@@ -10,11 +10,11 @@ use crate::{
 
 /// The core element builder.
 ///
-/// Almost every built-in view is an `El` under the hood. It collects a node's
+/// Almost every built-in view is an `Element` under the hood. It collects a node's
 /// kind, style (static and/or reactive), text, attributes, children and event
 /// handlers, and realizes them all in [`View::build`].
 #[must_use]
-pub struct El {
+pub struct Element {
   kind: ElementKind,
   base_style: Option<Style>,
   style_fn: Option<Box<dyn Fn() -> Style>>,
@@ -25,10 +25,10 @@ pub struct El {
   children: Vec<AnyView>,
 }
 
-impl El {
+impl Element {
   #[inline(always)]
   pub fn new(kind: ElementKind) -> Self {
-    El {
+    Element {
       kind,
       base_style: None,
       style_fn: None,
@@ -110,7 +110,7 @@ impl El {
   }
 }
 
-impl View for El {
+impl View for Element {
   fn build(self) -> NodeId {
     let node = with_backend(|b| b.create_element(self.kind));
 

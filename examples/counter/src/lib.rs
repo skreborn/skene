@@ -21,7 +21,7 @@ fn app_view() -> impl IntoView {
   let count = RwSignal::new(0i32);
 
   Flex::vertical()
-    .cross_axis_align(CrossAxisAlignment::Center)
+    .cross_axis_alignment(CrossAxisAlignment::Center)
     .gap(20.0)
     .padding(40.0)
     .child(
@@ -33,17 +33,7 @@ fn app_view() -> impl IntoView {
     .child(
       Flex::horizontal()
         .gap(12.0)
-        .child(
-          Button::new("−")
-            .action(move || count.update(|c| *c -= 1))
-            .build(),
-        )
-        .child(
-          Button::new("+")
-            .action(move || count.update(|c| *c += 1))
-            .build(),
-        )
-        .build(),
+        .child(Button::new("−").action(move || count.update(|c| *c -= 1)))
+        .child(Button::new("+").action(move || count.update(|c| *c += 1))),
     )
-    .build()
 }

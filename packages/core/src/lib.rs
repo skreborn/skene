@@ -14,8 +14,10 @@ mod runtime;
 mod view;
 mod views;
 
-pub use element::El;
+pub use element::Element;
 pub use runtime::{register_handler, root_scope, set_backend, with_backend};
+/// Derive fluent, self-returning setters for a widget struct.
+pub use skene_macros::Builder;
 /// Re-export the reactive primitives so apps need only depend on the facade.
 pub use skene_reactive as reactive;
 pub use skene_reactive::{
@@ -47,17 +49,7 @@ pub use skene_renderer::{
   Style,
 };
 pub use view::{AnyView, IntoView, View};
-pub use views::{
-  Button,
-  ButtonBuilder,
-  Container,
-  ContainerBuilder,
-  DynView,
-  Flex,
-  FlexBuilder,
-  Label,
-  dyn_view,
-};
+pub use views::{Button, Container, DynView, Flex, Label, dyn_view};
 
 /// Build the application root and insert it under the backend's root node.
 ///

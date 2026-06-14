@@ -98,10 +98,10 @@ pub fn declarations(style: &Style) -> String {
     if let Some(v) = style.flex_direction {
       push("flex-direction", flex_direction(v).to_string());
     }
-    if let Some(v) = style.main_axis_align {
+    if let Some(v) = style.main_axis_alignment {
       push("justify-content", justify_content(v).to_string());
     }
-    if let Some(v) = style.cross_axis_align {
+    if let Some(v) = style.cross_axis_alignment {
       push("align-items", align_items(v).to_string());
     }
     if let Some(v) = style.gap {

@@ -37,6 +37,9 @@ impl Color {
   }
 }
 
+// TODO: Remove `Length`
+// TODO: Padding should be `EdgeInsets`
+
 /// A length value.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Length {
@@ -118,8 +121,8 @@ pub enum Cursor {
 pub struct Style {
   pub display: Option<Display>,
   pub flex_direction: Option<Axis>,
-  pub main_axis_align: Option<MainAxisAlignment>,
-  pub cross_axis_align: Option<CrossAxisAlignment>,
+  pub main_axis_alignment: Option<MainAxisAlignment>,
+  pub cross_axis_alignment: Option<CrossAxisAlignment>,
   pub gap: Option<Length>,
   pub flex_grow: Option<f32>,
   pub flex_shrink: Option<f32>,
@@ -166,8 +169,8 @@ impl Style {
     over!(
       display,
       flex_direction,
-      main_axis_align,
-      cross_axis_align,
+      main_axis_alignment,
+      cross_axis_alignment,
       gap,
       flex_grow,
       flex_shrink,
@@ -195,7 +198,7 @@ impl Style {
   }
 }
 
-// TODO: Font size shouldn't be a length, just a number
+// TODO: All containers should default to taking up the full width/height
 // TODO: Color should be oklch (and convertable from various standards)
 
 /// Fluent setters used by widgets to assemble a [`Style`]. These only set
@@ -212,13 +215,13 @@ impl Style {
     self
   }
   #[inline(always)]
-  pub fn main_axis_align(mut self, v: MainAxisAlignment) -> Self {
-    self.main_axis_align = Some(v);
+  pub fn main_axis_alignment(mut self, v: MainAxisAlignment) -> Self {
+    self.main_axis_alignment = Some(v);
     self
   }
   #[inline(always)]
-  pub fn cross_axis_align(mut self, v: CrossAxisAlignment) -> Self {
-    self.cross_axis_align = Some(v);
+  pub fn cross_axis_alignment(mut self, v: CrossAxisAlignment) -> Self {
+    self.cross_axis_alignment = Some(v);
     self
   }
   #[inline(always)]

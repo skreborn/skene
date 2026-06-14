@@ -94,19 +94,9 @@ fn counter_increments_through_the_backend() {
       .child(Label::derived(move || format!("Count: {}", count.get())).font_size(32.0))
       .child(
         Flex::horizontal()
-          .child(
-            Button::new("-")
-              .action(move || count.update(|c| *c -= 1))
-              .build(),
-          )
-          .child(
-            Button::new("+")
-              .action(move || count.update(|c| *c += 1))
-              .build(),
-          )
-          .build(),
+          .child(Button::new("-").action(move || count.update(|c| *c -= 1)))
+          .child(Button::new("+").action(move || count.update(|c| *c += 1))),
       )
-      .build()
   });
 
   // The reactive label should have produced its initial text exactly once.

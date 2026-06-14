@@ -80,7 +80,7 @@ impl DomBackend {
     id
   }
 
-  fn el(&self, node: NodeId) -> &Element {
+  fn element(&self, node: NodeId) -> &Element {
     self.nodes.get(&node).expect("DOM backend: unknown node id")
   }
 }
@@ -168,12 +168,12 @@ impl Backend for DomBackend {
   }
 
   fn create_element(&mut self, kind: ElementKind) -> NodeId {
-    let el = self
+    let element = self
       .document
       .create_element(tag_for(kind))
       .expect("create element");
     let id = self.alloc_id();
-    self.nodes.insert(id, el);
+    self.nodes.insert(id, element);
     id
   }
 
@@ -186,8 +186,8 @@ impl Backend for DomBackend {
       return;
     }
 
-    let el = self.el(node);
-    let list = el.class_list();
+    let element = self.element(node);
+    let list = element.class_list();
     if let Some(old) = self.node_class.get(&node) {
       let _ = list.remove_1(old);
     }
@@ -196,27 +196,27 @@ impl Backend for DomBackend {
   }
 
   fn set_text(&mut self, node: NodeId, text: &str) {
-    self.el(node).set_text_content(Some(text));
+    self.element(node).set_text_content(Some(text));
   }
 
   fn set_attribute(&mut self, node: NodeId, name: &str, value: Option<&str>) {
-    let el = self.el(node);
+    let element = self.element(node);
     match value {
       Some(v) => {
-        let _ = el.set_attribute(name, v);
+        let _ = element.set_attribute(name, v);
       }
       None => {
-        let _ = el.remove_attribute(name);
+        let _ = element.remove_attribute(name);
       }
     }
   }
 
   fn insert_child(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    let parent_el = self.el(parent);
-    let child_el = self.el(child);
+    let parent_el = self.element(parent);
+    let child_el = self.element(child);
     match before {
       Some(before) => {
-        let before_el = self.el(before);
+        let before_el = self.element(before);
         let _ = parent_el.insert_before(child_el.as_ref(), Some(before_el.as_ref()));
       }
       None => {
@@ -226,8 +226,8 @@ impl Backend for DomBackend {
   }
 
   fn remove_child(&mut self, parent: NodeId, child: NodeId) {
-    let parent_el = self.el(parent);
-    let child_el = self.el(child);
+    let parent_el = self.element(parent);
+    let child_el = self.element(child);
     let _ = parent_el.remove_child(child_el.as_ref());
   }
 
@@ -241,14 +241,14 @@ impl Backend for DomBackend {
     else {
       return;
     };
-    let el = self.el(node).clone();
+    let element = self.element(node).clone();
     let closure = Closure::wrap(Box::new(move |ev: web_sys::Event| {
       if let Some(event) = convert_event(kind, &ev) {
         sink(node, event);
       }
     }) as Box<dyn FnMut(web_sys::Event)>);
-    let _ =
-      el.add_event_listener_with_callback(dom_event_name(kind), closure.as_ref().unchecked_ref());
+    let _ = element
+      .add_event_listener_with_callback(dom_event_name(kind), closure.as_ref().unchecked_ref());
     self.closures.push(closure);
   }
 

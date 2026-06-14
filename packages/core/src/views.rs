@@ -1,15 +1,18 @@
 //! The built-in widgets.
 //!
-//! Each widget is a small `bon` builder that exposes only the typed style props
-//! that make sense for it (a [`Flex`] has `gap` and axis alignment, a
-//! [`Container`] has `padding`/`width`/`background`/…). The builder's `build()`
-//! finalizes the widget value; realizing it against the backend happens later
-//! through [`View::build`], which assembles the relevant subset of the renderer
-//! [`Style`] internally — app code never touches `Style` or CSS directly.
+//! Each widget is its own builder: [`Builder`] derives fluent, self-returning
+//! setters for the typed style props that make sense for it (a [`Flex`] has
+//! `gap` and axis alignment, a [`Container`] has `padding`/`width`/`background`/…).
+//! Because a widget *is* a [`View`], there is no separate builder type and no
+//! `.build()` to call — chain setters and pass it straight to a parent.
+//!
+//! Realizing a widget against the backend happens in [`View::build`], which
+//! assembles the relevant subset of the renderer [`Style`] internally — app code
+//! never touches `Style` or CSS directly.
 
 use std::{cell::RefCell, rc::Rc};
 
-use bon::Builder;
+use skene_macros::Builder;
 use skene_reactive::{Effect, Scope};
 use skene_renderer::{
   Axis,
@@ -25,7 +28,7 @@ use skene_renderer::{
 };
 
 use crate::{
-  element::El,
+  element::Element,
   runtime::with_backend,
   view::{AnyView, IntoView, View},
 };
@@ -42,13 +45,16 @@ enum TextSource {
 /// re-renders whenever the signals it reads change.
 ///
 /// ```ignore
-/// Label::new("Hello").font_size(20.0).build();
-/// Label::derived(move || format!("Value: {count}")).build();
+/// Label::new("Hello").font_size(20.0);
+/// Label::derived(move || format!("Value: {count}"));
 /// ```
+#[derive(Builder)]
 #[must_use]
 pub struct Label {
   source: TextSource,
+  #[builder(into)]
   color: Option<Color>,
+  #[builder(into)]
   font_size: Option<Length>,
   font_weight: Option<u16>,
 }
@@ -75,24 +81,6 @@ impl Label {
       font_weight: None,
     }
   }
-
-  pub fn color(mut self, color: impl Into<Color>) -> Self {
-    self.color = Some(color.into());
-
-    self
-  }
-
-  pub fn font_size(mut self, font_size: impl Into<Length>) -> Self {
-    self.font_size = Some(font_size.into());
-
-    self
-  }
-
-  pub fn font_weight(mut self, font_weight: u16) -> Self {
-    self.font_weight = Some(font_weight);
-
-    self
-  }
 }
 
 impl View for Label {
@@ -108,29 +96,30 @@ impl View for Label {
       style = style.font_weight(v);
     }
 
-    let el = El::new(ElementKind::Text).style(style);
-    let el = match self.source {
-      TextSource::Static(text) => el.text(text),
-      TextSource::Derived(f) => el.text_fn(move || f()),
+    let element = Element::new(ElementKind::Text).style(style);
+    let element = match self.source {
+      TextSource::Static(text) => element.text(text),
+      TextSource::Derived(f) => element.text_fn(move || f()),
     };
-    el.build()
+    element.build()
   }
 }
 
 /// A clickable button with text.
 ///
 /// ```ignore
-/// Button::new("Increment").action(move || count.update(|c| *c += 1)).build();
+/// Button::new("Increment").action(move || count.update(|c| *c += 1));
 /// ```
 #[derive(Builder)]
-#[builder(start_fn = with_label)]
 #[must_use]
 pub struct Button {
-  #[builder(start_fn, into)]
   label: String,
-  #[builder(field)]
+  /// Generates `fn action(self, impl Fn() + 'static) -> Self`.
+  #[builder(callback)]
   action: Option<Rc<dyn Fn()>>,
+  #[builder(into)]
   background: Option<Color>,
+  #[builder(into)]
   color: Option<Color>,
   #[builder(into)]
   font_size: Option<Length>,
@@ -141,18 +130,15 @@ pub struct Button {
 impl Button {
   /// A button labelled with `text`.
   #[inline(always)]
-  #[allow(clippy::new_ret_no_self)] // returns a builder; `build()` yields the `Button`
-  pub fn new(text: impl Into<String>) -> ButtonBuilder {
-    Button::with_label(text.into())
-  }
-}
-
-impl<S: button_builder::State> ButtonBuilder<S> {
-  /// Run `f` when the button is clicked.
-  #[inline(always)]
-  pub fn action(mut self, f: impl Fn() + 'static) -> Self {
-    self.action = Some(Rc::new(f));
-    self
+  pub fn new(text: impl Into<String>) -> Self {
+    Self {
+      label: text.into(),
+      action: None,
+      background: None,
+      color: None,
+      font_size: None,
+      border_radius: None,
+    }
   }
 }
 
@@ -168,45 +154,45 @@ impl View for Button {
       .border_radius(self.border_radius.unwrap_or(Length::Px(8.0)))
       .cursor(Cursor::Pointer);
 
-    let mut el = El::new(ElementKind::Button).style(style).text(self.label);
+    let mut element = Element::new(ElementKind::Button)
+      .style(style)
+      .text(self.label);
     if let Some(action) = self.action {
-      el = el.on_click(move || action());
+      element = element.on_click(move || action());
     }
-    el.build()
+    element.build()
   }
 }
 
 /// A flex container holding any number of children.
 ///
 /// Construct with [`Flex::horizontal`] or [`Flex::vertical`] and add children
-/// with [`child`](FlexBuilder::child):
+/// with [`child`](Flex::child):
 ///
 /// ```ignore
 /// Flex::horizontal()
 ///   .gap(16.0)
-///   .main_axis_align(MainAxisAlignment::Center)
-///   .child(Label::new("a").build())
-///   .child(Label::new("b").build())
-///   .build();
+///   .main_axis_alignment(MainAxisAlignment::Center)
+///   .child(Label::new("a"))
+///   .child(Label::new("b"));
 /// ```
 #[derive(Builder)]
-#[builder(start_fn = new)]
 #[must_use]
 pub struct Flex {
-  #[builder(start_fn)]
   axis: Axis,
-  #[builder(field)]
+  #[builder(item = child, view)]
   children: Vec<AnyView>,
   #[builder(into)]
   gap: Option<Length>,
-  main_axis_align: Option<MainAxisAlignment>,
-  cross_axis_align: Option<CrossAxisAlignment>,
+  main_axis_alignment: Option<MainAxisAlignment>,
+  cross_axis_alignment: Option<CrossAxisAlignment>,
   #[builder(into)]
   width: Option<Length>,
   #[builder(into)]
   height: Option<Length>,
   #[builder(into)]
   padding: Option<Length>,
+  #[builder(into)]
   background: Option<Color>,
   #[builder(into)]
   border_radius: Option<Length>,
@@ -215,30 +201,30 @@ pub struct Flex {
 impl Flex {
   /// A row: children laid out along the horizontal main axis.
   #[inline(always)]
-  pub fn horizontal() -> FlexBuilder {
-    Flex::new(Axis::Horizontal)
+  pub fn horizontal() -> Self {
+    Flex::with_axis(Axis::Horizontal)
   }
 
   /// A column: children laid out along the vertical main axis.
   #[inline(always)]
-  pub fn vertical() -> FlexBuilder {
-    Flex::new(Axis::Vertical)
-  }
-}
-
-impl<S: flex_builder::State> FlexBuilder<S> {
-  /// Append a child.
-  #[inline(always)]
-  pub fn child(mut self, child: impl IntoView) -> Self {
-    self.children.push(child.into_view());
-    self
+  pub fn vertical() -> Self {
+    Flex::with_axis(Axis::Vertical)
   }
 
-  /// Append several children.
   #[inline(always)]
-  pub fn children(mut self, children: impl IntoIterator<Item = AnyView>) -> Self {
-    self.children.extend(children);
-    self
+  fn with_axis(axis: Axis) -> Self {
+    Self {
+      axis,
+      children: Vec::new(),
+      gap: None,
+      main_axis_alignment: None,
+      cross_axis_alignment: None,
+      width: None,
+      height: None,
+      padding: None,
+      background: None,
+      border_radius: None,
+    }
   }
 }
 
@@ -251,11 +237,11 @@ impl View for Flex {
     if let Some(v) = self.gap {
       style = style.gap(v);
     }
-    if let Some(v) = self.main_axis_align {
-      style = style.main_axis_align(v);
+    if let Some(v) = self.main_axis_alignment {
+      style = style.main_axis_alignment(v);
     }
-    if let Some(v) = self.cross_axis_align {
-      style = style.cross_axis_align(v);
+    if let Some(v) = self.cross_axis_alignment {
+      style = style.cross_axis_alignment(v);
     }
     if let Some(v) = self.width {
       style = style.width(v);
@@ -273,7 +259,7 @@ impl View for Flex {
       style = style.border_radius(v);
     }
 
-    El::new(ElementKind::Box)
+    Element::new(ElementKind::Box)
       .style(style)
       .children(self.children)
       .build()
@@ -283,13 +269,11 @@ impl View for Flex {
 /// A single-child box with the common container style props.
 ///
 /// ```ignore
-/// Container::new(child).padding(16.0).background(Color::WHITE).build();
+/// Container::new(child).padding(16.0).background(Color::WHITE);
 /// ```
 #[derive(Builder)]
-#[builder(start_fn = with_child)]
 #[must_use]
 pub struct Container {
-  #[builder(start_fn)]
   child: AnyView,
   #[builder(into)]
   width: Option<Length>,
@@ -297,6 +281,7 @@ pub struct Container {
   height: Option<Length>,
   #[builder(into)]
   padding: Option<Length>,
+  #[builder(into)]
   background: Option<Color>,
   #[builder(into)]
   border_radius: Option<Length>,
@@ -305,9 +290,15 @@ pub struct Container {
 impl Container {
   /// A container wrapping `child`.
   #[inline(always)]
-  #[allow(clippy::new_ret_no_self)] // returns a builder; `build()` yields the `Container`
-  pub fn new(child: impl IntoView) -> ContainerBuilder {
-    Container::with_child(child.into_view())
+  pub fn new(child: impl IntoView) -> Self {
+    Self {
+      child: child.into_view(),
+      width: None,
+      height: None,
+      padding: None,
+      background: None,
+      border_radius: None,
+    }
   }
 }
 
@@ -330,7 +321,7 @@ impl View for Container {
       style = style.border_radius(v);
     }
 
-    El::new(ElementKind::Box)
+    Element::new(ElementKind::Box)
       .style(style)
       .child_any(self.child)
       .build()

@@ -1,0 +1,33 @@
+[package]
+name = "skene-dom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+rustc-hash = { workspace = true }
+skene-core = { workspace = true }
+skene-renderer = { workspace = true }
+wasm-bindgen = { workspace = true }
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "Document",
+  "Window",
+  "Element",
+  "DomTokenList",
+  "HtmlElement",
+  "HtmlHeadElement",
+  "HtmlInputElement",
+  "HtmlStyleElement",
+  "Node",
+  "Text",
+  "Event",
+  "EventTarget",
+  "MouseEvent",
+  "KeyboardEvent",
+  "InputEvent",
+]

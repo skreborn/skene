@@ -1,0 +1,12 @@
+{
+  "wrap_guides": [100],
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "rustfmt": {
+          "extraArgs": ["+nightly"],
+        },
+      },
+    },
+  },
+}

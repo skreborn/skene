@@ -31,14 +31,28 @@ impl std::fmt::Debug for NodeId {
 ///
 /// This is intentionally abstract: it describes the *role* of a node, not how a
 /// particular backend realizes it. The DOM backend maps these to HTML tags
-/// (`Box` → `div`, `Text` → `span`, `Button` → `button`); a native backend would
-/// map them to its own widget primitives, a TUI backend to its own.
+/// (`Box` → `div`, `Text` → `span`); a native backend would map them to its own
+/// widget primitives, a TUI backend to its own.
+///
+/// There is deliberately no `Button` kind: a button is just a composition of
+/// these primitives (see `skene_core::Button`), not a special element.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ElementKind {
   /// A generic layout container (a styled box).
   Box,
   /// A run of text. Its content is set with [`Backend::set_text`](crate::Backend::set_text).
   Text,
-  /// An interactive button.
+}
+
+/// The accessibility role of a node: its semantic purpose, independent of how it
+/// is built. Set with [`Backend::set_role`](crate::Backend::set_role).
+///
+/// This is backend-agnostic. The DOM backend maps it to an ARIA `role`
+/// attribute; a native backend would map it into its accessibility tree, a TUI
+/// backend into screen-reader output.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Role {
   Button,
+  Link,
+  Checkbox,
 }

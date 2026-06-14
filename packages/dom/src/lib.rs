@@ -25,6 +25,7 @@ use skene_renderer::{
   NodeId,
   PointerButton,
   PointerEvent,
+  Role,
   Style,
 };
 use stylesheet::StyleStore;
@@ -89,7 +90,15 @@ fn tag_for(kind: ElementKind) -> &'static str {
   match kind {
     ElementKind::Box => "div",
     ElementKind::Text => "span",
-    ElementKind::Button => "button",
+  }
+}
+
+/// The ARIA `role` attribute value for a semantic [`Role`].
+fn aria_role(role: Role) -> &'static str {
+  match role {
+    Role::Button => "button",
+    Role::Link => "link",
+    Role::Checkbox => "checkbox",
   }
 }
 
@@ -209,6 +218,10 @@ impl Backend for DomBackend {
         let _ = element.remove_attribute(name);
       }
     }
+  }
+
+  fn set_role(&mut self, node: NodeId, role: Role) {
+    let _ = self.element(node).set_attribute("role", aria_role(role));
   }
 
   fn insert_child(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {

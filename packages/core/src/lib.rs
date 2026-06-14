@@ -15,7 +15,7 @@ mod view;
 mod views;
 
 pub use element::Element;
-pub use runtime::{register_handler, root_scope, set_backend, with_backend};
+pub use runtime::{register_handler, root_scope, set_backend, set_role, with_backend};
 /// Derive fluent, self-returning setters for a widget struct.
 pub use skene_macros::Builder;
 /// Re-export the reactive primitives so apps need only depend on the facade.
@@ -47,6 +47,7 @@ pub use skene_renderer::{
   EventKind,
   MainAxisAlignment,
   NodeId,
+  Role,
   Style,
 };
 pub use view::{AnyView, IntoView, View};

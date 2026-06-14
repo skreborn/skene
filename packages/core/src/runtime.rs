@@ -9,7 +9,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
 use skene_reactive::{Runtime, Scope};
-use skene_renderer::{Backend, Event, EventKind, NodeId};
+use skene_renderer::{Backend, Event, EventKind, NodeId, Role};
 
 pub(crate) type Handler = Rc<dyn Fn(Event)>;
 
@@ -66,6 +66,11 @@ pub fn register_handler(node: NodeId, kind: EventKind, handler: Handler) {
       .push(handler);
   });
   with_backend(|b| b.listen(node, kind));
+}
+
+/// Set a node's accessibility [`Role`] on the active backend.
+pub fn set_role(node: NodeId, role: Role) {
+  with_backend(|b| b.set_role(node, role));
 }
 
 /// The application root scope. All top-level signals/effects live under it, so

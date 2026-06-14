@@ -20,6 +20,7 @@ use skene_renderer::{
   NodeId,
   PointerButton,
   PointerEvent,
+  Role,
   Style,
 };
 
@@ -59,6 +60,7 @@ impl Backend for MockBackend {
     self.0.borrow_mut().text.push((node, text.to_string()));
   }
   fn set_attribute(&mut self, _node: NodeId, _name: &str, _value: Option<&str>) {}
+  fn set_role(&mut self, _node: NodeId, _role: Role) {}
   fn insert_child(&mut self, _parent: NodeId, _child: NodeId, _before: Option<NodeId>) {}
   fn remove_child(&mut self, _parent: NodeId, _child: NodeId) {}
   fn destroy(&mut self, _node: NodeId) {}

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{ElementKind, Event, EventKind, NodeId, Style};
+use crate::{ElementKind, Event, EventKind, NodeId, Role, Style};
 
 /// A sink that a backend calls when an event fires on a node.
 ///
@@ -41,6 +41,9 @@ pub trait Backend {
 
   /// Set (`Some`) or remove (`None`) an attribute on a node.
   fn set_attribute(&mut self, node: NodeId, name: &str, value: Option<&str>);
+
+  /// Set a node's accessibility [`Role`].
+  fn set_role(&mut self, node: NodeId, role: Role);
 
   /// Insert `child` under `parent`. If `before` is `Some`, insert immediately
   /// before that existing child; otherwise append.

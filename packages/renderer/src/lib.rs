@@ -22,7 +22,7 @@ mod style;
 
 pub use backend::{Backend, EventSink};
 pub use event::{Event, EventKind, KeyEvent, Modifiers, PointerButton, PointerEvent};
-pub use node::{ElementKind, NodeId};
+pub use node::{ElementKind, NodeId, Role};
 pub use style::{
   Axis,
   Border,

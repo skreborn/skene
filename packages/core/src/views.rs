@@ -23,14 +23,16 @@ use skene_renderer::{
   Display,
   EdgeInsets,
   ElementKind,
+  EventKind,
   MainAxisAlignment,
   NodeId,
+  Role,
   Style,
 };
 
 use crate::{
   element::Element,
-  runtime::with_backend,
+  runtime::{register_handler, set_role, with_backend},
   view::{AnyView, IntoView, View},
 };
 
@@ -109,65 +111,70 @@ impl View for Label {
 }
 
 // TODO: Gestures should be abstracted to a core type
-// TODO: Button should allow container and label customization
+// TODO: A button should respond to keyboard activation (Enter/Space), not just clicks
 
-/// A clickable button with text.
+/// A clickable button: a label *view* wrapped in a container, exposed to the DOM
+/// with a button role.
+///
+/// A button is not a special element — it is a raw composition of other widgets,
+/// so widget libraries can build styled buttons on top of it:
+///
+/// * the label is any [`View`] (a string becomes a [`Label`]), so it can be an icon,
+///   a row of widgets, etc;
+/// * the wrapping container is produced by a closure that defaults to a *style-less*
+///   [`Container`] — override it via [`container`](Button::container) to style the button.
 ///
 /// ```ignore
+/// // A plain, unstyled button:
 /// Button::new("Increment").action(move || count.update(|c| *c += 1));
+///
+/// // A styled button: override the container builder.
+/// Button::new("Increment")
+///   .action(move || count.update(|c| *c += 1))
+///   .container(|label| Container::new(label).padding(12.0).background(Color::rgb(0x37, 0x6e, 0xff)));
 /// ```
 #[derive(Builder)]
 #[must_use]
 pub struct Button {
-  label: String,
+  label: AnyView,
   /// Run a closure when the button is clicked.
   #[builder(callback)]
   action: Option<Rc<dyn Fn()>>,
-  /// Background color.
-  #[builder(into)]
-  background: Option<Color>,
-  /// Text color.
-  #[builder(into)]
-  color: Option<Color>,
-  /// Font size, in logical pixels.
-  font_size: Option<f64>,
-  /// Corner radius, in logical pixels.
-  border_radius: Option<f64>,
+  /// Wrap the label view in a container. Receives the label and returns the
+  /// container to render it in; defaults to a style-less [`Container`].
+  #[builder(callback)]
+  container: Option<Rc<dyn Fn(AnyView) -> Container>>,
 }
 
 impl Button {
-  /// A button labelled with `text`.
+  /// A button whose content is `label` (a string becomes a [`Label`]).
   #[inline(always)]
-  pub fn new(text: impl Into<String>) -> Self {
+  pub fn new(label: impl IntoView) -> Self {
     Self {
-      label: text.into(),
+      label: label.into_view(),
       action: None,
-      background: None,
-      color: None,
-      font_size: None,
-      border_radius: None,
+      container: None,
     }
   }
 }
 
 impl View for Button {
   fn build(self) -> NodeId {
-    // A sensible default look, with per-instance overrides on top.
-    let style = Style::new()
-      .padding(EdgeInsets::symmetric(20.0, 10.0))
-      .font_size(self.font_size.unwrap_or(20.0))
-      .background(self.background.unwrap_or(Color::rgb(0x37, 0x6e, 0xff)))
-      .color(self.color.unwrap_or(Color::WHITE))
-      .border_radius(self.border_radius.unwrap_or(8.0))
-      .cursor(Cursor::Pointer);
+    let content = self.label;
+    let container = match self.container {
+      Some(make) => make(content),
+      // The default wrapper is style-less apart from the button's pointer cursor.
+      None => Container::new(content).cursor(Cursor::Pointer),
+    };
+    let node = container.build();
 
-    let mut element = Element::new(ElementKind::Button)
-      .style(style)
-      .text(self.label);
+    // Expose it as a button to assistive tech (ARIA `role="button"` in the DOM).
+    set_role(node, Role::Button);
+
     if let Some(action) = self.action {
-      element = element.on_click(move || action());
+      register_handler(node, EventKind::Click, Rc::new(move |_| action()));
     }
-    element.build()
+    node
   }
 }
 
@@ -307,6 +314,8 @@ pub struct Container {
   border: Option<Border>,
   /// Corner radius, in logical pixels.
   border_radius: Option<f64>,
+  /// Mouse cursor shown over the container.
+  cursor: Option<Cursor>,
 }
 
 impl Container {
@@ -321,6 +330,7 @@ impl Container {
       background: None,
       border: None,
       border_radius: None,
+      cursor: None,
     }
   }
 }
@@ -345,6 +355,9 @@ impl View for Container {
     }
     if let Some(v) = self.border_radius {
       style = style.border_radius(v);
+    }
+    if let Some(v) = self.cursor {
+      style = style.cursor(v);
     }
 
     Element::new(ElementKind::Box)

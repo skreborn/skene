@@ -1,7 +1,10 @@
 use skene_core::{
   Button,
   Color,
+  Container,
   CrossAxisAlignment,
+  Cursor,
+  EdgeInsets,
   Flex,
   IntoView,
   Label,
@@ -33,7 +36,20 @@ fn app_view() -> impl IntoView {
     .child(
       Flex::horizontal()
         .gap(12.0)
-        .child(Button::new("−").action(move || count.update(|c| *c -= 1)))
-        .child(Button::new("+").action(move || count.update(|c| *c += 1))),
+        .child(counter_button("−", move || count.update(|c| *c -= 1)))
+        .child(counter_button("+", move || count.update(|c| *c += 1))),
     )
+}
+
+/// A blue pill button — styles a [`Button`] by overriding its container builder.
+fn counter_button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
+  Button::new(Label::new(symbol).color(Color::WHITE).font_size(20.0))
+    .action(action)
+    .container(|label| {
+      Container::new(label)
+        .padding(EdgeInsets::symmetric(20.0, 10.0))
+        .background(Color::rgb(0x37, 0x6e, 0xff))
+        .border_radius(8.0)
+        .cursor(Cursor::Pointer)
+    })
 }

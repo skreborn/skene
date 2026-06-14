@@ -25,11 +25,12 @@ pub use event::{Event, EventKind, KeyEvent, Modifiers, PointerButton, PointerEve
 pub use node::{ElementKind, NodeId};
 pub use style::{
   Axis,
+  Border,
   Color,
   CrossAxisAlignment,
   Cursor,
   Display,
-  Length,
+  EdgeInsets,
   MainAxisAlignment,
   Style,
 };

@@ -10,6 +10,8 @@
 //! merged (a later style overrides earlier set properties) and compared. App
 //! code never assembles a [`Style`] directly: each widget exposes only the
 //! properties that make sense for it and assembles a [`Style`] internally.
+//!
+//! Sizes are plain `f64` logical pixels.
 
 /// An RGBA color, 8 bits per channel.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -37,35 +39,77 @@ impl Color {
   }
 }
 
-// TODO: Remove `Length`
-// TODO: Padding should be `EdgeInsets`
-
-/// A length value.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Length {
-  /// A length in (CSS/logical) pixels.
-  Px(f64),
-  /// A percentage of the relevant containing measure.
-  Pct(f64),
-  /// Automatic / content-driven sizing.
-  Auto,
+/// Spacing on the four edges of a box, in logical pixels (à la Flutter's
+/// `EdgeInsets`). A single `f64` converts to equal insets on all sides, so a
+/// widget's `padding` prop accepts both `40.0` and `EdgeInsets::symmetric(..)`.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[must_use]
+pub struct EdgeInsets {
+  pub top: f64,
+  pub right: f64,
+  pub bottom: f64,
+  pub left: f64,
 }
 
-impl Length {
-  pub const ZERO: Length = Length::Px(0.0);
-}
+impl EdgeInsets {
+  pub const ZERO: EdgeInsets = EdgeInsets::all(0.0);
 
-impl From<f64> for Length {
+  /// Equal insets on all four sides.
   #[inline(always)]
-  fn from(v: f64) -> Self {
-    Length::Px(v)
+  pub const fn all(value: f64) -> EdgeInsets {
+    EdgeInsets {
+      top: value,
+      right: value,
+      bottom: value,
+      left: value,
+    }
+  }
+
+  /// Insets that are symmetric about each axis.
+  #[inline(always)]
+  pub const fn symmetric(horizontal: f64, vertical: f64) -> EdgeInsets {
+    EdgeInsets {
+      top: vertical,
+      right: horizontal,
+      bottom: vertical,
+      left: horizontal,
+    }
+  }
+
+  /// Insets on the left and right edges only.
+  #[inline(always)]
+  pub const fn horizontal(value: f64) -> EdgeInsets {
+    EdgeInsets::symmetric(value, 0.0)
+  }
+
+  /// Insets on the top and bottom edges only.
+  #[inline(always)]
+  pub const fn vertical(value: f64) -> EdgeInsets {
+    EdgeInsets::symmetric(0.0, value)
   }
 }
 
-impl From<i32> for Length {
+impl From<f64> for EdgeInsets {
   #[inline(always)]
-  fn from(v: i32) -> Self {
-    Length::Px(f64::from(v))
+  fn from(value: f64) -> Self {
+    EdgeInsets::all(value)
+  }
+}
+
+/// A solid border: a width (logical pixels) and a color. The corner radius is
+/// *not* part of this — it describes the overall shape of the box and lives on
+/// [`Style::border_radius`].
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[must_use]
+pub struct Border {
+  pub width: f64,
+  pub color: Color,
+}
+
+impl Border {
+  #[inline(always)]
+  pub const fn new(width: f64, color: Color) -> Border {
+    Border { width, color }
   }
 }
 
@@ -123,31 +167,27 @@ pub struct Style {
   pub flex_direction: Option<Axis>,
   pub main_axis_alignment: Option<MainAxisAlignment>,
   pub cross_axis_alignment: Option<CrossAxisAlignment>,
-  pub gap: Option<Length>,
+  pub gap: Option<f64>,
   pub flex_grow: Option<f32>,
   pub flex_shrink: Option<f32>,
-  pub flex_basis: Option<Length>,
+  pub flex_basis: Option<f64>,
 
-  pub width: Option<Length>,
-  pub height: Option<Length>,
-  pub min_width: Option<Length>,
-  pub min_height: Option<Length>,
-  pub max_width: Option<Length>,
-  pub max_height: Option<Length>,
+  pub width: Option<f64>,
+  pub height: Option<f64>,
+  pub min_width: Option<f64>,
+  pub min_height: Option<f64>,
+  pub max_width: Option<f64>,
+  pub max_height: Option<f64>,
 
-  pub padding_top: Option<Length>,
-  pub padding_right: Option<Length>,
-  pub padding_bottom: Option<Length>,
-  pub padding_left: Option<Length>,
+  pub padding: Option<EdgeInsets>,
 
   pub background: Option<Color>,
   pub color: Option<Color>,
-  pub font_size: Option<Length>,
+  pub font_size: Option<f64>,
   pub font_weight: Option<u16>,
 
-  pub border_width: Option<Length>,
-  pub border_color: Option<Color>,
-  pub border_radius: Option<Length>,
+  pub border: Option<Border>,
+  pub border_radius: Option<f64>,
 
   pub cursor: Option<Cursor>,
 }
@@ -181,16 +221,12 @@ impl Style {
       min_height,
       max_width,
       max_height,
-      padding_top,
-      padding_right,
-      padding_bottom,
-      padding_left,
+      padding,
       background,
       color,
       font_size,
       font_weight,
-      border_width,
-      border_color,
+      border,
       border_radius,
       cursor,
     );
@@ -225,8 +261,8 @@ impl Style {
     self
   }
   #[inline(always)]
-  pub fn gap(mut self, v: impl Into<Length>) -> Self {
-    self.gap = Some(v.into());
+  pub fn gap(mut self, v: f64) -> Self {
+    self.gap = Some(v);
     self
   }
   #[inline(always)]
@@ -240,60 +276,45 @@ impl Style {
     self
   }
   #[inline(always)]
-  pub fn flex_basis(mut self, v: impl Into<Length>) -> Self {
-    self.flex_basis = Some(v.into());
+  pub fn flex_basis(mut self, v: f64) -> Self {
+    self.flex_basis = Some(v);
     self
   }
 
   #[inline(always)]
-  pub fn width(mut self, v: impl Into<Length>) -> Self {
-    self.width = Some(v.into());
+  pub fn width(mut self, v: f64) -> Self {
+    self.width = Some(v);
     self
   }
   #[inline(always)]
-  pub fn height(mut self, v: impl Into<Length>) -> Self {
-    self.height = Some(v.into());
+  pub fn height(mut self, v: f64) -> Self {
+    self.height = Some(v);
     self
   }
   #[inline(always)]
-  pub fn min_width(mut self, v: impl Into<Length>) -> Self {
-    self.min_width = Some(v.into());
+  pub fn min_width(mut self, v: f64) -> Self {
+    self.min_width = Some(v);
     self
   }
   #[inline(always)]
-  pub fn min_height(mut self, v: impl Into<Length>) -> Self {
-    self.min_height = Some(v.into());
+  pub fn min_height(mut self, v: f64) -> Self {
+    self.min_height = Some(v);
     self
   }
   #[inline(always)]
-  pub fn max_width(mut self, v: impl Into<Length>) -> Self {
-    self.max_width = Some(v.into());
+  pub fn max_width(mut self, v: f64) -> Self {
+    self.max_width = Some(v);
     self
   }
   #[inline(always)]
-  pub fn max_height(mut self, v: impl Into<Length>) -> Self {
-    self.max_height = Some(v.into());
+  pub fn max_height(mut self, v: f64) -> Self {
+    self.max_height = Some(v);
     self
   }
 
-  pub fn padding(mut self, v: impl Into<Length>) -> Self {
-    let v = v.into();
-    self.padding_top = Some(v);
-    self.padding_right = Some(v);
-    self.padding_bottom = Some(v);
-    self.padding_left = Some(v);
-    self
-  }
-  pub fn padding_horiz(mut self, v: impl Into<Length>) -> Self {
-    let v = v.into();
-    self.padding_left = Some(v);
-    self.padding_right = Some(v);
-    self
-  }
-  pub fn padding_vert(mut self, v: impl Into<Length>) -> Self {
-    let v = v.into();
-    self.padding_top = Some(v);
-    self.padding_bottom = Some(v);
+  #[inline(always)]
+  pub fn padding(mut self, v: EdgeInsets) -> Self {
+    self.padding = Some(v);
     self
   }
 
@@ -308,8 +329,8 @@ impl Style {
     self
   }
   #[inline(always)]
-  pub fn font_size(mut self, v: impl Into<Length>) -> Self {
-    self.font_size = Some(v.into());
+  pub fn font_size(mut self, v: f64) -> Self {
+    self.font_size = Some(v);
     self
   }
   #[inline(always)]
@@ -319,14 +340,13 @@ impl Style {
   }
 
   #[inline(always)]
-  pub fn border(mut self, width: impl Into<Length>, color: Color) -> Self {
-    self.border_width = Some(width.into());
-    self.border_color = Some(color);
+  pub fn border(mut self, v: Border) -> Self {
+    self.border = Some(v);
     self
   }
   #[inline(always)]
-  pub fn border_radius(mut self, v: impl Into<Length>) -> Self {
-    self.border_radius = Some(v.into());
+  pub fn border_radius(mut self, v: f64) -> Self {
+    self.border_radius = Some(v);
     self
   }
 

@@ -44,7 +44,7 @@ use syn::{
 /// # Field attributes (`#[builder(...)]`)
 ///
 /// * `skip` — generate no setter for this field.
-/// * `into` — take `impl Into<T>` instead of `T` (e.g. so `Length` fields accept `20.0`).
+/// * `into` — take `impl Into<T>` instead of `T` (e.g. so an `EdgeInsets` field accepts `20.0`).
 /// * `callback` — for an `Option<Rc<dyn Fn..>>` (or `Box`/`Arc`) field: generate a setter
 ///   that takes the closure directly (`impl Fn.. + 'static`) and wraps it in the pointer.
 /// * `view` — convert with skene's `IntoView` (`.into_view()`); for `Vec<AnyView>` children.
@@ -101,12 +101,14 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
       continue;
     }
     let field_name = field.ident.as_ref().expect("named field");
+    // The field's own doc comments are carried onto the generated setter(s).
+    let docs = doc_attrs(field);
 
     if let Some(item_ty) = generic_inner(&field.ty, "Vec") {
-      methods.push(collection_setters(&cfg, field_name, item_ty, &core));
+      methods.push(collection_setters(&cfg, &docs, field_name, item_ty, &core));
     }
     else if let Some(inner_ty) = generic_inner(&field.ty, "Option") {
-      methods.push(option_setter(&cfg, field, field_name, inner_ty, &core)?);
+      methods.push(option_setter(&cfg, &docs, field, field_name, inner_ty, &core)?);
     }
     // Any other field type is a required field owned by a constructor: skip it.
   }
@@ -121,16 +123,18 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
 /// A scalar `Option<T>` setter.
 fn option_setter(
   cfg: &FieldConfig,
+  docs: &TokenStream2,
   field: &Field,
   name: &Ident,
   inner: &Type,
   core: &TokenStream2,
 ) -> syn::Result<TokenStream2> {
   if cfg.callback {
-    return callback_setter(field, name, inner);
+    return callback_setter(docs, field, name, inner);
   }
   if cfg.view {
     return Ok(quote! {
+      #docs
       #[inline(always)]
       pub fn #name(mut self, value: impl #core::IntoView) -> Self {
         self.#name = ::core::option::Option::Some(#core::IntoView::into_view(value));
@@ -140,6 +144,7 @@ fn option_setter(
   }
   if cfg.into {
     return Ok(quote! {
+      #docs
       #[inline(always)]
       pub fn #name(mut self, value: impl ::core::convert::Into<#inner>) -> Self {
         self.#name = ::core::option::Option::Some(::core::convert::Into::into(value));
@@ -148,6 +153,7 @@ fn option_setter(
     });
   }
   Ok(quote! {
+    #docs
     #[inline(always)]
     pub fn #name(mut self, value: #inner) -> Self {
       self.#name = ::core::option::Option::Some(value);
@@ -158,7 +164,12 @@ fn option_setter(
 
 /// A callback setter for `Option<Rc<dyn Fn..>>` (or `Box`/`Arc`): takes the
 /// closure directly and wraps it in the pointer type the field stores.
-fn callback_setter(field: &Field, name: &Ident, inner: &Type) -> syn::Result<TokenStream2> {
+fn callback_setter(
+  docs: &TokenStream2,
+  field: &Field,
+  name: &Ident,
+  inner: &Type,
+) -> syn::Result<TokenStream2> {
   let err = || {
     syn::Error::new_spanned(
       &field.ty,
@@ -200,6 +211,7 @@ fn callback_setter(field: &Field, name: &Ident, inner: &Type) -> syn::Result<Tok
   };
 
   Ok(quote! {
+    #docs
     #[inline(always)]
     pub fn #name(mut self, #name: impl #bounds #lifetime) -> Self {
       self.#name = ::core::option::Option::Some(#wrapper::new(#name));
@@ -212,6 +224,7 @@ fn callback_setter(field: &Field, name: &Ident, inner: &Type) -> syn::Result<Tok
 /// optional singular adder named by `#[builder(item = ..)]`.
 fn collection_setters(
   cfg: &FieldConfig,
+  docs: &TokenStream2,
   field: &Ident,
   item: &Type,
   core: &TokenStream2,
@@ -219,6 +232,7 @@ fn collection_setters(
   let singular = cfg.item.as_ref().map(|adder| {
     if cfg.view {
       quote! {
+        #docs
         #[inline(always)]
         pub fn #adder(mut self, item: impl #core::IntoView) -> Self {
           self.#field.push(#core::IntoView::into_view(item));
@@ -228,6 +242,7 @@ fn collection_setters(
     }
     else if cfg.into {
       quote! {
+        #docs
         #[inline(always)]
         pub fn #adder(mut self, item: impl ::core::convert::Into<#item>) -> Self {
           self.#field.push(::core::convert::Into::into(item));
@@ -237,6 +252,7 @@ fn collection_setters(
     }
     else {
       quote! {
+        #docs
         #[inline(always)]
         pub fn #adder(mut self, item: #item) -> Self {
           self.#field.push(item);
@@ -248,6 +264,7 @@ fn collection_setters(
 
   let plural = if cfg.view {
     quote! {
+      #docs
       #[inline(always)]
       pub fn #field<__SkeneItems>(mut self, items: __SkeneItems) -> Self
       where
@@ -261,6 +278,7 @@ fn collection_setters(
   }
   else if cfg.into {
     quote! {
+      #docs
       #[inline(always)]
       pub fn #field<__SkeneItems>(mut self, items: __SkeneItems) -> Self
       where
@@ -274,6 +292,7 @@ fn collection_setters(
   }
   else {
     quote! {
+      #docs
       #[inline(always)]
       pub fn #field(mut self, items: impl ::core::iter::IntoIterator<Item = #item>) -> Self {
         self.#field.extend(items);
@@ -329,6 +348,16 @@ impl FieldConfig {
     }
     Ok(cfg)
   }
+}
+
+/// The field's doc-comment attributes (`#[doc = ".."]`), to be re-emitted on the
+/// generated setter so the documentation carries through.
+fn doc_attrs(field: &Field) -> TokenStream2 {
+  let docs = field
+    .attrs
+    .iter()
+    .filter(|attr| attr.path().is_ident("doc"));
+  quote!(#(#docs)*)
 }
 
 /// If `ty` is `Wrapper<Inner>` (matched by the last path segment), return `Inner`.

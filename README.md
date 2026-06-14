@@ -80,7 +80,7 @@ Setters take their value by `T` by default; opt into `impl Into<T>` per field
 with `#[builder(into)]`. Field attributes (`#[builder(...)]`):
 
 - `skip` — generate no setter
-- `into` — take `impl Into<T>` instead of `T` (e.g. so `Length` props accept `20.0`)
+- `into` — take `impl Into<T>` instead of `T` (e.g. so a `padding: EdgeInsets` prop accepts `20.0`)
 - `callback` — for an `Option<Rc<dyn Fn..>>` field, generate a setter taking the closure directly (`impl Fn.. + 'static`) and wrap it (this is how `Button::action` is generated)
 - `view` — convert with `IntoView::into_view`, for child collections
 - `item = name` — name the singular collection adder

@@ -16,12 +16,13 @@ use skene_macros::Builder;
 use skene_reactive::{Effect, Scope};
 use skene_renderer::{
   Axis,
+  Border,
   Color,
   CrossAxisAlignment,
   Cursor,
   Display,
+  EdgeInsets,
   ElementKind,
-  Length,
   MainAxisAlignment,
   NodeId,
   Style,
@@ -52,10 +53,12 @@ enum TextSource {
 #[must_use]
 pub struct Label {
   source: TextSource,
+  /// Text color.
   #[builder(into)]
   color: Option<Color>,
-  #[builder(into)]
-  font_size: Option<Length>,
+  /// Font size, in logical pixels.
+  font_size: Option<f64>,
+  /// Font weight (e.g. `400` normal, `700` bold).
   font_weight: Option<u16>,
 }
 
@@ -105,6 +108,9 @@ impl View for Label {
   }
 }
 
+// TODO: Gestures should be abstracted to a core type
+// TODO: Button should allow container and label customization
+
 /// A clickable button with text.
 ///
 /// ```ignore
@@ -114,17 +120,19 @@ impl View for Label {
 #[must_use]
 pub struct Button {
   label: String,
-  /// Generates `fn action(self, impl Fn() + 'static) -> Self`.
+  /// Run a closure when the button is clicked.
   #[builder(callback)]
   action: Option<Rc<dyn Fn()>>,
+  /// Background color.
   #[builder(into)]
   background: Option<Color>,
+  /// Text color.
   #[builder(into)]
   color: Option<Color>,
-  #[builder(into)]
-  font_size: Option<Length>,
-  #[builder(into)]
-  border_radius: Option<Length>,
+  /// Font size, in logical pixels.
+  font_size: Option<f64>,
+  /// Corner radius, in logical pixels.
+  border_radius: Option<f64>,
 }
 
 impl Button {
@@ -146,12 +154,11 @@ impl View for Button {
   fn build(self) -> NodeId {
     // A sensible default look, with per-instance overrides on top.
     let style = Style::new()
-      .padding_horiz(20.0)
-      .padding_vert(10.0)
-      .font_size(self.font_size.unwrap_or(Length::Px(20.0)))
+      .padding(EdgeInsets::symmetric(20.0, 10.0))
+      .font_size(self.font_size.unwrap_or(20.0))
       .background(self.background.unwrap_or(Color::rgb(0x37, 0x6e, 0xff)))
       .color(self.color.unwrap_or(Color::WHITE))
-      .border_radius(self.border_radius.unwrap_or(Length::Px(8.0)))
+      .border_radius(self.border_radius.unwrap_or(8.0))
       .cursor(Cursor::Pointer);
 
     let mut element = Element::new(ElementKind::Button)
@@ -180,22 +187,29 @@ impl View for Button {
 #[must_use]
 pub struct Flex {
   axis: Axis,
+  /// Append a child view.
   #[builder(item = child, view)]
   children: Vec<AnyView>,
-  #[builder(into)]
-  gap: Option<Length>,
+  /// Space between children, in logical pixels.
+  gap: Option<f64>,
+  /// Alignment of children along the main (layout) axis.
   main_axis_alignment: Option<MainAxisAlignment>,
+  /// Alignment of children along the cross axis.
   cross_axis_alignment: Option<CrossAxisAlignment>,
+  /// Fixed width, in logical pixels.
+  width: Option<f64>,
+  /// Fixed height, in logical pixels.
+  height: Option<f64>,
+  /// Inner spacing.
   #[builder(into)]
-  width: Option<Length>,
-  #[builder(into)]
-  height: Option<Length>,
-  #[builder(into)]
-  padding: Option<Length>,
+  padding: Option<EdgeInsets>,
+  /// Background color.
   #[builder(into)]
   background: Option<Color>,
-  #[builder(into)]
-  border_radius: Option<Length>,
+  /// A solid border.
+  border: Option<Border>,
+  /// Corner radius, in logical pixels.
+  border_radius: Option<f64>,
 }
 
 impl Flex {
@@ -223,6 +237,7 @@ impl Flex {
       height: None,
       padding: None,
       background: None,
+      border: None,
       border_radius: None,
     }
   }
@@ -255,6 +270,9 @@ impl View for Flex {
     if let Some(v) = self.background {
       style = style.background(v);
     }
+    if let Some(v) = self.border {
+      style = style.border(v);
+    }
     if let Some(v) = self.border_radius {
       style = style.border_radius(v);
     }
@@ -275,16 +293,20 @@ impl View for Flex {
 #[must_use]
 pub struct Container {
   child: AnyView,
+  /// Fixed width, in logical pixels.
+  width: Option<f64>,
+  /// Fixed height, in logical pixels.
+  height: Option<f64>,
+  /// Inner spacing.
   #[builder(into)]
-  width: Option<Length>,
-  #[builder(into)]
-  height: Option<Length>,
-  #[builder(into)]
-  padding: Option<Length>,
+  padding: Option<EdgeInsets>,
+  /// Background color.
   #[builder(into)]
   background: Option<Color>,
-  #[builder(into)]
-  border_radius: Option<Length>,
+  /// A solid border.
+  border: Option<Border>,
+  /// Corner radius, in logical pixels.
+  border_radius: Option<f64>,
 }
 
 impl Container {
@@ -297,6 +319,7 @@ impl Container {
       height: None,
       padding: None,
       background: None,
+      border: None,
       border_radius: None,
     }
   }
@@ -316,6 +339,9 @@ impl View for Container {
     }
     if let Some(v) = self.background {
       style = style.background(v);
+    }
+    if let Some(v) = self.border {
+      style = style.border(v);
     }
     if let Some(v) = self.border_radius {
       style = style.border_radius(v);

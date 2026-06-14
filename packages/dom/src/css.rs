@@ -15,17 +15,18 @@ use skene_renderer::{
   CrossAxisAlignment,
   Cursor,
   Display,
-  Length,
+  EdgeInsets,
   MainAxisAlignment,
   Style,
 };
 
-fn length(l: Length) -> String {
-  match l {
-    Length::Px(v) => format!("{v}px"),
-    Length::Pct(v) => format!("{v}%"),
-    Length::Auto => "auto".to_string(),
-  }
+fn length(px: f64) -> String {
+  format!("{px}px")
+}
+
+/// The CSS `padding` shorthand value: `top right bottom left`.
+fn edge_insets(e: EdgeInsets) -> String {
+  format!("{}px {}px {}px {}px", e.top, e.right, e.bottom, e.left)
 }
 
 fn color(c: Color) -> String {
@@ -136,17 +137,8 @@ pub fn declarations(style: &Style) -> String {
       push("max-height", length(v));
     }
 
-    if let Some(v) = style.padding_top {
-      push("padding-top", length(v));
-    }
-    if let Some(v) = style.padding_right {
-      push("padding-right", length(v));
-    }
-    if let Some(v) = style.padding_bottom {
-      push("padding-bottom", length(v));
-    }
-    if let Some(v) = style.padding_left {
-      push("padding-left", length(v));
+    if let Some(v) = style.padding {
+      push("padding", edge_insets(v));
     }
 
     if let Some(v) = style.background {
@@ -162,12 +154,10 @@ pub fn declarations(style: &Style) -> String {
       push("font-weight", v.to_string());
     }
 
-    if let Some(v) = style.border_width {
-      push("border-width", length(v));
+    if let Some(v) = style.border {
+      push("border-width", length(v.width));
       push("border-style", "solid".to_string());
-    }
-    if let Some(v) = style.border_color {
-      push("border-color", color(v));
+      push("border-color", color(v.color));
     }
     if let Some(v) = style.border_radius {
       push("border-radius", length(v));

@@ -11,3 +11,6 @@ crate-type = ["cdylib"]
 skene-core = { workspace = true }
 skene-dom = { workspace = true }
 wasm-bindgen = { workspace = true }
+
+[lints]
+workspace = true

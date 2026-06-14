@@ -9,7 +9,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_core::{RwSignal, SignalGet, SignalUpdate, Style, button, column, label, row};
+use skene_core::{Button, Flex, Label, RwSignal, SignalGet, SignalUpdate};
 use skene_renderer::{
   Backend,
   ElementKind,
@@ -20,6 +20,7 @@ use skene_renderer::{
   NodeId,
   PointerButton,
   PointerEvent,
+  Style,
 };
 
 #[derive(Default)]
@@ -89,13 +90,23 @@ fn counter_increments_through_the_backend() {
   let count = RwSignal::new(0i32);
 
   skene_core::mount(move || {
-    column((
-      label(move || format!("Count: {}", count.get())).style(Style::new().font_size(32.0)),
-      row((
-        button("-").on_click(move || count.update(|c| *c -= 1)),
-        button("+").on_click(move || count.update(|c| *c += 1)),
-      )),
-    ))
+    Flex::vertical()
+      .child(Label::derived(move || format!("Count: {}", count.get())).font_size(32.0))
+      .child(
+        Flex::horizontal()
+          .child(
+            Button::new("-")
+              .action(move || count.update(|c| *c -= 1))
+              .build(),
+          )
+          .child(
+            Button::new("+")
+              .action(move || count.update(|c| *c += 1))
+              .build(),
+          )
+          .build(),
+      )
+      .build()
   });
 
   // The reactive label should have produced its initial text exactly once.

@@ -8,10 +8,14 @@
 pub struct NodeId(u64);
 
 impl NodeId {
+  #[must_use]
+  #[inline(always)]
   pub const fn from_raw(raw: u64) -> Self {
     NodeId(raw)
   }
 
+  #[must_use]
+  #[inline(always)]
   pub const fn raw(self) -> u64 {
     self.0
   }

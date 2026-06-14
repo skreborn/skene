@@ -30,6 +30,7 @@ pub enum PointerButton {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[allow(clippy::struct_excessive_bools)] // four independent keyboard modifier flags
 pub struct Modifiers {
   pub shift: bool,
   pub ctrl: bool,
@@ -48,9 +49,9 @@ pub struct PointerEvent {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct KeyEvent {
-  /// The logical key value (e.g. "Enter", "a", "ArrowUp").
+  /// The logical key value (e.g. `Enter`, `a`, `ArrowUp`).
   pub key: String,
-  /// The physical key code (e.g. "Enter", "KeyA").
+  /// The physical key code (e.g. `Enter`, `KeyA`).
   pub code: String,
   pub modifiers: Modifiers,
 }
@@ -69,6 +70,7 @@ pub enum Event {
 }
 
 impl Event {
+  #[must_use]
   pub fn kind(&self) -> EventKind {
     match self {
       Event::Click(_) => EventKind::Click,

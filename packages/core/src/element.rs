@@ -13,6 +13,7 @@ use crate::{
 /// Almost every built-in view is an `El` under the hood. It collects a node's
 /// kind, style (static and/or reactive), text, attributes, children and event
 /// handlers, and realizes them all in [`View::build`].
+#[must_use]
 pub struct El {
   kind: ElementKind,
   base_style: Option<Style>,
@@ -25,6 +26,7 @@ pub struct El {
 }
 
 impl El {
+  #[inline(always)]
   pub fn new(kind: ElementKind) -> Self {
     El {
       kind,
@@ -39,6 +41,7 @@ impl El {
   }
 
   /// Apply a static style. Repeated calls merge, later winning.
+  #[inline(always)]
   pub fn style(mut self, style: Style) -> Self {
     self.base_style = Some(match self.base_style.take() {
       Some(base) => base.merge(&style),
@@ -49,49 +52,58 @@ impl El {
 
   /// Apply a reactive style: re-applied whenever its tracked signals change.
   /// Merged on top of any static style.
+  #[inline(always)]
   pub fn style_fn(mut self, f: impl Fn() -> Style + 'static) -> Self {
     self.style_fn = Some(Box::new(f));
     self
   }
 
   /// Set static text content.
+  #[inline(always)]
   pub fn text(mut self, text: impl Into<String>) -> Self {
     self.text = Some(text.into());
     self
   }
 
   /// Set reactive text content: re-applied whenever its tracked signals change.
+  #[inline(always)]
   pub fn text_fn(mut self, f: impl Fn() -> String + 'static) -> Self {
     self.text_fn = Some(Box::new(f));
     self
   }
 
+  #[inline(always)]
   pub fn attr(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
     self.attrs.push((name.into(), Some(value.into())));
     self
   }
 
   /// Subscribe to an event category.
+  #[inline(always)]
   pub fn on_event(mut self, kind: EventKind, handler: impl Fn(Event) + 'static) -> Self {
     self.handlers.push((kind, Rc::new(handler)));
     self
   }
 
   /// Convenience: handle clicks (the event payload is ignored).
+  #[inline(always)]
   pub fn on_click(self, handler: impl Fn() + 'static) -> Self {
     self.on_event(EventKind::Click, move |_| handler())
   }
 
+  #[inline(always)]
   pub fn child(mut self, child: impl IntoView) -> Self {
     self.children.push(child.into_view());
     self
   }
 
+  #[inline(always)]
   pub fn child_any(mut self, child: AnyView) -> Self {
     self.children.push(child);
     self
   }
 
+  #[inline(always)]
   pub fn children(mut self, children: impl IntoIterator<Item = AnyView>) -> Self {
     self.children.extend(children);
     self

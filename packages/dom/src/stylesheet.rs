@@ -40,6 +40,8 @@ impl StyleStore {
     }
   }
 
+  // TODO: Hash style struct itself instead of the rendered text
+
   /// Return the class name for a CSS declaration block, inserting a new rule
   /// into the stylesheet the first time a given block is seen.
   pub fn class_for(&mut self, declarations: &str) -> String {

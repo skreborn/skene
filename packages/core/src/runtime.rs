@@ -42,6 +42,8 @@ pub fn set_backend(backend: Rc<RefCell<dyn Backend>>) {
 
 /// Run a closure with mutable access to the active backend.
 ///
+/// # Panics
+///
 /// Panics if no backend has been installed.
 pub fn with_backend<R>(f: impl FnOnce(&mut dyn Backend) -> R) -> R {
   BACKEND.with(|b| {
@@ -68,6 +70,7 @@ pub fn register_handler(node: NodeId, kind: EventKind, handler: Handler) {
 
 /// The application root scope. All top-level signals/effects live under it, so
 /// it (and everything it owns) survives for the lifetime of the app.
+#[must_use]
 pub fn root_scope() -> Scope {
   ROOT_SCOPE.with(|s| {
     let mut s = s.borrow_mut();

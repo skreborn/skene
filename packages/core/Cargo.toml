@@ -2,9 +2,12 @@
 name = "skene-core"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
+bon = { workspace = true }
 skene-reactive = { workspace = true }
 skene-renderer = { workspace = true }
 rustc-hash = { workspace = true }
+
+[lints]
+workspace = true

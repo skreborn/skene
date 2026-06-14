@@ -32,33 +32,31 @@ pub use skene_reactive::{
 /// Re-export the renderer abstraction's public types (styles, colors, events).
 pub use skene_renderer as renderer;
 pub use skene_renderer::{
-  AlignItems,
+  Axis,
   Backend,
   Color,
+  CrossAxisAlignment,
   Cursor,
   Display,
   ElementKind,
   Event,
   EventKind,
-  FlexDirection,
-  JustifyContent,
   Length,
+  MainAxisAlignment,
   NodeId,
   Style,
 };
 pub use view::{AnyView, IntoView, View};
 pub use views::{
-  Children,
+  Button,
+  ButtonBuilder,
+  Container,
+  ContainerBuilder,
   DynView,
-  button,
-  column,
-  container,
+  Flex,
+  FlexBuilder,
+  Label,
   dyn_view,
-  empty,
-  flex,
-  label,
-  row,
-  text,
 };
 
 /// Build the application root and insert it under the backend's root node.

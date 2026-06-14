@@ -50,6 +50,11 @@ pub struct DomBackend {
 impl DomBackend {
   /// Create a backend mounted at `mount` (the element new views are inserted
   /// under).
+  ///
+  /// # Panics
+  ///
+  /// Panics if there is no `window`/`document` (i.e. not running in a browser).
+  #[must_use]
   pub fn new(mount: Element) -> DomBackend {
     let document = web_sys::window()
       .expect("no window")
@@ -105,7 +110,7 @@ fn pointer_button(button: i16) -> PointerButton {
     0 => PointerButton::Primary,
     1 => PointerButton::Middle,
     2 => PointerButton::Secondary,
-    n => PointerButton::Other(n.max(0) as u16),
+    n => PointerButton::Other(u16::try_from(n).unwrap_or(0)),
   }
 }
 
@@ -115,8 +120,8 @@ fn convert_event(kind: EventKind, ev: &web_sys::Event) -> Option<Event> {
     EventKind::Click | EventKind::PointerDown | EventKind::PointerUp | EventKind::PointerMove => {
       let me = ev.dyn_ref::<web_sys::MouseEvent>()?;
       let pe = PointerEvent {
-        x: me.offset_x() as f64,
-        y: me.offset_y() as f64,
+        x: f64::from(me.offset_x()),
+        y: f64::from(me.offset_y()),
         button: pointer_button(me.button()),
         modifiers: Modifiers {
           shift: me.shift_key(),
@@ -257,6 +262,11 @@ impl Backend for DomBackend {
 /// Installs a [`DomBackend`] rooted at `<body>`, builds `app` as the root view,
 /// and returns. The reactive runtime, event listeners and view tree are kept
 /// alive for the lifetime of the page.
+///
+/// # Panics
+///
+/// Panics if there is no `window`, `document` or `<body>` (i.e. not running in
+/// a browser).
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,

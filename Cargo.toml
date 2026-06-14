@@ -8,6 +8,7 @@ edition = "2024"
 rust-version = "1.91"
 
 [workspace.dependencies]
+bon = "3.9"
 rustc-hash = "2.1"
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-dom = { path = "packages/dom", version = "0.1.0" }

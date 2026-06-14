@@ -1,5 +1,7 @@
 use skene_renderer::NodeId;
 
+use crate::views::Label;
+
 /// A node in the application's view tree.
 ///
 /// `build` is the single responsibility of a view: realize itself against the
@@ -54,12 +56,12 @@ impl<V: View> IntoView for V {
 
 impl IntoView for &str {
   fn into_view(self) -> AnyView {
-    crate::views::text(self).into_any()
+    Label::new(self).into_any()
   }
 }
 
 impl IntoView for String {
   fn into_view(self) -> AnyView {
-    crate::views::text(self).into_any()
+    Label::new(self).into_any()
   }
 }

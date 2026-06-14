@@ -10,13 +10,13 @@
 //! friendly: the same `Style` always yields the same class.
 
 use skene_renderer::{
-  AlignItems,
+  Axis,
   Color,
+  CrossAxisAlignment,
   Cursor,
   Display,
-  FlexDirection,
-  JustifyContent,
   Length,
+  MainAxisAlignment,
   Style,
 };
 
@@ -33,7 +33,7 @@ fn color(c: Color) -> String {
     format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b)
   }
   else {
-    format!("rgba({},{},{},{})", c.r, c.g, c.b, c.a as f64 / 255.0)
+    format!("rgba({},{},{},{})", c.r, c.g, c.b, f64::from(c.a) / 255.0)
   }
 }
 
@@ -45,33 +45,31 @@ fn display(d: Display) -> &'static str {
   }
 }
 
-fn flex_direction(d: FlexDirection) -> &'static str {
+fn flex_direction(d: Axis) -> &'static str {
   match d {
-    FlexDirection::Row => "row",
-    FlexDirection::Column => "column",
-    FlexDirection::RowReverse => "row-reverse",
-    FlexDirection::ColumnReverse => "column-reverse",
+    Axis::Horizontal => "row",
+    Axis::Vertical => "column",
   }
 }
 
-fn justify_content(j: JustifyContent) -> &'static str {
+fn justify_content(j: MainAxisAlignment) -> &'static str {
   match j {
-    JustifyContent::Start => "flex-start",
-    JustifyContent::Center => "center",
-    JustifyContent::End => "flex-end",
-    JustifyContent::SpaceBetween => "space-between",
-    JustifyContent::SpaceAround => "space-around",
-    JustifyContent::SpaceEvenly => "space-evenly",
+    MainAxisAlignment::Start => "flex-start",
+    MainAxisAlignment::Center => "center",
+    MainAxisAlignment::End => "flex-end",
+    MainAxisAlignment::SpaceBetween => "space-between",
+    MainAxisAlignment::SpaceAround => "space-around",
+    MainAxisAlignment::SpaceEvenly => "space-evenly",
   }
 }
 
-fn align_items(a: AlignItems) -> &'static str {
+fn align_items(a: CrossAxisAlignment) -> &'static str {
   match a {
-    AlignItems::Start => "flex-start",
-    AlignItems::Center => "center",
-    AlignItems::End => "flex-end",
-    AlignItems::Stretch => "stretch",
-    AlignItems::Baseline => "baseline",
+    CrossAxisAlignment::Start => "flex-start",
+    CrossAxisAlignment::Center => "center",
+    CrossAxisAlignment::End => "flex-end",
+    CrossAxisAlignment::Stretch => "stretch",
+    CrossAxisAlignment::Baseline => "baseline",
   }
 }
 
@@ -100,10 +98,10 @@ pub fn declarations(style: &Style) -> String {
     if let Some(v) = style.flex_direction {
       push("flex-direction", flex_direction(v).to_string());
     }
-    if let Some(v) = style.justify_content {
+    if let Some(v) = style.main_axis_align {
       push("justify-content", justify_content(v).to_string());
     }
-    if let Some(v) = style.align_items {
+    if let Some(v) = style.cross_axis_align {
       push("align-items", align_items(v).to_string());
     }
     if let Some(v) = style.gap {
@@ -149,19 +147,6 @@ pub fn declarations(style: &Style) -> String {
     }
     if let Some(v) = style.padding_left {
       push("padding-left", length(v));
-    }
-
-    if let Some(v) = style.margin_top {
-      push("margin-top", length(v));
-    }
-    if let Some(v) = style.margin_right {
-      push("margin-right", length(v));
-    }
-    if let Some(v) = style.margin_bottom {
-      push("margin-bottom", length(v));
-    }
-    if let Some(v) = style.margin_left {
-      push("margin-left", length(v));
     }
 
     if let Some(v) = style.background {

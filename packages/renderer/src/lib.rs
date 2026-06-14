@@ -23,4 +23,13 @@ mod style;
 pub use backend::{Backend, EventSink};
 pub use event::{Event, EventKind, KeyEvent, Modifiers, PointerButton, PointerEvent};
 pub use node::{ElementKind, NodeId};
-pub use style::{AlignItems, Color, Cursor, Display, FlexDirection, JustifyContent, Length, Style};
+pub use style::{
+  Axis,
+  Color,
+  CrossAxisAlignment,
+  Cursor,
+  Display,
+  Length,
+  MainAxisAlignment,
+  Style,
+};

@@ -1,3 +1,7 @@
+#[cfg(feature = "test")]
+use std::mem::take;
+#[cfg(debug_assertions)]
+use std::panic::Location;
 use std::{
   any::{Any, TypeId},
   cell::{Cell, RefCell},
@@ -24,15 +28,15 @@ use crate::{
 pub(crate) type ScopeContexts = HashMap<TypeId, Box<dyn Any>>;
 
 thread_local! {
-pub static RUNTIME: Runtime = Runtime::new();
+  pub static RUNTIME: Runtime = Runtime::new();
 }
 
 static UI_THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
 #[cfg(debug_assertions)]
-static UI_THREAD_SET_LOCATION: OnceLock<&'static std::panic::Location<'static>> = OnceLock::new();
+static UI_THREAD_SET_LOCATION: OnceLock<&'static Location<'static>> = OnceLock::new();
 static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
 
-/// The internal reactive Runtime which stores all the reactive system states in a
+/// The internal reactive `Runtime` which stores all the reactive system states in a
 /// thread local.
 pub struct Runtime {
   pub(crate) current_effect: RefCell<Option<Rc<dyn EffectTrait>>>,
@@ -69,10 +73,11 @@ impl Runtime {
     }
   }
 
-  /// Call this once on the UI thread during initialization.
+  /// Records the calling thread as the UI thread; call once during initialization.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn init_on_ui_thread() {
     let current = thread::current().id();
+
     match UI_THREAD_ID.set(current) {
       Ok(_) => {}
       Err(_) => {
@@ -83,14 +88,17 @@ impl Runtime {
         );
       }
     }
+
     #[cfg(debug_assertions)]
     {
-      let caller = std::panic::Location::caller();
+      let caller = Location::caller();
       let _ = UI_THREAD_SET_LOCATION.set(caller);
     }
+
     ENFORCE_UI_THREAD.store(true, Ordering::Relaxed);
   }
 
+  /// Panics if enforcement is on and the caller is not the UI thread.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn assert_ui_thread() {
     if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
@@ -98,12 +106,13 @@ impl Runtime {
     }
 
     let current = thread::current().id();
+
     match UI_THREAD_ID.get() {
       Some(ui_id) => {
         if *ui_id != current {
           #[cfg(debug_assertions)]
           {
-            let caller = std::panic::Location::caller();
+            let caller = Location::caller();
             let set_at = UI_THREAD_SET_LOCATION.get();
             let set_info = set_at
               .map(|loc| format!(" (set at {}:{})", loc.file(), loc.line()))
@@ -134,6 +143,7 @@ impl Runtime {
     }
   }
 
+  /// Whether the caller is the UI thread, or `true` when enforcement is off.
   pub fn is_ui_thread() -> bool {
     if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
       true
@@ -141,9 +151,36 @@ impl Runtime {
     else {
       UI_THREAD_ID
         .get()
-        .map(|id| *id == thread::current().id())
+        .map(|thread| *thread == thread::current().id())
         .unwrap_or(false)
     }
+  }
+
+  /// Resets the calling thread's reactive runtime to a fresh, empty state.
+  ///
+  /// Clears all signals, effects, scopes, and pending work. Available only with
+  /// the `test` feature.
+  #[cfg(feature = "test")]
+  pub fn reset() {
+    // Take the effects out and drop them after every borrow is released: an effect's
+    // `Drop` re-enters the runtime (`remove_effect`, `dispose`), so clearing the map
+    // in place would borrow it twice.
+    let effects = RUNTIME.with(|runtime| {
+      *runtime.current_effect.borrow_mut() = None;
+      *runtime.current_scope.borrow_mut() = Id::next();
+      runtime.children.borrow_mut().clear();
+      runtime.parents.borrow_mut().clear();
+      runtime.signals.borrow_mut().clear();
+      let effects = take(&mut *runtime.effects.borrow_mut());
+      runtime.scope_contexts.borrow_mut().clear();
+      runtime.batching.set(false);
+      runtime.pending_effects.borrow_mut().clear();
+      runtime.pending_effects_set.borrow_mut().clear();
+
+      effects
+    });
+
+    drop(effects);
   }
 
   pub(crate) fn register_effect(&self, effect: &Rc<dyn EffectTrait>) {
@@ -171,9 +208,11 @@ impl Runtime {
   pub(crate) fn run_pending_effects(&self) {
     loop {
       let mut pending_effects = self.pending_effects.take();
+
       if pending_effects.is_empty() {
         break;
       }
+
       pending_effects.sort_by_key(|id| {
         let priority = self
           .get_effect(*id)
@@ -181,8 +220,10 @@ impl Runtime {
           .unwrap_or(EffectPriority::Normal);
         (Reverse(priority), *id)
       });
+
       for effect_id in pending_effects {
         self.pending_effects_set.borrow_mut().remove(&effect_id);
+
         if let Some(effect) = self.get_effect(effect_id) {
           run_effect(effect);
         }
@@ -190,18 +231,21 @@ impl Runtime {
     }
   }
 
-  /// Drain any queued work from the sync runtime and run pending UI effects.
+  /// Drains any queued work from the sync runtime and runs pending UI effects.
   pub fn drain_pending_work() {
     Runtime::assert_ui_thread();
     let pending_effects = SYNC_RUNTIME.take_pending_effects();
     let pending_disposals = SYNC_RUNTIME.take_pending_disposals();
+
     RUNTIME.with(|runtime| {
       for id in pending_effects {
         runtime.add_pending_effect(id);
       }
+
       for id in pending_disposals {
         id.dispose();
       }
+
       runtime.run_pending_effects();
     });
   }
@@ -213,20 +257,24 @@ impl Runtime {
       || SYNC_RUNTIME.has_pending_disposals()
   }
 
-  /// Set a waker that will be called when a sync signal is updated off the UI thread.
+  /// Sets a waker that will be called when a sync signal is updated off the UI thread.
   /// The waker should nudge the UI event loop (e.g., by sending a proxy event).
   pub fn set_sync_effect_waker(waker: impl Fn() + Send + Sync + 'static) {
     SYNC_RUNTIME.set_waker(waker);
   }
 
+  /// The effect currently tracking signal reads, if any.
   pub fn get_current_effect() -> Option<Rc<dyn EffectTrait>> {
     RUNTIME.with(|rt| rt.current_effect.borrow().clone())
   }
 
+  /// Sets the effect that tracks signal reads.
   pub fn set_current_effect(effect: Option<Rc<dyn EffectTrait>>) {
     RUNTIME.with(|rt| *rt.current_effect.borrow_mut() = effect);
   }
 
+  /// Runs `f` with `effect` as the tracking effect, restoring the previous one
+  /// afterwards.
   pub fn with_effect<T>(effect: Option<Rc<dyn EffectTrait>>, f: impl FnOnce() -> T) -> T {
     struct EffectRestoreGuard(Option<Rc<dyn EffectTrait>>);
 

@@ -1,32 +1,23 @@
-use std::{
-  any::Any,
-  cell::RefCell,
-  collections::HashSet,
-  fmt,
-  marker::PhantomData,
-  rc::Rc,
-  sync::Arc,
-};
-
-use parking_lot::Mutex;
+use std::{any::Any, cell::RefCell, fmt, marker::PhantomData, rc::Rc};
 
 use crate::{
+  context::Context,
   effect::{Effect, UpdaterEffect},
   id::Id,
   memo::Memo,
   runtime::{RUNTIME, Runtime},
-  signal::{ReadSignal, RwSignal, SignalState, SignalValue, WriteSignal},
+  signal::{ReadSignal, RwSignal, SignalState, SignalValue, Subscribers, WriteSignal},
   storage::{SyncStorage, UnsyncStorage},
   trigger::Trigger,
 };
 
-/// You can manually control Signal's lifetime by using Scope.
+/// Controls a signal's lifetime explicitly, apart from the implicit scope tree.
 ///
-/// Every Signal has a Scope created explicitly or implicitly,
-/// and when you Dispose the Scope, it will clean up all the Signals
-/// that belong to the Scope and all the child Scopes
+/// Every signal belongs to a `Scope`, created explicitly or implicitly. Disposing
+/// a `Scope` cleans up every signal under it and all of its child scopes.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Scope(pub(crate) Id, pub(crate) PhantomData<()>);
+#[must_use]
+pub struct Scope(pub(crate) Id, pub(crate) PhantomData<*const ()>);
 
 impl Default for Scope {
   fn default() -> Self {
@@ -35,28 +26,33 @@ impl Default for Scope {
 }
 
 impl fmt::Debug for Scope {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let mut s = f.debug_struct("Scope");
-    s.field("id", &self.0);
-    s.finish()
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let mut r#struct = formatter.debug_struct("Scope");
+
+    r#struct.field("id", &self.0);
+
+    r#struct.finish()
   }
 }
 
 impl Scope {
-  /// Create a new Scope that isn't a child or parent of any scope
+  /// Creates a new `Scope` that isn't a child or parent of any scope.
+  #[inline(always)]
   pub fn new() -> Self {
     Self(Id::next(), PhantomData)
   }
 
-  /// The current Scope in the Runtime. Any Signal/Effect/Memo created with
-  /// implicitly Scope will be under this Scope
+  /// Returns the current `Scope` in the `Runtime`. Any signal, `Effect`, or `Memo`
+  /// created with an implicit scope is placed under this `Scope`.
+  #[inline(always)]
   pub fn current() -> Scope {
     RUNTIME.with(|runtime| Scope(*runtime.current_scope.borrow(), PhantomData))
   }
 
-  /// Create a child Scope of this Scope
+  /// Creates a child `Scope` of this `Scope`.
   pub fn create_child(&self) -> Scope {
     let child = Id::next();
+
     RUNTIME.with(|runtime| {
       runtime
         .children
@@ -64,16 +60,16 @@ impl Scope {
         .entry(self.0)
         .or_default()
         .insert(child);
+
       runtime.parents.borrow_mut().insert(child, self.0);
     });
+
     Scope(child, PhantomData)
   }
 
-  /// Re-parent this scope to be a child of another scope.
+  /// Reparents this scope under another scope.
   ///
-  /// If this scope already has a parent, it will be removed from that parent first.
-  /// This is useful when the scope hierarchy needs to be adjusted after construction
-  /// to match the view hierarchy.
+  /// If this scope already has a parent, it is removed from that parent first.
   ///
   /// # Example
   /// ```rust
@@ -86,14 +82,12 @@ impl Scope {
   /// ```
   pub fn set_parent(&self, new_parent: Scope) {
     RUNTIME.with(|runtime| {
-      // Remove from old parent's children set (if any)
       if let Some(old_parent) = runtime.parents.borrow_mut().remove(&self.0)
         && let Some(children) = runtime.children.borrow_mut().get_mut(&old_parent)
       {
         children.remove(&self.0);
       }
 
-      // Add to new parent's children set
       runtime
         .children
         .borrow_mut()
@@ -101,12 +95,12 @@ impl Scope {
         .or_default()
         .insert(self.0);
 
-      // Set new parent
       runtime.parents.borrow_mut().insert(self.0, new_parent.0);
     });
   }
 
   /// Returns the parent scope of this scope, if any.
+  #[inline(always)]
   pub fn parent(&self) -> Option<Scope> {
     RUNTIME.with(|runtime| {
       runtime
@@ -117,7 +111,7 @@ impl Scope {
     })
   }
 
-  /// Create a new Signal under this Scope
+  /// Creates a new signal under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_signal<T>(self, value: T) -> (ReadSignal<T>, WriteSignal<T>)
   where
@@ -126,7 +120,7 @@ impl Scope {
     self.enter(|| RwSignal::new_split(value))
   }
 
-  /// Create a RwSignal under this Scope (local/unsync by default)
+  /// Creates a `RwSignal` under this `Scope` (local/unsync by default).
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_rw_signal<T>(self, value: T) -> RwSignal<T>
   where
@@ -135,7 +129,7 @@ impl Scope {
     self.enter(|| RwSignal::new(value))
   }
 
-  /// Create a sync Signal under this Scope
+  /// Creates a sync signal under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_sync_signal<T>(
     self,
@@ -147,7 +141,7 @@ impl Scope {
     self.enter(|| RwSignal::<T, SyncStorage>::new_sync_split(value))
   }
 
-  /// Create a sync RwSignal under this Scope
+  /// Creates a sync `RwSignal` under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_sync_rw_signal<T>(self, value: T) -> RwSignal<T, SyncStorage>
   where
@@ -156,7 +150,7 @@ impl Scope {
     self.enter(|| RwSignal::<T, SyncStorage>::new_sync(value))
   }
 
-  /// Create a local (unsync) Signal under this Scope
+  /// Creates a local (unsync) signal under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_local_signal<T>(
     self,
@@ -168,7 +162,7 @@ impl Scope {
     self.enter(|| RwSignal::new_split(value))
   }
 
-  /// Create a local (unsync) RwSignal under this Scope
+  /// Creates a local (unsync) `RwSignal` under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_local_rw_signal<T>(self, value: T) -> RwSignal<T, UnsyncStorage>
   where
@@ -177,7 +171,7 @@ impl Scope {
     self.enter(|| RwSignal::new(value))
   }
 
-  /// Create a Memo under this Scope
+  /// Creates a `Memo` under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_memo<T>(self, f: impl Fn(Option<&T>) -> T + 'static) -> Memo<T>
   where
@@ -186,13 +180,13 @@ impl Scope {
     self.enter(|| Memo::new(f))
   }
 
-  /// Create a Trigger under this Scope
+  /// Creates a `Trigger` under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_trigger(self) -> Trigger {
     self.enter(Trigger::new)
   }
 
-  /// Create effect under this Scope
+  /// Creates an effect under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_effect<T>(self, f: impl Fn(Option<T>) -> T + 'static)
   where
@@ -201,7 +195,7 @@ impl Scope {
     self.enter(|| Effect::new(f))
   }
 
-  /// Create updater under this Scope
+  /// Creates an updater under this `Scope`.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn create_updater<R>(
     self,
@@ -214,14 +208,14 @@ impl Scope {
     self.enter(|| UpdaterEffect::new(compute, on_change))
   }
 
-  /// Store a context value in this scope.
+  /// Stores a context value in this scope.
   ///
   /// The stored context value can be retrieved by this scope and any of its
   /// descendants using [`Scope::get_context`] or [`Context::get`](crate::Context::get).
   /// Child scopes can provide their own values of the same type, which will
   /// shadow the parent's value for that subtree.
   ///
-  /// Context values are automatically cleaned up when the scope is disposed.
+  /// `Context` values are automatically cleaned up when the scope is disposed.
   ///
   /// # Example
   /// ```rust
@@ -236,12 +230,12 @@ impl Scope {
   where
     T: Clone + 'static,
   {
-    self.enter(|| crate::context::Context::provide(value))
+    self.enter(|| Context::provide(value))
   }
 
-  /// Try to retrieve a stored context value from this scope or its ancestors.
+  /// Tries to retrieve a stored context value from this scope or its ancestors.
   ///
-  /// Context lookup walks up the scope tree from this scope to find the
+  /// `Context` lookup walks up the scope tree from this scope to find the
   /// nearest ancestor that provides a value of the requested type.
   ///
   /// Note: This method must be called while the scope is entered (i.e., inside
@@ -263,7 +257,7 @@ impl Scope {
   where
     T: Clone + 'static,
   {
-    self.enter(crate::context::Context::get::<T>)
+    self.enter(Context::get::<T>)
   }
 
   /// Runs the given closure within this scope.
@@ -273,6 +267,7 @@ impl Scope {
     T: 'static,
   {
     Runtime::assert_ui_thread();
+
     let prev_scope = RUNTIME.with(|runtime| {
       let mut current_scope = runtime.current_scope.borrow_mut();
       let prev_scope = *current_scope;
@@ -297,8 +292,10 @@ impl Scope {
   {
     Runtime::assert_ui_thread();
     let parent = self;
+
     move |t| {
       let scope = parent.create_child();
+
       let prev_scope = RUNTIME.with(|runtime| {
         let mut current_scope = runtime.current_scope.borrow_mut();
         let prev_scope = *current_scope;
@@ -316,28 +313,30 @@ impl Scope {
     }
   }
 
-  /// This is normally used in create_effect, and it will bind the effect's lifetime
-  /// to this scope
+  /// Subscribes the running effect to this scope, binding the effect's lifetime to it.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn track(&self) {
     Runtime::assert_ui_thread();
+
     let signal = if let Some(signal) = self.0.signal() {
       signal
     }
     else {
-      let signal = SignalState {
-        id: self.0,
-        subscribers: Arc::new(Mutex::new(HashSet::new())),
-        value: SignalValue::Local(Rc::new(RefCell::new(()))),
-      };
+      let signal = SignalState::from_parts(
+        self.0,
+        SignalValue::Local(Rc::new(RefCell::new(()))),
+        Subscribers::local(),
+      );
+
       self.0.add_signal(signal.clone());
+
       signal
     };
+
     signal.subscribe();
   }
 
-  /// Dispose this Scope, and it will cleanup all the Signals and child Scope
-  /// of this Scope.
+  /// Disposes this scope, cleaning up all of its signals and child scopes.
   pub fn dispose(&self) {
     self.0.dispose();
   }

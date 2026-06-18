@@ -1,0 +1,98 @@
+/*
+TODO: Implement font loading that generates font imports with trimming set.
+
+Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
+
+```
+@font-face {
+  font-family: "Open Sans";
+  src: local("Open Sans"), url("open-sans.woff") format("woff2");
+  ascent-override: 71.4%;
+  descent-override: 0%;
+  line-gap-override: 0%;
+}
+*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+  font: inherit;
+  vertical-align: baseline;
+  background: transparent;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(html) {
+  width: 100%;
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+:where(body) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* The single mounted app child fills the viewport; scrolling is a child concern. */
+:where(body > *) {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+:where(button) {
+  cursor: default;
+  text-align: inherit;
+}
+
+:where(textarea) {
+  resize: none;
+}
+
+:where(a) {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(ol, ul, menu) {
+  list-style: none;
+}
+
+:where(img, picture, video, canvas, svg) {
+  display: block;
+  max-width: 100%;
+}
+
+:where(table) {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+:where(:focus-visible) {
+  outline: none;
+}

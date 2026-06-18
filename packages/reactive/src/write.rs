@@ -1,4 +1,5 @@
 use std::{
+  mem::transmute,
   ops::{Deref, DerefMut},
   rc::Rc,
   sync::Arc,
@@ -6,29 +7,40 @@ use std::{
 
 use parking_lot::{Mutex, MutexGuard};
 
-use crate::{id::Id, signal::TrackedRefCell};
+use crate::{
+  id::Id,
+  signal::{TrackedRefCell, TrackedRefMut},
+};
 
+/// A mutable borrow guard over a thread-safe signal's value.
 pub struct SyncWriteRef<'a, T> {
   id: Id,
   _handle: Arc<Mutex<T>>,
   pub(crate) guard: Option<MutexGuard<'a, T>>,
 }
 
+/// A mutable borrow guard over a thread-local signal's value.
 pub struct LocalWriteRef<'a, T> {
   id: Id,
   _handle: Rc<TrackedRefCell<T>>,
-  pub(crate) guard: Option<crate::signal::TrackedRefMut<'a, T>>,
+  pub(crate) guard: Option<TrackedRefMut<'a, T>>,
 }
 
+/// A mutable borrow guard over a signal's value, thread-safe or thread-local.
 pub enum WriteRef<'a, T> {
+  /// A guard over a thread-safe signal.
   Sync(SyncWriteRef<'a, T>),
+  /// A guard over a thread-local signal.
   Local(LocalWriteRef<'a, T>),
 }
 
 impl<'a, T> SyncWriteRef<'a, T> {
   pub(crate) fn new(id: Id, handle: Arc<Mutex<T>>) -> Self {
     let guard = handle.lock();
-    let guard = unsafe { std::mem::transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
+
+    // SAFETY: the retained `Arc` keeps the data alive for the guard's lifetime.
+    let guard = unsafe { transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
+
     Self {
       id,
       _handle: handle,
@@ -42,6 +54,7 @@ impl<'a, T> Drop for SyncWriteRef<'a, T> {
     if let Some(guard) = self.guard.take() {
       drop(guard);
     }
+
     if let Some(signal) = self.id.signal() {
       signal.run_effects();
     }
@@ -51,11 +64,10 @@ impl<'a, T> Drop for SyncWriteRef<'a, T> {
 impl<'a, T> LocalWriteRef<'a, T> {
   pub(crate) fn new(id: Id, handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow_mut();
-    let guard = unsafe {
-      std::mem::transmute::<crate::signal::TrackedRefMut<'_, T>, crate::signal::TrackedRefMut<'a, T>>(
-        guard,
-      )
-    };
+
+    // SAFETY: the retained `Rc` keeps the data alive for the guard's lifetime.
+    let guard = unsafe { transmute::<TrackedRefMut<'_, T>, TrackedRefMut<'a, T>>(guard) };
+
     Self {
       id,
       _handle: handle,
@@ -69,6 +81,7 @@ impl<'a, T> Drop for LocalWriteRef<'a, T> {
     if let Some(guard) = self.guard.take() {
       drop(guard);
     }
+
     if let Some(signal) = self.id.signal() {
       signal.run_effects();
     }
@@ -94,11 +107,12 @@ impl<'a, T> DerefMut for WriteRef<'a, T> {
   }
 }
 
+/// Updates a signal's value in place, re-running its subscribers.
 pub trait SignalUpdate<T> {
-  /// get the Signal Id
+  /// The signal's `Id`.
   fn id(&self) -> Id;
 
-  /// Sets the new_value to the Signal and triggers effect run
+  /// Replaces the value and re-runs subscribers.
   fn set(&self, new_value: T)
   where
     T: 'static,
@@ -106,7 +120,7 @@ pub trait SignalUpdate<T> {
     let _ = self.try_update(|v| *v = new_value);
   }
 
-  /// Update the stored value with the given function and triggers effect run
+  /// Mutates the value through `f` and re-runs subscribers.
   fn update(&self, f: impl FnOnce(&mut T))
   where
     T: 'static,
@@ -114,17 +128,19 @@ pub trait SignalUpdate<T> {
     let _ = self.try_update(f);
   }
 
-  /// Update the stored value with the given function, triggers effect run,
-  /// and returns the value returned by the function
+  /// Mutates the value through `f` if the signal is live, re-runs subscribers, and
+  /// returns `f`'s result.
   fn try_update<O>(&self, f: impl FnOnce(&mut T) -> O) -> Option<O>
   where
     T: 'static;
 }
 
+/// Mutably borrows a signal's value through a guard.
 pub trait SignalWrite<T> {
-  /// get the Signal Id
+  /// The signal's `Id`.
   fn id(&self) -> Id;
-  /// Mutably borrows the signal value, triggering subscribers when dropped.
+
+  /// Mutably borrows the signal value, re-running subscribers when the guard is dropped.
   fn write(&self) -> WriteRef<'_, T>
   where
     T: 'static,
@@ -132,7 +148,7 @@ pub trait SignalWrite<T> {
     self.try_write().unwrap()
   }
 
-  /// If the Signal isn't disposed, mutably borrows the signal value.
+  /// Mutably borrows the signal value if the signal is live.
   fn try_write(&self) -> Option<WriteRef<'_, T>>
   where
     T: 'static;

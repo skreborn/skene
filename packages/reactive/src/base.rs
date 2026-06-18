@@ -12,13 +12,12 @@ use crate::{
   storage::SyncStorage,
 };
 
-/// BaseSignal gives you another way to control the lifetime of a Signal apart
-/// from Scope. This unsync variant stores its value on the UI thread.
+/// Controls the lifetime of a signal directly, apart from any `Scope`. This
+/// unsync variant stores its value on the UI thread.
 ///
-/// When BaseSignal is dropped, it will dispose the underlying Signal as well.
-/// The signal isn't put in any Scope when a BaseSignal is created, so that the
-/// lifetime of the signal can only be determined by BaseSignal rather than
-/// Scope dependencies.
+/// The signal is placed in no scope; it lives until the `BaseSignal` is dropped,
+/// which disposes the underlying signal.
+#[must_use]
 pub struct BaseSignal<T: 'static> {
   id: Id,
   ty: PhantomData<T>,
@@ -39,15 +38,18 @@ impl<T: 'static> Drop for BaseSignal<T> {
 }
 
 impl<T: 'static> BaseSignal<T> {
+  /// Creates a base signal holding `value`, disposed when it is dropped.
   pub fn new(value: T) -> Self {
     let id = SignalState::new(value);
+
     BaseSignal {
       id,
       ty: PhantomData,
     }
   }
 
-  /// Create a RwSignal of this Signal
+  /// Creates a `RwSignal` of this signal.
+  #[inline(always)]
   pub fn rw(&self) -> RwSignal<T> {
     RwSignal {
       id: self.id,
@@ -56,7 +58,8 @@ impl<T: 'static> BaseSignal<T> {
     }
   }
 
-  /// Create a Getter of this Signal
+  /// Creates a read-only `ReadSignal` of this signal.
+  #[inline(always)]
   pub fn read_only(&self) -> ReadSignal<T> {
     ReadSignal {
       id: self.id,
@@ -65,7 +68,8 @@ impl<T: 'static> BaseSignal<T> {
     }
   }
 
-  /// Create a Setter of this Signal
+  /// Creates a write-only `WriteSignal` of this signal.
+  #[inline(always)]
   pub fn write_only(&self) -> WriteSignal<T> {
     WriteSignal {
       id: self.id,
@@ -76,18 +80,21 @@ impl<T: 'static> BaseSignal<T> {
 }
 
 impl<T: Clone + 'static> SignalGet<T> for BaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Clone + 'static> SignalWith<T> for BaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: 'static> SignalUpdate<T> for BaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -115,6 +122,7 @@ impl<T: 'static> SignalUpdate<T> for BaseSignal<T> {
 }
 
 /// Thread-safe variant that stores the signal in the sync runtime.
+#[must_use]
 pub struct SyncBaseSignal<T: Send + Sync + 'static> {
   id: Id,
   ty: PhantomData<T>,
@@ -135,15 +143,18 @@ impl<T: Send + Sync + 'static> Drop for SyncBaseSignal<T> {
 }
 
 impl<T: Send + Sync + 'static> SyncBaseSignal<T> {
+  /// Creates a thread-safe base signal holding `value`, disposed when it is dropped.
   pub fn new(value: T) -> Self {
     let id = SignalState::new_sync(value);
+
     SyncBaseSignal {
       id,
       ty: PhantomData,
     }
   }
 
-  /// Create a RwSignal of this Signal
+  /// Creates a `RwSignal` of this signal.
+  #[inline(always)]
   pub fn rw(&self) -> RwSignal<T, SyncStorage> {
     RwSignal {
       id: self.id,
@@ -152,7 +163,8 @@ impl<T: Send + Sync + 'static> SyncBaseSignal<T> {
     }
   }
 
-  /// Create a Getter of this Signal
+  /// Creates a read-only `ReadSignal` of this signal.
+  #[inline(always)]
   pub fn read_only(&self) -> ReadSignal<T, SyncStorage> {
     ReadSignal {
       id: self.id,
@@ -161,7 +173,8 @@ impl<T: Send + Sync + 'static> SyncBaseSignal<T> {
     }
   }
 
-  /// Create a Setter of this Signal
+  /// Creates a write-only `WriteSignal` of this signal.
+  #[inline(always)]
   pub fn write_only(&self) -> WriteSignal<T, SyncStorage> {
     WriteSignal {
       id: self.id,
@@ -172,18 +185,21 @@ impl<T: Send + Sync + 'static> SyncBaseSignal<T> {
 }
 
 impl<T: Clone + Send + Sync + 'static> SignalGet<T> for SyncBaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Clone + Send + Sync + 'static> SignalWith<T> for SyncBaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Send + Sync + 'static> SignalUpdate<T> for SyncBaseSignal<T> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }

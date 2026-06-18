@@ -174,7 +174,8 @@ fn read_untracked_does_not_subscribe() {
   Effect::new({
     let untracked_runs = untracked_runs.clone();
     move |_| {
-      signal.read_untracked();
+      let _ = signal.read_untracked();
+
       untracked_runs.set(untracked_runs.get() + 1);
     }
   });

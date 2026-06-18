@@ -4,27 +4,43 @@ use crate::{
   id::Id,
   runtime::{RUNTIME, Runtime},
   scope::Scope,
+  sync_runtime::SYNC_RUNTIME,
 };
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Default)]
+/// The order in which an effect runs relative to others in the same batch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum EffectPriority {
+  /// Runs after every high-priority effect.
   #[default]
   Normal,
+  /// Runs before every normal-priority effect.
   High,
 }
 
+/// A type-erased running effect the runtime schedules and re-runs.
 pub trait EffectTrait: Any {
+  /// The effect's identifier.
   fn id(&self) -> Id;
+
+  /// Runs the effect, returning whether its value changed.
   fn run(&self) -> bool;
+
+  /// Records `id` as a signal the effect subscribed to on its last run.
   fn add_observer(&self, id: Id);
+
+  /// Clears and returns the effect's subscribed signals.
   fn clear_observers(&self) -> HashSet<Id>;
+
+  /// The effect's scheduling priority.
   fn priority(&self) -> EffectPriority {
     EffectPriority::Normal
   }
+
+  /// The effect as a `dyn Any` for downcasting.
   fn as_any(&self) -> &dyn Any;
 }
 
-/// Handle for a running effect. Prefer `Effect::new` over `create_effect`.
+/// A handle for a running effect. Prefer `Effect::new` over `Scope::create_effect`.
 pub struct Effect<T, F>
 where
   T: 'static,
@@ -57,7 +73,9 @@ where
   T: Any + 'static,
   F: Fn(Option<T>) -> T + 'static,
 {
-  #[allow(clippy::new_ret_no_self)]
+  /// Runs `f` immediately and re-runs it whenever a signal it read changes. `f`
+  /// receives its previous return value, or `None` on the first run.
+  #[expect(clippy::new_ret_no_self)]
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(f: F) {
     Runtime::assert_ui_thread();
@@ -76,7 +94,7 @@ where
   }
 }
 
-/// Internal updater effect handle. Prefer the associated constructors over the free functions.
+/// An internal updater-effect handle, created via `Scope::create_updater`.
 pub struct UpdaterEffect<T, I, C, U> {
   id: Id,
   compute: C,
@@ -97,14 +115,10 @@ impl<T, I, C, U> Drop for UpdaterEffect<T, I, C, U> {
   }
 }
 
-/// Create an effect updater that runs `on_change` when any signals that subscribe during the
-/// run of `compute` are updated. `compute` is immediately run only once, and its value is returned
-/// from the call to `create_updater`.
 impl UpdaterEffect<(), (), (), ()> {
-  /// Create an effect updater that runs `on_change` when any signals that subscribe during the
-  /// run of `compute` are updated. `compute` is immediately run only once, and its value is
-  /// returned from the call to `create_updater`.
-  #[allow(clippy::new_ret_no_self)]
+  /// Runs `on_change` whenever a signal read during `compute` changes. Runs
+  /// `compute` once immediately and returns its value.
+  #[expect(clippy::new_ret_no_self)]
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new<R>(compute: impl Fn() -> R + 'static, on_change: impl Fn(R) + 'static) -> R
   where
@@ -113,9 +127,8 @@ impl UpdaterEffect<(), (), (), ()> {
     UpdaterEffect::new_stateful(move |_| (compute(), ()), move |r, _| on_change(r))
   }
 
-  /// Create an effect updater that runs `on_change` when any signals within `compute` subscribe to
-  /// changes. `compute` is immediately run and its return value is returned.
-  #[allow(clippy::new_ret_no_self)]
+  /// Like [`UpdaterEffect::new`], but threads state `T` out of `compute` into each
+  /// `on_change` and back.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new_stateful<T, R>(
     compute: impl Fn(Option<T>) -> (R, T) + 'static,
@@ -143,25 +156,28 @@ impl UpdaterEffect<(), (), (), ()> {
   }
 }
 
-/// Signals that are wrapped with `untrack` will not subscribe to any effect.
 impl Effect<(), fn(Option<()>) -> ()> {
-  #[allow(clippy::new_ret_no_self)]
+  /// Runs `f` without subscribing the current effect to any signal it reads.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn untrack<T>(f: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
     let prev_effect = RUNTIME.with(|runtime| runtime.current_effect.borrow_mut().take());
     let result = f();
+
     RUNTIME.with(|runtime| {
       *runtime.current_effect.borrow_mut() = prev_effect;
     });
+
     result
   }
 
-  #[allow(clippy::new_ret_no_self)]
+  /// Runs `f`, deferring dependent effects until it returns so a batch of signal
+  /// writes triggers each effect at most once.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn batch<T>(f: impl FnOnce() -> T) -> T {
     let already_batching = RUNTIME.with(|runtime| {
       let batching = runtime.batching.get();
+
       if !batching {
         runtime.batching.set(true);
       }
@@ -170,6 +186,7 @@ impl Effect<(), fn(Option<()>) -> ()> {
     });
 
     let result = f();
+
     if !already_batching {
       RUNTIME.with(|runtime| {
         runtime.batching.set(false);
@@ -232,7 +249,6 @@ where
     let effect_scope = Scope(effect_id, PhantomData);
     let (result, new_value) = effect_scope.enter(|| (effect.compute)(None));
 
-    // set new value
     *effect.value.borrow_mut() = Some(new_value);
 
     *runtime.current_effect.borrow_mut() = None;
@@ -241,17 +257,23 @@ where
   })
 }
 
-/// Do a observer clean up at the beginning of each effect run. It clears the effect
-/// from all the Signals that this effect subscribes to, and clears all the signals
-/// that's stored in this effect, so that the next effect run can re-track signals.
+/// Drops `effect` from the subscriber set of every signal it was observing.
 pub(crate) fn observer_clean_up(effect: &Rc<dyn EffectTrait>) {
   let effect_id = effect.id();
   let observers = effect.clear_observers();
-  for observer in observers {
-    if let Some(signal) = observer.signal() {
-      signal.subscribers.lock().remove(&effect_id);
+
+  RUNTIME.with(|runtime| {
+    let signals = runtime.signals.borrow();
+
+    for observer in observers {
+      if let Some(signal) = signals.get(&observer) {
+        signal.subscribers.remove(effect_id);
+      }
+      else if let Some(signal) = SYNC_RUNTIME.get_signal(&observer) {
+        signal.subscribers.lock().remove(&effect_id);
+      }
     }
-  }
+  });
 }
 
 impl<T, F> EffectTrait for Effect<T, F>
@@ -259,14 +281,13 @@ where
   T: 'static,
   F: Fn(Option<T>) -> T + 'static,
 {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   fn run(&self) -> bool {
     let curr_value = self.value.borrow_mut().take();
-
-    // run the effect
     let new_value = (self.f)(curr_value);
 
     *self.value.borrow_mut() = Some(new_value);
@@ -294,18 +315,18 @@ where
   C: Fn(Option<T>) -> (I, T) + 'static,
   U: Fn(I, T) -> T + 'static,
 {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   fn run(&self) -> bool {
     let curr_value = self.value.borrow_mut().take();
-
-    // run the effect
     let (i, t) = (self.compute)(curr_value);
     let new_value = (self.on_change)(i, t);
 
     *self.value.borrow_mut() = Some(new_value);
+
     true
   }
 
@@ -322,6 +343,8 @@ where
   }
 }
 
+/// Re-runs `on_change` whenever a signal read during the last [`SignalTracker::track`]
+/// call changes, until the tracker is dropped.
 pub struct SignalTracker {
   id: Id,
   on_change: Rc<dyn Fn()>,
@@ -334,7 +357,7 @@ impl Drop for SignalTracker {
 }
 
 impl SignalTracker {
-  /// Creates a [SignalTracker] that subscribes to any changes in signals used within `on_change`.
+  /// Creates a [`SignalTracker`] that subscribes to any changes in signals used within `on_change`.
   pub fn new(on_change: impl Fn() + 'static) -> Self {
     let id = Id::next();
 
@@ -344,10 +367,10 @@ impl SignalTracker {
     }
   }
 
-  /// Updates the tracking function used for [SignalTracker].
+  /// Runs `f` and returns its value, subscribing to every signal it reads so a
+  /// later change re-runs `on_change`. Replaces any previous subscription.
   pub fn track<T: 'static>(&self, f: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
-    // Clear any previous tracking by disposing the old effect
     self.id.dispose();
 
     let prev_effect = RUNTIME.with(|runtime| runtime.current_effect.borrow_mut().take());
@@ -384,6 +407,7 @@ struct TrackingEffect {
 }
 
 impl EffectTrait for TrackingEffect {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }

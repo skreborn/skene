@@ -1,9 +1,4 @@
-//! # skene Reactive
-//!
-//! [`RwSignal::new_split`](RwSignal::new_split) returns a separated [`ReadSignal`] and
-//! [`WriteSignal`] for a variable. An existing `RwSignal` may be converted using
-//! [`RwSignal::read_only`](RwSignal::read_only) and [`RwSignal::write_only`](RwSignal::write_only)
-//! where necessary, but the reverse is not possible.
+//! # Reactive engine
 
 mod base;
 mod context;
@@ -23,13 +18,8 @@ mod write;
 
 pub use base::{BaseSignal, SyncBaseSignal};
 pub use context::Context;
-pub use derived::{
-  DerivedRwSignal,
-  SyncDerivedRwSignal,
-  create_derived_rw_signal,
-  create_sync_derived_rw_signal,
-};
-pub use effect::{Effect, EffectTrait, SignalTracker, UpdaterEffect};
+pub use derived::{DerivedRwSignal, SyncDerivedRwSignal};
+pub use effect::{Effect, EffectPriority, EffectTrait, SignalTracker, UpdaterEffect};
 pub use id::Id as ReactiveId;
 pub use memo::Memo;
 pub use read::{ReadRef, SignalGet, SignalRead, SignalTrack, SignalWith};

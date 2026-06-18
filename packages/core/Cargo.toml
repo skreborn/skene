@@ -3,11 +3,18 @@ name = "skene-core"
 version.workspace = true
 edition.workspace = true
 
+[features]
+test = ["skene-reactive/test"]
+
 [dependencies]
-skene-macros = { workspace = true }
-skene-reactive = { workspace = true }
-skene-renderer = { workspace = true }
-rustc-hash = { workspace = true }
+color.workspace = true
+fixed.workspace = true
+longest-increasing-subsequence = "0.1"
+rustc-hash.workspace = true
+skene-reactive.workspace = true
+
+[dev-dependencies]
+skene-reactive = { workspace = true, features = ["test"] }
 
 [lints]
 workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "counter-web"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+counter-core = { path = "../counter-core" }
+skene.workspace = true
+skene-web.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true

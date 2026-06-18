@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{
   effect::observer_clean_up,
@@ -7,23 +7,24 @@ use crate::{
   sync_runtime::SYNC_RUNTIME,
 };
 
-/// An internal id which can reference a Signal/Effect/Scope.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// An internal id which can reference a signal/`Effect`/`Scope`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(u64);
 
 impl Id {
-  /// Create a new Id that's next in order
+  /// Creates a new `Id` that's next in order.
   pub(crate) fn next() -> Id {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
-    Id(COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    Id(COUNTER.fetch_add(1, Ordering::Relaxed))
   }
 
-  /// Try to get the Signal that links with this Id
+  /// Tries to get the signal that links with this `Id`.
   pub(crate) fn signal(&self) -> Option<SignalState> {
     if Runtime::is_ui_thread() {
       if let Some(sig) = RUNTIME.with(|runtime| runtime.signals.borrow().get(self).cloned()) {
         return Some(sig);
       }
+
       SYNC_RUNTIME.get_signal(self).map(Into::into)
     }
     else {
@@ -31,12 +32,23 @@ impl Id {
     }
   }
 
-  /// Try to set the Signal to be linking with this Id
+  /// Reads the local (unsync) signal for this id, asserting the UI thread.
+  ///
+  /// For unsync signal handles, whose storage is always local: skips the
+  /// local-vs-sync dispatch [`signal`](Self::signal) performs.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub(crate) fn local_signal(&self) -> Option<SignalState> {
+    Runtime::assert_ui_thread();
+
+    RUNTIME.with(|runtime| runtime.signals.borrow().get(self).cloned())
+  }
+
+  /// Tries to set the signal to be linking with this `Id`.
   pub(crate) fn add_signal(&self, signal: SignalState) {
     RUNTIME.with(|runtime| runtime.signals.borrow_mut().insert(*self, signal));
   }
 
-  /// Make this Id a child of the current Scope
+  /// Makes this `Id` a child of the current `Scope`.
   pub(crate) fn set_scope(&self) {
     RUNTIME.with(|runtime| {
       let scope = *runtime.current_scope.borrow();
@@ -50,7 +62,7 @@ impl Id {
     });
   }
 
-  /// Dispose only the children of this Id without removing resources tied to the Id itself.
+  /// Disposes only the children of this `Id` without removing resources tied to the `Id` itself.
   pub(crate) fn dispose_children(&self) {
     if let Ok(Some(children)) =
       RUNTIME.try_with(|runtime| runtime.children.borrow_mut().remove(self))
@@ -61,17 +73,16 @@ impl Id {
     }
   }
 
-  /// Dispose the relevant resources that's linking to this Id, and the all the children
-  /// and grandchildren.
+  /// Disposes the resources linked to this `Id` and all of its descendants.
   pub(crate) fn dispose(&self) {
     if !Runtime::is_ui_thread() {
-      // Bounce disposal work to the UI thread so we clean up the correct runtime.
+      // Disposal must run on the UI thread.
       SYNC_RUNTIME.enqueue_disposals([*self]);
+
       return;
     }
 
     if let Ok((children, signal, effect)) = RUNTIME.try_with(|runtime| {
-      // Clean up scope-specific data
       runtime.scope_contexts.borrow_mut().remove(self);
       runtime.parents.borrow_mut().remove(self);
 
@@ -92,9 +103,11 @@ impl Id {
       }
 
       let mut signal = signal;
+
       if signal.is_none() {
         signal = SYNC_RUNTIME.remove_signal(self).map(Into::into);
       }
+
       Self::cleanup_signal(signal);
     }
     else if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
@@ -104,9 +117,8 @@ impl Id {
 
   fn cleanup_signal(signal: Option<SignalState>) {
     if let Some(signal) = signal {
-      for effect_id in signal.subscriber_ids() {
-        // Drop any effect that was subscribed to this signal so it can't linger
-        // with dangling dependencies.
+      // Snapshot first: dispose may re-enter the subscriber set.
+      for effect_id in signal.subscribers.snapshot() {
         effect_id.dispose();
       }
     }
@@ -115,7 +127,10 @@ impl Id {
 
 #[cfg(test)]
 mod tests {
-  use std::{cell::Cell, rc::Rc};
+  use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+  };
 
   use crate::{
     RwSignal,
@@ -161,7 +176,7 @@ mod tests {
     let dep_scope = parent.create_child();
     let (dep_signal, dep_setter) = dep_scope.create_signal(0);
 
-    let created_signal = Rc::new(std::cell::RefCell::new(None));
+    let created_signal = Rc::new(RefCell::new(None));
     let run_count = Rc::new(Cell::new(0));
 
     parent.enter(|| {

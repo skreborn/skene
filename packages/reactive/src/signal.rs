@@ -8,21 +8,23 @@ use std::{
   collections::HashSet,
   fmt,
   marker::PhantomData,
+  ops::{Deref, DerefMut},
   rc::Rc,
   sync::Arc,
 };
 
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
+use smallvec::SmallVec;
 
 use crate::{
   SignalGet,
   SignalUpdate,
   id::Id,
-  read::{SignalRead, SignalTrack, SignalWith},
+  read::{LocalReadRef, ReadRef, SignalRead, SignalTrack, SignalWith, SyncReadRef},
   runtime::{RUNTIME, Runtime},
   storage::{Storage, SyncStorage, UnsyncStorage},
   sync_runtime::{SYNC_RUNTIME, SyncSignal},
-  write::SignalWrite,
+  write::{LocalWriteRef, SignalWrite, SyncWriteRef, WriteRef},
 };
 
 #[derive(Debug)]
@@ -133,6 +135,8 @@ impl<T> TrackedRefCell<T> {
   }
 }
 
+/// A shared borrow guard over a thread-local signal's value.
+#[must_use]
 pub struct TrackedRef<'a, T> {
   inner: Ref<'a, T>,
   #[cfg(debug_assertions)]
@@ -146,13 +150,14 @@ impl<'a, T> Drop for TrackedRef<'a, T> {
   }
 }
 
-impl<'a, T> std::ops::Deref for TrackedRef<'a, T> {
+impl<'a, T> Deref for TrackedRef<'a, T> {
   type Target = T;
   fn deref(&self) -> &Self::Target {
     &self.inner
   }
 }
 
+/// An exclusive borrow guard over a thread-local signal's value.
 pub struct TrackedRefMut<'a, T> {
   inner: RefMut<'a, T>,
   #[cfg(debug_assertions)]
@@ -166,30 +171,35 @@ impl<'a, T> Drop for TrackedRefMut<'a, T> {
   }
 }
 
-impl<'a, T> std::ops::Deref for TrackedRefMut<'a, T> {
+impl<'a, T> Deref for TrackedRefMut<'a, T> {
   type Target = T;
   fn deref(&self) -> &Self::Target {
     &self.inner
   }
 }
 
-impl<'a, T> std::ops::DerefMut for TrackedRefMut<'a, T> {
+impl<'a, T> DerefMut for TrackedRefMut<'a, T> {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.inner
   }
 }
 
+/// A thread-safe [`RwSignal`].
 pub type SyncRwSignal<T> = RwSignal<T, SyncStorage>;
+/// A thread-safe [`ReadSignal`].
 pub type SyncReadSignal<T> = ReadSignal<T, SyncStorage>;
+/// A thread-safe [`WriteSignal`].
 pub type SyncWriteSignal<T> = WriteSignal<T, SyncStorage>;
 
 impl<T, S> SignalTrack<T> for RwSignal<T, S> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T, S> SignalTrack<T> for ReadSignal<T, S> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -199,28 +209,16 @@ impl<T: Any + 'static> Storage<T> for UnsyncStorage {
   fn create(value: T) -> Id {
     SignalState::new(value)
   }
-
-  fn get(id: Id) -> Option<Self::Signal> {
-    id.signal()
-  }
-
-  type Signal = SignalState;
 }
 
 impl<T: Any + Send + Sync + 'static> Storage<T> for SyncStorage {
   fn create(value: T) -> Id {
     SignalState::new_sync(value)
   }
-
-  fn get(id: Id) -> Option<Self::Signal> {
-    id.signal()
-      .or_else(|| SYNC_RUNTIME.get_signal(&id).map(|s| s.into()))
-  }
-
-  type Signal = SignalState;
 }
 
-/// A read write Signal which can act as both a Getter and a Setter
+/// A read-write signal that acts as both a getter and a setter.
+#[must_use]
 pub struct RwSignal<T, S = UnsyncStorage> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
@@ -228,6 +226,7 @@ pub struct RwSignal<T, S = UnsyncStorage> {
 }
 
 impl<T, S> RwSignal<T, S> {
+  /// The signal's `Id`.
   pub fn id(&self) -> Id {
     self.id
   }
@@ -250,11 +249,13 @@ impl<T, S> PartialEq for RwSignal<T, S> {
 }
 
 impl<T, S> fmt::Debug for RwSignal<T, S> {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let mut s = f.debug_struct("RwSignal");
-    s.field("id", &self.id);
-    s.field("ty", &self.ty);
-    s.finish()
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let mut r#struct = formatter.debug_struct("RwSignal");
+
+    r#struct.field("id", &self.id);
+    r#struct.field("ty", &self.ty);
+
+    r#struct.finish()
   }
 }
 
@@ -265,7 +266,8 @@ impl<T: Default + 'static> Default for RwSignal<T> {
 }
 
 impl<T, S> RwSignal<T, S> {
-  /// Create a Getter of this Signal
+  /// Creates a read-only `ReadSignal` of this signal.
+  #[inline(always)]
   pub fn read_only(&self) -> ReadSignal<T, S> {
     ReadSignal {
       id: self.id,
@@ -274,7 +276,8 @@ impl<T, S> RwSignal<T, S> {
     }
   }
 
-  /// Create a Setter of this Signal
+  /// Creates a write-only `WriteSignal` of this signal.
+  #[inline(always)]
   pub fn write_only(&self) -> WriteSignal<T, S> {
     WriteSignal {
       id: self.id,
@@ -289,43 +292,54 @@ impl<T: Send + Sync + 'static> RwSignal<T, SyncStorage> {
   /// unscoped, so callers must ensure it is disposed manually.
   pub fn new_sync(value: T) -> Self {
     let id = SignalState::new_sync(value);
+
     if Runtime::is_ui_thread() {
       id.set_scope();
     }
+
     RwSignal {
       id,
       ty: PhantomData,
       st: PhantomData,
     }
   }
+
   /// Creates a sync signal with separate read/write handles. Off-UI calls
   /// leave the signal unscoped; the caller is responsible for disposal.
   pub fn new_sync_split(value: T) -> (ReadSignal<T, SyncStorage>, WriteSignal<T, SyncStorage>) {
     let sig = Self::new_sync(value);
+
     (sig.read_only(), sig.write_only())
   }
 }
 
 impl<T: 'static> RwSignal<T, UnsyncStorage> {
+  /// Creates a signal holding `value`, scoped to the current reactive scope.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(value: T) -> Self {
     Runtime::assert_ui_thread();
+
     let id = <UnsyncStorage as Storage<T>>::create(value);
     id.set_scope();
+
     RwSignal {
       id,
       ty: PhantomData,
       st: PhantomData,
     }
   }
+
+  /// Creates a signal with separate read/write handles.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new_split(value: T) -> (ReadSignal<T, UnsyncStorage>, WriteSignal<T, UnsyncStorage>) {
     let sig = Self::new(value);
+
     (sig.read_only(), sig.write_only())
   }
 }
 
-/// A getter only Signal
+/// A read-only signal.
+#[must_use]
 pub struct ReadSignal<T, S = UnsyncStorage> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
@@ -333,6 +347,7 @@ pub struct ReadSignal<T, S = UnsyncStorage> {
 }
 
 impl<T, S> ReadSignal<T, S> {
+  /// The signal's `Id`.
   pub fn id(&self) -> Id {
     self.id
   }
@@ -354,7 +369,8 @@ impl<T, S> PartialEq for ReadSignal<T, S> {
   }
 }
 
-/// A setter only Signal
+/// A write-only handle to a signal.
+#[must_use]
 pub struct WriteSignal<T, S = UnsyncStorage> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
@@ -362,6 +378,7 @@ pub struct WriteSignal<T, S = UnsyncStorage> {
 }
 
 impl<T, S> WriteSignal<T, S> {
+  /// The signal's `Id`.
   pub fn id(&self) -> Id {
     self.id
   }
@@ -385,10 +402,21 @@ impl<T, S> PartialEq for WriteSignal<T, S> {
 
 /// Internal state for a signal; stores the value and subscriber set.
 #[derive(Clone)]
-pub(crate) struct SignalState {
+pub(crate) struct SignalState(Rc<SignalStateInner>);
+
+pub(crate) struct SignalStateInner {
   pub(crate) id: Id,
   pub(crate) value: SignalValue,
-  pub(crate) subscribers: Arc<Mutex<HashSet<Id>>>,
+  pub(crate) subscribers: Subscribers,
+}
+
+impl Deref for SignalState {
+  type Target = SignalStateInner;
+
+  #[inline(always)]
+  fn deref(&self) -> &SignalStateInner {
+    &self.0
+  }
 }
 
 #[derive(Clone)]
@@ -397,14 +425,63 @@ pub(crate) enum SignalValue {
   Local(Rc<dyn Any>),
 }
 
-#[allow(dead_code)]
-pub enum SignalBorrow<'a, T> {
-  Sync(MutexGuard<'a, T>),
-  Local(TrackedRef<'a, T>),
+/// A signal's subscriber set: local (single-thread) or sync (cross-thread).
+#[derive(Clone)]
+pub(crate) enum Subscribers {
+  Local(Rc<RefCell<SmallVec<[Id; 4]>>>),
+  Sync(Arc<Mutex<HashSet<Id>>>),
+}
+
+impl Subscribers {
+  pub(crate) fn local() -> Subscribers {
+    Subscribers::Local(Rc::new(RefCell::new(SmallVec::new())))
+  }
+
+  /// Adds `id`, if not already present.
+  fn insert(&self, id: Id) {
+    match self {
+      Subscribers::Local(subscribers) => {
+        let mut subscribers = subscribers.borrow_mut();
+
+        if !subscribers.contains(&id) {
+          subscribers.push(id);
+        }
+      }
+      Subscribers::Sync(subscribers) => {
+        subscribers.lock().insert(id);
+      }
+    }
+  }
+
+  /// Removes `id`, if present.
+  pub(crate) fn remove(&self, id: Id) {
+    match self {
+      Subscribers::Local(subscribers) => subscribers.borrow_mut().retain(|other| *other != id),
+      Subscribers::Sync(subscribers) => {
+        subscribers.lock().remove(&id);
+      }
+    }
+  }
+
+  /// Returns a detached copy of the current subscriber ids.
+  pub(crate) fn snapshot(&self) -> SmallVec<[Id; 4]> {
+    match self {
+      Subscribers::Local(subscribers) => subscribers.borrow().iter().copied().collect(),
+      Subscribers::Sync(subscribers) => subscribers.lock().iter().copied().collect(),
+    }
+  }
 }
 
 impl SignalState {
-  #[allow(clippy::new_ret_no_self)]
+  pub(crate) fn from_parts(id: Id, value: SignalValue, subscribers: Subscribers) -> SignalState {
+    SignalState(Rc::new(SignalStateInner {
+      id,
+      value,
+      subscribers,
+    }))
+  }
+
+  #[expect(clippy::new_ret_no_self)]
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new<T>(value: T) -> Id
   where
@@ -413,11 +490,8 @@ impl SignalState {
     Runtime::assert_ui_thread();
     let id = Id::next();
     let value = TrackedRefCell::new(value);
-    let signal = SignalState {
-      id,
-      subscribers: Arc::new(Mutex::new(HashSet::new())),
-      value: SignalValue::Local(Rc::new(value)),
-    };
+    let signal =
+      SignalState::from_parts(id, SignalValue::Local(Rc::new(value)), Subscribers::local());
     id.add_signal(signal);
     id
   }
@@ -429,7 +503,7 @@ impl SignalState {
     let id = Id::next();
     let value = Arc::new(Mutex::new(value));
     let subscribers = Arc::new(Mutex::new(HashSet::new()));
-    // Sync signals live in the global sync runtime; we don't store them in the TLS runtime.
+
     SYNC_RUNTIME.insert_signal(
       id,
       SyncSignal {
@@ -439,34 +513,6 @@ impl SignalState {
       },
     );
     id
-  }
-
-  #[allow(dead_code)]
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn borrow<T: 'static>(&self) -> SignalBorrow<'_, T> {
-    match &self.value {
-      SignalValue::Sync(v) => {
-        let v = v
-          .as_ref()
-          .downcast_ref::<Mutex<T>>()
-          .expect("to downcast signal type");
-        SignalBorrow::Sync(v.lock())
-      }
-      SignalValue::Local(v) => {
-        let v = v
-          .as_ref()
-          .downcast_ref::<TrackedRefCell<T>>()
-          .expect("to downcast signal type");
-        #[cfg(debug_assertions)]
-        {
-          SignalBorrow::Local(v.borrow_at(Location::caller()))
-        }
-        #[cfg(not(debug_assertions))]
-        {
-          SignalBorrow::Local(v.borrow())
-        }
-      }
-    }
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
@@ -560,12 +606,8 @@ impl SignalState {
     result
   }
 
-  pub(crate) fn subscriber_ids(&self) -> HashSet<Id> {
-    self.subscribers.lock().iter().copied().collect()
-  }
-
   pub(crate) fn run_effects(&self) {
-    let ids: smallvec::SmallVec<[_; 3]> = self.subscriber_ids().into_iter().collect();
+    let ids = self.subscribers.snapshot();
     let on_ui_thread = Runtime::is_ui_thread();
 
     if !on_ui_thread {
@@ -577,6 +619,7 @@ impl SignalState {
       for id in &ids {
         r.add_pending_effect(*id);
       }
+
       if !r.batching.get() {
         r.run_pending_effects();
       }
@@ -586,7 +629,7 @@ impl SignalState {
   pub(crate) fn subscribe(&self) {
     RUNTIME.with(|runtime| {
       if let Some(effect) = runtime.current_effect.borrow().as_ref() {
-        self.subscribers.lock().insert(effect.id());
+        self.subscribers.insert(effect.id());
         effect.add_observer(self.id);
       }
     });
@@ -615,43 +658,48 @@ impl SignalState {
 
 // Sync storage trait impls (requires Send + Sync)
 impl<T: Clone + Send + Sync> SignalGet<T> for RwSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Send + Sync> SignalWith<T> for RwSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Send + Sync> SignalRead<T> for RwSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
-  fn try_read(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
     self.id().signal().map(|signal| {
       signal.subscribe();
-      crate::read::ReadRef::Sync(crate::read::SyncReadRef::new(signal.as_sync::<T>()))
+      ReadRef::Sync(SyncReadRef::new(signal.as_sync::<T>()))
     })
   }
 
-  fn try_read_untracked(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read_untracked(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    self.id().signal().map(|signal| {
-      crate::read::ReadRef::Sync(crate::read::SyncReadRef::new(signal.as_sync::<T>()))
-    })
+    self
+      .id()
+      .signal()
+      .map(|signal| ReadRef::Sync(SyncReadRef::new(signal.as_sync::<T>())))
   }
 }
 
 impl<T: Send + Sync> SignalUpdate<T> for RwSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -683,68 +731,72 @@ impl<T: Send + Sync> SignalUpdate<T> for RwSignal<T, SyncStorage> {
 }
 
 impl<T: Send + Sync> SignalWrite<T> for RwSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
-  fn write(&self) -> crate::write::WriteRef<'_, T>
+  fn write(&self) -> WriteRef<'_, T>
   where
     T: 'static,
   {
     self.try_write().unwrap()
   }
 
-  fn try_write(&self) -> Option<crate::write::WriteRef<'_, T>>
+  fn try_write(&self) -> Option<WriteRef<'_, T>>
   where
     T: 'static,
   {
-    self.id().signal().map(|signal| {
-      crate::write::WriteRef::Sync(crate::write::SyncWriteRef::new(
-        signal.id,
-        signal.as_sync::<T>(),
-      ))
-    })
+    self
+      .id()
+      .signal()
+      .map(|signal| WriteRef::Sync(SyncWriteRef::new(signal.id, signal.as_sync::<T>())))
   }
 }
 
 impl<T: Clone + Send + Sync> SignalGet<T> for ReadSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Send + Sync> SignalWith<T> for ReadSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T: Send + Sync> SignalRead<T> for ReadSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
-  fn try_read(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
     self.id().signal().map(|signal| {
       signal.subscribe();
-      crate::read::ReadRef::Sync(crate::read::SyncReadRef::new(signal.as_sync::<T>()))
+      ReadRef::Sync(SyncReadRef::new(signal.as_sync::<T>()))
     })
   }
 
-  fn try_read_untracked(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read_untracked(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    self.id().signal().map(|signal| {
-      crate::read::ReadRef::Sync(crate::read::SyncReadRef::new(signal.as_sync::<T>()))
-    })
+    self
+      .id()
+      .signal()
+      .map(|signal| ReadRef::Sync(SyncReadRef::new(signal.as_sync::<T>())))
   }
 }
 
 impl<T: Send + Sync> SignalUpdate<T> for WriteSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -776,65 +828,67 @@ impl<T: Send + Sync> SignalUpdate<T> for WriteSignal<T, SyncStorage> {
 }
 
 impl<T: Send + Sync> SignalWrite<T> for WriteSignal<T, SyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
-  fn try_write(&self) -> Option<crate::write::WriteRef<'_, T>>
+  fn try_write(&self) -> Option<WriteRef<'_, T>>
   where
     T: 'static,
   {
-    self.id().signal().map(|signal| {
-      crate::write::WriteRef::Sync(crate::write::SyncWriteRef::new(
-        signal.id,
-        signal.as_sync::<T>(),
-      ))
-    })
+    self
+      .id()
+      .signal()
+      .map(|signal| WriteRef::Sync(SyncWriteRef::new(signal.id, signal.as_sync::<T>())))
   }
 }
 
 // Unsync storage trait impls (no Send + Sync required)
 impl<T: Clone> SignalGet<T> for RwSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T> SignalWith<T> for RwSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T> SignalRead<T> for RwSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_read(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
+    self.id().local_signal().map(|signal| {
       signal.subscribe();
-      crate::read::ReadRef::Local(crate::read::LocalReadRef::new(signal.as_local::<T>()))
+      ReadRef::Local(LocalReadRef::new(signal.as_local::<T>()))
     })
   }
 
-  fn try_read_untracked(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read_untracked(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
-      crate::read::ReadRef::Local(crate::read::LocalReadRef::new(signal.as_local::<T>()))
-    })
+    self
+      .id()
+      .local_signal()
+      .map(|signal| ReadRef::Local(LocalReadRef::new(signal.as_local::<T>())))
   }
 }
 
 impl<T> SignalUpdate<T> for RwSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -844,8 +898,7 @@ impl<T> SignalUpdate<T> for RwSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    if let Some(signal) = self.id().signal() {
+    if let Some(signal) = self.id().local_signal() {
       signal.update_value_local(|v| *v = new_value);
     }
   }
@@ -855,8 +908,7 @@ impl<T> SignalUpdate<T> for RwSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    if let Some(signal) = self.id().signal() {
+    if let Some(signal) = self.id().local_signal() {
       signal.update_value_local(f);
     }
   }
@@ -866,44 +918,41 @@ impl<T> SignalUpdate<T> for RwSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
     self
       .id()
-      .signal()
+      .local_signal()
       .map(|signal| signal.update_value_local(f))
   }
 }
 
 impl<T> SignalWrite<T> for RwSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  fn write(&self) -> crate::write::WriteRef<'_, T>
+  fn write(&self) -> WriteRef<'_, T>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
     self.try_write().unwrap()
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_write(&self) -> Option<crate::write::WriteRef<'_, T>>
+  fn try_write(&self) -> Option<WriteRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
-      crate::write::WriteRef::Local(crate::write::LocalWriteRef::new(
-        signal.id,
-        signal.as_local::<T>(),
-      ))
-    })
+    self
+      .id()
+      .local_signal()
+      .map(|signal| WriteRef::Local(LocalWriteRef::new(signal.id, signal.as_local::<T>())))
   }
 }
 
 impl<T> SignalUpdate<T> for WriteSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -913,8 +962,7 @@ impl<T> SignalUpdate<T> for WriteSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    if let Some(signal) = self.id().signal() {
+    if let Some(signal) = self.id().local_signal() {
       signal.update_value_local(|v| *v = new_value);
     }
   }
@@ -924,8 +972,7 @@ impl<T> SignalUpdate<T> for WriteSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    if let Some(signal) = self.id().signal() {
+    if let Some(signal) = self.id().local_signal() {
       signal.update_value_local(f);
     }
   }
@@ -935,70 +982,69 @@ impl<T> SignalUpdate<T> for WriteSignal<T, UnsyncStorage> {
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
     self
       .id()
-      .signal()
+      .local_signal()
       .map(|signal| signal.update_value_local(f))
   }
 }
 
 impl<T> SignalWrite<T> for WriteSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_write(&self) -> Option<crate::write::WriteRef<'_, T>>
+  fn try_write(&self) -> Option<WriteRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
-      crate::write::WriteRef::Local(crate::write::LocalWriteRef::new(
-        signal.id,
-        signal.as_local::<T>(),
-      ))
-    })
+    self
+      .id()
+      .local_signal()
+      .map(|signal| WriteRef::Local(LocalWriteRef::new(signal.id, signal.as_local::<T>())))
   }
 }
 
 impl<T: Clone> SignalGet<T> for ReadSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T> SignalWith<T> for ReadSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 }
 
 impl<T> SignalRead<T> for ReadSignal<T, UnsyncStorage> {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_read(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
+    self.id().local_signal().map(|signal| {
       signal.subscribe();
-      crate::read::ReadRef::Local(crate::read::LocalReadRef::new(signal.as_local::<T>()))
+      ReadRef::Local(LocalReadRef::new(signal.as_local::<T>()))
     })
   }
 
-  fn try_read_untracked(&self) -> Option<crate::read::ReadRef<'_, T>>
+  fn try_read_untracked(&self) -> Option<ReadRef<'_, T>>
   where
     T: 'static,
   {
-    Runtime::assert_ui_thread();
-    self.id().signal().map(|signal| {
-      crate::read::ReadRef::Local(crate::read::LocalReadRef::new(signal.as_local::<T>()))
-    })
+    self
+      .id()
+      .local_signal()
+      .map(|signal| ReadRef::Local(LocalReadRef::new(signal.as_local::<T>())))
   }
 }

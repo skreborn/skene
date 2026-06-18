@@ -22,13 +22,13 @@ use crate::runtime::RUNTIME;
 pub struct Context;
 
 impl Context {
-  /// Store a context value in the current scope.
+  /// Stores a context value in the current scope.
   ///
   /// The stored context value can be retrieved by the current scope and any of its
   /// descendants using [`Context::get`]. Child scopes can provide their own values
   /// of the same type, which will shadow the parent's value for that subtree.
   ///
-  /// Context values are automatically cleaned up when the scope is disposed.
+  /// `Context` values are automatically cleaned up when the scope is disposed.
   ///
   /// # Example
   /// ```rust
@@ -56,9 +56,9 @@ impl Context {
     });
   }
 
-  /// Try to retrieve a stored context value from the current scope or its ancestors.
+  /// Tries to retrieve a stored context value from the current scope or its ancestors.
   ///
-  /// Context lookup walks up the scope tree from the current scope to find the
+  /// `Context` lookup walks up the scope tree from the current scope to find the
   /// nearest ancestor that provides a value of the requested type. This enables
   /// nested components to override context values for their subtrees.
   ///
@@ -81,6 +81,7 @@ impl Context {
     T: Clone + 'static,
   {
     let ty = TypeId::of::<T>();
+
     RUNTIME.with(|runtime| {
       let mut scope = *runtime.current_scope.borrow();
       let scope_contexts = runtime.scope_contexts.borrow();
@@ -92,7 +93,7 @@ impl Context {
         {
           return value.downcast_ref::<T>().cloned();
         }
-        // Walk up to parent scope
+
         match parents.get(&scope) {
           Some(&parent) => scope = parent,
           None => return None,
@@ -104,8 +105,10 @@ impl Context {
 
 #[cfg(test)]
 mod tests {
+  use std::{cell::Cell, rc::Rc};
+
   use super::*;
-  use crate::scope::Scope;
+  use crate::{Effect, RwSignal, SignalGet, SignalUpdate, id::Id, scope::Scope};
 
   #[test]
   fn context_in_same_scope() {
@@ -326,8 +329,6 @@ mod tests {
 
   #[test]
   fn child_created_via_set_scope_inherits_context() {
-    use crate::id::Id;
-
     let parent = Scope::new();
     parent.enter(|| {
       Context::provide(42i32);
@@ -360,10 +361,10 @@ mod tests {
 
   #[test]
   fn newtype_wrappers_are_distinct_types() {
-    #[derive(Clone, PartialEq, Debug)]
+    #[derive(Debug, Clone, PartialEq)]
     struct UserId(i32);
 
-    #[derive(Clone, PartialEq, Debug)]
+    #[derive(Debug, Clone, PartialEq)]
     struct PostId(i32);
 
     let scope = Scope::new();
@@ -382,15 +383,13 @@ mod tests {
 
   #[test]
   fn context_with_rw_signal() {
-    use crate::{RwSignal, SignalGet, SignalUpdate};
-
     let scope = Scope::new();
     scope.enter(|| {
       let signal = RwSignal::new(42);
       Context::provide(signal);
 
       // Retrieve the signal from context
-      let retrieved = Context::get::<crate::signal::RwSignal<i32>>().unwrap();
+      let retrieved = Context::get::<RwSignal<i32>>().unwrap();
       assert_eq!(retrieved.get_untracked(), 42);
 
       // Modifying the retrieved signal should affect the original
@@ -546,10 +545,6 @@ mod tests {
 
   #[test]
   fn context_visible_in_effect() {
-    use std::{cell::Cell, rc::Rc};
-
-    use crate::{Effect, RwSignal, SignalGet};
-
     let scope = Scope::new();
     let seen_value = Rc::new(Cell::new(0i32));
 
@@ -574,10 +569,10 @@ mod tests {
   #[test]
   fn zero_sized_type_as_context_marker() {
     // ZST marker types are a common pattern
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     struct DarkMode;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     struct DebugEnabled;
 
     let scope = Scope::new();

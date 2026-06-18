@@ -1,18 +1,12 @@
-use skene_renderer::NodeId;
+use crate::{NodeId, dynamic};
 
-use crate::views::Label;
-
-/// A node in the application's view tree.
-///
-/// `build` is the single responsibility of a view: realize itself against the
-/// active backend (creating nodes, applying styles, wiring reactive effects and
-/// event handlers) and return the id of its root node. The browser — or, in
-/// future, a native/TUI backend — handles layout, painting and hit-testing.
+/// A view that builds into a backend node.
 pub trait View: 'static {
-  /// Realize this view and return its root node.
+  /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
 
-  /// Erase this view's concrete type into an [`AnyView`].
+  /// Erases this view's concrete type.
+  #[inline(always)]
   fn into_any(self) -> AnyView
   where
     Self: Sized,
@@ -21,47 +15,61 @@ pub trait View: 'static {
   }
 }
 
-/// A type-erased view: a deferred build closure.
+/// A type-erased view.
+#[must_use]
 pub struct AnyView(Box<dyn FnOnce() -> NodeId>);
 
 impl AnyView {
+  /// Creates a type-erased view from `build`.
+  #[inline(always)]
   pub fn new(build: impl FnOnce() -> NodeId + 'static) -> Self {
     AnyView(Box::new(build))
   }
 }
 
 impl View for AnyView {
+  #[inline(always)]
   fn build(self) -> NodeId {
     (self.0)()
   }
 
+  #[inline(always)]
   fn into_any(self) -> AnyView {
     self
   }
 }
 
-/// Anything that can be turned into a view.
-///
-/// A blanket impl covers every [`View`]; additional impls provide ergonomic
-/// conversions (e.g. string literals become text).
+/// A value that can be turned into a view.
 pub trait IntoView {
+  /// Converts this value into a view.
   fn into_view(self) -> AnyView;
 }
 
 impl<V: View> IntoView for V {
+  #[inline(always)]
   fn into_view(self) -> AnyView {
     self.into_any()
   }
 }
 
-impl IntoView for &str {
-  fn into_view(self) -> AnyView {
-    Label::new(self).into_any()
+/// A reactive subtree.
+#[must_use]
+pub struct DynamicView {
+  build: Box<dyn Fn() -> NodeId>,
+}
+
+impl DynamicView {
+  /// Creates a reactive subtree.
+  #[inline(always)]
+  pub fn new<V: View>(build: impl Fn() -> V + 'static) -> Self {
+    Self {
+      build: Box::new(move || build().build()),
+    }
   }
 }
 
-impl IntoView for String {
-  fn into_view(self) -> AnyView {
-    Label::new(self).into_any()
+impl View for DynamicView {
+  fn build(self) -> NodeId {
+    dynamic(self.build)
   }
 }

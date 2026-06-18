@@ -3,6 +3,7 @@ use std::{
   cell::{Cell, RefCell},
   collections::HashSet,
   marker::PhantomData,
+  mem::take,
   rc::Rc,
 };
 
@@ -18,11 +19,11 @@ use crate::{
   write::SignalUpdate,
 };
 
-/// A memoized derived value that only recomputes when one of its tracked
-/// dependencies changes, and only notifies dependents when its value changes.
+/// A memoized derived value.
 ///
-/// Unlike the previous implementation, this is driven by dependency invalidation
-/// rather than an `Effect` that eagerly recomputes.
+/// Recomputes only when one of its tracked dependencies changes, and notifies its
+/// own dependents only when the recomputed value differs.
+#[must_use]
 pub struct Memo<T: PartialEq + 'static> {
   getter: ReadSignal<T>,
   memo_id: Id,
@@ -40,7 +41,7 @@ impl<T: Clone + PartialEq + 'static> SignalGet<T> for Memo<T>
 where
   ReadSignal<T>: SignalGet<T>,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.getter.id
   }
 
@@ -78,7 +79,7 @@ where
 }
 
 impl<T: PartialEq + 'static> SignalTrack<T> for Memo<T> {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.getter.id
   }
 }
@@ -87,7 +88,7 @@ impl<T: PartialEq + 'static> SignalWith<T> for Memo<T>
 where
   ReadSignal<T>: SignalWith<T>,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.getter.id
   }
 
@@ -125,6 +126,8 @@ where
 }
 
 impl<T: PartialEq + 'static> Memo<T> {
+  /// Creates a memo computed by `f`, which receives the previous value or `None`
+  /// on its first run.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(f: impl Fn(Option<&T>) -> T + 'static) -> Self {
     Runtime::assert_ui_thread();
@@ -208,6 +211,7 @@ impl<T: PartialEq + 'static> MemoState<T> {
     if !self.dirty.get() {
       return;
     }
+
     self.recompute();
   }
 
@@ -218,7 +222,9 @@ impl<T: PartialEq + 'static> MemoState<T> {
       .as_ref()
       .copied()
       .expect("memo getter set");
+
     Runtime::assert_ui_thread();
+
     let effect = RUNTIME
       .with(|runtime| runtime.get_effect(self.id))
       .expect("memo registered");
@@ -237,6 +243,7 @@ impl<T: PartialEq + 'static> MemoState<T> {
         (changed, new_value)
       })
     });
+
     RUNTIME.with(|runtime| *runtime.current_effect.borrow_mut() = prev_effect);
 
     if changed && let Some(setter) = self.setter.borrow().as_ref() {
@@ -262,6 +269,7 @@ impl<T> EffectTrait for MemoState<T>
 where
   T: PartialEq + 'static,
 {
+  #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
@@ -277,7 +285,7 @@ where
   }
 
   fn clear_observers(&self) -> HashSet<Id> {
-    std::mem::take(&mut *self.observers.borrow_mut())
+    take(&mut *self.observers.borrow_mut())
   }
 
   fn priority(&self) -> EffectPriority {

@@ -1,17 +1,20 @@
 use std::{
   any::Any,
   collections::{HashMap, HashSet},
-  sync::{Arc, LazyLock, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard},
+  mem::take,
+  sync::{Arc, LazyLock, OnceLock, RwLock},
 };
 
 use parking_lot::Mutex;
 
-use crate::id::Id;
+use crate::{
+  id::Id,
+  signal::{SignalState, SignalValue, Subscribers},
+};
 
 pub(crate) static SYNC_RUNTIME: LazyLock<SyncRuntime> = LazyLock::new(SyncRuntime::new);
 
 /// Sync-only signal representation for the global runtime.
-#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) struct SyncSignal {
   pub(crate) id: Id,
@@ -19,18 +22,17 @@ pub(crate) struct SyncSignal {
   pub(crate) subscribers: Arc<Mutex<HashSet<Id>>>,
 }
 
-impl From<SyncSignal> for crate::signal::SignalState {
+impl From<SyncSignal> for SignalState {
   fn from(sync: SyncSignal) -> Self {
-    crate::signal::SignalState {
-      id: sync.id,
-      value: crate::signal::SignalValue::Sync(sync.value),
-      subscribers: sync.subscribers,
-    }
+    SignalState::from_parts(
+      sync.id,
+      SignalValue::Sync(sync.value),
+      Subscribers::Sync(sync.subscribers),
+    )
   }
 }
 
 /// Global runtime for sync signals (shared across threads).
-#[allow(dead_code)]
 pub(crate) struct SyncRuntime {
   signals: RwLock<HashMap<Id, SyncSignal>>,
   pending_effects: Mutex<Vec<Id>>,
@@ -39,7 +41,6 @@ pub(crate) struct SyncRuntime {
 }
 
 impl SyncRuntime {
-  #[allow(dead_code)]
   pub(crate) fn new() -> Self {
     Self {
       signals: RwLock::new(HashMap::new()),
@@ -49,31 +50,18 @@ impl SyncRuntime {
     }
   }
 
-  #[allow(dead_code)]
   pub(crate) fn get_signal(&self, id: &Id) -> Option<SyncSignal> {
     self.signals.read().ok()?.get(id).cloned()
   }
 
-  #[allow(dead_code)]
   pub(crate) fn insert_signal(&self, id: Id, signal: SyncSignal) {
     if let Ok(mut signals) = self.signals.write() {
       signals.insert(id, signal);
     }
   }
 
-  #[allow(dead_code)]
   pub(crate) fn remove_signal(&self, id: &Id) -> Option<SyncSignal> {
     self.signals.write().ok()?.remove(id)
-  }
-
-  #[allow(dead_code)]
-  pub(crate) fn read_guard(&self) -> Option<RwLockReadGuard<'_, HashMap<Id, SyncSignal>>> {
-    self.signals.read().ok()
-  }
-
-  #[allow(dead_code)]
-  pub(crate) fn write_guard(&self) -> Option<RwLockWriteGuard<'_, HashMap<Id, SyncSignal>>> {
-    self.signals.write().ok()
   }
 
   pub(crate) fn enqueue_effects(&self, ids: impl IntoIterator<Item = Id>) {
@@ -101,11 +89,11 @@ impl SyncRuntime {
   }
 
   pub(crate) fn take_pending_effects(&self) -> Vec<Id> {
-    std::mem::take(&mut *self.pending_effects.lock())
+    take(&mut *self.pending_effects.lock())
   }
 
   pub(crate) fn take_pending_disposals(&self) -> Vec<Id> {
-    std::mem::take(&mut *self.pending_disposals.lock())
+    take(&mut *self.pending_disposals.lock())
   }
 
   pub(crate) fn has_pending_effects(&self) -> bool {

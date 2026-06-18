@@ -6,10 +6,12 @@ use crate::{
   SignalTrack,
   SignalUpdate,
   SignalWith,
+  id::Id,
   storage::{SyncStorage, UnsyncStorage},
 };
 
 /// A derived signal backed by a local [`RwSignal`] (UI-thread only).
+#[must_use]
 pub struct DerivedRwSignal<
   T: 'static,
   O,
@@ -17,8 +19,8 @@ pub struct DerivedRwSignal<
   UF: Fn(&O) -> T + Clone + 'static,
 > {
   signal: RwSignal<T, UnsyncStorage>,
-  getter: RwSignal<Box<GF>, UnsyncStorage>,
-  setter: RwSignal<Box<UF>, UnsyncStorage>,
+  getter: RwSignal<GF, UnsyncStorage>,
+  setter: RwSignal<UF, UnsyncStorage>,
   ty: PhantomData<T>,
   ts: PhantomData<()>,
 }
@@ -47,7 +49,7 @@ where
   GF: Fn(&T) -> O + Copy + 'static,
   UF: Fn(&O) -> T + Copy + 'static,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -95,7 +97,7 @@ where
   GF: Fn(&T) -> O + Copy,
   UF: Fn(&O) -> T + Copy,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -154,7 +156,7 @@ where
   GF: Fn(&T) -> O + Copy,
   UF: Fn(&O) -> T + Copy,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 }
@@ -166,7 +168,7 @@ where
   GF: Fn(&T) -> O + Copy + 'static,
   UF: Fn(&O) -> T + Copy + 'static,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -224,9 +226,12 @@ where
   GF: Fn(&T) -> O + Clone + 'static,
   UF: Fn(&O) -> T + Clone + 'static,
 {
+  /// Creates a derived signal over `signal`, reading through `getter` and writing
+  /// back through `setter`.
   pub fn new(signal: RwSignal<T, UnsyncStorage>, getter: GF, setter: UF) -> Self {
-    let getter = RwSignal::<Box<GF>, UnsyncStorage>::new(Box::new(getter));
-    let setter = RwSignal::<Box<UF>, UnsyncStorage>::new(Box::new(setter));
+    let getter = RwSignal::<GF, UnsyncStorage>::new(getter);
+    let setter = RwSignal::<UF, UnsyncStorage>::new(setter);
+
     DerivedRwSignal {
       signal,
       getter,
@@ -237,21 +242,8 @@ where
   }
 }
 
-pub fn create_derived_rw_signal<T, O, GF, UF>(
-  signal: RwSignal<T, UnsyncStorage>,
-  getter: GF,
-  setter: UF,
-) -> DerivedRwSignal<T, O, GF, UF>
-where
-  T: 'static,
-  O: 'static,
-  GF: Fn(&T) -> O + Clone + 'static,
-  UF: Fn(&O) -> T + Clone + 'static,
-{
-  DerivedRwSignal::new(signal, getter, setter)
-}
-
 /// A derived signal backed by a thread-safe [`RwSignal`].
+#[must_use]
 pub struct SyncDerivedRwSignal<
   T: Send + Sync + 'static,
   O: Send + Sync,
@@ -259,8 +251,8 @@ pub struct SyncDerivedRwSignal<
   UF: Fn(&O) -> T + Clone + Send + Sync + 'static,
 > {
   signal: RwSignal<T, SyncStorage>,
-  getter: RwSignal<Box<GF>, SyncStorage>,
-  setter: RwSignal<Box<UF>, SyncStorage>,
+  getter: RwSignal<GF, SyncStorage>,
+  setter: RwSignal<UF, SyncStorage>,
   ty: PhantomData<T>,
   ts: PhantomData<()>,
 }
@@ -293,7 +285,7 @@ where
   GF: Fn(&T) -> O + Copy + Send + Sync,
   UF: Fn(&O) -> T + Copy + Send + Sync,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -341,7 +333,7 @@ where
   GF: Fn(&T) -> O + Copy + Send + Sync,
   UF: Fn(&O) -> T + Copy + Send + Sync,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -400,7 +392,7 @@ where
   GF: Fn(&T) -> O + Copy + Send + Sync,
   UF: Fn(&O) -> T + Copy + Send + Sync,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 }
@@ -412,7 +404,7 @@ where
   GF: Fn(&T) -> O + Copy + Send + Sync,
   UF: Fn(&O) -> T + Copy + Send + Sync,
 {
-  fn id(&self) -> crate::id::Id {
+  fn id(&self) -> Id {
     self.signal.id
   }
 
@@ -470,9 +462,12 @@ where
   GF: Fn(&T) -> O + Clone + Send + Sync + 'static,
   UF: Fn(&O) -> T + Clone + Send + Sync + 'static,
 {
+  /// Creates a thread-safe derived signal over `signal`, reading through `getter`
+  /// and writing back through `setter`.
   pub fn new(signal: RwSignal<T, SyncStorage>, getter: GF, setter: UF) -> Self {
-    let getter = RwSignal::<Box<GF>, SyncStorage>::new_sync(Box::new(getter));
-    let setter = RwSignal::<Box<UF>, SyncStorage>::new_sync(Box::new(setter));
+    let getter = RwSignal::<GF, SyncStorage>::new_sync(getter);
+    let setter = RwSignal::<UF, SyncStorage>::new_sync(setter);
+
     SyncDerivedRwSignal {
       signal,
       getter,
@@ -481,18 +476,4 @@ where
       ts: PhantomData,
     }
   }
-}
-
-pub fn create_sync_derived_rw_signal<T, O, GF, UF>(
-  signal: RwSignal<T, SyncStorage>,
-  getter: GF,
-  setter: UF,
-) -> SyncDerivedRwSignal<T, O, GF, UF>
-where
-  T: Send + Sync + 'static,
-  O: Send + Sync,
-  GF: Fn(&T) -> O + Clone + Send + Sync + 'static,
-  UF: Fn(&O) -> T + Clone + Send + Sync + 'static,
-{
-  SyncDerivedRwSignal::new(signal, getter, setter)
 }

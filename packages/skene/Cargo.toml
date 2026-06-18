@@ -1,0 +1,11 @@
+[package]
+name = "skene"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+skene-core.workspace = true
+skene-reactive.workspace = true
+
+[lints]
+workspace = true

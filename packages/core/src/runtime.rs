@@ -1,91 +1,218 @@
-//! The process-wide (thread-local) glue between the core and a [`Backend`].
-//!
-//! The core is single-threaded (the reactive runtime is too), so the active
-//! backend and the event-handler registry live in thread-locals. Views reach
-//! the backend through [`with_backend`]; the backend reaches handlers through
-//! the [`EventSink`] installed in [`set_backend`].
+#[cfg(any(test, feature = "test"))]
+use std::ops::Deref;
+use std::{any::Any, cell::Cell, rc::Rc};
 
-use std::{cell::RefCell, rc::Rc};
-
-use rustc_hash::FxHashMap;
 use skene_reactive::{Runtime, Scope};
-use skene_renderer::{Backend, Event, EventKind, NodeId, Role};
 
-pub(crate) type Handler = Rc<dyn Fn(Event)>;
+use crate::{Backend, NodeId};
 
 thread_local! {
-    static BACKEND: RefCell<Option<Rc<RefCell<dyn Backend>>>> = const { RefCell::new(None) };
-    static HANDLERS: RefCell<FxHashMap<(NodeId, EventKind), Vec<Handler>>> =
-        RefCell::new(FxHashMap::default());
-    static ROOT_SCOPE: RefCell<Option<Scope>> = const { RefCell::new(None) };
+  static BACKEND: Cell<Option<*const dyn Backend>> = const { Cell::new(None) };
+  static ROOT_SCOPE: Cell<Option<Scope>> = const { Cell::new(None) };
 }
 
-/// Install the active backend and wire its event sink to the handler registry.
-///
-/// This also initializes the reactive runtime on the current (UI) thread.
-pub fn set_backend(backend: Rc<RefCell<dyn Backend>>) {
-  Runtime::init_on_ui_thread();
-
-  let sink: skene_renderer::EventSink = Rc::new(|node: NodeId, event: Event| {
-    let kind = event.kind();
-    let handlers = HANDLERS.with(|h| h.borrow().get(&(node, kind)).cloned());
-    if let Some(handlers) = handlers {
-      for handler in handlers {
-        handler(event.clone());
-      }
-    }
-  });
-  backend.borrow_mut().set_event_sink(sink);
-
-  BACKEND.with(|b| *b.borrow_mut() = Some(backend));
-}
-
-/// Run a closure with mutable access to the active backend.
+/// Installs a backend for the current thread.
 ///
 /// # Panics
 ///
-/// Panics if no backend has been installed.
-pub fn with_backend<R>(f: impl FnOnce(&mut dyn Backend) -> R) -> R {
-  BACKEND.with(|b| {
-    let backend = b.borrow();
-    let backend = backend
-      .as_ref()
-      .expect("no backend installed; call skene_dom::launch (or set_backend) first");
-    let mut backend = backend.borrow_mut();
-    f(&mut *backend)
+/// Panics if a backend is already installed for this thread.
+pub fn install_backend(backend: Rc<dyn Backend>) {
+  Runtime::init_on_ui_thread();
+
+  BACKEND.with(|slot| {
+    slot.update(|slot| {
+      assert!(
+        slot.is_none(),
+        "a backend is already installed for this thread",
+      );
+
+      Some(Rc::as_ptr(Box::leak(Box::new(backend))))
+    });
+  });
+}
+
+/// Runs a closure with access to the installed backend.
+///
+/// # Panics
+///
+/// Panics if no backend is installed for this thread.
+#[inline(always)]
+pub fn with_backend<R>(apply: impl FnOnce(&dyn Backend) -> R) -> R {
+  let backend = BACKEND
+    .with(Cell::get)
+    .expect("no backend is installed for this thread");
+
+  // SAFETY: the pointee is either a leaked instance that lives for the entire lifetime of the
+  // process or one owned by the single `TestBackend` guard on the stack.
+  apply(unsafe { &*backend })
+}
+
+/// Runs a closure with access to the installed backend as its concrete type.
+///
+/// Used to reach a backend's own typed API.
+///
+/// # Panics
+///
+/// Panics if no backend is installed for this thread, or if it is not of type `B`.
+#[inline(always)]
+pub fn with_backend_as<B: Backend, R>(apply: impl FnOnce(&B) -> R) -> R {
+  with_backend(|backend| {
+    apply(
+      (backend as &dyn Any)
+        .downcast_ref()
+        .expect("the installed backend does not match the expected type"),
+    )
   })
 }
 
-/// Register an event handler for `(node, kind)` and subscribe the node to that
-/// event category on the backend.
-pub fn register_handler(node: NodeId, kind: EventKind, handler: Handler) {
-  HANDLERS.with(|h| {
-    h.borrow_mut()
-      .entry((node, kind))
-      .or_default()
-      .push(handler);
-  });
-  with_backend(|b| b.listen(node, kind));
-}
-
-/// Set a node's accessibility [`Role`] on the active backend.
-pub fn set_role(node: NodeId, role: Role) {
-  with_backend(|b| b.set_role(node, role));
-}
-
-/// The application root scope. All top-level signals/effects live under it, so
-/// it (and everything it owns) survives for the lifetime of the app.
-#[must_use]
+/// Returns the root scope for the current thread.
+///
+/// If there is no scope yet, a new one is created.
 pub fn root_scope() -> Scope {
-  ROOT_SCOPE.with(|s| {
-    let mut s = s.borrow_mut();
-    if let Some(scope) = *s {
+  ROOT_SCOPE.with(|current| {
+    if let Some(scope) = current.get() {
       scope
     }
     else {
       let scope = Scope::new();
-      *s = Some(scope);
+
+      current.set(Some(scope));
+
       scope
     }
   })
+}
+
+/// Builds `view` under the installed backend's root node.
+///
+/// Returns the built node's identifier.
+pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
+  let scope = root_scope();
+
+  scope.enter(|| {
+    with_backend(|backend| {
+      let node = view();
+
+      backend.attach_child(backend.root(), node, None);
+
+      node
+    })
+  })
+}
+
+/// An installed backend's guard.
+///
+/// The backend is uninstalled when this guard is dropped.
+#[cfg(any(test, feature = "test"))]
+#[must_use]
+pub struct BackendGuard<B: Backend> {
+  backend: Rc<B>,
+}
+
+#[cfg(any(test, feature = "test"))]
+impl<B: Backend> Deref for BackendGuard<B> {
+  type Target = B;
+
+  fn deref(&self) -> &B {
+    &self.backend
+  }
+}
+
+#[cfg(any(test, feature = "test"))]
+impl<B: Backend> Drop for BackendGuard<B> {
+  fn drop(&mut self) {
+    Runtime::reset();
+
+    ROOT_SCOPE.with(|active_scope| active_scope.set(None));
+    BACKEND.with(|slot| slot.set(None));
+  }
+}
+
+/// Installs a test backend for the current thread.
+///
+/// Dropping the returned guard uninstalls the backend and resets the reactive runtime and root
+/// scope.
+///
+/// # Panics
+///
+/// Panics if a backend is already installed for this thread.
+#[cfg(any(test, feature = "test"))]
+pub fn install_test_backend<B: Backend>(backend: B) -> BackendGuard<B> {
+  let backend = Rc::new(backend);
+
+  BACKEND.with(|slot| {
+    slot.update(|slot| {
+      assert!(
+        slot.is_none(),
+        "a backend is already installed for this thread",
+      );
+
+      Some(Rc::as_ptr(&backend) as *const dyn Backend)
+    });
+  });
+
+  BackendGuard { backend }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::{cell::Cell, rc::Rc};
+
+  use skene_reactive::RwSignal;
+
+  use crate::{Backend, MockBackend, NodeId, install_test_backend};
+
+  struct DropTracker {
+    dropped: Rc<Cell<bool>>,
+  }
+
+  impl Drop for DropTracker {
+    fn drop(&mut self) {
+      self.dropped.set(true);
+    }
+  }
+
+  impl Backend for DropTracker {
+    fn root(&self) -> NodeId {
+      NodeId::new(0)
+    }
+
+    fn create_group(&self) -> NodeId {
+      NodeId::new(0)
+    }
+
+    fn attach_child(&self, _parent: NodeId, _child: NodeId, _before: Option<NodeId>) {}
+    fn detach_child(&self, _parent: NodeId, _child: NodeId) {}
+
+    fn destroy(&self, _node: NodeId) {}
+  }
+
+  #[test]
+  #[should_panic = "a backend is already installed for this thread"]
+  fn single_install() {
+    let _first = install_test_backend(MockBackend::new());
+    let _second = install_test_backend(MockBackend::new());
+  }
+
+  #[test]
+  fn drop_guard() {
+    let backend_uninstalled = Rc::new(Cell::new(false));
+    let runtime_reset = Rc::new(Cell::new(false));
+
+    {
+      let _backend = install_test_backend(DropTracker {
+        dropped: backend_uninstalled.clone(),
+      });
+
+      let _ = RwSignal::new(DropTracker {
+        dropped: runtime_reset.clone(),
+      });
+
+      assert!(!backend_uninstalled.get());
+      assert!(!runtime_reset.get());
+    }
+
+    assert!(backend_uninstalled.get());
+    assert!(runtime_reset.get());
+  }
 }

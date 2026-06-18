@@ -1,136 +1,242 @@
 # Skene
 
-A fine-grained reactive UI framework for the web. Views compile to WebAssembly
-and render to the DOM; there is no virtual DOM and no diffing — a signal write
-re-runs exactly the effects that depend on it, and each effect patches the DOM
-node it owns directly.
+Skene builds multi-platform apps as a **shared core plus thin platform shells**, all in Rust.
 
-The renderer is abstracted behind a small retained-tree trait, so although the
-only backend today is the DOM, the same view and reactive layers are designed to
-drive a future native backend (layout/paint/text/accessibility) or a TUI backend
-without changes.
+An application is a Cargo workspace: one platform-agnostic business-logic *core* that holds all state
+and logic, and one slim *shell* per platform that renders it. A shell reads the core's reactive state
+directly—no serialization, no view-model, no diffing—so the boundary between logic and UI is an
+ordinary Rust function call.
+
+This is the [crux](https://github.com/redbadger/crux) architecture with one change: crux keeps the
+core in Rust but writes each shell in the platform's native framework (Swift/Kotlin/TypeScript) across
+a serialized FFI edge. Skene writes the shells in Rust too, so a shell reads the core's signals
+directly and there is no boundary to cross.
+
+## Reactivity
+
+Fine-grained and vdom-free. A signal write re-runs exactly the effects that depend on it, and each
+effect patches the node it owns—no virtual DOM, no tree diffing. Effects run synchronously on write.
+
+```rust
+let count = RwSignal::new(0);
+count.update(|n| *n += 1);   // re-runs only the effects that read `count`
+```
 
 ## Architecture
 
-The workspace is five crates under `packages/`, layered bottom-up:
+Four library crates under `packages/`:
 
-| Crate            | Role |
-|------------------|------|
-| `skene-reactive` | The reactivity engine: `RwSignal`, `Memo`, `Effect`, `Scope`. Effects run synchronously on write. |
-| `skene-renderer` | The backend abstraction. The `Backend` trait owns a retained tree of `NodeId`s; views attach a semantic `Style` and receive abstract `Event`s. **Knows nothing about CSS, the DOM, GPUs or terminals.** |
-| `skene-core`     | The `View` tree, the built-in widgets (`Label`, `Button`, `Flex`, `Container`), and the runtime glue that binds a backend to the handler registry. |
-| `skene-dom`      | The DOM `Backend`, compiled to WASM. Maps nodes to elements, translates `Style` into CSS, routes DOM events back into the core, and mounts the app with `launch`. |
-| `skene-macros`   | `#[derive(Builder)]`: generates the fluent, self-returning setter API on widget structs. |
+```
+skene-reactive          the reactive engine — standalone, no skene deps
+      │
+      ▼
+   skene-core           + reactive: NodeId, the structural Backend trait, the value
+      │                 vocabulary, the reconciliation helpers, and the (non-generic,
+      ├───────────┐     backend-agnostic) View scaffolding — no widgets
+      ▼           ▼
+    skene      skene-web        skene   = facade re-exporting reactive + core
+  (facade)    (a backend)       web     = the browser/DOM backend, compiled to WASM
+```
 
-Two design constraints are worth calling out:
+| Crate | Role |
+|-------|------|
+| `skene-reactive` | Reactive engine: `RwSignal`, `Memo`, `Effect`, `Scope`, `Trigger`. Effects run synchronously on write. |
+| `skene-core` | The shared foundation: `NodeId`, the structural `Backend` trait, the value vocabulary (`Color`, `Length`, `Factor`, `Inset`, `Axis`, alignments, `MouseCursor`), the reconciliation helpers (`reconcile`, `dynamic`, `Source`), and the non-generic view scaffolding (`View`, `AnyView`, `IntoView`, `Children`, `IntoChildren`, `HasChildren`, `DynamicView`). No widgets. |
+| `skene` | Facade re-exporting `reactive` + `core`; the shared foundation a core and any shell build on. |
+| `skene-web` | The web backend (`WebBackend`, compiled to WASM): its own view types (`Container`, `Text`, `Span`, `RichText`, …) that implement core's `View`, its style model and CSS translation, mouse input, and `launch`. |
 
-- **The core never knows what CSS is.** Styling flows to the backend as a
-  semantic `Style` (a flat bag of optional, backend-agnostic properties). Only
-  `skene-dom` turns that into CSS. A native or TUI backend would interpret the
-  same `Style` differently.
-- **Styles are shared, hashed, and SSR-friendly.** The DOM backend does not use
-  inline styles. It hashes each CSS declaration block to a deterministic class
-  name, injects the rule once into a single `<style>` element in `<head>`, and
-  assigns the class to the element. Identical styles — even across different
-  widgets — collapse to one class, and because the hashing is deterministic the
-  scheme is compatible with server-side rendering.
+There is no shared widget set and no per-backend type parameter. The view scaffolding is shared and
+non-generic—an app targets one backend, so `View` needn't distinguish them—while each backend owns its
+concrete view types. A native or TUI backend slots in as its own crate (its own views, styling, and
+input), reusing only the reactive engine, the value vocabulary, and the scaffolding.
 
-## Widgets
+### Styling on the web backend
 
-Every widget *is* its own builder *is* a `View`: chain typed setters and pass it
-straight to a parent — there is no separate builder type and no `.build()` to
-call. Each widget exposes only the props that make sense for it (a `Flex` has
-`gap` and axis alignment; a `Container` has `padding`/`width`/`background`/…).
-The setters are generated by `#[derive(Builder)]` from `skene-macros`.
+Only the web backend knows what CSS is: styling reaches a backend as backend-agnostic values, and
+`skene-web` turns them into CSS. Each rendered declaration block is hashed to a deterministic class and
+interned once in a single `<style>` element, reference-counted by live node so identical styles collapse
+to one class and unused ones are collected. A node's initial style is a shared class; later reactive
+changes apply as inline overrides, so a running animation never rewrites the shared rule. The
+determinism keeps the scheme compatible with server-side rendering.
 
-Widgets are kept maximally composable rather than special-cased. A `Button`, for
-instance, is just a label *view* wrapped in a `Container` (marked with a button
-role in the DOM): its label can be any view, and its wrapping container defaults
-to *style-less* — to style a button you override the container builder, so
-libraries can layer their own button styles on top of the raw element.
+## An app is a workspace
+
+```
+my-app/
+  core/          # my-app-core:   state + logic, depends on `skene` (reactive + core) only
+  shell-web/     # my-app-web:    depends on core + skene-web
+  shell-native/  # my-app-native: depends on core + skene-native  (future)
+```
+
+The core exposes its state as signals and depends on no backend, so it cannot reference a platform
+type:
 
 ```rust
-use skene_core::{
-  Button, Color, Container, CrossAxisAlignment, Cursor, EdgeInsets, Flex, IntoView, Label,
-  RwSignal, SignalGet, SignalUpdate,
-};
-
-fn app() -> impl IntoView {
-  let count = RwSignal::new(0i32);
-
-  Flex::vertical()
-    .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(20.0)
-    .padding(40.0)
-    .child(
-      Label::derived(move || format!("Count: {}", count.get()))
-        .font_size(32.0)
-        .font_weight(700)
-        .color(Color::rgb(0x20, 0x20, 0x20)),
-    )
-    .child(
-      Flex::horizontal()
-        .gap(12.0)
-        .child(counter_button("−", move || count.update(|c| *c -= 1)))
-        .child(counter_button("+", move || count.update(|c| *c += 1))),
-    )
+pub struct Counter {
+  pub count: RwSignal<i32>,
 }
 
-/// A styled button: a label view, wrapped in a container we style ourselves.
-fn counter_button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Button::new(Label::new(symbol).color(Color::WHITE).font_size(20.0))
-    .action(action)
-    .container(|label| {
-      Container::new(label)
-        .padding(EdgeInsets::symmetric(20.0, 10.0))
-        .background(Color::rgb(0x37, 0x6e, 0xff))
-        .border_radius(8.0)
-        .cursor(Cursor::Pointer)
-    })
+impl Counter {
+  pub fn new() -> Self {
+    Self { count: RwSignal::new(0) }
+  }
+
+  pub fn increment(&self) {
+    self.count.update(|n| *n += 1);
+  }
 }
 ```
 
+A shell reads those signals directly and builds a native view that reacts:
+
+```rust
+fn ui(counter: Counter) -> impl IntoView {
+  Container::new(Text::derive(move || format!("count: {}", counter.count.get())))
+}
+```
+
+`counter.count` is one signal: the shell's `Text` subscribes to it and the core's `increment` writes
+it, across a plain call. A second shell reuses `Counter` unchanged and builds a wholly different view
+tree from the same signals.
+
+## Widgets
+
+Every widget *is* its own builder *is* a `View`: chain typed setters and pass it straight to a
+parent—no separate builder type, no `.build()` to call. One setter convention: `set_<prop>` for a
+fixed value, `derive_<prop>` for a reactive one, `on_<event>` for a handler.
+
+```rust
+use skene::prelude::*;
+use skene_web::prelude::*;
+
+fn app(counter: Counter) -> impl IntoView {
+  Container::column()
+    .set_cross_axis_alignment(CrossAxisAlignment::Center)
+    .set_spacing(20.0)
+    .set_padding(40.0)
+    .set_children((
+      Text::derive(move || format!("Count: {}", counter.count.get()))
+        .set_font_size(32.0)
+        .set_font_weight(700)
+        .set_color(Color::rgb(0x20, 0x20, 0x20)),
+      Container::row().set_spacing(12.0).set_children((
+        counter_button("−", move || counter.decrement()),
+        counter_button("+", move || counter.increment()),
+      )),
+    ))
+}
+
+/// A blue pill button: a container with the button role wrapping its label.
+fn counter_button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
+  Container::new()
+    .set_children([Text::new(symbol).set_color(Color::WHITE).set_font_size(20.0)])
+    .set_role(Role::Button)
+    .set_padding(Inset::symmetric(20.0, 10.0))
+    .set_color(Color::rgb(0x37, 0x6e, 0xff))
+    .set_border_radius(8.0)
+    .set_cursor(MouseCursor::Click)
+    .on_press(action)
+}
+```
+
+There is no `Button` widget: a button is a `Container` with `Role::Button` and an `on_press` handler,
+so its label is any view and its styling is yours. There is likewise no separate `List`/`Grid`/`Stack`:
+one `Container` both decorates itself and lays out its children, in the mode its constructor picks—
+`new()` (block flow), `row()`/`column()` (flex), `grid(n)`, or `stack()` (children overlapping in one
+cell).
+
 ### Defining your own widget
 
-`#[derive(Builder)]` generates a setter per field from the field type:
+A widget is a struct that implements core's `View` (`fn build(self) -> NodeId`). The common case
+composes existing widgets and delegates:
 
-- `Option<T>` → `fn field(self, T) -> Self`
-- `Vec<T>` → a plural extender named after the field (and, with `#[builder(item = name)]`, a singular adder)
-- any other type → no setter (a required field you set in your own constructor)
+```rust
+#[must_use]
+pub struct Labeled {
+  label: String,
+  child: AnyView,
+}
 
-Setters take their value by `T` by default; opt into `impl Into<T>` per field
-with `#[builder(into)]`. Field attributes (`#[builder(...)]`):
+impl View for Labeled {
+  fn build(self) -> NodeId {
+    Container::column()
+      .set_children((Text::new(self.label), self.child))
+      .build()
+  }
+}
+```
 
-- `skip` — generate no setter
-- `into` — take `impl Into<T>` instead of `T` (e.g. so a `padding: EdgeInsets` prop accepts `20.0`)
-- `callback` — for an `Option<Rc<dyn Fn..>>` field, generate a setter taking the closure directly (`impl Fn.. + 'static`) and wrap it (this is how `Button::action` is generated)
-- `view` — convert with `IntoView::into_view`, for child collections
-- `item = name` — name the singular collection adder
+A custom container reuses the shared children machinery through `HasChildren`—never reimplementing
+child mounting or keyed reconciliation:
+
+```rust
+#[must_use]
+pub struct Panel {
+  children: Children,
+}
+
+impl HasChildren for Panel {
+  fn children_slot(&mut self) -> &mut Children {
+    &mut self.children
+  }
+}
+```
+
+That yields the chainable `set_children` / `derive_children` setters (settable anywhere in the chain).
+`set_children` takes a fixed set—an array or `Vec` of one type, or a tuple of mixed types
+(`impl IntoChildren`); `derive_children` takes a reactive, keyed set that reconciles minimally on
+change (the same node stays put; only displaced or new children move).
+
+### Escape hatches
+
+The framework models the common case and gets out of the way for the rest. A view it can't express is
+yours to build: implement `View` for your type and drive the backend's concrete API directly through
+`with_backend_as`.
+
+```rust
+use skene_web::{NodeId, View, WebBackend, with_backend_as};
+
+impl View for MyExoticView {
+  fn build(self) -> NodeId {
+    with_backend_as::<WebBackend, _>(|backend| {
+      let node = backend.create_container(None);
+      // …raw web-backend calls the framework doesn't model…
+      node
+    })
+  }
+}
+```
 
 ## Build & run
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli --version 0.2.125   # must match the wasm-bindgen crate version
+cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
-cargo build --release --target wasm32-unknown-unknown -p counter
-wasm-bindgen target/wasm32-unknown-unknown/release/counter.wasm \
-    --out-dir examples/counter/dist --target web
-python3 -m http.server --directory examples/counter 8080
+cargo xtask web                  # build the wasm demo and serve it on :8080
 ```
 
-Then open <http://localhost:8080>.
+Then open <http://localhost:8080>. `cargo xtask web` runs the release wasm build, generates the
+bindings into `examples/counter-web/dist`, and serves the demo; pass `--port <n>` to change the
+port, `--debug` for a debug build, or `--no-serve` to build only. The underlying steps are:
 
-The `wasm-bindgen` CLI version must match the `wasm-bindgen` crate (currently
-`0.2.125`); a mismatch fails the bindings step.
+```sh
+cargo build --release --target wasm32-unknown-unknown -p counter-web
+wasm-bindgen target/wasm32-unknown-unknown/release/counter_web.wasm \
+    --out-dir examples/counter-web/dist --target web
+```
+
+The counter example is two crates—`examples/counter-core` (the platform-agnostic logic) and
+`examples/counter-web` (the wasm shell)—demonstrating the core/shell split. A mismatch between the
+`wasm-bindgen` CLI and the crate version fails the bindings step; `cargo xtask web` warns when it
+detects one.
 
 ## Testing
 
 ```sh
-cargo test --workspace --exclude counter   # host tests (the counter is a wasm cdylib)
+cargo test --workspace      # host tests: core reconciliation + web CSS translation
 ```
 
-`packages/core/tests/counter_flow.rs` exercises the whole stack —
-reactive engine → view building → backend mutations → event routing → effect
-re-run — against a recording mock `Backend`, so the framework logic is covered
-without a browser.
+`skene-core`'s reconciliation tests run against a structural `MockBackend` on the host.
+`skene-web`'s widget tests (`packages/web/tests/widgets.rs`) drive the real `WebBackend` against a live
+DOM, so they run under `wasm32` via `wasm-bindgen-test` in a browser rather than on the host.

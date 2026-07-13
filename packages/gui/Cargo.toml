@@ -1,0 +1,59 @@
+[package]
+name = "skene-gui"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Expose the platform teardown (`web::uninstall`) so one thread can run many independent
+# mounts. Enabled automatically for this crate's own tests via the self dev-dependency.
+test = ["skene-reactive/test"]
+
+[dependencies]
+rustc-hash.workspace = true
+skene-core.workspace = true
+skene-gui-macros.workspace = true
+skene-reactive.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+serde = "1"
+serde_json = "1"
+smallvec = "1"
+wasm-bindgen-futures = "0.4"
+wasm-bindgen.workspace = true
+web-sys = { version = "0.3", features = [
+  "console",
+  "CssStyleDeclaration",
+  "CssStyleSheet",
+  "Document",
+  "DomTokenList",
+  "Element",
+  "Event",
+  "EventTarget",
+  "HtmlCollection",
+  "HtmlElement",
+  "HtmlHeadElement",
+  "HtmlStyleElement",
+  "Node",
+  "NodeList",
+  "StyleSheet",
+  "Window",
+] }
+
+# The SSR web platform: the WASI host's clocks and poll drive the executor's reactor.
+[target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
+wasi = "0.14"
+
+[dev-dependencies]
+# Depend on ourselves with `test` on, so `cargo test` gets the platform teardown without a
+# `--features` flag.
+skene-gui = { path = ".", features = ["test"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

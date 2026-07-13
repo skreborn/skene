@@ -1,0 +1,223 @@
+//! Asynchronously loaded data, from the load to the swapped-in tree.
+//!
+//! Run in a headless browser:
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown`.
+#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+
+use std::{cell::Cell, rc::Rc};
+
+use skene_gui::{
+  Container,
+  DynamicView,
+  HasChildren,
+  Resource,
+  Text,
+  View,
+  reactive::Scope,
+  wasm_bindgen::JsValue,
+  web::{self, mount},
+};
+use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+use web_sys::{Document, Element};
+
+wasm_bindgen_test_configure!(run_in_browser);
+
+fn document() -> Document {
+  web_sys::window()
+    .expect("a window")
+    .document()
+    .expect("a document")
+}
+
+/// Uninstalls the web platform when it drops, isolating each test.
+struct Installed;
+
+impl Drop for Installed {
+  fn drop(&mut self) {
+    web::uninstall();
+  }
+}
+
+fn fresh_root() -> (Installed, Element) {
+  let root = document().create_element("div").expect("create root div");
+
+  web::install(root.clone());
+
+  (Installed, root)
+}
+
+/// Yields to the event loop, letting a load make progress.
+async fn tick() {
+  JsFuture::from(js_sys::Promise::resolve(&JsValue::UNDEFINED))
+    .await
+    .expect("a resolved promise");
+}
+
+/// Enough turns for a load parked on a few awaits to finish.
+async fn settle() {
+  for _ in 0..16 {
+    tick().await;
+  }
+}
+
+#[wasm_bindgen_test]
+async fn a_resource_is_none_until_it_lands() {
+  let scope = Scope::new();
+
+  let resource = scope.enter(|| {
+    Resource::new(|| async {
+      tick().await;
+
+      7
+    })
+  });
+
+  assert_eq!(resource.get(), None, "loading");
+  assert!(resource.is_loading());
+
+  settle().await;
+
+  assert_eq!(resource.get(), Some(7), "loaded");
+  assert!(!resource.is_loading());
+}
+
+/// Failure is the loaded type's business: load a `Result` and match on it.
+#[wasm_bindgen_test]
+async fn a_resource_can_load_a_result() {
+  let scope = Scope::new();
+
+  let resource: Resource<Result<i32, String>> =
+    scope.enter(|| Resource::new(|| async { Err("boom".to_owned()) }));
+
+  settle().await;
+
+  assert_eq!(resource.get(), Some(Err("boom".to_owned())));
+}
+
+/// The headline: load data, show a placeholder meanwhile, then display it — end to end,
+/// against a real DOM.
+#[wasm_bindgen_test]
+async fn a_loading_tree_is_swapped_for_the_loaded_one() {
+  let (_guard, root) = fresh_root();
+
+  mount(|| {
+    let user = Resource::new(|| async {
+      tick().await;
+
+      "Ada".to_owned()
+    });
+
+    DynamicView::new(move || {
+      user.with(|user| match user {
+        None => Text::new("Loading…").into_any(),
+        Some(name) => Container::new()
+          .set_child(Text::new(name.clone()))
+          .into_any(),
+      })
+    })
+    .build()
+  });
+
+  let anchor = root.first_element_child().expect("the dynamic anchor");
+
+  assert_eq!(
+    anchor
+      .first_element_child()
+      .unwrap()
+      .text_content()
+      .as_deref(),
+    Some("Loading…"),
+    "the placeholder shows while loading",
+  );
+
+  settle().await;
+
+  let loaded = anchor.first_element_child().unwrap();
+
+  assert_eq!(
+    anchor.children().length(),
+    1,
+    "the placeholder is torn down"
+  );
+  assert_eq!(loaded.tag_name(), "DIV");
+  assert_eq!(loaded.text_content().as_deref(), Some("Ada"));
+}
+
+/// A resource's load is scope-bound like any other task: disposing the scope stops it, so it
+/// never lands in a torn-down tree.
+#[wasm_bindgen_test]
+async fn disposing_the_scope_cancels_the_load() {
+  let scope = Scope::new();
+  let finished = Rc::new(Cell::new(false));
+
+  scope.enter({
+    let finished = Rc::clone(&finished);
+
+    || {
+      let _load = Resource::new(move || {
+        let finished = Rc::clone(&finished);
+
+        async move {
+          for _ in 0..8 {
+            tick().await;
+          }
+
+          finished.set(true);
+
+          1
+        }
+      });
+    }
+  });
+
+  tick().await;
+
+  scope.dispose();
+
+  settle().await;
+
+  // The resource itself is not read back: its signal was disposed with the scope, and
+  // reading a disposed signal panics. What matters is that the load stopped.
+  assert!(!finished.get(), "the load stopped rather than completing");
+}
+
+/// `refetch` re-runs the retained loader into the value, so a resource can reload on demand.
+#[wasm_bindgen_test]
+async fn refetch_reruns_the_loader() {
+  let scope = Scope::new();
+  let runs = Rc::new(Cell::new(0));
+
+  let resource: Resource<i32> = scope.enter({
+    let runs = Rc::clone(&runs);
+
+    move || {
+      Resource::new(move || {
+        let runs = Rc::clone(&runs);
+
+        async move {
+          let run = runs.get();
+          runs.set(run + 1);
+
+          run
+        }
+      })
+    }
+  });
+
+  settle().await;
+
+  assert_eq!(resource.get(), Some(0), "the first load ran once");
+
+  resource.refetch();
+
+  assert_eq!(
+    resource.get(),
+    None,
+    "refetch clears the value while it reloads"
+  );
+
+  settle().await;
+
+  assert_eq!(resource.get(), Some(1), "refetch re-ran the loader");
+}

@@ -7,6 +7,13 @@
         "rustfmt": {
           "extraArgs": ["+nightly"],
         },
+        // Analyze for the web (wasm32) target so rust-analyzer sees the
+        // `#[cfg(target_arch = "wasm32")]` realization in `skene-gui`/`skene-web` rather
+        // than treating it as dead. When working on another backend, point this at that
+        // platform's triple (e.g. "aarch64-apple-ios") to light up its cfg-gated code.
+        "cargo": {
+          "target": "wasm32-unknown-unknown",
+        },
       },
     },
   },

@@ -1,33 +1,33 @@
-use super::Number;
+use num_traits::ConstZero;
 
 /// Spacing on the four edges of a box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[must_use]
-pub struct Inset {
+pub struct Inset<T> {
   /// Offset from the top edge.
-  pub top: Number,
+  pub top: T,
   /// Offset from the right edge.
-  pub right: Number,
+  pub right: T,
   /// Offset from the bottom edge.
-  pub bottom: Number,
+  pub bottom: T,
   /// Offset from the left edge.
-  pub left: Number,
+  pub left: T,
 }
 
-impl Inset {
+impl<T: ConstZero> Inset<T> {
   /// Zero inset on all sides.
   pub const ZERO: Self = Self {
-    top: Number::ZERO,
-    right: Number::ZERO,
-    bottom: Number::ZERO,
-    left: Number::ZERO,
+    top: T::ZERO,
+    right: T::ZERO,
+    bottom: T::ZERO,
+    left: T::ZERO,
   };
+}
 
+impl<T: Copy> Inset<T> {
   /// Creates an inset with the same value on all four sides.
   #[inline(always)]
-  pub fn all(value: impl Into<Number>) -> Self {
-    let value = value.into();
-
+  pub const fn all(value: T) -> Self {
     Self {
       top: value,
       right: value,
@@ -38,10 +38,7 @@ impl Inset {
 
   /// Creates an inset with symmetric values on the horizontal and vertical axes.
   #[inline(always)]
-  pub fn symmetric(horizontal: impl Into<Number>, vertical: impl Into<Number>) -> Self {
-    let horizontal = horizontal.into();
-    let vertical = vertical.into();
-
+  pub const fn symmetric(horizontal: T, vertical: T) -> Self {
     Self {
       top: vertical,
       right: horizontal,
@@ -49,16 +46,18 @@ impl Inset {
       left: horizontal,
     }
   }
+}
 
+impl<T: Copy + ConstZero> Inset<T> {
   /// Creates an inset with symmetric values on the horizontal axis.
   #[inline(always)]
-  pub fn horizontal(value: impl Into<Number>) -> Self {
-    Self::symmetric(value, Number::ZERO)
+  pub const fn horizontal(value: T) -> Self {
+    Self::symmetric(value, T::ZERO)
   }
 
   /// Creates an inset with symmetric values on the vertical axis.
   #[inline(always)]
-  pub fn vertical(value: impl Into<Number>) -> Self {
-    Self::symmetric(Number::ZERO, value)
+  pub const fn vertical(value: T) -> Self {
+    Self::symmetric(T::ZERO, value)
   }
 }

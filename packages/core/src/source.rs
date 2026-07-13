@@ -1,12 +1,18 @@
+use std::rc::Rc;
+
 use skene_reactive::Effect;
 
-/// The source of a property value.
+/// The source of a property value: a fixed value or a reactive computation.
+///
+/// [`Clone`], and the derived closure is shared (`Rc`), so an inherited source can be
+/// handed to many nodes.
+#[derive(Clone)]
 #[must_use]
 pub enum Source<T> {
   /// A static value.
   Static(T),
   /// A derived value.
-  Derived(Box<dyn Fn() -> T>),
+  Derived(Rc<dyn Fn() -> T>),
 }
 
 impl<T: 'static> Source<T> {

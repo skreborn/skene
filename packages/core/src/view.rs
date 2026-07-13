@@ -1,6 +1,6 @@
-use crate::{NodeId, dynamic};
+use crate::NodeId;
 
-/// A view that builds into a backend node.
+/// A view that builds into a platform node.
 pub trait View: 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
@@ -49,27 +49,5 @@ impl<V: View> IntoView for V {
   #[inline(always)]
   fn into_view(self) -> AnyView {
     self.into_any()
-  }
-}
-
-/// A reactive subtree.
-#[must_use]
-pub struct DynamicView {
-  build: Box<dyn Fn() -> NodeId>,
-}
-
-impl DynamicView {
-  /// Creates a reactive subtree.
-  #[inline(always)]
-  pub fn new<V: View>(build: impl Fn() -> V + 'static) -> Self {
-    Self {
-      build: Box::new(move || build().build()),
-    }
-  }
-}
-
-impl View for DynamicView {
-  fn build(self) -> NodeId {
-    dynamic(self.build)
   }
 }

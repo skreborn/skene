@@ -1,0 +1,14 @@
+[package]
+name = "counter"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+skene-gui.workspace = true
+
+[lints]
+workspace = true

@@ -82,7 +82,7 @@ impl Id {
       return;
     }
 
-    if let Ok((children, signal, effect)) = RUNTIME.try_with(|runtime| {
+    if let Ok((children, signal, effect, cleanups)) = RUNTIME.try_with(|runtime| {
       runtime.scope_contexts.borrow_mut().remove(self);
       runtime.parents.borrow_mut().remove(self);
 
@@ -90,11 +90,20 @@ impl Id {
         runtime.children.borrow_mut().remove(self),
         runtime.signals.borrow_mut().remove(self),
         runtime.effects.borrow_mut().remove(self),
+        runtime.cleanups.borrow_mut().remove(self),
       )
     }) {
       if let Some(children) = children {
         for child in children {
           child.dispose();
+        }
+      }
+
+      // After the children, so a parent's cleanup sees a fully torn-down subtree. Reverse
+      // registration order, so a later callback unwinds before what it was built on.
+      if let Some(cleanups) = cleanups {
+        for cleanup in cleanups.into_iter().rev() {
+          cleanup();
         }
       }
 

@@ -1,24 +1,22 @@
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Lch, LinearSrgb, Oklab, Oklch, Srgb};
 
-use super::Number;
-
-/// Color value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// Color value, stored as its Oklch `[lightness, chroma, hue, alpha]` components.
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct Color {
-  lightness: Number,
-  chroma: Number,
-  hue: Number,
-  alpha: Number,
+  lightness: f32,
+  chroma: f32,
+  hue: f32,
+  alpha: f32,
 }
 
 impl Color {
   /// Fully transparent color.
   pub const TRANSPARENT: Self = Self {
-    lightness: Number::ZERO,
-    chroma: Number::ZERO,
-    hue: Number::ZERO,
-    alpha: Number::ZERO,
+    lightness: 0.,
+    chroma: 0.,
+    hue: 0.,
+    alpha: 0.,
   };
 
   #[inline(always)]
@@ -26,22 +24,16 @@ impl Color {
     let [lightness, chroma, hue, alpha] = AlphaColor::convert::<Oklch>(value).components;
 
     Self {
-      lightness: lightness.into(),
-      chroma: chroma.into(),
-      hue: hue.into(),
-      alpha: alpha.into(),
+      lightness,
+      chroma,
+      hue,
+      alpha,
     }
   }
 
   #[inline(always)]
   fn to_space<S: ColorSpace>(self) -> AlphaColor<S> {
-    AlphaColor::<Oklch>::new([
-      self.lightness.into(),
-      self.chroma.into(),
-      self.hue.into(),
-      self.alpha.into(),
-    ])
-    .convert::<S>()
+    AlphaColor::<Oklch>::new([self.lightness, self.chroma, self.hue, self.alpha]).convert::<S>()
   }
 
   /// Creates an opaque color in the sRGB color space.
@@ -49,7 +41,7 @@ impl Color {
   /// Components on a scale of `0` to `1`.
   #[inline(always)]
   pub fn srgb(red: f32, green: f32, blue: f32) -> Self {
-    Self::from_space(AlphaColor::<Srgb>::new([red, green, blue, 1.0]))
+    Self::from_space(AlphaColor::<Srgb>::new([red, green, blue, 1.]))
   }
 
   /// Creates an opaque color in the linear-light sRGB color space.
@@ -57,7 +49,7 @@ impl Color {
   /// Components on a scale of `0` to `1`.
   #[inline(always)]
   pub fn linear_srgb(red: f32, green: f32, blue: f32) -> Self {
-    Self::from_space(AlphaColor::<LinearSrgb>::new([red, green, blue, 1.0]))
+    Self::from_space(AlphaColor::<LinearSrgb>::new([red, green, blue, 1.]))
   }
 
   /// Creates an opaque color in the HSL color space.
@@ -65,7 +57,7 @@ impl Color {
   /// `hue` in degrees; `saturation` and `lightness` on a scale of `0` to `100`.
   #[inline(always)]
   pub fn hsl(hue: f32, saturation: f32, lightness: f32) -> Self {
-    Self::from_space(AlphaColor::<Hsl>::new([hue, saturation, lightness, 1.0]))
+    Self::from_space(AlphaColor::<Hsl>::new([hue, saturation, lightness, 1.]))
   }
 
   /// Creates an opaque color in the HWB color space.
@@ -73,7 +65,7 @@ impl Color {
   /// `hue` in degrees; `whiteness` and `blackness` on a scale of `0` to `100`.
   #[inline(always)]
   pub fn hwb(hue: f32, whiteness: f32, blackness: f32) -> Self {
-    Self::from_space(AlphaColor::<Hwb>::new([hue, whiteness, blackness, 1.0]))
+    Self::from_space(AlphaColor::<Hwb>::new([hue, whiteness, blackness, 1.]))
   }
 
   /// Creates an opaque color in the CIE Lab color space.
@@ -81,7 +73,7 @@ impl Color {
   /// `lightness` on a scale of `0` to `100`.
   #[inline(always)]
   pub fn lab(lightness: f32, a_axis: f32, b_axis: f32) -> Self {
-    Self::from_space(AlphaColor::<Lab>::new([lightness, a_axis, b_axis, 1.0]))
+    Self::from_space(AlphaColor::<Lab>::new([lightness, a_axis, b_axis, 1.]))
   }
 
   /// Creates an opaque color in the CIE `LCh` color space.
@@ -89,7 +81,7 @@ impl Color {
   /// `lightness` on a scale of `0` to `100` and `hue` in degrees.
   #[inline(always)]
   pub fn lch(lightness: f32, chroma: f32, hue: f32) -> Self {
-    Self::from_space(AlphaColor::<Lch>::new([lightness, chroma, hue, 1.0]))
+    Self::from_space(AlphaColor::<Lch>::new([lightness, chroma, hue, 1.]))
   }
 
   /// Creates an opaque color in the Oklab color space.
@@ -97,7 +89,7 @@ impl Color {
   /// `lightness` on a scale of `0` to `1`.
   #[inline(always)]
   pub fn oklab(lightness: f32, a_axis: f32, b_axis: f32) -> Self {
-    Self::from_space(AlphaColor::<Oklab>::new([lightness, a_axis, b_axis, 1.0]))
+    Self::from_space(AlphaColor::<Oklab>::new([lightness, a_axis, b_axis, 1.]))
   }
 
   /// Creates an opaque color in the Oklch color space.
@@ -105,7 +97,7 @@ impl Color {
   /// `lightness` on a scale of `0` to `1` and `hue` in degrees.
   #[inline(always)]
   pub fn oklch(lightness: f32, chroma: f32, hue: f32) -> Self {
-    Self::from_space(AlphaColor::<Oklch>::new([lightness, chroma, hue, 1.0]))
+    Self::from_space(AlphaColor::<Oklch>::new([lightness, chroma, hue, 1.]))
   }
 
   /// Returns a new color with the specified alpha component.
@@ -115,7 +107,7 @@ impl Color {
       lightness: self.lightness,
       chroma: self.chroma,
       hue: self.hue,
-      alpha: alpha.into(),
+      alpha,
     }
   }
 

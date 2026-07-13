@@ -198,7 +198,7 @@ impl Effect<(), fn(Option<()>) -> ()> {
   }
 }
 
-pub(crate) fn run_initial_effect(effect: Rc<dyn EffectTrait>) {
+fn run_initial_effect(effect: Rc<dyn EffectTrait>) {
   Runtime::assert_ui_thread();
   let effect_id = effect.id();
 

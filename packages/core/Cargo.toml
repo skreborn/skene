@@ -8,8 +8,8 @@ test = ["skene-reactive/test"]
 
 [dependencies]
 color.workspace = true
-fixed.workspace = true
 longest-increasing-subsequence = "0.1"
+num-traits.workspace = true
 rustc-hash.workspace = true
 skene-reactive.workspace = true
 

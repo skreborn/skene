@@ -1,6 +1,6 @@
 //! Workspace automation tasks.
 //!
-//! Run with `cargo xtask <command>`. The `web` command builds the `counter-web`
+//! Run with `cargo xtask <command>`. The `web` command builds the `counter`
 //! demo to wasm, generates its bindings, and serves it over HTTP.
 
 use std::{
@@ -16,9 +16,9 @@ use std::{
 
 use clap::{Parser, Subcommand};
 
-const DEMO_CRATE: &str = "counter-web";
-const WASM_STEM: &str = "counter_web";
-const DEMO_DIR: &str = "examples/counter-web";
+const DEMO_CRATE: &str = "counter";
+const WASM_STEM: &str = "counter";
+const DEMO_DIR: &str = "examples/counter";
 const DEFAULT_PORT: u16 = 8080;
 
 /// Workspace automation tasks.

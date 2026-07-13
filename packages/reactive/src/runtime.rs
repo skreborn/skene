@@ -25,7 +25,7 @@ use crate::{
 };
 
 /// Type alias for context storage within a scope.
-pub(crate) type ScopeContexts = HashMap<TypeId, Box<dyn Any>>;
+type ScopeContexts = HashMap<TypeId, Box<dyn Any>>;
 
 thread_local! {
   pub static RUNTIME: Runtime = Runtime::new();
@@ -35,6 +35,9 @@ static UI_THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
 #[cfg(debug_assertions)]
 static UI_THREAD_SET_LOCATION: OnceLock<&'static Location<'static>> = OnceLock::new();
 static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
+
+/// The callbacks registered to run when one scope is disposed.
+type Cleanups = Vec<Box<dyn FnOnce()>>;
 
 /// The internal reactive `Runtime` which stores all the reactive system states in a
 /// thread local.
@@ -46,9 +49,11 @@ pub struct Runtime {
   pub(crate) signals: RefCell<HashMap<Id, SignalState>>,
   pub(crate) effects: RefCell<HashMap<Id, Rc<dyn EffectTrait>>>,
   pub(crate) scope_contexts: RefCell<HashMap<Id, ScopeContexts>>,
+  /// Callbacks to run when a scope is disposed, in reverse registration order.
+  pub(crate) cleanups: RefCell<HashMap<Id, Cleanups>>,
   pub(crate) batching: Cell<bool>,
   pub(crate) pending_effects: RefCell<SmallVec<[Id; 10]>>,
-  pub(crate) pending_effects_set: RefCell<HashSet<Id>>,
+  pending_effects_set: RefCell<HashSet<Id>>,
 }
 
 impl Default for Runtime {
@@ -67,6 +72,7 @@ impl Runtime {
       signals: Default::default(),
       effects: Default::default(),
       scope_contexts: Default::default(),
+      cleanups: Default::default(),
       batching: Cell::new(false),
       pending_effects: RefCell::new(SmallVec::new()),
       pending_effects_set: RefCell::new(HashSet::new()),
@@ -143,6 +149,15 @@ impl Runtime {
     }
   }
 
+  /// Whether a UI thread has been designated via
+  /// [`init_on_ui_thread`](Self::init_on_ui_thread).
+  ///
+  /// When it has not, an off-thread `Sync` signal write cannot be routed to the UI thread and
+  /// its effects are silently dropped — the case [`SignalState::warn_if_undesignated`] flags.
+  pub(crate) fn ui_thread_designated() -> bool {
+    ENFORCE_UI_THREAD.load(Ordering::Relaxed)
+  }
+
   /// Whether the caller is the UI thread, or `true` when enforcement is off.
   pub fn is_ui_thread() -> bool {
     if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
@@ -162,25 +177,29 @@ impl Runtime {
   /// the `test` feature.
   #[cfg(feature = "test")]
   pub fn reset() {
-    // Take the effects out and drop them after every borrow is released: an effect's
-    // `Drop` re-enters the runtime (`remove_effect`, `dispose`), so clearing the map
-    // in place would borrow it twice.
-    let effects = RUNTIME.with(|runtime| {
+    // Take the effects and cleanups out and drop them after every borrow is released: an
+    // effect's `Drop` re-enters the runtime (`remove_effect`, `dispose`), and a cleanup may
+    // own anything at all, so clearing the maps in place could borrow them twice. Reset
+    // discards cleanups rather than running them: it is a teardown to a blank runtime, not a
+    // graceful disposal.
+    let (effects, cleanups) = RUNTIME.with(|runtime| {
       *runtime.current_effect.borrow_mut() = None;
       *runtime.current_scope.borrow_mut() = Id::next();
       runtime.children.borrow_mut().clear();
       runtime.parents.borrow_mut().clear();
       runtime.signals.borrow_mut().clear();
       let effects = take(&mut *runtime.effects.borrow_mut());
+      let cleanups = take(&mut *runtime.cleanups.borrow_mut());
       runtime.scope_contexts.borrow_mut().clear();
       runtime.batching.set(false);
       runtime.pending_effects.borrow_mut().clear();
       runtime.pending_effects_set.borrow_mut().clear();
 
-      effects
+      (effects, cleanups)
     });
 
     drop(effects);
+    drop(cleanups);
   }
 
   pub(crate) fn register_effect(&self, effect: &Rc<dyn EffectTrait>) {

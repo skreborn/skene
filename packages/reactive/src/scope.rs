@@ -336,6 +336,29 @@ impl Scope {
     signal.subscribe();
   }
 
+  /// Runs `f` when this scope is disposed.
+  ///
+  /// The hook for anything the runtime cannot clean up itself — cancelling a spawned task,
+  /// clearing a timer, closing a subscription — so it ends with the scope that started it
+  /// rather than outliving the view. Callbacks run after the scope's children are disposed,
+  /// in reverse registration order.
+  ///
+  /// # Panics
+  ///
+  /// Panics if called off the UI thread.
+  pub fn on_cleanup(&self, f: impl FnOnce() + 'static) {
+    Runtime::assert_ui_thread();
+
+    RUNTIME.with(|runtime| {
+      runtime
+        .cleanups
+        .borrow_mut()
+        .entry(self.0)
+        .or_default()
+        .push(Box::new(f));
+    });
+  }
+
   /// Disposes this scope, cleaning up all of its signals and child scopes.
   pub fn dispose(&self) {
     self.0.dispose();

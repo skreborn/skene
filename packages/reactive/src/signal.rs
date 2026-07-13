@@ -73,7 +73,7 @@ impl<T> TrackedRefCell<T> {
   }
 
   #[cfg(debug_assertions)]
-  pub(crate) fn borrow_at(&self, caller: &'static Location<'static>) -> TrackedRef<'_, T> {
+  fn borrow_at(&self, caller: &'static Location<'static>) -> TrackedRef<'_, T> {
     let inner = self
       .inner
       .try_borrow()
@@ -87,7 +87,7 @@ impl<T> TrackedRefCell<T> {
   }
 
   #[cfg(debug_assertions)]
-  pub(crate) fn borrow_mut_at(&self, caller: &'static Location<'static>) -> TrackedRefMut<'_, T> {
+  fn borrow_mut_at(&self, caller: &'static Location<'static>) -> TrackedRefMut<'_, T> {
     let inner = self
       .inner
       .try_borrow_mut()
@@ -608,6 +608,11 @@ impl SignalState {
 
   pub(crate) fn run_effects(&self) {
     let ids = self.subscribers.snapshot();
+
+    if !ids.is_empty() && matches!(self.value, SignalValue::Sync(_)) {
+      Self::warn_if_undesignated();
+    }
+
     let on_ui_thread = Runtime::is_ui_thread();
 
     if !on_ui_thread {
@@ -626,6 +631,25 @@ impl SignalState {
     });
   }
 
+  /// Warns once when a `Sync` signal with subscribers runs effects but no UI thread was ever
+  /// designated. Without one, an off-thread write routes its effects to the writer's own
+  /// runtime and they never reach the UI thread — a silent loss this at least makes loud.
+  fn warn_if_undesignated() {
+    if Runtime::ui_thread_designated() {
+      return;
+    }
+
+    static WARNED: std::sync::Once = std::sync::Once::new();
+
+    WARNED.call_once(|| {
+      eprintln!(
+        "skene-reactive: a Sync signal has subscribed effects but Runtime::init_on_ui_thread() \
+         was never called — an off-thread write's effects are silently dropped. Call \
+         init_on_ui_thread() during setup."
+      );
+    });
+  }
+
   pub(crate) fn subscribe(&self) {
     RUNTIME.with(|runtime| {
       if let Some(effect) = runtime.current_effect.borrow().as_ref() {
@@ -635,7 +659,7 @@ impl SignalState {
     });
   }
 
-  pub(crate) fn as_sync<T: Send + Sync + 'static>(&self) -> Arc<Mutex<T>> {
+  fn as_sync<T: Send + Sync + 'static>(&self) -> Arc<Mutex<T>> {
     match &self.value {
       SignalValue::Sync(v) => v
         .clone()
@@ -645,7 +669,7 @@ impl SignalState {
     }
   }
 
-  pub(crate) fn as_local<T: 'static>(&self) -> Rc<TrackedRefCell<T>> {
+  fn as_local<T: 'static>(&self) -> Rc<TrackedRefCell<T>> {
     match &self.value {
       SignalValue::Local(v) => v
         .clone()

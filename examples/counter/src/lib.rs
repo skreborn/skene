@@ -1,10 +1,11 @@
 //! A counter demo: one app crate, depending only on `skene-gui`, that runs on any GUI
-//! backend the build targets.
+//! platform the build targets.
 //!
-//! Gated to `wasm32` (the only configured backend): building a view for a target with no
-//! backend is a compile error, so an app is built for the platform(s) it targets.
+//! Gated to the browser platform (the only one with an interactive entry point): building
+//! a view for a target with no platform is a compile error, so an app is built for the
+//! platform(s) it targets.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use skene_gui::prelude::*;
 

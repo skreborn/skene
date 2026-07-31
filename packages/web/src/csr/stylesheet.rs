@@ -1,7 +1,7 @@
 //! The browser's stylesheet sink: one `<style>` element per interned rule template.
 //!
 //! Interning, naming and refcounting live in the shared [`ClassInterner`]; this wrapper
-//! mirrors its outcomes into the document — appending a `<style>` holding the realized
+//! mirrors its outcomes into the document—appending a `<style>` holding the realized
 //! template when a class is newly interned, removing it when the interner reports the
 //! class collected. A template may hold several rules (variants, `@media` blocks,
 //! `@keyframes`), so an element per class keeps insertion and removal one operation with

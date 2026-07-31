@@ -51,7 +51,7 @@ impl Node {
   }
 }
 
-/// The SSR platform's state: the node arena and the string stylesheet. Private — reached
+/// The SSR platform's state: the node arena and the string stylesheet. Private—reached
 /// only through this module's functions.
 #[must_use]
 struct State {
@@ -126,7 +126,7 @@ impl State {
     }
   }
 
-  /// Merges `delta` into a node's inline style, winning over its interned class — the path a
+  /// Merges `delta` into a node's inline style, winning over its interned class—the path a
   /// reactive property takes, so its settled value is serialized inline.
   fn override_style(&mut self, node: NodeId, delta: &Declarations) {
     if let Some(node) = self.nodes.get_mut(&node) {
@@ -188,7 +188,7 @@ impl State {
     )
   }
 
-  /// Renders the settled view tree — the page body.
+  /// Renders the settled view tree—the page body.
   fn render_body(&self) -> String {
     let mut out = String::new();
 
@@ -224,7 +224,7 @@ impl State {
   /// Serializes the tree in document order, pausing at each unsettled boundary.
   ///
   /// Resumes from `cursor`, appending to `out` until it reaches a child that is a boundary whose
-  /// work has not settled — then returns that boundary's node, leaving the cursor poised to emit
+  /// work has not settled—then returns that boundary's node, leaving the cursor poised to emit
   /// it next. Ancestors stay open across the pause, exactly as a streamed document expects. A
   /// `None` return means the whole tree is serialized.
   fn stream(&self, cursor: &mut Vec<Frame>, out: &mut String) -> Option<NodeId> {
@@ -323,7 +323,7 @@ impl Node {
     out.push('>');
   }
 
-  /// Emits a node's closing tag: `</tag>` — nothing for a void element, which has no
+  /// Emits a node's closing tag: `</tag>`—nothing for a void element, which has no
   /// closing tag in HTML.
   fn emit_close(&self, out: &mut String) {
     if self.is_void() {
@@ -359,7 +359,7 @@ pub fn register_boundary(node: NodeId, settled: BoundarySettled) {
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(node, settled));
 }
 
-/// Whether `node` is a boundary whose content has not settled — the streaming walk's pause test.
+/// Whether `node` is a boundary whose content has not settled—the streaming walk's pause test.
 fn boundary_pending(node: NodeId) -> bool {
   BOUNDARIES.with(|boundaries| {
     boundaries
@@ -451,32 +451,32 @@ pub fn set_text(node: NodeId, text: &str) {
   with_state(|state| state.set_text(node, text));
 }
 
-/// Registers a click handler — inert on the server, where HTML is static; interactivity
+/// Registers a click handler—inert on the server, where HTML is static; interactivity
 /// returns when the client hydrates.
 #[inline(always)]
 pub fn handle_click(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
-/// Registers a pointer-enter handler — inert on the server.
+/// Registers a pointer-enter handler—inert on the server.
 #[inline(always)]
 pub fn handle_pointer_enter(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
-/// Registers a pointer-leave handler — inert on the server.
+/// Registers a pointer-leave handler—inert on the server.
 #[inline(always)]
 pub fn handle_pointer_leave(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
-/// Registers a focus handler — inert on the server.
+/// Registers a focus handler—inert on the server.
 #[inline(always)]
 pub fn handle_focus(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
-/// Registers a blur handler — inert on the server.
+/// Registers a blur handler—inert on the server.
 #[inline(always)]
 pub fn handle_blur(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
-/// Registers a key handler — inert on the server.
+/// Registers a key handler—inert on the server.
 #[inline(always)]
 pub fn handle_key_down(_node: NodeId, _handler: Rc<dyn Fn(&KeyEvent)>) {}
 
-/// Registers an input handler — inert on the server.
+/// Registers an input handler—inert on the server.
 #[inline(always)]
 pub fn handle_input(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
 
@@ -538,7 +538,7 @@ where
 ///
 /// The shell settles and its styles render, then the body walks in document order. At each
 /// deferred boundary the walk flushes the chunk built so far, blocks until that boundary's
-/// content settles, and resumes emitting it in place — so a client with no JavaScript receives a
+/// content settles, and resumes emitting it in place—so a client with no JavaScript receives a
 /// correct document progressively, each chunk appended to the last.
 ///
 /// The styles are the shell's; a boundary whose loaded content introduces a brand-new class is

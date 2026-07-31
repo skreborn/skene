@@ -1,5 +1,5 @@
 //! Suspense boundaries: a subtree whose async work is counted, so its completion can be
-//! detected — and, on a server, so a render can flush the shell and stream the boundary's
+//! detected—and, on a server, so a render can flush the shell and stream the boundary's
 //! content once it settles.
 
 use skene_reactive::{Context, RwSignal, SignalUpdate, SignalWith};

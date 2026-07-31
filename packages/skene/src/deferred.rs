@@ -2,7 +2,7 @@
 //!
 //! Wrap slow content in a [`Deferred`]. On the server the render emits everything up to the
 //! boundary, blocks until the boundary's async work settles, then streams the content in document
-//! order — so a client with no JavaScript still receives a correct, progressively-rendered page.
+//! order—so a client with no JavaScript still receives a correct, progressively-rendered page.
 //! On the client the content builds directly; its own reactive subtrees show their placeholders
 //! until they load, and hydration adopts the server's already-settled markup.
 

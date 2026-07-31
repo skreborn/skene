@@ -21,7 +21,7 @@ impl Reorder {
   ///
   /// `previous_positions[i]` is the previous position of the kept entry now at
   /// `new_positions[i]`; both are in the new order. Entries on the longest increasing run of
-  /// previous positions are already in the right relative order and can stay put — every
+  /// previous positions are already in the right relative order and can stay put—every
   /// other position must be re-inserted before its successor, which is what makes the
   /// reorder minimal.
   ///

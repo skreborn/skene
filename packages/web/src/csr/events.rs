@@ -2,7 +2,7 @@
 //!
 //! Bubbling events (click, focusin/focusout, keydown, input) are **delegated**: one
 //! listener per event type on the mount root dispatches by walking from the event target
-//! up through the tree, running each carrying node's handlers — so a node costs no
+//! up through the tree, running each carrying node's handlers—so a node costs no
 //! listener, and an event on a descendant reaches its ancestors exactly as per-node
 //! listeners would. Non-bubbling events (pointerenter/pointerleave) attach directly to
 //! their node. Every dispatch runs inside a reactive batch, so however many signals a

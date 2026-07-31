@@ -14,7 +14,7 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 ///
 /// The load starts on creation and is bound to the current scope, so it ends with the view
 /// that asked for it. Reading tracks, so a view that reads a resource re-runs when the value
-/// arrives — pair it with a [`DynamicView`](crate::DynamicView) to swap a placeholder for the
+/// arrives—pair it with a [`DynamicView`](crate::DynamicView) to swap a placeholder for the
 /// loaded tree:
 ///
 /// ```ignore
@@ -27,7 +27,7 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 /// ```
 ///
 /// A resource loaded on the server crosses the boundary to the client and is adopted on
-/// hydration rather than re-loaded — so [`new`](Self::new) requires the value to be
+/// hydration rather than re-loaded—so [`new`](Self::new) requires the value to be
 /// serializable. Data only a client can produce (a browser API, an unserializable value) uses
 /// [`client`](Self::client) instead, which skips the server and loads on the client.
 ///
@@ -70,7 +70,7 @@ impl<T: 'static> Resource<T> {
   /// The value crosses the server-to-client boundary: on the server its settled value is
   /// serialized into the render, and on the client that value is adopted instead of loading
   /// again. Resources are matched across the boundary by creation order, so the client must
-  /// create its resources in the same order the server did — which it does when it builds the
+  /// create its resources in the same order the server did—which it does when it builds the
   /// same view. When no server value is present (a plain client render, or one the server did
   /// not settle), it loads normally.
   pub fn new<F>(load: impl Fn() -> F + 'static) -> Self

@@ -80,6 +80,7 @@ fn computed_style(root: &Element, property: &str) -> String {
   let element = only_child(root)
     .dyn_into::<HtmlElement>()
     .expect("an HTML element");
+
   let value = web_sys::window()
     .unwrap()
     .get_computed_style(&element)
@@ -182,6 +183,7 @@ fn children_mount_in_order() {
     children.item(0).and_then(|c| c.text_content()).as_deref(),
     Some("a"),
   );
+
   assert_eq!(
     children.item(2).and_then(|c| c.text_content()).as_deref(),
     Some("c"),
@@ -231,6 +233,7 @@ fn interned_class_actually_applies_its_style() {
   let element = only_child(&root)
     .dyn_into::<HtmlElement>()
     .expect("an HTML element");
+
   let style = web_sys::window()
     .unwrap()
     .get_computed_style(&element)
@@ -285,7 +288,7 @@ fn click_handler_runs_on_a_real_click() {
   assert_eq!(clicks.get(), 2);
 }
 
-/// A handler may re-enter the platform — the click path clones handlers out before running
+/// A handler may re-enter the platform—the click path clones handlers out before running
 /// them so building or destroying nodes from inside one does not deadlock the state borrow.
 #[wasm_bindgen_test]
 fn a_click_handler_may_build_nodes() {

@@ -40,6 +40,7 @@ fn an_off_thread_write_reaches_a_ui_effect_on_drain() {
     Runtime::has_pending_work(),
     "the off-thread write queued work for the UI thread",
   );
+
   assert_eq!(
     &*seen.lock().unwrap(),
     &[0],

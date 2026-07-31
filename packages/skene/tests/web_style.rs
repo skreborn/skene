@@ -1,5 +1,5 @@
 //! Declarative style dynamics rendered to CSS: conditional variants, transitions, and
-//! keyframe animations — the no-script styling contract of server-rendered output.
+//! keyframe animations—the no-script styling contract of server-rendered output.
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
@@ -35,6 +35,7 @@ fn state_variant_renders_a_pseudo_class_rule() {
       .styles()
       .contains(&format!(".{class}{{display:flow-root;width:10px;}}"))
   );
+
   assert!(
     rendered
       .styles()
@@ -123,6 +124,7 @@ fn animations_render_keyframes_and_reference_them() {
   assert!(styles.contains(&format!(
     "@keyframes {name}{{0%{{border-radius:0px;}}100%{{border-radius:16px;}}}}"
   )));
+
   assert!(styles.contains(&format!(
     "animation:{name} 2s ease 0s infinite alternate both;"
   )));

@@ -3,8 +3,8 @@
 //! One property maps to the same declaration text whether it is folded into a class or
 //! applied alone as an inline override, so a value renders identically on both paths and
 //! on both leaves. A node's full static style renders to a **rule template**: the
-//! complete CSS for one class — base declarations, conditional variants as
-//! pseudo-classes and `@media` blocks, transitions, and content-addressed `@keyframes` —
+//! complete CSS for one class—base declarations, conditional variants as
+//! pseudo-classes and `@media` blocks, transitions, and content-addressed `@keyframes`—
 //! with [`CLASS_PLACEHOLDER`] standing in for the class name until the interner assigns
 //! one.
 
@@ -227,6 +227,7 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
     RunDisplay::Inline => Declarations::new(),
     RunDisplay::InlineBox => Declarations::new().set("display", "inline-block"),
   };
+
   let base = fold_run_style(display, &props.style);
 
   if base.is_empty()
@@ -255,7 +256,7 @@ pub(crate) fn run_prop_declarations(prop: &RunProp) -> Declarations {
   apply_run_prop(Declarations::new(), prop)
 }
 
-/// The rule template for a raw declaration set — the escape-hatch styling path.
+/// The rule template for a raw declaration set—the escape-hatch styling path.
 pub(crate) fn declarations_template(declarations: &Declarations) -> String {
   let mut out = String::new();
 

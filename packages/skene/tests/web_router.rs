@@ -52,6 +52,7 @@ fn requested_path_resolves_the_route() {
       .body()
       .contains("about page")
   );
+
   assert!(
     render_to_string_at("/nope", app)
       .body()

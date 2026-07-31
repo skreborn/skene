@@ -40,6 +40,7 @@ fn a_text_renders_to_a_styled_span() {
     "a text is a marked, classed span: {}",
     page.body(),
   );
+
   assert!(page.body().ends_with(">Hello</span>"), "{}", page.body());
   assert!(
     page.styles().contains("display:block"),
@@ -57,10 +58,12 @@ fn a_container_nests_its_child() {
     body.starts_with("<div data-h="),
     "a container is a div: {body}"
   );
+
   assert!(
     body.contains("<span") && body.contains(">Hi</span>"),
     "the child span nests inside: {body}",
   );
+
   assert!(
     body.ends_with("</div>"),
     "the container closes after its child: {body}",
@@ -81,6 +84,7 @@ fn identical_styles_share_one_rule() {
     2,
     "both spans carry the shared class: {body}",
   );
+
   assert_eq!(
     page.styles().matches(&format!(".{class}{{")).count(),
     1,
@@ -101,7 +105,7 @@ fn text_and_attributes_are_escaped() {
 }
 
 /// The payoff: an immediately-ready resource settles during the render, so the *loaded* tree
-/// serializes, not the placeholder — the SSR fixpoint at work.
+/// serializes, not the placeholder—the SSR fixpoint at work.
 #[test]
 fn a_resolved_resource_serializes_its_loaded_tree() {
   let page = render_to_string(|| {
@@ -122,6 +126,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
     "the loaded value is serialized: {}",
     page.body(),
   );
+
   assert!(
     !page.body().contains("Loading"),
     "the placeholder was replaced before serialization: {}",
@@ -129,7 +134,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
   );
 }
 
-/// An *async* load — one that parks on a host operation — settles before serialization: the
+/// An *async* load—one that parks on a host operation—settles before serialization: the
 /// runner blocks on the WASI reactor until the sleep resolves, so the loaded tree serializes.
 #[test]
 fn an_async_load_settles_before_serialization() {
@@ -155,6 +160,7 @@ fn an_async_load_settles_before_serialization() {
     "the async value settled and serialized: {}",
     page.body(),
   );
+
   assert!(
     !page.body().contains("Loading"),
     "the render blocked on the load, not the placeholder: {}",
@@ -171,20 +177,24 @@ fn page_assembles_a_full_document() {
 
     Text::new("hi")
   });
+
   let document = page.page();
 
   assert!(
     document.starts_with("<!DOCTYPE html><html><head><style>"),
     "the styles open the head: {document}",
   );
+
   assert!(
     document.contains(&format!("</head><body>{}", page.body())),
     "the tree is the body: {document}",
   );
+
   assert!(
     document.contains("<script id=\"skene-state\" type=\"application/json\">[\"\\\"Ada\\\"\"]"),
     "the state is embedded in the script: {document}",
   );
+
   assert!(
     document.ends_with("</script></body></html>"),
     "the document closes cleanly: {document}",
@@ -240,7 +250,7 @@ fn a_client_resource_is_not_serialized() {
   );
 }
 
-/// An inline `Span` is a classless, inline run — unlike a block `Text`, which carries a
+/// An inline `Span` is a classless, inline run—unlike a block `Text`, which carries a
 /// `display:block` class.
 #[test]
 fn an_inline_span_is_classless_unlike_a_block_text() {
@@ -263,17 +273,20 @@ fn rich_text_nests_groups_and_embeds_views() {
       Span::view(Container::new()),
     ])
   });
+
   let body = page.body();
 
   assert!(
     body.contains(">a</span>") && body.contains(">b</span>"),
     "the group's nested runs are present: {body}",
   );
+
   assert_eq!(
     body.matches("<div").count(),
     2,
     "the block wrapper plus the embedded view's `<div>`: {body}",
   );
+
   assert!(
     page.styles().contains("inline-block"),
     "the embedded view's host span is inline-level: {}",
@@ -282,7 +295,7 @@ fn rich_text_nests_groups_and_embeds_views() {
 }
 
 /// A page with no `Deferred` streams as a single chunk: the walk never pauses, so the one chunk
-/// is the whole document — the same markup `render_to_string` would assemble.
+/// is the whole document—the same markup `render_to_string` would assemble.
 #[test]
 fn a_page_without_deferred_streams_as_one_chunk() {
   let stream = render_to_stream(|| Text::new("hi"));
@@ -293,6 +306,7 @@ fn a_page_without_deferred_streams_as_one_chunk() {
     "the one chunk opens the document: {}",
     stream.document(),
   );
+
   assert!(
     stream.document().contains(">hi</span>") && stream.document().ends_with("</html>"),
     "and carries the whole body: {}",
@@ -302,7 +316,7 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 
 /// The payoff: the shell flushes before a `Deferred` boundary's slow content settles. The first
 /// chunk carries the shell and stops *before* the boundary; the boundary's loaded content arrives
-/// in a later chunk, in document order — no placeholder, and no JavaScript.
+/// in a later chunk, in document order—no placeholder, and no JavaScript.
 #[test]
 fn deferred_content_streams_after_the_shell() {
   let stream = render_to_stream(|| {
@@ -331,14 +345,16 @@ fn deferred_content_streams_after_the_shell() {
     "the shell flushes before the boundary settles: {:?}",
     stream.chunks(),
   );
+
   assert!(
     stream.chunks()[0].contains(">shell</span>"),
     "the first chunk carries the shell: {}",
     stream.chunks()[0],
   );
+
   assert!(
     !stream.chunks()[0].contains(">late</span>") && !stream.chunks()[0].contains(">loading</span>"),
-    "and stops before the boundary — neither its loaded value nor its placeholder: {}",
+    "and stops before the boundary—neither its loaded value nor its placeholder: {}",
     stream.chunks()[0],
   );
 
@@ -348,6 +364,7 @@ fn deferred_content_streams_after_the_shell() {
     document.contains(">late</span>") && !document.contains(">loading</span>"),
     "the boundary streams its settled content, never the placeholder: {document}",
   );
+
   assert!(
     document.find("shell") < document.find("late"),
     "and in document order, the shell before the deferred content: {document}",

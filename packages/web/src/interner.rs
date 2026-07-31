@@ -6,7 +6,7 @@
 //! users, so an unused rule is collected. The naming (`skene-{hash:x}`, with a forward
 //! probe on the rare collision) hashes the template text and is identical on every web
 //! leaf, so a node styled the same way gets the same class whether it renders to a live
-//! DOM or an HTML string — the parity hydration relies on.
+//! DOM or an HTML string—the parity hydration relies on.
 //!
 //! Each leaf layers its own sink on the outcomes reported here: the browser adds a rule's
 //! realized text to the document when one is [newly interned](ClassInterner::class_for)
@@ -47,7 +47,7 @@ impl ClassInterner {
     }
   }
 
-  /// Returns the class for `template`, and whether it was newly interned — a leaf adds
+  /// Returns the class for `template`, and whether it was newly interned—a leaf adds
   /// the realized rule to its sink only then.
   ///
   /// The returned class has no claim on it yet: call [`retain`](Self::retain) once it is
@@ -95,7 +95,7 @@ impl ClassInterner {
   }
 
   /// Records that one node stopped using `class`, returning whether that was its last
-  /// user — a leaf removes the rule from its sink only then.
+  /// user—a leaf removes the rule from its sink only then.
   pub(crate) fn release(&mut self, class: &str) -> bool {
     let count = match self.rules.get_mut(class) {
       Some(rule) => {
@@ -124,7 +124,7 @@ impl ClassInterner {
     false
   }
 
-  /// Each live rule as `(class, template)`, for a leaf that renders them in a batch — the
+  /// Each live rule as `(class, template)`, for a leaf that renders them in a batch—the
   /// server sink only; the browser mirrors rules into the document incrementally instead.
   #[cfg(target_os = "wasi")]
   pub(crate) fn live_rules(&self) -> impl Iterator<Item = (&str, &str)> {

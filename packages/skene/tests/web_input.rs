@@ -35,6 +35,7 @@ fn placeholder_and_value_serialize_as_attributes() {
       .body()
       .contains("placeholder=\"Type &quot;here&quot;\"")
   );
+
   assert!(rendered.body().contains("value=\"a &amp; b\""));
 }
 
@@ -57,6 +58,7 @@ fn input_styling_interns_with_variants() {
       .styles()
       .contains(&format!(".{class}{{padding:8px 8px 8px 8px;}}"))
   );
+
   assert!(
     rendered
       .styles()
@@ -76,6 +78,7 @@ fn handlers_are_inert_on_the_server() {
         Input::new().handle_input(|_| {}).handle_focus(|| {}),
       ))
   });
+
   let plain = render_to_string(|| Container::new().set_children((Text::new("t"), Input::new())));
 
   assert_eq!(rendered.body(), plain.body());

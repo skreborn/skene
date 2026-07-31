@@ -285,6 +285,7 @@ mod tests {
     parent.enter(|| {
       assert_eq!(Context::get::<i32>(), Some(42));
     });
+
     child.enter(|| {
       assert_eq!(Context::get::<i32>(), Some(100));
     });
@@ -302,6 +303,7 @@ mod tests {
           .and_then(|entity| entity.contexts.as_ref())
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -310,6 +312,7 @@ mod tests {
           .and_then(|entity| entity.contexts.as_ref())
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -445,6 +448,7 @@ mod tests {
           .get(&root.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -452,6 +456,7 @@ mod tests {
           .get(&middle.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -473,6 +478,7 @@ mod tests {
           .get(&root.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       // Middle and leaf should be gone
       assert!(
         runtime
@@ -481,6 +487,7 @@ mod tests {
           .get(&middle.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -488,6 +495,7 @@ mod tests {
           .get(&leaf.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       // Parent tracking for leaf should be gone
       assert!(
         runtime
@@ -766,6 +774,7 @@ mod tests {
           .get(&parent.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -773,6 +782,7 @@ mod tests {
           .get(&child1.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -780,6 +790,7 @@ mod tests {
           .get(&child2.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -801,6 +812,7 @@ mod tests {
           .get(&parent.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -808,6 +820,7 @@ mod tests {
           .get(&child1.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -815,6 +828,7 @@ mod tests {
           .get(&child2.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -822,6 +836,7 @@ mod tests {
           .get(&child3.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       // Parent tracking should be gone for all children
       assert!(
         runtime
@@ -831,6 +846,7 @@ mod tests {
           .and_then(|entity| entity.parent)
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -839,6 +855,7 @@ mod tests {
           .and_then(|entity| entity.parent)
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -869,6 +886,7 @@ mod tests {
           .get(&parent.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -876,6 +894,7 @@ mod tests {
           .get(&child1.0)
           .is_some_and(|entity| entity.contexts.is_some())
       );
+
       assert!(
         runtime
           .entities
@@ -896,6 +915,7 @@ mod tests {
           .get(&child1.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -903,6 +923,7 @@ mod tests {
           .get(&child2.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -911,6 +932,7 @@ mod tests {
           .and_then(|entity| entity.parent)
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -941,6 +963,7 @@ mod tests {
           .get(&scope.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -963,6 +986,7 @@ mod tests {
           .get(&scope.0)
           .is_none_or(|entity| entity.contexts.is_none())
       );
+
       assert!(
         runtime
           .entities

@@ -62,6 +62,7 @@ impl Scope {
         .children
         .get_or_insert_default()
         .insert(child);
+
       entities.entry(child).or_default().parent = Some(self.0);
     });
 
@@ -101,6 +102,7 @@ impl Scope {
         .children
         .get_or_insert_default()
         .insert(self.0);
+
       entities.entry(self.0).or_default().parent = Some(new_parent.0);
     });
   }
@@ -345,8 +347,8 @@ impl Scope {
 
   /// Runs `f` when this scope is disposed.
   ///
-  /// The hook for anything the runtime cannot clean up itself — cancelling a spawned task,
-  /// clearing a timer, closing a subscription — so it ends with the scope that started it
+  /// The hook for anything the runtime cannot clean up itself—cancelling a spawned task,
+  /// clearing a timer, closing a subscription—so it ends with the scope that started it
   /// rather than outliving the view. Callbacks run after the scope's children are disposed,
   /// in reverse registration order.
   ///

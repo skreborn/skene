@@ -2,7 +2,7 @@
 //!
 //! Off a JS host there is no `spawn_local`, so this leaf drives futures itself. [`drive`] fills
 //! the platform executor seam; [`stabilize`] polls every ready task, and when none are ready but
-//! host operations are outstanding it blocks the runner on the WASI `poll` until one completes —
+//! host operations are outstanding it blocks the runner on the WASI `poll` until one completes—
 //! so an async load (a [`sleep`], an HTTP call registered with the reactor) resolves and the
 //! render settles on its *loaded* tree rather than a placeholder.
 
@@ -167,7 +167,7 @@ pub(super) fn stabilize() {
   stabilize_until(|| false);
 }
 
-/// Pumps the executor until `done` reports the render has progressed far enough, then returns —
+/// Pumps the executor until `done` reports the render has progressed far enough, then returns—
 /// leaving any work `done` does not depend on still outstanding.
 ///
 /// The streaming counterpart to [`stabilize`]: the shell settles against its boundary, then each

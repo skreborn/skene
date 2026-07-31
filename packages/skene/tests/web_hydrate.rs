@@ -51,7 +51,7 @@ fn element_count(root: &Element) -> u32 {
 
 #[wasm_bindgen_test]
 fn hydrate_adopts_the_marked_elements() {
-  // The container builds as node 1, its child text as node 2 — matching the markers.
+  // The container builds as node 1, its child text as node 2—matching the markers.
   let root = server_root("<div data-h=\"1\"><span data-h=\"2\">Hi</span></div>");
   let server_container = root.first_element_child().expect("a container");
   let server_span = server_container.first_element_child().expect("a span");
@@ -66,10 +66,12 @@ fn hydrate_adopts_the_marked_elements() {
     server_container == hydrated_container,
     "the container was adopted, not recreated",
   );
+
   assert!(
     server_span == hydrated_container.first_element_child().expect("a span"),
     "the child span was adopted too",
   );
+
   assert_eq!(
     element_count(&root),
     2,
@@ -145,6 +147,7 @@ fn a_resource_adopts_server_state_without_loading() {
     !loaded.get(),
     "the loader did not run; the server value was adopted",
   );
+
   data.with(|value| {
     assert_eq!(
       value.map(String::as_str),

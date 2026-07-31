@@ -96,6 +96,7 @@ where
       observers: RefCell::new(FxHashSet::default()),
       ts: PhantomData,
     });
+
     id.set_scope();
     RUNTIME.with(|runtime| runtime.register_effect(&effect));
 
@@ -157,6 +158,7 @@ impl UpdaterEffect<(), (), (), ()> {
       observers: RefCell::new(FxHashSet::default()),
       _phantom: PhantomData,
     });
+
     id.set_scope();
     let effect_dyn: Rc<dyn EffectTrait> = effect.clone();
     RUNTIME.with(|runtime| runtime.register_effect(&effect_dyn));

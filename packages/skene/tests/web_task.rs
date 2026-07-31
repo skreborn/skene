@@ -52,7 +52,7 @@ async fn a_spawned_task_runs() {
   assert!(ran.get(), "on the event loop");
 }
 
-/// A task may write a signal when it finishes — the delivery path a loaded resource needs.
+/// A task may write a signal when it finishes—the delivery path a loaded resource needs.
 #[wasm_bindgen_test]
 async fn a_task_can_deliver_into_a_signal() {
   let scope = Scope::new();

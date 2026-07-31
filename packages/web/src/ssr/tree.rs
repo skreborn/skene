@@ -1,7 +1,7 @@
 //! The SSR web platform's tree mutations, for the shared composition helpers.
 //!
 //! Selected by target-gating: the composition helpers call `attach` and it resolves, at
-//! compile time, to the one leaf the target configures — here, a string tree rather than
+//! compile time, to the one leaf the target configures—here, a string tree rather than
 //! a live DOM.
 
 use skene_core::NodeId;

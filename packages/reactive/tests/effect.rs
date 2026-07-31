@@ -45,6 +45,7 @@ fn batch_simple() {
     name.set("John");
     age.set(20);
   });
+
   Runtime::drain_pending_work();
   assert_eq!(count.get(), 4);
 }

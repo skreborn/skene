@@ -95,7 +95,7 @@ async fn a_resource_can_load_a_result() {
   assert_eq!(resource.get(), Some(Err("boom".to_owned())));
 }
 
-/// The headline: load data, show a placeholder meanwhile, then display it — end to end,
+/// The headline: load data, show a placeholder meanwhile, then display it—end to end,
 /// against a real DOM.
 #[wasm_bindgen_test]
 async fn a_loading_tree_is_swapped_for_the_loaded_one() {
@@ -140,6 +140,7 @@ async fn a_loading_tree_is_swapped_for_the_loaded_one() {
     1,
     "the placeholder is torn down"
   );
+
   assert_eq!(loaded.tag_name(), "DIV");
   assert_eq!(loaded.text_content().as_deref(), Some("Ada"));
 }

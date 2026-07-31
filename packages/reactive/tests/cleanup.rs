@@ -1,4 +1,4 @@
-//! Scope cleanup: the hook anything the runtime cannot free itself hangs on — a spawned
+//! Scope cleanup: the hook anything the runtime cannot free itself hangs on—a spawned
 //! task, a timer, a subscription.
 
 use std::{cell::RefCell, rc::Rc};
@@ -52,6 +52,7 @@ fn disposing_a_parent_runs_a_childs_cleanup() {
 
     move || record("grandchild")
   });
+
   child.on_cleanup({
     let record = record.clone();
 

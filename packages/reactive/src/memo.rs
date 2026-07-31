@@ -240,6 +240,7 @@ impl<T: PartialEq + 'static> MemoState<T> {
           Some(previous) => new_value != *previous,
           None => true,
         };
+
         (changed, new_value)
       })
     });

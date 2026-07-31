@@ -81,4 +81,5 @@ criterion_group!(
   bench_set_with_effects,
   bench_memo_chain
 );
+
 criterion_main!(benches);

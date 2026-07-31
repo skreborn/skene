@@ -2,7 +2,7 @@
 //!
 //! An app defines its route type and implements [`Route`]; the [`Router`] holds the
 //! current route in a signal, so any view that reads it re-renders on navigation. The
-//! router knows nothing of URLs' owners: a platform binds it thinly — the browser to the
+//! router knows nothing of URLs' owners: a platform binds it thinly—the browser to the
 //! History API, a server render to the requested path, a native shell to nothing at all.
 
 use std::{cell::RefCell, rc::Rc};
@@ -18,7 +18,7 @@ pub trait Route: Clone + PartialEq + 'static {
   fn to_path(&self) -> String;
 }
 
-/// A route type whose instances can be enumerated — what static site generation renders.
+/// A route type whose instances can be enumerated—what static site generation renders.
 pub trait StaticRoutes: Route {
   /// Every statically-renderable route.
   fn all() -> Vec<Self>;

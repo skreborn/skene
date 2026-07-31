@@ -108,6 +108,7 @@ fn representative_render_is_stable() {
     "interned rules changed:\n{}",
     rendered.styles(),
   );
+
   assert_eq!(rendered.body(), SNAPSHOT_BODY);
 }
 

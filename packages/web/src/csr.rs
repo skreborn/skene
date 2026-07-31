@@ -1,7 +1,7 @@
 //! The web platform: a browser DOM.
 //!
 //! Creates elements, styles them through a shared stylesheet, sets text and wires click
-//! listeners — what the built-in views realize against, and the escape hatch a low-level
+//! listeners—what the built-in views realize against, and the escape hatch a low-level
 //! web view calls directly. Layout, painting, text shaping and hit-testing are the
 //! browser's. Mount with [`launch`].
 
@@ -34,7 +34,7 @@ use crate::Declarations;
 const ROOT_ID: NodeId = NodeId::new(0);
 
 /// The web platform's state: the element registry, the stylesheet store, and the live
-/// event-listener closures. Private — reached only through this module's functions.
+/// event-listener closures. Private—reached only through this module's functions.
 #[must_use]
 struct State {
   /// The owning document, used to create elements.
@@ -126,7 +126,7 @@ impl State {
   }
 
   /// Interns `template` as a shared, content-addressed class and assigns it to `node`,
-  /// refcounting rules so unused ones are collected. The batched path — apply a node's
+  /// refcounting rules so unused ones are collected. The batched path—apply a node's
   /// full style once. It stays SSR-compatible (the class is content-addressed).
   pub fn assign_class(&self, node: NodeId, template: &str) {
     let previous = self.node_class.borrow().get(&node).cloned();
@@ -164,7 +164,7 @@ impl State {
   }
 
   /// Applies each of `declarations` as an inline override on `node`, winning over its
-  /// interned class — the path for a reactive change, so an animating property never
+  /// interned class—the path for a reactive change, so an animating property never
   /// rewrites the shared stylesheet.
   pub fn override_style(&self, node: NodeId, declarations: &Declarations) {
     self.with_element(node, |element| {
@@ -364,7 +364,7 @@ impl State {
 
   /// The DOM element for a freshly built node `id`: during hydration the server element whose
   /// marker matches `id` is adopted (and its marker stripped); otherwise a fresh `tag` element
-  /// is created. A hydration lookup that misses, or finds a different tag, is a mismatch — it is
+  /// is created. A hydration lookup that misses, or finds a different tag, is a mismatch—it is
   /// logged and a fresh element is created in the divergent node's place.
   fn element_for(&self, id: NodeId, tag: &str) -> Element {
     let candidate = match self.hydration.borrow_mut().as_mut() {
@@ -465,7 +465,7 @@ impl State {
     }
 
     // A node adopted in place already sits under its parent in the server DOM; a freshly built
-    // one — a normal build, or a hydration-mismatch fallback — must be inserted.
+    // one—a normal build, or a hydration-mismatch fallback—must be inserted.
     if self.adopted.borrow().contains(&child) {
       return;
     }
@@ -577,7 +577,7 @@ fn with_state<R>(apply: impl FnOnce(&State) -> R) -> R {
   })
 }
 
-/// Installs the web platform for this thread, rooted at `root` — the element views are
+/// Installs the web platform for this thread, rooted at `root`—the element views are
 /// inserted under.
 ///
 /// # Panics
@@ -625,7 +625,7 @@ pub fn create_element(tag: &str) -> NodeId {
 /// The DOM element backing `node`, to manipulate directly: set attributes, append children,
 /// or hand it to a JS library.
 ///
-/// The raw-handle escape hatch, specific to this platform — not part of the shared
+/// The raw-handle escape hatch, specific to this platform—not part of the shared
 /// vocabulary, so a portable view reaches for [`set_attribute`] instead.
 #[must_use]
 pub fn element(node: NodeId) -> Element {
@@ -721,7 +721,7 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 /// serialized alongside them.
 ///
 /// Builds `app` but, rather than creating DOM nodes, takes over the server-rendered ones in
-/// document order — wiring event listeners and reactive bindings onto them — so the markup is
+/// document order—wiring event listeners and reactive bindings onto them—so the markup is
 /// reused in place, with no rebuild and no flash. Critical resources adopt their server value
 /// from `state` (as produced by `render_to_string`) instead of loading again. The build must
 /// produce the same structure the server did.
@@ -776,6 +776,7 @@ where
     .expect("a window")
     .document()
     .expect("a document");
+
   let body = document.body().expect("a body");
   let state = document
     .get_element_by_id(crate::STATE_SCRIPT_ID)

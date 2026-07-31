@@ -26,18 +26,22 @@ fn assert_ui_thread_reports_caller_and_set_location() {
       message.contains("Unsync runtime access from non-UI thread"),
       "panic message should describe unsync access; got {message}"
     );
+
     assert!(
       message.contains("caller:"),
       "panic message should include caller location; got {message}"
     );
+
     assert!(
       message.contains("set at"),
       "panic message should include UI init location; got {message}"
     );
+
     assert!(
       message.contains(file!()),
       "panic message should reference this file as caller; got {message}"
     );
+
     assert!(
       !message.contains("reactive/src/runtime.rs"),
       "panic message should point to user/test code, not runtime internals; got {message}"

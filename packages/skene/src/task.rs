@@ -17,7 +17,7 @@ use crate::driver;
 ///
 /// The executor owns the future once it is handed over, so there is nothing left to drop from
 /// the outside; a flag checked before each poll is what stops the work instead. It is checked
-/// *before* delegating, so once the scope is disposed no more of the caller's code runs — the
+/// *before* delegating, so once the scope is disposed no more of the caller's code runs—the
 /// task cannot wake up and write into a torn-down tree.
 struct UntilDisposed {
   future: Pin<Box<dyn Future<Output = ()>>>,
@@ -41,8 +41,8 @@ impl Future for UntilDisposed {
 
 /// Runs `future` as a task, until it finishes or the current [`Scope`] is disposed.
 ///
-/// Scope-bound on purpose: a task started while building a view ends with that view — or with
-/// any ancestor of it — rather than waking later to write into a tree that is gone.
+/// Scope-bound on purpose: a task started while building a view ends with that view—or with
+/// any ancestor of it—rather than waking later to write into a tree that is gone.
 ///
 /// The future runs on the target's platform executor: on the web that is the event loop, so it
 /// resumes on the UI thread and may touch signals and views directly. Cancellation takes effect

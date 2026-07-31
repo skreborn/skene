@@ -78,6 +78,7 @@ impl<T> TrackedRefCell<T> {
       .inner
       .try_borrow()
       .unwrap_or_else(|_| self.panic_conflict(caller));
+
     let shared = self.shared_borrows.get();
     if shared == 0 && !self.has_mut_borrow.get() {
       self.holder.set(Some(caller));
@@ -92,6 +93,7 @@ impl<T> TrackedRefCell<T> {
       .inner
       .try_borrow_mut()
       .unwrap_or_else(|_| self.panic_conflict(caller));
+
     if self.shared_borrows.get() == 0 && !self.has_mut_borrow.get() {
       self.holder.set(Some(caller));
     }
@@ -512,6 +514,7 @@ impl SignalState {
         subscribers,
       },
     );
+
     id
   }
 
@@ -523,6 +526,7 @@ impl SignalState {
           .as_ref()
           .downcast_ref::<Mutex<T>>()
           .expect("to downcast signal type");
+
         v.lock().clone()
       }
       SignalValue::Local(v) => {
@@ -530,6 +534,7 @@ impl SignalState {
           .as_ref()
           .downcast_ref::<TrackedRefCell<T>>()
           .expect("to downcast signal type");
+
         #[cfg(debug_assertions)]
         {
           v.borrow_at(Location::caller()).clone()
@@ -556,6 +561,7 @@ impl SignalState {
           .as_ref()
           .downcast_ref::<Mutex<T>>()
           .expect("to downcast signal type");
+
         f(&v.lock())
       }
       SignalValue::Local(v) => {
@@ -563,6 +569,7 @@ impl SignalState {
           .as_ref()
           .downcast_ref::<TrackedRefCell<T>>()
           .expect("to downcast signal type");
+
         #[cfg(debug_assertions)]
         {
           f(&v.borrow_at(Location::caller()))
@@ -637,7 +644,7 @@ impl SignalState {
 
   /// Warns once when a `Sync` signal with subscribers runs effects but no UI thread was ever
   /// designated. Without one, an off-thread write routes its effects to the writer's own
-  /// runtime and they never reach the UI thread — a silent loss this at least makes loud.
+  /// runtime and they never reach the UI thread—a silent loss this at least makes loud.
   fn warn_if_undesignated() {
     if Runtime::ui_thread_designated() {
       return;
@@ -648,7 +655,7 @@ impl SignalState {
     WARNED.call_once(|| {
       eprintln!(
         "skene-reactive: a Sync signal has subscribed effects but Runtime::init_on_ui_thread() \
-         was never called — an off-thread write's effects are silently dropped. Call \
+         was never called—an off-thread write's effects are silently dropped. Call \
          init_on_ui_thread() during setup."
       );
     });

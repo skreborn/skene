@@ -2,7 +2,7 @@
 //!
 //! The app's `wasm32-wasip2` build is a plain command: given a path argument, it writes
 //! the rendered page to stdout. [`Runner`] wraps a wasm runtime around that contract so a
-//! server renders routes with a function call — no protocol, no bindings, and the same
+//! server renders routes with a function call—no protocol, no bindings, and the same
 //! artifact still works standalone (`wasmtime app.wasm /path`).
 //!
 //! This is a *library* a user's server embeds; skene ships no server. It is host-only:
@@ -59,6 +59,7 @@ impl Runner {
     let engine = Engine::default();
     let component = Component::from_file(&engine, path.as_ref())
       .with_context(|| format!("load component {}", path.as_ref().display()))?;
+
     let mut linker = Linker::new(&engine);
 
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker).context("link WASI")?;
@@ -82,10 +83,12 @@ impl Runner {
       .inherit_stderr()
       .args(&["app", route_path])
       .build();
+
     let host = Host {
       ctx,
       table: wasmtime::component::ResourceTable::new(),
     };
+
     let mut store = Store::new(&self.engine, host);
     let command = wasmtime_wasi::p2::bindings::sync::Command::instantiate(
       &mut store,

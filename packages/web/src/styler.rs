@@ -1,6 +1,6 @@
 //! The batched styling helper for web views.
 //!
-//! A web view — built-in or library-authored — folds its static properties into one
+//! A web view—built-in or library-authored—folds its static properties into one
 //! content-addressed class ([`set_style`](super::set_style)) and wires each reactive
 //! property to a single-property inline override ([`override_style`](super::override_style))
 //! that wins over the class on change. [`Styler`] drives that split so a raw web view gets

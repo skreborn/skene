@@ -3,7 +3,7 @@
 //! A low-level custom view builds [`Declarations`] and applies them with
 //! [`set_style`](super::set_style), or drives the batched path
 //! through [`Styler`](super::Styler). A declaration's value is CSS text the caller
-//! renders — `"8px"`, `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"` — so the
+//! renders—`"8px"`, `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`—so the
 //! full open-ended CSS value space is reachable and nothing is special-cased.
 //!
 //! Declarations are keyed by property and sorted, so a set is deterministic and

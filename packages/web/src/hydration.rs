@@ -11,7 +11,7 @@ pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
 /// page assembly and the client's `hydrate_page`.
 pub const STATE_SCRIPT_ID: &str = "skene-state";
 
-/// Encodes each resource's settled state, in creation order — `null` for one that did not
+/// Encodes each resource's settled state, in creation order—`null` for one that did not
 /// settle.
 #[cfg(target_os = "wasi")]
 pub(crate) fn encode_state(values: &[Option<String>]) -> String {

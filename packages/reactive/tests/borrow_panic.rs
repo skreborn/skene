@@ -23,10 +23,12 @@ fn borrow_conflict_reports_locations() {
   else {
     panic!("unexpected panic payload type: {:?}", panic);
   };
+
   assert!(
     msg.contains("signal value already borrowed"),
     "panic message missing base text: {msg}"
   );
+
   assert!(
     msg.contains("attempted at"),
     "panic message missing attempt location: {msg}"

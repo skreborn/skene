@@ -79,6 +79,7 @@ impl Id {
         .children
         .get_or_insert_default()
         .insert(*self);
+
       entities.entry(*self).or_default().parent = Some(scope);
     });
   }
@@ -298,6 +299,7 @@ mod tests {
           .get(&signal_id)
           .is_some_and(|entity| entity.signal.is_some())
       );
+
       assert_eq!(
         runtime
           .entities
@@ -307,6 +309,7 @@ mod tests {
           .count(),
         1
       );
+
       assert!(
         runtime
           .entities
@@ -334,6 +337,7 @@ mod tests {
           .and_then(|entity| entity.signal.as_ref())
           .is_none()
       );
+
       assert!(
         runtime
           .entities
@@ -341,6 +345,7 @@ mod tests {
           .values()
           .all(|entity| entity.effect.is_none())
       );
+
       assert!(
         runtime
           .entities
@@ -392,6 +397,7 @@ mod tests {
         .get(&parent.0)
         .and_then(|entity| entity.children.as_ref())
         .expect("parent should have children");
+
       assert!(parent_children.contains(&child.0));
     });
   }
@@ -452,6 +458,7 @@ mod tests {
         .get(&new_parent.0)
         .and_then(|entity| entity.children.as_ref())
         .expect("new parent should have children");
+
       assert!(new_children.contains(&child.0));
     });
   }

@@ -50,7 +50,7 @@ impl<K> Default for Scratch<K> {
 ///
 /// Only `items` is tracked: it alone decides when the list is diffed again. `build` runs
 /// untracked, so an item that reads a signal while building neither re-runs this diff nor
-/// rebuilds itself — express an item's own reactivity with a `derive_` property or a nested
+/// rebuilds itself—express an item's own reactivity with a `derive_` property or a nested
 /// [`DynamicView`], which set up their own effects.
 pub fn reconcile<T, I, K>(
   parent: NodeId,
@@ -95,7 +95,7 @@ pub fn reconcile<T, I, K>(
         let scope = parent_scope.create_child();
         // Untracked: an item's build is one-shot, so a signal it happens to read must not
         // subscribe *this* effect and re-run the whole list diff. Reactivity inside an item
-        // is its own — a `derive_` property or a nested `DynamicView` — and those set up
+        // is its own—a `derive_` property or a nested `DynamicView`—and those set up
         // their own effects, which track normally.
         let node = scope.enter(|| Effect::untrack(|| build(item)));
 

@@ -2,17 +2,17 @@
 //!
 //! One family, two leaves selected by target: the browser (`csr`,
 //! `target_os = "unknown"`) realizes against a live DOM, and the server renderer (`ssr`,
-//! `target_os = "wasi"`) against a string tree — both emitting the same web semantics, so
+//! `target_os = "wasi"`) against a string tree—both emitting the same web semantics, so
 //! a node styled the same way gets the same content-addressed class on either leaf.
 //!
 //! The crate exposes three surfaces:
 //!
-//! - **The typed vocabulary** the built-in views realize through — [`create_box`], [`update_box`],
-//!   [`create_run`], [`update_run`], [`set_text`], [`handle_click`], the tree mutations — plus the
+//! - **The typed vocabulary** the built-in views realize through—[`create_box`], [`update_box`],
+//!   [`create_run`], [`update_run`], [`set_text`], [`handle_click`], the tree mutations—plus the
 //!   async and hydration seams ([`drive`], [`is_server`], [`adopt_next`], [`register_source`]).
 //! - **The web escape hatch** for a view written directly against the web: [`create_element`],
 //!   [`set_attribute`], [`set_style`]/[`override_style`] with raw [`Declarations`], and on the
-//!   browser leaf the raw `element`/`document` handles — which do not exist on the server leaf, so
+//!   browser leaf the raw `element`/`document` handles—which do not exist on the server leaf, so
 //!   DOM-reaching code fails to compile there.
 //! - **The entries**: the browser's `launch`/`hydrate_page`, the server's raw
 //!   `render_to_string`/`render_to_stream`.
@@ -35,7 +35,7 @@ pub use hydration::{HydrationSource, STATE_SCRIPT_ID};
 #[cfg(target_arch = "wasm32")]
 pub use styler::Styler;
 
-/// The reset stylesheet every web leaf applies — injected into a `<style>` by the
+/// The reset stylesheet every web leaf applies—injected into a `<style>` by the
 /// browser, serialized into the document by a server.
 #[cfg(target_arch = "wasm32")]
 const RESET_CSS: &str = include_str!("reset.css");
@@ -47,8 +47,8 @@ mod ssr;
 
 // The active leaf's surface. Both leaves expose the same shared vocabulary and seams;
 // they differ at the edges. The browser leaf adds the raw-handle escape hatch
-// (`element`/`document`) and its entry points — `element` is browser-only, so a view
-// reaching for it will not compile for the server — while the server leaf omits those and
+// (`element`/`document`) and its entry points—`element` is browser-only, so a view
+// reaching for it will not compile for the server—while the server leaf omits those and
 // exposes `render_to_string`/`render_to_stream` instead. `uninstall` is the browser
 // leaf's test teardown.
 #[cfg(target_arch = "wasm32")]
@@ -119,8 +119,8 @@ pub use self::ssr::{
   tree::{attach, create_group, destroy, detach},
 };
 
-/// Realizes a box: the element for its role, with its full static style — base
-/// properties, conditional variants, transitions and animations — interned as one shared
+/// Realizes a box: the element for its role, with its full static style—base
+/// properties, conditional variants, transitions and animations—interned as one shared
 /// class.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
@@ -155,7 +155,7 @@ pub fn place_in_stack(node: NodeId) {
 }
 
 /// Realizes a text run: an `<a>` when linked, else a `<span>`, with its full static
-/// style interned as a shared class — or classless when it is entirely unstyled.
+/// style interned as a shared class—or classless when it is entirely unstyled.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_run(props: &RunProps) -> NodeId {
@@ -186,7 +186,7 @@ pub fn update_run(node: NodeId, prop: &RunProp) {
 }
 
 /// Realizes a single-line text input, with its full static style interned as a shared
-/// class — or classless when it is unstyled.
+/// class—or classless when it is unstyled.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_input(props: &InputProps) -> NodeId {

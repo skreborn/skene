@@ -31,6 +31,13 @@ pub trait EffectTrait: Any {
   /// Clears and returns the effect's subscribed signals.
   fn clear_observers(&self) -> HashSet<Id>;
 
+  /// Marks the effect's cached output stale, returning the signal carrying that output so
+  /// the staleness propagates to its subscribers. `None` when there is nothing cached
+  /// downstream, or when the output was already stale.
+  fn mark_stale(&self) -> Option<Id> {
+    None
+  }
+
   /// The effect's scheduling priority.
   fn priority(&self) -> EffectPriority {
     EffectPriority::Normal

@@ -288,6 +288,16 @@ where
     take(&mut *self.observers.borrow_mut())
   }
 
+  fn mark_stale(&self) -> Option<Id> {
+    if self.dirty.get() {
+      return None;
+    }
+
+    self.dirty.set(true);
+
+    self.getter.borrow().as_ref().map(|getter| getter.id)
+  }
+
   fn priority(&self) -> EffectPriority {
     EffectPriority::High
   }

@@ -621,6 +621,10 @@ impl SignalState {
     }
 
     RUNTIME.with(|r| {
+      // Mark before scheduling, so a read that happens before the effects run (inside a
+      // batch, or mid-flush) pulls a fresh value instead of a stale cache.
+      r.mark_stale(&ids);
+
       for id in &ids {
         r.add_pending_effect(*id);
       }

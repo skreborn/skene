@@ -39,6 +39,15 @@ static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
 /// The callbacks registered to run when one scope is disposed.
 type Cleanups = Vec<Box<dyn FnOnce()>>;
 
+/// Clears the flushing flag when the flush unwinds.
+struct FlushGuard<'a>(&'a Cell<bool>);
+
+impl Drop for FlushGuard<'_> {
+  fn drop(&mut self) {
+    self.0.set(false);
+  }
+}
+
 /// The internal reactive `Runtime` which stores all the reactive system states in a
 /// thread local.
 pub struct Runtime {
@@ -54,6 +63,9 @@ pub struct Runtime {
   pub(crate) batching: Cell<bool>,
   pub(crate) pending_effects: RefCell<SmallVec<[Id; 10]>>,
   pending_effects_set: RefCell<HashSet<Id>>,
+  /// Whether a flush is currently draining; a write during it enqueues instead of
+  /// re-entering the flush.
+  flushing: Cell<bool>,
 }
 
 impl Default for Runtime {
@@ -76,6 +88,7 @@ impl Runtime {
       batching: Cell::new(false),
       pending_effects: RefCell::new(SmallVec::new()),
       pending_effects_set: RefCell::new(HashSet::new()),
+      flushing: Cell::new(false),
     }
   }
 
@@ -194,6 +207,7 @@ impl Runtime {
       runtime.batching.set(false);
       runtime.pending_effects.borrow_mut().clear();
       runtime.pending_effects_set.borrow_mut().clear();
+      runtime.flushing.set(false);
 
       (effects, cleanups)
     });
@@ -224,7 +238,46 @@ impl Runtime {
     }
   }
 
+  /// Marks every stale-able effect among `ids` stale, propagating through each one's
+  /// output signal to its own subscribers — so a read anywhere downstream pulls a fresh
+  /// value before the scheduled re-runs happen.
+  pub(crate) fn mark_stale(&self, ids: &[Id]) {
+    let mut stack: SmallVec<[Id; 8]> = SmallVec::from_slice(ids);
+
+    while let Some(id) = stack.pop() {
+      let Some(effect) = self.get_effect(id)
+      else {
+        continue;
+      };
+
+      let Some(downstream) = effect.mark_stale()
+      else {
+        continue;
+      };
+
+      let subscribers = self
+        .signals
+        .borrow()
+        .get(&downstream)
+        .map(|signal| signal.subscribers.snapshot());
+
+      if let Some(subscribers) = subscribers {
+        stack.extend(subscribers);
+      }
+    }
+  }
+
+  /// Drains the pending effects until none remain. Re-entrant calls return immediately:
+  /// the running flush picks up whatever a mid-flush write enqueued.
   pub(crate) fn run_pending_effects(&self) {
+    if self.flushing.get() {
+      return;
+    }
+
+    self.flushing.set(true);
+
+    let _guard = FlushGuard(&self.flushing);
+
     loop {
       let mut pending_effects = self.pending_effects.take();
 
@@ -257,6 +310,8 @@ impl Runtime {
     let pending_disposals = SYNC_RUNTIME.take_pending_disposals();
 
     RUNTIME.with(|runtime| {
+      runtime.mark_stale(&pending_effects);
+
       for id in pending_effects {
         runtime.add_pending_effect(id);
       }

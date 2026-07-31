@@ -26,11 +26,15 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[doc(hidden)]
     #[cfg_attr(
-      target_arch = "wasm32",
+      all(target_arch = "wasm32", target_os = "unknown"),
       ::skene::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene::wasm_bindgen)
     )]
     pub fn __skene_main() {
+      #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
       ::skene::launch(#name);
+
+      #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+      ::skene::render_main(#name);
     }
   }
   .into()

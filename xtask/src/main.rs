@@ -18,6 +18,8 @@ use clap::{Parser, Subcommand};
 
 const DEMO_CRATE: &str = "counter";
 const WASM_STEM: &str = "counter";
+#[cfg(not(target_arch = "wasm32"))]
+const SERVER_STEM: &str = "counter-server";
 const DEMO_DIR: &str = "examples/counter";
 const DEFAULT_PORT: u16 = 8080;
 
@@ -33,6 +35,8 @@ struct Cli {
 enum Task {
   /// Build the `counter-web` demo to wasm, generate bindings, and serve it.
   Web(WebArgs),
+  /// Statically generate the demo: render each route through the embedded runner.
+  Ssg(SsgArgs),
 }
 
 #[derive(clap::Args)]
@@ -46,6 +50,19 @@ struct WebArgs {
   /// Build and generate bindings without starting the server.
   #[arg(long)]
   no_serve: bool,
+}
+
+#[derive(clap::Args)]
+struct SsgArgs {
+  /// Routes to render.
+  #[arg(long, default_values_t = [String::from("/")])]
+  path: Vec<String>,
+  /// Output directory, relative to the workspace root.
+  #[arg(long, default_value = "examples/counter/ssg")]
+  out: String,
+  /// Build without optimizations instead of `--release`.
+  #[arg(long)]
+  debug: bool,
 }
 
 impl Default for WebArgs {
@@ -64,6 +81,7 @@ fn main() -> ExitCode {
 
   let result = match task {
     Task::Web(args) => web(&args),
+    Task::Ssg(args) => ssg(&args),
   };
 
   match result {
@@ -74,6 +92,59 @@ fn main() -> ExitCode {
       ExitCode::FAILURE
     }
   }
+}
+
+/// Statically generate the demo: build the server component, render each route, write
+/// `<out>/<route>/index.html`.
+#[cfg(target_arch = "wasm32")]
+fn ssg(_args: &SsgArgs) -> Result<(), String> {
+  Err("ssg runs on the host".to_owned())
+}
+
+/// Statically generate the demo: build the server component, render each route, write
+/// `<out>/<route>/index.html`.
+#[cfg(not(target_arch = "wasm32"))]
+fn ssg(args: &SsgArgs) -> Result<(), String> {
+  let root = workspace_root();
+  let profile = if args.debug { "debug" } else { "release" };
+  let mut build = Command::new("cargo");
+
+  build
+    .current_dir(&root)
+    .args(["build", "-p", DEMO_CRATE, "--target", "wasm32-wasip2"]);
+
+  if !args.debug {
+    build.arg("--release");
+  }
+
+  let status = build.status().map_err(|error| error.to_string())?;
+
+  if !status.success() {
+    return Err("building the server component failed".to_owned());
+  }
+
+  let artifact = root
+    .join("target/wasm32-wasip2")
+    .join(profile)
+    .join(format!("{SERVER_STEM}.wasm"));
+  let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
+  let out_root = root.join(&args.out);
+
+  for route in &args.path {
+    let page = runner
+      .render(route)
+      .map_err(|error| format!("render {route}: {error:#}"))?;
+    let directory = out_root.join(route.trim_start_matches('/'));
+
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+
+    let file = directory.join("index.html");
+
+    fs::write(&file, page).map_err(|error| error.to_string())?;
+    println!("rendered {route} -> {}", file.display());
+  }
+
+  Ok(())
 }
 
 /// Build the demo to wasm, generate bindings, and serve it unless `--no-serve`.

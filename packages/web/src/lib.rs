@@ -62,6 +62,7 @@ pub use self::csr::uninstall;
 pub use self::csr::{
   adopt_next,
   create_element,
+  current_path,
   document,
   drive,
   element,
@@ -78,7 +79,9 @@ pub use self::csr::{
   is_server,
   launch,
   mount,
+  on_pop,
   override_style,
+  push_path,
   register_source,
   set_attribute,
   set_input_value,
@@ -92,6 +95,7 @@ pub(crate) use self::ssr::assign_class;
 pub use self::ssr::{
   adopt_next,
   create_element,
+  current_path,
   drive,
   handle_blur,
   handle_click,
@@ -108,6 +112,7 @@ pub use self::ssr::{
   render_to_string,
   set_attribute,
   set_input_value,
+  set_request_path,
   set_style,
   set_text,
   sleep,

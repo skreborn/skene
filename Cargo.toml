@@ -17,6 +17,8 @@ skene = { path = "packages/skene", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
+skene-router = { path = "packages/router", version = "0.1.0" }
+skene-runner = { path = "packages/runner", version = "0.1.0" }
 skene-web = { path = "packages/web", version = "0.1.0" }
 strum = { version = "0.28", features = ["derive"] }
 syn = { version = "2", features = ["full"] }

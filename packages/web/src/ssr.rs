@@ -343,6 +343,8 @@ impl Node {
 
 thread_local! {
   static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+  /// The path being rendered, as supplied by the runner; `/` when none was.
+  static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// Each critical resource's serializer, in creation order; drained once the render settles.
   static SOURCES: RefCell<Vec<crate::HydrationSource>> = const { RefCell::new(Vec::new()) };
   /// Each deferred boundary's node, mapped to a probe for whether its work has settled; consulted
@@ -365,6 +367,17 @@ fn boundary_pending(node: NodeId) -> bool {
       .get(&node)
       .is_some_and(|settled| !settled())
   })
+}
+
+/// Sets the path the coming render is for, read back by [`current_path`].
+pub fn set_request_path(path: &str) {
+  REQUEST_PATH.with(|current| path.clone_into(&mut current.borrow_mut()));
+}
+
+/// The path being rendered, as supplied through [`set_request_path`].
+#[must_use]
+pub fn current_path() -> String {
+  REQUEST_PATH.with(|current| current.borrow().clone())
 }
 
 /// The server never adopts: it produces the state the client adopts.

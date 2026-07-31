@@ -21,12 +21,15 @@ mod reconcile;
 #[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
+mod routing;
+#[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
 
 pub use skene_core::{self as core, *};
 pub use skene_macros::main;
 pub use skene_reactive::{self as reactive};
+pub use skene_router as router;
 // The active driver, reached by name from the shared realization.
 #[cfg(target_arch = "wasm32")]
 pub(crate) use skene_web as driver;
@@ -49,6 +52,8 @@ pub use crate::empty::empty;
 pub use crate::reconcile::{DynamicView, dynamic, reconcile};
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
+#[cfg(target_arch = "wasm32")]
+pub use crate::routing::install_router;
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
@@ -191,6 +196,37 @@ where
     body,
     state,
   }
+}
+
+/// Renders the application for the given request path: the router (when installed via
+/// [`install_router`]) resolves against `path`, and the render proceeds as
+/// [`render_to_string`].
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_to_string_at<V, F>(path: &str, app: F) -> Rendered
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  driver::set_request_path(path);
+
+  render_to_string(app)
+}
+
+/// The server entry `#[main]` expands to: renders the path given as the first argument
+/// (default `/`) and writes the complete page to stdout.
+///
+/// This makes the app's server build a plain command — `wasmtime app.wasm /some/path`
+/// prints the document — which is exactly the interface the runner embeds.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_main<V, F>(app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  let path = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
+  let rendered = render_to_string_at(&path, app);
+
+  print!("{}", rendered.page());
 }
 
 /// A server render as an ordered sequence of HTML chunks, ready to flush one after another.

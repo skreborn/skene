@@ -1,7 +1,7 @@
 # Roadmap
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 5.**
+Phases are ordered; later phases assume the earlier ones. **Current phase: 6.**
 
 ## Phase 1 — Reactive engine internals ✅
 
@@ -75,17 +75,21 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Remaining:** pointer down/up/move, scroll, change (committed value), `<textarea>`,
   focus management primitives (programmatic focus, tab order), `Role` expansion.
 
-## Phase 5 — Router, runner, SSG
+## Phase 5 — Router, runner, SSG ✅ (core)
 
-- `skene-router`: a typed route as a signal; web csr binds the History API, ssr takes the
-  route as render input, native/tui keep it in memory. Depends on `skene-reactive` only.
-- `skene-runner`: a host-side library embedding wasmtime around the app's `wasm32-wasip2`
-  module—`render(route) -> Rendered`/`Stream` for any server, plus a dev server. The SSR
-  reactor's `register` seam goes public so third-party clients (`wasi:http`) block the
-  render like the built-in `sleep` does.
-- SSG: enumerate the route table, render each route through the runner, write files.
-- The build tool emits the CSR page from the same shell contract SSR uses, so the two
-  cannot drift.
+- **Done.** `skene-router`: a typed `Route` (parse/to_path) in a signal-backed `Router`
+  with a platform sink seam, provided through the reactive `Context`; the umbrella's
+  `install_router` binds it to the browser History API (pushState + popstate) or, on the
+  server leaf, to the requested path. `render_to_string_at(path, app)` renders a route;
+  `#[main]` now also expands to the server entry, making the app's `wasm32-wasip2` build
+  a plain command (`wasmtime app.wasm /path` prints the page). `skene-runner` embeds
+  wasmtime around exactly that contract (`Runner::load` + `render(path)`), host-only, for
+  any server to call. `cargo xtask ssg --path / --path /about` builds the component and
+  writes `<out>/<route>/index.html` through the runner.
+- **Remaining:** route enumeration for SSG (`StaticRoutes::all` surfaced through the
+  artifact); streaming through the runner (`render_to_stream` over incremental stdout);
+  the CSR page emitted from the SSR shell contract (build tool); typed link helpers
+  (an `<a>` that navigates without a reload).
 
 ## Phase 6 — Native driver family
 

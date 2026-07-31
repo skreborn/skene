@@ -8,6 +8,7 @@
 pub(crate) mod tree;
 
 mod events;
+mod history;
 mod logging;
 mod stylesheet;
 mod task;
@@ -23,7 +24,10 @@ use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent};
 
 use self::stylesheet::StyleStore;
-pub use self::task::drive;
+pub use self::{
+  history::{current_path, on_pop, push_path},
+  task::drive,
+};
 // The CSS declaration set is web-family shared; this leaf takes it in `set_style`.
 use crate::Declarations;
 

@@ -1,11 +1,12 @@
 //! A counter demo: one app crate, depending only on `skene`, that runs on any GUI
 //! platform the build targets.
 //!
-//! Gated to the browser platform (the only one with an interactive entry point): building
-//! a view for a target with no platform is a compile error, so an app is built for the
-//! platform(s) it targets.
+//! Gated to `wasm32` (both web leaves): in the browser `#[main]` launches it; on the
+//! server leaf the same entry renders a requested path to stdout. Building a view for a
+//! target with no platform is a compile error, so an app is built for the platform(s) it
+//! targets.
 
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#![cfg(target_arch = "wasm32")]
 
 use skene::prelude::*;
 

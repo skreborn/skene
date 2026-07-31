@@ -7,5 +7,9 @@ publish = false
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 
+# Host-only: ssg embeds the runner; xtask is never itself a wasm build product.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+skene-runner.workspace = true
+
 [lints]
 workspace = true

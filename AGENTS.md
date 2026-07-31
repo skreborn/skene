@@ -2,38 +2,52 @@
 
 ## Hard constraints
 
-- The spine (`skene-reactive` + `skene-core`) stays platform-agnostic: no platform assumptions or
-  nomenclature. It hosts the reactive engine, view spine, generic geometry (over a plain `f32`
-  scalar), and universal values (`Color`, `MouseCursor`, `Axis`, alignment) only.
-- **There are no "backends", and no trait describing one.** A platform is a plain module of
-  free-standing types and functions under `skene-gui`'s `platform/` (`web`, later `android`,
-  `unix`, …), holding its own state privately — the shape `std` uses (`std::sys` behind
-  `std::fs`, extras under `std::os::unix`). Exactly one is compiled, chosen by target-gating.
-  There is no `dyn` dispatch, no downcast, and no runtime swap: every call site already knows,
-  at compile time, which platform it is talking to.
-- Shared code reaches the platform by *name*, not through an abstraction: it calls
-  `platform::tree::attach`, and the target decides what that is. A target with no platform has
-  no realization, so building a view there is a compile error, not a runtime panic.
-- There is no framework-defined `Style`; a platform styles its own way. The framework ships no
-  predefined set of styles, for any view.
-- Built-in views live in the facade (`skene-gui`) as a shared builder API with per-platform,
-  target-gated realization under `platform/<name>/views/`. The API is uniform, so app code is
-  portable; only realization differs. There is no shared "vocabulary" crate. TUI is a parallel
-  facade sharing only the spine and universal values.
-- The canonical building block is a **view** (the `View` trait, `build(self) -> NodeId`); never
-  "widget". A library view is authored the same way as a built-in: a shared builder plus a
-  cfg-gated `build` calling its platform's functions. That is the whole escape hatch — there is
-  no `realize` helper. No framework `cfg` helper, no prescribed module shape.
-- The spine must not reference a platform, and now cannot: it has no notion of one. The facade
-  (`skene-gui`) owns the platforms, target-gates their dependencies, and is the single
-  dependency an app pulls in.
-- The web platform must stay compatible with eventual server-side rendering (content-addressed
-  class interning in the `StyleStore` preserved).
-- Each platform tests itself against its own concrete output (the web platform against a real
-  DOM, via `wasm-bindgen-test`). There is no shared or generic "mock" platform for exercising
-  the built-in views: with per-platform realization and no shared trait, a generic platform has
-  no realization to assert against — it would only test a fiction. What the spine keeps is pure
-  and unit-tested in isolation (`Reorder`), needing no platform at all.
+- Skene is a **client-side** framework. No server-side features, ever: no server
+  functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
+  runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
+- The spine (`skene-reactive` + `skene-core`) stays platform-agnostic: no platform
+  assumptions or nomenclature. Core hosts the reactive engine, the view spine, the
+  **scene**, the style model and interner core, generic geometry (over a plain `f32`
+  scalar), and universal values.
+- The canonical building block is a **view** (the `View` trait); never "widget". Views
+  are realized **once**, against the scene—there is no per-platform `impl View`, no
+  "backend" concept, and no trait describing a platform.
+- A **driver** is a separate crate (`skene-web`, `skene-native`, `skene-tui`) that mounts
+  the scene into its sink and owns the effects binding node `Source`s. Drivers depend on
+  core, never on views or on each other. There is no `dyn` driver, no downcast, and no
+  runtime swap: shared structural algorithms are generic over a driver-ops parameter and
+  monomorphize; every platform-facing call lives inside a driver crate.
+- Driver selection is **exactly one umbrella feature** (`web`, `desktop`, `tui`, …);
+  zero or more than one is a `compile_error!`. Target-gating is the enforcement layer, not
+  the selector: the web csr/ssr leaves stay split on `target_os` (`unknown`/`wasi`), so
+  the server leaf physically cannot touch the DOM.
+- The **style model is data** (`StyleSet`: typed props + open per-family passthrough,
+  media/state variants, transitions, keyframes). Layout vocabulary is taffy's, adopted
+  not invented. On the web a `StyleSet` compiles to real CSS inside one interned class, so
+  SSR/SSG output is responsive, hoverable and animated with **no JS/WASM**. `derive_`
+  closures remain for genuinely dynamic values only.
+- The **interner contract is load-bearing**: content-addressed class names
+  (`skene-{hash:x}`, forward probe on collision), reference-counted, deterministic and
+  identical across csr and ssr—hydration and stylesheet parity depend on it. The pure core
+  lives in `skene-core`; each driver layers only its sink.
+- **Painted** nodes are vello, everywhere interactive: native layers, web `<canvas>` via
+  wgpu. SSR/SSG render them empty; TUI does not realize them. **Embed** nodes are
+  driver-managed—payload in the driver's side table, constructor exposed only by the
+  driver crate (raw DOM element on web csr, real platform controls on native). On
+  platforms with a real view hierarchy the driver realizes the scene into it, so embeds
+  and painted layers interleave in z-order by the platform compositor.
+- View logic is tested **headless against the scene** on the host. Drivers test against
+  their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime; native: its
+  toolkit). There is no mock driver.
+- HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
+  `Resource`, the SSR reactor's public `register`, `Boundary`—so third-party integrations
+  sit on the same footing first-party ones would. (Exception: a native driver owning its
+  event loop may ship a loop-integrated timer.)
+
+> **Transition.** The codebase is mid-migration to this architecture; `packages/gui`
+> still realizes views per platform against the pre-scene model. `DESIGN.md` is the
+> target; `ROADMAP.md` tracks which phase the code is in. New work follows the target
+> unless it is a fix inside not-yet-migrated code.
 
 ## Style and documentation conventions
 
@@ -58,14 +72,13 @@
 
 ## Naming & API conventions
 
-- The spine stays minimal and structural. The built-in views live in the facade (`skene-gui`),
-  realized per backend; users extend by composing built-ins or authoring their own per-backend
-  views.
+- The spine stays minimal and structural. The built-in views live in `skene-views`,
+  realized once against the scene; users extend by composing built-ins, painting a
+  `Painted` node, or authoring a driver-specific `Embed` view.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A backend method that
-  realizes the handler is named the same (e.g. `WebBackend::handle_click`).
-- A test double's method that simulates an external event is named `trigger_<event>` (e.g. a mock
-  backend drives a node's click handlers with `trigger_click`).
+  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
+  function that realizes the handler is named the same.
+- A test double's method that simulates an external event is named `trigger_<event>`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,
   frequently-constructed types like the geometry and value vocabulary. The API is early and
@@ -84,6 +97,6 @@
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different
-  places, shape them so a human can compare them at a glance — same names where they make sense,
+  places, shape them so a human can compare them at a glance—same names where they make sense,
   same order of items, same structure. (This is legibility, not coupling; sharing helpers to cut
   duplication is still encouraged.)

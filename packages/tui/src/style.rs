@@ -1,52 +1,35 @@
-//! Typed properties to terminal layout and paint: the TUI realization of the driver
-//! vocabulary.
+//! Cell styles to terminal layout and paint.
 //!
 //! Layout is taffy with `1.0 = 1 cell`. A style resolves in two steps: the conditional
 //! variants overlay the base against the terminal environment (size, focus), then the
 //! effective style maps to a taffy [`Style`] for layout and to paint attributes for
 //! drawing.
 
-use skene_core::{
-  Axis,
-  BoxStyle,
-  Color,
-  Condition,
-  CrossAxisAlignment,
-  Layout,
-  MainAxisAlignment,
-  RunStyle,
-};
+use skene_core::{Axis, Color, CrossAxisAlignment, Layout, MainAxisAlignment};
 use taffy::{
   prelude::{TaffyAuto, TaffyGridLine, fr, length, repeat},
   style::{AlignItems, Dimension, Display, FlexDirection, GridPlacement, JustifyContent, Style},
 };
 
+use crate::props::{BoxStyle, Condition, RunStyle};
+
 /// The terminal environment conditions resolve against.
 #[derive(Clone, Copy)]
 pub(crate) struct Environment {
   /// The terminal width, in cells.
-  pub(crate) columns: f32,
+  pub(crate) columns: u16,
   /// The terminal height, in cells.
-  pub(crate) rows: f32,
+  pub(crate) rows: u16,
 }
 
 /// Whether `condition` holds in `environment` for a node with the given focus state.
-///
-/// Pointer states never hold (the terminal has no pointer yet); a dark color scheme is
-/// assumed, matching the common terminal.
 fn condition_holds(condition: Condition, environment: Environment, focused: bool) -> bool {
   match condition {
     Condition::MinWidth(value) => environment.columns >= value,
     Condition::MaxWidth(value) => environment.columns <= value,
     Condition::MinHeight(value) => environment.rows >= value,
     Condition::MaxHeight(value) => environment.rows <= value,
-    Condition::DarkMode => true,
-    Condition::Focused | Condition::FocusVisible => focused,
-    Condition::LightMode
-    | Condition::ReducedMotion
-    | Condition::Hovered
-    | Condition::Pressed
-    | Condition::Disabled => false,
+    Condition::Focused => focused,
   }
 }
 
@@ -61,8 +44,6 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.padding = over.padding.or(base.padding);
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
-  base.border_radius = over.border_radius.or(base.border_radius);
-  base.cursor = over.cursor.or(base.cursor);
   base.spacing = over.spacing.or(base.spacing);
   base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
   base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
@@ -108,8 +89,7 @@ pub(crate) fn effective_run_style(
       .all(|condition| condition_holds(*condition, environment, focused))
     {
       effective.color = style.color.or(effective.color);
-      effective.font_size = style.font_size.or(effective.font_size);
-      effective.font_weight = style.font_weight.or(effective.font_weight);
+      effective.bold = style.bold.or(effective.bold);
     }
   }
 
@@ -146,26 +126,26 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
 /// Folds the effective style's sizing into `out`, shared by boxes and inputs.
 pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool) {
   out.size = taffy::geometry::Size {
-    width: style.width.map_or(Dimension::AUTO, length),
-    height: style.height.map_or(Dimension::AUTO, length),
+    width: style.width.map_or(Dimension::AUTO, cells),
+    height: style.height.map_or(Dimension::AUTO, cells),
   };
 
   out.min_size = taffy::geometry::Size {
-    width: style.min_width.map_or(Dimension::AUTO, length),
-    height: style.min_height.map_or(Dimension::AUTO, length),
+    width: style.min_width.map_or(Dimension::AUTO, cells),
+    height: style.min_height.map_or(Dimension::AUTO, cells),
   };
 
   out.max_size = taffy::geometry::Size {
-    width: style.max_width.map_or(Dimension::AUTO, length),
-    height: style.max_height.map_or(Dimension::AUTO, length),
+    width: style.max_width.map_or(Dimension::AUTO, cells),
+    height: style.max_height.map_or(Dimension::AUTO, cells),
   };
 
   if let Some(padding) = style.padding {
     out.padding = taffy::geometry::Rect {
-      left: length(padding.left),
-      right: length(padding.right),
-      top: length(padding.top),
-      bottom: length(padding.bottom),
+      left: length(f32::from(padding.left)),
+      right: length(f32::from(padding.right)),
+      top: length(f32::from(padding.top)),
+      bottom: length(f32::from(padding.bottom)),
     };
   }
 
@@ -180,8 +160,8 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
 
   if let Some(spacing) = style.spacing {
     out.gap = taffy::geometry::Size {
-      width: length(spacing),
-      height: length(spacing),
+      width: length(f32::from(spacing)),
+      height: length(f32::from(spacing)),
     };
   }
 
@@ -215,6 +195,12 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
   }
 }
 
+/// A cell length as a taffy dimension.
+#[inline(always)]
+fn cells(value: u16) -> Dimension {
+  length(f32::from(value))
+}
+
 /// A [`Color`]'s terminal RGB, or `None` when fully transparent.
 pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
   let [red, green, blue, alpha] = color.to_rgba();
@@ -229,9 +215,4 @@ pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
     (green.clamp(0.0, 1.0) * 255.0) as u8,
     (blue.clamp(0.0, 1.0) * 255.0) as u8,
   ))
-}
-
-/// Whether a font weight paints bold.
-pub(crate) fn is_bold(weight: Option<f32>) -> bool {
-  weight.is_some_and(|weight| weight >= 600.0)
 }

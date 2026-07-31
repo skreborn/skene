@@ -1,9 +1,8 @@
-//! Keyed reconciliation, shared across every platform.
+//! Keyed reconciliation, shared by every facade.
 //!
-//! The tree mutations resolve through the active driver, which the
-//! target selects at compile time, so this is written once and monomorphizes onto whichever
-//! platform the build targets. The minimal-reorder decision itself is platform-agnostic and
-//! lives in the spine ([`Reorder`]).
+//! The tree mutations resolve through the facade's [`TreeOps`] parameter, so this is
+//! written once and monomorphizes onto whichever driver the facade names. The minimal
+//! reorder decision itself lives in [`Reorder`].
 
 use std::{
   cell::{Cell, RefCell},
@@ -12,10 +11,9 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_core::{NodeId, Reorder, View};
 use skene_reactive::{Effect, Scope};
 
-use crate::driver as tree;
+use crate::{AnyView, NodeId, Reorder, View, tree::TreeOps};
 
 struct Mounted {
   node: NodeId,
@@ -52,7 +50,7 @@ impl<K> Default for Scratch<K> {
 /// untracked, so an item that reads a signal while building neither re-runs this diff nor
 /// rebuilds itself—express an item's own reactivity with a `derive_` property or a nested
 /// [`DynamicView`], which set up their own effects.
-pub fn reconcile<T, I, K>(
+pub fn reconcile<Ops: TreeOps, T, I, K>(
   parent: NodeId,
   items: impl Fn() -> I + 'static,
   key: impl Fn(&T) -> K + 'static,
@@ -106,8 +104,8 @@ pub fn reconcile<T, I, K>(
     }
 
     for (_, (_, entry)) in old.drain() {
-      tree::detach(parent, entry.node);
-      tree::destroy(entry.node);
+      Ops::default().detach(parent, entry.node);
+      Ops::default().destroy(entry.node);
 
       entry.scope.dispose();
     }
@@ -119,7 +117,7 @@ pub fn reconcile<T, I, K>(
       let before = mounted.get(i + 1).map(|(_, entry)| entry.node);
 
       if stable.next_if_eq(&i).is_none() {
-        tree::attach(parent, mounted[i].1.node, before);
+        Ops::default().attach(parent, mounted[i].1.node, before);
       }
     }
 
@@ -134,8 +132,8 @@ pub fn reconcile<T, I, K>(
 ///
 /// `build` reruns whenever its reactive dependencies change; the previous subtree is
 /// removed, destroyed, and its scope disposed before the new one is inserted.
-pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  let container = tree::create_group();
+pub fn dynamic<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  let container = Ops::default().create_group();
 
   let parent_scope = Scope::current();
   let current = Rc::new(Cell::new(None::<(NodeId, Scope)>));
@@ -145,11 +143,11 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
     let new_node = child_scope.enter(&build);
     let previous = current.take();
 
-    tree::attach(container, new_node, None);
+    Ops::default().attach(container, new_node, None);
 
     if let Some((old_node, _)) = &previous {
-      tree::detach(container, *old_node);
-      tree::destroy(*old_node);
+      Ops::default().detach(container, *old_node);
+      Ops::default().destroy(*old_node);
     }
 
     if let Some((_, old_scope)) = previous {
@@ -162,24 +160,38 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
   container
 }
 
-/// A reactive subtree.
+/// A reactive subtree, generic over the facade's [`TreeOps`].
+///
+/// A facade aliases this with its own ops type, so app code sees a plain `DynamicView`.
 #[must_use]
-pub struct DynamicView {
+pub struct DynamicView<Ops> {
   build: Box<dyn Fn() -> NodeId>,
+  ops: std::marker::PhantomData<Ops>,
 }
 
-impl DynamicView {
+impl<Ops> DynamicView<Ops> {
   /// Creates a reactive subtree.
   #[inline(always)]
   pub fn new<V: View>(build: impl Fn() -> V + 'static) -> Self {
     Self {
       build: Box::new(move || build().build()),
+      ops: std::marker::PhantomData,
     }
   }
 }
 
-impl View for DynamicView {
+impl<Ops: TreeOps> View for DynamicView<Ops> {
   fn build(self) -> NodeId {
-    dynamic(self.build)
+    dynamic::<Ops>(self.build)
   }
+}
+
+/// A view that renders nothing.
+///
+/// A no-op placeholder—for example, the branch a view returns for a driver it has no
+/// implementation for.
+#[inline(always)]
+#[must_use]
+pub fn empty<Ops: TreeOps>() -> impl View {
+  AnyView::new(|| Ops::default().create_group())
 }

@@ -10,7 +10,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene::{
+use skene_gui::{
   AnyView,
   Border,
   Color,

@@ -6,7 +6,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene::{
+use skene_gui::{
   Container,
   DynamicView,
   HasChildren,

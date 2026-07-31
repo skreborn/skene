@@ -9,19 +9,22 @@
   assumptions or nomenclature. Core hosts the reactive engine, the view spine, the typed
   property vocabulary (`BoxProps`, `RunProps`, later `StyleSet`), `Boundary`, generic
   geometry (over a plain `f32` scalar), and universal values.
-- The canonical building block is a **view** (the `View` trait); never "widget". Views
-  are realized **once**, in the umbrella, against the typed driver vocabulary—there is no
-  per-platform `impl View`, no "backend" concept, and no trait describing a platform.
-- A **driver** is a separate crate (`skene-web`, `skene-native`, `skene-tui`) exporting
-  the same typed vocabulary (`create_box`, `update_box`, `create_run`, tree mutations,
-  the async/hydration seams) mapped to its own sink. Drivers depend on core, never on
-  each other. The umbrella is the only crate that names a driver (`driver::` resolved at
-  compile time); there is no `dyn` driver, no downcast, and no runtime swap.
-- Driver selection: by target while web is the only driver; **exactly one umbrella
-  feature** once same-triple drivers exist (desktop/tui), with more than one a
-  `compile_error!`. Target-gating is the enforcement layer: the web csr/ssr leaves stay
-  split on `target_os` (`unknown`/`wasi`), so the server leaf physically cannot touch the
-  DOM.
+- The canonical building block is a **view** (the `View` trait); never "widget". Two
+  equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
+  terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
+  the blessed one. Within a facade, views are realized **once** against its typed driver
+  vocabulary—no per-platform `impl View`, no "backend" concept.
+- A GUI **driver** is a separate crate (`skene-web`, later `skene-native`) exporting the
+  same typed vocabulary mapped to its own sink; `skene-tui` carries its driver
+  internally. Drivers depend on core, never on each other; a facade is the only place
+  that names its drivers. The structural machinery (`Children`, `reconcile`, `dynamic`)
+  lives in core, generic over a zero-sized `TreeOps` parameter each facade aliases
+  away—monomorphized, so there is no `dyn` driver, no downcast, and no runtime swap.
+- Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
+  `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
+  native driver, later). No feature flags. Target-gating is the enforcement layer: the
+  web csr/ssr leaves stay split on `target_os` (`unknown`/`wasi`), so the server leaf
+  physically cannot touch the DOM.
 - The **style model is data** (`StyleSet`: typed props + open per-family passthrough,
   media/state variants, transitions, keyframes). Layout vocabulary is taffy's, adopted
   not invented. On the web a `StyleSet` compiles to real CSS inside one interned class, so

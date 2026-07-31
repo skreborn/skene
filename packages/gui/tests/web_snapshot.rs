@@ -4,7 +4,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene::{
+use skene_gui::{
   Border,
   Container,
   HasChildren,
@@ -34,7 +34,7 @@ use skene::{
 /// A tree exercising every built-in view and property path: static and derived box
 /// properties, roles, stack placement, text styling and links, theme cascade, span groups,
 /// inline views, and the empty view.
-fn representative_tree() -> impl skene::IntoView {
+fn representative_tree() -> impl skene_gui::IntoView {
   TextTheme::new(
     Container::column()
       .set_main_axis_alignment(MainAxisAlignment::Center)

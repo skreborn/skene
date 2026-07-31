@@ -3,7 +3,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene::{
+use skene_gui::{
   Container,
   HasChildren,
   Text,

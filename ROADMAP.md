@@ -111,10 +111,24 @@ The largest phase by far; do not start before phase 4 proves the event model.
 - A loop-integrated timer (the one sanctioned exception to timers-are-userland).
 - Per-OS glue in leaves: IME, clipboard, menus, window management.
 
-## Phase 7—TUI driver
+## Phase 7—TUI facade ✅ (core)
 
-- taffy with `1.0 = 1 cell`; buffer renderer; no Painted/Embed realization.
-- Deliberately minimal—its role is to prove the vocabulary is platform-neutral.
+- **Done, twice-shaped.** First landed as a driver of the shared GUI vocabulary; then
+  reshaped into a **first-class, equal facade**: `skene-tui` owns its vocabulary
+  outright—`u16` cells, `bool` bold, one-cell colored borders, terminal conditions
+  (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`)—so nothing a
+  terminal cannot render exists to call. Its `Container`/`Text`/`Input` builders and
+  realization live in-crate; layout is taffy at `1.0 = 1 cell`; frames paint via
+  crossterm (truecolor, bold, reverse, `Tab`/`Enter` focus, input editing, `Ctrl-C`) or
+  headlessly through `render_to_text`, with `trigger_key`/`focused_node` test seams.
+- Alongside it: the umbrella returned to its `skene-gui` name (GUI is not the blessed
+  way), its `tui` feature is gone (selection is by facade dependency), and the
+  structural machinery (`Children`/`reconcile`/`dynamic`/`DynamicView`/`empty`) hoisted
+  into core as zero-cost `TreeOps` generics both facades alias. The reactive UI-thread
+  designation became resettable under the `test` feature for multi-threaded host
+  harnesses.
+- **Remaining:** text wrapping; mouse events; scroll; cursor positioning in inputs
+  (edits append/pop only); a diffed redraw instead of full frames.
 
 ## Phase 8—CLI
 

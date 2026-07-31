@@ -14,6 +14,7 @@ crossterm = "0.29"
 rustc-hash.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
+skene-router.workspace = true
 taffy = "0.9"
 
 [dev-dependencies]

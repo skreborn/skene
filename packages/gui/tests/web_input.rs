@@ -3,7 +3,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene::{
+use skene_gui::{
   Container,
   HasChildren,
   Input,
@@ -44,7 +44,7 @@ fn placeholder_and_value_serialize_as_attributes() {
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
     Input::new()
-      .set_style(BoxStyle::new().set_padding(skene::Inset::all(8.)))
+      .set_style(BoxStyle::new().set_padding(skene_gui::Inset::all(8.)))
       .set_when(Condition::Focused, BoxStyle::new().set_border_radius(4.))
   });
 

@@ -2,7 +2,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene::{
+use skene_gui::{
   DynamicView,
   Text,
   View,
@@ -34,7 +34,7 @@ impl Route for Page {
   }
 }
 
-fn app() -> impl skene::IntoView {
+fn app() -> impl skene_gui::IntoView {
   let router = install_router(Page::Home);
 
   DynamicView::new(move || match router.route() {

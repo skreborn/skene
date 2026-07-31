@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use skene::{
+use skene_gui::{
   Color,
   Container,
   Deferred,

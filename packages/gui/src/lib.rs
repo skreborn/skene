@@ -8,19 +8,15 @@
 
 pub mod prelude;
 
-mod children;
 mod container;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
-mod empty;
 mod input;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 mod realize;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
-mod reconcile;
 #[cfg(target_arch = "wasm32")]
 mod resource;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 mod routing;
 #[cfg(target_arch = "wasm32")]
 mod task;
@@ -30,15 +26,7 @@ pub use skene_core::{self as core, *};
 pub use skene_macros::main;
 pub use skene_reactive::{self as reactive};
 pub use skene_router as router;
-// The active driver, reached by name from the shared realization: the web driver on a
-// wasm target, the terminal driver on a native target with the `tui` feature.
-#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
-pub(crate) use skene_tui as driver;
-/// The terminal driver, for a library author writing a view directly against it.
-///
-/// Deliberately kept out of [`prelude`] so portable app code never names a driver.
-#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
-pub use skene_tui as tui;
+// The active driver, reached by name from the shared realization.
 #[cfg(target_arch = "wasm32")]
 pub(crate) use skene_web as driver;
 /// The web driver, for a library author writing a view directly against the browser DOM.
@@ -54,22 +42,84 @@ pub use wasm_bindgen;
 
 #[cfg(target_arch = "wasm32")]
 pub use crate::deferred::Deferred;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
-pub use crate::empty::empty;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
-pub use crate::reconcile::{DynamicView, dynamic, reconcile};
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 pub use crate::routing::install_router;
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
-  children::{Children, HasChildren},
   container::Container,
   input::Input,
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
+
+/// The active driver's tree mutations, instantiating the spine's shared structural
+/// machinery. App code sees it only through the [`Children`] and [`DynamicView`]
+/// aliases.
+#[derive(Clone, Copy, Default)]
+pub struct DriverOps;
+
+#[cfg(target_arch = "wasm32")]
+impl skene_core::TreeOps for DriverOps {
+  #[inline(always)]
+  fn create_group(self) -> NodeId {
+    driver::create_group()
+  }
+
+  #[inline(always)]
+  fn attach(self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    driver::attach(parent, child, before);
+  }
+
+  #[inline(always)]
+  fn detach(self, parent: NodeId, child: NodeId) {
+    driver::detach(parent, child);
+  }
+
+  #[inline(always)]
+  fn destroy(self, node: NodeId) {
+    driver::destroy(node);
+  }
+}
+
+/// A container's children.
+pub type Children = skene_core::Children<DriverOps>;
+/// A reactive subtree.
+#[cfg(target_arch = "wasm32")]
+pub type DynamicView = skene_core::DynamicView<DriverOps>;
+
+/// Reactively reconciles a parent's children from a keyed collection; see
+/// [`skene_core::reconcile`].
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn reconcile<T, I, K>(
+  parent: NodeId,
+  items: impl Fn() -> I + 'static,
+  key: impl Fn(&T) -> K + 'static,
+  build: impl Fn(T) -> NodeId + 'static,
+) where
+  I: IntoIterator<Item = T>,
+  K: Eq + std::hash::Hash + 'static,
+{
+  skene_core::reconcile::<DriverOps, T, I, K>(parent, items, key, build);
+}
+
+/// Anchors a reactive subtree under a fresh group node, returning that node; see
+/// [`skene_core::dynamic`].
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::dynamic::<DriverOps>(build)
+}
+
+/// A view that renders nothing.
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+#[must_use]
+pub fn empty() -> impl View {
+  skene_core::empty::<DriverOps>()
+}
 
 /// Spacing on the four edges of a box, in logical pixels.
 pub type Inset = skene_core::Inset<f32>;

@@ -29,19 +29,41 @@ skene-core       the spine: view spine, the typed property vocabulary (BoxProps,
       │                   parley text, AccessKit; per-OS leaves
       ├── skene-tui       terminal driver: taffy layout in cells, buffer renderer
       │
-skene            the umbrella and the single dependency an app pulls in: the built-in
-                 views realized ONCE against the active driver, the composition helpers
-                 (Children, reconcile, dynamic), driver selection, prelude, launch,
-                 #[main], spawn, Resource, Deferred, client_only
+skene-gui        the GUI facade and a GUI app's single dependency: the built-in views
+                 realized ONCE against the active pixel driver (web today, native
+                 later), prelude, launch, #[main], spawn, Resource, Deferred,
+                 client_only
 
-skene-router     routing over signals; a small per-driver URL binding seam
+skene-tui        the terminal facade and a terminal app's single dependency, EQUAL in
+                 standing to skene-gui: its own views typed to the medium (u16 cells,
+                 bool bold, one-cell borders—no radius, font size, or transition
+                 exists to call), its own driver internals, launch
+
+skene-router     routing over signals; a small per-facade URL binding seam
 skene-runner     host-side library embedding a wasm runtime; exposes the app's render
                  functions to a user's server, and powers SSG
-skene-macros     the #[skene::main] entry proc-macro
+skene-macros     the #[skene_gui::main] entry proc-macro
 ```
 
-Dependency arrows only point down; drivers depend on core (never on each other); the
-umbrella depends on everything and is the **only** crate that names a driver.
+**Two facades, one spine.** GUI and TUI are different media, not one medium with
+fallbacks: a GUI app targets any combination of web and native and genuinely converges;
+a terminal app is written for the terminal on purpose, and never cross-compiles into the
+other family. Each facade therefore owns its builder vocabulary outright, typed to
+exactly its capabilities—while everything beneath (the reactive engine, the view
+trait, `Color`, `Inset<T>`, the alignments, `KeyEvent`, and the structural machinery) is
+written once in the spine.
+
+Dependency arrows only point down; drivers depend on core (never on each other); each
+facade names only its own drivers.
+
+**The structural machinery is shared through `TreeOps`.** `Children`, `reconcile`,
+`dynamic`, `DynamicView` and `empty` live in core, generic over a zero-sized driver-ops
+parameter each facade implements (`DriverOps`, `TuiOps`) and hides behind plain type
+aliases—so app code sees `Children`, not `Children<Ops>`. The parameter monomorphizes:
+every call statically resolves and inlines into the one compiled driver, at zero runtime
+cost (a binary holds exactly one facade, so exactly one instantiation ever exists). If
+externally-implementable items land in Rust, the parameter can disappear without
+touching app code, since only the aliases are public.
 
 ## The typed driver vocabulary
 
@@ -200,30 +222,28 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 
 ### TUI (`skene-tui`)
 
-Layout, no painting: taffy with `1.0 = 1 cell`, painted into a cell buffer—to the
-terminal through `launch` (crossterm: raw mode, truecolor, keyboard focus with
-`Tab`/`Enter`), or to plain text through `render_to_text` for headless tests. Conditional
-variants resolve against the terminal size and focus; painted/embedded content has no
-realization.
+A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
+and `Input` are typed to the terminal: lengths are `u16` cells, text is a color plus a
+`bool` bold, a border is one cell of box-drawing characters in a color, and conditions
+are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`).
+Nothing the medium lacks exists to call—no radius, no cursor, no font size, no
+transition—so a terminal app is first-class at compile time rather than best-effort at
+run time.
 
-**A deliberately-targeted subset, not part of the write-once promise.** The terminal is
-a genuinely different medium—integer cells, a handful of paint attributes—so while it
-consumes the same typed vocabulary (ignoring what it cannot render: radii, font sizes,
-transitions), an app targets it on purpose, with cell-scale values and the properties a
-terminal shows. The write-once story is the native+web combination, whose outputs
-genuinely converge. If TUI-first ergonomics ever warrant their own integer-cell builder
-surface, a thin dedicated facade can layer over this same driver.
+Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
+through `launch` (crossterm: raw mode, truecolor, `Tab`/`Enter` keyboard focus), or to
+plain text through `render_to_text` for headless tests. Terminal apps never
+cross-compile into the GUI family; the write-once promise belongs to web+native.
 
 ## Selection and entry
 
-Selection is by target where the target decides (wasm32 → `skene-web`, no feature
-needed) and by **umbrella feature** where triples are shared: `tui` selects the terminal
-driver on native targets (and changes nothing on wasm). When the native driver lands
-beside it, enabling two same-triple drivers becomes a `compile_error!`. Target-gating
-stays the enforcement layer where it applies (`target_os` splits csr/ssr; `web-sys`
-cannot exist off the browser target).
+Selection is by **facade dependency** first—a GUI app depends on `skene-gui`, a
+terminal app on `skene-tui`—and by target within a facade: `skene-gui` resolves wasm32
+to the web driver and will resolve native triples to the native driver, with no feature
+flag anywhere. Target-gating stays the enforcement layer where it applies (`target_os`
+splits csr/ssr; `web-sys` cannot exist off the browser target).
 
-The umbrella is the one crate allowed to name the active driver, which is why the shared
+A facade is the one place allowed to name its drivers, which is why the shared
 driver-adjacent surface lives there: `launch`, `#[main]` (per-driver entry glue),
 `spawn` (scope-bound cancellation over the driver's executor seam), `Resource`
 (serialize-by-default across the SSR boundary, `Resource::client` opt-out), `Deferred`,

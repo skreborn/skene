@@ -9,16 +9,13 @@ use skene_core::NodeId;
 use taffy::prelude::{AvailableSpace, length};
 
 use crate::{
-  NodeKind,
-  ROOT_ID,
-  State,
+  state::{NodeKind, ROOT_ID, State},
   style::{
     Environment,
     apply_box_sizing,
     box_taffy_style,
     effective_box_style,
     effective_run_style,
-    is_bold,
     terminal_rgb,
   },
 };
@@ -94,8 +91,8 @@ impl Buffer {
 /// Lays the tree out at `width` x `height` and paints it.
 pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   let environment = Environment {
-    columns: f32::from(width),
-    rows: f32::from(height),
+    columns: width,
+    rows: height,
   };
 
   refresh_styles(state, environment);
@@ -181,7 +178,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         }
 
         if record.in_stack {
-          apply_box_sizing(&mut out, &skene_core::BoxStyle::default(), true);
+          apply_box_sizing(&mut out, &crate::props::BoxStyle::default(), true);
         }
 
         taffy.set_style(record.taffy, out).expect("style a run");
@@ -279,7 +276,7 @@ fn paint_node(
         NodePaint::Box {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border.color),
+            color: terminal_rgb(border),
           }),
           reverse: focused,
         }
@@ -295,7 +292,7 @@ fn paint_node(
         NodePaint::Text {
           text: text.clone(),
           foreground: effective.color.and_then(terminal_rgb),
-          bold: is_bold(effective.font_weight),
+          bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: false,
         }
@@ -317,7 +314,7 @@ fn paint_node(
         NodePaint::Input {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border.color),
+            color: terminal_rgb(border),
           }),
           text,
           dim,

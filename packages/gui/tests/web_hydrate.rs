@@ -12,7 +12,7 @@ use std::{
   rc::Rc,
 };
 
-use skene::{
+use skene_gui::{
   Container,
   HasChildren,
   Resource,

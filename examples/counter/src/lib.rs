@@ -8,7 +8,7 @@
 
 #![cfg(target_arch = "wasm32")]
 
-use skene::prelude::*;
+use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

@@ -1,5 +1,5 @@
 [package]
-name = "skene"
+name = "skene-gui"
 version.workspace = true
 edition.workspace = true
 
@@ -32,7 +32,7 @@ skene-tui = { workspace = true, optional = true }
 [dev-dependencies]
 # Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
 # `--features` flag.
-skene = { path = ".", features = ["test"] }
+skene-gui = { path = ".", features = ["test"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"

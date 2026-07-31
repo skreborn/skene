@@ -17,10 +17,10 @@ count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 
 ## Hello, counter
 
-An app depends only on `skene`, marks its entry with `#[main]`, and names no driver:
+A GUI app depends only on `skene-gui`, marks its entry with `#[main]`, and names no driver:
 
 ```rust
-use skene::prelude::*;
+use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
@@ -73,10 +73,10 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene-reactive` | `RwSignal`, `Memo`, `Effect`, `Scope`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene` | The umbrella: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `Input`) realized once against `driver::*`; the composition helpers (`Children`, `reconcile`, `dynamic`); `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
+| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `Input`) realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `cargo xtask ssg`. |
-| `skene-tui` | The terminal driver (feature `tui`): taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. A deliberately-targeted subset—see `examples/tui-counter` (`cargo run -p tui-counter`). |
+| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u16` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui-counter` (`cargo run -p tui-counter`). |
 
 **Realize once, drive per platform.** Views are realized a single time against a typed,
 driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
@@ -154,14 +154,14 @@ wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 Then open <http://localhost:8080>. `cargo xtask web` builds the `counter` example to wasm,
 generates the bindings into `examples/counter/dist`, and serves it; pass `--port <n>`,
 `--debug`, or `--no-serve`. The example is a single crate (`examples/counter`) depending only
-on `skene`.
+on `skene-gui`.
 
 ## Testing
 
 ```sh
 cargo test --workspace      # host: reactive + the spine's pure helpers
-cargo test -p skene --target wasm32-unknown-unknown   # browser: real DOM, headless browser
-cargo test -p skene --target wasm32-wasip2            # server: wasmtime, incl. snapshot
+cargo test -p skene-gui --target wasm32-unknown-unknown   # browser: real DOM, headless browser
+cargo test -p skene-gui --target wasm32-wasip2            # server: wasmtime, incl. snapshot
 ```
 
 Drivers test against their real sinks: the browser suite drives a real DOM via

@@ -23,7 +23,11 @@ use crossterm::{
 };
 use skene_core::{IntoView, KeyEvent, View};
 
-use crate::{NodeKind, State, paint, with_state};
+use crate::{
+  paint,
+  state::{NodeKind, State},
+  with_state,
+};
 
 /// Restores the terminal when the loop unwinds.
 struct TerminalGuard;
@@ -128,6 +132,7 @@ fn draw(buffer: &paint::Buffer) {
               b: blue,
             }
           });
+
         let _ = queue!(out, SetForegroundColor(color));
       }
 
@@ -141,6 +146,7 @@ fn draw(buffer: &paint::Buffer) {
               b: blue,
             }
           });
+
         let _ = queue!(out, SetBackgroundColor(color));
       }
 

@@ -73,7 +73,9 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene-reactive` | `RwSignal`, `Memo`, `Effect`, `Scope`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene` | The umbrella: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`) realized once against `driver::*`; the composition helpers (`Children`, `reconcile`, `dynamic`); `spawn`/`Resource`/`Deferred`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
+| `skene` | The umbrella: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `Input`) realized once against `driver::*`; the composition helpers (`Children`, `reconcile`, `dynamic`); `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
+| `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
+| `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `cargo xtask ssg`. |
 
 **Realize once, drive per platform.** Views are realized a single time against a typed,
 driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
@@ -133,10 +135,19 @@ fn canvas() -> impl IntoView {
 ## Build & run
 
 ```sh
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32-unknown-unknown wasm32-wasip2
 cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
 cargo xtask web                  # build the wasm demo and serve it on :8080
+cargo xtask ssg                  # statically render the demo through the embedded runner
+```
+
+The same app also renders server-side with no integration at all — its `wasm32-wasip2`
+build is a plain command:
+
+```sh
+cargo build -p counter --target wasm32-wasip2
+wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 ```
 
 Then open <http://localhost:8080>. `cargo xtask web` builds the `counter` example to wasm,

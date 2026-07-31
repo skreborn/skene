@@ -35,6 +35,9 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
       #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
       ::skene::render_main(#name);
+
+      #[cfg(not(target_arch = "wasm32"))]
+      ::skene::launch(#name);
     }
   }
   .into()

@@ -1,6 +1,6 @@
 // The derived variant is only constructible and mountable on a target with a platform; the
 // type itself is always present, since it is a field of the shared `Container` builder.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -34,7 +34,7 @@ impl Children {
   /// Creates a derived set of children.
   ///
   /// `items` yields the items, `key` gives each a stable identity, `view` renders one.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_arch = "wasm32", feature = "tui"))]
   #[inline(always)]
   pub fn derive<T, I, K, V>(
     items: impl Fn() -> I + 'static,
@@ -52,7 +52,7 @@ impl Children {
   }
 
   /// Mounts these children under `parent`.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_arch = "wasm32", feature = "tui"))]
   pub fn mount(self, parent: NodeId) {
     self.mount_with(parent, std::convert::identity);
   }
@@ -62,7 +62,7 @@ impl Children {
   /// Each built child node is passed through `prepare` before insertion.
   ///
   /// Reconciliation tracks the node `prepare` returns.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_arch = "wasm32", feature = "tui"))]
   pub fn mount_with(self, parent: NodeId, prepare: impl Fn(NodeId) -> NodeId + 'static) {
     use skene_core::View as _;
 
@@ -104,7 +104,7 @@ pub trait HasChildren: Sized {
   }
 
   /// Sets a single derived child.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_arch = "wasm32", feature = "tui"))]
   #[inline(always)]
   #[must_use]
   fn derive_child<V: skene_core::View>(self, child: impl Fn() -> V + 'static) -> Self {
@@ -114,7 +114,7 @@ pub trait HasChildren: Sized {
   /// Sets a derived set of children.
   ///
   /// `items` yields the items, `key` gives each a stable identity, `view` renders one.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(any(target_arch = "wasm32", feature = "tui"))]
   #[inline(always)]
   #[must_use]
   fn derive_children<T, I, K, V>(

@@ -1,0 +1,25 @@
+[package]
+name = "skene-tui"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Expose the driver teardown (`uninstall`) so one thread can run many independent
+# mounts, as a test suite does.
+test = ["skene-reactive/test"]
+
+# Host-only: the terminal driver never itself compiles to wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+crossterm = "0.29"
+rustc-hash.workspace = true
+skene-core.workspace = true
+skene-reactive.workspace = true
+taffy = "0.9"
+
+[dev-dependencies]
+# Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
+# `--features` flag.
+skene-tui = { path = ".", features = ["test"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+[package]
+name = "tui-counter"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+skene = { workspace = true, features = ["tui"] }
+
+[lints]
+workspace = true

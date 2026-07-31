@@ -1,6 +1,6 @@
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -235,7 +235,7 @@ impl Text {
 /// An inline run within a [`RichText`]: text, a group of nested spans styled as a unit, or an
 /// arbitrary view embedded among the text.
 ///
-/// Spans flow together and wrap as one line, so styling can vary within it — unlike a [`Text`],
+/// Spans flow together and wrap as one line, so styling can vary within it—unlike a [`Text`],
 /// which is its own block. A [group](Self::group)'s style cascades to its children; a
 /// [view](Self::view) is laid out as an inline-level box among the surrounding runs.
 #[must_use]
@@ -266,7 +266,7 @@ impl Span {
     Self::with_content(SpanContent::Text(Source::Derived(Rc::new(content))))
   }
 
-  /// A group of nested spans, styled as a unit — the group's style cascades to its children.
+  /// A group of nested spans, styled as a unit—the group's style cascades to its children.
   #[inline(always)]
   pub fn group(children: impl IntoIterator<Item = Span>) -> Self {
     Self::with_content(SpanContent::Group(children.into_iter().collect()))
@@ -499,7 +499,7 @@ impl View for TextTheme {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 mod realize {
   use skene_core::{NodeId, RunDisplay, RunProp, RunProps, RunStyle, View};
 
@@ -519,7 +519,7 @@ mod realize {
   };
 
   /// Realizes a text run from its resolved style, returning the node and that resolved
-  /// style — the inherited base a group cascades to its children.
+  /// style—the inherited base a group cascades to its children.
   fn build_run(
     display: RunDisplay,
     link: Option<String>,
@@ -537,6 +537,7 @@ mod realize {
       RunProp::Color,
       driver::update_run,
     );
+
     split_prop(
       resolved.font_size.clone(),
       &mut statics.font_size,
@@ -544,6 +545,7 @@ mod realize {
       RunProp::FontSize,
       driver::update_run,
     );
+
     split_prop(
       resolved.font_weight.clone(),
       &mut statics.font_weight,

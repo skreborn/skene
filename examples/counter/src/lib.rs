@@ -3,7 +3,7 @@
 //!
 //! Gated to `wasm32` (both web leaves): in the browser `#[main]` launches it; on the
 //! server leaf the same entry renders a requested path to stdout. Building a view for a
-//! target with no platform is a compile error, so an app is built for the platform(s) it
+//! target with no driver is a compile error, so an app is built for the platform(s) it
 //! targets.
 
 #![cfg(target_arch = "wasm32")]

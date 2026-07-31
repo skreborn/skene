@@ -1,27 +1,27 @@
 # Roadmap
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 6.**
+Phases are ordered; later phases assume the earlier ones. **Current phase: 6 (TUI done first as the vocabulary proof).**
 
-## Phase 1 — Reactive engine internals ✅
+## Phase 1—Reactive engine internals ✅
 
 API kept as-is (`RwSignal`/`Memo`/`Effect`/`Scope`/`Context`, sync/local storage split).
 
-- **1a, correctness — done.** Eager staleness marking (a write marks dependent memos
-  stale transitively; reads pull freshness — fixing the stale memo-read inside
+- **1a, correctness—done.** Eager staleness marking (a write marks dependent memos
+  stale transitively; reads pull freshness—fixing the stale memo-read inside
   `Effect::batch`), memo change-filtering preserved, non-reentrant flushing (a mid-flush
   write enqueues; the running flush drains it), sync-runtime drains mark before running.
-- **1b, performance — done.** The five `HashMap<Id, _>` runtime maps collapsed into one
+- **1b, performance—done.** The five `HashMap<Id, _>` runtime maps collapsed into one
   `FxHashMap<Id, Entity>`; all hashing on rustc-hash; dispose unlinks from the parent's
   children set (fixed unbounded growth under child churn). Criterion benches: creation
   −40%, reads −44%, write-through-effects −30%, memo chains −24%.
 - **Remaining:** a true generational arena (needs an `Id` allocation redesign across the
   local and sync runtimes); implicit batch around event dispatch (lands with phase 4).
 
-## Phase 2 — The typed vocabulary, the crate split, realize-once views ✅
+## Phase 2—The typed vocabulary, the crate split, realize-once views ✅
 
 The structural core of the redesign; see `DESIGN.md` for the full shape (refined during
-implementation: a typed driver vocabulary rather than a persistent core scene — static
+implementation: a typed driver vocabulary rather than a persistent core scene—static
 dispatch requires the realization to live where the driver is nameable).
 
 - **Done.** The typed property vocabulary in `skene-core` (`BoxProps`/`BoxProp`,
@@ -42,7 +42,7 @@ Carried over from the pre-split code and preserved through the migration:
 marker-based hydration with loud mismatch; serialize-by-default resources
 (`Resource::client` opt-out); `Span`/`RichText`; scope-bound `spawn`.
 
-## Phase 3 — Declarative style: conditions, transitions, animations ✅ (core)
+## Phase 3—Declarative style: conditions, transitions, animations ✅ (core)
 
 - **Done.** `BoxProps`/`RunProps` carry `variants: Vec<(Vec<Condition>, Style)>`
   (conjunction; media features and interaction states), `transitions`, and
@@ -62,12 +62,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   - Hydration adopts the server's `<style>` rules instead of rebuilding duplicates.
   - Variants for the raw-`Declarations` escape hatch (currently base-only).
 
-## Phase 4 — Events and first controls ✅ (core)
+## Phase 4—Events and first controls ✅ (core)
 
 - **Done.** Portable event vocabulary: click, pointer enter/leave, focus/blur, key down
   (`KeyEvent`: W3C key names + modifiers), input. On the web the bubbling events are
-  **delegated** — one listener per event type on the mount root, dispatch walks the
-  target's ancestors by a stamped node id — and the non-bubbling pointer enter/leave
+  **delegated**—one listener per event type on the mount root, dispatch walks the
+  target's ancestors by a stamped node id—and the non-bubbling pointer enter/leave
   attach per node. Every dispatch runs inside an implicit reactive batch. First control:
   `Input` (web `<input>`, a void element in SSR output) with
   `bind_value`/`derive_value`/`handle_input`/`handle_key_down`, placeholder, and the full
@@ -75,7 +75,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Remaining:** pointer down/up/move, scroll, change (committed value), `<textarea>`,
   focus management primitives (programmatic focus, tab order), `Role` expansion.
 
-## Phase 5 — Router, runner, SSG ✅ (core)
+## Phase 5—Router, runner, SSG ✅ (core)
 
 - **Done.** `skene-router`: a typed `Route` (parse/to_path) in a signal-backed `Router`
   with a platform sink seam, provided through the reactive `Context`; the umbrella's
@@ -91,7 +91,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   the CSR page emitted from the SSR shell contract (build tool); typed link helpers
   (an `<a>` that navigates without a reload).
 
-## Phase 6 — Native driver family
+## Phase 6—Native driver family
 
 The largest phase by far; do not start before phase 4 proves the event model.
 
@@ -111,12 +111,12 @@ The largest phase by far; do not start before phase 4 proves the event model.
 - A loop-integrated timer (the one sanctioned exception to timers-are-userland).
 - Per-OS glue in leaves: IME, clipboard, menus, window management.
 
-## Phase 7 — TUI driver
+## Phase 7—TUI driver
 
 - taffy with `1.0 = 1 cell`; buffer renderer; no Painted/Embed realization.
 - Deliberately minimal—its role is to prove the vocabulary is platform-neutral.
 
-## Phase 8 — CLI
+## Phase 8—CLI
 
 Explicitly last, after the stretch goals above.
 

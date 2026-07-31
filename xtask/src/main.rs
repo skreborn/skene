@@ -127,6 +127,7 @@ fn ssg(args: &SsgArgs) -> Result<(), String> {
     .join("target/wasm32-wasip2")
     .join(profile)
     .join(format!("{SERVER_STEM}.wasm"));
+
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
   let out_root = root.join(&args.out);
 
@@ -134,6 +135,7 @@ fn ssg(args: &SsgArgs) -> Result<(), String> {
     let page = runner
       .render(route)
       .map_err(|error| format!("render {route}: {error:#}"))?;
+
     let directory = out_root.join(route.trim_start_matches('/'));
 
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
@@ -187,6 +189,7 @@ fn generate_bindings(root: &Path, release: bool) -> Result<(), String> {
     .join("target/wasm32-unknown-unknown")
     .join(profile)
     .join(format!("{WASM_STEM}.wasm"));
+
   let out_dir = root.join(DEMO_DIR).join("dist");
   let mut command = Command::new("wasm-bindgen");
   command
@@ -207,6 +210,7 @@ fn warn_on_version_mismatch(root: &Path) {
   else {
     return;
   };
+
   let Some(cli_version) = Command::new("wasm-bindgen")
     .arg("--version")
     .output()
@@ -261,6 +265,7 @@ fn run_command(command: &mut Command, label: &str) -> Result<(), String> {
 fn serve_dir(dir: &Path, port: u16) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
+
   println!("serving {} at http://localhost:{port}", dir.display());
 
   for stream in listener.incoming() {
@@ -283,6 +288,7 @@ fn handle_request(mut stream: &TcpStream, dir: &Path) {
 
     return;
   };
+
   let relative = target.trim_start_matches('/');
   let relative = if relative.is_empty() {
     "index.html"
@@ -290,6 +296,7 @@ fn handle_request(mut stream: &TcpStream, dir: &Path) {
   else {
     relative
   };
+
   let path = dir.join(relative);
 
   if !path.starts_with(dir) || !path.is_file() {
@@ -351,6 +358,7 @@ fn write_response(
      Connection: close\r\n\r\n",
     body.len()
   );
+
   stream.write_all(header.as_bytes())?;
   stream.write_all(body)?;
   stream.flush()

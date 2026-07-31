@@ -31,10 +31,64 @@ thread_local! {
   pub static RUNTIME: Runtime = Runtime::new();
 }
 
+// The designation is a set-once global in production; the `test` feature makes it
+// resettable so a multi-threaded test harness can designate each test's thread in turn
+// (serialized by the test suite).
+#[cfg(not(feature = "test"))]
 static UI_THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
+#[cfg(feature = "test")]
+static UI_THREAD_ID: std::sync::RwLock<Option<ThreadId>> = std::sync::RwLock::new(None);
 #[cfg(debug_assertions)]
 static UI_THREAD_SET_LOCATION: OnceLock<&'static Location<'static>> = OnceLock::new();
 static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
+
+/// The designated UI thread, if any.
+fn ui_thread_id() -> Option<ThreadId> {
+  #[cfg(not(feature = "test"))]
+  {
+    UI_THREAD_ID.get().copied()
+  }
+
+  #[cfg(feature = "test")]
+  {
+    *UI_THREAD_ID.read().expect("read the UI thread id")
+  }
+}
+
+/// Designates `current` as the UI thread; returns the existing designation when one is
+/// already set to a different thread.
+fn set_ui_thread_id(current: ThreadId) -> Result<(), ThreadId> {
+  #[cfg(not(feature = "test"))]
+  {
+    match UI_THREAD_ID.set(current) {
+      Ok(()) => Ok(()),
+      Err(_) => {
+        let existing = *UI_THREAD_ID.get().expect("a set id");
+
+        if existing == current {
+          Ok(())
+        }
+        else {
+          Err(existing)
+        }
+      }
+    }
+  }
+
+  #[cfg(feature = "test")]
+  {
+    let mut slot = UI_THREAD_ID.write().expect("write the UI thread id");
+
+    match *slot {
+      Some(existing) if existing != current => Err(existing),
+      _ => {
+        *slot = Some(current);
+
+        Ok(())
+      }
+    }
+  }
+}
 
 /// The callbacks registered to run when one scope is disposed.
 type Cleanups = Vec<Box<dyn FnOnce()>>;
@@ -98,16 +152,10 @@ impl Runtime {
   pub fn init_on_ui_thread() {
     let current = thread::current().id();
 
-    match UI_THREAD_ID.set(current) {
-      Ok(_) => {}
-      Err(_) => {
-        assert_eq!(
-          UI_THREAD_ID.get(),
-          Some(&current),
-          "UI thread id already set to a different thread"
-        );
-      }
-    }
+    assert!(
+      set_ui_thread_id(current).is_ok(),
+      "UI thread id already set to a different thread"
+    );
 
     #[cfg(debug_assertions)]
     {
@@ -127,9 +175,9 @@ impl Runtime {
 
     let current = thread::current().id();
 
-    match UI_THREAD_ID.get() {
+    match ui_thread_id() {
       Some(ui_id) => {
-        if *ui_id != current {
+        if ui_id != current {
           #[cfg(debug_assertions)]
           {
             let caller = Location::caller();
@@ -137,6 +185,7 @@ impl Runtime {
             let set_info = set_at
               .map(|loc| format!(" (set at {}:{})", loc.file(), loc.line()))
               .unwrap_or_default();
+
             panic!(
               "Unsync runtime access from non-UI thread\n  expected UI thread: {:?}{}\n  current thread: {:?}\n  caller: {}:{}",
               ui_id,
@@ -149,7 +198,7 @@ impl Runtime {
           #[cfg(not(debug_assertions))]
           {
             assert_eq!(
-              *ui_id, current,
+              ui_id, current,
               "Unsync runtime access from non-UI thread: expected {:?}, got {:?}",
               ui_id, current
             );
@@ -158,7 +207,7 @@ impl Runtime {
       }
       None => {
         // Once enforcement is on, first access defines the UI thread.
-        let _ = UI_THREAD_ID.set(current);
+        let _ = set_ui_thread_id(current);
       }
     }
   }
@@ -167,7 +216,7 @@ impl Runtime {
   /// [`init_on_ui_thread`](Self::init_on_ui_thread).
   ///
   /// When it has not, an off-thread `Sync` signal write cannot be routed to the UI thread and
-  /// its effects are silently dropped — the case [`SignalState::warn_if_undesignated`] flags.
+  /// its effects are silently dropped—the case [`SignalState::warn_if_undesignated`] flags.
   pub(crate) fn ui_thread_designated() -> bool {
     ENFORCE_UI_THREAD.load(Ordering::Relaxed)
   }
@@ -178,10 +227,7 @@ impl Runtime {
       true
     }
     else {
-      UI_THREAD_ID
-        .get()
-        .map(|thread| *thread == thread::current().id())
-        .unwrap_or(false)
+      ui_thread_id().is_some_and(|thread| thread == thread::current().id())
     }
   }
 
@@ -208,6 +254,11 @@ impl Runtime {
     });
 
     drop(entities);
+
+    // Release the process-wide UI-thread designation, so the next (serialized) test can
+    // designate its own thread.
+    *UI_THREAD_ID.write().expect("write the UI thread id") = None;
+    ENFORCE_UI_THREAD.store(false, Ordering::Relaxed);
   }
 
   pub(crate) fn register_effect(&self, effect: &Rc<dyn EffectTrait>) {
@@ -241,7 +292,7 @@ impl Runtime {
   }
 
   /// Marks every stale-able effect among `ids` stale, propagating through each one's
-  /// output signal to its own subscribers — so a read anywhere downstream pulls a fresh
+  /// output signal to its own subscribers—so a read anywhere downstream pulls a fresh
   /// value before the scheduled re-runs happen.
   pub(crate) fn mark_stale(&self, ids: &[Id]) {
     let mut stack: SmallVec<[Id; 8]> = SmallVec::from_slice(ids);
@@ -293,6 +344,7 @@ impl Runtime {
           .get_effect(*id)
           .map(|effect| effect.priority())
           .unwrap_or(EffectPriority::Normal);
+
         (Reverse(priority), *id)
       });
 

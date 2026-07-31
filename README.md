@@ -1,14 +1,14 @@
 # Skene
 
 A client-side Rust GUI framework. Write an app once against one dependency, and it runs
-on whatever driver the build selects — the web today (client-rendered, server-rendered, or
+on whatever driver the build selects—the web today (client-rendered, server-rendered, or
 statically generated), native and terminal drivers as they land. The building block is a
 **view**; the reactive engine is fine-grained and vdom-free.
 
 ## Reactivity
 
 A signal write re-runs exactly the effects that depend on it, and each effect patches the
-node it owns — no virtual DOM, no tree diffing. Effects run synchronously on write.
+node it owns—no virtual DOM, no tree diffing. Effects run synchronously on write.
 
 ```rust
 let count = RwSignal::new(0);
@@ -53,7 +53,7 @@ fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
 ## Architecture
 
 ```
-skene-reactive     the reactive engine — standalone
+skene-reactive     the reactive engine—standalone
       │
 skene-core         + reactive: the view spine, the typed property vocabulary, Source,
       │            Boundary, Reorder, IntoChildren, generic geometry, and the value
@@ -76,11 +76,12 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene` | The umbrella: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `Input`) realized once against `driver::*`; the composition helpers (`Children`, `reconcile`, `dynamic`); `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `cargo xtask ssg`. |
+| `skene-tui` | The terminal driver (feature `tui`): taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. A deliberately-targeted subset—see `examples/tui-counter` (`cargo run -p tui-counter`). |
 
 **Realize once, drive per platform.** Views are realized a single time against a typed,
 driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
 mutations); each driver crate exports that vocabulary mapped to its own sink. Exactly one
-driver is compiled, resolved by the umbrella at compile time — no "backend" trait, no
+driver is compiled, resolved by the umbrella at compile time—no "backend" trait, no
 `dyn` dispatch, no runtime swap.
 
 ### Styling on the web platform
@@ -93,14 +94,14 @@ animation never rewrites the shared rule. The determinism keeps it server-side-r
 
 ## Views
 
-A view *is* its own builder *is* a `View`: chain typed setters and pass it to a parent — no
+A view *is* its own builder *is* a `View`: chain typed setters and pass it to a parent—no
 separate builder type, no `.build()` to call. One setter convention: `set_<prop>` for a fixed
 value, `derive_<prop>` for a reactive one, `handle_<event>` for a handler.
 
 There is no `Button` view: a button is a `Container` with `Role::Button` and a click handler,
 so its label is any view and its styling is yours. There is likewise no separate
 `List`/`Grid`/`Stack`: one `Container` decorates itself and lays out its children in the mode
-its constructor picks — `new()` (block), `row()`/`column()` (flex), `grid(n)`, or `stack()`
+its constructor picks—`new()` (block), `row()`/`column()` (flex), `grid(n)`, or `stack()`
 (children overlapping in one cell).
 
 ### Defining your own view
@@ -118,7 +119,7 @@ impl View for Labeled {
 ```
 
 For web-specific work beyond the built-ins, just call the driver's functions from a
-view, cfg-gated to that target — there is no helper in between (`empty()` is the no-op for
+view, cfg-gated to that target—there is no helper in between (`empty()` is the no-op for
 platforms a view doesn't support):
 
 ```rust
@@ -142,7 +143,7 @@ cargo xtask web                  # build the wasm demo and serve it on :8080
 cargo xtask ssg                  # statically render the demo through the embedded runner
 ```
 
-The same app also renders server-side with no integration at all — its `wasm32-wasip2`
+The same app also renders server-side with no integration at all—its `wasm32-wasip2`
 build is a plain command:
 
 ```sh

@@ -1,6 +1,6 @@
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -10,7 +10,7 @@ use skene_core::{Animation, BoxStyle, Condition, KeyEvent, Source, Transition};
 ///
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the shown text, and
-/// [`handle_input`](Self::handle_input) receives each edit —
+/// [`handle_input`](Self::handle_input) receives each edit—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
 /// set wholesale with [`set_style`](Self::set_style) and conditionally with
 /// [`set_when`](Self::set_when).
@@ -166,7 +166,7 @@ impl Default for Input {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 impl Input {
   /// Binds the value to `signal` in both directions: the input shows the signal and each
   /// edit writes it back.
@@ -180,7 +180,7 @@ impl Input {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 impl skene_core::View for Input {
   fn build(self) -> skene_core::NodeId {
     use skene_core::InputProps;

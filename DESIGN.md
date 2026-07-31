@@ -200,18 +200,28 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 
 ### TUI (`skene-tui`)
 
-Layout, no painting: taffy with `1.0 = 1 cell`, rendered to a terminal buffer. `Painted`
-and embeds have no realization. TUI is deliberately the cheapest driver—it doubles as
-the proof that the vocabulary is platform-neutral.
+Layout, no painting: taffy with `1.0 = 1 cell`, painted into a cell buffer—to the
+terminal through `launch` (crossterm: raw mode, truecolor, keyboard focus with
+`Tab`/`Enter`), or to plain text through `render_to_text` for headless tests. Conditional
+variants resolve against the terminal size and focus; painted/embedded content has no
+realization.
+
+**A deliberately-targeted subset, not part of the write-once promise.** The terminal is
+a genuinely different medium—integer cells, a handful of paint attributes—so while it
+consumes the same typed vocabulary (ignoring what it cannot render: radii, font sizes,
+transitions), an app targets it on purpose, with cell-scale values and the properties a
+terminal shows. The write-once story is the native+web combination, whose outputs
+genuinely converge. If TUI-first ergonomics ever warrant their own integer-cell builder
+surface, a thin dedicated facade can layer over this same driver.
 
 ## Selection and entry
 
-With one driver today, selection is by target: the umbrella pulls `skene-web` under
-`cfg(target_arch = "wasm32")` and no feature is needed. When a second same-triple driver
-lands (desktop and TUI share a target triple), selection becomes **exactly one driver
-feature** (`web`, `desktop`, `tui`, …), with more than one a `compile_error!`.
-Target-gating stays the enforcement layer where it applies (`target_os` splits csr/ssr;
-`web-sys` cannot exist off the browser target).
+Selection is by target where the target decides (wasm32 → `skene-web`, no feature
+needed) and by **umbrella feature** where triples are shared: `tui` selects the terminal
+driver on native targets (and changes nothing on wasm). When the native driver lands
+beside it, enabling two same-triple drivers becomes a `compile_error!`. Target-gating
+stays the enforcement layer where it applies (`target_os` splits csr/ssr; `web-sys`
+cannot exist off the browser target).
 
 The umbrella is the one crate allowed to name the active driver, which is why the shared
 driver-adjacent surface lives there: `launch`, `#[main]` (per-driver entry glue),

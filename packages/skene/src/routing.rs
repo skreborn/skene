@@ -2,6 +2,7 @@
 
 use skene_router::{Route, Router};
 
+#[cfg(target_arch = "wasm32")]
 use crate::driver;
 
 /// Creates the app's router from the driver's current URL, wires navigation both ways,
@@ -14,7 +15,7 @@ use crate::driver;
 ///
 /// Pair the returned router with a [`DynamicView`](crate::DynamicView) that matches on
 /// [`route`](Router::route); read it anywhere beneath with [`Router::get`].
-#[cfg(target_os = "unknown")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let initial = R::parse(&driver::current_path()).unwrap_or(fallback);
   let router = Router::new(initial);
@@ -35,11 +36,22 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 }
 
 /// Creates the app's router from the requested path, and provides it to the current
-/// scope. Navigation stays in memory — a server render is one route.
-#[cfg(target_os = "wasi")]
+/// scope. Navigation stays in memory—a server render is one route.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let initial = R::parse(&driver::current_path()).unwrap_or(fallback);
   let router = Router::new(initial);
+
+  router.provide();
+
+  router
+}
+
+/// Creates the app's router at `fallback`, and provides it to the current scope.
+/// Navigation stays in memory; the terminal owns no URL.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn install_router<R: Route>(fallback: R) -> Router<R> {
+  let router = Router::new(fallback);
 
   router.provide();
 

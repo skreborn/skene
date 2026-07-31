@@ -1,6 +1,6 @@
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -470,7 +470,7 @@ impl HasChildren for Container {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 impl skene_core::View for Container {
   // One `split_prop` call per property; length is the property count, not complexity.
   #[expect(clippy::too_many_lines)]
@@ -492,6 +492,7 @@ impl skene_core::View for Container {
       BoxProp::Width,
       driver::update_box,
     );
+
     split_prop(
       self.height,
       &mut style.height,
@@ -499,6 +500,7 @@ impl skene_core::View for Container {
       BoxProp::Height,
       driver::update_box,
     );
+
     split_prop(
       self.min_width,
       &mut style.min_width,
@@ -506,6 +508,7 @@ impl skene_core::View for Container {
       BoxProp::MinWidth,
       driver::update_box,
     );
+
     split_prop(
       self.min_height,
       &mut style.min_height,
@@ -513,6 +516,7 @@ impl skene_core::View for Container {
       BoxProp::MinHeight,
       driver::update_box,
     );
+
     split_prop(
       self.max_width,
       &mut style.max_width,
@@ -520,6 +524,7 @@ impl skene_core::View for Container {
       BoxProp::MaxWidth,
       driver::update_box,
     );
+
     split_prop(
       self.max_height,
       &mut style.max_height,
@@ -527,6 +532,7 @@ impl skene_core::View for Container {
       BoxProp::MaxHeight,
       driver::update_box,
     );
+
     split_prop(
       self.padding,
       &mut style.padding,
@@ -534,6 +540,7 @@ impl skene_core::View for Container {
       BoxProp::Padding,
       driver::update_box,
     );
+
     split_prop(
       self.color,
       &mut style.color,
@@ -541,6 +548,7 @@ impl skene_core::View for Container {
       BoxProp::Color,
       driver::update_box,
     );
+
     split_prop(
       self.border,
       &mut style.border,
@@ -548,6 +556,7 @@ impl skene_core::View for Container {
       BoxProp::Border,
       driver::update_box,
     );
+
     split_prop(
       self.border_radius,
       &mut style.border_radius,
@@ -555,6 +564,7 @@ impl skene_core::View for Container {
       BoxProp::BorderRadius,
       driver::update_box,
     );
+
     split_prop(
       self.cursor,
       &mut style.cursor,
@@ -562,6 +572,7 @@ impl skene_core::View for Container {
       BoxProp::Cursor,
       driver::update_box,
     );
+
     split_prop(
       self.spacing,
       &mut style.spacing,
@@ -569,6 +580,7 @@ impl skene_core::View for Container {
       BoxProp::Spacing,
       driver::update_box,
     );
+
     split_prop(
       self.main_axis_alignment,
       &mut style.main_axis_alignment,
@@ -576,6 +588,7 @@ impl skene_core::View for Container {
       BoxProp::MainAxisAlignment,
       driver::update_box,
     );
+
     split_prop(
       self.cross_axis_alignment,
       &mut style.cross_axis_alignment,

@@ -14,13 +14,13 @@ mod container;
 mod deferred;
 mod empty;
 mod input;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 mod realize;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 mod reconcile;
 #[cfg(target_arch = "wasm32")]
 mod resource;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 mod routing;
 #[cfg(target_arch = "wasm32")]
 mod task;
@@ -30,7 +30,15 @@ pub use skene_core::{self as core, *};
 pub use skene_macros::main;
 pub use skene_reactive::{self as reactive};
 pub use skene_router as router;
-// The active driver, reached by name from the shared realization.
+// The active driver, reached by name from the shared realization: the web driver on a
+// wasm target, the terminal driver on a native target with the `tui` feature.
+#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
+pub(crate) use skene_tui as driver;
+/// The terminal driver, for a library author writing a view directly against it.
+///
+/// Deliberately kept out of [`prelude`] so portable app code never names a driver.
+#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
+pub use skene_tui as tui;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use skene_web as driver;
 /// The web driver, for a library author writing a view directly against the browser DOM.
@@ -46,13 +54,13 @@ pub use wasm_bindgen;
 
 #[cfg(target_arch = "wasm32")]
 pub use crate::deferred::Deferred;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 pub use crate::empty::empty;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 pub use crate::reconcile::{DynamicView, dynamic, reconcile};
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "tui"))]
 pub use crate::routing::install_router;
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
@@ -75,8 +83,8 @@ pub type Rect = skene_core::Rect<f32>;
 /// Wraps a view that only a client can realize, so it renders on an interactive platform and
 /// falls back to [`empty`] where it cannot run.
 ///
-/// The place for a low-level view that reaches a platform's raw handles — a `<canvas>` driven
-/// through `web::element`, a JS charting library — which have no meaning off the client. On a
+/// The place for a low-level view that reaches a platform's raw handles—a `<canvas>` driven
+/// through `web::element`, a JS charting library—which have no meaning off the client. On a
 /// server-rendering platform this yields nothing; the real content arrives when the client
 /// hydrates. `build` returns the node it realizes, exactly as a view's `build` does.
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -106,6 +114,17 @@ where
   tracing::info!("application mounted");
 }
 
+/// Mounts and runs the application in the terminal, until `Ctrl-C`.
+#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
+#[inline(always)]
+pub fn launch<V, F>(app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  driver::launch(app);
+}
+
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded state, so
 /// the client takes over the markup `render_to_string` produced without a rebuild.
 ///
@@ -125,7 +144,7 @@ where
 
 /// A server render, in parts: the stylesheet, the body markup, and the hydration state.
 ///
-/// Assemble a full document with [`page`](Self::page), or place the parts yourself — the
+/// Assemble a full document with [`page`](Self::page), or place the parts yourself—the
 /// [`styles`](Self::styles) in `<head>`, the [`body`](Self::body) as the app root, and the
 /// [`state`](Self::state) wherever the client's `hydrate_page` can read it back. The client boot
 /// pairs with `page`; a custom placement pairs with the lower-level `web::hydrate`.
@@ -146,7 +165,7 @@ impl Rendered {
     &self.styles
   }
 
-  /// The settled view tree — the page body.
+  /// The settled view tree—the page body.
   #[must_use]
   #[inline(always)]
   pub fn body(&self) -> &str {
@@ -180,8 +199,8 @@ impl Rendered {
 /// Renders the application, for a server-rendering platform.
 ///
 /// Builds the tree, drives its resources until they settle, and serializes the result plus the
-/// resource state for hydration. The render is self-contained — state is set up and torn down
-/// per call — so a runner can serve many requests from one instance.
+/// resource state for hydration. The render is self-contained—state is set up and torn down
+/// per call—so a runner can serve many requests from one instance.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 #[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
@@ -215,8 +234,8 @@ where
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout.
 ///
-/// This makes the app's server build a plain command — `wasmtime app.wasm /some/path`
-/// prints the document — which is exactly the interface the runner embeds.
+/// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
+/// prints the document—which is exactly the interface the runner embeds.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub fn render_main<V, F>(app: F)
 where
@@ -234,7 +253,7 @@ where
 /// Each chunk is written to the response as it is produced: the first opens the document and
 /// carries the shell, and each subsequent one carries a [`Deferred`] boundary's content, streamed
 /// once it settled. A client with no JavaScript receives a correct document progressively, since
-/// the chunks concatenate — in order — into the same markup [`render_to_string`] would produce.
+/// the chunks concatenate—in order—into the same markup [`render_to_string`] would produce.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 #[must_use]
 pub struct Stream {
@@ -257,7 +276,7 @@ impl Stream {
     self.chunks
   }
 
-  /// The whole document, the chunks concatenated in order — what a no-JavaScript client ends up
+  /// The whole document, the chunks concatenated in order—what a no-JavaScript client ends up
   /// with once every chunk has arrived.
   #[must_use]
   #[inline(always)]
@@ -270,7 +289,7 @@ impl Stream {
 ///
 /// Like [`render_to_string`], but flushes the shell before every [`Deferred`] boundary's slow
 /// content: the returned [`Stream`]'s chunks are written to the response as they are produced, so
-/// the client sees the page progressively without waiting on the slowest data — and, because the
+/// the client sees the page progressively without waiting on the slowest data—and, because the
 /// chunks are emitted in document order, with no JavaScript required.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub fn render_to_stream<V, F>(app: F) -> Stream

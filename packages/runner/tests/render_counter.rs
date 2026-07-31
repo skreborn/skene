@@ -15,6 +15,7 @@ fn renders_the_counter_page() {
     env!("CARGO_MANIFEST_DIR"),
     "/../../target/wasm32-wasip2/debug/counter-server.wasm",
   );
+
   let runner = Runner::load(artifact).expect("load the counter component");
 
   let page = runner.render("/").expect("render the root route");

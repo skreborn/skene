@@ -2,13 +2,20 @@
 //! primitives, logging macros, and the entry point.
 
 pub use skene_core::{
+  Animation,
   Axis,
+  BoxStyle,
   Color,
+  Condition,
   CrossAxisAlignment,
+  Easing,
   IntoChildren,
   IntoView,
   MainAxisAlignment,
   MouseCursor,
+  RunStyle,
+  StyleProperty,
+  Transition,
   View,
 };
 pub use skene_reactive::{

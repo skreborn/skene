@@ -16,7 +16,17 @@ use skene::{
   TextStyle,
   TextTheme,
   View,
-  core::{Color, CrossAxisAlignment, MainAxisAlignment, MouseCursor},
+  core::{
+    Animation,
+    BoxStyle,
+    Color,
+    Condition,
+    CrossAxisAlignment,
+    MainAxisAlignment,
+    MouseCursor,
+    StyleProperty,
+    Transition,
+  },
   empty,
   render_to_string,
 };
@@ -66,6 +76,20 @@ fn representative_tree() -> impl skene::IntoView {
         // Two identically-styled boxes: their class must intern once.
         Container::new().set_padding(Inset::all(8.)),
         Container::new().set_padding(Inset::all(8.)),
+        // Declarative dynamics: a hover variant, a media variant, a transition, and an
+        // animation, all compiled into the interned class.
+        Container::new()
+          .set_width(50.)
+          .set_when(Condition::Hovered, BoxStyle::new().set_width(60.))
+          .set_when(Condition::MaxWidth(480.), BoxStyle::new().set_width(40.))
+          .set_transition(Transition::new(StyleProperty::Width, 0.2))
+          .set_animation(Animation::new(
+            1.,
+            [
+              (0., BoxStyle::new().set_border_radius(0.)),
+              (100., BoxStyle::new().set_border_radius(8.)),
+            ],
+          )),
         empty().into_any(),
       )),
   )
@@ -88,6 +112,6 @@ fn representative_render_is_stable() {
 }
 
 /// The interned rule block (the styles after the reset), sorted by class name.
-const SNAPSHOT_RULES: &str = ".skene-17a1b6ee{display:flow-root;padding:8px 8px 8px 8px;}.skene-3b7ac76f{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;font-weight:500;}.skene-672c937e{display:flow-root;height:10px;width:10px;}.skene-7e7afc41{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);font-weight:500;}.skene-7f1a3d7c{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-7f8fd1e5{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-8512280b{align-items:stretch;background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;display:flex;flex-direction:column;gap:12px;justify-content:center;max-height:800px;min-width:200px;padding:24px 16px 24px 16px;}.skene-8686c52a{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}.skene-98c7435c{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-9953c877{display:grid;}.skene-ad435bb4{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-ae79fa8d{display:grid;gap:4px;grid-template-columns:repeat(3, 1fr);}.skene-c00b701c{cursor:pointer;display:flex;flex-direction:row;height:40px;width:120px;}.skene-f446f81f{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}</style>";
+const SNAPSHOT_RULES: &str = ".skene-1e21c5dd{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-2c954cc1{display:grid;}.skene-34816c7a{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);font-weight:500;}.skene-363f1d58{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-3ebd287d{cursor:pointer;display:flex;flex-direction:row;height:40px;width:120px;}.skene-4a0198c2{display:flow-root;height:10px;width:10px;}.skene-5f645ac1{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-688fd045{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-6e356e0f{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;font-weight:500;}.skene-7757becd{display:flow-root;padding:8px 8px 8px 8px;}.skene-b88e6449{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-bc803f39{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:flow-root;transition:width 0.2s ease 0s;width:50px;}.skene-bc803f39:hover{width:60px;}@media (max-width: 480px){.skene-bc803f39{width:40px;}}.skene-e074310a{display:grid;gap:4px;grid-template-columns:repeat(3, 1fr);}.skene-e80573af{align-items:stretch;background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;display:flex;flex-direction:column;gap:12px;justify-content:center;max-height:800px;min-width:200px;padding:24px 16px 24px 16px;}.skene-e97c44ab{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}</style>";
 
-const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-8512280b\"><span data-h=\"2\" class=\"skene-f446f81f\">Title &amp; &lt;escaped&gt;</span><a data-h=\"3\" href=\"https://example.com/?a=1&amp;b=2\" class=\"skene-3b7ac76f\">linked</a><button data-h=\"4\" type=\"button\" class=\"skene-c00b701c\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><span data-h=\"5\" class=\"skene-98c7435c\">Press</span></button><div data-h=\"6\" class=\"skene-ae79fa8d\"><span data-h=\"7\" class=\"skene-98c7435c\">a</span><span data-h=\"8\" class=\"skene-98c7435c\">b</span><span data-h=\"9\" class=\"skene-98c7435c\">c</span></div><div data-h=\"10\" class=\"skene-9953c877\"><span data-h=\"11\" class=\"skene-98c7435c\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"12\" class=\"skene-98c7435c\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"13\"><span data-h=\"14\" class=\"skene-ad435bb4\">plain </span><span data-h=\"15\" class=\"skene-7f1a3d7c\"><span data-h=\"16\" class=\"skene-7f1a3d7c\">in </span><span data-h=\"17\" class=\"skene-8686c52a\">group</span></span><span data-h=\"18\" class=\"skene-7f8fd1e5\"><div data-h=\"19\" class=\"skene-672c937e\"></div></span><a data-h=\"20\" href=\"/rel\" class=\"skene-7e7afc41\"> tail</a></div><div data-h=\"21\" class=\"skene-17a1b6ee\"></div><div data-h=\"22\" class=\"skene-17a1b6ee\"></div><div data-h=\"23\"></div></div>";
+const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-e80573af\"><span data-h=\"2\" class=\"skene-b88e6449\">Title &amp; &lt;escaped&gt;</span><a data-h=\"3\" href=\"https://example.com/?a=1&amp;b=2\" class=\"skene-6e356e0f\">linked</a><button data-h=\"4\" type=\"button\" class=\"skene-3ebd287d\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><span data-h=\"5\" class=\"skene-688fd045\">Press</span></button><div data-h=\"6\" class=\"skene-e074310a\"><span data-h=\"7\" class=\"skene-688fd045\">a</span><span data-h=\"8\" class=\"skene-688fd045\">b</span><span data-h=\"9\" class=\"skene-688fd045\">c</span></div><div data-h=\"10\" class=\"skene-2c954cc1\"><span data-h=\"11\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"12\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"13\"><span data-h=\"14\" class=\"skene-1e21c5dd\">plain </span><span data-h=\"15\" class=\"skene-363f1d58\"><span data-h=\"16\" class=\"skene-363f1d58\">in </span><span data-h=\"17\" class=\"skene-e97c44ab\">group</span></span><span data-h=\"18\" class=\"skene-5f645ac1\"><div data-h=\"19\" class=\"skene-4a0198c2\"></div></span><a data-h=\"20\" href=\"/rel\" class=\"skene-34816c7a\"> tail</a></div><div data-h=\"21\" class=\"skene-7757becd\"></div><div data-h=\"22\" class=\"skene-7757becd\"></div><div data-h=\"23\" class=\"skene-bc803f39\"></div><div data-h=\"24\"></div></div>";

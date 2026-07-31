@@ -4,7 +4,18 @@
 
 use std::rc::Rc;
 
-use skene_core::{Axis, Color, CrossAxisAlignment, MainAxisAlignment, MouseCursor, Source};
+use skene_core::{
+  Animation,
+  Axis,
+  BoxStyle,
+  Color,
+  Condition,
+  CrossAxisAlignment,
+  MainAxisAlignment,
+  MouseCursor,
+  Source,
+  Transition,
+};
 
 use crate::{Border, Children, HasChildren, Inset, Layout, Role};
 
@@ -35,6 +46,9 @@ pub struct Container {
   pub(crate) spacing: Option<Source<f32>>,
   pub(crate) main_axis_alignment: Option<Source<MainAxisAlignment>>,
   pub(crate) cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
+  pub(crate) variants: Vec<(Vec<Condition>, BoxStyle)>,
+  pub(crate) transitions: Vec<Transition>,
+  pub(crate) animations: Vec<Animation<BoxStyle>>,
   pub(crate) click_handler: Option<Rc<dyn Fn()>>,
 }
 
@@ -59,6 +73,9 @@ impl Container {
       spacing: None,
       main_axis_alignment: None,
       cross_axis_alignment: None,
+      variants: Vec::new(),
+      transitions: Vec::new(),
+      animations: Vec::new(),
       click_handler: None,
     }
   }
@@ -335,6 +352,47 @@ impl Container {
     self
   }
 
+  /// Adds a conditional style variant, applied while `condition` holds.
+  ///
+  /// Declarative: it compiles to a stylesheet rule, so it works in static output with no
+  /// script. Later variants win over earlier ones.
+  #[inline(always)]
+  pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
+    self.variants.push((vec![condition], style));
+
+    self
+  }
+
+  /// Adds a conditional style variant, applied while all of `conditions` hold.
+  #[inline(always)]
+  pub fn set_when_all(
+    mut self,
+    conditions: impl IntoIterator<Item = Condition>,
+    style: BoxStyle,
+  ) -> Self {
+    self
+      .variants
+      .push((conditions.into_iter().collect(), style));
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value changes.
+  #[inline(always)]
+  pub fn set_transition(mut self, transition: Transition) -> Self {
+    self.transitions.push(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<BoxStyle>) -> Self {
+    self.animations.push(animation);
+
+    self
+  }
+
   /// Sets the click handler.
   #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
@@ -362,8 +420,10 @@ impl HasChildren for Container {
 
 #[cfg(target_arch = "wasm32")]
 impl skene_core::View for Container {
+  // One `split_prop` call per property; length is the property count, not complexity.
+  #[expect(clippy::too_many_lines)]
   fn build(self) -> skene_core::NodeId {
-    use skene_core::{BoxProp, BoxProps, BoxStyle};
+    use skene_core::{BoxProp, BoxProps};
 
     use crate::{
       driver,
@@ -476,6 +536,9 @@ impl skene_core::View for Container {
       layout: self.layout,
       role: self.role,
       style,
+      variants: self.variants,
+      transitions: self.transitions,
+      animations: self.animations,
     });
 
     for binder in binders {

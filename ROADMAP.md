@@ -1,7 +1,7 @@
 # Roadmap
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 3.**
+Phases are ordered; later phases assume the earlier ones. **Current phase: 4.**
 
 ## Phase 1 — Reactive engine internals ✅
 
@@ -42,19 +42,25 @@ Carried over from the pre-split code and preserved through the migration:
 marker-based hydration with loud mismatch; serialize-by-default resources
 (`Resource::client` opt-out); `Span`/`RichText`; scope-bound `spawn`.
 
-## Phase 3 — Declarative style: conditions, transitions, animations
+## Phase 3 — Declarative style: conditions, transitions, animations ✅ (core)
 
-- `StyleSet` grows `variants: Vec<(Condition, Props)>` with
-  `Condition = Media(width/height ranges, color scheme, reduced motion) | State(hover,
-  focus, focus-visible, active, disabled)`, plus `transitions` and `animations`
-  (keyframes).
-- Layout props adopt taffy's style types as the vocabulary.
-- Web renders the whole set into the interned class: `@media` blocks, pseudo-class rules,
-  `transition:`, `@keyframes`. **Gate:** an SSG page is responsive, hoverable and animated
-  with zero JS.
-- Streaming style deltas: a `Deferred` chunk whose content interns a brand-new class
-  carries that rule in its chunk.
-- Hydration adopts the server's `<style>` sheet instead of rebuilding a duplicate.
+- **Done.** `BoxProps`/`RunProps` carry `variants: Vec<(Vec<Condition>, Style)>`
+  (conjunction; media features and interaction states), `transitions`, and
+  `animations` (keyframes over the same style type). Builders: `set_when`,
+  `set_when_all`, `set_transition`, `set_animation` on `Container`/`Text`/`Span`;
+  `BoxStyle`/`RunStyle` gained chainable const setters. The web driver renders the whole
+  set into one interned **rule template** (`@media` blocks, pseudo-class rules,
+  `transition:`, content-addressed `@keyframes`); the interner keys on templates; the
+  browser sink is one `<style>` element per class. **Gate met:** SSR output is
+  responsive, hoverable and animated with zero JS (`web_style.rs`), and the snapshot
+  pins it.
+- **Remaining:**
+  - Layout props adopt taffy's style types as the vocabulary (with the wider flex/grid
+    property set).
+  - Streaming style deltas: a `Deferred` chunk whose content interns a brand-new class
+    carries that rule in its chunk.
+  - Hydration adopts the server's `<style>` rules instead of rebuilding duplicates.
+  - Variants for the raw-`Declarations` escape hatch (currently base-only).
 
 ## Phase 4 — Events and first controls
 

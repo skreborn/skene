@@ -132,17 +132,17 @@ impl State {
     self.with_element(node, Clone::clone)
   }
 
-  /// Interns `declarations` as a shared, content-addressed class and assigns it to `node`,
-  /// refcounting rules so unused ones are collected. The batched path — apply a node's full
-  /// style once. It stays SSR-compatible (the class is content-addressed).
-  pub fn set_style(&self, node: NodeId, declarations: &Declarations) {
+  /// Interns `template` as a shared, content-addressed class and assigns it to `node`,
+  /// refcounting rules so unused ones are collected. The batched path — apply a node's
+  /// full style once. It stays SSR-compatible (the class is content-addressed).
+  pub fn assign_class(&self, node: NodeId, template: &str) {
     let previous = self.node_class.borrow().get(&node).cloned();
 
     // Intern and swap the refcounts in one borrow. No change? leave the DOM and the
     // class's refcount alone.
     let class = {
       let mut styles = self.styles.borrow_mut();
-      let class = styles.class_for(declarations);
+      let class = styles.class_for(template);
 
       if previous.as_deref() == Some(&*class) {
         return;
@@ -425,6 +425,7 @@ thread_local! {
 }
 
 /// Advances to the next resource slot, returning its adopted server value if hydrating.
+#[must_use]
 pub fn adopt_next() -> Option<String> {
   let slot = NEXT_SLOT.get();
 
@@ -528,7 +529,15 @@ pub fn set_attribute(node: NodeId, name: &str, value: &str) {
 
 /// Interns `declarations` as a shared, content-addressed class and assigns it to `node`.
 pub fn set_style(node: NodeId, declarations: &Declarations) {
-  with_state(|state| state.set_style(node, declarations));
+  with_state(|state| {
+    state.assign_class(node, &crate::mapping::declarations_template(declarations));
+  });
+}
+
+/// Interns a full rule template as a shared, content-addressed class and assigns it to
+/// `node`.
+pub(crate) fn assign_class(node: NodeId, template: &str) {
+  with_state(|state| state.assign_class(node, template));
 }
 
 /// Applies each of `declarations` as an inline override on `node`, winning over its

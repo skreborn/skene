@@ -4,7 +4,18 @@
 
 use std::rc::Rc;
 
-use skene_core::{AnyView, Color, IntoView, NodeId, Source, View};
+use skene_core::{
+  Animation,
+  AnyView,
+  Color,
+  Condition,
+  IntoView,
+  NodeId,
+  RunStyle,
+  Source,
+  Transition,
+  View,
+};
 use skene_reactive::{Context, Scope};
 
 /// The text style of a text node: an optional static-or-reactive [`Source`] per property.
@@ -91,6 +102,15 @@ pub struct Text {
   pub(crate) source: Source<String>,
   pub(crate) link: Option<String>,
   pub(crate) style: TextStyle,
+  pub(crate) dynamics: RunDynamics,
+}
+
+/// A run's declarative dynamics: conditional variants, transitions, animations.
+#[derive(Default)]
+pub(crate) struct RunDynamics {
+  pub(crate) variants: Vec<(Vec<Condition>, RunStyle)>,
+  pub(crate) transitions: Vec<Transition>,
+  pub(crate) animations: Vec<Animation<RunStyle>>,
 }
 
 impl Text {
@@ -101,6 +121,7 @@ impl Text {
       source: Source::Static(content.into()),
       link: None,
       style: TextStyle::new(),
+      dynamics: RunDynamics::default(),
     }
   }
 
@@ -111,6 +132,7 @@ impl Text {
       source: Source::Derived(Rc::new(content)),
       link: None,
       style: TextStyle::new(),
+      dynamics: RunDynamics::default(),
     }
   }
 
@@ -169,6 +191,45 @@ impl Text {
 
     self
   }
+
+  /// Adds a conditional style variant, applied while `condition` holds.
+  #[inline(always)]
+  pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
+    self.dynamics.variants.push((vec![condition], style));
+
+    self
+  }
+
+  /// Adds a conditional style variant, applied while all of `conditions` hold.
+  #[inline(always)]
+  pub fn set_when_all(
+    mut self,
+    conditions: impl IntoIterator<Item = Condition>,
+    style: RunStyle,
+  ) -> Self {
+    self
+      .dynamics
+      .variants
+      .push((conditions.into_iter().collect(), style));
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value changes.
+  #[inline(always)]
+  pub fn set_transition(mut self, transition: Transition) -> Self {
+    self.dynamics.transitions.push(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<RunStyle>) -> Self {
+    self.dynamics.animations.push(animation);
+
+    self
+  }
 }
 
 /// An inline run within a [`RichText`]: text, a group of nested spans styled as a unit, or an
@@ -182,6 +243,7 @@ pub struct Span {
   pub(crate) content: SpanContent,
   pub(crate) link: Option<String>,
   pub(crate) style: TextStyle,
+  pub(crate) dynamics: RunDynamics,
 }
 
 /// What a [`Span`] renders: a text run, nested spans, or an embedded view.
@@ -223,6 +285,7 @@ impl Span {
       content,
       link: None,
       style: TextStyle::new(),
+      dynamics: RunDynamics::default(),
     }
   }
 
@@ -278,6 +341,45 @@ impl Span {
   #[inline(always)]
   pub fn derive_font_weight(mut self, font_weight: impl Fn() -> f32 + 'static) -> Self {
     self.style = self.style.derive_font_weight(font_weight);
+
+    self
+  }
+
+  /// Adds a conditional style variant, applied while `condition` holds.
+  #[inline(always)]
+  pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
+    self.dynamics.variants.push((vec![condition], style));
+
+    self
+  }
+
+  /// Adds a conditional style variant, applied while all of `conditions` hold.
+  #[inline(always)]
+  pub fn set_when_all(
+    mut self,
+    conditions: impl IntoIterator<Item = Condition>,
+    style: RunStyle,
+  ) -> Self {
+    self
+      .dynamics
+      .variants
+      .push((conditions.into_iter().collect(), style));
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value changes.
+  #[inline(always)]
+  pub fn set_transition(mut self, transition: Transition) -> Self {
+    self.dynamics.transitions.push(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<RunStyle>) -> Self {
+    self.dynamics.animations.push(animation);
 
     self
   }
@@ -403,6 +505,7 @@ mod realize {
 
   use super::{
     RichText,
+    RunDynamics,
     Span,
     SpanContent,
     Text,
@@ -417,7 +520,12 @@ mod realize {
 
   /// Realizes a text run from its resolved style, returning the node and that resolved
   /// style — the inherited base a group cascades to its children.
-  fn build_run(display: RunDisplay, link: Option<String>, style: TextStyle) -> (NodeId, TextStyle) {
+  fn build_run(
+    display: RunDisplay,
+    link: Option<String>,
+    style: TextStyle,
+    dynamics: RunDynamics,
+  ) -> (NodeId, TextStyle) {
     let resolved = resolved_text_style(style, link.is_some());
     let mut statics = RunStyle::default();
     let mut binders = Binders::new();
@@ -448,6 +556,9 @@ mod realize {
       display,
       link,
       style: statics,
+      variants: dynamics.variants,
+      transitions: dynamics.transitions,
+      animations: dynamics.animations,
     });
 
     for binder in binders {
@@ -460,7 +571,7 @@ mod realize {
   impl View for Text {
     fn build(self) -> NodeId {
       // A block run: its own line, unlike an inline `Span`.
-      let (node, _) = build_run(RunDisplay::Block, self.link, self.style);
+      let (node, _) = build_run(RunDisplay::Block, self.link, self.style, self.dynamics);
 
       self.source.bind(move |text| driver::set_text(node, &text));
 
@@ -478,7 +589,7 @@ mod realize {
         RunDisplay::Inline
       };
 
-      let (node, resolved) = build_run(display, self.link, self.style);
+      let (node, resolved) = build_run(display, self.link, self.style, self.dynamics);
 
       match self.content {
         SpanContent::Text(source) => {

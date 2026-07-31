@@ -93,28 +93,34 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
 Styling is **data**, not closures, because two requirements demand it: server-rendered and
 statically-generated pages must be responsive and animated with **no JS/WASM**, and every
 platform speaks the same layout semantics. A closure (`derive_color(move || …)`) is opaque
-—a server can only serialize its current value; a `StyleSet` compiles to real CSS.
+—a server can only serialize its current value; style data compiles to real CSS.
+
+The typed props carry the full static style (implemented for boxes and text runs):
 
 ```
-StyleSet {
-  base:        Props,                    // the typed portable core + open passthrough
-  variants:    Vec<(Condition, Props)>,  // Condition = Media(…) | State(Hover|Focus|Active|…)
-  transitions: Vec<Transition>,          // property set, duration, delay, easing
-  animations:  Vec<Keyframes>,
+BoxProps/RunProps {
+  style:       BoxStyle/RunStyle,             // the fixed base properties
+  variants:    Vec<(Vec<Condition>, Style)>,  // all conditions must hold; later wins
+  transitions: Vec<Transition>,               // property, duration, delay, easing
+  animations:  Vec<Animation<Style>>,         // keyframes over the same style type
 }
+Condition = MinWidth | MaxWidth | MinHeight | MaxHeight | DarkMode | LightMode
+          | ReducedMotion | Hovered | Focused | FocusVisible | Pressed | Disabled
 ```
 
-- **Layout** adopts taffy's style model as the vocabulary (re-exported/aliased): flexbox,
-  grid, block—defined once by the library that implements it everywhere, rendered to CSS
-  text on the web. The framework invents no layout system.
+- **Layout** will adopt taffy's style model as the vocabulary (re-exported/aliased):
+  flexbox, grid, block—defined once by the library that implements it everywhere,
+  rendered to CSS text on the web. The framework invents no layout system. (Pending; the
+  current `Layout` enum is the seed.)
 - **Decoration and text** are skene's typed properties (background, border, radius,
   cursor, text color/size/weight, …), growing as views need them.
 - **Passthrough** keeps the vocabulary open: a per-family extension (web: raw CSS
   declarations) for everything the typed core doesn't model. Portable code sticks to the
   core; web-only code can reach all of CSS.
-- **Web** renders a `StyleSet` into one interned class: base declarations, `@media`
-  blocks, `:hover`/`:focus`/`:active` rules, `transition:`, `@keyframes`. State- and
-  media-driven styling therefore works in a static document with zero script.
+- **Web** renders the whole set into one interned **rule template**: base declarations,
+  `@media` blocks, `:hover`/`:focus`/`:active` rules, `transition:`, content-addressed
+  `@keyframes`. State- and media-driven styling therefore works in a static document with
+  zero script.
 - **Native/TUI** resolve `Condition` against driver signals (window size, pointer state,
   focus) and run transitions/animations on the driver's frame ticker—not through the
   reactive graph per frame. `derive_` properties remain for genuinely dynamic values; they
@@ -122,15 +128,17 @@ StyleSet {
 
 ### The interner
 
-The content-addressed class interner is load-bearing and its contract is preserved
-verbatim from the pre-scene design: a style set is hashed to a deterministic name
-(`skene-{hash:x}`, forward probe on collision), interned once, reference-counted by live
-node, collected when unused. Identical styles collapse to one class; determinism makes the
-server's stylesheet byte-compatible with the client's, which hydration relies on. The
-interner core is pure and lives in `skene-core`; each driver layers its sink on the
-outcomes (web csr: a live `CssStyleSheet`, rule in on intern, rule out on collect; ssr:
-render live rules once at the end). On native the same interning shares resolved style
-objects across nodes—the computed-style sharing browsers get from classes.
+The content-addressed class interner is load-bearing: a node's complete rule template
+(base rule, variants, `@media` blocks, `@keyframes`, with the class as a placeholder) is
+hashed to a deterministic name (`skene-{hash:x}`, forward probe on collision), interned
+once, reference-counted by live node, collected when unused. Identical styles collapse to
+one class; determinism makes the server's stylesheet byte-compatible with the client's,
+which hydration relies on. The interner is pure and shared by the web leaves; each layers
+its sink on the outcomes (csr: one `<style>` element per class, appended on intern and
+removed on collect—one operation either way, however many rules the template holds; ssr:
+render live templates once at the end, sorted by class). On native the same interning
+shares resolved style objects across nodes—the computed-style sharing browsers get from
+classes.
 
 ## Reactive engine
 

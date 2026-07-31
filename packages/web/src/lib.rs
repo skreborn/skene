@@ -54,6 +54,8 @@ mod ssr;
 #[cfg(target_arch = "wasm32")]
 use skene_core::{BoxProp, BoxProps, NodeId, Role, RunProp, RunProps};
 
+#[cfg(target_os = "unknown")]
+pub(crate) use self::csr::assign_class;
 #[cfg(all(target_os = "unknown", feature = "test"))]
 pub use self::csr::uninstall;
 #[cfg(target_os = "unknown")]
@@ -78,6 +80,8 @@ pub use self::csr::{
   tree::{attach, create_group, destroy, detach},
 };
 #[cfg(target_os = "wasi")]
+pub(crate) use self::ssr::assign_class;
+#[cfg(target_os = "wasi")]
 pub use self::ssr::{
   adopt_next,
   create_element,
@@ -96,9 +100,11 @@ pub use self::ssr::{
   tree::{attach, create_group, destroy, detach},
 };
 
-/// Realizes a box: the element for its role, with its static style interned as a shared
+/// Realizes a box: the element for its role, with its full static style — base
+/// properties, conditional variants, transitions and animations — interned as one shared
 /// class.
 #[cfg(target_arch = "wasm32")]
+#[must_use]
 pub fn create_box(props: &BoxProps) -> NodeId {
   let node = create_element(match props.role {
     Some(Role::Button) => "button",
@@ -109,7 +115,7 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     set_attribute(node, "type", "button");
   }
 
-  set_style(node, &mapping::box_declarations(props));
+  assign_class(node, &mapping::box_template(props));
 
   node
 }
@@ -129,9 +135,10 @@ pub fn place_in_stack(node: NodeId) {
   override_style(node, &Declarations::new().set("grid-area", "1 / 1"));
 }
 
-/// Realizes a text run: an `<a>` when linked, else a `<span>`, with its static style
-/// interned as a shared class — or classless when it is unstyled.
+/// Realizes a text run: an `<a>` when linked, else a `<span>`, with its full static
+/// style interned as a shared class — or classless when it is entirely unstyled.
 #[cfg(target_arch = "wasm32")]
+#[must_use]
 pub fn create_run(props: &RunProps) -> NodeId {
   let node = match props.link.as_deref() {
     Some(href) => {
@@ -144,10 +151,8 @@ pub fn create_run(props: &RunProps) -> NodeId {
     None => create_element("span"),
   };
 
-  let declarations = mapping::run_declarations(props);
-
-  if !declarations.is_empty() {
-    set_style(node, &declarations);
+  if let Some(template) = mapping::run_template(props) {
+    assign_class(node, &template);
   }
 
   node

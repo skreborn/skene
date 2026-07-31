@@ -105,11 +105,11 @@ impl State {
     }
   }
 
-  /// Interns `declarations` as a shared, content-addressed class and assigns it to `node`,
+  /// Interns `template` as a shared, content-addressed class and assigns it to `node`,
   /// refcounting rules so those of a torn-down subtree are collected before serialization.
-  fn set_style(&mut self, node: NodeId, declarations: &Declarations) {
+  fn assign_class(&mut self, node: NodeId, template: &str) {
     let previous = self.nodes.get(&node).and_then(|node| node.class.clone());
-    let class = self.styles.class_for(declarations);
+    let class = self.styles.class_for(template);
 
     if previous.as_deref() == Some(&*class) {
       return;
@@ -406,7 +406,15 @@ pub fn set_attribute(node: NodeId, name: &str, value: &str) {
 
 /// Interns `declarations` as a shared, content-addressed class and assigns it to `node`.
 pub fn set_style(node: NodeId, declarations: &Declarations) {
-  with_state(|state| state.set_style(node, declarations));
+  with_state(|state| {
+    state.assign_class(node, &crate::mapping::declarations_template(declarations));
+  });
+}
+
+/// Interns a full rule template as a shared, content-addressed class and assigns it to
+/// `node`.
+pub(crate) fn assign_class(node: NodeId, template: &str) {
+  with_state(|state| state.assign_class(node, template));
 }
 
 /// Applies each of `declarations` as an inline override on `node`, winning over its

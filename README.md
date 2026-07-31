@@ -1,8 +1,9 @@
 # Skene
 
-A Rust GUI framework. Write an app once against one dependency, and it runs on whatever
-platform the build targets — the web today, native platforms as they land. The building block
-is a **view**; the reactive engine is fine-grained and vdom-free.
+A client-side Rust GUI framework. Write an app once against one dependency, and it runs
+on whatever driver the build selects — the web today (client-rendered, server-rendered, or
+statically generated), native and terminal drivers as they land. The building block is a
+**view**; the reactive engine is fine-grained and vdom-free.
 
 ## Reactivity
 
@@ -16,20 +17,20 @@ count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 
 ## Hello, counter
 
-An app depends only on `skene-gui`, marks its entry with `#[main]`, and names no platform:
+An app depends only on `skene`, marks its entry with `#[main]`, and names no driver:
 
 ```rust
-use skene_gui::prelude::*;
+use skene::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
   let count = RwSignal::new(0u64);
 
   Container::column()
-    .set_spacing(20)
+    .set_spacing(20.)
     .set_children((
-      Text::derive(move || format!("Count: {}", count.get())).set_font_size(32),
-      Container::row().set_spacing(12).set_children((
+      Text::derive(move || format!("Count: {}", count.get())).set_font_size(32.),
+      Container::row().set_spacing(12.).set_children((
         button("−", move || count.update(|n| *n = n.saturating_sub(1))),
         button("+", move || count.update(|n| *n = n.saturating_add(1))),
       )),
@@ -39,7 +40,7 @@ fn app() -> impl IntoView {
 fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
   Container::new()
     .set_role(Role::Button)
-    .set_padding(Inset::symmetric(16, 12))
+    .set_padding(Inset::symmetric(16., 12.))
     .set_cursor(MouseCursor::Click)
     .set_child(Text::new(symbol))
     .handle_click(action)
@@ -54,26 +55,31 @@ fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
 ```
 skene-reactive     the reactive engine — standalone
       │
-skene-core         + reactive: the view spine, Source, Reorder, IntoChildren, generic
-      │            geometry, and the value vocabulary. No views, no platforms.
+skene-core         + reactive: the view spine, the typed property vocabulary, Source,
+      │            Boundary, Reorder, IntoChildren, generic geometry, and the value
+      │            vocabulary. No views, no platforms.
       │
-skene-gui          the facade: built-in views, composition helpers, the platforms
-                   themselves (target-gated), and the single dependency an app pulls in
+skene-web          the web driver: the typed vocabulary mapped to a live DOM (browser)
+      │            or an HTML string (server), the content-addressed stylesheet,
+      │            hydration, and the WASI reactor
+      │
+skene              the umbrella and the single dependency an app pulls in: the built-in
+                   views realized once against the active driver, the composition
+                   helpers, and the transparent entry
 ```
 
 | Crate | Role |
 |-------|------|
 | `skene-reactive` | `RwSignal`, `Memo`, `Effect`, `Scope`, `Trigger`. Synchronous on write. |
-| `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), `IntoChildren`, `Reorder` (the pure minimal-reorder decision), `Source`, generic geometry (`Inset<T>`, `Size<T>`, `Point<T>`, `Rect<T>`), and the value vocabulary (`Color`, `Axis`, alignments, `MouseCursor`). Knows nothing of platforms. |
-| `skene-gui` | The facade: the built-in views (`Container`, `Text`, `TextTheme`) and the values they take; the composition helpers (`Children`, `reconcile`, `dynamic`); the platforms themselves under `platform/` (`web` today); the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
+| `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
+| `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
+| `skene` | The umbrella: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`) realized once against `driver::*`; the composition helpers (`Children`, `reconcile`, `dynamic`); `spawn`/`Resource`/`Deferred`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
 
-**No backends, no framework-defined styles.** There is no "backend" trait or object. A
-platform is a plain module of free-standing functions under `skene-gui`'s `platform/`,
-holding its state privately — the shape `std` uses. Exactly one is compiled, chosen by
-target-gating, so there is no `dyn` dispatch and no runtime swap. The built-in views are a
-*shared builder API* with a *per-platform*, target-gated `build` — app code is portable while
-realization is native to each platform. The framework ships no predefined `Style`; each
-platform styles its own way.
+**Realize once, drive per platform.** Views are realized a single time against a typed,
+driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
+mutations); each driver crate exports that vocabulary mapped to its own sink. Exactly one
+driver is compiled, resolved by the umbrella at compile time — no "backend" trait, no
+`dyn` dispatch, no runtime swap.
 
 ### Styling on the web platform
 
@@ -109,7 +115,7 @@ impl View for Labeled {
 }
 ```
 
-For platform-specific work beyond the built-ins, just call the platform's functions from a
+For web-specific work beyond the built-ins, just call the driver's functions from a
 view, cfg-gated to that target — there is no helper in between (`empty()` is the no-op for
 platforms a view doesn't support):
 
@@ -136,15 +142,16 @@ cargo xtask web                  # build the wasm demo and serve it on :8080
 Then open <http://localhost:8080>. `cargo xtask web` builds the `counter` example to wasm,
 generates the bindings into `examples/counter/dist`, and serves it; pass `--port <n>`,
 `--debug`, or `--no-serve`. The example is a single crate (`examples/counter`) depending only
-on `skene-gui`.
+on `skene`.
 
 ## Testing
 
 ```sh
-cargo test --workspace      # host: reactive + the spine's pure helpers (Reorder)
-cargo test -p skene-gui --target wasm32-unknown-unknown   # web: real DOM, headless browser
+cargo test --workspace      # host: reactive + the spine's pure helpers
+cargo test -p skene --target wasm32-unknown-unknown   # browser: real DOM, headless browser
+cargo test -p skene --target wasm32-wasip2            # server: wasmtime, incl. snapshot
 ```
 
-The built-in views realize per platform, so their tests are per-platform: the web suite
-drives a real DOM via `wasm-bindgen-test`. There is no generic mock — a generic platform has
-no realization to assert against.
+Drivers test against their real sinks: the browser suite drives a real DOM via
+`wasm-bindgen-test`; the server suite runs under wasmtime and pins a byte-exact render
+snapshot.

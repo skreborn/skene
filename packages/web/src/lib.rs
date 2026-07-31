@@ -1,0 +1,162 @@
+//! The skene web driver.
+//!
+//! One family, two leaves selected by target: the browser (`csr`,
+//! `target_os = "unknown"`) realizes against a live DOM, and the server renderer (`ssr`,
+//! `target_os = "wasi"`) against a string tree — both emitting the same web semantics, so
+//! a node styled the same way gets the same content-addressed class on either leaf.
+//!
+//! The crate exposes three surfaces:
+//!
+//! - **The typed vocabulary** the built-in views realize through — [`create_box`], [`update_box`],
+//!   [`create_run`], [`update_run`], [`set_text`], [`handle_click`], the tree mutations — plus the
+//!   async and hydration seams ([`drive`], [`is_server`], [`adopt_next`], [`register_source`]).
+//! - **The web escape hatch** for a view written directly against the web: [`create_element`],
+//!   [`set_attribute`], [`set_style`]/[`override_style`] with raw [`Declarations`], and on the
+//!   browser leaf the raw `element`/`document` handles — which do not exist on the server leaf, so
+//!   DOM-reaching code fails to compile there.
+//! - **The entries**: the browser's `launch`/`hydrate_page`, the server's raw
+//!   `render_to_string`/`render_to_stream`.
+
+mod declarations;
+#[cfg(target_arch = "wasm32")]
+mod interner;
+
+pub use declarations::Declarations;
+
+#[cfg(target_arch = "wasm32")]
+mod hydration;
+#[cfg(target_arch = "wasm32")]
+mod mapping;
+#[cfg(target_arch = "wasm32")]
+mod styler;
+
+#[cfg(target_arch = "wasm32")]
+pub use hydration::{HydrationSource, STATE_SCRIPT_ID};
+#[cfg(target_arch = "wasm32")]
+pub use styler::Styler;
+
+/// The reset stylesheet every web leaf applies — injected into a `<style>` by the
+/// browser, serialized into the document by a server.
+#[cfg(target_arch = "wasm32")]
+const RESET_CSS: &str = include_str!("reset.css");
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+mod csr;
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+mod ssr;
+
+// The active leaf's surface. Both leaves expose the same shared vocabulary and seams;
+// they differ at the edges. The browser leaf adds the raw-handle escape hatch
+// (`element`/`document`) and its entry points — `element` is browser-only, so a view
+// reaching for it will not compile for the server — while the server leaf omits those and
+// exposes `render_to_string`/`render_to_stream` instead. `uninstall` is the browser
+// leaf's test teardown.
+#[cfg(target_arch = "wasm32")]
+use skene_core::{BoxProp, BoxProps, NodeId, Role, RunProp, RunProps};
+
+#[cfg(all(target_os = "unknown", feature = "test"))]
+pub use self::csr::uninstall;
+#[cfg(target_os = "unknown")]
+pub use self::csr::{
+  adopt_next,
+  create_element,
+  document,
+  drive,
+  element,
+  handle_click,
+  hydrate,
+  hydrate_page,
+  install,
+  is_server,
+  launch,
+  mount,
+  override_style,
+  register_source,
+  set_attribute,
+  set_style,
+  set_text,
+  tree::{attach, create_group, destroy, detach},
+};
+#[cfg(target_os = "wasi")]
+pub use self::ssr::{
+  adopt_next,
+  create_element,
+  drive,
+  handle_click,
+  is_server,
+  override_style,
+  register_boundary,
+  register_source,
+  render_to_stream,
+  render_to_string,
+  set_attribute,
+  set_style,
+  set_text,
+  sleep,
+  tree::{attach, create_group, destroy, detach},
+};
+
+/// Realizes a box: the element for its role, with its static style interned as a shared
+/// class.
+#[cfg(target_arch = "wasm32")]
+pub fn create_box(props: &BoxProps) -> NodeId {
+  let node = create_element(match props.role {
+    Some(Role::Button) => "button",
+    None => "div",
+  });
+
+  if matches!(props.role, Some(Role::Button)) {
+    set_attribute(node, "type", "button");
+  }
+
+  set_style(node, &mapping::box_declarations(props));
+
+  node
+}
+
+/// Applies one changed box property as an inline override, winning over the interned
+/// class.
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn update_box(node: NodeId, prop: &BoxProp) {
+  override_style(node, &mapping::box_prop_declarations(prop));
+}
+
+/// Overlaps a stack child in the box's single cell.
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn place_in_stack(node: NodeId) {
+  override_style(node, &Declarations::new().set("grid-area", "1 / 1"));
+}
+
+/// Realizes a text run: an `<a>` when linked, else a `<span>`, with its static style
+/// interned as a shared class — or classless when it is unstyled.
+#[cfg(target_arch = "wasm32")]
+pub fn create_run(props: &RunProps) -> NodeId {
+  let node = match props.link.as_deref() {
+    Some(href) => {
+      let node = create_element("a");
+
+      set_attribute(node, "href", href);
+
+      node
+    }
+    None => create_element("span"),
+  };
+
+  let declarations = mapping::run_declarations(props);
+
+  if !declarations.is_empty() {
+    set_style(node, &declarations);
+  }
+
+  node
+}
+
+/// Applies one changed text-run property as an inline override, winning over the interned
+/// class.
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn update_run(node: NodeId, prop: &RunProp) {
+  override_style(node, &mapping::run_prop_declarations(prop));
+}

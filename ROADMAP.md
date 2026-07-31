@@ -1,42 +1,42 @@
 # Roadmap
 
-The phased migration to the scene architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 1.**
+The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
+Phases are ordered; later phases assume the earlier ones. **Current phase: 3.**
 
-## Phase 1 — Reactive engine internals
+## Phase 1 — Reactive engine internals ✅
 
-API stays as-is (`RwSignal`/`Memo`/`Effect`/`Scope`/`Context`, sync/local storage split).
+API kept as-is (`RwSignal`/`Memo`/`Effect`/`Scope`/`Context`, sync/local storage split).
 
-- **1a, correctness:**
-  - Eager staleness marking: a write marks dependent memos stale transitively at write
-    time; reads pull freshness. Fixes the proven bug where a memo read inside
-    `Effect::batch` after a write returned the stale value. Memos keep change-filtering
-    (an unchanged recompute notifies no one).
-  - Non-reentrant flushing: a write during a flush enqueues instead of recursing; the
-    running flush drains it. Sync-runtime drains mark before running.
-- **1b, performance:** replace the five `HashMap<Id, _>` runtime maps with arena storage
-  and small-vector subscription edges with back-pointers. Measure before/after.
-- Later, with drivers: implicit batch around event dispatch.
+- **1a, correctness — done.** Eager staleness marking (a write marks dependent memos
+  stale transitively; reads pull freshness — fixing the stale memo-read inside
+  `Effect::batch`), memo change-filtering preserved, non-reentrant flushing (a mid-flush
+  write enqueues; the running flush drains it), sync-runtime drains mark before running.
+- **1b, performance — done.** The five `HashMap<Id, _>` runtime maps collapsed into one
+  `FxHashMap<Id, Entity>`; all hashing on rustc-hash; dispose unlinks from the parent's
+  children set (fixed unbounded growth under child churn). Criterion benches: creation
+  −40%, reads −44%, write-through-effects −30%, memo chains −24%.
+- **Remaining:** a true generational arena (needs an `Id` allocation redesign across the
+  local and sync runtimes); implicit batch around event dispatch (lands with phase 4).
 
-## Phase 2 — The scene, the crate split, the web driver retargeted
+## Phase 2 — The typed vocabulary, the crate split, realize-once views ✅
 
-The structural core of the redesign; see `DESIGN.md` for the full shape.
+The structural core of the redesign; see `DESIGN.md` for the full shape (refined during
+implementation: a typed driver vocabulary rather than a persistent core scene — static
+dispatch requires the realization to live where the driver is nameable).
 
-- The scene in `skene-core`: node kinds (Box, Text, Group, Painted, Embed), properties as
-  `Source`s, persistent structural tree, generic driver-ops algorithms (`reconcile`,
-  `dynamic`, destroy walks) hoisted from the facade.
-- Built-in views realized once against the scene, in `skene-views`.
-- `skene-web` split out as a driver crate; csr/ssr leaves keep the `target_os` split. The
-  ssr serializer walks the scene (its private string tree dissolves into it); csr keeps
-  only its NodeId→Element registry and sinks.
-- The umbrella `skene`: driver selection by feature (`compile_error!` on zero or two),
-  prelude, `launch`, `#[main]`, `spawn`, `Resource`, `Deferred`, `client_only`.
-- Headless scene tests for the built-in views; the browser/wasmtime suites keep covering
-  the drivers.
-- **Gate:** every existing web/ssr/hydration/resource/streaming test passes; interned
-  class names and the hydration marker scheme are byte-compatible before/after.
+- **Done.** The typed property vocabulary in `skene-core` (`BoxProps`/`BoxProp`,
+  `RunProps`/`RunProp`); `Border`/`Layout`/`Role` and `Boundary` hoisted into core;
+  `skene-web` split out as a driver crate (csr/ssr leaves keep the `target_os` split,
+  interner/Declarations/hydration channel inside); views realized once in the umbrella
+  `skene` against `driver::*`; `skene-gui` dissolved (crate renamed `skene`,
+  `skene-gui-macros` → `skene-macros`, entry `__skene_main`).
+- **Gate met:** the full web/ssr/hydration/resource/streaming suites pass, and a
+  byte-exact SSR snapshot (interned class names, `data-h` markers, markup) is identical
+  before and after the migration.
+- **Remaining:** a host-compilable recording driver for headless view tests; driver
+  selection by feature when a second same-triple driver lands.
 
-Carried over, already done in the pre-scene code and preserved through the migration:
+Carried over from the pre-split code and preserved through the migration:
 `render_to_string` and `Rendered::page`; in-order streaming (`render_to_stream`,
 `Deferred`, resumable cursor); the WASI-`poll` reactor and `stabilize` fixpoint;
 marker-based hydration with loud mismatch; serialize-by-default resources
@@ -79,13 +79,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 
 ## Phase 6 — Native driver family
 
-The largest phase by far; do not start before phase 4 proves the event/scene model.
+The largest phase by far; do not start before phase 4 proves the event model.
 
 - Shared machinery: taffy layout, vello paint, parley text, AccessKit, the frame ticker
   running style transitions/animations, `Condition` resolution against window/pointer
   signals.
 - Compositing premise: **the platform composites.** On iOS/Android/macOS the driver
-  realizes the scene into the native view hierarchy—painted content in vello-backed
+  realizes the tree into the native view hierarchy—painted content in vello-backed
   layers that are views, embeds as ordinary native views—so custom paint and real
   platform controls interleave in z-order for free. The Linux leaf is
   winit + single vello surface (no native control set exists to embed); Windows chooses
@@ -100,7 +100,7 @@ The largest phase by far; do not start before phase 4 proves the event/scene mod
 ## Phase 7 — TUI driver
 
 - taffy with `1.0 = 1 cell`; buffer renderer; no Painted/Embed realization.
-- Deliberately minimal—its role is to prove the scene is platform-neutral.
+- Deliberately minimal—its role is to prove the vocabulary is platform-neutral.
 
 ## Phase 8 — CLI
 

@@ -1,4 +1,4 @@
-//! A counter demo: one app crate, depending only on `skene-gui`, that runs on any GUI
+//! A counter demo: one app crate, depending only on `skene`, that runs on any GUI
 //! platform the build targets.
 //!
 //! Gated to the browser platform (the only one with an interactive entry point): building
@@ -7,7 +7,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
-use skene_gui::prelude::*;
+use skene::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

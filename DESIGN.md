@@ -14,31 +14,25 @@ a skene frontend without the framework becoming a server framework.
 The building block is a **view** (the `View` trait). "View" is the canonical term
 throughout—there is no separate "widget" concept.
 
-> **Transition status.** This document describes the target architecture. The codebase is
-> mid-migration: `packages/gui` still realizes views per platform against the pre-scene
-> model. `ROADMAP.md` tracks which phase the code is in.
-
 ## Crates
 
 ```
 skene-reactive   reactive engine: signals, effects, memos, scopes, contexts
       │
-skene-core       the spine: view spine, the SCENE (platform-neutral node tree), the
-      │          style model (StyleSet + interner core), Source, Reorder, generic
+skene-core       the spine: view spine, the typed property vocabulary (BoxProps,
+      │          RunProps, later StyleSet), Source, Boundary, Reorder, generic
       │          geometry, universal values. Knows nothing of platforms.
       │
-skene-views      the built-in views (Container, Text, RichText, TextTheme, controls as
-      │          they land), realized ONCE against the scene. Knows nothing of platforms.
-      │
-      ├── skene-web       web driver: DOM sink (csr) + HTML/CSS serializer (ssr), CSSOM
-      │                   stylesheet, hydration, event delegation, painted-node canvas
+      ├── skene-web       web driver: DOM sink (csr) + HTML/CSS serializer (ssr), the
+      │                   CSSOM stylesheet and interner, hydration, the WASI reactor
       ├── skene-native    painted-native driver family: taffy layout, vello paint,
       │                   parley text, AccessKit; per-OS leaves
       ├── skene-tui       terminal driver: taffy layout in cells, buffer renderer
       │
-skene            the umbrella and the single dependency an app pulls in: driver selection,
-                 prelude, launch, #[main], and the driver-adjacent shared features that
-                 must name the active driver (spawn, Resource, Deferred, client_only)
+skene            the umbrella and the single dependency an app pulls in: the built-in
+                 views realized ONCE against the active driver, the composition helpers
+                 (Children, reconcile, dynamic), driver selection, prelude, launch,
+                 #[main], spawn, Resource, Deferred, client_only
 
 skene-router     routing over signals; a small per-driver URL binding seam
 skene-runner     host-side library embedding a wasm runtime; exposes the app's render
@@ -46,71 +40,53 @@ skene-runner     host-side library embedding a wasm runtime; exposes the app's r
 skene-macros     the #[skene::main] entry proc-macro
 ```
 
-Dependency arrows only point down the first column; drivers depend on core (never on
-views or on each other); the umbrella depends on everything and is the only crate that
-names a driver.
+Dependency arrows only point down; drivers depend on core (never on each other); the
+umbrella depends on everything and is the **only** crate that names a driver.
 
-## The scene
+## The typed driver vocabulary
 
-The scene is the platform-neutral realization target: views build **scene nodes** instead
-of calling platform functions. It has two aspects:
+Views are realized **once**, in the umbrella, against a driver-neutral vocabulary of
+typed functions every driver crate exports under the same names—`create_box(&BoxProps)`,
+`update_box(node, &BoxProp)`, `create_run(&RunProps)`, `update_run`, `set_text`,
+`create_group`, `attach`/`detach`/`destroy`, `handle_click`, plus the async and hydration
+seams (`drive`, `is_server`, `adopt_next`, `register_source`). The umbrella resolves
+`driver::` to the enabled driver at compile time and writes each `impl View` exactly one
+time; a driver maps the typed data to its own sink and keeps its own retained state.
 
-- **A build-time description.** A node carries its kind, its typed properties as
-  `Source<T>` (static or derived, unbound), its `StyleSet`, and its event handlers. A
-  built-in view's `build` writes this data once—there is no per-platform `impl View`.
-- **A persistent structural tree.** Parent/child order and node identity live in the scene
-  for the app's lifetime. Structural algorithms (attach, detach, destroy walks,
-  reconciliation) run here, written once.
+- **Statics batch, deriveds bind.** A builder's fixed properties arrive together in the
+  create call—the web driver folds them into one content-addressed class—while each
+  `derive_` property binds an effect that re-applies through the per-property update call
+  (web: a single-declaration inline override). The split is written once, in the umbrella.
+- **`Role` guides the driver's concrete choice** (web: `Role::Button` → `<button>`); the
+  vocabulary stays semantic, never platform-worded.
+- **Painted**—a future vocabulary entry: a vello paint callback plus a layout size,
+  portable across every *interactive* target. Native drivers paint it into a layer; the
+  web driver paints it into a `<canvas>` via wgpu (WebGPU; the vello CPU/hybrid path is
+  the fallback where WebGPU is absent). SSR/SSG render it empty—the client fills it after
+  hydration—and the TUI driver does not realize it. Vello is the one renderer, everywhere.
+- **Embeds are driver-specific views**, not vocabulary: a driver crate exposes its own
+  constructors (`web::element` and `client_only` for raw DOM today; later
+  `ios::native_view`, an Android map view). The payload never crosses a crate boundary,
+  so there is no `Any` and no downcast.
 
-  **Why a scene and not per-platform realization.** Three forcing functions. (1) The
-  orphan rule: with views in one crate and platforms in another, `impl View for Container`
-  cannot live in the platform crate, so separate driver crates are impossible under
-  per-platform realization. (2) The old model wrote the same node bookkeeping twice—the
-  csr and ssr leaves each kept a parallel arena with children/parents mirrors; the scene
-  is that structure, hoisted and written once. (3) With taffy layout and the shared style
-  model on every platform, realization decisions genuinely are shared; per-platform
-  realization would copy them N times.
+  **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
+  views in one crate and drivers in others, `impl View for Container` can live in neither
+  driver, so separate driver crates are impossible under per-platform realization. Typing
+  the vocabulary moves the platform decision (CSS text, native styles) into the driver
+  while realization is written once above it.
 
-### Node kinds
+  **Why not a persistent scene tree in core.** A core-owned retained tree was considered
+  and rejected: compile-time by-name dispatch requires the caller to sit above the callee
+  in the crate graph, so core could never call driver functions—every workaround was a
+  `dyn` driver or a function-pointer table in disguise—and the tree would double the
+  bookkeeping every driver already keeps for its sink. The umbrella naming the driver is
+  the one place static dispatch works, so that is where realization lives.
 
-- **Box**—a container: layout, decoration, handlers, children. `Role` guides the driver's
-  concrete choice (web: `Role::Button` → `<button>`).
-- **Text**—a block or inline text run with resolved text style; rich text nests runs.
-- **Group**—a structural anchor with no semantics of its own (`dynamic`, `Deferred`).
-- **Painted**—a custom-painted node: a vello paint callback plus a layout size. Portable
-  across every *interactive* target: native drivers paint it into a layer; the web driver
-  paints it into a `<canvas>` via wgpu (WebGPU; the vello CPU/hybrid path is the fallback
-  where WebGPU is absent). SSR/SSG render it empty—the client fills it after hydration—and
-  the TUI driver does not realize it. The paint signature is shared vocabulary; vello is
-  the one renderer, everywhere.
-- **Embed**—a driver-managed node. The scene records only that the node belongs to the
-  driver; the payload lives in the driver's own side table, and the constructor is
-  exposed by the driver crate alone. This is how a web view takes the raw `Element`
-  (`web::raw_element`, csr-only), and how a native leaf hosts a real platform control
-  (`ios::native_view`, an Android map, a web iframe). No `Any`, no downcast: the payload
-  never crosses a crate boundary.
-
-### How drivers realize the scene
-
-A driver **mounts** a scene subtree: for each node it creates its artifact (DOM element,
-native view, taffy node + layer, cell region) and **binds** the node's `Source`s—the
-driver owns the effects, so a derived property re-applies through driver code directly.
-Shared structural algorithms (`reconcile`, `dynamic`, destroy walks) live in core as
-functions generic over a small driver-ops parameter, monomorphized into each driver: no
-trait object, no `dyn`, no runtime dispatch. After mount, a reactive update flows
-signal → effect (owned by the driver) → driver sink, without touching a diff.
-
-  **Why drivers bind, rather than the scene notifying.** Compile-time by-name dispatch
-  requires the caller to sit above the callee in the crate graph. Views sit below drivers,
-  so views cannot call driver functions; drivers sit above core, so driver code can walk
-  scene data and instantiate core's generic algorithms freely. Binding at mount puts every
-  platform-facing call inside the driver crate, which is what keeps the whole system
-  statically dispatched with separate driver crates.
-
-  **No mock driver—but headless tests.** The scene is a real artifact, not a fiction: view
-  logic (properties, structure, style resolution, reconcile behavior) is tested on the
-  host against the scene, in milliseconds. Drivers test against their real sinks (web: a
-  browser DOM via `wasm-bindgen-test`; ssr: wasmtime; native: its toolkit).
+  **No mock driver—but headless tests.** Because the vocabulary carries typed data, a
+  future host-compilable *recording* driver can capture exactly what any real driver
+  receives, giving view logic fast headless tests without pretending to be a platform.
+  Drivers test against their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr:
+  wasmtime under a byte-exact snapshot; native: its toolkit).
 
 ## The style model
 
@@ -184,14 +160,15 @@ The public API is stable: `RwSignal`/`ReadSignal`/`WriteSignal` (Copy handles),
 Two leaves, selected by target and enforced by it—`web-sys` does not exist on
 `wasm32-wasip2`, so the server leaf *cannot* touch the DOM:
 
-- **csr** (`target_os = "unknown"`)—the browser. DOM artifacts, the CSSOM stylesheet sink,
-  root-level event delegation (one listener per event type, dispatch by node id),
-  hydration (creation-order `data-h` markers, loud mismatch), `Painted` via
-  `<canvas>` + wgpu, `Embed` for raw-element views.
-- **ssr** (`target_os = "wasi"`)—the serializer. Walks the scene to HTML plus the interned
-  stylesheet; drives async to a fixpoint on a WASI-`poll` reactor before serializing;
-  streams in document order around `Deferred` boundaries; serializes resource state for
-  the client to adopt. `Painted` and `Embed` render empty; handlers are inert.
+- **csr** (`target_os = "unknown"`)—the browser. DOM artifacts, the CSSOM stylesheet
+  sink, hydration (creation-order `data-h` markers, loud mismatch), the raw
+  `element`/`document` escape hatch; later root-level event delegation and `Painted` via
+  `<canvas>` + wgpu.
+- **ssr** (`target_os = "wasi"`)—the serializer. Renders its string tree to HTML plus the
+  interned stylesheet; drives async to a fixpoint on a WASI-`poll` reactor before
+  serializing; streams in document order around `Deferred` boundaries; serializes
+  resource state for the client to adopt. The raw handles do not exist here (`web-sys` is
+  absent on wasi), painted/embedded content renders empty, and handlers are inert.
 
 The app compiles to wasm for both leaves; the same module serves CSR in the browser and
 SSR/SSG in a runner.
@@ -199,13 +176,13 @@ SSR/SSG in a runner.
 ### Native (`skene-native`)
 
 One family; the design premise is that **the platform composites**. Where the OS has a
-real view hierarchy (iOS, Android, macOS), the driver realizes the scene *into* it: taffy
+real view hierarchy (iOS, Android, macOS), the driver realizes the tree *into* it: taffy
 computes frames, painted content renders through vello into layers that are themselves
 views in that hierarchy, and an `Embed` is an ordinary native view (a `UITextField`, a
 map). Sibling order is z-order, so custom-painted content and real platform controls
 interleave for free—compositing is the platform's duty, not the framework's. The driver
 decides its own realization granularity internally (view-per-node versus flattened painted
-layers); the invariant is only that scene order maps to compositor order.
+layers); the invariant is only that tree order maps to compositor order.
 
 The Linux desktop leaf has no native control set to embed, so it is the plain
 winit + single-vello-surface case; Windows sits between (composition visuals) and its leaf
@@ -216,16 +193,17 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 ### TUI (`skene-tui`)
 
 Layout, no painting: taffy with `1.0 = 1 cell`, rendered to a terminal buffer. `Painted`
-and `Embed` have no realization. TUI is deliberately the cheapest driver—it doubles as
-the proof that the scene is platform-neutral.
+and embeds have no realization. TUI is deliberately the cheapest driver—it doubles as
+the proof that the vocabulary is platform-neutral.
 
 ## Selection and entry
 
-An app depends on `skene` with **exactly one driver feature** (`web`, `desktop`, `tui`,
-…); zero or two is a `compile_error!`. Target-gating remains the enforcement layer where
-it applies (wasm32 → web; `target_os` splits csr/ssr), but it is no longer the selector:
-desktop and TUI share a target triple, so selection by dependency/feature is the primary
-mechanism.
+With one driver today, selection is by target: the umbrella pulls `skene-web` under
+`cfg(target_arch = "wasm32")` and no feature is needed. When a second same-triple driver
+lands (desktop and TUI share a target triple), selection becomes **exactly one driver
+feature** (`web`, `desktop`, `tui`, …), with more than one a `compile_error!`.
+Target-gating stays the enforcement layer where it applies (`target_os` splits csr/ssr;
+`web-sys` cannot exist off the browser target).
 
 The umbrella is the one crate allowed to name the active driver, which is why the shared
 driver-adjacent surface lives there: `launch`, `#[main]` (per-driver entry glue),
@@ -277,15 +255,17 @@ Recorded because they were load-bearing and the reasons they fell matter:
 
 - **Per-platform view realization** (shared builder, per-platform `impl View`) fell to the
   orphan rule the moment drivers became separate crates, and to the duplication it forced
-  (the csr/ssr leaves each maintained the same node bookkeeping). The scene replaces it.
+  it forced (each leaf re-derived the same realization decisions). The typed vocabulary
+  replaces it: the decision moves to data, the mapping to the driver.
 - **"No framework style model"** existed so no platform would be forced onto a foreign
   vocabulary. Taffy-everywhere plus no-JS responsive SSG *is* a shared vocabulary by
   requirement; the model is now framework-defined but open (passthrough), and each driver
   still owns its sink.
 - **"Selection is the target, only"** cannot distinguish desktop from TUI on one triple.
   Target-gating is demoted from selector to enforcement.
-- **"No generic platform to test against"** was true when there was nothing real between
-  views and platforms. The scene is real; headless view tests assert on it.
+- **"No generic platform to test against"** was true when the realization interface was
+  per-platform text. The typed vocabulary is real data; a recording driver can capture it
+  faithfully for headless view tests.
 - **A `Backend` trait object** (pre-redesign) cost `unsafe`, `Box::leak`, and a fallible
   downcast to re-discover what the compiler knew. Still rejected: drivers are statically
   selected, and the generic driver-ops parameter monomorphizes—there is no `dyn` driver

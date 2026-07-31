@@ -1,0 +1,46 @@
+[package]
+name = "skene"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Expose the driver teardown (`web::uninstall`) so one thread can run many independent
+# mounts. Enabled automatically for this crate's own tests via the self dev-dependency.
+test = ["skene-reactive/test", "skene-web/test"]
+
+[dependencies]
+rustc-hash.workspace = true
+skene-core.workspace = true
+skene-macros.workspace = true
+skene-reactive.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+serde = "1"
+serde_json = "1"
+skene-web.workspace = true
+wasm-bindgen.workspace = true
+
+[dev-dependencies]
+# Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
+# `--features` flag.
+skene = { path = ".", features = ["test"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+wasm-bindgen-test = "0.3"
+web-sys = { version = "0.3", features = [
+  "CssStyleDeclaration",
+  "Document",
+  "DomTokenList",
+  "Element",
+  "HtmlCollection",
+  "HtmlElement",
+  "Node",
+  "NodeList",
+  "Window",
+] }
+
+[lints]
+workspace = true

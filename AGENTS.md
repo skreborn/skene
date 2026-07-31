@@ -6,21 +6,22 @@
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
   runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
 - The spine (`skene-reactive` + `skene-core`) stays platform-agnostic: no platform
-  assumptions or nomenclature. Core hosts the reactive engine, the view spine, the
-  **scene**, the style model and interner core, generic geometry (over a plain `f32`
-  scalar), and universal values.
+  assumptions or nomenclature. Core hosts the reactive engine, the view spine, the typed
+  property vocabulary (`BoxProps`, `RunProps`, later `StyleSet`), `Boundary`, generic
+  geometry (over a plain `f32` scalar), and universal values.
 - The canonical building block is a **view** (the `View` trait); never "widget". Views
-  are realized **once**, against the scene—there is no per-platform `impl View`, no
-  "backend" concept, and no trait describing a platform.
-- A **driver** is a separate crate (`skene-web`, `skene-native`, `skene-tui`) that mounts
-  the scene into its sink and owns the effects binding node `Source`s. Drivers depend on
-  core, never on views or on each other. There is no `dyn` driver, no downcast, and no
-  runtime swap: shared structural algorithms are generic over a driver-ops parameter and
-  monomorphize; every platform-facing call lives inside a driver crate.
-- Driver selection is **exactly one umbrella feature** (`web`, `desktop`, `tui`, …);
-  zero or more than one is a `compile_error!`. Target-gating is the enforcement layer, not
-  the selector: the web csr/ssr leaves stay split on `target_os` (`unknown`/`wasi`), so
-  the server leaf physically cannot touch the DOM.
+  are realized **once**, in the umbrella, against the typed driver vocabulary—there is no
+  per-platform `impl View`, no "backend" concept, and no trait describing a platform.
+- A **driver** is a separate crate (`skene-web`, `skene-native`, `skene-tui`) exporting
+  the same typed vocabulary (`create_box`, `update_box`, `create_run`, tree mutations,
+  the async/hydration seams) mapped to its own sink. Drivers depend on core, never on
+  each other. The umbrella is the only crate that names a driver (`driver::` resolved at
+  compile time); there is no `dyn` driver, no downcast, and no runtime swap.
+- Driver selection: by target while web is the only driver; **exactly one umbrella
+  feature** once same-triple drivers exist (desktop/tui), with more than one a
+  `compile_error!`. Target-gating is the enforcement layer: the web csr/ssr leaves stay
+  split on `target_os` (`unknown`/`wasi`), so the server leaf physically cannot touch the
+  DOM.
 - The **style model is data** (`StyleSet`: typed props + open per-family passthrough,
   media/state variants, transitions, keyframes). Layout vocabulary is taffy's, adopted
   not invented. On the web a `StyleSet` compiles to real CSS inside one interned class, so
@@ -30,24 +31,23 @@
   (`skene-{hash:x}`, forward probe on collision), reference-counted, deterministic and
   identical across csr and ssr—hydration and stylesheet parity depend on it. The pure core
   lives in `skene-core`; each driver layers only its sink.
-- **Painted** nodes are vello, everywhere interactive: native layers, web `<canvas>` via
-  wgpu. SSR/SSG render them empty; TUI does not realize them. **Embed** nodes are
-  driver-managed—payload in the driver's side table, constructor exposed only by the
-  driver crate (raw DOM element on web csr, real platform controls on native). On
-  platforms with a real view hierarchy the driver realizes the scene into it, so embeds
+- **Painted** content is vello, everywhere interactive: native layers, web `<canvas>`
+  via wgpu. SSR/SSG render it empty; TUI does not realize it. **Embeds** are
+  driver-specific views with driver-exposed constructors (raw DOM element on web csr,
+  real platform controls on native); the payload never crosses a crate boundary. On
+  platforms with a real view hierarchy the driver realizes the tree into it, so embeds
   and painted layers interleave in z-order by the platform compositor.
-- View logic is tested **headless against the scene** on the host. Drivers test against
-  their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime; native: its
-  toolkit). There is no mock driver.
+- View logic tests run headless where possible (via a recording driver, once it exists).
+  Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
+  wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.
 - HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
   `Resource`, the SSR reactor's public `register`, `Boundary`—so third-party integrations
   sit on the same footing first-party ones would. (Exception: a native driver owning its
   event loop may ship a loop-integrated timer.)
 
-> **Transition.** The codebase is mid-migration to this architecture; `packages/gui`
-> still realizes views per platform against the pre-scene model. `DESIGN.md` is the
-> target; `ROADMAP.md` tracks which phase the code is in. New work follows the target
-> unless it is a fix inside not-yet-migrated code.
+> **Transition.** The crate split and realize-once views are in place (`packages/skene`,
+> `packages/web`). `DESIGN.md` is the target; `ROADMAP.md` tracks which phase the code is
+> in. New work follows the target.
 
 ## Style and documentation conventions
 
@@ -72,9 +72,10 @@
 
 ## Naming & API conventions
 
-- The spine stays minimal and structural. The built-in views live in `skene-views`,
-  realized once against the scene; users extend by composing built-ins, painting a
-  `Painted` node, or authoring a driver-specific `Embed` view.
+- The spine stays minimal and structural. The built-in views live in the umbrella
+  (`skene`), realized once against the driver vocabulary; users extend by composing
+  built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
+  view against the driver's escape hatch.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.

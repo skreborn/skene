@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-skene-gui.workspace = true
+skene.workspace = true
 
 [lints]
 workspace = true

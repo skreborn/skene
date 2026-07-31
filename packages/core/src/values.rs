@@ -1,19 +1,25 @@
 mod alignment;
 mod axis;
+mod border;
 mod color;
 mod inset;
+mod layout;
 mod mouse_cursor;
 mod point;
 mod rect;
+mod role;
 mod size;
 
 pub use alignment::*;
 pub use axis::*;
+pub use border::*;
 pub use color::*;
 pub use inset::*;
+pub use layout::*;
 pub use mouse_cursor::*;
 pub use point::*;
 pub use rect::*;
+pub use role::*;
 pub use size::*;
 
 macro_rules! impl_ops {

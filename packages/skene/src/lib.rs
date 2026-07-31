@@ -1,0 +1,262 @@
+//! # skene
+//!
+//! The single dependency an app pulls in. Holds the built-in views, realized once against
+//! the active driver's typed vocabulary, the composition helpers, the transparent entry
+//! point, and re-exports the spine + reactive engine. App code names no driver: write a
+//! view function, mark it [`macro@main`], and it runs on whatever driver the build
+//! selects.
+
+pub mod prelude;
+
+mod children;
+mod container;
+#[cfg(target_arch = "wasm32")]
+mod deferred;
+mod empty;
+#[cfg(target_arch = "wasm32")]
+mod realize;
+#[cfg(target_arch = "wasm32")]
+mod reconcile;
+#[cfg(target_arch = "wasm32")]
+mod resource;
+#[cfg(target_arch = "wasm32")]
+mod task;
+mod text;
+
+pub use skene_core::{self as core, *};
+pub use skene_macros::main;
+pub use skene_reactive::{self as reactive};
+// The active driver, reached by name from the shared realization.
+#[cfg(target_arch = "wasm32")]
+pub(crate) use skene_web as driver;
+/// The web driver, for a library author writing a view directly against the browser DOM.
+///
+/// These are the only web-specific names the facade exposes, and they are deliberately kept
+/// out of [`prelude`] so portable app code never names a driver.
+#[cfg(target_arch = "wasm32")]
+pub use skene_web as web;
+pub use tracing;
+#[cfg(target_arch = "wasm32")]
+#[doc(hidden)]
+pub use wasm_bindgen;
+
+#[cfg(target_arch = "wasm32")]
+pub use crate::deferred::Deferred;
+#[cfg(target_arch = "wasm32")]
+pub use crate::empty::empty;
+#[cfg(target_arch = "wasm32")]
+pub use crate::reconcile::{DynamicView, dynamic, reconcile};
+#[cfg(target_arch = "wasm32")]
+pub use crate::resource::Resource;
+#[cfg(target_arch = "wasm32")]
+pub use crate::task::spawn;
+pub use crate::{
+  children::{Children, HasChildren},
+  container::Container,
+  text::{RichText, Span, Text, TextStyle, TextTheme},
+};
+
+/// Spacing on the four edges of a box, in logical pixels.
+pub type Inset = skene_core::Inset<f32>;
+/// A 2D size, in logical pixels.
+pub type Size = skene_core::Size<f32>;
+/// A point in the logical-pixel coordinate space.
+pub type Point = skene_core::Point<f32>;
+/// A positioned, sized rectangle, in logical pixels.
+pub type Rect = skene_core::Rect<f32>;
+
+/// Wraps a view that only a client can realize, so it renders on an interactive platform and
+/// falls back to [`empty`] where it cannot run.
+///
+/// The place for a low-level view that reaches a platform's raw handles — a `<canvas>` driven
+/// through `web::element`, a JS charting library — which have no meaning off the client. On a
+/// server-rendering platform this yields nothing; the real content arrives when the client
+/// hydrates. `build` returns the node it realizes, exactly as a view's `build` does.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[inline(always)]
+pub fn client_only(build: impl FnOnce() -> skene_core::NodeId + 'static) -> impl View {
+  skene_core::AnyView::new(build)
+}
+
+/// On a server-rendering platform this yields nothing; the real content arrives when the
+/// client hydrates.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[inline(always)]
+pub fn client_only(_build: impl FnOnce() -> skene_core::NodeId + 'static) -> impl View {
+  empty()
+}
+
+/// Mounts and runs the application in the browser.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[inline(always)]
+pub fn launch<V, F>(app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  driver::launch(app);
+
+  tracing::info!("application mounted");
+}
+
+/// Hydrates a server-rendered page: adopts the document body and reads the embedded state, so
+/// the client takes over the markup `render_to_string` produced without a rebuild.
+///
+/// The client entry point for a server-rendered app, the counterpart to [`launch`] for a
+/// fresh client render.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[inline(always)]
+pub fn hydrate_page<V, F>(app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  driver::hydrate_page(app);
+
+  tracing::info!("application hydrated");
+}
+
+/// A server render, in parts: the stylesheet, the body markup, and the hydration state.
+///
+/// Assemble a full document with [`page`](Self::page), or place the parts yourself — the
+/// [`styles`](Self::styles) in `<head>`, the [`body`](Self::body) as the app root, and the
+/// [`state`](Self::state) wherever the client's `hydrate_page` can read it back. The client boot
+/// pairs with `page`; a custom placement pairs with the lower-level `web::hydrate`.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[must_use]
+pub struct Rendered {
+  styles: String,
+  body: String,
+  state: String,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+impl Rendered {
+  /// The `<style>` block: the reset plus the interned rules.
+  #[must_use]
+  #[inline(always)]
+  pub fn styles(&self) -> &str {
+    &self.styles
+  }
+
+  /// The settled view tree — the page body.
+  #[must_use]
+  #[inline(always)]
+  pub fn body(&self) -> &str {
+    &self.body
+  }
+
+  /// The encoded resource state, or `[]` when there is none.
+  #[must_use]
+  #[inline(always)]
+  pub fn state(&self) -> &str {
+    &self.state
+  }
+
+  /// Assembles a complete HTML document: the styles in `<head>`, the tree in `<body>`, and the
+  /// state in a `<script>` the client's `hydrate_page` reads back.
+  #[must_use]
+  pub fn page(&self) -> String {
+    format!(
+      "<!DOCTYPE html><html><head>{styles}</head><body>{body}<script id=\"{id}\" \
+       type=\"application/json\">{state}</script></body></html>",
+      styles = self.styles,
+      body = self.body,
+      id = driver::STATE_SCRIPT_ID,
+      // `<` keeps a value's `<` from closing the script early, and is valid JSON that
+      // decodes back to `<`.
+      state = self.state.replace('<', "\\u003c"),
+    )
+  }
+}
+
+/// Renders the application, for a server-rendering platform.
+///
+/// Builds the tree, drives its resources until they settle, and serializes the result plus the
+/// resource state for hydration. The render is self-contained — state is set up and torn down
+/// per call — so a runner can serve many requests from one instance.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[inline(always)]
+pub fn render_to_string<V, F>(app: F) -> Rendered
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  let (styles, body, state) = driver::render_to_string(app);
+
+  Rendered {
+    styles,
+    body,
+    state,
+  }
+}
+
+/// A server render as an ordered sequence of HTML chunks, ready to flush one after another.
+///
+/// Each chunk is written to the response as it is produced: the first opens the document and
+/// carries the shell, and each subsequent one carries a [`Deferred`] boundary's content, streamed
+/// once it settled. A client with no JavaScript receives a correct document progressively, since
+/// the chunks concatenate — in order — into the same markup [`render_to_string`] would produce.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[must_use]
+pub struct Stream {
+  chunks: Vec<String>,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+impl Stream {
+  /// The chunks, in flush order.
+  #[must_use]
+  #[inline(always)]
+  pub fn chunks(&self) -> &[String] {
+    &self.chunks
+  }
+
+  /// Consumes the stream into its chunks, in flush order.
+  #[must_use]
+  #[inline(always)]
+  pub fn into_chunks(self) -> Vec<String> {
+    self.chunks
+  }
+
+  /// The whole document, the chunks concatenated in order — what a no-JavaScript client ends up
+  /// with once every chunk has arrived.
+  #[must_use]
+  #[inline(always)]
+  pub fn document(&self) -> String {
+    self.chunks.concat()
+  }
+}
+
+/// Renders the application as an in-order HTML stream, for a server-rendering platform.
+///
+/// Like [`render_to_string`], but flushes the shell before every [`Deferred`] boundary's slow
+/// content: the returned [`Stream`]'s chunks are written to the response as they are produced, so
+/// the client sees the page progressively without waiting on the slowest data — and, because the
+/// chunks are emitted in document order, with no JavaScript required.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_to_stream<V, F>(app: F) -> Stream
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  let (styles, mut chunks, state) = driver::render_to_stream(app);
+  let head = format!("<!DOCTYPE html><html><head>{styles}</head><body>");
+  let tail = format!(
+    "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
+    id = driver::STATE_SCRIPT_ID,
+    // `<` keeps a value's `<` from closing the script early, and is valid JSON that decodes
+    // back to `<`.
+    state = state.replace('<', "\\u003c"),
+  );
+
+  if let Some(first) = chunks.first_mut() {
+    first.insert_str(0, &head);
+  }
+
+  if let Some(last) = chunks.last_mut() {
+    last.push_str(&tail);
+  }
+
+  Stream { chunks }
+}

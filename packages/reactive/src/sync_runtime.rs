@@ -1,11 +1,11 @@
 use std::{
   any::Any,
-  collections::{HashMap, HashSet},
   mem::take,
   sync::{Arc, LazyLock, OnceLock, RwLock},
 };
 
 use parking_lot::Mutex;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
   id::Id,
@@ -19,7 +19,7 @@ pub(crate) static SYNC_RUNTIME: LazyLock<SyncRuntime> = LazyLock::new(SyncRuntim
 pub(crate) struct SyncSignal {
   pub(crate) id: Id,
   pub(crate) value: Arc<dyn Any + Send + Sync>,
-  pub(crate) subscribers: Arc<Mutex<HashSet<Id>>>,
+  pub(crate) subscribers: Arc<Mutex<FxHashSet<Id>>>,
 }
 
 impl From<SyncSignal> for SignalState {
@@ -34,7 +34,7 @@ impl From<SyncSignal> for SignalState {
 
 /// Global runtime for sync signals (shared across threads).
 pub(crate) struct SyncRuntime {
-  signals: RwLock<HashMap<Id, SyncSignal>>,
+  signals: RwLock<FxHashMap<Id, SyncSignal>>,
   pending_effects: Mutex<Vec<Id>>,
   pending_disposals: Mutex<Vec<Id>>,
   waker: OnceLock<Arc<dyn Fn() + Send + Sync>>,
@@ -43,7 +43,7 @@ pub(crate) struct SyncRuntime {
 impl SyncRuntime {
   pub(crate) fn new() -> Self {
     Self {
-      signals: RwLock::new(HashMap::new()),
+      signals: RwLock::new(FxHashMap::default()),
       pending_effects: Mutex::new(Vec::new()),
       pending_disposals: Mutex::new(Vec::new()),
       waker: OnceLock::new(),

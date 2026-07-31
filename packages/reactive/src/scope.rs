@@ -54,14 +54,15 @@ impl Scope {
     let child = Id::next();
 
     RUNTIME.with(|runtime| {
-      runtime
-        .children
-        .borrow_mut()
+      let mut entities = runtime.entities.borrow_mut();
+
+      entities
         .entry(self.0)
         .or_default()
+        .children
+        .get_or_insert_default()
         .insert(child);
-
-      runtime.parents.borrow_mut().insert(child, self.0);
+      entities.entry(child).or_default().parent = Some(self.0);
     });
 
     Scope(child, PhantomData)
@@ -82,20 +83,25 @@ impl Scope {
   /// ```
   pub fn set_parent(&self, new_parent: Scope) {
     RUNTIME.with(|runtime| {
-      if let Some(old_parent) = runtime.parents.borrow_mut().remove(&self.0)
-        && let Some(children) = runtime.children.borrow_mut().get_mut(&old_parent)
+      let mut entities = runtime.entities.borrow_mut();
+
+      if let Some(old_parent) = entities
+        .get_mut(&self.0)
+        .and_then(|entity| entity.parent.take())
+        && let Some(children) = entities
+          .get_mut(&old_parent)
+          .and_then(|entity| entity.children.as_mut())
       {
         children.remove(&self.0);
       }
 
-      runtime
-        .children
-        .borrow_mut()
+      entities
         .entry(new_parent.0)
         .or_default()
+        .children
+        .get_or_insert_default()
         .insert(self.0);
-
-      runtime.parents.borrow_mut().insert(self.0, new_parent.0);
+      entities.entry(self.0).or_default().parent = Some(new_parent.0);
     });
   }
 
@@ -104,10 +110,11 @@ impl Scope {
   pub fn parent(&self) -> Option<Scope> {
     RUNTIME.with(|runtime| {
       runtime
-        .parents
+        .entities
         .borrow()
         .get(&self.0)
-        .map(|id| Scope(*id, PhantomData))
+        .and_then(|entity| entity.parent)
+        .map(|id| Scope(id, PhantomData))
     })
   }
 
@@ -351,10 +358,11 @@ impl Scope {
 
     RUNTIME.with(|runtime| {
       runtime
-        .cleanups
+        .entities
         .borrow_mut()
         .entry(self.0)
         .or_default()
+        .cleanups
         .push(Box::new(f));
     });
   }

@@ -5,7 +5,6 @@ use std::panic::Location;
 use std::{
   any::Any,
   cell::{Ref, RefCell, RefMut},
-  collections::HashSet,
   fmt,
   marker::PhantomData,
   ops::{Deref, DerefMut},
@@ -14,6 +13,7 @@ use std::{
 };
 
 use parking_lot::Mutex;
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -429,7 +429,7 @@ pub(crate) enum SignalValue {
 #[derive(Clone)]
 pub(crate) enum Subscribers {
   Local(Rc<RefCell<SmallVec<[Id; 4]>>>),
-  Sync(Arc<Mutex<HashSet<Id>>>),
+  Sync(Arc<Mutex<FxHashSet<Id>>>),
 }
 
 impl Subscribers {
@@ -502,7 +502,7 @@ impl SignalState {
   {
     let id = Id::next();
     let value = Arc::new(Mutex::new(value));
-    let subscribers = Arc::new(Mutex::new(HashSet::new()));
+    let subscribers = Arc::new(Mutex::new(FxHashSet::default()));
 
     SYNC_RUNTIME.insert_signal(
       id,

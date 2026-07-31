@@ -21,8 +21,14 @@ impl Id {
   /// Tries to get the signal that links with this `Id`.
   pub(crate) fn signal(&self) -> Option<SignalState> {
     if Runtime::is_ui_thread() {
-      if let Some(sig) = RUNTIME.with(|runtime| runtime.signals.borrow().get(self).cloned()) {
-        return Some(sig);
+      if let Some(signal) = RUNTIME.with(|runtime| {
+        runtime
+          .entities
+          .borrow()
+          .get(self)
+          .and_then(|entity| entity.signal.clone())
+      }) {
+        return Some(signal);
       }
 
       SYNC_RUNTIME.get_signal(self).map(Into::into)
@@ -40,34 +46,53 @@ impl Id {
   pub(crate) fn local_signal(&self) -> Option<SignalState> {
     Runtime::assert_ui_thread();
 
-    RUNTIME.with(|runtime| runtime.signals.borrow().get(self).cloned())
+    RUNTIME.with(|runtime| {
+      runtime
+        .entities
+        .borrow()
+        .get(self)
+        .and_then(|entity| entity.signal.clone())
+    })
   }
 
   /// Tries to set the signal to be linking with this `Id`.
   pub(crate) fn add_signal(&self, signal: SignalState) {
-    RUNTIME.with(|runtime| runtime.signals.borrow_mut().insert(*self, signal));
+    RUNTIME.with(|runtime| {
+      runtime
+        .entities
+        .borrow_mut()
+        .entry(*self)
+        .or_default()
+        .signal = Some(signal);
+    });
   }
 
   /// Makes this `Id` a child of the current `Scope`.
   pub(crate) fn set_scope(&self) {
     RUNTIME.with(|runtime| {
       let scope = *runtime.current_scope.borrow();
-      runtime
-        .children
-        .borrow_mut()
+      let mut entities = runtime.entities.borrow_mut();
+
+      entities
         .entry(scope)
         .or_default()
+        .children
+        .get_or_insert_default()
         .insert(*self);
-      runtime.parents.borrow_mut().insert(*self, scope);
+      entities.entry(*self).or_default().parent = Some(scope);
     });
   }
 
   /// Disposes only the children of this `Id` without removing resources tied to the `Id` itself.
   pub(crate) fn dispose_children(&self) {
-    if let Ok(Some(children)) =
-      RUNTIME.try_with(|runtime| runtime.children.borrow_mut().remove(self))
-    {
-      for child in children {
+    if let Ok(Some(children)) = RUNTIME.try_with(|runtime| {
+      runtime
+        .entities
+        .borrow_mut()
+        .get_mut(self)
+        .and_then(|entity| entity.children.take())
+    }) {
+      for child in *children {
         child.dispose();
       }
     }
@@ -82,46 +107,61 @@ impl Id {
       return;
     }
 
-    if let Ok((children, signal, effect, cleanups)) = RUNTIME.try_with(|runtime| {
-      runtime.scope_contexts.borrow_mut().remove(self);
-      runtime.parents.borrow_mut().remove(self);
+    let Ok(entity) = RUNTIME.try_with(|runtime| {
+      let mut entities = runtime.entities.borrow_mut();
+      let entity = entities.remove(self);
 
-      (
-        runtime.children.borrow_mut().remove(self),
-        runtime.signals.borrow_mut().remove(self),
-        runtime.effects.borrow_mut().remove(self),
-        runtime.cleanups.borrow_mut().remove(self),
-      )
-    }) {
-      if let Some(children) = children {
-        for child in children {
-          child.dispose();
-        }
+      // Unlink from the parent, so a long-lived scope's children set does not accumulate
+      // disposed ids.
+      if let Some(parent) = entity.as_ref().and_then(|entity| entity.parent)
+        && let Some(parent_entity) = entities.get_mut(&parent)
+        && let Some(children) = parent_entity.children.as_mut()
+      {
+        children.remove(self);
       }
 
-      // After the children, so a parent's cleanup sees a fully torn-down subtree. Reverse
-      // registration order, so a later callback unwinds before what it was built on.
-      if let Some(cleanups) = cleanups {
-        for cleanup in cleanups.into_iter().rev() {
-          cleanup();
-        }
+      entity
+    })
+    else {
+      if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
+        Self::cleanup_signal(Some(signal.into()));
       }
 
-      if let Some(effect) = effect {
-        observer_clean_up(&effect);
+      return;
+    };
+
+    let Some(entity) = entity
+    else {
+      if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
+        Self::cleanup_signal(Some(signal.into()));
       }
 
-      let mut signal = signal;
+      return;
+    };
 
-      if signal.is_none() {
-        signal = SYNC_RUNTIME.remove_signal(self).map(Into::into);
+    if let Some(children) = entity.children {
+      for child in *children {
+        child.dispose();
       }
-
-      Self::cleanup_signal(signal);
     }
-    else if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
-      Self::cleanup_signal(Some(signal.into()));
+
+    // After the children, so a parent's cleanup sees a fully torn-down subtree. Reverse
+    // registration order, so a later callback unwinds before what it was built on.
+    for cleanup in entity.cleanups.into_iter().rev() {
+      cleanup();
     }
+
+    if let Some(effect) = entity.effect {
+      observer_clean_up(&effect);
+    }
+
+    let mut signal = entity.signal;
+
+    if signal.is_none() {
+      signal = SYNC_RUNTIME.remove_signal(self).map(Into::into);
+    }
+
+    Self::cleanup_signal(signal);
   }
 
   fn cleanup_signal(signal: Option<SignalState>) {
@@ -176,7 +216,15 @@ mod tests {
     assert_eq!(count.get(), 1);
 
     // The effect should be removed from the runtime.
-    RUNTIME.with(|runtime| assert!(runtime.effects.borrow().is_empty()));
+    RUNTIME.with(|runtime| {
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .values()
+          .all(|entity| entity.effect.is_none())
+      )
+    });
   }
 
   #[test]
@@ -214,7 +262,15 @@ mod tests {
     assert_eq!(run_count.get(), 1);
 
     assert!(inner_signal.id().signal().is_none());
-    RUNTIME.with(|runtime| assert!(runtime.effects.borrow().is_empty()));
+    RUNTIME.with(|runtime| {
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .values()
+          .all(|entity| entity.effect.is_none())
+      )
+    });
   }
 
   #[test]
@@ -235,9 +291,30 @@ mod tests {
     // Sanity: effect ran and runtime holds signal/effect.
     assert_eq!(run_count.get(), 1);
     RUNTIME.with(|runtime| {
-      assert!(runtime.signals.borrow().contains_key(&signal_id));
-      assert_eq!(runtime.effects.borrow().len(), 1);
-      assert!(runtime.children.borrow().get(&scope.0).is_some());
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&signal_id)
+          .is_some_and(|entity| entity.signal.is_some())
+      );
+      assert_eq!(
+        runtime
+          .entities
+          .borrow()
+          .values()
+          .filter(|entity| entity.effect.is_some())
+          .count(),
+        1
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&scope.0)
+          .and_then(|entity| entity.children.as_ref())
+          .is_some()
+      );
     });
 
     // Dispose the scope; both signal and effect should be cleaned up.
@@ -249,9 +326,47 @@ mod tests {
     assert_eq!(run_count.get(), 1);
 
     RUNTIME.with(|runtime| {
-      assert!(runtime.signals.borrow().get(&signal_id).is_none());
-      assert!(runtime.effects.borrow().is_empty());
-      assert!(runtime.children.borrow().get(&scope.0).is_none());
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&signal_id)
+          .and_then(|entity| entity.signal.as_ref())
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .values()
+          .all(|entity| entity.effect.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&scope.0)
+          .and_then(|entity| entity.children.as_ref())
+          .is_none()
+      );
+    });
+  }
+
+  /// A disposed child leaves no stale id behind in its parent's children set.
+  #[test]
+  fn dispose_unlinks_from_parent_children() {
+    let parent = Scope::new();
+    let child = parent.create_child();
+
+    child.dispose();
+
+    RUNTIME.with(|runtime| {
+      let entities = runtime.entities.borrow();
+      let children = entities
+        .get(&parent.0)
+        .and_then(|entity| entity.children.as_ref());
+
+      assert!(children.is_none_or(|children| !children.contains(&child.0)));
     });
   }
 
@@ -272,9 +387,10 @@ mod tests {
 
     // Verify child is in parent's children set
     RUNTIME.with(|runtime| {
-      let children = runtime.children.borrow();
-      let parent_children = children
+      let entities = runtime.entities.borrow();
+      let parent_children = entities
         .get(&parent.0)
+        .and_then(|entity| entity.children.as_ref())
         .expect("parent should have children");
       assert!(parent_children.contains(&child.0));
     });
@@ -320,17 +436,21 @@ mod tests {
 
     // Verify removed from old parent's children
     RUNTIME.with(|runtime| {
-      let children = runtime.children.borrow();
-      if let Some(old_children) = children.get(&old_parent.0) {
+      let entities = runtime.entities.borrow();
+      if let Some(old_children) = entities
+        .get(&old_parent.0)
+        .and_then(|entity| entity.children.as_ref())
+      {
         assert!(!old_children.contains(&child.0));
       }
     });
 
     // Verify added to new parent's children
     RUNTIME.with(|runtime| {
-      let children = runtime.children.borrow();
-      let new_children = children
+      let entities = runtime.entities.borrow();
+      let new_children = entities
         .get(&new_parent.0)
+        .and_then(|entity| entity.children.as_ref())
         .expect("new parent should have children");
       assert!(new_children.contains(&child.0));
     });

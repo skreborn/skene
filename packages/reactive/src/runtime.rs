@@ -6,7 +6,6 @@ use std::{
   any::{Any, TypeId},
   cell::{Cell, RefCell},
   cmp::Reverse,
-  collections::{HashMap, HashSet},
   rc::Rc,
   sync::{
     OnceLock,
@@ -15,6 +14,7 @@ use std::{
   thread::{self, ThreadId},
 };
 
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use crate::{
@@ -25,7 +25,7 @@ use crate::{
 };
 
 /// Type alias for context storage within a scope.
-type ScopeContexts = HashMap<TypeId, Box<dyn Any>>;
+pub(crate) type ScopeContexts = FxHashMap<TypeId, Box<dyn Any>>;
 
 thread_local! {
   pub static RUNTIME: Runtime = Runtime::new();
@@ -38,6 +38,17 @@ static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
 
 /// The callbacks registered to run when one scope is disposed.
 type Cleanups = Vec<Box<dyn FnOnce()>>;
+
+/// One id's runtime record: whichever of the signal, effect, and scope facets it carries.
+#[derive(Default)]
+pub(crate) struct Entity {
+  pub(crate) signal: Option<SignalState>,
+  pub(crate) effect: Option<Rc<dyn EffectTrait>>,
+  pub(crate) parent: Option<Id>,
+  pub(crate) children: Option<Box<FxHashSet<Id>>>,
+  pub(crate) contexts: Option<Box<ScopeContexts>>,
+  pub(crate) cleanups: Cleanups,
+}
 
 /// Clears the flushing flag when the flush unwinds.
 struct FlushGuard<'a>(&'a Cell<bool>);
@@ -53,16 +64,11 @@ impl Drop for FlushGuard<'_> {
 pub struct Runtime {
   pub(crate) current_effect: RefCell<Option<Rc<dyn EffectTrait>>>,
   pub(crate) current_scope: RefCell<Id>,
-  pub(crate) children: RefCell<HashMap<Id, HashSet<Id>>>,
-  pub(crate) parents: RefCell<HashMap<Id, Id>>,
-  pub(crate) signals: RefCell<HashMap<Id, SignalState>>,
-  pub(crate) effects: RefCell<HashMap<Id, Rc<dyn EffectTrait>>>,
-  pub(crate) scope_contexts: RefCell<HashMap<Id, ScopeContexts>>,
-  /// Callbacks to run when a scope is disposed, in reverse registration order.
-  pub(crate) cleanups: RefCell<HashMap<Id, Cleanups>>,
+  /// Every live id's record, keyed once for all of its facets.
+  pub(crate) entities: RefCell<FxHashMap<Id, Entity>>,
   pub(crate) batching: Cell<bool>,
   pub(crate) pending_effects: RefCell<SmallVec<[Id; 10]>>,
-  pending_effects_set: RefCell<HashSet<Id>>,
+  pending_effects_set: RefCell<FxHashSet<Id>>,
   /// Whether a flush is currently draining; a write during it enqueues instead of
   /// re-entering the flush.
   flushing: Cell<bool>,
@@ -79,15 +85,10 @@ impl Runtime {
     Self {
       current_effect: RefCell::new(None),
       current_scope: RefCell::new(Id::next()),
-      children: RefCell::new(HashMap::new()),
-      parents: RefCell::new(HashMap::new()),
-      signals: Default::default(),
-      effects: Default::default(),
-      scope_contexts: Default::default(),
-      cleanups: Default::default(),
+      entities: RefCell::new(FxHashMap::default()),
       batching: Cell::new(false),
       pending_effects: RefCell::new(SmallVec::new()),
-      pending_effects_set: RefCell::new(HashSet::new()),
+      pending_effects_set: RefCell::new(FxHashSet::default()),
       flushing: Cell::new(false),
     }
   }
@@ -190,45 +191,46 @@ impl Runtime {
   /// the `test` feature.
   #[cfg(feature = "test")]
   pub fn reset() {
-    // Take the effects and cleanups out and drop them after every borrow is released: an
-    // effect's `Drop` re-enters the runtime (`remove_effect`, `dispose`), and a cleanup may
-    // own anything at all, so clearing the maps in place could borrow them twice. Reset
-    // discards cleanups rather than running them: it is a teardown to a blank runtime, not a
+    // Take the entities out and drop them after every borrow is released: an effect's
+    // `Drop` re-enters the runtime (`remove_effect`, `dispose`), and a cleanup may own
+    // anything at all, so clearing the map in place could borrow it twice. Reset discards
+    // cleanups rather than running them: it is a teardown to a blank runtime, not a
     // graceful disposal.
-    let (effects, cleanups) = RUNTIME.with(|runtime| {
+    let entities = RUNTIME.with(|runtime| {
       *runtime.current_effect.borrow_mut() = None;
       *runtime.current_scope.borrow_mut() = Id::next();
-      runtime.children.borrow_mut().clear();
-      runtime.parents.borrow_mut().clear();
-      runtime.signals.borrow_mut().clear();
-      let effects = take(&mut *runtime.effects.borrow_mut());
-      let cleanups = take(&mut *runtime.cleanups.borrow_mut());
-      runtime.scope_contexts.borrow_mut().clear();
       runtime.batching.set(false);
       runtime.pending_effects.borrow_mut().clear();
       runtime.pending_effects_set.borrow_mut().clear();
       runtime.flushing.set(false);
 
-      (effects, cleanups)
+      take(&mut *runtime.entities.borrow_mut())
     });
 
-    drop(effects);
-    drop(cleanups);
+    drop(entities);
   }
 
   pub(crate) fn register_effect(&self, effect: &Rc<dyn EffectTrait>) {
     self
-      .effects
+      .entities
       .borrow_mut()
-      .insert(effect.id(), effect.clone());
+      .entry(effect.id())
+      .or_default()
+      .effect = Some(effect.clone());
   }
 
   pub(crate) fn remove_effect(&self, id: Id) {
-    self.effects.borrow_mut().remove(&id);
+    if let Some(entity) = self.entities.borrow_mut().get_mut(&id) {
+      entity.effect = None;
+    }
   }
 
   pub(crate) fn get_effect(&self, id: Id) -> Option<Rc<dyn EffectTrait>> {
-    self.effects.borrow().get(&id).cloned()
+    self
+      .entities
+      .borrow()
+      .get(&id)
+      .and_then(|entity| entity.effect.clone())
   }
 
   pub(crate) fn add_pending_effect(&self, effect_id: Id) {
@@ -256,9 +258,10 @@ impl Runtime {
       };
 
       let subscribers = self
-        .signals
+        .entities
         .borrow()
         .get(&downstream)
+        .and_then(|entity| entity.signal.as_ref())
         .map(|signal| signal.subscribers.snapshot());
 
       if let Some(subscribers) = subscribers {

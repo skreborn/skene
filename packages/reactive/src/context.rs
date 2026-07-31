@@ -48,10 +48,12 @@ impl Context {
     RUNTIME.with(|runtime| {
       let scope = *runtime.current_scope.borrow();
       runtime
-        .scope_contexts
+        .entities
         .borrow_mut()
         .entry(scope)
         .or_default()
+        .contexts
+        .get_or_insert_default()
         .insert(ty, Box::new(value) as Box<dyn Any>);
     });
   }
@@ -84,18 +86,19 @@ impl Context {
 
     RUNTIME.with(|runtime| {
       let mut scope = *runtime.current_scope.borrow();
-      let scope_contexts = runtime.scope_contexts.borrow();
-      let parents = runtime.parents.borrow();
+      let entities = runtime.entities.borrow();
 
       loop {
-        if let Some(contexts) = scope_contexts.get(&scope)
+        let entity = entities.get(&scope)?;
+
+        if let Some(contexts) = &entity.contexts
           && let Some(value) = contexts.get(&ty)
         {
           return value.downcast_ref::<T>().cloned();
         }
 
-        match parents.get(&scope) {
-          Some(&parent) => scope = parent,
+        match entity.parent {
+          Some(parent) => scope = parent,
           None => return None,
         }
       }
@@ -291,9 +294,30 @@ mod tests {
 
     // Verify parent's context is gone (scope no longer has context)
     RUNTIME.with(|runtime| {
-      assert!(runtime.scope_contexts.borrow().get(&parent.0).is_none());
-      assert!(runtime.scope_contexts.borrow().get(&child.0).is_none());
-      assert!(runtime.parents.borrow().get(&child.0).is_none());
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&parent.0)
+          .and_then(|entity| entity.contexts.as_ref())
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child.0)
+          .and_then(|entity| entity.contexts.as_ref())
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
     });
   }
 
@@ -339,8 +363,11 @@ mod tests {
 
       // The child_id should now have parent as its parent
       RUNTIME.with(|runtime| {
-        let parents = runtime.parents.borrow();
-        assert_eq!(parents.get(&child_id), Some(&parent.0));
+        let entities = runtime.entities.borrow();
+        assert_eq!(
+          entities.get(&child_id).and_then(|entity| entity.parent),
+          Some(parent.0)
+        );
       });
     });
   }
@@ -411,9 +438,27 @@ mod tests {
 
     // Verify all contexts exist
     RUNTIME.with(|runtime| {
-      assert!(runtime.scope_contexts.borrow().contains_key(&root.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&middle.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&leaf.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&root.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&middle.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&leaf.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
     });
 
     // Dispose middle - should clean up leaf too
@@ -421,12 +466,37 @@ mod tests {
 
     RUNTIME.with(|runtime| {
       // Root should still exist
-      assert!(runtime.scope_contexts.borrow().contains_key(&root.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&root.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
       // Middle and leaf should be gone
-      assert!(!runtime.scope_contexts.borrow().contains_key(&middle.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&leaf.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&middle.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&leaf.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
       // Parent tracking for leaf should be gone
-      assert!(!runtime.parents.borrow().contains_key(&leaf.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&leaf.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
     });
 
     // Root context still works
@@ -689,10 +759,34 @@ mod tests {
 
     // Verify all contexts exist
     RUNTIME.with(|runtime| {
-      assert!(runtime.scope_contexts.borrow().contains_key(&parent.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&child1.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&child2.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&child3.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&parent.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child3.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
     });
 
     // Dispose parent - should clean up all children
@@ -700,14 +794,59 @@ mod tests {
 
     RUNTIME.with(|runtime| {
       // All should be gone
-      assert!(!runtime.scope_contexts.borrow().contains_key(&parent.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child1.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child2.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child3.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&parent.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child3.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
       // Parent tracking should be gone for all children
-      assert!(!runtime.parents.borrow().contains_key(&child1.0));
-      assert!(!runtime.parents.borrow().contains_key(&child2.0));
-      assert!(!runtime.parents.borrow().contains_key(&child3.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child3.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
     });
   }
 
@@ -723,19 +862,63 @@ mod tests {
 
     // Verify children's contexts exist
     RUNTIME.with(|runtime| {
-      assert!(!runtime.scope_contexts.borrow().contains_key(&parent.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&child1.0));
-      assert!(runtime.scope_contexts.borrow().contains_key(&child2.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&parent.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .is_some_and(|entity| entity.contexts.is_some())
+      );
     });
 
     // Dispose parent - should still clean up children's contexts
     parent.dispose();
 
     RUNTIME.with(|runtime| {
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child1.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child2.0));
-      assert!(!runtime.parents.borrow().contains_key(&child1.0));
-      assert!(!runtime.parents.borrow().contains_key(&child2.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child1.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child2.0)
+          .and_then(|entity| entity.parent)
+          .is_none()
+      );
     });
   }
 
@@ -751,8 +934,20 @@ mod tests {
     scope.dispose();
 
     RUNTIME.with(|runtime| {
-      assert!(!runtime.scope_contexts.borrow().contains_key(&scope.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&scope.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
     });
 
     // Second dispose - should not panic
@@ -761,8 +956,20 @@ mod tests {
 
     // Still clean
     RUNTIME.with(|runtime| {
-      assert!(!runtime.scope_contexts.borrow().contains_key(&scope.0));
-      assert!(!runtime.scope_contexts.borrow().contains_key(&child.0));
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&scope.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
+      assert!(
+        runtime
+          .entities
+          .borrow()
+          .get(&child.0)
+          .is_none_or(|entity| entity.contexts.is_none())
+      );
     });
   }
 }

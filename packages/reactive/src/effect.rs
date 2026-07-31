@@ -1,4 +1,6 @@
-use std::{any::Any, cell::RefCell, collections::HashSet, marker::PhantomData, mem, rc::Rc};
+use std::{any::Any, cell::RefCell, marker::PhantomData, rc::Rc};
+
+use rustc_hash::FxHashSet;
 
 use crate::{
   id::Id,
@@ -29,7 +31,7 @@ pub trait EffectTrait: Any {
   fn add_observer(&self, id: Id);
 
   /// Clears and returns the effect's subscribed signals.
-  fn clear_observers(&self) -> HashSet<Id>;
+  fn clear_observers(&self) -> Vec<Id>;
 
   /// Marks the effect's cached output stale, returning the signal carrying that output so
   /// the staleness propagates to its subscribers. `None` when there is nothing cached
@@ -56,7 +58,7 @@ where
   id: Id,
   f: F,
   value: RefCell<Option<T>>,
-  observers: RefCell<HashSet<Id>>,
+  observers: RefCell<FxHashSet<Id>>,
   ts: PhantomData<()>,
 }
 
@@ -91,7 +93,7 @@ where
       id,
       f,
       value: RefCell::new(None),
-      observers: RefCell::new(HashSet::default()),
+      observers: RefCell::new(FxHashSet::default()),
       ts: PhantomData,
     });
     id.set_scope();
@@ -107,7 +109,7 @@ pub struct UpdaterEffect<T, I, C, U> {
   compute: C,
   on_change: U,
   value: RefCell<Option<T>>,
-  observers: RefCell<HashSet<Id>>,
+  observers: RefCell<FxHashSet<Id>>,
   _phantom: PhantomData<I>,
 }
 
@@ -152,7 +154,7 @@ impl UpdaterEffect<(), (), (), ()> {
       compute,
       on_change,
       value: RefCell::new(None),
-      observers: RefCell::new(HashSet::default()),
+      observers: RefCell::new(FxHashSet::default()),
       _phantom: PhantomData,
     });
     id.set_scope();
@@ -270,10 +272,13 @@ pub(crate) fn observer_clean_up(effect: &Rc<dyn EffectTrait>) {
   let observers = effect.clear_observers();
 
   RUNTIME.with(|runtime| {
-    let signals = runtime.signals.borrow();
+    let entities = runtime.entities.borrow();
 
     for observer in observers {
-      if let Some(signal) = signals.get(&observer) {
+      if let Some(signal) = entities
+        .get(&observer)
+        .and_then(|entity| entity.signal.as_ref())
+      {
         signal.subscribers.remove(effect_id);
       }
       else if let Some(signal) = SYNC_RUNTIME.get_signal(&observer) {
@@ -306,8 +311,8 @@ where
     self.observers.borrow_mut().insert(id);
   }
 
-  fn clear_observers(&self) -> HashSet<Id> {
-    mem::take(&mut *self.observers.borrow_mut())
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
   }
 
   fn as_any(&self) -> &dyn Any {
@@ -341,8 +346,8 @@ where
     self.observers.borrow_mut().insert(id);
   }
 
-  fn clear_observers(&self) -> HashSet<Id> {
-    mem::take(&mut *self.observers.borrow_mut())
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
   }
 
   fn as_any(&self) -> &dyn Any {
@@ -384,7 +389,7 @@ impl SignalTracker {
 
     let tracking_effect: Rc<dyn EffectTrait> = Rc::new(TrackingEffect {
       id: self.id,
-      observers: RefCell::new(HashSet::default()),
+      observers: RefCell::new(FxHashSet::default()),
       on_change: self.on_change.clone(),
     });
 
@@ -409,7 +414,7 @@ impl SignalTracker {
 
 struct TrackingEffect {
   id: Id,
-  observers: RefCell<HashSet<Id>>,
+  observers: RefCell<FxHashSet<Id>>,
   on_change: Rc<dyn Fn()>,
 }
 
@@ -428,8 +433,8 @@ impl EffectTrait for TrackingEffect {
     self.observers.borrow_mut().insert(id);
   }
 
-  fn clear_observers(&self) -> HashSet<Id> {
-    mem::take(&mut *self.observers.borrow_mut())
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
   }
 
   fn as_any(&self) -> &dyn Any {

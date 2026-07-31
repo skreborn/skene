@@ -1,11 +1,11 @@
 use std::{
   any::Any,
   cell::{Cell, RefCell},
-  collections::HashSet,
   marker::PhantomData,
-  mem::take,
   rc::Rc,
 };
+
+use rustc_hash::FxHashSet;
 
 use crate::{
   SignalGet,
@@ -168,7 +168,7 @@ struct MemoState<T: PartialEq + 'static> {
   getter: RefCell<Option<ReadSignal<T>>>,
   setter: RefCell<Option<WriteSignal<T>>>,
   dirty: Cell<bool>,
-  observers: RefCell<HashSet<Id>>,
+  observers: RefCell<FxHashSet<Id>>,
   _phantom: PhantomData<T>,
 }
 
@@ -180,7 +180,7 @@ impl<T: PartialEq + 'static> MemoState<T> {
       getter: RefCell::new(None),
       setter: RefCell::new(None),
       dirty: Cell::new(true),
-      observers: RefCell::new(HashSet::new()),
+      observers: RefCell::new(FxHashSet::default()),
       _phantom: PhantomData,
     }
   }
@@ -284,8 +284,8 @@ where
     self.observers.borrow_mut().insert(id);
   }
 
-  fn clear_observers(&self) -> HashSet<Id> {
-    take(&mut *self.observers.borrow_mut())
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
   }
 
   fn mark_stale(&self) -> Option<Id> {

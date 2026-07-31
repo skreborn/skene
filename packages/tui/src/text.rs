@@ -17,7 +17,7 @@ pub struct Text {
   source: Source<String>,
   color: Option<Source<Color>>,
   bold: Option<Source<bool>>,
-  variants: Vec<(Vec<Condition>, RunStyle)>,
+  variants: Vec<(Condition, RunStyle)>,
 }
 
 impl Text {
@@ -78,21 +78,7 @@ impl Text {
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
-    self.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: RunStyle,
-  ) -> Self {
-    self
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.variants.push((condition, style));
 
     self
   }

@@ -103,6 +103,38 @@ fn media_variant_resolves_against_terminal_size() {
   assert!(!wide.contains('┌'));
 }
 
+/// A composed condition resolves in the terminal: the variant applies when either
+/// alternative holds, including a nested `and`.
+#[test]
+fn composed_condition_resolves() {
+  let (narrow, tall, wide) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(3)
+        .set_when(
+          Condition::or([
+            Condition::MaxWidth(10),
+            Condition::and([Condition::MinHeight(6), Condition::MaxHeight(8)]),
+          ]),
+          BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
+        )
+        .into_any()
+        .build()
+    });
+
+    (
+      tui::render_to_text(8, 4),
+      tui::render_to_text(20, 7),
+      tui::render_to_text(20, 4),
+    )
+  });
+
+  assert!(narrow.contains('┌'));
+  assert!(tall.contains('┌'));
+  assert!(!wide.contains('┌'));
+}
+
 /// Bold is a plain `bool` on a run, and derived text re-renders on a signal change.
 #[test]
 fn bold_and_derived_text() {

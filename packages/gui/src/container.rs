@@ -47,7 +47,7 @@ pub struct Container {
   pub(crate) spacing: Option<Source<f32>>,
   pub(crate) main_axis_alignment: Option<Source<MainAxisAlignment>>,
   pub(crate) cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
-  pub(crate) variants: Vec<(Vec<Condition>, BoxStyle)>,
+  pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
   pub(crate) click_handler: Option<Rc<dyn Fn()>>,
@@ -370,21 +370,7 @@ impl Container {
   /// script. Later variants win over earlier ones.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: BoxStyle,
-  ) -> Self {
-    self
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.variants.push((condition, style));
 
     self
   }

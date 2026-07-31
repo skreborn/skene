@@ -2,6 +2,7 @@
 
 mod boundary;
 mod children;
+mod condition;
 mod events;
 mod node;
 mod props;
@@ -16,6 +17,7 @@ mod view;
 
 pub use boundary::Boundary;
 pub use children::{Children, HasChildren, IntoChildren};
+pub use condition::{Composable, ConditionShape};
 pub use events::KeyEvent;
 pub use node::NodeId;
 pub use props::{BoxProp, BoxProps, BoxStyle, InputProps, RunDisplay, RunProp, RunProps, RunStyle};

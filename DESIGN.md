@@ -122,13 +122,21 @@ The typed props carry the full static style (implemented for boxes and text runs
 ```
 BoxProps/RunProps {
   style:       BoxStyle/RunStyle,             // the fixed base properties
-  variants:    Vec<(Vec<Condition>, Style)>,  // all conditions must hold; later wins
+  variants:    Vec<(Condition, Style)>,       // applies while it holds; later wins
   transitions: Vec<Transition>,               // property, duration, delay, easing
   animations:  Vec<Animation<Style>>,         // keyframes over the same style type
 }
 Condition = MinWidth | MaxWidth | MinHeight | MaxHeight | DarkMode | LightMode
           | ReducedMotion | Hovered | Focused | FocusVisible | Pressed | Disabled
+          | And(Vec<Condition>) | Or(Vec<Condition>)    // composable to any depth
 ```
+
+Each facade owns its own `Condition` enum—leaves typed to its medium—but the composition
+machinery is one generic in the spine (`Composable`): an interpreting driver evaluates the
+tree against live state, and the web driver flattens it to disjunctive normal form and
+emits one CSS rule per conjunction (`@media` wrapping, pseudo-classes suffixing). This is
+the same sharing shape as `TreeOps`—never feature-gated variants, which cargo's additive
+feature unification would break in any build containing both facades.
 
 - **Layout** will adopt taffy's style model as the vocabulary (re-exported/aliased):
   flexbox, grid, block—defined once by the library that implements it everywhere,

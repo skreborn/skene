@@ -6,7 +6,15 @@
 //! best-effort at run time. Mouse hover, pointer shapes and one-cell borders are in: a
 //! compatible terminal renders them, and an incompatible one degrades quietly.
 
-use skene_core::{Color, CrossAxisAlignment, Inset, MainAxisAlignment, MouseCursor};
+use skene_core::{
+  Color,
+  Composable,
+  ConditionShape,
+  CrossAxisAlignment,
+  Inset,
+  MainAxisAlignment,
+  MouseCursor,
+};
 
 /// A box's static style: each property the builder fixed to a value.
 ///
@@ -191,8 +199,9 @@ impl RunStyle {
 }
 
 /// A condition under which a style variant applies: the terminal's size, the node's
-/// focus, or the mouse hovering it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// focus, or the mouse hovering it—composable to any depth with [`and`](Self::and) and
+/// [`or`](Self::or).
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub enum Condition {
   /// The terminal is at least this wide, in cells.
@@ -207,6 +216,35 @@ pub enum Condition {
   Focused,
   /// The mouse is over the node, in terminals that report it.
   Hovered,
+  /// Every subcondition holds; empty always holds.
+  And(Vec<Condition>),
+  /// Any subcondition holds; empty never holds.
+  Or(Vec<Condition>),
+}
+
+impl Condition {
+  /// A condition holding while every one of `conditions` holds; empty always holds.
+  #[inline(always)]
+  pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::And(conditions.into_iter().collect())
+  }
+
+  /// A condition holding while any one of `conditions` holds; empty never holds.
+  #[inline(always)]
+  pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::Or(conditions.into_iter().collect())
+  }
+}
+
+impl Composable for Condition {
+  #[inline(always)]
+  fn shape(&self) -> ConditionShape<'_, Self> {
+    match self {
+      Self::And(subconditions) => ConditionShape::And(subconditions),
+      Self::Or(subconditions) => ConditionShape::Or(subconditions),
+      _ => ConditionShape::Leaf(self),
+    }
+  }
 }
 
 /// One box property's value, for a reactive update.

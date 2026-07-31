@@ -61,8 +61,8 @@ fn media_variant_renders_an_at_media_block() {
 #[test]
 fn combined_conditions_nest_media_around_states() {
   let rendered = render_to_string(|| {
-    Container::new().set_when_all(
-      [Condition::Hovered, Condition::DarkMode],
+    Container::new().set_when(
+      Condition::and([Condition::Hovered, Condition::DarkMode]),
       BoxStyle::new().set_border_radius(8.),
     )
   });
@@ -71,6 +71,33 @@ fn combined_conditions_nest_media_around_states() {
 
   assert!(rendered.styles().contains(&format!(
     "@media (prefers-color-scheme: dark){{.{class}:hover{{border-radius:8px;}}}}"
+  )));
+}
+
+/// An `or` condition emits one rule per alternative; a nested `and` expands into its
+/// own conjunction.
+#[test]
+fn or_composition_emits_a_rule_per_alternative() {
+  let rendered = render_to_string(|| {
+    Container::new().set_when(
+      Condition::or([
+        Condition::Hovered,
+        Condition::and([Condition::DarkMode, Condition::Focused]),
+      ]),
+      BoxStyle::new().set_spacing(2.),
+    )
+  });
+
+  let class = root_class(rendered.body());
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!(".{class}:hover{{gap:2px;}}"))
+  );
+
+  assert!(rendered.styles().contains(&format!(
+    "@media (prefers-color-scheme: dark){{.{class}:focus{{gap:2px;}}}}"
   )));
 }
 

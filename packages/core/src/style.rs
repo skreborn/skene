@@ -5,12 +5,14 @@
 //! static page stays responsive, hoverable and animated with no script. A native driver
 //! resolves the same data against its own window and pointer state.
 
+use crate::condition::{Composable, ConditionShape};
+
 /// A condition under which a style variant applies.
 ///
 /// Environment conditions (viewport, color scheme, motion preference) and interaction
-/// states (hover, focus, press) compose: a variant guarded by several conditions applies
-/// only when all of them hold.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// states (hover, focus, press) are the leaves; [`and`](Self::and) and [`or`](Self::or)
+/// compose them to any depth.
+#[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum Condition {
   /// The viewport is at least this wide, in logical pixels.
@@ -37,6 +39,35 @@ pub enum Condition {
   Pressed,
   /// The element is disabled.
   Disabled,
+  /// Every subcondition holds; empty always holds.
+  And(Vec<Condition>),
+  /// Any subcondition holds; empty never holds.
+  Or(Vec<Condition>),
+}
+
+impl Condition {
+  /// A condition holding while every one of `conditions` holds; empty always holds.
+  #[inline(always)]
+  pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::And(conditions.into_iter().collect())
+  }
+
+  /// A condition holding while any one of `conditions` holds; empty never holds.
+  #[inline(always)]
+  pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::Or(conditions.into_iter().collect())
+  }
+}
+
+impl Composable for Condition {
+  #[inline(always)]
+  fn shape(&self) -> ConditionShape<'_, Self> {
+    match self {
+      Self::And(subconditions) => ConditionShape::And(subconditions),
+      Self::Or(subconditions) => ConditionShape::Or(subconditions),
+      _ => ConditionShape::Leaf(self),
+    }
+  }
 }
 
 /// A styleable property, named for transitions.

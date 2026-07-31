@@ -23,7 +23,7 @@ pub struct Input {
   value: Option<Source<String>>,
   placeholder: Option<String>,
   style: BoxStyle,
-  variants: Vec<(Vec<Condition>, BoxStyle)>,
+  variants: Vec<(Condition, BoxStyle)>,
   #[expect(clippy::struct_field_names, clippy::type_complexity)]
   input_handler: Option<Rc<dyn Fn(&str)>>,
   #[expect(clippy::type_complexity)]
@@ -94,21 +94,7 @@ impl Input {
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: BoxStyle,
-  ) -> Self {
-    self
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.variants.push((condition, style));
 
     self
   }

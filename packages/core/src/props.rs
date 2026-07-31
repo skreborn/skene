@@ -219,9 +219,9 @@ pub struct BoxProps {
   pub role: Option<Role>,
   /// The static style.
   pub style: BoxStyle,
-  /// Conditional variants, each applying while all of its conditions hold; later
-  /// entries win over earlier ones.
-  pub variants: Vec<(Vec<Condition>, BoxStyle)>,
+  /// Conditional variants, each applying while its condition holds; later entries win
+  /// over earlier ones.
+  pub variants: Vec<(Condition, BoxStyle)>,
   /// The property transitions.
   pub transitions: Vec<Transition>,
   /// The keyframe animations.
@@ -235,9 +235,9 @@ pub struct InputProps {
   pub placeholder: Option<String>,
   /// The static style.
   pub style: BoxStyle,
-  /// Conditional variants, each applying while all of its conditions hold; later
-  /// entries win over earlier ones.
-  pub variants: Vec<(Vec<Condition>, BoxStyle)>,
+  /// Conditional variants, each applying while its condition holds; later entries win
+  /// over earlier ones.
+  pub variants: Vec<(Condition, BoxStyle)>,
   /// The property transitions.
   pub transitions: Vec<Transition>,
   /// The keyframe animations.
@@ -325,9 +325,9 @@ pub struct RunProps {
   pub link: Option<String>,
   /// The static style.
   pub style: RunStyle,
-  /// Conditional variants, each applying while all of its conditions hold; later
-  /// entries win over earlier ones.
-  pub variants: Vec<(Vec<Condition>, RunStyle)>,
+  /// Conditional variants, each applying while its condition holds; later entries win
+  /// over earlier ones.
+  pub variants: Vec<(Condition, RunStyle)>,
   /// The property transitions.
   pub transitions: Vec<Transition>,
   /// The keyframe animations.

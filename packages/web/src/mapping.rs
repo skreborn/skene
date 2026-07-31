@@ -19,6 +19,7 @@ use skene_core::{
   Axis,
   BoxProp,
   BoxProps,
+  Composable,
   Condition,
   Easing,
   InputProps,
@@ -280,10 +281,11 @@ fn push_rule(out: &mut String, states: &[&'static str], declarations: &Declarati
 }
 
 /// Assembles the rule template: `@keyframes` blocks, the base rule (with transitions and
-/// animations folded in), then each variant rule in declaration order.
+/// animations folded in), then each variant's rules—one per disjunctive conjunction of
+/// its condition—in declaration order.
 fn template<S>(
   mut base: Declarations,
-  variants: &[(Vec<Condition>, S)],
+  variants: &[(Condition, S)],
   transitions: &[Transition],
   animations: &[Animation<S>],
   style_declarations: impl Fn(&S) -> Declarations,
@@ -306,29 +308,31 @@ fn template<S>(
 
   push_rule(&mut out, &[], &base);
 
-  for (conditions, style) in variants {
+  for (condition, style) in variants {
     let declarations = style_declarations(style);
 
     if declarations.is_empty() {
       continue;
     }
 
-    let mut media: Vec<String> = conditions.iter().filter_map(media_feature).collect();
-    let mut states: Vec<&'static str> = conditions.iter().filter_map(state_selector).collect();
+    for term in condition.disjunctive_leaves() {
+      let mut media: Vec<String> = term.iter().copied().filter_map(media_feature).collect();
+      let mut states: Vec<&'static str> = term.iter().copied().filter_map(state_selector).collect();
 
-    // Canonical order, so the same condition set always renders the same template.
-    media.sort_unstable();
-    states.sort_unstable();
+      // Canonical order, so the same condition set always renders the same template.
+      media.sort_unstable();
+      states.sort_unstable();
 
-    if media.is_empty() {
-      push_rule(&mut out, &states, &declarations);
-    }
-    else {
-      out.push_str("@media ");
-      out.push_str(&media.join(" and "));
-      out.push('{');
-      push_rule(&mut out, &states, &declarations);
-      out.push('}');
+      if media.is_empty() {
+        push_rule(&mut out, &states, &declarations);
+      }
+      else {
+        out.push_str("@media ");
+        out.push_str(&media.join(" and "));
+        out.push('{');
+        push_rule(&mut out, &states, &declarations);
+        out.push('}');
+      }
     }
   }
 

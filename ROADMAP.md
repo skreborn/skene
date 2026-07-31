@@ -44,10 +44,11 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 
 ## Phase 3—Declarative style: conditions, transitions, animations ✅ (core)
 
-- **Done.** `BoxProps`/`RunProps` carry `variants: Vec<(Vec<Condition>, Style)>`
-  (conjunction; media features and interaction states), `transitions`, and
-  `animations` (keyframes over the same style type). Builders: `set_when`,
-  `set_when_all`, `set_transition`, `set_animation` on `Container`/`Text`/`Span`;
+- **Done.** `BoxProps`/`RunProps` carry `variants: Vec<(Condition, Style)>` (media
+  features and interaction states, composable to any depth with `Condition::and`/
+  `Condition::or`), `transitions`, and `animations` (keyframes over the same style
+  type). Builders: `set_when`, `set_transition`, `set_animation` on
+  `Container`/`Text`/`Span`;
   `BoxStyle`/`RunStyle` gained chainable const setters. The web driver renders the whole
   set into one interned **rule template** (`@media` blocks, pseudo-class rules,
   `transition:`, content-addressed `@keyframes`); the interner keys on templates; the

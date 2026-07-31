@@ -108,7 +108,7 @@ pub struct Text {
 /// A run's declarative dynamics: conditional variants, transitions, animations.
 #[derive(Default)]
 pub(crate) struct RunDynamics {
-  pub(crate) variants: Vec<(Vec<Condition>, RunStyle)>,
+  pub(crate) variants: Vec<(Condition, RunStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<RunStyle>>,
 }
@@ -195,22 +195,7 @@ impl Text {
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
-    self.dynamics.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: RunStyle,
-  ) -> Self {
-    self
-      .dynamics
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.dynamics.variants.push((condition, style));
 
     self
   }
@@ -348,22 +333,7 @@ impl Span {
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
-    self.dynamics.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: RunStyle,
-  ) -> Self {
-    self
-      .dynamics
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.dynamics.variants.push((condition, style));
 
     self
   }

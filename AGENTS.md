@@ -98,6 +98,12 @@
   (the entry proc-macro is the exemplar). Never reach for a macro that adds little while degrading
   `rustfmt`/rust-analyzer support, readability, or performance; prefer a function or generic when
   one suffices.
+- Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
+  when facades need the same machinery over different vocabularies, the spine hosts it once as
+  a small monomorphized generic (`TreeOps`, `Composable`), each facade keeping its own flat,
+  medium-typed surface. Never share via feature-gated variants or fields: cargo features are
+  additive and unify across the build graph, so mutually-exclusive cfgs break any build
+  containing both facades.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

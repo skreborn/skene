@@ -22,18 +22,18 @@ pub(crate) enum NodeKind {
   Box {
     layout: Layout,
     style: BoxStyle,
-    variants: Vec<(Vec<Condition>, BoxStyle)>,
+    variants: Vec<(Condition, BoxStyle)>,
   },
   /// A text run, sized by its text.
   Run {
     style: RunStyle,
-    variants: Vec<(Vec<Condition>, RunStyle)>,
+    variants: Vec<(Condition, RunStyle)>,
     text: String,
   },
   /// A single-line text input.
   Input {
     style: BoxStyle,
-    variants: Vec<(Vec<Condition>, BoxStyle)>,
+    variants: Vec<(Condition, BoxStyle)>,
     value: String,
     placeholder: Option<String>,
   },

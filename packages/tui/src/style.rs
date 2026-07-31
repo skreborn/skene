@@ -5,7 +5,7 @@
 //! effective style maps to a taffy [`Style`] for layout and to paint attributes for
 //! drawing.
 
-use skene_core::{Axis, Color, CrossAxisAlignment, Layout, MainAxisAlignment};
+use skene_core::{Axis, Color, Composable, CrossAxisAlignment, Layout, MainAxisAlignment};
 use taffy::{
   prelude::{TaffyAuto, TaffyGridLine, fr, length, repeat},
   style::{AlignItems, Dimension, Display, FlexDirection, GridPlacement, JustifyContent, Style},
@@ -31,19 +31,16 @@ pub(crate) struct Interaction {
   pub(crate) hovered: bool,
 }
 
-/// Whether `condition` holds in `environment` for a node in `interaction`.
-fn condition_holds(
-  condition: Condition,
-  environment: Environment,
-  interaction: Interaction,
-) -> bool {
+/// Whether leaf `condition` holds in `environment` for a node in `interaction`.
+fn leaf_holds(condition: &Condition, environment: Environment, interaction: Interaction) -> bool {
   match condition {
-    Condition::MinWidth(value) => environment.columns >= value,
-    Condition::MaxWidth(value) => environment.columns <= value,
-    Condition::MinHeight(value) => environment.rows >= value,
-    Condition::MaxHeight(value) => environment.rows <= value,
+    Condition::MinWidth(value) => environment.columns >= *value,
+    Condition::MaxWidth(value) => environment.columns <= *value,
+    Condition::MinHeight(value) => environment.rows >= *value,
+    Condition::MaxHeight(value) => environment.rows <= *value,
     Condition::Focused => interaction.focused,
     Condition::Hovered => interaction.hovered,
+    Condition::And(_) | Condition::Or(_) => unreachable!("a composite is never a leaf"),
   }
 }
 
@@ -70,17 +67,14 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
 /// winning.
 pub(crate) fn effective_box_style(
   base: &BoxStyle,
-  variants: &[(Vec<Condition>, BoxStyle)],
+  variants: &[(Condition, BoxStyle)],
   environment: Environment,
   interaction: Interaction,
 ) -> BoxStyle {
   let mut effective = *base;
 
-  for (conditions, style) in variants {
-    if conditions
-      .iter()
-      .all(|condition| condition_holds(*condition, environment, interaction))
-    {
+  for (condition, style) in variants {
+    if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
       effective = overlay_box(effective, style);
     }
   }
@@ -92,17 +86,14 @@ pub(crate) fn effective_box_style(
 /// winning.
 pub(crate) fn effective_run_style(
   base: &RunStyle,
-  variants: &[(Vec<Condition>, RunStyle)],
+  variants: &[(Condition, RunStyle)],
   environment: Environment,
   interaction: Interaction,
 ) -> RunStyle {
   let mut effective = *base;
 
-  for (conditions, style) in variants {
-    if conditions
-      .iter()
-      .all(|condition| condition_holds(*condition, environment, interaction))
-    {
+  for (condition, style) in variants {
+    if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
       effective.color = style.color.or(effective.color);
       effective.bold = style.bold.or(effective.bold);
     }

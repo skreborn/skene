@@ -49,7 +49,7 @@ pub struct Container {
   cursor: Option<Source<MouseCursor>>,
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
   cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
-  variants: Vec<(Vec<Condition>, BoxStyle)>,
+  variants: Vec<(Condition, BoxStyle)>,
   click_handler: Option<Rc<dyn Fn()>>,
   pointer_enter_handler: Option<Rc<dyn Fn()>>,
   pointer_leave_handler: Option<Rc<dyn Fn()>>,
@@ -339,21 +339,7 @@ impl Container {
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.variants.push((vec![condition], style));
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while all of `conditions` hold.
-  #[inline(always)]
-  pub fn set_when_all(
-    mut self,
-    conditions: impl IntoIterator<Item = Condition>,
-    style: BoxStyle,
-  ) -> Self {
-    self
-      .variants
-      .push((conditions.into_iter().collect(), style));
+    self.variants.push((condition, style));
 
     self
   }

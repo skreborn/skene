@@ -21,6 +21,7 @@ use skene_core::{
   BoxProps,
   Condition,
   Easing,
+  InputProps,
   Layout,
   RunDisplay,
   RunProp,
@@ -160,6 +161,30 @@ pub(crate) fn box_template(props: &BoxProps) -> String {
     &props.animations,
     |style| fold_box_style(Declarations::new(), style),
   )
+}
+
+/// The complete rule template for an input, or `None` when it is entirely unstyled.
+pub(crate) fn input_template(props: &InputProps) -> Option<String> {
+  let base = fold_box_style(Declarations::new(), &props.style);
+
+  if base.is_empty()
+    && props
+      .variants
+      .iter()
+      .all(|(_, style)| *style == skene_core::BoxStyle::default())
+    && props.transitions.is_empty()
+    && props.animations.is_empty()
+  {
+    return None;
+  }
+
+  Some(template(
+    base,
+    &props.variants,
+    &props.transitions,
+    &props.animations,
+    |style| fold_box_style(Declarations::new(), style),
+  ))
 }
 
 /// The declarations for one box property alone, for an inline override.

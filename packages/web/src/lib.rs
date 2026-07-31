@@ -52,7 +52,7 @@ mod ssr;
 // exposes `render_to_string`/`render_to_stream` instead. `uninstall` is the browser
 // leaf's test teardown.
 #[cfg(target_arch = "wasm32")]
-use skene_core::{BoxProp, BoxProps, NodeId, Role, RunProp, RunProps};
+use skene_core::{BoxProp, BoxProps, InputProps, NodeId, Role, RunProp, RunProps};
 
 #[cfg(target_os = "unknown")]
 pub(crate) use self::csr::assign_class;
@@ -65,7 +65,13 @@ pub use self::csr::{
   document,
   drive,
   element,
+  handle_blur,
   handle_click,
+  handle_focus,
+  handle_input,
+  handle_key_down,
+  handle_pointer_enter,
+  handle_pointer_leave,
   hydrate,
   hydrate_page,
   install,
@@ -75,6 +81,7 @@ pub use self::csr::{
   override_style,
   register_source,
   set_attribute,
+  set_input_value,
   set_style,
   set_text,
   tree::{attach, create_group, destroy, detach},
@@ -86,7 +93,13 @@ pub use self::ssr::{
   adopt_next,
   create_element,
   drive,
+  handle_blur,
   handle_click,
+  handle_focus,
+  handle_input,
+  handle_key_down,
+  handle_pointer_enter,
+  handle_pointer_leave,
   is_server,
   override_style,
   register_boundary,
@@ -94,6 +107,7 @@ pub use self::ssr::{
   render_to_stream,
   render_to_string,
   set_attribute,
+  set_input_value,
   set_style,
   set_text,
   sleep,
@@ -164,4 +178,30 @@ pub fn create_run(props: &RunProps) -> NodeId {
 #[inline(always)]
 pub fn update_run(node: NodeId, prop: &RunProp) {
   override_style(node, &mapping::run_prop_declarations(prop));
+}
+
+/// Realizes a single-line text input, with its full static style interned as a shared
+/// class — or classless when it is unstyled.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_input(props: &InputProps) -> NodeId {
+  let node = create_element("input");
+
+  if let Some(placeholder) = &props.placeholder {
+    set_attribute(node, "placeholder", placeholder);
+  }
+
+  if let Some(template) = mapping::input_template(props) {
+    assign_class(node, &template);
+  }
+
+  node
+}
+
+/// Applies one changed input style property as an inline override, winning over the
+/// interned class.
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn update_input(node: NodeId, prop: &BoxProp) {
+  override_style(node, &mapping::box_prop_declarations(prop));
 }

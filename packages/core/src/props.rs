@@ -228,6 +228,22 @@ pub struct BoxProps {
   pub animations: Vec<Animation<BoxStyle>>,
 }
 
+/// Everything a driver needs to realize a single-line text input.
+#[must_use]
+pub struct InputProps {
+  /// The hint shown while the value is empty.
+  pub placeholder: Option<String>,
+  /// The static style.
+  pub style: BoxStyle,
+  /// Conditional variants, each applying while all of its conditions hold; later
+  /// entries win over earlier ones.
+  pub variants: Vec<(Vec<Condition>, BoxStyle)>,
+  /// The property transitions.
+  pub transitions: Vec<Transition>,
+  /// The keyframe animations.
+  pub animations: Vec<Animation<BoxStyle>>,
+}
+
 /// A text run's static style: each property the builder or the inherited theme fixed to a
 /// value.
 ///

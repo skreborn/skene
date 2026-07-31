@@ -2,6 +2,7 @@
 
 mod boundary;
 mod children;
+mod events;
 mod node;
 mod props;
 mod reorder;
@@ -13,8 +14,9 @@ mod view;
 
 pub use boundary::Boundary;
 pub use children::IntoChildren;
+pub use events::KeyEvent;
 pub use node::NodeId;
-pub use props::{BoxProp, BoxProps, BoxStyle, RunDisplay, RunProp, RunProps, RunStyle};
+pub use props::{BoxProp, BoxProps, BoxStyle, InputProps, RunDisplay, RunProp, RunProps, RunStyle};
 pub use reorder::Reorder;
 pub use runtime::{reset_root_scope, root_scope};
 pub use source::Source;

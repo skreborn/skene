@@ -1,7 +1,7 @@
 # Roadmap
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 4.**
+Phases are ordered; later phases assume the earlier ones. **Current phase: 5.**
 
 ## Phase 1 — Reactive engine internals ✅
 
@@ -62,14 +62,18 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   - Hydration adopts the server's `<style>` rules instead of rebuilding duplicates.
   - Variants for the raw-`Declarations` escape hatch (currently base-only).
 
-## Phase 4 — Events and first controls
+## Phase 4 — Events and first controls ✅ (core)
 
-- Portable event vocabulary: pointer (down/up/move/enter/leave, click stays), keyboard,
-  focus/blur, input/change, scroll. Root-level delegation on the web (one listener per
-  event type, dispatch by node id) replaces the per-node closures.
-- Implicit reactive batch around driver event dispatch.
-- First form controls (web: native `<input>`/`<textarea>` realizations), `Role` expanded.
-- Focus management primitives.
+- **Done.** Portable event vocabulary: click, pointer enter/leave, focus/blur, key down
+  (`KeyEvent`: W3C key names + modifiers), input. On the web the bubbling events are
+  **delegated** — one listener per event type on the mount root, dispatch walks the
+  target's ancestors by a stamped node id — and the non-bubbling pointer enter/leave
+  attach per node. Every dispatch runs inside an implicit reactive batch. First control:
+  `Input` (web `<input>`, a void element in SSR output) with
+  `bind_value`/`derive_value`/`handle_input`/`handle_key_down`, placeholder, and the full
+  declarative styling surface (`set_style`, `set_when`, transitions, animations).
+- **Remaining:** pointer down/up/move, scroll, change (committed value), `<textarea>`,
+  focus management primitives (programmatic focus, tab order), `Role` expansion.
 
 ## Phase 5 — Router, runner, SSG
 

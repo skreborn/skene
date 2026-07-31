@@ -16,7 +16,7 @@ mod task;
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{IntoView, NodeId, View};
+use skene_core::{IntoView, KeyEvent, NodeId, View};
 
 use self::stylesheet::StyleStore;
 pub use self::task::{drive, sleep};
@@ -323,11 +323,21 @@ impl Node {
     out.push('>');
   }
 
-  /// Emits a node's closing tag: `</tag>`.
+  /// Emits a node's closing tag: `</tag>` — nothing for a void element, which has no
+  /// closing tag in HTML.
   fn emit_close(&self, out: &mut String) {
+    if self.is_void() {
+      return;
+    }
+
     out.push_str("</");
     out.push_str(&self.tag);
     out.push('>');
+  }
+
+  /// Whether the node's tag is an HTML void element.
+  fn is_void(&self) -> bool {
+    matches!(self.tag.as_str(), "input" | "br" | "hr" | "img")
   }
 }
 
@@ -432,6 +442,42 @@ pub fn set_text(node: NodeId, text: &str) {
 /// returns when the client hydrates.
 #[inline(always)]
 pub fn handle_click(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
+/// Registers a pointer-enter handler — inert on the server.
+#[inline(always)]
+pub fn handle_pointer_enter(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
+/// Registers a pointer-leave handler — inert on the server.
+#[inline(always)]
+pub fn handle_pointer_leave(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
+/// Registers a focus handler — inert on the server.
+#[inline(always)]
+pub fn handle_focus(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
+/// Registers a blur handler — inert on the server.
+#[inline(always)]
+pub fn handle_blur(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
+/// Registers a key handler — inert on the server.
+#[inline(always)]
+pub fn handle_key_down(_node: NodeId, _handler: Rc<dyn Fn(&KeyEvent)>) {}
+
+/// Registers an input handler — inert on the server.
+#[inline(always)]
+pub fn handle_input(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
+
+/// Sets the value of an input node, serialized as its `value` attribute.
+pub fn set_input_value(node: NodeId, value: &str) {
+  with_state(|state| {
+    if let Some(node) = state.nodes.get_mut(&node) {
+      match node.attributes.iter_mut().find(|(name, _)| name == "value") {
+        Some((_, existing)) => value.clone_into(existing),
+        None => node.attributes.push(("value".to_owned(), value.to_owned())),
+      }
+    }
+  });
+}
 
 /// Renders `app`, returning `(styles, body, state)`: the `<style>` block, the settled view
 /// tree, and the encoded resource state the client adopts on hydration.

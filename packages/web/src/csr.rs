@@ -7,20 +7,20 @@
 
 pub(crate) mod tree;
 
+mod events;
 mod logging;
 mod stylesheet;
 mod task;
 
 use std::{
   cell::{Cell, RefCell},
-  collections::hash_map::Entry,
   rc::Rc,
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_core::{IntoView, NodeId, View};
-use wasm_bindgen::{JsCast, closure::Closure};
-use web_sys::{Document, Element, HtmlElement};
+use skene_core::{IntoView, KeyEvent, NodeId, View};
+use wasm_bindgen::JsCast;
+use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent};
 
 use self::stylesheet::StyleStore;
 pub use self::task::drive;
@@ -28,13 +28,6 @@ pub use self::task::drive;
 use crate::Declarations;
 
 const ROOT_ID: NodeId = NodeId::new(0);
-
-/// A live DOM click-listener callback, kept alive for the platform's lifetime.
-type ClickClosure = Closure<dyn FnMut(web_sys::Event)>;
-
-/// The click handlers registered for each node. Shared (`Rc`) with the listener
-/// closures so they can run without borrowing the state.
-type ClickHandlers = Rc<RefCell<FxHashMap<NodeId, Vec<Rc<dyn Fn()>>>>>;
 
 /// The web platform's state: the element registry, the stylesheet store, and the live
 /// event-listener closures. Private — reached only through this module's functions.
@@ -57,11 +50,8 @@ struct State {
   styles: RefCell<StyleStore>,
   /// The next node id to allocate.
   next_id: Cell<u64>,
-  /// The click handlers registered for each node.
-  click_handlers: ClickHandlers,
-  /// One live click listener per node, kept alive until the node is destroyed. Dropping
-  /// it detaches the DOM listener.
-  click_listeners: RefCell<FxHashMap<NodeId, ClickClosure>>,
+  /// The event registries and live listeners.
+  events: events::Events,
   /// While hydrating, the server-rendered elements indexed by their creation-order marker;
   /// `None` in normal operation, when nodes are created fresh.
   hydration: RefCell<Option<FxHashMap<u64, Element>>>,
@@ -105,8 +95,7 @@ impl State {
       parents: RefCell::new(FxHashMap::default()),
       styles: RefCell::new(styles),
       next_id: Cell::new(1),
-      click_handlers: Rc::new(RefCell::new(FxHashMap::default())),
-      click_listeners: RefCell::new(FxHashMap::default()),
+      events: events::Events::new(),
       hydration: RefCell::new(None),
       adopted: RefCell::new(FxHashSet::default()),
     }
@@ -190,43 +179,163 @@ impl State {
     self.with_element(node, |element| element.set_text_content(Some(text)));
   }
 
-  /// Registers `handler` to run when `node` is clicked, until the node is destroyed. A
-  /// single DOM listener per node runs every registered handler.
+  /// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles
+  /// to it), until the node is destroyed. Delivered by delegation: one listener on the
+  /// mount root serves every node.
   pub fn handle_click(&self, node: NodeId, handler: Rc<dyn Fn()>) {
     self
-      .click_handlers
+      .events
+      .click
       .borrow_mut()
       .entry(node)
       .or_default()
       .push(handler);
 
-    let mut listeners = self.click_listeners.borrow_mut();
+    let handlers = Rc::clone(&self.events.click);
 
-    let Entry::Vacant(slot) = listeners.entry(node)
-    else {
-      return;
-    };
-
-    let click_handlers = Rc::clone(&self.click_handlers);
-
-    // Cloning the handlers out before invoking keeps the borrow short, so a handler
-    // may re-enter the platform (e.g. to build or destroy nodes).
-    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
-      let Some(to_run) = click_handlers.borrow().get(&node).cloned()
-      else {
-        return;
-      };
-
-      for handler in to_run {
-        handler();
-      }
-    }) as Box<dyn FnMut(web_sys::Event)>);
-
-    self.with_element(node, |element| {
-      let _ = element.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref());
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "click", move |id, _event| {
+          events::run_handlers(&handlers, id, (), |run, ()| run());
+        });
     });
+  }
 
-    slot.insert(closure);
+  /// Registers `handler` to run when `node` gains focus, until the node is destroyed.
+  pub fn handle_focus(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+    self
+      .events
+      .focus
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.focus);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "focusin", move |id, _event| {
+          events::run_handlers(&handlers, id, (), |run, ()| run());
+        });
+    });
+  }
+
+  /// Registers `handler` to run when `node` loses focus, until the node is destroyed.
+  pub fn handle_blur(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+    self
+      .events
+      .blur
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.blur);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "focusout", move |id, _event| {
+          events::run_handlers(&handlers, id, (), |run, ()| run());
+        });
+    });
+  }
+
+  /// Registers `handler` to run when a key is pressed on `node` or within it, until the
+  /// node is destroyed.
+  pub fn handle_key_down(&self, node: NodeId, handler: Rc<dyn Fn(&KeyEvent)>) {
+    self
+      .events
+      .key_down
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.key_down);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "keydown", move |id, event| {
+          let Some(keyboard) = event.dyn_ref::<KeyboardEvent>()
+          else {
+            return;
+          };
+
+          let key_event = KeyEvent {
+            key: keyboard.key(),
+            ctrl: keyboard.ctrl_key(),
+            shift: keyboard.shift_key(),
+            alt: keyboard.alt_key(),
+            meta: keyboard.meta_key(),
+          };
+
+          events::run_handlers(&handlers, id, &key_event, |run, key_event| run(key_event));
+        });
+    });
+  }
+
+  /// Registers `handler` to run with the new value when `node`'s (or a descendant
+  /// input's) text changes, until the node is destroyed.
+  pub fn handle_input(&self, node: NodeId, handler: Rc<dyn Fn(&str)>) {
+    self
+      .events
+      .input
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.input);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "input", move |id, event| {
+          let Some(value) = event
+            .target()
+            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
+            .map(|input| input.value())
+          else {
+            return;
+          };
+
+          events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
+        });
+    });
+  }
+
+  /// Registers `handler` to run when the pointer enters `node`, until the node is
+  /// destroyed.
+  pub fn handle_pointer_enter(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+    self.with_element(node, |element| {
+      self
+        .events
+        .add_direct_listener(node, element, "pointerenter", handler);
+    });
+  }
+
+  /// Registers `handler` to run when the pointer leaves `node`, until the node is
+  /// destroyed.
+  pub fn handle_pointer_leave(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+    self.with_element(node, |element| {
+      self
+        .events
+        .add_direct_listener(node, element, "pointerleave", handler);
+    });
+  }
+
+  /// Sets the live value of an input node.
+  pub fn set_input_value(&self, node: NodeId, value: &str) {
+    self.with_element(node, |element| {
+      if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+        input.set_value(value);
+      }
+    });
   }
 
   fn alloc_id(&self) -> NodeId {
@@ -243,6 +352,7 @@ impl State {
     let id = self.alloc_id();
     let element = self.element_for(id, tag);
 
+    events::stamp_node_id(&element, id);
     self.nodes.borrow_mut().insert(id, element);
 
     id
@@ -387,7 +497,8 @@ impl State {
   fn destroy(&self, node: NodeId) {
     // Tear down the whole detached subtree, releasing each node's element, class, handlers and
     // listener closures. Dropping a closure detaches its DOM listener, so no `removeEventListener`
-    // is needed. No user code runs during teardown, so every map is borrowed once up front.
+    // is needed. No user code runs during teardown, so the structural maps are borrowed once up
+    // front; the event registries hold their own cells.
     let mut stack = vec![node];
 
     let mut children = self.children.borrow_mut();
@@ -395,8 +506,6 @@ impl State {
     let mut nodes = self.nodes.borrow_mut();
     let mut node_class = self.node_class.borrow_mut();
     let mut styles = self.styles.borrow_mut();
-    let mut click_handlers = self.click_handlers.borrow_mut();
-    let mut click_listeners = self.click_listeners.borrow_mut();
 
     while let Some(current) = stack.pop() {
       if let Some(descendants) = children.remove(&current) {
@@ -410,8 +519,7 @@ impl State {
         styles.release(&class);
       }
 
-      click_handlers.remove(&current);
-      click_listeners.remove(&current);
+      self.events.remove(current);
     }
   }
 }
@@ -551,9 +659,47 @@ pub fn set_text(node: NodeId, text: &str) {
   with_state(|state| state.set_text(node, text));
 }
 
-/// Registers `handler` to run when `node` is clicked, until the node is destroyed.
+/// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles to
+/// it), until the node is destroyed.
 pub fn handle_click(node: NodeId, handler: Rc<dyn Fn()>) {
   with_state(|state| state.handle_click(node, handler));
+}
+
+/// Registers `handler` to run when the pointer enters `node`, until the node is destroyed.
+pub fn handle_pointer_enter(node: NodeId, handler: Rc<dyn Fn()>) {
+  with_state(|state| state.handle_pointer_enter(node, handler));
+}
+
+/// Registers `handler` to run when the pointer leaves `node`, until the node is destroyed.
+pub fn handle_pointer_leave(node: NodeId, handler: Rc<dyn Fn()>) {
+  with_state(|state| state.handle_pointer_leave(node, handler));
+}
+
+/// Registers `handler` to run when `node` gains focus, until the node is destroyed.
+pub fn handle_focus(node: NodeId, handler: Rc<dyn Fn()>) {
+  with_state(|state| state.handle_focus(node, handler));
+}
+
+/// Registers `handler` to run when `node` loses focus, until the node is destroyed.
+pub fn handle_blur(node: NodeId, handler: Rc<dyn Fn()>) {
+  with_state(|state| state.handle_blur(node, handler));
+}
+
+/// Registers `handler` to run when a key is pressed on `node` or within it, until the
+/// node is destroyed.
+pub fn handle_key_down(node: NodeId, handler: Rc<dyn Fn(&KeyEvent)>) {
+  with_state(|state| state.handle_key_down(node, handler));
+}
+
+/// Registers `handler` to run with the new value when text is entered on `node` or an
+/// input within it, until the node is destroyed.
+pub fn handle_input(node: NodeId, handler: Rc<dyn Fn(&str)>) {
+  with_state(|state| state.handle_input(node, handler));
+}
+
+/// Sets the live value of an input node.
+pub fn set_input_value(node: NodeId, value: &str) {
+  with_state(|state| state.set_input_value(node, value));
 }
 
 /// Builds `view` under the installed root, returning its node.

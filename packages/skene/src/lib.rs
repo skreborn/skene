@@ -13,6 +13,7 @@ mod container;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
 mod empty;
+mod input;
 #[cfg(target_arch = "wasm32")]
 mod realize;
 #[cfg(target_arch = "wasm32")]
@@ -53,6 +54,7 @@ pub use crate::task::spawn;
 pub use crate::{
   children::{Children, HasChildren},
   container::Container,
+  input::Input,
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 

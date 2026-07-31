@@ -11,6 +11,7 @@ use skene_core::{
   Color,
   Condition,
   CrossAxisAlignment,
+  KeyEvent,
   MainAxisAlignment,
   MouseCursor,
   Source,
@@ -50,6 +51,12 @@ pub struct Container {
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
   pub(crate) click_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) pointer_enter_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) pointer_leave_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
 }
 
 impl Container {
@@ -77,6 +84,11 @@ impl Container {
       transitions: Vec::new(),
       animations: Vec::new(),
       click_handler: None,
+      pointer_enter_handler: None,
+      pointer_leave_handler: None,
+      focus_handler: None,
+      blur_handler: None,
+      key_down_handler: None,
     }
   }
 
@@ -400,6 +412,46 @@ impl Container {
 
     self
   }
+
+  /// Sets the pointer-enter handler.
+  #[inline(always)]
+  pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.pointer_enter_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-leave handler.
+  #[inline(always)]
+  pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.pointer_leave_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the focus handler.
+  #[inline(always)]
+  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
+    self.focus_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the blur handler.
+  #[inline(always)]
+  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
+    self.blur_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the key-press handler, run for keys pressed on the box or within it.
+  #[inline(always)]
+  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    self.key_down_handler = Some(Rc::new(action));
+
+    self
+  }
 }
 
 impl Default for Container {
@@ -547,6 +599,26 @@ impl skene_core::View for Container {
 
     if let Some(action) = self.click_handler {
       driver::handle_click(node, action);
+    }
+
+    if let Some(action) = self.pointer_enter_handler {
+      driver::handle_pointer_enter(node, action);
+    }
+
+    if let Some(action) = self.pointer_leave_handler {
+      driver::handle_pointer_leave(node, action);
+    }
+
+    if let Some(action) = self.focus_handler {
+      driver::handle_focus(node, action);
+    }
+
+    if let Some(action) = self.blur_handler {
+      driver::handle_blur(node, action);
+    }
+
+    if let Some(action) = self.key_down_handler {
+      driver::handle_key_down(node, action);
     }
 
     match self.layout {

@@ -6,9 +6,12 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_core::{KeyEvent, Layout, NodeId};
+use skene_core::{KeyEvent, Layout, MouseCursor, NodeId};
 
-use crate::props::{BoxStyle, Condition, RunStyle};
+use crate::{
+  props::{BoxStyle, Condition, RunStyle},
+  style::{Environment, Interaction, effective_box_style},
+};
 
 /// The virtual root every mounted view attaches under.
 pub(crate) const ROOT_ID: NodeId = NodeId::new(0);
@@ -60,7 +63,13 @@ pub(crate) struct State {
   pub(crate) blur: Handlers<dyn Fn()>,
   pub(crate) key_down: Handlers<dyn Fn(&KeyEvent)>,
   pub(crate) input: Handlers<dyn Fn(&str)>,
+  pub(crate) pointer_enter: Handlers<dyn Fn()>,
+  pub(crate) pointer_leave: Handlers<dyn Fn()>,
   pub(crate) focused: Cell<Option<NodeId>>,
+  /// The path from the root to the deepest node under the mouse, when known.
+  pub(crate) hovered: RefCell<Vec<NodeId>>,
+  /// The size of the last computed layout, which mouse hit-testing resolves against.
+  pub(crate) last_size: Cell<(u16, u16)>,
   pub(crate) dirty: Cell<bool>,
   pub(crate) quit: Cell<bool>,
 }
@@ -98,7 +107,11 @@ impl State {
       blur: RefCell::new(FxHashMap::default()),
       key_down: RefCell::new(FxHashMap::default()),
       input: RefCell::new(FxHashMap::default()),
+      pointer_enter: RefCell::new(FxHashMap::default()),
+      pointer_leave: RefCell::new(FxHashMap::default()),
       focused: Cell::new(None),
+      hovered: RefCell::new(Vec::new()),
+      last_size: Cell::new((80, 24)),
       dirty: Cell::new(true),
       quit: Cell::new(false),
     }
@@ -224,6 +237,9 @@ impl State {
       self.blur.borrow_mut().remove(&current);
       self.key_down.borrow_mut().remove(&current);
       self.input.borrow_mut().remove(&current);
+      self.pointer_enter.borrow_mut().remove(&current);
+      self.pointer_leave.borrow_mut().remove(&current);
+      self.hovered.borrow_mut().retain(|node| *node != current);
 
       if self.focused.get() == Some(current) {
         self.focused.set(None);
@@ -323,13 +339,165 @@ impl State {
       }
     };
 
-    let previous = self.focused.replace(Some(next));
+    self.set_focused(Some(next));
+  }
+
+  /// Sets the focused node, firing blur and focus handlers on change.
+  pub(crate) fn set_focused(&self, next: Option<NodeId>) {
+    let previous = self.focused.replace(next);
+
+    if previous == next {
+      return;
+    }
 
     if let Some(previous) = previous {
       Self::run_handlers(&self.blur, previous, (), |run, ()| run());
     }
 
-    Self::run_handlers(&self.focus, next, (), |run, ()| run());
+    if let Some(next) = next {
+      Self::run_handlers(&self.focus, next, (), |run, ()| run());
+    }
+
     self.dirty.set(true);
+  }
+
+  /// The path from the root to the deepest node containing the cell (`x`, `y`), against
+  /// the last computed layout.
+  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<NodeId> {
+    let mut path = Vec::new();
+
+    self.hit_walk(ROOT_ID, 0, 0, i32::from(x), i32::from(y), &mut path);
+
+    path
+  }
+
+  /// Descends into the deepest child containing the point, preferring later (topmost)
+  /// children, accumulating the path.
+  fn hit_walk(
+    &self,
+    node: NodeId,
+    offset_x: i32,
+    offset_y: i32,
+    x: i32,
+    y: i32,
+    path: &mut Vec<NodeId>,
+  ) -> bool {
+    let (origin_x, origin_y, width, height, children) = {
+      let nodes = self.nodes.borrow();
+      let Some(record) = nodes.get(&node)
+      else {
+        return false;
+      };
+
+      let Ok(layout) = self.taffy.borrow().layout(record.taffy).copied()
+      else {
+        return false;
+      };
+
+      #[expect(clippy::cast_possible_truncation)]
+      let (origin_x, origin_y) = (
+        offset_x + layout.location.x.round() as i32,
+        offset_y + layout.location.y.round() as i32,
+      );
+
+      #[expect(clippy::cast_possible_truncation)]
+      let (width, height) = (
+        layout.size.width.round().max(0.0) as i32,
+        layout.size.height.round().max(0.0) as i32,
+      );
+
+      (origin_x, origin_y, width, height, record.children.clone())
+    };
+
+    let contains = x >= origin_x && x < origin_x + width && y >= origin_y && y < origin_y + height;
+
+    if node != ROOT_ID && !contains {
+      return false;
+    }
+
+    path.push(node);
+
+    // Later children paint on top, so they win the hit.
+    for child in children.iter().rev() {
+      if self.hit_walk(*child, origin_x, origin_y, x, y, path) {
+        break;
+      }
+    }
+
+    true
+  }
+
+  /// Updates the hover path to the nodes under (`x`, `y`), firing pointer-leave and
+  /// pointer-enter handlers for the difference.
+  pub(crate) fn set_hover(&self, x: u16, y: u16) {
+    let next = self.hit_test(x, y);
+    let previous = self.hovered.borrow().clone();
+
+    if previous == next {
+      return;
+    }
+
+    for node in previous.iter().rev() {
+      if !next.contains(node) {
+        Self::run_handlers(&self.pointer_leave, *node, (), |run, ()| run());
+      }
+    }
+
+    for node in &next {
+      if !previous.contains(node) {
+        Self::run_handlers(&self.pointer_enter, *node, (), |run, ()| run());
+      }
+    }
+
+    *self.hovered.borrow_mut() = next;
+    self.dirty.set(true);
+  }
+
+  /// Dispatches a mouse click at (`x`, `y`): focuses the deepest focusable node on the
+  /// hit path (or blurs when none is hit), then runs click handlers from the deepest
+  /// node up.
+  pub(crate) fn mouse_click(&self, x: u16, y: u16) {
+    let path = self.hit_test(x, y);
+    let focusable = self.focusable();
+    let target = path
+      .iter()
+      .rev()
+      .find(|node| focusable.contains(node))
+      .copied();
+
+    self.set_focused(target);
+
+    for node in path.iter().rev() {
+      Self::run_handlers(&self.click, *node, (), |run, ()| run());
+    }
+  }
+
+  /// The pointer shape for the current hover path: the deepest hovered node with a
+  /// cursor set, resolved through its effective style.
+  pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
+    let (columns, rows) = self.last_size.get();
+    let environment = Environment { columns, rows };
+    let hovered = self.hovered.borrow();
+    let nodes = self.nodes.borrow();
+
+    hovered.iter().rev().find_map(|node| {
+      let record = nodes.get(node)?;
+      let (NodeKind::Box {
+        style, variants, ..
+      }
+      | NodeKind::Input {
+        style, variants, ..
+      }) = &record.kind
+      else {
+        return None;
+      };
+
+      let interaction = Interaction {
+        focused: self.focused.get() == Some(*node),
+        hovered: true,
+      };
+
+      effective_box_style(style, variants, environment, interaction).cursor
+    })
   }
 }

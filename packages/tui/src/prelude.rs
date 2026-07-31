@@ -10,6 +10,7 @@ pub use skene_core::{
   KeyEvent,
   Layout,
   MainAxisAlignment,
+  MouseCursor,
   View,
 };
 pub use skene_reactive::{

@@ -34,9 +34,14 @@ fn button(label: &'static str, action: impl Fn() + 'static) -> impl IntoView {
   Container::row()
     .set_padding(Inset::horizontal(1))
     .set_color(Color::srgb(0.2, 0.22, 0.2))
+    .set_cursor(MouseCursor::Click)
     .set_when(
       Condition::Focused,
       BoxStyle::new().set_color(Color::srgb(0.3, 0.4, 0.3)),
+    )
+    .set_when(
+      Condition::Hovered,
+      BoxStyle::new().set_color(Color::srgb(0.28, 0.32, 0.28)),
     )
     .set_child(Text::new(label))
     .handle_click(action)

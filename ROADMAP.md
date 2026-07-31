@@ -127,8 +127,14 @@ The largest phase by far; do not start before phase 4 proves the event model.
   into core as zero-cost `TreeOps` generics both facades alias. The reactive UI-thread
   designation became resettable under the `test` feature for multi-threaded host
   harnesses.
-- **Remaining:** text wrapping; mouse events; scroll; cursor positioning in inputs
-  (edits append/pop only); a diffed redraw instead of full frames.
+- **Mouse—done.** Motion drives `Condition::Hovered` variants and pointer enter/leave
+  handlers; left clicks hit-test against the taffy layout, focus the target, and run its
+  click handlers; a hovered node's `cursor` sets the pointer shape via OSC 22. Headless
+  `trigger_mouse_move`/`trigger_mouse_click` seams drive it in tests.
+- **Remaining:** text wrapping; scroll (incl. mouse wheel); caret positioning in inputs
+  (edits append/pop only); a diffed redraw instead of full frames; selectable border
+  character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,
+  custom).
 
 ## Phase 8—CLI
 

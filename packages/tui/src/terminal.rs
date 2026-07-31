@@ -8,7 +8,17 @@ use std::{io::Write, time::Duration};
 
 use crossterm::{
   cursor,
-  event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
+  event::{
+    self,
+    DisableMouseCapture,
+    EnableMouseCapture,
+    Event,
+    KeyCode,
+    KeyEventKind,
+    KeyModifiers,
+    MouseButton,
+    MouseEventKind,
+  },
   execute,
   queue,
   style::{
@@ -21,7 +31,7 @@ use crossterm::{
   },
   terminal,
 };
-use skene_core::{IntoView, KeyEvent, View};
+use skene_core::{IntoView, KeyEvent, MouseCursor, View};
 
 use crate::{
   paint,
@@ -35,7 +45,13 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
   fn drop(&mut self) {
     let mut out = std::io::stdout();
-    let _ = execute!(out, cursor::Show, terminal::LeaveAlternateScreen);
+    let _ = execute!(
+      out,
+      DisableMouseCapture,
+      cursor::Show,
+      terminal::LeaveAlternateScreen
+    );
+
     let _ = terminal::disable_raw_mode();
   }
 }
@@ -64,6 +80,7 @@ where
   execute!(
     std::io::stdout(),
     terminal::EnterAlternateScreen,
+    EnableMouseCapture,
     cursor::Hide
   )
   .expect("enter the alternate screen");
@@ -93,11 +110,43 @@ where
         Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
           with_state(|state| dispatch_key(state, &key));
         }
+        Ok(Event::Mouse(mouse)) => {
+          with_state(|state| dispatch_mouse(state, mouse));
+        }
         Ok(Event::Resize(..)) => with_state(|state| state.dirty.set(true)),
         _ => {}
       }
     }
   }
+}
+
+/// Dispatches one mouse event: hover tracking (with the pointer shape), and left-button
+/// clicks—all inside a reactive batch.
+fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
+  skene_reactive::Effect::batch(|| match mouse.kind {
+    MouseEventKind::Moved | MouseEventKind::Drag(_) => {
+      state.set_hover(mouse.column, mouse.row);
+      set_pointer_shape(state.hover_cursor());
+    }
+    MouseEventKind::Down(MouseButton::Left) => {
+      state.set_hover(mouse.column, mouse.row);
+      state.mouse_click(mouse.column, mouse.row);
+    }
+    _ => {}
+  });
+}
+
+/// Sets the terminal's pointer shape via OSC 22; terminals without support ignore it.
+fn set_pointer_shape(cursor: Option<MouseCursor>) {
+  let shape = match cursor {
+    Some(MouseCursor::Click) => "pointer",
+    Some(MouseCursor::Text) => "text",
+    Some(MouseCursor::Default) | None => "default",
+  };
+
+  let mut out = std::io::stdout();
+  let _ = write!(out, "\x1b]22;{shape}\x1b\\");
+  let _ = out.flush();
 }
 
 /// Writes a painted frame to the terminal.
@@ -337,4 +386,25 @@ pub fn trigger_key(key: &str) {
 #[must_use]
 pub fn focused_node() -> Option<skene_core::NodeId> {
   with_state(|state| state.focused.get())
+}
+
+/// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
+/// headlessly. Hit-testing resolves against the last render's layout.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_move(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::Effect::batch(|| state.set_hover(x, y));
+  });
+}
+
+/// Simulates a left click at the cell (`x`, `y`), for a test driving mouse interaction
+/// headlessly. Hit-testing resolves against the last render's layout.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_click(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::Effect::batch(|| {
+      state.set_hover(x, y);
+      state.mouse_click(x, y);
+    });
+  });
 }

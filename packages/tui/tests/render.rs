@@ -226,3 +226,115 @@ fn dynamic_swaps_content() {
   assert_eq!(before, "off\n");
   assert_eq!(after, "on\n");
 }
+
+/// The mouse hovering a node applies its `Hovered` variant and fires pointer handlers;
+/// moving off reverts and fires the leave handler.
+#[test]
+fn hover_variant_and_pointer_handlers() {
+  let (plain, hovered, after, enters, leaves) = with_driver(|| {
+    let enters = Rc::new(Cell::new(0u32));
+    let leaves = Rc::new(Cell::new(0u32));
+
+    {
+      let enters = Rc::clone(&enters);
+      let leaves = Rc::clone(&leaves);
+
+      tui::mount(|| {
+        Container::row()
+          .set_children((
+            Container::new()
+              .set_width(4)
+              .set_height(2)
+              .set_when(
+                Condition::Hovered,
+                BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
+              )
+              .handle_pointer_enter(move || enters.set(enters.get() + 1))
+              .handle_pointer_leave(move || leaves.set(leaves.get() + 1)),
+            Container::new().set_width(4).set_height(2),
+          ))
+          .into_any()
+          .build()
+      });
+    }
+
+    let plain = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_move(1, 0);
+
+    let hovered = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_move(6, 0);
+
+    let after = tui::render_to_text(10, 3);
+
+    (plain, hovered, after, enters.get(), leaves.get())
+  });
+
+  assert!(!plain.contains('┌'));
+  assert!(hovered.contains('┌'));
+  assert!(!after.contains('┌'));
+  assert_eq!(enters, 1);
+  assert_eq!(leaves, 1);
+}
+
+/// A mouse click hits the topmost node at the cell, runs its click handlers, and
+/// focuses it.
+#[test]
+fn mouse_click_hits_and_focuses() {
+  let (first, second) = with_driver(|| {
+    let first = Rc::new(Cell::new(0u32));
+    let second = Rc::new(Cell::new(0u32));
+
+    {
+      let first = Rc::clone(&first);
+      let second = Rc::clone(&second);
+
+      tui::mount(|| {
+        Container::row()
+          .set_children((
+            Container::new()
+              .set_width(4)
+              .set_height(2)
+              .handle_click(move || first.set(first.get() + 1)),
+            Container::new()
+              .set_width(4)
+              .set_height(2)
+              .handle_click(move || second.set(second.get() + 1)),
+          ))
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_click(5, 0);
+    tui::trigger_key("Enter");
+
+    (first.get(), second.get())
+  });
+
+  // The click hit the second box; Enter then re-clicks it through the focus it gained.
+  assert_eq!(first, 0);
+  assert_eq!(second, 2);
+}
+
+/// The hover path's deepest node with a cursor decides the pointer shape.
+#[test]
+fn hover_cursor_resolves() {
+  with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(4)
+        .set_height(2)
+        .set_cursor(skene_tui::core::MouseCursor::Click)
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_move(1, 0);
+  });
+}

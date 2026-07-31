@@ -12,6 +12,7 @@ use crate::{
   state::{NodeKind, ROOT_ID, State},
   style::{
     Environment,
+    Interaction,
     apply_box_sizing,
     box_taffy_style,
     effective_box_style,
@@ -95,6 +96,7 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
     rows: height,
   };
 
+  state.last_size.set((width, height));
   refresh_styles(state, environment);
 
   {
@@ -140,8 +142,14 @@ fn refresh_styles(state: &State, environment: Environment) {
   let focused = state.focused.get();
   let mut taffy = state.taffy.borrow_mut();
 
+  let hovered = state.hovered.borrow();
+
   for (id, record) in nodes.iter() {
-    let node_focused = focused == Some(*id);
+    let interaction = Interaction {
+      focused: focused == Some(*id),
+      hovered: hovered.contains(id),
+    };
+
     // The single mounted child fills the viewport, as the web reset's `body > *` does.
     let fills_root = record.parent == Some(ROOT_ID);
 
@@ -151,7 +159,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         style,
         variants,
       } => {
-        let effective = effective_box_style(style, variants, environment, node_focused);
+        let effective = effective_box_style(style, variants, environment, interaction);
         let mut out = box_taffy_style(*layout, &effective, record.in_stack);
 
         if fills_root {
@@ -189,7 +197,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         value,
         placeholder,
       } => {
-        let effective = effective_box_style(style, variants, environment, node_focused);
+        let effective = effective_box_style(style, variants, environment, interaction);
         let mut out = taffy::style::Style::default();
 
         apply_box_sizing(&mut out, &effective, record.in_stack);
@@ -266,12 +274,17 @@ fn paint_node(
       layout.size.height.round().max(0.0) as usize,
     );
 
-    let focused = state.focused.get() == Some(node);
+    let interaction = Interaction {
+      focused: state.focused.get() == Some(node),
+      hovered: state.hovered.borrow().contains(&node),
+    };
+
+    let focused = interaction.focused;
     let paint = match &record.kind {
       NodeKind::Box {
         style, variants, ..
       } => {
-        let effective = effective_box_style(style, variants, environment, focused);
+        let effective = effective_box_style(style, variants, environment, interaction);
 
         NodePaint::Box {
           background: effective.color.and_then(terminal_rgb),
@@ -287,7 +300,7 @@ fn paint_node(
         text,
         ..
       } => {
-        let effective = effective_run_style(style, variants, environment, focused);
+        let effective = effective_run_style(style, variants, environment, interaction);
 
         NodePaint::Text {
           text: text.clone(),
@@ -303,7 +316,7 @@ fn paint_node(
         value,
         placeholder,
       } => {
-        let effective = effective_box_style(style, variants, environment, focused);
+        let effective = effective_box_style(style, variants, environment, interaction);
         let (text, dim) = if value.is_empty() {
           (placeholder.clone().unwrap_or_default(), true)
         }

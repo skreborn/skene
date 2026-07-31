@@ -37,7 +37,7 @@ pub use skene_router as router;
 use state::{NodeKind, State};
 pub use terminal::launch;
 #[cfg(feature = "test")]
-pub use terminal::{focused_node, trigger_key};
+pub use terminal::{focused_node, trigger_key, trigger_mouse_click, trigger_mouse_move};
 
 pub use crate::{
   container::Container,

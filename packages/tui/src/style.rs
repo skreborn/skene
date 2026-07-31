@@ -22,14 +22,28 @@ pub(crate) struct Environment {
   pub(crate) rows: u16,
 }
 
-/// Whether `condition` holds in `environment` for a node with the given focus state.
-fn condition_holds(condition: Condition, environment: Environment, focused: bool) -> bool {
+/// A node's interaction state, resolved by the driver.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct Interaction {
+  /// Whether the node has keyboard focus.
+  pub(crate) focused: bool,
+  /// Whether the mouse hovers the node (itself or a descendant).
+  pub(crate) hovered: bool,
+}
+
+/// Whether `condition` holds in `environment` for a node in `interaction`.
+fn condition_holds(
+  condition: Condition,
+  environment: Environment,
+  interaction: Interaction,
+) -> bool {
   match condition {
     Condition::MinWidth(value) => environment.columns >= value,
     Condition::MaxWidth(value) => environment.columns <= value,
     Condition::MinHeight(value) => environment.rows >= value,
     Condition::MaxHeight(value) => environment.rows <= value,
-    Condition::Focused => focused,
+    Condition::Focused => interaction.focused,
+    Condition::Hovered => interaction.hovered,
   }
 }
 
@@ -45,6 +59,7 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
   base.spacing = over.spacing.or(base.spacing);
+  base.cursor = over.cursor.or(base.cursor);
   base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
   base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
 
@@ -57,14 +72,14 @@ pub(crate) fn effective_box_style(
   base: &BoxStyle,
   variants: &[(Vec<Condition>, BoxStyle)],
   environment: Environment,
-  focused: bool,
+  interaction: Interaction,
 ) -> BoxStyle {
   let mut effective = *base;
 
   for (conditions, style) in variants {
     if conditions
       .iter()
-      .all(|condition| condition_holds(*condition, environment, focused))
+      .all(|condition| condition_holds(*condition, environment, interaction))
     {
       effective = overlay_box(effective, style);
     }
@@ -79,14 +94,14 @@ pub(crate) fn effective_run_style(
   base: &RunStyle,
   variants: &[(Vec<Condition>, RunStyle)],
   environment: Environment,
-  focused: bool,
+  interaction: Interaction,
 ) -> RunStyle {
   let mut effective = *base;
 
   for (conditions, style) in variants {
     if conditions
       .iter()
-      .all(|condition| condition_holds(*condition, environment, focused))
+      .all(|condition| condition_holds(*condition, environment, interaction))
     {
       effective.color = style.color.or(effective.color);
       effective.bold = style.bold.or(effective.bold);

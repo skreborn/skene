@@ -1,11 +1,12 @@
 //! The terminal's own typed style vocabulary: cells, colors, bold—and nothing a
 //! terminal cannot render.
 //!
-//! Lengths are `u16` cells. There is no radius, no cursor, no font size, and no
-//! transition: what the medium lacks, the types lack, so a terminal app is first-class
-//! at compile time rather than best-effort at run time.
+//! Lengths are `u16` cells. There is no font size and no transition: what the medium
+//! lacks, the types lack, so a terminal app is first-class at compile time rather than
+//! best-effort at run time. Mouse hover, pointer shapes and one-cell borders are in: a
+//! compatible terminal renders them, and an incompatible one degrades quietly.
 
-use skene_core::{Color, CrossAxisAlignment, Inset, MainAxisAlignment};
+use skene_core::{Color, CrossAxisAlignment, Inset, MainAxisAlignment, MouseCursor};
 
 /// A box's static style: each property the builder fixed to a value.
 ///
@@ -33,6 +34,8 @@ pub struct BoxStyle {
   pub border: Option<Color>,
   /// The gap between children, in cells.
   pub spacing: Option<u16>,
+  /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
+  pub cursor: Option<MouseCursor>,
   /// The children's alignment along the main axis.
   pub main_axis_alignment: Option<MainAxisAlignment>,
   /// The children's alignment along the cross axis.
@@ -126,6 +129,14 @@ impl BoxStyle {
     self
   }
 
+  /// Sets the pointer shape shown over the box, in terminals that honor it.
+  #[inline(always)]
+  pub const fn set_cursor(mut self, cursor: MouseCursor) -> Self {
+    self.cursor = Some(cursor);
+
+    self
+  }
+
   /// Sets the children's alignment along the main axis.
   #[inline(always)]
   pub const fn set_main_axis_alignment(mut self, alignment: MainAxisAlignment) -> Self {
@@ -179,8 +190,8 @@ impl RunStyle {
   }
 }
 
-/// A condition under which a style variant applies: the terminal's size, or the node's
-/// focus.
+/// A condition under which a style variant applies: the terminal's size, the node's
+/// focus, or the mouse hovering it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub enum Condition {
@@ -194,6 +205,8 @@ pub enum Condition {
   MaxHeight(u16),
   /// The node has keyboard focus.
   Focused,
+  /// The mouse is over the node, in terminals that report it.
+  Hovered,
 }
 
 /// One box property's value, for a reactive update.
@@ -209,6 +222,7 @@ pub(crate) enum BoxProp {
   Color(Color),
   Border(Color),
   Spacing(u16),
+  Cursor(MouseCursor),
   MainAxisAlignment(MainAxisAlignment),
   CrossAxisAlignment(CrossAxisAlignment),
 }
@@ -233,6 +247,7 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::Color(value) => style.color = Some(value),
     BoxProp::Border(value) => style.border = Some(value),
     BoxProp::Spacing(value) => style.spacing = Some(value),
+    BoxProp::Cursor(value) => style.cursor = Some(value),
     BoxProp::MainAxisAlignment(value) => style.main_axis_alignment = Some(value),
     BoxProp::CrossAxisAlignment(value) => style.cross_axis_alignment = Some(value),
   }

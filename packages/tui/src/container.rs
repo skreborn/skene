@@ -9,6 +9,7 @@ use skene_core::{
   KeyEvent,
   Layout,
   MainAxisAlignment,
+  MouseCursor,
   NodeId,
   Source,
   View,
@@ -45,10 +46,13 @@ pub struct Container {
   color: Option<Source<Color>>,
   border: Option<Source<Color>>,
   spacing: Option<Source<u16>>,
+  cursor: Option<Source<MouseCursor>>,
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
   cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   variants: Vec<(Vec<Condition>, BoxStyle)>,
   click_handler: Option<Rc<dyn Fn()>>,
+  pointer_enter_handler: Option<Rc<dyn Fn()>>,
+  pointer_leave_handler: Option<Rc<dyn Fn()>>,
   focus_handler: Option<Rc<dyn Fn()>>,
   blur_handler: Option<Rc<dyn Fn()>>,
   #[expect(clippy::type_complexity)]
@@ -71,10 +75,13 @@ impl Container {
       color: None,
       border: None,
       spacing: None,
+      cursor: None,
       main_axis_alignment: None,
       cross_axis_alignment: None,
       variants: Vec::new(),
       click_handler: None,
+      pointer_enter_handler: None,
+      pointer_leave_handler: None,
       focus_handler: None,
       blur_handler: None,
       key_down_handler: None,
@@ -275,6 +282,22 @@ impl Container {
     self
   }
 
+  /// Sets a static pointer shape, shown over the box in terminals that honor it.
+  #[inline(always)]
+  pub fn set_cursor(mut self, cursor: MouseCursor) -> Self {
+    self.cursor = Some(Source::Static(cursor));
+
+    self
+  }
+
+  /// Sets a derived pointer shape.
+  #[inline(always)]
+  pub fn derive_cursor(mut self, cursor: impl Fn() -> MouseCursor + 'static) -> Self {
+    self.cursor = Some(Source::Derived(Rc::new(cursor)));
+
+    self
+  }
+
   /// Sets a static main axis alignment.
   #[inline(always)]
   pub fn set_main_axis_alignment(mut self, alignment: MainAxisAlignment) -> Self {
@@ -335,11 +358,27 @@ impl Container {
     self
   }
 
-  /// Sets the click handler (`Enter` while focused). A box with a click handler becomes
-  /// focusable.
+  /// Sets the click handler (`Enter` while focused, or a mouse click). A box with a
+  /// click handler becomes focusable.
   #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
     self.click_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-enter handler, run when the mouse moves onto the box.
+  #[inline(always)]
+  pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.pointer_enter_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-leave handler, run when the mouse moves off the box.
+  #[inline(always)]
+  pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.pointer_leave_handler = Some(Rc::new(action));
 
     self
   }
@@ -474,6 +513,14 @@ impl View for Container {
     );
 
     split_prop(
+      self.cursor,
+      &mut style.cursor,
+      &mut binders,
+      BoxProp::Cursor,
+      update_box,
+    );
+
+    split_prop(
       self.main_axis_alignment,
       &mut style.main_axis_alignment,
       &mut binders,
@@ -508,6 +555,24 @@ impl View for Container {
       if let Some(action) = self.click_handler {
         state
           .click
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if let Some(action) = self.pointer_enter_handler {
+        state
+          .pointer_enter
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if let Some(action) = self.pointer_leave_handler {
+        state
+          .pointer_leave
           .borrow_mut()
           .entry(node)
           .or_default()

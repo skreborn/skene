@@ -225,15 +225,21 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
 and `Input` are typed to the terminal: lengths are `u16` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
-are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`).
-Nothing the medium lacks exists to call—no radius, no cursor, no font size, no
-transition—so a terminal app is first-class at compile time rather than best-effort at
-run time.
+are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,
+`Hovered`). Nothing the medium lacks exists to call—no font size, no transition—so a
+terminal app is first-class at compile time rather than best-effort at run time.
+
+The mouse is in-capability: motion drives `Hovered` variants and pointer enter/leave
+handlers, a left click hits the topmost node (hit-tested against the taffy layout),
+focuses it, and runs its click handlers, and a hovered node's `cursor` sets the pointer
+shape via OSC 22—terminals without mouse reporting or pointer shapes degrade quietly.
 
 Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
-through `launch` (crossterm: raw mode, truecolor, `Tab`/`Enter` keyboard focus), or to
-plain text through `render_to_text` for headless tests. Terminal apps never
-cross-compile into the GUI family; the write-once promise belongs to web+native.
+through `launch` (crossterm: raw mode, truecolor, mouse capture, `Tab`/`Enter` keyboard
+focus), or to plain text through `render_to_text` for headless tests
+(`trigger_key`/`trigger_mouse_move`/`trigger_mouse_click` drive it without a terminal).
+Terminal apps never cross-compile into the GUI family; the write-once promise belongs to
+web+native.
 
 ## Selection and entry
 

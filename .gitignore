@@ -2,4 +2,3 @@ dist
 target
 Cargo.lock
 *.wasm
-examples/counter/ssg/

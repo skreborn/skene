@@ -4,10 +4,57 @@ use std::{fs, path::Path, process::Command};
 
 use crate::manifest::App;
 
-/// Builds the app's browser wasm and generates its bindings into `<app>/dist`.
+/// Builds the app's browser wasm and generates its bindings into `<app>/dist/web`.
 pub fn build_web(app: &App, release: bool) -> Result<(), String> {
   build_wasm(app, release)?;
   generate_bindings(app, release)
+}
+
+/// Builds the app's terminal binary and places it in `<app>/dist/tui`.
+pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
+  let mut command = Command::new("cargo");
+
+  command
+    .current_dir(&app.workspace_root)
+    .args(["build", "-p", &app.package]);
+
+  if release {
+    command.arg("--release");
+  }
+
+  run(&mut command, "cargo build")?;
+
+  let profile = if release { "release" } else { "debug" };
+  let binary = app
+    .workspace_root
+    .join("target")
+    .join(profile)
+    .join(&app.package);
+  let out_dir = app.dir.join("dist/tui");
+
+  fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
+
+  let out = out_dir.join(&app.package);
+
+  fs::copy(&binary, &out).map_err(|error| format!("{}: {error}", binary.display()))?;
+  println!("built {}", out.display());
+
+  Ok(())
+}
+
+/// Builds and runs the app's terminal binary in this terminal.
+pub fn run_tui(app: &App, release: bool) -> Result<(), String> {
+  let mut command = Command::new("cargo");
+
+  command
+    .current_dir(&app.workspace_root)
+    .args(["run", "-p", &app.package]);
+
+  if release {
+    command.arg("--release");
+  }
+
+  run(&mut command, "cargo run")
 }
 
 fn build_wasm(app: &App, release: bool) -> Result<(), String> {
@@ -37,7 +84,7 @@ fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
     .join("target/wasm32-unknown-unknown")
     .join(profile)
     .join(format!("{}.wasm", app.stem));
-  let out_dir = app.dir.join("dist");
+  let out_dir = app.dir.join("dist/web");
   let mut command = Command::new("wasm-bindgen");
 
   command
@@ -54,7 +101,8 @@ fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
 /// Builds the app's server binary for `wasm32-wasip2` and returns the artifact path.
 pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, String> {
   let server_bin = app.server_bin.as_deref().ok_or(
-    "skene.toml declares no [app] server-bin; ssg needs the server binary to render through",
+    "skene.toml declares no [app] server-bin; `build web --static` renders through the \
+     server binary",
   )?;
   let mut command = Command::new("cargo");
 
@@ -83,9 +131,10 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
   )
 }
 
-/// Statically generates `routes` through the embedded runner into `out`, assets
-/// alongside.
-pub fn ssg(app: &App, routes: &[String], out: &Path, release: bool) -> Result<(), String> {
+/// Statically generates `routes` through the embedded runner into
+/// `<app>/dist/web-static`, assets alongside.
+pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
+  let out = &app.dir.join("dist/web-static");
   let artifact = build_server(app, release)?;
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
 

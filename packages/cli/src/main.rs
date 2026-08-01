@@ -60,30 +60,51 @@ mod host {
 
   #[derive(Subcommand)]
   enum Command {
-    /// Build the browser wasm and its bindings into `<app>/dist`.
-    Build {
-      /// Build without optimizations instead of `--release`.
+    /// Build the app for a target, into `<app>/dist/<target>`.
+    #[command(subcommand)]
+    Build(BuildTarget),
+    /// Run the app on a target: the web dev loop, or the terminal binary.
+    #[command(subcommand)]
+    Run(RunTarget),
+  }
+
+  #[derive(Subcommand)]
+  enum BuildTarget {
+    /// The browser wasm and its bindings, into `dist/web`—or, with `--static`, the
+    /// statically generated site into `dist/web-static`.
+    Web {
+      /// Statically generate routes through the embedded runner, assets alongside.
       #[arg(long)]
-      debug: bool,
-    },
-    /// Statically generate routes through the embedded runner, assets alongside.
-    Ssg {
-      /// Routes to render.
+      r#static: bool,
+      /// Routes to render (with `--static`).
       #[arg(long, default_values_t = [String::from("/")])]
       path: Vec<String>,
-      /// Output directory, relative to the app directory.
-      #[arg(long, default_value = "ssg")]
-      out: PathBuf,
       /// Build without optimizations instead of `--release`.
       #[arg(long)]
       debug: bool,
     },
-    /// Build, serve, and live-reload on change—the dev loop.
-    Dev {
+    /// The terminal binary, into `dist/tui`.
+    Tui {
+      /// Build without optimizations instead of `--release`.
+      #[arg(long)]
+      debug: bool,
+    },
+  }
+
+  #[derive(Subcommand)]
+  enum RunTarget {
+    /// The dev loop: build, serve, and live-reload on change.
+    Web {
       /// Port to serve on.
       #[arg(long, default_value_t = 8080)]
       port: u16,
       /// Build with optimizations (dev builds are unoptimized by default).
+      #[arg(long)]
+      release: bool,
+    },
+    /// Build and run the terminal binary in this terminal.
+    Tui {
+      /// Build with optimizations.
       #[arg(long)]
       release: bool,
     },
@@ -93,11 +114,23 @@ mod host {
     let app = App::load(&cli.dir)?;
 
     match cli.command {
-      Command::Build { debug } => pipeline::build_web(&app, !debug),
+      Command::Build(BuildTarget::Web {
+        r#static: false,
+        debug,
+        ..
+      }) => pipeline::build_web(&app, !debug),
 
-      Command::Ssg { path, out, debug } => pipeline::ssg(&app, &path, &app.dir.join(out), !debug),
+      Command::Build(BuildTarget::Web {
+        r#static: true,
+        path,
+        debug,
+      }) => pipeline::build_static(&app, &path, !debug),
 
-      Command::Dev { port, release } => dev(app, port, release),
+      Command::Build(BuildTarget::Tui { debug }) => pipeline::build_tui(&app, !debug),
+
+      Command::Run(RunTarget::Web { port, release }) => dev(app, port, release),
+
+      Command::Run(RunTarget::Tui { release }) => pipeline::run_tui(&app, release),
     }
   }
 

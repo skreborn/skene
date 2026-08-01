@@ -46,9 +46,9 @@ impl Reload {
   }
 }
 
-/// Serves the app on `port` until interrupted: `index.html` and `dist/` from the app
-/// directory, declared assets at their URIs, and—with `reload`—the SSE endpoint plus
-/// the reload script injected into HTML.
+/// Serves the app on `port` until interrupted: `index.html` and `dist/web/` from the
+/// app directory, declared assets at their URIs, and—with `reload`—the SSE endpoint
+/// plus the reload script injected into HTML.
 pub fn serve(app: &Arc<App>, port: u16, reload: Option<&Reload>) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
@@ -96,7 +96,7 @@ fn handle_request(mut stream: TcpStream, app: &App, reload: Option<&Reload>) {
 
   // Only the page, the generated bundle, and declared assets are reachable—never the
   // app's sources or manifests.
-  let path = if relative == "index.html" || relative.starts_with("dist/") {
+  let path = if relative == "index.html" || relative.starts_with("dist/web/") {
     Some(app.dir.join(relative)).filter(|path| path.is_file())
   }
   else {

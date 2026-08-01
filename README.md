@@ -139,8 +139,9 @@ fn canvas() -> impl IntoView {
 rustup target add wasm32-unknown-unknown wasm32-wasip2
 cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
-cargo skene --dir examples/counter dev   # build the demo, serve on :8080, live-reload
-cargo skene --dir examples/counter ssg    # statically render it through the embedded runner
+cargo skene --dir examples/counter run web        # build, serve on :8080, live-reload
+cargo skene --dir examples/counter build web --static   # statically generate the site
+cargo skene --dir examples/tui-counter run tui    # build and run the terminal demo
 ```
 
 The same app also renders server-side with no integration at all—its `wasm32-wasip2`
@@ -151,12 +152,13 @@ cargo build -p counter --target wasm32-wasip2
 wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 ```
 
-Then open <http://localhost:8080>. `skene dev` builds the `counter` example to wasm,
-generates the bindings into `examples/counter/dist`, serves it with the assets its
-`skene.toml` declares, and rebuilds + reloads the page on change; pass `--port <n>` or
-`--release`. (`cargo skene` runs the workspace-local CLI; `cargo install --path
-packages/cli` makes it a plain `skene`.) The example is a single crate
-(`examples/counter`) depending only on `skene-gui`.
+Then open <http://localhost:8080>. `skene run web` builds the `counter` example to
+wasm, generates the bindings into `examples/counter/dist/web`, serves it with the
+assets its `skene.toml` declares, and rebuilds + reloads the page on change; pass
+`--port <n>` or `--release`. Every build lands under `dist/<target>`: `web`,
+`web-static`, `tui`—`ios` and the rest as they arrive. (`cargo skene` runs the
+workspace-local CLI; `cargo install --path packages/cli` makes it a plain `skene`.)
+The example is a single crate (`examples/counter`) depending only on `skene-gui`.
 
 ## Testing
 

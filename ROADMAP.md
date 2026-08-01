@@ -175,9 +175,15 @@ sink are just different sinks for the same paths.)
   `DarkMode`/`LightMode` condition leaves, mirroring the GUI vocabulary.
 - **Truecolor detection in TUI**: detect support (`COLORTERM`/terminfo) and approximate
   to 256- or 16-color palettes when absent, instead of assuming truecolor.
-- **Asset system**: declare assets (fonts, images, stylesheets, scripts) in code; the
-  build tool bundles them with the output (hashed URLs for web/SSG, embedded or
-  alongside for native/TUI).
+- **Asset system**: declared in `skene.toml`—the framework manifest, which will grow
+  further settings over time (Flutter's pubspec is the model)—never in code and never
+  statically checked. Declared files and directories become reachable at predictable
+  URIs; the CLI serves them in dev, copies them into web/SSG output, and bundles them
+  for native. A library crate's own `skene.toml` (found beside its `Cargo.toml` via
+  cargo metadata) contributes assets the same way an app's does.
+- **View transitions (web)**: best-effort—`document.startViewTransition` wrapping SPA
+  route changes and `@view-transition` in generated CSS for MPA/SSG navigations,
+  degrading to instant swaps where the browser lacks support.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system; the realize-once vocabulary already permits the code side.
@@ -220,6 +226,9 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   output, the dev server (subsuming `cargo xtask web`), native builds.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
+- `skene.toml` is read here: the manifest-declared assets (see the backlog) are served
+  in dev, copied into SSG output, and collected from library crates' manifests across
+  the dependency graph.
 - Route-based wasm code splitting with lazy loading, where the splitting tooling allows.
 
 ## Phase 8—Native driver family

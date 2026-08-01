@@ -71,6 +71,8 @@ use skene_core::{
 
 #[cfg(target_os = "unknown")]
 pub(crate) use self::csr::assign_class;
+#[cfg(all(target_os = "unknown", feature = "snapshot"))]
+pub use self::csr::boot_with_dev_state;
 #[cfg(all(target_os = "unknown", feature = "test"))]
 pub use self::csr::uninstall;
 #[cfg(target_os = "unknown")]

@@ -12,7 +12,7 @@ name = "counter-server"
 path = "src/main.rs"
 
 [dependencies]
-skene-gui.workspace = true
+skene-gui = { features = ["snapshot"], workspace = true }
 
 [lints]
 workspace = true

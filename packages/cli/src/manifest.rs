@@ -3,10 +3,10 @@
 //!
 //! Every setting is optional; an app with no manifest gets working defaults from its
 //! `Cargo.toml`. Assets are declared as manifest-relative files or directories and
-//! become reachable at exactly those relative paths as URIs—predictable, never
-//! statically checked. A library crate's own `skene.toml` (found beside its
-//! `Cargo.toml` through cargo metadata) contributes assets the same way; on a URI
-//! collision the app wins, then earlier dependencies, with a warning.
+//! become reachable at `/<package>/<declared path>`—the providing package's name scopes
+//! every URI, so the app's and its libraries' assets can never collide. Predictable,
+//! never statically checked. A library crate's own `skene.toml` (found beside its
+//! `Cargo.toml` through cargo metadata) contributes assets the same way.
 
 use std::{
   fs,
@@ -64,8 +64,11 @@ pub struct App {
   pub assets: Vec<AssetRoot>,
 }
 
-/// One package's declared assets: its directory and its manifest-relative paths.
+/// One package's declared assets: its name (the URI scope), its directory, and its
+/// manifest-relative paths.
 pub struct AssetRoot {
+  /// The package name, scoping every URI as `/<package>/<path>`.
+  pub package: String,
   /// The directory `skene.toml` lives in.
   pub dir: PathBuf,
   /// The declared manifest-relative paths.
@@ -94,16 +97,16 @@ impl App {
 
     if !manifest.assets.paths.is_empty() {
       assets.push(AssetRoot {
+        package: package.clone(),
         dir: dir.clone(),
         paths: manifest.assets.paths,
       });
     }
 
-    // Every other package's manifest contributes after the app's, so the app wins URI
-    // collisions.
     if let Some(packages) = metadata["packages"].as_array() {
       for entry in packages {
-        let Some(manifest_path) = entry["manifest_path"].as_str()
+        let (Some(name), Some(manifest_path)) =
+          (entry["name"].as_str(), entry["manifest_path"].as_str())
         else {
           continue;
         };
@@ -121,6 +124,7 @@ impl App {
           && !found.assets.paths.is_empty()
         {
           assets.push(AssetRoot {
+            package: name.to_owned(),
             dir: package_dir.to_path_buf(),
             paths: found.assets.paths,
           });
@@ -138,8 +142,9 @@ impl App {
     })
   }
 
-  /// The file an asset URI resolves to, if any root declares it: the first root whose
-  /// declared path is the URI itself or a directory prefix of it.
+  /// The file an asset URI resolves to, if declared: the URI's first segment names the
+  /// providing package, the rest a path that package declared (itself or within a
+  /// declared directory).
   pub fn resolve_asset(&self, uri: &str) -> Option<PathBuf> {
     let relative = uri.trim_start_matches('/');
 
@@ -147,16 +152,17 @@ impl App {
       return None;
     }
 
-    for root in &self.assets {
-      for declared in &root.paths {
-        let declared = declared.trim_end_matches('/');
+    let (package, relative) = relative.split_once('/')?;
+    let root = self.assets.iter().find(|root| root.package == package)?;
 
-        if relative == declared || relative.starts_with(&format!("{declared}/")) {
-          let path = root.dir.join(relative);
+    for declared in &root.paths {
+      let declared = declared.trim_end_matches('/');
 
-          if path.is_file() {
-            return Some(path);
-          }
+      if relative == declared || relative.starts_with(&format!("{declared}/")) {
+        let path = root.dir.join(relative);
+
+        if path.is_file() {
+          return Some(path);
         }
       }
     }
@@ -164,16 +170,21 @@ impl App {
     None
   }
 
-  /// Copies every declared asset into `out`, preserving its URI path; on a collision
-  /// the first (winning) root's file stays, with a warning.
+  /// Copies every declared asset into `out`, preserving its package-scoped URI path.
   pub fn copy_assets(&self, out: &Path) -> Result<(), String> {
     let mut copied: Vec<PathBuf> = Vec::new();
 
     for root in &self.assets {
       for declared in &root.paths {
-        let source = root.dir.join(declared.trim_end_matches('/'));
+        let declared = declared.trim_end_matches('/');
+        let source = root.dir.join(declared);
 
-        copy_tree(&source, declared.trim_end_matches('/'), out, &mut copied)?;
+        copy_tree(
+          &source,
+          &format!("{}/{declared}", root.package),
+          out,
+          &mut copied,
+        )?;
       }
     }
 

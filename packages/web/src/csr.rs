@@ -7,6 +7,8 @@
 
 pub(crate) mod tree;
 
+#[cfg(feature = "snapshot")]
+mod dev;
 mod events;
 mod history;
 mod logging;
@@ -40,6 +42,8 @@ use web_sys::{
   KeyboardEvent,
 };
 
+#[cfg(feature = "snapshot")]
+pub use self::dev::boot_with_dev_state;
 use self::stylesheet::StyleStore;
 pub use self::{
   history::{current_path, on_pop, push_path},

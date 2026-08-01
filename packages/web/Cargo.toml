@@ -3,7 +3,11 @@ name = "skene-web"
 version.workspace = true
 edition.workspace = true
 
+
 [features]
+# The dev-loop state handshake with the skene CLI: fetch and stage the held snapshot
+# before boot, expose `skene_snapshot` for the reload beacon.
+snapshot = ["skene-reactive/snapshot", "web-sys/Response"]
 # Expose the platform teardown (`uninstall`) so one thread can run many independent
 # mounts, as a test suite does.
 test = ["skene-reactive/test"]

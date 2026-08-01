@@ -44,7 +44,7 @@ mod host {
   use crate::{
     manifest::App,
     pipeline,
-    server::{Reload, serve},
+    server::{Dev, serve},
   };
 
   /// Build, statically generate, and develop skene applications.
@@ -140,16 +140,16 @@ mod host {
     pipeline::build_web(&app, release)?;
 
     let app = Arc::new(app);
-    let reload = Reload::default();
+    let dev = Dev::default();
 
-    watch(Arc::clone(&app), release, reload.clone())?;
+    watch(Arc::clone(&app), release, dev.clone())?;
 
-    serve(&app, port, Some(&reload))
+    serve(&app, port, Some(&dev))
   }
 
   /// Watches the workspace's packages, the app, and the asset roots; debounces bursts
   /// of events, rebuilds, and triggers a reload on success.
-  fn watch(app: Arc<App>, release: bool, reload: Reload) -> Result<(), String> {
+  fn watch(app: Arc<App>, release: bool, dev: Dev) -> Result<(), String> {
     use notify::{RecursiveMode, Watcher};
 
     let (sender, receiver) = mpsc::channel();
@@ -196,7 +196,7 @@ mod host {
 
         match pipeline::build_web(&app, release) {
           Ok(()) => {
-            reload.trigger();
+            dev.trigger();
             println!("rebuilt; reloading");
           }
           Err(error) => eprintln!("rebuild failed: {error}"),

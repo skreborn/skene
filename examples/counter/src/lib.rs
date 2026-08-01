@@ -12,7 +12,7 @@ use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
-  let count = RwSignal::new(0u64);
+  let count = RwSignal::tagged("count", 0u64);
 
   Container::column()
     .set_main_axis_alignment(MainAxisAlignment::Center)

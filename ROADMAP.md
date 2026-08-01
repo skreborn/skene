@@ -239,10 +239,17 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   `skene.toml` is read and its `[assets]` paths are collected across the dependency
   graph via cargo metadata (app wins collisions), served at their declared URIs in dev
   and copied into static output.
-- **Remaining here:** state-preserving reloads (web: snapshot to sessionStorage around
-  the reload; native/TUI: the CLI holds the bytes), route enumeration for static
-  generation, the CSR page generated from the SSR shell contract, wasm-split lazy
-  loading, and richer `skene.toml` settings as they earn their place.
+- **State-preserving reloads—done (web).** One protocol for every target: the dev
+  server holds the authoritative snapshot (`POST`/`GET /skene:state`), the injected
+  script beacons `skene_snapshot()` before each reload (and on `pagehide`), and—behind
+  the `snapshot` feature—`launch`/`hydrate_page` fetch and stage the held bytes before
+  mounting, gated by the dev server's injected `skene-dev` meta marker so production
+  pages boot fetch-free. Assets are scoped per package: every URI is
+  `/<package>/<declared path>`, so app and library assets can never collide.
+- **Remaining here:** the same state handshake from `run tui` (the protocol already
+  fits), route enumeration for static generation, the CSR page generated from the SSR
+  shell contract, wasm-split lazy loading, and richer `skene.toml` settings as they
+  earn their place.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
 - `skene.toml` is read here: the manifest-declared assets (see the backlog) are served

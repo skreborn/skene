@@ -135,6 +135,9 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
 /// `<app>/dist/web-static`, assets alongside.
 pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
   let out = &app.dir.join("dist/web-static");
+  // A generated directory by contract: clear it so removed routes and assets never
+  // linger.
+  let _ = fs::remove_dir_all(out);
   let artifact = build_server(app, release)?;
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
 

@@ -176,9 +176,19 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  driver::launch(app);
+  #[cfg(feature = "snapshot")]
+  driver::boot_with_dev_state(move || {
+    driver::launch(app);
 
-  tracing::info!("application mounted");
+    tracing::info!("application mounted");
+  });
+
+  #[cfg(not(feature = "snapshot"))]
+  {
+    driver::launch(app);
+
+    tracing::info!("application mounted");
+  }
 }
 
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded state, so
@@ -193,9 +203,19 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  driver::hydrate_page(app);
+  #[cfg(feature = "snapshot")]
+  driver::boot_with_dev_state(move || {
+    driver::hydrate_page(app);
 
-  tracing::info!("application hydrated");
+    tracing::info!("application hydrated");
+  });
+
+  #[cfg(not(feature = "snapshot"))]
+  {
+    driver::hydrate_page(app);
+
+    tracing::info!("application hydrated");
+  }
 }
 
 /// A server render, in parts: the stylesheet, the body markup, and the hydration state.

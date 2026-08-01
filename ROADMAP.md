@@ -64,6 +64,10 @@ marker-based hydration with loud mismatch; serialize-by-default resources
     carries that rule in its chunk.
   - Hydration adopts the server's `<style>` rules instead of rebuilding duplicates.
   - Variants for the raw-`Declarations` escape hatch (currently base-only).
+  - Investigate double-classing: one shared class per element kind carrying its reset,
+    one content-addressed class carrying its initial style (dynamic values stay inline
+    overrides)—so the reset text stops being duplicated into, and hashed with, every
+    generated class.
 
 ## Phase 4—Events and first controls ✅ (core)
 

@@ -14,6 +14,8 @@ mod control;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
 mod focus;
+#[cfg(target_arch = "wasm32")]
+pub mod head;
 mod input;
 mod radio;
 #[cfg(target_arch = "wasm32")]
@@ -204,6 +206,7 @@ where
 #[must_use]
 pub struct Rendered {
   styles: String,
+  head: String,
   body: String,
   state: String,
 }
@@ -215,6 +218,14 @@ impl Rendered {
   #[inline(always)]
   pub fn styles(&self) -> &str {
     &self.styles
+  }
+
+  /// The registered head content: the title and the elements added through
+  /// [`head`](crate::head).
+  #[must_use]
+  #[inline(always)]
+  pub fn head(&self) -> &str {
+    &self.head
   }
 
   /// The settled view tree—the page body.
@@ -236,8 +247,9 @@ impl Rendered {
   #[must_use]
   pub fn page(&self) -> String {
     format!(
-      "<!DOCTYPE html><html><head>{styles}</head><body>{body}<script id=\"{id}\" \
+      "<!DOCTYPE html><html><head>{head}{styles}</head><body>{body}<script id=\"{id}\" \
        type=\"application/json\">{state}</script></body></html>",
+      head = self.head,
       styles = self.styles,
       body = self.body,
       id = driver::STATE_SCRIPT_ID,
@@ -260,10 +272,11 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  let (styles, body, state) = driver::render_to_string(app);
+  let (styles, head, body, state) = driver::render_to_string(app);
 
   Rendered {
     styles,
+    head,
     body,
     state,
   }
@@ -349,8 +362,8 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  let (styles, mut chunks, state) = driver::render_to_stream(app);
-  let head = format!("<!DOCTYPE html><html><head>{styles}</head><body>");
+  let (styles, head, mut chunks, state) = driver::render_to_stream(app);
+  let head = format!("<!DOCTYPE html><html><head>{head}{styles}</head><body>");
   let tail = format!(
     "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
     id = driver::STATE_SCRIPT_ID,

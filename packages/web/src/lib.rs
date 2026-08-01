@@ -74,6 +74,7 @@ pub(crate) use self::csr::assign_class;
 pub use self::csr::uninstall;
 #[cfg(target_os = "unknown")]
 pub use self::csr::{
+  add_head_element,
   adopt_next,
   blur_node,
   create_element,
@@ -107,6 +108,7 @@ pub use self::csr::{
   register_source,
   set_attribute,
   set_checked,
+  set_document_title,
   set_input_value,
   set_style,
   set_text,
@@ -116,6 +118,7 @@ pub use self::csr::{
 pub(crate) use self::ssr::assign_class;
 #[cfg(target_os = "wasi")]
 pub use self::ssr::{
+  add_head_element,
   adopt_next,
   blur_node,
   create_element,
@@ -143,6 +146,7 @@ pub use self::ssr::{
   render_to_string,
   set_attribute,
   set_checked,
+  set_document_title,
   set_input_value,
   set_request_path,
   set_style,

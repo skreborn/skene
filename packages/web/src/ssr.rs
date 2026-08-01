@@ -58,6 +58,8 @@ struct State {
   nodes: FxHashMap<NodeId, Node>,
   styles: StyleStore,
   next_id: u64,
+  document_title: Option<String>,
+  head_entries: Vec<(String, Vec<(String, String)>)>,
 }
 
 impl State {
@@ -70,7 +72,42 @@ impl State {
       nodes,
       styles: StyleStore::new(),
       next_id: 1,
+      document_title: None,
+      head_entries: Vec::new(),
     }
+  }
+
+  /// Renders the collected head content: the title, then each head element in
+  /// registration order.
+  fn render_head(&self) -> String {
+    let mut out = String::new();
+
+    if let Some(title) = &self.document_title {
+      out.push_str("<title>");
+      escape_text(title, &mut out);
+      out.push_str("</title>");
+    }
+
+    for (tag, attributes) in &self.head_entries {
+      out.push('<');
+      out.push_str(tag);
+
+      for (name, value) in attributes {
+        out.push(' ');
+        out.push_str(name);
+        out.push_str("=\"");
+        escape_attr(value, &mut out);
+        out.push('"');
+      }
+
+      out.push('>');
+
+      if tag == "script" {
+        out.push_str("</script>");
+      }
+    }
+
+    out
   }
 
   fn alloc_id(&mut self) -> NodeId {
@@ -562,6 +599,24 @@ pub fn set_input_value(node: NodeId, value: &str) {
   });
 }
 
+/// Sets the document title, serialized into the page head.
+pub fn set_document_title(title: &str) {
+  with_state(|state| state.document_title = Some(title.to_owned()));
+}
+
+/// Adds an element to the page head, serialized in registration order.
+pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
+  with_state(|state| {
+    state.head_entries.push((
+      tag.to_owned(),
+      attributes
+        .iter()
+        .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
+        .collect(),
+    ));
+  });
+}
+
 /// Sets the checked state of a checkbox or radio node, serialized as the `checked`
 /// attribute.
 pub fn set_checked(node: NodeId, checked: bool) {
@@ -578,13 +633,14 @@ pub fn set_checked(node: NodeId, checked: bool) {
   });
 }
 
-/// Renders `app`, returning `(styles, body, state)`: the `<style>` block, the settled view
-/// tree, and the encoded resource state the client adopts on hydration.
+/// Renders `app`, returning `(styles, head, body, state)`: the `<style>` block, the
+/// registered head content, the settled view tree, and the encoded resource state the
+/// client adopts on hydration.
 ///
 /// The load-bearing steps: build the tree, drive its resources to a fixpoint so the *settled*
 /// tree is what serializes, drain the resource state while the signals are still alive, then
 /// tear the render down so the next call starts clean.
-pub fn render_to_string<V, F>(app: F) -> (String, String, String)
+pub fn render_to_string<V, F>(app: F) -> (String, String, String, String)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView,
@@ -608,6 +664,7 @@ where
   // Drain the sources while the resource signals are still alive, before the scope disposes.
   let state = collect_hydration_state();
   let styles = with_state(|state| state.render_styles());
+  let head = with_state(|state| state.render_head());
   let body = with_state(|state| state.render_body());
 
   scope.dispose();
@@ -617,10 +674,10 @@ where
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   STATE.with(|state| *state.borrow_mut() = None);
 
-  (styles, body, state)
+  (styles, head, body, state)
 }
 
-/// Renders `app` as an in-order stream: `(styles, body_chunks, state)`.
+/// Renders `app` as an in-order stream: `(styles, head, body_chunks, state)`.
 ///
 /// The shell settles and its styles render, then the body walks in document order. At each
 /// deferred boundary the walk flushes the chunk built so far, blocks until that boundary's
@@ -629,7 +686,7 @@ where
 ///
 /// The styles are the shell's; a boundary whose loaded content introduces a brand-new class is
 /// the delta-style streaming's concern, not yet handled here.
-pub fn render_to_stream<V, F>(app: F) -> (String, Vec<String>, String)
+pub fn render_to_stream<V, F>(app: F) -> (String, String, Vec<String>, String)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView,
@@ -654,6 +711,7 @@ where
   task::stabilize_until(move || root.is_settled());
 
   let styles = with_state(|state| state.render_styles());
+  let head = with_state(|state| state.render_head());
 
   let mut chunks = Vec::new();
   let mut cursor = vec![Frame {
@@ -687,7 +745,7 @@ where
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   STATE.with(|state| *state.borrow_mut() = None);
 
-  (styles, chunks, state)
+  (styles, head, chunks, state)
 }
 
 /// Drains the registered sources into the encoded hydration state.

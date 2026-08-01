@@ -156,10 +156,11 @@ sink are just different sinks for the same paths.)
   mouse capture off, cursor shown) before the panic message prints, so a crash never
   leaves the terminal wedged; restore also runs on normal unwind today via the raw-mode
   guard.
-- **Titles and head management**: `set_title`/`derive_title` everywhere—web
-  `document.title`, TUI OSC 0/2, native window title—and on web the full head
-  vocabulary (title, meta, link, stylesheet, script) rendered into SSR/SSG heads and
-  kept live under CSR.
+- **Titles and head management**: **web done**—`head::set_title`/`derive_title` plus
+  `add_meta`/`add_meta_property`/`add_link`/`add_stylesheet`/`add_script`, serialized
+  into the SSR/SSG `<head>` (escaped, registration order) and applied live under CSR,
+  where an identical element left by a server render is adopted, not duplicated.
+  Remaining: the TUI title via OSC 0/2 and the native window title.
 - **Light/dark detection in TUI**: query the terminal background via OSC 11 and expose
   `DarkMode`/`LightMode` condition leaves, mirroring the GUI vocabulary.
 - **Truecolor detection in TUI**: detect support (`COLORTERM`/terminfo) and approximate

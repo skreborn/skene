@@ -33,6 +33,7 @@ use skene_gui::{
   View,
   dynamic,
   empty,
+  head,
   reactive::{Runtime, RwSignal, SignalGet, SignalUpdate},
   reconcile,
   wasm_bindgen::JsCast,
@@ -385,6 +386,33 @@ fn checkbox_binding_round_trips() {
   let _ = target.dispatch_event(&event);
 
   assert!(!checked.get());
+}
+
+/// Head registrations set the live document title and add each element once.
+#[wasm_bindgen_test]
+fn head_registrations_apply_once() {
+  let (_guard, _root) = fresh_root();
+
+  head::set_title("Live title");
+  head::add_meta("live-test", "value");
+  head::add_meta("live-test", "value");
+
+  assert_eq!(document().title(), "Live title");
+
+  let head = document().head().expect("a head");
+  let mut matches = 0;
+
+  for index in 0..head.children().length() {
+    let element = head.children().item(index).expect("an element");
+
+    if element.get_attribute("name").as_deref() == Some("live-test") {
+      matches += 1;
+
+      element.remove();
+    }
+  }
+
+  assert_eq!(matches, 1);
 }
 
 /// A focus handle moves real keyboard focus to its bound view.

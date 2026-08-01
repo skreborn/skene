@@ -8,20 +8,26 @@
 
 pub mod prelude;
 
+mod checkbox;
 mod container;
+mod control;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
 mod focus;
 mod input;
+mod radio;
 #[cfg(target_arch = "wasm32")]
 mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
+mod select;
+mod slider;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
+mod textarea;
 
 pub use skene_core::{self as core, *};
 pub use skene_macros::main;
@@ -50,10 +56,15 @@ pub use crate::routing::install_router;
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
+  checkbox::Checkbox,
   container::Container,
   focus::FocusHandle,
   input::Input,
+  radio::Radio,
+  select::Select,
+  slider::Slider,
   text::{RichText, Span, Text, TextStyle, TextTheme},
+  textarea::Textarea,
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural

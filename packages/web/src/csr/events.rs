@@ -33,6 +33,7 @@ pub(super) struct Events {
   pub(super) key_down: Handlers<dyn Fn(&KeyEvent)>,
   pub(super) input: Handlers<dyn Fn(&str)>,
   pub(super) change: Handlers<dyn Fn(&str)>,
+  pub(super) toggle: Handlers<dyn Fn(bool)>,
   pub(super) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
   pub(super) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
   pub(super) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
@@ -51,6 +52,7 @@ impl Events {
       key_down: Rc::new(RefCell::new(FxHashMap::default())),
       input: Rc::new(RefCell::new(FxHashMap::default())),
       change: Rc::new(RefCell::new(FxHashMap::default())),
+      toggle: Rc::new(RefCell::new(FxHashMap::default())),
       pointer_down: Rc::new(RefCell::new(FxHashMap::default())),
       pointer_up: Rc::new(RefCell::new(FxHashMap::default())),
       pointer_move: Rc::new(RefCell::new(FxHashMap::default())),
@@ -125,6 +127,7 @@ impl Events {
     self.key_down.borrow_mut().remove(&node);
     self.input.borrow_mut().remove(&node);
     self.change.borrow_mut().remove(&node);
+    self.toggle.borrow_mut().remove(&node);
     self.pointer_down.borrow_mut().remove(&node);
     self.pointer_up.borrow_mut().remove(&node);
     self.pointer_move.borrow_mut().remove(&node);

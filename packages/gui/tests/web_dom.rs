@@ -16,6 +16,7 @@ use std::{
 use skene_gui::{
   AnyView,
   Border,
+  Checkbox,
   Color,
   Container,
   Deferred,
@@ -352,6 +353,38 @@ fn change_handler_receives_the_committed_value() {
   let _ = target.dispatch_event(&event);
 
   assert_eq!(&*seen.borrow(), "committed");
+}
+
+/// A checkbox bound to a signal reflects it and writes toggles back through a real
+/// change event.
+#[wasm_bindgen_test]
+fn checkbox_binding_round_trips() {
+  let (_guard, root) = fresh_root();
+  let checked = RwSignal::new(false);
+
+  mount(move || Checkbox::new().bind_checked(checked).build());
+
+  let target = only_child(&root)
+    .dyn_into::<web_sys::HtmlInputElement>()
+    .expect("an input element");
+
+  assert_eq!(target.get_attribute("type").as_deref(), Some("checkbox"));
+  assert!(!target.checked());
+
+  checked.set(true);
+
+  assert!(target.checked());
+
+  target.set_checked(false);
+
+  let init = web_sys::EventInit::new();
+
+  init.set_bubbles(true);
+
+  let event = web_sys::Event::new_with_event_init_dict("change", &init).expect("an event");
+  let _ = target.dispatch_event(&event);
+
+  assert!(!checked.get());
 }
 
 /// A focus handle moves real keyboard focus to its bound view.

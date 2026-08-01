@@ -30,7 +30,15 @@ use skene_core::{
   View,
 };
 use wasm_bindgen::JsCast;
-use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent};
+use web_sys::{
+  Document,
+  Element,
+  HtmlElement,
+  HtmlInputElement,
+  HtmlSelectElement,
+  HtmlTextAreaElement,
+  KeyboardEvent,
+};
 
 use self::stylesheet::StyleStore;
 pub use self::{
@@ -311,10 +319,7 @@ impl State {
       self
         .events
         .ensure_root_listener(root, "input", move |id, event| {
-          let Some(value) = event
-            .target()
-            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
-            .map(|input| input.value())
+          let Some(value) = element_value(event)
           else {
             return;
           };
@@ -435,15 +440,42 @@ impl State {
       self
         .events
         .ensure_root_listener(root, "change", move |id, event| {
-          let Some(value) = event
-            .target()
-            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
-            .map(|input| input.value())
+          let Some(value) = element_value(event)
           else {
             return;
           };
 
           events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
+        });
+    });
+  }
+
+  /// Registers `handler` to run with the new checked state when `node`'s (or a
+  /// descendant toggle's) state changes, until the node is destroyed.
+  pub fn handle_toggle(&self, node: NodeId, handler: Rc<dyn Fn(bool)>) {
+    self
+      .events
+      .toggle
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.toggle);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "change", move |id, event| {
+          let Some(checked) = event
+            .target()
+            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
+            .map(|input| input.checked())
+          else {
+            return;
+          };
+
+          events::run_handlers(&handlers, id, checked, |run, checked| run(checked));
         });
     });
   }
@@ -466,11 +498,26 @@ impl State {
     });
   }
 
-  /// Sets the live value of an input node.
+  /// Sets the live value of an input, text area, or select node.
   pub fn set_input_value(&self, node: NodeId, value: &str) {
     self.with_element(node, |element| {
       if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
         input.set_value(value);
+      }
+      else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
+        area.set_value(value);
+      }
+      else if let Some(select) = element.dyn_ref::<HtmlSelectElement>() {
+        select.set_value(value);
+      }
+    });
+  }
+
+  /// Sets the live checked state of a checkbox or radio node.
+  pub fn set_checked(&self, node: NodeId, checked: bool) {
+    self.with_element(node, |element| {
+      if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+        input.set_checked(checked);
       }
     });
   }
@@ -873,6 +920,16 @@ pub fn blur_node(node: NodeId) {
   with_state(|state| state.blur_node(node));
 }
 
+/// Registers a delegated toggle handler on `node`; see [`State::handle_toggle`].
+pub fn handle_toggle(node: NodeId, handler: Rc<dyn Fn(bool)>) {
+  with_state(|state| state.handle_toggle(node, handler));
+}
+
+/// Sets the live checked state of a checkbox or radio node.
+pub fn set_checked(node: NodeId, checked: bool) {
+  with_state(|state| state.set_checked(node, checked));
+}
+
 /// Sets the live value of an input node.
 pub fn set_input_value(node: NodeId, value: &str) {
   with_state(|state| state.set_input_value(node, value));
@@ -1005,4 +1062,23 @@ fn pointer_payload(pointer: &web_sys::PointerEvent) -> PointerEvent {
       meta: pointer.meta_key(),
     },
   }
+}
+
+/// The current value of the control an event targets, whichever control kind it is.
+fn element_value(event: &web_sys::Event) -> Option<String> {
+  let target = event.target()?;
+
+  if let Some(input) = target.dyn_ref::<HtmlInputElement>() {
+    return Some(input.value());
+  }
+
+  if let Some(area) = target.dyn_ref::<HtmlTextAreaElement>() {
+    return Some(area.value());
+  }
+
+  if let Some(select) = target.dyn_ref::<HtmlSelectElement>() {
+    return Some(select.value());
+  }
+
+  None
 }

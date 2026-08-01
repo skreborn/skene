@@ -80,7 +80,17 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   (committed value), and focus management: `set_tab_index`/`set_autofocus` (serialized
   in SSR output) plus `FocusHandle` for programmatic focus. `KeyEvent` modifiers moved
   into a shared `Modifiers` struct.
-- **Remaining:** `<textarea>` (with the basic controls), `Role` expansion.
+- **Basic controls—done.** `Checkbox`, `Radio` (grouped, arrow-key movement),
+  `Select` (fixed options), `Textarea`, `Slider`—each realized as its semantic element
+  (native keyboard and accessibility behavior for free), unstyled by default, sharing
+  one builder surface (`ControlBase` + the `control_surface!` macro: styling, variants,
+  transitions, animations, tab order, autofocus, focus binding, focus/blur/key
+  handlers) and two-way signal binding (`bind_checked`/`bind_value`). `Role` expanded:
+  navigation/main/header/footer/aside/section/article/heading(level)/list/list-item
+  realize as their semantic elements. SSR serializes control state (`checked`,
+  `selected` options, textarea text content, range attributes).
+- **Remaining:** a styled companion package (optional dependency), once theming
+  settles.
 
 ## Phase 5—Router, runner, SSG ✅ (core)
 

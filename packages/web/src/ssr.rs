@@ -484,6 +484,9 @@ pub fn handle_input(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
 pub fn handle_change(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_toggle(_node: NodeId, _handler: Rc<dyn Fn(bool)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
 pub fn handle_pointer_down(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
@@ -501,13 +504,75 @@ pub fn focus_node(_node: NodeId) {}
 /// Inert on the server; focus is the client's after hydration.
 pub fn blur_node(_node: NodeId) {}
 
-/// Sets the value of an input node, serialized as its `value` attribute.
+/// Sets the value of an input, text area, or select node: the `value` attribute, the
+/// text content, or the matching option's `selected` mark, respectively.
 pub fn set_input_value(node: NodeId, value: &str) {
   with_state(|state| {
-    if let Some(node) = state.nodes.get_mut(&node) {
-      match node.attributes.iter_mut().find(|(name, _)| name == "value") {
-        Some((_, existing)) => value.clone_into(existing),
-        None => node.attributes.push(("value".to_owned(), value.to_owned())),
+    let Some(record) = state.nodes.get(&node)
+    else {
+      return;
+    };
+
+    match record.tag.as_str() {
+      "textarea" => {
+        if let Some(record) = state.nodes.get_mut(&node) {
+          record.text = Some(value.to_owned());
+        }
+      }
+
+      "select" => {
+        let options = record.children.clone();
+
+        for option in options {
+          let Some(record) = state.nodes.get_mut(&option)
+          else {
+            continue;
+          };
+
+          let matches = record
+            .attributes
+            .iter()
+            .any(|(name, current)| name == "value" && current == value);
+
+          record.attributes.retain(|(name, _)| name != "selected");
+
+          if matches {
+            record
+              .attributes
+              .push(("selected".to_owned(), String::new()));
+          }
+        }
+      }
+
+      _ => {
+        if let Some(record) = state.nodes.get_mut(&node) {
+          match record
+            .attributes
+            .iter_mut()
+            .find(|(name, _)| name == "value")
+          {
+            Some((_, existing)) => value.clone_into(existing),
+            None => record
+              .attributes
+              .push(("value".to_owned(), value.to_owned())),
+          }
+        }
+      }
+    }
+  });
+}
+
+/// Sets the checked state of a checkbox or radio node, serialized as the `checked`
+/// attribute.
+pub fn set_checked(node: NodeId, checked: bool) {
+  with_state(|state| {
+    if let Some(record) = state.nodes.get_mut(&node) {
+      record.attributes.retain(|(name, _)| name != "checked");
+
+      if checked {
+        record
+          .attributes
+          .push(("checked".to_owned(), String::new()));
       }
     }
   });

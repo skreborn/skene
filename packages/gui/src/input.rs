@@ -1,12 +1,14 @@
+//! A single-line text input.
+
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
 #![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 use std::rc::Rc;
 
-use skene_core::{Animation, BoxStyle, Condition, KeyEvent, Source, Transition};
+use skene_core::Source;
 
-use crate::FocusHandle;
+use crate::control::{ControlBase, control_surface};
 
 /// A single-line text input.
 ///
@@ -14,8 +16,7 @@ use crate::FocusHandle;
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_input`](Self::handle_input) receives each edit—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
-/// set wholesale with [`set_style`](Self::set_style) and conditionally with
-/// [`set_when`](Self::set_when).
+/// set wholesale with `set_style` and conditionally with `set_when`.
 ///
 /// ```ignore
 /// let name = RwSignal::new(String::new());
@@ -26,23 +27,13 @@ use crate::FocusHandle;
 /// ```
 #[must_use]
 pub struct Input {
-  pub(crate) value: Option<Source<String>>,
-  pub(crate) placeholder: Option<String>,
-  pub(crate) style: BoxStyle,
-  pub(crate) variants: Vec<(Condition, BoxStyle)>,
-  pub(crate) transitions: Vec<Transition>,
-  pub(crate) animations: Vec<Animation<BoxStyle>>,
+  value: Option<Source<String>>,
+  placeholder: Option<String>,
   #[expect(clippy::struct_field_names, clippy::type_complexity)]
-  pub(crate) input_handler: Option<Rc<dyn Fn(&str)>>,
+  input_handler: Option<Rc<dyn Fn(&str)>>,
   #[expect(clippy::type_complexity)]
-  pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) change_handler: Option<Rc<dyn Fn(&str)>>,
-  pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
-  pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
-  pub(crate) tab_index: Option<i32>,
-  pub(crate) autofocus: bool,
-  pub(crate) focus_handle: Option<FocusHandle>,
+  change_handler: Option<Rc<dyn Fn(&str)>>,
+  control: ControlBase,
 }
 
 impl Input {
@@ -52,18 +43,9 @@ impl Input {
     Self {
       value: None,
       placeholder: None,
-      style: BoxStyle::new(),
-      variants: Vec::new(),
-      transitions: Vec::new(),
-      animations: Vec::new(),
       input_handler: None,
-      key_down_handler: None,
       change_handler: None,
-      focus_handler: None,
-      blur_handler: None,
-      tab_index: None,
-      autofocus: false,
-      focus_handle: None,
+      control: ControlBase::new(),
     }
   }
 
@@ -91,66 +73,10 @@ impl Input {
     self
   }
 
-  /// Sets the static style.
-  #[inline(always)]
-  pub fn set_style(mut self, style: BoxStyle) -> Self {
-    self.style = style;
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while `condition` holds.
-  #[inline(always)]
-  pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.variants.push((condition, style));
-
-    self
-  }
-
-  /// Adds a property transition, interpolating that property whenever its value changes.
-  #[inline(always)]
-  pub fn set_transition(mut self, transition: Transition) -> Self {
-    self.transitions.push(transition);
-
-    self
-  }
-
-  /// Adds a keyframe animation.
-  #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxStyle>) -> Self {
-    self.animations.push(animation);
-
-    self
-  }
-
   /// Sets the edit handler, run with the new value on every change.
   #[inline(always)]
   pub fn handle_input(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.input_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the key-press handler.
-  #[inline(always)]
-  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.key_down_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the focus handler.
-  #[inline(always)]
-  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.focus_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the blur handler.
-  #[inline(always)]
-  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.blur_handler = Some(Rc::new(action));
 
     self
   }
@@ -163,34 +89,9 @@ impl Input {
 
     self
   }
-
-  /// Sets the position in the keyboard tab order: `0` joins it in document order, a
-  /// negative value removes the input from it while keeping it programmatically
-  /// focusable.
-  #[inline(always)]
-  pub fn set_tab_index(mut self, tab_index: i32) -> Self {
-    self.tab_index = Some(tab_index);
-
-    self
-  }
-
-  /// Makes the input take focus when the page loads.
-  #[inline(always)]
-  pub fn set_autofocus(mut self) -> Self {
-    self.autofocus = true;
-
-    self
-  }
-
-  /// Binds `handle` to the input, so [`FocusHandle::focus`](FocusHandle::focus) targets
-  /// it once built.
-  #[inline(always)]
-  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
-    self.focus_handle = Some(handle.clone());
-
-    self
-  }
 }
+
+control_surface!(Input);
 
 impl Default for Input {
   #[inline(always)]
@@ -220,14 +121,10 @@ impl skene_core::View for Input {
 
     use crate::driver;
 
+    let (control, handlers) = self.control.into_parts();
     let node = driver::create_input(&InputProps {
       placeholder: self.placeholder,
-      style: self.style,
-      variants: self.variants,
-      transitions: self.transitions,
-      animations: self.animations,
-      tab_index: self.tab_index,
-      autofocus: self.autofocus,
+      control,
     });
 
     if let Some(value) = self.value {
@@ -238,25 +135,11 @@ impl skene_core::View for Input {
       driver::handle_input(node, action);
     }
 
-    if let Some(action) = self.key_down_handler {
-      driver::handle_key_down(node, action);
-    }
-
-    if let Some(action) = self.focus_handler {
-      driver::handle_focus(node, action);
-    }
-
-    if let Some(action) = self.blur_handler {
-      driver::handle_blur(node, action);
-    }
-
     if let Some(action) = self.change_handler {
       driver::handle_change(node, action);
     }
 
-    if let Some(handle) = &self.focus_handle {
-      handle.assign(node);
-    }
+    handlers.register(node);
 
     node
   }

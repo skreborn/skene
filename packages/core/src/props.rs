@@ -246,11 +246,9 @@ pub struct BoxProps {
   pub autofocus: bool,
 }
 
-/// Everything a driver needs to realize a single-line text input.
+/// The realization surface every form control shares: styling plus focus placement.
 #[must_use]
-pub struct InputProps {
-  /// The hint shown while the value is empty.
-  pub placeholder: Option<String>,
+pub struct ControlProps {
   /// The static style.
   pub style: BoxStyle,
   /// Conditional variants, each applying while its condition holds; later entries win
@@ -265,6 +263,76 @@ pub struct InputProps {
   pub tab_index: Option<i32>,
   /// Whether the element takes focus when the page loads.
   pub autofocus: bool,
+}
+
+/// Everything a driver needs to realize a single-line text input.
+#[must_use]
+pub struct InputProps {
+  /// The hint shown while the value is empty.
+  pub placeholder: Option<String>,
+  /// The shared control surface.
+  pub control: ControlProps,
+}
+
+/// Everything a driver needs to realize a checkbox.
+#[must_use]
+pub struct CheckboxProps {
+  /// The shared control surface.
+  pub control: ControlProps,
+}
+
+/// Everything a driver needs to realize one radio button.
+#[must_use]
+pub struct RadioProps {
+  /// The group the radio belongs to; the platform keeps one member checked and moves
+  /// between members with the arrow keys.
+  pub group: String,
+  /// The value this member stands for.
+  pub value: String,
+  /// The shared control surface.
+  pub control: ControlProps,
+}
+
+/// One choice of a select control.
+#[must_use]
+pub struct SelectOption {
+  /// The value the choice stands for.
+  pub value: String,
+  /// The text shown for the choice.
+  pub label: String,
+}
+
+/// Everything a driver needs to realize a select control.
+#[must_use]
+pub struct SelectProps {
+  /// The choices, in order.
+  pub options: Vec<SelectOption>,
+  /// The shared control surface.
+  pub control: ControlProps,
+}
+
+/// Everything a driver needs to realize a multi-line text area.
+#[must_use]
+pub struct TextareaProps {
+  /// The hint shown while the value is empty.
+  pub placeholder: Option<String>,
+  /// The visible height, in text rows.
+  pub rows: Option<u16>,
+  /// The shared control surface.
+  pub control: ControlProps,
+}
+
+/// Everything a driver needs to realize a slider.
+#[must_use]
+pub struct SliderProps {
+  /// The smallest selectable value.
+  pub min: f32,
+  /// The largest selectable value.
+  pub max: f32,
+  /// The step between selectable values; a platform default when absent.
+  pub step: Option<f32>,
+  /// The shared control surface.
+  pub control: ControlProps,
 }
 
 /// A text run's static style: each property the builder or the inherited theme fixed to a

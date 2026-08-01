@@ -21,8 +21,8 @@ use skene_core::{
   BoxProps,
   Composable,
   Condition,
+  ControlProps,
   Easing,
-  InputProps,
   Layout,
   Overflow,
   RunDisplay,
@@ -178,26 +178,27 @@ pub(crate) fn box_template(props: &BoxProps) -> String {
   )
 }
 
-/// The complete rule template for an input, or `None` when it is entirely unstyled.
-pub(crate) fn input_template(props: &InputProps) -> Option<String> {
-  let base = fold_box_style(Declarations::new(), &props.style);
+/// The complete rule template for a form control, or `None` when it is entirely
+/// unstyled.
+pub(crate) fn control_template(control: &ControlProps) -> Option<String> {
+  let base = fold_box_style(Declarations::new(), &control.style);
 
   if base.is_empty()
-    && props
+    && control
       .variants
       .iter()
       .all(|(_, style)| *style == skene_core::BoxStyle::default())
-    && props.transitions.is_empty()
-    && props.animations.is_empty()
+    && control.transitions.is_empty()
+    && control.animations.is_empty()
   {
     return None;
   }
 
   Some(template(
     base,
-    &props.variants,
-    &props.transitions,
-    &props.animations,
+    &control.variants,
+    &control.transitions,
+    &control.animations,
     |style| fold_box_style(Declarations::new(), style),
   ))
 }

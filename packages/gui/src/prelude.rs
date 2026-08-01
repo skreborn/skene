@@ -39,6 +39,7 @@ pub use tracing::{debug, error, info, trace, warn};
 pub use crate::render_to_string;
 pub use crate::{
   Border,
+  Checkbox,
   Container,
   FocusHandle,
   HasChildren,
@@ -46,14 +47,18 @@ pub use crate::{
   Inset,
   Layout,
   Point,
+  Radio,
   Rect,
   RichText,
   Role,
+  Select,
   Size,
+  Slider,
   Span,
   Text,
   TextStyle,
   TextTheme,
+  Textarea,
   main,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]

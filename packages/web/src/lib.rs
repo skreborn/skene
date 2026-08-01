@@ -52,7 +52,21 @@ mod ssr;
 // exposes `render_to_string`/`render_to_stream` instead. `uninstall` is the browser
 // leaf's test teardown.
 #[cfg(target_arch = "wasm32")]
-use skene_core::{BoxProp, BoxProps, InputProps, NodeId, Role, RunProp, RunProps};
+use skene_core::{
+  BoxProp,
+  BoxProps,
+  CheckboxProps,
+  ControlProps,
+  InputProps,
+  NodeId,
+  RadioProps,
+  Role,
+  RunProp,
+  RunProps,
+  SelectProps,
+  SliderProps,
+  TextareaProps,
+};
 
 #[cfg(target_os = "unknown")]
 pub(crate) use self::csr::assign_class;
@@ -80,6 +94,7 @@ pub use self::csr::{
   handle_pointer_move,
   handle_pointer_up,
   handle_scroll,
+  handle_toggle,
   hydrate,
   hydrate_page,
   install,
@@ -91,6 +106,7 @@ pub use self::csr::{
   push_path,
   register_source,
   set_attribute,
+  set_checked,
   set_input_value,
   set_style,
   set_text,
@@ -118,6 +134,7 @@ pub use self::ssr::{
   handle_pointer_move,
   handle_pointer_up,
   handle_scroll,
+  handle_toggle,
   is_server,
   override_style,
   register_boundary,
@@ -125,6 +142,7 @@ pub use self::ssr::{
   render_to_stream,
   render_to_string,
   set_attribute,
+  set_checked,
   set_input_value,
   set_request_path,
   set_style,
@@ -141,6 +159,23 @@ pub use self::ssr::{
 pub fn create_box(props: &BoxProps) -> NodeId {
   let node = create_element(match props.role {
     Some(Role::Button) => "button",
+    Some(Role::Navigation) => "nav",
+    Some(Role::Main) => "main",
+    Some(Role::Header) => "header",
+    Some(Role::Footer) => "footer",
+    Some(Role::Aside) => "aside",
+    Some(Role::Section) => "section",
+    Some(Role::Article) => "article",
+    Some(Role::Heading(level)) => match level.clamp(1, 6) {
+      1 => "h1",
+      2 => "h2",
+      3 => "h3",
+      4 => "h4",
+      5 => "h5",
+      _ => "h6",
+    },
+    Some(Role::List) => "ul",
+    Some(Role::ListItem) => "li",
     None => "div",
   });
 
@@ -207,6 +242,23 @@ pub fn update_run(node: NodeId, prop: &RunProp) {
   override_style(node, &mapping::run_prop_declarations(prop));
 }
 
+/// Folds a control's shared surface into `node`: the tab order and autofocus
+/// attributes, plus the interned style class when the control is styled.
+#[cfg(target_arch = "wasm32")]
+fn apply_control(node: NodeId, control: &ControlProps) {
+  if let Some(tab_index) = control.tab_index {
+    set_attribute(node, "tabindex", &tab_index.to_string());
+  }
+
+  if control.autofocus {
+    set_attribute(node, "autofocus", "");
+  }
+
+  if let Some(template) = mapping::control_template(control) {
+    assign_class(node, &template);
+  }
+}
+
 /// Realizes a single-line text input, with its full static style interned as a shared
 /// class—or classless when it is unstyled.
 #[cfg(target_arch = "wasm32")]
@@ -218,17 +270,95 @@ pub fn create_input(props: &InputProps) -> NodeId {
     set_attribute(node, "placeholder", placeholder);
   }
 
-  if let Some(tab_index) = props.tab_index {
-    set_attribute(node, "tabindex", &tab_index.to_string());
+  apply_control(node, &props.control);
+
+  node
+}
+
+/// Realizes a checkbox: a two-state toggle, checked through [`set_checked`] and
+/// reported through [`handle_toggle`].
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_checkbox(props: &CheckboxProps) -> NodeId {
+  let node = create_element("input");
+
+  set_attribute(node, "type", "checkbox");
+  apply_control(node, &props.control);
+
+  node
+}
+
+/// Realizes one radio button of a group; the platform keeps one member checked and
+/// moves between members with the arrow keys.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_radio(props: &RadioProps) -> NodeId {
+  let node = create_element("input");
+
+  set_attribute(node, "type", "radio");
+  set_attribute(node, "name", &props.group);
+  set_attribute(node, "value", &props.value);
+  apply_control(node, &props.control);
+
+  node
+}
+
+/// Realizes a select control with its options; the chosen value is set through
+/// [`set_input_value`] and reported through [`handle_change`].
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_select(props: &SelectProps) -> NodeId {
+  let node = create_element("select");
+
+  apply_control(node, &props.control);
+
+  for option in &props.options {
+    let child = create_element("option");
+
+    set_attribute(child, "value", &option.value);
+    set_text(child, &option.label);
+    attach(node, child, None);
   }
 
-  if props.autofocus {
-    set_attribute(node, "autofocus", "");
+  node
+}
+
+/// Realizes a multi-line text area, with its value set through [`set_input_value`] and
+/// edits reported through [`handle_input`].
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_textarea(props: &TextareaProps) -> NodeId {
+  let node = create_element("textarea");
+
+  if let Some(placeholder) = &props.placeholder {
+    set_attribute(node, "placeholder", placeholder);
   }
 
-  if let Some(template) = mapping::input_template(props) {
-    assign_class(node, &template);
+  if let Some(rows) = props.rows {
+    set_attribute(node, "rows", &rows.to_string());
   }
+
+  apply_control(node, &props.control);
+
+  node
+}
+
+/// Realizes a slider over the given range, with its value set through
+/// [`set_input_value`] and moves reported through [`handle_input`].
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_slider(props: &SliderProps) -> NodeId {
+  let node = create_element("input");
+
+  set_attribute(node, "type", "range");
+  set_attribute(node, "min", &props.min.to_string());
+  set_attribute(node, "max", &props.max.to_string());
+
+  if let Some(step) = props.step {
+    set_attribute(node, "step", &step.to_string());
+  }
+
+  apply_control(node, &props.control);
 
   node
 }

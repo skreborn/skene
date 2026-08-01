@@ -44,7 +44,7 @@ mod host {
   use crate::{
     manifest::App,
     pipeline,
-    server::{Dev, serve},
+    server::{Dev, serve, spawn_state_server},
   };
 
   /// Build, statically generate, and develop skene applications.
@@ -102,9 +102,10 @@ mod host {
       #[arg(long)]
       release: bool,
     },
-    /// Build and run the terminal binary in this terminal.
+    /// The terminal dev loop: build and run the binary, rebuild and restart on
+    /// change—state carried across the restart.
     Tui {
-      /// Build with optimizations.
+      /// Build with optimizations (dev builds are unoptimized by default).
       #[arg(long)]
       release: bool,
     },
@@ -130,26 +131,100 @@ mod host {
 
       Command::Run(RunTarget::Web { port, release }) => dev(app, port, release),
 
-      Command::Run(RunTarget::Tui { release }) => pipeline::run_tui(&app, release),
+      Command::Run(RunTarget::Tui { release }) => run_tui(&app, release),
     }
   }
 
-  /// The dev loop: build once, then serve while watching for changes; each successful
-  /// rebuild tells every open page to reload.
+  /// The web dev loop: build once, then serve while watching for changes; each
+  /// successful rebuild tells every open page to reload.
   fn dev(app: App, port: u16, release: bool) -> Result<(), String> {
     pipeline::build_web(&app, release, true)?;
 
     let app = Arc::new(app);
     let dev = Dev::default();
+    let (changes, watcher) = watch_sources(&app)?;
 
-    watch(Arc::clone(&app), release, dev.clone())?;
+    {
+      let app = Arc::clone(&app);
+      let dev = dev.clone();
+
+      thread::spawn(move || {
+        // Keep the watcher alive for the whole loop.
+        let _watcher = watcher;
+
+        while changes.recv().is_ok() {
+          drain_burst(&changes);
+          println!("change detected; rebuilding…");
+
+          match pipeline::build_web(&app, release, true) {
+            Ok(()) => {
+              dev.trigger();
+              println!("rebuilt; reloading");
+            }
+            Err(error) => eprintln!("rebuild failed: {error}"),
+          }
+        }
+      });
+    }
 
     serve(&app, port, Some(&dev))
   }
 
-  /// Watches the workspace's packages, the app, and the asset roots; debounces bursts
-  /// of events, rebuilds, and triggers a reload on success.
-  fn watch(app: Arc<App>, release: bool, dev: Dev) -> Result<(), String> {
+  /// The terminal dev loop: run the binary with the state handshake, and on each
+  /// change rebuild first, then swap in the new binary—the CLI-held state carries
+  /// across the swap. Ends when the app itself exits.
+  fn run_tui(app: &App, release: bool) -> Result<(), String> {
+    pipeline::build_tui_binary(app, release).map_err(|error| format!("build failed:\n{error}"))?;
+
+    let dev = Dev::default();
+    let port = spawn_state_server(dev.clone())?;
+    let (changes, _watcher) = watch_sources(app)?;
+    let binary = pipeline::tui_binary(app, release);
+
+    loop {
+      let mut child = std::process::Command::new(&binary)
+        .current_dir(&app.dir)
+        .env("SKENE_DEV", port.to_string())
+        .spawn()
+        .map_err(|error| format!("{}: {error}", binary.display()))?;
+
+      loop {
+        if let Ok(Some(_)) = child.try_wait() {
+          // The user quit the app; the loop ends with it.
+          return Ok(());
+        }
+
+        match changes.recv_timeout(Duration::from_millis(100)) {
+          Ok(()) => {
+            drain_burst(&changes);
+
+            // Rebuild before swapping, so the running app stays up through the compile
+            // (and through a failed one).
+            match pipeline::build_tui_binary(app, release) {
+              Ok(()) => {
+                let _ = child.kill();
+                let _ = child.wait();
+
+                break;
+              }
+              Err(error) => eprintln!("rebuild failed:\n{error}"),
+            }
+          }
+          Err(mpsc::RecvTimeoutError::Timeout) => {}
+          Err(mpsc::RecvTimeoutError::Disconnected) => {
+            let _ = child.kill();
+            let _ = child.wait();
+
+            return Ok(());
+          }
+        }
+      }
+    }
+  }
+
+  /// Watches the workspace's packages, the app, and the asset roots; sends one unit
+  /// per change. The returned watcher must stay alive as long as the receiver.
+  fn watch_sources(app: &App) -> Result<(mpsc::Receiver<()>, notify::RecommendedWatcher), String> {
     use notify::{RecursiveMode, Watcher};
 
     let (sender, receiver) = mpsc::channel();
@@ -183,26 +258,11 @@ mod host {
       }
     }
 
-    thread::spawn(move || {
-      // Keep the watcher alive for the whole loop.
-      let _watcher = watcher;
+    Ok((receiver, watcher))
+  }
 
-      while receiver.recv().is_ok() {
-        // Debounce the burst a save produces.
-        while receiver.recv_timeout(Duration::from_millis(200)).is_ok() {}
-
-        println!("change detected; rebuilding…");
-
-        match pipeline::build_web(&app, release, true) {
-          Ok(()) => {
-            dev.trigger();
-            println!("rebuilt; reloading");
-          }
-          Err(error) => eprintln!("rebuild failed: {error}"),
-        }
-      }
-    });
-
-    Ok(())
+  /// Drains the burst of filesystem events one save produces.
+  fn drain_burst(changes: &mpsc::Receiver<()>) {
+    while changes.recv_timeout(Duration::from_millis(200)).is_ok() {}
   }
 }

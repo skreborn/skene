@@ -20,6 +20,8 @@ pub mod prelude;
 
 mod button;
 mod container;
+#[cfg(feature = "snapshot")]
+mod dev;
 mod events;
 mod focus;
 mod input;

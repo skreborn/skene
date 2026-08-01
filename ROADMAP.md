@@ -251,9 +251,15 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   mounting, gated by the dev server's injected `skene-dev` meta marker so production
   pages boot fetch-free. Assets are scoped per package: every URI is
   `/<package>/<declared path>`, so app and library assets can never collide.
-- **Remaining here:** the same state handshake from `run tui` (the protocol already
-  fits), route enumeration for static generation, the CSR page generated from the SSR
-  shell contract, wasm-split lazy loading, and richer `skene.toml` settings as they
+- **The terminal dev loop—done.** `skene run tui` runs the binary with `SKENE_DEV`
+  naming an ephemeral state port, watches, rebuilds on change (the old process stays up
+  through the compile, and through a failed one), then swaps in the new binary. The
+  app-side handshake mirrors the web's over the same `/skene:state` protocol: restore
+  before mount, then debounced checkpoints off the UI thread after every event batch,
+  plus a final flush on quit—so a kill at any moment loses at most a fraction of a
+  second of state. Verified end to end under a pseudo-terminal: three clicks, a source
+  touch, a rebuild-restart, and the fresh process painted the preserved count.
+- **Remaining here:** wasm-split lazy loading, and richer `skene.toml` settings as they
   earn their place.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.

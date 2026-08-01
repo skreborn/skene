@@ -71,6 +71,10 @@ where
   V: IntoView,
 {
   crate::install();
+
+  #[cfg(feature = "snapshot")]
+  crate::dev::install();
+
   crate::mount(|| app().into_view().build());
 
   terminal::enable_raw_mode().expect("enable raw mode");
@@ -109,19 +113,31 @@ where
       break;
     }
 
+    #[cfg(feature = "snapshot")]
+    crate::dev::tick();
+
     if event::poll(Duration::from_millis(100)).unwrap_or(false) {
       match event::read() {
         Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
           with_state(|state| dispatch_key(state, &key));
+
+          #[cfg(feature = "snapshot")]
+          crate::dev::mark_changed();
         }
         Ok(Event::Mouse(mouse)) => {
           with_state(|state| dispatch_mouse(state, mouse));
+
+          #[cfg(feature = "snapshot")]
+          crate::dev::mark_changed();
         }
         Ok(Event::Resize(..)) => with_state(|state| state.dirty.set(true)),
         _ => {}
       }
     }
   }
+
+  #[cfg(feature = "snapshot")]
+  crate::dev::flush();
 }
 
 /// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer

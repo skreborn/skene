@@ -65,6 +65,74 @@ impl Dev {
   }
 }
 
+/// Serves only the state slot on an ephemeral port, for a dev loop around a target
+/// with no page to serve (the terminal, native later); returns the port for
+/// `SKENE_DEV`.
+pub fn spawn_state_server(dev: Dev) -> Result<u16, String> {
+  let listener =
+    TcpListener::bind(("127.0.0.1", 0)).map_err(|error| format!("bind the state port: {error}"))?;
+  let port = listener
+    .local_addr()
+    .map_err(|error| error.to_string())?
+    .port();
+
+  thread::spawn(move || {
+    for stream in listener.incoming() {
+      let Ok(stream) = stream
+      else {
+        continue;
+      };
+
+      let dev = dev.clone();
+
+      thread::spawn(move || handle_state_request(stream, &dev));
+    }
+  });
+
+  Ok(port)
+}
+
+/// Handles one request against the state slot alone.
+fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
+  let Ok(clone) = stream.try_clone()
+  else {
+    return;
+  };
+
+  let mut reader = BufReader::new(clone);
+  let mut line = String::new();
+
+  if reader.read_line(&mut line).is_err() {
+    return;
+  }
+
+  let mut parts = line.split_whitespace();
+
+  match (parts.next(), parts.next()) {
+    (Some("POST"), Some("/skene:state")) => match read_body(&mut reader) {
+      Some(body) => {
+        dev.store(body);
+
+        let _ = write_response(&mut stream, "204 No Content", "text/plain", b"");
+      }
+      None => {
+        let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
+      }
+    },
+    (Some("GET"), Some("/skene:state")) => match dev.stored() {
+      Some(bytes) => {
+        let _ = write_response(&mut stream, "200 OK", "application/octet-stream", &bytes);
+      }
+      None => {
+        let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"no state");
+      }
+    },
+    _ => {
+      let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
+    }
+  }
+}
+
 /// Serves the app on `port` until interrupted: `index.html` and `dist/web/` from the
 /// app directory, declared assets at their URIs, and—with `dev`—the reload SSE
 /// endpoint, the state slot, and the reload script injected into HTML.

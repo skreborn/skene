@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-skene-tui.workspace = true
+skene-tui = { features = ["snapshot"], workspace = true }
 
 [lints]
 workspace = true

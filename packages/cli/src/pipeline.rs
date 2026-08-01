@@ -52,8 +52,8 @@ fn write_page(app: &App, dev: bool) -> Result<(), String> {
   fs::write(app.dir.join("dist/web/index.html"), page).map_err(|error| error.to_string())
 }
 
-/// Builds the app's terminal binary and places it in `<app>/dist/tui`.
-pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
+/// Builds the app's terminal binary, quietly; on failure returns cargo's output.
+pub fn build_tui_binary(app: &App, release: bool) -> Result<(), String> {
   let mut command = Command::new("cargo");
 
   command
@@ -64,14 +64,34 @@ pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
     command.arg("--release");
   }
 
-  run(&mut command, "cargo build")?;
+  let output = command
+    .output()
+    .map_err(|error| format!("failed to run cargo build: {error}"))?;
 
+  if output.status.success() {
+    Ok(())
+  }
+  else {
+    Err(String::from_utf8_lossy(&output.stderr).into_owned())
+  }
+}
+
+/// The built terminal binary's path.
+pub fn tui_binary(app: &App, release: bool) -> std::path::PathBuf {
   let profile = if release { "release" } else { "debug" };
-  let binary = app
+
+  app
     .workspace_root
     .join("target")
     .join(profile)
-    .join(&app.package);
+    .join(&app.package)
+}
+
+/// Builds the app's terminal binary and places it in `<app>/dist/tui`.
+pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
+  build_tui_binary(app, release)?;
+
+  let binary = tui_binary(app, release);
   let out_dir = app.dir.join("dist/tui");
 
   fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
@@ -82,21 +102,6 @@ pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
   println!("built {}", out.display());
 
   Ok(())
-}
-
-/// Builds and runs the app's terminal binary in this terminal.
-pub fn run_tui(app: &App, release: bool) -> Result<(), String> {
-  let mut command = Command::new("cargo");
-
-  command
-    .current_dir(&app.workspace_root)
-    .args(["run", "-p", &app.package]);
-
-  if release {
-    command.arg("--release");
-  }
-
-  run(&mut command, "cargo run")
 }
 
 fn build_wasm(app: &App, release: bool) -> Result<(), String> {

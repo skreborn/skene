@@ -1,6 +1,6 @@
 //! The router wired to the active driver's URL.
 
-use skene_router::{Route, Router};
+use skene_router::{Route, Router, StaticRoutes};
 
 #[cfg(target_arch = "wasm32")]
 use crate::driver;
@@ -45,6 +45,24 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   router.provide();
 
   router
+}
+
+/// [`install_router`], for a route type whose statically-renderable routes are
+/// enumerable: the enumeration also reaches the build tool, so `skene build web
+/// --static` renders every route without being told them.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[inline(always)]
+pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
+  install_router(fallback)
+}
+
+/// [`install_router`], recording the enumerable routes for the build tool: `skene
+/// build web --static` renders every route without being told them.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
+  driver::record_static_routes(R::all().iter().map(Route::to_path).collect());
+
+  install_router(fallback)
 }
 
 /// Creates the app's router at `fallback`, and provides it to the current scope.

@@ -4,10 +4,52 @@ use std::{fs, path::Path, process::Command};
 
 use crate::manifest::App;
 
-/// Builds the app's browser wasm and generates its bindings into `<app>/dist/web`.
-pub fn build_web(app: &App, release: bool) -> Result<(), String> {
+/// The dev additions to the generated page: the marker the framework's boot handshake
+/// looks for, and the script that beacons the state snapshot and reloads on the
+/// server's say-so.
+const DEV_PAGE_ADDITIONS: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
+  const save = () => {\n\
+    if (window.skene_snapshot) navigator.sendBeacon(\"/skene:state\", window.skene_snapshot());\n\
+  };\n\
+  addEventListener(\"pagehide\", save);\n\
+  new EventSource(\"/skene:reload\").onmessage = () => {\n\
+    save();\n\
+    location.reload();\n\
+  };\n\
+})();</script>";
+/// Builds the app's browser wasm, generates its bindings, and writes the boot page—
+/// all into `<app>/dist/web`. A dev build's page carries the dev marker and the
+/// reload script.
+pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   build_wasm(app, release)?;
-  generate_bindings(app, release)
+  generate_bindings(app, release)?;
+  write_page(app, dev)
+}
+
+/// Writes the generated CSR boot page: the module import of the generated bindings,
+/// initialized on load.
+fn write_page(app: &App, dev: bool) -> Result<(), String> {
+  let additions = if dev { DEV_PAGE_ADDITIONS } else { "" };
+  let page = format!(
+    "<!DOCTYPE html>\n\
+     <html>\n\
+       <head>\n\
+         <meta charset=\"utf-8\">\n\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
+         <title>{package}</title>{additions}\n\
+       </head>\n\
+       <body>\n\
+         <script type=\"module\">\n\
+           import init from \"/dist/web/{stem}.js\";\n\n\
+           init();\n\
+         </script>\n\
+       </body>\n\
+     </html>\n",
+    package = app.package,
+    stem = app.stem,
+  );
+
+  fs::write(app.dir.join("dist/web/index.html"), page).map_err(|error| error.to_string())
 }
 
 /// Builds the app's terminal binary and places it in `<app>/dist/tui`.
@@ -131,8 +173,8 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
   )
 }
 
-/// Statically generates `routes` through the embedded runner into
-/// `<app>/dist/web-static`, assets alongside.
+/// Statically generates through the embedded runner into `<app>/dist/web-static`,
+/// assets alongside: the given routes, or—given none—every route the app enumerates.
 pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
   let out = &app.dir.join("dist/web-static");
   // A generated directory by contract: clear it so removed routes and assets never
@@ -140,8 +182,23 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
   let _ = fs::remove_dir_all(out);
   let artifact = build_server(app, release)?;
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
+  // No explicit routes: render every route the app enumerates (see
+  // `install_static_router`), or the root alone.
+  let routes = if routes.is_empty() {
+    let enumerated = runner.routes().map_err(|error| format!("{error:#}"))?;
 
-  for route in routes {
+    if enumerated.is_empty() {
+      vec!["/".to_owned()]
+    }
+    else {
+      enumerated
+    }
+  }
+  else {
+    routes.to_vec()
+  };
+
+  for route in &routes {
     let page = runner
       .render(route)
       .map_err(|error| format!("render {route}: {error:#}"))?;

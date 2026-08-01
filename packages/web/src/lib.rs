@@ -141,6 +141,8 @@ pub use self::ssr::{
   handle_toggle,
   is_server,
   override_style,
+  record_static_routes,
+  recorded_static_routes,
   register_boundary,
   register_source,
   render_to_stream,

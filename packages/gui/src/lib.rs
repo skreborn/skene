@@ -55,7 +55,7 @@ pub use crate::deferred::Deferred;
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
 #[cfg(target_arch = "wasm32")]
-pub use crate::routing::install_router;
+pub use crate::routing::{install_router, install_static_router};
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
@@ -319,7 +319,9 @@ where
 }
 
 /// The server entry `#[main]` expands to: renders the path given as the first argument
-/// (default `/`) and writes the complete page to stdout.
+/// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
+/// the statically-renderable routes one per line (see
+/// [`install_static_router`]).
 ///
 /// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
 /// prints the document—which is exactly the interface the runner embeds.
@@ -329,8 +331,19 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  let path = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
-  let rendered = render_to_string_at(&path, app);
+  let argument = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
+
+  if argument == "--routes" {
+    let _ = render_to_string_at("/", app);
+
+    for route in driver::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]) {
+      println!("{route}");
+    }
+
+    return;
+  }
+
+  let rendered = render_to_string_at(&argument, app);
 
   print!("{}", rendered.page());
 }

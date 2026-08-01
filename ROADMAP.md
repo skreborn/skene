@@ -104,10 +104,15 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   wasmtime around exactly that contract (`Runner::load` + `render(path)`), host-only, for
   any server to call. `cargo xtask ssg --path / --path /about` builds the component and
   writes `<out>/<route>/index.html` through the runner.
-- **Remaining:** route enumeration for SSG (`StaticRoutes::all` surfaced through the
-  artifact); streaming through the runner (`render_to_stream` over incremental stdout);
-  the CSR page emitted from the SSR shell contract (build tool); typed link helpers
-  (an `<a>` that navigates without a reload).
+- **Route enumeration and the generated page—done.** `install_static_router` records
+  `StaticRoutes::all`; the server binary's `--routes` mode prints them;
+  `Runner::routes()` reads them; and `skene build web --static` renders every
+  enumerated route when given no `--path`. `skene build web` also generates the CSR
+  boot page into `dist/web/` (dev builds carry the dev marker and reload script at
+  generation time; the server injects nothing), so no hand-written `index.html`
+  remains.
+- **Remaining:** streaming through the runner (`render_to_stream` over incremental
+  stdout); typed link helpers (an `<a>` that navigates without a reload).
 
 ## Phase 6—TUI facade ✅ (core)
 

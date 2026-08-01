@@ -76,8 +76,8 @@ mod host {
       /// Statically generate routes through the embedded runner, assets alongside.
       #[arg(long)]
       r#static: bool,
-      /// Routes to render (with `--static`).
-      #[arg(long, default_values_t = [String::from("/")])]
+      /// Routes to render (with `--static`); every enumerated route when omitted.
+      #[arg(long)]
       path: Vec<String>,
       /// Build without optimizations instead of `--release`.
       #[arg(long)]
@@ -118,7 +118,7 @@ mod host {
         r#static: false,
         debug,
         ..
-      }) => pipeline::build_web(&app, !debug),
+      }) => pipeline::build_web(&app, !debug, false),
 
       Command::Build(BuildTarget::Web {
         r#static: true,
@@ -137,7 +137,7 @@ mod host {
   /// The dev loop: build once, then serve while watching for changes; each successful
   /// rebuild tells every open page to reload.
   fn dev(app: App, port: u16, release: bool) -> Result<(), String> {
-    pipeline::build_web(&app, release)?;
+    pipeline::build_web(&app, release, true)?;
 
     let app = Arc::new(app);
     let dev = Dev::default();
@@ -170,7 +170,6 @@ mod host {
     let mut roots = vec![
       app.workspace_root.join("packages"),
       app.dir.join("src"),
-      app.dir.join("index.html"),
       app.dir.join("skene.toml"),
     ];
 
@@ -194,7 +193,7 @@ mod host {
 
         println!("change detected; rebuilding…");
 
-        match pipeline::build_web(&app, release) {
+        match pipeline::build_web(&app, release, true) {
           Ok(()) => {
             dev.trigger();
             println!("rebuilt; reloading");

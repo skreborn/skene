@@ -77,11 +77,35 @@ impl Runner {
   ///
   /// Fails when the app traps, exits with failure, or writes non-UTF-8 output.
   pub fn render(&self, route_path: &str) -> Result<String> {
+    self.invoke(route_path)
+  }
+
+  /// The routes the app declares statically renderable, in declaration order; `/`
+  /// alone when the app declares none.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the app traps, exits with failure, or writes non-UTF-8 output.
+  pub fn routes(&self) -> Result<Vec<String>> {
+    let output = self.invoke("--routes")?;
+
+    Ok(
+      output
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect(),
+    )
+  }
+
+  /// Runs one fresh instance of the app with `argument`, returning its stdout.
+  fn invoke(&self, argument: &str) -> Result<String> {
     let stdout = MemoryOutputPipe::new(usize::MAX);
     let ctx = WasiCtxBuilder::new()
       .stdout(stdout.clone())
       .inherit_stderr()
-      .args(&["app", route_path])
+      .args(&["app", argument])
       .build();
 
     let host = Host {

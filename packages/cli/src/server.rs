@@ -16,20 +16,6 @@ use url::Url;
 
 use crate::manifest::App;
 
-/// The `<script>` a served HTML page gains in dev: it beacons the app's state snapshot
-/// to the CLI before every reload (the app exposes `skene_snapshot` when built with the
-/// `snapshot` feature), and reloads when the server says so.
-const RELOAD_SCRIPT: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
-  const save = () => {\n\
-    if (window.skene_snapshot) navigator.sendBeacon(\"/skene:state\", window.skene_snapshot());\n\
-  };\n\
-  addEventListener(\"pagehide\", save);\n\
-  new EventSource(\"/skene:reload\").onmessage = () => {\n\
-    save();\n\
-    location.reload();\n\
-  };\n\
-})();</script>";
-
 /// The dev channel: the open live-reload streams, and the authoritative state snapshot
 /// held across reloads.
 #[derive(Clone, Default)]
@@ -157,7 +143,7 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       }
     },
 
-    ("GET", relative, _) => serve_file(&mut stream, app, relative, dev.is_some()),
+    ("GET", relative, _) => serve_file(&mut stream, app, relative),
 
     _ => {
       let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
@@ -222,17 +208,17 @@ fn request_path(target: &str) -> Option<String> {
   Some(segments.join("/"))
 }
 
-/// Serves one static file: the page, the generated bundle, or a declared asset—never
+/// Serves one static file: the generated page and bundle, or a declared asset—never
 /// the app's sources or manifests.
-fn serve_file(stream: &mut TcpStream, app: &App, relative: &str, dev: bool) {
-  let relative = if relative.is_empty() {
-    "index.html"
+fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
+  let relative = if relative.is_empty() || relative == "index.html" {
+    "dist/web/index.html"
   }
   else {
     relative
   };
 
-  let path = if relative == "index.html" || relative.starts_with("dist/web/") {
+  let path = if relative.starts_with("dist/web/") {
     Some(app.dir.join(relative)).filter(|path| path.is_file())
   }
   else {
@@ -248,14 +234,8 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str, dev: bool) {
   };
 
   match fs::read(&path) {
-    Ok(mut body) => {
-      let kind = content_type(&path);
-
-      if dev && kind.starts_with("text/html") {
-        body.extend_from_slice(RELOAD_SCRIPT.as_bytes());
-      }
-
-      let _ = write_response(stream, "200 OK", kind, &body);
+    Ok(body) => {
+      let _ = write_response(stream, "200 OK", content_type(&path), &body);
     }
     Err(_) => {
       let _ = write_response(

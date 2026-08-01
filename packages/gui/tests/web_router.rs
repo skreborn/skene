@@ -7,8 +7,9 @@ use skene_gui::{
   Text,
   View,
   install_router,
+  install_static_router,
   render_to_string_at,
-  router::{Route, Router},
+  router::{Route, Router, StaticRoutes},
 };
 
 #[derive(Clone, PartialEq)]
@@ -31,6 +32,12 @@ impl Route for Page {
       Self::Home => "/".to_owned(),
       Self::About => "/about".to_owned(),
     }
+  }
+}
+
+impl StaticRoutes for Page {
+  fn all() -> Vec<Self> {
+    vec![Self::Home, Self::About]
   }
 }
 
@@ -74,4 +81,27 @@ fn router_flows_through_context() {
   });
 
   assert!(rendered.body().contains("/about"));
+}
+
+/// An enumerable router records its routes for the build tool; a plain one records
+/// nothing.
+#[test]
+fn static_router_records_its_routes() {
+  let _ = render_to_string_at("/", || {
+    let router = install_static_router(Page::Home);
+
+    DynamicView::new(move || match router.route() {
+      Page::Home => Text::new("home page").into_any(),
+      Page::About => Text::new("about page").into_any(),
+    })
+  });
+
+  assert_eq!(
+    skene_gui::web::recorded_static_routes(),
+    Some(vec!["/".to_owned(), "/about".to_owned()])
+  );
+
+  let _ = render_to_string_at("/", app);
+
+  assert_eq!(skene_gui::web::recorded_static_routes(), None);
 }

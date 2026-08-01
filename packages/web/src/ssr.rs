@@ -380,6 +380,8 @@ impl Node {
 
 thread_local! {
   static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+  /// The statically-renderable routes the app recorded during the last render.
+  static STATIC_ROUTES: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
   /// The path being rendered, as supplied by the runner; `/` when none was.
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// Each critical resource's serializer, in creation order; drained once the render settles.
@@ -595,6 +597,18 @@ pub fn set_input_value(node: NodeId, value: &str) {
   });
 }
 
+/// Records the app's statically-renderable routes, readable after the render through
+/// [`recorded_static_routes`].
+pub fn record_static_routes(routes: Vec<String>) {
+  STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = Some(routes));
+}
+
+/// The routes the last render recorded, or `None` when it recorded none.
+#[must_use]
+pub fn recorded_static_routes() -> Option<Vec<String>> {
+  STATIC_ROUTES.with(|recorded| recorded.borrow().clone())
+}
+
 /// Sets the document title, serialized into the page head.
 pub fn set_document_title(title: &str) {
   with_state(|state| state.document_title = Some(title.to_owned()));
@@ -642,6 +656,7 @@ where
   V: IntoView,
 {
   STATE.with(|state| *state.borrow_mut() = Some(State::new()));
+  STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
   SOURCES.with(|sources| sources.borrow_mut().clear());
   // A `Deferred` still registers its boundary here, though this path serializes the fully-settled
   // tree and never consults it; clear so registrations do not accumulate across renders.
@@ -688,6 +703,7 @@ where
   V: IntoView,
 {
   STATE.with(|state| *state.borrow_mut() = Some(State::new()));
+  STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
   SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
 

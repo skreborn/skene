@@ -246,9 +246,35 @@ sink are just different sinks for the same paths.)
 - **Reactive stores**: fine-grained nested reactivity over structs and collections
   (derive-based; field- and key-level subscriptions), generally available on the same
   signal substrate.
-- **Error/suspense audit**: name what `Boundary` + `Resource` + `Deferred` actually
-  guarantee against the error-boundary/suspense/transition triple, and fill what falls
-  short.
+- **Error/suspense audit—done; fixes pending.** What holds today: `Boundary` counts a
+  subtree's tasks through `Context`; `Deferred` streams around it on the server, and a
+  boundary that cannot settle (nothing ready, nothing outstanding) flushes what it has;
+  `Resource` keeps failure in the value (`Result` payloads); hydration mismatches are
+  loud; a trapped server render surfaces as the runner's `Err`. The gaps, each its own
+  work item:
+  - **Client suspense view**: `Boundary::is_settled` reads untracked, so nothing can
+    reactively swap a fallback today; add a tracking read and a `Suspense` view
+    (fallback until the subtree's tasks settle) on the client—and on the TUI once it
+    has tasks.
+  - **ErrorBoundary**: a view collecting carried `Err` values from its subtree
+    (fallback receives the errors, a handle retries). Panics stay fatal on wasm (no
+    unwinding)—the boundary is for carried errors, never caught panics.
+  - **Transition semantics**: keep the previous content visible while the next
+    subtree's boundary settles (route changes foremost), instead of dropping to
+    placeholders.
+  - **TUI async story**: the terminal loop has no executor—`spawn`/`Resource`/
+    `Boundary` are absent from that facade. Pump a local executor from the event loop
+    (filling the same `drive` seam the web leaves fill) and host `spawn`/`Resource`
+    once for both facades.
+  - **Resource adoption is order-keyed**: a server/client divergence adopts the wrong
+    value silently when the types line up. Offer explicitly keyed resources (unique
+    tags, as snapshots use) and document the ordering contract.
+  - **No render deadline on the server**: a hung host operation blocks `stabilize`—and
+    a streamed chunk—indefinitely, and the `MAX_ROUNDS` cap on self-waking tasks
+    returns *silently*, serializing placeholders with no diagnostic. Add a
+    configurable deadline and a loud report of what failed to settle.
+  - **Hydration mismatch is fatal**: the loud panic is right for development;
+    production should be able to rebuild the mismatched subtree client-side instead.
 - **All basic controls**: checkbox, select, textarea, radio, slider, and friends—
   unstyled by default with full keyboard and ARIA behavior; a styled set may ship as a
   separate optional package.

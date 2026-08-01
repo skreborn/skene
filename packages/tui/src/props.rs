@@ -14,6 +14,7 @@ use skene_core::{
   Inset,
   MainAxisAlignment,
   MouseCursor,
+  Overflow,
 };
 
 /// A box's static style: each property the builder fixed to a value.
@@ -44,6 +45,8 @@ pub struct BoxStyle {
   pub spacing: Option<u16>,
   /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
   pub cursor: Option<MouseCursor>,
+  /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
+  pub overflow: Option<Overflow>,
   /// The children's alignment along the main axis.
   pub main_axis_alignment: Option<MainAxisAlignment>,
   /// The children's alignment along the cross axis.
@@ -141,6 +144,14 @@ impl BoxStyle {
   #[inline(always)]
   pub const fn set_cursor(mut self, cursor: MouseCursor) -> Self {
     self.cursor = Some(cursor);
+
+    self
+  }
+
+  /// Sets how content overflowing the box behaves.
+  #[inline(always)]
+  pub const fn set_overflow(mut self, overflow: Overflow) -> Self {
+    self.overflow = Some(overflow);
 
     self
   }
@@ -265,6 +276,7 @@ pub(crate) enum BoxProp {
   Border(Color),
   Spacing(u16),
   Cursor(MouseCursor),
+  Overflow(Overflow),
   MainAxisAlignment(MainAxisAlignment),
   CrossAxisAlignment(CrossAxisAlignment),
 }
@@ -290,6 +302,7 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::Border(value) => style.border = Some(value),
     BoxProp::Spacing(value) => style.spacing = Some(value),
     BoxProp::Cursor(value) => style.cursor = Some(value),
+    BoxProp::Overflow(value) => style.overflow = Some(value),
     BoxProp::MainAxisAlignment(value) => style.main_axis_alignment = Some(value),
     BoxProp::CrossAxisAlignment(value) => style.cross_axis_alignment = Some(value),
   }

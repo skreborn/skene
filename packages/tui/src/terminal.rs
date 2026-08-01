@@ -203,7 +203,10 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         modifiers,
       );
     }
-    _ => {}
+    MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, 1),
+    MouseEventKind::ScrollUp => state.mouse_scroll(mouse.column, mouse.row, 0, -1),
+    MouseEventKind::ScrollRight => state.mouse_scroll(mouse.column, mouse.row, 1, 0),
+    MouseEventKind::ScrollLeft => state.mouse_scroll(mouse.column, mouse.row, -1, 0),
   });
 }
 
@@ -367,6 +370,14 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
         for target in state.ancestors(focused) {
           State::run_handlers(&state.click, target, (), |run, ()| run());
         }
+      }
+
+      if code == KeyCode::PageDown {
+        state.page_scroll(1);
+      }
+
+      if code == KeyCode::PageUp {
+        state.page_scroll(-1);
       }
 
       edit_focused_input(state, code, key.modifiers);
@@ -548,5 +559,15 @@ pub fn trigger_color_scheme(dark: bool) {
   with_state(|state| {
     state.dark.set(dark);
     state.dirty.set(true);
+  });
+}
+
+/// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving
+/// scrolling. Positive deltas scroll right and down, one cell per unit; hit-testing
+/// resolves against the last render's layout.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i32, delta_rows: i32) {
+  with_state(|state| {
+    skene_reactive::Effect::batch(|| state.mouse_scroll(x, y, delta_columns, delta_rows));
   });
 }

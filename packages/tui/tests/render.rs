@@ -613,3 +613,148 @@ fn color_scheme_conditions_follow_the_background() {
   assert!(dark.contains('┌'));
   assert!(!light.contains('┌'));
 }
+
+/// A scroll box clips its content, the wheel moves it, a click resolves against the
+/// scrolled position, and a thumb marks the offset on the right edge.
+#[test]
+fn scroll_box_clips_wheels_and_hit_tests() {
+  let clicked = Rc::new(std::cell::RefCell::new(Vec::new()));
+  let clicks = Rc::clone(&clicked);
+  let (first, scrolled, log) = with_driver(move || {
+    tui::mount(|| {
+      Container::new()
+        .set_child(
+          Container::column()
+            .set_height(3)
+            .set_overflow(Overflow::Auto)
+            .derive_children(
+              || 0..6,
+              |index| *index,
+              move |index| {
+                let clicked = Rc::clone(&clicked);
+
+                Container::new()
+                  .handle_click(move || clicked.borrow_mut().push(index))
+                  .set_child(Text::new(format!("item {index}")))
+              },
+            ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let first = tui::render_to_text(12, 4);
+
+    tui::trigger_mouse_scroll(2, 1, 0, 2);
+
+    let scrolled = tui::render_to_text(12, 4);
+
+    tui::trigger_mouse_click(2, 1);
+
+    (first, scrolled, clicks.borrow().clone())
+  });
+
+  assert!(first.contains("item 0"));
+  assert!(first.contains("item 2"));
+  assert!(!first.contains("item 3"));
+  assert!(first.contains('█'));
+
+  assert!(!scrolled.contains("item 1"));
+  assert!(scrolled.contains("item 2"));
+  assert!(scrolled.contains("item 4"));
+  assert!(!scrolled.contains("item 5"));
+
+  assert_eq!(log, vec![3]);
+}
+
+/// Focusing a control below the fold scrolls it into view.
+#[test]
+fn focus_scrolls_into_view() {
+  let frame = with_driver(|| {
+    tui::mount(|| {
+      Container::column()
+        .set_height(3)
+        .set_overflow(Overflow::Scroll)
+        .set_children(
+          (0..6)
+            .map(|index| {
+              Button::new()
+                .set_child(Text::new(format!("button {index}")))
+                .into_any()
+            })
+            .collect::<Vec<_>>(),
+        )
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(12, 4);
+
+    for _ in 0..5 {
+      tui::trigger_key("Tab");
+    }
+
+    tui::render_to_text(12, 4)
+  });
+
+  assert!(frame.contains("button 4"));
+  assert!(!frame.contains("button 0"));
+}
+
+/// A virtual list builds only the visible slice plus overscan, and scrolling shifts
+/// that window while the content stays in place.
+#[test]
+fn virtual_list_windows_its_items() {
+  let built = Rc::new(std::cell::RefCell::new(Vec::new()));
+  let log = Rc::clone(&built);
+  let (first, second, scrolled, log) = with_driver(move || {
+    tui::mount(|| {
+      Container::new()
+        .set_child(
+          VirtualList::new(
+            1,
+            || 1000,
+            move |index| {
+              log.borrow_mut().push(index);
+
+              Text::new(format!("row {index}"))
+            },
+          )
+          .set_overscan(2)
+          .set_style(BoxStyle::new().set_height(4)),
+        )
+        .into_any()
+        .build()
+    });
+
+    // The first render measures the viewport; the second builds the settled window.
+    let first = tui::render_to_text(12, 6);
+    let second = tui::render_to_text(12, 6);
+
+    tui::trigger_mouse_scroll(2, 1, 0, 500);
+
+    let scrolled = tui::render_to_text(12, 6);
+
+    (first, second, scrolled, built.borrow().clone())
+  });
+
+  assert!(first.contains("row 0"));
+
+  assert!(second.contains("row 0"));
+  assert!(second.contains("row 3"));
+  assert!(!second.contains("row 7"));
+
+  assert!(scrolled.contains("row 500"));
+  assert!(scrolled.contains("row 503"));
+
+  let max_built = log.iter().copied().max().unwrap_or(0);
+  let min_built_after_500 = log.iter().copied().filter(|index| *index >= 490).count();
+
+  assert!(
+    log.len() < 30,
+    "built {} items instead of a window",
+    log.len()
+  );
+  assert!(max_built < 520);
+  assert!(min_built_after_500 > 0);
+}

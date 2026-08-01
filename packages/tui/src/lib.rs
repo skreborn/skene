@@ -35,6 +35,7 @@ mod state;
 mod style;
 mod terminal;
 mod text;
+mod virtual_list;
 
 use std::cell::RefCell;
 
@@ -61,18 +62,20 @@ pub use terminal::{
   trigger_key,
   trigger_mouse_click,
   trigger_mouse_move,
+  trigger_mouse_scroll,
 };
 
 pub use crate::{
   button::Button,
   container::Container,
-  events::PointerEvent,
+  events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   input::Input,
   overlay::{Anchor, Overlay},
   props::{BoxStyle, Condition, RunStyle},
   routing::install_router,
   text::Text,
+  virtual_list::VirtualList,
 };
 
 /// Spacing on the four edges of a box, in cells.

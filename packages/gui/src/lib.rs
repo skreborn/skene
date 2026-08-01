@@ -32,6 +32,7 @@ mod slider;
 mod task;
 mod text;
 mod textarea;
+mod virtual_list;
 
 pub use skene_core::{self as core, *};
 pub use skene_macros::main;
@@ -71,6 +72,7 @@ pub use crate::{
   slider::Slider,
   text::{RichText, Span, Text, TextStyle, TextTheme},
   textarea::Textarea,
+  virtual_list::VirtualList,
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural

@@ -14,6 +14,7 @@ mod style;
 mod tree;
 mod values;
 mod view;
+mod virtualize;
 
 pub use boundary::Boundary;
 pub use children::{Children, HasChildren, IntoChildren};
@@ -62,3 +63,4 @@ pub use values::{
   Size,
 };
 pub use view::{AnyView, IntoView, View};
+pub use virtualize::{VirtualWindow, virtual_window};

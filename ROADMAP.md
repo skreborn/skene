@@ -148,7 +148,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   exactly like the web.
 - **Remaining (parity):** the rest of the control set in cells (checkbox `[x]`, radio
   `(•)`, slider track, select cycling)—textarea waits on caret positioning.
-- **Remaining:** text wrapping; scroll (incl. mouse wheel); caret positioning in inputs
+- **Scroll—done.** `set_overflow` on the box vocabulary (taffy computes the scroll
+  region); the wheel scrolls the innermost box that can still move, `PageUp`/`PageDown`
+  the scrollable nearest the focus; children paint clipped and offset, with proportional
+  track-and-thumb overlays on the overflowing edges; hit-testing resolves through the
+  offsets; focusing a control scrolls it into view; `trigger_mouse_scroll` drives it
+  headlessly.
+- **Remaining:** text wrapping; caret positioning in inputs
   (edits append/pop only); a diffed redraw instead of full frames; selectable border
   character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,
   custom); box shadows (always a 1×1 offset to the bottom-right, color and opacity
@@ -246,8 +252,13 @@ sink are just different sinks for the same paths.)
 - **All basic controls**: checkbox, select, textarea, radio, slider, and friends—
   unstyled by default with full keyboard and ARIA behavior; a styled set may ship as a
   separate optional package.
-- **List virtualization**: windowed rendering for large lists, on every facade (the TUI
-  scroll view and native lists need it alike).
+- **List virtualization—done (web + TUI).** `VirtualList` on both facades: a scrollable
+  column of fixed-extent, index-keyed items, only the visible slice plus an overscan
+  margin built (over `reconcile`), the rest carried by two derived spacers; the window
+  math lives once in core (`virtual_window`). The web measures the viewport with a
+  `ResizeObserver` and SSR serializes the overscan margin; the TUI reports viewport
+  sizes after layout. Remaining: variable-extent items, horizontal lists, and the
+  native realization with its driver.
 - **Internationalization**: first-class eventually—message catalogs, locale-aware
   formatting, reactive locale switching.
 

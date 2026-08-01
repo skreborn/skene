@@ -86,6 +86,17 @@ struct State {
   adopted: RefCell<FxHashSet<NodeId>>,
   /// Each overlay node's realization config.
   overlays: RefCell<FxHashMap<NodeId, (bool, Placement)>>,
+  /// Each watched node's size observer and its live callback closure.
+  #[expect(clippy::type_complexity)]
+  observers: RefCell<
+    FxHashMap<
+      NodeId,
+      (
+        web_sys::ResizeObserver,
+        wasm_bindgen::closure::Closure<dyn FnMut()>,
+      ),
+    >,
+  >,
 }
 
 impl State {
@@ -127,6 +138,7 @@ impl State {
       hydration: RefCell::new(None),
       adopted: RefCell::new(FxHashSet::default()),
       overlays: RefCell::new(FxHashMap::default()),
+      observers: RefCell::new(FxHashMap::default()),
     }
   }
 
@@ -378,6 +390,26 @@ impl State {
 
           events::run_handlers(&handlers, id, &payload, |run, payload| run(payload));
         });
+    });
+  }
+
+  /// Watches `node`'s content size, running `handler` with its width and height in
+  /// logical pixels once observed and on every change, until the node is destroyed.
+  pub fn observe_size(&self, node: NodeId, handler: Rc<dyn Fn(f32, f32)>) {
+    self.with_element(node, |element| {
+      let target = element.clone();
+      let closure = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
+        #[expect(clippy::cast_precision_loss)]
+        handler(target.client_width() as f32, target.client_height() as f32);
+      });
+      let observer =
+        web_sys::ResizeObserver::new(closure.as_ref().unchecked_ref()).expect("a resize observer");
+
+      observer.observe(element);
+      self
+        .observers
+        .borrow_mut()
+        .insert(node, (observer, closure));
     });
   }
 
@@ -795,6 +827,7 @@ impl State {
     let mut nodes = self.nodes.borrow_mut();
     let mut node_class = self.node_class.borrow_mut();
     let mut styles = self.styles.borrow_mut();
+    let mut observers = self.observers.borrow_mut();
 
     while let Some(current) = stack.pop() {
       if let Some(descendants) = children.remove(&current) {
@@ -806,6 +839,11 @@ impl State {
 
       if let Some(class) = node_class.remove(&current) {
         styles.release(&class);
+      }
+
+      if let Some((observer, closure)) = observers.remove(&current) {
+        observer.disconnect();
+        drop(closure);
       }
 
       self.events.remove(current);
@@ -1008,6 +1046,11 @@ pub fn handle_pointer_move(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
 /// Registers a scroll handler on `node`; see [`State::handle_scroll`].
 pub fn handle_scroll(node: NodeId, handler: Rc<dyn Fn(&ScrollEvent)>) {
   with_state(|state| state.handle_scroll(node, handler));
+}
+
+/// Watches a node's content size; see [`State::observe_size`].
+pub fn observe_size(node: NodeId, handler: Rc<dyn Fn(f32, f32)>) {
+  with_state(|state| state.observe_size(node, handler));
 }
 
 /// Moves keyboard focus to `node`.

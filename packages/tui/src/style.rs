@@ -5,7 +5,15 @@
 //! effective style maps to a taffy [`Style`] for layout and to paint attributes for
 //! drawing.
 
-use skene_core::{Axis, Color, Composable, CrossAxisAlignment, Layout, MainAxisAlignment};
+use skene_core::{
+  Axis,
+  Color,
+  Composable,
+  CrossAxisAlignment,
+  Layout,
+  MainAxisAlignment,
+  Overflow,
+};
 use taffy::{
   prelude::{TaffyAuto, TaffyGridLine, fr, length, repeat},
   style::{AlignItems, Dimension, Display, FlexDirection, GridPlacement, JustifyContent, Style},
@@ -61,6 +69,7 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.border = over.border.or(base.border);
   base.spacing = over.spacing.or(base.spacing);
   base.cursor = over.cursor.or(base.cursor);
+  base.overflow = over.overflow.or(base.overflow);
   base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
   base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
 
@@ -172,6 +181,19 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     out.gap = taffy::geometry::Size {
       width: length(f32::from(spacing)),
       height: length(f32::from(spacing)),
+    };
+  }
+
+  if let Some(overflow) = style.overflow {
+    let mapped = match overflow {
+      Overflow::Visible => taffy::style::Overflow::Visible,
+      Overflow::Hidden => taffy::style::Overflow::Hidden,
+      Overflow::Scroll | Overflow::Auto => taffy::style::Overflow::Scroll,
+    };
+
+    out.overflow = taffy::geometry::Point {
+      x: mapped,
+      y: mapped,
     };
   }
 

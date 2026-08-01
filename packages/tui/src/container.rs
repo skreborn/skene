@@ -11,6 +11,7 @@ use skene_core::{
   MainAxisAlignment,
   MouseCursor,
   NodeId,
+  Overflow,
   Source,
   View,
 };
@@ -18,7 +19,7 @@ use skene_core::{
 use crate::{
   Children,
   Inset,
-  events::PointerEvent,
+  events::{PointerEvent, ScrollEvent},
   props::{BoxProp, BoxStyle, Condition},
   realize::{Binders, split_prop},
   state::NodeKind,
@@ -48,6 +49,7 @@ pub struct Container {
   border: Option<Source<Color>>,
   spacing: Option<Source<u16>>,
   cursor: Option<Source<MouseCursor>>,
+  overflow: Option<Source<Overflow>>,
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
   cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   variants: Vec<(Condition, BoxStyle)>,
@@ -64,6 +66,8 @@ pub struct Container {
   pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
   #[expect(clippy::type_complexity)]
   pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  scroll_handler: Option<Rc<dyn Fn(&ScrollEvent)>>,
   anchor: Option<crate::Anchor>,
 }
 
@@ -84,6 +88,7 @@ impl Container {
       border: None,
       spacing: None,
       cursor: None,
+      overflow: None,
       main_axis_alignment: None,
       cross_axis_alignment: None,
       variants: Vec::new(),
@@ -96,6 +101,7 @@ impl Container {
       pointer_down_handler: None,
       pointer_up_handler: None,
       pointer_move_handler: None,
+      scroll_handler: None,
       anchor: None,
     }
   }
@@ -310,6 +316,23 @@ impl Container {
     self
   }
 
+  /// Sets how content overflowing the box behaves; `Scroll` and `Auto` make it
+  /// scrollable by mouse wheel and `PageUp`/`PageDown`.
+  #[inline(always)]
+  pub fn set_overflow(mut self, overflow: Overflow) -> Self {
+    self.overflow = Some(Source::Static(overflow));
+
+    self
+  }
+
+  /// Sets a derived overflow behavior.
+  #[inline(always)]
+  pub fn derive_overflow(mut self, overflow: impl Fn() -> Overflow + 'static) -> Self {
+    self.overflow = Some(Source::Derived(Rc::new(overflow)));
+
+    self
+  }
+
   /// Sets a static main axis alignment.
   #[inline(always)]
   pub fn set_main_axis_alignment(mut self, alignment: MainAxisAlignment) -> Self {
@@ -426,6 +449,17 @@ impl Container {
   #[inline(always)]
   pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
     self.pointer_move_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the scroll handler, run with the new offsets when the box scrolls.
+  ///
+  /// The box scrolls only with an overflow that allows it; see
+  /// [`set_overflow`](Self::set_overflow).
+  #[inline(always)]
+  pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.scroll_handler = Some(Rc::new(action));
 
     self
   }
@@ -552,6 +586,14 @@ impl View for Container {
     );
 
     split_prop(
+      self.overflow,
+      &mut style.overflow,
+      &mut binders,
+      BoxProp::Overflow,
+      update_box,
+    );
+
+    split_prop(
       self.main_axis_alignment,
       &mut style.main_axis_alignment,
       &mut binders,
@@ -658,6 +700,15 @@ impl View for Container {
       if let Some(action) = self.pointer_move_handler {
         state
           .pointer_move
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if let Some(action) = self.scroll_handler {
+        state
+          .scroll
           .borrow_mut()
           .entry(node)
           .or_default()

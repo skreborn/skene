@@ -62,6 +62,7 @@ pub use crate::{
   TextStyle,
   TextTheme,
   Textarea,
+  VirtualList,
   main,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]

@@ -46,6 +46,9 @@ pub(crate) struct Buffer {
   pub(crate) width: usize,
   pub(crate) height: usize,
   pub(crate) cells: Vec<TerminalCell>,
+  /// The active clip rectangle (start inclusive, end exclusive), while a clipping box
+  /// paints its children.
+  clip: Option<(isize, isize, isize, isize)>,
 }
 
 impl Buffer {
@@ -54,11 +57,18 @@ impl Buffer {
       width,
       height,
       cells: vec![TerminalCell::EMPTY; width * height],
+      clip: None,
     }
   }
 
   fn cell_mut(&mut self, x: isize, y: isize) -> Option<&mut TerminalCell> {
     if x < 0 || y < 0 {
+      return None;
+    }
+
+    if let Some((clip_x, clip_y, clip_end_x, clip_end_y)) = self.clip
+      && (x < clip_x || y < clip_y || x >= clip_end_x || y >= clip_end_y)
+    {
       return None;
     }
 
@@ -90,6 +100,10 @@ impl Buffer {
 }
 
 /// Lays the tree out at `width` x `height` and paints it.
+///
+/// A pending scroll-into-view and the viewport watchers resolve between layout and
+/// paint; the handlers they fire may rebuild content, so the layout is computed again
+/// until it settles (bounded, so a pathological feedback loop still paints).
 pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   let environment = Environment {
     columns: width,
@@ -98,36 +112,17 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   };
 
   state.last_size.set((width, height));
-  refresh_styles(state, environment);
+  compute_layout(state, environment, width, height);
 
-  {
-    let root_taffy = state.nodes.borrow()[&ROOT_ID].taffy;
-    let mut taffy = state.taffy.borrow_mut();
+  for _ in 0..3 {
+    let revealed = state.resolve_reveal();
+    let viewports = state.notify_viewports();
 
-    taffy
-      .set_style(
-        root_taffy,
-        taffy::style::Style {
-          display: taffy::style::Display::Flex,
-          flex_direction: taffy::style::FlexDirection::Column,
-          size: taffy::geometry::Size {
-            width: length(f32::from(width)),
-            height: length(f32::from(height)),
-          },
-          ..taffy::style::Style::default()
-        },
-      )
-      .expect("style the root");
+    if !(revealed || viewports) {
+      break;
+    }
 
-    taffy
-      .compute_layout(
-        root_taffy,
-        taffy::geometry::Size {
-          width: AvailableSpace::Definite(f32::from(width)),
-          height: AvailableSpace::Definite(f32::from(height)),
-        },
-      )
-      .expect("compute the layout");
+    compute_layout(state, environment, width, height);
   }
 
   let mut buffer = Buffer::new(usize::from(width), usize::from(height));
@@ -139,6 +134,39 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   }
 
   buffer
+}
+
+/// Refreshes every taffy style and computes the layout at `width` x `height`.
+fn compute_layout(state: &State, environment: Environment, width: u16, height: u16) {
+  refresh_styles(state, environment);
+
+  let root_taffy = state.nodes.borrow()[&ROOT_ID].taffy;
+  let mut taffy = state.taffy.borrow_mut();
+
+  taffy
+    .set_style(
+      root_taffy,
+      taffy::style::Style {
+        display: taffy::style::Display::Flex,
+        flex_direction: taffy::style::FlexDirection::Column,
+        size: taffy::geometry::Size {
+          width: length(f32::from(width)),
+          height: length(f32::from(height)),
+        },
+        ..taffy::style::Style::default()
+      },
+    )
+    .expect("style the root");
+
+  taffy
+    .compute_layout(
+      root_taffy,
+      taffy::geometry::Size {
+        width: AvailableSpace::Definite(f32::from(width)),
+        height: AvailableSpace::Definite(f32::from(height)),
+      },
+    )
+    .expect("compute the layout");
 }
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
@@ -325,7 +353,7 @@ fn paint_node(
   offset_x: isize,
   offset_y: isize,
 ) {
-  let (kind_paint, children, x, y, width, height) = {
+  let (kind_paint, children, x, y, width, height, border) = {
     let nodes = state.nodes.borrow();
     let Some(record) = nodes.get(&node)
     else {
@@ -348,6 +376,14 @@ fn paint_node(
     let (width, height) = (
       layout.size.width.round().max(0.0) as usize,
       layout.size.height.round().max(0.0) as usize,
+    );
+
+    #[expect(clippy::cast_possible_truncation)]
+    let border = (
+      layout.border.left.round() as isize,
+      layout.border.top.round() as isize,
+      layout.border.right.round() as isize,
+      layout.border.bottom.round() as isize,
     );
 
     let interaction = Interaction {
@@ -426,7 +462,7 @@ fn paint_node(
       NodeKind::Group => NodePaint::None,
     };
 
-    (paint, record.children.clone(), x, y, width, height)
+    (paint, record.children.clone(), x, y, width, height, border)
   };
 
   match kind_paint {
@@ -480,13 +516,142 @@ fn paint_node(
     NodePaint::None => {}
   }
 
+  let saved_clip = buffer.clip;
+
+  if state.clips(node) {
+    let rect = (
+      x + border.0,
+      y + border.1,
+      x + isize::try_from(width).unwrap_or(isize::MAX) - border.2,
+      y + isize::try_from(height).unwrap_or(isize::MAX) - border.3,
+    );
+
+    buffer.clip = Some(match saved_clip {
+      Some(outer) => intersect(outer, rect),
+      None => rect,
+    });
+  }
+
+  let (scroll_x, scroll_y) = state.scroll_offset(node);
+  let (child_x, child_y) = (
+    x - isize::try_from(scroll_x).unwrap_or(0),
+    y - isize::try_from(scroll_y).unwrap_or(0),
+  );
+
   for child in children {
     if state.is_overlay(child) {
       continue;
     }
 
-    paint_node(state, environment, buffer, child, x, y);
+    paint_node(state, environment, buffer, child, child_x, child_y);
   }
+
+  buffer.clip = saved_clip;
+
+  if state.is_scrollable(node) {
+    draw_scrollbars(state, buffer, node, x, y, width, height, border);
+  }
+}
+
+/// The intersection of two clip rectangles.
+const fn intersect(
+  first: (isize, isize, isize, isize),
+  second: (isize, isize, isize, isize),
+) -> (isize, isize, isize, isize) {
+  (
+    if first.0 > second.0 {
+      first.0
+    }
+    else {
+      second.0
+    },
+    if first.1 > second.1 {
+      first.1
+    }
+    else {
+      second.1
+    },
+    if first.2 < second.2 {
+      first.2
+    }
+    else {
+      second.2
+    },
+    if first.3 < second.3 {
+      first.3
+    }
+    else {
+      second.3
+    },
+  )
+}
+
+/// Overlays scrollbar tracks and thumbs on a scrollable box's right and bottom edges,
+/// each drawn only while its axis overflows.
+#[expect(clippy::too_many_arguments)]
+fn draw_scrollbars(
+  state: &State,
+  buffer: &mut Buffer,
+  node: NodeId,
+  x: isize,
+  y: isize,
+  width: usize,
+  height: usize,
+  border: (isize, isize, isize, isize),
+) {
+  let (offset_x, offset_y) = state.scroll_offset(node);
+  let (limit_x, limit_y) = state.scroll_limits(node);
+  let (width, height) = (
+    isize::try_from(width).unwrap_or(0),
+    isize::try_from(height).unwrap_or(0),
+  );
+
+  if limit_y > 0 {
+    let track = height - border.1 - border.3;
+    let (top, thumb) = thumb_span(track, offset_y, limit_y);
+
+    for row in 0..track {
+      if let Some(cell) = buffer.cell_mut(x + width - 1, y + border.1 + row) {
+        cell.character = if row >= top && row < top + thumb {
+          '█'
+        }
+        else {
+          '░'
+        };
+      }
+    }
+  }
+
+  if limit_x > 0 {
+    let track = width - border.0 - border.2;
+    let (start, thumb) = thumb_span(track, offset_x, limit_x);
+
+    for column in 0..track {
+      if let Some(cell) = buffer.cell_mut(x + border.0 + column, y + height - 1) {
+        cell.character = if column >= start && column < start + thumb {
+          '█'
+        }
+        else {
+          '░'
+        };
+      }
+    }
+  }
+}
+
+/// A scrollbar thumb's start and length along a track, proportional to the viewport
+/// within the scrollable content.
+fn thumb_span(track: isize, offset: u16, limit: u16) -> (isize, isize) {
+  if track <= 0 {
+    return (0, 0);
+  }
+
+  let limit = isize::try_from(limit).unwrap_or(0);
+  let content = track + limit;
+  let thumb = (track * track / content).max(1).min(track);
+  let start = (track - thumb) * isize::try_from(offset).unwrap_or(0) / limit.max(1);
+
+  (start, thumb)
 }
 
 /// A border's paint: present, with an optional explicit color.

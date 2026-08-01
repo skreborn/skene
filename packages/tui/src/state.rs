@@ -13,12 +13,13 @@ use skene_core::{
   Modifiers,
   MouseCursor,
   NodeId,
+  Overflow,
   Placement,
   PointerButton,
 };
 
 use crate::{
-  events::PointerEvent,
+  events::{PointerEvent, ScrollEvent},
   props::{BoxStyle, Condition, RunStyle},
   style::{Environment, Interaction, effective_box_style},
 };
@@ -88,6 +89,7 @@ pub(crate) struct State {
   pub(crate) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
+  pub(crate) scroll: Handlers<dyn Fn(&ScrollEvent)>,
   pub(crate) dismiss: Handlers<dyn Fn()>,
   /// Every overlay node, in build order—later entries stack on top.
   pub(crate) overlays: RefCell<Vec<NodeId>>,
@@ -100,6 +102,14 @@ pub(crate) struct State {
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
   pub(crate) dark: Cell<bool>,
+  /// Each scrolled node's offsets, in cells.
+  pub(crate) scroll_offsets: RefCell<FxHashMap<NodeId, (u16, u16)>>,
+  /// The node to scroll into view once the next layout is computed.
+  pub(crate) reveal: Cell<Option<NodeId>>,
+  /// Each watched node's viewport callback and last reported content size, run after
+  /// layout when that size changes.
+  #[expect(clippy::type_complexity)]
+  pub(crate) viewport_watchers: RefCell<FxHashMap<NodeId, (Rc<dyn Fn(u16, u16)>, (u16, u16))>>,
   /// The terminal title, emitted via OSC 2 when it changes.
   pub(crate) title: RefCell<Option<String>>,
   /// Whether the title changed since it was last emitted.
@@ -146,6 +156,7 @@ impl State {
       pointer_down: RefCell::new(FxHashMap::default()),
       pointer_up: RefCell::new(FxHashMap::default()),
       pointer_move: RefCell::new(FxHashMap::default()),
+      scroll: RefCell::new(FxHashMap::default()),
       dismiss: RefCell::new(FxHashMap::default()),
       overlays: RefCell::new(Vec::new()),
       focused: Cell::new(None),
@@ -153,6 +164,9 @@ impl State {
       hovered: RefCell::new(Vec::new()),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
+      scroll_offsets: RefCell::new(FxHashMap::default()),
+      reveal: Cell::new(None),
+      viewport_watchers: RefCell::new(FxHashMap::default()),
       title: RefCell::new(None),
       title_dirty: Cell::new(false),
       dirty: Cell::new(true),
@@ -300,10 +314,17 @@ impl State {
       self.pointer_down.borrow_mut().remove(&current);
       self.pointer_up.borrow_mut().remove(&current);
       self.pointer_move.borrow_mut().remove(&current);
+      self.scroll.borrow_mut().remove(&current);
       self.dismiss.borrow_mut().remove(&current);
       self.overlays.borrow_mut().retain(|node| *node != current);
       self.hovered.borrow_mut().retain(|node| *node != current);
       self.controls.borrow_mut().remove(&current);
+      self.scroll_offsets.borrow_mut().remove(&current);
+      self.viewport_watchers.borrow_mut().remove(&current);
+
+      if self.reveal.get() == Some(current) {
+        self.reveal.set(None);
+      }
 
       if self.focused.get() == Some(current) {
         self.focused.set(None);
@@ -414,7 +435,8 @@ impl State {
     self.set_focused(Some(next));
   }
 
-  /// Sets the focused node, firing blur and focus handlers on change.
+  /// Sets the focused node, firing blur and focus handlers on change; the newly focused
+  /// node is scrolled into view at the next render.
   pub(crate) fn set_focused(&self, next: Option<NodeId>) {
     let previous = self.focused.replace(next);
 
@@ -428,6 +450,8 @@ impl State {
 
     if let Some(next) = next {
       Self::run_handlers(&self.focus, next, (), |run, ()| run());
+
+      self.reveal.set(Some(next));
     }
 
     self.dirty.set(true);
@@ -502,13 +526,20 @@ impl State {
 
     path.push((node, (origin_x, origin_y)));
 
+    // A scrolled box shifts its children by its offsets.
+    let (scroll_x, scroll_y) = self.scroll_offset(node);
+    let (child_x, child_y) = (
+      origin_x - i32::from(scroll_x),
+      origin_y - i32::from(scroll_y),
+    );
+
     // Later children paint on top, so they win the hit; overlays hit separately.
     for child in children.iter().rev() {
       if self.is_overlay(*child) {
         continue;
       }
 
-      if self.hit_walk(*child, origin_x, origin_y, x, y, path) {
+      if self.hit_walk(*child, child_x, child_y, x, y, path) {
         break;
       }
     }
@@ -654,7 +685,8 @@ impl State {
     })
   }
 
-  /// A node's absolute origin: its taffy locations summed up the parent chain.
+  /// A node's absolute origin: its taffy locations summed up the parent chain, each
+  /// ancestor's scroll offsets subtracted.
   fn absolute_origin(&self, node: NodeId) -> (i32, i32) {
     let nodes = self.nodes.borrow();
     let taffy = self.taffy.borrow();
@@ -673,6 +705,13 @@ impl State {
           x += layout.location.x.round() as i32;
           y += layout.location.y.round() as i32;
         }
+      }
+
+      if let Some(parent) = record.parent {
+        let (scroll_x, scroll_y) = self.scroll_offset(parent);
+
+        x -= i32::from(scroll_x);
+        y -= i32::from(scroll_y);
       }
 
       current = record.parent;
@@ -774,15 +813,21 @@ impl State {
     )
   }
 
-  /// The pointer shape for the current hover path: the deepest hovered node with a
-  /// cursor set, resolved through its effective style.
-  pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
+  /// The current environment conditions resolve against.
+  pub(crate) fn environment(&self) -> Environment {
     let (columns, rows) = self.last_size.get();
-    let environment = Environment {
+
+    Environment {
       columns,
       rows,
       dark: self.dark.get(),
-    };
+    }
+  }
+
+  /// The pointer shape for the current hover path: the deepest hovered node with a
+  /// cursor set, resolved through its effective style.
+  pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
+    let environment = self.environment();
     let hovered = self.hovered.borrow();
     let nodes = self.nodes.borrow();
 
@@ -805,5 +850,346 @@ impl State {
 
       effective_box_style(style, variants, environment, interaction).cursor
     })
+  }
+
+  /// A node's effective overflow, `Visible` when unset or the node has no box style.
+  fn effective_overflow(&self, node: NodeId) -> Overflow {
+    let nodes = self.nodes.borrow();
+    let Some(record) = nodes.get(&node)
+    else {
+      return Overflow::Visible;
+    };
+
+    let (NodeKind::Box {
+      style, variants, ..
+    }
+    | NodeKind::Input {
+      style, variants, ..
+    }
+    | NodeKind::Overlay {
+      style, variants, ..
+    }) = &record.kind
+    else {
+      return Overflow::Visible;
+    };
+
+    let interaction = Interaction {
+      focused: self.focused.get() == Some(node),
+      hovered: self.hovered.borrow().contains(&node),
+    };
+
+    effective_box_style(style, variants, self.environment(), interaction)
+      .overflow
+      .unwrap_or(Overflow::Visible)
+  }
+
+  /// Whether the node's content scrolls.
+  pub(crate) fn is_scrollable(&self, node: NodeId) -> bool {
+    matches!(
+      self.effective_overflow(node),
+      Overflow::Scroll | Overflow::Auto
+    )
+  }
+
+  /// Whether the node clips its children when painting.
+  pub(crate) fn clips(&self, node: NodeId) -> bool {
+    !matches!(self.effective_overflow(node), Overflow::Visible)
+  }
+
+  /// A node's scroll offsets, clamped to what the last layout allows.
+  pub(crate) fn scroll_offset(&self, node: NodeId) -> (u16, u16) {
+    let Some((x, y)) = self.scroll_offsets.borrow().get(&node).copied()
+    else {
+      return (0, 0);
+    };
+
+    let (limit_x, limit_y) = self.scroll_limits(node);
+
+    (x.min(limit_x), y.min(limit_y))
+  }
+
+  /// A node's maximum scroll offsets, from the last computed layout.
+  pub(crate) fn scroll_limits(&self, node: NodeId) -> (u16, u16) {
+    let nodes = self.nodes.borrow();
+    let Some(record) = nodes.get(&node)
+    else {
+      return (0, 0);
+    };
+
+    match self.taffy.borrow().layout(record.taffy) {
+      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      Ok(layout) => (
+        layout.scroll_width().round().max(0.0) as u16,
+        layout.scroll_height().round().max(0.0) as u16,
+      ),
+      Err(_) => (0, 0),
+    }
+  }
+
+  /// Scrolls the node by a delta, clamped to its limits, firing its scroll handlers;
+  /// `false` when the node does not scroll or cannot move further.
+  pub(crate) fn scroll_by(&self, node: NodeId, delta_x: i32, delta_y: i32) -> bool {
+    if !self.is_scrollable(node) {
+      return false;
+    }
+
+    let (limit_x, limit_y) = self.scroll_limits(node);
+    let (x, y) = self.scroll_offset(node);
+    let next = (
+      u16::try_from((i32::from(x) + delta_x).clamp(0, i32::from(limit_x))).expect("clamped"),
+      u16::try_from((i32::from(y) + delta_y).clamp(0, i32::from(limit_y))).expect("clamped"),
+    );
+
+    if next == (x, y) {
+      return false;
+    }
+
+    self.set_scroll(node, next);
+
+    true
+  }
+
+  /// Stores a node's offsets, fires its scroll handlers, and repaints.
+  fn set_scroll(&self, node: NodeId, (x, y): (u16, u16)) {
+    self.scroll_offsets.borrow_mut().insert(node, (x, y));
+    self.dirty.set(true);
+
+    Self::run_handlers(
+      &self.scroll,
+      node,
+      &ScrollEvent { column: x, row: y },
+      |run, event| run(event),
+    );
+  }
+
+  /// Scrolls the innermost box under the cell (`x`, `y`) that can still move in the
+  /// given direction.
+  pub(crate) fn mouse_scroll(&self, x: u16, y: u16, delta_x: i32, delta_y: i32) {
+    for (node, _) in self.hit_test(x, y).iter().rev() {
+      if self.scroll_by(*node, delta_x, delta_y) {
+        return;
+      }
+    }
+  }
+
+  /// Scrolls the nearest scrollable box around the focus (or the first in tree order)
+  /// by `pages` viewport heights.
+  pub(crate) fn page_scroll(&self, pages: i32) {
+    let target = self
+      .focused
+      .get()
+      .and_then(|focused| {
+        self
+          .ancestors(focused)
+          .into_iter()
+          .find(|node| self.is_scrollable(*node))
+      })
+      .or_else(|| self.first_scrollable());
+
+    if let Some(node) = target {
+      let (_, height) = self.node_size(node);
+      let _ = self.scroll_by(node, 0, pages * height.max(1));
+    }
+  }
+
+  /// The first scrollable node in tree order.
+  fn first_scrollable(&self) -> Option<NodeId> {
+    let order: Vec<NodeId> = {
+      let nodes = self.nodes.borrow();
+      let mut order = Vec::new();
+      let mut stack = vec![ROOT_ID];
+
+      while let Some(current) = stack.pop() {
+        if let Some(record) = nodes.get(&current) {
+          order.push(current);
+          stack.extend(record.children.iter().rev());
+        }
+      }
+
+      order
+    };
+
+    order.into_iter().find(|node| self.is_scrollable(*node))
+  }
+
+  /// Registers `watch` to run with the node's content size (inside its border) after
+  /// each layout in which that size changed.
+  pub(crate) fn watch_viewport(&self, node: NodeId, watch: Rc<dyn Fn(u16, u16)>) {
+    self
+      .viewport_watchers
+      .borrow_mut()
+      .insert(node, (watch, (0, 0)));
+  }
+
+  /// Runs the viewport watchers whose content size changed since they last ran; `true`
+  /// when any did. Call once the layout is computed.
+  pub(crate) fn notify_viewports(&self) -> bool {
+    let mut pending = Vec::new();
+
+    {
+      let nodes = self.nodes.borrow();
+      let taffy = self.taffy.borrow();
+      let mut watchers = self.viewport_watchers.borrow_mut();
+
+      for (node, (watch, last)) in watchers.iter_mut() {
+        let Some(record) = nodes.get(node)
+        else {
+          continue;
+        };
+
+        let Ok(layout) = taffy.layout(record.taffy)
+        else {
+          continue;
+        };
+
+        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let size = (
+          (layout.size.width - layout.border.left - layout.border.right)
+            .round()
+            .max(0.0) as u16,
+          (layout.size.height - layout.border.top - layout.border.bottom)
+            .round()
+            .max(0.0) as u16,
+        );
+
+        if size != *last {
+          *last = size;
+
+          pending.push((Rc::clone(watch), size));
+        }
+      }
+    }
+
+    let changed = !pending.is_empty();
+
+    for (watch, (width, height)) in pending {
+      watch(width, height);
+    }
+
+    changed
+  }
+
+  /// Scrolls ancestors so the pending reveal target is visible, firing scroll handlers;
+  /// `true` when any offset changed. Call once the layout is computed.
+  pub(crate) fn resolve_reveal(&self) -> bool {
+    let Some(node) = self.reveal.take()
+    else {
+      return false;
+    };
+
+    let mut adjusted = Vec::new();
+
+    {
+      let nodes = self.nodes.borrow();
+      let taffy = self.taffy.borrow();
+      let layout_of = |id: NodeId| {
+        nodes
+          .get(&id)
+          .and_then(|record| taffy.layout(record.taffy).ok().copied())
+      };
+      let Some(layout) = layout_of(node)
+      else {
+        return false;
+      };
+
+      #[expect(clippy::cast_possible_truncation)]
+      let (mut rel_x, mut rel_y) = (
+        layout.location.x.round() as i32,
+        layout.location.y.round() as i32,
+      );
+
+      #[expect(clippy::cast_possible_truncation)]
+      let (width, height) = (
+        layout.size.width.round().max(0.0) as i32,
+        layout.size.height.round().max(0.0) as i32,
+      );
+
+      let mut current = nodes.get(&node).and_then(|record| record.parent);
+
+      while let Some(ancestor) = current {
+        let Some(ancestor_layout) = layout_of(ancestor)
+        else {
+          break;
+        };
+
+        let (mut offset_x, mut offset_y) = self.scroll_offset(ancestor);
+
+        if self.is_scrollable(ancestor) {
+          let (limit_x, limit_y) = self.scroll_limits(ancestor);
+
+          #[expect(clippy::cast_possible_truncation)]
+          let next = (
+            fit_axis(
+              i32::from(offset_x),
+              rel_x,
+              width,
+              ancestor_layout.size.width.round() as i32,
+              ancestor_layout.border.left.round() as i32,
+              i32::from(limit_x),
+            ),
+            fit_axis(
+              i32::from(offset_y),
+              rel_y,
+              height,
+              ancestor_layout.size.height.round() as i32,
+              ancestor_layout.border.top.round() as i32,
+              i32::from(limit_y),
+            ),
+          );
+          let next = (
+            u16::try_from(next.0).unwrap_or(0),
+            u16::try_from(next.1).unwrap_or(0),
+          );
+
+          if next != (offset_x, offset_y) {
+            adjusted.push((ancestor, next));
+          }
+
+          (offset_x, offset_y) = next;
+        }
+
+        #[expect(clippy::cast_possible_truncation)]
+        {
+          rel_x += ancestor_layout.location.x.round() as i32 - i32::from(offset_x);
+          rel_y += ancestor_layout.location.y.round() as i32 - i32::from(offset_y);
+        }
+
+        current = nodes.get(&ancestor).and_then(|record| record.parent);
+      }
+    }
+
+    let changed = !adjusted.is_empty();
+
+    for (node, next) in adjusted {
+      self.set_scroll(node, next);
+    }
+
+    changed
+  }
+}
+
+/// The nearest offset showing `[rel, rel + extent)` within a viewport of `size` behind
+/// a border, clamped to `[0, limit]`; an oversized target aligns to its start.
+const fn fit_axis(offset: i32, rel: i32, extent: i32, size: i32, border: i32, limit: i32) -> i32 {
+  let min_offset = rel + extent - size + border;
+  let max_offset = rel - border;
+  let next = if min_offset > max_offset || offset > max_offset {
+    max_offset
+  }
+  else if offset < min_offset {
+    min_offset
+  }
+  else {
+    offset
+  };
+
+  if next < 0 {
+    0
+  }
+  else if next > limit {
+    limit
+  }
+  else {
+    next
   }
 }

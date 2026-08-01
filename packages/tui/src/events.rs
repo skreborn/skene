@@ -2,6 +2,16 @@
 
 use skene_core::{Modifiers, PointerButton};
 
+/// A scroll: the scrolled box's new offsets, in cells.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub struct ScrollEvent {
+  /// The horizontal scroll offset, in cells.
+  pub column: u16,
+  /// The vertical scroll offset, in cells.
+  pub row: u16,
+}
+
 /// A pointer event: where in the terminal, which button, and the modifier state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]

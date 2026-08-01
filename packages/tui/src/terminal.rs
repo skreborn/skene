@@ -87,6 +87,10 @@ where
 
   loop {
     let quit = with_state(|state| {
+      if state.title_dirty.replace(false) {
+        emit_title(state.title.borrow().as_deref().unwrap_or(""));
+      }
+
       if state.dirty.replace(false) {
         // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
         // 80x24 rather than painting nothing.
@@ -120,20 +124,79 @@ where
   }
 }
 
-/// Dispatches one mouse event: hover tracking (with the pointer shape), and left-button
-/// clicks—all inside a reactive batch.
+/// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer
+/// down/up/move handlers, and left-button clicks—all inside a reactive batch.
 fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
+  let modifiers = portable_modifiers(mouse.modifiers);
+
   skene_reactive::Effect::batch(|| match mouse.kind {
     MouseEventKind::Moved | MouseEventKind::Drag(_) => {
+      let button = match mouse.kind {
+        MouseEventKind::Drag(button) => Some(portable_button(button)),
+        _ => None,
+      };
+
       state.set_hover(mouse.column, mouse.row);
+      state.run_pointer(
+        &state.pointer_move,
+        mouse.column,
+        mouse.row,
+        button,
+        modifiers,
+      );
       set_pointer_shape(state.hover_cursor());
     }
-    MouseEventKind::Down(MouseButton::Left) => {
+    MouseEventKind::Down(button) => {
       state.set_hover(mouse.column, mouse.row);
-      state.mouse_click(mouse.column, mouse.row);
+      state.run_pointer(
+        &state.pointer_down,
+        mouse.column,
+        mouse.row,
+        Some(portable_button(button)),
+        modifiers,
+      );
+
+      if button == MouseButton::Left {
+        state.mouse_click(mouse.column, mouse.row);
+      }
+    }
+    MouseEventKind::Up(button) => {
+      state.run_pointer(
+        &state.pointer_up,
+        mouse.column,
+        mouse.row,
+        Some(portable_button(button)),
+        modifiers,
+      );
     }
     _ => {}
   });
+}
+
+/// A crossterm mouse button as the portable vocabulary's.
+fn portable_button(button: MouseButton) -> skene_core::PointerButton {
+  match button {
+    MouseButton::Left => skene_core::PointerButton::Primary,
+    MouseButton::Right => skene_core::PointerButton::Secondary,
+    MouseButton::Middle => skene_core::PointerButton::Auxiliary,
+  }
+}
+
+/// Crossterm modifier state as the portable vocabulary's.
+fn portable_modifiers(modifiers: KeyModifiers) -> skene_core::Modifiers {
+  skene_core::Modifiers {
+    ctrl: modifiers.contains(KeyModifiers::CONTROL),
+    shift: modifiers.contains(KeyModifiers::SHIFT),
+    alt: modifiers.contains(KeyModifiers::ALT),
+    meta: modifiers.contains(KeyModifiers::SUPER),
+  }
+}
+
+/// Emits the terminal title via OSC 2; terminals without support ignore it.
+fn emit_title(title: &str) {
+  let mut out = std::io::stdout();
+  let _ = write!(out, "\x1b]2;{title}\x1b\\");
+  let _ = out.flush();
 }
 
 /// Sets the terminal's pointer shape via OSC 22; terminals without support ignore it.
@@ -338,12 +401,7 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
 
   KeyEvent {
     key,
-    modifiers: skene_core::Modifiers {
-      ctrl: modifiers.contains(KeyModifiers::CONTROL),
-      shift: modifiers.contains(KeyModifiers::SHIFT),
-      alt: modifiers.contains(KeyModifiers::ALT),
-      meta: modifiers.contains(KeyModifiers::SUPER),
-    },
+    modifiers: portable_modifiers(modifiers),
   }
 }
 
@@ -395,7 +453,16 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
 #[cfg(feature = "test")]
 pub fn trigger_mouse_move(x: u16, y: u16) {
   with_state(|state| {
-    skene_reactive::Effect::batch(|| state.set_hover(x, y));
+    skene_reactive::Effect::batch(|| {
+      state.set_hover(x, y);
+      state.run_pointer(
+        &state.pointer_move,
+        x,
+        y,
+        None,
+        skene_core::Modifiers::default(),
+      );
+    });
   });
 }
 
@@ -406,7 +473,28 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::Effect::batch(|| {
       state.set_hover(x, y);
+      state.run_pointer(
+        &state.pointer_down,
+        x,
+        y,
+        Some(skene_core::PointerButton::Primary),
+        skene_core::Modifiers::default(),
+      );
       state.mouse_click(x, y);
+      state.run_pointer(
+        &state.pointer_up,
+        x,
+        y,
+        Some(skene_core::PointerButton::Primary),
+        skene_core::Modifiers::default(),
+      );
     });
   });
+}
+
+/// The current terminal title, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn current_title() -> Option<String> {
+  with_state(|state| state.title.borrow().clone())
 }

@@ -19,6 +19,8 @@
 pub mod prelude;
 
 mod container;
+mod events;
+mod focus;
 mod input;
 mod paint;
 mod props;
@@ -31,16 +33,34 @@ mod text;
 
 use std::cell::RefCell;
 
-pub use skene_core::{self as core, HasChildren, IntoView, KeyEvent, Layout, NodeId, View};
+pub use skene_core::{
+  self as core,
+  HasChildren,
+  IntoView,
+  KeyEvent,
+  Layout,
+  Modifiers,
+  NodeId,
+  PointerButton,
+  View,
+};
 pub use skene_reactive::{self as reactive};
 pub use skene_router as router;
 use state::{NodeKind, State};
 pub use terminal::launch;
 #[cfg(feature = "test")]
-pub use terminal::{focused_node, trigger_key, trigger_mouse_click, trigger_mouse_move};
+pub use terminal::{
+  current_title,
+  focused_node,
+  trigger_key,
+  trigger_mouse_click,
+  trigger_mouse_move,
+};
 
 pub use crate::{
   container::Container,
+  events::PointerEvent,
+  focus::FocusHandle,
   input::Input,
   props::{BoxStyle, Condition, RunStyle},
   routing::install_router,
@@ -172,6 +192,24 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 
     node
   })
+}
+
+/// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.
+#[inline(always)]
+pub fn set_title(title: impl Into<String>) {
+  let title = title.into();
+
+  with_state(move |state| {
+    *state.title.borrow_mut() = Some(title);
+
+    state.title_dirty.set(true);
+  });
+}
+
+/// Derives the terminal title, re-emitted whenever it changes.
+#[inline(always)]
+pub fn derive_title(title: impl Fn() -> String + 'static) {
+  skene_reactive::Effect::new(move |_| set_title(title()));
 }
 
 /// Lays the mounted tree out at `width` x `height` cells and paints it to plain text—the

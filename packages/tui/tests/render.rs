@@ -259,6 +259,119 @@ fn dynamic_swaps_content() {
   assert_eq!(after, "on\n");
 }
 
+/// Pointer events reach handlers along the hit path with terminal and view-relative
+/// cell coordinates.
+#[test]
+fn pointer_events_carry_cell_coordinates() {
+  let (down, moved) = with_driver(|| {
+    let down = Rc::new(Cell::new(None));
+    let moved = Rc::new(Cell::new(None));
+
+    {
+      let down = Rc::clone(&down);
+      let moved = Rc::clone(&moved);
+
+      tui::mount(|| {
+        Container::row()
+          .set_children((
+            Container::new().set_width(4).set_height(3),
+            Container::new()
+              .set_width(6)
+              .set_height(3)
+              .handle_pointer_down(move |event| {
+                down.set(Some((
+                  event.column,
+                  event.row,
+                  event.local_column,
+                  event.local_row,
+                  event.button,
+                )));
+              })
+              .handle_pointer_move(move |event| {
+                moved.set(Some((event.local_column, event.local_row, event.button)));
+              }),
+          ))
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(12, 4);
+
+    tui::trigger_mouse_click(6, 1);
+    tui::trigger_mouse_move(7, 2);
+
+    (down.get(), moved.get())
+  });
+
+  assert_eq!(down, Some((6, 1, 2, 1, Some(PointerButton::Primary))));
+  assert_eq!(moved, Some((3, 2, None)));
+}
+
+/// The terminal title follows `set_title` and a derived title follows its signal.
+#[test]
+fn title_follows_state() {
+  let (first, second) = with_driver(|| {
+    let name = RwSignal::new("one".to_owned());
+
+    tui::mount(|| {
+      tui::derive_title(move || format!("app: {}", name.get()));
+
+      Text::new("body").into_any().build()
+    });
+
+    let first = tui::current_title();
+
+    name.set("two".to_owned());
+
+    (first, tui::current_title())
+  });
+
+  assert_eq!(first.as_deref(), Some("app: one"));
+  assert_eq!(second.as_deref(), Some("app: two"));
+}
+
+/// A focus handle moves keyboard focus programmatically, and autofocus takes it at
+/// mount.
+#[test]
+fn focus_handle_and_autofocus() {
+  with_driver(|| {
+    let handle = FocusHandle::new();
+    let target = {
+      let handle = handle.clone();
+
+      tui::mount(move || {
+        Container::column()
+          .set_children((
+            Input::new().set_autofocus(),
+            Container::new()
+              .set_height(1)
+              .handle_click(|| {})
+              .bind_focus(&handle),
+          ))
+          .into_any()
+          .build()
+      })
+    };
+
+    let _ = tui::render_to_text(8, 3);
+
+    let autofocused = tui::focused_node().expect("the autofocused input");
+
+    handle.focus();
+
+    let focused = tui::focused_node().expect("the handle's target");
+
+    assert_ne!(autofocused, focused);
+
+    handle.blur();
+
+    assert_eq!(tui::focused_node(), None);
+
+    let _ = target;
+  });
+}
+
 /// The mouse hovering a node applies its `Hovered` variant and fires pointer handlers;
 /// moving off reverts and fires the leave handler.
 #[test]

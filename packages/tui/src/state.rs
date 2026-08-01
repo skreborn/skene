@@ -6,9 +6,10 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_core::{KeyEvent, Layout, MouseCursor, NodeId};
+use skene_core::{KeyEvent, Layout, Modifiers, MouseCursor, NodeId, PointerButton};
 
 use crate::{
+  events::PointerEvent,
   props::{BoxStyle, Condition, RunStyle},
   style::{Environment, Interaction, effective_box_style},
 };
@@ -65,11 +66,18 @@ pub(crate) struct State {
   pub(crate) input: Handlers<dyn Fn(&str)>,
   pub(crate) pointer_enter: Handlers<dyn Fn()>,
   pub(crate) pointer_leave: Handlers<dyn Fn()>,
+  pub(crate) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
+  pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
+  pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) focused: Cell<Option<NodeId>>,
   /// The path from the root to the deepest node under the mouse, when known.
   pub(crate) hovered: RefCell<Vec<NodeId>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
   pub(crate) last_size: Cell<(u16, u16)>,
+  /// The terminal title, emitted via OSC 2 when it changes.
+  pub(crate) title: RefCell<Option<String>>,
+  /// Whether the title changed since it was last emitted.
+  pub(crate) title_dirty: Cell<bool>,
   pub(crate) dirty: Cell<bool>,
   pub(crate) quit: Cell<bool>,
 }
@@ -109,9 +117,14 @@ impl State {
       input: RefCell::new(FxHashMap::default()),
       pointer_enter: RefCell::new(FxHashMap::default()),
       pointer_leave: RefCell::new(FxHashMap::default()),
+      pointer_down: RefCell::new(FxHashMap::default()),
+      pointer_up: RefCell::new(FxHashMap::default()),
+      pointer_move: RefCell::new(FxHashMap::default()),
       focused: Cell::new(None),
       hovered: RefCell::new(Vec::new()),
       last_size: Cell::new((80, 24)),
+      title: RefCell::new(None),
+      title_dirty: Cell::new(false),
       dirty: Cell::new(true),
       quit: Cell::new(false),
     }
@@ -239,6 +252,9 @@ impl State {
       self.input.borrow_mut().remove(&current);
       self.pointer_enter.borrow_mut().remove(&current);
       self.pointer_leave.borrow_mut().remove(&current);
+      self.pointer_down.borrow_mut().remove(&current);
+      self.pointer_up.borrow_mut().remove(&current);
+      self.pointer_move.borrow_mut().remove(&current);
       self.hovered.borrow_mut().retain(|node| *node != current);
 
       if self.focused.get() == Some(current) {
@@ -361,9 +377,9 @@ impl State {
     self.dirty.set(true);
   }
 
-  /// The path from the root to the deepest node containing the cell (`x`, `y`), against
-  /// the last computed layout.
-  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<NodeId> {
+  /// The path from the root to the deepest node containing the cell (`x`, `y`)—each
+  /// with its absolute origin—against the last computed layout.
+  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i32, i32))> {
     let mut path = Vec::new();
 
     self.hit_walk(ROOT_ID, 0, 0, i32::from(x), i32::from(y), &mut path);
@@ -380,7 +396,7 @@ impl State {
     offset_y: i32,
     x: i32,
     y: i32,
-    path: &mut Vec<NodeId>,
+    path: &mut Vec<(NodeId, (i32, i32))>,
   ) -> bool {
     let (origin_x, origin_y, width, height, children) = {
       let nodes = self.nodes.borrow();
@@ -415,7 +431,7 @@ impl State {
       return false;
     }
 
-    path.push(node);
+    path.push((node, (origin_x, origin_y)));
 
     // Later children paint on top, so they win the hit.
     for child in children.iter().rev() {
@@ -430,7 +446,7 @@ impl State {
   /// Updates the hover path to the nodes under (`x`, `y`), firing pointer-leave and
   /// pointer-enter handlers for the difference.
   pub(crate) fn set_hover(&self, x: u16, y: u16) {
-    let next = self.hit_test(x, y);
+    let next: Vec<NodeId> = self.hit_test(x, y).iter().map(|(node, _)| *node).collect();
     let previous = self.hovered.borrow().clone();
 
     if previous == next {
@@ -462,13 +478,37 @@ impl State {
     let target = path
       .iter()
       .rev()
-      .find(|node| focusable.contains(node))
-      .copied();
+      .find(|(node, _)| focusable.contains(node))
+      .map(|(node, _)| *node);
 
     self.set_focused(target);
 
-    for node in path.iter().rev() {
+    for (node, _) in path.iter().rev() {
       Self::run_handlers(&self.click, *node, (), |run, ()| run());
+    }
+  }
+
+  /// Runs one pointer registry's handlers along the hit path at (`x`, `y`), deepest
+  /// first, each receiving its own view-relative coordinates.
+  pub(crate) fn run_pointer(
+    &self,
+    handlers: &Handlers<dyn Fn(&PointerEvent)>,
+    x: u16,
+    y: u16,
+    button: Option<PointerButton>,
+    modifiers: Modifiers,
+  ) {
+    for (node, (origin_x, origin_y)) in self.hit_test(x, y).iter().rev() {
+      let event = PointerEvent {
+        column: x,
+        row: y,
+        local_column: u16::try_from(i32::from(x) - origin_x).unwrap_or(0),
+        local_row: u16::try_from(i32::from(y) - origin_y).unwrap_or(0),
+        button,
+        modifiers,
+      };
+
+      Self::run_handlers(handlers, *node, &event, |run, event| run(event));
     }
   }
 

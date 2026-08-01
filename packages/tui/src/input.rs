@@ -5,6 +5,7 @@ use std::rc::Rc;
 use skene_core::{KeyEvent, NodeId, Source, View};
 
 use crate::{
+  FocusHandle,
   props::{BoxStyle, Condition},
   state::NodeKind,
   with_state,
@@ -14,7 +15,7 @@ use crate::{
 ///
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the shown text, and
-/// [`handle_input`](Self::handle_input) receives each edit—
+/// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
 /// set wholesale with [`set_style`](Self::set_style) and conditionally with
 /// [`set_when`](Self::set_when).
@@ -24,12 +25,14 @@ pub struct Input {
   placeholder: Option<String>,
   style: BoxStyle,
   variants: Vec<(Condition, BoxStyle)>,
-  #[expect(clippy::struct_field_names, clippy::type_complexity)]
-  input_handler: Option<Rc<dyn Fn(&str)>>,
+  #[expect(clippy::type_complexity)]
+  change_handler: Option<Rc<dyn Fn(&str)>>,
   #[expect(clippy::type_complexity)]
   key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
   focus_handler: Option<Rc<dyn Fn()>>,
   blur_handler: Option<Rc<dyn Fn()>>,
+  autofocus: bool,
+  focus_handle: Option<FocusHandle>,
 }
 
 impl Input {
@@ -41,7 +44,9 @@ impl Input {
       placeholder: None,
       style: BoxStyle::new(),
       variants: Vec::new(),
-      input_handler: None,
+      change_handler: None,
+      autofocus: false,
+      focus_handle: None,
       key_down_handler: None,
       focus_handler: None,
       blur_handler: None,
@@ -72,7 +77,7 @@ impl Input {
 
     self
       .derive_value(move || signal.get())
-      .handle_input(move |value| signal.set(value.to_owned()))
+      .handle_change(move |value| signal.set(value.to_owned()))
   }
 
   /// Sets the hint shown while the value is empty.
@@ -99,10 +104,27 @@ impl Input {
     self
   }
 
-  /// Sets the edit handler, run with the new value on every change.
+  /// Sets the change handler, run with the new value on every edit, in real time.
   #[inline(always)]
-  pub fn handle_input(mut self, action: impl Fn(&str) + 'static) -> Self {
-    self.input_handler = Some(Rc::new(action));
+  pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
+    self.change_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Makes the input take focus when it mounts.
+  #[inline(always)]
+  pub fn set_autofocus(mut self) -> Self {
+    self.autofocus = true;
+
+    self
+  }
+
+  /// Binds `handle` to the input, so [`FocusHandle::focus`](FocusHandle::focus) targets
+  /// it once built.
+  #[inline(always)]
+  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
+    self.focus_handle = Some(handle.clone());
 
     self
   }
@@ -158,7 +180,7 @@ impl View for Input {
     }
 
     with_state(|state| {
-      if let Some(action) = self.input_handler {
+      if let Some(action) = self.change_handler {
         state
           .input
           .borrow_mut()
@@ -193,7 +215,16 @@ impl View for Input {
           .or_default()
           .push(action);
       }
+
+      if self.autofocus {
+        state.focused.set(Some(node));
+        state.dirty.set(true);
+      }
     });
+
+    if let Some(handle) = &self.focus_handle {
+      handle.assign(node);
+    }
 
     node
   }

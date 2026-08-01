@@ -241,6 +241,11 @@ The mouse is in-capability: motion drives `Hovered` variants and pointer enter/l
 handlers, a left click hits the topmost node (hit-tested against the taffy layout),
 focuses it, and runs its click handlers, and a hovered node's `cursor` sets the pointer
 shape via OSC 22—terminals without mouse reporting or pointer shapes degrade quietly.
+Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u16` cell
+coordinates, both terminal-absolute and view-relative, plus the button and modifiers.
+`set_title`/`derive_title` name the terminal window via OSC 2, and `FocusHandle` and
+`set_autofocus` manage keyboard focus programmatically—the same surface the GUI facade
+offers, each typed to its own medium.
 
 Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
 through `launch` (crossterm: raw mode, truecolor, mouse capture, `Tab`/`Enter` keyboard

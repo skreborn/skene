@@ -17,7 +17,9 @@ use skene_core::{
 
 use crate::{
   Children,
+  FocusHandle,
   Inset,
+  events::PointerEvent,
   props::{BoxProp, BoxStyle, Condition},
   realize::{Binders, split_prop},
   state::NodeKind,
@@ -57,6 +59,14 @@ pub struct Container {
   blur_handler: Option<Rc<dyn Fn()>>,
   #[expect(clippy::type_complexity)]
   key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pointer_down_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  autofocus: bool,
+  focus_handle: Option<FocusHandle>,
 }
 
 impl Container {
@@ -85,6 +95,11 @@ impl Container {
       focus_handler: None,
       blur_handler: None,
       key_down_handler: None,
+      pointer_down_handler: None,
+      pointer_up_handler: None,
+      pointer_move_handler: None,
+      autofocus: false,
+      focus_handle: None,
     }
   }
 
@@ -393,6 +408,47 @@ impl Container {
 
     self
   }
+
+  /// Sets the pointer-down handler, run for presses on the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_down_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-up handler, run for releases on the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_up_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-move handler, run for moves over the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_move_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Makes the box take focus when it mounts.
+  #[inline(always)]
+  pub fn set_autofocus(mut self) -> Self {
+    self.autofocus = true;
+
+    self
+  }
+
+  /// Binds `handle` to the box, so [`FocusHandle::focus`](FocusHandle::focus) targets
+  /// it once built.
+  #[inline(always)]
+  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
+    self.focus_handle = Some(handle.clone());
+
+    self
+  }
 }
 
 impl Default for Container {
@@ -591,7 +647,43 @@ impl View for Container {
           .or_default()
           .push(action);
       }
+
+      if let Some(action) = self.pointer_down_handler {
+        state
+          .pointer_down
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if let Some(action) = self.pointer_up_handler {
+        state
+          .pointer_up
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if let Some(action) = self.pointer_move_handler {
+        state
+          .pointer_move
+          .borrow_mut()
+          .entry(node)
+          .or_default()
+          .push(action);
+      }
+
+      if self.autofocus {
+        state.focused.set(Some(node));
+        state.dirty.set(true);
+      }
     });
+
+    if let Some(handle) = &self.focus_handle {
+      handle.assign(node);
+    }
 
     match self.layout {
       // Overlap the children in one grid cell.

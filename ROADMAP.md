@@ -128,6 +128,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   handlers; left clicks hit-test against the taffy layout, focus the target, and run its
   click handlers; a hovered node's `cursor` sets the pointer shape via OSC 22. Headless
   `trigger_mouse_move`/`trigger_mouse_click` seams drive it in tests.
+- **Parity—done.** Pointer down/up/move with the terminal's own `PointerEvent` (`u16`
+  cells, terminal-absolute and view-relative, button, modifiers); `set_title`/
+  `derive_title` via OSC 2; `FocusHandle` + `set_autofocus`; `Input::handle_change`
+  matches the GUI facade's real-time naming.
+- **Remaining (parity):** the basic control set in cells (checkbox `[x]`, radio `(•)`,
+  slider track, select cycling)—textarea waits on caret positioning.
 - **Remaining:** text wrapping; scroll (incl. mouse wheel); caret positioning in inputs
   (edits append/pop only); a diffed redraw instead of full frames; selectable border
   character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,

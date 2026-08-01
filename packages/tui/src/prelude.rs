@@ -10,7 +10,9 @@ pub use skene_core::{
   KeyEvent,
   Layout,
   MainAxisAlignment,
+  Modifiers,
   MouseCursor,
+  PointerButton,
   View,
 };
 pub use skene_reactive::{
@@ -31,12 +33,16 @@ pub use crate::{
   Condition,
   Container,
   DynamicView,
+  FocusHandle,
   HasChildren,
   Input,
   Inset,
+  PointerEvent,
   RunStyle,
   Text,
+  derive_title,
   empty,
   install_router,
   launch,
+  set_title,
 };

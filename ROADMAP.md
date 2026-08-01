@@ -1,7 +1,9 @@
 # Roadmap
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
-Phases are ordered; later phases assume the earlier ones. **Current phase: 6 (TUI done first as the vocabulary proof).**
+Phases are ordered; later phases assume the earlier ones. Native is deliberately
+last—not a current priority. **Current focus: vocabulary completeness (events,
+controls, head management) ahead of the CLI.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -92,27 +94,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   the CSR page emitted from the SSR shell contract (build tool); typed link helpers
   (an `<a>` that navigates without a reload).
 
-## Phase 6—Native driver family
-
-The largest phase by far; do not start before phase 4 proves the event model.
-
-- Shared machinery: taffy layout, vello paint, parley text, AccessKit, the frame ticker
-  running style transitions/animations, `Condition` resolution against window/pointer
-  signals.
-- Compositing premise: **the platform composites.** On iOS/Android/macOS the driver
-  realizes the tree into the native view hierarchy—painted content in vello-backed
-  layers that are views, embeds as ordinary native views—so custom paint and real
-  platform controls interleave in z-order for free. The Linux leaf is
-  winit + single vello surface (no native control set exists to embed); Windows chooses
-  per its composition APIs.
-- `Embed` constructors per leaf (`ios::native_view`, …): real text fields, maps, web
-  views.
-- Off-thread delivery: wire `set_sync_effect_waker` + `drain_pending_work` to the event
-  loop proxy—the machinery exists and is tested; only the wiring is missing.
-- A loop-integrated timer (the one sanctioned exception to timers-are-userland).
-- Per-OS glue in leaves: IME, clipboard, menus, window management.
-
-## Phase 7—TUI facade ✅ (core)
+## Phase 6—TUI facade ✅ (core)
 
 - **Done, twice-shaped.** First landed as a driver of the shared GUI vocabulary; then
   reshaped into a **first-class, equal facade**: `skene-tui` owns its vocabulary
@@ -183,7 +165,7 @@ sink are just different sinks for the same paths.)
   dev reloads (full restart, no hot-patching) and stands on its own (session restore,
   crash recovery). Stable identities across runs are the hard prerequisite; the
   phase-1 arena redesign must be shaped with this in mind.
-- **Accessibility**: AccessKit on native (already in phase 6's shared machinery) and in
+- **Accessibility**: AccessKit on native (already in phase 8's shared machinery) and in
   the TUI where it can reach; on the web, `Role` expansion and semantic output audited
   against ARIA. A stated commitment across facades, not an afterthought.
 - **Reactive stores**: fine-grained nested reactivity over structs and collections
@@ -207,12 +189,32 @@ without one may grow minimal introspection later); islands architecture (compile
 styling already removes most reasons a static page ships wasm); LiveView-style server
 rendering (adjacent to the server-side non-goal); a webview desktop shell.
 
-## Phase 8—CLI
-
-Explicitly last, after the stretch goals above.
+## Phase 7—CLI
 
 - One tool to build/run/serve per platform: wasm bundling + the generated CSR page, SSG
   output, the dev server (subsuming `cargo xtask web`), native builds.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
 - Route-based wasm code splitting with lazy loading, where the splitting tooling allows.
+
+## Phase 8—Native driver family
+
+The largest phase by far, and deliberately the last: it realizes an
+already-complete vocabulary once, instead of chasing additions.
+
+- Shared machinery: taffy layout, vello paint, parley text, AccessKit, the frame ticker
+  running style transitions/animations, `Condition` resolution against window/pointer
+  signals.
+- Compositing premise: **the platform composites.** On iOS/Android/macOS the driver
+  realizes the tree into the native view hierarchy—painted content in vello-backed
+  layers that are views, embeds as ordinary native views—so custom paint and real
+  platform controls interleave in z-order for free. The Linux leaf is
+  winit + single vello surface (no native control set exists to embed); Windows chooses
+  per its composition APIs.
+- `Embed` constructors per leaf (`ios::native_view`, …): real text fields, maps, web
+  views.
+- Off-thread delivery: wire `set_sync_effect_waker` + `drain_pending_work` to the event
+  loop proxy—the machinery exists and is tested; only the wiring is missing.
+- A loop-integrated timer (the one sanctioned exception to timers-are-userland).
+- Per-OS glue in leaves: IME, clipboard, menus, window management.
+

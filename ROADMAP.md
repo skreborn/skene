@@ -123,11 +123,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Done, twice-shaped.** First landed as a driver of the shared GUI vocabulary; then
   reshaped into a **first-class, equal facade**: `skene-tui` owns its vocabulary
   outright—`u16` cells, `bool` bold, one-cell colored borders, terminal conditions
-  (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`, `Hovered`)—so nothing a
-  terminal cannot render exists to call. Its `Container`/`Text`/`Input` builders and
-  realization live in-crate; layout is taffy at `1.0 = 1 cell`; frames paint via
-  crossterm (truecolor, bold, reverse, `Tab`/`Enter` focus, input editing, `Ctrl-C`) or
-  headlessly through `render_to_text`, with `trigger_key`/`focused_node` test seams.
+  (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`, `Hovered`,
+  `DarkMode`/`LightMode`)—so nothing a terminal cannot render exists to call. Its
+  `Container`/`Text`/`Input` builders and realization live in-crate; layout is taffy at
+  `1.0 = 1 cell`; frames paint via crossterm (truecolor with detected 256/16-color
+  fallback, bold, reverse, `Tab`/`Enter` focus, input editing, `Ctrl-C`) or headlessly
+  through `render_to_text`, with `trigger_key`/`focused_node` test seams.
 - Alongside it: the umbrella returned to its `skene-gui` name (GUI is not the blessed
   way), its `tui` feature is gone (selection is by facade dependency), and the
   structural machinery (`Children`/`reconcile`/`dynamic`/`DynamicView`/`empty`) hoisted
@@ -184,19 +185,29 @@ sink are just different sinks for the same paths.)
   the taffy results they already have.
 - **Animation in TUI**: run the frame ticker against tui style data—color and attribute
   interpolation foremost, but sizes and positions are just as animatable in cells.
-- **Panic hook for TUI**: a hook that restores the terminal (cooked mode, main screen,
-  mouse capture off, cursor shown) before the panic message prints, so a crash never
-  leaves the terminal wedged; restore also runs on normal unwind today via the raw-mode
-  guard.
+- **Panic hook for TUI—done.** `launch` installs a hook that restores the terminal
+  (cooked mode, main screen, mouse capture off, cursor shown) before the panic message
+  prints, so a crash never leaves the terminal wedged; normal unwind still restores via
+  the raw-mode guard.
 - **Titles and head management**: **web done**—`head::set_title`/`derive_title` plus
   `add_meta`/`add_meta_property`/`add_link`/`add_stylesheet`/`add_script`, serialized
   into the SSR/SSG `<head>` (escaped, registration order) and applied live under CSR,
   where an identical element left by a server render is adopted, not duplicated.
   Remaining: the TUI title via OSC 0/2 and the native window title.
-- **Light/dark detection in TUI**: query the terminal background via OSC 11 and expose
-  `DarkMode`/`LightMode` condition leaves, mirroring the GUI vocabulary.
-- **Truecolor detection in TUI**: detect support (`COLORTERM`/terminfo) and approximate
-  to 256- or 16-color palettes when absent, instead of assuming truecolor.
+- **Light/dark detection in TUI—done.** `launch` queries the terminal background via
+  OSC 11 (falling back to `COLORFGBG`, then to dark) and the `DarkMode`/`LightMode`
+  condition leaves mirror the GUI vocabulary; `trigger_color_scheme` drives them in
+  tests. Remaining: live change notifications (DECSET 2031) instead of the one launch
+  query.
+- **Truecolor detection in TUI—done.** `COLORTERM`/`TERM` name the depth; paint
+  quantizes to the xterm 256-color palette or the 16 base colors when truecolor is
+  absent, instead of assuming it.
+- **Dark/light theming story**: the `DarkMode`/`LightMode` condition leaves style one
+  view at a time, but the theme itself—colors, text included—needs a shape. Two
+  candidates: individually derivable properties on each view (fits the reactivity
+  model, but may cost too much and read awkwardly at scale) or a global light+dark pair
+  under one theme provider. Leaning to derivable properties; explore when the work
+  starts.
 - **Asset system**: declared in `skene.toml`—the framework manifest, which will grow
   further settings over time (Flutter's pubspec is the model)—never in code and never
   statically checked. Declared files and directories become reachable at predictable

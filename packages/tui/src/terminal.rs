@@ -44,23 +44,30 @@ struct TerminalGuard;
 
 impl Drop for TerminalGuard {
   fn drop(&mut self) {
-    let mut out = std::io::stdout();
-    let _ = execute!(
-      out,
-      DisableMouseCapture,
-      cursor::Show,
-      terminal::LeaveAlternateScreen
-    );
-
-    let _ = terminal::disable_raw_mode();
+    restore_terminal();
   }
+}
+
+/// Returns the terminal to its ordinary state: cooked mode, the main screen, mouse
+/// capture off, the cursor shown. Safe to run more than once, on any thread.
+fn restore_terminal() {
+  let mut out = std::io::stdout();
+  let _ = execute!(
+    out,
+    DisableMouseCapture,
+    cursor::Show,
+    terminal::LeaveAlternateScreen
+  );
+
+  let _ = terminal::disable_raw_mode();
 }
 
 /// Mounts and runs a skene application in the terminal.
 ///
 /// Installs the terminal driver, builds `app`, and runs the keyboard loop until
 /// `Ctrl-C`. The reactive runtime, handlers and tree are kept alive for the run's
-/// lifetime.
+/// lifetime. A panic anywhere in the process restores the terminal before its message
+/// prints.
 ///
 /// # Panics
 ///
@@ -70,6 +77,13 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
+  let previous_hook = std::panic::take_hook();
+
+  std::panic::set_hook(Box::new(move |info| {
+    restore_terminal();
+    previous_hook(info);
+  }));
+
   crate::install();
 
   #[cfg(feature = "snapshot")]
@@ -80,6 +94,10 @@ where
   terminal::enable_raw_mode().expect("enable raw mode");
 
   let _guard = TerminalGuard;
+  let dark = crate::detect::background_is_dark();
+  let depth = crate::detect::ColorDepth::detect();
+
+  with_state(|state| state.dark.set(dark));
 
   execute!(
     std::io::stdout(),
@@ -103,7 +121,7 @@ where
           _ => (80, 24),
         };
 
-        draw(&paint::render(state, width, height));
+        draw(&paint::render(state, width, height), depth);
       }
 
       state.quit.get()
@@ -228,8 +246,8 @@ fn set_pointer_shape(cursor: Option<MouseCursor>) {
   let _ = out.flush();
 }
 
-/// Writes a painted frame to the terminal.
-fn draw(buffer: &paint::Buffer) {
+/// Writes a painted frame to the terminal, quantizing colors to `depth`.
+fn draw(buffer: &paint::Buffer, depth: crate::detect::ColorDepth) {
   let mut out = std::io::stdout();
   let _ = queue!(out, cursor::MoveTo(0, 0), ResetColor);
 
@@ -253,13 +271,7 @@ fn draw(buffer: &paint::Buffer) {
       if cell.foreground != current.foreground {
         let color = cell
           .foreground
-          .map_or(TerminalColor::Reset, |(red, green, blue)| {
-            TerminalColor::Rgb {
-              r: red,
-              g: green,
-              b: blue,
-            }
-          });
+          .map_or(TerminalColor::Reset, |rgb| depth.terminal_color(rgb));
 
         let _ = queue!(out, SetForegroundColor(color));
       }
@@ -267,13 +279,7 @@ fn draw(buffer: &paint::Buffer) {
       if cell.background != current.background {
         let color = cell
           .background
-          .map_or(TerminalColor::Reset, |(red, green, blue)| {
-            TerminalColor::Rgb {
-              r: red,
-              g: green,
-              b: blue,
-            }
-          });
+          .map_or(TerminalColor::Reset, |rgb| depth.terminal_color(rgb));
 
         let _ = queue!(out, SetBackgroundColor(color));
       }
@@ -533,4 +539,14 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 #[must_use]
 pub fn current_title() -> Option<String> {
   with_state(|state| state.title.borrow().clone())
+}
+
+/// Simulates the terminal reporting a dark or light background, for a headless test
+/// driving the `DarkMode`/`LightMode` conditions.
+#[cfg(feature = "test")]
+pub fn trigger_color_scheme(dark: bool) {
+  with_state(|state| {
+    state.dark.set(dark);
+    state.dirty.set(true);
+  });
 }

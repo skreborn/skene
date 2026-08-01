@@ -94,6 +94,7 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   let environment = Environment {
     columns: width,
     rows: height,
+    dark: state.dark.get(),
   };
 
   state.last_size.set((width, height));

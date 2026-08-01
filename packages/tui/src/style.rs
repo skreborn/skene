@@ -20,6 +20,8 @@ pub(crate) struct Environment {
   pub(crate) columns: u16,
   /// The terminal height, in cells.
   pub(crate) rows: u16,
+  /// Whether the terminal background is dark.
+  pub(crate) dark: bool,
 }
 
 /// A node's interaction state, resolved by the driver.
@@ -40,6 +42,8 @@ fn leaf_holds(condition: &Condition, environment: Environment, interaction: Inte
     Condition::MaxHeight(value) => environment.rows <= *value,
     Condition::Focused => interaction.focused,
     Condition::Hovered => interaction.hovered,
+    Condition::DarkMode => environment.dark,
+    Condition::LightMode => !environment.dark,
     Condition::And(_) | Condition::Or(_) => unreachable!("a composite is never a leaf"),
   }
 }
@@ -217,8 +221,8 @@ pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
 
   #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
   Some((
-    (red.clamp(0.0, 1.0) * 255.0) as u8,
-    (green.clamp(0.0, 1.0) * 255.0) as u8,
-    (blue.clamp(0.0, 1.0) * 255.0) as u8,
+    (red.clamp(0.0, 1.0) * 255.0).round() as u8,
+    (green.clamp(0.0, 1.0) * 255.0).round() as u8,
+    (blue.clamp(0.0, 1.0) * 255.0).round() as u8,
   ))
 }

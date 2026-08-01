@@ -98,6 +98,8 @@ pub(crate) struct State {
   pub(crate) hovered: RefCell<Vec<NodeId>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
   pub(crate) last_size: Cell<(u16, u16)>,
+  /// Whether the terminal background is dark, detected at launch.
+  pub(crate) dark: Cell<bool>,
   /// The terminal title, emitted via OSC 2 when it changes.
   pub(crate) title: RefCell<Option<String>>,
   /// Whether the title changed since it was last emitted.
@@ -150,6 +152,7 @@ impl State {
       controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
       last_size: Cell::new((80, 24)),
+      dark: Cell::new(true),
       title: RefCell::new(None),
       title_dirty: Cell::new(false),
       dirty: Cell::new(true),
@@ -775,7 +778,11 @@ impl State {
   /// cursor set, resolved through its effective style.
   pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
     let (columns, rows) = self.last_size.get();
-    let environment = Environment { columns, rows };
+    let environment = Environment {
+      columns,
+      rows,
+      dark: self.dark.get(),
+    };
     let hovered = self.hovered.borrow();
     let nodes = self.nodes.borrow();
 

@@ -216,6 +216,10 @@ pub enum Condition {
   Focused,
   /// The mouse is over the node, in terminals that report it.
   Hovered,
+  /// The terminal background is dark; an undetectable background counts as dark.
+  DarkMode,
+  /// The terminal background is light.
+  LightMode,
   /// Every subcondition holds; empty always holds.
   And(Vec<Condition>),
   /// Any subcondition holds; empty never holds.

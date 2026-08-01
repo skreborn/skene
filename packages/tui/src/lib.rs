@@ -20,6 +20,7 @@ pub mod prelude;
 
 mod button;
 mod container;
+mod detect;
 #[cfg(feature = "snapshot")]
 mod dev;
 mod events;
@@ -56,6 +57,7 @@ pub use terminal::launch;
 pub use terminal::{
   current_title,
   focused_node,
+  trigger_color_scheme,
   trigger_key,
   trigger_mouse_click,
   trigger_mouse_move,

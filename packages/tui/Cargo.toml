@@ -20,6 +20,10 @@ skene-reactive.workspace = true
 skene-router.workspace = true
 taffy = "0.9"
 
+# The OSC 11 background query polls stdin for the reply.
+[target.'cfg(all(not(target_arch = "wasm32"), unix))'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 # Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
 # `--features` flag.

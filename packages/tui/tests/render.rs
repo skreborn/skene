@@ -585,3 +585,31 @@ fn popup_anchors_below_and_light_dismisses() {
   assert!(lines[1].contains("menu"));
   assert!(!dismissed_frame.contains("menu"));
 }
+
+/// The color-scheme conditions follow the reported background: dark by default, and a
+/// `LightMode` variant takes over when the terminal reports a light one.
+#[test]
+fn color_scheme_conditions_follow_the_background() {
+  let (dark, light) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(3)
+        .set_when(
+          Condition::DarkMode,
+          BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
+        )
+        .into_any()
+        .build()
+    });
+
+    let dark = tui::render_to_text(12, 4);
+
+    tui::trigger_color_scheme(false);
+
+    (dark, tui::render_to_text(12, 4))
+  });
+
+  assert!(dark.contains('┌'));
+  assert!(!light.contains('┌'));
+}

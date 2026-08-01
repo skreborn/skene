@@ -49,6 +49,11 @@ pub struct PointerEvent {
   pub x: f32,
   /// The pointer's vertical position, in viewport logical pixels.
   pub y: f32,
+  /// The pointer's horizontal position, relative to the handling view's top-left
+  /// corner.
+  pub local_x: f32,
+  /// The pointer's vertical position, relative to the handling view's top-left corner.
+  pub local_y: f32,
   /// The button that changed state, or `None` for a move.
   pub button: Option<PointerButton>,
   /// The modifier state.

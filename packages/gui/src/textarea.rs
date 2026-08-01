@@ -14,7 +14,7 @@ use crate::control::{ControlBase, control_surface};
 ///
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the shown text, and
-/// [`handle_input`](Self::handle_input) receives each edit—
+/// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default; the
 /// visible height is set in text rows with [`set_rows`](Self::set_rows).
 #[must_use]
@@ -22,8 +22,6 @@ pub struct Textarea {
   value: Option<Source<String>>,
   placeholder: Option<String>,
   rows: Option<u16>,
-  #[expect(clippy::type_complexity)]
-  input_handler: Option<Rc<dyn Fn(&str)>>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
   control: ControlBase,
@@ -37,7 +35,6 @@ impl Textarea {
       value: None,
       placeholder: None,
       rows: None,
-      input_handler: None,
       change_handler: None,
       control: ControlBase::new(),
     }
@@ -75,16 +72,7 @@ impl Textarea {
     self
   }
 
-  /// Sets the edit handler, run with the new value on every change.
-  #[inline(always)]
-  pub fn handle_input(mut self, action: impl Fn(&str) + 'static) -> Self {
-    self.input_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the change handler, run with the committed value when an edit is committed
-  /// (focus leaves the text area).
+  /// Sets the change handler, run with the new value on every edit, in real time.
   #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.change_handler = Some(Rc::new(action));
@@ -112,7 +100,7 @@ impl Textarea {
 
     self
       .derive_value(move || signal.get())
-      .handle_input(move |value| signal.set(value.to_owned()))
+      .handle_change(move |value| signal.set(value.to_owned()))
   }
 }
 
@@ -132,10 +120,6 @@ impl skene_core::View for Textarea {
 
     if let Some(value) = self.value {
       value.bind(move |value| driver::set_input_value(node, &value));
-    }
-
-    if let Some(action) = self.input_handler {
-      driver::handle_input(node, action);
     }
 
     if let Some(action) = self.change_handler {

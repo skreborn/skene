@@ -14,7 +14,7 @@ use crate::control::{ControlBase, control_surface};
 ///
 /// The chosen value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the selection, and
-/// [`handle_change`](Self::handle_change) receives each choice—
+/// [`handle_change`](Self::handle_change) receives each choice as it is made—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
 #[must_use]

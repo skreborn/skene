@@ -14,7 +14,7 @@ use crate::control::{ControlBase, control_surface};
 ///
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the position, and
-/// [`handle_input`](Self::handle_input) receives each move—
+/// [`handle_change`](Self::handle_change) receives each move in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
 #[must_use]
@@ -23,7 +23,7 @@ pub struct Slider {
   max: f32,
   step: Option<f32>,
   value: Option<Source<f32>>,
-  input_handler: Option<Rc<dyn Fn(f32)>>,
+  change_handler: Option<Rc<dyn Fn(f32)>>,
   control: ControlBase,
 }
 
@@ -36,7 +36,7 @@ impl Slider {
       max,
       step: None,
       value: None,
-      input_handler: None,
+      change_handler: None,
       control: ControlBase::new(),
     }
   }
@@ -65,10 +65,10 @@ impl Slider {
     self
   }
 
-  /// Sets the move handler, run with the new value on every move.
+  /// Sets the change handler, run with the new value on every move, in real time.
   #[inline(always)]
-  pub fn handle_input(mut self, action: impl Fn(f32) + 'static) -> Self {
-    self.input_handler = Some(Rc::new(action));
+  pub fn handle_change(mut self, action: impl Fn(f32) + 'static) -> Self {
+    self.change_handler = Some(Rc::new(action));
 
     self
   }
@@ -86,7 +86,7 @@ impl Slider {
 
     self
       .derive_value(move || signal.get())
-      .handle_input(move |value| signal.set(value))
+      .handle_change(move |value| signal.set(value))
   }
 }
 
@@ -109,10 +109,10 @@ impl skene_core::View for Slider {
       value.bind(move |value| driver::set_input_value(node, &value.to_string()));
     }
 
-    if let Some(action) = self.input_handler {
+    if let Some(action) = self.change_handler {
       let action = Rc::clone(&action);
 
-      driver::handle_input(
+      driver::handle_change(
         node,
         Rc::new(move |value: &str| {
           if let Ok(value) = value.parse::<f32>() {

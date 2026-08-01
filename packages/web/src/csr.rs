@@ -217,7 +217,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "click", move |id, _event| {
+        .ensure_root_listener(root, "click", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
         });
     });
@@ -238,7 +238,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "focusin", move |id, _event| {
+        .ensure_root_listener(root, "focusin", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
         });
     });
@@ -259,7 +259,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "focusout", move |id, _event| {
+        .ensure_root_listener(root, "focusout", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
         });
     });
@@ -281,7 +281,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "keydown", move |id, event| {
+        .ensure_root_listener(root, "keydown", move |id, _element, event| {
           let Some(keyboard) = event.dyn_ref::<KeyboardEvent>()
           else {
             return;
@@ -298,33 +298,6 @@ impl State {
           };
 
           events::run_handlers(&handlers, id, &key_event, |run, key_event| run(key_event));
-        });
-    });
-  }
-
-  /// Registers `handler` to run with the new value when `node`'s (or a descendant
-  /// input's) text changes, until the node is destroyed.
-  pub fn handle_input(&self, node: NodeId, handler: Rc<dyn Fn(&str)>) {
-    self
-      .events
-      .input
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    let handlers = Rc::clone(&self.events.input);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "input", move |id, event| {
-          let Some(value) = element_value(event)
-          else {
-            return;
-          };
-
-          events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
         });
     });
   }
@@ -387,13 +360,13 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, event_name, move |id, event| {
+        .ensure_root_listener(root, event_name, move |id, element, event| {
           let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
           else {
             return;
           };
 
-          let payload = pointer_payload(pointer);
+          let payload = pointer_payload(pointer, element);
 
           events::run_handlers(&handlers, id, &payload, |run, payload| run(payload));
         });
@@ -423,8 +396,8 @@ impl State {
     });
   }
 
-  /// Registers `handler` to run with the committed value when `node`'s (or a descendant
-  /// control's) value change is committed, until the node is destroyed.
+  /// Registers `handler` to run with the new value on every change of `node`'s (or a
+  /// descendant control's) value, in real time, until the node is destroyed.
   pub fn handle_change(&self, node: NodeId, handler: Rc<dyn Fn(&str)>) {
     self
       .events
@@ -439,7 +412,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "change", move |id, event| {
+        .ensure_root_listener(root, "input", move |id, _element, event| {
           let Some(value) = element_value(event)
           else {
             return;
@@ -450,8 +423,8 @@ impl State {
     });
   }
 
-  /// Registers `handler` to run with the new checked state when `node`'s (or a
-  /// descendant toggle's) state changes, until the node is destroyed.
+  /// Registers `handler` to run with the new checked state, in real time, when `node`'s
+  /// (or a descendant toggle's) state changes, until the node is destroyed.
   pub fn handle_toggle(&self, node: NodeId, handler: Rc<dyn Fn(bool)>) {
     self
       .events
@@ -466,7 +439,7 @@ impl State {
     self.with_element(ROOT_ID, |root| {
       self
         .events
-        .ensure_root_listener(root, "change", move |id, event| {
+        .ensure_root_listener(root, "input", move |id, _element, event| {
           let Some(checked) = event
             .target()
             .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
@@ -876,11 +849,6 @@ pub fn handle_key_down(node: NodeId, handler: Rc<dyn Fn(&KeyEvent)>) {
 }
 
 /// Registers `handler` to run with the new value when text is entered on `node` or an
-/// input within it, until the node is destroyed.
-pub fn handle_input(node: NodeId, handler: Rc<dyn Fn(&str)>) {
-  with_state(|state| state.handle_input(node, handler));
-}
-
 /// Registers a delegated committed-change handler on `node`; see
 /// [`State::handle_change`].
 pub fn handle_change(node: NodeId, handler: Rc<dyn Fn(&str)>) {
@@ -1095,12 +1063,17 @@ where
   mount(|| app().into_view().build());
 }
 
-/// The portable payload of a DOM pointer event.
-fn pointer_payload(pointer: &web_sys::PointerEvent) -> PointerEvent {
-  #[expect(clippy::cast_precision_loss)]
+/// The portable payload of a DOM pointer event, with local coordinates relative to the
+/// handling `element`.
+fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
+  let rect = element.get_bounding_client_rect();
+
+  #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
   PointerEvent {
     x: pointer.client_x() as f32,
     y: pointer.client_y() as f32,
+    local_x: pointer.client_x() as f32 - rect.left() as f32,
+    local_y: pointer.client_y() as f32 - rect.top() as f32,
     button: match pointer.button() {
       0 => Some(PointerButton::Primary),
       1 => Some(PointerButton::Auxiliary),

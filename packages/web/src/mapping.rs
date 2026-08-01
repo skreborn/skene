@@ -171,6 +171,7 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
 pub(crate) fn box_template(props: &BoxProps) -> String {
   template(
     fold_box_style(layout_declarations(props.layout), &props.style),
+    "",
     &props.variants,
     &props.transitions,
     &props.animations,
@@ -178,29 +179,28 @@ pub(crate) fn box_template(props: &BoxProps) -> String {
   )
 }
 
-/// The complete rule template for a form control, or `None` when it is entirely
-/// unstyled.
-pub(crate) fn control_template(control: &ControlProps) -> Option<String> {
-  let base = fold_box_style(Declarations::new(), &control.style);
+/// The reset every form control carries in its own class: no native chrome, no
+/// browser-imposed spacing or typography—an unstyled element the author styles from
+/// zero. Focus outlines are deliberately left intact.
+pub(crate) const CONTROL_RESET: &str =
+  "appearance:none;background:none;border:none;margin:0;padding:0;font:inherit;color:inherit;";
 
-  if base.is_empty()
-    && control
-      .variants
-      .iter()
-      .all(|(_, style)| *style == skene_core::BoxStyle::default())
-    && control.transitions.is_empty()
-    && control.animations.is_empty()
-  {
-    return None;
-  }
+/// The select control's reset: the shared one, upgraded to the customizable-select
+/// rendering (`appearance: base-select`) where the browser supports it.
+pub(crate) const SELECT_RESET: &str = "appearance:none;appearance:base-select;background:none;border:none;margin:0;padding:0;\
+   font:inherit;color:inherit;";
 
-  Some(template(
-    base,
+/// The complete rule template for a form control: its reset, then its static style—so
+/// every control carries a class, and author declarations override the reset in place.
+pub(crate) fn control_template(control: &ControlProps, reset: &'static str) -> String {
+  template(
+    fold_box_style(Declarations::new(), &control.style),
+    reset,
     &control.variants,
     &control.transitions,
     &control.animations,
     |style| fold_box_style(Declarations::new(), style),
-  ))
+  )
 }
 
 /// The declarations for one box property alone, for an inline override.
@@ -259,6 +259,7 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
 
   Some(template(
     base,
+    "",
     &props.variants,
     &props.transitions,
     &props.animations,
@@ -295,11 +296,13 @@ fn push_rule(out: &mut String, states: &[&'static str], declarations: &Declarati
   out.push('}');
 }
 
-/// Assembles the rule template: `@keyframes` blocks, the base rule (with transitions and
-/// animations folded in), then each variant's rules—one per disjunctive conjunction of
-/// its condition—in declaration order.
+/// Assembles the rule template: `@keyframes` blocks, the base rule (`reset` first, so
+/// author declarations override it in place; transitions and animations folded in),
+/// then each variant's rules—one per disjunctive conjunction of its condition—in
+/// declaration order.
 fn template<S>(
   mut base: Declarations,
+  reset: &'static str,
   variants: &[(Condition, S)],
   transitions: &[Transition],
   animations: &[Animation<S>],
@@ -321,7 +324,12 @@ fn template<S>(
     base = base.set("animation", render_animation_values(animations, &names));
   }
 
-  push_rule(&mut out, &[], &base);
+  out.push('.');
+  out.push(CLASS_PLACEHOLDER);
+  out.push('{');
+  out.push_str(reset);
+  out.push_str(&base.render());
+  out.push('}');
 
   for (condition, style) in variants {
     let declarations = style_declarations(style);

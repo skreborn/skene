@@ -53,11 +53,10 @@ fn input_styling_interns_with_variants() {
   let end = body[start..].find('"').expect("a closing quote") + start;
   let class = &body[start..end];
 
-  assert!(
-    rendered
-      .styles()
-      .contains(&format!(".{class}{{padding:8px 8px 8px 8px;}}"))
-  );
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{appearance:none;background:none;border:none;margin:0;padding:0;\
+     font:inherit;color:inherit;padding:8px 8px 8px 8px;}}"
+  )));
 
   assert!(
     rendered
@@ -88,10 +87,7 @@ fn handlers_are_inert_on_the_server() {
       .handle_scroll(|_| {})
       .set_children((
         Text::new("t"),
-        Input::new()
-          .handle_input(|_| {})
-          .handle_change(|_| {})
-          .handle_focus(|| {}),
+        Input::new().handle_change(|_| {}).handle_focus(|| {}),
       ))
   });
 

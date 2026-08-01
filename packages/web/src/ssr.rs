@@ -513,10 +513,6 @@ pub fn handle_blur(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 #[inline(always)]
 pub fn handle_key_down(_node: NodeId, _handler: Rc<dyn Fn(&KeyEvent)>) {}
 
-/// Registers an input handler—inert on the server.
-#[inline(always)]
-pub fn handle_input(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
-
 /// Inert on the server; interactivity is the client's after hydration.
 pub fn handle_change(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
 

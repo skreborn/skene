@@ -87,7 +87,6 @@ pub use self::csr::{
   handle_change,
   handle_click,
   handle_focus,
-  handle_input,
   handle_key_down,
   handle_pointer_down,
   handle_pointer_enter,
@@ -129,7 +128,6 @@ pub use self::ssr::{
   handle_change,
   handle_click,
   handle_focus,
-  handle_input,
   handle_key_down,
   handle_pointer_down,
   handle_pointer_enter,
@@ -247,9 +245,9 @@ pub fn update_run(node: NodeId, prop: &RunProp) {
 }
 
 /// Folds a control's shared surface into `node`: the tab order and autofocus
-/// attributes, plus the interned style class when the control is styled.
+/// attributes, plus the interned class carrying the control's reset and its style.
 #[cfg(target_arch = "wasm32")]
-fn apply_control(node: NodeId, control: &ControlProps) {
+fn apply_control(node: NodeId, control: &ControlProps, reset: &'static str) {
   if let Some(tab_index) = control.tab_index {
     set_attribute(node, "tabindex", &tab_index.to_string());
   }
@@ -258,9 +256,7 @@ fn apply_control(node: NodeId, control: &ControlProps) {
     set_attribute(node, "autofocus", "");
   }
 
-  if let Some(template) = mapping::control_template(control) {
-    assign_class(node, &template);
-  }
+  assign_class(node, &mapping::control_template(control, reset));
 }
 
 /// Realizes a single-line text input, with its full static style interned as a shared
@@ -274,7 +270,7 @@ pub fn create_input(props: &InputProps) -> NodeId {
     set_attribute(node, "placeholder", placeholder);
   }
 
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node
 }
@@ -287,7 +283,7 @@ pub fn create_checkbox(props: &CheckboxProps) -> NodeId {
   let node = create_element("input");
 
   set_attribute(node, "type", "checkbox");
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node
 }
@@ -302,7 +298,7 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
   set_attribute(node, "type", "radio");
   set_attribute(node, "name", &props.group);
   set_attribute(node, "value", &props.value);
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node
 }
@@ -314,7 +310,7 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
 pub fn create_select(props: &SelectProps) -> NodeId {
   let node = create_element("select");
 
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::SELECT_RESET);
 
   for option in &props.options {
     let child = create_element("option");
@@ -328,7 +324,7 @@ pub fn create_select(props: &SelectProps) -> NodeId {
 }
 
 /// Realizes a multi-line text area, with its value set through [`set_input_value`] and
-/// edits reported through [`handle_input`].
+/// edits reported through [`handle_change`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_textarea(props: &TextareaProps) -> NodeId {
@@ -342,13 +338,13 @@ pub fn create_textarea(props: &TextareaProps) -> NodeId {
     set_attribute(node, "rows", &rows.to_string());
   }
 
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node
 }
 
 /// Realizes a slider over the given range, with its value set through
-/// [`set_input_value`] and moves reported through [`handle_input`].
+/// [`set_input_value`] and moves reported through [`handle_change`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_slider(props: &SliderProps) -> NodeId {
@@ -362,7 +358,7 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
     set_attribute(node, "step", &step.to_string());
   }
 
-  apply_control(node, &props.control);
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node
 }

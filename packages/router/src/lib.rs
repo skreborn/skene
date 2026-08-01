@@ -62,16 +62,20 @@ impl<R: Route> Router<R> {
     self.current.get()
   }
 
-  /// Navigates to `route`: updates the state and reports the new path to the platform's
-  /// sink (the browser pushes a history entry).
+  /// Navigates to `route`: reports the new path to the platform's sink (the browser
+  /// pushes a history entry), then updates the state.
+  ///
+  /// The sink runs first so anything reacting to the state—a derived document title
+  /// above all—applies to the new history entry, never retroactively to the departed
+  /// one.
   pub fn navigate(&self, route: R) {
     let path = route.to_path();
-
-    self.current.set(route);
 
     if let Some(sink) = self.sink.borrow().as_ref() {
       sink(&path);
     }
+
+    self.current.set(route);
   }
 
   /// Applies an externally-changed path (back/forward navigation, the initial URL)

@@ -328,7 +328,7 @@ fn pointer_down_handler_receives_the_event() {
   assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
 }
 
-/// A change handler receives the committed value when the change event fires.
+/// A change handler receives the value, in real time, when an input event fires.
 #[wasm_bindgen_test]
 fn change_handler_receives_the_committed_value() {
   let (_guard, root) = fresh_root();
@@ -350,14 +350,14 @@ fn change_handler_receives_the_committed_value() {
 
   init.set_bubbles(true);
 
-  let event = web_sys::Event::new_with_event_init_dict("change", &init).expect("an event");
+  let event = web_sys::Event::new_with_event_init_dict("input", &init).expect("an event");
   let _ = target.dispatch_event(&event);
 
   assert_eq!(&*seen.borrow(), "committed");
 }
 
 /// A checkbox bound to a signal reflects it and writes toggles back through a real
-/// change event.
+/// input event.
 #[wasm_bindgen_test]
 fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
@@ -382,7 +382,7 @@ fn checkbox_binding_round_trips() {
 
   init.set_bubbles(true);
 
-  let event = web_sys::Event::new_with_event_init_dict("change", &init).expect("an event");
+  let event = web_sys::Event::new_with_event_init_dict("input", &init).expect("an event");
   let _ = target.dispatch_event(&event);
 
   assert!(!checked.get());

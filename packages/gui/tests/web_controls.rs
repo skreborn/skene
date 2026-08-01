@@ -101,6 +101,30 @@ fn slider_serializes_range_and_value() {
   assert!(body.contains("value=\"40\""));
 }
 
+/// Every control carries its own reset class: no native chrome, author styles from
+/// zero; the select opts into the customizable-select rendering where supported.
+#[test]
+fn controls_carry_their_reset() {
+  let rendered = render_to_string(Checkbox::new);
+  let body = rendered.body();
+  let start = body.find("class=\"").expect("a class") + 7;
+  let end = body[start..].find('"').expect("a closing quote") + start;
+  let class = body[start..end].to_owned();
+
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{appearance:none;background:none;border:none;margin:0;padding:0;\
+     font:inherit;color:inherit;}}"
+  )));
+
+  let rendered = render_to_string(|| Select::new().set_options([("a", "A")]));
+
+  assert!(
+    rendered
+      .styles()
+      .contains("appearance:none;appearance:base-select;")
+  );
+}
+
 /// Roles realize as their semantic elements, headings by level.
 #[test]
 fn roles_realize_semantic_elements() {

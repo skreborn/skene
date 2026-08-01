@@ -31,7 +31,6 @@ pub(super) struct Events {
   pub(super) focus: Handlers<dyn Fn()>,
   pub(super) blur: Handlers<dyn Fn()>,
   pub(super) key_down: Handlers<dyn Fn(&KeyEvent)>,
-  pub(super) input: Handlers<dyn Fn(&str)>,
   pub(super) change: Handlers<dyn Fn(&str)>,
   pub(super) toggle: Handlers<dyn Fn(bool)>,
   pub(super) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
@@ -50,7 +49,6 @@ impl Events {
       focus: Rc::new(RefCell::new(FxHashMap::default())),
       blur: Rc::new(RefCell::new(FxHashMap::default())),
       key_down: Rc::new(RefCell::new(FxHashMap::default())),
-      input: Rc::new(RefCell::new(FxHashMap::default())),
       change: Rc::new(RefCell::new(FxHashMap::default())),
       toggle: Rc::new(RefCell::new(FxHashMap::default())),
       pointer_down: Rc::new(RefCell::new(FxHashMap::default())),
@@ -62,12 +60,13 @@ impl Events {
   }
 
   /// Installs the delegated listener for `event_name` on `root`, once. `dispatch` runs
-  /// for each node on the path from the event target up, inside one reactive batch.
+  /// for each node on the path from the event target up—receiving that node's own
+  /// element—inside one reactive batch.
   pub(super) fn ensure_root_listener(
     &self,
     root: &Element,
     event_name: &'static str,
-    dispatch: impl Fn(NodeId, &web_sys::Event) + 'static,
+    dispatch: impl Fn(NodeId, &Element, &web_sys::Event) + 'static,
   ) {
     let mut listeners = self.root_listeners.borrow_mut();
 
@@ -83,7 +82,7 @@ impl Events {
       skene_reactive::Effect::batch(|| {
         while let Some(element) = current {
           if let Some(id) = node_id_of(&element) {
-            dispatch(id, &event);
+            dispatch(id, &element, &event);
           }
 
           current = element.parent_element();
@@ -125,7 +124,6 @@ impl Events {
     self.focus.borrow_mut().remove(&node);
     self.blur.borrow_mut().remove(&node);
     self.key_down.borrow_mut().remove(&node);
-    self.input.borrow_mut().remove(&node);
     self.change.borrow_mut().remove(&node);
     self.toggle.borrow_mut().remove(&node);
     self.pointer_down.borrow_mut().remove(&node);

@@ -60,6 +60,7 @@ use skene_core::{
   ControlProps,
   InputProps,
   NodeId,
+  OverlayProps,
   RadioProps,
   Role,
   RunProp,
@@ -91,6 +92,7 @@ pub use self::csr::{
   handle_click,
   handle_focus,
   handle_key_down,
+  handle_overlay_dismiss,
   handle_pointer_down,
   handle_pointer_enter,
   handle_pointer_leave,
@@ -107,11 +109,13 @@ pub use self::csr::{
   on_pop,
   override_style,
   push_path,
+  register_overlay,
   register_source,
   set_attribute,
   set_checked,
   set_document_title,
   set_input_value,
+  set_overlay_open,
   set_style,
   set_text,
   tree::{attach, create_group, destroy, detach},
@@ -132,6 +136,7 @@ pub use self::ssr::{
   handle_click,
   handle_focus,
   handle_key_down,
+  handle_overlay_dismiss,
   handle_pointer_down,
   handle_pointer_enter,
   handle_pointer_leave,
@@ -144,6 +149,7 @@ pub use self::ssr::{
   record_static_routes,
   recorded_static_routes,
   register_boundary,
+  register_overlay,
   register_source,
   render_to_stream,
   render_to_string,
@@ -151,6 +157,7 @@ pub use self::ssr::{
   set_checked,
   set_document_title,
   set_input_value,
+  set_overlay_open,
   set_request_path,
   set_style,
   set_text,
@@ -281,6 +288,28 @@ pub fn create_button(props: &ButtonProps) -> NodeId {
 
   set_attribute(node, "type", "button");
   apply_control(node, &props.control, mapping::CONTROL_RESET);
+
+  node
+}
+
+/// Realizes an overlay: a `<dialog>` when modal, a manual popover otherwise—top-layer
+/// elements either way, mounted in place and opened through [`set_overlay_open`].
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_overlay(props: &OverlayProps) -> NodeId {
+  let node = if props.modal {
+    create_element("dialog")
+  }
+  else {
+    let node = create_element("div");
+
+    set_attribute(node, "popover", "manual");
+
+    node
+  };
+
+  assign_class(node, &mapping::overlay_template(props));
+  register_overlay(node, props.modal, props.placement);
 
   node
 }

@@ -51,6 +51,7 @@ pub struct Container {
   pub(crate) main_axis_alignment: Option<Source<MainAxisAlignment>>,
   pub(crate) cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   pub(crate) overflow: Option<Source<Overflow>>,
+  pub(crate) anchor: Option<crate::Anchor>,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
@@ -93,6 +94,7 @@ impl Container {
       main_axis_alignment: None,
       cross_axis_alignment: None,
       overflow: None,
+      anchor: None,
       variants: Vec::new(),
       transitions: Vec::new(),
       animations: Vec::new(),
@@ -508,6 +510,15 @@ impl Container {
 
     self
   }
+
+  /// Binds `anchor` to the box, so an overlay's
+  /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
+    self.anchor = Some(anchor.clone());
+
+    self
+  }
 }
 
 impl Default for Container {
@@ -712,6 +723,10 @@ impl skene_core::View for Container {
 
     if let Some(action) = self.scroll_handler {
       driver::handle_scroll(node, action);
+    }
+
+    if let Some(anchor) = &self.anchor {
+      anchor.assign(node);
     }
 
     match self.layout {

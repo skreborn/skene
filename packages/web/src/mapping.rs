@@ -25,6 +25,8 @@ use skene_core::{
   Easing,
   Layout,
   Overflow,
+  OverlayProps,
+  Placement,
   RunDisplay,
   RunProp,
   RunProps,
@@ -177,6 +179,47 @@ pub(crate) fn box_template(props: &BoxProps) -> String {
     &props.animations,
     |style| fold_box_style(Declarations::new(), style),
   )
+}
+
+/// The reset an overlay's element carries: the user-agent dialog/popover chrome
+/// stripped, the top-layer fixed positioning and auto margins (which center it) left
+/// intact for the placement margins to override.
+const OVERLAY_RESET: &str = "border:none;padding:0;background:none;color:inherit;overflow:visible;";
+
+/// The margin declaration placing an overlay against the viewport: `auto` centers an
+/// axis, `0` pins an edge.
+fn placement_margin(placement: Placement) -> &'static str {
+  match placement {
+    Placement::Center => "auto",
+    Placement::Top => "0 auto auto",
+    Placement::TopStart => "0 auto auto 0",
+    Placement::TopEnd => "0 0 auto auto",
+    Placement::Bottom => "auto auto 0",
+    Placement::BottomStart => "auto auto 0 0",
+    Placement::BottomEnd => "auto 0 0 auto",
+  }
+}
+
+/// The complete rule template for an overlay: its reset, its placement margins, its
+/// content style and variants, and—for a modal with a backdrop—the `::backdrop` rule.
+pub(crate) fn overlay_template(props: &OverlayProps) -> String {
+  let base = fold_box_style(
+    Declarations::new().set("margin", placement_margin(props.placement)),
+    &props.style,
+  );
+  let mut out = template(base, OVERLAY_RESET, &props.variants, &[], &[], |style| {
+    fold_box_style(Declarations::new(), style)
+  });
+
+  if let Some(color) = props.backdrop {
+    push_rule(
+      &mut out,
+      &["::backdrop"],
+      &Declarations::new().set("background-color", Declarations::render_color(color)),
+    );
+  }
+
+  out
 }
 
 /// The reset every form control carries in its own class: no native chrome, no

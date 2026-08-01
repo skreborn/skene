@@ -31,6 +31,7 @@ pub struct Button {
   key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
   autofocus: bool,
   focus_handle: Option<FocusHandle>,
+  anchor: Option<crate::Anchor>,
 }
 
 impl Button {
@@ -47,6 +48,7 @@ impl Button {
       key_down_handler: None,
       autofocus: false,
       focus_handle: None,
+      anchor: None,
     }
   }
 
@@ -111,6 +113,15 @@ impl Button {
   #[inline(always)]
   pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
     self.focus_handle = Some(handle.clone());
+
+    self
+  }
+
+  /// Binds `anchor` to the button, so an overlay's
+  /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
+    self.anchor = Some(anchor.clone());
 
     self
   }
@@ -192,6 +203,10 @@ impl View for Button {
 
     if let Some(handle) = &self.focus_handle {
       handle.assign(node);
+    }
+
+    if let Some(anchor) = &self.anchor {
+      anchor.assign(node);
     }
 
     self.children.mount(node);

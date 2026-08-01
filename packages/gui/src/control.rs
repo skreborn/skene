@@ -19,6 +19,7 @@ pub(crate) struct ControlBase {
   pub(crate) tab_index: Option<i32>,
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
+  pub(crate) anchor: Option<crate::Anchor>,
   pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
   #[expect(clippy::type_complexity)]
@@ -35,6 +36,7 @@ impl ControlBase {
       tab_index: None,
       autofocus: false,
       focus_handle: None,
+      anchor: None,
       focus_handler: None,
       blur_handler: None,
       key_down_handler: None,
@@ -56,6 +58,7 @@ impl ControlBase {
       },
       ControlHandlers {
         focus_handle: self.focus_handle,
+        anchor: self.anchor,
         focus: self.focus_handler,
         blur: self.blur_handler,
         key_down: self.key_down_handler,
@@ -68,6 +71,7 @@ impl ControlBase {
 #[cfg(target_arch = "wasm32")]
 pub(crate) struct ControlHandlers {
   focus_handle: Option<FocusHandle>,
+  anchor: Option<crate::Anchor>,
   focus: Option<Rc<dyn Fn()>>,
   blur: Option<Rc<dyn Fn()>>,
   #[expect(clippy::type_complexity)]
@@ -92,6 +96,10 @@ impl ControlHandlers {
 
     if let Some(handle) = &self.focus_handle {
       handle.assign(node);
+    }
+
+    if let Some(anchor) = &self.anchor {
+      anchor.assign(node);
     }
   }
 }
@@ -165,6 +173,15 @@ macro_rules! control_surface {
       #[inline(always)]
       pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
         self.control.focus_handle = Some(handle.clone());
+
+        self
+      }
+
+      /// Binds `anchor` to the control, so an overlay's
+      /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
+      #[inline(always)]
+      pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
+        self.control.anchor = Some(anchor.clone());
 
         self
       }

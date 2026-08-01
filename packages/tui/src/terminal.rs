@@ -323,6 +323,14 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
     KeyCode::Tab => state.move_focus(1),
     KeyCode::BackTab => state.move_focus(-1),
     code => {
+      if code == KeyCode::Esc
+        && let Some((top, _)) = state.topmost_open_overlay()
+      {
+        State::run_handlers(&state.dismiss, top, (), |run, ()| run());
+
+        return;
+      }
+
       let key_event = portable_key(code, key.modifiers);
       let targets = match state.focused.get() {
         Some(focused) => state.ancestors(focused),

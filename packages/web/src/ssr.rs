@@ -539,6 +539,15 @@ pub fn focus_node(_node: NodeId) {}
 /// Inert on the server; focus is the client's after hydration.
 pub fn blur_node(_node: NodeId) {}
 
+/// Inert on the server; an overlay serializes closed.
+pub fn register_overlay(_node: NodeId, _modal: bool, _placement: skene_core::Placement) {}
+
+/// Inert on the server; an overlay serializes closed.
+pub fn set_overlay_open(_node: NodeId, _open: bool, _anchor: Option<NodeId>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_overlay_dismiss(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+
 /// Sets the value of an input, text area, or select node: the `value` attribute, the
 /// text content, or the matching option's `selected` mark, respectively.
 pub fn set_input_value(node: NodeId, value: &str) {

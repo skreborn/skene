@@ -146,7 +146,11 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Remaining:** text wrapping; scroll (incl. mouse wheel); caret positioning in inputs
   (edits append/pop only); a diffed redraw instead of full frames; selectable border
   character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,
-  custom).
+  custom); box shadows (always a 1×1 offset to the bottom-right, color and opacity
+  configurable, rendered by mixing the shadow color into whatever lies beneath—both the
+  foreground and the background color of the shadowed cell); a compositor pass where
+  every layer draws into one internal buffer first (so a later layer reads the colors
+  already placed—the shadow mix depends on it—and the frame flushes at once).
 
 ## Backlog—unphased features
 
@@ -158,9 +162,18 @@ sink are just different sinks for the same paths.)
 - **HTTP client** as a separate crate (`skene-http`), built on the public seams
   (`spawn`, `Resource`) exactly as a third-party client would be—same footing is the
   point. A WebSocket sibling follows the same rule.
-- **Overlays**: portals, popups, modals, tooltips—content mounted outside its parent's
-  clip/z-order. Web: top-layer (`<dialog>`/popover) or a portal to `<body>`; native: the
-  platform compositor's layers; TUI: a second paint pass over the cell buffer.
+- **Overlays—done (web + TUI).** `Overlay::modal()` / `Overlay::popup()` on both
+  facades: open state signal-driven (`bind_open`), dismissal always a request
+  (`handle_dismiss`—Escape, backdrop click, or a press outside a popup; the overlay
+  never closes itself), placement against the viewport or an `Anchor`-bound view
+  (`Top`/`Bottom` open above/below the anchor), and a backdrop for modals. Web realizes
+  the top layer natively—`<dialog>`+`showModal` (focus trap, `::backdrop`) for modals,
+  a manual popover for popups, both serialized closed by SSR; the TUI paints overlays
+  in a second pass over the cell buffer, hit-tests them first (nothing beneath an open
+  modal is reachable, and it contains the tab order), and re-roots their layout so they
+  escape normal flow. Remaining: flip-when-out-of-space anchoring, CSS anchor
+  positioning where supported, and the portal-to-arbitrary-plane case if it ever earns
+  its keep. Native: the platform compositor's layers, with the same vocabulary.
 - **Container queries** next to media queries: `Condition` leaves resolved against an
   ancestor container's size, not the viewport. Web compiles to `@container` (the driver
   stamps `container-type` on the queried ancestor); TUI and native resolve them against

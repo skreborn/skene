@@ -12,6 +12,7 @@ pub use skene_core::{
   MainAxisAlignment,
   Modifiers,
   MouseCursor,
+  Placement,
   PointerButton,
   View,
 };
@@ -28,6 +29,7 @@ pub use skene_reactive::{
 };
 
 pub use crate::{
+  Anchor,
   BoxStyle,
   Button,
   Children,
@@ -38,6 +40,7 @@ pub use crate::{
   HasChildren,
   Input,
   Inset,
+  Overlay,
   PointerEvent,
   RunStyle,
   Text,

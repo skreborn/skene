@@ -38,6 +38,7 @@ pub use tracing::{debug, error, info, trace, warn};
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub use crate::render_to_string;
 pub use crate::{
+  Anchor,
   Border,
   Button,
   Checkbox,
@@ -47,6 +48,7 @@ pub use crate::{
   Input,
   Inset,
   Layout,
+  Overlay,
   Point,
   Radio,
   Rect,

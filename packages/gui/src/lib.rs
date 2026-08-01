@@ -18,6 +18,7 @@ mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
 mod input;
+mod overlay;
 mod radio;
 #[cfg(target_arch = "wasm32")]
 mod realize;
@@ -64,6 +65,7 @@ pub use crate::{
   container::Container,
   focus::FocusHandle,
   input::Input,
+  overlay::{Anchor, Overlay},
   radio::Radio,
   select::Select,
   slider::Slider,

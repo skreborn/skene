@@ -482,3 +482,106 @@ fn hover_cursor_resolves() {
     tui::trigger_mouse_move(1, 0);
   });
 }
+
+/// A modal overlay paints over the app with its backdrop scrim, blocks clicks beneath
+/// it, and Escape asks it to close.
+#[test]
+fn modal_overlay_covers_blocks_and_dismisses() {
+  let (closed, open_frame, blocked, after_escape) = with_driver(|| {
+    let open = RwSignal::new(false);
+    let clicks = Rc::new(Cell::new(0u32));
+
+    {
+      let clicks = Rc::clone(&clicks);
+
+      tui::mount(move || {
+        Container::column()
+          .set_children((
+            Button::new()
+              .set_style(BoxStyle::new().set_width(6).set_height(1))
+              .set_child(Text::new("base"))
+              .handle_click(move || clicks.set(clicks.get() + 1)),
+            Overlay::modal()
+              .bind_open(open)
+              .set_backdrop(Color::srgb(0., 0., 0.))
+              .set_style(BoxStyle::new().set_padding(Inset::all(1)))
+              .set_child(Text::new("dialog")),
+          ))
+          .into_any()
+          .build()
+      });
+    }
+
+    let closed = tui::render_to_text(12, 5);
+
+    open.set(true);
+
+    let open_frame = tui::render_to_text(12, 5);
+
+    // A click where the base button sits is blocked and asks the modal to close.
+    tui::trigger_mouse_click(1, 0);
+
+    let blocked = clicks.get();
+
+    let _ = tui::render_to_text(12, 5);
+
+    tui::trigger_key("Escape");
+
+    (closed, open_frame, blocked, tui::render_to_text(12, 5))
+  });
+
+  assert!(closed.contains("base"));
+  assert!(!closed.contains("dialog"));
+  assert!(open_frame.contains("dialog"));
+  assert!(!open_frame.contains("base"));
+  assert_eq!(blocked, 0);
+  assert!(after_escape.contains("base"));
+  assert!(!after_escape.contains("dialog"));
+}
+
+/// An anchored popup opens below its anchor, and a press outside asks it to close
+/// while the press still reaches the app.
+#[test]
+fn popup_anchors_below_and_light_dismisses() {
+  let (frame, dismissed_frame) = with_driver(|| {
+    let open = RwSignal::new(false);
+    let anchor = Anchor::new();
+
+    {
+      let anchor_for_button = anchor.clone();
+
+      tui::mount(move || {
+        Container::column()
+          .set_children((
+            Button::new()
+              .set_style(BoxStyle::new().set_width(8).set_height(1))
+              .set_child(Text::new("trigger"))
+              .bind_anchor(&anchor_for_button),
+            Overlay::popup()
+              .bind_open(open)
+              .set_anchor(&anchor)
+              .set_placement(Placement::Bottom)
+              .set_child(Text::new("menu")),
+          ))
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(12, 4);
+
+    open.set(true);
+
+    let frame = tui::render_to_text(12, 4);
+
+    tui::trigger_mouse_click(10, 3);
+
+    (frame, tui::render_to_text(12, 4))
+  });
+
+  let lines: Vec<&str> = frame.lines().collect();
+
+  assert!(lines[0].contains("trigger"));
+  assert!(lines[1].contains("menu"));
+  assert!(!dismissed_frame.contains("menu"));
+}

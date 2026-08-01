@@ -64,6 +64,7 @@ pub struct Container {
   pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
   #[expect(clippy::type_complexity)]
   pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  anchor: Option<crate::Anchor>,
 }
 
 impl Container {
@@ -95,6 +96,7 @@ impl Container {
       pointer_down_handler: None,
       pointer_up_handler: None,
       pointer_move_handler: None,
+      anchor: None,
     }
   }
 
@@ -427,6 +429,15 @@ impl Container {
 
     self
   }
+
+  /// Binds `anchor` to the box, so an overlay's
+  /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
+    self.anchor = Some(anchor.clone());
+
+    self
+  }
 }
 
 impl Default for Container {
@@ -653,6 +664,10 @@ impl View for Container {
           .push(action);
       }
     });
+
+    if let Some(anchor) = &self.anchor {
+      anchor.assign(node);
+    }
 
     match self.layout {
       // Overlap the children in one grid cell.

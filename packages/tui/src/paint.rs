@@ -133,7 +133,60 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
 
   paint_node(state, environment, &mut buffer, ROOT_ID, 0, 0);
 
+  for overlay in state.open_overlays() {
+    paint_overlay(state, environment, &mut buffer, overlay);
+  }
+
   buffer
+}
+
+/// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
+/// computed origin.
+fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, overlay: NodeId) {
+  let backdrop = {
+    let nodes = state.nodes.borrow();
+
+    match nodes.get(&overlay).map(|record| &record.kind) {
+      Some(NodeKind::Overlay { backdrop, .. }) => backdrop.and_then(terminal_rgb),
+      _ => return,
+    }
+  };
+
+  if let Some(color) = backdrop {
+    for cell in &mut buffer.cells {
+      *cell = TerminalCell {
+        background: Some(color),
+        ..TerminalCell::EMPTY
+      };
+    }
+  }
+
+  let (origin_x, origin_y) = state.overlay_origin(overlay);
+  let (location_x, location_y) = {
+    let nodes = state.nodes.borrow();
+    let Some(record) = nodes.get(&overlay)
+    else {
+      return;
+    };
+
+    match state.taffy.borrow().layout(record.taffy) {
+      #[expect(clippy::cast_possible_truncation)]
+      Ok(layout) => (
+        layout.location.x.round() as isize,
+        layout.location.y.round() as isize,
+      ),
+      Err(_) => (0, 0),
+    }
+  };
+
+  paint_node(
+    state,
+    environment,
+    buffer,
+    overlay,
+    isize::try_from(origin_x).unwrap_or(0) - location_x,
+    isize::try_from(origin_y).unwrap_or(0) - location_y,
+  );
 }
 
 /// Refreshes every node's taffy style from its effective style in `environment`.
@@ -218,6 +271,28 @@ fn refresh_styles(state: &State, environment: Environment) {
         }
 
         taffy.set_style(record.taffy, out).expect("style an input");
+      }
+      NodeKind::Overlay {
+        open,
+        style,
+        variants,
+        ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let mut out = taffy::style::Style {
+          position: taffy::style::Position::Absolute,
+          ..taffy::style::Style::default()
+        };
+
+        apply_box_sizing(&mut out, &effective, false);
+
+        if !*open {
+          out.display = taffy::style::Display::None;
+        }
+
+        taffy
+          .set_style(record.taffy, out)
+          .expect("style an overlay");
       }
       NodeKind::Group => {
         if fills_root {
@@ -334,6 +409,19 @@ fn paint_node(
           reverse: focused,
         }
       }
+      NodeKind::Overlay {
+        style, variants, ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+
+        NodePaint::Box {
+          background: effective.color.and_then(terminal_rgb),
+          border: effective.border.map(|border| BorderPaint {
+            color: terminal_rgb(border),
+          }),
+          reverse: false,
+        }
+      }
       NodeKind::Group => NodePaint::None,
     };
 
@@ -392,6 +480,10 @@ fn paint_node(
   }
 
   for child in children {
+    if state.is_overlay(child) {
+      continue;
+    }
+
     paint_node(state, environment, buffer, child, x, y);
   }
 }

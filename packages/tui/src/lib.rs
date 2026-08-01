@@ -25,6 +25,7 @@ mod dev;
 mod events;
 mod focus;
 mod input;
+mod overlay;
 mod paint;
 mod props;
 mod realize;
@@ -66,6 +67,7 @@ pub use crate::{
   events::PointerEvent,
   focus::FocusHandle,
   input::Input,
+  overlay::{Anchor, Overlay},
   props::{BoxStyle, Condition, RunStyle},
   routing::install_router,
   text::Text,

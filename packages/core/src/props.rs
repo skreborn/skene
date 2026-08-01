@@ -16,6 +16,7 @@ use crate::{
   MainAxisAlignment,
   MouseCursor,
   Overflow,
+  Placement,
   Role,
   Transition,
 };
@@ -258,6 +259,23 @@ pub struct ControlProps {
   pub tab_index: Option<i32>,
   /// Whether the element takes focus when the page loads.
   pub autofocus: bool,
+}
+
+/// Everything a driver needs to realize an overlay: content above the app, opened and
+/// closed by the facade.
+#[must_use]
+pub struct OverlayProps {
+  /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
+  pub modal: bool,
+  /// Where the overlay sits.
+  pub placement: Placement,
+  /// The backdrop color painted over the app while open, if any.
+  pub backdrop: Option<Color>,
+  /// The content box's static style.
+  pub style: BoxStyle,
+  /// Conditional variants, each applying while its condition holds; later entries win
+  /// over earlier ones.
+  pub variants: Vec<(Condition, BoxStyle)>,
 }
 
 /// Everything a driver needs to realize a button.

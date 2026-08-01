@@ -6,7 +6,16 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_core::{KeyEvent, Layout, Modifiers, MouseCursor, NodeId, PointerButton};
+use skene_core::{
+  Color,
+  KeyEvent,
+  Layout,
+  Modifiers,
+  MouseCursor,
+  NodeId,
+  Placement,
+  PointerButton,
+};
 
 use crate::{
   events::PointerEvent,
@@ -40,6 +49,16 @@ pub(crate) enum NodeKind {
   },
   /// A structural anchor with no visuals of its own.
   Group,
+  /// An overlay: content above the app, opened and closed by the facade.
+  Overlay {
+    modal: bool,
+    open: bool,
+    placement: Placement,
+    backdrop: Option<Color>,
+    anchor: Option<NodeId>,
+    style: BoxStyle,
+    variants: Vec<(Condition, BoxStyle)>,
+  },
 }
 
 /// One node's record: its realization, its taffy node, and its place in the tree.
@@ -69,6 +88,9 @@ pub(crate) struct State {
   pub(crate) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
+  pub(crate) dismiss: Handlers<dyn Fn()>,
+  /// Every overlay node, in build order—later entries stack on top.
+  pub(crate) overlays: RefCell<Vec<NodeId>>,
   pub(crate) focused: Cell<Option<NodeId>>,
   /// The nodes registered as focusable controls (buttons, and controls to come).
   pub(crate) controls: RefCell<FxHashSet<NodeId>>,
@@ -122,6 +144,8 @@ impl State {
       pointer_down: RefCell::new(FxHashMap::default()),
       pointer_up: RefCell::new(FxHashMap::default()),
       pointer_move: RefCell::new(FxHashMap::default()),
+      dismiss: RefCell::new(FxHashMap::default()),
+      overlays: RefCell::new(Vec::new()),
       focused: Cell::new(None),
       controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
@@ -169,16 +193,20 @@ impl State {
       old.children.retain(|node| *node != child);
     }
 
-    let (child_taffy, old_parent_taffy) = {
+    let overlay = matches!(
+      nodes.get(&child).map(|record| &record.kind),
+      Some(NodeKind::Overlay { .. })
+    );
+    let root_taffy = nodes.get(&ROOT_ID).expect("the root").taffy;
+    let child_taffy = {
       let record = nodes.get_mut(&child).expect("tui driver: unknown node id");
       let old = record.parent.take();
 
       record.parent = Some(parent);
 
-      (
-        record.taffy,
-        old.map(|old| nodes.get(&old).expect("a recorded parent").taffy),
-      )
+      let _ = old;
+
+      record.taffy
     };
 
     let parent_record = nodes.get_mut(&parent).expect("tui driver: unknown node id");
@@ -199,13 +227,22 @@ impl State {
 
     let mut taffy = self.taffy.borrow_mut();
 
-    if let Some(old) = old_parent_taffy {
-      let _ = taffy.remove_child(old, child_taffy);
+    if let Some(current) = taffy.parent(child_taffy) {
+      let _ = taffy.remove_child(current, child_taffy);
     }
 
-    taffy
-      .insert_child_at_index(parent_taffy, index, child_taffy)
-      .expect("attach a taffy child");
+    // An overlay leaves normal flow entirely: its layout hangs off the root, its tree
+    // place stays with its parent.
+    if overlay {
+      taffy
+        .add_child(root_taffy, child_taffy)
+        .expect("attach an overlay's taffy node");
+    }
+    else {
+      taffy
+        .insert_child_at_index(parent_taffy, index, child_taffy)
+        .expect("attach a taffy child");
+    }
 
     self.dirty.set(true);
   }
@@ -226,11 +263,13 @@ impl State {
 
     drop(nodes);
 
-    if let (Some(parent_taffy), Some(child_taffy)) = (parent_taffy, child_taffy) {
-      let _ = self
-        .taffy
-        .borrow_mut()
-        .remove_child(parent_taffy, child_taffy);
+    if let Some(child_taffy) = child_taffy {
+      let _ = parent_taffy;
+      let mut taffy = self.taffy.borrow_mut();
+
+      if let Some(current) = taffy.parent(child_taffy) {
+        let _ = taffy.remove_child(current, child_taffy);
+      }
     }
 
     self.dirty.set(true);
@@ -258,6 +297,8 @@ impl State {
       self.pointer_down.borrow_mut().remove(&current);
       self.pointer_up.borrow_mut().remove(&current);
       self.pointer_move.borrow_mut().remove(&current);
+      self.dismiss.borrow_mut().remove(&current);
+      self.overlays.borrow_mut().retain(|node| *node != current);
       self.hovered.borrow_mut().retain(|node| *node != current);
       self.controls.borrow_mut().remove(&current);
 
@@ -294,6 +335,13 @@ impl State {
         // Reverse, so the stack pops children in tree order.
         stack.extend(record.children.iter().rev());
       }
+    }
+
+    drop(nodes);
+
+    // An open modal contains the tab order.
+    if let Some((top, true)) = self.topmost_open_overlay() {
+      order.retain(|node| self.ancestors(*node).contains(&top));
     }
 
     order
@@ -385,6 +433,19 @@ impl State {
   /// The path from the root to the deepest node containing the cell (`x`, `y`)—each
   /// with its absolute origin—against the last computed layout.
   pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i32, i32))> {
+    // Overlays hit first, topmost first; below an open modal nothing is hittable.
+    for overlay in self.open_overlays().iter().rev() {
+      let mut path = Vec::new();
+
+      if self.hit_overlay(*overlay, x, y, &mut path) {
+        return path;
+      }
+
+      if matches!(self.topmost_open_overlay(), Some((top, true)) if top == *overlay) {
+        return Vec::new();
+      }
+    }
+
     let mut path = Vec::new();
 
     self.hit_walk(ROOT_ID, 0, 0, i32::from(x), i32::from(y), &mut path);
@@ -438,8 +499,12 @@ impl State {
 
     path.push((node, (origin_x, origin_y)));
 
-    // Later children paint on top, so they win the hit.
+    // Later children paint on top, so they win the hit; overlays hit separately.
     for child in children.iter().rev() {
+      if self.is_overlay(*child) {
+        continue;
+      }
+
       if self.hit_walk(*child, origin_x, origin_y, x, y, path) {
         break;
       }
@@ -478,6 +543,18 @@ impl State {
   /// hit path (or blurs when none is hit), then runs click handlers from the deepest
   /// node up.
   pub(crate) fn mouse_click(&self, x: u16, y: u16) {
+    if let Some((top, modal)) = self.topmost_open_overlay() {
+      let mut path = Vec::new();
+
+      if !self.hit_overlay(top, x, y, &mut path) {
+        Self::run_handlers(&self.dismiss, top, (), |run, ()| run());
+
+        if modal {
+          return;
+        }
+      }
+    }
+
     let path = self.hit_test(x, y);
     let focusable = self.focusable();
     let target = path
@@ -515,6 +592,183 @@ impl State {
 
       Self::run_handlers(handlers, *node, &event, |run, event| run(event));
     }
+  }
+
+  /// Opens or closes an overlay, resolving its anchor at that moment.
+  pub(crate) fn set_overlay_open(&self, node: NodeId, open: bool, anchor: Option<NodeId>) {
+    self.with_node(node, |record| {
+      if let NodeKind::Overlay {
+        open: current,
+        anchor: bound,
+        ..
+      } = &mut record.kind
+      {
+        *current = open;
+        *bound = anchor;
+      }
+    });
+
+    self.dirty.set(true);
+  }
+
+  /// Whether `node` is an overlay.
+  pub(crate) fn is_overlay(&self, node: NodeId) -> bool {
+    matches!(
+      self.nodes.borrow().get(&node).map(|record| &record.kind),
+      Some(NodeKind::Overlay { .. })
+    )
+  }
+
+  /// Every open overlay, in build order—later entries stack on top.
+  pub(crate) fn open_overlays(&self) -> Vec<NodeId> {
+    let nodes = self.nodes.borrow();
+
+    self
+      .overlays
+      .borrow()
+      .iter()
+      .copied()
+      .filter(|node| {
+        matches!(
+          nodes.get(node).map(|record| &record.kind),
+          Some(NodeKind::Overlay { open: true, .. })
+        )
+      })
+      .collect()
+  }
+
+  /// The topmost open overlay and whether it is modal.
+  pub(crate) fn topmost_open_overlay(&self) -> Option<(NodeId, bool)> {
+    let nodes = self.nodes.borrow();
+
+    self.overlays.borrow().iter().rev().find_map(|node| {
+      match nodes.get(node).map(|record| &record.kind) {
+        Some(NodeKind::Overlay {
+          open: true, modal, ..
+        }) => Some((*node, *modal)),
+        _ => None,
+      }
+    })
+  }
+
+  /// A node's absolute origin: its taffy locations summed up the parent chain.
+  fn absolute_origin(&self, node: NodeId) -> (i32, i32) {
+    let nodes = self.nodes.borrow();
+    let taffy = self.taffy.borrow();
+    let mut current = Some(node);
+    let (mut x, mut y) = (0, 0);
+
+    while let Some(id) = current {
+      let Some(record) = nodes.get(&id)
+      else {
+        break;
+      };
+
+      if let Ok(layout) = taffy.layout(record.taffy) {
+        #[expect(clippy::cast_possible_truncation)]
+        {
+          x += layout.location.x.round() as i32;
+          y += layout.location.y.round() as i32;
+        }
+      }
+
+      current = record.parent;
+    }
+
+    (x, y)
+  }
+
+  /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
+  /// anchor, everything else against the terminal.
+  pub(crate) fn overlay_origin(&self, node: NodeId) -> (i32, i32) {
+    let (columns, rows) = self.last_size.get();
+    let (columns, rows) = (i32::from(columns), i32::from(rows));
+    let (placement, anchor) = {
+      let nodes = self.nodes.borrow();
+
+      match nodes.get(&node).map(|record| &record.kind) {
+        Some(NodeKind::Overlay {
+          placement, anchor, ..
+        }) => (*placement, *anchor),
+        _ => return (0, 0),
+      }
+    };
+    let (width, height) = self.node_size(node);
+
+    if let Some(anchor) = anchor.filter(|_| matches!(placement, Placement::Top | Placement::Bottom))
+    {
+      let (anchor_x, anchor_y) = self.absolute_origin(anchor);
+      let (_, anchor_height) = self.node_size(anchor);
+
+      return match placement {
+        Placement::Top => (anchor_x, anchor_y - height),
+        _ => (anchor_x, anchor_y + anchor_height),
+      };
+    }
+
+    match placement {
+      Placement::Center => ((columns - width) / 2, (rows - height) / 2),
+      Placement::Top => ((columns - width) / 2, 0),
+      Placement::TopStart => (0, 0),
+      Placement::TopEnd => (columns - width, 0),
+      Placement::Bottom => ((columns - width) / 2, rows - height),
+      Placement::BottomStart => (0, rows - height),
+      Placement::BottomEnd => (columns - width, rows - height),
+    }
+  }
+
+  /// A node's laid-out size, in cells.
+  fn node_size(&self, node: NodeId) -> (i32, i32) {
+    let nodes = self.nodes.borrow();
+    let Some(record) = nodes.get(&node)
+    else {
+      return (0, 0);
+    };
+
+    match self.taffy.borrow().layout(record.taffy) {
+      #[expect(clippy::cast_possible_truncation)]
+      Ok(layout) => (
+        layout.size.width.round().max(0.0) as i32,
+        layout.size.height.round().max(0.0) as i32,
+      ),
+      Err(_) => (0, 0),
+    }
+  }
+
+  /// Hits `overlay`'s subtree at its computed origin, accumulating the path.
+  pub(crate) fn hit_overlay(
+    &self,
+    overlay: NodeId,
+    x: u16,
+    y: u16,
+    path: &mut Vec<(NodeId, (i32, i32))>,
+  ) -> bool {
+    let (origin_x, origin_y) = self.overlay_origin(overlay);
+    let (location_x, location_y) = {
+      let nodes = self.nodes.borrow();
+      let Some(record) = nodes.get(&overlay)
+      else {
+        return false;
+      };
+
+      match self.taffy.borrow().layout(record.taffy) {
+        #[expect(clippy::cast_possible_truncation)]
+        Ok(layout) => (
+          layout.location.x.round() as i32,
+          layout.location.y.round() as i32,
+        ),
+        Err(_) => (0, 0),
+      }
+    };
+
+    self.hit_walk(
+      overlay,
+      origin_x - location_x,
+      origin_y - location_y,
+      i32::from(x),
+      i32::from(y),
+      path,
+    )
   }
 
   /// The pointer shape for the current hover path: the deepest hovered node with a

@@ -26,6 +26,7 @@ use skene_core::{
   KeyEvent,
   Modifiers,
   NodeId,
+  Placement,
   PointerButton,
   PointerEvent,
   ScrollEvent,
@@ -83,6 +84,8 @@ struct State {
   /// The nodes adopted in place during hydration, so their attach skips the DOM insert; cleared
   /// when hydration ends.
   adopted: RefCell<FxHashSet<NodeId>>,
+  /// Each overlay node's realization config.
+  overlays: RefCell<FxHashMap<NodeId, (bool, Placement)>>,
 }
 
 impl State {
@@ -123,6 +126,7 @@ impl State {
       events: events::Events::new(),
       hydration: RefCell::new(None),
       adopted: RefCell::new(FxHashSet::default()),
+      overlays: RefCell::new(FxHashMap::default()),
     }
   }
 
@@ -455,6 +459,130 @@ impl State {
           events::run_handlers(&handlers, id, checked, |run, checked| run(checked));
         });
     });
+  }
+
+  /// Records an overlay's realization config, consulted when it opens.
+  pub fn register_overlay(&self, node: NodeId, modal: bool, placement: Placement) {
+    self.overlays.borrow_mut().insert(node, (modal, placement));
+  }
+
+  /// Opens or closes an overlay: a modal shows as a dialog (top layer, focus trapped),
+  /// a popup shows as a popover—positioned against `anchor` when one is bound.
+  pub fn set_overlay_open(&self, node: NodeId, open: bool, anchor: Option<NodeId>) {
+    let Some((modal, placement)) = self.overlays.borrow().get(&node).copied()
+    else {
+      return;
+    };
+
+    let element = self.element(node);
+    let anchor = anchor.map(|anchor| self.element(anchor));
+
+    if modal {
+      let Some(dialog) = element.dyn_ref::<web_sys::HtmlDialogElement>()
+      else {
+        return;
+      };
+
+      if open {
+        let _ = dialog.show_modal();
+      }
+      else {
+        dialog.close();
+      }
+
+      return;
+    }
+
+    let Some(html) = element.dyn_ref::<HtmlElement>()
+    else {
+      return;
+    };
+
+    if open {
+      let _ = html.show_popover();
+
+      if let Some(anchor) = anchor {
+        position_at_anchor(html, &anchor, placement);
+      }
+    }
+    else {
+      let _ = html.hide_popover();
+    }
+  }
+
+  /// Registers `handler` to run when the user asks the overlay to close: Escape, a
+  /// modal's backdrop click, or a pointer press outside a popup. The overlay never
+  /// closes itself—the handler owns the open state.
+  pub fn handle_overlay_dismiss(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+    let Some((modal, _)) = self.overlays.borrow().get(&node).copied()
+    else {
+      return;
+    };
+
+    if modal {
+      self.with_element(node, |element| {
+        {
+          let handler = Rc::clone(&handler);
+
+          self
+            .events
+            .add_direct_listener(node, element, "cancel", move |event| {
+              event.prevent_default();
+              handler();
+            });
+        }
+
+        let dialog = element.clone();
+
+        self
+          .events
+          .add_direct_listener(node, element, "click", move |event| {
+            if event.target().as_ref() == Some(dialog.unchecked_ref()) {
+              handler();
+            }
+          });
+      });
+
+      return;
+    }
+
+    // A popup dismisses from anywhere: Escape and outside presses reach the document
+    // root, gated on the popover actually being shown.
+    let root = self
+      .document
+      .document_element()
+      .expect("a document element");
+    let popup = self.element(node);
+
+    {
+      let popup = popup.clone();
+      let handler = Rc::clone(&handler);
+
+      self
+        .events
+        .add_direct_listener(node, &root, "keydown", move |event| {
+          if popup.matches(":popover-open").unwrap_or(false)
+            && event
+              .dyn_ref::<KeyboardEvent>()
+              .is_some_and(|event| event.key() == "Escape")
+          {
+            handler();
+          }
+        });
+    }
+
+    self
+      .events
+      .add_direct_listener(node, &root, "pointerdown", move |event| {
+        let outside = event
+          .target()
+          .and_then(|target| target.dyn_into::<web_sys::Node>().ok())
+          .is_some_and(|target| !popup.contains(Some(&target)));
+
+        if popup.matches(":popover-open").unwrap_or(false) && outside {
+          handler();
+        }
+      });
   }
 
   /// Moves keyboard focus to `node`.
@@ -1110,4 +1238,37 @@ fn element_value(event: &web_sys::Event) -> Option<String> {
   }
 
   None
+}
+
+/// Positions an open popup against its anchor: below it for `Bottom`, above it for
+/// `Top`, start-aligned either way; other placements keep their viewport position.
+fn position_at_anchor(popup: &HtmlElement, anchor: &Element, placement: Placement) {
+  let rect = anchor.get_bounding_client_rect();
+  let style = popup.style();
+  let top = match placement {
+    Placement::Top => rect.top() - f64::from(popup.offset_height()),
+    Placement::Bottom => rect.bottom(),
+    _ => return,
+  };
+
+  let _ = style.set_property("inset", "auto");
+  let _ = style.set_property("margin", "0");
+  let _ = style.set_property("position", "fixed");
+  let _ = style.set_property("left", &format!("{}px", rect.left()));
+  let _ = style.set_property("top", &format!("{top}px"));
+}
+
+/// Records an overlay's realization config; see [`State::register_overlay`].
+pub fn register_overlay(node: NodeId, modal: bool, placement: Placement) {
+  with_state(|state| state.register_overlay(node, modal, placement));
+}
+
+/// Opens or closes an overlay; see [`State::set_overlay_open`].
+pub fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
+  with_state(|state| state.set_overlay_open(node, open, anchor));
+}
+
+/// Registers an overlay dismiss handler; see [`State::handle_overlay_dismiss`].
+pub fn handle_overlay_dismiss(node: NodeId, handler: Rc<dyn Fn()>) {
+  with_state(|state| state.handle_overlay_dismiss(node, handler));
 }

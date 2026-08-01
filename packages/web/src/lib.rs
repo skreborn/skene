@@ -61,18 +61,25 @@ pub use self::csr::uninstall;
 #[cfg(target_os = "unknown")]
 pub use self::csr::{
   adopt_next,
+  blur_node,
   create_element,
   current_path,
   document,
   drive,
   element,
+  focus_node,
   handle_blur,
+  handle_change,
   handle_click,
   handle_focus,
   handle_input,
   handle_key_down,
+  handle_pointer_down,
   handle_pointer_enter,
   handle_pointer_leave,
+  handle_pointer_move,
+  handle_pointer_up,
+  handle_scroll,
   hydrate,
   hydrate_page,
   install,
@@ -94,16 +101,23 @@ pub(crate) use self::ssr::assign_class;
 #[cfg(target_os = "wasi")]
 pub use self::ssr::{
   adopt_next,
+  blur_node,
   create_element,
   current_path,
   drive,
+  focus_node,
   handle_blur,
+  handle_change,
   handle_click,
   handle_focus,
   handle_input,
   handle_key_down,
+  handle_pointer_down,
   handle_pointer_enter,
   handle_pointer_leave,
+  handle_pointer_move,
+  handle_pointer_up,
+  handle_scroll,
   is_server,
   override_style,
   register_boundary,
@@ -132,6 +146,14 @@ pub fn create_box(props: &BoxProps) -> NodeId {
 
   if matches!(props.role, Some(Role::Button)) {
     set_attribute(node, "type", "button");
+  }
+
+  if let Some(tab_index) = props.tab_index {
+    set_attribute(node, "tabindex", &tab_index.to_string());
+  }
+
+  if props.autofocus {
+    set_attribute(node, "autofocus", "");
   }
 
   assign_class(node, &mapping::box_template(props));
@@ -194,6 +216,14 @@ pub fn create_input(props: &InputProps) -> NodeId {
 
   if let Some(placeholder) = &props.placeholder {
     set_attribute(node, "placeholder", placeholder);
+  }
+
+  if let Some(tab_index) = props.tab_index {
+    set_attribute(node, "tabindex", &tab_index.to_string());
+  }
+
+  if props.autofocus {
+    set_attribute(node, "autofocus", "");
   }
 
   if let Some(template) = mapping::input_template(props) {

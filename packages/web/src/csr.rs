@@ -19,7 +19,16 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_core::{IntoView, KeyEvent, NodeId, View};
+use skene_core::{
+  IntoView,
+  KeyEvent,
+  Modifiers,
+  NodeId,
+  PointerButton,
+  PointerEvent,
+  ScrollEvent,
+  View,
+};
 use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent};
 
@@ -272,10 +281,12 @@ impl State {
 
           let key_event = KeyEvent {
             key: keyboard.key(),
-            ctrl: keyboard.ctrl_key(),
-            shift: keyboard.shift_key(),
-            alt: keyboard.alt_key(),
-            meta: keyboard.meta_key(),
+            modifiers: Modifiers {
+              ctrl: keyboard.ctrl_key(),
+              shift: keyboard.shift_key(),
+              alt: keyboard.alt_key(),
+              meta: keyboard.meta_key(),
+            },
           };
 
           events::run_handlers(&handlers, id, &key_event, |run, key_event| run(key_event));
@@ -319,7 +330,7 @@ impl State {
     self.with_element(node, |element| {
       self
         .events
-        .add_direct_listener(node, element, "pointerenter", handler);
+        .add_direct_listener(node, element, "pointerenter", move |_| handler());
     });
   }
 
@@ -329,7 +340,129 @@ impl State {
     self.with_element(node, |element| {
       self
         .events
-        .add_direct_listener(node, element, "pointerleave", handler);
+        .add_direct_listener(node, element, "pointerleave", move |_| handler());
+    });
+  }
+
+  /// Registers `handler` to run when a pointer button is pressed on `node` or within it,
+  /// until the node is destroyed.
+  pub fn handle_pointer_down(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+    self.delegate_pointer(node, handler, |events| &events.pointer_down, "pointerdown");
+  }
+
+  /// Registers `handler` to run when a pointer button is released on `node` or within
+  /// it, until the node is destroyed.
+  pub fn handle_pointer_up(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+    self.delegate_pointer(node, handler, |events| &events.pointer_up, "pointerup");
+  }
+
+  /// Registers `handler` to run when the pointer moves over `node` or within it, until
+  /// the node is destroyed.
+  pub fn handle_pointer_move(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+    self.delegate_pointer(node, handler, |events| &events.pointer_move, "pointermove");
+  }
+
+  /// Registers a delegated pointer handler for `event_name`, backed by the registry
+  /// `registry` selects.
+  fn delegate_pointer(
+    &self,
+    node: NodeId,
+    handler: Rc<dyn Fn(&PointerEvent)>,
+    registry: impl Fn(&events::Events) -> &events::Handlers<dyn Fn(&PointerEvent)>,
+    event_name: &'static str,
+  ) {
+    registry(&self.events)
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(registry(&self.events));
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, event_name, move |id, event| {
+          let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
+          else {
+            return;
+          };
+
+          let payload = pointer_payload(pointer);
+
+          events::run_handlers(&handlers, id, &payload, |run, payload| run(payload));
+        });
+    });
+  }
+
+  /// Registers `handler` to run with the scrolled offsets when `node` scrolls, until the
+  /// node is destroyed.
+  pub fn handle_scroll(&self, node: NodeId, handler: Rc<dyn Fn(&ScrollEvent)>) {
+    self.with_element(node, |element| {
+      self
+        .events
+        .add_direct_listener(node, element, "scroll", move |event| {
+          let Some(target) = event
+            .target()
+            .and_then(|target| target.dyn_into::<Element>().ok())
+          else {
+            return;
+          };
+
+          #[expect(clippy::cast_precision_loss)]
+          handler(&ScrollEvent {
+            x: target.scroll_left() as f32,
+            y: target.scroll_top() as f32,
+          });
+        });
+    });
+  }
+
+  /// Registers `handler` to run with the committed value when `node`'s (or a descendant
+  /// control's) value change is committed, until the node is destroyed.
+  pub fn handle_change(&self, node: NodeId, handler: Rc<dyn Fn(&str)>) {
+    self
+      .events
+      .change
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(handler);
+
+    let handlers = Rc::clone(&self.events.change);
+
+    self.with_element(ROOT_ID, |root| {
+      self
+        .events
+        .ensure_root_listener(root, "change", move |id, event| {
+          let Some(value) = event
+            .target()
+            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
+            .map(|input| input.value())
+          else {
+            return;
+          };
+
+          events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
+        });
+    });
+  }
+
+  /// Moves keyboard focus to `node`.
+  pub fn focus_node(&self, node: NodeId) {
+    self.with_element(node, |element| {
+      if let Some(html) = element.dyn_ref::<HtmlElement>() {
+        let _ = html.focus();
+      }
+    });
+  }
+
+  /// Removes keyboard focus from `node`.
+  pub fn blur_node(&self, node: NodeId) {
+    self.with_element(node, |element| {
+      if let Some(html) = element.dyn_ref::<HtmlElement>() {
+        let _ = html.blur();
+      }
     });
   }
 
@@ -701,6 +834,45 @@ pub fn handle_input(node: NodeId, handler: Rc<dyn Fn(&str)>) {
   with_state(|state| state.handle_input(node, handler));
 }
 
+/// Registers a delegated committed-change handler on `node`; see
+/// [`State::handle_change`].
+pub fn handle_change(node: NodeId, handler: Rc<dyn Fn(&str)>) {
+  with_state(|state| state.handle_change(node, handler));
+}
+
+/// Registers a delegated pointer-down handler on `node`; see
+/// [`State::handle_pointer_down`].
+pub fn handle_pointer_down(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  with_state(|state| state.handle_pointer_down(node, handler));
+}
+
+/// Registers a delegated pointer-up handler on `node`; see
+/// [`State::handle_pointer_up`].
+pub fn handle_pointer_up(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  with_state(|state| state.handle_pointer_up(node, handler));
+}
+
+/// Registers a delegated pointer-move handler on `node`; see
+/// [`State::handle_pointer_move`].
+pub fn handle_pointer_move(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  with_state(|state| state.handle_pointer_move(node, handler));
+}
+
+/// Registers a scroll handler on `node`; see [`State::handle_scroll`].
+pub fn handle_scroll(node: NodeId, handler: Rc<dyn Fn(&ScrollEvent)>) {
+  with_state(|state| state.handle_scroll(node, handler));
+}
+
+/// Moves keyboard focus to `node`.
+pub fn focus_node(node: NodeId) {
+  with_state(|state| state.focus_node(node));
+}
+
+/// Removes keyboard focus from `node`.
+pub fn blur_node(node: NodeId) {
+  with_state(|state| state.blur_node(node));
+}
+
 /// Sets the live value of an input node.
 pub fn set_input_value(node: NodeId, value: &str) {
   with_state(|state| state.set_input_value(node, value));
@@ -812,4 +984,25 @@ where
 
   install(body.into());
   mount(|| app().into_view().build());
+}
+
+/// The portable payload of a DOM pointer event.
+fn pointer_payload(pointer: &web_sys::PointerEvent) -> PointerEvent {
+  #[expect(clippy::cast_precision_loss)]
+  PointerEvent {
+    x: pointer.client_x() as f32,
+    y: pointer.client_y() as f32,
+    button: match pointer.button() {
+      0 => Some(PointerButton::Primary),
+      1 => Some(PointerButton::Auxiliary),
+      2 => Some(PointerButton::Secondary),
+      _ => None,
+    },
+    modifiers: Modifiers {
+      ctrl: pointer.ctrl_key(),
+      shift: pointer.shift_key(),
+      alt: pointer.alt_key(),
+      meta: pointer.meta_key(),
+    },
+  }
 }

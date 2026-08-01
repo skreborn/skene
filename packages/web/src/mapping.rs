@@ -24,6 +24,7 @@ use skene_core::{
   Easing,
   InputProps,
   Layout,
+  Overflow,
   RunDisplay,
   RunProp,
   RunProps,
@@ -88,6 +89,15 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
     BoxProp::CrossAxisAlignment(value) => {
       declarations.set("align-items", Declarations::render_cross_axis(*value))
     }
+    BoxProp::Overflow(value) => declarations.set(
+      "overflow",
+      match value {
+        Overflow::Visible => "visible",
+        Overflow::Hidden => "hidden",
+        Overflow::Scroll => "scroll",
+        Overflow::Auto => "auto",
+      },
+    ),
   }
 }
 
@@ -147,6 +157,10 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
 
   if let Some(value) = style.cross_axis_alignment {
     declarations = apply_box_prop(declarations, &BoxProp::CrossAxisAlignment(value));
+  }
+
+  if let Some(value) = style.overflow {
+    declarations = apply_box_prop(declarations, &BoxProp::Overflow(value));
   }
 
   declarations

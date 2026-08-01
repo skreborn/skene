@@ -40,8 +40,10 @@ web-sys = { version = "0.3", features = [
   "HtmlStyleElement",
   "KeyboardEvent",
   "Location",
+  "MouseEvent",
   "Node",
   "NodeList",
+  "PointerEvent",
   "StyleSheet",
   "Window",
 ] }

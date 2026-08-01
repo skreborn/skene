@@ -1,6 +1,6 @@
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
+#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -14,6 +14,9 @@ use skene_core::{
   KeyEvent,
   MainAxisAlignment,
   MouseCursor,
+  Overflow,
+  PointerEvent,
+  ScrollEvent,
   Source,
   Transition,
 };
@@ -47,6 +50,10 @@ pub struct Container {
   pub(crate) spacing: Option<Source<f32>>,
   pub(crate) main_axis_alignment: Option<Source<MainAxisAlignment>>,
   pub(crate) cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
+  pub(crate) overflow: Option<Source<Overflow>>,
+  pub(crate) tab_index: Option<i32>,
+  pub(crate) autofocus: bool,
+  pub(crate) focus_handle: Option<crate::FocusHandle>,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
@@ -57,6 +64,14 @@ pub struct Container {
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
   #[expect(clippy::type_complexity)]
   pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) pointer_down_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) scroll_handler: Option<Rc<dyn Fn(&ScrollEvent)>>,
 }
 
 impl Container {
@@ -80,6 +95,10 @@ impl Container {
       spacing: None,
       main_axis_alignment: None,
       cross_axis_alignment: None,
+      overflow: None,
+      tab_index: None,
+      autofocus: false,
+      focus_handle: None,
       variants: Vec::new(),
       transitions: Vec::new(),
       animations: Vec::new(),
@@ -89,6 +108,10 @@ impl Container {
       focus_handler: None,
       blur_handler: None,
       key_down_handler: None,
+      pointer_down_handler: None,
+      pointer_up_handler: None,
+      pointer_move_handler: None,
+      scroll_handler: None,
     }
   }
 
@@ -438,6 +461,84 @@ impl Container {
 
     self
   }
+
+  /// Sets the pointer-down handler, run for presses on the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_down_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-up handler, run for releases on the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_up_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-move handler, run for moves over the box or within it.
+  #[inline(always)]
+  pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.pointer_move_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the scroll handler, run with the new offsets when the box scrolls.
+  ///
+  /// The box scrolls only with an overflow that allows it; see
+  /// [`set_overflow`](Self::set_overflow).
+  #[inline(always)]
+  pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.scroll_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets a static overflow behavior.
+  #[inline(always)]
+  pub fn set_overflow(mut self, overflow: Overflow) -> Self {
+    self.overflow = Some(Source::Static(overflow));
+
+    self
+  }
+
+  /// Sets a derived overflow behavior.
+  #[inline(always)]
+  pub fn derive_overflow(mut self, overflow: impl Fn() -> Overflow + 'static) -> Self {
+    self.overflow = Some(Source::Derived(Rc::new(overflow)));
+
+    self
+  }
+
+  /// Sets the position in the keyboard tab order: `0` joins it in document order, a
+  /// negative value removes the box from it while keeping it programmatically
+  /// focusable.
+  #[inline(always)]
+  pub fn set_tab_index(mut self, tab_index: i32) -> Self {
+    self.tab_index = Some(tab_index);
+
+    self
+  }
+
+  /// Makes the box take focus when the page loads.
+  #[inline(always)]
+  pub fn set_autofocus(mut self) -> Self {
+    self.autofocus = true;
+
+    self
+  }
+
+  /// Binds `handle` to the box, so [`FocusHandle::focus`](crate::FocusHandle::focus)
+  /// targets it once built.
+  #[inline(always)]
+  pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
+    self.focus_handle = Some(handle.clone());
+
+    self
+  }
 }
 
 impl Default for Container {
@@ -456,7 +557,7 @@ impl HasChildren<crate::GuiOps> for Container {
   }
 }
 
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Container {
   // One `split_prop` call per property; length is the property count, not complexity.
   #[expect(clippy::too_many_lines)]
@@ -583,6 +684,14 @@ impl skene_core::View for Container {
       driver::update_box,
     );
 
+    split_prop(
+      self.overflow,
+      &mut style.overflow,
+      &mut binders,
+      BoxProp::Overflow,
+      driver::update_box,
+    );
+
     let node = driver::create_box(&BoxProps {
       layout: self.layout,
       role: self.role,
@@ -590,6 +699,8 @@ impl skene_core::View for Container {
       variants: self.variants,
       transitions: self.transitions,
       animations: self.animations,
+      tab_index: self.tab_index,
+      autofocus: self.autofocus,
     });
 
     for binder in binders {
@@ -618,6 +729,26 @@ impl skene_core::View for Container {
 
     if let Some(action) = self.key_down_handler {
       driver::handle_key_down(node, action);
+    }
+
+    if let Some(action) = self.pointer_down_handler {
+      driver::handle_pointer_down(node, action);
+    }
+
+    if let Some(action) = self.pointer_up_handler {
+      driver::handle_pointer_up(node, action);
+    }
+
+    if let Some(action) = self.pointer_move_handler {
+      driver::handle_pointer_move(node, action);
+    }
+
+    if let Some(action) = self.scroll_handler {
+      driver::handle_scroll(node, action);
+    }
+
+    if let Some(handle) = &self.focus_handle {
+      handle.assign(node);
     }
 
     match self.layout {

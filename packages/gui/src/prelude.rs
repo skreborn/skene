@@ -35,13 +35,12 @@ pub use tracing::{debug, error, info, trace, warn};
 /// The entry point exists only on a target with a configured platform; on one without,
 /// naming it is a compile error rather than a runtime panic. Each web leaf exposes its own—
 /// the browser `launch`es, a server `render_to_string`s.
-#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
-pub use crate::launch;
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub use crate::render_to_string;
 pub use crate::{
   Border,
   Container,
+  FocusHandle,
   HasChildren,
   Input,
   Inset,

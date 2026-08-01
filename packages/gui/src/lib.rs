@@ -11,6 +11,7 @@ pub mod prelude;
 mod container;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
+mod focus;
 mod input;
 #[cfg(target_arch = "wasm32")]
 mod realize;
@@ -50,6 +51,7 @@ pub use crate::routing::install_router;
 pub use crate::task::spawn;
 pub use crate::{
   container::Container,
+  focus::FocusHandle,
   input::Input,
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
@@ -162,17 +164,6 @@ where
   driver::launch(app);
 
   tracing::info!("application mounted");
-}
-
-/// Mounts and runs the application in the terminal, until `Ctrl-C`.
-#[cfg(all(not(target_arch = "wasm32"), feature = "tui"))]
-#[inline(always)]
-pub fn launch<V, F>(app: F)
-where
-  F: FnOnce() -> V + 'static,
-  V: IntoView,
-{
-  driver::launch(app);
 }
 
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded state, so

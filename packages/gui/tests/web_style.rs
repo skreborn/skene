@@ -7,7 +7,7 @@ use skene_gui::{
   Container,
   HasChildren,
   Text,
-  core::{Animation, BoxStyle, Condition, Easing, RunStyle, StyleProperty, Transition},
+  core::{Animation, BoxStyle, Condition, Easing, Overflow, RunStyle, StyleProperty, Transition},
   render_to_string,
 };
 
@@ -99,6 +99,27 @@ fn or_composition_emits_a_rule_per_alternative() {
   assert!(rendered.styles().contains(&format!(
     "@media (prefers-color-scheme: dark){{.{class}:focus{{gap:2px;}}}}"
   )));
+}
+
+/// Overflow renders into the interned class, and the tab order serializes as an
+/// attribute alongside it.
+#[test]
+fn overflow_and_tab_order_render() {
+  let rendered = render_to_string(|| {
+    Container::new()
+      .set_overflow(Overflow::Scroll)
+      .set_tab_index(0)
+  });
+
+  let class = root_class(rendered.body());
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!(".{class}{{display:flow-root;overflow:scroll;}}"))
+  );
+
+  assert!(rendered.body().contains("tabindex=\"0\""));
 }
 
 /// Transitions render into the base rule's `transition` declaration.

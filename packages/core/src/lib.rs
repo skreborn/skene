@@ -18,7 +18,7 @@ mod view;
 pub use boundary::Boundary;
 pub use children::{Children, HasChildren, IntoChildren};
 pub use condition::{Composable, ConditionShape};
-pub use events::KeyEvent;
+pub use events::{KeyEvent, Modifiers, PointerButton, PointerEvent, ScrollEvent};
 pub use node::NodeId;
 pub use props::{BoxProp, BoxProps, BoxStyle, InputProps, RunDisplay, RunProp, RunProps, RunStyle};
 pub use reconcile::{DynamicView, dynamic, empty, reconcile};
@@ -36,6 +36,7 @@ pub use values::{
   Layout,
   MainAxisAlignment,
   MouseCursor,
+  Overflow,
   Point,
   Rect,
   Role,

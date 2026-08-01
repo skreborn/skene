@@ -8,7 +8,10 @@
 //! `cargo test -p skene-gui --target wasm32-unknown-unknown`.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_gui::{
   AnyView,
@@ -17,8 +20,11 @@ use skene_gui::{
   Container,
   Deferred,
   DynamicView,
+  FocusHandle,
   HasChildren,
+  Input,
   Inset,
+  PointerButton,
   Role,
   Text,
   TextStyle,
@@ -286,6 +292,98 @@ fn click_handler_runs_on_a_real_click() {
   button.click();
 
   assert_eq!(clicks.get(), 2);
+}
+
+/// A delegated pointer-down handler receives the event with its position and button.
+#[wasm_bindgen_test]
+fn pointer_down_handler_receives_the_event() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Container::new()
+        .handle_pointer_down(move |event| seen.set(Some((event.x, event.y, event.button))))
+        .build()
+    }
+  });
+
+  let target = only_child(&root);
+  let init = web_sys::PointerEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_client_x(11);
+  init.set_client_y(7);
+  init.set_button(0);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a pointer event");
+
+  let _ = target.dispatch_event(&event);
+
+  assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
+}
+
+/// A change handler receives the committed value when the change event fires.
+#[wasm_bindgen_test]
+fn change_handler_receives_the_committed_value() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(RefCell::new(String::new()));
+
+  mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Input::new()
+        .set_value("committed")
+        .handle_change(move |value| value.clone_into(&mut seen.borrow_mut()))
+        .build()
+    }
+  });
+
+  let target = only_child(&root);
+  let init = web_sys::EventInit::new();
+
+  init.set_bubbles(true);
+
+  let event = web_sys::Event::new_with_event_init_dict("change", &init).expect("an event");
+  let _ = target.dispatch_event(&event);
+
+  assert_eq!(&*seen.borrow(), "committed");
+}
+
+/// A focus handle moves real keyboard focus to its bound view.
+#[wasm_bindgen_test]
+fn focus_handle_focuses_the_bound_view() {
+  let (_guard, root) = fresh_root();
+  let handle = FocusHandle::new();
+
+  // A detached root cannot take focus; attach it to the live document for this test.
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("attach the test root");
+
+  mount({
+    let handle = handle.clone();
+
+    move || Input::new().bind_focus(&handle).build()
+  });
+
+  handle.focus();
+
+  let target = only_child(&root);
+
+  assert_eq!(document().active_element(), Some(target));
+
+  handle.blur();
+
+  assert_ne!(document().active_element(), Some(only_child(&root)));
+
+  root.remove();
 }
 
 /// A handler may re-enter the platform—the click path clones handlers out before running

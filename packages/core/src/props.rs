@@ -15,6 +15,7 @@ use crate::{
   Layout,
   MainAxisAlignment,
   MouseCursor,
+  Overflow,
   Role,
   Transition,
 };
@@ -54,6 +55,8 @@ pub struct BoxStyle {
   pub main_axis_alignment: Option<MainAxisAlignment>,
   /// The children's alignment along the cross axis.
   pub cross_axis_alignment: Option<CrossAxisAlignment>,
+  /// How content exceeding the box's bounds is treated.
+  pub overflow: Option<Overflow>,
 }
 
 impl BoxStyle {
@@ -174,6 +177,14 @@ impl BoxStyle {
 
     self
   }
+
+  /// Sets how content exceeding the box's bounds is treated.
+  #[inline(always)]
+  pub const fn set_overflow(mut self, overflow: Overflow) -> Self {
+    self.overflow = Some(overflow);
+
+    self
+  }
 }
 
 /// One box property's value, for a reactive update.
@@ -208,6 +219,8 @@ pub enum BoxProp {
   MainAxisAlignment(MainAxisAlignment),
   /// The children's alignment along the cross axis.
   CrossAxisAlignment(CrossAxisAlignment),
+  /// How content exceeding the box's bounds is treated.
+  Overflow(Overflow),
 }
 
 /// Everything a driver needs to realize a box.
@@ -226,6 +239,11 @@ pub struct BoxProps {
   pub transitions: Vec<Transition>,
   /// The keyframe animations.
   pub animations: Vec<Animation<BoxStyle>>,
+  /// The position in the keyboard tab order: `Some(0)` joins it in document order,
+  /// negative removes the element from it while keeping it programmatically focusable.
+  pub tab_index: Option<i32>,
+  /// Whether the element takes focus when the page loads.
+  pub autofocus: bool,
 }
 
 /// Everything a driver needs to realize a single-line text input.
@@ -242,6 +260,11 @@ pub struct InputProps {
   pub transitions: Vec<Transition>,
   /// The keyframe animations.
   pub animations: Vec<Animation<BoxStyle>>,
+  /// The position in the keyboard tab order: `Some(0)` joins it in document order,
+  /// negative removes the element from it while keeping it programmatically focusable.
+  pub tab_index: Option<i32>,
+  /// Whether the element takes focus when the page loads.
+  pub autofocus: bool,
 }
 
 /// A text run's static style: each property the builder or the inherited theme fixed to a

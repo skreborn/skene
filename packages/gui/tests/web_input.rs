@@ -66,6 +66,15 @@ fn input_styling_interns_with_variants() {
   );
 }
 
+/// The tab order and autofocus serialize as attributes.
+#[test]
+fn focus_attributes_serialize() {
+  let rendered = render_to_string(|| Input::new().set_tab_index(3).set_autofocus());
+
+  assert!(rendered.body().contains("tabindex=\"3\""));
+  assert!(rendered.body().contains("autofocus"));
+}
+
 /// Handlers are inert on the server: registering them changes nothing in the output.
 #[test]
 fn handlers_are_inert_on_the_server() {
@@ -73,9 +82,16 @@ fn handlers_are_inert_on_the_server() {
     Container::new()
       .handle_pointer_enter(|| {})
       .handle_key_down(|_| {})
+      .handle_pointer_down(|_| {})
+      .handle_pointer_up(|_| {})
+      .handle_pointer_move(|_| {})
+      .handle_scroll(|_| {})
       .set_children((
         Text::new("t"),
-        Input::new().handle_input(|_| {}).handle_focus(|| {}),
+        Input::new()
+          .handle_input(|_| {})
+          .handle_change(|_| {})
+          .handle_focus(|| {}),
       ))
   });
 

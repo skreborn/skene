@@ -1,10 +1,12 @@
 // View fields are read only by a platform's realization module; a target with no platform
 // compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(any(target_arch = "wasm32", feature = "tui")), allow(dead_code))]
+#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 use std::rc::Rc;
 
 use skene_core::{Animation, BoxStyle, Condition, KeyEvent, Source, Transition};
+
+use crate::FocusHandle;
 
 /// A single-line text input.
 ///
@@ -34,8 +36,13 @@ pub struct Input {
   pub(crate) input_handler: Option<Rc<dyn Fn(&str)>>,
   #[expect(clippy::type_complexity)]
   pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
+  #[expect(clippy::type_complexity)]
+  pub(crate) change_handler: Option<Rc<dyn Fn(&str)>>,
   pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) tab_index: Option<i32>,
+  pub(crate) autofocus: bool,
+  pub(crate) focus_handle: Option<FocusHandle>,
 }
 
 impl Input {
@@ -51,8 +58,12 @@ impl Input {
       animations: Vec::new(),
       input_handler: None,
       key_down_handler: None,
+      change_handler: None,
       focus_handler: None,
       blur_handler: None,
+      tab_index: None,
+      autofocus: false,
+      focus_handle: None,
     }
   }
 
@@ -143,6 +154,42 @@ impl Input {
 
     self
   }
+
+  /// Sets the change handler, run with the committed value when an edit is committed
+  /// (focus leaves the input, or Enter is pressed).
+  #[inline(always)]
+  pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
+    self.change_handler = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the position in the keyboard tab order: `0` joins it in document order, a
+  /// negative value removes the input from it while keeping it programmatically
+  /// focusable.
+  #[inline(always)]
+  pub fn set_tab_index(mut self, tab_index: i32) -> Self {
+    self.tab_index = Some(tab_index);
+
+    self
+  }
+
+  /// Makes the input take focus when the page loads.
+  #[inline(always)]
+  pub fn set_autofocus(mut self) -> Self {
+    self.autofocus = true;
+
+    self
+  }
+
+  /// Binds `handle` to the input, so [`FocusHandle::focus`](FocusHandle::focus) targets
+  /// it once built.
+  #[inline(always)]
+  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
+    self.focus_handle = Some(handle.clone());
+
+    self
+  }
 }
 
 impl Default for Input {
@@ -152,7 +199,7 @@ impl Default for Input {
   }
 }
 
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 impl Input {
   /// Binds the value to `signal` in both directions: the input shows the signal and each
   /// edit writes it back.
@@ -166,7 +213,7 @@ impl Input {
   }
 }
 
-#[cfg(any(target_arch = "wasm32", feature = "tui"))]
+#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Input {
   fn build(self) -> skene_core::NodeId {
     use skene_core::InputProps;
@@ -179,6 +226,8 @@ impl skene_core::View for Input {
       variants: self.variants,
       transitions: self.transitions,
       animations: self.animations,
+      tab_index: self.tab_index,
+      autofocus: self.autofocus,
     });
 
     if let Some(value) = self.value {
@@ -199,6 +248,14 @@ impl skene_core::View for Input {
 
     if let Some(action) = self.blur_handler {
       driver::handle_blur(node, action);
+    }
+
+    if let Some(action) = self.change_handler {
+      driver::handle_change(node, action);
+    }
+
+    if let Some(handle) = &self.focus_handle {
+      handle.assign(node);
     }
 
     node

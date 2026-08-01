@@ -75,8 +75,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   `Input` (web `<input>`, a void element in SSR output) with
   `bind_value`/`derive_value`/`handle_input`/`handle_key_down`, placeholder, and the full
   declarative styling surface (`set_style`, `set_when`, transitions, animations).
-- **Remaining:** pointer down/up/move, scroll, change (committed value), `<textarea>`,
-  focus management primitives (programmatic focus, tab order), `Role` expansion.
+- **Events complete.** Pointer down/up/move (`PointerEvent`: viewport position, button,
+  modifiers; delegated), scroll (`ScrollEvent` on a box with `set_overflow`), change
+  (committed value), and focus management: `set_tab_index`/`set_autofocus` (serialized
+  in SSR output) plus `FocusHandle` for programmatic focus. `KeyEvent` modifiers moved
+  into a shared `Modifiers` struct.
+- **Remaining:** `<textarea>` (with the basic controls), `Role` expansion.
 
 ## Phase 5—Router, runner, SSG ✅ (core)
 

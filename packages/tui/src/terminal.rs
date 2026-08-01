@@ -338,10 +338,12 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
 
   KeyEvent {
     key,
-    ctrl: modifiers.contains(KeyModifiers::CONTROL),
-    shift: modifiers.contains(KeyModifiers::SHIFT),
-    alt: modifiers.contains(KeyModifiers::ALT),
-    meta: modifiers.contains(KeyModifiers::SUPER),
+    modifiers: skene_core::Modifiers {
+      ctrl: modifiers.contains(KeyModifiers::CONTROL),
+      shift: modifiers.contains(KeyModifiers::SHIFT),
+      alt: modifiers.contains(KeyModifiers::ALT),
+      meta: modifiers.contains(KeyModifiers::SUPER),
+    },
   }
 }
 

@@ -16,7 +16,7 @@ mod task;
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{IntoView, KeyEvent, NodeId, View};
+use skene_core::{IntoView, KeyEvent, NodeId, PointerEvent, ScrollEvent, View};
 
 use self::stylesheet::StyleStore;
 pub use self::task::{drive, sleep};
@@ -479,6 +479,27 @@ pub fn handle_key_down(_node: NodeId, _handler: Rc<dyn Fn(&KeyEvent)>) {}
 /// Registers an input handler—inert on the server.
 #[inline(always)]
 pub fn handle_input(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_change(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_pointer_down(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_pointer_up(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_pointer_move(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+
+/// Inert on the server; interactivity is the client's after hydration.
+pub fn handle_scroll(_node: NodeId, _handler: Rc<dyn Fn(&ScrollEvent)>) {}
+
+/// Inert on the server; focus is the client's after hydration.
+pub fn focus_node(_node: NodeId) {}
+
+/// Inert on the server; focus is the client's after hydration.
+pub fn blur_node(_node: NodeId) {}
 
 /// Sets the value of an input node, serialized as its `value` attribute.
 pub fn set_input_value(node: NodeId, value: &str) {

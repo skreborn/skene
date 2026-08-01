@@ -11,7 +11,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{KeyEvent, NodeId};
+use skene_core::{KeyEvent, NodeId, PointerEvent};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::Element;
 
@@ -23,7 +23,7 @@ const NODE_ID_PROPERTY: &str = "__skene";
 type Listener = Closure<dyn FnMut(web_sys::Event)>;
 
 /// The handlers registered for one delegated event type, keyed by node.
-type Handlers<F> = Rc<RefCell<FxHashMap<NodeId, Vec<Rc<F>>>>>;
+pub(super) type Handlers<F> = Rc<RefCell<FxHashMap<NodeId, Vec<Rc<F>>>>>;
 
 /// The browser leaf's event state: per-kind handler registries and the live listeners.
 pub(super) struct Events {
@@ -32,6 +32,10 @@ pub(super) struct Events {
   pub(super) blur: Handlers<dyn Fn()>,
   pub(super) key_down: Handlers<dyn Fn(&KeyEvent)>,
   pub(super) input: Handlers<dyn Fn(&str)>,
+  pub(super) change: Handlers<dyn Fn(&str)>,
+  pub(super) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
+  pub(super) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
+  pub(super) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
   /// One live listener per delegated event type, attached to the mount root.
   root_listeners: RefCell<FxHashMap<&'static str, Listener>>,
   /// The live listeners of the non-bubbling, per-node events.
@@ -46,6 +50,10 @@ impl Events {
       blur: Rc::new(RefCell::new(FxHashMap::default())),
       key_down: Rc::new(RefCell::new(FxHashMap::default())),
       input: Rc::new(RefCell::new(FxHashMap::default())),
+      change: Rc::new(RefCell::new(FxHashMap::default())),
+      pointer_down: Rc::new(RefCell::new(FxHashMap::default())),
+      pointer_up: Rc::new(RefCell::new(FxHashMap::default())),
+      pointer_move: Rc::new(RefCell::new(FxHashMap::default())),
       root_listeners: RefCell::new(FxHashMap::default()),
       direct_listeners: RefCell::new(FxHashMap::default()),
     }
@@ -87,16 +95,16 @@ impl Events {
   }
 
   /// Attaches a per-node listener for a non-bubbling `event_name`, running `handler`
-  /// inside a reactive batch, until the node is destroyed.
+  /// with the raw event inside a reactive batch, until the node is destroyed.
   pub(super) fn add_direct_listener(
     &self,
     node: NodeId,
     element: &Element,
     event_name: &str,
-    handler: Rc<dyn Fn()>,
+    handler: impl Fn(&web_sys::Event) + 'static,
   ) {
-    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
-      skene_reactive::Effect::batch(|| handler());
+    let closure = Closure::wrap(Box::new(move |event: web_sys::Event| {
+      skene_reactive::Effect::batch(|| handler(&event));
     }) as Box<dyn FnMut(web_sys::Event)>);
 
     let _ = element.add_event_listener_with_callback(event_name, closure.as_ref().unchecked_ref());
@@ -116,6 +124,10 @@ impl Events {
     self.blur.borrow_mut().remove(&node);
     self.key_down.borrow_mut().remove(&node);
     self.input.borrow_mut().remove(&node);
+    self.change.borrow_mut().remove(&node);
+    self.pointer_down.borrow_mut().remove(&node);
+    self.pointer_up.borrow_mut().remove(&node);
+    self.pointer_move.borrow_mut().remove(&node);
     self.direct_listeners.borrow_mut().remove(&node);
   }
 }

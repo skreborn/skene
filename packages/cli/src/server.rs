@@ -11,6 +11,9 @@ use std::{
   thread,
 };
 
+use percent_encoding::percent_decode_str;
+use url::Url;
+
 use crate::manifest::App;
 
 /// The `<script>` a served HTML page gains in dev: it beacons the app's state snapshot
@@ -121,21 +124,20 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
     return;
   };
 
-  let target = target.split(['?', '#']).next().unwrap_or(target);
-
-  if target.contains("..") {
+  let Some(relative) = request_path(target)
+  else {
     let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
 
     return;
-  }
+  };
 
-  match (method, target, dev) {
-    ("GET", "/skene:reload", Some(dev)) => {
+  match (method, relative.as_str(), dev) {
+    ("GET", "skene:reload", Some(dev)) => {
       drop(reader);
       dev.adopt(stream);
     }
 
-    ("POST", "/skene:state", Some(dev)) => match read_body(&mut reader) {
+    ("POST", "skene:state", Some(dev)) => match read_body(&mut reader) {
       Some(body) => {
         dev.store(body);
 
@@ -146,7 +148,7 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       }
     },
 
-    ("GET", "/skene:state", Some(dev)) => match dev.stored() {
+    ("GET", "skene:state", Some(dev)) => match dev.stored() {
       Some(bytes) => {
         let _ = write_response(&mut stream, "200 OK", "application/octet-stream", &bytes);
       }
@@ -155,7 +157,7 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       }
     },
 
-    ("GET", target, _) => serve_file(&mut stream, app, target, dev.is_some()),
+    ("GET", relative, _) => serve_file(&mut stream, app, relative, dev.is_some()),
 
     _ => {
       let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
@@ -195,10 +197,34 @@ fn read_body(reader: &mut BufReader<TcpStream>) -> Option<Vec<u8>> {
   Some(body)
 }
 
+/// The request target as a decoded, root-relative path: parsed and normalized as a
+/// proper URL (dot segments resolved, query and fragment separated), each segment
+/// percent-decoded, and rejected when a decoded segment would climb or nest.
+fn request_path(target: &str) -> Option<String> {
+  let base = Url::parse("http://localhost/").ok()?;
+  let url = base.join(target).ok()?;
+  let mut segments = Vec::new();
+
+  for segment in url.path_segments()? {
+    if segment.is_empty() {
+      continue;
+    }
+
+    let segment = percent_decode_str(segment).decode_utf8().ok()?;
+
+    if segment == "." || segment == ".." || segment.contains(['/', '\\']) {
+      return None;
+    }
+
+    segments.push(segment.into_owned());
+  }
+
+  Some(segments.join("/"))
+}
+
 /// Serves one static file: the page, the generated bundle, or a declared asset—never
 /// the app's sources or manifests.
-fn serve_file(stream: &mut TcpStream, app: &App, target: &str, dev: bool) {
-  let relative = target.trim_start_matches('/');
+fn serve_file(stream: &mut TcpStream, app: &App, relative: &str, dev: bool) {
   let relative = if relative.is_empty() {
     "index.html"
   }

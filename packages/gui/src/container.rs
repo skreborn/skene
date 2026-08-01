@@ -51,9 +51,6 @@ pub struct Container {
   pub(crate) main_axis_alignment: Option<Source<MainAxisAlignment>>,
   pub(crate) cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   pub(crate) overflow: Option<Source<Overflow>>,
-  pub(crate) tab_index: Option<i32>,
-  pub(crate) autofocus: bool,
-  pub(crate) focus_handle: Option<crate::FocusHandle>,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
@@ -96,9 +93,6 @@ impl Container {
       main_axis_alignment: None,
       cross_axis_alignment: None,
       overflow: None,
-      tab_index: None,
-      autofocus: false,
-      focus_handle: None,
       variants: Vec::new(),
       transitions: Vec::new(),
       animations: Vec::new(),
@@ -438,7 +432,9 @@ impl Container {
     self
   }
 
-  /// Sets the focus handler.
+  /// Sets the focus handler, run when the box or a descendant gains focus.
+  ///
+  /// A box never takes focus itself—only controls do; this observes focus within it.
   #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
     self.focus_handler = Some(Rc::new(action));
@@ -446,7 +442,7 @@ impl Container {
     self
   }
 
-  /// Sets the blur handler.
+  /// Sets the blur handler, run when the box or a descendant loses focus.
   #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
     self.blur_handler = Some(Rc::new(action));
@@ -509,33 +505,6 @@ impl Container {
   #[inline(always)]
   pub fn derive_overflow(mut self, overflow: impl Fn() -> Overflow + 'static) -> Self {
     self.overflow = Some(Source::Derived(Rc::new(overflow)));
-
-    self
-  }
-
-  /// Sets the position in the keyboard tab order: `0` joins it in document order, a
-  /// negative value removes the box from it while keeping it programmatically
-  /// focusable.
-  #[inline(always)]
-  pub fn set_tab_index(mut self, tab_index: i32) -> Self {
-    self.tab_index = Some(tab_index);
-
-    self
-  }
-
-  /// Makes the box take focus when the page loads.
-  #[inline(always)]
-  pub fn set_autofocus(mut self) -> Self {
-    self.autofocus = true;
-
-    self
-  }
-
-  /// Binds `handle` to the box, so [`FocusHandle::focus`](crate::FocusHandle::focus)
-  /// targets it once built.
-  #[inline(always)]
-  pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
-    self.focus_handle = Some(handle.clone());
 
     self
   }
@@ -699,8 +668,6 @@ impl skene_core::View for Container {
       variants: self.variants,
       transitions: self.transitions,
       animations: self.animations,
-      tab_index: self.tab_index,
-      autofocus: self.autofocus,
     });
 
     for binder in binders {
@@ -745,10 +712,6 @@ impl skene_core::View for Container {
 
     if let Some(action) = self.scroll_handler {
       driver::handle_scroll(node, action);
-    }
-
-    if let Some(handle) = &self.focus_handle {
-      handle.assign(node);
     }
 
     match self.layout {

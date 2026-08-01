@@ -8,6 +8,7 @@
 
 pub mod prelude;
 
+mod button;
 mod checkbox;
 mod container;
 mod control;
@@ -58,6 +59,7 @@ pub use crate::routing::install_router;
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
+  button::Button,
   checkbox::Checkbox,
   container::Container,
   focus::FocusHandle,

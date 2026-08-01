@@ -55,6 +55,7 @@ mod ssr;
 use skene_core::{
   BoxProp,
   BoxProps,
+  ButtonProps,
   CheckboxProps,
   ControlProps,
   InputProps,
@@ -185,14 +186,6 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     set_attribute(node, "type", "button");
   }
 
-  if let Some(tab_index) = props.tab_index {
-    set_attribute(node, "tabindex", &tab_index.to_string());
-  }
-
-  if props.autofocus {
-    set_attribute(node, "autofocus", "");
-  }
-
   assign_class(node, &mapping::box_template(props));
 
   node
@@ -270,6 +263,19 @@ pub fn create_input(props: &InputProps) -> NodeId {
     set_attribute(node, "placeholder", placeholder);
   }
 
+  apply_control(node, &props.control, mapping::CONTROL_RESET);
+
+  node
+}
+
+/// Realizes a button: natively focusable and clickable, its content the attached
+/// children.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+pub fn create_button(props: &ButtonProps) -> NodeId {
+  let node = create_element("button");
+
+  set_attribute(node, "type", "button");
   apply_control(node, &props.control, mapping::CONTROL_RESET);
 
   node

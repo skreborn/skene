@@ -18,6 +18,7 @@
 
 pub mod prelude;
 
+mod button;
 mod container;
 mod events;
 mod focus;
@@ -58,6 +59,7 @@ pub use terminal::{
 };
 
 pub use crate::{
+  button::Button,
   container::Container,
   events::PointerEvent,
   focus::FocusHandle,

@@ -174,9 +174,8 @@ fn focus_variant_and_click() {
       let clicks = Rc::clone(&clicks);
 
       tui::mount(|| {
-        Container::new()
-          .set_width(6)
-          .set_height(3)
+        Button::new()
+          .set_style(BoxStyle::new().set_width(6).set_height(3))
           .set_when(
             Condition::Focused,
             BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
@@ -344,8 +343,8 @@ fn focus_handle_and_autofocus() {
         Container::column()
           .set_children((
             Input::new().set_autofocus(),
-            Container::new()
-              .set_height(1)
+            Button::new()
+              .set_style(BoxStyle::new().set_height(1))
               .handle_click(|| {})
               .bind_focus(&handle),
           ))
@@ -438,13 +437,11 @@ fn mouse_click_hits_and_focuses() {
       tui::mount(|| {
         Container::row()
           .set_children((
-            Container::new()
-              .set_width(4)
-              .set_height(2)
+            Button::new()
+              .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || first.set(first.get() + 1)),
-            Container::new()
-              .set_width(4)
-              .set_height(2)
+            Button::new()
+              .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || second.set(second.get() + 1)),
           ))
           .into_any()
@@ -456,13 +453,15 @@ fn mouse_click_hits_and_focuses() {
 
     tui::trigger_mouse_click(5, 0);
     tui::trigger_key("Enter");
+    tui::trigger_key(" ");
 
     (first.get(), second.get())
   });
 
-  // The click hit the second box; Enter then re-clicks it through the focus it gained.
+  // The click hit the second button; Enter and Space then re-click it through the focus
+  // it gained.
   assert_eq!(first, 0);
-  assert_eq!(second, 2);
+  assert_eq!(second, 3);
 }
 
 /// The hover path's deepest node with a cursor decides the pointer shape.

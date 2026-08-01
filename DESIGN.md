@@ -245,7 +245,9 @@ Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u16` c
 coordinates, both terminal-absolute and view-relative, plus the button and modifiers.
 `set_title`/`derive_title` name the terminal window via OSC 2, and `FocusHandle` and
 `set_autofocus` manage keyboard focus programmatically—the same surface the GUI facade
-offers, each typed to its own medium.
+offers, each typed to its own medium. Focus belongs to controls: `Button` is the
+focus-taking box (`Tab` reaches it, `Enter` and `Space` activate it), and a plain
+container never enters the tab order, exactly as on the web.
 
 Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
 through `launch` (crossterm: raw mode, truecolor, mouse capture, `Tab`/`Enter` keyboard

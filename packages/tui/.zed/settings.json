@@ -1,0 +1,18 @@
+// Open this directory as its own Zed project (`zed packages/tui`) to work on the
+// terminal facade: rust-analyzer runs for the host target here, so the `not(wasm32)`
+// half of the workspace lights up. The repo root's settings point rust-analyzer at
+// wasm32 instead; one rust-analyzer instance can only analyze for a single target, so
+// the two views live in two projects.
+{
+  "wrap_guides": [100],
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "check": { "command": "clippy" },
+        "rustfmt": {
+          "extraArgs": ["+nightly"],
+        },
+      },
+    },
+  },
+}

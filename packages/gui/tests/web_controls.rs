@@ -4,6 +4,7 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Button,
   Checkbox,
   Container,
   HasChildren,
@@ -15,6 +16,26 @@ use skene_gui::{
   Textarea,
   render_to_string,
 };
+
+/// A button serializes as a real button element carrying its reset class, its children
+/// as content, and its tab-order attributes.
+#[test]
+fn button_serializes_as_a_button_element() {
+  let rendered = render_to_string(|| {
+    Button::new()
+      .set_tab_index(0)
+      .set_child(Text::new("Go"))
+      .handle_click(|| {})
+  });
+
+  let body = rendered.body();
+
+  assert!(body.starts_with("<button "));
+  assert!(body.contains("type=\"button\""));
+  assert!(body.contains("tabindex=\"0\""));
+  assert!(body.contains(">Go</span>"));
+  assert!(body.ends_with("</button>"));
+}
 
 /// A checkbox serializes as a checkbox input, with its state as the `checked` attribute.
 #[test]

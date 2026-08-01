@@ -25,20 +25,23 @@ fn card(count: RwSignal<u64>) -> impl IntoView {
       Text::derive(move || count.get().to_string()).set_color(Color::srgb(0.8, 0.9, 0.8)),
       Container::row().set_spacing(2).set_children((
         button("-", move || {
-          count.update(|value| *value = value.saturating_sub(1))
+          count.update(|value| *value = value.saturating_sub(1));
         }),
         button("+", move || {
-          count.update(|value| *value = value.saturating_add(1))
+          count.update(|value| *value = value.saturating_add(1));
         }),
       )),
     ))
 }
 
 fn button(label: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Container::row()
-    .set_padding(Inset::horizontal(1))
-    .set_color(Color::srgb(0.2, 0.22, 0.2))
-    .set_cursor(MouseCursor::Click)
+  Button::new()
+    .set_style(
+      BoxStyle::new()
+        .set_padding(Inset::horizontal(1))
+        .set_color(Color::srgb(0.2, 0.22, 0.2))
+        .set_cursor(MouseCursor::Click),
+    )
     .set_when(
       Condition::Focused,
       BoxStyle::new().set_color(Color::srgb(0.3, 0.4, 0.3)),

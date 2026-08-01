@@ -17,7 +17,6 @@ use skene_core::{
 
 use crate::{
   Children,
-  FocusHandle,
   Inset,
   events::PointerEvent,
   props::{BoxProp, BoxStyle, Condition},
@@ -65,8 +64,6 @@ pub struct Container {
   pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
   #[expect(clippy::type_complexity)]
   pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
-  autofocus: bool,
-  focus_handle: Option<FocusHandle>,
 }
 
 impl Container {
@@ -98,8 +95,6 @@ impl Container {
       pointer_down_handler: None,
       pointer_up_handler: None,
       pointer_move_handler: None,
-      autofocus: false,
-      focus_handle: None,
     }
   }
 
@@ -432,23 +427,6 @@ impl Container {
 
     self
   }
-
-  /// Makes the box take focus when it mounts.
-  #[inline(always)]
-  pub fn set_autofocus(mut self) -> Self {
-    self.autofocus = true;
-
-    self
-  }
-
-  /// Binds `handle` to the box, so [`FocusHandle::focus`](FocusHandle::focus) targets
-  /// it once built.
-  #[inline(always)]
-  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
-    self.focus_handle = Some(handle.clone());
-
-    self
-  }
 }
 
 impl Default for Container {
@@ -674,16 +652,7 @@ impl View for Container {
           .or_default()
           .push(action);
       }
-
-      if self.autofocus {
-        state.focused.set(Some(node));
-        state.dirty.set(true);
-      }
     });
-
-    if let Some(handle) = &self.focus_handle {
-      handle.assign(node);
-    }
 
     match self.layout {
       // Overlap the children in one grid cell.

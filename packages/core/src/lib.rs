@@ -24,6 +24,7 @@ pub use props::{
   BoxProp,
   BoxProps,
   BoxStyle,
+  ButtonProps,
   CheckboxProps,
   ControlProps,
   InputProps,

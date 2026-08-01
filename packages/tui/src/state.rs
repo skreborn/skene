@@ -5,7 +5,7 @@ use std::{
   rc::Rc,
 };
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{KeyEvent, Layout, Modifiers, MouseCursor, NodeId, PointerButton};
 
 use crate::{
@@ -70,6 +70,8 @@ pub(crate) struct State {
   pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) focused: Cell<Option<NodeId>>,
+  /// The nodes registered as focusable controls (buttons, and controls to come).
+  pub(crate) controls: RefCell<FxHashSet<NodeId>>,
   /// The path from the root to the deepest node under the mouse, when known.
   pub(crate) hovered: RefCell<Vec<NodeId>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
@@ -121,6 +123,7 @@ impl State {
       pointer_up: RefCell::new(FxHashMap::default()),
       pointer_move: RefCell::new(FxHashMap::default()),
       focused: Cell::new(None),
+      controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
       last_size: Cell::new((80, 24)),
       title: RefCell::new(None),
@@ -256,6 +259,7 @@ impl State {
       self.pointer_up.borrow_mut().remove(&current);
       self.pointer_move.borrow_mut().remove(&current);
       self.hovered.borrow_mut().retain(|node| *node != current);
+      self.controls.borrow_mut().remove(&current);
 
       if self.focused.get() == Some(current) {
         self.focused.set(None);
@@ -273,16 +277,17 @@ impl State {
     apply(record)
   }
 
-  /// The focusable nodes (inputs and boxes with click handlers), in tree order.
+  /// The focusable nodes—inputs and registered controls; never plain boxes—in tree
+  /// order.
   pub(crate) fn focusable(&self) -> Vec<NodeId> {
     let nodes = self.nodes.borrow();
-    let click = self.click.borrow();
+    let controls = self.controls.borrow();
     let mut order = Vec::new();
     let mut stack = vec![ROOT_ID];
 
     while let Some(current) = stack.pop() {
       if let Some(record) = nodes.get(&current) {
-        if matches!(record.kind, NodeKind::Input { .. }) || click.contains_key(&current) {
+        if matches!(record.kind, NodeKind::Input { .. }) || controls.contains(&current) {
           order.push(current);
         }
 

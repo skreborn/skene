@@ -319,7 +319,19 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
         });
       }
 
-      if code == KeyCode::Enter
+      let space_activates = code == KeyCode::Char(' ')
+        && state.focused.get().is_some_and(|focused| {
+          !matches!(
+            state
+              .nodes
+              .borrow()
+              .get(&focused)
+              .map(|record| &record.kind),
+            Some(crate::state::NodeKind::Input { .. })
+          )
+        });
+
+      if (code == KeyCode::Enter || space_activates)
         && let Some(focused) = state.focused.get()
       {
         for target in state.ancestors(focused) {

@@ -80,7 +80,8 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   (committed value), and focus management: `set_tab_index`/`set_autofocus` (serialized
   in SSR output) plus `FocusHandle` for programmatic focus. `KeyEvent` modifiers moved
   into a shared `Modifiers` struct.
-- **Basic controls—done.** `Checkbox`, `Radio` (grouped, arrow-key movement),
+- **Basic controls—done.** `Button` (the one focus-taking box; a `Container` never
+  takes focus—controls do), `Checkbox`, `Radio` (grouped, arrow-key movement),
   `Select` (fixed options), `Textarea`, `Slider`—each realized as its semantic element
   (native keyboard and accessibility behavior for free), unstyled by default, sharing
   one builder surface (`ControlBase` + the `control_surface!` macro: styling, variants,
@@ -131,9 +132,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Parity—done.** Pointer down/up/move with the terminal's own `PointerEvent` (`u16`
   cells, terminal-absolute and view-relative, button, modifiers); `set_title`/
   `derive_title` via OSC 2; `FocusHandle` + `set_autofocus`; `Input::handle_change`
-  matches the GUI facade's real-time naming.
-- **Remaining (parity):** the basic control set in cells (checkbox `[x]`, radio `(•)`,
-  slider track, select cycling)—textarea waits on caret positioning.
+  matches the GUI facade's real-time naming. `Button` is the focus-taking box (`Tab`
+  reaches it; `Enter` and `Space` activate it); focusability belongs to controls, never
+  plain containers—a clickable box stays mouse-clickable but out of the tab order,
+  exactly like the web.
+- **Remaining (parity):** the rest of the control set in cells (checkbox `[x]`, radio
+  `(•)`, slider track, select cycling)—textarea waits on caret positioning.
 - **Remaining:** text wrapping; scroll (incl. mouse wheel); caret positioning in inputs
   (edits append/pop only); a diffed redraw instead of full frames; selectable border
   character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,

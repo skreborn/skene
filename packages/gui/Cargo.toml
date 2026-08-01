@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+# Serialize tagged signals to a byte snapshot and restore them on creation; see
+# `skene-reactive`'s feature of the same name.
+snapshot = ["skene-reactive/snapshot"]
 # Expose the driver teardown (`web::uninstall`) so one thread can run many independent
 # mounts. Enabled automatically for this crate's own tests via the self dev-dependency.
 test = ["skene-reactive/test", "skene-web/test"]

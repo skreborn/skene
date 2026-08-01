@@ -4,15 +4,22 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+# Serialize tagged signals to a byte snapshot and restore them on creation.
+snapshot = ["dep:postcard", "dep:serde"]
 test = []
 
 [dependencies]
 parking_lot = "0.12"
+postcard = { default-features = false, features = ["alloc"], optional = true, version = "1" }
 rustc-hash.workspace = true
+serde = { optional = true, version = "1" }
 smallvec = "1.15"
 
 [dev-dependencies]
 criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.5" }
+# Depend on ourselves with `snapshot` on, so `cargo test` covers the snapshot suite
+# without a `--features` flag.
+skene-reactive = { features = ["snapshot"], path = "." }
 
 [[bench]]
 name = "engine"

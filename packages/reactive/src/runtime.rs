@@ -255,6 +255,9 @@ impl Runtime {
 
     drop(entities);
 
+    #[cfg(feature = "snapshot")]
+    crate::snapshot::clear();
+
     // Release the process-wide UI-thread designation, so the next (serialized) test can
     // designate its own thread.
     *UI_THREAD_ID.write().expect("write the UI thread id") = None;

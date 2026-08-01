@@ -194,8 +194,13 @@ sink are just different sinks for the same paths.)
   live outside the graph—the focused node, scroll positions, and similar platform
   particularities—which the drivers fully own and can replay. Powers state-preserving
   dev reloads (full restart, no hot-patching) and stands on its own (session restore,
-  crash recovery). Stable identities across runs are the hard prerequisite; the
-  phase-1 arena redesign must be shaped with this in mind.
+  crash recovery). **Core landed:** the opt-in `snapshot` cargo feature (forwarded by
+  both facades) gives `RwSignal::tagged("tag", default)`—the tag is the identity across
+  runs, so the arena redesign is decoupled—plus `snapshot()`/`restore()` over
+  serde+postcard: staged values apply exactly once on creation, failed decodes degrade
+  to the default, corrupt snapshots stage nothing, duplicate live tags panic.
+  Remaining: driver extras riding along (focus, scroll), and the CLI holding the
+  snapshot across dev reloads.
 - **Accessibility**: AccessKit on native (already in phase 8's shared machinery) and in
   the TUI where it can reach; on the web, `Role` expansion and semantic output audited
   against ARIA. A stated commitment across facades, not an afterthought.

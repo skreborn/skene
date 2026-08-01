@@ -11,6 +11,8 @@ mod read;
 mod runtime;
 mod scope;
 mod signal;
+#[cfg(feature = "snapshot")]
+mod snapshot;
 mod storage;
 mod sync_runtime;
 mod trigger;
@@ -33,5 +35,7 @@ pub use signal::{
   SyncWriteSignal,
   WriteSignal,
 };
+#[cfg(feature = "snapshot")]
+pub use snapshot::{restore, snapshot};
 pub use trigger::Trigger;
 pub use write::{SignalUpdate, SignalWrite, WriteRef};

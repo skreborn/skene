@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+# Serialize tagged signals to a byte snapshot and restore them on creation; see
+# `skene-reactive`'s feature of the same name.
+snapshot = ["skene-reactive/snapshot"]
 # Expose the driver teardown (`uninstall`) so one thread can run many independent
 # mounts, as a test suite does.
 test = ["skene-reactive/test"]

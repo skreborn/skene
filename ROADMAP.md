@@ -160,8 +160,10 @@ sink are just different sinks for the same paths.)
   mouse capture off, cursor shown) before the panic message prints, so a crash never
   leaves the terminal wedged; restore also runs on normal unwind today via the raw-mode
   guard.
-- **Window titles**: `set_title`/`derive_title`—web `document.title` (SSR: `<title>` in
-  the head), TUI OSC 0/2, native window title.
+- **Titles and head management**: `set_title`/`derive_title` everywhere—web
+  `document.title`, TUI OSC 0/2, native window title—and on web the full head
+  vocabulary (title, meta, link, stylesheet, script) rendered into SSR/SSG heads and
+  kept live under CSR.
 - **Light/dark detection in TUI**: query the terminal background via OSC 11 and expose
   `DarkMode`/`LightMode` condition leaves, mirroring the GUI vocabulary.
 - **Truecolor detection in TUI**: detect support (`COLORTERM`/terminfo) and approximate
@@ -172,6 +174,33 @@ sink are just different sinks for the same paths.)
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system; the realize-once vocabulary already permits the code side.
+- **Serializable reactive state**: the signal graph snapshots to a byte stream and
+  restores on startup—stable signal identities across runs, serde'd values, opt-out
+  for the non-serializable. Powers state-preserving dev reloads (full restart, no
+  hot-patching) and stands on its own (session restore, crash recovery).
+- **Accessibility**: AccessKit on native (already in phase 6's shared machinery) and in
+  the TUI where it can reach; on the web, `Role` expansion and semantic output audited
+  against ARIA. A stated commitment across facades, not an afterthought.
+- **Reactive stores**: fine-grained nested reactivity over structs and collections
+  (derive-based; field- and key-level subscriptions), generally available on the same
+  signal substrate.
+- **Error/suspense audit**: name what `Boundary` + `Resource` + `Deferred` actually
+  guarantee against the error-boundary/suspense/transition triple, and fill what falls
+  short.
+- **All basic controls**: checkbox, select, textarea, radio, slider, and friends—
+  unstyled by default with full keyboard and ARIA behavior; a styled set may ship as a
+  separate optional package.
+- **List virtualization**: windowed rendering for large lists, on every facade (the TUI
+  scroll view and native lists need it alike).
+- **Internationalization**: first-class eventually—message catalogs, locale-aware
+  formatting, reactive locale switching.
+
+Decided against, for the record: hot-patching (state-preserving reloads come from
+serializable reactive state instead); a custom devtools/inspector (native realizes into
+the platform view hierarchy, so the platform's own inspectors already work; platforms
+without one may grow minimal introspection later); islands architecture (compiled no-JS
+styling already removes most reasons a static page ships wasm); LiveView-style server
+rendering (adjacent to the server-side non-goal); a webview desktop shell.
 
 ## Phase 8—CLI
 
@@ -179,3 +208,6 @@ Explicitly last, after the stretch goals above.
 
 - One tool to build/run/serve per platform: wasm bundling + the generated CSR page, SSG
   output, the dev server (subsuming `cargo xtask web`), native builds.
+- The dev loop is watch + rebuild + full reload; state survives via the serializable
+  reactive state in the backlog—the CLI holds the snapshot across the restart.
+- Route-based wasm code splitting with lazy loading, where the splitting tooling allows.

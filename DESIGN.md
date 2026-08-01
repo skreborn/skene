@@ -58,7 +58,7 @@ facade names only its own drivers.
 
 **The structural machinery is shared through `TreeOps`.** `Children`, `reconcile`,
 `dynamic`, `DynamicView` and `empty` live in core, generic over a zero-sized driver-ops
-parameter each facade implements (`DriverOps`, `TuiOps`) and hides behind plain type
+parameter each facade implements (`GuiOps`, `TuiOps`) and hides behind plain type
 aliases—so app code sees `Children`, not `Children<Ops>`. The parameter monomorphizes:
 every call statically resolves and inlines into the one compiled driver, at zero runtime
 cost (a binary holds exactly one facade, so exactly one instantiation ever exists). If

@@ -447,7 +447,7 @@ impl Default for Container {
   }
 }
 
-impl HasChildren<crate::DriverOps> for Container {
+impl HasChildren<crate::GuiOps> for Container {
   #[inline(always)]
   fn set_children_to(mut self, children: Children) -> Self {
     self.children = children;

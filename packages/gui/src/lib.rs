@@ -58,10 +58,10 @@ pub use crate::{
 /// machinery. App code sees it only through the [`Children`] and [`DynamicView`]
 /// aliases.
 #[derive(Clone, Copy, Default)]
-pub struct DriverOps;
+pub struct GuiOps;
 
 #[cfg(target_arch = "wasm32")]
-impl skene_core::TreeOps for DriverOps {
+impl skene_core::TreeOps for GuiOps {
   #[inline(always)]
   fn create_group(self) -> NodeId {
     driver::create_group()
@@ -84,10 +84,10 @@ impl skene_core::TreeOps for DriverOps {
 }
 
 /// A container's children.
-pub type Children = skene_core::Children<DriverOps>;
+pub type Children = skene_core::Children<GuiOps>;
 /// A reactive subtree.
 #[cfg(target_arch = "wasm32")]
-pub type DynamicView = skene_core::DynamicView<DriverOps>;
+pub type DynamicView = skene_core::DynamicView<GuiOps>;
 
 /// Reactively reconciles a parent's children from a keyed collection; see
 /// [`skene_core::reconcile`].
@@ -102,7 +102,7 @@ pub fn reconcile<T, I, K>(
   I: IntoIterator<Item = T>,
   K: Eq + std::hash::Hash + 'static,
 {
-  skene_core::reconcile::<DriverOps, T, I, K>(parent, items, key, build);
+  skene_core::reconcile::<GuiOps, T, I, K>(parent, items, key, build);
 }
 
 /// Anchors a reactive subtree under a fresh group node, returning that node; see
@@ -110,7 +110,7 @@ pub fn reconcile<T, I, K>(
 #[cfg(target_arch = "wasm32")]
 #[inline(always)]
 pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::dynamic::<DriverOps>(build)
+  skene_core::dynamic::<GuiOps>(build)
 }
 
 /// A view that renders nothing.
@@ -118,7 +118,7 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
 #[inline(always)]
 #[must_use]
 pub fn empty() -> impl View {
-  skene_core::empty::<DriverOps>()
+  skene_core::empty::<GuiOps>()
 }
 
 /// Spacing on the four edges of a box, in logical pixels.

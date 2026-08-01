@@ -117,7 +117,7 @@ The largest phase by far; do not start before phase 4 proves the event model.
 - **Done, twice-shaped.** First landed as a driver of the shared GUI vocabulary; then
   reshaped into a **first-class, equal facade**: `skene-tui` owns its vocabulary
   outright—`u16` cells, `bool` bold, one-cell colored borders, terminal conditions
-  (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`)—so nothing a
+  (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`, `Hovered`)—so nothing a
   terminal cannot render exists to call. Its `Container`/`Text`/`Input` builders and
   realization live in-crate; layout is taffy at `1.0 = 1 cell`; frames paint via
   crossterm (truecolor, bold, reverse, `Tab`/`Enter` focus, input editing, `Ctrl-C`) or
@@ -136,6 +136,42 @@ The largest phase by far; do not start before phase 4 proves the event model.
   (edits append/pop only); a diffed redraw instead of full frames; selectable border
   character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,
   custom).
+
+## Backlog—unphased features
+
+Wanted, not yet scheduled into a phase. (Confirmed already true, recorded here so it
+stays true: **URI paths on all platforms**—`Route::parse`/`to_path` speak URL paths
+everywhere; the browser History API, the server request path, and the TUI's in-memory
+sink are just different sinks for the same paths.)
+
+- **HTTP client** as a separate crate (`skene-http`), built on the public seams
+  (`spawn`, `Resource`) exactly as a third-party client would be—same footing is the
+  point. A WebSocket sibling follows the same rule.
+- **Overlays**: portals, popups, modals, tooltips—content mounted outside its parent's
+  clip/z-order. Web: top-layer (`<dialog>`/popover) or a portal to `<body>`; native: the
+  platform compositor's layers; TUI: a second paint pass over the cell buffer.
+- **Container queries** next to media queries: `Condition` leaves resolved against an
+  ancestor container's size, not the viewport. Web compiles to `@container` (the driver
+  stamps `container-type` on the queried ancestor); TUI and native resolve them against
+  the taffy results they already have.
+- **Animation in TUI**: run the frame ticker against tui style data—color and attribute
+  interpolation foremost, but sizes and positions are just as animatable in cells.
+- **Panic hook for TUI**: a hook that restores the terminal (cooked mode, main screen,
+  mouse capture off, cursor shown) before the panic message prints, so a crash never
+  leaves the terminal wedged; restore also runs on normal unwind today via the raw-mode
+  guard.
+- **Window titles**: `set_title`/`derive_title`—web `document.title` (SSR: `<title>` in
+  the head), TUI OSC 0/2, native window title.
+- **Light/dark detection in TUI**: query the terminal background via OSC 11 and expose
+  `DarkMode`/`LightMode` condition leaves, mirroring the GUI vocabulary.
+- **Truecolor detection in TUI**: detect support (`COLORTERM`/terminfo) and approximate
+  to 256- or 16-color palettes when absent, instead of assuming truecolor.
+- **Asset system**: declare assets (fonts, images, stylesheets, scripts) in code; the
+  build tool bundles them with the output (hashed URLs for web/SSG, embedded or
+  alongside for native/TUI).
+- **Component libraries**: third-party crates shipping components—views plus
+  facade-specific code plus assets—consumable on equal footing with built-ins. Depends
+  on the asset system; the realize-once vocabulary already permits the code side.
 
 ## Phase 8—CLI
 

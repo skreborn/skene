@@ -641,7 +641,7 @@ fn draw_scrollbars(
 
 /// A scrollbar thumb's start and length along a track, proportional to the viewport
 /// within the scrollable content.
-fn thumb_span(track: isize, offset: u16, limit: u16) -> (isize, isize) {
+fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   if track <= 0 {
     return (0, 0);
   }

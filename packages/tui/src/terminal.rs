@@ -566,7 +566,7 @@ pub fn trigger_color_scheme(dark: bool) {
 /// scrolling. Positive deltas scroll right and down, one cell per unit; hit-testing
 /// resolves against the last render's layout.
 #[cfg(feature = "test")]
-pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i32, delta_rows: i32) {
+pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
   with_state(|state| {
     skene_reactive::Effect::batch(|| state.mouse_scroll(x, y, delta_columns, delta_rows));
   });

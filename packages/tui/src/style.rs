@@ -44,10 +44,10 @@ pub(crate) struct Interaction {
 /// Whether leaf `condition` holds in `environment` for a node in `interaction`.
 fn leaf_holds(condition: &Condition, environment: Environment, interaction: Interaction) -> bool {
   match condition {
-    Condition::MinWidth(value) => environment.columns >= *value,
-    Condition::MaxWidth(value) => environment.columns <= *value,
-    Condition::MinHeight(value) => environment.rows >= *value,
-    Condition::MaxHeight(value) => environment.rows <= *value,
+    Condition::MinWidth(value) => u32::from(environment.columns) >= *value,
+    Condition::MaxWidth(value) => u32::from(environment.columns) <= *value,
+    Condition::MinHeight(value) => u32::from(environment.rows) >= *value,
+    Condition::MaxHeight(value) => u32::from(environment.rows) <= *value,
     Condition::Focused => interaction.focused,
     Condition::Hovered => interaction.hovered,
     Condition::DarkMode => environment.dark,
@@ -161,10 +161,10 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
 
   if let Some(padding) = style.padding {
     out.padding = taffy::geometry::Rect {
-      left: length(f32::from(padding.left)),
-      right: length(f32::from(padding.right)),
-      top: length(f32::from(padding.top)),
-      bottom: length(f32::from(padding.bottom)),
+      left: length(cell(padding.left)),
+      right: length(cell(padding.right)),
+      top: length(cell(padding.top)),
+      bottom: length(cell(padding.bottom)),
     };
   }
 
@@ -179,8 +179,8 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
 
   if let Some(spacing) = style.spacing {
     out.gap = taffy::geometry::Size {
-      width: length(f32::from(spacing)),
-      height: length(f32::from(spacing)),
+      width: length(cell(spacing)),
+      height: length(cell(spacing)),
     };
   }
 
@@ -227,10 +227,19 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
   }
 }
 
+/// A cell length as layout units.
+#[inline(always)]
+fn cell(value: u32) -> f32 {
+  #[expect(clippy::cast_precision_loss)]
+  {
+    value as f32
+  }
+}
+
 /// A cell length as a taffy dimension.
 #[inline(always)]
-fn cells(value: u16) -> Dimension {
-  length(f32::from(value))
+fn cells(value: u32) -> Dimension {
+  length(cell(value))
 }
 
 /// A [`Color`]'s terminal RGB, or `None` when fully transparent.

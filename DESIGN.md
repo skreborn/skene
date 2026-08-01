@@ -35,7 +35,7 @@ skene-gui        the GUI facade and a GUI app's single dependency: the built-in 
                  client_only
 
 skene-tui        the terminal facade and a terminal app's single dependency, EQUAL in
-                 standing to skene-gui: its own views typed to the medium (u16 cells,
+                 standing to skene-gui: its own views typed to the medium (u32 cells,
                  bool bold, one-cell borders—no radius, font size, or transition
                  exists to call), its own driver internals, launch
 
@@ -231,7 +231,7 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 ### TUI (`skene-tui`)
 
 A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
-and `Input` are typed to the terminal: lengths are `u16` cells, text is a color plus a
+and `Input` are typed to the terminal: lengths are `u32` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
 are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,
 `Hovered`). Nothing the medium lacks exists to call—no font size, no transition—so a
@@ -241,7 +241,7 @@ The mouse is in-capability: motion drives `Hovered` variants and pointer enter/l
 handlers, a left click hits the topmost node (hit-tested against the taffy layout),
 focuses it, and runs its click handlers, and a hovered node's `cursor` sets the pointer
 shape via OSC 22—terminals without mouse reporting or pointer shapes degrade quietly.
-Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u16` cell
+Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u32` cell
 coordinates, both terminal-absolute and view-relative, plus the button and modifiers.
 `set_title`/`derive_title` name the terminal window via OSC 2, and `FocusHandle` and
 `set_autofocus` manage keyboard focus programmatically—the same surface the GUI facade

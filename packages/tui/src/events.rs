@@ -7,9 +7,9 @@ use skene_core::{Modifiers, PointerButton};
 #[must_use]
 pub struct ScrollEvent {
   /// The horizontal scroll offset, in cells.
-  pub column: u16,
+  pub column: u32,
   /// The vertical scroll offset, in cells.
-  pub row: u16,
+  pub row: u32,
 }
 
 /// A pointer event: where in the terminal, which button, and the modifier state.
@@ -17,13 +17,13 @@ pub struct ScrollEvent {
 #[must_use]
 pub struct PointerEvent {
   /// The pointer's column, in cells from the terminal's left edge.
-  pub column: u16,
+  pub column: u32,
   /// The pointer's row, in cells from the terminal's top edge.
-  pub row: u16,
+  pub row: u32,
   /// The pointer's column, relative to the handling view's left edge.
-  pub local_column: u16,
+  pub local_column: u32,
   /// The pointer's row, relative to the handling view's top edge.
-  pub local_row: u16,
+  pub local_row: u32,
   /// The button that changed state, or `None` for a move.
   pub button: Option<PointerButton>,
   /// The modifier state.

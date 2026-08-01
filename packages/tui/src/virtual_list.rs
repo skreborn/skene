@@ -18,10 +18,9 @@ use crate::{
 ///
 /// Items are keyed by index: scrolling reuses the views whose indices stay in the
 /// window, and an item expresses its own reactivity with `derive_` properties as usual.
-/// Content taller than 65535 cells saturates.
 #[must_use]
 pub struct VirtualList {
-  item_height: u16,
+  item_height: u32,
   count: Rc<dyn Fn() -> usize>,
   item: Rc<dyn Fn(usize) -> NodeId>,
   style: BoxStyle,
@@ -32,7 +31,7 @@ pub struct VirtualList {
 impl VirtualList {
   /// Creates a list of `count()` items, each `item_height` cells tall, built by `item`.
   pub fn new<V: IntoView>(
-    item_height: u16,
+    item_height: u32,
     count: impl Fn() -> usize + 'static,
     item: impl Fn(usize) -> V + 'static,
   ) -> Self {
@@ -82,8 +81,8 @@ impl View for VirtualList {
 
     style.overflow = Some(style.overflow.unwrap_or(Overflow::Auto));
 
-    let offset = RwSignal::new(0u16);
-    let viewport = RwSignal::new(0u16);
+    let offset = RwSignal::new(0u32);
+    let viewport = RwSignal::new(0u32);
     let outer = with_state(|state| {
       let outer = state.insert_node(
         NodeKind::Box {
@@ -112,11 +111,12 @@ impl View for VirtualList {
     let window = Memo::new(move |_| {
       let count = count();
 
+      #[expect(clippy::cast_precision_loss)]
       (
         virtual_window(
-          f32::from(offset.get()),
-          f32::from(viewport.get()),
-          f32::from(item_height),
+          offset.get() as f32,
+          viewport.get() as f32,
+          item_height as f32,
           count,
           overscan,
         ),
@@ -125,7 +125,7 @@ impl View for VirtualList {
     });
 
     let extent = move |items: usize| {
-      u16::try_from(items.saturating_mul(usize::from(item_height))).unwrap_or(u16::MAX)
+      u32::try_from(items.saturating_mul(item_height as usize)).unwrap_or(u32::MAX)
     };
     let leading = crate::Container::new()
       .derive_height(move || extent(window.get().0.start))

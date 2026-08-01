@@ -1,7 +1,7 @@
 //! The terminal's own typed style vocabulary: cells, colors, bold—and nothing a
 //! terminal cannot render.
 //!
-//! Lengths are `u16` cells. There is no font size and no transition: what the medium
+//! Lengths are `u32` cells. There is no font size and no transition: what the medium
 //! lacks, the types lack, so a terminal app is first-class at compile time rather than
 //! best-effort at run time. Mouse hover, pointer shapes and one-cell borders are in: a
 //! compatible terminal renders them, and an incompatible one degrades quietly.
@@ -24,25 +24,25 @@ use skene_core::{
 #[must_use]
 pub struct BoxStyle {
   /// The fixed width, in cells.
-  pub width: Option<u16>,
+  pub width: Option<u32>,
   /// The fixed height, in cells.
-  pub height: Option<u16>,
+  pub height: Option<u32>,
   /// The minimum width, in cells.
-  pub min_width: Option<u16>,
+  pub min_width: Option<u32>,
   /// The minimum height, in cells.
-  pub min_height: Option<u16>,
+  pub min_height: Option<u32>,
   /// The maximum width, in cells.
-  pub max_width: Option<u16>,
+  pub max_width: Option<u32>,
   /// The maximum height, in cells.
-  pub max_height: Option<u16>,
+  pub max_height: Option<u32>,
   /// The padding on each edge, in cells.
-  pub padding: Option<Inset<u16>>,
+  pub padding: Option<Inset<u32>>,
   /// The background color.
   pub color: Option<Color>,
   /// The border color; a border is always one cell of box-drawing characters.
   pub border: Option<Color>,
   /// The gap between children, in cells.
-  pub spacing: Option<u16>,
+  pub spacing: Option<u32>,
   /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
   pub cursor: Option<MouseCursor>,
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
@@ -62,7 +62,7 @@ impl BoxStyle {
 
   /// Sets the width, in cells.
   #[inline(always)]
-  pub const fn set_width(mut self, width: u16) -> Self {
+  pub const fn set_width(mut self, width: u32) -> Self {
     self.width = Some(width);
 
     self
@@ -70,7 +70,7 @@ impl BoxStyle {
 
   /// Sets the height, in cells.
   #[inline(always)]
-  pub const fn set_height(mut self, height: u16) -> Self {
+  pub const fn set_height(mut self, height: u32) -> Self {
     self.height = Some(height);
 
     self
@@ -78,7 +78,7 @@ impl BoxStyle {
 
   /// Sets the minimum width, in cells.
   #[inline(always)]
-  pub const fn set_min_width(mut self, min_width: u16) -> Self {
+  pub const fn set_min_width(mut self, min_width: u32) -> Self {
     self.min_width = Some(min_width);
 
     self
@@ -86,7 +86,7 @@ impl BoxStyle {
 
   /// Sets the minimum height, in cells.
   #[inline(always)]
-  pub const fn set_min_height(mut self, min_height: u16) -> Self {
+  pub const fn set_min_height(mut self, min_height: u32) -> Self {
     self.min_height = Some(min_height);
 
     self
@@ -94,7 +94,7 @@ impl BoxStyle {
 
   /// Sets the maximum width, in cells.
   #[inline(always)]
-  pub const fn set_max_width(mut self, max_width: u16) -> Self {
+  pub const fn set_max_width(mut self, max_width: u32) -> Self {
     self.max_width = Some(max_width);
 
     self
@@ -102,7 +102,7 @@ impl BoxStyle {
 
   /// Sets the maximum height, in cells.
   #[inline(always)]
-  pub const fn set_max_height(mut self, max_height: u16) -> Self {
+  pub const fn set_max_height(mut self, max_height: u32) -> Self {
     self.max_height = Some(max_height);
 
     self
@@ -110,7 +110,7 @@ impl BoxStyle {
 
   /// Sets the padding on each edge, in cells.
   #[inline(always)]
-  pub const fn set_padding(mut self, padding: Inset<u16>) -> Self {
+  pub const fn set_padding(mut self, padding: Inset<u32>) -> Self {
     self.padding = Some(padding);
 
     self
@@ -134,7 +134,7 @@ impl BoxStyle {
 
   /// Sets the gap between children, in cells.
   #[inline(always)]
-  pub const fn set_spacing(mut self, spacing: u16) -> Self {
+  pub const fn set_spacing(mut self, spacing: u32) -> Self {
     self.spacing = Some(spacing);
 
     self
@@ -216,13 +216,13 @@ impl RunStyle {
 #[must_use]
 pub enum Condition {
   /// The terminal is at least this wide, in cells.
-  MinWidth(u16),
+  MinWidth(u32),
   /// The terminal is at most this wide, in cells.
-  MaxWidth(u16),
+  MaxWidth(u32),
   /// The terminal is at least this tall, in cells.
-  MinHeight(u16),
+  MinHeight(u32),
   /// The terminal is at most this tall, in cells.
-  MaxHeight(u16),
+  MaxHeight(u32),
   /// The node has keyboard focus.
   Focused,
   /// The mouse is over the node, in terminals that report it.
@@ -265,16 +265,16 @@ impl Composable for Condition {
 /// One box property's value, for a reactive update.
 #[derive(Clone, Copy)]
 pub(crate) enum BoxProp {
-  Width(u16),
-  Height(u16),
-  MinWidth(u16),
-  MinHeight(u16),
-  MaxWidth(u16),
-  MaxHeight(u16),
-  Padding(Inset<u16>),
+  Width(u32),
+  Height(u32),
+  MinWidth(u32),
+  MinHeight(u32),
+  MaxWidth(u32),
+  MaxHeight(u32),
+  Padding(Inset<u32>),
   Color(Color),
   Border(Color),
-  Spacing(u16),
+  Spacing(u32),
   Cursor(MouseCursor),
   Overflow(Overflow),
   MainAxisAlignment(MainAxisAlignment),

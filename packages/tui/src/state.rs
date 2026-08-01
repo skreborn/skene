@@ -103,13 +103,13 @@ pub(crate) struct State {
   /// Whether the terminal background is dark, detected at launch.
   pub(crate) dark: Cell<bool>,
   /// Each scrolled node's offsets, in cells.
-  pub(crate) scroll_offsets: RefCell<FxHashMap<NodeId, (u16, u16)>>,
+  pub(crate) scroll_offsets: RefCell<FxHashMap<NodeId, (u32, u32)>>,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Cell<Option<NodeId>>,
   /// Each watched node's viewport callback and last reported content size, run after
   /// layout when that size changes.
   #[expect(clippy::type_complexity)]
-  pub(crate) viewport_watchers: RefCell<FxHashMap<NodeId, (Rc<dyn Fn(u16, u16)>, (u16, u16))>>,
+  pub(crate) viewport_watchers: RefCell<FxHashMap<NodeId, (Rc<dyn Fn(u32, u32)>, (u32, u32))>>,
   /// The terminal title, emitted via OSC 2 when it changes.
   pub(crate) title: RefCell<Option<String>>,
   /// Whether the title changed since it was last emitted.
@@ -459,7 +459,7 @@ impl State {
 
   /// The path from the root to the deepest node containing the cell (`x`, `y`)—each
   /// with its absolute origin—against the last computed layout.
-  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i32, i32))> {
+  pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(NodeId, (i64, i64))> {
     // Overlays hit first, topmost first; below an open modal nothing is hittable.
     for overlay in self.open_overlays().iter().rev() {
       let mut path = Vec::new();
@@ -475,7 +475,7 @@ impl State {
 
     let mut path = Vec::new();
 
-    self.hit_walk(ROOT_ID, 0, 0, i32::from(x), i32::from(y), &mut path);
+    self.hit_walk(ROOT_ID, 0, 0, i64::from(x), i64::from(y), &mut path);
 
     path
   }
@@ -485,11 +485,11 @@ impl State {
   fn hit_walk(
     &self,
     node: NodeId,
-    offset_x: i32,
-    offset_y: i32,
-    x: i32,
-    y: i32,
-    path: &mut Vec<(NodeId, (i32, i32))>,
+    offset_x: i64,
+    offset_y: i64,
+    x: i64,
+    y: i64,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let (origin_x, origin_y, width, height, children) = {
       let nodes = self.nodes.borrow();
@@ -505,14 +505,14 @@ impl State {
 
       #[expect(clippy::cast_possible_truncation)]
       let (origin_x, origin_y) = (
-        offset_x + layout.location.x.round() as i32,
-        offset_y + layout.location.y.round() as i32,
+        offset_x + layout.location.x.round() as i64,
+        offset_y + layout.location.y.round() as i64,
       );
 
       #[expect(clippy::cast_possible_truncation)]
       let (width, height) = (
-        layout.size.width.round().max(0.0) as i32,
-        layout.size.height.round().max(0.0) as i32,
+        layout.size.width.round().max(0.0) as i64,
+        layout.size.height.round().max(0.0) as i64,
       );
 
       (origin_x, origin_y, width, height, record.children.clone())
@@ -529,8 +529,8 @@ impl State {
     // A scrolled box shifts its children by its offsets.
     let (scroll_x, scroll_y) = self.scroll_offset(node);
     let (child_x, child_y) = (
-      origin_x - i32::from(scroll_x),
-      origin_y - i32::from(scroll_y),
+      origin_x - i64::from(scroll_x),
+      origin_y - i64::from(scroll_y),
     );
 
     // Later children paint on top, so they win the hit; overlays hit separately.
@@ -616,10 +616,10 @@ impl State {
   ) {
     for (node, (origin_x, origin_y)) in self.hit_test(x, y).iter().rev() {
       let event = PointerEvent {
-        column: x,
-        row: y,
-        local_column: u16::try_from(i32::from(x) - origin_x).unwrap_or(0),
-        local_row: u16::try_from(i32::from(y) - origin_y).unwrap_or(0),
+        column: u32::from(x),
+        row: u32::from(y),
+        local_column: u32::try_from(i64::from(x) - origin_x).unwrap_or(0),
+        local_row: u32::try_from(i64::from(y) - origin_y).unwrap_or(0),
         button,
         modifiers,
       };
@@ -687,7 +687,7 @@ impl State {
 
   /// A node's absolute origin: its taffy locations summed up the parent chain, each
   /// ancestor's scroll offsets subtracted.
-  fn absolute_origin(&self, node: NodeId) -> (i32, i32) {
+  fn absolute_origin(&self, node: NodeId) -> (i64, i64) {
     let nodes = self.nodes.borrow();
     let taffy = self.taffy.borrow();
     let mut current = Some(node);
@@ -702,16 +702,16 @@ impl State {
       if let Ok(layout) = taffy.layout(record.taffy) {
         #[expect(clippy::cast_possible_truncation)]
         {
-          x += layout.location.x.round() as i32;
-          y += layout.location.y.round() as i32;
+          x += layout.location.x.round() as i64;
+          y += layout.location.y.round() as i64;
         }
       }
 
       if let Some(parent) = record.parent {
         let (scroll_x, scroll_y) = self.scroll_offset(parent);
 
-        x -= i32::from(scroll_x);
-        y -= i32::from(scroll_y);
+        x -= i64::from(scroll_x);
+        y -= i64::from(scroll_y);
       }
 
       current = record.parent;
@@ -722,9 +722,9 @@ impl State {
 
   /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
   /// anchor, everything else against the terminal.
-  pub(crate) fn overlay_origin(&self, node: NodeId) -> (i32, i32) {
+  pub(crate) fn overlay_origin(&self, node: NodeId) -> (i64, i64) {
     let (columns, rows) = self.last_size.get();
-    let (columns, rows) = (i32::from(columns), i32::from(rows));
+    let (columns, rows) = (i64::from(columns), i64::from(rows));
     let (placement, anchor) = {
       let nodes = self.nodes.borrow();
 
@@ -760,7 +760,7 @@ impl State {
   }
 
   /// A node's laid-out size, in cells.
-  fn node_size(&self, node: NodeId) -> (i32, i32) {
+  fn node_size(&self, node: NodeId) -> (i64, i64) {
     let nodes = self.nodes.borrow();
     let Some(record) = nodes.get(&node)
     else {
@@ -770,8 +770,8 @@ impl State {
     match self.taffy.borrow().layout(record.taffy) {
       #[expect(clippy::cast_possible_truncation)]
       Ok(layout) => (
-        layout.size.width.round().max(0.0) as i32,
-        layout.size.height.round().max(0.0) as i32,
+        layout.size.width.round().max(0.0) as i64,
+        layout.size.height.round().max(0.0) as i64,
       ),
       Err(_) => (0, 0),
     }
@@ -783,7 +783,7 @@ impl State {
     overlay: NodeId,
     x: u16,
     y: u16,
-    path: &mut Vec<(NodeId, (i32, i32))>,
+    path: &mut Vec<(NodeId, (i64, i64))>,
   ) -> bool {
     let (origin_x, origin_y) = self.overlay_origin(overlay);
     let (location_x, location_y) = {
@@ -796,8 +796,8 @@ impl State {
       match self.taffy.borrow().layout(record.taffy) {
         #[expect(clippy::cast_possible_truncation)]
         Ok(layout) => (
-          layout.location.x.round() as i32,
-          layout.location.y.round() as i32,
+          layout.location.x.round() as i64,
+          layout.location.y.round() as i64,
         ),
         Err(_) => (0, 0),
       }
@@ -807,8 +807,8 @@ impl State {
       overlay,
       origin_x - location_x,
       origin_y - location_y,
-      i32::from(x),
-      i32::from(y),
+      i64::from(x),
+      i64::from(y),
       path,
     )
   }
@@ -897,7 +897,7 @@ impl State {
   }
 
   /// A node's scroll offsets, clamped to what the last layout allows.
-  pub(crate) fn scroll_offset(&self, node: NodeId) -> (u16, u16) {
+  pub(crate) fn scroll_offset(&self, node: NodeId) -> (u32, u32) {
     let Some((x, y)) = self.scroll_offsets.borrow().get(&node).copied()
     else {
       return (0, 0);
@@ -909,7 +909,7 @@ impl State {
   }
 
   /// A node's maximum scroll offsets, from the last computed layout.
-  pub(crate) fn scroll_limits(&self, node: NodeId) -> (u16, u16) {
+  pub(crate) fn scroll_limits(&self, node: NodeId) -> (u32, u32) {
     let nodes = self.nodes.borrow();
     let Some(record) = nodes.get(&node)
     else {
@@ -919,8 +919,8 @@ impl State {
     match self.taffy.borrow().layout(record.taffy) {
       #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
       Ok(layout) => (
-        layout.scroll_width().round().max(0.0) as u16,
-        layout.scroll_height().round().max(0.0) as u16,
+        layout.scroll_width().round().max(0.0) as u32,
+        layout.scroll_height().round().max(0.0) as u32,
       ),
       Err(_) => (0, 0),
     }
@@ -928,7 +928,7 @@ impl State {
 
   /// Scrolls the node by a delta, clamped to its limits, firing its scroll handlers;
   /// `false` when the node does not scroll or cannot move further.
-  pub(crate) fn scroll_by(&self, node: NodeId, delta_x: i32, delta_y: i32) -> bool {
+  pub(crate) fn scroll_by(&self, node: NodeId, delta_x: i64, delta_y: i64) -> bool {
     if !self.is_scrollable(node) {
       return false;
     }
@@ -936,8 +936,8 @@ impl State {
     let (limit_x, limit_y) = self.scroll_limits(node);
     let (x, y) = self.scroll_offset(node);
     let next = (
-      u16::try_from((i32::from(x) + delta_x).clamp(0, i32::from(limit_x))).expect("clamped"),
-      u16::try_from((i32::from(y) + delta_y).clamp(0, i32::from(limit_y))).expect("clamped"),
+      u32::try_from((i64::from(x) + delta_x).clamp(0, i64::from(limit_x))).expect("clamped"),
+      u32::try_from((i64::from(y) + delta_y).clamp(0, i64::from(limit_y))).expect("clamped"),
     );
 
     if next == (x, y) {
@@ -950,7 +950,7 @@ impl State {
   }
 
   /// Stores a node's offsets, fires its scroll handlers, and repaints.
-  fn set_scroll(&self, node: NodeId, (x, y): (u16, u16)) {
+  fn set_scroll(&self, node: NodeId, (x, y): (u32, u32)) {
     self.scroll_offsets.borrow_mut().insert(node, (x, y));
     self.dirty.set(true);
 
@@ -964,7 +964,7 @@ impl State {
 
   /// Scrolls the innermost box under the cell (`x`, `y`) that can still move in the
   /// given direction.
-  pub(crate) fn mouse_scroll(&self, x: u16, y: u16, delta_x: i32, delta_y: i32) {
+  pub(crate) fn mouse_scroll(&self, x: u16, y: u16, delta_x: i64, delta_y: i64) {
     for (node, _) in self.hit_test(x, y).iter().rev() {
       if self.scroll_by(*node, delta_x, delta_y) {
         return;
@@ -974,7 +974,7 @@ impl State {
 
   /// Scrolls the nearest scrollable box around the focus (or the first in tree order)
   /// by `pages` viewport heights.
-  pub(crate) fn page_scroll(&self, pages: i32) {
+  pub(crate) fn page_scroll(&self, pages: i64) {
     let target = self
       .focused
       .get()
@@ -1014,7 +1014,7 @@ impl State {
 
   /// Registers `watch` to run with the node's content size (inside its border) after
   /// each layout in which that size changed.
-  pub(crate) fn watch_viewport(&self, node: NodeId, watch: Rc<dyn Fn(u16, u16)>) {
+  pub(crate) fn watch_viewport(&self, node: NodeId, watch: Rc<dyn Fn(u32, u32)>) {
     self
       .viewport_watchers
       .borrow_mut()
@@ -1046,10 +1046,10 @@ impl State {
         let size = (
           (layout.size.width - layout.border.left - layout.border.right)
             .round()
-            .max(0.0) as u16,
+            .max(0.0) as u32,
           (layout.size.height - layout.border.top - layout.border.bottom)
             .round()
-            .max(0.0) as u16,
+            .max(0.0) as u32,
         );
 
         if size != *last {
@@ -1094,14 +1094,14 @@ impl State {
 
       #[expect(clippy::cast_possible_truncation)]
       let (mut rel_x, mut rel_y) = (
-        layout.location.x.round() as i32,
-        layout.location.y.round() as i32,
+        layout.location.x.round() as i64,
+        layout.location.y.round() as i64,
       );
 
       #[expect(clippy::cast_possible_truncation)]
       let (width, height) = (
-        layout.size.width.round().max(0.0) as i32,
-        layout.size.height.round().max(0.0) as i32,
+        layout.size.width.round().max(0.0) as i64,
+        layout.size.height.round().max(0.0) as i64,
       );
 
       let mut current = nodes.get(&node).and_then(|record| record.parent);
@@ -1120,25 +1120,25 @@ impl State {
           #[expect(clippy::cast_possible_truncation)]
           let next = (
             fit_axis(
-              i32::from(offset_x),
+              i64::from(offset_x),
               rel_x,
               width,
-              ancestor_layout.size.width.round() as i32,
-              ancestor_layout.border.left.round() as i32,
-              i32::from(limit_x),
+              ancestor_layout.size.width.round() as i64,
+              ancestor_layout.border.left.round() as i64,
+              i64::from(limit_x),
             ),
             fit_axis(
-              i32::from(offset_y),
+              i64::from(offset_y),
               rel_y,
               height,
-              ancestor_layout.size.height.round() as i32,
-              ancestor_layout.border.top.round() as i32,
-              i32::from(limit_y),
+              ancestor_layout.size.height.round() as i64,
+              ancestor_layout.border.top.round() as i64,
+              i64::from(limit_y),
             ),
           );
           let next = (
-            u16::try_from(next.0).unwrap_or(0),
-            u16::try_from(next.1).unwrap_or(0),
+            u32::try_from(next.0).unwrap_or(0),
+            u32::try_from(next.1).unwrap_or(0),
           );
 
           if next != (offset_x, offset_y) {
@@ -1150,8 +1150,8 @@ impl State {
 
         #[expect(clippy::cast_possible_truncation)]
         {
-          rel_x += ancestor_layout.location.x.round() as i32 - i32::from(offset_x);
-          rel_y += ancestor_layout.location.y.round() as i32 - i32::from(offset_y);
+          rel_x += ancestor_layout.location.x.round() as i64 - i64::from(offset_x);
+          rel_y += ancestor_layout.location.y.round() as i64 - i64::from(offset_y);
         }
 
         current = nodes.get(&ancestor).and_then(|record| record.parent);
@@ -1170,7 +1170,7 @@ impl State {
 
 /// The nearest offset showing `[rel, rel + extent)` within a viewport of `size` behind
 /// a border, clamped to `[0, limit]`; an oversized target aligns to its start.
-const fn fit_axis(offset: i32, rel: i32, extent: i32, size: i32, border: i32, limit: i32) -> i32 {
+const fn fit_axis(offset: i64, rel: i64, extent: i64, size: i64, border: i64, limit: i64) -> i64 {
   let min_offset = rel + extent - size + border;
   let max_offset = rel - border;
   let next = if min_offset > max_offset || offset > max_offset {

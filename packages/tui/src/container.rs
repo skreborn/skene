@@ -38,16 +38,16 @@ use crate::{
 pub struct Container {
   children: Children,
   layout: Layout,
-  width: Option<Source<u16>>,
-  height: Option<Source<u16>>,
-  min_width: Option<Source<u16>>,
-  min_height: Option<Source<u16>>,
-  max_width: Option<Source<u16>>,
-  max_height: Option<Source<u16>>,
+  width: Option<Source<u32>>,
+  height: Option<Source<u32>>,
+  min_width: Option<Source<u32>>,
+  min_height: Option<Source<u32>>,
+  max_width: Option<Source<u32>>,
+  max_height: Option<Source<u32>>,
   padding: Option<Source<Inset>>,
   color: Option<Source<Color>>,
   border: Option<Source<Color>>,
-  spacing: Option<Source<u16>>,
+  spacing: Option<Source<u32>>,
   cursor: Option<Source<MouseCursor>>,
   overflow: Option<Source<Overflow>>,
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
@@ -142,7 +142,7 @@ impl Container {
 
   /// Sets a static width, in cells.
   #[inline(always)]
-  pub fn set_width(mut self, width: u16) -> Self {
+  pub fn set_width(mut self, width: u32) -> Self {
     self.width = Some(Source::Static(width));
 
     self
@@ -150,7 +150,7 @@ impl Container {
 
   /// Sets a derived width, in cells.
   #[inline(always)]
-  pub fn derive_width(mut self, width: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_width(mut self, width: impl Fn() -> u32 + 'static) -> Self {
     self.width = Some(Source::Derived(Rc::new(width)));
 
     self
@@ -158,7 +158,7 @@ impl Container {
 
   /// Sets a static height, in cells.
   #[inline(always)]
-  pub fn set_height(mut self, height: u16) -> Self {
+  pub fn set_height(mut self, height: u32) -> Self {
     self.height = Some(Source::Static(height));
 
     self
@@ -166,7 +166,7 @@ impl Container {
 
   /// Sets a derived height, in cells.
   #[inline(always)]
-  pub fn derive_height(mut self, height: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_height(mut self, height: impl Fn() -> u32 + 'static) -> Self {
     self.height = Some(Source::Derived(Rc::new(height)));
 
     self
@@ -174,7 +174,7 @@ impl Container {
 
   /// Sets a static minimum width, in cells.
   #[inline(always)]
-  pub fn set_min_width(mut self, min_width: u16) -> Self {
+  pub fn set_min_width(mut self, min_width: u32) -> Self {
     self.min_width = Some(Source::Static(min_width));
 
     self
@@ -182,7 +182,7 @@ impl Container {
 
   /// Sets a derived minimum width, in cells.
   #[inline(always)]
-  pub fn derive_min_width(mut self, min_width: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_min_width(mut self, min_width: impl Fn() -> u32 + 'static) -> Self {
     self.min_width = Some(Source::Derived(Rc::new(min_width)));
 
     self
@@ -190,7 +190,7 @@ impl Container {
 
   /// Sets a static minimum height, in cells.
   #[inline(always)]
-  pub fn set_min_height(mut self, min_height: u16) -> Self {
+  pub fn set_min_height(mut self, min_height: u32) -> Self {
     self.min_height = Some(Source::Static(min_height));
 
     self
@@ -198,7 +198,7 @@ impl Container {
 
   /// Sets a derived minimum height, in cells.
   #[inline(always)]
-  pub fn derive_min_height(mut self, min_height: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_min_height(mut self, min_height: impl Fn() -> u32 + 'static) -> Self {
     self.min_height = Some(Source::Derived(Rc::new(min_height)));
 
     self
@@ -206,7 +206,7 @@ impl Container {
 
   /// Sets a static maximum width, in cells.
   #[inline(always)]
-  pub fn set_max_width(mut self, max_width: u16) -> Self {
+  pub fn set_max_width(mut self, max_width: u32) -> Self {
     self.max_width = Some(Source::Static(max_width));
 
     self
@@ -214,7 +214,7 @@ impl Container {
 
   /// Sets a derived maximum width, in cells.
   #[inline(always)]
-  pub fn derive_max_width(mut self, max_width: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_max_width(mut self, max_width: impl Fn() -> u32 + 'static) -> Self {
     self.max_width = Some(Source::Derived(Rc::new(max_width)));
 
     self
@@ -222,7 +222,7 @@ impl Container {
 
   /// Sets a static maximum height, in cells.
   #[inline(always)]
-  pub fn set_max_height(mut self, max_height: u16) -> Self {
+  pub fn set_max_height(mut self, max_height: u32) -> Self {
     self.max_height = Some(Source::Static(max_height));
 
     self
@@ -230,7 +230,7 @@ impl Container {
 
   /// Sets a derived maximum height, in cells.
   #[inline(always)]
-  pub fn derive_max_height(mut self, max_height: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_max_height(mut self, max_height: impl Fn() -> u32 + 'static) -> Self {
     self.max_height = Some(Source::Derived(Rc::new(max_height)));
 
     self
@@ -286,7 +286,7 @@ impl Container {
 
   /// Sets a static gap between children, in cells.
   #[inline(always)]
-  pub fn set_spacing(mut self, spacing: u16) -> Self {
+  pub fn set_spacing(mut self, spacing: u32) -> Self {
     self.spacing = Some(Source::Static(spacing));
 
     self
@@ -294,7 +294,7 @@ impl Container {
 
   /// Sets a derived gap between children, in cells.
   #[inline(always)]
-  pub fn derive_spacing(mut self, spacing: impl Fn() -> u16 + 'static) -> Self {
+  pub fn derive_spacing(mut self, spacing: impl Fn() -> u32 + 'static) -> Self {
     self.spacing = Some(Source::Derived(Rc::new(spacing)));
 
     self

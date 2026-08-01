@@ -122,7 +122,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 
 - **Done, twice-shaped.** First landed as a driver of the shared GUI vocabulary; then
   reshaped into a **first-class, equal facade**: `skene-tui` owns its vocabulary
-  outright—`u16` cells, `bool` bold, one-cell colored borders, terminal conditions
+  outright—`u32` cells, `bool` bold, one-cell colored borders, terminal conditions
   (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`, `Hovered`,
   `DarkMode`/`LightMode`)—so nothing a terminal cannot render exists to call. Its
   `Container`/`Text`/`Input` builders and realization live in-crate; layout is taffy at
@@ -139,7 +139,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   handlers; left clicks hit-test against the taffy layout, focus the target, and run its
   click handlers; a hovered node's `cursor` sets the pointer shape via OSC 22. Headless
   `trigger_mouse_move`/`trigger_mouse_click` seams drive it in tests.
-- **Parity—done.** Pointer down/up/move with the terminal's own `PointerEvent` (`u16`
+- **Parity—done.** Pointer down/up/move with the terminal's own `PointerEvent` (`u32`
   cells, terminal-absolute and view-relative, button, modifiers); `set_title`/
   `derive_title` via OSC 2; `FocusHandle` + `set_autofocus`; `Input::handle_change`
   matches the GUI facade's real-time naming. `Button` is the focus-taking box (`Tab`

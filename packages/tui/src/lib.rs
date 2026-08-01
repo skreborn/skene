@@ -3,7 +3,7 @@
 //! The terminal facade: the single dependency a terminal app pulls in, equal in standing
 //! to `skene-gui` and sharing the same spine (the reactive engine, the view trait, the
 //! reconciliation machinery)—but with its own vocabulary, typed to what a terminal
-//! renders: lengths are `u16` cells, text is a color and a `bool` bold, borders are one
+//! renders: lengths are `u32` cells, text is a color and a `bool` bold, borders are one
 //! cell of box-drawing characters. What the medium lacks, the types lack.
 //!
 //! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
@@ -79,7 +79,7 @@ pub use crate::{
 };
 
 /// Spacing on the four edges of a box, in cells.
-pub type Inset = skene_core::Inset<u16>;
+pub type Inset = skene_core::Inset<u32>;
 
 /// The terminal driver's tree mutations, instantiating the spine's shared structural
 /// machinery. App code sees it only through the [`Children`] and [`DynamicView`]

@@ -228,7 +228,18 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
 ## Phase 7—CLI
 
 - One tool to build/run/serve per platform: wasm bundling + the generated CSR page, SSG
-  output, the dev server (subsuming `cargo xtask web`), native builds.
+  output, the dev server, native builds.
+- **First milestone landed.** The `skene` binary (`packages/cli`, `cargo skene` in the
+  workspace) subsumed and deleted the xtask: `skene build` (wasm + bindings into
+  `dist/`), `skene ssg` (routes through the embedded runner, assets alongside), and
+  `skene dev`—build, serve, watch, rebuild, live-reload over SSE, serving only the
+  page, the bundle, and declared assets. `skene.toml` is read and its `[assets]` paths
+  are collected across the dependency graph via cargo metadata (app wins collisions),
+  served at their declared URIs in dev and copied into SSG output.
+- **Remaining here:** state-preserving reloads (web: snapshot to sessionStorage around
+  the reload; native/TUI: the CLI holds the bytes), route enumeration for SSG, the CSR
+  page generated from the SSR shell contract, wasm-split lazy loading, `skene run` for
+  the terminal facade, and richer `skene.toml` settings as they earn their place.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
 - `skene.toml` is read here: the manifest-declared assets (see the backlog) are served

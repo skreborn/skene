@@ -1,5 +1,5 @@
 [alias]
-xtask = "run --package xtask --release --"
+skene = "run --package skene-cli --release --"
 
 # Run the CSR web platform's `wasm-bindgen-test` integration tests in a headless browser.
 [target.wasm32-unknown-unknown]

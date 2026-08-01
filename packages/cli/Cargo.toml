@@ -1,0 +1,24 @@
+[package]
+name = "skene-cli"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[[bin]]
+name = "skene"
+path = "src/main.rs"
+
+[dependencies]
+clap = { features = ["derive"], version = "4" }
+serde = { features = ["derive"], version = "1" }
+serde_json = "1"
+toml = "0.8"
+
+# Host-only: the CLI is never itself a wasm build product; on wasm targets (a workspace
+# build) it compiles to an empty stub.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify = "8"
+skene-runner.workspace = true
+
+[lints]
+workspace = true

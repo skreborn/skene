@@ -1,0 +1,165 @@
+//! The build steps: cargo to wasm, wasm-bindgen to bindings, the runner to pages.
+
+use std::{fs, path::Path, process::Command};
+
+use crate::manifest::App;
+
+/// Builds the app's browser wasm and generates its bindings into `<app>/dist`.
+pub fn build_web(app: &App, release: bool) -> Result<(), String> {
+  build_wasm(app, release)?;
+  generate_bindings(app, release)
+}
+
+fn build_wasm(app: &App, release: bool) -> Result<(), String> {
+  let mut command = Command::new("cargo");
+
+  command.current_dir(&app.workspace_root).args([
+    "build",
+    "--target",
+    "wasm32-unknown-unknown",
+    "-p",
+    &app.package,
+  ]);
+
+  if release {
+    command.arg("--release");
+  }
+
+  run(&mut command, "cargo build")
+}
+
+fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
+  warn_on_version_mismatch(&app.workspace_root);
+
+  let profile = if release { "release" } else { "debug" };
+  let wasm = app
+    .workspace_root
+    .join("target/wasm32-unknown-unknown")
+    .join(profile)
+    .join(format!("{}.wasm", app.stem));
+  let out_dir = app.dir.join("dist");
+  let mut command = Command::new("wasm-bindgen");
+
+  command
+    .arg(&wasm)
+    .arg("--out-dir")
+    .arg(&out_dir)
+    .args(["--target", "web"]);
+
+  run(&mut command, "wasm-bindgen").map_err(|error| {
+    format!("{error}\nis `wasm-bindgen-cli` installed? `cargo install wasm-bindgen-cli`")
+  })
+}
+
+/// Builds the app's server binary for `wasm32-wasip2` and returns the artifact path.
+pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, String> {
+  let server_bin = app.server_bin.as_deref().ok_or(
+    "skene.toml declares no [app] server-bin; ssg needs the server binary to render through",
+  )?;
+  let mut command = Command::new("cargo");
+
+  command.current_dir(&app.workspace_root).args([
+    "build",
+    "--target",
+    "wasm32-wasip2",
+    "-p",
+    &app.package,
+  ]);
+
+  if release {
+    command.arg("--release");
+  }
+
+  run(&mut command, "cargo build")?;
+
+  let profile = if release { "release" } else { "debug" };
+
+  Ok(
+    app
+      .workspace_root
+      .join("target/wasm32-wasip2")
+      .join(profile)
+      .join(format!("{server_bin}.wasm")),
+  )
+}
+
+/// Statically generates `routes` through the embedded runner into `out`, assets
+/// alongside.
+pub fn ssg(app: &App, routes: &[String], out: &Path, release: bool) -> Result<(), String> {
+  let artifact = build_server(app, release)?;
+  let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
+
+  for route in routes {
+    let page = runner
+      .render(route)
+      .map_err(|error| format!("render {route}: {error:#}"))?;
+    let directory = out.join(route.trim_start_matches('/'));
+
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+
+    let file = directory.join("index.html");
+
+    fs::write(&file, page).map_err(|error| error.to_string())?;
+    println!("rendered {route} -> {}", file.display());
+  }
+
+  app.copy_assets(out)
+}
+
+fn run(command: &mut Command, label: &str) -> Result<(), String> {
+  let status = command
+    .status()
+    .map_err(|error| format!("failed to run {label}: {error}"))?;
+
+  if status.success() {
+    Ok(())
+  }
+  else {
+    Err(format!("{label} exited with {status}"))
+  }
+}
+
+/// Warns when the installed `wasm-bindgen` CLI disagrees with the locked crate, the
+/// usual cause of a failed bindings step.
+fn warn_on_version_mismatch(root: &Path) {
+  let Some(crate_version) = locked_wasm_bindgen_version(root)
+  else {
+    return;
+  };
+
+  let Some(cli_version) = Command::new("wasm-bindgen")
+    .arg("--version")
+    .output()
+    .ok()
+    .filter(|output| output.status.success())
+    .and_then(|output| String::from_utf8(output.stdout).ok())
+    .and_then(|text| text.split_whitespace().nth(1).map(str::to_string))
+  else {
+    return;
+  };
+
+  if cli_version != crate_version {
+    eprintln!(
+      "warning: wasm-bindgen CLI {cli_version} != crate {crate_version}; \
+       run `cargo install -f wasm-bindgen-cli --version {crate_version}` if bindings fail"
+    );
+  }
+}
+
+fn locked_wasm_bindgen_version(root: &Path) -> Option<String> {
+  let lock = fs::read_to_string(root.join("Cargo.lock")).ok()?;
+  let mut lines = lock.lines();
+
+  while let Some(line) = lines.next() {
+    if line == "name = \"wasm-bindgen\"" {
+      let version = lines.next()?;
+
+      return version
+        .strip_prefix("version = \"")
+        .and_then(|rest| rest.strip_suffix('"'))
+        .map(str::to_string);
+    }
+  }
+
+  None
+}

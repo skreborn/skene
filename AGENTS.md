@@ -98,6 +98,10 @@
   (the entry proc-macro is the exemplar). Never reach for a macro that adds little while degrading
   `rustfmt`/rust-analyzer support, readability, or performance; prefer a function or generic when
   one suffices.
+- All reactive-system work keeps the state-snapshot use case in mind (ROADMAP backlog:
+  serializable reactive state): signal identities must be able to stay stable across two runs
+  of the same binary, and serializability stays opt-in—likely an optional unique tag per
+  signal—never a bound forced on users' types.
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
   when facades need the same machinery over different vocabularies, the spine hosts it once as
   a small monomorphized generic (`TreeOps`, `Composable`), each facade keeping its own flat,

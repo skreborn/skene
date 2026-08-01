@@ -175,9 +175,14 @@ sink are just different sinks for the same paths.)
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system; the realize-once vocabulary already permits the code side.
 - **Serializable reactive state**: the signal graph snapshots to a byte stream and
-  restores on startup—stable signal identities across runs, serde'd values, opt-out
-  for the non-serializable. Powers state-preserving dev reloads (full restart, no
-  hot-patching) and stands on its own (session restore, crash recovery).
+  restores on startup. Strictly **opt-in**—serializability is never a bound forced on
+  users' types; the likely shape is an optional unique tag on a signal, with only
+  tagged state restored (exact logic open). The snapshot also carries the extras that
+  live outside the graph—the focused node, scroll positions, and similar platform
+  particularities—which the drivers fully own and can replay. Powers state-preserving
+  dev reloads (full restart, no hot-patching) and stands on its own (session restore,
+  crash recovery). Stable identities across runs are the hard prerequisite; the
+  phase-1 arena redesign must be shaped with this in mind.
 - **Accessibility**: AccessKit on native (already in phase 6's shared machinery) and in
   the TUI where it can reach; on the web, `Role` expansion and semantic output audited
   against ARIA. A stated commitment across facades, not an afterthought.

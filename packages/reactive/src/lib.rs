@@ -14,6 +14,7 @@ mod signal;
 #[cfg(feature = "snapshot")]
 mod snapshot;
 mod storage;
+mod store;
 mod sync_runtime;
 mod trigger;
 mod write;
@@ -35,7 +36,21 @@ pub use signal::{
   SyncWriteSignal,
   WriteSignal,
 };
+pub use skene_macros::Store;
 #[cfg(feature = "snapshot")]
 pub use snapshot::{restore, snapshot};
+pub use store::{
+  AtIndex,
+  AtKey,
+  IndexedField,
+  KeyedCollection,
+  KeyedField,
+  PathSegment,
+  Store,
+  StoreCore,
+  StoreField,
+  StorePath,
+  Subfield,
+};
 pub use trigger::Trigger;
 pub use write::{SignalUpdate, SignalWrite, WriteRef};

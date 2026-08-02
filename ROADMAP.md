@@ -243,9 +243,16 @@ sink are just different sinks for the same paths.)
 - **Accessibility**: AccessKit on native (already in phase 8's shared machinery) and in
   the TUI where it can reach; on the web, `Role` expansion and semantic output audited
   against ARIA. A stated commitment across facades, not an afterthought.
-- **Reactive stores**: fine-grained nested reactivity over structs and collections
-  (derive-based; field- and key-level subscriptions), generally available on the same
-  signal substrate.
+- **Reactive stores—done.** `Store<T>` owns one plain value; `#[derive(Store)]`
+  generates a `<Name>StoreFields` trait (blanket-implemented over `StoreField`, so
+  accessors compose through nesting and collections) whose lenses subscribe at field,
+  `Vec`-index (`.at`), and map-key (`.key`, `HashMap`/`BTreeMap`) granularity. A write
+  notifies exactly what it can affect—the location, its ancestors, its descendants—via
+  a lazily-built trigger trie; the value stays a plain struct, so its methods work and
+  `Store::tagged` snapshots it as one unit under one tag. Deriving requires a direct
+  `skene-reactive` dependency (the generated code names it). Remaining: derived
+  (memoized) lens reads, generic structs in the derive, and a keyed-iteration helper
+  feeding `reconcile`.
 - **Error/suspense audit—done; fixes pending.** What holds today: `Boundary` counts a
   subtree's tasks through `Context`; `Deferred` streams around it on the server, and a
   boundary that cannot settle (nothing ready, nothing outstanding) flushes what it has;

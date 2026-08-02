@@ -613,6 +613,23 @@ impl SignalState {
     result
   }
 
+  /// Mutates the value without re-running subscribers, for a caller owning its own
+  /// notification (a store's trigger fan-out).
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub(crate) fn update_value_local_untracked<U, T: 'static>(
+    &self,
+    f: impl FnOnce(&mut T) -> U,
+  ) -> U {
+    let value = self.as_local::<T>();
+    #[cfg(debug_assertions)]
+    let mut guard = value.borrow_mut_at(Location::caller());
+    #[cfg(not(debug_assertions))]
+    let mut guard = value.borrow_mut();
+    let result = f(&mut *guard);
+    drop(guard);
+    result
+  }
+
   pub(crate) fn run_effects(&self) {
     let ids = self.subscribers.snapshot();
 

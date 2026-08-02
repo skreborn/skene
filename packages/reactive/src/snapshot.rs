@@ -39,30 +39,43 @@ impl<T: Serialize + DeserializeOwned + 'static> RwSignal<T> {
   /// Panics if `tag` is already carried by a live tagged signal.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn tagged(tag: &'static str, value: T) -> Self {
-    let staged = STAGED.with(|staged| staged.borrow_mut().remove(tag));
-    let value = staged
+    let value = take_staged(tag)
       .and_then(|bytes| postcard::from_bytes(&bytes).ok())
       .unwrap_or(value);
     let signal = Self::new(value);
 
-    SERIALIZERS.with(|serializers| {
-      let mut serializers = serializers.borrow_mut();
-
-      if let Some(previous) = serializers.get(tag) {
-        assert!(previous().is_none(), "duplicate snapshot tag: {tag}");
-      }
-
-      serializers.insert(
-        tag,
-        Box::new(move || {
-          signal
-            .try_with_untracked(|value| value.and_then(|value| postcard::to_allocvec(value).ok()))
-        }),
-      );
-    });
+    register(
+      tag,
+      Box::new(move || {
+        signal.try_with_untracked(|value| value.and_then(|value| postcard::to_allocvec(value).ok()))
+      }),
+    );
 
     signal
   }
+}
+
+/// Takes the value staged under `tag`, consuming it; the next creation under the same
+/// tag starts fresh.
+pub(crate) fn take_staged(tag: &str) -> Option<Vec<u8>> {
+  STAGED.with(|staged| staged.borrow_mut().remove(tag))
+}
+
+/// Registers a tagged value's serializer, replacing a disposed predecessor.
+///
+/// # Panics
+///
+/// Panics if `tag` is already carried by a live tagged signal or store.
+pub(crate) fn register(tag: &'static str, serialize: Box<dyn Fn() -> Option<Vec<u8>>>) {
+  SERIALIZERS.with(|serializers| {
+    let mut serializers = serializers.borrow_mut();
+
+    if let Some(previous) = serializers.get(tag) {
+      assert!(previous().is_none(), "duplicate snapshot tag: {tag}");
+    }
+
+    serializers.insert(tag, serialize);
+  });
 }
 
 /// Serializes every live tagged signal's current value, ordered by tag.

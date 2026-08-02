@@ -20,6 +20,8 @@ pub use skene_core::{
 };
 pub use skene_reactive::{
   Effect,
+  IndexedField,
+  KeyedField,
   Memo,
   ReadSignal,
   RwSignal,
@@ -27,6 +29,8 @@ pub use skene_reactive::{
   SignalGet,
   SignalUpdate,
   SignalWith,
+  Store,
+  StoreField,
   WriteSignal,
 };
 

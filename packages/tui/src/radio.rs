@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// checked radio's value.
 #[must_use]
 pub struct Radio {
-  base: ControlBase,
+  base: ControlBase<crate::props::ControlStyle>,
   group: String,
   value: String,
   checked: Option<Source<bool>>,

@@ -16,7 +16,7 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 /// [`set_when`](Self::set_when).
 #[must_use]
 pub struct Input {
-  base: ControlBase,
+  base: ControlBase<crate::props::BoxStyle>,
   value: Option<Source<String>>,
   placeholder: Option<String>,
   #[expect(clippy::type_complexity)]

@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
 pub struct Select {
-  base: ControlBase,
+  base: ControlBase<crate::props::ControlStyle>,
   options: Vec<(String, String)>,
   indicator: Option<char>,
   value: Option<Source<String>>,

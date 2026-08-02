@@ -19,7 +19,7 @@ use taffy::{
   style::{AlignItems, Dimension, Display, FlexDirection, GridPlacement, JustifyContent, Style},
 };
 
-use crate::props::{BoxStyle, Condition, RunStyle};
+use crate::props::{BoxStyle, Condition, ControlStyle, RunStyle};
 
 /// The terminal environment conditions resolve against.
 #[derive(Clone, Copy)]
@@ -90,6 +90,27 @@ pub(crate) fn effective_box_style(
   for (condition, style) in variants {
     if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
       effective = overlay_box(effective, style);
+    }
+  }
+
+  effective
+}
+
+/// The control style with every variant whose conditions hold overlaid, later entries
+/// winning.
+pub(crate) fn effective_control_style(
+  base: &ControlStyle,
+  variants: &[(Condition, ControlStyle)],
+  environment: Environment,
+  interaction: Interaction,
+) -> ControlStyle {
+  let mut effective = *base;
+
+  for (condition, style) in variants {
+    if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
+      effective.color = style.color.or(effective.color);
+      effective.bold = style.bold.or(effective.bold);
+      effective.cursor = style.cursor.or(effective.cursor);
     }
   }
 

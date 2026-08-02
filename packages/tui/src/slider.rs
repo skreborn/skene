@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
 pub struct Slider {
-  base: ControlBase,
+  base: ControlBase<crate::props::ControlStyle>,
   min: f32,
   max: f32,
   step: f32,

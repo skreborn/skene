@@ -20,8 +20,8 @@ use skene_core::{
 
 use crate::{
   events::{PointerEvent, ScrollEvent},
-  props::{BoxStyle, Condition, RunStyle},
-  style::{Environment, Interaction, effective_box_style},
+  props::{BoxStyle, Condition, ControlStyle, RunStyle},
+  style::{Environment, Interaction, effective_box_style, effective_control_style},
 };
 
 /// The virtual root every mounted view attaches under.
@@ -50,31 +50,31 @@ pub(crate) enum NodeKind {
   },
   /// A toggleable checkbox, rendered as its checked or unchecked mark.
   Checkbox {
-    style: BoxStyle,
-    variants: Vec<(Condition, BoxStyle)>,
+    style: ControlStyle,
+    variants: Vec<(Condition, ControlStyle)>,
     marks: (char, char),
     checked: bool,
   },
   /// One choice in a radio group, rendered `(•)` or `( )`.
   Radio {
-    style: BoxStyle,
-    variants: Vec<(Condition, BoxStyle)>,
+    style: ControlStyle,
+    variants: Vec<(Condition, ControlStyle)>,
     group: String,
     marks: (char, char),
     checked: bool,
   },
   /// A fixed-option selector, cycling in place.
   Select {
-    style: BoxStyle,
-    variants: Vec<(Condition, BoxStyle)>,
+    style: ControlStyle,
+    variants: Vec<(Condition, ControlStyle)>,
     options: Vec<(String, String)>,
     indicator: char,
     value: String,
   },
   /// A numeric slider on a horizontal track.
   Slider {
-    style: BoxStyle,
-    variants: Vec<(Condition, BoxStyle)>,
+    style: ControlStyle,
+    variants: Vec<(Condition, ControlStyle)>,
     glyphs: (char, char),
     min: f32,
     max: f32,
@@ -107,8 +107,20 @@ impl NodeKind {
       }
       | NodeKind::Overlay {
         style, variants, ..
-      }
-      | NodeKind::Checkbox {
+      } => Some((style, variants)),
+      NodeKind::Run { .. }
+      | NodeKind::Group
+      | NodeKind::Checkbox { .. }
+      | NodeKind::Radio { .. }
+      | NodeKind::Select { .. }
+      | NodeKind::Slider { .. } => None,
+    }
+  }
+
+  /// The node's control styling, when it is a small control.
+  pub(crate) fn control_style(&self) -> Option<(&ControlStyle, &[(Condition, ControlStyle)])> {
+    match self {
+      NodeKind::Checkbox {
         style, variants, ..
       }
       | NodeKind::Radio {
@@ -120,7 +132,7 @@ impl NodeKind {
       | NodeKind::Slider {
         style, variants, ..
       } => Some((style, variants)),
-      NodeKind::Run { .. } | NodeKind::Group => None,
+      _ => None,
     }
   }
 }
@@ -1142,13 +1154,18 @@ impl State {
 
     hovered.iter().rev().find_map(|node| {
       let record = nodes.get(node)?;
-      let (style, variants) = record.kind.box_style()?;
       let interaction = Interaction {
         focused: self.focused.get() == Some(*node),
         hovered: true,
       };
 
-      effective_box_style(style, variants, environment, interaction).cursor
+      if let Some((style, variants)) = record.kind.box_style() {
+        return effective_box_style(style, variants, environment, interaction).cursor;
+      }
+
+      let (style, variants) = record.kind.control_style()?;
+
+      effective_control_style(style, variants, environment, interaction).cursor
     })
   }
 

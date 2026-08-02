@@ -165,9 +165,11 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   one-cell band down and right, the color mixed by its alpha into both the foreground
   and the background beneath (unset colors mix against the detected light/dark
   default); carried by the boxes that own their container—`Container`, `Button`,
-  `Input`, overlays—while the small controls take a `ControlStyle`, the `BoxStyle`
-  subset they honor, so a shadow (or spacing, alignment, overflow) on a checkbox is a
-  compile error rather than a silent no-op. Every
+  `Input`, overlays—because their whole box is the interactive surface. The small
+  controls are glyphs, not boxes: they take a `ControlStyle` (mark color, bold,
+  cursor), every box property on one is a compile error, and a wrapping `Container`
+  carries sizing, padding, borders, backgrounds, and shadows (the control paints no
+  fill, so the wrapper's shows through; the slider fills its container's width). Every
   layer already paints into the one internal cell buffer—which the shadow and scrim
   mixes read—and the flush rewrites only the rows that changed since the previous
   frame. Modals default to a half-transparent black scrim alpha-mixed over the frame

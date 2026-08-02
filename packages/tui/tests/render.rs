@@ -1036,7 +1036,7 @@ fn slider_nudges_and_jumps() {
 
     let after_keys = volume.get_untracked();
 
-    tui::trigger_mouse_click(11, 0);
+    tui::trigger_mouse_click(13, 0);
 
     (track, after_keys, volume.get_untracked())
   });
@@ -1148,21 +1148,29 @@ fn modal_scrim_defaults_on_and_disables() {
   assert_eq!(bright_before[0].1, undimmed[0].1);
 }
 
-/// A small control styles through `ControlStyle`—the subset it honors; the
-/// container-only properties (shadow, spacing, alignment) are not on the type.
+/// A small control styles like a glyph—mark color through `ControlStyle`—and box
+/// properties come from a wrapping container, whose border frames the mark.
 #[test]
-fn control_style_styles_the_honored_subset() {
-  let frame = with_driver(|| {
+fn control_style_styles_the_glyph_and_containers_the_box() {
+  let (frame, colors) = with_driver(|| {
     tui::mount(|| {
-      Checkbox::new()
-        .set_style(ControlStyle::new().set_border(Color::srgb(1., 1., 1.)))
+      Container::new()
+        .set_border(Color::srgb(1., 1., 1.))
+        .set_width(3)
+        .set_height(3)
+        .set_child(
+          Checkbox::new().set_style(ControlStyle::new().set_color(Color::srgb(1., 0., 0.))),
+        )
         .into_any()
         .build()
     });
 
-    tui::render_to_text(5, 3)
+    (tui::render_to_text(5, 3), tui::render_to_colors(5, 3))
   });
 
   assert!(frame.contains('┌'));
   assert!(frame.contains('\u{2610}'));
+
+  // The mark sits inside the border, in the control's color.
+  assert_eq!(colors[5 + 1].0, Some((255, 0, 0)));
 }

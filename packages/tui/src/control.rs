@@ -4,16 +4,15 @@ use std::rc::Rc;
 
 use skene_core::{KeyEvent, NodeId};
 
-use crate::{
-  FocusHandle,
-  props::{BoxStyle, Condition},
-  with_state,
-};
+use crate::{FocusHandle, props::Condition, with_state};
 
-/// The state behind a control's shared builder surface, embedded by every control.
-pub(crate) struct ControlBase {
-  pub(crate) style: BoxStyle,
-  pub(crate) variants: Vec<(Condition, BoxStyle)>,
+/// The state behind a control's shared builder surface, embedded by every control;
+/// `S` is the style vocabulary the control accepts (a small control's
+/// [`ControlStyle`](crate::props::ControlStyle), a container-owning one's
+/// [`BoxStyle`](crate::props::BoxStyle)).
+pub(crate) struct ControlBase<S> {
+  pub(crate) style: S,
+  pub(crate) variants: Vec<(Condition, S)>,
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
   pub(crate) anchor: Option<crate::Anchor>,
@@ -23,10 +22,10 @@ pub(crate) struct ControlBase {
   pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
 }
 
-impl ControlBase {
+impl<S: Default> ControlBase<S> {
   pub(crate) fn new() -> Self {
     Self {
-      style: BoxStyle::new(),
+      style: S::default(),
       variants: Vec::new(),
       autofocus: false,
       focus_handle: None,
@@ -87,15 +86,14 @@ impl ControlBase {
 }
 
 /// Generates the shared builder surface, delegating to the embedded [`ControlBase`];
-/// `$style` is the style type the control accepts (a small control's [`ControlStyle`],
-/// a container-owning one's [`BoxStyle`](crate::props::BoxStyle)).
+/// `$style` is the style vocabulary the control accepts.
 macro_rules! control_surface {
   ($name:ident, $style:ty) => {
     impl $name {
       /// Sets the static style.
       #[inline(always)]
       pub fn set_style(mut self, style: $style) -> Self {
-        self.base.style = style.into();
+        self.base.style = style;
 
         self
       }
@@ -103,7 +101,7 @@ macro_rules! control_surface {
       /// Adds a conditional style variant, applied while `condition` holds.
       #[inline(always)]
       pub fn set_when(mut self, condition: crate::props::Condition, style: $style) -> Self {
-        self.base.variants.push((condition, style.into()));
+        self.base.variants.push((condition, style));
 
         self
       }

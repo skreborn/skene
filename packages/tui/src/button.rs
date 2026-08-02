@@ -14,7 +14,7 @@ use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_st
 /// [`set_when`](Self::set_when).
 #[must_use]
 pub struct Button {
-  base: ControlBase,
+  base: ControlBase<crate::props::BoxStyle>,
   children: Children,
   click_handler: Option<Rc<dyn Fn()>>,
 }

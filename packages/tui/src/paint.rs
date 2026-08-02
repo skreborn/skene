@@ -16,6 +16,7 @@ use crate::{
     apply_box_sizing,
     box_taffy_style,
     effective_box_style,
+    effective_control_style,
     effective_run_style,
     terminal_rgb,
   },
@@ -304,29 +305,19 @@ fn refresh_styles(state: &State, environment: Environment) {
 
         taffy.set_style(record.taffy, out).expect("style an input");
       }
-      NodeKind::Checkbox {
-        style, variants, ..
-      }
-      | NodeKind::Radio {
-        style, variants, ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let mut out = taffy::style::Style::default();
+      NodeKind::Checkbox { .. } | NodeKind::Radio { .. } => {
+        let out = taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: length(1.0),
+            height: length(1.0),
+          },
+          ..taffy::style::Style::default()
+        };
 
-        apply_box_sizing(&mut out, &effective, record.in_stack);
-        size_control(&mut out, &effective, 1.0);
         taffy.set_style(record.taffy, out).expect("style a control");
       }
-      NodeKind::Select {
-        style,
-        variants,
-        options,
-        ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
+      NodeKind::Select { options, .. } => {
         let mut out = taffy::style::Style::default();
-
-        apply_box_sizing(&mut out, &effective, record.in_stack);
 
         #[expect(clippy::cast_precision_loss)]
         let longest = options
@@ -335,17 +326,24 @@ fn refresh_styles(state: &State, environment: Environment) {
           .max()
           .unwrap_or(0) as f32;
 
-        size_control(&mut out, &effective, longest + 2.0);
+        out.size = taffy::geometry::Size {
+          width: length(longest + 2.0),
+          height: length(1.0),
+        };
+
         taffy.set_style(record.taffy, out).expect("style a control");
       }
-      NodeKind::Slider {
-        style, variants, ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let mut out = taffy::style::Style::default();
+      NodeKind::Slider { .. } => {
+        // The track fills its container's width; wrap in a sized `Container` to bound
+        // it.
+        let out = taffy::style::Style {
+          size: taffy::geometry::Size {
+            width: taffy::prelude::percent(1.0),
+            height: length(1.0),
+          },
+          ..taffy::style::Style::default()
+        };
 
-        apply_box_sizing(&mut out, &effective, record.in_stack);
-        size_control(&mut out, &effective, 12.0);
         taffy.set_style(record.taffy, out).expect("style a control");
       }
       NodeKind::Overlay {
@@ -514,36 +512,20 @@ fn paint_node(
         variants,
         marks,
         checked,
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-
-        NodePaint::Input {
-          background: effective.color.and_then(terminal_rgb),
-          border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
-          text: if *checked { marks.0 } else { marks.1 }.to_string(),
-          dim: false,
-          reverse: focused,
-        }
       }
-      NodeKind::Radio {
+      | NodeKind::Radio {
         style,
         variants,
         marks,
         checked,
         ..
       } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
+        let effective = effective_control_style(style, variants, environment, interaction);
 
-        NodePaint::Input {
-          background: effective.color.and_then(terminal_rgb),
-          border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
+        NodePaint::Text {
           text: if *checked { marks.0 } else { marks.1 }.to_string(),
+          foreground: effective.color.and_then(terminal_rgb),
+          bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
         }
@@ -555,19 +537,16 @@ fn paint_node(
         indicator,
         value,
       } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
+        let effective = effective_control_style(style, variants, environment, interaction);
         let label = options
           .iter()
           .find(|(option, _)| option == value)
           .map_or_else(|| value.clone(), |(_, label)| label.clone());
 
-        NodePaint::Input {
-          background: effective.color.and_then(terminal_rgb),
-          border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
+        NodePaint::Text {
           text: format!("{label} {indicator}"),
+          foreground: effective.color.and_then(terminal_rgb),
+          bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
         }
@@ -581,16 +560,12 @@ fn paint_node(
         value,
         ..
       } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let inner = width.saturating_sub(if effective.border.is_some() { 2 } else { 0 });
+        let effective = effective_control_style(style, variants, environment, interaction);
 
-        NodePaint::Input {
-          background: effective.color.and_then(terminal_rgb),
-          border: effective.border.map(|border| BorderPaint {
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
-          text: slider_track(inner, *min, *max, *value, *glyphs),
+        NodePaint::Text {
+          text: slider_track(width, *min, *max, *value, *glyphs),
+          foreground: effective.color.and_then(terminal_rgb),
+          bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
         }
@@ -938,20 +913,6 @@ fn draw_text(
     if reverse {
       cell.reverse = true;
     }
-  }
-}
-
-/// Sizes a control's taffy style: `content` cells wide and one tall (plus a border's
-/// cells), where the effective style fixes nothing.
-fn size_control(out: &mut taffy::style::Style, effective: &crate::props::BoxStyle, content: f32) {
-  let border = if effective.border.is_some() { 2.0 } else { 0.0 };
-
-  if effective.width.is_none() {
-    out.size.width = length(content + border);
-  }
-
-  if effective.height.is_none() {
-    out.size.height = length(1.0 + border);
   }
 }
 

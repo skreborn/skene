@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// a mouse click toggles it.
 #[must_use]
 pub struct Checkbox {
-  base: ControlBase,
+  base: ControlBase<crate::props::ControlStyle>,
   checked: Option<Source<bool>>,
   marks: Option<(char, char)>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,

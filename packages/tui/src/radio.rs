@@ -89,7 +89,7 @@ impl Radio {
   }
 }
 
-crate::control::control_surface!(Radio);
+crate::control::control_surface!(Radio, crate::props::ControlStyle);
 
 impl View for Radio {
   fn build(mut self) -> NodeId {

@@ -86,7 +86,7 @@ impl Default for Input {
   }
 }
 
-crate::control::control_surface!(Input);
+crate::control::control_surface!(Input, crate::props::BoxStyle);
 
 impl View for Input {
   fn build(mut self) -> NodeId {

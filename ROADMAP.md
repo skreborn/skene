@@ -164,8 +164,10 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Shadows and the compositor—done.** `set_shadow` on the box vocabulary casts a
   one-cell band down and right, the color mixed by its alpha into both the foreground
   and the background beneath (unset colors mix against the detected light/dark
-  default); honored by the boxes that own their container—`Container`, `Button`,
-  `Input`, overlays—while the small controls ignore it (wrap them instead). Every
+  default); carried by the boxes that own their container—`Container`, `Button`,
+  `Input`, overlays—while the small controls take a `ControlStyle`, the `BoxStyle`
+  subset they honor, so a shadow (or spacing, alignment, overflow) on a checkbox is a
+  compile error rather than a silent no-op. Every
   layer already paints into the one internal cell buffer—which the shadow and scrim
   mixes read—and the flush rewrites only the rows that changed since the previous
   frame. Modals default to a half-transparent black scrim alpha-mixed over the frame

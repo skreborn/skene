@@ -85,7 +85,7 @@ impl Default for Checkbox {
   }
 }
 
-crate::control::control_surface!(Checkbox);
+crate::control::control_surface!(Checkbox, crate::props::ControlStyle);
 
 impl View for Checkbox {
   fn build(mut self) -> NodeId {

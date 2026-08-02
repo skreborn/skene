@@ -522,7 +522,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: None,
+          shadow: effective.shadow,
           text: if *checked { marks.0 } else { marks.1 }.to_string(),
           dim: false,
           reverse: focused,
@@ -542,7 +542,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: None,
+          shadow: effective.shadow,
           text: if *checked { marks.0 } else { marks.1 }.to_string(),
           dim: false,
           reverse: focused,
@@ -566,7 +566,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: None,
+          shadow: effective.shadow,
           text: format!("{label} {indicator}"),
           dim: false,
           reverse: focused,
@@ -589,7 +589,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: None,
+          shadow: effective.shadow,
           text: slider_track(inner, *min, *max, *value, *glyphs),
           dim: false,
           reverse: focused,

@@ -82,7 +82,7 @@ pub use crate::{
   focus::FocusHandle,
   input::Input,
   overlay::{Anchor, Overlay},
-  props::{BoxStyle, Condition, RunStyle},
+  props::{BoxStyle, Condition, ControlStyle, RunStyle},
   radio::Radio,
   resource::Resource,
   routing::install_router,

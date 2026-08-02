@@ -102,7 +102,7 @@ impl Default for Select {
   }
 }
 
-crate::control::control_surface!(Select);
+crate::control::control_surface!(Select, crate::props::ControlStyle);
 
 impl View for Select {
   fn build(mut self) -> NodeId {

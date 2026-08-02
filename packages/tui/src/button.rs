@@ -46,7 +46,7 @@ impl Default for Button {
   }
 }
 
-crate::control::control_surface!(Button);
+crate::control::control_surface!(Button, crate::props::BoxStyle);
 
 impl skene_core::HasChildren<crate::TuiOps> for Button {
   #[inline(always)]

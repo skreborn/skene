@@ -86,26 +86,24 @@ impl ControlBase {
   }
 }
 
-/// Generates the shared builder surface, delegating to the embedded [`ControlBase`].
+/// Generates the shared builder surface, delegating to the embedded [`ControlBase`];
+/// `$style` is the style type the control accepts (a small control's [`ControlStyle`],
+/// a container-owning one's [`BoxStyle`](crate::props::BoxStyle)).
 macro_rules! control_surface {
-  ($name:ident) => {
+  ($name:ident, $style:ty) => {
     impl $name {
       /// Sets the static style.
       #[inline(always)]
-      pub fn set_style(mut self, style: crate::props::BoxStyle) -> Self {
-        self.base.style = style;
+      pub fn set_style(mut self, style: $style) -> Self {
+        self.base.style = style.into();
 
         self
       }
 
       /// Adds a conditional style variant, applied while `condition` holds.
       #[inline(always)]
-      pub fn set_when(
-        mut self,
-        condition: crate::props::Condition,
-        style: crate::props::BoxStyle,
-      ) -> Self {
-        self.base.variants.push((condition, style));
+      pub fn set_when(mut self, condition: crate::props::Condition, style: $style) -> Self {
+        self.base.variants.push((condition, style.into()));
 
         self
       }

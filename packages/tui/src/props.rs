@@ -48,9 +48,6 @@ pub struct BoxStyle {
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
   pub overflow: Option<Overflow>,
   /// The shadow color, cast one cell down and right and mixed into the colors beneath.
-  ///
-  /// Honored by the boxes that own their container—`Container`, `Button`, `Input`, and
-  /// overlays; the small controls ignore it, so wrap them in a `Container` instead.
   pub shadow: Option<Color>,
   /// The children's alignment along the main axis.
   pub main_axis_alignment: Option<MainAxisAlignment>,
@@ -184,6 +181,143 @@ impl BoxStyle {
     self.cross_axis_alignment = Some(alignment);
 
     self
+  }
+}
+
+/// A small control's static style: the box properties a control that does not own a
+/// container honors.
+///
+/// The subset of [`BoxStyle`] without the children- and container-only properties
+/// (spacing, alignment, overflow, shadow); wrap the control in a
+/// [`Container`](crate::Container) for those.
+#[derive(Clone, Copy, Default, PartialEq)]
+#[must_use]
+pub struct ControlStyle {
+  /// The fixed width, in cells.
+  pub width: Option<u32>,
+  /// The fixed height, in cells.
+  pub height: Option<u32>,
+  /// The minimum width, in cells.
+  pub min_width: Option<u32>,
+  /// The minimum height, in cells.
+  pub min_height: Option<u32>,
+  /// The maximum width, in cells.
+  pub max_width: Option<u32>,
+  /// The maximum height, in cells.
+  pub max_height: Option<u32>,
+  /// The padding on each edge, in cells.
+  pub padding: Option<Inset<u32>>,
+  /// The background color.
+  pub color: Option<Color>,
+  /// The border color; a border is always one cell of box-drawing characters.
+  pub border: Option<Color>,
+  /// The pointer shape shown over the control, in terminals that honor it (OSC 22).
+  pub cursor: Option<MouseCursor>,
+}
+
+impl ControlStyle {
+  /// Creates an empty style.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  /// Sets the width, in cells.
+  #[inline(always)]
+  pub const fn set_width(mut self, width: u32) -> Self {
+    self.width = Some(width);
+
+    self
+  }
+
+  /// Sets the height, in cells.
+  #[inline(always)]
+  pub const fn set_height(mut self, height: u32) -> Self {
+    self.height = Some(height);
+
+    self
+  }
+
+  /// Sets the minimum width, in cells.
+  #[inline(always)]
+  pub const fn set_min_width(mut self, min_width: u32) -> Self {
+    self.min_width = Some(min_width);
+
+    self
+  }
+
+  /// Sets the minimum height, in cells.
+  #[inline(always)]
+  pub const fn set_min_height(mut self, min_height: u32) -> Self {
+    self.min_height = Some(min_height);
+
+    self
+  }
+
+  /// Sets the maximum width, in cells.
+  #[inline(always)]
+  pub const fn set_max_width(mut self, max_width: u32) -> Self {
+    self.max_width = Some(max_width);
+
+    self
+  }
+
+  /// Sets the maximum height, in cells.
+  #[inline(always)]
+  pub const fn set_max_height(mut self, max_height: u32) -> Self {
+    self.max_height = Some(max_height);
+
+    self
+  }
+
+  /// Sets the padding on each edge, in cells.
+  #[inline(always)]
+  pub const fn set_padding(mut self, padding: Inset<u32>) -> Self {
+    self.padding = Some(padding);
+
+    self
+  }
+
+  /// Sets the background color.
+  #[inline(always)]
+  pub const fn set_color(mut self, color: Color) -> Self {
+    self.color = Some(color);
+
+    self
+  }
+
+  /// Sets a one-cell border in the given color.
+  #[inline(always)]
+  pub const fn set_border(mut self, color: Color) -> Self {
+    self.border = Some(color);
+
+    self
+  }
+
+  /// Sets the pointer shape shown over the control, in terminals that honor it.
+  #[inline(always)]
+  pub const fn set_cursor(mut self, cursor: MouseCursor) -> Self {
+    self.cursor = Some(cursor);
+
+    self
+  }
+}
+
+impl From<ControlStyle> for BoxStyle {
+  fn from(style: ControlStyle) -> Self {
+    Self {
+      width: style.width,
+      height: style.height,
+      min_width: style.min_width,
+      min_height: style.min_height,
+      max_width: style.max_width,
+      max_height: style.max_height,
+      padding: style.padding,
+      color: style.color,
+      border: style.border,
+      cursor: style.cursor,
+      ..Self::default()
+    }
   }
 }
 

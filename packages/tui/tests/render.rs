@@ -1147,3 +1147,22 @@ fn modal_scrim_defaults_on_and_disables() {
 
   assert_eq!(bright_before[0].1, undimmed[0].1);
 }
+
+/// A small control styles through `ControlStyle`—the subset it honors; the
+/// container-only properties (shadow, spacing, alignment) are not on the type.
+#[test]
+fn control_style_styles_the_honored_subset() {
+  let frame = with_driver(|| {
+    tui::mount(|| {
+      Checkbox::new()
+        .set_style(ControlStyle::new().set_border(Color::srgb(1., 1., 1.)))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(5, 3)
+  });
+
+  assert!(frame.contains('┌'));
+  assert!(frame.contains('\u{2610}'));
+}

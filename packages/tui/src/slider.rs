@@ -92,7 +92,7 @@ impl Slider {
   }
 }
 
-crate::control::control_surface!(Slider);
+crate::control::control_surface!(Slider, crate::props::ControlStyle);
 
 impl View for Slider {
   fn build(mut self) -> NodeId {

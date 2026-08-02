@@ -180,9 +180,10 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   hit path; focused-then-ancestors for keys; every handler on one node always runs),
   then the built-in default—`Tab` focus movement, `Enter`/`Space` and click activation,
   control arrows, input editing, `Escape` dismissal—unless prevented. Handlers return
-  their verdict through `IntoPrevent`: `()` observes, `Prevent::Default` suppresses the
-  built-in but keeps bubbling, `Prevent::Bubbling` the reverse, `Prevent::All` both,
-  and `Option<Prevent>` for conditional flows; prevention only accumulates. The web
+  their verdict as anything `Into<Prevent>`: `()` observes (`From<()>` maps to
+  `Prevent::None`), `Prevent::Default` suppresses the built-in but keeps bubbling,
+  `Prevent::Bubbling` the reverse, `Prevent::All` both; prevention only accumulates.
+  The web
   maps a prevented default to `preventDefault` (canceling the same natives: Enter
   activation, checkbox toggling, text insertion) and stops its delegated walk on
   prevented bubbling, so the facades agree bit-for-bit. `Tab` and `Escape` stopped

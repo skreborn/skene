@@ -9,16 +9,22 @@
 //! `Space` and click (a control's toggle, check, cycle, or jump), control arrows,
 //! input editing, `Escape` dismissal—unless a handler prevented it.
 //!
-//! A handler's closure returns its verdict through [`IntoPrevent`]: nothing (`()`) to
-//! observe, a [`Prevent`] to suppress the default, stop bubbling, or both; prevention
-//! only accumulates. Notification events—change, toggle, scroll offsets, focus and
-//! blur—report what already happened and take no verdict, and a terminal's `Ctrl-C`
-//! stays unconditional.
+//! A handler's closure returns its verdict as anything `Into<Prevent>`: `()` to
+//! observe, or a [`Prevent`] to suppress the default, stop bubbling, or both;
+//! prevention only accumulates. Notification events—change, toggle, scroll offsets,
+//! focus and blur—report what already happened and take no verdict, and a terminal's
+//! `Ctrl-C` stays unconditional.
 
 /// What a handler prevents of the dispatch that invoked it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// A handler returns anything `Into<Prevent>`; `()` converts to
+/// [`None`](Prevent::None), so an observing handler needs no return at all.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[must_use]
 pub enum Prevent {
+  /// Prevents nothing: the built-in default runs and bubbling continues.
+  #[default]
+  None,
   /// Suppresses the built-in default; shallower handlers still run.
   Default,
   /// Skips the shallower handlers; the built-in default still runs.
@@ -27,33 +33,10 @@ pub enum Prevent {
   All,
 }
 
-/// A handler's verdict, converted from whatever its closure returns.
-///
-/// Implemented for `()` (an observing handler needs no return), for [`Prevent`]
-/// (returned directly), and for `Option<Prevent>` (a conditional verdict).
-pub trait IntoPrevent {
-  /// The prevention this value requests, if any.
-  fn into_prevent(self) -> Option<Prevent>;
-}
-
-impl IntoPrevent for () {
+impl From<()> for Prevent {
   #[inline(always)]
-  fn into_prevent(self) -> Option<Prevent> {
-    None
-  }
-}
-
-impl IntoPrevent for Prevent {
-  #[inline(always)]
-  fn into_prevent(self) -> Option<Prevent> {
-    Some(self)
-  }
-}
-
-impl IntoPrevent for Option<Prevent> {
-  #[inline(always)]
-  fn into_prevent(self) -> Option<Prevent> {
-    self
+  fn from((): ()) -> Self {
+    Self::None
   }
 }
 
@@ -69,15 +52,15 @@ pub struct Prevention {
 
 impl Prevention {
   /// Folds one handler's verdict in; prevention only accumulates.
-  pub fn absorb(&mut self, verdict: Option<Prevent>) {
+  pub fn absorb(&mut self, verdict: Prevent) {
     match verdict {
-      Some(Prevent::Default) => self.default = true,
-      Some(Prevent::Bubbling) => self.bubbling = true,
-      Some(Prevent::All) => {
+      Prevent::None => {}
+      Prevent::Default => self.default = true,
+      Prevent::Bubbling => self.bubbling = true,
+      Prevent::All => {
         self.default = true;
         self.bubbling = true;
       }
-      None => {}
     }
   }
 
@@ -89,11 +72,11 @@ impl Prevention {
 }
 
 /// A click handler as dispatch stores it: the closure plus its verdict.
-pub type ClickHandler = dyn Fn() -> Option<Prevent>;
+pub type ClickHandler = dyn Fn() -> Prevent;
 /// A key handler as dispatch stores it: the closure plus its verdict.
-pub type KeyHandler = dyn Fn(&KeyEvent) -> Option<Prevent>;
+pub type KeyHandler = dyn Fn(&KeyEvent) -> Prevent;
 /// A pointer handler as dispatch stores it: the closure plus its verdict.
-pub type PointerHandler = dyn Fn(&PointerEvent) -> Option<Prevent>;
+pub type PointerHandler = dyn Fn(&PointerEvent) -> Prevent;
 
 /// The modifier-key state accompanying an input event.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

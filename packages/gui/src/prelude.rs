@@ -10,7 +10,6 @@ pub use skene_core::{
   CrossAxisAlignment,
   Easing,
   IntoChildren,
-  IntoPrevent,
   IntoView,
   KeyEvent,
   MainAxisAlignment,

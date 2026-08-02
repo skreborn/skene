@@ -202,13 +202,11 @@ macro_rules! control_surface {
 
       /// Sets the key-press handler.
       #[inline(always)]
-      pub fn handle_key_down<R: skene_core::IntoPrevent>(
+      pub fn handle_key_down<R: Into<skene_core::Prevent>>(
         mut self,
         action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
       ) -> Self {
-        self.control.key_down_handler = Some(std::rc::Rc::new(move |event| {
-          skene_core::IntoPrevent::into_prevent(action(event))
-        }));
+        self.control.key_down_handler = Some(std::rc::Rc::new(move |event| action(event).into()));
 
         self
       }

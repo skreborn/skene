@@ -168,7 +168,7 @@ pub(super) fn run_preventable<F: ?Sized, P: Copy>(
   handlers: &Handlers<F>,
   node: NodeId,
   payload: P,
-  invoke: impl Fn(&F, P) -> Option<Prevent>,
+  invoke: impl Fn(&F, P) -> Prevent,
 ) -> Prevention {
   let mut prevention = Prevention::default();
 

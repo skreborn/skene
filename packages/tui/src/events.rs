@@ -13,7 +13,7 @@ pub struct ScrollEvent {
 }
 
 /// A pointer handler as dispatch stores it: the closure plus its verdict.
-pub type PointerHandler = dyn Fn(&PointerEvent) -> Option<skene_core::Prevent>;
+pub type PointerHandler = dyn Fn(&PointerEvent) -> skene_core::Prevent;
 
 /// A pointer event: where in the terminal, which button, and the modifier state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

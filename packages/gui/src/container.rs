@@ -11,12 +11,12 @@ use skene_core::{
   Color,
   Condition,
   CrossAxisAlignment,
-  IntoPrevent,
   KeyEvent,
   MainAxisAlignment,
   MouseCursor,
   Overflow,
   PointerEvent,
+  Prevent,
   ScrollEvent,
   Source,
   Transition,
@@ -409,8 +409,8 @@ impl Container {
 
   /// Sets the click handler.
   #[inline(always)]
-  pub fn handle_click<R: IntoPrevent>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.click_handler = Some(Rc::new(move || action().into_prevent()));
+  pub fn handle_click<R: Into<Prevent>>(mut self, action: impl Fn() -> R + 'static) -> Self {
+    self.click_handler = Some(Rc::new(move || action().into()));
 
     self
   }
@@ -451,44 +451,44 @@ impl Container {
 
   /// Sets the key-press handler, run for keys pressed on the box or within it.
   #[inline(always)]
-  pub fn handle_key_down<R: IntoPrevent>(
+  pub fn handle_key_down<R: Into<Prevent>>(
     mut self,
     action: impl Fn(&KeyEvent) -> R + 'static,
   ) -> Self {
-    self.key_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
+    self.key_down_handler = Some(Rc::new(move |event| action(event).into()));
 
     self
   }
 
   /// Sets the pointer-down handler, run for presses on the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_down<R: IntoPrevent>(
+  pub fn handle_pointer_down<R: Into<Prevent>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.pointer_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
+    self.pointer_down_handler = Some(Rc::new(move |event| action(event).into()));
 
     self
   }
 
   /// Sets the pointer-up handler, run for releases on the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_up<R: IntoPrevent>(
+  pub fn handle_pointer_up<R: Into<Prevent>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.pointer_up_handler = Some(Rc::new(move |event| action(event).into_prevent()));
+    self.pointer_up_handler = Some(Rc::new(move |event| action(event).into()));
 
     self
   }
 
   /// Sets the pointer-move handler, run for moves over the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_move<R: IntoPrevent>(
+  pub fn handle_pointer_move<R: Into<Prevent>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.pointer_move_handler = Some(Rc::new(move |event| action(event).into_prevent()));
+    self.pointer_move_handler = Some(Rc::new(move |event| action(event).into()));
 
     self
   }

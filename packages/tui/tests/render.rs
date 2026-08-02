@@ -1190,7 +1190,12 @@ fn prevented_keys_skip_their_defaults() {
             .bind_value(volume)
             .set_autofocus()
             .handle_key_down(|event| {
-              (event.key == "ArrowRight" || event.key == "Tab").then_some(Prevent::All)
+              if event.key == "ArrowRight" || event.key == "Tab" {
+                Prevent::All
+              }
+              else {
+                Prevent::None
+              }
             }),
           Button::new().set_child(Text::new("next")),
         ))
@@ -1233,7 +1238,14 @@ fn prevented_enter_skips_activation() {
         Button::new()
           .set_autofocus()
           .handle_click(move || clicks.set(clicks.get() + 1))
-          .handle_key_down(|event| (event.key == "Enter").then_some(Prevent::Default))
+          .handle_key_down(|event| {
+            if event.key == "Enter" {
+              Prevent::Default
+            }
+            else {
+              Prevent::None
+            }
+          })
           .set_child(Text::new("go"))
           .into_any()
           .build()

@@ -37,13 +37,11 @@ impl Button {
 
   /// Sets the click handler (activation by pointer, Enter, or Space).
   #[inline(always)]
-  pub fn handle_click<R: skene_core::IntoPrevent>(
+  pub fn handle_click<R: Into<skene_core::Prevent>>(
     mut self,
     action: impl Fn() -> R + 'static,
   ) -> Self {
-    self.click_handler = Some(Rc::new(move || {
-      skene_core::IntoPrevent::into_prevent(action())
-    }));
+    self.click_handler = Some(Rc::new(move || action().into()));
 
     self
   }

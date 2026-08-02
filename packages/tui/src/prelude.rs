@@ -7,7 +7,6 @@ pub use skene_core::{
   CrossAxisAlignment,
   Errors,
   IntoChildren,
-  IntoPrevent,
   IntoView,
   KeyEvent,
   Layout,

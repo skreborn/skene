@@ -26,7 +26,6 @@ pub use condition::{Composable, ConditionShape};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
   ClickHandler,
-  IntoPrevent,
   KeyEvent,
   KeyHandler,
   Modifiers,

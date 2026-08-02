@@ -70,6 +70,7 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.spacing = over.spacing.or(base.spacing);
   base.cursor = over.cursor.or(base.cursor);
   base.overflow = over.overflow.or(base.overflow);
+  base.shadow = over.shadow.or(base.shadow);
   base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
   base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
 

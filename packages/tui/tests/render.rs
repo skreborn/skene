@@ -907,3 +907,172 @@ fn transition_holds_previous_content_until_settled() {
   assert!(swapped.contains("page 20"));
   assert!(!swapped.contains("page 10"));
 }
+
+/// A checkbox toggles by `Space` and by mouse click, both directions of the binding.
+#[test]
+fn checkbox_toggles_by_key_and_click() {
+  let (unchecked, checked, value) = with_driver(|| {
+    let on = RwSignal::new(false);
+
+    tui::mount(|| Checkbox::new().bind_checked(on).into_any().build());
+
+    let unchecked = tui::render_to_text(6, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key(" ");
+
+    let checked = tui::render_to_text(6, 1);
+
+    tui::trigger_mouse_click(1, 0);
+
+    (unchecked, checked, on.get_untracked())
+  });
+
+  assert!(unchecked.contains("[ ]"));
+  assert!(checked.contains("[x]"));
+  assert!(!value);
+}
+
+/// Radios in a group are exclusive, arrow keys move the check, and the bound signal
+/// follows the chosen value.
+#[test]
+fn radio_group_moves_the_check() {
+  let (first, moved, value) = with_driver(|| {
+    let choice = RwSignal::new("a".to_owned());
+
+    tui::mount(|| {
+      Container::column()
+        .set_children((
+          Radio::new("letters", "a").bind_value(choice),
+          Radio::new("letters", "b").bind_value(choice),
+          Radio::new("letters", "c").bind_value(choice),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let first = tui::render_to_text(6, 3);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("ArrowDown");
+
+    let moved = tui::render_to_text(6, 3);
+
+    (first, moved, choice.get_untracked())
+  });
+
+  let checked = |frame: &str| {
+    frame
+      .lines()
+      .enumerate()
+      .filter(|(_, line)| line.contains('•'))
+      .map(|(row, _)| row)
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(checked(&first), vec![0]);
+  assert_eq!(checked(&moved), vec![2]);
+  assert_eq!(value, "c");
+}
+
+/// A select cycles through its options with `Enter` and arrows, wrapping.
+#[test]
+fn select_cycles_its_options() {
+  let (initial, cycled, back, value) = with_driver(|| {
+    let unit = RwSignal::new("px".to_owned());
+
+    tui::mount(|| {
+      Select::new()
+        .set_options([("px", "pixels"), ("cell", "cells")])
+        .bind_value(unit)
+        .into_any()
+        .build()
+    });
+
+    let initial = tui::render_to_text(10, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let cycled = tui::render_to_text(10, 1);
+
+    tui::trigger_key("ArrowUp");
+
+    (
+      initial,
+      cycled,
+      tui::render_to_text(10, 1),
+      unit.get_untracked(),
+    )
+  });
+
+  assert!(initial.contains("pixels"));
+  assert!(cycled.contains("cells"));
+  assert!(back.contains("pixels"));
+  assert_eq!(value, "px");
+}
+
+/// A slider nudges by its step on arrows and jumps to a clicked cell.
+#[test]
+fn slider_nudges_and_jumps() {
+  let (track, after_keys, after_click) = with_driver(|| {
+    let volume = RwSignal::new(0.0f32);
+
+    tui::mount(|| {
+      Slider::new(0.0, 10.0)
+        .set_step(1.0)
+        .bind_value(volume)
+        .into_any()
+        .build()
+    });
+
+    let track = tui::render_to_text(14, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowRight");
+    tui::trigger_key("ArrowRight");
+
+    let after_keys = volume.get_untracked();
+
+    tui::trigger_mouse_click(11, 0);
+
+    (track, after_keys, volume.get_untracked())
+  });
+
+  assert!(track.starts_with('●'));
+  assert!((after_keys - 2.0).abs() < f32::EPSILON);
+  assert!((after_click - 10.0).abs() < f32::EPSILON);
+}
+
+/// A shadow mixes its color into both colors of the band below and to the right.
+#[test]
+fn shadow_mixes_into_the_cells_beneath() {
+  let colors = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_color(Color::srgb(1., 0., 0.))
+        .set_child(
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
+        )
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_colors(4, 3)
+  });
+
+  let background = |x: usize, y: usize| colors[y * 4 + x].1.expect("a painted background");
+  let clean = background(0, 0);
+
+  // The one-cell band below and to the right dims; everything else keeps the backdrop.
+  assert_eq!(clean, (255, 0, 0));
+  assert_eq!(background(1, 1), background(2, 1));
+  assert!(background(2, 1).0 < clean.0);
+  assert_eq!(background(3, 1), clean);
+  assert_eq!(background(1, 2), clean);
+}

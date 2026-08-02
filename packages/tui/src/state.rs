@@ -48,6 +48,35 @@ pub(crate) enum NodeKind {
     value: String,
     placeholder: Option<String>,
   },
+  /// A toggleable checkbox, rendered `[x]` or `[ ]`.
+  Checkbox {
+    style: BoxStyle,
+    variants: Vec<(Condition, BoxStyle)>,
+    checked: bool,
+  },
+  /// One choice in a radio group, rendered `(•)` or `( )`.
+  Radio {
+    style: BoxStyle,
+    variants: Vec<(Condition, BoxStyle)>,
+    group: String,
+    checked: bool,
+  },
+  /// A fixed-option selector, cycling in place.
+  Select {
+    style: BoxStyle,
+    variants: Vec<(Condition, BoxStyle)>,
+    options: Vec<(String, String)>,
+    value: String,
+  },
+  /// A numeric slider on a horizontal track.
+  Slider {
+    style: BoxStyle,
+    variants: Vec<(Condition, BoxStyle)>,
+    min: f32,
+    max: f32,
+    step: f32,
+    value: f32,
+  },
   /// A structural anchor with no visuals of its own.
   Group,
   /// An overlay: content above the app, opened and closed by the facade.
@@ -60,6 +89,36 @@ pub(crate) enum NodeKind {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
   },
+}
+
+impl NodeKind {
+  /// The node's box styling, when it carries one.
+  pub(crate) fn box_style(&self) -> Option<(&BoxStyle, &[(Condition, BoxStyle)])> {
+    match self {
+      NodeKind::Box {
+        style, variants, ..
+      }
+      | NodeKind::Input {
+        style, variants, ..
+      }
+      | NodeKind::Overlay {
+        style, variants, ..
+      }
+      | NodeKind::Checkbox {
+        style, variants, ..
+      }
+      | NodeKind::Radio {
+        style, variants, ..
+      }
+      | NodeKind::Select {
+        style, variants, ..
+      }
+      | NodeKind::Slider {
+        style, variants, ..
+      } => Some((style, variants)),
+      NodeKind::Run { .. } | NodeKind::Group => None,
+    }
+  }
 }
 
 /// One node's record: its realization, its taffy node, and its place in the tree.
@@ -90,6 +149,8 @@ pub(crate) struct State {
   pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
   pub(crate) scroll: Handlers<dyn Fn(&ScrollEvent)>,
+  pub(crate) toggle: Handlers<dyn Fn(bool)>,
+  pub(crate) change_value: Handlers<dyn Fn(f32)>,
   pub(crate) dismiss: Handlers<dyn Fn()>,
   /// Every overlay node, in build order—later entries stack on top.
   pub(crate) overlays: RefCell<Vec<NodeId>>,
@@ -157,6 +218,8 @@ impl State {
       pointer_up: RefCell::new(FxHashMap::default()),
       pointer_move: RefCell::new(FxHashMap::default()),
       scroll: RefCell::new(FxHashMap::default()),
+      toggle: RefCell::new(FxHashMap::default()),
+      change_value: RefCell::new(FxHashMap::default()),
       dismiss: RefCell::new(FxHashMap::default()),
       overlays: RefCell::new(Vec::new()),
       focused: Cell::new(None),
@@ -315,6 +378,8 @@ impl State {
       self.pointer_up.borrow_mut().remove(&current);
       self.pointer_move.borrow_mut().remove(&current);
       self.scroll.borrow_mut().remove(&current);
+      self.toggle.borrow_mut().remove(&current);
+      self.change_value.borrow_mut().remove(&current);
       self.dismiss.borrow_mut().remove(&current);
       self.overlays.borrow_mut().retain(|node| *node != current);
       self.hovered.borrow_mut().retain(|node| *node != current);
@@ -599,8 +664,248 @@ impl State {
 
     self.set_focused(target);
 
+    if let Some(target) = target {
+      let origin = path
+        .iter()
+        .find(|(node, _)| *node == target)
+        .map_or((0, 0), |(_, origin)| *origin);
+
+      self.activate_control(target, Some(i64::from(x) - origin.0));
+    }
+
     for (node, _) in path.iter().rev() {
       Self::run_handlers(&self.click, *node, (), |run, ()| run());
+    }
+  }
+
+  /// Activates a control the way `Enter`, `Space`, or a click does: toggles a
+  /// checkbox, checks a radio, cycles a select, and—given a click's local column—jumps
+  /// a slider's thumb there.
+  pub(crate) fn activate_control(&self, node: NodeId, local_column: Option<i64>) {
+    enum Activation {
+      Toggle,
+      Check,
+      Cycle,
+      Slide,
+    }
+
+    let activation = {
+      let nodes = self.nodes.borrow();
+
+      match nodes.get(&node).map(|record| &record.kind) {
+        Some(NodeKind::Checkbox { .. }) => Activation::Toggle,
+        Some(NodeKind::Radio { .. }) => Activation::Check,
+        Some(NodeKind::Select { .. }) => Activation::Cycle,
+        Some(NodeKind::Slider { .. }) => Activation::Slide,
+        _ => return,
+      }
+    };
+
+    match activation {
+      Activation::Toggle => self.toggle_checkbox(node),
+      Activation::Check => self.check_radio(node),
+      Activation::Cycle => self.cycle_select(node, 1),
+      Activation::Slide => {
+        if let Some(local_column) = local_column {
+          self.slide_to(node, local_column);
+        }
+      }
+    }
+  }
+
+  /// Flips a checkbox, firing its toggle handlers with the new state.
+  fn toggle_checkbox(&self, node: NodeId) {
+    let next = self.with_node(node, |record| {
+      if let NodeKind::Checkbox { checked, .. } = &mut record.kind {
+        *checked = !*checked;
+
+        Some(*checked)
+      }
+      else {
+        None
+      }
+    });
+
+    if let Some(next) = next {
+      self.dirty.set(true);
+
+      Self::run_handlers(&self.toggle, node, next, |run, checked| run(checked));
+    }
+  }
+
+  /// Checks a radio, unchecking its group, firing toggle handlers for every change.
+  pub(crate) fn check_radio(&self, node: NodeId) {
+    let group = {
+      let nodes = self.nodes.borrow();
+
+      match nodes.get(&node).map(|record| &record.kind) {
+        Some(NodeKind::Radio { group, .. }) => group.clone(),
+        _ => return,
+      }
+    };
+
+    let mut flipped = Vec::new();
+
+    {
+      let mut nodes = self.nodes.borrow_mut();
+
+      for (id, record) in nodes.iter_mut() {
+        if let NodeKind::Radio {
+          group: this_group,
+          checked,
+          ..
+        } = &mut record.kind
+          && *this_group == group
+        {
+          let next = *id == node;
+
+          if *checked != next {
+            *checked = next;
+
+            flipped.push((*id, next));
+          }
+        }
+      }
+    }
+
+    if flipped.is_empty() {
+      return;
+    }
+
+    self.dirty.set(true);
+
+    for (id, checked) in flipped {
+      Self::run_handlers(&self.toggle, id, checked, |run, checked| run(checked));
+    }
+  }
+
+  /// The radios of `node`'s group, in tree order, with `node`'s position among them.
+  pub(crate) fn radio_group(&self, node: NodeId) -> Option<(Vec<NodeId>, usize)> {
+    let group = {
+      let nodes = self.nodes.borrow();
+
+      match nodes.get(&node).map(|record| &record.kind) {
+        Some(NodeKind::Radio { group, .. }) => group.clone(),
+        _ => return None,
+      }
+    };
+
+    let members: Vec<NodeId> = {
+      let nodes = self.nodes.borrow();
+
+      self
+        .focusable()
+        .into_iter()
+        .filter(|id| {
+          matches!(
+            nodes.get(id).map(|record| &record.kind),
+            Some(NodeKind::Radio { group: this_group, .. }) if *this_group == group
+          )
+        })
+        .collect()
+    };
+
+    let position = members.iter().position(|id| *id == node)?;
+
+    Some((members, position))
+  }
+
+  /// Cycles a select by `step` options, wrapping, firing its change handlers.
+  pub(crate) fn cycle_select(&self, node: NodeId, step: isize) {
+    let next = self.with_node(node, |record| {
+      let NodeKind::Select { options, value, .. } = &mut record.kind
+      else {
+        return None;
+      };
+
+      if options.is_empty() {
+        return None;
+      }
+
+      let count = isize::try_from(options.len()).ok()?;
+      let index = options
+        .iter()
+        .position(|(option, _)| option == value)
+        .and_then(|index| isize::try_from(index).ok())
+        .unwrap_or(0);
+      let next = usize::try_from((index + step).rem_euclid(count)).ok()?;
+      let next = options[next].0.clone();
+
+      if next == *value {
+        return None;
+      }
+
+      value.clone_from(&next);
+
+      Some(next)
+    });
+
+    if let Some(next) = next {
+      self.dirty.set(true);
+
+      Self::run_handlers(&self.input, node, next.as_str(), |run, value| run(value));
+    }
+  }
+
+  /// Moves a slider by `steps` of its step size, clamped, firing its change handlers.
+  pub(crate) fn nudge_slider(&self, node: NodeId, steps: f32) {
+    self.write_slider(node, |min, max, step, value| {
+      (value + step * steps).clamp(min, max)
+    });
+  }
+
+  /// Jumps a slider's thumb to a clicked cell of its track, snapped to its step.
+  fn slide_to(&self, node: NodeId, local_column: i64) {
+    let (width, _) = self.node_size(node);
+
+    self.write_slider(node, |min, max, step, _| {
+      #[expect(clippy::cast_precision_loss)]
+      let fraction = if width > 1 {
+        (local_column.clamp(0, width - 1) as f32) / ((width - 1) as f32)
+      }
+      else {
+        0.0
+      };
+      let value = min + fraction * (max - min);
+
+      if step > 0.0 {
+        (min + ((value - min) / step).round() * step).clamp(min, max)
+      }
+      else {
+        value.clamp(min, max)
+      }
+    });
+  }
+
+  /// Rewrites a slider's value through `next`, firing change handlers on change.
+  fn write_slider(&self, node: NodeId, next: impl FnOnce(f32, f32, f32, f32) -> f32) {
+    let changed = self.with_node(node, |record| {
+      let NodeKind::Slider {
+        min,
+        max,
+        step,
+        value,
+        ..
+      } = &mut record.kind
+      else {
+        return None;
+      };
+
+      let target = next(*min, *max, *step, *value);
+
+      if (target - *value).abs() < f32::EPSILON {
+        return None;
+      }
+
+      *value = target;
+
+      Some(target)
+    });
+
+    if let Some(value) = changed {
+      self.dirty.set(true);
+
+      Self::run_handlers(&self.change_value, node, value, |run, value| run(value));
     }
   }
 
@@ -833,16 +1138,7 @@ impl State {
 
     hovered.iter().rev().find_map(|node| {
       let record = nodes.get(node)?;
-      let (NodeKind::Box {
-        style, variants, ..
-      }
-      | NodeKind::Input {
-        style, variants, ..
-      }) = &record.kind
-      else {
-        return None;
-      };
-
+      let (style, variants) = record.kind.box_style()?;
       let interaction = Interaction {
         focused: self.focused.get() == Some(*node),
         hovered: true,
@@ -860,15 +1156,7 @@ impl State {
       return Overflow::Visible;
     };
 
-    let (NodeKind::Box {
-      style, variants, ..
-    }
-    | NodeKind::Input {
-      style, variants, ..
-    }
-    | NodeKind::Overlay {
-      style, variants, ..
-    }) = &record.kind
+    let Some((style, variants)) = record.kind.box_style()
     else {
       return Overflow::Visible;
     };

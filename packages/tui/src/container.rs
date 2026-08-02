@@ -50,6 +50,7 @@ pub struct Container {
   spacing: Option<Source<u32>>,
   cursor: Option<Source<MouseCursor>>,
   overflow: Option<Source<Overflow>>,
+  shadow: Option<Source<Color>>,
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
   cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   variants: Vec<(Condition, BoxStyle)>,
@@ -89,6 +90,7 @@ impl Container {
       spacing: None,
       cursor: None,
       overflow: None,
+      shadow: None,
       main_axis_alignment: None,
       cross_axis_alignment: None,
       variants: Vec::new(),
@@ -329,6 +331,23 @@ impl Container {
   #[inline(always)]
   pub fn derive_overflow(mut self, overflow: impl Fn() -> Overflow + 'static) -> Self {
     self.overflow = Some(Source::Derived(Rc::new(overflow)));
+
+    self
+  }
+
+  /// Sets the shadow color, cast one cell down and right; its alpha is the strength of
+  /// the mix into the colors beneath.
+  #[inline(always)]
+  pub fn set_shadow(mut self, color: Color) -> Self {
+    self.shadow = Some(Source::Static(color));
+
+    self
+  }
+
+  /// Sets a derived shadow color.
+  #[inline(always)]
+  pub fn derive_shadow(mut self, color: impl Fn() -> Color + 'static) -> Self {
+    self.shadow = Some(Source::Derived(Rc::new(color)));
 
     self
   }
@@ -590,6 +609,14 @@ impl View for Container {
       &mut style.overflow,
       &mut binders,
       BoxProp::Overflow,
+      update_box,
+    );
+
+    split_prop(
+      self.shadow,
+      &mut style.shadow,
+      &mut binders,
+      BoxProp::Shadow,
       update_box,
     );
 

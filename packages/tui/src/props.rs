@@ -47,6 +47,8 @@ pub struct BoxStyle {
   pub cursor: Option<MouseCursor>,
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
   pub overflow: Option<Overflow>,
+  /// The shadow color, cast one cell down and right and mixed into the colors beneath.
+  pub shadow: Option<Color>,
   /// The children's alignment along the main axis.
   pub main_axis_alignment: Option<MainAxisAlignment>,
   /// The children's alignment along the cross axis.
@@ -152,6 +154,15 @@ impl BoxStyle {
   #[inline(always)]
   pub const fn set_overflow(mut self, overflow: Overflow) -> Self {
     self.overflow = Some(overflow);
+
+    self
+  }
+
+  /// Sets the shadow color, cast one cell down and right; its alpha is the strength of
+  /// the mix into the colors beneath.
+  #[inline(always)]
+  pub const fn set_shadow(mut self, color: Color) -> Self {
+    self.shadow = Some(color);
 
     self
   }
@@ -277,6 +288,7 @@ pub(crate) enum BoxProp {
   Spacing(u32),
   Cursor(MouseCursor),
   Overflow(Overflow),
+  Shadow(Color),
   MainAxisAlignment(MainAxisAlignment),
   CrossAxisAlignment(CrossAxisAlignment),
 }
@@ -303,6 +315,7 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::Spacing(value) => style.spacing = Some(value),
     BoxProp::Cursor(value) => style.cursor = Some(value),
     BoxProp::Overflow(value) => style.overflow = Some(value),
+    BoxProp::Shadow(value) => style.shadow = Some(value),
     BoxProp::MainAxisAlignment(value) => style.main_axis_alignment = Some(value),
     BoxProp::CrossAxisAlignment(value) => style.cross_axis_alignment = Some(value),
   }

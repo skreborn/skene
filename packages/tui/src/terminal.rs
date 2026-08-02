@@ -31,7 +31,7 @@ use crossterm::{
   },
   terminal,
 };
-use skene_core::{IntoView, KeyEvent, MouseCursor, View};
+use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, View};
 
 use crate::{
   paint,
@@ -107,6 +107,8 @@ where
   )
   .expect("enter the alternate screen");
 
+  let mut last_frame: Option<paint::Buffer> = None;
+
   loop {
     crate::task::pump();
 
@@ -123,7 +125,10 @@ where
           _ => (80, 24),
         };
 
-        draw(&paint::render(state, width, height), depth);
+        let frame = paint::render(state, width, height);
+
+        draw(&frame, depth, last_frame.as_ref());
+        last_frame = Some(frame);
       }
 
       state.quit.get()
@@ -251,12 +256,21 @@ fn set_pointer_shape(cursor: Option<MouseCursor>) {
   let _ = out.flush();
 }
 
-/// Writes a painted frame to the terminal, quantizing colors to `depth`.
-fn draw(buffer: &paint::Buffer, depth: crate::detect::ColorDepth) {
+/// Writes a painted frame to the terminal, quantizing colors to `depth`; rows
+/// unchanged since the previous frame are skipped.
+fn draw(
+  buffer: &paint::Buffer,
+  depth: crate::detect::ColorDepth,
+  previous: Option<&paint::Buffer>,
+) {
   let mut out = std::io::stdout();
   let _ = queue!(out, cursor::MoveTo(0, 0), ResetColor);
 
   for row in 0..buffer.height {
+    if !paint::row_changed(previous, buffer, row) {
+      continue;
+    }
+
     let _ = queue!(
       out,
       cursor::MoveTo(0, u16::try_from(row).unwrap_or(u16::MAX)),
@@ -369,9 +383,19 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
       if (code == KeyCode::Enter || space_activates)
         && let Some(focused) = state.focused.get()
       {
+        state.activate_control(focused, None);
+
         for target in state.ancestors(focused) {
           State::run_handlers(&state.click, target, (), |run, ()| run());
         }
+      }
+
+      if matches!(
+        code,
+        KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down
+      ) && let Some(focused) = state.focused.get()
+      {
+        control_arrow(state, focused, code);
       }
 
       if code == KeyCode::PageDown {
@@ -430,6 +454,60 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
         run(value);
       });
     }
+  }
+}
+
+/// Applies an arrow key to the focused control: radios move the check through their
+/// group, selects cycle, sliders nudge by one step.
+fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
+  enum Move {
+    Radio,
+    Select,
+    Slider,
+  }
+
+  let target = {
+    let nodes = state.nodes.borrow();
+
+    match nodes.get(&focused).map(|record| &record.kind) {
+      Some(NodeKind::Radio { .. }) => Move::Radio,
+      Some(NodeKind::Select { .. }) => Move::Select,
+      Some(NodeKind::Slider { .. }) => Move::Slider,
+      _ => return,
+    }
+  };
+  let forward = matches!(code, KeyCode::Right | KeyCode::Down);
+
+  match target {
+    Move::Radio => {
+      let Some((members, position)) = state.radio_group(focused)
+      else {
+        return;
+      };
+
+      let Ok(count) = isize::try_from(members.len())
+      else {
+        return;
+      };
+
+      let Ok(position) = isize::try_from(position)
+      else {
+        return;
+      };
+
+      let step: isize = if forward { 1 } else { -1 };
+      let Ok(next) = usize::try_from((position + step).rem_euclid(count.max(1)))
+      else {
+        return;
+      };
+
+      let next = members[next];
+
+      state.set_focused(Some(next));
+      state.check_radio(next);
+    }
+    Move::Select => state.cycle_select(focused, if forward { 1 } else { -1 }),
+    Move::Slider => state.nudge_slider(focused, if forward { 1.0 } else { -1.0 }),
   }
 }
 

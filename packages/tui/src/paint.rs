@@ -5,7 +5,7 @@
 //! tree back-to-front into a [`Buffer`]—which serializes to plain text for tests or to
 //! the terminal for the interactive loop.
 
-use skene_core::NodeId;
+use skene_core::{Color, NodeId};
 use taffy::prelude::{AvailableSpace, length};
 
 use crate::{
@@ -219,6 +219,8 @@ fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, o
 }
 
 /// Refreshes every node's taffy style from its effective style in `environment`.
+// A match dispatch over the node kinds; length is the kind count, not complexity.
+#[expect(clippy::too_many_lines)]
 fn refresh_styles(state: &State, environment: Environment) {
   let nodes = state.nodes.borrow();
   let focused = state.focused.get();
@@ -300,6 +302,50 @@ fn refresh_styles(state: &State, environment: Environment) {
         }
 
         taffy.set_style(record.taffy, out).expect("style an input");
+      }
+      NodeKind::Checkbox {
+        style, variants, ..
+      }
+      | NodeKind::Radio {
+        style, variants, ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let mut out = taffy::style::Style::default();
+
+        apply_box_sizing(&mut out, &effective, record.in_stack);
+        size_control(&mut out, &effective, 3.0);
+        taffy.set_style(record.taffy, out).expect("style a control");
+      }
+      NodeKind::Select {
+        style,
+        variants,
+        options,
+        ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let mut out = taffy::style::Style::default();
+
+        apply_box_sizing(&mut out, &effective, record.in_stack);
+
+        #[expect(clippy::cast_precision_loss)]
+        let longest = options
+          .iter()
+          .map(|(_, label)| label.chars().count())
+          .max()
+          .unwrap_or(0) as f32;
+
+        size_control(&mut out, &effective, longest + 2.0);
+        taffy.set_style(record.taffy, out).expect("style a control");
+      }
+      NodeKind::Slider {
+        style, variants, ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let mut out = taffy::style::Style::default();
+
+        apply_box_sizing(&mut out, &effective, record.in_stack);
+        size_control(&mut out, &effective, 12.0);
+        taffy.set_style(record.taffy, out).expect("style a control");
       }
       NodeKind::Overlay {
         open,
@@ -403,6 +449,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
+          shadow: effective.shadow,
           reverse: focused,
         }
       }
@@ -441,6 +488,7 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
+          shadow: effective.shadow,
           text,
           dim,
           reverse: focused,
@@ -456,7 +504,90 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
+          shadow: effective.shadow,
           reverse: false,
+        }
+      }
+      NodeKind::Checkbox {
+        style,
+        variants,
+        checked,
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+
+        NodePaint::Input {
+          background: effective.color.and_then(terminal_rgb),
+          border: effective.border.map(|border| BorderPaint {
+            color: terminal_rgb(border),
+          }),
+          shadow: effective.shadow,
+          text: if *checked { "[x]" } else { "[ ]" }.to_owned(),
+          dim: false,
+          reverse: focused,
+        }
+      }
+      NodeKind::Radio {
+        style,
+        variants,
+        checked,
+        ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+
+        NodePaint::Input {
+          background: effective.color.and_then(terminal_rgb),
+          border: effective.border.map(|border| BorderPaint {
+            color: terminal_rgb(border),
+          }),
+          shadow: effective.shadow,
+          text: if *checked { "(\u{2022})" } else { "( )" }.to_owned(),
+          dim: false,
+          reverse: focused,
+        }
+      }
+      NodeKind::Select {
+        style,
+        variants,
+        options,
+        value,
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let label = options
+          .iter()
+          .find(|(option, _)| option == value)
+          .map_or_else(|| value.clone(), |(_, label)| label.clone());
+
+        NodePaint::Input {
+          background: effective.color.and_then(terminal_rgb),
+          border: effective.border.map(|border| BorderPaint {
+            color: terminal_rgb(border),
+          }),
+          shadow: effective.shadow,
+          text: format!("{label} \u{25be}"),
+          dim: false,
+          reverse: focused,
+        }
+      }
+      NodeKind::Slider {
+        style,
+        variants,
+        min,
+        max,
+        value,
+        ..
+      } => {
+        let effective = effective_box_style(style, variants, environment, interaction);
+        let inner = width.saturating_sub(if effective.border.is_some() { 2 } else { 0 });
+
+        NodePaint::Input {
+          background: effective.color.and_then(terminal_rgb),
+          border: effective.border.map(|border| BorderPaint {
+            color: terminal_rgb(border),
+          }),
+          shadow: effective.shadow,
+          text: slider_track(inner, *min, *max, *value),
+          dim: false,
+          reverse: focused,
         }
       }
       NodeKind::Group => NodePaint::None,
@@ -469,8 +600,13 @@ fn paint_node(
     NodePaint::Box {
       background,
       border,
+      shadow,
       reverse,
     } => {
+      if let Some(shadow) = shadow {
+        draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
+      }
+
       fill(buffer, x, y, width, height, background, reverse);
 
       if let Some(border) = border {
@@ -487,10 +623,15 @@ fn paint_node(
     NodePaint::Input {
       background,
       border,
+      shadow,
       text,
       dim,
       reverse,
     } => {
+      if let Some(shadow) = shadow {
+        draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
+      }
+
       fill(buffer, x, y, width, height, background, reverse);
 
       let inset = if let Some(border) = border {
@@ -664,6 +805,7 @@ enum NodePaint {
   Box {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
+    shadow: Option<Color>,
     reverse: bool,
   },
   Text {
@@ -676,6 +818,7 @@ enum NodePaint {
   Input {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
+    shadow: Option<Color>,
     text: String,
     dim: bool,
     reverse: bool,
@@ -790,5 +933,168 @@ fn draw_text(
     if reverse {
       cell.reverse = true;
     }
+  }
+}
+
+/// Sizes a control's taffy style: `content` cells wide and one tall (plus a border's
+/// cells), where the effective style fixes nothing.
+fn size_control(out: &mut taffy::style::Style, effective: &crate::props::BoxStyle, content: f32) {
+  let border = if effective.border.is_some() { 2.0 } else { 0.0 };
+
+  if effective.width.is_none() {
+    out.size.width = length(content + border);
+  }
+
+  if effective.height.is_none() {
+    out.size.height = length(1.0 + border);
+  }
+}
+
+/// A slider's track over `width` cells: `─` with the thumb `●` at the value's cell.
+fn slider_track(width: usize, min: f32, max: f32, value: f32) -> String {
+  if width == 0 {
+    return String::new();
+  }
+
+  let span = max - min;
+  let fraction = if span > 0.0 {
+    ((value - min) / span).clamp(0.0, 1.0)
+  }
+  else {
+    0.0
+  };
+
+  #[expect(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+  )]
+  let thumb = (fraction * (width - 1) as f32).round() as usize;
+
+  (0..width)
+    .map(|cell| {
+      if cell == thumb {
+        '\u{25cf}'
+      }
+      else {
+        '\u{2500}'
+      }
+    })
+    .collect()
+}
+
+/// Casts a box's shadow: the one-cell band below and to the right, the shadow color
+/// mixed into both the foreground and the background of each covered cell by its
+/// alpha. An unset color beneath mixes against the terminal's default for the detected
+/// background.
+fn draw_shadow(
+  buffer: &mut Buffer,
+  x: isize,
+  y: isize,
+  width: usize,
+  height: usize,
+  color: Color,
+  dark: bool,
+) {
+  let [red, green, blue, alpha] = color.to_rgba();
+  let alpha = alpha.clamp(0.0, 1.0);
+
+  if alpha <= 0.0 || width == 0 || height == 0 {
+    return;
+  }
+
+  let (foreground_base, background_base) = if dark {
+    ((255, 255, 255), (0, 0, 0))
+  }
+  else {
+    ((0, 0, 0), (255, 255, 255))
+  };
+  let mix = |existing: Option<(u8, u8, u8)>, base: (u8, u8, u8)| -> (u8, u8, u8) {
+    let (base_red, base_green, base_blue) = existing.unwrap_or(base);
+    let channel = |shadow: f32, beneath: u8| -> u8 {
+      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      let mixed = (shadow.clamp(0.0, 1.0) * 255.0)
+        .mul_add(alpha, f32::from(beneath) * (1.0 - alpha))
+        .round() as u8;
+
+      mixed
+    };
+
+    (
+      channel(red, base_red),
+      channel(green, base_green),
+      channel(blue, base_blue),
+    )
+  };
+  let (width, height) = (
+    isize::try_from(width).unwrap_or(0),
+    isize::try_from(height).unwrap_or(0),
+  );
+  let mut cast = |cell_x: isize, cell_y: isize| {
+    let dark_cell = buffer.cell_mut(cell_x, cell_y);
+
+    if let Some(cell) = dark_cell {
+      cell.foreground = Some(mix(cell.foreground, foreground_base));
+      cell.background = Some(mix(cell.background, background_base));
+    }
+  };
+
+  for row in 1..=height {
+    cast(x + width, y + row);
+  }
+
+  for column in 1..width {
+    cast(x + column, y + height);
+  }
+}
+
+/// Whether `row` must be rewritten: the previous frame is absent, differently sized, or
+/// differs in that row.
+pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) -> bool {
+  match previous {
+    Some(previous) if previous.width == next.width && previous.height == next.height => {
+      previous.cells[row * previous.width..(row + 1) * previous.width]
+        != next.cells[row * next.width..(row + 1) * next.width]
+    }
+    _ => true,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn rows_diff_against_the_previous_frame() {
+    let mut previous = Buffer::new(3, 2);
+    let mut next = Buffer::new(3, 2);
+
+    previous.cells[1].character = 'a';
+    next.cells[1].character = 'a';
+    next.cells[4].character = 'b';
+
+    assert!(!row_changed(Some(&previous), &next, 0));
+    assert!(row_changed(Some(&previous), &next, 1));
+    assert!(row_changed(None, &next, 0));
+
+    let resized = Buffer::new(2, 2);
+
+    assert!(row_changed(Some(&resized), &next, 0));
+  }
+
+  #[test]
+  fn slider_tracks_place_the_thumb() {
+    assert_eq!(
+      slider_track(5, 0.0, 4.0, 0.0),
+      "\u{25cf}\u{2500}\u{2500}\u{2500}\u{2500}"
+    );
+    assert_eq!(
+      slider_track(5, 0.0, 4.0, 2.0),
+      "\u{2500}\u{2500}\u{25cf}\u{2500}\u{2500}"
+    );
+    assert_eq!(
+      slider_track(5, 0.0, 4.0, 4.0),
+      "\u{2500}\u{2500}\u{2500}\u{2500}\u{25cf}"
+    );
   }
 }

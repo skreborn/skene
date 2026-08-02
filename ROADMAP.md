@@ -146,22 +146,27 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   reaches it; `Enter` and `Space` activate it); focusability belongs to controls, never
   plain containers—a clickable box stays mouse-clickable but out of the tab order,
   exactly like the web.
-- **Remaining (parity):** the rest of the control set in cells (checkbox `[x]`, radio
-  `(•)`, slider track, select cycling)—textarea waits on caret positioning.
+- **Controls—done.** `Checkbox` (`[x]`), `Radio` (`(•)`, group-exclusive, arrow keys
+  move the check), `Select` (current label shown, `Enter`/arrows cycle the options),
+  and `Slider` (`──●──` track; arrows nudge by step, a click jumps the thumb)—each on
+  the shared `ControlBase` + `control_surface!` builder surface (`Button` and `Input`
+  retrofitted onto it), with the same `bind_`/`derive_`/`handle_` vocabulary as the GUI
+  facade. Textarea still waits on caret positioning.
 - **Scroll—done.** `set_overflow` on the box vocabulary (taffy computes the scroll
   region); the wheel scrolls the innermost box that can still move, `PageUp`/`PageDown`
   the scrollable nearest the focus; children paint clipped and offset, with proportional
   track-and-thumb overlays on the overflowing edges; hit-testing resolves through the
   offsets; focusing a control scrolls it into view; `trigger_mouse_scroll` drives it
   headlessly.
-- **Remaining:** text wrapping; caret positioning in inputs
-  (edits append/pop only); a diffed redraw instead of full frames; selectable border
-  character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy, ASCII,
-  custom); box shadows (always a 1×1 offset to the bottom-right, color and opacity
-  configurable, rendered by mixing the shadow color into whatever lies beneath—both the
-  foreground and the background color of the shadowed cell); a compositor pass where
-  every layer draws into one internal buffer first (so a later layer reads the colors
-  already placed—the shadow mix depends on it—and the frame flushes at once).
+- **Shadows and the compositor—done.** `set_shadow` on the box vocabulary casts a
+  one-cell band down and right, the color mixed by its alpha into both the foreground
+  and the background beneath (unset colors mix against the detected light/dark
+  default); every layer already paints into the one internal cell buffer—which the
+  shadow mix reads—and the flush now rewrites only the rows that changed since the
+  previous frame.
+- **Remaining:** text wrapping; caret positioning in inputs (edits append/pop only);
+  selectable border character sets (rounded `╭╮╰╯`—the terminal's border radius—double,
+  heavy, ASCII, custom).
 
 ## Backlog—unphased features
 

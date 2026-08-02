@@ -2,14 +2,9 @@
 
 use std::rc::Rc;
 
-use skene_core::{KeyEvent, NodeId, Source, View};
+use skene_core::{NodeId, Source, View};
 
-use crate::{
-  FocusHandle,
-  props::{BoxStyle, Condition},
-  state::NodeKind,
-  with_state,
-};
+use crate::{control::ControlBase, state::NodeKind, with_state};
 
 /// A single-line text input.
 ///
@@ -21,18 +16,11 @@ use crate::{
 /// [`set_when`](Self::set_when).
 #[must_use]
 pub struct Input {
+  base: ControlBase,
   value: Option<Source<String>>,
   placeholder: Option<String>,
-  style: BoxStyle,
-  variants: Vec<(Condition, BoxStyle)>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
-  #[expect(clippy::type_complexity)]
-  key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
-  focus_handler: Option<Rc<dyn Fn()>>,
-  blur_handler: Option<Rc<dyn Fn()>>,
-  autofocus: bool,
-  focus_handle: Option<FocusHandle>,
 }
 
 impl Input {
@@ -40,16 +28,10 @@ impl Input {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
+      base: ControlBase::new(),
       value: None,
       placeholder: None,
-      style: BoxStyle::new(),
-      variants: Vec::new(),
       change_handler: None,
-      autofocus: false,
-      focus_handle: None,
-      key_down_handler: None,
-      focus_handler: None,
-      blur_handler: None,
     }
   }
 
@@ -88,67 +70,10 @@ impl Input {
     self
   }
 
-  /// Sets the static style.
-  #[inline(always)]
-  pub fn set_style(mut self, style: BoxStyle) -> Self {
-    self.style = style;
-
-    self
-  }
-
-  /// Adds a conditional style variant, applied while `condition` holds.
-  #[inline(always)]
-  pub fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.variants.push((condition, style));
-
-    self
-  }
-
   /// Sets the change handler, run with the new value on every edit, in real time.
   #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
     self.change_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Makes the input take focus when it mounts.
-  #[inline(always)]
-  pub fn set_autofocus(mut self) -> Self {
-    self.autofocus = true;
-
-    self
-  }
-
-  /// Binds `handle` to the input, so [`FocusHandle::focus`](FocusHandle::focus) targets
-  /// it once built.
-  #[inline(always)]
-  pub fn bind_focus(mut self, handle: &FocusHandle) -> Self {
-    self.focus_handle = Some(handle.clone());
-
-    self
-  }
-
-  /// Sets the key-press handler.
-  #[inline(always)]
-  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.key_down_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the focus handler.
-  #[inline(always)]
-  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.focus_handler = Some(Rc::new(action));
-
-    self
-  }
-
-  /// Sets the blur handler.
-  #[inline(always)]
-  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.blur_handler = Some(Rc::new(action));
 
     self
   }
@@ -161,13 +86,17 @@ impl Default for Input {
   }
 }
 
+crate::control::control_surface!(Input);
+
 impl View for Input {
-  fn build(self) -> NodeId {
+  fn build(mut self) -> NodeId {
+    let style = self.base.style;
+    let variants = std::mem::take(&mut self.base.variants);
     let node = with_state(|state| {
       state.insert_node(
         NodeKind::Input {
-          style: self.style,
-          variants: self.variants,
+          style,
+          variants,
           value: String::new(),
           placeholder: self.placeholder,
         },
@@ -179,52 +108,18 @@ impl View for Input {
       value.bind(move |value| set_input_value(node, &value));
     }
 
-    with_state(|state| {
-      if let Some(action) = self.change_handler {
+    if let Some(action) = self.change_handler {
+      with_state(|state| {
         state
           .input
           .borrow_mut()
           .entry(node)
           .or_default()
           .push(action);
-      }
-
-      if let Some(action) = self.key_down_handler {
-        state
-          .key_down
-          .borrow_mut()
-          .entry(node)
-          .or_default()
-          .push(action);
-      }
-
-      if let Some(action) = self.focus_handler {
-        state
-          .focus
-          .borrow_mut()
-          .entry(node)
-          .or_default()
-          .push(action);
-      }
-
-      if let Some(action) = self.blur_handler {
-        state
-          .blur
-          .borrow_mut()
-          .entry(node)
-          .or_default()
-          .push(action);
-      }
-
-      if self.autofocus {
-        state.focused.set(Some(node));
-        state.dirty.set(true);
-      }
-    });
-
-    if let Some(handle) = &self.focus_handle {
-      handle.assign(node);
+      });
     }
+
+    self.base.register(node);
 
     node
   }

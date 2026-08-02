@@ -19,7 +19,9 @@
 pub mod prelude;
 
 mod button;
+mod checkbox;
 mod container;
+mod control;
 mod detect;
 #[cfg(feature = "snapshot")]
 mod dev;
@@ -29,9 +31,12 @@ mod input;
 mod overlay;
 mod paint;
 mod props;
+mod radio;
 mod realize;
 mod resource;
 mod routing;
+mod select;
+mod slider;
 mod state;
 mod style;
 mod task;
@@ -70,14 +75,18 @@ pub use terminal::{
 
 pub use crate::{
   button::Button,
+  checkbox::Checkbox,
   container::Container,
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   input::Input,
   overlay::{Anchor, Overlay},
   props::{BoxStyle, Condition, RunStyle},
+  radio::Radio,
   resource::Resource,
   routing::install_router,
+  select::Select,
+  slider::Slider,
   task::spawn,
   text::Text,
   virtual_list::VirtualList,
@@ -254,6 +263,24 @@ pub fn derive_title(title: impl Fn() -> String + 'static) {
 #[must_use]
 pub fn render_to_text(width: u16, height: u16) -> String {
   with_state(|state| paint::render(state, width, height).to_text())
+}
+
+/// The painted frame's colors at `width` x `height`: each cell's foreground and
+/// background, row-major—for a headless test asserting paint, such as a shadow's mix.
+#[cfg(feature = "test")]
+#[must_use]
+#[expect(clippy::type_complexity)]
+pub fn render_to_colors(
+  width: u16,
+  height: u16,
+) -> Vec<(Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)> {
+  with_state(|state| {
+    paint::render(state, width, height)
+      .cells
+      .iter()
+      .map(|cell| (cell.foreground, cell.background))
+      .collect()
+  })
 }
 
 /// Allocates a detached grouping node—a block box, as every facade's group is.

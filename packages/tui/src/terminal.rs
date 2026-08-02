@@ -31,7 +31,7 @@ use crossterm::{
   },
   terminal,
 };
-use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, View};
+use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, Prevention, View};
 
 use crate::{
   paint,
@@ -178,18 +178,21 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       };
 
       state.set_hover(mouse.column, mouse.row);
-      state.run_pointer(
+
+      let _ = state.run_pointer(
         &state.pointer_move,
         mouse.column,
         mouse.row,
         button,
         modifiers,
       );
+
       set_pointer_shape(state.hover_cursor());
     }
     MouseEventKind::Down(button) => {
       state.set_hover(mouse.column, mouse.row);
-      state.run_pointer(
+
+      let prevention = state.run_pointer(
         &state.pointer_down,
         mouse.column,
         mouse.row,
@@ -197,12 +200,13 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         modifiers,
       );
 
-      if button == MouseButton::Left {
+      // The press's default—focusing and the click dispatch—obeys the verdicts.
+      if button == MouseButton::Left && !prevention.default {
         state.mouse_click(mouse.column, mouse.row);
       }
     }
     MouseEventKind::Up(button) => {
-      state.run_pointer(
+      let _ = state.run_pointer(
         &state.pointer_up,
         mouse.column,
         mouse.row,
@@ -335,8 +339,10 @@ fn draw(
   let _ = out.flush();
 }
 
-/// Dispatches one keyboard event: focus movement, activation, input editing, and the
-/// key-down handlers—all inside a reactive batch.
+/// Dispatches one keyboard event per the shared contract: the key-down handlers run
+/// first (the focused node then its ancestors), then the key's built-in default—focus
+/// movement, activation, control arrows, dismissal, editing—unless a handler prevented
+/// it. All inside a reactive batch; `Ctrl-C` stays unconditional.
 fn dispatch_key(state: &State, key: &event::KeyEvent) {
   if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
     state.quit.set(true);
@@ -344,71 +350,95 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
     return;
   }
 
-  skene_reactive::Effect::batch(|| match key.code {
-    KeyCode::Tab => state.move_focus(1),
-    KeyCode::BackTab => state.move_focus(-1),
-    code => {
-      if code == KeyCode::Esc
-        && let Some((top, _)) = state.topmost_open_overlay()
-      {
-        State::run_handlers(&state.dismiss, top, (), |run, ()| run());
+  skene_reactive::Effect::batch(|| {
+    let code = key.code;
+    let key_event = portable_key(code, key.modifiers);
+    let targets = match state.focused.get() {
+      Some(focused) => state.ancestors(focused),
+      None => state.key_down.borrow().keys().copied().collect(),
+    };
+    let mut prevention = Prevention::default();
 
-        return;
+    for target in &targets {
+      prevention.merge(State::run_preventable(
+        &state.key_down,
+        *target,
+        &key_event,
+        |run, event| run(event),
+      ));
+
+      if prevention.bubbling {
+        break;
       }
-
-      let key_event = portable_key(code, key.modifiers);
-      let targets = match state.focused.get() {
-        Some(focused) => state.ancestors(focused),
-        None => state.key_down.borrow().keys().copied().collect(),
-      };
-
-      for target in &targets {
-        State::run_handlers(&state.key_down, *target, &key_event, |run, event| {
-          run(event);
-        });
-      }
-
-      let space_activates = code == KeyCode::Char(' ')
-        && state.focused.get().is_some_and(|focused| {
-          !matches!(
-            state
-              .nodes
-              .borrow()
-              .get(&focused)
-              .map(|record| &record.kind),
-            Some(crate::state::NodeKind::Input { .. })
-          )
-        });
-
-      if (code == KeyCode::Enter || space_activates)
-        && let Some(focused) = state.focused.get()
-      {
-        state.activate_control(focused, None);
-
-        for target in state.ancestors(focused) {
-          State::run_handlers(&state.click, target, (), |run, ()| run());
-        }
-      }
-
-      if matches!(
-        code,
-        KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down
-      ) && let Some(focused) = state.focused.get()
-      {
-        control_arrow(state, focused, code);
-      }
-
-      if code == KeyCode::PageDown {
-        state.page_scroll(1);
-      }
-
-      if code == KeyCode::PageUp {
-        state.page_scroll(-1);
-      }
-
-      edit_focused_input(state, code, key.modifiers);
     }
+
+    if prevention.default {
+      return;
+    }
+
+    key_default(state, code, key.modifiers);
   });
+}
+
+/// Runs a key's built-in default: focus movement, dismissal, activation, control
+/// arrows, page scrolling, and input editing.
+fn key_default(state: &State, code: KeyCode, modifiers: KeyModifiers) {
+  match code {
+    KeyCode::Tab => {
+      state.move_focus(1);
+
+      return;
+    }
+    KeyCode::BackTab => {
+      state.move_focus(-1);
+
+      return;
+    }
+    KeyCode::Esc => {
+      if let Some((top, _)) = state.topmost_open_overlay() {
+        State::run_handlers(&state.dismiss, top, (), |run, ()| run());
+      }
+
+      return;
+    }
+    _ => {}
+  }
+
+  let space_activates = code == KeyCode::Char(' ')
+    && state.focused.get().is_some_and(|focused| {
+      !matches!(
+        state
+          .nodes
+          .borrow()
+          .get(&focused)
+          .map(|record| &record.kind),
+        Some(crate::state::NodeKind::Input { .. })
+      )
+    });
+
+  if (code == KeyCode::Enter || space_activates)
+    && let Some(focused) = state.focused.get()
+  {
+    state.activate_dispatch(focused);
+  }
+
+  if matches!(
+    code,
+    KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down
+  ) && let Some(focused) = state.focused.get()
+  {
+    control_arrow(state, focused, code);
+  }
+
+  if code == KeyCode::PageDown {
+    state.page_scroll(1);
+  }
+
+  if code == KeyCode::PageUp {
+    state.page_scroll(-1);
+  }
+
+  edit_focused_input(state, code, modifiers);
 }
 
 /// Applies an editing key to the focused input, firing its input handlers.
@@ -507,7 +537,12 @@ fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
       state.check_radio(next);
     }
     Move::Select => state.cycle_select(focused, if forward { 1 } else { -1 }),
-    Move::Slider => state.nudge_slider(focused, if forward { 1.0 } else { -1.0 }),
+    Move::Slider => {
+      // A slider rises on `Up`/`Right`, unlike a group's next-member order.
+      let increase = matches!(code, KeyCode::Right | KeyCode::Up);
+
+      state.nudge_slider(focused, if increase { 1.0 } else { -1.0 });
+    }
   }
 }
 
@@ -588,7 +623,7 @@ pub fn trigger_mouse_move(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::Effect::batch(|| {
       state.set_hover(x, y);
-      state.run_pointer(
+      let _ = state.run_pointer(
         &state.pointer_move,
         x,
         y,
@@ -606,7 +641,7 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::Effect::batch(|| {
       state.set_hover(x, y);
-      state.run_pointer(
+      let _ = state.run_pointer(
         &state.pointer_down,
         x,
         y,
@@ -614,7 +649,7 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
         skene_core::Modifiers::default(),
       );
       state.mouse_click(x, y);
-      state.run_pointer(
+      let _ = state.run_pointer(
         &state.pointer_up,
         x,
         y,

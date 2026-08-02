@@ -24,7 +24,19 @@ pub use boundary::Boundary;
 pub use children::{Children, HasChildren, IntoChildren};
 pub use condition::{Composable, ConditionShape};
 pub use errors::{ErrorBoundary, Errors};
-pub use events::{KeyEvent, Modifiers, PointerButton, PointerEvent, ScrollEvent};
+pub use events::{
+  ClickHandler,
+  IntoPrevent,
+  KeyEvent,
+  KeyHandler,
+  Modifiers,
+  PointerButton,
+  PointerEvent,
+  PointerHandler,
+  Prevent,
+  Prevention,
+  ScrollEvent,
+};
 pub use node::NodeId;
 pub use props::{
   BoxProp,

@@ -7,6 +7,7 @@ pub use skene_core::{
   CrossAxisAlignment,
   Errors,
   IntoChildren,
+  IntoPrevent,
   IntoView,
   KeyEvent,
   Layout,
@@ -16,6 +17,7 @@ pub use skene_core::{
   Overflow,
   Placement,
   PointerButton,
+  Prevent,
   View,
 };
 pub use skene_reactive::{

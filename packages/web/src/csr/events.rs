@@ -11,7 +11,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{KeyEvent, NodeId, PointerEvent};
+use skene_core::{NodeId, Prevent, Prevention};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::Element;
 
@@ -27,15 +27,15 @@ pub(super) type Handlers<F> = Rc<RefCell<FxHashMap<NodeId, Vec<Rc<F>>>>>;
 
 /// The browser leaf's event state: per-kind handler registries and the live listeners.
 pub(super) struct Events {
-  pub(super) click: Handlers<dyn Fn()>,
+  pub(super) click: Handlers<skene_core::ClickHandler>,
   pub(super) focus: Handlers<dyn Fn()>,
   pub(super) blur: Handlers<dyn Fn()>,
-  pub(super) key_down: Handlers<dyn Fn(&KeyEvent)>,
+  pub(super) key_down: Handlers<skene_core::KeyHandler>,
   pub(super) change: Handlers<dyn Fn(&str)>,
   pub(super) toggle: Handlers<dyn Fn(bool)>,
-  pub(super) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
-  pub(super) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
-  pub(super) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
+  pub(super) pointer_down: Handlers<skene_core::PointerHandler>,
+  pub(super) pointer_up: Handlers<skene_core::PointerHandler>,
+  pub(super) pointer_move: Handlers<skene_core::PointerHandler>,
   /// One live listener per delegated event type, attached to the mount root.
   root_listeners: RefCell<FxHashMap<&'static str, Listener>>,
   /// The live listeners of the non-bubbling, per-node events.
@@ -61,12 +61,14 @@ impl Events {
 
   /// Installs the delegated listener for `event_name` on `root`, once. `dispatch` runs
   /// for each node on the path from the event target up—receiving that node's own
-  /// element—inside one reactive batch.
+  /// element—inside one reactive batch; its folded verdicts stop the walk and, for the
+  /// default, call `preventDefault` so the browser's built-in response is suppressed
+  /// too.
   pub(super) fn ensure_root_listener(
     &self,
     root: &Element,
     event_name: &'static str,
-    dispatch: impl Fn(NodeId, &Element, &web_sys::Event) + 'static,
+    dispatch: impl Fn(NodeId, &Element, &web_sys::Event) -> Prevention + 'static,
   ) {
     let mut listeners = self.root_listeners.borrow_mut();
 
@@ -80,12 +82,22 @@ impl Events {
         .and_then(|target| target.dyn_into::<Element>().ok());
 
       skene_reactive::Effect::batch(|| {
+        let mut prevention = Prevention::default();
+
         while let Some(element) = current {
           if let Some(id) = node_id_of(&element) {
-            dispatch(id, &element, &event);
+            prevention.merge(dispatch(id, &element, &event));
+
+            if prevention.bubbling {
+              break;
+            }
           }
 
           current = element.parent_element();
+        }
+
+        if prevention.default {
+          event.prevent_default();
         }
       });
     }) as Box<dyn FnMut(web_sys::Event)>);
@@ -149,6 +161,27 @@ pub(super) fn run_handlers<F: ?Sized, P: Copy>(
   for handler in to_run {
     invoke(&handler, payload);
   }
+}
+
+/// Runs `node`'s handlers, folding their verdicts; every handler on the node runs.
+pub(super) fn run_preventable<F: ?Sized, P: Copy>(
+  handlers: &Handlers<F>,
+  node: NodeId,
+  payload: P,
+  invoke: impl Fn(&F, P) -> Option<Prevent>,
+) -> Prevention {
+  let mut prevention = Prevention::default();
+
+  let Some(to_run) = handlers.borrow().get(&node).cloned()
+  else {
+    return prevention;
+  };
+
+  for handler in to_run {
+    prevention.absorb(invoke(&handler, payload));
+  }
+
+  prevention
 }
 
 /// Stamps `element` with `node`'s id, so a delegated dispatch can resolve it.

@@ -1174,3 +1174,126 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
   // The mark sits inside the border, in the control's color.
   assert_eq!(colors[5 + 1].0, Some((255, 0, 0)));
 }
+
+/// A key handler's verdict suppresses the key's built-in response: a prevented arrow
+/// leaves the slider where it is, a prevented `Tab` leaves focus in place, and an
+/// unprevented key still gets its default.
+#[test]
+fn prevented_keys_skip_their_defaults() {
+  let (value, first, second) = with_driver(|| {
+    let volume = RwSignal::new(0.0f32);
+
+    tui::mount(|| {
+      Container::column()
+        .set_children((
+          Slider::new(0.0, 10.0)
+            .bind_value(volume)
+            .set_autofocus()
+            .handle_key_down(|event| {
+              (event.key == "ArrowRight" || event.key == "Tab").then_some(Prevent::All)
+            }),
+          Button::new().set_child(Text::new("next")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(14, 2);
+
+    tui::trigger_key("ArrowRight");
+
+    let after_prevented = volume.get_untracked();
+
+    tui::trigger_key("ArrowUp");
+
+    let first = tui::focused_node();
+
+    tui::trigger_key("Tab");
+
+    assert!((after_prevented - 0.0).abs() < f32::EPSILON);
+
+    (volume.get_untracked(), first, tui::focused_node())
+  });
+
+  assert!((value - 1.0).abs() < f32::EPSILON);
+  assert_eq!(first, second);
+}
+
+/// `Enter`'s default is the activation dispatch: preventing it in a key handler keeps
+/// the focused button's click handlers from running, while `Space` still activates.
+#[test]
+fn prevented_enter_skips_activation() {
+  let clicks = with_driver(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+
+    {
+      let clicks = Rc::clone(&clicks);
+
+      tui::mount(move || {
+        Button::new()
+          .set_autofocus()
+          .handle_click(move || clicks.set(clicks.get() + 1))
+          .handle_key_down(|event| (event.key == "Enter").then_some(Prevent::Default))
+          .set_child(Text::new("go"))
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(6, 1);
+
+    tui::trigger_key("Enter");
+    tui::trigger_key(" ");
+
+    clicks.get()
+  });
+
+  assert_eq!(clicks, 1);
+}
+
+/// A click handler's `Prevent::Bubbling` stops shallower handlers; `Prevent::Default`
+/// on the path keeps a checkbox from toggling while every handler still runs.
+#[test]
+fn click_verdicts_split_bubbling_from_default() {
+  let (inner_runs, outer_runs, checked) = with_driver(|| {
+    let inner_runs = Rc::new(Cell::new(0u32));
+    let outer_runs = Rc::new(Cell::new(0u32));
+    let on = RwSignal::new(false);
+
+    {
+      let inner_runs = Rc::clone(&inner_runs);
+      let outer_runs = Rc::clone(&outer_runs);
+
+      tui::mount(move || {
+        let inner_runs = Rc::clone(&inner_runs);
+        let outer_runs = Rc::clone(&outer_runs);
+
+        Container::new()
+          .handle_click(move || {
+            outer_runs.set(outer_runs.get() + 1);
+          })
+          .set_child(
+            Container::new()
+              .handle_click(move || {
+                inner_runs.set(inner_runs.get() + 1);
+
+                Prevent::All
+              })
+              .set_child(Checkbox::new().bind_checked(on)),
+          )
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(6, 1);
+
+    tui::trigger_mouse_click(0, 0);
+
+    (inner_runs.get(), outer_runs.get(), on.get_untracked())
+  });
+
+  assert_eq!(inner_runs, 1);
+  assert_eq!(outer_runs, 0);
+  assert!(!checked);
+}

@@ -6,7 +6,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{Animation, BoxStyle, Condition, KeyEvent, Transition};
+use skene_core::{Animation, BoxStyle, Condition, Transition};
 
 use crate::FocusHandle;
 
@@ -22,8 +22,7 @@ pub(crate) struct ControlBase {
   pub(crate) anchor: Option<crate::Anchor>,
   pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
+  pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
 }
 
 impl ControlBase {
@@ -74,8 +73,7 @@ pub(crate) struct ControlHandlers {
   anchor: Option<crate::Anchor>,
   focus: Option<Rc<dyn Fn()>>,
   blur: Option<Rc<dyn Fn()>>,
-  #[expect(clippy::type_complexity)]
-  key_down: Option<Rc<dyn Fn(&KeyEvent)>>,
+  key_down: Option<Rc<skene_core::KeyHandler>>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -204,8 +202,13 @@ macro_rules! control_surface {
 
       /// Sets the key-press handler.
       #[inline(always)]
-      pub fn handle_key_down(mut self, action: impl Fn(&skene_core::KeyEvent) + 'static) -> Self {
-        self.control.key_down_handler = Some(std::rc::Rc::new(action));
+      pub fn handle_key_down<R: skene_core::IntoPrevent>(
+        mut self,
+        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
+      ) -> Self {
+        self.control.key_down_handler = Some(std::rc::Rc::new(move |event| {
+          skene_core::IntoPrevent::into_prevent(action(event))
+        }));
 
         self
       }

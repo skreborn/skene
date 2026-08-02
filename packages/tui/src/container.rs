@@ -6,6 +6,7 @@ use skene_core::{
   Axis,
   Color,
   CrossAxisAlignment,
+  IntoPrevent,
   KeyEvent,
   Layout,
   MainAxisAlignment,
@@ -54,19 +55,15 @@ pub struct Container {
   main_axis_alignment: Option<Source<MainAxisAlignment>>,
   cross_axis_alignment: Option<Source<CrossAxisAlignment>>,
   variants: Vec<(Condition, BoxStyle)>,
-  click_handler: Option<Rc<dyn Fn()>>,
+  click_handler: Option<Rc<skene_core::ClickHandler>>,
   pointer_enter_handler: Option<Rc<dyn Fn()>>,
   pointer_leave_handler: Option<Rc<dyn Fn()>>,
   focus_handler: Option<Rc<dyn Fn()>>,
   blur_handler: Option<Rc<dyn Fn()>>,
-  #[expect(clippy::type_complexity)]
-  key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pointer_down_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  key_down_handler: Option<Rc<skene_core::KeyHandler>>,
+  pointer_down_handler: Option<Rc<crate::events::PointerHandler>>,
+  pointer_up_handler: Option<Rc<crate::events::PointerHandler>>,
+  pointer_move_handler: Option<Rc<crate::events::PointerHandler>>,
   #[expect(clippy::type_complexity)]
   scroll_handler: Option<Rc<dyn Fn(&ScrollEvent)>>,
   anchor: Option<crate::Anchor>,
@@ -398,11 +395,11 @@ impl Container {
     self
   }
 
-  /// Sets the click handler (`Enter` while focused, or a mouse click). A box with a
-  /// click handler becomes focusable.
+  /// Sets the click handler (`Enter` while focused, or a mouse click); its
+  /// [`Prevent`] verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.click_handler = Some(Rc::new(action));
+  pub fn handle_click<R: IntoPrevent>(mut self, action: impl Fn() -> R + 'static) -> Self {
+    self.click_handler = Some(Rc::new(move || action().into_prevent()));
 
     self
   }
@@ -440,34 +437,49 @@ impl Container {
   }
 
   /// Sets the key-press handler, run for keys pressed while the box or a descendant is
-  /// focused.
+  /// focused; its [`Prevent`] verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.key_down_handler = Some(Rc::new(action));
+  pub fn handle_key_down<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&KeyEvent) -> R + 'static,
+  ) -> Self {
+    self.key_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
-  /// Sets the pointer-down handler, run for presses on the box or within it.
+  /// Sets the pointer-down handler, run for presses on the box or within it; its
+  /// [`Prevent`] verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_down_handler = Some(Rc::new(action));
+  pub fn handle_pointer_down<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
-  /// Sets the pointer-up handler, run for releases on the box or within it.
+  /// Sets the pointer-up handler, run for releases on the box or within it; its
+  /// [`Prevent`] verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_up_handler = Some(Rc::new(action));
+  pub fn handle_pointer_up<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_up_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
-  /// Sets the pointer-move handler, run for moves over the box or within it.
+  /// Sets the pointer-move handler, run for moves over the box or within it; its
+  /// [`Prevent`] verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_move_handler = Some(Rc::new(action));
+  pub fn handle_pointer_move<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_move_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }

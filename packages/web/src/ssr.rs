@@ -16,7 +16,7 @@ mod task;
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{IntoView, KeyEvent, NodeId, PointerEvent, ScrollEvent, View};
+use skene_core::{IntoView, NodeId, ScrollEvent, View};
 
 use self::stylesheet::StyleStore;
 pub use self::task::{drive, set_render_deadline, sleep};
@@ -522,7 +522,7 @@ pub fn set_text(node: NodeId, text: &str) {
 /// Registers a click handler—inert on the server, where HTML is static; interactivity
 /// returns when the client hydrates.
 #[inline(always)]
-pub fn handle_click(_node: NodeId, _handler: Rc<dyn Fn()>) {}
+pub fn handle_click(_node: NodeId, _handler: Rc<skene_core::ClickHandler>) {}
 
 /// Registers a pointer-enter handler—inert on the server.
 #[inline(always)]
@@ -542,7 +542,7 @@ pub fn handle_blur(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
 /// Registers a key handler—inert on the server.
 #[inline(always)]
-pub fn handle_key_down(_node: NodeId, _handler: Rc<dyn Fn(&KeyEvent)>) {}
+pub fn handle_key_down(_node: NodeId, _handler: Rc<skene_core::KeyHandler>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
 pub fn handle_change(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
@@ -551,13 +551,13 @@ pub fn handle_change(_node: NodeId, _handler: Rc<dyn Fn(&str)>) {}
 pub fn handle_toggle(_node: NodeId, _handler: Rc<dyn Fn(bool)>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
-pub fn handle_pointer_down(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+pub fn handle_pointer_down(_node: NodeId, _handler: Rc<skene_core::PointerHandler>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
-pub fn handle_pointer_up(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+pub fn handle_pointer_up(_node: NodeId, _handler: Rc<skene_core::PointerHandler>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
-pub fn handle_pointer_move(_node: NodeId, _handler: Rc<dyn Fn(&PointerEvent)>) {}
+pub fn handle_pointer_move(_node: NodeId, _handler: Rc<skene_core::PointerHandler>) {}
 
 /// Inert on the server; interactivity is the client's after hydration.
 pub fn handle_scroll(_node: NodeId, _handler: Rc<dyn Fn(&ScrollEvent)>) {}

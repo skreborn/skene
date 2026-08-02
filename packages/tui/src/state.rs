@@ -8,7 +8,6 @@ use std::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
   Color,
-  KeyEvent,
   Layout,
   Modifiers,
   MouseCursor,
@@ -16,6 +15,8 @@ use skene_core::{
   Overflow,
   Placement,
   PointerButton,
+  Prevent,
+  Prevention,
 };
 
 use crate::{
@@ -154,16 +155,16 @@ pub(crate) struct State {
   pub(crate) nodes: RefCell<FxHashMap<NodeId, NodeRecord>>,
   pub(crate) taffy: RefCell<taffy::TaffyTree<()>>,
   next_id: Cell<u64>,
-  pub(crate) click: Handlers<dyn Fn()>,
+  pub(crate) click: Handlers<skene_core::ClickHandler>,
   pub(crate) focus: Handlers<dyn Fn()>,
   pub(crate) blur: Handlers<dyn Fn()>,
-  pub(crate) key_down: Handlers<dyn Fn(&KeyEvent)>,
+  pub(crate) key_down: Handlers<skene_core::KeyHandler>,
   pub(crate) input: Handlers<dyn Fn(&str)>,
   pub(crate) pointer_enter: Handlers<dyn Fn()>,
   pub(crate) pointer_leave: Handlers<dyn Fn()>,
-  pub(crate) pointer_down: Handlers<dyn Fn(&PointerEvent)>,
-  pub(crate) pointer_up: Handlers<dyn Fn(&PointerEvent)>,
-  pub(crate) pointer_move: Handlers<dyn Fn(&PointerEvent)>,
+  pub(crate) pointer_down: Handlers<crate::events::PointerHandler>,
+  pub(crate) pointer_up: Handlers<crate::events::PointerHandler>,
+  pub(crate) pointer_move: Handlers<crate::events::PointerHandler>,
   pub(crate) scroll: Handlers<dyn Fn(&ScrollEvent)>,
   pub(crate) toggle: Handlers<dyn Fn(bool)>,
   pub(crate) change_value: Handlers<dyn Fn(f32)>,
@@ -484,6 +485,27 @@ impl State {
     }
   }
 
+  /// Runs `node`'s handlers, folding their verdicts; every handler on the node runs.
+  pub(crate) fn run_preventable<F: ?Sized, P: Copy>(
+    handlers: &Handlers<F>,
+    node: NodeId,
+    payload: P,
+    invoke: impl Fn(&F, P) -> Option<Prevent>,
+  ) -> Prevention {
+    let mut prevention = Prevention::default();
+
+    let Some(to_run) = handlers.borrow().get(&node).cloned()
+    else {
+      return prevention;
+    };
+
+    for handler in to_run {
+      prevention.absorb(invoke(&handler, payload));
+    }
+
+    prevention
+  }
+
   /// Moves focus by `step` through the focusable nodes, firing blur and focus handlers.
   pub(crate) fn move_focus(&self, step: isize) {
     let order = self.focusable();
@@ -655,8 +677,8 @@ impl State {
   }
 
   /// Dispatches a mouse click at (`x`, `y`): focuses the deepest focusable node on the
-  /// hit path (or blurs when none is hit), then runs click handlers from the deepest
-  /// node up.
+  /// hit path (or blurs when none is hit), runs click handlers from the deepest node
+  /// up, then—unless a handler prevented the default—activates the focused control.
   pub(crate) fn mouse_click(&self, x: u16, y: u16) {
     if let Some((top, modal)) = self.topmost_open_overlay() {
       let mut path = Vec::new();
@@ -680,6 +702,22 @@ impl State {
 
     self.set_focused(target);
 
+    let mut prevention = Prevention::default();
+
+    for (node, _) in path.iter().rev() {
+      prevention.merge(Self::run_preventable(&self.click, *node, (), |run, ()| {
+        run()
+      }));
+
+      if prevention.bubbling {
+        break;
+      }
+    }
+
+    if prevention.default {
+      return;
+    }
+
     if let Some(target) = target {
       let origin = path
         .iter()
@@ -688,9 +726,25 @@ impl State {
 
       self.activate_control(target, Some(i64::from(x) - origin.0));
     }
+  }
 
-    for (node, _) in path.iter().rev() {
-      Self::run_handlers(&self.click, *node, (), |run, ()| run());
+  /// Dispatches an activation on `target` as `Enter`/`Space` do: click handlers bubble
+  /// from it, then—unless prevented—the control's own activation.
+  pub(crate) fn activate_dispatch(&self, target: NodeId) {
+    let mut prevention = Prevention::default();
+
+    for node in self.ancestors(target) {
+      prevention.merge(Self::run_preventable(&self.click, node, (), |run, ()| {
+        run()
+      }));
+
+      if prevention.bubbling {
+        break;
+      }
+    }
+
+    if !prevention.default {
+      self.activate_control(target, None);
     }
   }
 
@@ -926,15 +980,18 @@ impl State {
   }
 
   /// Runs one pointer registry's handlers along the hit path at (`x`, `y`), deepest
-  /// first, each receiving its own view-relative coordinates.
+  /// first, each receiving its own view-relative coordinates; the folded verdicts come
+  /// back so the caller can honor them.
   pub(crate) fn run_pointer(
     &self,
-    handlers: &Handlers<dyn Fn(&PointerEvent)>,
+    handlers: &Handlers<crate::events::PointerHandler>,
     x: u16,
     y: u16,
     button: Option<PointerButton>,
     modifiers: Modifiers,
-  ) {
+  ) -> Prevention {
+    let mut prevention = Prevention::default();
+
     for (node, (origin_x, origin_y)) in self.hit_test(x, y).iter().rev() {
       let event = PointerEvent {
         column: u32::from(x),
@@ -945,8 +1002,19 @@ impl State {
         modifiers,
       };
 
-      Self::run_handlers(handlers, *node, &event, |run, event| run(event));
+      prevention.merge(Self::run_preventable(
+        handlers,
+        *node,
+        &event,
+        |run, event| run(event),
+      ));
+
+      if prevention.bubbling {
+        break;
+      }
     }
+
+    prevention
   }
 
   /// Opens or closes an overlay, resolving its anchor at that moment.

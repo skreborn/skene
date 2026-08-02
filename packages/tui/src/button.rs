@@ -16,7 +16,7 @@ use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_st
 pub struct Button {
   base: ControlBase<crate::props::BoxStyle>,
   children: Children,
-  click_handler: Option<Rc<dyn Fn()>>,
+  click_handler: Option<Rc<skene_core::ClickHandler>>,
 }
 
 impl Button {
@@ -30,10 +30,16 @@ impl Button {
     }
   }
 
-  /// Sets the click handler (activation by mouse click, `Enter`, or `Space`).
+  /// Sets the click handler (activation by mouse click, `Enter`, or `Space`); its
+  /// [`Prevent`](skene_core::Prevent) verdict is honored per the dispatch contract.
   #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.click_handler = Some(Rc::new(action));
+  pub fn handle_click<R: skene_core::IntoPrevent>(
+    mut self,
+    action: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.click_handler = Some(Rc::new(move || {
+      skene_core::IntoPrevent::into_prevent(action())
+    }));
 
     self
   }

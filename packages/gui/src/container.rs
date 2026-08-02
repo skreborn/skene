@@ -11,6 +11,7 @@ use skene_core::{
   Color,
   Condition,
   CrossAxisAlignment,
+  IntoPrevent,
   KeyEvent,
   MainAxisAlignment,
   MouseCursor,
@@ -55,19 +56,15 @@ pub struct Container {
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
-  pub(crate) click_handler: Option<Rc<dyn Fn()>>,
+  pub(crate) click_handler: Option<Rc<skene_core::ClickHandler>>,
   pub(crate) pointer_enter_handler: Option<Rc<dyn Fn()>>,
   pub(crate) pointer_leave_handler: Option<Rc<dyn Fn()>>,
   pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) pointer_down_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) pointer_up_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) pointer_move_handler: Option<Rc<dyn Fn(&PointerEvent)>>,
+  pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
+  pub(crate) pointer_down_handler: Option<Rc<skene_core::PointerHandler>>,
+  pub(crate) pointer_up_handler: Option<Rc<skene_core::PointerHandler>>,
+  pub(crate) pointer_move_handler: Option<Rc<skene_core::PointerHandler>>,
   #[expect(clippy::type_complexity)]
   pub(crate) scroll_handler: Option<Rc<dyn Fn(&ScrollEvent)>>,
 }
@@ -412,8 +409,8 @@ impl Container {
 
   /// Sets the click handler.
   #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.click_handler = Some(Rc::new(action));
+  pub fn handle_click<R: IntoPrevent>(mut self, action: impl Fn() -> R + 'static) -> Self {
+    self.click_handler = Some(Rc::new(move || action().into_prevent()));
 
     self
   }
@@ -454,32 +451,44 @@ impl Container {
 
   /// Sets the key-press handler, run for keys pressed on the box or within it.
   #[inline(always)]
-  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
-    self.key_down_handler = Some(Rc::new(action));
+  pub fn handle_key_down<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&KeyEvent) -> R + 'static,
+  ) -> Self {
+    self.key_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
   /// Sets the pointer-down handler, run for presses on the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_down_handler = Some(Rc::new(action));
+  pub fn handle_pointer_down<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_down_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
   /// Sets the pointer-up handler, run for releases on the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_up_handler = Some(Rc::new(action));
+  pub fn handle_pointer_up<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_up_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }
 
   /// Sets the pointer-move handler, run for moves over the box or within it.
   #[inline(always)]
-  pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
-    self.pointer_move_handler = Some(Rc::new(action));
+  pub fn handle_pointer_move<R: IntoPrevent>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.pointer_move_handler = Some(Rc::new(move |event| action(event).into_prevent()));
 
     self
   }

@@ -175,12 +175,20 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   frame. Modals default to a half-transparent black scrim alpha-mixed over the frame
   (both colors of every cell, characters dimming through); a fully transparent
   backdrop disables it, for the shadow-on-the-dialog look instead.
-- **Event consumption contract**: dispatch is currently fixed-order with no way to
-  consume—an arrow key on a focused slider both nudges it and reaches `handle_key_down`
-  (and on the web the browser's own control behavior always runs). Determinism demands
-  an explicit contract: a documented dispatch order per event, and a consumption
-  mechanism (handlers preempting built-in control behavior, or the reverse) that works
-  the same on every facade. Design before more controls land.
+- **Event consumption contract—done.** Dispatch is one documented contract in core
+  (`skene_core::events`): user handlers first in fixed order (deepest-first along the
+  hit path; focused-then-ancestors for keys; every handler on one node always runs),
+  then the built-in default—`Tab` focus movement, `Enter`/`Space` and click activation,
+  control arrows, input editing, `Escape` dismissal—unless prevented. Handlers return
+  their verdict through `IntoPrevent`: `()` observes, `Prevent::Default` suppresses the
+  built-in but keeps bubbling, `Prevent::Bubbling` the reverse, `Prevent::All` both,
+  and `Option<Prevent>` for conditional flows; prevention only accumulates. The web
+  maps a prevented default to `preventDefault` (canceling the same natives: Enter
+  activation, checkbox toggling, text insertion) and stops its delegated walk on
+  prevented bubbling, so the facades agree bit-for-bit. `Tab` and `Escape` stopped
+  preempting handlers on the TUI; sliders rise on `Up`/`Right` like the platform range
+  input. Notifications (change, toggle, scroll, focus/blur) take no verdict; `Ctrl-C`
+  stays unconditional.
 - **Remaining:** text wrapping; caret positioning in inputs (edits append/pop only);
   selectable border character sets (rounded `╭╮╰╯`—the terminal's border radius—double,
   heavy, ASCII, custom).

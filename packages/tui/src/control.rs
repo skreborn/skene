@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{KeyEvent, NodeId};
+use skene_core::NodeId;
 
 use crate::{FocusHandle, props::Condition, with_state};
 
@@ -18,8 +18,7 @@ pub(crate) struct ControlBase<S> {
   pub(crate) anchor: Option<crate::Anchor>,
   pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
   pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
-  #[expect(clippy::type_complexity)]
-  pub(crate) key_down_handler: Option<Rc<dyn Fn(&KeyEvent)>>,
+  pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
 }
 
 impl<S: Default> ControlBase<S> {
@@ -122,10 +121,17 @@ macro_rules! control_surface {
         self
       }
 
-      /// Sets the key-press handler, run for keys pressed while the control is focused.
+      /// Sets the key-press handler, run for keys pressed while the control is
+      /// focused; its [`Prevent`](skene_core::Prevent) verdict is honored per the
+      /// dispatch contract.
       #[inline(always)]
-      pub fn handle_key_down(mut self, action: impl Fn(&skene_core::KeyEvent) + 'static) -> Self {
-        self.base.key_down_handler = Some(std::rc::Rc::new(action));
+      pub fn handle_key_down<R: skene_core::IntoPrevent>(
+        mut self,
+        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
+      ) -> Self {
+        self.base.key_down_handler = Some(std::rc::Rc::new(move |event| {
+          skene_core::IntoPrevent::into_prevent(action(event))
+        }));
 
         self
       }

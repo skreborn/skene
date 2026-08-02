@@ -29,6 +29,7 @@ use skene_core::{
   Placement,
   PointerButton,
   PointerEvent,
+  Prevention,
   ScrollEvent,
   View,
 };
@@ -223,7 +224,7 @@ impl State {
   /// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles
   /// to it), until the node is destroyed. Delivered by delegation: one listener on the
   /// mount root serves every node.
-  pub fn handle_click(&self, node: NodeId, handler: Rc<dyn Fn()>) {
+  pub fn handle_click(&self, node: NodeId, handler: Rc<skene_core::ClickHandler>) {
     self
       .events
       .click
@@ -238,7 +239,7 @@ impl State {
       self
         .events
         .ensure_root_listener(root, "click", move |id, _element, _event| {
-          events::run_handlers(&handlers, id, (), |run, ()| run());
+          events::run_preventable(&handlers, id, (), |run, ()| run())
         });
     });
   }
@@ -260,6 +261,8 @@ impl State {
         .events
         .ensure_root_listener(root, "focusin", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
+
+          Prevention::default()
         });
     });
   }
@@ -281,13 +284,15 @@ impl State {
         .events
         .ensure_root_listener(root, "focusout", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
+
+          Prevention::default()
         });
     });
   }
 
   /// Registers `handler` to run when a key is pressed on `node` or within it, until the
   /// node is destroyed.
-  pub fn handle_key_down(&self, node: NodeId, handler: Rc<dyn Fn(&KeyEvent)>) {
+  pub fn handle_key_down(&self, node: NodeId, handler: Rc<skene_core::KeyHandler>) {
     self
       .events
       .key_down
@@ -304,7 +309,7 @@ impl State {
         .ensure_root_listener(root, "keydown", move |id, _element, event| {
           let Some(keyboard) = event.dyn_ref::<KeyboardEvent>()
           else {
-            return;
+            return Prevention::default();
           };
 
           let key_event = KeyEvent {
@@ -317,7 +322,7 @@ impl State {
             },
           };
 
-          events::run_handlers(&handlers, id, &key_event, |run, key_event| run(key_event));
+          events::run_preventable(&handlers, id, &key_event, |run, key_event| run(key_event))
         });
     });
   }
@@ -344,19 +349,19 @@ impl State {
 
   /// Registers `handler` to run when a pointer button is pressed on `node` or within it,
   /// until the node is destroyed.
-  pub fn handle_pointer_down(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  pub fn handle_pointer_down(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
     self.delegate_pointer(node, handler, |events| &events.pointer_down, "pointerdown");
   }
 
   /// Registers `handler` to run when a pointer button is released on `node` or within
   /// it, until the node is destroyed.
-  pub fn handle_pointer_up(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  pub fn handle_pointer_up(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
     self.delegate_pointer(node, handler, |events| &events.pointer_up, "pointerup");
   }
 
   /// Registers `handler` to run when the pointer moves over `node` or within it, until
   /// the node is destroyed.
-  pub fn handle_pointer_move(&self, node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+  pub fn handle_pointer_move(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
     self.delegate_pointer(node, handler, |events| &events.pointer_move, "pointermove");
   }
 
@@ -365,8 +370,8 @@ impl State {
   fn delegate_pointer(
     &self,
     node: NodeId,
-    handler: Rc<dyn Fn(&PointerEvent)>,
-    registry: impl Fn(&events::Events) -> &events::Handlers<dyn Fn(&PointerEvent)>,
+    handler: Rc<skene_core::PointerHandler>,
+    registry: impl Fn(&events::Events) -> &events::Handlers<skene_core::PointerHandler>,
     event_name: &'static str,
   ) {
     registry(&self.events)
@@ -383,12 +388,12 @@ impl State {
         .ensure_root_listener(root, event_name, move |id, element, event| {
           let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
           else {
-            return;
+            return Prevention::default();
           };
 
           let payload = pointer_payload(pointer, element);
 
-          events::run_handlers(&handlers, id, &payload, |run, payload| run(payload));
+          events::run_preventable(&handlers, id, &payload, |run, payload| run(payload))
         });
     });
   }
@@ -455,10 +460,12 @@ impl State {
         .ensure_root_listener(root, "input", move |id, _element, event| {
           let Some(value) = element_value(event)
           else {
-            return;
+            return Prevention::default();
           };
 
           events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
+
+          Prevention::default()
         });
     });
   }
@@ -485,10 +492,12 @@ impl State {
             .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
             .map(|input| input.checked())
           else {
-            return;
+            return Prevention::default();
           };
 
           events::run_handlers(&handlers, id, checked, |run, checked| run(checked));
+
+          Prevention::default()
         });
     });
   }
@@ -1025,7 +1034,7 @@ pub fn set_text(node: NodeId, text: &str) {
 
 /// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles to
 /// it), until the node is destroyed.
-pub fn handle_click(node: NodeId, handler: Rc<dyn Fn()>) {
+pub fn handle_click(node: NodeId, handler: Rc<skene_core::ClickHandler>) {
   with_state(|state| state.handle_click(node, handler));
 }
 
@@ -1051,7 +1060,7 @@ pub fn handle_blur(node: NodeId, handler: Rc<dyn Fn()>) {
 
 /// Registers `handler` to run when a key is pressed on `node` or within it, until the
 /// node is destroyed.
-pub fn handle_key_down(node: NodeId, handler: Rc<dyn Fn(&KeyEvent)>) {
+pub fn handle_key_down(node: NodeId, handler: Rc<skene_core::KeyHandler>) {
   with_state(|state| state.handle_key_down(node, handler));
 }
 
@@ -1064,19 +1073,19 @@ pub fn handle_change(node: NodeId, handler: Rc<dyn Fn(&str)>) {
 
 /// Registers a delegated pointer-down handler on `node`; see
 /// [`State::handle_pointer_down`].
-pub fn handle_pointer_down(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+pub fn handle_pointer_down(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
   with_state(|state| state.handle_pointer_down(node, handler));
 }
 
 /// Registers a delegated pointer-up handler on `node`; see
 /// [`State::handle_pointer_up`].
-pub fn handle_pointer_up(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+pub fn handle_pointer_up(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
   with_state(|state| state.handle_pointer_up(node, handler));
 }
 
 /// Registers a delegated pointer-move handler on `node`; see
 /// [`State::handle_pointer_move`].
-pub fn handle_pointer_move(node: NodeId, handler: Rc<dyn Fn(&PointerEvent)>) {
+pub fn handle_pointer_move(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
   with_state(|state| state.handle_pointer_move(node, handler));
 }
 

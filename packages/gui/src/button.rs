@@ -20,7 +20,7 @@ use crate::{
 #[must_use]
 pub struct Button {
   children: Children,
-  click_handler: Option<Rc<dyn Fn()>>,
+  click_handler: Option<Rc<skene_core::ClickHandler>>,
   control: ControlBase,
 }
 
@@ -37,8 +37,13 @@ impl Button {
 
   /// Sets the click handler (activation by pointer, Enter, or Space).
   #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
-    self.click_handler = Some(Rc::new(action));
+  pub fn handle_click<R: skene_core::IntoPrevent>(
+    mut self,
+    action: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.click_handler = Some(Rc::new(move || {
+      skene_core::IntoPrevent::into_prevent(action())
+    }));
 
     self
   }

@@ -48,10 +48,11 @@ pub(crate) enum NodeKind {
     value: String,
     placeholder: Option<String>,
   },
-  /// A toggleable checkbox, rendered `[x]` or `[ ]`.
+  /// A toggleable checkbox, rendered as its checked or unchecked mark.
   Checkbox {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
+    marks: (char, char),
     checked: bool,
   },
   /// One choice in a radio group, rendered `(•)` or `( )`.
@@ -59,6 +60,7 @@ pub(crate) enum NodeKind {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
     group: String,
+    marks: (char, char),
     checked: bool,
   },
   /// A fixed-option selector, cycling in place.
@@ -66,12 +68,14 @@ pub(crate) enum NodeKind {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
     options: Vec<(String, String)>,
+    indicator: char,
     value: String,
   },
   /// A numeric slider on a horizontal track.
   Slider {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
+    glyphs: (char, char),
     min: f32,
     max: f32,
     step: f32,

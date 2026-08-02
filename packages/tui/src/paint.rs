@@ -176,17 +176,18 @@ fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, o
     let nodes = state.nodes.borrow();
 
     match nodes.get(&overlay).map(|record| &record.kind) {
-      Some(NodeKind::Overlay { backdrop, .. }) => backdrop.and_then(terminal_rgb),
+      Some(NodeKind::Overlay { backdrop, .. }) => *backdrop,
       _ => return,
     }
   };
 
   if let Some(color) = backdrop {
-    for cell in &mut buffer.cells {
-      *cell = TerminalCell {
-        background: Some(color),
-        ..TerminalCell::EMPTY
-      };
+    let [red, green, blue, alpha] = color.to_rgba();
+
+    if alpha > 0.0 {
+      for cell in &mut buffer.cells {
+        tint(cell, red, green, blue, alpha, environment.dark);
+      }
     }
   }
 
@@ -313,7 +314,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         let mut out = taffy::style::Style::default();
 
         apply_box_sizing(&mut out, &effective, record.in_stack);
-        size_control(&mut out, &effective, 3.0);
+        size_control(&mut out, &effective, 1.0);
         taffy.set_style(record.taffy, out).expect("style a control");
       }
       NodeKind::Select {
@@ -511,6 +512,7 @@ fn paint_node(
       NodeKind::Checkbox {
         style,
         variants,
+        marks,
         checked,
       } => {
         let effective = effective_box_style(style, variants, environment, interaction);
@@ -520,8 +522,8 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: effective.shadow,
-          text: if *checked { "[x]" } else { "[ ]" }.to_owned(),
+          shadow: None,
+          text: if *checked { marks.0 } else { marks.1 }.to_string(),
           dim: false,
           reverse: focused,
         }
@@ -529,6 +531,7 @@ fn paint_node(
       NodeKind::Radio {
         style,
         variants,
+        marks,
         checked,
         ..
       } => {
@@ -539,8 +542,8 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: effective.shadow,
-          text: if *checked { "(\u{2022})" } else { "( )" }.to_owned(),
+          shadow: None,
+          text: if *checked { marks.0 } else { marks.1 }.to_string(),
           dim: false,
           reverse: focused,
         }
@@ -549,6 +552,7 @@ fn paint_node(
         style,
         variants,
         options,
+        indicator,
         value,
       } => {
         let effective = effective_box_style(style, variants, environment, interaction);
@@ -562,8 +566,8 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: effective.shadow,
-          text: format!("{label} \u{25be}"),
+          shadow: None,
+          text: format!("{label} {indicator}"),
           dim: false,
           reverse: focused,
         }
@@ -571,6 +575,7 @@ fn paint_node(
       NodeKind::Slider {
         style,
         variants,
+        glyphs,
         min,
         max,
         value,
@@ -584,8 +589,8 @@ fn paint_node(
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
           }),
-          shadow: effective.shadow,
-          text: slider_track(inner, *min, *max, *value),
+          shadow: None,
+          text: slider_track(inner, *min, *max, *value, *glyphs),
           dim: false,
           reverse: focused,
         }
@@ -950,8 +955,8 @@ fn size_control(out: &mut taffy::style::Style, effective: &crate::props::BoxStyl
   }
 }
 
-/// A slider's track over `width` cells: `─` with the thumb `●` at the value's cell.
-fn slider_track(width: usize, min: f32, max: f32, value: f32) -> String {
+/// A slider's track over `width` cells, the thumb at the value's cell.
+fn slider_track(width: usize, min: f32, max: f32, value: f32, glyphs: (char, char)) -> String {
   if width == 0 {
     return String::new();
   }
@@ -972,14 +977,7 @@ fn slider_track(width: usize, min: f32, max: f32, value: f32) -> String {
   let thumb = (fraction * (width - 1) as f32).round() as usize;
 
   (0..width)
-    .map(|cell| {
-      if cell == thumb {
-        '\u{25cf}'
-      }
-      else {
-        '\u{2500}'
-      }
-    })
+    .map(|cell| if cell == thumb { glyphs.1 } else { glyphs.0 })
     .collect()
 }
 
@@ -1003,6 +1001,29 @@ fn draw_shadow(
     return;
   }
 
+  let (width, height) = (
+    isize::try_from(width).unwrap_or(0),
+    isize::try_from(height).unwrap_or(0),
+  );
+  let mut cast = |cell_x: isize, cell_y: isize| {
+    if let Some(cell) = buffer.cell_mut(cell_x, cell_y) {
+      tint(cell, red, green, blue, alpha, dark);
+    }
+  };
+
+  for row in 1..=height {
+    cast(x + width, y + row);
+  }
+
+  for column in 1..width {
+    cast(x + column, y + height);
+  }
+}
+
+/// Mixes a color into both of a cell's colors by `alpha`, an unset color mixing
+/// against the terminal default for the detected `dark` background.
+fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, dark: bool) {
+  let alpha = alpha.clamp(0.0, 1.0);
   let (foreground_base, background_base) = if dark {
     ((255, 255, 255), (0, 0, 0))
   }
@@ -1011,9 +1032,9 @@ fn draw_shadow(
   };
   let mix = |existing: Option<(u8, u8, u8)>, base: (u8, u8, u8)| -> (u8, u8, u8) {
     let (base_red, base_green, base_blue) = existing.unwrap_or(base);
-    let channel = |shadow: f32, beneath: u8| -> u8 {
+    let channel = |over: f32, beneath: u8| -> u8 {
       #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-      let mixed = (shadow.clamp(0.0, 1.0) * 255.0)
+      let mixed = (over.clamp(0.0, 1.0) * 255.0)
         .mul_add(alpha, f32::from(beneath) * (1.0 - alpha))
         .round() as u8;
 
@@ -1026,26 +1047,9 @@ fn draw_shadow(
       channel(blue, base_blue),
     )
   };
-  let (width, height) = (
-    isize::try_from(width).unwrap_or(0),
-    isize::try_from(height).unwrap_or(0),
-  );
-  let mut cast = |cell_x: isize, cell_y: isize| {
-    let dark_cell = buffer.cell_mut(cell_x, cell_y);
 
-    if let Some(cell) = dark_cell {
-      cell.foreground = Some(mix(cell.foreground, foreground_base));
-      cell.background = Some(mix(cell.background, background_base));
-    }
-  };
-
-  for row in 1..=height {
-    cast(x + width, y + row);
-  }
-
-  for column in 1..width {
-    cast(x + column, y + height);
-  }
+  cell.foreground = Some(mix(cell.foreground, foreground_base));
+  cell.background = Some(mix(cell.background, background_base));
 }
 
 /// Whether `row` must be rewritten: the previous frame is absent, differently sized, or
@@ -1084,17 +1088,10 @@ mod tests {
 
   #[test]
   fn slider_tracks_place_the_thumb() {
-    assert_eq!(
-      slider_track(5, 0.0, 4.0, 0.0),
-      "\u{25cf}\u{2500}\u{2500}\u{2500}\u{2500}"
-    );
-    assert_eq!(
-      slider_track(5, 0.0, 4.0, 2.0),
-      "\u{2500}\u{2500}\u{25cf}\u{2500}\u{2500}"
-    );
-    assert_eq!(
-      slider_track(5, 0.0, 4.0, 4.0),
-      "\u{2500}\u{2500}\u{2500}\u{2500}\u{25cf}"
-    );
+    let glyphs = ('-', '*');
+
+    assert_eq!(slider_track(5, 0.0, 4.0, 0.0, glyphs), "*----");
+    assert_eq!(slider_track(5, 0.0, 4.0, 2.0, glyphs), "--*--");
+    assert_eq!(slider_track(5, 0.0, 4.0, 4.0, glyphs), "----*");
   }
 }

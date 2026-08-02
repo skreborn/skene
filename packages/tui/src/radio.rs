@@ -4,9 +4,10 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 
-/// A radio button, rendered `(•)` or `( )`; radios sharing a group are exclusive.
+/// A radio button, rendered as a single mark (`◉`/`○` by default); radios sharing a
+/// group are exclusive.
 ///
 /// Checking one radio unchecks its group. `Enter`, `Space`, or a mouse click checks the
 /// focused radio; arrow keys move the check through the group.
@@ -18,6 +19,7 @@ pub struct Radio {
   group: String,
   value: String,
   checked: Option<Source<bool>>,
+  marks: Option<(char, char)>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
@@ -30,6 +32,7 @@ impl Radio {
       group: group.into(),
       value: value.into(),
       checked: None,
+      marks: None,
       toggle_handler: None,
     }
   }
@@ -46,6 +49,15 @@ impl Radio {
   #[inline(always)]
   pub fn derive_checked(mut self, checked: impl Fn() -> bool + 'static) -> Self {
     self.checked = Some(Source::Derived(Rc::new(checked)));
+
+    self
+  }
+
+  /// Sets the checked and unchecked marks, overriding any
+  /// [`ControlTheme`](crate::ControlTheme).
+  #[inline(always)]
+  pub fn set_marks(mut self, checked: char, unchecked: char) -> Self {
+    self.marks = Some((checked, unchecked));
 
     self
   }
@@ -89,6 +101,7 @@ impl View for Radio {
           style,
           variants,
           group: self.group,
+          marks: self.marks.unwrap_or_else(|| Glyphs::current().radio),
           checked: false,
         },
         taffy::style::Style::default(),

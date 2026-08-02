@@ -60,4 +60,13 @@ fn popup_serializes_as_a_manual_popover() {
   assert!(body.contains("menu"));
 
   assert!(rendered.styles().contains("margin:auto 0 0 auto;"));
+  assert!(!rendered.styles().contains("::backdrop"));
+}
+
+/// A modal ships a half-transparent black backdrop without being asked.
+#[test]
+fn modal_carries_a_default_backdrop() {
+  let rendered = render_to_string(|| Overlay::modal().set_child(Text::new("dialog content")));
+
+  assert!(rendered.styles().contains("::backdrop{background-color:"));
 }

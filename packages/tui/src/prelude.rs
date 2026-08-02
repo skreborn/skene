@@ -42,6 +42,7 @@ pub use crate::{
   Children,
   Condition,
   Container,
+  ControlTheme,
   DynamicView,
   ErrorBoundary,
   FocusHandle,

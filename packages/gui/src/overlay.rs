@@ -64,7 +64,7 @@ impl Overlay {
       modal,
       open: None,
       placement: Placement::Center,
-      backdrop: None,
+      backdrop: modal.then(|| Color::srgb(0.0, 0.0, 0.0).with_alpha(0.5)),
       style: BoxStyle::new(),
       variants: Vec::new(),
       anchor: None,
@@ -110,7 +110,8 @@ impl Overlay {
     self
   }
 
-  /// Sets the backdrop color painted over the app while a modal is open.
+  /// Sets the backdrop color painted over the app while a modal is open;
+  /// half-transparent black by default, and a fully transparent color disables it.
   #[inline(always)]
   pub fn set_backdrop(mut self, color: Color) -> Self {
     self.backdrop = Some(color);

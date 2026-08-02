@@ -48,6 +48,9 @@ pub struct BoxStyle {
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
   pub overflow: Option<Overflow>,
   /// The shadow color, cast one cell down and right and mixed into the colors beneath.
+  ///
+  /// Honored by the boxes that own their container—`Container`, `Button`, `Input`, and
+  /// overlays; the small controls ignore it, so wrap them in a `Container` instead.
   pub shadow: Option<Color>,
   /// The children's alignment along the main axis.
   pub main_axis_alignment: Option<MainAxisAlignment>,

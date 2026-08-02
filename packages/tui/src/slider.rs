@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 
 /// A slider over `min..=max`, rendered as a track with a thumb (`──●──`).
 ///
@@ -19,6 +19,7 @@ pub struct Slider {
   min: f32,
   max: f32,
   step: f32,
+  glyphs: Option<(char, char)>,
   value: Option<Source<f32>>,
   change_handler: Option<Rc<dyn Fn(f32)>>,
 }
@@ -32,6 +33,7 @@ impl Slider {
       min,
       max,
       step: 1.0,
+      glyphs: None,
       value: None,
       change_handler: None,
     }
@@ -41,6 +43,15 @@ impl Slider {
   #[inline(always)]
   pub fn set_step(mut self, step: f32) -> Self {
     self.step = step;
+
+    self
+  }
+
+  /// Sets the track and thumb glyphs, overriding any
+  /// [`ControlTheme`](crate::ControlTheme).
+  #[inline(always)]
+  pub fn set_track(mut self, track: char, thumb: char) -> Self {
+    self.glyphs = Some((track, thumb));
 
     self
   }
@@ -92,6 +103,7 @@ impl View for Slider {
         NodeKind::Slider {
           style,
           variants,
+          glyphs: self.glyphs.unwrap_or_else(|| Glyphs::current().slider),
           min: self.min,
           max: self.max,
           step: self.step,

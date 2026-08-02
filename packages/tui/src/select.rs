@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 
 /// A selector over fixed options, rendered as the current option's label.
 ///
@@ -17,6 +17,7 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 pub struct Select {
   base: ControlBase,
   options: Vec<(String, String)>,
+  indicator: Option<char>,
   value: Option<Source<String>>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
@@ -29,6 +30,7 @@ impl Select {
     Self {
       base: ControlBase::new(),
       options: Vec::new(),
+      indicator: None,
       value: None,
       change_handler: None,
     }
@@ -44,6 +46,15 @@ impl Select {
       .into_iter()
       .map(|(value, label)| (value.into(), label.into()))
       .collect();
+
+    self
+  }
+
+  /// Sets the indicator after the current label, overriding any
+  /// [`ControlTheme`](crate::ControlTheme).
+  #[inline(always)]
+  pub fn set_indicator(mut self, indicator: char) -> Self {
+    self.indicator = Some(indicator);
 
     self
   }
@@ -108,6 +119,9 @@ impl View for Select {
           style,
           variants,
           options: self.options,
+          indicator: self
+            .indicator
+            .unwrap_or_else(|| Glyphs::current().select_indicator),
           value: initial,
         },
         taffy::style::Style::default(),

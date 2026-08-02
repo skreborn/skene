@@ -4,9 +4,9 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 
-/// A checkbox, rendered `[x]` or `[ ]`.
+/// A checkbox, rendered as a single mark (`☑`/`☐` by default).
 ///
 /// The checked state flows both ways: [`derive_checked`](Self::derive_checked) (or
 /// [`set_checked`](Self::set_checked)) drives the mark, and
@@ -17,6 +17,7 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 pub struct Checkbox {
   base: ControlBase,
   checked: Option<Source<bool>>,
+  marks: Option<(char, char)>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
@@ -27,6 +28,7 @@ impl Checkbox {
     Self {
       base: ControlBase::new(),
       checked: None,
+      marks: None,
       toggle_handler: None,
     }
   }
@@ -43,6 +45,15 @@ impl Checkbox {
   #[inline(always)]
   pub fn derive_checked(mut self, checked: impl Fn() -> bool + 'static) -> Self {
     self.checked = Some(Source::Derived(Rc::new(checked)));
+
+    self
+  }
+
+  /// Sets the checked and unchecked marks, overriding any
+  /// [`ControlTheme`](crate::ControlTheme).
+  #[inline(always)]
+  pub fn set_marks(mut self, checked: char, unchecked: char) -> Self {
+    self.marks = Some((checked, unchecked));
 
     self
   }
@@ -85,6 +96,7 @@ impl View for Checkbox {
         NodeKind::Checkbox {
           style,
           variants,
+          marks: self.marks.unwrap_or_else(|| Glyphs::current().checkbox),
           checked: false,
         },
         taffy::style::Style::default(),

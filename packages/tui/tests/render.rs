@@ -533,7 +533,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
   assert!(closed.contains("base"));
   assert!(!closed.contains("dialog"));
   assert!(open_frame.contains("dialog"));
-  assert!(!open_frame.contains("base"));
+  assert!(open_frame.contains("base"));
   assert_eq!(blocked, 0);
   assert!(after_escape.contains("base"));
   assert!(!after_escape.contains("dialog"));
@@ -923,13 +923,13 @@ fn checkbox_toggles_by_key_and_click() {
 
     let checked = tui::render_to_text(6, 1);
 
-    tui::trigger_mouse_click(1, 0);
+    tui::trigger_mouse_click(0, 0);
 
     (unchecked, checked, on.get_untracked())
   });
 
-  assert!(unchecked.contains("[ ]"));
-  assert!(checked.contains("[x]"));
+  assert!(unchecked.contains('\u{2610}'));
+  assert!(checked.contains('\u{2611}'));
   assert!(!value);
 }
 
@@ -967,7 +967,7 @@ fn radio_group_moves_the_check() {
     frame
       .lines()
       .enumerate()
-      .filter(|(_, line)| line.contains('•'))
+      .filter(|(_, line)| line.contains('\u{25c9}'))
       .map(|(row, _)| row)
       .collect::<Vec<_>>()
   };
@@ -1075,4 +1075,75 @@ fn shadow_mixes_into_the_cells_beneath() {
   assert!(background(2, 1).0 < clean.0);
   assert_eq!(background(3, 1), clean);
   assert_eq!(background(1, 2), clean);
+}
+
+/// A control theme restyles the glyphs of the subtree, and a control's own setter wins
+/// over it.
+#[test]
+fn control_theme_restyles_glyphs() {
+  let frame = with_driver(|| {
+    tui::mount(|| {
+      ControlTheme::new(Container::column().set_children((
+        Checkbox::new().set_checked(true),
+        Checkbox::new().set_checked(true).set_marks('#', '.'),
+        Radio::new("g", "a").set_checked(true),
+      )))
+      .set_checkbox('X', 'O')
+      .set_radio('>', '<')
+      .into_any()
+      .build()
+    });
+
+    tui::render_to_text(6, 3)
+  });
+
+  let lines: Vec<&str> = frame.lines().collect();
+
+  assert_eq!(lines[0].trim_end(), "X");
+  assert_eq!(lines[1].trim_end(), "#");
+  assert_eq!(lines[2].trim_end(), ">");
+}
+
+/// A modal's default scrim dims the app beneath it, and a fully transparent backdrop
+/// disables the scrim entirely.
+#[test]
+fn modal_scrim_defaults_on_and_disables() {
+  let scrim = |backdrop: Option<Color>| {
+    with_driver(move || {
+      let open = RwSignal::new(false);
+
+      tui::mount(move || {
+        let modal = Overlay::modal().bind_open(open).set_child(Text::new("hi"));
+        let modal = match backdrop {
+          Some(color) => modal.set_backdrop(color),
+          None => modal,
+        };
+
+        Container::column()
+          .set_children((
+            Container::new()
+              .set_color(Color::srgb(1., 0., 0.))
+              .set_height(1),
+            modal,
+          ))
+          .into_any()
+          .build()
+      });
+
+      let before = tui::render_to_colors(6, 3);
+
+      open.set(true);
+
+      (before, tui::render_to_colors(6, 3))
+    })
+  };
+
+  let (before, dimmed) = scrim(None);
+
+  assert_eq!(before[0].1, Some((255, 0, 0)));
+  assert_eq!(dimmed[0].1, Some((128, 0, 0)));
+
+  let (bright_before, undimmed) = scrim(Some(Color::srgb(0., 0., 0.).with_alpha(0.)));
+
+  assert_eq!(bright_before[0].1, undimmed[0].1);
 }

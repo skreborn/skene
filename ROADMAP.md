@@ -146,12 +146,15 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   reaches it; `Enter` and `Space` activate it); focusability belongs to controls, never
   plain containers—a clickable box stays mouse-clickable but out of the tab order,
   exactly like the web.
-- **Controls—done.** `Checkbox` (`[x]`), `Radio` (`(•)`, group-exclusive, arrow keys
-  move the check), `Select` (current label shown, `Enter`/arrows cycle the options),
-  and `Slider` (`──●──` track; arrows nudge by step, a click jumps the thumb)—each on
-  the shared `ControlBase` + `control_surface!` builder surface (`Button` and `Input`
-  retrofitted onto it), with the same `bind_`/`derive_`/`handle_` vocabulary as the GUI
-  facade. Textarea still waits on caret positioning.
+- **Controls—done.** `Checkbox` (`☑`/`☐`), `Radio` (`◉`/`○`, group-exclusive, arrow
+  keys move the check), `Select` (current label plus indicator, `Enter`/arrows cycle
+  the options), and `Slider` (`──●──` track; arrows nudge by step, a click jumps the
+  thumb)—each on the shared `ControlBase` + `control_surface!` builder surface
+  (`Button` and `Input` retrofitted onto it), with the same
+  `bind_`/`derive_`/`handle_` vocabulary as the GUI facade. Every control glyph is a
+  single cell and configurable: `ControlTheme` restyles a subtree through the reactive
+  context (nested themes overlay), and each control's own `set_marks`/`set_indicator`/
+  `set_track` wins locally. Textarea still waits on caret positioning.
 - **Scroll—done.** `set_overflow` on the box vocabulary (taffy computes the scroll
   region); the wheel scrolls the innermost box that can still move, `PageUp`/`PageDown`
   the scrollable nearest the focus; children paint clipped and offset, with proportional
@@ -161,9 +164,19 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Shadows and the compositor—done.** `set_shadow` on the box vocabulary casts a
   one-cell band down and right, the color mixed by its alpha into both the foreground
   and the background beneath (unset colors mix against the detected light/dark
-  default); every layer already paints into the one internal cell buffer—which the
-  shadow mix reads—and the flush now rewrites only the rows that changed since the
-  previous frame.
+  default); honored by the boxes that own their container—`Container`, `Button`,
+  `Input`, overlays—while the small controls ignore it (wrap them instead). Every
+  layer already paints into the one internal cell buffer—which the shadow and scrim
+  mixes read—and the flush rewrites only the rows that changed since the previous
+  frame. Modals default to a half-transparent black scrim alpha-mixed over the frame
+  (both colors of every cell, characters dimming through); a fully transparent
+  backdrop disables it, for the shadow-on-the-dialog look instead.
+- **Event consumption contract**: dispatch is currently fixed-order with no way to
+  consume—an arrow key on a focused slider both nudges it and reaches `handle_key_down`
+  (and on the web the browser's own control behavior always runs). Determinism demands
+  an explicit contract: a documented dispatch order per event, and a consumption
+  mechanism (handlers preempting built-in control behavior, or the reverse) that works
+  the same on every facade. Design before more controls land.
 - **Remaining:** text wrapping; caret positioning in inputs (edits append/pop only);
   selectable border character sets (rounded `╭╮╰╯`—the terminal's border radius—double,
   heavy, ASCII, custom).

@@ -42,6 +42,7 @@ mod style;
 mod task;
 mod terminal;
 mod text;
+mod theme;
 mod virtual_list;
 
 use std::cell::RefCell;
@@ -89,6 +90,7 @@ pub use crate::{
   slider::Slider,
   task::spawn,
   text::Text,
+  theme::ControlTheme,
   virtual_list::VirtualList,
 };
 

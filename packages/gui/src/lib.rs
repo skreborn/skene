@@ -138,6 +138,14 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
   skene_core::dynamic::<GuiOps>(build)
 }
 
+/// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;
+/// see [`skene_core::transition`].
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::transition::<GuiOps>(build)
+}
+
 /// A view that renders nothing.
 #[cfg(target_arch = "wasm32")]
 #[inline(always)]

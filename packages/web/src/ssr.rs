@@ -19,7 +19,7 @@ use rustc_hash::FxHashMap;
 use skene_core::{IntoView, KeyEvent, NodeId, PointerEvent, ScrollEvent, View};
 
 use self::stylesheet::StyleStore;
-pub use self::task::{drive, sleep};
+pub use self::task::{drive, set_render_deadline, sleep};
 // The CSS declaration set is web-family shared; this leaf takes it in `set_style`.
 use crate::Declarations;
 
@@ -386,6 +386,9 @@ thread_local! {
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// Each critical resource's serializer, in creation order; drained once the render settles.
   static SOURCES: RefCell<Vec<crate::HydrationSource>> = const { RefCell::new(Vec::new()) };
+  /// Each tag-keyed resource's serializer; drained with [`SOURCES`], sorted by tag.
+  static TAGGED_SOURCES: RefCell<Vec<(String, crate::HydrationSource)>> =
+    const { RefCell::new(Vec::new()) };
   /// Each deferred boundary's node, mapped to a probe for whether its work has settled; consulted
   /// by the streaming walk to decide where to pause.
   static BOUNDARIES: RefCell<FxHashMap<NodeId, BoundarySettled>> = RefCell::new(FxHashMap::default());
@@ -429,6 +432,32 @@ pub fn adopt_next() -> Option<String> {
 /// Registers a critical resource's serializer, to be drained once the render settles.
 pub fn register_source(source: crate::HydrationSource) {
   SOURCES.with(|sources| sources.borrow_mut().push(source));
+}
+
+/// The server never adopts: it produces the state the client adopts.
+#[inline(always)]
+#[must_use]
+pub fn adopt_tagged(_tag: &str) -> Option<String> {
+  None
+}
+
+/// Registers a tag-keyed resource's serializer, to be drained once the render settles.
+///
+/// # Panics
+///
+/// Panics when `tag` is already registered in this render: tags pair one server value
+/// with one client resource, so a duplicate has no well-defined owner.
+pub fn register_tagged_source(tag: &str, source: crate::HydrationSource) {
+  TAGGED_SOURCES.with(|sources| {
+    let mut sources = sources.borrow_mut();
+
+    assert!(
+      sources.iter().all(|(existing, _)| existing != tag),
+      "duplicate resource tag: {tag}",
+    );
+
+    sources.push((tag.to_owned(), source));
+  });
 }
 
 /// This leaf renders on the server, so a client-only load skips its round here.
@@ -670,6 +699,7 @@ where
   STATE.with(|state| *state.borrow_mut() = Some(State::new()));
   STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
   SOURCES.with(|sources| sources.borrow_mut().clear());
+  TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   // A `Deferred` still registers its boundary here, though this path serializes the fully-settled
   // tree and never consults it; clear so registrations do not accumulate across renders.
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
@@ -694,6 +724,7 @@ where
   task::clear();
 
   SOURCES.with(|sources| sources.borrow_mut().clear());
+  TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   STATE.with(|state| *state.borrow_mut() = None);
 
@@ -717,6 +748,7 @@ where
   STATE.with(|state| *state.borrow_mut() = Some(State::new()));
   STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
   SOURCES.with(|sources| sources.borrow_mut().clear());
+  TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
 
   let scope = skene_core::root_scope().create_child();
@@ -766,6 +798,7 @@ where
   task::clear();
 
   SOURCES.with(|sources| sources.borrow_mut().clear());
+  TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   STATE.with(|state| *state.borrow_mut() = None);
 
@@ -776,8 +809,17 @@ where
 fn collect_hydration_state() -> String {
   let values: Vec<Option<String>> =
     SOURCES.with(|sources| sources.borrow().iter().map(|source| source()).collect());
+  let mut tagged: Vec<(String, String)> = TAGGED_SOURCES.with(|sources| {
+    sources
+      .borrow()
+      .iter()
+      .filter_map(|(tag, source)| source().map(|value| (tag.clone(), value)))
+      .collect()
+  });
 
-  crate::hydration::encode_state(&values)
+  tagged.sort();
+
+  crate::hydration::encode_state(&values, &tagged)
 }
 
 fn escape_text(text: &str, out: &mut String) {

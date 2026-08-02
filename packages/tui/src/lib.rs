@@ -146,6 +146,13 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
   skene_core::dynamic::<TuiOps>(build)
 }
 
+/// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;
+/// see [`skene_core::transition`].
+#[inline(always)]
+pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::transition::<TuiOps>(build)
+}
+
 /// A view that renders nothing.
 #[inline(always)]
 #[must_use]

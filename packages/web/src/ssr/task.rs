@@ -7,7 +7,7 @@
 //! render settles on its *loaded* tree rather than a placeholder.
 
 use std::{
-  cell::RefCell,
+  cell::{Cell, RefCell},
   future::Future,
   pin::Pin,
   sync::Arc,
@@ -22,9 +22,22 @@ use wasi::{clocks::monotonic_clock, io::poll::Pollable};
 /// waterfall) fails the render rather than hanging the runner forever.
 const MAX_ROUNDS: u32 = 1024;
 
+/// The default time budget a render may spend settling before it is cut off.
+const DEFAULT_DEADLINE: Duration = Duration::from_secs(10);
+
 thread_local! {
   static EXECUTOR: RefCell<Executor> = RefCell::new(Executor::new());
   static REACTOR: RefCell<Reactor> = const { RefCell::new(Reactor::new()) };
+  static BUDGET: Cell<Duration> = const { Cell::new(DEFAULT_DEADLINE) };
+}
+
+/// Sets the time budget every following render may spend settling its async work.
+///
+/// A render that exceeds it stops waiting, reports what failed to settle, and
+/// serializes the tree as it stands—placeholders included—rather than hanging its
+/// caller. Ten seconds by default.
+pub fn set_render_deadline(budget: Duration) {
+  BUDGET.with(|current| current.set(budget));
 }
 
 /// The set of live tasks and the ids ready to be polled.
@@ -70,17 +83,25 @@ impl Reactor {
     }
   }
 
-  /// Blocks the runner on the outstanding operations until at least one is ready, waking its
-  /// task; returns whether there was anything to wait on.
-  fn block(&mut self) -> bool {
+  /// Blocks the runner on the outstanding operations until at least one is ready—or the
+  /// deadline instant passes—waking the ready tasks; returns whether there was anything
+  /// to wait on.
+  fn block(&mut self, deadline: u64) -> bool {
     if self.waiters.is_empty() {
       return false;
     }
 
-    let pollables: Vec<&Pollable> = self.waiters.iter().map(|(pollable, _)| pollable).collect();
+    let cutoff = monotonic_clock::subscribe_instant(deadline);
+    let mut pollables: Vec<&Pollable> = self.waiters.iter().map(|(pollable, _)| pollable).collect();
+
+    pollables.push(&cutoff);
+
     let mut ready = wasi::io::poll::poll(&pollables);
 
     drop(pollables);
+
+    // The cutoff's own index is not a waiter; passing the deadline wakes nothing.
+    ready.retain(|index| (*index as usize) < self.waiters.len());
 
     // Remove highest-index first so earlier removals do not shift the later ones.
     ready.sort_unstable_by(|a, b| b.cmp(a));
@@ -175,8 +196,18 @@ pub(super) fn stabilize() {
 /// on the next thing it needs. Like [`stabilize`] it also returns once nothing is ready and
 /// nothing is outstanding, or after [`MAX_ROUNDS`].
 pub(super) fn stabilize_until(done: impl Fn() -> bool) {
+  let budget = BUDGET.with(Cell::get);
+  let deadline =
+    monotonic_clock::now().saturating_add(u64::try_from(budget.as_nanos()).unwrap_or(u64::MAX));
+
   for _ in 0..MAX_ROUNDS {
     if done() {
+      return;
+    }
+
+    if monotonic_clock::now() >= deadline {
+      report_unsettled("its deadline", budget);
+
       return;
     }
 
@@ -184,7 +215,7 @@ pub(super) fn stabilize_until(done: impl Fn() -> bool) {
 
     if ready.is_empty() {
       // Nothing synchronously ready: block on any outstanding host operations, else settle.
-      if REACTOR.with(|reactor| reactor.borrow_mut().block()) {
+      if REACTOR.with(|reactor| reactor.borrow_mut().block(deadline)) {
         continue;
       }
 
@@ -207,6 +238,20 @@ pub(super) fn stabilize_until(done: impl Fn() -> bool) {
       }
     }
   }
+
+  report_unsettled("its polling bound", BUDGET.with(Cell::get));
+}
+
+/// Reports a render cut off before its async work settled: what stopped it and what is
+/// still alive. The render serializes as it stands—placeholders included.
+fn report_unsettled(cutoff: &str, budget: Duration) {
+  let tasks = EXECUTOR.with(|executor| executor.borrow().tasks.len());
+  let waiting = REACTOR.with(|reactor| reactor.borrow().waiters.len());
+
+  tracing::error!(
+    "render hit {cutoff} (budget {budget:?}) before settling: \
+     {tasks} task(s) alive, {waiting} host operation(s) outstanding",
+  );
 }
 
 /// Drops every task and outstanding operation, readying the executor for the next render.

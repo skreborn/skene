@@ -863,3 +863,47 @@ fn error_boundary_presents_and_clears_reports() {
   assert!(restored.contains("CONTENT"));
   assert!(!restored.contains("failed"));
 }
+
+/// A transitional subtree holds the previous content while the next rebuild's resource
+/// is pending, and swaps only once it settles.
+#[test]
+fn transition_holds_previous_content_until_settled() {
+  let (first, held, swapped) = with_driver(|| {
+    let route = RwSignal::new(1u32);
+
+    tui::mount(|| {
+      DynamicView::transitional(move || {
+        let page = route.get();
+        let value = Resource::new(move || async move { page * 10 });
+
+        DynamicView::new(move || match value.get() {
+          None => Text::new("hold").into_any(),
+          Some(value) => Text::new(format!("page {value}")).into_any(),
+        })
+      })
+      .into_any()
+      .build()
+    });
+
+    let _ = tui::pump_tasks();
+
+    let first = tui::render_to_text(12, 2);
+
+    route.set(2);
+
+    let held = tui::render_to_text(12, 2);
+
+    let _ = tui::pump_tasks();
+
+    (first, held, tui::render_to_text(12, 2))
+  });
+
+  assert!(first.contains("page 10"));
+
+  assert!(held.contains("page 10"));
+  assert!(!held.contains("page 20"));
+  assert!(!held.contains("hold"));
+
+  assert!(swapped.contains("page 20"));
+  assert!(!swapped.contains("page 10"));
+}

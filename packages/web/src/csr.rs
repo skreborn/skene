@@ -877,6 +877,8 @@ thread_local! {
   static ADOPTED: RefCell<Vec<Option<String>>> = const { RefCell::new(Vec::new()) };
   /// The next resource's creation-order slot, matched against [`ADOPTED`].
   static NEXT_SLOT: Cell<usize> = const { Cell::new(0) };
+  /// The server-rendered tag-keyed values to adopt during hydration.
+  static TAGGED: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Advances to the next resource slot, returning its adopted server value if hydrating.
@@ -892,6 +894,21 @@ pub fn adopt_next() -> Option<String> {
 /// A no-op on the client: it adopts server state rather than producing it.
 #[inline(always)]
 pub fn register_source(_source: crate::HydrationSource) {}
+
+/// Takes the adopted server value registered under `tag`, if hydrating left one.
+#[must_use]
+pub fn adopt_tagged(tag: &str) -> Option<String> {
+  TAGGED.with(|tagged| {
+    let mut tagged = tagged.borrow_mut();
+    let index = tagged.iter().position(|(existing, _)| existing == tag)?;
+
+    Some(tagged.remove(index).1)
+  })
+}
+
+/// A no-op on the client: it adopts server state rather than producing it.
+#[inline(always)]
+pub fn register_tagged_source(_tag: &str, _source: crate::HydrationSource) {}
 
 /// The browser is a client, not the server.
 #[inline(always)]
@@ -1192,7 +1209,10 @@ where
   });
 
   NEXT_SLOT.set(0);
-  ADOPTED.with(|adopted| *adopted.borrow_mut() = crate::hydration::decode_state(state));
+  let (ordered, tagged) = crate::hydration::decode_state(state);
+
+  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
+  TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
 
   with_state(State::seed_hydration);
 

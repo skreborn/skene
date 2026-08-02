@@ -14,6 +14,7 @@ mod source;
 mod style;
 mod suspense;
 mod task;
+mod transition;
 mod tree;
 mod values;
 mod view;
@@ -51,6 +52,7 @@ pub use source::Source;
 pub use style::{Animation, Condition, Easing, StyleProperty, Transition};
 pub use suspense::Suspense;
 pub use task::scope_bound;
+pub use transition::transition;
 pub use tree::TreeOps;
 pub use values::{
   Axis,

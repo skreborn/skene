@@ -82,3 +82,24 @@ fn error_boundary_serializes_reported_fallback() {
   assert!(body.contains("failed: broken"));
   assert!(!body.contains("CONTENT"));
 }
+
+/// A transitional rebuild counts toward the enclosing boundary, so a stream settles
+/// through it to the resolved content.
+#[test]
+fn transition_settles_through_the_stream() {
+  let stream = skene_gui::render_to_stream(|| {
+    skene_gui::DynamicView::transitional(|| {
+      let value = Resource::new(|| async { 9u32 });
+
+      DynamicView::new(move || match value.get() {
+        None => Text::new("hold").into_any(),
+        Some(value) => Text::new(format!("landed {value}")).into_any(),
+      })
+    })
+  });
+
+  let body: String = stream.into_chunks().concat();
+
+  assert!(body.contains("landed 9"));
+  assert!(!body.contains("hold"));
+}

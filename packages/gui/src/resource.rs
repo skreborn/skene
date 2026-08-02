@@ -72,7 +72,8 @@ impl<T: 'static> Resource<T> {
   /// again. Resources are matched across the boundary by creation order, so the client must
   /// create its resources in the same order the server did—which it does when it builds the
   /// same view. When no server value is present (a plain client render, or one the server did
-  /// not settle), it loads normally.
+  /// not settle), it loads normally. [`tagged`](Self::tagged) pairs the two sides
+  /// explicitly instead.
   pub fn new<F>(load: impl Fn() -> F + 'static) -> Self
   where
     F: Future<Output = T> + 'static,
@@ -100,6 +101,50 @@ impl<T: 'static> Resource<T> {
           .and_then(|value| serde_json::to_string(value).ok())
       })
     }));
+
+    resource
+  }
+
+  /// Starts loading, adopting and serializing by `tag` rather than creation order.
+  ///
+  /// Order-keyed matching (see [`new`](Self::new)) requires the client to create its
+  /// resources in exactly the server's order; a tag makes the pairing explicit, so a build
+  /// that diverges between server and client never adopts another resource's value. Tags
+  /// must be unique among a render's tagged resources.
+  ///
+  /// # Panics
+  ///
+  /// A server render panics when two live resources register the same tag.
+  pub fn tagged<F>(tag: &'static str, load: impl Fn() -> F + 'static) -> Self
+  where
+    F: Future<Output = T> + 'static,
+    T: Serialize + DeserializeOwned,
+  {
+    let resource = Self::with_loader(Rc::new(move || Box::pin(load())));
+
+    if let Some(state) = driver::adopt_tagged(tag)
+      && let Ok(adopted) = serde_json::from_str::<T>(&state)
+    {
+      resource.value.set(Some(adopted));
+
+      return resource;
+    }
+
+    resource.load();
+
+    // On the server this registers the value for serialization once the render settles; on the
+    // client it is a no-op.
+    let value = resource.value;
+    driver::register_tagged_source(
+      tag,
+      Box::new(move || {
+        value.with(|value| {
+          value
+            .as_ref()
+            .and_then(|value| serde_json::to_string(value).ok())
+        })
+      }),
+    );
 
     resource
   }

@@ -166,6 +166,7 @@ pub fn dynamic<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 #[must_use]
 pub struct DynamicView<Ops> {
   build: Box<dyn Fn() -> NodeId>,
+  transitional: bool,
   ops: std::marker::PhantomData<Ops>,
 }
 
@@ -175,6 +176,19 @@ impl<Ops> DynamicView<Ops> {
   pub fn new<V: View>(build: impl Fn() -> V + 'static) -> Self {
     Self {
       build: Box::new(move || build().build()),
+      transitional: false,
+      ops: std::marker::PhantomData,
+    }
+  }
+
+  /// Creates a transitional subtree: each rebuild takes over only once its async work
+  /// settles, the previous content holding the screen until then; see
+  /// [`transition`](crate::transition).
+  #[inline(always)]
+  pub fn transitional<V: View>(build: impl Fn() -> V + 'static) -> Self {
+    Self {
+      build: Box::new(move || build().build()),
+      transitional: true,
       ops: std::marker::PhantomData,
     }
   }
@@ -182,7 +196,12 @@ impl<Ops> DynamicView<Ops> {
 
 impl<Ops: TreeOps> View for DynamicView<Ops> {
   fn build(self) -> NodeId {
-    dynamic::<Ops>(self.build)
+    if self.transitional {
+      crate::transition::<Ops>(self.build)
+    }
+    else {
+      dynamic::<Ops>(self.build)
+    }
   }
 }
 

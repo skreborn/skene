@@ -191,7 +191,8 @@ fn page_assembles_a_full_document() {
   );
 
   assert!(
-    document.contains("<script id=\"skene-state\" type=\"application/json\">[\"\\\"Ada\\\"\"]"),
+    document
+      .contains("<script id=\"skene-state\" type=\"application/json\">[[\"\\\"Ada\\\"\"],[]]"),
     "the state is embedded in the script: {document}",
   );
 
@@ -228,7 +229,7 @@ fn resources_serialize_their_state() {
 
   assert_eq!(
     page.state(),
-    r#"["\"Ada\"","\"Bo\""]"#,
+    r#"[["\"Ada\"","\"Bo\""],[]]"#,
     "both values are JSON-encoded in creation order",
   );
 }
@@ -245,7 +246,7 @@ fn a_client_resource_is_not_serialized() {
 
   assert_eq!(
     page.state(),
-    "[]",
+    "[[],[]]",
     "no serializable resources means empty state"
   );
 }
@@ -385,4 +386,47 @@ fn a_groups_style_cascades_to_its_children() {
     "the group and its inheriting child share the color class: {}",
     page.body(),
   );
+}
+
+/// A render that cannot settle within its deadline returns with placeholders instead
+/// of hanging its caller.
+#[test]
+fn render_deadline_cuts_off_unsettled_work() {
+  web::set_render_deadline(Duration::from_millis(20));
+
+  let rendered = render_to_string(|| {
+    let value = Resource::client(|| async {
+      web::sleep(Duration::from_secs(3600)).await;
+
+      1u32
+    });
+
+    DynamicView::new(move || match value.get() {
+      None => Text::new("still waiting").into_any(),
+      Some(value) => Text::new(format!("done {value}")).into_any(),
+    })
+  });
+
+  web::set_render_deadline(Duration::from_secs(10));
+
+  assert!(rendered.body().contains("still waiting"));
+  assert!(!rendered.body().contains("done"));
+}
+
+/// A tagged resource serializes its settled value under its tag, decoupled from
+/// creation order.
+#[test]
+fn tagged_resource_serializes_under_its_tag() {
+  let rendered = render_to_string(|| {
+    let value = Resource::tagged("answer", || async { 41u32 });
+
+    DynamicView::new(move || match value.get() {
+      None => Text::new("hold").into_any(),
+      Some(value) => Text::new(format!("tagged {value}")).into_any(),
+    })
+  });
+
+  assert!(rendered.body().contains("tagged 41"));
+  assert!(rendered.state().contains("answer"));
+  assert!(rendered.state().contains("41"));
 }

@@ -267,24 +267,30 @@ sink are just different sinks for the same paths.)
     carried in values stays the default—this exists only for errors with no render
     site of their own, and panics are never caught. Kept experimentally: if
     per-resource matching keeps covering real apps, delete it.
-  - **Transition semantics**: keep the previous content visible while the next
-    subtree's boundary settles (route changes foremost), instead of dropping to
-    placeholders.
+  - **Transition semantics—done.** `DynamicView::transitional` (core `transition`):
+    each rebuild runs under a fresh boundary and stays detached until it settles, the
+    previous content holding the screen; the latest rebuild wins; an unsettled rebuild
+    counts toward the enclosing boundary, so a server render and the stream settle
+    through it; a `Suspense` covers the first load, which has nothing to hold.
   - **TUI async—done.** The terminal facade gained a local executor pumped from the
     event loop (wakers may fire from any thread through a shared readiness queue; the
     futures stay on the terminal thread), `spawn` over the spine's shared
     `scope_bound` wrapper—which now also backs the GUI facade's `spawn`—and a
     `Resource` mirroring the GUI one minus the server crossing, with a `pump_tasks`
     test seam.
-  - **Resource adoption is order-keyed**: a server/client divergence adopts the wrong
-    value silently when the types line up. Offer explicitly keyed resources (unique
-    tags, as snapshots use) and document the ordering contract.
-  - **No render deadline on the server**: a hung host operation blocks `stabilize`—and
-    a streamed chunk—indefinitely, and the `MAX_ROUNDS` cap on self-waking tasks
-    returns *silently*, serializing placeholders with no diagnostic. Add a
-    configurable deadline and a loud report of what failed to settle.
-  - **Hydration mismatch is fatal**: the loud panic is right for development;
-    production should be able to rebuild the mismatched subtree client-side instead.
+  - **Resource adoption—keyed, done.** `Resource::tagged("tag", loader)` adopts and
+    serializes by tag—unique per render; a duplicate panics the server render—and the
+    hydration state carries the order-keyed entries plus the tag-keyed ones sorted by
+    tag. Order-keyed `new` stays the default, its contract documented.
+  - **Render deadline—done.** `web::set_render_deadline` bounds every render's
+    settling (ten seconds by default): passing it—or the polling bound—stops the wait,
+    logs what stayed alive (tasks, outstanding host operations), and serializes the
+    tree as it stands, placeholders included; the reactor's block wakes at the
+    deadline instead of waiting forever.
+  - **Hydration mismatch—resolved.** The audit's "fatal" claim was wrong: a miss
+    always built a fresh element. The diagnostics are now split—an absent marker
+    builds fresh quietly (legitimate for server-detached subtrees), a tag disagreement
+    and never-adopted leftovers stay loud—which is the production story.
 - **All basic controls**: checkbox, select, textarea, radio, slider, and friends—
   unstyled by default with full keyboard and ARIA behavior; a styled set may ship as a
   separate optional package.

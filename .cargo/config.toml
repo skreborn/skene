@@ -1,10 +1,8 @@
 [alias]
 skene = "run --package skene-cli --release --"
 
-# Run the CSR web platform's `wasm-bindgen-test` integration tests in a headless browser.
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"
 
-# Run the SSR web platform's tests under a WASI runtime (wasmtime on PATH).
 [target.wasm32-wasip2]
 runner = "wasmtime"

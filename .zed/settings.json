@@ -3,19 +3,11 @@
   "lsp": {
     "rust-analyzer": {
       "initialization_options": {
-        "check": { "command": "clippy" },
-        "rustfmt": {
-          "extraArgs": ["+nightly"],
+        "check": {
+          "command": "clippy",
+          "extraArgs": ["--all-targets"],
         },
-        // Analyze for the web (wasm32) target so rust-analyzer sees the
-        // `#[cfg(target_arch = "wasm32")]` realization in `skene-gui`/`skene-web` rather
-        // than treating it as dead. One rust-analyzer instance analyzes for exactly one
-        // target: while working on the terminal side (`skene-tui`), delete this override
-        // so the host target lights that half up instead. For another backend later,
-        // point this at its triple (e.g. "aarch64-apple-ios").
-        "cargo": {
-          "target": "wasm32-unknown-unknown",
-        },
+        "rustfmt": { "extraArgs": ["+nightly"] },
       },
     },
   },

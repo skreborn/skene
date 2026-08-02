@@ -758,3 +758,108 @@ fn virtual_list_windows_its_items() {
   assert!(max_built < 520);
   assert!(min_built_after_500 > 0);
 }
+
+/// A suspense view shows its fallback until the resource inside settles, then swaps to
+/// the content; refetching does not re-suspend (the swap follows the boundary's tasks).
+#[test]
+fn suspense_swaps_fallback_for_loaded_content() {
+  let (loading, loaded) = with_driver(|| {
+    tui::mount(|| {
+      Suspense::new(|| {
+        let value = Resource::new(|| async { 42u32 });
+
+        DynamicView::new(move || match value.get() {
+          None => Text::new("hold").into_any(),
+          Some(value) => Text::new(format!("value {value}")).into_any(),
+        })
+      })
+      .set_fallback(|| Text::new("LOADING"))
+      .into_any()
+      .build()
+    });
+
+    let loading = tui::render_to_text(12, 2);
+
+    let _ = tui::pump_tasks();
+
+    (loading, tui::render_to_text(12, 2))
+  });
+
+  assert!(loading.contains("LOADING"));
+  assert!(!loading.contains("value"));
+
+  assert!(loaded.contains("value 42"));
+  assert!(!loaded.contains("LOADING"));
+}
+
+/// A spawned task is scope-bound: content torn down before its task lands never runs
+/// the continuation.
+#[test]
+fn tasks_end_with_their_scope() {
+  let landed = Rc::new(Cell::new(false));
+  let seen = Rc::clone(&landed);
+  with_driver(move || {
+    let show = RwSignal::new(true);
+
+    tui::mount(|| {
+      DynamicView::new(move || {
+        if show.get() {
+          let landed = Rc::clone(&landed);
+
+          tui::spawn(async move { landed.set(true) });
+
+          Text::new("on").into_any()
+        }
+        else {
+          Text::new("off").into_any()
+        }
+      })
+      .into_any()
+      .build()
+    });
+
+    show.set(false);
+    let _ = tui::pump_tasks();
+  });
+
+  assert!(!seen.get());
+}
+
+/// An error boundary swaps to its fallback when a captured handle reports, and clearing
+/// restores the content as it was.
+#[test]
+fn error_boundary_presents_and_clears_reports() {
+  let handle = Rc::new(Cell::new(None::<Errors>));
+  let grabbed = Rc::clone(&handle);
+  let (before, failed, restored) = with_driver(move || {
+    tui::mount(|| {
+      ErrorBoundary::new(move || {
+        grabbed.set(Errors::current());
+
+        Text::new("CONTENT")
+      })
+      .set_fallback(|errors| Text::new(errors.with(|errors| format!("failed: {}", errors[0]))))
+      .into_any()
+      .build()
+    });
+
+    let before = tui::render_to_text(30, 2);
+    let errors = handle.get().expect("a boundary handle");
+
+    errors.report(std::io::Error::other("boom"));
+
+    let failed = tui::render_to_text(30, 2);
+
+    errors.clear();
+
+    (before, failed, tui::render_to_text(30, 2))
+  });
+
+  assert!(before.contains("CONTENT"));
+
+  assert!(failed.contains("failed: boom"));
+  assert!(!failed.contains("CONTENT"));
+
+  assert!(restored.contains("CONTENT"));
+  assert!(!restored.contains("failed"));
+}

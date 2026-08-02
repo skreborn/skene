@@ -39,10 +39,11 @@ impl Boundary {
     self.pending.update(|pending| *pending -= 1);
   }
 
-  /// Whether all the boundary's work has settled. Does not track.
+  /// Whether all the boundary's work has settled. Tracks, so a reactive reader—a
+  /// suspense swap, a derived placeholder—re-runs as work starts and finishes.
   #[must_use]
   pub fn is_settled(self) -> bool {
-    self.pending.with_untracked(|pending| *pending == 0)
+    self.pending.with(|pending| *pending == 0)
   }
 }
 

@@ -106,6 +106,10 @@ impl skene_core::TreeOps for GuiOps {
 
 /// A container's children.
 pub type Children = skene_core::Children<GuiOps>;
+/// A suspense view over the active driver's tree; see [`skene_core::Suspense`].
+pub type Suspense = skene_core::Suspense<GuiOps>;
+/// An error boundary over the active driver's tree; see [`skene_core::ErrorBoundary`].
+pub type ErrorBoundary = skene_core::ErrorBoundary<GuiOps>;
 /// A reactive subtree.
 #[cfg(target_arch = "wasm32")]
 pub type DynamicView = skene_core::DynamicView<GuiOps>;

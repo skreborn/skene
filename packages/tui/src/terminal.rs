@@ -108,6 +108,8 @@ where
   .expect("enter the alternate screen");
 
   loop {
+    crate::task::pump();
+
     let quit = with_state(|state| {
       if state.title_dirty.replace(false) {
         emit_title(state.title.borrow().as_deref().unwrap_or(""));

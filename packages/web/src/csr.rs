@@ -681,8 +681,9 @@ impl State {
 
   /// The DOM element for a freshly built node `id`: during hydration the server element whose
   /// marker matches `id` is adopted (and its marker stripped); otherwise a fresh `tag` element
-  /// is created. A hydration lookup that misses, or finds a different tag, is a mismatch—it is
-  /// logged and a fresh element is created in the divergent node's place.
+  /// is created. A marker the serialized page lacks builds fresh quietly—a subtree the server
+  /// built detached (a suspense fallback) never serializes—while a tag disagreement is a loud
+  /// mismatch, built fresh in the divergent node's place.
   fn element_for(&self, id: NodeId, tag: &str) -> Element {
     let candidate = match self.hydration.borrow_mut().as_mut() {
       Some(markers) => Some(markers.remove(&id.value())),
@@ -697,9 +698,18 @@ impl State {
 
         element
       }
-      Some(_) => {
+      Some(Some(element)) => {
         tracing::error!(
-          "hydration mismatch: no server <{tag}> for node {}",
+          "hydration mismatch: server rendered <{}> where the client builds <{tag}> (node {})",
+          element.tag_name().to_lowercase(),
+          id.value()
+        );
+
+        self.document.create_element(tag).expect("create element")
+      }
+      Some(None) => {
+        tracing::debug!(
+          "no serialized <{tag}> for node {}; building fresh",
           id.value()
         );
 
@@ -741,9 +751,19 @@ impl State {
     *self.hydration.borrow_mut() = Some(map);
   }
 
-  /// Ends hydration: later builds create fresh nodes and attach them to the DOM.
+  /// Ends hydration: later builds create fresh nodes and attach them to the DOM. Server
+  /// elements the client never built are a loud mismatch—they linger in the document
+  /// unmanaged.
   fn finish_hydration(&self) {
-    *self.hydration.borrow_mut() = None;
+    if let Some(markers) = self.hydration.borrow_mut().take()
+      && !markers.is_empty()
+    {
+      tracing::error!(
+        "hydration mismatch: {} server element(s) were never adopted",
+        markers.len()
+      );
+    }
+
     self.adopted.borrow_mut().clear();
   }
 

@@ -3,6 +3,7 @@
 mod boundary;
 mod children;
 mod condition;
+mod errors;
 mod events;
 mod node;
 mod props;
@@ -11,6 +12,8 @@ mod reorder;
 mod runtime;
 mod source;
 mod style;
+mod suspense;
+mod task;
 mod tree;
 mod values;
 mod view;
@@ -19,6 +22,7 @@ mod virtualize;
 pub use boundary::Boundary;
 pub use children::{Children, HasChildren, IntoChildren};
 pub use condition::{Composable, ConditionShape};
+pub use errors::{ErrorBoundary, Errors};
 pub use events::{KeyEvent, Modifiers, PointerButton, PointerEvent, ScrollEvent};
 pub use node::NodeId;
 pub use props::{
@@ -45,6 +49,8 @@ pub use reorder::Reorder;
 pub use runtime::{reset_root_scope, root_scope};
 pub use source::Source;
 pub use style::{Animation, Condition, Easing, StyleProperty, Transition};
+pub use suspense::Suspense;
+pub use task::scope_bound;
 pub use tree::TreeOps;
 pub use values::{
   Axis,

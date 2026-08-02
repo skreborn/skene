@@ -30,9 +30,11 @@ mod overlay;
 mod paint;
 mod props;
 mod realize;
+mod resource;
 mod routing;
 mod state;
 mod style;
+mod task;
 mod terminal;
 mod text;
 mod virtual_list;
@@ -41,6 +43,7 @@ use std::cell::RefCell;
 
 pub use skene_core::{
   self as core,
+  Errors,
   HasChildren,
   IntoView,
   KeyEvent,
@@ -73,10 +76,17 @@ pub use crate::{
   input::Input,
   overlay::{Anchor, Overlay},
   props::{BoxStyle, Condition, RunStyle},
+  resource::Resource,
   routing::install_router,
+  task::spawn,
   text::Text,
   virtual_list::VirtualList,
 };
+
+/// A suspense view over the terminal tree; see [`skene_core::Suspense`].
+pub type Suspense = skene_core::Suspense<TuiOps>;
+/// An error boundary over the terminal tree; see [`skene_core::ErrorBoundary`].
+pub type ErrorBoundary = skene_core::ErrorBoundary<TuiOps>;
 
 /// Spacing on the four edges of a box, in cells.
 pub type Inset = skene_core::Inset<u32>;
@@ -190,8 +200,17 @@ pub fn install() {
 pub fn uninstall() {
   skene_reactive::Runtime::reset();
   skene_core::reset_root_scope();
+  task::clear();
 
   STATE.with(|state| *state.borrow_mut() = None);
+}
+
+/// Polls every ready task, as the interactive loop does between events; `true` when any
+/// ran. For a headless test driving async work.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn pump_tasks() -> bool {
+  task::pump()
 }
 
 /// Builds `view` under the installed root, returning its node.

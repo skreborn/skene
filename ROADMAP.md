@@ -252,20 +252,30 @@ sink are just different sinks for the same paths.)
   `Resource` keeps failure in the value (`Result` payloads); hydration mismatches are
   loud; a trapped server render surfaces as the runner's `Err`. The gaps, each its own
   work item:
-  - **Client suspense view**: `Boundary::is_settled` reads untracked, so nothing can
-    reactively swap a fallback today; add a tracking read and a `Suspense` view
-    (fallback until the subtree's tasks settle) on the client—and on the TUI once it
-    has tasks.
-  - **ErrorBoundary**: a view collecting carried `Err` values from its subtree
-    (fallback receives the errors, a handle retries). Panics stay fatal on wasm (no
-    unwinding)—the boundary is for carried errors, never caught panics.
+  - **Client suspense—done.** `Boundary::is_settled` now tracks, and a shared
+    `Suspense` view lives once in core, aliased by both facades: the content builds
+    eagerly under a fresh boundary (its resources and tasks start right away), the
+    fallback holds the screen while that boundary is pending, and the whole subtree
+    counts as one pending unit toward an enclosing boundary—so a server render and
+    the stream settle through it to the content. Hydration treats a marker the page
+    lacks as a quiet fresh build (a detached fallback is legitimate); tag
+    disagreements and never-adopted server elements stay loud.
+  - **ErrorBoundary—done, on probation.** A deliberately thin `Errors` handle in
+    `Context`, mirroring `Boundary`: captured at build, reported into from handlers
+    and tasks, cleared to restore the content as it was; the `ErrorBoundary` view's
+    fallback receives the same handle and rebuilds as the held errors change. Failure
+    carried in values stays the default—this exists only for errors with no render
+    site of their own, and panics are never caught. Kept experimentally: if
+    per-resource matching keeps covering real apps, delete it.
   - **Transition semantics**: keep the previous content visible while the next
     subtree's boundary settles (route changes foremost), instead of dropping to
     placeholders.
-  - **TUI async story**: the terminal loop has no executor—`spawn`/`Resource`/
-    `Boundary` are absent from that facade. Pump a local executor from the event loop
-    (filling the same `drive` seam the web leaves fill) and host `spawn`/`Resource`
-    once for both facades.
+  - **TUI async—done.** The terminal facade gained a local executor pumped from the
+    event loop (wakers may fire from any thread through a shared readiness queue; the
+    futures stay on the terminal thread), `spawn` over the spine's shared
+    `scope_bound` wrapper—which now also backs the GUI facade's `spawn`—and a
+    `Resource` mirroring the GUI one minus the server crossing, with a `pump_tasks`
+    test seam.
   - **Resource adoption is order-keyed**: a server/client divergence adopts the wrong
     value silently when the types line up. Offer explicitly keyed resources (unique
     tags, as snapshots use) and document the ordering contract.

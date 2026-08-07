@@ -17,8 +17,9 @@ API kept as-is (`RwSignal`/`Memo`/`Effect`/`Scope`/`Context`, sync/local storage
   `FxHashMap<Id, Entity>`; all hashing on rustc-hash; dispose unlinks from the parent's
   children set (fixed unbounded growth under child churn). Criterion benches: creation
   −40%, reads −44%, write-through-effects −30%, memo chains −24%.
-- **Remaining:** a true generational arena (needs an `Id` allocation redesign across the
-  local and sync runtimes); implicit batch around event dispatch (lands with phase 4).
+- **Remaining:** folded into the reactive engine rewrite (backlog): the true generational
+  arena and the `Id` allocation redesign. The implicit batch around event dispatch landed
+  with phase 4.
 
 ## Phase 2—The typed vocabulary, the crate split, realize-once views ✅
 
@@ -201,6 +202,16 @@ stays true: **URI paths on all platforms**—`Route::parse`/`to_path` speak URL 
 everywhere; the browser History API, the server request path, and the TUI's in-memory
 sink are just different sinks for the same paths.)
 
+- **Reactive engine rewrite**: replace the floem-forked engine with a clean slate.
+  Same capabilities—signals, memos, effects, scopes, context, batching, the sync/local
+  storage split, stores, tagged snapshots—but designed around our own divergences (eager
+  staleness marking, the single entity map, non-reentrant flushing) instead of patching
+  them into an inherited shape, and speaking industry-standard reactive names and
+  mechanics throughout, dropping floem's idiosyncrasies. Folds in phase 1's leftovers:
+  the true generational arena and the `Id` allocation redesign across both runtimes.
+  Standing constraints carry over: signal identities stable across two runs of the same
+  binary, serializability opt-in (the snapshot contract), the resettable UI-thread
+  designation for test harnesses.
 - **HTTP client** as a separate crate (`skene-http`), built on the public seams
   (`spawn`, `Resource`) exactly as a third-party client would be—same footing is the
   point. A WebSocket sibling follows the same rule.

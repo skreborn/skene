@@ -6,16 +6,16 @@ pub(crate) fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
   Container::column()
-    .set_main_axis_alignment(MainAxisAlignment::Center)
-    .set_cross_axis_alignment(CrossAxisAlignment::Center)
+    .set_justify_content(JustifyContent::Center)
+    .set_align_items(AlignItems::Center)
     .set_color(Color::srgb(0.08, 0.08, 0.1))
     .set_child(card(count))
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {
   Container::column()
-    .set_cross_axis_alignment(CrossAxisAlignment::Center)
-    .set_spacing(1)
+    .set_align_items(AlignItems::Center)
+    .set_gap(1)
     .set_min_width(24)
     .set_padding(Inset::symmetric(4, 1))
     .set_color(Color::srgb(0.13, 0.13, 0.16))
@@ -23,7 +23,7 @@ fn card(count: Signal<u64>) -> impl IntoView {
     .set_children((
       Text::new("COUNTER").set_bold(true),
       Text::derive(move || count.get().to_string()).set_color(Color::srgb(0.8, 0.9, 0.8)),
-      Container::row().set_spacing(2).set_children((
+      Container::row().set_gap(2).set_children((
         button("-", move || {
           count.update(|value| *value = value.saturating_sub(1));
         }),

@@ -1,7 +1,9 @@
-mod alignment;
 mod axis;
 mod border;
 mod color;
+mod dimension;
+mod flex;
+mod grid;
 mod inset;
 mod layout;
 mod mouse_cursor;
@@ -12,10 +14,12 @@ mod rect;
 mod role;
 mod size;
 
-pub use alignment::*;
 pub use axis::*;
 pub use border::*;
 pub use color::*;
+pub use dimension::*;
+pub use flex::*;
+pub use grid::*;
 pub use inset::*;
 pub use layout::*;
 pub use mouse_cursor::*;

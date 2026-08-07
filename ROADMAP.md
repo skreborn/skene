@@ -2,8 +2,8 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: to be chosen—the reactive engine rewrite
-landed; the taffy layout vocabulary (phase 3 remainder) is the leading candidate.**
+last—not a current priority. **Current focus: the recording driver (phase 2
+remainder), then TUI text wrapping; the taffy layout vocabulary landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -58,9 +58,16 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   browser sink is one `<style>` element per class. **Gate met:** SSR output is
   responsive, hoverable and animated with zero JS (`web_style.rs`), and the snapshot
   pins it.
+- **Taffy layout vocabulary—done.** The box props speak taffy's style model on both
+  facades, scalar-generic in core (`Dimension` lengths—fixed, percent, auto—margin,
+  position + inset, aspect ratio, flex wrap/grow/shrink/basis, the
+  `justify_content`/`align_items`/`align_content`/`align_self` alignment family, grid
+  track templates with `fr`/`minmax`/`fit-content`, auto tracks and flow, line/span
+  placements, and `gap` split by axis). The invented `MainAxisAlignment`/
+  `CrossAxisAlignment`/`spacing` names are gone; `Container::grid(n)` is now sugar for
+  an `fr`-repeat template. The web compiles it all to CSS; the TUI feeds taffy
+  directly, in cells.
 - **Remaining:**
-  - Layout props adopt taffy's style types as the vocabulary (with the wider flex/grid
-    property set).
   - Streaming style deltas: a `Deferred` chunk whose content interns a brand-new class
     carries that rule in its chunk.
   - Hydration adopts the server's `<style>` rules instead of rebuilding duplicates.

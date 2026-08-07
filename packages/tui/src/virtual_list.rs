@@ -83,6 +83,7 @@ impl View for VirtualList {
 
     let offset = Signal::new(0u32);
     let viewport = Signal::new(0u32);
+    let taffy = box_taffy_style(Layout::Block, &style, false);
     let outer = with_state(|state| {
       let outer = state.insert_node(
         NodeKind::Box {
@@ -90,7 +91,7 @@ impl View for VirtualList {
           style,
           variants: self.variants,
         },
-        box_taffy_style(Layout::Block, &style, false),
+        taffy,
       );
 
       state

@@ -63,13 +63,13 @@ impl skene_core::HasChildren<crate::TuiOps> for Button {
 
 impl View for Button {
   fn build(mut self) -> NodeId {
-    let style = self.base.style;
+    let style = self.base.style.clone();
     let variants = std::mem::take(&mut self.base.variants);
     let node = with_state(|state| {
       let node = state.insert_node(
         NodeKind::Box {
           layout: Layout::Block,
-          style,
+          style: style.clone(),
           variants,
         },
         box_taffy_style(Layout::Block, &style, false),

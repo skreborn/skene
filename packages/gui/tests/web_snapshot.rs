@@ -17,12 +17,12 @@ use skene_gui::{
   TextTheme,
   View,
   core::{
+    AlignItems,
     Animation,
     BoxStyle,
     Color,
     Condition,
-    CrossAxisAlignment,
-    MainAxisAlignment,
+    JustifyContent,
     MouseCursor,
     StyleProperty,
     Transition,
@@ -37,9 +37,9 @@ use skene_gui::{
 fn representative_tree() -> impl skene_gui::IntoView {
   TextTheme::new(
     Container::column()
-      .set_main_axis_alignment(MainAxisAlignment::Center)
-      .set_cross_axis_alignment(CrossAxisAlignment::Stretch)
-      .set_spacing(12.)
+      .set_justify_content(JustifyContent::Center)
+      .set_align_items(AlignItems::Stretch)
+      .set_gap(12.)
       .set_padding(Inset::symmetric(16., 24.))
       .set_color(Color::srgb(0.1, 0.2, 0.3))
       .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
@@ -60,7 +60,7 @@ fn representative_tree() -> impl skene_gui::IntoView {
           .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
           .handle_click(|| {})
           .set_child(Text::new("Press")),
-        Container::grid(3).set_spacing(4.).set_children((
+        Container::grid(3).set_gap(4.).set_children((
           Text::new("a"),
           Text::new("b"),
           Text::new("c"),
@@ -113,6 +113,6 @@ fn representative_render_is_stable() {
 }
 
 /// The interned rule block (the styles after the reset), sorted by class name.
-const SNAPSHOT_RULES: &str = ".skene-1e21c5dd{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-2c954cc1{display:grid;}.skene-34816c7a{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);font-weight:500;}.skene-363f1d58{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-3ebd287d{cursor:pointer;display:flex;flex-direction:row;height:40px;width:120px;}.skene-4a0198c2{display:flow-root;height:10px;width:10px;}.skene-5f645ac1{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-688fd045{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-6e356e0f{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;font-weight:500;}.skene-7757becd{display:flow-root;padding:8px 8px 8px 8px;}.skene-b88e6449{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-bc803f39{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:flow-root;transition:width 0.2s ease 0s;width:50px;}.skene-bc803f39:hover{width:60px;}@media (max-width: 480px){.skene-bc803f39{width:40px;}}.skene-e074310a{display:grid;gap:4px;grid-template-columns:repeat(3, 1fr);}.skene-e80573af{align-items:stretch;background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;display:flex;flex-direction:column;gap:12px;justify-content:center;max-height:800px;min-width:200px;padding:24px 16px 24px 16px;}.skene-e97c44ab{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}</style>";
+const SNAPSHOT_RULES: &str = ".skene-161d4dec{align-items:stretch;background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;column-gap:12px;display:flex;flex-direction:column;justify-content:center;max-height:800px;min-width:200px;padding:24px 16px 24px 16px;row-gap:12px;}.skene-1e21c5dd{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-2c954cc1{display:grid;}.skene-2e87257c{column-gap:4px;display:grid;grid-template-columns:1fr 1fr 1fr;row-gap:4px;}.skene-34816c7a{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);font-weight:500;}.skene-363f1d58{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-3ebd287d{cursor:pointer;display:flex;flex-direction:row;height:40px;width:120px;}.skene-4a0198c2{display:flow-root;height:10px;width:10px;}.skene-5f645ac1{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-688fd045{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-6e356e0f{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;font-weight:500;}.skene-7757becd{display:flow-root;padding:8px 8px 8px 8px;}.skene-b88e6449{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-bc803f39{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:flow-root;transition:width 0.2s ease 0s;width:50px;}.skene-bc803f39:hover{width:60px;}@media (max-width: 480px){.skene-bc803f39{width:40px;}}.skene-e97c44ab{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}</style>";
 
-const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-e80573af\"><span data-h=\"2\" class=\"skene-b88e6449\">Title &amp; &lt;escaped&gt;</span><a data-h=\"3\" href=\"https://example.com/?a=1&amp;b=2\" class=\"skene-6e356e0f\">linked</a><button data-h=\"4\" type=\"button\" class=\"skene-3ebd287d\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><span data-h=\"5\" class=\"skene-688fd045\">Press</span></button><div data-h=\"6\" class=\"skene-e074310a\"><span data-h=\"7\" class=\"skene-688fd045\">a</span><span data-h=\"8\" class=\"skene-688fd045\">b</span><span data-h=\"9\" class=\"skene-688fd045\">c</span></div><div data-h=\"10\" class=\"skene-2c954cc1\"><span data-h=\"11\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"12\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"13\"><span data-h=\"14\" class=\"skene-1e21c5dd\">plain </span><span data-h=\"15\" class=\"skene-363f1d58\"><span data-h=\"16\" class=\"skene-363f1d58\">in </span><span data-h=\"17\" class=\"skene-e97c44ab\">group</span></span><span data-h=\"18\" class=\"skene-5f645ac1\"><div data-h=\"19\" class=\"skene-4a0198c2\"></div></span><a data-h=\"20\" href=\"/rel\" class=\"skene-34816c7a\"> tail</a></div><div data-h=\"21\" class=\"skene-7757becd\"></div><div data-h=\"22\" class=\"skene-7757becd\"></div><div data-h=\"23\" class=\"skene-bc803f39\"></div><div data-h=\"24\"></div></div>";
+const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-161d4dec\"><span data-h=\"2\" class=\"skene-b88e6449\">Title &amp; &lt;escaped&gt;</span><a data-h=\"3\" href=\"https://example.com/?a=1&amp;b=2\" class=\"skene-6e356e0f\">linked</a><button data-h=\"4\" type=\"button\" class=\"skene-3ebd287d\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><span data-h=\"5\" class=\"skene-688fd045\">Press</span></button><div data-h=\"6\" class=\"skene-2e87257c\"><span data-h=\"7\" class=\"skene-688fd045\">a</span><span data-h=\"8\" class=\"skene-688fd045\">b</span><span data-h=\"9\" class=\"skene-688fd045\">c</span></div><div data-h=\"10\" class=\"skene-2c954cc1\"><span data-h=\"11\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"12\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"13\"><span data-h=\"14\" class=\"skene-1e21c5dd\">plain </span><span data-h=\"15\" class=\"skene-363f1d58\"><span data-h=\"16\" class=\"skene-363f1d58\">in </span><span data-h=\"17\" class=\"skene-e97c44ab\">group</span></span><span data-h=\"18\" class=\"skene-5f645ac1\"><div data-h=\"19\" class=\"skene-4a0198c2\"></div></span><a data-h=\"20\" href=\"/rel\" class=\"skene-34816c7a\"> tail</a></div><div data-h=\"21\" class=\"skene-7757becd\"></div><div data-h=\"22\" class=\"skene-7757becd\"></div><div data-h=\"23\" class=\"skene-bc803f39\"></div><div data-h=\"24\"></div></div>";

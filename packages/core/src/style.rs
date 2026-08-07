@@ -88,8 +88,14 @@ pub enum StyleProperty {
   MaxWidth,
   /// The maximum height.
   MaxHeight,
+  /// The width-to-height ratio.
+  AspectRatio,
+  /// The margin.
+  Margin,
   /// The padding.
   Padding,
+  /// The positioned offset.
+  Inset,
   /// The background color.
   Background,
   /// The border color.
@@ -99,7 +105,11 @@ pub enum StyleProperty {
   /// The corner radius.
   BorderRadius,
   /// The gap between children.
-  Spacing,
+  Gap,
+  /// The initial main-axis size as a flex item.
+  FlexBasis,
+  /// The share of the flex line's free space.
+  FlexGrow,
   /// The text color.
   TextColor,
   /// The font size.

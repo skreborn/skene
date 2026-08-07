@@ -138,10 +138,14 @@ emits one CSS rule per conjunction (`@media` wrapping, pseudo-classes suffixing)
 the same sharing shape as `TreeOps`—never feature-gated variants, which cargo's additive
 feature unification would break in any build containing both facades.
 
-- **Layout** will adopt taffy's style model as the vocabulary (re-exported/aliased):
-  flexbox, grid, block—defined once by the library that implements it everywhere,
-  rendered to CSS text on the web. The framework invents no layout system. (Pending; the
-  current `Layout` enum is the seed.)
+- **Layout** speaks taffy's style model as the vocabulary: flexbox (direction, wrap,
+  grow/shrink/basis), grid (track templates with `fr`/`minmax`/`fit-content`, auto
+  tracks and flow, line/span placements), block, and the shared alignment family
+  (`justify_content`/`align_items`/`align_content`/`align_self` and friends), with
+  lengths as `Dimension` (fixed, percent, auto) plus margin, position and inset. The
+  types are mirrored in core, scalar-generic so the GUI facade instantiates logical
+  pixels and the TUI cells; the web renders them to CSS text, the terminal feeds taffy
+  directly. The framework invents no layout system.
 - **Decoration and text** are skene's typed properties (background, border, radius,
   cursor, text color/size/weight, …), growing as views need them.
 - **Passthrough** keeps the vocabulary open: a per-family extension (web: raw CSS

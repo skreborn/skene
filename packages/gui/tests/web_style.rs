@@ -7,7 +7,25 @@ use skene_gui::{
   Container,
   HasChildren,
   Text,
-  core::{Animation, BoxStyle, Condition, Easing, Overflow, RunStyle, StyleProperty, Transition},
+  core::{
+    AlignItems,
+    Animation,
+    BoxStyle,
+    Condition,
+    Dimension,
+    Easing,
+    FlexWrap,
+    GridPlacement,
+    GridTrack,
+    Inset,
+    Line,
+    Overflow,
+    Position,
+    RunStyle,
+    StyleProperty,
+    TrackLimit,
+    Transition,
+  },
   render_to_string,
 };
 
@@ -47,13 +65,13 @@ fn state_variant_renders_a_pseudo_class_rule() {
 #[test]
 fn media_variant_renders_an_at_media_block() {
   let rendered = render_to_string(|| {
-    Container::new().set_when(Condition::MaxWidth(600.), BoxStyle::new().set_spacing(4.))
+    Container::new().set_when(Condition::MaxWidth(600.), BoxStyle::new().set_gap(4.))
   });
 
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
-    "@media (max-width: 600px){{.{class}{{gap:4px;}}}}"
+    "@media (max-width: 600px){{.{class}{{column-gap:4px;row-gap:4px;}}}}"
   )));
 }
 
@@ -84,7 +102,7 @@ fn or_composition_emits_a_rule_per_alternative() {
         Condition::Hovered,
         Condition::and([Condition::DarkMode, Condition::Focused]),
       ]),
-      BoxStyle::new().set_spacing(2.),
+      BoxStyle::new().set_gap(2.),
     )
   });
 
@@ -93,11 +111,11 @@ fn or_composition_emits_a_rule_per_alternative() {
   assert!(
     rendered
       .styles()
-      .contains(&format!(".{class}:hover{{gap:2px;}}"))
+      .contains(&format!(".{class}:hover{{column-gap:2px;row-gap:2px;}}"))
   );
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{.{class}:focus{{gap:2px;}}}}"
+    "@media (prefers-color-scheme: dark){{.{class}:focus{{column-gap:2px;row-gap:2px;}}}}"
   )));
 }
 
@@ -220,4 +238,80 @@ fn variants_participate_in_content_addressing() {
   assert_eq!(classes.len(), 4);
   assert_eq!(classes[1], classes[2]);
   assert_ne!(classes[1], classes[3]);
+}
+
+/// The full flex item vocabulary compiles to its CSS properties, dimensions included.
+#[test]
+fn flex_item_properties_render() {
+  let rendered = render_to_string(|| {
+    Container::row()
+      .set_flex_wrap(FlexWrap::Wrap)
+      .set_width(Dimension::Percent(50.))
+      .set_flex_basis(120.)
+      .set_flex_grow(2.)
+      .set_flex_shrink(0.)
+      .set_align_self(AlignItems::Center)
+      .set_margin(Inset {
+        top: Dimension::Length(4.),
+        right: Dimension::Auto,
+        bottom: Dimension::Length(4.),
+        left: Dimension::Auto,
+      })
+  });
+
+  let class = root_class(rendered.body());
+  let styles = rendered.styles();
+
+  assert!(styles.contains(&format!(
+    ".{class}{{align-self:center;display:flex;flex-basis:120px;flex-direction:row;\
+     flex-grow:2;flex-shrink:0;flex-wrap:wrap;margin:4px auto 4px auto;width:50%;}}"
+  )));
+}
+
+/// A positioned box renders its mode and inset.
+#[test]
+fn positioned_box_renders_inset() {
+  let rendered = render_to_string(|| {
+    Container::new()
+      .set_position(Position::Absolute)
+      .set_inset(Inset {
+        top: Dimension::Length(0.),
+        right: Dimension::Length(8.),
+        bottom: Dimension::Auto,
+        left: Dimension::Percent(10.),
+      })
+  });
+
+  let class = root_class(rendered.body());
+
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{display:flow-root;inset:0px 8px auto 10%;position:absolute;}}"
+  )));
+}
+
+/// Grid templates render taffy's full track vocabulary, and placements pin children.
+#[test]
+fn grid_tracks_and_placements_render() {
+  let rendered = render_to_string(|| {
+    Container::grid(1)
+      .set_grid_template_columns([
+        GridTrack::Length(100.),
+        GridTrack::Fr(1.),
+        GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Fr(2.)),
+        GridTrack::FitContent(200.),
+      ])
+      .set_grid_template_rows(GridTrack::Auto.repeated(2))
+      .set_grid_auto_rows([GridTrack::MinContent])
+      .set_children((Container::new()
+        .set_grid_column(Line::between(1, 3))
+        .set_grid_row(Line::span(2)),))
+  });
+
+  let styles = rendered.styles();
+
+  assert!(styles.contains("grid-template-columns:100px 1fr minmax(50px, 2fr) fit-content(200px);"));
+  assert!(styles.contains("grid-template-rows:auto auto;"));
+  assert!(styles.contains("grid-auto-rows:min-content;"));
+  assert!(styles.contains("grid-column:1 / 3;"));
+  assert!(styles.contains("grid-row:auto / span 2;"));
 }

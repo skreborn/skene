@@ -16,17 +16,20 @@ use std::{
 use rustc_hash::FxHasher;
 use skene_core::{
   Animation,
-  Axis,
   BoxProp,
   BoxProps,
   Composable,
   Condition,
   ControlProps,
   Easing,
+  FlexDirection,
+  FlexWrap,
+  GridAutoFlow,
   Layout,
   Overflow,
   OverlayProps,
   Placement,
+  Position,
   RunDisplay,
   RunProp,
   RunProps,
@@ -48,26 +51,37 @@ fn layout_declarations(layout: Layout) -> Declarations {
     Layout::Flex { direction } => Declarations::new().set("display", "flex").set(
       "flex-direction",
       match direction {
-        Axis::Horizontal => "row",
-        Axis::Vertical => "column",
+        FlexDirection::Row => "row",
+        FlexDirection::Column => "column",
+        FlexDirection::RowReverse => "row-reverse",
+        FlexDirection::ColumnReverse => "column-reverse",
       },
     ),
-    Layout::Grid { columns } => Declarations::new()
-      .set("display", "grid")
-      .set("grid-template-columns", format!("repeat({columns}, 1fr)")),
-    Layout::Stack => Declarations::new().set("display", "grid"),
+    Layout::Grid | Layout::Stack => Declarations::new().set("display", "grid"),
   }
 }
 
 /// Folds one box property into `declarations`.
 fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
   match prop {
-    BoxProp::Width(value) => declarations.set("width", format!("{value}px")),
-    BoxProp::Height(value) => declarations.set("height", format!("{value}px")),
-    BoxProp::MinWidth(value) => declarations.set("min-width", format!("{value}px")),
-    BoxProp::MinHeight(value) => declarations.set("min-height", format!("{value}px")),
-    BoxProp::MaxWidth(value) => declarations.set("max-width", format!("{value}px")),
-    BoxProp::MaxHeight(value) => declarations.set("max-height", format!("{value}px")),
+    BoxProp::Width(value) => declarations.set("width", Declarations::render_dimension(*value)),
+    BoxProp::Height(value) => declarations.set("height", Declarations::render_dimension(*value)),
+    BoxProp::MinWidth(value) => {
+      declarations.set("min-width", Declarations::render_dimension(*value))
+    }
+    BoxProp::MinHeight(value) => {
+      declarations.set("min-height", Declarations::render_dimension(*value))
+    }
+    BoxProp::MaxWidth(value) => {
+      declarations.set("max-width", Declarations::render_dimension(*value))
+    }
+    BoxProp::MaxHeight(value) => {
+      declarations.set("max-height", Declarations::render_dimension(*value))
+    }
+    BoxProp::AspectRatio(value) => declarations.set("aspect-ratio", value.to_string()),
+    BoxProp::Margin(value) => {
+      declarations.set("margin", Declarations::render_dimension_inset(*value))
+    }
     BoxProp::Padding(value) => declarations.set(
       "padding",
       format!(
@@ -75,6 +89,16 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
         value.top, value.right, value.bottom, value.left,
       ),
     ),
+    BoxProp::Position(value) => declarations.set(
+      "position",
+      match value {
+        Position::Relative => "relative",
+        Position::Absolute => "absolute",
+      },
+    ),
+    BoxProp::Inset(value) => {
+      declarations.set("inset", Declarations::render_dimension_inset(*value))
+    }
     BoxProp::Color(value) => {
       declarations.set("background-color", Declarations::render_color(*value))
     }
@@ -84,12 +108,64 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
       .set("border-color", Declarations::render_color(value.color)),
     BoxProp::BorderRadius(value) => declarations.set("border-radius", format!("{value}px")),
     BoxProp::Cursor(value) => declarations.set("cursor", Declarations::render_cursor(*value)),
-    BoxProp::Spacing(value) => declarations.set("gap", format!("{value}px")),
-    BoxProp::MainAxisAlignment(value) => {
-      declarations.set("justify-content", Declarations::render_main_axis(*value))
+    BoxProp::RowGap(value) => declarations.set("row-gap", format!("{value}px")),
+    BoxProp::ColumnGap(value) => declarations.set("column-gap", format!("{value}px")),
+    BoxProp::FlexWrap(value) => declarations.set(
+      "flex-wrap",
+      match value {
+        FlexWrap::NoWrap => "nowrap",
+        FlexWrap::Wrap => "wrap",
+        FlexWrap::WrapReverse => "wrap-reverse",
+      },
+    ),
+    BoxProp::FlexGrow(value) => declarations.set("flex-grow", value.to_string()),
+    BoxProp::FlexShrink(value) => declarations.set("flex-shrink", value.to_string()),
+    BoxProp::FlexBasis(value) => {
+      declarations.set("flex-basis", Declarations::render_dimension(*value))
     }
-    BoxProp::CrossAxisAlignment(value) => {
-      declarations.set("align-items", Declarations::render_cross_axis(*value))
+    BoxProp::JustifyContent(value) => declarations.set(
+      "justify-content",
+      Declarations::render_align_content(*value),
+    ),
+    BoxProp::AlignItems(value) => {
+      declarations.set("align-items", Declarations::render_align_items(*value))
+    }
+    BoxProp::AlignContent(value) => {
+      declarations.set("align-content", Declarations::render_align_content(*value))
+    }
+    BoxProp::JustifyItems(value) => {
+      declarations.set("justify-items", Declarations::render_align_items(*value))
+    }
+    BoxProp::AlignSelf(value) => {
+      declarations.set("align-self", Declarations::render_align_items(*value))
+    }
+    BoxProp::JustifySelf(value) => {
+      declarations.set("justify-self", Declarations::render_align_items(*value))
+    }
+    BoxProp::GridTemplateColumns(value) => {
+      declarations.set("grid-template-columns", Declarations::render_tracks(value))
+    }
+    BoxProp::GridTemplateRows(value) => {
+      declarations.set("grid-template-rows", Declarations::render_tracks(value))
+    }
+    BoxProp::GridAutoColumns(value) => {
+      declarations.set("grid-auto-columns", Declarations::render_tracks(value))
+    }
+    BoxProp::GridAutoRows(value) => {
+      declarations.set("grid-auto-rows", Declarations::render_tracks(value))
+    }
+    BoxProp::GridAutoFlow(value) => declarations.set(
+      "grid-auto-flow",
+      match value {
+        GridAutoFlow::Row => "row",
+        GridAutoFlow::Column => "column",
+        GridAutoFlow::RowDense => "row dense",
+        GridAutoFlow::ColumnDense => "column dense",
+      },
+    ),
+    BoxProp::GridRow(value) => declarations.set("grid-row", Declarations::render_grid_line(*value)),
+    BoxProp::GridColumn(value) => {
+      declarations.set("grid-column", Declarations::render_grid_line(*value))
     }
     BoxProp::Overflow(value) => declarations.set(
       "overflow",
@@ -129,8 +205,24 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::MaxHeight(value));
   }
 
+  if let Some(value) = style.aspect_ratio {
+    declarations = apply_box_prop(declarations, &BoxProp::AspectRatio(value));
+  }
+
+  if let Some(value) = style.margin {
+    declarations = apply_box_prop(declarations, &BoxProp::Margin(value));
+  }
+
   if let Some(value) = style.padding {
     declarations = apply_box_prop(declarations, &BoxProp::Padding(value));
+  }
+
+  if let Some(value) = style.position {
+    declarations = apply_box_prop(declarations, &BoxProp::Position(value));
+  }
+
+  if let Some(value) = style.inset {
+    declarations = apply_box_prop(declarations, &BoxProp::Inset(value));
   }
 
   if let Some(value) = style.color {
@@ -149,16 +241,80 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::Cursor(value));
   }
 
-  if let Some(value) = style.spacing {
-    declarations = apply_box_prop(declarations, &BoxProp::Spacing(value));
+  if let Some(value) = style.row_gap {
+    declarations = apply_box_prop(declarations, &BoxProp::RowGap(value));
   }
 
-  if let Some(value) = style.main_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::MainAxisAlignment(value));
+  if let Some(value) = style.column_gap {
+    declarations = apply_box_prop(declarations, &BoxProp::ColumnGap(value));
   }
 
-  if let Some(value) = style.cross_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::CrossAxisAlignment(value));
+  if let Some(value) = style.flex_wrap {
+    declarations = apply_box_prop(declarations, &BoxProp::FlexWrap(value));
+  }
+
+  if let Some(value) = style.flex_grow {
+    declarations = apply_box_prop(declarations, &BoxProp::FlexGrow(value));
+  }
+
+  if let Some(value) = style.flex_shrink {
+    declarations = apply_box_prop(declarations, &BoxProp::FlexShrink(value));
+  }
+
+  if let Some(value) = style.flex_basis {
+    declarations = apply_box_prop(declarations, &BoxProp::FlexBasis(value));
+  }
+
+  if let Some(value) = style.justify_content {
+    declarations = apply_box_prop(declarations, &BoxProp::JustifyContent(value));
+  }
+
+  if let Some(value) = style.align_items {
+    declarations = apply_box_prop(declarations, &BoxProp::AlignItems(value));
+  }
+
+  if let Some(value) = style.align_content {
+    declarations = apply_box_prop(declarations, &BoxProp::AlignContent(value));
+  }
+
+  if let Some(value) = style.justify_items {
+    declarations = apply_box_prop(declarations, &BoxProp::JustifyItems(value));
+  }
+
+  if let Some(value) = style.align_self {
+    declarations = apply_box_prop(declarations, &BoxProp::AlignSelf(value));
+  }
+
+  if let Some(value) = style.justify_self {
+    declarations = apply_box_prop(declarations, &BoxProp::JustifySelf(value));
+  }
+
+  if let Some(value) = &style.grid_template_columns {
+    declarations = apply_box_prop(declarations, &BoxProp::GridTemplateColumns(value.clone()));
+  }
+
+  if let Some(value) = &style.grid_template_rows {
+    declarations = apply_box_prop(declarations, &BoxProp::GridTemplateRows(value.clone()));
+  }
+
+  if let Some(value) = &style.grid_auto_columns {
+    declarations = apply_box_prop(declarations, &BoxProp::GridAutoColumns(value.clone()));
+  }
+
+  if let Some(value) = &style.grid_auto_rows {
+    declarations = apply_box_prop(declarations, &BoxProp::GridAutoRows(value.clone()));
+  }
+
+  if let Some(value) = style.grid_auto_flow {
+    declarations = apply_box_prop(declarations, &BoxProp::GridAutoFlow(value));
+  }
+
+  if let Some(value) = style.grid_row {
+    declarations = apply_box_prop(declarations, &BoxProp::GridRow(value));
+  }
+
+  if let Some(value) = style.grid_column {
+    declarations = apply_box_prop(declarations, &BoxProp::GridColumn(value));
   }
 
   if let Some(value) = style.overflow {
@@ -441,12 +597,17 @@ fn style_property_name(property: StyleProperty) -> &'static str {
     StyleProperty::MinHeight => "min-height",
     StyleProperty::MaxWidth => "max-width",
     StyleProperty::MaxHeight => "max-height",
+    StyleProperty::AspectRatio => "aspect-ratio",
+    StyleProperty::Margin => "margin",
     StyleProperty::Padding => "padding",
+    StyleProperty::Inset => "inset",
     StyleProperty::Background => "background-color",
     StyleProperty::BorderColor => "border-color",
     StyleProperty::BorderWidth => "border-width",
     StyleProperty::BorderRadius => "border-radius",
-    StyleProperty::Spacing => "gap",
+    StyleProperty::Gap => "gap",
+    StyleProperty::FlexBasis => "flex-basis",
+    StyleProperty::FlexGrow => "flex-grow",
     StyleProperty::TextColor => "color",
     StyleProperty::FontSize => "font-size",
     StyleProperty::FontWeight => "font-weight",

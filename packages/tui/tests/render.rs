@@ -49,7 +49,7 @@ fn row_flows_runs_with_spacing() {
   let rendered = with_driver(|| {
     tui::mount(|| {
       Container::row()
-        .set_spacing(2)
+        .set_gap(2)
         .set_children((Text::new("ab"), Text::new("cd")))
         .into_any()
         .build()
@@ -1308,4 +1308,94 @@ fn click_verdicts_split_bubbling_from_default() {
   assert_eq!(inner_runs, 1);
   assert_eq!(outer_runs, 0);
   assert!(!checked);
+}
+
+/// Grid tracks size columns by the taffy vocabulary: fixed cells, fractions, auto.
+#[test]
+fn grid_tracks_size_columns() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::grid(1)
+        .set_grid_template_columns([GridTrack::Length(4), GridTrack::Fr(1.), GridTrack::Fr(1.)])
+        .set_children((Text::new("a"), Text::new("b"), Text::new("c")))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 1)
+  });
+
+  // 4 fixed cells, then the remaining 8 split into two 4-cell fractions.
+  assert_eq!(rendered, "a   b   c\n");
+}
+
+/// A grid child placement spans tracks.
+#[test]
+fn grid_placement_spans_tracks() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::grid(2)
+        .set_children((
+          Container::new()
+            .set_grid_column(Line::span(2))
+            .set_children((Text::new("wide"),)),
+          Text::new("l"),
+          Text::new("r"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(8, 2)
+  });
+
+  assert_eq!(rendered, "wide\nl   r\n");
+}
+
+/// Flex grow distributes the free space between children.
+#[test]
+fn flex_grow_distributes_space() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::row()
+        .set_children((
+          Container::new()
+            .set_flex_grow(1.)
+            .set_color(Color::srgb(0.2, 0.2, 0.8))
+            .set_children((Text::new("a"),)),
+          Container::new()
+            .set_width(3)
+            .set_children((Text::new("b"),)),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 1)
+  });
+
+  // The grown box takes the 9 cells the fixed 3-cell box leaves.
+  assert_eq!(rendered, "a        b\n");
+}
+
+/// A percent width resolves against the parent's extent.
+#[test]
+fn percent_width_resolves_against_parent() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::row()
+        .set_children((
+          Container::new()
+            .set_width(Dimension::Percent(50.))
+            .set_children((Text::new("half"),)),
+          Text::new("x"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 1)
+  });
+
+  assert_eq!(rendered, "half  x\n");
 }

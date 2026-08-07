@@ -11,7 +11,18 @@
 
 use std::borrow::Cow;
 
-use skene_core::{Color, CrossAxisAlignment, MainAxisAlignment, MouseCursor};
+use skene_core::{
+  AlignContent,
+  AlignItems,
+  Color,
+  Dimension,
+  GridPlacement,
+  GridTrack,
+  Inset,
+  Line,
+  MouseCursor,
+  TrackLimit,
+};
 use smallvec::SmallVec;
 
 /// A set of CSS declarations (`property: value`), kept sorted by property.
@@ -74,28 +85,115 @@ impl Declarations {
     }
   }
 
-  /// Renders a [`MainAxisAlignment`] to its CSS `justify-content` keyword.
+  /// Renders an [`AlignContent`] (or `JustifyContent`) to its CSS keyword.
   #[must_use]
-  pub fn render_main_axis(alignment: MainAxisAlignment) -> &'static str {
+  pub fn render_align_content(alignment: AlignContent) -> &'static str {
     match alignment {
-      MainAxisAlignment::Start => "flex-start",
-      MainAxisAlignment::Center => "center",
-      MainAxisAlignment::End => "flex-end",
-      MainAxisAlignment::SpaceBetween => "space-between",
-      MainAxisAlignment::SpaceAround => "space-around",
-      MainAxisAlignment::SpaceEvenly => "space-evenly",
+      AlignContent::Start => "flex-start",
+      AlignContent::End => "flex-end",
+      AlignContent::Center => "center",
+      AlignContent::Stretch => "stretch",
+      AlignContent::SpaceBetween => "space-between",
+      AlignContent::SpaceAround => "space-around",
+      AlignContent::SpaceEvenly => "space-evenly",
     }
   }
 
-  /// Renders a [`CrossAxisAlignment`] to its CSS `align-items` keyword.
+  /// Renders an [`AlignItems`] (or any of its aliases) to its CSS keyword.
   #[must_use]
-  pub fn render_cross_axis(alignment: CrossAxisAlignment) -> &'static str {
+  pub fn render_align_items(alignment: AlignItems) -> &'static str {
     match alignment {
-      CrossAxisAlignment::Start => "flex-start",
-      CrossAxisAlignment::End => "flex-end",
-      CrossAxisAlignment::Center => "center",
-      CrossAxisAlignment::Stretch => "stretch",
-      CrossAxisAlignment::Baseline => "baseline",
+      AlignItems::Start => "flex-start",
+      AlignItems::End => "flex-end",
+      AlignItems::Center => "center",
+      AlignItems::Baseline => "baseline",
+      AlignItems::Stretch => "stretch",
+    }
+  }
+
+  /// Renders a [`Dimension`] to its CSS length text.
+  #[must_use]
+  pub fn render_dimension(dimension: Dimension<f32>) -> String {
+    match dimension {
+      Dimension::Length(value) => format!("{value}px"),
+      Dimension::Percent(value) => format!("{value}%"),
+      Dimension::Auto => "auto".to_owned(),
+    }
+  }
+
+  /// Renders a dimension inset to its four-value CSS shorthand (`t r b l`).
+  #[must_use]
+  pub fn render_dimension_inset(inset: Inset<Dimension<f32>>) -> String {
+    format!(
+      "{} {} {} {}",
+      Self::render_dimension(inset.top),
+      Self::render_dimension(inset.right),
+      Self::render_dimension(inset.bottom),
+      Self::render_dimension(inset.left),
+    )
+  }
+
+  /// Renders one [`TrackLimit`] of a `minmax()` track.
+  #[must_use]
+  fn render_track_limit(limit: TrackLimit<f32>) -> String {
+    match limit {
+      TrackLimit::Length(value) => format!("{value}px"),
+      TrackLimit::Percent(value) => format!("{value}%"),
+      TrackLimit::Fr(value) => format!("{value}fr"),
+      TrackLimit::Auto => "auto".to_owned(),
+      TrackLimit::MinContent => "min-content".to_owned(),
+      TrackLimit::MaxContent => "max-content".to_owned(),
+    }
+  }
+
+  /// Renders a [`GridTrack`] to its CSS track text.
+  #[must_use]
+  pub fn render_track(track: GridTrack<f32>) -> String {
+    match track {
+      GridTrack::Length(value) => format!("{value}px"),
+      GridTrack::Percent(value) => format!("{value}%"),
+      GridTrack::Fr(value) => format!("{value}fr"),
+      GridTrack::Auto => "auto".to_owned(),
+      GridTrack::MinContent => "min-content".to_owned(),
+      GridTrack::MaxContent => "max-content".to_owned(),
+      GridTrack::FitContent(value) => format!("fit-content({value}px)"),
+      GridTrack::Minmax(min, max) => format!(
+        "minmax({}, {})",
+        Self::render_track_limit(min),
+        Self::render_track_limit(max),
+      ),
+    }
+  }
+
+  /// Renders a track list to its space-separated CSS text.
+  #[must_use]
+  pub fn render_tracks(tracks: &[GridTrack<f32>]) -> String {
+    tracks
+      .iter()
+      .map(|track| Self::render_track(*track))
+      .collect::<Vec<_>>()
+      .join(" ")
+  }
+
+  /// Renders one grid placement axis to its `start / end` CSS text.
+  #[must_use]
+  pub fn render_grid_line(line: Line<GridPlacement>) -> String {
+    let end = Self::render_placement(line.end);
+    let mut out = Self::render_placement(line.start);
+
+    out.push_str(" / ");
+    out.push_str(&end);
+
+    out
+  }
+
+  /// Renders one [`GridPlacement`] to its CSS text.
+  #[must_use]
+  fn render_placement(placement: GridPlacement) -> String {
+    match placement {
+      GridPlacement::Auto => "auto".to_owned(),
+      GridPlacement::Line(index) => index.to_string(),
+      GridPlacement::Span(count) => format!("span {count}"),
     }
   }
 

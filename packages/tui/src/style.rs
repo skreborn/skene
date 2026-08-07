@@ -5,18 +5,10 @@
 //! effective style maps to a taffy [`Style`] for layout and to paint attributes for
 //! drawing.
 
-use skene_core::{
-  Axis,
-  Color,
-  Composable,
-  CrossAxisAlignment,
-  Layout,
-  MainAxisAlignment,
-  Overflow,
-};
+use skene_core::{Color, Composable, Layout, Overflow};
 use taffy::{
-  prelude::{TaffyAuto, TaffyGridLine, fr, length, repeat},
-  style::{AlignItems, Dimension, Display, FlexDirection, GridPlacement, JustifyContent, Style},
+  prelude::{TaffyAuto, TaffyGridLine, TaffyGridSpan, fit_content, fr, length, minmax, percent},
+  style::{Display, Style},
 };
 
 use crate::props::{BoxStyle, Condition, ControlStyle, RunStyle};
@@ -64,15 +56,38 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.min_height = over.min_height.or(base.min_height);
   base.max_width = over.max_width.or(base.max_width);
   base.max_height = over.max_height.or(base.max_height);
+  base.aspect_ratio = over.aspect_ratio.or(base.aspect_ratio);
+  base.margin = over.margin.or(base.margin);
   base.padding = over.padding.or(base.padding);
+  base.position = over.position.or(base.position);
+  base.inset = over.inset.or(base.inset);
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
-  base.spacing = over.spacing.or(base.spacing);
+  base.row_gap = over.row_gap.or(base.row_gap);
+  base.column_gap = over.column_gap.or(base.column_gap);
   base.cursor = over.cursor.or(base.cursor);
   base.overflow = over.overflow.or(base.overflow);
   base.shadow = over.shadow.or(base.shadow);
-  base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
-  base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
+  base.flex_wrap = over.flex_wrap.or(base.flex_wrap);
+  base.flex_grow = over.flex_grow.or(base.flex_grow);
+  base.flex_shrink = over.flex_shrink.or(base.flex_shrink);
+  base.flex_basis = over.flex_basis.or(base.flex_basis);
+  base.justify_content = over.justify_content.or(base.justify_content);
+  base.align_items = over.align_items.or(base.align_items);
+  base.align_content = over.align_content.or(base.align_content);
+  base.justify_items = over.justify_items.or(base.justify_items);
+  base.align_self = over.align_self.or(base.align_self);
+  base.justify_self = over.justify_self.or(base.justify_self);
+  base.grid_auto_flow = over.grid_auto_flow.or(base.grid_auto_flow);
+  base.grid_row = over.grid_row.or(base.grid_row);
+  base.grid_column = over.grid_column.or(base.grid_column);
+  base.grid_template_columns = over
+    .grid_template_columns
+    .clone()
+    .or(base.grid_template_columns);
+  base.grid_template_rows = over.grid_template_rows.clone().or(base.grid_template_rows);
+  base.grid_auto_columns = over.grid_auto_columns.clone().or(base.grid_auto_columns);
+  base.grid_auto_rows = over.grid_auto_rows.clone().or(base.grid_auto_rows);
 
   base
 }
@@ -85,7 +100,7 @@ pub(crate) fn effective_box_style(
   environment: Environment,
   interaction: Interaction,
 ) -> BoxStyle {
-  let mut effective = *base;
+  let mut effective = base.clone();
 
   for (condition, style) in variants {
     if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
@@ -143,20 +158,18 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
     display: match layout {
       Layout::Block => Display::Block,
       Layout::Flex { .. } => Display::Flex,
-      Layout::Grid { .. } | Layout::Stack => Display::Grid,
+      Layout::Grid | Layout::Stack => Display::Grid,
     },
     ..Style::default()
   };
 
   if let Layout::Flex { direction } = layout {
     out.flex_direction = match direction {
-      Axis::Horizontal => FlexDirection::Row,
-      Axis::Vertical => FlexDirection::Column,
+      skene_core::FlexDirection::Row => taffy::style::FlexDirection::Row,
+      skene_core::FlexDirection::Column => taffy::style::FlexDirection::Column,
+      skene_core::FlexDirection::RowReverse => taffy::style::FlexDirection::RowReverse,
+      skene_core::FlexDirection::ColumnReverse => taffy::style::FlexDirection::ColumnReverse,
     };
-  }
-
-  if let Layout::Grid { columns } = layout {
-    out.grid_template_columns = vec![repeat(columns, vec![fr(1.0)])];
   }
 
   apply_box_sizing(&mut out, style, in_stack);
@@ -164,22 +177,154 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
   out
 }
 
-/// Folds the effective style's sizing into `out`, shared by boxes and inputs.
+/// A [`Dimension`](skene_core::Dimension) in cells as a taffy dimension.
+fn dimension(value: skene_core::Dimension<u32>) -> taffy::style::Dimension {
+  match value {
+    skene_core::Dimension::Length(cells) => length(cell(cells)),
+    skene_core::Dimension::Percent(value) => percent(value / 100.),
+    skene_core::Dimension::Auto => taffy::style::Dimension::AUTO,
+  }
+}
+
+/// A [`Dimension`](skene_core::Dimension) in cells as a taffy auto-capable length.
+fn dimension_lpa(value: skene_core::Dimension<u32>) -> taffy::style::LengthPercentageAuto {
+  match value {
+    skene_core::Dimension::Length(cells) => length(cell(cells)),
+    skene_core::Dimension::Percent(value) => percent(value / 100.),
+    skene_core::Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
+  }
+}
+
+/// A dimension inset as a taffy rect.
+fn dimension_rect(
+  inset: skene_core::Inset<skene_core::Dimension<u32>>,
+) -> taffy::geometry::Rect<taffy::style::LengthPercentageAuto> {
+  taffy::geometry::Rect {
+    left: dimension_lpa(inset.left),
+    right: dimension_lpa(inset.right),
+    top: dimension_lpa(inset.top),
+    bottom: dimension_lpa(inset.bottom),
+  }
+}
+
+/// One [`TrackLimit`](skene_core::TrackLimit) as a taffy min-track sizing function.
+fn min_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MinTrackSizingFunction {
+  match limit {
+    skene_core::TrackLimit::Length(cells) => length(cell(cells)),
+    skene_core::TrackLimit::Percent(value) => percent(value / 100.),
+    // A fraction is meaningless as a minimum; taffy treats it as auto, as CSS does.
+    skene_core::TrackLimit::Fr(_) | skene_core::TrackLimit::Auto => {
+      taffy::style::MinTrackSizingFunction::AUTO
+    }
+    skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
+    skene_core::TrackLimit::MaxContent => taffy::prelude::max_content(),
+  }
+}
+
+/// One [`TrackLimit`](skene_core::TrackLimit) as a taffy max-track sizing function.
+fn max_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MaxTrackSizingFunction {
+  match limit {
+    skene_core::TrackLimit::Length(cells) => length(cell(cells)),
+    skene_core::TrackLimit::Percent(value) => percent(value / 100.),
+    skene_core::TrackLimit::Fr(value) => fr(value),
+    skene_core::TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
+    skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
+    skene_core::TrackLimit::MaxContent => taffy::prelude::max_content(),
+  }
+}
+
+/// One [`GridTrack`](skene_core::GridTrack) as a taffy track sizing function.
+fn track(value: skene_core::GridTrack<u32>) -> taffy::style::TrackSizingFunction {
+  match value {
+    skene_core::GridTrack::Length(cells) => length(cell(cells)),
+    skene_core::GridTrack::Percent(value) => percent(value / 100.),
+    skene_core::GridTrack::Fr(value) => fr(value),
+    skene_core::GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
+    skene_core::GridTrack::MinContent => taffy::prelude::min_content(),
+    skene_core::GridTrack::MaxContent => taffy::prelude::max_content(),
+    skene_core::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
+    skene_core::GridTrack::Minmax(min, max) => minmax(min_track(min), max_track(max)),
+  }
+}
+
+/// A track list as a taffy template.
+fn template(
+  tracks: &[skene_core::GridTrack<u32>],
+) -> Vec<taffy::style::GridTemplateComponent<String>> {
+  tracks
+    .iter()
+    .map(|entry| taffy::style::GridTemplateComponent::Single(track(*entry)))
+    .collect()
+}
+
+/// One [`GridPlacement`](skene_core::GridPlacement) as taffy's.
+fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<String> {
+  match value {
+    skene_core::GridPlacement::Auto => taffy::style::GridPlacement::Auto,
+    skene_core::GridPlacement::Line(index) => taffy::style::GridPlacement::from_line_index(index),
+    skene_core::GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
+  }
+}
+
+/// An [`AlignContent`](skene_core::AlignContent) as taffy's.
+fn align_content(value: skene_core::AlignContent) -> taffy::style::AlignContent {
+  match value {
+    skene_core::AlignContent::Start => taffy::style::AlignContent::Start,
+    skene_core::AlignContent::End => taffy::style::AlignContent::End,
+    skene_core::AlignContent::Center => taffy::style::AlignContent::Center,
+    skene_core::AlignContent::Stretch => taffy::style::AlignContent::Stretch,
+    skene_core::AlignContent::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_core::AlignContent::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_core::AlignContent::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+  }
+}
+
+/// An [`AlignItems`](skene_core::AlignItems) as taffy's.
+fn align_items(value: skene_core::AlignItems) -> taffy::style::AlignItems {
+  match value {
+    skene_core::AlignItems::Start => taffy::style::AlignItems::Start,
+    skene_core::AlignItems::End => taffy::style::AlignItems::End,
+    skene_core::AlignItems::Center => taffy::style::AlignItems::Center,
+    skene_core::AlignItems::Baseline => taffy::style::AlignItems::Baseline,
+    skene_core::AlignItems::Stretch => taffy::style::AlignItems::Stretch,
+  }
+}
+
+/// Folds the effective style's layout properties into `out`, shared by boxes and
+/// inputs.
+// One fold per property; length is the property count, not complexity.
+#[expect(clippy::too_many_lines)]
 pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool) {
   out.size = taffy::geometry::Size {
-    width: style.width.map_or(Dimension::AUTO, cells),
-    height: style.height.map_or(Dimension::AUTO, cells),
+    width: style.width.map_or(taffy::style::Dimension::AUTO, dimension),
+    height: style
+      .height
+      .map_or(taffy::style::Dimension::AUTO, dimension),
   };
 
   out.min_size = taffy::geometry::Size {
-    width: style.min_width.map_or(Dimension::AUTO, cells),
-    height: style.min_height.map_or(Dimension::AUTO, cells),
+    width: style
+      .min_width
+      .map_or(taffy::style::Dimension::AUTO, dimension),
+    height: style
+      .min_height
+      .map_or(taffy::style::Dimension::AUTO, dimension),
   };
 
   out.max_size = taffy::geometry::Size {
-    width: style.max_width.map_or(Dimension::AUTO, cells),
-    height: style.max_height.map_or(Dimension::AUTO, cells),
+    width: style
+      .max_width
+      .map_or(taffy::style::Dimension::AUTO, dimension),
+    height: style
+      .max_height
+      .map_or(taffy::style::Dimension::AUTO, dimension),
   };
+
+  out.aspect_ratio = style.aspect_ratio;
+
+  if let Some(margin) = style.margin {
+    out.margin = dimension_rect(margin);
+  }
 
   if let Some(padding) = style.padding {
     out.padding = taffy::geometry::Rect {
@@ -188,6 +333,17 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
       top: length(cell(padding.top)),
       bottom: length(cell(padding.bottom)),
     };
+  }
+
+  if let Some(position) = style.position {
+    out.position = match position {
+      skene_core::Position::Relative => taffy::style::Position::Relative,
+      skene_core::Position::Absolute => taffy::style::Position::Absolute,
+    };
+  }
+
+  if let Some(inset) = style.inset {
+    out.inset = dimension_rect(inset);
   }
 
   if style.border.is_some() {
@@ -199,11 +355,12 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  if let Some(spacing) = style.spacing {
-    out.gap = taffy::geometry::Size {
-      width: length(cell(spacing)),
-      height: length(cell(spacing)),
-    };
+  if let Some(row_gap) = style.row_gap {
+    out.gap.height = length(cell(row_gap));
+  }
+
+  if let Some(column_gap) = style.column_gap {
+    out.gap.width = length(cell(column_gap));
   }
 
   if let Some(overflow) = style.overflow {
@@ -219,32 +376,81 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  out.justify_content = style.main_axis_alignment.map(|alignment| match alignment {
-    MainAxisAlignment::Start => JustifyContent::FlexStart,
-    MainAxisAlignment::Center => JustifyContent::Center,
-    MainAxisAlignment::End => JustifyContent::FlexEnd,
-    MainAxisAlignment::SpaceBetween => JustifyContent::SpaceBetween,
-    MainAxisAlignment::SpaceAround => JustifyContent::SpaceAround,
-    MainAxisAlignment::SpaceEvenly => JustifyContent::SpaceEvenly,
-  });
+  if let Some(flex_wrap) = style.flex_wrap {
+    out.flex_wrap = match flex_wrap {
+      skene_core::FlexWrap::NoWrap => taffy::style::FlexWrap::NoWrap,
+      skene_core::FlexWrap::Wrap => taffy::style::FlexWrap::Wrap,
+      skene_core::FlexWrap::WrapReverse => taffy::style::FlexWrap::WrapReverse,
+    };
+  }
 
-  out.align_items = style.cross_axis_alignment.map(|alignment| match alignment {
-    CrossAxisAlignment::Start => AlignItems::FlexStart,
-    CrossAxisAlignment::End => AlignItems::FlexEnd,
-    CrossAxisAlignment::Center => AlignItems::Center,
-    CrossAxisAlignment::Stretch => AlignItems::Stretch,
-    CrossAxisAlignment::Baseline => AlignItems::Baseline,
-  });
+  if let Some(flex_grow) = style.flex_grow {
+    out.flex_grow = flex_grow;
+  }
+
+  if let Some(flex_shrink) = style.flex_shrink {
+    out.flex_shrink = flex_shrink;
+  }
+
+  if let Some(flex_basis) = style.flex_basis {
+    out.flex_basis = dimension(flex_basis);
+  }
+
+  out.justify_content = style.justify_content.map(align_content);
+  out.align_items = style.align_items.map(align_items);
+  out.align_content = style.align_content.map(align_content);
+  out.justify_items = style.justify_items.map(align_items);
+  out.align_self = style.align_self.map(align_items);
+  out.justify_self = style.justify_self.map(align_items);
+
+  if let Some(tracks) = &style.grid_template_columns {
+    out.grid_template_columns = template(tracks);
+  }
+
+  if let Some(tracks) = &style.grid_template_rows {
+    out.grid_template_rows = template(tracks);
+  }
+
+  if let Some(tracks) = &style.grid_auto_columns {
+    out.grid_auto_columns = tracks.iter().map(|entry| track(*entry)).collect();
+  }
+
+  if let Some(tracks) = &style.grid_auto_rows {
+    out.grid_auto_rows = tracks.iter().map(|entry| track(*entry)).collect();
+  }
+
+  if let Some(flow) = style.grid_auto_flow {
+    out.grid_auto_flow = match flow {
+      skene_core::GridAutoFlow::Row => taffy::style::GridAutoFlow::Row,
+      skene_core::GridAutoFlow::Column => taffy::style::GridAutoFlow::Column,
+      skene_core::GridAutoFlow::RowDense => taffy::style::GridAutoFlow::RowDense,
+      skene_core::GridAutoFlow::ColumnDense => taffy::style::GridAutoFlow::ColumnDense,
+    };
+  }
+
+  if let Some(row) = style.grid_row {
+    out.grid_row = taffy::geometry::Line {
+      start: placement(row.start),
+      end: placement(row.end),
+    };
+  }
+
+  if let Some(column) = style.grid_column {
+    out.grid_column = taffy::geometry::Line {
+      start: placement(column.start),
+      end: placement(column.end),
+    };
+  }
 
   if in_stack {
     out.grid_row = taffy::geometry::Line {
-      start: GridPlacement::from_line_index(1),
-      end: GridPlacement::Auto,
+      start: taffy::style::GridPlacement::from_line_index(1),
+      end: taffy::style::GridPlacement::Auto,
     };
 
     out.grid_column = taffy::geometry::Line {
-      start: GridPlacement::from_line_index(1),
-      end: GridPlacement::Auto,
+      start: taffy::style::GridPlacement::from_line_index(1),
+      end: taffy::style::GridPlacement::Auto,
     };
   }
 }
@@ -256,12 +462,6 @@ fn cell(value: u32) -> f32 {
   {
     value as f32
   }
-}
-
-/// A cell length as a taffy dimension.
-#[inline(always)]
-fn cells(value: u32) -> Dimension {
-  length(cell(value))
 }
 
 /// A [`Color`]'s terminal RGB, or `None` when fully transparent.

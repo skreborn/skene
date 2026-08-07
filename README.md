@@ -27,10 +27,10 @@ fn app() -> impl IntoView {
   let count = Signal::new(0u64);
 
   Container::column()
-    .set_spacing(20.)
+    .set_gap(20.)
     .set_children((
       Text::derive(move || format!("Count: {}", count.get())).set_font_size(32.),
-      Container::row().set_spacing(12.).set_children((
+      Container::row().set_gap(12.).set_children((
         button("−", move || count.update(|n| *n = n.saturating_sub(1))),
         button("+", move || count.update(|n| *n = n.saturating_add(1))),
       )),

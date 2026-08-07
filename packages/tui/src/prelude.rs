@@ -2,21 +2,31 @@
 //! primitives, and the entry point.
 
 pub use skene_core::{
+  AlignContent,
+  AlignItems,
   Axis,
   Color,
-  CrossAxisAlignment,
+  Dimension,
   Errors,
+  FlexDirection,
+  FlexWrap,
+  GridAutoFlow,
+  GridPlacement,
+  GridTrack,
   IntoChildren,
   IntoView,
+  JustifyContent,
   KeyEvent,
   Layout,
-  MainAxisAlignment,
+  Line,
   Modifiers,
   MouseCursor,
   Overflow,
   Placement,
   PointerButton,
+  Position,
   Prevent,
+  TrackLimit,
   View,
 };
 pub use skene_reactive::{

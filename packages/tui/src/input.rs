@@ -90,7 +90,7 @@ crate::control::control_surface!(Input, crate::props::BoxStyle);
 
 impl View for Input {
   fn build(mut self) -> NodeId {
-    let style = self.base.style;
+    let style = self.base.style.clone();
     let variants = std::mem::take(&mut self.base.variants);
     let node = with_state(|state| {
       state.insert_node(

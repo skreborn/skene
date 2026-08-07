@@ -20,7 +20,6 @@ pub mod head;
 mod input;
 mod overlay;
 mod radio;
-#[cfg(target_arch = "wasm32")]
 mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
@@ -37,8 +36,15 @@ mod virtual_list;
 pub use skene_core::{self as core, *};
 pub use skene_macros::main;
 pub use skene_reactive::{self as reactive};
+// The active driver, reached by name from the shared realization: the web on wasm
+// targets, the recording driver on the host, for headless view tests.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use skene_record as driver;
+/// The recording driver's test seams (`trigger_` events, tree inspection), for
+/// headless view tests on the host.
+#[cfg(not(target_arch = "wasm32"))]
+pub use skene_record as record;
 pub use skene_router as router;
-// The active driver, reached by name from the shared realization.
 #[cfg(target_arch = "wasm32")]
 pub(crate) use skene_web as driver;
 /// The web driver, for a library author writing a view directly against the browser DOM.
@@ -81,7 +87,6 @@ pub use crate::{
 #[derive(Clone, Copy, Default)]
 pub struct GuiOps;
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::TreeOps for GuiOps {
   #[inline(always)]
   fn create_group(self) -> NodeId {
@@ -111,12 +116,10 @@ pub type Suspense = skene_core::Suspense<GuiOps>;
 /// An error boundary over the active driver's tree; see [`skene_core::ErrorBoundary`].
 pub type ErrorBoundary = skene_core::ErrorBoundary<GuiOps>;
 /// A reactive subtree.
-#[cfg(target_arch = "wasm32")]
 pub type DynamicView = skene_core::DynamicView<GuiOps>;
 
 /// Reactively reconciles a parent's children from a keyed collection; see
 /// [`skene_core::reconcile`].
-#[cfg(target_arch = "wasm32")]
 #[inline(always)]
 pub fn reconcile<T, I, K>(
   parent: NodeId,
@@ -132,7 +135,6 @@ pub fn reconcile<T, I, K>(
 
 /// Anchors a reactive subtree under a fresh group node, returning that node; see
 /// [`skene_core::dynamic`].
-#[cfg(target_arch = "wasm32")]
 #[inline(always)]
 pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
   skene_core::dynamic::<GuiOps>(build)
@@ -140,14 +142,12 @@ pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
 
 /// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;
 /// see [`skene_core::transition`].
-#[cfg(target_arch = "wasm32")]
 #[inline(always)]
 pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
   skene_core::transition::<GuiOps>(build)
 }
 
 /// A view that renders nothing.
-#[cfg(target_arch = "wasm32")]
 #[inline(always)]
 #[must_use]
 pub fn empty() -> impl View {

@@ -1,9 +1,5 @@
 //! A two-state toggle.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::Source;
@@ -70,7 +66,6 @@ impl Default for Checkbox {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Checkbox {
   /// Binds the state to `signal` in both directions: the checkbox shows the signal and
   /// each toggle writes it back.
@@ -84,7 +79,6 @@ impl Checkbox {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Checkbox {
   fn build(self) -> skene_core::NodeId {
     use skene_core::CheckboxProps;

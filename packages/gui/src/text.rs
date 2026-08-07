@@ -1,7 +1,3 @@
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::{
@@ -469,7 +465,6 @@ impl View for TextTheme {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 mod realize {
   use skene_core::{NodeId, RunDisplay, RunProp, RunProps, RunStyle, View};
 

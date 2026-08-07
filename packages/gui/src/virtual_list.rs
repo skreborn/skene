@@ -1,9 +1,5 @@
 //! A vertically scrolling list rendering only its visible slice.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::{AnyView, BoxStyle, Condition, IntoView};
@@ -67,7 +63,6 @@ impl VirtualList {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for VirtualList {
   fn build(self) -> skene_core::NodeId {
     use skene_core::{

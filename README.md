@@ -164,7 +164,7 @@ The example is a single crate (`examples/counter`) depending only on `skene-gui`
 ## Testing
 
 ```sh
-cargo test --workspace      # host: reactive + the spine's pure helpers
+cargo test --workspace      # host: reactive, the spine, headless views (recording driver)
 cargo test -p skene-gui --target wasm32-unknown-unknown   # browser: real DOM, headless browser
 cargo test -p skene-gui --target wasm32-wasip2            # server: wasmtime, incl. snapshot
 ```

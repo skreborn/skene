@@ -2,7 +2,6 @@
 
 // Fields are read only by a platform's realization; a target with no platform compiles
 // the base but never reads them.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 use std::rc::Rc;
 
@@ -44,7 +43,6 @@ impl ControlBase {
 
   /// Splits the base into the realization props and the handlers to register on the
   /// built node.
-  #[cfg(target_arch = "wasm32")]
   pub(crate) fn into_parts(self) -> (skene_core::ControlProps, ControlHandlers) {
     (
       skene_core::ControlProps {
@@ -67,7 +65,6 @@ impl ControlBase {
 }
 
 /// The shared handlers split off a [`ControlBase`], registered once the node exists.
-#[cfg(target_arch = "wasm32")]
 pub(crate) struct ControlHandlers {
   focus_handle: Option<FocusHandle>,
   anchor: Option<crate::Anchor>,
@@ -76,7 +73,6 @@ pub(crate) struct ControlHandlers {
   key_down: Option<Rc<skene_core::KeyHandler>>,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl ControlHandlers {
   /// Registers the handlers on `node` and binds the focus handle to it.
   pub(crate) fn register(self, node: skene_core::NodeId) {

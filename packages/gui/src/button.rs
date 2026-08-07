@@ -1,9 +1,5 @@
 //! A clickable button.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use crate::{
@@ -65,7 +61,6 @@ impl HasChildren<crate::GuiOps> for Button {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Button {
   fn build(self) -> skene_core::NodeId {
     use skene_core::ButtonProps;

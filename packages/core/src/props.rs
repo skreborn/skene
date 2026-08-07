@@ -494,6 +494,7 @@ pub enum BoxProp {
 }
 
 /// Everything a driver needs to realize a box.
+#[derive(Clone)]
 #[must_use]
 pub struct BoxProps {
   /// The layout mode.
@@ -512,6 +513,7 @@ pub struct BoxProps {
 }
 
 /// The realization surface every form control shares: styling plus focus placement.
+#[derive(Clone)]
 #[must_use]
 pub struct ControlProps {
   /// The static style.
@@ -532,6 +534,7 @@ pub struct ControlProps {
 
 /// Everything a driver needs to realize an overlay: content above the app, opened and
 /// closed by the facade.
+#[derive(Clone)]
 #[must_use]
 pub struct OverlayProps {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
@@ -548,6 +551,7 @@ pub struct OverlayProps {
 }
 
 /// Everything a driver needs to realize a button.
+#[derive(Clone)]
 #[must_use]
 pub struct ButtonProps {
   /// The shared control surface.
@@ -555,6 +559,7 @@ pub struct ButtonProps {
 }
 
 /// Everything a driver needs to realize a single-line text input.
+#[derive(Clone)]
 #[must_use]
 pub struct InputProps {
   /// The hint shown while the value is empty.
@@ -564,6 +569,7 @@ pub struct InputProps {
 }
 
 /// Everything a driver needs to realize a checkbox.
+#[derive(Clone)]
 #[must_use]
 pub struct CheckboxProps {
   /// The shared control surface.
@@ -571,6 +577,7 @@ pub struct CheckboxProps {
 }
 
 /// Everything a driver needs to realize one radio button.
+#[derive(Clone)]
 #[must_use]
 pub struct RadioProps {
   /// The group the radio belongs to; the platform keeps one member checked and moves
@@ -583,6 +590,7 @@ pub struct RadioProps {
 }
 
 /// One choice of a select control.
+#[derive(Clone)]
 #[must_use]
 pub struct SelectOption {
   /// The value the choice stands for.
@@ -592,6 +600,7 @@ pub struct SelectOption {
 }
 
 /// Everything a driver needs to realize a select control.
+#[derive(Clone)]
 #[must_use]
 pub struct SelectProps {
   /// The choices, in order.
@@ -601,6 +610,7 @@ pub struct SelectProps {
 }
 
 /// Everything a driver needs to realize a multi-line text area.
+#[derive(Clone)]
 #[must_use]
 pub struct TextareaProps {
   /// The hint shown while the value is empty.
@@ -612,6 +622,7 @@ pub struct TextareaProps {
 }
 
 /// Everything a driver needs to realize a slider.
+#[derive(Clone)]
 #[must_use]
 pub struct SliderProps {
   /// The smallest selectable value.
@@ -697,6 +708,7 @@ pub enum RunDisplay {
 }
 
 /// Everything a driver needs to realize a text run.
+#[derive(Clone)]
 #[must_use]
 pub struct RunProps {
   /// How the run participates in the surrounding layout.

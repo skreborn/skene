@@ -1,9 +1,5 @@
 //! A single-line text input.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::Source;
@@ -88,7 +84,6 @@ impl Default for Input {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Input {
   /// Binds the value to `signal` in both directions: the input shows the signal and each
   /// edit writes it back.
@@ -102,7 +97,6 @@ impl Input {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Input {
   fn build(self) -> skene_core::NodeId {
     use skene_core::InputProps;

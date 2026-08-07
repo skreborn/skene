@@ -2,8 +2,8 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: the recording driver (phase 2
-remainder), then TUI text wrapping; the taffy layout vocabulary landed.**
+last—not a current priority. **Current focus: TUI text wrapping; the taffy layout
+vocabulary and the recording driver landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -36,8 +36,14 @@ dispatch requires the realization to live where the driver is nameable).
 - **Gate met:** the full web/ssr/hydration/resource/streaming suites pass, and a
   byte-exact SSR snapshot (interned class names, `data-h` markers, markup) is identical
   before and after the migration.
-- **Remaining:** a host-compilable recording driver for headless view tests; driver
-  selection by feature when a second same-triple driver lands.
+- **Recording driver—done.** `skene-record` is the host driver: the same typed
+  vocabulary, mapped to an in-memory tree that records every realization call. The
+  facade's views compile and realize on the host, so view logic tests headlessly
+  (`packages/gui/tests/record.rs`): structure, derived props, reconcile reuse, and
+  events through `trigger_` seams with the `Prevention` verdict returned. Recording is
+  bookkeeping, not emulation—no layout, no built-in event defaults. The wasm-only
+  surface (entry, hydration, tasks, resources, routing, head) stays web-gated.
+- **Remaining:** driver selection by feature when a second same-triple driver lands.
 
 Carried over from the pre-split code and preserved through the migration:
 `render_to_string` and `Rendered::page`; in-order streaming (`render_to_stream`,

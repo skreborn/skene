@@ -1,9 +1,5 @@
 //! Content above the app: modals and popups.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::{cell::Cell, rc::Rc};
 
 use skene_core::{BoxStyle, Color, Condition, NodeId, Placement, Source};
@@ -162,7 +158,6 @@ impl HasChildren<crate::GuiOps> for Overlay {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Overlay {
   /// Binds the open state to `signal` in both directions: the overlay follows the
   /// signal, and a dismiss request writes it back to `false`.
@@ -176,7 +171,6 @@ impl Overlay {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Overlay {
   fn build(self) -> NodeId {
     use skene_core::OverlayProps;

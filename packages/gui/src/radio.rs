@@ -1,9 +1,5 @@
 //! One choice of a mutually-exclusive group.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::Source;
@@ -65,7 +61,6 @@ impl Radio {
 
 control_surface!(Radio);
 
-#[cfg(target_arch = "wasm32")]
 impl Radio {
   /// Binds the member to `signal` holding the group's selected value: the member shows
   /// as checked while the signal equals its value, and selecting it writes its value
@@ -87,7 +82,6 @@ impl Radio {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Radio {
   fn build(self) -> skene_core::NodeId {
     use skene_core::RadioProps;

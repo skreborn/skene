@@ -1,9 +1,5 @@
 //! A draggable choice of a number within a range.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::Source;
@@ -76,7 +72,6 @@ impl Slider {
 
 control_surface!(Slider);
 
-#[cfg(target_arch = "wasm32")]
 impl Slider {
   /// Binds the value to `signal` in both directions: the slider shows the signal and
   /// each move writes it back.
@@ -90,7 +85,6 @@ impl Slider {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Slider {
   fn build(self) -> skene_core::NodeId {
     use skene_core::SliderProps;

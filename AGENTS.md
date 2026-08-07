@@ -40,8 +40,8 @@
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
   and painted layers interleave in z-order by the platform compositor.
-- View logic tests run headless where possible (via a recording driver, once it exists).
-  Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
+- View logic tests run headless where possible, via the recording driver
+  (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
   wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.
 - HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
   `Resource`, the SSR reactor's public `register`, `Boundary`—so third-party integrations

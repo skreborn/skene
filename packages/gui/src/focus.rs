@@ -2,7 +2,6 @@
 
 // The bound node is read only by a platform's realization; a target with no platform
 // compiles the handle but never reads it.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 
 use std::{cell::Cell, rc::Rc};
 
@@ -32,7 +31,6 @@ impl FocusHandle {
   /// Moves keyboard focus to the bound view; a no-op while unbound.
   #[inline(always)]
   pub fn focus(&self) {
-    #[cfg(target_arch = "wasm32")]
     if let Some(node) = self.0.get() {
       crate::driver::focus_node(node);
     }
@@ -41,7 +39,6 @@ impl FocusHandle {
   /// Removes keyboard focus from the bound view; a no-op while unbound.
   #[inline(always)]
   pub fn blur(&self) {
-    #[cfg(target_arch = "wasm32")]
     if let Some(node) = self.0.get() {
       crate::driver::blur_node(node);
     }

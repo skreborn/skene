@@ -1,9 +1,5 @@
 //! A dropdown choice among fixed options.
 
-// View fields are read only by a platform's realization module; a target with no platform
-// compiles the struct but no realizer, leaving them unread.
-#![cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-
 use std::rc::Rc;
 
 use skene_core::{SelectOption, Source};
@@ -89,7 +85,6 @@ impl Default for Select {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Select {
   /// Binds the selection to `signal` in both directions: the select shows the signal
   /// and each choice writes it back.
@@ -103,7 +98,6 @@ impl Select {
   }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl skene_core::View for Select {
   fn build(self) -> skene_core::NodeId {
     use skene_core::SelectProps;

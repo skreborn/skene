@@ -155,8 +155,9 @@ wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 Then open <http://localhost:8080>. `skene run web` builds the `counter` example to
 wasm, generates the bindings into `examples/counter/dist/web`, serves it with the
 assets its `skene.toml` declares, and rebuilds + reloads the page on change; pass
-`--port <n>` or `--release`. Every build lands under `dist/<target>`: `web`,
-`web-static`, `tui`—`ios` and the rest as they arrive. (`cargo skene` runs the
+`--port <n>` or `--release`. Every build lands under `dist/<target>`—`web` (CSR and
+static alike, the folder replaced wholesale each build), `tui`, `ios` and the rest as
+they arrive. (`cargo skene` runs the
 workspace-local CLI; `cargo install --path packages/cli` makes it a plain `skene`.)
 The example is a single crate (`examples/counter`) depending only on `skene-gui`.
 

@@ -18,12 +18,20 @@ const DEV_PAGE_ADDITIONS: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
   };\n\
 })();</script>";
 /// Builds the app's browser wasm, generates its bindings, and writes the boot page—
-/// all into `<app>/dist/web`. A dev build's page carries the dev marker and the
-/// reload script.
+/// all into `<app>/dist/web`, replacing the folder wholesale. A dev build's page
+/// carries the dev marker and the reload script.
 pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   build_wasm(app, release)?;
+  clear_web_out(app);
   generate_bindings(app, release)?;
   write_page(app, dev)
+}
+
+/// Deletes `<app>/dist/web`. Every web build—CSR or static—replaces the folder
+/// wholesale, after its compile succeeds, so stale artifacts never linger and a
+/// failed rebuild leaves the served output standing.
+fn clear_web_out(app: &App) {
+  let _ = fs::remove_dir_all(app.dir.join("dist/web"));
 }
 
 /// Writes the generated CSR boot page: the module import of the generated bindings,
@@ -178,14 +186,14 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
   )
 }
 
-/// Statically generates through the embedded runner into `<app>/dist/web-static`,
-/// assets alongside: the given routes, or—given none—every route the app enumerates.
+/// Statically generates through the embedded runner into `<app>/dist/web`, replacing
+/// the folder wholesale, assets alongside: the given routes, or—given none—every
+/// route the app enumerates.
 pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
-  let out = &app.dir.join("dist/web-static");
-  // A generated directory by contract: clear it so removed routes and assets never
-  // linger.
-  let _ = fs::remove_dir_all(out);
+  let out = &app.dir.join("dist/web");
   let artifact = build_server(app, release)?;
+
+  clear_web_out(app);
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
   // No explicit routes: render every route the app enumerates (see
   // `install_static_router`), or the root alone.

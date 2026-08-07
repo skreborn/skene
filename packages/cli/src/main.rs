@@ -70,8 +70,8 @@ mod host {
 
   #[derive(Subcommand)]
   enum BuildTarget {
-    /// The browser wasm and its bindings, into `dist/web`—or, with `--static`, the
-    /// statically generated site into `dist/web-static`.
+    /// The browser wasm and its bindings—or, with `--static`, the statically
+    /// generated site—into `dist/web`, replacing the folder wholesale.
     Web {
       /// Statically generate routes through the embedded runner, assets alongside.
       #[arg(long)]

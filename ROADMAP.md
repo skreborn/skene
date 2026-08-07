@@ -2,8 +2,8 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: vocabulary completeness (events,
-controls, head management) ahead of the CLI.**
+last—not a current priority. **Current focus: the reactive engine rewrite (backlog),
+before more call sites accumulate on the old API.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -370,7 +370,8 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   assets alongside), `skene build tui` (the terminal binary), `skene run web` (build,
   serve, watch, rebuild, live-reload over SSE—serving only the page, the bundle, and
   declared assets), and `skene run tui`. Every output lands under `dist/<target>`
-  (`web`, `web-static`, `tui`; `ios`/`android` when the native family arrives).
+  (`web`—CSR and static alike, the folder replaced wholesale each build—and `tui`;
+  `ios`/`android` when the native family arrives).
   `skene.toml` is read and its `[assets]` paths are collected across the dependency
   graph via cargo metadata (app wins collisions), served at their declared URIs in dev
   and copied into static output.

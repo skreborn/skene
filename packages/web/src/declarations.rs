@@ -12,14 +12,15 @@
 use std::borrow::Cow;
 
 use skene_core::{
-  AlignContent,
-  AlignItems,
   Color,
   Dimension,
   GridPlacement,
   GridTrack,
   Inset,
+  ItemAlignment,
   Line,
+  LineAlignment,
+  MainAxisAlignment,
   MouseCursor,
   TrackLimit,
 };
@@ -85,30 +86,55 @@ impl Declarations {
     }
   }
 
-  /// Renders an [`AlignContent`] (or `JustifyContent`) to its CSS keyword.
+  /// Renders a [`MainAxisAlignment`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_align_content(alignment: AlignContent) -> &'static str {
+  pub fn render_main_axis(alignment: MainAxisAlignment) -> &'static str {
     match alignment {
-      AlignContent::Start => "flex-start",
-      AlignContent::End => "flex-end",
-      AlignContent::Center => "center",
-      AlignContent::Stretch => "stretch",
-      AlignContent::SpaceBetween => "space-between",
-      AlignContent::SpaceAround => "space-around",
-      AlignContent::SpaceEvenly => "space-evenly",
+      MainAxisAlignment::Start => "flex-start",
+      MainAxisAlignment::End => "flex-end",
+      MainAxisAlignment::Center => "center",
+      MainAxisAlignment::SpaceBetween => "space-between",
+      MainAxisAlignment::SpaceAround => "space-around",
+      MainAxisAlignment::SpaceEvenly => "space-evenly",
     }
   }
 
-  /// Renders an [`AlignItems`] (or any of its aliases) to its CSS keyword.
+  /// Renders a [`LineAlignment`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_align_items(alignment: AlignItems) -> &'static str {
+  pub fn render_line_alignment(alignment: LineAlignment) -> &'static str {
     match alignment {
-      AlignItems::Start => "flex-start",
-      AlignItems::End => "flex-end",
-      AlignItems::Center => "center",
-      AlignItems::Baseline => "baseline",
-      AlignItems::Stretch => "stretch",
+      LineAlignment::Start => "flex-start",
+      LineAlignment::End => "flex-end",
+      LineAlignment::Center => "center",
+      LineAlignment::Stretch => "stretch",
+      LineAlignment::SpaceBetween => "space-between",
+      LineAlignment::SpaceAround => "space-around",
+      LineAlignment::SpaceEvenly => "space-evenly",
     }
+  }
+
+  /// Renders an [`ItemAlignment`] to its CSS keyword.
+  #[must_use]
+  pub fn render_item_alignment(alignment: ItemAlignment) -> &'static str {
+    match alignment {
+      ItemAlignment::Start => "flex-start",
+      ItemAlignment::End => "flex-end",
+      ItemAlignment::Center => "center",
+      ItemAlignment::Baseline => "baseline",
+      ItemAlignment::Stretch => "stretch",
+    }
+  }
+
+  /// Renders a fraction (`0.` to `1.`) as CSS percentage text.
+  ///
+  /// Widened for the multiply, then narrowed back so `0.1` renders as `10`, not
+  /// `10.000001`.
+  #[must_use]
+  fn render_fraction(value: f32) -> String {
+    #[expect(clippy::cast_possible_truncation)]
+    let percent = (f64::from(value) * 100.) as f32;
+
+    format!("{percent}%")
   }
 
   /// Renders a [`Dimension`] to its CSS length text.
@@ -116,7 +142,7 @@ impl Declarations {
   pub fn render_dimension(dimension: Dimension<f32>) -> String {
     match dimension {
       Dimension::Length(value) => format!("{value}px"),
-      Dimension::Percent(value) => format!("{value}%"),
+      Dimension::Fraction(value) => Self::render_fraction(value),
       Dimension::Auto => "auto".to_owned(),
     }
   }
@@ -138,8 +164,8 @@ impl Declarations {
   fn render_track_limit(limit: TrackLimit<f32>) -> String {
     match limit {
       TrackLimit::Length(value) => format!("{value}px"),
-      TrackLimit::Percent(value) => format!("{value}%"),
-      TrackLimit::Fr(value) => format!("{value}fr"),
+      TrackLimit::Fraction(value) => Self::render_fraction(value),
+      TrackLimit::Flex(value) => format!("{value}fr"),
       TrackLimit::Auto => "auto".to_owned(),
       TrackLimit::MinContent => "min-content".to_owned(),
       TrackLimit::MaxContent => "max-content".to_owned(),
@@ -151,8 +177,8 @@ impl Declarations {
   pub fn render_track(track: GridTrack<f32>) -> String {
     match track {
       GridTrack::Length(value) => format!("{value}px"),
-      GridTrack::Percent(value) => format!("{value}%"),
-      GridTrack::Fr(value) => format!("{value}fr"),
+      GridTrack::Fraction(value) => Self::render_fraction(value),
+      GridTrack::Flex(value) => format!("{value}fr"),
       GridTrack::Auto => "auto".to_owned(),
       GridTrack::MinContent => "min-content".to_owned(),
       GridTrack::MaxContent => "max-content".to_owned(),

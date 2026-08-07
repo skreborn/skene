@@ -26,10 +26,18 @@
   web csr/ssr leaves stay split on `target_os` (`unknown`/`wasi`), so the server leaf
   physically cannot touch the DOM.
 - The **style model is data** (`StyleSet`: typed props + open per-family passthrough,
-  media/state variants, transitions, keyframes). Layout vocabulary is taffy's, adopted
-  not invented. On the web a `StyleSet` compiles to real CSS inside one interned class, so
-  SSR/SSG output is responsive, hoverable and animated with **no JS/WASM**. `derive_`
-  closures remain for genuinely dynamic values only.
+  media/state variants, transitions, keyframes). Layout **runs on taffy**—the framework
+  invents no layout system and exposes taffy's full capability—but the **public
+  vocabulary is not CSS's**: names and values follow the modern declarative frameworks
+  (Flutter, SwiftUI, Jetpack Compose)—explicit, axis-named, self-describing. Concretely:
+  `main_axis_alignment`/`cross_axis_alignment`/`line_alignment` plus the
+  `main_axis_item_alignment` and `self_` variants, never `justify-*`/`align-*`;
+  `Dimension::Fraction` ratios (`0.` to `1.`), never percents; `spacing`, not `gap`;
+  `GridTrack::Flex`, not `fr`. CSS nomenclature lives only inside the web driver's
+  mapping layer. This applies to styling vocabulary generally and is settled—do not
+  re-litigate it toward CSS naming. On the web a `StyleSet` compiles to real CSS inside
+  one interned class, so SSR/SSG output is responsive, hoverable and animated with
+  **no JS/WASM**. `derive_` closures remain for genuinely dynamic values only.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}`, forward probe on collision), reference-counted, deterministic and
   identical across csr and ssr—hydration and stylesheet parity depend on it. The pure core

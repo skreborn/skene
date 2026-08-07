@@ -7,9 +7,6 @@
 //! compatible terminal renders them, and an incompatible one degrades quietly.
 
 use skene_core::{
-  AlignContent,
-  AlignItems,
-  AlignSelf,
   Color,
   Composable,
   ConditionShape,
@@ -19,10 +16,10 @@ use skene_core::{
   GridPlacement,
   GridTrack,
   Inset,
-  JustifyContent,
-  JustifyItems,
-  JustifySelf,
+  ItemAlignment,
   Line,
+  LineAlignment,
+  MainAxisAlignment,
   MouseCursor,
   Overflow,
   Position,
@@ -61,9 +58,9 @@ pub struct BoxStyle {
   /// The border color; a border is always one cell of box-drawing characters.
   pub border: Option<Color>,
   /// The gap between rows of children, in cells.
-  pub row_gap: Option<u32>,
+  pub row_spacing: Option<u32>,
   /// The gap between columns of children, in cells.
-  pub column_gap: Option<u32>,
+  pub column_spacing: Option<u32>,
   /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
   pub cursor: Option<MouseCursor>,
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
@@ -79,19 +76,19 @@ pub struct BoxStyle {
   /// The box's initial main-axis size as a flex item.
   pub flex_basis: Option<Dimension<u32>>,
   /// Distribution of children along the main (flex) or inline (grid) axis.
-  pub justify_content: Option<JustifyContent>,
+  pub main_axis_alignment: Option<MainAxisAlignment>,
   /// Alignment of children on the cross (flex) or block (grid) axis.
-  pub align_items: Option<AlignItems>,
+  pub cross_axis_alignment: Option<ItemAlignment>,
   /// Distribution of wrapped lines or grid tracks along the cross or block axis.
-  pub align_content: Option<AlignContent>,
+  pub line_alignment: Option<LineAlignment>,
   /// Alignment of grid children on the inline axis.
-  pub justify_items: Option<JustifyItems>,
+  pub main_axis_item_alignment: Option<ItemAlignment>,
   /// The box's own cross- or block-axis alignment, overriding its parent's
-  /// `align_items`.
-  pub align_self: Option<AlignSelf>,
+  /// `cross_axis_alignment`.
+  pub self_cross_axis_alignment: Option<ItemAlignment>,
   /// The box's own inline-axis alignment in a grid, overriding its parent's
-  /// `justify_items`.
-  pub justify_self: Option<JustifySelf>,
+  /// `main_axis_item_alignment`.
+  pub self_main_axis_alignment: Option<ItemAlignment>,
   /// The grid's explicit column tracks.
   pub grid_template_columns: Option<Vec<GridTrack<u32>>>,
   /// The grid's explicit row tracks.
@@ -221,25 +218,25 @@ impl BoxStyle {
 
   /// Sets the gap between children on both axes, in cells.
   #[inline(always)]
-  pub const fn set_gap(mut self, gap: u32) -> Self {
-    self.row_gap = Some(gap);
-    self.column_gap = Some(gap);
+  pub const fn set_spacing(mut self, gap: u32) -> Self {
+    self.row_spacing = Some(gap);
+    self.column_spacing = Some(gap);
 
     self
   }
 
   /// Sets the gap between rows of children, in cells.
   #[inline(always)]
-  pub const fn set_row_gap(mut self, row_gap: u32) -> Self {
-    self.row_gap = Some(row_gap);
+  pub const fn set_row_gap(mut self, row_spacing: u32) -> Self {
+    self.row_spacing = Some(row_spacing);
 
     self
   }
 
   /// Sets the gap between columns of children, in cells.
   #[inline(always)]
-  pub const fn set_column_gap(mut self, column_gap: u32) -> Self {
-    self.column_gap = Some(column_gap);
+  pub const fn set_column_gap(mut self, column_spacing: u32) -> Self {
+    self.column_spacing = Some(column_spacing);
 
     self
   }
@@ -303,48 +300,48 @@ impl BoxStyle {
 
   /// Sets the distribution of children along the main (flex) or inline (grid) axis.
   #[inline(always)]
-  pub const fn set_justify_content(mut self, justify_content: JustifyContent) -> Self {
-    self.justify_content = Some(justify_content);
+  pub const fn set_justify_content(mut self, main_axis_alignment: MainAxisAlignment) -> Self {
+    self.main_axis_alignment = Some(main_axis_alignment);
 
     self
   }
 
   /// Sets the alignment of children on the cross (flex) or block (grid) axis.
   #[inline(always)]
-  pub const fn set_align_items(mut self, align_items: AlignItems) -> Self {
-    self.align_items = Some(align_items);
+  pub const fn set_align_items(mut self, cross_axis_alignment: ItemAlignment) -> Self {
+    self.cross_axis_alignment = Some(cross_axis_alignment);
 
     self
   }
 
   /// Sets the distribution of wrapped lines or grid tracks along the cross or block axis.
   #[inline(always)]
-  pub const fn set_align_content(mut self, align_content: AlignContent) -> Self {
-    self.align_content = Some(align_content);
+  pub const fn set_align_content(mut self, line_alignment: LineAlignment) -> Self {
+    self.line_alignment = Some(line_alignment);
 
     self
   }
 
   /// Sets the alignment of grid children on the inline axis.
   #[inline(always)]
-  pub const fn set_justify_items(mut self, justify_items: JustifyItems) -> Self {
-    self.justify_items = Some(justify_items);
+  pub const fn set_justify_items(mut self, main_axis_item_alignment: ItemAlignment) -> Self {
+    self.main_axis_item_alignment = Some(main_axis_item_alignment);
 
     self
   }
 
   /// Sets the box's own cross- or block-axis alignment.
   #[inline(always)]
-  pub const fn set_align_self(mut self, align_self: AlignSelf) -> Self {
-    self.align_self = Some(align_self);
+  pub const fn set_align_self(mut self, self_cross_axis_alignment: ItemAlignment) -> Self {
+    self.self_cross_axis_alignment = Some(self_cross_axis_alignment);
 
     self
   }
 
   /// Sets the box's own inline-axis alignment in a grid.
   #[inline(always)]
-  pub const fn set_justify_self(mut self, justify_self: JustifySelf) -> Self {
-    self.justify_self = Some(justify_self);
+  pub const fn set_justify_self(mut self, self_main_axis_alignment: ItemAlignment) -> Self {
+    self.self_main_axis_alignment = Some(self_main_axis_alignment);
 
     self
   }
@@ -565,8 +562,8 @@ pub(crate) enum BoxProp {
   Inset(Inset<Dimension<u32>>),
   Color(Color),
   Border(Color),
-  RowGap(u32),
-  ColumnGap(u32),
+  RowSpacing(u32),
+  ColumnSpacing(u32),
   Cursor(MouseCursor),
   Overflow(Overflow),
   Shadow(Color),
@@ -574,12 +571,12 @@ pub(crate) enum BoxProp {
   FlexGrow(f32),
   FlexShrink(f32),
   FlexBasis(Dimension<u32>),
-  JustifyContent(JustifyContent),
-  AlignItems(AlignItems),
-  AlignContent(AlignContent),
-  JustifyItems(JustifyItems),
-  AlignSelf(AlignSelf),
-  JustifySelf(JustifySelf),
+  MainAxisAlignment(MainAxisAlignment),
+  CrossAxisAlignment(ItemAlignment),
+  LineAlignment(LineAlignment),
+  MainAxisItemAlignment(ItemAlignment),
+  SelfCrossAxisAlignment(ItemAlignment),
+  SelfMainAxisAlignment(ItemAlignment),
   GridTemplateColumns(Vec<GridTrack<u32>>),
   GridTemplateRows(Vec<GridTrack<u32>>),
   GridAutoColumns(Vec<GridTrack<u32>>),
@@ -605,8 +602,8 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::Inset(value) => style.inset = Some(value),
     BoxProp::Color(value) => style.color = Some(value),
     BoxProp::Border(value) => style.border = Some(value),
-    BoxProp::RowGap(value) => style.row_gap = Some(value),
-    BoxProp::ColumnGap(value) => style.column_gap = Some(value),
+    BoxProp::RowSpacing(value) => style.row_spacing = Some(value),
+    BoxProp::ColumnSpacing(value) => style.column_spacing = Some(value),
     BoxProp::Cursor(value) => style.cursor = Some(value),
     BoxProp::Overflow(value) => style.overflow = Some(value),
     BoxProp::Shadow(value) => style.shadow = Some(value),
@@ -614,12 +611,12 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::FlexGrow(value) => style.flex_grow = Some(value),
     BoxProp::FlexShrink(value) => style.flex_shrink = Some(value),
     BoxProp::FlexBasis(value) => style.flex_basis = Some(value),
-    BoxProp::JustifyContent(value) => style.justify_content = Some(value),
-    BoxProp::AlignItems(value) => style.align_items = Some(value),
-    BoxProp::AlignContent(value) => style.align_content = Some(value),
-    BoxProp::JustifyItems(value) => style.justify_items = Some(value),
-    BoxProp::AlignSelf(value) => style.align_self = Some(value),
-    BoxProp::JustifySelf(value) => style.justify_self = Some(value),
+    BoxProp::MainAxisAlignment(value) => style.main_axis_alignment = Some(value),
+    BoxProp::CrossAxisAlignment(value) => style.cross_axis_alignment = Some(value),
+    BoxProp::LineAlignment(value) => style.line_alignment = Some(value),
+    BoxProp::MainAxisItemAlignment(value) => style.main_axis_item_alignment = Some(value),
+    BoxProp::SelfCrossAxisAlignment(value) => style.self_cross_axis_alignment = Some(value),
+    BoxProp::SelfMainAxisAlignment(value) => style.self_main_axis_alignment = Some(value),
     BoxProp::GridTemplateColumns(value) => style.grid_template_columns = Some(value),
     BoxProp::GridTemplateRows(value) => style.grid_template_rows = Some(value),
     BoxProp::GridAutoColumns(value) => style.grid_auto_columns = Some(value),

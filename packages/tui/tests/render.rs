@@ -49,7 +49,7 @@ fn row_flows_runs_with_spacing() {
   let rendered = with_driver(|| {
     tui::mount(|| {
       Container::row()
-        .set_gap(2)
+        .set_spacing(2)
         .set_children((Text::new("ab"), Text::new("cd")))
         .into_any()
         .build()
@@ -1316,7 +1316,11 @@ fn grid_tracks_size_columns() {
   let rendered = with_driver(|| {
     tui::mount(|| {
       Container::grid(1)
-        .set_grid_template_columns([GridTrack::Length(4), GridTrack::Fr(1.), GridTrack::Fr(1.)])
+        .set_grid_template_columns([
+          GridTrack::Length(4),
+          GridTrack::Flex(1.),
+          GridTrack::Flex(1.),
+        ])
         .set_children((Text::new("a"), Text::new("b"), Text::new("c")))
         .into_any()
         .build()
@@ -1386,7 +1390,7 @@ fn percent_width_resolves_against_parent() {
       Container::row()
         .set_children((
           Container::new()
-            .set_width(Dimension::Percent(50.))
+            .set_width(Dimension::Fraction(0.5))
             .set_children((Text::new("half"),)),
           Text::new("x"),
         ))

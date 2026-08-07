@@ -64,15 +64,17 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   browser sink is one `<style>` element per class. **Gate met:** SSR output is
   responsive, hoverable and animated with zero JS (`web_style.rs`), and the snapshot
   pins it.
-- **Taffy layout vocabulary—done.** The box props speak taffy's style model on both
-  facades, scalar-generic in core (`Dimension` lengths—fixed, percent, auto—margin,
-  position + inset, aspect ratio, flex wrap/grow/shrink/basis, the
-  `justify_content`/`align_items`/`align_content`/`align_self` alignment family, grid
-  track templates with `fr`/`minmax`/`fit-content`, auto tracks and flow, line/span
-  placements, and `gap` split by axis). The invented `MainAxisAlignment`/
-  `CrossAxisAlignment`/`spacing` names are gone; `Container::grid(n)` is now sugar for
-  an `fr`-repeat template. The web compiles it all to CSS; the TUI feeds taffy
-  directly, in cells.
+- **Full layout vocabulary—done.** The box props expose taffy's complete capability
+  on both facades, scalar-generic in core: `Dimension` lengths (fixed, `Fraction`
+  ratios `0.`–`1.`, auto), margin, position + inset, aspect ratio, flex
+  wrap/grow/shrink/basis, grid track templates (`Flex` shares, `Minmax`,
+  `FitContent`), auto tracks and flow, line/span placements, and per-axis `spacing`.
+  Naming follows the framework's settled vocabulary rule (see `AGENTS.md`): explicit
+  and axis-named after Flutter/SwiftUI/Compose—`main_axis_alignment`/
+  `cross_axis_alignment`/`line_alignment` and the `main_axis_item_alignment`/`self_`
+  variants—never CSS's `justify`/`align` pairs, which live only in the web driver's
+  mapping layer. `Container::grid(n)` is sugar for a `Flex(1.)`-repeat template. The
+  web compiles it all to CSS; the TUI feeds taffy directly, in cells.
 - **Remaining:**
   - Streaming style deltas: a `Deferred` chunk whose content interns a brand-new class
     carries that rule in its chunk.

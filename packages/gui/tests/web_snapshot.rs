@@ -17,12 +17,12 @@ use skene_gui::{
   TextTheme,
   View,
   core::{
-    AlignItems,
     Animation,
     BoxStyle,
     Color,
     Condition,
-    JustifyContent,
+    ItemAlignment,
+    MainAxisAlignment,
     MouseCursor,
     StyleProperty,
     Transition,
@@ -37,9 +37,9 @@ use skene_gui::{
 fn representative_tree() -> impl skene_gui::IntoView {
   TextTheme::new(
     Container::column()
-      .set_justify_content(JustifyContent::Center)
-      .set_align_items(AlignItems::Stretch)
-      .set_gap(12.)
+      .set_justify_content(MainAxisAlignment::Center)
+      .set_align_items(ItemAlignment::Stretch)
+      .set_spacing(12.)
       .set_padding(Inset::symmetric(16., 24.))
       .set_color(Color::srgb(0.1, 0.2, 0.3))
       .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
@@ -60,7 +60,7 @@ fn representative_tree() -> impl skene_gui::IntoView {
           .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
           .handle_click(|| {})
           .set_child(Text::new("Press")),
-        Container::grid(3).set_gap(4.).set_children((
+        Container::grid(3).set_spacing(4.).set_children((
           Text::new("a"),
           Text::new("b"),
           Text::new("c"),

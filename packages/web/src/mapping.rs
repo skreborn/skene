@@ -108,8 +108,8 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
       .set("border-color", Declarations::render_color(value.color)),
     BoxProp::BorderRadius(value) => declarations.set("border-radius", format!("{value}px")),
     BoxProp::Cursor(value) => declarations.set("cursor", Declarations::render_cursor(*value)),
-    BoxProp::RowGap(value) => declarations.set("row-gap", format!("{value}px")),
-    BoxProp::ColumnGap(value) => declarations.set("column-gap", format!("{value}px")),
+    BoxProp::RowSpacing(value) => declarations.set("row-gap", format!("{value}px")),
+    BoxProp::ColumnSpacing(value) => declarations.set("column-gap", format!("{value}px")),
     BoxProp::FlexWrap(value) => declarations.set(
       "flex-wrap",
       match value {
@@ -123,24 +123,23 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
     BoxProp::FlexBasis(value) => {
       declarations.set("flex-basis", Declarations::render_dimension(*value))
     }
-    BoxProp::JustifyContent(value) => declarations.set(
-      "justify-content",
-      Declarations::render_align_content(*value),
-    ),
-    BoxProp::AlignItems(value) => {
-      declarations.set("align-items", Declarations::render_align_items(*value))
+    BoxProp::MainAxisAlignment(value) => {
+      declarations.set("justify-content", Declarations::render_main_axis(*value))
     }
-    BoxProp::AlignContent(value) => {
-      declarations.set("align-content", Declarations::render_align_content(*value))
+    BoxProp::CrossAxisAlignment(value) => {
+      declarations.set("align-items", Declarations::render_item_alignment(*value))
     }
-    BoxProp::JustifyItems(value) => {
-      declarations.set("justify-items", Declarations::render_align_items(*value))
+    BoxProp::LineAlignment(value) => {
+      declarations.set("align-content", Declarations::render_line_alignment(*value))
     }
-    BoxProp::AlignSelf(value) => {
-      declarations.set("align-self", Declarations::render_align_items(*value))
+    BoxProp::MainAxisItemAlignment(value) => {
+      declarations.set("justify-items", Declarations::render_item_alignment(*value))
     }
-    BoxProp::JustifySelf(value) => {
-      declarations.set("justify-self", Declarations::render_align_items(*value))
+    BoxProp::SelfCrossAxisAlignment(value) => {
+      declarations.set("align-self", Declarations::render_item_alignment(*value))
+    }
+    BoxProp::SelfMainAxisAlignment(value) => {
+      declarations.set("justify-self", Declarations::render_item_alignment(*value))
     }
     BoxProp::GridTemplateColumns(value) => {
       declarations.set("grid-template-columns", Declarations::render_tracks(value))
@@ -241,12 +240,12 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::Cursor(value));
   }
 
-  if let Some(value) = style.row_gap {
-    declarations = apply_box_prop(declarations, &BoxProp::RowGap(value));
+  if let Some(value) = style.row_spacing {
+    declarations = apply_box_prop(declarations, &BoxProp::RowSpacing(value));
   }
 
-  if let Some(value) = style.column_gap {
-    declarations = apply_box_prop(declarations, &BoxProp::ColumnGap(value));
+  if let Some(value) = style.column_spacing {
+    declarations = apply_box_prop(declarations, &BoxProp::ColumnSpacing(value));
   }
 
   if let Some(value) = style.flex_wrap {
@@ -265,28 +264,28 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::FlexBasis(value));
   }
 
-  if let Some(value) = style.justify_content {
-    declarations = apply_box_prop(declarations, &BoxProp::JustifyContent(value));
+  if let Some(value) = style.main_axis_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::MainAxisAlignment(value));
   }
 
-  if let Some(value) = style.align_items {
-    declarations = apply_box_prop(declarations, &BoxProp::AlignItems(value));
+  if let Some(value) = style.cross_axis_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::CrossAxisAlignment(value));
   }
 
-  if let Some(value) = style.align_content {
-    declarations = apply_box_prop(declarations, &BoxProp::AlignContent(value));
+  if let Some(value) = style.line_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::LineAlignment(value));
   }
 
-  if let Some(value) = style.justify_items {
-    declarations = apply_box_prop(declarations, &BoxProp::JustifyItems(value));
+  if let Some(value) = style.main_axis_item_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::MainAxisItemAlignment(value));
   }
 
-  if let Some(value) = style.align_self {
-    declarations = apply_box_prop(declarations, &BoxProp::AlignSelf(value));
+  if let Some(value) = style.self_cross_axis_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::SelfCrossAxisAlignment(value));
   }
 
-  if let Some(value) = style.justify_self {
-    declarations = apply_box_prop(declarations, &BoxProp::JustifySelf(value));
+  if let Some(value) = style.self_main_axis_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::SelfMainAxisAlignment(value));
   }
 
   if let Some(value) = &style.grid_template_columns {
@@ -605,7 +604,7 @@ fn style_property_name(property: StyleProperty) -> &'static str {
     StyleProperty::BorderColor => "border-color",
     StyleProperty::BorderWidth => "border-width",
     StyleProperty::BorderRadius => "border-radius",
-    StyleProperty::Gap => "gap",
+    StyleProperty::Spacing => "gap",
     StyleProperty::FlexBasis => "flex-basis",
     StyleProperty::FlexGrow => "flex-grow",
     StyleProperty::TextColor => "color",

@@ -66,9 +66,6 @@ pub use task::scope_bound;
 pub use transition::transition;
 pub use tree::TreeOps;
 pub use values::{
-  AlignContent,
-  AlignItems,
-  AlignSelf,
   Axis,
   Border,
   Color,
@@ -79,11 +76,11 @@ pub use values::{
   GridPlacement,
   GridTrack,
   Inset,
-  JustifyContent,
-  JustifyItems,
-  JustifySelf,
+  ItemAlignment,
   Layout,
   Line,
+  LineAlignment,
+  MainAxisAlignment,
   MouseCursor,
   Overflow,
   Placement,

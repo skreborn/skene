@@ -3,9 +3,6 @@
 use std::rc::Rc;
 
 use skene_core::{
-  AlignContent,
-  AlignItems,
-  AlignSelf,
   Color,
   Dimension,
   FlexDirection,
@@ -13,12 +10,12 @@ use skene_core::{
   GridAutoFlow,
   GridPlacement,
   GridTrack,
-  JustifyContent,
-  JustifyItems,
-  JustifySelf,
+  ItemAlignment,
   KeyEvent,
   Layout,
   Line,
+  LineAlignment,
+  MainAxisAlignment,
   MouseCursor,
   NodeId,
   Overflow,
@@ -63,8 +60,8 @@ pub struct Container {
   inset: Option<Source<skene_core::Inset<Dimension<u32>>>>,
   color: Option<Source<Color>>,
   border: Option<Source<Color>>,
-  row_gap: Option<Source<u32>>,
-  column_gap: Option<Source<u32>>,
+  row_spacing: Option<Source<u32>>,
+  column_spacing: Option<Source<u32>>,
   cursor: Option<Source<MouseCursor>>,
   overflow: Option<Source<Overflow>>,
   shadow: Option<Source<Color>>,
@@ -72,12 +69,12 @@ pub struct Container {
   flex_grow: Option<Source<f32>>,
   flex_shrink: Option<Source<f32>>,
   flex_basis: Option<Source<Dimension<u32>>>,
-  justify_content: Option<Source<JustifyContent>>,
-  align_items: Option<Source<AlignItems>>,
-  align_content: Option<Source<AlignContent>>,
-  justify_items: Option<Source<JustifyItems>>,
-  align_self: Option<Source<AlignSelf>>,
-  justify_self: Option<Source<JustifySelf>>,
+  main_axis_alignment: Option<Source<MainAxisAlignment>>,
+  cross_axis_alignment: Option<Source<ItemAlignment>>,
+  line_alignment: Option<Source<LineAlignment>>,
+  main_axis_item_alignment: Option<Source<ItemAlignment>>,
+  self_cross_axis_alignment: Option<Source<ItemAlignment>>,
+  self_main_axis_alignment: Option<Source<ItemAlignment>>,
   grid_template_columns: Option<Source<Vec<GridTrack<u32>>>>,
   grid_template_rows: Option<Source<Vec<GridTrack<u32>>>>,
   grid_auto_columns: Option<Source<Vec<GridTrack<u32>>>>,
@@ -119,8 +116,8 @@ impl Container {
       inset: None,
       color: None,
       border: None,
-      row_gap: None,
-      column_gap: None,
+      row_spacing: None,
+      column_spacing: None,
       cursor: None,
       overflow: None,
       shadow: None,
@@ -128,12 +125,12 @@ impl Container {
       flex_grow: None,
       flex_shrink: None,
       flex_basis: None,
-      justify_content: None,
-      align_items: None,
-      align_content: None,
-      justify_items: None,
-      align_self: None,
-      justify_self: None,
+      main_axis_alignment: None,
+      cross_axis_alignment: None,
+      line_alignment: None,
+      main_axis_item_alignment: None,
+      self_cross_axis_alignment: None,
+      self_main_axis_alignment: None,
       grid_template_columns: None,
       grid_template_rows: None,
       grid_auto_columns: None,
@@ -184,7 +181,7 @@ impl Container {
   /// `grid_template_columns` (and friends) for any other track layout.
   #[inline(always)]
   pub fn grid(columns: u16) -> Self {
-    Container::mode(Layout::Grid).set_grid_template_columns(GridTrack::Fr(1.).repeated(columns))
+    Container::mode(Layout::Grid).set_grid_template_columns(GridTrack::Flex(1.).repeated(columns))
   }
 
   /// A container overlapping its children in one cell, stacked in order (last on top).
@@ -354,52 +351,52 @@ impl Container {
 
   /// Sets a static gap between children on both axes, in cells.
   #[inline(always)]
-  pub fn set_gap(mut self, gap: u32) -> Self {
-    self.row_gap = Some(Source::Static(gap));
-    self.column_gap = Some(Source::Static(gap));
+  pub fn set_spacing(mut self, gap: u32) -> Self {
+    self.row_spacing = Some(Source::Static(gap));
+    self.column_spacing = Some(Source::Static(gap));
 
     self
   }
 
   /// Sets a derived gap between children on both axes, in cells.
   #[inline(always)]
-  pub fn derive_gap(mut self, gap: impl Fn() -> u32 + 'static) -> Self {
+  pub fn derive_spacing(mut self, gap: impl Fn() -> u32 + 'static) -> Self {
     let gap: Rc<dyn Fn() -> u32> = Rc::new(gap);
 
-    self.row_gap = Some(Source::Derived(Rc::clone(&gap)));
-    self.column_gap = Some(Source::Derived(gap));
+    self.row_spacing = Some(Source::Derived(Rc::clone(&gap)));
+    self.column_spacing = Some(Source::Derived(gap));
 
     self
   }
 
   /// Sets a static gap between rows of children, in cells.
   #[inline(always)]
-  pub fn set_row_gap(mut self, row_gap: u32) -> Self {
-    self.row_gap = Some(Source::Static(row_gap));
+  pub fn set_row_gap(mut self, row_spacing: u32) -> Self {
+    self.row_spacing = Some(Source::Static(row_spacing));
 
     self
   }
 
   /// Sets a derived gap between rows of children, in cells.
   #[inline(always)]
-  pub fn derive_row_gap(mut self, row_gap: impl Fn() -> u32 + 'static) -> Self {
-    self.row_gap = Some(Source::Derived(Rc::new(row_gap)));
+  pub fn derive_row_gap(mut self, row_spacing: impl Fn() -> u32 + 'static) -> Self {
+    self.row_spacing = Some(Source::Derived(Rc::new(row_spacing)));
 
     self
   }
 
   /// Sets a static gap between columns of children, in cells.
   #[inline(always)]
-  pub fn set_column_gap(mut self, column_gap: u32) -> Self {
-    self.column_gap = Some(Source::Static(column_gap));
+  pub fn set_column_gap(mut self, column_spacing: u32) -> Self {
+    self.column_spacing = Some(Source::Static(column_spacing));
 
     self
   }
 
   /// Sets a derived gap between columns of children, in cells.
   #[inline(always)]
-  pub fn derive_column_gap(mut self, column_gap: impl Fn() -> u32 + 'static) -> Self {
-    self.column_gap = Some(Source::Derived(Rc::new(column_gap)));
+  pub fn derive_column_gap(mut self, column_spacing: impl Fn() -> u32 + 'static) -> Self {
+    self.column_spacing = Some(Source::Derived(Rc::new(column_spacing)));
 
     self
   }
@@ -593,8 +590,8 @@ impl Container {
 
   /// Sets a static distribution of children along the main (flex) or inline (grid) axis.
   #[inline(always)]
-  pub fn set_justify_content(mut self, justify_content: JustifyContent) -> Self {
-    self.justify_content = Some(Source::Static(justify_content));
+  pub fn set_justify_content(mut self, main_axis_alignment: MainAxisAlignment) -> Self {
+    self.main_axis_alignment = Some(Source::Static(main_axis_alignment));
 
     self
   }
@@ -603,33 +600,36 @@ impl Container {
   #[inline(always)]
   pub fn derive_justify_content(
     mut self,
-    justify_content: impl Fn() -> JustifyContent + 'static,
+    main_axis_alignment: impl Fn() -> MainAxisAlignment + 'static,
   ) -> Self {
-    self.justify_content = Some(Source::Derived(Rc::new(justify_content)));
+    self.main_axis_alignment = Some(Source::Derived(Rc::new(main_axis_alignment)));
 
     self
   }
 
   /// Sets a static alignment of children on the cross (flex) or block (grid) axis.
   #[inline(always)]
-  pub fn set_align_items(mut self, align_items: AlignItems) -> Self {
-    self.align_items = Some(Source::Static(align_items));
+  pub fn set_align_items(mut self, cross_axis_alignment: ItemAlignment) -> Self {
+    self.cross_axis_alignment = Some(Source::Static(cross_axis_alignment));
 
     self
   }
 
   /// Sets a derived alignment of children on the cross (flex) or block (grid) axis.
   #[inline(always)]
-  pub fn derive_align_items(mut self, align_items: impl Fn() -> AlignItems + 'static) -> Self {
-    self.align_items = Some(Source::Derived(Rc::new(align_items)));
+  pub fn derive_align_items(
+    mut self,
+    cross_axis_alignment: impl Fn() -> ItemAlignment + 'static,
+  ) -> Self {
+    self.cross_axis_alignment = Some(Source::Derived(Rc::new(cross_axis_alignment)));
 
     self
   }
 
   /// Sets a static distribution of wrapped lines or grid tracks along the cross or block axis.
   #[inline(always)]
-  pub fn set_align_content(mut self, align_content: AlignContent) -> Self {
-    self.align_content = Some(Source::Static(align_content));
+  pub fn set_align_content(mut self, line_alignment: LineAlignment) -> Self {
+    self.line_alignment = Some(Source::Static(line_alignment));
 
     self
   }
@@ -638,17 +638,17 @@ impl Container {
   #[inline(always)]
   pub fn derive_align_content(
     mut self,
-    align_content: impl Fn() -> AlignContent + 'static,
+    line_alignment: impl Fn() -> LineAlignment + 'static,
   ) -> Self {
-    self.align_content = Some(Source::Derived(Rc::new(align_content)));
+    self.line_alignment = Some(Source::Derived(Rc::new(line_alignment)));
 
     self
   }
 
   /// Sets a static alignment of grid children on the inline axis.
   #[inline(always)]
-  pub fn set_justify_items(mut self, justify_items: JustifyItems) -> Self {
-    self.justify_items = Some(Source::Static(justify_items));
+  pub fn set_justify_items(mut self, main_axis_item_alignment: ItemAlignment) -> Self {
+    self.main_axis_item_alignment = Some(Source::Static(main_axis_item_alignment));
 
     self
   }
@@ -657,41 +657,47 @@ impl Container {
   #[inline(always)]
   pub fn derive_justify_items(
     mut self,
-    justify_items: impl Fn() -> JustifyItems + 'static,
+    main_axis_item_alignment: impl Fn() -> ItemAlignment + 'static,
   ) -> Self {
-    self.justify_items = Some(Source::Derived(Rc::new(justify_items)));
+    self.main_axis_item_alignment = Some(Source::Derived(Rc::new(main_axis_item_alignment)));
 
     self
   }
 
   /// Sets a static cross- or block-axis alignment of the box itself.
   #[inline(always)]
-  pub fn set_align_self(mut self, align_self: AlignSelf) -> Self {
-    self.align_self = Some(Source::Static(align_self));
+  pub fn set_align_self(mut self, self_cross_axis_alignment: ItemAlignment) -> Self {
+    self.self_cross_axis_alignment = Some(Source::Static(self_cross_axis_alignment));
 
     self
   }
 
   /// Sets a derived cross- or block-axis alignment of the box itself.
   #[inline(always)]
-  pub fn derive_align_self(mut self, align_self: impl Fn() -> AlignSelf + 'static) -> Self {
-    self.align_self = Some(Source::Derived(Rc::new(align_self)));
+  pub fn derive_align_self(
+    mut self,
+    self_cross_axis_alignment: impl Fn() -> ItemAlignment + 'static,
+  ) -> Self {
+    self.self_cross_axis_alignment = Some(Source::Derived(Rc::new(self_cross_axis_alignment)));
 
     self
   }
 
   /// Sets a static inline-axis alignment of the box itself in a grid.
   #[inline(always)]
-  pub fn set_justify_self(mut self, justify_self: JustifySelf) -> Self {
-    self.justify_self = Some(Source::Static(justify_self));
+  pub fn set_justify_self(mut self, self_main_axis_alignment: ItemAlignment) -> Self {
+    self.self_main_axis_alignment = Some(Source::Static(self_main_axis_alignment));
 
     self
   }
 
   /// Sets a derived inline-axis alignment of the box itself in a grid.
   #[inline(always)]
-  pub fn derive_justify_self(mut self, justify_self: impl Fn() -> JustifySelf + 'static) -> Self {
-    self.justify_self = Some(Source::Derived(Rc::new(justify_self)));
+  pub fn derive_justify_self(
+    mut self,
+    self_main_axis_alignment: impl Fn() -> ItemAlignment + 'static,
+  ) -> Self {
+    self.self_main_axis_alignment = Some(Source::Derived(Rc::new(self_main_axis_alignment)));
 
     self
   }
@@ -1078,18 +1084,18 @@ impl View for Container {
     );
 
     split_prop(
-      self.row_gap,
-      &mut style.row_gap,
+      self.row_spacing,
+      &mut style.row_spacing,
       &mut binders,
-      BoxProp::RowGap,
+      BoxProp::RowSpacing,
       update_box,
     );
 
     split_prop(
-      self.column_gap,
-      &mut style.column_gap,
+      self.column_spacing,
+      &mut style.column_spacing,
       &mut binders,
-      BoxProp::ColumnGap,
+      BoxProp::ColumnSpacing,
       update_box,
     );
 
@@ -1150,50 +1156,50 @@ impl View for Container {
     );
 
     split_prop(
-      self.justify_content,
-      &mut style.justify_content,
+      self.main_axis_alignment,
+      &mut style.main_axis_alignment,
       &mut binders,
-      BoxProp::JustifyContent,
+      BoxProp::MainAxisAlignment,
       update_box,
     );
 
     split_prop(
-      self.align_items,
-      &mut style.align_items,
+      self.cross_axis_alignment,
+      &mut style.cross_axis_alignment,
       &mut binders,
-      BoxProp::AlignItems,
+      BoxProp::CrossAxisAlignment,
       update_box,
     );
 
     split_prop(
-      self.align_content,
-      &mut style.align_content,
+      self.line_alignment,
+      &mut style.line_alignment,
       &mut binders,
-      BoxProp::AlignContent,
+      BoxProp::LineAlignment,
       update_box,
     );
 
     split_prop(
-      self.justify_items,
-      &mut style.justify_items,
+      self.main_axis_item_alignment,
+      &mut style.main_axis_item_alignment,
       &mut binders,
-      BoxProp::JustifyItems,
+      BoxProp::MainAxisItemAlignment,
       update_box,
     );
 
     split_prop(
-      self.align_self,
-      &mut style.align_self,
+      self.self_cross_axis_alignment,
+      &mut style.self_cross_axis_alignment,
       &mut binders,
-      BoxProp::AlignSelf,
+      BoxProp::SelfCrossAxisAlignment,
       update_box,
     );
 
     split_prop(
-      self.justify_self,
-      &mut style.justify_self,
+      self.self_main_axis_alignment,
+      &mut style.self_main_axis_alignment,
       &mut binders,
-      BoxProp::JustifySelf,
+      BoxProp::SelfMainAxisAlignment,
       update_box,
     );
 

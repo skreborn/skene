@@ -104,11 +104,11 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   bookkeeping every driver already keeps for its sink. The umbrella naming the driver is
   the one place static dispatch works, so that is where realization lives.
 
-  **No mock driver—but headless tests.** Because the vocabulary carries typed data, a
-  future host-compilable *recording* driver can capture exactly what any real driver
-  receives, giving view logic fast headless tests without pretending to be a platform.
-  Drivers test against their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr:
-  wasmtime under a byte-exact snapshot; native: its toolkit).
+  **No mock driver—but headless tests.** Because the vocabulary carries typed data, the
+  host-compilable *recording* driver (`skene-record`) captures exactly what any real
+  driver receives, giving view logic fast headless tests without pretending to be a
+  platform. Drivers test against their real sinks (web: a browser DOM via
+  `wasm-bindgen-test`; ssr: wasmtime under a byte-exact snapshot; native: its toolkit).
 
 ## The style model
 
@@ -138,14 +138,17 @@ emits one CSS rule per conjunction (`@media` wrapping, pseudo-classes suffixing)
 the same sharing shape as `TreeOps`—never feature-gated variants, which cargo's additive
 feature unification would break in any build containing both facades.
 
-- **Layout** speaks taffy's style model as the vocabulary: flexbox (direction, wrap,
-  grow/shrink/basis), grid (track templates with `fr`/`minmax`/`fit-content`, auto
-  tracks and flow, line/span placements), block, and the shared alignment family
-  (`justify_content`/`align_items`/`align_content`/`align_self` and friends), with
-  lengths as `Dimension` (fixed, percent, auto) plus margin, position and inset. The
+- **Layout** runs on taffy at full capability—flexbox (direction, wrap,
+  grow/shrink/basis), grid (track templates with `Flex` shares, `Minmax`,
+  `FitContent`, auto tracks and flow, line/span placements), block—but the vocabulary
+  is the modern frameworks' (Flutter/SwiftUI/Compose), not CSS's: axis-explicit
+  alignment (`main_axis_alignment`, `cross_axis_alignment`, `line_alignment`, the
+  `main_axis_item_alignment`/`self_` variants), `Dimension` lengths as fixed,
+  `Fraction` (`0.`–`1.`) or auto, per-axis `spacing`, margin, position and inset. The
   types are mirrored in core, scalar-generic so the GUI facade instantiates logical
-  pixels and the TUI cells; the web renders them to CSS text, the terminal feeds taffy
-  directly. The framework invents no layout system.
+  pixels and the TUI cells; the web renders them to CSS text (the only place CSS
+  nomenclature exists), the terminal feeds taffy directly. The framework invents no
+  layout system.
 - **Decoration and text** are skene's typed properties (background, border, radius,
   cursor, text color/size/weight, …), growing as views need them.
 - **Passthrough** keeps the vocabulary open: a per-family extension (web: raw CSS

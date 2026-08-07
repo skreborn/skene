@@ -35,50 +35,62 @@ pub enum FlexWrap {
   WrapReverse,
 }
 
-/// Alignment of items on the cross axis (flex) or block axis (grid).
+/// Distribution of children along a container's main axis.
+///
+/// The main axis is the flex direction; in a grid it is the horizontal (row) axis,
+/// where this distributes the column tracks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
-pub enum AlignItems {
-  /// Aligns items to the start of the axis.
+pub enum MainAxisAlignment {
+  /// Packs children at the start of the axis.
   Start,
-  /// Aligns items to the end of the axis.
+  /// Packs children at the end of the axis.
   End,
-  /// Centers items on the axis.
+  /// Packs children at the center of the axis.
   Center,
-  /// Aligns items to their text baseline.
-  Baseline,
-  /// Stretches items to fill the axis.
-  Stretch,
-}
-
-/// One item's own cross-axis alignment, overriding the container's `align_items`.
-pub type AlignSelf = AlignItems;
-
-/// Alignment of grid items on the inline axis.
-pub type JustifyItems = AlignItems;
-
-/// One item's own inline-axis alignment, overriding the container's `justify_items`.
-pub type JustifySelf = AlignItems;
-
-/// Distribution of content along an axis with free space.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[must_use]
-pub enum AlignContent {
-  /// Packs content at the start of the axis.
-  Start,
-  /// Packs content at the end of the axis.
-  End,
-  /// Packs content at the center of the axis.
-  Center,
-  /// Stretches content to fill the axis.
-  Stretch,
-  /// Distributes free space between items.
+  /// Distributes free space between children.
   SpaceBetween,
-  /// Distributes free space around items.
+  /// Distributes free space around children.
   SpaceAround,
-  /// Distributes free space evenly between and around items.
+  /// Distributes free space evenly between and around children.
   SpaceEvenly,
 }
 
-/// Distribution of children along the main axis (flex) or inline axis (grid).
-pub type JustifyContent = AlignContent;
+/// Alignment of one item within the space its container gives it.
+///
+/// Which axis it applies to is named by the property carrying it
+/// (`cross_axis_alignment`, `main_axis_item_alignment`, and the `self_` overrides).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum ItemAlignment {
+  /// Aligns the item to the start of the axis.
+  Start,
+  /// Aligns the item to the end of the axis.
+  End,
+  /// Centers the item on the axis.
+  Center,
+  /// Aligns the item to its text baseline.
+  Baseline,
+  /// Stretches the item to fill the axis.
+  Stretch,
+}
+
+/// Distribution of wrapped flex lines—or a grid's row tracks—along the cross axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum LineAlignment {
+  /// Packs lines at the start of the axis.
+  Start,
+  /// Packs lines at the end of the axis.
+  End,
+  /// Packs lines at the center of the axis.
+  Center,
+  /// Stretches lines to fill the axis.
+  Stretch,
+  /// Distributes free space between lines.
+  SpaceBetween,
+  /// Distributes free space around lines.
+  SpaceAround,
+  /// Distributes free space evenly between and around lines.
+  SpaceEvenly,
+}

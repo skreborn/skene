@@ -63,8 +63,8 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.inset = over.inset.or(base.inset);
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
-  base.row_gap = over.row_gap.or(base.row_gap);
-  base.column_gap = over.column_gap.or(base.column_gap);
+  base.row_spacing = over.row_spacing.or(base.row_spacing);
+  base.column_spacing = over.column_spacing.or(base.column_spacing);
   base.cursor = over.cursor.or(base.cursor);
   base.overflow = over.overflow.or(base.overflow);
   base.shadow = over.shadow.or(base.shadow);
@@ -72,12 +72,18 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.flex_grow = over.flex_grow.or(base.flex_grow);
   base.flex_shrink = over.flex_shrink.or(base.flex_shrink);
   base.flex_basis = over.flex_basis.or(base.flex_basis);
-  base.justify_content = over.justify_content.or(base.justify_content);
-  base.align_items = over.align_items.or(base.align_items);
-  base.align_content = over.align_content.or(base.align_content);
-  base.justify_items = over.justify_items.or(base.justify_items);
-  base.align_self = over.align_self.or(base.align_self);
-  base.justify_self = over.justify_self.or(base.justify_self);
+  base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
+  base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
+  base.line_alignment = over.line_alignment.or(base.line_alignment);
+  base.main_axis_item_alignment = over
+    .main_axis_item_alignment
+    .or(base.main_axis_item_alignment);
+  base.self_cross_axis_alignment = over
+    .self_cross_axis_alignment
+    .or(base.self_cross_axis_alignment);
+  base.self_main_axis_alignment = over
+    .self_main_axis_alignment
+    .or(base.self_main_axis_alignment);
   base.grid_auto_flow = over.grid_auto_flow.or(base.grid_auto_flow);
   base.grid_row = over.grid_row.or(base.grid_row);
   base.grid_column = over.grid_column.or(base.grid_column);
@@ -181,7 +187,7 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
 fn dimension(value: skene_core::Dimension<u32>) -> taffy::style::Dimension {
   match value {
     skene_core::Dimension::Length(cells) => length(cell(cells)),
-    skene_core::Dimension::Percent(value) => percent(value / 100.),
+    skene_core::Dimension::Fraction(value) => percent(value),
     skene_core::Dimension::Auto => taffy::style::Dimension::AUTO,
   }
 }
@@ -190,7 +196,7 @@ fn dimension(value: skene_core::Dimension<u32>) -> taffy::style::Dimension {
 fn dimension_lpa(value: skene_core::Dimension<u32>) -> taffy::style::LengthPercentageAuto {
   match value {
     skene_core::Dimension::Length(cells) => length(cell(cells)),
-    skene_core::Dimension::Percent(value) => percent(value / 100.),
+    skene_core::Dimension::Fraction(value) => percent(value),
     skene_core::Dimension::Auto => taffy::style::LengthPercentageAuto::AUTO,
   }
 }
@@ -211,9 +217,10 @@ fn dimension_rect(
 fn min_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MinTrackSizingFunction {
   match limit {
     skene_core::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_core::TrackLimit::Percent(value) => percent(value / 100.),
-    // A fraction is meaningless as a minimum; taffy treats it as auto, as CSS does.
-    skene_core::TrackLimit::Fr(_) | skene_core::TrackLimit::Auto => {
+    skene_core::TrackLimit::Fraction(value) => percent(value),
+    // A flexible share is meaningless as a minimum; taffy treats it as auto, as CSS
+    // does.
+    skene_core::TrackLimit::Flex(_) | skene_core::TrackLimit::Auto => {
       taffy::style::MinTrackSizingFunction::AUTO
     }
     skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
@@ -225,8 +232,8 @@ fn min_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MinTrackSizing
 fn max_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MaxTrackSizingFunction {
   match limit {
     skene_core::TrackLimit::Length(cells) => length(cell(cells)),
-    skene_core::TrackLimit::Percent(value) => percent(value / 100.),
-    skene_core::TrackLimit::Fr(value) => fr(value),
+    skene_core::TrackLimit::Fraction(value) => percent(value),
+    skene_core::TrackLimit::Flex(value) => fr(value),
     skene_core::TrackLimit::Auto => taffy::style::MaxTrackSizingFunction::AUTO,
     skene_core::TrackLimit::MinContent => taffy::prelude::min_content(),
     skene_core::TrackLimit::MaxContent => taffy::prelude::max_content(),
@@ -237,8 +244,8 @@ fn max_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MaxTrackSizing
 fn track(value: skene_core::GridTrack<u32>) -> taffy::style::TrackSizingFunction {
   match value {
     skene_core::GridTrack::Length(cells) => length(cell(cells)),
-    skene_core::GridTrack::Percent(value) => percent(value / 100.),
-    skene_core::GridTrack::Fr(value) => fr(value),
+    skene_core::GridTrack::Fraction(value) => percent(value),
+    skene_core::GridTrack::Flex(value) => fr(value),
     skene_core::GridTrack::Auto => taffy::style::TrackSizingFunction::AUTO,
     skene_core::GridTrack::MinContent => taffy::prelude::min_content(),
     skene_core::GridTrack::MaxContent => taffy::prelude::max_content(),
@@ -266,27 +273,40 @@ fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<St
   }
 }
 
-/// An [`AlignContent`](skene_core::AlignContent) as taffy's.
-fn align_content(value: skene_core::AlignContent) -> taffy::style::AlignContent {
+/// A [`MainAxisAlignment`](skene_core::MainAxisAlignment) as taffy's content
+/// alignment.
+fn main_axis(value: skene_core::MainAxisAlignment) -> taffy::style::AlignContent {
   match value {
-    skene_core::AlignContent::Start => taffy::style::AlignContent::Start,
-    skene_core::AlignContent::End => taffy::style::AlignContent::End,
-    skene_core::AlignContent::Center => taffy::style::AlignContent::Center,
-    skene_core::AlignContent::Stretch => taffy::style::AlignContent::Stretch,
-    skene_core::AlignContent::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_core::AlignContent::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_core::AlignContent::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+    skene_core::MainAxisAlignment::Start => taffy::style::AlignContent::Start,
+    skene_core::MainAxisAlignment::End => taffy::style::AlignContent::End,
+    skene_core::MainAxisAlignment::Center => taffy::style::AlignContent::Center,
+    skene_core::MainAxisAlignment::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_core::MainAxisAlignment::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_core::MainAxisAlignment::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
   }
 }
 
-/// An [`AlignItems`](skene_core::AlignItems) as taffy's.
-fn align_items(value: skene_core::AlignItems) -> taffy::style::AlignItems {
+/// A [`LineAlignment`](skene_core::LineAlignment) as taffy's content alignment.
+fn line(value: skene_core::LineAlignment) -> taffy::style::AlignContent {
   match value {
-    skene_core::AlignItems::Start => taffy::style::AlignItems::Start,
-    skene_core::AlignItems::End => taffy::style::AlignItems::End,
-    skene_core::AlignItems::Center => taffy::style::AlignItems::Center,
-    skene_core::AlignItems::Baseline => taffy::style::AlignItems::Baseline,
-    skene_core::AlignItems::Stretch => taffy::style::AlignItems::Stretch,
+    skene_core::LineAlignment::Start => taffy::style::AlignContent::Start,
+    skene_core::LineAlignment::End => taffy::style::AlignContent::End,
+    skene_core::LineAlignment::Center => taffy::style::AlignContent::Center,
+    skene_core::LineAlignment::Stretch => taffy::style::AlignContent::Stretch,
+    skene_core::LineAlignment::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_core::LineAlignment::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_core::LineAlignment::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+  }
+}
+
+/// An [`ItemAlignment`](skene_core::ItemAlignment) as taffy's item alignment.
+fn item(value: skene_core::ItemAlignment) -> taffy::style::AlignItems {
+  match value {
+    skene_core::ItemAlignment::Start => taffy::style::AlignItems::Start,
+    skene_core::ItemAlignment::End => taffy::style::AlignItems::End,
+    skene_core::ItemAlignment::Center => taffy::style::AlignItems::Center,
+    skene_core::ItemAlignment::Baseline => taffy::style::AlignItems::Baseline,
+    skene_core::ItemAlignment::Stretch => taffy::style::AlignItems::Stretch,
   }
 }
 
@@ -355,12 +375,12 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  if let Some(row_gap) = style.row_gap {
-    out.gap.height = length(cell(row_gap));
+  if let Some(row_spacing) = style.row_spacing {
+    out.gap.height = length(cell(row_spacing));
   }
 
-  if let Some(column_gap) = style.column_gap {
-    out.gap.width = length(cell(column_gap));
+  if let Some(column_spacing) = style.column_spacing {
+    out.gap.width = length(cell(column_spacing));
   }
 
   if let Some(overflow) = style.overflow {
@@ -396,12 +416,12 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     out.flex_basis = dimension(flex_basis);
   }
 
-  out.justify_content = style.justify_content.map(align_content);
-  out.align_items = style.align_items.map(align_items);
-  out.align_content = style.align_content.map(align_content);
-  out.justify_items = style.justify_items.map(align_items);
-  out.align_self = style.align_self.map(align_items);
-  out.justify_self = style.justify_self.map(align_items);
+  out.justify_content = style.main_axis_alignment.map(main_axis);
+  out.align_items = style.cross_axis_alignment.map(item);
+  out.align_content = style.line_alignment.map(line);
+  out.justify_items = style.main_axis_item_alignment.map(item);
+  out.align_self = style.self_cross_axis_alignment.map(item);
+  out.justify_self = style.self_main_axis_alignment.map(item);
 
   if let Some(tracks) = &style.grid_template_columns {
     out.grid_template_columns = template(tracks);

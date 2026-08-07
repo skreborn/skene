@@ -8,16 +8,15 @@ use skene_gui::{
   HasChildren,
   Text,
   core::{
-    AlignItems,
     Animation,
     BoxStyle,
     Condition,
     Dimension,
     Easing,
     FlexWrap,
-    GridPlacement,
     GridTrack,
     Inset,
+    ItemAlignment,
     Line,
     Overflow,
     Position,
@@ -65,7 +64,7 @@ fn state_variant_renders_a_pseudo_class_rule() {
 #[test]
 fn media_variant_renders_an_at_media_block() {
   let rendered = render_to_string(|| {
-    Container::new().set_when(Condition::MaxWidth(600.), BoxStyle::new().set_gap(4.))
+    Container::new().set_when(Condition::MaxWidth(600.), BoxStyle::new().set_spacing(4.))
   });
 
   let class = root_class(rendered.body());
@@ -102,7 +101,7 @@ fn or_composition_emits_a_rule_per_alternative() {
         Condition::Hovered,
         Condition::and([Condition::DarkMode, Condition::Focused]),
       ]),
-      BoxStyle::new().set_gap(2.),
+      BoxStyle::new().set_spacing(2.),
     )
   });
 
@@ -246,11 +245,11 @@ fn flex_item_properties_render() {
   let rendered = render_to_string(|| {
     Container::row()
       .set_flex_wrap(FlexWrap::Wrap)
-      .set_width(Dimension::Percent(50.))
+      .set_width(Dimension::Fraction(0.5))
       .set_flex_basis(120.)
       .set_flex_grow(2.)
       .set_flex_shrink(0.)
-      .set_align_self(AlignItems::Center)
+      .set_align_self(ItemAlignment::Center)
       .set_margin(Inset {
         top: Dimension::Length(4.),
         right: Dimension::Auto,
@@ -278,7 +277,7 @@ fn positioned_box_renders_inset() {
         top: Dimension::Length(0.),
         right: Dimension::Length(8.),
         bottom: Dimension::Auto,
-        left: Dimension::Percent(10.),
+        left: Dimension::Fraction(0.1),
       })
   });
 
@@ -296,8 +295,8 @@ fn grid_tracks_and_placements_render() {
     Container::grid(1)
       .set_grid_template_columns([
         GridTrack::Length(100.),
-        GridTrack::Fr(1.),
-        GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Fr(2.)),
+        GridTrack::Flex(1.),
+        GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
         GridTrack::FitContent(200.),
       ])
       .set_grid_template_rows(GridTrack::Auto.repeated(2))

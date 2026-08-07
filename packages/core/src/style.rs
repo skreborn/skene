@@ -104,8 +104,8 @@ pub enum StyleProperty {
   BorderWidth,
   /// The corner radius.
   BorderRadius,
-  /// The gap between children.
-  Gap,
+  /// The spacing between children.
+  Spacing,
   /// The initial main-axis size as a flex item.
   FlexBasis,
   /// The share of the flex line's free space.

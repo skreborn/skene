@@ -4,10 +4,10 @@
 pub enum GridTrack<T> {
   /// A fixed length.
   Length(T),
-  /// A percentage of the container's corresponding extent (`0.` to `100.`).
-  Percent(f32),
-  /// A fraction of the free space.
-  Fr(f32),
+  /// A fraction of the container's corresponding extent (`0.` to `1.`).
+  Fraction(f32),
+  /// A share of the free space, weighted against the other flexible tracks.
+  Flex(f32),
   /// Sized to the content.
   Auto,
   /// The content's minimum size.
@@ -30,16 +30,17 @@ impl<T: Copy> GridTrack<T> {
 
 /// One limit of a [`GridTrack::Minmax`] track.
 ///
-/// A fraction is meaningful only as the maximum; as a minimum it behaves as `Auto`.
+/// A flexible share is meaningful only as the maximum; as a minimum it behaves as
+/// `Auto`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub enum TrackLimit<T> {
   /// A fixed length.
   Length(T),
-  /// A percentage of the container's corresponding extent (`0.` to `100.`).
-  Percent(f32),
-  /// A fraction of the free space.
-  Fr(f32),
+  /// A fraction of the container's corresponding extent (`0.` to `1.`).
+  Fraction(f32),
+  /// A share of the free space, weighted against the other flexible tracks.
+  Flex(f32),
   /// Sized to the content.
   Auto,
   /// The content's minimum size.

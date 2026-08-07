@@ -2,8 +2,6 @@
 //! primitives, logging macros, and the entry point.
 
 pub use skene_core::{
-  AlignContent,
-  AlignItems,
   Animation,
   Axis,
   BoxStyle,
@@ -18,9 +16,11 @@ pub use skene_core::{
   GridTrack,
   IntoChildren,
   IntoView,
-  JustifyContent,
+  ItemAlignment,
   KeyEvent,
   Line,
+  LineAlignment,
+  MainAxisAlignment,
   MouseCursor,
   Position,
   Prevent,

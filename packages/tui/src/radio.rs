@@ -73,8 +73,8 @@ impl Radio {
   /// Binds the radio to `signal` in both directions: it shows checked while the signal
   /// holds its value, and checking it writes its value back.
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::RwSignal<String>) -> Self {
-    use skene_reactive::{SignalUpdate, SignalWith};
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Set, With};
 
     let value = self.value.clone();
     let chosen = self.value.clone();

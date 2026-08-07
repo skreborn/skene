@@ -5,9 +5,9 @@ use std::future::Future;
 use crate::driver;
 
 /// Runs `future` as a task, until it finishes or the current
-/// [`Scope`](skene_reactive::Scope) is disposed.
+/// [`Owner`](skene_reactive::Owner) is disposed.
 ///
-/// Scope-bound on purpose: a task started while building a view ends with that view—or with
+/// Owner-bound on purpose: a task started while building a view ends with that view—or with
 /// any ancestor of it—rather than waking later to write into a tree that is gone.
 ///
 /// The future runs on the target's platform executor: on the web that is the event loop, so it

@@ -11,13 +11,13 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_reactive::{Effect, Scope};
+use skene_reactive::{Effect, Owner, untrack};
 
 use crate::{AnyView, NodeId, Reorder, View, tree::TreeOps};
 
 struct Mounted {
   node: NodeId,
-  scope: Scope,
+  scope: Owner,
 }
 
 struct Scratch<K> {
@@ -59,7 +59,7 @@ pub fn reconcile<Ops: TreeOps, T, I, K>(
   I: IntoIterator<Item = T>,
   K: Eq + Hash + 'static,
 {
-  let parent_scope = Scope::current();
+  let parent_scope = Owner::current();
   let scratch = RefCell::new(Scratch::<K>::default());
 
   Effect::new(move |prev: Option<Vec<(K, Mounted)>>| {
@@ -90,12 +90,12 @@ pub fn reconcile<Ops: TreeOps, T, I, K>(
         entry
       }
       else {
-        let scope = parent_scope.create_child();
+        let scope = parent_scope.child();
         // Untracked: an item's build is one-shot, so a signal it happens to read must not
         // subscribe *this* effect and re-run the whole list diff. Reactivity inside an item
         // is its own—a `derive_` property or a nested `DynamicView`—and those set up
         // their own effects, which track normally.
-        let node = scope.enter(|| Effect::untrack(|| build(item)));
+        let node = scope.enter(|| untrack(|| build(item)));
 
         Mounted { node, scope }
       };
@@ -135,11 +135,11 @@ pub fn reconcile<Ops: TreeOps, T, I, K>(
 pub fn dynamic<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let container = Ops::default().create_group();
 
-  let parent_scope = Scope::current();
-  let current = Rc::new(Cell::new(None::<(NodeId, Scope)>));
+  let parent_scope = Owner::current();
+  let current = Rc::new(Cell::new(None::<(NodeId, Owner)>));
 
   Effect::new(move |_| {
-    let child_scope = parent_scope.create_child();
+    let child_scope = parent_scope.child();
     let new_node = child_scope.enter(&build);
     let previous = current.take();
 

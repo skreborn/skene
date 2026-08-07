@@ -31,7 +31,7 @@ impl FocusHandle {
   #[inline(always)]
   pub fn focus(&self) {
     if let Some(node) = self.0.get() {
-      skene_reactive::Effect::batch(|| with_state(|state| state.set_focused(Some(node))));
+      skene_reactive::batch(|| with_state(|state| state.set_focused(Some(node))));
     }
   }
 
@@ -39,7 +39,7 @@ impl FocusHandle {
   #[inline(always)]
   pub fn blur(&self) {
     if let Some(node) = self.0.get() {
-      skene_reactive::Effect::batch(|| {
+      skene_reactive::batch(|| {
         with_state(|state| {
           if state.focused.get() == Some(node) {
             state.set_focused(None);

@@ -34,7 +34,7 @@ use skene_gui::{
   dynamic,
   empty,
   head,
-  reactive::{Runtime, RwSignal, SignalGet, SignalUpdate},
+  reactive::{Get, Runtime, Set, Signal},
   reconcile,
   wasm_bindgen::JsCast,
   web::{self, mount},
@@ -361,7 +361,7 @@ fn change_handler_receives_the_committed_value() {
 #[wasm_bindgen_test]
 fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
-  let checked = RwSignal::new(false);
+  let checked = Signal::new(false);
 
   mount(move || Checkbox::new().bind_checked(checked).build());
 
@@ -472,7 +472,7 @@ fn a_click_handler_may_build_nodes() {
 #[wasm_bindgen_test]
 fn derived_text_updates_the_dom_on_change() {
   let (_guard, root) = fresh_root();
-  let count = RwSignal::new(0);
+  let count = Signal::new(0);
 
   mount(move || Text::derive(move || count.get().to_string()).build());
 
@@ -489,7 +489,7 @@ fn derived_text_updates_the_dom_on_change() {
 #[wasm_bindgen_test]
 fn derived_style_overrides_inline_on_change() {
   let (_guard, root) = fresh_root();
-  let size = RwSignal::new(12.0f32);
+  let size = Signal::new(12.0f32);
 
   mount(move || Text::new("t").derive_font_size(move || size.get()).build());
 
@@ -514,7 +514,7 @@ fn derived_style_overrides_inline_on_change() {
 #[wasm_bindgen_test]
 fn theme_link_style_inherits_and_updates_on_a_link() {
   let (_guard, root) = fresh_root();
-  let weight = RwSignal::new(400.0f32);
+  let weight = Signal::new(400.0f32);
 
   mount(move || {
     TextTheme::new(Text::new("go").set_link("https://example.com/"))
@@ -640,7 +640,7 @@ fn a_low_level_view_reaches_the_platform_directly() {
 #[wasm_bindgen_test]
 fn reconcile_reorders_the_real_dom_preserving_nodes() {
   let (_guard, root) = fresh_root();
-  let items = RwSignal::new(vec![1, 2, 3]);
+  let items = Signal::new(vec![1, 2, 3]);
 
   mount(move || {
     let parent = web::create_element("div");
@@ -688,7 +688,7 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
 #[wasm_bindgen_test]
 fn dynamic_view_swaps_between_trees_on_state_change() {
   let (_guard, root) = fresh_root();
-  let logged_in = RwSignal::new(false);
+  let logged_in = Signal::new(false);
 
   mount(move || {
     DynamicView::new(move || {
@@ -720,7 +720,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
 #[wasm_bindgen_test]
 fn dynamic_swaps_the_real_dom() {
   let (_guard, root) = fresh_root();
-  let flag = RwSignal::new(true);
+  let flag = Signal::new(true);
 
   mount(move || {
     dynamic(move || web::create_element(if flag.get() { "section" } else { "article" }))
@@ -741,8 +741,8 @@ fn dynamic_swaps_the_real_dom() {
 #[wasm_bindgen_test]
 fn an_items_own_signal_does_not_re_run_the_list_diff() {
   let (_guard, root) = fresh_root();
-  let items = RwSignal::new(vec![1, 2]);
-  let extra = RwSignal::new(0u32);
+  let items = Signal::new(vec![1, 2]);
+  let extra = Signal::new(0u32);
   let runs = Rc::new(Cell::new(0u32));
 
   mount({
@@ -801,8 +801,8 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
 #[wasm_bindgen_test]
 fn a_derived_property_inside_an_item_still_updates() {
   let (_guard, root) = fresh_root();
-  let items = RwSignal::new(vec![1]);
-  let size = RwSignal::new(12.0f32);
+  let items = Signal::new(vec![1]);
+  let size = Signal::new(12.0f32);
 
   mount(move || {
     let parent = web::create_element("div");

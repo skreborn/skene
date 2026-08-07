@@ -1,4 +1,6 @@
-use crate::{Memo, ReadSignal, RwSignal, SignalUpdate, SignalWith, WriteSignal};
+//! Operator sugar over readable and writable handles.
+
+use crate::{Memo, ReadSignal, Signal, Update, With, WriteSignal};
 
 macro_rules! impl_unary_op {
   ($signal_type:ident, $trait:ident, $method:ident, $op:tt, [$($extra:tt)*]) => {
@@ -23,6 +25,7 @@ macro_rules! impl_bin_op {
       for<'a> &'a T: std::ops::$trait<T, Output = T>,
     {
       type Output = T;
+
       fn $method(self, rhs: T) -> Self::Output {
         self.with(|val| val $op rhs)
       }
@@ -101,7 +104,7 @@ macro_rules! impl_all_ops {
   };
 }
 
-impl_all_ops!(RwSignal, []);
+impl_all_ops!(Signal, []);
 impl_assign_ops!(WriteSignal, []);
 impl_with_ops!(ReadSignal, []);
 impl_with_ops!(Memo, [PartialEq]);

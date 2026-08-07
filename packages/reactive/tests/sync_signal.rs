@@ -1,10 +1,10 @@
 use std::thread;
 
-use skene_reactive::{SignalGet, SignalUpdate, SyncRwSignal};
+use skene_reactive::{Get, Set, SyncSignal};
 
 #[test]
 fn sync_signal_reads_and_writes_across_threads() {
-  let signal: SyncRwSignal<i32> = SyncRwSignal::new_sync(0);
+  let signal: SyncSignal<i32> = SyncSignal::new_sync(0);
   let writer = signal;
 
   let handle = thread::spawn(move || {

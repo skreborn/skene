@@ -83,8 +83,8 @@ impl Slider {
   /// Binds the value to `signal` in both directions: the slider shows the signal and
   /// each move writes it back.
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::RwSignal<f32>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_value(self, signal: skene_reactive::Signal<f32>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
       .derive_value(move || signal.get())

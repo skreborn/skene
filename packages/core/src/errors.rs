@@ -3,7 +3,7 @@
 
 use std::{error::Error, rc::Rc};
 
-use skene_reactive::{Context, Effect, RwSignal, Scope, SignalUpdate, SignalWith};
+use skene_reactive::{Effect, Owner, Signal, Update, With, provide_context, use_context};
 
 use crate::{IntoView, NodeId, View, reconcile::dynamic, tree::TreeOps};
 
@@ -16,13 +16,13 @@ use crate::{IntoView, NodeId, View, reconcile::dynamic, tree::TreeOps};
 #[derive(Clone, Copy)]
 #[must_use]
 pub struct Errors {
-  errors: RwSignal<Vec<Rc<dyn Error>>>,
+  errors: Signal<Vec<Rc<dyn Error>>>,
 }
 
 impl Errors {
   fn new() -> Self {
     Self {
-      errors: RwSignal::new(Vec::new()),
+      errors: Signal::new(Vec::new()),
     }
   }
 
@@ -30,7 +30,7 @@ impl Errors {
   /// one.
   #[must_use]
   pub fn current() -> Option<Self> {
-    Context::get::<Self>()
+    use_context::<Self>()
   }
 
   /// Reports an error; the boundary swaps to its fallback.
@@ -102,10 +102,10 @@ impl<Ops: TreeOps> View for ErrorBoundary<Ops> {
     let errors = Errors::new();
     // A child scope so the handle is in `Context` for the content only, not its
     // siblings; it holds no state of its own and disposes with the view.
-    let scope = Scope::current().create_child();
+    let scope = Owner::current().child();
 
     let content = scope.enter(|| {
-      Context::provide(errors);
+      provide_context(errors);
 
       (self.content)()
     });

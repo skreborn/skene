@@ -4,14 +4,13 @@ use rustc_hash::FxHashSet;
 
 use crate::{
   id::Id,
+  owner::Owner,
   runtime::{RUNTIME, Runtime},
-  scope::Scope,
-  sync_runtime::SYNC_RUNTIME,
 };
 
-/// The order in which an effect runs relative to others in the same batch.
+/// The order in which an effect runs relative to others in the same flush.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub enum EffectPriority {
+pub(crate) enum EffectPriority {
   /// Runs after every high-priority effect.
   #[default]
   Normal,
@@ -20,12 +19,12 @@ pub enum EffectPriority {
 }
 
 /// A type-erased running effect the runtime schedules and re-runs.
-pub trait EffectTrait: Any {
+pub(crate) trait AnyEffect: Any {
   /// The effect's identifier.
   fn id(&self) -> Id;
 
-  /// Runs the effect, returning whether its value changed.
-  fn run(&self) -> bool;
+  /// Runs the effect.
+  fn run(&self);
 
   /// Records `id` as a signal the effect subscribed to on its last run.
   fn add_observer(&self, id: Id);
@@ -33,9 +32,9 @@ pub trait EffectTrait: Any {
   /// Clears and returns the effect's subscribed signals.
   fn clear_observers(&self) -> Vec<Id>;
 
-  /// Marks the effect's cached output stale, returning the signal carrying that output so
-  /// the staleness propagates to its subscribers. `None` when there is nothing cached
-  /// downstream, or when the output was already stale.
+  /// Marks the effect's cached output stale, returning the signal carrying that output
+  /// so the staleness propagates to its subscribers. `None` when there is nothing
+  /// cached downstream, or when the output was already stale.
   fn mark_stale(&self) -> Option<Id> {
     None
   }
@@ -49,7 +48,7 @@ pub trait EffectTrait: Any {
   fn as_any(&self) -> &dyn Any;
 }
 
-/// A handle for a running effect. Prefer `Effect::new` over `Scope::create_effect`.
+/// A side effect that re-runs whenever a signal it read changes.
 pub struct Effect<T, F>
 where
   T: 'static,
@@ -59,7 +58,7 @@ where
   f: F,
   value: RefCell<Option<T>>,
   observers: RefCell<FxHashSet<Id>>,
-  ts: PhantomData<()>,
+  ty: PhantomData<T>,
 }
 
 impl<T, F> Drop for Effect<T, F>
@@ -83,38 +82,211 @@ where
   F: Fn(Option<T>) -> T + 'static,
 {
   /// Runs `f` immediately and re-runs it whenever a signal it read changes. `f`
-  /// receives its previous return value, or `None` on the first run.
+  /// receives its previous return value, or `None` on the first run. The effect lives
+  /// until the current [`Owner`] is disposed.
   #[expect(clippy::new_ret_no_self)]
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(f: F) {
     Runtime::assert_ui_thread();
-    let id = Id::next();
-    let effect: Rc<dyn EffectTrait> = Rc::new(Self {
+
+    let id = Runtime::allocate();
+    let effect: Rc<dyn AnyEffect> = Rc::new(Self {
       id,
       f,
       value: RefCell::new(None),
       observers: RefCell::new(FxHashSet::default()),
-      ts: PhantomData,
+      ty: PhantomData,
     });
 
-    id.set_scope();
+    id.set_owner();
     RUNTIME.with(|runtime| runtime.register_effect(&effect));
-
     run_initial_effect(effect);
   }
 }
 
-/// An internal updater-effect handle, created via `Scope::create_updater`.
-pub struct UpdaterEffect<T, I, C, U> {
+impl Effect<(), fn(Option<()>) -> ()> {
+  /// Runs `compute` immediately and returns its value; whenever a signal it read
+  /// changes, recomputes and passes the fresh value to `on_change`.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub fn watch<R>(compute: impl Fn() -> R + 'static, on_change: impl Fn(R) + 'static) -> R
+  where
+    R: 'static,
+  {
+    Runtime::assert_ui_thread();
+
+    let id = Runtime::allocate();
+    let effect = Rc::new(WatchEffect {
+      id,
+      compute,
+      on_change,
+      observers: RefCell::new(FxHashSet::default()),
+      ty: PhantomData,
+    });
+
+    id.set_owner();
+
+    let effect_dyn: Rc<dyn AnyEffect> = effect.clone();
+
+    RUNTIME.with(|runtime| runtime.register_effect(&effect_dyn));
+
+    Runtime::with_effect(Some(effect_dyn), || {
+      Owner::from_id(id).enter(|| (effect.compute)())
+    })
+  }
+}
+
+/// Runs `f` without subscribing the current effect to any signal it reads.
+#[cfg_attr(debug_assertions, track_caller)]
+pub fn untrack<T>(f: impl FnOnce() -> T) -> T {
+  Runtime::assert_ui_thread();
+  Runtime::with_effect(None, f)
+}
+
+/// Runs `f`, deferring dependent effects until it returns so a batch of signal writes
+/// triggers each effect at most once.
+#[cfg_attr(debug_assertions, track_caller)]
+pub fn batch<T>(f: impl FnOnce() -> T) -> T {
+  let already_batching = RUNTIME.with(|runtime| {
+    let batching = runtime.batching.get();
+
+    if !batching {
+      runtime.batching.set(true);
+    }
+
+    batching
+  });
+
+  let result = f();
+
+  if !already_batching {
+    RUNTIME.with(|runtime| {
+      runtime.batching.set(false);
+      runtime.run_pending_effects();
+    });
+  }
+
+  result
+}
+
+fn run_initial_effect(effect: Rc<dyn AnyEffect>) {
+  Runtime::assert_ui_thread();
+
+  let effect_id = effect.id();
+
+  Runtime::with_effect(Some(effect.clone()), || {
+    Owner::from_id(effect_id).enter(|| {
+      effect.run();
+    });
+  });
+}
+
+pub(crate) fn run_effect(effect: Rc<dyn AnyEffect>) {
+  Runtime::assert_ui_thread();
+
+  let effect_id = effect.id();
+
+  effect_id.dispose_children();
+  observer_clean_up(&effect);
+
+  Runtime::with_effect(Some(effect.clone()), || {
+    Owner::from_id(effect_id).enter(|| {
+      effect.run();
+    });
+  });
+}
+
+/// Drops `effect` from the subscriber set of every signal it was observing.
+pub(crate) fn observer_clean_up(effect: &Rc<dyn AnyEffect>) {
+  let effect_id = effect.id();
+  let observers = effect.clear_observers();
+
+  RUNTIME.with(|runtime| {
+    let arena = runtime.arena.borrow();
+
+    for observer in observers {
+      if observer.is_sync() {
+        if let Some(signal) = crate::sync::SYNC.get(observer) {
+          signal.subscribers.lock().remove(&effect_id);
+        }
+      }
+      else if let Some(signal) = arena
+        .get(observer)
+        .and_then(|entity| entity.signal.as_ref())
+      {
+        signal.subscribers.remove(effect_id);
+      }
+    }
+  });
+}
+
+impl<T, F> AnyEffect for Effect<T, F>
+where
+  T: 'static,
+  F: Fn(Option<T>) -> T + 'static,
+{
+  #[inline(always)]
+  fn id(&self) -> Id {
+    self.id
+  }
+
+  fn run(&self) {
+    let previous = self.value.borrow_mut().take();
+    let value = (self.f)(previous);
+
+    *self.value.borrow_mut() = Some(value);
+  }
+
+  fn add_observer(&self, id: Id) {
+    self.observers.borrow_mut().insert(id);
+  }
+
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
+  }
+
+  fn as_any(&self) -> &dyn Any {
+    self
+  }
+}
+
+/// The effect behind [`Effect::watch`]: recompute, then hand the value on.
+struct WatchEffect<R, C, U> {
   id: Id,
   compute: C,
   on_change: U,
-  value: RefCell<Option<T>>,
   observers: RefCell<FxHashSet<Id>>,
-  _phantom: PhantomData<I>,
+  ty: PhantomData<R>,
 }
 
-impl<T, I, C, U> Drop for UpdaterEffect<T, I, C, U> {
+impl<R, C, U> AnyEffect for WatchEffect<R, C, U>
+where
+  R: 'static,
+  C: Fn() -> R + 'static,
+  U: Fn(R) + 'static,
+{
+  #[inline(always)]
+  fn id(&self) -> Id {
+    self.id
+  }
+
+  fn run(&self) {
+    (self.on_change)((self.compute)());
+  }
+
+  fn add_observer(&self, id: Id) {
+    self.observers.borrow_mut().insert(id);
+  }
+
+  fn clear_observers(&self) -> Vec<Id> {
+    self.observers.borrow_mut().drain().collect()
+  }
+
+  fn as_any(&self) -> &dyn Any {
+    self
+  }
+}
+
+impl<R, C, U> Drop for WatchEffect<R, C, U> {
   fn drop(&mut self) {
     if RUNTIME
       .try_with(|runtime| runtime.remove_effect(self.id))
@@ -125,310 +297,70 @@ impl<T, I, C, U> Drop for UpdaterEffect<T, I, C, U> {
   }
 }
 
-impl UpdaterEffect<(), (), (), ()> {
-  /// Runs `on_change` whenever a signal read during `compute` changes. Runs
-  /// `compute` once immediately and returns its value.
-  #[expect(clippy::new_ret_no_self)]
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn new<R>(compute: impl Fn() -> R + 'static, on_change: impl Fn(R) + 'static) -> R
-  where
-    R: 'static,
-  {
-    UpdaterEffect::new_stateful(move |_| (compute(), ()), move |r, _| on_change(r))
-  }
-
-  /// Like [`UpdaterEffect::new`], but threads state `T` out of `compute` into each
-  /// `on_change` and back.
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn new_stateful<T, R>(
-    compute: impl Fn(Option<T>) -> (R, T) + 'static,
-    on_change: impl Fn(R, T) -> T + 'static,
-  ) -> R
-  where
-    T: Any + 'static,
-    R: 'static,
-  {
-    Runtime::assert_ui_thread();
-    let id = Id::next();
-    let effect = Rc::new(UpdaterEffect {
-      id,
-      compute,
-      on_change,
-      value: RefCell::new(None),
-      observers: RefCell::new(FxHashSet::default()),
-      _phantom: PhantomData,
-    });
-
-    id.set_scope();
-    let effect_dyn: Rc<dyn EffectTrait> = effect.clone();
-    RUNTIME.with(|runtime| runtime.register_effect(&effect_dyn));
-
-    run_initial_updater_effect(effect)
-  }
+/// Re-runs a callback whenever a signal read during the last [`track`](Self::track)
+/// call changes, until the reaction is dropped.
+#[must_use]
+pub struct Reaction {
+  id: std::cell::Cell<Option<Id>>,
+  on_invalidate: Rc<dyn Fn()>,
 }
 
-impl Effect<(), fn(Option<()>) -> ()> {
-  /// Runs `f` without subscribing the current effect to any signal it reads.
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn untrack<T>(f: impl FnOnce() -> T) -> T {
-    Runtime::assert_ui_thread();
-    let prev_effect = RUNTIME.with(|runtime| runtime.current_effect.borrow_mut().take());
-    let result = f();
-
-    RUNTIME.with(|runtime| {
-      *runtime.current_effect.borrow_mut() = prev_effect;
-    });
-
-    result
-  }
-
-  /// Runs `f`, deferring dependent effects until it returns so a batch of signal
-  /// writes triggers each effect at most once.
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn batch<T>(f: impl FnOnce() -> T) -> T {
-    let already_batching = RUNTIME.with(|runtime| {
-      let batching = runtime.batching.get();
-
-      if !batching {
-        runtime.batching.set(true);
-      }
-
-      batching
-    });
-
-    let result = f();
-
-    if !already_batching {
-      RUNTIME.with(|runtime| {
-        runtime.batching.set(false);
-        runtime.run_pending_effects();
-      });
-    }
-
-    result
-  }
-}
-
-fn run_initial_effect(effect: Rc<dyn EffectTrait>) {
-  Runtime::assert_ui_thread();
-  let effect_id = effect.id();
-
-  RUNTIME.with(|runtime| {
-    *runtime.current_effect.borrow_mut() = Some(effect.clone());
-
-    let effect_scope = Scope(effect_id, PhantomData);
-    effect_scope.enter(|| {
-      effect.run();
-    });
-
-    *runtime.current_effect.borrow_mut() = None;
-  });
-}
-
-pub(crate) fn run_effect(effect: Rc<dyn EffectTrait>) {
-  Runtime::assert_ui_thread();
-  let effect_id = effect.id();
-  effect_id.dispose_children();
-
-  observer_clean_up(&effect);
-
-  RUNTIME.with(|runtime| {
-    *runtime.current_effect.borrow_mut() = Some(effect.clone());
-
-    let effect_scope = Scope(effect_id, PhantomData);
-    effect_scope.enter(move || {
-      effect.run();
-    });
-
-    *runtime.current_effect.borrow_mut() = None;
-  });
-}
-
-fn run_initial_updater_effect<T, I, C, U>(effect: Rc<UpdaterEffect<T, I, C, U>>) -> I
-where
-  T: 'static,
-  I: 'static,
-  C: Fn(Option<T>) -> (I, T) + 'static,
-  U: Fn(I, T) -> T + 'static,
-{
-  Runtime::assert_ui_thread();
-  let effect_id = effect.id();
-
-  RUNTIME.with(|runtime| {
-    *runtime.current_effect.borrow_mut() = Some(effect.clone());
-
-    let effect_scope = Scope(effect_id, PhantomData);
-    let (result, new_value) = effect_scope.enter(|| (effect.compute)(None));
-
-    *effect.value.borrow_mut() = Some(new_value);
-
-    *runtime.current_effect.borrow_mut() = None;
-
-    result
-  })
-}
-
-/// Drops `effect` from the subscriber set of every signal it was observing.
-pub(crate) fn observer_clean_up(effect: &Rc<dyn EffectTrait>) {
-  let effect_id = effect.id();
-  let observers = effect.clear_observers();
-
-  RUNTIME.with(|runtime| {
-    let entities = runtime.entities.borrow();
-
-    for observer in observers {
-      if let Some(signal) = entities
-        .get(&observer)
-        .and_then(|entity| entity.signal.as_ref())
-      {
-        signal.subscribers.remove(effect_id);
-      }
-      else if let Some(signal) = SYNC_RUNTIME.get_signal(&observer) {
-        signal.subscribers.lock().remove(&effect_id);
-      }
-    }
-  });
-}
-
-impl<T, F> EffectTrait for Effect<T, F>
-where
-  T: 'static,
-  F: Fn(Option<T>) -> T + 'static,
-{
-  #[inline(always)]
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn run(&self) -> bool {
-    let curr_value = self.value.borrow_mut().take();
-    let new_value = (self.f)(curr_value);
-
-    *self.value.borrow_mut() = Some(new_value);
-
-    true
-  }
-
-  fn add_observer(&self, id: Id) {
-    self.observers.borrow_mut().insert(id);
-  }
-
-  fn clear_observers(&self) -> Vec<Id> {
-    self.observers.borrow_mut().drain().collect()
-  }
-
-  fn as_any(&self) -> &dyn Any {
-    self
-  }
-}
-
-impl<T, I, C, U> EffectTrait for UpdaterEffect<T, I, C, U>
-where
-  T: 'static,
-  I: 'static,
-  C: Fn(Option<T>) -> (I, T) + 'static,
-  U: Fn(I, T) -> T + 'static,
-{
-  #[inline(always)]
-  fn id(&self) -> Id {
-    self.id
-  }
-
-  fn run(&self) -> bool {
-    let curr_value = self.value.borrow_mut().take();
-    let (i, t) = (self.compute)(curr_value);
-    let new_value = (self.on_change)(i, t);
-
-    *self.value.borrow_mut() = Some(new_value);
-
-    true
-  }
-
-  fn add_observer(&self, id: Id) {
-    self.observers.borrow_mut().insert(id);
-  }
-
-  fn clear_observers(&self) -> Vec<Id> {
-    self.observers.borrow_mut().drain().collect()
-  }
-
-  fn as_any(&self) -> &dyn Any {
-    self
-  }
-}
-
-/// Re-runs `on_change` whenever a signal read during the last [`SignalTracker::track`]
-/// call changes, until the tracker is dropped.
-pub struct SignalTracker {
-  id: Id,
-  on_change: Rc<dyn Fn()>,
-}
-
-impl Drop for SignalTracker {
+impl Drop for Reaction {
   fn drop(&mut self) {
-    self.id.dispose();
+    if let Some(id) = self.id.take() {
+      id.dispose();
+    }
   }
 }
 
-impl SignalTracker {
-  /// Creates a [`SignalTracker`] that subscribes to any changes in signals used within `on_change`.
-  pub fn new(on_change: impl Fn() + 'static) -> Self {
-    let id = Id::next();
-
-    SignalTracker {
-      id,
-      on_change: Rc::new(on_change),
+impl Reaction {
+  /// Creates a reaction that runs `on_invalidate` when a tracked signal changes.
+  pub fn new(on_invalidate: impl Fn() + 'static) -> Self {
+    Self {
+      id: std::cell::Cell::new(None),
+      on_invalidate: Rc::new(on_invalidate),
     }
   }
 
-  /// Runs `f` and returns its value, subscribing to every signal it reads so a
-  /// later change re-runs `on_change`. Replaces any previous subscription.
+  /// Runs `f` and returns its value, subscribing to every signal it reads so a later
+  /// change re-runs the reaction's callback. Replaces any previous subscription.
   pub fn track<T: 'static>(&self, f: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
-    self.id.dispose();
 
-    let prev_effect = RUNTIME.with(|runtime| runtime.current_effect.borrow_mut().take());
+    if let Some(previous) = self.id.take() {
+      previous.dispose();
+    }
 
-    let tracking_effect: Rc<dyn EffectTrait> = Rc::new(TrackingEffect {
-      id: self.id,
+    let id = Runtime::allocate();
+
+    self.id.set(Some(id));
+
+    let effect: Rc<dyn AnyEffect> = Rc::new(ReactionEffect {
+      id,
       observers: RefCell::new(FxHashSet::default()),
-      on_change: self.on_change.clone(),
+      on_invalidate: self.on_invalidate.clone(),
     });
 
-    RUNTIME.with(|runtime| {
-      runtime.register_effect(&tracking_effect);
-      *runtime.current_effect.borrow_mut() = Some(tracking_effect.clone());
-    });
+    RUNTIME.with(|runtime| runtime.register_effect(&effect));
 
-    let effect_scope = Scope(self.id, PhantomData);
-    let result = effect_scope.enter(|| {
-      effect_scope.track();
-      f()
-    });
-
-    RUNTIME.with(|runtime| {
-      *runtime.current_effect.borrow_mut() = prev_effect;
-    });
-
-    result
+    Runtime::with_effect(Some(effect), || Owner::from_id(id).enter(f))
   }
 }
 
-struct TrackingEffect {
+struct ReactionEffect {
   id: Id,
   observers: RefCell<FxHashSet<Id>>,
-  on_change: Rc<dyn Fn()>,
+  on_invalidate: Rc<dyn Fn()>,
 }
 
-impl EffectTrait for TrackingEffect {
+impl AnyEffect for ReactionEffect {
   #[inline(always)]
   fn id(&self) -> Id {
     self.id
   }
 
-  fn run(&self) -> bool {
-    (self.on_change)();
-    true
+  fn run(&self) {
+    (self.on_invalidate)();
   }
 
   fn add_observer(&self, id: Id) {

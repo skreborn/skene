@@ -79,7 +79,7 @@ impl skene_core::View for VirtualList {
       TreeOps,
       virtual_window,
     };
-    use skene_reactive::{Memo, RwSignal, SignalGet, SignalUpdate};
+    use skene_reactive::{Get, Memo, Set, Signal};
 
     use crate::{Container, GuiOps, driver};
 
@@ -87,8 +87,8 @@ impl skene_core::View for VirtualList {
 
     style.overflow = Some(style.overflow.unwrap_or(Overflow::Auto));
 
-    let offset = RwSignal::new(0.0f32);
-    let viewport = RwSignal::new(0.0f32);
+    let offset = Signal::new(0.0f32);
+    let viewport = Signal::new(0.0f32);
     let outer = driver::create_box(&BoxProps {
       layout: Layout::Block,
       role: None,

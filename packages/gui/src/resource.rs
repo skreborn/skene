@@ -3,7 +3,7 @@
 use std::{future::Future, pin::Pin, rc::Rc};
 
 use serde::{Serialize, de::DeserializeOwned};
-use skene_reactive::{RwSignal, SignalGet, SignalUpdate, SignalWith};
+use skene_reactive::{Get, Set, Signal, With};
 
 use crate::{driver, spawn};
 
@@ -35,8 +35,8 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 /// type's business, not the resource's: load a `Result` and match on it.
 #[must_use]
 pub struct Resource<T: 'static> {
-  value: RwSignal<Option<T>>,
-  loader: RwSignal<Loader<T>>,
+  value: Signal<Option<T>>,
+  loader: Signal<Loader<T>>,
 }
 
 impl<T: 'static> Clone for Resource<T> {
@@ -52,8 +52,8 @@ impl<T: 'static> Resource<T> {
   /// A resource with its value unloaded and `loader` retained for [`load`](Self::load).
   fn with_loader(loader: Loader<T>) -> Self {
     Self {
-      value: RwSignal::new(None),
-      loader: RwSignal::new(loader),
+      value: Signal::new(None),
+      loader: Signal::new(loader),
     }
   }
 

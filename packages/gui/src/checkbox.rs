@@ -75,8 +75,8 @@ impl Checkbox {
   /// Binds the state to `signal` in both directions: the checkbox shows the signal and
   /// each toggle writes it back.
   #[inline(always)]
-  pub fn bind_checked(self, signal: skene_reactive::RwSignal<bool>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_checked(self, signal: skene_reactive::Signal<bool>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
       .derive_checked(move || signal.get())

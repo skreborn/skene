@@ -44,10 +44,10 @@ impl View for Deferred {
     let boundary = skene_core::Boundary::new();
     // A child scope so the boundary is in `Context` for the content's tasks only, not its
     // siblings; it holds no state of its own and disposes with the render.
-    let scope = skene_reactive::Scope::current().create_child();
+    let scope = skene_reactive::Owner::current().child();
 
     let content = scope.enter(|| {
-      skene_reactive::Context::provide(boundary);
+      skene_reactive::provide_context(boundary);
 
       (self.content)()
     });

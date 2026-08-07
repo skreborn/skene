@@ -13,7 +13,7 @@ use skene_gui::{
   Resource,
   Text,
   View,
-  reactive::Scope,
+  reactive::Owner,
   wasm_bindgen::JsValue,
   web::{self, mount},
 };
@@ -63,7 +63,7 @@ async fn settle() {
 
 #[wasm_bindgen_test]
 async fn a_resource_is_none_until_it_lands() {
-  let scope = Scope::new();
+  let scope = Owner::new();
 
   let resource = scope.enter(|| {
     Resource::new(|| async {
@@ -85,7 +85,7 @@ async fn a_resource_is_none_until_it_lands() {
 /// Failure is the loaded type's business: load a `Result` and match on it.
 #[wasm_bindgen_test]
 async fn a_resource_can_load_a_result() {
-  let scope = Scope::new();
+  let scope = Owner::new();
 
   let resource: Resource<Result<i32, String>> =
     scope.enter(|| Resource::new(|| async { Err("boom".to_owned()) }));
@@ -149,7 +149,7 @@ async fn a_loading_tree_is_swapped_for_the_loaded_one() {
 /// never lands in a torn-down tree.
 #[wasm_bindgen_test]
 async fn disposing_the_scope_cancels_the_load() {
-  let scope = Scope::new();
+  let scope = Owner::new();
   let finished = Rc::new(Cell::new(false));
 
   scope.enter({
@@ -186,7 +186,7 @@ async fn disposing_the_scope_cancels_the_load() {
 /// `refetch` re-runs the retained loader into the value, so a resource can reload on demand.
 #[wasm_bindgen_test]
 async fn refetch_reruns_the_loader() {
-  let scope = Scope::new();
+  let scope = Owner::new();
   let runs = Rc::new(Cell::new(0));
 
   let resource: Resource<i32> = scope.enter({

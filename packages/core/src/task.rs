@@ -1,4 +1,4 @@
-//! Scope-bound task wrapping, shared by every facade's spawner.
+//! Owner-bound task wrapping, shared by every facade's spawner.
 
 use std::{
   cell::Cell,
@@ -8,7 +8,7 @@ use std::{
   task::{Context, Poll},
 };
 
-use skene_reactive::Scope;
+use skene_reactive::Owner;
 
 use crate::Boundary;
 
@@ -39,17 +39,17 @@ impl Future for UntilDisposed {
 }
 
 /// Wraps `future` for a facade's executor: it stops at its next poll once the current
-/// [`Scope`] is disposed, and it counts as pending work toward the nearest enclosing
+/// [`Owner`] is disposed, and it counts as pending work toward the nearest enclosing
 /// [`Boundary`] until it finishes.
 ///
-/// Scope-binding is the cancellation contract every facade's `spawn` shares: a task
+/// Owner-binding is the cancellation contract every facade's `spawn` shares: a task
 /// started while building a view ends with that view—or with any ancestor of it—rather
 /// than waking later to write into a tree that is gone. The boundary is captured here,
 /// while it is in `Context`; the future runs off the build scope, where it no longer is.
 pub fn scope_bound(future: impl Future<Output = ()> + 'static) -> impl Future<Output = ()> {
   let disposed = Rc::new(Cell::new(false));
 
-  Scope::current().on_cleanup({
+  Owner::current().on_cleanup({
     let disposed = Rc::clone(&disposed);
 
     move || disposed.set(true)

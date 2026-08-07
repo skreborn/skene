@@ -1,9 +1,9 @@
-//! Scope cleanup: the hook anything the runtime cannot free itself hangs on—a spawned
+//! Owner cleanup: the hook anything the runtime cannot free itself hangs on—a spawned
 //! task, a timer, a subscription.
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_reactive::Scope;
+use skene_reactive::Owner;
 
 /// Records what ran, in order.
 fn log() -> (
@@ -23,7 +23,7 @@ fn log() -> (
 #[test]
 fn a_cleanup_runs_when_its_scope_is_disposed() {
   let (entries, record) = log();
-  let scope = Scope::new();
+  let scope = Owner::new();
 
   scope.on_cleanup({
     let record = record.clone();
@@ -43,9 +43,9 @@ fn a_cleanup_runs_when_its_scope_is_disposed() {
 #[test]
 fn disposing_a_parent_runs_a_childs_cleanup() {
   let (entries, record) = log();
-  let parent = Scope::new();
-  let child = parent.create_child();
-  let grandchild = child.create_child();
+  let parent = Owner::new();
+  let child = parent.child();
+  let grandchild = child.child();
 
   grandchild.on_cleanup({
     let record = record.clone();
@@ -71,7 +71,7 @@ fn disposing_a_parent_runs_a_childs_cleanup() {
 #[test]
 fn cleanups_run_in_reverse_registration_order() {
   let (entries, record) = log();
-  let scope = Scope::new();
+  let scope = Owner::new();
 
   for what in ["first", "second", "third"] {
     scope.on_cleanup({
@@ -89,7 +89,7 @@ fn cleanups_run_in_reverse_registration_order() {
 #[test]
 fn a_cleanup_runs_at_most_once() {
   let (entries, record) = log();
-  let scope = Scope::new();
+  let scope = Owner::new();
 
   scope.on_cleanup(move || record("cleaned"));
 

@@ -95,8 +95,8 @@ impl Textarea {
   /// Binds the value to `signal` in both directions: the text area shows the signal and
   /// each edit writes it back.
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::RwSignal<String>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
       .derive_value(move || signal.get())

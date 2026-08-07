@@ -23,8 +23,8 @@ fn assert_ui_thread_reports_caller_and_set_location() {
   {
     let message = panic_message(result.expect_err("expected panic off UI thread"));
     assert!(
-      message.contains("Unsync runtime access from non-UI thread"),
-      "panic message should describe unsync access; got {message}"
+      message.contains("local runtime access from non-UI thread"),
+      "panic message should describe local-runtime access; got {message}"
     );
 
     assert!(

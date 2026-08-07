@@ -3,16 +3,16 @@
 //! Each test thread carries its own runtime, so a spawned thread stands in for the
 //! next run of the application.
 
-use skene_reactive::{RwSignal, Scope, SignalGet, SignalUpdate, restore, snapshot};
+use skene_reactive::{Get, Owner, Set, Signal, restore, snapshot};
 
 /// A snapshot restores tagged state across runs: staged values are adopted, tags with
 /// no staged value fall back to their defaults, and untagged signals stay out of it.
 #[test]
 fn snapshot_round_trips_tagged_state() {
   let bytes = std::thread::spawn(|| {
-    let count = RwSignal::tagged("count", 1u32);
-    let name = RwSignal::tagged("name", String::from("fresh"));
-    let _untagged = RwSignal::new(9u8);
+    let count = Signal::tagged("count", 1u32);
+    let name = Signal::tagged("name", String::from("fresh"));
+    let _untagged = Signal::new(9u8);
 
     count.set(41);
     name.set("skene".to_owned());
@@ -26,9 +26,9 @@ fn snapshot_round_trips_tagged_state() {
     restore(&bytes);
 
     (
-      RwSignal::tagged("count", 1u32).get(),
-      RwSignal::tagged("name", String::from("fresh")).get(),
-      RwSignal::tagged("missing", 7u8).get(),
+      Signal::tagged("count", 1u32).get(),
+      Signal::tagged("name", String::from("fresh")).get(),
+      Signal::tagged("missing", 7u8).get(),
     )
   })
   .join()
@@ -43,7 +43,7 @@ fn snapshot_round_trips_tagged_state() {
 #[test]
 fn changed_type_degrades_to_the_default() {
   let bytes = std::thread::spawn(|| {
-    let value = RwSignal::tagged("value", 0u32);
+    let value = Signal::tagged("value", 0u32);
 
     value.set(300);
 
@@ -55,7 +55,7 @@ fn changed_type_degrades_to_the_default() {
   let value = std::thread::spawn(move || {
     restore(&bytes);
 
-    RwSignal::tagged("value", String::from("fallback")).get()
+    Signal::tagged("value", String::from("fallback")).get()
   })
   .join()
   .expect("the second run");
@@ -68,7 +68,7 @@ fn changed_type_degrades_to_the_default() {
 #[test]
 fn staged_value_applies_exactly_once() {
   let bytes = std::thread::spawn(|| {
-    RwSignal::tagged("once", 0u32).set(5);
+    Signal::tagged("once", 0u32).set(5);
 
     snapshot()
   })
@@ -78,12 +78,12 @@ fn staged_value_applies_exactly_once() {
   let (first, second) = std::thread::spawn(move || {
     restore(&bytes);
 
-    let scope = Scope::new();
-    let first = scope.enter(|| RwSignal::tagged("once", 1u32).get());
+    let scope = Owner::new();
+    let first = scope.enter(|| Signal::tagged("once", 1u32).get());
 
     scope.dispose();
 
-    (first, RwSignal::tagged("once", 1u32).get())
+    (first, Signal::tagged("once", 1u32).get())
   })
   .join()
   .expect("the second run");
@@ -98,7 +98,7 @@ fn corrupt_snapshot_stages_nothing() {
   let value = std::thread::spawn(|| {
     restore(b"not a snapshot");
 
-    RwSignal::tagged("value", 3u16).get()
+    Signal::tagged("value", 3u16).get()
   })
   .join()
   .expect("the run");
@@ -110,6 +110,6 @@ fn corrupt_snapshot_stages_nothing() {
 #[test]
 #[should_panic(expected = "duplicate snapshot tag: dup")]
 fn duplicate_live_tag_panics() {
-  let _first = RwSignal::tagged("dup", 1u32);
-  let _second = RwSignal::tagged("dup", 2u32);
+  let _first = Signal::tagged("dup", 1u32);
+  let _second = Signal::tagged("dup", 2u32);
 }

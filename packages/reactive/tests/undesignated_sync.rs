@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use skene_reactive::{Effect, SignalGet, SignalUpdate, SyncRwSignal};
+use skene_reactive::{Effect, Get, Set, SyncSignal};
 
 /// Off the UI thread the hazard is real (an off-thread write's effects are dropped), which the
 /// runtime now warns about. On the writing thread itself—here, the main thread with no UI
@@ -13,7 +13,7 @@ use skene_reactive::{Effect, SignalGet, SignalUpdate, SyncRwSignal};
 /// break single-threaded use.
 #[test]
 fn effects_still_run_single_threaded_without_a_designated_ui_thread() {
-  let signal: SyncRwSignal<i32> = SyncRwSignal::new_sync(0);
+  let signal: SyncSignal<i32> = SyncSignal::new_sync(0);
   let seen = Arc::new(Mutex::new(Vec::new()));
 
   Effect::new({

@@ -11,7 +11,7 @@ A signal write re-runs exactly the effects that depend on it, and each effect pa
 node it owns—no virtual DOM, no tree diffing. Effects run synchronously on write.
 
 ```rust
-let count = RwSignal::new(0);
+let count = Signal::new(0);
 count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 ```
 
@@ -24,7 +24,7 @@ use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
-  let count = RwSignal::new(0u64);
+  let count = Signal::new(0u64);
 
   Container::column()
     .set_spacing(20.)
@@ -70,7 +70,7 @@ skene              the umbrella and the single dependency an app pulls in: the b
 
 | Crate | Role |
 |-------|------|
-| `skene-reactive` | `RwSignal`, `Memo`, `Effect`, `Scope`, `Trigger`. Synchronous on write. |
+| `skene-reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
 | `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `Input`) realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |

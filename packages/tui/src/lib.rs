@@ -217,7 +217,7 @@ pub fn install() {
 #[cfg(feature = "test")]
 pub fn uninstall() {
   skene_reactive::Runtime::reset();
-  skene_core::reset_root_scope();
+  skene_core::reset_root_owner();
   task::clear();
 
   STATE.with(|state| *state.borrow_mut() = None);
@@ -233,7 +233,7 @@ pub fn pump_tasks() -> bool {
 
 /// Builds `view` under the installed root, returning its node.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  skene_core::root_scope().enter(|| {
+  skene_core::root_owner().enter(|| {
     let node = view();
 
     with_state(|state| state.attach_child(state::ROOT_ID, node, None));

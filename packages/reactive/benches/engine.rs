@@ -1,20 +1,20 @@
 //! Engine microbenchmarks: creation, reads, writes through effects, memo chains.
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use skene_reactive::{Effect, Memo, RwSignal, Scope, SignalGet, SignalUpdate};
+use skene_reactive::{Effect, Get, Memo, Owner, Signal, Update};
 
 fn bench_create(c: &mut Criterion) {
   c.bench_function("create_1000_signals", |bencher| {
     bencher.iter_batched(
-      Scope::new,
-      |scope| {
-        scope.enter(|| {
+      Owner::new,
+      |owner| {
+        owner.enter(|| {
           for _ in 0..1000 {
-            let _ = RwSignal::new(0u64);
+            let _ = Signal::new(0u64);
           }
         });
 
-        scope.dispose();
+        owner.dispose();
       },
       BatchSize::SmallInput,
     );
@@ -22,8 +22,8 @@ fn bench_create(c: &mut Criterion) {
 }
 
 fn bench_get(c: &mut Criterion) {
-  let scope = Scope::new();
-  let signal = scope.create_rw_signal(0u64);
+  let owner = Owner::new();
+  let signal = owner.enter(|| Signal::new(0u64));
 
   c.bench_function("get_outside_effect", |bencher| {
     bencher.iter(|| signal.get());
@@ -31,10 +31,10 @@ fn bench_get(c: &mut Criterion) {
 }
 
 fn bench_set_with_effects(c: &mut Criterion) {
-  let scope = Scope::new();
-  let signal = scope.create_rw_signal(0u64);
+  let owner = Owner::new();
+  let signal = owner.enter(|| Signal::new(0u64));
 
-  scope.enter(|| {
+  owner.enter(|| {
     for _ in 0..10 {
       Effect::new(move |_| {
         let _ = signal.get();
@@ -48,10 +48,10 @@ fn bench_set_with_effects(c: &mut Criterion) {
 }
 
 fn bench_memo_chain(c: &mut Criterion) {
-  let scope = Scope::new();
-  let source = scope.create_rw_signal(0u64);
+  let owner = Owner::new();
+  let source = owner.enter(|| Signal::new(0u64));
 
-  let last = scope.enter(|| {
+  let last = owner.enter(|| {
     let mut memo = Memo::new(move |_| source.get() + 1);
 
     for _ in 0..9 {
@@ -63,7 +63,7 @@ fn bench_memo_chain(c: &mut Criterion) {
     memo
   });
 
-  scope.enter(|| {
+  owner.enter(|| {
     Effect::new(move |_| {
       let _ = last.get();
     });

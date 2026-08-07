@@ -5,7 +5,7 @@
 use skene_gui::{
   Text,
   head,
-  reactive::{RwSignal, SignalGet},
+  reactive::{Get, Signal},
   render_to_string,
 };
 
@@ -41,7 +41,7 @@ fn head_registrations_serialize() {
 #[test]
 fn derived_title_reads_signals() {
   let rendered = render_to_string(|| {
-    let count = RwSignal::new(3u32);
+    let count = Signal::new(3u32);
 
     head::derive_title(move || format!("{} items", count.get()));
 

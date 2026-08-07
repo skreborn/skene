@@ -3,11 +3,11 @@ use std::{
   rc::Rc,
 };
 
-use skene_reactive::{Effect, Memo, Runtime, RwSignal, SignalGet, SignalTrack, SignalUpdate};
+use skene_reactive::{Effect, Get, Memo, Runtime, Set, Signal, Track};
 
 #[test]
 fn memo_recomputes_eagerly_on_change() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let calls = Rc::new(Cell::new(0));
 
   let memo = Memo::new({
@@ -36,7 +36,7 @@ fn memo_recomputes_eagerly_on_change() {
 
 #[test]
 fn memo_notifies_dependents_on_change_when_recomputed() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let memo = Memo::new(move |_| source.get());
   let runs = Rc::new(Cell::new(0));
 
@@ -62,7 +62,7 @@ fn memo_notifies_dependents_on_change_when_recomputed() {
 
 #[test]
 fn memo_skips_notifications_when_value_unchanged() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let memo = Memo::new(move |_| source.get());
   let runs = Rc::new(Cell::new(0));
 
@@ -84,7 +84,7 @@ fn memo_skips_notifications_when_value_unchanged() {
 
 #[test]
 fn memo_skips_when_derived_value_equal_after_signal_update() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let memo = Memo::new(move |_| source.get() % 2 == 0);
   let runs = Rc::new(Cell::new(0));
 
@@ -110,7 +110,7 @@ fn memo_skips_when_derived_value_equal_after_signal_update() {
 
 #[test]
 fn memo_notifies_when_derived_value_changes_after_signal_update() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let memo = Memo::new(move |_| source.get() % 2 == 0);
   let runs = Rc::new(Cell::new(0));
 
@@ -136,7 +136,7 @@ fn memo_notifies_when_derived_value_changes_after_signal_update() {
 
 #[test]
 fn memo_recomputes_before_dependents_use_value() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let memo = Memo::new(move |_| source.get());
   let seen = Rc::new(RefCell::new(Vec::new()));
 
@@ -163,7 +163,7 @@ fn memo_recomputes_before_dependents_use_value() {
 
 #[test]
 fn memo_stays_in_lockstep_with_signal_for_add_assign_updates() {
-  let mut counter = RwSignal::new(0);
+  let mut counter = Signal::new(0);
   let memo_runs = Rc::new(RefCell::new(Vec::new()));
 
   let memo = Memo::new({
@@ -201,7 +201,7 @@ fn memo_stays_in_lockstep_with_signal_for_add_assign_updates() {
 
 #[test]
 fn memo_high_priority_runs_before_normal_dependents() {
-  let source = RwSignal::new(0);
+  let source = Signal::new(0);
   let log = Rc::new(RefCell::new(Vec::new()));
 
   let memo = Memo::new({

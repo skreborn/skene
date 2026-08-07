@@ -1,11 +1,11 @@
 #![cfg(debug_assertions)]
 
-use skene_reactive::{RwSignal, SignalRead, SignalWrite};
+use skene_reactive::{Read, Signal, Write};
 
 #[test]
 fn borrow_conflict_reports_locations() {
   let result = std::panic::catch_unwind(|| {
-    let signal = RwSignal::new(0);
+    let signal = Signal::new(0);
     let _first = signal.read(); // holds a shared borrow
 
     // Should panic when trying to take a mutable borrow while a shared one is held.

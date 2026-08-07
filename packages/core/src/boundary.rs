@@ -2,7 +2,7 @@
 //! detected—and, on a server, so a render can flush the shell and stream the boundary's
 //! content once it settles.
 
-use skene_reactive::{Context, RwSignal, SignalUpdate, SignalWith};
+use skene_reactive::{Signal, Update, With, use_context};
 
 /// The outstanding async work inside a boundary.
 ///
@@ -12,21 +12,21 @@ use skene_reactive::{Context, RwSignal, SignalUpdate, SignalWith};
 #[derive(Clone, Copy)]
 #[must_use]
 pub struct Boundary {
-  pending: RwSignal<usize>,
+  pending: Signal<usize>,
 }
 
 impl Boundary {
   /// A fresh boundary with nothing pending.
   pub fn new() -> Self {
     Self {
-      pending: RwSignal::new(0),
+      pending: Signal::new(0),
     }
   }
 
   /// The nearest enclosing boundary, if the current subtree is inside one.
   #[must_use]
   pub fn current() -> Option<Self> {
-    Context::get::<Self>()
+    use_context::<Self>()
   }
 
   /// Records a task starting inside the boundary.

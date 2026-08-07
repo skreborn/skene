@@ -71,8 +71,8 @@ impl Radio {
   /// as checked while the signal equals its value, and selecting it writes its value
   /// back.
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::RwSignal<String>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Get, Set};
 
     let value = self.value.clone();
     let selected = self.value.clone();

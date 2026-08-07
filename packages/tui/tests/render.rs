@@ -139,7 +139,7 @@ fn composed_condition_resolves() {
 #[test]
 fn bold_and_derived_text() {
   let (frame, before, after) = with_driver(|| {
-    let count = RwSignal::new(1u32);
+    let count = Signal::new(1u32);
 
     tui::mount(|| {
       Container::column()
@@ -207,7 +207,7 @@ fn focus_variant_and_click() {
 #[test]
 fn input_binds_a_signal_both_ways() {
   let (value, frame) = with_driver(|| {
-    let name = RwSignal::new(String::new());
+    let name = Signal::new(String::new());
 
     tui::mount(|| {
       Input::new()
@@ -232,7 +232,7 @@ fn input_binds_a_signal_both_ways() {
 #[test]
 fn dynamic_swaps_content() {
   let (before, after) = with_driver(|| {
-    let on = RwSignal::new(false);
+    let on = Signal::new(false);
 
     tui::mount(|| {
       DynamicView::new(move || {
@@ -311,7 +311,7 @@ fn pointer_events_carry_cell_coordinates() {
 #[test]
 fn title_follows_state() {
   let (first, second) = with_driver(|| {
-    let name = RwSignal::new("one".to_owned());
+    let name = Signal::new("one".to_owned());
 
     tui::mount(|| {
       tui::derive_title(move || format!("app: {}", name.get()));
@@ -488,7 +488,7 @@ fn hover_cursor_resolves() {
 #[test]
 fn modal_overlay_covers_blocks_and_dismisses() {
   let (closed, open_frame, blocked, after_escape) = with_driver(|| {
-    let open = RwSignal::new(false);
+    let open = Signal::new(false);
     let clicks = Rc::new(Cell::new(0u32));
 
     {
@@ -544,7 +544,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
 #[test]
 fn popup_anchors_below_and_light_dismisses() {
   let (frame, dismissed_frame) = with_driver(|| {
-    let open = RwSignal::new(false);
+    let open = Signal::new(false);
     let anchor = Anchor::new();
 
     {
@@ -799,7 +799,7 @@ fn tasks_end_with_their_scope() {
   let landed = Rc::new(Cell::new(false));
   let seen = Rc::clone(&landed);
   with_driver(move || {
-    let show = RwSignal::new(true);
+    let show = Signal::new(true);
 
     tui::mount(|| {
       DynamicView::new(move || {
@@ -869,7 +869,7 @@ fn error_boundary_presents_and_clears_reports() {
 #[test]
 fn transition_holds_previous_content_until_settled() {
   let (first, held, swapped) = with_driver(|| {
-    let route = RwSignal::new(1u32);
+    let route = Signal::new(1u32);
 
     tui::mount(|| {
       DynamicView::transitional(move || {
@@ -912,7 +912,7 @@ fn transition_holds_previous_content_until_settled() {
 #[test]
 fn checkbox_toggles_by_key_and_click() {
   let (unchecked, checked, value) = with_driver(|| {
-    let on = RwSignal::new(false);
+    let on = Signal::new(false);
 
     tui::mount(|| Checkbox::new().bind_checked(on).into_any().build());
 
@@ -938,7 +938,7 @@ fn checkbox_toggles_by_key_and_click() {
 #[test]
 fn radio_group_moves_the_check() {
   let (first, moved, value) = with_driver(|| {
-    let choice = RwSignal::new("a".to_owned());
+    let choice = Signal::new("a".to_owned());
 
     tui::mount(|| {
       Container::column()
@@ -981,7 +981,7 @@ fn radio_group_moves_the_check() {
 #[test]
 fn select_cycles_its_options() {
   let (initial, cycled, back, value) = with_driver(|| {
-    let unit = RwSignal::new("px".to_owned());
+    let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
       Select::new()
@@ -1018,7 +1018,7 @@ fn select_cycles_its_options() {
 #[test]
 fn slider_nudges_and_jumps() {
   let (track, after_keys, after_click) = with_driver(|| {
-    let volume = RwSignal::new(0.0f32);
+    let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
       Slider::new(0.0, 10.0)
@@ -1110,7 +1110,7 @@ fn control_theme_restyles_glyphs() {
 fn modal_scrim_defaults_on_and_disables() {
   let scrim = |backdrop: Option<Color>| {
     with_driver(move || {
-      let open = RwSignal::new(false);
+      let open = Signal::new(false);
 
       tui::mount(move || {
         let modal = Overlay::modal().bind_open(open).set_child(Text::new("hi"));
@@ -1181,7 +1181,7 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
 #[test]
 fn prevented_keys_skip_their_defaults() {
   let (value, first, second) = with_driver(|| {
-    let volume = RwSignal::new(0.0f32);
+    let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
       Container::column()
@@ -1270,7 +1270,7 @@ fn click_verdicts_split_bubbling_from_default() {
   let (inner_runs, outer_runs, checked) = with_driver(|| {
     let inner_runs = Rc::new(Cell::new(0u32));
     let outer_runs = Rc::new(Cell::new(0u32));
-    let on = RwSignal::new(false);
+    let on = Signal::new(false);
 
     {
       let inner_runs = Rc::clone(&inner_runs);

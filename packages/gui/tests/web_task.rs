@@ -7,7 +7,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
-  reactive::{RwSignal, Scope, SignalGet, SignalUpdate},
+  reactive::{Get, Owner, Set, Signal},
   spawn,
   wasm_bindgen::JsValue,
 };
@@ -32,7 +32,7 @@ async fn parked() {
 
 #[wasm_bindgen_test]
 async fn a_spawned_task_runs() {
-  let scope = Scope::new();
+  let scope = Owner::new();
   let ran = Rc::new(Cell::new(false));
 
   scope.enter({
@@ -55,8 +55,8 @@ async fn a_spawned_task_runs() {
 /// A task may write a signal when it finishes—the delivery path a loaded resource needs.
 #[wasm_bindgen_test]
 async fn a_task_can_deliver_into_a_signal() {
-  let scope = Scope::new();
-  let value = RwSignal::new(0);
+  let scope = Owner::new();
+  let value = Signal::new(0);
 
   scope.enter(move || {
     spawn(async move {
@@ -76,7 +76,7 @@ async fn a_task_can_deliver_into_a_signal() {
 /// so it never resumes into a torn-down tree.
 #[wasm_bindgen_test]
 async fn disposing_the_scope_cancels_a_parked_task() {
-  let scope = Scope::new();
+  let scope = Owner::new();
   let finished = Rc::new(Cell::new(false));
 
   scope.enter({
@@ -107,8 +107,8 @@ async fn disposing_the_scope_cancels_a_parked_task() {
 /// scope itself.
 #[wasm_bindgen_test]
 async fn disposing_an_ancestor_cancels_a_task() {
-  let parent = Scope::new();
-  let child = parent.create_child();
+  let parent = Owner::new();
+  let child = parent.child();
   let finished = Rc::new(Cell::new(false));
 
   child.enter({

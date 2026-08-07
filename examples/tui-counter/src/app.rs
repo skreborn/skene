@@ -3,7 +3,7 @@
 use skene_tui::prelude::*;
 
 pub(crate) fn app() -> impl IntoView {
-  let count = RwSignal::tagged("count", 0u64);
+  let count = Signal::tagged("count", 0u64);
 
   Container::column()
     .set_main_axis_alignment(MainAxisAlignment::Center)
@@ -12,7 +12,7 @@ pub(crate) fn app() -> impl IntoView {
     .set_child(card(count))
 }
 
-fn card(count: RwSignal<u64>) -> impl IntoView {
+fn card(count: Signal<u64>) -> impl IntoView {
   Container::column()
     .set_cross_axis_alignment(CrossAxisAlignment::Center)
     .set_spacing(1)

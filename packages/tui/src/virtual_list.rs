@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use skene_core::{HasChildren, IntoView, Layout, NodeId, Overflow, View, virtual_window};
-use skene_reactive::{Memo, RwSignal, SignalGet, SignalUpdate};
+use skene_reactive::{Get, Memo, Set, Signal};
 
 use crate::{
   events::ScrollEvent,
@@ -81,8 +81,8 @@ impl View for VirtualList {
 
     style.overflow = Some(style.overflow.unwrap_or(Overflow::Auto));
 
-    let offset = RwSignal::new(0u32);
-    let viewport = RwSignal::new(0u32);
+    let offset = Signal::new(0u32);
+    let viewport = Signal::new(0u32);
     let outer = with_state(|state| {
       let outer = state.insert_node(
         NodeKind::Box {

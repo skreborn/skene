@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{Context, Effect, Scope};
+use skene_reactive::{Effect, Owner, provide_context};
 
 use crate::{Boundary, IntoView, NodeId, View, tree::TreeOps};
 
@@ -51,10 +51,10 @@ impl<Ops: TreeOps> View for Suspense<Ops> {
     let parent = Boundary::current();
     // A child scope so the boundary is in `Context` for the content's tasks only, not
     // its siblings; it holds no state of its own and disposes with the view.
-    let scope = Scope::current().create_child();
+    let scope = Owner::current().child();
 
     let content = scope.enter(|| {
-      Context::provide(boundary);
+      provide_context(boundary);
 
       (self.content)()
     });
@@ -67,7 +67,7 @@ impl<Ops: TreeOps> View for Suspense<Ops> {
     if let Some(parent) = parent {
       let entered = Rc::clone(&entered);
 
-      Scope::current().on_cleanup(move || {
+      Owner::current().on_cleanup(move || {
         if entered.get() {
           parent.leave();
         }

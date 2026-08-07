@@ -7,7 +7,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_reactive::{Context, RwSignal, SignalGet, SignalUpdate};
+use skene_reactive::{Get, Set, Signal, provide_context, use_context};
 
 /// A type that names every place in the app, convertible to and from a URL path.
 pub trait Route: Clone + PartialEq + 'static {
@@ -34,7 +34,7 @@ type Sink = Rc<RefCell<Option<Box<dyn Fn(&str)>>>>;
 /// ([`provide`](Self::provide) / [`get`](Self::get)), so any view can read or navigate.
 #[must_use]
 pub struct Router<R: Route> {
-  current: RwSignal<R>,
+  current: Signal<R>,
   sink: Sink,
 }
 
@@ -51,7 +51,7 @@ impl<R: Route> Router<R> {
   /// Creates a router at `initial`.
   pub fn new(initial: R) -> Self {
     Self {
-      current: RwSignal::new(initial),
+      current: Signal::new(initial),
       sink: Rc::new(RefCell::new(None)),
     }
   }
@@ -101,13 +101,13 @@ impl<R: Route> Router<R> {
   /// Stores this router in the current reactive scope, for [`get`](Self::get) anywhere
   /// beneath it.
   pub fn provide(&self) {
-    Context::provide(self.clone());
+    provide_context(self.clone());
   }
 
   /// The router provided by an ancestor scope, if any.
   #[must_use]
   pub fn get() -> Option<Self> {
-    Context::get::<Self>()
+    use_context::<Self>()
   }
 }
 

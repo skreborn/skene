@@ -973,7 +973,7 @@ pub fn install(root: Element) {
 #[cfg(feature = "test")]
 pub fn uninstall() {
   skene_reactive::Runtime::reset();
-  skene_core::reset_root_scope();
+  skene_core::reset_root_owner();
 
   STATE.with(|state| *state.borrow_mut() = None);
 }
@@ -1178,7 +1178,7 @@ pub fn set_input_value(node: NodeId, value: &str) {
 
 /// Builds `view` under the installed root, returning its node.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  skene_core::root_scope().enter(|| {
+  skene_core::root_owner().enter(|| {
     let node = view();
 
     with_state(|state| state.attach_child(ROOT_ID, node, None));

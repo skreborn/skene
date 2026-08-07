@@ -81,7 +81,7 @@ impl Events {
         .target()
         .and_then(|target| target.dyn_into::<Element>().ok());
 
-      skene_reactive::Effect::batch(|| {
+      skene_reactive::batch(|| {
         let mut prevention = Prevention::default();
 
         while let Some(element) = current {
@@ -117,7 +117,7 @@ impl Events {
     handler: impl Fn(&web_sys::Event) + 'static,
   ) {
     let closure = Closure::wrap(Box::new(move |event: web_sys::Event| {
-      skene_reactive::Effect::batch(|| handler(&event));
+      skene_reactive::batch(|| handler(&event));
     }) as Box<dyn FnMut(web_sys::Event)>);
 
     let _ = element.add_event_listener_with_callback(event_name, closure.as_ref().unchecked_ref());

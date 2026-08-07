@@ -58,7 +58,7 @@ pub use props::{
 };
 pub use reconcile::{DynamicView, dynamic, empty, reconcile};
 pub use reorder::Reorder;
-pub use runtime::{reset_root_scope, root_scope};
+pub use runtime::{reset_root_owner, root_owner};
 pub use source::Source;
 pub use style::{Animation, Condition, Easing, StyleProperty, Transition};
 pub use suspense::Suspense;

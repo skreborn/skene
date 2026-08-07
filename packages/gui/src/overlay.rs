@@ -167,8 +167,8 @@ impl Overlay {
   /// Binds the open state to `signal` in both directions: the overlay follows the
   /// signal, and a dismiss request writes it back to `false`.
   #[inline(always)]
-  pub fn bind_open(self, signal: skene_reactive::RwSignal<bool>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_open(self, signal: skene_reactive::Signal<bool>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
       .derive_open(move || signal.get())

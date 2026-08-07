@@ -151,7 +151,7 @@ pub(crate) fn clear() {
 
 /// Runs `future` as a task, until it finishes or the current scope is disposed.
 ///
-/// Scope-bound on purpose: a task started while building a view ends with that view—or
+/// Owner-bound on purpose: a task started while building a view ends with that view—or
 /// with any ancestor of it—rather than waking later to write into a tree that is gone.
 /// The future runs on the terminal thread, pumped by the event loop between events, so
 /// it may touch signals and views directly; cancellation takes effect at its next poll.

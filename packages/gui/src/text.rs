@@ -16,7 +16,7 @@ use skene_core::{
   Transition,
   View,
 };
-use skene_reactive::{Context, Scope};
+use skene_reactive::{Owner, provide_context, use_context};
 
 /// The text style of a text node: an optional static-or-reactive [`Source`] per property.
 #[derive(Clone, Default)]
@@ -376,14 +376,14 @@ impl RichText {
 /// group's resolved style to its nested children.
 #[inline(always)]
 pub(crate) fn provide_group_base(base: TextStyle, build: impl FnOnce()) {
-  let mut inherited = Context::get::<InheritedText>().unwrap_or_default();
+  let mut inherited = use_context::<InheritedText>().unwrap_or_default();
 
   inherited.base = base;
 
-  let scope = Scope::current().create_child();
+  let scope = Owner::current().child();
 
   scope.enter(|| {
-    Context::provide(inherited);
+    provide_context(inherited);
 
     build();
   });
@@ -442,7 +442,7 @@ struct InheritedText {
 /// theme's link style under the node's own.
 #[inline(always)]
 pub(crate) fn resolved_text_style(style: TextStyle, is_link: bool) -> TextStyle {
-  let inherited = Context::get::<InheritedText>().unwrap_or_default();
+  let inherited = use_context::<InheritedText>().unwrap_or_default();
   let mut resolved = inherited.base;
 
   if is_link {
@@ -454,15 +454,15 @@ pub(crate) fn resolved_text_style(style: TextStyle, is_link: bool) -> TextStyle 
 
 impl View for TextTheme {
   fn build(self) -> NodeId {
-    let mut inherited = Context::get::<InheritedText>().unwrap_or_default();
+    let mut inherited = use_context::<InheritedText>().unwrap_or_default();
 
     inherited.base = inherited.base.overlay(self.base);
     inherited.link = inherited.link.overlay(self.link);
 
-    let scope = Scope::current().create_child();
+    let scope = Owner::current().child();
 
     scope.enter(|| {
-      Context::provide(inherited);
+      provide_context(inherited);
 
       self.child.build()
     })

@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{Context, Effect, Scope};
+use skene_reactive::{Effect, Owner, provide_context};
 
 use crate::{Boundary, NodeId, tree::TreeOps};
 
@@ -20,10 +20,10 @@ use crate::{Boundary, NodeId, tree::TreeOps};
 /// hold.
 pub fn transition<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let container = Ops::default().create_group();
-  let parent_scope = Scope::current();
+  let parent_scope = Owner::current();
   let parent = Boundary::current();
-  let current = Rc::new(Cell::new(None::<(NodeId, Scope)>));
-  let pending = Rc::new(Cell::new(None::<(NodeId, Scope)>));
+  let current = Rc::new(Cell::new(None::<(NodeId, Owner)>));
+  let pending = Rc::new(Cell::new(None::<(NodeId, Owner)>));
   // Whether unsettled rebuilds currently count as pending toward the enclosing
   // boundary, so a disposal mid-pend still balances the count.
   let entered = Rc::new(Cell::new(false));
@@ -53,10 +53,10 @@ pub fn transition<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId 
       scope.dispose();
     }
 
-    let scope = parent_scope.create_child();
+    let scope = parent_scope.child();
     let boundary = Boundary::new();
     let node = scope.enter(|| {
-      Context::provide(boundary);
+      provide_context(boundary);
 
       build()
     });

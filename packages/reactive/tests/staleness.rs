@@ -2,17 +2,17 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_reactive::{Effect, Memo, RwSignal, SignalGet, SignalUpdate};
+use skene_reactive::{Effect, Get, Memo, Set, Signal, batch};
 
 /// A memo read inside a batch, after a write to its source, pulls the fresh value.
 #[test]
 fn memo_read_inside_batch_is_fresh() {
-  let source = RwSignal::new(1);
+  let source = Signal::new(1);
   let memo = Memo::new(move |_| source.get() * 10);
 
   assert_eq!(memo.get(), 10);
 
-  let seen = Effect::batch(|| {
+  let seen = batch(|| {
     source.set(2);
 
     memo.get()
@@ -24,13 +24,13 @@ fn memo_read_inside_batch_is_fresh() {
 /// Staleness propagates through a memo chain: a read at the end pulls the whole chain.
 #[test]
 fn memo_chain_read_inside_batch_is_fresh() {
-  let source = RwSignal::new(1);
+  let source = Signal::new(1);
   let doubled = Memo::new(move |_| source.get() * 2);
   let quadrupled = Memo::new(move |_| doubled.get() * 2);
 
   assert_eq!(quadrupled.get(), 4);
 
-  let seen = Effect::batch(|| {
+  let seen = batch(|| {
     source.set(3);
 
     quadrupled.get()
@@ -42,7 +42,7 @@ fn memo_chain_read_inside_batch_is_fresh() {
 /// A memo whose recomputed value is unchanged notifies no dependent effect.
 #[test]
 fn unchanged_memo_filters_change() {
-  let source = RwSignal::new(2);
+  let source = Signal::new(2);
   let is_even = Memo::new(move |_| source.get() % 2 == 0);
   let runs = Rc::new(RefCell::new(0));
 
@@ -69,8 +69,8 @@ fn unchanged_memo_filters_change() {
 /// finishes, not re-entrantly inside it.
 #[test]
 fn write_during_flush_defers() {
-  let first = RwSignal::new(0);
-  let second = RwSignal::new(0);
+  let first = Signal::new(0);
+  let second = Signal::new(0);
   let log = Rc::new(RefCell::new(Vec::new()));
 
   {
@@ -105,7 +105,7 @@ fn write_during_flush_defers() {
 /// values consistent.
 #[test]
 fn diamond_runs_once_consistently() {
-  let source = RwSignal::new(1);
+  let source = Signal::new(1);
   let doubled = Memo::new(move |_| source.get() * 2);
   let runs = Rc::new(RefCell::new(0));
 

@@ -172,9 +172,11 @@ classes.
 
 ## Reactive engine
 
-The public API is stable: `RwSignal`/`ReadSignal`/`WriteSignal` (Copy handles),
-`Memo`, `Effect`, `Trigger`, `Scope`, `Context`, the `Sync`/local storage split, and the
-`set_`/`derive_`/`handle_` builder convention above it. The internals contract:
+The public API speaks the ecosystem's standard reactive vocabulary:
+`Signal`/`ReadSignal`/`WriteSignal` (Copy handles), `Memo`, `Effect`, `Trigger`,
+`Owner`, `provide_context`/`use_context`, `batch`/`untrack`, the access traits
+(`Get`/`With`/`Read`/`Set`/`Update`/`Write`/`Track`), the `Sync`/local storage split,
+and the `set_`/`derive_`/`handle_` builder convention above it. The internals contract:
 
 - **Eager staleness, lazy recomputation.** A write marks dependent memos stale
   transitively at write time; a memo read pulls freshness through the chain. A memo is
@@ -183,9 +185,12 @@ The public API is stable: `RwSignal`/`ReadSignal`/`WriteSignal` (Copy handles),
 - **Non-reentrant flushing.** Effects triggered while a flush is running are enqueued and
   drained by the same flush, not run recursively. Driver event dispatch wraps in an
   implicit batch, so N writes in one handler run each dependent effect once.
-- **Arena storage.** Signals, effects, scopes and subscription edges live in slotmap-style
-  arenas with small-vector edge lists, not per-entity `Rc<dyn Any>` in hash maps. (The
-  five-map layout predates this; the swap is API-invisible.)
+- **Arena storage.** Every local entity—signal, effect, owner—is one slot in a
+  generational arena per thread, addressed by index and validated by generation;
+  subscription edges are small-vector lists. An id carries its realm (local or sync)
+  and its runtime's nonce, so a stale or foreign id resolves to nothing rather than to
+  a different entity. Sync signals live in a generational slab in the process-wide
+  registry.
 - **Threading.** The UI thread owns the local runtime. `Sync` signals live in a global
   runtime; an off-thread write enqueues its subscribed effects and pokes the installed
   waker; the driver drains on its loop (`drain_pending_work`). The browser build is

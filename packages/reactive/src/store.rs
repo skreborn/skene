@@ -17,7 +17,7 @@ use std::{
 
 use rustc_hash::{FxHashMap, FxHasher};
 
-use crate::{Effect, RwSignal, Scope, SignalWith, Trigger};
+use crate::{Owner, Signal, Trigger, access::With, effect::batch};
 
 /// One step of a store path: a struct field by declaration order, or a collection
 /// entry by its position or hashed key.
@@ -32,21 +32,21 @@ pub enum PathSegment {
 /// The address of a location inside a store's value, from the root.
 pub type StorePath = Vec<PathSegment>;
 
-/// A store's shared plumbing: the trigger registry and the owning scope.
+/// A store's shared plumbing: the trigger registry and the owning owner.
 ///
 /// Every lens of one store carries the same core; custom lenses only forward it.
 #[derive(Clone, Copy)]
 #[must_use]
 pub struct StoreCore {
-  triggers: RwSignal<FxHashMap<StorePath, Trigger>>,
-  scope: Scope,
+  triggers: Signal<FxHashMap<StorePath, Trigger>>,
+  owner: Owner,
 }
 
 impl StoreCore {
   fn new() -> Self {
     Self {
-      triggers: RwSignal::new(FxHashMap::default()),
-      scope: Scope::current(),
+      triggers: Signal::new(FxHashMap::default()),
+      owner: Owner::current(),
     }
   }
 
@@ -54,12 +54,13 @@ impl StoreCore {
   fn track(&self, path: &[PathSegment]) {
     let existing = self
       .triggers
-      .try_with_untracked(|triggers| triggers.and_then(|triggers| triggers.get(path).copied()));
+      .try_with_untracked(|triggers| triggers.get(path).copied())
+      .flatten();
 
     let trigger = match existing {
       Some(trigger) => trigger,
       None => {
-        let trigger = self.scope.enter(Trigger::new);
+        let trigger = self.owner.enter(Trigger::new);
 
         let _ = update_untracked(self.triggers, |triggers| {
           triggers.insert(path.to_vec(), trigger);
@@ -78,17 +79,15 @@ impl StoreCore {
     let affected: Vec<Trigger> = self
       .triggers
       .try_with_untracked(|triggers| {
-        triggers.map(|triggers| {
-          triggers
-            .iter()
-            .filter(|(tracked, _)| tracked.starts_with(path) || path.starts_with(tracked))
-            .map(|(_, trigger)| *trigger)
-            .collect()
-        })
+        triggers
+          .iter()
+          .filter(|(tracked, _)| tracked.starts_with(path) || path.starts_with(tracked))
+          .map(|(_, trigger)| *trigger)
+          .collect()
       })
       .unwrap_or_default();
 
-    Effect::batch(|| {
+    batch(|| {
       for trigger in affected {
         trigger.notify();
       }
@@ -99,13 +98,13 @@ impl StoreCore {
 /// Mutates a signal's value without its own notification; the store fans out through
 /// its triggers instead.
 fn update_untracked<T: 'static, R>(
-  signal: RwSignal<T>,
+  signal: Signal<T>,
   write: impl FnOnce(&mut T) -> R,
 ) -> Option<R> {
   signal
     .id()
-    .signal()
-    .map(|entity| entity.update_value_local_untracked(write))
+    .state()
+    .map(|state| state.update_untracked(write))
 }
 
 /// Fine-grained reactive state over one plain value.
@@ -116,7 +115,7 @@ fn update_untracked<T: 'static, R>(
 /// generates the per-field accessors that descend into it.
 #[must_use]
 pub struct Store<T: 'static> {
-  value: RwSignal<T>,
+  value: Signal<T>,
   core: StoreCore,
 }
 
@@ -130,10 +129,10 @@ impl<T: 'static> Clone for Store<T> {
 impl<T: 'static> Copy for Store<T> {}
 
 impl<T: 'static> Store<T> {
-  /// Creates a store owned by the current scope.
+  /// Creates a store owned by the current [`Owner`].
   pub fn new(value: T) -> Self {
     Self {
-      value: RwSignal::new(value),
+      value: Signal::new(value),
       core: StoreCore::new(),
     }
   }
@@ -144,7 +143,7 @@ impl<T: serde::Serialize + serde::de::DeserializeOwned + 'static> Store<T> {
   /// Creates a store whose `tag` is its identity in state snapshots.
   ///
   /// The whole value serializes as one unit under the tag, exactly as
-  /// [`RwSignal::tagged`] does for a single value: the store starts from the value
+  /// [`Signal::tagged`] does for a single value: the store starts from the value
   /// staged under its tag by [`restore`](crate::restore) when one is present and
   /// decodes as `T`, and from `value` otherwise.
   ///
@@ -161,7 +160,9 @@ impl<T: serde::Serialize + serde::de::DeserializeOwned + 'static> Store<T> {
     crate::snapshot::register(
       tag,
       Box::new(move || {
-        cell.try_with_untracked(|value| value.and_then(|value| postcard::to_allocvec(value).ok()))
+        cell
+          .try_with_untracked(|value| postcard::to_allocvec(value).ok())
+          .flatten()
       }),
     );
 
@@ -291,7 +292,7 @@ impl<T: 'static> StoreField for Store<T> {
   fn write_path(&self, _path: &mut StorePath) {}
 
   fn read_untracked<R>(&self, read: impl FnOnce(&T) -> R) -> Option<R> {
-    self.value.try_with_untracked(|value| value.map(read))
+    self.value.try_with_untracked(read)
   }
 
   fn write_untracked<R>(&self, write: impl FnOnce(&mut T) -> R) -> Option<R> {

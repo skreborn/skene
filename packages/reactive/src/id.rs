@@ -1,142 +1,159 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU16, Ordering};
 
 use crate::{
   effect::observer_clean_up,
   runtime::{RUNTIME, Runtime},
   signal::SignalState,
-  sync_runtime::SYNC_RUNTIME,
+  sync::SYNC,
 };
 
-/// An internal id which can reference a signal/`Effect`/`Scope`.
+/// Identifies one reactive entity: a signal, an effect, or an [`Owner`](crate::Owner).
+///
+/// An id names a generational slot in its allocating runtime—the calling thread's for
+/// local entities, the process-wide registry for sync signals. A stale id (its slot
+/// freed or reused, or another thread's runtime) resolves to nothing rather than to a
+/// different entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub struct Id(u64);
 
+const SYNC_BIT: u64 = 1 << 63;
+const NONCE_MASK: u16 = 0x7FFF;
+
+/// The next local runtime's nonce; distinguishes ids across threads and resets.
+static NEXT_NONCE: AtomicU16 = AtomicU16::new(0);
+
+/// Allocates a nonce for a fresh local runtime.
+pub(crate) fn next_nonce() -> u16 {
+  NEXT_NONCE.fetch_add(1, Ordering::Relaxed) & NONCE_MASK
+}
+
 impl Id {
-  /// Creates a new `Id` that's next in order.
-  pub(crate) fn next() -> Id {
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-    Id(COUNTER.fetch_add(1, Ordering::Relaxed))
+  /// Packs a local id from its runtime's nonce, slot generation, and slot index.
+  #[inline(always)]
+  pub(crate) const fn local(nonce: u16, generation: u16, index: u32) -> Self {
+    Self((((nonce & NONCE_MASK) as u64) << 48) | ((generation as u64) << 32) | index as u64)
   }
 
-  /// Tries to get the signal that links with this `Id`.
-  pub(crate) fn signal(&self) -> Option<SignalState> {
-    if Runtime::is_ui_thread() {
-      if let Some(signal) = RUNTIME.with(|runtime| {
-        runtime
-          .entities
-          .borrow()
-          .get(self)
-          .and_then(|entity| entity.signal.clone())
-      }) {
-        return Some(signal);
-      }
-
-      SYNC_RUNTIME.get_signal(self).map(Into::into)
-    }
-    else {
-      SYNC_RUNTIME.get_signal(self).map(Into::into)
-    }
+  /// Packs a sync id from its slot generation and slot index.
+  #[inline(always)]
+  pub(crate) const fn sync(generation: u16, index: u32) -> Self {
+    Self(SYNC_BIT | ((generation as u64) << 32) | index as u64)
   }
 
-  /// Reads the local (unsync) signal for this id, asserting the UI thread.
-  ///
-  /// For unsync signal handles, whose storage is always local: skips the
-  /// local-vs-sync dispatch [`signal`](Self::signal) performs.
+  /// Whether this id names a sync signal rather than a local entity.
+  #[inline(always)]
+  pub(crate) const fn is_sync(self) -> bool {
+    self.0 & SYNC_BIT != 0
+  }
+
+  /// The allocating local runtime's nonce.
+  #[inline(always)]
+  pub(crate) const fn nonce(self) -> u16 {
+    ((self.0 >> 48) as u16) & NONCE_MASK
+  }
+
+  /// The slot generation this id was minted for.
+  #[inline(always)]
+  pub(crate) const fn generation(self) -> u16 {
+    (self.0 >> 32) as u16
+  }
+
+  /// The slot index in the allocating runtime.
+  #[inline(always)]
+  pub(crate) const fn index(self) -> u32 {
+    self.0 as u32
+  }
+
+  /// The signal state this id names, resolved in the id's own realm.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn local_signal(&self) -> Option<SignalState> {
+  pub(crate) fn state(self) -> Option<SignalState> {
+    if self.is_sync() {
+      return SYNC.get(self).map(Into::into);
+    }
+
     Runtime::assert_ui_thread();
 
     RUNTIME.with(|runtime| {
       runtime
-        .entities
+        .arena
         .borrow()
         .get(self)
         .and_then(|entity| entity.signal.clone())
     })
   }
 
-  /// Tries to set the signal to be linking with this `Id`.
-  pub(crate) fn add_signal(&self, signal: SignalState) {
+  /// Attaches this id to the current owner, so disposing the owner disposes it.
+  pub(crate) fn set_owner(self) {
     RUNTIME.with(|runtime| {
-      runtime
-        .entities
-        .borrow_mut()
-        .entry(*self)
-        .or_default()
-        .signal = Some(signal);
+      let owner = runtime.current_owner.get();
+      let mut arena = runtime.arena.borrow_mut();
+
+      if let Some(entity) = arena.get_mut(owner) {
+        entity.children.get_or_insert_default().insert(self);
+      }
+
+      if !self.is_sync()
+        && let Some(entity) = arena.get_mut(self)
+      {
+        entity.parent = Some(owner);
+      }
     });
   }
 
-  /// Makes this `Id` a child of the current `Scope`.
-  pub(crate) fn set_scope(&self) {
-    RUNTIME.with(|runtime| {
-      let scope = *runtime.current_scope.borrow();
-      let mut entities = runtime.entities.borrow_mut();
-
-      entities
-        .entry(scope)
-        .or_default()
-        .children
-        .get_or_insert_default()
-        .insert(*self);
-
-      entities.entry(*self).or_default().parent = Some(scope);
-    });
-  }
-
-  /// Disposes only the children of this `Id` without removing resources tied to the `Id` itself.
-  pub(crate) fn dispose_children(&self) {
-    if let Ok(Some(children)) = RUNTIME.try_with(|runtime| {
+  /// Disposes only the children of this id, keeping the entity itself.
+  pub(crate) fn dispose_children(self) {
+    let children = RUNTIME.try_with(|runtime| {
       runtime
-        .entities
+        .arena
         .borrow_mut()
         .get_mut(self)
         .and_then(|entity| entity.children.take())
-    }) {
+    });
+
+    if let Ok(Some(children)) = children {
       for child in *children {
         child.dispose();
       }
     }
   }
 
-  /// Disposes the resources linked to this `Id` and all of its descendants.
-  pub(crate) fn dispose(&self) {
+  /// Disposes the entity this id names and every descendant.
+  pub(crate) fn dispose(self) {
+    if self.is_sync() {
+      Self::dispose_sync(self);
+
+      return;
+    }
+
     if !Runtime::is_ui_thread() {
-      // Disposal must run on the UI thread.
-      SYNC_RUNTIME.enqueue_disposals([*self]);
+      // Local disposal must run on the entity's own thread; route it there.
+      SYNC.enqueue_disposals([self]);
 
       return;
     }
 
     let Ok(entity) = RUNTIME.try_with(|runtime| {
-      let mut entities = runtime.entities.borrow_mut();
-      let entity = entities.remove(self);
+      let mut arena = runtime.arena.borrow_mut();
+      let entity = arena.remove(self);
 
-      // Unlink from the parent, so a long-lived scope's children set does not accumulate
-      // disposed ids.
+      // Unlink from the parent, so a long-lived owner's children set does not
+      // accumulate disposed ids.
       if let Some(parent) = entity.as_ref().and_then(|entity| entity.parent)
-        && let Some(parent_entity) = entities.get_mut(&parent)
+        && let Some(parent_entity) = arena.get_mut(parent)
         && let Some(children) = parent_entity.children.as_mut()
       {
-        children.remove(self);
+        children.remove(&self);
       }
 
       entity
     })
     else {
-      if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
-        Self::cleanup_signal(Some(signal.into()));
-      }
-
       return;
     };
 
     let Some(entity) = entity
     else {
-      if let Some(signal) = SYNC_RUNTIME.remove_signal(self) {
-        Self::cleanup_signal(Some(signal.into()));
-      }
-
       return;
     };
 
@@ -156,310 +173,46 @@ impl Id {
       observer_clean_up(&effect);
     }
 
-    let mut signal = entity.signal;
-
-    if signal.is_none() {
-      signal = SYNC_RUNTIME.remove_signal(self).map(Into::into);
-    }
-
-    Self::cleanup_signal(signal);
-  }
-
-  fn cleanup_signal(signal: Option<SignalState>) {
-    if let Some(signal) = signal {
+    if let Some(signal) = entity.signal {
       // Snapshot first: dispose may re-enter the subscriber set.
-      for effect_id in signal.subscribers.snapshot() {
-        effect_id.dispose();
+      for subscriber in signal.subscribers.snapshot() {
+        subscriber.dispose();
       }
     }
   }
-}
 
-#[cfg(test)]
-mod tests {
-  use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-  };
+  /// Removes a sync signal and disposes its subscribers—UI-thread effects—on the UI
+  /// thread, directly or through the pending-disposal queue.
+  fn dispose_sync(id: Id) {
+    let Some(signal) = SYNC.remove(id)
+    else {
+      return;
+    };
 
-  use crate::{
-    RwSignal,
-    SignalTrack,
-    SignalUpdate,
-    effect::Effect,
-    runtime::{RUNTIME, Runtime},
-    scope::Scope,
-  };
+    let subscribers = signal
+      .subscribers
+      .lock()
+      .iter()
+      .copied()
+      .collect::<Vec<_>>();
 
-  #[test]
-  fn effect_disposed_when_dependency_signal_disposed() {
-    let parent = Scope::new();
-    let signal_scope = parent.create_child();
-    let (signal, setter) = signal_scope.create_signal(0);
-
-    let count = Rc::new(Cell::new(0));
-    parent.enter(|| {
-      let count = count.clone();
-      Effect::new(move |_| {
-        signal.track();
-        count.set(count.get() + 1);
-      });
-    });
-
-    assert_eq!(count.get(), 1);
-
-    // Disposing the signal's scope should clean up the subscribing effect.
-    signal_scope.dispose();
-
-    // Mutations after disposal should not rerun the effect.
-    setter.set(1);
-    Runtime::drain_pending_work();
-    assert_eq!(count.get(), 1);
-
-    // The effect should be removed from the runtime.
-    RUNTIME.with(|runtime| {
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .values()
-          .all(|entity| entity.effect.is_none())
-      )
-    });
-  }
-
-  #[test]
-  fn signals_created_by_effect_are_disposed_with_effect() {
-    let parent = Scope::new();
-    let dep_scope = parent.create_child();
-    let (dep_signal, dep_setter) = dep_scope.create_signal(0);
-
-    let created_signal = Rc::new(RefCell::new(None));
-    let run_count = Rc::new(Cell::new(0));
-
-    parent.enter(|| {
-      let created_signal = created_signal.clone();
-      let run_count = run_count.clone();
-      Effect::new(move |_| {
-        dep_signal.track();
-        run_count.set(run_count.get() + 1);
-        if created_signal.borrow().is_none() {
-          created_signal.replace(Some(RwSignal::new(0)));
-        }
-      });
-    });
-
-    assert_eq!(run_count.get(), 1);
-    let inner_signal = created_signal.borrow().expect("signal created");
-    assert!(inner_signal.id().signal().is_some());
-
-    // Dispose the dependency scope; the effect should be disposed and clean up its children.
-    dep_scope.dispose();
-    Runtime::drain_pending_work();
-
-    // Mutating the dependency after disposal should do nothing.
-    dep_setter.set(1);
-    Runtime::drain_pending_work();
-    assert_eq!(run_count.get(), 1);
-
-    assert!(inner_signal.id().signal().is_none());
-    RUNTIME.with(|runtime| {
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .values()
-          .all(|entity| entity.effect.is_none())
-      )
-    });
-  }
-
-  #[test]
-  fn disposing_scope_drops_signals_and_effects() {
-    let scope = Scope::new();
-    let (signal, setter) = scope.create_signal(0);
-    let signal_id = signal.id();
-
-    let run_count = Rc::new(Cell::new(0));
-    scope.enter(|| {
-      let run_count = run_count.clone();
-      Effect::new(move |_| {
-        signal.track();
-        run_count.set(run_count.get() + 1);
-      });
-    });
-
-    // Sanity: effect ran and runtime holds signal/effect.
-    assert_eq!(run_count.get(), 1);
-    RUNTIME.with(|runtime| {
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .get(&signal_id)
-          .is_some_and(|entity| entity.signal.is_some())
-      );
-
-      assert_eq!(
-        runtime
-          .entities
-          .borrow()
-          .values()
-          .filter(|entity| entity.effect.is_some())
-          .count(),
-        1
-      );
-
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .get(&scope.0)
-          .and_then(|entity| entity.children.as_ref())
-          .is_some()
-      );
-    });
-
-    // Dispose the scope; both signal and effect should be cleaned up.
-    scope.dispose();
-    Runtime::drain_pending_work();
-
-    setter.set(1);
-    Runtime::drain_pending_work();
-    assert_eq!(run_count.get(), 1);
-
-    RUNTIME.with(|runtime| {
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .get(&signal_id)
-          .and_then(|entity| entity.signal.as_ref())
-          .is_none()
-      );
-
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .values()
-          .all(|entity| entity.effect.is_none())
-      );
-
-      assert!(
-        runtime
-          .entities
-          .borrow()
-          .get(&scope.0)
-          .and_then(|entity| entity.children.as_ref())
-          .is_none()
-      );
-    });
-  }
-
-  /// A disposed child leaves no stale id behind in its parent's children set.
-  #[test]
-  fn dispose_unlinks_from_parent_children() {
-    let parent = Scope::new();
-    let child = parent.create_child();
-
-    child.dispose();
-
-    RUNTIME.with(|runtime| {
-      let entities = runtime.entities.borrow();
-      let children = entities
-        .get(&parent.0)
-        .and_then(|entity| entity.children.as_ref());
-
-      assert!(children.is_none_or(|children| !children.contains(&child.0)));
-    });
-  }
-
-  #[test]
-  fn set_parent_reparents_scope() {
-    // Create two independent scopes (simulating eager construction)
-    let parent = Scope::new();
-    let child = Scope::new();
-
-    // Initially child has no parent
-    assert!(child.parent().is_none());
-
-    // Re-parent child under parent
-    child.set_parent(parent);
-
-    // Verify parent relationship
-    assert_eq!(child.parent().map(|s| s.0), Some(parent.0));
-
-    // Verify child is in parent's children set
-    RUNTIME.with(|runtime| {
-      let entities = runtime.entities.borrow();
-      let parent_children = entities
-        .get(&parent.0)
-        .and_then(|entity| entity.children.as_ref())
-        .expect("parent should have children");
-
-      assert!(parent_children.contains(&child.0));
-    });
-  }
-
-  #[test]
-  fn set_parent_disposes_with_new_parent() {
-    let parent = Scope::new();
-    let child = Scope::new();
-
-    // Create a signal in the child scope
-    let signal = child.create_rw_signal(42);
-    let signal_id = signal.id();
-
-    // Re-parent child under parent
-    child.set_parent(parent);
-
-    // Signal should still exist
-    assert!(signal_id.signal().is_some());
-
-    // Dispose parent - should also dispose child and its signal
-    parent.dispose();
-    Runtime::drain_pending_work();
-
-    // Signal should be cleaned up
-    assert!(signal_id.signal().is_none());
-  }
-
-  #[test]
-  fn set_parent_removes_from_old_parent() {
-    let old_parent = Scope::new();
-    let new_parent = Scope::new();
-    let child = old_parent.create_child();
-
-    // Verify initial parent
-    assert_eq!(child.parent().map(|s| s.0), Some(old_parent.0));
-
-    // Re-parent to new parent
-    child.set_parent(new_parent);
-
-    // Verify new parent
-    assert_eq!(child.parent().map(|s| s.0), Some(new_parent.0));
-
-    // Verify removed from old parent's children
-    RUNTIME.with(|runtime| {
-      let entities = runtime.entities.borrow();
-      if let Some(old_children) = entities
-        .get(&old_parent.0)
-        .and_then(|entity| entity.children.as_ref())
-      {
-        assert!(!old_children.contains(&child.0));
+    if Runtime::is_ui_thread() {
+      if let Some(parent) = signal.parent {
+        let _ = RUNTIME.try_with(|runtime| {
+          if let Some(entity) = runtime.arena.borrow_mut().get_mut(parent)
+            && let Some(children) = entity.children.as_mut()
+          {
+            children.remove(&id);
+          }
+        });
       }
-    });
 
-    // Verify added to new parent's children
-    RUNTIME.with(|runtime| {
-      let entities = runtime.entities.borrow();
-      let new_children = entities
-        .get(&new_parent.0)
-        .and_then(|entity| entity.children.as_ref())
-        .expect("new parent should have children");
-
-      assert!(new_children.contains(&child.0));
-    });
+      for subscriber in subscribers {
+        subscriber.dispose();
+      }
+    }
+    else {
+      SYNC.enqueue_disposals(subscribers);
+    }
   }
 }

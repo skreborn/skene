@@ -19,7 +19,7 @@ use crate::control::{ControlBase, control_surface};
 /// set wholesale with `set_style` and conditionally with `set_when`.
 ///
 /// ```ignore
-/// let name = RwSignal::new(String::new());
+/// let name = Signal::new(String::new());
 ///
 /// Input::new()
 ///   .set_placeholder("Name")
@@ -93,8 +93,8 @@ impl Input {
   /// Binds the value to `signal` in both directions: the input shows the signal and each
   /// edit writes it back.
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::RwSignal<String>) -> Self {
-    use skene_reactive::{SignalGet, SignalUpdate};
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
       .derive_value(move || signal.get())

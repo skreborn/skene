@@ -170,7 +170,7 @@ where
 fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
   let modifiers = portable_modifiers(mouse.modifiers);
 
-  skene_reactive::Effect::batch(|| match mouse.kind {
+  skene_reactive::batch(|| match mouse.kind {
     MouseEventKind::Moved | MouseEventKind::Drag(_) => {
       let button = match mouse.kind {
         MouseEventKind::Drag(button) => Some(portable_button(button)),
@@ -350,7 +350,7 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
     return;
   }
 
-  skene_reactive::Effect::batch(|| {
+  skene_reactive::batch(|| {
     let code = key.code;
     let key_event = portable_key(code, key.modifiers);
     let targets = match state.focused.get() {
@@ -621,7 +621,7 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
 #[cfg(feature = "test")]
 pub fn trigger_mouse_move(x: u16, y: u16) {
   with_state(|state| {
-    skene_reactive::Effect::batch(|| {
+    skene_reactive::batch(|| {
       state.set_hover(x, y);
       let _ = state.run_pointer(
         &state.pointer_move,
@@ -639,7 +639,7 @@ pub fn trigger_mouse_move(x: u16, y: u16) {
 #[cfg(feature = "test")]
 pub fn trigger_mouse_click(x: u16, y: u16) {
   with_state(|state| {
-    skene_reactive::Effect::batch(|| {
+    skene_reactive::batch(|| {
       state.set_hover(x, y);
       let _ = state.run_pointer(
         &state.pointer_down,
@@ -683,6 +683,6 @@ pub fn trigger_color_scheme(dark: bool) {
 #[cfg(feature = "test")]
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
   with_state(|state| {
-    skene_reactive::Effect::batch(|| state.mouse_scroll(x, y, delta_columns, delta_rows));
+    skene_reactive::batch(|| state.mouse_scroll(x, y, delta_columns, delta_rows));
   });
 }

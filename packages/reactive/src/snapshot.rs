@@ -1,6 +1,6 @@
 //! Opt-in state snapshots: tagged signals serialize to bytes and restore on creation.
 //!
-//! A signal created with [`RwSignal::tagged`] names itself with a unique tag—its
+//! A signal created with [`Signal::tagged`] names itself with a unique tag—its
 //! identity across two runs of the same application, resilient to code moving around.
 //! [`snapshot`] serializes every live tagged signal's current value; [`restore`] stages
 //! a prior snapshot so tagged signals created afterwards adopt their staged value
@@ -15,7 +15,7 @@ use std::cell::RefCell;
 use rustc_hash::FxHashMap;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::{RwSignal, SignalWith};
+use crate::{Signal, With};
 
 /// Each live tagged signal's serializer; `None` from a serializer means the signal was
 /// disposed.
@@ -23,11 +23,11 @@ type Serializers = RefCell<FxHashMap<&'static str, Box<dyn Fn() -> Option<Vec<u8
 
 thread_local! {
   static SERIALIZERS: Serializers = RefCell::new(FxHashMap::default());
-  /// Restore values staged by tag, each consumed by the next matching [`RwSignal::tagged`].
+  /// Restore values staged by tag, each consumed by the next matching [`Signal::tagged`].
   static STAGED: RefCell<FxHashMap<String, Vec<u8>>> = RefCell::new(FxHashMap::default());
 }
 
-impl<T: Serialize + DeserializeOwned + 'static> RwSignal<T> {
+impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
   /// Creates a signal whose `tag` is its identity in state snapshots.
   ///
   /// The signal starts from the value staged under its tag by [`restore`] when one is
@@ -47,7 +47,9 @@ impl<T: Serialize + DeserializeOwned + 'static> RwSignal<T> {
     register(
       tag,
       Box::new(move || {
-        signal.try_with_untracked(|value| value.and_then(|value| postcard::to_allocvec(value).ok()))
+        signal
+          .try_with_untracked(|value| postcard::to_allocvec(value).ok())
+          .flatten()
       }),
     );
 
@@ -112,6 +114,7 @@ pub fn restore(bytes: &[u8]) {
 }
 
 /// Clears every registration and staged value, for a runtime reset.
+#[cfg(feature = "test")]
 pub(crate) fn clear() {
   SERIALIZERS.with(|serializers| serializers.borrow_mut().clear());
   STAGED.with(|staged| staged.borrow_mut().clear());

@@ -8,7 +8,7 @@ use std::{
   thread,
 };
 
-use skene_reactive::{Effect, Runtime, SignalGet, SignalUpdate, SyncRwSignal};
+use skene_reactive::{Effect, Get, Runtime, Set, SyncSignal};
 
 /// A sync signal written from another thread queues its subscribed effect for the UI thread,
 /// which runs it on the next drain. This is the whole path a background task needs to
@@ -17,7 +17,7 @@ use skene_reactive::{Effect, Runtime, SignalGet, SignalUpdate, SyncRwSignal};
 fn an_off_thread_write_reaches_a_ui_effect_on_drain() {
   Runtime::init_on_ui_thread();
 
-  let signal: SyncRwSignal<i32> = SyncRwSignal::new_sync(0);
+  let signal: SyncSignal<i32> = SyncSignal::new_sync(0);
   let seen = Arc::new(Mutex::new(Vec::new()));
 
   Effect::new({

@@ -704,7 +704,7 @@ where
   // tree and never consults it; clear so registrations do not accumulate across renders.
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
 
-  let scope = skene_core::root_scope().create_child();
+  let scope = skene_core::root_owner().child();
 
   scope.enter(|| {
     let node = app().into_view().build();
@@ -751,13 +751,13 @@ where
   TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
 
-  let scope = skene_core::root_scope().create_child();
+  let scope = skene_core::root_owner().child();
   let root = skene_core::Boundary::new();
 
   scope.enter(|| {
     // The whole render is a boundary: work outside any deferred boundary counts as the shell's,
     // so the walk can settle it before flushing the first chunk.
-    skene_reactive::Context::provide(root);
+    skene_reactive::provide_context(root);
 
     let node = app().into_view().build();
 

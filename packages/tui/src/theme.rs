@@ -1,7 +1,7 @@
 //! Control glyphs inherited by a subtree.
 
 use skene_core::{AnyView, IntoView, NodeId, View};
-use skene_reactive::{Context, Scope};
+use skene_reactive::{Owner, provide_context, use_context};
 
 /// The glyphs terminal controls render with.
 ///
@@ -34,7 +34,7 @@ impl Glyphs {
   /// The glyphs the current subtree inherits: the nearest enclosing theme's, or the
   /// defaults.
   pub(crate) fn current() -> Self {
-    Context::get::<Self>().unwrap_or_default()
+    use_context::<Self>().unwrap_or_default()
   }
 }
 
@@ -118,10 +118,10 @@ impl View for ControlTheme {
       inherited.slider = slider;
     }
 
-    let scope = Scope::current().create_child();
+    let scope = Owner::current().child();
 
     scope.enter(|| {
-      Context::provide(inherited);
+      provide_context(inherited);
 
       self.child.build()
     })

@@ -1,20 +1,11 @@
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{
-  Effect,
-  Runtime,
-  RwSignal,
-  SignalGet,
-  SignalRead,
-  SignalTrack,
-  SignalUpdate,
-  SignalWrite,
-};
+use skene_reactive::{Effect, Get, Read, Runtime, Set, Signal, Track, Write, batch};
 
 #[test]
 fn batch_simple() {
-  let name = RwSignal::new("John");
-  let age = RwSignal::new(20);
+  let name = Signal::new("John");
+  let age = Signal::new(20);
 
   let count = Rc::new(Cell::new(0));
 
@@ -41,7 +32,7 @@ fn batch_simple() {
   assert_eq!(count.get(), 3);
 
   // Batching will only update once
-  Effect::batch(|| {
+  batch(|| {
     name.set("John");
     age.set(20);
   });
@@ -52,8 +43,8 @@ fn batch_simple() {
 
 #[test]
 fn batch_batch() {
-  let name = RwSignal::new("John");
-  let age = RwSignal::new(20);
+  let name = Signal::new("John");
+  let age = Signal::new(20);
 
   let count = Rc::new(Cell::new(0));
 
@@ -70,10 +61,10 @@ fn batch_batch() {
   assert_eq!(count.get(), 1);
 
   // Batching within another batch should be equivalent to batching them all together
-  Effect::batch(|| {
+  batch(|| {
     name.set("Mary");
     age.set(21);
-    Effect::batch(|| {
+    batch(|| {
       name.set("John");
       age.set(20);
     });
@@ -85,7 +76,7 @@ fn batch_batch() {
 
 #[test]
 fn no_reentrant_runs() {
-  let state = RwSignal::new(0);
+  let state = Signal::new(0);
   let log = Rc::new(std::cell::RefCell::new(Vec::new()));
 
   Effect::new({
@@ -113,7 +104,7 @@ fn cross_thread_write_updates_value_immediately() {
 
 #[test]
 fn pending_effects_are_deduped() {
-  let signal = RwSignal::new(0);
+  let signal = Signal::new(0);
   let counter = Rc::new(Cell::new(0));
 
   Effect::new({
@@ -124,7 +115,7 @@ fn pending_effects_are_deduped() {
     }
   });
 
-  Effect::batch(|| {
+  batch(|| {
     signal.set(1);
     signal.set(2);
     signal.set(3);
@@ -141,7 +132,7 @@ fn signals_are_send_sync_when_value_is() {
 
 #[test]
 fn track_default_subscribes() {
-  let signal = RwSignal::new(0);
+  let signal = Signal::new(0);
   let runs = Rc::new(Cell::new(0));
 
   Effect::new({
@@ -160,7 +151,7 @@ fn track_default_subscribes() {
 
 #[test]
 fn read_untracked_does_not_subscribe() {
-  let signal = RwSignal::new(0);
+  let signal = Signal::new(0);
   let tracked_runs = Rc::new(Cell::new(0));
   let untracked_runs = Rc::new(Cell::new(0));
 
@@ -197,7 +188,7 @@ fn read_untracked_does_not_subscribe() {
 
 #[test]
 fn write_ref_drop_notifies_subscribers_once() {
-  let signal = RwSignal::new(0);
+  let signal = Signal::new(0);
   let runs = Rc::new(Cell::new(0));
 
   Effect::new({

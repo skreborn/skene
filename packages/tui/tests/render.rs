@@ -61,6 +61,24 @@ fn row_flows_runs_with_spacing() {
   assert_eq!(rendered, "ab  cd\n\n");
 }
 
+/// Text wraps at its container's width, breaking at spaces.
+#[test]
+fn text_wraps_at_the_container_width() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_child(Text::new("alpha beta"))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 4)
+  });
+
+  assert_eq!(rendered, "alpha\nbeta\n\n\n");
+}
+
 /// A border draws box-drawing characters; the root child fills the viewport.
 #[test]
 fn border_draws_a_frame() {

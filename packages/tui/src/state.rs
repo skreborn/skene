@@ -36,7 +36,7 @@ pub(crate) enum NodeKind {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
   },
-  /// A text run, sized by its text.
+  /// A text run, wrapping at the available width.
   Run {
     style: RunStyle,
     variants: Vec<(Condition, RunStyle)>,
@@ -153,7 +153,9 @@ pub(crate) type Handlers<F> = RefCell<FxHashMap<NodeId, Vec<Rc<F>>>>;
 /// The terminal driver's state: the node tree, the taffy tree, handlers, and focus.
 pub(crate) struct State {
   pub(crate) nodes: RefCell<FxHashMap<NodeId, NodeRecord>>,
-  pub(crate) taffy: RefCell<taffy::TaffyTree<()>>,
+  /// The taffy tree; a text run's leaf carries its text as context, wrapped by the
+  /// layout's measure function.
+  pub(crate) taffy: RefCell<taffy::TaffyTree<String>>,
   next_id: Cell<u64>,
   pub(crate) click: Handlers<skene_core::ClickHandler>,
   pub(crate) focus: Handlers<dyn Fn()>,

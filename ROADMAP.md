@@ -2,8 +2,8 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: TUI text wrapping; the taffy layout
-vocabulary, the recording driver, and the platform-native naming pass landed.**
+last—not a current priority. **Current focus: remaining TUI polish (input carets,
+border character sets); text wrapping and the platform-native naming pass landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -206,9 +206,14 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   preempting handlers on the TUI; sliders rise on `Up`/`Right` like the platform range
   input. Notifications (change, toggle, scroll, focus/blur) take no verdict; `Ctrl-C`
   stays unconditional.
-- **Remaining:** text wrapping; caret positioning in inputs (edits append/pop only);
-  selectable border character sets (rounded `╭╮╰╯`—the terminal's border radius—double,
-  heavy, ASCII, custom).
+- **Text wrapping—done.** A run's leaf is auto-sized and measured through taffy: a
+  greedy wrap at the available width (lines break at spaces, a word longer than a full
+  line breaks mid-word, a newline always breaks), min-content the longest word,
+  max-content one line. Paint re-wraps at the laid-out width, so stretched and shrunk
+  runs agree with their measure.
+- **Remaining:** caret positioning in inputs (edits append/pop only); selectable
+  border character sets (rounded `╭╮╰╯`—the terminal's border radius—double, heavy,
+  ASCII, custom).
 
 ## Backlog—unphased features
 

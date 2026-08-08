@@ -160,14 +160,105 @@ fn compute_layout(state: &State, environment: Environment, width: u16, height: u
     .expect("style the root");
 
   taffy
-    .compute_layout(
+    .compute_layout_with_measure(
       root_taffy,
       taffy::geometry::Size {
         width: AvailableSpace::Definite(f32::from(width)),
         height: AvailableSpace::Definite(f32::from(height)),
       },
+      |known, available, _, text, _| measure_run(known, available, text),
     )
     .expect("compute the layout");
+}
+
+/// Measures a text run's leaf: its text wrapped at the width constraint, in cells.
+///
+/// A leaf carrying no text measures to its known dimensions or zero.
+fn measure_run(
+  known: taffy::geometry::Size<Option<f32>>,
+  available: taffy::geometry::Size<AvailableSpace>,
+  text: Option<&mut String>,
+) -> taffy::geometry::Size<f32> {
+  let Some(text) = text
+  else {
+    return taffy::geometry::Size {
+      width: known.width.unwrap_or(0.0),
+      height: known.height.unwrap_or(0.0),
+    };
+  };
+
+  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  let limit = match (known.width, available.width) {
+    (Some(width), _) | (None, AvailableSpace::Definite(width)) => width.max(0.0) as usize,
+    (None, AvailableSpace::MinContent) => longest_word(text),
+    (None, AvailableSpace::MaxContent) => usize::MAX,
+  };
+  let lines = wrap_text(text, limit);
+
+  #[expect(clippy::cast_precision_loss)]
+  taffy::geometry::Size {
+    width: known.width.unwrap_or_else(|| {
+      lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0) as f32
+    }),
+    height: known.height.unwrap_or(lines.len() as f32),
+  }
+}
+
+/// Wraps text to `width` columns: lines break at spaces, a word longer than a full
+/// line breaks mid-word, and a newline always breaks. Yields at least one line.
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+  let width = width.max(1);
+  let mut lines = Vec::new();
+
+  for paragraph in text.split('\n') {
+    let characters: Vec<char> = paragraph.chars().collect();
+    let mut start = 0;
+
+    loop {
+      if characters.len() - start <= width {
+        lines.push(characters[start..].iter().collect());
+
+        break;
+      }
+
+      let window = &characters[start..start + width];
+      let break_at = if characters[start + width] == ' ' {
+        width
+      }
+      else {
+        match window.iter().rposition(|&character| character == ' ') {
+          Some(position) if position > 0 => position,
+          _ => width,
+        }
+      };
+
+      lines.push(characters[start..start + break_at].iter().collect());
+      start += break_at;
+
+      while characters.get(start) == Some(&' ') {
+        start += 1;
+      }
+
+      if start == characters.len() {
+        break;
+      }
+    }
+  }
+
+  lines
+}
+
+/// The longest unbreakable word's width in cells: the narrowest a wrap can go.
+fn longest_word(text: &str) -> usize {
+  text
+    .split([' ', '\n'])
+    .map(|word| word.chars().count())
+    .max()
+    .unwrap_or(0)
 }
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
@@ -260,15 +351,16 @@ fn refresh_styles(state: &State, environment: Environment) {
         if text.is_empty() && !record.children.is_empty() {
           // A group or embedded-view run: lay its children out in a row.
           out.display = taffy::style::Display::Flex;
+
+          taffy
+            .set_node_context(record.taffy, None)
+            .expect("clear a run's text");
         }
         else {
-          #[expect(clippy::cast_precision_loss)]
-          let width = text.chars().count() as f32;
-
-          out.size = taffy::geometry::Size {
-            width: length(width),
-            height: length(1.0),
-          };
+          // The leaf stays auto-sized; the measure function wraps the text.
+          taffy
+            .set_node_context(record.taffy, Some(text.clone()))
+            .expect("carry a run's text");
         }
 
         if record.in_stack {
@@ -461,7 +553,7 @@ fn paint_node(
         let effective = effective_run_style(style, variants, environment, interaction);
 
         NodePaint::Text {
-          text: text.clone(),
+          lines: wrap_text(text, width),
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -523,7 +615,7 @@ fn paint_node(
         let effective = effective_control_style(style, variants, environment, interaction);
 
         NodePaint::Text {
-          text: if *checked { marks.0 } else { marks.1 }.to_string(),
+          lines: vec![if *checked { marks.0 } else { marks.1 }.to_string()],
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -544,7 +636,7 @@ fn paint_node(
           .map_or_else(|| value.clone(), |(_, label)| label.clone());
 
         NodePaint::Text {
-          text: format!("{label} {indicator}"),
+          lines: vec![format!("{label} {indicator}")],
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -563,7 +655,7 @@ fn paint_node(
         let effective = effective_control_style(style, variants, environment, interaction);
 
         NodePaint::Text {
-          text: slider_track(width, *min, *max, *value, *glyphs),
+          lines: vec![slider_track(width, *min, *max, *value, *glyphs)],
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -594,12 +686,25 @@ fn paint_node(
       }
     }
     NodePaint::Text {
-      text,
+      lines,
       foreground,
       bold,
       dim,
       reverse,
-    } => draw_text(buffer, x, y, &text, foreground, bold, dim, reverse),
+    } => {
+      for (row, line) in lines.iter().enumerate() {
+        draw_text(
+          buffer,
+          x,
+          y + isize::try_from(row).expect("fits"),
+          line,
+          foreground,
+          bold,
+          dim,
+          reverse,
+        );
+      }
+    }
     NodePaint::TextField {
       background,
       border,
@@ -789,7 +894,7 @@ enum NodePaint {
     reverse: bool,
   },
   Text {
-    text: String,
+    lines: Vec<String>,
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
     dim: bool,
@@ -1045,6 +1150,16 @@ mod tests {
     let resized = Buffer::new(2, 2);
 
     assert!(row_changed(Some(&resized), &next, 0));
+  }
+
+  #[test]
+  fn wrapping_breaks_at_spaces_words_and_newlines() {
+    assert_eq!(wrap_text("alpha beta gamma", 8), ["alpha", "beta", "gamma"]);
+    assert_eq!(wrap_text("alpha beta gamma", 11), ["alpha beta", "gamma"]);
+    assert_eq!(wrap_text("abcdefgh", 3), ["abc", "def", "gh"]);
+    assert_eq!(wrap_text("ab\ncd", 10), ["ab", "cd"]);
+    assert_eq!(wrap_text("", 5), [""]);
+    assert_eq!(wrap_text("ab  ", 2), ["ab"]);
   }
 
   #[test]

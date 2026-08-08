@@ -116,24 +116,24 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
     ),
     BoxProp::Flex(value) => declarations
       .set("flex-basis", Declarations::render_dimension(value.initial))
-      .set("flex-grow", value.grow.to_string())
-      .set("flex-shrink", value.shrink.to_string()),
+      .set("flex-grow", value.grow_factor.to_string())
+      .set("flex-shrink", value.shrink_factor.to_string()),
     BoxProp::Arrangement(value) => {
-      declarations.set("justify-content", Declarations::render_main_axis(*value))
+      declarations.set("justify-content", Declarations::render_arrangement(*value))
     }
-    BoxProp::CrossAxisAlignment(value) => {
+    BoxProp::ItemAlignment(value) => {
       declarations.set("align-items", Declarations::render_item_alignment(*value))
     }
     BoxProp::LineArrangement(value) => {
-      declarations.set("align-content", Declarations::render_line_alignment(*value))
+      declarations.set("align-content", Declarations::render_arrangement(*value))
     }
-    BoxProp::MainAxisItemAlignment(value) => {
+    BoxProp::ItemHorizontalAlignment(value) => {
       declarations.set("justify-items", Declarations::render_item_alignment(*value))
     }
-    BoxProp::SelfCrossAxisAlignment(value) => {
+    BoxProp::SelfAlignment(value) => {
       declarations.set("align-self", Declarations::render_item_alignment(*value))
     }
-    BoxProp::SelfMainAxisAlignment(value) => {
+    BoxProp::SelfHorizontalAlignment(value) => {
       declarations.set("justify-self", Declarations::render_item_alignment(*value))
     }
     BoxProp::GridColumns(value) => {
@@ -249,28 +249,28 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::Flex(value));
   }
 
-  if let Some(value) = style.main_axis_arrangement {
+  if let Some(value) = style.arrangement {
     declarations = apply_box_prop(declarations, &BoxProp::Arrangement(value));
   }
 
-  if let Some(value) = style.cross_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::CrossAxisAlignment(value));
+  if let Some(value) = style.item_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::ItemAlignment(value));
   }
 
   if let Some(value) = style.line_arrangement {
     declarations = apply_box_prop(declarations, &BoxProp::LineArrangement(value));
   }
 
-  if let Some(value) = style.main_axis_item_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::MainAxisItemAlignment(value));
+  if let Some(value) = style.item_horizontal_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::ItemHorizontalAlignment(value));
   }
 
-  if let Some(value) = style.self_cross_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::SelfCrossAxisAlignment(value));
+  if let Some(value) = style.self_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::SelfAlignment(value));
   }
 
-  if let Some(value) = style.self_main_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::SelfMainAxisAlignment(value));
+  if let Some(value) = style.self_horizontal_alignment {
+    declarations = apply_box_prop(declarations, &BoxProp::SelfHorizontalAlignment(value));
   }
 
   if let Some(value) = &style.grid_columns {

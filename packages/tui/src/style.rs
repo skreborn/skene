@@ -69,18 +69,16 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.shadow = over.shadow.or(base.shadow);
   base.wrap = over.wrap.or(base.wrap);
   base.flex = over.flex.or(base.flex);
-  base.main_axis_arrangement = over.main_axis_arrangement.or(base.main_axis_arrangement);
-  base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
+  base.arrangement = over.arrangement.or(base.arrangement);
+  base.item_alignment = over.item_alignment.or(base.item_alignment);
   base.line_arrangement = over.line_arrangement.or(base.line_arrangement);
-  base.main_axis_item_alignment = over
-    .main_axis_item_alignment
-    .or(base.main_axis_item_alignment);
-  base.self_cross_axis_alignment = over
-    .self_cross_axis_alignment
-    .or(base.self_cross_axis_alignment);
-  base.self_main_axis_alignment = over
-    .self_main_axis_alignment
-    .or(base.self_main_axis_alignment);
+  base.item_horizontal_alignment = over
+    .item_horizontal_alignment
+    .or(base.item_horizontal_alignment);
+  base.self_alignment = over.self_alignment.or(base.self_alignment);
+  base.self_horizontal_alignment = over
+    .self_horizontal_alignment
+    .or(base.self_horizontal_alignment);
   base.grid_flow = over.grid_flow.or(base.grid_flow);
   base.grid_row_placement = over.grid_row_placement.or(base.grid_row_placement);
   base.grid_column_placement = over.grid_column_placement.or(base.grid_column_placement);
@@ -270,29 +268,16 @@ fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<St
   }
 }
 
-/// A [`Arrangement`](skene_core::Arrangement) as taffy's content
-/// alignment.
-fn main_axis(value: skene_core::Arrangement) -> taffy::style::AlignContent {
+/// An [`Arrangement`](skene_core::Arrangement) as taffy's content alignment.
+fn arrangement(value: skene_core::Arrangement) -> taffy::style::AlignContent {
   match value {
     skene_core::Arrangement::Start => taffy::style::AlignContent::Start,
     skene_core::Arrangement::End => taffy::style::AlignContent::End,
     skene_core::Arrangement::Center => taffy::style::AlignContent::Center,
+    skene_core::Arrangement::Stretch => taffy::style::AlignContent::Stretch,
     skene_core::Arrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
     skene_core::Arrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
     skene_core::Arrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
-  }
-}
-
-/// A [`LineArrangement`](skene_core::LineArrangement) as taffy's content alignment.
-fn line(value: skene_core::LineArrangement) -> taffy::style::AlignContent {
-  match value {
-    skene_core::LineArrangement::Start => taffy::style::AlignContent::Start,
-    skene_core::LineArrangement::End => taffy::style::AlignContent::End,
-    skene_core::LineArrangement::Center => taffy::style::AlignContent::Center,
-    skene_core::LineArrangement::Stretch => taffy::style::AlignContent::Stretch,
-    skene_core::LineArrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_core::LineArrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_core::LineArrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
   }
 }
 
@@ -402,16 +387,16 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
 
   if let Some(flex) = style.flex {
     out.flex_basis = dimension(flex.initial);
-    out.flex_grow = flex.grow;
-    out.flex_shrink = flex.shrink;
+    out.flex_grow = flex.grow_factor;
+    out.flex_shrink = flex.shrink_factor;
   }
 
-  out.justify_content = style.main_axis_arrangement.map(main_axis);
-  out.align_items = style.cross_axis_alignment.map(item);
-  out.align_content = style.line_arrangement.map(line);
-  out.justify_items = style.main_axis_item_alignment.map(item);
-  out.align_self = style.self_cross_axis_alignment.map(item);
-  out.justify_self = style.self_main_axis_alignment.map(item);
+  out.justify_content = style.arrangement.map(arrangement);
+  out.align_items = style.item_alignment.map(item);
+  out.align_content = style.line_arrangement.map(arrangement);
+  out.justify_items = style.item_horizontal_alignment.map(item);
+  out.align_self = style.self_alignment.map(item);
+  out.justify_self = style.self_horizontal_alignment.map(item);
 
   if let Some(tracks) = &style.grid_columns {
     out.grid_template_columns = template(tracks);

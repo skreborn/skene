@@ -21,7 +21,16 @@ mod view;
 mod virtualize;
 
 pub use boundary::Boundary;
-pub use children::{Children, HasChildren, IntoChildren};
+pub use children::{
+  Children,
+  FlexChild,
+  GridChild,
+  HasChildren,
+  IntoChildOf,
+  IntoChildren,
+  PlainChild,
+  StackChild,
+};
 pub use condition::{Composable, ConditionShape};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
@@ -66,6 +75,7 @@ pub use task::scope_bound;
 pub use transition::transition;
 pub use tree::TreeOps;
 pub use values::{
+  Alignment,
   Arrangement,
   Axis,
   Border,
@@ -80,7 +90,6 @@ pub use values::{
   ItemAlignment,
   Layout,
   Line,
-  LineArrangement,
   MouseCursor,
   Overflow,
   Placement,

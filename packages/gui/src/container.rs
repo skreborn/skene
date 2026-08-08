@@ -7,7 +7,6 @@ use skene_core::{
   Color,
   Condition,
   Dimension,
-  FlexDirection,
   Flexibility,
   GridFlow,
   GridPlacement,
@@ -15,7 +14,6 @@ use skene_core::{
   ItemAlignment,
   KeyEvent,
   Line,
-  LineArrangement,
   MouseCursor,
   Overflow,
   PointerEvent,
@@ -29,14 +27,14 @@ use skene_core::{
 
 use crate::{Border, Children, HasChildren, Inset, Layout, Role};
 
-/// A box that decorates itself and lays out its children.
+/// A box that decorates itself and flows its children in document order.
 ///
-/// Constructed in a layout mode: [`new`](Container::new) (block normal flow),
-/// [`row`](Container::row) / [`column`](Container::column) (flex),
-/// [`grid`](Container::grid), or [`stack`](Container::stack) (children overlapping in
-/// one cell). Children are set with [`set_children`](HasChildren::set_children) or
-/// `derive_children`; decoration, sizing, and layout are set with the chainable
-/// `set_`/`derive_` methods. Each platform realizes it its own way.
+/// The plain container; the typed containers—[`Row`](crate::Row),
+/// [`Column`](crate::Column), [`Grid`](crate::Grid), [`Stack`](crate::Stack)—layer their
+/// layouts over this same surface. Children are set with
+/// [`set_children`](HasChildren::set_children) or `derive_children`; decoration and
+/// sizing with the chainable `set_`/`derive_` methods. Each platform realizes it its own
+/// way.
 #[must_use]
 pub struct Container {
   pub(crate) children: Children,
@@ -60,12 +58,12 @@ pub struct Container {
   pub(crate) spacing: Option<Source<Spacing<f32>>>,
   pub(crate) wrap: Option<Source<Wrap>>,
   pub(crate) flex: Option<Source<Flexibility<f32>>>,
-  pub(crate) main_axis_arrangement: Option<Source<Arrangement>>,
-  pub(crate) cross_axis_alignment: Option<Source<ItemAlignment>>,
-  pub(crate) line_arrangement: Option<Source<LineArrangement>>,
-  pub(crate) main_axis_item_alignment: Option<Source<ItemAlignment>>,
-  pub(crate) self_cross_axis_alignment: Option<Source<ItemAlignment>>,
-  pub(crate) self_main_axis_alignment: Option<Source<ItemAlignment>>,
+  pub(crate) arrangement: Option<Source<Arrangement>>,
+  pub(crate) item_alignment: Option<Source<ItemAlignment>>,
+  pub(crate) line_arrangement: Option<Source<Arrangement>>,
+  pub(crate) item_horizontal_alignment: Option<Source<ItemAlignment>>,
+  pub(crate) self_alignment: Option<Source<ItemAlignment>>,
+  pub(crate) self_horizontal_alignment: Option<Source<ItemAlignment>>,
   pub(crate) grid_columns: Option<Source<Vec<GridTrack<f32>>>>,
   pub(crate) grid_rows: Option<Source<Vec<GridTrack<f32>>>>,
   pub(crate) grid_implicit_columns: Option<Source<Vec<GridTrack<f32>>>>,
@@ -93,7 +91,7 @@ pub struct Container {
 
 impl Container {
   #[inline(always)]
-  fn mode(layout: Layout) -> Self {
+  pub(crate) fn mode(layout: Layout) -> Self {
     Self {
       children: Children::default(),
       layout,
@@ -116,12 +114,12 @@ impl Container {
       spacing: None,
       wrap: None,
       flex: None,
-      main_axis_arrangement: None,
-      cross_axis_alignment: None,
+      arrangement: None,
+      item_alignment: None,
       line_arrangement: None,
-      main_axis_item_alignment: None,
-      self_cross_axis_alignment: None,
-      self_main_axis_alignment: None,
+      item_horizontal_alignment: None,
+      self_alignment: None,
+      self_horizontal_alignment: None,
       grid_columns: None,
       grid_rows: None,
       grid_implicit_columns: None,
@@ -151,37 +149,6 @@ impl Container {
   #[inline(always)]
   pub fn new() -> Self {
     Container::mode(Layout::Flow)
-  }
-
-  /// A flex container laying children out left to right.
-  #[inline(always)]
-  pub fn row() -> Self {
-    Container::flex(FlexDirection::Row)
-  }
-
-  /// A flex container laying children out top to bottom.
-  #[inline(always)]
-  pub fn column() -> Self {
-    Container::flex(FlexDirection::Column)
-  }
-
-  /// A flex container laying children out along `direction`.
-  #[inline(always)]
-  pub fn flex(direction: FlexDirection) -> Self {
-    Container::mode(Layout::Flex { direction })
-  }
-
-  /// A grid container with `columns` equal-width columns; set
-  /// `grid_columns` (and friends) for any other track layout.
-  #[inline(always)]
-  pub fn grid(columns: u16) -> Self {
-    Container::mode(Layout::Grid).set_grid_columns(GridTrack::Flex(1.).repeated(columns))
-  }
-
-  /// A container overlapping its children in one cell, stacked in order (last on top).
-  #[inline(always)]
-  pub fn stack() -> Self {
-    Container::mode(Layout::Stack)
   }
 
   /// Sets the semantic role.
@@ -383,26 +350,6 @@ impl Container {
     self
   }
 
-  /// Sets a static spacing between children: one value for both axes, or a
-  /// [`Spacing`] per axis.
-  #[inline(always)]
-  pub fn set_spacing(mut self, spacing: impl Into<Spacing<f32>>) -> Self {
-    self.spacing = Some(Source::Static(spacing.into()));
-
-    self
-  }
-
-  /// Sets a derived spacing between children.
-  #[inline(always)]
-  pub fn derive_spacing<S: Into<Spacing<f32>>>(
-    mut self,
-    spacing: impl Fn() -> S + 'static,
-  ) -> Self {
-    self.spacing = Some(Source::Derived(Rc::new(move || spacing().into())));
-
-    self
-  }
-
   /// Sets a static width-to-height ratio the unsized axis follows.
   #[inline(always)]
   pub fn set_aspect_ratio(mut self, aspect_ratio: f32) -> Self {
@@ -453,302 +400,6 @@ impl Container {
     offset: impl Fn() -> skene_core::Inset<Dimension<f32>> + 'static,
   ) -> Self {
     self.offset = Some(Source::Derived(Rc::new(offset)));
-
-    self
-  }
-
-  /// Statically pins the box to the given edges, out of flow, against the nearest
-  /// offset or pinned ancestor.
-  #[inline(always)]
-  pub fn set_pinned(mut self, pinned: skene_core::Inset<Dimension<f32>>) -> Self {
-    self.pinned = Some(Source::Static(pinned));
-
-    self
-  }
-
-  /// Derives the edges the box is pinned to.
-  #[inline(always)]
-  pub fn derive_pinned(
-    mut self,
-    pinned: impl Fn() -> skene_core::Inset<Dimension<f32>> + 'static,
-  ) -> Self {
-    self.pinned = Some(Source::Derived(Rc::new(pinned)));
-
-    self
-  }
-
-  /// Sets a static flex wrapping mode.
-  #[inline(always)]
-  pub fn set_wrap(mut self, wrap: Wrap) -> Self {
-    self.wrap = Some(Source::Static(wrap));
-
-    self
-  }
-
-  /// Sets a derived flex wrapping mode.
-  #[inline(always)]
-  pub fn derive_wrap(mut self, wrap: impl Fn() -> Wrap + 'static) -> Self {
-    self.wrap = Some(Source::Derived(Rc::new(wrap)));
-
-    self
-  }
-
-  /// Sets a static flexibility as a flex child.
-  #[inline(always)]
-  pub fn set_flex(mut self, flex: Flexibility<f32>) -> Self {
-    self.flex = Some(Source::Static(flex));
-
-    self
-  }
-
-  /// Sets a derived flexibility.
-  #[inline(always)]
-  pub fn derive_flex(mut self, flex: impl Fn() -> Flexibility<f32> + 'static) -> Self {
-    self.flex = Some(Source::Derived(Rc::new(flex)));
-
-    self
-  }
-
-  /// Sets a static distribution of children along the main (flex) or inline (grid) axis.
-  #[inline(always)]
-  pub fn set_main_axis_arrangement(mut self, main_axis_arrangement: Arrangement) -> Self {
-    self.main_axis_arrangement = Some(Source::Static(main_axis_arrangement));
-
-    self
-  }
-
-  /// Sets a derived distribution of children along the main (flex) or inline (grid) axis.
-  #[inline(always)]
-  pub fn derive_main_axis_arrangement(
-    mut self,
-    main_axis_arrangement: impl Fn() -> Arrangement + 'static,
-  ) -> Self {
-    self.main_axis_arrangement = Some(Source::Derived(Rc::new(main_axis_arrangement)));
-
-    self
-  }
-
-  /// Sets a static alignment of children on the cross (flex) or block (grid) axis.
-  #[inline(always)]
-  pub fn set_cross_axis_alignment(mut self, cross_axis_alignment: ItemAlignment) -> Self {
-    self.cross_axis_alignment = Some(Source::Static(cross_axis_alignment));
-
-    self
-  }
-
-  /// Sets a derived alignment of children on the cross (flex) or block (grid) axis.
-  #[inline(always)]
-  pub fn derive_cross_axis_alignment(
-    mut self,
-    cross_axis_alignment: impl Fn() -> ItemAlignment + 'static,
-  ) -> Self {
-    self.cross_axis_alignment = Some(Source::Derived(Rc::new(cross_axis_alignment)));
-
-    self
-  }
-
-  /// Sets a static distribution of wrapped lines or grid tracks along the cross or block axis.
-  #[inline(always)]
-  pub fn set_line_arrangement(mut self, line_arrangement: LineArrangement) -> Self {
-    self.line_arrangement = Some(Source::Static(line_arrangement));
-
-    self
-  }
-
-  /// Sets a derived distribution of wrapped lines or grid tracks along the cross or block axis.
-  #[inline(always)]
-  pub fn derive_line_arrangement(
-    mut self,
-    line_arrangement: impl Fn() -> LineArrangement + 'static,
-  ) -> Self {
-    self.line_arrangement = Some(Source::Derived(Rc::new(line_arrangement)));
-
-    self
-  }
-
-  /// Sets a static alignment of grid children on the inline axis.
-  #[inline(always)]
-  pub fn set_main_axis_item_alignment(mut self, main_axis_item_alignment: ItemAlignment) -> Self {
-    self.main_axis_item_alignment = Some(Source::Static(main_axis_item_alignment));
-
-    self
-  }
-
-  /// Sets a derived alignment of grid children on the inline axis.
-  #[inline(always)]
-  pub fn derive_main_axis_item_alignment(
-    mut self,
-    main_axis_item_alignment: impl Fn() -> ItemAlignment + 'static,
-  ) -> Self {
-    self.main_axis_item_alignment = Some(Source::Derived(Rc::new(main_axis_item_alignment)));
-
-    self
-  }
-
-  /// Sets a static cross- or block-axis alignment of the box itself.
-  #[inline(always)]
-  pub fn set_self_cross_axis_alignment(mut self, self_cross_axis_alignment: ItemAlignment) -> Self {
-    self.self_cross_axis_alignment = Some(Source::Static(self_cross_axis_alignment));
-
-    self
-  }
-
-  /// Sets a derived cross- or block-axis alignment of the box itself.
-  #[inline(always)]
-  pub fn derive_self_cross_axis_alignment(
-    mut self,
-    self_cross_axis_alignment: impl Fn() -> ItemAlignment + 'static,
-  ) -> Self {
-    self.self_cross_axis_alignment = Some(Source::Derived(Rc::new(self_cross_axis_alignment)));
-
-    self
-  }
-
-  /// Sets a static inline-axis alignment of the box itself in a grid.
-  #[inline(always)]
-  pub fn set_self_main_axis_alignment(mut self, self_main_axis_alignment: ItemAlignment) -> Self {
-    self.self_main_axis_alignment = Some(Source::Static(self_main_axis_alignment));
-
-    self
-  }
-
-  /// Sets a derived inline-axis alignment of the box itself in a grid.
-  #[inline(always)]
-  pub fn derive_self_main_axis_alignment(
-    mut self,
-    self_main_axis_alignment: impl Fn() -> ItemAlignment + 'static,
-  ) -> Self {
-    self.self_main_axis_alignment = Some(Source::Derived(Rc::new(self_main_axis_alignment)));
-
-    self
-  }
-
-  /// Sets static explicit grid column tracks.
-  #[inline(always)]
-  pub fn set_grid_columns(mut self, tracks: impl IntoIterator<Item = GridTrack<f32>>) -> Self {
-    self.grid_columns = Some(Source::Static(tracks.into_iter().collect()));
-
-    self
-  }
-
-  /// Sets derived explicit grid column tracks.
-  #[inline(always)]
-  pub fn derive_grid_columns(mut self, tracks: impl Fn() -> Vec<GridTrack<f32>> + 'static) -> Self {
-    self.grid_columns = Some(Source::Derived(Rc::new(tracks)));
-
-    self
-  }
-
-  /// Sets static explicit grid row tracks.
-  #[inline(always)]
-  pub fn set_grid_rows(mut self, tracks: impl IntoIterator<Item = GridTrack<f32>>) -> Self {
-    self.grid_rows = Some(Source::Static(tracks.into_iter().collect()));
-
-    self
-  }
-
-  /// Sets derived explicit grid row tracks.
-  #[inline(always)]
-  pub fn derive_grid_rows(mut self, tracks: impl Fn() -> Vec<GridTrack<f32>> + 'static) -> Self {
-    self.grid_rows = Some(Source::Derived(Rc::new(tracks)));
-
-    self
-  }
-
-  /// Sets static sizes for implicitly created grid columns, cycled.
-  #[inline(always)]
-  pub fn set_grid_implicit_columns(
-    mut self,
-    tracks: impl IntoIterator<Item = GridTrack<f32>>,
-  ) -> Self {
-    self.grid_implicit_columns = Some(Source::Static(tracks.into_iter().collect()));
-
-    self
-  }
-
-  /// Sets derived sizes for implicitly created grid columns, cycled.
-  #[inline(always)]
-  pub fn derive_grid_implicit_columns(
-    mut self,
-    tracks: impl Fn() -> Vec<GridTrack<f32>> + 'static,
-  ) -> Self {
-    self.grid_implicit_columns = Some(Source::Derived(Rc::new(tracks)));
-
-    self
-  }
-
-  /// Sets static sizes for implicitly created grid rows, cycled.
-  #[inline(always)]
-  pub fn set_grid_implicit_rows(
-    mut self,
-    tracks: impl IntoIterator<Item = GridTrack<f32>>,
-  ) -> Self {
-    self.grid_implicit_rows = Some(Source::Static(tracks.into_iter().collect()));
-
-    self
-  }
-
-  /// Sets derived sizes for implicitly created grid rows, cycled.
-  #[inline(always)]
-  pub fn derive_grid_implicit_rows(
-    mut self,
-    tracks: impl Fn() -> Vec<GridTrack<f32>> + 'static,
-  ) -> Self {
-    self.grid_implicit_rows = Some(Source::Derived(Rc::new(tracks)));
-
-    self
-  }
-
-  /// Sets a static direction auto-placed grid children fill.
-  #[inline(always)]
-  pub fn set_grid_flow(mut self, grid_flow: GridFlow) -> Self {
-    self.grid_flow = Some(Source::Static(grid_flow));
-
-    self
-  }
-
-  /// Sets a derived direction auto-placed grid children fill.
-  #[inline(always)]
-  pub fn derive_grid_flow(mut self, grid_flow: impl Fn() -> GridFlow + 'static) -> Self {
-    self.grid_flow = Some(Source::Derived(Rc::new(grid_flow)));
-
-    self
-  }
-
-  /// Sets a static row placement of the box as a grid child.
-  #[inline(always)]
-  pub fn set_grid_row_placement(mut self, grid_row_placement: Line<GridPlacement>) -> Self {
-    self.grid_row_placement = Some(Source::Static(grid_row_placement));
-
-    self
-  }
-
-  /// Sets a derived row placement of the box as a grid child.
-  #[inline(always)]
-  pub fn derive_grid_row_placement(
-    mut self,
-    grid_row_placement: impl Fn() -> Line<GridPlacement> + 'static,
-  ) -> Self {
-    self.grid_row_placement = Some(Source::Derived(Rc::new(grid_row_placement)));
-
-    self
-  }
-
-  /// Sets a static column placement of the box as a grid child.
-  #[inline(always)]
-  pub fn set_grid_column_placement(mut self, grid_column_placement: Line<GridPlacement>) -> Self {
-    self.grid_column_placement = Some(Source::Static(grid_column_placement));
-
-    self
-  }
-
-  /// Sets a derived column placement of the box as a grid child.
-  #[inline(always)]
-  pub fn derive_grid_column_placement(
-    mut self,
-    grid_column_placement: impl Fn() -> Line<GridPlacement> + 'static,
-  ) -> Self {
-    self.grid_column_placement = Some(Source::Derived(Rc::new(grid_column_placement)));
 
     self
   }
@@ -911,6 +562,8 @@ impl Default for Container {
 }
 
 impl HasChildren<crate::GuiOps> for Container {
+  type Kind = skene_core::PlainChild;
+
   #[inline(always)]
   fn set_children_to(mut self, children: Children) -> Self {
     self.children = children;
@@ -1078,18 +731,18 @@ impl skene_core::View for Container {
     );
 
     split_prop(
-      self.main_axis_arrangement,
-      &mut style.main_axis_arrangement,
+      self.arrangement,
+      &mut style.arrangement,
       &mut binders,
       BoxProp::Arrangement,
       driver::update_box,
     );
 
     split_prop(
-      self.cross_axis_alignment,
-      &mut style.cross_axis_alignment,
+      self.item_alignment,
+      &mut style.item_alignment,
       &mut binders,
-      BoxProp::CrossAxisAlignment,
+      BoxProp::ItemAlignment,
       driver::update_box,
     );
 
@@ -1102,26 +755,26 @@ impl skene_core::View for Container {
     );
 
     split_prop(
-      self.main_axis_item_alignment,
-      &mut style.main_axis_item_alignment,
+      self.item_horizontal_alignment,
+      &mut style.item_horizontal_alignment,
       &mut binders,
-      BoxProp::MainAxisItemAlignment,
+      BoxProp::ItemHorizontalAlignment,
       driver::update_box,
     );
 
     split_prop(
-      self.self_cross_axis_alignment,
-      &mut style.self_cross_axis_alignment,
+      self.self_alignment,
+      &mut style.self_alignment,
       &mut binders,
-      BoxProp::SelfCrossAxisAlignment,
+      BoxProp::SelfAlignment,
       driver::update_box,
     );
 
     split_prop(
-      self.self_main_axis_alignment,
-      &mut style.self_main_axis_alignment,
+      self.self_horizontal_alignment,
+      &mut style.self_horizontal_alignment,
       &mut binders,
-      BoxProp::SelfMainAxisAlignment,
+      BoxProp::SelfHorizontalAlignment,
       driver::update_box,
     );
 

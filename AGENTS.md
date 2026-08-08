@@ -30,16 +30,22 @@
   invents no layout system and exposes taffy's full capability—but the **public
   vocabulary is not CSS's**: names and values follow the modern declarative frameworks
   (Flutter, SwiftUI, Jetpack Compose), mixed and matched for whichever is clearest—
-  explicit, axis-named, self-describing. Concretely: distributions are *arrangements*
-  (`main_axis_arrangement: Arrangement`, `line_arrangement`), per-item properties are
-  *alignments* (`cross_axis_alignment`, `main_axis_item_alignment`, the `self_`
-  overrides: `ItemAlignment`)—never `justify-*`/`align-*`; `Dimension::Fraction` is a
-  ratio of the parent (`0.5` = half, not clamped, not a weight); weights live in
-  `Flexibility` and `GridTrack::Flex`; `spacing: Spacing`, not `gap`; `offset` and
-  `pinned` insets, not `position: relative/absolute`; `Layout::Flow`, not block;
-  `grid_columns`/`grid_implicit_columns`/`grid_flow`, not templates and auto-flow. CSS
-  nomenclature lives only inside the web driver's mapping layer. This applies to
-  styling vocabulary generally and is settled—do not re-litigate it toward CSS naming.
+  explicit and self-describing; CSS naming stays only where it is genuinely the best
+  name in context. Concretely: distributions are *arrangements* (`arrangement`,
+  `line_arrangement`: `Arrangement`), per-item properties are *alignments*
+  (`item_alignment`, two-axis `Alignment` for grids and stacks)—never
+  `justify-*`/`align-*`; `Dimension::Fraction` is a ratio of the parent (`0.5` = half,
+  not clamped, not a weight); weights are the wrappers' grow/shrink factors and
+  `GridTrack::Flex`; `spacing`, not `gap`; `columns`/`implicit_columns`/`flow` on a
+  grid, not templates and auto-flow. CSS nomenclature lives only inside the web
+  driver's mapping layer. This is settled—do not re-litigate it toward CSS naming.
+- **Layout is statically constrained.** Each layout is its own container view—`Row`,
+  `Column`, `Grid`, `Stack`, plain `Container` (flow)—exposing only the properties it
+  honors; per-child properties travel in wrapper views (`Flexible`, `Pinned`,
+  `GridCell`) accepted only by the matching container through its child kind
+  (`HasChildren::Kind`). Wrappers create no node; they annotate their child's. The
+  shared decoration surface is defined once and macro-generated onto each container
+  (`box_surface!`, like the controls' `control_surface!`)—never hand-duplicated.
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.

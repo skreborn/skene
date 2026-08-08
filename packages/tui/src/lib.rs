@@ -21,6 +21,7 @@ pub mod prelude;
 mod button;
 mod checkbox;
 mod container;
+mod containers;
 mod control;
 mod detect;
 #[cfg(feature = "snapshot")]
@@ -78,6 +79,7 @@ pub use crate::{
   button::Button,
   checkbox::Checkbox,
   container::Container,
+  containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   input::Input,

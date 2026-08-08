@@ -20,7 +20,6 @@ use skene_core::{
   Inset,
   ItemAlignment,
   Line,
-  LineArrangement,
   MouseCursor,
   TrackLimit,
 };
@@ -86,30 +85,17 @@ impl Declarations {
     }
   }
 
-  /// Renders a [`Arrangement`] to its CSS distribution keyword.
+  /// Renders an [`Arrangement`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_main_axis(alignment: Arrangement) -> &'static str {
-    match alignment {
+  pub fn render_arrangement(arrangement: Arrangement) -> &'static str {
+    match arrangement {
       Arrangement::Start => "flex-start",
       Arrangement::End => "flex-end",
       Arrangement::Center => "center",
+      Arrangement::Stretch => "stretch",
       Arrangement::SpaceBetween => "space-between",
       Arrangement::SpaceAround => "space-around",
       Arrangement::SpaceEvenly => "space-evenly",
-    }
-  }
-
-  /// Renders a [`LineArrangement`] to its CSS distribution keyword.
-  #[must_use]
-  pub fn render_line_alignment(alignment: LineArrangement) -> &'static str {
-    match alignment {
-      LineArrangement::Start => "flex-start",
-      LineArrangement::End => "flex-end",
-      LineArrangement::Center => "center",
-      LineArrangement::Stretch => "stretch",
-      LineArrangement::SpaceBetween => "space-between",
-      LineArrangement::SpaceAround => "space-around",
-      LineArrangement::SpaceEvenly => "space-evenly",
     }
   }
 

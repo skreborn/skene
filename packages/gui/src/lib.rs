@@ -11,6 +11,7 @@ pub mod prelude;
 mod button;
 mod checkbox;
 mod container;
+mod containers;
 mod control;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
@@ -70,6 +71,7 @@ pub use crate::{
   button::Button,
   checkbox::Checkbox,
   container::Container,
+  containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   focus::FocusHandle,
   input::Input,
   overlay::{Anchor, Overlay},

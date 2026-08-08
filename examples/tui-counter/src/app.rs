@@ -5,16 +5,16 @@ use skene_tui::prelude::*;
 pub(crate) fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
-  Container::column()
-    .set_main_axis_arrangement(Arrangement::Center)
-    .set_cross_axis_alignment(ItemAlignment::Center)
+  Column::new()
+    .set_arrangement(Arrangement::Center)
+    .set_item_alignment(ItemAlignment::Center)
     .set_color(Color::srgb(0.08, 0.08, 0.1))
     .set_child(card(count))
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {
-  Container::column()
-    .set_cross_axis_alignment(ItemAlignment::Center)
+  Column::new()
+    .set_item_alignment(ItemAlignment::Center)
     .set_spacing(1)
     .set_min_width(24)
     .set_padding(Inset::symmetric(4, 1))
@@ -23,7 +23,7 @@ fn card(count: Signal<u64>) -> impl IntoView {
     .set_children((
       Text::new("COUNTER").set_bold(true),
       Text::derive(move || count.get().to_string()).set_color(Color::srgb(0.8, 0.9, 0.8)),
-      Container::row().set_spacing(2).set_children((
+      Row::new().set_spacing(2).set_children((
         button("-", move || {
           count.update(|value| *value = value.saturating_sub(1));
         }),

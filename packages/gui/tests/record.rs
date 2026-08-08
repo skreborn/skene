@@ -6,10 +6,12 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
+  Column,
   Container,
   HasChildren,
   Input,
   Overlay,
+  Row,
   Text,
   View,
   core::{Color, Dimension, Prevent, Role},
@@ -20,11 +22,11 @@ use skene_gui::{
 /// A static tree records its structure: kinds, order, and text content.
 #[test]
 fn tree_structure_is_recorded() {
-  let root = Container::column()
+  let root = Column::new()
     .set_role(Role::Navigation)
     .set_children((
       Text::new("first"),
-      Container::row().set_children((Text::new("second"),)),
+      Row::new().set_children((Text::new("second"),)),
     ))
     .build();
 

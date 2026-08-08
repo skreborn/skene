@@ -26,11 +26,11 @@ use skene_gui::prelude::*;
 fn app() -> impl IntoView {
   let count = Signal::new(0u64);
 
-  Container::column()
-    .set_gap(20.)
+  Column::new()
+    .set_spacing(20.)
     .set_children((
       Text::derive(move || format!("Count: {}", count.get())).set_font_size(32.),
-      Container::row().set_gap(12.).set_children((
+      Row::new().set_spacing(12.).set_children((
         button("−", move || count.update(|n| *n = n.saturating_sub(1))),
         button("+", move || count.update(|n| *n = n.saturating_add(1))),
       )),
@@ -98,11 +98,14 @@ A view *is* its own builder *is* a `View`: chain typed setters and pass it to a 
 separate builder type, no `.build()` to call. One setter convention: `set_<prop>` for a fixed
 value, `derive_<prop>` for a reactive one, `handle_<event>` for a handler.
 
-There is no `Button` view: a button is a `Container` with `Role::Button` and a click handler,
-so its label is any view and its styling is yours. There is likewise no separate
-`List`/`Grid`/`Stack`: one `Container` decorates itself and lays out its children in the mode
-its constructor picks—`new()` (block), `row()`/`column()` (flex), `grid(n)`, or `stack()`
-(children overlapping in one cell).
+Every layout is its own view—`Row`, `Column`, `Grid`, `Stack`, and the plain `Container`
+(normal flow)—so only the properties that layout honors exist to call: a `Row` has an
+`arrangement`, a `Grid` has `columns`, and nothing else compiles. Per-child properties
+travel the same way, in wrapper views only the matching container accepts—`Flexible`
+(take or give up space in a `Row`/`Column`), `Pinned` (against a `Stack`'s edges),
+`GridCell` (placement in a `Grid`)—which create no node of their own. All of them share
+one decoration surface (color, border, padding, events), defined once and generated onto
+each.
 
 ### Defining your own view
 

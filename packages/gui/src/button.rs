@@ -53,6 +53,8 @@ impl Default for Button {
 }
 
 impl HasChildren<crate::GuiOps> for Button {
+  type Kind = skene_core::PlainChild;
+
   #[inline(always)]
   fn set_children_to(mut self, children: Children) -> Self {
     self.children = children;

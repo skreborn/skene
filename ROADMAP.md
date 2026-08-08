@@ -69,14 +69,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   ratios `0.`–`1.`, auto), margin, position + inset, aspect ratio, flex
   wrap/grow/shrink/basis, grid track templates (`Flex` shares, `Minmax`,
   `FitContent`), auto tracks and flow, line/span placements, and per-axis `spacing`.
-  Naming follows the framework's settled vocabulary rule (see `AGENTS.md`):
-  distributions are arrangements (`main_axis_arrangement`, `line_arrangement`),
-  per-item properties alignments (`cross_axis_alignment`, `main_axis_item_alignment`,
-  the `self_` overrides); one setter per property (`spacing: Spacing`,
-  `flex: Flexibility`, `offset`/`pinned` insets replacing CSS positioning);
-  `Layout::Flow`; `grid_columns`/`grid_implicit_columns`/`grid_flow`.
-  `Container::grid(n)` is sugar for a `Flex(1.)`-repeat track list. The web compiles
-  it all to CSS; the TUI feeds taffy directly, in cells.
+  Naming and shape follow the settled rules in `AGENTS.md`: layouts are typed
+  container views (`Row`/`Column`/`Grid`/`Stack`/`Container`) exposing only what they
+  honor, per-child properties ride in wrapper views (`Flexible`/`Pinned`/`GridCell`)
+  accepted through typed child kinds, distributions are arrangements and per-item
+  properties alignments, and one setter serves each property. The web compiles it all
+  to CSS; the TUI feeds taffy directly, in cells.
 - **Remaining:**
   - Streaming style deltas: a `Deferred` chunk whose content interns a brand-new class
     carries that rule in its chunk.

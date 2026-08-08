@@ -31,7 +31,7 @@ fn with_driver<R>(body: impl FnOnce() -> R) -> R {
 fn column_stacks_runs() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::column()
+      Column::new()
         .set_children((Text::new("alpha"), Text::new("beta")))
         .into_any()
         .build()
@@ -48,7 +48,7 @@ fn column_stacks_runs() {
 fn row_flows_runs_with_spacing() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::row()
+      Row::new()
         .set_spacing(2)
         .set_children((Text::new("ab"), Text::new("cd")))
         .into_any()
@@ -142,7 +142,7 @@ fn bold_and_derived_text() {
     let count = Signal::new(1u32);
 
     tui::mount(|| {
-      Container::column()
+      Column::new()
         .set_children((
           Text::new("title").set_bold(true),
           Text::derive(move || format!("n={}", count.get())),
@@ -271,7 +271,7 @@ fn pointer_events_carry_cell_coordinates() {
       let moved = Rc::clone(&moved);
 
       tui::mount(|| {
-        Container::row()
+        Row::new()
           .set_children((
             Container::new().set_width(4).set_height(3),
             Container::new()
@@ -340,7 +340,7 @@ fn focus_handle_and_autofocus() {
       let handle = handle.clone();
 
       tui::mount(move || {
-        Container::column()
+        Column::new()
           .set_children((
             Input::new().set_autofocus(),
             Button::new()
@@ -384,7 +384,7 @@ fn hover_variant_and_pointer_handlers() {
       let leaves = Rc::clone(&leaves);
 
       tui::mount(|| {
-        Container::row()
+        Row::new()
           .set_children((
             Container::new()
               .set_width(4)
@@ -435,7 +435,7 @@ fn mouse_click_hits_and_focuses() {
       let second = Rc::clone(&second);
 
       tui::mount(|| {
-        Container::row()
+        Row::new()
           .set_children((
             Button::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
@@ -495,7 +495,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
       let clicks = Rc::clone(&clicks);
 
       tui::mount(move || {
-        Container::column()
+        Column::new()
           .set_children((
             Button::new()
               .set_style(BoxStyle::new().set_width(6).set_height(1))
@@ -551,7 +551,7 @@ fn popup_anchors_below_and_light_dismisses() {
       let anchor_for_button = anchor.clone();
 
       tui::mount(move || {
-        Container::column()
+        Column::new()
           .set_children((
             Button::new()
               .set_style(BoxStyle::new().set_width(8).set_height(1))
@@ -624,7 +624,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
     tui::mount(|| {
       Container::new()
         .set_child(
-          Container::column()
+          Column::new()
             .set_height(3)
             .set_overflow(Overflow::Auto)
             .derive_children(
@@ -672,7 +672,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
 fn focus_scrolls_into_view() {
   let frame = with_driver(|| {
     tui::mount(|| {
-      Container::column()
+      Column::new()
         .set_height(3)
         .set_overflow(Overflow::Scroll)
         .set_children(
@@ -941,7 +941,7 @@ fn radio_group_moves_the_check() {
     let choice = Signal::new("a".to_owned());
 
     tui::mount(|| {
-      Container::column()
+      Column::new()
         .set_children((
           Radio::new("letters", "a").bind_value(choice),
           Radio::new("letters", "b").bind_value(choice),
@@ -1083,7 +1083,7 @@ fn shadow_mixes_into_the_cells_beneath() {
 fn control_theme_restyles_glyphs() {
   let frame = with_driver(|| {
     tui::mount(|| {
-      ControlTheme::new(Container::column().set_children((
+      ControlTheme::new(Column::new().set_children((
         Checkbox::new().set_checked(true),
         Checkbox::new().set_checked(true).set_marks('#', '.'),
         Radio::new("g", "a").set_checked(true),
@@ -1119,7 +1119,7 @@ fn modal_scrim_defaults_on_and_disables() {
           None => modal,
         };
 
-        Container::column()
+        Column::new()
           .set_children((
             Container::new()
               .set_color(Color::srgb(1., 0., 0.))
@@ -1184,7 +1184,7 @@ fn prevented_keys_skip_their_defaults() {
     let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
-      Container::column()
+      Column::new()
         .set_children((
           Slider::new(0.0, 10.0)
             .bind_value(volume)
@@ -1315,8 +1315,8 @@ fn click_verdicts_split_bubbling_from_default() {
 fn grid_tracks_size_columns() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::grid(1)
-        .set_grid_columns([
+      Grid::new()
+        .set_columns([
           GridTrack::Length(4),
           GridTrack::Flex(1.),
           GridTrack::Flex(1.),
@@ -1338,11 +1338,10 @@ fn grid_tracks_size_columns() {
 fn grid_placement_spans_tracks() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::grid(2)
+      Grid::uniform(2)
         .set_children((
-          Container::new()
-            .set_grid_column_placement(Line::span(2))
-            .set_children((Text::new("wide"),)),
+          GridCell::new(Container::new().set_children((Text::new("wide"),)))
+            .set_column(Line::span(2)),
           Text::new("l"),
           Text::new("r"),
         ))
@@ -1361,12 +1360,13 @@ fn grid_placement_spans_tracks() {
 fn flex_grow_distributes_space() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::row()
+      Row::new()
         .set_children((
-          Container::new()
-            .set_flex(Flexibility::grow(1.))
-            .set_color(Color::srgb(0.2, 0.2, 0.8))
-            .set_children((Text::new("a"),)),
+          Flexible::new(
+            Container::new()
+              .set_color(Color::srgb(0.2, 0.2, 0.8))
+              .set_children((Text::new("a"),)),
+          ),
           Container::new()
             .set_width(3)
             .set_children((Text::new("b"),)),
@@ -1387,7 +1387,7 @@ fn flex_grow_distributes_space() {
 fn percent_width_resolves_against_parent() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::row()
+      Row::new()
         .set_children((
           Container::new()
             .set_width(Dimension::Fraction(0.5))

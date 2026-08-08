@@ -20,7 +20,6 @@ use crate::{
   ItemAlignment,
   Layout,
   Line,
-  LineArrangement,
   MouseCursor,
   Overflow,
   Placement,
@@ -76,19 +75,19 @@ pub struct BoxStyle {
   /// shrink weights.
   pub flex: Option<Flexibility<f32>>,
   /// Distribution of children along the main (flex) or inline (grid) axis.
-  pub main_axis_arrangement: Option<Arrangement>,
+  pub arrangement: Option<Arrangement>,
   /// Alignment of children on the cross (flex) or block (grid) axis.
-  pub cross_axis_alignment: Option<ItemAlignment>,
+  pub item_alignment: Option<ItemAlignment>,
   /// Distribution of wrapped lines or grid tracks along the cross or block axis.
-  pub line_arrangement: Option<LineArrangement>,
+  pub line_arrangement: Option<Arrangement>,
   /// Alignment of grid children on the inline axis.
-  pub main_axis_item_alignment: Option<ItemAlignment>,
+  pub item_horizontal_alignment: Option<ItemAlignment>,
   /// The box's own cross- or block-axis alignment, overriding its parent's
-  /// `cross_axis_alignment`.
-  pub self_cross_axis_alignment: Option<ItemAlignment>,
+  /// `item_alignment`.
+  pub self_alignment: Option<ItemAlignment>,
   /// The box's own inline-axis alignment in a grid, overriding its parent's
-  /// `main_axis_item_alignment`.
-  pub self_main_axis_alignment: Option<ItemAlignment>,
+  /// `item_horizontal_alignment`.
+  pub self_horizontal_alignment: Option<ItemAlignment>,
   /// The grid's explicit column tracks.
   pub grid_columns: Option<Vec<GridTrack<f32>>>,
   /// The grid's explicit row tracks.
@@ -246,7 +245,7 @@ impl BoxStyle {
 
   /// Sets whether and how a flex container wraps its children.
   #[inline(always)]
-  pub const fn set_flex_wrap(mut self, wrap: Wrap) -> Self {
+  pub const fn set_wrap(mut self, wrap: Wrap) -> Self {
     self.wrap = Some(wrap);
 
     self
@@ -262,16 +261,16 @@ impl BoxStyle {
 
   /// Sets the distribution of children along the main (flex) or inline (grid) axis.
   #[inline(always)]
-  pub const fn set_main_axis_arrangement(mut self, main_axis_arrangement: Arrangement) -> Self {
-    self.main_axis_arrangement = Some(main_axis_arrangement);
+  pub const fn set_arrangement(mut self, arrangement: Arrangement) -> Self {
+    self.arrangement = Some(arrangement);
 
     self
   }
 
   /// Sets the alignment of children on the cross (flex) or block (grid) axis.
   #[inline(always)]
-  pub const fn set_cross_axis_alignment(mut self, cross_axis_alignment: ItemAlignment) -> Self {
-    self.cross_axis_alignment = Some(cross_axis_alignment);
+  pub const fn set_item_alignment(mut self, item_alignment: ItemAlignment) -> Self {
+    self.item_alignment = Some(item_alignment);
 
     self
   }
@@ -279,7 +278,7 @@ impl BoxStyle {
   /// Sets the distribution of wrapped lines or grid tracks along the cross or block
   /// axis.
   #[inline(always)]
-  pub const fn set_line_arrangement(mut self, line_arrangement: LineArrangement) -> Self {
+  pub const fn set_line_arrangement(mut self, line_arrangement: Arrangement) -> Self {
     self.line_arrangement = Some(line_arrangement);
 
     self
@@ -287,33 +286,30 @@ impl BoxStyle {
 
   /// Sets the alignment of grid children on the inline axis.
   #[inline(always)]
-  pub const fn set_main_axis_item_alignment(
+  pub const fn set_item_horizontal_alignment(
     mut self,
-    main_axis_item_alignment: ItemAlignment,
+    item_horizontal_alignment: ItemAlignment,
   ) -> Self {
-    self.main_axis_item_alignment = Some(main_axis_item_alignment);
+    self.item_horizontal_alignment = Some(item_horizontal_alignment);
 
     self
   }
 
   /// Sets the box's own cross- or block-axis alignment.
   #[inline(always)]
-  pub const fn set_self_cross_axis_alignment(
-    mut self,
-    self_cross_axis_alignment: ItemAlignment,
-  ) -> Self {
-    self.self_cross_axis_alignment = Some(self_cross_axis_alignment);
+  pub const fn set_self_alignment(mut self, self_alignment: ItemAlignment) -> Self {
+    self.self_alignment = Some(self_alignment);
 
     self
   }
 
   /// Sets the box's own inline-axis alignment in a grid.
   #[inline(always)]
-  pub const fn set_self_main_axis_alignment(
+  pub const fn set_self_horizontal_alignment(
     mut self,
-    self_main_axis_alignment: ItemAlignment,
+    self_horizontal_alignment: ItemAlignment,
   ) -> Self {
-    self.self_main_axis_alignment = Some(self_main_axis_alignment);
+    self.self_horizontal_alignment = Some(self_horizontal_alignment);
 
     self
   }
@@ -435,15 +431,15 @@ pub enum BoxProp {
   /// Distribution of children along the main axis.
   Arrangement(Arrangement),
   /// Alignment of children on the cross axis.
-  CrossAxisAlignment(ItemAlignment),
+  ItemAlignment(ItemAlignment),
   /// Distribution of wrapped lines—or grid rows—along the cross axis.
-  LineArrangement(LineArrangement),
+  LineArrangement(Arrangement),
   /// Alignment of grid children within their cells, on the main axis.
-  MainAxisItemAlignment(ItemAlignment),
+  ItemHorizontalAlignment(ItemAlignment),
   /// The box's own cross-axis alignment, overriding its parent's.
-  SelfCrossAxisAlignment(ItemAlignment),
+  SelfAlignment(ItemAlignment),
   /// The box's own main-axis alignment in a grid, overriding its parent's.
-  SelfMainAxisAlignment(ItemAlignment),
+  SelfHorizontalAlignment(ItemAlignment),
   /// The grid's explicit column tracks.
   GridColumns(Vec<GridTrack<f32>>),
   /// The grid's explicit row tracks.

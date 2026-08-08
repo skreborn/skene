@@ -18,15 +18,19 @@ use skene_gui::{
   Border,
   Checkbox,
   Color,
+  Column,
   Container,
   Deferred,
   DynamicView,
   FocusHandle,
+  Grid,
   HasChildren,
   Input,
   Inset,
   PointerButton,
   Role,
+  Row,
+  Stack,
   Text,
   TextStyle,
   TextTheme,
@@ -178,7 +182,7 @@ fn children_mount_in_order() {
   let (_guard, root) = fresh_root();
 
   mount(|| {
-    Container::row()
+    Row::new()
       .set_children((Text::new("a"), Text::new("b"), Text::new("c")))
       .build()
   });
@@ -258,7 +262,7 @@ fn interned_class_actually_applies_its_style() {
 fn stack_children_share_one_grid_cell() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::stack().set_child(Text::new("only")).build());
+  mount(|| Stack::new().set_child(Text::new("only")).build());
 
   let child = only_child(&only_child(&root))
     .dyn_into::<HtmlElement>()
@@ -591,7 +595,7 @@ fn block_container_computes_as_flow_root() {
 fn column_container_is_a_flex_column() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::column().build());
+  mount(|| Column::new().build());
 
   assert_eq!(computed_style(&root, "display"), "flex");
   assert_eq!(computed_style(&root, "flex-direction"), "column");
@@ -601,7 +605,7 @@ fn column_container_is_a_flex_column() {
 fn grid_container_is_a_grid() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::grid(2).build());
+  mount(|| Grid::uniform(2).build());
 
   assert_eq!(computed_style(&root, "display"), "grid");
 }

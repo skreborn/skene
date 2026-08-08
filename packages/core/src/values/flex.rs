@@ -30,28 +30,27 @@ pub enum Wrap {
 /// space and giving up overflow.
 ///
 /// The child starts at `initial` on the main axis; leftover space is then handed out
-/// in proportion to the children's `grow` weights, and overflow reclaimed in
-/// proportion to their `shrink` weights. A weight of zero opts out of that direction
-/// of flexing.
+/// in proportion to the children's grow factors, and overflow reclaimed in proportion
+/// to their shrink factors. A factor of zero opts out of that direction of flexing.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct Flexibility<T> {
   /// The main-axis size flexing starts from.
   pub initial: Dimension<T>,
   /// The child's weight when free space is handed out.
-  pub grow: f32,
+  pub grow_factor: f32,
   /// The child's weight when overflow is reclaimed.
-  pub shrink: f32,
+  pub shrink_factor: f32,
 }
 
 impl<T> Flexibility<T> {
   /// Flexibility from all three components.
   #[inline(always)]
-  pub const fn new(initial: Dimension<T>, grow: f32, shrink: f32) -> Self {
+  pub const fn new(initial: Dimension<T>, grow_factor: f32, shrink_factor: f32) -> Self {
     Self {
       initial,
-      grow,
-      shrink,
+      grow_factor,
+      shrink_factor,
     }
   }
 
@@ -60,8 +59,8 @@ impl<T> Flexibility<T> {
   pub const fn grow(weight: f32) -> Self {
     Self {
       initial: Dimension::Auto,
-      grow: weight,
-      shrink: 1.,
+      grow_factor: weight,
+      shrink_factor: 1.,
     }
   }
 
@@ -74,8 +73,8 @@ impl<T> Flexibility<T> {
   {
     Self {
       initial: Dimension::Fraction(0.),
-      grow: weight,
-      shrink: 1.,
+      grow_factor: weight,
+      shrink_factor: 1.,
     }
   }
 }
@@ -85,8 +84,8 @@ impl<T> Default for Flexibility<T> {
   fn default() -> Self {
     Self {
       initial: Dimension::Auto,
-      grow: 0.,
-      shrink: 1.,
+      grow_factor: 0.,
+      shrink_factor: 1.,
     }
   }
 }
@@ -119,51 +118,31 @@ impl<T: Copy> From<T> for Spacing<T> {
   }
 }
 
-/// Distribution of a container's children along its main axis.
-///
-/// The main axis is the flex direction; in a grid it is the horizontal (row) axis,
-/// where this distributes the column tracks.
+/// Distribution of a set of things—children, wrapped lines, grid tracks—along an
+/// axis with free space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Arrangement {
-  /// Packs children at the start of the axis.
+  /// Packs everything at the start of the axis.
   Start,
-  /// Packs children at the end of the axis.
+  /// Packs everything at the end of the axis.
   End,
-  /// Packs children at the center of the axis.
+  /// Packs everything at the center of the axis.
   Center,
-  /// Distributes free space between children.
-  SpaceBetween,
-  /// Distributes free space around children.
-  SpaceAround,
-  /// Distributes free space evenly between and around children.
-  SpaceEvenly,
-}
-
-/// Distribution of wrapped flex lines—or a grid's row tracks—along the cross axis.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[must_use]
-pub enum LineArrangement {
-  /// Packs lines at the start of the axis.
-  Start,
-  /// Packs lines at the end of the axis.
-  End,
-  /// Packs lines at the center of the axis.
-  Center,
-  /// Stretches lines to fill the axis.
+  /// Stretches the stretchable to fill the axis; children pack at the start.
   Stretch,
-  /// Distributes free space between lines.
+  /// Distributes free space between the entries.
   SpaceBetween,
-  /// Distributes free space around lines.
+  /// Distributes free space around the entries.
   SpaceAround,
-  /// Distributes free space evenly between and around lines.
+  /// Distributes free space evenly between and around the entries.
   SpaceEvenly,
 }
 
 /// Alignment of one item within the space its container gives it.
 ///
-/// Which axis it applies to is named by the property carrying it
-/// (`cross_axis_alignment`, `main_axis_item_alignment`, and the `self_` overrides).
+/// Which axis it applies to comes from the property carrying it: the container's
+/// `item_alignment`, or a wrapper view's own alignment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum ItemAlignment {
@@ -177,4 +156,28 @@ pub enum ItemAlignment {
   Baseline,
   /// Stretches the item to fill the axis.
   Stretch,
+}
+
+/// A two-axis alignment: where an item sits in the cell or region it is given.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct Alignment {
+  /// The horizontal placement.
+  pub horizontal: ItemAlignment,
+  /// The vertical placement.
+  pub vertical: ItemAlignment,
+}
+
+impl Alignment {
+  /// Centered on both axes.
+  pub const CENTER: Self = Self::new(ItemAlignment::Center, ItemAlignment::Center);
+
+  /// An alignment from its two axes.
+  #[inline(always)]
+  pub const fn new(horizontal: ItemAlignment, vertical: ItemAlignment) -> Self {
+    Self {
+      horizontal,
+      vertical,
+    }
+  }
 }

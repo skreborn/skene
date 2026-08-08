@@ -53,6 +53,8 @@ impl Default for Button {
 crate::control::control_surface!(Button, crate::props::BoxStyle);
 
 impl skene_core::HasChildren<crate::TuiOps> for Button {
+  type Kind = skene_core::PlainChild;
+
   #[inline(always)]
   fn set_children_to(mut self, children: Children) -> Self {
     self.children = children;

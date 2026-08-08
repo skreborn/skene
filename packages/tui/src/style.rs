@@ -63,6 +63,7 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.pinned = over.pinned.or(base.pinned);
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
+  base.border_glyphs = over.border_glyphs.or(base.border_glyphs);
   base.spacing = over.spacing.or(base.spacing);
   base.cursor = over.cursor.or(base.cursor);
   base.overflow = over.overflow.or(base.overflow);

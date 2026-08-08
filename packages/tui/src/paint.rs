@@ -544,6 +544,7 @@ fn paint_node(
         NodePaint::Box {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
+            glyphs: effective.border_glyphs.unwrap_or_default(),
             color: terminal_rgb(border),
           }),
           shadow: effective.shadow,
@@ -589,6 +590,7 @@ fn paint_node(
         NodePaint::TextField {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
+            glyphs: effective.border_glyphs.unwrap_or_default(),
             color: terminal_rgb(border),
           }),
           shadow: effective.shadow,
@@ -606,6 +608,7 @@ fn paint_node(
         NodePaint::Box {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
+            glyphs: effective.border_glyphs.unwrap_or_default(),
             color: terminal_rgb(border),
           }),
           shadow: effective.shadow,
@@ -695,7 +698,7 @@ fn paint_node(
       fill(buffer, x, y, width, height, background, reverse);
 
       if let Some(border) = border {
-        draw_border(buffer, x, y, width, height, border.color);
+        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
       }
     }
     NodePaint::Text {
@@ -734,7 +737,7 @@ fn paint_node(
       fill(buffer, x, y, width, height, background, reverse);
 
       let inset = if let Some(border) = border {
-        draw_border(buffer, x, y, width, height, border.color);
+        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
 
         1
       }
@@ -904,8 +907,9 @@ fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   (start, thumb)
 }
 
-/// A border's paint: present, with an optional explicit color.
+/// A border's paint: present, with its character set and an optional explicit color.
 struct BorderPaint {
+  glyphs: crate::BorderGlyphs,
   color: Option<(u8, u8, u8)>,
 }
 
@@ -966,13 +970,14 @@ fn fill(
   }
 }
 
-/// Draws a single-line box border with box-drawing characters.
+/// Draws a one-cell box border with the given character set.
 fn draw_border(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
+  glyphs: crate::BorderGlyphs,
   color: Option<(u8, u8, u8)>,
 ) {
   if width < 2 || height < 2 {
@@ -994,21 +999,21 @@ fn draw_border(
   for column in 1..width - 1 {
     let cx = x + isize::try_from(column).expect("fits");
 
-    put(cx, y, '─');
-    put(cx, bottom, '─');
+    put(cx, y, glyphs.horizontal);
+    put(cx, bottom, glyphs.horizontal);
   }
 
   for row in 1..height - 1 {
     let cy = y + isize::try_from(row).expect("fits");
 
-    put(x, cy, '│');
-    put(right, cy, '│');
+    put(x, cy, glyphs.vertical);
+    put(right, cy, glyphs.vertical);
   }
 
-  put(x, y, '┌');
-  put(right, y, '┐');
-  put(x, bottom, '└');
-  put(right, bottom, '┘');
+  put(x, y, glyphs.top_left);
+  put(right, y, glyphs.top_right);
+  put(x, bottom, glyphs.bottom_left);
+  put(right, bottom, glyphs.bottom_right);
 }
 
 /// Draws one line of text.

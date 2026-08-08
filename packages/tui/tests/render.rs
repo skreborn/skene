@@ -61,6 +61,36 @@ fn row_flows_runs_with_spacing() {
   assert_eq!(rendered, "ab  cd\n\n");
 }
 
+/// A border draws with the selected character set—rounded here, and ASCII through a
+/// hover variant.
+#[test]
+fn border_glyphs_select_the_character_set() {
+  let (rounded, ascii) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(4)
+        .set_height(3)
+        .set_border(Color::srgb(1., 1., 1.))
+        .set_border_glyphs(BorderGlyphs::ROUNDED)
+        .set_when(
+          Condition::Hovered,
+          BoxStyle::new().set_border_glyphs(BorderGlyphs::ASCII),
+        )
+        .into_any()
+        .build()
+    });
+
+    let rounded = tui::render_to_text(6, 3);
+
+    tui::trigger_mouse_move(1, 1);
+
+    (rounded, tui::render_to_text(6, 3))
+  });
+
+  assert_eq!(rounded, "╭──╮\n│  │\n╰──╯\n");
+  assert_eq!(ascii, "+--+\n|  |\n+--+\n");
+}
+
 /// Text wraps at its container's width, breaking at spaces.
 #[test]
 fn text_wraps_at_the_container_width() {

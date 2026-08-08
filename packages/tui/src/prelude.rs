@@ -48,6 +48,7 @@ pub use skene_reactive::{
 
 pub use crate::{
   Anchor,
+  BorderGlyphs,
   BoxStyle,
   Button,
   Checkbox,

@@ -25,6 +25,68 @@ use skene_core::{
   Wrap,
 };
 
+/// The characters a one-cell border draws with.
+///
+/// The named sets cover the box-drawing families—[`LIGHT`](Self::LIGHT) (the default),
+/// [`ROUNDED`](Self::ROUNDED), [`DOUBLE`](Self::DOUBLE), [`HEAVY`](Self::HEAVY), and
+/// [`ASCII`](Self::ASCII)—and a custom set is the struct built directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct BorderGlyphs {
+  /// The top and bottom edges.
+  pub horizontal: char,
+  /// The left and right edges.
+  pub vertical: char,
+  /// The top-left corner.
+  pub top_left: char,
+  /// The top-right corner.
+  pub top_right: char,
+  /// The bottom-left corner.
+  pub bottom_left: char,
+  /// The bottom-right corner.
+  pub bottom_right: char,
+}
+
+impl BorderGlyphs {
+  /// Light box-drawing lines with square corners: `─│┌┐└┘`.
+  pub const LIGHT: Self = Self::new('─', '│', '┌', '┐', '└', '┘');
+  /// Light lines with arc corners—the terminal's border radius: `─│╭╮╰╯`.
+  pub const ROUNDED: Self = Self::new('─', '│', '╭', '╮', '╰', '╯');
+  /// Double lines: `═║╔╗╚╝`.
+  pub const DOUBLE: Self = Self::new('═', '║', '╔', '╗', '╚', '╝');
+  /// Heavy lines: `━┃┏┓┗┛`.
+  pub const HEAVY: Self = Self::new('━', '┃', '┏', '┓', '┗', '┛');
+  /// Plain ASCII, for terminals without box-drawing characters: `-|++++`.
+  pub const ASCII: Self = Self::new('-', '|', '+', '+', '+', '+');
+
+  /// Creates a set from the edge and corner characters.
+  #[inline(always)]
+  pub const fn new(
+    horizontal: char,
+    vertical: char,
+    top_left: char,
+    top_right: char,
+    bottom_left: char,
+    bottom_right: char,
+  ) -> Self {
+    Self {
+      horizontal,
+      vertical,
+      top_left,
+      top_right,
+      bottom_left,
+      bottom_right,
+    }
+  }
+}
+
+impl Default for BorderGlyphs {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::LIGHT
+  }
+}
+
 /// A box's static style: each property the builder fixed to a value.
 ///
 /// Also the style a conditional variant carries, built with the chainable setters.
@@ -58,6 +120,8 @@ pub struct BoxStyle {
   pub color: Option<Color>,
   /// The border color; a border is always one cell of box-drawing characters.
   pub border: Option<Color>,
+  /// The characters the border draws with; [`BorderGlyphs::LIGHT`] when unset.
+  pub border_glyphs: Option<BorderGlyphs>,
   /// The spacing between children, per axis, in cells.
   pub spacing: Option<Spacing<u32>>,
   /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
@@ -209,6 +273,14 @@ impl BoxStyle {
   #[inline(always)]
   pub const fn set_border(mut self, border: Color) -> Self {
     self.border = Some(border);
+
+    self
+  }
+
+  /// Sets the characters the border draws with.
+  #[inline(always)]
+  pub const fn set_border_glyphs(mut self, border_glyphs: BorderGlyphs) -> Self {
+    self.border_glyphs = Some(border_glyphs);
 
     self
   }
@@ -536,6 +608,7 @@ pub(crate) enum BoxProp {
   Pinned(Inset<Dimension<u32>>),
   Color(Color),
   Border(Color),
+  BorderGlyphs(BorderGlyphs),
   Spacing(Spacing<u32>),
   Cursor(MouseCursor),
   Overflow(Overflow),
@@ -573,6 +646,7 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::Pinned(value) => style.pinned = Some(value),
     BoxProp::Color(value) => style.color = Some(value),
     BoxProp::Border(value) => style.border = Some(value),
+    BoxProp::BorderGlyphs(value) => style.border_glyphs = Some(value),
     BoxProp::Spacing(value) => style.spacing = Some(value),
     BoxProp::Cursor(value) => style.cursor = Some(value),
     BoxProp::Overflow(value) => style.overflow = Some(value),

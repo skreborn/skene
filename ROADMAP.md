@@ -2,8 +2,8 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: selectable TUI border character sets;
-input carets, text wrapping, and the platform-native naming pass landed.**
+last—not a current priority. **Current focus: picking the next phase—the TUI polish
+(text wrapping, input carets, border character sets) all landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -217,8 +217,11 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   places it at the clicked column. The focused field paints it as the one cell flipped
   back out of the reverse video; a long value slides a window that keeps the caret on
   the last cell and stays put on blur, as the web input's scroll does.
-- **Remaining:** selectable border character sets (rounded `╭╮╰╯`—the terminal's
-  border radius—double, heavy, ASCII, custom).
+- **Border character sets—done.** `BorderGlyphs` on the box vocabulary
+  (`set_border_glyphs`, with a `derive_` twin and variant support): six public
+  characters—edges and corners—with the named sets `LIGHT` (the default), `ROUNDED`
+  (`╭╮╰╯`—the terminal's border radius), `DOUBLE`, `HEAVY`, and `ASCII`; a custom set
+  is the struct built directly.
 
 ## Backlog—unphased features
 

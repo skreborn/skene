@@ -68,6 +68,7 @@ macro_rules! box_surface {
       box_surface!(@plain set_offset, derive_offset, skene_core::Inset<Dimension<u32>>, "the in-flow shift from each edge");
       box_surface!(@plain set_color, derive_color, skene_core::Color, "the background color");
       box_surface!(@plain set_border, derive_border, skene_core::Color, "a one-cell border in the given color");
+      box_surface!(@plain set_border_glyphs, derive_border_glyphs, crate::BorderGlyphs, "the characters the border draws with");
       box_surface!(@plain set_shadow, derive_shadow, skene_core::Color, "the shadow color, cast one cell down and right");
       box_surface!(@plain set_cursor, derive_cursor, skene_core::MouseCursor, "the mouse cursor shown over the box");
       box_surface!(@plain set_overflow, derive_overflow, skene_core::Overflow, "how content exceeding the bounds is treated");

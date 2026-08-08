@@ -59,6 +59,7 @@ pub struct Container {
   pinned: Option<Source<skene_core::Inset<Dimension<u32>>>>,
   color: Option<Source<Color>>,
   border: Option<Source<Color>>,
+  border_glyphs: Option<Source<crate::BorderGlyphs>>,
   pub(crate) spacing: Option<Source<Spacing<u32>>>,
   cursor: Option<Source<MouseCursor>>,
   overflow: Option<Source<Overflow>>,
@@ -112,6 +113,7 @@ impl Container {
       pinned: None,
       color: None,
       border: None,
+      border_glyphs: None,
       spacing: None,
       cursor: None,
       overflow: None,
@@ -307,6 +309,25 @@ impl Container {
   #[inline(always)]
   pub fn derive_border(mut self, color: impl Fn() -> Color + 'static) -> Self {
     self.border = Some(Source::Derived(Rc::new(color)));
+
+    self
+  }
+
+  /// Sets a static border character set.
+  #[inline(always)]
+  pub fn set_border_glyphs(mut self, border_glyphs: crate::BorderGlyphs) -> Self {
+    self.border_glyphs = Some(Source::Static(border_glyphs));
+
+    self
+  }
+
+  /// Sets a derived border character set.
+  #[inline(always)]
+  pub fn derive_border_glyphs(
+    mut self,
+    border_glyphs: impl Fn() -> crate::BorderGlyphs + 'static,
+  ) -> Self {
+    self.border_glyphs = Some(Source::Derived(Rc::new(border_glyphs)));
 
     self
   }
@@ -659,6 +680,14 @@ impl View for Container {
       &mut style.border,
       &mut binders,
       BoxProp::Border,
+      update_box,
+    );
+
+    split_prop(
+      self.border_glyphs,
+      &mut style.border_glyphs,
+      &mut binders,
+      BoxProp::BorderGlyphs,
       update_box,
     );
 

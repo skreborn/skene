@@ -85,7 +85,7 @@ pub use crate::{
   lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
   picker::Picker,
-  props::{BoxStyle, Condition, ControlStyle, RunStyle},
+  props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
   radio::Radio,
   resource::Resource,
   routing::install_router,

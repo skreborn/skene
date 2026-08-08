@@ -13,17 +13,17 @@ use skene_gui::{
     Condition,
     Dimension,
     Easing,
-    FlexWrap,
+    Flexibility,
     GridTrack,
     Inset,
     ItemAlignment,
     Line,
     Overflow,
-    Position,
     RunStyle,
     StyleProperty,
     TrackLimit,
     Transition,
+    Wrap,
   },
   render_to_string,
 };
@@ -244,12 +244,10 @@ fn variants_participate_in_content_addressing() {
 fn flex_item_properties_render() {
   let rendered = render_to_string(|| {
     Container::row()
-      .set_flex_wrap(FlexWrap::Wrap)
+      .set_wrap(Wrap::Forward)
       .set_width(Dimension::Fraction(0.5))
-      .set_flex_basis(120.)
-      .set_flex_grow(2.)
-      .set_flex_shrink(0.)
-      .set_align_self(ItemAlignment::Center)
+      .set_flex(Flexibility::new(Dimension::Length(120.), 2., 0.))
+      .set_self_cross_axis_alignment(ItemAlignment::Center)
       .set_margin(Inset {
         top: Dimension::Length(4.),
         right: Dimension::Auto,
@@ -271,14 +269,12 @@ fn flex_item_properties_render() {
 #[test]
 fn positioned_box_renders_inset() {
   let rendered = render_to_string(|| {
-    Container::new()
-      .set_position(Position::Absolute)
-      .set_inset(Inset {
-        top: Dimension::Length(0.),
-        right: Dimension::Length(8.),
-        bottom: Dimension::Auto,
-        left: Dimension::Fraction(0.1),
-      })
+    Container::new().set_pinned(Inset {
+      top: Dimension::Length(0.),
+      right: Dimension::Length(8.),
+      bottom: Dimension::Auto,
+      left: Dimension::Fraction(0.1),
+    })
   });
 
   let class = root_class(rendered.body());
@@ -293,17 +289,17 @@ fn positioned_box_renders_inset() {
 fn grid_tracks_and_placements_render() {
   let rendered = render_to_string(|| {
     Container::grid(1)
-      .set_grid_template_columns([
+      .set_grid_columns([
         GridTrack::Length(100.),
         GridTrack::Flex(1.),
         GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
         GridTrack::FitContent(200.),
       ])
-      .set_grid_template_rows(GridTrack::Auto.repeated(2))
-      .set_grid_auto_rows([GridTrack::MinContent])
+      .set_grid_rows(GridTrack::Auto.repeated(2))
+      .set_grid_implicit_rows([GridTrack::MinContent])
       .set_children((Container::new()
-        .set_grid_column(Line::between(1, 3))
-        .set_grid_row(Line::span(2)),))
+        .set_grid_column_placement(Line::between(1, 3))
+        .set_grid_row_placement(Line::span(2)),))
   });
 
   let styles = rendered.styles();

@@ -23,18 +23,17 @@ use skene_core::{
   ControlProps,
   Easing,
   FlexDirection,
-  FlexWrap,
-  GridAutoFlow,
+  GridFlow,
   Layout,
   Overflow,
   OverlayProps,
   Placement,
-  Position,
   RunDisplay,
   RunProp,
   RunProps,
   StyleProperty,
   Transition,
+  Wrap,
 };
 
 use crate::Declarations;
@@ -47,7 +46,7 @@ pub(crate) const CLASS_PLACEHOLDER: char = '\u{1}';
 #[inline(always)]
 fn layout_declarations(layout: Layout) -> Declarations {
   match layout {
-    Layout::Block => Declarations::new().set("display", "flow-root"),
+    Layout::Flow => Declarations::new().set("display", "flow-root"),
     Layout::Flex { direction } => Declarations::new().set("display", "flex").set(
       "flex-direction",
       match direction {
@@ -89,16 +88,12 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
         value.top, value.right, value.bottom, value.left,
       ),
     ),
-    BoxProp::Position(value) => declarations.set(
-      "position",
-      match value {
-        Position::Relative => "relative",
-        Position::Absolute => "absolute",
-      },
-    ),
-    BoxProp::Inset(value) => {
-      declarations.set("inset", Declarations::render_dimension_inset(*value))
-    }
+    BoxProp::Offset(value) => declarations
+      .set("position", "relative")
+      .set("inset", Declarations::render_dimension_inset(*value)),
+    BoxProp::Pinned(value) => declarations
+      .set("position", "absolute")
+      .set("inset", Declarations::render_dimension_inset(*value)),
     BoxProp::Color(value) => {
       declarations.set("background-color", Declarations::render_color(*value))
     }
@@ -108,28 +103,28 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
       .set("border-color", Declarations::render_color(value.color)),
     BoxProp::BorderRadius(value) => declarations.set("border-radius", format!("{value}px")),
     BoxProp::Cursor(value) => declarations.set("cursor", Declarations::render_cursor(*value)),
-    BoxProp::RowSpacing(value) => declarations.set("row-gap", format!("{value}px")),
-    BoxProp::ColumnSpacing(value) => declarations.set("column-gap", format!("{value}px")),
-    BoxProp::FlexWrap(value) => declarations.set(
+    BoxProp::Spacing(value) => declarations
+      .set("column-gap", format!("{}px", value.column))
+      .set("row-gap", format!("{}px", value.row)),
+    BoxProp::Wrap(value) => declarations.set(
       "flex-wrap",
       match value {
-        FlexWrap::NoWrap => "nowrap",
-        FlexWrap::Wrap => "wrap",
-        FlexWrap::WrapReverse => "wrap-reverse",
+        Wrap::None => "nowrap",
+        Wrap::Forward => "wrap",
+        Wrap::Reverse => "wrap-reverse",
       },
     ),
-    BoxProp::FlexGrow(value) => declarations.set("flex-grow", value.to_string()),
-    BoxProp::FlexShrink(value) => declarations.set("flex-shrink", value.to_string()),
-    BoxProp::FlexBasis(value) => {
-      declarations.set("flex-basis", Declarations::render_dimension(*value))
-    }
-    BoxProp::MainAxisAlignment(value) => {
+    BoxProp::Flex(value) => declarations
+      .set("flex-basis", Declarations::render_dimension(value.initial))
+      .set("flex-grow", value.grow.to_string())
+      .set("flex-shrink", value.shrink.to_string()),
+    BoxProp::Arrangement(value) => {
       declarations.set("justify-content", Declarations::render_main_axis(*value))
     }
     BoxProp::CrossAxisAlignment(value) => {
       declarations.set("align-items", Declarations::render_item_alignment(*value))
     }
-    BoxProp::LineAlignment(value) => {
+    BoxProp::LineArrangement(value) => {
       declarations.set("align-content", Declarations::render_line_alignment(*value))
     }
     BoxProp::MainAxisItemAlignment(value) => {
@@ -141,29 +136,31 @@ fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
     BoxProp::SelfMainAxisAlignment(value) => {
       declarations.set("justify-self", Declarations::render_item_alignment(*value))
     }
-    BoxProp::GridTemplateColumns(value) => {
+    BoxProp::GridColumns(value) => {
       declarations.set("grid-template-columns", Declarations::render_tracks(value))
     }
-    BoxProp::GridTemplateRows(value) => {
+    BoxProp::GridRows(value) => {
       declarations.set("grid-template-rows", Declarations::render_tracks(value))
     }
-    BoxProp::GridAutoColumns(value) => {
+    BoxProp::GridImplicitColumns(value) => {
       declarations.set("grid-auto-columns", Declarations::render_tracks(value))
     }
-    BoxProp::GridAutoRows(value) => {
+    BoxProp::GridImplicitRows(value) => {
       declarations.set("grid-auto-rows", Declarations::render_tracks(value))
     }
-    BoxProp::GridAutoFlow(value) => declarations.set(
+    BoxProp::GridFlow(value) => declarations.set(
       "grid-auto-flow",
       match value {
-        GridAutoFlow::Row => "row",
-        GridAutoFlow::Column => "column",
-        GridAutoFlow::RowDense => "row dense",
-        GridAutoFlow::ColumnDense => "column dense",
+        GridFlow::Rows => "row",
+        GridFlow::Columns => "column",
+        GridFlow::DenseRows => "row dense",
+        GridFlow::DenseColumns => "column dense",
       },
     ),
-    BoxProp::GridRow(value) => declarations.set("grid-row", Declarations::render_grid_line(*value)),
-    BoxProp::GridColumn(value) => {
+    BoxProp::GridRowPlacement(value) => {
+      declarations.set("grid-row", Declarations::render_grid_line(*value))
+    }
+    BoxProp::GridColumnPlacement(value) => {
       declarations.set("grid-column", Declarations::render_grid_line(*value))
     }
     BoxProp::Overflow(value) => declarations.set(
@@ -216,12 +213,12 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::Padding(value));
   }
 
-  if let Some(value) = style.position {
-    declarations = apply_box_prop(declarations, &BoxProp::Position(value));
+  if let Some(value) = style.offset {
+    declarations = apply_box_prop(declarations, &BoxProp::Offset(value));
   }
 
-  if let Some(value) = style.inset {
-    declarations = apply_box_prop(declarations, &BoxProp::Inset(value));
+  if let Some(value) = style.pinned {
+    declarations = apply_box_prop(declarations, &BoxProp::Pinned(value));
   }
 
   if let Some(value) = style.color {
@@ -240,40 +237,28 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::Cursor(value));
   }
 
-  if let Some(value) = style.row_spacing {
-    declarations = apply_box_prop(declarations, &BoxProp::RowSpacing(value));
+  if let Some(value) = style.spacing {
+    declarations = apply_box_prop(declarations, &BoxProp::Spacing(value));
   }
 
-  if let Some(value) = style.column_spacing {
-    declarations = apply_box_prop(declarations, &BoxProp::ColumnSpacing(value));
+  if let Some(value) = style.wrap {
+    declarations = apply_box_prop(declarations, &BoxProp::Wrap(value));
   }
 
-  if let Some(value) = style.flex_wrap {
-    declarations = apply_box_prop(declarations, &BoxProp::FlexWrap(value));
+  if let Some(value) = style.flex {
+    declarations = apply_box_prop(declarations, &BoxProp::Flex(value));
   }
 
-  if let Some(value) = style.flex_grow {
-    declarations = apply_box_prop(declarations, &BoxProp::FlexGrow(value));
-  }
-
-  if let Some(value) = style.flex_shrink {
-    declarations = apply_box_prop(declarations, &BoxProp::FlexShrink(value));
-  }
-
-  if let Some(value) = style.flex_basis {
-    declarations = apply_box_prop(declarations, &BoxProp::FlexBasis(value));
-  }
-
-  if let Some(value) = style.main_axis_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::MainAxisAlignment(value));
+  if let Some(value) = style.main_axis_arrangement {
+    declarations = apply_box_prop(declarations, &BoxProp::Arrangement(value));
   }
 
   if let Some(value) = style.cross_axis_alignment {
     declarations = apply_box_prop(declarations, &BoxProp::CrossAxisAlignment(value));
   }
 
-  if let Some(value) = style.line_alignment {
-    declarations = apply_box_prop(declarations, &BoxProp::LineAlignment(value));
+  if let Some(value) = style.line_arrangement {
+    declarations = apply_box_prop(declarations, &BoxProp::LineArrangement(value));
   }
 
   if let Some(value) = style.main_axis_item_alignment {
@@ -288,32 +273,32 @@ fn fold_box_style(mut declarations: Declarations, style: &skene_core::BoxStyle) 
     declarations = apply_box_prop(declarations, &BoxProp::SelfMainAxisAlignment(value));
   }
 
-  if let Some(value) = &style.grid_template_columns {
-    declarations = apply_box_prop(declarations, &BoxProp::GridTemplateColumns(value.clone()));
+  if let Some(value) = &style.grid_columns {
+    declarations = apply_box_prop(declarations, &BoxProp::GridColumns(value.clone()));
   }
 
-  if let Some(value) = &style.grid_template_rows {
-    declarations = apply_box_prop(declarations, &BoxProp::GridTemplateRows(value.clone()));
+  if let Some(value) = &style.grid_rows {
+    declarations = apply_box_prop(declarations, &BoxProp::GridRows(value.clone()));
   }
 
-  if let Some(value) = &style.grid_auto_columns {
-    declarations = apply_box_prop(declarations, &BoxProp::GridAutoColumns(value.clone()));
+  if let Some(value) = &style.grid_implicit_columns {
+    declarations = apply_box_prop(declarations, &BoxProp::GridImplicitColumns(value.clone()));
   }
 
-  if let Some(value) = &style.grid_auto_rows {
-    declarations = apply_box_prop(declarations, &BoxProp::GridAutoRows(value.clone()));
+  if let Some(value) = &style.grid_implicit_rows {
+    declarations = apply_box_prop(declarations, &BoxProp::GridImplicitRows(value.clone()));
   }
 
-  if let Some(value) = style.grid_auto_flow {
-    declarations = apply_box_prop(declarations, &BoxProp::GridAutoFlow(value));
+  if let Some(value) = style.grid_flow {
+    declarations = apply_box_prop(declarations, &BoxProp::GridFlow(value));
   }
 
-  if let Some(value) = style.grid_row {
-    declarations = apply_box_prop(declarations, &BoxProp::GridRow(value));
+  if let Some(value) = style.grid_row_placement {
+    declarations = apply_box_prop(declarations, &BoxProp::GridRowPlacement(value));
   }
 
-  if let Some(value) = style.grid_column {
-    declarations = apply_box_prop(declarations, &BoxProp::GridColumn(value));
+  if let Some(value) = style.grid_column_placement {
+    declarations = apply_box_prop(declarations, &BoxProp::GridColumnPlacement(value));
   }
 
   if let Some(value) = style.overflow {
@@ -605,8 +590,7 @@ fn style_property_name(property: StyleProperty) -> &'static str {
     StyleProperty::BorderWidth => "border-width",
     StyleProperty::BorderRadius => "border-radius",
     StyleProperty::Spacing => "gap",
-    StyleProperty::FlexBasis => "flex-basis",
-    StyleProperty::FlexGrow => "flex-grow",
+    StyleProperty::Flex => "flex",
     StyleProperty::TextColor => "color",
     StyleProperty::FontSize => "font-size",
     StyleProperty::FontWeight => "font-weight",

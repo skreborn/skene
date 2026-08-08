@@ -29,15 +29,20 @@
   media/state variants, transitions, keyframes). Layout **runs on taffy**—the framework
   invents no layout system and exposes taffy's full capability—but the **public
   vocabulary is not CSS's**: names and values follow the modern declarative frameworks
-  (Flutter, SwiftUI, Jetpack Compose)—explicit, axis-named, self-describing. Concretely:
-  `main_axis_alignment`/`cross_axis_alignment`/`line_alignment` plus the
-  `main_axis_item_alignment` and `self_` variants, never `justify-*`/`align-*`;
-  `Dimension::Fraction` ratios (`0.` to `1.`), never percents; `spacing`, not `gap`;
-  `GridTrack::Flex`, not `fr`. CSS nomenclature lives only inside the web driver's
-  mapping layer. This applies to styling vocabulary generally and is settled—do not
-  re-litigate it toward CSS naming. On the web a `StyleSet` compiles to real CSS inside
-  one interned class, so SSR/SSG output is responsive, hoverable and animated with
-  **no JS/WASM**. `derive_` closures remain for genuinely dynamic values only.
+  (Flutter, SwiftUI, Jetpack Compose), mixed and matched for whichever is clearest—
+  explicit, axis-named, self-describing. Concretely: distributions are *arrangements*
+  (`main_axis_arrangement: Arrangement`, `line_arrangement`), per-item properties are
+  *alignments* (`cross_axis_alignment`, `main_axis_item_alignment`, the `self_`
+  overrides: `ItemAlignment`)—never `justify-*`/`align-*`; `Dimension::Fraction` is a
+  ratio of the parent (`0.5` = half, not clamped, not a weight); weights live in
+  `Flexibility` and `GridTrack::Flex`; `spacing: Spacing`, not `gap`; `offset` and
+  `pinned` insets, not `position: relative/absolute`; `Layout::Flow`, not block;
+  `grid_columns`/`grid_implicit_columns`/`grid_flow`, not templates and auto-flow. CSS
+  nomenclature lives only inside the web driver's mapping layer. This applies to
+  styling vocabulary generally and is settled—do not re-litigate it toward CSS naming.
+  On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
+  output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
+  remain for genuinely dynamic values only.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}`, forward probe on collision), reference-counted, deterministic and
   identical across csr and ssr—hydration and stylesheet parity depend on it. The pure core
@@ -90,6 +95,12 @@
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.
+- **One property, one setter.** Every property is settable exactly one way (plus its
+  `derive_` twin). A concept with components gets one shared value type set as a
+  whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for
+  grow/shrink/initial—never per-component setters (`set_padding_left`, `set_row_gap`).
+  Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
+  adding a second path.
 - A test double's method that simulates an external event is named `trigger_<event>`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,

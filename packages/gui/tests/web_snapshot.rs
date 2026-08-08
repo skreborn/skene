@@ -18,11 +18,11 @@ use skene_gui::{
   View,
   core::{
     Animation,
+    Arrangement,
     BoxStyle,
     Color,
     Condition,
     ItemAlignment,
-    MainAxisAlignment,
     MouseCursor,
     StyleProperty,
     Transition,
@@ -37,8 +37,8 @@ use skene_gui::{
 fn representative_tree() -> impl skene_gui::IntoView {
   TextTheme::new(
     Container::column()
-      .set_justify_content(MainAxisAlignment::Center)
-      .set_align_items(ItemAlignment::Stretch)
+      .set_main_axis_arrangement(Arrangement::Center)
+      .set_cross_axis_alignment(ItemAlignment::Stretch)
       .set_spacing(12.)
       .set_padding(Inset::symmetric(16., 24.))
       .set_color(Color::srgb(0.1, 0.2, 0.3))

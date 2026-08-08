@@ -66,30 +66,31 @@ pub use task::scope_bound;
 pub use transition::transition;
 pub use tree::TreeOps;
 pub use values::{
+  Arrangement,
   Axis,
   Border,
   Color,
   Dimension,
   FlexDirection,
-  FlexWrap,
-  GridAutoFlow,
+  Flexibility,
+  GridFlow,
   GridPlacement,
   GridTrack,
   Inset,
   ItemAlignment,
   Layout,
   Line,
-  LineAlignment,
-  MainAxisAlignment,
+  LineArrangement,
   MouseCursor,
   Overflow,
   Placement,
   Point,
-  Position,
   Rect,
   Role,
   Size,
+  Spacing,
   TrackLimit,
+  Wrap,
 };
 pub use view::{AnyView, IntoView, View};
 pub use virtualize::{VirtualWindow, virtual_window};

@@ -2,13 +2,13 @@ use super::FlexDirection;
 
 /// The layout mode of a box.
 ///
-/// Grid templates, auto tracks, and flow live in the box's style
-/// (`grid_template_columns` and friends), as every other layout property does.
+/// Grid tracks, implicit tracks, and flow live in the box's style (`grid_columns`
+/// and friends), as every other layout property does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Layout {
-  /// Block flow: children flow in normal document order, contained within the box.
-  Block,
+  /// Normal flow: children stack in document order, contained within the box.
+  Flow,
   /// Flex: children laid out along `direction`.
   Flex {
     /// The main axis, and whether it runs reversed.

@@ -85,7 +85,7 @@ impl skene_core::View for VirtualList {
     let offset = Signal::new(0.0f32);
     let viewport = Signal::new(0.0f32);
     let outer = driver::create_box(&BoxProps {
-      layout: Layout::Block,
+      layout: Layout::Flow,
       role: None,
       style,
       variants: self.variants,

@@ -1316,7 +1316,7 @@ fn grid_tracks_size_columns() {
   let rendered = with_driver(|| {
     tui::mount(|| {
       Container::grid(1)
-        .set_grid_template_columns([
+        .set_grid_columns([
           GridTrack::Length(4),
           GridTrack::Flex(1.),
           GridTrack::Flex(1.),
@@ -1341,7 +1341,7 @@ fn grid_placement_spans_tracks() {
       Container::grid(2)
         .set_children((
           Container::new()
-            .set_grid_column(Line::span(2))
+            .set_grid_column_placement(Line::span(2))
             .set_children((Text::new("wide"),)),
           Text::new("l"),
           Text::new("r"),
@@ -1364,7 +1364,7 @@ fn flex_grow_distributes_space() {
       Container::row()
         .set_children((
           Container::new()
-            .set_flex_grow(1.)
+            .set_flex(Flexibility::grow(1.))
             .set_color(Color::srgb(0.2, 0.2, 0.8))
             .set_children((Text::new("a"),)),
           Container::new()

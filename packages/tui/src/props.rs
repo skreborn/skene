@@ -7,22 +7,23 @@
 //! compatible terminal renders them, and an incompatible one degrades quietly.
 
 use skene_core::{
+  Arrangement,
   Color,
   Composable,
   ConditionShape,
   Dimension,
-  FlexWrap,
-  GridAutoFlow,
+  Flexibility,
+  GridFlow,
   GridPlacement,
   GridTrack,
   Inset,
   ItemAlignment,
   Line,
-  LineAlignment,
-  MainAxisAlignment,
+  LineArrangement,
   MouseCursor,
   Overflow,
-  Position,
+  Spacing,
+  Wrap,
 };
 
 /// A box's static style: each property the builder fixed to a value.
@@ -49,18 +50,17 @@ pub struct BoxStyle {
   pub margin: Option<Inset<Dimension<u32>>>,
   /// The padding on each edge, in cells.
   pub padding: Option<Inset<u32>>,
-  /// How the box is positioned; the inset offsets it.
-  pub position: Option<Position>,
-  /// The offset from each edge, for a positioned box.
-  pub inset: Option<Inset<Dimension<u32>>>,
+  /// The shift from each edge, keeping the box in flow.
+  pub offset: Option<Inset<Dimension<u32>>>,
+  /// The edges the box is pinned to, out of flow, against the nearest offset or
+  /// pinned ancestor; wins when `offset` is also set.
+  pub pinned: Option<Inset<Dimension<u32>>>,
   /// The background color.
   pub color: Option<Color>,
   /// The border color; a border is always one cell of box-drawing characters.
   pub border: Option<Color>,
-  /// The gap between rows of children, in cells.
-  pub row_spacing: Option<u32>,
-  /// The gap between columns of children, in cells.
-  pub column_spacing: Option<u32>,
+  /// The spacing between children, per axis, in cells.
+  pub spacing: Option<Spacing<u32>>,
   /// The pointer shape shown over the box, in terminals that honor it (OSC 22).
   pub cursor: Option<MouseCursor>,
   /// How content overflowing the box behaves; `Scroll` and `Auto` make it scrollable.
@@ -68,19 +68,16 @@ pub struct BoxStyle {
   /// The shadow color, cast one cell down and right and mixed into the colors beneath.
   pub shadow: Option<Color>,
   /// Whether and how a flex container wraps its children.
-  pub flex_wrap: Option<FlexWrap>,
-  /// How much the box grows to fill its flex line's free space.
-  pub flex_grow: Option<f32>,
-  /// How much the box shrinks when its flex line overflows.
-  pub flex_shrink: Option<f32>,
-  /// The box's initial main-axis size as a flex item.
-  pub flex_basis: Option<Dimension<u32>>,
+  pub wrap: Option<Wrap>,
+  /// The box's flexibility as a flex child: its initial size and its grow and
+  /// shrink weights.
+  pub flex: Option<Flexibility<u32>>,
   /// Distribution of children along the main (flex) or inline (grid) axis.
-  pub main_axis_alignment: Option<MainAxisAlignment>,
+  pub main_axis_arrangement: Option<Arrangement>,
   /// Alignment of children on the cross (flex) or block (grid) axis.
   pub cross_axis_alignment: Option<ItemAlignment>,
   /// Distribution of wrapped lines or grid tracks along the cross or block axis.
-  pub line_alignment: Option<LineAlignment>,
+  pub line_arrangement: Option<LineArrangement>,
   /// Alignment of grid children on the inline axis.
   pub main_axis_item_alignment: Option<ItemAlignment>,
   /// The box's own cross- or block-axis alignment, overriding its parent's
@@ -90,19 +87,19 @@ pub struct BoxStyle {
   /// `main_axis_item_alignment`.
   pub self_main_axis_alignment: Option<ItemAlignment>,
   /// The grid's explicit column tracks.
-  pub grid_template_columns: Option<Vec<GridTrack<u32>>>,
+  pub grid_columns: Option<Vec<GridTrack<u32>>>,
   /// The grid's explicit row tracks.
-  pub grid_template_rows: Option<Vec<GridTrack<u32>>>,
+  pub grid_rows: Option<Vec<GridTrack<u32>>>,
   /// The sizes given to implicitly created columns, cycled.
-  pub grid_auto_columns: Option<Vec<GridTrack<u32>>>,
+  pub grid_implicit_columns: Option<Vec<GridTrack<u32>>>,
   /// The sizes given to implicitly created rows, cycled.
-  pub grid_auto_rows: Option<Vec<GridTrack<u32>>>,
+  pub grid_implicit_rows: Option<Vec<GridTrack<u32>>>,
   /// The direction auto-placed grid children fill.
-  pub grid_auto_flow: Option<GridAutoFlow>,
+  pub grid_flow: Option<GridFlow>,
   /// The box's row placement as a grid child.
-  pub grid_row: Option<Line<GridPlacement>>,
+  pub grid_row_placement: Option<Line<GridPlacement>>,
   /// The box's column placement as a grid child.
-  pub grid_column: Option<Line<GridPlacement>>,
+  pub grid_column_placement: Option<Line<GridPlacement>>,
 }
 
 impl BoxStyle {
@@ -184,18 +181,19 @@ impl BoxStyle {
     self
   }
 
-  /// Sets how the box is positioned.
+  /// Sets the shift from each edge, keeping the box in flow.
   #[inline(always)]
-  pub const fn set_position(mut self, position: Position) -> Self {
-    self.position = Some(position);
+  pub const fn set_offset(mut self, offset: Inset<Dimension<u32>>) -> Self {
+    self.offset = Some(offset);
 
     self
   }
 
-  /// Sets the offset from each edge, for a positioned box.
+  /// Pins the box to the given edges, out of flow, against the nearest offset or
+  /// pinned ancestor.
   #[inline(always)]
-  pub const fn set_inset(mut self, inset: Inset<Dimension<u32>>) -> Self {
-    self.inset = Some(inset);
+  pub const fn set_pinned(mut self, pinned: Inset<Dimension<u32>>) -> Self {
+    self.pinned = Some(pinned);
 
     self
   }
@@ -216,27 +214,11 @@ impl BoxStyle {
     self
   }
 
-  /// Sets the gap between children on both axes, in cells.
+  /// Sets the spacing between children: one value for both axes, or a [`Spacing`]
+  /// per axis.
   #[inline(always)]
-  pub const fn set_spacing(mut self, gap: u32) -> Self {
-    self.row_spacing = Some(gap);
-    self.column_spacing = Some(gap);
-
-    self
-  }
-
-  /// Sets the gap between rows of children, in cells.
-  #[inline(always)]
-  pub const fn set_row_gap(mut self, row_spacing: u32) -> Self {
-    self.row_spacing = Some(row_spacing);
-
-    self
-  }
-
-  /// Sets the gap between columns of children, in cells.
-  #[inline(always)]
-  pub const fn set_column_gap(mut self, column_spacing: u32) -> Self {
-    self.column_spacing = Some(column_spacing);
+  pub fn set_spacing(mut self, spacing: impl Into<Spacing<u32>>) -> Self {
+    self.spacing = Some(spacing.into());
 
     self
   }
@@ -268,47 +250,31 @@ impl BoxStyle {
 
   /// Sets whether and how a flex container wraps its children.
   #[inline(always)]
-  pub const fn set_flex_wrap(mut self, flex_wrap: FlexWrap) -> Self {
-    self.flex_wrap = Some(flex_wrap);
+  pub const fn set_flex_wrap(mut self, wrap: Wrap) -> Self {
+    self.wrap = Some(wrap);
 
     self
   }
 
-  /// Sets how much the box grows to fill its flex line's free space.
+  /// Sets the box's flexibility as a flex child.
   #[inline(always)]
-  pub const fn set_flex_grow(mut self, flex_grow: f32) -> Self {
-    self.flex_grow = Some(flex_grow);
-
-    self
-  }
-
-  /// Sets how much the box shrinks when its flex line overflows.
-  #[inline(always)]
-  pub const fn set_flex_shrink(mut self, flex_shrink: f32) -> Self {
-    self.flex_shrink = Some(flex_shrink);
-
-    self
-  }
-
-  /// Sets the box's initial main-axis size as a flex item.
-  #[inline(always)]
-  pub fn set_flex_basis(mut self, flex_basis: impl Into<Dimension<u32>>) -> Self {
-    self.flex_basis = Some(flex_basis.into());
+  pub const fn set_flex(mut self, flex: Flexibility<u32>) -> Self {
+    self.flex = Some(flex);
 
     self
   }
 
   /// Sets the distribution of children along the main (flex) or inline (grid) axis.
   #[inline(always)]
-  pub const fn set_justify_content(mut self, main_axis_alignment: MainAxisAlignment) -> Self {
-    self.main_axis_alignment = Some(main_axis_alignment);
+  pub const fn set_main_axis_arrangement(mut self, main_axis_arrangement: Arrangement) -> Self {
+    self.main_axis_arrangement = Some(main_axis_arrangement);
 
     self
   }
 
   /// Sets the alignment of children on the cross (flex) or block (grid) axis.
   #[inline(always)]
-  pub const fn set_align_items(mut self, cross_axis_alignment: ItemAlignment) -> Self {
+  pub const fn set_cross_axis_alignment(mut self, cross_axis_alignment: ItemAlignment) -> Self {
     self.cross_axis_alignment = Some(cross_axis_alignment);
 
     self
@@ -316,15 +282,18 @@ impl BoxStyle {
 
   /// Sets the distribution of wrapped lines or grid tracks along the cross or block axis.
   #[inline(always)]
-  pub const fn set_align_content(mut self, line_alignment: LineAlignment) -> Self {
-    self.line_alignment = Some(line_alignment);
+  pub const fn set_line_arrangement(mut self, line_arrangement: LineArrangement) -> Self {
+    self.line_arrangement = Some(line_arrangement);
 
     self
   }
 
   /// Sets the alignment of grid children on the inline axis.
   #[inline(always)]
-  pub const fn set_justify_items(mut self, main_axis_item_alignment: ItemAlignment) -> Self {
+  pub const fn set_main_axis_item_alignment(
+    mut self,
+    main_axis_item_alignment: ItemAlignment,
+  ) -> Self {
     self.main_axis_item_alignment = Some(main_axis_item_alignment);
 
     self
@@ -332,7 +301,10 @@ impl BoxStyle {
 
   /// Sets the box's own cross- or block-axis alignment.
   #[inline(always)]
-  pub const fn set_align_self(mut self, self_cross_axis_alignment: ItemAlignment) -> Self {
+  pub const fn set_self_cross_axis_alignment(
+    mut self,
+    self_cross_axis_alignment: ItemAlignment,
+  ) -> Self {
     self.self_cross_axis_alignment = Some(self_cross_axis_alignment);
 
     self
@@ -340,7 +312,10 @@ impl BoxStyle {
 
   /// Sets the box's own inline-axis alignment in a grid.
   #[inline(always)]
-  pub const fn set_justify_self(mut self, self_main_axis_alignment: ItemAlignment) -> Self {
+  pub const fn set_self_main_axis_alignment(
+    mut self,
+    self_main_axis_alignment: ItemAlignment,
+  ) -> Self {
     self.self_main_axis_alignment = Some(self_main_axis_alignment);
 
     self
@@ -348,62 +323,65 @@ impl BoxStyle {
 
   /// Sets the grid's explicit column tracks.
   #[inline(always)]
-  pub fn set_grid_template_columns(
-    mut self,
-    tracks: impl IntoIterator<Item = GridTrack<u32>>,
-  ) -> Self {
-    self.grid_template_columns = Some(tracks.into_iter().collect());
+  pub fn set_grid_columns(mut self, tracks: impl IntoIterator<Item = GridTrack<u32>>) -> Self {
+    self.grid_columns = Some(tracks.into_iter().collect());
 
     self
   }
 
   /// Sets the grid's explicit row tracks.
   #[inline(always)]
-  pub fn set_grid_template_rows(
-    mut self,
-    tracks: impl IntoIterator<Item = GridTrack<u32>>,
-  ) -> Self {
-    self.grid_template_rows = Some(tracks.into_iter().collect());
+  pub fn set_grid_rows(mut self, tracks: impl IntoIterator<Item = GridTrack<u32>>) -> Self {
+    self.grid_rows = Some(tracks.into_iter().collect());
 
     self
   }
 
   /// Sets the sizes given to implicitly created columns, cycled.
   #[inline(always)]
-  pub fn set_grid_auto_columns(mut self, tracks: impl IntoIterator<Item = GridTrack<u32>>) -> Self {
-    self.grid_auto_columns = Some(tracks.into_iter().collect());
+  pub fn set_grid_implicit_columns(
+    mut self,
+    tracks: impl IntoIterator<Item = GridTrack<u32>>,
+  ) -> Self {
+    self.grid_implicit_columns = Some(tracks.into_iter().collect());
 
     self
   }
 
   /// Sets the sizes given to implicitly created rows, cycled.
   #[inline(always)]
-  pub fn set_grid_auto_rows(mut self, tracks: impl IntoIterator<Item = GridTrack<u32>>) -> Self {
-    self.grid_auto_rows = Some(tracks.into_iter().collect());
+  pub fn set_grid_implicit_rows(
+    mut self,
+    tracks: impl IntoIterator<Item = GridTrack<u32>>,
+  ) -> Self {
+    self.grid_implicit_rows = Some(tracks.into_iter().collect());
 
     self
   }
 
   /// Sets the direction auto-placed grid children fill.
   #[inline(always)]
-  pub const fn set_grid_auto_flow(mut self, grid_auto_flow: GridAutoFlow) -> Self {
-    self.grid_auto_flow = Some(grid_auto_flow);
+  pub const fn set_grid_flow(mut self, grid_flow: GridFlow) -> Self {
+    self.grid_flow = Some(grid_flow);
 
     self
   }
 
   /// Sets the box's row placement as a grid child.
   #[inline(always)]
-  pub const fn set_grid_row(mut self, grid_row: Line<GridPlacement>) -> Self {
-    self.grid_row = Some(grid_row);
+  pub const fn set_grid_row_placement(mut self, grid_row_placement: Line<GridPlacement>) -> Self {
+    self.grid_row_placement = Some(grid_row_placement);
 
     self
   }
 
   /// Sets the box's column placement as a grid child.
   #[inline(always)]
-  pub const fn set_grid_column(mut self, grid_column: Line<GridPlacement>) -> Self {
-    self.grid_column = Some(grid_column);
+  pub const fn set_grid_column_placement(
+    mut self,
+    grid_column_placement: Line<GridPlacement>,
+  ) -> Self {
+    self.grid_column_placement = Some(grid_column_placement);
 
     self
   }
@@ -558,32 +536,29 @@ pub(crate) enum BoxProp {
   AspectRatio(f32),
   Margin(Inset<Dimension<u32>>),
   Padding(Inset<u32>),
-  Position(Position),
-  Inset(Inset<Dimension<u32>>),
+  Offset(Inset<Dimension<u32>>),
+  Pinned(Inset<Dimension<u32>>),
   Color(Color),
   Border(Color),
-  RowSpacing(u32),
-  ColumnSpacing(u32),
+  Spacing(Spacing<u32>),
   Cursor(MouseCursor),
   Overflow(Overflow),
   Shadow(Color),
-  FlexWrap(FlexWrap),
-  FlexGrow(f32),
-  FlexShrink(f32),
-  FlexBasis(Dimension<u32>),
-  MainAxisAlignment(MainAxisAlignment),
+  Wrap(Wrap),
+  Flex(Flexibility<u32>),
+  Arrangement(Arrangement),
   CrossAxisAlignment(ItemAlignment),
-  LineAlignment(LineAlignment),
+  LineArrangement(LineArrangement),
   MainAxisItemAlignment(ItemAlignment),
   SelfCrossAxisAlignment(ItemAlignment),
   SelfMainAxisAlignment(ItemAlignment),
-  GridTemplateColumns(Vec<GridTrack<u32>>),
-  GridTemplateRows(Vec<GridTrack<u32>>),
-  GridAutoColumns(Vec<GridTrack<u32>>),
-  GridAutoRows(Vec<GridTrack<u32>>),
-  GridAutoFlow(GridAutoFlow),
-  GridRow(Line<GridPlacement>),
-  GridColumn(Line<GridPlacement>),
+  GridColumns(Vec<GridTrack<u32>>),
+  GridRows(Vec<GridTrack<u32>>),
+  GridImplicitColumns(Vec<GridTrack<u32>>),
+  GridImplicitRows(Vec<GridTrack<u32>>),
+  GridFlow(GridFlow),
+  GridRowPlacement(Line<GridPlacement>),
+  GridColumnPlacement(Line<GridPlacement>),
 }
 
 /// Folds one changed property into a stored box style.
@@ -598,32 +573,29 @@ pub(crate) fn apply_box_prop(style: &mut BoxStyle, prop: BoxProp) {
     BoxProp::AspectRatio(value) => style.aspect_ratio = Some(value),
     BoxProp::Margin(value) => style.margin = Some(value),
     BoxProp::Padding(value) => style.padding = Some(value),
-    BoxProp::Position(value) => style.position = Some(value),
-    BoxProp::Inset(value) => style.inset = Some(value),
+    BoxProp::Offset(value) => style.offset = Some(value),
+    BoxProp::Pinned(value) => style.pinned = Some(value),
     BoxProp::Color(value) => style.color = Some(value),
     BoxProp::Border(value) => style.border = Some(value),
-    BoxProp::RowSpacing(value) => style.row_spacing = Some(value),
-    BoxProp::ColumnSpacing(value) => style.column_spacing = Some(value),
+    BoxProp::Spacing(value) => style.spacing = Some(value),
     BoxProp::Cursor(value) => style.cursor = Some(value),
     BoxProp::Overflow(value) => style.overflow = Some(value),
     BoxProp::Shadow(value) => style.shadow = Some(value),
-    BoxProp::FlexWrap(value) => style.flex_wrap = Some(value),
-    BoxProp::FlexGrow(value) => style.flex_grow = Some(value),
-    BoxProp::FlexShrink(value) => style.flex_shrink = Some(value),
-    BoxProp::FlexBasis(value) => style.flex_basis = Some(value),
-    BoxProp::MainAxisAlignment(value) => style.main_axis_alignment = Some(value),
+    BoxProp::Wrap(value) => style.wrap = Some(value),
+    BoxProp::Flex(value) => style.flex = Some(value),
+    BoxProp::Arrangement(value) => style.main_axis_arrangement = Some(value),
     BoxProp::CrossAxisAlignment(value) => style.cross_axis_alignment = Some(value),
-    BoxProp::LineAlignment(value) => style.line_alignment = Some(value),
+    BoxProp::LineArrangement(value) => style.line_arrangement = Some(value),
     BoxProp::MainAxisItemAlignment(value) => style.main_axis_item_alignment = Some(value),
     BoxProp::SelfCrossAxisAlignment(value) => style.self_cross_axis_alignment = Some(value),
     BoxProp::SelfMainAxisAlignment(value) => style.self_main_axis_alignment = Some(value),
-    BoxProp::GridTemplateColumns(value) => style.grid_template_columns = Some(value),
-    BoxProp::GridTemplateRows(value) => style.grid_template_rows = Some(value),
-    BoxProp::GridAutoColumns(value) => style.grid_auto_columns = Some(value),
-    BoxProp::GridAutoRows(value) => style.grid_auto_rows = Some(value),
-    BoxProp::GridAutoFlow(value) => style.grid_auto_flow = Some(value),
-    BoxProp::GridRow(value) => style.grid_row = Some(value),
-    BoxProp::GridColumn(value) => style.grid_column = Some(value),
+    BoxProp::GridColumns(value) => style.grid_columns = Some(value),
+    BoxProp::GridRows(value) => style.grid_rows = Some(value),
+    BoxProp::GridImplicitColumns(value) => style.grid_implicit_columns = Some(value),
+    BoxProp::GridImplicitRows(value) => style.grid_implicit_rows = Some(value),
+    BoxProp::GridFlow(value) => style.grid_flow = Some(value),
+    BoxProp::GridRowPlacement(value) => style.grid_row_placement = Some(value),
+    BoxProp::GridColumnPlacement(value) => style.grid_column_placement = Some(value),
   }
 }
 

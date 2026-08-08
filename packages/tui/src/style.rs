@@ -59,22 +59,19 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.aspect_ratio = over.aspect_ratio.or(base.aspect_ratio);
   base.margin = over.margin.or(base.margin);
   base.padding = over.padding.or(base.padding);
-  base.position = over.position.or(base.position);
-  base.inset = over.inset.or(base.inset);
+  base.offset = over.offset.or(base.offset);
+  base.pinned = over.pinned.or(base.pinned);
   base.color = over.color.or(base.color);
   base.border = over.border.or(base.border);
-  base.row_spacing = over.row_spacing.or(base.row_spacing);
-  base.column_spacing = over.column_spacing.or(base.column_spacing);
+  base.spacing = over.spacing.or(base.spacing);
   base.cursor = over.cursor.or(base.cursor);
   base.overflow = over.overflow.or(base.overflow);
   base.shadow = over.shadow.or(base.shadow);
-  base.flex_wrap = over.flex_wrap.or(base.flex_wrap);
-  base.flex_grow = over.flex_grow.or(base.flex_grow);
-  base.flex_shrink = over.flex_shrink.or(base.flex_shrink);
-  base.flex_basis = over.flex_basis.or(base.flex_basis);
-  base.main_axis_alignment = over.main_axis_alignment.or(base.main_axis_alignment);
+  base.wrap = over.wrap.or(base.wrap);
+  base.flex = over.flex.or(base.flex);
+  base.main_axis_arrangement = over.main_axis_arrangement.or(base.main_axis_arrangement);
   base.cross_axis_alignment = over.cross_axis_alignment.or(base.cross_axis_alignment);
-  base.line_alignment = over.line_alignment.or(base.line_alignment);
+  base.line_arrangement = over.line_arrangement.or(base.line_arrangement);
   base.main_axis_item_alignment = over
     .main_axis_item_alignment
     .or(base.main_axis_item_alignment);
@@ -84,16 +81,16 @@ fn overlay_box(mut base: BoxStyle, over: &BoxStyle) -> BoxStyle {
   base.self_main_axis_alignment = over
     .self_main_axis_alignment
     .or(base.self_main_axis_alignment);
-  base.grid_auto_flow = over.grid_auto_flow.or(base.grid_auto_flow);
-  base.grid_row = over.grid_row.or(base.grid_row);
-  base.grid_column = over.grid_column.or(base.grid_column);
-  base.grid_template_columns = over
-    .grid_template_columns
+  base.grid_flow = over.grid_flow.or(base.grid_flow);
+  base.grid_row_placement = over.grid_row_placement.or(base.grid_row_placement);
+  base.grid_column_placement = over.grid_column_placement.or(base.grid_column_placement);
+  base.grid_columns = over.grid_columns.clone().or(base.grid_columns);
+  base.grid_rows = over.grid_rows.clone().or(base.grid_rows);
+  base.grid_implicit_columns = over
+    .grid_implicit_columns
     .clone()
-    .or(base.grid_template_columns);
-  base.grid_template_rows = over.grid_template_rows.clone().or(base.grid_template_rows);
-  base.grid_auto_columns = over.grid_auto_columns.clone().or(base.grid_auto_columns);
-  base.grid_auto_rows = over.grid_auto_rows.clone().or(base.grid_auto_rows);
+    .or(base.grid_implicit_columns);
+  base.grid_implicit_rows = over.grid_implicit_rows.clone().or(base.grid_implicit_rows);
 
   base
 }
@@ -162,7 +159,7 @@ pub(crate) fn effective_run_style(
 pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) -> Style {
   let mut out = Style {
     display: match layout {
-      Layout::Block => Display::Block,
+      Layout::Flow => Display::Block,
       Layout::Flex { .. } => Display::Flex,
       Layout::Grid | Layout::Stack => Display::Grid,
     },
@@ -273,29 +270,29 @@ fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<St
   }
 }
 
-/// A [`MainAxisAlignment`](skene_core::MainAxisAlignment) as taffy's content
+/// A [`Arrangement`](skene_core::Arrangement) as taffy's content
 /// alignment.
-fn main_axis(value: skene_core::MainAxisAlignment) -> taffy::style::AlignContent {
+fn main_axis(value: skene_core::Arrangement) -> taffy::style::AlignContent {
   match value {
-    skene_core::MainAxisAlignment::Start => taffy::style::AlignContent::Start,
-    skene_core::MainAxisAlignment::End => taffy::style::AlignContent::End,
-    skene_core::MainAxisAlignment::Center => taffy::style::AlignContent::Center,
-    skene_core::MainAxisAlignment::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_core::MainAxisAlignment::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_core::MainAxisAlignment::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+    skene_core::Arrangement::Start => taffy::style::AlignContent::Start,
+    skene_core::Arrangement::End => taffy::style::AlignContent::End,
+    skene_core::Arrangement::Center => taffy::style::AlignContent::Center,
+    skene_core::Arrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_core::Arrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_core::Arrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
   }
 }
 
-/// A [`LineAlignment`](skene_core::LineAlignment) as taffy's content alignment.
-fn line(value: skene_core::LineAlignment) -> taffy::style::AlignContent {
+/// A [`LineArrangement`](skene_core::LineArrangement) as taffy's content alignment.
+fn line(value: skene_core::LineArrangement) -> taffy::style::AlignContent {
   match value {
-    skene_core::LineAlignment::Start => taffy::style::AlignContent::Start,
-    skene_core::LineAlignment::End => taffy::style::AlignContent::End,
-    skene_core::LineAlignment::Center => taffy::style::AlignContent::Center,
-    skene_core::LineAlignment::Stretch => taffy::style::AlignContent::Stretch,
-    skene_core::LineAlignment::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
-    skene_core::LineAlignment::SpaceAround => taffy::style::AlignContent::SpaceAround,
-    skene_core::LineAlignment::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
+    skene_core::LineArrangement::Start => taffy::style::AlignContent::Start,
+    skene_core::LineArrangement::End => taffy::style::AlignContent::End,
+    skene_core::LineArrangement::Center => taffy::style::AlignContent::Center,
+    skene_core::LineArrangement::Stretch => taffy::style::AlignContent::Stretch,
+    skene_core::LineArrangement::SpaceBetween => taffy::style::AlignContent::SpaceBetween,
+    skene_core::LineArrangement::SpaceAround => taffy::style::AlignContent::SpaceAround,
+    skene_core::LineArrangement::SpaceEvenly => taffy::style::AlignContent::SpaceEvenly,
   }
 }
 
@@ -355,15 +352,15 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  if let Some(position) = style.position {
-    out.position = match position {
-      skene_core::Position::Relative => taffy::style::Position::Relative,
-      skene_core::Position::Absolute => taffy::style::Position::Absolute,
-    };
+  // A pinned box leaves the flow; an offset one shifts within it. Pinned wins when
+  // both are set.
+  if let Some(pinned) = style.pinned {
+    out.position = taffy::style::Position::Absolute;
+    out.inset = dimension_rect(pinned);
   }
-
-  if let Some(inset) = style.inset {
-    out.inset = dimension_rect(inset);
+  else if let Some(offset) = style.offset {
+    out.position = taffy::style::Position::Relative;
+    out.inset = dimension_rect(offset);
   }
 
   if style.border.is_some() {
@@ -375,12 +372,11 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  if let Some(row_spacing) = style.row_spacing {
-    out.gap.height = length(cell(row_spacing));
-  }
-
-  if let Some(column_spacing) = style.column_spacing {
-    out.gap.width = length(cell(column_spacing));
+  if let Some(spacing) = style.spacing {
+    out.gap = taffy::geometry::Size {
+      width: length(cell(spacing.column)),
+      height: length(cell(spacing.row)),
+    };
   }
 
   if let Some(overflow) = style.overflow {
@@ -396,66 +392,60 @@ pub(crate) fn apply_box_sizing(out: &mut Style, style: &BoxStyle, in_stack: bool
     };
   }
 
-  if let Some(flex_wrap) = style.flex_wrap {
-    out.flex_wrap = match flex_wrap {
-      skene_core::FlexWrap::NoWrap => taffy::style::FlexWrap::NoWrap,
-      skene_core::FlexWrap::Wrap => taffy::style::FlexWrap::Wrap,
-      skene_core::FlexWrap::WrapReverse => taffy::style::FlexWrap::WrapReverse,
+  if let Some(wrap) = style.wrap {
+    out.flex_wrap = match wrap {
+      skene_core::Wrap::None => taffy::style::FlexWrap::NoWrap,
+      skene_core::Wrap::Forward => taffy::style::FlexWrap::Wrap,
+      skene_core::Wrap::Reverse => taffy::style::FlexWrap::WrapReverse,
     };
   }
 
-  if let Some(flex_grow) = style.flex_grow {
-    out.flex_grow = flex_grow;
+  if let Some(flex) = style.flex {
+    out.flex_basis = dimension(flex.initial);
+    out.flex_grow = flex.grow;
+    out.flex_shrink = flex.shrink;
   }
 
-  if let Some(flex_shrink) = style.flex_shrink {
-    out.flex_shrink = flex_shrink;
-  }
-
-  if let Some(flex_basis) = style.flex_basis {
-    out.flex_basis = dimension(flex_basis);
-  }
-
-  out.justify_content = style.main_axis_alignment.map(main_axis);
+  out.justify_content = style.main_axis_arrangement.map(main_axis);
   out.align_items = style.cross_axis_alignment.map(item);
-  out.align_content = style.line_alignment.map(line);
+  out.align_content = style.line_arrangement.map(line);
   out.justify_items = style.main_axis_item_alignment.map(item);
   out.align_self = style.self_cross_axis_alignment.map(item);
   out.justify_self = style.self_main_axis_alignment.map(item);
 
-  if let Some(tracks) = &style.grid_template_columns {
+  if let Some(tracks) = &style.grid_columns {
     out.grid_template_columns = template(tracks);
   }
 
-  if let Some(tracks) = &style.grid_template_rows {
+  if let Some(tracks) = &style.grid_rows {
     out.grid_template_rows = template(tracks);
   }
 
-  if let Some(tracks) = &style.grid_auto_columns {
+  if let Some(tracks) = &style.grid_implicit_columns {
     out.grid_auto_columns = tracks.iter().map(|entry| track(*entry)).collect();
   }
 
-  if let Some(tracks) = &style.grid_auto_rows {
+  if let Some(tracks) = &style.grid_implicit_rows {
     out.grid_auto_rows = tracks.iter().map(|entry| track(*entry)).collect();
   }
 
-  if let Some(flow) = style.grid_auto_flow {
+  if let Some(flow) = style.grid_flow {
     out.grid_auto_flow = match flow {
-      skene_core::GridAutoFlow::Row => taffy::style::GridAutoFlow::Row,
-      skene_core::GridAutoFlow::Column => taffy::style::GridAutoFlow::Column,
-      skene_core::GridAutoFlow::RowDense => taffy::style::GridAutoFlow::RowDense,
-      skene_core::GridAutoFlow::ColumnDense => taffy::style::GridAutoFlow::ColumnDense,
+      skene_core::GridFlow::Rows => taffy::style::GridAutoFlow::Row,
+      skene_core::GridFlow::Columns => taffy::style::GridAutoFlow::Column,
+      skene_core::GridFlow::DenseRows => taffy::style::GridAutoFlow::RowDense,
+      skene_core::GridFlow::DenseColumns => taffy::style::GridAutoFlow::ColumnDense,
     };
   }
 
-  if let Some(row) = style.grid_row {
+  if let Some(row) = style.grid_row_placement {
     out.grid_row = taffy::geometry::Line {
       start: placement(row.start),
       end: placement(row.end),
     };
   }
 
-  if let Some(column) = style.grid_column {
+  if let Some(column) = style.grid_column_placement {
     out.grid_column = taffy::geometry::Line {
       start: placement(column.start),
       end: placement(column.end),

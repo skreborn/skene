@@ -12,6 +12,7 @@
 use std::borrow::Cow;
 
 use skene_core::{
+  Arrangement,
   Color,
   Dimension,
   GridPlacement,
@@ -19,8 +20,7 @@ use skene_core::{
   Inset,
   ItemAlignment,
   Line,
-  LineAlignment,
-  MainAxisAlignment,
+  LineArrangement,
   MouseCursor,
   TrackLimit,
 };
@@ -86,30 +86,30 @@ impl Declarations {
     }
   }
 
-  /// Renders a [`MainAxisAlignment`] to its CSS distribution keyword.
+  /// Renders a [`Arrangement`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_main_axis(alignment: MainAxisAlignment) -> &'static str {
+  pub fn render_main_axis(alignment: Arrangement) -> &'static str {
     match alignment {
-      MainAxisAlignment::Start => "flex-start",
-      MainAxisAlignment::End => "flex-end",
-      MainAxisAlignment::Center => "center",
-      MainAxisAlignment::SpaceBetween => "space-between",
-      MainAxisAlignment::SpaceAround => "space-around",
-      MainAxisAlignment::SpaceEvenly => "space-evenly",
+      Arrangement::Start => "flex-start",
+      Arrangement::End => "flex-end",
+      Arrangement::Center => "center",
+      Arrangement::SpaceBetween => "space-between",
+      Arrangement::SpaceAround => "space-around",
+      Arrangement::SpaceEvenly => "space-evenly",
     }
   }
 
-  /// Renders a [`LineAlignment`] to its CSS distribution keyword.
+  /// Renders a [`LineArrangement`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_line_alignment(alignment: LineAlignment) -> &'static str {
+  pub fn render_line_alignment(alignment: LineArrangement) -> &'static str {
     match alignment {
-      LineAlignment::Start => "flex-start",
-      LineAlignment::End => "flex-end",
-      LineAlignment::Center => "center",
-      LineAlignment::Stretch => "stretch",
-      LineAlignment::SpaceBetween => "space-between",
-      LineAlignment::SpaceAround => "space-around",
-      LineAlignment::SpaceEvenly => "space-evenly",
+      LineArrangement::Start => "flex-start",
+      LineArrangement::End => "flex-end",
+      LineArrangement::Center => "center",
+      LineArrangement::Stretch => "stretch",
+      LineArrangement::SpaceBetween => "space-between",
+      LineArrangement::SpaceAround => "space-around",
+      LineArrangement::SpaceEvenly => "space-evenly",
     }
   }
 

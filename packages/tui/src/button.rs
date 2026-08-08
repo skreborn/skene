@@ -68,11 +68,11 @@ impl View for Button {
     let node = with_state(|state| {
       let node = state.insert_node(
         NodeKind::Box {
-          layout: Layout::Block,
+          layout: Layout::Flow,
           style: style.clone(),
           variants,
         },
-        box_taffy_style(Layout::Block, &style, false),
+        box_taffy_style(Layout::Flow, &style, false),
       );
 
       if let Some(action) = self.click_handler {

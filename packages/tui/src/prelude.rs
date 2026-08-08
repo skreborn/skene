@@ -2,13 +2,14 @@
 //! primitives, and the entry point.
 
 pub use skene_core::{
+  Arrangement,
   Axis,
   Color,
   Dimension,
   Errors,
   FlexDirection,
-  FlexWrap,
-  GridAutoFlow,
+  Flexibility,
+  GridFlow,
   GridPlacement,
   GridTrack,
   IntoChildren,
@@ -17,17 +18,16 @@ pub use skene_core::{
   KeyEvent,
   Layout,
   Line,
-  LineAlignment,
-  MainAxisAlignment,
+  LineArrangement,
   Modifiers,
   MouseCursor,
   Overflow,
   Placement,
   PointerButton,
-  Position,
   Prevent,
   TrackLimit,
   View,
+  Wrap,
 };
 pub use skene_reactive::{
   Effect,

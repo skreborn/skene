@@ -3,6 +3,7 @@
 
 pub use skene_core::{
   Animation,
+  Arrangement,
   Axis,
   BoxStyle,
   Color,
@@ -10,8 +11,8 @@ pub use skene_core::{
   Dimension,
   Easing,
   FlexDirection,
-  FlexWrap,
-  GridAutoFlow,
+  Flexibility,
+  GridFlow,
   GridPlacement,
   GridTrack,
   IntoChildren,
@@ -19,16 +20,15 @@ pub use skene_core::{
   ItemAlignment,
   KeyEvent,
   Line,
-  LineAlignment,
-  MainAxisAlignment,
+  LineArrangement,
   MouseCursor,
-  Position,
   Prevent,
   RunStyle,
   StyleProperty,
   TrackLimit,
   Transition,
   View,
+  Wrap,
 };
 pub use skene_reactive::{
   Effect,

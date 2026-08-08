@@ -52,15 +52,15 @@ pub enum TrackLimit<T> {
 /// The direction auto-placed grid items fill, and whether gaps are backfilled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
-pub enum GridAutoFlow {
+pub enum GridFlow {
   /// Fills row by row.
-  Row,
+  Rows,
   /// Fills column by column.
-  Column,
+  Columns,
   /// Fills row by row, backfilling earlier gaps.
-  RowDense,
+  DenseRows,
   /// Fills column by column, backfilling earlier gaps.
-  ColumnDense,
+  DenseColumns,
 }
 
 /// One end of a grid item's placement.

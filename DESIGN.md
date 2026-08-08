@@ -138,17 +138,17 @@ emits one CSS rule per conjunction (`@media` wrapping, pseudo-classes suffixing)
 the same sharing shape as `TreeOps`—never feature-gated variants, which cargo's additive
 feature unification would break in any build containing both facades.
 
-- **Layout** runs on taffy at full capability—flexbox (direction, wrap,
-  grow/shrink/basis), grid (track templates with `Flex` shares, `Minmax`,
-  `FitContent`, auto tracks and flow, line/span placements), block—but the vocabulary
-  is the modern frameworks' (Flutter/SwiftUI/Compose), not CSS's: axis-explicit
-  alignment (`main_axis_alignment`, `cross_axis_alignment`, `line_alignment`, the
-  `main_axis_item_alignment`/`self_` variants), `Dimension` lengths as fixed,
-  `Fraction` (`0.`–`1.`) or auto, per-axis `spacing`, margin, position and inset. The
-  types are mirrored in core, scalar-generic so the GUI facade instantiates logical
-  pixels and the TUI cells; the web renders them to CSS text (the only place CSS
-  nomenclature exists), the terminal feeds taffy directly. The framework invents no
-  layout system.
+- **Layout** runs on taffy at full capability—flex (direction, wrap, `Flexibility`),
+  grid (track lists with `Flex` shares, `Minmax`, `FitContent`, implicit tracks,
+  flow, line/span placements), normal flow—but the vocabulary is the modern
+  frameworks' (Flutter/SwiftUI/Compose), not CSS's: arrangements distribute
+  (`main_axis_arrangement`, `line_arrangement`), alignments place items
+  (`cross_axis_alignment`, `main_axis_item_alignment`, the `self_` overrides);
+  `Dimension` is a fixed length, a `Fraction` of the parent, or auto; `spacing` is
+  one per-axis value; `offset`/`pinned` insets replace CSS positioning. The types are
+  mirrored in core, scalar-generic so the GUI facade instantiates logical pixels and
+  the TUI cells; the web renders them to CSS text (the only place CSS nomenclature
+  exists), the terminal feeds taffy directly. The framework invents no layout system.
 - **Decoration and text** are skene's typed properties (background, border, radius,
   cursor, text color/size/weight, …), growing as views need them.
 - **Passthrough** keeps the vocabulary open: a per-family extension (web: raw CSS

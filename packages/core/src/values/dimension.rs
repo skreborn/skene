@@ -5,7 +5,12 @@
 pub enum Dimension<T> {
   /// A fixed length.
   Length(T),
-  /// A fraction of the parent's corresponding extent (`0.` to `1.`).
+  /// A fraction of the parent's corresponding extent: `0.5` is half the parent,
+  /// whatever the siblings say, and values above `1.` overflow it.
+  ///
+  /// Not a weight—to split an axis between siblings in proportion, give them
+  /// [`Flexibility`](super::Flexibility) weights (or, for grid tracks,
+  /// [`GridTrack::Flex`](super::GridTrack) shares) instead.
   Fraction(f32),
   /// Sized by the layout algorithm.
   Auto,

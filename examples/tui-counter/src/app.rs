@@ -6,15 +6,15 @@ pub(crate) fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
   Container::column()
-    .set_justify_content(MainAxisAlignment::Center)
-    .set_align_items(ItemAlignment::Center)
+    .set_main_axis_arrangement(Arrangement::Center)
+    .set_cross_axis_alignment(ItemAlignment::Center)
     .set_color(Color::srgb(0.08, 0.08, 0.1))
     .set_child(card(count))
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {
   Container::column()
-    .set_align_items(ItemAlignment::Center)
+    .set_cross_axis_alignment(ItemAlignment::Center)
     .set_spacing(1)
     .set_min_width(24)
     .set_padding(Inset::symmetric(4, 1))

@@ -106,10 +106,8 @@ pub enum StyleProperty {
   BorderRadius,
   /// The spacing between children.
   Spacing,
-  /// The initial main-axis size as a flex item.
-  FlexBasis,
-  /// The share of the flex line's free space.
-  FlexGrow,
+  /// The flexibility as a flex child.
+  Flex,
   /// The text color.
   TextColor,
   /// The font size.

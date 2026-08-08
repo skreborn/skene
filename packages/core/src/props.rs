@@ -13,6 +13,7 @@ use crate::{
   Condition,
   Dimension,
   Flexibility,
+  FocusOrder,
   GridFlow,
   GridPlacement,
   GridTrack,
@@ -490,9 +491,8 @@ pub struct ControlProps {
   pub transitions: Vec<Transition>,
   /// The keyframe animations.
   pub animations: Vec<Animation<BoxStyle>>,
-  /// The position in the keyboard tab order: `Some(0)` joins it in document order,
-  /// negative removes the element from it while keeping it programmatically focusable.
-  pub tab_index: Option<i32>,
+  /// The control's place in sequential focus traversal.
+  pub focus_order: Option<FocusOrder>,
   /// Whether the element takes focus when the page loads.
   pub autofocus: bool,
 }

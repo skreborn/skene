@@ -63,6 +63,7 @@ pub use crate::{
   Errors,
   Flexible,
   FocusHandle,
+  FocusOrder,
   Grid,
   GridCell,
   HasChildren,

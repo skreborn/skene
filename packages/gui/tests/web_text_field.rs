@@ -5,6 +5,7 @@
 
 use skene_gui::{
   Container,
+  FocusOrder,
   HasChildren,
   Text,
   TextField,
@@ -65,12 +66,17 @@ fn input_styling_interns_with_variants() {
   );
 }
 
-/// The tab order and autofocus serialize as attributes.
+/// The focus order and autofocus serialize as attributes; positions count from 0, so
+/// the first position maps to `tabindex="1"`.
 #[test]
 fn focus_attributes_serialize() {
-  let rendered = render_to_string(|| TextField::new().set_tab_index(3).set_autofocus());
+  let rendered = render_to_string(|| {
+    TextField::new()
+      .set_focus_order(FocusOrder::Position(0))
+      .set_autofocus()
+  });
 
-  assert!(rendered.body().contains("tabindex=\"3\""));
+  assert!(rendered.body().contains("tabindex=\"1\""));
   assert!(rendered.body().contains("autofocus"));
 }
 

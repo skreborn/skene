@@ -255,12 +255,22 @@ pub fn update_run(node: NodeId, prop: &RunProp) {
   override_style(node, &mapping::run_prop_declarations(prop));
 }
 
-/// Folds a control's shared surface into `node`: the tab order and autofocus
+/// Renders a [`FocusOrder`](skene_core::FocusOrder) to its `tabindex` value.
+#[cfg(target_arch = "wasm32")]
+fn render_focus_order(focus_order: skene_core::FocusOrder) -> String {
+  match focus_order {
+    skene_core::FocusOrder::Auto => "0".into(),
+    skene_core::FocusOrder::Position(position) => (u32::from(position) + 1).to_string(),
+    skene_core::FocusOrder::Skip => "-1".into(),
+  }
+}
+
+/// Folds a control's shared surface into `node`: the focus order and autofocus
 /// attributes, plus the interned class carrying the control's reset and its style.
 #[cfg(target_arch = "wasm32")]
 fn apply_control(node: NodeId, control: &ControlProps, reset: &'static str) {
-  if let Some(tab_index) = control.tab_index {
-    set_attribute(node, "tabindex", &tab_index.to_string());
+  if let Some(focus_order) = control.focus_order {
+    set_attribute(node, "tabindex", &render_focus_order(focus_order));
   }
 
   if control.autofocus {

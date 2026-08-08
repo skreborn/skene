@@ -7,6 +7,7 @@ use skene_gui::{
   Button,
   Checkbox,
   Container,
+  FocusOrder,
   HasChildren,
   Picker,
   Radio,
@@ -23,7 +24,7 @@ use skene_gui::{
 fn button_serializes_as_a_button_element() {
   let rendered = render_to_string(|| {
     Button::new()
-      .set_tab_index(0)
+      .set_focus_order(FocusOrder::Auto)
       .set_child(Text::new("Go"))
       .handle_click(|| {})
   });

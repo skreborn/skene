@@ -83,6 +83,7 @@ pub use values::{
   Dimension,
   FlexDirection,
   Flexibility,
+  FocusOrder,
   GridFlow,
   GridPlacement,
   GridTrack,

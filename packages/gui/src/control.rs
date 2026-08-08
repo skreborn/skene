@@ -15,7 +15,7 @@ pub(crate) struct ControlBase {
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
-  pub(crate) tab_index: Option<i32>,
+  pub(crate) focus_order: Option<skene_core::FocusOrder>,
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
   pub(crate) anchor: Option<crate::Anchor>,
@@ -31,7 +31,7 @@ impl ControlBase {
       variants: Vec::new(),
       transitions: Vec::new(),
       animations: Vec::new(),
-      tab_index: None,
+      focus_order: None,
       autofocus: false,
       focus_handle: None,
       anchor: None,
@@ -50,7 +50,7 @@ impl ControlBase {
         variants: self.variants,
         transitions: self.transitions,
         animations: self.animations,
-        tab_index: self.tab_index,
+        focus_order: self.focus_order,
         autofocus: self.autofocus,
       },
       ControlHandlers {
@@ -99,8 +99,8 @@ impl ControlHandlers {
 }
 
 /// Implements the shared control surface on a control with a `control: ControlBase`
-/// field: styling, conditional variants, transitions, animations, tab order, autofocus,
-/// focus binding, and the focus/blur/key handlers.
+/// field: styling, conditional variants, transitions, animations, focus order,
+/// autofocus, focus binding, and the focus/blur/key handlers.
 macro_rules! control_surface {
   ($control:ident) => {
     impl $control {
@@ -144,12 +144,10 @@ macro_rules! control_surface {
         self
       }
 
-      /// Sets the position in the keyboard tab order: `0` joins it in document order, a
-      /// negative value removes the control from it while keeping it programmatically
-      /// focusable.
+      /// Sets the control's place in sequential focus traversal.
       #[inline(always)]
-      pub fn set_tab_index(mut self, tab_index: i32) -> Self {
-        self.control.tab_index = Some(tab_index);
+      pub fn set_focus_order(mut self, focus_order: skene_core::FocusOrder) -> Self {
+        self.control.focus_order = Some(focus_order);
 
         self
       }

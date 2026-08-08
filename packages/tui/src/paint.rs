@@ -252,6 +252,12 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
   lines
 }
 
+/// The first visible column of an input's value: zero until the caret passes the inner
+/// width, then sliding to keep the caret on the last cell.
+pub(crate) const fn field_window(caret: usize, inner: usize) -> usize {
+  caret.saturating_sub(inner.saturating_sub(1))
+}
+
 /// The longest unbreakable word's width in cells: the narrowest a wrap can go.
 fn longest_word(text: &str) -> usize {
   text
@@ -374,6 +380,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         variants,
         value,
         placeholder,
+        ..
       } => {
         let effective = effective_box_style(style, variants, environment, interaction);
         let mut out = taffy::style::Style::default();
@@ -381,10 +388,9 @@ fn refresh_styles(state: &State, environment: Environment) {
         apply_box_sizing(&mut out, &effective, record.in_stack);
 
         if effective.width.is_none() {
+          // One cell past the value keeps the caret inside the box at the end.
           #[expect(clippy::cast_precision_loss)]
-          let content = value
-            .chars()
-            .count()
+          let content = (value.chars().count() + 1)
             .max(placeholder.as_ref().map_or(0, |text| text.chars().count()))
             .max(8) as f32;
 
@@ -565,6 +571,7 @@ fn paint_node(
         variants,
         value,
         placeholder,
+        caret,
       } => {
         let effective = effective_box_style(style, variants, environment, interaction);
         let (text, dim) = if value.is_empty() {
@@ -574,6 +581,11 @@ fn paint_node(
           (value.clone(), false)
         };
 
+        let inset = usize::from(effective.border.is_some());
+        let inner = width.saturating_sub(2 * inset);
+        let window = field_window(*caret, inner);
+        let text: String = text.chars().skip(window).take(inner).collect();
+
         NodePaint::TextField {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
@@ -582,6 +594,7 @@ fn paint_node(
           shadow: effective.shadow,
           text,
           dim,
+          caret: (focused && inner > 0).then(|| caret - window),
           reverse: focused,
         }
       }
@@ -711,6 +724,7 @@ fn paint_node(
       shadow,
       text,
       dim,
+      caret,
       reverse,
     } => {
       if let Some(shadow) = shadow {
@@ -738,6 +752,16 @@ fn paint_node(
         dim,
         reverse,
       );
+
+      // The block caret: the one cell flipped back out of the focused reverse video.
+      if let Some(column) = caret
+        && let Some(cell) = buffer.cell_mut(
+          x + inset + isize::try_from(column).expect("fits"),
+          y + inset,
+        )
+      {
+        cell.reverse = false;
+      }
     }
     NodePaint::None => {}
   }
@@ -906,6 +930,7 @@ enum NodePaint {
     shadow: Option<Color>,
     text: String,
     dim: bool,
+    caret: Option<usize>,
     reverse: bool,
   },
   None,

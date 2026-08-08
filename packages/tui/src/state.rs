@@ -21,6 +21,7 @@ use skene_core::{
 
 use crate::{
   events::{PointerEvent, ScrollEvent},
+  paint::field_window,
   props::{BoxStyle, Condition, ControlStyle, RunStyle},
   style::{Environment, Interaction, effective_box_style, effective_control_style},
 };
@@ -42,12 +43,14 @@ pub(crate) enum NodeKind {
     variants: Vec<(Condition, RunStyle)>,
     text: String,
   },
-  /// A single-line text input.
+  /// A single-line text input; the caret is a character position in the value,
+  /// `0..=len`.
   TextField {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
     value: String,
     placeholder: Option<String>,
+    caret: usize,
   },
   /// A toggleable checkbox, rendered as its checked or unchecked mark.
   Checkbox {
@@ -541,7 +544,8 @@ impl State {
   }
 
   /// Sets the focused node, firing blur and focus handlers on change; the newly focused
-  /// node is scrolled into view at the next render.
+  /// node is scrolled into view at the next render, and a newly focused input's caret
+  /// moves to the value's end (a click re-places it afterwards).
   pub(crate) fn set_focused(&self, next: Option<NodeId>) {
     let previous = self.focused.replace(next);
 
@@ -554,6 +558,12 @@ impl State {
     }
 
     if let Some(next) = next {
+      self.with_node(next, |record| {
+        if let NodeKind::TextField { value, caret, .. } = &mut record.kind {
+          *caret = value.chars().count();
+        }
+      });
+
       Self::run_handlers(&self.focus, next, (), |run, ()| run());
 
       self.reveal.set(Some(next));
@@ -752,13 +762,14 @@ impl State {
 
   /// Activates a control the way `Enter`, `Space`, or a click does: toggles a
   /// checkbox, checks a radio, cycles a select, and—given a click's local column—jumps
-  /// a slider's thumb there.
+  /// a slider's thumb or places an input's caret there.
   pub(crate) fn activate_control(&self, node: NodeId, local_column: Option<i64>) {
     enum Activation {
       Toggle,
       Check,
       Cycle,
       Slide,
+      Place,
     }
 
     let activation = {
@@ -769,6 +780,7 @@ impl State {
         Some(NodeKind::Radio { .. }) => Activation::Check,
         Some(NodeKind::Picker { .. }) => Activation::Cycle,
         Some(NodeKind::Slider { .. }) => Activation::Slide,
+        Some(NodeKind::TextField { .. }) => Activation::Place,
         _ => return,
       }
     };
@@ -782,6 +794,61 @@ impl State {
           self.slide_to(node, local_column);
         }
       }
+      Activation::Place => {
+        if let Some(local_column) = local_column {
+          self.place_caret(node, local_column);
+        }
+      }
+    }
+  }
+
+  /// Places an input's caret at a click's local column, mapped through the border
+  /// inset and the value's visible window.
+  fn place_caret(&self, node: NodeId, local_column: i64) {
+    let (columns, rows) = self.last_size.get();
+    let environment = Environment {
+      columns,
+      rows,
+      dark: self.dark.get(),
+    };
+    let interaction = Interaction {
+      focused: self.focused.get() == Some(node),
+      hovered: self.hovered.borrow().contains(&node),
+    };
+
+    let placed = self.with_node(node, |record| {
+      let NodeKind::TextField {
+        style,
+        variants,
+        value,
+        caret,
+        ..
+      } = &mut record.kind
+      else {
+        return false;
+      };
+
+      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      let width = self
+        .taffy
+        .borrow()
+        .layout(record.taffy)
+        .map_or(0, |layout| layout.size.width.round().max(0.0) as usize);
+      let effective = effective_box_style(style, variants, environment, interaction);
+      let inset = usize::from(effective.border.is_some());
+      let inner = width.saturating_sub(2 * inset);
+      let window = field_window(*caret, inner);
+      let column = usize::try_from(local_column)
+        .unwrap_or(0)
+        .saturating_sub(inset);
+
+      *caret = (window + column).min(value.chars().count());
+
+      true
+    });
+
+    if placed {
+      self.dirty.set(true);
     }
   }
 

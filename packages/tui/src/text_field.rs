@@ -99,6 +99,7 @@ impl View for TextField {
           variants,
           value: String::new(),
           placeholder: self.placeholder,
+          caret: 0,
         },
         taffy::style::Style::default(),
       )
@@ -129,8 +130,14 @@ impl View for TextField {
 fn set_value(node: NodeId, value: &str) {
   with_state(|state| {
     state.with_node(node, |record| {
-      if let NodeKind::TextField { value: current, .. } = &mut record.kind {
+      if let NodeKind::TextField {
+        value: current,
+        caret,
+        ..
+      } = &mut record.kind
+      {
         value.clone_into(current);
+        *caret = (*caret).min(current.chars().count());
       }
     });
 

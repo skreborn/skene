@@ -246,6 +246,99 @@ fn input_binds_a_signal_both_ways() {
   assert!(frame.starts_with("hi"));
 }
 
+/// The caret moves with arrows, `Home`, and `End`; edits insert and delete around it.
+#[test]
+fn caret_edits_insert_and_delete() {
+  let value = with_driver(|| {
+    let name = Signal::new(String::new());
+
+    tui::mount(|| TextField::new().bind_value(name).into_any().build());
+
+    tui::trigger_key("Tab");
+
+    for key in ["a", "b", "c"] {
+      tui::trigger_key(key);
+    }
+
+    tui::trigger_key("ArrowLeft");
+    tui::trigger_key("X");
+    assert_eq!(name.get_untracked(), "abXc");
+
+    tui::trigger_key("Home");
+    tui::trigger_key("Delete");
+    assert_eq!(name.get_untracked(), "bXc");
+
+    tui::trigger_key("End");
+    tui::trigger_key("Backspace");
+
+    name.get_untracked()
+  });
+
+  assert_eq!(value, "bX");
+}
+
+/// `Ctrl`-arrows jump the caret over whole words; `Ctrl+Backspace` and `Ctrl+Delete`
+/// remove them.
+#[test]
+fn caret_jumps_and_deletes_by_word() {
+  let value = with_driver(|| {
+    let name = Signal::new(String::from("alpha beta gamma"));
+
+    tui::mount(|| TextField::new().bind_value(name).into_any().build());
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Ctrl+ArrowLeft");
+    tui::trigger_key("Ctrl+Backspace");
+    assert_eq!(name.get_untracked(), "alpha gamma");
+
+    tui::trigger_key("Ctrl+ArrowLeft");
+    tui::trigger_key("Ctrl+ArrowRight");
+    tui::trigger_key("Ctrl+Delete");
+
+    name.get_untracked()
+  });
+
+  assert_eq!(value, "alpha");
+}
+
+/// A long value slides its window to keep the caret visible; a click re-places the
+/// caret at the clicked column.
+#[test]
+fn caret_windows_long_values_and_follows_clicks() {
+  let (tail, head, clicked) = with_driver(|| {
+    let name = Signal::new(String::new());
+
+    tui::mount(|| {
+      TextField::new()
+        .set_style(BoxStyle::new().set_width(5))
+        .bind_value(name)
+        .into_any()
+        .build()
+    });
+
+    tui::trigger_key("Tab");
+
+    for key in ["a", "b", "c", "d", "e", "f", "g", "h"] {
+      tui::trigger_key(key);
+    }
+
+    let tail = tui::render_to_text(10, 1);
+
+    tui::trigger_key("Home");
+
+    let head = tui::render_to_text(10, 1);
+
+    tui::trigger_mouse_click(2, 0);
+    tui::trigger_key("X");
+
+    (tail, head, name.get_untracked())
+  });
+
+  assert_eq!(tail, "efgh\n");
+  assert_eq!(head, "abcde\n");
+  assert_eq!(clicked, "abXcdefgh");
+}
+
 /// A dynamic subtree swaps its content when its dependency changes.
 #[test]
 fn dynamic_swaps_content() {

@@ -441,50 +441,160 @@ fn key_default(state: &State, code: KeyCode, modifiers: KeyModifiers) {
   edit_focused_input(state, code, modifiers);
 }
 
-/// Applies an editing key to the focused input, firing its input handlers.
+/// Applies an editing or caret key to the focused input: characters insert at the
+/// caret, `Backspace`/`Delete` remove around it, arrows and `Home`/`End` move it, and
+/// `Ctrl` makes the arrows jump and the removals delete whole words. Input handlers
+/// fire on every value change.
 fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
+  enum Edit {
+    Value(String),
+    Caret,
+  }
+
   let Some(focused) = state.focused.get()
   else {
     return;
   };
 
-  let edited: Option<String> = state
+  let byte_of = |value: &str, position: usize| {
+    value
+      .char_indices()
+      .nth(position)
+      .map_or(value.len(), |(index, _)| index)
+  };
+
+  let edit: Option<Edit> = state
     .nodes
     .borrow_mut()
     .get_mut(&focused)
     .and_then(|record| {
-      let NodeKind::TextField { value, .. } = &mut record.kind
+      let NodeKind::TextField { value, caret, .. } = &mut record.kind
       else {
         return None;
       };
+
+      let count = value.chars().count();
 
       match code {
         KeyCode::Char(character)
           if !modifiers.contains(KeyModifiers::CONTROL)
             && !modifiers.contains(KeyModifiers::ALT) =>
         {
-          value.push(character);
+          let at = byte_of(value, *caret);
 
-          Some(value.clone())
+          value.insert(at, character);
+          *caret += 1;
+
+          Some(Edit::Value(value.clone()))
         }
-        KeyCode::Backspace => {
-          value.pop();
+        KeyCode::Backspace if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 => {
+          let target = word_before(value, *caret);
 
-          Some(value.clone())
+          value.replace_range(byte_of(value, target)..byte_of(value, *caret), "");
+          *caret = target;
+
+          Some(Edit::Value(value.clone()))
+        }
+        KeyCode::Delete if modifiers.contains(KeyModifiers::CONTROL) && *caret < count => {
+          value.replace_range(
+            byte_of(value, *caret)..byte_of(value, word_after(value, *caret)),
+            "",
+          );
+
+          Some(Edit::Value(value.clone()))
+        }
+        KeyCode::Backspace if *caret > 0 => {
+          *caret -= 1;
+          value.remove(byte_of(value, *caret));
+
+          Some(Edit::Value(value.clone()))
+        }
+        KeyCode::Delete if *caret < count => {
+          value.remove(byte_of(value, *caret));
+
+          Some(Edit::Value(value.clone()))
+        }
+        KeyCode::Left if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 => {
+          *caret = word_before(value, *caret);
+
+          Some(Edit::Caret)
+        }
+        KeyCode::Right if modifiers.contains(KeyModifiers::CONTROL) && *caret < count => {
+          *caret = word_after(value, *caret);
+
+          Some(Edit::Caret)
+        }
+        KeyCode::Left if *caret > 0 => {
+          *caret -= 1;
+
+          Some(Edit::Caret)
+        }
+        KeyCode::Right if *caret < count => {
+          *caret += 1;
+
+          Some(Edit::Caret)
+        }
+        KeyCode::Home if *caret > 0 => {
+          *caret = 0;
+
+          Some(Edit::Caret)
+        }
+        KeyCode::End if *caret < count => {
+          *caret = count;
+
+          Some(Edit::Caret)
         }
         _ => None,
       }
     });
 
-  if let Some(value) = edited {
-    state.dirty.set(true);
+  match edit {
+    Some(Edit::Value(value)) => {
+      state.dirty.set(true);
 
-    for target in state.ancestors(focused) {
-      State::run_handlers(&state.input, target, value.as_str(), |run, value| {
-        run(value);
-      });
+      for target in state.ancestors(focused) {
+        State::run_handlers(&state.input, target, value.as_str(), |run, value| {
+          run(value);
+        });
+      }
     }
+    Some(Edit::Caret) => state.dirty.set(true),
+    None => {}
   }
+}
+
+/// The caret position at the start of the word before `caret`: spaces skipped, then
+/// the word.
+fn word_before(value: &str, caret: usize) -> usize {
+  let characters: Vec<char> = value.chars().collect();
+  let mut position = caret;
+
+  while position > 0 && characters[position - 1] == ' ' {
+    position -= 1;
+  }
+
+  while position > 0 && characters[position - 1] != ' ' {
+    position -= 1;
+  }
+
+  position
+}
+
+/// The caret position at the end of the word after `caret`: spaces skipped, then the
+/// word.
+fn word_after(value: &str, caret: usize) -> usize {
+  let characters: Vec<char> = value.chars().collect();
+  let mut position = caret;
+
+  while position < characters.len() && characters[position] == ' ' {
+    position += 1;
+  }
+
+  while position < characters.len() && characters[position] != ' ' {
+    position += 1;
+  }
+
+  position
 }
 
 /// Applies an arrow key to the focused control: radios move the check through their
@@ -574,13 +684,28 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
 }
 
 /// Simulates one key press by its portable W3C key value (`"a"`, `"Enter"`, `"Tab"`,
-/// `"Backspace"`, …), for a test driving the loop headlessly.
+/// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
+/// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`).
 ///
 /// # Panics
 ///
 /// Panics if `key` is not a supported key value.
 #[cfg(feature = "test")]
 pub fn trigger_key(key: &str) {
+  let mut modifiers = KeyModifiers::NONE;
+  let mut key = key;
+
+  while let Some((modifier, rest)) = key.split_once('+') {
+    match modifier {
+      "Ctrl" => modifiers |= KeyModifiers::CONTROL,
+      "Alt" => modifiers |= KeyModifiers::ALT,
+      "Shift" => modifiers |= KeyModifiers::SHIFT,
+      _ => break,
+    }
+
+    key = rest;
+  }
+
   let code = match key {
     "Enter" => KeyCode::Enter,
     "Backspace" => KeyCode::Backspace,
@@ -591,6 +716,8 @@ pub fn trigger_key(key: &str) {
     "ArrowRight" => KeyCode::Right,
     "ArrowUp" => KeyCode::Up,
     "ArrowDown" => KeyCode::Down,
+    "Home" => KeyCode::Home,
+    "End" => KeyCode::End,
     other => {
       let mut characters = other.chars();
       let character = characters.next().expect("a key value");
@@ -605,7 +732,7 @@ pub fn trigger_key(key: &str) {
   };
 
   with_state(|state| {
-    dispatch_key(state, &event::KeyEvent::new(code, KeyModifiers::NONE));
+    dispatch_key(state, &event::KeyEvent::new(code, modifiers));
   });
 }
 

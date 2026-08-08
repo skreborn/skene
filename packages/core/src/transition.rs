@@ -9,7 +9,7 @@ use crate::{Boundary, NodeId, tree::TreeOps};
 /// Anchors a reactive subtree under a fresh group node, each rebuild replacing the
 /// previous content only once its async work settles.
 ///
-/// Like [`dynamic`](crate::dynamic), `build` reruns whenever its reactive dependencies
+/// Like [`derived`](crate::derived), `build` reruns whenever its reactive dependencies
 /// change; unlike it, each rebuild runs under a fresh [`Boundary`], stays detached while
 /// that boundary is pending, and swaps in when it settles—immediately, when it has no
 /// async work—so the previous content holds the screen instead of a placeholder. A

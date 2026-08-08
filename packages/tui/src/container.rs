@@ -944,7 +944,7 @@ impl View for Container {
 pub(crate) fn update_box(node: NodeId, prop: BoxProp) {
   with_state(|state| {
     state.with_node(node, |record| {
-      if let NodeKind::Box { style, .. } | NodeKind::Input { style, .. } = &mut record.kind {
+      if let NodeKind::Box { style, .. } | NodeKind::TextField { style, .. } = &mut record.kind {
         crate::props::apply_box_prop(style, prop);
       }
     });

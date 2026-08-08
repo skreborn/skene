@@ -100,7 +100,7 @@ impl skene_core::View for Slider {
     });
 
     if let Some(value) = self.value {
-      value.bind(move |value| driver::set_input_value(node, &value.to_string()));
+      value.bind(move |value| driver::set_value(node, &value.to_string()));
     }
 
     if let Some(action) = self.change_handler {

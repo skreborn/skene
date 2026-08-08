@@ -582,7 +582,7 @@ pub fn handle_overlay_dismiss(_node: NodeId, _handler: Rc<dyn Fn()>) {}
 
 /// Sets the value of an input, text area, or select node: the `value` attribute, the
 /// text content, or the matching option's `selected` mark, respectively.
-pub fn set_input_value(node: NodeId, value: &str) {
+pub fn set_value(node: NodeId, value: &str) {
   with_state(|state| {
     let Some(record) = state.nodes.get(&node)
     else {

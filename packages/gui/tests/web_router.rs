@@ -3,7 +3,7 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  DynamicView,
+  DerivedView,
   Text,
   View,
   install_router,
@@ -44,7 +44,7 @@ impl StaticRoutes for Page {
 fn app() -> impl skene_gui::IntoView {
   let router = install_router(Page::Home);
 
-  DynamicView::new(move || match router.route() {
+  DerivedView::new(move || match router.route() {
     Page::Home => Text::new("home page").into_any(),
     Page::About => Text::new("about page").into_any(),
   })
@@ -73,7 +73,7 @@ fn router_flows_through_context() {
   let rendered = render_to_string_at("/about", || {
     let _ = install_router(Page::Home);
 
-    DynamicView::new(|| {
+    DerivedView::new(|| {
       let router = Router::<Page>::get().expect("a provided router");
 
       Text::new(router.route().to_path()).into_any()
@@ -90,7 +90,7 @@ fn static_router_records_its_routes() {
   let _ = render_to_string_at("/", || {
     let router = install_static_router(Page::Home);
 
-    DynamicView::new(move || match router.route() {
+    DerivedView::new(move || match router.route() {
       Page::Home => Text::new("home page").into_any(),
       Page::About => Text::new("about page").into_any(),
     })

@@ -18,7 +18,7 @@ mod transition;
 mod tree;
 mod values;
 mod view;
-mod virtualize;
+mod window;
 
 pub use boundary::Boundary;
 pub use children::{
@@ -53,19 +53,19 @@ pub use props::{
   ButtonProps,
   CheckboxProps,
   ControlProps,
-  InputProps,
   OverlayProps,
+  PickerOption,
+  PickerProps,
   RadioProps,
   RunDisplay,
   RunProp,
   RunProps,
   RunStyle,
-  SelectOption,
-  SelectProps,
   SliderProps,
-  TextareaProps,
+  TextEditorProps,
+  TextFieldProps,
 };
-pub use reconcile::{DynamicView, dynamic, empty, reconcile};
+pub use reconcile::{DerivedView, derived, empty, reconcile};
 pub use reorder::Reorder;
 pub use runtime::{reset_root_owner, root_owner};
 pub use source::Source;
@@ -102,4 +102,4 @@ pub use values::{
   Wrap,
 };
 pub use view::{AnyView, IntoView, View};
-pub use virtualize::{VirtualWindow, virtual_window};
+pub use window::{ItemWindow, item_window};

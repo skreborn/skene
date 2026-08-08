@@ -5,7 +5,7 @@ use std::{error::Error, rc::Rc};
 
 use skene_reactive::{Effect, Owner, Signal, Update, With, provide_context, use_context};
 
-use crate::{IntoView, NodeId, View, reconcile::dynamic, tree::TreeOps};
+use crate::{IntoView, NodeId, View, reconcile::derived, tree::TreeOps};
 
 /// The errors a subtree carried to its nearest [`ErrorBoundary`].
 ///
@@ -128,7 +128,7 @@ impl<Ops: TreeOps> View for ErrorBoundary<Ops> {
     });
 
     let fallback = self.fallback;
-    let anchor = dynamic::<Ops>(move || {
+    let anchor = derived::<Ops>(move || {
       if errors.is_empty() {
         Ops::default().create_group()
       }

@@ -210,7 +210,7 @@ fn input_binds_a_signal_both_ways() {
     let name = Signal::new(String::new());
 
     tui::mount(|| {
-      Input::new()
+      TextField::new()
         .set_placeholder("name")
         .bind_value(name)
         .into_any()
@@ -235,7 +235,7 @@ fn dynamic_swaps_content() {
     let on = Signal::new(false);
 
     tui::mount(|| {
-      DynamicView::new(move || {
+      DerivedView::new(move || {
         if on.get() {
           Text::new("on").into_any()
         }
@@ -342,7 +342,7 @@ fn focus_handle_and_autofocus() {
       tui::mount(move || {
         Column::new()
           .set_children((
-            Input::new().set_autofocus(),
+            TextField::new().set_autofocus(),
             Button::new()
               .set_style(BoxStyle::new().set_height(1))
               .handle_click(|| {})
@@ -711,7 +711,7 @@ fn virtual_list_windows_its_items() {
     tui::mount(|| {
       Container::new()
         .set_child(
-          VirtualList::new(
+          LazyColumn::new(
             1,
             || 1000,
             move |index| {
@@ -760,7 +760,7 @@ fn virtual_list_windows_its_items() {
 }
 
 /// A suspense view shows its fallback until the resource inside settles, then swaps to
-/// the content; refetching does not re-suspend (the swap follows the boundary's tasks).
+/// the content; reloading does not re-suspend (the swap follows the boundary's tasks).
 #[test]
 fn suspense_swaps_fallback_for_loaded_content() {
   let (loading, loaded) = with_driver(|| {
@@ -768,7 +768,7 @@ fn suspense_swaps_fallback_for_loaded_content() {
       Suspense::new(|| {
         let value = Resource::new(|| async { 42u32 });
 
-        DynamicView::new(move || match value.get() {
+        DerivedView::new(move || match value.get() {
           None => Text::new("hold").into_any(),
           Some(value) => Text::new(format!("value {value}")).into_any(),
         })
@@ -802,7 +802,7 @@ fn tasks_end_with_their_scope() {
     let show = Signal::new(true);
 
     tui::mount(|| {
-      DynamicView::new(move || {
+      DerivedView::new(move || {
         if show.get() {
           let landed = Rc::clone(&landed);
 
@@ -872,11 +872,11 @@ fn transition_holds_previous_content_until_settled() {
     let route = Signal::new(1u32);
 
     tui::mount(|| {
-      DynamicView::transitional(move || {
+      DerivedView::transitional(move || {
         let page = route.get();
         let value = Resource::new(move || async move { page * 10 });
 
-        DynamicView::new(move || match value.get() {
+        DerivedView::new(move || match value.get() {
           None => Text::new("hold").into_any(),
           Some(value) => Text::new(format!("page {value}")).into_any(),
         })
@@ -984,7 +984,7 @@ fn select_cycles_its_options() {
     let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
-      Select::new()
+      Picker::new()
         .set_options([("px", "pixels"), ("cell", "cells")])
         .bind_value(unit)
         .into_any()

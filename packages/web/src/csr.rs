@@ -645,7 +645,7 @@ impl State {
   }
 
   /// Sets the live value of an input, text area, or select node.
-  pub fn set_input_value(&self, node: NodeId, value: &str) {
+  pub fn set_value(&self, node: NodeId, value: &str) {
     self.with_element(node, |element| {
       if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
         input.set_value(value);
@@ -1172,8 +1172,8 @@ pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
 }
 
 /// Sets the live value of an input node.
-pub fn set_input_value(node: NodeId, value: &str) {
-  with_state(|state| state.set_input_value(node, value));
+pub fn set_value(node: NodeId, value: &str) {
+  with_state(|state| state.set_value(node, value));
 }
 
 /// Builds `view` under the installed root, returning its node.

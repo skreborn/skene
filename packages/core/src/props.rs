@@ -526,7 +526,7 @@ pub struct ButtonProps {
 /// Everything a driver needs to realize a single-line text input.
 #[derive(Clone)]
 #[must_use]
-pub struct InputProps {
+pub struct TextFieldProps {
   /// The hint shown while the value is empty.
   pub placeholder: Option<String>,
   /// The shared control surface.
@@ -557,7 +557,7 @@ pub struct RadioProps {
 /// One choice of a select control.
 #[derive(Clone)]
 #[must_use]
-pub struct SelectOption {
+pub struct PickerOption {
   /// The value the choice stands for.
   pub value: String,
   /// The text shown for the choice.
@@ -567,9 +567,9 @@ pub struct SelectOption {
 /// Everything a driver needs to realize a select control.
 #[derive(Clone)]
 #[must_use]
-pub struct SelectProps {
+pub struct PickerProps {
   /// The choices, in order.
-  pub options: Vec<SelectOption>,
+  pub options: Vec<PickerOption>,
   /// The shared control surface.
   pub control: ControlProps,
 }
@@ -577,11 +577,11 @@ pub struct SelectProps {
 /// Everything a driver needs to realize a multi-line text area.
 #[derive(Clone)]
 #[must_use]
-pub struct TextareaProps {
+pub struct TextEditorProps {
   /// The hint shown while the value is empty.
   pub placeholder: Option<String>,
-  /// The visible height, in text rows.
-  pub rows: Option<u16>,
+  /// The visible height, in text lines.
+  pub lines: Option<u16>,
   /// The shared control surface.
   pub control: ControlProps,
 }

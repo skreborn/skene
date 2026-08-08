@@ -10,7 +10,7 @@ use skene_gui::{
   Color,
   Container,
   Deferred,
-  DynamicView,
+  DerivedView,
   HasChildren,
   Resource,
   RichText,
@@ -111,7 +111,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
   let page = render_to_string(|| {
     let greeting = Resource::new(|| async { "Ada".to_owned() });
 
-    DynamicView::new(move || {
+    DerivedView::new(move || {
       greeting.with(|value| match value {
         None => Text::new("Loading…").into_any(),
         Some(name) => Container::new()
@@ -145,7 +145,7 @@ fn an_async_load_settles_before_serialization() {
       "Ada".to_owned()
     });
 
-    DynamicView::new(move || {
+    DerivedView::new(move || {
       greeting.with(|value| match value {
         None => Text::new("Loading…").into_any(),
         Some(name) => Container::new()
@@ -330,7 +330,7 @@ fn deferred_content_streams_after_the_shell() {
           "late".to_owned()
         });
 
-        DynamicView::new(move || {
+        DerivedView::new(move || {
           data.with(|value| match value {
             None => Text::new("loading").into_any(),
             Some(text) => Text::new(text.clone()).into_any(),
@@ -401,7 +401,7 @@ fn render_deadline_cuts_off_unsettled_work() {
       1u32
     });
 
-    DynamicView::new(move || match value.get() {
+    DerivedView::new(move || match value.get() {
       None => Text::new("still waiting").into_any(),
       Some(value) => Text::new(format!("done {value}")).into_any(),
     })
@@ -420,7 +420,7 @@ fn tagged_resource_serializes_under_its_tag() {
   let rendered = render_to_string(|| {
     let value = Resource::tagged("answer", || async { 41u32 });
 
-    DynamicView::new(move || match value.get() {
+    DerivedView::new(move || match value.get() {
       None => Text::new("hold").into_any(),
       Some(value) => Text::new(format!("tagged {value}")).into_any(),
     })

@@ -43,7 +43,7 @@ pub(crate) enum NodeKind {
     text: String,
   },
   /// A single-line text input.
-  Input {
+  TextField {
     style: BoxStyle,
     variants: Vec<(Condition, BoxStyle)>,
     value: String,
@@ -65,7 +65,7 @@ pub(crate) enum NodeKind {
     checked: bool,
   },
   /// A fixed-option selector, cycling in place.
-  Select {
+  Picker {
     style: ControlStyle,
     variants: Vec<(Condition, ControlStyle)>,
     options: Vec<(String, String)>,
@@ -103,7 +103,7 @@ impl NodeKind {
       NodeKind::Box {
         style, variants, ..
       }
-      | NodeKind::Input {
+      | NodeKind::TextField {
         style, variants, ..
       }
       | NodeKind::Overlay {
@@ -113,7 +113,7 @@ impl NodeKind {
       | NodeKind::Group
       | NodeKind::Checkbox { .. }
       | NodeKind::Radio { .. }
-      | NodeKind::Select { .. }
+      | NodeKind::Picker { .. }
       | NodeKind::Slider { .. } => None,
     }
   }
@@ -127,7 +127,7 @@ impl NodeKind {
       | NodeKind::Radio {
         style, variants, ..
       }
-      | NodeKind::Select {
+      | NodeKind::Picker {
         style, variants, ..
       }
       | NodeKind::Slider {
@@ -434,7 +434,7 @@ impl State {
 
     while let Some(current) = stack.pop() {
       if let Some(record) = nodes.get(&current) {
-        if matches!(record.kind, NodeKind::Input { .. }) || controls.contains(&current) {
+        if matches!(record.kind, NodeKind::TextField { .. }) || controls.contains(&current) {
           order.push(current);
         }
 
@@ -765,7 +765,7 @@ impl State {
       match nodes.get(&node).map(|record| &record.kind) {
         Some(NodeKind::Checkbox { .. }) => Activation::Toggle,
         Some(NodeKind::Radio { .. }) => Activation::Check,
-        Some(NodeKind::Select { .. }) => Activation::Cycle,
+        Some(NodeKind::Picker { .. }) => Activation::Cycle,
         Some(NodeKind::Slider { .. }) => Activation::Slide,
         _ => return,
       }
@@ -774,7 +774,7 @@ impl State {
     match activation {
       Activation::Toggle => self.toggle_checkbox(node),
       Activation::Check => self.check_radio(node),
-      Activation::Cycle => self.cycle_select(node, 1),
+      Activation::Cycle => self.cycle_picker(node, 1),
       Activation::Slide => {
         if let Some(local_column) = local_column {
           self.slide_to(node, local_column);
@@ -881,9 +881,9 @@ impl State {
   }
 
   /// Cycles a select by `step` options, wrapping, firing its change handlers.
-  pub(crate) fn cycle_select(&self, node: NodeId, step: isize) {
+  pub(crate) fn cycle_picker(&self, node: NodeId, step: isize) {
     let next = self.with_node(node, |record| {
-      let NodeKind::Select { options, value, .. } = &mut record.kind
+      let NodeKind::Picker { options, value, .. } = &mut record.kind
       else {
         return None;
       };

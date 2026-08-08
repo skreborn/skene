@@ -3,7 +3,7 @@
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
 last—not a current priority. **Current focus: TUI text wrapping; the taffy layout
-vocabulary and the recording driver landed.**
+vocabulary, the recording driver, and the platform-native naming pass landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -92,7 +92,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   **delegated**—one listener per event type on the mount root, dispatch walks the
   target's ancestors by a stamped node id—and the non-bubbling pointer enter/leave
   attach per node. Every dispatch runs inside an implicit reactive batch. First control:
-  `Input` (web `<input>`, a void element in SSR output) with
+  `TextField` (web `<input>`, a void element in SSR output) with
   `bind_value`/`derive_value`/`handle_input`/`handle_key_down`, placeholder, and the full
   declarative styling surface (`set_style`, `set_when`, transitions, animations).
 - **Events complete.** Pointer down/up/move (`PointerEvent`: viewport position, button,
@@ -102,7 +102,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   into a shared `Modifiers` struct.
 - **Basic controls—done.** `Button` (the one focus-taking box; a `Container` never
   takes focus—controls do), `Checkbox`, `Radio` (grouped, arrow-key movement),
-  `Select` (fixed options), `Textarea`, `Slider`—each realized as its semantic element
+  `Picker` (fixed options), `TextEditor`, `Slider`—each realized as its semantic element
   (native keyboard and accessibility behavior for free), unstyled by default, sharing
   one builder surface (`ControlBase` + the `control_surface!` macro: styling, variants,
   transitions, animations, tab order, autofocus, focus binding, focus/blur/key
@@ -141,13 +141,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   outright—`u32` cells, `bool` bold, one-cell colored borders, terminal conditions
   (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`, `Hovered`,
   `DarkMode`/`LightMode`)—so nothing a terminal cannot render exists to call. Its
-  `Container`/`Text`/`Input` builders and realization live in-crate; layout is taffy at
+  `Container`/`Text`/`TextField` builders and realization live in-crate; layout is taffy at
   `1.0 = 1 cell`; frames paint via crossterm (truecolor with detected 256/16-color
   fallback, bold, reverse, `Tab`/`Enter` focus, input editing, `Ctrl-C`) or headlessly
   through `render_to_text`, with `trigger_key`/`focused_node` test seams.
 - Alongside it: the umbrella returned to its `skene-gui` name (GUI is not the blessed
   way), its `tui` feature is gone (selection is by facade dependency), and the
-  structural machinery (`Children`/`reconcile`/`dynamic`/`DynamicView`/`empty`) hoisted
+  structural machinery (`Children`/`reconcile`/`derived`/`DerivedView`/`empty`) hoisted
   into core as zero-cost `TreeOps` generics both facades alias. The reactive UI-thread
   designation became resettable under the `test` feature for multi-threaded host
   harnesses.
@@ -163,14 +163,14 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   plain containers—a clickable box stays mouse-clickable but out of the tab order,
   exactly like the web.
 - **Controls—done.** `Checkbox` (`☑`/`☐`), `Radio` (`◉`/`○`, group-exclusive, arrow
-  keys move the check), `Select` (current label plus indicator, `Enter`/arrows cycle
+  keys move the check), `Picker` (current label plus indicator, `Enter`/arrows cycle
   the options), and `Slider` (`──●──` track; arrows nudge by step, a click jumps the
   thumb)—each on the shared `ControlBase` + `control_surface!` builder surface
-  (`Button` and `Input` retrofitted onto it), with the same
+  (`Button` and `TextField` retrofitted onto it), with the same
   `bind_`/`derive_`/`handle_` vocabulary as the GUI facade. Every control glyph is a
   single cell and configurable: `ControlTheme` restyles a subtree through the reactive
   context (nested themes overlay), and each control's own `set_marks`/`set_indicator`/
-  `set_track` wins locally. Textarea still waits on caret positioning.
+  `set_track` wins locally. TextEditor still waits on caret positioning.
 - **Scroll—done.** `set_overflow` on the box vocabulary (taffy computes the scroll
   region); the wheel scrolls the innermost box that can still move, `PageUp`/`PageDown`
   the scrollable nearest the focus; children paint clipped and offset, with proportional
@@ -181,7 +181,7 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   one-cell band down and right, the color mixed by its alpha into both the foreground
   and the background beneath (unset colors mix against the detected light/dark
   default); carried by the boxes that own their container—`Container`, `Button`,
-  `Input`, overlays—because their whole box is the interactive surface. The small
+  `TextField`, overlays—because their whole box is the interactive surface. The small
   controls are glyphs, not boxes: they take a `ControlStyle` (mark color, bold,
   cursor), every box property on one is a compile error, and a wrapping `Container`
   carries sizing, padding, borders, backgrounds, and shadows (the control paints no
@@ -337,7 +337,7 @@ sink are just different sinks for the same paths.)
     carried in values stays the default—this exists only for errors with no render
     site of their own, and panics are never caught. Kept experimentally: if
     per-resource matching keeps covering real apps, delete it.
-  - **Transition semantics—done.** `DynamicView::transitional` (core `transition`):
+  - **Transition semantics—done.** `DerivedView::transitional` (core `transition`):
     each rebuild runs under a fresh boundary and stays detached until it settles, the
     previous content holding the screen; the latest rebuild wins; an unsettled rebuild
     counts toward the enclosing boundary, so a server render and the stream settle
@@ -361,10 +361,10 @@ sink are just different sinks for the same paths.)
     always built a fresh element. The diagnostics are now split—an absent marker
     builds fresh quietly (legitimate for server-detached subtrees), a tag disagreement
     and never-adopted leftovers stay loud—which is the production story.
-- **All basic controls**: checkbox, select, textarea, radio, slider, and friends—
+- **All basic controls**: checkbox, picker, text editor, radio, slider, and friends—
   unstyled by default with full keyboard and ARIA behavior; a styled set may ship as a
   separate optional package.
-- **List virtualization—done (web + TUI).** `VirtualList` on both facades: a scrollable
+- **List virtualization—done (web + TUI).** `LazyColumn` on both facades: a scrollable
   column of fixed-extent, index-keyed items, only the visible slice plus an overscan
   margin built (over `reconcile`), the rest carried by two derived spacers; the window
   math lives once in core (`virtual_window`). The web measures the viewport with a

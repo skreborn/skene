@@ -8,7 +8,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
   Container,
-  DynamicView,
+  DerivedView,
   HasChildren,
   Resource,
   Text,
@@ -108,7 +108,7 @@ async fn a_loading_tree_is_swapped_for_the_loaded_one() {
       "Ada".to_owned()
     });
 
-    DynamicView::new(move || {
+    DerivedView::new(move || {
       user.with(|user| match user {
         None => Text::new("Loading…").into_any(),
         Some(name) => Container::new()
@@ -183,9 +183,9 @@ async fn disposing_the_scope_cancels_the_load() {
   assert!(!finished.get(), "the load stopped rather than completing");
 }
 
-/// `refetch` re-runs the retained loader into the value, so a resource can reload on demand.
+/// `reload` re-runs the retained loader into the value, so a resource can reload on demand.
 #[wasm_bindgen_test]
-async fn refetch_reruns_the_loader() {
+async fn reload_reruns_the_loader() {
   let scope = Owner::new();
   let runs = Rc::new(Cell::new(0));
 
@@ -210,15 +210,15 @@ async fn refetch_reruns_the_loader() {
 
   assert_eq!(resource.get(), Some(0), "the first load ran once");
 
-  resource.refetch();
+  resource.reload();
 
   assert_eq!(
     resource.get(),
     None,
-    "refetch clears the value while it reloads"
+    "reload clears the value while it reloads"
   );
 
   settle().await;
 
-  assert_eq!(resource.get(), Some(1), "refetch re-ran the loader");
+  assert_eq!(resource.get(), Some(1), "reload re-ran the loader");
 }

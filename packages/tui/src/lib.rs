@@ -28,23 +28,23 @@ mod detect;
 mod dev;
 mod events;
 mod focus;
-mod input;
+mod lazy_column;
 mod overlay;
 mod paint;
+mod picker;
 mod props;
 mod radio;
 mod realize;
 mod resource;
 mod routing;
-mod select;
 mod slider;
 mod state;
 mod style;
 mod task;
 mod terminal;
 mod text;
+mod text_field;
 mod theme;
-mod virtual_list;
 
 use std::cell::RefCell;
 
@@ -82,18 +82,18 @@ pub use crate::{
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
-  input::Input,
+  lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
+  picker::Picker,
   props::{BoxStyle, Condition, ControlStyle, RunStyle},
   radio::Radio,
   resource::Resource,
   routing::install_router,
-  select::Select,
   slider::Slider,
   task::spawn,
   text::Text,
+  text_field::TextField,
   theme::ControlTheme,
-  virtual_list::VirtualList,
 };
 
 /// A suspense view over the terminal tree; see [`skene_core::Suspense`].
@@ -105,7 +105,7 @@ pub type ErrorBoundary = skene_core::ErrorBoundary<TuiOps>;
 pub type Inset = skene_core::Inset<u32>;
 
 /// The terminal driver's tree mutations, instantiating the spine's shared structural
-/// machinery. App code sees it only through the [`Children`] and [`DynamicView`]
+/// machinery. App code sees it only through the [`Children`] and [`DerivedView`]
 /// aliases.
 #[derive(Clone, Copy, Default)]
 pub struct TuiOps;
@@ -135,7 +135,7 @@ impl skene_core::TreeOps for TuiOps {
 /// A container's children.
 pub type Children = skene_core::Children<TuiOps>;
 /// A reactive subtree.
-pub type DynamicView = skene_core::DynamicView<TuiOps>;
+pub type DerivedView = skene_core::DerivedView<TuiOps>;
 
 /// Reactively reconciles a parent's children from a keyed collection; see
 /// [`skene_core::reconcile`].
@@ -153,10 +153,10 @@ pub fn reconcile<T, I, K>(
 }
 
 /// Anchors a reactive subtree under a fresh group node, returning that node; see
-/// [`skene_core::dynamic`].
+/// [`skene_core::derived`].
 #[inline(always)]
-pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::dynamic::<TuiOps>(build)
+pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::derived::<TuiOps>(build)
 }
 
 /// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;

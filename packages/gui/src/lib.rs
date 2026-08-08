@@ -18,21 +18,21 @@ mod deferred;
 mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
-mod input;
+mod lazy_column;
 mod overlay;
+mod picker;
 mod radio;
 mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
-mod select;
 mod slider;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
-mod textarea;
-mod virtual_list;
+mod text_editor;
+mod text_field;
 
 pub use skene_core::{self as core, *};
 pub use skene_macros::main;
@@ -73,18 +73,18 @@ pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   focus::FocusHandle,
-  input::Input,
+  lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
+  picker::Picker,
   radio::Radio,
-  select::Select,
   slider::Slider,
   text::{RichText, Span, Text, TextStyle, TextTheme},
-  textarea::Textarea,
-  virtual_list::VirtualList,
+  text_editor::TextEditor,
+  text_field::TextField,
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural
-/// machinery. App code sees it only through the [`Children`] and [`DynamicView`]
+/// machinery. App code sees it only through the [`Children`] and [`DerivedView`]
 /// aliases.
 #[derive(Clone, Copy, Default)]
 pub struct GuiOps;
@@ -118,7 +118,7 @@ pub type Suspense = skene_core::Suspense<GuiOps>;
 /// An error boundary over the active driver's tree; see [`skene_core::ErrorBoundary`].
 pub type ErrorBoundary = skene_core::ErrorBoundary<GuiOps>;
 /// A reactive subtree.
-pub type DynamicView = skene_core::DynamicView<GuiOps>;
+pub type DerivedView = skene_core::DerivedView<GuiOps>;
 
 /// Reactively reconciles a parent's children from a keyed collection; see
 /// [`skene_core::reconcile`].
@@ -136,10 +136,10 @@ pub fn reconcile<T, I, K>(
 }
 
 /// Anchors a reactive subtree under a fresh group node, returning that node; see
-/// [`skene_core::dynamic`].
+/// [`skene_core::derived`].
 #[inline(always)]
-pub fn dynamic(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::dynamic::<GuiOps>(build)
+pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::derived::<GuiOps>(build)
 }
 
 /// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;

@@ -3,14 +3,14 @@
 /// The slice of a virtual list worth rendering: item indices `start..end`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
-pub struct VirtualWindow {
+pub struct ItemWindow {
   /// The first rendered item's index.
   pub start: usize,
   /// One past the last rendered item's index.
   pub end: usize,
 }
 
-impl VirtualWindow {
+impl ItemWindow {
   /// The number of rendered items.
   #[inline(always)]
   #[must_use]
@@ -32,15 +32,15 @@ impl VirtualWindow {
 /// Extents are in the caller's unit (pixels, cells); a non-positive `item_extent`
 /// yields the full list.
 #[inline(always)]
-pub fn virtual_window(
+pub fn item_window(
   offset: f32,
   viewport: f32,
   item_extent: f32,
   count: usize,
   overscan: usize,
-) -> VirtualWindow {
+) -> ItemWindow {
   if item_extent <= 0.0 {
-    return VirtualWindow {
+    return ItemWindow {
       start: 0,
       end: count,
     };
@@ -51,7 +51,7 @@ pub fn virtual_window(
   #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
   let visible = ((offset.max(0.0) + viewport.max(0.0)) / item_extent).ceil() as usize;
 
-  VirtualWindow {
+  ItemWindow {
     start: first.saturating_sub(overscan).min(count),
     end: visible.saturating_add(overscan).min(count),
   }
@@ -63,17 +63,17 @@ mod tests {
 
   #[test]
   fn windows_cover_the_viewport_with_overscan() {
-    let window = virtual_window(100.0, 50.0, 10.0, 100, 2);
+    let window = item_window(100.0, 50.0, 10.0, 100, 2);
 
     assert_eq!(window.start, 8);
     assert_eq!(window.end, 17);
 
-    let top = virtual_window(0.0, 50.0, 10.0, 100, 2);
+    let top = item_window(0.0, 50.0, 10.0, 100, 2);
 
     assert_eq!(top.start, 0);
     assert_eq!(top.end, 7);
 
-    let clamped = virtual_window(990.0, 50.0, 10.0, 100, 2);
+    let clamped = item_window(990.0, 50.0, 10.0, 100, 2);
 
     assert_eq!(clamped.end, 100);
     assert_eq!(clamped.start, 97);
@@ -81,9 +81,9 @@ mod tests {
 
   #[test]
   fn degenerate_inputs_stay_in_bounds() {
-    assert_eq!(virtual_window(0.0, 0.0, 10.0, 5, 1).len(), 1);
-    assert_eq!(virtual_window(0.0, 100.0, 0.0, 5, 1).len(), 5);
-    assert_eq!(virtual_window(1000.0, 100.0, 10.0, 3, 1).start, 3);
-    assert!(virtual_window(0.0, 10.0, 5.0, 0, 3).is_empty());
+    assert_eq!(item_window(0.0, 0.0, 10.0, 5, 1).len(), 1);
+    assert_eq!(item_window(0.0, 100.0, 0.0, 5, 1).len(), 5);
+    assert_eq!(item_window(1000.0, 100.0, 10.0, 3, 1).start, 3);
+    assert!(item_window(0.0, 10.0, 5.0, 0, 3).is_empty());
   }
 }

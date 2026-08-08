@@ -7,20 +7,20 @@ use skene_reactive::{Get, Set, Signal, With};
 
 use crate::{driver, spawn};
 
-/// A resource's loader, boxed so it can be stored and re-run on [`refetch`](Resource::refetch).
+/// A resource's loader, boxed so it can be stored and re-run on [`reload`](Resource::reload).
 type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 
 /// Data loaded by a task, `None` until it lands.
 ///
 /// The load starts on creation and is bound to the current scope, so it ends with the view
 /// that asked for it. Reading tracks, so a view that reads a resource re-runs when the value
-/// arrives—pair it with a [`DynamicView`](crate::DynamicView) to swap a placeholder for the
+/// arrives—pair it with a [`DerivedView`](crate::DerivedView) to swap a placeholder for the
 /// loaded tree:
 ///
 /// ```ignore
 /// let user = Resource::new(|| async { load_user().await });
 ///
-/// DynamicView::new(move || match user.get() {
+/// DerivedView::new(move || match user.get() {
 ///   None => Text::new("Loading…").into_any(),
 ///   Some(user) => profile(user).into_any(),
 /// })
@@ -31,7 +31,7 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 /// serializable. Data only a client can produce (a browser API, an unserializable value) uses
 /// [`client`](Self::client) instead, which skips the server and loads on the client.
 ///
-/// The loader is retained, so [`refetch`](Self::refetch) can re-run it. Failure is the loaded
+/// The loader is retained, so [`reload`](Self::reload) can re-run it. Failure is the loaded
 /// type's business, not the resource's: load a `Result` and match on it.
 #[must_use]
 pub struct Resource<T: 'static> {
@@ -169,7 +169,7 @@ impl<T: 'static> Resource<T> {
   }
 
   /// Re-runs the loader, clearing the value to `None` while it reloads.
-  pub fn refetch(&self) {
+  pub fn reload(&self) {
     self.value.set(None);
 
     self.load();

@@ -12,25 +12,25 @@ use crate::control::{ControlBase, control_surface};
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default; the
-/// visible height is set in text rows with [`set_rows`](Self::set_rows).
+/// visible height is set in text lines with [`set_lines`](Self::set_lines).
 #[must_use]
-pub struct Textarea {
+pub struct TextEditor {
   value: Option<Source<String>>,
   placeholder: Option<String>,
-  rows: Option<u16>,
+  lines: Option<u16>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
   control: ControlBase,
 }
 
-impl Textarea {
+impl TextEditor {
   /// Creates an empty text area.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       value: None,
       placeholder: None,
-      rows: None,
+      lines: None,
       change_handler: None,
       control: ControlBase::new(),
     }
@@ -60,10 +60,10 @@ impl Textarea {
     self
   }
 
-  /// Sets the visible height, in text rows.
+  /// Sets the visible height, in text lines.
   #[inline(always)]
-  pub fn set_rows(mut self, rows: u16) -> Self {
-    self.rows = Some(rows);
+  pub fn set_lines(mut self, lines: u16) -> Self {
+    self.lines = Some(lines);
 
     self
   }
@@ -77,16 +77,16 @@ impl Textarea {
   }
 }
 
-control_surface!(Textarea);
+control_surface!(TextEditor);
 
-impl Default for Textarea {
+impl Default for TextEditor {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Textarea {
+impl TextEditor {
   /// Binds the value to `signal` in both directions: the text area shows the signal and
   /// each edit writes it back.
   #[inline(always)]
@@ -99,21 +99,21 @@ impl Textarea {
   }
 }
 
-impl skene_core::View for Textarea {
+impl skene_core::View for TextEditor {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::TextareaProps;
+    use skene_core::TextEditorProps;
 
     use crate::driver;
 
     let (control, handlers) = self.control.into_parts();
-    let node = driver::create_textarea(&TextareaProps {
+    let node = driver::create_text_editor(&TextEditorProps {
       placeholder: self.placeholder,
-      rows: self.rows,
+      lines: self.lines,
       control,
     });
 
     if let Some(value) = self.value {
-      value.bind(move |value| driver::set_input_value(node, &value));
+      value.bind(move |value| driver::set_value(node, &value));
     }
 
     if let Some(action) = self.change_handler {

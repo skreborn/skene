@@ -3,14 +3,14 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene_gui::{Text, VirtualList, render_to_string};
+use skene_gui::{LazyColumn, Text, render_to_string};
 
 /// A server render carries the scroll box, the overscan slice, and a trailing spacer
 /// covering every unbuilt item.
 #[test]
 fn virtual_list_serializes_the_overscan_slice() {
   let rendered = render_to_string(|| {
-    VirtualList::new(24.0, || 1000, |index| Text::new(format!("row {index}"))).set_overscan(3)
+    LazyColumn::new(24.0, || 1000, |index| Text::new(format!("row {index}"))).set_overscan(3)
   });
 
   let body = rendered.body();

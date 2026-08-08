@@ -13,7 +13,7 @@ use crate::driver;
 /// back/forward navigation flows back into the route. On a server render the route
 /// parses from the requested path and navigation stays in memory.
 ///
-/// Pair the returned router with a [`DynamicView`](crate::DynamicView) that matches on
+/// Pair the returned router with a [`DerivedView`](crate::DerivedView) that matches on
 /// [`route`](Router::route); read it anywhere beneath with [`Router::get`].
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {

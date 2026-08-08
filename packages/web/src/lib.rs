@@ -58,16 +58,16 @@ use skene_core::{
   ButtonProps,
   CheckboxProps,
   ControlProps,
-  InputProps,
   NodeId,
   OverlayProps,
+  PickerProps,
   RadioProps,
   Role,
   RunProp,
   RunProps,
-  SelectProps,
   SliderProps,
-  TextareaProps,
+  TextEditorProps,
+  TextFieldProps,
 };
 
 #[cfg(target_os = "unknown")]
@@ -117,10 +117,10 @@ pub use self::csr::{
   set_attribute,
   set_checked,
   set_document_title,
-  set_input_value,
   set_overlay_open,
   set_style,
   set_text,
+  set_value,
   tree::{attach, create_group, destroy, detach},
 };
 #[cfg(target_os = "wasi")]
@@ -162,12 +162,12 @@ pub use self::ssr::{
   set_attribute,
   set_checked,
   set_document_title,
-  set_input_value,
   set_overlay_open,
   set_render_deadline,
   set_request_path,
   set_style,
   set_text,
+  set_value,
   sleep,
   tree::{attach, create_group, destroy, detach},
 };
@@ -274,7 +274,7 @@ fn apply_control(node: NodeId, control: &ControlProps, reset: &'static str) {
 /// class—or classless when it is unstyled.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
-pub fn create_input(props: &InputProps) -> NodeId {
+pub fn create_text_field(props: &TextFieldProps) -> NodeId {
   let node = create_element("input");
 
   if let Some(placeholder) = &props.placeholder {
@@ -350,10 +350,10 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
 }
 
 /// Realizes a select control with its options; the chosen value is set through
-/// [`set_input_value`] and reported through [`handle_change`].
+/// [`set_value`] and reported through [`handle_change`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
-pub fn create_select(props: &SelectProps) -> NodeId {
+pub fn create_picker(props: &PickerProps) -> NodeId {
   let node = create_element("select");
 
   apply_control(node, &props.control, mapping::SELECT_RESET);
@@ -369,19 +369,19 @@ pub fn create_select(props: &SelectProps) -> NodeId {
   node
 }
 
-/// Realizes a multi-line text area, with its value set through [`set_input_value`] and
+/// Realizes a multi-line text area, with its value set through [`set_value`] and
 /// edits reported through [`handle_change`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
-pub fn create_textarea(props: &TextareaProps) -> NodeId {
+pub fn create_text_editor(props: &TextEditorProps) -> NodeId {
   let node = create_element("textarea");
 
   if let Some(placeholder) = &props.placeholder {
     set_attribute(node, "placeholder", placeholder);
   }
 
-  if let Some(rows) = props.rows {
-    set_attribute(node, "rows", &rows.to_string());
+  if let Some(lines) = props.lines {
+    set_attribute(node, "rows", &lines.to_string());
   }
 
   apply_control(node, &props.control, mapping::CONTROL_RESET);
@@ -390,7 +390,7 @@ pub fn create_textarea(props: &TextareaProps) -> NodeId {
 }
 
 /// Realizes a slider over the given range, with its value set through
-/// [`set_input_value`] and moves reported through [`handle_change`].
+/// [`set_value`] and moves reported through [`handle_change`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_slider(props: &SliderProps) -> NodeId {
@@ -413,6 +413,6 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
 /// interned class.
 #[cfg(target_arch = "wasm32")]
 #[inline(always)]
-pub fn update_input(node: NodeId, prop: &BoxProp) {
+pub fn update_text_field(node: NodeId, prop: &BoxProp) {
   override_style(node, &mapping::box_prop_declarations(prop));
 }

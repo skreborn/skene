@@ -412,7 +412,7 @@ fn key_default(state: &State, code: KeyCode, modifiers: KeyModifiers) {
           .borrow()
           .get(&focused)
           .map(|record| &record.kind),
-        Some(crate::state::NodeKind::Input { .. })
+        Some(crate::state::NodeKind::TextField { .. })
       )
     });
 
@@ -453,7 +453,7 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
     .borrow_mut()
     .get_mut(&focused)
     .and_then(|record| {
-      let NodeKind::Input { value, .. } = &mut record.kind
+      let NodeKind::TextField { value, .. } = &mut record.kind
       else {
         return None;
       };
@@ -492,7 +492,7 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
 fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
   enum Move {
     Radio,
-    Select,
+    Picker,
     Slider,
   }
 
@@ -501,7 +501,7 @@ fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
 
     match nodes.get(&focused).map(|record| &record.kind) {
       Some(NodeKind::Radio { .. }) => Move::Radio,
-      Some(NodeKind::Select { .. }) => Move::Select,
+      Some(NodeKind::Picker { .. }) => Move::Picker,
       Some(NodeKind::Slider { .. }) => Move::Slider,
       _ => return,
     }
@@ -536,7 +536,7 @@ fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
       state.set_focused(Some(next));
       state.check_radio(next);
     }
-    Move::Select => state.cycle_select(focused, if forward { 1 } else { -1 }),
+    Move::Picker => state.cycle_picker(focused, if forward { 1 } else { -1 }),
     Move::Slider => {
       // A slider rises on `Up`/`Right`, unlike a group's next-member order.
       let increase = matches!(code, KeyCode::Right | KeyCode::Up);

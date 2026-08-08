@@ -14,7 +14,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`handle_change`](Self::handle_change) receives each newly selected value—
 /// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
-pub struct Select {
+pub struct Picker {
   base: ControlBase<crate::props::ControlStyle>,
   options: Vec<(String, String)>,
   indicator: Option<char>,
@@ -23,7 +23,7 @@ pub struct Select {
   change_handler: Option<Rc<dyn Fn(&str)>>,
 }
 
-impl Select {
+impl Picker {
   /// Creates a selector with no options.
   #[inline(always)]
   pub fn new() -> Self {
@@ -95,16 +95,16 @@ impl Select {
   }
 }
 
-impl Default for Select {
+impl Default for Picker {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(Select, crate::props::ControlStyle);
+crate::control::control_surface!(Picker, crate::props::ControlStyle);
 
-impl View for Select {
+impl View for Picker {
   fn build(mut self) -> NodeId {
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);
@@ -115,13 +115,13 @@ impl View for Select {
       .unwrap_or_default();
     let node = with_state(|state| {
       state.insert_node(
-        NodeKind::Select {
+        NodeKind::Picker {
           style,
           variants,
           options: self.options,
           indicator: self
             .indicator
-            .unwrap_or_else(|| Glyphs::current().select_indicator),
+            .unwrap_or_else(|| Glyphs::current().picker_indicator),
           value: initial,
         },
         taffy::style::Style::default(),
@@ -132,7 +132,7 @@ impl View for Select {
       value.bind(move |value| {
         with_state(|state| {
           state.with_node(node, |record| {
-            if let NodeKind::Select { value: current, .. } = &mut record.kind {
+            if let NodeKind::Picker { value: current, .. } = &mut record.kind {
               current.clone_from(&value);
             }
           });

@@ -3,7 +3,7 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene_gui::{DynamicView, Resource, Suspense, Text, View, render_to_string};
+use skene_gui::{DerivedView, Resource, Suspense, Text, View, render_to_string};
 
 /// The server drives the resource to its value and serializes the settled content.
 #[test]
@@ -12,7 +12,7 @@ fn suspense_serializes_settled_content() {
     Suspense::new(|| {
       let value = Resource::new(|| async { 7u32 });
 
-      DynamicView::new(move || match value.get() {
+      DerivedView::new(move || match value.get() {
         None => Text::new("hold").into_any(),
         Some(value) => Text::new(format!("ready {value}")).into_any(),
       })
@@ -35,7 +35,7 @@ fn suspense_settles_through_the_stream() {
     Suspense::new(|| {
       let value = Resource::new(|| async { 3u32 });
 
-      DynamicView::new(move || match value.get() {
+      DerivedView::new(move || match value.get() {
         None => Text::new("hold").into_any(),
         Some(value) => Text::new(format!("streamed {value}")).into_any(),
       })
@@ -88,10 +88,10 @@ fn error_boundary_serializes_reported_fallback() {
 #[test]
 fn transition_settles_through_the_stream() {
   let stream = skene_gui::render_to_stream(|| {
-    skene_gui::DynamicView::transitional(|| {
+    skene_gui::DerivedView::transitional(|| {
       let value = Resource::new(|| async { 9u32 });
 
-      DynamicView::new(move || match value.get() {
+      DerivedView::new(move || match value.get() {
         None => Text::new("hold").into_any(),
         Some(value) => Text::new(format!("landed {value}")).into_any(),
       })

@@ -9,10 +9,10 @@ use skene_gui::{
   Column,
   Container,
   HasChildren,
-  Input,
   Overlay,
   Row,
   Text,
+  TextField,
   View,
   core::{Color, Dimension, Prevent, Role},
   prelude::{Get, Set, Signal},
@@ -101,7 +101,7 @@ fn click_trigger_runs_the_handler() {
 #[test]
 fn change_trigger_commits_into_the_binding() {
   let value = Signal::new(String::new());
-  let root = Input::new().bind_value(value).build();
+  let root = TextField::new().bind_value(value).build();
 
   record::trigger_change(root, "typed");
 

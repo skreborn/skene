@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{SelectOption, Source};
+use skene_core::{PickerOption, Source};
 
 use crate::control::{ControlBase, control_surface};
 
@@ -14,15 +14,15 @@ use crate::control::{ControlBase, control_surface};
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
 #[must_use]
-pub struct Select {
-  options: Vec<SelectOption>,
+pub struct Picker {
+  options: Vec<PickerOption>,
   value: Option<Source<String>>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
   control: ControlBase,
 }
 
-impl Select {
+impl Picker {
   /// Creates a select with no options.
   #[inline(always)]
   pub fn new() -> Self {
@@ -42,7 +42,7 @@ impl Select {
   ) -> Self {
     self.options = options
       .into_iter()
-      .map(|(value, label)| SelectOption {
+      .map(|(value, label)| PickerOption {
         value: value.into(),
         label: label.into(),
       })
@@ -76,16 +76,16 @@ impl Select {
   }
 }
 
-control_surface!(Select);
+control_surface!(Picker);
 
-impl Default for Select {
+impl Default for Picker {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Select {
+impl Picker {
   /// Binds the selection to `signal` in both directions: the select shows the signal
   /// and each choice writes it back.
   #[inline(always)]
@@ -98,20 +98,20 @@ impl Select {
   }
 }
 
-impl skene_core::View for Select {
+impl skene_core::View for Picker {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::SelectProps;
+    use skene_core::PickerProps;
 
     use crate::driver;
 
     let (control, handlers) = self.control.into_parts();
-    let node = driver::create_select(&SelectProps {
+    let node = driver::create_picker(&PickerProps {
       options: self.options,
       control,
     });
 
     if let Some(value) = self.value {
-      value.bind(move |value| driver::set_input_value(node, &value));
+      value.bind(move |value| driver::set_value(node, &value));
     }
 
     if let Some(action) = self.change_handler {

@@ -21,21 +21,21 @@ use skene_gui::{
   Column,
   Container,
   Deferred,
-  DynamicView,
+  DerivedView,
   FocusHandle,
   Grid,
   HasChildren,
-  Input,
   Inset,
   PointerButton,
   Role,
   Row,
   Stack,
   Text,
+  TextField,
   TextStyle,
   TextTheme,
   View,
-  dynamic,
+  derived,
   empty,
   head,
   reactive::{Get, Runtime, Set, Signal},
@@ -342,7 +342,7 @@ fn change_handler_receives_the_committed_value() {
     let seen = Rc::clone(&seen);
 
     move || {
-      Input::new()
+      TextField::new()
         .set_value("committed")
         .handle_change(move |value| value.clone_into(&mut seen.borrow_mut()))
         .build()
@@ -435,7 +435,7 @@ fn focus_handle_focuses_the_bound_view() {
   mount({
     let handle = handle.clone();
 
-    move || Input::new().bind_focus(&handle).build()
+    move || TextField::new().bind_focus(&handle).build()
   });
 
   handle.focus();
@@ -695,7 +695,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
   let logged_in = Signal::new(false);
 
   mount(move || {
-    DynamicView::new(move || {
+    DerivedView::new(move || {
       if logged_in.get() {
         Text::new("welcome").into_any()
       }
@@ -706,7 +706,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
     .build()
   });
 
-  // `DynamicView` anchors its subtree under a group node.
+  // `DerivedView` anchors its subtree under a group node.
   let anchor = only_child(&root);
 
   assert_eq!(anchor.first_element_child().unwrap().tag_name(), "BUTTON");
@@ -727,7 +727,7 @@ fn dynamic_swaps_the_real_dom() {
   let flag = Signal::new(true);
 
   mount(move || {
-    dynamic(move || web::create_element(if flag.get() { "section" } else { "article" }))
+    derived(move || web::create_element(if flag.get() { "section" } else { "article" }))
   });
 
   let anchor = only_child(&root);

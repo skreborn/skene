@@ -14,7 +14,7 @@ pub(crate) struct Glyphs {
   /// A radio's checked and unchecked marks.
   pub(crate) radio: (char, char),
   /// The indicator after a select's current label.
-  pub(crate) select_indicator: char,
+  pub(crate) picker_indicator: char,
   /// A slider's track and thumb.
   pub(crate) slider: (char, char),
 }
@@ -24,7 +24,7 @@ impl Default for Glyphs {
     Self {
       checkbox: ('\u{2611}', '\u{2610}'),
       radio: ('\u{25c9}', '\u{25cb}'),
-      select_indicator: '\u{25be}',
+      picker_indicator: '\u{25be}',
       slider: ('\u{2500}', '\u{25cf}'),
     }
   }
@@ -48,7 +48,7 @@ pub struct ControlTheme {
   child: AnyView,
   checkbox: Option<(char, char)>,
   radio: Option<(char, char)>,
-  select_indicator: Option<char>,
+  picker_indicator: Option<char>,
   slider: Option<(char, char)>,
 }
 
@@ -60,7 +60,7 @@ impl ControlTheme {
       child: child.into_view(),
       checkbox: None,
       radio: None,
-      select_indicator: None,
+      picker_indicator: None,
       slider: None,
     }
   }
@@ -83,8 +83,8 @@ impl ControlTheme {
 
   /// Sets the indicator after a select's current label in the subtree.
   #[inline(always)]
-  pub fn set_select_indicator(mut self, indicator: char) -> Self {
-    self.select_indicator = Some(indicator);
+  pub fn set_picker_indicator(mut self, indicator: char) -> Self {
+    self.picker_indicator = Some(indicator);
 
     self
   }
@@ -110,8 +110,8 @@ impl View for ControlTheme {
       inherited.radio = radio;
     }
 
-    if let Some(indicator) = self.select_indicator {
-      inherited.select_indicator = indicator;
+    if let Some(indicator) = self.picker_indicator {
+      inherited.picker_indicator = indicator;
     }
 
     if let Some(slider) = self.slider {

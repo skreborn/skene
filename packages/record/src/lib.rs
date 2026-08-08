@@ -18,10 +18,10 @@ use skene_core::{
   BoxStyle,
   ButtonProps,
   CheckboxProps,
-  InputProps,
   KeyEvent,
   NodeId,
   OverlayProps,
+  PickerProps,
   PointerEvent,
   Prevention,
   RadioProps,
@@ -30,9 +30,9 @@ use skene_core::{
   RunProps,
   RunStyle,
   ScrollEvent,
-  SelectProps,
   SliderProps,
-  TextareaProps,
+  TextEditorProps,
+  TextFieldProps,
 };
 
 thread_local! {
@@ -46,11 +46,11 @@ enum Kind {
   Box(Box<BoxProps>),
   Run(Box<RunProps>),
   Button(Box<ButtonProps>),
-  Input(Box<InputProps>),
+  TextField(Box<TextFieldProps>),
   Checkbox(Box<CheckboxProps>),
   Radio(Box<RadioProps>),
-  Select(Box<SelectProps>),
-  Textarea(Box<TextareaProps>),
+  Picker(Box<PickerProps>),
+  TextEditor(Box<TextEditorProps>),
   Slider(Box<SliderProps>),
   Overlay(Box<OverlayProps>),
 }
@@ -62,11 +62,11 @@ impl Kind {
       Kind::Box(_) => "Box",
       Kind::Run(_) => "Run",
       Kind::Button(_) => "Button",
-      Kind::Input(_) => "Input",
+      Kind::TextField(_) => "TextField",
       Kind::Checkbox(_) => "Checkbox",
       Kind::Radio(_) => "Radio",
-      Kind::Select(_) => "Select",
-      Kind::Textarea(_) => "Textarea",
+      Kind::Picker(_) => "Picker",
+      Kind::TextEditor(_) => "TextEditor",
       Kind::Slider(_) => "Slider",
       Kind::Overlay(_) => "Overlay",
     }
@@ -237,8 +237,8 @@ pub fn create_button(props: &ButtonProps) -> NodeId {
 
 /// Records a single-line text input.
 #[must_use]
-pub fn create_input(props: &InputProps) -> NodeId {
-  with(|recording| recording.insert(Kind::Input(Box::new(props.clone()))))
+pub fn create_text_field(props: &TextFieldProps) -> NodeId {
+  with(|recording| recording.insert(Kind::TextField(Box::new(props.clone()))))
 }
 
 /// Records a checkbox.
@@ -255,14 +255,14 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
 
 /// Records a select control.
 #[must_use]
-pub fn create_select(props: &SelectProps) -> NodeId {
-  with(|recording| recording.insert(Kind::Select(Box::new(props.clone()))))
+pub fn create_picker(props: &PickerProps) -> NodeId {
+  with(|recording| recording.insert(Kind::Picker(Box::new(props.clone()))))
 }
 
 /// Records a multi-line text area.
 #[must_use]
-pub fn create_textarea(props: &TextareaProps) -> NodeId {
-  with(|recording| recording.insert(Kind::Textarea(Box::new(props.clone()))))
+pub fn create_text_editor(props: &TextEditorProps) -> NodeId {
+  with(|recording| recording.insert(Kind::TextEditor(Box::new(props.clone()))))
 }
 
 /// Records a slider.
@@ -283,12 +283,12 @@ pub fn set_overlay_open(node: NodeId, open: bool, _anchor: Option<NodeId>) {
 }
 
 /// Records one changed box property on a control, applied over its static style.
-pub fn update_input(node: NodeId, prop: &BoxProp) {
+pub fn update_text_field(node: NodeId, prop: &BoxProp) {
   update_box(node, prop);
 }
 
 /// Records a control's current value.
-pub fn set_input_value(node: NodeId, value: &str) {
+pub fn set_value(node: NodeId, value: &str) {
   let _ = with_node(node, |node| {
     node.value.clear();
     node.value.push_str(value);
@@ -393,7 +393,7 @@ pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevention {
 
 /// Records a committed value and runs `node`'s change handlers with it.
 pub fn trigger_change(node: NodeId, value: &str) {
-  set_input_value(node, value);
+  set_value(node, value);
 
   let handlers = with_node(node, |node| node.handlers.change.clone()).unwrap_or_default();
 
@@ -494,11 +494,11 @@ pub fn box_style(node: NodeId) -> Option<BoxStyle> {
     let mut style = match &node.kind {
       Kind::Box(props) => props.style.clone(),
       Kind::Button(props) => props.control.style.clone(),
-      Kind::Input(props) => props.control.style.clone(),
+      Kind::TextField(props) => props.control.style.clone(),
       Kind::Checkbox(props) => props.control.style.clone(),
       Kind::Radio(props) => props.control.style.clone(),
-      Kind::Select(props) => props.control.style.clone(),
-      Kind::Textarea(props) => props.control.style.clone(),
+      Kind::Picker(props) => props.control.style.clone(),
+      Kind::TextEditor(props) => props.control.style.clone(),
       Kind::Slider(props) => props.control.style.clone(),
       Kind::Overlay(props) => props.style.clone(),
       Kind::Group | Kind::Run(_) => return None,

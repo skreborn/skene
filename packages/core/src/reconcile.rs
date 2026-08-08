@@ -49,7 +49,7 @@ impl<K> Default for Scratch<K> {
 /// Only `items` is tracked: it alone decides when the list is diffed again. `build` runs
 /// untracked, so an item that reads a signal while building neither re-runs this diff nor
 /// rebuilds itself—express an item's own reactivity with a `derive_` property or a nested
-/// [`DynamicView`], which set up their own effects.
+/// [`DerivedView`], which set up their own effects.
 pub fn reconcile<Ops: TreeOps, T, I, K>(
   parent: NodeId,
   items: impl Fn() -> I + 'static,
@@ -93,7 +93,7 @@ pub fn reconcile<Ops: TreeOps, T, I, K>(
         let scope = parent_scope.child();
         // Untracked: an item's build is one-shot, so a signal it happens to read must not
         // subscribe *this* effect and re-run the whole list diff. Reactivity inside an item
-        // is its own—a `derive_` property or a nested `DynamicView`—and those set up
+        // is its own—a `derive_` property or a nested `DerivedView`—and those set up
         // their own effects, which track normally.
         let node = scope.enter(|| untrack(|| build(item)));
 
@@ -132,7 +132,7 @@ pub fn reconcile<Ops: TreeOps, T, I, K>(
 ///
 /// `build` reruns whenever its reactive dependencies change; the previous subtree is
 /// removed, destroyed, and its scope disposed before the new one is inserted.
-pub fn dynamic<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
+pub fn derived<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let container = Ops::default().create_group();
 
   let parent_scope = Owner::current();
@@ -162,15 +162,15 @@ pub fn dynamic<Ops: TreeOps>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 
 /// A reactive subtree, generic over the facade's [`TreeOps`].
 ///
-/// A facade aliases this with its own ops type, so app code sees a plain `DynamicView`.
+/// A facade aliases this with its own ops type, so app code sees a plain `DerivedView`.
 #[must_use]
-pub struct DynamicView<Ops> {
+pub struct DerivedView<Ops> {
   build: Box<dyn Fn() -> NodeId>,
   transitional: bool,
   ops: std::marker::PhantomData<Ops>,
 }
 
-impl<Ops> DynamicView<Ops> {
+impl<Ops> DerivedView<Ops> {
   /// Creates a reactive subtree.
   #[inline(always)]
   pub fn new<V: View>(build: impl Fn() -> V + 'static) -> Self {
@@ -194,13 +194,13 @@ impl<Ops> DynamicView<Ops> {
   }
 }
 
-impl<Ops: TreeOps> View for DynamicView<Ops> {
+impl<Ops: TreeOps> View for DerivedView<Ops> {
   fn build(self) -> NodeId {
     if self.transitional {
       crate::transition::<Ops>(self.build)
     }
     else {
-      dynamic::<Ops>(self.build)
+      derived::<Ops>(self.build)
     }
   }
 }

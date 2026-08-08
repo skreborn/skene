@@ -2,7 +2,7 @@
 //!
 //! A facade defines a zero-sized ops type calling its driver's functions and instantiates
 //! the shared structural machinery ([`Children`](crate::Children),
-//! [`reconcile`](crate::reconcile), [`dynamic`](crate::dynamic)) with it. The parameter
+//! [`reconcile`](crate::reconcile), [`derived`](crate::derived)) with it. The parameter
 //! monomorphizes, so every call resolves statically into the one compiled driver—there is
 //! no trait object and no runtime dispatch.
 

@@ -57,7 +57,7 @@ Dependency arrows only point down; drivers depend on core (never on each other);
 facade names only its own drivers.
 
 **The structural machinery is shared through `TreeOps`.** `Children`, `reconcile`,
-`dynamic`, `DynamicView` and `empty` live in core, generic over a zero-sized driver-ops
+`derived`, `DerivedView` and `empty` live in core, generic over a zero-sized driver-ops
 parameter each facade implements (`GuiOps`, `TuiOps`) and hides behind plain type
 aliases—so app code sees `Children`, not `Children<Ops>`. The parameter monomorphizes:
 every call statically resolves and inlines into the one compiled driver, at zero runtime
@@ -244,7 +244,7 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 ### TUI (`skene-tui`)
 
 A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
-and `Input` are typed to the terminal: lengths are `u32` cells, text is a color plus a
+and `TextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
 are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,
 `Hovered`). Nothing the medium lacks exists to call—no font size, no transition—so a
@@ -291,7 +291,7 @@ external crate can provide, and ships it as *public seams* so third-party integr
 on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
-- `Resource`—load into a signal, hydrate across the SSR boundary, refetch.
+- `Resource`—load into a signal, hydrate across the SSR boundary, reload.
 - The SSR reactor's `register(pollable, waker)`—public in `skene-web`, so any client
   library that speaks `wasi:*` pollables (an HTTP client on `wasi:http`) blocks the render
   until its load settles, exactly as the built-in `sleep` does.

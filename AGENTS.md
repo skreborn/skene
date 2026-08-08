@@ -17,7 +17,7 @@
 - A GUI **driver** is a separate crate (`skene-web`, later `skene-native`) exporting the
   same typed vocabulary mapped to its own sink; `skene-tui` carries its driver
   internally. Drivers depend on core, never on each other; a facade is the only place
-  that names its drivers. The structural machinery (`Children`, `reconcile`, `dynamic`)
+  that names its drivers. The structural machinery (`Children`, `reconcile`, `derived`)
   lives in core, generic over a zero-sized `TreeOps` parameter each facade aliases
   away—monomorphized, so there is no `dyn` driver, no downcast, and no runtime swap.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
@@ -101,6 +101,14 @@
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.
+- The layout vocabulary rule extends to the whole surface: views, controls, and
+  composition helpers take the platform-native frameworks' names (`TextField`,
+  `TextEditor`, `Picker`, `LazyColumn`, `derived`), never HTML element or React
+  component names. Borrowed naming survives only where it is genuinely the domain's
+  best term: the reactive vocabulary (`Signal`/`Memo`/`Effect`—industry-standard
+  beyond any one framework), `Suspense`/`ErrorBoundary`, `reconcile`, and the
+  web-facing terms of art (`hydrate`, `render_to_string`, the `head` module) in the
+  layers that are web by definition.
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for

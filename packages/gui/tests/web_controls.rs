@@ -8,12 +8,12 @@ use skene_gui::{
   Checkbox,
   Container,
   HasChildren,
+  Picker,
   Radio,
   Role,
-  Select,
   Slider,
   Text,
-  Textarea,
+  TextEditor,
   render_to_string,
 };
 
@@ -73,7 +73,7 @@ fn radio_serializes_group_value_and_state() {
 #[test]
 fn select_serializes_options_and_selection() {
   let rendered = render_to_string(|| {
-    Select::new()
+    Picker::new()
       .set_options([("a", "First"), ("b", "Second")])
       .set_value("b")
   });
@@ -94,9 +94,9 @@ fn select_serializes_options_and_selection() {
 #[test]
 fn textarea_serializes_value_as_content() {
   let rendered = render_to_string(|| {
-    Textarea::new()
+    TextEditor::new()
       .set_placeholder("Notes")
-      .set_rows(4)
+      .set_lines(4)
       .set_value("draft text")
   });
 
@@ -137,7 +137,7 @@ fn controls_carry_their_reset() {
      font:inherit;color:inherit;}}"
   )));
 
-  let rendered = render_to_string(|| Select::new().set_options([("a", "A")]));
+  let rendered = render_to_string(|| Picker::new().set_options([("a", "A")]));
 
   assert!(
     rendered

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{HasChildren, IntoView, Layout, NodeId, Overflow, View, virtual_window};
+use skene_core::{HasChildren, IntoView, Layout, NodeId, Overflow, View, item_window};
 use skene_reactive::{Get, Memo, Set, Signal};
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
 /// Items are keyed by index: scrolling reuses the views whose indices stay in the
 /// window, and an item expresses its own reactivity with `derive_` properties as usual.
 #[must_use]
-pub struct VirtualList {
+pub struct LazyColumn {
   item_height: u32,
   count: Rc<dyn Fn() -> usize>,
   item: Rc<dyn Fn(usize) -> NodeId>,
@@ -28,7 +28,7 @@ pub struct VirtualList {
   overscan: usize,
 }
 
-impl VirtualList {
+impl LazyColumn {
   /// Creates a list of `count()` items, each `item_height` cells tall, built by `item`.
   pub fn new<V: IntoView>(
     item_height: u32,
@@ -75,7 +75,7 @@ impl VirtualList {
   }
 }
 
-impl View for VirtualList {
+impl View for LazyColumn {
   fn build(self) -> NodeId {
     let mut style = self.style;
 
@@ -114,7 +114,7 @@ impl View for VirtualList {
 
       #[expect(clippy::cast_precision_loss)]
       (
-        virtual_window(
+        item_window(
           offset.get() as f32,
           viewport.get() as f32,
           item_height as f32,

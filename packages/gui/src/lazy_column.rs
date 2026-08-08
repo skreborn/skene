@@ -11,7 +11,7 @@ use skene_core::{AnyView, BoxStyle, Condition, IntoView};
 /// window, and an item expresses its own reactivity with `derive_` properties as usual.
 /// A server render measures no viewport, so it serializes only the overscan margin.
 #[must_use]
-pub struct VirtualList {
+pub struct LazyColumn {
   item_height: f32,
   count: Rc<dyn Fn() -> usize>,
   item: Rc<dyn Fn(usize) -> AnyView>,
@@ -20,7 +20,7 @@ pub struct VirtualList {
   overscan: usize,
 }
 
-impl VirtualList {
+impl LazyColumn {
   /// Creates a list of `count()` items, each `item_height` logical pixels tall, built
   /// by `item`.
   pub fn new<V: IntoView>(
@@ -63,17 +63,9 @@ impl VirtualList {
   }
 }
 
-impl skene_core::View for VirtualList {
+impl skene_core::View for LazyColumn {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::{
-      BoxProps,
-      HasChildren,
-      Layout,
-      Overflow,
-      ScrollEvent,
-      TreeOps,
-      virtual_window,
-    };
+    use skene_core::{BoxProps, HasChildren, Layout, Overflow, ScrollEvent, TreeOps, item_window};
     use skene_reactive::{Get, Memo, Set, Signal};
 
     use crate::{Container, GuiOps, driver};
@@ -106,7 +98,7 @@ impl skene_core::View for VirtualList {
       let count = count();
 
       (
-        virtual_window(offset.get(), viewport.get(), item_height, count, overscan),
+        item_window(offset.get(), viewport.get(), item_height, count, overscan),
         count,
       )
     });

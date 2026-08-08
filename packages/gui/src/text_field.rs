@@ -2,9 +2,9 @@
 
 use std::rc::Rc;
 
-use skene_core::{NodeId, Source, View};
+use skene_core::Source;
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::control::{ControlBase, control_surface};
 
 /// A single-line text input.
 ///
@@ -12,26 +12,33 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
-/// set wholesale with [`set_style`](Self::set_style) and conditionally with
-/// [`set_when`](Self::set_when).
+/// set wholesale with `set_style` and conditionally with `set_when`.
+///
+/// ```ignore
+/// let name = Signal::new(String::new());
+///
+/// TextField::new()
+///   .set_placeholder("Name")
+///   .bind_value(name)
+/// ```
 #[must_use]
-pub struct Input {
-  base: ControlBase<crate::props::BoxStyle>,
+pub struct TextField {
   value: Option<Source<String>>,
   placeholder: Option<String>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
+  control: ControlBase,
 }
 
-impl Input {
+impl TextField {
   /// Creates an empty input.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      base: ControlBase::new(),
       value: None,
       placeholder: None,
       change_handler: None,
+      control: ControlBase::new(),
     }
   }
 
@@ -51,17 +58,6 @@ impl Input {
     self
   }
 
-  /// Binds the value to `signal` in both directions: the input shows the signal and each
-  /// edit writes it back.
-  #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
-    use skene_reactive::{Get, Set};
-
-    self
-      .derive_value(move || signal.get())
-      .handle_change(move |value| signal.set(value.to_owned()))
-  }
-
   /// Sets the hint shown while the value is empty.
   #[inline(always)]
   pub fn set_placeholder(mut self, placeholder: impl Into<String>) -> Self {
@@ -79,61 +75,50 @@ impl Input {
   }
 }
 
-impl Default for Input {
+control_surface!(TextField);
+
+impl Default for TextField {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(Input, crate::props::BoxStyle);
+impl TextField {
+  /// Binds the value to `signal` in both directions: the input shows the signal and each
+  /// edit writes it back.
+  #[inline(always)]
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Get, Set};
 
-impl View for Input {
-  fn build(mut self) -> NodeId {
-    let style = self.base.style.clone();
-    let variants = std::mem::take(&mut self.base.variants);
-    let node = with_state(|state| {
-      state.insert_node(
-        NodeKind::Input {
-          style,
-          variants,
-          value: String::new(),
-          placeholder: self.placeholder,
-        },
-        taffy::style::Style::default(),
-      )
-    });
-
-    if let Some(value) = self.value {
-      value.bind(move |value| set_input_value(node, &value));
-    }
-
-    if let Some(action) = self.change_handler {
-      with_state(|state| {
-        state
-          .input
-          .borrow_mut()
-          .entry(node)
-          .or_default()
-          .push(action);
-      });
-    }
-
-    self.base.register(node);
-
-    node
+    self
+      .derive_value(move || signal.get())
+      .handle_change(move |value| signal.set(value.to_owned()))
   }
 }
 
-/// Sets the live value of an input node.
-fn set_input_value(node: NodeId, value: &str) {
-  with_state(|state| {
-    state.with_node(node, |record| {
-      if let NodeKind::Input { value: current, .. } = &mut record.kind {
-        value.clone_into(current);
-      }
+impl skene_core::View for TextField {
+  fn build(self) -> skene_core::NodeId {
+    use skene_core::TextFieldProps;
+
+    use crate::driver;
+
+    let (control, handlers) = self.control.into_parts();
+    let node = driver::create_text_field(&TextFieldProps {
+      placeholder: self.placeholder,
+      control,
     });
 
-    state.dirty.set(true);
-  });
+    if let Some(value) = self.value {
+      value.bind(move |value| driver::set_value(node, &value));
+    }
+
+    if let Some(action) = self.change_handler {
+      driver::handle_change(node, action);
+    }
+
+    handlers.register(node);
+
+    node
+  }
 }

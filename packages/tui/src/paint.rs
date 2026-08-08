@@ -277,7 +277,7 @@ fn refresh_styles(state: &State, environment: Environment) {
 
         taffy.set_style(record.taffy, out).expect("style a run");
       }
-      NodeKind::Input {
+      NodeKind::TextField {
         style,
         variants,
         value,
@@ -316,7 +316,7 @@ fn refresh_styles(state: &State, environment: Environment) {
 
         taffy.set_style(record.taffy, out).expect("style a control");
       }
-      NodeKind::Select { options, .. } => {
+      NodeKind::Picker { options, .. } => {
         let mut out = taffy::style::Style::default();
 
         #[expect(clippy::cast_precision_loss)]
@@ -468,7 +468,7 @@ fn paint_node(
           reverse: false,
         }
       }
-      NodeKind::Input {
+      NodeKind::TextField {
         style,
         variants,
         value,
@@ -482,7 +482,7 @@ fn paint_node(
           (value.clone(), false)
         };
 
-        NodePaint::Input {
+        NodePaint::TextField {
           background: effective.color.and_then(terminal_rgb),
           border: effective.border.map(|border| BorderPaint {
             color: terminal_rgb(border),
@@ -530,7 +530,7 @@ fn paint_node(
           reverse: focused,
         }
       }
-      NodeKind::Select {
+      NodeKind::Picker {
         style,
         variants,
         options,
@@ -600,7 +600,7 @@ fn paint_node(
       dim,
       reverse,
     } => draw_text(buffer, x, y, &text, foreground, bold, dim, reverse),
-    NodePaint::Input {
+    NodePaint::TextField {
       background,
       border,
       shadow,
@@ -795,7 +795,7 @@ enum NodePaint {
     dim: bool,
     reverse: bool,
   },
-  Input {
+  TextField {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
     shadow: Option<Color>,

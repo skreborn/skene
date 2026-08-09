@@ -148,6 +148,10 @@
   medium-typed surface. Never share via feature-gated variants or fields: cargo features are
   additive and unify across the build graph, so mutually-exclusive cfgs break any build
   containing both facades.
+- Examples are targeted: one per feature, under `examples/gui/<name>` and
+  `examples/tui/<name>` (folder names without facade suffixes), never crammed into an
+  existing example. Every common user-facing capability gets one; the `gallery`
+  example shows off every built-in view and control with minimal but pretty styling.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

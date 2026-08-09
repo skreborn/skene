@@ -8,7 +8,7 @@
 
 #![cfg(target_arch = "wasm32")]
 
-use skene_gui::{AnyView, DerivedView, Lazy, prelude::*};
+use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
@@ -22,8 +22,6 @@ fn app() -> impl IntoView {
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {
-  let open = Signal::new(false);
-
   Column::new()
     .set_item_alignment(ItemAlignment::Center)
     .set_spacing(24.)
@@ -48,34 +46,8 @@ fn card(count: Signal<u64>) -> impl IntoView {
         button("+", move || {
           count.update(|value| *value = value.saturating_add(1));
         }),
-        button("?", move || {
-          open.update(|value| *value = !*value);
-        }),
       )),
-      DerivedView::new(move || {
-        if open.get() {
-          Suspense::new(|| Lazy::new(about))
-            .set_fallback(|| note("loading…"))
-            .into_any()
-        }
-        else {
-          Text::new("").into_any()
-        }
-      }),
     ))
-}
-
-/// The about panel: its body—and everything only it uses—loads as its own wasm
-/// module, fetched on the first open.
-#[lazy]
-async fn about() -> AnyView {
-  note("Adds or removes one per click; this note arrived lazily.").into_any()
-}
-
-fn note(text: &'static str) -> Text {
-  Text::new(text)
-    .set_font_size(13.)
-    .set_color(Color::srgb(0.55, 0.57, 0.63))
 }
 
 fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {

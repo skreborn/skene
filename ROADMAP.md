@@ -233,6 +233,15 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   characters—edges and corners—with the named sets `LIGHT` (the default), `ROUNDED`
   (`╭╮╰╯`—the terminal's border radius), `DOUBLE`, `HEAVY`, and `ASCII`; a custom set
   is the struct built directly.
+- **Interaction polish—done.** Control marks are width-safe strings (`[x]`/`( )`
+  defaults—box-symbol glyphs render two cells wide in some emulators—themable back
+  via `ControlTheme`), and a checkbox or radio takes a `set_label` rendered as part of
+  the control, so clicking the label toggles. The picker opens a real options popup on
+  activation (anchored beneath, the current option marked, a row click selects,
+  `Escape` dismisses; arrows still cycle directly). Sliders drag: a press grabs,
+  motion slides until release. Scrollbars respond to the mouse—a track press jumps the
+  thumb, a thumb press grabs it, dragging follows—and thumbs paint at half-cell
+  resolution (`▀▄▌▐`), so short tracks move smoothly instead of a full cell at a time.
 
 ## Backlog—unphased features
 

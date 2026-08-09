@@ -49,6 +49,13 @@
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.
+- **Progressive enhancement is doctrine.** Everything that can work without JavaScript
+  must: server-rendered and statically-generated pages deliver their full content as
+  markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
+  real links, and the client bundle layers interactivity on top by hydrating in
+  place—content is never gated on JS. Prefer the latest CSS standards and pay nothing
+  for obscure or ancient engines; when a slightly older engine can be supported
+  without giving anything up in new ones, support it.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}`, forward probe on collision), reference-counted, deterministic and
   identical across csr and ssr—hydration and stylesheet parity depend on it. The pure core

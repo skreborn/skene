@@ -565,6 +565,16 @@ pub fn handle_scroll(_node: NodeId, _handler: Rc<dyn Fn(&ScrollEvent)>) {}
 /// Inert on the server; sizes are measured by the client after hydration.
 pub fn observe_size(_node: NodeId, _handler: Rc<dyn Fn(f32, f32)>) {}
 
+/// Inert on the server; a lazy view's content renders in place, claimed only by the
+/// hydrating client.
+pub fn claim_lazy(_node: NodeId) -> bool {
+  false
+}
+
+/// Inert on the server; a lazy view's content renders in place, discarded only by the
+/// hydrating client.
+pub fn discard_lazy(_node: NodeId) {}
+
 /// Inert on the server; focus is the client's after hydration.
 pub fn focus_node(_node: NodeId) {}
 

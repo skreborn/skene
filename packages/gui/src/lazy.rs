@@ -13,6 +13,10 @@ use crate::driver as tree;
 /// counts as pending toward the enclosing boundary, so a wrapping
 /// [`Suspense`](crate::Suspense) shows its fallback, a [`Deferred`](crate::Deferred)
 /// streams around it, and a server render settles through it to the content.
+///
+/// On a hydrated page whose server render included the content, the server markup is
+/// claimed instead: it stays visible, already satisfying the enclosing boundary, until
+/// the module arrives and the real content replaces it in place.
 #[must_use]
 pub struct Lazy {
   load: Box<dyn FnOnce(NodeId)>,
@@ -28,11 +32,30 @@ impl Lazy {
   {
     Self {
       load: Box::new(move |node| {
-        crate::spawn(async move {
+        let claimed = tree::claim_lazy(node);
+        let work = async move {
           let content = load().await.into_view().build();
 
+          if claimed {
+            tree::discard_lazy(node);
+          }
+
           tree::attach(node, content, None);
-        });
+        };
+
+        if claimed {
+          // The claimed markup already satisfies the enclosing boundary; the swap
+          // reports to a private one nothing watches.
+          let scope = skene_reactive::Owner::current().child();
+
+          scope.enter(|| {
+            skene_reactive::provide_context(skene_core::Boundary::new());
+            crate::spawn(work);
+          });
+        }
+        else {
+          crate::spawn(work);
+        }
       }),
     }
   }

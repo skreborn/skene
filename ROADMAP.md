@@ -437,7 +437,19 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   carrying `#[lazy]` without the opt-in fails with the fix named. Verified end to end
   on the counter example, debug and release: boot without the module, one fetch on
   first open, none on reopen.
-- **Remaining here:** richer `skene.toml` settings as they earn their place.
+- **Progressively enhanced static output—done.** `build web --static` ships the client
+  bundle beside the pages (split modules included) and every page boots it: the markup
+  stands on its own—content works with JavaScript disabled—and a capable client
+  hydrates it into the running app. `launch` recognizes a server-rendered page by its
+  embedded state script and adopts it in place, so the one `#[main]` entry covers CSR
+  and hydration alike. A `Lazy` view hydrating over server-rendered content claims it:
+  the markup stays visible, already satisfying the enclosing boundary, until the module
+  arrives and the real content replaces it. Verified on the static counter build:
+  content in the HTML, hydration adopts without rebuilds, the lazy module fetches after
+  boot and swaps invisibly.
+- **Remaining here:** richer `skene.toml` settings as they earn their place; on a
+  hydrated page with several lazy views racing, order-keyed resource adoption inside
+  them can cross—tags already cover it, ordering the arrivals would too.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
 - `skene.toml` is read here: the manifest-declared assets (see the backlog) are served

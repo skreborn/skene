@@ -760,6 +760,46 @@ impl State {
     *self.hydration.borrow_mut() = Some(map);
   }
 
+  /// Claims a lazy group's server-rendered subtree while hydrating: the markup stays
+  /// in place, visible until the real content arrives, and its markers leave the
+  /// adoption map so nothing else adopts into it. Whether there was server content to
+  /// keep.
+  fn claim_lazy(&self, node: NodeId) -> bool {
+    let mut hydration = self.hydration.borrow_mut();
+    let Some(markers) = hydration.as_mut()
+    else {
+      return false;
+    };
+
+    let element = self.element(node);
+    let descendants = element
+      .query_selector_all("[data-h]")
+      .expect("query the claimed markers");
+
+    for index in 0..descendants.length() {
+      if let Some(id) = descendants
+        .item(index)
+        .and_then(|descendant| descendant.dyn_into::<Element>().ok())
+        .and_then(|descendant| descendant.get_attribute("data-h"))
+        .and_then(|value| value.parse::<u64>().ok())
+      {
+        markers.remove(&id);
+      }
+    }
+
+    element.first_child().is_some()
+  }
+
+  /// Removes a claimed lazy group's server-rendered children, as the real content
+  /// arrives to take their place.
+  fn discard_lazy(&self, node: NodeId) {
+    let element = self.element(node);
+
+    while let Some(child) = element.first_child() {
+      let _ = element.remove_child(&child);
+    }
+  }
+
   /// Ends hydration: later builds create fresh nodes and attach them to the DOM. Server
   /// elements the client never built are a loud mismatch—they linger in the document
   /// unmanaged.
@@ -999,6 +1039,19 @@ pub fn create_element(tag: &str) -> NodeId {
 #[must_use]
 pub fn element(node: NodeId) -> Element {
   with_state(|state| state.element(node))
+}
+
+/// Claims a lazy view's server-rendered subtree while hydrating: the markup stays in
+/// place, visible until the real content arrives, and its markers leave the adoption
+/// map. `false` when not hydrating, or when the server rendered nothing there.
+pub fn claim_lazy(node: NodeId) -> bool {
+  with_state(|state| state.claim_lazy(node))
+}
+
+/// Removes a claimed lazy view's server-rendered children, as the real content
+/// arrives to take their place.
+pub fn discard_lazy(node: NodeId) {
+  with_state(|state| state.discard_lazy(node));
 }
 
 /// Sets `node`'s `name` attribute to `value`.
@@ -1264,6 +1317,10 @@ where
 /// Installs the web platform rooted at `<body>` and builds `app` under it. The reactive
 /// runtime, event listeners and view tree are kept alive for the lifetime of the page.
 ///
+/// A server-rendered page—recognized by its embedded state script—is adopted in place
+/// instead of rebuilt, as [`hydrate_page`] does: a statically generated page carries
+/// its content as plain markup and this entry enhances it.
+///
 /// # Panics
 ///
 /// Panics if there is no `window`, `document` or `<body>` (i.e. not running in a browser).
@@ -1272,16 +1329,22 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
+  let document = web_sys::window()
+    .expect("a window")
+    .document()
+    .expect("a document");
+
+  if document.get_element_by_id(crate::STATE_SCRIPT_ID).is_some() {
+    hydrate_page(app);
+
+    return;
+  }
+
   console_error_panic_hook::set_once();
 
   let _ = tracing::subscriber::set_global_default(logging::ConsoleSubscriber);
 
-  let body = web_sys::window()
-    .expect("a window")
-    .document()
-    .expect("a document")
-    .body()
-    .expect("a body");
+  let body = document.body().expect("a body");
 
   install(body.into());
   mount(|| app().into_view().build());

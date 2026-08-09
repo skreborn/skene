@@ -15,11 +15,13 @@ use std::{
 use skene_gui::{
   Container,
   HasChildren,
+  Lazy,
   Resource,
   Text,
-  wasm_bindgen::JsCast,
+  wasm_bindgen::{JsCast, JsValue},
   web::{self, hydrate},
 };
+use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement};
 
@@ -155,6 +157,52 @@ fn a_resource_adopts_server_state_without_loading() {
       "the adopted value is the server's, not the loader's",
     );
   });
+
+  web::uninstall();
+}
+
+/// Yields to the event loop, letting spawned work make progress.
+async fn tick() {
+  JsFuture::from(js_sys::Promise::resolve(&JsValue::UNDEFINED))
+    .await
+    .expect("a resolved promise");
+}
+
+#[wasm_bindgen_test]
+async fn a_lazy_view_keeps_server_content_until_it_loads() {
+  // Client build order: container 1, lazy group 2. The server numbered the lazy
+  // content later (9)—after its own synchronous build—so the claim, not the order,
+  // must account for it.
+  let root =
+    server_root("<div data-h=\"1\"><div data-h=\"2\"><span data-h=\"9\">note</span></div></div>");
+  let server_span = root.query_selector("span").expect("query").expect("a span");
+
+  hydrate(root.clone(), "", || {
+    Container::new().set_child(Lazy::new(|| async { Text::new("note") }))
+  });
+
+  // Claimed: the server content still stands, visible, while the module is pending.
+  assert_eq!(element_count(&root), 3, "the server content was kept");
+  assert_eq!(root.text_content().expect("text"), "note");
+
+  for _ in 0..4 {
+    tick().await;
+  }
+
+  // Swapped: the arrived content replaced the server span, nothing duplicated.
+  assert_eq!(
+    element_count(&root),
+    3,
+    "the arrived content replaced the claim"
+  );
+  assert_eq!(root.text_content().expect("text"), "note");
+
+  let hydrated_span = root.query_selector("span").expect("query").expect("a span");
+
+  assert!(
+    server_span != hydrated_span,
+    "the arrived content is freshly built, not the claim",
+  );
 
   web::uninstall();
 }

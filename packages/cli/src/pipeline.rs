@@ -226,11 +226,20 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
 /// Statically generates through the embedded runner into `<app>/dist/web`, replacing
 /// the folder wholesale, assets alongside: the given routes, or—given none—every
 /// route the app enumerates.
+///
+/// Each page carries its full content as markup and works without JavaScript; the
+/// client bundle lands beside the pages and every page boots it, so a capable client
+/// hydrates the markup into the running app. Paths are root-absolute: the output
+/// expects `dist/web` served as the site root.
 pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
   let out = &app.dir.join("dist/web");
   let artifact = build_server(app, release)?;
 
+  build_wasm(app, release)?;
   clear_web_out(app);
+  generate_bindings(app, release)?;
+  crate::split::split_web(app, release)?;
+
   let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
   // No explicit routes: render every route the app enumerates (see
   // `install_static_router`), or the root alone.
@@ -258,11 +267,28 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
 
     let file = directory.join("index.html");
 
-    fs::write(&file, page).map_err(|error| error.to_string())?;
+    fs::write(&file, inject_client(&page, &app.stem)).map_err(|error| error.to_string())?;
     println!("rendered {route} -> {}", file.display());
   }
 
   app.copy_assets(out)
+}
+
+/// Adds the client bundle's boot script to a rendered page: the content stands on its
+/// own as markup, and the script hydrates it into the running app when it runs.
+fn inject_client(page: &str, stem: &str) -> String {
+  let script = format!("<script type=\"module\">import init from \"/{stem}.js\"; init();</script>");
+
+  match page.rfind("</body>") {
+    Some(position) => {
+      let mut out = page.to_owned();
+
+      out.insert_str(position, &script);
+
+      out
+    }
+    None => format!("{page}{script}"),
+  }
 }
 
 fn run(command: &mut Command, label: &str) -> Result<(), String> {

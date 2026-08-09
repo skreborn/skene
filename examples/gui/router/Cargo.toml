@@ -1,0 +1,18 @@
+[package]
+name = "router"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "router-server"
+path = "src/main.rs"
+
+[dependencies]
+skene-gui = { features = ["snapshot"], workspace = true }
+
+[lints]
+workspace = true

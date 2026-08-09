@@ -1,10 +1,7 @@
 # The skene framework manifest; every setting is optional.
 
 [app]
-server-bin = "counter-server"
+server-bin = "router-server"
 
 [web]
 split = true
-
-[assets]
-paths = ["assets"]

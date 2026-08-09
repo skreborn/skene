@@ -49,11 +49,13 @@ impl Drop for TerminalGuard {
 }
 
 /// Returns the terminal to its ordinary state: cooked mode, the main screen, mouse
-/// capture off, the cursor shown. Safe to run more than once, on any thread.
+/// capture off, the keyboard back to legacy encoding, the cursor shown. Safe to run
+/// more than once, on any thread.
 fn restore_terminal() {
   let mut out = std::io::stdout();
   let _ = execute!(
     out,
+    event::PopKeyboardEnhancementFlags,
     DisableMouseCapture,
     cursor::Show,
     terminal::LeaveAlternateScreen
@@ -107,6 +109,18 @@ where
   )
   .expect("enter the alternate screen");
 
+  // A terminal speaking the kitty keyboard protocol disambiguates modified keys—
+  // `Ctrl+Backspace` above all; the rest keep the legacy encoding, where `Ctrl+W`
+  // stands in for it.
+  if terminal::supports_keyboard_enhancement().unwrap_or(false) {
+    let _ = execute!(
+      std::io::stdout(),
+      event::PushKeyboardEnhancementFlags(
+        event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES,
+      ),
+    );
+  }
+
   let mut last_frame: Option<paint::Buffer> = None;
 
   loop {
@@ -155,7 +169,13 @@ where
           #[cfg(feature = "snapshot")]
           crate::dev::mark_changed();
         }
-        Ok(Event::Resize(..)) => with_state(|state| state.dirty.set(true)),
+        Ok(Event::Resize(..)) => {
+          // A full rewrite: the previous frame no longer matches what the terminal
+          // shows (a resize reflows it, outside prints may have overwritten it).
+          last_frame = None;
+
+          with_state(|state| state.dirty.set(true));
+        }
         _ => {}
       }
     }
@@ -487,7 +507,11 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
 
           Some(Edit::Value(value.clone()))
         }
-        KeyCode::Backspace if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 => {
+        // `Ctrl+W` matches `Ctrl+Backspace`: legacy keyboard encodings cannot express
+        // the latter, and the readline binding is muscle memory anyway.
+        KeyCode::Backspace | KeyCode::Char('w')
+          if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 =>
+        {
           let target = word_before(value, *caret);
 
           value.replace_range(byte_of(value, target)..byte_of(value, *caret), "");

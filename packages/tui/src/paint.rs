@@ -958,7 +958,8 @@ enum NodePaint {
   None,
 }
 
-/// Fills a rectangle's background and focus attribute.
+/// Fills a rectangle: a background paints opaquely, clearing whatever was beneath;
+/// the focus attribute applies either way.
 fn fill(
   buffer: &mut Buffer,
   x: isize,
@@ -979,6 +980,9 @@ fn fill(
         y + isize::try_from(row).expect("fits"),
       ) {
         if background.is_some() {
+          cell.character = ' ';
+          cell.foreground = None;
+          cell.bold = false;
           cell.background = background;
         }
 

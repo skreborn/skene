@@ -61,6 +61,32 @@ fn row_flows_runs_with_spacing() {
   assert_eq!(rendered, "ab  cd\n\n");
 }
 
+/// A background fill is opaque: whatever painted beneath it clears, rather than
+/// showing through as recolored characters.
+#[test]
+fn background_fills_cover_content_beneath() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Stack::new()
+        .set_width(6)
+        .set_height(1)
+        .set_children((
+          Text::new("under"),
+          Container::new()
+            .set_width(6)
+            .set_height(1)
+            .set_color(Color::srgb(0.5, 0.5, 0.5)),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(6, 1)
+  });
+
+  assert_eq!(rendered, "\n", "the fill covered the text beneath");
+}
+
 /// A pinned bare text run honors its edges inside a stack; the annotation lands on
 /// the run's record, box style or not.
 #[test]
@@ -370,11 +396,16 @@ fn caret_jumps_and_deletes_by_word() {
     tui::trigger_key("Ctrl+ArrowLeft");
     tui::trigger_key("Ctrl+ArrowRight");
     tui::trigger_key("Ctrl+Delete");
+    assert_eq!(name.get_untracked(), "alpha");
+
+    // `Ctrl+W` deletes the word too, for terminals whose keyboard encoding cannot
+    // express `Ctrl+Backspace`.
+    tui::trigger_key("Ctrl+w");
 
     name.get_untracked()
   });
 
-  assert_eq!(value, "alpha");
+  assert_eq!(value, "");
 }
 
 /// A long value slides its window to keep the caret visible; a click re-places the

@@ -88,8 +88,8 @@ fn toggles() -> impl IntoView {
   section(
     "Checkbox & Radio",
     Column::new().set_spacing(1).set_children((
-      Row::new().set_spacing(1).set_children((
-        Checkbox::new().bind_checked(agreed),
+      Row::new().set_spacing(2).set_children((
+        Checkbox::new().bind_checked(agreed).set_label("subscribed"),
         Text::derive(move || {
           if agreed.get() {
             "checked".to_owned()
@@ -110,10 +110,9 @@ fn toggles() -> impl IntoView {
 }
 
 fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  Row::new().set_spacing(1).set_children((
-    Radio::new("flavor", value).bind_value(flavor),
-    Text::new(value).set_color(faint()),
-  ))
+  Radio::new("flavor", value)
+    .bind_value(flavor)
+    .set_label(value)
 }
 
 fn inputs() -> impl IntoView {

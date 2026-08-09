@@ -19,7 +19,8 @@ pub struct Radio {
   group: String,
   value: String,
   checked: Option<Source<bool>>,
-  marks: Option<(char, char)>,
+  marks: Option<(String, String)>,
+  label: Option<String>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
@@ -33,6 +34,7 @@ impl Radio {
       value: value.into(),
       checked: None,
       marks: None,
+      label: None,
       toggle_handler: None,
     }
   }
@@ -56,8 +58,16 @@ impl Radio {
   /// Sets the checked and unchecked marks, overriding any
   /// [`ControlTheme`](crate::ControlTheme).
   #[inline(always)]
-  pub fn set_marks(mut self, checked: char, unchecked: char) -> Self {
-    self.marks = Some((checked, unchecked));
+  pub fn set_marks(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
+    self.marks = Some((checked.into(), unchecked.into()));
+
+    self
+  }
+
+  /// Sets the label after the mark; clicking it checks too.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
 
     self
   }
@@ -102,6 +112,7 @@ impl View for Radio {
           variants,
           group: self.group,
           marks: self.marks.unwrap_or_else(|| Glyphs::current().radio),
+          label: self.label,
           checked: false,
         },
         taffy::style::Style::default(),

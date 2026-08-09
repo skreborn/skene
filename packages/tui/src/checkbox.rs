@@ -6,7 +6,8 @@ use skene_core::{NodeId, Source, View};
 
 use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 
-/// A checkbox, rendered as a single mark (`☑`/`☐` by default).
+/// A checkbox: its mark (`[x]`/`[ ]` by default), then the optional label—one
+/// control, so clicking the label toggles too.
 ///
 /// The checked state flows both ways: [`derive_checked`](Self::derive_checked) (or
 /// [`set_checked`](Self::set_checked)) drives the mark, and
@@ -17,7 +18,8 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 pub struct Checkbox {
   base: ControlBase<crate::props::ControlStyle>,
   checked: Option<Source<bool>>,
-  marks: Option<(char, char)>,
+  marks: Option<(String, String)>,
+  label: Option<String>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
@@ -29,6 +31,7 @@ impl Checkbox {
       base: ControlBase::new(),
       checked: None,
       marks: None,
+      label: None,
       toggle_handler: None,
     }
   }
@@ -52,8 +55,16 @@ impl Checkbox {
   /// Sets the checked and unchecked marks, overriding any
   /// [`ControlTheme`](crate::ControlTheme).
   #[inline(always)]
-  pub fn set_marks(mut self, checked: char, unchecked: char) -> Self {
-    self.marks = Some((checked, unchecked));
+  pub fn set_marks(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
+    self.marks = Some((checked.into(), unchecked.into()));
+
+    self
+  }
+
+  /// Sets the label after the mark; clicking it toggles too.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
 
     self
   }
@@ -97,6 +108,7 @@ impl View for Checkbox {
           style,
           variants,
           marks: self.marks.unwrap_or_else(|| Glyphs::current().checkbox),
+          label: self.label,
           checked: false,
         },
         taffy::style::Style::default(),

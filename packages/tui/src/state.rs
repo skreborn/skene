@@ -52,19 +52,21 @@ pub(crate) enum NodeKind {
     placeholder: Option<String>,
     caret: usize,
   },
-  /// A toggleable checkbox, rendered as its checked or unchecked mark.
+  /// A toggleable checkbox: its checked or unchecked mark, then the label.
   Checkbox {
     style: ControlStyle,
     variants: Vec<(Condition, ControlStyle)>,
-    marks: (char, char),
+    marks: (String, String),
+    label: Option<String>,
     checked: bool,
   },
-  /// One choice in a radio group, rendered `(•)` or `( )`.
+  /// One choice in a radio group: its mark—`(x)` or `( )`—then the label.
   Radio {
     style: ControlStyle,
     variants: Vec<(Condition, ControlStyle)>,
     group: String,
-    marks: (char, char),
+    marks: (String, String),
+    label: Option<String>,
     checked: bool,
   },
   /// A fixed-option selector, cycling in place.

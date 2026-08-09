@@ -1150,9 +1150,36 @@ fn checkbox_toggles_by_key_and_click() {
     (unchecked, checked, on.get_untracked())
   });
 
-  assert!(unchecked.contains('\u{2610}'));
-  assert!(checked.contains('\u{2611}'));
+  assert!(unchecked.contains("[ ]"));
+  assert!(checked.contains("[x]"));
   assert!(!value);
+}
+
+/// A labeled checkbox renders the mark and label as one control, and clicking the
+/// label toggles it.
+#[test]
+fn checkbox_labels_render_and_toggle() {
+  let (frame, value) = with_driver(|| {
+    let on = Signal::new(false);
+
+    tui::mount(|| {
+      Checkbox::new()
+        .bind_checked(on)
+        .set_label("subscribe")
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(16, 1);
+
+    // A click on the label text, well past the mark.
+    tui::trigger_mouse_click(8, 0);
+
+    (frame, on.get_untracked())
+  });
+
+  assert_eq!(frame, "[ ] subscribe\n");
+  assert!(value, "the label click toggled the checkbox");
 }
 
 /// Radios in a group are exclusive, arrow keys move the check, and the bound signal
@@ -1189,7 +1216,7 @@ fn radio_group_moves_the_check() {
     frame
       .lines()
       .enumerate()
-      .filter(|(_, line)| line.contains('\u{25c9}'))
+      .filter(|(_, line)| line.contains("(x)"))
       .map(|(row, _)| row)
       .collect::<Vec<_>>()
   };
@@ -1263,7 +1290,7 @@ fn slider_nudges_and_jumps() {
     (track, after_keys, volume.get_untracked())
   });
 
-  assert!(track.starts_with('●'));
+  assert!(track.starts_with('\u{2588}'));
   assert!((after_keys - 2.0).abs() < f32::EPSILON);
   assert!((after_click - 10.0).abs() < f32::EPSILON);
 }
@@ -1307,11 +1334,11 @@ fn control_theme_restyles_glyphs() {
     tui::mount(|| {
       ControlTheme::new(Column::new().set_children((
         Checkbox::new().set_checked(true),
-        Checkbox::new().set_checked(true).set_marks('#', '.'),
+        Checkbox::new().set_checked(true).set_marks("#", "."),
         Radio::new("g", "a").set_checked(true),
       )))
-      .set_checkbox('X', 'O')
-      .set_radio('>', '<')
+      .set_checkbox("X", "O")
+      .set_radio(">", "<")
       .into_any()
       .build()
     });
@@ -1391,7 +1418,7 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
   });
 
   assert!(frame.contains('┌'));
-  assert!(frame.contains('\u{2610}'));
+  assert!(frame.contains("[ ]"));
 
   // The mark sits inside the border, in the control's color.
   assert_eq!(colors[5 + 1].0, Some((255, 0, 0)));

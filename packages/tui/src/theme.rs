@@ -5,14 +5,16 @@ use skene_reactive::{Owner, provide_context, use_context};
 
 /// The glyphs terminal controls render with.
 ///
-/// Defaults: `☑`/`☐` for checkboxes, `◉`/`○` for radios, `▾` for the select indicator,
-/// and `─`/`●` for a slider's track and thumb.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Defaults: `[x]`/`[ ]` for checkboxes, `(x)`/`( )` for radios, `▾` for the select
+/// indicator, and `─`/`█` for a slider's track and thumb—every default one cell per
+/// character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
+/// some emulators; a theme opting into them takes that on itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Glyphs {
   /// A checkbox's checked and unchecked marks.
-  pub(crate) checkbox: (char, char),
+  pub(crate) checkbox: (String, String),
   /// A radio's checked and unchecked marks.
-  pub(crate) radio: (char, char),
+  pub(crate) radio: (String, String),
   /// The indicator after a select's current label.
   pub(crate) picker_indicator: char,
   /// A slider's track and thumb.
@@ -22,10 +24,10 @@ pub(crate) struct Glyphs {
 impl Default for Glyphs {
   fn default() -> Self {
     Self {
-      checkbox: ('\u{2611}', '\u{2610}'),
-      radio: ('\u{25c9}', '\u{25cb}'),
+      checkbox: ("[x]".to_owned(), "[ ]".to_owned()),
+      radio: ("(x)".to_owned(), "( )".to_owned()),
       picker_indicator: '\u{25be}',
-      slider: ('\u{2500}', '\u{25cf}'),
+      slider: ('\u{2500}', '\u{2588}'),
     }
   }
 }
@@ -46,8 +48,8 @@ impl Glyphs {
 #[must_use]
 pub struct ControlTheme {
   child: AnyView,
-  checkbox: Option<(char, char)>,
-  radio: Option<(char, char)>,
+  checkbox: Option<(String, String)>,
+  radio: Option<(String, String)>,
   picker_indicator: Option<char>,
   slider: Option<(char, char)>,
 }
@@ -67,16 +69,16 @@ impl ControlTheme {
 
   /// Sets the checked and unchecked marks of checkboxes in the subtree.
   #[inline(always)]
-  pub fn set_checkbox(mut self, checked: char, unchecked: char) -> Self {
-    self.checkbox = Some((checked, unchecked));
+  pub fn set_checkbox(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
+    self.checkbox = Some((checked.into(), unchecked.into()));
 
     self
   }
 
   /// Sets the checked and unchecked marks of radios in the subtree.
   #[inline(always)]
-  pub fn set_radio(mut self, checked: char, unchecked: char) -> Self {
-    self.radio = Some((checked, unchecked));
+  pub fn set_radio(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
+    self.radio = Some((checked.into(), unchecked.into()));
 
     self
   }

@@ -411,13 +411,17 @@ fn refresh_styles(state: &State, environment: Environment) {
 
         taffy.set_style(record.taffy, out).expect("style an input");
       }
-      NodeKind::Checkbox { .. } | NodeKind::Radio { .. } => {
+      NodeKind::Checkbox { marks, label, .. } | NodeKind::Radio { marks, label, .. } => {
         let mut out = taffy::style::Style::default();
 
         apply_annotations(&mut out, record);
 
+        #[expect(clippy::cast_precision_loss)]
+        let width = (marks.0.chars().count().max(marks.1.chars().count())
+          + label.as_ref().map_or(0, |label| label.chars().count() + 1)) as f32;
+
         out.size = taffy::geometry::Size {
-          width: length(1.0),
+          width: length(width),
           height: length(1.0),
         };
 
@@ -637,19 +641,26 @@ fn paint_node(
         style,
         variants,
         marks,
+        label,
         checked,
       }
       | NodeKind::Radio {
         style,
         variants,
         marks,
+        label,
         checked,
         ..
       } => {
         let effective = effective_control_style(style, variants, environment, interaction);
+        let mark = if *checked { &marks.0 } else { &marks.1 };
+        let text = match label {
+          Some(label) => format!("{mark} {label}"),
+          None => mark.clone(),
+        };
 
         NodePaint::Text {
-          lines: vec![if *checked { marks.0 } else { marks.1 }.to_string()],
+          lines: vec![text],
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,

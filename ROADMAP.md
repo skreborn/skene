@@ -4,7 +4,7 @@ The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then t
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
 last—not a current priority. **Current focus: picking the next phase—the TUI polish,
 wasm-split lazy loading, progressive enhancement (hydrating static output, `Link`),
-and the targeted examples (counter, router, gallery) landed.**
+and the targeted examples (counter, router, the gui and tui galleries) landed.**
 
 ## Phase 1—Reactive engine internals ✅
 

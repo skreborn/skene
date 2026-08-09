@@ -1,0 +1,14 @@
+[package]
+name = "tui-gallery"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+skene-tui.workspace = true
+
+[dev-dependencies]
+skene-tui = { features = ["test"], workspace = true }
+
+[lints]
+workspace = true

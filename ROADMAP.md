@@ -3,7 +3,7 @@
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
 last—not a current priority. **Current focus: picking the next phase—the TUI polish
-(text wrapping, input carets, border character sets) all landed.**
+and wasm-split lazy loading (`#[lazy]` + `Lazy`) landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -424,14 +424,25 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   plus a final flush on quit—so a kill at any moment loses at most a fraction of a
   second of state. Verified end to end under a pseudo-terminal: three clicks, a source
   touch, a rebuild-restart, and the fresh process painted the preserved count.
-- **Remaining here:** wasm-split lazy loading, and richer `skene.toml` settings as they
-  earn their place.
+- **Wasm-split lazy loading—done.** `#[lazy]` marks an async view function whose body—
+  and everything only lazy bodies reach—splits out of the main wasm into its own
+  module, fetched on the first call; the `Lazy` view renders one (`Lazy::new(about)`),
+  pending toward the enclosing boundary so `Suspense` fallbacks and server renders
+  compose. The macro and the `skene_gui::split` runtime speak the `wasm-split-cli`
+  symbol convention (the split tool is embedded as a library; the CLI emits the
+  modules, shared chunks, and the `__wasm_split.js` loader manifest beside the
+  bindings), split-off code gates to the browser leaf alone—the server leaf and every
+  other target call the body directly—and apps opt in with `[web] split = true` in
+  `skene.toml`, which flips the app compile to relocation-keeping flags; a build
+  carrying `#[lazy]` without the opt-in fails with the fix named. Verified end to end
+  on the counter example, debug and release: boot without the module, one fetch on
+  first open, none on reopen.
+- **Remaining here:** richer `skene.toml` settings as they earn their place.
 - The dev loop is watch + rebuild + full reload; state survives via the serializable
   reactive state in the backlog—the CLI holds the snapshot across the restart.
 - `skene.toml` is read here: the manifest-declared assets (see the backlog) are served
   in dev, copied into SSG output, and collected from library crates' manifests across
   the dependency graph.
-- Route-based wasm code splitting with lazy loading, where the splitting tooling allows.
 
 ## Phase 8—Native driver family
 

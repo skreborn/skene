@@ -10,6 +10,8 @@ mod manifest;
 mod pipeline;
 #[cfg(not(target_arch = "wasm32"))]
 mod server;
+#[cfg(not(target_arch = "wasm32"))]
+mod split;
 
 #[cfg(target_arch = "wasm32")]
 fn main() {}

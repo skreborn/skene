@@ -21,6 +21,7 @@ notify = "8"
 percent-encoding = "2"
 skene-runner.workspace = true
 url = "2"
+wasm-split-cli = "0.8.0-alpha.1"
 
 [lints]
 workspace = true

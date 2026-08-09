@@ -23,9 +23,21 @@ pub struct ManifestFile {
   /// App-level settings.
   #[serde(default)]
   pub app: AppSection,
+  /// Web build settings.
+  #[serde(default)]
+  pub web: WebSection,
   /// Asset declarations.
   #[serde(default)]
   pub assets: AssetsSection,
+}
+
+/// The `[web]` section.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct WebSection {
+  /// Whether web builds split `#[lazy]` functions into lazily-fetched wasm modules.
+  #[serde(default)]
+  pub split: bool,
 }
 
 /// The `[app]` section.
@@ -60,6 +72,8 @@ pub struct App {
   pub stem: String,
   /// The server binary for ssg, when declared.
   pub server_bin: Option<String>,
+  /// Whether web builds split `#[lazy]` functions into lazily-fetched wasm modules.
+  pub split: bool,
   /// Every asset root contributing to this app, the app's own first.
   pub assets: Vec<AssetRoot>,
 }
@@ -138,6 +152,7 @@ impl App {
       workspace_root,
       package,
       server_bin: manifest.app.server_bin,
+      split: manifest.web.split,
       assets,
     })
   }

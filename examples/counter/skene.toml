@@ -3,5 +3,8 @@
 [app]
 server-bin = "counter-server"
 
+[web]
+split = true
+
 [assets]
 paths = ["assets"]

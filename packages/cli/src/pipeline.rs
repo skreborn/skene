@@ -24,6 +24,7 @@ pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   build_wasm(app, release)?;
   clear_web_out(app);
   generate_bindings(app, release)?;
+  crate::split::split_web(app, release)?;
   write_page(app, dev)
 }
 
@@ -115,30 +116,66 @@ pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
 fn build_wasm(app: &App, release: bool) -> Result<(), String> {
   let mut command = Command::new("cargo");
 
-  command.current_dir(&app.workspace_root).args([
-    "build",
-    "--target",
-    "wasm32-unknown-unknown",
-    "-p",
-    &app.package,
-  ]);
+  command.current_dir(&app.workspace_root);
 
-  if release {
-    command.arg("--release");
+  // A split build keeps what the split tool reads—relocations, symbol names, unfused
+  // functions—with the extra flags scoped to the app's own compile.
+  if app.split {
+    command.args([
+      "rustc",
+      "--lib",
+      "--target",
+      "wasm32-unknown-unknown",
+      "-p",
+      &app.package,
+    ]);
+
+    if release {
+      command.args([
+        "--config",
+        "profile.release.lto=false",
+        "--config",
+        "profile.release.strip=false",
+        "--config",
+        "profile.release.debug=1",
+        "--release",
+      ]);
+    }
+
+    command.args(["--", "-Clink-arg=--emit-relocs"]);
+  }
+  else {
+    command.args([
+      "build",
+      "--target",
+      "wasm32-unknown-unknown",
+      "-p",
+      &app.package,
+    ]);
+
+    if release {
+      command.arg("--release");
+    }
   }
 
   run(&mut command, "cargo build")
 }
 
-fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
-  warn_on_version_mismatch(&app.workspace_root);
-
+/// The built browser wasm artifact's path.
+pub fn wasm_artifact(app: &App, release: bool) -> std::path::PathBuf {
   let profile = if release { "release" } else { "debug" };
-  let wasm = app
+
+  app
     .workspace_root
     .join("target/wasm32-unknown-unknown")
     .join(profile)
-    .join(format!("{}.wasm", app.stem));
+    .join(format!("{}.wasm", app.stem))
+}
+
+fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
+  warn_on_version_mismatch(&app.workspace_root);
+
+  let wasm = wasm_artifact(app, release);
   let out_dir = app.dir.join("dist/web");
   let mut command = Command::new("wasm-bindgen");
 

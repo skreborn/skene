@@ -18,6 +18,8 @@ mod deferred;
 mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
+#[cfg(target_arch = "wasm32")]
+mod lazy;
 mod lazy_column;
 mod overlay;
 mod picker;
@@ -28,6 +30,8 @@ mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
 mod slider;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub mod split;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
@@ -35,7 +39,7 @@ mod text_editor;
 mod text_field;
 
 pub use skene_core::{self as core, *};
-pub use skene_macros::main;
+pub use skene_macros::{lazy, main};
 pub use skene_reactive::{self as reactive};
 // The active driver, reached by name from the shared realization: the web on wasm
 // targets, the recording driver on the host, for headless view tests.
@@ -61,6 +65,8 @@ pub use wasm_bindgen;
 
 #[cfg(target_arch = "wasm32")]
 pub use crate::deferred::Deferred;
+#[cfg(target_arch = "wasm32")]
+pub use crate::lazy::Lazy;
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
 #[cfg(target_arch = "wasm32")]

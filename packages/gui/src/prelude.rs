@@ -89,6 +89,7 @@ pub use crate::{
   TextField,
   TextStyle,
   TextTheme,
+  lazy,
   main,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]

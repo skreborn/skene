@@ -23,5 +23,11 @@ skene-runner.workspace = true
 url = "2"
 wasm-split-cli = "0.8.0-alpha.1"
 
+[target.'cfg(unix)'.dependencies]
+rustix = { features = ["termios"], version = "1" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { features = ["Win32_System_Console"], version = "0.61" }
+
 [lints]
 workspace = true

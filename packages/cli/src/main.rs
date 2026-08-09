@@ -12,6 +12,8 @@ mod pipeline;
 mod server;
 #[cfg(not(target_arch = "wasm32"))]
 mod split;
+#[cfg(not(target_arch = "wasm32"))]
+mod tty;
 
 #[cfg(target_arch = "wasm32")]
 fn main() {}
@@ -183,6 +185,11 @@ mod host {
     let (changes, _watcher) = watch_sources(app)?;
     let binary = pipeline::tui_binary(app, release);
     let mut running = binary_digest(&binary);
+    // The terminal state before any app instance touches it. A swap kills the running
+    // instance mid-raw-mode; restoring this before the next spawn keeps each
+    // instance's own saved "original" sane, so the final quit restores a working
+    // terminal.
+    let sane_tty = crate::tty::Tty::capture();
 
     loop {
       let mut child = std::process::Command::new(&binary)
@@ -217,6 +224,10 @@ mod host {
 
                 let _ = child.kill();
                 let _ = child.wait();
+
+                if let Some(tty) = &sane_tty {
+                  tty.restore();
+                }
 
                 break;
               }

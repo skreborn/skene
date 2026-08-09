@@ -57,7 +57,9 @@ fn text() -> impl IntoView {
   section(
     "Text",
     Column::new().set_spacing(1).set_children((
-      Text::new("A run of text with a color and a bold flag.").set_color(bright()),
+      Text::new("A run of text with a color and a bold flag.")
+        .set_bold(true)
+        .set_color(bright()),
       Text::new(
         "Long runs wrap at the available width, breaking at spaces, so a paragraph \
          reads naturally in however many columns it gets.",
@@ -68,7 +70,7 @@ fn text() -> impl IntoView {
 }
 
 fn buttons() -> impl IntoView {
-  let count = Signal::new(0u64);
+  let count = Signal::tagged("clicks", 0u64);
 
   section(
     "Button",
@@ -80,8 +82,8 @@ fn buttons() -> impl IntoView {
 }
 
 fn toggles() -> impl IntoView {
-  let agreed = Signal::new(true);
-  let flavor = Signal::new("mint".to_owned());
+  let agreed = Signal::tagged("agreed", true);
+  let flavor = Signal::tagged("flavor", "mint".to_owned());
 
   section(
     "Checkbox & Radio",
@@ -115,9 +117,9 @@ fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
 }
 
 fn inputs() -> impl IntoView {
-  let name = Signal::new(String::new());
-  let volume = Signal::new(40.0f32);
-  let season = Signal::new("summer".to_owned());
+  let name = Signal::tagged("name", String::new());
+  let volume = Signal::tagged("volume", 40.0f32);
+  let season = Signal::tagged("season", "summer".to_owned());
 
   section(
     "TextField, Slider & Picker",

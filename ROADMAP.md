@@ -2,8 +2,9 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: picking the next phase—the TUI polish
-and wasm-split lazy loading (`#[lazy]` + `Lazy`) landed.**
+last—not a current priority. **Current focus: picking the next phase—the TUI polish,
+wasm-split lazy loading, progressive enhancement (hydrating static output, `Link`),
+and the targeted examples (counter, router, gallery) landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -131,8 +132,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   boot page into `dist/web/` (dev builds carry the dev marker and reload script at
   generation time; the server injects nothing), so no hand-written `index.html`
   remains.
+- **Typed links—done.** `Link::new(route)`: a real anchor carrying the route's path,
+  so a page without JavaScript navigates by full page load, and a running app
+  intercepts the click into `Router::navigate`—modified clicks stay with the browser,
+  so open-in-new-tab keeps working. Route parsing trims trailing slashes (the root
+  stays `/`), matching the directory URLs statically-hosted routes serve under.
 - **Remaining:** streaming through the runner (`render_to_stream` over incremental
-  stdout); typed link helpers (an `<a>` that navigates without a reload).
+  stdout).
 
 ## Phase 6—TUI facade ✅ (core)
 

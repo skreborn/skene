@@ -1,0 +1,14 @@
+[package]
+name = "gallery"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+skene-gui.workspace = true
+
+[lints]
+workspace = true

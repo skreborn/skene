@@ -73,10 +73,10 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene-reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `TextField`) realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router`; the transparent `launch` + `#[main]`. Re-exports core + reactive + `tracing`. |
+| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `TextField`) realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
-| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u16` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui-counter` (`cargo run -p tui-counter`). |
+| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u16` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
 
 **Realize once, drive per platform.** Views are realized a single time against a typed,
 driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
@@ -142,10 +142,16 @@ fn canvas() -> impl IntoView {
 rustup target add wasm32-unknown-unknown wasm32-wasip2
 cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
-cargo skene --dir examples/counter run web        # build, serve on :8080, live-reload
-cargo skene --dir examples/counter build web --static   # statically generate the site
-cargo skene --dir examples/tui-counter run tui    # build and run the terminal demo
+cargo skene --dir examples/gui/counter run web        # build, serve on :8080, live-reload
+cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
+cargo skene --dir examples/tui/counter run tui    # build and run the terminal demo
 ```
+
+Targeted examples live under `examples/gui` and `examples/tui`, one folder per
+feature: `counter` (state, snapshot-preserving reloads), `router` (typed routes behind
+real links, the about page split out and lazily loaded via `#[lazy]`), and `gallery`
+(every built-in view and control, live)—the terminal has its own `counter` and
+`gallery`.
 
 The same app also renders server-side with no integration at all—its `wasm32-wasip2`
 build is a plain command:
@@ -156,13 +162,13 @@ wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 ```
 
 Then open <http://localhost:8080>. `skene run web` builds the `counter` example to
-wasm, generates the bindings into `examples/counter/dist/web`, serves it with the
+wasm, generates the bindings into `examples/gui/counter/dist/web`, serves it with the
 assets its `skene.toml` declares, and rebuilds + reloads the page on change; pass
 `--port <n>` or `--release`. Every build lands under `dist/<target>`—`web` (CSR and
 static alike, the folder replaced wholesale each build), `tui`, `ios` and the rest as
 they arrive. (`cargo skene` runs the
 workspace-local CLI; `cargo install --path packages/cli` makes it a plain `skene`.)
-The example is a single crate (`examples/counter`) depending only on `skene-gui`.
+The example is a single crate (`examples/gui/counter`) depending only on `skene-gui`.
 
 ## Testing
 

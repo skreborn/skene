@@ -210,8 +210,6 @@ mod host {
                 let rebuilt = binary_digest(&binary);
 
                 if rebuilt.is_some() && rebuilt == running {
-                  announce("rebuilt; binary unchanged, keeping the running app");
-
                   continue;
                 }
 

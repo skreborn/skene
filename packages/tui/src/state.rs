@@ -7,6 +7,7 @@ use std::{
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
+  Axis,
   Color,
   Layout,
   Modifiers,
@@ -148,6 +149,13 @@ impl NodeKind {
 pub(crate) enum Drag {
   /// A slider's thumb: motion slides the value to the pointer's column.
   Slider(NodeId),
+  /// A scrollbar's thumb: motion scrolls so the grabbed spot follows the pointer.
+  Scrollbar {
+    node: NodeId,
+    axis: Axis,
+    /// The grabbed position within the thumb, in track cells.
+    grab: i64,
+  },
 }
 
 /// One node's record: its realization, its taffy node, and its place in the tree.
@@ -709,6 +717,14 @@ impl State {
   /// hit path (or blurs when none is hit), runs click handlers from the deepest node
   /// up, then—unless a handler prevented the default—activates the focused control.
   pub(crate) fn mouse_click(&self, x: u16, y: u16) {
+    // A press on a scrollbar grabs it—jumping the thumb when pressed off it—and
+    // consumes the press: no focus change, no click dispatch.
+    if let Some((node, axis, position)) = self.scrollbar_hit(x, y) {
+      self.grab_scrollbar(node, axis, position);
+
+      return;
+    }
+
     if let Some((top, modal)) = self.topmost_open_overlay() {
       let mut path = Vec::new();
 
@@ -766,12 +782,25 @@ impl State {
   }
 
   /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way.
-  pub(crate) fn drag_to(&self, x: u16, _y: u16) {
+  pub(crate) fn drag_to(&self, x: u16, y: u16) {
     match self.drag.get() {
       Some(Drag::Slider(node)) => {
         let (origin_x, _) = self.absolute_origin(node);
 
         self.slide_to(node, i64::from(x) - origin_x);
+      }
+      Some(Drag::Scrollbar { node, axis, grab }) => {
+        let Some((track_start, track, limit)) = self.scroll_geometry(node, axis)
+        else {
+          return;
+        };
+
+        let along = match axis {
+          Axis::Horizontal => i64::from(x),
+          Axis::Vertical => i64::from(y),
+        };
+
+        self.scroll_thumb_to(node, axis, track, limit, along - track_start - grab);
       }
       None => {}
     }
@@ -780,6 +809,116 @@ impl State {
   /// Ends the drag in progress, on release.
   pub(crate) fn end_drag(&self) {
     self.drag.set(None);
+  }
+
+  /// The scrollbar under (`x`, `y`), if any: the owning scrollable, its axis, and the
+  /// pointer's position within the track.
+  fn scrollbar_hit(&self, x: u16, y: u16) -> Option<(NodeId, Axis, i64)> {
+    let ids: Vec<NodeId> = self.nodes.borrow().keys().copied().collect();
+    let (px, py) = (i64::from(x), i64::from(y));
+
+    for node in ids {
+      if !self.is_scrollable(node) {
+        continue;
+      }
+
+      let (limit_x, limit_y) = self.scroll_limits(node);
+      let (origin_x, origin_y) = self.absolute_origin(node);
+      let (width, height) = self.node_size(node);
+
+      if limit_y > 0
+        && px == origin_x + width - 1
+        && let Some((track_start, track, _)) = self.scroll_geometry(node, Axis::Vertical)
+        && py >= track_start
+        && py < track_start + track
+      {
+        return Some((node, Axis::Vertical, py - track_start));
+      }
+
+      if limit_x > 0
+        && py == origin_y + height - 1
+        && let Some((track_start, track, _)) = self.scroll_geometry(node, Axis::Horizontal)
+        && px >= track_start
+        && px < track_start + track
+      {
+        return Some((node, Axis::Horizontal, px - track_start));
+      }
+    }
+
+    None
+  }
+
+  /// A scrollable's track along `axis`: its absolute start, its length in cells, and
+  /// the scroll limit.
+  fn scroll_geometry(&self, node: NodeId, axis: Axis) -> Option<(i64, i64, u32)> {
+    let (limit_x, limit_y) = self.scroll_limits(node);
+    let (origin_x, origin_y) = self.absolute_origin(node);
+    let (width, height) = self.node_size(node);
+    let border = {
+      let nodes = self.nodes.borrow();
+      let record = nodes.get(&node)?;
+
+      match self.taffy.borrow().layout(record.taffy) {
+        #[expect(clippy::cast_possible_truncation)]
+        Ok(layout) => (
+          layout.border.left.round() as i64,
+          layout.border.top.round() as i64,
+          layout.border.right.round() as i64,
+          layout.border.bottom.round() as i64,
+        ),
+        Err(_) => (0, 0, 0, 0),
+      }
+    };
+
+    match axis {
+      Axis::Vertical => Some((origin_y + border.1, height - border.1 - border.3, limit_y)),
+      Axis::Horizontal => Some((origin_x + border.0, width - border.0 - border.2, limit_x)),
+    }
+  }
+
+  /// A press on a scrollbar: grabs the thumb where it was pressed—or jumps it to the
+  /// press and grabs its middle—then drags until release.
+  fn grab_scrollbar(&self, node: NodeId, axis: Axis, position: i64) {
+    let Some((_, track, limit)) = self.scroll_geometry(node, axis)
+    else {
+      return;
+    };
+
+    let offset = match axis {
+      Axis::Horizontal => self.scroll_offset(node).0,
+      Axis::Vertical => self.scroll_offset(node).1,
+    };
+    let (start, thumb) =
+      crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), offset, limit);
+    let (start, thumb) = (start as i64, thumb as i64);
+    let grab = if position >= start && position < start + thumb {
+      position - start
+    }
+    else {
+      thumb / 2
+    };
+
+    self.scroll_thumb_to(node, axis, track, limit, position - grab);
+    self.drag.set(Some(Drag::Scrollbar { node, axis, grab }));
+  }
+
+  /// Scrolls so the thumb's start lands on `target_start` within its track, clamped.
+  fn scroll_thumb_to(&self, node: NodeId, axis: Axis, track: i64, limit: u32, target_start: i64) {
+    let (_, thumb) = crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), 0, limit);
+    let thumb = thumb as i64;
+    let room = (track - thumb).max(1);
+    let target_start = target_start.clamp(0, track - thumb);
+    let offset = target_start * i64::from(limit) / room;
+    let current = match axis {
+      Axis::Horizontal => i64::from(self.scroll_offset(node).0),
+      Axis::Vertical => i64::from(self.scroll_offset(node).1),
+    };
+    let delta = offset - current;
+
+    let _ = match axis {
+      Axis::Horizontal => self.scroll_by(node, delta, 0),
+      Axis::Vertical => self.scroll_by(node, 0, delta),
+    };
   }
 
   /// Dispatches an activation on `target` as `Enter`/`Space` do: click handlers bubble

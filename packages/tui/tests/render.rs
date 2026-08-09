@@ -1372,6 +1372,70 @@ fn slider_nudges_and_jumps() {
   assert!((after_click - 10.0).abs() < f32::EPSILON);
 }
 
+/// A scrollbar responds to the mouse: a press on the track jumps the thumb there,
+/// dragging follows the pointer, and a mid-scroll thumb paints in eighth-cell blocks.
+#[test]
+fn scrollbar_jumps_and_drags() {
+  let (jumped, dragged, colors) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(4)
+        .set_overflow(Overflow::Auto)
+        .set_child(
+          Column::new().set_children(
+            (0..12)
+              .map(|index| Text::new(format!("r{index}")))
+              .collect::<Vec<_>>(),
+          ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(6, 4);
+
+    // A press at the track's bottom, off the thumb: the thumb jumps there.
+    tui::trigger_mouse_press(5, 3);
+
+    let jumped = tui::render_to_text(6, 4);
+
+    // Dragging back up follows the pointer.
+    tui::trigger_mouse_drag(5, 1);
+
+    let dragged = tui::render_to_text(6, 4);
+    let colors = tui::render_to_colors(6, 4);
+
+    tui::trigger_mouse_release(5, 1);
+
+    (jumped, dragged, colors)
+  });
+
+  assert!(
+    jumped.contains("r8") && !jumped.contains("r0\n"),
+    "the track press scrolled to the end: {jumped}",
+  );
+
+  assert!(
+    dragged.contains("r2") && !dragged.contains("r8"),
+    "the drag scrolled back up: {dragged}",
+  );
+
+  assert!(
+    dragged
+      .chars()
+      .any(|character| ('▁'..='▇').contains(&character)),
+    "a mid-scroll thumb paints in eighth blocks: {dragged}",
+  );
+
+  let track: Vec<_> = (0..4).map(|row| colors[row * 6 + 5].1).collect();
+
+  assert!(
+    track[0].is_some() && track.iter().all(|background| *background == track[0]),
+    "every track cell shares the track background: {track:?}",
+  );
+}
+
 /// A pressed slider drags: motion slides the value to the pointer's column until
 /// release, and motion after release changes nothing.
 #[test]

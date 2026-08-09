@@ -888,42 +888,150 @@ fn draw_scrollbars(
     isize::try_from(height).unwrap_or(0),
   );
 
+  let dark = state.dark.get();
+
   if limit_y > 0 {
     let track = height - border.1 - border.3;
-    let (top, thumb) = thumb_span(track, offset_y, limit_y);
+    let (top, thumb) = thumb_span_eighths(track, offset_y, limit_y);
 
     for row in 0..track {
       if let Some(cell) = buffer.cell_mut(x + width - 1, y + border.1 + row) {
-        cell.character = if row >= top && row < top + thumb {
-          '█'
-        }
-        else {
-          '░'
+        let (character, reverse) = match eighth_coverage(row, top, thumb) {
+          Coverage::Full => ('█', false),
+          Coverage::Leading(eighths) => (lower_block(8 - eighths), true),
+          Coverage::Trailing(eighths) => (lower_block(eighths), false),
+          Coverage::None => (' ', false),
         };
+
+        paint_track_cell(cell, dark);
+
+        cell.character = character;
+        cell.reverse = reverse;
       }
     }
   }
 
   if limit_x > 0 {
     let track = width - border.0 - border.2;
-    let (start, thumb) = thumb_span(track, offset_x, limit_x);
+    let (start, thumb) = thumb_span_eighths(track, offset_x, limit_x);
 
     for column in 0..track {
       if let Some(cell) = buffer.cell_mut(x + border.0 + column, y + height - 1) {
-        cell.character = if column >= start && column < start + thumb {
-          '█'
-        }
-        else {
-          '░'
+        let (character, reverse) = match eighth_coverage(column, start, thumb) {
+          Coverage::Full => ('█', false),
+          Coverage::Leading(eighths) => (left_block(eighths), false),
+          Coverage::Trailing(eighths) => (left_block(8 - eighths), true),
+          Coverage::None => (' ', false),
         };
+
+        paint_track_cell(cell, dark);
+
+        cell.character = character;
+        cell.reverse = reverse;
       }
     }
   }
 }
 
+/// Colors one scrollbar cell: the thumb inks in the terminal default foreground for the
+/// detected background, the track is a quarter of that ink over the cell beneath—so a
+/// partially covered cell's remainder matches the track exactly.
+fn paint_track_cell(cell: &mut TerminalCell, dark: bool) {
+  let (ink, base) = if dark {
+    ((255, 255, 255), (0, 0, 0))
+  }
+  else {
+    ((0, 0, 0), (255, 255, 255))
+  };
+  let beneath = cell.background.unwrap_or(base);
+  let quarter = |over: u8, under: u8| -> u8 {
+    u8::try_from((u16::from(over) + 3 * u16::from(under) + 2) / 4).unwrap_or(u8::MAX)
+  };
+
+  cell.foreground = Some(ink);
+  cell.background = Some((
+    quarter(ink.0, beneath.0),
+    quarter(ink.1, beneath.1),
+    quarter(ink.2, beneath.2),
+  ));
+  cell.bold = false;
+}
+
+/// How much of a track cell the thumb covers, in eighth-cell resolution.
+enum Coverage {
+  Full,
+  /// The leading eighths only: the thumb ends mid-cell.
+  Leading(u8),
+  /// The trailing eighths only: the thumb starts mid-cell.
+  Trailing(u8),
+  None,
+}
+
+/// The thumb's coverage of the track cell at `position`, against an eighth-cell span.
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+const fn eighth_coverage(position: isize, start_eighth: isize, thumb_eighths: isize) -> Coverage {
+  let cell_start = position * 8;
+  let cell_end = cell_start + 8;
+  let end_eighth = start_eighth + thumb_eighths;
+  let from = if start_eighth > cell_start {
+    start_eighth
+  }
+  else {
+    cell_start
+  };
+  let to = if end_eighth < cell_end {
+    end_eighth
+  }
+  else {
+    cell_end
+  };
+
+  if to - from <= 0 {
+    return Coverage::None;
+  }
+
+  if to - from >= 8 {
+    return Coverage::Full;
+  }
+
+  if start_eighth > cell_start {
+    Coverage::Trailing((to - from) as u8)
+  }
+  else {
+    Coverage::Leading((to - from) as u8)
+  }
+}
+
+/// The block character filling a cell's lowest `eighths`/8, `eighths` in `1..=7`.
+const fn lower_block(eighths: u8) -> char {
+  match eighths {
+    1 => '▁',
+    2 => '▂',
+    3 => '▃',
+    4 => '▄',
+    5 => '▅',
+    6 => '▆',
+    _ => '▇',
+  }
+}
+
+/// The block character filling a cell's leftmost `eighths`/8, `eighths` in `1..=7`.
+const fn left_block(eighths: u8) -> char {
+  match eighths {
+    1 => '▏',
+    2 => '▎',
+    3 => '▍',
+    4 => '▌',
+    5 => '▋',
+    6 => '▊',
+    _ => '▉',
+  }
+}
+
 /// A scrollbar thumb's start and length along a track, proportional to the viewport
-/// within the scrollable content.
-fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
+/// within the scrollable content, in whole cells. The grab arithmetic works at this
+/// resolution; the paint refines to eighths.
+pub(crate) fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   if track <= 0 {
     return (0, 0);
   }
@@ -932,6 +1040,21 @@ fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   let content = track + limit;
   let thumb = (track * track / content).max(1).min(track);
   let start = (track - thumb) * isize::try_from(offset).unwrap_or(0) / limit.max(1);
+
+  (start, thumb)
+}
+
+/// [`thumb_span`] at eighth-cell resolution, for the smooth paint.
+fn thumb_span_eighths(track: isize, offset: u32, limit: u32) -> (isize, isize) {
+  if track <= 0 {
+    return (0, 0);
+  }
+
+  let eighths = track * 8;
+  let limit = isize::try_from(limit).unwrap_or(0);
+  let content = track + limit;
+  let thumb = (eighths * track / content).max(8).min(eighths);
+  let start = (eighths - thumb) * isize::try_from(offset).unwrap_or(0) / limit.max(1);
 
   (start, thumb)
 }

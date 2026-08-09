@@ -1604,6 +1604,41 @@ impl State {
     true
   }
 
+  /// Every scrolled node's offsets, keyed by the node's build-order id and ordered by
+  /// it—the dev loop's carry across a restart.
+  #[cfg(feature = "snapshot")]
+  pub(crate) fn scroll_snapshot(&self) -> Vec<(u64, u32, u32)> {
+    let mut entries: Vec<_> = self
+      .scroll_offsets
+      .borrow()
+      .iter()
+      .filter(|(_, (x, y))| *x > 0 || *y > 0)
+      .map(|(node, (x, y))| (node.value(), *x, *y))
+      .collect();
+
+    entries.sort_unstable();
+
+    entries
+  }
+
+  /// Adopts offsets a prior run captured through [`scroll_snapshot`], by node id;
+  /// entries no live node carries are dropped, and reads clamp to the next layout.
+  #[cfg(feature = "snapshot")]
+  pub(crate) fn restore_scroll(&self, entries: &[(u64, u32, u32)]) {
+    let nodes = self.nodes.borrow();
+    let mut offsets = self.scroll_offsets.borrow_mut();
+
+    for (id, x, y) in entries {
+      let node = NodeId::new(*id);
+
+      if nodes.contains_key(&node) {
+        offsets.insert(node, (*x, *y));
+      }
+    }
+
+    self.dirty.set(true);
+  }
+
   /// Stores a node's offsets, fires its scroll handlers, and repaints.
   fn set_scroll(&self, node: NodeId, (x, y): (u32, u32)) {
     self.scroll_offsets.borrow_mut().insert(node, (x, y));

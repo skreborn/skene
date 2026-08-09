@@ -16,12 +16,22 @@ use url::Url;
 
 use crate::manifest::App;
 
-/// The dev channel: the open live-reload streams, and the authoritative state snapshot
-/// held across reloads.
+/// The dev channel: the open live-reload streams, the authoritative state snapshot
+/// held across reloads, and the rebuild-failure notice the running app polls.
 #[derive(Clone, Default)]
 pub struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
   state: Arc<Mutex<Option<Vec<u8>>>>,
+  notice: Arc<Mutex<Notice>>,
+}
+
+/// The rebuild-failure notice: its text, a version bumped on every change so the app
+/// re-presents a repeated failure, and how often an app has fetched it.
+#[derive(Default)]
+struct Notice {
+  version: u64,
+  text: Option<String>,
+  polls: u64,
 }
 
 impl Dev {
@@ -62,6 +72,56 @@ impl Dev {
       .lock()
       .unwrap_or_else(std::sync::PoisonError::into_inner)
       .clone()
+  }
+
+  /// Posts a rebuild failure for the running app's dev modal, superseding the last.
+  pub fn set_notice(&self, text: String) {
+    let mut notice = self
+      .notice
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+    notice.version += 1;
+    notice.text = Some(text);
+  }
+
+  /// Clears the failure notice, after a successful rebuild.
+  pub fn clear_notice(&self) {
+    let mut notice = self
+      .notice
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+    if notice.text.is_some() {
+      notice.version += 1;
+      notice.text = None;
+    }
+  }
+
+  /// How many times an app has fetched the notice—to tell whether one is listening.
+  pub fn notice_polls(&self) -> u64 {
+    self
+      .notice
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner)
+      .polls
+  }
+
+  /// The notice body an app polls: the version line, then the failure text.
+  fn notice_body(&self) -> Vec<u8> {
+    let mut notice = self
+      .notice
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+    notice.polls += 1;
+
+    format!(
+      "{}\n{}",
+      notice.version,
+      notice.text.as_deref().unwrap_or_default()
+    )
+    .into_bytes()
   }
 }
 
@@ -127,6 +187,14 @@ fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
         let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"no state");
       }
     },
+    (Some("GET"), Some("/skene:notice")) => {
+      let _ = write_response(
+        &mut stream,
+        "200 OK",
+        "text/plain; charset=utf-8",
+        &dev.notice_body(),
+      );
+    }
     _ => {
       let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
     }

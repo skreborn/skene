@@ -1839,3 +1839,78 @@ fn percent_width_resolves_against_parent() {
 
   assert_eq!(rendered, "half  x\n");
 }
+
+/// Scroll offsets ride the state snapshot: restored into a fresh driver, the same
+/// nodes resume at their prior offsets.
+#[test]
+fn scroll_offsets_survive_a_snapshot_roundtrip() {
+  fn build() {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(4)
+        .set_overflow(Overflow::Auto)
+        .set_child(
+          Column::new().set_children(
+            (0..12)
+              .map(|index| Text::new(format!("r{index}")))
+              .collect::<Vec<_>>(),
+          ),
+        )
+        .into_any()
+        .build()
+    });
+  }
+
+  let bytes = with_driver(|| {
+    build();
+
+    let _ = tui::render_to_text(6, 4);
+
+    tui::trigger_mouse_scroll(2, 2, 0, 3);
+
+    assert!(tui::render_to_text(6, 4).contains("r3"));
+
+    tui::reactive::snapshot()
+  });
+  let restored = with_driver(|| {
+    tui::reactive::restore(&bytes);
+    build();
+    tui::adopt_scroll();
+
+    tui::render_to_text(6, 4)
+  });
+
+  assert!(
+    restored.contains("r3") && !restored.contains("r0\n"),
+    "the restored run resumed at the same offset: {restored}",
+  );
+}
+
+/// The dev rebuild notice presents as a modal over the app and dismisses with Escape.
+#[test]
+fn dev_notice_modal_presents_and_dismisses() {
+  let (open, dismissed) = with_driver(|| {
+    let notice = Signal::new(None::<String>);
+
+    tui::mount(|| Text::new("app content").into_any().build());
+    tui::mount(|| tui::dev_notice_view(notice).into_view().build());
+
+    notice.set(Some("expected `;`".to_owned()));
+
+    let open = tui::render_to_text(40, 10);
+
+    tui::trigger_key("Escape");
+
+    (open, tui::render_to_text(40, 10))
+  });
+
+  assert!(
+    open.contains("Rebuild failed") && open.contains("expected `;`"),
+    "the notice presented: {open}",
+  );
+  assert!(
+    !dismissed.contains("Rebuild failed") && dismissed.contains("app content"),
+    "Escape dismissed the notice: {dismissed}",
+  );
+}

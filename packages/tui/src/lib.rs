@@ -48,6 +48,8 @@ mod theme;
 
 use std::cell::RefCell;
 
+#[cfg(all(feature = "snapshot", feature = "test"))]
+pub use dev::{adopt_scroll, notice_view as dev_notice_view};
 pub use skene_core::{
   self as core,
   Errors,
@@ -196,6 +198,12 @@ pub(crate) fn with_state<R>(apply: impl FnOnce(&State) -> R) -> R {
   })
 }
 
+/// Runs `apply` against the driver state, or `None` when none is installed.
+#[cfg(feature = "snapshot")]
+pub(crate) fn try_with_state<R>(apply: impl FnOnce(&State) -> R) -> Option<R> {
+  STATE.with(|state| state.borrow().as_ref().map(apply))
+}
+
 /// Installs the terminal driver for this thread.
 ///
 /// # Panics
@@ -214,6 +222,9 @@ pub fn install() {
 
     *state = Some(State::new());
   });
+
+  #[cfg(feature = "snapshot")]
+  dev::provide_scroll();
 }
 
 /// Uninstalls the terminal driver and resets the reactive runtime and root scope.

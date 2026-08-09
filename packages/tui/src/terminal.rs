@@ -104,6 +104,15 @@ where
 
   with_state(|state| state.dark.set(dark));
 
+  #[cfg(feature = "snapshot")]
+  {
+    crate::dev::adopt_scroll();
+
+    if let Some(notice) = crate::dev::notice_signal() {
+      crate::mount(|| crate::dev::notice_view(notice).into_view().build());
+    }
+  }
+
   execute!(
     std::io::stdout(),
     terminal::EnterAlternateScreen,

@@ -51,7 +51,7 @@ pub use signal::{
 pub use skene_macros::Store;
 pub use slice::{Slice, SyncSlice};
 #[cfg(feature = "snapshot")]
-pub use snapshot::{restore, snapshot};
+pub use snapshot::{provide, restore, snapshot, staged};
 pub use storage::{LocalStorage, SyncStorage};
 pub use store::{
   AtIndex,

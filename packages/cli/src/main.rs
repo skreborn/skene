@@ -214,6 +214,8 @@ mod host {
             // running app (and its state) stays up instead of restarting for nothing.
             match pipeline::build_tui_binary(app, release) {
               Ok(()) => {
+                dev.clear_notice();
+
                 let rebuilt = binary_digest(&binary);
 
                 if rebuilt.is_some() && rebuilt == running {
@@ -231,7 +233,18 @@ mod host {
 
                 break;
               }
-              Err(error) => announce(&format!("rebuild failed:\n{error}")),
+              Err(error) => {
+                // The running app presents the notice in a modal; the raw print is the
+                // fallback for an app that does not poll it.
+                let polls = dev.notice_polls();
+
+                dev.set_notice(error.clone());
+                thread::sleep(Duration::from_millis(1200));
+
+                if dev.notice_polls() == polls {
+                  announce(&format!("rebuild failed:\n{error}"));
+                }
+              }
             }
           }
           Err(mpsc::RecvTimeoutError::Timeout) => {}

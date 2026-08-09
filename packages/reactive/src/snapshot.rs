@@ -80,6 +80,24 @@ pub(crate) fn register(tag: &'static str, serialize: Box<dyn Fn() -> Option<Vec<
   });
 }
 
+/// Registers a snapshot provider: its bytes join every later [`snapshot`] under `tag`,
+/// alongside the tagged signals. `None` omits the entry; a restored counterpart is
+/// adopted through [`staged`].
+///
+/// # Panics
+///
+/// Panics if `tag` is already carried by a live tagged signal or provider.
+pub fn provide(tag: &'static str, serialize: impl Fn() -> Option<Vec<u8>> + 'static) {
+  register(tag, Box::new(serialize));
+}
+
+/// Takes the bytes a [`restore`] staged under `tag`, consuming them—the adopting half
+/// of a [`provide`]d entry.
+#[must_use]
+pub fn staged(tag: &str) -> Option<Vec<u8>> {
+  take_staged(tag)
+}
+
 /// Serializes every live tagged signal's current value, ordered by tag.
 #[must_use]
 pub fn snapshot() -> Vec<u8> {

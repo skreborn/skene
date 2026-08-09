@@ -182,6 +182,7 @@ mod host {
     let port = spawn_state_server(dev.clone())?;
     let (changes, _watcher) = watch_sources(app)?;
     let binary = pipeline::tui_binary(app, release);
+    let mut running = binary_digest(&binary);
 
     loop {
       let mut child = std::process::Command::new(&binary)
@@ -201,15 +202,27 @@ mod host {
             drain_burst(&changes);
 
             // Rebuild before swapping, so the running app stays up through the compile
-            // (and through a failed one).
+            // (and through a failed one). A rebuild the change did not reach—an
+            // unrelated file, a comment elsewhere—leaves the binary identical, and the
+            // running app (and its state) stays up instead of restarting for nothing.
             match pipeline::build_tui_binary(app, release) {
               Ok(()) => {
+                let rebuilt = binary_digest(&binary);
+
+                if rebuilt.is_some() && rebuilt == running {
+                  announce("rebuilt; binary unchanged, keeping the running app");
+
+                  continue;
+                }
+
+                running = rebuilt;
+
                 let _ = child.kill();
                 let _ = child.wait();
 
                 break;
               }
-              Err(error) => eprintln!("rebuild failed:\n{error}"),
+              Err(error) => announce(&format!("rebuild failed:\n{error}")),
             }
           }
           Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -222,6 +235,33 @@ mod host {
         }
       }
     }
+  }
+
+  /// Prints into the terminal the running app holds in raw mode: every line break
+  /// carries a carriage return, so the text reads straight instead of stair-stepping.
+  fn announce(text: &str) {
+    use std::io::Write;
+
+    let mut out = std::io::stderr();
+
+    for line in text.lines() {
+      let _ = write!(out, "{line}\r\n");
+    }
+
+    let _ = out.flush();
+  }
+
+  /// The binary's content digest, to tell a rebuild that changed nothing from one
+  /// that needs a swap.
+  fn binary_digest(path: &std::path::Path) -> Option<u64> {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
+    let bytes = std::fs::read(path).ok()?;
+    let mut hasher = DefaultHasher::new();
+
+    bytes.hash(&mut hasher);
+
+    Some(hasher.finish())
   }
 
   /// Watches the workspace's packages, the app, and the asset roots; sends one unit

@@ -206,6 +206,10 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         modifiers,
       );
 
+      if matches!(mouse.kind, MouseEventKind::Drag(MouseButton::Left)) {
+        state.drag_to(mouse.column, mouse.row);
+      }
+
       set_pointer_shape(state.hover_cursor());
     }
     MouseEventKind::Down(button) => {
@@ -232,6 +236,10 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         Some(portable_button(button)),
         modifiers,
       );
+
+      if button == MouseButton::Left {
+        state.end_drag();
+      }
     }
     MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, 1),
     MouseEventKind::ScrollUp => state.mouse_scroll(mouse.column, mouse.row, 0, -1),
@@ -810,6 +818,62 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
         Some(skene_core::PointerButton::Primary),
         skene_core::Modifiers::default(),
       );
+      state.end_drag();
+    });
+  });
+}
+
+/// Simulates pressing the left button at (`x`, `y`) without releasing—the start of a
+/// drag—for a test driving drags headlessly.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_press(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::batch(|| {
+      state.set_hover(x, y);
+      let _ = state.run_pointer(
+        &state.pointer_down,
+        x,
+        y,
+        Some(skene_core::PointerButton::Primary),
+        skene_core::Modifiers::default(),
+      );
+      state.mouse_click(x, y);
+    });
+  });
+}
+
+/// Simulates dragging to (`x`, `y`) with the left button held, after
+/// [`trigger_mouse_press`].
+#[cfg(feature = "test")]
+pub fn trigger_mouse_drag(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::batch(|| {
+      state.set_hover(x, y);
+      let _ = state.run_pointer(
+        &state.pointer_move,
+        x,
+        y,
+        Some(skene_core::PointerButton::Primary),
+        skene_core::Modifiers::default(),
+      );
+      state.drag_to(x, y);
+    });
+  });
+}
+
+/// Simulates releasing the left button at (`x`, `y`), ending a drag.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_release(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::batch(|| {
+      let _ = state.run_pointer(
+        &state.pointer_up,
+        x,
+        y,
+        Some(skene_core::PointerButton::Primary),
+        skene_core::Modifiers::default(),
+      );
+      state.end_drag();
     });
   });
 }

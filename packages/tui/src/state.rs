@@ -143,6 +143,13 @@ impl NodeKind {
   }
 }
 
+/// A press-initiated drag in progress, followed by pointer motion until release.
+#[derive(Clone, Copy)]
+pub(crate) enum Drag {
+  /// A slider's thumb: motion slides the value to the pointer's column.
+  Slider(NodeId),
+}
+
 /// One node's record: its realization, its taffy node, and its place in the tree.
 pub(crate) struct NodeRecord {
   pub(crate) kind: NodeKind,
@@ -186,6 +193,8 @@ pub(crate) struct State {
   pub(crate) controls: RefCell<FxHashSet<NodeId>>,
   /// The path from the root to the deepest node under the mouse, when known.
   pub(crate) hovered: RefCell<Vec<NodeId>>,
+  /// The drag in progress, from a press until its release.
+  pub(crate) drag: Cell<Option<Drag>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
@@ -253,6 +262,7 @@ impl State {
       focused: Cell::new(None),
       controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
+      drag: Cell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
       scroll_offsets: RefCell::new(FxHashMap::default()),
@@ -744,7 +754,32 @@ impl State {
         .map_or((0, 0), |(_, origin)| *origin);
 
       self.activate_control(target, Some(i64::from(x) - origin.0));
+
+      // A press on a slider starts a drag: motion keeps sliding until release.
+      if matches!(
+        self.nodes.borrow().get(&target).map(|record| &record.kind),
+        Some(NodeKind::Slider { .. })
+      ) {
+        self.drag.set(Some(Drag::Slider(target)));
+      }
     }
+  }
+
+  /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way.
+  pub(crate) fn drag_to(&self, x: u16, _y: u16) {
+    match self.drag.get() {
+      Some(Drag::Slider(node)) => {
+        let (origin_x, _) = self.absolute_origin(node);
+
+        self.slide_to(node, i64::from(x) - origin_x);
+      }
+      None => {}
+    }
+  }
+
+  /// Ends the drag in progress, on release.
+  pub(crate) fn end_drag(&self) {
+    self.drag.set(None);
   }
 
   /// Dispatches an activation on `target` as `Enter`/`Space` do: click handlers bubble

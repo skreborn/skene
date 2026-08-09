@@ -1372,6 +1372,52 @@ fn slider_nudges_and_jumps() {
   assert!((after_click - 10.0).abs() < f32::EPSILON);
 }
 
+/// A pressed slider drags: motion slides the value to the pointer's column until
+/// release, and motion after release changes nothing.
+#[test]
+fn slider_drags_to_the_pointer() {
+  let (mid, edge, after_release) = with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    tui::mount(|| {
+      Container::new()
+        .set_width(11)
+        .set_child(Slider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(5, 0);
+
+    let mid = volume.get_untracked();
+
+    tui::trigger_mouse_drag(10, 0);
+
+    let edge = volume.get_untracked();
+
+    tui::trigger_mouse_release(10, 0);
+    tui::trigger_mouse_drag(2, 0);
+
+    (mid, edge, volume.get_untracked())
+  });
+
+  assert!(
+    (mid - 5.0).abs() < f32::EPSILON,
+    "dragged to the middle: {mid}"
+  );
+  assert!(
+    (edge - 10.0).abs() < f32::EPSILON,
+    "dragged to the end: {edge}"
+  );
+  assert!(
+    (after_release - 10.0).abs() < f32::EPSILON,
+    "released: motion no longer slides ({after_release})",
+  );
+}
+
 /// A shadow mixes its color into both colors of the band below and to the right.
 #[test]
 fn shadow_mixes_into_the_cells_beneath() {

@@ -148,6 +148,9 @@ pub(crate) struct NodeRecord {
   pub(crate) children: Vec<NodeId>,
   pub(crate) parent: Option<NodeId>,
   pub(crate) in_stack: bool,
+  /// Wrapper-view layout annotations (pinned edges, flexibility, grid placement) for
+  /// a node whose kind carries no box style of its own.
+  pub(crate) annotations: Option<Box<BoxStyle>>,
 }
 
 /// A node's handlers of one event kind.
@@ -222,6 +225,7 @@ impl State {
         children: Vec::new(),
         parent: None,
         in_stack: false,
+        annotations: None,
       },
     );
 
@@ -278,6 +282,7 @@ impl State {
         children: Vec::new(),
         parent: None,
         in_stack: false,
+        annotations: None,
       },
     );
 

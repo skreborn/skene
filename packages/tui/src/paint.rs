@@ -9,7 +9,7 @@ use skene_core::{Color, NodeId};
 use taffy::prelude::{AvailableSpace, length};
 
 use crate::{
-  state::{NodeKind, ROOT_ID, State},
+  state::{NodeKind, NodeRecord, ROOT_ID, State},
   style::{
     Environment,
     Interaction,
@@ -317,6 +317,17 @@ fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, o
   );
 }
 
+/// Applies a node's wrapper annotations—and its stack membership—to its taffy style,
+/// for a kind that carries no box style of its own.
+fn apply_annotations(out: &mut taffy::style::Style, record: &NodeRecord) {
+  if let Some(annotations) = &record.annotations {
+    apply_box_sizing(out, annotations, record.in_stack);
+  }
+  else if record.in_stack {
+    apply_box_sizing(out, &crate::props::BoxStyle::default(), true);
+  }
+}
+
 /// Refreshes every node's taffy style from its effective style in `environment`.
 // A match dispatch over the node kinds; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
@@ -369,10 +380,7 @@ fn refresh_styles(state: &State, environment: Environment) {
             .expect("carry a run's text");
         }
 
-        if record.in_stack {
-          apply_box_sizing(&mut out, &crate::props::BoxStyle::default(), true);
-        }
-
+        apply_annotations(&mut out, record);
         taffy.set_style(record.taffy, out).expect("style a run");
       }
       NodeKind::TextField {
@@ -404,18 +412,21 @@ fn refresh_styles(state: &State, environment: Environment) {
         taffy.set_style(record.taffy, out).expect("style an input");
       }
       NodeKind::Checkbox { .. } | NodeKind::Radio { .. } => {
-        let out = taffy::style::Style {
-          size: taffy::geometry::Size {
-            width: length(1.0),
-            height: length(1.0),
-          },
-          ..taffy::style::Style::default()
+        let mut out = taffy::style::Style::default();
+
+        apply_annotations(&mut out, record);
+
+        out.size = taffy::geometry::Size {
+          width: length(1.0),
+          height: length(1.0),
         };
 
         taffy.set_style(record.taffy, out).expect("style a control");
       }
       NodeKind::Picker { options, .. } => {
         let mut out = taffy::style::Style::default();
+
+        apply_annotations(&mut out, record);
 
         #[expect(clippy::cast_precision_loss)]
         let longest = options
@@ -434,12 +445,13 @@ fn refresh_styles(state: &State, environment: Environment) {
       NodeKind::Slider { .. } => {
         // The track fills its container's width; wrap in a sized `Container` to bound
         // it.
-        let out = taffy::style::Style {
-          size: taffy::geometry::Size {
-            width: taffy::prelude::percent(1.0),
-            height: length(1.0),
-          },
-          ..taffy::style::Style::default()
+        let mut out = taffy::style::Style::default();
+
+        apply_annotations(&mut out, record);
+
+        out.size = taffy::geometry::Size {
+          width: taffy::prelude::percent(1.0),
+          height: length(1.0),
         };
 
         taffy.set_style(record.taffy, out).expect("style a control");
@@ -478,6 +490,12 @@ fn refresh_styles(state: &State, environment: Environment) {
               },
             )
             .expect("style a group");
+        }
+        else if record.in_stack || record.annotations.is_some() {
+          let mut out = taffy::style::Style::default();
+
+          apply_annotations(&mut out, record);
+          taffy.set_style(record.taffy, out).expect("style a group");
         }
       }
     }

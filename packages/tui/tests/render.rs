@@ -61,6 +61,52 @@ fn row_flows_runs_with_spacing() {
   assert_eq!(rendered, "ab  cd\n\n");
 }
 
+/// A pinned bare text run honors its edges inside a stack; the annotation lands on
+/// the run's record, box style or not.
+#[test]
+fn pinned_text_honors_its_edges() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Stack::new()
+        .set_width(12)
+        .set_height(3)
+        .set_child(Pinned::new(Text::new("pin")).set_edges(tui::core::Inset {
+          top: Dimension::Auto,
+          right: Dimension::Length(0),
+          bottom: Dimension::Length(0),
+          left: Dimension::Auto,
+        }))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 3)
+  });
+
+  assert_eq!(rendered, "\n\n         pin\n");
+}
+
+/// A flexible bare text run takes the row's free space, pushing later children over.
+#[test]
+fn flexible_text_takes_free_space() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Row::new()
+        .set_children((
+          Text::new("a"),
+          Flexible::new(Text::new("b")),
+          Text::new("c"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 1)
+  });
+
+  assert_eq!(rendered, "ab         c\n");
+}
+
 /// A border draws with the selected character set—rounded here, and ASCII through a
 /// hover variant.
 #[test]

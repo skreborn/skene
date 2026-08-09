@@ -976,6 +976,11 @@ pub(crate) fn update_box(node: NodeId, prop: BoxProp) {
       if let NodeKind::Box { style, .. } | NodeKind::TextField { style, .. } = &mut record.kind {
         crate::props::apply_box_prop(style, prop);
       }
+      else {
+        // A kind with no box style of its own—a run, a glyph control, a group—takes
+        // wrapper annotations on its record.
+        crate::props::apply_box_prop(record.annotations.get_or_insert_default(), prop);
+      }
     });
 
     state.dirty.set(true);

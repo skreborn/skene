@@ -372,11 +372,15 @@ fn caret_edits_insert_and_delete() {
 
     tui::trigger_key("End");
     tui::trigger_key("Backspace");
+    assert_eq!(name.get_untracked(), "bX");
+
+    // `Ctrl+H` is `0x08`, the legacy byte of `Ctrl+Backspace`: one character deletes.
+    tui::trigger_key("Ctrl+h");
 
     name.get_untracked()
   });
 
-  assert_eq!(value, "bX");
+  assert_eq!(value, "b");
 }
 
 /// `Ctrl`-arrows jump the caret over whole words; `Ctrl+Backspace` and `Ctrl+Delete`

@@ -55,7 +55,10 @@ fn restore_terminal() {
   let mut out = std::io::stdout();
   let _ = execute!(
     out,
-    event::PopKeyboardEnhancementFlags,
+    // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`):
+    // idempotent, so the reset holds however many app instances set it before—a
+    // dev-loop swap kills the previous instance without running its restore.
+    crossterm::style::Print("\x1b[=0;1u"),
     DisableMouseCapture,
     cursor::Show,
     terminal::LeaveAlternateScreen
@@ -111,14 +114,10 @@ where
 
   // A terminal speaking the kitty keyboard protocol disambiguates modified keys—
   // `Ctrl+Backspace` above all; the rest keep the legacy encoding, where `Ctrl+W`
-  // stands in for it.
+  // stands in for it. The stackless set form (`CSI = 1 ; 1 u`), not a push: a
+  // dev-loop swap kills an instance without popping, and a set stays balanced.
   if terminal::supports_keyboard_enhancement().unwrap_or(false) {
-    let _ = execute!(
-      std::io::stdout(),
-      event::PushKeyboardEnhancementFlags(
-        event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES,
-      ),
-    );
+    let _ = execute!(std::io::stdout(), crossterm::style::Print("\x1b[=1;1u"));
   }
 
   let mut last_frame: Option<paint::Buffer> = None;
@@ -527,7 +526,11 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
 
           Some(Edit::Value(value.clone()))
         }
-        KeyCode::Backspace if *caret > 0 => {
+        // Legacy encodings send `Ctrl+Backspace` as `0x08`—the byte of `Ctrl+H`—with
+        // no way to tell the two apart; deleting one character honors both readings.
+        KeyCode::Backspace | KeyCode::Char('h')
+          if !modifiers.contains(KeyModifiers::ALT) && *caret > 0 =>
+        {
           *caret -= 1;
           value.remove(byte_of(value, *caret));
 

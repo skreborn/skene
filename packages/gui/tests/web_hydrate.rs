@@ -115,8 +115,8 @@ fn a_resource_adopts_server_state_without_loading() {
   let loaded = Rc::new(Cell::new(false));
   let captured: Rc<RefCell<Option<Resource<String>>>> = Rc::new(RefCell::new(None));
 
-  // The server's state: a JSON array of one JSON-encoded value, "Ada".
-  hydrate(root.clone(), r#"["\"Ada\""]"#, {
+  // The server's state: one order-keyed JSON-encoded value, "Ada", and no tagged ones.
+  hydrate(root.clone(), r#"[["\"Ada\""],[]]"#, {
     let loaded = Rc::clone(&loaded);
     let captured = Rc::clone(&captured);
 

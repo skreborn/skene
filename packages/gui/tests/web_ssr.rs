@@ -18,6 +18,7 @@ use skene_gui::{
   Text,
   View,
   client_only,
+  render_page_stream,
   render_to_stream,
   render_to_string,
   web,
@@ -312,6 +313,51 @@ fn a_page_without_deferred_streams_as_one_chunk() {
     stream.document().contains(">hi</span>") && stream.document().ends_with("</html>"),
     "and carries the whole body: {}",
     stream.document(),
+  );
+}
+
+/// The piece-driven stream: the sink receives the opening shell, a chunk per deferred
+/// boundary, and the closing tail, in order—and the pieces concatenate to the same
+/// document the collected stream assembles.
+#[test]
+fn page_stream_pieces_concatenate_to_the_document() {
+  fn app() -> impl skene_gui::IntoView {
+    Container::new().set_children([
+      Text::new("shell").into_any(),
+      Deferred::new(|| {
+        let data = Resource::new(|| async {
+          web::sleep(Duration::from_millis(5)).await;
+
+          "late".to_owned()
+        });
+
+        DerivedView::new(move || {
+          data.with(|value| match value {
+            None => Text::new("loading").into_any(),
+            Some(text) => Text::new(text.clone()).into_any(),
+          })
+        })
+      })
+      .into_any(),
+    ])
+  }
+
+  let mut pieces: Vec<String> = Vec::new();
+
+  render_page_stream(app, |piece| pieces.push(piece.to_owned()));
+
+  assert!(
+    pieces.len() >= 4,
+    "shell, a chunk each side of the boundary, and the tail: {} pieces",
+    pieces.len(),
+  );
+
+  assert!(pieces[0].starts_with("<!DOCTYPE html><html><head>"));
+  assert!(pieces[pieces.len() - 1].ends_with("</body></html>"));
+  assert_eq!(
+    pieces.concat(),
+    render_to_stream(app).document(),
+    "the pieces concatenate to the collected stream's document",
   );
 }
 

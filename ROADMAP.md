@@ -137,8 +137,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   intercepts the click into `Router::navigate`—modified clicks stay with the browser,
   so open-in-new-tab keeps working. Route parsing trims trailing slashes (the root
   stays `/`), matching the directory URLs statically-hosted routes serve under.
-- **Remaining:** streaming through the runner (`render_to_stream` over incremental
-  stdout).
+- **Streaming through the runner—done.** The stream walk drives a sink
+  (`render_to_stream_with` handing out `StreamPiece`s; the collected
+  `render_to_stream` wraps it), `render_page_stream` assembles progressive full-page
+  flushes, and the server entry's `--stream <path>` mode writes each flush to stdout
+  as it is produced. `Runner::render_stream(path, sink)` forwards the guest's writes
+  through a channel while the render still runs—the shell arrives before a deferred
+  boundary settles—and the pieces concatenate byte-identically to `render(path)`.
 
 ## Phase 6—TUI facade ✅ (core)
 

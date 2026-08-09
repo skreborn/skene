@@ -349,7 +349,8 @@ where
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
 /// the statically-renderable routes one per line (see
-/// [`install_static_router`]).
+/// [`install_static_router`]), or, given `--stream <path>`, writes the page flush by
+/// flush, each one followed through to stdout as it is produced.
 ///
 /// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
 /// prints the document—which is exactly the interface the runner embeds.
@@ -367,6 +368,21 @@ where
     for route in driver::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]) {
       println!("{route}");
     }
+
+    return;
+  }
+
+  if argument == "--stream" {
+    let path = std::env::args().nth(2).unwrap_or_else(|| "/".to_owned());
+
+    driver::set_request_path(&path);
+    render_page_stream(app, |piece| {
+      use std::io::Write;
+
+      print!("{piece}");
+
+      let _ = std::io::stdout().flush();
+    });
 
     return;
   }
@@ -444,4 +460,33 @@ where
   }
 
   Stream { chunks }
+}
+
+/// Renders the application as a progressive page, each flush handed to `sink` as it is
+/// produced: the opening shell, a body chunk per settled [`Deferred`] boundary, and the
+/// closing tail. The flushes concatenate to [`render_to_stream`]'s
+/// [`document`](Stream::document), so writing each one to a response streams the page.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  driver::render_to_stream_with(app, |piece| match piece {
+    driver::StreamPiece::Shell { styles, head } => {
+      sink(&format!(
+        "<!DOCTYPE html><html><head>{head}{styles}</head><body>"
+      ));
+    }
+    driver::StreamPiece::Chunk(chunk) => sink(&chunk),
+    driver::StreamPiece::Tail(state) => {
+      sink(&format!(
+        "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
+        id = driver::STATE_SCRIPT_ID,
+        // `<` keeps a value's `<` from closing the script early, and is valid JSON that decodes
+        // back to `<`.
+        state = state.replace('<', "\\u003c"),
+      ));
+    }
+  });
 }

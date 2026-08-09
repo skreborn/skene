@@ -741,7 +741,24 @@ where
   (styles, head, body, state)
 }
 
-/// Renders `app` as an in-order stream: `(styles, head, body_chunks, state)`.
+/// One piece of a streamed render, in emission order.
+pub enum StreamPiece<'a> {
+  /// The settled shell's styles and head, before any body chunk.
+  Shell {
+    /// The `<style>` block.
+    styles: &'a str,
+    /// The registered head content.
+    head: &'a str,
+  },
+  /// One body chunk: the markup up to the next deferred boundary, or after the last.
+  Chunk(String),
+  /// The encoded hydration state, once the walk completes.
+  Tail(String),
+}
+
+/// Renders `app` as an in-order stream, each piece handed to `flush` as it is
+/// produced: the shell once it settles, a body chunk at each deferred boundary, and
+/// the hydration state last.
 ///
 /// The shell settles and its styles render, then the body walks in document order. At each
 /// deferred boundary the walk flushes the chunk built so far, blocks until that boundary's
@@ -750,7 +767,7 @@ where
 ///
 /// The styles are the shell's; a boundary whose loaded content introduces a brand-new class is
 /// the delta-style streaming's concern, not yet handled here.
-pub fn render_to_stream<V, F>(app: F) -> (String, String, Vec<String>, String)
+pub fn render_to_stream_with<V, F>(app: F, mut flush: impl FnMut(StreamPiece<'_>))
 where
   F: FnOnce() -> V + 'static,
   V: IntoView,
@@ -779,7 +796,11 @@ where
   let styles = with_state(|state| state.render_styles());
   let head = with_state(|state| state.render_head());
 
-  let mut chunks = Vec::new();
+  flush(StreamPiece::Shell {
+    styles: &styles,
+    head: &head,
+  });
+
   let mut cursor = vec![Frame {
     id: ROOT,
     next_child: 0,
@@ -789,7 +810,7 @@ where
     let mut chunk = String::new();
     let pending = with_state(|state| state.stream(&mut cursor, &mut chunk));
 
-    chunks.push(chunk);
+    flush(StreamPiece::Chunk(chunk));
 
     let Some(node) = pending
     else {
@@ -802,7 +823,7 @@ where
     BOUNDARIES.with(|boundaries| boundaries.borrow_mut().remove(&node));
   }
 
-  let state = collect_hydration_state();
+  flush(StreamPiece::Tail(collect_hydration_state()));
 
   scope.dispose();
   task::clear();
@@ -811,6 +832,30 @@ where
   TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   STATE.with(|state| *state.borrow_mut() = None);
+}
+
+/// [`render_to_stream_with`], collected: `(styles, head, body_chunks, state)`.
+pub fn render_to_stream<V, F>(app: F) -> (String, String, Vec<String>, String)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  let mut styles = String::new();
+  let mut head = String::new();
+  let mut chunks = Vec::new();
+  let mut state = String::new();
+
+  render_to_stream_with(app, |piece| match piece {
+    StreamPiece::Shell {
+      styles: shell_styles,
+      head: shell_head,
+    } => {
+      shell_styles.clone_into(&mut styles);
+      shell_head.clone_into(&mut head);
+    }
+    StreamPiece::Chunk(chunk) => chunks.push(chunk),
+    StreamPiece::Tail(tail) => state = tail,
+  });
 
   (styles, head, chunks, state)
 }

@@ -129,6 +129,7 @@ pub use self::csr::{
 pub(crate) use self::ssr::assign_class;
 #[cfg(target_os = "wasi")]
 pub use self::ssr::{
+  StreamPiece,
   add_head_element,
   adopt_next,
   adopt_tagged,
@@ -162,6 +163,7 @@ pub use self::ssr::{
   register_source,
   register_tagged_source,
   render_to_stream,
+  render_to_stream_with,
   render_to_string,
   set_attribute,
   set_checked,

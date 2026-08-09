@@ -10,15 +10,26 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::path::Path;
+use std::{path::Path, sync::mpsc};
 
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use wasmtime::{
   Engine,
   Store,
   component::{Component, Linker},
 };
-use wasmtime_wasi::p2::{IoView, WasiCtx, WasiCtxBuilder, WasiView, pipe::MemoryOutputPipe};
+use wasmtime_wasi::p2::{
+  IoView,
+  OutputStream,
+  Pollable,
+  StdoutStream,
+  StreamResult,
+  WasiCtx,
+  WasiCtxBuilder,
+  WasiView,
+  pipe::MemoryOutputPipe,
+};
 
 /// A loaded skene app, ready to render routes.
 ///
@@ -99,13 +110,51 @@ impl Runner {
     )
   }
 
+  /// Renders `route_path` as a progressive stream: `sink` receives each piece of
+  /// output as the app flushes it, while the render is still running—the shell first,
+  /// a chunk per deferred boundary as it settles, the closing tail last. The pieces
+  /// concatenate to the full document.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the app traps or exits with failure.
+  pub fn render_stream(&self, route_path: &str, mut sink: impl FnMut(&[u8])) -> Result<()> {
+    let (sender, receiver) = mpsc::channel();
+    let pipe = ChannelPipe { sender };
+
+    std::thread::scope(|scope| {
+      let guest = scope.spawn(move || self.run(&["app", "--stream", route_path], pipe));
+
+      // Every sender lives in the guest's store; the loop ends when the run finishes
+      // and drops it.
+      for bytes in receiver {
+        sink(&bytes);
+      }
+
+      guest
+        .join()
+        .map_err(|_| anyhow::anyhow!("the render thread panicked"))?
+    })
+  }
+
   /// Runs one fresh instance of the app with `argument`, returning its stdout.
   fn invoke(&self, argument: &str) -> Result<String> {
     let stdout = MemoryOutputPipe::new(usize::MAX);
+
+    self.run(&["app", argument], stdout.clone())?;
+
+    let bytes = stdout.contents();
+
+    String::from_utf8(bytes.to_vec()).context("rendered output is not UTF-8")
+  }
+
+  /// Runs one fresh instance of the app with `arguments`, its stdout wired to
+  /// `stdout`.
+  fn run(&self, arguments: &[&str], stdout: impl StdoutStream + 'static) -> Result<()> {
     let ctx = WasiCtxBuilder::new()
-      .stdout(stdout.clone())
+      .stdout(stdout)
       .inherit_stderr()
-      .args(&["app", argument])
+      .args(arguments)
       .build();
 
     let host = Host {
@@ -125,12 +174,46 @@ impl Runner {
       .wasi_cli_run()
       .call_run(&mut store)
       .context("run app")?
-      .map_err(|()| anyhow::anyhow!("app exited with failure"))?;
+      .map_err(|()| anyhow::anyhow!("app exited with failure"))
+  }
+}
 
-    drop(store);
+/// Guest stdout forwarded through a channel write by write, so a caller streams the
+/// output while the render still runs.
+#[derive(Clone)]
+struct ChannelPipe {
+  sender: mpsc::Sender<Vec<u8>>,
+}
 
-    let bytes = stdout.contents();
+#[async_trait::async_trait]
+impl Pollable for ChannelPipe {
+  async fn ready(&mut self) {}
+}
 
-    String::from_utf8(bytes.to_vec()).context("rendered output is not UTF-8")
+impl OutputStream for ChannelPipe {
+  fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
+    // A closed receiver means the caller stopped listening; the render finishes
+    // regardless, as it would printing to a closed pipe.
+    let _ = self.sender.send(bytes.to_vec());
+
+    Ok(())
+  }
+
+  fn flush(&mut self) -> StreamResult<()> {
+    Ok(())
+  }
+
+  fn check_write(&mut self) -> StreamResult<usize> {
+    Ok(usize::MAX)
+  }
+}
+
+impl StdoutStream for ChannelPipe {
+  fn stream(&self) -> Box<dyn OutputStream> {
+    Box::new(self.clone())
+  }
+
+  fn isatty(&self) -> bool {
+    false
   }
 }

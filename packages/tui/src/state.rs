@@ -993,6 +993,34 @@ impl State {
     }
   }
 
+  /// Selects a picker's option by value, firing its change handlers on a change.
+  pub(crate) fn select_picker(&self, node: NodeId, value: &str) {
+    let next = self.with_node(node, |record| {
+      let NodeKind::Picker {
+        options,
+        value: current,
+        ..
+      } = &mut record.kind
+      else {
+        return None;
+      };
+
+      if current == value || !options.iter().any(|(option, _)| option == value) {
+        return None;
+      }
+
+      value.clone_into(current);
+
+      Some(current.clone())
+    });
+
+    if let Some(next) = next {
+      self.dirty.set(true);
+
+      Self::run_handlers(&self.input, node, next.as_str(), |run, value| run(value));
+    }
+  }
+
   /// Moves a slider by `steps` of its step size, clamped, firing its change handlers.
   pub(crate) fn nudge_slider(&self, node: NodeId, steps: f32) {
     self.write_slider(node, |min, max, step, value| {

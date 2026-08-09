@@ -1226,9 +1226,9 @@ fn radio_group_moves_the_check() {
   assert_eq!(value, "c");
 }
 
-/// A select cycles through its options with `Enter` and arrows, wrapping.
+/// A picker cycles through its options with the arrow keys, wrapping.
 #[test]
-fn select_cycles_its_options() {
+fn picker_cycles_on_arrows() {
   let (initial, cycled, back, value) = with_driver(|| {
     let unit = Signal::new("px".to_owned());
 
@@ -1243,7 +1243,7 @@ fn select_cycles_its_options() {
     let initial = tui::render_to_text(10, 1);
 
     tui::trigger_key("Tab");
-    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
 
     let cycled = tui::render_to_text(10, 1);
 
@@ -1261,6 +1261,83 @@ fn select_cycles_its_options() {
   assert!(cycled.contains("cells"));
   assert!(back.contains("pixels"));
   assert_eq!(value, "px");
+}
+
+/// `Enter` opens the picker's options popup, a row click selects and closes, and
+/// `Escape` dismisses without selecting.
+#[test]
+fn picker_opens_a_popup_and_selects_by_click() {
+  let (closed, open, value, after_click, dismissed) = with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    tui::mount(|| {
+      Picker::new()
+        .set_options([("px", "pixels"), ("cell", "cells")])
+        .bind_value(unit)
+        .into_any()
+        .build()
+    });
+
+    let closed = tui::render_to_text(14, 5);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(14, 5);
+
+    // The "cells" row, located in the open frame.
+    let row = u16::try_from(
+      open
+        .lines()
+        .position(|line| line.contains("cells"))
+        .expect("the cells row is visible"),
+    )
+    .expect("fits");
+    let column = u16::try_from(
+      open
+        .lines()
+        .nth(usize::from(row))
+        .expect("the row line")
+        .find("cells")
+        .expect("the cells column"),
+    )
+    .expect("fits");
+
+    tui::trigger_mouse_click(column, row);
+
+    let after_click = tui::render_to_text(14, 5);
+
+    tui::trigger_key("Enter");
+    tui::trigger_key("Escape");
+
+    (
+      closed,
+      open,
+      unit.get_untracked(),
+      after_click,
+      tui::render_to_text(14, 5),
+    )
+  });
+
+  assert!(
+    !closed.contains("cells"),
+    "closed shows only the current label"
+  );
+  assert!(
+    open.contains("x pixels") && open.contains("cells"),
+    "the popup lists every option, the current one marked: {open}",
+  );
+
+  assert_eq!(value, "cell", "the row click selected");
+  assert!(
+    !after_click.lines().any(|line| line.contains("pixels")),
+    "the selection closed the popup: {after_click}",
+  );
+
+  assert!(
+    !dismissed.lines().any(|line| line.contains("pixels")),
+    "escape dismissed the reopened popup: {dismissed}",
+  );
 }
 
 /// A slider nudges by its step on arrows and jumps to a clicked cell.

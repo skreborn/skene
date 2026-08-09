@@ -444,6 +444,12 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   plus a final flush on quit—so a kill at any moment loses at most a fraction of a
   second of state. Verified end to end under a pseudo-terminal: three clicks, a source
   touch, a rebuild-restart, and the fresh process painted the preserved count.
+  A failed rebuild lands in the running app as a dismissable modal—the CLI holds the
+  compiler error at `/skene:notice`, the app polls it and presents it over the content
+  (Escape dismisses; a fix clears it), falling back to a raw print when nothing polls.
+  Scroll offsets ride the snapshot beside the tagged signals, through the reactive
+  engine's `provide`/`staged` seam, keyed by build-order node id—so a restart resumes
+  scrolled where the last instance stood. Both verified under the pseudo-terminal.
 - **Wasm-split lazy loading—done.** `#[lazy]` marks an async view function whose body—
   and everything only lazy bodies reach—splits out of the main wasm into its own
   module, fetched on the first call; the `Lazy` view renders one (`Lazy::new(about)`),

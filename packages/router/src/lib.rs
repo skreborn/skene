@@ -80,8 +80,14 @@ impl<R: Route> Router<R> {
 
   /// Applies an externally-changed path (back/forward navigation, the initial URL)
   /// without reporting it back to the sink. Returns whether the path parsed.
+  ///
+  /// Trailing slashes are trimmed before parsing (the root stays `/`), so the
+  /// directory URLs a statically-hosted route serves under match their route.
   #[must_use = "an unmatched path leaves the route unchanged"]
   pub fn apply_path(&self, path: &str) -> bool {
+    let trimmed = path.trim_end_matches('/');
+    let path = if trimmed.is_empty() { "/" } else { trimmed };
+
     match R::parse(path) {
       Some(route) => {
         self.current.set(route);

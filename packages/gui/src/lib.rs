@@ -21,6 +21,8 @@ pub mod head;
 #[cfg(target_arch = "wasm32")]
 mod lazy;
 mod lazy_column;
+#[cfg(target_arch = "wasm32")]
+mod link;
 mod overlay;
 mod picker;
 mod radio;
@@ -67,6 +69,8 @@ pub use wasm_bindgen;
 pub use crate::deferred::Deferred;
 #[cfg(target_arch = "wasm32")]
 pub use crate::lazy::Lazy;
+#[cfg(target_arch = "wasm32")]
+pub use crate::link::Link;
 #[cfg(target_arch = "wasm32")]
 pub use crate::resource::Resource;
 #[cfg(target_arch = "wasm32")]

@@ -17,8 +17,8 @@ use crate::driver;
 /// [`route`](Router::route); read it anywhere beneath with [`Router::get`].
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
-  let initial = R::parse(&driver::current_path()).unwrap_or(fallback);
-  let router = Router::new(initial);
+  let router = Router::new(fallback);
+  let _ = router.apply_path(&driver::current_path());
 
   router.set_sink(driver::push_path);
 
@@ -39,8 +39,8 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 /// scope. Navigation stays in memory—a server render is one route.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
-  let initial = R::parse(&driver::current_path()).unwrap_or(fallback);
-  let router = Router::new(initial);
+  let router = Router::new(fallback);
+  let _ = router.apply_path(&driver::current_path());
 
   router.provide();
 

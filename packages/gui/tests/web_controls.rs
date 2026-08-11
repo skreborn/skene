@@ -15,6 +15,10 @@ use skene_gui::{
   Slider,
   Text,
   TextEditor,
+  TextField,
+  TextStyle,
+  TextTheme,
+  core::{BoxStyle, Color, Condition},
   render_to_string,
 };
 
@@ -124,9 +128,17 @@ fn slider_serializes_range_and_value() {
 }
 
 /// Every control carries its own reset class: no native chrome, author styles from
-/// zero; the select opts into the customizable-select rendering where supported.
+/// zero. A toggle's reset keeps the border its drawn chrome needs, and the select opts
+/// into the customizable-select rendering where supported.
 #[test]
 fn controls_carry_their_reset() {
+  let rendered = render_to_string(|| Button::new().set_child(Text::new("Go")));
+
+  assert!(rendered.styles().contains(
+    "{appearance:none;background:none;border:none;margin:0;padding:0;\
+     font:inherit;color:inherit;}"
+  ));
+
   let rendered = render_to_string(Checkbox::new);
   let body = rendered.body();
   let start = body.find("class=\"").expect("a class") + 7;
@@ -134,8 +146,8 @@ fn controls_carry_their_reset() {
   let class = body[start..end].to_owned();
 
   assert!(rendered.styles().contains(&format!(
-    ".{class}{{appearance:none;background:none;border:none;margin:0;padding:0;\
-     font:inherit;color:inherit;}}"
+    ".{class}{{appearance:none;background:none;border:1px solid currentColor;margin:0;\
+     padding:0;font:inherit;color:inherit;}}"
   )));
 
   let rendered = render_to_string(|| Picker::new().set_options([("a", "A")]));
@@ -145,6 +157,76 @@ fn controls_carry_their_reset() {
       .styles()
       .contains("appearance:none;appearance:base-select;")
   );
+}
+
+/// Controls carry the built-in hover and focus feedback—a slight ink wash over the
+/// background under a stronger ink mix into the border—each state emitted only while
+/// no variant conditions on it; the slider draws its own chrome and carries none.
+#[test]
+fn controls_carry_interaction_feedback() {
+  let rendered = render_to_string(|| Button::new().set_child(Text::new("Go")));
+  let styles = rendered.styles();
+
+  assert!(styles.contains(
+    ":hover{background-image:linear-gradient(color-mix(in srgb, currentColor 6.25%, transparent)"
+  ));
+  assert!(styles.contains(
+    ":focus-visible{background-image:linear-gradient(color-mix(in srgb, currentColor 9.375%, \
+     transparent)"
+  ));
+  assert!(styles.contains(
+    ":focus-visible:hover{background-image:linear-gradient(color-mix(in srgb, currentColor \
+     12.5%, transparent)"
+  ));
+  assert!(styles.contains("border-color:color-mix(in srgb, currentColor 25%, transparent);"));
+
+  let authored = render_to_string(|| {
+    Button::new()
+      .set_when(
+        Condition::Hovered,
+        BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
+      )
+      .set_child(Text::new("Go"))
+  });
+  let styles = authored.styles();
+
+  assert!(!styles.contains(":hover{background-image:"));
+  assert!(styles.contains(":focus-visible{background-image:"));
+
+  let slider = render_to_string(|| Slider::new(0., 100.));
+
+  assert!(!slider.styles().contains("background-image:"));
+}
+
+/// A labeled toggle wraps in a label box: the caption is part of the control, so
+/// activating the caption activates the input.
+#[test]
+fn labeled_toggle_wraps_in_a_label() {
+  let rendered = render_to_string(|| Checkbox::new().set_label("subscribed"));
+  let body = rendered.body();
+
+  assert!(body.starts_with("<label"));
+  assert!(body.contains("type=\"checkbox\""));
+  assert!(body.contains(">subscribed</span>"));
+  assert!(body.ends_with("</label>"));
+}
+
+/// A control inherits the surrounding text theme through the framework's own
+/// inheritance: the resolved ink and selection pair land in its interned class.
+#[test]
+fn controls_inherit_the_text_theme() {
+  let rendered = render_to_string(|| {
+    TextTheme::new(TextField::new()).set_base(
+      TextStyle::new()
+        .set_color(Color::srgb(1., 0., 0.))
+        .set_selection_background(Color::srgb(0., 0., 1.)),
+    )
+  });
+  let styles = rendered.styles();
+
+  assert!(styles.contains("color:inherit;"));
+  assert!(styles.contains("color:oklch("));
+  assert!(styles.contains("::selection{background-color:"));
 }
 
 /// Roles realize as their semantic elements, headings by level.

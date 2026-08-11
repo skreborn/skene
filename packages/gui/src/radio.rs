@@ -17,6 +17,7 @@ pub struct Radio {
   group: String,
   value: String,
   checked: Option<Source<bool>>,
+  label: Option<String>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
   control: ControlBase,
 }
@@ -29,9 +30,18 @@ impl Radio {
       group: group.into(),
       value: value.into(),
       checked: None,
+      label: None,
       toggle_handler: None,
       control: ControlBase::new(),
     }
+  }
+
+  /// Sets the label beside the ring; clicking it selects too.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
+
+    self
   }
 
   /// Sets a static checked state.
@@ -105,6 +115,9 @@ impl skene_core::View for Radio {
 
     handlers.register(node);
 
-    node
+    match self.label {
+      Some(label) => crate::control::labeled(node, label),
+      None => node,
+    }
   }
 }

@@ -56,11 +56,16 @@ fn layout_declarations(layout: Layout) -> Declarations {
         FlexDirection::ColumnReverse => "column-reverse",
       },
     ),
-    Layout::Grid | Layout::Stack => Declarations::new().set("display", "grid"),
+    Layout::Grid => Declarations::new().set("display", "grid"),
+    // The stack is the containing block its pinned children position against.
+    Layout::Stack => Declarations::new()
+      .set("display", "grid")
+      .set("position", "relative"),
   }
 }
 
 /// Folds one box property into `declarations`.
+#[expect(clippy::too_many_lines)]
 fn apply_box_prop(declarations: Declarations, prop: &BoxProp) -> Declarations {
   match prop {
     BoxProp::Width(value) => declarations.set("width", Declarations::render_dimension(*value)),
@@ -369,22 +374,111 @@ pub(crate) fn overlay_template(props: &OverlayProps) -> String {
 pub(crate) const CONTROL_RESET: &str =
   "appearance:none;background:none;border:none;margin:0;padding:0;font:inherit;color:inherit;";
 
+/// The toggle controls' reset: the shared one, except the border stays—the default
+/// chrome draws the checkbox box and radio ring with it, in the inherited ink.
+pub(crate) const TOGGLE_RESET: &str = "appearance:none;background:none;border:1px solid currentColor;margin:0;padding:0;\
+   font:inherit;color:inherit;";
+
 /// The select control's reset: the shared one, upgraded to the customizable-select
 /// rendering (`appearance: base-select`) where the browser supports it.
 pub(crate) const SELECT_RESET: &str = "appearance:none;appearance:base-select;background:none;border:none;margin:0;padding:0;\
    font:inherit;color:inherit;";
 
-/// The complete rule template for a form control: its reset, then its static style—so
-/// every control carries a class, and author declarations override the reset in place.
-pub(crate) fn control_template(control: &ControlProps, reset: &'static str) -> String {
-  template(
-    fold_box_style(Declarations::new(), &control.style),
+/// The complete rule template for a form control: its reset, then its inherited text
+/// style and its static style—so every control carries a class, and author declarations
+/// override the reset in place. With `feedback`, the built-in hover and focus tints
+/// follow the variants, mixing the border toward the given base color while the author
+/// sets no border (`currentColor` for a toggle, whose chrome border is that already).
+pub(crate) fn control_template(
+  control: &ControlProps,
+  reset: &'static str,
+  feedback: Option<&'static str>,
+) -> String {
+  let base = fold_box_style(
+    fold_run_style(Declarations::new(), &control.text),
+    &control.style,
+  );
+  let mut out = template(
+    base,
     reset,
     &control.variants,
     &control.transitions,
     &control.animations,
     |style| fold_box_style(Declarations::new(), style),
-  )
+  );
+
+  if let Some(border_base) = feedback {
+    push_interaction_rules(
+      &mut out,
+      &control.variants,
+      &control.style.border.map_or_else(
+        || border_base.to_owned(),
+        |border| Declarations::render_color(border.color),
+      ),
+    );
+  }
+
+  let selection = fold_selection(&control.text);
+
+  if !selection.is_empty() {
+    push_rule(&mut out, &[], "::selection", &selection);
+  }
+
+  out
+}
+
+/// Appends the built-in interaction feedback: a slight ink wash over the background
+/// (two, three, and four 32nds for hover, focus, and both) under a stronger ink mix
+/// into the border (four, six, and eight sixteenths)—each state emitted only while no
+/// variant of the control conditions on it, so authored styling wins over the default.
+fn push_interaction_rules(
+  out: &mut String,
+  variants: &[(Condition, skene_core::BoxStyle)],
+  border: &str,
+) {
+  use skene_core::Composable;
+
+  let authored_hover = variants
+    .iter()
+    .any(|(condition, _)| condition.involves(&|leaf| matches!(leaf, Condition::Hovered)));
+  let authored_focus = variants.iter().any(|(condition, _)| {
+    condition.involves(&|leaf| matches!(leaf, Condition::Focused | Condition::FocusVisible))
+  });
+
+  let mut tint = |states: &[&'static str], wash_32nds: u16, border_16ths: u16| {
+    let wash = format!(
+      "color-mix(in srgb, currentColor {}%, transparent)",
+      f32::from(wash_32nds) * 100. / 32.,
+    );
+    let edge = format!(
+      "color-mix(in srgb, currentColor {}%, {border})",
+      f32::from(border_16ths) * 100. / 16.,
+    );
+
+    push_rule(
+      out,
+      states,
+      "",
+      &Declarations::new()
+        .set(
+          "background-image",
+          format!("linear-gradient({wash}, {wash})"),
+        )
+        .set("border-color", edge),
+    );
+  };
+
+  if !authored_hover {
+    tint(&[":hover"], 2, 4);
+  }
+
+  if !authored_focus {
+    tint(&[":focus-visible"], 3, 6);
+  }
+
+  if !authored_hover && !authored_focus {
+    tint(&[":focus-visible", ":hover"], 4, 8);
+  }
 }
 
 /// The declarations for one box property alone, for an inline override.

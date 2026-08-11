@@ -484,6 +484,8 @@ pub struct BoxProps {
 pub struct ControlProps {
   /// The static style.
   pub style: BoxStyle,
+  /// The static text styling the control inherited, resolved by the facade.
+  pub text: RunStyle,
   /// Conditional variants, each applying while its condition holds; later entries win
   /// over earlier ones.
   pub variants: Vec<(Condition, BoxStyle)>,

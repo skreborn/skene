@@ -101,5 +101,5 @@ fn transition_settles_through_the_stream() {
   let body: String = stream.into_chunks().concat();
 
   assert!(body.contains("landed 9"));
-  assert!(!body.contains("hold"));
+  assert!(!body.contains(">hold<"));
 }

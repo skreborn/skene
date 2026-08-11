@@ -51,11 +51,13 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   user-select: none;
 }
 
-/* The single mounted app child fills the viewport; scrolling is a child concern. */
+/* The single mounted app child fills the viewport and is the page's scroll container,
+   so the page scrolls as a browser page does unless the app overrides its overflow. */
 :where(body > *) {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  overflow: auto;
 }
 
 :where(input, textarea) {
@@ -71,21 +73,145 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  /* Controls clip their content box; trimming would crop descenders. */
+  text-box-trim: none;
 }
 
 :where(button) {
-  cursor: default;
   text-align: inherit;
 }
 
-/* Control chrome is not content: only text runs are selectable. */
-:where(button, select) {
+/* Clickable controls carry the pointer, text entry the I-beam it already has. */
+:where(button, select, input[type="checkbox"], input[type="radio"]) {
+  cursor: pointer;
+}
+
+/* Control chrome is not content: only text runs are selectable. Top-layer elements
+   restart the used-value chain, so overlays restate the opt-in default. */
+:where(button, select, label, dialog, [popover]) {
   -webkit-user-select: none;
   user-select: none;
 }
 
+/* A label captions the control it wraps; clicking it activates that control. */
+:where(label) {
+  cursor: pointer;
+}
+
 :where(textarea) {
   resize: none;
+}
+
+/* The select's dropdown, wearing the select's own ink and background—styled only
+   where the customizable-select rendering is supported (the control reset opts in
+   with appearance: base-select); other engines keep the native popup. */
+:where(select)::picker(select) {
+  appearance: base-select;
+  background: inherit;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+:where(option) {
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+:where(option:hover, option:focus) {
+  background: color-mix(in srgb, currentColor 12.5%, transparent);
+}
+
+:where(input, textarea)::placeholder {
+  color: color-mix(in srgb, currentColor 50%, transparent);
+  opacity: 1;
+}
+
+/* The default toggle chrome, drawn in the inherited ink: a bordered box or circle
+   whose mark scales in while checked. The border itself rides in the controls' reset
+   class, which would otherwise strip it. */
+:where(input[type="checkbox"], input[type="radio"]) {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+}
+
+:where(input[type="checkbox"]) {
+  border-radius: 4px;
+}
+
+:where(input[type="radio"]) {
+  border-radius: 50%;
+}
+
+:where(input[type="checkbox"], input[type="radio"])::before {
+  content: "";
+  background: currentColor;
+  transform: scale(0);
+}
+
+:where(input[type="checkbox"])::before {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+:where(input[type="radio"])::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked::before {
+  transform: scale(1);
+}
+
+/* The default slider chrome, drawn in the inherited ink: a soft track under a round
+   thumb. The vendor track and thumb selectors cannot share rules—an unknown selector
+   drops the whole rule—so each engine gets its own. */
+:where(input[type="range"]) {
+  width: 160px;
+  height: 16px;
+}
+
+:where(input[type="range"])::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+:where(input[type="range"])::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+:where(input[type="range"])::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+:where(input[type="range"])::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+:where(input[type="range"])::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 :where(a) {

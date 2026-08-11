@@ -42,11 +42,48 @@ impl ControlBase {
   }
 
   /// Splits the base into the realization props and the handlers to register on the
-  /// built node.
+  /// built node, resolving the inherited text style into the props' static text and
+  /// the handlers' reactive binders.
   pub(crate) fn into_parts(self) -> (skene_core::ControlProps, ControlHandlers) {
+    use skene_core::{RunProp, RunStyle};
+
+    use crate::realize::split_prop;
+
+    let resolved = crate::text::resolved_text_style(crate::TextStyle::new(), false);
+    let mut text = RunStyle::default();
+    let mut binders = crate::realize::Binders::new();
+
+    text.selection_color = resolved.selection_color;
+    text.selection_background = resolved.selection_background;
+
+    split_prop(
+      resolved.color,
+      &mut text.color,
+      &mut binders,
+      RunProp::Color,
+      crate::driver::update_run,
+    );
+
+    split_prop(
+      resolved.font_size,
+      &mut text.font_size,
+      &mut binders,
+      RunProp::FontSize,
+      crate::driver::update_run,
+    );
+
+    split_prop(
+      resolved.font_weight,
+      &mut text.font_weight,
+      &mut binders,
+      RunProp::FontWeight,
+      crate::driver::update_run,
+    );
+
     (
       skene_core::ControlProps {
         style: self.style,
+        text,
         variants: self.variants,
         transitions: self.transitions,
         animations: self.animations,
@@ -59,6 +96,7 @@ impl ControlBase {
         focus: self.focus_handler,
         blur: self.blur_handler,
         key_down: self.key_down_handler,
+        binders,
       },
     )
   }
@@ -71,11 +109,17 @@ pub(crate) struct ControlHandlers {
   focus: Option<Rc<dyn Fn()>>,
   blur: Option<Rc<dyn Fn()>>,
   key_down: Option<Rc<skene_core::KeyHandler>>,
+  binders: crate::realize::Binders,
 }
 
 impl ControlHandlers {
-  /// Registers the handlers on `node` and binds the focus handle to it.
+  /// Registers the handlers on `node`, runs the reactive text-style binders, and binds
+  /// the focus handle to it.
   pub(crate) fn register(self, node: skene_core::NodeId) {
+    for binder in self.binders {
+      binder(node);
+    }
+
     if let Some(action) = self.focus {
       crate::driver::handle_focus(node, action);
     }
@@ -96,6 +140,33 @@ impl ControlHandlers {
       anchor.assign(node);
     }
   }
+}
+
+/// Wraps a built toggle control in a label box carrying its caption, so activating the
+/// caption activates the control; returns the wrapper.
+pub(crate) fn labeled(control: skene_core::NodeId, label: String) -> skene_core::NodeId {
+  use skene_core::{BoxProps, BoxStyle, FlexDirection, ItemAlignment, Layout, View};
+
+  let wrapper = crate::driver::create_box(&BoxProps {
+    layout: Layout::Flex {
+      direction: FlexDirection::Row,
+    },
+    role: Some(skene_core::Role::Label),
+    style: BoxStyle::new()
+      .set_spacing(8.)
+      .set_item_alignment(ItemAlignment::Center),
+    variants: Vec::new(),
+    transitions: Vec::new(),
+    animations: Vec::new(),
+  });
+
+  crate::driver::attach(wrapper, control, None);
+
+  let caption = crate::Text::new(label).build();
+
+  crate::driver::attach(wrapper, caption, None);
+
+  wrapper
 }
 
 /// Implements the shared control surface on a control with a `control: ControlBase`

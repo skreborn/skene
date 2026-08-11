@@ -33,8 +33,8 @@ fn accent() -> Color {
 #[must_use]
 pub fn app() -> impl IntoView {
   TextTheme::new(gallery())
-    .set_selection_color(Color::srgb(0.95, 0.97, 1.))
-    .set_selection_background(Color::srgb(0.24, 0.36, 0.54))
+    .set_selection_color(Color::srgb(0.95, 1., 0.96))
+    .set_selection_background(Color::srgb(0.22, 0.4, 0.28))
 }
 
 fn gallery() -> impl IntoView {
@@ -235,10 +235,14 @@ fn layouts() -> impl IntoView {
               .set_border_glyphs(BorderGlyphs::ROUNDED)
               .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
           )
-          .set_children((
-            Text::new("A modal overlay; Escape dismisses.").set_color(bright()),
-            button("Close", move || open.set(false)),
-          )),
+          .set_child(
+            Column::new().set_spacing(1).set_children((
+              Text::new("A modal overlay; Escape dismisses.").set_color(bright()),
+              Row::new()
+                .set_arrangement(Arrangement::End)
+                .set_child(button("Close", move || open.set(false))),
+            )),
+          ),
       )),
     )),
   )

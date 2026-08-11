@@ -203,6 +203,7 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     },
     Some(Role::List) => "ul",
     Some(Role::ListItem) => "li",
+    Some(Role::Label) => "label",
     None => "div",
   });
 
@@ -272,9 +273,16 @@ fn render_focus_order(focus_order: skene_core::FocusOrder) -> String {
 }
 
 /// Folds a control's shared surface into `node`: the focus order and autofocus
-/// attributes, plus the interned class carrying the control's reset and its style.
+/// attributes, plus the interned class carrying the control's reset and its style—
+/// with the built-in hover and focus tints unless `feedback` is `None`; see
+/// [`mapping::control_template`] for the base border color it names.
 #[cfg(target_arch = "wasm32")]
-fn apply_control(node: NodeId, control: &ControlProps, reset: &'static str) {
+fn apply_control(
+  node: NodeId,
+  control: &ControlProps,
+  reset: &'static str,
+  feedback: Option<&'static str>,
+) {
   if let Some(focus_order) = control.focus_order {
     set_attribute(node, "tabindex", &render_focus_order(focus_order));
   }
@@ -283,7 +291,7 @@ fn apply_control(node: NodeId, control: &ControlProps, reset: &'static str) {
     set_attribute(node, "autofocus", "");
   }
 
-  assign_class(node, &mapping::control_template(control, reset));
+  assign_class(node, &mapping::control_template(control, reset, feedback));
 }
 
 /// Realizes a single-line text input, with its full static style interned as a shared
@@ -297,7 +305,12 @@ pub fn create_text_field(props: &TextFieldProps) -> NodeId {
     set_attribute(node, "placeholder", placeholder);
   }
 
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::CONTROL_RESET,
+    Some("transparent"),
+  );
 
   node
 }
@@ -310,7 +323,12 @@ pub fn create_button(props: &ButtonProps) -> NodeId {
   let node = create_element("button");
 
   set_attribute(node, "type", "button");
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::CONTROL_RESET,
+    Some("transparent"),
+  );
 
   node
 }
@@ -345,7 +363,12 @@ pub fn create_checkbox(props: &CheckboxProps) -> NodeId {
   let node = create_element("input");
 
   set_attribute(node, "type", "checkbox");
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::TOGGLE_RESET,
+    Some("currentColor"),
+  );
 
   node
 }
@@ -360,7 +383,12 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
   set_attribute(node, "type", "radio");
   set_attribute(node, "name", &props.group);
   set_attribute(node, "value", &props.value);
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::TOGGLE_RESET,
+    Some("currentColor"),
+  );
 
   node
 }
@@ -372,7 +400,12 @@ pub fn create_radio(props: &RadioProps) -> NodeId {
 pub fn create_picker(props: &PickerProps) -> NodeId {
   let node = create_element("select");
 
-  apply_control(node, &props.control, mapping::SELECT_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::SELECT_RESET,
+    Some("transparent"),
+  );
 
   for option in &props.options {
     let child = create_element("option");
@@ -400,7 +433,12 @@ pub fn create_text_editor(props: &TextEditorProps) -> NodeId {
     set_attribute(node, "rows", &lines.to_string());
   }
 
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  apply_control(
+    node,
+    &props.control,
+    mapping::CONTROL_RESET,
+    Some("transparent"),
+  );
 
   node
 }
@@ -420,7 +458,8 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
     set_attribute(node, "step", &step.to_string());
   }
 
-  apply_control(node, &props.control, mapping::CONTROL_RESET);
+  // The slider draws its own track and thumb chrome; no background tints.
+  apply_control(node, &props.control, mapping::CONTROL_RESET, None);
 
   node
 }

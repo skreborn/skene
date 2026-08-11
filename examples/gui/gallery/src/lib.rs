@@ -30,27 +30,35 @@ fn accent() -> Color {
 
 #[main]
 fn app() -> impl IntoView {
-  Column::new()
-    .set_item_alignment(ItemAlignment::Center)
-    .set_padding(Inset::symmetric(24., 48.))
-    .set_color(background())
-    .set_child(
-      Column::new()
-        .set_spacing(24.)
-        .set_max_width(560.)
-        .set_children((
-          Text::new("GALLERY")
-            .set_font_size(13.)
-            .set_font_weight(500.)
-            .set_color(faint()),
-          typography(),
-          buttons(),
-          toggles(),
-          inputs(),
-          layouts(),
-          list(),
-        )),
-    )
+  TextTheme::new(
+    Column::new()
+      .set_item_alignment(ItemAlignment::Center)
+      .set_padding(Inset::symmetric(24., 48.))
+      .set_color(background())
+      .set_child(
+        Column::new()
+          .set_spacing(24.)
+          .set_max_width(560.)
+          .set_children((
+            Text::new("GALLERY")
+              .set_font_size(13.)
+              .set_font_weight(500.)
+              .set_color(faint()),
+            typography(),
+            buttons(),
+            toggles(),
+            inputs(),
+            layouts(),
+            list(),
+          )),
+      ),
+  )
+  .set_base(
+    TextStyle::new()
+      .set_color(bright())
+      .set_selection_color(Color::srgb(0.95, 1., 0.96))
+      .set_selection_background(Color::srgb(0.22, 0.4, 0.28)),
+  )
 }
 
 fn typography() -> impl IntoView {
@@ -69,12 +77,19 @@ fn typography() -> impl IntoView {
         plain("links").set_link("https://example.com"),
         plain(" in one paragraph."),
       ]),
+      Text::new(
+        "Selection is opt-in: this paragraph is selectable, so drag across it and copy—\
+         the chrome around it never joins in.",
+      )
+      .set_selectable(true)
+      .set_font_size(14.)
+      .set_color(faint()),
     )),
   )
 }
 
 fn buttons() -> impl IntoView {
-  let count = Signal::new(0u32);
+  let count = Signal::tagged("clicks", 0u32);
 
   section(
     "Button",
@@ -94,8 +109,8 @@ fn buttons() -> impl IntoView {
 }
 
 fn toggles() -> impl IntoView {
-  let agreed = Signal::new(true);
-  let flavor = Signal::new("mint".to_owned());
+  let agreed = Signal::tagged("agreed", true);
+  let flavor = Signal::tagged("flavor", "mint".to_owned());
 
   section(
     "Checkbox & Radio",
@@ -104,7 +119,7 @@ fn toggles() -> impl IntoView {
         .set_spacing(8.)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          Checkbox::new().bind_checked(agreed),
+          Checkbox::new().bind_checked(agreed).set_label("subscribed"),
           Text::derive(move || {
             if agreed.get() {
               "checked".to_owned()
@@ -126,20 +141,16 @@ fn toggles() -> impl IntoView {
 }
 
 fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  Row::new()
-    .set_spacing(8.)
-    .set_item_alignment(ItemAlignment::Center)
-    .set_children((
-      Radio::new("flavor", value).bind_value(flavor),
-      Text::new(value).set_font_size(13.).set_color(faint()),
-    ))
+  Radio::new("flavor", value)
+    .bind_value(flavor)
+    .set_label(value)
 }
 
 fn inputs() -> impl IntoView {
-  let name = Signal::new(String::new());
-  let bio = Signal::new(String::new());
-  let volume = Signal::new(40.0f32);
-  let season = Signal::new("summer".to_owned());
+  let name = Signal::tagged("name", String::new());
+  let bio = Signal::tagged("bio", String::new());
+  let volume = Signal::tagged("volume", 40.0f32);
+  let season = Signal::tagged("season", "summer".to_owned());
 
   section(
     "TextField, TextEditor, Slider & Picker",
@@ -211,15 +222,19 @@ fn layouts() -> impl IntoView {
         Overlay::modal()
           .bind_open(open)
           .set_style(card())
-          .set_children((
-            Text::new("A modal overlay; Escape or the backdrop dismisses.")
-              .set_font_size(14.)
-              .set_color(bright()),
-            Button::new()
-              .handle_click(move || open.set(false))
-              .set_style(chip())
-              .set_child(label("Close")),
-          )),
+          .set_child(
+            Column::new().set_spacing(20.).set_children((
+              Text::new("A modal overlay; Escape or the backdrop dismisses.")
+                .set_font_size(14.)
+                .set_color(bright()),
+              Row::new().set_arrangement(Arrangement::End).set_child(
+                Button::new()
+                  .handle_click(move || open.set(false))
+                  .set_style(chip())
+                  .set_child(label("Close")),
+              ),
+            )),
+          ),
       )),
     )),
   )

@@ -29,4 +29,6 @@ pub enum Role {
   List,
   /// One item of a [`List`](Role::List).
   ListItem,
+  /// A control's caption: activating it activates the control it wraps.
+  Label,
 }

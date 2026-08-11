@@ -567,6 +567,7 @@ pub fn observe_size(_node: NodeId, _handler: Rc<dyn Fn(f32, f32)>) {}
 
 /// Inert on the server; a lazy view's content renders in place, claimed only by the
 /// hydrating client.
+#[must_use]
 pub fn claim_lazy(_node: NodeId) -> bool {
   false
 }

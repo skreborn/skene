@@ -452,22 +452,7 @@ impl State {
       .or_default()
       .push(handler);
 
-    let handlers = Rc::clone(&self.events.change);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "input", move |id, _element, event| {
-          let Some(value) = element_value(event)
-          else {
-            return Prevention::default();
-          };
-
-          events::run_handlers(&handlers, id, value.as_str(), |run, value| run(value));
-
-          Prevention::default()
-        });
-    });
+    self.ensure_input_listener();
   }
 
   /// Registers `handler` to run with the new checked state, in real time, when `node`'s
@@ -481,21 +466,31 @@ impl State {
       .or_default()
       .push(handler);
 
-    let handlers = Rc::clone(&self.events.toggle);
+    self.ensure_input_listener();
+  }
+
+  /// Installs the one delegated `input` listener serving both the change and toggle
+  /// registries—the two share the event, so a lone per-registry listener would starve
+  /// whichever registered second.
+  fn ensure_input_listener(&self) {
+    let change = Rc::clone(&self.events.change);
+    let toggle = Rc::clone(&self.events.toggle);
 
     self.with_element(ROOT_ID, |root| {
       self
         .events
         .ensure_root_listener(root, "input", move |id, _element, event| {
-          let Some(checked) = event
+          if let Some(value) = element_value(event) {
+            events::run_handlers(&change, id, value.as_str(), |run, value| run(value));
+          }
+
+          if let Some(checked) = event
             .target()
             .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
             .map(|input| input.checked())
-          else {
-            return Prevention::default();
-          };
-
-          events::run_handlers(&handlers, id, checked, |run, checked| run(checked));
+          {
+            events::run_handlers(&toggle, id, checked, |run, checked| run(checked));
+          }
 
           Prevention::default()
         });
@@ -575,10 +570,25 @@ impl State {
 
         let dialog = element.clone();
 
+        // A backdrop click targets the dialog element itself, but so does a click on
+        // the dialog's own padding—only coordinates outside the dialog's box dismiss.
         self
           .events
           .add_direct_listener(node, element, "click", move |event| {
-            if event.target().as_ref() == Some(dialog.unchecked_ref()) {
+            if event.target().as_ref() != Some(dialog.unchecked_ref()) {
+              return;
+            }
+
+            let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>()
+            else {
+              return;
+            };
+
+            let rect = dialog.get_bounding_client_rect();
+            let x = f64::from(mouse.client_x());
+            let y = f64::from(mouse.client_y());
+
+            if x < rect.left() || x > rect.right() || y < rect.top() || y > rect.bottom() {
               handler();
             }
           });
@@ -1044,6 +1054,7 @@ pub fn element(node: NodeId) -> Element {
 /// Claims a lazy view's server-rendered subtree while hydrating: the markup stays in
 /// place, visible until the real content arrives, and its markers leave the adoption
 /// map. `false` when not hydrating, or when the server rendered nothing there.
+#[must_use]
 pub fn claim_lazy(node: NodeId) -> bool {
   with_state(|state| state.claim_lazy(node))
 }

@@ -183,11 +183,11 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   context (nested themes overlay), and each control's own `set_marks`/`set_indicator`/
   `set_track` wins locally. TextEditor still waits on caret positioning.
 - **Scroll—done.** `set_overflow` on the box vocabulary (taffy computes the scroll
-  region); the wheel scrolls the innermost box that can still move, `PageUp`/`PageDown`
-  the scrollable nearest the focus; children paint clipped and offset, with proportional
-  track-and-thumb overlays on the overflowing edges; hit-testing resolves through the
-  offsets; focusing a control scrolls it into view; `trigger_mouse_scroll` drives it
-  headlessly.
+  region); the wheel scrolls the innermost box that can still move, three rows per
+  report as a browser's notch does, `PageUp`/`PageDown` the scrollable nearest the
+  focus; children paint clipped and offset, with proportional track-and-thumb overlays
+  on the overflowing edges; hit-testing resolves through the offsets; focusing a
+  control scrolls it into view; `trigger_mouse_scroll` drives it headlessly.
 - **Shadows and the compositor—done.** `set_shadow` on the box vocabulary casts a
   one-cell band down and right, the color mixed by its alpha into both the foreground
   and the background beneath (unset colors mix against the detected light/dark
@@ -250,8 +250,10 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   as subtle background tints of the scheme's ink—one eighth for hover, two for focus,
   three for both, each distinct—applied only for states the author hasn't conditioned
   a variant on, so `set_when(Hovered, …)` replaces the default the way author CSS
-  replaces UA styling. The cell `reverse` bit remains only where terminals use it:
-  the input caret and the scrollbar's partial-cell caps. The picker popup marks its
+  replaces UA styling. Reverse video is gone entirely: the scrollbar's partial caps
+  paint their complement glyphs with explicitly swapped colors, and the input caret is
+  the terminal's own bar cursor (`DECSCUSR`), blinking as the terminal does—hidden
+  while a modal or a covering popup makes its input inert. The picker popup marks its
   current option with a highlight bar over the row instead of an `x` prefix.
 - **Text selection—done.** Selection is controlled explicitly across backends: text
   runs are selectable by default (`set_selectable(false)` opts out), control chrome—

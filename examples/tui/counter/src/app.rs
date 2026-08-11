@@ -21,7 +21,7 @@ fn card(count: Signal<u64>) -> impl IntoView {
     .set_color(Color::srgb(0.13, 0.13, 0.16))
     .set_border(Color::srgb(0.35, 0.35, 0.45))
     .set_children((
-      Text::new("COUNTER").set_bold(true),
+      Text::new("COUNTER").set_bold(true).set_selectable(true),
       Text::derive(move || count.get().to_string()).set_color(Color::srgb(0.8, 0.9, 0.8)),
       Row::new().set_spacing(2).set_children((
         button("-", move || {

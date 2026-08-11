@@ -73,9 +73,10 @@ fn text() -> impl IntoView {
       )
       .set_color(faint()),
       Text::new(
-        "Drag to select text—double-click a word, triple-click a run—and right-click \
-         to copy it as it appears in the source.",
+        "This paragraph opts into selection: drag to select—double-click a word, \
+         triple-click a run—and right-click to copy it as it appears in the source.",
       )
+      .set_selectable(true)
       .set_color(faint()),
     )),
   )

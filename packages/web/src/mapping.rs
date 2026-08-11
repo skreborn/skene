@@ -445,10 +445,10 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
 
   let mut base = fold_run_style(display, &props.style);
 
-  if !props.selectable {
+  if props.selectable {
     base = base
-      .set("-webkit-user-select", "none")
-      .set("user-select", "none");
+      .set("-webkit-user-select", "text")
+      .set("user-select", "text");
   }
 
   let selection = fold_selection(&props.style);

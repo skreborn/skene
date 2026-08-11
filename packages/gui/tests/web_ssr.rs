@@ -480,15 +480,17 @@ fn tagged_resource_serializes_under_its_tag() {
 }
 
 /// A run's selection colors compile to a `::selection` rule inside its interned class,
-/// and `set_selectable(false)` opts the run out through `user-select`.
+/// and `set_selectable(true)` opts the run in through `user-select`—the reset keeps
+/// everything else unselectable.
 #[test]
 fn selection_styling_compiles_into_the_class() {
   let page = render_to_string(|| {
     Column::new().set_children((
       Text::new("pick me")
+        .set_selectable(true)
         .set_selection_color(Color::srgb(1., 1., 1.))
         .set_selection_background(Color::srgb(1., 0., 0.)),
-      Text::new("chrome").set_selectable(false),
+      Text::new("plain"),
     ))
   });
   let styles = page.styles();
@@ -498,12 +500,13 @@ fn selection_styling_compiles_into_the_class() {
     "a ::selection rule renders: {styles}",
   );
   assert!(
-    styles.contains("user-select:none;"),
-    "the opt-out renders user-select: {styles}",
+    styles.contains("user-select:text;"),
+    "the opt-in restores user-select: {styles}",
   );
-
-  // The reset keeps framework controls unselectable without opting text out.
-  assert!(styles.contains(":where(button, select)"));
+  assert!(
+    styles.contains("user-select: none"),
+    "the reset defaults everything unselectable: {styles}",
+  );
 }
 
 /// A theme's selection colors inherit down to its runs through the base text style.

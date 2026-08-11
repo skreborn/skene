@@ -16,12 +16,14 @@ use crate::{
 
 /// A selector over fixed options, rendered closed as the current option's label.
 ///
-/// `Enter`, `Space`, or a mouse click opens the options popup beneath it (and closes
-/// it again); clicking an option selects it, `Escape` or a press outside dismisses.
-/// Arrow keys cycle the value directly, popup open or closed. The value flows both
-/// ways: [`derive_value`](Self::derive_value) (or [`set_value`](Self::set_value))
-/// picks the shown option, and [`handle_change`](Self::handle_change) receives each
-/// newly selected value—[`bind_value`](Self::bind_value) wires both to one signal.
+/// `Enter`, `Space`, or a mouse click opens the options popup beneath it. Open, the
+/// arrows and the pointer move the highlight without committing; `Enter`, `Space`, or
+/// a row click chooses the highlighted option, and `Escape` or a press outside
+/// dismisses with the value unchanged. Closed, arrow keys cycle the value directly.
+/// The value flows both ways: [`derive_value`](Self::derive_value) (or
+/// [`set_value`](Self::set_value)) picks the shown option, and
+/// [`handle_change`](Self::handle_change) receives each newly selected value—
+/// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
 pub struct Picker {
   base: ControlBase<crate::props::ControlStyle>,
@@ -126,7 +128,7 @@ crate::control::control_surface!(Picker, crate::props::ControlStyle);
 
 impl View for Picker {
   fn build(mut self) -> NodeId {
-    use skene_reactive::{Set, Signal, Update};
+    use skene_reactive::{Get, Set, Signal, Update};
 
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);
@@ -191,8 +193,11 @@ impl View for Picker {
       });
     }
 
-    // Activation toggles the options popup instead of the built-in cycle.
+    // Activation toggles the options popup instead of the built-in cycle. The popup
+    // highlights `active`, opening on the current option—only `Enter`, `Space`, or a
+    // row click commits it, so `Escape` leaves the old value in place.
     let open = Signal::new(false);
+    let active = Signal::new(selected.get_untracked());
 
     with_state(|state| {
       state
@@ -201,11 +206,22 @@ impl View for Picker {
         .entry(node)
         .or_default()
         .push(Rc::new(move || {
+          if !open.get() {
+            active.set(selected.get());
+          }
+
           open.update(|open| *open = !*open);
 
           Prevent::Default
         }));
     });
+
+    register_popup_keys(
+      node,
+      options.iter().map(|(value, _)| value.clone()).collect(),
+      active,
+      open,
+    );
 
     let anchor = Anchor::new();
 
@@ -220,7 +236,7 @@ impl View for Picker {
           crate::Column::new().set_children(
             options
               .into_iter()
-              .map(|(value, label)| option_row(node, value, label, selected, open))
+              .map(|(value, label)| option_row(node, value, label, active, open))
               .collect::<Vec<_>>(),
           ),
         )
@@ -235,13 +251,66 @@ impl View for Picker {
   }
 }
 
-/// One selectable row of the options popup: the current option carries the highlight
-/// bar.
+/// Registers the popup's keyboard behavior on the picker: while open, arrows move the
+/// highlight without committing, and `Enter` or `Space` chooses it.
+fn register_popup_keys(
+  node: NodeId,
+  values: Vec<String>,
+  active: skene_reactive::Signal<String>,
+  open: skene_reactive::Signal<bool>,
+) {
+  use skene_reactive::{Get, Set};
+
+  with_state(|state| {
+    state
+      .key_down
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(Rc::new(move |event: &skene_core::KeyEvent| {
+        if !open.get() {
+          return Prevent::None;
+        }
+
+        match event.key.as_str() {
+          "ArrowDown" | "ArrowUp" => {
+            let current = active.get();
+            let at = values
+              .iter()
+              .position(|value| *value == current)
+              .unwrap_or(0);
+            let next = if event.key == "ArrowDown" {
+              (at + 1).min(values.len().saturating_sub(1))
+            }
+            else {
+              at.saturating_sub(1)
+            };
+
+            if let Some(value) = values.get(next) {
+              active.set(value.clone());
+            }
+
+            Prevent::Default
+          }
+          "Enter" | " " => {
+            with_state(|state| state.select_picker(node, &active.get()));
+            open.set(false);
+
+            Prevent::Default
+          }
+          _ => Prevent::None,
+        }
+      }));
+  });
+}
+
+/// One selectable row of the options popup: the highlighted option carries the bar,
+/// following the pointer, and a click commits.
 fn option_row(
   node: NodeId,
   value: String,
   label: String,
-  selected: skene_reactive::Signal<String>,
+  active: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
 ) -> crate::Container {
   use skene_core::Color;
@@ -249,10 +318,11 @@ fn option_row(
 
   let shown = value.clone();
   let ink_shown = value.clone();
+  let hovered = value.clone();
 
   crate::Container::new()
     .derive_color(move || {
-      if selected.with(|selected| *selected == shown) {
+      if active.with(|active| *active == shown) {
         row_highlight(with_state(|state| state.dark.get())).0
       }
       else {
@@ -260,13 +330,14 @@ fn option_row(
       }
     })
     .set_child(crate::Text::new(label).derive_color(move || {
-      if selected.with(|selected| *selected == ink_shown) {
+      if active.with(|active| *active == ink_shown) {
         row_highlight(with_state(|state| state.dark.get())).1
       }
       else {
         Color::srgb(0., 0., 0.).with_alpha(0.)
       }
     }))
+    .handle_pointer_enter(move || active.set(hovered.clone()))
     .handle_click(move || {
       with_state(|state| state.select_picker(node, &value));
       open.set(false);

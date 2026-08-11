@@ -46,6 +46,9 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   overflow: hidden;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
+  /* Selection is opt-in: a run's set_selectable(true) restores user-select. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* The single mounted app child fills the viewport; scrolling is a child concern. */
@@ -53,6 +56,11 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+}
+
+:where(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 :where(button, input, select, textarea) {

@@ -611,7 +611,7 @@ fn paint_node(
           interaction_background(
             background,
             environment.dark,
-            interaction_eighths(variants, interaction),
+            interaction_sixteenths(variants, interaction),
           )
         }
         else {
@@ -678,7 +678,7 @@ fn paint_node(
           background: interaction_background(
             effective.color.and_then(terminal_rgb),
             environment.dark,
-            interaction_eighths(variants, interaction),
+            interaction_sixteenths(variants, interaction),
           ),
           border: effective.border.map(|border| BorderPaint {
             glyphs: effective.border_glyphs.unwrap_or_default(),
@@ -732,7 +732,7 @@ fn paint_node(
           background: interaction_background(
             None,
             environment.dark,
-            interaction_eighths(variants, interaction),
+            interaction_sixteenths(variants, interaction),
           ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -758,7 +758,7 @@ fn paint_node(
           background: interaction_background(
             None,
             environment.dark,
-            interaction_eighths(variants, interaction),
+            interaction_sixteenths(variants, interaction),
           ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -782,7 +782,7 @@ fn paint_node(
           background: interaction_background(
             None,
             environment.dark,
-            interaction_eighths(variants, interaction),
+            interaction_sixteenths(variants, interaction),
           ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
@@ -1289,10 +1289,10 @@ fn draw_text(
   }
 }
 
-/// The built-in interaction feedback in eighths of ink: hover adds one, focus two—
-/// each only while no variant of the node conditions on that state, so authored
-/// styling wins over the default.
-fn interaction_eighths<S>(
+/// The built-in interaction feedback in sixteenths of ink: three for hover, four for
+/// focus, five for both—each state counted only while no variant of the node
+/// conditions on it, so authored styling wins over the default.
+fn interaction_sixteenths<S>(
   variants: &[(crate::props::Condition, S)],
   interaction: Interaction,
 ) -> u16 {
@@ -1304,34 +1304,32 @@ fn interaction_eighths<S>(
   let authored_focus = variants.iter().any(|(condition, _)| {
     condition.involves(&|leaf| matches!(leaf, crate::props::Condition::Focused))
   });
-  let mut eighths = 0;
+  let hover = interaction.hovered && !authored_hover;
+  let focus = interaction.focused && !authored_focus;
 
-  if interaction.hovered && !authored_hover {
-    eighths += 1;
+  match (hover, focus) {
+    (false, false) => 0,
+    (true, false) => 3,
+    (false, true) => 4,
+    (true, true) => 5,
   }
-
-  if interaction.focused && !authored_focus {
-    eighths += 2;
-  }
-
-  eighths
 }
 
-/// Mixes `eighths`/8 of the scheme's ink into `base`—the terminal default background
-/// when unset—for the built-in hover and focus feedback.
+/// Mixes `sixteenths`/16 of the scheme's ink into `base`—the terminal default
+/// background when unset—for the built-in hover and focus feedback.
 fn interaction_background(
   base: Option<(u8, u8, u8)>,
   dark: bool,
-  eighths: u16,
+  sixteenths: u16,
 ) -> Option<(u8, u8, u8)> {
-  if eighths == 0 {
+  if sixteenths == 0 {
     return base;
   }
 
   let ink: (u8, u8, u8) = if dark { (255, 255, 255) } else { (0, 0, 0) };
   let under = base.unwrap_or(if dark { (0, 0, 0) } else { (255, 255, 255) });
   let mix = |over: u8, under: u8| {
-    u8::try_from((u16::from(over) * eighths + u16::from(under) * (8 - eighths)) / 8)
+    u8::try_from((u16::from(over) * sixteenths + u16::from(under) * (16 - sixteenths)) / 16)
       .unwrap_or(u8::MAX)
   };
 

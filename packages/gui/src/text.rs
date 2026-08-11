@@ -141,7 +141,7 @@ impl Text {
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       source: Source::Static(content.into()),
-      selectable: true,
+      selectable: false,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
@@ -153,14 +153,14 @@ impl Text {
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
       source: Source::Derived(Rc::new(content)),
-      selectable: true,
+      selectable: false,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
   }
 
-  /// Sets whether the user can select and copy the text; selectable by default.
+  /// Sets whether the user can select and copy the text; off by default.
   #[inline(always)]
   pub const fn set_selectable(mut self, selectable: bool) -> Self {
     self.selectable = selectable;
@@ -317,14 +317,14 @@ impl Span {
   fn with_content(content: SpanContent) -> Self {
     Self {
       content,
-      selectable: true,
+      selectable: false,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
   }
 
-  /// Sets whether the user can select and copy the run; selectable by default.
+  /// Sets whether the user can select and copy the run; off by default.
   #[inline(always)]
   pub const fn set_selectable(mut self, selectable: bool) -> Self {
     self.selectable = selectable;

@@ -843,8 +843,8 @@ fn a_derived_property_inside_an_item_still_updates() {
   );
 }
 
-/// `set_selectable(false)` computes `user-select: none` on the run; a plain run keeps
-/// the selectable default.
+/// Selection is opt-in: a plain run computes `user-select: none` through the reset,
+/// and `set_selectable(true)` restores it.
 #[wasm_bindgen_test]
 fn unselectable_text_computes_user_select_none() {
   let (_guard, root) = fresh_root();
@@ -852,8 +852,8 @@ fn unselectable_text_computes_user_select_none() {
   mount(|| {
     Column::new()
       .set_children((
-        Text::new("content"),
-        Text::new("chrome").set_selectable(false),
+        Text::new("content").set_selectable(true),
+        Text::new("chrome"),
       ))
       .build()
   });
@@ -881,8 +881,19 @@ fn unselectable_text_computes_user_select_none() {
       .unwrap()
   };
 
-  assert_ne!(computed(0), "none");
-  assert_eq!(computed(1), "none");
+  // A plain run computes `auto`, which resolves to the body's `none` at use time—the
+  // reset is what turns selection off; the opt-in overrides it in place.
+  let body_select = web_sys::window()
+    .unwrap()
+    .get_computed_style(&document().body().expect("a body"))
+    .unwrap()
+    .expect("computed style")
+    .get_property_value("user-select")
+    .unwrap();
+
+  assert_eq!(body_select, "none");
+  assert_eq!(computed(0), "text");
+  assert_eq!(computed(1), "auto");
 
   root.remove();
 }

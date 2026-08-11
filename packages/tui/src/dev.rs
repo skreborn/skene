@@ -209,7 +209,7 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
         crate::Text::new("Rebuild failed")
           .set_bold(true)
           .set_color(Color::srgb(0.8, 0.2, 0.2)),
-        crate::Text::derive(move || notice.get().unwrap_or_default()),
+        crate::Text::derive(move || notice.get().unwrap_or_default()).set_selectable(true),
         crate::Text::new("Esc to dismiss").set_color(Color::srgb(0.5, 0.5, 0.5)),
       )),
     )

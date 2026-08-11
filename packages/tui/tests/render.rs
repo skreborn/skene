@@ -1959,7 +1959,7 @@ fn drag_selects_and_copies_the_source_flow() {
     tui::mount(|| {
       Container::new()
         .set_width(8)
-        .set_child(Text::new("alpha beta gamma"))
+        .set_child(Text::new("alpha beta gamma").set_selectable(true))
         .into_any()
         .build()
     });
@@ -1998,7 +1998,12 @@ fn drag_selects_and_copies_the_source_flow() {
 #[test]
 fn double_and_triple_click_select_word_and_run() {
   let word = with_driver(|| {
-    tui::mount(|| Text::new("alpha beta").into_any().build());
+    tui::mount(|| {
+      Text::new("alpha beta")
+        .set_selectable(true)
+        .into_any()
+        .build()
+    });
     let _ = tui::render_to_text(20, 4);
 
     tui::trigger_mouse_click(7, 0);
@@ -2012,7 +2017,12 @@ fn double_and_triple_click_select_word_and_run() {
   assert_eq!(word.as_deref(), Some("beta"));
 
   let run = with_driver(|| {
-    tui::mount(|| Text::new("alpha beta").into_any().build());
+    tui::mount(|| {
+      Text::new("alpha beta")
+        .set_selectable(true)
+        .into_any()
+        .build()
+    });
     let _ = tui::render_to_text(20, 4);
 
     tui::trigger_mouse_click(7, 0);
@@ -2034,7 +2044,10 @@ fn selection_spans_runs_in_document_order() {
   let copied = with_driver(|| {
     tui::mount(|| {
       Column::new()
-        .set_children((Text::new("first"), Text::new("second")))
+        .set_children((
+          Text::new("first").set_selectable(true),
+          Text::new("second").set_selectable(true),
+        ))
         .into_any()
         .build()
     });
@@ -2052,16 +2065,16 @@ fn selection_spans_runs_in_document_order() {
   assert_eq!(copied.as_deref(), Some("rst\nsecond"));
 }
 
-/// A button's label never selects, and `set_selectable(false)` opts a run out; neither
-/// press opens the copy menu.
+/// A button's label never selects—an explicit opt-in notwithstanding—and a plain run
+/// stays unselectable by default; neither press opens the copy menu.
 #[test]
 fn control_chrome_and_opted_out_runs_do_not_select() {
   let (button_menu, plain_menu, copied) = with_driver(|| {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Button::new().set_child(Text::new("Press me")),
-          Text::new("plain").set_selectable(false),
+          Button::new().set_child(Text::new("Press me").set_selectable(true)),
+          Text::new("plain"),
         ))
         .into_any()
         .build()
@@ -2100,10 +2113,14 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
 fn text_theme_sets_selection_colors() {
   let (themed, custom) = with_driver(|| {
     tui::mount(|| {
-      TextTheme::new(Column::new().set_children((
-        Text::new("themed"),
-        Text::new("custom").set_selection_background(Color::srgb(0., 1., 0.)),
-      )))
+      TextTheme::new(
+        Column::new().set_children((
+          Text::new("themed").set_selectable(true),
+          Text::new("custom")
+            .set_selectable(true)
+            .set_selection_background(Color::srgb(0., 1., 0.)),
+        )),
+      )
       .set_selection_color(Color::srgb(1., 1., 0.))
       .set_selection_background(Color::srgb(1., 0., 0.))
       .into_any()
@@ -2134,7 +2151,12 @@ fn text_theme_sets_selection_colors() {
 #[test]
 fn escape_closes_the_menu_then_clears_the_selection() {
   let (menu, kept, cleared) = with_driver(|| {
-    tui::mount(|| Text::new("alpha beta").into_any().build());
+    tui::mount(|| {
+      Text::new("alpha beta")
+        .set_selectable(true)
+        .into_any()
+        .build()
+    });
     let _ = tui::render_to_text(20, 4);
 
     tui::trigger_mouse_click(2, 0);
@@ -2372,7 +2394,12 @@ fn clicks_complete_on_release_over_the_same_target() {
 #[test]
 fn the_copy_menu_disables_without_terminal_clipboard() {
   let (menu, after_press, copied) = with_driver(|| {
-    tui::mount(|| Text::new("alpha beta").into_any().build());
+    tui::mount(|| {
+      Text::new("alpha beta")
+        .set_selectable(true)
+        .into_any()
+        .build()
+    });
 
     let _ = tui::render_to_text(30, 6);
 
@@ -2413,8 +2440,8 @@ fn hover_cursor_defaults_follow_the_content() {
           Button::new().set_child(Text::new("press")),
           Checkbox::new().set_label("check"),
           TextField::new(),
-          Text::new("words"),
-          Text::new("chrome").set_selectable(false),
+          Text::new("words").set_selectable(true),
+          Text::new("chrome"),
           Button::new()
             .set_style(BoxStyle::new().set_cursor(MouseCursor::Default))
             .set_child(Text::new("styled")),
@@ -2545,9 +2572,9 @@ fn interaction_states_tint_distinctly() {
   });
 
   assert_eq!(rest, None);
-  assert_eq!(hover, Some((31, 31, 31)));
+  assert_eq!(hover, Some((47, 47, 47)));
   assert_eq!(focus, Some((63, 63, 63)));
-  assert_eq!(both, Some((95, 95, 95)));
+  assert_eq!(both, Some((79, 79, 79)));
   assert_eq!(
     authored,
     Some((255, 0, 0)),
@@ -2555,7 +2582,7 @@ fn interaction_states_tint_distinctly() {
   );
   assert_eq!(
     toggle,
-    Some((31, 31, 31)),
+    Some((47, 47, 47)),
     "controls tint their label cells"
   );
 }
@@ -2600,4 +2627,39 @@ fn the_caret_reports_the_terminal_cursor_cell() {
   assert_eq!(focused, Some((0, 0)));
   assert_eq!(typed, Some((2, 0)), "the caret follows the typed value");
   assert_eq!(covered, None, "a covering modal hides the cursor");
+}
+
+/// Popup keyboard navigation moves the highlight without committing: `Escape` keeps
+/// the old value, `Enter` chooses the highlighted option.
+#[test]
+fn picker_popup_navigates_without_committing() {
+  let (after_escape, after_enter) = with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    tui::mount(|| {
+      Picker::new()
+        .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
+        .bind_value(unit)
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(14, 6);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Escape");
+
+    let after_escape = unit.get_untracked();
+
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Enter");
+
+    (after_escape, unit.get_untracked())
+  });
+
+  assert_eq!(after_escape, "px", "escape keeps the old value");
+  assert_eq!(after_enter, "cell", "enter chooses the highlighted option");
 }

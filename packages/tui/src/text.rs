@@ -29,7 +29,7 @@ impl Text {
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       source: Source::Static(content.into()),
-      selectable: true,
+      selectable: false,
       color: None,
       bold: None,
       selection_color: None,
@@ -43,7 +43,7 @@ impl Text {
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
       source: Source::Derived(Rc::new(content)),
-      selectable: true,
+      selectable: false,
       color: None,
       bold: None,
       selection_color: None,
@@ -52,8 +52,8 @@ impl Text {
     }
   }
 
-  /// Sets whether the user can select and copy the text; selectable by default, except
-  /// inside a control, whose chrome never is.
+  /// Sets whether the user can select and copy the text; off by default—selection is
+  /// opt-in. Control chrome never selects, this setter notwithstanding.
   #[inline(always)]
   pub const fn set_selectable(mut self, selectable: bool) -> Self {
     self.selectable = selectable;

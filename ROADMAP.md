@@ -279,6 +279,24 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   discards clipboard writes, so there `Copy` presents disabled with a hint. Verified
   under the pseudo-terminal: drag highlight, the anchored menu, the OSC 52 payload,
   and the disabled VTE path.
+- **Web control defaults—done.** The web controls carry real defaults in place of the
+  stripped UA chrome, all drawn in the inherited ink: checkboxes and radios a bordered
+  box or ring whose mark scales in, the slider a track and thumb through the vendor
+  pseudos, and the select's dropdown styled through the customizable-select rendering
+  (`appearance: base-select`, `::picker(select)`) where the engine supports it. Hover
+  and focus feedback is a slight ink wash over the background under a stronger ink mix
+  into the border color, per state suppressed once an author variant conditions on it.
+  Controls join the framework's text inheritance (`ControlProps::text`): the resolved
+  ink, size, weight, and selection pair land in the interned class, so an input's text
+  is never the browser's black. Checkbox and radio take the TUI's `set_label`, realized
+  as a wrapping label element (`Role::Label`), so clicking the caption toggles. Fixes
+  riding along: the mounted root scrolls by default, clickable controls carry the
+  pointer, `Stack` is its pinned children's containing block, a modal dismisses only on
+  clicks landing outside its box, one delegated `input` listener serves the change and
+  toggle registries together (the second registrant was starved), controls are exempt
+  from text-box trimming so descenders paint, and top-layer elements restate the
+  selection opt-out. Both galleries tag their dynamic signals, so the dev loop restores
+  them across restarts.
 
 ## Backlog—unphased features
 

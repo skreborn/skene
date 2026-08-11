@@ -1454,11 +1454,20 @@ fn scrollbar_jumps_and_drags() {
     "a mid-scroll thumb paints in eighth blocks: {dragged}",
   );
 
-  let track: Vec<_> = (0..4).map(|row| colors[row * 6 + 5].1).collect();
+  // The track color shows in every cell of the bar column: as the background of empty
+  // and fully covered cells, or as the complement glyph's ink where a partial swaps
+  // the colors in place of the missing upper-block run.
+  let track: Vec<_> = (0..4).map(|row| colors[row * 6 + 5]).collect();
+  let track_color = track
+    .iter()
+    .find_map(|(_, background)| *background)
+    .expect("a track background");
 
   assert!(
-    track[0].is_some() && track.iter().all(|background| *background == track[0]),
-    "every track cell shares the track background: {track:?}",
+    track.iter().all(|(foreground, background)| {
+      *background == Some(track_color) || *foreground == Some(track_color)
+    }),
+    "the track color shows in every bar cell: {track:?}",
   );
 }
 
@@ -2549,4 +2558,46 @@ fn interaction_states_tint_distinctly() {
     Some((31, 31, 31)),
     "controls tint their label cells"
   );
+}
+
+/// The caret is the terminal's own bar cursor: reported at the focused input's caret
+/// cell, absent without focus, and hidden while a modal covers the input.
+#[test]
+fn the_caret_reports_the_terminal_cursor_cell() {
+  let (blurred, focused, typed, covered) = with_driver(|| {
+    let open = Signal::new(false);
+
+    tui::mount(|| {
+      Column::new()
+        .set_children((
+          TextField::new(),
+          Overlay::modal()
+            .bind_open(open)
+            .set_child(Text::new("cover"))
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let blurred = tui::render_to_caret(20, 4);
+
+    tui::trigger_key("Tab");
+
+    let focused = tui::render_to_caret(20, 4);
+
+    tui::trigger_key("a");
+    tui::trigger_key("b");
+
+    let typed = tui::render_to_caret(20, 4);
+
+    open.set(true);
+
+    (blurred, focused, typed, tui::render_to_caret(20, 4))
+  });
+
+  assert_eq!(blurred, None);
+  assert_eq!(focused, Some((0, 0)));
+  assert_eq!(typed, Some((2, 0)), "the caret follows the typed value");
+  assert_eq!(covered, None, "a covering modal hides the cursor");
 }

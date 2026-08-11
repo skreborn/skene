@@ -29,7 +29,6 @@ pub(crate) struct TerminalCell {
   pub(crate) foreground: Option<(u8, u8, u8)>,
   pub(crate) background: Option<(u8, u8, u8)>,
   pub(crate) bold: bool,
-  pub(crate) reverse: bool,
 }
 
 impl TerminalCell {
@@ -38,7 +37,6 @@ impl TerminalCell {
     foreground: None,
     background: None,
     bold: false,
-    reverse: false,
   };
 }
 
@@ -47,6 +45,8 @@ pub(crate) struct Buffer {
   pub(crate) width: usize,
   pub(crate) height: usize,
   pub(crate) cells: Vec<TerminalCell>,
+  /// The focused input's caret cell, shown as the terminal's own bar cursor.
+  pub(crate) caret: Option<(u16, u16)>,
   /// The active clip rectangle (start inclusive, end exclusive), while a clipping box
   /// paints its children.
   clip: Option<(isize, isize, isize, isize)>,
@@ -58,6 +58,7 @@ impl Buffer {
       width,
       height,
       cells: vec![TerminalCell::EMPTY; width * height],
+      caret: None,
       clip: None,
     }
   }
@@ -307,6 +308,30 @@ fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, o
   }
 
   let (origin_x, origin_y) = state.overlay_origin(overlay);
+
+  // A modal makes everything beneath inert, taking the caret with it; a popup hides
+  // the caret only when it covers the cell. Either way the overlay's own content may
+  // set a fresh one while it paints.
+  if let Some((caret_x, caret_y)) = buffer.caret {
+    let modal = matches!(
+      state
+        .nodes
+        .borrow()
+        .get(&overlay)
+        .map(|record| &record.kind),
+      Some(NodeKind::Overlay { modal: true, .. })
+    );
+    let (overlay_width, overlay_height) = state.node_size(overlay);
+    let covered = i64::from(caret_x) >= origin_x
+      && i64::from(caret_x) < origin_x + overlay_width
+      && i64::from(caret_y) >= origin_y
+      && i64::from(caret_y) < origin_y + overlay_height;
+
+    if modal || covered {
+      buffer.caret = None;
+    }
+  }
+
   let (location_x, location_y) = {
     let nodes = state.nodes.borrow();
     let Some(record) = nodes.get(&overlay)
@@ -837,14 +862,17 @@ fn paint_node(
 
       draw_text(buffer, x + inset, y + inset, &text, None, false, dim);
 
-      // The block caret: the one inverted cell, as a terminal cursor is.
-      if let Some(column) = caret
-        && let Some(cell) = buffer.cell_mut(
+      // The caret: the terminal's own bar cursor at the cell, recorded only while the
+      // cell is visible under the current clip.
+      if let Some(column) = caret {
+        let (caret_x, caret_y) = (
           x + inset + isize::try_from(column).expect("fits"),
           y + inset,
-        )
-      {
-        cell.reverse = true;
+        );
+
+        if buffer.cell_mut(caret_x, caret_y).is_some() {
+          buffer.caret = u16::try_from(caret_x).ok().zip(u16::try_from(caret_y).ok());
+        }
       }
     }
     NodePaint::None => {}
@@ -948,17 +976,20 @@ fn draw_scrollbars(
 
     for row in 0..track {
       if let Some(cell) = buffer.cell_mut(x + width - 1, y + border.1 + row) {
-        let (character, reverse) = match eighth_coverage(row, top, thumb) {
-          Coverage::Full => ('█', false),
-          Coverage::Leading(eighths) => (lower_block(8 - eighths), true),
-          Coverage::Trailing(eighths) => (lower_block(eighths), false),
-          Coverage::None => (' ', false),
+        let (ink, track_tint) = track_colors(cell, dark);
+        // A leading partial paints the complement glyph with the colors swapped, in
+        // place of the upper-block run Unicode lacks.
+        let (character, foreground, background) = match eighth_coverage(row, top, thumb) {
+          Coverage::Full => ('█', ink, track_tint),
+          Coverage::Leading(eighths) => (lower_block(8 - eighths), track_tint, ink),
+          Coverage::Trailing(eighths) => (lower_block(eighths), ink, track_tint),
+          Coverage::None => (' ', ink, track_tint),
         };
 
-        paint_track_cell(cell, dark);
-
         cell.character = character;
-        cell.reverse = reverse;
+        cell.foreground = Some(foreground);
+        cell.background = Some(background);
+        cell.bold = false;
       }
     }
   }
@@ -969,26 +1000,29 @@ fn draw_scrollbars(
 
     for column in 0..track {
       if let Some(cell) = buffer.cell_mut(x + border.0 + column, y + height - 1) {
-        let (character, reverse) = match eighth_coverage(column, start, thumb) {
-          Coverage::Full => ('█', false),
-          Coverage::Leading(eighths) => (left_block(eighths), false),
-          Coverage::Trailing(eighths) => (left_block(8 - eighths), true),
-          Coverage::None => (' ', false),
+        let (ink, track_tint) = track_colors(cell, dark);
+        // A trailing partial paints the complement glyph with the colors swapped, in
+        // place of the right-block run Unicode lacks.
+        let (character, foreground, background) = match eighth_coverage(column, start, thumb) {
+          Coverage::Full => ('█', ink, track_tint),
+          Coverage::Leading(eighths) => (left_block(eighths), ink, track_tint),
+          Coverage::Trailing(eighths) => (left_block(8 - eighths), track_tint, ink),
+          Coverage::None => (' ', ink, track_tint),
         };
 
-        paint_track_cell(cell, dark);
-
         cell.character = character;
-        cell.reverse = reverse;
+        cell.foreground = Some(foreground);
+        cell.background = Some(background);
+        cell.bold = false;
       }
     }
   }
 }
 
-/// Colors one scrollbar cell: the thumb inks in the terminal default foreground for the
-/// detected background, the track is a quarter of that ink over the cell beneath—so a
+/// One scrollbar cell's ink and track: the terminal default foreground for the
+/// detected background, and a quarter of that ink over the cell beneath—so a
 /// partially covered cell's remainder matches the track exactly.
-fn paint_track_cell(cell: &mut TerminalCell, dark: bool) {
+fn track_colors(cell: &TerminalCell, dark: bool) -> ((u8, u8, u8), (u8, u8, u8)) {
   let (ink, base) = if dark {
     ((255, 255, 255), (0, 0, 0))
   }
@@ -1000,13 +1034,14 @@ fn paint_track_cell(cell: &mut TerminalCell, dark: bool) {
     u8::try_from((u16::from(over) + 3 * u16::from(under) + 2) / 4).unwrap_or(u8::MAX)
   };
 
-  cell.foreground = Some(ink);
-  cell.background = Some((
-    quarter(ink.0, beneath.0),
-    quarter(ink.1, beneath.1),
-    quarter(ink.2, beneath.2),
-  ));
-  cell.bold = false;
+  (
+    ink,
+    (
+      quarter(ink.0, beneath.0),
+      quarter(ink.1, beneath.1),
+      quarter(ink.2, beneath.2),
+    ),
+  )
 }
 
 /// How much of a track cell the thumb covers, in eighth-cell resolution.
@@ -1174,7 +1209,6 @@ fn fill(
         cell.foreground = None;
         cell.bold = false;
         cell.background = background;
-        cell.reverse = false;
       }
     }
   }
@@ -1384,6 +1418,16 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     usize::try_from(menu_height).unwrap_or(0),
   );
   let backdrop = if dark { (0, 0, 0) } else { (255, 255, 255) };
+
+  // The menu covering the caret cell hides the terminal cursor with it.
+  if let Some((caret_x, caret_y)) = buffer.caret
+    && isize::try_from(caret_x)
+      .is_ok_and(|caret_x| caret_x >= x && caret_x < x + isize::try_from(width).unwrap_or(0))
+    && isize::try_from(caret_y)
+      .is_ok_and(|caret_y| caret_y >= y && caret_y < y + isize::try_from(height).unwrap_or(0))
+  {
+    buffer.caret = None;
+  }
 
   fill(buffer, x, y, width, height, Some(backdrop));
   draw_border(

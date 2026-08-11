@@ -288,6 +288,14 @@ pub fn render_to_text(width: u16, height: u16) -> String {
   with_state(|state| paint::render(state, width, height).to_text())
 }
 
+/// The painted frame's caret cell at `width` x `height`—where the terminal's bar
+/// cursor shows—for a headless test asserting caret placement.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
+  with_state(|state| paint::render(state, width, height).caret)
+}
+
 /// The painted frame's colors at `width` x `height`: each cell's foreground and
 /// background, row-major—for a headless test asserting paint, such as a shadow's mix.
 #[cfg(feature = "test")]

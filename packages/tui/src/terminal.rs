@@ -39,6 +39,9 @@ use crate::{
   with_state,
 };
 
+/// The rows or columns one wheel report scrolls: a browser's three lines per notch.
+const WHEEL_STEP: i64 = 3;
+
 /// Restores the terminal when the loop unwinds.
 struct TerminalGuard;
 
@@ -60,6 +63,7 @@ fn restore_terminal() {
     // dev-loop swap kills the previous instance without running its restore.
     crossterm::style::Print("\x1b[=0;1u"),
     DisableMouseCapture,
+    cursor::SetCursorStyle::DefaultUserShape,
     cursor::Show,
     terminal::LeaveAlternateScreen
   );
@@ -265,10 +269,10 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         state.end_drag();
       }
     }
-    MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, 1),
-    MouseEventKind::ScrollUp => state.mouse_scroll(mouse.column, mouse.row, 0, -1),
-    MouseEventKind::ScrollRight => state.mouse_scroll(mouse.column, mouse.row, 1, 0),
-    MouseEventKind::ScrollLeft => state.mouse_scroll(mouse.column, mouse.row, -1, 0),
+    MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, WHEEL_STEP),
+    MouseEventKind::ScrollUp => state.mouse_scroll(mouse.column, mouse.row, 0, -WHEEL_STEP),
+    MouseEventKind::ScrollRight => state.mouse_scroll(mouse.column, mouse.row, WHEEL_STEP, 0),
+    MouseEventKind::ScrollLeft => state.mouse_scroll(mouse.column, mouse.row, -WHEEL_STEP, 0),
   });
 }
 
@@ -403,7 +407,6 @@ fn draw(
       foreground: None,
       background: None,
       bold: false,
-      reverse: false,
     };
 
     for cell in &buffer.cells[row * buffer.width..(row + 1) * buffer.width] {
@@ -435,20 +438,24 @@ fn draw(
         );
       }
 
-      if cell.reverse != current.reverse {
-        let _ = queue!(
-          out,
-          SetAttribute(if cell.reverse {
-            Attribute::Reverse
-          }
-          else {
-            Attribute::NoReverse
-          })
-        );
-      }
-
       let _ = queue!(out, crossterm::style::Print(cell.character));
       current = *cell;
+    }
+  }
+
+  // The focused input's caret is the terminal's own bar cursor, blinking as the
+  // terminal does.
+  match buffer.caret {
+    Some((column, row)) => {
+      let _ = queue!(
+        out,
+        cursor::MoveTo(column, row),
+        cursor::SetCursorStyle::BlinkingBar,
+        cursor::Show
+      );
+    }
+    None => {
+      let _ = queue!(out, cursor::Hide);
     }
   }
 

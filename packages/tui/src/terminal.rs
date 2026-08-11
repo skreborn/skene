@@ -257,6 +257,7 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       );
 
       if button == MouseButton::Left {
+        state.mouse_release(mouse.column, mouse.row);
         state.end_drag();
       }
     }
@@ -291,7 +292,7 @@ fn dispatch_press(
   }
 
   if button == MouseButton::Left {
-    state.mouse_click(column, row);
+    state.mouse_press(column, row);
   }
 
   // A right press opens the copy menu at the pressed cell while a selection exists.
@@ -911,7 +912,7 @@ pub fn trigger_mouse_press(x: u16, y: u16) {
         Some(skene_core::PointerButton::Primary),
         skene_core::Modifiers::default(),
       );
-      state.mouse_click(x, y);
+      state.mouse_press(x, y);
     });
   });
 }
@@ -950,7 +951,7 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
           Some(skene_core::PointerButton::Primary),
           skene_core::Modifiers::default(),
         );
-        state.mouse_click(x, y);
+        state.mouse_press(x, y);
       }
 
       let _ = state.run_pointer(
@@ -960,6 +961,7 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
         Some(skene_core::PointerButton::Primary),
         skene_core::Modifiers::default(),
       );
+      state.mouse_release(x, y);
       state.end_drag();
     });
   });

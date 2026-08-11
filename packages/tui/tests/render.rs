@@ -2284,3 +2284,50 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
     "the fresh gesture chained to the page: {chained}",
   );
 }
+
+/// A click completes on release over the same target: pressing one button and
+/// releasing over another—or over nothing—clicks neither.
+#[test]
+fn clicks_complete_on_release_over_the_same_target() {
+  let (first, second) = with_driver(|| {
+    let first = Rc::new(Cell::new(0u32));
+    let second = Rc::new(Cell::new(0u32));
+    let (count_first, count_second) = (Rc::clone(&first), Rc::clone(&second));
+
+    tui::mount(move || {
+      let (one, two) = (Rc::clone(&count_first), Rc::clone(&count_second));
+
+      Row::new()
+        .set_spacing(2)
+        .set_children((
+          Button::new()
+            .handle_click(move || one.set(one.get() + 1))
+            .set_child(Text::new("one")),
+          Button::new()
+            .handle_click(move || two.set(two.get() + 1))
+            .set_child(Text::new("two")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(20, 3);
+
+    // Press on the first, release on the second: no click anywhere.
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_release(6, 0);
+
+    // Press on the first, release on empty space: still nothing.
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_release(15, 2);
+
+    // Press and release on the first: one click.
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_release(1, 0);
+
+    (first.get(), second.get())
+  });
+
+  assert_eq!(first, 1);
+  assert_eq!(second, 0);
+}

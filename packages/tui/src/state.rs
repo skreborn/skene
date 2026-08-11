@@ -223,6 +223,12 @@ pub(crate) struct State {
   /// arriving without one stands in for a click whose press the terminal swallowed.
   pub(crate) left_held: Cell<bool>,
   pub(crate) right_held: Cell<bool>,
+  /// The delivered left press awaiting its release: the hit path and the focusable
+  /// target under it.
+  pressed_path: RefCell<Vec<NodeId>>,
+  pressed_target: Cell<Option<NodeId>>,
+  /// Whether the press landed on the copy menu's `Copy` item, awaiting its release.
+  pressed_copy: Cell<bool>,
   /// The text selection, when one exists.
   pub(crate) selection: Cell<Option<Selection>>,
   /// The copy menu's pressed cell, while the menu is open.
@@ -307,6 +313,9 @@ impl State {
       drag: Cell::new(None),
       left_held: Cell::new(false),
       right_held: Cell::new(false),
+      pressed_path: RefCell::new(Vec::new()),
+      pressed_target: Cell::new(None),
+      pressed_copy: Cell::new(false),
       selection: Cell::new(None),
       menu: Cell::new(None),
       last_press: Cell::new(None),
@@ -775,17 +784,24 @@ impl State {
     self.dirty.set(true);
   }
 
-  /// Dispatches a mouse click at (`x`, `y`): focuses the deepest focusable node on the
-  /// hit path (or blurs when none is hit), runs click handlers from the deepest node
-  /// up, then—unless a handler prevented the default—activates the focused control.
-  pub(crate) fn mouse_click(&self, x: u16, y: u16) {
-    // An open copy menu consumes the press: `Copy` copies, anywhere else just closes.
+  /// Dispatches a left press at (`x`, `y`): focuses the deepest focusable node on the
+  /// hit path (or blurs when none is hit), runs the press-natured activations—a
+  /// slider's jump and drag, an input's caret—and records the path for the release,
+  /// which completes the click.
+  pub(crate) fn mouse_press(&self, x: u16, y: u16) {
+    *self.pressed_path.borrow_mut() = Vec::new();
+    self.pressed_target.set(None);
+    self.pressed_copy.set(false);
+
+    // A press on the open copy menu waits for its release on `Copy`; anywhere else it
+    // just closes the menu. Either way the press is consumed.
     if self.menu.get().is_some() {
       if self.copy_hit(x, y) {
-        self.copy_selection();
+        self.pressed_copy.set(true);
       }
-
-      self.close_menu();
+      else {
+        self.close_menu();
+      }
 
       return;
     }
@@ -822,9 +838,86 @@ impl State {
 
     self.set_focused(target);
 
+    // The press-natured activations act now: a slider jumps and starts its drag, an
+    // input places its caret. Clicks and the toggling activations wait for the
+    // release.
+    if let Some(target) = target {
+      enum PressActivation {
+        Slide,
+        Place,
+        Wait,
+      }
+
+      let activation = match self.nodes.borrow().get(&target).map(|record| &record.kind) {
+        Some(NodeKind::Slider { .. }) => PressActivation::Slide,
+        Some(NodeKind::TextField { .. }) => PressActivation::Place,
+        _ => PressActivation::Wait,
+      };
+      let origin = path
+        .iter()
+        .find(|(node, _)| *node == target)
+        .map_or((0, 0), |(_, origin)| *origin);
+      let local_column = i64::from(x) - origin.0;
+
+      match activation {
+        PressActivation::Slide => {
+          self.slide_to(target, local_column);
+          self.drag.set(Some(Drag::Slider(target)));
+        }
+        PressActivation::Place => self.place_caret(target, local_column),
+        PressActivation::Wait => {}
+      }
+    }
+
+    *self.pressed_path.borrow_mut() = path.iter().map(|(node, _)| *node).collect();
+    self.pressed_target.set(target);
+
+    // A press on a selectable run starts a selection: a drag extends it, a double
+    // click takes the word, a triple click the whole run.
+    if let Some(point) = self.text_position_at(x, y) {
+      match self.register_press(x, y) {
+        2 => self.select_word(point),
+        3 => self.select_run(point),
+        _ => self.anchor_selection(point),
+      }
+    }
+    else {
+      self.last_press.set(None);
+    }
+  }
+
+  /// Completes a click on release: the click handlers and the toggling activations
+  /// fire on the deepest node under both the press and the release—releasing over a
+  /// different target clicks nothing, as on the web.
+  pub(crate) fn mouse_release(&self, x: u16, y: u16) {
+    if self.pressed_copy.replace(false) {
+      if self.copy_hit(x, y) {
+        self.copy_selection();
+      }
+
+      self.close_menu();
+
+      return;
+    }
+
+    let pressed = std::mem::take(&mut *self.pressed_path.borrow_mut());
+    let target = self.pressed_target.take();
+
+    if pressed.is_empty() {
+      return;
+    }
+
+    let released: Vec<NodeId> = self.hit_test(x, y).iter().map(|(node, _)| *node).collect();
+    let common: Vec<NodeId> = pressed
+      .iter()
+      .zip(&released)
+      .take_while(|(press, release)| press == release)
+      .map(|(node, _)| *node)
+      .collect();
+
     let mut prevention = Prevention::default();
 
-    for (node, _) in path.iter().rev() {
+    for node in common.iter().rev() {
       prevention.merge(Self::run_preventable(&self.click, *node, (), |run, ()| {
         run()
       }));
@@ -838,34 +931,12 @@ impl State {
       return;
     }
 
-    if let Some(target) = target {
-      let origin = path
-        .iter()
-        .find(|(node, _)| *node == target)
-        .map_or((0, 0), |(_, origin)| *origin);
-
-      self.activate_control(target, Some(i64::from(x) - origin.0));
-
-      // A press on a slider starts a drag: motion keeps sliding until release.
-      if matches!(
-        self.nodes.borrow().get(&target).map(|record| &record.kind),
-        Some(NodeKind::Slider { .. })
-      ) {
-        self.drag.set(Some(Drag::Slider(target)));
-      }
-    }
-
-    // A press on a selectable run starts a selection: a drag extends it, a double
-    // click takes the word, a triple click the whole run.
-    if let Some(point) = self.text_position_at(x, y) {
-      match self.register_press(x, y) {
-        2 => self.select_word(point),
-        3 => self.select_run(point),
-        _ => self.anchor_selection(point),
-      }
-    }
-    else {
-      self.last_press.set(None);
+    if let Some(target) = target
+      && common.contains(&target)
+    {
+      // Without a column: the toggling activations only—the press-natured ones
+      // already acted on the press.
+      self.activate_control(target, None);
     }
   }
 

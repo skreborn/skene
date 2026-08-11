@@ -177,6 +177,18 @@ pub(crate) struct NodeRecord {
 /// A node's handlers of one event kind.
 pub(crate) type Handlers<F> = RefCell<FxHashMap<NodeId, Vec<Rc<F>>>>;
 
+/// The pause that ends a wheel gesture: the next wheel event re-targets, as on the
+/// web.
+const SCROLL_GESTURE: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// One wheel gesture's scroll target: the cell it hit, the box it scrolls, and the
+/// last wheel event's time.
+struct ScrollLatch {
+  cell: (u16, u16),
+  target: NodeId,
+  last: std::time::Instant,
+}
+
 /// The terminal driver's state: the node tree, the taffy tree, handlers, and focus.
 pub(crate) struct State {
   pub(crate) nodes: RefCell<FxHashMap<NodeId, NodeRecord>>,
@@ -207,6 +219,10 @@ pub(crate) struct State {
   pub(crate) hovered: RefCell<Vec<NodeId>>,
   /// The drag in progress, from a press until its release.
   pub(crate) drag: Cell<Option<Drag>>,
+  /// Whether a left or right press has been delivered and not yet released; a release
+  /// arriving without one stands in for a click whose press the terminal swallowed.
+  pub(crate) left_held: Cell<bool>,
+  pub(crate) right_held: Cell<bool>,
   /// The text selection, when one exists.
   pub(crate) selection: Cell<Option<Selection>>,
   /// The copy menu's pressed cell, while the menu is open.
@@ -215,6 +231,10 @@ pub(crate) struct State {
   pub(crate) last_press: Cell<Option<(std::time::Instant, u16, u16, u8)>>,
   /// The pointer's last known cell, for painting the menu's hover state.
   pub(crate) last_pointer: Cell<(u16, u16)>,
+  /// The wheel gesture's latched target, held while consecutive wheel events stay on
+  /// its cell: scrolling never re-targets a scrollable that merely slid under an
+  /// unmoved pointer, and the target's limits consume the wheel instead of chaining.
+  scroll_latch: RefCell<Option<ScrollLatch>>,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: RefCell<Option<String>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
@@ -285,10 +305,13 @@ impl State {
       controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
       drag: Cell::new(None),
+      left_held: Cell::new(false),
+      right_held: Cell::new(false),
       selection: Cell::new(None),
       menu: Cell::new(None),
       last_press: Cell::new(None),
       last_pointer: Cell::new((0, 0)),
+      scroll_latch: RefCell::new(None),
       pending_copy: RefCell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
@@ -459,6 +482,14 @@ impl State {
 
       if self.focused.get() == Some(current) {
         self.focused.set(None);
+      }
+
+      {
+        let mut latch = self.scroll_latch.borrow_mut();
+
+        if latch.as_ref().is_some_and(|entry| entry.target == current) {
+          *latch = None;
+        }
       }
 
       self.invalidate_selection(current);
@@ -714,9 +745,14 @@ impl State {
     let next: Vec<NodeId> = self.hit_test(x, y).iter().map(|(node, _)| *node).collect();
     let previous = self.hovered.borrow().clone();
 
-    if self.last_pointer.replace((x, y)) != (x, y) && self.menu.get().is_some() {
-      // The menu's hover state follows the pointer.
-      self.dirty.set(true);
+    if self.last_pointer.replace((x, y)) != (x, y) {
+      // A real pointer move releases the wheel's latched target.
+      *self.scroll_latch.borrow_mut() = None;
+
+      if self.menu.get().is_some() {
+        // The menu's hover state follows the pointer.
+        self.dirty.set(true);
+      }
     }
 
     if previous == next {
@@ -1763,13 +1799,41 @@ impl State {
     );
   }
 
-  /// Scrolls the innermost box under the cell (`x`, `y`) that can still move in the
-  /// given direction.
+  /// Scrolls under the cell (`x`, `y`): a gesture in progress keeps its latched box—
+  /// consuming the wheel at that box's limits, never chaining—and a fresh gesture
+  /// targets the innermost box under the cell that can still move in the given
+  /// direction.
   pub(crate) fn mouse_scroll(&self, x: u16, y: u16, delta_x: i64, delta_y: i64) {
     self.close_menu();
 
+    let now = std::time::Instant::now();
+    let latched = {
+      let mut latch = self.scroll_latch.borrow_mut();
+
+      match latch.as_mut() {
+        Some(entry) if entry.cell == (x, y) && now.duration_since(entry.last) <= SCROLL_GESTURE => {
+          entry.last = now;
+
+          Some(entry.target)
+        }
+        _ => None,
+      }
+    };
+
+    if let Some(target) = latched {
+      let _ = self.scroll_by(target, delta_x, delta_y);
+
+      return;
+    }
+
     for (node, _) in self.hit_test(x, y).iter().rev() {
       if self.scroll_by(*node, delta_x, delta_y) {
+        *self.scroll_latch.borrow_mut() = Some(ScrollLatch {
+          cell: (x, y),
+          target: *node,
+          last: now,
+        });
+
         return;
       }
     }

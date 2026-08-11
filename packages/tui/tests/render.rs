@@ -2125,3 +2125,162 @@ fn escape_closes_the_menu_then_clears_the_selection() {
   );
   assert_eq!(cleared[2].1, None, "the second Escape clears it");
 }
+
+/// The wheel's target latches until the pointer moves: an inner scrollable that merely
+/// slides under the unmoved pointer never steals the scroll, and a real move
+/// re-targets.
+#[test]
+fn wheel_target_latches_until_the_pointer_moves() {
+  let (latched, retargeted) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_child(
+          Column::new()
+            .set_height(4)
+            .set_overflow(Overflow::Auto)
+            .set_children((
+              Text::new("top0"),
+              Text::new("top1"),
+              Text::new("top2"),
+              Text::new("top3"),
+              Column::new()
+                .set_height(4)
+                .set_min_height(4)
+                .set_width(10)
+                .set_overflow(Overflow::Auto)
+                .set_children(
+                  (0..8)
+                    .map(|index| Text::new(format!("inner{index}")))
+                    .collect::<Vec<_>>(),
+                ),
+              Text::new("bottom0"),
+              Text::new("bottom1"),
+              Text::new("bottom2"),
+              Text::new("bottom3"),
+            )),
+        )
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(14, 5);
+
+    // The first wheel scrolls the page and slides the inner scrollable under the
+    // still pointer; the second must keep scrolling the page.
+    tui::trigger_mouse_scroll(2, 1, 0, 4);
+    tui::trigger_mouse_scroll(2, 1, 0, 2);
+
+    let latched = tui::render_to_text(14, 5);
+
+    // A real pointer move releases the latch: the next wheel targets what is now
+    // under the pointer—the inner scrollable.
+    tui::trigger_mouse_move(8, 3);
+    tui::trigger_mouse_move(2, 1);
+    tui::trigger_mouse_scroll(2, 1, 0, 1);
+
+    (latched, tui::render_to_text(14, 5))
+  });
+
+  assert!(
+    latched.contains("bottom0") && !latched.contains("inner4"),
+    "the second wheel kept the page as its target: {latched}",
+  );
+  assert!(
+    retargeted.contains("inner4"),
+    "after the move, the wheel scrolled the inner box: {retargeted}",
+  );
+}
+
+/// A release with no delivered press still clicks: VTE terminals swallow every rapid
+/// press past the third yet forward the release, so the orphan release stands in.
+#[test]
+fn an_orphan_release_stands_in_for_a_swallowed_click() {
+  let clicks = with_driver(|| {
+    let count = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&count);
+
+    tui::mount(move || {
+      Button::new()
+        .handle_click(move || counted.set(counted.get() + 1))
+        .set_child(Text::new("go"))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(10, 3);
+
+    // Three delivered clicks, then three whose presses the terminal swallowed.
+    for _ in 0..3 {
+      tui::trigger_mouse_click(1, 0);
+    }
+
+    for _ in 0..3 {
+      tui::trigger_mouse_release(1, 0);
+    }
+
+    count.get()
+  });
+
+  assert_eq!(clicks, 6);
+}
+
+/// A wheel gesture holds its target at the target's limits—reaching the inner box's
+/// end never chains mid-gesture—and a paused, fresh gesture chains past the
+/// at-limit box to the page, as on the web.
+#[test]
+fn wheel_gesture_holds_at_the_target_limit_then_chains() {
+  let (held, chained) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_child(
+          Column::new()
+            .set_height(4)
+            .set_overflow(Overflow::Auto)
+            .set_children((
+              Column::new()
+                .set_height(2)
+                .set_min_height(2)
+                .set_width(10)
+                .set_overflow(Overflow::Auto)
+                .set_children(
+                  (0..4)
+                    .map(|index| Text::new(format!("inner{index}")))
+                    .collect::<Vec<_>>(),
+                ),
+              Text::new("bottom0"),
+              Text::new("bottom1"),
+              Text::new("bottom2"),
+              Text::new("bottom3"),
+              Text::new("bottom4"),
+              Text::new("bottom5"),
+            )),
+        )
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(14, 5);
+
+    // The first wheel latches the inner box and scrolls it to its end; the second,
+    // still in the gesture, is consumed there rather than chaining to the page.
+    tui::trigger_mouse_scroll(1, 0, 0, 2);
+    tui::trigger_mouse_scroll(1, 0, 0, 2);
+
+    let held = tui::render_to_text(14, 5);
+
+    // A pause ends the gesture; the next wheel chains past the at-limit inner box.
+    std::thread::sleep(std::time::Duration::from_millis(510));
+    tui::trigger_mouse_scroll(1, 0, 0, 1);
+
+    (held, tui::render_to_text(14, 5))
+  });
+
+  assert!(
+    held.contains("inner2") && held.contains("bottom0"),
+    "the at-limit inner box consumed the wheel: {held}",
+  );
+  assert!(
+    !chained.contains("inner2") && chained.contains("bottom2"),
+    "the fresh gesture chained to the page: {chained}",
+  );
+}

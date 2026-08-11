@@ -226,28 +226,28 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       set_pointer_shape(state.hover_cursor());
     }
     MouseEventKind::Down(button) => {
-      state.set_hover(mouse.column, mouse.row);
-
-      let prevention = state.run_pointer(
-        &state.pointer_down,
-        mouse.column,
-        mouse.row,
-        Some(portable_button(button)),
-        modifiers,
-      );
-
-      // The press's default—focusing and the click dispatch—obeys the verdicts.
-      if button == MouseButton::Left && !prevention.default {
-        state.mouse_click(mouse.column, mouse.row);
+      match button {
+        MouseButton::Left => state.left_held.set(true),
+        MouseButton::Right => state.right_held.set(true),
+        MouseButton::Middle => {}
       }
 
-      // A right press opens the copy menu at the pressed cell while a selection
-      // exists.
-      if button == MouseButton::Right && !prevention.default {
-        state.right_press(mouse.column, mouse.row);
-      }
+      dispatch_press(state, mouse.column, mouse.row, button, modifiers);
     }
     MouseEventKind::Up(button) => {
+      // A release whose press was never delivered stands in for the whole click: VTE
+      // terminals report only the first three presses of a rapid sequence to the app,
+      // yet forward every release.
+      let orphan = match button {
+        MouseButton::Left => !state.left_held.replace(false),
+        MouseButton::Right => !state.right_held.replace(false),
+        MouseButton::Middle => false,
+      };
+
+      if orphan {
+        dispatch_press(state, mouse.column, mouse.row, button, modifiers);
+      }
+
       let _ = state.run_pointer(
         &state.pointer_up,
         mouse.column,
@@ -265,6 +265,39 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
     MouseEventKind::ScrollRight => state.mouse_scroll(mouse.column, mouse.row, 1, 0),
     MouseEventKind::ScrollLeft => state.mouse_scroll(mouse.column, mouse.row, -1, 0),
   });
+}
+
+/// Dispatches one press: hover, the pointer-down handlers, then—unless a handler
+/// prevented the default—the left click or the right press's copy menu.
+fn dispatch_press(
+  state: &State,
+  column: u16,
+  row: u16,
+  button: MouseButton,
+  modifiers: skene_core::Modifiers,
+) {
+  state.set_hover(column, row);
+
+  let prevention = state.run_pointer(
+    &state.pointer_down,
+    column,
+    row,
+    Some(portable_button(button)),
+    modifiers,
+  );
+
+  if prevention.default {
+    return;
+  }
+
+  if button == MouseButton::Left {
+    state.mouse_click(column, row);
+  }
+
+  // A right press opens the copy menu at the pressed cell while a selection exists.
+  if button == MouseButton::Right {
+    state.right_press(column, row);
+  }
 }
 
 /// A crossterm mouse button as the portable vocabulary's.
@@ -859,27 +892,8 @@ pub fn trigger_mouse_move(x: u16, y: u16) {
 /// headlessly. Hit-testing resolves against the last render's layout.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_click(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      state.set_hover(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_down,
-        x,
-        y,
-        Some(skene_core::PointerButton::Primary),
-        skene_core::Modifiers::default(),
-      );
-      state.mouse_click(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_up,
-        x,
-        y,
-        Some(skene_core::PointerButton::Primary),
-        skene_core::Modifiers::default(),
-      );
-      state.end_drag();
-    });
-  });
+  trigger_mouse_press(x, y);
+  trigger_mouse_release(x, y);
 }
 
 /// Simulates pressing the left button at (`x`, `y`) without releasing—the start of a
@@ -888,6 +902,7 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 pub fn trigger_mouse_press(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::batch(|| {
+      state.left_held.set(true);
       state.set_hover(x, y);
       let _ = state.run_pointer(
         &state.pointer_down,
@@ -920,11 +935,24 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
   });
 }
 
-/// Simulates releasing the left button at (`x`, `y`), ending a drag.
+/// Simulates releasing the left button at (`x`, `y`), ending a drag. A release with no
+/// press delivered stands in for the whole click, as the interactive loop's does.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_release(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::batch(|| {
+      if !state.left_held.replace(false) {
+        state.set_hover(x, y);
+        let _ = state.run_pointer(
+          &state.pointer_down,
+          x,
+          y,
+          Some(skene_core::PointerButton::Primary),
+          skene_core::Modifiers::default(),
+        );
+        state.mouse_click(x, y);
+      }
+
       let _ = state.run_pointer(
         &state.pointer_up,
         x,
@@ -943,6 +971,7 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
   with_state(|state| {
     skene_reactive::batch(|| {
+      state.right_held.set(true);
       state.set_hover(x, y);
       let _ = state.run_pointer(
         &state.pointer_down,
@@ -952,6 +981,7 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
         skene_core::Modifiers::default(),
       );
       state.right_press(x, y);
+      state.right_held.set(false);
       let _ = state.run_pointer(
         &state.pointer_up,
         x,

@@ -246,6 +246,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   full cell at a time. Hover pointer shapes (OSC 22) default by content—the pointer
   over buttons and toggling controls, the I-beam over inputs and selectable text—an
   explicit `set_cursor` winning.
+- **State feedback—done.** Focus no longer inverts: controls carry built-in feedback
+  as subtle background tints of the scheme's ink—one eighth for hover, two for focus,
+  three for both, each distinct—applied only for states the author hasn't conditioned
+  a variant on, so `set_when(Hovered, …)` replaces the default the way author CSS
+  replaces UA styling. The cell `reverse` bit remains only where terminals use it:
+  the input caret and the scrollbar's partial-cell caps. The picker popup marks its
+  current option with a highlight bar over the row instead of an `x` prefix.
 - **Text selection—done.** Selection is controlled explicitly across backends: text
   runs are selectable by default (`set_selectable(false)` opts out), control chrome—
   button labels, picker rows—never is, and on the web the same flag compiles to

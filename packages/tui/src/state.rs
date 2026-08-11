@@ -247,6 +247,9 @@ pub(crate) struct State {
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
   pub(crate) dark: Cell<bool>,
+  /// Whether OSC 52 clipboard writes reach the system clipboard, probed at launch;
+  /// without them the copy menu's `Copy` presents disabled.
+  pub(crate) clipboard: Cell<bool>,
   /// Each scrolled node's offsets, in cells.
   pub(crate) scroll_offsets: RefCell<FxHashMap<NodeId, (u32, u32)>>,
   /// The node to scroll into view once the next layout is computed.
@@ -324,6 +327,7 @@ impl State {
       pending_copy: RefCell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
+      clipboard: Cell::new(true),
       scroll_offsets: RefCell::new(FxHashMap::default()),
       reveal: Cell::new(None),
       viewport_watchers: RefCell::new(FxHashMap::default()),
@@ -794,10 +798,13 @@ impl State {
     self.pressed_copy.set(false);
 
     // A press on the open copy menu waits for its release on `Copy`; anywhere else it
-    // just closes the menu. Either way the press is consumed.
+    // just closes the menu. Either way the press is consumed. A disabled `Copy`—no
+    // terminal clipboard—swallows the press without acting.
     if self.menu.get().is_some() {
       if self.copy_hit(x, y) {
-        self.pressed_copy.set(true);
+        if self.clipboard.get() {
+          self.pressed_copy.set(true);
+        }
       }
       else {
         self.close_menu();
@@ -1714,7 +1721,21 @@ impl State {
       };
 
       if let Some((style, variants)) = record.kind.box_style() {
-        return effective_box_style(style, variants, environment, interaction).cursor;
+        if let Some(cursor) = effective_box_style(style, variants, environment, interaction).cursor
+        {
+          return Some(cursor);
+        }
+
+        // The defaults: an input shows the I-beam, a button the pointer.
+        if matches!(record.kind, NodeKind::TextField { .. }) {
+          return Some(MouseCursor::Text);
+        }
+
+        return self
+          .controls
+          .borrow()
+          .contains(node)
+          .then_some(MouseCursor::Click);
       }
 
       if let NodeKind::Run {
@@ -1729,7 +1750,20 @@ impl State {
 
       let (style, variants) = record.kind.control_style()?;
 
-      effective_control_style(style, variants, environment, interaction).cursor
+      if let Some(cursor) =
+        effective_control_style(style, variants, environment, interaction).cursor
+      {
+        return Some(cursor);
+      }
+
+      // The toggling controls default to the pointer; a slider keeps the arrow, as on
+      // the web.
+      match record.kind {
+        NodeKind::Checkbox { .. } | NodeKind::Radio { .. } | NodeKind::Picker { .. } => {
+          Some(MouseCursor::Click)
+        }
+        _ => None,
+      }
     })
   }
 
@@ -1843,15 +1877,31 @@ impl State {
   /// entries no live node carries are dropped, and reads clamp to the next layout.
   #[cfg(feature = "snapshot")]
   pub(crate) fn restore_scroll(&self, entries: &[(u64, u32, u32)]) {
-    let nodes = self.nodes.borrow();
-    let mut offsets = self.scroll_offsets.borrow_mut();
+    let mut restored = Vec::new();
 
-    for (id, x, y) in entries {
-      let node = NodeId::new(*id);
+    {
+      let nodes = self.nodes.borrow();
+      let mut offsets = self.scroll_offsets.borrow_mut();
 
-      if nodes.contains_key(&node) {
-        offsets.insert(node, (*x, *y));
+      for (id, x, y) in entries {
+        let node = NodeId::new(*id);
+
+        if nodes.contains_key(&node) {
+          offsets.insert(node, (*x, *y));
+          restored.push((node, *x, *y));
+        }
       }
+    }
+
+    // The scroll handlers hear the restored offsets, so a lazy column rebuilds its
+    // window at the resumed position.
+    for (node, x, y) in restored {
+      Self::run_handlers(
+        &self.scroll,
+        node,
+        &ScrollEvent { column: x, row: y },
+        |run, event| run(event),
+      );
     }
 
     self.dirty.set(true);

@@ -1,7 +1,8 @@
-//! Terminal capability detection: color depth and background darkness.
+//! Terminal capability detection: color depth, background darkness, and clipboard
+//! support.
 //!
-//! Both detections degrade quietly: an unresponsive or unknown terminal gets 16 colors
-//! and a dark background.
+//! Every detection degrades quietly: an unresponsive or unknown terminal gets 16
+//! colors, a dark background, and a working clipboard.
 
 use std::env;
 #[cfg(unix)]
@@ -173,11 +174,42 @@ fn colorfgbg_is_dark(value: &str) -> Option<bool> {
 /// Queries the terminal background via OSC 11, waiting briefly for the reply on stdin.
 #[cfg(unix)]
 fn query_background() -> Option<(u8, u8, u8)> {
-  const PREFIX: &[u8] = b"\x1b]11;";
+  parse_osc11(&query("\x1b]11;?\x1b\\", b"\x1b]11;")?)
+}
 
+/// No reply channel outside a Unix terminal.
+#[cfg(not(unix))]
+fn query_background() -> Option<(u8, u8, u8)> {
+  None
+}
+
+/// Whether OSC 52 clipboard writes reach the system clipboard: every terminal is
+/// assumed capable except one identifying as VTE, which discards them.
+///
+/// Call with raw mode enabled: the reply arrives on stdin and must not echo.
+pub(crate) fn clipboard_writes_work() -> bool {
+  terminal_version().is_none_or(|terminal| !terminal.starts_with("VTE("))
+}
+
+/// The terminal's name and version via XTVERSION (`NAME(VERSION)`), when it answers.
+#[cfg(unix)]
+fn terminal_version() -> Option<String> {
+  parse_xtversion(&query("\x1b[>0q", b"\x1bP>|")?)
+}
+
+/// No reply channel outside a Unix terminal.
+#[cfg(not(unix))]
+fn terminal_version() -> Option<String> {
+  None
+}
+
+/// Writes `request` and reads the reply that starts with `prefix` from stdin, waiting
+/// briefly; the reply ends at BEL or ST.
+#[cfg(unix)]
+fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
   let mut out = std::io::stdout();
 
-  write!(out, "\x1b]11;?\x1b\\").ok()?;
+  write!(out, "{request}").ok()?;
   out.flush().ok()?;
 
   let deadline = Instant::now() + Duration::from_millis(100);
@@ -206,14 +238,14 @@ fn query_background() -> Option<(u8, u8, u8)> {
 
     response.push(byte);
 
-    // Anything that stops being an OSC 11 reply prefix is unrelated input: stop
-    // consuming rather than eat the user's first keystrokes.
-    if response.len() <= PREFIX.len() && response != PREFIX[..response.len()] {
+    // Anything that stops being the reply's prefix is unrelated input: stop consuming
+    // rather than eat the user's first keystrokes.
+    if response.len() <= prefix.len() && response != prefix[..response.len()] {
       return None;
     }
 
     if byte == 0x07 || response.ends_with(b"\x1b\\") {
-      return parse_osc11(&response);
+      return Some(response);
     }
 
     if response.len() > 64 {
@@ -222,10 +254,15 @@ fn query_background() -> Option<(u8, u8, u8)> {
   }
 }
 
-/// No reply channel outside a Unix terminal.
-#[cfg(not(unix))]
-fn query_background() -> Option<(u8, u8, u8)> {
-  None
+/// Parses an XTVERSION reply (`DCS > | NAME(VERSION) ST`) to its `NAME(VERSION)` text.
+fn parse_xtversion(response: &[u8]) -> Option<String> {
+  let text = std::str::from_utf8(response).ok()?;
+  let inner = text
+    .strip_prefix("\x1bP>|")?
+    .trim_end_matches('\x07')
+    .trim_end_matches("\x1b\\");
+
+  (!inner.is_empty()).then(|| inner.to_owned())
 }
 
 /// Parses an OSC 11 reply (`ESC ] 11 ; rgb : rrrr / gggg / bbbb BEL|ST`) to RGB.
@@ -305,6 +342,19 @@ mod tests {
       Some((255, 0, 0))
     );
     assert_eq!(parse_osc11(b"garbage"), None);
+  }
+
+  #[test]
+  fn xtversion_replies_parse_and_identify_vte() {
+    assert_eq!(
+      parse_xtversion(b"\x1bP>|VTE(7802)\x1b\\").as_deref(),
+      Some("VTE(7802)")
+    );
+    assert_eq!(
+      parse_xtversion(b"\x1bP>|kitty(0.32.1)\x1b\\").as_deref(),
+      Some("kitty(0.32.1)")
+    );
+    assert_eq!(parse_xtversion(b"garbage"), None);
   }
 
   #[test]

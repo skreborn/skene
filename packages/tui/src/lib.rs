@@ -69,9 +69,11 @@ use state::{NodeKind, State};
 pub use terminal::launch;
 #[cfg(feature = "test")]
 pub use terminal::{
+  current_cursor,
   current_title,
   focused_node,
   take_copied,
+  trigger_clipboard_support,
   trigger_color_scheme,
   trigger_key,
   trigger_mouse_click,

@@ -1341,8 +1341,9 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     Some((128, 128, 128)),
   );
 
+  let enabled = state.clipboard.get();
   let (pointer_x, pointer_y) = state.last_pointer.get();
-  let hovered = state.copy_hit(pointer_x, pointer_y);
+  let hovered = enabled && state.copy_hit(pointer_x, pointer_y);
   let (ink, highlight) = if dark {
     DARK_SELECTION
   }
@@ -1365,9 +1366,22 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     crate::selection::MENU_ITEM,
     hovered.then_some(ink),
     false,
-    false,
+    !enabled,
     false,
   );
+
+  if !enabled {
+    draw_text(
+      buffer,
+      x + 2,
+      y + 2,
+      crate::selection::MENU_HINT,
+      None,
+      false,
+      true,
+      false,
+    );
+  }
 }
 
 /// A slider's track over `width` cells, the thumb at the value's cell.

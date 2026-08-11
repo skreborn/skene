@@ -35,6 +35,9 @@ pub(crate) struct Selection {
 /// The copy menu's sole item label.
 pub(crate) const MENU_ITEM: &str = "Copy";
 
+/// The disabled menu's hint line, shown when the terminal discards clipboard writes.
+pub(crate) const MENU_HINT: &str = "no terminal support";
+
 /// The window between two presses of one multi-click sequence.
 const MULTI_CLICK: Duration = Duration::from_millis(500);
 
@@ -385,12 +388,18 @@ impl State {
     }
   }
 
-  /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal.
+  /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal;
+  /// a disabled menu grows a row for its hint.
   pub(crate) fn menu_bounds(&self) -> Option<(i64, i64, i64, i64)> {
     let (x, y) = self.menu.get()?;
     let (columns, rows) = self.last_size.get();
-    let width = i64::try_from(MENU_ITEM.chars().count()).unwrap_or(0) + 4;
-    let height = 3;
+    let (label, height) = if self.clipboard.get() {
+      (MENU_ITEM.chars().count(), 3)
+    }
+    else {
+      (MENU_ITEM.chars().count().max(MENU_HINT.chars().count()), 4)
+    };
+    let width = i64::try_from(label).unwrap_or(0) + 4;
     let x = i64::from(x).min(i64::from(columns) - width).max(0);
     let y = i64::from(y).min(i64::from(rows) - height).max(0);
 

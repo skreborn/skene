@@ -101,8 +101,12 @@ where
   let _guard = TerminalGuard;
   let dark = crate::detect::background_is_dark();
   let depth = crate::detect::ColorDepth::detect();
+  let clipboard = crate::detect::clipboard_writes_work();
 
-  with_state(|state| state.dark.set(dark));
+  with_state(|state| {
+    state.dark.set(dark);
+    state.clipboard.set(clipboard);
+  });
 
   #[cfg(feature = "snapshot")]
   {
@@ -1017,6 +1021,23 @@ pub fn trigger_color_scheme(dark: bool) {
     state.dark.set(dark);
     state.dirty.set(true);
   });
+}
+
+/// Simulates the clipboard-support detection, for a headless test driving the copy
+/// menu's disabled state.
+#[cfg(feature = "test")]
+pub fn trigger_clipboard_support(supported: bool) {
+  with_state(|state| {
+    state.clipboard.set(supported);
+    state.dirty.set(true);
+  });
+}
+
+/// The pointer shape the current hover resolves to, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn current_cursor() -> Option<MouseCursor> {
+  with_state(State::hover_cursor)
 }
 
 /// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving

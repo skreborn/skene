@@ -2331,3 +2331,131 @@ fn clicks_complete_on_release_over_the_same_target() {
   assert_eq!(first, 1);
   assert_eq!(second, 0);
 }
+
+/// Without terminal clipboard support the copy menu presents `Copy` disabled with a
+/// hint; pressing it neither copies nor closes the menu.
+#[test]
+fn the_copy_menu_disables_without_terminal_clipboard() {
+  let (menu, after_press, copied) = with_driver(|| {
+    tui::mount(|| Text::new("alpha beta").into_any().build());
+
+    let _ = tui::render_to_text(30, 6);
+
+    tui::trigger_clipboard_support(false);
+    tui::trigger_mouse_click(2, 0);
+    tui::trigger_mouse_click(2, 0);
+    tui::trigger_mouse_right_click(0, 0);
+
+    let menu = tui::render_to_text(30, 6);
+
+    tui::trigger_mouse_click(2, 1);
+
+    (menu, tui::render_to_text(30, 6), tui::take_copied())
+  });
+
+  assert!(
+    menu.contains("Copy") && menu.contains("no terminal support"),
+    "the disabled item and its hint present: {menu}",
+  );
+  assert!(
+    after_press.contains("Copy"),
+    "the disabled item swallows the press without closing: {after_press}",
+  );
+  assert_eq!(copied, None);
+}
+
+/// The hover cursor defaults follow the content: the pointer over buttons and
+/// toggling controls, the I-beam over inputs and selectable text, and none over
+/// anything else—an explicit style still winning.
+#[test]
+fn hover_cursor_defaults_follow_the_content() {
+  use skene_tui::core::MouseCursor;
+
+  let cursors = with_driver(|| {
+    tui::mount(|| {
+      Column::new()
+        .set_children((
+          Button::new().set_child(Text::new("press")),
+          Checkbox::new().set_label("check"),
+          TextField::new(),
+          Text::new("words"),
+          Text::new("chrome").set_selectable(false),
+          Button::new()
+            .set_style(BoxStyle::new().set_cursor(MouseCursor::Default))
+            .set_child(Text::new("styled")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(20, 8);
+
+    let mut cursors = Vec::new();
+
+    for row in 0..6 {
+      tui::trigger_mouse_move(1, row);
+      cursors.push(tui::current_cursor());
+    }
+
+    cursors
+  });
+
+  assert_eq!(
+    cursors,
+    vec![
+      Some(MouseCursor::Click),
+      Some(MouseCursor::Click),
+      Some(MouseCursor::Text),
+      Some(MouseCursor::Text),
+      None,
+      Some(MouseCursor::Default),
+    ],
+  );
+}
+
+/// A restored scroll offset reaches the scroll handlers: a lazy column resumes with
+/// its scrolled-to items built, not a blank window.
+#[test]
+fn restored_scroll_rebuilds_a_lazy_column_window() {
+  fn build() {
+    tui::mount(|| {
+      Container::new()
+        .set_child(
+          LazyColumn::new(1, || 1000, |index| Text::new(format!("row {index}")))
+            .set_overscan(2)
+            .set_style(BoxStyle::new().set_height(4)),
+        )
+        .into_any()
+        .build()
+    });
+  }
+
+  let bytes = with_driver(|| {
+    build();
+
+    let _ = tui::render_to_text(12, 6);
+    let _ = tui::render_to_text(12, 6);
+
+    tui::trigger_mouse_scroll(2, 1, 0, 500);
+
+    assert!(tui::render_to_text(12, 6).contains("row 500"));
+
+    tui::reactive::snapshot()
+  });
+  let restored = with_driver(|| {
+    tui::reactive::restore(&bytes);
+    build();
+    tui::adopt_scroll();
+
+    let first = tui::render_to_text(12, 6);
+
+    (first, tui::render_to_text(12, 6))
+  });
+
+  assert!(
+    restored.1.contains("row 500") && !restored.1.contains("row 0\n"),
+    "the resumed window builds without a manual scroll: {} / {}",
+    restored.0,
+    restored.1,
+  );
+}

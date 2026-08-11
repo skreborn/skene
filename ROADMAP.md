@@ -240,8 +240,21 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   activation (anchored beneath, the current option marked, a row click selects,
   `Escape` dismisses; arrows still cycle directly). Sliders drag: a press grabs,
   motion slides until release. Scrollbars respond to the mouse—a track press jumps the
-  thumb, a thumb press grabs it, dragging follows—and thumbs paint at half-cell
-  resolution (`▀▄▌▐`), so short tracks move smoothly instead of a full cell at a time.
+  thumb, a thumb press grabs it, dragging follows—and thumbs paint at eighth-cell
+  resolution (the `▁`–`▇`/`▏`–`▉` block runs, the missing directions as reversed
+  complements), inked over a tinted track, so short tracks move smoothly instead of a
+  full cell at a time.
+- **Text selection—done.** Selection is controlled explicitly across backends: text
+  runs are selectable by default (`set_selectable(false)` opts out), control chrome—
+  button labels, picker rows—never is, and on the web the same flag compiles to
+  `user-select`. In the terminal a drag selects across runs in document order, a
+  double click takes the word, a triple click the run; the highlight paints in
+  selection colors set per run or inherited through `TextTheme` (`::selection` rules
+  on the web), defaulting per the detected background. A right click over a selection
+  opens a copy menu anchored at the pressed cell; `Copy` writes the clipboard over
+  OSC 52 with the text as it appears in the source—soft wraps restored to their
+  spaces, runs joined by newlines. Verified under the pseudo-terminal: drag highlight,
+  the anchored menu, and the OSC 52 payload.
 
 ## Backlog—unphased features
 

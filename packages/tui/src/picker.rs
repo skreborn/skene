@@ -235,7 +235,8 @@ impl View for Picker {
   }
 }
 
-/// One selectable row of the options popup: the current option carries the mark.
+/// One selectable row of the options popup: the current option carries the highlight
+/// bar.
 fn option_row(
   node: NodeId,
   value: String,
@@ -243,15 +244,28 @@ fn option_row(
   selected: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
 ) -> crate::Container {
+  use skene_core::Color;
   use skene_reactive::{Set, With};
 
   let shown = value.clone();
+  let ink_shown = value.clone();
 
   crate::Container::new()
-    .set_child(crate::Text::derive(move || {
-      let mark = selected.with(|selected| if *selected == shown { 'x' } else { ' ' });
-
-      format!("{mark} {label}")
+    .derive_color(move || {
+      if selected.with(|selected| *selected == shown) {
+        row_highlight(with_state(|state| state.dark.get())).0
+      }
+      else {
+        Color::srgb(0., 0., 0.).with_alpha(0.)
+      }
+    })
+    .set_child(crate::Text::new(label).derive_color(move || {
+      if selected.with(|selected| *selected == ink_shown) {
+        row_highlight(with_state(|state| state.dark.get())).1
+      }
+      else {
+        Color::srgb(0., 0., 0.).with_alpha(0.)
+      }
     }))
     .handle_click(move || {
       with_state(|state| state.select_picker(node, &value));
@@ -259,6 +273,24 @@ fn option_row(
 
       Prevent::Default
     })
+}
+
+/// The selected row's highlight bar—background and ink—for a dark or light terminal.
+fn row_highlight(dark: bool) -> (skene_core::Color, skene_core::Color) {
+  use skene_core::Color;
+
+  if dark {
+    (
+      Color::srgb(52. / 255., 88. / 255., 134. / 255.),
+      Color::srgb(1., 1., 1.),
+    )
+  }
+  else {
+    (
+      Color::srgb(174. / 255., 208. / 255., 250. / 255.),
+      Color::srgb(0., 0., 0.),
+    )
+  }
 }
 
 /// The popup's default box: a plain border, filled to cover the content beneath.

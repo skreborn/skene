@@ -1267,7 +1267,7 @@ fn picker_cycles_on_arrows() {
 /// `Escape` dismisses without selecting.
 #[test]
 fn picker_opens_a_popup_and_selects_by_click() {
-  let (closed, open, value, after_click, dismissed) = with_driver(|| {
+  let (closed, open, highlight, value, after_click, dismissed) = with_driver(|| {
     let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
@@ -1284,6 +1284,7 @@ fn picker_opens_a_popup_and_selects_by_click() {
     tui::trigger_key("Enter");
 
     let open = tui::render_to_text(14, 5);
+    let open_colors = tui::render_to_colors(14, 5);
 
     // The "cells" row, located in the open frame.
     let row = u16::try_from(
@@ -1303,6 +1304,24 @@ fn picker_opens_a_popup_and_selects_by_click() {
     )
     .expect("fits");
 
+    // The current option's row carries the highlight bar; the other row shows the
+    // popup fill.
+    let cell_at = |needle: &str| {
+      let row = open
+        .lines()
+        .position(|line| line.contains(needle))
+        .expect("the row is visible");
+      let column = open
+        .lines()
+        .nth(row)
+        .expect("the row line")
+        .find(needle)
+        .expect("the column");
+
+      open_colors[row * 14 + column].1
+    };
+    let (marked, other) = (cell_at("pixels"), cell_at("cells"));
+
     tui::trigger_mouse_click(column, row);
 
     let after_click = tui::render_to_text(14, 5);
@@ -1313,6 +1332,7 @@ fn picker_opens_a_popup_and_selects_by_click() {
     (
       closed,
       open,
+      (marked, other),
       unit.get_untracked(),
       after_click,
       tui::render_to_text(14, 5),
@@ -1324,9 +1344,15 @@ fn picker_opens_a_popup_and_selects_by_click() {
     "closed shows only the current label"
   );
   assert!(
-    open.contains("x pixels") && open.contains("cells"),
-    "the popup lists every option, the current one marked: {open}",
+    open.contains("│ pixels │") && open.contains("│ cells  │"),
+    "the popup lists every option, markless: {open}",
   );
+  assert_eq!(
+    highlight.0,
+    Some((52, 88, 134)),
+    "the current option carries the highlight bar",
+  );
+  assert_ne!(highlight.0, highlight.1, "the other row stays plain");
 
   assert_eq!(value, "cell", "the row click selected");
   assert!(
@@ -2457,5 +2483,70 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
     "the resumed window builds without a manual scroll: {} / {}",
     restored.0,
     restored.1,
+  );
+}
+
+/// The built-in interaction feedback tints distinctly—rest, hover, focus, and
+/// hover+focus each paint their own background—and an authored variant replaces the
+/// default for its state.
+#[test]
+fn interaction_states_tint_distinctly() {
+  let (rest, hover, focus, both, authored, toggle) = with_driver(|| {
+    tui::mount(|| {
+      Column::new()
+        .set_children((
+          Button::new().set_child(Text::new("go")),
+          Button::new()
+            .set_when(
+              Condition::Hovered,
+              BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
+            )
+            .set_child(Text::new("hi")),
+          Checkbox::new().set_label("c"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(10, 4);
+
+    let sample = |row: usize| tui::render_to_colors(10, 4)[row * 10].1;
+    let rest = sample(0);
+
+    tui::trigger_mouse_move(0, 0);
+
+    let hover = sample(0);
+
+    tui::trigger_mouse_move(9, 3);
+    tui::trigger_key("Tab");
+
+    let focus = sample(0);
+
+    tui::trigger_mouse_move(0, 0);
+
+    let both = sample(0);
+
+    tui::trigger_mouse_move(0, 1);
+
+    let authored = sample(1);
+
+    tui::trigger_mouse_move(0, 2);
+
+    (rest, hover, focus, both, authored, sample(2))
+  });
+
+  assert_eq!(rest, None);
+  assert_eq!(hover, Some((31, 31, 31)));
+  assert_eq!(focus, Some((63, 63, 63)));
+  assert_eq!(both, Some((95, 95, 95)));
+  assert_eq!(
+    authored,
+    Some((255, 0, 0)),
+    "the authored hover wins over the default",
+  );
+  assert_eq!(
+    toggle,
+    Some((31, 31, 31)),
+    "controls tint their label cells"
   );
 }

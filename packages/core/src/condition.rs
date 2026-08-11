@@ -36,6 +36,16 @@ pub trait Composable: Sized {
     }
   }
 
+  /// Whether any leaf of the condition satisfies `predicate`.
+  fn involves(&self, predicate: &impl Fn(&Self) -> bool) -> bool {
+    match self.shape() {
+      ConditionShape::Leaf(condition) => predicate(condition),
+      ConditionShape::And(subconditions) | ConditionShape::Or(subconditions) => subconditions
+        .iter()
+        .any(|subcondition| subcondition.involves(predicate)),
+    }
+  }
+
   /// The condition's disjunctive normal form: the conjunctions of leaves of which any
   /// one holding entirely makes the condition hold.
   ///

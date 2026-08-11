@@ -579,15 +579,27 @@ fn paint_node(
         style, variants, ..
       } => {
         let effective = effective_box_style(style, variants, environment, interaction);
+        let background = effective.color.and_then(terminal_rgb);
+        // Only a control—a button—gets the built-in feedback; a plain box stays as
+        // authored.
+        let background = if state.controls.borrow().contains(&node) {
+          interaction_background(
+            background,
+            environment.dark,
+            interaction_eighths(variants, interaction),
+          )
+        }
+        else {
+          background
+        };
 
         NodePaint::Box {
-          background: effective.color.and_then(terminal_rgb),
+          background,
           border: effective.border.map(|border| BorderPaint {
             glyphs: effective.border_glyphs.unwrap_or_default(),
             color: terminal_rgb(border),
           }),
           shadow: effective.shadow,
-          reverse: focused,
         }
       }
       NodeKind::Run {
@@ -611,9 +623,9 @@ fn paint_node(
         NodePaint::Text {
           lines: spans.into_iter().map(|(_, line)| line).collect(),
           foreground: effective.color.and_then(terminal_rgb),
+          background: None,
           bold: effective.bold.unwrap_or(false),
           dim: false,
-          reverse: false,
           selection,
         }
       }
@@ -638,7 +650,11 @@ fn paint_node(
         let text: String = text.chars().skip(window).take(inner).collect();
 
         NodePaint::TextField {
-          background: effective.color.and_then(terminal_rgb),
+          background: interaction_background(
+            effective.color.and_then(terminal_rgb),
+            environment.dark,
+            interaction_eighths(variants, interaction),
+          ),
           border: effective.border.map(|border| BorderPaint {
             glyphs: effective.border_glyphs.unwrap_or_default(),
             color: terminal_rgb(border),
@@ -647,7 +663,6 @@ fn paint_node(
           text,
           dim,
           caret: (focused && inner > 0).then(|| caret - window),
-          reverse: focused,
         }
       }
       NodeKind::Overlay {
@@ -662,7 +677,6 @@ fn paint_node(
             color: terminal_rgb(border),
           }),
           shadow: effective.shadow,
-          reverse: false,
         }
       }
       NodeKind::Checkbox {
@@ -690,9 +704,13 @@ fn paint_node(
         NodePaint::Text {
           lines: vec![text],
           foreground: effective.color.and_then(terminal_rgb),
+          background: interaction_background(
+            None,
+            environment.dark,
+            interaction_eighths(variants, interaction),
+          ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
-          reverse: focused,
           selection: None,
         }
       }
@@ -712,9 +730,13 @@ fn paint_node(
         NodePaint::Text {
           lines: vec![format!("{label} {indicator}")],
           foreground: effective.color.and_then(terminal_rgb),
+          background: interaction_background(
+            None,
+            environment.dark,
+            interaction_eighths(variants, interaction),
+          ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
-          reverse: focused,
           selection: None,
         }
       }
@@ -732,9 +754,13 @@ fn paint_node(
         NodePaint::Text {
           lines: vec![slider_track(width, *min, *max, *value, *glyphs)],
           foreground: effective.color.and_then(terminal_rgb),
+          background: interaction_background(
+            None,
+            environment.dark,
+            interaction_eighths(variants, interaction),
+          ),
           bold: effective.bold.unwrap_or(false),
           dim: false,
-          reverse: focused,
           selection: None,
         }
       }
@@ -749,13 +775,12 @@ fn paint_node(
       background,
       border,
       shadow,
-      reverse,
     } => {
       if let Some(shadow) = shadow {
         draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
       }
 
-      fill(buffer, x, y, width, height, background, reverse);
+      fill(buffer, x, y, width, height, background);
 
       if let Some(border) = border {
         draw_border(buffer, x, y, width, height, border.glyphs, border.color);
@@ -764,22 +789,23 @@ fn paint_node(
     NodePaint::Text {
       lines,
       foreground,
+      background,
       bold,
       dim,
-      reverse,
       selection,
     } => {
       for (row, line) in lines.iter().enumerate() {
-        draw_text(
-          buffer,
-          x,
-          y + isize::try_from(row).expect("fits"),
-          line,
-          foreground,
-          bold,
-          dim,
-          reverse,
-        );
+        let row_y = y + isize::try_from(row).expect("fits");
+
+        draw_text(buffer, x, row_y, line, foreground, bold, dim);
+
+        if let Some(background) = background {
+          for column in 0..line.chars().count() {
+            if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
+              cell.background = Some(background);
+            }
+          }
+        }
       }
 
       if let Some(selection) = selection {
@@ -793,13 +819,12 @@ fn paint_node(
       text,
       dim,
       caret,
-      reverse,
     } => {
       if let Some(shadow) = shadow {
         draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
       }
 
-      fill(buffer, x, y, width, height, background, reverse);
+      fill(buffer, x, y, width, height, background);
 
       let inset = if let Some(border) = border {
         draw_border(buffer, x, y, width, height, border.glyphs, border.color);
@@ -810,25 +835,16 @@ fn paint_node(
         0
       };
 
-      draw_text(
-        buffer,
-        x + inset,
-        y + inset,
-        &text,
-        None,
-        false,
-        dim,
-        reverse,
-      );
+      draw_text(buffer, x + inset, y + inset, &text, None, false, dim);
 
-      // The block caret: the one cell flipped back out of the focused reverse video.
+      // The block caret: the one inverted cell, as a terminal cursor is.
       if let Some(column) = caret
         && let Some(cell) = buffer.cell_mut(
           x + inset + isize::try_from(column).expect("fits"),
           y + inset,
         )
       {
-        cell.reverse = false;
+        cell.reverse = true;
       }
     }
     NodePaint::None => {}
@@ -1115,14 +1131,13 @@ enum NodePaint {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
     shadow: Option<Color>,
-    reverse: bool,
   },
   Text {
     lines: Vec<String>,
     foreground: Option<(u8, u8, u8)>,
+    background: Option<(u8, u8, u8)>,
     bold: bool,
     dim: bool,
-    reverse: bool,
     selection: Option<SelectionPaint>,
   },
   TextField {
@@ -1132,13 +1147,11 @@ enum NodePaint {
     text: String,
     dim: bool,
     caret: Option<usize>,
-    reverse: bool,
   },
   None,
 }
 
-/// Fills a rectangle: a background paints opaquely, clearing whatever was beneath;
-/// the focus attribute applies either way.
+/// Fills a rectangle: a background paints opaquely, clearing whatever was beneath.
 fn fill(
   buffer: &mut Buffer,
   x: isize,
@@ -1146,9 +1159,8 @@ fn fill(
   width: usize,
   height: usize,
   background: Option<(u8, u8, u8)>,
-  reverse: bool,
 ) {
-  if background.is_none() && !reverse {
+  if background.is_none() {
     return;
   }
 
@@ -1158,14 +1170,11 @@ fn fill(
         x + isize::try_from(column).expect("fits"),
         y + isize::try_from(row).expect("fits"),
       ) {
-        if background.is_some() {
-          cell.character = ' ';
-          cell.foreground = None;
-          cell.bold = false;
-          cell.background = background;
-        }
-
-        cell.reverse = reverse;
+        cell.character = ' ';
+        cell.foreground = None;
+        cell.bold = false;
+        cell.background = background;
+        cell.reverse = false;
       }
     }
   }
@@ -1218,7 +1227,6 @@ fn draw_border(
 }
 
 /// Draws one line of text.
-#[expect(clippy::too_many_arguments)]
 fn draw_text(
   buffer: &mut Buffer,
   x: isize,
@@ -1227,7 +1235,6 @@ fn draw_text(
   foreground: Option<(u8, u8, u8)>,
   bold: bool,
   dim: bool,
-  reverse: bool,
 ) {
   for (index, character) in text.chars().enumerate() {
     let Some(cell) = buffer.cell_mut(x + isize::try_from(index).expect("fits"), y)
@@ -1245,11 +1252,60 @@ fn draw_text(
     }
 
     cell.bold = bold;
-
-    if reverse {
-      cell.reverse = true;
-    }
   }
+}
+
+/// The built-in interaction feedback in eighths of ink: hover adds one, focus two—
+/// each only while no variant of the node conditions on that state, so authored
+/// styling wins over the default.
+fn interaction_eighths<S>(
+  variants: &[(crate::props::Condition, S)],
+  interaction: Interaction,
+) -> u16 {
+  use skene_core::Composable;
+
+  let authored_hover = variants.iter().any(|(condition, _)| {
+    condition.involves(&|leaf| matches!(leaf, crate::props::Condition::Hovered))
+  });
+  let authored_focus = variants.iter().any(|(condition, _)| {
+    condition.involves(&|leaf| matches!(leaf, crate::props::Condition::Focused))
+  });
+  let mut eighths = 0;
+
+  if interaction.hovered && !authored_hover {
+    eighths += 1;
+  }
+
+  if interaction.focused && !authored_focus {
+    eighths += 2;
+  }
+
+  eighths
+}
+
+/// Mixes `eighths`/8 of the scheme's ink into `base`—the terminal default background
+/// when unset—for the built-in hover and focus feedback.
+fn interaction_background(
+  base: Option<(u8, u8, u8)>,
+  dark: bool,
+  eighths: u16,
+) -> Option<(u8, u8, u8)> {
+  if eighths == 0 {
+    return base;
+  }
+
+  let ink: (u8, u8, u8) = if dark { (255, 255, 255) } else { (0, 0, 0) };
+  let under = base.unwrap_or(if dark { (0, 0, 0) } else { (255, 255, 255) });
+  let mix = |over: u8, under: u8| {
+    u8::try_from((u16::from(over) * eighths + u16::from(under) * (8 - eighths)) / 8)
+      .unwrap_or(u8::MAX)
+  };
+
+  Some((
+    mix(ink.0, under.0),
+    mix(ink.1, under.1),
+    mix(ink.2, under.2),
+  ))
 }
 
 /// The selection ink and highlight for a dark terminal, when no theme sets them.
@@ -1306,7 +1362,6 @@ fn draw_selection(
       ) {
         cell.foreground = Some(selection.colors.0);
         cell.background = Some(selection.colors.1);
-        cell.reverse = false;
       }
     }
   }
@@ -1330,7 +1385,7 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
   );
   let backdrop = if dark { (0, 0, 0) } else { (255, 255, 255) };
 
-  fill(buffer, x, y, width, height, Some(backdrop), false);
+  fill(buffer, x, y, width, height, Some(backdrop));
   draw_border(
     buffer,
     x,
@@ -1367,7 +1422,6 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     hovered.then_some(ink),
     false,
     !enabled,
-    false,
   );
 
   if !enabled {
@@ -1379,7 +1433,6 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
       None,
       false,
       true,
-      false,
     );
   }
 }

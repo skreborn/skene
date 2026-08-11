@@ -237,9 +237,12 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   defaults—box-symbol glyphs render two cells wide in some emulators—themable back
   via `ControlTheme`), and a checkbox or radio takes a `set_label` rendered as part of
   the control, so clicking the label toggles. The picker opens a real options popup on
-  activation, anchored beneath: arrows and the pointer move the highlight without
-  committing, `Enter`, `Space`, or a row click chooses it, and `Escape` dismisses with
-  the value unchanged; arrows still cycle directly while closed. Sliders drag: a press grabs,
+  activation, anchored directly beneath the control (flipping above when the bottom
+  runs out of room): arrows and the pointer move the highlight without committing,
+  `Enter`, `Space`, or a row click chooses it, `Escape` dismisses with the value
+  unchanged, and focus leaving the picker closes it; arrows still cycle directly
+  while closed. A press inside an anchored popup keeps its control focused, as a
+  browser's select does. Sliders drag: a press grabs,
   motion slides until release. Scrollbars respond to the mouse—a track press jumps the
   thumb, a thumb press grabs it, dragging follows—and thumbs paint at eighth-cell
   resolution (the `▁`–`▇`/`▏`–`▉` block runs, the missing directions as reversed
@@ -247,6 +250,13 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   full cell at a time. Hover pointer shapes (OSC 22) default by content—the pointer
   over buttons and toggling controls, the I-beam over inputs and selectable text—an
   explicit `set_cursor` winning.
+- **Rich text—done (TUI core).** `RichText`/`Span`: inline spans flow and wrap as one
+  paragraph with per-span color and weight; a linked span underlines in the scheme's
+  link blue and anchors an OSC 8 hyperlink the terminal itself opens. Opt-in selection
+  treats the paragraph as one source flow, copying across span boundaries. Verified
+  under the pseudo-terminal: the anchor opens and closes around the span, underlined.
+  Remaining: derived span content, span groups, and embedded views—the web facade's
+  full `Span` surface.
 - **State feedback—done.** Focus no longer inverts: controls carry built-in feedback
   as subtle background tints of the scheme's ink—three sixteenths for hover, four for
   focus, five for both, each distinct—applied only for states the author hasn't

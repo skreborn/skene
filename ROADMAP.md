@@ -237,8 +237,9 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   defaults—box-symbol glyphs render two cells wide in some emulators—themable back
   via `ControlTheme`), and a checkbox or radio takes a `set_label` rendered as part of
   the control, so clicking the label toggles. The picker opens a real options popup on
-  activation (anchored beneath, the current option marked, a row click selects,
-  `Escape` dismisses; arrows still cycle directly). Sliders drag: a press grabs,
+  activation, anchored beneath: arrows and the pointer move the highlight without
+  committing, `Enter`, `Space`, or a row click chooses it, and `Escape` dismisses with
+  the value unchanged; arrows still cycle directly while closed. Sliders drag: a press grabs,
   motion slides until release. Scrollbars respond to the mouse—a track press jumps the
   thumb, a thumb press grabs it, dragging follows—and thumbs paint at eighth-cell
   resolution (the `▁`–`▇`/`▏`–`▉` block runs, the missing directions as reversed
@@ -247,18 +248,18 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   over buttons and toggling controls, the I-beam over inputs and selectable text—an
   explicit `set_cursor` winning.
 - **State feedback—done.** Focus no longer inverts: controls carry built-in feedback
-  as subtle background tints of the scheme's ink—one eighth for hover, two for focus,
-  three for both, each distinct—applied only for states the author hasn't conditioned
-  a variant on, so `set_when(Hovered, …)` replaces the default the way author CSS
-  replaces UA styling. Reverse video is gone entirely: the scrollbar's partial caps
+  as subtle background tints of the scheme's ink—three sixteenths for hover, four for
+  focus, five for both, each distinct—applied only for states the author hasn't
+  conditioned a variant on, so `set_when(Hovered, …)` replaces the default the way
+  author CSS replaces UA styling. Reverse video is gone entirely: the scrollbar's partial caps
   paint their complement glyphs with explicitly swapped colors, and the input caret is
   the terminal's own bar cursor (`DECSCUSR`), blinking as the terminal does—hidden
   while a modal or a covering popup makes its input inert. The picker popup marks its
   current option with a highlight bar over the row instead of an `x` prefix.
-- **Text selection—done.** Selection is controlled explicitly across backends: text
-  runs are selectable by default (`set_selectable(false)` opts out), control chrome—
-  button labels, picker rows—never is, and on the web the same flag compiles to
-  `user-select`. In the terminal a drag selects across runs in document order, a
+- **Text selection—done.** Selection is controlled explicitly across backends and
+  opt-in: `set_selectable(true)` marks a run selectable, control chrome—button labels,
+  picker rows—never is, and on the web the reset turns `user-select` off until a run's
+  flag restores it. In the terminal a drag selects across runs in document order, a
   double click takes the word, a triple click the run; the highlight paints in
   selection colors set per run or inherited through `TextTheme` (`::selection` rules
   on the web), defaulting per the detected background. A right click over a selection

@@ -66,6 +66,13 @@
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
   and painted layers interleave in z-order by the platform compositor.
+- **The TUI targets browser parity.** Wherever the terminal can express it, behavior
+  follows a modern browser: layout, features, settings, colors, selection, and every
+  interaction's shape—clicks fire on press+release over one target while focus, caret
+  placement, and drags act on press; wheel gestures latch their scroll target and
+  consume at its limits until a pause or pointer move; popups light-dismiss; selection
+  gestures match (drag, double-click word, triple-click run). When an interaction's
+  design is in doubt, mimic the web.
 - View logic tests run headless where possible, via the recording driver
   (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
   wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.

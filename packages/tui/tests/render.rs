@@ -1914,3 +1914,214 @@ fn dev_notice_modal_presents_and_dismisses() {
     "Escape dismissed the notice: {dismissed}",
   );
 }
+
+/// A drag over a wrapped run highlights the selected cells, and `Copy` yields the text
+/// as it appears in the source: the soft wrap's collapsed space restored, no line
+/// break inserted.
+#[test]
+fn drag_selects_and_copies_the_source_flow() {
+  let (colors, menu, copied) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(8)
+        .set_child(Text::new("alpha beta gamma"))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(20, 6);
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_drag(2, 1);
+    tui::trigger_mouse_release(2, 1);
+
+    let colors = tui::render_to_colors(20, 6);
+
+    tui::trigger_mouse_right_click(2, 1);
+
+    let menu = tui::render_to_text(20, 6);
+
+    tui::trigger_mouse_click(4, 2);
+
+    (colors, menu, tui::take_copied())
+  });
+
+  // The anchor's cell carries the selection highlight; unselected neighbors do not.
+  assert_eq!(colors[1].1, Some((52, 88, 134)));
+  assert_eq!(colors[1].0, Some((255, 255, 255)));
+  assert_eq!(colors[0].1, None);
+  assert_eq!(
+    colors[20 + 1].1,
+    Some((52, 88, 134)),
+    "the wrapped line continues"
+  );
+  assert_eq!(colors[20 + 2].1, None, "the focus is exclusive");
+  assert!(menu.contains("Copy"), "the menu opened: {menu}");
+  assert_eq!(copied.as_deref(), Some("lpha be"));
+}
+
+/// A double click selects the word under the pointer; a triple click the whole run.
+#[test]
+fn double_and_triple_click_select_word_and_run() {
+  let word = with_driver(|| {
+    tui::mount(|| Text::new("alpha beta").into_any().build());
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_right_click(0, 0);
+    tui::trigger_mouse_click(2, 1);
+
+    tui::take_copied()
+  });
+
+  assert_eq!(word.as_deref(), Some("beta"));
+
+  let run = with_driver(|| {
+    tui::mount(|| Text::new("alpha beta").into_any().build());
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_right_click(0, 0);
+    tui::trigger_mouse_click(2, 1);
+
+    tui::take_copied()
+  });
+
+  assert_eq!(run.as_deref(), Some("alpha beta"));
+}
+
+/// A drag spans runs in document order—joined by newlines on copy—and dragging past
+/// every run clamps to the nearest position.
+#[test]
+fn selection_spans_runs_in_document_order() {
+  let copied = with_driver(|| {
+    tui::mount(|| {
+      Column::new()
+        .set_children((Text::new("first"), Text::new("second")))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(40, 8);
+    tui::trigger_mouse_press(2, 0);
+    tui::trigger_mouse_drag(30, 3);
+    tui::trigger_mouse_release(30, 3);
+    tui::trigger_mouse_right_click(3, 3);
+    tui::trigger_mouse_click(5, 4);
+
+    tui::take_copied()
+  });
+
+  assert_eq!(copied.as_deref(), Some("rst\nsecond"));
+}
+
+/// A button's label never selects, and `set_selectable(false)` opts a run out; neither
+/// press opens the copy menu.
+#[test]
+fn control_chrome_and_opted_out_runs_do_not_select() {
+  let (button_menu, plain_menu, copied) = with_driver(|| {
+    tui::mount(|| {
+      Column::new()
+        .set_children((
+          Button::new().set_child(Text::new("Press me")),
+          Text::new("plain").set_selectable(false),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(20, 4);
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_drag(6, 0);
+    tui::trigger_mouse_release(6, 0);
+    tui::trigger_mouse_right_click(1, 0);
+
+    let button_menu = tui::render_to_text(20, 4);
+
+    tui::trigger_mouse_press(1, 1);
+    tui::trigger_mouse_drag(4, 1);
+    tui::trigger_mouse_release(4, 1);
+    tui::trigger_mouse_right_click(1, 1);
+
+    (button_menu, tui::render_to_text(20, 4), tui::take_copied())
+  });
+
+  assert!(
+    !button_menu.contains("Copy"),
+    "no menu over a label: {button_menu}"
+  );
+  assert!(
+    !plain_menu.contains("Copy"),
+    "no menu over an opt-out: {plain_menu}"
+  );
+  assert_eq!(copied, None);
+}
+
+/// A `TextTheme`'s selection colors inherit down the subtree, and a run's own setter
+/// overrides the theme.
+#[test]
+fn text_theme_sets_selection_colors() {
+  let (themed, custom) = with_driver(|| {
+    tui::mount(|| {
+      TextTheme::new(Column::new().set_children((
+        Text::new("themed"),
+        Text::new("custom").set_selection_background(Color::srgb(0., 1., 0.)),
+      )))
+      .set_selection_color(Color::srgb(1., 1., 0.))
+      .set_selection_background(Color::srgb(1., 0., 0.))
+      .into_any()
+      .build()
+    });
+
+    let _ = tui::render_to_text(20, 4);
+
+    for _ in 0..3 {
+      tui::trigger_mouse_click(0, 0);
+    }
+
+    let themed = tui::render_to_colors(20, 4);
+
+    for _ in 0..3 {
+      tui::trigger_mouse_click(0, 1);
+    }
+
+    (themed, tui::render_to_colors(20, 4))
+  });
+
+  assert_eq!(themed[0], (Some((255, 255, 0)), Some((255, 0, 0))));
+  assert_eq!(custom[20], (Some((255, 255, 0)), Some((0, 255, 0))));
+}
+
+/// Escape peels the transient layers in order: first the copy menu, then the
+/// selection.
+#[test]
+fn escape_closes_the_menu_then_clears_the_selection() {
+  let (menu, kept, cleared) = with_driver(|| {
+    tui::mount(|| Text::new("alpha beta").into_any().build());
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_mouse_click(2, 0);
+    tui::trigger_mouse_click(2, 0);
+    tui::trigger_mouse_right_click(0, 0);
+
+    let menu = tui::render_to_text(20, 4);
+
+    tui::trigger_key("Escape");
+
+    let kept = tui::render_to_colors(20, 4);
+
+    tui::trigger_key("Escape");
+
+    (menu, kept, tui::render_to_colors(20, 4))
+  });
+
+  assert!(menu.contains("Copy"));
+  assert_eq!(
+    kept[2].1,
+    Some((52, 88, 134)),
+    "the selection survives the menu"
+  );
+  assert_eq!(cleared[2].1, None, "the second Escape clears it");
+}

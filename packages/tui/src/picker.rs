@@ -211,19 +211,21 @@ impl View for Picker {
 
     anchor.assign(node);
 
-    let popup = Overlay::popup()
-      .set_anchor(&anchor)
-      .bind_open(open)
-      .set_style(self.popup_style.unwrap_or_else(default_popup_style))
-      .set_child(
-        crate::Column::new().set_children(
-          options
-            .into_iter()
-            .map(|(value, label)| option_row(node, value, label, selected, open))
-            .collect::<Vec<_>>(),
-        ),
-      )
-      .build();
+    let popup = crate::theme::build_unselectable(|| {
+      Overlay::popup()
+        .set_anchor(&anchor)
+        .bind_open(open)
+        .set_style(self.popup_style.unwrap_or_else(default_popup_style))
+        .set_child(
+          crate::Column::new().set_children(
+            options
+              .into_iter()
+              .map(|(value, label)| option_row(node, value, label, selected, open))
+              .collect::<Vec<_>>(),
+          ),
+        )
+        .build()
+    });
 
     with_state(|state| state.attach_child(node, popup, None));
 

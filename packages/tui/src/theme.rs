@@ -1,6 +1,6 @@
-//! Control glyphs inherited by a subtree.
+//! Control glyphs and text defaults inherited by a subtree.
 
-use skene_core::{AnyView, IntoView, NodeId, View};
+use skene_core::{AnyView, Color, IntoView, NodeId, View};
 use skene_reactive::{Owner, provide_context, use_context};
 
 /// The glyphs terminal controls render with.
@@ -128,4 +128,98 @@ impl View for ControlTheme {
       self.child.build()
     })
   }
+}
+
+/// The text defaults a subtree inherits: the selection colors.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct TextDefaults {
+  /// The text color while selected.
+  pub(crate) selection_color: Option<Color>,
+  /// The background behind selected text.
+  pub(crate) selection_background: Option<Color>,
+}
+
+impl TextDefaults {
+  /// The defaults the current subtree inherits: the nearest enclosing theme's, or none.
+  pub(crate) fn current() -> Self {
+    use_context::<Self>().unwrap_or_default()
+  }
+}
+
+/// Text styling inherited by a subtree, threaded through the reactive `Context`.
+///
+/// Wrap a subtree to restyle the text beneath: each setter overrides that default for
+/// every run beneath, a nested theme overlays an outer one, and a run's own setters win
+/// over any theme. Without a theme, selection paints in the terminal defaults for the
+/// detected dark or light background.
+#[must_use]
+pub struct TextTheme {
+  child: AnyView,
+  selection_color: Option<Color>,
+  selection_background: Option<Color>,
+}
+
+impl TextTheme {
+  /// Creates a text theme wrapping `child`.
+  #[inline(always)]
+  pub fn new(child: impl IntoView) -> Self {
+    Self {
+      child: child.into_view(),
+      selection_color: None,
+      selection_background: None,
+    }
+  }
+
+  /// Sets the text color of selected text in the subtree.
+  #[inline(always)]
+  pub fn set_selection_color(mut self, color: Color) -> Self {
+    self.selection_color = Some(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text in the subtree.
+  #[inline(always)]
+  pub fn set_selection_background(mut self, color: Color) -> Self {
+    self.selection_background = Some(color);
+
+    self
+  }
+}
+
+impl View for TextTheme {
+  fn build(self) -> NodeId {
+    let mut inherited = TextDefaults::current();
+
+    if let Some(color) = self.selection_color {
+      inherited.selection_color = Some(color);
+    }
+
+    if let Some(background) = self.selection_background {
+      inherited.selection_background = Some(background);
+    }
+
+    let scope = Owner::current().child();
+
+    scope.enter(|| {
+      provide_context(inherited);
+
+      self.child.build()
+    })
+  }
+}
+
+/// Marks the runs of a subtree unselectable: control chrome is not content.
+#[derive(Clone, Copy)]
+pub(crate) struct Unselectable;
+
+/// Builds a control's content with the subtree's runs marked unselectable.
+pub(crate) fn build_unselectable<R>(build: impl FnOnce() -> R) -> R {
+  let scope = Owner::current().child();
+
+  scope.enter(|| {
+    provide_context(Unselectable);
+
+    build()
+  })
 }

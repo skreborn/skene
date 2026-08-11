@@ -134,7 +134,7 @@ where
   loop {
     crate::task::pump();
 
-    let quit = with_state(|state| {
+    let (quit, copy) = with_state(|state| {
       if state.title_dirty.replace(false) {
         emit_title(state.title.borrow().as_deref().unwrap_or(""));
       }
@@ -153,8 +153,12 @@ where
         last_frame = Some(frame);
       }
 
-      state.quit.get()
+      (state.quit.get(), state.pending_copy.borrow_mut().take())
     });
+
+    if let Some(text) = copy {
+      emit_copy(&text);
+    }
 
     if quit {
       break;
@@ -236,6 +240,12 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       if button == MouseButton::Left && !prevention.default {
         state.mouse_click(mouse.column, mouse.row);
       }
+
+      // A right press opens the copy menu at the pressed cell while a selection
+      // exists.
+      if button == MouseButton::Right && !prevention.default {
+        state.right_press(mouse.column, mouse.row);
+      }
     }
     MouseEventKind::Up(button) => {
       let _ = state.run_pointer(
@@ -281,6 +291,38 @@ fn emit_title(title: &str) {
   let mut out = std::io::stdout();
   let _ = write!(out, "\x1b]2;{title}\x1b\\");
   let _ = out.flush();
+}
+
+/// Copies text to the system clipboard via OSC 52; terminals without support ignore
+/// it, and terminals gating clipboard writes ask the user.
+fn emit_copy(text: &str) {
+  let mut out = std::io::stdout();
+  let _ = write!(out, "\x1b]52;c;{}\x1b\\", base64(text.as_bytes()));
+  let _ = out.flush();
+}
+
+/// Standard base64 with padding, for the OSC 52 payload.
+fn base64(bytes: &[u8]) -> String {
+  const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+
+  for chunk in bytes.chunks(3) {
+    let block = (u32::from(chunk[0]) << 16)
+      | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+      | u32::from(*chunk.get(2).unwrap_or(&0));
+
+    for position in 0..4 {
+      if position <= chunk.len() {
+        out.push(ALPHABET[(block >> (18 - 6 * position)) as usize & 63] as char);
+      }
+      else {
+        out.push('=');
+      }
+    }
+  }
+
+  out
 }
 
 /// Sets the terminal's pointer shape via OSC 22; terminals without support ignore it.
@@ -431,7 +473,15 @@ fn key_default(state: &State, code: KeyCode, modifiers: KeyModifiers) {
       return;
     }
     KeyCode::Esc => {
-      if let Some((top, _)) = state.topmost_open_overlay() {
+      // The most transient layer goes first: the copy menu, then the selection, then
+      // an open overlay.
+      if state.menu.get().is_some() {
+        state.close_menu();
+      }
+      else if state.selection.get().is_some() {
+        state.clear_selection();
+      }
+      else if let Some((top, _)) = state.topmost_open_overlay() {
         State::run_handlers(&state.dismiss, top, (), |run, ()| run());
       }
 
@@ -885,6 +935,39 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
       state.end_drag();
     });
   });
+}
+
+/// Simulates a right click at the cell (`x`, `y`)—the copy-menu gesture—for a test
+/// driving selection headlessly.
+#[cfg(feature = "test")]
+pub fn trigger_mouse_right_click(x: u16, y: u16) {
+  with_state(|state| {
+    skene_reactive::batch(|| {
+      state.set_hover(x, y);
+      let _ = state.run_pointer(
+        &state.pointer_down,
+        x,
+        y,
+        Some(skene_core::PointerButton::Secondary),
+        skene_core::Modifiers::default(),
+      );
+      state.right_press(x, y);
+      let _ = state.run_pointer(
+        &state.pointer_up,
+        x,
+        y,
+        Some(skene_core::PointerButton::Secondary),
+        skene_core::Modifiers::default(),
+      );
+    });
+  });
+}
+
+/// Takes the text the last `Copy` staged for the clipboard, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn take_copied() -> Option<String> {
+  with_state(|state| state.pending_copy.borrow_mut().take())
 }
 
 /// The current terminal title, for a headless test.

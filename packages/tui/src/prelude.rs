@@ -81,6 +81,7 @@ pub use crate::{
   Suspense,
   Text,
   TextField,
+  TextTheme,
   derive_title,
   empty,
   install_router,

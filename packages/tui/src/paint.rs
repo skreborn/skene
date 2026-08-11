@@ -134,6 +134,8 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
     paint_overlay(state, environment, &mut buffer, overlay);
   }
 
+  draw_menu(state, &mut buffer, environment.dark);
+
   buffer
 }
 
@@ -209,10 +211,12 @@ fn measure_run(
 }
 
 /// Wraps text to `width` columns: lines break at spaces, a word longer than a full
-/// line breaks mid-word, and a newline always breaks. Yields at least one line.
-fn wrap_text(text: &str, width: usize) -> Vec<String> {
+/// line breaks mid-word, and a newline always breaks. Yields at least one line, each
+/// paired with its start offset into the source, in characters, newlines included.
+pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
   let width = width.max(1);
   let mut lines = Vec::new();
+  let mut base = 0;
 
   for paragraph in text.split('\n') {
     let characters: Vec<char> = paragraph.chars().collect();
@@ -220,7 +224,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
 
     loop {
       if characters.len() - start <= width {
-        lines.push(characters[start..].iter().collect());
+        lines.push((base + start, characters[start..].iter().collect()));
 
         break;
       }
@@ -236,7 +240,10 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
         }
       };
 
-      lines.push(characters[start..start + break_at].iter().collect());
+      lines.push((
+        base + start,
+        characters[start..start + break_at].iter().collect(),
+      ));
       start += break_at;
 
       while characters.get(start) == Some(&' ') {
@@ -247,9 +254,19 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
         break;
       }
     }
+
+    base += characters.len() + 1;
   }
 
   lines
+}
+
+/// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+  wrap_spans(text, width)
+    .into_iter()
+    .map(|(_, line)| line)
+    .collect()
 }
 
 /// The first visible column of an input's value: zero until the caret passes the inner
@@ -577,16 +594,27 @@ fn paint_node(
         style,
         variants,
         text,
-        ..
+        selectable,
       } => {
         let effective = effective_run_style(style, variants, environment, interaction);
+        let spans = wrap_spans(text, width);
+        let selection = selectable
+          .then(|| {
+            state.selection_range(node).map(|range| SelectionPaint {
+              range,
+              starts: spans.iter().map(|(start, _)| *start).collect(),
+              colors: selection_colors(&effective, environment.dark),
+            })
+          })
+          .flatten();
 
         NodePaint::Text {
-          lines: wrap_text(text, width),
+          lines: spans.into_iter().map(|(_, line)| line).collect(),
           foreground: effective.color.and_then(terminal_rgb),
           bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: false,
+          selection,
         }
       }
       NodeKind::TextField {
@@ -665,6 +693,7 @@ fn paint_node(
           bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
+          selection: None,
         }
       }
       NodeKind::Picker {
@@ -686,6 +715,7 @@ fn paint_node(
           bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
+          selection: None,
         }
       }
       NodeKind::Slider {
@@ -705,6 +735,7 @@ fn paint_node(
           bold: effective.bold.unwrap_or(false),
           dim: false,
           reverse: focused,
+          selection: None,
         }
       }
       NodeKind::Group => NodePaint::None,
@@ -736,6 +767,7 @@ fn paint_node(
       bold,
       dim,
       reverse,
+      selection,
     } => {
       for (row, line) in lines.iter().enumerate() {
         draw_text(
@@ -748,6 +780,10 @@ fn paint_node(
           dim,
           reverse,
         );
+      }
+
+      if let Some(selection) = selection {
+        draw_selection(buffer, x, y, &lines, &selection);
       }
     }
     NodePaint::TextField {
@@ -1066,6 +1102,14 @@ struct BorderPaint {
 }
 
 /// What one node contributes to the frame.
+/// A run's selection highlight: the selected source range, each painted line's start
+/// offset in the source, and the ink and highlight colors.
+struct SelectionPaint {
+  range: (usize, usize),
+  starts: Vec<usize>,
+  colors: ((u8, u8, u8), (u8, u8, u8)),
+}
+
 enum NodePaint {
   Box {
     background: Option<(u8, u8, u8)>,
@@ -1079,6 +1123,7 @@ enum NodePaint {
     bold: bool,
     dim: bool,
     reverse: bool,
+    selection: Option<SelectionPaint>,
   },
   TextField {
     background: Option<(u8, u8, u8)>,
@@ -1205,6 +1250,124 @@ fn draw_text(
       cell.reverse = true;
     }
   }
+}
+
+/// The selection ink and highlight for a dark terminal, when no theme sets them.
+const DARK_SELECTION: ((u8, u8, u8), (u8, u8, u8)) = ((255, 255, 255), (52, 88, 134));
+
+/// The selection ink and highlight for a light terminal, when no theme sets them.
+const LIGHT_SELECTION: ((u8, u8, u8), (u8, u8, u8)) = ((0, 0, 0), (174, 208, 250));
+
+/// A run's selection ink and highlight: its effective style's, or the defaults for the
+/// detected background.
+fn selection_colors(style: &crate::props::RunStyle, dark: bool) -> ((u8, u8, u8), (u8, u8, u8)) {
+  let default = if dark {
+    DARK_SELECTION
+  }
+  else {
+    LIGHT_SELECTION
+  };
+
+  (
+    style
+      .selection_color
+      .and_then(terminal_rgb)
+      .unwrap_or(default.0),
+    style
+      .selection_background
+      .and_then(terminal_rgb)
+      .unwrap_or(default.1),
+  )
+}
+
+/// Recolors a run's selected cells: the selection ink over its highlight.
+fn draw_selection(
+  buffer: &mut Buffer,
+  x: isize,
+  y: isize,
+  lines: &[String],
+  selection: &SelectionPaint,
+) {
+  let (from, to) = selection.range;
+
+  for (row, line) in lines.iter().enumerate() {
+    let start = selection.starts[row];
+
+    for (column, _) in line.chars().enumerate() {
+      let offset = start + column;
+
+      if offset < from || offset >= to {
+        continue;
+      }
+
+      if let Some(cell) = buffer.cell_mut(
+        x + isize::try_from(column).expect("fits"),
+        y + isize::try_from(row).expect("fits"),
+      ) {
+        cell.foreground = Some(selection.colors.0);
+        cell.background = Some(selection.colors.1);
+        cell.reverse = false;
+      }
+    }
+  }
+}
+
+/// Paints the copy menu over everything at its anchored cell, the `Copy` item
+/// highlighted while the pointer is on it.
+fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
+  let Some((menu_x, menu_y, menu_width, menu_height)) = state.menu_bounds()
+  else {
+    return;
+  };
+
+  let (x, y) = (
+    isize::try_from(menu_x).unwrap_or(0),
+    isize::try_from(menu_y).unwrap_or(0),
+  );
+  let (width, height) = (
+    usize::try_from(menu_width).unwrap_or(0),
+    usize::try_from(menu_height).unwrap_or(0),
+  );
+  let backdrop = if dark { (0, 0, 0) } else { (255, 255, 255) };
+
+  fill(buffer, x, y, width, height, Some(backdrop), false);
+  draw_border(
+    buffer,
+    x,
+    y,
+    width,
+    height,
+    crate::BorderGlyphs::default(),
+    Some((128, 128, 128)),
+  );
+
+  let (pointer_x, pointer_y) = state.last_pointer.get();
+  let hovered = state.copy_hit(pointer_x, pointer_y);
+  let (ink, highlight) = if dark {
+    DARK_SELECTION
+  }
+  else {
+    LIGHT_SELECTION
+  };
+
+  if hovered {
+    for column in 1..width.saturating_sub(1) {
+      if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), y + 1) {
+        cell.background = Some(highlight);
+      }
+    }
+  }
+
+  draw_text(
+    buffer,
+    x + 2,
+    y + 1,
+    crate::selection::MENU_ITEM,
+    hovered.then_some(ink),
+    false,
+    false,
+    false,
+  );
 }
 
 /// A slider's track over `width` cells, the thumb at the value's cell.

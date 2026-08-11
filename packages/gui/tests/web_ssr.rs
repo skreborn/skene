@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use skene_gui::{
   Color,
+  Column,
   Container,
   Deferred,
   DerivedView,
@@ -16,6 +17,7 @@ use skene_gui::{
   RichText,
   Span,
   Text,
+  TextTheme,
   View,
   client_only,
   render_page_stream,
@@ -475,4 +477,50 @@ fn tagged_resource_serializes_under_its_tag() {
   assert!(rendered.body().contains("tagged 41"));
   assert!(rendered.state().contains("answer"));
   assert!(rendered.state().contains("41"));
+}
+
+/// A run's selection colors compile to a `::selection` rule inside its interned class,
+/// and `set_selectable(false)` opts the run out through `user-select`.
+#[test]
+fn selection_styling_compiles_into_the_class() {
+  let page = render_to_string(|| {
+    Column::new().set_children((
+      Text::new("pick me")
+        .set_selection_color(Color::srgb(1., 1., 1.))
+        .set_selection_background(Color::srgb(1., 0., 0.)),
+      Text::new("chrome").set_selectable(false),
+    ))
+  });
+  let styles = page.styles();
+
+  assert!(
+    styles.contains("::selection{background-color:oklch(") || styles.contains("::selection{color:"),
+    "a ::selection rule renders: {styles}",
+  );
+  assert!(
+    styles.contains("user-select:none;"),
+    "the opt-out renders user-select: {styles}",
+  );
+
+  // The reset keeps framework controls unselectable without opting text out.
+  assert!(styles.contains(":where(button, select)"));
+}
+
+/// A theme's selection colors inherit down to its runs through the base text style.
+#[test]
+fn text_theme_selection_colors_inherit() {
+  let page = render_to_string(|| {
+    TextTheme::new(Text::new("themed")).set_base(
+      skene_gui::TextStyle::new()
+        .set_selection_color(Color::srgb(0., 0., 0.))
+        .set_selection_background(Color::srgb(0., 1., 0.)),
+    )
+  });
+  let class = first_class(page.body());
+
+  assert!(
+    page.styles().contains(&format!(".{class}::selection{{")),
+    "the inherited selection colors intern with the run: {}",
+    page.styles(),
+  );
 }

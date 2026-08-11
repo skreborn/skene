@@ -70,6 +70,12 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   text-align: inherit;
 }
 
+/* Control chrome is not content: only text runs are selectable. */
+:where(button, select) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 :where(textarea) {
   resize: none;
 }

@@ -37,6 +37,7 @@ mod radio;
 mod realize;
 mod resource;
 mod routing;
+mod selection;
 mod slider;
 mod state;
 mod style;
@@ -70,6 +71,7 @@ pub use terminal::launch;
 pub use terminal::{
   current_title,
   focused_node,
+  take_copied,
   trigger_color_scheme,
   trigger_key,
   trigger_mouse_click,
@@ -77,6 +79,7 @@ pub use terminal::{
   trigger_mouse_move,
   trigger_mouse_press,
   trigger_mouse_release,
+  trigger_mouse_right_click,
   trigger_mouse_scroll,
 };
 
@@ -98,7 +101,7 @@ pub use crate::{
   task::spawn,
   text::Text,
   text_field::TextField,
-  theme::ControlTheme,
+  theme::{ControlTheme, TextTheme},
 };
 
 /// A suspense view over the terminal tree; see [`skene_core::Suspense`].

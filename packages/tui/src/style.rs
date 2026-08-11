@@ -148,6 +148,10 @@ pub(crate) fn effective_run_style(
     if condition.holds(&|leaf| leaf_holds(leaf, environment, interaction)) {
       effective.color = style.color.or(effective.color);
       effective.bold = style.bold.or(effective.bold);
+      effective.selection_color = style.selection_color.or(effective.selection_color);
+      effective.selection_background = style
+        .selection_background
+        .or(effective.selection_background);
     }
   }
 

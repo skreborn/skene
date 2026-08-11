@@ -614,6 +614,10 @@ pub struct RunStyle {
   pub font_size: Option<f32>,
   /// The font weight.
   pub font_weight: Option<f32>,
+  /// The text color while selected.
+  pub selection_color: Option<Color>,
+  /// The background behind selected text.
+  pub selection_background: Option<Color>,
 }
 
 impl RunStyle {
@@ -643,6 +647,22 @@ impl RunStyle {
   #[inline(always)]
   pub const fn set_font_weight(mut self, font_weight: f32) -> Self {
     self.font_weight = Some(font_weight);
+
+    self
+  }
+
+  /// Sets the text color while selected.
+  #[inline(always)]
+  pub const fn set_selection_color(mut self, color: Color) -> Self {
+    self.selection_color = Some(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text.
+  #[inline(always)]
+  pub const fn set_selection_background(mut self, color: Color) -> Self {
+    self.selection_background = Some(color);
 
     self
   }
@@ -678,6 +698,8 @@ pub enum RunDisplay {
 pub struct RunProps {
   /// How the run participates in the surrounding layout.
   pub display: RunDisplay,
+  /// Whether the user can select and copy the run's text.
+  pub selectable: bool,
   /// The link destination, when the run is a link.
   pub link: Option<String>,
   /// The static style.

@@ -28,9 +28,16 @@ fn accent() -> Color {
   Color::srgb(0.2, 0.22, 0.2)
 }
 
-/// The whole gallery: a scrollable column of titled sections.
+/// The whole gallery: a scrollable column of titled sections, its text selecting in
+/// the theme's colors.
 #[must_use]
 pub fn app() -> impl IntoView {
+  TextTheme::new(gallery())
+    .set_selection_color(Color::srgb(0.95, 0.97, 1.))
+    .set_selection_background(Color::srgb(0.24, 0.36, 0.54))
+}
+
+fn gallery() -> impl IntoView {
   Column::new()
     .set_item_alignment(ItemAlignment::Center)
     .set_overflow(Overflow::Auto)
@@ -63,6 +70,11 @@ fn text() -> impl IntoView {
       Text::new(
         "Long runs wrap at the available width, breaking at spaces, so a paragraph \
          reads naturally in however many columns it gets.",
+      )
+      .set_color(faint()),
+      Text::new(
+        "Drag to select text—double-click a word, triple-click a run—and right-click \
+         to copy it as it appears in the source.",
       )
       .set_color(faint()),
     )),

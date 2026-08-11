@@ -90,7 +90,7 @@ impl View for Button {
     });
 
     self.base.register(node);
-    self.children.mount(node);
+    crate::theme::build_unselectable(|| self.children.mount(node));
 
     node
   }

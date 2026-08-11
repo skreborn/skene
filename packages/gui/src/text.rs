@@ -15,6 +15,9 @@ use skene_core::{
 use skene_reactive::{Owner, provide_context, use_context};
 
 /// The text style of a text node: an optional static-or-reactive [`Source`] per property.
+///
+/// The selection pair is static only: platforms realize it outside the per-node reactive
+/// path (on the web, a `::selection` rule).
 #[derive(Clone, Default)]
 #[must_use]
 pub struct TextStyle {
@@ -24,6 +27,10 @@ pub struct TextStyle {
   pub font_size: Option<Source<f32>>,
   /// The font weight.
   pub font_weight: Option<Source<f32>>,
+  /// The text color while selected.
+  pub selection_color: Option<Color>,
+  /// The background behind selected text.
+  pub selection_background: Option<Color>,
 }
 
 impl TextStyle {
@@ -81,6 +88,22 @@ impl TextStyle {
     self
   }
 
+  /// Sets the text color while selected.
+  #[inline(always)]
+  pub const fn set_selection_color(mut self, color: Color) -> Self {
+    self.selection_color = Some(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text.
+  #[inline(always)]
+  pub const fn set_selection_background(mut self, color: Color) -> Self {
+    self.selection_background = Some(color);
+
+    self
+  }
+
   /// Overlays each set property of `over` onto `self`, `over` winning.
   #[inline(always)]
   fn overlay(self, over: Self) -> Self {
@@ -88,6 +111,8 @@ impl TextStyle {
       color: over.color.or(self.color),
       font_size: over.font_size.or(self.font_size),
       font_weight: over.font_weight.or(self.font_weight),
+      selection_color: over.selection_color.or(self.selection_color),
+      selection_background: over.selection_background.or(self.selection_background),
     }
   }
 }
@@ -96,6 +121,7 @@ impl TextStyle {
 #[must_use]
 pub struct Text {
   pub(crate) source: Source<String>,
+  pub(crate) selectable: bool,
   pub(crate) link: Option<String>,
   pub(crate) style: TextStyle,
   pub(crate) dynamics: RunDynamics,
@@ -115,6 +141,7 @@ impl Text {
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       source: Source::Static(content.into()),
+      selectable: true,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
@@ -126,10 +153,19 @@ impl Text {
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
       source: Source::Derived(Rc::new(content)),
+      selectable: true,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
+  }
+
+  /// Sets whether the user can select and copy the text; selectable by default.
+  #[inline(always)]
+  pub const fn set_selectable(mut self, selectable: bool) -> Self {
+    self.selectable = selectable;
+
+    self
   }
 
   /// Makes the text a link to the given destination.
@@ -188,6 +224,22 @@ impl Text {
     self
   }
 
+  /// Sets the text color while selected.
+  #[inline(always)]
+  pub fn set_selection_color(mut self, color: Color) -> Self {
+    self.style = self.style.set_selection_color(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text.
+  #[inline(always)]
+  pub fn set_selection_background(mut self, color: Color) -> Self {
+    self.style = self.style.set_selection_background(color);
+
+    self
+  }
+
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
@@ -222,6 +274,7 @@ impl Text {
 #[must_use]
 pub struct Span {
   pub(crate) content: SpanContent,
+  pub(crate) selectable: bool,
   pub(crate) link: Option<String>,
   pub(crate) style: TextStyle,
   pub(crate) dynamics: RunDynamics,
@@ -264,10 +317,19 @@ impl Span {
   fn with_content(content: SpanContent) -> Self {
     Self {
       content,
+      selectable: true,
       link: None,
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
+  }
+
+  /// Sets whether the user can select and copy the run; selectable by default.
+  #[inline(always)]
+  pub const fn set_selectable(mut self, selectable: bool) -> Self {
+    self.selectable = selectable;
+
+    self
   }
 
   /// Makes the run a link to the given destination.
@@ -322,6 +384,22 @@ impl Span {
   #[inline(always)]
   pub fn derive_font_weight(mut self, font_weight: impl Fn() -> f32 + 'static) -> Self {
     self.style = self.style.derive_font_weight(font_weight);
+
+    self
+  }
+
+  /// Sets the text color while selected.
+  #[inline(always)]
+  pub fn set_selection_color(mut self, color: Color) -> Self {
+    self.style = self.style.set_selection_color(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text.
+  #[inline(always)]
+  pub fn set_selection_background(mut self, color: Color) -> Self {
+    self.style = self.style.set_selection_background(color);
 
     self
   }
@@ -487,6 +565,7 @@ mod realize {
   /// style—the inherited base a group cascades to its children.
   fn build_run(
     display: RunDisplay,
+    selectable: bool,
     link: Option<String>,
     style: TextStyle,
     dynamics: RunDynamics,
@@ -494,6 +573,9 @@ mod realize {
     let resolved = resolved_text_style(style, link.is_some());
     let mut statics = RunStyle::default();
     let mut binders = Binders::new();
+
+    statics.selection_color = resolved.selection_color;
+    statics.selection_background = resolved.selection_background;
 
     split_prop(
       resolved.color.clone(),
@@ -521,6 +603,7 @@ mod realize {
 
     let node = driver::create_run(&RunProps {
       display,
+      selectable,
       link,
       style: statics,
       variants: dynamics.variants,
@@ -538,7 +621,13 @@ mod realize {
   impl View for Text {
     fn build(self) -> NodeId {
       // A block run: its own line, unlike an inline `Span`.
-      let (node, _) = build_run(RunDisplay::Block, self.link, self.style, self.dynamics);
+      let (node, _) = build_run(
+        RunDisplay::Block,
+        self.selectable,
+        self.link,
+        self.style,
+        self.dynamics,
+      );
 
       self.source.bind(move |text| driver::set_text(node, &text));
 
@@ -556,7 +645,13 @@ mod realize {
         RunDisplay::Inline
       };
 
-      let (node, resolved) = build_run(display, self.link, self.style, self.dynamics);
+      let (node, resolved) = build_run(
+        display,
+        self.selectable,
+        self.link,
+        self.style,
+        self.dynamics,
+      );
 
       match self.content {
         SpanContent::Text(source) => {

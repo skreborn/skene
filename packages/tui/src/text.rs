@@ -15,8 +15,11 @@ use crate::{
 #[must_use]
 pub struct Text {
   source: Source<String>,
+  selectable: bool,
   color: Option<Source<Color>>,
   bold: Option<Source<bool>>,
+  selection_color: Option<Color>,
+  selection_background: Option<Color>,
   variants: Vec<(Condition, RunStyle)>,
 }
 
@@ -26,8 +29,11 @@ impl Text {
   pub fn new(content: impl Into<String>) -> Self {
     Self {
       source: Source::Static(content.into()),
+      selectable: true,
       color: None,
       bold: None,
+      selection_color: None,
+      selection_background: None,
       variants: Vec::new(),
     }
   }
@@ -37,10 +43,22 @@ impl Text {
   pub fn derive(content: impl Fn() -> String + 'static) -> Self {
     Self {
       source: Source::Derived(Rc::new(content)),
+      selectable: true,
       color: None,
       bold: None,
+      selection_color: None,
+      selection_background: None,
       variants: Vec::new(),
     }
+  }
+
+  /// Sets whether the user can select and copy the text; selectable by default, except
+  /// inside a control, whose chrome never is.
+  #[inline(always)]
+  pub const fn set_selectable(mut self, selectable: bool) -> Self {
+    self.selectable = selectable;
+
+    self
   }
 
   /// Sets a static color.
@@ -75,6 +93,23 @@ impl Text {
     self
   }
 
+  /// Sets the text color while selected, overriding any [`TextTheme`](crate::TextTheme).
+  #[inline(always)]
+  pub const fn set_selection_color(mut self, color: Color) -> Self {
+    self.selection_color = Some(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text, overriding any
+  /// [`TextTheme`](crate::TextTheme).
+  #[inline(always)]
+  pub const fn set_selection_background(mut self, color: Color) -> Self {
+    self.selection_background = Some(color);
+
+    self
+  }
+
   /// Adds a conditional style variant, applied while `condition` holds.
   #[inline(always)]
   pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
@@ -88,6 +123,12 @@ impl View for Text {
   fn build(self) -> NodeId {
     let mut style = RunStyle::new();
     let mut binders = Binders::new();
+    let defaults = crate::theme::TextDefaults::current();
+    let selectable =
+      self.selectable && skene_reactive::use_context::<crate::theme::Unselectable>().is_none();
+
+    style.selection_color = self.selection_color.or(defaults.selection_color);
+    style.selection_background = self.selection_background.or(defaults.selection_background);
 
     split_prop(
       self.color,
@@ -111,6 +152,7 @@ impl View for Text {
           style,
           variants: self.variants,
           text: String::new(),
+          selectable,
         },
         taffy::style::Style::default(),
       )
@@ -151,6 +193,7 @@ fn set_text(node: NodeId, text: &str) {
       }
     });
 
+    state.invalidate_selection(node);
     state.dirty.set(true);
   });
 }

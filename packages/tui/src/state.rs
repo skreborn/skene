@@ -24,6 +24,7 @@ use crate::{
   events::{PointerEvent, ScrollEvent},
   paint::field_window,
   props::{BoxStyle, Condition, ControlStyle, RunStyle},
+  selection::Selection,
   style::{Environment, Interaction, effective_box_style, effective_control_style},
 };
 
@@ -43,6 +44,7 @@ pub(crate) enum NodeKind {
     style: RunStyle,
     variants: Vec<(Condition, RunStyle)>,
     text: String,
+    selectable: bool,
   },
   /// A single-line text input; the caret is a character position in the value,
   /// `0..=len`.
@@ -156,6 +158,8 @@ pub(crate) enum Drag {
     /// The grabbed position within the thumb, in track cells.
     grab: i64,
   },
+  /// A text selection: motion extends it to the position under the pointer.
+  Selection,
 }
 
 /// One node's record: its realization, its taffy node, and its place in the tree.
@@ -203,6 +207,16 @@ pub(crate) struct State {
   pub(crate) hovered: RefCell<Vec<NodeId>>,
   /// The drag in progress, from a press until its release.
   pub(crate) drag: Cell<Option<Drag>>,
+  /// The text selection, when one exists.
+  pub(crate) selection: Cell<Option<Selection>>,
+  /// The copy menu's pressed cell, while the menu is open.
+  pub(crate) menu: Cell<Option<(u16, u16)>>,
+  /// The last press, for counting multi-click sequences: its time, cell, and count.
+  pub(crate) last_press: Cell<Option<(std::time::Instant, u16, u16, u8)>>,
+  /// The pointer's last known cell, for painting the menu's hover state.
+  pub(crate) last_pointer: Cell<(u16, u16)>,
+  /// Text staged for the terminal loop's clipboard write.
+  pub(crate) pending_copy: RefCell<Option<String>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
@@ -271,6 +285,11 @@ impl State {
       controls: RefCell::new(FxHashSet::default()),
       hovered: RefCell::new(Vec::new()),
       drag: Cell::new(None),
+      selection: Cell::new(None),
+      menu: Cell::new(None),
+      last_press: Cell::new(None),
+      last_pointer: Cell::new((0, 0)),
+      pending_copy: RefCell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
       scroll_offsets: RefCell::new(FxHashMap::default()),
@@ -441,6 +460,8 @@ impl State {
       if self.focused.get() == Some(current) {
         self.focused.set(None);
       }
+
+      self.invalidate_selection(current);
     }
 
     self.dirty.set(true);
@@ -693,6 +714,11 @@ impl State {
     let next: Vec<NodeId> = self.hit_test(x, y).iter().map(|(node, _)| *node).collect();
     let previous = self.hovered.borrow().clone();
 
+    if self.last_pointer.replace((x, y)) != (x, y) && self.menu.get().is_some() {
+      // The menu's hover state follows the pointer.
+      self.dirty.set(true);
+    }
+
     if previous == next {
       return;
     }
@@ -717,6 +743,17 @@ impl State {
   /// hit path (or blurs when none is hit), runs click handlers from the deepest node
   /// up, then—unless a handler prevented the default—activates the focused control.
   pub(crate) fn mouse_click(&self, x: u16, y: u16) {
+    // An open copy menu consumes the press: `Copy` copies, anywhere else just closes.
+    if self.menu.get().is_some() {
+      if self.copy_hit(x, y) {
+        self.copy_selection();
+      }
+
+      self.close_menu();
+
+      return;
+    }
+
     // A press on a scrollbar grabs it—jumping the thumb when pressed off it—and
     // consumes the press: no focus change, no click dispatch.
     if let Some((node, axis, position)) = self.scrollbar_hit(x, y) {
@@ -724,6 +761,8 @@ impl State {
 
       return;
     }
+
+    self.clear_selection();
 
     if let Some((top, modal)) = self.topmost_open_overlay() {
       let mut path = Vec::new();
@@ -779,6 +818,19 @@ impl State {
         self.drag.set(Some(Drag::Slider(target)));
       }
     }
+
+    // A press on a selectable run starts a selection: a drag extends it, a double
+    // click takes the word, a triple click the whole run.
+    if let Some(point) = self.text_position_at(x, y) {
+      match self.register_press(x, y) {
+        2 => self.select_word(point),
+        3 => self.select_run(point),
+        _ => self.anchor_selection(point),
+      }
+    }
+    else {
+      self.last_press.set(None);
+    }
   }
 
   /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way.
@@ -802,6 +854,7 @@ impl State {
 
         self.scroll_thumb_to(node, axis, track, limit, along - track_start - grab);
       }
+      Some(Drag::Selection) => self.extend_selection(x, y),
       None => {}
     }
   }
@@ -1387,6 +1440,54 @@ impl State {
     (x, y)
   }
 
+  /// A node's on-screen origin: like [`absolute_origin`](Self::absolute_origin), but
+  /// content inside an overlay positions against the overlay's computed origin.
+  pub(crate) fn screen_origin(&self, node: NodeId) -> (i64, i64) {
+    let (mut x, mut y) = (0, 0);
+    let mut current = Some(node);
+
+    while let Some(id) = current {
+      if self.is_overlay(id) {
+        let (overlay_x, overlay_y) = self.overlay_origin(id);
+
+        return (x + overlay_x, y + overlay_y);
+      }
+
+      let (location, parent) = {
+        let nodes = self.nodes.borrow();
+        let Some(record) = nodes.get(&id)
+        else {
+          break;
+        };
+
+        #[expect(clippy::cast_possible_truncation)]
+        let location = match self.taffy.borrow().layout(record.taffy) {
+          Ok(layout) => (
+            layout.location.x.round() as i64,
+            layout.location.y.round() as i64,
+          ),
+          Err(_) => (0, 0),
+        };
+
+        (location, record.parent)
+      };
+
+      x += location.0;
+      y += location.1;
+
+      if let Some(parent) = parent {
+        let (scroll_x, scroll_y) = self.scroll_offset(parent);
+
+        x -= i64::from(scroll_x);
+        y -= i64::from(scroll_y);
+      }
+
+      current = parent;
+    }
+
+    (x, y)
+  }
+
   /// An open overlay's absolute origin: anchored `Top`/`Bottom` position against the
   /// anchor, everything else against the terminal.
   pub(crate) fn overlay_origin(&self, node: NodeId) -> (i64, i64) {
@@ -1427,7 +1528,7 @@ impl State {
   }
 
   /// A node's laid-out size, in cells.
-  fn node_size(&self, node: NodeId) -> (i64, i64) {
+  pub(crate) fn node_size(&self, node: NodeId) -> (i64, i64) {
     let nodes = self.nodes.borrow();
     let Some(record) = nodes.get(&node)
     else {
@@ -1507,6 +1608,16 @@ impl State {
 
       if let Some((style, variants)) = record.kind.box_style() {
         return effective_box_style(style, variants, environment, interaction).cursor;
+      }
+
+      if let NodeKind::Run {
+        text,
+        selectable: true,
+        ..
+      } = &record.kind
+        && !text.is_empty()
+      {
+        return Some(MouseCursor::Text);
       }
 
       let (style, variants) = record.kind.control_style()?;
@@ -1655,6 +1766,8 @@ impl State {
   /// Scrolls the innermost box under the cell (`x`, `y`) that can still move in the
   /// given direction.
   pub(crate) fn mouse_scroll(&self, x: u16, y: u16, delta_x: i64, delta_y: i64) {
+    self.close_menu();
+
     for (node, _) in self.hit_test(x, y).iter().rev() {
       if self.scroll_by(*node, delta_x, delta_y) {
         return;

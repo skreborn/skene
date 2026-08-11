@@ -354,7 +354,8 @@ pub(crate) fn overlay_template(props: &OverlayProps) -> String {
   if let Some(color) = props.backdrop {
     push_rule(
       &mut out,
-      &["::backdrop"],
+      &[],
+      "::backdrop",
       &Declarations::new().set("background-color", Declarations::render_color(color)),
     );
   }
@@ -418,6 +419,21 @@ fn fold_run_style(mut declarations: Declarations, style: &skene_core::RunStyle) 
   declarations
 }
 
+/// The declarations of a run style's `::selection` pseudo-element.
+fn fold_selection(style: &skene_core::RunStyle) -> Declarations {
+  let mut declarations = Declarations::new();
+
+  if let Some(value) = style.selection_color {
+    declarations = declarations.set("color", Declarations::render_color(value));
+  }
+
+  if let Some(value) = style.selection_background {
+    declarations = declarations.set("background-color", Declarations::render_color(value));
+  }
+
+  declarations
+}
+
 /// The complete rule template for a text run, or `None` when it is entirely unstyled (an
 /// unstyled inline run carries no class).
 pub(crate) fn run_template(props: &RunProps) -> Option<String> {
@@ -427,9 +443,18 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
     RunDisplay::InlineBox => Declarations::new().set("display", "inline-block"),
   };
 
-  let base = fold_run_style(display, &props.style);
+  let mut base = fold_run_style(display, &props.style);
+
+  if !props.selectable {
+    base = base
+      .set("-webkit-user-select", "none")
+      .set("user-select", "none");
+  }
+
+  let selection = fold_selection(&props.style);
 
   if base.is_empty()
+    && selection.is_empty()
     && props
       .variants
       .iter()
@@ -440,14 +465,22 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
     return None;
   }
 
-  Some(template(
+  let mut out = template(
     base,
     "",
     &props.variants,
     &props.transitions,
     &props.animations,
     |style| fold_run_style(Declarations::new(), style),
-  ))
+  );
+
+  if !selection.is_empty() {
+    push_rule(&mut out, &[], "::selection", &selection);
+  }
+
+  push_variant_rules(&mut out, "::selection", &props.variants, &fold_selection);
+
+  Some(out)
 }
 
 /// The declarations for one text-run property alone, for an inline override.
@@ -460,13 +493,18 @@ pub(crate) fn run_prop_declarations(prop: &RunProp) -> Declarations {
 pub(crate) fn declarations_template(declarations: &Declarations) -> String {
   let mut out = String::new();
 
-  push_rule(&mut out, &[], declarations);
+  push_rule(&mut out, &[], "", declarations);
 
   out
 }
 
-/// Appends one rule: `.<placeholder><states…>{declarations}`.
-fn push_rule(out: &mut String, states: &[&'static str], declarations: &Declarations) {
+/// Appends one rule: `.<placeholder><states…><pseudo>{declarations}`.
+fn push_rule(
+  out: &mut String,
+  states: &[&'static str],
+  pseudo: &'static str,
+  declarations: &Declarations,
+) {
   out.push('.');
   out.push(CLASS_PLACEHOLDER);
 
@@ -474,6 +512,7 @@ fn push_rule(out: &mut String, states: &[&'static str], declarations: &Declarati
     out.push_str(state);
   }
 
+  out.push_str(pseudo);
   out.push('{');
   out.push_str(&declarations.render());
   out.push('}');
@@ -514,6 +553,20 @@ fn template<S>(
   out.push_str(&base.render());
   out.push('}');
 
+  push_variant_rules(&mut out, "", variants, &style_declarations);
+
+  out
+}
+
+/// Appends each variant's rules—one per disjunctive conjunction of its condition, each
+/// targeting `pseudo` after the state selectors—in declaration order. Variants whose
+/// declarations are empty add nothing.
+fn push_variant_rules<S>(
+  out: &mut String,
+  pseudo: &'static str,
+  variants: &[(Condition, S)],
+  style_declarations: &impl Fn(&S) -> Declarations,
+) {
   for (condition, style) in variants {
     let declarations = style_declarations(style);
 
@@ -530,19 +583,17 @@ fn template<S>(
       states.sort_unstable();
 
       if media.is_empty() {
-        push_rule(&mut out, &states, &declarations);
+        push_rule(out, &states, pseudo, &declarations);
       }
       else {
         out.push_str("@media ");
         out.push_str(&media.join(" and "));
         out.push('{');
-        push_rule(&mut out, &states, &declarations);
+        push_rule(out, &states, pseudo, &declarations);
         out.push('}');
       }
     }
   }
-
-  out
 }
 
 /// The media feature a condition renders to, when it is an environment condition.

@@ -513,6 +513,10 @@ pub struct RunStyle {
   pub color: Option<Color>,
   /// Whether the text is bold.
   pub bold: Option<bool>,
+  /// The text color while selected.
+  pub selection_color: Option<Color>,
+  /// The background behind selected text.
+  pub selection_background: Option<Color>,
 }
 
 impl RunStyle {
@@ -534,6 +538,22 @@ impl RunStyle {
   #[inline(always)]
   pub const fn set_bold(mut self, bold: bool) -> Self {
     self.bold = Some(bold);
+
+    self
+  }
+
+  /// Sets the text color while selected.
+  #[inline(always)]
+  pub const fn set_selection_color(mut self, color: Color) -> Self {
+    self.selection_color = Some(color);
+
+    self
+  }
+
+  /// Sets the background behind selected text.
+  #[inline(always)]
+  pub const fn set_selection_background(mut self, color: Color) -> Self {
+    self.selection_background = Some(color);
 
     self
   }

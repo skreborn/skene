@@ -842,3 +842,47 @@ fn a_derived_property_inside_an_item_still_updates() {
     "24px"
   );
 }
+
+/// `set_selectable(false)` computes `user-select: none` on the run; a plain run keeps
+/// the selectable default.
+#[wasm_bindgen_test]
+fn unselectable_text_computes_user_select_none() {
+  let (_guard, root) = fresh_root();
+
+  mount(|| {
+    Column::new()
+      .set_children((
+        Text::new("content"),
+        Text::new("chrome").set_selectable(false),
+      ))
+      .build()
+  });
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect root");
+
+  let children = only_child(&root).children();
+  let computed = |index: u32| {
+    let element = children
+      .item(index)
+      .expect("a run")
+      .dyn_into::<HtmlElement>()
+      .expect("an HTML element");
+
+    web_sys::window()
+      .unwrap()
+      .get_computed_style(&element)
+      .unwrap()
+      .expect("computed style")
+      .get_property_value("user-select")
+      .unwrap()
+  };
+
+  assert_ne!(computed(0), "none");
+  assert_eq!(computed(1), "none");
+
+  root.remove();
+}

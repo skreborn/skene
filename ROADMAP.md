@@ -243,7 +243,9 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   thumb, a thumb press grabs it, dragging follows—and thumbs paint at eighth-cell
   resolution (the `▁`–`▇`/`▏`–`▉` block runs, the missing directions as reversed
   complements), inked over a tinted track, so short tracks move smoothly instead of a
-  full cell at a time.
+  full cell at a time. Hover pointer shapes (OSC 22) default by content—the pointer
+  over buttons and toggling controls, the I-beam over inputs and selectable text—an
+  explicit `set_cursor` winning.
 - **Text selection—done.** Selection is controlled explicitly across backends: text
   runs are selectable by default (`set_selectable(false)` opts out), control chrome—
   button labels, picker rows—never is, and on the web the same flag compiles to
@@ -253,8 +255,10 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   on the web), defaulting per the detected background. A right click over a selection
   opens a copy menu anchored at the pressed cell; `Copy` writes the clipboard over
   OSC 52 with the text as it appears in the source—soft wraps restored to their
-  spaces, runs joined by newlines. Verified under the pseudo-terminal: drag highlight,
-  the anchored menu, and the OSC 52 payload.
+  spaces, runs joined by newlines. A terminal identifying as VTE over XTVERSION
+  discards clipboard writes, so there `Copy` presents disabled with a hint. Verified
+  under the pseudo-terminal: drag highlight, the anchored menu, the OSC 52 payload,
+  and the disabled VTE path.
 
 ## Backlog—unphased features
 
@@ -462,7 +466,9 @@ rendering (adjacent to the server-side non-goal); a webview desktop shell.
   (Escape dismisses; a fix clears it), falling back to a raw print when nothing polls.
   Scroll offsets ride the snapshot beside the tagged signals, through the reactive
   engine's `provide`/`staged` seam, keyed by build-order node id—so a restart resumes
-  scrolled where the last instance stood. Both verified under the pseudo-terminal.
+  scrolled where the last instance stood, restored offsets replaying through the
+  scroll handlers so a lazy column rebuilds its window at the resumed position. Both
+  verified under the pseudo-terminal.
 - **Wasm-split lazy loading—done.** `#[lazy]` marks an async view function whose body—
   and everything only lazy bodies reach—splits out of the main wasm into its own
   module, fetched on the first call; the `Lazy` view renders one (`Lazy::new(about)`),

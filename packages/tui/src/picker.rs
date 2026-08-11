@@ -128,7 +128,7 @@ crate::control::control_surface!(Picker, crate::props::ControlStyle);
 
 impl View for Picker {
   fn build(mut self) -> NodeId {
-    use skene_reactive::{Get, Set, Signal, Update};
+    use skene_reactive::{Get, Set, Signal};
 
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);
@@ -193,29 +193,12 @@ impl View for Picker {
       });
     }
 
-    // Activation toggles the options popup instead of the built-in cycle. The popup
-    // highlights `active`, opening on the current option—only `Enter`, `Space`, or a
-    // row click commits it, so `Escape` leaves the old value in place.
+    // The popup highlights `active`, opening on the current option—only `Enter`,
+    // `Space`, or a row click commits it, so `Escape` leaves the old value in place.
     let open = Signal::new(false);
     let active = Signal::new(selected.get_untracked());
 
-    with_state(|state| {
-      state
-        .click
-        .borrow_mut()
-        .entry(node)
-        .or_default()
-        .push(Rc::new(move || {
-          if !open.get() {
-            active.set(selected.get());
-          }
-
-          open.update(|open| *open = !*open);
-
-          Prevent::Default
-        }));
-    });
-
+    register_popup_toggle(node, open, active, selected);
     register_popup_keys(
       node,
       options.iter().map(|(value, _)| value.clone()).collect(),
@@ -230,6 +213,7 @@ impl View for Picker {
     let popup = crate::theme::build_unselectable(|| {
       Overlay::popup()
         .set_anchor(&anchor)
+        .set_placement(skene_core::Placement::Bottom)
         .bind_open(open)
         .set_style(self.popup_style.unwrap_or_else(default_popup_style))
         .set_child(
@@ -249,6 +233,41 @@ impl View for Picker {
 
     node
   }
+}
+
+/// Registers the popup's toggling on the picker: activation toggles it—the highlight
+/// opening on the current option—and focus leaving the picker closes it.
+fn register_popup_toggle(
+  node: NodeId,
+  open: skene_reactive::Signal<bool>,
+  active: skene_reactive::Signal<String>,
+  selected: skene_reactive::Signal<String>,
+) {
+  use skene_reactive::{Get, Set, Update};
+
+  with_state(|state| {
+    state
+      .click
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(Rc::new(move || {
+        if !open.get() {
+          active.set(selected.get());
+        }
+
+        open.update(|open| *open = !*open);
+
+        Prevent::Default
+      }));
+
+    state
+      .blur
+      .borrow_mut()
+      .entry(node)
+      .or_default()
+      .push(Rc::new(move || open.set(false)));
+  });
 }
 
 /// Registers the popup's keyboard behavior on the picker: while open, arrows move the

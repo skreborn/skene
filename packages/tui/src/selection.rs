@@ -85,14 +85,9 @@ impl State {
   fn run_text(&self, node: NodeId) -> Option<String> {
     let nodes = self.nodes.borrow();
 
-    match nodes.get(&node).map(|record| &record.kind) {
-      Some(NodeKind::Run {
-        text,
-        selectable: true,
-        ..
-      }) if !text.is_empty() => Some(text.clone()),
-      _ => None,
-    }
+    nodes
+      .get(&node)
+      .and_then(|record| record.kind.selectable_text())
   }
 
   /// The character offset within `node`'s source at the run-local cell, clamped into
@@ -174,13 +169,7 @@ impl State {
         continue;
       }
 
-      if let NodeKind::Run {
-        text,
-        selectable: true,
-        ..
-      } = &record.kind
-        && !text.is_empty()
-      {
+      if record.kind.selectable_text().is_some() {
         order.push(current);
       }
 

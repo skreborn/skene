@@ -1307,9 +1307,13 @@ fn picker_opens_a_popup_and_selects_by_click() {
     // The current option's row carries the highlight bar; the other row shows the
     // popup fill.
     let cell_at = |needle: &str| {
+      // The popup sits beneath the closed control, which shows the same label: the
+      // last match is the popup's row.
       let row = open
         .lines()
-        .position(|line| line.contains(needle))
+        .collect::<Vec<_>>()
+        .iter()
+        .rposition(|line| line.contains(needle))
         .expect("the row is visible");
       let column = open
         .lines()
@@ -2662,4 +2666,93 @@ fn picker_popup_navigates_without_committing() {
 
   assert_eq!(after_escape, "px", "escape keeps the old value");
   assert_eq!(after_enter, "cell", "enter chooses the highlighted option");
+}
+
+/// The options popup anchors beneath the picker—not mid-screen—and closes when focus
+/// leaves the picker.
+#[test]
+fn picker_popup_anchors_beneath_and_closes_on_blur() {
+  let (open, blurred) = with_driver(|| {
+    tui::mount(|| {
+      Column::new()
+        .set_children((
+          Picker::new().set_options([("px", "pixels"), ("cell", "cells")]),
+          Button::new().set_child(Text::new("next")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(16, 8);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(16, 8);
+
+    tui::trigger_key("Tab");
+
+    (open, tui::render_to_text(16, 8))
+  });
+
+  let lines: Vec<&str> = open.lines().collect();
+
+  assert!(
+    lines[0].contains("pixels") && lines[1].starts_with('┌'),
+    "the popup opens directly beneath the control: {open}",
+  );
+  assert!(
+    !blurred.contains("cells"),
+    "focus moving on closes the popup: {blurred}",
+  );
+}
+
+/// Rich text flows its spans as one wrapping paragraph—each span keeping its own ink
+/// and the linked span the scheme's link blue—and an opted-in paragraph selects and
+/// copies across span boundaries as one source flow.
+#[test]
+fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
+  let (frame, colors, copied) = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(12)
+        .set_child(
+          RichText::new([
+            Span::text("plain "),
+            Span::text("red").set_color(Color::srgb(1., 0., 0.)),
+            Span::text(" and "),
+            Span::text("docs").set_link("https://example.com"),
+          ])
+          .set_selectable(true),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(14, 4);
+    let colors = tui::render_to_colors(14, 4);
+
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(8, 1);
+    tui::trigger_mouse_release(8, 1);
+    tui::trigger_mouse_right_click(0, 1);
+    tui::trigger_mouse_click(2, 2);
+
+    (frame, colors, tui::take_copied())
+  });
+
+  // The concatenation wraps as one paragraph: "plain red and" exceeds 12 cells, so
+  // "and docs" lands on the second line.
+  assert_eq!(frame, "plain red\nand docs\n\n\n");
+
+  assert_eq!(colors[6].0, Some((255, 0, 0)), "the red span keeps its ink");
+  assert_eq!(colors[0].0, None, "the plain span stays default");
+  assert_eq!(
+    colors[14 + 4].0,
+    Some((102, 153, 255)),
+    "the linked span inks in link blue",
+  );
+
+  // The drag crossed three span boundaries; the copy is the continuous source flow.
+  assert_eq!(copied.as_deref(), Some("plain red and docs"));
 }

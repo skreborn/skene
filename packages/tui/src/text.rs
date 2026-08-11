@@ -197,3 +197,110 @@ fn set_text(node: NodeId, text: &str) {
     state.dirty.set(true);
   });
 }
+
+/// An inline run within a [`RichText`]: its own color, weight, and optional link.
+///
+/// Spans flow together and wrap as one paragraph, so styling can vary within it—
+/// unlike a [`Text`], which is its own block. A linked span renders in the scheme's
+/// link ink, underlined, and anchors an OSC 8 hyperlink the terminal opens.
+#[must_use]
+pub struct Span {
+  text: String,
+  color: Option<Color>,
+  bold: bool,
+  link: Option<String>,
+}
+
+impl Span {
+  /// A static run of text.
+  #[inline(always)]
+  pub fn text(content: impl Into<String>) -> Self {
+    Self {
+      text: content.into(),
+      color: None,
+      bold: false,
+      link: None,
+    }
+  }
+
+  /// Sets the span's color.
+  #[inline(always)]
+  pub const fn set_color(mut self, color: Color) -> Self {
+    self.color = Some(color);
+
+    self
+  }
+
+  /// Sets whether the span is bold.
+  #[inline(always)]
+  pub const fn set_bold(mut self, bold: bool) -> Self {
+    self.bold = bold;
+
+    self
+  }
+
+  /// Makes the span a link to the given destination.
+  #[inline(always)]
+  pub fn set_link(mut self, destination: impl Into<String>) -> Self {
+    self.link = Some(destination.into());
+
+    self
+  }
+}
+
+/// A paragraph of inline [`Span`]s, which flow together and wrap as one run of text.
+#[must_use]
+pub struct RichText {
+  spans: Vec<Span>,
+  selectable: bool,
+}
+
+impl RichText {
+  /// Creates rich text from a sequence of spans.
+  #[inline(always)]
+  pub fn new(spans: impl IntoIterator<Item = Span>) -> Self {
+    Self {
+      spans: spans.into_iter().collect(),
+      selectable: false,
+    }
+  }
+
+  /// Sets whether the user can select and copy the paragraph; off by default—
+  /// selection is opt-in. Control chrome never selects, this setter notwithstanding.
+  #[inline(always)]
+  pub const fn set_selectable(mut self, selectable: bool) -> Self {
+    self.selectable = selectable;
+
+    self
+  }
+}
+
+impl View for RichText {
+  fn build(self) -> NodeId {
+    let defaults = crate::theme::TextDefaults::current();
+    let selectable =
+      self.selectable && skene_reactive::use_context::<crate::theme::Unselectable>().is_none();
+    let spans = self
+      .spans
+      .into_iter()
+      .map(|span| crate::state::ParagraphSpan {
+        text: span.text,
+        color: span.color,
+        bold: span.bold,
+        link: span.link,
+      })
+      .collect();
+
+    with_state(|state| {
+      state.insert_node(
+        NodeKind::Paragraph {
+          spans,
+          selectable,
+          selection_color: defaults.selection_color,
+          selection_background: defaults.selection_background,
+        },
+        taffy::style::Style::default(),
+      )
+    })
+  }
+}

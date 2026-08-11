@@ -46,6 +46,13 @@ pub(crate) enum NodeKind {
     text: String,
     selectable: bool,
   },
+  /// A paragraph of inline spans, flowing and wrapping as one run of text.
+  Paragraph {
+    spans: Vec<ParagraphSpan>,
+    selectable: bool,
+    selection_color: Option<Color>,
+    selection_background: Option<Color>,
+  },
   /// A single-line text input; the caret is a character position in the value,
   /// `0..=len`.
   TextField {
@@ -118,11 +125,31 @@ impl NodeKind {
         style, variants, ..
       } => Some((style, variants)),
       NodeKind::Run { .. }
+      | NodeKind::Paragraph { .. }
       | NodeKind::Group
       | NodeKind::Checkbox { .. }
       | NodeKind::Radio { .. }
       | NodeKind::Picker { .. }
       | NodeKind::Slider { .. } => None,
+    }
+  }
+
+  /// The node's source text, when it is a selectable, non-empty run or paragraph.
+  pub(crate) fn selectable_text(&self) -> Option<String> {
+    match self {
+      NodeKind::Run {
+        text,
+        selectable: true,
+        ..
+      } if !text.is_empty() => Some(text.clone()),
+      NodeKind::Paragraph {
+        spans,
+        selectable: true,
+        ..
+      } if spans.iter().any(|span| !span.text.is_empty()) => {
+        Some(spans.iter().map(|span| span.text.as_str()).collect())
+      }
+      _ => None,
     }
   }
 
@@ -144,6 +171,14 @@ impl NodeKind {
       _ => None,
     }
   }
+}
+
+/// One inline span of a [`NodeKind::Paragraph`]: its text, styling, and optional link.
+pub(crate) struct ParagraphSpan {
+  pub(crate) text: String,
+  pub(crate) color: Option<Color>,
+  pub(crate) bold: bool,
+  pub(crate) link: Option<String>,
 }
 
 /// A press-initiated drag in progress, followed by pointer motion until release.
@@ -841,7 +876,22 @@ impl State {
       .iter()
       .rev()
       .find(|(node, _)| focusable.contains(node))
-      .map(|(node, _)| *node);
+      .map(|(node, _)| *node)
+      .or_else(|| {
+        // A press inside an overlay with no focusable of its own keeps focus on the
+        // overlay's nearest focusable ancestor—its anchoring control—so a popup's
+        // rows never blur the control that opened it.
+        let (first, _) = path.first()?;
+
+        if !self.is_overlay(*first) {
+          return None;
+        }
+
+        self
+          .ancestors(*first)
+          .into_iter()
+          .find(|node| focusable.contains(node))
+      });
 
     self.set_focused(target);
 
@@ -1623,10 +1673,28 @@ impl State {
     {
       let (anchor_x, anchor_y) = self.absolute_origin(anchor);
       let (_, anchor_height) = self.node_size(anchor);
+      let x = anchor_x.min(columns - width).max(0);
+      let below = anchor_y + anchor_height;
+      let above = anchor_y - height;
 
+      // The preferred side flips when it runs out of room, as a browser popup does.
       return match placement {
-        Placement::Top => (anchor_x, anchor_y - height),
-        _ => (anchor_x, anchor_y + anchor_height),
+        Placement::Top => {
+          if above < 0 && below + height <= rows {
+            (x, below)
+          }
+          else {
+            (x, above.max(0))
+          }
+        }
+        _ => {
+          if below + height > rows && above >= 0 {
+            (x, above)
+          }
+          else {
+            (x, below.min(rows - height).max(0))
+          }
+        }
       };
     }
 
@@ -1738,13 +1806,7 @@ impl State {
           .then_some(MouseCursor::Click);
       }
 
-      if let NodeKind::Run {
-        text,
-        selectable: true,
-        ..
-      } = &record.kind
-        && !text.is_empty()
-      {
+      if record.kind.selectable_text().is_some() {
         return Some(MouseCursor::Text);
       }
 

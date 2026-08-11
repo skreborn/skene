@@ -78,6 +78,16 @@ fn text() -> impl IntoView {
       )
       .set_selectable(true)
       .set_color(faint()),
+      RichText::new([
+        Span::text("Rich text mixes ").set_color(faint()),
+        Span::text("weights").set_bold(true),
+        Span::text(", ").set_color(faint()),
+        Span::text("colors").set_color(bright()),
+        Span::text(", and ").set_color(faint()),
+        Span::text("links").set_link("https://example.com"),
+        Span::text(" in one paragraph.").set_color(faint()),
+      ])
+      .set_selectable(true),
     )),
   )
 }

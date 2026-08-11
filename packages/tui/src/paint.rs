@@ -29,6 +29,9 @@ pub(crate) struct TerminalCell {
   pub(crate) foreground: Option<(u8, u8, u8)>,
   pub(crate) background: Option<(u8, u8, u8)>,
   pub(crate) bold: bool,
+  pub(crate) underline: bool,
+  /// The cell's hyperlink, an index into the frame's [`Buffer::links`].
+  pub(crate) link: Option<u16>,
 }
 
 impl TerminalCell {
@@ -37,6 +40,8 @@ impl TerminalCell {
     foreground: None,
     background: None,
     bold: false,
+    underline: false,
+    link: None,
   };
 }
 
@@ -47,6 +52,9 @@ pub(crate) struct Buffer {
   pub(crate) cells: Vec<TerminalCell>,
   /// The focused input's caret cell, shown as the terminal's own bar cursor.
   pub(crate) caret: Option<(u16, u16)>,
+  /// The frame's hyperlink destinations, indexed by [`TerminalCell::link`], emitted as
+  /// OSC 8 anchors.
+  pub(crate) links: Vec<String>,
   /// The active clip rectangle (start inclusive, end exclusive), while a clipping box
   /// paints its children.
   clip: Option<(isize, isize, isize, isize)>,
@@ -59,6 +67,7 @@ impl Buffer {
       height,
       cells: vec![TerminalCell::EMPTY; width * height],
       caret: None,
+      links: Vec::new(),
       clip: None,
     }
   }
@@ -404,6 +413,18 @@ fn refresh_styles(state: &State, environment: Environment) {
 
         taffy.set_style(record.taffy, out).expect("style a box");
       }
+      NodeKind::Paragraph { spans, .. } => {
+        let mut out = taffy::style::Style::default();
+        let text: String = spans.iter().map(|span| span.text.as_str()).collect();
+
+        taffy
+          .set_node_context(record.taffy, Some(text))
+          .expect("carry a paragraph's text");
+        apply_annotations(&mut out, record);
+        taffy
+          .set_style(record.taffy, out)
+          .expect("style a paragraph");
+      }
       NodeKind::Run { text, .. } => {
         let mut out = taffy::style::Style::default();
 
@@ -654,6 +675,77 @@ fn paint_node(
           selection,
         }
       }
+      NodeKind::Paragraph {
+        spans,
+        selectable,
+        selection_color,
+        selection_background,
+      } => {
+        let text: String = spans.iter().map(|span| span.text.as_str()).collect();
+        let lines = wrap_spans(&text, width);
+        let mut destinations = Vec::new();
+        let paints: Vec<SpanPaint> = spans
+          .iter()
+          .map(|span| {
+            let link = span.link.as_ref().map(|url| {
+              destinations.push(url.clone());
+              u16::try_from(destinations.len() - 1).unwrap_or(0)
+            });
+            // A link inks in the scheme's link blue unless the span sets its own.
+            let foreground = span
+              .color
+              .and_then(terminal_rgb)
+              .or_else(|| link.map(|_| link_blue(environment.dark)));
+
+            SpanPaint {
+              foreground,
+              bold: span.bold,
+              underline: link.is_some(),
+              link,
+            }
+          })
+          .collect();
+        let attribution: Vec<u16> = spans
+          .iter()
+          .enumerate()
+          .flat_map(|(index, span)| {
+            let index = u16::try_from(index).unwrap_or(0);
+
+            span.text.chars().map(move |_| index)
+          })
+          .collect();
+        let selection = selectable
+          .then(|| {
+            state.selection_range(node).map(|range| SelectionPaint {
+              range,
+              starts: lines.iter().map(|(start, _)| *start).collect(),
+              colors: {
+                let default = if environment.dark {
+                  DARK_SELECTION
+                }
+                else {
+                  LIGHT_SELECTION
+                };
+
+                (
+                  selection_color.and_then(terminal_rgb).unwrap_or(default.0),
+                  selection_background
+                    .and_then(terminal_rgb)
+                    .unwrap_or(default.1),
+                )
+              },
+            })
+          })
+          .flatten();
+
+        NodePaint::Paragraph {
+          lines,
+          attribution,
+          spans: paints,
+          links: destinations,
+          selection,
+        }
+      }
       NodeKind::TextField {
         style,
         variants,
@@ -796,6 +888,51 @@ fn paint_node(
   };
 
   match kind_paint {
+    NodePaint::Paragraph {
+      lines,
+      attribution,
+      spans,
+      links,
+      selection,
+    } => {
+      // The paragraph's links join the frame registry; span indices shift by the base.
+      let base = u16::try_from(buffer.links.len()).unwrap_or(0);
+
+      buffer.links.extend(links);
+
+      for (row, (start, line)) in lines.iter().enumerate() {
+        let row_y = y + isize::try_from(row).expect("fits");
+
+        for (column, character) in line.chars().enumerate() {
+          let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y)
+          else {
+            continue;
+          };
+          let Some(paint) = attribution
+            .get(start + column)
+            .and_then(|index| spans.get(usize::from(*index)))
+          else {
+            continue;
+          };
+
+          cell.character = character;
+
+          if paint.foreground.is_some() {
+            cell.foreground = paint.foreground;
+          }
+
+          cell.bold = paint.bold;
+          cell.underline = paint.underline;
+          cell.link = paint.link.map(|index| base + index);
+        }
+      }
+
+      if let Some(selection) = selection {
+        let plain: Vec<String> = lines.into_iter().map(|(_, line)| line).collect();
+
+        draw_selection(buffer, x, y, &plain, &selection);
+      }
+    }
     NodePaint::Box {
       background,
       border,
@@ -1153,6 +1290,14 @@ struct BorderPaint {
 }
 
 /// What one node contributes to the frame.
+/// One paragraph span's paint: its ink, weight, underline, and link.
+struct SpanPaint {
+  foreground: Option<(u8, u8, u8)>,
+  bold: bool,
+  underline: bool,
+  link: Option<u16>,
+}
+
 /// A run's selection highlight: the selected source range, each painted line's start
 /// offset in the source, and the ink and highlight colors.
 struct SelectionPaint {
@@ -1162,6 +1307,16 @@ struct SelectionPaint {
 }
 
 enum NodePaint {
+  Paragraph {
+    /// Wrapped lines over the concatenated text, each with its start offset.
+    lines: Vec<(usize, String)>,
+    /// Each concatenated character's span index.
+    attribution: Vec<u16>,
+    /// Per-span paint: ink, weight, underline, and the link index into `links`.
+    spans: Vec<SpanPaint>,
+    links: Vec<String>,
+    selection: Option<SelectionPaint>,
+  },
   Box {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
@@ -1208,6 +1363,8 @@ fn fill(
         cell.character = ' ';
         cell.foreground = None;
         cell.bold = false;
+        cell.underline = false;
+        cell.link = None;
         cell.background = background;
       }
     }
@@ -1338,6 +1495,11 @@ fn interaction_background(
     mix(ink.1, under.1),
     mix(ink.2, under.2),
   ))
+}
+
+/// The scheme's link ink, when a linked span sets no color of its own.
+const fn link_blue(dark: bool) -> (u8, u8, u8) {
+  if dark { (102, 153, 255) } else { (0, 102, 204) }
 }
 
 /// The selection ink and highlight for a dark terminal, when no theme sets them.

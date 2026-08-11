@@ -101,7 +101,7 @@ pub use crate::{
   routing::install_router,
   slider::Slider,
   task::spawn,
-  text::Text,
+  text::{RichText, Span, Text},
   text_field::TextField,
   theme::{ControlTheme, TextTheme},
 };

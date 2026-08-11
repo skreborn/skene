@@ -407,6 +407,8 @@ fn draw(
       foreground: None,
       background: None,
       bold: false,
+      underline: false,
+      link: None,
     };
 
     for cell in &buffer.cells[row * buffer.width..(row + 1) * buffer.width] {
@@ -438,8 +440,38 @@ fn draw(
         );
       }
 
+      if cell.underline != current.underline {
+        let _ = queue!(
+          out,
+          SetAttribute(if cell.underline {
+            Attribute::Underlined
+          }
+          else {
+            Attribute::NoUnderline
+          })
+        );
+      }
+
+      // OSC 8 anchors: close the running link on any change, open the next.
+      if cell.link != current.link {
+        if current.link.is_some() {
+          let _ = queue!(out, crossterm::style::Print("\x1b]8;;\x1b\\"));
+        }
+
+        if let Some(url) = cell
+          .link
+          .and_then(|index| buffer.links.get(usize::from(index)))
+        {
+          let _ = queue!(out, crossterm::style::Print(format!("\x1b]8;;{url}\x1b\\")));
+        }
+      }
+
       let _ = queue!(out, crossterm::style::Print(cell.character));
       current = *cell;
+    }
+
+    if current.link.is_some() {
+      let _ = queue!(out, crossterm::style::Print("\x1b]8;;\x1b\\"));
     }
   }
 

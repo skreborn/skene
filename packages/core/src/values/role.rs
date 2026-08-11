@@ -7,8 +7,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Role {
-  /// A clickable button.
-  Button,
   /// A navigation region.
   Navigation,
   /// The document's main content region; one per page.

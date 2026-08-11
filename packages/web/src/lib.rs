@@ -185,7 +185,6 @@ pub use self::ssr::{
 #[must_use]
 pub fn create_box(props: &BoxProps) -> NodeId {
   let node = create_element(match props.role {
-    Some(Role::Button) => "button",
     Some(Role::Navigation) => "nav",
     Some(Role::Main) => "main",
     Some(Role::Header) => "header",
@@ -206,10 +205,6 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     Some(Role::Label) => "label",
     None => "div",
   });
-
-  if matches!(props.role, Some(Role::Button)) {
-    set_attribute(node, "type", "button");
-  }
 
   assign_class(node, &mapping::box_template(props));
 

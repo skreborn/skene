@@ -79,7 +79,7 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   create call—the web driver folds them into one content-addressed class—while each
   `derive_` property binds an effect that re-applies through the per-property update call
   (web: a single-declaration inline override). The split is written once, in the umbrella.
-- **`Role` guides the driver's concrete choice** (web: `Role::Button` → `<button>`); the
+- **`Role` guides the driver's concrete choice** (web: `Role::Navigation` → `<nav>`); the
   vocabulary stays semantic, never platform-worded.
 - **Painted**—a future vocabulary entry: a vello paint callback plus a layout size,
   portable across every *interactive* target. Native drivers paint it into a layer; the

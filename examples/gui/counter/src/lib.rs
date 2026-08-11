@@ -51,20 +51,19 @@ fn card(count: Signal<u64>) -> impl IntoView {
 }
 
 fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Row::new()
-    .set_arrangement(Arrangement::Center)
-    .set_item_alignment(ItemAlignment::Center)
-    .set_padding(Inset::symmetric(16., 12.))
-    .set_color(Color::srgb(0.195, 0.215, 0.195))
-    .set_border(Border::new(1., Color::srgb(0.2, 0.2, 0.2)))
-    .set_border_radius(8.)
-    .set_cursor(MouseCursor::Click)
-    .set_role(Role::Button)
+  Button::new()
+    .handle_click(action)
+    .set_style(
+      BoxStyle::new()
+        .set_padding(Inset::symmetric(16., 12.))
+        .set_color(Color::srgb(0.195, 0.215, 0.195))
+        .set_border(Border::new(1., Color::srgb(0.2, 0.2, 0.2)))
+        .set_border_radius(8.),
+    )
     .set_child(
       Text::new(symbol)
         .set_font_size(22.)
         .set_font_weight(500.)
         .set_color(Color::srgb(0.835, 0.9, 0.84)),
     )
-    .handle_click(action)
 }

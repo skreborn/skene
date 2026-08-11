@@ -38,12 +38,10 @@ fn app() -> impl IntoView {
 }
 
 fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Container::new()
-    .set_role(Role::Button)
-    .set_padding(Inset::symmetric(16., 12.))
-    .set_cursor(MouseCursor::Click)
-    .set_child(Text::new(symbol))
+  Button::new()
     .handle_click(action)
+    .set_style(BoxStyle::new().set_padding(Inset::symmetric(16., 12.)))
+    .set_child(Text::new(symbol))
 }
 ```
 

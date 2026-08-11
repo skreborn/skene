@@ -139,15 +139,12 @@ fn container_is_a_div() {
 }
 
 #[wasm_bindgen_test]
-fn button_role_realizes_a_button_element() {
+fn role_realizes_its_semantic_element() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::new().set_role(Role::Button).build());
+  mount(|| Container::new().set_role(Role::Navigation).build());
 
-  let element = only_child(&root);
-
-  assert_eq!(element.tag_name(), "BUTTON");
-  assert_eq!(element.get_attribute("type").as_deref(), Some("button"));
+  assert_eq!(only_child(&root).tag_name(), "NAV");
 }
 
 #[wasm_bindgen_test]
@@ -284,7 +281,6 @@ fn click_handler_runs_on_a_real_click() {
 
     move || {
       Container::new()
-        .set_role(Role::Button)
         .handle_click(move || clicks.set(clicks.get() + 1))
         .build()
     }
@@ -459,7 +455,6 @@ fn a_click_handler_may_build_nodes() {
 
   mount(|| {
     Container::new()
-      .set_role(Role::Button)
       .handle_click(|| {
         // Re-enter the platform from inside a handler.
         let _ = web::create_element("div");
@@ -700,7 +695,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
         Text::new("welcome").into_any()
       }
       else {
-        Container::new().set_role(Role::Button).into_any()
+        Container::new().set_role(Role::Navigation).into_any()
       }
     })
     .build()
@@ -709,7 +704,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
   // `DerivedView` anchors its subtree under a group node.
   let anchor = only_child(&root);
 
-  assert_eq!(anchor.first_element_child().unwrap().tag_name(), "BUTTON");
+  assert_eq!(anchor.first_element_child().unwrap().tag_name(), "NAV");
 
   logged_in.set(true);
   Runtime::drain_pending_work();

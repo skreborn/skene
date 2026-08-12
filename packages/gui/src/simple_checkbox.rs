@@ -2,7 +2,7 @@
 
 use skene_core::View;
 
-use crate::RawCheckbox;
+use crate::{RawCheckbox, simple::simple_surface};
 
 /// A ready-made checkbox: the platform's ink-drawn box and mark, with the Simple
 /// interaction feedback.
@@ -71,6 +71,8 @@ impl Default for SimpleCheckbox {
     Self::new()
   }
 }
+
+simple_surface!(SimpleCheckbox);
 
 impl View for SimpleCheckbox {
   fn build(self) -> skene_core::NodeId {

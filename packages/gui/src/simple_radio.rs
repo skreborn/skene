@@ -2,7 +2,7 @@
 
 use skene_core::View;
 
-use crate::RawRadio;
+use crate::{RawRadio, simple::simple_surface};
 
 /// A ready-made radio button: the platform's ink-drawn ring and dot, with the Simple
 /// interaction feedback.
@@ -65,6 +65,8 @@ impl SimpleRadio {
     self
   }
 }
+
+simple_surface!(SimpleRadio);
 
 impl View for SimpleRadio {
   fn build(self) -> skene_core::NodeId {

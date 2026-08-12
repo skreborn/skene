@@ -2,7 +2,7 @@
 
 use skene_core::{NodeId, View};
 
-use crate::RawCheckbox;
+use crate::{RawCheckbox, simple::simple_surface};
 
 /// A ready-made checkbox: the theme's marks with the Simple interaction feedback.
 ///
@@ -70,6 +70,8 @@ impl Default for SimpleCheckbox {
     Self::new()
   }
 }
+
+simple_surface!(SimpleCheckbox);
 
 impl View for SimpleCheckbox {
   fn build(self) -> NodeId {

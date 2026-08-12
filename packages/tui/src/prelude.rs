@@ -79,15 +79,6 @@ pub use crate::{
   Row,
   RunStyle,
   ScrollEvent,
-  SimpleButton,
-  SimpleCard,
-  SimpleCheckbox,
-  SimplePalette,
-  SimplePicker,
-  SimpleRadio,
-  SimpleSlider,
-  SimpleTextField,
-  SimpleVariant,
   Span,
   Stack,
   Suspense,
@@ -99,4 +90,16 @@ pub use crate::{
   launch,
   set_title,
   spawn,
+};
+#[cfg(feature = "simple-views")]
+pub use crate::{
+  SimpleButton,
+  SimpleCard,
+  SimpleCheckbox,
+  SimplePalette,
+  SimplePicker,
+  SimpleRadio,
+  SimpleSlider,
+  SimpleTextField,
+  SimpleVariant,
 };

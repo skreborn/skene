@@ -40,13 +40,21 @@ mod realize;
 mod resource;
 mod routing;
 mod selection;
+#[cfg(feature = "simple-views")]
 mod simple;
+#[cfg(feature = "simple-views")]
 mod simple_button;
+#[cfg(feature = "simple-views")]
 mod simple_card;
+#[cfg(feature = "simple-views")]
 mod simple_checkbox;
+#[cfg(feature = "simple-views")]
 mod simple_picker;
+#[cfg(feature = "simple-views")]
 mod simple_radio;
+#[cfg(feature = "simple-views")]
 mod simple_slider;
+#[cfg(feature = "simple-views")]
 mod simple_text_field;
 mod state;
 mod style;
@@ -109,6 +117,12 @@ pub use crate::{
   raw_text_field::RawTextField,
   resource::Resource,
   routing::install_router,
+  task::spawn,
+  text::{RichText, Span, Text},
+  theme::{ControlTheme, TextTheme},
+};
+#[cfg(feature = "simple-views")]
+pub use crate::{
   simple::{SimplePalette, SimpleVariant},
   simple_button::SimpleButton,
   simple_card::SimpleCard,
@@ -117,9 +131,6 @@ pub use crate::{
   simple_radio::SimpleRadio,
   simple_slider::SimpleSlider,
   simple_text_field::SimpleTextField,
-  task::spawn,
-  text::{RichText, Span, Text},
-  theme::{ControlTheme, TextTheme},
 };
 
 /// A suspense view over the terminal tree; see [`skene_core::Suspense`].

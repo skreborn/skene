@@ -2,7 +2,11 @@
 
 use skene_core::{NodeId, View};
 
-use crate::{RawPicker, simple, simple::SimplePalette};
+use crate::{
+  RawPicker,
+  simple,
+  simple::{SimplePalette, simple_surface},
+};
 
 /// A ready-made select: the current label and indicator, its popup a Simple card.
 ///
@@ -73,6 +77,8 @@ impl Default for SimplePicker {
     Self::new()
   }
 }
+
+simple_surface!(SimplePicker);
 
 impl View for SimplePicker {
   fn build(self) -> NodeId {

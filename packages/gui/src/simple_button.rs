@@ -1,21 +1,21 @@
 //! A ready-made button in the Simple design language.
 
-use std::rc::Rc;
+use skene_core::{Border, BoxStyle, Color, Condition, HasChildren, Inset, Source, View};
 
-use skene_core::{Border, BoxStyle, Condition, HasChildren, Inset, View};
-
-use crate::{RawButton, SimpleVariant, Text, simple};
+use crate::{RawButton, SimpleVariant, Text, simple, simple::simple_surface};
 
 /// A ready-made button: a text label on the variant's surface, with hover feedback and
 /// the platform's full keyboard behavior.
 ///
-/// Pick the emphasis with [`set_variant`](Self::set_variant). For anything beyond a
-/// labeled action—custom content, custom styling—compose [`RawButton`] directly.
+/// Pick the emphasis with [`set_variant`](Self::set_variant); a derived label comes
+/// from the [`derive`](Self::derive) constructor, exactly as on [`Text`]. For anything
+/// beyond a labeled action—custom content, custom styling—compose [`RawButton`]
+/// directly.
 #[must_use]
 pub struct SimpleButton {
-  label: String,
+  raw: RawButton,
+  label: Source<String>,
   variant: SimpleVariant,
-  click_handler: Option<Rc<skene_core::ClickHandler>>,
 }
 
 impl SimpleButton {
@@ -23,9 +23,19 @@ impl SimpleButton {
   #[inline(always)]
   pub fn new(label: impl Into<String>) -> Self {
     Self {
-      label: label.into(),
+      raw: RawButton::new(),
+      label: Source::Static(label.into()),
       variant: SimpleVariant::Primary,
-      click_handler: None,
+    }
+  }
+
+  /// Creates a button with a derived label, re-rendered whenever it changes.
+  #[inline(always)]
+  pub fn derive(label: impl Fn() -> String + 'static) -> Self {
+    Self {
+      raw: RawButton::new(),
+      label: Source::Derived(std::rc::Rc::new(label)),
+      variant: SimpleVariant::Primary,
     }
   }
 
@@ -43,35 +53,38 @@ impl SimpleButton {
     mut self,
     action: impl Fn() -> R + 'static,
   ) -> Self {
-    self.click_handler = Some(Rc::new(move || action().into()));
+    self.raw = self.raw.handle_click(action);
 
     self
   }
 }
 
+simple_surface!(SimpleButton);
+
 impl View for SimpleButton {
   fn build(self) -> skene_core::NodeId {
     let look = self.variant.look();
-    let mut button = RawButton::new()
+    let text = match self.label {
+      Source::Static(label) => Text::new(label),
+      Source::Derived(label) => Text::derive(move || label()),
+    };
+
+    self
+      .raw
       .set_style(
         BoxStyle::new()
           .set_padding(Inset::symmetric(16., 8.))
           .set_color(look.surface)
-          .set_border(Border::new(1., look.border))
+          .set_border(Border::new(1., look.border.unwrap_or(Color::TRANSPARENT)))
           .set_border_radius(simple::RADIUS),
       )
       .set_when(Condition::Hovered, BoxStyle::new().set_color(look.hover))
       .set_child(
-        Text::new(self.label)
+        text
           .set_font_size(14.)
           .set_font_weight(500.)
           .set_color(look.ink),
-      );
-
-    if let Some(action) = self.click_handler {
-      button = button.handle_click(move || action());
-    }
-
-    button.build()
+      )
+      .build()
   }
 }

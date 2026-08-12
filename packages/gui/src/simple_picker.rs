@@ -2,7 +2,7 @@
 
 use skene_core::View;
 
-use crate::{RawPicker, simple};
+use crate::{RawPicker, simple, simple::simple_surface};
 
 /// A ready-made select: field chrome around the platform dropdown, its border
 /// brightening on focus.
@@ -74,6 +74,8 @@ impl Default for SimplePicker {
     Self::new()
   }
 }
+
+simple_surface!(SimplePicker);
 
 impl View for SimplePicker {
   fn build(self) -> skene_core::NodeId {

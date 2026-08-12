@@ -1,97 +1,17 @@
-//! The Simple component library's shared design language: one neutral palette, one
-//! shape vocabulary, and the emphasis variants.
+//! The Simple component library's facade-side machinery: the shape vocabulary in
+//! logical pixels and the shared builder surface. The palette and the emphasis
+//! variants come from `skene-simple`, shared with every other facade.
 //!
 //! Every `Simple*` view composes the raw controls through their public surface alone,
 //! so a third-party component library sits on exactly the same footing.
 
-use skene_core::{Border, BoxStyle, Color, Condition, Inset};
+use skene_core::{Border, BoxStyle, Condition, Inset};
+pub use skene_simple::{SimplePalette, SimpleVariant};
 
 /// The corner radius of a Simple control.
 pub(crate) const RADIUS: f32 = 8.;
 /// The corner radius of a [`SimpleCard`](crate::SimpleCard).
 pub(crate) const CARD_RADIUS: f32 = 12.;
-
-/// The Simple components' design tokens: a neutral dark palette shared by every
-/// platform's Simple library.
-///
-/// Use the tokens for chrome around the components—page backgrounds, captions,
-/// separators—so an app reads as one surface.
-#[must_use]
-pub struct SimplePalette;
-
-impl SimplePalette {
-  /// The page background.
-  #[inline(always)]
-  pub fn background() -> Color {
-    Color::srgb(0.035, 0.035, 0.043)
-  }
-
-  /// The default text ink.
-  #[inline(always)]
-  pub fn foreground() -> Color {
-    Color::srgb(0.98, 0.98, 0.98)
-  }
-
-  /// A raised surface: cards, popovers, modals.
-  #[inline(always)]
-  pub fn card() -> Color {
-    Color::srgb(0.094, 0.094, 0.106)
-  }
-
-  /// Hairline borders and separators.
-  #[inline(always)]
-  pub fn border() -> Color {
-    Color::srgb(0.153, 0.153, 0.165)
-  }
-
-  /// The primary action surface.
-  #[inline(always)]
-  pub fn primary() -> Color {
-    Color::srgb(0.98, 0.98, 0.98)
-  }
-
-  /// Ink on the primary surface.
-  #[inline(always)]
-  pub fn primary_foreground() -> Color {
-    Color::srgb(0.094, 0.094, 0.106)
-  }
-
-  /// The secondary action surface.
-  #[inline(always)]
-  pub fn secondary() -> Color {
-    Color::srgb(0.153, 0.153, 0.165)
-  }
-
-  /// Ink on the secondary surface.
-  #[inline(always)]
-  pub fn secondary_foreground() -> Color {
-    Color::srgb(0.98, 0.98, 0.98)
-  }
-
-  /// De-emphasized text: captions, hints, section titles.
-  #[inline(always)]
-  pub fn muted_foreground() -> Color {
-    Color::srgb(0.631, 0.631, 0.667)
-  }
-
-  /// The destructive action surface.
-  #[inline(always)]
-  pub fn destructive() -> Color {
-    Color::srgb(0.863, 0.149, 0.149)
-  }
-
-  /// Ink on the destructive surface.
-  #[inline(always)]
-  pub fn destructive_foreground() -> Color {
-    Color::srgb(0.98, 0.98, 0.98)
-  }
-
-  /// The focused control's border ink.
-  #[inline(always)]
-  pub fn ring() -> Color {
-    Color::srgb(0.631, 0.631, 0.667)
-  }
-}
 
 /// The shared field chrome: padded, hairline-bordered, rounded.
 pub(crate) fn field_style() -> BoxStyle {
@@ -109,65 +29,74 @@ pub(crate) fn field_focus() -> (Condition, BoxStyle) {
   )
 }
 
-/// A Simple action's emphasis, selecting its surface and ink.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-#[must_use]
-pub enum SimpleVariant {
-  /// The main action: a high-contrast surface.
-  #[default]
-  Primary,
-  /// A supporting action: a subdued surface.
-  Secondary,
-  /// A hairline-bordered action on the ambient background.
-  Outline,
-  /// A bare action, surfacing only under the pointer.
-  Ghost,
-  /// A dangerous action: the destructive surface.
-  Destructive,
-}
+/// Generates the shared non-styling control surface on a Simple control with a `raw`
+/// field, each method forwarded to the raw control: focus order, autofocus, focus and
+/// anchor binding, and the focus/blur/key handlers.
+macro_rules! simple_surface {
+  ($control:ident) => {
+    impl $control {
+      /// Sets the control's place in sequential focus traversal.
+      #[inline(always)]
+      pub fn set_focus_order(mut self, focus_order: skene_core::FocusOrder) -> Self {
+        self.raw = self.raw.set_focus_order(focus_order);
 
-/// One variant's resolved colors.
-pub(crate) struct Look {
-  pub(crate) surface: Color,
-  pub(crate) ink: Color,
-  pub(crate) border: Color,
-  pub(crate) hover: Color,
-}
+        self
+      }
 
-impl SimpleVariant {
-  /// The variant's resolved colors.
-  pub(crate) fn look(self) -> Look {
-    match self {
-      Self::Primary => Look {
-        surface: SimplePalette::primary(),
-        ink: SimplePalette::primary_foreground(),
-        border: Color::TRANSPARENT,
-        hover: Color::srgb(0.894, 0.894, 0.906),
-      },
-      Self::Secondary => Look {
-        surface: SimplePalette::secondary(),
-        ink: SimplePalette::secondary_foreground(),
-        border: Color::TRANSPARENT,
-        hover: Color::srgb(0.247, 0.247, 0.275),
-      },
-      Self::Outline => Look {
-        surface: Color::TRANSPARENT,
-        ink: SimplePalette::foreground(),
-        border: SimplePalette::border(),
-        hover: SimplePalette::secondary(),
-      },
-      Self::Ghost => Look {
-        surface: Color::TRANSPARENT,
-        ink: SimplePalette::foreground(),
-        border: Color::TRANSPARENT,
-        hover: SimplePalette::secondary(),
-      },
-      Self::Destructive => Look {
-        surface: SimplePalette::destructive(),
-        ink: SimplePalette::destructive_foreground(),
-        border: Color::TRANSPARENT,
-        hover: Color::srgb(0.725, 0.11, 0.11),
-      },
+      /// Makes the control take focus when the page loads.
+      #[inline(always)]
+      pub fn set_autofocus(mut self) -> Self {
+        self.raw = self.raw.set_autofocus();
+
+        self
+      }
+
+      /// Binds `handle` to the control, so
+      /// [`FocusHandle::focus`](crate::FocusHandle::focus) targets it once built.
+      #[inline(always)]
+      pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
+        self.raw = self.raw.bind_focus(handle);
+
+        self
+      }
+
+      /// Binds `anchor` to the control, so an overlay's
+      /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
+      #[inline(always)]
+      pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
+        self.raw = self.raw.bind_anchor(anchor);
+
+        self
+      }
+
+      /// Sets the focus handler.
+      #[inline(always)]
+      pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
+        self.raw = self.raw.handle_focus(action);
+
+        self
+      }
+
+      /// Sets the blur handler.
+      #[inline(always)]
+      pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
+        self.raw = self.raw.handle_blur(action);
+
+        self
+      }
+
+      /// Sets the key-press handler.
+      #[inline(always)]
+      pub fn handle_key_down<R: Into<skene_core::Prevent>>(
+        mut self,
+        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
+      ) -> Self {
+        self.raw = self.raw.handle_key_down(action);
+
+        self
+      }
     }
-  }
+  };
 }
+
+pub(crate) use simple_surface;

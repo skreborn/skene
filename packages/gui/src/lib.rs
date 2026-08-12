@@ -34,14 +34,23 @@ mod realize;
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
+#[cfg(feature = "simple-views")]
 mod simple;
+#[cfg(feature = "simple-views")]
 mod simple_button;
+#[cfg(feature = "simple-views")]
 mod simple_card;
+#[cfg(feature = "simple-views")]
 mod simple_checkbox;
+#[cfg(feature = "simple-views")]
 mod simple_picker;
+#[cfg(feature = "simple-views")]
 mod simple_radio;
+#[cfg(feature = "simple-views")]
 mod simple_slider;
+#[cfg(feature = "simple-views")]
 mod simple_text_editor;
+#[cfg(feature = "simple-views")]
 mod simple_text_field;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
@@ -99,6 +108,10 @@ pub use crate::{
   raw_slider::RawSlider,
   raw_text_editor::RawTextEditor,
   raw_text_field::RawTextField,
+  text::{RichText, Span, Text, TextStyle, TextTheme},
+};
+#[cfg(feature = "simple-views")]
+pub use crate::{
   simple::{SimplePalette, SimpleVariant},
   simple_button::SimpleButton,
   simple_card::SimpleCard,
@@ -108,7 +121,6 @@ pub use crate::{
   simple_slider::SimpleSlider,
   simple_text_editor::SimpleTextEditor,
   simple_text_field::SimpleTextField,
-  text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural

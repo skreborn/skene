@@ -1,0 +1,10 @@
+[package]
+name = "skene-simple"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+skene-core.workspace = true
+
+[lints]
+workspace = true

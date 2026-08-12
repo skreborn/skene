@@ -82,6 +82,18 @@ pub use crate::{
   RichText,
   Role,
   Row,
+  Size,
+  Span,
+  Stack,
+  Suspense,
+  Text,
+  TextStyle,
+  TextTheme,
+  lazy,
+  main,
+};
+#[cfg(feature = "simple-views")]
+pub use crate::{
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
@@ -92,15 +104,6 @@ pub use crate::{
   SimpleTextEditor,
   SimpleTextField,
   SimpleVariant,
-  Size,
-  Span,
-  Stack,
-  Suspense,
-  Text,
-  TextStyle,
-  TextTheme,
-  lazy,
-  main,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use crate::{hydrate_page, launch};

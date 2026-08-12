@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+default = ["simple-views"]
+# The ready-made Simple component library (`SimpleButton`, `SimpleCard`, …) over the
+# raw controls.
+simple-views = ["dep:skene-simple"]
 # Serialize tagged signals to a byte snapshot and restore them on creation; see
 # `skene-reactive`'s feature of the same name.
 snapshot = ["skene-reactive/snapshot", "skene-web/snapshot"]
@@ -17,6 +21,7 @@ skene-core.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
 skene-router.workspace = true
+skene-simple = { optional = true, workspace = true }
 tracing.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

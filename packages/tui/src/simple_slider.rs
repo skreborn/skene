@@ -2,7 +2,7 @@
 
 use skene_core::{NodeId, View};
 
-use crate::RawSlider;
+use crate::{RawSlider, simple::simple_surface};
 
 /// A ready-made slider: the theme's track and thumb glyphs.
 ///
@@ -63,6 +63,8 @@ impl SimpleSlider {
     self
   }
 }
+
+simple_surface!(SimpleSlider);
 
 impl View for SimpleSlider {
   fn build(self) -> NodeId {

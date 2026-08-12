@@ -2,7 +2,7 @@
 
 use skene_core::{NodeId, View};
 
-use crate::RawRadio;
+use crate::{RawRadio, simple::simple_surface};
 
 /// A ready-made radio button: the theme's marks with the Simple interaction feedback.
 ///
@@ -64,6 +64,8 @@ impl SimpleRadio {
     self
   }
 }
+
+simple_surface!(SimpleRadio);
 
 impl View for SimpleRadio {
   fn build(self) -> NodeId {

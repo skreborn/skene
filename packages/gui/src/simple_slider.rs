@@ -2,7 +2,7 @@
 
 use skene_core::View;
 
-use crate::RawSlider;
+use crate::{RawSlider, simple::simple_surface};
 
 /// A ready-made slider: the platform's ink-drawn track and thumb.
 ///
@@ -63,6 +63,8 @@ impl SimpleSlider {
     self
   }
 }
+
+simple_surface!(SimpleSlider);
 
 impl View for SimpleSlider {
   fn build(self) -> skene_core::NodeId {

@@ -79,9 +79,11 @@ fn buttons() -> impl IntoView {
       Row::new()
         .set_spacing(2)
         .set_wrap(Wrap::Forward)
+        .set_line_spacing(1)
         .set_children((
           SimpleButton::new("Primary").handle_click(move || count.update(|value| *value += 1)),
           SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
+          SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
           SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
           SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
         )),

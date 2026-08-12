@@ -115,6 +115,40 @@ impl State {
     Some(SelectionPoint { node, offset })
   }
 
+  /// The link destination at the cell (`x`, `y`), when the cell carries a linked
+  /// span's character—exact hits only, never clamped into a neighboring line.
+  pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<String> {
+    let path = self.hit_test(x, y);
+    let (node, (origin_x, origin_y)) = *path.last()?;
+    let (width, _) = self.node_size(node);
+    let nodes = self.nodes.borrow();
+    let NodeKind::Paragraph { spans, .. } = &nodes.get(&node)?.kind
+    else {
+      return None;
+    };
+    let text: String = spans.iter().map(|span| span.text.as_str()).collect();
+    let lines = wrap_spans(&text, usize::try_from(width).unwrap_or(1));
+    let row = usize::try_from(i64::from(y) - origin_y).ok()?;
+    let column = usize::try_from(i64::from(x) - origin_x).ok()?;
+    let (start, line) = lines.get(row)?;
+
+    if column >= line.chars().count() {
+      return None;
+    }
+
+    let offset = start + column;
+    let mut cursor = 0;
+
+    spans.iter().find_map(|span| {
+      let end = cursor + span.text.chars().count();
+      let hit = (cursor..end).contains(&offset);
+
+      cursor = end;
+
+      if hit { span.link.clone() } else { None }
+    })
+  }
+
   /// The source position nearest the cell (`x`, `y`) over every selectable run—by
   /// vertical distance first, then horizontal, earlier runs winning ties. Runs outside
   /// an open modal are ignored while one is open.

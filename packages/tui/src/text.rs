@@ -239,7 +239,9 @@ impl Span {
     self
   }
 
-  /// Makes the span a link to the given destination.
+  /// Makes the span a link to the given destination: underlined, inked in the link
+  /// blue unless the span sets a color, opened by a click through the system handler,
+  /// and carried as an OSC 8 anchor for the terminal's own link handling.
   #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());

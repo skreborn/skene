@@ -142,7 +142,7 @@ where
   loop {
     crate::task::pump();
 
-    let (quit, copy) = with_state(|state| {
+    let (quit, copy, open) = with_state(|state| {
       if state.title_dirty.replace(false) {
         emit_title(state.title.borrow().as_deref().unwrap_or(""));
       }
@@ -161,11 +161,19 @@ where
         last_frame = Some(frame);
       }
 
-      (state.quit.get(), state.pending_copy.borrow_mut().take())
+      (
+        state.quit.get(),
+        state.pending_copy.borrow_mut().take(),
+        state.pending_open.borrow_mut().take(),
+      )
     });
 
     if let Some(text) = copy {
       emit_copy(&text);
+    }
+
+    if let Some(url) = open {
+      open_url(&url);
     }
 
     if quit {
@@ -335,6 +343,23 @@ fn emit_title(title: &str) {
   let mut out = std::io::stdout();
   let _ = write!(out, "\x1b]2;{title}\x1b\\");
   let _ = out.flush();
+}
+
+/// Opens `url` with the system handler, detached and best-effort.
+fn open_url(url: &str) {
+  #[cfg(target_os = "macos")]
+  let command = "open";
+  #[cfg(all(unix, not(target_os = "macos")))]
+  let command = "xdg-open";
+  #[cfg(windows)]
+  let command = "explorer";
+
+  let _ = std::process::Command::new(command)
+    .arg(url)
+    .stdin(std::process::Stdio::null())
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .spawn();
 }
 
 /// Copies text to the system clipboard via OSC 52; terminals without support ignore
@@ -1077,6 +1102,13 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
 #[must_use]
 pub fn take_copied() -> Option<String> {
   with_state(|state| state.pending_copy.borrow_mut().take())
+}
+
+/// Takes the link the last click staged for the system handler, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn take_opened() -> Option<String> {
+  with_state(|state| state.pending_open.borrow_mut().take())
 }
 
 /// The current terminal title, for a headless test.

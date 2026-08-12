@@ -729,6 +729,75 @@ fn hover_cursor_resolves() {
   });
 }
 
+/// A click on a linked span stages its destination for the system handler; a click
+/// beside it stages nothing, and the link shows the pointing hand.
+#[test]
+fn link_click_opens_the_destination() {
+  let (on_link, cursor, beside) = with_driver(|| {
+    tui::mount(|| {
+      RichText::new([
+        Span::text("read the "),
+        Span::text("docs").set_link("https://example.com/docs"),
+      ])
+      .into_any()
+      .build()
+    });
+
+    let _ = tui::render_to_text(20, 2);
+
+    tui::trigger_mouse_move(10, 0);
+
+    let cursor = tui::current_cursor();
+
+    tui::trigger_mouse_click(10, 0);
+
+    let on_link = tui::take_opened();
+
+    tui::trigger_mouse_click(2, 0);
+
+    (on_link, cursor, tui::take_opened())
+  });
+
+  assert_eq!(on_link.as_deref(), Some("https://example.com/docs"));
+  assert_eq!(cursor, Some(skene_tui::core::MouseCursor::Click));
+  assert_eq!(beside, None);
+}
+
+/// A slider shows the open hand at rest and the closed hand while dragging.
+#[test]
+fn slider_shows_the_grab_cursors() {
+  let (resting, dragging, released) = with_driver(|| {
+    let volume = Signal::new(5.0f32);
+
+    tui::mount(|| {
+      Container::new()
+        .set_width(11)
+        .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_mouse_move(5, 0);
+
+    let resting = tui::current_cursor();
+
+    tui::trigger_mouse_press(5, 0);
+    tui::trigger_mouse_drag(7, 0);
+
+    let dragging = tui::current_cursor();
+
+    tui::trigger_mouse_release(7, 0);
+
+    (resting, dragging, tui::current_cursor())
+  });
+
+  assert_eq!(resting, Some(skene_tui::core::MouseCursor::Grab));
+  assert_eq!(dragging, Some(skene_tui::core::MouseCursor::Grabbing));
+  assert_eq!(released, Some(skene_tui::core::MouseCursor::Grab));
+}
+
 /// A modal overlay paints over the app with its backdrop scrim, blocks clicks beneath
 /// it, and Escape asks it to close.
 #[test]

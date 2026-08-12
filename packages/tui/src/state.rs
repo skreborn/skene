@@ -278,6 +278,10 @@ pub(crate) struct State {
   scroll_latch: RefCell<Option<ScrollLatch>>,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: RefCell<Option<String>>,
+  /// The link pressed at its cell, opened when the release lands on the same cell.
+  pressed_link: RefCell<Option<(u16, u16, String)>>,
+  /// A link destination staged for the terminal loop to open.
+  pub(crate) pending_open: RefCell<Option<String>>,
   /// The size of the last computed layout, which mouse hit-testing resolves against.
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
@@ -360,6 +364,8 @@ impl State {
       last_pointer: Cell::new((0, 0)),
       scroll_latch: RefCell::new(None),
       pending_copy: RefCell::new(None),
+      pressed_link: RefCell::new(None),
+      pending_open: RefCell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
       clipboard: Cell::new(true),
@@ -941,6 +947,9 @@ impl State {
     else {
       self.last_press.set(None);
     }
+
+    // A press on a link arms it; the release on the same cell opens it.
+    *self.pressed_link.borrow_mut() = self.link_at(x, y).map(|url| (x, y, url));
   }
 
   /// Completes a click on release: the click handlers and the toggling activations
@@ -984,8 +993,18 @@ impl State {
       }
     }
 
+    let pressed_link = self.pressed_link.borrow_mut().take();
+
     if prevention.default {
       return;
+    }
+
+    // A click on a link—press and release on one cell, so a selection drag never
+    // opens—stages it for the terminal loop's system handler.
+    if let Some((press_x, press_y, url)) = pressed_link
+      && (press_x, press_y) == (x, y)
+    {
+      *self.pending_open.borrow_mut() = Some(url);
     }
 
     if let Some(target) = target

@@ -70,6 +70,7 @@ pub use terminal::{
   current_title,
   focused_node,
   take_copied,
+  take_opened,
   trigger_clipboard_support,
   trigger_color_scheme,
   trigger_key,

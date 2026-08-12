@@ -8,13 +8,13 @@ use crate::{
   simple::{self, SimpleVariant, simple_surface},
 };
 
-/// A ready-made button: a bordered text label on the variant's surface, with the
+/// A ready-made button: a one-row text label on the variant's surface, with the
 /// terminal's full keyboard behavior.
 ///
-/// Interaction feedback rides the border: hovering brightens it to the ring, focusing
-/// inks it in the label's own ink; the surface never changes. Pick the emphasis with
-/// [`set_variant`](Self::set_variant); a derived label comes from the
-/// [`derive`](Self::derive) constructor, exactly as on [`Text`](crate::Text). For
+/// The surface shifts on hover and focus; the bordered `Outline` variant shifts its
+/// border instead—to the ring under the pointer, to its own ink while focused. Pick
+/// the emphasis with [`set_variant`](Self::set_variant); a derived label comes from
+/// the [`derive`](Self::derive) constructor, exactly as on [`Text`](crate::Text). For
 /// anything beyond a labeled action—custom content, custom styling—compose
 /// [`RawButton`] directly.
 #[must_use]
@@ -76,22 +76,30 @@ impl View for SimpleButton {
       Source::Static(label) => crate::Text::new(label),
       Source::Derived(label) => crate::Text::derive(move || label()),
     };
+    let mut style = BoxStyle::new()
+      .set_padding(crate::Inset::horizontal(2))
+      .set_color(look.surface)
+      .set_cursor(MouseCursor::Click);
 
-    self
-      .raw
-      .set_style(
-        BoxStyle::new()
-          .set_padding(crate::Inset::horizontal(2))
-          .set_color(look.surface)
-          .set_border(look.border.unwrap_or(look.surface))
-          .set_border_glyphs(simple::GLYPHS)
-          .set_cursor(MouseCursor::Click),
-      )
-      .set_when(
-        Condition::Hovered,
-        BoxStyle::new().set_border(crate::simple::SimplePalette::ring()),
-      )
-      .set_when(Condition::Focused, BoxStyle::new().set_border(look.ink))
+    let mut button = self.raw;
+
+    if let Some(border) = look.border {
+      style = style.set_border(border).set_border_glyphs(simple::GLYPHS);
+      button = button
+        .set_when(
+          Condition::Hovered,
+          BoxStyle::new().set_border(crate::simple::SimplePalette::ring()),
+        )
+        .set_when(Condition::Focused, BoxStyle::new().set_border(look.ink));
+    }
+    else {
+      button = button
+        .set_when(Condition::Hovered, BoxStyle::new().set_color(look.hover))
+        .set_when(Condition::Focused, BoxStyle::new().set_color(look.focus));
+    }
+
+    button
+      .set_style(style)
       .set_child(text.set_bold(true).set_color(look.ink))
       .build()
   }

@@ -80,6 +80,7 @@ fn buttons() -> impl IntoView {
         .set_spacing(2)
         .set_wrap(Wrap::Forward)
         .set_line_spacing(1)
+        .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleButton::new("Primary").handle_click(move || count.update(|value| *value += 1)),
           SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),

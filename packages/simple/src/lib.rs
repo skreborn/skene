@@ -118,6 +118,8 @@ pub struct Look {
   pub border: Option<Color>,
   /// The surface shown under the pointer.
   pub hover: Color,
+  /// The surface shown while focused, on platforms without a focus ring of their own.
+  pub focus: Color,
 }
 
 impl SimpleVariant {
@@ -129,30 +131,35 @@ impl SimpleVariant {
         ink: SimplePalette::primary_foreground(),
         border: None,
         hover: Color::srgb(0.894, 0.894, 0.906),
+        focus: Color::srgb(0.831, 0.831, 0.855),
       },
       Self::Secondary => Look {
         surface: SimplePalette::secondary(),
         ink: SimplePalette::secondary_foreground(),
         border: None,
         hover: Color::srgb(0.247, 0.247, 0.275),
+        focus: Color::srgb(0.322, 0.322, 0.357),
       },
       Self::Outline => Look {
         surface: Color::TRANSPARENT,
         ink: SimplePalette::foreground(),
         border: Some(SimplePalette::border()),
         hover: SimplePalette::secondary(),
+        focus: Color::srgb(0.247, 0.247, 0.275),
       },
       Self::Ghost => Look {
         surface: Color::TRANSPARENT,
         ink: SimplePalette::foreground(),
         border: None,
         hover: SimplePalette::secondary(),
+        focus: Color::srgb(0.247, 0.247, 0.275),
       },
       Self::Destructive => Look {
         surface: SimplePalette::destructive(),
         ink: SimplePalette::destructive_foreground(),
         border: None,
         hover: Color::srgb(0.725, 0.11, 0.11),
+        focus: Color::srgb(0.6, 0.106, 0.106),
       },
     }
   }

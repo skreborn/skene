@@ -386,18 +386,25 @@ fn row_highlight(dark: bool) -> (skene_core::Color, skene_core::Color) {
   }
 }
 
-/// The popup's default box: a plain border, filled to cover the content beneath.
+/// The popup's default box: a plain border in the scheme's ink, filled to cover the
+/// content beneath.
 fn default_popup_style() -> BoxStyle {
   let dark = with_state(|state| state.dark.get());
-  let backdrop = if dark {
-    skene_core::Color::srgb(0., 0., 0.)
+  let (backdrop, edge) = if dark {
+    (
+      skene_core::Color::srgb(0., 0., 0.),
+      skene_core::Color::srgb(0.75, 0.75, 0.75),
+    )
   }
   else {
-    skene_core::Color::srgb(1., 1., 1.)
+    (
+      skene_core::Color::srgb(1., 1., 1.),
+      skene_core::Color::srgb(0.25, 0.25, 0.25),
+    )
   };
 
   BoxStyle::new()
     .set_color(backdrop)
-    .set_border(skene_core::Color::srgb(0., 0., 0.).with_alpha(0.))
+    .set_border(edge)
     .set_padding(crate::Inset::horizontal(1))
 }

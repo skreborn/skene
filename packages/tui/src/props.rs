@@ -118,7 +118,8 @@ pub struct BoxStyle {
   pub pinned: Option<Inset<Dimension<u32>>>,
   /// The background color.
   pub color: Option<Color>,
-  /// The border color; a border is always one cell of box-drawing characters.
+  /// The border color; a border is always one cell of box-drawing characters. A fully
+  /// transparent color keeps the border's cells but paints no glyphs.
   pub border: Option<Color>,
   /// The characters the border draws with; [`BorderGlyphs::LIGHT`] when unset.
   pub border_glyphs: Option<BorderGlyphs>,
@@ -269,7 +270,8 @@ impl BoxStyle {
     self
   }
 
-  /// Sets a one-cell border in the given color.
+  /// Sets a one-cell border in the given color; a fully transparent color keeps the
+  /// border's cells but paints no glyphs.
   #[inline(always)]
   pub const fn set_border(mut self, border: Color) -> Self {
     self.border = Some(border);

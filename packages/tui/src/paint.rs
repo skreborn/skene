@@ -963,7 +963,9 @@ fn paint_node(
 
       fill(buffer, x, y, width, height, background);
 
-      if let Some(border) = border {
+      if let Some(border) = border
+        && border.color.is_some()
+      {
         draw_border(buffer, x, y, width, height, border.glyphs, border.color);
       }
     }
@@ -1008,7 +1010,9 @@ fn paint_node(
       fill(buffer, x, y, width, height, background);
 
       let inset = if let Some(border) = border {
-        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        if border.color.is_some() {
+          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        }
 
         1
       }
@@ -1374,7 +1378,8 @@ fn thumb_span_eighths(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   (start, thumb)
 }
 
-/// A border's paint: present, with its character set and an optional explicit color.
+/// A border's paint: present, with its character set and its color—`None` for a fully
+/// transparent border, which keeps its cells but paints no glyphs.
 struct BorderPaint {
   glyphs: crate::BorderGlyphs,
   color: Option<(u8, u8, u8)>,

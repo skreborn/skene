@@ -8,7 +8,8 @@ use crate::{
   simple::{SimplePalette, simple_surface},
 };
 
-/// A ready-made select: the current label and indicator, its popup a Simple card.
+/// A ready-made select: the current label and indicator, its popup a Simple card with
+/// the highlight bar in the palette's secondary surface.
 ///
 /// The chosen value flows both ways, exactly as on [`RawPicker`]; for custom styling,
 /// compose the raw control directly.
@@ -90,6 +91,7 @@ impl View for SimplePicker {
           .set_border(SimplePalette::border())
           .set_border_glyphs(simple::GLYPHS),
       )
+      .set_highlight(SimplePalette::secondary(), SimplePalette::foreground())
       .build()
   }
 }

@@ -2,10 +2,15 @@
 
 use skene_core::View;
 
-use crate::{RawPicker, simple, simple::simple_surface};
+use crate::{
+  RawPicker,
+  simple,
+  simple::{SimplePalette, simple_surface},
+};
 
-/// A ready-made select: field chrome around the platform dropdown, its border
-/// brightening on focus.
+/// A ready-made select: field chrome on the card surface around the platform
+/// dropdown, its border brightening on focus. The dropdown wears the select's own
+/// surface, so the card colors the popup too.
 ///
 /// The chosen value flows both ways, exactly as on [`RawPicker`]; for custom styling,
 /// compose the raw control directly.
@@ -83,7 +88,7 @@ impl View for SimplePicker {
 
     self
       .raw
-      .set_style(simple::field_style())
+      .set_style(simple::field_style().set_color(SimplePalette::card()))
       .set_when(condition, style)
       .build()
   }

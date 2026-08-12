@@ -34,6 +34,7 @@ pub struct RawPicker {
   options: Vec<(String, String)>,
   indicator: Option<char>,
   popup_style: Option<BoxStyle>,
+  highlight: Option<(skene_core::Color, skene_core::Color)>,
   value: Option<Source<String>>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
@@ -48,6 +49,7 @@ impl RawPicker {
       options: Vec::new(),
       indicator: None,
       popup_style: None,
+      highlight: None,
       value: None,
       change_handler: None,
     }
@@ -81,6 +83,19 @@ impl RawPicker {
   #[inline(always)]
   pub fn set_popup_style(mut self, style: BoxStyle) -> Self {
     self.popup_style = Some(style);
+
+    self
+  }
+
+  /// Sets the highlighted row's bar and ink, replacing the default blue selection
+  /// bar for the detected background.
+  #[inline(always)]
+  pub const fn set_highlight(
+    mut self,
+    background: skene_core::Color,
+    color: skene_core::Color,
+  ) -> Self {
+    self.highlight = Some((background, color));
 
     self
   }
@@ -214,6 +229,7 @@ impl View for RawPicker {
 
     anchor.assign(node);
 
+    let highlight = self.highlight;
     let popup = crate::theme::build_unselectable(|| {
       Overlay::popup()
         .set_anchor(&anchor)
@@ -224,7 +240,7 @@ impl View for RawPicker {
           crate::Column::new().set_children(
             options
               .into_iter()
-              .map(|(value, label)| option_row(node, value, label, active, open))
+              .map(|(value, label)| option_row(node, value, label, active, open, highlight))
               .collect::<Vec<_>>(),
           ),
         )
@@ -327,14 +343,16 @@ fn register_popup_keys(
   });
 }
 
-/// One selectable row of the options popup: the highlighted option carries the bar,
-/// following the pointer, and a click commits.
+/// One selectable row of the options popup: the highlighted option carries the bar—
+/// `highlight` when set, else the default for the detected background—following the
+/// pointer, and a click commits.
 fn option_row(
   node: NodeId,
   value: String,
   label: String,
   active: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
+  highlight: Option<(skene_core::Color, skene_core::Color)>,
 ) -> crate::Container {
   use skene_core::Color;
   use skene_reactive::{Set, With};
@@ -346,7 +364,10 @@ fn option_row(
   crate::Container::new()
     .derive_color(move || {
       if active.with(|active| *active == shown) {
-        row_highlight(with_state(|state| state.dark.get())).0
+        highlight.map_or_else(
+          || row_highlight(with_state(|state| state.dark.get())).0,
+          |(background, _)| background,
+        )
       }
       else {
         Color::srgb(0., 0., 0.).with_alpha(0.)
@@ -354,7 +375,10 @@ fn option_row(
     })
     .set_child(crate::Text::new(label).derive_color(move || {
       if active.with(|active| *active == ink_shown) {
-        row_highlight(with_state(|state| state.dark.get())).1
+        highlight.map_or_else(
+          || row_highlight(with_state(|state| state.dark.get())).1,
+          |(_, color)| color,
+        )
       }
       else {
         Color::srgb(0., 0., 0.).with_alpha(0.)

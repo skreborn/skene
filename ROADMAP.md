@@ -575,6 +575,63 @@ sink are just different sinks for the same paths.)
   to the default, corrupt snapshots stage nothing, duplicate live tags panic.
   Remaining: driver extras riding along (focus, scroll), and the CLI holding the
   snapshot across dev reloads.
+- **Explore: positional store/restore, tags as an override.** Tagging every signal by
+  hand is the price of restoration today, and a tag is a process-global key: `snapshot.rs`
+  holds one flat map from `&'static str`, so a duplicate live tag panics no matter how far
+  apart the two declarations sit. Target shape: a signal's identity comes from *where* it
+  was created and *what type* it holds, a tag is an explicit override that only
+  disambiguates where the automatic match would go wrong, and a tag needs to be unique
+  only within the function declaring it.
+  - **Identity.** Candidates, cheapest first: `#[track_caller]` creation sites
+    (file+line+column—stable until an edit moves the line, which is precisely when the
+    diff must work); a proc-macro stamping a per-function id plus a creation counter; or
+    the owner tree, where identity is the path of child indexes from the root owner plus
+    the index within the owner. The owner path looks strongest—the engine already builds
+    it, and it survives edits that don't change the tree's shape—but it must be checked
+    against conditional and looped creation.
+  - **The diff.** Per owner (or per function invocation) both sides are a sequence of
+    entries keyed by (type, optional tag); align them, restore the matches, and let
+    additions and deletions fall to the default. Myers LCS is the obvious tool, but
+    **patience diff fits better**: tagged entries are exactly patience's unique anchors,
+    and untagged runs align by index between anchors. Per the rule that makes this
+    tractable, a tag present on only one side matches nothing—adding or removing a tag is
+    a delete plus an insert, and the untagged neighbours realign around it. A true
+    conflict (incompatible type at a matched position, or an ambiguous alignment) resets
+    to the default, which is also what a failed decode already does.
+  - **Serializability, and the end of the `snapshot` feature.** Store/restore becomes
+    on-by-default and opt-out: the built-in and simple types just work, with no tag and
+    no feature to remember. So `Signal::new` carries `Serialize`/`Deserialize`
+    unconditionally and the `snapshot` cargo feature is deleted—it could never gate the
+    bound anyway, since features are additive and a crate compiling alone would break the
+    moment anything in the graph enabled it. The opt-out is an explicit constructor for
+    values that cannot or should not round-trip (`Signal::transient` and friends—name to
+    settle), which asks nothing of `T`; it also covers the type that is serializable but
+    whose restored value would be wrong, like a live handle. Non-obvious consequence to
+    design for: with restoration on by default, a stale snapshot reaching a changed
+    program is the normal case, not the exception—so the diff's conflict-resets-to-default
+    rule and the failed-decode degrade path carry the whole burden of correctness, and
+    both need tests that edit the program between snapshot and restore.
+  - Must keep working alongside it: `Store::tagged` (a store snapshots as one unit),
+    `Resource::tagged` and its order-keyed default, and the dev-loop `/skene:state`
+    protocol.
+- **Explore: optional keys on every view, so driver extras restore the same way.** Scroll
+  offsets ride the snapshot keyed by build-order node id and focus does not restore at
+  all. If a view can carry an optional identity—by index by default, an explicit key
+  overriding—then focus, scroll offsets, caret and selection positions, and open popup
+  state all restore through the same alignment as the signals above, and restoration
+  becomes one algorithm instead of one per extra. `set_key` is the name to weigh
+  (Flutter's `Key`, SwiftUI's `.id()`, Compose's `key()`), and it should be the concept
+  `reconcile` keys lists by rather than a second one. What the exploration has to answer:
+  whether kind-plus-index is stable enough across conditional subtrees, what the
+  per-node identity costs when nothing restores, and whether asking users to key views is
+  tolerable devex or a sign the whole idea belongs only to the extras the drivers own.
+  **Focus restoration ships either way**, exploration or not, and comes first: the
+  terminal's snapshot provider carries scroll offsets alone, so a dev-loop restart lands
+  scrolled where it stood with nothing focused—the caret, an open picker, and the tab
+  position all lost. Restoring the focused node by the same build-order key scroll
+  already uses is the immediate work; the keys then generalize it. The web leaf owes both
+  halves—it registers no provider at all, so a dev reload there restores neither focus nor
+  scroll.
 - **Accessibility**: AccessKit on native (already in phase 8's shared machinery) and in
   the TUI where it can reach; on the web, `Role` expansion and semantic output audited
   against ARIA. A stated commitment across facades, not an afterthought.

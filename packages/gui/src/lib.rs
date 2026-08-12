@@ -16,19 +16,11 @@ mod deferred;
 mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
-#[cfg(target_arch = "wasm32")]
 mod lazy;
-mod lazy_column;
 #[cfg(target_arch = "wasm32")]
 mod link;
 mod overlay;
-mod raw_button;
-mod raw_checkbox;
-mod raw_picker;
-mod raw_radio;
-mod raw_slider;
-mod raw_text_editor;
-mod raw_text_field;
+mod raw;
 mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
@@ -36,22 +28,6 @@ mod resource;
 mod routing;
 #[cfg(feature = "simple-views")]
 mod simple;
-#[cfg(feature = "simple-views")]
-mod simple_button;
-#[cfg(feature = "simple-views")]
-mod simple_card;
-#[cfg(feature = "simple-views")]
-mod simple_checkbox;
-#[cfg(feature = "simple-views")]
-mod simple_picker;
-#[cfg(feature = "simple-views")]
-mod simple_radio;
-#[cfg(feature = "simple-views")]
-mod simple_slider;
-#[cfg(feature = "simple-views")]
-mod simple_text_editor;
-#[cfg(feature = "simple-views")]
-mod simple_text_field;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
 #[cfg(target_arch = "wasm32")]
@@ -93,34 +69,29 @@ pub use crate::link::Link;
 pub use crate::resource::Resource;
 #[cfg(target_arch = "wasm32")]
 pub use crate::routing::{install_router, install_static_router};
+#[cfg(feature = "simple-views")]
+pub use crate::simple::{
+  SimpleButton,
+  SimpleCard,
+  SimpleCheckbox,
+  SimplePalette,
+  SimplePicker,
+  SimpleRadio,
+  SimpleSlider,
+  SimpleTextEditor,
+  SimpleTextField,
+  SimpleVariant,
+};
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   focus::FocusHandle,
-  lazy_column::LazyColumn,
+  lazy::LazyColumn,
   overlay::{Anchor, Overlay},
-  raw_button::RawButton,
-  raw_checkbox::RawCheckbox,
-  raw_picker::RawPicker,
-  raw_radio::RawRadio,
-  raw_slider::RawSlider,
-  raw_text_editor::RawTextEditor,
-  raw_text_field::RawTextField,
+  raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextEditor, RawTextField},
   text::{RichText, Span, Text, TextStyle, TextTheme},
-};
-#[cfg(feature = "simple-views")]
-pub use crate::{
-  simple::{SimplePalette, SimpleVariant},
-  simple_button::SimpleButton,
-  simple_card::SimpleCard,
-  simple_checkbox::SimpleCheckbox,
-  simple_picker::SimplePicker,
-  simple_radio::SimpleRadio,
-  simple_slider::SimpleSlider,
-  simple_text_editor::SimpleTextEditor,
-  simple_text_field::SimpleTextField,
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural

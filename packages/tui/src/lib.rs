@@ -26,36 +26,17 @@ mod detect;
 mod dev;
 mod events;
 mod focus;
-mod lazy_column;
+mod lazy;
 mod overlay;
 mod paint;
 mod props;
-mod raw_button;
-mod raw_checkbox;
-mod raw_picker;
-mod raw_radio;
-mod raw_slider;
-mod raw_text_field;
+mod raw;
 mod realize;
 mod resource;
 mod routing;
 mod selection;
 #[cfg(feature = "simple-views")]
 mod simple;
-#[cfg(feature = "simple-views")]
-mod simple_button;
-#[cfg(feature = "simple-views")]
-mod simple_card;
-#[cfg(feature = "simple-views")]
-mod simple_checkbox;
-#[cfg(feature = "simple-views")]
-mod simple_picker;
-#[cfg(feature = "simple-views")]
-mod simple_radio;
-#[cfg(feature = "simple-views")]
-mod simple_slider;
-#[cfg(feature = "simple-views")]
-mod simple_text_field;
 mod state;
 mod style;
 mod task;
@@ -101,36 +82,32 @@ pub use terminal::{
   trigger_mouse_scroll,
 };
 
+#[cfg(feature = "simple-views")]
+pub use crate::simple::{
+  SimpleButton,
+  SimpleCard,
+  SimpleCheckbox,
+  SimplePalette,
+  SimplePicker,
+  SimpleRadio,
+  SimpleSlider,
+  SimpleTextField,
+  SimpleVariant,
+};
 pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
-  lazy_column::LazyColumn,
+  lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
-  raw_button::RawButton,
-  raw_checkbox::RawCheckbox,
-  raw_picker::RawPicker,
-  raw_radio::RawRadio,
-  raw_slider::RawSlider,
-  raw_text_field::RawTextField,
+  raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextField},
   resource::Resource,
   routing::install_router,
   task::spawn,
   text::{RichText, Span, Text},
   theme::{ControlTheme, TextTheme},
-};
-#[cfg(feature = "simple-views")]
-pub use crate::{
-  simple::{SimplePalette, SimpleVariant},
-  simple_button::SimpleButton,
-  simple_card::SimpleCard,
-  simple_checkbox::SimpleCheckbox,
-  simple_picker::SimplePicker,
-  simple_radio::SimpleRadio,
-  simple_slider::SimpleSlider,
-  simple_text_field::SimpleTextField,
 };
 
 /// A suspense view over the terminal tree; see [`skene_core::Suspense`].

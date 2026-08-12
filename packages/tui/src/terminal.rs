@@ -241,6 +241,7 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       }
 
       dispatch_press(state, mouse.column, mouse.row, button, modifiers);
+      set_pointer_shape(state.hover_cursor());
     }
     MouseEventKind::Up(button) => {
       // A release whose press was never delivered stands in for the whole click: VTE
@@ -267,6 +268,7 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
       if button == MouseButton::Left {
         state.mouse_release(mouse.column, mouse.row);
         state.end_drag();
+        set_pointer_shape(state.hover_cursor());
       }
     }
     MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, WHEEL_STEP),
@@ -372,6 +374,8 @@ fn set_pointer_shape(cursor: Option<MouseCursor>) {
   let shape = match cursor {
     Some(MouseCursor::Click) => "pointer",
     Some(MouseCursor::Text) => "text",
+    Some(MouseCursor::Grab) => "grab",
+    Some(MouseCursor::Grabbing) => "grabbing",
     Some(MouseCursor::Default) | None => "default",
   };
 

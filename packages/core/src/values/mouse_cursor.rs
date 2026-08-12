@@ -8,4 +8,8 @@ pub enum MouseCursor {
   Click,
   /// Text (I-beam) cursor.
   Text,
+  /// Open-hand cursor, over something draggable.
+  Grab,
+  /// Closed-hand cursor, while dragging.
+  Grabbing,
 }

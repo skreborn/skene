@@ -176,6 +176,11 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
 :where(input[type="range"]) {
   width: 160px;
   height: 16px;
+  cursor: grab;
+}
+
+:where(input[type="range"]:active) {
+  cursor: grabbing;
 }
 
 :where(input[type="range"])::-webkit-slider-runnable-track {

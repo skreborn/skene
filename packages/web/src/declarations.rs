@@ -82,6 +82,8 @@ impl Declarations {
       MouseCursor::Default => "default",
       MouseCursor::Click => "pointer",
       MouseCursor::Text => "text",
+      MouseCursor::Grab => "grab",
+      MouseCursor::Grabbing => "grabbing",
     }
   }
 

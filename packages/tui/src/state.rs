@@ -1777,6 +1777,18 @@ impl State {
   /// The pointer shape for the current hover path: the deepest hovered node with a
   /// cursor set, resolved through its effective style.
   pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
+    // A slider drag shows the closed hand until release, wherever the pointer is.
+    if matches!(self.drag.get(), Some(Drag::Slider(_))) {
+      return Some(MouseCursor::Grabbing);
+    }
+
+    // A link under the pointer shows the pointing hand, as in a browser.
+    let (pointer_x, pointer_y) = self.last_pointer.get();
+
+    if self.link_at(pointer_x, pointer_y).is_some() {
+      return Some(MouseCursor::Click);
+    }
+
     let environment = self.environment();
     let hovered = self.hovered.borrow();
     let nodes = self.nodes.borrow();
@@ -1818,12 +1830,12 @@ impl State {
         return Some(cursor);
       }
 
-      // The toggling controls default to the pointer; a slider keeps the arrow, as on
-      // the web.
+      // The toggling controls default to the pointer, a slider to the open hand.
       match record.kind {
         NodeKind::Checkbox { .. } | NodeKind::Radio { .. } | NodeKind::Picker { .. } => {
           Some(MouseCursor::Click)
         }
+        NodeKind::Slider { .. } => Some(MouseCursor::Grab),
         _ => None,
       }
     })

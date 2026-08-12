@@ -488,6 +488,9 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
   // The slider draws its own track and thumb chrome; no background tints.
   apply_control(node, &props.control, mapping::CONTROL_RESET, None);
 
+  // The filled run starts at the default value—the midpoint—until a value lands.
+  override_style(node, &Declarations::new().set("--skene-slider-fill", "50%"));
+
   node
 }
 

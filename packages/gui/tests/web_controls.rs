@@ -125,6 +125,7 @@ fn slider_serializes_range_and_value() {
   assert!(body.contains("max=\"100\""));
   assert!(body.contains("step=\"5\""));
   assert!(body.contains("value=\"40\""));
+  assert!(body.contains("--skene-slider-fill:40%"));
 }
 
 /// Every control carries its own reset class: no native chrome, author styles from

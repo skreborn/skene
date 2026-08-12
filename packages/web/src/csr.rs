@@ -484,12 +484,12 @@ impl State {
             events::run_handlers(&change, id, value.as_str(), |run, value| run(value));
           }
 
-          if let Some(checked) = event
+          if let Some(input) = event
             .target()
             .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
-            .map(|input| input.checked())
           {
-            events::run_handlers(&toggle, id, checked, |run, checked| run(checked));
+            refresh_slider_fill(&input);
+            events::run_handlers(&toggle, id, input.checked(), |run, checked| run(checked));
           }
 
           Prevention::default()
@@ -659,6 +659,7 @@ impl State {
     self.with_element(node, |element| {
       if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
         input.set_value(value);
+        refresh_slider_fill(input);
       }
       else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
         area.set_value(value);
@@ -1017,6 +1018,32 @@ pub fn install(root: Element) {
   });
 
   install_deselection();
+}
+
+/// Keeps a range input's `--skene-slider-fill` at the value's fraction of its span,
+/// painting the filled run on engines without a native progress part.
+fn refresh_slider_fill(input: &HtmlInputElement) {
+  if input.type_() != "range" {
+    return;
+  }
+
+  let number = |raw: String, fallback: f64| raw.parse::<f64>().unwrap_or(fallback);
+  let min = number(input.min(), 0.0);
+  let max = number(input.max(), 100.0);
+  let value = number(input.value(), min);
+  let span = max - min;
+  let fraction = if span > 0.0 {
+    ((value - min) / span).clamp(0.0, 1.0)
+  }
+  else {
+    0.0
+  };
+
+  if let Some(html) = input.dyn_ref::<HtmlElement>() {
+    let _ = html
+      .style()
+      .set_property("--skene-slider-fill", &format!("{}%", fraction * 100.0));
+  }
 }
 
 /// Collapses the document selection when a primary press lands on unselectable

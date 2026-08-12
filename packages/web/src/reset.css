@@ -172,7 +172,9 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
 
 /* The default slider chrome, drawn in the inherited ink: a soft track under a round
    thumb. The vendor track and thumb selectors cannot share rules—an unknown selector
-   drops the whole rule—so each engine gets its own. */
+   drops the whole rule—so each engine gets its own. WebKit has no progress part, so
+   its filled run rides `--skene-slider-fill`, kept at the value's fraction by the
+   platform; Gecko paints its own progress. */
 :where(input[type="range"]) {
   width: 160px;
   height: 16px;
@@ -186,7 +188,10 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
 :where(input[type="range"])::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: color-mix(in srgb, currentColor 25%, transparent);
+  background-color: color-mix(in srgb, currentColor 25%, transparent);
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: var(--skene-slider-fill, 0%) 100%;
 }
 
 :where(input[type="range"])::-webkit-slider-thumb {

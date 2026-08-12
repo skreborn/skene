@@ -734,35 +734,65 @@ fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
   }
 }
 
-/// The caret position at the start of the word before `caret`: spaces skipped, then
-/// the word.
+/// A caret-motion character class; each maximal same-class run is one word, so a run
+/// of punctuation breaks like a word of its own.
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum CharClass {
+  Whitespace,
+  Punctuation,
+  Word,
+}
+
+/// The class of one character: word characters are alphanumerics and `_`.
+fn char_class(character: char) -> CharClass {
+  if character.is_whitespace() {
+    CharClass::Whitespace
+  }
+  else if character.is_alphanumeric() || character == '_' {
+    CharClass::Word
+  }
+  else {
+    CharClass::Punctuation
+  }
+}
+
+/// The caret position at the start of the word before `caret`: whitespace skipped,
+/// then one same-class run.
 fn word_before(value: &str, caret: usize) -> usize {
   let characters: Vec<char> = value.chars().collect();
   let mut position = caret;
 
-  while position > 0 && characters[position - 1] == ' ' {
+  while position > 0 && char_class(characters[position - 1]) == CharClass::Whitespace {
     position -= 1;
   }
 
-  while position > 0 && characters[position - 1] != ' ' {
-    position -= 1;
+  if position > 0 {
+    let class = char_class(characters[position - 1]);
+
+    while position > 0 && char_class(characters[position - 1]) == class {
+      position -= 1;
+    }
   }
 
   position
 }
 
-/// The caret position at the end of the word after `caret`: spaces skipped, then the
-/// word.
+/// The caret position at the end of the word after `caret`: whitespace skipped, then
+/// one same-class run.
 fn word_after(value: &str, caret: usize) -> usize {
   let characters: Vec<char> = value.chars().collect();
   let mut position = caret;
 
-  while position < characters.len() && characters[position] == ' ' {
+  while position < characters.len() && char_class(characters[position]) == CharClass::Whitespace {
     position += 1;
   }
 
-  while position < characters.len() && characters[position] != ' ' {
-    position += 1;
+  if position < characters.len() {
+    let class = char_class(characters[position]);
+
+    while position < characters.len() && char_class(characters[position]) == class {
+      position += 1;
+    }
   }
 
   position

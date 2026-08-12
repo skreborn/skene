@@ -412,6 +412,30 @@ fn caret_jumps_and_deletes_by_word() {
   assert_eq!(value, "");
 }
 
+/// A word removal eats trailing whitespace, then one same-class run: punctuation runs
+/// break like words of their own.
+#[test]
+fn word_deletion_breaks_on_character_class() {
+  let value = with_driver(|| {
+    let name = Signal::new(String::from("foo.bar_baz("));
+
+    tui::mount(|| RawTextField::new().bind_value(name).into_any().build());
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Ctrl+Backspace");
+    assert_eq!(name.get_untracked(), "foo.bar_baz");
+
+    tui::trigger_key("Ctrl+Backspace");
+    assert_eq!(name.get_untracked(), "foo.");
+
+    tui::trigger_key("Ctrl+Backspace");
+
+    name.get_untracked()
+  });
+
+  assert_eq!(value, "foo");
+}
+
 /// A long value slides its window to keep the caret visible; a click re-places the
 /// caret at the clicked column.
 #[test]

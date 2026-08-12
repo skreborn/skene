@@ -294,7 +294,7 @@ fn focus_variant_and_click() {
       let clicks = Rc::clone(&clicks);
 
       tui::mount(|| {
-        Button::new()
+        RawButton::new()
           .set_style(BoxStyle::new().set_width(6).set_height(3))
           .set_when(
             Condition::Focused,
@@ -330,7 +330,7 @@ fn input_binds_a_signal_both_ways() {
     let name = Signal::new(String::new());
 
     tui::mount(|| {
-      TextField::new()
+      RawTextField::new()
         .set_placeholder("name")
         .bind_value(name)
         .into_any()
@@ -354,7 +354,7 @@ fn caret_edits_insert_and_delete() {
   let value = with_driver(|| {
     let name = Signal::new(String::new());
 
-    tui::mount(|| TextField::new().bind_value(name).into_any().build());
+    tui::mount(|| RawTextField::new().bind_value(name).into_any().build());
 
     tui::trigger_key("Tab");
 
@@ -390,7 +390,7 @@ fn caret_jumps_and_deletes_by_word() {
   let value = with_driver(|| {
     let name = Signal::new(String::from("alpha beta gamma"));
 
-    tui::mount(|| TextField::new().bind_value(name).into_any().build());
+    tui::mount(|| RawTextField::new().bind_value(name).into_any().build());
 
     tui::trigger_key("Tab");
     tui::trigger_key("Ctrl+ArrowLeft");
@@ -420,7 +420,7 @@ fn caret_windows_long_values_and_follows_clicks() {
     let name = Signal::new(String::new());
 
     tui::mount(|| {
-      TextField::new()
+      RawTextField::new()
         .set_style(BoxStyle::new().set_width(5))
         .bind_value(name)
         .into_any()
@@ -564,8 +564,8 @@ fn focus_handle_and_autofocus() {
       tui::mount(move || {
         Column::new()
           .set_children((
-            TextField::new().set_autofocus(),
-            Button::new()
+            RawTextField::new().set_autofocus(),
+            RawButton::new()
               .set_style(BoxStyle::new().set_height(1))
               .handle_click(|| {})
               .bind_focus(&handle),
@@ -659,10 +659,10 @@ fn mouse_click_hits_and_focuses() {
       tui::mount(|| {
         Row::new()
           .set_children((
-            Button::new()
+            RawButton::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || first.set(first.get() + 1)),
-            Button::new()
+            RawButton::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || second.set(second.get() + 1)),
           ))
@@ -719,7 +719,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
       tui::mount(move || {
         Column::new()
           .set_children((
-            Button::new()
+            RawButton::new()
               .set_style(BoxStyle::new().set_width(6).set_height(1))
               .set_child(Text::new("base"))
               .handle_click(move || clicks.set(clicks.get() + 1)),
@@ -775,7 +775,7 @@ fn popup_anchors_below_and_light_dismisses() {
       tui::mount(move || {
         Column::new()
           .set_children((
-            Button::new()
+            RawButton::new()
               .set_style(BoxStyle::new().set_width(8).set_height(1))
               .set_child(Text::new("trigger"))
               .bind_anchor(&anchor_for_button),
@@ -900,7 +900,7 @@ fn focus_scrolls_into_view() {
         .set_children(
           (0..6)
             .map(|index| {
-              Button::new()
+              RawButton::new()
                 .set_child(Text::new(format!("button {index}")))
                 .into_any()
             })
@@ -1136,7 +1136,7 @@ fn checkbox_toggles_by_key_and_click() {
   let (unchecked, checked, value) = with_driver(|| {
     let on = Signal::new(false);
 
-    tui::mount(|| Checkbox::new().bind_checked(on).into_any().build());
+    tui::mount(|| RawCheckbox::new().bind_checked(on).into_any().build());
 
     let unchecked = tui::render_to_text(6, 1);
 
@@ -1163,7 +1163,7 @@ fn checkbox_labels_render_and_toggle() {
     let on = Signal::new(false);
 
     tui::mount(|| {
-      Checkbox::new()
+      RawCheckbox::new()
         .bind_checked(on)
         .set_label("subscribe")
         .into_any()
@@ -1192,9 +1192,9 @@ fn radio_group_moves_the_check() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Radio::new("letters", "a").bind_value(choice),
-          Radio::new("letters", "b").bind_value(choice),
-          Radio::new("letters", "c").bind_value(choice),
+          RawRadio::new("letters", "a").bind_value(choice),
+          RawRadio::new("letters", "b").bind_value(choice),
+          RawRadio::new("letters", "c").bind_value(choice),
         ))
         .into_any()
         .build()
@@ -1233,7 +1233,7 @@ fn picker_cycles_on_arrows() {
     let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
-      Picker::new()
+      RawPicker::new()
         .set_options([("px", "pixels"), ("cell", "cells")])
         .bind_value(unit)
         .into_any()
@@ -1271,7 +1271,7 @@ fn picker_opens_a_popup_and_selects_by_click() {
     let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
-      Picker::new()
+      RawPicker::new()
         .set_options([("px", "pixels"), ("cell", "cells")])
         .bind_value(unit)
         .into_any()
@@ -1377,7 +1377,7 @@ fn slider_nudges_and_jumps() {
     let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
-      Slider::new(0.0, 10.0)
+      RawSlider::new(0.0, 10.0)
         .set_step(1.0)
         .bind_value(volume)
         .into_any()
@@ -1485,7 +1485,7 @@ fn slider_drags_to_the_pointer() {
     tui::mount(|| {
       Container::new()
         .set_width(11)
-        .set_child(Slider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
+        .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
         .into_any()
         .build()
     });
@@ -1559,9 +1559,9 @@ fn control_theme_restyles_glyphs() {
   let frame = with_driver(|| {
     tui::mount(|| {
       ControlTheme::new(Column::new().set_children((
-        Checkbox::new().set_checked(true),
-        Checkbox::new().set_checked(true).set_marks("#", "."),
-        Radio::new("g", "a").set_checked(true),
+        RawCheckbox::new().set_checked(true),
+        RawCheckbox::new().set_checked(true).set_marks("#", "."),
+        RawRadio::new("g", "a").set_checked(true),
       )))
       .set_checkbox("X", "O")
       .set_radio(">", "<")
@@ -1634,7 +1634,7 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
         .set_width(3)
         .set_height(3)
         .set_child(
-          Checkbox::new().set_style(ControlStyle::new().set_color(Color::srgb(1., 0., 0.))),
+          RawCheckbox::new().set_style(ControlStyle::new().set_color(Color::srgb(1., 0., 0.))),
         )
         .into_any()
         .build()
@@ -1661,7 +1661,7 @@ fn prevented_keys_skip_their_defaults() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Slider::new(0.0, 10.0)
+          RawSlider::new(0.0, 10.0)
             .bind_value(volume)
             .set_autofocus()
             .handle_key_down(|event| {
@@ -1672,7 +1672,7 @@ fn prevented_keys_skip_their_defaults() {
                 Prevent::None
               }
             }),
-          Button::new().set_child(Text::new("next")),
+          RawButton::new().set_child(Text::new("next")),
         ))
         .into_any()
         .build()
@@ -1710,7 +1710,7 @@ fn prevented_enter_skips_activation() {
       let clicks = Rc::clone(&clicks);
 
       tui::mount(move || {
-        Button::new()
+        RawButton::new()
           .set_autofocus()
           .handle_click(move || clicks.set(clicks.get() + 1))
           .handle_key_down(|event| {
@@ -1766,7 +1766,7 @@ fn click_verdicts_split_bubbling_from_default() {
 
                 Prevent::All
               })
-              .set_child(Checkbox::new().bind_checked(on)),
+              .set_child(RawCheckbox::new().bind_checked(on)),
           )
           .into_any()
           .build()
@@ -2077,7 +2077,7 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Button::new().set_child(Text::new("Press me").set_selectable(true)),
+          RawButton::new().set_child(Text::new("Press me").set_selectable(true)),
           Text::new("plain"),
         ))
         .into_any()
@@ -2261,7 +2261,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
     let counted = Rc::clone(&count);
 
     tui::mount(move || {
-      Button::new()
+      RawButton::new()
         .handle_click(move || counted.set(counted.get() + 1))
         .set_child(Text::new("go"))
         .into_any()
@@ -2361,10 +2361,10 @@ fn clicks_complete_on_release_over_the_same_target() {
       Row::new()
         .set_spacing(2)
         .set_children((
-          Button::new()
+          RawButton::new()
             .handle_click(move || one.set(one.get() + 1))
             .set_child(Text::new("one")),
-          Button::new()
+          RawButton::new()
             .handle_click(move || two.set(two.get() + 1))
             .set_child(Text::new("two")),
         ))
@@ -2441,12 +2441,12 @@ fn hover_cursor_defaults_follow_the_content() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Button::new().set_child(Text::new("press")),
-          Checkbox::new().set_label("check"),
-          TextField::new(),
+          RawButton::new().set_child(Text::new("press")),
+          RawCheckbox::new().set_label("check"),
+          RawTextField::new(),
           Text::new("words").set_selectable(true),
           Text::new("chrome"),
-          Button::new()
+          RawButton::new()
             .set_style(BoxStyle::new().set_cursor(MouseCursor::Default))
             .set_child(Text::new("styled")),
         ))
@@ -2535,14 +2535,14 @@ fn interaction_states_tint_distinctly() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Button::new().set_child(Text::new("go")),
-          Button::new()
+          RawButton::new().set_child(Text::new("go")),
+          RawButton::new()
             .set_when(
               Condition::Hovered,
               BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
             )
             .set_child(Text::new("hi")),
-          Checkbox::new().set_label("c"),
+          RawCheckbox::new().set_label("c"),
         ))
         .into_any()
         .build()
@@ -2601,7 +2601,7 @@ fn the_caret_reports_the_terminal_cursor_cell() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          TextField::new(),
+          RawTextField::new(),
           Overlay::modal()
             .bind_open(open)
             .set_child(Text::new("cover"))
@@ -2641,7 +2641,7 @@ fn picker_popup_navigates_without_committing() {
     let unit = Signal::new("px".to_owned());
 
     tui::mount(|| {
-      Picker::new()
+      RawPicker::new()
         .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
         .bind_value(unit)
         .into_any()
@@ -2676,8 +2676,8 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
     tui::mount(|| {
       Column::new()
         .set_children((
-          Picker::new().set_options([("px", "pixels"), ("cell", "cells")]),
-          Button::new().set_child(Text::new("next")),
+          RawPicker::new().set_options([("px", "pixels"), ("cell", "cells")]),
+          RawButton::new().set_child(Text::new("next")),
         ))
         .into_any()
         .build()

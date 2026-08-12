@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`bind_checked`](Self::bind_checked) wires both to one signal. `Enter`, `Space`, or
 /// a mouse click toggles it.
 #[must_use]
-pub struct Checkbox {
+pub struct RawCheckbox {
   base: ControlBase<crate::props::ControlStyle>,
   checked: Option<Source<bool>>,
   marks: Option<(String, String)>,
@@ -23,7 +23,7 @@ pub struct Checkbox {
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
-impl Checkbox {
+impl RawCheckbox {
   /// Creates an unchecked checkbox.
   #[inline(always)]
   pub fn new() -> Self {
@@ -89,16 +89,16 @@ impl Checkbox {
   }
 }
 
-impl Default for Checkbox {
+impl Default for RawCheckbox {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(Checkbox, crate::props::ControlStyle);
+crate::control::control_surface!(RawCheckbox, crate::props::ControlStyle);
 
-impl View for Checkbox {
+impl View for RawCheckbox {
   fn build(mut self) -> NodeId {
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);

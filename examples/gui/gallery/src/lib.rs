@@ -97,7 +97,7 @@ fn buttons() -> impl IntoView {
       .set_spacing(12.)
       .set_item_alignment(ItemAlignment::Center)
       .set_children((
-        Button::new()
+        RawButton::new()
           .handle_click(move || count.update(|value| *value += 1))
           .set_style(chip())
           .set_child(label("Click me")),
@@ -119,7 +119,7 @@ fn toggles() -> impl IntoView {
         .set_spacing(8.)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          Checkbox::new().bind_checked(agreed).set_label("subscribed"),
+          RawCheckbox::new().bind_checked(agreed).set_label("subscribed"),
           Text::derive(move || {
             if agreed.get() {
               "checked".to_owned()
@@ -141,7 +141,7 @@ fn toggles() -> impl IntoView {
 }
 
 fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  Radio::new("flavor", value)
+  RawRadio::new("flavor", value)
     .bind_value(flavor)
     .set_label(value)
 }
@@ -155,11 +155,11 @@ fn inputs() -> impl IntoView {
   section(
     "TextField, TextEditor, Slider & Picker",
     Column::new().set_spacing(16.).set_children((
-      TextField::new()
+      RawTextField::new()
         .set_placeholder("Your name")
         .bind_value(name)
         .set_style(field()),
-      TextEditor::new()
+      RawTextEditor::new()
         .set_placeholder("A few lines about you")
         .set_lines(3)
         .bind_value(bio)
@@ -168,12 +168,12 @@ fn inputs() -> impl IntoView {
         .set_spacing(12.)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          Slider::new(0., 100.).set_step(1.).bind_value(volume),
+          RawSlider::new(0., 100.).set_step(1.).bind_value(volume),
           Text::derive(move || format!("{:.0}%", volume.get()))
             .set_font_size(13.)
             .set_color(faint()),
         )),
-      Picker::new()
+      RawPicker::new()
         .set_options([
           ("spring", "Spring"),
           ("summer", "Summer"),
@@ -215,7 +215,7 @@ fn layouts() -> impl IntoView {
           }),
         ),
       Row::new().set_children((
-        Button::new()
+        RawButton::new()
           .handle_click(move || open.set(true))
           .set_style(chip())
           .set_child(label("Open a modal")),
@@ -228,7 +228,7 @@ fn layouts() -> impl IntoView {
                 .set_font_size(14.)
                 .set_color(bright()),
               Row::new().set_arrangement(Arrangement::End).set_child(
-                Button::new()
+                RawButton::new()
                   .handle_click(move || open.set(false))
                   .set_style(chip())
                   .set_child(label("Close")),

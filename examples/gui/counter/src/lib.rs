@@ -51,7 +51,7 @@ fn card(count: Signal<u64>) -> impl IntoView {
 }
 
 fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Button::new()
+  RawButton::new()
     .handle_click(action)
     .set_style(
       BoxStyle::new()

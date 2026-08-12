@@ -14,13 +14,13 @@ use crate::{
 /// the platform's button semantics come with the element. Unstyled by default; styling
 /// is the box style, set with `set_style` and conditionally with `set_when`.
 #[must_use]
-pub struct Button {
+pub struct RawButton {
   children: Children,
   click_handler: Option<Rc<skene_core::ClickHandler>>,
   control: ControlBase,
 }
 
-impl Button {
+impl RawButton {
   /// Creates an empty button.
   #[inline(always)]
   pub fn new() -> Self {
@@ -43,16 +43,16 @@ impl Button {
   }
 }
 
-control_surface!(Button);
+control_surface!(RawButton);
 
-impl Default for Button {
+impl Default for RawButton {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl HasChildren<crate::GuiOps> for Button {
+impl HasChildren<crate::GuiOps> for RawButton {
   type Kind = skene_core::PlainChild;
 
   #[inline(always)]
@@ -63,7 +63,7 @@ impl HasChildren<crate::GuiOps> for Button {
   }
 }
 
-impl skene_core::View for Button {
+impl skene_core::View for RawButton {
   fn build(self) -> skene_core::NodeId {
     use skene_core::ButtonProps;
 

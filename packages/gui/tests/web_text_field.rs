@@ -8,7 +8,7 @@ use skene_gui::{
   FocusOrder,
   HasChildren,
   Text,
-  TextField,
+  RawTextField,
   core::{BoxStyle, Condition},
   render_to_string,
 };
@@ -16,7 +16,7 @@ use skene_gui::{
 /// An input serializes as a void element: no closing tag.
 #[test]
 fn input_is_a_void_element() {
-  let rendered = render_to_string(TextField::new);
+  let rendered = render_to_string(RawTextField::new);
 
   assert!(rendered.body().starts_with("<input "));
   assert!(!rendered.body().contains("</input>"));
@@ -26,7 +26,7 @@ fn input_is_a_void_element() {
 #[test]
 fn placeholder_and_value_serialize_as_attributes() {
   let rendered = render_to_string(|| {
-    TextField::new()
+    RawTextField::new()
       .set_placeholder("Type \"here\"")
       .set_value("a & b")
   });
@@ -40,11 +40,11 @@ fn placeholder_and_value_serialize_as_attributes() {
   assert!(rendered.body().contains("value=\"a &amp; b\""));
 }
 
-/// TextField styling interns like a box's, including focus variants.
+/// RawTextField styling interns like a box's, including focus variants.
 #[test]
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
-    TextField::new()
+    RawTextField::new()
       .set_style(BoxStyle::new().set_padding(skene_gui::Inset::all(8.)))
       .set_when(Condition::Focused, BoxStyle::new().set_border_radius(4.))
   });
@@ -71,7 +71,7 @@ fn input_styling_interns_with_variants() {
 #[test]
 fn focus_attributes_serialize() {
   let rendered = render_to_string(|| {
-    TextField::new()
+    RawTextField::new()
       .set_focus_order(FocusOrder::Position(0))
       .set_autofocus()
   });
@@ -93,12 +93,12 @@ fn handlers_are_inert_on_the_server() {
       .handle_scroll(|_| {})
       .set_children((
         Text::new("t"),
-        TextField::new().handle_change(|_| {}).handle_focus(|| {}),
+        RawTextField::new().handle_change(|_| {}).handle_focus(|| {}),
       ))
   });
 
   let plain =
-    render_to_string(|| Container::new().set_children((Text::new("t"), TextField::new())));
+    render_to_string(|| Container::new().set_children((Text::new("t"), RawTextField::new())));
 
   assert_eq!(rendered.body(), plain.body());
 }

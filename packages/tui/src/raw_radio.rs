@@ -14,7 +14,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`bind_value`](Self::bind_value) wires a whole group to one signal holding the
 /// checked radio's value.
 #[must_use]
-pub struct Radio {
+pub struct RawRadio {
   base: ControlBase<crate::props::ControlStyle>,
   group: String,
   value: String,
@@ -24,7 +24,7 @@ pub struct Radio {
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
 }
 
-impl Radio {
+impl RawRadio {
   /// Creates an unchecked radio carrying `value` within `group`.
   #[inline(always)]
   pub fn new(group: impl Into<String>, value: impl Into<String>) -> Self {
@@ -99,9 +99,9 @@ impl Radio {
   }
 }
 
-crate::control::control_surface!(Radio, crate::props::ControlStyle);
+crate::control::control_surface!(RawRadio, crate::props::ControlStyle);
 
-impl View for Radio {
+impl View for RawRadio {
   fn build(mut self) -> NodeId {
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);

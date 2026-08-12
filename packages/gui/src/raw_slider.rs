@@ -14,7 +14,7 @@ use crate::control::{ControlBase, control_surface};
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
 #[must_use]
-pub struct Slider {
+pub struct RawSlider {
   min: f32,
   max: f32,
   step: Option<f32>,
@@ -23,7 +23,7 @@ pub struct Slider {
   control: ControlBase,
 }
 
-impl Slider {
+impl RawSlider {
   /// Creates a slider selecting within `min..=max`.
   #[inline(always)]
   pub fn new(min: f32, max: f32) -> Self {
@@ -70,9 +70,9 @@ impl Slider {
   }
 }
 
-control_surface!(Slider);
+control_surface!(RawSlider);
 
-impl Slider {
+impl RawSlider {
   /// Binds the value to `signal` in both directions: the slider shows the signal and
   /// each move writes it back.
   #[inline(always)]
@@ -85,7 +85,7 @@ impl Slider {
   }
 }
 
-impl skene_core::View for Slider {
+impl skene_core::View for RawSlider {
   fn build(self) -> skene_core::NodeId {
     use skene_core::SliderProps;
 

@@ -18,8 +18,8 @@
 
 pub mod prelude;
 
-mod button;
-mod checkbox;
+mod raw_button;
+mod raw_checkbox;
 mod container;
 mod containers;
 mod control;
@@ -31,20 +31,20 @@ mod focus;
 mod lazy_column;
 mod overlay;
 mod paint;
-mod picker;
+mod raw_picker;
 mod props;
-mod radio;
+mod raw_radio;
 mod realize;
 mod resource;
 mod routing;
 mod selection;
-mod slider;
+mod raw_slider;
 mod state;
 mod style;
 mod task;
 mod terminal;
 mod text;
-mod text_field;
+mod raw_text_field;
 mod theme;
 
 use std::cell::RefCell;
@@ -86,23 +86,23 @@ pub use terminal::{
 };
 
 pub use crate::{
-  button::Button,
-  checkbox::Checkbox,
+  raw_button::RawButton,
+  raw_checkbox::RawCheckbox,
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
-  picker::Picker,
+  raw_picker::RawPicker,
   props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
-  radio::Radio,
+  raw_radio::RawRadio,
   resource::Resource,
   routing::install_router,
-  slider::Slider,
+  raw_slider::RawSlider,
   task::spawn,
   text::{RichText, Span, Text},
-  text_field::TextField,
+  raw_text_field::RawTextField,
   theme::{ControlTheme, TextTheme},
 };
 

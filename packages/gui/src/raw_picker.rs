@@ -14,7 +14,7 @@ use crate::control::{ControlBase, control_surface};
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
 #[must_use]
-pub struct Picker {
+pub struct RawPicker {
   options: Vec<PickerOption>,
   value: Option<Source<String>>,
   #[expect(clippy::type_complexity)]
@@ -22,7 +22,7 @@ pub struct Picker {
   control: ControlBase,
 }
 
-impl Picker {
+impl RawPicker {
   /// Creates a select with no options.
   #[inline(always)]
   pub fn new() -> Self {
@@ -76,16 +76,16 @@ impl Picker {
   }
 }
 
-control_surface!(Picker);
+control_surface!(RawPicker);
 
-impl Default for Picker {
+impl Default for RawPicker {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Picker {
+impl RawPicker {
   /// Binds the selection to `signal` in both directions: the select shows the signal
   /// and each choice writes it back.
   #[inline(always)]
@@ -98,7 +98,7 @@ impl Picker {
   }
 }
 
-impl skene_core::View for Picker {
+impl skene_core::View for RawPicker {
   fn build(self) -> skene_core::NodeId {
     use skene_core::PickerProps;
 

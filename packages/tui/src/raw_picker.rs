@@ -25,7 +25,7 @@ use crate::{
 /// [`handle_change`](Self::handle_change) receives each newly selected value—
 /// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
-pub struct Picker {
+pub struct RawPicker {
   base: ControlBase<crate::props::ControlStyle>,
   options: Vec<(String, String)>,
   indicator: Option<char>,
@@ -35,7 +35,7 @@ pub struct Picker {
   change_handler: Option<Rc<dyn Fn(&str)>>,
 }
 
-impl Picker {
+impl RawPicker {
   /// Creates a selector with no options.
   #[inline(always)]
   pub fn new() -> Self {
@@ -117,16 +117,16 @@ impl Picker {
   }
 }
 
-impl Default for Picker {
+impl Default for RawPicker {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(Picker, crate::props::ControlStyle);
+crate::control::control_surface!(RawPicker, crate::props::ControlStyle);
 
-impl View for Picker {
+impl View for RawPicker {
   fn build(mut self) -> NodeId {
     use skene_reactive::{Get, Set, Signal};
 

@@ -16,7 +16,7 @@ use std::{
 use skene_gui::{
   AnyView,
   Border,
-  Checkbox,
+  RawCheckbox,
   Color,
   Column,
   Container,
@@ -31,7 +31,7 @@ use skene_gui::{
   Row,
   Stack,
   Text,
-  TextField,
+  RawTextField,
   TextStyle,
   TextTheme,
   View,
@@ -338,7 +338,7 @@ fn change_handler_receives_the_committed_value() {
     let seen = Rc::clone(&seen);
 
     move || {
-      TextField::new()
+      RawTextField::new()
         .set_value("committed")
         .handle_change(move |value| value.clone_into(&mut seen.borrow_mut()))
         .build()
@@ -363,7 +363,7 @@ fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  mount(move || Checkbox::new().bind_checked(checked).build());
+  mount(move || RawCheckbox::new().bind_checked(checked).build());
 
   let target = only_child(&root)
     .dyn_into::<web_sys::HtmlInputElement>()
@@ -431,7 +431,7 @@ fn focus_handle_focuses_the_bound_view() {
   mount({
     let handle = handle.clone();
 
-    move || TextField::new().bind_focus(&handle).build()
+    move || RawTextField::new().bind_focus(&handle).build()
   });
 
   handle.focus();

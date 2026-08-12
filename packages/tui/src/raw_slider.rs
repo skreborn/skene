@@ -14,7 +14,7 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`handle_change`](Self::handle_change) receives each new value—
 /// [`bind_value`](Self::bind_value) wires both to one signal.
 #[must_use]
-pub struct Slider {
+pub struct RawSlider {
   base: ControlBase<crate::props::ControlStyle>,
   min: f32,
   max: f32,
@@ -24,7 +24,7 @@ pub struct Slider {
   change_handler: Option<Rc<dyn Fn(f32)>>,
 }
 
-impl Slider {
+impl RawSlider {
   /// Creates a slider over `min..=max`, stepping by 1.
   #[inline(always)]
   pub fn new(min: f32, max: f32) -> Self {
@@ -92,9 +92,9 @@ impl Slider {
   }
 }
 
-crate::control::control_surface!(Slider, crate::props::ControlStyle);
+crate::control::control_surface!(RawSlider, crate::props::ControlStyle);
 
-impl View for Slider {
+impl View for RawSlider {
   fn build(mut self) -> NodeId {
     let style = self.base.style;
     let variants = std::mem::take(&mut self.base.variants);

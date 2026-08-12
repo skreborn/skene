@@ -15,7 +15,7 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 /// set wholesale with [`set_style`](Self::set_style) and conditionally with
 /// [`set_when`](Self::set_when).
 #[must_use]
-pub struct TextField {
+pub struct RawTextField {
   base: ControlBase<crate::props::BoxStyle>,
   value: Option<Source<String>>,
   placeholder: Option<String>,
@@ -23,7 +23,7 @@ pub struct TextField {
   change_handler: Option<Rc<dyn Fn(&str)>>,
 }
 
-impl TextField {
+impl RawTextField {
   /// Creates an empty input.
   #[inline(always)]
   pub fn new() -> Self {
@@ -79,16 +79,16 @@ impl TextField {
   }
 }
 
-impl Default for TextField {
+impl Default for RawTextField {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(TextField, crate::props::BoxStyle);
+crate::control::control_surface!(RawTextField, crate::props::BoxStyle);
 
-impl View for TextField {
+impl View for RawTextField {
   fn build(mut self) -> NodeId {
     let style = self.base.style.clone();
     let variants = std::mem::take(&mut self.base.variants);

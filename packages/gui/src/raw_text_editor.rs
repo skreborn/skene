@@ -1,4 +1,4 @@
-//! A single-line text input.
+//! A multi-line text area.
 
 use std::rc::Rc;
 
@@ -6,37 +6,31 @@ use skene_core::Source;
 
 use crate::control::{ControlBase, control_surface};
 
-/// A single-line text input.
+/// A multi-line text area.
 ///
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
-/// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
-/// set wholesale with `set_style` and conditionally with `set_when`.
-///
-/// ```ignore
-/// let name = Signal::new(String::new());
-///
-/// TextField::new()
-///   .set_placeholder("Name")
-///   .bind_value(name)
-/// ```
+/// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default; the
+/// visible height is set in text lines with [`set_lines`](Self::set_lines).
 #[must_use]
-pub struct TextField {
+pub struct RawTextEditor {
   value: Option<Source<String>>,
   placeholder: Option<String>,
+  lines: Option<u16>,
   #[expect(clippy::type_complexity)]
   change_handler: Option<Rc<dyn Fn(&str)>>,
   control: ControlBase,
 }
 
-impl TextField {
-  /// Creates an empty input.
+impl RawTextEditor {
+  /// Creates an empty text area.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       value: None,
       placeholder: None,
+      lines: None,
       change_handler: None,
       control: ControlBase::new(),
     }
@@ -66,6 +60,14 @@ impl TextField {
     self
   }
 
+  /// Sets the visible height, in text lines.
+  #[inline(always)]
+  pub fn set_lines(mut self, lines: u16) -> Self {
+    self.lines = Some(lines);
+
+    self
+  }
+
   /// Sets the change handler, run with the new value on every edit, in real time.
   #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
@@ -75,18 +77,18 @@ impl TextField {
   }
 }
 
-control_surface!(TextField);
+control_surface!(RawTextEditor);
 
-impl Default for TextField {
+impl Default for RawTextEditor {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl TextField {
-  /// Binds the value to `signal` in both directions: the input shows the signal and each
-  /// edit writes it back.
+impl RawTextEditor {
+  /// Binds the value to `signal` in both directions: the text area shows the signal and
+  /// each edit writes it back.
   #[inline(always)]
   pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
     use skene_reactive::{Get, Set};
@@ -97,15 +99,16 @@ impl TextField {
   }
 }
 
-impl skene_core::View for TextField {
+impl skene_core::View for RawTextEditor {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::TextFieldProps;
+    use skene_core::TextEditorProps;
 
     use crate::driver;
 
     let (control, handlers) = self.control.into_parts();
-    let node = driver::create_text_field(&TextFieldProps {
+    let node = driver::create_text_editor(&TextEditorProps {
       placeholder: self.placeholder,
+      lines: self.lines,
       control,
     });
 

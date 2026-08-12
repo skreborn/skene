@@ -15,14 +15,14 @@ use crate::control::{ControlBase, control_surface};
 /// with the platform's full keyboard behavior; styling is the box style, set with
 /// `set_style` and conditionally with `set_when`.
 #[must_use]
-pub struct Checkbox {
+pub struct RawCheckbox {
   checked: Option<Source<bool>>,
   label: Option<String>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
   control: ControlBase,
 }
 
-impl Checkbox {
+impl RawCheckbox {
   /// Creates an unchecked checkbox.
   #[inline(always)]
   pub fn new() -> Self {
@@ -67,16 +67,16 @@ impl Checkbox {
   }
 }
 
-control_surface!(Checkbox);
+control_surface!(RawCheckbox);
 
-impl Default for Checkbox {
+impl Default for RawCheckbox {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl Checkbox {
+impl RawCheckbox {
   /// Binds the state to `signal` in both directions: the checkbox shows the signal and
   /// each toggle writes it back.
   #[inline(always)]
@@ -89,7 +89,7 @@ impl Checkbox {
   }
 }
 
-impl skene_core::View for Checkbox {
+impl skene_core::View for RawCheckbox {
   fn build(self) -> skene_core::NodeId {
     use skene_core::CheckboxProps;
 

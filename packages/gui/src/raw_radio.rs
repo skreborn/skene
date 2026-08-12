@@ -13,7 +13,7 @@ use crate::control::{ControlBase, control_surface};
 /// group to one signal holding the selected value. Unstyled by default, with the
 /// platform's full keyboard behavior.
 #[must_use]
-pub struct Radio {
+pub struct RawRadio {
   group: String,
   value: String,
   checked: Option<Source<bool>>,
@@ -22,7 +22,7 @@ pub struct Radio {
   control: ControlBase,
 }
 
-impl Radio {
+impl RawRadio {
   /// Creates the `group` member standing for `value`, unchecked.
   #[inline(always)]
   pub fn new(group: impl Into<String>, value: impl Into<String>) -> Self {
@@ -69,9 +69,9 @@ impl Radio {
   }
 }
 
-control_surface!(Radio);
+control_surface!(RawRadio);
 
-impl Radio {
+impl RawRadio {
   /// Binds the member to `signal` holding the group's selected value: the member shows
   /// as checked while the signal equals its value, and selecting it writes its value
   /// back.
@@ -92,7 +92,7 @@ impl Radio {
   }
 }
 
-impl skene_core::View for Radio {
+impl skene_core::View for RawRadio {
   fn build(self) -> skene_core::NodeId {
     use skene_core::RadioProps;
 

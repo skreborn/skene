@@ -13,13 +13,13 @@ use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_st
 /// set with [`set_style`](Self::set_style) and conditionally with
 /// [`set_when`](Self::set_when).
 #[must_use]
-pub struct Button {
+pub struct RawButton {
   base: ControlBase<crate::props::BoxStyle>,
   children: Children,
   click_handler: Option<Rc<skene_core::ClickHandler>>,
 }
 
-impl Button {
+impl RawButton {
   /// Creates an empty button.
   #[inline(always)]
   pub fn new() -> Self {
@@ -43,16 +43,16 @@ impl Button {
   }
 }
 
-impl Default for Button {
+impl Default for RawButton {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-crate::control::control_surface!(Button, crate::props::BoxStyle);
+crate::control::control_surface!(RawButton, crate::props::BoxStyle);
 
-impl skene_core::HasChildren<crate::TuiOps> for Button {
+impl skene_core::HasChildren<crate::TuiOps> for RawButton {
   type Kind = skene_core::PlainChild;
 
   #[inline(always)]
@@ -63,7 +63,7 @@ impl skene_core::HasChildren<crate::TuiOps> for Button {
   }
 }
 
-impl View for Button {
+impl View for RawButton {
   fn build(mut self) -> NodeId {
     let style = self.base.style.clone();
     let variants = std::mem::take(&mut self.base.variants);

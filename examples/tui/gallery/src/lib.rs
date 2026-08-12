@@ -112,7 +112,7 @@ fn toggles() -> impl IntoView {
     "Checkbox & Radio",
     Column::new().set_spacing(1).set_children((
       Row::new().set_spacing(2).set_children((
-        Checkbox::new().bind_checked(agreed).set_label("subscribed"),
+        RawCheckbox::new().bind_checked(agreed).set_label("subscribed"),
         Text::derive(move || {
           if agreed.get() {
             "checked".to_owned()
@@ -133,7 +133,7 @@ fn toggles() -> impl IntoView {
 }
 
 fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  Radio::new("flavor", value)
+  RawRadio::new("flavor", value)
     .bind_value(flavor)
     .set_label(value)
 }
@@ -146,17 +146,17 @@ fn inputs() -> impl IntoView {
   section(
     "TextField, Slider & Picker",
     Column::new().set_spacing(1).set_children((
-      TextField::new()
+      RawTextField::new()
         .set_placeholder("Your name")
         .bind_value(name)
         .set_style(BoxStyle::new().set_width(24).set_color(background())),
       Row::new().set_spacing(2).set_children((
         Container::new()
           .set_width(20)
-          .set_child(Slider::new(0., 100.).set_step(1.).bind_value(volume)),
+          .set_child(RawSlider::new(0., 100.).set_step(1.).bind_value(volume)),
         Text::derive(move || format!("{:.0}%", volume.get())).set_color(faint()),
       )),
-      Picker::new()
+      RawPicker::new()
         .set_options([
           ("spring", "Spring"),
           ("summer", "Summer"),
@@ -278,7 +278,7 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
 }
 
 fn button(label: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Button::new()
+  RawButton::new()
     .set_style(
       BoxStyle::new()
         .set_padding(Inset::horizontal(1))

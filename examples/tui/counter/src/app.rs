@@ -35,7 +35,7 @@ fn card(count: Signal<u64>) -> impl IntoView {
 }
 
 fn button(label: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Button::new()
+  RawButton::new()
     .set_style(
       BoxStyle::new()
         .set_padding(Inset::horizontal(1))

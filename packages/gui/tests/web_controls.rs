@@ -4,18 +4,18 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  Button,
-  Checkbox,
+  RawButton,
+  RawCheckbox,
   Container,
   FocusOrder,
   HasChildren,
-  Picker,
-  Radio,
+  RawPicker,
+  RawRadio,
   Role,
-  Slider,
+  RawSlider,
   Text,
-  TextEditor,
-  TextField,
+  RawTextEditor,
+  RawTextField,
   TextStyle,
   TextTheme,
   core::{BoxStyle, Color, Condition},
@@ -27,7 +27,7 @@ use skene_gui::{
 #[test]
 fn button_serializes_as_a_button_element() {
   let rendered = render_to_string(|| {
-    Button::new()
+    RawButton::new()
       .set_focus_order(FocusOrder::Auto)
       .set_child(Text::new("Go"))
       .handle_click(|| {})
@@ -45,12 +45,12 @@ fn button_serializes_as_a_button_element() {
 /// A checkbox serializes as a checkbox input, with its state as the `checked` attribute.
 #[test]
 fn checkbox_serializes_with_its_state() {
-  let rendered = render_to_string(|| Checkbox::new().set_checked(true));
+  let rendered = render_to_string(|| RawCheckbox::new().set_checked(true));
 
   assert!(rendered.body().contains("type=\"checkbox\""));
   assert!(rendered.body().contains("checked"));
 
-  let unchecked = render_to_string(|| Checkbox::new().set_checked(false));
+  let unchecked = render_to_string(|| RawCheckbox::new().set_checked(false));
 
   assert!(!unchecked.body().contains("checked"));
 }
@@ -60,8 +60,8 @@ fn checkbox_serializes_with_its_state() {
 fn radio_serializes_group_value_and_state() {
   let rendered = render_to_string(|| {
     Container::new().set_children((
-      Radio::new("color", "red").set_checked(true),
-      Radio::new("color", "green"),
+      RawRadio::new("color", "red").set_checked(true),
+      RawRadio::new("color", "green"),
     ))
   });
 
@@ -78,7 +78,7 @@ fn radio_serializes_group_value_and_state() {
 #[test]
 fn select_serializes_options_and_selection() {
   let rendered = render_to_string(|| {
-    Picker::new()
+    RawPicker::new()
       .set_options([("a", "First"), ("b", "Second")])
       .set_value("b")
   });
@@ -99,7 +99,7 @@ fn select_serializes_options_and_selection() {
 #[test]
 fn textarea_serializes_value_as_content() {
   let rendered = render_to_string(|| {
-    TextEditor::new()
+    RawTextEditor::new()
       .set_placeholder("Notes")
       .set_lines(4)
       .set_value("draft text")
@@ -116,7 +116,7 @@ fn textarea_serializes_value_as_content() {
 /// A slider serializes as a range input with its bounds, step, and value.
 #[test]
 fn slider_serializes_range_and_value() {
-  let rendered = render_to_string(|| Slider::new(0., 100.).set_step(5.).set_value(40.));
+  let rendered = render_to_string(|| RawSlider::new(0., 100.).set_step(5.).set_value(40.));
 
   let body = rendered.body();
 
@@ -132,14 +132,14 @@ fn slider_serializes_range_and_value() {
 /// into the customizable-select rendering where supported.
 #[test]
 fn controls_carry_their_reset() {
-  let rendered = render_to_string(|| Button::new().set_child(Text::new("Go")));
+  let rendered = render_to_string(|| RawButton::new().set_child(Text::new("Go")));
 
   assert!(rendered.styles().contains(
     "{appearance:none;background:none;border:none;margin:0;padding:0;\
      font:inherit;color:inherit;}"
   ));
 
-  let rendered = render_to_string(Checkbox::new);
+  let rendered = render_to_string(RawCheckbox::new);
   let body = rendered.body();
   let start = body.find("class=\"").expect("a class") + 7;
   let end = body[start..].find('"').expect("a closing quote") + start;
@@ -150,7 +150,7 @@ fn controls_carry_their_reset() {
      padding:0;font:inherit;color:inherit;}}"
   )));
 
-  let rendered = render_to_string(|| Picker::new().set_options([("a", "A")]));
+  let rendered = render_to_string(|| RawPicker::new().set_options([("a", "A")]));
 
   assert!(
     rendered
@@ -164,7 +164,7 @@ fn controls_carry_their_reset() {
 /// no variant conditions on it; the slider draws its own chrome and carries none.
 #[test]
 fn controls_carry_interaction_feedback() {
-  let rendered = render_to_string(|| Button::new().set_child(Text::new("Go")));
+  let rendered = render_to_string(|| RawButton::new().set_child(Text::new("Go")));
   let styles = rendered.styles();
 
   assert!(styles.contains(
@@ -181,7 +181,7 @@ fn controls_carry_interaction_feedback() {
   assert!(styles.contains("border-color:color-mix(in srgb, currentColor 25%, transparent);"));
 
   let authored = render_to_string(|| {
-    Button::new()
+    RawButton::new()
       .set_when(
         Condition::Hovered,
         BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
@@ -193,7 +193,7 @@ fn controls_carry_interaction_feedback() {
   assert!(!styles.contains(":hover{background-image:"));
   assert!(styles.contains(":focus-visible{background-image:"));
 
-  let slider = render_to_string(|| Slider::new(0., 100.));
+  let slider = render_to_string(|| RawSlider::new(0., 100.));
 
   assert!(!slider.styles().contains("background-image:"));
 }
@@ -202,7 +202,7 @@ fn controls_carry_interaction_feedback() {
 /// activating the caption activates the input.
 #[test]
 fn labeled_toggle_wraps_in_a_label() {
-  let rendered = render_to_string(|| Checkbox::new().set_label("subscribed"));
+  let rendered = render_to_string(|| RawCheckbox::new().set_label("subscribed"));
   let body = rendered.body();
 
   assert!(body.starts_with("<label"));
@@ -216,7 +216,7 @@ fn labeled_toggle_wraps_in_a_label() {
 #[test]
 fn controls_inherit_the_text_theme() {
   let rendered = render_to_string(|| {
-    TextTheme::new(TextField::new()).set_base(
+    TextTheme::new(RawTextField::new()).set_base(
       TextStyle::new()
         .set_color(Color::srgb(1., 0., 0.))
         .set_selection_background(Color::srgb(0., 0., 1.)),

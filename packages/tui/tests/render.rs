@@ -2692,6 +2692,38 @@ fn picker_popup_navigates_without_committing() {
   assert_eq!(after_enter, "cell", "enter chooses the highlighted option");
 }
 
+/// While the popup is open, `Tab` chooses the highlighted option and keeps focus on
+/// the picker instead of moving it on.
+#[test]
+fn picker_popup_commits_on_tab() {
+  let (value, kept_focus) = with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    tui::mount(|| {
+      RawPicker::new()
+        .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
+        .bind_value(unit)
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(14, 6);
+
+    tui::trigger_key("Tab");
+
+    let picker = tui::focused_node();
+
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Tab");
+
+    (unit.get_untracked(), tui::focused_node() == picker)
+  });
+
+  assert_eq!(value, "cell", "tab chooses the highlighted option");
+  assert!(kept_focus, "tab keeps focus on the picker");
+}
+
 /// The options popup anchors beneath the picker—not mid-screen—and closes when focus
 /// leaves the picker.
 #[test]

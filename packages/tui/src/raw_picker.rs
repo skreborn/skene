@@ -17,9 +17,10 @@ use crate::{
 /// A selector over fixed options, rendered closed as the current option's label.
 ///
 /// `Enter`, `Space`, or a mouse click opens the options popup beneath it. Open, the
-/// arrows and the pointer move the highlight without committing; `Enter`, `Space`, or
-/// a row click chooses the highlighted option, and `Escape` or a press outside
-/// dismisses with the value unchanged. Closed, arrow keys cycle the value directly.
+/// arrows and the pointer move the highlight without committing; `Enter`, `Space`,
+/// `Tab`, or a row click chooses the highlighted option, and `Escape` or a press
+/// outside dismisses with the value unchanged. Closed, arrow keys cycle the value
+/// directly.
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) picks the shown option, and
 /// [`handle_change`](Self::handle_change) receives each newly selected value—
@@ -274,7 +275,7 @@ fn register_popup_toggle(
 }
 
 /// Registers the popup's keyboard behavior on the picker: while open, arrows move the
-/// highlight without committing, and `Enter` or `Space` chooses it.
+/// highlight without committing, and `Enter`, `Space`, or `Tab` chooses it.
 fn register_popup_keys(
   node: NodeId,
   values: Vec<String>,
@@ -314,7 +315,7 @@ fn register_popup_keys(
 
             Prevent::Default
           }
-          "Enter" | " " => {
+          "Enter" | " " | "Tab" => {
             with_state(|state| state.select_picker(node, &active.get()));
             open.set(false);
 

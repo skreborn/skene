@@ -308,6 +308,22 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   under one neutral palette (`SimplePalette`) and shape language shared across GUI and
   terminal—the web's corner radius is the terminal's arc-cornered border glyphs. Every
   example uses the Simple components instead of hand-styling raw ones.
+- **Simple shared and configurable—done.** The palette and the variants' resolved
+  colors extracted into `skene-simple`, imported by both facades behind a default-on
+  `simple-views` feature. Every Simple component forwards the raw controls' non-styling
+  surface (focus order, autofocus, focus/anchor binding, focus/blur/key handlers), and
+  its semantic knobs pair `set_` with `derive_` where the machinery supports it—derived
+  button labels (`SimpleButton::derive`), card spacing and alignment. Terminal Simple
+  feedback moved off the backdrop onto the border: every Simple button is a rounded
+  bordered box (a transparent border keeps its cells but paints no glyphs—new box
+  vocabulary semantics—so `Ghost` holds its footprint), hover brightens the border to
+  the ring, focus inks it in the control's own ink. TUI polish riding along: word
+  motion and deletion break on character class (alphanumeric-plus-underscore runs,
+  punctuation runs, whitespace skipped); the slider paints a dimmed full-block track
+  under a full-ink thumb at eighth-cell precision (the scrollbar technique); `Tab`
+  commits an open picker popup's highlight instead of moving focus, as the web does.
+  The `raw`/`simple`/`lazy` view families moved into folder modules
+  (`raw/button.rs`, `simple/card.rs`, `lazy/column.rs`) in both facades.
 
 ## Backlog—unphased features
 
@@ -315,6 +331,13 @@ Wanted, not yet scheduled into a phase. (Confirmed already true, recorded here s
 stays true: **URI paths on all platforms**—`Route::parse`/`to_path` speak URL paths
 everywhere; the browser History API, the server request path, and the TUI's in-memory
 sink are just different sinks for the same paths.)
+
+- **Explore: split the TUI debug run like the web's.** `skene run tui` currently takes
+  over the invoking terminal, so build errors and instance logs have nowhere to go but
+  a dismissable in-app dialog that swallows them. Instead, keep the invoking terminal
+  for the build loop and logs, and print a runner command the user executes in a
+  second terminal to attach the actual TUI app—mirroring how the web flow keeps the
+  terminal while the app lives in the browser.
 
 - **Reactive engine rewrite—done.** The floem fork is gone; the engine is a clean slate
   with the same capabilities—signals, memos, effects, owners, context, batching, the

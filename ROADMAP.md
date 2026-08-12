@@ -324,6 +324,19 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   commits an open picker popup's highlight instead of moving focus, as the web does.
   The `raw`/`simple`/`lazy` view families moved into folder modules
   (`raw/button.rs`, `simple/card.rs`, `lazy/column.rs`) in both facades.
+- **Links, cursors, and Simple polish—done.** Terminal links act like a browser's: a
+  click opens the destination through the system handler (press and release on one
+  cell, so selection drags never fire it), the pointing hand shows over them, and the
+  OSC 8 anchors already emitted keep the terminal's own handling. Web links gained
+  their defaults back—underlined, scheme link blue, the theme's base ink never colors
+  an unstyled link—plus the `LinkPolicy` vocabulary: an external (absolute) destination
+  opens a new page withholding the opener and referrer, all overridable, with the
+  `nofollow`/`sponsored`/`ugc` endorsements. Sliders show the open hand at rest and the
+  closed hand mid-drag on both platforms. A web press outside selectable text collapses
+  the selection without making chrome selectable. The terminal's solid Simple buttons
+  went borderless—one row, their surface shifting on hover and focus—while `Outline`
+  keeps its border feedback; the galleries agree on rich text last, the pinned badge's
+  corner, and card widths that split the swatch grid into whole cells.
 
 ## Backlog—unphased features
 

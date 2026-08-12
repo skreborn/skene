@@ -892,3 +892,19 @@ fn unselectable_text_computes_user_select_none() {
 
   root.remove();
 }
+
+/// An unstyled link keeps the reset's defaults—the scheme's link blue and the
+/// underline—while a themed base ink never colors it.
+#[wasm_bindgen_test]
+fn links_default_to_blue_and_underline() {
+  let (_installed, root) = fresh_root();
+
+  mount(|| {
+    TextTheme::new(Text::new("docs").set_link("https://example.com"))
+      .set_base(TextStyle::new().set_color(Color::srgb(0.9, 0.9, 0.9)))
+      .build()
+  });
+
+  assert_eq!(computed_style(&root, "color"), "rgb(0, 102, 204)");
+  assert_eq!(computed_style(&root, "text-decoration-line"), "underline");
+}

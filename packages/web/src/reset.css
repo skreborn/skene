@@ -51,18 +51,6 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   user-select: none;
 }
 
-/* Links: underlined, inked in the scheme's link blue unless the author styles them. */
-:where(a) {
-  color: #0066cc;
-  text-decoration: underline;
-}
-
-@media (prefers-color-scheme: dark) {
-  :where(a) {
-    color: #6699ff;
-  }
-}
-
 /* The single mounted app child fills the viewport and is the page's scroll container,
    so the page scrolls as a browser page does unless the app overrides its overflow. */
 :where(body > *) {
@@ -231,9 +219,16 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   background: currentColor;
 }
 
+/* Links: underlined, inked in the scheme's link blue unless the author styles them. */
 :where(a) {
-  color: inherit;
-  text-decoration: none;
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(a) {
+    color: #6699ff;
+  }
 }
 
 :where(ol, ul, menu) {

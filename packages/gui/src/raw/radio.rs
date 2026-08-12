@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::Source;
 
-use crate::control::{ControlBase, control_surface};
+use crate::control::ControlBase;
 
 /// A radio button: one choice of a mutually-exclusive group.
 ///
@@ -72,8 +72,6 @@ impl RawRadio {
   }
 }
 
-control_surface!(RawRadio);
-
 impl RawRadio {
   /// Binds the member to `signal` holding the group's selected value: the member shows
   /// as checked while the signal equals its value, and selecting it writes its value
@@ -122,5 +120,19 @@ impl skene_core::View for RawRadio {
       Some(label) => crate::control::labeled(node, label),
       None => node,
     }
+  }
+}
+
+impl crate::HasFocus for RawRadio {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawRadio {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

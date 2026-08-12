@@ -2,7 +2,7 @@
 
 use skene_core::{Dimension, View};
 
-use crate::{RawTextField, simple, simple::simple_surface};
+use crate::{HasStyle, RawTextField, simple};
 
 /// A ready-made single-line text input: full-width field chrome whose border brightens
 /// on focus.
@@ -72,8 +72,6 @@ impl Default for SimpleTextField {
   }
 }
 
-simple_surface!(SimpleTextField);
-
 impl View for SimpleTextField {
   fn build(self) -> skene_core::NodeId {
     let (condition, style) = simple::field_focus();
@@ -83,5 +81,12 @@ impl View for SimpleTextField {
       .set_style(simple::field_style().set_width(Dimension::Fraction(1.)))
       .set_when(condition, style)
       .build()
+  }
+}
+
+impl crate::HasFocus for SimpleTextField {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

@@ -11,6 +11,9 @@ use skene_gui::{
   render_to_string_at,
   router::{Route, Router, StaticRoutes},
 };
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 
 #[derive(Clone, PartialEq)]
 enum Page {

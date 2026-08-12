@@ -99,12 +99,10 @@ impl Default for RawCheckbox {
   }
 }
 
-crate::control::control_surface!(RawCheckbox, crate::props::ControlStyle);
-
 impl View for RawCheckbox {
   fn build(mut self) -> NodeId {
-    let style = self.base.style;
-    let variants = std::mem::take(&mut self.base.variants);
+    let style = self.base.style.style;
+    let variants = std::mem::take(&mut self.base.style.variants);
     let node = with_state(|state| {
       state.insert_node(
         NodeKind::Checkbox {
@@ -149,5 +147,21 @@ impl View for RawCheckbox {
     self.base.register(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawCheckbox {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.base.focus
+  }
+}
+
+impl crate::HasStyle for RawCheckbox {
+  type Style = crate::props::ControlStyle;
+
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+    &mut self.base.style
   }
 }

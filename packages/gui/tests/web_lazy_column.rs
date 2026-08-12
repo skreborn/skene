@@ -3,6 +3,9 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 use skene_gui::{LazyColumn, Text, render_to_string};
 
 /// A server render carries the scroll box, the overscan slice, and a trailing spacer

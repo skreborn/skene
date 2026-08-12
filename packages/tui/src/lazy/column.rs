@@ -6,6 +6,7 @@ use skene_core::{HasChildren, IntoView, Layout, NodeId, Overflow, View, item_win
 use skene_reactive::{Get, Memo, Set, Signal};
 
 use crate::{
+  HasSize,
   events::ScrollEvent,
   props::{BoxStyle, Condition},
   state::NodeKind,

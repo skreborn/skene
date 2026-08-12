@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::Source;
 
-use crate::control::{ControlBase, control_surface};
+use crate::control::ControlBase;
 
 /// A checkbox: a two-state toggle.
 ///
@@ -70,8 +70,6 @@ impl RawCheckbox {
   }
 }
 
-control_surface!(RawCheckbox);
-
 impl Default for RawCheckbox {
   #[inline(always)]
   fn default() -> Self {
@@ -115,5 +113,19 @@ impl skene_core::View for RawCheckbox {
       Some(label) => crate::control::labeled(node, label),
       None => node,
     }
+  }
+}
+
+impl crate::HasFocus for RawCheckbox {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawCheckbox {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

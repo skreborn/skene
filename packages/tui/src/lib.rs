@@ -39,6 +39,7 @@ mod simple;
 mod state;
 mod style;
 mod styled_box;
+mod surface;
 mod task;
 mod terminal;
 mod text;
@@ -97,6 +98,7 @@ pub use crate::simple::{
 };
 pub use crate::{
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
+  control::{FocusCore, StyleCore},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   lazy::LazyColumn,
@@ -106,6 +108,7 @@ pub use crate::{
   resource::Resource,
   routing::install_router,
   styled_box::StyledBox,
+  surface::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle},
   task::spawn,
   text::{RichText, Span, Text},
   theme::{ControlTheme, TextTheme},

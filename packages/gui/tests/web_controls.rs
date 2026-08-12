@@ -21,6 +21,9 @@ use skene_gui::{
   core::{BoxStyle, Color, Condition},
   render_to_string,
 };
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 
 /// A button serializes as a real button element carrying its reset class, its children
 /// as content, and its tab-order attributes.

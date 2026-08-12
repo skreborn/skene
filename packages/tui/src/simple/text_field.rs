@@ -2,7 +2,7 @@
 
 use skene_core::{Dimension, NodeId, View};
 
-use crate::{RawTextField, simple, simple::simple_surface};
+use crate::{HasStyle, RawTextField, simple};
 
 /// A ready-made single-line text input: full-width field chrome whose border brightens
 /// to the ring under the pointer and inks fully on focus.
@@ -72,8 +72,6 @@ impl Default for SimpleTextField {
   }
 }
 
-simple_surface!(SimpleTextField);
-
 impl View for SimpleTextField {
   fn build(self) -> NodeId {
     let (hover_condition, hover_style) = simple::field_hover();
@@ -85,5 +83,12 @@ impl View for SimpleTextField {
       .set_when(hover_condition, hover_style)
       .set_when(focus_condition, focus_style)
       .build()
+  }
+}
+
+impl crate::HasFocus for SimpleTextField {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

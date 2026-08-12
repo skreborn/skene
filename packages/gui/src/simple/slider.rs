@@ -2,7 +2,7 @@
 
 use skene_core::View;
 
-use crate::{RawSlider, simple::simple_surface};
+use crate::RawSlider;
 
 /// A ready-made slider: the platform's ink-drawn track and thumb.
 ///
@@ -64,10 +64,15 @@ impl SimpleSlider {
   }
 }
 
-simple_surface!(SimpleSlider);
-
 impl View for SimpleSlider {
   fn build(self) -> skene_core::NodeId {
     self.raw.build()
+  }
+}
+
+impl crate::HasFocus for SimpleSlider {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

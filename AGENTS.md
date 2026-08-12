@@ -45,13 +45,16 @@
   matching container through its child kind (`HasChildren::Kind`). Wrappers create no
   node; they annotate their child's. `Container` is decoration and sizing around
   **exactly one** child—no multi-child flow; `Column`, `Row`, and `Wrap` cover those
-  cases. The shared box surface lives once on `StyledBox`—**public**, one per facade,
-  typed to its medium—which every container wraps and which reaches a wrapper through one
-  exported derive forwarding a chosen subset: never hand-duplicated, and never a trait,
-  because a property a view does not honor must be statically absent rather than merely
-  unused. A third-party layout view is built exactly as `Row` is, from that public surface
-  alone; there is no privileged base. (ROADMAP work: `StyledBox` is named and public, but
-  the single-child `Container` does not exist yet and the flow still lives on the box.)
+  cases. The shared surfaces live once as accessor traits mirroring `HasChildren`:
+  `HasSize`, `HasDecoration`, and `HasEvents` provide every builder over one required
+  accessor to the wrapped—**public**, per-facade—`StyledBox`, and `HasFocus`/`HasStyle`
+  do the same over a control's public cores. A wrapper implements a two-line accessor
+  per group; forwarding is never hand-duplicated and never macro-generated. Absence is
+  per group, not per property: a view that must not be sized simply does not implement
+  `HasSize`. A third-party layout view is built exactly as `Row` is, from that public
+  surface alone; there is no privileged base. (ROADMAP work: `StyledBox` is named and
+  public, but the single-child `Container` does not exist yet and the flow still lives
+  on the box.)
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.

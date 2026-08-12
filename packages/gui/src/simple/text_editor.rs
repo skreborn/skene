@@ -2,7 +2,7 @@
 
 use skene_core::{Dimension, View};
 
-use crate::{RawTextEditor, simple, simple::simple_surface};
+use crate::{HasStyle, RawTextEditor, simple};
 
 /// A ready-made multi-line text area: full-width field chrome whose border brightens
 /// on focus.
@@ -80,8 +80,6 @@ impl Default for SimpleTextEditor {
   }
 }
 
-simple_surface!(SimpleTextEditor);
-
 impl View for SimpleTextEditor {
   fn build(self) -> skene_core::NodeId {
     let (condition, style) = simple::field_focus();
@@ -91,5 +89,12 @@ impl View for SimpleTextEditor {
       .set_style(simple::field_style().set_width(Dimension::Fraction(1.)))
       .set_when(condition, style)
       .build()
+  }
+}
+
+impl crate::HasFocus for SimpleTextEditor {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

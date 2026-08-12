@@ -2881,3 +2881,133 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
   // The drag crossed three span boundaries; the copy is the continuous source flow.
   assert_eq!(copied.as_deref(), Some("plain red and docs"));
 }
+
+/// A view implementing the surface traits over a `StyledBox` field offers the whole
+/// vocabulary through two-line accessors, exactly as a built-in container does.
+#[test]
+fn surface_traits_forward_to_the_styled_box() {
+  #[must_use]
+  struct Framed {
+    base: StyledBox,
+  }
+
+  impl HasSize for Framed {
+    fn size_box(&mut self) -> &mut StyledBox {
+      &mut self.base
+    }
+  }
+
+  impl HasDecoration for Framed {
+    fn decoration_box(&mut self) -> &mut StyledBox {
+      &mut self.base
+    }
+  }
+
+  impl HasChildren<tui::TuiOps> for Framed {
+    type Kind = skene_core::PlainChild;
+
+    fn set_children_to(mut self, children: tui::Children) -> Self {
+      self.base = self.base.set_children_to(children);
+
+      self
+    }
+  }
+
+  impl View for Framed {
+    fn build(self) -> skene_core::NodeId {
+      self.base.build()
+    }
+  }
+
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Framed {
+        base: StyledBox::new(),
+      }
+      .set_width(7)
+      .set_border(Color::srgb(1., 1., 1.))
+      .set_children((Text::new("hi"),))
+      .into_any()
+      .build()
+    });
+
+    tui::render_to_text(9, 4)
+  });
+
+  assert_eq!(rendered, "┌─────┐\n│hi   │\n│     │\n└─────┘\n");
+}
+
+/// A wrapper implementing one surface trait offers exactly that group; the others are
+/// never generated, and the implemented one still forwards.
+#[test]
+fn a_single_surface_trait_narrows_the_wrapper() {
+  #[must_use]
+  struct Tinted {
+    inner: StyledBox,
+  }
+
+  impl HasDecoration for Tinted {
+    fn decoration_box(&mut self) -> &mut StyledBox {
+      &mut self.inner
+    }
+  }
+
+  impl View for Tinted {
+    fn build(self) -> skene_core::NodeId {
+      self.inner.build()
+    }
+  }
+
+  let colors = with_driver(|| {
+    tui::mount(|| {
+      Tinted {
+        inner: StyledBox::new().set_width(2).set_height(1),
+      }
+      .set_color(Color::srgb(1., 0., 0.))
+      .into_any()
+      .build()
+    });
+
+    tui::render_to_colors(3, 2)
+  });
+
+  assert_eq!(colors[0].1, Some((255, 0, 0)), "the fill forwards");
+  assert_eq!(colors[2].1, None, "the box ends at the width");
+}
+
+/// A view implementing `HasFocus` over a raw control forwards focus behavior through
+/// it, the way the Simple controls wrap their raw counterparts.
+#[test]
+fn has_focus_forwards_through_a_raw_control() {
+  #[must_use]
+  struct Wrapped {
+    raw: RawTextField,
+  }
+
+  impl HasFocus for Wrapped {
+    fn focus_core(&mut self) -> &mut tui::FocusCore {
+      self.raw.focus_core()
+    }
+  }
+
+  impl View for Wrapped {
+    fn build(self) -> skene_core::NodeId {
+      self.raw.build()
+    }
+  }
+
+  let focused = with_driver(|| {
+    tui::mount(|| {
+      Wrapped {
+        raw: RawTextField::new(),
+      }
+      .set_autofocus()
+      .into_any()
+      .build()
+    });
+
+    tui::focused_node().is_some()
+  });
+
+  assert!(focused, "autofocus forwards through the wrapper");
+}

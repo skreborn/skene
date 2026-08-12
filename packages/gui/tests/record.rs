@@ -8,6 +8,9 @@ use std::{cell::Cell, rc::Rc};
 use skene_gui::{
   Column,
   HasChildren,
+  HasDecoration,
+  HasEvents,
+  HasSize,
   Overlay,
   RawTextField,
   Row,
@@ -167,4 +170,100 @@ fn decoration_records_verbatim() {
   let style = record::box_style(root).expect("a box style");
 
   assert_eq!(style.color, Some(color));
+}
+
+/// A view implementing the surface traits over a `StyledBox` field offers the whole
+/// vocabulary through two-line accessors, exactly as a built-in container does.
+#[test]
+fn surface_traits_forward_to_the_styled_box() {
+  use skene_gui::{HasDecoration, HasSize};
+
+  #[must_use]
+  struct Framed {
+    base: StyledBox,
+  }
+
+  impl HasSize for Framed {
+    fn size_box(&mut self) -> &mut StyledBox {
+      &mut self.base
+    }
+  }
+
+  impl HasDecoration for Framed {
+    fn decoration_box(&mut self) -> &mut StyledBox {
+      &mut self.base
+    }
+  }
+
+  impl HasChildren<skene_gui::GuiOps> for Framed {
+    type Kind = skene_gui::core::PlainChild;
+
+    fn set_children_to(mut self, children: skene_gui::Children) -> Self {
+      self.base = self.base.set_children_to(children);
+
+      self
+    }
+  }
+
+  impl View for Framed {
+    fn build(self) -> skene_gui::core::NodeId {
+      self.base.build()
+    }
+  }
+
+  let root = Framed {
+    base: StyledBox::new(),
+  }
+  .set_width(120.)
+  .set_color(Color::srgb(1., 0., 0.))
+  .set_children((Text::new("inside"),))
+  .build();
+  let style = record::box_style(root).expect("a box style");
+
+  assert_eq!(style.width, Some(Dimension::Length(120.)));
+  assert_eq!(style.color, Some(Color::srgb(1., 0., 0.)));
+  assert_eq!(record::outline(root), "Box\n  Run \"inside\"\n");
+}
+
+/// A view implementing `HasFocus` over a raw control forwards through it, the way the
+/// Simple controls wrap their raw counterparts.
+#[test]
+fn has_focus_forwards_through_a_raw_control() {
+  use skene_gui::HasFocus;
+
+  #[must_use]
+  struct Wrapped {
+    raw: RawTextField,
+  }
+
+  impl HasFocus for Wrapped {
+    fn focus_core(&mut self) -> &mut skene_gui::FocusCore {
+      self.raw.focus_core()
+    }
+  }
+
+  impl View for Wrapped {
+    fn build(self) -> skene_gui::core::NodeId {
+      self.raw.build()
+    }
+  }
+
+  let pressed = Rc::new(Cell::new(false));
+  let seen = Rc::clone(&pressed);
+  let root = Wrapped {
+    raw: RawTextField::new(),
+  }
+  .set_autofocus()
+  .handle_key_down(move |_| seen.set(true))
+  .build();
+
+  let _ = record::trigger_key_down(
+    root,
+    &skene_gui::core::KeyEvent {
+      key: "a".into(),
+      modifiers: skene_gui::core::Modifiers::default(),
+    },
+  );
+
+  assert!(pressed.get(), "the key handler forwards to the control");
 }

@@ -4,6 +4,8 @@ use std::rc::Rc;
 
 use skene_core::{AnyView, BoxStyle, Condition, IntoView};
 
+use crate::HasSize;
+
 /// A scrollable column of `count()` fixed-height items, only the visible slice (plus an
 /// overscan margin) built at any moment; the rest is empty space.
 ///

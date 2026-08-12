@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::Source;
 
-use crate::control::{ControlBase, control_surface};
+use crate::control::ControlBase;
 
 /// A single-line text input.
 ///
@@ -78,8 +78,6 @@ impl RawTextField {
   }
 }
 
-control_surface!(RawTextField);
-
 impl Default for RawTextField {
   #[inline(always)]
   fn default() -> Self {
@@ -123,5 +121,19 @@ impl skene_core::View for RawTextField {
     handlers.register(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawTextField {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawTextField {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

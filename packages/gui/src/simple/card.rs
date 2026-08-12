@@ -2,7 +2,7 @@
 
 use skene_core::{Border, HasChildren, ItemAlignment, Source, View};
 
-use crate::{Children, Column, Inset, SimplePalette, simple};
+use crate::{Children, Column, HasDecoration, Inset, SimplePalette, simple};
 
 /// A ready-made card: a raised, hairline-bordered surface grouping related content,
 /// laid out as a column.

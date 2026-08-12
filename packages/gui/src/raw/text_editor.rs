@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::Source;
 
-use crate::control::{ControlBase, control_surface};
+use crate::control::ControlBase;
 
 /// A multi-line text area.
 ///
@@ -80,8 +80,6 @@ impl RawTextEditor {
   }
 }
 
-control_surface!(RawTextEditor);
-
 impl Default for RawTextEditor {
   #[inline(always)]
   fn default() -> Self {
@@ -126,5 +124,19 @@ impl skene_core::View for RawTextEditor {
     handlers.register(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawTextEditor {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawTextEditor {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

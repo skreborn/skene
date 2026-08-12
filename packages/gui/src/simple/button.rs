@@ -2,7 +2,7 @@
 
 use skene_core::{Border, BoxStyle, Color, Condition, HasChildren, Inset, Source, View};
 
-use crate::{RawButton, SimpleVariant, Text, simple, simple::simple_surface};
+use crate::{HasStyle, RawButton, SimpleVariant, Text, simple};
 
 /// A ready-made button: a text label on the variant's surface, with hover feedback and
 /// the platform's full keyboard behavior.
@@ -59,8 +59,6 @@ impl SimpleButton {
   }
 }
 
-simple_surface!(SimpleButton);
-
 impl View for SimpleButton {
   fn build(self) -> skene_core::NodeId {
     let look = self.variant.look();
@@ -86,5 +84,12 @@ impl View for SimpleButton {
           .set_color(look.ink),
       )
       .build()
+  }
+}
+
+impl crate::HasFocus for SimpleButton {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

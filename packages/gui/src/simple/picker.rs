@@ -2,11 +2,7 @@
 
 use skene_core::View;
 
-use crate::{
-  RawPicker,
-  simple,
-  simple::{SimplePalette, simple_surface},
-};
+use crate::{HasStyle, RawPicker, simple, simple::SimplePalette};
 
 /// A ready-made select: field chrome on the card surface around the platform
 /// dropdown, its border brightening on focus. The dropdown wears the select's own
@@ -80,8 +76,6 @@ impl Default for SimplePicker {
   }
 }
 
-simple_surface!(SimplePicker);
-
 impl View for SimplePicker {
   fn build(self) -> skene_core::NodeId {
     let (condition, style) = simple::field_focus();
@@ -91,5 +85,12 @@ impl View for SimplePicker {
       .set_style(simple::field_style().set_color(SimplePalette::card()))
       .set_when(condition, style)
       .build()
+  }
+}
+
+impl crate::HasFocus for SimplePicker {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

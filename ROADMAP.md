@@ -505,55 +505,50 @@ sink are just different sinks for the same paths.)
   degrading to instant swaps where the browser lacks support.
 - **`StyledBox` the primitive, `Container` a thin single-child wrapper, and the
   forwarding published.** Two changes that only make sense together.
-  - **The primitive gets its own name.** `Row`/`Column`/`Grid`/`Stack` each hold a
-    `Container` today and `box_surface!` forwards the whole shared surface onto them, so
-    the type that means "plain flow box" is also the type every layout is built out of.
-    Split the roles: the composable that owns the shared box surface—sizing, margin,
-    padding, offset, background, border, radius, shadow, cursor, overflow, variants,
-    events, children—becomes `StyledBox`, pairing with the `BoxStyle`/`BoxProps`
-    vocabulary it carries. (Rejected: `Box` itself, which a prelude glob would shadow
+  - **The primitive has its own name—done.** The composable that owns the shared box
+    surface—sizing, margin, padding, offset, background, border, radius, shadow, cursor,
+    overflow, variants, events, children—is `StyledBox`, pairing with the
+    `BoxStyle`/`BoxProps` vocabulary it carries, **public** in both facades and wrapped
+    by every layout view. (Rejected: `Box` itself, which a prelude glob would shadow
     over `std`'s, breaking `Box::new` in user files; `Surface`, which already means
     "the set of builder methods" here; `Frame`, taken by the terminal's painted frames;
     `DecoratedBox`, Flutter's name but blind to the sizing and events this also holds.)
-    Every layout view wraps it. **`StyledBox` is public**—each facade exporting its
-    own, typed to its medium—so a third-party layout view is built exactly the way `Row`
-    is: wrap the box, derive the subset of the surface it honors, add its own layout
-    properties. No privileged base, no path the built-ins get and users don't. The gate
-    is a layout view written outside the facade crate, against its public API alone, that
-    matches a built-in feature for feature; that also makes the whole surface public
-    vocabulary, so it needs documenting to the standard `Container` is held to.
+  - **The forwarding surfaces—done, as traits.** The strong-form "never a trait" rule
+    was wrong: per-property absence would need a derive, but nothing real selects per
+    property—containers take whole groups, Simple views withhold exactly the styling
+    group—so group granularity suffices, and traits win. The shape mirrors
+    `HasChildren`: `HasSize`, `HasDecoration`, and `HasEvents` each require one
+    accessor (`size_box`/`decoration_box`/`events_box`, returning `&mut StyledBox`)
+    and provide every builder on top; `HasFocus` and `HasStyle` do the same over a
+    control's `FocusCore`/`StyleCore`, public structs with private fields split out of
+    `ControlBase`. Provided bodies write the box's `pub(crate)` fields directly—trait
+    defaults resolve visibility at the definition site, the capability macro
+    expansions lacked—so the surface is defined exactly once: `StyledBox` itself
+    implements the traits through identity accessors and keeps no inherent setters.
+    Multi-layer wrapping composes through the public accessor (`SimpleCheckbox`
+    forwards `focus_core` to its raw control's), and a third-party wrapper is a
+    two-line impl per group, no macro anywhere. A derive-based approach
+    (`#[derive(BoxSurface)]` expanding to exported vocabulary macros) was built first
+    and replaced by this—the traits delete the entire apparatus: the vocabulary
+    macros, the gate/check proc-macro helpers, the derive entry points, and the
+    `extern crate self` aliases. Costs accepted: the traits arrive via imports (the
+    preludes carry them), and rustdoc lists the methods under trait implementations
+    rather than inherently.
   - **`Container` loses flow and takes exactly one child.** No multi-child normal flow:
     `Column` covers the vertical case, `Row` the horizontal, `Wrap` on either the
     wrapping one. `Container` becomes decoration plus sizing around a single child, and
     the child API is `set_child` alone—no `Children`, no `derive_children`. The repo pays
-    nothing for this: every `Container` in both galleries and the router example is
-    already single-child or childless. Once it lands, `AGENTS.md`'s layout bullet stops
-    naming "plain `Container` (flow)".
-  - **A derive, not a trait.** The trait shape (one `map_container`-style accessor plus a
-    blanket extension trait) is the smaller mechanism and would need no macro at all, but
-    it forwards all or nothing—and the whole point of typed containers is that a property
-    a view does not honor is *statically absent*, not merely unused. A trait cannot make
-    `set_width` disappear from a control that must not be sized. So:
-    `#[derive(BoxSurface)]` on the wrapper struct, with a `skip`/allowlist attribute
-    controlling exactly which
-    methods appear, finding the `StyledBox` field by type and taking an attribute to
-    name it when ambiguous—noting the sharp edge that a derive matches the *written*
-    path, so an aliased field type needs the attribute. It lands in `skene-macros` beside
-    `#[main]`/`#[lazy]`/`Store`, and it replaces all three of today's private
-    `macro_rules!`—`box_surface!` (`base: Container`, some forty methods),
-    `control_surface!` (`base: ControlBase`), `simple_surface!` (`raw: Raw*`), each
-    hardcoding a field name and none exported—so we do not ship one public mechanism
-    beside two private ones.
-  - **What the first-party set gains, and must adopt.** A third-party view forwards by
-    hand or not at all today, and the built-ins already show the cost: `SimpleCard`
-    exposes spacing, alignment, and children, so wrapping a `Column` silently drops
-    width, padding, color, border, shadow, cursor, overflow, variants, and every pointer
-    handler.
-    Every Simple view adopts the derive as part of this work, not as a follow-up. A
-    forwarded method keeps the primitive's name, signature, and documented contract, from
-    one generated source—never a hand-written copy that drifts.
-  - Both facades and the record driver move together; the sweep touches every example and
-    both galleries, and the SSR snapshot changes wherever a layout's node shifts.
+    nothing for this: every former `Container` use in both galleries and the router
+    example is already single-child or childless. Once it lands, `AGENTS.md`'s layout
+    bullet stops carrying the transition parenthetical.
+  - **What the first-party set gains, and must adopt.** The built-ins still show the
+    cost of hand forwarding: `SimpleCard` exposes spacing, alignment, and children, so
+    wrapping a `Column` silently drops width, padding, color, border, shadow, cursor,
+    overflow, variants, and every pointer handler. `SimpleCard` (and any Simple view
+    still forwarding a subset by hand) adopts the traits as part of this work.
+  - The remaining gate: a layout view written outside the facade crate, against its
+    public API alone, that matches a built-in feature for feature—and the SSR snapshot
+    watched wherever a layout's node shifts.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

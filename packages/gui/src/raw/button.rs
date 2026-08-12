@@ -2,11 +2,7 @@
 
 use std::rc::Rc;
 
-use crate::{
-  Children,
-  HasChildren,
-  control::{ControlBase, control_surface},
-};
+use crate::{Children, HasChildren, control::ControlBase};
 
 /// A button: natively focusable and clickable, its content the attached children.
 ///
@@ -46,8 +42,6 @@ impl RawButton {
   }
 }
 
-control_surface!(RawButton);
-
 impl Default for RawButton {
   #[inline(always)]
   fn default() -> Self {
@@ -83,5 +77,19 @@ impl skene_core::View for RawButton {
     self.children.mount(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawButton {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawButton {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

@@ -95,12 +95,10 @@ impl RawSlider {
   }
 }
 
-crate::control::control_surface!(RawSlider, crate::props::ControlStyle);
-
 impl View for RawSlider {
   fn build(mut self) -> NodeId {
-    let style = self.base.style;
-    let variants = std::mem::take(&mut self.base.variants);
+    let style = self.base.style.style;
+    let variants = std::mem::take(&mut self.base.style.variants);
     let node = with_state(|state| {
       state.insert_node(
         NodeKind::Slider {
@@ -144,5 +142,21 @@ impl View for RawSlider {
     self.base.register(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawSlider {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.base.focus
+  }
+}
+
+impl crate::HasStyle for RawSlider {
+  type Style = crate::props::ControlStyle;
+
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+    &mut self.base.style
   }
 }

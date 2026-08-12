@@ -3,9 +3,10 @@
 use skene_core::{MouseCursor, NodeId, Source, View};
 
 use crate::{
+  HasStyle,
   RawButton,
   props::{BoxStyle, Condition},
-  simple::{self, SimpleVariant, simple_surface},
+  simple::{self, SimpleVariant},
 };
 
 /// A ready-made button: a one-row text label on the variant's surface, with the
@@ -65,8 +66,6 @@ impl SimpleButton {
   }
 }
 
-simple_surface!(SimpleButton);
-
 impl View for SimpleButton {
   fn build(self) -> NodeId {
     use skene_core::HasChildren;
@@ -102,5 +101,12 @@ impl View for SimpleButton {
       .set_style(style)
       .set_child(text.set_bold(true).set_color(look.ink))
       .build()
+  }
+}
+
+impl crate::HasFocus for SimpleButton {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

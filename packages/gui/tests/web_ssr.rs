@@ -25,6 +25,9 @@ use skene_gui::{
   render_to_string,
   web,
 };
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 
 /// The class of the first classed element in `body`.
 fn first_class(body: &str) -> &str {

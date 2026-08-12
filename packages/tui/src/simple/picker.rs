@@ -2,11 +2,7 @@
 
 use skene_core::{NodeId, View};
 
-use crate::{
-  RawPicker,
-  simple,
-  simple::{SimplePalette, simple_surface},
-};
+use crate::{RawPicker, simple, simple::SimplePalette};
 
 /// A ready-made select: the current label and indicator, its popup a Simple card with
 /// the highlight bar in the palette's secondary surface.
@@ -79,8 +75,6 @@ impl Default for SimplePicker {
   }
 }
 
-simple_surface!(SimplePicker);
-
 impl View for SimplePicker {
   fn build(self) -> NodeId {
     self
@@ -93,5 +87,12 @@ impl View for SimplePicker {
       )
       .set_highlight(SimplePalette::secondary(), SimplePalette::foreground())
       .build()
+  }
+}
+
+impl crate::HasFocus for SimplePicker {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    crate::HasFocus::focus_core(&mut self.raw)
   }
 }

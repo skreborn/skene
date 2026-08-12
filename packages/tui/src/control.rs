@@ -6,13 +6,9 @@ use skene_core::NodeId;
 
 use crate::{FocusHandle, props::Condition, with_state};
 
-/// The state behind a control's shared builder surface, embedded by every control;
-/// `S` is the style vocabulary the control accepts (a small control's
-/// [`ControlStyle`](crate::props::ControlStyle), a container-owning one's
-/// [`BoxStyle`](crate::props::BoxStyle)).
-pub(crate) struct ControlBase<S> {
-  pub(crate) style: S,
-  pub(crate) variants: Vec<(Condition, S)>,
+/// The focus state behind a control's shared builder surface: the target of
+/// [`HasFocus`](crate::HasFocus).
+pub struct FocusCore {
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
   pub(crate) anchor: Option<crate::Anchor>,
@@ -21,27 +17,49 @@ pub(crate) struct ControlBase<S> {
   pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
 }
 
+/// The styling state behind a control's shared builder surface: the target of
+/// [`HasStyle`](crate::HasStyle); `S` is the style vocabulary the control accepts.
+pub struct StyleCore<S> {
+  pub(crate) style: S,
+  pub(crate) variants: Vec<(Condition, S)>,
+}
+
+/// The state behind a control's shared builder surface, embedded by every control;
+/// `S` is the style vocabulary the control accepts (a small control's
+/// [`ControlStyle`](crate::props::ControlStyle), a container-owning one's
+/// [`BoxStyle`](crate::props::BoxStyle)).
+pub(crate) struct ControlBase<S> {
+  pub(crate) style: StyleCore<S>,
+  pub(crate) focus: FocusCore,
+}
+
 impl<S: Default> ControlBase<S> {
   pub(crate) fn new() -> Self {
     Self {
-      style: S::default(),
-      variants: Vec::new(),
-      autofocus: false,
-      focus_handle: None,
-      anchor: None,
-      focus_handler: None,
-      blur_handler: None,
-      key_down_handler: None,
+      style: StyleCore {
+        style: S::default(),
+        variants: Vec::new(),
+      },
+      focus: FocusCore {
+        autofocus: false,
+        focus_handle: None,
+        anchor: None,
+        focus_handler: None,
+        blur_handler: None,
+        key_down_handler: None,
+      },
     }
   }
 
   /// Registers the built control: joins the focus order, wires the base's handlers,
   /// and binds its handles.
   pub(crate) fn register(self, node: NodeId) {
+    let focus = self.focus;
+
     with_state(|state| {
       state.controls.borrow_mut().insert(node);
 
-      if let Some(action) = self.focus_handler {
+      if let Some(action) = focus.focus_handler {
         state
           .focus
           .borrow_mut()
@@ -50,7 +68,7 @@ impl<S: Default> ControlBase<S> {
           .push(action);
       }
 
-      if let Some(action) = self.blur_handler {
+      if let Some(action) = focus.blur_handler {
         state
           .blur
           .borrow_mut()
@@ -59,7 +77,7 @@ impl<S: Default> ControlBase<S> {
           .push(action);
       }
 
-      if let Some(action) = self.key_down_handler {
+      if let Some(action) = focus.key_down_handler {
         state
           .key_down
           .borrow_mut()
@@ -68,99 +86,18 @@ impl<S: Default> ControlBase<S> {
           .push(action);
       }
 
-      if self.autofocus {
+      if focus.autofocus {
         state.focused.set(Some(node));
         state.dirty.set(true);
       }
     });
 
-    if let Some(handle) = &self.focus_handle {
+    if let Some(handle) = &focus.focus_handle {
       handle.assign(node);
     }
 
-    if let Some(anchor) = &self.anchor {
+    if let Some(anchor) = &focus.anchor {
       anchor.assign(node);
     }
   }
 }
-
-/// Generates the shared builder surface, delegating to the embedded [`ControlBase`];
-/// `$style` is the style vocabulary the control accepts.
-macro_rules! control_surface {
-  ($name:ident, $style:ty) => {
-    impl $name {
-      /// Sets the static style.
-      #[inline(always)]
-      pub fn set_style(mut self, style: $style) -> Self {
-        self.base.style = style;
-
-        self
-      }
-
-      /// Adds a conditional style variant, applied while `condition` holds.
-      #[inline(always)]
-      pub fn set_when(mut self, condition: crate::props::Condition, style: $style) -> Self {
-        self.base.variants.push((condition, style));
-
-        self
-      }
-
-      /// Sets the focus handler.
-      #[inline(always)]
-      pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-        self.base.focus_handler = Some(std::rc::Rc::new(action));
-
-        self
-      }
-
-      /// Sets the blur handler.
-      #[inline(always)]
-      pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-        self.base.blur_handler = Some(std::rc::Rc::new(action));
-
-        self
-      }
-
-      /// Sets the key-press handler, run for keys pressed while the control is
-      /// focused; its [`Prevent`](skene_core::Prevent) verdict is honored per the
-      /// dispatch contract.
-      #[inline(always)]
-      pub fn handle_key_down<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
-      ) -> Self {
-        self.base.key_down_handler = Some(std::rc::Rc::new(move |event| action(event).into()));
-
-        self
-      }
-
-      /// Makes the control take focus when it mounts.
-      #[inline(always)]
-      pub fn set_autofocus(mut self) -> Self {
-        self.base.autofocus = true;
-
-        self
-      }
-
-      /// Binds `handle` to the control, so
-      /// [`FocusHandle::focus`](crate::FocusHandle::focus) targets it once built.
-      #[inline(always)]
-      pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
-        self.base.focus_handle = Some(handle.clone());
-
-        self
-      }
-
-      /// Binds `anchor` to the control, so an overlay's
-      /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
-      #[inline(always)]
-      pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
-        self.base.anchor = Some(anchor.clone());
-
-        self
-      }
-    }
-  };
-}
-
-pub(crate) use control_surface;

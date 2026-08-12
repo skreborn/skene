@@ -12,6 +12,9 @@ use std::{
   rc::Rc,
 };
 
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::HasEvents;
 use skene_gui::{
   HasChildren,
   Lazy,

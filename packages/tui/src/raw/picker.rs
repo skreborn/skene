@@ -5,6 +5,8 @@ use std::rc::Rc;
 use skene_core::{HasChildren, NodeId, Prevent, Source, View};
 
 use crate::{
+  HasDecoration,
+  HasEvents,
   Overlay,
   control::ControlBase,
   overlay::Anchor,
@@ -143,14 +145,12 @@ impl Default for RawPicker {
   }
 }
 
-crate::control::control_surface!(RawPicker, crate::props::ControlStyle);
-
 impl View for RawPicker {
   fn build(mut self) -> NodeId {
     use skene_reactive::{Get, Set, Signal};
 
-    let style = self.base.style;
-    let variants = std::mem::take(&mut self.base.variants);
+    let style = self.base.style.style;
+    let variants = std::mem::take(&mut self.base.style.variants);
     let initial = self
       .options
       .first()
@@ -432,4 +432,20 @@ fn default_popup_style() -> BoxStyle {
     .set_color(backdrop)
     .set_border(edge)
     .set_padding(crate::Inset::horizontal(1))
+}
+
+impl crate::HasFocus for RawPicker {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.base.focus
+  }
+}
+
+impl crate::HasStyle for RawPicker {
+  type Style = crate::props::ControlStyle;
+
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+    &mut self.base.style
+  }
 }

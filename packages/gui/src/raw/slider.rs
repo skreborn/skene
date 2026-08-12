@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use skene_core::Source;
 
-use crate::control::{ControlBase, control_surface};
+use crate::control::ControlBase;
 
 /// A slider: a draggable choice of a number within a range.
 ///
@@ -73,8 +73,6 @@ impl RawSlider {
   }
 }
 
-control_surface!(RawSlider);
-
 impl RawSlider {
   /// Binds the value to `signal` in both directions: the slider shows the signal and
   /// each move writes it back.
@@ -122,5 +120,19 @@ impl skene_core::View for RawSlider {
     handlers.register(node);
 
     node
+  }
+}
+
+impl crate::HasFocus for RawSlider {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.control.focus
+  }
+}
+
+impl crate::HasStyle for RawSlider {
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore {
+    &mut self.control.style
   }
 }

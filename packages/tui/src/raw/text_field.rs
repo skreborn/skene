@@ -89,12 +89,10 @@ impl Default for RawTextField {
   }
 }
 
-crate::control::control_surface!(RawTextField, crate::props::BoxStyle);
-
 impl View for RawTextField {
   fn build(mut self) -> NodeId {
-    let style = self.base.style.clone();
-    let variants = std::mem::take(&mut self.base.variants);
+    let style = self.base.style.style.clone();
+    let variants = std::mem::take(&mut self.base.style.variants);
     let node = with_state(|state| {
       state.insert_node(
         NodeKind::TextField {
@@ -146,4 +144,20 @@ fn set_value(node: NodeId, value: &str) {
 
     state.dirty.set(true);
   });
+}
+
+impl crate::HasFocus for RawTextField {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.base.focus
+  }
+}
+
+impl crate::HasStyle for RawTextField {
+  type Style = crate::props::BoxStyle;
+
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::BoxStyle> {
+    &mut self.base.style
+  }
 }

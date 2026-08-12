@@ -30,6 +30,7 @@ mod simple;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
 mod styled_box;
+mod surface;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
@@ -86,11 +87,13 @@ pub use crate::simple::{
 pub use crate::task::spawn;
 pub use crate::{
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
+  control::{FocusCore, StyleCore},
   focus::FocusHandle,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextEditor, RawTextField},
   styled_box::StyledBox,
+  surface::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle},
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 

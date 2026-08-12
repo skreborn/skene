@@ -9,12 +9,9 @@ use skene_core::{Animation, BoxStyle, Condition, Transition};
 
 use crate::FocusHandle;
 
-/// The state behind a control's shared builder surface, embedded by every control.
-pub(crate) struct ControlBase {
-  pub(crate) style: BoxStyle,
-  pub(crate) variants: Vec<(Condition, BoxStyle)>,
-  pub(crate) transitions: Vec<Transition>,
-  pub(crate) animations: Vec<Animation<BoxStyle>>,
+/// The focus state behind a control's shared builder surface: the target of
+/// [`HasFocus`](crate::HasFocus).
+pub struct FocusCore {
   pub(crate) focus_order: Option<skene_core::FocusOrder>,
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
@@ -24,20 +21,39 @@ pub(crate) struct ControlBase {
   pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
 }
 
+/// The styling state behind a control's shared builder surface: the target of
+/// [`HasStyle`](crate::HasStyle).
+pub struct StyleCore {
+  pub(crate) style: BoxStyle,
+  pub(crate) variants: Vec<(Condition, BoxStyle)>,
+  pub(crate) transitions: Vec<Transition>,
+  pub(crate) animations: Vec<Animation<BoxStyle>>,
+}
+
+/// The state behind a control's shared builder surface, embedded by every control.
+pub(crate) struct ControlBase {
+  pub(crate) style: StyleCore,
+  pub(crate) focus: FocusCore,
+}
+
 impl ControlBase {
   pub(crate) fn new() -> Self {
     Self {
-      style: BoxStyle::new(),
-      variants: Vec::new(),
-      transitions: Vec::new(),
-      animations: Vec::new(),
-      focus_order: None,
-      autofocus: false,
-      focus_handle: None,
-      anchor: None,
-      focus_handler: None,
-      blur_handler: None,
-      key_down_handler: None,
+      style: StyleCore {
+        style: BoxStyle::new(),
+        variants: Vec::new(),
+        transitions: Vec::new(),
+        animations: Vec::new(),
+      },
+      focus: FocusCore {
+        focus_order: None,
+        autofocus: false,
+        focus_handle: None,
+        anchor: None,
+        focus_handler: None,
+        blur_handler: None,
+        key_down_handler: None,
+      },
     }
   }
 
@@ -82,20 +98,20 @@ impl ControlBase {
 
     (
       skene_core::ControlProps {
-        style: self.style,
+        style: self.style.style,
         text,
-        variants: self.variants,
-        transitions: self.transitions,
-        animations: self.animations,
-        focus_order: self.focus_order,
-        autofocus: self.autofocus,
+        variants: self.style.variants,
+        transitions: self.style.transitions,
+        animations: self.style.animations,
+        focus_order: self.focus.focus_order,
+        autofocus: self.focus.autofocus,
       },
       ControlHandlers {
-        focus_handle: self.focus_handle,
-        anchor: self.anchor,
-        focus: self.focus_handler,
-        blur: self.blur_handler,
-        key_down: self.key_down_handler,
+        focus_handle: self.focus.focus_handle,
+        anchor: self.focus.anchor,
+        focus: self.focus.focus_handler,
+        blur: self.focus.blur_handler,
+        key_down: self.focus.key_down_handler,
         binders,
       },
     )
@@ -168,115 +184,3 @@ pub(crate) fn labeled(control: skene_core::NodeId, label: String) -> skene_core:
 
   wrapper
 }
-
-/// Implements the shared control surface on a control with a `control: ControlBase`
-/// field: styling, conditional variants, transitions, animations, focus order,
-/// autofocus, focus binding, and the focus/blur/key handlers.
-macro_rules! control_surface {
-  ($control:ident) => {
-    impl $control {
-      /// Sets the static style.
-      #[inline(always)]
-      pub fn set_style(mut self, style: skene_core::BoxStyle) -> Self {
-        self.control.style = style;
-
-        self
-      }
-
-      /// Adds a conditional style variant, applied while `condition` holds.
-      #[inline(always)]
-      pub fn set_when(
-        mut self,
-        condition: skene_core::Condition,
-        style: skene_core::BoxStyle,
-      ) -> Self {
-        self.control.variants.push((condition, style));
-
-        self
-      }
-
-      /// Adds a property transition, interpolating that property whenever its value
-      /// changes.
-      #[inline(always)]
-      pub fn set_transition(mut self, transition: skene_core::Transition) -> Self {
-        self.control.transitions.push(transition);
-
-        self
-      }
-
-      /// Adds a keyframe animation.
-      #[inline(always)]
-      pub fn set_animation(
-        mut self,
-        animation: skene_core::Animation<skene_core::BoxStyle>,
-      ) -> Self {
-        self.control.animations.push(animation);
-
-        self
-      }
-
-      /// Sets the control's place in sequential focus traversal.
-      #[inline(always)]
-      pub fn set_focus_order(mut self, focus_order: skene_core::FocusOrder) -> Self {
-        self.control.focus_order = Some(focus_order);
-
-        self
-      }
-
-      /// Makes the control take focus when the page loads.
-      #[inline(always)]
-      pub fn set_autofocus(mut self) -> Self {
-        self.control.autofocus = true;
-
-        self
-      }
-
-      /// Binds `handle` to the control, so
-      /// [`FocusHandle::focus`](crate::FocusHandle::focus) targets it once built.
-      #[inline(always)]
-      pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
-        self.control.focus_handle = Some(handle.clone());
-
-        self
-      }
-
-      /// Binds `anchor` to the control, so an overlay's
-      /// [`set_anchor`](crate::Overlay::set_anchor) positions against it once built.
-      #[inline(always)]
-      pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
-        self.control.anchor = Some(anchor.clone());
-
-        self
-      }
-
-      /// Sets the focus handler.
-      #[inline(always)]
-      pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-        self.control.focus_handler = Some(std::rc::Rc::new(action));
-
-        self
-      }
-
-      /// Sets the blur handler.
-      #[inline(always)]
-      pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-        self.control.blur_handler = Some(std::rc::Rc::new(action));
-
-        self
-      }
-
-      /// Sets the key-press handler.
-      #[inline(always)]
-      pub fn handle_key_down<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
-      ) -> Self {
-        self.control.key_down_handler = Some(std::rc::Rc::new(move |event| action(event).into()));
-
-        self
-      }
-    }
-  };
-}
-
-pub(crate) use control_surface;

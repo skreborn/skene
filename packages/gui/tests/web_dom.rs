@@ -43,6 +43,9 @@ use skene_gui::{
   wasm_bindgen::JsCast,
   web::{self, mount},
 };
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::{HasDecoration, HasEvents, HasFocus};
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement};
 

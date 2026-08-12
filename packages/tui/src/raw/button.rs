@@ -53,8 +53,6 @@ impl Default for RawButton {
   }
 }
 
-crate::control::control_surface!(RawButton, crate::props::BoxStyle);
-
 impl skene_core::HasChildren<crate::TuiOps> for RawButton {
   type Kind = skene_core::PlainChild;
 
@@ -68,8 +66,8 @@ impl skene_core::HasChildren<crate::TuiOps> for RawButton {
 
 impl View for RawButton {
   fn build(mut self) -> NodeId {
-    let style = self.base.style.clone();
-    let variants = std::mem::take(&mut self.base.variants);
+    let style = self.base.style.style.clone();
+    let variants = std::mem::take(&mut self.base.style.variants);
     let node = with_state(|state| {
       let node = state.insert_node(
         NodeKind::Box {
@@ -96,5 +94,21 @@ impl View for RawButton {
     crate::theme::build_unselectable(|| self.children.mount(node));
 
     node
+  }
+}
+
+impl crate::HasFocus for RawButton {
+  #[inline(always)]
+  fn focus_core(&mut self) -> &mut crate::FocusCore {
+    &mut self.base.focus
+  }
+}
+
+impl crate::HasStyle for RawButton {
+  type Style = crate::props::BoxStyle;
+
+  #[inline(always)]
+  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::BoxStyle> {
+    &mut self.base.style
   }
 }

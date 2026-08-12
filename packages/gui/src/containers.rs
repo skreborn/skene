@@ -37,158 +37,9 @@ use skene_core::{
 
 use crate::{Children, StyledBox, driver};
 
-/// Generates the shared box surface—decoration, sizing, dynamics, events, children—
-/// forwarding to the wrapped [`StyledBox`].
-macro_rules! box_surface {
-  ($type:ident, $kind:ty) => {
-    impl $type {
-      /// Sets the semantic role.
-      #[inline(always)]
-      pub fn set_role(mut self, role: skene_core::Role) -> Self {
-        self.base = self.base.set_role(role);
-
-        self
-      }
-
-      /// Adds a conditional style variant, applied while `condition` holds.
-      #[inline(always)]
-      pub fn set_when(mut self, condition: skene_core::Condition, style: skene_core::BoxStyle) -> Self {
-        self.base = self.base.set_when(condition, style);
-
-        self
-      }
-
-      /// Adds a property transition.
-      #[inline(always)]
-      pub fn set_transition(mut self, transition: skene_core::Transition) -> Self {
-        self.base = self.base.set_transition(transition);
-
-        self
-      }
-
-      /// Adds a keyframe animation.
-      #[inline(always)]
-      pub fn set_animation(mut self, animation: skene_core::Animation<skene_core::BoxStyle>) -> Self {
-        self.base = self.base.set_animation(animation);
-
-        self
-      }
-
-      /// Binds `anchor` to the box, so an overlay positions against it once built.
-      #[inline(always)]
-      pub fn bind_anchor(mut self, anchor: &crate::Anchor) -> Self {
-        self.base = self.base.bind_anchor(anchor);
-
-        self
-      }
-
-      box_surface!(@forward set_width, derive_width, impl Into<Dimension<f32>>, "the width");
-      box_surface!(@forward set_height, derive_height, impl Into<Dimension<f32>>, "the height");
-      box_surface!(@forward set_min_width, derive_min_width, impl Into<Dimension<f32>>, "the minimum width");
-      box_surface!(@forward set_min_height, derive_min_height, impl Into<Dimension<f32>>, "the minimum height");
-      box_surface!(@forward set_max_width, derive_max_width, impl Into<Dimension<f32>>, "the maximum width");
-      box_surface!(@forward set_max_height, derive_max_height, impl Into<Dimension<f32>>, "the maximum height");
-      box_surface!(@plain set_aspect_ratio, derive_aspect_ratio, f32, "the width-to-height ratio");
-      box_surface!(@plain set_margin, derive_margin, skene_core::Inset<Dimension<f32>>, "the margin on each edge");
-      box_surface!(@plain set_padding, derive_padding, crate::Inset, "the padding on each edge");
-      box_surface!(@plain set_offset, derive_offset, skene_core::Inset<Dimension<f32>>, "the in-flow shift from each edge");
-      box_surface!(@plain set_color, derive_color, skene_core::Color, "the background color");
-      box_surface!(@plain set_border, derive_border, crate::Border, "the border");
-      box_surface!(@plain set_border_radius, derive_border_radius, f32, "the corner radius");
-      box_surface!(@plain set_cursor, derive_cursor, skene_core::MouseCursor, "the mouse cursor shown over the box");
-      box_surface!(@plain set_overflow, derive_overflow, skene_core::Overflow, "how content exceeding the bounds is treated");
-
-      box_surface!(@handler handle_click, skene_core::Prevent, "click");
-      box_surface!(@handler0 handle_pointer_enter, "pointer-enter");
-      box_surface!(@handler0 handle_pointer_leave, "pointer-leave");
-      box_surface!(@handler0 handle_focus, "focus");
-      box_surface!(@handler0 handle_blur, "blur");
-    }
-
-    impl $type {
-      /// Sets the key-down handler.
-      #[inline(always)]
-      pub fn handle_key_down<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::KeyEvent) -> R + 'static,
-      ) -> Self {
-        self.base = self.base.handle_key_down(action);
-
-        self
-      }
-
-      /// Sets the pointer-down handler.
-      #[inline(always)]
-      pub fn handle_pointer_down<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::PointerEvent) -> R + 'static,
-      ) -> Self {
-        self.base = self.base.handle_pointer_down(action);
-
-        self
-      }
-
-      /// Sets the pointer-up handler.
-      #[inline(always)]
-      pub fn handle_pointer_up<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::PointerEvent) -> R + 'static,
-      ) -> Self {
-        self.base = self.base.handle_pointer_up(action);
-
-        self
-      }
-
-      /// Sets the pointer-move handler.
-      #[inline(always)]
-      pub fn handle_pointer_move<R: Into<skene_core::Prevent>>(
-        mut self,
-        action: impl Fn(&skene_core::PointerEvent) -> R + 'static,
-      ) -> Self {
-        self.base = self.base.handle_pointer_move(action);
-
-        self
-      }
-
-      /// Sets the scroll handler.
-      #[inline(always)]
-      pub fn handle_scroll(mut self, action: impl Fn(&skene_core::ScrollEvent) + 'static) -> Self {
-        self.base = self.base.handle_scroll(action);
-
-        self
-      }
-    }
-
-    impl skene_core::HasChildren<crate::GuiOps> for $type {
-      type Kind = $kind;
-
-      fn set_children_to(mut self, children: Children) -> Self {
-        self.base.children = children;
-
-        self
-      }
-    }
-  };
-
-  (@forward $set:ident, $derive:ident, impl Into<$type:ty>, $doc:literal) => {
-    #[doc = concat!("Sets ", $doc, ".")]
-    #[inline(always)]
-    pub fn $set(mut self, value: impl Into<$type>) -> Self {
-      self.base = self.base.$set(value);
-
-      self
-    }
-
-    #[doc = concat!("Derives ", $doc, ".")]
-    #[inline(always)]
-    pub fn $derive<D: Into<$type>>(mut self, value: impl Fn() -> D + 'static) -> Self {
-      self.base = self.base.$derive(value);
-
-      self
-    }
-  };
-
-  (@own $set:ident, $derive:ident, $field:ident, $type:ty, $doc:literal) => {
+/// Generates a layout property pair, written straight into the base's field.
+macro_rules! own_prop {
+  ($set:ident, $derive:ident, $field:ident, $type:ty, $doc:literal) => {
     #[doc = concat!("Sets ", $doc, ".")]
     #[inline(always)]
     pub fn $set(mut self, value: $type) -> Self {
@@ -201,44 +52,6 @@ macro_rules! box_surface {
     #[inline(always)]
     pub fn $derive(mut self, value: impl Fn() -> $type + 'static) -> Self {
       self.base.$field = Some(Source::Derived(Rc::new(value)));
-
-      self
-    }
-  };
-
-  (@plain $set:ident, $derive:ident, $type:ty, $doc:literal) => {
-    #[doc = concat!("Sets ", $doc, ".")]
-    #[inline(always)]
-    pub fn $set(mut self, value: $type) -> Self {
-      self.base = self.base.$set(value);
-
-      self
-    }
-
-    #[doc = concat!("Derives ", $doc, ".")]
-    #[inline(always)]
-    pub fn $derive(mut self, value: impl Fn() -> $type + 'static) -> Self {
-      self.base = self.base.$derive(value);
-
-      self
-    }
-  };
-
-  (@handler $name:ident, $verdict:ty, $doc:literal) => {
-    #[doc = concat!("Sets the ", $doc, " handler.")]
-    #[inline(always)]
-    pub fn $name<R: Into<$verdict>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-      self.base = self.base.$name(action);
-
-      self
-    }
-  };
-
-  (@handler0 $name:ident, $doc:literal) => {
-    #[doc = concat!("Sets the ", $doc, " handler.")]
-    #[inline(always)]
-    pub fn $name(mut self, action: impl Fn() + 'static) -> Self {
-      self.base = self.base.$name(action);
 
       self
     }
@@ -370,10 +183,34 @@ macro_rules! flex_surface {
         self
       }
 
-      box_surface!(@own set_arrangement, derive_arrangement, arrangement, Arrangement, "the distribution of children along the main axis");
-      box_surface!(@own set_item_alignment, derive_item_alignment, item_alignment, ItemAlignment, "the alignment of each child on the cross axis");
-      box_surface!(@own set_line_arrangement, derive_line_arrangement, line_arrangement, Arrangement, "the distribution of wrapped lines along the cross axis");
-      box_surface!(@own set_wrap, derive_wrap, wrap, Wrap, "whether children wrap onto multiple lines");
+      own_prop!(
+        set_arrangement,
+        derive_arrangement,
+        arrangement,
+        Arrangement,
+        "the distribution of children along the main axis"
+      );
+      own_prop!(
+        set_item_alignment,
+        derive_item_alignment,
+        item_alignment,
+        ItemAlignment,
+        "the alignment of each child on the cross axis"
+      );
+      own_prop!(
+        set_line_arrangement,
+        derive_line_arrangement,
+        line_arrangement,
+        Arrangement,
+        "the distribution of wrapped lines along the cross axis"
+      );
+      own_prop!(
+        set_wrap,
+        derive_wrap,
+        wrap,
+        Wrap,
+        "whether children wrap onto multiple lines"
+      );
     }
 
     impl Default for $type {
@@ -400,8 +237,6 @@ macro_rules! flex_surface {
 
 flex_surface!(Row, FlexDirection::Row, FlexDirection::RowReverse);
 flex_surface!(Column, FlexDirection::Column, FlexDirection::ColumnReverse);
-box_surface!(Row, FlexChild);
-box_surface!(Column, FlexChild);
 
 /// A grid container placing children into tracks.
 #[must_use]
@@ -534,9 +369,27 @@ impl Grid {
     self
   }
 
-  box_surface!(@own set_flow, derive_flow, grid_flow, GridFlow, "the direction auto-placed children fill");
-  box_surface!(@own set_column_arrangement, derive_column_arrangement, arrangement, Arrangement, "the horizontal distribution of the column tracks");
-  box_surface!(@own set_row_arrangement, derive_row_arrangement, line_arrangement, Arrangement, "the vertical distribution of the row tracks");
+  own_prop!(
+    set_flow,
+    derive_flow,
+    grid_flow,
+    GridFlow,
+    "the direction auto-placed children fill"
+  );
+  own_prop!(
+    set_column_arrangement,
+    derive_column_arrangement,
+    arrangement,
+    Arrangement,
+    "the horizontal distribution of the column tracks"
+  );
+  own_prop!(
+    set_row_arrangement,
+    derive_row_arrangement,
+    line_arrangement,
+    Arrangement,
+    "the vertical distribution of the row tracks"
+  );
 }
 
 impl Default for Grid {
@@ -557,8 +410,6 @@ impl View for Grid {
     base.build()
   }
 }
-
-box_surface!(Grid, GridChild);
 
 /// A container overlapping its children in one cell, stacked in order (last on top).
 ///
@@ -613,8 +464,6 @@ impl View for Stack {
     base.build()
   }
 }
-
-box_surface!(Stack, StackChild);
 
 /// Reads a source through a shared handle, for merged reactive child properties.
 fn reader<T: Clone + 'static>(source: Option<&Source<T>>, fallback: T) -> impl Fn() -> T + 'static {
@@ -917,5 +766,129 @@ impl IntoChildOf<GridChild> for GridCell {
 
       node
     })
+  }
+}
+
+impl crate::HasSize for Row {
+  #[inline(always)]
+  fn size_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasDecoration for Row {
+  #[inline(always)]
+  fn decoration_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasEvents for Row {
+  #[inline(always)]
+  fn events_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl skene_core::HasChildren<crate::GuiOps> for Row {
+  type Kind = FlexChild;
+
+  fn set_children_to(mut self, children: Children) -> Self {
+    self.base.children = children;
+
+    self
+  }
+}
+
+impl crate::HasSize for Column {
+  #[inline(always)]
+  fn size_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasDecoration for Column {
+  #[inline(always)]
+  fn decoration_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasEvents for Column {
+  #[inline(always)]
+  fn events_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl skene_core::HasChildren<crate::GuiOps> for Column {
+  type Kind = FlexChild;
+
+  fn set_children_to(mut self, children: Children) -> Self {
+    self.base.children = children;
+
+    self
+  }
+}
+
+impl crate::HasSize for Grid {
+  #[inline(always)]
+  fn size_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasDecoration for Grid {
+  #[inline(always)]
+  fn decoration_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasEvents for Grid {
+  #[inline(always)]
+  fn events_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl skene_core::HasChildren<crate::GuiOps> for Grid {
+  type Kind = GridChild;
+
+  fn set_children_to(mut self, children: Children) -> Self {
+    self.base.children = children;
+
+    self
+  }
+}
+
+impl crate::HasSize for Stack {
+  #[inline(always)]
+  fn size_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasDecoration for Stack {
+  #[inline(always)]
+  fn decoration_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl crate::HasEvents for Stack {
+  #[inline(always)]
+  fn events_box(&mut self) -> &mut StyledBox {
+    &mut self.base
+  }
+}
+
+impl skene_core::HasChildren<crate::GuiOps> for Stack {
+  type Kind = StackChild;
+
+  fn set_children_to(mut self, children: Children) -> Self {
+    self.base.children = children;
+
+    self
   }
 }

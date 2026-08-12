@@ -867,18 +867,37 @@ fn paint_node(
         ..
       } => {
         let effective = effective_control_style(style, variants, environment, interaction);
+        let span = max - min;
+        let fraction = if span > 0.0 {
+          ((value - min) / span).clamp(0.0, 1.0)
+        }
+        else {
+          0.0
+        };
 
-        NodePaint::Text {
-          lines: vec![slider_track(width, *min, *max, *value, *glyphs)],
-          foreground: effective.color.and_then(terminal_rgb),
-          background: interaction_background(
-            None,
-            environment.dark,
-            interaction_sixteenths(variants, interaction),
-          ),
-          bold: effective.bold.unwrap_or(false),
-          dim: false,
-          selection: None,
+        // The default full-block glyphs take the smooth path: a dimmed block track
+        // under a full-ink thumb at eighth-cell precision. Themed glyphs keep the
+        // classic per-cell rendering.
+        if *glyphs == ('█', '█') {
+          NodePaint::Slider {
+            fraction,
+            ink: effective.color.and_then(terminal_rgb),
+            wash_sixteenths: interaction_sixteenths(variants, interaction),
+          }
+        }
+        else {
+          NodePaint::Text {
+            lines: vec![slider_track(width, fraction, *glyphs)],
+            foreground: effective.color.and_then(terminal_rgb),
+            background: interaction_background(
+              None,
+              environment.dark,
+              interaction_sixteenths(variants, interaction),
+            ),
+            bold: effective.bold.unwrap_or(false),
+            dim: false,
+            selection: None,
+          }
         }
       }
       NodeKind::Group => NodePaint::None,
@@ -1011,6 +1030,22 @@ fn paint_node(
           buffer.caret = u16::try_from(caret_x).ok().zip(u16::try_from(caret_y).ok());
         }
       }
+    }
+    NodePaint::Slider {
+      fraction,
+      ink,
+      wash_sixteenths,
+    } => {
+      draw_slider(
+        buffer,
+        x,
+        y,
+        width,
+        fraction,
+        ink,
+        wash_sixteenths,
+        environment.dark,
+      );
     }
     NodePaint::None => {}
   }
@@ -1152,6 +1187,62 @@ fn draw_scrollbars(
         cell.background = Some(background);
         cell.bold = false;
       }
+    }
+  }
+}
+
+/// A slider: full-block track cells in a dimmed ink under a one-cell thumb in the full
+/// ink, the thumb placed at eighth-cell precision through partial-width blocks, the
+/// track brightening with the built-in interaction feedback.
+#[expect(clippy::too_many_arguments)]
+fn draw_slider(
+  buffer: &mut Buffer,
+  x: isize,
+  y: isize,
+  width: usize,
+  fraction: f32,
+  ink: Option<(u8, u8, u8)>,
+  wash_sixteenths: u16,
+  dark: bool,
+) {
+  let track = isize::try_from(width).unwrap_or(0);
+
+  if track <= 0 {
+    return;
+  }
+
+  #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+  let start = (fraction * ((track * 8 - 8) as f32)).round() as isize;
+
+  for column in 0..track {
+    if let Some(cell) = buffer.cell_mut(x + column, y) {
+      let ink = ink.unwrap_or(if dark { (255, 255, 255) } else { (0, 0, 0) });
+      let beneath = cell
+        .background
+        .unwrap_or(if dark { (0, 0, 0) } else { (255, 255, 255) });
+      let sixteenths = (4 + wash_sixteenths).min(16);
+      let mix = |over: u8, under: u8| -> u8 {
+        u8::try_from((u16::from(over) * sixteenths + u16::from(under) * (16 - sixteenths) + 8) / 16)
+          .unwrap_or(u8::MAX)
+      };
+      let tint = (
+        mix(ink.0, beneath.0),
+        mix(ink.1, beneath.1),
+        mix(ink.2, beneath.2),
+      );
+      // A trailing partial paints the complement glyph with the colors swapped, in
+      // place of the right-block run Unicode lacks.
+      let (character, foreground, background) = match eighth_coverage(column, start, 8) {
+        Coverage::Full => ('█', ink, beneath),
+        Coverage::Leading(eighths) => (left_block(eighths), ink, tint),
+        Coverage::Trailing(eighths) => (left_block(8 - eighths), tint, ink),
+        Coverage::None => ('█', tint, beneath),
+      };
+
+      cell.character = character;
+      cell.foreground = Some(foreground);
+      cell.background = Some(background);
+      cell.bold = false;
     }
   }
 }
@@ -1337,6 +1428,14 @@ enum NodePaint {
     text: String,
     dim: bool,
     caret: Option<usize>,
+  },
+  Slider {
+    /// The value's position along the track, `0.0..=1.0`.
+    fraction: f32,
+    /// The thumb's ink; the scheme's default when unset.
+    ink: Option<(u8, u8, u8)>,
+    /// The built-in interaction feedback, brightening the track.
+    wash_sixteenths: u16,
   },
   None,
 }
@@ -1641,19 +1740,11 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
   }
 }
 
-/// A slider's track over `width` cells, the thumb at the value's cell.
-fn slider_track(width: usize, min: f32, max: f32, value: f32, glyphs: (char, char)) -> String {
+/// A themed slider's track over `width` cells, the thumb at the value's cell.
+fn slider_track(width: usize, fraction: f32, glyphs: (char, char)) -> String {
   if width == 0 {
     return String::new();
   }
-
-  let span = max - min;
-  let fraction = if span > 0.0 {
-    ((value - min) / span).clamp(0.0, 1.0)
-  }
-  else {
-    0.0
-  };
 
   #[expect(
     clippy::cast_precision_loss,
@@ -1786,8 +1877,8 @@ mod tests {
   fn slider_tracks_place_the_thumb() {
     let glyphs = ('-', '*');
 
-    assert_eq!(slider_track(5, 0.0, 4.0, 0.0, glyphs), "*----");
-    assert_eq!(slider_track(5, 0.0, 4.0, 2.0, glyphs), "--*--");
-    assert_eq!(slider_track(5, 0.0, 4.0, 4.0, glyphs), "----*");
+    assert_eq!(slider_track(5, 0.0, glyphs), "*----");
+    assert_eq!(slider_track(5, 0.5, glyphs), "--*--");
+    assert_eq!(slider_track(5, 1.0, glyphs), "----*");
   }
 }

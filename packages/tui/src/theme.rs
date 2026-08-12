@@ -6,9 +6,11 @@ use skene_reactive::{Owner, provide_context, use_context};
 /// The glyphs terminal controls render with.
 ///
 /// Defaults: `[x]`/`[ ]` for checkboxes, `(x)`/`( )` for radios, `▾` for the select
-/// indicator, and `─`/`█` for a slider's track and thumb—every default one cell per
-/// character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
-/// some emulators; a theme opting into them takes that on itself.
+/// indicator, and `█`/`█` for a slider—full blocks paint smoothly, the track dimmed
+/// under a thumb placed at eighth-cell precision; any other pair renders per cell.
+/// Every default is one cell per character in every terminal. Box-symbol marks (`☑`,
+/// `◉`) render two cells wide in some emulators; a theme opting into them takes that
+/// on itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Glyphs {
   /// A checkbox's checked and unchecked marks.
@@ -27,7 +29,7 @@ impl Default for Glyphs {
       checkbox: ("[x]".to_owned(), "[ ]".to_owned()),
       radio: ("(x)".to_owned(), "( )".to_owned()),
       picker_indicator: '\u{25be}',
-      slider: ('\u{2500}', '\u{2588}'),
+      slider: ('\u{2588}', '\u{2588}'),
     }
   }
 }

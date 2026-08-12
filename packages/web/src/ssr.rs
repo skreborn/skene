@@ -1,6 +1,6 @@
 //! The SSR web platform: a string tree.
 //!
-//! Emits the same web semantics as the browser leaf (`Container` -> `<div>` with
+//! Emits the same web semantics as the browser leaf (`StyledBox` -> `<div>` with
 //! `display:flex`) to an HTML string instead of a live DOM. It implements the shared
 //! vocabulary the built-in views build against; the raw-handle escape hatch (`element`,
 //! `document`) is absent by construction, so a view that reaches for a real `Element` will

@@ -7,11 +7,11 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
   Column,
-  Container,
   HasChildren,
   Overlay,
   RawTextField,
   Row,
+  StyledBox,
   Text,
   View,
   core::{Color, Dimension, Prevent, Role},
@@ -42,7 +42,7 @@ fn tree_structure_is_recorded() {
 #[test]
 fn derived_property_updates_the_recorded_style() {
   let width = Signal::new(100.0f32);
-  let root = Container::new()
+  let root = StyledBox::new()
     .set_height(40.)
     .derive_width(move || width.get())
     .build();
@@ -62,7 +62,7 @@ fn derived_property_updates_the_recorded_style() {
 #[test]
 fn derived_text_updates_the_recorded_run() {
   let count = Signal::new(1);
-  let root = Container::new()
+  let root = StyledBox::new()
     .set_children((Text::derive(move || format!("count: {}", count.get())),))
     .build();
   let run = record::children(root)[0];
@@ -78,7 +78,7 @@ fn derived_text_updates_the_recorded_run() {
 #[test]
 fn click_trigger_runs_the_handler() {
   let clicks = Rc::new(Cell::new(0));
-  let root = Container::new()
+  let root = StyledBox::new()
     .handle_click({
       let clicks = Rc::clone(&clicks);
 
@@ -113,7 +113,7 @@ fn change_trigger_commits_into_the_binding() {
 #[test]
 fn overlay_open_follows_its_signal() {
   let open = Signal::new(false);
-  let root = Container::new()
+  let root = StyledBox::new()
     .set_children((Overlay::modal()
       .bind_open(open)
       .set_children((Text::new("dialog"),)),))
@@ -163,7 +163,7 @@ fn reconcile_reuses_and_reorders_recorded_children() {
 #[test]
 fn decoration_records_verbatim() {
   let color = Color::srgb(0.25, 0.5, 0.75);
-  let root = Container::new().set_color(color).build();
+  let root = StyledBox::new().set_color(color).build();
   let style = record::box_style(root).expect("a box style");
 
   assert_eq!(style.color, Some(color));

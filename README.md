@@ -71,7 +71,7 @@ skene-simple       the Simple design language both facades import: the neutral
 | `skene-reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`), the raw controls (`RawButton`, `RawTextField`, …) and the `Simple*` components over them, realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
+| `skene-gui` | The GUI facade: the built-in views (`StyledBox`, `Text`, `RichText`, `TextTheme`), the raw controls (`RawButton`, `RawTextField`, …) and the `Simple*` components over them, realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
 | `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u32` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
@@ -100,7 +100,7 @@ A view *is* its own builder *is* a `View`: chain typed setters and pass it to a 
 separate builder type, no `.build()` to call. One setter convention: `set_<prop>` for a fixed
 value, `derive_<prop>` for a reactive one, `handle_<event>` for a handler.
 
-Every layout is its own view—`Row`, `Column`, `Grid`, `Stack`, and the plain `Container`
+Every layout is its own view—`Row`, `Column`, `Grid`, `Stack`, and the plain `StyledBox`
 (normal flow)—so only the properties that layout honors exist to call: a `Row` has an
 `arrangement`, a `Grid` has `columns`, and nothing else compiles. Per-child properties
 travel the same way, in wrapper views only the matching container accepts—`Flexible`

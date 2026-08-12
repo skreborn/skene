@@ -510,7 +510,7 @@ fn refresh_styles(state: &State, environment: Environment) {
         taffy.set_style(record.taffy, out).expect("style a control");
       }
       NodeKind::Slider { .. } => {
-        // The track fills its container's width; wrap in a sized `Container` to bound
+        // The track fills its container's width; wrap in a sized `StyledBox` to bound
         // it.
         let mut out = taffy::style::Style::default();
 

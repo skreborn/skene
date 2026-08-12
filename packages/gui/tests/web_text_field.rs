@@ -4,10 +4,10 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  Container,
   FocusOrder,
   HasChildren,
   RawTextField,
+  StyledBox,
   Text,
   core::{BoxStyle, Condition},
   render_to_string,
@@ -84,7 +84,7 @@ fn focus_attributes_serialize() {
 #[test]
 fn handlers_are_inert_on_the_server() {
   let rendered = render_to_string(|| {
-    Container::new()
+    StyledBox::new()
       .handle_pointer_enter(|| {})
       .handle_key_down(|_| {})
       .handle_pointer_down(|_| {})
@@ -100,7 +100,7 @@ fn handlers_are_inert_on_the_server() {
   });
 
   let plain =
-    render_to_string(|| Container::new().set_children((Text::new("t"), RawTextField::new())));
+    render_to_string(|| StyledBox::new().set_children((Text::new("t"), RawTextField::new())));
 
   assert_eq!(rendered.body(), plain.body());
 }

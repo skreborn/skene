@@ -8,7 +8,6 @@
 
 pub mod prelude;
 
-mod container;
 mod containers;
 mod control;
 #[cfg(target_arch = "wasm32")]
@@ -30,6 +29,7 @@ mod routing;
 mod simple;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
+mod styled_box;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
@@ -85,12 +85,12 @@ pub use crate::simple::{
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
-  container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   focus::FocusHandle,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextEditor, RawTextField},
+  styled_box::StyledBox,
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 

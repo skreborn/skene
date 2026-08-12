@@ -9,13 +9,13 @@ use std::time::Duration;
 use skene_gui::{
   Color,
   Column,
-  Container,
   Deferred,
   DerivedView,
   HasChildren,
   Resource,
   RichText,
   Span,
+  StyledBox,
   Text,
   TextTheme,
   View,
@@ -54,7 +54,7 @@ fn a_text_renders_to_a_styled_span() {
 
 #[test]
 fn a_container_nests_its_child() {
-  let page = render_to_string(|| Container::new().set_child(Text::new("Hi")));
+  let page = render_to_string(|| StyledBox::new().set_child(Text::new("Hi")));
   let body = page.body();
 
   assert!(
@@ -76,7 +76,7 @@ fn a_container_nests_its_child() {
 #[test]
 fn identical_styles_share_one_rule() {
   // Two siblings styled the same must share a class and emit its rule exactly once.
-  let page = render_to_string(|| Container::new().set_children([Text::new("a"), Text::new("b")]));
+  let page = render_to_string(|| StyledBox::new().set_children([Text::new("a"), Text::new("b")]));
   let body = page.body();
   // The shared class is on the sibling spans, not the container that wraps them.
   let span = body.find("<span").expect("a span");
@@ -117,7 +117,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
     DerivedView::new(move || {
       greeting.with(|value| match value {
         None => Text::new("Loading…").into_any(),
-        Some(name) => Container::new()
+        Some(name) => StyledBox::new()
           .set_child(Text::new(name.clone()))
           .into_any(),
       })
@@ -151,7 +151,7 @@ fn an_async_load_settles_before_serialization() {
     DerivedView::new(move || {
       greeting.with(|value| match value {
         None => Text::new("Loading…").into_any(),
-        Some(name) => Container::new()
+        Some(name) => StyledBox::new()
           .set_child(Text::new(name.clone()))
           .into_any(),
       })
@@ -274,7 +274,7 @@ fn rich_text_nests_groups_and_embeds_views() {
   let page = render_to_string(|| {
     RichText::new([
       Span::group([Span::text("a"), Span::text("b")]),
-      Span::view(Container::new()),
+      Span::view(StyledBox::new()),
     ])
   });
 
@@ -324,7 +324,7 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 #[test]
 fn page_stream_pieces_concatenate_to_the_document() {
   fn app() -> impl skene_gui::IntoView {
-    Container::new().set_children([
+    StyledBox::new().set_children([
       Text::new("shell").into_any(),
       Deferred::new(|| {
         let data = Resource::new(|| async {
@@ -369,7 +369,7 @@ fn page_stream_pieces_concatenate_to_the_document() {
 #[test]
 fn deferred_content_streams_after_the_shell() {
   let stream = render_to_stream(|| {
-    Container::new().set_children([
+    StyledBox::new().set_children([
       Text::new("shell").into_any(),
       Deferred::new(|| {
         let data = Resource::new(|| async {

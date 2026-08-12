@@ -13,10 +13,10 @@ use std::{
 };
 
 use skene_gui::{
-  Container,
   HasChildren,
   Lazy,
   Resource,
+  StyledBox,
   Text,
   wasm_bindgen::{JsCast, JsValue},
   web::{self, hydrate},
@@ -59,7 +59,7 @@ fn hydrate_adopts_the_marked_elements() {
   let server_span = server_container.first_element_child().expect("a span");
 
   hydrate(root.clone(), "", || {
-    Container::new().set_child(Text::new("Hi"))
+    StyledBox::new().set_child(Text::new("Hi"))
   });
 
   let hydrated_container = root.first_element_child().expect("a container");
@@ -92,7 +92,7 @@ fn a_hydrated_handler_fires_on_the_adopted_node() {
   hydrate(root.clone(), "", {
     let clicked = Rc::clone(&clicked);
 
-    move || Container::new().handle_click(move || clicked.set(true))
+    move || StyledBox::new().handle_click(move || clicked.set(true))
   });
 
   root
@@ -178,7 +178,7 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
   let server_span = root.query_selector("span").expect("query").expect("a span");
 
   hydrate(root.clone(), "", || {
-    Container::new().set_child(Lazy::new(|| async { Text::new("note") }))
+    StyledBox::new().set_child(Lazy::new(|| async { Text::new("note") }))
   });
 
   // Claimed: the server content still stands, visible, while the module is pending.
@@ -212,7 +212,7 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
   // The server sent a <span> for marker 1, but the client builds a <div> there.
   let root = server_root("<span data-h=\"1\">x</span>");
 
-  hydrate(root.clone(), "", Container::new);
+  hydrate(root.clone(), "", StyledBox::new);
 
   // The mismatched span is left in place and a fresh div is created rather than adopted, so the
   // divergence shows up as an extra node instead of a silently mis-typed one.

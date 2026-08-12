@@ -18,7 +18,6 @@
 
 pub mod prelude;
 
-mod container;
 mod containers;
 mod control;
 mod detect;
@@ -39,6 +38,7 @@ mod selection;
 mod simple;
 mod state;
 mod style;
+mod styled_box;
 mod task;
 mod terminal;
 mod text;
@@ -96,7 +96,6 @@ pub use crate::simple::{
   SimpleVariant,
 };
 pub use crate::{
-  container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
@@ -106,6 +105,7 @@ pub use crate::{
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextField},
   resource::Resource,
   routing::install_router,
+  styled_box::StyledBox,
   task::spawn,
   text::{RichText, Span, Text},
   theme::{ControlTheme, TextTheme},

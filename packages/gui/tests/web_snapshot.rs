@@ -7,7 +7,6 @@
 use skene_gui::{
   Border,
   Column,
-  Container,
   Grid,
   HasChildren,
   Inset,
@@ -16,6 +15,7 @@ use skene_gui::{
   Row,
   Span,
   Stack,
+  StyledBox,
   Text,
   TextStyle,
   TextTheme,
@@ -74,15 +74,15 @@ fn representative_tree() -> impl skene_gui::IntoView {
           Span::text("plain "),
           Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
             .set_color(Color::srgb(1.0, 0.5, 0.0)),
-          Span::view(Container::new().set_width(10.).set_height(10.)),
+          Span::view(StyledBox::new().set_width(10.).set_height(10.)),
           Span::text(" tail").set_link("/rel"),
         ]),
         // Two identically-styled boxes: their class must intern once.
-        Container::new().set_padding(Inset::all(8.)),
-        Container::new().set_padding(Inset::all(8.)),
+        StyledBox::new().set_padding(Inset::all(8.)),
+        StyledBox::new().set_padding(Inset::all(8.)),
         // Declarative dynamics: a hover variant, a media variant, a transition, and an
         // animation, all compiled into the interned class.
-        Container::new()
+        StyledBox::new()
           .set_width(50.)
           .set_when(Condition::Hovered, BoxStyle::new().set_width(60.))
           .set_when(Condition::MaxWidth(480.), BoxStyle::new().set_width(40.))

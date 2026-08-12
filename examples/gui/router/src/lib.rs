@@ -88,7 +88,7 @@ async fn about() -> AnyView {
 }
 
 fn page(title: &'static str, body: &'static str) -> impl IntoView {
-  Container::new().set_max_width(420.).set_child(
+  StyledBox::new().set_max_width(420.).set_child(
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new(title)
         .set_font_size(13.)

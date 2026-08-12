@@ -1,10 +1,11 @@
 //! The typed containers and child wrappers.
 //!
 //! Each layout gets its own view—[`Row`], [`Column`], [`Grid`], [`Stack`]—so only the
-//! properties that layout honors exist to call; the plain [`Container`] lays its
-//! children out in normal flow. Per-child properties travel in wrapper views
-//! ([`Flexible`], [`Pinned`], [`GridCell`]) accepted only by the matching container;
-//! a wrapper creates no node of its own, it annotates its child's.
+//! properties that layout honors exist to call; each wraps a [`StyledBox`] for the
+//! shared surface, which on its own flows its children in document order. Per-child
+//! properties travel in wrapper views ([`Flexible`], [`Pinned`], [`GridCell`]) accepted
+//! only by the matching container; a wrapper creates no node of its own, it annotates
+//! its child's.
 
 use std::rc::Rc;
 
@@ -33,10 +34,10 @@ use skene_core::{
   Wrap,
 };
 
-use crate::{Children, Container, container::update_box, props::BoxProp};
+use crate::{Children, StyledBox, props::BoxProp, styled_box::update_box};
 
 /// Generates the shared box surface—decoration, sizing, dynamics, events, children—
-/// forwarding to the wrapped [`Container`].
+/// forwarding to the wrapped [`StyledBox`].
 macro_rules! box_surface {
   ($type:ident, $kind:ty) => {
     impl $type {
@@ -273,7 +274,7 @@ fn split_alignment(
 /// let it take or give up space.
 #[must_use]
 pub struct Row {
-  base: Container,
+  base: StyledBox,
   spacing: Option<Source<u32>>,
   line_spacing: Option<Source<u32>>,
 }
@@ -281,7 +282,7 @@ pub struct Row {
 /// A flex container laying children out top to bottom; see [`Row`].
 #[must_use]
 pub struct Column {
-  base: Container,
+  base: StyledBox,
   spacing: Option<Source<u32>>,
   line_spacing: Option<Source<u32>>,
 }
@@ -293,7 +294,7 @@ macro_rules! flex_surface {
       #[inline(always)]
       pub fn new() -> Self {
         Self {
-          base: Container::mode(Layout::Flex {
+          base: StyledBox::mode(Layout::Flex {
             direction: $direction,
           }),
           spacing: None,
@@ -305,7 +306,7 @@ macro_rules! flex_surface {
       #[inline(always)]
       pub fn reversed() -> Self {
         Self {
-          base: Container::mode(Layout::Flex {
+          base: StyledBox::mode(Layout::Flex {
             direction: $reversed,
           }),
           spacing: None,
@@ -381,7 +382,7 @@ box_surface!(Column, FlexChild);
 /// A grid container placing children into tracks.
 #[must_use]
 pub struct Grid {
-  base: Container,
+  base: StyledBox,
   spacing: Option<Source<Spacing<u32>>>,
   item_alignment: Option<Source<Alignment>>,
 }
@@ -391,7 +392,7 @@ impl Grid {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      base: Container::mode(Layout::Grid),
+      base: StyledBox::mode(Layout::Grid),
       spacing: None,
       item_alignment: None,
     }
@@ -540,7 +541,7 @@ box_surface!(Grid, GridChild);
 /// Wrap a child in [`Pinned`] to place it against the stack's edges instead.
 #[must_use]
 pub struct Stack {
-  base: Container,
+  base: StyledBox,
   alignment: Option<Source<Alignment>>,
 }
 
@@ -549,7 +550,7 @@ impl Stack {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      base: Container::mode(Layout::Stack),
+      base: StyledBox::mode(Layout::Stack),
       alignment: None,
     }
   }

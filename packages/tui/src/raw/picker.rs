@@ -353,7 +353,7 @@ fn option_row(
   active: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
   highlight: Option<(skene_core::Color, skene_core::Color)>,
-) -> crate::Container {
+) -> crate::StyledBox {
   use skene_core::Color;
   use skene_reactive::{Set, With};
 
@@ -361,7 +361,7 @@ fn option_row(
   let ink_shown = value.clone();
   let hovered = value.clone();
 
-  crate::Container::new()
+  crate::StyledBox::new()
     .derive_color(move || {
       if active.with(|active| *active == shown) {
         highlight.map_or_else(

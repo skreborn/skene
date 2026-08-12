@@ -4,7 +4,6 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  Container,
   FocusOrder,
   HasChildren,
   RawButton,
@@ -15,6 +14,7 @@ use skene_gui::{
   RawTextEditor,
   RawTextField,
   Role,
+  StyledBox,
   Text,
   TextStyle,
   TextTheme,
@@ -59,7 +59,7 @@ fn checkbox_serializes_with_its_state() {
 #[test]
 fn radio_serializes_group_value_and_state() {
   let rendered = render_to_string(|| {
-    Container::new().set_children((
+    StyledBox::new().set_children((
       RawRadio::new("color", "red").set_checked(true),
       RawRadio::new("color", "green"),
     ))
@@ -234,13 +234,13 @@ fn controls_inherit_the_text_theme() {
 #[test]
 fn roles_realize_semantic_elements() {
   let rendered = render_to_string(|| {
-    Container::new().set_role(Role::Navigation).set_children((
-      Container::new()
+    StyledBox::new().set_role(Role::Navigation).set_children((
+      StyledBox::new()
         .set_role(Role::Heading(2))
         .set_child(Text::new("Title")),
-      Container::new()
+      StyledBox::new()
         .set_role(Role::List)
-        .set_child(Container::new().set_role(Role::ListItem)),
+        .set_child(StyledBox::new().set_role(Role::ListItem)),
     ))
   });
 
@@ -261,7 +261,7 @@ fn link_policy_lands_as_target_and_rel() {
   use skene_gui::core::{LinkAnnotation, LinkPolicy};
 
   let rendered = render_to_string(|| {
-    Container::new().set_children((
+    StyledBox::new().set_children((
       Text::new("external").set_link("https://example.com"),
       Text::new("internal").set_link("/about"),
       Text::new("overridden")

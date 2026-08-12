@@ -68,7 +68,7 @@ impl skene_core::View for LazyColumn {
     use skene_core::{BoxProps, HasChildren, Layout, Overflow, ScrollEvent, TreeOps, item_window};
     use skene_reactive::{Get, Memo, Set, Signal};
 
-    use crate::{Container, GuiOps, driver};
+    use crate::{GuiOps, StyledBox, driver};
 
     let mut style = self.style;
 
@@ -105,11 +105,11 @@ impl skene_core::View for LazyColumn {
 
     #[expect(clippy::cast_precision_loss)]
     let extent = move |items: usize| items as f32 * item_height;
-    let leading = Container::new()
+    let leading = StyledBox::new()
       .derive_height(move || extent(window.get().0.start))
       .build();
     let items = GuiOps.create_group();
-    let trailing = Container::new()
+    let trailing = StyledBox::new()
       .derive_height(move || {
         let (window, count) = window.get();
 
@@ -132,7 +132,7 @@ impl skene_core::View for LazyColumn {
       },
       |index| *index,
       move |index| {
-        Container::new()
+        StyledBox::new()
           .set_height(item_height)
           .set_child(item(index))
           .build()

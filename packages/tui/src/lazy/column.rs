@@ -39,7 +39,7 @@ impl LazyColumn {
       item_height,
       count: Rc::new(count),
       item: Rc::new(move |index| {
-        crate::Container::new()
+        crate::StyledBox::new()
           .set_height(item_height)
           .set_child(item(index))
           .build()
@@ -128,11 +128,11 @@ impl View for LazyColumn {
     let extent = move |items: usize| {
       u32::try_from(items.saturating_mul(item_height as usize)).unwrap_or(u32::MAX)
     };
-    let leading = crate::Container::new()
+    let leading = crate::StyledBox::new()
       .derive_height(move || extent(window.get().0.start))
       .build();
     let items = crate::create_group();
-    let trailing = crate::Container::new()
+    let trailing = crate::StyledBox::new()
       .derive_height(move || {
         let (window, count) = window.get();
 

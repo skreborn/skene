@@ -94,7 +94,7 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   so there is no `Any` and no downcast.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
-  views in one crate and drivers in others, `impl View for Container` can live in neither
+  views in one crate and drivers in others, `impl View for StyledBox` can live in neither
   driver, so separate driver crates are impossible under per-platform realization. Typing
   the vocabulary moves the platform decision (CSS text, native styles) into the driver
   while realization is written once above it.
@@ -276,7 +276,7 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 
 ### TUI (`skene-tui`)
 
-A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
+A facade in its own right, not a driver of the GUI vocabulary. Its `StyledBox`, `Text`
 and `RawTextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
 are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,

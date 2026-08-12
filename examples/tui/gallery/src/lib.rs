@@ -142,7 +142,7 @@ fn inputs() -> impl IntoView {
         .set_placeholder("Your name")
         .bind_value(name),
       Row::new().set_spacing(2).set_children((
-        Container::new()
+        StyledBox::new()
           .set_width(20)
           .set_child(SimpleSlider::new(0., 100.).set_step(1.).bind_value(volume)),
         Text::derive(move || format!("{:.0}%", volume.get()))
@@ -178,7 +178,7 @@ fn borders() -> impl IntoView {
 }
 
 fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
-  Container::new()
+  StyledBox::new()
     .set_padding(Inset::horizontal(1))
     .set_border(SimplePalette::border())
     .set_border_glyphs(glyphs)
@@ -206,7 +206,7 @@ fn layouts() -> impl IntoView {
         .set_color(SimplePalette::secondary())
         .set_child(
           Pinned::new(
-            Container::new()
+            StyledBox::new()
               .set_padding(Inset::horizontal(1))
               .set_color(SimplePalette::card())
               .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
@@ -268,7 +268,7 @@ fn list() -> impl IntoView {
 /// A titled card around one section's content; the width divides the swatch grid into
 /// whole-cell tracks.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  Container::new().set_min_width(53).set_child(
+  StyledBox::new().set_min_width(53).set_child(
     SimpleCard::new().set_children((
       Text::new(title)
         .set_bold(true)
@@ -279,7 +279,7 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
 }
 
 fn swatch(brightness: f32) -> impl IntoView {
-  Container::new().set_height(1).set_color(Color::srgb(
+  StyledBox::new().set_height(1).set_color(Color::srgb(
     brightness * 0.5,
     brightness,
     brightness * 0.55,

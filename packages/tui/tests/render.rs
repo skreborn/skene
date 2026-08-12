@@ -72,7 +72,7 @@ fn background_fills_cover_content_beneath() {
         .set_height(1)
         .set_children((
           Text::new("under"),
-          Container::new()
+          StyledBox::new()
             .set_width(6)
             .set_height(1)
             .set_color(Color::srgb(0.5, 0.5, 0.5)),
@@ -139,7 +139,7 @@ fn flexible_text_takes_free_space() {
 fn border_glyphs_select_the_character_set() {
   let (rounded, ascii) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(4)
         .set_height(3)
         .set_border(Color::srgb(1., 1., 1.))
@@ -168,7 +168,7 @@ fn border_glyphs_select_the_character_set() {
 fn text_wraps_at_the_container_width() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_child(Text::new("alpha beta"))
         .into_any()
@@ -186,7 +186,7 @@ fn text_wraps_at_the_container_width() {
 fn border_draws_a_frame() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(7)
         .set_border(Color::srgb(1., 1., 1.))
         .set_child(Text::new("hi"))
@@ -205,7 +205,7 @@ fn border_draws_a_frame() {
 fn media_variant_resolves_against_terminal_size() {
   let (narrow, wide) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_height(3)
         .set_when(
@@ -229,7 +229,7 @@ fn media_variant_resolves_against_terminal_size() {
 fn composed_condition_resolves() {
   let (narrow, tall, wide) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_height(3)
         .set_when(
@@ -519,8 +519,8 @@ fn pointer_events_carry_cell_coordinates() {
       tui::mount(|| {
         Row::new()
           .set_children((
-            Container::new().set_width(4).set_height(3),
-            Container::new()
+            StyledBox::new().set_width(4).set_height(3),
+            StyledBox::new()
               .set_width(6)
               .set_height(3)
               .handle_pointer_down(move |event| {
@@ -632,7 +632,7 @@ fn hover_variant_and_pointer_handlers() {
       tui::mount(|| {
         Row::new()
           .set_children((
-            Container::new()
+            StyledBox::new()
               .set_width(4)
               .set_height(2)
               .set_when(
@@ -641,7 +641,7 @@ fn hover_variant_and_pointer_handlers() {
               )
               .handle_pointer_enter(move || enters.set(enters.get() + 1))
               .handle_pointer_leave(move || leaves.set(leaves.get() + 1)),
-            Container::new().set_width(4).set_height(2),
+            StyledBox::new().set_width(4).set_height(2),
           ))
           .into_any()
           .build()
@@ -715,7 +715,7 @@ fn mouse_click_hits_and_focuses() {
 fn hover_cursor_resolves() {
   with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(4)
         .set_height(2)
         .set_cursor(skene_tui::core::MouseCursor::Click)
@@ -770,7 +770,7 @@ fn slider_shows_the_grab_cursors() {
     let volume = Signal::new(5.0f32);
 
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(11)
         .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
         .into_any()
@@ -907,7 +907,7 @@ fn popup_anchors_below_and_light_dismisses() {
 fn color_scheme_conditions_follow_the_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_height(3)
         .set_when(
@@ -937,7 +937,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
   let clicks = Rc::clone(&clicked);
   let (first, scrolled, log) = with_driver(move || {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_child(
           Column::new()
             .set_height(3)
@@ -948,7 +948,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
               move |index| {
                 let clicked = Rc::clone(&clicked);
 
-                Container::new()
+                StyledBox::new()
                   .handle_click(move || clicked.borrow_mut().push(index))
                   .set_child(Text::new(format!("item {index}")))
               },
@@ -1024,7 +1024,7 @@ fn virtual_list_windows_its_items() {
   let log = Rc::clone(&built);
   let (first, second, scrolled, log) = with_driver(move || {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_child(
           LazyColumn::new(
             1,
@@ -1501,7 +1501,7 @@ fn slider_nudges_and_jumps() {
 fn scrollbar_jumps_and_drags() {
   let (jumped, dragged, colors) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_height(4)
         .set_overflow(Overflow::Auto)
@@ -1576,7 +1576,7 @@ fn slider_drags_to_the_pointer() {
     let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(11)
         .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
         .into_any()
@@ -1619,10 +1619,10 @@ fn slider_drags_to_the_pointer() {
 fn shadow_mixes_into_the_cells_beneath() {
   let colors = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_color(Color::srgb(1., 0., 0.))
         .set_child(
-          Container::new()
+          StyledBox::new()
             .set_width(2)
             .set_height(1)
             .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
@@ -1689,7 +1689,7 @@ fn modal_scrim_defaults_on_and_disables() {
 
         Column::new()
           .set_children((
-            Container::new()
+            StyledBox::new()
               .set_color(Color::srgb(1., 0., 0.))
               .set_height(1),
             modal,
@@ -1722,7 +1722,7 @@ fn modal_scrim_defaults_on_and_disables() {
 fn control_style_styles_the_glyph_and_containers_the_box() {
   let (frame, colors) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_border(Color::srgb(1., 1., 1.))
         .set_width(3)
         .set_height(3)
@@ -1848,12 +1848,12 @@ fn click_verdicts_split_bubbling_from_default() {
         let inner_runs = Rc::clone(&inner_runs);
         let outer_runs = Rc::clone(&outer_runs);
 
-        Container::new()
+        StyledBox::new()
           .handle_click(move || {
             outer_runs.set(outer_runs.get() + 1);
           })
           .set_child(
-            Container::new()
+            StyledBox::new()
               .handle_click(move || {
                 inner_runs.set(inner_runs.get() + 1);
 
@@ -1908,7 +1908,7 @@ fn grid_placement_spans_tracks() {
     tui::mount(|| {
       Grid::uniform(2)
         .set_children((
-          GridCell::new(Container::new().set_children((Text::new("wide"),)))
+          GridCell::new(StyledBox::new().set_children((Text::new("wide"),)))
             .set_column(Line::span(2)),
           Text::new("l"),
           Text::new("r"),
@@ -1931,11 +1931,11 @@ fn flex_grow_distributes_space() {
       Row::new()
         .set_children((
           Flexible::new(
-            Container::new()
+            StyledBox::new()
               .set_color(Color::srgb(0.2, 0.2, 0.8))
               .set_children((Text::new("a"),)),
           ),
-          Container::new()
+          StyledBox::new()
             .set_width(3)
             .set_children((Text::new("b"),)),
         ))
@@ -1957,7 +1957,7 @@ fn percent_width_resolves_against_parent() {
     tui::mount(|| {
       Row::new()
         .set_children((
-          Container::new()
+          StyledBox::new()
             .set_width(Dimension::Fraction(0.5))
             .set_children((Text::new("half"),)),
           Text::new("x"),
@@ -1978,7 +1978,7 @@ fn percent_width_resolves_against_parent() {
 fn scroll_offsets_survive_a_snapshot_roundtrip() {
   fn build() {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(6)
         .set_height(4)
         .set_overflow(Overflow::Auto)
@@ -2054,7 +2054,7 @@ fn dev_notice_modal_presents_and_dismisses() {
 fn drag_selects_and_copies_the_source_flow() {
   let (colors, menu, copied) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(8)
         .set_child(Text::new("alpha beta gamma").set_selectable(true))
         .into_any()
@@ -2287,7 +2287,7 @@ fn escape_closes_the_menu_then_clears_the_selection() {
 fn wheel_target_latches_until_the_pointer_moves() {
   let (latched, retargeted) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_child(
           Column::new()
             .set_height(4)
@@ -2385,7 +2385,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
 fn wheel_gesture_holds_at_the_target_limit_then_chains() {
   let (held, chained) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_child(
           Column::new()
             .set_height(4)
@@ -2578,7 +2578,7 @@ fn hover_cursor_defaults_follow_the_content() {
 fn restored_scroll_rebuilds_a_lazy_column_window() {
   fn build() {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_child(
           LazyColumn::new(1, || 1000, |index| Text::new(format!("row {index}")))
             .set_overscan(2)
@@ -2839,7 +2839,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
 fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
   let (frame, colors, copied) = with_driver(|| {
     tui::mount(|| {
-      Container::new()
+      StyledBox::new()
         .set_width(12)
         .set_child(
           RichText::new([

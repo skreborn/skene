@@ -50,8 +50,8 @@
   exported derive forwarding a chosen subset: never hand-duplicated, and never a trait,
   because a property a view does not honor must be statically absent rather than merely
   unused. A third-party layout view is built exactly as `Row` is, from that public surface
-  alone; there is no privileged base. (ROADMAP work: the code still calls that composable
-  `Container` and still flows multiple children.)
+  alone; there is no privileged base. (ROADMAP work: `StyledBox` is named and public, but
+  the single-child `Container` does not exist yet and the flow still lives on the box.)
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.
@@ -119,7 +119,7 @@
   built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
   view against the driver's escape hatch.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
+  `handle_<event>` for an event handler (e.g. `StyledBox::handle_click`). A driver
   function that realizes the handler is named the same.
 - The layout vocabulary rule extends to the whole surface: views, controls, and
   composition helpers take the platform-native frameworks' names (`TextField`,

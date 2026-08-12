@@ -1,4 +1,4 @@
-//! A box that decorates itself and lays out its children, in cells.
+//! The shared box every container view wraps, in cells.
 
 use std::rc::Rc;
 
@@ -37,13 +37,13 @@ use crate::{
 
 /// A box that decorates itself and flows its children in document order.
 ///
-/// The plain container; the typed containers—[`Row`](crate::Row),
-/// [`Column`](crate::Column), [`Grid`](crate::Grid), [`Stack`](crate::Stack)—layer their
-/// layouts over this same surface. Children are set with `set_children` or
-/// `derive_children`; decoration and sizing with the chainable `set_`/`derive_` methods,
-/// in cells.
+/// The shared box surface: the typed containers—[`Row`](crate::Row),
+/// [`Column`](crate::Column), [`Grid`](crate::Grid), [`Stack`](crate::Stack)—each wrap
+/// one and layer their layout over it, and a container view of your own does the same.
+/// Children are set with `set_children` or `derive_children`; decoration and sizing with
+/// the chainable `set_`/`derive_` methods, in cells.
 #[must_use]
-pub struct Container {
+pub struct StyledBox {
   pub(crate) children: Children,
   pub(crate) layout: Layout,
   width: Option<Source<Dimension<u32>>>,
@@ -94,7 +94,7 @@ pub struct Container {
   anchor: Option<crate::Anchor>,
 }
 
-impl Container {
+impl StyledBox {
   #[inline(always)]
   pub(crate) fn mode(layout: Layout) -> Self {
     Self {
@@ -151,7 +151,7 @@ impl Container {
   /// A block container: children flow in normal document order, contained within it.
   #[inline(always)]
   pub fn new() -> Self {
-    Container::mode(Layout::Flow)
+    StyledBox::mode(Layout::Flow)
   }
 
   /// Sets a static width: cells, a percentage, or auto.
@@ -554,14 +554,14 @@ impl Container {
   }
 }
 
-impl Default for Container {
+impl Default for StyledBox {
   #[inline(always)]
   fn default() -> Self {
-    Container::new()
+    Self::new()
   }
 }
 
-impl skene_core::HasChildren<crate::TuiOps> for Container {
+impl skene_core::HasChildren<crate::TuiOps> for StyledBox {
   type Kind = skene_core::PlainChild;
 
   #[inline(always)]
@@ -572,7 +572,7 @@ impl skene_core::HasChildren<crate::TuiOps> for Container {
   }
 }
 
-impl View for Container {
+impl View for StyledBox {
   // One `split_prop` call per property; length is the property count, not complexity.
   #[expect(clippy::too_many_lines)]
   fn build(self) -> NodeId {

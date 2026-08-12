@@ -39,6 +39,8 @@ skene-tui        the terminal facade and a terminal app's single dependency, EQU
                  bool bold, one-cell borders—no radius, font size, or transition
                  exists to call), its own driver internals, launch
 
+skene-simple     the Simple design language shared by both facades' Simple* views:
+                 the neutral palette and the emphasis variants, over core's Color
 skene-router     routing over signals; a small per-facade URL binding seam
 skene-runner     host-side library embedding a wasm runtime; exposes the app's render
                  functions to a user's server, and powers SSG
@@ -125,12 +127,19 @@ Form controls come in two layers, in each facade.
   `SimpleTextField`, GUI-only `SimpleTextEditor`) are the first-party ready-made
   library over them: one neutral palette (`SimplePalette`) and one shape language,
   shared across the GUI and the terminal wherever the medium allows (the web's corner
-  radius becomes the terminal's arc-cornered border glyphs). Examples use the Simple
-  components rather than hand-styling raw ones.
+  radius becomes the terminal's arc-cornered border glyphs; terminal hover and focus
+  feedback rides the border, never the backdrop). Examples use the Simple components
+  rather than hand-styling raw ones.
 
-The Simple layer composes the raw controls through their public surface alone—it is
-deliberately nothing a third-party component library could not build on the same
-footing.
+The palette and the variants' resolved colors live in `skene-simple`, one crate both
+facades import; each facade keeps its own component builders, typed to its medium, and
+gates the whole layer behind a default-on `simple-views` feature. Beyond looks, every
+Simple component stays fully configurable: its semantic knobs come in `set_`/`derive_`
+pairs where the machinery supports reactivity (labels, spacing, alignment, every bound
+value), and the raw controls' non-styling surface—focus order, autofocus, focus and
+anchor binding, focus/blur/key handlers—forwards through. The Simple layer composes
+the raw controls through their public surface alone—it is deliberately nothing a
+third-party component library could not build on the same footing.
 
 ## The style model
 

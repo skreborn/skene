@@ -1,9 +1,10 @@
 # Skene
 
-A client-side Rust GUI framework. Write an app once against one dependency, and it runs
-on whatever driver the build selects—the web today (client-rendered, server-rendered, or
-statically generated), native and terminal drivers as they land. The building block is a
-**view**; the reactive engine is fine-grained and vdom-free.
+A client-side Rust UI framework. Write a GUI app once against one dependency, and it
+runs on whatever driver the build selects—the web today (client-rendered,
+server-rendered, or statically generated), native as it lands—while the terminal is a
+facade of its own, equal in standing, with its own vocabulary typed to the medium. The
+building block is a **view**; the reactive engine is fine-grained and vdom-free.
 
 ## Reactivity
 
@@ -50,13 +51,19 @@ skene-core         + reactive: the view spine, the typed property vocabulary, So
       │            Boundary, Reorder, IntoChildren, generic geometry, and the value
       │            vocabulary. No views, no platforms.
       │
-skene-web          the web driver: the typed vocabulary mapped to a live DOM (browser)
-      │            or an HTML string (server), the content-addressed stylesheet,
-      │            hydration, and the WASI reactor
+      ├── skene-web      the web driver: the typed vocabulary mapped to a live DOM
+      │         │        (browser) or an HTML string (server), the content-addressed
+      │         │        stylesheet, hydration, and the WASI reactor
+      │         │
+      │    skene-gui     the GUI facade and the single dependency a GUI app pulls in:
+      │                  the built-in views realized once against the active driver,
+      │                  the composition helpers, and the transparent entry
       │
-skene              the umbrella and the single dependency an app pulls in: the built-in
-                   views realized once against the active driver, the composition
-                   helpers, and the transparent entry
+      └── skene-tui      the terminal facade, equal in standing: its own views typed
+                         to the medium, its driver carried in-crate
+
+skene-simple       the Simple design language both facades import: the neutral
+                   palette and the emphasis variants
 ```
 
 | Crate | Role |
@@ -67,7 +74,11 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`), the raw controls (`RawButton`, `RawTextField`, …) and the `Simple*` components over them, realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
-| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u16` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
+| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u32` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
+| `skene-simple` | The Simple design language shared by both facades' `Simple*` components: the neutral palette (`SimplePalette`) and the emphasis variants (`SimpleVariant`), over core's `Color`. |
+| `skene-record` | The recording driver: the host sink behind `skene-gui`'s headless view tests, capturing exactly what a real driver receives, plus the `trigger_*` test seams. |
+| `skene-macros` | The `#[main]` and `#[lazy]` proc-macros. |
+| `skene-cli` | The `skene` command: `run web`, `build web --static`, `run tui`, serving, live reload. |
 
 **Realize once, drive per platform.** Views are realized a single time against a typed,
 driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
@@ -104,8 +115,9 @@ Form controls come in two layers. The `Raw*` controls (`RawButton`, `RawCheckbox
 `RawTextField`, …) are the unstyled, infinitely extensible bases every component
 library builds on: full platform behavior, zero opinion about looks. The `Simple*`
 components (`SimpleButton`, `SimpleCard`, `SimpleTextField`, …) are the ready-made
-library on top—one neutral palette (`SimplePalette`) and shape language, shared by the
-GUI and the terminal wherever the medium allows—so an app is presentable with no
+library on top—one neutral palette (`SimplePalette`, from the shared `skene-simple`
+crate) and shape language, shared by the GUI and the terminal wherever the medium
+allows, behind a default-on `simple-views` feature—so an app is presentable with no
 styling at all:
 
 ```rust
@@ -120,7 +132,7 @@ The common case composes built-ins and implements `View` by delegating:
 ```rust
 impl View for Labeled {
   fn build(self) -> NodeId {
-    Container::column()
+    Column::new()
       .set_children((Text::new(self.label), self.child))
       .build()
   }

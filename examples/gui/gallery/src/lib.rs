@@ -35,12 +35,17 @@ fn app() -> impl IntoView {
       .set_selection_color(SimplePalette::background())
       .set_selection_background(SimplePalette::foreground()),
   )
+  // The gallery is dark regardless of the OS scheme, so it inks links for its own
+  // surface instead of leaving them to the scheme-following default.
+  .set_link(TextStyle::new().set_color(Color::srgb(0.4, 0.6, 1.)))
 }
 
 fn typography() -> impl IntoView {
   section(
     "Text",
-    Column::new().set_spacing(12.).set_children((
+    // The paragraph rhythm: text-box trimming removes the leading, so the spacing
+    // carries the whole between-paragraph gap.
+    Column::new().set_spacing(16.).set_children((
       Text::new("A run of text with a size, a weight, and a color.").set_font_size(16.),
       Text::new(
         "Selection is opt-in: this paragraph is selectable, so drag across it and copy—\
@@ -53,7 +58,7 @@ fn typography() -> impl IntoView {
         plain("Rich text mixes "),
         plain("weights").set_font_weight(700.),
         plain(", "),
-        plain("colors").set_color(SimplePalette::foreground()),
+        plain("colors").set_color(Color::srgb(1., 0.62, 0.25)),
         plain(", and "),
         Span::text("links")
           .set_font_size(14.)

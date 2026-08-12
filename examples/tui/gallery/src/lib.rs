@@ -60,7 +60,7 @@ fn text() -> impl IntoView {
         Span::text("Rich text mixes ").set_color(SimplePalette::muted_foreground()),
         Span::text("weights").set_bold(true),
         Span::text(", ").set_color(SimplePalette::muted_foreground()),
-        Span::text("colors").set_color(SimplePalette::foreground()),
+        Span::text("colors").set_color(Color::srgb(1., 0.62, 0.25)),
         Span::text(", and ").set_color(SimplePalette::muted_foreground()),
         Span::text("links").set_link("https://example.com"),
         Span::text(" in one paragraph.").set_color(SimplePalette::muted_foreground()),
@@ -202,7 +202,7 @@ fn layouts() -> impl IntoView {
         swatch(0.30),
       )),
       Stack::new()
-        .set_height(3)
+        .set_height(5)
         .set_color(SimplePalette::secondary())
         .set_child(
           Pinned::new(

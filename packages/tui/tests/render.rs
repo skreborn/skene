@@ -3011,3 +3011,125 @@ fn has_focus_forwards_through_a_raw_control() {
 
   assert!(focused, "autofocus forwards through the wrapper");
 }
+
+/// The equal-footing gate: a layout view written outside the facade, against its
+/// public API alone, matches the built-in it wraps feature for feature—the surface
+/// traits, typed children (a [`Flexible`] wrapper included), and its own layout knob—
+/// rendering cell-for-cell identically to the built-in.
+#[test]
+fn a_third_party_layout_view_matches_the_built_in() {
+  #[must_use]
+  struct Toolbar {
+    base: Row,
+  }
+
+  impl Toolbar {
+    fn new() -> Self {
+      Self { base: Row::new() }
+    }
+
+    fn set_spacing(mut self, spacing: u32) -> Self {
+      self.base = self.base.set_spacing(spacing);
+
+      self
+    }
+  }
+
+  impl HasSize for Toolbar {
+    fn size_box(&mut self) -> &mut StyledBox {
+      self.base.size_box()
+    }
+  }
+
+  impl HasDecoration for Toolbar {
+    fn decoration_box(&mut self) -> &mut StyledBox {
+      self.base.decoration_box()
+    }
+  }
+
+  impl HasEvents for Toolbar {
+    fn events_box(&mut self) -> &mut StyledBox {
+      self.base.events_box()
+    }
+  }
+
+  impl HasChildren<tui::TuiOps> for Toolbar {
+    type Kind = skene_core::FlexChild;
+
+    fn set_children_to(mut self, children: tui::Children) -> Self {
+      self.base = self.base.set_children_to(children);
+
+      self
+    }
+  }
+
+  impl View for Toolbar {
+    fn build(self) -> skene_core::NodeId {
+      self.base.build()
+    }
+  }
+
+  let third_party = with_driver(|| {
+    tui::mount(|| {
+      Toolbar::new()
+        .set_spacing(1)
+        .set_border(Color::srgb(1., 1., 1.))
+        .set_children((
+          Text::new("ab"),
+          Flexible::new(Text::new("cd")),
+          Text::new("ef"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(14, 4)
+  });
+  let built_in = with_driver(|| {
+    tui::mount(|| {
+      Row::new()
+        .set_spacing(1)
+        .set_border(Color::srgb(1., 1., 1.))
+        .set_children((
+          Text::new("ab"),
+          Flexible::new(Text::new("cd")),
+          Text::new("ef"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(14, 4)
+  });
+
+  assert_eq!(third_party, built_in);
+  assert!(third_party.contains("ab"), "the frame painted content");
+}
+
+/// A Simple card carries the whole box surface: sizing and decoration land on its
+/// column, overriding the default look property by property.
+#[test]
+fn simple_card_takes_the_full_surface() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      SimpleCard::new()
+        .set_width(8)
+        .set_padding(Inset::default())
+        .set_border_glyphs(BorderGlyphs::ASCII)
+        .set_children((Text::new("hi"),))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(10, 4)
+  });
+
+  assert!(
+    rendered.starts_with("+------+"),
+    "the glyph override reaches the card's border: {rendered:?}",
+  );
+  assert!(
+    rendered.contains("|hi"),
+    "content sits inside: {rendered:?}"
+  );
+}

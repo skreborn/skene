@@ -542,14 +542,15 @@ sink are just different sinks for the same paths.)
     either the wrapping one; the flow substrate remains on `StyledBox`, which layout
     views feed their children through. The sweep cost nothing—every former use in both
     galleries and the router example was already single-child or childless.
-  - **What the first-party set gains, and must adopt.** The built-ins still show the
-    cost of hand forwarding: `SimpleCard` exposes spacing, alignment, and children, so
-    wrapping a `Column` silently drops width, padding, color, border, shadow, cursor,
-    overflow, variants, and every pointer handler. `SimpleCard` (and any Simple view
-    still forwarding a subset by hand) adopts the traits as part of this work.
-  - The remaining gate: a layout view written outside the facade crate, against its
-    public API alone, that matches a built-in feature for feature—and the SSR snapshot
-    watched wherever a layout's node shifts.
+  - **First-party adoption—done.** `SimpleCard` holds its `Column` and implements the
+    surface traits over it, so the full box surface reaches the card—its default look
+    applied up front, every property overridable—closing the last hand-forwarded
+    subset. The Simple controls ride `HasFocus` the same way.
+  - **The equal-footing gate—held.** A layout view written in an external test crate,
+    against the public API alone—the surface traits, typed `FlexChild` children (a
+    `Flexible` wrapper included), its own spacing knob—renders cell-for-cell identical
+    to the built-in `Row` it wraps. The SSR snapshot stays watched wherever a layout's
+    node shifts.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

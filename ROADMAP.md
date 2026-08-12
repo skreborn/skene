@@ -4,7 +4,8 @@ The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then t
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
 last—not a current priority. **Current focus: picking the next phase—the TUI polish,
 wasm-split lazy loading, progressive enhancement (hydrating static output, `Link`),
-and the targeted examples (counter, router, the gui and tui galleries) landed.**
+the targeted examples (counter, router, the gui and tui galleries), and the raw/Simple
+control split landed.**
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -297,6 +298,16 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   from text-box trimming so descenders paint, and top-layer elements restate the
   selection opt-out. Both galleries tag their dynamic signals, so the dev loop restores
   them across restarts.
+- **Raw controls + the Simple library—done.** Every form control renamed with a `Raw`
+  prefix (`RawButton`, `RawCheckbox`, `RawRadio`, `RawPicker`, `RawSlider`,
+  `RawTextField`, GUI-only `RawTextEditor`)—the unstyled, infinitely extensible bases
+  component libraries build on. Over them, each facade ships the first-party `Simple*`
+  set (`SimpleButton` with `SimpleVariant` emphases, `SimpleCard`, `SimpleCheckbox`,
+  `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, GUI-only
+  `SimpleTextEditor`), composing the raw controls through their public surface alone
+  under one neutral palette (`SimplePalette`) and shape language shared across GUI and
+  terminal—the web's corner radius is the terminal's arc-cornered border glyphs. Every
+  example uses the Simple components instead of hand-styling raw ones.
 
 ## Backlog—unphased features
 

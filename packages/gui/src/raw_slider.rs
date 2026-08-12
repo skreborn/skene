@@ -13,6 +13,9 @@ use crate::control::{ControlBase, control_surface};
 /// [`handle_change`](Self::handle_change) receives each move in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
+///
+/// The unstyled base a component library builds on; [`SimpleSlider`](crate::SimpleSlider) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawSlider {
   min: f32,

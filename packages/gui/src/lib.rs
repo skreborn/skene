@@ -8,8 +8,6 @@
 
 pub mod prelude;
 
-mod raw_button;
-mod raw_checkbox;
 mod container;
 mod containers;
 mod control;
@@ -24,21 +22,32 @@ mod lazy_column;
 #[cfg(target_arch = "wasm32")]
 mod link;
 mod overlay;
+mod raw_button;
+mod raw_checkbox;
 mod raw_picker;
 mod raw_radio;
+mod raw_slider;
+mod raw_text_editor;
+mod raw_text_field;
 mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
-mod raw_slider;
+mod simple;
+mod simple_button;
+mod simple_card;
+mod simple_checkbox;
+mod simple_picker;
+mod simple_radio;
+mod simple_slider;
+mod simple_text_editor;
+mod simple_text_field;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
 #[cfg(target_arch = "wasm32")]
 mod task;
 mod text;
-mod raw_text_editor;
-mod raw_text_field;
 
 pub use skene_core::{self as core, *};
 pub use skene_macros::{lazy, main};
@@ -78,19 +87,28 @@ pub use crate::routing::{install_router, install_static_router};
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
-  raw_button::RawButton,
-  raw_checkbox::RawCheckbox,
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   focus::FocusHandle,
   lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
+  raw_button::RawButton,
+  raw_checkbox::RawCheckbox,
   raw_picker::RawPicker,
   raw_radio::RawRadio,
   raw_slider::RawSlider,
-  text::{RichText, Span, Text, TextStyle, TextTheme},
   raw_text_editor::RawTextEditor,
   raw_text_field::RawTextField,
+  simple::{SimplePalette, SimpleVariant},
+  simple_button::SimpleButton,
+  simple_card::SimpleCard,
+  simple_checkbox::SimpleCheckbox,
+  simple_picker::SimplePicker,
+  simple_radio::SimpleRadio,
+  simple_slider::SimpleSlider,
+  simple_text_editor::SimpleTextEditor,
+  simple_text_field::SimpleTextField,
+  text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 
 /// The active driver's tree mutations, instantiating the spine's shared structural

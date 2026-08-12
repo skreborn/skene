@@ -110,6 +110,28 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   platform. Drivers test against their real sinks (web: a browser DOM via
   `wasm-bindgen-test`; ssr: wasmtime under a byte-exact snapshot; native: its toolkit).
 
+## Controls: raw and Simple
+
+Form controls come in two layers, in each facade.
+
+- **The `Raw*` controls** (`RawButton`, `RawCheckbox`, `RawRadio`, `RawPicker`,
+  `RawSlider`, `RawTextField`, GUI-only `RawTextEditor`) are the unstyled, infinitely
+  extensible bases every component library builds on: the platform's full keyboard,
+  focus, and accessibility behavior, the shared builder surface (`ControlBase` +
+  `control_surface!`), two-way signal binding, and zero opinion about looks beyond the
+  built-in interaction feedback.
+- **The `Simple*` components** (`SimpleButton` with its `SimpleVariant` emphases,
+  `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`,
+  `SimpleTextField`, GUI-only `SimpleTextEditor`) are the first-party ready-made
+  library over them: one neutral palette (`SimplePalette`) and one shape language,
+  shared across the GUI and the terminal wherever the medium allows (the web's corner
+  radius becomes the terminal's arc-cornered border glyphs). Examples use the Simple
+  components rather than hand-styling raw ones.
+
+The Simple layer composes the raw controls through their public surface alone—it is
+deliberately nothing a third-party component library could not build on the same
+footing.
+
 ## The style model
 
 Styling is **data**, not closures, because two requirements demand it: server-rendered and
@@ -244,7 +266,7 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 ### TUI (`skene-tui`)
 
 A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
-and `TextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
+and `RawTextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
 are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,
 `Hovered`). Nothing the medium lacks exists to call—no font size, no transition—so a
@@ -258,7 +280,7 @@ Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u32` c
 coordinates, both terminal-absolute and view-relative, plus the button and modifiers.
 `set_title`/`derive_title` name the terminal window via OSC 2, and `FocusHandle` and
 `set_autofocus` manage keyboard focus programmatically—the same surface the GUI facade
-offers, each typed to its own medium. Focus belongs to controls: `Button` is the
+offers, each typed to its own medium. Focus belongs to controls: `RawButton` is the
 focus-taking box (`Tab` reaches it, `Enter` and `Space` activate it), and a plain
 container never enters the tab order, exactly as on the web.
 

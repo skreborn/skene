@@ -14,6 +14,9 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
 /// set wholesale with [`set_style`](Self::set_style) and conditionally with
 /// [`set_when`](Self::set_when).
+///
+/// The unstyled base a component library builds on; [`SimpleTextField`](crate::SimpleTextField) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawTextField {
   base: ControlBase<crate::props::BoxStyle>,

@@ -13,6 +13,9 @@ use crate::{
 /// The one focus-taking box: keyboard activation (Enter and Space), the tab order, and
 /// the platform's button semantics come with the element. Unstyled by default; styling
 /// is the box style, set with `set_style` and conditionally with `set_when`.
+///
+/// The unstyled base a component library builds on; [`SimpleButton`](crate::SimpleButton) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawButton {
   children: Children,

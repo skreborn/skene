@@ -28,12 +28,12 @@ fn the_gallery_renders_and_responds() {
   let (frame, clicked) = with_driver(|| {
     tui::mount(|| tui_gallery::app().into_view().build());
 
-    let frame = tui::render_to_text(60, 90);
+    let frame = tui::render_to_text(60, 140);
 
     tui::trigger_key("Tab");
     tui::trigger_key("Enter");
 
-    (frame, tui::render_to_text(60, 90))
+    (frame, tui::render_to_text(60, 140))
   });
 
   for title in [

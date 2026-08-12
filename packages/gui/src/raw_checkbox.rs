@@ -14,6 +14,9 @@ use crate::control::{ControlBase, control_surface};
 /// [`bind_checked`](Self::bind_checked) wires both to one signal. Unstyled by default,
 /// with the platform's full keyboard behavior; styling is the box style, set with
 /// `set_style` and conditionally with `set_when`.
+///
+/// The unstyled base a component library builds on; [`SimpleCheckbox`](crate::SimpleCheckbox) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawCheckbox {
   checked: Option<Source<bool>>,

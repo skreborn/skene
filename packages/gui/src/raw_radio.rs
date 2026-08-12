@@ -12,6 +12,9 @@ use crate::control::{ControlBase, control_surface};
 /// between members with the arrow keys. [`bind_value`](Self::bind_value) wires a whole
 /// group to one signal holding the selected value. Unstyled by default, with the
 /// platform's full keyboard behavior.
+///
+/// The unstyled base a component library builds on; [`SimpleRadio`](crate::SimpleRadio) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawRadio {
   group: String,

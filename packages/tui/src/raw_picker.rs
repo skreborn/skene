@@ -24,6 +24,9 @@ use crate::{
 /// [`set_value`](Self::set_value)) picks the shown option, and
 /// [`handle_change`](Self::handle_change) receives each newly selected value—
 /// [`bind_value`](Self::bind_value) wires both to one signal.
+///
+/// The unstyled base a component library builds on; [`SimplePicker`](crate::SimplePicker) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawPicker {
   base: ControlBase<crate::props::ControlStyle>,

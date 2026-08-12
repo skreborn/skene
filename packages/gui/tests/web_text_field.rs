@@ -7,8 +7,8 @@ use skene_gui::{
   Container,
   FocusOrder,
   HasChildren,
-  Text,
   RawTextField,
+  Text,
   core::{BoxStyle, Condition},
   render_to_string,
 };
@@ -40,7 +40,7 @@ fn placeholder_and_value_serialize_as_attributes() {
   assert!(rendered.body().contains("value=\"a &amp; b\""));
 }
 
-/// RawTextField styling interns like a box's, including focus variants.
+/// `RawTextField` styling interns like a box's, including focus variants.
 #[test]
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
@@ -93,7 +93,9 @@ fn handlers_are_inert_on_the_server() {
       .handle_scroll(|_| {})
       .set_children((
         Text::new("t"),
-        RawTextField::new().handle_change(|_| {}).handle_focus(|| {}),
+        RawTextField::new()
+          .handle_change(|_| {})
+          .handle_focus(|| {}),
       ))
   });
 

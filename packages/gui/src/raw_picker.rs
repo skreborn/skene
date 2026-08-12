@@ -13,6 +13,9 @@ use crate::control::{ControlBase, control_surface};
 /// [`handle_change`](Self::handle_change) receives each choice as it is made—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
 /// the platform's full keyboard behavior.
+///
+/// The unstyled base a component library builds on; [`SimplePicker`](crate::SimplePicker) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawPicker {
   options: Vec<PickerOption>,

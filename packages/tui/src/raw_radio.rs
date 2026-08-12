@@ -13,6 +13,9 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// focused radio; arrow keys move the check through the group.
 /// [`bind_value`](Self::bind_value) wires a whole group to one signal holding the
 /// checked radio's value.
+///
+/// The unstyled base a component library builds on; [`SimpleRadio`](crate::SimpleRadio) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawRadio {
   base: ControlBase<crate::props::ControlStyle>,

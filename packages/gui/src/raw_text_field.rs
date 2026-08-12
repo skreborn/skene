@@ -21,6 +21,9 @@ use crate::control::{ControlBase, control_surface};
 ///   .set_placeholder("Name")
 ///   .bind_value(name)
 /// ```
+///
+/// The unstyled base a component library builds on; [`SimpleTextField`](crate::SimpleTextField) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawTextField {
   value: Option<Source<String>>,

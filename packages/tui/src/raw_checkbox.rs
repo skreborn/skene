@@ -14,6 +14,9 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// [`handle_toggle`](Self::handle_toggle) receives each flip—
 /// [`bind_checked`](Self::bind_checked) wires both to one signal. `Enter`, `Space`, or
 /// a mouse click toggles it.
+///
+/// The unstyled base a component library builds on; [`SimpleCheckbox`](crate::SimpleCheckbox) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawCheckbox {
   base: ControlBase<crate::props::ControlStyle>,

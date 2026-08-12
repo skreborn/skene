@@ -13,6 +13,9 @@ use crate::control::{ControlBase, control_surface};
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default; the
 /// visible height is set in text lines with [`set_lines`](Self::set_lines).
+///
+/// The unstyled base a component library builds on; [`SimpleTextEditor`](crate::SimpleTextEditor)
+/// is the ready-made counterpart.
 #[must_use]
 pub struct RawTextEditor {
   value: Option<Source<String>>,

@@ -1,54 +1,32 @@
-//! The gallery's views, in cells: every built-in view and control, live.
+//! The gallery's views, in cells: every built-in view and Simple component, live.
 
 #![cfg(not(target_arch = "wasm32"))]
 
 use skene_tui::prelude::*;
-
-fn background() -> Color {
-  Color::srgb(0.08, 0.08, 0.1)
-}
-
-fn surface() -> Color {
-  Color::srgb(0.13, 0.13, 0.16)
-}
-
-fn edge() -> Color {
-  Color::srgb(0.35, 0.35, 0.45)
-}
-
-fn faint() -> Color {
-  Color::srgb(0.55, 0.57, 0.63)
-}
-
-fn bright() -> Color {
-  Color::srgb(0.8, 0.9, 0.8)
-}
-
-fn accent() -> Color {
-  Color::srgb(0.2, 0.22, 0.2)
-}
 
 /// The whole gallery: a scrollable column of titled sections, its text selecting in
 /// the theme's colors.
 #[must_use]
 pub fn app() -> impl IntoView {
   TextTheme::new(gallery())
-    .set_selection_color(Color::srgb(0.95, 1., 0.96))
-    .set_selection_background(Color::srgb(0.22, 0.4, 0.28))
+    .set_selection_color(SimplePalette::background())
+    .set_selection_background(SimplePalette::foreground())
 }
 
 fn gallery() -> impl IntoView {
   Column::new()
     .set_item_alignment(ItemAlignment::Center)
     .set_overflow(Overflow::Auto)
-    .set_color(background())
+    .set_color(SimplePalette::background())
     .set_child(
       Column::new()
         .set_spacing(1)
         .set_max_width(56)
         .set_padding(Inset::symmetric(2, 1))
         .set_children((
-          Text::new("GALLERY").set_bold(true).set_color(faint()),
+          Text::new("GALLERY")
+            .set_bold(true)
+            .set_color(SimplePalette::muted_foreground()),
           text(),
           buttons(),
           toggles(),
@@ -66,26 +44,26 @@ fn text() -> impl IntoView {
     Column::new().set_spacing(1).set_children((
       Text::new("A run of text with a color and a bold flag.")
         .set_bold(true)
-        .set_color(bright()),
+        .set_color(SimplePalette::foreground()),
       Text::new(
         "Long runs wrap at the available width, breaking at spaces, so a paragraph \
          reads naturally in however many columns it gets.",
       )
-      .set_color(faint()),
+      .set_color(SimplePalette::muted_foreground()),
       Text::new(
         "This paragraph opts into selection: drag to select—double-click a word, \
          triple-click a run—and right-click to copy it as it appears in the source.",
       )
       .set_selectable(true)
-      .set_color(faint()),
+      .set_color(SimplePalette::muted_foreground()),
       RichText::new([
-        Span::text("Rich text mixes ").set_color(faint()),
+        Span::text("Rich text mixes ").set_color(SimplePalette::muted_foreground()),
         Span::text("weights").set_bold(true),
-        Span::text(", ").set_color(faint()),
-        Span::text("colors").set_color(bright()),
-        Span::text(", and ").set_color(faint()),
+        Span::text(", ").set_color(SimplePalette::muted_foreground()),
+        Span::text("colors").set_color(SimplePalette::foreground()),
+        Span::text(", and ").set_color(SimplePalette::muted_foreground()),
         Span::text("links").set_link("https://example.com"),
-        Span::text(" in one paragraph.").set_color(faint()),
+        Span::text(" in one paragraph.").set_color(SimplePalette::muted_foreground()),
       ])
       .set_selectable(true),
     )),
@@ -97,9 +75,18 @@ fn buttons() -> impl IntoView {
 
   section(
     "Button",
-    Row::new().set_spacing(2).set_children((
-      button("Click me", move || count.update(|value| *value += 1)),
-      Text::derive(move || format!("clicked {} time(s)", count.get())).set_color(faint()),
+    Column::new().set_spacing(1).set_children((
+      Row::new()
+        .set_spacing(2)
+        .set_wrap(Wrap::Forward)
+        .set_children((
+          SimpleButton::new("Primary").handle_click(move || count.update(|value| *value += 1)),
+          SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
+          SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
+          SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
+        )),
+      Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
+        .set_color(SimplePalette::muted_foreground()),
     )),
   )
 }
@@ -112,7 +99,9 @@ fn toggles() -> impl IntoView {
     "Checkbox & Radio",
     Column::new().set_spacing(1).set_children((
       Row::new().set_spacing(2).set_children((
-        RawCheckbox::new().bind_checked(agreed).set_label("subscribed"),
+        SimpleCheckbox::new()
+          .bind_checked(agreed)
+          .set_label("subscribed"),
         Text::derive(move || {
           if agreed.get() {
             "checked".to_owned()
@@ -121,7 +110,7 @@ fn toggles() -> impl IntoView {
             "unchecked".to_owned()
           }
         })
-        .set_color(faint()),
+        .set_color(SimplePalette::muted_foreground()),
       )),
       Row::new().set_spacing(2).set_children((
         radio_choice("mint", flavor),
@@ -133,7 +122,7 @@ fn toggles() -> impl IntoView {
 }
 
 fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  RawRadio::new("flavor", value)
+  SimpleRadio::new("flavor", value)
     .bind_value(flavor)
     .set_label(value)
 }
@@ -146,17 +135,17 @@ fn inputs() -> impl IntoView {
   section(
     "TextField, Slider & Picker",
     Column::new().set_spacing(1).set_children((
-      RawTextField::new()
+      SimpleTextField::new()
         .set_placeholder("Your name")
-        .bind_value(name)
-        .set_style(BoxStyle::new().set_width(24).set_color(background())),
+        .bind_value(name),
       Row::new().set_spacing(2).set_children((
         Container::new()
           .set_width(20)
-          .set_child(RawSlider::new(0., 100.).set_step(1.).bind_value(volume)),
-        Text::derive(move || format!("{:.0}%", volume.get())).set_color(faint()),
+          .set_child(SimpleSlider::new(0., 100.).set_step(1.).bind_value(volume)),
+        Text::derive(move || format!("{:.0}%", volume.get()))
+          .set_color(SimplePalette::muted_foreground()),
       )),
-      RawPicker::new()
+      SimplePicker::new()
         .set_options([
           ("spring", "Spring"),
           ("summer", "Summer"),
@@ -188,9 +177,9 @@ fn borders() -> impl IntoView {
 fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
   Container::new()
     .set_padding(Inset::horizontal(1))
-    .set_border(edge())
+    .set_border(SimplePalette::border())
     .set_border_glyphs(glyphs)
-    .set_child(Text::new(label).set_color(faint()))
+    .set_child(Text::new(label).set_color(SimplePalette::muted_foreground()))
 }
 
 fn layouts() -> impl IntoView {
@@ -209,38 +198,46 @@ fn layouts() -> impl IntoView {
         swatch(0.40),
         swatch(0.30),
       )),
-      Stack::new().set_height(3).set_color(accent()).set_child(
-        Pinned::new(
-          Container::new()
-            .set_padding(Inset::horizontal(1))
-            .set_color(surface())
-            .set_child(Text::new("pinned").set_color(faint())),
-        )
-        .set_edges(skene_tui::core::Inset {
-          top: Dimension::Length(0),
-          right: Dimension::Length(1),
-          bottom: Dimension::Auto,
-          left: Dimension::Auto,
-        }),
-      ),
+      Stack::new()
+        .set_height(3)
+        .set_color(SimplePalette::secondary())
+        .set_child(
+          Pinned::new(
+            Container::new()
+              .set_padding(Inset::horizontal(1))
+              .set_color(SimplePalette::card())
+              .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
+          )
+          .set_edges(skene_tui::core::Inset {
+            top: Dimension::Length(0),
+            right: Dimension::Length(1),
+            bottom: Dimension::Auto,
+            left: Dimension::Auto,
+          }),
+        ),
       Row::new().set_children((
-        button("Open a modal", move || open.set(true)),
+        SimpleButton::new("Open a modal")
+          .set_variant(SimpleVariant::Secondary)
+          .handle_click(move || open.set(true)),
         Overlay::modal()
           .bind_open(open)
           .set_style(
             BoxStyle::new()
               .set_padding(Inset::symmetric(2, 1))
-              .set_color(surface())
-              .set_border(edge())
+              .set_color(SimplePalette::card())
+              .set_border(SimplePalette::border())
               .set_border_glyphs(BorderGlyphs::ROUNDED)
               .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
           )
           .set_child(
             Column::new().set_spacing(1).set_children((
-              Text::new("A modal overlay; Escape dismisses.").set_color(bright()),
-              Row::new()
-                .set_arrangement(Arrangement::End)
-                .set_child(button("Close", move || open.set(false))),
+              Text::new("A modal overlay; Escape dismisses.")
+                .set_color(SimplePalette::foreground()),
+              Row::new().set_arrangement(Arrangement::End).set_child(
+                SimpleButton::new("Close")
+                  .set_variant(SimpleVariant::Secondary)
+                  .handle_click(move || open.set(false)),
+              ),
             )),
           ),
       )),
@@ -256,8 +253,8 @@ fn list() -> impl IntoView {
       || 1000,
       |index| {
         Row::new().set_spacing(1).set_children((
-          Text::new(format!("Row {index}")).set_color(bright()),
-          Text::new("virtualized").set_color(faint()),
+          Text::new(format!("Row {index}")).set_color(SimplePalette::foreground()),
+          Text::new("virtualized").set_color(SimplePalette::muted_foreground()),
         ))
       },
     )
@@ -267,34 +264,14 @@ fn list() -> impl IntoView {
 
 /// A titled card around one section's content.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  Column::new()
-    .set_spacing(1)
-    .set_padding(Inset::symmetric(2, 1))
-    .set_min_width(52)
-    .set_color(surface())
-    .set_border(edge())
-    .set_border_glyphs(BorderGlyphs::ROUNDED)
-    .set_children((Text::new(title).set_bold(true).set_color(faint()), content))
-}
-
-fn button(label: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  RawButton::new()
-    .set_style(
-      BoxStyle::new()
-        .set_padding(Inset::horizontal(1))
-        .set_color(accent())
-        .set_cursor(MouseCursor::Click),
-    )
-    .set_when(
-      Condition::Focused,
-      BoxStyle::new().set_color(Color::srgb(0.3, 0.4, 0.3)),
-    )
-    .set_when(
-      Condition::Hovered,
-      BoxStyle::new().set_color(Color::srgb(0.28, 0.32, 0.28)),
-    )
-    .set_child(Text::new(label))
-    .handle_click(action)
+  Container::new().set_min_width(52).set_child(
+    SimpleCard::new().set_children((
+      Text::new(title)
+        .set_bold(true)
+        .set_color(SimplePalette::muted_foreground()),
+      content,
+    )),
+  )
 }
 
 fn swatch(brightness: f32) -> impl IntoView {

@@ -13,6 +13,9 @@ use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
 /// (or [`set_value`](Self::set_value)) positions the thumb, and
 /// [`handle_change`](Self::handle_change) receives each new value—
 /// [`bind_value`](Self::bind_value) wires both to one signal.
+///
+/// The unstyled base a component library builds on; [`SimpleSlider`](crate::SimpleSlider) is
+/// the ready-made counterpart.
 #[must_use]
 pub struct RawSlider {
   base: ControlBase<crate::props::ControlStyle>,

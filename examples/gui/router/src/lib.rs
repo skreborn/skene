@@ -55,7 +55,7 @@ fn app() -> impl IntoView {
   Column::new()
     .set_spacing(32.)
     .set_padding(Inset::all(48.))
-    .set_color(Color::srgb(0.1, 0.1, 0.1))
+    .set_color(SimplePalette::background())
     .set_children((
       Row::new().set_spacing(16.).set_children((
         Link::new(Page::Home).set_child(|| navigation("Home")),
@@ -88,27 +88,22 @@ async fn about() -> AnyView {
 }
 
 fn page(title: &'static str, body: &'static str) -> impl IntoView {
-  Column::new()
-    .set_spacing(12.)
-    .set_max_width(420.)
-    .set_padding(Inset::symmetric(32., 28.))
-    .set_color(Color::srgb(0.15, 0.15, 0.15))
-    .set_border(Border::new(1., Color::srgb(0.2, 0.2, 0.2)))
-    .set_border_radius(8.)
-    .set_children((
+  Container::new().set_max_width(420.).set_child(
+    SimpleCard::new().set_spacing(12.).set_children((
       Text::new(title)
         .set_font_size(13.)
         .set_font_weight(500.)
-        .set_color(Color::srgb(0.55, 0.57, 0.63)),
+        .set_color(SimplePalette::muted_foreground()),
       Text::new(body)
         .set_font_size(16.)
-        .set_color(Color::srgb(0.78, 0.87, 0.8)),
-    ))
+        .set_color(SimplePalette::foreground()),
+    )),
+  )
 }
 
 fn navigation(label: &'static str) -> impl IntoView {
   Text::new(label)
     .set_font_size(14.)
     .set_font_weight(600.)
-    .set_color(Color::srgb(0.78, 0.87, 0.8))
+    .set_color(SimplePalette::foreground())
 }

@@ -18,8 +18,6 @@
 
 pub mod prelude;
 
-mod raw_button;
-mod raw_checkbox;
 mod container;
 mod containers;
 mod control;
@@ -31,20 +29,30 @@ mod focus;
 mod lazy_column;
 mod overlay;
 mod paint;
-mod raw_picker;
 mod props;
+mod raw_button;
+mod raw_checkbox;
+mod raw_picker;
 mod raw_radio;
+mod raw_slider;
+mod raw_text_field;
 mod realize;
 mod resource;
 mod routing;
 mod selection;
-mod raw_slider;
+mod simple;
+mod simple_button;
+mod simple_card;
+mod simple_checkbox;
+mod simple_picker;
+mod simple_radio;
+mod simple_slider;
+mod simple_text_field;
 mod state;
 mod style;
 mod task;
 mod terminal;
 mod text;
-mod raw_text_field;
 mod theme;
 
 use std::cell::RefCell;
@@ -86,23 +94,31 @@ pub use terminal::{
 };
 
 pub use crate::{
-  raw_button::RawButton,
-  raw_checkbox::RawCheckbox,
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   lazy_column::LazyColumn,
   overlay::{Anchor, Overlay},
-  raw_picker::RawPicker,
   props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
+  raw_button::RawButton,
+  raw_checkbox::RawCheckbox,
+  raw_picker::RawPicker,
   raw_radio::RawRadio,
+  raw_slider::RawSlider,
+  raw_text_field::RawTextField,
   resource::Resource,
   routing::install_router,
-  raw_slider::RawSlider,
+  simple::{SimplePalette, SimpleVariant},
+  simple_button::SimpleButton,
+  simple_card::SimpleCard,
+  simple_checkbox::SimpleCheckbox,
+  simple_picker::SimplePicker,
+  simple_radio::SimpleRadio,
+  simple_slider::SimpleSlider,
+  simple_text_field::SimpleTextField,
   task::spawn,
   text::{RichText, Span, Text},
-  raw_text_field::RawTextField,
   theme::{ControlTheme, TextTheme},
 };
 

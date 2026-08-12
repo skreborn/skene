@@ -31,17 +31,10 @@ fn app() -> impl IntoView {
     .set_children((
       Text::derive(move || format!("Count: {}", count.get())).set_font_size(32.),
       Row::new().set_spacing(12.).set_children((
-        button("−", move || count.update(|n| *n = n.saturating_sub(1))),
-        button("+", move || count.update(|n| *n = n.saturating_add(1))),
+        SimpleButton::new("−").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
+        SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
       )),
     ))
-}
-
-fn button(symbol: &'static str, action: impl Fn() + 'static) -> impl IntoView {
-  Button::new()
-    .handle_click(action)
-    .set_style(BoxStyle::new().set_padding(Inset::symmetric(16., 12.)))
-    .set_child(Text::new(symbol))
 }
 ```
 
@@ -71,7 +64,7 @@ skene              the umbrella and the single dependency an app pulls in: the b
 | `skene-reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Trigger`. Synchronous on write. |
 | `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
 | `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`, `TextField`) realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
+| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`), the raw controls (`RawButton`, `RawTextField`, …) and the `Simple*` components over them, realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
 | `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
 | `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u16` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
@@ -104,6 +97,21 @@ travel the same way, in wrapper views only the matching container accepts—`Fle
 `GridCell` (placement in a `Grid`)—which create no node of their own. All of them share
 one decoration surface (color, border, padding, events), defined once and generated onto
 each.
+
+### Controls: raw and Simple
+
+Form controls come in two layers. The `Raw*` controls (`RawButton`, `RawCheckbox`,
+`RawTextField`, …) are the unstyled, infinitely extensible bases every component
+library builds on: full platform behavior, zero opinion about looks. The `Simple*`
+components (`SimpleButton`, `SimpleCard`, `SimpleTextField`, …) are the ready-made
+library on top—one neutral palette (`SimplePalette`) and shape language, shared by the
+GUI and the terminal wherever the medium allows—so an app is presentable with no
+styling at all:
+
+```rust
+SimpleButton::new("Save").handle_click(save),
+SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_click(delete),
+```
 
 ### Defining your own view
 

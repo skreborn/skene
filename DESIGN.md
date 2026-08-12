@@ -170,8 +170,10 @@ the same sharing shape as `TreeOps`—never feature-gated variants, which cargo'
 feature unification would break in any build containing both facades.
 
 - **Layout** runs on taffy at full capability, statically constrained per layout:
-  each mode is its own container view (`Row`/`Column`, `Grid`, `Stack`, plain
-  `Container` flow), exposing only what it honors—a `Row` has `arrangement`,
+  each mode is its own container view (`Row`/`Column`, `Grid`, `Stack`) wrapping the
+  public `StyledBox`—so a third-party layout is built from the same parts—with
+  `Container` decorating exactly one child and laying nothing out, exposing only what
+  it honors—a `Row` has `arrangement`,
   `item_alignment`, `spacing`, `wrap`; a `Grid` has `columns`/`rows`, implicit
   tracks, `flow`, and two-axis arrangement and `Alignment`. Per-child properties ride
   in wrapper views the matching container alone accepts (`Flexible` with

@@ -40,12 +40,18 @@
   grid, not templates and auto-flow. CSS nomenclature lives only inside the web
   driver's mapping layer. This is settled—do not re-litigate it toward CSS naming.
 - **Layout is statically constrained.** Each layout is its own container view—`Row`,
-  `Column`, `Grid`, `Stack`, plain `Container` (flow)—exposing only the properties it
-  honors; per-child properties travel in wrapper views (`Flexible`, `Pinned`,
-  `GridCell`) accepted only by the matching container through its child kind
-  (`HasChildren::Kind`). Wrappers create no node; they annotate their child's. The
-  shared decoration surface is defined once and macro-generated onto each container
-  (`box_surface!`, like the controls' `control_surface!`)—never hand-duplicated.
+  `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
+  travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the
+  matching container through its child kind (`HasChildren::Kind`). Wrappers create no
+  node; they annotate their child's. `Container` is decoration and sizing around
+  **exactly one** child—no multi-child flow; `Column`, `Row`, and `Wrap` cover those
+  cases. The shared box surface lives once on `StyledBox`—**public**, one per facade,
+  typed to its medium—which every container wraps and which reaches a wrapper through one
+  exported derive forwarding a chosen subset: never hand-duplicated, and never a trait,
+  because a property a view does not honor must be statically absent rather than merely
+  unused. A third-party layout view is built exactly as `Row` is, from that public surface
+  alone; there is no privileged base. (ROADMAP work: the code still calls that composable
+  `Container` and still flows multiple children.)
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.

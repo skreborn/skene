@@ -503,13 +503,68 @@ sink are just different sinks for the same paths.)
 - **View transitions (web)**: best-effort—`document.startViewTransition` wrapping SPA
   route changes and `@view-transition` in generated CSS for MPA/SSG navigations,
   degrading to instant swaps where the browser lacks support.
+- **`StyledBox` the primitive, `Container` a thin single-child wrapper, and the
+  forwarding published.** Two changes that only make sense together.
+  - **The primitive gets its own name.** `Row`/`Column`/`Grid`/`Stack` each hold a
+    `Container` today and `box_surface!` forwards the whole shared surface onto them, so
+    the type that means "plain flow box" is also the type every layout is built out of.
+    Split the roles: the composable that owns the shared box surface—sizing, margin,
+    padding, offset, background, border, radius, shadow, cursor, overflow, variants,
+    events, children—becomes `StyledBox`, pairing with the `BoxStyle`/`BoxProps`
+    vocabulary it carries. (Rejected: `Box` itself, which a prelude glob would shadow
+    over `std`'s, breaking `Box::new` in user files; `Surface`, which already means
+    "the set of builder methods" here; `Frame`, taken by the terminal's painted frames;
+    `DecoratedBox`, Flutter's name but blind to the sizing and events this also holds.)
+    Every layout view wraps it. **`StyledBox` is public**—each facade exporting its
+    own, typed to its medium—so a third-party layout view is built exactly the way `Row`
+    is: wrap the box, derive the subset of the surface it honors, add its own layout
+    properties. No privileged base, no path the built-ins get and users don't. The gate
+    is a layout view written outside the facade crate, against its public API alone, that
+    matches a built-in feature for feature; that also makes the whole surface public
+    vocabulary, so it needs documenting to the standard `Container` is held to.
+  - **`Container` loses flow and takes exactly one child.** No multi-child normal flow:
+    `Column` covers the vertical case, `Row` the horizontal, `Wrap` on either the
+    wrapping one. `Container` becomes decoration plus sizing around a single child, and
+    the child API is `set_child` alone—no `Children`, no `derive_children`. The repo pays
+    nothing for this: every `Container` in both galleries and the router example is
+    already single-child or childless. Once it lands, `AGENTS.md`'s layout bullet stops
+    naming "plain `Container` (flow)".
+  - **A derive, not a trait.** The trait shape (one `map_container`-style accessor plus a
+    blanket extension trait) is the smaller mechanism and would need no macro at all, but
+    it forwards all or nothing—and the whole point of typed containers is that a property
+    a view does not honor is *statically absent*, not merely unused. A trait cannot make
+    `set_width` disappear from a control that must not be sized. So:
+    `#[derive(BoxSurface)]` on the wrapper struct, with a `skip`/allowlist attribute
+    controlling exactly which
+    methods appear, finding the `StyledBox` field by type and taking an attribute to
+    name it when ambiguous—noting the sharp edge that a derive matches the *written*
+    path, so an aliased field type needs the attribute. It lands in `skene-macros` beside
+    `#[main]`/`#[lazy]`/`Store`, and it replaces all three of today's private
+    `macro_rules!`—`box_surface!` (`base: Container`, some forty methods),
+    `control_surface!` (`base: ControlBase`), `simple_surface!` (`raw: Raw*`), each
+    hardcoding a field name and none exported—so we do not ship one public mechanism
+    beside two private ones.
+  - **What the first-party set gains, and must adopt.** A third-party view forwards by
+    hand or not at all today, and the built-ins already show the cost: `SimpleCard`
+    exposes spacing, alignment, and children, so wrapping a `Column` silently drops
+    width, padding, color, border, shadow, cursor, overflow, variants, and every pointer
+    handler.
+    Every Simple view adopts the derive as part of this work, not as a follow-up. A
+    forwarded method keeps the primitive's name, signature, and documented contract, from
+    one generated source—never a hand-written copy that drifts.
+  - Both facades and the record driver move together; the sweep touches every example and
+    both galleries, and the SSR snapshot changes wherever a layout's node shifts.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
-  on the asset system; the realize-once vocabulary already permits the code side.
+  on the asset system for the assets half; the realize-once vocabulary already permits
+  the code side, and the forwarding item above is what makes a third-party view as
+  capable as a built-in one.
 - **Serializable reactive state**: the signal graph snapshots to a byte stream and
-  restores on startup. Strictly **opt-in**—serializability is never a bound forced on
-  users' types; the likely shape is an optional unique tag on a signal, with only
-  tagged state restored (exact logic open). The snapshot also carries the extras that
+  restores on startup. **Direction settled: on by default, opt-out**—the built-in and
+  simple types restore with no tag and no feature, an explicit constructor opts a signal
+  out, and a tag is only an override for the positional diff (see the two exploration
+  items below; the opt-in-only shape below it is what landed first, not the target). The
+  snapshot also carries the extras that
   live outside the graph—the focused node, scroll positions, and similar platform
   particularities—which the drivers fully own and can replay. Powers state-preserving
   dev reloads (full restart, no hot-patching) and stands on its own (session restore,

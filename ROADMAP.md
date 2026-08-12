@@ -337,6 +337,19 @@ marker-based hydration with loud mismatch; serialize-by-default resources
   went borderless—one row, their surface shifting on hover and focus—while `Outline`
   keeps its border feedback; the galleries agree on rich text last, the pinned badge's
   corner, and card widths that split the swatch grid into whole cells.
+- **Chromium follow-ups—done.** Running the gallery in Chromium surfaced what Firefox
+  had hidden. The reset's old anchor-neutralizing rule (`color: inherit`) sat later in
+  the file at the same zero specificity as the new link defaults and won, so links
+  rendered black; the defaults now live in that one rule. Blink has no counterpart to
+  Gecko's `::-moz-range-progress`, so a slider showed no filled run: the filled part
+  now rides a `--skene-slider-fill` custom property, set as an inline override by both
+  leaves (the browser leaf on every value change and edit, the server leaf during
+  serialization) and consumed by a `background-size` longhand on
+  `::-webkit-slider-runnable-track`. The customizable-select popup inherits the
+  select's own background, which was transparent, so `SimplePicker` now sits on the
+  card surface. `RawPicker` grew `set_highlight`, and the Simple popup highlight
+  speaks the palette instead of the browser-blue default. The galleries space
+  text-box-trimmed paragraphs wider, raise the stack demo, and ink "colors" in amber.
 
 ## Backlog—unphased features
 

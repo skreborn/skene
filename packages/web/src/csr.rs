@@ -1015,6 +1015,65 @@ pub fn install(root: Element) {
 
     *state = Some(State::new(root));
   });
+
+  install_deselection();
+}
+
+/// Collapses the document selection when a primary press lands on unselectable
+/// content: selection is opt-in, but clearing one is not—a click anywhere outside
+/// selectable text deselects, as it would on a plain page. Presses on selectable text
+/// keep the browser's own anchoring, and a `Shift`-press keeps its extension.
+fn install_deselection() {
+  let Some(window) = web_sys::window()
+  else {
+    return;
+  };
+  let Some(document) = window.document()
+  else {
+    return;
+  };
+  let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::PointerEvent)>::new(
+    move |event: web_sys::PointerEvent| {
+      if event.button() != 0 || event.shift_key() {
+        return;
+      }
+
+      let Some(window) = web_sys::window()
+      else {
+        return;
+      };
+      let Ok(Some(selection)) = window.get_selection()
+      else {
+        return;
+      };
+
+      if selection.is_collapsed() {
+        return;
+      }
+
+      let Some(target) = event
+        .target()
+        .and_then(|target| target.dyn_into::<Element>().ok())
+      else {
+        return;
+      };
+      let selectable = window
+        .get_computed_style(&target)
+        .ok()
+        .flatten()
+        .and_then(|style| style.get_property_value("user-select").ok())
+        .is_some_and(|value| value != "none");
+
+      if !selectable {
+        let _ = selection.remove_all_ranges();
+      }
+    },
+  );
+
+  let _ =
+    document.add_event_listener_with_callback("pointerdown", closure.as_ref().unchecked_ref());
+
+  closure.forget();
 }
 
 /// Uninstalls the web platform and resets the reactive runtime and root scope.

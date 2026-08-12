@@ -534,13 +534,14 @@ sink are just different sinks for the same paths.)
     `extern crate self` aliases. Costs accepted: the traits arrive via imports (the
     preludes carry them), and rustdoc lists the methods under trait implementations
     rather than inherently.
-  - **`Container` loses flow and takes exactly one child.** No multi-child normal flow:
-    `Column` covers the vertical case, `Row` the horizontal, `Wrap` on either the
-    wrapping one. `Container` becomes decoration plus sizing around a single child, and
-    the child API is `set_child` alone—no `Children`, no `derive_children`. The repo pays
-    nothing for this: every former `Container` use in both galleries and the router
-    example is already single-child or childless. Once it lands, `AGENTS.md`'s layout
-    bullet stops carrying the transition parenthetical.
+  - **`Container` single-child—done.** `Container` is decoration plus sizing around one
+    `set_child`—no `Children`, no `derive_children`, no layout of its own; a thin
+    wrapper over `StyledBox` built from the public surface alone, so it doubles as the
+    reference for a third-party wrapper. No view in the vocabulary offers multi-child
+    normal flow: `Column` covers the vertical case, `Row` the horizontal, `Wrap` on
+    either the wrapping one; the flow substrate remains on `StyledBox`, which layout
+    views feed their children through. The sweep cost nothing—every former use in both
+    galleries and the router example was already single-child or childless.
   - **What the first-party set gains, and must adopt.** The built-ins still show the
     cost of hand forwarding: `SimpleCard` exposes spacing, alignment, and children, so
     wrapping a `Column` silently drops width, padding, color, border, shadow, cursor,

@@ -18,6 +18,7 @@
 
 pub mod prelude;
 
+mod container;
 mod containers;
 mod control;
 mod detect;
@@ -97,6 +98,7 @@ pub use crate::simple::{
   SimpleVariant,
 };
 pub use crate::{
+  container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   control::{FocusCore, StyleCore},
   events::{PointerEvent, ScrollEvent},

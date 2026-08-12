@@ -8,6 +8,7 @@
 
 pub mod prelude;
 
+mod container;
 mod containers;
 mod control;
 #[cfg(target_arch = "wasm32")]
@@ -86,6 +87,7 @@ pub use crate::simple::{
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
+  container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   control::{FocusCore, StyleCore},
   focus::FocusHandle,

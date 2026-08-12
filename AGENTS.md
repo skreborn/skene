@@ -51,10 +51,10 @@
   do the same over a control's public cores. A wrapper implements a two-line accessor
   per group; forwarding is never hand-duplicated and never macro-generated. Absence is
   per group, not per property: a view that must not be sized simply does not implement
-  `HasSize`. A third-party layout view is built exactly as `Row` is, from that public
-  surface alone; there is no privileged base. (ROADMAP work: `StyledBox` is named and
-  public, but the single-child `Container` does not exist yet and the flow still lives
-  on the box.)
+  `HasSize`. `Container` is the vocabulary's plain box—decoration and sizing around its
+  one `set_child`—while document flow lives only on the `StyledBox` substrate the
+  containers are built from. A third-party layout view is built exactly as `Row` is,
+  from that public surface alone; there is no privileged base.
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.

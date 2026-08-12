@@ -261,7 +261,7 @@ fn plain(text: &'static str) -> Span {
 }
 
 fn badge(text: &'static str) -> impl IntoView {
-  StyledBox::new()
+  Container::new()
     .set_padding(Inset::symmetric(8., 4.))
     .set_color(SimplePalette::card())
     .set_border_radius(6.)
@@ -273,7 +273,7 @@ fn badge(text: &'static str) -> impl IntoView {
 }
 
 fn swatch(brightness: f32) -> impl IntoView {
-  StyledBox::new()
+  Container::new()
     .set_height(32.)
     .set_color(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
     .set_border_radius(6.)

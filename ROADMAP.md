@@ -86,6 +86,28 @@ marker-based hydration with loud mismatch; serialize-by-default resources
     one content-addressed class carrying its initial style (dynamic values stay inline
     overrides)—so the reset text stops being duplicated into, and hashed with, every
     generated class.
+  - Retire the slider's `--skene-slider-fill` custom property. The filled run rides an
+    inline custom property both web leaves write—the browser leaf on every value change,
+    the server leaf during serialization—consumed by a `background-size` longhand on
+    `::-webkit-slider-runnable-track`, because Blink has no `::-moz-range-progress`. **It
+    breaks the doctrine outright:** on a page without JavaScript the range element still
+    works—the thumb moves, the value changes, and a form would post it—while the fill
+    stays frozen at the serialized value, so the control lies about its own state in
+    Blink. Gecko's engine-native pseudo has no such gap, which is the measure of how
+    wrong the Blink path is. The mechanism offends on top of that: two leaves writing one
+    magic property through a vendor pseudo, the fill living outside the interned class,
+    and a per-engine split. Wanted: the standard's own base-appearance slider parts
+    (`::slider-track`/`::slider-fill`/`::slider-thumb`), the route `SimplePicker` already
+    took to `base-select`, checked against current engine support—with the Gecko pseudo
+    retired once base appearance covers both engines, and one compiled fallback for
+    engines that lack it. The fallback must be judged by that same rule: any declaration
+    computed from the value is JS-bound and will freeze again, so an engine without the
+    slider parts should paint **no** fill rather than a stale one—the thumb's own position
+    still reports the value truthfully—and the custom property may survive only as an
+    enhancement a running app layers on. Also weighed and rejected on their own terms: a
+    value-sized `linear-gradient` in the interned class (a class per value—unacceptable
+    churn) and the fill as our own child views (loses the range element's keyboard and
+    accessibility behavior, which is the reason the control is a real input).
 
 ## Phase 4—Events and first controls ✅ (core)
 

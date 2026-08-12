@@ -444,7 +444,7 @@ fn render_deadline_cuts_off_unsettled_work() {
 
   let rendered = render_to_string(|| {
     let value = Resource::client(|| async {
-      web::sleep(Duration::from_secs(3600)).await;
+      web::sleep(Duration::from_hours(1)).await;
 
       1u32
     });

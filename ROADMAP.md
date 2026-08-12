@@ -365,6 +365,53 @@ sink are just different sinks for the same paths.)
   second terminal to attach the actual TUI app—mirroring how the web flow keeps the
   terminal while the app lives in the browser.
 
+- **Multi-line text input for the terminal.** `RawTextEditor`/`SimpleTextEditor` are
+  GUI-only; the terminal's editing story stops at the single-line `RawTextField`. Wanted:
+  the same pair in `skene-tui`—the value soft-wrapping at the field's width through the
+  run measurement already in `paint`, the caret walking visual lines with a remembered
+  goal column, `Up`/`Down` moving by wrapped line, `Enter` inserting a newline instead of
+  activating, `Home`/`End` per visual line with the document ends under `Ctrl`, the value
+  window scrolling vertically as the caret leaves the box (the horizontal slide the field
+  already does), and explicit row sizing. Browser parity is the reference for every one of
+  those, per the TUI's standing rule.
+
+- **Selection and clipboard in every terminal text input.** Selection covers selectable
+  runs today; the field and the coming editor have a caret and no selection, and the
+  right-click menu offers `Copy` alone. Wanted: the source-anchored selection model
+  extended over an input's value—drag, shift-arrows and shift-click extend, double click
+  takes the word, triple click the line, insertion replaces the selection,
+  `Backspace`/`Delete` remove it—and the menu grown to `Cut` and `Paste` over an input,
+  each disabled per what the terminal supports and whether the input is read-only. `Copy`
+  and `Cut` write OSC 52 through the path that already exists. **Paste is the hard half:**
+  reading the clipboard needs an OSC 52 query reply, which most terminals refuse or gate
+  behind permission, so the reachable design is bracketed paste (crossterm's
+  `Event::Paste`) as the real source, with the menu item pulling from an OSC 52 read where
+  XTVERSION says it works and otherwise presenting the terminal's own paste gesture as the
+  hint. The VTE-discards detection already in place is the model for that capability
+  probe.
+
+- **`Ctrl-Q` quits; `Ctrl-C`/`X`/`V` do their real jobs.** `Ctrl-C` is an unconditional
+  quit ahead of dispatch today (`terminal.rs`, `dispatch_key`), which costs the terminal
+  the one clipboard shortcut every other platform has. Wanted: `Ctrl-Q` takes over as the
+  unconditional quit—the guaranteed exit stays guaranteed, and raw mode already delivers
+  these as keys rather than signals—while `Ctrl-C` copies, `Ctrl-X` cuts, and `Ctrl-V`
+  pastes over the clipboard path above, running through the ordinary dispatch contract so
+  a handler can prevent them. `Ctrl-C` without a selection is a no-op, as it is in a
+  browser. Each menu item carries its shortcut as a hint, and the quit key is documented
+  where `launch` is.
+
+- **Explore: undo/redo in the terminal** (`Ctrl-Z`, `Ctrl-Shift-Z`/`Ctrl-Y`). Browser
+  parity points at per-input history, not an app-wide command stack: the framework has no
+  model of what a user action is, but a text control owning a bounded ring of
+  (value, caret, selection) entries is self-contained and matches what the DOM gives an
+  `<input>`. Open questions: coalescing (consecutive insertions or deletions of one
+  character class collapse into one entry, caret jumps and blur close it), what a
+  programmatic write does (the DOM clears the stack on a script-set value—`bind_value`
+  writes are the counterpart), whether the stack survives the dev loop's restore, and
+  whether `Ctrl-Z` should keep any route to suspend now that raw mode swallows `SIGTSTP`.
+  The web facade needs no code for this—the DOM already undoes—so the work is the
+  terminal's, and the parity claim is what the exploration must confirm.
+
 - **Reactive engine rewrite—done.** The floem fork is gone; the engine is a clean slate
   with the same capabilities—signals, memos, effects, owners, context, batching, the
   sync/local storage split, stores, tagged snapshots—designed around our own mechanics

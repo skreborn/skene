@@ -123,6 +123,7 @@ pub struct Text {
   pub(crate) source: Source<String>,
   pub(crate) selectable: bool,
   pub(crate) link: Option<String>,
+  pub(crate) link_policy: skene_core::LinkPolicy,
   pub(crate) style: TextStyle,
   pub(crate) dynamics: RunDynamics,
 }
@@ -143,6 +144,7 @@ impl Text {
       source: Source::Static(content.into()),
       selectable: false,
       link: None,
+      link_policy: skene_core::LinkPolicy::default(),
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
@@ -155,6 +157,7 @@ impl Text {
       source: Source::Derived(Rc::new(content)),
       selectable: false,
       link: None,
+      link_policy: skene_core::LinkPolicy::default(),
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
@@ -168,10 +171,19 @@ impl Text {
     self
   }
 
-  /// Makes the text a link to the given destination.
+  /// Makes the text a link to the given destination: underlined, inked in the
+  /// scheme's link blue unless styled, opening per its [`LinkPolicy`].
   #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
+
+    self
+  }
+
+  /// Sets how the link opens and what it discloses; see [`LinkPolicy`].
+  #[inline(always)]
+  pub const fn set_link_policy(mut self, link_policy: skene_core::LinkPolicy) -> Self {
+    self.link_policy = link_policy;
 
     self
   }
@@ -276,6 +288,7 @@ pub struct Span {
   pub(crate) content: SpanContent,
   pub(crate) selectable: bool,
   pub(crate) link: Option<String>,
+  pub(crate) link_policy: skene_core::LinkPolicy,
   pub(crate) style: TextStyle,
   pub(crate) dynamics: RunDynamics,
 }
@@ -319,6 +332,7 @@ impl Span {
       content,
       selectable: false,
       link: None,
+      link_policy: skene_core::LinkPolicy::default(),
       style: TextStyle::new(),
       dynamics: RunDynamics::default(),
     }
@@ -332,10 +346,19 @@ impl Span {
     self
   }
 
-  /// Makes the run a link to the given destination.
+  /// Makes the run a link to the given destination: underlined, inked in the scheme's
+  /// link blue unless styled, opening per its [`LinkPolicy`].
   #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
+
+    self
+  }
+
+  /// Sets how the link opens and what it discloses; see [`LinkPolicy`].
+  #[inline(always)]
+  pub const fn set_link_policy(mut self, link_policy: skene_core::LinkPolicy) -> Self {
+    self.link_policy = link_policy;
 
     self
   }
@@ -520,6 +543,9 @@ pub(crate) fn resolved_text_style(style: TextStyle, is_link: bool) -> TextStyle 
   let mut resolved = inherited.base;
 
   if is_link {
+    // The base ink never colors a link: an unstyled link keeps the scheme's link
+    // blue, as in a browser. The theme's link style and the run's own still win.
+    resolved.color = None;
     resolved = resolved.overlay(inherited.link);
   }
 
@@ -567,6 +593,7 @@ mod realize {
     display: RunDisplay,
     selectable: bool,
     link: Option<String>,
+    link_policy: skene_core::LinkPolicy,
     style: TextStyle,
     dynamics: RunDynamics,
   ) -> (NodeId, TextStyle) {
@@ -605,6 +632,7 @@ mod realize {
       display,
       selectable,
       link,
+      link_policy,
       style: statics,
       variants: dynamics.variants,
       transitions: dynamics.transitions,
@@ -625,6 +653,7 @@ mod realize {
         RunDisplay::Block,
         self.selectable,
         self.link,
+        self.link_policy,
         self.style,
         self.dynamics,
       );
@@ -649,6 +678,7 @@ mod realize {
         display,
         self.selectable,
         self.link,
+        self.link_policy,
         self.style,
         self.dynamics,
       );

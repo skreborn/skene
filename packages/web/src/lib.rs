@@ -228,6 +228,10 @@ pub fn place_in_stack(node: NodeId) {
 
 /// Realizes a text run: an `<a>` when linked, else a `<span>`, with its full static
 /// style interned as a shared class—or classless when it is entirely unstyled.
+///
+/// The link's [`LinkPolicy`](skene_core::LinkPolicy) lands as `target` and `rel`: an
+/// external destination (an absolute URL) opens a new page unless overridden, a new
+/// page withholds the opener, and an external navigation withholds the referrer.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn create_run(props: &RunProps) -> NodeId {
@@ -236,6 +240,34 @@ pub fn create_run(props: &RunProps) -> NodeId {
       let node = create_element("a");
 
       set_attribute(node, "href", href);
+
+      let external = href.starts_with("//") || href.contains("://");
+      let policy = props.link_policy;
+      let new_page = policy.new_page.unwrap_or(external);
+      let mut rel = Vec::new();
+
+      if new_page {
+        set_attribute(node, "target", "_blank");
+
+        if !policy.expose_opener {
+          rel.push("noopener");
+        }
+      }
+
+      if external && !policy.send_referrer {
+        rel.push("noreferrer");
+      }
+
+      match policy.annotation {
+        Some(skene_core::LinkAnnotation::NoFollow) => rel.push("nofollow"),
+        Some(skene_core::LinkAnnotation::Sponsored) => rel.push("sponsored"),
+        Some(skene_core::LinkAnnotation::Ugc) => rel.push("ugc"),
+        None => {}
+      }
+
+      if !rel.is_empty() {
+        set_attribute(node, "rel", &rel.join(" "));
+      }
 
       node
     }

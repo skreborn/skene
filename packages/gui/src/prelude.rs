@@ -20,6 +20,8 @@ pub use skene_core::{
   ItemAlignment,
   KeyEvent,
   Line,
+  LinkAnnotation,
+  LinkPolicy,
   MouseCursor,
   Prevent,
   RunStyle,

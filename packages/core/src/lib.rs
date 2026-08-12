@@ -91,6 +91,8 @@ pub use values::{
   ItemAlignment,
   Layout,
   Line,
+  LinkAnnotation,
+  LinkPolicy,
   MouseCursor,
   Overflow,
   Placement,

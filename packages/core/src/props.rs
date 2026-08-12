@@ -21,6 +21,7 @@ use crate::{
   ItemAlignment,
   Layout,
   Line,
+  LinkPolicy,
   MouseCursor,
   Overflow,
   Placement,
@@ -704,6 +705,8 @@ pub struct RunProps {
   pub selectable: bool,
   /// The link destination, when the run is a link.
   pub link: Option<String>,
+  /// How the link opens and what it discloses; meaningful only when `link` is set.
+  pub link_policy: LinkPolicy,
   /// The static style.
   pub style: RunStyle,
   /// Conditional variants, each applying while its condition holds; later entries win

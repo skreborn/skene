@@ -251,3 +251,34 @@ fn roles_realize_semantic_elements() {
   assert!(body.contains("<li"));
   assert!(body.ends_with("</nav>"));
 }
+
+/// Links carry their policy: an external destination opens a new page withholding the
+/// opener and the referrer, a relative one opens bare in place, and an explicit policy
+/// overrides both the page and the disclosures.
+#[test]
+fn link_policy_lands_as_target_and_rel() {
+  use skene_gui::core::{LinkAnnotation, LinkPolicy};
+
+  let rendered = render_to_string(|| {
+    Container::new().set_children((
+      Text::new("external").set_link("https://example.com"),
+      Text::new("internal").set_link("/about"),
+      Text::new("overridden")
+        .set_link("https://example.com")
+        .set_link_policy(
+          LinkPolicy::new()
+            .set_new_page(false)
+            .set_send_referrer(true)
+            .set_annotation(LinkAnnotation::Sponsored),
+        ),
+    ))
+  });
+
+  let body = rendered.body();
+
+  assert!(body.contains(r#"href="https://example.com" target="_blank" rel="noopener noreferrer""#));
+  assert!(body.contains(r#"href="/about""#));
+  assert!(!body.contains(r#"href="/about" target"#));
+  assert!(!body.contains(r#"href="/about" rel"#));
+  assert!(body.contains(r#"href="https://example.com" rel="sponsored""#));
+}

@@ -212,9 +212,9 @@ fn layouts() -> impl IntoView {
               .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
           )
           .set_edges(skene_tui::core::Inset {
-            top: Dimension::Length(0),
+            top: Dimension::Auto,
             right: Dimension::Length(1),
-            bottom: Dimension::Auto,
+            bottom: Dimension::Length(1),
             left: Dimension::Auto,
           }),
         ),
@@ -265,9 +265,10 @@ fn list() -> impl IntoView {
   )
 }
 
-/// A titled card around one section's content.
+/// A titled card around one section's content; the width divides the swatch grid into
+/// whole-cell tracks.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  Container::new().set_min_width(52).set_child(
+  Container::new().set_min_width(53).set_child(
     SimpleCard::new().set_children((
       Text::new(title)
         .set_bold(true)

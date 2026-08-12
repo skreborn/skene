@@ -42,15 +42,6 @@ fn typography() -> impl IntoView {
     "Text",
     Column::new().set_spacing(12.).set_children((
       Text::new("A run of text with a size, a weight, and a color.").set_font_size(16.),
-      RichText::new([
-        plain("Rich text mixes "),
-        plain("weights").set_font_weight(700.),
-        plain(", "),
-        plain("colors").set_color(SimplePalette::foreground()),
-        plain(", and "),
-        plain("links").set_link("https://example.com"),
-        plain(" in one paragraph."),
-      ]),
       Text::new(
         "Selection is opt-in: this paragraph is selectable, so drag across it and copy—\
          the chrome around it never joins in.",
@@ -58,6 +49,17 @@ fn typography() -> impl IntoView {
       .set_selectable(true)
       .set_font_size(14.)
       .set_color(SimplePalette::muted_foreground()),
+      RichText::new([
+        plain("Rich text mixes "),
+        plain("weights").set_font_weight(700.),
+        plain(", "),
+        plain("colors").set_color(SimplePalette::foreground()),
+        plain(", and "),
+        Span::text("links")
+          .set_font_size(14.)
+          .set_link("https://example.com"),
+        plain(" in one paragraph."),
+      ]),
     )),
   )
 }

@@ -8,7 +8,8 @@ use skene_tui::prelude::*;
 /// the theme's colors.
 #[must_use]
 pub fn app() -> impl IntoView {
-  TextTheme::new(gallery())
+  TextTheme::new()
+    .set_child(gallery())
     .set_selection_color(SimplePalette::background())
     .set_selection_background(SimplePalette::foreground())
 }
@@ -210,18 +211,19 @@ fn layouts() -> impl IntoView {
         .set_color(SimplePalette::secondary())
         .set_child(
           Stack::new().set_child(
-            Pinned::new(
-              Container::new()
-                .set_padding(Inset::horizontal(1))
-                .set_color(SimplePalette::card())
-                .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
-            )
-            .set_edges(skene_tui::core::Inset {
-              top: Dimension::Auto,
-              right: Dimension::Length(1),
-              bottom: Dimension::Length(1),
-              left: Dimension::Auto,
-            }),
+            Pinned::new()
+              .set_edges(skene_tui::core::Inset {
+                top: Dimension::Auto,
+                right: Dimension::Length(1),
+                bottom: Dimension::Length(1),
+                left: Dimension::Auto,
+              })
+              .set_child(
+                Container::new()
+                  .set_padding(Inset::horizontal(1))
+                  .set_color(SimplePalette::card())
+                  .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
+              ),
           ),
         ),
       Row::new().set_children((

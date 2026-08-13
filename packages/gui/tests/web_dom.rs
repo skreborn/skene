@@ -519,7 +519,8 @@ fn theme_link_style_inherits_and_updates_on_a_link() {
   let weight = Signal::new(400.0f32);
 
   mount(move || {
-    TextTheme::new(Text::new("go").set_link("https://example.com/"))
+    TextTheme::new()
+      .set_child(Text::new("go").set_link("https://example.com/"))
       .set_link(TextStyle::new().derive_font_weight(move || weight.get()))
       .build()
   });
@@ -548,7 +549,8 @@ fn theme_link_style_skips_non_link_text() {
   let (_guard, root) = fresh_root();
 
   mount(|| {
-    TextTheme::new(Text::new("plain"))
+    TextTheme::new()
+      .set_child(Text::new("plain"))
       .set_link(TextStyle::new().set_font_weight(700.0))
       .build()
   });
@@ -903,7 +905,8 @@ fn links_default_to_blue_and_underline() {
   let (_installed, root) = fresh_root();
 
   mount(|| {
-    TextTheme::new(Text::new("docs").set_link("https://example.com"))
+    TextTheme::new()
+      .set_child(Text::new("docs").set_link("https://example.com"))
       .set_base(TextStyle::new().set_color(Color::srgb(0.9, 0.9, 0.9)))
       .build()
   });

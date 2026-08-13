@@ -254,20 +254,21 @@ fn flex_properties_render() {
   let rendered = render_to_string(|| {
     Row::new()
       .set_wrap(Wrap::Forward)
-      .set_children((Flexible::new(
-        StyledBox::new()
-          .set_width(Dimension::Fraction(0.5))
-          .set_margin(Inset {
-            top: Dimension::Length(4.),
-            right: Dimension::Auto,
-            bottom: Dimension::Length(4.),
-            left: Dimension::Auto,
-          }),
-      )
-      .set_grow_factor(2.)
-      .set_shrink_factor(0.)
-      .set_initial(120.)
-      .set_item_alignment(ItemAlignment::Center),))
+      .set_children((Flexible::new()
+        .set_child(
+          StyledBox::new()
+            .set_width(Dimension::Fraction(0.5))
+            .set_margin(Inset {
+              top: Dimension::Length(4.),
+              right: Dimension::Auto,
+              bottom: Dimension::Length(4.),
+              left: Dimension::Auto,
+            }),
+        )
+        .set_grow_factor(2.)
+        .set_shrink_factor(0.)
+        .set_initial(120.)
+        .set_item_alignment(ItemAlignment::Center),))
   });
 
   let class = root_class(rendered.body());
@@ -286,12 +287,14 @@ fn flex_properties_render() {
 #[test]
 fn pinned_child_renders_out_of_flow() {
   let rendered = render_to_string(|| {
-    Stack::new().set_children((Pinned::new(StyledBox::new()).set_edges(Inset {
-      top: Dimension::Length(0.),
-      right: Dimension::Length(8.),
-      bottom: Dimension::Auto,
-      left: Dimension::Fraction(0.1),
-    }),))
+    Stack::new().set_children((Pinned::new()
+      .set_edges(Inset {
+        top: Dimension::Length(0.),
+        right: Dimension::Length(8.),
+        bottom: Dimension::Auto,
+        left: Dimension::Fraction(0.1),
+      })
+      .set_child(StyledBox::new()),))
   });
 
   let body = rendered.body();
@@ -312,9 +315,10 @@ fn grid_tracks_and_placements_render() {
       ])
       .set_rows(GridTrack::Auto.repeated(2))
       .set_implicit_rows([GridTrack::MinContent])
-      .set_children((GridCell::new(StyledBox::new())
+      .set_children((GridCell::new()
         .set_column(Line::between(1, 3))
-        .set_row(Line::span(2)),))
+        .set_row(Line::span(2))
+        .set_child(StyledBox::new()),))
   });
 
   let styles = rendered.styles();

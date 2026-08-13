@@ -494,17 +494,25 @@ pub(crate) fn provide_group_base(base: TextStyle, build: impl FnOnce()) {
 /// accumulate.
 #[must_use]
 pub struct TextTheme {
-  pub(crate) child: AnyView,
+  pub(crate) child: Option<AnyView>,
   pub(crate) base: TextStyle,
   pub(crate) link: TextStyle,
 }
 
 impl TextTheme {
-  /// Creates a text theme wrapping `child`.
+  /// Sets the subtree the theme applies to.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Creates a text theme wrapping its child.
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       base: TextStyle::new(),
       link: TextStyle::new(),
     }
@@ -552,6 +560,13 @@ pub(crate) fn resolved_text_style(style: TextStyle, is_link: bool) -> TextStyle 
   resolved.overlay(style)
 }
 
+impl Default for TextTheme {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl View for TextTheme {
   fn build(self) -> NodeId {
     let mut inherited = use_context::<InheritedText>().unwrap_or_default();
@@ -564,7 +579,9 @@ impl View for TextTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self.child.build()
+      self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build)
     })
   }
 }

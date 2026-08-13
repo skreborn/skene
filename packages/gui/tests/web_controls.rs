@@ -220,11 +220,13 @@ fn labeled_toggle_wraps_in_a_label() {
 #[test]
 fn controls_inherit_the_text_theme() {
   let rendered = render_to_string(|| {
-    TextTheme::new(RawTextField::new()).set_base(
-      TextStyle::new()
-        .set_color(Color::srgb(1., 0., 0.))
-        .set_selection_background(Color::srgb(0., 0., 1.)),
-    )
+    TextTheme::new()
+      .set_base(
+        TextStyle::new()
+          .set_color(Color::srgb(1., 0., 0.))
+          .set_selection_background(Color::srgb(0., 0., 1.)),
+      )
+      .set_child(RawTextField::new())
   });
   let styles = rendered.styles();
 

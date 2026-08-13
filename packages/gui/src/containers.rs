@@ -494,7 +494,7 @@ fn apply_child_prop(node: NodeId, derived: bool, read: impl Fn() -> BoxProp + 's
 /// space. The wrapper creates no node; its properties land on the child's own.
 #[must_use]
 pub struct Flexible {
-  child: AnyView,
+  child: Option<AnyView>,
   grow_factor: Option<Source<f32>>,
   shrink_factor: Option<Source<f32>>,
   initial: Option<Source<Dimension<f32>>>,
@@ -502,11 +502,19 @@ pub struct Flexible {
 }
 
 impl Flexible {
-  /// Wraps `child` with a grow factor of `1.`.
+  /// Sets the wrapped child.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Wraps a child with a grow factor of `1.`.
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       grow_factor: None,
       shrink_factor: None,
       initial: None,
@@ -585,7 +593,9 @@ impl Flexible {
 impl IntoChildOf<FlexChild> for Flexible {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self.child.build();
+      let node = self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build);
       let derived = [&self.grow_factor, &self.shrink_factor]
         .iter()
         .any(|source| source.as_ref().is_some_and(Source::is_derived))
@@ -615,16 +625,24 @@ impl IntoChildOf<FlexChild> for Flexible {
 /// that axis. The wrapper creates no node; its properties land on the child's own.
 #[must_use]
 pub struct Pinned {
-  child: AnyView,
+  child: Option<AnyView>,
   edges: Option<Source<skene_core::Inset<Dimension<f32>>>>,
 }
 
 impl Pinned {
-  /// Wraps `child`, pinned but with every edge auto until [`set_edges`](Self::set_edges).
+  /// Sets the pinned child.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Wraps a child, pinned but with every edge auto until [`set_edges`](Self::set_edges).
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       edges: None,
     }
   }
@@ -652,7 +670,9 @@ impl Pinned {
 impl IntoChildOf<StackChild> for Pinned {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self.child.build();
+      let node = self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build);
       let edges = self.edges.unwrap_or(Source::Static(skene_core::Inset {
         top: Dimension::Auto,
         right: Dimension::Auto,
@@ -672,18 +692,26 @@ impl IntoChildOf<StackChild> for Pinned {
 /// The wrapper creates no node; its properties land on the child's own.
 #[must_use]
 pub struct GridCell {
-  child: AnyView,
+  child: Option<AnyView>,
   row: Option<Source<Line<GridPlacement>>>,
   column: Option<Source<Line<GridPlacement>>>,
   alignment: Option<Source<Alignment>>,
 }
 
 impl GridCell {
-  /// Wraps `child`, auto-placed until a row or column placement is set.
+  /// Sets the placed child.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Wraps a child, auto-placed until a row or column placement is set.
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       row: None,
       column: None,
       alignment: None,
@@ -742,7 +770,9 @@ impl GridCell {
 impl IntoChildOf<GridChild> for GridCell {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self.child.build();
+      let node = self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build);
 
       if let Some(row) = self.row {
         row.bind(move |row| driver::update_box(node, &BoxProp::GridRowPlacement(row)));

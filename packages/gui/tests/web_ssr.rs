@@ -516,11 +516,13 @@ fn selection_styling_compiles_into_the_class() {
 #[test]
 fn text_theme_selection_colors_inherit() {
   let page = render_to_string(|| {
-    TextTheme::new(Text::new("themed")).set_base(
-      skene_gui::TextStyle::new()
-        .set_selection_color(Color::srgb(0., 0., 0.))
-        .set_selection_background(Color::srgb(0., 1., 0.)),
-    )
+    TextTheme::new()
+      .set_base(
+        skene_gui::TextStyle::new()
+          .set_selection_color(Color::srgb(0., 0., 0.))
+          .set_selection_background(Color::srgb(0., 1., 0.)),
+      )
+      .set_child(Text::new("themed"))
   });
   let class = first_class(page.body());
 

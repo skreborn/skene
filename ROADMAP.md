@@ -550,6 +550,19 @@ sink are just different sinks for the same paths.)
     control—and may simply retire `RawSlider`/`RawCheckbox`/`RawRadio` if a headless
     shell over an author-supplied view adds nothing; and `SimpleCard`, which now builds
     its `Container` at build time and so exposes only its own knobs.
+- **Ship the children-last rule as a lint.** Every view now takes its children through a
+  builder method so a chain can end with them (Flutter's `sort_child_properties_last`),
+  but nothing enforces the ordering—`AGENTS.md` states it as a convention. Rust has no
+  stable way to ship a custom lint that runs under plain `cargo clippy`: the ecosystem
+  answer is a **dylint** crate (`skene-lints`) that users run with `cargo dylint --all`,
+  which is how Bevy and Anchor ship theirs. The cost is real and is why this is not done
+  yet: a dylint crate links rustc internals, so it pins an exact nightly and needs
+  rebuilding on every toolchain bump, and users must install `cargo-dylint` plus
+  `dylint-link`. Worth paying once the view surface settles—pinning a toolchain against
+  an API still in motion buys little. Rejected alternative: type-state, where
+  `set_child` returns a wrapper implementing only `View` so a later property setter is a
+  compile error. It needs no tooling and is airtight, but it makes a *style* rule
+  mandatory, breaks `HasChildren`'s `-> Self` contract, and doubles the view types.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

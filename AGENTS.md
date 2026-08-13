@@ -132,6 +132,12 @@
   beyond any one framework), `Suspense`/`ErrorBoundary`, `reconcile`, and the
   web-facing terms of art (`hydrate`, `render_to_string`, the `head` module) in the
   layers that are web by definition.
+- **Children come last.** Every view takes its child or children through a builder
+  method (`set_child`/`set_children`/`derive_children`), never a constructor argument, and
+  a chain ends with them: properties first, content last. This is Flutter's
+  `sort_child_properties_last` rule, and for the same reason—a nested child is visually
+  large, so anything after it is easy to miss. In-tree it is a convention (see the
+  ROADMAP item for shipping it as a real lint).
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for

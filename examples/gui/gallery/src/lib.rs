@@ -6,8 +6,7 @@ use skene_gui::{Overlay, prelude::*};
 
 #[main]
 fn app() -> impl IntoView {
-  TextTheme::new(
-    Column::new()
+  TextTheme::new().set_child(Column::new()
       .set_item_alignment(ItemAlignment::Center)
       .set_padding(Inset::symmetric(24., 48.))
       .set_color(SimplePalette::background())
@@ -27,8 +26,7 @@ fn app() -> impl IntoView {
             layouts(),
             list(),
           )),
-      ),
-  )
+      ))
   .set_base(
     TextStyle::new()
       .set_color(SimplePalette::foreground())
@@ -191,12 +189,14 @@ fn layouts() -> impl IntoView {
         .set_color(SimplePalette::secondary())
         .set_border_radius(8.)
         .set_child(
-          Pinned::new(badge("pinned")).set_edges(skene_gui::core::Inset {
-            top: Dimension::Auto,
-            right: Dimension::Length(8.),
-            bottom: Dimension::Length(8.),
-            left: Dimension::Auto,
-          }),
+          Pinned::new()
+            .set_edges(skene_gui::core::Inset {
+              top: Dimension::Auto,
+              right: Dimension::Length(8.),
+              bottom: Dimension::Length(8.),
+              left: Dimension::Auto,
+            })
+            .set_child(badge("pinned")),
         ),
       Row::new().set_children((
         SimpleButton::new("Open a modal")

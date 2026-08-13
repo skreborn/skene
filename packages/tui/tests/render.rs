@@ -99,12 +99,16 @@ fn pinned_text_honors_its_edges() {
         .set_width(12)
         .set_height(3)
         .set_child(
-          Stack::new().set_child(Pinned::new(Text::new("pin")).set_edges(tui::core::Inset {
-            top: Dimension::Auto,
-            right: Dimension::Length(0),
-            bottom: Dimension::Length(0),
-            left: Dimension::Auto,
-          })),
+          Stack::new().set_child(
+            Pinned::new()
+              .set_edges(tui::core::Inset {
+                top: Dimension::Auto,
+                right: Dimension::Length(0),
+                bottom: Dimension::Length(0),
+                left: Dimension::Auto,
+              })
+              .set_child(Text::new("pin")),
+          ),
         )
         .into_any()
         .build()
@@ -124,7 +128,7 @@ fn flexible_text_takes_free_space() {
       Row::new()
         .set_children((
           Text::new("a"),
-          Flexible::new(Text::new("b")),
+          Flexible::new().set_child(Text::new("b")),
           Text::new("c"),
         ))
         .into_any()
@@ -1648,15 +1652,16 @@ fn shadow_mixes_into_the_cells_beneath() {
 fn control_theme_restyles_glyphs() {
   let frame = with_driver(|| {
     tui::mount(|| {
-      ControlTheme::new(Column::new().set_children((
-        RawCheckbox::new().set_checked(true),
-        RawCheckbox::new().set_checked(true).set_marks("#", "."),
-        RawRadio::new("g", "a").set_checked(true),
-      )))
-      .set_checkbox("X", "O")
-      .set_radio(">", "<")
-      .into_any()
-      .build()
+      ControlTheme::new()
+        .set_child(Column::new().set_children((
+          RawCheckbox::new().set_checked(true),
+          RawCheckbox::new().set_checked(true).set_marks("#", "."),
+          RawRadio::new("g", "a").set_checked(true),
+        )))
+        .set_checkbox("X", "O")
+        .set_radio(">", "<")
+        .into_any()
+        .build()
     });
 
     tui::render_to_text(6, 3)
@@ -1905,7 +1910,9 @@ fn grid_placement_spans_tracks() {
     tui::mount(|| {
       Grid::uniform(2)
         .set_children((
-          GridCell::new(Container::new().set_child(Text::new("wide"))).set_column(Line::span(2)),
+          GridCell::new()
+            .set_column(Line::span(2))
+            .set_child(Container::new().set_child(Text::new("wide"))),
           Text::new("l"),
           Text::new("r"),
         ))
@@ -1926,7 +1933,7 @@ fn flex_grow_distributes_space() {
     tui::mount(|| {
       Row::new()
         .set_children((
-          Flexible::new(
+          Flexible::new().set_child(
             Container::new()
               .set_color(Color::srgb(0.2, 0.2, 0.8))
               .set_child(Text::new("a")),
@@ -2204,18 +2211,19 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
 fn text_theme_sets_selection_colors() {
   let (themed, custom) = with_driver(|| {
     tui::mount(|| {
-      TextTheme::new(
-        Column::new().set_children((
-          Text::new("themed").set_selectable(true),
-          Text::new("custom")
-            .set_selectable(true)
-            .set_selection_background(Color::srgb(0., 1., 0.)),
-        )),
-      )
-      .set_selection_color(Color::srgb(1., 1., 0.))
-      .set_selection_background(Color::srgb(1., 0., 0.))
-      .into_any()
-      .build()
+      TextTheme::new()
+        .set_child(
+          Column::new().set_children((
+            Text::new("themed").set_selectable(true),
+            Text::new("custom")
+              .set_selectable(true)
+              .set_selection_background(Color::srgb(0., 1., 0.)),
+          )),
+        )
+        .set_selection_color(Color::srgb(1., 1., 0.))
+        .set_selection_background(Color::srgb(1., 0., 0.))
+        .into_any()
+        .build()
     });
 
     let _ = tui::render_to_text(20, 4);
@@ -3039,7 +3047,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .set_spacing(1)
         .set_children((
           Text::new("ab"),
-          Flexible::new(Text::new("cd")),
+          Flexible::new().set_child(Text::new("cd")),
           Text::new("ef"),
         ))
         .into_any()
@@ -3054,7 +3062,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
         .set_spacing(1)
         .set_children((
           Text::new("ab"),
-          Flexible::new(Text::new("cd")),
+          Flexible::new().set_child(Text::new("cd")),
           Text::new("ef"),
         ))
         .into_any()

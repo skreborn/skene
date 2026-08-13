@@ -49,7 +49,7 @@ impl Glyphs {
 /// one, and a control's own glyph setters win over any theme.
 #[must_use]
 pub struct ControlTheme {
-  child: AnyView,
+  child: Option<AnyView>,
   checkbox: Option<(String, String)>,
   radio: Option<(String, String)>,
   picker_indicator: Option<char>,
@@ -57,11 +57,19 @@ pub struct ControlTheme {
 }
 
 impl ControlTheme {
-  /// Creates a control theme wrapping `child`.
+  /// Sets the subtree the theme applies to.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Creates a control theme wrapping its child.
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       checkbox: None,
       radio: None,
       picker_indicator: None,
@@ -102,6 +110,13 @@ impl ControlTheme {
   }
 }
 
+impl Default for ControlTheme {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl View for ControlTheme {
   fn build(self) -> NodeId {
     let mut inherited = Glyphs::current();
@@ -127,7 +142,9 @@ impl View for ControlTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self.child.build()
+      self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build)
     })
   }
 }
@@ -156,17 +173,25 @@ impl TextDefaults {
 /// detected dark or light background.
 #[must_use]
 pub struct TextTheme {
-  child: AnyView,
+  child: Option<AnyView>,
   selection_color: Option<Color>,
   selection_background: Option<Color>,
 }
 
 impl TextTheme {
-  /// Creates a text theme wrapping `child`.
+  /// Sets the subtree the theme applies to.
   #[inline(always)]
-  pub fn new(child: impl IntoView) -> Self {
+  pub fn set_child(mut self, child: impl IntoView) -> Self {
+    self.child = Some(child.into_view());
+
+    self
+  }
+
+  /// Creates a text theme wrapping its child.
+  #[inline(always)]
+  pub fn new() -> Self {
     Self {
-      child: child.into_view(),
+      child: None,
       selection_color: None,
       selection_background: None,
     }
@@ -189,6 +214,13 @@ impl TextTheme {
   }
 }
 
+impl Default for TextTheme {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl View for TextTheme {
   fn build(self) -> NodeId {
     let mut inherited = TextDefaults::current();
@@ -206,7 +238,9 @@ impl View for TextTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self.child.build()
+      self
+        .child
+        .map_or_else(|| crate::empty().build(), View::build)
     })
   }
 }

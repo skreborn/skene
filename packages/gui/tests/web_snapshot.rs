@@ -42,66 +42,67 @@ use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 /// properties, roles, stack placement, text styling and links, theme cascade, span groups,
 /// inline views, and the empty view.
 fn representative_tree() -> impl skene_gui::IntoView {
-  TextTheme::new(
-    Column::new()
-      .set_arrangement(Arrangement::Center)
-      .set_item_alignment(ItemAlignment::Stretch)
-      .set_spacing(12.)
-      .set_padding(Inset::symmetric(16., 24.))
-      .set_color(Color::srgb(0.1, 0.2, 0.3))
-      .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
-      .set_border_radius(6.)
-      .set_min_width(200.)
-      .set_max_height(800.)
-      .set_children((
-        Text::new("Title & <escaped>")
-          .set_font_size(24.)
-          .set_font_weight(700.)
-          .set_color(Color::srgb(0.9, 0.9, 0.9)),
-        Text::new("linked").set_link("https://example.com/?a=1&b=2"),
-        Row::new()
-          .set_role(Role::Section)
-          .set_cursor(MouseCursor::Click)
-          .set_width(120.)
-          .set_height(40.)
-          .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
-          .handle_click(|| {})
-          .set_child(Text::new("Press")),
-        Grid::uniform(3).set_spacing(4.).set_children((
-          Text::new("a"),
-          Text::new("b"),
-          Text::new("c"),
-        )),
-        Stack::new().set_children((Text::new("under"), Text::new("over"))),
-        RichText::new([
-          Span::text("plain "),
-          Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
-            .set_color(Color::srgb(1.0, 0.5, 0.0)),
-          Span::view(StyledBox::new().set_width(10.).set_height(10.)),
-          Span::text(" tail").set_link("/rel"),
-        ]),
-        // Two identically-styled boxes: their class must intern once.
-        StyledBox::new().set_padding(Inset::all(8.)),
-        StyledBox::new().set_padding(Inset::all(8.)),
-        // Declarative dynamics: a hover variant, a media variant, a transition, and an
-        // animation, all compiled into the interned class.
-        StyledBox::new()
-          .set_width(50.)
-          .set_when(Condition::Hovered, BoxStyle::new().set_width(60.))
-          .set_when(Condition::MaxWidth(480.), BoxStyle::new().set_width(40.))
-          .set_transition(Transition::new(StyleProperty::Width, 0.2))
-          .set_animation(Animation::new(
-            1.,
-            [
-              (0., BoxStyle::new().set_border_radius(0.)),
-              (100., BoxStyle::new().set_border_radius(8.)),
-            ],
+  TextTheme::new()
+    .set_child(
+      Column::new()
+        .set_arrangement(Arrangement::Center)
+        .set_item_alignment(ItemAlignment::Stretch)
+        .set_spacing(12.)
+        .set_padding(Inset::symmetric(16., 24.))
+        .set_color(Color::srgb(0.1, 0.2, 0.3))
+        .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
+        .set_border_radius(6.)
+        .set_min_width(200.)
+        .set_max_height(800.)
+        .set_children((
+          Text::new("Title & <escaped>")
+            .set_font_size(24.)
+            .set_font_weight(700.)
+            .set_color(Color::srgb(0.9, 0.9, 0.9)),
+          Text::new("linked").set_link("https://example.com/?a=1&b=2"),
+          Row::new()
+            .set_role(Role::Section)
+            .set_cursor(MouseCursor::Click)
+            .set_width(120.)
+            .set_height(40.)
+            .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
+            .handle_click(|| {})
+            .set_child(Text::new("Press")),
+          Grid::uniform(3).set_spacing(4.).set_children((
+            Text::new("a"),
+            Text::new("b"),
+            Text::new("c"),
           )),
-        empty().into_any(),
-      )),
-  )
-  .set_base(TextStyle::new().set_color(Color::srgb(0.8, 0.8, 0.8)))
-  .set_link(TextStyle::new().set_font_weight(500.))
+          Stack::new().set_children((Text::new("under"), Text::new("over"))),
+          RichText::new([
+            Span::text("plain "),
+            Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
+              .set_color(Color::srgb(1.0, 0.5, 0.0)),
+            Span::view(StyledBox::new().set_width(10.).set_height(10.)),
+            Span::text(" tail").set_link("/rel"),
+          ]),
+          // Two identically-styled boxes: their class must intern once.
+          StyledBox::new().set_padding(Inset::all(8.)),
+          StyledBox::new().set_padding(Inset::all(8.)),
+          // Declarative dynamics: a hover variant, a media variant, a transition, and an
+          // animation, all compiled into the interned class.
+          StyledBox::new()
+            .set_width(50.)
+            .set_when(Condition::Hovered, BoxStyle::new().set_width(60.))
+            .set_when(Condition::MaxWidth(480.), BoxStyle::new().set_width(40.))
+            .set_transition(Transition::new(StyleProperty::Width, 0.2))
+            .set_animation(Animation::new(
+              1.,
+              [
+                (0., BoxStyle::new().set_border_radius(0.)),
+                (100., BoxStyle::new().set_border_radius(8.)),
+              ],
+            )),
+          empty().into_any(),
+        )),
+    )
+    .set_base(TextStyle::new().set_color(Color::srgb(0.8, 0.8, 0.8)))
+    .set_link(TextStyle::new().set_font_weight(500.))
 }
 
 #[test]

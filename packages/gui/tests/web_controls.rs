@@ -164,13 +164,20 @@ fn controls_carry_their_reset() {
   );
 }
 
+/// The interned rules: the stylesheet past the reset, where a control's own classes
+/// land. The reset carries chrome of its own—the slider's track paints a gradient—so a
+/// claim about what a control interns must not read it.
+fn interned(styles: &str) -> &str {
+  &styles[styles.find(".skene-").expect("an interned rule")..]
+}
+
 /// Controls carry the built-in hover and focus feedback—a slight ink wash over the
 /// background under a stronger ink mix into the border—each state emitted only while
 /// no variant conditions on it; the slider draws its own chrome and carries none.
 #[test]
 fn controls_carry_interaction_feedback() {
   let rendered = render_to_string(|| RawButton::new().set_child(Text::new("Go")));
-  let styles = rendered.styles();
+  let styles = interned(rendered.styles());
 
   assert!(styles.contains(
     ":hover{background-image:linear-gradient(color-mix(in srgb, currentColor 6.25%, transparent)"
@@ -193,14 +200,14 @@ fn controls_carry_interaction_feedback() {
       )
       .set_child(Text::new("Go"))
   });
-  let styles = authored.styles();
+  let styles = interned(authored.styles());
 
   assert!(!styles.contains(":hover{background-image:"));
   assert!(styles.contains(":focus-visible{background-image:"));
 
   let slider = render_to_string(|| RawSlider::new(0., 100.));
 
-  assert!(!slider.styles().contains("background-image:"));
+  assert!(!interned(slider.styles()).contains("background-image:"));
 }
 
 /// A labeled toggle wraps in a label box: the caption is part of the control, so

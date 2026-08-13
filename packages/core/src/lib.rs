@@ -28,6 +28,7 @@ pub use children::{
   HasChildren,
   IntoChildOf,
   IntoChildren,
+  NoChild,
   PlainChild,
   StackChild,
 };

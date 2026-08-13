@@ -27,6 +27,7 @@ use skene_core::{
   ItemAlignment,
   Layout,
   Line,
+  NoChild,
   NodeId,
   Source,
   Spacing,
@@ -493,8 +494,8 @@ fn apply_child_prop(node: NodeId, derived: bool, read: impl Fn() -> BoxProp + 's
 /// Defaults to a grow factor of `1.`: the child takes an equal share of the free
 /// space. The wrapper creates no node; its properties land on the child's own.
 #[must_use]
-pub struct Flexible {
-  child: Option<AnyView>,
+pub struct Flexible<C = NoChild> {
+  child: C,
   grow_factor: Option<Source<f32>>,
   shrink_factor: Option<Source<f32>>,
   initial: Option<Source<Dimension<f32>>>,
@@ -502,23 +503,36 @@ pub struct Flexible {
 }
 
 impl Flexible {
-  /// Sets the wrapped child.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Wraps a child with a grow factor of `1.`.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       grow_factor: None,
       shrink_factor: None,
       initial: None,
       alignment: None,
+    }
+  }
+}
+
+impl Default for Flexible {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<C> Flexible<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> Flexible<AnyView> {
+    Flexible {
+      child: child.into_view(),
+      grow_factor: self.grow_factor,
+      shrink_factor: self.shrink_factor,
+      initial: self.initial,
+      alignment: self.alignment,
     }
   }
 
@@ -590,12 +604,10 @@ impl Flexible {
   }
 }
 
-impl IntoChildOf<FlexChild> for Flexible {
+impl IntoChildOf<FlexChild> for Flexible<AnyView> {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build);
+      let node = self.child.build();
       let derived = [&self.grow_factor, &self.shrink_factor]
         .iter()
         .any(|source| source.as_ref().is_some_and(Source::is_derived))
@@ -624,26 +636,36 @@ impl IntoChildOf<FlexChild> for Flexible {
 /// Unset edges default to auto: the child sits where the stack's alignment puts it on
 /// that axis. The wrapper creates no node; its properties land on the child's own.
 #[must_use]
-pub struct Pinned {
-  child: Option<AnyView>,
+pub struct Pinned<C = NoChild> {
+  child: C,
   edges: Option<Source<skene_core::Inset<Dimension<f32>>>>,
 }
 
 impl Pinned {
-  /// Sets the pinned child.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Wraps a child, pinned but with every edge auto until [`set_edges`](Self::set_edges).
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       edges: None,
+    }
+  }
+}
+
+impl Default for Pinned {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<C> Pinned<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> Pinned<AnyView> {
+    Pinned {
+      child: child.into_view(),
+      edges: self.edges,
     }
   }
 
@@ -667,12 +689,10 @@ impl Pinned {
   }
 }
 
-impl IntoChildOf<StackChild> for Pinned {
+impl IntoChildOf<StackChild> for Pinned<AnyView> {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build);
+      let node = self.child.build();
       let edges = self.edges.unwrap_or(Source::Static(skene_core::Inset {
         top: Dimension::Auto,
         right: Dimension::Auto,
@@ -691,30 +711,42 @@ impl IntoChildOf<StackChild> for Pinned {
 ///
 /// The wrapper creates no node; its properties land on the child's own.
 #[must_use]
-pub struct GridCell {
-  child: Option<AnyView>,
+pub struct GridCell<C = NoChild> {
+  child: C,
   row: Option<Source<Line<GridPlacement>>>,
   column: Option<Source<Line<GridPlacement>>>,
   alignment: Option<Source<Alignment>>,
 }
 
 impl GridCell {
-  /// Sets the placed child.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Wraps a child, auto-placed until a row or column placement is set.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       row: None,
       column: None,
       alignment: None,
+    }
+  }
+}
+
+impl Default for GridCell {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<C> GridCell<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> GridCell<AnyView> {
+    GridCell {
+      child: child.into_view(),
+      row: self.row,
+      column: self.column,
+      alignment: self.alignment,
     }
   }
 
@@ -767,12 +799,10 @@ impl GridCell {
   }
 }
 
-impl IntoChildOf<GridChild> for GridCell {
+impl IntoChildOf<GridChild> for GridCell<AnyView> {
   fn into_child(self) -> AnyView {
     AnyView::new(move || {
-      let node = self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build);
+      let node = self.child.build();
 
       if let Some(row) = self.row {
         row.bind(move |row| driver::update_box(node, &BoxProp::GridRowPlacement(row)));

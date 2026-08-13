@@ -136,8 +136,10 @@
   method (`set_child`/`set_children`/`derive_children`), never a constructor argument, and
   a chain ends with them: properties first, content last. This is Flutter's
   `sort_child_properties_last` rule, and for the same reason—a nested child is visually
-  large, so anything after it is easy to miss. In-tree it is a convention (see the
-  ROADMAP item for shipping it as a real lint).
+  large, so anything after it is easy to miss. A view that exists only to wrap something
+  (`Flexible`, `Pinned`, `GridCell`, the themes) goes further and requires the child in
+  the type system: it holds the child as a type parameter, starting at `NoChild`, and
+  only the form carrying one is a view.
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for

@@ -1,6 +1,6 @@
 //! Control glyphs and text defaults inherited by a subtree.
 
-use skene_core::{AnyView, Color, IntoView, NodeId, View};
+use skene_core::{AnyView, Color, IntoView, NoChild, NodeId, View};
 use skene_reactive::{Owner, provide_context, use_context};
 
 /// The glyphs terminal controls render with.
@@ -48,8 +48,8 @@ impl Glyphs {
 /// overrides that glyph for every control beneath, a nested theme overlays an outer
 /// one, and a control's own glyph setters win over any theme.
 #[must_use]
-pub struct ControlTheme {
-  child: Option<AnyView>,
+pub struct ControlTheme<C = NoChild> {
+  child: C,
   checkbox: Option<(String, String)>,
   radio: Option<(String, String)>,
   picker_indicator: Option<char>,
@@ -57,23 +57,29 @@ pub struct ControlTheme {
 }
 
 impl ControlTheme {
-  /// Sets the subtree the theme applies to.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Creates a control theme wrapping its child.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       checkbox: None,
       radio: None,
       picker_indicator: None,
       slider: None,
+    }
+  }
+}
+
+impl<C> ControlTheme<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> ControlTheme<AnyView> {
+    ControlTheme {
+      child: child.into_view(),
+      checkbox: self.checkbox,
+      radio: self.radio,
+      picker_indicator: self.picker_indicator,
+      slider: self.slider,
     }
   }
 
@@ -117,7 +123,7 @@ impl Default for ControlTheme {
   }
 }
 
-impl View for ControlTheme {
+impl View for ControlTheme<AnyView> {
   fn build(self) -> NodeId {
     let mut inherited = Glyphs::current();
 
@@ -142,9 +148,7 @@ impl View for ControlTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build)
+      self.child.build()
     })
   }
 }
@@ -172,28 +176,32 @@ impl TextDefaults {
 /// over any theme. Without a theme, selection paints in the terminal defaults for the
 /// detected dark or light background.
 #[must_use]
-pub struct TextTheme {
-  child: Option<AnyView>,
+pub struct TextTheme<C = NoChild> {
+  child: C,
   selection_color: Option<Color>,
   selection_background: Option<Color>,
 }
 
 impl TextTheme {
-  /// Sets the subtree the theme applies to.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Creates a text theme wrapping its child.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       selection_color: None,
       selection_background: None,
+    }
+  }
+}
+
+impl<C> TextTheme<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> TextTheme<AnyView> {
+    TextTheme {
+      child: child.into_view(),
+      selection_color: self.selection_color,
+      selection_background: self.selection_background,
     }
   }
 
@@ -221,7 +229,7 @@ impl Default for TextTheme {
   }
 }
 
-impl View for TextTheme {
+impl View for TextTheme<AnyView> {
   fn build(self) -> NodeId {
     let mut inherited = TextDefaults::current();
 
@@ -238,9 +246,7 @@ impl View for TextTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build)
+      self.child.build()
     })
   }
 }

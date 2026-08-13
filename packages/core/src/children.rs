@@ -6,6 +6,13 @@ use crate::{
   view::{AnyView, IntoView, View},
 };
 
+/// The absence of a child, in a view that requires one.
+///
+/// A wrapper or theme starts out holding this and cannot build; `set_child` exchanges
+/// it for the child, and only then does the view exist as far as the type system is
+/// concerned—so forgetting the child is a compile error, not an empty render.
+pub struct NoChild;
+
 /// The child kind a plain container accepts: any view.
 pub struct PlainChild;
 

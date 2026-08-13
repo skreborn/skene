@@ -542,6 +542,13 @@ sink are just different sinks for the same paths.)
     own children is distinct from a wrapping container's inset from the layout. Overflow
     stayed with `Container`—it is the box that carries a size, so it is the box that
     scrolls.
+  - **A required child is a type-state—done.** `Flexible`, `Pinned`, `GridCell`, and the
+    themes exist only to wrap something, so the child is not optional: each is
+    `Wrapper<C = NoChild>` holding its child *as* the parameter, and `set_child`
+    exchanges `NoChild` for the view, returning `Wrapper<AnyView>`. Only that form
+    implements `View`/`IntoChildOf`, so forgetting the child is a compile error rather
+    than an empty render—no `Option`, no placeholder, no unsafe, and the property
+    setters stay generic over the state so ordering is free.
   - **Remaining.** The GUI facade's half of all the above (it still has `StyledBox` and
     the box traits); per-property variants on the GUI vocabulary; the control redesign
     (`RawButton::new(|| -> View)`, `RawTextField::new(|| -> Decoration)`, a
@@ -550,19 +557,6 @@ sink are just different sinks for the same paths.)
     control—and may simply retire `RawSlider`/`RawCheckbox`/`RawRadio` if a headless
     shell over an author-supplied view adds nothing; and `SimpleCard`, which now builds
     its `Container` at build time and so exposes only its own knobs.
-- **Ship the children-last rule as a lint.** Every view now takes its children through a
-  builder method so a chain can end with them (Flutter's `sort_child_properties_last`),
-  but nothing enforces the ordering—`AGENTS.md` states it as a convention. Rust has no
-  stable way to ship a custom lint that runs under plain `cargo clippy`: the ecosystem
-  answer is a **dylint** crate (`skene-lints`) that users run with `cargo dylint --all`,
-  which is how Bevy and Anchor ship theirs. The cost is real and is why this is not done
-  yet: a dylint crate links rustc internals, so it pins an exact nightly and needs
-  rebuilding on every toolchain bump, and users must install `cargo-dylint` plus
-  `dylint-link`. Worth paying once the view surface settles—pinning a toolchain against
-  an API still in motion buys little. Rejected alternative: type-state, where
-  `set_child` returns a wrapper implementing only `View` so a later property setter is a
-  compile error. It needs no tooling and is airtight, but it makes a *style* rule
-  mandatory, breaks `HasChildren`'s `-> Self` contract, and doubles the view types.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits
@@ -711,6 +705,28 @@ sink are just different sinks for the same paths.)
   native realization with its driver.
 - **Internationalization**: first-class eventually—message catalogs, locale-aware
   formatting, reactive locale switching.
+
+Standing notes, attached to no step:
+
+- **The children-last rule could ship as a lint.** Every view takes its children through
+  a builder method so a chain ends with them, and `AGENTS.md` states the ordering as a
+  convention; nothing enforces it. Rust has no stable way to ship a lint that runs under
+  plain `cargo clippy`—the ecosystem answer is a **dylint** crate users invoke with
+  `cargo dylint`, at the cost of pinning an exact nightly (it links rustc internals) and
+  asking users to install the tool. Worth remembering, not worth scheduling.
+- **`IntoChildren`, `IntoChildOf`, and `IntoView` cannot be replaced by std traits**—
+  checked against the compiler, so the experiment need not be repeated. A blanket
+  `impl<I: IntoIterator<Item = V>> IntoChildren for I` conflicts with the tuple impls,
+  and the same conflict appears with `From` in place of the custom trait: rustc refuses
+  both because an upstream crate *may* implement `IntoIterator` for tuples. Tuples are
+  not optional—children are heterogeneous, so arrays cannot carry them—which makes the
+  custom trait the only shape that accepts both. `Into<AnyView>` cannot replace
+  `IntoView` either: `impl<V: View> From<V> for AnyView` collides with the reflexive
+  `From<T> for T` because `AnyView` is itself a view. Separately, a `FromIterator` for
+  `Children` would be unchecked as things stand: `Children<Ops>` is parameterized by the
+  driver ops and erases the child kind at construction, so collecting into it would
+  admit a `Flexible` into a stack—making it meaningful would mean threading the kind
+  through as `Children<Ops, Kind>`, visible in every facade alias.
 
 Decided against, for the record: hot-patching (state-preserving reloads come from
 serializable reactive state instead); a custom devtools/inspector (native realizes into

@@ -6,6 +6,7 @@ use skene_core::{
   Color,
   Condition,
   IntoView,
+  NoChild,
   NodeId,
   RunStyle,
   Source,
@@ -493,28 +494,32 @@ pub(crate) fn provide_group_base(base: TextStyle, build: impl FnOnce()) {
 /// [`TextStyle`], so it can carry static and derived properties alike. Nested themes
 /// accumulate.
 #[must_use]
-pub struct TextTheme {
-  pub(crate) child: Option<AnyView>,
+pub struct TextTheme<C = NoChild> {
+  pub(crate) child: C,
   pub(crate) base: TextStyle,
   pub(crate) link: TextStyle,
 }
 
 impl TextTheme {
-  /// Sets the subtree the theme applies to.
-  #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView) -> Self {
-    self.child = Some(child.into_view());
-
-    self
-  }
-
   /// Creates a text theme wrapping its child.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      child: None,
+      child: NoChild,
       base: TextStyle::new(),
       link: TextStyle::new(),
+    }
+  }
+}
+
+impl<C> TextTheme<C> {
+  /// Sets the child, which the view requires before it can build.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView) -> TextTheme<AnyView> {
+    TextTheme {
+      child: child.into_view(),
+      base: self.base,
+      link: self.link,
     }
   }
 
@@ -567,7 +572,7 @@ impl Default for TextTheme {
   }
 }
 
-impl View for TextTheme {
+impl View for TextTheme<AnyView> {
   fn build(self) -> NodeId {
     let mut inherited = use_context::<InheritedText>().unwrap_or_default();
 
@@ -579,9 +584,7 @@ impl View for TextTheme {
     scope.enter(|| {
       provide_context(inherited);
 
-      self
-        .child
-        .map_or_else(|| crate::empty().build(), View::build)
+      self.child.build()
     })
   }
 }

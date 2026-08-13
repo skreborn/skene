@@ -7,10 +7,9 @@
 use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
+  Container,
   DerivedView,
-  HasChildren,
   Resource,
-  StyledBox,
   Text,
   View,
   reactive::Owner,
@@ -111,7 +110,7 @@ async fn a_loading_tree_is_swapped_for_the_loaded_one() {
     DerivedView::new(move || {
       user.with(|user| match user {
         None => Text::new("Loading…").into_any(),
-        Some(name) => StyledBox::new()
+        Some(name) => Container::new()
           .set_child(Text::new(name.clone()))
           .into_any(),
       })

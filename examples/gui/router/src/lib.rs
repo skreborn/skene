@@ -52,20 +52,23 @@ impl StaticRoutes for Page {
 fn app() -> impl IntoView {
   let router = install_static_router(Page::Home);
 
-  Column::new()
-    .set_spacing(32.)
-    .set_padding(Inset::all(48.))
+  Container::new()
     .set_color(SimplePalette::background())
-    .set_children((
-      Row::new().set_spacing(16.).set_children((
-        Link::new(Page::Home).set_child(|| navigation("Home")),
-        Link::new(Page::About).set_child(|| navigation("About")),
-      )),
-      DerivedView::new(move || match router.route() {
-        Page::Home => home().into_view().into_any(),
-        Page::About => Lazy::new(about).into_any(),
-      }),
-    ))
+    .set_child(
+      Column::new()
+        .set_spacing(32.)
+        .set_padding(Inset::all(48.))
+        .set_children((
+          Row::new().set_spacing(16.).set_children((
+            Link::new(Page::Home).set_child(|| navigation("Home")),
+            Link::new(Page::About).set_child(|| navigation("About")),
+          )),
+          DerivedView::new(move || match router.route() {
+            Page::Home => home().into_view().into_any(),
+            Page::About => Lazy::new(about).into_any(),
+          }),
+        )),
+    )
 }
 
 fn home() -> impl IntoView {

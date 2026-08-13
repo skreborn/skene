@@ -8,6 +8,7 @@
 
 pub mod prelude;
 
+mod box_node;
 mod container;
 mod containers;
 mod control;
@@ -16,6 +17,7 @@ mod deferred;
 mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
+mod layout_box;
 mod lazy;
 #[cfg(target_arch = "wasm32")]
 mod link;
@@ -30,7 +32,6 @@ mod routing;
 mod simple;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
-mod styled_box;
 mod surface;
 #[cfg(target_arch = "wasm32")]
 mod task;
@@ -91,11 +92,11 @@ pub use crate::{
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   control::{FocusCore, StyleCore},
   focus::FocusHandle,
+  layout_box::LayoutBox,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextEditor, RawTextField},
-  styled_box::StyledBox,
-  surface::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle},
+  surface::{HasFocus, HasStyle},
   text::{RichText, Span, Text, TextStyle, TextTheme},
 };
 

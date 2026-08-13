@@ -13,11 +13,15 @@ use std::{
   rc::Rc,
 };
 
+// The csr and ssr halves each use a different subset of the surface traits.
+#[allow(unused_imports)]
+use skene_gui::HasFocus;
 use skene_gui::{
   AnyView,
   Border,
   Color,
   Column,
+  Container,
   Deferred,
   DerivedView,
   FocusHandle,
@@ -30,7 +34,6 @@ use skene_gui::{
   Role,
   Row,
   Stack,
-  StyledBox,
   Text,
   TextStyle,
   TextTheme,
@@ -43,9 +46,6 @@ use skene_gui::{
   wasm_bindgen::JsCast,
   web::{self, mount},
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus};
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement};
 
@@ -136,7 +136,7 @@ fn deferred_builds_its_content_on_the_client() {
 fn container_is_a_div() {
   let (_guard, root) = fresh_root();
 
-  mount(|| StyledBox::new().build());
+  mount(|| Container::new().build());
 
   assert_eq!(only_child(&root).tag_name(), "DIV");
 }
@@ -145,7 +145,7 @@ fn container_is_a_div() {
 fn role_realizes_its_semantic_element() {
   let (_guard, root) = fresh_root();
 
-  mount(|| StyledBox::new().set_role(Role::Navigation).build());
+  mount(|| Container::new().set_role(Role::Navigation).build());
 
   assert_eq!(only_child(&root).tag_name(), "NAV");
 }
@@ -207,7 +207,7 @@ fn styling_interns_a_generated_class() {
   let (_guard, root) = fresh_root();
 
   mount(|| {
-    StyledBox::new()
+    Container::new()
       .set_color(Color::srgb(1.0, 0.0, 0.0))
       .build()
   });
@@ -229,7 +229,7 @@ fn interned_class_actually_applies_its_style() {
   let (_guard, root) = fresh_root();
 
   mount(|| {
-    StyledBox::new()
+    Container::new()
       .set_padding(Inset::all(10.0))
       .set_border(Border::new(2.0, Color::srgb(0.0, 0.0, 0.0)))
       .build()
@@ -283,7 +283,7 @@ fn click_handler_runs_on_a_real_click() {
     let clicks = Rc::clone(&clicks);
 
     move || {
-      StyledBox::new()
+      Container::new()
         .handle_click(move || clicks.set(clicks.get() + 1))
         .build()
     }
@@ -309,7 +309,7 @@ fn pointer_down_handler_receives_the_event() {
     let seen = Rc::clone(&seen);
 
     move || {
-      StyledBox::new()
+      Container::new()
         .handle_pointer_down(move |event| seen.set(Some((event.x, event.y, event.button))))
         .build()
     }
@@ -457,7 +457,7 @@ fn a_click_handler_may_build_nodes() {
   let (_guard, root) = fresh_root();
 
   mount(|| {
-    StyledBox::new()
+    Container::new()
       .handle_click(|| {
         // Re-enter the platform from inside a handler.
         let _ = web::create_element("div");
@@ -583,12 +583,18 @@ fn theme_link_style_skips_non_link_text() {
 }
 
 #[wasm_bindgen_test]
-fn block_container_computes_as_flow_root() {
+fn container_is_a_single_cell_grid() {
   let (_guard, root) = fresh_root();
 
-  mount(|| StyledBox::new().build());
+  mount(|| Container::new().build());
 
-  assert_eq!(computed_style(&root, "display"), "flow-root");
+  assert_eq!(computed_style(&root, "display"), "grid");
+
+  // One track each way. The resolved size follows the viewport; the count does not.
+  let tracks = |axis| computed_style(&root, axis).split_whitespace().count();
+
+  assert_eq!(tracks("grid-template-columns"), 1);
+  assert_eq!(tracks("grid-template-rows"), 1);
 }
 
 #[wasm_bindgen_test]
@@ -700,7 +706,7 @@ fn dynamic_view_swaps_between_trees_on_state_change() {
         Text::new("welcome").into_any()
       }
       else {
-        StyledBox::new().set_role(Role::Navigation).into_any()
+        Container::new().set_role(Role::Navigation).into_any()
       }
     })
     .build()

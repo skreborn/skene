@@ -11,7 +11,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
+use skene_gui::{HasFocus, HasStyle};
 
 /// A modal serializes as a closed dialog carrying its placement margins and its
 /// backdrop rule.

@@ -4,6 +4,7 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Container,
   Flexible,
   Grid,
   GridCell,
@@ -11,7 +12,6 @@ use skene_gui::{
   Pinned,
   Row,
   Stack,
-  StyledBox,
   Text,
   core::{
     Animation,
@@ -34,7 +34,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
+use skene_gui::{HasFocus, HasStyle};
 
 /// The class assigned to the first (only) top-level element of a render.
 fn root_class(body: &str) -> String {
@@ -48,18 +48,16 @@ fn root_class(body: &str) -> String {
 #[test]
 fn state_variant_renders_a_pseudo_class_rule() {
   let rendered = render_to_string(|| {
-    StyledBox::new()
+    Container::new()
       .set_width(10.)
-      .set_when(Condition::Hovered, BoxStyle::new().set_width(20.))
+      .set_width_when(Condition::Hovered, 20.)
   });
 
   let class = root_class(rendered.body());
 
-  assert!(
-    rendered
-      .styles()
-      .contains(&format!(".{class}{{display:flow-root;width:10px;}}"))
-  );
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;width:10px;}}"
+  )));
 
   assert!(
     rendered
@@ -71,14 +69,13 @@ fn state_variant_renders_a_pseudo_class_rule() {
 /// A media variant wraps its rule in an `@media` block.
 #[test]
 fn media_variant_renders_an_at_media_block() {
-  let rendered = render_to_string(|| {
-    StyledBox::new().set_when(Condition::MaxWidth(600.), BoxStyle::new().set_spacing(4.))
-  });
+  let rendered =
+    render_to_string(|| Container::new().set_border_radius_when(Condition::MaxWidth(600.), 4.));
 
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
-    "@media (max-width: 600px){{.{class}{{column-gap:4px;row-gap:4px;}}}}"
+    "@media (max-width: 600px){{.{class}{{border-radius:4px;}}}}"
   )));
 }
 
@@ -86,9 +83,9 @@ fn media_variant_renders_an_at_media_block() {
 #[test]
 fn combined_conditions_nest_media_around_states() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_when(
+    Container::new().set_border_radius_when(
       Condition::and([Condition::Hovered, Condition::DarkMode]),
-      BoxStyle::new().set_border_radius(8.),
+      8.,
     )
   });
 
@@ -104,12 +101,12 @@ fn combined_conditions_nest_media_around_states() {
 #[test]
 fn or_composition_emits_a_rule_per_alternative() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_when(
+    Container::new().set_border_radius_when(
       Condition::or([
         Condition::Hovered,
         Condition::and([Condition::DarkMode, Condition::Focused]),
       ]),
-      BoxStyle::new().set_spacing(2.),
+      2.,
     )
   });
 
@@ -118,33 +115,31 @@ fn or_composition_emits_a_rule_per_alternative() {
   assert!(
     rendered
       .styles()
-      .contains(&format!(".{class}:hover{{column-gap:2px;row-gap:2px;}}"))
+      .contains(&format!(".{class}:hover{{border-radius:2px;}}"))
   );
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{.{class}:focus{{column-gap:2px;row-gap:2px;}}}}"
+    "@media (prefers-color-scheme: dark){{.{class}:focus{{border-radius:2px;}}}}"
   )));
 }
 
 /// Overflow renders into the interned class.
 #[test]
 fn overflow_renders() {
-  let rendered = render_to_string(|| StyledBox::new().set_overflow(Overflow::Scroll));
+  let rendered = render_to_string(|| Container::new().set_overflow(Overflow::Scroll));
 
   let class = root_class(rendered.body());
 
-  assert!(
-    rendered
-      .styles()
-      .contains(&format!(".{class}{{display:flow-root;overflow:scroll;}}"))
-  );
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;overflow:scroll;}}"
+  )));
 }
 
 /// Transitions render into the base rule's `transition` declaration.
 #[test]
 fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
-    StyledBox::new()
+    Container::new()
       .set_width(10.)
       .set_transition(Transition::new(StyleProperty::Background, 0.3))
       .set_transition(
@@ -166,7 +161,7 @@ fn transitions_render_into_the_base_rule() {
 #[test]
 fn animations_render_keyframes_and_reference_them() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_animation(
+    Container::new().set_animation(
       Animation::new(
         2.,
         [
@@ -200,7 +195,7 @@ fn animations_render_keyframes_and_reference_them() {
 #[test]
 fn run_variants_intern_and_render() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_children((
+    Row::new().set_children((
       Text::new("a").set_when(Condition::Hovered, RunStyle::new().set_font_weight(700.)),
       Text::new("b").set_when(Condition::Hovered, RunStyle::new().set_font_weight(700.)),
     ))
@@ -216,16 +211,16 @@ fn run_variants_intern_and_render() {
 #[test]
 fn variants_participate_in_content_addressing() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_children((
-      StyledBox::new()
+    Row::new().set_children((
+      Container::new()
         .set_width(10.)
-        .set_when(Condition::Hovered, BoxStyle::new().set_width(20.)),
-      StyledBox::new()
+        .set_width_when(Condition::Hovered, 20.),
+      Container::new()
         .set_width(10.)
-        .set_when(Condition::Hovered, BoxStyle::new().set_width(20.)),
-      StyledBox::new()
+        .set_width_when(Condition::Hovered, 20.),
+      Container::new()
         .set_width(10.)
-        .set_when(Condition::Hovered, BoxStyle::new().set_width(30.)),
+        .set_width_when(Condition::Hovered, 30.),
     ))
   });
 
@@ -256,7 +251,7 @@ fn flex_properties_render() {
       .set_wrap(Wrap::Forward)
       .set_children((Flexible::new()
         .set_child(
-          StyledBox::new()
+          Container::new()
             .set_width(Dimension::Fraction(0.5))
             .set_margin(Inset {
               top: Dimension::Length(4.),
@@ -294,7 +289,7 @@ fn pinned_child_renders_out_of_flow() {
         bottom: Dimension::Auto,
         left: Dimension::Fraction(0.1),
       })
-      .set_child(StyledBox::new()),))
+      .set_child(Container::new()),))
   });
 
   let body = rendered.body();
@@ -318,7 +313,7 @@ fn grid_tracks_and_placements_render() {
       .set_children((GridCell::new()
         .set_column(Line::between(1, 3))
         .set_row(Line::span(2))
-        .set_child(StyledBox::new()),))
+        .set_child(Container::new()),))
   });
 
   let styles = rendered.styles();

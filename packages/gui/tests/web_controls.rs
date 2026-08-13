@@ -4,6 +4,7 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Container,
   FocusOrder,
   HasChildren,
   RawButton,
@@ -14,7 +15,7 @@ use skene_gui::{
   RawTextEditor,
   RawTextField,
   Role,
-  StyledBox,
+  Row,
   Text,
   TextStyle,
   TextTheme,
@@ -23,7 +24,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
+use skene_gui::{HasFocus, HasStyle};
 
 /// A button serializes as a real button element carrying its reset class, its children
 /// as content, and its tab-order attributes.
@@ -62,7 +63,7 @@ fn checkbox_serializes_with_its_state() {
 #[test]
 fn radio_serializes_group_value_and_state() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_children((
+    Row::new().set_children((
       RawRadio::new("color", "red").set_checked(true),
       RawRadio::new("color", "green"),
     ))
@@ -239,14 +240,16 @@ fn controls_inherit_the_text_theme() {
 #[test]
 fn roles_realize_semantic_elements() {
   let rendered = render_to_string(|| {
-    StyledBox::new().set_role(Role::Navigation).set_children((
-      StyledBox::new()
-        .set_role(Role::Heading(2))
-        .set_child(Text::new("Title")),
-      StyledBox::new()
-        .set_role(Role::List)
-        .set_child(StyledBox::new().set_role(Role::ListItem)),
-    ))
+    Container::new().set_role(Role::Navigation).set_child(
+      Row::new().set_children((
+        Container::new()
+          .set_role(Role::Heading(2))
+          .set_child(Text::new("Title")),
+        Container::new()
+          .set_role(Role::List)
+          .set_child(Container::new().set_role(Role::ListItem)),
+      )),
+    )
   });
 
   let body = rendered.body();
@@ -266,7 +269,7 @@ fn link_policy_lands_as_target_and_rel() {
   use skene_gui::core::{LinkAnnotation, LinkPolicy};
 
   let rendered = render_to_string(|| {
-    StyledBox::new().set_children((
+    Row::new().set_children((
       Text::new("external").set_link("https://example.com"),
       Text::new("internal").set_link("/about"),
       Text::new("overridden")

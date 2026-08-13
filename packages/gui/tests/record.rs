@@ -7,14 +7,12 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
   Column,
+  Container,
   HasChildren,
-  HasDecoration,
-  HasEvents,
-  HasSize,
+  LayoutBox,
   Overlay,
   RawTextField,
   Row,
-  StyledBox,
   Text,
   View,
   core::{Color, Dimension, Prevent, Role},
@@ -25,17 +23,17 @@ use skene_gui::{
 /// A static tree records its structure: kinds, order, and text content.
 #[test]
 fn tree_structure_is_recorded() {
-  let root = Column::new()
+  let root = Container::new()
     .set_role(Role::Navigation)
-    .set_children((
+    .set_child(Column::new().set_children((
       Text::new("first"),
       Row::new().set_children((Text::new("second"),)),
-    ))
+    )))
     .build();
 
   assert_eq!(
     record::outline(root),
-    "Box\n  Run \"first\"\n  Box\n    Run \"second\"\n"
+    "Box\n  Box\n    Run \"first\"\n    Box\n      Run \"second\"\n"
   );
   assert_eq!(record::role(root), Some(Role::Navigation));
 }
@@ -45,7 +43,7 @@ fn tree_structure_is_recorded() {
 #[test]
 fn derived_property_updates_the_recorded_style() {
   let width = Signal::new(100.0f32);
-  let root = StyledBox::new()
+  let root = Container::new()
     .set_height(40.)
     .derive_width(move || width.get())
     .build();
@@ -65,8 +63,8 @@ fn derived_property_updates_the_recorded_style() {
 #[test]
 fn derived_text_updates_the_recorded_run() {
   let count = Signal::new(1);
-  let root = StyledBox::new()
-    .set_children((Text::derive(move || format!("count: {}", count.get())),))
+  let root = Container::new()
+    .set_child(Text::derive(move || format!("count: {}", count.get())))
     .build();
   let run = record::children(root)[0];
 
@@ -81,7 +79,7 @@ fn derived_text_updates_the_recorded_run() {
 #[test]
 fn click_trigger_runs_the_handler() {
   let clicks = Rc::new(Cell::new(0));
-  let root = StyledBox::new()
+  let root = Container::new()
     .handle_click({
       let clicks = Rc::clone(&clicks);
 
@@ -116,10 +114,12 @@ fn change_trigger_commits_into_the_binding() {
 #[test]
 fn overlay_open_follows_its_signal() {
   let open = Signal::new(false);
-  let root = StyledBox::new()
-    .set_children((Overlay::modal()
-      .bind_open(open)
-      .set_children((Text::new("dialog"),)),))
+  let root = Container::new()
+    .set_child(
+      Overlay::modal()
+        .bind_open(open)
+        .set_children((Text::new("dialog"),)),
+    )
     .build();
   let overlay = record::children(root)[0];
 
@@ -166,37 +166,46 @@ fn reconcile_reuses_and_reorders_recorded_children() {
 #[test]
 fn decoration_records_verbatim() {
   let color = Color::srgb(0.25, 0.5, 0.75);
-  let root = StyledBox::new().set_color(color).build();
+  let root = Container::new().set_color(color).build();
   let style = record::box_style(root).expect("a box style");
 
   assert_eq!(style.color, Some(color));
 }
 
-/// A view implementing the surface traits over a `StyledBox` field offers the whole
-/// vocabulary through two-line accessors, exactly as a built-in container does.
+/// The equal-footing gate: a layout view written outside the facade, against its
+/// public API alone, matches the built-in it parallels feature for feature—typed
+/// children (a [`Flexible`] wrapper included) and its own layout knob—realizing an
+/// identical node.
 #[test]
-fn surface_traits_forward_to_the_styled_box() {
-  use skene_gui::{HasDecoration, HasSize};
+fn a_third_party_layout_view_matches_the_built_in() {
+  use skene_gui::{Flexible, core::FlexChild};
 
   #[must_use]
-  struct Framed {
-    base: StyledBox,
+  struct Toolbar {
+    base: LayoutBox<FlexChild>,
   }
 
-  impl HasSize for Framed {
-    fn size_box(&mut self) -> &mut StyledBox {
-      &mut self.base
+  impl Toolbar {
+    fn new() -> Self {
+      Self {
+        base: LayoutBox::new(skene_gui::Layout::Flex {
+          direction: skene_gui::core::FlexDirection::Row,
+        }),
+      }
+    }
+
+    fn set_spacing(mut self, spacing: f32) -> Self {
+      self.base = self.base.set_spacing(skene_gui::core::Spacing {
+        row: 0.,
+        column: spacing,
+      });
+
+      self
     }
   }
 
-  impl HasDecoration for Framed {
-    fn decoration_box(&mut self) -> &mut StyledBox {
-      &mut self.base
-    }
-  }
-
-  impl HasChildren<skene_gui::GuiOps> for Framed {
-    type Kind = skene_gui::core::PlainChild;
+  impl HasChildren<skene_gui::GuiOps> for Toolbar {
+    type Kind = FlexChild;
 
     fn set_children_to(mut self, children: skene_gui::Children) -> Self {
       self.base = self.base.set_children_to(children);
@@ -205,24 +214,38 @@ fn surface_traits_forward_to_the_styled_box() {
     }
   }
 
-  impl View for Framed {
+  impl View for Toolbar {
     fn build(self) -> skene_gui::core::NodeId {
       self.base.build()
     }
   }
 
-  let root = Framed {
-    base: StyledBox::new(),
-  }
-  .set_width(120.)
-  .set_color(Color::srgb(1., 0., 0.))
-  .set_children((Text::new("inside"),))
-  .build();
-  let style = record::box_style(root).expect("a box style");
+  let children = || {
+    (
+      Text::new("ab"),
+      Flexible::new().set_child(Text::new("cd")),
+      Text::new("ef"),
+    )
+  };
+  let third_party = Toolbar::new()
+    .set_spacing(4.)
+    .set_children(children())
+    .build();
+  let built_in = Row::new().set_spacing(4.).set_children(children()).build();
 
-  assert_eq!(style.width, Some(Dimension::Length(120.)));
-  assert_eq!(style.color, Some(Color::srgb(1., 0., 0.)));
-  assert_eq!(record::outline(root), "Box\n  Run \"inside\"\n");
+  assert_eq!(record::layout(third_party), record::layout(built_in));
+  assert_eq!(record::outline(third_party), record::outline(built_in));
+  assert!(
+    record::box_style(third_party) == record::box_style(built_in),
+    "the layout knob lands the same on both"
+  );
+
+  let wrapped = |node| record::box_style(record::children(node)[1]);
+
+  assert!(
+    wrapped(third_party) == wrapped(built_in),
+    "the `Flexible` wrapper lands the same on both"
+  );
 }
 
 /// A view implementing `HasFocus` over a raw control forwards through it, the way the

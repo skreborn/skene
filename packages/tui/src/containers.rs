@@ -433,6 +433,21 @@ impl Grid {
     self
   }
 
+  /// Sets the spacing between tracks applied while `condition` holds.
+  #[inline(always)]
+  pub fn set_spacing_when(
+    mut self,
+    condition: crate::Condition,
+    spacing: impl Into<Spacing<u32>>,
+  ) -> Self {
+    self.base.variants.push((
+      condition,
+      crate::BoxStyle::new().set_spacing(spacing.into()),
+    ));
+
+    self
+  }
+
   /// Sets a static alignment of each child within its cell, on both axes.
   #[inline(always)]
   pub fn set_item_alignment(mut self, alignment: Alignment) -> Self {
@@ -448,6 +463,8 @@ impl Grid {
 
     self
   }
+
+  holder_props!();
 
   own_prop!(
     set_flow,

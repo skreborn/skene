@@ -7,6 +7,7 @@
 use skene_gui::{
   Border,
   Column,
+  Container,
   Grid,
   HasChildren,
   Inset,
@@ -15,7 +16,6 @@ use skene_gui::{
   Row,
   Span,
   Stack,
-  StyledBox,
   Text,
   TextStyle,
   TextTheme,
@@ -36,7 +36,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
+use skene_gui::{HasFocus, HasStyle};
 
 /// A tree exercising every built-in view and property path: static and derived box
 /// properties, roles, stack placement, text styling and links, theme cascade, span groups,
@@ -44,62 +44,65 @@ use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
 fn representative_tree() -> impl skene_gui::IntoView {
   TextTheme::new()
     .set_child(
-      Column::new()
-        .set_arrangement(Arrangement::Center)
-        .set_item_alignment(ItemAlignment::Stretch)
-        .set_spacing(12.)
-        .set_padding(Inset::symmetric(16., 24.))
+      Container::new()
         .set_color(Color::srgb(0.1, 0.2, 0.3))
         .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
         .set_border_radius(6.)
         .set_min_width(200.)
         .set_max_height(800.)
-        .set_children((
-          Text::new("Title & <escaped>")
-            .set_font_size(24.)
-            .set_font_weight(700.)
-            .set_color(Color::srgb(0.9, 0.9, 0.9)),
-          Text::new("linked").set_link("https://example.com/?a=1&b=2"),
-          Row::new()
-            .set_role(Role::Section)
-            .set_cursor(MouseCursor::Click)
-            .set_width(120.)
-            .set_height(40.)
-            .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
-            .handle_click(|| {})
-            .set_child(Text::new("Press")),
-          Grid::uniform(3).set_spacing(4.).set_children((
-            Text::new("a"),
-            Text::new("b"),
-            Text::new("c"),
-          )),
-          Stack::new().set_children((Text::new("under"), Text::new("over"))),
-          RichText::new([
-            Span::text("plain "),
-            Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
-              .set_color(Color::srgb(1.0, 0.5, 0.0)),
-            Span::view(StyledBox::new().set_width(10.).set_height(10.)),
-            Span::text(" tail").set_link("/rel"),
-          ]),
-          // Two identically-styled boxes: their class must intern once.
-          StyledBox::new().set_padding(Inset::all(8.)),
-          StyledBox::new().set_padding(Inset::all(8.)),
-          // Declarative dynamics: a hover variant, a media variant, a transition, and an
-          // animation, all compiled into the interned class.
-          StyledBox::new()
-            .set_width(50.)
-            .set_when(Condition::Hovered, BoxStyle::new().set_width(60.))
-            .set_when(Condition::MaxWidth(480.), BoxStyle::new().set_width(40.))
-            .set_transition(Transition::new(StyleProperty::Width, 0.2))
-            .set_animation(Animation::new(
-              1.,
-              [
-                (0., BoxStyle::new().set_border_radius(0.)),
-                (100., BoxStyle::new().set_border_radius(8.)),
-              ],
+        .set_child(
+          Column::new()
+            .set_arrangement(Arrangement::Center)
+            .set_item_alignment(ItemAlignment::Stretch)
+            .set_spacing(12.)
+            .set_padding(Inset::symmetric(16., 24.))
+            .set_children((
+              Text::new("Title & <escaped>")
+                .set_font_size(24.)
+                .set_font_weight(700.)
+                .set_color(Color::srgb(0.9, 0.9, 0.9)),
+              Text::new("linked").set_link("https://example.com/?a=1&b=2"),
+              Container::new()
+                .set_role(Role::Section)
+                .set_cursor(MouseCursor::Click)
+                .set_width(120.)
+                .set_height(40.)
+                .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
+                .handle_click(|| {})
+                .set_child(Row::new().set_spacing(4.).set_child(Text::new("Press"))),
+              Grid::uniform(3).set_spacing(4.).set_children((
+                Text::new("a"),
+                Text::new("b"),
+                Text::new("c"),
+              )),
+              Stack::new().set_children((Text::new("under"), Text::new("over"))),
+              RichText::new([
+                Span::text("plain "),
+                Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
+                  .set_color(Color::srgb(1.0, 0.5, 0.0)),
+                Span::view(Container::new().set_width(10.).set_height(10.)),
+                Span::text(" tail").set_link("/rel"),
+              ]),
+              // Two identically-styled boxes: their class must intern once.
+              Container::new().set_padding(Inset::all(8.)),
+              Container::new().set_padding(Inset::all(8.)),
+              // Declarative dynamics: a hover variant, a media variant, a transition, and an
+              // animation, all compiled into the interned class.
+              Container::new()
+                .set_width(50.)
+                .set_width_when(Condition::Hovered, 60.)
+                .set_width_when(Condition::MaxWidth(480.), 40.)
+                .set_transition(Transition::new(StyleProperty::Width, 0.2))
+                .set_animation(Animation::new(
+                  1.,
+                  [
+                    (0., BoxStyle::new().set_border_radius(0.)),
+                    (100., BoxStyle::new().set_border_radius(8.)),
+                  ],
+                )),
+              empty().into_any(),
             )),
-          empty().into_any(),
-        )),
+        ),
     )
     .set_base(TextStyle::new().set_color(Color::srgb(0.8, 0.8, 0.8)))
     .set_link(TextStyle::new().set_font_weight(500.))
@@ -121,6 +124,6 @@ fn representative_render_is_stable() {
 }
 
 /// The interned rule block (the styles after the reset), sorted by class name.
-const SNAPSHOT_RULES: &str = ".skene-1e21c5dd{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-2e87257c{column-gap:4px;display:grid;grid-template-columns:1fr 1fr 1fr;row-gap:4px;}.skene-2f32df5c{display:grid;position:relative;}.skene-363f1d58{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-3ebd287d{cursor:pointer;display:flex;flex-direction:row;height:40px;width:120px;}.skene-4a0198c2{display:flow-root;height:10px;width:10px;}.skene-5f645ac1{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-688fd045{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-6c97a4f5{display:block;font-weight:500;}.skene-74b5828{align-items:stretch;background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;column-gap:0px;display:flex;flex-direction:column;justify-content:center;max-height:800px;min-width:200px;padding:24px 16px 24px 16px;row-gap:12px;}.skene-7757becd{display:flow-root;padding:8px 8px 8px 8px;}.skene-b88e6449{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-bc803f39{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:flow-root;transition:width 0.2s ease 0s;width:50px;}.skene-bc803f39:hover{width:60px;}@media (max-width: 480px){.skene-bc803f39{width:40px;}}.skene-d1a25ba1{font-weight:500;}.skene-e97c44ab{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}</style>";
+const SNAPSHOT_RULES: &str = ".skene-1e21c5dd{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-2e09cb3e{cursor:pointer;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:40px;width:120px;}.skene-2e87257c{column-gap:4px;display:grid;grid-template-columns:1fr 1fr 1fr;row-gap:4px;}.skene-2f32df5c{display:grid;position:relative;}.skene-363f1d58{color:oklch(0.7311429 0.18611379 52.775707 / 1);}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-3a0eae90{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;transition:width 0.2s ease 0s;width:50px;}.skene-3a0eae90:hover{width:60px;}@media (max-width: 480px){.skene-3a0eae90{width:40px;}}.skene-547744be{align-items:stretch;column-gap:0px;display:flex;flex-direction:column;justify-content:center;padding:24px 16px 24px 16px;row-gap:12px;}.skene-56ba2de5{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;padding:8px 8px 8px 8px;}.skene-5f645ac1{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-688fd045{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-6c97a4f5{display:block;font-weight:500;}.skene-89f95e44{column-gap:4px;display:flex;flex-direction:row;row-gap:0px;}.skene-b88e6449{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}.skene-d1a25ba1{font-weight:500;}.skene-df45aa42{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:10px;width:10px;}.skene-e54fc788{background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;max-height:800px;min-width:200px;}.skene-e97c44ab{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}</style>";
 
-const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-74b5828\"><span data-h=\"2\" class=\"skene-b88e6449\">Title &amp; &lt;escaped&gt;</span><a data-h=\"3\" href=\"https://example.com/?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"skene-6c97a4f5\">linked</a><section data-h=\"4\" class=\"skene-3ebd287d\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><span data-h=\"5\" class=\"skene-688fd045\">Press</span></section><div data-h=\"6\" class=\"skene-2e87257c\"><span data-h=\"7\" class=\"skene-688fd045\">a</span><span data-h=\"8\" class=\"skene-688fd045\">b</span><span data-h=\"9\" class=\"skene-688fd045\">c</span></div><div data-h=\"10\" class=\"skene-2f32df5c\"><span data-h=\"11\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"12\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"13\"><span data-h=\"14\" class=\"skene-1e21c5dd\">plain </span><span data-h=\"15\" class=\"skene-363f1d58\"><span data-h=\"16\" class=\"skene-363f1d58\">in </span><span data-h=\"17\" class=\"skene-e97c44ab\">group</span></span><span data-h=\"18\" class=\"skene-5f645ac1\"><div data-h=\"19\" class=\"skene-4a0198c2\"></div></span><a data-h=\"20\" href=\"/rel\" class=\"skene-d1a25ba1\"> tail</a></div><div data-h=\"21\" class=\"skene-7757becd\"></div><div data-h=\"22\" class=\"skene-7757becd\"></div><div data-h=\"23\" class=\"skene-bc803f39\"></div><div data-h=\"24\"></div></div>";
+const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-e54fc788\"><div data-h=\"2\" class=\"skene-547744be\"><span data-h=\"3\" class=\"skene-b88e6449\">Title &amp; &lt;escaped&gt;</span><a data-h=\"4\" href=\"https://example.com/?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"skene-6c97a4f5\">linked</a><section data-h=\"5\" class=\"skene-2e09cb3e\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><div data-h=\"6\" class=\"skene-89f95e44\"><span data-h=\"7\" class=\"skene-688fd045\">Press</span></div></section><div data-h=\"8\" class=\"skene-2e87257c\"><span data-h=\"9\" class=\"skene-688fd045\">a</span><span data-h=\"10\" class=\"skene-688fd045\">b</span><span data-h=\"11\" class=\"skene-688fd045\">c</span></div><div data-h=\"12\" class=\"skene-2f32df5c\"><span data-h=\"13\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"14\" class=\"skene-688fd045\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"15\"><span data-h=\"16\" class=\"skene-1e21c5dd\">plain </span><span data-h=\"17\" class=\"skene-363f1d58\"><span data-h=\"18\" class=\"skene-363f1d58\">in </span><span data-h=\"19\" class=\"skene-e97c44ab\">group</span></span><span data-h=\"20\" class=\"skene-5f645ac1\"><div data-h=\"21\" class=\"skene-df45aa42\"></div></span><a data-h=\"22\" href=\"/rel\" class=\"skene-d1a25ba1\"> tail</a></div><div data-h=\"23\" class=\"skene-56ba2de5\"></div><div data-h=\"24\" class=\"skene-56ba2de5\"></div><div data-h=\"25\" class=\"skene-3a0eae90\"></div><div data-h=\"26\"></div></div></div>";

@@ -177,16 +177,6 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
 
     out.grid_template_columns = single.clone();
     out.grid_template_rows = single;
-
-    // A scrolling container holds its child at its natural size instead of stretching
-    // it to the port, so what spills is what the scroll region measures.
-    if matches!(
-      style.overflow,
-      Some(skene_core::Overflow::Scroll | skene_core::Overflow::Auto)
-    ) {
-      out.align_items = Some(taffy::style::AlignItems::Start);
-      out.justify_items = Some(taffy::style::AlignItems::Start);
-    }
   }
 
   if let Layout::Flex { direction } = layout {

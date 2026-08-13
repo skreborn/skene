@@ -506,7 +506,7 @@ sink are just different sinks for the same paths.)
 - **Only `Container` is decorated; layouts lay out.** The Flutter split, settled after
   weighing the alternatives: `Container` is the one freely-stylable box—decoration,
   sizing, events, and a single child—while `Row`/`Column`/`Grid`/`Stack` carry layout
-  properties and nothing else. **Spiked on the terminal facade; the GUI half remains.**
+  properties and nothing else. **Done on both facades.**
   - **The forwarding problem dissolves.** With one decorated view there is nothing to
     forward: `HasSize`/`HasDecoration`/`HasEvents` are deleted and their methods are
     inherent on `Container`. `HasFocus`/`HasStyle` survive—orthogonal to this split,
@@ -515,9 +515,11 @@ sink are just different sinks for the same paths.)
     with them; the internal all-fields node builder is `pub(crate) BoxNode`.
   - **Equal footing is kept by `LayoutBox`**, public and carrying the full layout
     vocabulary over a child-kind parameter, so a third-party layout view is built from
-    it exactly as `Row` is built from the node. A test in an external crate builds a
-    `Toolbar` on it—typed `FlexChild` children, a `Flexible` wrapper, its own spacing
-    knob—and renders cell-for-cell identically to `Row`. The one asymmetry to note: the
+    it exactly as `Row` is built from the node. A test in each facade builds a `Toolbar`
+    on it—typed `FlexChild` children, a `Flexible` wrapper, its own spacing knob—and
+    matches `Row` cell-for-cell in the terminal, node-for-node against the recording
+    driver on the GUI side (which grew a `record::layout` accessor for it). The one
+    asymmetry to note: the
     built-ins write their properties straight into the private node, so their forwarding
     is a line per property against the public route's three.
   - **Responsiveness moved to per-property variants.** `set_spacing_when(condition,
@@ -532,9 +534,10 @@ sink are just different sinks for the same paths.)
     —one `1fr` track each way—so a sized container fills its child to the content box
     and an unsized one hugs it. Two findings the spike turned up, both now pinned by
     tests: `minmax(0, 1fr)` reports a *zero* max-content contribution, so an auto-sized
-    parent measures the container as empty—plain `1fr` keeps the intrinsic contribution;
-    and a scrolling container must hold its child at natural size (`align-items: start`)
-    rather than stretching it, or nothing overflows for the scroll region to measure.
+    parent measures the container as empty—plain `1fr` keeps the intrinsic contribution.
+    A scrolling container needs no `align-items: start` of its own: the automatic minimum
+    already leaves the child at natural size, and the branch that set it was dead, since
+    the sizing pass reassigns `align-items` from the style right after.
   - **`Container` gained `set_alignment`**, the two-axis placement of its one child. The
     single-cell grid gives it for free, and without it centering one child would mean
     wrapping it in a `Row` for `item_alignment`.
@@ -556,14 +559,12 @@ sink are just different sinks for the same paths.)
     stays generic ("complete") so a later required property reads the same way. Only
     traits that appear as *argument or return bounds* are worth annotating: a missing
     trait method is `E0599`, which never consults the attribute.
-  - **Remaining.** The GUI facade's half of all the above (it still has `StyledBox` and
-    the box traits); per-property variants on the GUI vocabulary; the control redesign
-    (`RawButton::new(|| -> View)`, `RawTextField::new(|| -> Decoration)`, a
-    driver-specific `WebSlider` a library may opt into for the no-JS path), which needs
-    an answer for who supplies the behavior when the returned view is not the native
-    control—and may simply retire `RawSlider`/`RawCheckbox`/`RawRadio` if a headless
-    shell over an author-supplied view adds nothing; and `SimpleCard`, which now builds
-    its `Container` at build time and so exposes only its own knobs.
+  - **Remaining.** The control redesign (`RawButton::new(|| -> View)`,
+    `RawTextField::new(|| -> Decoration)`, a driver-specific `WebSlider` a library may
+    opt into for the no-JS path), which needs an answer for who supplies the behavior
+    when the returned view is not the native control—and may simply retire
+    `RawSlider`/`RawCheckbox`/`RawRadio` if a headless shell over an author-supplied
+    view adds nothing.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

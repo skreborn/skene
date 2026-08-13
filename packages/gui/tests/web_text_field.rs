@@ -4,17 +4,18 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Container,
   FocusOrder,
   HasChildren,
   RawTextField,
-  StyledBox,
+  Row,
   Text,
   core::{BoxStyle, Condition},
   render_to_string,
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle};
+use skene_gui::{HasFocus, HasStyle};
 
 /// An input serializes as a void element: no closing tag.
 #[test]
@@ -87,23 +88,26 @@ fn focus_attributes_serialize() {
 #[test]
 fn handlers_are_inert_on_the_server() {
   let rendered = render_to_string(|| {
-    StyledBox::new()
+    Container::new()
       .handle_pointer_enter(|| {})
       .handle_key_down(|_| {})
       .handle_pointer_down(|_| {})
       .handle_pointer_up(|_| {})
       .handle_pointer_move(|_| {})
       .handle_scroll(|_| {})
-      .set_children((
-        Text::new("t"),
-        RawTextField::new()
-          .handle_change(|_| {})
-          .handle_focus(|| {}),
-      ))
+      .set_child(
+        Row::new().set_children((
+          Text::new("t"),
+          RawTextField::new()
+            .handle_change(|_| {})
+            .handle_focus(|| {}),
+        )),
+      )
   });
 
-  let plain =
-    render_to_string(|| StyledBox::new().set_children((Text::new("t"), RawTextField::new())));
+  let plain = render_to_string(|| {
+    Container::new().set_child(Row::new().set_children((Text::new("t"), RawTextField::new())))
+  });
 
   assert_eq!(rendered.body(), plain.body());
 }

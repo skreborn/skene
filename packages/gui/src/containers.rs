@@ -1,7 +1,7 @@
 //! The typed containers and child wrappers.
 //!
 //! Each layout gets its own view—[`Row`], [`Column`], [`Grid`], [`Stack`]—so only the
-//! properties that layout honors exist to call; each wraps a [`StyledBox`] for the
+//! properties that layout honors exist to call; each wraps a [`BoxNode`] for the
 //! shared surface, which on its own flows its children in document order. Per-child
 //! properties travel in wrapper views ([`Flexible`], [`Pinned`], [`GridCell`]) accepted
 //! only by the matching container; a wrapper creates no node of its own, it annotates
@@ -36,11 +36,12 @@ use skene_core::{
   Wrap,
 };
 
-use crate::{Children, StyledBox, driver};
+use crate::{Children, box_node::BoxNode, driver};
 
-/// Generates a layout property pair, written straight into the base's field.
+/// Generates a layout property's three setters—fixed, derived, and conditional—
+/// written straight into the base's field, or pushed as a one-property variant.
 macro_rules! own_prop {
-  ($set:ident, $derive:ident, $field:ident, $type:ty, $doc:literal) => {
+  ($set:ident, $derive:ident, $when:ident, $field:ident, $style:ident, $type:ty, $doc:literal) => {
     #[doc = concat!("Sets ", $doc, ".")]
     #[inline(always)]
     pub fn $set(mut self, value: $type) -> Self {
@@ -53,6 +54,54 @@ macro_rules! own_prop {
     #[inline(always)]
     pub fn $derive(mut self, value: impl Fn() -> $type + 'static) -> Self {
       self.base.$field = Some(Source::Derived(Rc::new(value)));
+
+      self
+    }
+
+    #[doc = concat!("Sets ", $doc, ", applied while `condition` holds.")]
+    #[inline(always)]
+    pub fn $when(mut self, condition: skene_core::Condition, value: $type) -> Self {
+      self
+        .base
+        .variants
+        .push((condition, skene_core::BoxStyle::new().$style(value)));
+
+      self
+    }
+  };
+}
+
+/// Generates the padding setters every layout carries: the inset between its own box
+/// and the children it arranges, distinct from a wrapping container's.
+macro_rules! holder_props {
+  () => {
+    /// Sets a static padding.
+    #[inline(always)]
+    pub fn set_padding(mut self, padding: crate::Inset) -> Self {
+      self.base.padding = Some(Source::Static(padding));
+
+      self
+    }
+
+    /// Sets a derived padding.
+    #[inline(always)]
+    pub fn derive_padding(mut self, padding: impl Fn() -> crate::Inset + 'static) -> Self {
+      self.base.padding = Some(Source::Derived(Rc::new(padding)));
+
+      self
+    }
+
+    /// Sets the padding applied while `condition` holds.
+    #[inline(always)]
+    pub fn set_padding_when(
+      mut self,
+      condition: skene_core::Condition,
+      padding: crate::Inset,
+    ) -> Self {
+      self
+        .base
+        .variants
+        .push((condition, skene_core::BoxStyle::new().set_padding(padding)));
 
       self
     }
@@ -112,7 +161,7 @@ fn split_alignment(
 /// let it take or give up space.
 #[must_use]
 pub struct Row {
-  base: StyledBox,
+  base: BoxNode,
   spacing: Option<Source<f32>>,
   line_spacing: Option<Source<f32>>,
 }
@@ -120,7 +169,7 @@ pub struct Row {
 /// A flex container laying children out top to bottom; see [`Row`].
 #[must_use]
 pub struct Column {
-  base: StyledBox,
+  base: BoxNode,
   spacing: Option<Source<f32>>,
   line_spacing: Option<Source<f32>>,
 }
@@ -132,7 +181,7 @@ macro_rules! flex_surface {
       #[inline(always)]
       pub fn new() -> Self {
         Self {
-          base: StyledBox::mode(Layout::Flex {
+          base: BoxNode::mode(Layout::Flex {
             direction: $direction,
           }),
           spacing: None,
@@ -144,7 +193,7 @@ macro_rules! flex_surface {
       #[inline(always)]
       pub fn reversed() -> Self {
         Self {
-          base: StyledBox::mode(Layout::Flex {
+          base: BoxNode::mode(Layout::Flex {
             direction: $reversed,
           }),
           spacing: None,
@@ -184,31 +233,63 @@ macro_rules! flex_surface {
         self
       }
 
+      /// Sets the spacing between children applied while `condition` holds.
+      #[inline(always)]
+      pub fn set_spacing_when(mut self, condition: skene_core::Condition, spacing: f32) -> Self {
+        let axes = match $direction {
+          FlexDirection::Row | FlexDirection::RowReverse => Spacing {
+            row: 0.,
+            column: spacing,
+          },
+          FlexDirection::Column | FlexDirection::ColumnReverse => Spacing {
+            row: spacing,
+            column: 0.,
+          },
+        };
+
+        self
+          .base
+          .variants
+          .push((condition, skene_core::BoxStyle::new().set_spacing(axes)));
+
+        self
+      }
+
+      holder_props!();
+
       own_prop!(
         set_arrangement,
         derive_arrangement,
+        set_arrangement_when,
         arrangement,
+        set_arrangement,
         Arrangement,
         "the distribution of children along the main axis"
       );
       own_prop!(
         set_item_alignment,
         derive_item_alignment,
+        set_item_alignment_when,
         item_alignment,
+        set_item_alignment,
         ItemAlignment,
         "the alignment of each child on the cross axis"
       );
       own_prop!(
         set_line_arrangement,
         derive_line_arrangement,
+        set_line_arrangement_when,
         line_arrangement,
+        set_line_arrangement,
         Arrangement,
         "the distribution of wrapped lines along the cross axis"
       );
       own_prop!(
         set_wrap,
         derive_wrap,
+        set_wrap_when,
         wrap,
+        set_wrap,
         Wrap,
         "whether children wrap onto multiple lines"
       );
@@ -242,7 +323,7 @@ flex_surface!(Column, FlexDirection::Column, FlexDirection::ColumnReverse);
 /// A grid container placing children into tracks.
 #[must_use]
 pub struct Grid {
-  base: StyledBox,
+  base: BoxNode,
   spacing: Option<Source<Spacing<f32>>>,
   item_alignment: Option<Source<Alignment>>,
 }
@@ -252,7 +333,7 @@ impl Grid {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      base: StyledBox::mode(Layout::Grid),
+      base: BoxNode::mode(Layout::Grid),
       spacing: None,
       item_alignment: None,
     }
@@ -354,6 +435,21 @@ impl Grid {
     self
   }
 
+  /// Sets the spacing between tracks applied while `condition` holds.
+  #[inline(always)]
+  pub fn set_spacing_when(
+    mut self,
+    condition: skene_core::Condition,
+    spacing: impl Into<Spacing<f32>>,
+  ) -> Self {
+    self.base.variants.push((
+      condition,
+      skene_core::BoxStyle::new().set_spacing(spacing.into()),
+    ));
+
+    self
+  }
+
   /// Sets a static alignment of each child within its cell, on both axes.
   #[inline(always)]
   pub fn set_item_alignment(mut self, alignment: Alignment) -> Self {
@@ -370,24 +466,32 @@ impl Grid {
     self
   }
 
+  holder_props!();
+
   own_prop!(
     set_flow,
     derive_flow,
+    set_flow_when,
     grid_flow,
+    set_grid_flow,
     GridFlow,
     "the direction auto-placed children fill"
   );
   own_prop!(
     set_column_arrangement,
     derive_column_arrangement,
+    set_column_arrangement_when,
     arrangement,
+    set_arrangement,
     Arrangement,
     "the horizontal distribution of the column tracks"
   );
   own_prop!(
     set_row_arrangement,
     derive_row_arrangement,
+    set_row_arrangement_when,
     line_arrangement,
+    set_line_arrangement,
     Arrangement,
     "the vertical distribution of the row tracks"
   );
@@ -417,7 +521,7 @@ impl View for Grid {
 /// Wrap a child in [`Pinned`] to place it against the stack's edges instead.
 #[must_use]
 pub struct Stack {
-  base: StyledBox,
+  base: BoxNode,
   alignment: Option<Source<Alignment>>,
 }
 
@@ -426,7 +530,7 @@ impl Stack {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      base: StyledBox::mode(Layout::Stack),
+      base: BoxNode::mode(Layout::Stack),
       alignment: None,
     }
   }
@@ -446,6 +550,8 @@ impl Stack {
 
     self
   }
+
+  holder_props!();
 }
 
 impl Default for Stack {
@@ -829,27 +935,6 @@ impl IntoChildOf<GridChild> for GridCell<AnyView> {
   }
 }
 
-impl crate::HasSize for Row {
-  #[inline(always)]
-  fn size_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasDecoration for Row {
-  #[inline(always)]
-  fn decoration_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasEvents for Row {
-  #[inline(always)]
-  fn events_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
 impl skene_core::HasChildren<crate::GuiOps> for Row {
   type Kind = FlexChild;
 
@@ -857,27 +942,6 @@ impl skene_core::HasChildren<crate::GuiOps> for Row {
     self.base.children = children;
 
     self
-  }
-}
-
-impl crate::HasSize for Column {
-  #[inline(always)]
-  fn size_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasDecoration for Column {
-  #[inline(always)]
-  fn decoration_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasEvents for Column {
-  #[inline(always)]
-  fn events_box(&mut self) -> &mut StyledBox {
-    &mut self.base
   }
 }
 
@@ -891,27 +955,6 @@ impl skene_core::HasChildren<crate::GuiOps> for Column {
   }
 }
 
-impl crate::HasSize for Grid {
-  #[inline(always)]
-  fn size_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasDecoration for Grid {
-  #[inline(always)]
-  fn decoration_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasEvents for Grid {
-  #[inline(always)]
-  fn events_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
 impl skene_core::HasChildren<crate::GuiOps> for Grid {
   type Kind = GridChild;
 
@@ -919,27 +962,6 @@ impl skene_core::HasChildren<crate::GuiOps> for Grid {
     self.base.children = children;
 
     self
-  }
-}
-
-impl crate::HasSize for Stack {
-  #[inline(always)]
-  fn size_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasDecoration for Stack {
-  #[inline(always)]
-  fn decoration_box(&mut self) -> &mut StyledBox {
-    &mut self.base
-  }
-}
-
-impl crate::HasEvents for Stack {
-  #[inline(always)]
-  fn events_box(&mut self) -> &mut StyledBox {
-    &mut self.base
   }
 }
 

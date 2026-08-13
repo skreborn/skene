@@ -6,36 +6,39 @@ use skene_gui::{Overlay, prelude::*};
 
 #[main]
 fn app() -> impl IntoView {
-  TextTheme::new().set_child(Column::new()
-      .set_item_alignment(ItemAlignment::Center)
-      .set_padding(Inset::symmetric(24., 48.))
-      .set_color(SimplePalette::background())
-      .set_child(
+  TextTheme::new()
+    .set_child(
+      Container::new().set_color(SimplePalette::background()).set_child(
         Column::new()
-          .set_spacing(24.)
-          .set_max_width(560.)
-          .set_children((
-            Text::new("GALLERY")
-              .set_font_size(13.)
-              .set_font_weight(500.)
-              .set_color(SimplePalette::muted_foreground()),
-            typography(),
-            buttons(),
-            toggles(),
-            inputs(),
-            layouts(),
-            list(),
-          )),
-      ))
-  .set_base(
-    TextStyle::new()
-      .set_color(SimplePalette::foreground())
-      .set_selection_color(SimplePalette::background())
-      .set_selection_background(SimplePalette::foreground()),
-  )
-  // The gallery is dark regardless of the OS scheme, so it inks links for its own
-  // surface instead of leaving them to the scheme-following default.
-  .set_link(TextStyle::new().set_color(Color::srgb(0.4, 0.6, 1.)))
+          .set_item_alignment(ItemAlignment::Center)
+          .set_padding(Inset::symmetric(24., 48.))
+          .set_child(
+            Container::new().set_max_width(560.).set_child(
+              Column::new().set_spacing(24.).set_children((
+                Text::new("GALLERY")
+                  .set_font_size(13.)
+                  .set_font_weight(500.)
+                  .set_color(SimplePalette::muted_foreground()),
+                typography(),
+                buttons(),
+                toggles(),
+                inputs(),
+                layouts(),
+                list(),
+              )),
+            ),
+          ),
+      ),
+    )
+    .set_base(
+      TextStyle::new()
+        .set_color(SimplePalette::foreground())
+        .set_selection_color(SimplePalette::background())
+        .set_selection_background(SimplePalette::foreground()),
+    )
+    // The gallery is dark regardless of the OS scheme, so it inks links for its own
+    // surface instead of leaving them to the scheme-following default.
+    .set_link(TextStyle::new().set_color(Color::srgb(0.4, 0.6, 1.)))
 }
 
 fn typography() -> impl IntoView {
@@ -184,19 +187,21 @@ fn layouts() -> impl IntoView {
         swatch(0.40),
         swatch(0.30),
       )),
-      Stack::new()
+      Container::new()
         .set_height(64.)
         .set_color(SimplePalette::secondary())
         .set_border_radius(8.)
         .set_child(
-          Pinned::new()
-            .set_edges(skene_gui::core::Inset {
-              top: Dimension::Auto,
-              right: Dimension::Length(8.),
-              bottom: Dimension::Length(8.),
-              left: Dimension::Auto,
-            })
-            .set_child(badge("pinned")),
+          Stack::new().set_child(
+            Pinned::new()
+              .set_edges(skene_gui::core::Inset {
+                top: Dimension::Auto,
+                right: Dimension::Length(8.),
+                bottom: Dimension::Length(8.),
+                left: Dimension::Auto,
+              })
+              .set_child(badge("pinned")),
+          ),
         ),
       Row::new().set_children((
         SimpleButton::new("Open a modal")

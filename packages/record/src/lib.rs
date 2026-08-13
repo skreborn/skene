@@ -19,6 +19,7 @@ use skene_core::{
   ButtonProps,
   CheckboxProps,
   KeyEvent,
+  Layout,
   NodeId,
   OverlayProps,
   PickerProps,
@@ -542,6 +543,16 @@ pub fn run_style(node: NodeId) -> Option<RunStyle> {
 pub fn role(node: NodeId) -> Option<Role> {
   with_node(node, |node| match &node.kind {
     Kind::Box(props) => props.role,
+    _ => None,
+  })
+  .flatten()
+}
+
+/// A box's layout mode, if the node is a box.
+#[must_use]
+pub fn layout(node: NodeId) -> Option<Layout> {
+  with_node(node, |node| match &node.kind {
+    Kind::Box(props) => Some(props.layout),
     _ => None,
   })
   .flatten()

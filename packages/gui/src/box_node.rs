@@ -1,3 +1,5 @@
+//! The shared box every container view wraps.
+
 use std::rc::Rc;
 
 use skene_core::{
@@ -24,16 +26,12 @@ use skene_core::{
 
 use crate::{Border, Children, HasChildren, Inset, Layout, Role};
 
-/// A box that decorates itself and flows its children in document order.
-///
-/// The shared box surface: the typed containers—[`Row`](crate::Row),
-/// [`Column`](crate::Column), [`Grid`](crate::Grid), [`Stack`](crate::Stack)—each wrap
-/// one and layer their layout over it, and a container view of your own does the same.
-/// Children are set with [`set_children`](HasChildren::set_children) or
-/// `derive_children`; decoration and sizing with the chainable `set_`/`derive_` methods.
-/// Each platform realizes it its own way.
+/// The realized box every view in the vocabulary is built from: the whole property
+/// set, split across the public surfaces that write into it—[`Container`](crate::Container)
+/// for decoration and sizing, the layout views and [`LayoutBox`](crate::LayoutBox) for
+/// arrangement.
 #[must_use]
-pub struct StyledBox {
+pub(crate) struct BoxNode {
   pub(crate) children: Children,
   pub(crate) layout: Layout,
   pub(crate) role: Option<Role>,
@@ -86,7 +84,7 @@ pub struct StyledBox {
   pub(crate) scroll_handler: Option<Rc<dyn Fn(&ScrollEvent)>>,
 }
 
-impl StyledBox {
+impl BoxNode {
   #[inline(always)]
   pub(crate) fn mode(layout: Layout) -> Self {
     Self {
@@ -145,39 +143,18 @@ impl StyledBox {
   /// A block container: children flow in normal document order, contained within it.
   #[inline(always)]
   pub fn new() -> Self {
-    StyledBox::mode(Layout::Flow)
+    BoxNode::mode(Layout::Flow)
   }
 }
 
-impl Default for StyledBox {
+impl Default for BoxNode {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl crate::HasSize for StyledBox {
-  #[inline(always)]
-  fn size_box(&mut self) -> &mut StyledBox {
-    self
-  }
-}
-
-impl crate::HasDecoration for StyledBox {
-  #[inline(always)]
-  fn decoration_box(&mut self) -> &mut StyledBox {
-    self
-  }
-}
-
-impl crate::HasEvents for StyledBox {
-  #[inline(always)]
-  fn events_box(&mut self) -> &mut StyledBox {
-    self
-  }
-}
-
-impl HasChildren<crate::GuiOps> for StyledBox {
+impl HasChildren<crate::GuiOps> for BoxNode {
   type Kind = skene_core::PlainChild;
 
   #[inline(always)]
@@ -188,7 +165,7 @@ impl HasChildren<crate::GuiOps> for StyledBox {
   }
 }
 
-impl skene_core::View for StyledBox {
+impl skene_core::View for BoxNode {
   // One `split_prop` call per property; length is the property count, not complexity.
   #[expect(clippy::too_many_lines)]
   fn build(self) -> skene_core::NodeId {

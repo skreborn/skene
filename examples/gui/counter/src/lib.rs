@@ -14,11 +14,14 @@ use skene_gui::prelude::*;
 fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
-  Column::new()
-    .set_arrangement(Arrangement::Center)
-    .set_item_alignment(ItemAlignment::Center)
+  Container::new()
     .set_color(SimplePalette::background())
-    .set_child(card(count))
+    .set_child(
+      Column::new()
+        .set_arrangement(Arrangement::Center)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_child(card(count)),
+    )
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {

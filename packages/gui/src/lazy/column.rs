@@ -4,8 +4,6 @@ use std::rc::Rc;
 
 use skene_core::{AnyView, BoxStyle, Condition, IntoView};
 
-use crate::HasSize;
-
 /// A scrollable column of `count()` fixed-height items, only the visible slice (plus an
 /// overscan margin) built at any moment; the rest is empty space.
 ///
@@ -67,10 +65,10 @@ impl LazyColumn {
 
 impl skene_core::View for LazyColumn {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::{BoxProps, HasChildren, Layout, Overflow, ScrollEvent, TreeOps, item_window};
+    use skene_core::{BoxProps, Layout, Overflow, ScrollEvent, TreeOps, item_window};
     use skene_reactive::{Get, Memo, Set, Signal};
 
-    use crate::{GuiOps, StyledBox, driver};
+    use crate::{Container, GuiOps, driver};
 
     let mut style = self.style;
 
@@ -107,11 +105,11 @@ impl skene_core::View for LazyColumn {
 
     #[expect(clippy::cast_precision_loss)]
     let extent = move |items: usize| items as f32 * item_height;
-    let leading = StyledBox::new()
+    let leading = Container::new()
       .derive_height(move || extent(window.get().0.start))
       .build();
     let items = GuiOps.create_group();
-    let trailing = StyledBox::new()
+    let trailing = Container::new()
       .derive_height(move || {
         let (window, count) = window.get();
 
@@ -134,7 +132,7 @@ impl skene_core::View for LazyColumn {
       },
       |index| *index,
       move |index| {
-        StyledBox::new()
+        Container::new()
           .set_height(item_height)
           .set_child(item(index))
           .build()

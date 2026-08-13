@@ -53,8 +53,7 @@
   where the property is. There is no box-surface forwarding to solve, and no trait for
   it; `HasFocus`/`HasStyle` remain only because each `Simple*` wraps a `Raw*`. A
   third-party layout view is built from the public `LayoutBox` exactly as `Row` is;
-  there is no privileged base. (ROADMAP work: the terminal facade is converted, the GUI
-  facade is not.)
+  there is no privileged base.
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.

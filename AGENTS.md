@@ -159,6 +159,19 @@
 ## Tooling & workflow rules
 
 - Always format with `cargo +nightly fmt`.
+- Tests run in three tiers, and the host tier alone proves nothing about the web. Run
+  `cargo test --workspace` for the host, `cargo test -p skene-gui --target wasm32-wasip2` for
+  the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
+  browser leaf, which drives a real Firefox through geckodriver. Every `web_*.rs` is gated to
+  a wasm target, so on the host those binaries compile to zero tests and report
+  `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
+  every host test while breaking the browser outright. Read the `test result:` line rather
+  than the exit code or a `FAILED` grep, because both wasm tiers mislead: wasmtime aborts on
+  the first panic, hiding every test after it in that binary and printing `Error: failed to
+  run main module` instead of a `FAILED` line, while the browser runner panics on cleanup
+  after reporting and exits non-zero even when everything passed. A browser failure also
+  poisons the platform for the tests that follow (`RefCell already borrowed`), so fix the
+  first failure before believing the rest.
 - Prefer `#[expect(lint)]` over `#[allow(lint)]`.
 - Order dependencies alphabetically by crate name within every Cargo manifest table.
 - Macros must pull their weight: use one only when it eliminates real boilerplate or repetition

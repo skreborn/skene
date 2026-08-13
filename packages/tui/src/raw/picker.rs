@@ -5,8 +5,6 @@ use std::rc::Rc;
 use skene_core::{HasChildren, NodeId, Prevent, Source, View};
 
 use crate::{
-  HasDecoration,
-  HasEvents,
   Overlay,
   control::ControlBase,
   overlay::Anchor,
@@ -353,7 +351,7 @@ fn option_row(
   active: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
   highlight: Option<(skene_core::Color, skene_core::Color)>,
-) -> crate::StyledBox {
+) -> crate::Container {
   use skene_core::Color;
   use skene_reactive::{Set, With};
 
@@ -361,7 +359,7 @@ fn option_row(
   let ink_shown = value.clone();
   let hovered = value.clone();
 
-  crate::StyledBox::new()
+  crate::Container::new()
     .derive_color(move || {
       if active.with(|active| *active == shown) {
         highlight.map_or_else(

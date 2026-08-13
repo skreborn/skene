@@ -164,10 +164,30 @@ pub(crate) fn box_taffy_style(layout: Layout, style: &BoxStyle, in_stack: bool) 
     display: match layout {
       Layout::Flow => Display::Block,
       Layout::Flex { .. } => Display::Flex,
-      Layout::Grid | Layout::Stack => Display::Grid,
+      Layout::Grid | Layout::Stack | Layout::Single => Display::Grid,
     },
     ..Style::default()
   };
+
+  if layout == Layout::Single {
+    // One track each way: `1fr` fills a sized box and hugs an unsized one, keeping the
+    // automatic minimum so the container still reports its child's intrinsic
+    // contribution to a parent that measures it.
+    let single = vec![taffy::style::GridTemplateComponent::Single(fr(1.))];
+
+    out.grid_template_columns = single.clone();
+    out.grid_template_rows = single;
+
+    // A scrolling container holds its child at its natural size instead of stretching
+    // it to the port, so what spills is what the scroll region measures.
+    if matches!(
+      style.overflow,
+      Some(skene_core::Overflow::Scroll | skene_core::Overflow::Auto)
+    ) {
+      out.align_items = Some(taffy::style::AlignItems::Start);
+      out.justify_items = Some(taffy::style::AlignItems::Start);
+    }
+  }
 
   if let Layout::Flex { direction } = layout {
     out.flex_direction = match direction {

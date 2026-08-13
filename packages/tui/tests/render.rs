@@ -67,16 +67,18 @@ fn row_flows_runs_with_spacing() {
 fn background_fills_cover_content_beneath() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Stack::new()
+      Container::new()
         .set_width(6)
         .set_height(1)
-        .set_children((
-          Text::new("under"),
-          StyledBox::new()
-            .set_width(6)
-            .set_height(1)
-            .set_color(Color::srgb(0.5, 0.5, 0.5)),
-        ))
+        .set_child(
+          Stack::new().set_children((
+            Text::new("under"),
+            Container::new()
+              .set_width(6)
+              .set_height(1)
+              .set_color(Color::srgb(0.5, 0.5, 0.5)),
+          )),
+        )
         .into_any()
         .build()
     });
@@ -93,15 +95,17 @@ fn background_fills_cover_content_beneath() {
 fn pinned_text_honors_its_edges() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      Stack::new()
+      Container::new()
         .set_width(12)
         .set_height(3)
-        .set_child(Pinned::new(Text::new("pin")).set_edges(tui::core::Inset {
-          top: Dimension::Auto,
-          right: Dimension::Length(0),
-          bottom: Dimension::Length(0),
-          left: Dimension::Auto,
-        }))
+        .set_child(
+          Stack::new().set_child(Pinned::new(Text::new("pin")).set_edges(tui::core::Inset {
+            top: Dimension::Auto,
+            right: Dimension::Length(0),
+            bottom: Dimension::Length(0),
+            left: Dimension::Auto,
+          })),
+        )
         .into_any()
         .build()
     });
@@ -139,15 +143,12 @@ fn flexible_text_takes_free_space() {
 fn border_glyphs_select_the_character_set() {
   let (rounded, ascii) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(4)
         .set_height(3)
         .set_border(Color::srgb(1., 1., 1.))
         .set_border_glyphs(BorderGlyphs::ROUNDED)
-        .set_when(
-          Condition::Hovered,
-          BoxStyle::new().set_border_glyphs(BorderGlyphs::ASCII),
-        )
+        .set_border_glyphs_when(Condition::Hovered, BorderGlyphs::ASCII)
         .into_any()
         .build()
     });
@@ -168,7 +169,7 @@ fn border_glyphs_select_the_character_set() {
 fn text_wraps_at_the_container_width() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_child(Text::new("alpha beta"))
         .into_any()
@@ -186,7 +187,7 @@ fn text_wraps_at_the_container_width() {
 fn border_draws_a_frame() {
   let rendered = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(7)
         .set_border(Color::srgb(1., 1., 1.))
         .set_child(Text::new("hi"))
@@ -205,13 +206,10 @@ fn border_draws_a_frame() {
 fn media_variant_resolves_against_terminal_size() {
   let (narrow, wide) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_height(3)
-        .set_when(
-          Condition::MaxWidth(10),
-          BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
-        )
+        .set_border_when(Condition::MaxWidth(10), Color::srgb(1., 1., 1.))
         .into_any()
         .build()
     });
@@ -229,15 +227,15 @@ fn media_variant_resolves_against_terminal_size() {
 fn composed_condition_resolves() {
   let (narrow, tall, wide) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_height(3)
-        .set_when(
+        .set_border_when(
           Condition::or([
             Condition::MaxWidth(10),
             Condition::and([Condition::MinHeight(6), Condition::MaxHeight(8)]),
           ]),
-          BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
+          Color::srgb(1., 1., 1.),
         )
         .into_any()
         .build()
@@ -519,8 +517,8 @@ fn pointer_events_carry_cell_coordinates() {
       tui::mount(|| {
         Row::new()
           .set_children((
-            StyledBox::new().set_width(4).set_height(3),
-            StyledBox::new()
+            Container::new().set_width(4).set_height(3),
+            Container::new()
               .set_width(6)
               .set_height(3)
               .handle_pointer_down(move |event| {
@@ -632,16 +630,13 @@ fn hover_variant_and_pointer_handlers() {
       tui::mount(|| {
         Row::new()
           .set_children((
-            StyledBox::new()
+            Container::new()
               .set_width(4)
               .set_height(2)
-              .set_when(
-                Condition::Hovered,
-                BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
-              )
+              .set_border_when(Condition::Hovered, Color::srgb(1., 1., 1.))
               .handle_pointer_enter(move || enters.set(enters.get() + 1))
               .handle_pointer_leave(move || leaves.set(leaves.get() + 1)),
-            StyledBox::new().set_width(4).set_height(2),
+            Container::new().set_width(4).set_height(2),
           ))
           .into_any()
           .build()
@@ -715,7 +710,7 @@ fn mouse_click_hits_and_focuses() {
 fn hover_cursor_resolves() {
   with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(4)
         .set_height(2)
         .set_cursor(skene_tui::core::MouseCursor::Click)
@@ -770,7 +765,7 @@ fn slider_shows_the_grab_cursors() {
     let volume = Signal::new(5.0f32);
 
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(11)
         .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
         .into_any()
@@ -907,13 +902,10 @@ fn popup_anchors_below_and_light_dismisses() {
 fn color_scheme_conditions_follow_the_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_height(3)
-        .set_when(
-          Condition::DarkMode,
-          BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
-        )
+        .set_border_when(Condition::DarkMode, Color::srgb(1., 1., 1.))
         .into_any()
         .build()
     });
@@ -937,22 +929,22 @@ fn scroll_box_clips_wheels_and_hit_tests() {
   let clicks = Rc::clone(&clicked);
   let (first, scrolled, log) = with_driver(move || {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_child(
-          Column::new()
+          Container::new()
             .set_height(3)
             .set_overflow(Overflow::Auto)
-            .derive_children(
+            .set_child(Column::new().derive_children(
               || 0..6,
               |index| *index,
               move |index| {
                 let clicked = Rc::clone(&clicked);
 
-                StyledBox::new()
+                Container::new()
                   .handle_click(move || clicked.borrow_mut().push(index))
                   .set_child(Text::new(format!("item {index}")))
               },
-            ),
+            )),
         )
         .into_any()
         .build()
@@ -987,17 +979,22 @@ fn scroll_box_clips_wheels_and_hit_tests() {
 fn focus_scrolls_into_view() {
   let frame = with_driver(|| {
     tui::mount(|| {
-      Column::new()
-        .set_height(3)
-        .set_overflow(Overflow::Scroll)
-        .set_children(
-          (0..6)
-            .map(|index| {
-              RawButton::new()
-                .set_child(Text::new(format!("button {index}")))
-                .into_any()
-            })
-            .collect::<Vec<_>>(),
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_height(3)
+            .set_overflow(Overflow::Scroll)
+            .set_child(
+              Column::new().set_children(
+                (0..6)
+                  .map(|index| {
+                    RawButton::new()
+                      .set_child(Text::new(format!("button {index}")))
+                      .into_any()
+                  })
+                  .collect::<Vec<_>>(),
+              ),
+            ),
         )
         .into_any()
         .build()
@@ -1024,7 +1021,7 @@ fn virtual_list_windows_its_items() {
   let log = Rc::clone(&built);
   let (first, second, scrolled, log) = with_driver(move || {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_child(
           LazyColumn::new(
             1,
@@ -1501,7 +1498,7 @@ fn slider_nudges_and_jumps() {
 fn scrollbar_jumps_and_drags() {
   let (jumped, dragged, colors) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_height(4)
         .set_overflow(Overflow::Auto)
@@ -1576,7 +1573,7 @@ fn slider_drags_to_the_pointer() {
     let volume = Signal::new(0.0f32);
 
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(11)
         .set_child(RawSlider::new(0.0, 10.0).set_step(1.0).bind_value(volume))
         .into_any()
@@ -1619,10 +1616,10 @@ fn slider_drags_to_the_pointer() {
 fn shadow_mixes_into_the_cells_beneath() {
   let colors = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_color(Color::srgb(1., 0., 0.))
         .set_child(
-          StyledBox::new()
+          Container::new()
             .set_width(2)
             .set_height(1)
             .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
@@ -1689,7 +1686,7 @@ fn modal_scrim_defaults_on_and_disables() {
 
         Column::new()
           .set_children((
-            StyledBox::new()
+            Container::new()
               .set_color(Color::srgb(1., 0., 0.))
               .set_height(1),
             modal,
@@ -1722,7 +1719,7 @@ fn modal_scrim_defaults_on_and_disables() {
 fn control_style_styles_the_glyph_and_containers_the_box() {
   let (frame, colors) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_border(Color::srgb(1., 1., 1.))
         .set_width(3)
         .set_height(3)
@@ -1848,12 +1845,12 @@ fn click_verdicts_split_bubbling_from_default() {
         let inner_runs = Rc::clone(&inner_runs);
         let outer_runs = Rc::clone(&outer_runs);
 
-        StyledBox::new()
+        Container::new()
           .handle_click(move || {
             outer_runs.set(outer_runs.get() + 1);
           })
           .set_child(
-            StyledBox::new()
+            Container::new()
               .handle_click(move || {
                 inner_runs.set(inner_runs.get() + 1);
 
@@ -1908,8 +1905,7 @@ fn grid_placement_spans_tracks() {
     tui::mount(|| {
       Grid::uniform(2)
         .set_children((
-          GridCell::new(StyledBox::new().set_children((Text::new("wide"),)))
-            .set_column(Line::span(2)),
+          GridCell::new(Container::new().set_child(Text::new("wide"))).set_column(Line::span(2)),
           Text::new("l"),
           Text::new("r"),
         ))
@@ -1931,13 +1927,11 @@ fn flex_grow_distributes_space() {
       Row::new()
         .set_children((
           Flexible::new(
-            StyledBox::new()
+            Container::new()
               .set_color(Color::srgb(0.2, 0.2, 0.8))
-              .set_children((Text::new("a"),)),
+              .set_child(Text::new("a")),
           ),
-          StyledBox::new()
-            .set_width(3)
-            .set_children((Text::new("b"),)),
+          Container::new().set_width(3).set_child(Text::new("b")),
         ))
         .into_any()
         .build()
@@ -1957,9 +1951,9 @@ fn percent_width_resolves_against_parent() {
     tui::mount(|| {
       Row::new()
         .set_children((
-          StyledBox::new()
+          Container::new()
             .set_width(Dimension::Fraction(0.5))
-            .set_children((Text::new("half"),)),
+            .set_child(Text::new("half")),
           Text::new("x"),
         ))
         .into_any()
@@ -1978,7 +1972,7 @@ fn percent_width_resolves_against_parent() {
 fn scroll_offsets_survive_a_snapshot_roundtrip() {
   fn build() {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(6)
         .set_height(4)
         .set_overflow(Overflow::Auto)
@@ -2054,7 +2048,7 @@ fn dev_notice_modal_presents_and_dismisses() {
 fn drag_selects_and_copies_the_source_flow() {
   let (colors, menu, copied) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(8)
         .set_child(Text::new("alpha beta gamma").set_selectable(true))
         .into_any()
@@ -2287,31 +2281,35 @@ fn escape_closes_the_menu_then_clears_the_selection() {
 fn wheel_target_latches_until_the_pointer_moves() {
   let (latched, retargeted) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_child(
-          Column::new()
+          Container::new()
             .set_height(4)
             .set_overflow(Overflow::Auto)
-            .set_children((
-              Text::new("top0"),
-              Text::new("top1"),
-              Text::new("top2"),
-              Text::new("top3"),
-              Column::new()
-                .set_height(4)
-                .set_min_height(4)
-                .set_width(10)
-                .set_overflow(Overflow::Auto)
-                .set_children(
-                  (0..8)
-                    .map(|index| Text::new(format!("inner{index}")))
-                    .collect::<Vec<_>>(),
-                ),
-              Text::new("bottom0"),
-              Text::new("bottom1"),
-              Text::new("bottom2"),
-              Text::new("bottom3"),
-            )),
+            .set_child(
+              Column::new().set_children((
+                Text::new("top0"),
+                Text::new("top1"),
+                Text::new("top2"),
+                Text::new("top3"),
+                Container::new()
+                  .set_height(4)
+                  .set_min_height(4)
+                  .set_width(10)
+                  .set_overflow(Overflow::Auto)
+                  .set_child(
+                    Column::new().set_children(
+                      (0..8)
+                        .map(|index| Text::new(format!("inner{index}")))
+                        .collect::<Vec<_>>(),
+                    ),
+                  ),
+                Text::new("bottom0"),
+                Text::new("bottom1"),
+                Text::new("bottom2"),
+                Text::new("bottom3"),
+              )),
+            ),
         )
         .into_any()
         .build()
@@ -2385,29 +2383,33 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
 fn wheel_gesture_holds_at_the_target_limit_then_chains() {
   let (held, chained) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_child(
-          Column::new()
+          Container::new()
             .set_height(4)
             .set_overflow(Overflow::Auto)
-            .set_children((
-              Column::new()
-                .set_height(2)
-                .set_min_height(2)
-                .set_width(10)
-                .set_overflow(Overflow::Auto)
-                .set_children(
-                  (0..4)
-                    .map(|index| Text::new(format!("inner{index}")))
-                    .collect::<Vec<_>>(),
-                ),
-              Text::new("bottom0"),
-              Text::new("bottom1"),
-              Text::new("bottom2"),
-              Text::new("bottom3"),
-              Text::new("bottom4"),
-              Text::new("bottom5"),
-            )),
+            .set_child(
+              Column::new().set_children((
+                Container::new()
+                  .set_height(2)
+                  .set_min_height(2)
+                  .set_width(10)
+                  .set_overflow(Overflow::Auto)
+                  .set_child(
+                    Column::new().set_children(
+                      (0..4)
+                        .map(|index| Text::new(format!("inner{index}")))
+                        .collect::<Vec<_>>(),
+                    ),
+                  ),
+                Text::new("bottom0"),
+                Text::new("bottom1"),
+                Text::new("bottom2"),
+                Text::new("bottom3"),
+                Text::new("bottom4"),
+                Text::new("bottom5"),
+              )),
+            ),
         )
         .into_any()
         .build()
@@ -2578,7 +2580,7 @@ fn hover_cursor_defaults_follow_the_content() {
 fn restored_scroll_rebuilds_a_lazy_column_window() {
   fn build() {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_child(
           LazyColumn::new(1, || 1000, |index| Text::new(format!("row {index}")))
             .set_overscan(2)
@@ -2839,7 +2841,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
 fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
   let (frame, colors, copied) = with_driver(|| {
     tui::mount(|| {
-      StyledBox::new()
+      Container::new()
         .set_width(12)
         .set_child(
           RichText::new([
@@ -2882,29 +2884,141 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
   assert_eq!(copied.as_deref(), Some("plain red and docs"));
 }
 
-/// A view implementing the surface traits over a `StyledBox` field offers the whole
-/// vocabulary through two-line accessors, exactly as a built-in container does.
+/// A sized container fills its child to the content box; an unsized one hugs it.
 #[test]
-fn surface_traits_forward_to_the_styled_box() {
+fn a_container_fills_when_sized_and_hugs_when_not() {
+  let sized = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(9)
+        .set_height(3)
+        .set_border(Color::srgb(1., 1., 1.))
+        .set_child(Container::new().set_color(Color::srgb(1., 0., 0.)))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_colors(9, 3)
+  });
+
+  // The inner container carries no size of its own, so the single cell stretches it
+  // across the outer box's content area: the row between the borders is all fill.
+  assert_eq!(
+    sized[9 + 1].1,
+    Some((255, 0, 0)),
+    "the child fills the width"
+  );
+  assert_eq!(sized[9 + 7].1, Some((255, 0, 0)), "out to the far edge");
+
+  // Inside a row the container is content-sized, so the track hugs the child rather
+  // than filling: the border closes right around the text.
+  let hugged = with_driver(|| {
+    tui::mount(|| {
+      Row::new()
+        .set_item_alignment(ItemAlignment::Start)
+        .set_child(
+          Container::new()
+            .set_border(Color::srgb(1., 1., 1.))
+            .set_child(Text::new("hi")),
+        )
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(9, 4)
+  });
+
+  assert_eq!(hugged, "┌──┐\n│hi│\n└──┘\n\n", "an unsized container hugs");
+}
+
+/// A container places a child that fills neither axis by its alignment.
+#[test]
+fn a_container_aligns_its_child() {
+  let rendered = with_driver(|| {
+    tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(3)
+        .set_alignment(Alignment {
+          horizontal: ItemAlignment::End,
+          vertical: ItemAlignment::End,
+        })
+        .set_child(Text::new("ab"))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(6, 3)
+  });
+
+  assert_eq!(rendered, "\n\n    ab\n", "the child sits at the far corner");
+}
+
+/// A layout property varies by condition without a closure, so the terminal and the
+/// web express responsiveness the same declarative way.
+#[test]
+fn layout_properties_vary_by_condition() {
+  let wide = with_driver(|| {
+    tui::mount(|| {
+      Row::new()
+        .set_spacing(1)
+        .set_spacing_when(Condition::MinWidth(10), 3)
+        .set_children((Text::new("ab"), Text::new("cd")))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(12, 2)
+  });
+  let narrow = with_driver(|| {
+    tui::mount(|| {
+      Row::new()
+        .set_spacing(1)
+        .set_spacing_when(Condition::MinWidth(10), 3)
+        .set_children((Text::new("ab"), Text::new("cd")))
+        .into_any()
+        .build()
+    });
+
+    tui::render_to_text(8, 2)
+  });
+
+  assert_eq!(wide, "ab   cd\n\n", "the wide condition holds");
+  assert_eq!(narrow, "ab cd\n\n", "the base spacing holds below it");
+}
+
+/// The equal-footing gate: a layout view written outside the facade, against its
+/// public API alone, matches the built-in it parallels feature for feature—typed
+/// children (a [`Flexible`] wrapper included) and its own layout knob—rendering
+/// cell-for-cell identically.
+#[test]
+fn a_third_party_layout_view_matches_the_built_in() {
   #[must_use]
-  struct Framed {
-    base: StyledBox,
+  struct Toolbar {
+    base: LayoutBox<skene_core::FlexChild>,
   }
 
-  impl HasSize for Framed {
-    fn size_box(&mut self) -> &mut StyledBox {
-      &mut self.base
+  impl Toolbar {
+    fn new() -> Self {
+      Self {
+        base: LayoutBox::new(Layout::Flex {
+          direction: skene_core::FlexDirection::Row,
+        }),
+      }
+    }
+
+    fn set_spacing(mut self, spacing: u32) -> Self {
+      self.base = self.base.set_spacing(skene_core::Spacing {
+        row: 0,
+        column: spacing,
+      });
+
+      self
     }
   }
 
-  impl HasDecoration for Framed {
-    fn decoration_box(&mut self) -> &mut StyledBox {
-      &mut self.base
-    }
-  }
-
-  impl HasChildren<tui::TuiOps> for Framed {
-    type Kind = skene_core::PlainChild;
+  impl HasChildren<tui::TuiOps> for Toolbar {
+    type Kind = skene_core::FlexChild;
 
     fn set_children_to(mut self, children: tui::Children) -> Self {
       self.base = self.base.set_children_to(children);
@@ -2913,66 +3027,45 @@ fn surface_traits_forward_to_the_styled_box() {
     }
   }
 
-  impl View for Framed {
+  impl View for Toolbar {
     fn build(self) -> skene_core::NodeId {
       self.base.build()
     }
   }
 
-  let rendered = with_driver(|| {
+  let third_party = with_driver(|| {
     tui::mount(|| {
-      Framed {
-        base: StyledBox::new(),
-      }
-      .set_width(7)
-      .set_border(Color::srgb(1., 1., 1.))
-      .set_children((Text::new("hi"),))
-      .into_any()
-      .build()
+      Toolbar::new()
+        .set_spacing(1)
+        .set_children((
+          Text::new("ab"),
+          Flexible::new(Text::new("cd")),
+          Text::new("ef"),
+        ))
+        .into_any()
+        .build()
     });
 
-    tui::render_to_text(9, 4)
+    tui::render_to_text(14, 3)
   });
-
-  assert_eq!(rendered, "┌─────┐\n│hi   │\n│     │\n└─────┘\n");
-}
-
-/// A wrapper implementing one surface trait offers exactly that group; the others are
-/// never generated, and the implemented one still forwards.
-#[test]
-fn a_single_surface_trait_narrows_the_wrapper() {
-  #[must_use]
-  struct Tinted {
-    inner: StyledBox,
-  }
-
-  impl HasDecoration for Tinted {
-    fn decoration_box(&mut self) -> &mut StyledBox {
-      &mut self.inner
-    }
-  }
-
-  impl View for Tinted {
-    fn build(self) -> skene_core::NodeId {
-      self.inner.build()
-    }
-  }
-
-  let colors = with_driver(|| {
+  let built_in = with_driver(|| {
     tui::mount(|| {
-      Tinted {
-        inner: StyledBox::new().set_width(2).set_height(1),
-      }
-      .set_color(Color::srgb(1., 0., 0.))
-      .into_any()
-      .build()
+      Row::new()
+        .set_spacing(1)
+        .set_children((
+          Text::new("ab"),
+          Flexible::new(Text::new("cd")),
+          Text::new("ef"),
+        ))
+        .into_any()
+        .build()
     });
 
-    tui::render_to_colors(3, 2)
+    tui::render_to_text(14, 3)
   });
 
-  assert_eq!(colors[0].1, Some((255, 0, 0)), "the fill forwards");
-  assert_eq!(colors[2].1, None, "the box ends at the width");
+  assert_eq!(third_party, built_in);
+  assert!(third_party.contains("ab"), "the frame painted content");
 }
 
 /// A view implementing `HasFocus` over a raw control forwards focus behavior through
@@ -3010,126 +3103,4 @@ fn has_focus_forwards_through_a_raw_control() {
   });
 
   assert!(focused, "autofocus forwards through the wrapper");
-}
-
-/// The equal-footing gate: a layout view written outside the facade, against its
-/// public API alone, matches the built-in it wraps feature for feature—the surface
-/// traits, typed children (a [`Flexible`] wrapper included), and its own layout knob—
-/// rendering cell-for-cell identically to the built-in.
-#[test]
-fn a_third_party_layout_view_matches_the_built_in() {
-  #[must_use]
-  struct Toolbar {
-    base: Row,
-  }
-
-  impl Toolbar {
-    fn new() -> Self {
-      Self { base: Row::new() }
-    }
-
-    fn set_spacing(mut self, spacing: u32) -> Self {
-      self.base = self.base.set_spacing(spacing);
-
-      self
-    }
-  }
-
-  impl HasSize for Toolbar {
-    fn size_box(&mut self) -> &mut StyledBox {
-      self.base.size_box()
-    }
-  }
-
-  impl HasDecoration for Toolbar {
-    fn decoration_box(&mut self) -> &mut StyledBox {
-      self.base.decoration_box()
-    }
-  }
-
-  impl HasEvents for Toolbar {
-    fn events_box(&mut self) -> &mut StyledBox {
-      self.base.events_box()
-    }
-  }
-
-  impl HasChildren<tui::TuiOps> for Toolbar {
-    type Kind = skene_core::FlexChild;
-
-    fn set_children_to(mut self, children: tui::Children) -> Self {
-      self.base = self.base.set_children_to(children);
-
-      self
-    }
-  }
-
-  impl View for Toolbar {
-    fn build(self) -> skene_core::NodeId {
-      self.base.build()
-    }
-  }
-
-  let third_party = with_driver(|| {
-    tui::mount(|| {
-      Toolbar::new()
-        .set_spacing(1)
-        .set_border(Color::srgb(1., 1., 1.))
-        .set_children((
-          Text::new("ab"),
-          Flexible::new(Text::new("cd")),
-          Text::new("ef"),
-        ))
-        .into_any()
-        .build()
-    });
-
-    tui::render_to_text(14, 4)
-  });
-  let built_in = with_driver(|| {
-    tui::mount(|| {
-      Row::new()
-        .set_spacing(1)
-        .set_border(Color::srgb(1., 1., 1.))
-        .set_children((
-          Text::new("ab"),
-          Flexible::new(Text::new("cd")),
-          Text::new("ef"),
-        ))
-        .into_any()
-        .build()
-    });
-
-    tui::render_to_text(14, 4)
-  });
-
-  assert_eq!(third_party, built_in);
-  assert!(third_party.contains("ab"), "the frame painted content");
-}
-
-/// A Simple card carries the whole box surface: sizing and decoration land on its
-/// column, overriding the default look property by property.
-#[test]
-fn simple_card_takes_the_full_surface() {
-  let rendered = with_driver(|| {
-    tui::mount(|| {
-      SimpleCard::new()
-        .set_width(8)
-        .set_padding(Inset::default())
-        .set_border_glyphs(BorderGlyphs::ASCII)
-        .set_children((Text::new("hi"),))
-        .into_any()
-        .build()
-    });
-
-    tui::render_to_text(10, 4)
-  });
-
-  assert!(
-    rendered.starts_with("+------+"),
-    "the glyph override reaches the card's border: {rendered:?}",
-  );
-  assert!(
-    rendered.contains("|hi"),
-    "content sits inside: {rendered:?}"
-  );
 }

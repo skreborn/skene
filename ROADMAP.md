@@ -503,54 +503,53 @@ sink are just different sinks for the same paths.)
 - **View transitions (web)**: best-effort—`document.startViewTransition` wrapping SPA
   route changes and `@view-transition` in generated CSS for MPA/SSG navigations,
   degrading to instant swaps where the browser lacks support.
-- **`StyledBox` the primitive, `Container` a thin single-child wrapper, and the
-  forwarding published.** Two changes that only make sense together.
-  - **The primitive has its own name—done.** The composable that owns the shared box
-    surface—sizing, margin, padding, offset, background, border, radius, shadow, cursor,
-    overflow, variants, events, children—is `StyledBox`, pairing with the
-    `BoxStyle`/`BoxProps` vocabulary it carries, **public** in both facades and wrapped
-    by every layout view. (Rejected: `Box` itself, which a prelude glob would shadow
-    over `std`'s, breaking `Box::new` in user files; `Surface`, which already means
-    "the set of builder methods" here; `Frame`, taken by the terminal's painted frames;
-    `DecoratedBox`, Flutter's name but blind to the sizing and events this also holds.)
-  - **The forwarding surfaces—done, as traits.** The strong-form "never a trait" rule
-    was wrong: per-property absence would need a derive, but nothing real selects per
-    property—containers take whole groups, Simple views withhold exactly the styling
-    group—so group granularity suffices, and traits win. The shape mirrors
-    `HasChildren`: `HasSize`, `HasDecoration`, and `HasEvents` each require one
-    accessor (`size_box`/`decoration_box`/`events_box`, returning `&mut StyledBox`)
-    and provide every builder on top; `HasFocus` and `HasStyle` do the same over a
-    control's `FocusCore`/`StyleCore`, public structs with private fields split out of
-    `ControlBase`. Provided bodies write the box's `pub(crate)` fields directly—trait
-    defaults resolve visibility at the definition site, the capability macro
-    expansions lacked—so the surface is defined exactly once: `StyledBox` itself
-    implements the traits through identity accessors and keeps no inherent setters.
-    Multi-layer wrapping composes through the public accessor (`SimpleCheckbox`
-    forwards `focus_core` to its raw control's), and a third-party wrapper is a
-    two-line impl per group, no macro anywhere. A derive-based approach
-    (`#[derive(BoxSurface)]` expanding to exported vocabulary macros) was built first
-    and replaced by this—the traits delete the entire apparatus: the vocabulary
-    macros, the gate/check proc-macro helpers, the derive entry points, and the
-    `extern crate self` aliases. Costs accepted: the traits arrive via imports (the
-    preludes carry them), and rustdoc lists the methods under trait implementations
-    rather than inherently.
-  - **`Container` single-child—done.** `Container` is decoration plus sizing around one
-    `set_child`—no `Children`, no `derive_children`, no layout of its own; a thin
-    wrapper over `StyledBox` built from the public surface alone, so it doubles as the
-    reference for a third-party wrapper. No view in the vocabulary offers multi-child
-    normal flow: `Column` covers the vertical case, `Row` the horizontal, `Wrap` on
-    either the wrapping one; the flow substrate remains on `StyledBox`, which layout
-    views feed their children through. The sweep cost nothing—every former use in both
-    galleries and the router example was already single-child or childless.
-  - **First-party adoption—done.** `SimpleCard` holds its `Column` and implements the
-    surface traits over it, so the full box surface reaches the card—its default look
-    applied up front, every property overridable—closing the last hand-forwarded
-    subset. The Simple controls ride `HasFocus` the same way.
-  - **The equal-footing gate—held.** A layout view written in an external test crate,
-    against the public API alone—the surface traits, typed `FlexChild` children (a
-    `Flexible` wrapper included), its own spacing knob—renders cell-for-cell identical
-    to the built-in `Row` it wraps. The SSR snapshot stays watched wherever a layout's
-    node shifts.
+- **Only `Container` is decorated; layouts lay out.** The Flutter split, settled after
+  weighing the alternatives: `Container` is the one freely-stylable box—decoration,
+  sizing, events, and a single child—while `Row`/`Column`/`Grid`/`Stack` carry layout
+  properties and nothing else. **Spiked on the terminal facade; the GUI half remains.**
+  - **The forwarding problem dissolves.** With one decorated view there is nothing to
+    forward: `HasSize`/`HasDecoration`/`HasEvents` are deleted and their methods are
+    inherent on `Container`. `HasFocus`/`HasStyle` survive—orthogonal to this split,
+    since every `Simple*` still wraps a `Raw*`—and go if the control redesign below
+    lands. The earlier `BoxSurface` derive and its exported vocabulary macros are gone
+    with them; the internal all-fields node builder is `pub(crate) BoxNode`.
+  - **Equal footing is kept by `LayoutBox`**, public and carrying the full layout
+    vocabulary over a child-kind parameter, so a third-party layout view is built from
+    it exactly as `Row` is built from the node. A test in an external crate builds a
+    `Toolbar` on it—typed `FlexChild` children, a `Flexible` wrapper, its own spacing
+    knob—and renders cell-for-cell identically to `Row`. The one asymmetry to note: the
+    built-ins write their properties straight into the private node, so their forwarding
+    is a line per property against the public route's three.
+  - **Responsiveness moved to per-property variants.** `set_spacing_when(condition,
+    spacing)` joins `set_spacing`/`derive_spacing`, so a layout keeps declarative
+    responsiveness—compiled to CSS media queries on the web, with no JS—without carrying
+    a whole `BoxStyle`. It also fixes a leak: a whole-style variant could set properties
+    the view does not honor, silently doing nothing, where a per-property setter exists
+    only where the property does. Storage is unchanged (each pushes a one-property
+    variant), so the driver mapping is untouched. Accepted cost: a condition affecting
+    two properties is now two calls.
+  - **The fill rule, verified in real frames.** `Container` realizes as `Layout::Single`
+    —one `1fr` track each way—so a sized container fills its child to the content box
+    and an unsized one hugs it. Two findings the spike turned up, both now pinned by
+    tests: `minmax(0, 1fr)` reports a *zero* max-content contribution, so an auto-sized
+    parent measures the container as empty—plain `1fr` keeps the intrinsic contribution;
+    and a scrolling container must hold its child at natural size (`align-items: start`)
+    rather than stretching it, or nothing overflows for the scroll region to measure.
+  - **`Container` gained `set_alignment`**, the two-axis placement of its one child. The
+    single-cell grid gives it for free, and without it centering one child would mean
+    wrapping it in a `Row` for `item_alignment`.
+  - **What layouts keep besides arrangement: padding**, since a layout's inset from its
+    own children is distinct from a wrapping container's inset from the layout. Overflow
+    stayed with `Container`—it is the box that carries a size, so it is the box that
+    scrolls.
+  - **Remaining.** The GUI facade's half of all the above (it still has `StyledBox` and
+    the box traits); per-property variants on the GUI vocabulary; the control redesign
+    (`RawButton::new(|| -> View)`, `RawTextField::new(|| -> Decoration)`, a
+    driver-specific `WebSlider` a library may opt into for the no-JS path), which needs
+    an answer for who supplies the behavior when the returned view is not the native
+    control—and may simply retire `RawSlider`/`RawCheckbox`/`RawRadio` if a headless
+    shell over an author-supplied view adds nothing; and `SimpleCard`, which now builds
+    its `Container` at build time and so exposes only its own knobs.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

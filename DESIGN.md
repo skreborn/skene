@@ -94,7 +94,7 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   so there is no `Any` and no downcast.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
-  views in one crate and drivers in others, `impl View for StyledBox` can live in neither
+  views in one crate and drivers in others, `impl View for Container` can live in neither
   driver, so separate driver crates are impossible under per-platform realization. Typing
   the vocabulary moves the platform decision (CSS text, native styles) into the driver
   while realization is written once above it.
@@ -119,9 +119,9 @@ Form controls come in two layers, in each facade.
 - **The `Raw*` controls** (`RawButton`, `RawCheckbox`, `RawRadio`, `RawPicker`,
   `RawSlider`, `RawTextField`, GUI-only `RawTextEditor`) are the unstyled, infinitely
   extensible bases every component library builds on: the platform's full keyboard,
-  focus, and accessibility behavior, the shared builder surface (`ControlBase` +
-  `control_surface!`), two-way signal binding, and zero opinion about looks beyond the
-  built-in interaction feedback.
+  focus, and accessibility behavior, the shared builder surface (`ControlBase`, reached
+  through `HasFocus`/`HasStyle`), two-way signal binding, and zero opinion about looks
+  beyond the built-in interaction feedback.
 - **The `Simple*` components** (`SimpleButton` with its `SimpleVariant` emphases,
   `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`,
   `SimpleTextField`, GUI-only `SimpleTextEditor`) are the first-party ready-made
@@ -170,10 +170,10 @@ the same sharing shape as `TreeOps`—never feature-gated variants, which cargo'
 feature unification would break in any build containing both facades.
 
 - **Layout** runs on taffy at full capability, statically constrained per layout:
-  each mode is its own container view (`Row`/`Column`, `Grid`, `Stack`) wrapping the
-  public `StyledBox`—so a third-party layout is built from the same parts—with
-  `Container` decorating exactly one child and laying nothing out, exposing only what
-  it honors—a `Row` has `arrangement`,
+  each mode is its own container view (`Row`/`Column`, `Grid`, `Stack`) carrying layout
+  properties alone—a third-party layout is built from the public `LayoutBox` the same
+  way—while `Container` is the one decorated box, sizing and styling exactly one child.
+  Each exposes only what it honors—a `Row` has `arrangement`,
   `item_alignment`, `spacing`, `wrap`; a `Grid` has `columns`/`rows`, implicit
   tracks, `flow`, and two-axis arrangement and `Alignment`. Per-child properties ride
   in wrapper views the matching container alone accepts (`Flexible` with
@@ -276,7 +276,7 @@ the event-loop proxy, and a loop-integrated timer is fair game here (the loop is
 
 ### TUI (`skene-tui`)
 
-A facade in its own right, not a driver of the GUI vocabulary. Its `StyledBox`, `Text`
+A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
 and `RawTextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
 `bool` bold, a border is one cell of box-drawing characters in a color, and conditions
 are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,

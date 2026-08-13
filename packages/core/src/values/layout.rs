@@ -18,4 +18,7 @@ pub enum Layout {
   Grid,
   /// Children overlap in one cell, stacked in order (last on top).
   Stack,
+  /// One cell holding exactly one child: the child fills the box when the box is
+  /// sized, and the box hugs the child when it is not.
+  Single,
 }

@@ -2,11 +2,10 @@
 
 use std::rc::Rc;
 
-use skene_core::{HasChildren, IntoView, Layout, NodeId, Overflow, View, item_window};
+use skene_core::{IntoView, Layout, NodeId, Overflow, View, item_window};
 use skene_reactive::{Get, Memo, Set, Signal};
 
 use crate::{
-  HasSize,
   events::ScrollEvent,
   props::{BoxStyle, Condition},
   state::NodeKind,
@@ -40,7 +39,7 @@ impl LazyColumn {
       item_height,
       count: Rc::new(count),
       item: Rc::new(move |index| {
-        crate::StyledBox::new()
+        crate::Container::new()
           .set_height(item_height)
           .set_child(item(index))
           .build()
@@ -129,11 +128,11 @@ impl View for LazyColumn {
     let extent = move |items: usize| {
       u32::try_from(items.saturating_mul(item_height as usize)).unwrap_or(u32::MAX)
     };
-    let leading = crate::StyledBox::new()
+    let leading = crate::Container::new()
       .derive_height(move || extent(window.get().0.start))
       .build();
     let items = crate::create_group();
-    let trailing = crate::StyledBox::new()
+    let trailing = crate::Container::new()
       .derive_height(move || {
         let (window, count) = window.get();
 

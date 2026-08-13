@@ -18,6 +18,7 @@
 
 pub mod prelude;
 
+mod box_node;
 mod container;
 mod containers;
 mod control;
@@ -26,6 +27,7 @@ mod detect;
 mod dev;
 mod events;
 mod focus;
+mod layout_box;
 mod lazy;
 mod overlay;
 mod paint;
@@ -39,7 +41,6 @@ mod selection;
 mod simple;
 mod state;
 mod style;
-mod styled_box;
 mod surface;
 mod task;
 mod terminal;
@@ -103,14 +104,14 @@ pub use crate::{
   control::{FocusCore, StyleCore},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
+  layout_box::LayoutBox,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextField},
   resource::Resource,
   routing::install_router,
-  styled_box::StyledBox,
-  surface::{HasDecoration, HasEvents, HasFocus, HasSize, HasStyle},
+  surface::{HasFocus, HasStyle},
   task::spawn,
   text::{RichText, Span, Text},
   theme::{ControlTheme, TextTheme},

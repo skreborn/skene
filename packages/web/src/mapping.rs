@@ -57,6 +57,12 @@ fn layout_declarations(layout: Layout) -> Declarations {
       },
     ),
     Layout::Grid => Declarations::new().set("display", "grid"),
+    // One track each way: `1fr` fills a sized box and hugs an unsized one, and the
+    // zero minimum lets a scrolling or shrinking child fit.
+    Layout::Single => Declarations::new()
+      .set("display", "grid")
+      .set("grid-template-columns", "minmax(0, 1fr)")
+      .set("grid-template-rows", "minmax(0, 1fr)"),
     // The stack is the containing block its pinned children position against.
     Layout::Stack => Declarations::new()
       .set("display", "grid")

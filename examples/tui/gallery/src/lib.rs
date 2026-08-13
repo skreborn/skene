@@ -14,27 +14,31 @@ pub fn app() -> impl IntoView {
 }
 
 fn gallery() -> impl IntoView {
-  Column::new()
-    .set_item_alignment(ItemAlignment::Center)
+  Container::new()
     .set_overflow(Overflow::Auto)
     .set_color(SimplePalette::background())
     .set_child(
       Column::new()
-        .set_spacing(1)
-        .set_max_width(56)
-        .set_padding(Inset::symmetric(2, 1))
-        .set_children((
-          Text::new("GALLERY")
-            .set_bold(true)
-            .set_color(SimplePalette::muted_foreground()),
-          text(),
-          buttons(),
-          toggles(),
-          inputs(),
-          borders(),
-          layouts(),
-          list(),
-        )),
+        .set_item_alignment(ItemAlignment::Center)
+        .set_child(
+          Container::new().set_max_width(56).set_child(
+            Column::new()
+              .set_spacing(1)
+              .set_padding(Inset::symmetric(2, 1))
+              .set_children((
+                Text::new("GALLERY")
+                  .set_bold(true)
+                  .set_color(SimplePalette::muted_foreground()),
+                text(),
+                buttons(),
+                toggles(),
+                inputs(),
+                borders(),
+                layouts(),
+                list(),
+              )),
+          ),
+        ),
     )
 }
 
@@ -201,22 +205,24 @@ fn layouts() -> impl IntoView {
         swatch(0.40),
         swatch(0.30),
       )),
-      Stack::new()
+      Container::new()
         .set_height(5)
         .set_color(SimplePalette::secondary())
         .set_child(
-          Pinned::new(
-            Container::new()
-              .set_padding(Inset::horizontal(1))
-              .set_color(SimplePalette::card())
-              .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
-          )
-          .set_edges(skene_tui::core::Inset {
-            top: Dimension::Auto,
-            right: Dimension::Length(1),
-            bottom: Dimension::Length(1),
-            left: Dimension::Auto,
-          }),
+          Stack::new().set_child(
+            Pinned::new(
+              Container::new()
+                .set_padding(Inset::horizontal(1))
+                .set_color(SimplePalette::card())
+                .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
+            )
+            .set_edges(skene_tui::core::Inset {
+              top: Dimension::Auto,
+              right: Dimension::Length(1),
+              bottom: Dimension::Length(1),
+              left: Dimension::Auto,
+            }),
+          ),
         ),
       Row::new().set_children((
         SimpleButton::new("Open a modal")

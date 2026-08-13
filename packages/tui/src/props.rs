@@ -461,7 +461,7 @@ impl BoxStyle {
 /// honors.
 ///
 /// Everything box-shaped—sizing, padding, borders, backgrounds, shadows—belongs to a
-/// wrapping [`StyledBox`](crate::StyledBox); a control is a glyph and styles like one.
+/// wrapping [`BoxNode`](crate::box_node::BoxNode); a control is a glyph and styles like one.
 #[derive(Clone, Copy, Default, PartialEq)]
 #[must_use]
 pub struct ControlStyle {

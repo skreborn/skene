@@ -45,16 +45,16 @@
   matching container through its child kind (`HasChildren::Kind`). Wrappers create no
   node; they annotate their child's. `Container` is decoration and sizing around
   **exactly one** child—no multi-child flow; `Column`, `Row`, and `Wrap` cover those
-  cases. The shared surfaces live once as accessor traits mirroring `HasChildren`:
-  `HasSize`, `HasDecoration`, and `HasEvents` provide every builder over one required
-  accessor to the wrapped—**public**, per-facade—`StyledBox`, and `HasFocus`/`HasStyle`
-  do the same over a control's public cores. A wrapper implements a two-line accessor
-  per group; forwarding is never hand-duplicated and never macro-generated. Absence is
-  per group, not per property: a view that must not be sized simply does not implement
-  `HasSize`. `Container` is the vocabulary's plain box—decoration and sizing around its
-  one `set_child`—while document flow lives only on the `StyledBox` substrate the
-  containers are built from. A third-party layout view is built exactly as `Row` is,
-  from that public surface alone; there is no privileged base.
+  cases. **Only `Container` is decorated**: it is the one freely-stylable box—
+  decoration, sizing, events, alignment, and a single child—and every layout view
+  carries layout properties plus its own padding and nothing else, so decorating a
+  layout means wrapping it. Conditional styling is per property (`set_spacing_when`)
+  rather than a whole style under one condition, which keeps a variant expressible only
+  where the property is. There is no box-surface forwarding to solve, and no trait for
+  it; `HasFocus`/`HasStyle` remain only because each `Simple*` wraps a `Raw*`. A
+  third-party layout view is built from the public `LayoutBox` exactly as `Row` is;
+  there is no privileged base. (ROADMAP work: the terminal facade is converted, the GUI
+  facade is not.)
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.
@@ -122,7 +122,7 @@
   built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
   view against the driver's escape hatch.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `handle_<event>` for an event handler (e.g. `StyledBox::handle_click`). A driver
+  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.
 - The layout vocabulary rule extends to the whole surface: views, controls, and
   composition helpers take the platform-native frameworks' names (`TextField`,

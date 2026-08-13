@@ -40,11 +40,18 @@ impl View for AnyView {
 }
 
 /// A value that can be turned into a view.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a complete view",
+  label = "not a complete view",
+  note = "check that it is indeed a view type",
+  note = "see its documentation to determine what completes it"
+)]
 pub trait IntoView {
   /// Converts this value into a view.
   fn into_view(self) -> AnyView;
 }
 
+#[diagnostic::do_not_recommend]
 impl<V: View> IntoView for V {
   #[inline(always)]
   fn into_view(self) -> AnyView {

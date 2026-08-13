@@ -548,7 +548,14 @@ sink are just different sinks for the same paths.)
     exchanges `NoChild` for the view, returning `Wrapper<AnyView>`. Only that form
     implements `View`/`IntoChildOf`, so forgetting the child is a compile error rather
     than an empty render—no `Option`, no placeholder, no unsafe, and the property
-    setters stay generic over the state so ordering is free.
+    setters stay generic over the state so ordering is free. The error explains itself:
+    `IntoChildOf` and `IntoChildren` carry `#[diagnostic::on_unimplemented]`, and
+    `#[diagnostic::do_not_recommend]` on the blanket `impl<V: IntoView> IntoChildOf for V`
+    keeps the blame on the child bound instead of burying it in `View`—which also makes
+    rustc name the missing piece, "expected `AnyView`, found `NoChild`". The wording
+    stays generic ("complete") so a later required property reads the same way. Only
+    traits that appear as *argument or return bounds* are worth annotating: a missing
+    trait method is `E0599`, which never consults the attribute.
   - **Remaining.** The GUI facade's half of all the above (it still has `StyledBox` and
     the box traits); per-property variants on the GUI vocabulary; the control redesign
     (`RawButton::new(|| -> View)`, `RawTextField::new(|| -> Decoration)`, a

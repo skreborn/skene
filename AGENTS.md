@@ -104,6 +104,10 @@
 - Apply `#[inline(always)]` wherever appropriate: the framework has a great many tiny functions
   that are best inlined across crate boundaries.
 - Document every public API; comment non-public code only when critical.
+- Give a purpose-built trait a `#[diagnostic::on_unimplemented]` message: these traits
+  exist to express one rule, so a failed bound should state that rule rather than the
+  mechanics. Where a blanket impl would be blamed instead, mark it
+  `#[diagnostic::do_not_recommend]` so the message the author needs is the one shown.
 - Within a type's own `impl` blocks, refer to that type as `Self`, never by name (`Self::ZERO`,
   `Self(value)`, `-> Self`). Its name may still appear for a *different* type, e.g. the source type
   in a `From` impl.

@@ -30,11 +30,20 @@ pub struct GridChild;
 /// Every view is a child of every kind; a facade's wrapper views (`Flexible`,
 /// `Pinned`, `GridCell`) implement only the kind of the container that understands
 /// their properties, so wrapping a child for the wrong container is a compile error.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a compatible and complete view",
+  label = "not a compatible and complete view",
+  note = "check that it is indeed a compatible view type",
+  note = "see its documentation to determine what completes it"
+)]
 pub trait IntoChildOf<Kind> {
   /// Converts this value into the child's view.
   fn into_child(self) -> AnyView;
 }
 
+// Blaming this blanket buries the useful message: a value fails to be a child because
+// it is not a view, and the reason it is not a view is what the author needs told.
+#[diagnostic::do_not_recommend]
 impl<Kind, V: IntoView> IntoChildOf<Kind> for V {
   #[inline(always)]
   fn into_child(self) -> AnyView {
@@ -45,6 +54,11 @@ impl<Kind, V: IntoView> IntoChildOf<Kind> for V {
 /// A value that can be converted into children of kind `Kind`.
 ///
 /// Platform-agnostic: a facade builds its own children type from the resulting views.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a set of children",
+  label = "not a set of children",
+  note = "pass a tuple, `Vec`, or an array of children"
+)]
 pub trait IntoChildren<Kind = PlainChild> {
   /// Converts this value into children.
   fn into_children(self) -> Vec<AnyView>;

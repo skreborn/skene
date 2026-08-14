@@ -533,3 +533,32 @@ fn text_theme_selection_colors_inherit() {
     page.styles(),
   );
 }
+
+/// A widget role serializes as an ARIA role on a plain element, and its reported state
+/// as the matching `aria-*` attributes—so a scriptless client still meets a real
+/// control.
+#[test]
+fn a_widget_role_and_state_serialize_as_aria() {
+  use skene_gui::core::{AccessProp, Role};
+
+  let rendered = render_to_string(|| {
+    Container::new().set_role(Role::Slider).set_accessibility([
+      AccessProp::Value(40.),
+      AccessProp::ValueMin(0.),
+      AccessProp::ValueMax(100.),
+      AccessProp::Label("Volume".to_owned()),
+    ])
+  });
+
+  let body = rendered.body();
+
+  assert!(
+    body.starts_with("<div"),
+    "a widget role stays a plain element"
+  );
+  assert!(body.contains("role=\"slider\""));
+  assert!(body.contains("aria-valuenow=\"40\""));
+  assert!(body.contains("aria-valuemin=\"0\""));
+  assert!(body.contains("aria-valuemax=\"100\""));
+  assert!(body.contains("aria-label=\"Volume\""));
+}

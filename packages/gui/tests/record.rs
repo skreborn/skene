@@ -290,3 +290,27 @@ fn has_focus_forwards_through_a_raw_control() {
 
   assert!(pressed.get(), "the key handler forwards to the control");
 }
+
+/// A widget role and the state it reports land on the node together: the role says what
+/// the control is, the accessibility props say what it currently reports.
+#[test]
+fn a_widget_reports_its_role_and_state() {
+  use skene_gui::core::{AccessProp, Role, Toggle};
+
+  let checked = Signal::new(false);
+  let root = Container::new()
+    .set_role(Role::Checkbox)
+    .derive_accessibility(move || vec![AccessProp::Checked(checked.get().into())])
+    .build();
+
+  assert_eq!(record::role(root), Some(Role::Checkbox));
+  assert_eq!(record::access(root), vec![AccessProp::Checked(Toggle::Off)]);
+
+  checked.set(true);
+
+  assert_eq!(
+    record::access(root),
+    vec![AccessProp::Checked(Toggle::On)],
+    "the reported state follows the signal, and does not accumulate",
+  );
+}

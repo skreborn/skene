@@ -53,6 +53,7 @@ mod ssr;
 // leaf's test teardown.
 #[cfg(target_arch = "wasm32")]
 use skene_core::{
+  AccessProp,
   BoxProp,
   BoxProps,
   ButtonProps,
@@ -68,6 +69,7 @@ use skene_core::{
   SliderProps,
   TextEditorProps,
   TextFieldProps,
+  Toggle,
 };
 
 #[cfg(target_os = "unknown")]
@@ -203,8 +205,14 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     Some(Role::List) => "ul",
     Some(Role::ListItem) => "li",
     Some(Role::Label) => "label",
-    None => "div",
+    // A widget role is an attribute, not an element: no native element carries the role
+    // without also carrying the behavior this control draws for itself.
+    Some(_) | None => "div",
   });
+
+  if let Some(role) = props.role.filter(|role| role.is_widget()) {
+    set_attribute(node, "role", aria_role(role));
+  }
 
   assign_class(node, &mapping::box_template(props));
 
@@ -503,4 +511,50 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
 #[inline(always)]
 pub fn update_text_field(node: NodeId, prop: &BoxProp) {
   override_style(node, &mapping::box_prop_declarations(prop));
+}
+
+/// A widget [`Role`]'s ARIA spelling.
+///
+/// Landmark roles never reach here—they realize as their semantic element instead.
+#[cfg(target_arch = "wasm32")]
+#[must_use]
+fn aria_role(role: Role) -> &'static str {
+  match role {
+    Role::Button => "button",
+    Role::Checkbox => "checkbox",
+    Role::Radio => "radio",
+    Role::RadioGroup => "radiogroup",
+    Role::Slider => "slider",
+    Role::Listbox => "listbox",
+    Role::ListboxOption => "option",
+    Role::Combobox => "combobox",
+    _ => "",
+  }
+}
+
+/// Applies one accessibility property, as the ARIA attribute that carries it.
+///
+/// A driver-level mapping: the vocabulary names the concept, this names it in ARIA.
+#[cfg(target_arch = "wasm32")]
+pub fn update_access(node: NodeId, prop: &AccessProp) {
+  let (name, value) = match prop {
+    AccessProp::Checked(toggle) => (
+      "aria-checked",
+      match toggle {
+        Toggle::On => "true".to_owned(),
+        Toggle::Off => "false".to_owned(),
+        Toggle::Mixed => "mixed".to_owned(),
+      },
+    ),
+    AccessProp::Value(value) => ("aria-valuenow", value.to_string()),
+    AccessProp::ValueMin(value) => ("aria-valuemin", value.to_string()),
+    AccessProp::ValueMax(value) => ("aria-valuemax", value.to_string()),
+    AccessProp::ValueText(text) => ("aria-valuetext", text.clone()),
+    AccessProp::Expanded(state) => ("aria-expanded", state.to_string()),
+    AccessProp::Selected(state) => ("aria-selected", state.to_string()),
+    AccessProp::Disabled(state) => ("aria-disabled", state.to_string()),
+    AccessProp::Label(text) => ("aria-label", text.clone()),
+  };
+
+  set_attribute(node, name, &value);
 }

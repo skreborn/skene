@@ -13,6 +13,7 @@ use std::{cell::RefCell, fmt::Write as _, rc::Rc};
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  AccessProp,
   BoxProp,
   BoxProps,
   BoxStyle,
@@ -105,6 +106,9 @@ struct Node {
   box_overrides: Vec<BoxProp>,
   /// Reactive run-property updates folded in application order.
   run_overrides: Vec<RunProp>,
+  /// Accessibility updates in application order; the last for a property is what the
+  /// widget currently reports.
+  access: Vec<AccessProp>,
   text: String,
   value: String,
   checked: bool,
@@ -120,6 +124,7 @@ impl Node {
       children: Vec::new(),
       box_overrides: Vec::new(),
       run_overrides: Vec::new(),
+      access: Vec::new(),
       text: String::new(),
       value: String::new(),
       checked: false,
@@ -204,6 +209,11 @@ pub fn create_box(props: &BoxProps) -> NodeId {
 /// Records one changed box property, applied over the static style.
 pub fn update_box(node: NodeId, prop: &BoxProp) {
   let _ = with_node(node, |node| node.box_overrides.push(prop.clone()));
+}
+
+/// Records one accessibility update.
+pub fn update_access(node: NodeId, prop: &AccessProp) {
+  let _ = with_node(node, |node| node.access.push(prop.clone()));
 }
 
 /// Records a stack child's placement into its parent's single cell.
@@ -546,6 +556,29 @@ pub fn role(node: NodeId) -> Option<Role> {
     _ => None,
   })
   .flatten()
+}
+
+/// What a widget currently reports: the last update recorded for each property, in
+/// first-set order.
+#[must_use]
+pub fn access(node: NodeId) -> Vec<AccessProp> {
+  fn slot(prop: &AccessProp) -> std::mem::Discriminant<AccessProp> {
+    std::mem::discriminant(prop)
+  }
+
+  with_node(node, |node| {
+    let mut latest: Vec<AccessProp> = Vec::new();
+
+    for prop in &node.access {
+      match latest.iter_mut().find(|held| slot(held) == slot(prop)) {
+        Some(held) => *held = prop.clone(),
+        None => latest.push(prop.clone()),
+      }
+    }
+
+    latest
+  })
+  .unwrap_or_default()
 }
 
 /// A box's layout mode, if the node is a box.

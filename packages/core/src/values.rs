@@ -15,6 +15,7 @@ mod point;
 mod rect;
 mod role;
 mod size;
+mod toggle;
 
 pub use axis::*;
 pub use border::*;
@@ -33,6 +34,7 @@ pub use point::*;
 pub use rect::*;
 pub use role::*;
 pub use size::*;
+pub use toggle::*;
 
 macro_rules! impl_ops {
   ($type:ident { $($field:ident),+ $(,)? }) => {

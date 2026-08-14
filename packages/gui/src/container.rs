@@ -545,6 +545,31 @@ impl Container {
     self
   }
 
+  /// Sets what this widget reports to assistive technology.
+  ///
+  /// Pairs with a widget [`Role`]: the role says what the control is, these say what it
+  /// currently reports. A driver maps them to its own accessibility layer.
+  #[inline(always)]
+  pub fn set_accessibility(
+    mut self,
+    state: impl IntoIterator<Item = skene_core::AccessProp>,
+  ) -> Self {
+    self.node.accessibility = Some(Source::Static(state.into_iter().collect()));
+
+    self
+  }
+
+  /// Derives what this widget reports, re-applied whenever it changes.
+  #[inline(always)]
+  pub fn derive_accessibility(
+    mut self,
+    state: impl Fn() -> Vec<skene_core::AccessProp> + 'static,
+  ) -> Self {
+    self.node.accessibility = Some(Source::Derived(Rc::new(state)));
+
+    self
+  }
+
   /// Sets the semantic role.
   #[inline(always)]
   pub fn set_role(mut self, role: Role) -> Self {

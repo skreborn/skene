@@ -920,3 +920,35 @@ fn links_default_to_blue_and_underline() {
   assert_eq!(computed_style(&root, "color"), "rgb(0, 102, 204)");
   assert_eq!(computed_style(&root, "text-decoration-line"), "underline");
 }
+
+#[wasm_bindgen_test]
+fn a_widget_role_and_state_reach_the_real_dom() {
+  use skene_gui::core::{AccessProp, Role};
+
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  mount(move || {
+    Container::new()
+      .set_role(Role::Checkbox)
+      .derive_accessibility(move || vec![AccessProp::Checked(checked.get().into())])
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "DIV");
+  assert_eq!(element.get_attribute("role").as_deref(), Some("checkbox"));
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("false"),
+  );
+
+  checked.set(true);
+
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("true"),
+    "the attribute follows the signal in the live DOM",
+  );
+}

@@ -67,6 +67,7 @@ pub(crate) struct BoxNode {
   pub(crate) grid_row_placement: Option<Source<Line<GridPlacement>>>,
   pub(crate) grid_column_placement: Option<Source<Line<GridPlacement>>>,
   pub(crate) overflow: Option<Source<Overflow>>,
+  pub(crate) accessibility: Option<Source<Vec<skene_core::AccessProp>>>,
   pub(crate) anchor: Option<crate::Anchor>,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
@@ -123,6 +124,7 @@ impl BoxNode {
       grid_row_placement: None,
       grid_column_placement: None,
       overflow: None,
+      accessibility: None,
       anchor: None,
       variants: Vec::new(),
       transitions: Vec::new(),
@@ -486,6 +488,14 @@ impl skene_core::View for BoxNode {
 
     if let Some(action) = self.scroll_handler {
       driver::handle_scroll(node, action);
+    }
+
+    if let Some(state) = self.accessibility {
+      state.bind(move |state| {
+        for prop in &state {
+          driver::update_access(node, prop);
+        }
+      });
     }
 
     if let Some(anchor) = &self.anchor {

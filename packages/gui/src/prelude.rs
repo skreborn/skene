@@ -77,6 +77,8 @@ pub use crate::{
   Pinned,
   Point,
   RawButton,
+  RawCheckbox,
+  RawSlider,
   RawTextEditor,
   RawTextField,
   Rect,

@@ -96,7 +96,7 @@ pub use crate::{
   layout_box::LayoutBox,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
-  raw::{RawButton, RawTextEditor, RawTextField},
+  raw::{RawButton, RawCheckbox, RawSlider, RawTextEditor, RawTextField},
   surface::{HasFocus, HasStyle},
   text::{RichText, Span, Text, TextStyle, TextTheme},
   web_controls::{WebCheckbox, WebPicker, WebRadio, WebSlider},

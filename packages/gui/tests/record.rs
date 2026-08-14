@@ -314,3 +314,140 @@ fn a_widget_reports_its_role_and_state() {
     "the reported state follows the signal, and does not accumulate",
   );
 }
+
+/// A drawn checkbox supplies behavior and reports state; the child supplies the pixels.
+/// Its node is a plain box carrying the checkbox role, not a native control.
+#[test]
+fn a_drawn_checkbox_reports_and_toggles() {
+  use skene_gui::{
+    RawCheckbox,
+    core::{AccessProp, Role, Toggle},
+  };
+
+  let checked = Signal::new(false);
+  let root = RawCheckbox::new()
+    .bind_checked(checked)
+    .set_label("Subscribed")
+    .set_child(Text::new("mark"))
+    .build();
+
+  assert_eq!(record::role(root), Some(Role::Checkbox));
+  assert_eq!(record::outline(root), "Box\n  Run \"mark\"\n");
+  assert_eq!(
+    record::access(root),
+    vec![
+      AccessProp::Checked(Toggle::Off),
+      AccessProp::Label("Subscribed".to_owned()),
+    ],
+  );
+
+  let _ = record::trigger_click(root);
+
+  assert!(checked.get(), "a click writes the bound signal back");
+  assert_eq!(
+    record::access(root),
+    vec![
+      AccessProp::Checked(Toggle::On),
+      AccessProp::Label("Subscribed".to_owned()),
+    ],
+    "and the reported state follows",
+  );
+}
+
+/// Space toggles a drawn checkbox and Enter does not, matching the browser's own.
+#[test]
+fn a_drawn_checkbox_toggles_on_space_only() {
+  use skene_gui::{RawCheckbox, core::Modifiers};
+
+  let checked = Signal::new(false);
+  let root = RawCheckbox::new()
+    .bind_checked(checked)
+    .set_child(Text::new("mark"))
+    .build();
+  let press = |key: &str| {
+    record::trigger_key_down(
+      root,
+      &skene_gui::core::KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  let prevention = press(" ");
+
+  assert!(checked.get());
+  assert!(prevention.default, "the page must not scroll under it");
+
+  let _ = press("Enter");
+
+  assert!(checked.get(), "Enter leaves a checkbox alone");
+}
+
+/// A drawn slider reports its value and bounds, and the keys move it the way a
+/// browser's range input does: arrows by a step, page keys by ten, Home and End to the
+/// bounds, everything else left alone.
+// Every expected value is a step multiple or a bound, so it is exactly representable
+// and an exact comparison is the assertion rather than an approximation of it.
+#[expect(clippy::float_cmp)]
+#[test]
+fn a_drawn_slider_reports_and_moves_on_keys() {
+  use skene_gui::{
+    RawSlider,
+    core::{AccessProp, KeyEvent, Modifiers, Role},
+  };
+
+  let value = Signal::new(40.0f32);
+  let root = RawSlider::new(0., 100.)
+    .set_step(5.)
+    .bind_value(value)
+    .set_label("Volume")
+    .set_child(Text::new("track"))
+    .build();
+
+  assert_eq!(record::role(root), Some(Role::Slider));
+  assert_eq!(
+    record::access(root),
+    vec![
+      AccessProp::Value(40.),
+      AccessProp::ValueMin(0.),
+      AccessProp::ValueMax(100.),
+      AccessProp::Label("Volume".to_owned()),
+    ],
+  );
+
+  let press = |key: &str| {
+    record::trigger_key_down(
+      root,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  let _ = press("ArrowRight");
+
+  assert_eq!(value.get(), 45., "an arrow moves by one step");
+
+  let _ = press("ArrowDown");
+
+  assert_eq!(value.get(), 40., "down falls, as on the web");
+
+  let _ = press("PageUp");
+
+  assert_eq!(value.get(), 90., "a page key moves by ten steps");
+
+  let _ = press("End");
+
+  assert_eq!(value.get(), 100.);
+
+  let _ = press("Home");
+
+  assert_eq!(value.get(), 0.);
+
+  let prevention = press("a");
+
+  assert_eq!(value.get(), 0., "an unrelated key leaves it alone");
+  assert!(!prevention.default, "and does not swallow the default");
+}

@@ -2,7 +2,15 @@
 //! library builds on—full platform behavior, zero opinion about looks.
 
 mod button;
+mod checkbox;
+mod slider;
 mod text_editor;
 mod text_field;
 
-pub use self::{button::RawButton, text_editor::RawTextEditor, text_field::RawTextField};
+pub use self::{
+  button::RawButton,
+  checkbox::RawCheckbox,
+  slider::RawSlider,
+  text_editor::RawTextEditor,
+  text_field::RawTextField,
+};

@@ -952,3 +952,44 @@ fn a_widget_role_and_state_reach_the_real_dom() {
     "the attribute follows the signal in the live DOM",
   );
 }
+
+#[wasm_bindgen_test]
+fn a_drawn_checkbox_is_an_accessible_div_in_the_real_dom() {
+  use skene_gui::RawCheckbox;
+
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+
+  mount(move || {
+    RawCheckbox::new()
+      .bind_checked(checked)
+      .set_label("Subscribed")
+      .set_child(Text::new("mark"))
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(element.tag_name(), "DIV", "no native input is involved");
+  assert_eq!(element.get_attribute("role").as_deref(), Some("checkbox"));
+  assert_eq!(element.get_attribute("tabindex").as_deref(), Some("0"));
+  assert_eq!(
+    element.get_attribute("aria-label").as_deref(),
+    Some("Subscribed"),
+  );
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("false"),
+  );
+
+  element
+    .dyn_ref::<HtmlElement>()
+    .expect("an HTML element")
+    .click();
+
+  assert!(checked.get(), "a real click toggles it");
+  assert_eq!(
+    element.get_attribute("aria-checked").as_deref(),
+    Some("true"),
+  );
+}

@@ -560,12 +560,41 @@ sink are just different sinks for the same paths.)
     stays generic ("complete") so a later required property reads the same way. Only
     traits that appear as *argument or return bounds* are worth annotating: a missing
     trait method is `E0599`, which never consults the attribute.
-  - **Remaining.** The control redesign (`RawButton::new(|| -> View)`,
-    `RawTextField::new(|| -> Decoration)`, a driver-specific `WebSlider` a library may
-    opt into for the no-JS path), which needs an answer for who supplies the behavior
-    when the returned view is not the native control—and may simply retire
-    `RawSlider`/`RawCheckbox`/`RawRadio` if a headless shell over an author-supplied
-    view adds nothing.
+  - **Nothing remains here.** The control redesign it used to carry outgrew the item and
+    is its own entry below.
+- **Controls: draw our own where it pays, keep the platform's where it does not.** The
+  `Raw*` controls stop being thin wrappers over native elements and become generic
+  builders that return any view, supplying only accessibility, focus, and event
+  handling; on the web they carry ARIA roles on their own nodes instead of the native
+  void elements. `Web*` become separate views built against the browser's own controls,
+  exposing exactly the customization that is deliverable cross-browser. `Simple*` build
+  on `Raw*`. `HasStyle`/`StyleCore` die either way: a control's decoration is spelled
+  the way `Container`'s is, per property, not as a foreign `BoxStyle` blob.
+  - **The split is by where the cost falls, and it inverts cleanly.** Custom for
+    `RawSlider`, `RawCheckbox`, `RawRadio`, `RawPicker`: native styling is worst exactly
+    there—the slider needed vendor pseudos and a custom property to paint a filled
+    run—while the platform residual is smallest, ARIA plus a form value. Native stays
+    for `RawTextField`/`RawTextEditor`: a text box already styles fine through the box
+    vocabulary, and the residual there is the whole of IME composition, autofill,
+    spellcheck, the undo stack, and mobile keyboard selection. Nothing we write is going
+    to be more correct than the platform at text entry, so we do not write it.
+  - **The interaction machinery is shared, not rewritten—done.** A terminal has no
+    native controls and already draws its own, so the logic exists; `SliderRange` and
+    `Ring` in the spine hold the medium-agnostic part—value from a normalized fraction,
+    stepping, wrapping movement through a group—and each facade converts its own cells
+    or pixels at the edge. This already removed two live duplications: the slider
+    fraction math had a copy in the terminal state and another in the web driver's fill
+    refresh, and the wrapping cycle was written twice inside the terminal alone.
+  - **The terminal's text machinery stays in the terminal.** Caret and word motion and
+    the selection model are not hoisted: one consumer means no duplication to remove,
+    and the spine takes no platform's concerns it does not need.
+  - **Open: how the no-JS path renders.** A `<noscript>` fallback cannot hide the ARIA
+    tree beside it, so a scriptless client would get both the working control and an
+    inert one. Rendering the native `Web*` control on the server and upgrading it to the
+    custom `Raw*` on hydration is the shape that satisfies progressive enhancement
+    instead of opting out of it—content is never gated on JS, and the client layers
+    interactivity on top—at the cost of a swap at hydration to keep from shifting
+    layout. Whether the fallback is emitted at all should be one toggle.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

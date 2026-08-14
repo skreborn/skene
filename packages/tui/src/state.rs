@@ -18,6 +18,8 @@ use skene_core::{
   PointerButton,
   Prevent,
   Prevention,
+  Ring,
+  SliderRange,
 };
 
 use crate::{
@@ -1378,13 +1380,11 @@ impl State {
         return None;
       }
 
-      let count = isize::try_from(options.len()).ok()?;
       let index = options
         .iter()
         .position(|(option, _)| option == value)
-        .and_then(|index| isize::try_from(index).ok())
         .unwrap_or(0);
-      let next = usize::try_from((index + step).rem_euclid(count)).ok()?;
+      let next = Ring::new(options.len()).step_from(index, step)?;
       let next = options[next].0.clone();
 
       if next == *value {
@@ -1433,16 +1433,14 @@ impl State {
 
   /// Moves a slider by `steps` of its step size, clamped, firing its change handlers.
   pub(crate) fn nudge_slider(&self, node: NodeId, steps: f32) {
-    self.write_slider(node, |min, max, step, value| {
-      (value + step * steps).clamp(min, max)
-    });
+    self.write_slider(node, |range, value| range.nudge(value, steps));
   }
 
   /// Jumps a slider's thumb to a clicked cell of its track, snapped to its step.
   fn slide_to(&self, node: NodeId, local_column: i64) {
     let (width, _) = self.node_size(node);
 
-    self.write_slider(node, |min, max, step, _| {
+    self.write_slider(node, |range, _| {
       #[expect(clippy::cast_precision_loss)]
       let fraction = if width > 1 {
         (local_column.clamp(0, width - 1) as f32) / ((width - 1) as f32)
@@ -1450,19 +1448,13 @@ impl State {
       else {
         0.0
       };
-      let value = min + fraction * (max - min);
 
-      if step > 0.0 {
-        (min + ((value - min) / step).round() * step).clamp(min, max)
-      }
-      else {
-        value.clamp(min, max)
-      }
+      range.value_at(fraction)
     });
   }
 
   /// Rewrites a slider's value through `next`, firing change handlers on change.
-  fn write_slider(&self, node: NodeId, next: impl FnOnce(f32, f32, f32, f32) -> f32) {
+  fn write_slider(&self, node: NodeId, next: impl FnOnce(SliderRange, f32) -> f32) {
     let changed = self.with_node(node, |record| {
       let NodeKind::Slider {
         min,
@@ -1475,7 +1467,7 @@ impl State {
         return None;
       };
 
-      let target = next(*min, *max, *step, *value);
+      let target = next(SliderRange::new(*min, *max, *step), *value);
 
       if (target - *value).abs() < f32::EPSILON {
         return None;

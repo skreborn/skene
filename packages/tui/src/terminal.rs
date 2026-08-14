@@ -855,18 +855,8 @@ fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
         return;
       };
 
-      let Ok(count) = isize::try_from(members.len())
-      else {
-        return;
-      };
-
-      let Ok(position) = isize::try_from(position)
-      else {
-        return;
-      };
-
       let step: isize = if forward { 1 } else { -1 };
-      let Ok(next) = usize::try_from((position + step).rem_euclid(count.max(1)))
+      let Some(next) = skene_core::Ring::new(members.len()).step_from(position, step)
       else {
         return;
       };

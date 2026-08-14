@@ -1027,17 +1027,11 @@ fn refresh_slider_fill(input: &HtmlInputElement) {
     return;
   }
 
-  let number = |raw: String, fallback: f64| raw.parse::<f64>().unwrap_or(fallback);
+  let number = |raw: String, fallback: f32| raw.parse::<f32>().unwrap_or(fallback);
   let min = number(input.min(), 0.0);
-  let max = number(input.max(), 100.0);
   let value = number(input.value(), min);
-  let span = max - min;
-  let fraction = if span > 0.0 {
-    ((value - min) / span).clamp(0.0, 1.0)
-  }
-  else {
-    0.0
-  };
+  let fraction =
+    skene_core::SliderRange::new(min, number(input.max(), 100.0), 0.0).fraction_of(value);
 
   if let Some(html) = input.dyn_ref::<HtmlElement>() {
     let _ = html

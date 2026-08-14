@@ -3,6 +3,7 @@
 mod boundary;
 mod children;
 mod condition;
+mod control;
 mod errors;
 mod events;
 mod node;
@@ -33,6 +34,7 @@ pub use children::{
   StackChild,
 };
 pub use condition::{Composable, ConditionShape};
+pub use control::{Ring, SliderRange};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
   ClickHandler,

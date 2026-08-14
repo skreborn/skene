@@ -100,12 +100,15 @@ marker-based hydration with loud mismatch; serialize-by-default resources
     *Needs Edits*, *Needs Naming*, *Needs Testcase (WPT)*; no engine ships slider parts;
     and while `appearance: base-select` shipped in Chrome 134—which is exactly why
     `SimplePicker` could take that route—"Base Appearance Form Controls" beyond select is
-    still only Proposed, with range not in scope. Revisit when that lands: take the parts,
-    retire the Gecko pseudo once base appearance covers both engines, and drop the custom
-    property. Also weighed and rejected on their own terms: a value-sized
-    `linear-gradient` in the interned class (a class per value—unacceptable churn) and the
-    fill as our own child views (loses the range element's keyboard and accessibility
-    behavior, which is the reason the control is a real input).
+    still only Proposed, with range not in scope. Confirmed by direct check rather than
+    shipping notes: on Chrome 148 `CSS.supports('appearance', 'base')` is false, so the
+    prerequisite itself is unreachable and the vendor pseudo is the only route on current
+    Blink. Revisit when that lands: take the parts, retire the Gecko pseudo once base
+    appearance covers both engines, and drop the custom property. Also weighed and
+    rejected on their own terms: a value-sized `linear-gradient` in the interned class (a
+    class per value—unacceptable churn) and the fill as our own child views (loses the
+    range element's keyboard and accessibility behavior, which is the reason the control
+    is a real input).
 
 ## Phase 4—Events and first controls ✅ (core)
 

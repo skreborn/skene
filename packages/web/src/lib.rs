@@ -488,7 +488,10 @@ pub fn create_slider(props: &SliderProps) -> NodeId {
   // The slider draws its own track and thumb chrome; no background tints.
   apply_control(node, &props.control, mapping::CONTROL_RESET, None);
 
-  // The filled run starts at the default value—the midpoint—until a value lands.
+  // The filled run is a running app's enhancement, so only the browser leaf starts it:
+  // it tracks the value from here on, and a served page paints no fill rather than one
+  // frozen at the value it was serialized with.
+  #[cfg(target_os = "unknown")]
   override_style(node, &Declarations::new().set("--skene-slider-fill", "50%"));
 
   node

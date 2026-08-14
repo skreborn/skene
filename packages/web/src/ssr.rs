@@ -631,35 +631,10 @@ pub fn set_value(node: NodeId, value: &str) {
         }
       }
 
+      // A range input serializes its value and nothing computed from it: a filled run
+      // painted here would freeze at this value while the control kept working without
+      // script, so the slider would lie about its own state. See the reset.
       _ => {
-        // A range input's filled run rides its inline custom property, so a static
-        // render paints it too.
-        let range_fill = record
-          .attributes
-          .iter()
-          .any(|(name, current)| name == "type" && current == "range")
-          .then(|| {
-            let number = |name: &str, fallback: f64| {
-              record
-                .attributes
-                .iter()
-                .find(|(attribute, _)| attribute == name)
-                .and_then(|(_, raw)| raw.parse::<f64>().ok())
-                .unwrap_or(fallback)
-            };
-            let min = number("min", 0.0);
-            let max = number("max", 100.0);
-            let value = value.parse::<f64>().unwrap_or(min);
-            let span = max - min;
-
-            if span > 0.0 {
-              ((value - min) / span).clamp(0.0, 1.0)
-            }
-            else {
-              0.0
-            }
-          });
-
         if let Some(record) = state.nodes.get_mut(&node) {
           match record
             .attributes
@@ -670,11 +645,6 @@ pub fn set_value(node: NodeId, value: &str) {
             None => record
               .attributes
               .push(("value".to_owned(), value.to_owned())),
-          }
-
-          if let Some(fraction) = range_fill {
-            record.inline = std::mem::take(&mut record.inline)
-              .set("--skene-slider-fill", format!("{}%", fraction * 100.0));
           }
         }
       }

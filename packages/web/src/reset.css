@@ -172,9 +172,14 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
 
 /* The default slider chrome, drawn in the inherited ink: a soft track under a round
    thumb. The vendor track and thumb selectors cannot share rules—an unknown selector
-   drops the whole rule—so each engine gets its own. WebKit has no progress part, so
-   its filled run rides `--skene-slider-fill`, kept at the value's fraction by the
-   platform; Gecko paints its own progress. */
+   drops the whole rule—so each engine gets its own.
+
+   Gecko's progress part is engine-native: it follows the value with no script, so it
+   paints everywhere. WebKit has no equivalent, and a fill computed from the value is
+   script-bound—it would freeze at the served value while the control kept working—so
+   the run rides `--skene-slider-fill`, which only a running app sets. Absent it the
+   `0%` fallback paints no fill at all, and the thumb's own position still reports the
+   value truthfully. */
 :where(input[type="range"]) {
   width: 160px;
   height: 16px;

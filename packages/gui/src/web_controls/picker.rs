@@ -11,13 +11,13 @@ use crate::control::ControlBase;
 /// The chosen value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the selection, and
 /// [`handle_change`](Self::handle_change) receives each choice as it is made—
-/// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
-/// the platform's full keyboard behavior.
+/// [`bind_value`](Self::bind_value) wires both to one signal.
 ///
-/// The unstyled base a component library builds on; [`SimplePicker`](crate::SimplePicker) is
-/// the ready-made counterpart.
+/// The browser's own select: the platform's whole keyboard, focus, form, and
+/// accessibility behavior, and only the customization that survives across engines. It
+/// is what a server render emits, so a scriptless client meets a working control.
 #[must_use]
-pub struct RawPicker {
+pub struct WebPicker {
   options: Vec<PickerOption>,
   value: Option<Source<String>>,
   #[expect(clippy::type_complexity)]
@@ -25,7 +25,7 @@ pub struct RawPicker {
   control: ControlBase,
 }
 
-impl RawPicker {
+impl WebPicker {
   /// Creates a select with no options.
   #[inline(always)]
   pub fn new() -> Self {
@@ -79,14 +79,14 @@ impl RawPicker {
   }
 }
 
-impl Default for RawPicker {
+impl Default for WebPicker {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl RawPicker {
+impl WebPicker {
   /// Binds the selection to `signal` in both directions: the select shows the signal
   /// and each choice writes it back.
   #[inline(always)]
@@ -99,7 +99,7 @@ impl RawPicker {
   }
 }
 
-impl skene_core::View for RawPicker {
+impl skene_core::View for WebPicker {
   fn build(self) -> skene_core::NodeId {
     use skene_core::PickerProps;
 
@@ -125,14 +125,14 @@ impl skene_core::View for RawPicker {
   }
 }
 
-impl crate::HasFocus for RawPicker {
+impl crate::HasFocus for WebPicker {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {
     &mut self.control.focus
   }
 }
 
-impl crate::HasStyle for RawPicker {
+impl crate::HasStyle for WebPicker {
   #[inline(always)]
   fn style_core(&mut self) -> &mut crate::StyleCore {
     &mut self.control.style

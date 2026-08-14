@@ -2,16 +2,16 @@
 
 use skene_core::View;
 
-use crate::RawCheckbox;
+use crate::WebCheckbox;
 
 /// A ready-made checkbox: the platform's ink-drawn box and mark, with the Simple
 /// interaction feedback.
 ///
-/// The checked state flows both ways, exactly as on [`RawCheckbox`]; for custom
+/// The checked state flows both ways, exactly as on [`WebCheckbox`]; for custom
 /// styling, compose the raw control directly.
 #[must_use]
 pub struct SimpleCheckbox {
-  raw: RawCheckbox,
+  raw: WebCheckbox,
 }
 
 impl SimpleCheckbox {
@@ -19,7 +19,7 @@ impl SimpleCheckbox {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      raw: RawCheckbox::new(),
+      raw: WebCheckbox::new(),
     }
   }
 

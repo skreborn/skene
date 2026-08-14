@@ -2,17 +2,17 @@
 
 use skene_core::View;
 
-use crate::{HasStyle, RawPicker, simple, simple::SimplePalette};
+use crate::{HasStyle, WebPicker, simple, simple::SimplePalette};
 
 /// A ready-made select: field chrome on the card surface around the platform
 /// dropdown, its border brightening on focus. The dropdown wears the select's own
 /// surface, so the card colors the popup too.
 ///
-/// The chosen value flows both ways, exactly as on [`RawPicker`]; for custom styling,
+/// The chosen value flows both ways, exactly as on [`WebPicker`]; for custom styling,
 /// compose the raw control directly.
 #[must_use]
 pub struct SimplePicker {
-  raw: RawPicker,
+  raw: WebPicker,
 }
 
 impl SimplePicker {
@@ -20,7 +20,7 @@ impl SimplePicker {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      raw: RawPicker::new(),
+      raw: WebPicker::new(),
     }
   }
 

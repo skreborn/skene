@@ -1,4 +1,4 @@
-//! One choice of a mutually-exclusive group.
+//! A two-state toggle.
 
 use std::rc::Rc;
 
@@ -6,32 +6,30 @@ use skene_core::Source;
 
 use crate::control::ControlBase;
 
-/// A radio button: one choice of a mutually-exclusive group.
+/// A checkbox: a two-state toggle.
 ///
-/// Members of one group share its name; the platform keeps one member checked and moves
-/// between members with the arrow keys. [`bind_value`](Self::bind_value) wires a whole
-/// group to one signal holding the selected value. Unstyled by default, with the
-/// platform's full keyboard behavior.
+/// The state flows both ways: [`derive_checked`](Self::derive_checked) (or
+/// [`set_checked`](Self::set_checked)) drives the shown state, and
+/// [`handle_toggle`](Self::handle_toggle) receives each change—
+/// [`bind_checked`](Self::bind_checked) wires both to one signal.
 ///
-/// The unstyled base a component library builds on; [`SimpleRadio`](crate::SimpleRadio) is
-/// the ready-made counterpart.
+/// The browser's own checkbox: the platform's whole keyboard, focus, form, and
+/// accessibility behavior, and only the customization that survives across engines—a
+/// native box's chrome is not freely stylable. It is what a server render emits, so a
+/// scriptless client meets a working control.
 #[must_use]
-pub struct RawRadio {
-  group: String,
-  value: String,
+pub struct WebCheckbox {
   checked: Option<Source<bool>>,
   label: Option<String>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
   control: ControlBase,
 }
 
-impl RawRadio {
-  /// Creates the `group` member standing for `value`, unchecked.
+impl WebCheckbox {
+  /// Creates an unchecked checkbox.
   #[inline(always)]
-  pub fn new(group: impl Into<String>, value: impl Into<String>) -> Self {
+  pub fn new() -> Self {
     Self {
-      group: group.into(),
-      value: value.into(),
       checked: None,
       label: None,
       toggle_handler: None,
@@ -39,7 +37,7 @@ impl RawRadio {
     }
   }
 
-  /// Sets the label beside the ring; clicking it selects too.
+  /// Sets the label beside the box; clicking it toggles too.
   #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
@@ -63,7 +61,7 @@ impl RawRadio {
     self
   }
 
-  /// Sets the toggle handler, run with the new state when this member's state changes.
+  /// Sets the toggle handler, run with the new state on every change.
   #[inline(always)]
   pub fn handle_toggle(mut self, action: impl Fn(bool) + 'static) -> Self {
     self.toggle_handler = Some(Rc::new(action));
@@ -72,39 +70,34 @@ impl RawRadio {
   }
 }
 
-impl RawRadio {
-  /// Binds the member to `signal` holding the group's selected value: the member shows
-  /// as checked while the signal equals its value, and selecting it writes its value
-  /// back.
+impl Default for WebCheckbox {
   #[inline(always)]
-  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
-    use skene_reactive::{Get, Set};
-
-    let value = self.value.clone();
-    let selected = self.value.clone();
-
-    self
-      .derive_checked(move || signal.get() == value)
-      .handle_toggle(move |checked| {
-        if checked {
-          signal.set(selected.clone());
-        }
-      })
+  fn default() -> Self {
+    Self::new()
   }
 }
 
-impl skene_core::View for RawRadio {
+impl WebCheckbox {
+  /// Binds the state to `signal` in both directions: the checkbox shows the signal and
+  /// each toggle writes it back.
+  #[inline(always)]
+  pub fn bind_checked(self, signal: skene_reactive::Signal<bool>) -> Self {
+    use skene_reactive::{Get, Set};
+
+    self
+      .derive_checked(move || signal.get())
+      .handle_toggle(move |checked| signal.set(checked))
+  }
+}
+
+impl skene_core::View for WebCheckbox {
   fn build(self) -> skene_core::NodeId {
-    use skene_core::RadioProps;
+    use skene_core::CheckboxProps;
 
     use crate::driver;
 
     let (control, handlers) = self.control.into_parts();
-    let node = driver::create_radio(&RadioProps {
-      group: self.group,
-      value: self.value,
-      control,
-    });
+    let node = driver::create_checkbox(&CheckboxProps { control });
 
     if let Some(checked) = self.checked {
       checked.bind(move |checked| driver::set_checked(node, checked));
@@ -123,14 +116,14 @@ impl skene_core::View for RawRadio {
   }
 }
 
-impl crate::HasFocus for RawRadio {
+impl crate::HasFocus for WebCheckbox {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {
     &mut self.control.focus
   }
 }
 
-impl crate::HasStyle for RawRadio {
+impl crate::HasStyle for WebCheckbox {
   #[inline(always)]
   fn style_core(&mut self) -> &mut crate::StyleCore {
     &mut self.control.style

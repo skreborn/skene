@@ -2,16 +2,16 @@
 
 use skene_core::View;
 
-use crate::RawRadio;
+use crate::WebRadio;
 
 /// A ready-made radio button: the platform's ink-drawn ring and dot, with the Simple
 /// interaction feedback.
 ///
-/// Members of one group share its name, exactly as on [`RawRadio`]; for custom styling,
+/// Members of one group share its name, exactly as on [`WebRadio`]; for custom styling,
 /// compose the raw control directly.
 #[must_use]
 pub struct SimpleRadio {
-  raw: RawRadio,
+  raw: WebRadio,
 }
 
 impl SimpleRadio {
@@ -19,7 +19,7 @@ impl SimpleRadio {
   #[inline(always)]
   pub fn new(group: impl Into<String>, value: impl Into<String>) -> Self {
     Self {
-      raw: RawRadio::new(group, value),
+      raw: WebRadio::new(group, value),
     }
   }
 

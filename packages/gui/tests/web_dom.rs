@@ -29,7 +29,6 @@ use skene_gui::{
   HasChildren,
   Inset,
   PointerButton,
-  RawCheckbox,
   RawTextField,
   Role,
   Row,
@@ -38,6 +37,7 @@ use skene_gui::{
   TextStyle,
   TextTheme,
   View,
+  WebCheckbox,
   derived,
   empty,
   head,
@@ -366,7 +366,7 @@ fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  mount(move || RawCheckbox::new().bind_checked(checked).build());
+  mount(move || WebCheckbox::new().bind_checked(checked).build());
 
   let target = only_child(&root)
     .dyn_into::<web_sys::HtmlInputElement>()

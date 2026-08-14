@@ -2,15 +2,15 @@
 
 use skene_core::View;
 
-use crate::RawSlider;
+use crate::WebSlider;
 
 /// A ready-made slider: the platform's ink-drawn track and thumb.
 ///
-/// The value flows both ways, exactly as on [`RawSlider`]; for custom styling, compose
+/// The value flows both ways, exactly as on [`WebSlider`]; for custom styling, compose
 /// the raw control directly.
 #[must_use]
 pub struct SimpleSlider {
-  raw: RawSlider,
+  raw: WebSlider,
 }
 
 impl SimpleSlider {
@@ -18,7 +18,7 @@ impl SimpleSlider {
   #[inline(always)]
   pub fn new(min: f32, max: f32) -> Self {
     Self {
-      raw: RawSlider::new(min, max),
+      raw: WebSlider::new(min, max),
     }
   }
 

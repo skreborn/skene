@@ -8,10 +8,6 @@ use skene_gui::{
   FocusOrder,
   HasChildren,
   RawButton,
-  RawCheckbox,
-  RawPicker,
-  RawRadio,
-  RawSlider,
   RawTextEditor,
   RawTextField,
   Role,
@@ -19,6 +15,10 @@ use skene_gui::{
   Text,
   TextStyle,
   TextTheme,
+  WebCheckbox,
+  WebPicker,
+  WebRadio,
+  WebSlider,
   core::{BoxStyle, Color, Condition},
   render_to_string,
 };
@@ -49,12 +49,12 @@ fn button_serializes_as_a_button_element() {
 /// A checkbox serializes as a checkbox input, with its state as the `checked` attribute.
 #[test]
 fn checkbox_serializes_with_its_state() {
-  let rendered = render_to_string(|| RawCheckbox::new().set_checked(true));
+  let rendered = render_to_string(|| WebCheckbox::new().set_checked(true));
 
   assert!(rendered.body().contains("type=\"checkbox\""));
   assert!(rendered.body().contains("checked"));
 
-  let unchecked = render_to_string(|| RawCheckbox::new().set_checked(false));
+  let unchecked = render_to_string(|| WebCheckbox::new().set_checked(false));
 
   assert!(!unchecked.body().contains("checked"));
 }
@@ -64,8 +64,8 @@ fn checkbox_serializes_with_its_state() {
 fn radio_serializes_group_value_and_state() {
   let rendered = render_to_string(|| {
     Row::new().set_children((
-      RawRadio::new("color", "red").set_checked(true),
-      RawRadio::new("color", "green"),
+      WebRadio::new("color", "red").set_checked(true),
+      WebRadio::new("color", "green"),
     ))
   });
 
@@ -82,7 +82,7 @@ fn radio_serializes_group_value_and_state() {
 #[test]
 fn select_serializes_options_and_selection() {
   let rendered = render_to_string(|| {
-    RawPicker::new()
+    WebPicker::new()
       .set_options([("a", "First"), ("b", "Second")])
       .set_value("b")
   });
@@ -120,7 +120,7 @@ fn textarea_serializes_value_as_content() {
 /// A slider serializes as a range input with its bounds, step, and value.
 #[test]
 fn slider_serializes_range_and_value() {
-  let rendered = render_to_string(|| RawSlider::new(0., 100.).set_step(5.).set_value(40.));
+  let rendered = render_to_string(|| WebSlider::new(0., 100.).set_step(5.).set_value(40.));
 
   let body = rendered.body();
 
@@ -147,7 +147,7 @@ fn controls_carry_their_reset() {
      font:inherit;color:inherit;}"
   ));
 
-  let rendered = render_to_string(RawCheckbox::new);
+  let rendered = render_to_string(WebCheckbox::new);
   let body = rendered.body();
   let start = body.find("class=\"").expect("a class") + 7;
   let end = body[start..].find('"').expect("a closing quote") + start;
@@ -158,7 +158,7 @@ fn controls_carry_their_reset() {
      padding:0;font:inherit;color:inherit;}}"
   )));
 
-  let rendered = render_to_string(|| RawPicker::new().set_options([("a", "A")]));
+  let rendered = render_to_string(|| WebPicker::new().set_options([("a", "A")]));
 
   assert!(
     rendered
@@ -208,7 +208,7 @@ fn controls_carry_interaction_feedback() {
   assert!(!styles.contains(":hover{background-image:"));
   assert!(styles.contains(":focus-visible{background-image:"));
 
-  let slider = render_to_string(|| RawSlider::new(0., 100.));
+  let slider = render_to_string(|| WebSlider::new(0., 100.));
 
   assert!(!interned(slider.styles()).contains("background-image:"));
 }
@@ -217,7 +217,7 @@ fn controls_carry_interaction_feedback() {
 /// activating the caption activates the input.
 #[test]
 fn labeled_toggle_wraps_in_a_label() {
-  let rendered = render_to_string(|| RawCheckbox::new().set_label("subscribed"));
+  let rendered = render_to_string(|| WebCheckbox::new().set_label("subscribed"));
   let body = rendered.body();
 
   assert!(body.starts_with("<label"));

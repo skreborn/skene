@@ -11,13 +11,15 @@ use crate::control::ControlBase;
 /// The value flows both ways: [`derive_value`](Self::derive_value) (or
 /// [`set_value`](Self::set_value)) drives the position, and
 /// [`handle_change`](Self::handle_change) receives each move in real time—
-/// [`bind_value`](Self::bind_value) wires both to one signal. Unstyled by default, with
-/// the platform's full keyboard behavior.
+/// [`bind_value`](Self::bind_value) wires both to one signal.
 ///
-/// The unstyled base a component library builds on; [`SimpleSlider`](crate::SimpleSlider) is
-/// the ready-made counterpart.
+/// The browser's own range input: the platform's whole keyboard, focus, form, and
+/// accessibility behavior, and only the customization that survives across engines—the
+/// track and thumb reach through vendor pseudo-elements, and a filled run cannot be
+/// drawn without script at all. It is what a server render emits, so a scriptless
+/// client meets a working control.
 #[must_use]
-pub struct RawSlider {
+pub struct WebSlider {
   min: f32,
   max: f32,
   step: Option<f32>,
@@ -26,7 +28,7 @@ pub struct RawSlider {
   control: ControlBase,
 }
 
-impl RawSlider {
+impl WebSlider {
   /// Creates a slider selecting within `min..=max`.
   #[inline(always)]
   pub fn new(min: f32, max: f32) -> Self {
@@ -73,7 +75,7 @@ impl RawSlider {
   }
 }
 
-impl RawSlider {
+impl WebSlider {
   /// Binds the value to `signal` in both directions: the slider shows the signal and
   /// each move writes it back.
   #[inline(always)]
@@ -86,7 +88,7 @@ impl RawSlider {
   }
 }
 
-impl skene_core::View for RawSlider {
+impl skene_core::View for WebSlider {
   fn build(self) -> skene_core::NodeId {
     use skene_core::SliderProps;
 
@@ -123,14 +125,14 @@ impl skene_core::View for RawSlider {
   }
 }
 
-impl crate::HasFocus for RawSlider {
+impl crate::HasFocus for WebSlider {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {
     &mut self.control.focus
   }
 }
 
-impl crate::HasStyle for RawSlider {
+impl crate::HasStyle for WebSlider {
   #[inline(always)]
   fn style_core(&mut self) -> &mut crate::StyleCore {
     &mut self.control.style

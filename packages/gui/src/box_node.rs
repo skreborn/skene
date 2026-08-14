@@ -35,7 +35,7 @@ pub(crate) struct BoxNode {
   pub(crate) children: Children,
   pub(crate) layout: Layout,
   pub(crate) role: Option<Role>,
-  pub(crate) focus_order: Option<skene_core::FocusOrder>,
+  pub(crate) focus_order: Option<Source<skene_core::FocusOrder>>,
   pub(crate) width: Option<Source<Dimension<f32>>>,
   pub(crate) height: Option<Source<Dimension<f32>>>,
   pub(crate) min_width: Option<Source<Dimension<f32>>>,
@@ -442,7 +442,6 @@ impl skene_core::View for BoxNode {
     let node = driver::create_box(&BoxProps {
       layout: self.layout,
       role: self.role,
-      focus_order: self.focus_order,
       style,
       variants: self.variants,
       transitions: self.transitions,
@@ -491,6 +490,10 @@ impl skene_core::View for BoxNode {
 
     if let Some(action) = self.scroll_handler {
       driver::handle_scroll(node, action);
+    }
+
+    if let Some(focus_order) = self.focus_order {
+      focus_order.bind(move |order| driver::update_focus_order(node, order));
     }
 
     if let Some(state) = self.accessibility {

@@ -469,11 +469,6 @@ pub struct BoxProps {
   pub layout: Layout,
   /// The semantic role, if any.
   pub role: Option<Role>,
-  /// The box's place in sequential focus traversal, when it takes focus at all.
-  ///
-  /// A plain box does not; a view drawing its own control sets this to join the tab
-  /// order the way a native control would.
-  pub focus_order: Option<FocusOrder>,
   /// The static style.
   pub style: BoxStyle,
   /// Conditional variants, each applying while its condition holds; later entries win

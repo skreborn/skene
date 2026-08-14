@@ -214,10 +214,6 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     set_attribute(node, "role", aria_role(role));
   }
 
-  if let Some(focus_order) = props.focus_order {
-    set_attribute(node, "tabindex", &render_focus_order(focus_order));
-  }
-
   assign_class(node, &mapping::box_template(props));
 
   node
@@ -534,6 +530,12 @@ fn aria_role(role: Role) -> &'static str {
     Role::Combobox => "combobox",
     _ => "",
   }
+}
+
+/// Sets where `node` sits in sequential focus traversal, as its `tabindex`.
+#[cfg(target_arch = "wasm32")]
+pub fn update_focus_order(node: NodeId, focus_order: skene_core::FocusOrder) {
+  set_attribute(node, "tabindex", &render_focus_order(focus_order));
 }
 
 /// Applies one accessibility property, as the ARIA attribute that carries it.

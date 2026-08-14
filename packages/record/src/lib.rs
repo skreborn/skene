@@ -109,6 +109,7 @@ struct Node {
   /// Accessibility updates in application order; the last for a property is what the
   /// widget currently reports.
   access: Vec<AccessProp>,
+  focus_order: Option<skene_core::FocusOrder>,
   text: String,
   value: String,
   checked: bool,
@@ -125,6 +126,7 @@ impl Node {
       box_overrides: Vec::new(),
       run_overrides: Vec::new(),
       access: Vec::new(),
+      focus_order: None,
       text: String::new(),
       value: String::new(),
       checked: false,
@@ -209,6 +211,11 @@ pub fn create_box(props: &BoxProps) -> NodeId {
 /// Records one changed box property, applied over the static style.
 pub fn update_box(node: NodeId, prop: &BoxProp) {
   let _ = with_node(node, |node| node.box_overrides.push(prop.clone()));
+}
+
+/// Records where a node sits in sequential focus traversal.
+pub fn update_focus_order(node: NodeId, focus_order: skene_core::FocusOrder) {
+  let _ = with_node(node, |node| node.focus_order = Some(focus_order));
 }
 
 /// Records one accessibility update.
@@ -579,6 +586,12 @@ pub fn access(node: NodeId) -> Vec<AccessProp> {
     latest
   })
   .unwrap_or_default()
+}
+
+/// Where a node sits in sequential focus traversal, if it takes focus.
+#[must_use]
+pub fn focus_order(node: NodeId) -> Option<skene_core::FocusOrder> {
+  with_node(node, |node| node.focus_order).flatten()
 }
 
 /// A box's layout mode, if the node is a box.

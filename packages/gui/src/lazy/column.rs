@@ -79,7 +79,6 @@ impl skene_core::View for LazyColumn {
     let outer = driver::create_box(&BoxProps {
       layout: Layout::Flow,
       role: None,
-      focus_order: None,
       style,
       variants: self.variants,
       transitions: Vec::new(),

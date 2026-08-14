@@ -451,3 +451,81 @@ fn a_drawn_slider_reports_and_moves_on_keys() {
   assert_eq!(value.get(), 0., "an unrelated key leaves it alone");
   assert!(!prevention.default, "and does not swallow the default");
 }
+
+/// A radio group owns the selection, the arrow keys, and the single tab stop; members
+/// find it through context, so wrapping one in a container does not detach it.
+#[test]
+fn a_drawn_radio_group_owns_its_members() {
+  use skene_gui::{
+    Container,
+    RawRadio,
+    RawRadioGroup,
+    core::{AccessProp, FocusOrder, KeyEvent, Modifiers, Role, Toggle},
+  };
+
+  let chosen = Signal::new("mint".to_owned());
+  let root = RawRadioGroup::new()
+    .bind_chosen(chosen)
+    .set_label("Flavor")
+    .set_child(Column::new().set_children((
+      RawRadio::new("mint").set_child(Text::new("Mint")),
+      // Wrapped for layout: context reaches it all the same.
+      Container::new().set_child(RawRadio::new("plum").set_child(Text::new("Plum"))),
+      RawRadio::new("fig").set_child(Text::new("Fig")),
+    )))
+    .build();
+
+  assert_eq!(record::role(root), Some(Role::RadioGroup));
+
+  let column = record::children(root)[0];
+  let mint = record::children(column)[0];
+  let plum = record::children(record::children(column)[1])[0];
+  let fig = record::children(column)[2];
+
+  assert_eq!(
+    record::role(plum),
+    Some(Role::Radio),
+    "the wrapped one still joined"
+  );
+  assert_eq!(
+    record::access(mint),
+    vec![AccessProp::Checked(Toggle::On)],
+    "the bound member reports checked",
+  );
+  assert_eq!(record::access(plum), vec![AccessProp::Checked(Toggle::Off)]);
+
+  // One tab stop: the chosen member, and nothing else.
+  assert_eq!(record::focus_order(mint), Some(FocusOrder::Auto));
+  assert_eq!(record::focus_order(plum), Some(FocusOrder::Skip));
+  assert_eq!(record::focus_order(fig), Some(FocusOrder::Skip));
+
+  let _ = record::trigger_key_down(
+    mint,
+    &KeyEvent {
+      key: "ArrowDown".into(),
+      modifiers: Modifiers::default(),
+    },
+  );
+
+  assert_eq!(
+    chosen.get(),
+    "plum",
+    "an arrow moves to the next member and chooses it"
+  );
+  assert_eq!(record::focus_order(mint), Some(FocusOrder::Skip));
+  assert_eq!(
+    record::focus_order(plum),
+    Some(FocusOrder::Auto),
+    "the tab stop follows"
+  );
+
+  let _ = record::trigger_key_down(
+    fig,
+    &KeyEvent {
+      key: "ArrowDown".into(),
+      modifiers: Modifiers::default(),
+    },
+  );
+
+  assert_eq!(chosen.get(), "mint", "and wraps at the end");
+}

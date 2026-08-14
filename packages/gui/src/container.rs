@@ -577,7 +577,21 @@ impl Container {
   /// a widget [`Role`] so what lands there is announced.
   #[inline(always)]
   pub fn set_focus_order(mut self, focus_order: skene_core::FocusOrder) -> Self {
-    self.node.focus_order = Some(focus_order);
+    self.node.focus_order = Some(Source::Static(focus_order));
+
+    self
+  }
+
+  /// Derives where the box sits in sequential focus traversal.
+  ///
+  /// A group of controls sharing one tab stop moves it to whichever member is current,
+  /// the way a native radio group does.
+  #[inline(always)]
+  pub fn derive_focus_order(
+    mut self,
+    focus_order: impl Fn() -> skene_core::FocusOrder + 'static,
+  ) -> Self {
+    self.node.focus_order = Some(Source::Derived(Rc::new(focus_order)));
 
     self
   }

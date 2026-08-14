@@ -168,6 +168,7 @@ pub(crate) fn labeled(control: skene_core::NodeId, label: String) -> skene_core:
       direction: FlexDirection::Row,
     },
     role: Some(skene_core::Role::Label),
+    focus_order: None,
     style: BoxStyle::new()
       .set_spacing(8.)
       .set_item_alignment(ItemAlignment::Center),

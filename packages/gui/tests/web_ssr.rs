@@ -542,12 +542,15 @@ fn a_widget_role_and_state_serialize_as_aria() {
   use skene_gui::core::{AccessProp, Role};
 
   let rendered = render_to_string(|| {
-    Container::new().set_role(Role::Slider).set_accessibility([
-      AccessProp::Value(40.),
-      AccessProp::ValueMin(0.),
-      AccessProp::ValueMax(100.),
-      AccessProp::Label("Volume".to_owned()),
-    ])
+    Container::new()
+      .set_role(Role::Slider)
+      .set_focus_order(skene_gui::FocusOrder::Auto)
+      .set_accessibility([
+        AccessProp::Value(40.),
+        AccessProp::ValueMin(0.),
+        AccessProp::ValueMax(100.),
+        AccessProp::Label("Volume".to_owned()),
+      ])
   });
 
   let body = rendered.body();
@@ -561,4 +564,8 @@ fn a_widget_role_and_state_serialize_as_aria() {
   assert!(body.contains("aria-valuemin=\"0\""));
   assert!(body.contains("aria-valuemax=\"100\""));
   assert!(body.contains("aria-label=\"Volume\""));
+  assert!(
+    body.contains("tabindex=\"0\""),
+    "a drawn control joins the tab order the way a native one does",
+  );
 }

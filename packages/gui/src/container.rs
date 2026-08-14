@@ -570,6 +570,18 @@ impl Container {
     self
   }
 
+  /// Makes the box take focus, at the given place in sequential traversal.
+  ///
+  /// A plain box does not take focus—only controls do. A view drawing its own control
+  /// sets this to join the tab order the way a native control would, and pairs it with
+  /// a widget [`Role`] so what lands there is announced.
+  #[inline(always)]
+  pub fn set_focus_order(mut self, focus_order: skene_core::FocusOrder) -> Self {
+    self.node.focus_order = Some(focus_order);
+
+    self
+  }
+
   /// Sets the semantic role.
   #[inline(always)]
   pub fn set_role(mut self, role: Role) -> Self {

@@ -214,6 +214,10 @@ pub fn create_box(props: &BoxProps) -> NodeId {
     set_attribute(node, "role", aria_role(role));
   }
 
+  if let Some(focus_order) = props.focus_order {
+    set_attribute(node, "tabindex", &render_focus_order(focus_order));
+  }
+
   assign_class(node, &mapping::box_template(props));
 
   node

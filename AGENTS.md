@@ -169,9 +169,13 @@
   than the exit code or a `FAILED` grep, because both wasm tiers mislead: wasmtime aborts on
   the first panic, hiding every test after it in that binary and printing `Error: failed to
   run main module` instead of a `FAILED` line, while the browser runner panics on cleanup
-  after reporting and exits non-zero even when everything passed. A browser failure also
-  poisons the platform for the tests that follow (`RefCell already borrowed`), so fix the
-  first failure before believing the rest.
+  after reporting and exits non-zero even when everything passed. That cleanup panic
+  (`PermissionDenied`) also stops cargo before the remaining binaries run, so the one-command
+  browser form silently covers only the first of them—run each browser binary by name
+  (`--test web_dom`, `web_hydrate`, `web_resource`, `web_task`; the other `web_*.rs` are
+  wasi-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
+  reads as a passing one. A browser failure also poisons the platform for the tests that
+  follow (`RefCell already borrowed`), so fix the first failure before believing the rest.
 - Prefer `#[expect(lint)]` over `#[allow(lint)]`.
 - Order dependencies alphabetically by crate name within every Cargo manifest table.
 - Macros must pull their weight: use one only when it eliminates real boilerplate or repetition

@@ -19,6 +19,7 @@ use skene_reactive::{Owner, provide_context, use_context};
 
 use crate::{
   Container,
+  FocusHandle,
   HasEvents,
   control::{Behavior, EventCore},
 };
@@ -32,7 +33,7 @@ struct GroupContext {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
   /// Members in build order, which is document order; the arrow keys walk it.
-  members: Rc<RefCell<Vec<(String, NodeId)>>>,
+  members: Rc<RefCell<Vec<(String, FocusHandle)>>>,
 }
 
 impl GroupContext {
@@ -48,11 +49,11 @@ impl GroupContext {
     else {
       return;
     };
-    let (value, node) = members[next].clone();
+    let (value, handle) = members[next].clone();
 
     drop(members);
     (self.choose)(value);
-    crate::driver::focus_node(node);
+    handle.focus();
   }
 
   /// Whether `value` is the group's one tab stop: the chosen member, or the first when
@@ -260,6 +261,7 @@ impl View for RawRadio<AnyView> {
     let group: Option<GroupContext> = use_context();
     let value = self.value;
     let label = self.label;
+    let handle = FocusHandle::new();
     let state = {
       let group = group.clone();
       let value = value.clone();
@@ -325,7 +327,8 @@ impl View for RawRadio<AnyView> {
     let container = Container::new()
       .set_role(Role::Radio)
       .derive_focus_order(order)
-      .derive_accessibility(state);
+      .derive_accessibility(state)
+      .bind_focus(&handle);
     let node = self
       .events
       .attach(container, behavior)
@@ -333,7 +336,7 @@ impl View for RawRadio<AnyView> {
       .build();
 
     if let Some(group) = &group {
-      group.members.borrow_mut().push((value, node));
+      group.members.borrow_mut().push((value, handle));
     }
 
     node

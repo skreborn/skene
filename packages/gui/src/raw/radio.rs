@@ -1,6 +1,6 @@
 //! A mutually-exclusive choice, drawn by the views it holds.
 
-use std::{cell::RefCell, ops::ControlFlow, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   AccessProp,
@@ -9,7 +9,6 @@ use skene_core::{
   IntoView,
   KeyEvent,
   NodeId,
-  Override,
   Prevent,
   Ring,
   Role,
@@ -18,7 +17,11 @@ use skene_core::{
 };
 use skene_reactive::{Owner, provide_context, use_context};
 
-use crate::Container;
+use crate::{
+  Container,
+  HasEvents,
+  control::{Behavior, EventCore},
+};
 
 /// What a [`RawRadioGroup`] shares with the members inside it.
 ///
@@ -207,8 +210,7 @@ impl View for RawRadioGroup<AnyView> {
 pub struct RawRadio<C = skene_core::NoChild> {
   child: C,
   value: String,
-  click: Override<()>,
-  key_down: Override<KeyEvent>,
+  events: EventCore,
   label: Option<String>,
 }
 
@@ -219,10 +221,16 @@ impl RawRadio {
     Self {
       child: skene_core::NoChild,
       value: value.into(),
-      click: Override::new(),
-      key_down: Override::new(),
+      events: EventCore::default(),
       label: None,
     }
+  }
+}
+
+impl<C> HasEvents for RawRadio<C> {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut EventCore {
+    &mut self.events
   }
 }
 
@@ -233,37 +241,9 @@ impl<C> RawRadio<C> {
     RawRadio {
       child: child.into_view(),
       value: self.value,
-      click: self.click,
-      key_down: self.key_down,
+      events: self.events,
       label: self.label,
     }
-  }
-
-  /// Installs a click handler ahead of the choice's own selection.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves the selection to run as though nothing
-  /// were installed; [`Break`](ControlFlow::Break) takes the click, and the choice does
-  /// nothing further.
-  #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
-    self.click.set(move |&()| action());
-
-    self
-  }
-
-  /// Installs a key handler ahead of the group's arrow traversal and `Space` selection.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves them to run as though nothing were
-  /// installed; [`Break`](ControlFlow::Break) takes the key, and the choice does
-  /// nothing further.
-  #[inline(always)]
-  pub fn handle_key_down(
-    mut self,
-    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.key_down.set(action);
-
-    self
   }
 
   /// Sets the accessible name, for when the child draws no readable label.
@@ -309,45 +289,46 @@ impl View for RawRadio<AnyView> {
         _ => FocusOrder::Auto,
       }
     };
-    let click = {
-      let group = group.clone();
-      let value = value.clone();
+    let behavior = Behavior::new()
+      .click({
+        let group = group.clone();
+        let value = value.clone();
 
-      self.click.wrap(move |&()| {
-        if let Some(group) = &group {
-          (group.choose)(value.clone());
+        move || {
+          if let Some(group) = &group {
+            (group.choose)(value.clone());
+          }
+
+          Prevent::None
         }
-
-        Prevent::None
       })
-    };
-    let key = {
-      let group = group.clone();
-      let value = value.clone();
+      .key_down({
+        let group = group.clone();
+        let value = value.clone();
 
-      self.key_down.wrap(move |event: &KeyEvent| {
-        let Some(group) = &group
-        else {
-          return Prevent::None;
-        };
+        move |event: &KeyEvent| {
+          let Some(group) = &group
+          else {
+            return Prevent::None;
+          };
 
-        match event.key.as_str() {
-          "ArrowRight" | "ArrowDown" => group.step_from(&value, 1),
-          "ArrowLeft" | "ArrowUp" => group.step_from(&value, -1),
-          " " => (group.choose)(value.clone()),
-          _ => return Prevent::None,
+          match event.key.as_str() {
+            "ArrowRight" | "ArrowDown" => group.step_from(&value, 1),
+            "ArrowLeft" | "ArrowUp" => group.step_from(&value, -1),
+            " " => (group.choose)(value.clone()),
+            _ => return Prevent::None,
+          }
+
+          Prevent::Platform
         }
-
-        Prevent::Platform
-      })
-    };
-
-    let node = Container::new()
+      });
+    let container = Container::new()
       .set_role(Role::Radio)
       .derive_focus_order(order)
-      .derive_accessibility(state)
-      .handle_click(move || click(&()))
-      .handle_key_down(key)
+      .derive_accessibility(state);
+    let node = self
+      .events
+      .attach(container, behavior)
       .set_child(self.child)
       .build();
 

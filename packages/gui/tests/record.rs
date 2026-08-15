@@ -392,6 +392,7 @@ fn an_installed_handler_runs_ahead_of_a_control() {
   use std::ops::ControlFlow;
 
   use skene_gui::{
+    HasEvents,
     RawCheckbox,
     core::{KeyEvent, Modifiers},
   };
@@ -437,6 +438,49 @@ fn an_installed_handler_runs_ahead_of_a_control() {
   assert_eq!(seen.get(), 2, "the installed handler sees every key");
   assert!(checked.get(), "continuing leaves the toggle to run");
   assert!(prevention.platform, "the verdict is now the control's");
+}
+
+/// A control carries a handler for every event, including the ones it does not act on,
+/// so a handler always goes on the control rather than on a wrapper around it—and keeps
+/// its signature if the control later grows behavior for that event.
+#[test]
+fn a_control_carries_handlers_for_events_it_ignores() {
+  use std::ops::ControlFlow;
+
+  use skene_gui::{
+    HasEvents,
+    RawCheckbox,
+    core::{Modifiers, PointerEvent},
+  };
+
+  let seen = Rc::new(Cell::new(false));
+  let noticed = Rc::clone(&seen);
+  let root = RawCheckbox::new()
+    .handle_pointer_down(move |_| {
+      noticed.set(true);
+
+      ControlFlow::Break(Prevent::Platform)
+    })
+    .set_child(Text::new("mark"))
+    .build();
+
+  let prevention = record::trigger_pointer_down(
+    root,
+    &PointerEvent {
+      x: 0.,
+      y: 0.,
+      local_x: 0.,
+      local_y: 0.,
+      button: None,
+      modifiers: Modifiers::default(),
+    },
+  );
+
+  assert!(
+    seen.get(),
+    "a checkbox acts on no pointer press, yet carries"
+  );
+  assert!(prevention.platform, "and reports the handler's verdict");
 }
 
 /// A drawn slider reports its value and bounds, and the keys move it the way a

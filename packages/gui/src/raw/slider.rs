@@ -1,6 +1,6 @@
 //! A choice of a number within a range, drawn by the view it holds.
 
-use std::{cell::Cell, ops::ControlFlow, rc::Rc};
+use std::{cell::Cell, rc::Rc};
 
 use skene_core::{
   AccessProp,
@@ -9,7 +9,6 @@ use skene_core::{
   IntoView,
   KeyEvent,
   NodeId,
-  Override,
   PointerEvent,
   Prevent,
   Role,
@@ -19,7 +18,11 @@ use skene_core::{
 };
 use skene_reactive::{Get, Set, Signal};
 
-use crate::Container;
+use crate::{
+  Container,
+  HasEvents,
+  control::{Behavior, EventCore},
+};
 
 /// How many steps a page key moves, matching what a browser's own range input does.
 const PAGE_STEPS: f32 = 10.;
@@ -47,12 +50,16 @@ pub struct RawSlider<C = skene_core::NoChild> {
   step: f32,
   value: Option<Source<f32>>,
   change_handler: Option<Rc<dyn Fn(f32)>>,
-  key_down: Override<KeyEvent>,
-  pointer_down: Override<PointerEvent>,
-  pointer_move: Override<PointerEvent>,
-  pointer_up: Override<PointerEvent>,
+  events: EventCore,
   focus_order: FocusOrder,
   label: Option<String>,
+}
+
+impl<C> HasEvents for RawSlider<C> {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut EventCore {
+    &mut self.events
+  }
 }
 
 impl RawSlider {
@@ -66,10 +73,7 @@ impl RawSlider {
       step: 1.,
       value: None,
       change_handler: None,
-      key_down: Override::new(),
-      pointer_down: Override::new(),
-      pointer_move: Override::new(),
-      pointer_up: Override::new(),
+      events: EventCore::default(),
       focus_order: FocusOrder::Auto,
       label: None,
     }
@@ -87,10 +91,7 @@ impl<C> RawSlider<C> {
       step: self.step,
       value: self.value,
       change_handler: self.change_handler,
-      key_down: self.key_down,
-      pointer_down: self.pointer_down,
-      pointer_move: self.pointer_move,
-      pointer_up: self.pointer_up,
+      events: self.events,
       focus_order: self.focus_order,
       label: self.label,
     }
@@ -136,67 +137,6 @@ impl<C> RawSlider<C> {
     self
       .derive_value(move || signal.get())
       .handle_change(move |value| signal.set(value))
-  }
-
-  /// Installs a key handler ahead of the slider's own arrow, page, `Home`, and `End`
-  /// moves.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves them to run as though nothing were
-  /// installed; [`Break`](ControlFlow::Break) takes the key, and the slider does
-  /// nothing further.
-  #[inline(always)]
-  pub fn handle_key_down(
-    mut self,
-    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.key_down.set(action);
-
-    self
-  }
-
-  /// Installs a press handler ahead of the slider's own jump to the pressed position.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves the jump to run as though nothing were
-  /// installed; [`Break`](ControlFlow::Break) takes the press, and the slider neither
-  /// jumps nor begins a drag.
-  #[inline(always)]
-  pub fn handle_pointer_down(
-    mut self,
-    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.pointer_down.set(action);
-
-    self
-  }
-
-  /// Installs a move handler ahead of the slider's own drag.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves the drag to run as though nothing were
-  /// installed; [`Break`](ControlFlow::Break) takes the move, and the slider does
-  /// nothing further.
-  #[inline(always)]
-  pub fn handle_pointer_move(
-    mut self,
-    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.pointer_move.set(action);
-
-    self
-  }
-
-  /// Installs a release handler ahead of the slider's own end of the drag.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves it to run as though nothing were
-  /// installed; [`Break`](ControlFlow::Break) takes the release, and the drag stays
-  /// open until the next one.
-  #[inline(always)]
-  pub fn handle_pointer_up(
-    mut self,
-    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.pointer_up.set(action);
-
-    self
   }
 
   /// Sets the control's place in sequential focus traversal.
@@ -272,64 +212,63 @@ impl View for RawSlider<AnyView> {
         }
       }
     };
-    let press = {
-      let pressed = Rc::clone(&pressed);
-      let slide = slide.clone();
+    let behavior = Behavior::new()
+      .pointer_down({
+        let pressed = Rc::clone(&pressed);
+        let slide = slide.clone();
 
-      self.pointer_down.wrap(move |event: &PointerEvent| {
-        pressed.set(true);
-        slide(event);
-
-        Prevent::Platform
-      })
-    };
-    let drag = {
-      let pressed = Rc::clone(&pressed);
-
-      self.pointer_move.wrap(move |event: &PointerEvent| {
-        if pressed.get() {
+        move |event: &PointerEvent| {
+          pressed.set(true);
           slide(event);
+
+          Prevent::Platform
         }
-
-        Prevent::None
       })
-    };
-    let release = {
-      let pressed = Rc::clone(&pressed);
+      .pointer_move({
+        let pressed = Rc::clone(&pressed);
 
-      self.pointer_up.wrap(move |_: &PointerEvent| {
-        pressed.set(false);
+        move |event: &PointerEvent| {
+          if pressed.get() {
+            slide(event);
+          }
 
-        Prevent::None
-      })
-    };
-    let key = {
-      let read = read.clone();
-      let write = Rc::clone(&write);
-
-      self.key_down.wrap(move |event: &KeyEvent| {
-        let current = read();
-        let Some(next) = key_value(range, current, &event.key)
-        else {
-          return Prevent::None;
-        };
-
-        if moved(next, current) {
-          write(next);
+          Prevent::None
         }
-
-        Prevent::Platform
       })
-    };
+      .pointer_up({
+        let pressed = Rc::clone(&pressed);
 
-    let node = Container::new()
+        move |_: &PointerEvent| {
+          pressed.set(false);
+
+          Prevent::None
+        }
+      })
+      .key_down({
+        let read = read.clone();
+        let write = Rc::clone(&write);
+
+        move |event: &KeyEvent| {
+          let current = read();
+          let Some(next) = key_value(range, current, &event.key)
+          else {
+            return Prevent::None;
+          };
+
+          if moved(next, current) {
+            write(next);
+          }
+
+          Prevent::Platform
+        }
+      });
+    let container = Container::new()
       .set_role(Role::Slider)
       .set_focus_order(self.focus_order)
-      .derive_accessibility(state)
-      .handle_pointer_down(press)
-      .handle_pointer_move(drag)
-      .handle_pointer_up(release)
-      .handle_key_down(key)
+      .derive_accessibility(state);
+    let node = self
+      .events
+      .attach(container, behavior)
       .set_child(self.child)
       .build();
 

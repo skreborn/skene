@@ -5,9 +5,19 @@
 
 use std::rc::Rc;
 
-use skene_core::{Animation, BoxStyle, Condition, Transition};
+use skene_core::{
+  Animation,
+  BoxStyle,
+  Condition,
+  KeyEvent,
+  Override,
+  PointerEvent,
+  Prevent,
+  ScrollEvent,
+  Transition,
+};
 
-use crate::FocusHandle;
+use crate::{Container, FocusHandle};
 
 /// The focus state behind a control's shared builder surface: the target of
 /// [`HasFocus`](crate::HasFocus).
@@ -28,6 +38,157 @@ pub struct StyleCore {
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
+}
+
+/// The event state behind a drawn control's shared builder surface: the target of
+/// [`HasEvents`](crate::HasEvents).
+///
+/// The preventable events are [`Override`]s, so a handler may take one from the control
+/// outright; the notification events carry no verdict and only observe.
+#[derive(Default)]
+pub struct EventCore {
+  pub(crate) click: Override<()>,
+  pub(crate) key_down: Override<KeyEvent>,
+  pub(crate) pointer_down: Override<PointerEvent>,
+  pub(crate) pointer_move: Override<PointerEvent>,
+  pub(crate) pointer_up: Override<PointerEvent>,
+  pub(crate) pointer_enter: Option<Rc<dyn Fn()>>,
+  pub(crate) pointer_leave: Option<Rc<dyn Fn()>>,
+  pub(crate) focus: Option<Rc<dyn Fn()>>,
+  pub(crate) blur: Option<Rc<dyn Fn()>>,
+  pub(crate) scroll: Option<Rc<ScrollHandler>>,
+}
+
+/// A scroll handler, as [`EventCore`] stores it.
+type ScrollHandler = dyn Fn(&ScrollEvent);
+
+/// What a drawn control does of its own accord, for the events it acts on.
+///
+/// A control supplies one of these to [`EventCore::attach`]; every event left unset
+/// simply reports its handler's verdict, so a control pays nothing for the events it
+/// ignores and gains the override path for free when it later acts on one.
+#[derive(Default)]
+#[must_use]
+pub struct Behavior {
+  click: Option<ClickBehavior>,
+  key_down: Option<BehaviorFor<KeyEvent>>,
+  pointer_down: Option<BehaviorFor<PointerEvent>>,
+  pointer_move: Option<BehaviorFor<PointerEvent>>,
+  pointer_up: Option<BehaviorFor<PointerEvent>>,
+}
+
+/// What a control does on one event carrying `E`, as [`Behavior`] stores it.
+type BehaviorFor<E> = Box<dyn Fn(&E) -> Prevent>;
+/// What a control does on a click, which carries nothing.
+type ClickBehavior = Box<dyn Fn() -> Prevent>;
+
+impl Behavior {
+  /// Creates a behavior that acts on nothing.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  /// Sets what the control does on a click.
+  #[inline(always)]
+  pub fn click(mut self, behavior: impl Fn() -> Prevent + 'static) -> Self {
+    self.click = Some(Box::new(behavior));
+
+    self
+  }
+
+  /// Sets what the control does on a key press.
+  #[inline(always)]
+  pub fn key_down(mut self, behavior: impl Fn(&KeyEvent) -> Prevent + 'static) -> Self {
+    self.key_down = Some(Box::new(behavior));
+
+    self
+  }
+
+  /// Sets what the control does on a pointer press.
+  #[inline(always)]
+  pub fn pointer_down(mut self, behavior: impl Fn(&PointerEvent) -> Prevent + 'static) -> Self {
+    self.pointer_down = Some(Box::new(behavior));
+
+    self
+  }
+
+  /// Sets what the control does on a pointer move.
+  #[inline(always)]
+  pub fn pointer_move(mut self, behavior: impl Fn(&PointerEvent) -> Prevent + 'static) -> Self {
+    self.pointer_move = Some(Box::new(behavior));
+
+    self
+  }
+
+  /// Sets what the control does on a pointer release.
+  #[inline(always)]
+  pub fn pointer_up(mut self, behavior: impl Fn(&PointerEvent) -> Prevent + 'static) -> Self {
+    self.pointer_up = Some(Box::new(behavior));
+
+    self
+  }
+}
+
+impl EventCore {
+  /// Registers every handler on `container`, each installed one folded over what
+  /// `behavior` supplies for that event.
+  pub fn attach(self, container: Container, behavior: Behavior) -> Container {
+    let Behavior {
+      click,
+      key_down,
+      pointer_down,
+      pointer_move,
+      pointer_up,
+    } = behavior;
+    let click = self
+      .click
+      .wrap(move |&()| click.as_ref().map_or(Prevent::None, |act| act()));
+    let mut container = container
+      .handle_click(move || click(&()))
+      .handle_key_down(
+        self
+          .key_down
+          .wrap(move |event| key_down.as_ref().map_or(Prevent::None, |act| act(event))),
+      )
+      .handle_pointer_down(self.pointer_down.wrap(move |event| {
+        pointer_down
+          .as_ref()
+          .map_or(Prevent::None, |act| act(event))
+      }))
+      .handle_pointer_move(self.pointer_move.wrap(move |event| {
+        pointer_move
+          .as_ref()
+          .map_or(Prevent::None, |act| act(event))
+      }))
+      .handle_pointer_up(
+        self
+          .pointer_up
+          .wrap(move |event| pointer_up.as_ref().map_or(Prevent::None, |act| act(event))),
+      );
+
+    if let Some(action) = self.pointer_enter {
+      container = container.handle_pointer_enter(move || action());
+    }
+
+    if let Some(action) = self.pointer_leave {
+      container = container.handle_pointer_leave(move || action());
+    }
+
+    if let Some(action) = self.focus {
+      container = container.handle_focus(move || action());
+    }
+
+    if let Some(action) = self.blur {
+      container = container.handle_blur(move || action());
+    }
+
+    if let Some(action) = self.scroll {
+      container = container.handle_scroll(move |event| action(event));
+    }
+
+    container
+  }
 }
 
 /// The state behind a control's shared builder surface, embedded by every control.

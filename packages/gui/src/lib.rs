@@ -91,13 +91,13 @@ pub use crate::task::spawn;
 pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
-  control::{FocusCore, StyleCore},
+  control::{Behavior, EventCore, FocusCore, StyleCore},
   focus::FocusHandle,
   layout_box::LayoutBox,
   lazy::LazyColumn,
   overlay::{Anchor, Overlay},
   raw::{RawButton, RawCheckbox, RawRadio, RawRadioGroup, RawSlider, RawTextEditor, RawTextField},
-  surface::{HasFocus, HasStyle},
+  surface::{HasEvents, HasFocus, HasStyle},
   text::{RichText, Span, Text, TextStyle, TextTheme},
   web_controls::{WebCheckbox, WebPicker, WebRadio, WebSlider},
 };

@@ -9,11 +9,20 @@
 //! The box surface has no counterpart here: only [`Container`](crate::Container)
 //! decorates, so there is nothing to forward.
 
-use std::rc::Rc;
+use std::{ops::ControlFlow, rc::Rc};
 
-use skene_core::{Animation, BoxStyle, Condition, KeyEvent, Prevent, Transition};
+use skene_core::{
+  Animation,
+  BoxStyle,
+  Condition,
+  KeyEvent,
+  PointerEvent,
+  Prevent,
+  ScrollEvent,
+  Transition,
+};
 
-use crate::control::{FocusCore, StyleCore};
+use crate::control::{EventCore, FocusCore, StyleCore};
 
 /// The control focus surface: focus order, autofocus, focus and anchor binding, and
 /// the focus/blur/key handlers, forwarded to a control's [`FocusCore`].
@@ -85,6 +94,126 @@ pub trait HasFocus: Sized {
     action: impl Fn(&KeyEvent) -> R + 'static,
   ) -> Self {
     self.focus_core().key_down_handler = Some(Rc::new(move |event| action(event).into()));
+
+    self
+  }
+}
+
+/// The drawn-control event surface: every event a control can carry, forwarded to its
+/// [`EventCore`].
+///
+/// Each control offers the whole set whether or not it acts on a given event, so a
+/// handler always goes on the control itself rather than on a wrapper around it, and a
+/// control that later grows behavior for an event does not change the signature its
+/// users already wrote against.
+///
+/// The preventable handlers return [`ControlFlow`]: `Continue` leaves the control to act
+/// as though nothing were installed, and `Break` takes the event, carrying the verdict
+/// the dispatch goes on to see. The notification handlers—pointer enter and leave,
+/// focus, blur, scroll—report what already happened and take no verdict, on a control
+/// exactly as on a [`Container`](crate::Container).
+pub trait HasEvents: Sized {
+  /// The core the handlers land on.
+  fn event_core(&mut self) -> &mut EventCore;
+
+  /// Installs a click handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
+    self.event_core().click.set(move |&()| action());
+
+    self
+  }
+
+  /// Installs a key handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_key_down(
+    mut self,
+    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.event_core().key_down.set(action);
+
+    self
+  }
+
+  /// Installs a pointer-press handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_down(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.event_core().pointer_down.set(action);
+
+    self
+  }
+
+  /// Installs a pointer-move handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_move(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.event_core().pointer_move.set(action);
+
+    self
+  }
+
+  /// Installs a pointer-release handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_up(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.event_core().pointer_up.set(action);
+
+    self
+  }
+
+  /// Sets the pointer-enter handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().pointer_enter = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the pointer-leave handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().pointer_leave = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the focus handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().focus = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the blur handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().blur = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Sets the scroll handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.event_core().scroll = Some(Rc::new(action));
 
     self
   }

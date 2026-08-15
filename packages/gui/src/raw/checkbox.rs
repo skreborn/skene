@@ -1,6 +1,6 @@
 //! A two-state toggle a view draws itself.
 
-use std::{ops::ControlFlow, rc::Rc};
+use std::rc::Rc;
 
 use skene_core::{
   AccessProp,
@@ -9,14 +9,17 @@ use skene_core::{
   IntoView,
   KeyEvent,
   NodeId,
-  Override,
   Prevent,
   Role,
   Source,
   View,
 };
 
-use crate::Container;
+use crate::{
+  Container,
+  HasEvents,
+  control::{Behavior, EventCore},
+};
 
 /// A checkbox drawn by the view it holds: the control supplies the behavior, the child
 /// supplies every pixel.
@@ -42,8 +45,7 @@ pub struct RawCheckbox<C = skene_core::NoChild> {
   child: C,
   checked: Option<Source<bool>>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
-  click: Override<()>,
-  key_down: Override<KeyEvent>,
+  events: EventCore,
   focus_order: FocusOrder,
   label: Option<String>,
 }
@@ -56,11 +58,17 @@ impl RawCheckbox {
       child: skene_core::NoChild,
       checked: None,
       toggle_handler: None,
-      click: Override::new(),
-      key_down: Override::new(),
+      events: EventCore::default(),
       focus_order: FocusOrder::Auto,
       label: None,
     }
+  }
+}
+
+impl<C> HasEvents for RawCheckbox<C> {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut EventCore {
+    &mut self.events
   }
 }
 
@@ -79,8 +87,7 @@ impl<C> RawCheckbox<C> {
       child: child.into_view(),
       checked: self.checked,
       toggle_handler: self.toggle_handler,
-      click: self.click,
-      key_down: self.key_down,
+      events: self.events,
       focus_order: self.focus_order,
       label: self.label,
     }
@@ -119,33 +126,6 @@ impl<C> RawCheckbox<C> {
     self
       .derive_checked(move || signal.get())
       .handle_toggle(move |checked| signal.set(checked))
-  }
-
-  /// Installs a click handler ahead of the checkbox's own toggle.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves the toggle to run as though nothing
-  /// were installed; [`Break`](ControlFlow::Break) takes the click, and the checkbox
-  /// does nothing further.
-  #[inline(always)]
-  pub fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
-    self.click.set(move |&()| action());
-
-    self
-  }
-
-  /// Installs a key handler ahead of the checkbox's own `Space` toggle.
-  ///
-  /// [`Continue`](ControlFlow::Continue) leaves the toggle to run as though nothing
-  /// were installed; [`Break`](ControlFlow::Break) takes the key, and the checkbox does
-  /// nothing further.
-  #[inline(always)]
-  pub fn handle_key_down(
-    mut self,
-    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.key_down.set(action);
-
-    self
   }
 
   /// Sets the control's place in sequential focus traversal.
@@ -193,34 +173,36 @@ impl View for RawCheckbox<AnyView> {
         }
       })
     };
-    let click = {
-      let toggle = Rc::clone(&toggle);
+    let behavior = Behavior::new()
+      .click({
+        let toggle = Rc::clone(&toggle);
 
-      self.click.wrap(move |&()| {
-        toggle();
+        move || {
+          toggle();
+
+          Prevent::None
+        }
+      })
+      // `Space` activates a checkbox and `Enter` does not, which is what the browser's
+      // own does; preventing the platform's response keeps the page from scrolling
+      // under it.
+      .key_down(move |event: &KeyEvent| {
+        if event.key == " " {
+          toggle();
+
+          return Prevent::Platform;
+        }
 
         Prevent::None
-      })
-    };
-    // `Space` activates a checkbox and `Enter` does not, which is what the browser's
-    // own does; preventing the platform's response keeps the page from scrolling under
-    // it.
-    let key = self.key_down.wrap(move |event: &KeyEvent| {
-      if event.key == " " {
-        toggle();
-
-        return Prevent::Platform;
-      }
-
-      Prevent::None
-    });
-
-    Container::new()
+      });
+    let container = Container::new()
       .set_role(Role::Checkbox)
       .set_focus_order(self.focus_order)
-      .derive_accessibility(state)
-      .handle_click(move || click(&()))
-      .handle_key_down(key)
+      .derive_accessibility(state);
+
+    self
+      .events
+      .attach(container, behavior)
       .set_child(self.child)
       .build()
   }

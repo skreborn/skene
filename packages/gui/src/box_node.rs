@@ -70,6 +70,7 @@ pub(crate) struct BoxNode {
   pub(crate) overflow: Option<Source<Overflow>>,
   pub(crate) accessibility: Option<Source<Vec<skene_core::AccessProp>>>,
   pub(crate) anchor: Option<crate::Anchor>,
+  pub(crate) focus_handle: Option<crate::FocusHandle>,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
   pub(crate) animations: Vec<Animation<BoxStyle>>,
@@ -128,6 +129,7 @@ impl BoxNode {
       overflow: None,
       accessibility: None,
       anchor: None,
+      focus_handle: None,
       variants: Vec::new(),
       transitions: Vec::new(),
       animations: Vec::new(),
@@ -506,6 +508,10 @@ impl skene_core::View for BoxNode {
 
     if let Some(anchor) = &self.anchor {
       anchor.assign(node);
+    }
+
+    if let Some(handle) = &self.focus_handle {
+      handle.assign(node);
     }
 
     match self.layout {

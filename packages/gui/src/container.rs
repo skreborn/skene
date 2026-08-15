@@ -731,6 +731,18 @@ impl Container {
 
     self
   }
+
+  /// Binds `handle` to the box, so [`FocusHandle::focus`](crate::FocusHandle::focus)
+  /// targets it once built.
+  ///
+  /// Only a box that takes focus—one carrying a widget [role](Self::set_role) and a
+  /// [focus order](Self::set_focus_order)—can receive it.
+  #[inline(always)]
+  pub fn bind_focus(mut self, handle: &crate::FocusHandle) -> Self {
+    self.node.focus_handle = Some(handle.clone());
+
+    self
+  }
 }
 
 impl Default for Container {

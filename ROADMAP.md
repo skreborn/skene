@@ -592,6 +592,25 @@ sink are just different sinks for the same paths.)
   - **The terminal's text machinery stays in the terminal.** Caret and word motion and
     the selection model are not hoisted: one consumer means no duplication to remove,
     and the spine takes no platform's concerns it does not need.
+  - **The four drawn GUI controls—done.** `RawCheckbox`, `RawSlider`, `RawRadio`/
+    `RawRadioGroup`, and `RawPicker`/`RawOption` are built from the public surface a
+    third party has: `Container` for the node, role, focus order and reported state,
+    `Overlay` for the picker's popup (layering, anchoring, light-dismiss), `Ring` and
+    `SliderRange` from the spine, and context for group membership—so a member may be
+    wrapped or interleaved with decoration rather than forced into a typed child kind.
+    Traversal differs by control because the platform's does: a radio group wraps, a
+    picker's list clamps. Both roving tab stops move with the selection, which is why
+    focus order became reactive.
+  - **The picker's shape.** `set_face` draws it closed and `set_options` draws the
+    list—properties first, the large one last—over `Stack[face, Overlay[Listbox]]`, a
+    tree with no privileged driver call in it. Its handlers cover the face; an option
+    carries its own, because roving focus puts the keyboard on a row while the list is
+    open. **Type-ahead is the one deliberate gap**: resetting its buffer needs a timer,
+    timers are userland, and the terminal's picker has none either.
+  - **Deferred, and why: `aria-activedescendant`.** Announcing the highlight without
+    moving focus would need a node-valued `AccessProp` and stable per-node ids in the
+    web driver. Roving focus reaches the same place with machinery that already
+    exists, so the id-relation vocabulary stays unbuilt until something needs it.
   - **Open: how the no-JS path renders.** A `<noscript>` fallback cannot hide the ARIA
     tree beside it, so a scriptless client would get both the working control and an
     inert one. Rendering the native `Web*` control on the server and upgrading it to the

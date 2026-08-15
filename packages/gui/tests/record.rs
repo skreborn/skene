@@ -791,3 +791,131 @@ fn a_closed_picker_cycles_without_opening() {
 
   assert_eq!(flavor.get(), "mint");
 }
+
+/// A member that reconciles away leaves its group, so the arrows never reach a
+/// destroyed node and the wrap lands on one that still exists.
+#[test]
+fn a_reconciled_away_member_leaves_its_group() {
+  use skene_gui::{
+    RawRadio,
+    RawRadioGroup,
+    core::{KeyEvent, Modifiers},
+  };
+
+  let flavors = Signal::new(vec![
+    String::from("mint"),
+    String::from("plum"),
+    String::from("fig"),
+  ]);
+  let chosen = Signal::new(String::from("mint"));
+  let root = RawRadioGroup::new()
+    .bind_chosen(chosen)
+    .set_child(Column::new().derive_children(
+      move || flavors.get(),
+      |flavor: &String| flavor.clone(),
+      |flavor| RawRadio::new(flavor.clone()).set_child(Text::new(flavor)),
+    ))
+    .build();
+  let column = record::children(root)[0];
+  let press = |node, key: &str| {
+    record::trigger_key_down(
+      node,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  assert_eq!(record::children(column).len(), 3);
+
+  let _ = press(record::children(column)[0], "ArrowDown");
+
+  assert_eq!(chosen.get(), "plum", "the arrows walk the built members");
+
+  chosen.set(String::from("mint"));
+  flavors.set(vec![String::from("mint"), String::from("fig")]);
+
+  let rows = record::children(column);
+
+  assert_eq!(rows.len(), 2, "the middle member is gone from the tree");
+
+  let _ = press(rows[0], "ArrowDown");
+
+  assert_eq!(
+    chosen.get(),
+    "fig",
+    "and gone from traversal—a stale roster would choose the destroyed member"
+  );
+
+  let _ = press(rows[1], "ArrowDown");
+
+  assert_eq!(chosen.get(), "mint", "the ring wraps over what remains");
+}
+
+/// A filtered-away option leaves the picker, so the highlight clamps at the end of what
+/// is left rather than running past it onto a destroyed row.
+#[test]
+fn a_filtered_away_option_leaves_its_picker() {
+  use skene_gui::{
+    RawOption,
+    RawPicker,
+    core::{FocusOrder, KeyEvent, Modifiers},
+  };
+
+  let shown = Signal::new(vec![
+    String::from("mint"),
+    String::from("plum"),
+    String::from("fig"),
+  ]);
+  let flavor = Signal::new(String::from("mint"));
+  let root = RawPicker::new()
+    .bind_value(flavor)
+    .set_face(Text::new("choose"))
+    .set_options((Column::new().derive_children(
+      move || shown.get(),
+      |flavor: &String| flavor.clone(),
+      |flavor| RawOption::new(flavor.clone()).set_child(Text::new(flavor)),
+    ),))
+    .build();
+  let face = record::children(root)[0];
+  let overlay = record::children(root)[1];
+  let listbox = record::children(overlay)[0];
+  let rows = || record::children(record::children(record::children(listbox)[0])[0]);
+  let press = |node, key: &str| {
+    record::trigger_key_down(
+      node,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+  let highlighted = || {
+    rows()
+      .into_iter()
+      .position(|node| record::focus_order(node) == Some(FocusOrder::Auto))
+  };
+
+  let _ = record::trigger_click(face);
+
+  assert_eq!(rows().len(), 3);
+  assert_eq!(
+    highlighted(),
+    Some(0),
+    "opening highlights the chosen option"
+  );
+
+  shown.set(vec![String::from("mint"), String::from("plum")]);
+
+  assert_eq!(rows().len(), 2, "the last option is gone from the tree");
+
+  let _ = press(rows()[0], "ArrowDown");
+  let _ = press(rows()[1], "ArrowDown");
+
+  assert_eq!(
+    highlighted(),
+    Some(1),
+    "the highlight clamps at what is left—a stale roster would run past it"
+  );
+}

@@ -130,6 +130,88 @@ impl Ring {
   }
 }
 
+/// The members a grouping control tracks: a radio group's choices, a picker's options.
+///
+/// A member joins as it builds and leaves as it is disposed, so a set that reconciles
+/// never keeps a destroyed member where the keyboard can reach it. `T` is whatever the
+/// facade needs to act on one—on a GUI, the handle that focuses it.
+///
+/// Order is join order. That is document order for a fixed set, and for one that only
+/// ever grows at its end; a member inserted into the middle of a reconciling set joins
+/// last, because nothing here can see the tree.
+#[must_use]
+pub struct Roster<T>(std::rc::Rc<std::cell::RefCell<Vec<(String, T)>>>);
+
+impl<T> Roster<T> {
+  /// Creates a roster with no members.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  /// Adds the member holding `value`, replacing any member already holding it.
+  pub fn join(&self, value: impl Into<String>, member: T) {
+    let value = value.into();
+    let mut members = self.0.borrow_mut();
+
+    members.retain(|(held, _)| *held != value);
+    members.push((value, member));
+  }
+
+  /// Removes the member holding `value`.
+  pub fn leave(&self, value: &str) {
+    self.0.borrow_mut().retain(|(held, _)| held != value);
+  }
+
+  /// How many members there are.
+  #[inline(always)]
+  #[must_use]
+  pub fn count(&self) -> usize {
+    self.0.borrow().len()
+  }
+
+  /// Where the member holding `value` sits, if there is one.
+  #[must_use]
+  pub fn position_of(&self, value: Option<&str>) -> Option<usize> {
+    let value = value?;
+
+    self.0.borrow().iter().position(|(held, _)| held == value)
+  }
+
+  /// Whether `value` is the first member's, which is where a group with no selection
+  /// puts its one tab stop.
+  #[must_use]
+  pub fn leads_with(&self, value: &str) -> bool {
+    self
+      .0
+      .borrow()
+      .first()
+      .is_some_and(|(first, _)| first == value)
+  }
+}
+
+impl<T: Clone> Roster<T> {
+  /// The member at `index`.
+  #[must_use]
+  pub fn at(&self, index: usize) -> Option<(String, T)> {
+    self.0.borrow().get(index).cloned()
+  }
+}
+
+impl<T> Clone for Roster<T> {
+  #[inline(always)]
+  fn clone(&self) -> Self {
+    Self(std::rc::Rc::clone(&self.0))
+  }
+}
+
+impl<T> Default for Roster<T> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self(std::rc::Rc::new(std::cell::RefCell::new(Vec::new())))
+  }
+}
+
 #[cfg(test)]
 // Every expected value here is exactly representable—a step multiple or an end of the
 // range—so an exact comparison is the assertion, not an approximation of it.

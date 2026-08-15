@@ -1,6 +1,6 @@
 //! A choice among fixed options, drawn by the views it holds.
 
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use skene_core::{
   AccessProp,
@@ -14,10 +14,11 @@ use skene_core::{
   PlainChild,
   Prevent,
   Role,
+  Roster,
   Source,
   View,
 };
-use skene_reactive::{Get, Owner, Set, Signal, provide_context, use_context};
+use skene_reactive::{Get, Owner, Set, Signal, on_cleanup, provide_context, use_context};
 
 use crate::{
   Anchor,
@@ -45,29 +46,19 @@ struct PickerContext {
   /// request—so dismissing leaves the old value in place.
   active: Signal<Option<String>>,
   open: Signal<bool>,
-  /// Options in build order, which is document order; the arrow keys walk it.
-  members: Rc<RefCell<Vec<(String, FocusHandle)>>>,
+  /// Options in join order, which the arrow keys walk; one leaves as it is disposed,
+  /// so a filtered set never strands a destroyed option in traversal.
+  members: Roster<FocusHandle>,
   face: FocusHandle,
 }
 
 impl PickerContext {
-  /// Where `value` sits among the options, if it is one of them.
-  fn position_of(&self, value: Option<&str>) -> Option<usize> {
-    let value = value?;
-
-    self
-      .members
-      .borrow()
-      .iter()
-      .position(|(held, _)| held == value)
-  }
-
   /// The place `step` from `at`, clamped at both ends the way a native select's list
   /// is—unlike a radio group, which wraps.
   fn clamped(&self, at: usize, step: isize) -> Option<usize> {
-    let count = self.members.borrow().len();
-
-    count
+    self
+      .members
+      .count()
       .checked_sub(1)
       .map(|last| at.saturating_add_signed(step).min(last))
   }
@@ -75,7 +66,7 @@ impl PickerContext {
   /// Highlights the option at `index` and moves focus onto it, so a reader announces
   /// the option the keyboard has reached.
   fn highlight_at(&self, index: usize) {
-    let Some((value, handle)) = self.members.borrow().get(index).cloned()
+    let Some((value, handle)) = self.members.at(index)
     else {
       return;
     };
@@ -86,7 +77,10 @@ impl PickerContext {
 
   /// Moves the highlight `step` places without committing.
   fn step_highlight(&self, step: isize) {
-    let at = self.position_of(self.active.get().as_deref()).unwrap_or(0);
+    let at = self
+      .members
+      .position_of(self.active.get().as_deref())
+      .unwrap_or(0);
 
     if let Some(next) = self.clamped(at, step) {
       self.highlight_at(next);
@@ -96,7 +90,10 @@ impl PickerContext {
   /// Opens the list with the highlight on the chosen option, or the first when nothing
   /// is chosen.
   fn open_list(&self) {
-    let at = self.position_of((self.chosen)().as_deref()).unwrap_or(0);
+    let at = self
+      .members
+      .position_of((self.chosen)().as_deref())
+      .unwrap_or(0);
 
     self.open.set(true);
     self.highlight_at(at);
@@ -128,12 +125,15 @@ impl PickerContext {
   /// Chooses the option `step` places from the chosen one without opening, the way a
   /// closed native select answers the arrow keys.
   fn cycle(&self, step: isize) {
-    let at = self.position_of((self.chosen)().as_deref()).unwrap_or(0);
+    let at = self
+      .members
+      .position_of((self.chosen)().as_deref())
+      .unwrap_or(0);
     let Some(next) = self.clamped(at, step)
     else {
       return;
     };
-    let Some((value, _)) = self.members.borrow().get(next).cloned()
+    let Some((value, _)) = self.members.at(next)
     else {
       return;
     };
@@ -298,7 +298,7 @@ impl View for RawPicker<AnyView> {
       }),
       active: Signal::new(None),
       open,
-      members: Rc::new(RefCell::new(Vec::new())),
+      members: Roster::new(),
       face: FocusHandle::new(),
     };
     let label = self.label;
@@ -535,7 +535,11 @@ impl View for RawOption<AnyView> {
       .build();
 
     if let Some(picker) = &picker {
-      picker.members.borrow_mut().push((value, handle));
+      picker.members.join(value.clone(), handle);
+
+      let picker = picker.clone();
+
+      on_cleanup(move || picker.members.leave(&value));
     }
 
     node

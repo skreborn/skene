@@ -34,7 +34,7 @@ pub use children::{
   StackChild,
 };
 pub use condition::{Composable, ConditionShape};
-pub use control::{Ring, SliderRange};
+pub use control::{Ring, Roster, SliderRange};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
   ClickHandler,

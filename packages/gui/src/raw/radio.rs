@@ -1,6 +1,6 @@
 //! A mutually-exclusive choice, drawn by the views it holds.
 
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use skene_core::{
   AccessProp,
@@ -12,10 +12,11 @@ use skene_core::{
   Prevent,
   Ring,
   Role,
+  Roster,
   Source,
   View,
 };
-use skene_reactive::{Owner, provide_context, use_context};
+use skene_reactive::{Owner, on_cleanup, provide_context, use_context};
 
 use crate::{
   Container,
@@ -32,26 +33,28 @@ use crate::{
 struct GroupContext {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
-  /// Members in build order, which is document order; the arrow keys walk it.
-  members: Rc<RefCell<Vec<(String, FocusHandle)>>>,
+  /// Members in join order, which the arrow keys walk; one leaves as it is disposed,
+  /// so a reconciling set never strands a destroyed member in traversal.
+  members: Roster<FocusHandle>,
 }
 
 impl GroupContext {
   /// Moves `step` places from the member holding `value` and chooses what it lands on,
   /// focusing it as the browser's own group does.
   fn step_from(&self, value: &str, step: isize) {
-    let members = self.members.borrow();
-    let Some(index) = members.iter().position(|(held, _)| held == value)
+    let Some(index) = self.members.position_of(Some(value))
     else {
       return;
     };
-    let Some(next) = Ring::new(members.len()).step_from(index, step)
+    let Some(next) = Ring::new(self.members.count()).step_from(index, step)
     else {
       return;
     };
-    let (value, handle) = members[next].clone();
+    let Some((value, handle)) = self.members.at(next)
+    else {
+      return;
+    };
 
-    drop(members);
     (self.choose)(value);
     handle.focus();
   }
@@ -61,11 +64,7 @@ impl GroupContext {
   fn is_tab_stop(&self, value: &str) -> bool {
     match (self.chosen)() {
       Some(chosen) => chosen == value,
-      None => self
-        .members
-        .borrow()
-        .first()
-        .is_some_and(|(first, _)| first == value),
+      None => self.members.leads_with(value),
     }
   }
 }
@@ -176,7 +175,7 @@ impl View for RawRadioGroup<AnyView> {
           action(value);
         }
       }),
-      members: Rc::new(RefCell::new(Vec::new())),
+      members: Roster::new(),
     };
     let label = self.label;
 
@@ -336,7 +335,11 @@ impl View for RawRadio<AnyView> {
       .build();
 
     if let Some(group) = &group {
-      group.members.borrow_mut().push((value, handle));
+      group.members.join(value.clone(), handle);
+
+      let group = group.clone();
+
+      on_cleanup(move || group.members.leave(&value));
     }
 
     node

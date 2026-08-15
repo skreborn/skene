@@ -628,3 +628,166 @@ fn a_drawn_radio_group_owns_its_members() {
 
   assert_eq!(chosen.get(), "mint", "and wraps at the end");
 }
+
+/// A drawn picker opens on a click, moves its highlight and its single tab stop with
+/// the arrows, and commits only on request—so a dismissal leaves the value alone.
+#[test]
+fn a_drawn_picker_opens_moves_and_commits() {
+  use skene_gui::{
+    RawOption,
+    RawPicker,
+    core::{AccessProp, FocusOrder, KeyEvent, Modifiers},
+  };
+
+  let flavor = Signal::new(String::from("mint"));
+  let root = RawPicker::new()
+    .bind_value(flavor)
+    .set_label("Flavor")
+    .set_face(Text::new("choose"))
+    .set_options((
+      RawOption::new("mint").set_child(Text::new("Mint")),
+      Text::new("— seasonal —"),
+      Container::new().set_child(RawOption::new("plum").set_child(Text::new("Plum"))),
+      RawOption::new("fig").set_child(Text::new("Fig")),
+    ))
+    .build();
+  let face = record::children(root)[0];
+  let overlay = record::children(root)[1];
+  let listbox = record::children(overlay)[0];
+  let column = record::children(listbox)[0];
+  let listed = record::children(column);
+  // The second option sits inside a wrapper and the plain text is no option at all, so
+  // the list is reached by structure rather than by position.
+  let rows = [listed[0], record::children(listed[2])[0], listed[3]];
+  let press = |node, key: &str| {
+    record::trigger_key_down(
+      node,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+  let tab_stops = || {
+    rows
+      .iter()
+      .filter(|node| record::focus_order(**node) == Some(FocusOrder::Auto))
+      .count()
+  };
+
+  assert_eq!(record::role(face), Some(Role::Combobox));
+  assert_eq!(record::role(listbox), Some(Role::Listbox));
+  assert!(
+    rows
+      .iter()
+      .all(|node| record::role(*node) == Some(Role::ListboxOption)),
+    "the wrapped option is an option like any other"
+  );
+  assert_eq!(
+    record::role(listed[1]),
+    None,
+    "the interleaved text is no option"
+  );
+  assert!(
+    record::access(face).contains(&AccessProp::Expanded(false)),
+    "a picker reports itself closed"
+  );
+  assert_eq!(tab_stops(), 0, "a closed list holds no tab stop");
+
+  let _ = record::trigger_click(face);
+
+  assert_eq!(record::overlay_open(overlay), Some(true));
+  assert!(record::access(face).contains(&AccessProp::Expanded(true)));
+  assert_eq!(tab_stops(), 1, "the open list holds exactly one");
+  assert_eq!(
+    record::focus_order(rows[0]),
+    Some(FocusOrder::Auto),
+    "opening highlights the chosen option"
+  );
+
+  let prevention = press(rows[0], "ArrowDown");
+
+  assert!(prevention.platform, "the page must not scroll under it");
+  assert_eq!(
+    record::focus_order(rows[1]),
+    Some(FocusOrder::Auto),
+    "the tab stop follows the highlight"
+  );
+  assert_eq!(flavor.get(), "mint", "moving the highlight commits nothing");
+
+  let _ = press(rows[1], "ArrowDown");
+  let _ = press(rows[2], "ArrowDown");
+
+  assert_eq!(
+    record::focus_order(rows[2]),
+    Some(FocusOrder::Auto),
+    "the highlight clamps at the end rather than wrapping"
+  );
+
+  let _ = press(rows[2], "Enter");
+
+  assert_eq!(flavor.get(), "fig", "Enter commits the highlight");
+  assert_eq!(record::overlay_open(overlay), Some(false));
+  assert!(record::access(face).contains(&AccessProp::Expanded(false)));
+  assert!(
+    record::access(rows[2]).contains(&AccessProp::Selected(true)),
+    "the committed option reports itself selected"
+  );
+
+  let _ = record::trigger_click(face);
+  let _ = press(rows[2], "ArrowUp");
+  record::trigger_dismiss(overlay);
+
+  assert_eq!(flavor.get(), "fig", "a dismissal leaves the value alone");
+  assert_eq!(record::overlay_open(overlay), Some(false));
+}
+
+/// A closed picker answers the arrows by changing the value outright, without opening,
+/// the way a closed native select does.
+#[test]
+fn a_closed_picker_cycles_without_opening() {
+  use skene_gui::{
+    RawOption,
+    RawPicker,
+    core::{KeyEvent, Modifiers},
+  };
+
+  let flavor = Signal::new(String::from("mint"));
+  let root = RawPicker::new()
+    .bind_value(flavor)
+    .set_face(Text::new("choose"))
+    .set_options((
+      RawOption::new("mint").set_child(Text::new("Mint")),
+      RawOption::new("plum").set_child(Text::new("Plum")),
+      RawOption::new("fig").set_child(Text::new("Fig")),
+    ))
+    .build();
+  let face = record::children(root)[0];
+  let overlay = record::children(root)[1];
+  let press = |key: &str| {
+    record::trigger_key_down(
+      face,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  let _ = press("ArrowDown");
+
+  assert_eq!(flavor.get(), "plum");
+  assert_eq!(record::overlay_open(overlay), Some(false), "still closed");
+
+  let _ = press("End");
+
+  assert_eq!(flavor.get(), "fig");
+
+  let _ = press("ArrowDown");
+
+  assert_eq!(flavor.get(), "fig", "the value clamps at the last option");
+
+  let _ = press("Home");
+
+  assert_eq!(flavor.get(), "mint");
+}

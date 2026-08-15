@@ -3,6 +3,7 @@
 
 mod button;
 mod checkbox;
+mod picker;
 mod radio;
 mod slider;
 mod text_editor;
@@ -11,6 +12,7 @@ mod text_field;
 pub use self::{
   button::RawButton,
   checkbox::RawCheckbox,
+  picker::{RawOption, RawPicker},
   radio::{RawRadio, RawRadioGroup},
   slider::RawSlider,
   text_editor::RawTextEditor,

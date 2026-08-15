@@ -12,8 +12,8 @@ use crate::{control::ControlBase, state::NodeKind, with_state};
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
-/// set wholesale with [`set_style`](Self::set_style) and conditionally with
-/// [`set_when`](Self::set_when).
+/// set wholesale with [`set_style`](crate::HasStyle::set_style) and conditionally with
+/// [`set_when`](crate::HasStyle::set_when).
 ///
 /// The unstyled base a component library builds on; [`SimpleTextField`](crate::SimpleTextField) is
 /// the ready-made counterpart.

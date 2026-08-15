@@ -7,8 +7,9 @@ use skene_reactive::{Signal, Update, With, use_context};
 /// The outstanding async work inside a boundary.
 ///
 /// A task spawned within the boundary increments the count; it decrements when the task
-/// finishes. The subtree is settled at zero. Threaded through the reactive [`Context`], so
-/// a task spawner reports to the nearest enclosing boundary without any view being special.
+/// finishes. The subtree is settled at zero. Threaded through the reactive context
+/// ([`use_context`]), so a task spawner reports to the nearest enclosing boundary without any view
+/// being special.
 #[derive(Clone, Copy)]
 #[must_use]
 pub struct Boundary {

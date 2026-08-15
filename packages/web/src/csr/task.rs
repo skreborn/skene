@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 ///
 /// The one executor primitive a web leaf provides: hand a `!Send` future to the event loop.
 /// Owner-bound cancellation is layered on top in the platform-independent
-/// [`spawn`](crate::spawn), so a leaf implements only this. A custom in-WASM executor, or a
+/// `spawn`, so a leaf implements only this. A custom in-WASM executor, or a
 /// worker-backed multi-threaded one, would replace this single function without touching
 /// `spawn` or its callers.
 #[inline(always)]

@@ -10,8 +10,8 @@ use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_st
 ///
 /// The one focus-taking box: `Tab` reaches it, `Enter` and `Space` activate it, and a
 /// mouse click focuses and activates it. Unstyled by default; styling is the box style,
-/// set with [`set_style`](Self::set_style) and conditionally with
-/// [`set_when`](Self::set_when).
+/// set with [`set_style`](crate::HasStyle::set_style) and conditionally with
+/// [`set_when`](crate::HasStyle::set_when).
 ///
 /// The unstyled base a component library builds on; [`SimpleButton`](crate::SimpleButton) is
 /// the ready-made counterpart.

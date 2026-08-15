@@ -166,7 +166,7 @@ impl Future for Sleep {
 /// Runs `future` to completion on the runner's executor.
 ///
 /// The one executor primitive the SSR leaf provides; scope-bound cancellation is layered on
-/// top in the platform-independent [`spawn`](crate::spawn), so this leaf implements only the
+/// top in the platform-independent `spawn`, so this leaf implements only the
 /// raw drive. The task makes progress only while [`stabilize`] is pumping.
 pub fn drive(future: impl Future<Output = ()> + 'static) {
   EXECUTOR.with(|executor| {

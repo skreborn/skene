@@ -173,7 +173,7 @@ impl Text {
   }
 
   /// Makes the text a link to the given destination: underlined, inked in the
-  /// scheme's link blue unless styled, opening per its [`LinkPolicy`].
+  /// scheme's link blue unless styled, opening per its [`LinkPolicy`](skene_core::LinkPolicy).
   #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
@@ -181,7 +181,7 @@ impl Text {
     self
   }
 
-  /// Sets how the link opens and what it discloses; see [`LinkPolicy`].
+  /// Sets how the link opens and what it discloses; see [`LinkPolicy`](skene_core::LinkPolicy).
   #[inline(always)]
   pub const fn set_link_policy(mut self, link_policy: skene_core::LinkPolicy) -> Self {
     self.link_policy = link_policy;
@@ -348,7 +348,7 @@ impl Span {
   }
 
   /// Makes the run a link to the given destination: underlined, inked in the scheme's
-  /// link blue unless styled, opening per its [`LinkPolicy`].
+  /// link blue unless styled, opening per its [`LinkPolicy`](skene_core::LinkPolicy).
   #[inline(always)]
   pub fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
@@ -356,7 +356,7 @@ impl Span {
     self
   }
 
-  /// Sets how the link opens and what it discloses; see [`LinkPolicy`].
+  /// Sets how the link opens and what it discloses; see [`LinkPolicy`](skene_core::LinkPolicy).
   #[inline(always)]
   pub const fn set_link_policy(mut self, link_policy: skene_core::LinkPolicy) -> Self {
     self.link_policy = link_policy;

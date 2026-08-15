@@ -177,7 +177,7 @@ pub trait HasEvents: Sized {
   #[inline(always)]
   #[must_use]
   fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
-    self.event_core().pointer_enter = Some(Rc::new(action));
+    self.event_core().pointer_enter = Some(Rc::new(move |&()| action()));
 
     self
   }
@@ -186,7 +186,7 @@ pub trait HasEvents: Sized {
   #[inline(always)]
   #[must_use]
   fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
-    self.event_core().pointer_leave = Some(Rc::new(action));
+    self.event_core().pointer_leave = Some(Rc::new(move |&()| action()));
 
     self
   }
@@ -195,7 +195,7 @@ pub trait HasEvents: Sized {
   #[inline(always)]
   #[must_use]
   fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.event_core().focus = Some(Rc::new(action));
+    self.event_core().focus = Some(Rc::new(move |&()| action()));
 
     self
   }
@@ -204,7 +204,7 @@ pub trait HasEvents: Sized {
   #[inline(always)]
   #[must_use]
   fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.event_core().blur = Some(Rc::new(action));
+    self.event_core().blur = Some(Rc::new(move |&()| action()));
 
     self
   }

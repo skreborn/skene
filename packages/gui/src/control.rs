@@ -52,15 +52,12 @@ pub struct EventCore {
   pub(crate) pointer_down: Override<PointerEvent>,
   pub(crate) pointer_move: Override<PointerEvent>,
   pub(crate) pointer_up: Override<PointerEvent>,
-  pub(crate) pointer_enter: Option<Rc<dyn Fn()>>,
-  pub(crate) pointer_leave: Option<Rc<dyn Fn()>>,
-  pub(crate) focus: Option<Rc<dyn Fn()>>,
-  pub(crate) blur: Option<Rc<dyn Fn()>>,
-  pub(crate) scroll: Option<Rc<ScrollHandler>>,
+  pub(crate) pointer_enter: Option<Rc<Observed<()>>>,
+  pub(crate) pointer_leave: Option<Rc<Observed<()>>>,
+  pub(crate) focus: Option<Rc<Observed<()>>>,
+  pub(crate) blur: Option<Rc<Observed<()>>>,
+  pub(crate) scroll: Option<Rc<Observed<ScrollEvent>>>,
 }
-
-/// A scroll handler, as [`EventCore`] stores it.
-type ScrollHandler = dyn Fn(&ScrollEvent);
 
 /// What a drawn control does of its own accord, for the events it acts on.
 ///
@@ -75,12 +72,19 @@ pub struct Behavior {
   pointer_down: Option<BehaviorFor<PointerEvent>>,
   pointer_move: Option<BehaviorFor<PointerEvent>>,
   pointer_up: Option<BehaviorFor<PointerEvent>>,
+  pointer_enter: Option<Rc<Observed<()>>>,
+  pointer_leave: Option<Rc<Observed<()>>>,
+  focus: Option<Rc<Observed<()>>>,
+  blur: Option<Rc<Observed<()>>>,
+  scroll: Option<Rc<Observed<ScrollEvent>>>,
 }
 
 /// What a control does on one event carrying `E`, as [`Behavior`] stores it.
 type BehaviorFor<E> = Box<dyn Fn(&E) -> Prevent>;
 /// What a control does on a click, which carries nothing.
 type ClickBehavior = Box<dyn Fn() -> Prevent>;
+/// What a control does on one notification event, which takes no verdict.
+type Observed<E> = dyn Fn(&E);
 
 impl Behavior {
   /// Creates a behavior that acts on nothing.
@@ -128,6 +132,69 @@ impl Behavior {
 
     self
   }
+
+  /// Sets what the control does when the pointer enters it.
+  #[inline(always)]
+  pub fn pointer_enter(mut self, behavior: impl Fn() + 'static) -> Self {
+    self.pointer_enter = Some(Rc::new(move |&()| behavior()));
+
+    self
+  }
+
+  /// Sets what the control does when the pointer leaves it.
+  #[inline(always)]
+  pub fn pointer_leave(mut self, behavior: impl Fn() + 'static) -> Self {
+    self.pointer_leave = Some(Rc::new(move |&()| behavior()));
+
+    self
+  }
+
+  /// Sets what the control does when focus arrives.
+  #[inline(always)]
+  pub fn focus(mut self, behavior: impl Fn() + 'static) -> Self {
+    self.focus = Some(Rc::new(move |&()| behavior()));
+
+    self
+  }
+
+  /// Sets what the control does when focus leaves.
+  #[inline(always)]
+  pub fn blur(mut self, behavior: impl Fn() + 'static) -> Self {
+    self.blur = Some(Rc::new(move |&()| behavior()));
+
+    self
+  }
+
+  /// Sets what the control does on a scroll.
+  #[inline(always)]
+  pub fn scroll(mut self, behavior: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.scroll = Some(Rc::new(behavior));
+
+    self
+  }
+}
+
+/// Pairs a control's behavior for one notification event with the handler installed
+/// over it.
+///
+/// A notification takes no verdict, so nothing can be taken over: both run, the
+/// control's first, and the installed handler observes what it did. `None` when neither
+/// exists, so an untouched event registers nothing.
+fn observed<E: ?Sized + 'static>(
+  behavior: Option<Rc<Observed<E>>>,
+  handler: Option<Rc<Observed<E>>>,
+) -> Option<impl Fn(&E) + 'static> {
+  (behavior.is_some() || handler.is_some()).then_some({
+    move |event: &E| {
+      if let Some(behavior) = &behavior {
+        behavior(event);
+      }
+
+      if let Some(handler) = &handler {
+        handler(event);
+      }
+    }
+  })
 }
 
 impl EventCore {
@@ -140,6 +207,11 @@ impl EventCore {
       pointer_down,
       pointer_move,
       pointer_up,
+      pointer_enter,
+      pointer_leave,
+      focus,
+      blur,
+      scroll,
     } = behavior;
     let click = self
       .click
@@ -167,23 +239,23 @@ impl EventCore {
           .wrap(move |event| pointer_up.as_ref().map_or(Prevent::None, |act| act(event))),
       );
 
-    if let Some(action) = self.pointer_enter {
-      container = container.handle_pointer_enter(move || action());
+    if let Some(action) = observed(pointer_enter, self.pointer_enter) {
+      container = container.handle_pointer_enter(move || action(&()));
     }
 
-    if let Some(action) = self.pointer_leave {
-      container = container.handle_pointer_leave(move || action());
+    if let Some(action) = observed(pointer_leave, self.pointer_leave) {
+      container = container.handle_pointer_leave(move || action(&()));
     }
 
-    if let Some(action) = self.focus {
-      container = container.handle_focus(move || action());
+    if let Some(action) = observed(focus, self.focus) {
+      container = container.handle_focus(move || action(&()));
     }
 
-    if let Some(action) = self.blur {
-      container = container.handle_blur(move || action());
+    if let Some(action) = observed(blur, self.blur) {
+      container = container.handle_blur(move || action(&()));
     }
 
-    if let Some(action) = self.scroll {
+    if let Some(action) = observed(scroll, self.scroll) {
       container = container.handle_scroll(move |event| action(event));
     }
 

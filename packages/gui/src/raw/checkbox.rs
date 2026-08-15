@@ -1,8 +1,20 @@
 //! A two-state toggle a view draws itself.
 
-use std::rc::Rc;
+use std::{ops::ControlFlow, rc::Rc};
 
-use skene_core::{AccessProp, AnyView, FocusOrder, IntoView, NodeId, Prevent, Role, Source, View};
+use skene_core::{
+  AccessProp,
+  AnyView,
+  FocusOrder,
+  IntoView,
+  KeyEvent,
+  NodeId,
+  Override,
+  Prevent,
+  Role,
+  Source,
+  View,
+};
 
 use crate::Container;
 
@@ -12,7 +24,10 @@ use crate::Container;
 /// Keyboard activation, the tab order, the checkbox role, and the checked state it
 /// reports come from the control; nothing is drawn for you, so the child renders both
 /// states—derive it from the same signal the checkbox is bound to. `Space` and a
-/// pointer click toggle, matching the browser's own.
+/// pointer click toggle, matching the browser's own; both are overridable, since a
+/// handler installed with [`handle_click`](Self::handle_click) or
+/// [`handle_key_down`](Self::handle_key_down) runs ahead of them and may take the
+/// event.
 ///
 /// The state flows both ways: [`derive_checked`](Self::derive_checked) (or
 /// [`set_checked`](Self::set_checked)) drives what is reported, and
@@ -27,6 +42,8 @@ pub struct RawCheckbox<C = skene_core::NoChild> {
   child: C,
   checked: Option<Source<bool>>,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
+  click: Override<()>,
+  key_down: Override<KeyEvent>,
   focus_order: FocusOrder,
   label: Option<String>,
 }
@@ -39,6 +56,8 @@ impl RawCheckbox {
       child: skene_core::NoChild,
       checked: None,
       toggle_handler: None,
+      click: Override::new(),
+      key_down: Override::new(),
       focus_order: FocusOrder::Auto,
       label: None,
     }
@@ -60,6 +79,8 @@ impl<C> RawCheckbox<C> {
       child: child.into_view(),
       checked: self.checked,
       toggle_handler: self.toggle_handler,
+      click: self.click,
+      key_down: self.key_down,
       focus_order: self.focus_order,
       label: self.label,
     }
@@ -98,6 +119,33 @@ impl<C> RawCheckbox<C> {
     self
       .derive_checked(move || signal.get())
       .handle_toggle(move |checked| signal.set(checked))
+  }
+
+  /// Installs a click handler ahead of the checkbox's own toggle.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves the toggle to run as though nothing
+  /// were installed; [`Break`](ControlFlow::Break) takes the click, and the checkbox
+  /// does nothing further.
+  #[inline(always)]
+  pub fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
+    self.click.set(move |&()| action());
+
+    self
+  }
+
+  /// Installs a key handler ahead of the checkbox's own `Space` toggle.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves the toggle to run as though nothing
+  /// were installed; [`Break`](ControlFlow::Break) takes the key, and the checkbox does
+  /// nothing further.
+  #[inline(always)]
+  pub fn handle_key_down(
+    mut self,
+    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.key_down.set(action);
+
+    self
   }
 
   /// Sets the control's place in sequential focus traversal.
@@ -145,24 +193,34 @@ impl View for RawCheckbox<AnyView> {
         }
       })
     };
-    let clicked = Rc::clone(&toggle);
+    let click = {
+      let toggle = Rc::clone(&toggle);
+
+      self.click.wrap(move |&()| {
+        toggle();
+
+        Prevent::None
+      })
+    };
+    // `Space` activates a checkbox and `Enter` does not, which is what the browser's
+    // own does; preventing the platform's response keeps the page from scrolling under
+    // it.
+    let key = self.key_down.wrap(move |event: &KeyEvent| {
+      if event.key == " " {
+        toggle();
+
+        return Prevent::Platform;
+      }
+
+      Prevent::None
+    });
 
     Container::new()
       .set_role(Role::Checkbox)
       .set_focus_order(self.focus_order)
       .derive_accessibility(state)
-      .handle_click(move || clicked())
-      // `Space` activates a checkbox and `Enter` does not, which is what the browser's
-      // own does; preventing the default keeps the page from scrolling under it.
-      .handle_key_down(move |event: &skene_core::KeyEvent| {
-        if event.key == " " {
-          toggle();
-
-          return Prevent::Default;
-        }
-
-        Prevent::None
-      })
+      .handle_click(move || click(&()))
+      .handle_key_down(key)
       .set_child(self.child)
       .build()
   }

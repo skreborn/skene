@@ -42,7 +42,7 @@ dispatch requires the realization to live where the driver is nameable).
   vocabulary, mapped to an in-memory tree that records every realization call. The
   facade's views compile and realize on the host, so view logic tests headlessly
   (`packages/gui/tests/record.rs`): structure, derived props, reconcile reuse, and
-  events through `trigger_` seams with the `Prevention` verdict returned. Recording is
+  events through `trigger_` seams with the `Prevented` verdict returned. Recording is
   bookkeeping, not emulation—no layout, no built-in event defaults. The wasm-only
   surface (entry, hydration, tasks, resources, routing, head) stays web-gated.
 - **Remaining:** driver selection by feature when a second same-triple driver lands.
@@ -229,11 +229,15 @@ marker-based hydration with loud mismatch; serialize-by-default resources
 - **Event consumption contract—done.** Dispatch is one documented contract in core
   (`skene_core::events`): user handlers first in fixed order (deepest-first along the
   hit path; focused-then-ancestors for keys; every handler on one node always runs),
-  then the built-in default—`Tab` focus movement, `Enter`/`Space` and click activation,
-  control arrows, input editing, `Escape` dismissal—unless prevented. Handlers return
-  their verdict as anything `Into<Prevent>`: `()` observes (`From<()>` maps to
-  `Prevent::None`), `Prevent::Default` suppresses the built-in but keeps bubbling,
-  `Prevent::Bubbling` the reverse, `Prevent::All` both; prevention only accumulates.
+  then the platform's own response—`Tab` focus movement, `Enter`/`Space` and click
+  activation of the control a driver realizes, input editing, `Escape` dismissal—unless
+  prevented. Handlers return their verdict as anything `Into<Prevent>`: `()` observes
+  (`From<()>` maps to `Prevent::None`), `Prevent::Platform` suppresses the platform's
+  response but keeps bubbling, `Prevent::Bubbling` the reverse, `Prevent::All` both;
+  prevention only accumulates. A view composing its own behavior out of these events is
+  not the platform and `Prevent` does not reach it: it takes its user's handler as an
+  `Override`, which runs first and either falls through (`ControlFlow::Continue`) or
+  takes the event outright (`ControlFlow::Break`).
   The web
   maps a prevented default to `preventDefault` (canceling the same natives: Enter
   activation, checkbox toggling, text insertion) and stops its delegated walk on

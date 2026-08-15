@@ -31,7 +31,7 @@ use crossterm::{
   },
   terminal,
 };
-use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, Prevention, View};
+use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, Prevented, View};
 
 use crate::{
   paint,
@@ -305,7 +305,7 @@ fn dispatch_press(
     modifiers,
   );
 
-  if prevention.default {
+  if prevention.platform {
     return;
   }
 
@@ -541,7 +541,7 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
       Some(focused) => state.ancestors(focused),
       None => state.key_down.borrow().keys().copied().collect(),
     };
-    let mut prevention = Prevention::default();
+    let mut prevention = Prevented::default();
 
     for target in &targets {
       prevention.merge(State::run_preventable(
@@ -556,7 +556,7 @@ fn dispatch_key(state: &State, key: &event::KeyEvent) {
       }
     }
 
-    if prevention.default {
+    if prevention.platform {
       return;
     }
 

@@ -1,13 +1,15 @@
 //! A choice of a number within a range, drawn by the view it holds.
 
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, ops::ControlFlow, rc::Rc};
 
 use skene_core::{
   AccessProp,
   AnyView,
   FocusOrder,
   IntoView,
+  KeyEvent,
   NodeId,
+  Override,
   PointerEvent,
   Prevent,
   Role,
@@ -30,7 +32,9 @@ const PAGE_STEPS: f32 = 10.;
 /// track, the fill, and the thumb—derive them from the same signal the slider is bound
 /// to. Arrows move by a step, `Home` and `End` reach the ends, the page keys move by
 /// ten steps, and a press or drag along the control jumps to that position, matching
-/// the browser's own.
+/// the browser's own. Every one of those is overridable, since a handler installed with
+/// [`handle_key_down`](Self::handle_key_down) or the pointer trio runs ahead of it and
+/// may take the event.
 ///
 /// Because the child draws the fill, it follows the value with no script-bound
 /// custom property and no vendor pseudo-element—the two things that make
@@ -43,6 +47,10 @@ pub struct RawSlider<C = skene_core::NoChild> {
   step: f32,
   value: Option<Source<f32>>,
   change_handler: Option<Rc<dyn Fn(f32)>>,
+  key_down: Override<KeyEvent>,
+  pointer_down: Override<PointerEvent>,
+  pointer_move: Override<PointerEvent>,
+  pointer_up: Override<PointerEvent>,
   focus_order: FocusOrder,
   label: Option<String>,
 }
@@ -58,6 +66,10 @@ impl RawSlider {
       step: 1.,
       value: None,
       change_handler: None,
+      key_down: Override::new(),
+      pointer_down: Override::new(),
+      pointer_move: Override::new(),
+      pointer_up: Override::new(),
       focus_order: FocusOrder::Auto,
       label: None,
     }
@@ -75,6 +87,10 @@ impl<C> RawSlider<C> {
       step: self.step,
       value: self.value,
       change_handler: self.change_handler,
+      key_down: self.key_down,
+      pointer_down: self.pointer_down,
+      pointer_move: self.pointer_move,
+      pointer_up: self.pointer_up,
       focus_order: self.focus_order,
       label: self.label,
     }
@@ -120,6 +136,67 @@ impl<C> RawSlider<C> {
     self
       .derive_value(move || signal.get())
       .handle_change(move |value| signal.set(value))
+  }
+
+  /// Installs a key handler ahead of the slider's own arrow, page, `Home`, and `End`
+  /// moves.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves them to run as though nothing were
+  /// installed; [`Break`](ControlFlow::Break) takes the key, and the slider does
+  /// nothing further.
+  #[inline(always)]
+  pub fn handle_key_down(
+    mut self,
+    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.key_down.set(action);
+
+    self
+  }
+
+  /// Installs a press handler ahead of the slider's own jump to the pressed position.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves the jump to run as though nothing were
+  /// installed; [`Break`](ControlFlow::Break) takes the press, and the slider neither
+  /// jumps nor begins a drag.
+  #[inline(always)]
+  pub fn handle_pointer_down(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.pointer_down.set(action);
+
+    self
+  }
+
+  /// Installs a move handler ahead of the slider's own drag.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves the drag to run as though nothing were
+  /// installed; [`Break`](ControlFlow::Break) takes the move, and the slider does
+  /// nothing further.
+  #[inline(always)]
+  pub fn handle_pointer_move(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.pointer_move.set(action);
+
+    self
+  }
+
+  /// Installs a release handler ahead of the slider's own end of the drag.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves it to run as though nothing were
+  /// installed; [`Break`](ControlFlow::Break) takes the release, and the drag stays
+  /// open until the next one.
+  #[inline(always)]
+  pub fn handle_pointer_up(
+    mut self,
+    action: impl Fn(&PointerEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.pointer_up.set(action);
+
+    self
   }
 
   /// Sets the control's place in sequential focus traversal.
@@ -199,38 +276,38 @@ impl View for RawSlider<AnyView> {
       let pressed = Rc::clone(&pressed);
       let slide = slide.clone();
 
-      move |event: &PointerEvent| {
+      self.pointer_down.wrap(move |event: &PointerEvent| {
         pressed.set(true);
         slide(event);
 
-        Prevent::Default
-      }
+        Prevent::Platform
+      })
     };
     let drag = {
       let pressed = Rc::clone(&pressed);
 
-      move |event: &PointerEvent| {
+      self.pointer_move.wrap(move |event: &PointerEvent| {
         if pressed.get() {
           slide(event);
         }
 
         Prevent::None
-      }
+      })
     };
     let release = {
       let pressed = Rc::clone(&pressed);
 
-      move |_: &PointerEvent| {
+      self.pointer_up.wrap(move |_: &PointerEvent| {
         pressed.set(false);
 
         Prevent::None
-      }
+      })
     };
     let key = {
       let read = read.clone();
       let write = Rc::clone(&write);
 
-      move |event: &skene_core::KeyEvent| {
+      self.key_down.wrap(move |event: &KeyEvent| {
         let current = read();
         let Some(next) = key_value(range, current, &event.key)
         else {
@@ -241,8 +318,8 @@ impl View for RawSlider<AnyView> {
           write(next);
         }
 
-        Prevent::Default
-      }
+        Prevent::Platform
+      })
     };
 
     let node = Container::new()

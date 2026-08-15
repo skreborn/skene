@@ -17,7 +17,7 @@ use skene_core::{
   Placement,
   PointerButton,
   Prevent,
-  Prevention,
+  Prevented,
   Ring,
   SliderRange,
 };
@@ -629,8 +629,8 @@ impl State {
     node: NodeId,
     payload: P,
     invoke: impl Fn(&F, P) -> Prevent,
-  ) -> Prevention {
-    let mut prevention = Prevention::default();
+  ) -> Prevented {
+    let mut prevention = Prevented::default();
 
     let Some(to_run) = handlers.borrow().get(&node).cloned()
     else {
@@ -983,7 +983,7 @@ impl State {
       .map(|(node, _)| *node)
       .collect();
 
-    let mut prevention = Prevention::default();
+    let mut prevention = Prevented::default();
 
     for node in common.iter().rev() {
       prevention.merge(Self::run_preventable(&self.click, *node, (), |run, ()| {
@@ -997,7 +997,7 @@ impl State {
 
     let pressed_link = self.pressed_link.borrow_mut().take();
 
-    if prevention.default {
+    if prevention.platform {
       return;
     }
 
@@ -1162,7 +1162,7 @@ impl State {
   /// Dispatches an activation on `target` as `Enter`/`Space` do: click handlers bubble
   /// from it, then—unless prevented—the control's own activation.
   pub(crate) fn activate_dispatch(&self, target: NodeId) {
-    let mut prevention = Prevention::default();
+    let mut prevention = Prevented::default();
 
     for node in self.ancestors(target) {
       prevention.merge(Self::run_preventable(&self.click, node, (), |run, ()| {
@@ -1174,7 +1174,7 @@ impl State {
       }
     }
 
-    if !prevention.default {
+    if !prevention.platform {
       self.activate_control(target, None);
     }
   }
@@ -1495,8 +1495,8 @@ impl State {
     y: u16,
     button: Option<PointerButton>,
     modifiers: Modifiers,
-  ) -> Prevention {
-    let mut prevention = Prevention::default();
+  ) -> Prevented {
+    let mut prevention = Prevented::default();
 
     for (node, (origin_x, origin_y)) in self.hit_test(x, y).iter().rev() {
       let event = PointerEvent {

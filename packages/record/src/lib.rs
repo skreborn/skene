@@ -25,7 +25,7 @@ use skene_core::{
   OverlayProps,
   PickerProps,
   PointerEvent,
-  Prevention,
+  Prevented,
   RadioProps,
   Role,
   RunProp,
@@ -372,9 +372,9 @@ register! {
 // --- Test seams: triggers ---
 
 /// Runs `node`'s click handlers, returning the accumulated prevention.
-pub fn trigger_click(node: NodeId) -> Prevention {
+pub fn trigger_click(node: NodeId) -> Prevented {
   let handlers = with_node(node, |node| node.handlers.click.clone()).unwrap_or_default();
-  let mut prevention = Prevention::default();
+  let mut prevention = Prevented::default();
 
   for handler in handlers {
     prevention.absorb(handler());
@@ -385,9 +385,9 @@ pub fn trigger_click(node: NodeId) -> Prevention {
 
 /// Runs `node`'s key-down handlers with `event`, returning the accumulated
 /// prevention.
-pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevention {
+pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
   let handlers = with_node(node, |node| node.handlers.key_down.clone()).unwrap_or_default();
-  let mut prevention = Prevention::default();
+  let mut prevention = Prevented::default();
 
   for handler in handlers {
     prevention.absorb(handler(event));
@@ -398,9 +398,9 @@ pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevention {
 
 /// Runs `node`'s pointer-down handlers with `event`, returning the accumulated
 /// prevention.
-pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevention {
+pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
   let handlers = with_node(node, |node| node.handlers.pointer_down.clone()).unwrap_or_default();
-  let mut prevention = Prevention::default();
+  let mut prevention = Prevented::default();
 
   for handler in handlers {
     prevention.absorb(handler(event));

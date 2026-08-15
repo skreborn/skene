@@ -11,7 +11,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rustc_hash::FxHashMap;
-use skene_core::{NodeId, Prevent, Prevention};
+use skene_core::{NodeId, Prevent, Prevented};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::Element;
 
@@ -68,7 +68,7 @@ impl Events {
     &self,
     root: &Element,
     event_name: &'static str,
-    dispatch: impl Fn(NodeId, &Element, &web_sys::Event) -> Prevention + 'static,
+    dispatch: impl Fn(NodeId, &Element, &web_sys::Event) -> Prevented + 'static,
   ) {
     let mut listeners = self.root_listeners.borrow_mut();
 
@@ -82,7 +82,7 @@ impl Events {
         .and_then(|target| target.dyn_into::<Element>().ok());
 
       skene_reactive::batch(|| {
-        let mut prevention = Prevention::default();
+        let mut prevention = Prevented::default();
 
         while let Some(element) = current {
           if let Some(id) = node_id_of(&element) {
@@ -96,7 +96,7 @@ impl Events {
           current = element.parent_element();
         }
 
-        if prevention.default {
+        if prevention.platform {
           event.prevent_default();
         }
       });
@@ -169,8 +169,8 @@ pub(super) fn run_preventable<F: ?Sized, P: Copy>(
   node: NodeId,
   payload: P,
   invoke: impl Fn(&F, P) -> Prevent,
-) -> Prevention {
-  let mut prevention = Prevention::default();
+) -> Prevented {
+  let mut prevention = Prevented::default();
 
   let Some(to_run) = handlers.borrow().get(&node).cloned()
   else {

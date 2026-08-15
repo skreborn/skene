@@ -86,7 +86,7 @@ fn click_trigger_runs_the_handler() {
       move || {
         clicks.set(clicks.get() + 1);
 
-        Prevent::Default
+        Prevent::Platform
       }
     })
     .build();
@@ -94,7 +94,7 @@ fn click_trigger_runs_the_handler() {
   let prevention = record::trigger_click(root);
 
   assert_eq!(clicks.get(), 1);
-  assert!(prevention.default);
+  assert!(prevention.platform);
   assert!(!prevention.bubbling);
 }
 
@@ -377,11 +377,66 @@ fn a_drawn_checkbox_toggles_on_space_only() {
   let prevention = press(" ");
 
   assert!(checked.get());
-  assert!(prevention.default, "the page must not scroll under it");
+  assert!(prevention.platform, "the page must not scroll under it");
 
   let _ = press("Enter");
 
   assert!(checked.get(), "Enter leaves a checkbox alone");
+}
+
+/// A handler installed on a drawn control runs ahead of the control's own behavior:
+/// breaking takes the event outright and carries its own verdict, continuing leaves the
+/// control to act as though nothing were installed.
+#[test]
+fn an_installed_handler_runs_ahead_of_a_control() {
+  use std::ops::ControlFlow;
+
+  use skene_gui::{
+    RawCheckbox,
+    core::{KeyEvent, Modifiers},
+  };
+
+  let checked = Signal::new(false);
+  let seen = Rc::new(Cell::new(0_usize));
+  let counted = Rc::clone(&seen);
+  let root = RawCheckbox::new()
+    .bind_checked(checked)
+    .handle_key_down(move |event: &KeyEvent| {
+      counted.set(counted.get() + 1);
+
+      if event.key == "Escape" {
+        return ControlFlow::Break(Prevent::Bubbling);
+      }
+
+      ControlFlow::Continue(())
+    })
+    .set_child(Text::new("mark"))
+    .build();
+  let press = |key: &str| {
+    record::trigger_key_down(
+      root,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  let prevention = press("Escape");
+
+  assert_eq!(seen.get(), 1, "the installed handler runs first");
+  assert!(!checked.get(), "breaking takes the event from the control");
+  assert!(prevention.bubbling, "the verdict is the handler's");
+  assert!(
+    !prevention.platform,
+    "the control's own verdict is not reached"
+  );
+
+  let prevention = press(" ");
+
+  assert_eq!(seen.get(), 2, "the installed handler sees every key");
+  assert!(checked.get(), "continuing leaves the toggle to run");
+  assert!(prevention.platform, "the verdict is now the control's");
 }
 
 /// A drawn slider reports its value and bounds, and the keys move it the way a
@@ -449,7 +504,7 @@ fn a_drawn_slider_reports_and_moves_on_keys() {
   let prevention = press("a");
 
   assert_eq!(value.get(), 0., "an unrelated key leaves it alone");
-  assert!(!prevention.default, "and does not swallow the default");
+  assert!(!prevention.platform, "and does not swallow the default");
 }
 
 /// A radio group owns the selection, the arrow keys, and the single tab stop; members

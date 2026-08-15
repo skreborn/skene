@@ -1810,7 +1810,7 @@ fn prevented_enter_skips_activation() {
           .handle_click(move || clicks.set(clicks.get() + 1))
           .handle_key_down(|event| {
             if event.key == "Enter" {
-              Prevent::Default
+              Prevent::Platform
             }
             else {
               Prevent::None
@@ -1833,7 +1833,7 @@ fn prevented_enter_skips_activation() {
   assert_eq!(clicks, 1);
 }
 
-/// A click handler's `Prevent::Bubbling` stops shallower handlers; `Prevent::Default`
+/// A click handler's `Prevent::Bubbling` stops shallower handlers; `Prevent::Platform`
 /// on the path keeps a checkbox from toggling while every handler still runs.
 #[test]
 fn click_verdicts_split_bubbling_from_default() {

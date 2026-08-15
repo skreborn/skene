@@ -1,13 +1,15 @@
 //! A mutually-exclusive choice, drawn by the views it holds.
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::ControlFlow, rc::Rc};
 
 use skene_core::{
   AccessProp,
   AnyView,
   FocusOrder,
   IntoView,
+  KeyEvent,
   NodeId,
+  Override,
   Prevent,
   Ring,
   Role,
@@ -196,10 +198,17 @@ impl View for RawRadioGroup<AnyView> {
 /// selection, the keyboard, and the single tab stop. Outside a group it still draws,
 /// reports its role, and is never checked—so a stray member is inert rather than
 /// broken.
+///
+/// The group's keyboard and the choice on click are overridable per member, since a
+/// handler installed with [`handle_click`](Self::handle_click) or
+/// [`handle_key_down`](Self::handle_key_down) runs ahead of them and may take the
+/// event.
 #[must_use]
 pub struct RawRadio<C = skene_core::NoChild> {
   child: C,
   value: String,
+  click: Override<()>,
+  key_down: Override<KeyEvent>,
   label: Option<String>,
 }
 
@@ -210,6 +219,8 @@ impl RawRadio {
     Self {
       child: skene_core::NoChild,
       value: value.into(),
+      click: Override::new(),
+      key_down: Override::new(),
       label: None,
     }
   }
@@ -222,8 +233,37 @@ impl<C> RawRadio<C> {
     RawRadio {
       child: child.into_view(),
       value: self.value,
+      click: self.click,
+      key_down: self.key_down,
       label: self.label,
     }
+  }
+
+  /// Installs a click handler ahead of the choice's own selection.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves the selection to run as though nothing
+  /// were installed; [`Break`](ControlFlow::Break) takes the click, and the choice does
+  /// nothing further.
+  #[inline(always)]
+  pub fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
+    self.click.set(move |&()| action());
+
+    self
+  }
+
+  /// Installs a key handler ahead of the group's arrow traversal and `Space` selection.
+  ///
+  /// [`Continue`](ControlFlow::Continue) leaves them to run as though nothing were
+  /// installed; [`Break`](ControlFlow::Break) takes the key, and the choice does
+  /// nothing further.
+  #[inline(always)]
+  pub fn handle_key_down(
+    mut self,
+    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.key_down.set(action);
+
+    self
   }
 
   /// Sets the accessible name, for when the child draws no readable label.
@@ -273,17 +313,19 @@ impl View for RawRadio<AnyView> {
       let group = group.clone();
       let value = value.clone();
 
-      move || {
+      self.click.wrap(move |&()| {
         if let Some(group) = &group {
           (group.choose)(value.clone());
         }
-      }
+
+        Prevent::None
+      })
     };
     let key = {
       let group = group.clone();
       let value = value.clone();
 
-      move |event: &skene_core::KeyEvent| {
+      self.key_down.wrap(move |event: &KeyEvent| {
         let Some(group) = &group
         else {
           return Prevent::None;
@@ -296,15 +338,15 @@ impl View for RawRadio<AnyView> {
           _ => return Prevent::None,
         }
 
-        Prevent::Default
-      }
+        Prevent::Platform
+      })
     };
 
     let node = Container::new()
       .set_role(Role::Radio)
       .derive_focus_order(order)
       .derive_accessibility(state)
-      .handle_click(click)
+      .handle_click(move || click(&()))
       .handle_key_down(key)
       .set_child(self.child)
       .build();

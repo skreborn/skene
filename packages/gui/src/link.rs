@@ -78,7 +78,7 @@ impl<R: Route> View for Link<R> {
 
         router.navigate(route.clone());
 
-        Prevent::Default
+        Prevent::Platform
       }),
     );
 

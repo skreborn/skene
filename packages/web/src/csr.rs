@@ -29,7 +29,7 @@ use skene_core::{
   Placement,
   PointerButton,
   PointerEvent,
-  Prevention,
+  Prevented,
   ScrollEvent,
   View,
 };
@@ -262,7 +262,7 @@ impl State {
         .ensure_root_listener(root, "focusin", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
 
-          Prevention::default()
+          Prevented::default()
         });
     });
   }
@@ -285,7 +285,7 @@ impl State {
         .ensure_root_listener(root, "focusout", move |id, _element, _event| {
           events::run_handlers(&handlers, id, (), |run, ()| run());
 
-          Prevention::default()
+          Prevented::default()
         });
     });
   }
@@ -309,7 +309,7 @@ impl State {
         .ensure_root_listener(root, "keydown", move |id, _element, event| {
           let Some(keyboard) = event.dyn_ref::<KeyboardEvent>()
           else {
-            return Prevention::default();
+            return Prevented::default();
           };
 
           let key_event = KeyEvent {
@@ -388,7 +388,7 @@ impl State {
         .ensure_root_listener(root, event_name, move |id, element, event| {
           let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
           else {
-            return Prevention::default();
+            return Prevented::default();
           };
 
           let payload = pointer_payload(pointer, element);
@@ -492,7 +492,7 @@ impl State {
             events::run_handlers(&toggle, id, input.checked(), |run, checked| run(checked));
           }
 
-          Prevention::default()
+          Prevented::default()
         });
     });
   }

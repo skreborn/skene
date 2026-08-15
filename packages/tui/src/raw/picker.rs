@@ -276,7 +276,7 @@ fn register_popup_toggle(
 
         open.update(|open| *open = !*open);
 
-        Prevent::Default
+        Prevent::Platform
       }));
 
     state
@@ -327,13 +327,13 @@ fn register_popup_keys(
               active.set(value.clone());
             }
 
-            Prevent::Default
+            Prevent::Platform
           }
           "Enter" | " " | "Tab" => {
             with_state(|state| state.select_picker(node, &active.get()));
             open.set(false);
 
-            Prevent::Default
+            Prevent::Platform
           }
           _ => Prevent::None,
         }
@@ -387,7 +387,7 @@ fn option_row(
       with_state(|state| state.select_picker(node, &value));
       open.set(false);
 
-      Prevent::Default
+      Prevent::Platform
     })
 }
 

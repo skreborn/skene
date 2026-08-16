@@ -138,10 +138,17 @@ impl skene_core::TreeOps for GuiOps {
   fn destroy(self, node: NodeId) {
     driver::destroy(node);
   }
+
+  #[inline(always)]
+  fn children(self, node: NodeId) -> Vec<NodeId> {
+    driver::children(node)
+  }
 }
 
 /// A container's children.
 pub type Children = skene_core::Children<GuiOps>;
+/// The members a grouping control tracks; see [`skene_core::Roster`].
+pub type Roster<T> = skene_core::Roster<GuiOps, T>;
 /// A suspense view over the active driver's tree; see [`skene_core::Suspense`].
 pub type Suspense = skene_core::Suspense<GuiOps>;
 /// An error boundary over the active driver's tree; see [`skene_core::ErrorBoundary`].

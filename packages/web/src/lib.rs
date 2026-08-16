@@ -125,7 +125,7 @@ pub use self::csr::{
   set_style,
   set_text,
   set_value,
-  tree::{attach, create_group, destroy, detach},
+  tree::{attach, children, create_group, destroy, detach},
 };
 #[cfg(target_os = "wasi")]
 pub(crate) use self::ssr::assign_class;
@@ -177,7 +177,7 @@ pub use self::ssr::{
   set_text,
   set_value,
   sleep,
-  tree::{attach, create_group, destroy, detach},
+  tree::{attach, children, create_group, destroy, detach},
 };
 
 /// Realizes a box: the element for its role, with its full static style—base

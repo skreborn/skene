@@ -607,6 +607,12 @@ sink are just different sinks for the same paths.)
     carries its own, because roving focus puts the keyboard on a row while the list is
     open. **Type-ahead is the one deliberate gap**: resetting its buffer needs a timer,
     timers are userland, and the terminal's picker has none either.
+  - **Membership is read from the tree.** A grouping control's members live in the
+    spine's `Roster`, which orders them by walking the subtree under its root rather
+    than by the order they joined—so a reconciling set stays in document order however
+    it changes, and a destroyed member is absent because the walk cannot reach it. That
+    added `TreeOps::children`, the seam's one query beside its four mutations; the web
+    leaf reads it back out of the live DOM, so only the browser tier proves it.
   - **Deferred, and why: `aria-activedescendant`.** Announcing the highlight without
     moving focus would need a node-valued `AccessProp` and stable per-node ids in the
     web driver. Roving focus reaches the same place with machinery that already

@@ -14,7 +14,6 @@ use skene_core::{
   PlainChild,
   Prevent,
   Role,
-  Roster,
   Source,
   View,
 };
@@ -29,6 +28,7 @@ use crate::{
   HasChildren,
   HasEvents,
   Overlay,
+  Roster,
   Stack,
   control::{Behavior, EventCore},
 };
@@ -46,8 +46,8 @@ struct PickerContext {
   /// request—so dismissing leaves the old value in place.
   active: Signal<Option<String>>,
   open: Signal<bool>,
-  /// Options in join order, which the arrow keys walk; one leaves as it is disposed,
-  /// so a filtered set never strands a destroyed option in traversal.
+  /// Options in document order, which the arrow keys walk—however the set is filtered,
+  /// and never reaching one that has been destroyed.
   members: Roster<FocusHandle>,
   face: FocusHandle,
 }
@@ -55,48 +55,49 @@ struct PickerContext {
 impl PickerContext {
   /// The place `step` from `at`, clamped at both ends the way a native select's list
   /// is—unlike a radio group, which wraps.
-  fn clamped(&self, at: usize, step: isize) -> Option<usize> {
-    self
-      .members
-      .count()
+  fn clamped(count: usize, at: usize, step: isize) -> Option<usize> {
+    count
       .checked_sub(1)
       .map(|last| at.saturating_add_signed(step).min(last))
   }
 
-  /// Highlights the option at `index` and moves focus onto it, so a reader announces
-  /// the option the keyboard has reached.
-  fn highlight_at(&self, index: usize) {
-    let Some((value, handle)) = self.members.at(index)
+  /// Where `value` sits among `members`, or the first place when it is not among them.
+  fn position_in(members: &[(String, FocusHandle)], value: Option<&str>) -> usize {
+    value
+      .and_then(|value| members.iter().position(|(held, _)| held == value))
+      .unwrap_or(0)
+  }
+
+  /// Highlights one option and moves focus onto it, so a reader announces the option
+  /// the keyboard has reached.
+  fn highlight(&self, option: Option<&(String, FocusHandle)>) {
+    let Some((value, handle)) = option
     else {
       return;
     };
 
-    self.active.set(Some(value));
+    self.active.set(Some(value.clone()));
     handle.focus();
   }
 
   /// Moves the highlight `step` places without committing.
   fn step_highlight(&self, step: isize) {
-    let at = self
-      .members
-      .position_of(self.active.get().as_deref())
-      .unwrap_or(0);
+    let members = self.members.ordered();
+    let at = Self::position_in(&members, self.active.get().as_deref());
 
-    if let Some(next) = self.clamped(at, step) {
-      self.highlight_at(next);
+    if let Some(next) = Self::clamped(members.len(), at, step) {
+      self.highlight(members.get(next));
     }
   }
 
   /// Opens the list with the highlight on the chosen option, or the first when nothing
   /// is chosen.
   fn open_list(&self) {
-    let at = self
-      .members
-      .position_of((self.chosen)().as_deref())
-      .unwrap_or(0);
+    let members = self.members.ordered();
+    let at = Self::position_in(&members, (self.chosen)().as_deref());
 
     self.open.set(true);
-    self.highlight_at(at);
+    self.highlight(members.get(at));
   }
 
   /// Closes the list and returns focus to the face, so the control keeps the focus it
@@ -125,20 +126,18 @@ impl PickerContext {
   /// Chooses the option `step` places from the chosen one without opening, the way a
   /// closed native select answers the arrow keys.
   fn cycle(&self, step: isize) {
-    let at = self
-      .members
-      .position_of((self.chosen)().as_deref())
-      .unwrap_or(0);
-    let Some(next) = self.clamped(at, step)
+    let members = self.members.ordered();
+    let at = Self::position_in(&members, (self.chosen)().as_deref());
+    let Some(next) = Self::clamped(members.len(), at, step)
     else {
       return;
     };
-    let Some((value, _)) = self.members.at(next)
+    let Some((value, _)) = members.get(next)
     else {
       return;
     };
 
-    (self.choose)(value);
+    (self.choose)(value.clone());
   }
 
   /// Whether `value` is the list's one tab stop: the highlighted option, while open.
@@ -303,6 +302,7 @@ impl View for RawPicker<AnyView> {
     };
     let label = self.label;
     let anchor = Anchor::new();
+    let root = context.members.clone();
 
     // A child owner keeps the context to this picker's subtree, so a sibling picker's
     // options never see it.
@@ -361,7 +361,11 @@ impl View for RawPicker<AnyView> {
           .set_role(Role::Listbox)
           .set_child(Column::new().set_children_to(self.options)),));
 
-      Stack::new().set_children((face, list)).build()
+      let node = Stack::new().set_children((face, list)).build();
+
+      root.root_at(node);
+
+      node
     })
   }
 }
@@ -535,11 +539,11 @@ impl View for RawOption<AnyView> {
       .build();
 
     if let Some(picker) = &picker {
-      picker.members.join(value.clone(), handle);
+      picker.members.join(node, value, handle);
 
       let picker = picker.clone();
 
-      on_cleanup(move || picker.members.leave(&value));
+      on_cleanup(move || picker.members.leave(node));
     }
 
     node

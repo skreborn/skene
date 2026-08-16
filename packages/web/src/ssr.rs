@@ -173,6 +173,15 @@ impl State {
     }
   }
 
+  /// The node's children, in document order; empty for one the arena no longer holds.
+  fn children(&self, node: NodeId) -> Vec<NodeId> {
+    self
+      .nodes
+      .get(&node)
+      .map(|node| node.children.clone())
+      .unwrap_or_default()
+  }
+
   fn attach_child(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
     if let Some(old) = self.nodes.get(&child).and_then(|node| node.parent)
       && let Some(old) = self.nodes.get_mut(&old)

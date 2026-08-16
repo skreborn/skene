@@ -32,3 +32,10 @@ pub fn detach(parent: NodeId, child: NodeId) {
 pub fn destroy(node: NodeId) {
   with_state(|state| state.destroy(node));
 }
+
+/// The node's children, in document order; empty for a node the platform no longer
+/// holds.
+#[must_use]
+pub fn children(node: NodeId) -> Vec<NodeId> {
+  with_state(|state| state.children(node))
+}

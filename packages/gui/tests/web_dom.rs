@@ -993,3 +993,76 @@ fn a_drawn_checkbox_is_an_accessible_div_in_the_real_dom() {
     Some("true"),
   );
 }
+
+/// A radio group's arrow traversal follows the real DOM's order, including a member
+/// reconciled into the middle of the set after the group was built.
+///
+/// The ordering walk asks the driver for a node's children, and on this leaf that
+/// answer is read back out of the live document—so only a real DOM exercises it.
+#[wasm_bindgen_test]
+fn a_radio_group_traverses_the_real_doms_order() {
+  use skene_gui::{HasChildren, RawRadio, RawRadioGroup};
+
+  let (_guard, root) = fresh_root();
+  let flavors = Signal::new(vec![String::from("mint"), String::from("fig")]);
+  let chosen = Signal::new(String::from("mint"));
+
+  mount(move || {
+    RawRadioGroup::new()
+      .bind_chosen(chosen)
+      .set_child(Column::new().derive_children(
+        move || flavors.get(),
+        |flavor: &String| flavor.clone(),
+        |flavor| RawRadio::new(flavor.clone()).set_child(Text::new(flavor)),
+      ))
+      .build()
+  });
+
+  let column = only_child(&only_child(&root));
+  let rows = || {
+    let children = column.children();
+
+    (0..children.length())
+      .filter_map(|index| children.item(index))
+      .collect::<Vec<_>>()
+  };
+  let press = |target: &Element, key: &str| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_key(key);
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+
+    let _ = target.dispatch_event(&event);
+  };
+
+  assert_eq!(rows().len(), 2);
+
+  press(&rows()[0], "ArrowDown");
+
+  assert_eq!(chosen.get(), "fig");
+
+  chosen.set(String::from("mint"));
+  flavors.set(vec![
+    String::from("mint"),
+    String::from("plum"),
+    String::from("fig"),
+  ]);
+
+  assert_eq!(rows().len(), 3, "the newcomer is in the document");
+  assert_eq!(
+    rows()[1].get_attribute("role").as_deref(),
+    Some("radio"),
+    "and it is the middle one",
+  );
+
+  press(&rows()[0], "ArrowDown");
+
+  assert_eq!(
+    chosen.get(),
+    "plum",
+    "traversal follows the document, not the order members joined",
+  );
+}

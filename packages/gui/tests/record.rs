@@ -919,3 +919,66 @@ fn a_filtered_away_option_leaves_its_picker() {
     "the highlight clamps at what is left—a stale roster would run past it"
   );
 }
+
+/// A member inserted into the middle of a reconciling set takes its place in traversal,
+/// because the order comes from the tree rather than from the order members joined.
+#[test]
+fn a_member_inserted_in_the_middle_traverses_in_document_order() {
+  use skene_gui::{
+    RawRadio,
+    RawRadioGroup,
+    core::{KeyEvent, Modifiers},
+  };
+
+  let flavors = Signal::new(vec![String::from("mint"), String::from("fig")]);
+  let chosen = Signal::new(String::from("mint"));
+  let root = RawRadioGroup::new()
+    .bind_chosen(chosen)
+    .set_child(Column::new().derive_children(
+      move || flavors.get(),
+      |flavor: &String| flavor.clone(),
+      |flavor| RawRadio::new(flavor.clone()).set_child(Text::new(flavor)),
+    ))
+    .build();
+  let column = record::children(root)[0];
+  let press = |node, key: &str| {
+    record::trigger_key_down(
+      node,
+      &KeyEvent {
+        key: key.into(),
+        modifiers: Modifiers::default(),
+      },
+    )
+  };
+
+  let _ = press(record::children(column)[0], "ArrowDown");
+
+  assert_eq!(chosen.get(), "fig");
+
+  chosen.set(String::from("mint"));
+  flavors.set(vec![
+    String::from("mint"),
+    String::from("plum"),
+    String::from("fig"),
+  ]);
+
+  let rows = record::children(column);
+
+  assert_eq!(rows.len(), 3);
+
+  let _ = press(rows[0], "ArrowDown");
+
+  assert_eq!(
+    chosen.get(),
+    "plum",
+    "the newcomer sits where the tree puts it, not where it joined"
+  );
+
+  let _ = press(rows[1], "ArrowDown");
+
+  assert_eq!(chosen.get(), "fig");
+
+  let _ = press(rows[2], "ArrowDown");
+
+  assert_eq!(chosen.get(), "mint", "and the ring still wraps");
+}

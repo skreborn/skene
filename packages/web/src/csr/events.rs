@@ -192,7 +192,7 @@ pub(super) fn stamp_node_id(element: &Element, node: NodeId) {
 }
 
 /// The node id stamped on `element`, if it belongs to this platform.
-fn node_id_of(element: &Element) -> Option<NodeId> {
+pub(super) fn node_id_of(element: &Element) -> Option<NodeId> {
   #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
   js_sys::Reflect::get(element, &JsValue::from_str(NODE_ID_PROPERTY))
     .ok()

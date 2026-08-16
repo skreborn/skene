@@ -12,7 +12,6 @@ use skene_core::{
   Prevent,
   Ring,
   Role,
-  Roster,
   Source,
   View,
 };
@@ -22,6 +21,7 @@ use crate::{
   Container,
   FocusHandle,
   HasEvents,
+  Roster,
   control::{Behavior, EventCore},
 };
 
@@ -33,8 +33,8 @@ use crate::{
 struct GroupContext {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
-  /// Members in join order, which the arrow keys walk; one leaves as it is disposed,
-  /// so a reconciling set never strands a destroyed member in traversal.
+  /// Members in document order, which the arrow keys walk—however the set reconciles,
+  /// and never reaching one that has been destroyed.
   members: Roster<FocusHandle>,
 }
 
@@ -42,15 +42,16 @@ impl GroupContext {
   /// Moves `step` places from the member holding `value` and chooses what it lands on,
   /// focusing it as the browser's own group does.
   fn step_from(&self, value: &str, step: isize) {
-    let Some(index) = self.members.position_of(Some(value))
+    let members = self.members.ordered();
+    let Some(index) = members.iter().position(|(held, _)| held == value)
     else {
       return;
     };
-    let Some(next) = Ring::new(self.members.count()).step_from(index, step)
+    let Some(next) = Ring::new(members.len()).step_from(index, step)
     else {
       return;
     };
-    let Some((value, handle)) = self.members.at(next)
+    let Some((value, handle)) = members.get(next).cloned()
     else {
       return;
     };
@@ -64,7 +65,11 @@ impl GroupContext {
   fn is_tab_stop(&self, value: &str) -> bool {
     match (self.chosen)() {
       Some(chosen) => chosen == value,
-      None => self.members.leads_with(value),
+      None => self
+        .members
+        .ordered()
+        .first()
+        .is_some_and(|(first, _)| first == value),
     }
   }
 }
@@ -178,6 +183,7 @@ impl View for RawRadioGroup<AnyView> {
       members: Roster::new(),
     };
     let label = self.label;
+    let root = context.members.clone();
 
     // A child owner keeps the context to this group's subtree, so a sibling group's
     // members never see it.
@@ -190,7 +196,11 @@ impl View for RawRadioGroup<AnyView> {
         group = group.set_accessibility([AccessProp::Label(label)]);
       }
 
-      group.set_child(self.child).build()
+      let node = group.set_child(self.child).build();
+
+      root.root_at(node);
+
+      node
     })
   }
 }
@@ -335,11 +345,11 @@ impl View for RawRadio<AnyView> {
       .build();
 
     if let Some(group) = &group {
-      group.members.join(value.clone(), handle);
+      group.members.join(node, value, handle);
 
       let group = group.clone();
 
-      on_cleanup(move || group.members.leave(&value));
+      on_cleanup(move || group.members.leave(node));
     }
 
     node

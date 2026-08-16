@@ -554,6 +554,16 @@ impl State {
     self.dirty.set(true);
   }
 
+  /// The node's children, in document order; empty for one the arena no longer holds.
+  pub(crate) fn children(&self, node: NodeId) -> Vec<NodeId> {
+    self
+      .nodes
+      .borrow()
+      .get(&node)
+      .map(|record| record.children.clone())
+      .unwrap_or_default()
+  }
+
   /// Runs `apply` on a node's record.
   pub(crate) fn with_node<R>(&self, node: NodeId, apply: impl FnOnce(&mut NodeRecord) -> R) -> R {
     let mut nodes = self.nodes.borrow_mut();

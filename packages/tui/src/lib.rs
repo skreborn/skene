@@ -151,10 +151,17 @@ impl skene_core::TreeOps for TuiOps {
   fn destroy(self, node: NodeId) {
     with_state(|state| state.destroy(node));
   }
+
+  #[inline(always)]
+  fn children(self, node: NodeId) -> Vec<NodeId> {
+    with_state(|state| state.children(node))
+  }
 }
 
 /// A container's children.
 pub type Children = skene_core::Children<TuiOps>;
+/// The members a grouping control tracks; see [`skene_core::Roster`].
+pub type Roster<T> = skene_core::Roster<TuiOps, T>;
 /// A reactive subtree.
 pub type DerivedView = skene_core::DerivedView<TuiOps>;
 

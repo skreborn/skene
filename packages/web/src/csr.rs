@@ -829,6 +829,24 @@ impl State {
 
   /// Runs `f` with the node's element, without cloning the handle. `f` must not make
   /// a call that inserts or removes nodes (which would borrow `nodes` again).
+  /// The node's children, in document order.
+  ///
+  /// Read back out of the live DOM rather than tracked alongside it, so the answer is
+  /// whatever the document actually holds. Empty for a node the platform no longer
+  /// has, and elements this driver did not create are skipped.
+  pub fn children(&self, node: NodeId) -> Vec<NodeId> {
+    let Some(element) = self.nodes.borrow().get(&node).cloned()
+    else {
+      return Vec::new();
+    };
+    let children = element.children();
+
+    (0..children.length())
+      .filter_map(|index| children.item(index))
+      .filter_map(|child| events::node_id_of(&child))
+      .collect()
+  }
+
   fn with_element<R>(&self, node: NodeId, apply: impl FnOnce(&Element) -> R) -> R {
     let nodes = self.nodes.borrow();
     let element = nodes.get(&node).expect("web platform: unknown node id");

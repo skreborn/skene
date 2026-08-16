@@ -1,4 +1,5 @@
-//! The structural driver seam: the four tree mutations every facade's driver provides.
+//! The structural driver seam: the tree mutations every facade's driver provides,
+//! plus the one query the shared machinery needs.
 //!
 //! A facade defines a zero-sized ops type calling its driver's functions and instantiates
 //! the shared structural machinery ([`Children`](crate::Children),
@@ -22,4 +23,10 @@ pub trait TreeOps: Copy + Default + 'static {
 
   /// Destroys an already-detached node and its entire subtree.
   fn destroy(self, node: NodeId);
+
+  /// The node's children, in document order.
+  ///
+  /// Empty for a leaf, and for a node the driver no longer holds—so a walk over a
+  /// subtree never reaches a destroyed node.
+  fn children(self, node: NodeId) -> Vec<NodeId>;
 }

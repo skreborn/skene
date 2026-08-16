@@ -493,18 +493,39 @@ sink are just different sinks for the same paths.)
 - **Truecolor detection in TUI—done.** `COLORTERM`/`TERM` name the depth; paint
   quantizes to the xterm 256-color palette or the 16 base colors when truecolor is
   absent, instead of assuming it.
-- **Dark/light theming story**: the `DarkMode`/`LightMode` condition leaves style one
-  view at a time, but the theme itself—colors, text included—needs a shape. Two
-  candidates: individually derivable properties on each view (fits the reactivity
-  model, but may cost too much and read awkwardly at scale) or a global light+dark pair
-  under one theme provider. Leaning to derivable properties; explore when the work
-  starts.
+- **Theming: one wrapper view, light and dark.** *Settles the earlier open question—
+  derivable properties on every view versus a light+dark pair under one provider. It is
+  the provider: per-view derivable properties read awkwardly at scale and put the same
+  decision in every call site.* A theme is a wrapper view holding both palettes, text
+  included. It follows the platform's scheme by default and takes a value—static and
+  derived alike—to override that, so an app can force one or bind it to a user setting.
+  What sits below reads it through context, the way a radio group's members reach their
+  group.
+  - **Every `Simple*` control is styled through that one view**, so a component library
+    restyles a subtree by wrapping it rather than by setting properties control by
+    control. This is what `SimplePalette` grows into.
+  - **An overlay carries no theme of its own**, mirroring the `Raw*` split: `Overlay` is
+    layering, anchoring, and dismissal, and nothing about how it looks. The Simple
+    collection ships the themed counterpart, so a popup is dressed by choosing that
+    view rather than by inheriting from wherever it happened to be built.
+  - **Theme colors are state-aware through the mechanism styling already uses**: a
+    `set_*_when` twin per themed property, not a second conditional system beside the
+    first. Keeps a variant expressible exactly where the property is, as the settled
+    conditional-styling rule already requires.
 - **Asset system**: declared in `skene.toml`—the framework manifest, which will grow
   further settings over time (Flutter's pubspec is the model)—never in code and never
   statically checked. Declared files and directories become reachable at predictable
   URIs; the CLI serves them in dev, copies them into web/SSG output, and bundles them
   for native. A library crate's own `skene.toml` (found beside its `Cargo.toml` via
   cargo metadata) contributes assets the same way an app's does.
+- **Font assets**: declared and copied like any other asset, from an app or a library
+  crate alike, and reachable at the same predictable URIs. What a font adds on top is
+  **generated metadata**—per-face ascender, descender, line gap, cap height, read at
+  build time—because the platforms need measurements the running text stack does not
+  hand them. The web needs them to emulate text-box trimming where an engine has not
+  shipped it and Chrome has; a native driver and the TUI need the same numbers for
+  their own layout. The metadata is generated output, so it is a build-time artifact
+  beside the copied file, never something an author writes or keeps in sync by hand.
 - **View transitions (web)**: best-effort—`document.startViewTransition` wrapping SPA
   route changes and `@view-transition` in generated CSS for MPA/SSG navigations,
   degrading to instant swaps where the browser lacks support.

@@ -934,3 +934,44 @@ fn a_simple_slider_is_drawn_from_ordinary_views() {
     "and follows the value"
   );
 }
+
+/// A Simple picker draws its own field and list: the face shows the chosen option's
+/// label, and each row is an option the picker owns.
+#[test]
+fn a_simple_picker_draws_its_field_and_list() {
+  use skene_gui::SimplePicker;
+
+  let flavor = Signal::new(String::from("plum"));
+  let root = Container::new()
+    .set_child(
+      SimplePicker::new()
+        .set_options([("mint", "Mint"), ("plum", "Plum"), ("fig", "Fig")])
+        .bind_value(flavor),
+    )
+    .build();
+  let stack = record::children(record::children(root)[0])[0];
+  let face = record::children(stack)[0];
+  let overlay = record::children(stack)[1];
+
+  assert_eq!(record::role(face), Some(Role::Combobox));
+  assert!(
+    record::outline(face).contains("Run \"Plum\""),
+    "the face shows the chosen option's label: {}",
+    record::outline(face)
+  );
+
+  let rows = record::outline(overlay);
+
+  assert_eq!(
+    rows.matches("Run \"").count(),
+    3,
+    "one row per option: {rows}"
+  );
+
+  flavor.set(String::from("fig"));
+
+  assert!(
+    record::outline(face).contains("Run \"Fig\""),
+    "and follows the value"
+  );
+}

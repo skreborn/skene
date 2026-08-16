@@ -1,18 +1,42 @@
 //! A ready-made dropdown choice in the Simple design language.
 
-use skene_core::View;
+use std::rc::Rc;
 
-use crate::{HasStyle, WebPicker, simple, simple::SimplePalette};
+use skene_core::{Condition, HasChildren, ItemAlignment, Source, View};
 
-/// A ready-made select: field chrome on the card surface around the platform
-/// dropdown, its border brightening on focus. The dropdown wears the select's own
-/// surface, so the card colors the popup too.
+use crate::{
+  Column,
+  Container,
+  Enhanced,
+  Inset,
+  RawOption,
+  RawPicker,
+  Row,
+  SimplePalette,
+  Text,
+  WebPicker,
+  simple,
+};
+
+/// The indicator after the chosen label.
+const INDICATOR: &str = "▾";
+/// The gap between the label and the indicator.
+const INDICATOR_GAP: f32 = 8.;
+
+/// A ready-made select in the Simple design language.
 ///
-/// The chosen value flows both ways, exactly as on [`WebPicker`]; for custom styling,
-/// compose the raw control directly.
+/// Drawn by the framework once the client owns the page: the field, the popup, and each
+/// row are ordinary views, so the list wears the Simple surface rather than the
+/// platform's dropdown chrome—which no engine lets a page style freely. Without script
+/// the browser's own select stands in, which works on its own.
+///
+/// The chosen value flows both ways. For a select drawn some other way, compose
+/// [`RawPicker`] directly.
 #[must_use]
 pub struct SimplePicker {
-  raw: WebPicker,
+  options: Vec<(String, String)>,
+  value: Option<Source<String>>,
+  change_handler: Option<Rc<dyn Fn(String)>>,
 }
 
 impl SimplePicker {
@@ -20,7 +44,9 @@ impl SimplePicker {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      raw: WebPicker::new(),
+      options: Vec::new(),
+      value: None,
+      change_handler: None,
     }
   }
 
@@ -30,42 +56,46 @@ impl SimplePicker {
     mut self,
     options: impl IntoIterator<Item = (V, L)>,
   ) -> Self {
-    self.raw = self.raw.set_options(options);
+    self.options = options
+      .into_iter()
+      .map(|(value, label)| (value.into(), label.into()))
+      .collect();
 
     self
   }
 
-  /// Sets a static selected value.
+  /// Sets a static chosen value.
   #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
-    self.raw = self.raw.set_value(value);
+    self.value = Some(Source::Static(value.into()));
 
     self
   }
 
-  /// Sets a derived selected value, re-applied whenever it changes.
+  /// Sets a derived chosen value, re-applied whenever it changes.
   #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
-    self.raw = self.raw.derive_value(value);
+    self.value = Some(Source::Derived(Rc::new(value)));
 
     self
   }
 
-  /// Sets the change handler, run with the chosen value on every choice.
+  /// Sets the change handler, run with the newly chosen value.
   #[inline(always)]
-  pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
-    self.raw = self.raw.handle_change(action);
+  pub fn handle_change(mut self, action: impl Fn(String) + 'static) -> Self {
+    self.change_handler = Some(Rc::new(action));
 
     self
   }
 
-  /// Binds the selection to `signal` in both directions: the select shows the signal
-  /// and each choice writes it back.
+  /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_value(mut self, signal: skene_reactive::Signal<String>) -> Self {
-    self.raw = self.raw.bind_value(signal);
+  pub fn bind_value(self, signal: skene_reactive::Signal<String>) -> Self {
+    use skene_reactive::{Get, Set};
 
     self
+      .derive_value(move || signal.get())
+      .handle_change(move |value| signal.set(value))
   }
 }
 
@@ -78,19 +108,118 @@ impl Default for SimplePicker {
 
 impl View for SimplePicker {
   fn build(self) -> skene_core::NodeId {
-    let (condition, style) = simple::field_focus();
+    let Self {
+      options,
+      value,
+      change_handler,
+    } = self;
+    let first = options.first().map(|(value, _)| value.clone());
+    let reads = move || {
+      value
+        .as_ref()
+        .map(Source::get)
+        .or_else(|| first.clone())
+        .unwrap_or_default()
+    };
 
-    self
-      .raw
-      .set_style(simple::field_style().set_color(SimplePalette::card()))
-      .set_when(condition, style)
-      .build()
+    Enhanced::new({
+      let options = options.clone();
+      let reads = reads.clone();
+      let change_handler = change_handler.clone();
+
+      move || native(options.clone(), reads.clone(), change_handler.clone())
+    })
+    .set_child(move || drawn(options.clone(), reads.clone(), change_handler.clone()))
+    .build()
   }
 }
 
-impl crate::HasFocus for SimplePicker {
-  #[inline(always)]
-  fn focus_core(&mut self) -> &mut crate::FocusCore {
-    crate::HasFocus::focus_core(&mut self.raw)
+/// The scriptless form: the browser's own select, styled as close to the drawn one as
+/// an engine allows.
+fn native(
+  options: Vec<(String, String)>,
+  value: impl Fn() -> String + 'static,
+  change_handler: Option<Rc<dyn Fn(String)>>,
+) -> WebPicker {
+  use crate::HasStyle;
+
+  let mut control = WebPicker::new()
+    .set_options(options)
+    .derive_value(value)
+    .set_style(simple::field_style().set_color(SimplePalette::card()))
+    .set_when(simple::field_focus().0, simple::field_focus().1);
+
+  if let Some(action) = change_handler {
+    control = control.handle_change(move |value| action(value.to_owned()));
   }
+
+  control
+}
+
+/// The drawn form: the field, and a popup wearing the Simple surface.
+fn drawn(
+  options: Vec<(String, String)>,
+  value: impl Fn() -> String + Clone + 'static,
+  change_handler: Option<Rc<dyn Fn(String)>>,
+) -> impl View {
+  let labels = options.clone();
+  let shown = value.clone();
+  let face = Container::new()
+    .set_padding(Inset::symmetric(12., 8.))
+    .set_border(skene_core::Border::new(1., SimplePalette::border()))
+    .set_border_radius(simple::RADIUS)
+    .set_border_when(
+      Condition::Focused,
+      skene_core::Border::new(1., SimplePalette::ring()),
+    )
+    .set_color(SimplePalette::card())
+    .set_child(
+      Row::new()
+        .set_spacing(INDICATOR_GAP)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_children((
+          Text::derive(move || {
+            let chosen = shown();
+
+            labels
+              .iter()
+              .find(|(value, _)| *value == chosen)
+              .map_or(chosen, |(_, label)| label.clone())
+          }),
+          Text::new(INDICATOR).set_color(SimplePalette::muted_foreground()),
+        )),
+    );
+  // The overlay carries no surface of its own, so the list paints one.
+  let list = Container::new()
+    .set_color(SimplePalette::card())
+    .set_border(skene_core::Border::new(1., SimplePalette::border()))
+    .set_border_radius(simple::RADIUS)
+    .set_padding(Inset::all(4.))
+    .set_child(
+      Column::new().set_children(
+        options
+          .into_iter()
+          .map(|(value, label)| row(value, label))
+          .collect::<Vec<_>>(),
+      ),
+    );
+  let mut control = RawPicker::new().derive_value(value);
+
+  if let Some(action) = change_handler {
+    control = control.handle_change(move |value| action(value));
+  }
+
+  control.set_face(face).set_options((list,))
+}
+
+/// One row of the drawn list: the highlight is the row's own focus, since the keyboard
+/// moves focus with it.
+fn row(value: String, label: String) -> impl View {
+  RawOption::new(value).set_child(
+    Container::new()
+      .set_padding(Inset::symmetric(8., 6.))
+      .set_border_radius(4.)
+      .set_color_when(Condition::Focused, SimplePalette::primary())
+      .set_child(Text::new(label)),
+  )
 }

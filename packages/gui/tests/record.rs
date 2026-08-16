@@ -901,3 +901,36 @@ fn a_simple_radio_group_draws_and_owns_its_members() {
   assert!(record::access(mint).contains(&AccessProp::Checked(true.into())));
   assert!(record::access(plum).contains(&AccessProp::Checked(false.into())));
 }
+
+/// A Simple slider is drawn from ordinary views: the control reports the slider role and
+/// its bounds, and the fill follows the value with no platform pseudo-element involved.
+#[test]
+fn a_simple_slider_is_drawn_from_ordinary_views() {
+  use skene_gui::{SimpleSlider, core::AccessProp};
+
+  let volume = Signal::new(25.0f32);
+  let root = Container::new()
+    .set_child(SimpleSlider::new(0., 100.).bind_value(volume))
+    .build();
+  let control = record::children(record::children(root)[0])[0];
+
+  assert_eq!(record::role(control), Some(Role::Slider));
+  assert!(record::access(control).contains(&AccessProp::ValueMax(100.)));
+
+  let stack = record::children(record::children(control)[0])[0];
+  let fill = record::children(record::children(stack)[0])[0];
+
+  assert_eq!(
+    record::box_style(fill).and_then(|style| style.width),
+    Some(Dimension::Fraction(0.25)),
+    "the filled run is a quarter of the track"
+  );
+
+  volume.set(75.);
+
+  assert_eq!(
+    record::box_style(fill).and_then(|style| style.width),
+    Some(Dimension::Fraction(0.75)),
+    "and follows the value"
+  );
+}

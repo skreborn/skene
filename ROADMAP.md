@@ -691,6 +691,19 @@ sink are just different sinks for the same paths.)
     - **Matching the two forms is the library's job, not the framework's.** The `Web*`
       controls keep a styling surface for exactly this; nothing automatic tries to keep
       a fallback and its enhanced form in step.
+    - **The swap can flash, and how much is a styling question.** A page that renders a
+      fallback repaints once when the client takes over, so a fallback styled unlike its
+      enhanced form will visibly change. This is more tractable than it looks: the web
+      driver already emits `appearance: none` resets (`TOGGLE_RESET`, `SELECT_RESET`),
+      so a native checkbox, radio, or range is de-chromed and takes a background,
+      border, and radius freely—a library can bring the two to near-identical rather
+      than merely the same size. The residue is what a stylesheet cannot reach: the
+      check glyph and the radio dot (a mark drawn by the engine, not a child we own),
+      and a native select's open list—though that one never coexists with the swap,
+      since a closed face is all a page shows at load. An app that wants none of it
+      turns the fallback off. Worth revisiting if the residue ever looks worse than the
+      alternative: emitting the fallback hidden and revealing it only if script never
+      arrives costs a flash of *nothing* instead, which may or may not read better.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

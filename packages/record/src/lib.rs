@@ -318,6 +318,13 @@ pub fn set_checked(node: NodeId, checked: bool) {
   let _ = with_node(node, |node| node.checked = checked);
 }
 
+/// Whether the client owns the page; always, for the recording driver—there is no
+/// server tree to reproduce, so an enhancement renders its enhanced form.
+#[must_use]
+pub fn settled() -> bool {
+  true
+}
+
 /// Records a programmatic focus; the recorder keeps no focus model.
 pub fn focus_node(_node: NodeId) {}
 

@@ -825,3 +825,24 @@ fn a_member_inserted_in_the_middle_traverses_in_document_order() {
 
   assert_eq!(chosen.get(), "mint", "and the ring still wraps");
 }
+
+/// An enhancement renders its child once the client owns the page—which, on a driver
+/// with no server tree to reproduce, is from the start.
+#[test]
+fn an_enhancement_renders_its_child_when_the_client_owns_the_page() {
+  use skene_gui::{Enhanced, RawCheckbox, WebCheckbox};
+
+  let root = Container::new()
+    .set_child(
+      Enhanced::new(WebCheckbox::new).set_child(|| RawCheckbox::new().set_child(Text::new("mark"))),
+    )
+    .build();
+  let built = record::children(root);
+
+  assert_eq!(built.len(), 1, "one form is rendered, never both");
+  assert_eq!(
+    record::role(record::children(built[0])[0]),
+    Some(Role::Checkbox),
+    "and it is the drawn one, not the browser's own"
+  );
+}

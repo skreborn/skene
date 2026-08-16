@@ -14,6 +14,7 @@ mod containers;
 mod control;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
+mod enhanced;
 mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
@@ -92,6 +93,7 @@ pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   control::{Behavior, EventCore, FocusCore, StyleCore},
+  enhanced::Enhanced,
   focus::FocusHandle,
   layout_box::LayoutBox,
   lazy::LazyColumn,

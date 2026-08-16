@@ -569,3 +569,27 @@ fn a_widget_role_and_state_serialize_as_aria() {
     "a drawn control joins the tab order the way a native one does",
   );
 }
+
+/// An enhancement serializes its fallback, so a scriptless client is handed the
+/// browser's own working control rather than an inert drawn one.
+#[test]
+fn an_enhancement_serializes_its_fallback() {
+  use skene_gui::{Enhanced, RawCheckbox, WebCheckbox};
+
+  let page = render_to_string(|| {
+    Container::new().set_child(
+      Enhanced::new(|| WebCheckbox::new())
+        .set_child(|| RawCheckbox::new().set_child(Text::new("mark"))),
+    )
+  });
+  let html = page.body();
+
+  assert!(
+    html.contains("type=\"checkbox\""),
+    "the browser's own control is what a server render emits: {html}"
+  );
+  assert!(
+    !html.contains("role=\"checkbox\""),
+    "and the drawn one is not serialized beside it: {html}"
+  );
+}

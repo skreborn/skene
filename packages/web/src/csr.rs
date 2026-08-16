@@ -988,6 +988,23 @@ pub fn is_server() -> bool {
   false
 }
 
+/// Whether the client owns the page: `false` only while hydration is reproducing the
+/// server's tree, `true` at every other moment, including a fresh client-side launch.
+///
+/// Reactive, so a view can render the scriptless form while it is false and rebuild into
+/// the enhanced one when it flips.
+#[must_use]
+pub fn settled() -> bool {
+  use skene_reactive::Get;
+
+  SETTLED.with(|settled| settled.get())
+}
+
+thread_local! {
+  /// Flipped once hydration finishes; already true when there was none to do.
+  static SETTLED: skene_reactive::Signal<bool> = skene_reactive::Signal::new(true);
+}
+
 /// Runs `apply` against the installed platform state.
 ///
 /// Only ever takes a shared borrow, so a click handler may re-enter and build or destroy
@@ -1373,6 +1390,13 @@ where
   });
 
   NEXT_SLOT.set(0);
+
+  {
+    use skene_reactive::Set;
+
+    SETTLED.with(|settled| settled.set(false));
+  }
+
   let (ordered, tagged) = crate::hydration::decode_state(state);
 
   ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
@@ -1383,6 +1407,14 @@ where
   mount(|| app().into_view().build());
 
   with_state(State::finish_hydration);
+
+  // The client owns the page now: a view that rendered its scriptless form rebuilds
+  // into the enhanced one, in a tree whose ids are no longer being matched.
+  {
+    use skene_reactive::Set;
+
+    SETTLED.with(|settled| settled.set(true));
+  }
 }
 
 /// Hydrates the server-rendered page: adopts `<body>` and reads the state script embedded by

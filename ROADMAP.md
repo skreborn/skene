@@ -664,13 +664,21 @@ sink are just different sinks for the same paths.)
     moving focus would need a node-valued `AccessProp` and stable per-node ids in the
     web driver. Roving focus reaches the same place with machinery that already
     exists, so the id-relation vocabulary stays unbuilt until something needs it.
-  - **Open: how the no-JS path renders.** A `<noscript>` fallback cannot hide the ARIA
-    tree beside it, so a scriptless client would get both the working control and an
-    inert one. Rendering the native `Web*` control on the server and upgrading it to the
-    custom `Raw*` on hydration is the shape that satisfies progressive enhancement
-    instead of opting out of it—content is never gated on JS, and the client layers
-    interactivity on top—at the cost of a swap at hydration to keep from shifting
-    layout. Whether the fallback is emitted at all should be one toggle.
+  - **The no-JS path—settled, and the seam is in.** A `<noscript>` fallback cannot hide
+    the ARIA tree beside it, so a scriptless client would get both the working control
+    and an inert one. `Enhanced` renders the native `Web*` control without script and
+    rebuilds into the drawn `Raw*` once the client owns the page: content is never gated
+    on JS, and the client layers interactivity on top.
+    - **The swap runs after hydration, not during it.** Hydration matches client to
+      server by node id (`data-h`), and a drawn control allocates a different number of
+      nodes than a native one—so rebuilding mid-hydration shifts every id after it, and
+      a later node can silently adopt an unrelated element of the same tag. Reproducing
+      the fallback first keeps the matching exact; the rebuild then runs in a tree
+      nobody is matching. That needed no change to hydration itself, only a reactive
+      `settled()` on each driver: false while the client reproduces the server's tree,
+      true otherwise—so a fresh client launch never builds the fallback at all.
+    - **Remaining:** footprint parity between the two forms, so the swap does not shift
+      layout; and the toggle for whether the fallback is emitted at all.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

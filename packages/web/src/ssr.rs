@@ -476,6 +476,13 @@ pub fn is_server() -> bool {
   true
 }
 
+/// Whether the client owns the page; never, on the server, so a view serializes its
+/// scriptless form.
+#[must_use]
+pub fn settled() -> bool {
+  false
+}
+
 /// Runs `apply` against the installed platform state.
 ///
 /// # Panics

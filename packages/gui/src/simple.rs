@@ -22,7 +22,7 @@ pub use self::{
   card::SimpleCard,
   checkbox::SimpleCheckbox,
   picker::SimplePicker,
-  radio::SimpleRadio,
+  radio::{SimpleRadio, SimpleRadioGroup},
   slider::SimpleSlider,
   text_editor::SimpleTextEditor,
   text_field::SimpleTextField,

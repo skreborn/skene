@@ -110,6 +110,7 @@ pub use crate::{
   SimplePalette,
   SimplePicker,
   SimpleRadio,
+  SimpleRadioGroup,
   SimpleSlider,
   SimpleTextEditor,
   SimpleTextField,

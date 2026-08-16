@@ -119,19 +119,20 @@ fn toggles() -> impl IntoView {
           .set_font_size(13.)
           .set_color(SimplePalette::muted_foreground()),
         )),
-      Row::new().set_spacing(16.).set_children((
-        radio_choice("mint", flavor),
-        radio_choice("vanilla", flavor),
-        radio_choice("plum", flavor),
-      )),
+      SimpleRadioGroup::new("flavor")
+        .bind_chosen(flavor)
+        .set_label("Flavor")
+        .set_child(Row::new().set_spacing(16.).set_children((
+          radio_choice("mint"),
+          radio_choice("vanilla"),
+          radio_choice("plum"),
+        ))),
     )),
   )
 }
 
-fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
-  SimpleRadio::new("flavor", value)
-    .bind_value(flavor)
-    .set_label(value)
+fn radio_choice(value: &'static str) -> impl IntoView {
+  SimpleRadio::new(value).set_label(value)
 }
 
 fn inputs() -> impl IntoView {

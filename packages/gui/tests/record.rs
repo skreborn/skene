@@ -871,3 +871,33 @@ fn a_simple_checkbox_is_drawn_from_ordinary_views() {
     record::outline(control)
   );
 }
+
+/// A Simple radio group draws its members and owns their selection, wherever they sit.
+#[test]
+fn a_simple_radio_group_draws_and_owns_its_members() {
+  use skene_gui::{SimpleRadio, SimpleRadioGroup, core::AccessProp};
+
+  let flavor = Signal::new(String::from("mint"));
+  let root = SimpleRadioGroup::new("flavor")
+    .bind_chosen(flavor)
+    .set_child(Column::new().set_children((
+      SimpleRadio::new("mint").set_label("Mint"),
+      Container::new().set_child(SimpleRadio::new("plum").set_label("Plum")),
+    )))
+    .build();
+
+  assert_eq!(record::role(root), Some(Role::RadioGroup));
+
+  let column = record::children(root)[0];
+  let mint = record::children(record::children(column)[0])[0];
+  let plum = record::children(record::children(record::children(column)[1])[0])[0];
+
+  assert_eq!(record::role(mint), Some(Role::Radio));
+  assert_eq!(
+    record::role(plum),
+    Some(Role::Radio),
+    "a wrapped member is a member"
+  );
+  assert!(record::access(mint).contains(&AccessProp::Checked(true.into())));
+  assert!(record::access(plum).contains(&AccessProp::Checked(false.into())));
+}

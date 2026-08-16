@@ -493,6 +493,30 @@ sink are just different sinks for the same paths.)
 - **Truecolor detection in TUI—done.** `COLORTERM`/`TERM` name the depth; paint
   quantizes to the xterm 256-color palette or the 16 base colors when truecolor is
   absent, instead of assuming it.
+- **The driver owns the platform's defaults.** The goal: nobody above a driver ever asks
+  whether they are cancelling browser behavior. The driver holds the policy—per event
+  kind and node kind—and cancels statically wherever *we* take the event over; above it
+  only bubbling exists, and since a view that handles an interaction consumes it, even
+  that never reaches a signature. `Prevent::Platform` becomes web-driver-internal.
+  - **Scoped deliberately.** Scrolling stays the platform's: it is compositor and layout
+    work, cancelling `wheel` forces non-passive listeners that degrade every scroll on
+    the page, and a main-thread reimplementation forfeits momentum, overscroll and
+    chaining. Text entry stays the platform's for the reasons already settled—caret and
+    word motion, the selection model, IME, autofill, the undo stack. The `Web*` controls
+    are out of scope by construction: they exist for the scriptless render and are
+    replaced by the drawn control at hydration, and taking over events needs script
+    anyway.
+  - **Known limit.** The driver decides statically, from the event and the node. A case
+    needing "cancel only when the handler took some branch" cannot be expressed; if one
+    turns up, that is the signal to reconsider rather than to widen the policy quietly.
+- **Retired before it shipped: a handler-side override.** `Override`/`ControlFlow`
+  briefly let a user take an event from a control. It was cut: no first-party code
+  wanted it, and it taxed every ordinary handler—`ControlFlow::Continue(())` spread
+  through the counter, the gallery and a dozen tests—because the orphan rule blocks
+  `From<()>` for a foreign type, so the common case could not stay implicit. If
+  overriding a drawn control's keys is ever genuinely needed, bring it back as
+  `override_<event>` on the controls that compose behavior, with a **local** enum so
+  `()` keeps meaning "just observe".
 - **Theming: one wrapper view, light and dark.** *Settles the earlier open question—
   derivable properties on every view versus a light+dark pair under one provider. It is
   the provider: per-view derivable properties read awkwardly at scale and put the same

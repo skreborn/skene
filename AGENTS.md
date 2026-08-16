@@ -80,7 +80,25 @@
   placement, and drags act on press; wheel gestures latch their scroll target and
   consume at its limits until a pause or pointer move; popups light-dismiss; selection
   gestures match (drag, double-click word, triple-click run). When an interaction's
-  design is in doubt, mimic the web.
+  design is in doubt, mimic the web—**because the browser is the most constrained
+  platform we target, not because it is the best design**. Parity is a floor. Where a
+  browser behavior is merely a browser behavior, we are free to rule otherwise, and we
+  record it here when we do.
+- **A view that handles an interaction owns it.** Every control consumes the events it
+  acts on: a press on a button is a press on the button, never also on the row it sits
+  in. This is a **deliberate divergence**—a DOM `<button>` inside a clickable `<div>`
+  does bubble to the div—settled because nested clickables are ambiguous to a user and
+  the framework's idiom is a closure per view, not delegation. The cost is that a parent
+  cannot observe its controls' clicks in one place; wrap the group in a `Container`,
+  which is a box rather than a control and keeps the choice.
+- **A verdict is the view's, never its user's.** `handle_<event>` takes a plain callback
+  on every control, `Raw*` and `Simple*` alike. A control decides what the platform and
+  the ancestors are told, once, where its behavior lives, so no app or library author
+  asks "am I cancelling a platform default here". `Prevent` belongs to the layer that
+  owns behavior; above a driver, nothing states one. A control the driver realizes never
+  asks to suppress the platform's response, because there that response **is** the
+  control. `Container` still takes `Into<Prevent>`—it is a box, not a control, and the
+  last place the choice is exposed; folding it in is pending.
 - View logic tests run headless where possible, via the recording driver
   (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
   wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.

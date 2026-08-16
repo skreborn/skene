@@ -68,8 +68,9 @@ struct State {
   /// swapped when the node's declarations change). A shared [`Rc<str>`] with the
   /// stylesheet store, so the class name lives once no matter how many nodes use it.
   node_class: RefCell<FxHashMap<NodeId, Rc<str>>>,
-  /// Each node's ordered children, mirroring the DOM tree so a subtree can be torn down on
-  /// [`destroy`].
+  /// Each node's ordered children: the driver's own record of the tree, which the DOM
+  /// is a sink for rather than a second copy of. Tears a subtree down on [`destroy`]
+  /// and answers [`children`](Self::children).
   children: RefCell<FxHashMap<NodeId, Vec<NodeId>>>,
   /// Each node's current parent.
   parents: RefCell<FxHashMap<NodeId, NodeId>>,
@@ -829,22 +830,14 @@ impl State {
 
   /// Runs `f` with the node's element, without cloning the handle. `f` must not make
   /// a call that inserts or removes nodes (which would borrow `nodes` again).
-  /// The node's children, in document order.
-  ///
-  /// Read back out of the live DOM rather than tracked alongside it, so the answer is
-  /// whatever the document actually holds. Empty for a node the platform no longer
-  /// has, and elements this driver did not create are skipped.
+  /// The node's children, in document order; empty for one the platform no longer holds.
   pub fn children(&self, node: NodeId) -> Vec<NodeId> {
-    let Some(element) = self.nodes.borrow().get(&node).cloned()
-    else {
-      return Vec::new();
-    };
-    let children = element.children();
-
-    (0..children.length())
-      .filter_map(|index| children.item(index))
-      .filter_map(|child| events::node_id_of(&child))
-      .collect()
+    self
+      .children
+      .borrow()
+      .get(&node)
+      .cloned()
+      .unwrap_or_default()
   }
 
   fn with_element<R>(&self, node: NodeId, apply: impl FnOnce(&Element) -> R) -> R {

@@ -994,13 +994,14 @@ fn a_drawn_checkbox_is_an_accessible_div_in_the_real_dom() {
   );
 }
 
-/// A radio group's arrow traversal follows the real DOM's order, including a member
+/// A radio group's arrow traversal follows document order, including a member
 /// reconciled into the middle of the set after the group was built.
 ///
-/// The ordering walk asks the driver for a node's children, and on this leaf that
-/// answer is read back out of the live document—so only a real DOM exercises it.
+/// The host tier pins the same thing against the recording driver. This pins it against
+/// the browser's: real reconcile, real elements, and a real `keydown`, so the order the
+/// driver reports is checked against the order the document actually renders.
 #[wasm_bindgen_test]
-fn a_radio_group_traverses_the_real_doms_order() {
+fn a_radio_group_traverses_in_document_order() {
   use skene_gui::{HasChildren, RawRadio, RawRadioGroup};
 
   let (_guard, root) = fresh_root();

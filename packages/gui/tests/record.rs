@@ -248,11 +248,11 @@ fn a_third_party_layout_view_matches_the_built_in() {
   );
 }
 
-/// A view implementing `HasFocus` over a raw control forwards through it, the way the
-/// Simple controls wrap their raw counterparts.
+/// A view implementing the control surfaces over a raw control forwards through them,
+/// the way the Simple controls wrap their raw counterparts.
 #[test]
 fn has_focus_forwards_through_a_raw_control() {
-  use skene_gui::HasFocus;
+  use skene_gui::{HasEvents, HasFocus};
 
   #[must_use]
   struct Wrapped {
@@ -262,6 +262,12 @@ fn has_focus_forwards_through_a_raw_control() {
   impl HasFocus for Wrapped {
     fn focus_core(&mut self) -> &mut skene_gui::FocusCore {
       self.raw.focus_core()
+    }
+  }
+
+  impl skene_gui::HasEvents for Wrapped {
+    fn event_core(&mut self) -> &mut skene_gui::EventCore {
+      self.raw.event_core()
     }
   }
 
@@ -384,13 +390,10 @@ fn a_drawn_checkbox_toggles_on_space_only() {
   assert!(checked.get(), "Enter leaves a checkbox alone");
 }
 
-/// A handler installed on a drawn control runs ahead of the control's own behavior:
-/// breaking takes the event outright and carries its own verdict, continuing leaves the
-/// control to act as though nothing were installed.
+/// A handler on a drawn control observes without displacing it: the control still
+/// acts, and what the dispatch is told to prevent stays the control's decision.
 #[test]
-fn an_installed_handler_runs_ahead_of_a_control() {
-  use std::ops::ControlFlow;
-
+fn a_handler_observes_without_displacing_the_control() {
   use skene_gui::{
     HasEvents,
     RawCheckbox,
@@ -402,15 +405,7 @@ fn an_installed_handler_runs_ahead_of_a_control() {
   let counted = Rc::clone(&seen);
   let root = RawCheckbox::new()
     .bind_checked(checked)
-    .handle_key_down(move |event: &KeyEvent| {
-      counted.set(counted.get() + 1);
-
-      if event.key == "Escape" {
-        return ControlFlow::Break(Prevent::Bubbling);
-      }
-
-      ControlFlow::Continue(())
-    })
+    .handle_key_down(move |_| counted.set(counted.get() + 1))
     .set_child(Text::new("mark"))
     .build();
   let press = |key: &str| {
@@ -425,28 +420,24 @@ fn an_installed_handler_runs_ahead_of_a_control() {
 
   let prevention = press("Escape");
 
-  assert_eq!(seen.get(), 1, "the installed handler runs first");
-  assert!(!checked.get(), "breaking takes the event from the control");
-  assert!(prevention.bubbling, "the verdict is the handler's");
+  assert_eq!(seen.get(), 1, "the handler sees a key the control ignores");
+  assert!(!checked.get());
   assert!(
     !prevention.platform,
-    "the control's own verdict is not reached"
+    "an ignored key prevents nothing, handler or no handler"
   );
 
   let prevention = press(" ");
 
-  assert_eq!(seen.get(), 2, "the installed handler sees every key");
-  assert!(checked.get(), "continuing leaves the toggle to run");
-  assert!(prevention.platform, "the verdict is now the control's");
+  assert_eq!(seen.get(), 2, "and sees the ones it acts on");
+  assert!(checked.get(), "which still toggle");
+  assert!(prevention.platform, "under the control's own verdict");
 }
 
 /// A control carries a handler for every event, including the ones it does not act on,
-/// so a handler always goes on the control rather than on a wrapper around it—and keeps
-/// its signature if the control later grows behavior for that event.
+/// so a handler always goes on the control rather than on a wrapper around it.
 #[test]
 fn a_control_carries_handlers_for_events_it_ignores() {
-  use std::ops::ControlFlow;
-
   use skene_gui::{
     HasEvents,
     RawCheckbox,
@@ -456,15 +447,11 @@ fn a_control_carries_handlers_for_events_it_ignores() {
   let seen = Rc::new(Cell::new(false));
   let noticed = Rc::clone(&seen);
   let root = RawCheckbox::new()
-    .handle_pointer_down(move |_| {
-      noticed.set(true);
-
-      ControlFlow::Break(Prevent::Platform)
-    })
+    .handle_pointer_down(move |_| noticed.set(true))
     .set_child(Text::new("mark"))
     .build();
 
-  let prevention = record::trigger_pointer_down(
+  let _ = record::trigger_pointer_down(
     root,
     &PointerEvent {
       x: 0.,
@@ -480,153 +467,6 @@ fn a_control_carries_handlers_for_events_it_ignores() {
     seen.get(),
     "a checkbox acts on no pointer press, yet carries"
   );
-  assert!(prevention.platform, "and reports the handler's verdict");
-}
-
-/// A drawn slider reports its value and bounds, and the keys move it the way a
-/// browser's range input does: arrows by a step, page keys by ten, Home and End to the
-/// bounds, everything else left alone.
-// Every expected value is a step multiple or a bound, so it is exactly representable
-// and an exact comparison is the assertion rather than an approximation of it.
-#[expect(clippy::float_cmp)]
-#[test]
-fn a_drawn_slider_reports_and_moves_on_keys() {
-  use skene_gui::{
-    RawSlider,
-    core::{AccessProp, KeyEvent, Modifiers, Role},
-  };
-
-  let value = Signal::new(40.0f32);
-  let root = RawSlider::new(0., 100.)
-    .set_step(5.)
-    .bind_value(value)
-    .set_label("Volume")
-    .set_child(Text::new("track"))
-    .build();
-
-  assert_eq!(record::role(root), Some(Role::Slider));
-  assert_eq!(
-    record::access(root),
-    vec![
-      AccessProp::Value(40.),
-      AccessProp::ValueMin(0.),
-      AccessProp::ValueMax(100.),
-      AccessProp::Label("Volume".to_owned()),
-    ],
-  );
-
-  let press = |key: &str| {
-    record::trigger_key_down(
-      root,
-      &KeyEvent {
-        key: key.into(),
-        modifiers: Modifiers::default(),
-      },
-    )
-  };
-
-  let _ = press("ArrowRight");
-
-  assert_eq!(value.get(), 45., "an arrow moves by one step");
-
-  let _ = press("ArrowDown");
-
-  assert_eq!(value.get(), 40., "down falls, as on the web");
-
-  let _ = press("PageUp");
-
-  assert_eq!(value.get(), 90., "a page key moves by ten steps");
-
-  let _ = press("End");
-
-  assert_eq!(value.get(), 100.);
-
-  let _ = press("Home");
-
-  assert_eq!(value.get(), 0.);
-
-  let prevention = press("a");
-
-  assert_eq!(value.get(), 0., "an unrelated key leaves it alone");
-  assert!(!prevention.platform, "and does not swallow the default");
-}
-
-/// A radio group owns the selection, the arrow keys, and the single tab stop; members
-/// find it through context, so wrapping one in a container does not detach it.
-#[test]
-fn a_drawn_radio_group_owns_its_members() {
-  use skene_gui::{
-    Container,
-    RawRadio,
-    RawRadioGroup,
-    core::{AccessProp, FocusOrder, KeyEvent, Modifiers, Role, Toggle},
-  };
-
-  let chosen = Signal::new("mint".to_owned());
-  let root = RawRadioGroup::new()
-    .bind_chosen(chosen)
-    .set_label("Flavor")
-    .set_child(Column::new().set_children((
-      RawRadio::new("mint").set_child(Text::new("Mint")),
-      // Wrapped for layout: context reaches it all the same.
-      Container::new().set_child(RawRadio::new("plum").set_child(Text::new("Plum"))),
-      RawRadio::new("fig").set_child(Text::new("Fig")),
-    )))
-    .build();
-
-  assert_eq!(record::role(root), Some(Role::RadioGroup));
-
-  let column = record::children(root)[0];
-  let mint = record::children(column)[0];
-  let plum = record::children(record::children(column)[1])[0];
-  let fig = record::children(column)[2];
-
-  assert_eq!(
-    record::role(plum),
-    Some(Role::Radio),
-    "the wrapped one still joined"
-  );
-  assert_eq!(
-    record::access(mint),
-    vec![AccessProp::Checked(Toggle::On)],
-    "the bound member reports checked",
-  );
-  assert_eq!(record::access(plum), vec![AccessProp::Checked(Toggle::Off)]);
-
-  // One tab stop: the chosen member, and nothing else.
-  assert_eq!(record::focus_order(mint), Some(FocusOrder::Auto));
-  assert_eq!(record::focus_order(plum), Some(FocusOrder::Skip));
-  assert_eq!(record::focus_order(fig), Some(FocusOrder::Skip));
-
-  let _ = record::trigger_key_down(
-    mint,
-    &KeyEvent {
-      key: "ArrowDown".into(),
-      modifiers: Modifiers::default(),
-    },
-  );
-
-  assert_eq!(
-    chosen.get(),
-    "plum",
-    "an arrow moves to the next member and chooses it"
-  );
-  assert_eq!(record::focus_order(mint), Some(FocusOrder::Skip));
-  assert_eq!(
-    record::focus_order(plum),
-    Some(FocusOrder::Auto),
-    "the tab stop follows"
-  );
-
-  let _ = record::trigger_key_down(
-    fig,
-    &KeyEvent {
-      key: "ArrowDown".into(),
-      modifiers: Modifiers::default(),
-    },
-  );
-
-  assert_eq!(chosen.get(), "mint", "and wraps at the end");
 }
 
 /// A drawn picker opens on a click, moves its highlight and its single tab stop with

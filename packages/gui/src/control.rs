@@ -10,7 +10,6 @@ use skene_core::{
   BoxStyle,
   Condition,
   KeyEvent,
-  Override,
   PointerEvent,
   Prevent,
   ScrollEvent,
@@ -26,9 +25,6 @@ pub struct FocusCore {
   pub(crate) autofocus: bool,
   pub(crate) focus_handle: Option<FocusHandle>,
   pub(crate) anchor: Option<crate::Anchor>,
-  pub(crate) focus_handler: Option<Rc<dyn Fn()>>,
-  pub(crate) blur_handler: Option<Rc<dyn Fn()>>,
-  pub(crate) key_down_handler: Option<Rc<skene_core::KeyHandler>>,
 }
 
 /// The styling state behind a control's shared builder surface: the target of
@@ -43,15 +39,16 @@ pub struct StyleCore {
 /// The event state behind a drawn control's shared builder surface: the target of
 /// [`HasEvents`](crate::HasEvents).
 ///
-/// The preventable events are [`Override`]s, so a handler may take one from the control
-/// outright; the notification events carry no verdict and only observe.
+/// Every handler here only observes: a control owns its own behavior, and nothing a
+/// user installs displaces it. What the dispatch is told to prevent is the control's
+/// decision alone, so no handler above the driver states one.
 #[derive(Default)]
 pub struct EventCore {
-  pub(crate) click: Override<()>,
-  pub(crate) key_down: Override<KeyEvent>,
-  pub(crate) pointer_down: Override<PointerEvent>,
-  pub(crate) pointer_move: Override<PointerEvent>,
-  pub(crate) pointer_up: Override<PointerEvent>,
+  pub(crate) click: Option<Rc<Observed<()>>>,
+  pub(crate) key_down: Option<Rc<Observed<KeyEvent>>>,
+  pub(crate) pointer_down: Option<Rc<Observed<PointerEvent>>>,
+  pub(crate) pointer_move: Option<Rc<Observed<PointerEvent>>>,
+  pub(crate) pointer_up: Option<Rc<Observed<PointerEvent>>>,
   pub(crate) pointer_enter: Option<Rc<Observed<()>>>,
   pub(crate) pointer_leave: Option<Rc<Observed<()>>>,
   pub(crate) focus: Option<Rc<Observed<()>>>,
@@ -59,15 +56,15 @@ pub struct EventCore {
   pub(crate) scroll: Option<Rc<Observed<ScrollEvent>>>,
 }
 
-/// What a drawn control does of its own accord, for the events it acts on.
+/// What a drawn control does of its own accord, and what that costs the dispatch.
 ///
-/// A control supplies one of these to [`EventCore::attach`]; every event left unset
-/// simply reports its handler's verdict, so a control pays nothing for the events it
-/// ignores and gains the override path for free when it later acts on one.
+/// A control supplies one of these to [`EventCore::attach`]. Its verdict is the whole
+/// verdict: an event a control acts on is an event it consumes, so the control—not its
+/// user—decides what the platform and the ancestors see.
 #[derive(Default)]
 #[must_use]
 pub struct Behavior {
-  click: Option<ClickBehavior>,
+  click: Option<BehaviorFor<()>>,
   key_down: Option<BehaviorFor<KeyEvent>>,
   pointer_down: Option<BehaviorFor<PointerEvent>>,
   pointer_move: Option<BehaviorFor<PointerEvent>>,
@@ -81,9 +78,7 @@ pub struct Behavior {
 
 /// What a control does on one event carrying `E`, as [`Behavior`] stores it.
 type BehaviorFor<E> = Box<dyn Fn(&E) -> Prevent>;
-/// What a control does on a click, which carries nothing.
-type ClickBehavior = Box<dyn Fn() -> Prevent>;
-/// What a control does on one notification event, which takes no verdict.
+/// A handler that only observes an event, as both sides store it.
 type Observed<E> = dyn Fn(&E);
 
 impl Behavior {
@@ -96,7 +91,7 @@ impl Behavior {
   /// Sets what the control does on a click.
   #[inline(always)]
   pub fn click(mut self, behavior: impl Fn() -> Prevent + 'static) -> Self {
-    self.click = Some(Box::new(behavior));
+    self.click = Some(Box::new(move |&()| behavior()));
 
     self
   }
@@ -174,12 +169,27 @@ impl Behavior {
   }
 }
 
+/// Folds a control's behavior for one event together with the handler installed over
+/// it: the control acts first, then the handler observes what it did, and the verdict
+/// is the control's.
+fn acted<E: ?Sized + 'static>(
+  behavior: Option<BehaviorFor<E>>,
+  handler: Option<Rc<Observed<E>>>,
+) -> impl Fn(&E) -> Prevent + 'static {
+  move |event| {
+    let prevented = behavior.as_ref().map_or(Prevent::None, |act| act(event));
+
+    if let Some(handler) = &handler {
+      handler(event);
+    }
+
+    prevented
+  }
+}
+
 /// Pairs a control's behavior for one notification event with the handler installed
-/// over it.
-///
-/// A notification takes no verdict, so nothing can be taken over: both run, the
-/// control's first, and the installed handler observes what it did. `None` when neither
-/// exists, so an untouched event registers nothing.
+/// over it: both run, the control's first. `None` when neither exists, so an untouched
+/// event registers nothing.
 fn observed<E: ?Sized + 'static>(
   behavior: Option<Rc<Observed<E>>>,
   handler: Option<Rc<Observed<E>>>,
@@ -198,68 +208,79 @@ fn observed<E: ?Sized + 'static>(
 }
 
 impl EventCore {
-  /// Registers every handler on `container`, each installed one folded over what
-  /// `behavior` supplies for that event.
+  /// Registers every handler on `container`, each over what `behavior` supplies for
+  /// that event.
   pub fn attach(self, container: Container, behavior: Behavior) -> Container {
-    let Behavior {
-      click,
-      key_down,
-      pointer_down,
-      pointer_move,
-      pointer_up,
-      pointer_enter,
-      pointer_leave,
-      focus,
-      blur,
-      scroll,
-    } = behavior;
-    let click = self
-      .click
-      .wrap(move |&()| click.as_ref().map_or(Prevent::None, |act| act()));
+    let click = acted(behavior.click, self.click);
     let mut container = container
       .handle_click(move || click(&()))
-      .handle_key_down(
-        self
-          .key_down
-          .wrap(move |event| key_down.as_ref().map_or(Prevent::None, |act| act(event))),
-      )
-      .handle_pointer_down(self.pointer_down.wrap(move |event| {
-        pointer_down
-          .as_ref()
-          .map_or(Prevent::None, |act| act(event))
-      }))
-      .handle_pointer_move(self.pointer_move.wrap(move |event| {
-        pointer_move
-          .as_ref()
-          .map_or(Prevent::None, |act| act(event))
-      }))
-      .handle_pointer_up(
-        self
-          .pointer_up
-          .wrap(move |event| pointer_up.as_ref().map_or(Prevent::None, |act| act(event))),
-      );
+      .handle_key_down(acted(behavior.key_down, self.key_down))
+      .handle_pointer_down(acted(behavior.pointer_down, self.pointer_down))
+      .handle_pointer_move(acted(behavior.pointer_move, self.pointer_move))
+      .handle_pointer_up(acted(behavior.pointer_up, self.pointer_up));
 
-    if let Some(action) = observed(pointer_enter, self.pointer_enter) {
+    if let Some(action) = observed(behavior.pointer_enter, self.pointer_enter) {
       container = container.handle_pointer_enter(move || action(&()));
     }
 
-    if let Some(action) = observed(pointer_leave, self.pointer_leave) {
+    if let Some(action) = observed(behavior.pointer_leave, self.pointer_leave) {
       container = container.handle_pointer_leave(move || action(&()));
     }
 
-    if let Some(action) = observed(focus, self.focus) {
+    if let Some(action) = observed(behavior.focus, self.focus) {
       container = container.handle_focus(move || action(&()));
     }
 
-    if let Some(action) = observed(blur, self.blur) {
+    if let Some(action) = observed(behavior.blur, self.blur) {
       container = container.handle_blur(move || action(&()));
     }
 
-    if let Some(action) = observed(scroll, self.scroll) {
+    if let Some(action) = observed(behavior.scroll, self.scroll) {
       container = container.handle_scroll(move |event| action(event));
     }
 
     container
+  }
+
+  /// Registers every handler on the built `node`, each over what `behavior` supplies
+  /// for that event. The path for a control the driver realizes, which has no
+  /// [`Container`] to build through.
+  pub fn register(self, node: skene_core::NodeId, behavior: Behavior) {
+    use crate::driver;
+
+    let click = acted(behavior.click, self.click);
+
+    driver::handle_click(node, Rc::new(move || click(&())));
+    driver::handle_key_down(node, Rc::new(acted(behavior.key_down, self.key_down)));
+    driver::handle_pointer_down(
+      node,
+      Rc::new(acted(behavior.pointer_down, self.pointer_down)),
+    );
+    driver::handle_pointer_move(
+      node,
+      Rc::new(acted(behavior.pointer_move, self.pointer_move)),
+    );
+    driver::handle_pointer_up(node, Rc::new(acted(behavior.pointer_up, self.pointer_up)));
+
+    if let Some(action) = observed(behavior.pointer_enter, self.pointer_enter) {
+      driver::handle_pointer_enter(node, Rc::new(move || action(&())));
+    }
+
+    if let Some(action) = observed(behavior.pointer_leave, self.pointer_leave) {
+      driver::handle_pointer_leave(node, Rc::new(move || action(&())));
+    }
+
+    if let Some(action) = observed(behavior.focus, self.focus) {
+      driver::handle_focus(node, Rc::new(move || action(&())));
+    }
+
+    if let Some(action) = observed(behavior.blur, self.blur) {
+      driver::handle_blur(node, Rc::new(move || action(&())));
+    }
+
+    if let Some(action) = observed(behavior.scroll, self.scroll) {
+      driver::handle_scroll(node, Rc::new(move |event| action(event)));
+    }
   }
 }
 
@@ -267,11 +288,13 @@ impl EventCore {
 pub(crate) struct ControlBase {
   pub(crate) style: StyleCore,
   pub(crate) focus: FocusCore,
+  pub(crate) events: EventCore,
 }
 
 impl ControlBase {
   pub(crate) fn new() -> Self {
     Self {
+      events: EventCore::default(),
       style: StyleCore {
         style: BoxStyle::new(),
         variants: Vec::new(),
@@ -283,9 +306,6 @@ impl ControlBase {
         autofocus: false,
         focus_handle: None,
         anchor: None,
-        focus_handler: None,
-        blur_handler: None,
-        key_down_handler: None,
       },
     }
   }
@@ -342,9 +362,7 @@ impl ControlBase {
       ControlHandlers {
         focus_handle: self.focus.focus_handle,
         anchor: self.focus.anchor,
-        focus: self.focus.focus_handler,
-        blur: self.focus.blur_handler,
-        key_down: self.focus.key_down_handler,
+        events: self.events,
         binders,
       },
     )
@@ -355,9 +373,7 @@ impl ControlBase {
 pub(crate) struct ControlHandlers {
   focus_handle: Option<FocusHandle>,
   anchor: Option<crate::Anchor>,
-  focus: Option<Rc<dyn Fn()>>,
-  blur: Option<Rc<dyn Fn()>>,
-  key_down: Option<Rc<skene_core::KeyHandler>>,
+  events: EventCore,
   binders: crate::realize::Binders,
 }
 
@@ -369,17 +385,7 @@ impl ControlHandlers {
       binder(node);
     }
 
-    if let Some(action) = self.focus {
-      crate::driver::handle_focus(node, action);
-    }
-
-    if let Some(action) = self.blur {
-      crate::driver::handle_blur(node, action);
-    }
-
-    if let Some(action) = self.key_down {
-      crate::driver::handle_key_down(node, action);
-    }
+    self.events.register(node, Behavior::new());
 
     if let Some(handle) = &self.focus_handle {
       handle.assign(node);

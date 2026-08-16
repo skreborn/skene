@@ -80,6 +80,13 @@ impl skene_core::View for RawButton {
   }
 }
 
+impl crate::HasEvents for RawButton {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.control.events
+  }
+}
+
 impl crate::HasFocus for RawButton {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {

@@ -2,8 +2,6 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::ops::ControlFlow;
-
 use skene_tui::prelude::*;
 
 /// The whole gallery: a scrollable column of titled sections, its text selecting in
@@ -91,8 +89,6 @@ fn buttons() -> impl IntoView {
         .set_children((
           SimpleButton::new("Primary").handle_click(move || {
             count.update(|value| *value += 1);
-
-            ControlFlow::Continue(())
           }),
           SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
           SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
@@ -237,8 +233,6 @@ fn layouts() -> impl IntoView {
           .set_variant(SimpleVariant::Secondary)
           .handle_click(move || {
             open.set(true);
-
-            ControlFlow::Continue(())
           }),
         Overlay::modal()
           .bind_open(open)
@@ -259,8 +253,6 @@ fn layouts() -> impl IntoView {
                   .set_variant(SimpleVariant::Secondary)
                   .handle_click(move || {
                     open.set(false);
-
-                    ControlFlow::Continue(())
                   }),
               ),
             )),

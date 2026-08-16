@@ -127,6 +127,13 @@ impl skene_core::View for RawTextEditor {
   }
 }
 
+impl crate::HasEvents for RawTextEditor {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.control.events
+  }
+}
+
 impl crate::HasFocus for RawTextEditor {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {

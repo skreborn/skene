@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::{cell::Cell, ops::ControlFlow, rc::Rc};
+use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{self as tui, prelude::*};
 
@@ -304,8 +304,6 @@ fn focus_variant_and_click() {
           )
           .handle_click(move || {
             clicks.set(clicks.get() + 1);
-
-            ControlFlow::Continue(())
           })
           .into_any()
           .build()
@@ -597,7 +595,7 @@ fn focus_handle_and_autofocus() {
             RawTextField::new().set_autofocus(),
             RawButton::new()
               .set_style(BoxStyle::new().set_height(1))
-              .handle_click(|| ControlFlow::Continue(()))
+              .handle_click(|| {})
               .bind_focus(&handle),
           ))
           .into_any()
@@ -690,15 +688,11 @@ fn mouse_click_hits_and_focuses() {
               .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || {
                 first.set(first.get() + 1);
-
-                ControlFlow::Continue(())
               }),
             RawButton::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
               .handle_click(move || {
                 second.set(second.get() + 1);
-
-                ControlFlow::Continue(())
               }),
           ))
           .into_any()
@@ -828,8 +822,6 @@ fn modal_overlay_covers_blocks_and_dismisses() {
               .set_child(Text::new("base"))
               .handle_click(move || {
                 clicks.set(clicks.get() + 1);
-
-                ControlFlow::Continue(())
               }),
             Overlay::modal()
               .bind_open(open)
@@ -1761,98 +1753,6 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
   assert_eq!(colors[5 + 1].0, Some((255, 0, 0)));
 }
 
-/// A key handler's verdict suppresses the key's built-in response: a prevented arrow
-/// leaves the slider where it is, a prevented `Tab` leaves focus in place, and an
-/// unprevented key still gets its default.
-#[test]
-fn prevented_keys_skip_their_defaults() {
-  let (value, first, second) = with_driver(|| {
-    let volume = Signal::new(0.0f32);
-
-    tui::mount(|| {
-      Column::new()
-        .set_children((
-          RawSlider::new(0.0, 10.0)
-            .bind_value(volume)
-            .set_autofocus()
-            .handle_key_down(|event| {
-              if event.key == "ArrowRight" || event.key == "Tab" {
-                ControlFlow::Break(Prevent::All)
-              }
-              else {
-                ControlFlow::Continue(())
-              }
-            }),
-          RawButton::new().set_child(Text::new("next")),
-        ))
-        .into_any()
-        .build()
-    });
-
-    let _ = tui::render_to_text(14, 2);
-
-    tui::trigger_key("ArrowRight");
-
-    let after_prevented = volume.get_untracked();
-
-    tui::trigger_key("ArrowUp");
-
-    let first = tui::focused_node();
-
-    tui::trigger_key("Tab");
-
-    assert!((after_prevented - 0.0).abs() < f32::EPSILON);
-
-    (volume.get_untracked(), first, tui::focused_node())
-  });
-
-  assert!((value - 1.0).abs() < f32::EPSILON);
-  assert_eq!(first, second);
-}
-
-/// `Enter`'s default is the activation dispatch: preventing it in a key handler keeps
-/// the focused button's click handlers from running, while `Space` still activates.
-#[test]
-fn prevented_enter_skips_activation() {
-  let clicks = with_driver(|| {
-    let clicks = Rc::new(Cell::new(0u32));
-
-    {
-      let clicks = Rc::clone(&clicks);
-
-      tui::mount(move || {
-        RawButton::new()
-          .set_autofocus()
-          .handle_click(move || {
-            clicks.set(clicks.get() + 1);
-
-            ControlFlow::Continue(())
-          })
-          .handle_key_down(|event| {
-            if event.key == "Enter" {
-              ControlFlow::Break(Prevent::Platform)
-            }
-            else {
-              ControlFlow::Continue(())
-            }
-          })
-          .set_child(Text::new("go"))
-          .into_any()
-          .build()
-      });
-    }
-
-    let _ = tui::render_to_text(6, 1);
-
-    tui::trigger_key("Enter");
-    tui::trigger_key(" ");
-
-    clicks.get()
-  });
-
-  assert_eq!(clicks, 1);
-}
-
 /// A click handler's `Prevent::Bubbling` stops shallower handlers; `Prevent::Platform`
 /// on the path keeps a checkbox from toggling while every handler still runs.
 #[test]
@@ -2383,8 +2283,6 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
       RawButton::new()
         .handle_click(move || {
           counted.set(counted.get() + 1);
-
-          ControlFlow::Continue(())
         })
         .set_child(Text::new("go"))
         .into_any()
@@ -2491,15 +2389,11 @@ fn clicks_complete_on_release_over_the_same_target() {
           RawButton::new()
             .handle_click(move || {
               one.set(one.get() + 1);
-
-              ControlFlow::Continue(())
             })
             .set_child(Text::new("one")),
           RawButton::new()
             .handle_click(move || {
               two.set(two.get() + 1);
-
-              ControlFlow::Continue(())
             })
             .set_child(Text::new("two")),
         ))

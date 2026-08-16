@@ -41,7 +41,6 @@ pub use events::{
   KeyEvent,
   KeyHandler,
   Modifiers,
-  Override,
   PointerButton,
   PointerEvent,
   PointerHandler,

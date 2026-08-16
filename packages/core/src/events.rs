@@ -16,11 +16,9 @@
 //! terminal's `Ctrl-C` stays unconditional.
 //!
 //! A view that composes its own behavior out of these events—every control that draws
-//! itself—is not the platform, and [`Prevent`] does not reach it. Such a view takes its
-//! user's handler as an [`Override`], which runs ahead of the behavior and may take the
-//! event outright.
-
-use std::{ops::ControlFlow, rc::Rc};
+//! itself—decides its own verdict where that behavior lives, and consumes the events it
+//! acts on. A handler installed on such a view only observes; above a driver, nothing
+//! states a verdict.
 
 /// What a handler prevents of the dispatch that invoked it.
 ///
@@ -75,62 +73,6 @@ impl Prevented {
   pub fn merge(&mut self, other: Self) {
     self.platform |= other.platform;
     self.bubbling |= other.bubbling;
-  }
-}
-
-/// A handler a view's user installs ahead of the view's own behavior.
-///
-/// A view that composes behavior out of the event vocabulary—a control that draws
-/// itself—holds one of these per event it acts on, and registers what
-/// [`wrap`](Self::wrap) returns. The installed handler runs first:
-/// [`Continue`](ControlFlow::Continue) leaves the view to act as though nothing were
-/// installed, and [`Break`](ControlFlow::Break) takes the event, carrying the verdict
-/// the dispatch goes on to see.
-///
-/// `E` is the event the handler receives, or `()` for an event with no payload.
-#[must_use]
-pub struct Override<E>(Option<OverrideHandler<E>>);
-
-/// The handler an [`Override`] holds, as it stores it.
-type OverrideHandler<E> = Rc<dyn Fn(&E) -> ControlFlow<Prevent>>;
-
-impl<E> Override<E> {
-  /// Creates an override with no handler installed.
-  #[inline(always)]
-  pub const fn new() -> Self {
-    Self(None)
-  }
-
-  /// Installs `handler`, replacing any already installed.
-  #[inline(always)]
-  pub fn set(&mut self, handler: impl Fn(&E) -> ControlFlow<Prevent> + 'static) {
-    self.0 = Some(Rc::new(handler));
-  }
-
-  /// Folds the installed handler and the view's own `behavior` into the single handler
-  /// the view registers on its node.
-  pub fn wrap(self, behavior: impl Fn(&E) -> Prevent + 'static) -> impl Fn(&E) -> Prevent {
-    move |event| match &self.0 {
-      Some(handler) => match handler(event) {
-        ControlFlow::Continue(()) => behavior(event),
-        ControlFlow::Break(prevent) => prevent,
-      },
-      None => behavior(event),
-    }
-  }
-}
-
-impl<E> Clone for Override<E> {
-  #[inline(always)]
-  fn clone(&self) -> Self {
-    Self(self.0.clone())
-  }
-}
-
-impl<E> Default for Override<E> {
-  #[inline(always)]
-  fn default() -> Self {
-    Self::new()
   }
 }
 

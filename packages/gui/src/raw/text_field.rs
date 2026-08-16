@@ -124,6 +124,13 @@ impl skene_core::View for RawTextField {
   }
 }
 
+impl crate::HasEvents for RawTextField {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.control.events
+  }
+}
+
 impl crate::HasFocus for RawTextField {
   #[inline(always)]
   fn focus_core(&mut self) -> &mut crate::FocusCore {

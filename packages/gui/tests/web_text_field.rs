@@ -15,7 +15,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasFocus, HasStyle};
+use skene_gui::{HasEvents, HasFocus, HasStyle};
 
 /// An input serializes as a void element: no closing tag.
 #[test]

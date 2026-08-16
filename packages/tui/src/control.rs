@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{KeyEvent, NodeId, Override, Prevent};
+use skene_core::{KeyEvent, NodeId, Prevent};
 
 use crate::{FocusHandle, events::ScrollEvent, props::Condition, with_state};
 
@@ -17,14 +17,13 @@ pub struct FocusCore {
 /// The event state behind a control's shared builder surface: the target of
 /// [`HasEvents`](crate::HasEvents).
 ///
-/// The preventable events are [`Override`]s, so a handler may take one from the control
-/// outright; the notification events carry no verdict and only observe. A terminal
-/// delivers no separate pointer press, move, and release to a control, so its
-/// preventable pair is the click and the key.
+/// Every handler here only observes: a control owns its own behavior, and nothing a
+/// user installs displaces it. What the dispatch is told to prevent is the control's
+/// decision alone, so no handler above the driver states one.
 #[derive(Default)]
 pub struct EventCore {
-  pub(crate) click: Override<()>,
-  pub(crate) key_down: Override<KeyEvent>,
+  pub(crate) click: Option<Rc<Observed<()>>>,
+  pub(crate) key_down: Option<Rc<Observed<KeyEvent>>>,
   pub(crate) pointer_enter: Option<Rc<Observed<()>>>,
   pub(crate) pointer_leave: Option<Rc<Observed<()>>>,
   pub(crate) focus: Option<Rc<Observed<()>>>,
@@ -34,13 +33,14 @@ pub struct EventCore {
 
 /// What a terminal control does of its own accord, for the events it acts on.
 ///
-/// A control supplies one of these to [`EventCore::register`]; every event left unset
-/// simply reports its handler's verdict. A control the driver realizes acts on none of
-/// them—its behavior is the terminal's own, and [`Prevent::Platform`] suppresses that.
+/// A control supplies one of these to [`EventCore::register`]. Its verdict is the whole
+/// verdict: an event a control acts on is an event it consumes. A control the driver
+/// realizes acts on none of them—its behavior is the terminal's own, which
+/// [`Prevent::Platform`] would suppress, so it never asks for that.
 #[derive(Default)]
 #[must_use]
 pub struct Behavior {
-  click: Option<ClickBehavior>,
+  click: Option<BehaviorFor<()>>,
   key_down: Option<BehaviorFor<KeyEvent>>,
   pointer_enter: Option<Rc<Observed<()>>>,
   pointer_leave: Option<Rc<Observed<()>>>,
@@ -51,10 +51,26 @@ pub struct Behavior {
 
 /// What a control does on one event carrying `E`, as [`Behavior`] stores it.
 type BehaviorFor<E> = Box<dyn Fn(&E) -> Prevent>;
-/// What a control does on a click, which carries nothing.
-type ClickBehavior = Box<dyn Fn() -> Prevent>;
-/// What a control does on one notification event, which takes no verdict.
+/// A handler that only observes an event, as both sides store it.
 type Observed<E> = dyn Fn(&E);
+
+/// Folds a control's behavior for one event together with the handler installed over
+/// it: the control acts first, then the handler observes what it did, and the verdict
+/// is the control's.
+fn acted<E: ?Sized + 'static>(
+  behavior: Option<BehaviorFor<E>>,
+  handler: Option<Rc<Observed<E>>>,
+) -> impl Fn(&E) -> Prevent + 'static {
+  move |event| {
+    let prevented = behavior.as_ref().map_or(Prevent::None, |act| act(event));
+
+    if let Some(handler) = &handler {
+      handler(event);
+    }
+
+    prevented
+  }
+}
 
 impl Behavior {
   /// Creates a behavior that acts on nothing.
@@ -66,7 +82,7 @@ impl Behavior {
   /// Sets what the control does on a click.
   #[inline(always)]
   pub fn click(mut self, behavior: impl Fn() -> Prevent + 'static) -> Self {
-    self.click = Some(Box::new(behavior));
+    self.click = Some(Box::new(move |&()| behavior()));
 
     self
   }
@@ -156,12 +172,8 @@ impl EventCore {
       blur,
       scroll,
     } = behavior;
-    let clicked = self
-      .click
-      .wrap(move |&()| click.as_ref().map_or(Prevent::None, |act| act()));
-    let pressed = self
-      .key_down
-      .wrap(move |event| key_down.as_ref().map_or(Prevent::None, |act| act(event)));
+    let clicked = acted(click, self.click);
+    let pressed = acted(key_down, self.key_down);
 
     with_state(|state| {
       state

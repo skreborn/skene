@@ -9,9 +9,9 @@
 //! The box surface has no counterpart here: only [`Container`](crate::Container)
 //! decorates, so there is nothing to forward.
 
-use std::{ops::ControlFlow, rc::Rc};
+use std::rc::Rc;
 
-use skene_core::{KeyEvent, Prevent};
+use skene_core::KeyEvent;
 
 use crate::{
   control::{EventCore, FocusCore, StyleCore},
@@ -65,31 +65,27 @@ pub trait HasFocus: Sized {
 /// handler always goes on the control itself, and a control that later grows behavior
 /// for an event does not change the signature its users already wrote against.
 ///
-/// The preventable handlers return [`ControlFlow`]: `Continue` leaves the control to act
-/// as though nothing were installed, and `Break` takes the event, carrying the verdict
-/// the dispatch goes on to see. A control the driver realizes acts on nothing itself—its
-/// behavior is the terminal's, which [`Prevent::Platform`] suppresses.
+/// A handler observes and nothing more. A control owns its own behavior and consumes
+/// the events it acts on—what the terminal and the ancestors are told is its decision,
+/// made once, where the behavior is—so nothing here returns a verdict.
 pub trait HasEvents: Sized {
   /// The core the handlers land on.
   fn event_core(&mut self) -> &mut EventCore;
 
-  /// Installs a click handler ahead of the control's own behavior.
+  /// Sets the click handler.
   #[inline(always)]
   #[must_use]
-  fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
-    self.event_core().click.set(move |&()| action());
+  fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().click = Some(Rc::new(move |&()| action()));
 
     self
   }
 
-  /// Installs a key handler ahead of the control's own behavior.
+  /// Sets the key-press handler.
   #[inline(always)]
   #[must_use]
-  fn handle_key_down(
-    mut self,
-    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
-  ) -> Self {
-    self.event_core().key_down.set(action);
+  fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    self.event_core().key_down = Some(Rc::new(action));
 
     self
   }

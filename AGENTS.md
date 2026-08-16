@@ -98,9 +98,10 @@
   owns behavior; above a driver, nothing states one. A control the driver realizes never
   asks to suppress the platform's response, because there that response **is** the
   control. A box keeps the one decision that is genuinely its own: `Container`'s
-  handlers return `Into<Handled>`—`()` for the ordinary case, `Handled::Yes` to say the
-  event was theirs—so a box chooses whether it consumes, and a control has that chosen
-  for it. Nothing above a driver ever states more than that.
+  handlers return `Into<Bubbling>`—`()` for the ordinary case, `Bubbling::Stop` to keep
+  the event from the ancestors—so a box chooses whether it consumes, and a control has
+  that chosen for it. The name is deliberate: it is about onward travel only, since a
+  view may handle an event and still let it climb. Nothing above a driver states more.
 - View logic tests run headless where possible, via the recording driver
   (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
   wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.

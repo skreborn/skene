@@ -76,37 +76,38 @@ impl Prevented {
   }
 }
 
-/// Whether a handler considered the event its own.
+/// Whether an event carries on to the ancestors after a handler has seen it.
 ///
-/// The one decision a view's user makes about dispatch: an event handled here is an
-/// event the ancestors never see. Everything else—what the platform is told—belongs to
-/// the layer that owns the behavior, so it never appears in a handler's signature.
+/// The one decision a view's user makes about dispatch, and it is only about onward
+/// travel: a view may handle an event and still let it climb. What the platform is told
+/// belongs to the layer that owns the behavior, so it never appears in a handler's
+/// signature.
 ///
-/// A handler returns anything `Into<Handled>`; `()` converts to [`No`](Handled::No), so
-/// an ordinary handler needs no return at all.
+/// A handler returns anything `Into<Bubbling>`; `()` converts to
+/// [`Continue`](Bubbling::Continue), so an ordinary handler needs no return at all.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[must_use]
-pub enum Handled {
-  /// Not handled here: the event carries on to the ancestors.
+pub enum Bubbling {
+  /// The event carries on to the ancestors.
   #[default]
-  No,
-  /// Handled here: the ancestors never see it.
-  Yes,
+  Continue,
+  /// The event stops here; no ancestor sees it.
+  Stop,
 }
 
-impl From<()> for Handled {
+impl From<()> for Bubbling {
   #[inline(always)]
   fn from((): ()) -> Self {
-    Self::No
+    Self::Continue
   }
 }
 
-impl From<Handled> for Prevent {
+impl From<Bubbling> for Prevent {
   #[inline(always)]
-  fn from(handled: Handled) -> Self {
-    match handled {
-      Handled::No => Self::None,
-      Handled::Yes => Self::Bubbling,
+  fn from(bubbling: Bubbling) -> Self {
+    match bubbling {
+      Bubbling::Continue => Self::None,
+      Bubbling::Stop => Self::Bubbling,
     }
   }
 }

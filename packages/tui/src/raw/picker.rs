@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{Handled, HasChildren, NodeId, Prevent, Source, View};
+use skene_core::{Bubbling, HasChildren, NodeId, Prevent, Source, View};
 
 use crate::{
   Overlay,
@@ -368,7 +368,7 @@ fn option_row(
       with_state(|state| state.select_picker(node, &value));
       open.set(false);
 
-      Handled::Yes
+      Bubbling::Stop
     })
 }
 

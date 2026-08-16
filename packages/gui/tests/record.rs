@@ -15,7 +15,7 @@ use skene_gui::{
   Row,
   Text,
   View,
-  core::{Color, Dimension, Handled, Role},
+  core::{Bubbling, Color, Dimension, Role},
   prelude::{Get, Set, Signal},
   record,
 };
@@ -86,7 +86,7 @@ fn click_trigger_runs_the_handler() {
       move || {
         clicks.set(clicks.get() + 1);
 
-        Handled::Yes
+        Bubbling::Stop
       }
     })
     .build();

@@ -1778,7 +1778,7 @@ fn a_click_stops_at_the_view_that_took_it() {
               .handle_click(move || {
                 inner_runs.set(inner_runs.get() + 1);
 
-                skene_tui::core::Handled::Yes
+                skene_tui::core::Bubbling::Stop
               })
               .set_child(Text::new("xx")),
           )

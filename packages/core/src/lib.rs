@@ -37,8 +37,8 @@ pub use condition::{Composable, ConditionShape};
 pub use control::{Ring, Roster, SliderRange};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
+  Bubbling,
   ClickHandler,
-  Handled,
   KeyEvent,
   KeyHandler,
   Modifiers,

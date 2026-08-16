@@ -846,3 +846,28 @@ fn an_enhancement_renders_its_child_when_the_client_owns_the_page() {
     "and it is the drawn one, not the browser's own"
   );
 }
+
+/// A Simple checkbox is drawn from ordinary views once the client owns the page: the
+/// control reports the checkbox role, and the box beside its caption is a box.
+#[test]
+fn a_simple_checkbox_is_drawn_from_ordinary_views() {
+  use skene_gui::{SimpleCheckbox, core::AccessProp};
+
+  let checked = Signal::new(true);
+  let root = Container::new()
+    .set_child(
+      SimpleCheckbox::new()
+        .bind_checked(checked)
+        .set_label("Ship"),
+    )
+    .build();
+  let control = record::children(record::children(root)[0])[0];
+
+  assert_eq!(record::role(control), Some(Role::Checkbox));
+  assert!(record::access(control).contains(&AccessProp::Checked(true.into())));
+  assert!(
+    record::outline(control).contains("Run \"Ship\""),
+    "the caption is drawn beside the box: {}",
+    record::outline(control)
+  );
+}

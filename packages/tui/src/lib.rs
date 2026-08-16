@@ -101,7 +101,7 @@ pub use crate::simple::{
 pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
-  control::{FocusCore, StyleCore},
+  control::{Behavior, EventCore, FocusCore, StyleCore},
   events::{PointerEvent, ScrollEvent},
   focus::FocusHandle,
   layout_box::LayoutBox,
@@ -111,7 +111,7 @@ pub use crate::{
   raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextField},
   resource::Resource,
   routing::install_router,
-  surface::{HasFocus, HasStyle},
+  surface::{HasEvents, HasFocus, HasStyle},
   task::spawn,
   text::{RichText, Span, Text},
   theme::{ControlTheme, TextTheme},

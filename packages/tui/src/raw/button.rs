@@ -1,10 +1,14 @@
 //! A clickable button, in cells.
 
-use std::rc::Rc;
-
 use skene_core::{Layout, NodeId, View};
 
-use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_style, with_state};
+use crate::{
+  Children,
+  control::{Behavior, ControlBase},
+  state::NodeKind,
+  style::box_taffy_style,
+  with_state,
+};
 
 /// A button: focusable and clickable, its content the attached children.
 ///
@@ -19,7 +23,6 @@ use crate::{Children, control::ControlBase, state::NodeKind, style::box_taffy_st
 pub struct RawButton {
   base: ControlBase<crate::props::BoxStyle>,
   children: Children,
-  click_handler: Option<Rc<skene_core::ClickHandler>>,
 }
 
 impl RawButton {
@@ -29,20 +32,7 @@ impl RawButton {
     Self {
       base: ControlBase::new(),
       children: Children::default(),
-      click_handler: None,
     }
-  }
-
-  /// Sets the click handler (activation by mouse click, `Enter`, or `Space`); its
-  /// [`Prevent`](skene_core::Prevent) verdict is honored per the dispatch contract.
-  #[inline(always)]
-  pub fn handle_click<R: Into<skene_core::Prevent>>(
-    mut self,
-    action: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.click_handler = Some(Rc::new(move || action().into()));
-
-    self
   }
 }
 
@@ -69,31 +59,27 @@ impl View for RawButton {
     let style = self.base.style.style.clone();
     let variants = std::mem::take(&mut self.base.style.variants);
     let node = with_state(|state| {
-      let node = state.insert_node(
+      state.insert_node(
         NodeKind::Box {
           layout: Layout::Flow,
           style: style.clone(),
           variants,
         },
         box_taffy_style(Layout::Flow, &style, false),
-      );
-
-      if let Some(action) = self.click_handler {
-        state
-          .click
-          .borrow_mut()
-          .entry(node)
-          .or_default()
-          .push(action);
-      }
-
-      node
+      )
     });
 
-    self.base.register(node);
+    self.base.register(node, Behavior::new());
     crate::theme::build_unselectable(|| self.children.mount(node));
 
     node
+  }
+}
+
+impl crate::HasEvents for RawButton {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.base.events
   }
 }
 

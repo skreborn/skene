@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, ops::ControlFlow, rc::Rc};
 
 use skene_tui::{self as tui, prelude::*};
 
@@ -302,7 +302,11 @@ fn focus_variant_and_click() {
             Condition::Focused,
             BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
           )
-          .handle_click(move || clicks.set(clicks.get() + 1))
+          .handle_click(move || {
+            clicks.set(clicks.get() + 1);
+
+            ControlFlow::Continue(())
+          })
           .into_any()
           .build()
       });
@@ -593,7 +597,7 @@ fn focus_handle_and_autofocus() {
             RawTextField::new().set_autofocus(),
             RawButton::new()
               .set_style(BoxStyle::new().set_height(1))
-              .handle_click(|| {})
+              .handle_click(|| ControlFlow::Continue(()))
               .bind_focus(&handle),
           ))
           .into_any()
@@ -684,10 +688,18 @@ fn mouse_click_hits_and_focuses() {
           .set_children((
             RawButton::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
-              .handle_click(move || first.set(first.get() + 1)),
+              .handle_click(move || {
+                first.set(first.get() + 1);
+
+                ControlFlow::Continue(())
+              }),
             RawButton::new()
               .set_style(BoxStyle::new().set_width(4).set_height(2))
-              .handle_click(move || second.set(second.get() + 1)),
+              .handle_click(move || {
+                second.set(second.get() + 1);
+
+                ControlFlow::Continue(())
+              }),
           ))
           .into_any()
           .build()
@@ -814,7 +826,11 @@ fn modal_overlay_covers_blocks_and_dismisses() {
             RawButton::new()
               .set_style(BoxStyle::new().set_width(6).set_height(1))
               .set_child(Text::new("base"))
-              .handle_click(move || clicks.set(clicks.get() + 1)),
+              .handle_click(move || {
+                clicks.set(clicks.get() + 1);
+
+                ControlFlow::Continue(())
+              }),
             Overlay::modal()
               .bind_open(open)
               .set_backdrop(Color::srgb(0., 0., 0.))
@@ -1761,10 +1777,10 @@ fn prevented_keys_skip_their_defaults() {
             .set_autofocus()
             .handle_key_down(|event| {
               if event.key == "ArrowRight" || event.key == "Tab" {
-                Prevent::All
+                ControlFlow::Break(Prevent::All)
               }
               else {
-                Prevent::None
+                ControlFlow::Continue(())
               }
             }),
           RawButton::new().set_child(Text::new("next")),
@@ -1807,13 +1823,17 @@ fn prevented_enter_skips_activation() {
       tui::mount(move || {
         RawButton::new()
           .set_autofocus()
-          .handle_click(move || clicks.set(clicks.get() + 1))
+          .handle_click(move || {
+            clicks.set(clicks.get() + 1);
+
+            ControlFlow::Continue(())
+          })
           .handle_key_down(|event| {
             if event.key == "Enter" {
-              Prevent::Platform
+              ControlFlow::Break(Prevent::Platform)
             }
             else {
-              Prevent::None
+              ControlFlow::Continue(())
             }
           })
           .set_child(Text::new("go"))
@@ -2361,7 +2381,11 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
 
     tui::mount(move || {
       RawButton::new()
-        .handle_click(move || counted.set(counted.get() + 1))
+        .handle_click(move || {
+          counted.set(counted.get() + 1);
+
+          ControlFlow::Continue(())
+        })
         .set_child(Text::new("go"))
         .into_any()
         .build()
@@ -2465,10 +2489,18 @@ fn clicks_complete_on_release_over_the_same_target() {
         .set_spacing(2)
         .set_children((
           RawButton::new()
-            .handle_click(move || one.set(one.get() + 1))
+            .handle_click(move || {
+              one.set(one.get() + 1);
+
+              ControlFlow::Continue(())
+            })
             .set_child(Text::new("one")),
           RawButton::new()
-            .handle_click(move || two.set(two.get() + 1))
+            .handle_click(move || {
+              two.set(two.get() + 1);
+
+              ControlFlow::Continue(())
+            })
             .set_child(Text::new("two")),
         ))
         .into_any()

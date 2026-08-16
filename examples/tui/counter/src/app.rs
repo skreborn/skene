@@ -1,5 +1,7 @@
 //! The counter's views, in cells.
 
+use std::ops::ControlFlow;
+
 use skene_tui::prelude::*;
 
 pub(crate) fn app() -> impl IntoView {
@@ -29,11 +31,15 @@ fn card(count: Signal<u64>) -> impl IntoView {
           .set_variant(SimpleVariant::Outline)
           .handle_click(move || {
             count.update(|value| *value = value.saturating_sub(1));
+
+            ControlFlow::Continue(())
           }),
         SimpleButton::new("+")
           .set_variant(SimpleVariant::Outline)
           .handle_click(move || {
             count.update(|value| *value = value.saturating_add(1));
+
+            ControlFlow::Continue(())
           }),
       )),
     ))

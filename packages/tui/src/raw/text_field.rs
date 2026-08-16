@@ -4,7 +4,11 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, with_state};
+use crate::{
+  control::{Behavior, ControlBase},
+  state::NodeKind,
+  with_state,
+};
 
 /// A single-line text input.
 ///
@@ -121,7 +125,7 @@ impl View for RawTextField {
       });
     }
 
-    self.base.register(node);
+    self.base.register(node, Behavior::new());
 
     node
   }
@@ -144,6 +148,13 @@ fn set_value(node: NodeId, value: &str) {
 
     state.dirty.set(true);
   });
+}
+
+impl crate::HasEvents for RawTextField {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.base.events
+  }
 }
 
 impl crate::HasFocus for RawTextField {

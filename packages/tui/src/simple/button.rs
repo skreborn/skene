@@ -53,17 +53,6 @@ impl SimpleButton {
 
     self
   }
-
-  /// Sets the click handler (activation by mouse click, `Enter`, or `Space`).
-  #[inline(always)]
-  pub fn handle_click<R: Into<skene_core::Prevent>>(
-    mut self,
-    action: impl Fn() -> R + 'static,
-  ) -> Self {
-    self.raw = self.raw.handle_click(action);
-
-    self
-  }
 }
 
 impl View for SimpleButton {
@@ -101,6 +90,13 @@ impl View for SimpleButton {
       .set_style(style)
       .set_child(text.set_bold(true).set_color(look.ink))
       .build()
+  }
+}
+
+impl crate::HasEvents for SimpleButton {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    self.raw.event_core()
   }
 }
 

@@ -6,7 +6,7 @@ use skene_core::{HasChildren, NodeId, Prevent, Source, View};
 
 use crate::{
   Overlay,
-  control::ControlBase,
+  control::{Behavior, ControlBase},
   overlay::Anchor,
   props::BoxStyle,
   state::NodeKind,
@@ -215,14 +215,15 @@ impl View for RawPicker {
     let open = Signal::new(false);
     let active = Signal::new(selected.get_untracked());
 
-    register_popup_toggle(node, open, active, selected);
-    register_popup_keys(
-      node,
-      options.iter().map(|(value, _)| value.clone()).collect(),
-      active,
-      open,
-    );
-
+    let behavior = Behavior::new()
+      .click(popup_toggle(open, active, selected))
+      .blur(move || open.set(false))
+      .key_down(popup_keys(
+        node,
+        options.iter().map(|(value, _)| value.clone()).collect(),
+        active,
+        open,
+      ));
     let anchor = Anchor::new();
 
     anchor.assign(node);
@@ -247,98 +248,76 @@ impl View for RawPicker {
 
     with_state(|state| state.attach_child(node, popup, None));
 
-    self.base.register(node);
+    self.base.register(node, behavior);
 
     node
   }
 }
 
-/// Registers the popup's toggling on the picker: activation toggles it—the highlight
-/// opening on the current option—and focus leaving the picker closes it.
-fn register_popup_toggle(
-  node: NodeId,
+/// The picker's own answer to activation: the popup toggles, opening with the highlight
+/// on the current option.
+fn popup_toggle(
   open: skene_reactive::Signal<bool>,
   active: skene_reactive::Signal<String>,
   selected: skene_reactive::Signal<String>,
-) {
+) -> impl Fn() -> Prevent {
   use skene_reactive::{Get, Set, Update};
 
-  with_state(|state| {
-    state
-      .click
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(Rc::new(move || {
-        if !open.get() {
-          active.set(selected.get());
-        }
+  move || {
+    if !open.get() {
+      active.set(selected.get());
+    }
 
-        open.update(|open| *open = !*open);
+    open.update(|open| *open = !*open);
 
-        Prevent::Platform
-      }));
-
-    state
-      .blur
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(Rc::new(move || open.set(false)));
-  });
+    Prevent::Platform
+  }
 }
 
-/// Registers the popup's keyboard behavior on the picker: while open, arrows move the
-/// highlight without committing, and `Enter`, `Space`, or `Tab` chooses it.
-fn register_popup_keys(
+/// The picker's own answer to a key: while open, arrows move the highlight without
+/// committing, and `Enter`, `Space`, or `Tab` chooses it.
+fn popup_keys(
   node: NodeId,
   values: Vec<String>,
   active: skene_reactive::Signal<String>,
   open: skene_reactive::Signal<bool>,
-) {
+) -> impl Fn(&skene_core::KeyEvent) -> Prevent {
   use skene_reactive::{Get, Set};
 
-  with_state(|state| {
-    state
-      .key_down
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(Rc::new(move |event: &skene_core::KeyEvent| {
-        if !open.get() {
-          return Prevent::None;
+  move |event: &skene_core::KeyEvent| {
+    if !open.get() {
+      return Prevent::None;
+    }
+
+    match event.key.as_str() {
+      "ArrowDown" | "ArrowUp" => {
+        let current = active.get();
+        let at = values
+          .iter()
+          .position(|value| *value == current)
+          .unwrap_or(0);
+        let next = if event.key == "ArrowDown" {
+          (at + 1).min(values.len().saturating_sub(1))
+        }
+        else {
+          at.saturating_sub(1)
+        };
+
+        if let Some(value) = values.get(next) {
+          active.set(value.clone());
         }
 
-        match event.key.as_str() {
-          "ArrowDown" | "ArrowUp" => {
-            let current = active.get();
-            let at = values
-              .iter()
-              .position(|value| *value == current)
-              .unwrap_or(0);
-            let next = if event.key == "ArrowDown" {
-              (at + 1).min(values.len().saturating_sub(1))
-            }
-            else {
-              at.saturating_sub(1)
-            };
+        Prevent::Platform
+      }
+      "Enter" | " " | "Tab" => {
+        with_state(|state| state.select_picker(node, &active.get()));
+        open.set(false);
 
-            if let Some(value) = values.get(next) {
-              active.set(value.clone());
-            }
-
-            Prevent::Platform
-          }
-          "Enter" | " " | "Tab" => {
-            with_state(|state| state.select_picker(node, &active.get()));
-            open.set(false);
-
-            Prevent::Platform
-          }
-          _ => Prevent::None,
-        }
-      }));
-  });
+        Prevent::Platform
+      }
+      _ => Prevent::None,
+    }
+  }
 }
 
 /// One selectable row of the options popup: the highlighted option carries the bar—

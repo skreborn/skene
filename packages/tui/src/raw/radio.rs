@@ -4,7 +4,12 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
+use crate::{
+  control::{Behavior, ControlBase},
+  state::NodeKind,
+  theme::Glyphs,
+  with_state,
+};
 
 /// A radio button, rendered as a single mark (`◉`/`○` by default); radios sharing a
 /// group are exclusive.
@@ -148,9 +153,16 @@ impl View for RawRadio {
       });
     }
 
-    self.base.register(node);
+    self.base.register(node, Behavior::new());
 
     node
+  }
+}
+
+impl crate::HasEvents for RawRadio {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.base.events
   }
 }
 

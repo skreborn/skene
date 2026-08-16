@@ -9,17 +9,21 @@
 //! The box surface has no counterpart here: only [`Container`](crate::Container)
 //! decorates, so there is nothing to forward.
 
-use std::rc::Rc;
+use std::{ops::ControlFlow, rc::Rc};
 
 use skene_core::{KeyEvent, Prevent};
 
 use crate::{
-  control::{FocusCore, StyleCore},
+  control::{EventCore, FocusCore, StyleCore},
+  events::ScrollEvent,
   props::Condition,
 };
 
-/// The control focus surface: autofocus, focus and anchor binding, and the
-/// focus/blur/key handlers, forwarded to a control's [`FocusCore`].
+/// The control focus surface: autofocus and the focus and anchor bindings, forwarded to
+/// a control's [`FocusCore`].
+///
+/// The handlers live on [`HasEvents`], since a control's own behavior is something a
+/// handler may take over and a focus binding is not.
 pub trait HasFocus: Sized {
   /// The core the focus behavior lands on.
   fn focus_core(&mut self) -> &mut FocusCore;
@@ -52,12 +56,67 @@ pub trait HasFocus: Sized {
 
     self
   }
+}
+
+/// The terminal-control event surface: every event a control can carry, forwarded to its
+/// [`EventCore`].
+///
+/// Each control offers the whole set whether or not it acts on a given event, so a
+/// handler always goes on the control itself, and a control that later grows behavior
+/// for an event does not change the signature its users already wrote against.
+///
+/// The preventable handlers return [`ControlFlow`]: `Continue` leaves the control to act
+/// as though nothing were installed, and `Break` takes the event, carrying the verdict
+/// the dispatch goes on to see. A control the driver realizes acts on nothing itself—its
+/// behavior is the terminal's, which [`Prevent::Platform`] suppresses.
+pub trait HasEvents: Sized {
+  /// The core the handlers land on.
+  fn event_core(&mut self) -> &mut EventCore;
+
+  /// Installs a click handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_click(mut self, action: impl Fn() -> ControlFlow<Prevent> + 'static) -> Self {
+    self.event_core().click.set(move |&()| action());
+
+    self
+  }
+
+  /// Installs a key handler ahead of the control's own behavior.
+  #[inline(always)]
+  #[must_use]
+  fn handle_key_down(
+    mut self,
+    action: impl Fn(&KeyEvent) -> ControlFlow<Prevent> + 'static,
+  ) -> Self {
+    self.event_core().key_down.set(action);
+
+    self
+  }
+
+  /// Sets the pointer-enter handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().pointer_enter = Some(Rc::new(move |&()| action()));
+
+    self
+  }
+
+  /// Sets the pointer-leave handler.
+  #[inline(always)]
+  #[must_use]
+  fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.event_core().pointer_leave = Some(Rc::new(move |&()| action()));
+
+    self
+  }
 
   /// Sets the focus handler.
   #[inline(always)]
   #[must_use]
   fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
-    self.focus_core().focus_handler = Some(Rc::new(action));
+    self.event_core().focus = Some(Rc::new(move |&()| action()));
 
     self
   }
@@ -66,27 +125,23 @@ pub trait HasFocus: Sized {
   #[inline(always)]
   #[must_use]
   fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
-    self.focus_core().blur_handler = Some(Rc::new(action));
+    self.event_core().blur = Some(Rc::new(move |&()| action()));
 
     self
   }
 
-  /// Sets the key-press handler, run for keys pressed while the control is focused;
-  /// its [`Prevent`] verdict is honored per the dispatch contract.
+  /// Sets the scroll handler.
   #[inline(always)]
   #[must_use]
-  fn handle_key_down<R: Into<Prevent>>(
-    mut self,
-    action: impl Fn(&KeyEvent) -> R + 'static,
-  ) -> Self {
-    self.focus_core().key_down_handler = Some(Rc::new(move |event| action(event).into()));
+  fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.event_core().scroll = Some(Rc::new(action));
 
     self
   }
 }
 
-/// The control styling surface: the static style and conditional variants, in the
-/// control's own style vocabulary, forwarded to its [`StyleCore`].
+/// The control styling surface: the static style and its conditional variants,
+/// forwarded to a control's [`StyleCore`].
 pub trait HasStyle: Sized {
   /// The style vocabulary the control accepts.
   type Style;

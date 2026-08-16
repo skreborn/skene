@@ -63,6 +63,7 @@ pub use crate::{
   Grid,
   GridCell,
   HasChildren,
+  HasEvents,
   HasFocus,
   HasStyle,
   Inset,

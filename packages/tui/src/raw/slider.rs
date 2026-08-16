@@ -4,7 +4,12 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
+use crate::{
+  control::{Behavior, ControlBase},
+  state::NodeKind,
+  theme::Glyphs,
+  with_state,
+};
 
 /// A slider over `min..=max`, rendered as a track with a thumb (`──●──`).
 ///
@@ -139,9 +144,16 @@ impl View for RawSlider {
       });
     }
 
-    self.base.register(node);
+    self.base.register(node, Behavior::new());
 
     node
+  }
+}
+
+impl crate::HasEvents for RawSlider {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.base.events
   }
 }
 

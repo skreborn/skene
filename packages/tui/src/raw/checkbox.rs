@@ -4,7 +4,12 @@ use std::rc::Rc;
 
 use skene_core::{NodeId, Source, View};
 
-use crate::{control::ControlBase, state::NodeKind, theme::Glyphs, with_state};
+use crate::{
+  control::{Behavior, ControlBase},
+  state::NodeKind,
+  theme::Glyphs,
+  with_state,
+};
 
 /// A checkbox: its mark (`[x]`/`[ ]` by default), then the optional label—one
 /// control, so clicking the label toggles too.
@@ -144,9 +149,16 @@ impl View for RawCheckbox {
       });
     }
 
-    self.base.register(node);
+    self.base.register(node, Behavior::new());
 
     node
+  }
+}
+
+impl crate::HasEvents for RawCheckbox {
+  #[inline(always)]
+  fn event_core(&mut self) -> &mut crate::EventCore {
+    &mut self.base.events
   }
 }
 

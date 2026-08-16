@@ -2,6 +2,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::ops::ControlFlow;
+
 use skene_tui::prelude::*;
 
 /// The whole gallery: a scrollable column of titled sections, its text selecting in
@@ -87,7 +89,11 @@ fn buttons() -> impl IntoView {
         .set_line_spacing(1)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          SimpleButton::new("Primary").handle_click(move || count.update(|value| *value += 1)),
+          SimpleButton::new("Primary").handle_click(move || {
+            count.update(|value| *value += 1);
+
+            ControlFlow::Continue(())
+          }),
           SimpleButton::new("Secondary").set_variant(SimpleVariant::Secondary),
           SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
           SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
@@ -229,7 +235,11 @@ fn layouts() -> impl IntoView {
       Row::new().set_children((
         SimpleButton::new("Open a modal")
           .set_variant(SimpleVariant::Secondary)
-          .handle_click(move || open.set(true)),
+          .handle_click(move || {
+            open.set(true);
+
+            ControlFlow::Continue(())
+          }),
         Overlay::modal()
           .bind_open(open)
           .set_style(
@@ -247,7 +257,11 @@ fn layouts() -> impl IntoView {
               Row::new().set_arrangement(Arrangement::End).set_child(
                 SimpleButton::new("Close")
                   .set_variant(SimpleVariant::Secondary)
-                  .handle_click(move || open.set(false)),
+                  .handle_click(move || {
+                    open.set(false);
+
+                    ControlFlow::Continue(())
+                  }),
               ),
             )),
           ),

@@ -677,8 +677,20 @@ sink are just different sinks for the same paths.)
       nobody is matching. That needed no change to hydration itself, only a reactive
       `settled()` on each driver: false while the client reproduces the server's tree,
       true otherwise—so a fresh client launch never builds the fallback at all.
-    - **Remaining:** footprint parity between the two forms, so the swap does not shift
-      layout; and the toggle for whether the fallback is emitted at all.
+    - **Footprint parity—done, and it found a real bug.** The two forms must claim the
+      same box or the swap shifts layout. The Simple controls give their scriptless form
+      the drawn one's metrics, and a browser test measures both: it caught the drawn
+      control stretching to the full line as a flex item where the browser's own control
+      hugs, so a drawn control now sizes to what it draws. Only a real browser answers
+      this—whether a native `<input>` honors a given width is not something the host
+      tier can tell us.
+    - **The toggle—done.** `set_scriptless_fallback(false)` makes every enhancement
+      render its enhanced form everywhere, server included. It also makes hydration
+      cheaper: both sides build the same tree, so nothing is built to be replaced a
+      moment later. On by default, since progressive enhancement is doctrine.
+    - **Matching the two forms is the library's job, not the framework's.** The `Web*`
+      controls keep a styling surface for exactly this; nothing automatic tries to keep
+      a fallback and its enhanced form in step.
 - **Component libraries**: third-party crates shipping components—views plus
   facade-specific code plus assets—consumable on equal footing with built-ins. Depends
   on the asset system for the assets half; the realize-once vocabulary already permits

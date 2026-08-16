@@ -333,8 +333,14 @@ impl View for RawRadio<AnyView> {
           Prevent::All
         }
       });
-    let container = Container::new()
-      .set_role(Role::Radio)
+    let mut container = Container::new().set_role(Role::Radio);
+
+    // A drawn control is the size of what it draws: without this it stretches as a
+    // flex item would, claiming a whole line where the browser's own control hugs.
+    container.node.self_alignment =
+      Some(skene_core::Source::Static(skene_core::ItemAlignment::Start));
+
+    let container = container
       .derive_focus_order(order)
       .derive_accessibility(state)
       .bind_focus(&handle);

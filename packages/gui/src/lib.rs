@@ -94,7 +94,7 @@ pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
   control::{Behavior, DecorationCore, EventCore, FocusCore},
-  enhanced::Enhanced,
+  enhanced::{Enhanced, set_scriptless_fallback},
   focus::FocusHandle,
   layout_box::LayoutBox,
   lazy::LazyColumn,

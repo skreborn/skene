@@ -16,7 +16,17 @@ use skene_core::{
 };
 use skene_reactive::{Owner, provide_context, use_context};
 
-use crate::{Container, Enhanced, RawRadio, RawRadioGroup, Row, SimplePalette, Text, WebRadio};
+use crate::{
+  Container,
+  Enhanced,
+  HasDecoration,
+  RawRadio,
+  RawRadioGroup,
+  Row,
+  SimplePalette,
+  Text,
+  WebRadio,
+};
 
 /// The ring's diameter.
 const RING_SIZE: f32 = 16.;
@@ -225,9 +235,14 @@ fn native(group: Option<GroupName>, value: String, label: Option<String>) -> Web
     .map_or_else(String::new, |group| group.name.clone());
   let chosen = group.clone();
   let held = value.clone();
-  let mut control = WebRadio::new(name, value.clone()).derive_checked(move || {
-    chosen.as_ref().and_then(|group| (group.chosen)()) == Some(held.clone())
-  });
+  // The same footprint as the drawn ring, so the swap at hydration shifts nothing.
+  let mut control = WebRadio::new(name, value.clone())
+    .derive_checked(move || {
+      chosen.as_ref().and_then(|group| (group.chosen)()) == Some(held.clone())
+    })
+    .set_width(RING_SIZE)
+    .set_height(RING_SIZE)
+    .set_border_radius(RING_SIZE / 2.);
 
   if let Some(label) = label {
     control = control.set_label(label);

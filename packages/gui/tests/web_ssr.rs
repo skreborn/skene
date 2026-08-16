@@ -593,3 +593,30 @@ fn an_enhancement_serializes_its_fallback() {
     "and the drawn one is not serialized beside it: {html}"
   );
 }
+
+/// Turning the scriptless fallback off makes the server serialize the enhanced form
+/// instead, so an app that does not want one pays nothing for it.
+#[test]
+fn a_disabled_fallback_serializes_the_enhanced_form() {
+  use skene_gui::{Enhanced, RawCheckbox, WebCheckbox, set_scriptless_fallback};
+
+  set_scriptless_fallback(false);
+
+  let page = render_to_string(|| {
+    Container::new().set_child(
+      Enhanced::new(WebCheckbox::new).set_child(|| RawCheckbox::new().set_child(Text::new("mark"))),
+    )
+  });
+  let html = page.body();
+
+  set_scriptless_fallback(true);
+
+  assert!(
+    html.contains("role=\"checkbox\""),
+    "the drawn form is what a server render emits now: {html}"
+  );
+  assert!(
+    !html.contains("type=\"checkbox\""),
+    "and the browser's own is not: {html}"
+  );
+}

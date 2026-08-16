@@ -1067,3 +1067,56 @@ fn a_radio_group_traverses_in_document_order() {
     "traversal follows the document, not the order members joined",
   );
 }
+
+/// The scriptless form occupies the same box as the drawn one, so replacing it at
+/// hydration shifts no layout.
+///
+/// Only a real browser answers this: it turns on whether a native `<input>` honors the
+/// width and height a stylesheet gives it, which nothing on the host can tell us.
+#[wasm_bindgen_test]
+fn a_fallback_occupies_the_drawn_forms_box() {
+  use skene_gui::{HasDecoration, RawCheckbox, WebCheckbox};
+
+  let (_guard, root) = fresh_root();
+
+  mount(|| {
+    Column::new()
+      .set_children((
+        WebCheckbox::new()
+          .set_width(16.)
+          .set_height(16.)
+          .set_border_radius(4.),
+        RawCheckbox::new().set_child(
+          Container::new()
+            .set_width(16.)
+            .set_height(16.)
+            .set_border_radius(4.),
+        ),
+      ))
+      .build()
+  });
+
+  document().body().expect("a body").append_child(&root).ok();
+
+  let children = root.first_element_child().expect("the column").children();
+  let native = children.item(0).expect("the native form");
+  let drawn = children.item(1).expect("the drawn form");
+  let native_box = native.get_bounding_client_rect();
+  let drawn_box = drawn.get_bounding_client_rect();
+
+  let measured = (
+    native_box.width(),
+    native_box.height(),
+    drawn_box.width(),
+    drawn_box.height(),
+  );
+
+  root.remove();
+
+  assert_eq!(
+    (measured.0, measured.1),
+    (measured.2, measured.3),
+    "the two forms claim the same box: native {measured:?}"
+  );
+  assert!(measured.1 > 0., "and it is a real one: {measured:?}");
+}

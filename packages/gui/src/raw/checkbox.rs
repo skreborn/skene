@@ -195,8 +195,14 @@ impl View for RawCheckbox<AnyView> {
 
         Prevent::None
       });
-    let container = Container::new()
-      .set_role(Role::Checkbox)
+    let mut container = Container::new().set_role(Role::Checkbox);
+
+    // A drawn control is the size of what it draws: without this it stretches as a
+    // flex item would, claiming a whole line where the browser's own control hugs.
+    container.node.self_alignment =
+      Some(skene_core::Source::Static(skene_core::ItemAlignment::Start));
+
+    let container = container
       .set_focus_order(self.focus_order)
       .derive_accessibility(state);
 

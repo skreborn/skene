@@ -4,7 +4,16 @@ use std::rc::Rc;
 
 use skene_core::{Alignment, Border, Condition, HasChildren, ItemAlignment, Source, View};
 
-use crate::{Container, Enhanced, RawCheckbox, Row, SimplePalette, Text, WebCheckbox};
+use crate::{
+  Container,
+  Enhanced,
+  HasDecoration,
+  RawCheckbox,
+  Row,
+  SimplePalette,
+  Text,
+  WebCheckbox,
+};
 
 /// The box's edge length.
 const BOX_SIZE: f32 = 16.;
@@ -120,7 +129,12 @@ fn native(
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
   label: Option<String>,
 ) -> WebCheckbox {
-  let mut control = WebCheckbox::new().derive_checked(checked);
+  // The same footprint as the drawn box, so the swap at hydration shifts nothing.
+  let mut control = WebCheckbox::new()
+    .derive_checked(checked)
+    .set_width(BOX_SIZE)
+    .set_height(BOX_SIZE)
+    .set_border_radius(4.);
 
   if let Some(label) = label {
     control = control.set_label(label);

@@ -14,7 +14,7 @@ use skene_core::{
   View,
 };
 
-use crate::{Container, Enhanced, RawSlider, SimplePalette, Stack, WebSlider};
+use crate::{Container, Enhanced, HasDecoration, RawSlider, SimplePalette, Stack, WebSlider};
 
 /// The track's thickness.
 const TRACK_HEIGHT: f32 = 6.;
@@ -128,7 +128,12 @@ fn native(
   value: impl Fn() -> f32 + 'static,
   change_handler: Option<Rc<dyn Fn(f32)>>,
 ) -> WebSlider {
-  let mut control = WebSlider::new(min, max).set_step(step).derive_value(value);
+  // The same footprint as the drawn track and thumb, so the swap shifts nothing.
+  let mut control = WebSlider::new(min, max)
+    .set_step(step)
+    .derive_value(value)
+    .set_width(Dimension::Fraction(1.))
+    .set_height(THUMB_SIZE);
 
   if let Some(action) = change_handler {
     control = control.handle_change(move |value| action(value));
@@ -183,6 +188,7 @@ fn drawn(
 
   control.set_child(
     Container::new()
+      .set_width(Dimension::Fraction(1.))
       .set_height(THUMB_SIZE)
       .set_child(Stack::new().set_children((track, thumb))),
   )

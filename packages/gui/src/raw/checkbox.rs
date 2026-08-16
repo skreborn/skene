@@ -180,7 +180,7 @@ impl View for RawCheckbox<AnyView> {
         move || {
           toggle();
 
-          Prevent::None
+          Prevent::Bubbling
         }
       })
       // `Space` activates a checkbox and `Enter` does not, which is what the browser's
@@ -190,7 +190,7 @@ impl View for RawCheckbox<AnyView> {
         if event.key == " " {
           toggle();
 
-          return Prevent::Platform;
+          return Prevent::All;
         }
 
         Prevent::None

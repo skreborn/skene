@@ -15,7 +15,7 @@ use skene_gui::{
   Row,
   Text,
   View,
-  core::{Color, Dimension, Prevent, Role},
+  core::{Color, Dimension, Handled, Role},
   prelude::{Get, Set, Signal},
   record,
 };
@@ -75,7 +75,7 @@ fn derived_text_updates_the_recorded_run() {
   assert_eq!(record::text(run).as_deref(), Some("count: 2"));
 }
 
-/// A click trigger runs the view's handler and returns its verdict.
+/// A click trigger runs the view's handler; a box that handled the event keeps it.
 #[test]
 fn click_trigger_runs_the_handler() {
   let clicks = Rc::new(Cell::new(0));
@@ -86,7 +86,7 @@ fn click_trigger_runs_the_handler() {
       move || {
         clicks.set(clicks.get() + 1);
 
-        Prevent::Platform
+        Handled::Yes
       }
     })
     .build();
@@ -94,8 +94,11 @@ fn click_trigger_runs_the_handler() {
   let prevention = record::trigger_click(root);
 
   assert_eq!(clicks.get(), 1);
-  assert!(prevention.platform);
-  assert!(!prevention.bubbling);
+  assert!(prevention.bubbling, "a box that handled it keeps it");
+  assert!(
+    !prevention.platform,
+    "and states nothing about the platform, which is the driver's"
+  );
 }
 
 /// A change trigger commits the value into an input's binding.

@@ -1753,14 +1753,13 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
   assert_eq!(colors[5 + 1].0, Some((255, 0, 0)));
 }
 
-/// A click handler's `Prevent::Bubbling` stops shallower handlers; `Prevent::Platform`
-/// on the path keeps a checkbox from toggling while every handler still runs.
+/// A click stops at the view that took it: a box says so with its verdict, and a
+/// control says so by being a control—an ancestor never sees a press on one.
 #[test]
-fn click_verdicts_split_bubbling_from_default() {
-  let (inner_runs, outer_runs, checked) = with_driver(|| {
+fn a_click_stops_at_the_view_that_took_it() {
+  let (inner_runs, outer_runs) = with_driver(|| {
     let inner_runs = Rc::new(Cell::new(0u32));
     let outer_runs = Rc::new(Cell::new(0u32));
-    let on = Signal::new(false);
 
     {
       let inner_runs = Rc::clone(&inner_runs);
@@ -1779,9 +1778,9 @@ fn click_verdicts_split_bubbling_from_default() {
               .handle_click(move || {
                 inner_runs.set(inner_runs.get() + 1);
 
-                Prevent::All
+                skene_tui::core::Handled::Yes
               })
-              .set_child(RawCheckbox::new().bind_checked(on)),
+              .set_child(Text::new("xx")),
           )
           .into_any()
           .build()
@@ -1792,15 +1791,48 @@ fn click_verdicts_split_bubbling_from_default() {
 
     tui::trigger_mouse_click(0, 0);
 
-    (inner_runs.get(), outer_runs.get(), on.get_untracked())
+    (inner_runs.get(), outer_runs.get())
   });
 
   assert_eq!(inner_runs, 1);
-  assert_eq!(outer_runs, 0);
-  assert!(!checked);
+  assert_eq!(outer_runs, 0, "the box that handled it kept it");
 }
 
-/// Grid tracks size columns by the taffy vocabulary: fixed cells, fractions, auto.
+/// A control consumes its own press, so a clickable ancestor never fires under it—and
+/// the control still does what it does.
+#[test]
+fn a_control_keeps_its_press_from_an_ancestor() {
+  let (outer_runs, checked) = with_driver(|| {
+    let outer_runs = Rc::new(Cell::new(0u32));
+    let on = Signal::new(false);
+
+    {
+      let outer_runs = Rc::clone(&outer_runs);
+
+      tui::mount(move || {
+        let outer_runs = Rc::clone(&outer_runs);
+
+        Container::new()
+          .handle_click(move || {
+            outer_runs.set(outer_runs.get() + 1);
+          })
+          .set_child(RawCheckbox::new().bind_checked(on))
+          .into_any()
+          .build()
+      });
+    }
+
+    let _ = tui::render_to_text(6, 1);
+
+    tui::trigger_mouse_click(0, 0);
+
+    (outer_runs.get(), on.get_untracked())
+  });
+
+  assert_eq!(outer_runs, 0, "the press was the checkbox's");
+  assert!(checked, "which still toggled");
+}
+
 #[test]
 fn grid_tracks_size_columns() {
   let rendered = with_driver(|| {

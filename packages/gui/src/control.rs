@@ -212,12 +212,17 @@ impl EventCore {
   /// that event.
   pub fn attach(self, container: Container, behavior: Behavior) -> Container {
     let click = acted(behavior.click, self.click);
-    let mut container = container
-      .handle_click(move || click(&()))
-      .handle_key_down(acted(behavior.key_down, self.key_down))
-      .handle_pointer_down(acted(behavior.pointer_down, self.pointer_down))
-      .handle_pointer_move(acted(behavior.pointer_move, self.pointer_move))
-      .handle_pointer_up(acted(behavior.pointer_up, self.pointer_up));
+    let mut container = container;
+
+    // A control states a full verdict, which the box's own surface no longer spells: a
+    // handler there decides bubbling and nothing else.
+    container.node.click_handler = Some(Rc::new(move || click(&())));
+    container.node.key_down_handler = Some(Rc::new(acted(behavior.key_down, self.key_down)));
+    container.node.pointer_down_handler =
+      Some(Rc::new(acted(behavior.pointer_down, self.pointer_down)));
+    container.node.pointer_move_handler =
+      Some(Rc::new(acted(behavior.pointer_move, self.pointer_move)));
+    container.node.pointer_up_handler = Some(Rc::new(acted(behavior.pointer_up, self.pointer_up)));
 
     if let Some(action) = observed(behavior.pointer_enter, self.pointer_enter) {
       container = container.handle_pointer_enter(move || action(&()));

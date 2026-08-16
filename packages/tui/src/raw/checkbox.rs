@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{NodeId, Source, View};
+use skene_core::{NodeId, Prevent, Source, View};
 
 use crate::{
   control::{Behavior, ControlBase},
@@ -149,7 +149,9 @@ impl View for RawCheckbox {
       });
     }
 
-    self.base.register(node, Behavior::new());
+    self
+      .base
+      .register(node, Behavior::new().click(|| Prevent::Bubbling));
 
     node
   }

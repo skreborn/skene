@@ -331,7 +331,7 @@ impl View for RawPicker<AnyView> {
             move || {
               context.open_list();
 
-              Prevent::None
+              Prevent::Bubbling
             }
           })
           .key_down({
@@ -382,7 +382,7 @@ fn face_key(context: &PickerContext, event: &KeyEvent) -> Prevent {
     _ => return Prevent::None,
   }
 
-  Prevent::Platform
+  Prevent::All
 }
 
 /// Where a key takes an open picker, from the option the keyboard sits on.
@@ -398,7 +398,7 @@ fn option_key(context: &PickerContext, event: &KeyEvent) -> Prevent {
     _ => return Prevent::None,
   }
 
-  Prevent::Platform
+  Prevent::All
 }
 
 /// One option within a [`RawPicker`], drawn by the view it holds.
@@ -505,7 +505,7 @@ impl View for RawOption<AnyView> {
             picker.commit_value(value.clone());
           }
 
-          Prevent::None
+          Prevent::Bubbling
         }
       })
       .pointer_enter({

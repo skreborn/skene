@@ -6,6 +6,7 @@ use skene_core::{
   Alignment,
   Color,
   Dimension,
+  Handled,
   IntoChildOf,
   KeyEvent,
   Layout,
@@ -13,7 +14,6 @@ use skene_core::{
   NodeId,
   Overflow,
   PlainChild,
-  Prevent,
   Source,
   View,
 };
@@ -576,11 +576,11 @@ impl Container {
     self
   }
 
-  /// Sets the click handler (`Enter` while focused, or a mouse click); its [`Prevent`]
-  /// verdict is honored per the dispatch contract.
+  /// Sets the click handler (`Enter` while focused, or a mouse click); it decides whether
+  /// the event carries on to the ancestors.
   #[inline(always)]
-  pub fn handle_click<R: Into<Prevent>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.node.click_handler = Some(Rc::new(move || action().into()));
+  pub fn handle_click<R: Into<Handled>>(mut self, action: impl Fn() -> R + 'static) -> Self {
+    self.node.click_handler = Some(Rc::new(move || action().into().into()));
 
     self
   }
@@ -618,13 +618,13 @@ impl Container {
   }
 
   /// Sets the key-press handler, run for keys pressed while the box or a descendant is
-  /// focused; its [`Prevent`] verdict is honored per the dispatch contract.
+  /// focused; it decides whether the event carries on to the ancestors.
   #[inline(always)]
-  pub fn handle_key_down<R: Into<Prevent>>(
+  pub fn handle_key_down<R: Into<Handled>>(
     mut self,
     action: impl Fn(&KeyEvent) -> R + 'static,
   ) -> Self {
-    self.node.key_down_handler = Some(Rc::new(move |event| action(event).into()));
+    self.node.key_down_handler = Some(Rc::new(move |event| action(event).into().into()));
 
     self
   }
@@ -632,11 +632,11 @@ impl Container {
   /// Sets the pointer-down handler; its [`Prevent`] verdict is honored per the
   /// dispatch contract.
   #[inline(always)]
-  pub fn handle_pointer_down<R: Into<Prevent>>(
+  pub fn handle_pointer_down<R: Into<Handled>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.node.pointer_down_handler = Some(Rc::new(move |event| action(event).into()));
+    self.node.pointer_down_handler = Some(Rc::new(move |event| action(event).into().into()));
 
     self
   }
@@ -644,11 +644,11 @@ impl Container {
   /// Sets the pointer-up handler; its [`Prevent`] verdict is honored per the dispatch
   /// contract.
   #[inline(always)]
-  pub fn handle_pointer_up<R: Into<Prevent>>(
+  pub fn handle_pointer_up<R: Into<Handled>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.node.pointer_up_handler = Some(Rc::new(move |event| action(event).into()));
+    self.node.pointer_up_handler = Some(Rc::new(move |event| action(event).into().into()));
 
     self
   }
@@ -656,11 +656,11 @@ impl Container {
   /// Sets the pointer-move handler; its [`Prevent`] verdict is honored per the
   /// dispatch contract.
   #[inline(always)]
-  pub fn handle_pointer_move<R: Into<Prevent>>(
+  pub fn handle_pointer_move<R: Into<Handled>>(
     mut self,
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
-    self.node.pointer_move_handler = Some(Rc::new(move |event| action(event).into()));
+    self.node.pointer_move_handler = Some(Rc::new(move |event| action(event).into().into()));
 
     self
   }

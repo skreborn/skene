@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{HasChildren, NodeId, Prevent, Source, View};
+use skene_core::{Handled, HasChildren, NodeId, Prevent, Source, View};
 
 use crate::{
   Overlay,
@@ -270,7 +270,9 @@ fn popup_toggle(
 
     open.update(|open| *open = !*open);
 
-    Prevent::Platform
+    // The popup is the picker's answer to a press: the terminal must not also cycle the
+    // value, and no ancestor sees the click.
+    Prevent::All
   }
 }
 
@@ -366,7 +368,7 @@ fn option_row(
       with_state(|state| state.select_picker(node, &value));
       open.set(false);
 
-      Prevent::Platform
+      Handled::Yes
     })
 }
 

@@ -76,6 +76,41 @@ impl Prevented {
   }
 }
 
+/// Whether a handler considered the event its own.
+///
+/// The one decision a view's user makes about dispatch: an event handled here is an
+/// event the ancestors never see. Everything else—what the platform is told—belongs to
+/// the layer that owns the behavior, so it never appears in a handler's signature.
+///
+/// A handler returns anything `Into<Handled>`; `()` converts to [`No`](Handled::No), so
+/// an ordinary handler needs no return at all.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[must_use]
+pub enum Handled {
+  /// Not handled here: the event carries on to the ancestors.
+  #[default]
+  No,
+  /// Handled here: the ancestors never see it.
+  Yes,
+}
+
+impl From<()> for Handled {
+  #[inline(always)]
+  fn from((): ()) -> Self {
+    Self::No
+  }
+}
+
+impl From<Handled> for Prevent {
+  #[inline(always)]
+  fn from(handled: Handled) -> Self {
+    match handled {
+      Handled::No => Self::None,
+      Handled::Yes => Self::Bubbling,
+    }
+  }
+}
+
 /// A click handler as dispatch stores it: the closure plus its verdict.
 pub type ClickHandler = dyn Fn() -> Prevent;
 /// A key handler as dispatch stores it: the closure plus its verdict.

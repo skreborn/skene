@@ -38,6 +38,7 @@ pub use control::{Ring, Roster, SliderRange};
 pub use errors::{ErrorBoundary, Errors};
 pub use events::{
   ClickHandler,
+  Handled,
   KeyEvent,
   KeyHandler,
   Modifiers,

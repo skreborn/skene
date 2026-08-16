@@ -310,7 +310,7 @@ impl View for RawRadio<AnyView> {
             (group.choose)(value.clone());
           }
 
-          Prevent::None
+          Prevent::Bubbling
         }
       })
       .key_down({
@@ -330,7 +330,7 @@ impl View for RawRadio<AnyView> {
             _ => return Prevent::None,
           }
 
-          Prevent::Platform
+          Prevent::All
         }
       });
     let container = Container::new()

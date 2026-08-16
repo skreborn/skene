@@ -221,18 +221,20 @@ impl View for RawSlider<AnyView> {
           pressed.set(true);
           slide(event);
 
-          Prevent::Platform
+          Prevent::All
         }
       })
       .pointer_move({
         let pressed = Rc::clone(&pressed);
 
         move |event: &PointerEvent| {
-          if pressed.get() {
-            slide(event);
+          if !pressed.get() {
+            return Prevent::None;
           }
 
-          Prevent::None
+          slide(event);
+
+          Prevent::Bubbling
         }
       })
       .pointer_up({
@@ -241,7 +243,7 @@ impl View for RawSlider<AnyView> {
         move |_: &PointerEvent| {
           pressed.set(false);
 
-          Prevent::None
+          Prevent::Bubbling
         }
       })
       .key_down({
@@ -259,7 +261,7 @@ impl View for RawSlider<AnyView> {
             write(next);
           }
 
-          Prevent::Platform
+          Prevent::All
         }
       });
     let container = Container::new()

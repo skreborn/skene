@@ -97,8 +97,10 @@
   asks "am I cancelling a platform default here". `Prevent` belongs to the layer that
   owns behavior; above a driver, nothing states one. A control the driver realizes never
   asks to suppress the platform's response, because there that response **is** the
-  control. `Container` still takes `Into<Prevent>`—it is a box, not a control, and the
-  last place the choice is exposed; folding it in is pending.
+  control. A box keeps the one decision that is genuinely its own: `Container`'s
+  handlers return `Into<Handled>`—`()` for the ordinary case, `Handled::Yes` to say the
+  event was theirs—so a box chooses whether it consumes, and a control has that chosen
+  for it. Nothing above a driver ever states more than that.
 - View logic tests run headless where possible, via the recording driver
   (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
   wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.

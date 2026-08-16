@@ -1,6 +1,6 @@
 //! A clickable button, in cells.
 
-use skene_core::{Layout, NodeId, View};
+use skene_core::{Layout, NodeId, Prevent, View};
 
 use crate::{
   Children,
@@ -69,7 +69,9 @@ impl View for RawButton {
       )
     });
 
-    self.base.register(node, Behavior::new());
+    self
+      .base
+      .register(node, Behavior::new().click(|| Prevent::Bubbling));
     crate::theme::build_unselectable(|| self.children.mount(node));
 
     node

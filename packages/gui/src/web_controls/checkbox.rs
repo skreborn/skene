@@ -123,9 +123,9 @@ impl crate::HasFocus for WebCheckbox {
   }
 }
 
-impl crate::HasStyle for WebCheckbox {
+impl crate::HasDecoration for WebCheckbox {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

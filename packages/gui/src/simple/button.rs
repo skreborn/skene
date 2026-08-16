@@ -1,8 +1,8 @@
 //! A ready-made button in the Simple design language.
 
-use skene_core::{Border, BoxStyle, Color, Condition, HasChildren, Inset, Source, View};
+use skene_core::{Border, Color, Condition, HasChildren, Inset, Source, View};
 
-use crate::{HasStyle, RawButton, SimpleVariant, Text, simple};
+use crate::{HasDecoration, RawButton, SimpleVariant, Text, simple};
 
 /// A ready-made button: a text label on the variant's surface, with hover feedback and
 /// the platform's full keyboard behavior.
@@ -69,14 +69,11 @@ impl View for SimpleButton {
 
     self
       .raw
-      .set_style(
-        BoxStyle::new()
-          .set_padding(Inset::symmetric(16., 8.))
-          .set_color(look.surface)
-          .set_border(Border::new(1., look.border.unwrap_or(Color::TRANSPARENT)))
-          .set_border_radius(simple::RADIUS),
-      )
-      .set_when(Condition::Hovered, BoxStyle::new().set_color(look.hover))
+      .set_padding(Inset::symmetric(16., 8.))
+      .set_color(look.surface)
+      .set_border(Border::new(1., look.border.unwrap_or(Color::TRANSPARENT)))
+      .set_border_radius(simple::RADIUS)
+      .set_color_when(Condition::Hovered, look.hover)
       .set_child(
         text
           .set_font_size(14.)

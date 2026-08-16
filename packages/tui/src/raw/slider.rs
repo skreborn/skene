@@ -166,11 +166,9 @@ impl crate::HasFocus for RawSlider {
   }
 }
 
-impl crate::HasStyle for RawSlider {
-  type Style = crate::props::ControlStyle;
-
+impl crate::HasMarks for RawSlider {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+  fn mark_core(&mut self) -> &mut crate::MarkCore {
     &mut self.base.style
   }
 }

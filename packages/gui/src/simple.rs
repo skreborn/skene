@@ -14,7 +14,7 @@ mod slider;
 mod text_editor;
 mod text_field;
 
-use skene_core::{Border, BoxStyle, Condition, Inset};
+use skene_core::{Border, Condition, Inset};
 pub use skene_simple::{SimplePalette, SimpleVariant};
 
 pub use self::{
@@ -33,18 +33,12 @@ pub(crate) const RADIUS: f32 = 8.;
 /// The corner radius of a [`SimpleCard`](crate::SimpleCard).
 pub(crate) const CARD_RADIUS: f32 = 12.;
 
-/// The shared field chrome: padded, hairline-bordered, rounded.
-pub(crate) fn field_style() -> BoxStyle {
-  BoxStyle::new()
+/// The shared field chrome, applied per property: padded, hairline-bordered, rounded,
+/// with the border brightening to the ring on focus.
+pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T) -> T {
+  control
     .set_padding(Inset::symmetric(12., 8.))
     .set_border(Border::new(1., SimplePalette::border()))
     .set_border_radius(RADIUS)
-}
-
-/// The shared field focus variant: the border brightens to the ring.
-pub(crate) fn field_focus() -> (Condition, BoxStyle) {
-  (
-    Condition::Focused,
-    BoxStyle::new().set_border(Border::new(1., SimplePalette::ring())),
-  )
+    .set_border_when(Condition::Focused, Border::new(1., SimplePalette::ring()))
 }

@@ -141,13 +141,14 @@ fn native(
   value: impl Fn() -> String + 'static,
   change_handler: Option<Rc<dyn Fn(String)>>,
 ) -> WebPicker {
-  use crate::HasStyle;
+  use crate::HasDecoration;
 
-  let mut control = WebPicker::new()
-    .set_options(options)
-    .derive_value(value)
-    .set_style(simple::field_style().set_color(SimplePalette::card()))
-    .set_when(simple::field_focus().0, simple::field_focus().1);
+  let mut control = simple::field_chrome(
+    WebPicker::new()
+      .set_options(options)
+      .derive_value(value)
+      .set_color(SimplePalette::card()),
+  );
 
   if let Some(action) = change_handler {
     control = control.handle_change(move |value| action(value.to_owned()));

@@ -15,7 +15,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasEvents, HasFocus, HasStyle};
+use skene_gui::{HasDecoration, HasEvents, HasFocus};
 
 /// An input serializes as a void element: no closing tag.
 #[test]
@@ -49,8 +49,8 @@ fn placeholder_and_value_serialize_as_attributes() {
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
     RawTextField::new()
-      .set_style(BoxStyle::new().set_padding(skene_gui::Inset::all(8.)))
-      .set_when(Condition::Focused, BoxStyle::new().set_border_radius(4.))
+      .set_padding(skene_gui::Inset::all(8.))
+      .set_border_radius_when(Condition::Focused, 4.)
   });
 
   let body = rendered.body();

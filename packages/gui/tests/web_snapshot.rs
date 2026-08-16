@@ -36,7 +36,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasFocus, HasStyle};
+use skene_gui::{HasDecoration, HasFocus};
 
 /// A tree exercising every built-in view and property path: static and derived box
 /// properties, roles, stack placement, text styling and links, theme cascade, span groups,

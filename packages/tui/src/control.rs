@@ -238,19 +238,25 @@ impl EventCore {
   }
 }
 
-/// The styling state behind a control's shared builder surface: the target of
-/// [`HasStyle`](crate::HasStyle); `S` is the style vocabulary the control accepts.
-pub struct StyleCore<S> {
+/// The decoration state behind a control's shared builder surface; `S` is the
+/// vocabulary the control decorates in.
+pub struct Decoration<S> {
   pub(crate) style: S,
   pub(crate) variants: Vec<(Condition, S)>,
 }
+
+/// What a control that draws marks decorates: the target of [`HasMarks`](crate::HasMarks).
+pub type MarkCore = Decoration<crate::props::ControlStyle>;
+/// What a control owning a box decorates: the target of
+/// [`HasDecoration`](crate::HasDecoration).
+pub type DecorationCore = Decoration<crate::props::BoxStyle>;
 
 /// The state behind a control's shared builder surface, embedded by every control;
 /// `S` is the style vocabulary the control accepts (a small control's
 /// [`ControlStyle`](crate::props::ControlStyle), a container-owning one's
 /// [`BoxStyle`](crate::props::BoxStyle)).
 pub(crate) struct ControlBase<S> {
-  pub(crate) style: StyleCore<S>,
+  pub(crate) style: Decoration<S>,
   pub(crate) focus: FocusCore,
   pub(crate) events: EventCore,
 }
@@ -258,7 +264,7 @@ pub(crate) struct ControlBase<S> {
 impl<S: Default> ControlBase<S> {
   pub(crate) fn new() -> Self {
     Self {
-      style: StyleCore {
+      style: Decoration {
         style: S::default(),
         variants: Vec::new(),
       },

@@ -3,9 +3,9 @@
 use skene_core::{MouseCursor, NodeId, Source, View};
 
 use crate::{
-  HasStyle,
+  HasDecoration,
   RawButton,
-  props::{BoxStyle, Condition},
+  props::Condition,
   simple::{self, SimpleVariant},
 };
 
@@ -64,30 +64,24 @@ impl View for SimpleButton {
       Source::Static(label) => crate::Text::new(label),
       Source::Derived(label) => crate::Text::derive(move || label()),
     };
-    let mut style = BoxStyle::new()
+    let mut button = self
+      .raw
       .set_padding(crate::Inset::horizontal(2))
       .set_color(look.surface)
       .set_cursor(MouseCursor::Click);
 
-    let mut button = self.raw;
-
-    if let Some(border) = look.border {
-      style = style.set_border(border).set_border_glyphs(simple::GLYPHS);
-      button = button
-        .set_when(
-          Condition::Hovered,
-          BoxStyle::new().set_border(crate::simple::SimplePalette::ring()),
-        )
-        .set_when(Condition::Focused, BoxStyle::new().set_border(look.ink));
-    }
-    else {
-      button = button
-        .set_when(Condition::Hovered, BoxStyle::new().set_color(look.hover))
-        .set_when(Condition::Focused, BoxStyle::new().set_color(look.focus));
-    }
+    button = match look.border {
+      Some(border) => button
+        .set_border(border)
+        .set_border_glyphs(simple::GLYPHS)
+        .set_border_when(Condition::Hovered, crate::simple::SimplePalette::ring())
+        .set_border_when(Condition::Focused, look.ink),
+      None => button
+        .set_color_when(Condition::Hovered, look.hover)
+        .set_color_when(Condition::Focused, look.focus),
+    };
 
     button
-      .set_style(style)
       .set_child(text.set_bold(true).set_color(look.ink))
       .build()
   }

@@ -24,7 +24,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasFocus, HasStyle};
+use skene_gui::{HasDecoration, HasFocus};
 
 /// A button serializes as a real button element carrying its reset class, its children
 /// as content, and its tab-order attributes.
@@ -197,10 +197,7 @@ fn controls_carry_interaction_feedback() {
 
   let authored = render_to_string(|| {
     RawButton::new()
-      .set_when(
-        Condition::Hovered,
-        BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
-      )
+      .set_color_when(Condition::Hovered, Color::srgb(1., 0., 0.))
       .set_child(Text::new("Go"))
   });
   let styles = interned(authored.styles());

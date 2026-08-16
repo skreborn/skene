@@ -16,8 +16,8 @@ use crate::{
 /// [`set_value`](Self::set_value)) drives the shown text, and
 /// [`handle_change`](Self::handle_change) receives each edit in real time—
 /// [`bind_value`](Self::bind_value) wires both to one signal. Styling is the box style,
-/// set wholesale with [`set_style`](crate::HasStyle::set_style) and conditionally with
-/// [`set_when`](crate::HasStyle::set_when).
+/// spelled per property through [`HasDecoration`](crate::HasDecoration), as a
+/// [`Container`](crate::Container)'s is.
 ///
 /// The unstyled base a component library builds on; [`SimpleTextField`](crate::SimpleTextField) is
 /// the ready-made counterpart.
@@ -166,11 +166,9 @@ impl crate::HasFocus for RawTextField {
   }
 }
 
-impl crate::HasStyle for RawTextField {
-  type Style = crate::props::BoxStyle;
-
+impl crate::HasDecoration for RawTextField {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::BoxStyle> {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.base.style
   }
 }

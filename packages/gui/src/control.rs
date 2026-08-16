@@ -28,8 +28,8 @@ pub struct FocusCore {
 }
 
 /// The styling state behind a control's shared builder surface: the target of
-/// [`HasStyle`](crate::HasStyle).
-pub struct StyleCore {
+/// [`HasDecoration`](crate::HasDecoration).
+pub struct DecorationCore {
   pub(crate) style: BoxStyle,
   pub(crate) variants: Vec<(Condition, BoxStyle)>,
   pub(crate) transitions: Vec<Transition>,
@@ -291,7 +291,7 @@ impl EventCore {
 
 /// The state behind a control's shared builder surface, embedded by every control.
 pub(crate) struct ControlBase {
-  pub(crate) style: StyleCore,
+  pub(crate) style: DecorationCore,
   pub(crate) focus: FocusCore,
   pub(crate) events: EventCore,
 }
@@ -300,7 +300,7 @@ impl ControlBase {
   pub(crate) fn new() -> Self {
     Self {
       events: EventCore::default(),
-      style: StyleCore {
+      style: DecorationCore {
         style: BoxStyle::new(),
         variants: Vec::new(),
         transitions: Vec::new(),

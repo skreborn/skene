@@ -34,7 +34,7 @@ use skene_gui::{
 };
 // The csr and ssr halves each use a different subset of the surface traits.
 #[allow(unused_imports)]
-use skene_gui::{HasFocus, HasStyle};
+use skene_gui::{HasDecoration, HasFocus};
 
 /// The class assigned to the first (only) top-level element of a render.
 fn root_class(body: &str) -> String {

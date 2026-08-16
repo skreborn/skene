@@ -14,8 +14,8 @@ use crate::{
 ///
 /// The one focus-taking box: `Tab` reaches it, `Enter` and `Space` activate it, and a
 /// mouse click focuses and activates it. Unstyled by default; styling is the box style,
-/// set with [`set_style`](crate::HasStyle::set_style) and conditionally with
-/// [`set_when`](crate::HasStyle::set_when).
+/// spelled per property through [`HasDecoration`](crate::HasDecoration), as a
+/// [`Container`](crate::Container)'s is.
 ///
 /// The unstyled base a component library builds on; [`SimpleButton`](crate::SimpleButton) is
 /// the ready-made counterpart.
@@ -92,11 +92,9 @@ impl crate::HasFocus for RawButton {
   }
 }
 
-impl crate::HasStyle for RawButton {
-  type Style = crate::props::BoxStyle;
-
+impl crate::HasDecoration for RawButton {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::BoxStyle> {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.base.style
   }
 }

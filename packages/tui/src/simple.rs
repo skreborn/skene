@@ -28,31 +28,18 @@ pub use self::{
   slider::SimpleSlider,
   text_field::SimpleTextField,
 };
-use crate::props::{BorderGlyphs, BoxStyle, Condition};
+use crate::props::{BorderGlyphs, Condition};
 
 /// The border every Simple surface draws with—arc corners, the terminal's radius.
 pub(crate) const GLYPHS: BorderGlyphs = BorderGlyphs::ROUNDED;
 
-/// The shared field chrome: padded, hairline-bordered, rounded.
-pub(crate) fn field_style() -> BoxStyle {
-  BoxStyle::new()
+/// The shared field chrome, applied per property: padded, bordered in the scheme's
+/// hairline, brightening on hover and again on focus.
+pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T) -> T {
+  control
     .set_padding(crate::Inset::horizontal(1))
     .set_border(SimplePalette::border())
     .set_border_glyphs(GLYPHS)
-}
-
-/// The shared field hover variant: the border brightens to the ring.
-pub(crate) fn field_hover() -> (Condition, BoxStyle) {
-  (
-    Condition::Hovered,
-    BoxStyle::new().set_border(SimplePalette::ring()),
-  )
-}
-
-/// The shared field focus variant: the border inks fully.
-pub(crate) fn field_focus() -> (Condition, BoxStyle) {
-  (
-    Condition::Focused,
-    BoxStyle::new().set_border(SimplePalette::foreground()),
-  )
+    .set_border_when(Condition::Hovered, SimplePalette::ring())
+    .set_border_when(Condition::Focused, SimplePalette::foreground())
 }

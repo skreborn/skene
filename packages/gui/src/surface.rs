@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use skene_core::{Animation, BoxStyle, Condition, KeyEvent, PointerEvent, ScrollEvent, Transition};
 
-use crate::control::{EventCore, FocusCore, StyleCore};
+use crate::control::{DecorationCore, EventCore, FocusCore};
 
 /// The control focus surface: focus order, autofocus, focus and anchor binding, and
 /// the focus/blur/key handlers, forwarded to a control's [`FocusCore`].
@@ -164,26 +164,149 @@ pub trait HasEvents: Sized {
   }
 }
 
-/// The control styling surface: the static style, conditional variants, transitions,
-/// and animations, forwarded to a control's [`StyleCore`].
-pub trait HasStyle: Sized {
-  /// The core the styling lands on.
-  fn style_core(&mut self) -> &mut StyleCore;
+/// The control decoration surface: a control's own chrome, spelled per property exactly
+/// as [`Container`](crate::Container) spells it, forwarded to a control's
+/// [`DecorationCore`].
+///
+/// A control that draws nothing needs none of this—its chrome is the `Container` its
+/// child is made of. This is for the controls that decorate an element of their own: a
+/// text field's box, a button's, and the browser's own controls, which a component
+/// library styles to sit as close to its drawn counterpart as an engine allows.
+pub trait HasDecoration: Sized {
+  /// The core the decoration lands on.
+  fn decoration_core(&mut self) -> &mut DecorationCore;
 
-  /// Sets the static style.
+  /// Sets the background color.
   #[inline(always)]
   #[must_use]
-  fn set_style(mut self, style: BoxStyle) -> Self {
-    self.style_core().style = style;
+  fn set_color(mut self, color: skene_core::Color) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_color(color);
 
     self
   }
 
-  /// Adds a conditional style variant, applied while `condition` holds.
+  /// Sets the background color applied while `condition` holds.
   #[inline(always)]
   #[must_use]
-  fn set_when(mut self, condition: Condition, style: BoxStyle) -> Self {
-    self.style_core().variants.push((condition, style));
+  fn set_color_when(mut self, condition: Condition, color: skene_core::Color) -> Self {
+    self
+      .decoration_core()
+      .variants
+      .push((condition, BoxStyle::new().set_color(color)));
+
+    self
+  }
+
+  /// Sets the border.
+  #[inline(always)]
+  #[must_use]
+  fn set_border(mut self, border: skene_core::Border) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_border(border);
+
+    self
+  }
+
+  /// Sets the border applied while `condition` holds.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_when(mut self, condition: Condition, border: skene_core::Border) -> Self {
+    self
+      .decoration_core()
+      .variants
+      .push((condition, BoxStyle::new().set_border(border)));
+
+    self
+  }
+
+  /// Sets the corner radius.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_radius(mut self, border_radius: f32) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_border_radius(border_radius);
+
+    self
+  }
+
+  /// Sets the corner radius applied while `condition` holds.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_radius_when(mut self, condition: Condition, border_radius: f32) -> Self {
+    self
+      .decoration_core()
+      .variants
+      .push((condition, BoxStyle::new().set_border_radius(border_radius)));
+
+    self
+  }
+
+  /// Sets the padding inside the control's own box.
+  #[inline(always)]
+  #[must_use]
+  fn set_padding(mut self, padding: crate::Inset) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_padding(padding);
+
+    self
+  }
+
+  /// Sets the pointer shape shown over the control.
+  #[inline(always)]
+  #[must_use]
+  fn set_cursor(mut self, cursor: skene_core::MouseCursor) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_cursor(cursor);
+
+    self
+  }
+
+  /// Sets a static width.
+  #[inline(always)]
+  #[must_use]
+  fn set_width(mut self, width: impl Into<skene_core::Dimension<f32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_width(width);
+
+    self
+  }
+
+  /// Sets a static height.
+  #[inline(always)]
+  #[must_use]
+  fn set_height(mut self, height: impl Into<skene_core::Dimension<f32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_height(height);
+
+    self
+  }
+
+  /// Sets a static minimum width.
+  #[inline(always)]
+  #[must_use]
+  fn set_min_width(mut self, min_width: impl Into<skene_core::Dimension<f32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_min_width(min_width);
+
+    self
+  }
+
+  /// Sets a static maximum width.
+  #[inline(always)]
+  #[must_use]
+  fn set_max_width(mut self, max_width: impl Into<skene_core::Dimension<f32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_max_width(max_width);
 
     self
   }
@@ -193,7 +316,7 @@ pub trait HasStyle: Sized {
   #[inline(always)]
   #[must_use]
   fn set_transition(mut self, transition: Transition) -> Self {
-    self.style_core().transitions.push(transition);
+    self.decoration_core().transitions.push(transition);
 
     self
   }
@@ -202,7 +325,7 @@ pub trait HasStyle: Sized {
   #[inline(always)]
   #[must_use]
   fn set_animation(mut self, animation: Animation<BoxStyle>) -> Self {
-    self.style_core().animations.push(animation);
+    self.decoration_core().animations.push(animation);
 
     self
   }

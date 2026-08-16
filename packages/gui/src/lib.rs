@@ -93,7 +93,7 @@ pub use crate::task::spawn;
 pub use crate::{
   container::Container,
   containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
-  control::{Behavior, EventCore, FocusCore, StyleCore},
+  control::{Behavior, DecorationCore, EventCore, FocusCore},
   enhanced::Enhanced,
   focus::FocusHandle,
   layout_box::LayoutBox,
@@ -110,7 +110,7 @@ pub use crate::{
     RawTextEditor,
     RawTextField,
   },
-  surface::{HasEvents, HasFocus, HasStyle},
+  surface::{HasDecoration, HasEvents, HasFocus},
   text::{RichText, Span, Text, TextStyle, TextTheme},
   web_controls::{WebCheckbox, WebPicker, WebRadio, WebSlider},
 };

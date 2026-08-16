@@ -14,9 +14,9 @@ use std::rc::Rc;
 use skene_core::KeyEvent;
 
 use crate::{
-  control::{EventCore, FocusCore, StyleCore},
+  control::{DecorationCore, EventCore, FocusCore, MarkCore},
   events::ScrollEvent,
-  props::Condition,
+  props::{BoxStyle, Condition, ControlStyle},
 };
 
 /// The control focus surface: autofocus and the focus and anchor bindings, forwarded to
@@ -136,29 +136,176 @@ pub trait HasEvents: Sized {
   }
 }
 
-/// The control styling surface: the static style and its conditional variants,
-/// forwarded to a control's [`StyleCore`].
-pub trait HasStyle: Sized {
-  /// The style vocabulary the control accepts.
-  type Style;
+/// The mark decoration surface: what a terminal control draws its marks with, spelled
+/// per property, forwarded to a control's [`MarkCore`].
+///
+/// A terminal draws a control's box itself, so what a control decorates is its marks—
+/// the check, the dot, the thumb, the indicator—rather than a surface.
+pub trait HasMarks: Sized {
+  /// The core the decoration lands on.
+  fn mark_core(&mut self) -> &mut MarkCore;
 
-  /// The core the styling lands on.
-  fn style_core(&mut self) -> &mut StyleCore<Self::Style>;
-
-  /// Sets the static style.
+  /// Sets the marks' color.
   #[inline(always)]
   #[must_use]
-  fn set_style(mut self, style: Self::Style) -> Self {
-    self.style_core().style = style;
+  fn set_color(mut self, color: skene_core::Color) -> Self {
+    let core = self.mark_core();
+
+    core.style = core.style.set_color(color);
 
     self
   }
 
-  /// Adds a conditional style variant, applied while `condition` holds.
+  /// Sets the marks' color while `condition` holds.
   #[inline(always)]
   #[must_use]
-  fn set_when(mut self, condition: Condition, style: Self::Style) -> Self {
-    self.style_core().variants.push((condition, style));
+  fn set_color_when(mut self, condition: Condition, color: skene_core::Color) -> Self {
+    self
+      .mark_core()
+      .variants
+      .push((condition, ControlStyle::new().set_color(color)));
+
+    self
+  }
+
+  /// Sets whether the marks are bold.
+  #[inline(always)]
+  #[must_use]
+  fn set_bold(mut self, bold: bool) -> Self {
+    let core = self.mark_core();
+
+    core.style = core.style.set_bold(bold);
+
+    self
+  }
+
+  /// Sets whether the marks are bold while `condition` holds.
+  #[inline(always)]
+  #[must_use]
+  fn set_bold_when(mut self, condition: Condition, bold: bool) -> Self {
+    self
+      .mark_core()
+      .variants
+      .push((condition, ControlStyle::new().set_bold(bold)));
+
+    self
+  }
+
+  /// Sets the pointer shape shown over the control, in terminals that honor it.
+  #[inline(always)]
+  #[must_use]
+  fn set_cursor(mut self, cursor: skene_core::MouseCursor) -> Self {
+    let core = self.mark_core();
+
+    core.style = core.style.set_cursor(cursor);
+
+    self
+  }
+}
+
+/// The box decoration surface: a terminal control that owns a box of its own, spelled
+/// per property, forwarded to its [`DecorationCore`].
+pub trait HasDecoration: Sized {
+  /// The core the decoration lands on.
+  fn decoration_core(&mut self) -> &mut DecorationCore;
+
+  /// Sets the background color.
+  #[inline(always)]
+  #[must_use]
+  fn set_color(mut self, color: skene_core::Color) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_color(color);
+
+    self
+  }
+
+  /// Sets the background color applied while `condition` holds.
+  #[inline(always)]
+  #[must_use]
+  fn set_color_when(mut self, condition: Condition, color: skene_core::Color) -> Self {
+    self
+      .decoration_core()
+      .variants
+      .push((condition, BoxStyle::new().set_color(color)));
+
+    self
+  }
+
+  /// Sets the border.
+  #[inline(always)]
+  #[must_use]
+  fn set_border(mut self, border: skene_core::Color) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_border(border);
+
+    self
+  }
+
+  /// Sets the border applied while `condition` holds.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_when(mut self, condition: Condition, border: skene_core::Color) -> Self {
+    self
+      .decoration_core()
+      .variants
+      .push((condition, BoxStyle::new().set_border(border)));
+
+    self
+  }
+
+  /// Sets the padding inside the control's own box, in cells.
+  #[inline(always)]
+  #[must_use]
+  fn set_padding(mut self, padding: crate::Inset) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_padding(padding);
+
+    self
+  }
+
+  /// Sets a static width, in cells.
+  #[inline(always)]
+  #[must_use]
+  fn set_width(mut self, width: impl Into<skene_core::Dimension<u32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_width(width);
+
+    self
+  }
+
+  /// Sets a static height, in cells.
+  #[inline(always)]
+  #[must_use]
+  fn set_height(mut self, height: impl Into<skene_core::Dimension<u32>>) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_height(height);
+
+    self
+  }
+
+  /// Sets the glyphs the border is drawn with.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_glyphs(mut self, glyphs: crate::props::BorderGlyphs) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_border_glyphs(glyphs);
+
+    self
+  }
+
+  /// Sets the pointer shape shown over the control, in terminals that honor it.
+  #[inline(always)]
+  #[must_use]
+  fn set_cursor(mut self, cursor: skene_core::MouseCursor) -> Self {
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_cursor(cursor);
 
     self
   }

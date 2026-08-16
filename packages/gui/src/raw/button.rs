@@ -94,9 +94,9 @@ impl crate::HasFocus for RawButton {
   }
 }
 
-impl crate::HasStyle for RawButton {
+impl crate::HasDecoration for RawButton {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

@@ -138,9 +138,9 @@ impl crate::HasFocus for RawTextField {
   }
 }
 
-impl crate::HasStyle for RawTextField {
+impl crate::HasDecoration for RawTextField {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

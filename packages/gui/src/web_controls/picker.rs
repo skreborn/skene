@@ -132,9 +132,9 @@ impl crate::HasFocus for WebPicker {
   }
 }
 
-impl crate::HasStyle for WebPicker {
+impl crate::HasDecoration for WebPicker {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

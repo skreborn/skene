@@ -141,9 +141,9 @@ impl crate::HasFocus for RawTextEditor {
   }
 }
 
-impl crate::HasStyle for RawTextEditor {
+impl crate::HasDecoration for RawTextEditor {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

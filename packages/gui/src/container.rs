@@ -621,7 +621,7 @@ impl Container {
     self
   }
 
-  /// Sets the click handler; its [`Prevent`] verdict is honored per the dispatch
+  /// Sets the click handler; its [`Bubbling`] verdict is honored per the dispatch
   /// contract.
   #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
@@ -665,7 +665,7 @@ impl Container {
   }
 
   /// Sets the key-press handler, run for keys pressed on the box or within it; its
-  /// [`Prevent`] verdict is honored per the dispatch contract.
+  /// [`Bubbling`] verdict is honored per the dispatch contract.
   #[inline(always)]
   pub fn handle_key_down<R: Into<Bubbling>>(
     mut self,
@@ -676,7 +676,7 @@ impl Container {
     self
   }
 
-  /// Sets the pointer-down handler; its [`Prevent`] verdict is honored per the dispatch
+  /// Sets the pointer-down handler; its [`Bubbling`] verdict is honored per the dispatch
   /// contract.
   #[inline(always)]
   pub fn handle_pointer_down<R: Into<Bubbling>>(
@@ -688,7 +688,7 @@ impl Container {
     self
   }
 
-  /// Sets the pointer-up handler; its [`Prevent`] verdict is honored per the dispatch
+  /// Sets the pointer-up handler; its [`Bubbling`] verdict is honored per the dispatch
   /// contract.
   #[inline(always)]
   pub fn handle_pointer_up<R: Into<Bubbling>>(
@@ -700,7 +700,7 @@ impl Container {
     self
   }
 
-  /// Sets the pointer-move handler; its [`Prevent`] verdict is honored per the dispatch
+  /// Sets the pointer-move handler; its [`Bubbling`] verdict is honored per the dispatch
   /// contract.
   #[inline(always)]
   pub fn handle_pointer_move<R: Into<Bubbling>>(

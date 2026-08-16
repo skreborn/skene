@@ -51,7 +51,11 @@
   layout means wrapping it. Conditional styling is per property (`set_spacing_when`)
   rather than a whole style under one condition, which keeps a variant expressible only
   where the property is. There is no box-surface forwarding to solve, and no trait for
-  it; `HasFocus`/`HasStyle` remain only because each `Simple*` wraps a `Raw*`. A
+  it. A control that draws nothing needs none of it either—its chrome is the `Container`
+  its child is made of. A control that owns an element of its own spells that element's
+  decoration per property too, through `HasDecoration` (`HasMarks` in the terminal,
+  where a control decorates its marks rather than a surface); the `BoxStyle` blob is
+  gone from every control surface. A
   third-party layout view is built from the public `LayoutBox` exactly as `Row` is;
   there is no privileged base.
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG

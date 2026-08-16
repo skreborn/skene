@@ -297,11 +297,9 @@ fn focus_variant_and_click() {
 
       tui::mount(|| {
         RawButton::new()
-          .set_style(BoxStyle::new().set_width(6).set_height(3))
-          .set_when(
-            Condition::Focused,
-            BoxStyle::new().set_border(Color::srgb(1., 1., 1.)),
-          )
+          .set_width(6)
+          .set_height(3)
+          .set_border_when(Condition::Focused, Color::srgb(1., 1., 1.))
           .handle_click(move || {
             clicks.set(clicks.get() + 1);
           })
@@ -449,7 +447,7 @@ fn caret_windows_long_values_and_follows_clicks() {
 
     tui::mount(|| {
       RawTextField::new()
-        .set_style(BoxStyle::new().set_width(5))
+        .set_width(5)
         .bind_value(name)
         .into_any()
         .build()
@@ -594,7 +592,7 @@ fn focus_handle_and_autofocus() {
           .set_children((
             RawTextField::new().set_autofocus(),
             RawButton::new()
-              .set_style(BoxStyle::new().set_height(1))
+              .set_height(1)
               .handle_click(|| {})
               .bind_focus(&handle),
           ))
@@ -685,12 +683,14 @@ fn mouse_click_hits_and_focuses() {
         Row::new()
           .set_children((
             RawButton::new()
-              .set_style(BoxStyle::new().set_width(4).set_height(2))
+              .set_width(4)
+              .set_height(2)
               .handle_click(move || {
                 first.set(first.get() + 1);
               }),
             RawButton::new()
-              .set_style(BoxStyle::new().set_width(4).set_height(2))
+              .set_width(4)
+              .set_height(2)
               .handle_click(move || {
                 second.set(second.get() + 1);
               }),
@@ -818,7 +818,8 @@ fn modal_overlay_covers_blocks_and_dismisses() {
         Column::new()
           .set_children((
             RawButton::new()
-              .set_style(BoxStyle::new().set_width(6).set_height(1))
+              .set_width(6)
+              .set_height(1)
               .set_child(Text::new("base"))
               .handle_click(move || {
                 clicks.set(clicks.get() + 1);
@@ -876,7 +877,8 @@ fn popup_anchors_below_and_light_dismisses() {
         Column::new()
           .set_children((
             RawButton::new()
-              .set_style(BoxStyle::new().set_width(8).set_height(1))
+              .set_width(8)
+              .set_height(1)
               .set_child(Text::new("trigger"))
               .bind_anchor(&anchor_for_button),
             Overlay::popup()
@@ -1736,9 +1738,7 @@ fn control_style_styles_the_glyph_and_containers_the_box() {
         .set_border(Color::srgb(1., 1., 1.))
         .set_width(3)
         .set_height(3)
-        .set_child(
-          RawCheckbox::new().set_style(ControlStyle::new().set_color(Color::srgb(1., 0., 0.))),
-        )
+        .set_child(RawCheckbox::new().set_color(Color::srgb(1., 0., 0.)))
         .into_any()
         .build()
     });
@@ -2508,7 +2508,7 @@ fn hover_cursor_defaults_follow_the_content() {
           Text::new("words").set_selectable(true),
           Text::new("chrome"),
           RawButton::new()
-            .set_style(BoxStyle::new().set_cursor(MouseCursor::Default))
+            .set_cursor(MouseCursor::Default)
             .set_child(Text::new("styled")),
         ))
         .into_any()
@@ -2598,10 +2598,7 @@ fn interaction_states_tint_distinctly() {
         .set_children((
           RawButton::new().set_child(Text::new("go")),
           RawButton::new()
-            .set_when(
-              Condition::Hovered,
-              BoxStyle::new().set_color(Color::srgb(1., 0., 0.)),
-            )
+            .set_color_when(Condition::Hovered, Color::srgb(1., 0., 0.))
             .set_child(Text::new("hi")),
           RawCheckbox::new().set_label("c"),
         ))

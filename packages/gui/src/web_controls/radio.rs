@@ -131,9 +131,9 @@ impl crate::HasFocus for WebRadio {
   }
 }
 
-impl crate::HasStyle for WebRadio {
+impl crate::HasDecoration for WebRadio {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

@@ -420,11 +420,9 @@ impl crate::HasFocus for RawPicker {
   }
 }
 
-impl crate::HasStyle for RawPicker {
-  type Style = crate::props::ControlStyle;
-
+impl crate::HasMarks for RawPicker {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+  fn mark_core(&mut self) -> &mut crate::MarkCore {
     &mut self.base.style
   }
 }

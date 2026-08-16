@@ -132,9 +132,9 @@ impl crate::HasFocus for WebSlider {
   }
 }
 
-impl crate::HasStyle for WebSlider {
+impl crate::HasDecoration for WebSlider {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore {
+  fn decoration_core(&mut self) -> &mut crate::DecorationCore {
     &mut self.control.style
   }
 }

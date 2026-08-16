@@ -175,11 +175,9 @@ impl crate::HasFocus for RawRadio {
   }
 }
 
-impl crate::HasStyle for RawRadio {
-  type Style = crate::props::ControlStyle;
-
+impl crate::HasMarks for RawRadio {
   #[inline(always)]
-  fn style_core(&mut self) -> &mut crate::StyleCore<crate::props::ControlStyle> {
+  fn mark_core(&mut self) -> &mut crate::MarkCore {
     &mut self.base.style
   }
 }

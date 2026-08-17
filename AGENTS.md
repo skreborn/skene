@@ -61,6 +61,16 @@
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.
+- **A subtree's colors come from one theme, and the scheme is a condition.** `SimpleTheme`
+  holds a light and a dark `Palette` and provides them through context; a themed property
+  is spelled `theme_<prop>(|palette| palette.token)` and expands to ordinary conditional
+  styling—the light value plus a `DarkMode` variant—so light/dark costs no script and a
+  server-rendered page answers the reader's preference before any bundle arrives. Fixing
+  the scheme (`set_scheme`) collapses that to one value. There is no reactive scheme
+  setter: a variant is static data by the time a driver sees it, so a scheme bound to a
+  user setting rebuilds the subtree through `derived`, which is the mechanism that
+  already exists. The theme's child is a closure, since a `theme_` setter resolves when
+  it is called and an argument is evaluated before its call.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
@@ -150,8 +160,9 @@
   built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
   view against the driver's escape hatch.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
-  function that realizes the handler is named the same.
+  `theme_<prop>` for one taken from the inherited theme's palette, `handle_<event>` for
+  an event handler (e.g. `Container::handle_click`). A driver function that realizes the
+  handler is named the same.
 - The layout vocabulary rule extends to the whole surface: views, controls, and
   composition helpers take the platform-native frameworks' names (`TextField`,
   `TextEditor`, `Picker`, `LazyColumn`, `derived`), never HTML element or React

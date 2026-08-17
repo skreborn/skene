@@ -13,9 +13,10 @@ mod radio;
 mod slider;
 mod text_editor;
 mod text_field;
+mod theme;
 
-use skene_core::{Border, Condition, Inset};
-pub use skene_simple::{SimplePalette, SimpleVariant};
+use skene_core::{Condition, Inset};
+pub use skene_simple::{Look, Palette, SimpleVariant};
 
 pub use self::{
   button::SimpleButton,
@@ -26,6 +27,7 @@ pub use self::{
   slider::SimpleSlider,
   text_editor::SimpleTextEditor,
   text_field::SimpleTextField,
+  theme::{SimpleTheme, ThemedBox, ThemedControl, ThemedText},
 };
 
 /// The corner radius of a Simple control.
@@ -36,9 +38,11 @@ pub(crate) const CARD_RADIUS: f32 = 12.;
 /// The shared field chrome, applied per property: padded, hairline-bordered, rounded,
 /// with the border brightening to the ring on focus.
 pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T) -> T {
+  use self::theme::ThemedControl;
+
   control
     .set_padding(Inset::symmetric(12., 8.))
-    .set_border(Border::new(1., SimplePalette::border()))
     .set_border_radius(RADIUS)
-    .set_border_when(Condition::Focused, Border::new(1., SimplePalette::ring()))
+    .theme_border(1., |palette| palette.border)
+    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
 }

@@ -1,8 +1,8 @@
 //! A ready-made button in the Simple design language.
 
-use skene_core::{Border, Color, Condition, HasChildren, Inset, Source, View};
+use skene_core::{Color, Condition, HasChildren, Inset, Source, View};
 
-use crate::{HasDecoration, RawButton, SimpleVariant, Text, simple};
+use crate::{HasDecoration, RawButton, SimpleVariant, Text, ThemedControl, ThemedText, simple};
 
 /// A ready-made button: a text label on the variant's surface, with hover feedback and
 /// the platform's full keyboard behavior.
@@ -61,7 +61,7 @@ impl SimpleButton {
 
 impl View for SimpleButton {
   fn build(self) -> skene_core::NodeId {
-    let look = self.variant.look();
+    let variant = self.variant;
     let text = match self.label {
       Source::Static(label) => Text::new(label),
       Source::Derived(label) => Text::derive(move || label()),
@@ -70,15 +70,19 @@ impl View for SimpleButton {
     self
       .raw
       .set_padding(Inset::symmetric(16., 8.))
-      .set_color(look.surface)
-      .set_border(Border::new(1., look.border.unwrap_or(Color::TRANSPARENT)))
+      .theme_color(move |palette| variant.look(palette).surface)
+      .theme_border(1., move |palette| {
+        variant.look(palette).border.unwrap_or(Color::TRANSPARENT)
+      })
       .set_border_radius(simple::RADIUS)
-      .set_color_when(Condition::Hovered, look.hover)
+      .theme_color_when(Condition::Hovered, move |palette| {
+        variant.look(palette).hover
+      })
       .set_child(
         text
           .set_font_size(14.)
           .set_font_weight(500.)
-          .set_color(look.ink),
+          .theme_color(move |palette| variant.look(palette).ink),
       )
       .build()
   }

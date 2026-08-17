@@ -6,7 +6,7 @@ use crate::{
   HasDecoration,
   RawButton,
   props::Condition,
-  simple::{self, SimpleVariant},
+  simple::{self, SimpleVariant, ThemedControl, ThemedText},
 };
 
 /// A ready-made button: a one-row text label on the variant's surface, with the
@@ -59,7 +59,7 @@ impl View for SimpleButton {
   fn build(self) -> NodeId {
     use skene_core::HasChildren;
 
-    let look = self.variant.look();
+    let variant = self.variant;
     let text = match self.label {
       Source::Static(label) => crate::Text::new(label),
       Source::Derived(label) => crate::Text::derive(move || label()),
@@ -67,22 +67,34 @@ impl View for SimpleButton {
     let mut button = self
       .raw
       .set_padding(crate::Inset::horizontal(2))
-      .set_color(look.surface)
+      .theme_color(move |palette| variant.look(palette).surface)
       .set_cursor(MouseCursor::Click);
 
-    button = match look.border {
-      Some(border) => button
-        .set_border(border)
+    // A bordered variant takes its feedback on the border, a filled one on the fill: a
+    // terminal border is a cell rather than a hairline, so an invisible one would still
+    // cost the room. Which of the two a variant is comes from the palette in force,
+    // since the border is the palette's to carry.
+    button = match variant.look(&simple::painted_palette()).border {
+      Some(_) => button
         .set_border_glyphs(simple::GLYPHS)
-        .set_border_when(Condition::Hovered, crate::simple::SimplePalette::ring())
-        .set_border_when(Condition::Focused, look.ink),
+        .theme_border(move |palette| variant.look(palette).border.unwrap_or(palette.border))
+        .theme_border_when(Condition::Hovered, |palette| palette.ring)
+        .theme_border_when(Condition::Focused, move |palette| variant.look(palette).ink),
       None => button
-        .set_color_when(Condition::Hovered, look.hover)
-        .set_color_when(Condition::Focused, look.focus),
+        .theme_color_when(Condition::Hovered, move |palette| {
+          variant.look(palette).hover
+        })
+        .theme_color_when(Condition::Focused, move |palette| {
+          variant.look(palette).focus
+        }),
     };
 
     button
-      .set_child(text.set_bold(true).set_color(look.ink))
+      .set_child(
+        text
+          .set_bold(true)
+          .theme_color(move |palette| variant.look(palette).ink),
+      )
       .build()
   }
 }

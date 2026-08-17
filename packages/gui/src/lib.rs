@@ -76,17 +76,22 @@ pub use crate::resource::Resource;
 pub use crate::routing::{install_router, install_static_router};
 #[cfg(feature = "simple-views")]
 pub use crate::simple::{
+  Look,
+  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
-  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleRadioGroup,
   SimpleSlider,
   SimpleTextEditor,
   SimpleTextField,
+  SimpleTheme,
   SimpleVariant,
+  ThemedBox,
+  ThemedControl,
+  ThemedText,
 };
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;

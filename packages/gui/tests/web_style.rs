@@ -44,6 +44,13 @@ fn root_class(body: &str) -> String {
   body[start..end].to_owned()
 }
 
+/// A color as the CSS the driver renders it to.
+fn css_color(color: skene_gui::core::Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
 /// A hover variant renders as a `:hover` rule on the same class.
 #[test]
 fn state_variant_renders_a_pseudo_class_rule() {
@@ -325,4 +332,56 @@ fn grid_tracks_and_placements_render() {
 
   assert!(body.contains("grid-column:1 / 3;"));
   assert!(body.contains("grid-row:auto / span 2;"));
+}
+
+/// The theme's scheme is real CSS: a server-rendered page carries the light value on the
+/// class and the dark one inside a `prefers-color-scheme` block, so it answers the
+/// reader's preference with no bundle loaded at all.
+#[test]
+fn a_theme_following_the_platform_renders_a_color_scheme_query() {
+  use skene_gui::{Palette, SimpleTheme, ThemedBox};
+
+  let rendered = render_to_string(|| {
+    SimpleTheme::new().set_child(|| Container::new().theme_color(|palette| palette.card))
+  });
+  let class = root_class(rendered.body());
+  let light = css_color(Palette::light().card);
+  let dark = css_color(Palette::dark().card);
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!("background-color:{light};")),
+    "the light value is the class's own"
+  );
+
+  assert!(rendered.styles().contains(&format!(
+    "@media (prefers-color-scheme: dark){{.{class}{{background-color:{dark};}}}}"
+  )));
+}
+
+/// A fixed scheme renders one value and no query: nothing is left for the platform to
+/// answer.
+#[test]
+fn a_theme_fixed_to_a_scheme_renders_no_color_scheme_query() {
+  use skene_gui::{Palette, SimpleTheme, ThemedBox, core::ColorScheme};
+
+  let rendered = render_to_string(|| {
+    SimpleTheme::new()
+      .set_scheme(ColorScheme::Dark)
+      .set_child(|| Container::new().theme_color(|palette| palette.card))
+  });
+  let class = root_class(rendered.body());
+
+  assert!(rendered.styles().contains(&format!(
+    "background-color:{};",
+    css_color(Palette::dark().card)
+  )));
+
+  // The stylesheet is the whole interned sheet, so the class names what to look for.
+  assert!(
+    !rendered
+      .styles()
+      .contains(&format!("@media (prefers-color-scheme: dark){{.{class}"))
+  );
 }

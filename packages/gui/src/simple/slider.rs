@@ -4,7 +4,6 @@ use std::rc::Rc;
 
 use skene_core::{
   Alignment,
-  Border,
   Condition,
   Dimension,
   HasChildren,
@@ -14,7 +13,7 @@ use skene_core::{
   View,
 };
 
-use crate::{Container, Enhanced, HasDecoration, RawSlider, SimplePalette, Stack, WebSlider};
+use crate::{Container, Enhanced, HasDecoration, RawSlider, Stack, ThemedBox, WebSlider};
 
 /// The track's thickness.
 const TRACK_HEIGHT: f32 = 6.;
@@ -154,14 +153,14 @@ fn drawn(
     .set_width(Dimension::Fraction(1.))
     .set_height(TRACK_HEIGHT)
     .set_border_radius(TRACK_HEIGHT / 2.)
-    .set_color(SimplePalette::secondary())
+    .theme_color(|palette| palette.secondary.surface)
     .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
     .set_child(
       Container::new()
         .derive_width(move || Dimension::Fraction(range.fraction_of(filled())))
         .set_height(TRACK_HEIGHT)
         .set_border_radius(TRACK_HEIGHT / 2.)
-        .set_color(SimplePalette::primary()),
+        .theme_color(|palette| palette.primary.surface),
     );
   // The thumb rides the fill's trailing edge, so it needs the same fraction rather than
   // a position of its own.
@@ -174,9 +173,9 @@ fn drawn(
         .set_width(THUMB_SIZE)
         .set_height(THUMB_SIZE)
         .set_border_radius(THUMB_SIZE / 2.)
-        .set_color(SimplePalette::primary())
-        .set_border(Border::new(2., SimplePalette::background()))
-        .set_border_when(Condition::Focused, Border::new(2., SimplePalette::ring())),
+        .theme_color(|palette| palette.primary.surface)
+        .theme_border(2., |palette| palette.background)
+        .theme_border_when(Condition::Focused, 2., |palette| palette.ring),
     );
   let mut control = RawSlider::new(range.min(), range.max())
     .set_step(range.step())

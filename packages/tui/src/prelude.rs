@@ -6,6 +6,7 @@ pub use skene_core::{
   Arrangement,
   Axis,
   Color,
+  ColorScheme,
   Dimension,
   Errors,
   FlexDirection,
@@ -98,13 +99,18 @@ pub use crate::{
 };
 #[cfg(feature = "simple-views")]
 pub use crate::{
+  Look,
+  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
-  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleSlider,
   SimpleTextField,
+  SimpleTheme,
   SimpleVariant,
+  ThemedBox,
+  ThemedControl,
+  ThemedText,
 };

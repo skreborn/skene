@@ -12,8 +12,9 @@ use crate::{
   RawOption,
   RawPicker,
   Row,
-  SimplePalette,
   Text,
+  ThemedBox,
+  ThemedText,
   WebPicker,
   simple,
 };
@@ -141,13 +142,13 @@ fn native(
   value: impl Fn() -> String + 'static,
   change_handler: Option<Rc<dyn Fn(String)>>,
 ) -> WebPicker {
-  use crate::HasDecoration;
+  use crate::ThemedControl;
 
   let mut control = simple::field_chrome(
     WebPicker::new()
       .set_options(options)
       .derive_value(value)
-      .set_color(SimplePalette::card()),
+      .theme_color(|palette| palette.card),
   );
 
   if let Some(action) = change_handler {
@@ -167,13 +168,10 @@ fn drawn(
   let shown = value.clone();
   let face = Container::new()
     .set_padding(Inset::symmetric(12., 8.))
-    .set_border(skene_core::Border::new(1., SimplePalette::border()))
     .set_border_radius(simple::RADIUS)
-    .set_border_when(
-      Condition::Focused,
-      skene_core::Border::new(1., SimplePalette::ring()),
-    )
-    .set_color(SimplePalette::card())
+    .theme_color(|palette| palette.card)
+    .theme_border(1., |palette| palette.border)
+    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
     .set_child(
       Row::new()
         .set_spacing(INDICATOR_GAP)
@@ -187,14 +185,14 @@ fn drawn(
               .find(|(value, _)| *value == chosen)
               .map_or(chosen, |(_, label)| label.clone())
           }),
-          Text::new(INDICATOR).set_color(SimplePalette::muted_foreground()),
+          Text::new(INDICATOR).theme_color(|palette| palette.muted_foreground),
         )),
     );
   // The overlay carries no surface of its own, so the list paints one.
   let list = Container::new()
-    .set_color(SimplePalette::card())
-    .set_border(skene_core::Border::new(1., SimplePalette::border()))
     .set_border_radius(simple::RADIUS)
+    .theme_color(|palette| palette.card)
+    .theme_border(1., |palette| palette.border)
     .set_padding(Inset::all(4.))
     .set_child(
       Column::new().set_children(
@@ -220,7 +218,7 @@ fn row(value: String, label: String) -> impl View {
     Container::new()
       .set_padding(Inset::symmetric(8., 6.))
       .set_border_radius(4.)
-      .set_color_when(Condition::Focused, SimplePalette::primary())
+      .theme_color_when(Condition::Focused, |palette| palette.primary.surface)
       .set_child(Text::new(label)),
   )
 }

@@ -493,11 +493,17 @@ pub(crate) fn provide_group_base(base: TextStyle, build: impl FnOnce()) {
 /// within the subtree, layered under a link's own overrides. Each style is a full
 /// [`TextStyle`], so it can carry static and derived properties alike. Nested themes
 /// accumulate.
+///
+/// [`set_when`](Self::set_when) inherits a conditional variant the same way, so an
+/// ambient ink can answer the viewport or the color scheme without a closure—and
+/// without script, since a variant compiles to real CSS. An inherited variant never
+/// inks a link, matching the base style's rule.
 #[must_use]
 pub struct TextTheme<C = NoChild> {
   pub(crate) child: C,
   pub(crate) base: TextStyle,
   pub(crate) link: TextStyle,
+  pub(crate) variants: Vec<(Condition, RunStyle)>,
 }
 
 impl TextTheme {
@@ -508,6 +514,7 @@ impl TextTheme {
       child: NoChild,
       base: TextStyle::new(),
       link: TextStyle::new(),
+      variants: Vec::new(),
     }
   }
 }
@@ -520,6 +527,7 @@ impl<C> TextTheme<C> {
       child: child.into_view(),
       base: self.base,
       link: self.link,
+      variants: self.variants,
     }
   }
 
@@ -538,6 +546,15 @@ impl<C> TextTheme<C> {
 
     self
   }
+
+  /// Adds a conditional variant inherited by the subtree, applied while `condition`
+  /// holds.
+  #[inline(always)]
+  pub fn set_when(mut self, condition: Condition, style: RunStyle) -> Self {
+    self.variants.push((condition, style));
+
+    self
+  }
 }
 
 /// Text styling inherited by a subtree, threaded through the reactive `Context`.
@@ -545,6 +562,7 @@ impl<C> TextTheme<C> {
 struct InheritedText {
   base: TextStyle,
   link: TextStyle,
+  variants: Vec<(Condition, RunStyle)>,
 }
 
 /// Resolves a text node's effective style from the inherited theme (via `Context`) and the
@@ -565,6 +583,27 @@ pub(crate) fn resolved_text_style(style: TextStyle, is_link: bool) -> TextStyle 
   resolved.overlay(style)
 }
 
+/// The variants a run inherits, layered under its own so a run's variant wins over the
+/// theme's. `is_link` drops the inherited ink, exactly as the base style does.
+#[inline(always)]
+pub(crate) fn inherited_text_variants(is_link: bool) -> Vec<(Condition, RunStyle)> {
+  let inherited = use_context::<InheritedText>().unwrap_or_default();
+
+  if !is_link {
+    return inherited.variants;
+  }
+
+  inherited
+    .variants
+    .into_iter()
+    .map(|(condition, mut style)| {
+      style.color = None;
+
+      (condition, style)
+    })
+    .collect()
+}
+
 impl Default for TextTheme {
   #[inline(always)]
   fn default() -> Self {
@@ -578,6 +617,7 @@ impl View for TextTheme<AnyView> {
 
     inherited.base = inherited.base.overlay(self.base);
     inherited.link = inherited.link.overlay(self.link);
+    inherited.variants.extend(self.variants);
 
     let scope = Owner::current().child();
 
@@ -599,6 +639,7 @@ mod realize {
     SpanContent,
     Text,
     TextStyle,
+    inherited_text_variants,
     provide_group_base,
     resolved_text_style,
   };
@@ -618,7 +659,10 @@ mod realize {
     dynamics: RunDynamics,
   ) -> (NodeId, TextStyle) {
     let resolved = resolved_text_style(style, link.is_some());
+    let mut variants = inherited_text_variants(link.is_some());
     let mut statics = RunStyle::default();
+
+    variants.extend(dynamics.variants);
     let mut binders = Binders::new();
 
     statics.selection_color = resolved.selection_color;
@@ -654,7 +698,7 @@ mod realize {
       link,
       link_policy,
       style: statics,
-      variants: dynamics.variants,
+      variants,
       transitions: dynamics.transitions,
       animations: dynamics.animations,
     });

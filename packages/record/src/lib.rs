@@ -19,6 +19,7 @@ use skene_core::{
   BoxStyle,
   ButtonProps,
   CheckboxProps,
+  Condition,
   KeyEvent,
   Layout,
   NodeId,
@@ -536,6 +537,35 @@ pub fn box_style(node: NodeId) -> Option<BoxStyle> {
     Some(style)
   })
   .flatten()
+}
+
+/// A box's conditional variants, in the order they were declared—later entries win over
+/// earlier ones, exactly as a driver applies them.
+#[must_use]
+pub fn box_variants(node: NodeId) -> Vec<(Condition, BoxStyle)> {
+  with_node(node, |node| match &node.kind {
+    Kind::Box(props) => props.variants.clone(),
+    Kind::Button(props) => props.control.variants.clone(),
+    Kind::TextField(props) => props.control.variants.clone(),
+    Kind::Checkbox(props) => props.control.variants.clone(),
+    Kind::Radio(props) => props.control.variants.clone(),
+    Kind::Picker(props) => props.control.variants.clone(),
+    Kind::TextEditor(props) => props.control.variants.clone(),
+    Kind::Slider(props) => props.control.variants.clone(),
+    Kind::Overlay(props) => props.variants.clone(),
+    Kind::Group | Kind::Run(_) => Vec::new(),
+  })
+  .unwrap_or_default()
+}
+
+/// A run's conditional variants, in declaration order.
+#[must_use]
+pub fn run_variants(node: NodeId) -> Vec<(Condition, RunStyle)> {
+  with_node(node, |node| match &node.kind {
+    Kind::Run(props) => props.variants.clone(),
+    _ => Vec::new(),
+  })
+  .unwrap_or_default()
 }
 
 /// A run's effective style: its static style with every reactive update folded in.

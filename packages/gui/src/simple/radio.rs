@@ -5,7 +5,6 @@ use std::rc::Rc;
 use skene_core::{
   Alignment,
   AnyView,
-  Border,
   Condition,
   HasChildren,
   IntoView,
@@ -18,14 +17,16 @@ use skene_reactive::{Owner, provide_context, use_context};
 
 use crate::{
   Container,
+  DerivedView,
   Enhanced,
   HasDecoration,
   RawRadio,
   RawRadioGroup,
   Row,
-  SimplePalette,
   Text,
+  ThemedBox,
   WebRadio,
+  empty,
 };
 
 /// The ring's diameter.
@@ -259,6 +260,15 @@ fn native(group: Option<GroupName>, value: String, label: Option<String>) -> Web
   control
 }
 
+/// The chosen member's dot, centered in its ring.
+fn dot() -> impl View {
+  Container::new()
+    .set_width(DOT_SIZE)
+    .set_height(DOT_SIZE)
+    .set_border_radius(DOT_SIZE / 2.)
+    .theme_color(|palette| palette.primary.surface)
+}
+
 /// The drawn form: a ring that carries a dot when chosen, beside the caption.
 fn drawn(group: Option<GroupName>, value: String, label: Option<String>) -> impl View {
   let chosen = {
@@ -275,24 +285,21 @@ fn drawn(group: Option<GroupName>, value: String, label: Option<String>) -> impl
     .set_width(RING_SIZE)
     .set_height(RING_SIZE)
     .set_border_radius(RING_SIZE / 2.)
-    .set_border(Border::new(1., SimplePalette::border()))
-    .set_border_when(Condition::Focused, Border::new(1., SimplePalette::ring()))
-    .set_color(SimplePalette::card())
+    .theme_color(|palette| palette.card)
+    .theme_border(1., |palette| palette.border)
+    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
     .set_alignment(Alignment::CENTER)
-    .set_child(
-      Container::new()
-        .set_width(DOT_SIZE)
-        .set_height(DOT_SIZE)
-        .set_border_radius(DOT_SIZE / 2.)
-        .derive_color(move || {
-          if dotted() {
-            SimplePalette::primary()
-          }
-          else {
-            SimplePalette::card()
-          }
-        }),
-    );
+    // The dot comes and goes rather than changing color: a color that changes with the
+    // state has to be derived, and a derived value cannot also carry the scheme variant
+    // that keeps the theme scriptless.
+    .set_child(DerivedView::new(move || {
+      if dotted() {
+        dot().into_view()
+      }
+      else {
+        empty().into_view()
+      }
+    }));
   let mut control = RawRadio::new(value);
 
   if let Some(label) = label.clone() {

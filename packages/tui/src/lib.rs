@@ -88,15 +88,20 @@ pub use terminal::{
 
 #[cfg(feature = "simple-views")]
 pub use crate::simple::{
+  Look,
+  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
-  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleSlider,
   SimpleTextField,
+  SimpleTheme,
   SimpleVariant,
+  ThemedBox,
+  ThemedControl,
+  ThemedText,
 };
 pub use crate::{
   container::Container,

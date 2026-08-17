@@ -2,17 +2,20 @@
 
 use std::rc::Rc;
 
-use skene_core::{Alignment, Border, Condition, HasChildren, ItemAlignment, Source, View};
+use skene_core::{Alignment, Condition, HasChildren, IntoView, ItemAlignment, Source, View};
 
 use crate::{
   Container,
+  DerivedView,
   Enhanced,
   HasDecoration,
   RawCheckbox,
   Row,
-  SimplePalette,
   Text,
+  ThemedBox,
+  ThemedText,
   WebCheckbox,
+  empty,
 };
 
 /// The box's edge length.
@@ -147,37 +150,40 @@ fn native(
   control
 }
 
+/// The checked box's fill and its check, filling the box it sits in.
+fn mark() -> impl View {
+  Container::new()
+    .theme_color(|palette| palette.primary.surface)
+    .set_alignment(Alignment::CENTER)
+    .set_child(Text::new("✓").theme_color(|palette| palette.primary.ink))
+}
+
 /// The drawn form: an ordinary box and mark, beside the caption.
 fn drawn(
   checked: impl Fn() -> bool + Clone + 'static,
   toggle_handler: Option<Rc<dyn Fn(bool)>>,
   label: Option<String>,
 ) -> impl View {
-  let filled = checked.clone();
   let marked = checked.clone();
   let box_view = Container::new()
     .set_width(BOX_SIZE)
     .set_height(BOX_SIZE)
     .set_border_radius(4.)
-    .set_border(Border::new(1., SimplePalette::border()))
+    .theme_color(|palette| palette.card)
+    .theme_border(1., |palette| palette.border)
     // The focus ring is the field's, so a drawn control reads as one of the family.
-    .set_border_when(
-      Condition::Focused,
-      Border::new(1., SimplePalette::ring()),
-    )
-    .derive_color(move || {
-      if filled() {
-        SimplePalette::primary()
+    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
+    // The mark is a child rather than a fill color on the box: a color that changes
+    // with the state has to be derived, and a derived value cannot also carry the
+    // scheme variant that keeps the theme scriptless.
+    .set_child(DerivedView::new(move || {
+      if marked() {
+        mark().into_view()
       }
       else {
-        SimplePalette::card()
+        empty().into_view()
       }
-    })
-    .set_alignment(Alignment::CENTER)
-    .set_child(
-      Text::derive(move || if marked() { "✓" } else { "" }.to_owned())
-        .set_color(SimplePalette::primary_foreground()),
-    );
+    }));
   let mut control = RawCheckbox::new().derive_checked(checked);
 
   if let Some(action) = toggle_handler {

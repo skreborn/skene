@@ -3067,3 +3067,62 @@ fn has_focus_forwards_through_a_raw_control() {
 
   assert!(focused, "autofocus forwards through the wrapper");
 }
+
+/// A themed surface paints the palette of the terminal's own background, and follows it
+/// when the reported background changes: the theme carries both palettes and the scheme
+/// picks one, exactly as the GUI facade's conditions do.
+#[test]
+fn a_theme_follows_the_terminals_background() {
+  let (dark, light) = with_driver(|| {
+    tui::mount(|| {
+      SimpleTheme::new()
+        .set_child(|| {
+          Container::new()
+            .set_width(4)
+            .set_height(1)
+            .theme_color(|palette| palette.card)
+        })
+        .into_any()
+        .build()
+    });
+
+    let dark = tui::render_to_colors(4, 1);
+
+    tui::trigger_color_scheme(false);
+
+    (dark, tui::render_to_colors(4, 1))
+  });
+
+  assert_ne!(
+    dark, light,
+    "the surface repaints when the terminal reports the other background"
+  );
+}
+
+/// A fixed scheme ignores the terminal's background, so a subtree pinned to one palette
+/// paints the same however the terminal reports itself.
+#[test]
+fn a_fixed_scheme_ignores_the_terminals_background() {
+  let (dark, light) = with_driver(|| {
+    tui::mount(|| {
+      SimpleTheme::new()
+        .set_scheme(ColorScheme::Light)
+        .set_child(|| {
+          Container::new()
+            .set_width(4)
+            .set_height(1)
+            .theme_color(|palette| palette.card)
+        })
+        .into_any()
+        .build()
+    });
+
+    let dark = tui::render_to_colors(4, 1);
+
+    tui::trigger_color_scheme(false);
+
+    (dark, tui::render_to_colors(4, 1))
+  });
+
+  assert_eq!(dark, light);
+}

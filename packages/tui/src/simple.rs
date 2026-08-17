@@ -16,9 +16,11 @@ mod picker;
 mod radio;
 mod slider;
 mod text_field;
+mod theme;
 
-pub use skene_simple::{SimplePalette, SimpleVariant};
+pub use skene_simple::{Look, Palette, SimpleVariant};
 
+pub(crate) use self::theme::painted_palette;
 pub use self::{
   button::SimpleButton,
   card::SimpleCard,
@@ -27,6 +29,7 @@ pub use self::{
   radio::SimpleRadio,
   slider::SimpleSlider,
   text_field::SimpleTextField,
+  theme::{SimpleTheme, ThemedBox, ThemedControl, ThemedText},
 };
 use crate::props::{BorderGlyphs, Condition};
 
@@ -36,10 +39,12 @@ pub(crate) const GLYPHS: BorderGlyphs = BorderGlyphs::ROUNDED;
 /// The shared field chrome, applied per property: padded, bordered in the scheme's
 /// hairline, brightening on hover and again on focus.
 pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T) -> T {
+  use self::theme::ThemedControl;
+
   control
     .set_padding(crate::Inset::horizontal(1))
-    .set_border(SimplePalette::border())
     .set_border_glyphs(GLYPHS)
-    .set_border_when(Condition::Hovered, SimplePalette::ring())
-    .set_border_when(Condition::Focused, SimplePalette::foreground())
+    .theme_border(|palette| palette.border)
+    .theme_border_when(Condition::Hovered, |palette| palette.ring)
+    .theme_border_when(Condition::Focused, |palette| palette.foreground)
 }

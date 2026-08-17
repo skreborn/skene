@@ -7,6 +7,7 @@ pub use skene_core::{
   Axis,
   BoxStyle,
   Color,
+  ColorScheme,
   Condition,
   Dimension,
   Easing,
@@ -59,6 +60,7 @@ pub use crate::{
   Border,
   Column,
   Container,
+  DerivedView,
   ErrorBoundary,
   Errors,
   Flexible,
@@ -104,17 +106,22 @@ pub use crate::{
 };
 #[cfg(feature = "simple-views")]
 pub use crate::{
+  Look,
+  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
-  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleRadioGroup,
   SimpleSlider,
   SimpleTextEditor,
   SimpleTextField,
+  SimpleTheme,
   SimpleVariant,
+  ThemedBox,
+  ThemedControl,
+  ThemedText,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use crate::{hydrate_page, launch};

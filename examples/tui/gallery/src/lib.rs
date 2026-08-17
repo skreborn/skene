@@ -4,20 +4,17 @@
 
 use skene_tui::prelude::*;
 
-/// The whole gallery: a scrollable column of titled sections, its text selecting in
-/// the theme's colors.
+/// The whole gallery: a scrollable column of titled sections, dressed by one theme
+/// that follows the terminal's own background.
 #[must_use]
 pub fn app() -> impl IntoView {
-  TextTheme::new()
-    .set_child(gallery())
-    .set_selection_color(SimplePalette::background())
-    .set_selection_background(SimplePalette::foreground())
+  SimpleTheme::new().set_child(gallery)
 }
 
 fn gallery() -> impl IntoView {
   Container::new()
     .set_overflow(Overflow::Auto)
-    .set_color(SimplePalette::background())
+    .theme_color(|palette| palette.background)
     .set_child(
       Column::new()
         .set_item_alignment(ItemAlignment::Center)
@@ -29,7 +26,7 @@ fn gallery() -> impl IntoView {
               .set_children((
                 Text::new("GALLERY")
                   .set_bold(true)
-                  .set_color(SimplePalette::muted_foreground()),
+                  .theme_color(|palette| palette.muted_foreground),
                 text(),
                 buttons(),
                 toggles(),
@@ -49,26 +46,26 @@ fn text() -> impl IntoView {
     Column::new().set_spacing(1).set_children((
       Text::new("A run of text with a color and a bold flag.")
         .set_bold(true)
-        .set_color(SimplePalette::foreground()),
+        .theme_color(|palette| palette.foreground),
       Text::new(
         "Long runs wrap at the available width, breaking at spaces, so a paragraph \
          reads naturally in however many columns it gets.",
       )
-      .set_color(SimplePalette::muted_foreground()),
+      .theme_color(|palette| palette.muted_foreground),
       Text::new(
         "This paragraph opts into selection: drag to select—double-click a word, \
          triple-click a run—and right-click to copy it as it appears in the source.",
       )
       .set_selectable(true)
-      .set_color(SimplePalette::muted_foreground()),
+      .theme_color(|palette| palette.muted_foreground),
       RichText::new([
-        Span::text("Rich text mixes ").set_color(SimplePalette::muted_foreground()),
+        Span::text("Rich text mixes ").theme_color(|palette| palette.muted_foreground),
         Span::text("weights").set_bold(true),
-        Span::text(", ").set_color(SimplePalette::muted_foreground()),
+        Span::text(", ").theme_color(|palette| palette.muted_foreground),
         Span::text("colors").set_color(Color::srgb(1., 0.62, 0.25)),
-        Span::text(", and ").set_color(SimplePalette::muted_foreground()),
+        Span::text(", and ").theme_color(|palette| palette.muted_foreground),
         Span::text("links").set_link("https://example.com"),
-        Span::text(" in one paragraph.").set_color(SimplePalette::muted_foreground()),
+        Span::text(" in one paragraph.").theme_color(|palette| palette.muted_foreground),
       ])
       .set_selectable(true),
     )),
@@ -96,7 +93,7 @@ fn buttons() -> impl IntoView {
           SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
     )),
   )
 }
@@ -120,7 +117,7 @@ fn toggles() -> impl IntoView {
             "unchecked".to_owned()
           }
         })
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
       )),
       Row::new().set_spacing(2).set_children((
         radio_choice("mint", flavor),
@@ -153,7 +150,7 @@ fn inputs() -> impl IntoView {
           .set_width(20)
           .set_child(SimpleSlider::new(0., 100.).set_step(1.).bind_value(volume)),
         Text::derive(move || format!("{:.0}%", volume.get()))
-          .set_color(SimplePalette::muted_foreground()),
+          .theme_color(|palette| palette.muted_foreground),
       )),
       SimplePicker::new()
         .set_options([
@@ -187,9 +184,9 @@ fn borders() -> impl IntoView {
 fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
   Container::new()
     .set_padding(Inset::horizontal(1))
-    .set_border(SimplePalette::border())
+    .theme_border(|palette| palette.border)
     .set_border_glyphs(glyphs)
-    .set_child(Text::new(label).set_color(SimplePalette::muted_foreground()))
+    .set_child(Text::new(label).theme_color(|palette| palette.muted_foreground))
 }
 
 fn layouts() -> impl IntoView {
@@ -210,7 +207,7 @@ fn layouts() -> impl IntoView {
       )),
       Container::new()
         .set_height(5)
-        .set_color(SimplePalette::secondary())
+        .theme_color(|palette| palette.secondary.surface)
         .set_child(
           Stack::new().set_child(
             Pinned::new()
@@ -223,8 +220,8 @@ fn layouts() -> impl IntoView {
               .set_child(
                 Container::new()
                   .set_padding(Inset::horizontal(1))
-                  .set_color(SimplePalette::card())
-                  .set_child(Text::new("pinned").set_color(SimplePalette::muted_foreground())),
+                  .theme_color(|palette| palette.card)
+                  .set_child(Text::new("pinned").theme_color(|palette| palette.muted_foreground)),
               ),
           ),
         ),
@@ -234,20 +231,16 @@ fn layouts() -> impl IntoView {
           .handle_click(move || {
             open.set(true);
           }),
+        // The overlay is layering and dismissal alone—the surface is a card inside it,
+        // which is what dresses a popup in the Simple design language. Only the shadow
+        // stays on the overlay itself, since a cast shadow is no palette's token.
         Overlay::modal()
           .bind_open(open)
-          .set_style(
-            BoxStyle::new()
-              .set_padding(Inset::symmetric(2, 1))
-              .set_color(SimplePalette::card())
-              .set_border(SimplePalette::border())
-              .set_border_glyphs(BorderGlyphs::ROUNDED)
-              .set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)),
-          )
+          .set_style(BoxStyle::new().set_shadow(Color::srgb(0., 0., 0.).with_alpha(0.5)))
           .set_child(
-            Column::new().set_spacing(1).set_children((
+            SimpleCard::new().set_children((
               Text::new("A modal overlay; Escape dismisses.")
-                .set_color(SimplePalette::foreground()),
+                .theme_color(|palette| palette.foreground),
               Row::new().set_arrangement(Arrangement::End).set_child(
                 SimpleButton::new("Close")
                   .set_variant(SimpleVariant::Secondary)
@@ -270,8 +263,8 @@ fn list() -> impl IntoView {
       || 1000,
       |index| {
         Row::new().set_spacing(1).set_children((
-          Text::new(format!("Row {index}")).set_color(SimplePalette::foreground()),
-          Text::new("virtualized").set_color(SimplePalette::muted_foreground()),
+          Text::new(format!("Row {index}")).theme_color(|palette| palette.foreground),
+          Text::new("virtualized").theme_color(|palette| palette.muted_foreground),
         ))
       },
     )
@@ -286,7 +279,7 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
     SimpleCard::new().set_children((
       Text::new(title)
         .set_bold(true)
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
       content,
     )),
   )

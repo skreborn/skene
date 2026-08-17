@@ -52,23 +52,25 @@ impl StaticRoutes for Page {
 fn app() -> impl IntoView {
   let router = install_static_router(Page::Home);
 
-  Container::new()
-    .set_color(SimplePalette::background())
-    .set_child(
-      Column::new()
-        .set_spacing(32.)
-        .set_padding(Inset::all(48.))
-        .set_children((
-          Row::new().set_spacing(16.).set_children((
-            Link::new(Page::Home).set_child(|| navigation("Home")),
-            Link::new(Page::About).set_child(|| navigation("About")),
+  SimpleTheme::new().set_child(move || {
+    Container::new()
+      .theme_color(|palette| palette.background)
+      .set_child(
+        Column::new()
+          .set_spacing(32.)
+          .set_padding(Inset::all(48.))
+          .set_children((
+            Row::new().set_spacing(16.).set_children((
+              Link::new(Page::Home).set_child(|| navigation("Home")),
+              Link::new(Page::About).set_child(|| navigation("About")),
+            )),
+            DerivedView::new(move || match router.route() {
+              Page::Home => home().into_view().into_any(),
+              Page::About => Lazy::new(about).into_any(),
+            }),
           )),
-          DerivedView::new(move || match router.route() {
-            Page::Home => home().into_view().into_any(),
-            Page::About => Lazy::new(about).into_any(),
-          }),
-        )),
-    )
+      )
+  })
 }
 
 fn home() -> impl IntoView {
@@ -96,10 +98,10 @@ fn page(title: &'static str, body: &'static str) -> impl IntoView {
       Text::new(title)
         .set_font_size(13.)
         .set_font_weight(500.)
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
       Text::new(body)
         .set_font_size(16.)
-        .set_color(SimplePalette::foreground()),
+        .theme_color(|palette| palette.foreground),
     )),
   )
 }
@@ -108,5 +110,5 @@ fn navigation(label: &'static str) -> impl IntoView {
   Text::new(label)
     .set_font_size(14.)
     .set_font_weight(600.)
-    .set_color(SimplePalette::foreground())
+    .theme_color(|palette| palette.foreground)
 }

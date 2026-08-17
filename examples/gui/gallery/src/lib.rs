@@ -6,9 +6,12 @@ use skene_gui::{Overlay, prelude::*};
 
 #[main]
 fn app() -> impl IntoView {
-  TextTheme::new()
-    .set_child(
-      Container::new().set_color(SimplePalette::background()).set_child(
+  // The theme follows the OS scheme, and it carries the ambient ink and selection
+  // colors with it, so nothing here names a color that a palette already holds.
+  SimpleTheme::new().set_child(|| {
+    Container::new()
+      .theme_color(|palette| palette.background)
+      .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
           .set_padding(Inset::symmetric(24., 48.))
@@ -18,7 +21,7 @@ fn app() -> impl IntoView {
                 Text::new("GALLERY")
                   .set_font_size(13.)
                   .set_font_weight(500.)
-                  .set_color(SimplePalette::muted_foreground()),
+                  .theme_color(|palette| palette.muted_foreground),
                 typography(),
                 buttons(),
                 toggles(),
@@ -28,17 +31,8 @@ fn app() -> impl IntoView {
               )),
             ),
           ),
-      ),
-    )
-    .set_base(
-      TextStyle::new()
-        .set_color(SimplePalette::foreground())
-        .set_selection_color(SimplePalette::background())
-        .set_selection_background(SimplePalette::foreground()),
-    )
-    // The gallery is dark regardless of the OS scheme, so it inks links for its own
-    // surface instead of leaving them to the scheme-following default.
-    .set_link(TextStyle::new().set_color(Color::srgb(0.4, 0.6, 1.)))
+      )
+  })
 }
 
 fn typography() -> impl IntoView {
@@ -54,7 +48,7 @@ fn typography() -> impl IntoView {
       )
       .set_selectable(true)
       .set_font_size(14.)
-      .set_color(SimplePalette::muted_foreground()),
+      .theme_color(|palette| palette.muted_foreground),
       RichText::new([
         plain("Rich text mixes "),
         plain("weights").set_font_weight(700.),
@@ -89,7 +83,7 @@ fn buttons() -> impl IntoView {
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
         .set_font_size(13.)
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
     )),
   )
 }
@@ -117,7 +111,7 @@ fn toggles() -> impl IntoView {
             }
           })
           .set_font_size(13.)
-          .set_color(SimplePalette::muted_foreground()),
+          .theme_color(|palette| palette.muted_foreground),
         )),
       SimpleRadioGroup::new("flavor")
         .bind_chosen(flavor)
@@ -158,7 +152,7 @@ fn inputs() -> impl IntoView {
           SimpleSlider::new(0., 100.).set_step(1.).bind_value(volume),
           Text::derive(move || format!("{:.0}%", volume.get()))
             .set_font_size(13.)
-            .set_color(SimplePalette::muted_foreground()),
+            .theme_color(|palette| palette.muted_foreground),
         )),
       SimplePicker::new()
         .set_options([
@@ -190,7 +184,7 @@ fn layouts() -> impl IntoView {
       )),
       Container::new()
         .set_height(64.)
-        .set_color(SimplePalette::secondary())
+        .theme_color(|palette| palette.secondary.surface)
         .set_border_radius(8.)
         .set_child(
           Stack::new().set_child(
@@ -208,19 +202,18 @@ fn layouts() -> impl IntoView {
         SimpleButton::new("Open a modal")
           .set_variant(SimpleVariant::Outline)
           .handle_click(move || open.set(true)),
-        Overlay::modal()
-          .bind_open(open)
-          .set_style(modal_style())
-          .set_child(
-            Column::new().set_spacing(20.).set_children((
-              Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
-              Row::new().set_arrangement(Arrangement::End).set_child(
-                SimpleButton::new("Close")
-                  .set_variant(SimpleVariant::Secondary)
-                  .handle_click(move || open.set(false)),
-              ),
-            )),
-          ),
+        // The overlay is layering and dismissal alone; the surface is a card inside it,
+        // which is what dresses a popup in the Simple design language.
+        Overlay::modal().bind_open(open).set_child(
+          SimpleCard::new().set_spacing(20.).set_children((
+            Text::new("A modal overlay; Escape or the backdrop dismisses.").set_font_size(14.),
+            Row::new().set_arrangement(Arrangement::End).set_child(
+              SimpleButton::new("Close")
+                .set_variant(SimpleVariant::Secondary)
+                .handle_click(move || open.set(false)),
+            ),
+          )),
+        ),
       )),
     )),
   )
@@ -241,7 +234,7 @@ fn list() -> impl IntoView {
             Text::new(format!("Row {index}")).set_font_size(13.),
             Text::new("virtualized: only the visible rows exist")
               .set_font_size(12.)
-              .set_color(SimplePalette::muted_foreground()),
+              .theme_color(|palette| palette.muted_foreground),
           ))
       },
     )
@@ -255,7 +248,7 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
     Text::new(title)
       .set_font_size(12.)
       .set_font_weight(600.)
-      .set_color(SimplePalette::muted_foreground()),
+      .theme_color(|palette| palette.muted_foreground),
     content,
   ))
 }
@@ -263,18 +256,18 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
 fn plain(text: &'static str) -> Span {
   Span::text(text)
     .set_font_size(14.)
-    .set_color(SimplePalette::muted_foreground())
+    .theme_color(|palette| palette.muted_foreground)
 }
 
 fn badge(text: &'static str) -> impl IntoView {
   Container::new()
     .set_padding(Inset::symmetric(8., 4.))
-    .set_color(SimplePalette::card())
+    .theme_color(|palette| palette.card)
     .set_border_radius(6.)
     .set_child(
       Text::new(text)
         .set_font_size(12.)
-        .set_color(SimplePalette::muted_foreground()),
+        .theme_color(|palette| palette.muted_foreground),
     )
 }
 
@@ -283,13 +276,4 @@ fn swatch(brightness: f32) -> impl IntoView {
     .set_height(32.)
     .set_color(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
     .set_border_radius(6.)
-}
-
-/// The modal's surface: the Simple card look on the overlay element itself.
-fn modal_style() -> BoxStyle {
-  BoxStyle::new()
-    .set_padding(Inset::all(24.))
-    .set_color(SimplePalette::card())
-    .set_border(Border::new(1., SimplePalette::border()))
-    .set_border_radius(12.)
 }

@@ -3125,3 +3125,41 @@ fn a_fixed_scheme_ignores_the_terminals_background() {
 
   assert_eq!(dark, light);
 }
+
+/// A chosen scheme re-inks the frame without rebuilding it: the paint reads the choice
+/// where it read the detected background, so the nodes—and everything they hold—stay.
+#[test]
+fn a_derived_scheme_repaints_without_rebuilding() {
+  let (light, dark, builds) = with_driver(|| {
+    let scheme = Signal::new(ColorScheme::Light);
+    let builds = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&builds);
+
+    tui::mount(move || {
+      SimpleTheme::adaptive(Palette::light(), Palette::dark())
+        .derive_scheme(move || scheme.get())
+        .set_child(move || {
+          counted.set(counted.get() + 1);
+
+          Container::new()
+            .set_width(4)
+            .set_height(1)
+            .set_color(Palette::current().card)
+        })
+        .into_any()
+        .build()
+    });
+
+    let light = tui::render_to_colors(4, 1);
+
+    scheme.set(ColorScheme::Dark);
+
+    (light, tui::render_to_colors(4, 1), builds.get())
+  });
+
+  assert_ne!(light, dark, "the choice reaches the paint");
+  assert_eq!(
+    builds, 1,
+    "and reaches it without building the subtree again"
+  );
+}

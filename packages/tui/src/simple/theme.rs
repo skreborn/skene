@@ -1,6 +1,7 @@
 //! The Simple design language's theme: the palette a subtree paints with.
 
 use skene_core::{AnyView, Color, ColorScheme, Composable, IntoView, NoChild, NodeId, View};
+use skene_reactive::Effect;
 
 use crate::{Palette, TextTheme, Token, props::Condition};
 
@@ -34,9 +35,9 @@ pub struct TwoPalettes {
 /// ```
 ///
 /// Only the adaptive form can be told which scheme to paint, through
-/// [`set_scheme`](SimpleTheme::set_scheme): a theme carrying one palette has nothing to
-/// choose, and the type says so. Choosing one leaves a theme carrying that palette
-/// alone, so the choice cannot be made twice.
+/// [`set_scheme`](SimpleTheme::set_scheme) and
+/// [`derive_scheme`](SimpleTheme::derive_scheme): a theme carrying one palette has
+/// nothing to choose, and the type says so.
 #[must_use]
 pub struct SimpleTheme<C = NoChild, S = OnePalette> {
   child: C,
@@ -90,9 +91,9 @@ impl<C, S> SimpleTheme<C, S> {
 impl<C> SimpleTheme<C, TwoPalettes> {
   /// Paints `scheme` rather than the terminal's.
   ///
-  /// The chosen palette applies unconditionally, so nothing is left for a condition to
-  /// answer—and nothing is left to choose, which is why this leaves a theme carrying one
-  /// palette.
+  /// Resolved where the theme is built, so the chosen palette applies unconditionally—
+  /// nothing is left for a condition to answer, and nothing is left to choose, which is
+  /// why this leaves a theme carrying one palette.
   #[inline(always)]
   pub fn set_scheme(self, scheme: ColorScheme) -> SimpleTheme<C, OnePalette> {
     let TwoPalettes { light, dark } = self.schemes;
@@ -105,6 +106,29 @@ impl<C> SimpleTheme<C, TwoPalettes> {
       },
       schemes: OnePalette,
     }
+  }
+
+  /// Paints the scheme `scheme` reports, following it as it changes.
+  ///
+  /// Bind it to the signal holding a user's setting. Every token keeps both values and
+  /// the paint is told which is in force, so a change re-inks the next frame without
+  /// rebuilding anything: the state inside the subtree, the focus, the scroll position
+  /// and a half-typed input all survive it.
+  ///
+  /// The choice is the terminal's, not the subtree's—the detected background is too—so
+  /// a second derived scheme deeper in the tree overrides the first rather than scoping
+  /// to its own subtree. Use [`set_scheme`](Self::set_scheme) for a subtree, which
+  /// resolves before anything is built.
+  #[inline(always)]
+  pub fn derive_scheme(self, scheme: impl Fn() -> ColorScheme + 'static) -> Self {
+    Effect::new(move |_| {
+      crate::with_state(|state| {
+        state.scheme.set(Some(scheme()));
+        state.dirty.set(true);
+      });
+    });
+
+    self
   }
 }
 
@@ -129,7 +153,7 @@ impl<S: 'static> View for SimpleTheme<AnyView, S> {
 /// A free function rather than a method because [`Token`] is the spine's type, not the
 /// terminal's.
 pub fn painted(token: &Token) -> Color {
-  let dark = crate::with_state(|state| state.dark.get());
+  let dark = crate::with_state(crate::state::State::dark);
   let holds = |leaf: &Condition| match leaf {
     Condition::DarkMode => dark,
     Condition::LightMode => !dark,

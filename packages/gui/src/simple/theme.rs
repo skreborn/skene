@@ -1,5 +1,7 @@
 //! The Simple design language's theme: the palette a subtree paints with.
 
+use skene_reactive::Effect;
+
 use crate::{
   AnyView,
   ColorScheme,
@@ -11,6 +13,7 @@ use crate::{
   TextStyle,
   TextTheme,
   View,
+  driver,
 };
 
 /// A theme carrying one palette, with no scheme left to choose.
@@ -44,9 +47,9 @@ pub struct TwoPalettes {
 /// ```
 ///
 /// Only the adaptive form can be told which scheme to paint, through
-/// [`set_scheme`](SimpleTheme::set_scheme): a theme carrying one palette has nothing to
-/// choose, and the type says so. Choosing one leaves a theme carrying that palette
-/// alone, so the choice cannot be made twice.
+/// [`set_scheme`](SimpleTheme::set_scheme) and
+/// [`derive_scheme`](SimpleTheme::derive_scheme): a theme carrying one palette has
+/// nothing to choose, and the type says so.
 #[must_use]
 pub struct SimpleTheme<C = NoChild, S = OnePalette> {
   child: C,
@@ -100,9 +103,9 @@ impl<C, S> SimpleTheme<C, S> {
 impl<C> SimpleTheme<C, TwoPalettes> {
   /// Paints `scheme` rather than the platform's.
   ///
-  /// The chosen palette applies unconditionally, so nothing is left for a media query to
-  /// answer—and nothing is left to choose, which is why this leaves a theme carrying one
-  /// palette.
+  /// Resolved where the theme is built, so the chosen palette applies unconditionally
+  /// and a server render carries it—nothing is left for a media query to answer, and
+  /// nothing is left to choose, which is why this leaves a theme carrying one palette.
   #[inline(always)]
   pub fn set_scheme(self, scheme: ColorScheme) -> SimpleTheme<C, OnePalette> {
     let TwoPalettes { light, dark } = self.schemes;
@@ -115,6 +118,24 @@ impl<C> SimpleTheme<C, TwoPalettes> {
       },
       schemes: OnePalette,
     }
+  }
+
+  /// Paints the scheme `scheme` reports, following it as it changes.
+  ///
+  /// Bind it to the signal holding a user's setting. Every token keeps both values and
+  /// the driver is told which is in force, so a change re-inks the page without
+  /// rebuilding anything: the state inside the subtree, the focus, the scroll position
+  /// and a half-typed input all survive it.
+  ///
+  /// The choice is the document's, not the subtree's—the platform's own scheme is
+  /// document-wide too—so a second derived scheme deeper in the tree overrides the
+  /// first rather than scoping to its own subtree. Use [`set_scheme`](Self::set_scheme)
+  /// for a subtree, which resolves before anything is built.
+  #[inline(always)]
+  pub fn derive_scheme(self, scheme: impl Fn() -> ColorScheme + 'static) -> Self {
+    Effect::new(move |_| driver::set_color_scheme(Some(scheme())));
+
+    self
   }
 }
 

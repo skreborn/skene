@@ -8,10 +8,12 @@ use skene_gui::{
   Container,
   HasChildren,
   Palette,
+  RawButton,
   SimpleTheme,
   Text,
   View,
   core::{Color, ColorScheme, Composable, Condition},
+  prelude::{Get, Set, Signal, Update},
   record,
 };
 
@@ -187,4 +189,49 @@ fn a_chosen_scheme_leaves_nothing_conditional() {
     Some(base(&Palette::dark().card))
   );
   assert!(record::box_variants(root).is_empty());
+}
+
+/// A derived scheme tells the driver which scheme is in force and leaves the tree alone,
+/// so everything the subtree holds survives the change: this is why it is not a rebuild.
+#[test]
+fn a_derived_scheme_keeps_the_subtree_it_re_inks() {
+  let scheme = Signal::new(ColorScheme::Light);
+  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+    .derive_scheme(move || scheme.get())
+    .set_child(|| {
+      // Component-local state, exactly as a control inside the theme would hold it.
+      let count = Signal::new(0u32);
+
+      Column::new().set_children((
+        Text::derive(move || count.get().to_string()),
+        RawButton::new().handle_click(move || count.update(|value| *value += 1)),
+      ))
+    })
+    .build();
+  let counter = record::children(root)[0];
+
+  let _ = record::trigger_click(record::children(root)[1]);
+
+  assert_eq!(record::text(counter).as_deref(), Some("1"));
+  assert_eq!(record::color_scheme(), Some(ColorScheme::Light));
+
+  scheme.set(ColorScheme::Dark);
+
+  assert_eq!(
+    record::color_scheme(),
+    Some(ColorScheme::Dark),
+    "the driver is told which scheme paints"
+  );
+
+  assert_eq!(
+    record::children(root)[0],
+    counter,
+    "the same node, not a rebuilt one"
+  );
+
+  assert_eq!(
+    record::text(counter).as_deref(),
+    Some("1"),
+    "the state inside the theme outlives the scheme change"
+  );
 }

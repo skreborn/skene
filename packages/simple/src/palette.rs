@@ -3,21 +3,14 @@
 
 use std::rc::Rc;
 
-use skene_core::{Adaptive, Color, Composable, Condition};
+use skene_core::{Color, Composable, Condition, Token};
 use skene_reactive::{Owner, provide_context, use_context};
-
-/// One design token: a color, and the conditions that override it.
-///
-/// Generic over the condition vocabulary so a terminal palette is expressed in the
-/// terminal's conditions and a GUI palette in the GUI's; each facade aliases the
-/// parameter away.
-pub type Token<C = Condition> = Adaptive<Color, C>;
 
 /// One emphasis variant's colors: the surface it paints, the ink on that surface, and
 /// the surfaces its interaction states paint instead.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
-pub struct Look<C = Condition> {
+pub struct SimpleLook<C = Condition> {
   /// The action's surface.
   pub surface: Token<C>,
   /// The ink on that surface.
@@ -30,7 +23,7 @@ pub struct Look<C = Condition> {
   pub focus: Token<C>,
 }
 
-/// The Simple components' design tokens: the chrome colors and one [`Look`] per
+/// The Simple components' design tokens: the chrome colors and one [`SimpleLook`] per
 /// emphasis variant.
 ///
 /// A palette is a **value**: build one, hand it around, hand it to a
@@ -44,7 +37,7 @@ pub struct Look<C = Condition> {
 /// nothing below this crate knows what a palette is.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
-pub struct Palette<C = Condition> {
+pub struct SimplePalette<C = Condition> {
   /// The page background.
   pub background: Token<C>,
   /// The default text ink.
@@ -58,18 +51,18 @@ pub struct Palette<C = Condition> {
   /// The focused or hovered control's border ink.
   pub ring: Token<C>,
   /// The main action: a high-contrast surface.
-  pub primary: Look<C>,
+  pub primary: SimpleLook<C>,
   /// A supporting action: a subdued surface.
-  pub secondary: Look<C>,
+  pub secondary: SimpleLook<C>,
   /// A hairline-bordered action on the ambient background.
-  pub outline: Look<C>,
+  pub outline: SimpleLook<C>,
   /// A bare action, surfacing only under the pointer.
-  pub ghost: Look<C>,
+  pub ghost: SimpleLook<C>,
   /// A dangerous action.
-  pub destructive: Look<C>,
+  pub destructive: SimpleLook<C>,
 }
 
-impl<C> Palette<C> {
+impl<C> SimplePalette<C> {
   /// The light palette: dark ink on a near-white page.
   pub fn light() -> Self {
     let background = Color::srgb(0.98, 0.98, 0.98);
@@ -85,28 +78,28 @@ impl<C> Palette<C> {
       card: Color::srgb(1., 1., 1.).into(),
       border: border.into(),
       ring: muted_foreground.into(),
-      primary: Look {
+      primary: SimpleLook {
         surface: Color::srgb(0.094, 0.094, 0.106).into(),
         ink: Color::srgb(0.98, 0.98, 0.98).into(),
         border: None,
         hover: Color::srgb(0.153, 0.153, 0.165).into(),
         focus: Color::srgb(0.247, 0.247, 0.275).into(),
       },
-      secondary: Look {
+      secondary: SimpleLook {
         surface: subdued.into(),
         ink: foreground.into(),
         border: None,
         hover: border.into(),
         focus: Color::srgb(0.831, 0.831, 0.847).into(),
       },
-      outline: Look {
+      outline: SimpleLook {
         surface: Color::TRANSPARENT.into(),
         ink: foreground.into(),
         border: Some(border.into()),
         hover: subdued.into(),
         focus: border.into(),
       },
-      ghost: Look {
+      ghost: SimpleLook {
         surface: Color::TRANSPARENT.into(),
         ink: foreground.into(),
         border: None,
@@ -131,28 +124,28 @@ impl<C> Palette<C> {
       card: Color::srgb(0.094, 0.094, 0.106).into(),
       border: border.into(),
       ring: muted_foreground.into(),
-      primary: Look {
+      primary: SimpleLook {
         surface: foreground.into(),
         ink: Color::srgb(0.094, 0.094, 0.106).into(),
         border: None,
         hover: Color::srgb(0.894, 0.894, 0.906).into(),
         focus: Color::srgb(0.831, 0.831, 0.855).into(),
       },
-      secondary: Look {
+      secondary: SimpleLook {
         surface: border.into(),
         ink: foreground.into(),
         border: None,
         hover: raised.into(),
         focus: Color::srgb(0.322, 0.322, 0.357).into(),
       },
-      outline: Look {
+      outline: SimpleLook {
         surface: Color::TRANSPARENT.into(),
         ink: foreground.into(),
         border: Some(border.into()),
         hover: border.into(),
         focus: raised.into(),
       },
-      ghost: Look {
+      ghost: SimpleLook {
         surface: Color::TRANSPARENT.into(),
         ink: foreground.into(),
         border: None,
@@ -164,7 +157,7 @@ impl<C> Palette<C> {
   }
 }
 
-impl<C: Composable> Palette<C> {
+impl<C: Composable> SimplePalette<C> {
   /// One palette whose every token carries `dark`'s value as a scheme variant: the
   /// plumbing a facade's adaptive theme runs on, rather than a way to express a design.
   ///
@@ -198,8 +191,8 @@ fn adapt_token<C: Composable>(light: Token<C>, dark: Token<C>) -> Token<C> {
 }
 
 /// One emphasis variant's colors, adapted token by token.
-fn adapt_look<C: Composable>(light: Look<C>, dark: Look<C>) -> Look<C> {
-  Look {
+fn adapt_look<C: Composable>(light: SimpleLook<C>, dark: SimpleLook<C>) -> SimpleLook<C> {
+  SimpleLook {
     surface: adapt_token(light.surface, dark.surface),
     ink: adapt_token(light.ink, dark.ink),
     border: light
@@ -211,7 +204,7 @@ fn adapt_look<C: Composable>(light: Look<C>, dark: Look<C>) -> Look<C> {
   }
 }
 
-impl<C: Composable + 'static> Palette<C> {
+impl<C: Composable + 'static> SimplePalette<C> {
   /// The palette the current subtree inherits: the nearest enclosing theme's, or the
   /// dark one.
   ///
@@ -236,8 +229,8 @@ impl<C: Composable + 'static> Palette<C> {
 
 /// The destructive action's colors, which carry their own contrast and so read the
 /// same in both schemes.
-fn destructive<C>() -> Look<C> {
-  Look {
+fn destructive<C>() -> SimpleLook<C> {
+  SimpleLook {
     surface: Color::srgb(0.863, 0.149, 0.149).into(),
     ink: Color::srgb(0.98, 0.98, 0.98).into(),
     border: None,
@@ -266,7 +259,7 @@ pub enum SimpleVariant {
 impl SimpleVariant {
   /// The variant's colors, taken from `palette`.
   #[inline(always)]
-  pub fn look<C>(self, palette: Palette<C>) -> Look<C> {
+  pub fn look<C>(self, palette: SimplePalette<C>) -> SimpleLook<C> {
     match self {
       Self::Primary => palette.primary,
       Self::Secondary => palette.secondary,

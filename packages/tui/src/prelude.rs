@@ -99,17 +99,16 @@ pub use crate::{
 };
 #[cfg(feature = "simple-views")]
 pub use crate::{
-  Look,
-  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
+  SimpleLook,
+  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleSlider,
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  Token,
   painted,
 };

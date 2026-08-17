@@ -2,7 +2,7 @@
 
 use skene_core::{Border, HasChildren, ItemAlignment, NodeId, PlainChild, View};
 
-use crate::{Children, Column, Container, Inset, Palette, simple};
+use crate::{Children, Column, Container, Inset, SimplePalette, simple};
 
 /// A ready-made card: a raised, hairline-bordered surface grouping related content,
 /// laid out as a column.
@@ -80,7 +80,7 @@ impl HasChildren<crate::GuiOps> for SimpleCard {
 impl View for SimpleCard {
   #[inline(always)]
   fn build(self) -> NodeId {
-    let palette = Palette::current();
+    let palette = SimplePalette::current();
 
     Container::new()
       .set_padding(Inset::all(24.))

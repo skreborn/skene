@@ -14,7 +14,7 @@ use skene_core::{
   View,
 };
 
-use crate::{Container, Enhanced, HasDecoration, Palette, RawSlider, Stack, WebSlider};
+use crate::{Container, Enhanced, HasDecoration, RawSlider, SimplePalette, Stack, WebSlider};
 
 /// The track's thickness.
 const TRACK_HEIGHT: f32 = 6.;
@@ -150,7 +150,7 @@ fn drawn(
 ) -> impl View {
   let filled = value.clone();
   let placed = value.clone();
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let track = Container::new()
     .set_width(Dimension::Fraction(1.))
     .set_height(TRACK_HEIGHT)

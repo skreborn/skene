@@ -344,15 +344,15 @@ fn grid_tracks_and_placements_render() {
 /// reader's preference with no bundle loaded at all.
 #[test]
 fn a_theme_following_the_platform_renders_a_color_scheme_query() {
-  use skene_gui::{Palette, SimpleTheme};
+  use skene_gui::{SimplePalette, SimpleTheme};
 
   let rendered = render_to_string(|| {
-    SimpleTheme::adaptive(Palette::light(), Palette::dark())
-      .set_child(|| Container::new().set_color(Palette::current().card))
+    SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+      .set_child(|| Container::new().set_color(SimplePalette::current().card))
   });
   let class = root_class(rendered.body());
-  let light = css_color(*Palette::light().card.base());
-  let dark = css_color(*Palette::dark().card.base());
+  let light = css_color(*SimplePalette::light().card.base());
+  let dark = css_color(*SimplePalette::dark().card.base());
 
   assert!(
     rendered
@@ -420,17 +420,17 @@ fn a_scheme_variant_keeps_its_states_on_both_rules() {
 /// answer.
 #[test]
 fn a_theme_fixed_to_a_scheme_renders_no_color_scheme_query() {
-  use skene_gui::{Palette, SimpleTheme};
+  use skene_gui::{SimplePalette, SimpleTheme};
 
   let rendered = render_to_string(|| {
-    SimpleTheme::new(Palette::dark())
-      .set_child(|| Container::new().set_color(Palette::current().card))
+    SimpleTheme::new(SimplePalette::dark())
+      .set_child(|| Container::new().set_color(SimplePalette::current().card))
   });
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
     "background-color:{};",
-    css_color(*Palette::dark().card.base())
+    css_color(*SimplePalette::dark().card.base())
   )));
 
   // The stylesheet is the whole interned sheet, so the class names what to look for.

@@ -8,9 +8,9 @@ use skene_gui::{Overlay, prelude::*};
 fn app() -> impl IntoView {
   // The theme follows the OS scheme, and it carries the ambient ink and selection
   // colors with it, so nothing here names a color that a palette already holds.
-  SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(|| {
+  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(|| {
     Container::new()
-      .set_color(Palette::current().background)
+      .set_color(SimplePalette::current().background)
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
@@ -21,7 +21,7 @@ fn app() -> impl IntoView {
                 Text::new("GALLERY")
                   .set_font_size(13.)
                   .set_font_weight(500.)
-                  .set_color(Palette::current().muted_foreground),
+                  .set_color(SimplePalette::current().muted_foreground),
                 typography(),
                 buttons(),
                 toggles(),
@@ -36,7 +36,7 @@ fn app() -> impl IntoView {
 }
 
 fn typography() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   section(
     "Text",
@@ -67,7 +67,7 @@ fn typography() -> impl IntoView {
 }
 
 fn buttons() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let count = Signal::tagged("clicks", 0u32);
 
@@ -93,7 +93,7 @@ fn buttons() -> impl IntoView {
 }
 
 fn toggles() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let agreed = Signal::tagged("agreed", true);
   let flavor = Signal::tagged("flavor", "mint".to_owned());
@@ -136,7 +136,7 @@ fn radio_choice(value: &'static str) -> impl IntoView {
 }
 
 fn inputs() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let name = Signal::tagged("name", String::new());
   let bio = Signal::tagged("bio", String::new());
@@ -175,7 +175,7 @@ fn inputs() -> impl IntoView {
 }
 
 fn layouts() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let open = Signal::new(false);
 
@@ -230,7 +230,7 @@ fn layouts() -> impl IntoView {
 }
 
 fn list() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let muted = palette.muted_foreground.clone();
 
   section(
@@ -257,7 +257,7 @@ fn list() -> impl IntoView {
 
 /// A titled card around one section's content.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   SimpleCard::new().set_children((
     Text::new(title)
@@ -269,7 +269,7 @@ fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
 }
 
 fn plain(text: &'static str) -> Span {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Span::text(text)
     .set_font_size(14.)
@@ -277,7 +277,7 @@ fn plain(text: &'static str) -> Span {
 }
 
 fn badge(text: &'static str) -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Container::new()
     .set_padding(Inset::symmetric(8., 4.))

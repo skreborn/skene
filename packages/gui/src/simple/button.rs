@@ -2,7 +2,7 @@
 
 use skene_core::{Border, Color, Condition, HasChildren, Inset, Source, View};
 
-use crate::{HasDecoration, Palette, RawButton, SimpleVariant, Text, simple};
+use crate::{HasDecoration, RawButton, SimplePalette, SimpleVariant, Text, simple};
 
 /// A ready-made button: a text label on the variant's surface, with hover feedback and
 /// the platform's full keyboard behavior.
@@ -61,7 +61,7 @@ impl SimpleButton {
 
 impl View for SimpleButton {
   fn build(self) -> skene_core::NodeId {
-    let look = self.variant.look(Palette::current());
+    let look = self.variant.look(SimplePalette::current());
     let text = match self.label {
       Source::Static(label) => Text::new(label),
       Source::Derived(label) => Text::derive(move || label()),

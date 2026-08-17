@@ -21,10 +21,10 @@ use crate::{
   DerivedView,
   Enhanced,
   HasDecoration,
-  Palette,
   RawRadio,
   RawRadioGroup,
   Row,
+  SimplePalette,
   Text,
   WebRadio,
   empty,
@@ -267,7 +267,7 @@ fn dot() -> impl View {
     .set_width(DOT_SIZE)
     .set_height(DOT_SIZE)
     .set_border_radius(DOT_SIZE / 2.)
-    .set_color(Palette::current().primary.surface)
+    .set_color(SimplePalette::current().primary.surface)
 }
 
 /// The drawn form: a ring that carries a dot when chosen, beside the caption.
@@ -282,7 +282,7 @@ fn drawn(group: Option<GroupName>, value: String, label: Option<String>) -> impl
     }
   };
   let dotted = chosen.clone();
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let ring = Container::new()
     .set_width(RING_SIZE)
     .set_height(RING_SIZE)

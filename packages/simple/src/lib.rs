@@ -11,4 +11,4 @@
 
 mod palette;
 
-pub use self::palette::{Look, Palette, SimpleVariant, Token};
+pub use self::palette::{SimpleLook, SimplePalette, SimpleVariant};

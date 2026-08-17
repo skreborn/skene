@@ -8,11 +8,11 @@ use skene_tui::prelude::*;
 /// that follows the terminal's own background.
 #[must_use]
 pub fn app() -> impl IntoView {
-  SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(gallery)
+  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(gallery)
 }
 
 fn gallery() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Container::new()
     .set_overflow(Overflow::Auto)
@@ -43,7 +43,7 @@ fn gallery() -> impl IntoView {
 }
 
 fn text() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   section(
     "Text",
@@ -77,7 +77,7 @@ fn text() -> impl IntoView {
 }
 
 fn buttons() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let count = Signal::tagged("clicks", 0u64);
 
@@ -105,7 +105,7 @@ fn buttons() -> impl IntoView {
 }
 
 fn toggles() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let agreed = Signal::tagged("agreed", true);
   let flavor = Signal::tagged("flavor", "mint".to_owned());
@@ -143,7 +143,7 @@ fn radio_choice(value: &'static str, flavor: Signal<String>) -> impl IntoView {
 }
 
 fn inputs() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let name = Signal::tagged("name", String::new());
   let volume = Signal::tagged("volume", 40.0f32);
@@ -192,7 +192,7 @@ fn borders() -> impl IntoView {
 }
 
 fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Container::new()
     .set_padding(Inset::horizontal(1))
@@ -202,7 +202,7 @@ fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
 }
 
 fn layouts() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   let open = Signal::new(false);
 
@@ -269,7 +269,7 @@ fn layouts() -> impl IntoView {
 }
 
 fn list() -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let ink = palette.foreground.clone();
   let muted = palette.muted_foreground.clone();
 
@@ -292,7 +292,7 @@ fn list() -> impl IntoView {
 /// A titled card around one section's content; the width divides the swatch grid into
 /// whole-cell tracks.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Container::new().set_min_width(53).set_child(
     SimpleCard::new().set_children((

@@ -2,7 +2,7 @@
 
 use skene_core::{NodeId, View};
 
-use crate::{Palette, RawPicker, simple};
+use crate::{RawPicker, SimplePalette, simple};
 
 /// A ready-made select: the current label and indicator, its popup a Simple card with
 /// the highlight bar in the palette's secondary surface.
@@ -77,7 +77,7 @@ impl Default for SimplePicker {
 
 impl View for SimplePicker {
   fn build(self) -> NodeId {
-    let palette = Palette::current();
+    let palette = SimplePalette::current();
 
     self
       .raw

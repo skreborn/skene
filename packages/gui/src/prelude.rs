@@ -103,14 +103,15 @@ pub use crate::{
   WebSlider,
   lazy,
   main,
+  stored_scheme,
 };
 #[cfg(feature = "simple-views")]
 pub use crate::{
-  Look,
-  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
+  SimpleLook,
+  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleRadioGroup,
@@ -119,7 +120,6 @@ pub use crate::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  Token,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use crate::{hydrate_page, launch};

@@ -16,12 +16,10 @@ mod text_field;
 mod theme;
 
 use skene_core::{Border, Condition, Inset};
-pub use skene_simple::{Look, SimpleVariant};
+pub use skene_simple::{SimpleLook, SimpleVariant};
 
 /// The Simple palette, over the GUI facade's conditions.
-pub type Palette = skene_simple::Palette<Condition>;
-/// One Simple design token, over the GUI facade's conditions.
-pub type Token = skene_simple::Token<Condition>;
+pub type SimplePalette = skene_simple::SimplePalette<Condition>;
 
 pub use self::{
   button::SimpleButton,
@@ -42,7 +40,7 @@ pub(crate) const CARD_RADIUS: f32 = 12.;
 
 /// The shared field chrome, applied per property: padded, hairline-bordered, rounded,
 /// with the border brightening to the ring on focus.
-pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T, palette: &Palette) -> T {
+pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T, palette: &SimplePalette) -> T {
   control
     .set_padding(Inset::symmetric(12., 8.))
     .set_border_radius(RADIUS)

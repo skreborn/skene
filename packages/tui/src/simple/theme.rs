@@ -3,7 +3,11 @@
 use skene_core::{AnyView, Color, ColorScheme, Composable, IntoView, NoChild, NodeId, View};
 use skene_reactive::Effect;
 
-use crate::{Palette, TextTheme, Token, props::Condition};
+use crate::{
+  SimplePalette,
+  TextTheme,
+  props::{Condition, Token},
+};
 
 /// A theme carrying one palette, with no scheme left to choose.
 #[must_use]
@@ -12,14 +16,14 @@ pub struct OnePalette;
 /// A theme carrying a light and a dark palette, either of which may still be chosen.
 #[must_use]
 pub struct TwoPalettes {
-  light: Palette,
-  dark: Palette,
+  light: SimplePalette,
+  dark: SimplePalette,
 }
 
 /// The palette a subtree paints with, threaded through the reactive `Context`.
 ///
 /// Wrap a subtree to dress every `Simple*` view beneath it; an app dresses its own
-/// chrome from the same palette by reading [`Palette::current`]. A nested theme replaces
+/// chrome from the same palette by reading [`SimplePalette::current`]. A nested theme replaces
 /// the palette beneath it.
 ///
 /// [`new`](Self::new) takes one palette. [`adaptive`](Self::adaptive) takes a light and
@@ -30,7 +34,7 @@ pub struct TwoPalettes {
 /// ```no_run
 /// # use skene_tui::prelude::*;
 /// # fn page() -> impl IntoView { Text::new("") }
-/// SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(page)
+/// SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(page)
 /// # ;
 /// ```
 ///
@@ -41,14 +45,14 @@ pub struct TwoPalettes {
 #[must_use]
 pub struct SimpleTheme<C = NoChild, S = OnePalette> {
   child: C,
-  palette: Palette,
+  palette: SimplePalette,
   schemes: S,
 }
 
 impl SimpleTheme {
   /// Creates a theme painting `palette`, whatever the terminal's background.
   #[inline(always)]
-  pub fn new(palette: Palette) -> Self {
+  pub fn new(palette: SimplePalette) -> Self {
     Self {
       child: NoChild,
       palette,
@@ -60,10 +64,10 @@ impl SimpleTheme {
 impl SimpleTheme<NoChild, TwoPalettes> {
   /// Creates a theme following the terminal's detected background, painting `light` on a
   /// light one and `dark` on a dark one.
-  pub fn adaptive(light: Palette, dark: Palette) -> Self {
+  pub fn adaptive(light: SimplePalette, dark: SimplePalette) -> Self {
     Self {
       child: NoChild,
-      palette: Palette::adapt(light.clone(), dark.clone()),
+      palette: SimplePalette::adapt(light.clone(), dark.clone()),
       schemes: TwoPalettes { light, dark },
     }
   }
@@ -73,7 +77,7 @@ impl<C, S> SimpleTheme<C, S> {
   /// Sets the child, which the view requires before it can build.
   ///
   /// The child comes as a closure because the palette has to be in scope while it is
-  /// built: [`Palette::current`] answers with the enclosing theme's, and an argument is
+  /// built: [`SimplePalette::current`] answers with the enclosing theme's, and an argument is
   /// evaluated before the call it is an argument to.
   #[inline(always)]
   pub fn set_child<V: IntoView>(
@@ -173,7 +177,7 @@ pub fn painted(token: &Token) -> Color {
 /// The theme's ambient text: the colors a selection paints in. The ink itself is the
 /// terminal's own foreground, which already matches its background, so a theme sets
 /// none.
-fn ambient_text(palette: &Palette) -> TextTheme {
+fn ambient_text(palette: &SimplePalette) -> TextTheme {
   TextTheme::new()
     .set_selection_color(painted(&palette.background))
     .set_selection_background(painted(&palette.foreground))

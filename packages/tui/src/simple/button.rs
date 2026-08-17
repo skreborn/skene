@@ -4,8 +4,8 @@ use skene_core::{MouseCursor, NodeId, Source, View};
 
 use crate::{
   HasDecoration,
-  Palette,
   RawButton,
+  SimplePalette,
   props::Condition,
   simple::{self, SimpleVariant},
 };
@@ -60,7 +60,7 @@ impl View for SimpleButton {
   fn build(self) -> NodeId {
     use skene_core::HasChildren;
 
-    let palette = Palette::current();
+    let palette = SimplePalette::current();
     let ring = palette.ring.clone();
     let look = self.variant.look(palette);
     let text = match self.label {

@@ -7,7 +7,16 @@
 
 use smallvec::SmallVec;
 
-use crate::condition::{Composable, ConditionShape};
+use crate::{
+  Color,
+  condition::{Composable, ConditionShape},
+};
+
+/// One design token: a color, and the conditions that override it.
+///
+/// The shape a component library's palette is made of. Naming it says what it is for;
+/// it is an [`Adaptive`] color and nothing more.
+pub type Token<C = Condition> = Adaptive<Color, C>;
 
 /// A value and the conditions that override it: what a property is set to, before any
 /// one view spells it out.

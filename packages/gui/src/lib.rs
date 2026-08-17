@@ -76,11 +76,11 @@ pub use crate::resource::Resource;
 pub use crate::routing::{install_router, install_static_router};
 #[cfg(feature = "simple-views")]
 pub use crate::simple::{
-  Look,
-  Palette,
   SimpleButton,
   SimpleCard,
   SimpleCheckbox,
+  SimpleLook,
+  SimplePalette,
   SimplePicker,
   SimpleRadio,
   SimpleRadioGroup,
@@ -89,7 +89,6 @@ pub use crate::simple::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  Token,
 };
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
@@ -189,6 +188,20 @@ pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
 #[inline(always)]
 pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
   skene_core::transition::<GuiOps>(build)
+}
+
+/// The color scheme the reader chose on a previous visit, when there is one.
+///
+/// Initialize the setting bound to
+/// [`SimpleTheme::derive_scheme`](crate::SimpleTheme::derive_scheme) from this, so the
+/// choice the page was already painted in is the one the app goes on to hold. A
+/// server-rendered page applies it before the first paint through a script in its head,
+/// and a reader who has chosen nothing gets `None`—the platform's own preference, which
+/// the styling answers with no script at all.
+#[inline(always)]
+#[must_use]
+pub fn stored_scheme() -> Option<ColorScheme> {
+  driver::stored_scheme()
 }
 
 /// A view that renders nothing.

@@ -7,8 +7,8 @@ use skene_gui::{
   Column,
   Container,
   HasChildren,
-  Palette,
   RawButton,
+  SimplePalette,
   SimpleTheme,
   Text,
   View,
@@ -27,30 +27,30 @@ fn base(token: &skene_gui::Token) -> Color {
 /// the app runs.
 #[test]
 fn an_adaptive_token_sets_a_property_and_a_dark_variant() {
-  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
-    .set_child(|| Container::new().set_color(Palette::current().card))
+  let root = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+    .set_child(|| Container::new().set_color(SimplePalette::current().card))
     .build();
   // A theme realizes no node of its own: it provides the palette and builds its child.
   let style = record::box_style(root).expect("a box style");
   let variants = record::box_variants(root);
 
-  assert_eq!(style.color, Some(base(&Palette::light().card)));
+  assert_eq!(style.color, Some(base(&SimplePalette::light().card)));
   assert_eq!(variants.len(), 1);
   assert_eq!(variants[0].0, Condition::DarkMode);
-  assert_eq!(variants[0].1.color, Some(base(&Palette::dark().card)));
+  assert_eq!(variants[0].1.color, Some(base(&SimplePalette::dark().card)));
 }
 
 /// A theme carrying one palette resolves to exactly one value: no variant is recorded,
 /// since there is nothing left for a condition to answer.
 #[test]
 fn one_palette_records_one_value_and_no_variant() {
-  let root = SimpleTheme::new(Palette::light())
-    .set_child(|| Container::new().set_color(Palette::current().card))
+  let root = SimpleTheme::new(SimplePalette::light())
+    .set_child(|| Container::new().set_color(SimplePalette::current().card))
     .build();
 
   assert_eq!(
     record::box_style(root).expect("a box style").color,
-    Some(base(&Palette::light().card))
+    Some(base(&SimplePalette::light().card))
   );
   assert!(record::box_variants(root).is_empty());
 }
@@ -59,9 +59,12 @@ fn one_palette_records_one_value_and_no_variant() {
 /// conditions: the state's own variant, then that state under the dark scheme.
 #[test]
 fn a_token_set_under_a_condition_narrows_to_the_scheme() {
-  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+  let root = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
     .set_child(|| {
-      Container::new().set_color_when(Condition::Hovered, Palette::current().secondary.surface)
+      Container::new().set_color_when(
+        Condition::Hovered,
+        SimplePalette::current().secondary.surface,
+      )
     })
     .build();
   let variants = record::box_variants(root);
@@ -70,7 +73,7 @@ fn a_token_set_under_a_condition_narrows_to_the_scheme() {
   assert_eq!(variants[0].0, Condition::Hovered);
   assert_eq!(
     variants[0].1.color,
-    Some(base(&Palette::light().secondary.surface))
+    Some(base(&SimplePalette::light().secondary.surface))
   );
   assert_eq!(
     variants[1].0,
@@ -79,7 +82,7 @@ fn a_token_set_under_a_condition_narrows_to_the_scheme() {
   );
   assert_eq!(
     variants[1].1.color,
-    Some(base(&Palette::dark().secondary.surface))
+    Some(base(&SimplePalette::dark().secondary.surface))
   );
 }
 
@@ -87,16 +90,16 @@ fn a_token_set_under_a_condition_narrows_to_the_scheme() {
 #[test]
 fn a_nested_theme_replaces_the_palette_beneath_it() {
   let ink = Color::srgb(0.1, 0.9, 0.4);
-  let mut inner = Palette::dark();
+  let mut inner = SimplePalette::dark();
 
   inner.card = ink.into();
 
-  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+  let root = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
     .set_child(move || {
       Column::new().set_children((
-        Container::new().set_color(Palette::current().card),
+        Container::new().set_color(SimplePalette::current().card),
         SimpleTheme::new(inner.clone())
-          .set_child(|| Container::new().set_color(Palette::current().card)),
+          .set_child(|| Container::new().set_color(SimplePalette::current().card)),
       ))
     })
     .build();
@@ -105,7 +108,7 @@ fn a_nested_theme_replaces_the_palette_beneath_it() {
 
   assert_eq!(
     record::box_variants(outer_box)[0].1.color,
-    Some(base(&Palette::dark().card))
+    Some(base(&SimplePalette::dark().card))
   );
   assert_eq!(
     record::box_style(inner_box).expect("a box style").color,
@@ -121,10 +124,10 @@ fn a_nested_theme_replaces_the_palette_beneath_it() {
 #[test]
 fn a_views_own_color_wins_over_the_palettes() {
   let ink = Color::srgb(0.9, 0.2, 0.2);
-  let root = SimpleTheme::new(Palette::dark())
+  let root = SimpleTheme::new(SimplePalette::dark())
     .set_child(move || {
       Container::new()
-        .set_color(Palette::current().card)
+        .set_color(SimplePalette::current().card)
         .set_color(ink)
     })
     .build();
@@ -138,20 +141,20 @@ fn a_views_own_color_wins_over_the_palettes() {
 /// The theme inks the runs beneath it, scheme and all, without any run naming a color.
 #[test]
 fn the_theme_inks_the_runs_beneath_it() {
-  let run = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+  let run = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
     .set_child(|| Text::new("themed"))
     .build();
   let variants = record::run_variants(run);
 
   assert_eq!(
     record::run_style(run).expect("a run style").color,
-    Some(base(&Palette::light().foreground))
+    Some(base(&SimplePalette::light().foreground))
   );
   assert!(
     variants
       .iter()
       .any(|(condition, style)| *condition == Condition::DarkMode
-        && style.color == Some(base(&Palette::dark().foreground))),
+        && style.color == Some(base(&SimplePalette::dark().foreground))),
     "the inherited ink carries the scheme with it"
   );
 }
@@ -160,18 +163,18 @@ fn the_theme_inks_the_runs_beneath_it() {
 /// theme's so it wins there too.
 #[test]
 fn a_runs_own_ink_wins_over_the_inherited_one() {
-  let run = SimpleTheme::adaptive(Palette::light(), Palette::dark())
-    .set_child(|| Text::new("themed").set_color(Palette::current().muted_foreground))
+  let run = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+    .set_child(|| Text::new("themed").set_color(SimplePalette::current().muted_foreground))
     .build();
   let variants = record::run_variants(run);
 
   assert_eq!(
     record::run_style(run).expect("a run style").color,
-    Some(base(&Palette::light().muted_foreground))
+    Some(base(&SimplePalette::light().muted_foreground))
   );
   assert_eq!(
     variants.last().expect("the run's own variant").1.color,
-    Some(base(&Palette::dark().muted_foreground))
+    Some(base(&SimplePalette::dark().muted_foreground))
   );
 }
 
@@ -179,14 +182,14 @@ fn a_runs_own_ink_wins_over_the_inherited_one() {
 /// to answer, and the choice costs no rebuild since it is made before the child builds.
 #[test]
 fn a_chosen_scheme_leaves_nothing_conditional() {
-  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+  let root = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
     .set_scheme(ColorScheme::Dark)
-    .set_child(|| Container::new().set_color(Palette::current().card))
+    .set_child(|| Container::new().set_color(SimplePalette::current().card))
     .build();
 
   assert_eq!(
     record::box_style(root).expect("a box style").color,
-    Some(base(&Palette::dark().card))
+    Some(base(&SimplePalette::dark().card))
   );
   assert!(record::box_variants(root).is_empty());
 }
@@ -196,7 +199,7 @@ fn a_chosen_scheme_leaves_nothing_conditional() {
 #[test]
 fn a_derived_scheme_keeps_the_subtree_it_re_inks() {
   let scheme = Signal::new(ColorScheme::Light);
-  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+  let root = SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
     .derive_scheme(move || scheme.get())
     .set_child(|| {
       // Component-local state, exactly as a control inside the theme would hold it.

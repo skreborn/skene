@@ -29,6 +29,10 @@ use skene_core::{
 /// vocabulary; see [`skene_core::Adaptive`].
 pub type Adaptive<T> = skene_core::Adaptive<T, Condition>;
 
+/// One design token, over the terminal's own condition vocabulary; see
+/// [`skene_core::Token`].
+pub type Token = skene_core::Token<Condition>;
+
 /// The characters a one-cell border draws with.
 ///
 /// The named sets cover the box-drawing families—[`LIGHT`](Self::LIGHT) (the default),

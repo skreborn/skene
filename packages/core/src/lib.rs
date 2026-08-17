@@ -74,7 +74,7 @@ pub use reconcile::{DerivedView, derived, empty, reconcile};
 pub use reorder::Reorder;
 pub use runtime::{reset_root_owner, root_owner};
 pub use source::Source;
-pub use style::{Adaptive, Animation, Condition, Easing, StyleProperty, Transition};
+pub use style::{Adaptive, Animation, Condition, Easing, StyleProperty, Token, Transition};
 pub use suspense::Suspense;
 pub use task::scope_bound;
 pub use transition::transition;

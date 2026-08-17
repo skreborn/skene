@@ -9,10 +9,10 @@ use crate::{
   Container,
   Enhanced,
   Inset,
-  Palette,
   RawOption,
   RawPicker,
   Row,
+  SimplePalette,
   Text,
   WebPicker,
   simple,
@@ -143,7 +143,7 @@ fn native(
 ) -> WebPicker {
   use crate::HasDecoration;
 
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let mut control = simple::field_chrome(
     WebPicker::new()
       .set_options(options)
@@ -167,7 +167,7 @@ fn drawn(
 ) -> impl View {
   let labels = options.clone();
   let shown = value.clone();
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let face = Container::new()
     .set_padding(Inset::symmetric(12., 8.))
     .set_border_radius(simple::RADIUS)
@@ -223,7 +223,7 @@ fn row(value: String, label: String) -> impl View {
     Container::new()
       .set_padding(Inset::symmetric(8., 6.))
       .set_border_radius(4.)
-      .set_color_when(Condition::Focused, Palette::current().primary.surface)
+      .set_color_when(Condition::Focused, SimplePalette::current().primary.surface)
       .set_child(Text::new(label)),
   )
 }

@@ -18,9 +18,9 @@ use crate::{
   DerivedView,
   Enhanced,
   HasDecoration,
-  Palette,
   RawCheckbox,
   Row,
+  SimplePalette,
   Text,
   WebCheckbox,
   empty,
@@ -160,7 +160,7 @@ fn native(
 
 /// The checked box's fill and its check, filling the box it sits in.
 fn mark() -> impl View {
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
 
   Container::new()
     .set_color(palette.primary.surface)
@@ -175,7 +175,7 @@ fn drawn(
   label: Option<String>,
 ) -> impl View {
   let marked = checked.clone();
-  let palette = Palette::current();
+  let palette = SimplePalette::current();
   let box_view = Container::new()
     .set_width(BOX_SIZE)
     .set_height(BOX_SIZE)

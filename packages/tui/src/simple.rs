@@ -18,12 +18,10 @@ mod slider;
 mod text_field;
 mod theme;
 
-pub use skene_simple::{Look, SimpleVariant};
+pub use skene_simple::{SimpleLook, SimpleVariant};
 
 /// The Simple palette, over the terminal's conditions.
-pub type Palette = skene_simple::Palette<Condition>;
-/// One Simple design token, over the terminal's conditions.
-pub type Token = skene_simple::Token<Condition>;
+pub type SimplePalette = skene_simple::SimplePalette<Condition>;
 
 pub use self::{
   button::SimpleButton,
@@ -42,7 +40,7 @@ pub(crate) const GLYPHS: BorderGlyphs = BorderGlyphs::ROUNDED;
 
 /// The shared field chrome, applied per property: padded, bordered in the scheme's
 /// hairline, brightening on hover and again on focus.
-pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T, palette: &Palette) -> T {
+pub(crate) fn field_chrome<T: crate::HasDecoration>(control: T, palette: &SimplePalette) -> T {
   control
     .set_padding(crate::Inset::horizontal(1))
     .set_border_glyphs(GLYPHS)

@@ -3075,12 +3075,12 @@ fn has_focus_forwards_through_a_raw_control() {
 fn a_theme_follows_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::adaptive(Palette::light(), Palette::dark())
+      SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
         .set_child(|| {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(Palette::current().card)
+            .set_color(SimplePalette::current().card)
         })
         .into_any()
         .build()
@@ -3105,12 +3105,12 @@ fn a_theme_follows_the_terminals_background() {
 fn a_fixed_scheme_ignores_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::new(Palette::light())
+      SimpleTheme::new(SimplePalette::light())
         .set_child(|| {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(Palette::current().card)
+            .set_color(SimplePalette::current().card)
         })
         .into_any()
         .build()
@@ -3136,7 +3136,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
     let counted = Rc::clone(&builds);
 
     tui::mount(move || {
-      SimpleTheme::adaptive(Palette::light(), Palette::dark())
+      SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
         .derive_scheme(move || scheme.get())
         .set_child(move || {
           counted.set(counted.get() + 1);
@@ -3144,7 +3144,7 @@ fn a_derived_scheme_repaints_without_rebuilding() {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .set_color(Palette::current().card)
+            .set_color(SimplePalette::current().card)
         })
         .into_any()
         .build()

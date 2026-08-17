@@ -60,6 +60,7 @@ struct State {
   next_id: u64,
   document_title: Option<String>,
   head_entries: Vec<(String, Vec<(String, String)>)>,
+  preempt_scheme: bool,
 }
 
 impl State {
@@ -74,13 +75,20 @@ impl State {
       next_id: 1,
       document_title: None,
       head_entries: Vec::new(),
+      preempt_scheme: false,
     }
   }
 
-  /// Renders the collected head content: the title, then each head element in
-  /// registration order.
+  /// Renders the collected head content: the scheme script first, when the page needs
+  /// it, then the title and each head element in registration order.
   fn render_head(&self) -> String {
     let mut out = String::new();
+
+    if self.preempt_scheme {
+      out.push_str("<script>");
+      out.push_str(PREEMPT_SCHEME);
+      out.push_str("</script>");
+    }
 
     if let Some(title) = &self.document_title {
       out.push_str("<title>");
@@ -476,12 +484,32 @@ pub fn is_server() -> bool {
   true
 }
 
-/// Accepts the app's chosen color scheme and writes nothing.
+/// Marks the page as one whose reader may have chosen a scheme, so its head carries the
+/// script that applies that choice before the first paint.
 ///
-/// A chosen scheme lives on the client—it is a reader's setting, which a server render
-/// cannot know—so the markup carries the platform-following form, which needs no script,
-/// and the client writes the attribute when it takes over.
-pub const fn set_color_scheme(_scheme: Option<skene_core::ColorScheme>) {}
+/// The choice itself is the reader's and lives in their browser, which a server render
+/// cannot see: the markup carries the platform-following form, which needs no script at
+/// all, and [`PREEMPT_SCHEME`] corrects it from storage before anything is painted. Only
+/// a page that can be told a scheme pays for the script.
+pub fn set_color_scheme(_scheme: Option<skene_core::ColorScheme>) {
+  with_state(|state| state.preempt_scheme = true);
+}
+
+/// The color scheme the reader chose on a previous visit; never known to a server.
+#[must_use]
+pub const fn stored_scheme() -> Option<skene_core::ColorScheme> {
+  None
+}
+
+/// The script that applies a stored scheme choice before the first paint.
+///
+/// Inline and blocking in the head, which is the whole point: a deferred script runs
+/// after the page has already been painted in the platform's scheme, which is the flash
+/// it exists to prevent. It writes exactly what the driver's own rules are gated on, and
+/// reads only its own key, so a page that never chose a scheme is untouched.
+const PREEMPT_SCHEME: &str = "try{var r=document.documentElement,\
+s=localStorage.getItem('skene-scheme');\
+if(s==='dark'||s==='light'){r.setAttribute('data-skene-scheme',s);r.style.colorScheme=s}}catch(e){}";
 
 /// Whether the client owns the page; never, on the server, so a view serializes its
 /// scriptless form.

@@ -1017,19 +1017,50 @@ pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
   else {
     return;
   };
-  let name = match scheme {
-    Some(skene_core::ColorScheme::Light) => "light",
-    Some(skene_core::ColorScheme::Dark) => "dark",
-    None => {
-      let _ = root.remove_attribute(crate::mapping::SCHEME_ATTRIBUTE);
-      let _ = root.remove_attribute("style");
+  let Some(name) = scheme.map(scheme_name)
+  else {
+    let _ = root.remove_attribute(crate::mapping::SCHEME_ATTRIBUTE);
+    let _ = root.remove_attribute("style");
+    let _ = storage().map(|storage| storage.remove_item(SCHEME_KEY));
 
-      return;
-    }
+    return;
   };
 
   let _ = root.set_attribute(crate::mapping::SCHEME_ATTRIBUTE, name);
   let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
+  // Stored so the next visit's head script applies it before anything is painted; an app
+  // restores its own setting from the same place through `stored_scheme`.
+  let _ = storage().map(|storage| storage.set_item(SCHEME_KEY, name));
+}
+
+/// The color scheme the reader chose on a previous visit.
+///
+/// Read it where an app initializes the setting it binds to `derive_scheme`, so the
+/// choice the head script already applied is the one the app goes on to hold.
+#[must_use]
+pub fn stored_scheme() -> Option<skene_core::ColorScheme> {
+  match storage()?.get_item(SCHEME_KEY).ok().flatten()?.as_str() {
+    "light" => Some(skene_core::ColorScheme::Light),
+    "dark" => Some(skene_core::ColorScheme::Dark),
+    _ => None,
+  }
+}
+
+/// That scheme's name, as the attribute and the store spell it.
+const fn scheme_name(scheme: skene_core::ColorScheme) -> &'static str {
+  match scheme {
+    skene_core::ColorScheme::Light => "light",
+    skene_core::ColorScheme::Dark => "dark",
+  }
+}
+
+/// The key a chosen scheme is stored under, which the head script reads.
+const SCHEME_KEY: &str = "skene-scheme";
+
+/// The reader's local storage, when the browser grants it—a page in a partitioned or
+/// private context may not.
+fn storage() -> Option<web_sys::Storage> {
+  web_sys::window()?.local_storage().ok().flatten()
 }
 
 /// Runs `apply` against the installed platform state.

@@ -49,6 +49,7 @@ web-sys = { version = "0.3", features = [
   "KeyboardEvent",
   "Location",
   "MouseEvent",
+  "Storage",
   "Node",
   "NodeList",
   "PointerEvent",

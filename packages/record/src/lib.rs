@@ -324,6 +324,13 @@ pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
   SCHEME.with(|recorded| recorded.set(scheme));
 }
 
+/// The color scheme a reader chose on a previous visit; the recording driver keeps no
+/// store, so a headless test starts with none.
+#[must_use]
+pub fn stored_scheme() -> Option<skene_core::ColorScheme> {
+  None
+}
+
 /// The color scheme the app has chosen, as last recorded.
 #[must_use]
 pub fn color_scheme() -> Option<skene_core::ColorScheme> {

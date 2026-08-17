@@ -620,3 +620,31 @@ fn a_disabled_fallback_serializes_the_enhanced_form() {
     "and the browser's own is not: {html}"
   );
 }
+
+/// A page whose reader may have chosen a scheme carries the script that applies that
+/// choice before the first paint—inline and blocking in the head, since a deferred one
+/// would run after the page had already been painted in the platform's scheme.
+#[test]
+fn a_chooseable_scheme_preempts_its_own_flash() {
+  use skene_gui::{SimplePalette, SimpleTheme, core::ColorScheme};
+
+  let rendered = render_to_string(|| {
+    SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+      .derive_scheme(|| ColorScheme::Dark)
+      .set_child(|| Text::new("themed"))
+  });
+  let head = rendered.head();
+
+  assert!(head.contains("<script>"), "the script is inline, not a src");
+  assert!(!head.contains("defer"), "and blocking, which is the point");
+  assert!(head.contains("localStorage.getItem('skene-scheme')"));
+  assert!(head.contains("data-skene-scheme"));
+}
+
+/// A page that never offers a choice pays nothing for one.
+#[test]
+fn a_page_with_no_chooseable_scheme_carries_no_script() {
+  let rendered = render_to_string(|| Text::new("plain"));
+
+  assert!(!rendered.head().contains("<script>"));
+}

@@ -127,6 +127,7 @@ pub use self::csr::{
   set_text,
   set_value,
   settled,
+  stored_scheme,
   tree::{attach, children, create_group, destroy, detach},
 };
 #[cfg(target_os = "wasi")]
@@ -181,6 +182,7 @@ pub use self::ssr::{
   set_value,
   settled,
   sleep,
+  stored_scheme,
   tree::{attach, children, create_group, destroy, detach},
 };
 

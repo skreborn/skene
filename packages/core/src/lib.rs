@@ -85,6 +85,7 @@ pub use values::{
   Axis,
   Border,
   Color,
+  ColorScheme,
   Dimension,
   FlexDirection,
   Flexibility,

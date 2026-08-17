@@ -1,5 +1,18 @@
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Lch, LinearSrgb, Oklab, Oklch, Srgb};
 
+/// One of the two color schemes a surface is painted for.
+///
+/// Names a scheme outright, where [`Condition::DarkMode`](crate::Condition::DarkMode)
+/// and its light twin ask the platform which one is in force.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum ColorScheme {
+  /// Dark ink on a light surface.
+  Light,
+  /// Light ink on a dark surface.
+  Dark,
+}
+
 /// Color value, stored as its Oklch `[lightness, chroma, hue, alpha]` components.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]

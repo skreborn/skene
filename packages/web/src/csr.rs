@@ -1005,6 +1005,33 @@ thread_local! {
   static SETTLED: skene_reactive::Signal<bool> = skene_reactive::Signal::new(true);
 }
 
+/// Writes the app's chosen color scheme onto the document root, or clears it so the
+/// platform's preference decides again.
+///
+/// Every scheme-conditional rule the driver compiles is gated on this attribute, so one
+/// write re-inks the whole document—no node is touched, and nothing built is rebuilt.
+/// `color-scheme` rides along so the user agent's own widgets, scrollbars and form
+/// controls follow the choice too.
+pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
+  let Some(root) = document().document_element()
+  else {
+    return;
+  };
+  let name = match scheme {
+    Some(skene_core::ColorScheme::Light) => "light",
+    Some(skene_core::ColorScheme::Dark) => "dark",
+    None => {
+      let _ = root.remove_attribute(crate::mapping::SCHEME_ATTRIBUTE);
+      let _ = root.remove_attribute("style");
+
+      return;
+    }
+  };
+
+  let _ = root.set_attribute(crate::mapping::SCHEME_ATTRIBUTE, name);
+  let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
+}
+
 /// Runs `apply` against the installed platform state.
 ///
 /// Only ever takes a shared borrow, so a click handler may re-enter and build or destroy

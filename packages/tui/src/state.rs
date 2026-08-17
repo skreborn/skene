@@ -288,6 +288,8 @@ pub(crate) struct State {
   pub(crate) last_size: Cell<(u16, u16)>,
   /// Whether the terminal background is dark, detected at launch.
   pub(crate) dark: Cell<bool>,
+  /// The color scheme the app has chosen, overriding the detected background.
+  pub(crate) scheme: Cell<Option<skene_core::ColorScheme>>,
   /// Whether OSC 52 clipboard writes reach the system clipboard, probed at launch;
   /// without them the copy menu's `Copy` presents disabled.
   pub(crate) clipboard: Cell<bool>,
@@ -308,6 +310,19 @@ pub(crate) struct State {
 }
 
 impl State {
+  /// Whether the scheme in force is dark: the app's choice when it has made one, and the
+  /// background the terminal reported otherwise.
+  ///
+  /// Every condition, glyph and eagerly-resolved color reads the scheme through here, so
+  /// a choice re-inks the next frame without any node being rebuilt.
+  pub(crate) fn dark(&self) -> bool {
+    match self.scheme.get() {
+      Some(skene_core::ColorScheme::Light) => false,
+      Some(skene_core::ColorScheme::Dark) => true,
+      None => self.dark.get(),
+    }
+  }
+
   pub(crate) fn new() -> Self {
     let mut taffy = taffy::TaffyTree::new();
     let root_taffy = taffy
@@ -370,6 +385,7 @@ impl State {
       pending_open: RefCell::new(None),
       last_size: Cell::new((80, 24)),
       dark: Cell::new(true),
+      scheme: Cell::new(None),
       clipboard: Cell::new(true),
       scroll_offsets: RefCell::new(FxHashMap::default()),
       reveal: Cell::new(None),
@@ -1238,7 +1254,7 @@ impl State {
     let environment = Environment {
       columns,
       rows,
-      dark: self.dark.get(),
+      dark: self.dark(),
     };
     let interaction = Interaction {
       focused: self.focused.get() == Some(node),
@@ -1791,7 +1807,7 @@ impl State {
     Environment {
       columns,
       rows,
-      dark: self.dark.get(),
+      dark: self.dark(),
     }
   }
 

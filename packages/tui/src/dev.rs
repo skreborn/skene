@@ -181,7 +181,7 @@ pub(crate) fn notice_signal() -> Option<Signal<Option<String>>> {
 pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
   use skene_core::{Color, HasChildren};
 
-  let dark = crate::with_state(|state| state.dark.get());
+  let dark = crate::with_state(crate::state::State::dark);
   let fill = if dark {
     Color::srgb(0., 0., 0.)
   }

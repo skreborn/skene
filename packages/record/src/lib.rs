@@ -319,6 +319,24 @@ pub fn set_checked(node: NodeId, checked: bool) {
   let _ = with_node(node, |node| node.checked = checked);
 }
 
+/// Records the app's chosen color scheme, or its clearing.
+pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
+  SCHEME.with(|recorded| recorded.set(scheme));
+}
+
+/// The color scheme the app has chosen, as last recorded.
+#[must_use]
+pub fn color_scheme() -> Option<skene_core::ColorScheme> {
+  SCHEME.with(std::cell::Cell::get)
+}
+
+thread_local! {
+  /// The last chosen scheme, which no recorded node carries: it is the document's.
+  static SCHEME: std::cell::Cell<Option<skene_core::ColorScheme>> = const {
+    std::cell::Cell::new(None)
+  };
+}
+
 /// Whether the client owns the page; always, for the recording driver—there is no
 /// server tree to reproduce, so an enhancement renders its enhanced form.
 #[must_use]

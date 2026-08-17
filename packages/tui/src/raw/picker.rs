@@ -344,7 +344,7 @@ fn option_row(
     .derive_color(move || {
       if active.with(|active| *active == shown) {
         highlight.map_or_else(
-          || row_highlight(with_state(|state| state.dark.get())).0,
+          || row_highlight(with_state(crate::state::State::dark)).0,
           |(background, _)| background,
         )
       }
@@ -355,7 +355,7 @@ fn option_row(
     .set_child(crate::Text::new(label).derive_color(move || {
       if active.with(|active| *active == ink_shown) {
         highlight.map_or_else(
-          || row_highlight(with_state(|state| state.dark.get())).1,
+          || row_highlight(with_state(crate::state::State::dark)).1,
           |(_, color)| color,
         )
       }
@@ -393,7 +393,7 @@ fn row_highlight(dark: bool) -> (skene_core::Color, skene_core::Color) {
 /// The popup's default box: a plain border in the scheme's ink, filled to cover the
 /// content beneath.
 fn default_popup_style() -> BoxStyle {
-  let dark = with_state(|state| state.dark.get());
+  let dark = with_state(crate::state::State::dark);
   let (backdrop, edge) = if dark {
     (
       skene_core::Color::srgb(0., 0., 0.),

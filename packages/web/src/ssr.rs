@@ -476,6 +476,13 @@ pub fn is_server() -> bool {
   true
 }
 
+/// Accepts the app's chosen color scheme and writes nothing.
+///
+/// A chosen scheme lives on the client—it is a reader's setting, which a server render
+/// cannot know—so the markup carries the platform-following form, which needs no script,
+/// and the client writes the attribute when it takes over.
+pub const fn set_color_scheme(_scheme: Option<skene_core::ColorScheme>) {}
+
 /// Whether the client owns the page; never, on the server, so a view serializes its
 /// scriptless form.
 #[must_use]

@@ -119,7 +119,7 @@ pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
   let environment = Environment {
     columns: width,
     rows: height,
-    dark: state.dark.get(),
+    dark: state.dark(),
   };
 
   state.last_size.set((width, height));
@@ -1144,7 +1144,7 @@ fn draw_scrollbars(
     isize::try_from(height).unwrap_or(0),
   );
 
-  let dark = state.dark.get();
+  let dark = state.dark();
 
   if limit_y > 0 {
     let track = height - border.1 - border.3;

@@ -44,6 +44,11 @@ fn root_class(body: &str) -> String {
   body[start..end].to_owned()
 }
 
+/// The root selector under which the platform's preference still decides.
+const DEFERRING: &str = ":where(:root:not([data-skene-scheme=\"light\"]))";
+/// The root selector under which the app has chosen the dark scheme outright.
+const CHOSEN: &str = ":where(:root[data-skene-scheme=\"dark\"])";
+
 /// A color as the CSS the driver renders it to.
 fn css_color(color: skene_gui::core::Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
@@ -99,7 +104,7 @@ fn combined_conditions_nest_media_around_states() {
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{.{class}:hover{{border-radius:8px;}}}}"
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:8px;}}}}"
   )));
 }
 
@@ -126,7 +131,7 @@ fn or_composition_emits_a_rule_per_alternative() {
   );
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{.{class}:focus{{border-radius:2px;}}}}"
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:focus{{border-radius:2px;}}}}"
   )));
 }
 
@@ -357,8 +362,58 @@ fn a_theme_following_the_platform_renders_a_color_scheme_query() {
   );
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{.{class}{{background-color:{dark};}}}}"
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}{{background-color:{dark};}}}}"
   )));
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!("{CHOSEN} .{class}{{background-color:{dark};}}")),
+    "and the same value under a scheme the app chooses at runtime"
+  );
+}
+
+/// A scheme variant renders twice: the platform's preference, deferring to a choice the
+/// app may have written on the root, and that choice. Both root selectors sit in
+/// `:where()`, so neither adds specificity and the cascade decides what it always did.
+#[test]
+fn a_scheme_variant_renders_the_preference_and_the_choice() {
+  let rendered =
+    render_to_string(|| Container::new().set_border_radius_when(Condition::DarkMode, 8.));
+  let class = root_class(rendered.body());
+
+  assert!(rendered.styles().contains(&format!(
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}{{border-radius:8px;}}}}"
+  )));
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!("{CHOSEN} .{class}{{border-radius:8px;}}"))
+  );
+}
+
+/// A scheme condition combined with a state keeps the state on both rules, so a chosen
+/// scheme and a hover compose exactly as the preference and a hover do.
+#[test]
+fn a_scheme_variant_keeps_its_states_on_both_rules() {
+  let rendered = render_to_string(|| {
+    Container::new().set_border_radius_when(
+      Condition::and([Condition::Hovered, Condition::DarkMode]),
+      4.,
+    )
+  });
+  let class = root_class(rendered.body());
+
+  assert!(rendered.styles().contains(&format!(
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:4px;}}}}"
+  )));
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!("{CHOSEN} .{class}:hover{{border-radius:4px;}}"))
+  );
 }
 
 /// A fixed scheme renders one value and no query: nothing is left for the platform to

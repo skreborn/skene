@@ -18,6 +18,7 @@ use skene_core::{
   Animation,
   BoxProp,
   BoxProps,
+  ColorScheme,
   Composable,
   Condition,
   ControlProps,
@@ -366,6 +367,7 @@ pub(crate) fn overlay_template(props: &OverlayProps) -> String {
   if let Some(color) = props.backdrop {
     push_rule(
       &mut out,
+      "",
       &[],
       "::backdrop",
       &Declarations::new().set("background-color", Declarations::render_color(color)),
@@ -428,7 +430,7 @@ pub(crate) fn control_template(
   let selection = fold_selection(&control.text);
 
   if !selection.is_empty() {
-    push_rule(&mut out, &[], "::selection", &selection);
+    push_rule(&mut out, "", &[], "::selection", &selection);
   }
 
   out
@@ -464,6 +466,7 @@ fn push_interaction_rules(
 
     push_rule(
       out,
+      "",
       states,
       "",
       &Declarations::new()
@@ -576,7 +579,7 @@ pub(crate) fn run_template(props: &RunProps) -> Option<String> {
   );
 
   if !selection.is_empty() {
-    push_rule(&mut out, &[], "::selection", &selection);
+    push_rule(&mut out, "", &[], "::selection", &selection);
   }
 
   push_variant_rules(&mut out, "::selection", &props.variants, &fold_selection);
@@ -594,7 +597,7 @@ pub(crate) fn run_prop_declarations(prop: &RunProp) -> Declarations {
 pub(crate) fn declarations_template(declarations: &Declarations) -> String {
   let mut out = String::new();
 
-  push_rule(&mut out, &[], "", declarations);
+  push_rule(&mut out, "", &[], "", declarations);
 
   out
 }
@@ -602,10 +605,12 @@ pub(crate) fn declarations_template(declarations: &Declarations) -> String {
 /// Appends one rule: `.<placeholder><states…><pseudo>{declarations}`.
 fn push_rule(
   out: &mut String,
+  ancestor: &str,
   states: &[&'static str],
   pseudo: &'static str,
   declarations: &Declarations,
 ) {
+  out.push_str(ancestor);
   out.push('.');
   out.push(CLASS_PLACEHOLDER);
 
@@ -683,17 +688,91 @@ fn push_variant_rules<S>(
       media.sort_unstable();
       states.sort_unstable();
 
-      if media.is_empty() {
-        push_rule(out, &states, pseudo, &declarations);
-      }
+      let Some(scheme) = term.iter().copied().find_map(scheme_of)
       else {
-        out.push_str("@media ");
-        out.push_str(&media.join(" and "));
-        out.push('{');
-        push_rule(out, &states, pseudo, &declarations);
-        out.push('}');
-      }
+        push_wrapped(out, &media, "", &states, pseudo, &declarations);
+
+        continue;
+      };
+      // A scheme condition answers two questions, so it renders twice: the platform's
+      // preference, which an app's own choice overrides, and that choice, which needs no
+      // preference query at all. Both root selectors sit in `:where()`, contributing no
+      // specificity, so the cascade decides exactly what it decided before they existed.
+      let without_preference: Vec<String> = media
+        .iter()
+        .filter(|feature| !feature.starts_with("(prefers-color-scheme"))
+        .cloned()
+        .collect();
+
+      push_wrapped(
+        out,
+        &media,
+        deferring_root(scheme),
+        &states,
+        pseudo,
+        &declarations,
+      );
+
+      push_wrapped(
+        out,
+        &without_preference,
+        chosen_root(scheme),
+        &states,
+        pseudo,
+        &declarations,
+      );
     }
+  }
+}
+
+/// Appends one rule, wrapped in an `@media` block when `media` is non-empty.
+fn push_wrapped(
+  out: &mut String,
+  media: &[String],
+  ancestor: &str,
+  states: &[&'static str],
+  pseudo: &'static str,
+  declarations: &Declarations,
+) {
+  if media.is_empty() {
+    push_rule(out, ancestor, states, pseudo, declarations);
+
+    return;
+  }
+
+  out.push_str("@media ");
+  out.push_str(&media.join(" and "));
+  out.push('{');
+  push_rule(out, ancestor, states, pseudo, declarations);
+  out.push('}');
+}
+
+/// The attribute an app's chosen color scheme is written to, on the document root.
+pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
+
+/// The color scheme a condition names, when it names one.
+const fn scheme_of(condition: &Condition) -> Option<ColorScheme> {
+  match condition {
+    Condition::DarkMode => Some(ColorScheme::Dark),
+    Condition::LightMode => Some(ColorScheme::Light),
+    _ => None,
+  }
+}
+
+/// The root selector under which the platform's preference still decides: any root not
+/// given the *other* scheme outright.
+const fn deferring_root(scheme: ColorScheme) -> &'static str {
+  match scheme {
+    ColorScheme::Light => ":where(:root:not([data-skene-scheme=\"dark\"])) ",
+    ColorScheme::Dark => ":where(:root:not([data-skene-scheme=\"light\"])) ",
+  }
+}
+
+/// The root selector under which the app has chosen this scheme outright.
+const fn chosen_root(scheme: ColorScheme) -> &'static str {
+  match scheme {
+    ColorScheme::Light => ":where(:root[data-skene-scheme=\"light\"]) ",
+    ColorScheme::Dark => ":where(:root[data-skene-scheme=\"dark\"]) ",
   }
 }
 

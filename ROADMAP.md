@@ -517,59 +517,64 @@ sink are just different sinks for the same paths.)
   overriding a drawn control's keys is ever genuinely needed, bring it back as
   `override_<event>` on the controls that compose behavior, with a **local** enum so
   `()` keeps meaning "just observe".
-- **Theming: one wrapper view, light and dark—done (web + TUI).** *Settled the earlier
-  open question—derivable properties on every view versus a light+dark pair under one
-  provider. It is the provider: per-view derivable properties read awkwardly at scale and
-  put the same decision in every call site.* `SimpleTheme` holds both palettes, text
-  included, follows the platform's scheme by default, and provides them through context
-  the way a radio group reaches its members. `SimplePalette`'s statics became `Palette`
-  data—one `Look` per emphasis variant, so the hover and focus colors that were hardcoded
-  inside `look()` are the palette's too—with `Palette::light()`/`dark()` shipped and both
-  overridable per theme. The whole scheme resolution lives once in `skene-simple`
-  (`Palettes::apply`/`apply_when`), monomorphized over a `SchemeCondition` trait each
-  facade implements for its own `Condition`; only the wrapper view and the setter traits
-  are per facade.
-  - **A themed property is ordinary conditional styling, which is what makes it free.**
-    Following the platform, `theme_color(|palette| palette.card)` emits the light value
-    as the property and the dark one as a `DarkMode` variant, so the web compiles it to
-    a `prefers-color-scheme` media query and a server-rendered page answers the reader's
-    preference with **no bundle loaded at all**; the terminal resolves the same variant
-    against its detected background and re-inks live. `set_scheme` fixes the scheme and
-    emits a single value instead. A conditional themed property narrows rather than
-    branching—`theme_color_when(Hovered, …)` emits `Hovered` and `Hovered ∧ DarkMode`—so
-    there is no second conditional system beside the first.
-  - **Every `Simple*` control is styled through that one view**, on both facades, and the
-    setters are public (`ThemedBox` for `Container`, `ThemedControl` blanket over
-    `HasDecoration`, `ThemedText` for runs), so an app and a third-party component
-    library dress their chrome from exactly the same palettes the built-ins use. Two
-    traits rather than one because `Container` is not a `HasDecoration` implementor and
-    a blanket impl cannot coexist with a concrete one—the split mirrors the framework's
-    own "only `Container` is decorated" rule, and the method names are identical either
-    side.
-  - **An overlay carries no theme of its own**, as settled: it is layering, anchoring
-    and dismissal. Both galleries now dress a modal by putting a `SimpleCard` **inside**
-    the overlay rather than styling the overlay element, which needs no new view—the
-    web driver already strips the dialog's user-agent chrome, so the card is the whole
-    surface. A `SimpleOverlay` convenience remains available to add later; nothing needs
-    it.
-  - **The theme's child is a closure**, not a view. A `theme_` setter resolves its token
-    when it is called, and an argument is evaluated before the call it is an argument
-    to—so a child passed by value would be built before the theme provided anything, and
-    would silently take the enclosing palettes. The closure moves construction inside the
-    provided scope. Found by the first test written against it, not by reasoning.
-  - **No `derive_scheme`, deliberately.** A conditional variant is static data by the
-    time it reaches a driver (`BoxStyle` holds a plain `Color`; only a base property
-    holds a `Source`), so a reactive scheme cannot reach a control's hover or focus color
-    at all—only a subtree rebuild can. That rebuild is what `derived`/`DerivedView`
-    already is, so binding the scheme to a user setting is
-    `DerivedView::new(move || SimpleTheme::new().set_scheme(setting.get()).set_child(page))`
-    and the framework adds no mechanism. Revisit only if the closure proves to be a
-    papercut in real apps.
+- **Theming: one wrapper view, light and dark—done (web + TUI), bar the live toggle.**
+  *Settled the earlier open question—derivable properties on every view versus a
+  light+dark pair under one provider. It is the provider.* The shape that landed, after
+  one wrong turn recorded below: a **design token is a value**, and a palette belongs to
+  the component library that defines it.
+  - **`Adaptive<T>` is the whole mechanism.** A base plus conditional overrides
+    (`SmallVec<[(Condition, T); 1]>`—a scheme-following token is a base and exactly one
+    variant), generic over the condition vocabulary each facade aliases away, since the
+    terminal's conditions are cells and its own background. Every color and border setter
+    takes `impl Into<Adaptive<_>>`, so `set_color(Color::WHITE)` and
+    `set_color(palette.card)` are the same call; setting one fans its variants into the
+    slots the view already carries, and **nothing new reaches a driver**. Under a
+    condition of the setter's own, `set_color_when` *narrows* the token's conditions
+    (`Hovered ∧ DarkMode`) rather than dropping them—`narrowed` is the one place a
+    two-slot inline vec is right, since narrowing turns a base and its variant into two
+    variants. `Composable` grew `dark_mode()` and `both()` to make that generic.
+  - **`skene-simple` owns `Palette`, and only owns it.** A struct of `Token`s with
+    `light()` and `dark()`; the crate holds no machinery a third-party library could not
+    write for its own palette type. `SimpleTheme::new(palette)` provides one through
+    context, `adaptive(light, dark)` pairs two so every token carries its dark value as a
+    `DarkMode` variant—the web compiles that to a `prefers-color-scheme` media query, so
+    a server-rendered page answers the reader with **no bundle loaded at all**.
+    `set_scheme` chooses one and returns a theme with nothing left to choose, in the
+    type.
+  - **Retired before it shipped: `theme_<prop>` setters.** The first cut put
+    `theme_color(|palette| palette.card)` on `Container`, `HasDecoration` and the run
+    views through three extension traits. It read well and it was wrong: the token
+    closure was `Fn(&Palette) -> Color` with `Palette` concrete, which welded the
+    framework's own box view to the Simple library's palette type and left a third-party
+    library unable to use its own. Equal footing is the point of `LayoutBox` and the
+    `Raw*` split; a themed setter surface cannot have it. Making the token a *value* the
+    ordinary setters accept deleted the whole surface, three traits, `Palettes`,
+    `SchemeCondition` and two applier functions—the replacement is smaller than what it
+    replaced.
+  - **The theme's child is a closure.** A palette is read from context, and an argument
+    is evaluated before the call it is an argument to, so a child passed by value is
+    built before the theme provides anything. Found by the first test written against it.
+  - **Remaining: a scheme the app controls.** `derive_scheme` was built and then cut,
+    because a `derived` rebuild destroys the old nodes and disposes their scope—measured,
+    not assumed: a signal inside the themed subtree went `1` → `0` across a flip, and
+    focus, scroll offsets and native input state go with the nodes. A theme toggle that
+    empties the form under it is worse than none. The fix is to stop rebuilding: an
+    app-controlled scheme belongs in the **condition vocabulary**, resolved by the driver
+    against an override the theme sets—on the web `Condition::DarkMode` compiling to the
+    media query *and* a root-attribute selector (`:root:not([data-scheme="light"])`
+    guarding the former so an explicit choice wins), with `derive_scheme` writing that
+    attribute in an effect; in the terminal, the same override read beside the detected
+    background. One attribute write, nothing destroyed, and the default path stays
+    scriptless.
+  - **An overlay carries no theme of its own**, as settled: it is layering, anchoring and
+    dismissal. Both galleries dress a modal by putting a `SimpleCard` **inside** the
+    overlay, which needs no new view—the web driver already strips the dialog's
+    user-agent chrome. A `SimpleOverlay` convenience remains available to add later.
   - **Two places a variant cannot reach, both terminal-only**: the picker popup's whole
     `BoxStyle` and the highlight's color pair take no conditional twin, and a `Span`
-    carries no variants. Those resolve eagerly against the scheme in force
-    (`painted_palette`), which is what the terminal's own defaults already did. The GUI
-    facade has no such gap.
+    carries no variants. Those resolve eagerly through the public `painted(&token)`,
+    which answers the scheme leaves alone—a component library faces this exactly as the
+    built-ins do. The GUI facade has no such gap.
   - **Inherited text became scheme-aware to carry this**: `TextTheme` grew `set_when`,
     the inherited variants layer under each run's own, and an inherited variant never
     inks a link—matching the base style's existing rule. The terminal needed none of it:

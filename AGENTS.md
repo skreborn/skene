@@ -61,16 +61,31 @@
   On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
   output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
   remain for genuinely dynamic values only.
-- **A subtree's colors come from one theme, and the scheme is a condition.** `SimpleTheme`
-  holds a light and a dark `Palette` and provides them through context; a themed property
-  is spelled `theme_<prop>(|palette| palette.token)` and expands to ordinary conditional
-  styling—the light value plus a `DarkMode` variant—so light/dark costs no script and a
-  server-rendered page answers the reader's preference before any bundle arrives. Fixing
-  the scheme (`set_scheme`) collapses that to one value. There is no reactive scheme
-  setter: a variant is static data by the time a driver sees it, so a scheme bound to a
-  user setting rebuilds the subtree through `derived`, which is the mechanism that
-  already exists. The theme's child is a closure, since a `theme_` setter resolves when
-  it is called and an argument is evaluated before its call.
+- **A design token is a value, and a palette belongs to its library.** `Adaptive<T>`—a
+  base plus conditional overrides, generic over the facade's condition vocabulary—is what
+  every color and border setter takes, so `set_color(Color::WHITE)` and
+  `set_color(palette.card)` are the same call and a token's own conditions land beside
+  the property as ordinary variants. Setting one under a condition (`set_color_when`)
+  *narrows* the token's conditions rather than dropping them. Nothing below a component
+  library knows what a palette is: `skene-simple` owns `Palette` as a plain struct of
+  tokens, and a third-party library defines its own struct on exactly the same footing.
+  There is no themed twin of any setter—that surface existed briefly, welded `Container`
+  to one concrete palette type, and is gone.
+  - `SimpleTheme::new(palette)` provides one palette through context;
+    `SimpleTheme::adaptive(light, dark)` pairs two so every token carries its dark value
+    as a `DarkMode` variant, which the web compiles to a `prefers-color-scheme` media
+    query—so light/dark costs no script and a server-rendered page answers the reader
+    before any bundle arrives. `set_scheme` chooses one and leaves a theme with nothing
+    left to choose, in the type.
+  - The theme's child is a closure: `Palette::current()` reads context, and an argument
+    is evaluated before the call it is an argument to, so a child passed by value would
+    be built before the theme provided anything.
+  - **A scheme an app controls must not rebuild the subtree.** A `derived` rebuild
+    destroys the old nodes and disposes their scope—measured: a signal inside the subtree
+    goes back to its initial value, and focus, scroll offsets and native input state go
+    with the nodes. A live toggle therefore belongs in the condition vocabulary, resolved
+    by the driver against an override the theme sets, and until that lands there is no
+    reactive scheme setter at all.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
@@ -160,9 +175,8 @@
   built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
   view against the driver's escape hatch.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `theme_<prop>` for one taken from the inherited theme's palette, `handle_<event>` for
-  an event handler (e.g. `Container::handle_click`). A driver function that realizes the
-  handler is named the same.
+  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
+  function that realizes the handler is named the same.
 - The layout vocabulary rule extends to the whole surface: views, controls, and
   composition helpers take the platform-native frameworks' names (`TextField`,
   `TextEditor`, `Picker`, `LazyColumn`, `derived`), never HTML element or React

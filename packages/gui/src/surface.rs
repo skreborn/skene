@@ -176,48 +176,82 @@ pub trait HasDecoration: Sized {
   /// The core the decoration lands on.
   fn decoration_core(&mut self) -> &mut DecorationCore;
 
-  /// Sets the background color.
+  /// Sets the background color, or an [`Adaptive`](skene_core::Adaptive) one: a token's
+  /// own conditional variants land beside the property, exactly as `set_color_when`
+  /// would spell them.
   #[inline(always)]
   #[must_use]
-  fn set_color(mut self, color: skene_core::Color) -> Self {
+  fn set_color(mut self, color: impl Into<skene_core::Adaptive<skene_core::Color>>) -> Self {
+    let (base, variants) = color.into().parts();
     let core = self.decoration_core();
 
-    core.style = core.style.clone().set_color(color);
+    core.style = core.style.clone().set_color(base);
+
+    for (condition, color) in variants {
+      core
+        .variants
+        .push((condition, BoxStyle::new().set_color(color)));
+    }
 
     self
   }
 
-  /// Sets the background color applied while `condition` holds.
+  /// Sets the background color applied while `condition` holds. An
+  /// [`Adaptive`](skene_core::Adaptive) color keeps its own conditions, narrowed to also
+  /// require `condition`.
   #[inline(always)]
   #[must_use]
-  fn set_color_when(mut self, condition: Condition, color: skene_core::Color) -> Self {
-    self
-      .decoration_core()
-      .variants
-      .push((condition, BoxStyle::new().set_color(color)));
-
-    self
-  }
-
-  /// Sets the border.
-  #[inline(always)]
-  #[must_use]
-  fn set_border(mut self, border: skene_core::Border) -> Self {
+  fn set_color_when(
+    mut self,
+    condition: Condition,
+    color: impl Into<skene_core::Adaptive<skene_core::Color>>,
+  ) -> Self {
     let core = self.decoration_core();
 
-    core.style = core.style.clone().set_border(border);
+    for (condition, color) in color.into().narrowed(condition) {
+      core
+        .variants
+        .push((condition, BoxStyle::new().set_color(color)));
+    }
 
     self
   }
 
-  /// Sets the border applied while `condition` holds.
+  /// Sets the border, or an [`Adaptive`](skene_core::Adaptive) one.
   #[inline(always)]
   #[must_use]
-  fn set_border_when(mut self, condition: Condition, border: skene_core::Border) -> Self {
+  fn set_border(mut self, border: impl Into<skene_core::Adaptive<skene_core::Border>>) -> Self {
+    let (base, variants) = border.into().parts();
+    let core = self.decoration_core();
+
+    core.style = core.style.clone().set_border(base);
+
+    for (condition, border) in variants {
+      core
+        .variants
+        .push((condition, BoxStyle::new().set_border(border)));
+    }
+
     self
-      .decoration_core()
-      .variants
-      .push((condition, BoxStyle::new().set_border(border)));
+  }
+
+  /// Sets the border applied while `condition` holds. An
+  /// [`Adaptive`](skene_core::Adaptive) border keeps its own conditions, narrowed to
+  /// also require `condition`.
+  #[inline(always)]
+  #[must_use]
+  fn set_border_when(
+    mut self,
+    condition: Condition,
+    border: impl Into<skene_core::Adaptive<skene_core::Border>>,
+  ) -> Self {
+    let core = self.decoration_core();
+
+    for (condition, border) in border.into().narrowed(condition) {
+      core
+        .variants
+        .push((condition, BoxStyle::new().set_border(border)));
+    }
 
     self
   }

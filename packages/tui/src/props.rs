@@ -25,6 +25,10 @@ use skene_core::{
   Wrap,
 };
 
+/// A value and the conditions that override it, over the terminal's own condition
+/// vocabulary; see [`skene_core::Adaptive`].
+pub type Adaptive<T> = skene_core::Adaptive<T, Condition>;
+
 /// The characters a one-cell border draws with.
 ///
 /// The named sets cover the box-drawing families—[`LIGHT`](Self::LIGHT) (the default),
@@ -611,6 +615,16 @@ impl Composable for Condition {
       Self::Or(subconditions) => ConditionShape::Or(subconditions),
       _ => ConditionShape::Leaf(self),
     }
+  }
+
+  #[inline(always)]
+  fn dark_mode() -> Self {
+    Self::DarkMode
+  }
+
+  #[inline(always)]
+  fn both(self, other: Self) -> Self {
+    Self::And(vec![self, other])
   }
 }
 

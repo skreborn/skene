@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use skene_core::{
+  Adaptive,
   Animation,
   AnyView,
   Color,
@@ -189,10 +190,20 @@ impl Text {
     self
   }
 
-  /// Sets a static color.
+  /// Sets a static color, or an [`Adaptive`] one: a token's own conditional variants
+  /// land beside the property, exactly as `set_when` would spell them.
   #[inline(always)]
-  pub fn set_color(mut self, color: Color) -> Self {
-    self.style = self.style.set_color(color);
+  pub fn set_color(mut self, color: impl Into<Adaptive<Color>>) -> Self {
+    let (base, variants) = color.into().parts();
+
+    self.style = self.style.set_color(base);
+
+    for (condition, color) in variants {
+      self
+        .dynamics
+        .variants
+        .push((condition, RunStyle::new().set_color(color)));
+    }
 
     self
   }
@@ -364,10 +375,20 @@ impl Span {
     self
   }
 
-  /// Sets a static color.
+  /// Sets a static color, or an [`Adaptive`] one: a token's own conditional variants
+  /// land beside the property, exactly as `set_when` would spell them.
   #[inline(always)]
-  pub fn set_color(mut self, color: Color) -> Self {
-    self.style = self.style.set_color(color);
+  pub fn set_color(mut self, color: impl Into<Adaptive<Color>>) -> Self {
+    let (base, variants) = color.into().parts();
+
+    self.style = self.style.set_color(base);
+
+    for (condition, color) in variants {
+      self
+        .dynamics
+        .variants
+        .push((condition, RunStyle::new().set_color(color)));
+    }
 
     self
   }

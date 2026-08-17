@@ -61,10 +61,19 @@ impl Text {
     self
   }
 
-  /// Sets a static color.
+  /// Sets a static color, or an [`Adaptive`] one: a token's own conditional variants
+  /// land beside the property, exactly as `set_when` would spell them.
   #[inline(always)]
-  pub fn set_color(mut self, color: Color) -> Self {
-    self.color = Some(Source::Static(color));
+  pub fn set_color(mut self, color: impl Into<crate::props::Adaptive<Color>>) -> Self {
+    let (base, variants) = color.into().parts();
+
+    self.color = Some(Source::Static(base));
+
+    for (condition, color) in variants {
+      self
+        .variants
+        .push((condition, RunStyle::new().set_color(color)));
+    }
 
     self
   }

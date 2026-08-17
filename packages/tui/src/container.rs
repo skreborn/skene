@@ -22,7 +22,7 @@ use crate::{
   Children,
   box_node::BoxNode,
   events::{PointerEvent, ScrollEvent},
-  props::{BoxStyle, Condition},
+  props::{Adaptive, BoxStyle, Condition},
 };
 
 /// Decoration and sizing around exactly one child.
@@ -407,10 +407,20 @@ impl Container {
     self
   }
 
-  /// Sets a static background color.
+  /// Sets a static background color, or an [`Adaptive`] one: a token's own conditional
+  /// variants land beside the property, exactly as `set_color_when` would spell them.
   #[inline(always)]
-  pub fn set_color(mut self, color: Color) -> Self {
-    self.node.color = Some(Source::Static(color));
+  pub fn set_color(mut self, color: impl Into<Adaptive<Color>>) -> Self {
+    let (base, variants) = color.into().parts();
+
+    self.node.color = Some(Source::Static(base));
+
+    for (condition, color) in variants {
+      self
+        .node
+        .variants
+        .push((condition, BoxStyle::new().set_color(color)));
+    }
 
     self
   }
@@ -423,21 +433,33 @@ impl Container {
     self
   }
 
-  /// Sets the background color applied while `condition` holds.
+  /// Sets the background color applied while `condition` holds. An [`Adaptive`] color
+  /// keeps its own conditions, narrowed to also require `condition`.
   #[inline(always)]
-  pub fn set_color_when(mut self, condition: Condition, color: Color) -> Self {
-    self
-      .node
-      .variants
-      .push((condition, BoxStyle::new().set_color(color)));
+  pub fn set_color_when(mut self, condition: Condition, color: impl Into<Adaptive<Color>>) -> Self {
+    for (condition, color) in color.into().narrowed(condition) {
+      self
+        .node
+        .variants
+        .push((condition, BoxStyle::new().set_color(color)));
+    }
 
     self
   }
 
-  /// Sets a static one-cell border in the given color.
+  /// Sets a static one-cell border in the given color, or an [`Adaptive`] one.
   #[inline(always)]
-  pub fn set_border(mut self, border: Color) -> Self {
-    self.node.border = Some(Source::Static(border));
+  pub fn set_border(mut self, border: impl Into<Adaptive<Color>>) -> Self {
+    let (base, variants) = border.into().parts();
+
+    self.node.border = Some(Source::Static(base));
+
+    for (condition, border) in variants {
+      self
+        .node
+        .variants
+        .push((condition, BoxStyle::new().set_border(border)));
+    }
 
     self
   }
@@ -450,13 +472,20 @@ impl Container {
     self
   }
 
-  /// Sets the border color applied while `condition` holds.
+  /// Sets the border color applied while `condition` holds. An [`Adaptive`] border keeps
+  /// its own conditions, narrowed to also require `condition`.
   #[inline(always)]
-  pub fn set_border_when(mut self, condition: Condition, border: Color) -> Self {
-    self
-      .node
-      .variants
-      .push((condition, BoxStyle::new().set_border(border)));
+  pub fn set_border_when(
+    mut self,
+    condition: Condition,
+    border: impl Into<Adaptive<Color>>,
+  ) -> Self {
+    for (condition, border) in border.into().narrowed(condition) {
+      self
+        .node
+        .variants
+        .push((condition, BoxStyle::new().set_border(border)));
+    }
 
     self
   }

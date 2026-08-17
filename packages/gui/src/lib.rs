@@ -89,9 +89,7 @@ pub use crate::simple::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  ThemedBox,
-  ThemedControl,
-  ThemedText,
+  Token,
 };
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;

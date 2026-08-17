@@ -1,275 +1,155 @@
-//! The Simple design language's theme: the palettes a subtree paints with, and the
-//! setters that read them.
-
-use skene_simple::{Palette, Palettes};
+//! The Simple design language's theme: the palette a subtree paints with.
 
 use crate::{
   AnyView,
-  Border,
-  Color,
   ColorScheme,
-  Condition,
-  Container,
-  HasDecoration,
   IntoView,
   NoChild,
   NodeId,
+  Palette,
   RunStyle,
-  Span,
-  Text,
   TextStyle,
   TextTheme,
   View,
 };
 
-/// The Simple palettes a subtree paints with, threaded through the reactive `Context`.
+/// A theme carrying one palette, with no scheme left to choose.
+#[must_use]
+pub struct OnePalette;
+
+/// A theme carrying a light and a dark palette, either of which may still be chosen.
+#[must_use]
+pub struct TwoPalettes {
+  light: Palette,
+  dark: Palette,
+}
+
+/// The palette a subtree paints with, threaded through the reactive `Context`.
 ///
-/// Wrap a subtree to dress every `Simple*` view beneath it: the theme holds a light
-/// and a dark palette, follows the platform's scheme by default, and a nested theme
-/// overlays an outer one. A themed property is spelled with the `theme_` setters, so
-/// a component library and an app dress their own chrome from the same palettes the
-/// built-in components use.
+/// Wrap a subtree to dress every `Simple*` view beneath it; an app dresses its own
+/// chrome from the same palette by reading [`Palette::current`]. A nested theme replaces
+/// the palette beneath it.
 ///
-/// Following the platform costs no script: each themed property compiles to its light
-/// value plus a dark-scheme variant, which the web renders as a `prefers-color-scheme`
-/// media query, so a server-rendered page answers the user's preference before any
-/// bundle arrives. [`set_scheme`](Self::set_scheme) fixes the scheme instead, and
-/// resolves each property to a single value.
-///
-/// To bind the scheme to a user setting, rebuild the theme from the signal holding it:
+/// [`new`](Self::new) takes one palette. [`adaptive`](Self::adaptive) takes a light and
+/// a dark one and follows the platform's scheme—which costs no script, because each
+/// token carries its dark value as an ordinary conditional variant and the web compiles
+/// that to a `prefers-color-scheme` media query. A server-rendered page therefore
+/// answers the reader's preference before any bundle arrives.
 ///
 /// ```no_run
 /// # use skene_gui::prelude::*;
 /// # fn page() -> impl IntoView { Text::new("") }
-/// # let scheme = Signal::new(ColorScheme::Dark);
-/// DerivedView::new(move || SimpleTheme::new().set_scheme(scheme.get()).set_child(page))
+/// SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(page)
 /// # ;
 /// ```
 ///
-/// The subtree rebuilds on each change, which is what keeps the conditional variants
-/// correct: a variant is static data by the time it reaches a driver, so a reactive
-/// scheme cannot reach one any other way.
+/// Only the adaptive form can be told which scheme to paint, through
+/// [`set_scheme`](SimpleTheme::set_scheme): a theme carrying one palette has nothing to
+/// choose, and the type says so. Choosing one leaves a theme carrying that palette
+/// alone, so the choice cannot be made twice.
 #[must_use]
-pub struct SimpleTheme<C = NoChild> {
+pub struct SimpleTheme<C = NoChild, S = OnePalette> {
   child: C,
-  palettes: Palettes,
+  palette: Palette,
+  schemes: S,
 }
 
 impl SimpleTheme {
-  /// Creates a theme wrapping its child, carrying the stock palettes and following the
-  /// platform's scheme.
+  /// Creates a theme painting `palette`, whatever the platform's scheme.
   #[inline(always)]
-  pub fn new() -> Self {
+  pub fn new(palette: Palette) -> Self {
     Self {
       child: NoChild,
-      palettes: Palettes::default(),
+      palette,
+      schemes: OnePalette,
     }
   }
 }
 
-impl<C> SimpleTheme<C> {
+impl SimpleTheme<NoChild, TwoPalettes> {
+  /// Creates a theme following the platform's color scheme, painting `light` under the
+  /// light one and `dark` under the dark one.
+  pub fn adaptive(light: Palette, dark: Palette) -> Self {
+    Self {
+      child: NoChild,
+      palette: Palette::adapt(light.clone(), dark.clone()),
+      schemes: TwoPalettes { light, dark },
+    }
+  }
+}
+
+impl<C, S> SimpleTheme<C, S> {
   /// Sets the child, which the view requires before it can build.
   ///
-  /// The child comes as a closure because the palettes have to be in scope while it is
-  /// built: a `theme_` setter resolves its token the moment it is called, and a child
-  /// passed by value would already have been built by then.
+  /// The child comes as a closure because the palette has to be in scope while it is
+  /// built: [`Palette::current`] answers with the enclosing theme's, and an argument is
+  /// evaluated before the call it is an argument to.
   #[inline(always)]
-  pub fn set_child<V: IntoView>(self, child: impl FnOnce() -> V + 'static) -> SimpleTheme<AnyView> {
+  pub fn set_child<V: IntoView>(
+    self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> SimpleTheme<AnyView, S> {
     SimpleTheme {
       child: AnyView::new(move || child().into_view().build()),
-      palettes: self.palettes,
+      palette: self.palette,
+      schemes: self.schemes,
     }
   }
+}
 
-  /// Sets the palette painted under the light scheme.
+impl<C> SimpleTheme<C, TwoPalettes> {
+  /// Paints `scheme` rather than the platform's.
+  ///
+  /// The chosen palette applies unconditionally, so nothing is left for a media query to
+  /// answer—and nothing is left to choose, which is why this leaves a theme carrying one
+  /// palette.
   #[inline(always)]
-  pub fn set_light(mut self, palette: Palette) -> Self {
-    self.palettes.light = palette;
+  pub fn set_scheme(self, scheme: ColorScheme) -> SimpleTheme<C, OnePalette> {
+    let TwoPalettes { light, dark } = self.schemes;
 
-    self
-  }
-
-  /// Sets the palette painted under the dark scheme.
-  #[inline(always)]
-  pub fn set_dark(mut self, palette: Palette) -> Self {
-    self.palettes.dark = palette;
-
-    self
-  }
-
-  /// Fixes the subtree to one scheme, overriding the platform's.
-  #[inline(always)]
-  pub fn set_scheme(mut self, scheme: ColorScheme) -> Self {
-    self.palettes.scheme = Some(scheme);
-
-    self
+    SimpleTheme {
+      child: self.child,
+      palette: match scheme {
+        ColorScheme::Light => light,
+        ColorScheme::Dark => dark,
+      },
+      schemes: OnePalette,
+    }
   }
 }
 
-impl Default for SimpleTheme {
-  #[inline(always)]
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-impl View for SimpleTheme<AnyView> {
+impl<S: 'static> View for SimpleTheme<AnyView, S> {
   fn build(self) -> NodeId {
-    let Self { child, palettes } = self;
+    let Self { child, palette, .. } = self;
+    let text = ambient_text(&palette);
 
-    palettes.provide(move || ambient_text(&palettes).set_child(child).build())
+    palette.provide(move || text.set_child(child).build())
   }
 }
 
-/// The theme's ambient run style: the ink every run beneath inherits, and the colors a
-/// selection paints in. A run's own setters still win, so a control's label keeps its
-/// own ink.
-fn ambient_text(palettes: &Palettes) -> TextTheme {
-  let ink = |palette: &Palette| {
+/// The theme's ambient text: the ink every run beneath inherits and the colors a
+/// selection paints in, each token's own conditions carried through as inherited
+/// variants. A run's own setters still win, so a control's label keeps its own ink.
+fn ambient_text(palette: &Palette) -> TextTheme {
+  let (ink, ink_variants) = palette.foreground.clone().parts();
+  let (page, page_variants) = palette.background.clone().parts();
+  let mut theme = TextTheme::new().set_base(
     TextStyle::new()
-      .set_color(palette.foreground)
-      .set_selection_color(palette.background)
-      .set_selection_background(palette.foreground)
-  };
+      .set_color(ink)
+      .set_selection_color(page)
+      .set_selection_background(ink),
+  );
 
-  match palettes.fixed() {
-    Some(palette) => TextTheme::new().set_base(ink(palette)),
-    None => TextTheme::new().set_base(ink(&palettes.light)).set_when(
-      Condition::DarkMode,
-      RunStyle::new()
-        .set_color(palettes.dark.foreground)
-        .set_selection_color(palettes.dark.background)
-        .set_selection_background(palettes.dark.foreground),
-    ),
-  }
-}
-
-/// The themed twin of [`Container`]'s decoration setters: each takes the token to paint
-/// rather than a color, and resolves it against the enclosing [`SimpleTheme`].
-pub trait ThemedBox: Sized {
-  /// Sets the background to `token`.
-  #[must_use]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self;
-
-  /// Sets the background to `token` while `condition` holds.
-  #[must_use]
-  fn theme_color_when(self, condition: Condition, token: impl Fn(&Palette) -> Color) -> Self;
-
-  /// Sets a border of `width` in `token`.
-  #[must_use]
-  fn theme_border(self, width: f32, token: impl Fn(&Palette) -> Color) -> Self;
-
-  /// Sets a border of `width` in `token` while `condition` holds.
-  #[must_use]
-  fn theme_border_when(
-    self,
-    condition: Condition,
-    width: f32,
-    token: impl Fn(&Palette) -> Color,
-  ) -> Self;
-}
-
-impl ThemedBox for Container {
-  #[inline(always)]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(self, token, Self::set_color, Self::set_color_when)
+  for (condition, ink) in ink_variants {
+    theme = theme.set_when(
+      condition,
+      RunStyle::new().set_color(ink).set_selection_background(ink),
+    );
   }
 
-  #[inline(always)]
-  fn theme_color_when(self, condition: Condition, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply_when(self, condition, token, Self::set_color_when)
+  for (condition, page) in page_variants {
+    theme = theme.set_when(condition, RunStyle::new().set_selection_color(page));
   }
 
-  #[inline(always)]
-  fn theme_border(self, width: f32, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(
-      self,
-      token,
-      |target, color| target.set_border(Border::new(width, color)),
-      |target, condition, color| target.set_border_when(condition, Border::new(width, color)),
-    )
-  }
-
-  #[inline(always)]
-  fn theme_border_when(
-    self,
-    condition: Condition,
-    width: f32,
-    token: impl Fn(&Palette) -> Color,
-  ) -> Self {
-    Palettes::current().apply_when(self, condition, token, |target, condition, color| {
-      target.set_border_when(condition, Border::new(width, color))
-    })
-  }
-}
-
-/// The themed twin of [`HasDecoration`]'s setters: each takes the token to paint rather
-/// than a color, and resolves it against the enclosing [`SimpleTheme`].
-pub trait ThemedControl: HasDecoration {
-  /// Sets the background to `token`.
-  #[inline(always)]
-  #[must_use]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(self, token, Self::set_color, Self::set_color_when)
-  }
-
-  /// Sets the background to `token` while `condition` holds.
-  #[inline(always)]
-  #[must_use]
-  fn theme_color_when(self, condition: Condition, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply_when(self, condition, token, Self::set_color_when)
-  }
-
-  /// Sets a border of `width` in `token`.
-  #[inline(always)]
-  #[must_use]
-  fn theme_border(self, width: f32, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(
-      self,
-      token,
-      |target, color| target.set_border(Border::new(width, color)),
-      |target, condition, color| target.set_border_when(condition, Border::new(width, color)),
-    )
-  }
-
-  /// Sets a border of `width` in `token` while `condition` holds.
-  #[inline(always)]
-  #[must_use]
-  fn theme_border_when(
-    self,
-    condition: Condition,
-    width: f32,
-    token: impl Fn(&Palette) -> Color,
-  ) -> Self {
-    Palettes::current().apply_when(self, condition, token, |target, condition, color| {
-      target.set_border_when(condition, Border::new(width, color))
-    })
-  }
-}
-
-impl<T: HasDecoration> ThemedControl for T {}
-
-/// The themed twin of a run's ink setter, on the views that carry one.
-pub trait ThemedText: Sized {
-  /// Sets the ink to `token`.
-  #[must_use]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self;
-}
-
-impl ThemedText for Text {
-  #[inline(always)]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(self, token, Self::set_color, |target, condition, color| {
-      target.set_when(condition, RunStyle::new().set_color(color))
-    })
-  }
-}
-
-impl ThemedText for Span {
-  #[inline(always)]
-  fn theme_color(self, token: impl Fn(&Palette) -> Color) -> Self {
-    Palettes::current().apply(self, token, Self::set_color, |target, condition, color| {
-      target.set_when(condition, RunStyle::new().set_color(color))
-    })
-  }
+  theme
 }

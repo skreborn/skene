@@ -2,7 +2,7 @@
 
 use skene_core::{HasChildren, ItemAlignment, NodeId, PlainChild, View};
 
-use crate::{Children, Column, Container, simple, simple::ThemedBox};
+use crate::{Children, Column, Container, Palette, simple};
 
 /// A ready-made card: a raised, hairline-bordered surface grouping related content,
 /// laid out as a column.
@@ -80,10 +80,12 @@ impl HasChildren<crate::TuiOps> for SimpleCard {
 impl View for SimpleCard {
   #[inline(always)]
   fn build(self) -> NodeId {
+    let palette = Palette::current();
+
     Container::new()
       .set_padding(crate::Inset::symmetric(2, 1))
-      .theme_color(|palette| palette.card)
-      .theme_border(|palette| palette.border)
+      .set_color(palette.card)
+      .set_border(palette.border)
       .set_border_glyphs(simple::GLYPHS)
       .set_child(self.column)
       .build()

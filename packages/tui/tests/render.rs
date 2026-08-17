@@ -3075,12 +3075,12 @@ fn has_focus_forwards_through_a_raw_control() {
 fn a_theme_follows_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::new()
+      SimpleTheme::adaptive(Palette::light(), Palette::dark())
         .set_child(|| {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .theme_color(|palette| palette.card)
+            .set_color(Palette::current().card)
         })
         .into_any()
         .build()
@@ -3105,13 +3105,12 @@ fn a_theme_follows_the_terminals_background() {
 fn a_fixed_scheme_ignores_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::new()
-        .set_scheme(ColorScheme::Light)
+      SimpleTheme::new(Palette::light())
         .set_child(|| {
           Container::new()
             .set_width(4)
             .set_height(1)
-            .theme_color(|palette| palette.card)
+            .set_color(Palette::current().card)
         })
         .into_any()
         .build()

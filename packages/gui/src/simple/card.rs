@@ -1,8 +1,8 @@
 //! A ready-made card surface in the Simple design language.
 
-use skene_core::{HasChildren, ItemAlignment, NodeId, PlainChild, View};
+use skene_core::{Border, HasChildren, ItemAlignment, NodeId, PlainChild, View};
 
-use crate::{Children, Column, Container, Inset, ThemedBox, simple};
+use crate::{Children, Column, Container, Inset, Palette, simple};
 
 /// A ready-made card: a raised, hairline-bordered surface grouping related content,
 /// laid out as a column.
@@ -80,10 +80,12 @@ impl HasChildren<crate::GuiOps> for SimpleCard {
 impl View for SimpleCard {
   #[inline(always)]
   fn build(self) -> NodeId {
+    let palette = Palette::current();
+
     Container::new()
       .set_padding(Inset::all(24.))
-      .theme_color(|palette| palette.card)
-      .theme_border(1., |palette| palette.border)
+      .set_color(palette.card)
+      .set_border(palette.border.map(|color| Border::new(1., color)))
       .set_border_radius(simple::CARD_RADIUS)
       .set_child(self.column)
       .build()

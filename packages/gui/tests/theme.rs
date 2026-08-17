@@ -1,5 +1,5 @@
-//! The Simple theme, realized against the recording driver: which values a themed
-//! property records, and which of them is a conditional variant.
+//! The Simple theme, realized against the recording driver: which values a token puts
+//! on a property, and which of them is a conditional variant.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -10,55 +10,56 @@ use skene_gui::{
   Palette,
   SimpleTheme,
   Text,
-  ThemedBox,
-  ThemedText,
   View,
-  core::{Color, ColorScheme, Condition},
+  core::{Color, ColorScheme, Composable, Condition},
   record,
 };
 
-/// Following the platform, a themed property records the light value as its own and the
-/// dark one as a variant—so the scheme is answered by declarative styling rather than by
-/// anything the app runs.
-#[test]
-fn following_the_platform_records_a_base_and_a_dark_variant() {
-  let root = SimpleTheme::new()
-    .set_child(|| Container::new().theme_color(|palette| palette.card))
-    .build();
-  // A theme realizes no node of its own: it provides the palettes and builds its child.
-  let box_node = root;
-  let style = record::box_style(box_node).expect("a box style");
-  let variants = record::box_variants(box_node);
-
-  assert_eq!(style.color, Some(Palette::light().card));
-  assert_eq!(variants.len(), 1);
-  assert_eq!(variants[0].0, Condition::DarkMode);
-  assert_eq!(variants[0].1.color, Some(Palette::dark().card));
+/// The color a token takes when nothing overrides it.
+fn base(token: &skene_gui::Token) -> Color {
+  *token.base()
 }
 
-/// A fixed scheme resolves to exactly one value: no variant is recorded, since there is
-/// nothing left for a condition to answer.
+/// An adaptive token puts its light value on the property and its dark one beside it as
+/// a variant—so the scheme is answered by declarative styling rather than by anything
+/// the app runs.
 #[test]
-fn a_fixed_scheme_records_one_value_and_no_variant() {
-  let root = SimpleTheme::new()
-    .set_scheme(ColorScheme::Light)
-    .set_child(|| Container::new().theme_color(|palette| palette.card))
+fn an_adaptive_token_sets_a_property_and_a_dark_variant() {
+  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+    .set_child(|| Container::new().set_color(Palette::current().card))
+    .build();
+  // A theme realizes no node of its own: it provides the palette and builds its child.
+  let style = record::box_style(root).expect("a box style");
+  let variants = record::box_variants(root);
+
+  assert_eq!(style.color, Some(base(&Palette::light().card)));
+  assert_eq!(variants.len(), 1);
+  assert_eq!(variants[0].0, Condition::DarkMode);
+  assert_eq!(variants[0].1.color, Some(base(&Palette::dark().card)));
+}
+
+/// A theme carrying one palette resolves to exactly one value: no variant is recorded,
+/// since there is nothing left for a condition to answer.
+#[test]
+fn one_palette_records_one_value_and_no_variant() {
+  let root = SimpleTheme::new(Palette::light())
+    .set_child(|| Container::new().set_color(Palette::current().card))
     .build();
 
   assert_eq!(
     record::box_style(root).expect("a box style").color,
-    Some(Palette::light().card)
+    Some(base(&Palette::light().card))
   );
   assert!(record::box_variants(root).is_empty());
 }
 
-/// A conditional themed property narrows to the scheme rather than opening a second
-/// conditional system: the state's own variant, then that state under the dark scheme.
+/// A token applied under a condition of the setter's own narrows rather than losing its
+/// conditions: the state's own variant, then that state under the dark scheme.
 #[test]
-fn a_conditional_themed_property_narrows_to_the_scheme() {
-  let root = SimpleTheme::new()
+fn a_token_set_under_a_condition_narrows_to_the_scheme() {
+  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
     .set_child(|| {
-      Container::new().theme_color_when(Condition::Hovered, |palette| palette.secondary.surface)
+      Container::new().set_color_when(Condition::Hovered, Palette::current().secondary.surface)
     })
     .build();
   let variants = record::box_variants(root);
@@ -67,31 +68,33 @@ fn a_conditional_themed_property_narrows_to_the_scheme() {
   assert_eq!(variants[0].0, Condition::Hovered);
   assert_eq!(
     variants[0].1.color,
-    Some(Palette::light().secondary.surface)
+    Some(base(&Palette::light().secondary.surface))
   );
   assert_eq!(
     variants[1].0,
-    Condition::and([Condition::Hovered, Condition::DarkMode])
+    Condition::Hovered.both(Condition::DarkMode),
+    "the token's own condition is kept, narrowed to the setter's"
   );
-  assert_eq!(variants[1].1.color, Some(Palette::dark().secondary.surface));
+  assert_eq!(
+    variants[1].1.color,
+    Some(base(&Palette::dark().secondary.surface))
+  );
 }
 
-/// A nested theme overlays the outer one: the palette it replaces wins beneath it, and
-/// the one it leaves alone still comes from outside.
+/// A nested theme replaces the palette beneath it, and leaves the one above alone.
 #[test]
-fn a_nested_theme_overlays_the_outer_one() {
+fn a_nested_theme_replaces_the_palette_beneath_it() {
   let ink = Color::srgb(0.1, 0.9, 0.4);
   let mut inner = Palette::dark();
 
-  inner.card = ink;
+  inner.card = ink.into();
 
-  let root = SimpleTheme::new()
+  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
     .set_child(move || {
       Column::new().set_children((
-        Container::new().theme_color(|palette| palette.card),
-        SimpleTheme::new()
-          .set_dark(inner)
-          .set_child(|| Container::new().theme_color(|palette| palette.card)),
+        Container::new().set_color(Palette::current().card),
+        SimpleTheme::new(inner.clone())
+          .set_child(|| Container::new().set_color(Palette::current().card)),
       ))
     })
     .build();
@@ -100,25 +103,26 @@ fn a_nested_theme_overlays_the_outer_one() {
 
   assert_eq!(
     record::box_variants(outer_box)[0].1.color,
-    Some(Palette::dark().card)
+    Some(base(&Palette::dark().card))
   );
-  assert_eq!(record::box_variants(inner_box)[0].1.color, Some(ink));
   assert_eq!(
     record::box_style(inner_box).expect("a box style").color,
-    Some(Palette::light().card),
-    "the palette the nested theme left alone still comes from the outer one"
+    Some(ink)
+  );
+  assert!(
+    record::box_variants(inner_box).is_empty(),
+    "the nested palette is flat, so nothing is left conditional"
   );
 }
 
-/// A view's own setter wins over the theme's, so a themed default is a default rather
-/// than a rule.
+/// A later setter wins over an earlier one, so a token is a default rather than a rule.
 #[test]
-fn a_views_own_color_wins_over_the_theme() {
+fn a_views_own_color_wins_over_the_palettes() {
   let ink = Color::srgb(0.9, 0.2, 0.2);
-  let root = SimpleTheme::new()
+  let root = SimpleTheme::new(Palette::dark())
     .set_child(move || {
       Container::new()
-        .theme_color(|palette| palette.card)
+        .set_color(Palette::current().card)
         .set_color(ink)
     })
     .build();
@@ -132,33 +136,55 @@ fn a_views_own_color_wins_over_the_theme() {
 /// The theme inks the runs beneath it, scheme and all, without any run naming a color.
 #[test]
 fn the_theme_inks_the_runs_beneath_it() {
-  let run = SimpleTheme::new().set_child(|| Text::new("themed")).build();
+  let run = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+    .set_child(|| Text::new("themed"))
+    .build();
   let variants = record::run_variants(run);
 
   assert_eq!(
     record::run_style(run).expect("a run style").color,
-    Some(Palette::light().foreground)
+    Some(base(&Palette::light().foreground))
   );
-  assert_eq!(variants.len(), 1);
-  assert_eq!(variants[0].0, Condition::DarkMode);
-  assert_eq!(variants[0].1.color, Some(Palette::dark().foreground));
+  assert!(
+    variants
+      .iter()
+      .any(|(condition, style)| *condition == Condition::DarkMode
+        && style.color == Some(base(&Palette::dark().foreground))),
+    "the inherited ink carries the scheme with it"
+  );
 }
 
 /// A run's own ink wins over the inherited one, and its own variant is applied after the
 /// theme's so it wins there too.
 #[test]
 fn a_runs_own_ink_wins_over_the_inherited_one() {
-  let run = SimpleTheme::new()
-    .set_child(|| Text::new("themed").theme_color(|palette| palette.muted_foreground))
+  let run = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+    .set_child(|| Text::new("themed").set_color(Palette::current().muted_foreground))
     .build();
   let variants = record::run_variants(run);
 
   assert_eq!(
     record::run_style(run).expect("a run style").color,
-    Some(Palette::light().muted_foreground)
+    Some(base(&Palette::light().muted_foreground))
   );
   assert_eq!(
     variants.last().expect("the run's own variant").1.color,
-    Some(Palette::dark().muted_foreground)
+    Some(base(&Palette::dark().muted_foreground))
   );
+}
+
+/// Choosing a scheme resolves every token to one value: nothing is left for a condition
+/// to answer, and the choice costs no rebuild since it is made before the child builds.
+#[test]
+fn a_chosen_scheme_leaves_nothing_conditional() {
+  let root = SimpleTheme::adaptive(Palette::light(), Palette::dark())
+    .set_scheme(ColorScheme::Dark)
+    .set_child(|| Container::new().set_color(Palette::current().card))
+    .build();
+
+  assert_eq!(
+    record::box_style(root).expect("a box style").color,
+    Some(base(&Palette::dark().card))
+  );
+  assert!(record::box_variants(root).is_empty());
 }

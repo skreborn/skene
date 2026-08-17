@@ -82,7 +82,7 @@ impl Default for SimpleTextEditor {
 
 impl View for SimpleTextEditor {
   fn build(self) -> skene_core::NodeId {
-    simple::field_chrome(self.raw)
+    simple::field_chrome(self.raw, &crate::Palette::current())
       .set_width(Dimension::Fraction(1.))
       .build()
   }

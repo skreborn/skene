@@ -119,9 +119,7 @@ pub use crate::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  ThemedBox,
-  ThemedControl,
-  ThemedText,
+  Token,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use crate::{hydrate_page, launch};

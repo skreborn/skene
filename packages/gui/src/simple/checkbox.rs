@@ -2,18 +2,26 @@
 
 use std::rc::Rc;
 
-use skene_core::{Alignment, Condition, HasChildren, IntoView, ItemAlignment, Source, View};
+use skene_core::{
+  Alignment,
+  Border,
+  Condition,
+  HasChildren,
+  IntoView,
+  ItemAlignment,
+  Source,
+  View,
+};
 
 use crate::{
   Container,
   DerivedView,
   Enhanced,
   HasDecoration,
+  Palette,
   RawCheckbox,
   Row,
   Text,
-  ThemedBox,
-  ThemedText,
   WebCheckbox,
   empty,
 };
@@ -152,10 +160,12 @@ fn native(
 
 /// The checked box's fill and its check, filling the box it sits in.
 fn mark() -> impl View {
+  let palette = Palette::current();
+
   Container::new()
-    .theme_color(|palette| palette.primary.surface)
+    .set_color(palette.primary.surface)
     .set_alignment(Alignment::CENTER)
-    .set_child(Text::new("✓").theme_color(|palette| palette.primary.ink))
+    .set_child(Text::new("✓").set_color(palette.primary.ink))
 }
 
 /// The drawn form: an ordinary box and mark, beside the caption.
@@ -165,14 +175,18 @@ fn drawn(
   label: Option<String>,
 ) -> impl View {
   let marked = checked.clone();
+  let palette = Palette::current();
   let box_view = Container::new()
     .set_width(BOX_SIZE)
     .set_height(BOX_SIZE)
     .set_border_radius(4.)
-    .theme_color(|palette| palette.card)
-    .theme_border(1., |palette| palette.border)
+    .set_color(palette.card)
+    .set_border(palette.border.map(|color| Border::new(1., color)))
     // The focus ring is the field's, so a drawn control reads as one of the family.
-    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
+    .set_border_when(
+      Condition::Focused,
+      palette.ring.map(|color| Border::new(1., color)),
+    )
     // The mark is a child rather than a fill color on the box: a color that changes
     // with the state has to be derived, and a derived value cannot also carry the
     // scheme variant that keeps the theme scriptless.

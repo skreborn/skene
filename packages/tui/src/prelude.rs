@@ -110,7 +110,6 @@ pub use crate::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  ThemedBox,
-  ThemedControl,
-  ThemedText,
+  Token,
+  painted,
 };

@@ -99,9 +99,8 @@ pub use crate::simple::{
   SimpleTextField,
   SimpleTheme,
   SimpleVariant,
-  ThemedBox,
-  ThemedControl,
-  ThemedText,
+  Token,
+  painted,
 };
 pub use crate::{
   container::Container,

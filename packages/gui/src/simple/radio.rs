@@ -5,6 +5,7 @@ use std::rc::Rc;
 use skene_core::{
   Alignment,
   AnyView,
+  Border,
   Condition,
   HasChildren,
   IntoView,
@@ -20,11 +21,11 @@ use crate::{
   DerivedView,
   Enhanced,
   HasDecoration,
+  Palette,
   RawRadio,
   RawRadioGroup,
   Row,
   Text,
-  ThemedBox,
   WebRadio,
   empty,
 };
@@ -266,7 +267,7 @@ fn dot() -> impl View {
     .set_width(DOT_SIZE)
     .set_height(DOT_SIZE)
     .set_border_radius(DOT_SIZE / 2.)
-    .theme_color(|palette| palette.primary.surface)
+    .set_color(Palette::current().primary.surface)
 }
 
 /// The drawn form: a ring that carries a dot when chosen, beside the caption.
@@ -281,13 +282,17 @@ fn drawn(group: Option<GroupName>, value: String, label: Option<String>) -> impl
     }
   };
   let dotted = chosen.clone();
+  let palette = Palette::current();
   let ring = Container::new()
     .set_width(RING_SIZE)
     .set_height(RING_SIZE)
     .set_border_radius(RING_SIZE / 2.)
-    .theme_color(|palette| palette.card)
-    .theme_border(1., |palette| palette.border)
-    .theme_border_when(Condition::Focused, 1., |palette| palette.ring)
+    .set_color(palette.card)
+    .set_border(palette.border.map(|color| Border::new(1., color)))
+    .set_border_when(
+      Condition::Focused,
+      palette.ring.map(|color| Border::new(1., color)),
+    )
     .set_alignment(Alignment::CENTER)
     // The dot comes and goes rather than changing color: a color that changes with the
     // state has to be derived, and a derived value cannot also carry the scheme variant

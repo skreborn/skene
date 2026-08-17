@@ -517,7 +517,7 @@ sink are just different sinks for the same paths.)
   overriding a drawn control's keys is ever genuinely needed, bring it back as
   `override_<event>` on the controls that compose behavior, with a **local** enum so
   `()` keeps meaning "just observe".
-- **Theming: one wrapper view, light and dark—done (web + TUI), bar the live toggle.**
+- **Theming: one wrapper view, light and dark—done (web + TUI).**
   *Settled the earlier open question—derivable properties on every view versus a
   light+dark pair under one provider. It is the provider.* The shape that landed, after
   one wrong turn recorded below: a **design token is a value**, and a palette belongs to
@@ -554,18 +554,29 @@ sink are just different sinks for the same paths.)
   - **The theme's child is a closure.** A palette is read from context, and an argument
     is evaluated before the call it is an argument to, so a child passed by value is
     built before the theme provides anything. Found by the first test written against it.
-  - **Remaining: a scheme the app controls.** `derive_scheme` was built and then cut,
-    because a `derived` rebuild destroys the old nodes and disposes their scope—measured,
-    not assumed: a signal inside the themed subtree went `1` → `0` across a flip, and
-    focus, scroll offsets and native input state go with the nodes. A theme toggle that
-    empties the form under it is worse than none. The fix is to stop rebuilding: an
-    app-controlled scheme belongs in the **condition vocabulary**, resolved by the driver
-    against an override the theme sets—on the web `Condition::DarkMode` compiling to the
-    media query *and* a root-attribute selector (`:root:not([data-scheme="light"])`
-    guarding the former so an explicit choice wins), with `derive_scheme` writing that
-    attribute in an effect; in the terminal, the same override read beside the detected
-    background. One attribute write, nothing destroyed, and the default path stays
-    scriptless.
+  - **A scheme the app controls—done, and it is not a rebuild.** `derive_scheme` was
+    first built on `derived` and cut before it shipped: a rebuild destroys the old nodes
+    and disposes their scope, measured rather than assumed—a signal inside the themed
+    subtree went `1` → `0` across a flip, and focus, scroll offsets and native input
+    state went with the nodes. A theme toggle that empties the form under it is worse
+    than none. What shipped instead tells the **driver** which scheme is in force and
+    touches nothing:
+    - The web compiles every scheme variant twice—the media query, guarded by
+      `:where(:root:not([data-skene-scheme="light"]))` so an explicit choice wins, and
+      that choice as `:where(:root[data-skene-scheme="dark"])`. `derive_scheme` writes
+      the attribute (and `color-scheme`, so the user agent's own widgets follow) from an
+      effect. **Both guards sit in `:where()`**, which was not a detail: contributing
+      specificity would have made a dark variant beat a `:hover` rule that is more
+      specific in intent.
+    - The terminal keeps the choice beside its detected background and answers both
+      through one `State::dark()`, so conditions, glyphs and eagerly-resolved colors all
+      follow it, and the frame is simply marked dirty.
+    - Pinned by regression tests on both facades: the same node, the same local state
+      (`1`, not `0`), and one build of the subtree across a flip.
+    - **A chosen scheme is the document's**, since the platform's own is—a nested
+      `derive_scheme` overrides rather than scoping. `set_scheme` remains the
+      per-subtree answer, resolving before anything is built, which is also what lets it
+      survive into a server render where a reader's stored preference cannot.
   - **An overlay carries no theme of its own**, as settled: it is layering, anchoring and
     dismissal. Both galleries dress a modal by putting a `SimpleCard` **inside** the
     overlay, which needs no new view—the web driver already strips the dialog's

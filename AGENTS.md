@@ -80,12 +80,21 @@
   - The theme's child is a closure: `Palette::current()` reads context, and an argument
     is evaluated before the call it is an argument to, so a child passed by value would
     be built before the theme provided anything.
-  - **A scheme an app controls must not rebuild the subtree.** A `derived` rebuild
-    destroys the old nodes and disposes their scope—measured: a signal inside the subtree
-    goes back to its initial value, and focus, scroll offsets and native input state go
-    with the nodes. A live toggle therefore belongs in the condition vocabulary, resolved
-    by the driver against an override the theme sets, and until that lands there is no
-    reactive scheme setter at all.
+  - **A scheme an app controls is resolved by the driver, never by a rebuild.** A
+    `derived` rebuild destroys the old nodes and disposes their scope—measured: a signal
+    inside the subtree goes back to its initial value, and focus, scroll offsets and
+    native input state go with it. So `derive_scheme` tells the driver which scheme is in
+    force and touches nothing: the web writes `data-skene-scheme` on the document root,
+    which every scheme-conditional rule is already gated on, and the terminal reads the
+    choice where it reads its detected background. One write re-inks the page.
+    - The web emits each scheme variant **twice**—the media query guarded by
+      `:where(:root:not([data-skene-scheme="light"]))`, and the choice as
+      `:where(:root[data-skene-scheme="dark"])`. Both guards sit in `:where()` so they
+      contribute no specificity: without that, a dark variant would start beating a
+      `:hover` rule that is more specific in intent.
+    - A chosen scheme is the **document's**, since the platform's own is; a nested
+      `derive_scheme` overrides rather than scoping. `set_scheme` is the per-subtree
+      answer, resolving before anything is built and so surviving into a server render.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as

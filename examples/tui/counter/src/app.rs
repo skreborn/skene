@@ -5,9 +5,9 @@ use skene_tui::prelude::*;
 pub(crate) fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
-  SimpleTheme::new().set_child(move || {
+  SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(move || {
     Container::new()
-      .theme_color(|palette| palette.background)
+      .set_color(Palette::current().background)
       .set_child(
         Column::new()
           .set_arrangement(Arrangement::Center)
@@ -18,14 +18,16 @@ pub(crate) fn app() -> impl IntoView {
 }
 
 fn card(count: Signal<u64>) -> impl IntoView {
+  let palette = Palette::current();
+
   SimpleCard::new()
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
       Text::new("COUNTER")
         .set_bold(true)
         .set_selectable(true)
-        .theme_color(|palette| palette.muted_foreground),
-      Text::derive(move || count.get().to_string()).theme_color(|palette| palette.foreground),
+        .set_color(palette.muted_foreground),
+      Text::derive(move || count.get().to_string()).set_color(palette.foreground),
       Row::new().set_spacing(2).set_children((
         SimpleButton::new("-")
           .set_variant(SimpleVariant::Outline)

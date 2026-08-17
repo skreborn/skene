@@ -52,9 +52,9 @@ impl StaticRoutes for Page {
 fn app() -> impl IntoView {
   let router = install_static_router(Page::Home);
 
-  SimpleTheme::new().set_child(move || {
+  SimpleTheme::adaptive(Palette::light(), Palette::dark()).set_child(move || {
     Container::new()
-      .theme_color(|palette| palette.background)
+      .set_color(Palette::current().background)
       .set_child(
         Column::new()
           .set_spacing(32.)
@@ -93,15 +93,17 @@ async fn about() -> AnyView {
 }
 
 fn page(title: &'static str, body: &'static str) -> impl IntoView {
+  let palette = Palette::current();
+
   Container::new().set_max_width(420.).set_child(
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new(title)
         .set_font_size(13.)
         .set_font_weight(500.)
-        .theme_color(|palette| palette.muted_foreground),
+        .set_color(palette.muted_foreground),
       Text::new(body)
         .set_font_size(16.)
-        .theme_color(|palette| palette.foreground),
+        .set_color(palette.foreground),
     )),
   )
 }
@@ -110,5 +112,5 @@ fn navigation(label: &'static str) -> impl IntoView {
   Text::new(label)
     .set_font_size(14.)
     .set_font_weight(600.)
-    .theme_color(|palette| palette.foreground)
+    .set_color(Palette::current().foreground)
 }

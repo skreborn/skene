@@ -18,10 +18,21 @@ pub enum ConditionShape<'condition, C> {
 }
 
 /// A condition type composed of facade-specific leaves under `and`/`or`.
-pub trait Composable: Sized {
+pub trait Composable: Clone + Sized {
   /// This condition's top-level shape. A value reported as [`ConditionShape::Leaf`] must not be
   /// a composite.
   fn shape(&self) -> ConditionShape<'_, Self>;
+
+  /// The leaf holding while the platform's dark color scheme is in force.
+  ///
+  /// Every medium answers this one—a browser from the reader's preference, a terminal
+  /// from its own background—so the shared machinery can name it without knowing the
+  /// vocabulary it belongs to.
+  fn dark_mode() -> Self;
+
+  /// The condition holding while both this one and `other` hold.
+  #[must_use]
+  fn both(self, other: Self) -> Self;
 
   /// Whether the condition holds, with `leaf` deciding each leaf.
   fn holds(&self, leaf: &impl Fn(&Self) -> bool) -> bool {

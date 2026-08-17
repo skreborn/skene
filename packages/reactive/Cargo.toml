@@ -14,7 +14,7 @@ postcard = { default-features = false, features = ["alloc"], optional = true, ve
 rustc-hash.workspace = true
 serde = { optional = true, version = "1" }
 skene-macros.workspace = true
-smallvec = "1.15"
+smallvec.workspace = true
 
 [dev-dependencies]
 criterion = { default-features = false, features = ["cargo_bench_support"], version = "0.5" }

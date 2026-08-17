@@ -5,7 +5,123 @@
 //! static page stays responsive, hoverable and animated with no script. A native driver
 //! resolves the same data against its own window and pointer state.
 
+use smallvec::SmallVec;
+
 use crate::condition::{Composable, ConditionShape};
+
+/// A value and the conditions that override it: what a property is set to, before any
+/// one view spells it out.
+///
+/// Every setter that takes a color or a border takes one of these, and a plain value
+/// converts into a [`Fixed`](Self::Fixed) one—so `set_color(Color::WHITE)` and
+/// `set_color(palette.card)` are the same call. Setting one fans it out into the
+/// property and the conditional variants a view already carries, so nothing new reaches
+/// a driver and the web still compiles the whole thing to one interned class.
+///
+/// This is what a design token is: a component library's palette is a struct of these,
+/// and the library owns that struct outright. Nothing here knows what a palette is.
+///
+/// Generic over the condition vocabulary, which each facade aliases away—the terminal's
+/// conditions are cells and its own background, the GUI's are pixels and the reader's
+/// preference, and a token is expressed in whichever medium it belongs to.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub enum Adaptive<T, C = Condition> {
+  /// One value, whatever holds.
+  Fixed(T),
+  /// A value overridden while a condition holds; later variants win over earlier ones.
+  Conditional {
+    /// The value applied when no variant's condition holds.
+    base: T,
+    /// The overriding values, in declaration order.
+    variants: SmallVec<[(C, T); 1]>,
+  },
+}
+
+impl<T, C> From<T> for Adaptive<T, C> {
+  #[inline(always)]
+  fn from(value: T) -> Self {
+    Self::Fixed(value)
+  }
+}
+
+impl<T, C> Adaptive<T, C> {
+  /// This value, overridden by `value` while `condition` holds.
+  pub fn when(self, condition: C, value: T) -> Self {
+    let (base, mut variants) = self.parts();
+
+    variants.push((condition, value));
+
+    Self::Conditional { base, variants }
+  }
+
+  /// The value applied when no variant's condition holds.
+  #[inline(always)]
+  pub const fn base(&self) -> &T {
+    match self {
+      Self::Fixed(base) | Self::Conditional { base, .. } => base,
+    }
+  }
+
+  /// The overriding values, in declaration order.
+  #[inline(always)]
+  pub fn variants(&self) -> &[(C, T)] {
+    match self {
+      Self::Fixed(_) => &[],
+      Self::Conditional { variants, .. } => variants,
+    }
+  }
+
+  /// The base and the variants, for a setter fanning them into its own slots.
+  #[inline(always)]
+  pub fn parts(self) -> (T, SmallVec<[(C, T); 1]>) {
+    match self {
+      Self::Fixed(base) => (base, SmallVec::new()),
+      Self::Conditional { base, variants } => (base, variants),
+    }
+  }
+
+  /// This value with `wrap` applied to the base and to every variant—for a token that
+  /// paints a property built from it, such as a color becoming a border.
+  pub fn map<U>(self, wrap: impl Fn(T) -> U) -> Adaptive<U, C> {
+    match self {
+      Self::Fixed(base) => Adaptive::Fixed(wrap(base)),
+      Self::Conditional { base, variants } => Adaptive::Conditional {
+        base: wrap(base),
+        variants: variants
+          .into_iter()
+          .map(|(condition, value)| (condition, wrap(value)))
+          .collect(),
+      },
+    }
+  }
+}
+
+impl<T, C: Composable> Adaptive<T, C> {
+  /// A value that follows the platform's color scheme.
+  #[inline(always)]
+  pub fn schemes(light: T, dark: T) -> Self {
+    Self::Fixed(light).when(C::dark_mode(), dark)
+  }
+
+  /// Every value this takes while `condition` also holds, base included—for a setter
+  /// applying a token under a condition of its own, which narrows the token's own
+  /// conditions rather than discarding them.
+  ///
+  /// Two inline, where a token stores one: a token that follows the color scheme is a
+  /// base plus one variant, and narrowing turns both of those into variants.
+  pub fn narrowed(self, condition: C) -> SmallVec<[(C, T); 2]> {
+    let (base, variants) = self.parts();
+    let mut narrowed: SmallVec<[(C, T); 2]> = variants
+      .into_iter()
+      .map(|(inner, value)| (condition.clone().both(inner), value))
+      .collect();
+
+    narrowed.insert(0, (condition, base));
+
+    narrowed
+  }
+}
 
 /// A condition under which a style variant applies.
 ///
@@ -67,6 +183,16 @@ impl Composable for Condition {
       Self::Or(subconditions) => ConditionShape::Or(subconditions),
       _ => ConditionShape::Leaf(self),
     }
+  }
+
+  #[inline(always)]
+  fn dark_mode() -> Self {
+    Self::DarkMode
+  }
+
+  #[inline(always)]
+  fn both(self, other: Self) -> Self {
+    Self::And(vec![self, other])
   }
 }
 

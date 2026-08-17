@@ -67,8 +67,9 @@
   `set_color(palette.card)` are the same call and a token's own conditions land beside
   the property as ordinary variants. Setting one under a condition (`set_color_when`)
   *narrows* the token's conditions rather than dropping them. Nothing below a component
-  library knows what a palette is: `skene-simple` owns `Palette` as a plain struct of
-  tokens, and a third-party library defines its own struct on exactly the same footing.
+  library knows what a palette is: `skene-simple` owns `SimplePalette`—named for its
+  library, so a third-party palette is free to be `AcmePalette`—as a plain struct of
+  `Token`s, and defines nothing a third-party library could not define for itself.
   There is no themed twin of any setter—that surface existed briefly, welded `Container`
   to one concrete palette type, and is gone.
   - `SimpleTheme::new(palette)` provides one palette through context;
@@ -77,7 +78,7 @@
     query—so light/dark costs no script and a server-rendered page answers the reader
     before any bundle arrives. `set_scheme` chooses one and leaves a theme with nothing
     left to choose, in the type.
-  - The theme's child is a closure: `Palette::current()` reads context, and an argument
+  - The theme's child is a closure: `SimplePalette::current()` reads context, and an argument
     is evaluated before the call it is an argument to, so a child passed by value would
     be built before the theme provided anything.
   - **A scheme an app controls is resolved by the driver, never by a rebuild.** A
@@ -95,6 +96,12 @@
     - A chosen scheme is the **document's**, since the platform's own is; a nested
       `derive_scheme` overrides rather than scoping. `set_scheme` is the per-subtree
       answer, resolving before anything is built and so surviving into a server render.
+      Scoping the *derived* one is an open question—see the ROADMAP entry, which records
+      why the guard is the hard half.
+    - A server-rendered page that offers a choice emits one inline **blocking** script in
+      its head, applying the stored scheme before the first paint; deferred would run
+      after the paint, which is the flash it exists to prevent. `stored_scheme()` reads
+      the same key so an app's setting starts where the page already is.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as

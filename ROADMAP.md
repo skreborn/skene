@@ -533,8 +533,8 @@ sink are just different sinks for the same paths.)
     (`Hovered ∧ DarkMode`) rather than dropping them—`narrowed` is the one place a
     two-slot inline vec is right, since narrowing turns a base and its variant into two
     variants. `Composable` grew `dark_mode()` and `both()` to make that generic.
-  - **`skene-simple` owns `Palette`, and only owns it.** A struct of `Token`s with
-    `light()` and `dark()`; the crate holds no machinery a third-party library could not
+  - **`skene-simple` owns `SimplePalette`, and only owns it.** A struct of `Token`s—core's, since a design
+    token belongs to no one library—with `light()` and `dark()`; the crate holds no machinery a third-party library could not
     write for its own palette type. `SimpleTheme::new(palette)` provides one through
     context, `adaptive(light, dark)` pairs two so every token carries its dark value as a
     `DarkMode` variant—the web compiles that to a `prefers-color-scheme` media query, so
@@ -573,10 +573,47 @@ sink are just different sinks for the same paths.)
       follow it, and the frame is simply marked dirty.
     - Pinned by regression tests on both facades: the same node, the same local state
       (`1`, not `0`), and one build of the subtree across a flip.
+    - **A server-rendered page preempts its own flash.** A reader's choice lives in
+      their browser, which a render cannot see, so the markup carries the
+      platform-following form and a page that offers a choice emits one inline blocking
+      script in its head—the driver's own text, reading the driver's own key—that applies
+      the stored scheme before the first paint. Inline and blocking is the whole point: a
+      deferred script runs after the page has been painted in the platform's scheme,
+      which is the flash. `stored_scheme()` reads the same key, so an app initializes the
+      setting it binds from the choice the page was already painted in, and a page that
+      never offers a choice carries no script at all.
     - **A chosen scheme is the document's**, since the platform's own is—a nested
-      `derive_scheme` overrides rather than scoping. `set_scheme` remains the
-      per-subtree answer, resolving before anything is built, which is also what lets it
-      survive into a server render where a reader's stored preference cannot.
+      `derive_scheme` overrides rather than scoping. `set_scheme` remains the per-subtree
+      answer, resolving before anything is built, which is also what lets it survive into
+      a server render where a reader's stored preference cannot.
+
+- **Explore: a scheme override that scopes to a subtree.** `derive_scheme` is
+  document-wide because the CSS it compiles to is: a scheme variant renders as the media
+  query guarded by `:where(:root:not([data-skene-scheme="light"]))` plus the choice as
+  `:where(:root[data-skene-scheme="dark"])`, and both name the root. Moving the attribute
+  onto a theme's own element makes the *choice* half scope immediately—
+  `:where([data-skene-scheme="dark"]) .c` matches any ancestor—so the hard half is the
+  **guard**: the preference rule must apply only where no ancestor has chosen the other
+  scheme, and a descendant combinator cannot say "no ancestor has X". Candidates worth
+  measuring, none free:
+  - **A custom property carrying the choice**, inherited down the tree
+    (`--skene-scheme`), with the rules keyed on it. Inheritance is exactly the scoping
+    wanted, but a property value cannot gate a whole rule; it would need `@container
+    style(--skene-scheme: dark)`, which is style queries—Chrome and Safari have them,
+    Firefox does not yet, and the scriptless preference path must keep working where they
+    are missing.
+  - **`light-dark()` plus `color-scheme`**, which scopes natively: `color-scheme` is
+    inherited, so setting it on a theme's element retargets every `light-dark()` beneath
+    it, with no attribute and no guard at all. This is the cleanest fit and the largest
+    change: it wants a token's two values compiled into one declaration rather than a
+    base plus a variant, so it only covers a variant that is exactly a scheme pair—a
+    scheme variant combined with `:hover` still needs the rule form, and the two must
+    agree.
+  - **Emitting both scopes** and letting the nearer win by source order, accepting that a
+    theme inside a theme cannot un-choose.
+  Also worth settling in the same pass: whether a scoped override should carry
+  `color-scheme` for the user agent's own widgets, and whether the theme grows a node to
+  hang the attribute on—today it realizes none, and adding one shifts hydration ids.
   - **An overlay carries no theme of its own**, as settled: it is layering, anchoring and
     dismissal. Both galleries dress a modal by putting a `SimpleCard` **inside** the
     overlay, which needs no new view—the web driver already strips the dialog's

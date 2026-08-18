@@ -72,15 +72,25 @@
   `Token`s, and defines nothing a third-party library could not define for itself.
   There is no themed twin of any setter—that surface existed briefly, welded `Container`
   to one concrete palette type, and is gone.
-  - `SimpleTheme::new(palette)` provides one palette through context;
-    `SimpleTheme::adaptive(light, dark)` pairs two so every token carries its dark value
-    as a `DarkMode` variant, which the web compiles to a `prefers-color-scheme` media
-    query—so light/dark costs no script and a server-rendered page answers the reader
-    before any bundle arrives. `set_scheme` chooses one and leaves a theme with nothing
-    left to choose, in the type.
-  - The theme's child is a closure: `SimplePalette::current()` reads context, and an argument
-    is evaluated before the call it is an argument to, so a child passed by value would
-    be built before the theme provided anything.
+  - **Light and dark are not two themes.** A theme carries exactly one palette, and a
+    palette answers the color scheme the same way it answers a viewport or a pointer:
+    per property, through `set_<prop>` and `set_<prop>_when(condition, value)`. There is
+    no `adaptive` constructor, no light/dark pair, and no palette-level conditional—the
+    whole-palette overlay was considered and rejected, because a palette that switches
+    wholesale re-privileges the very separation the per-property form removes.
+    `SimplePalette::default()` is the built-in palette, built from those same public
+    setters, so what the library does is exactly what a third party can do.
+  - `SimpleTheme::new(palette)` provides one palette through context, and nesting one
+    replaces the palette beneath it—inheritance by *our* view tree, through the reactive
+    `Context`, never by anything a platform does with the tree. The theme's child is a
+    closure: `SimplePalette::current()` reads context, and an argument is evaluated
+    before the call it is an argument to, so a child passed by value would be built
+    before the theme provided anything.
+  - **The scheme in force is the document's, not a theme's**, exactly as the platform's
+    own preference is—so `set_scheme(Option<ColorScheme>)` and `derive_scheme` are
+    facade functions rather than theme methods, and `None` returns to following the
+    platform. Nesting themes nests palettes; the scheme decides which value each of
+    their conditional tokens takes.
   - **A scheme an app controls is resolved by the driver, never by a rebuild.** A
     `derived` rebuild destroys the old nodes and disposes their scope—measured: a signal
     inside the subtree goes back to its initial value, and focus, scroll offsets and
@@ -93,15 +103,19 @@
       `:where(:root[data-skene-scheme="dark"])`. Both guards sit in `:where()` so they
       contribute no specificity: without that, a dark variant would start beating a
       `:hover` rule that is more specific in intent.
-    - A chosen scheme is the **document's**, since the platform's own is; a nested
-      `derive_scheme` overrides rather than scoping. `set_scheme` is the per-subtree
-      answer, resolving before anything is built and so surviving into a server render.
-      Scoping the *derived* one is an open question—see the ROADMAP entry, which records
-      why the guard is the hard half.
+    - Scoping the override to a subtree is **not wanted**: an app has one scheme, the
+      way the platform does. It was investigated, the guard half is genuinely hard, and
+      the requirement was withdrawn rather than solved—do not reopen it as a bug.
     - A server-rendered page that offers a choice emits one inline **blocking** script in
       its head, applying the stored scheme before the first paint; deferred would run
       after the paint, which is the flash it exists to prevent. `stored_scheme()` reads
       the same key so an app's setting starts where the page already is.
+  - **The view tree and the DOM tree do not diverge today, and we do not lean on it.**
+    Every view attaches its child to its own node and the annotating wrappers realize
+    none, so the DOM is a contraction of the view tree; overlays are `<dialog>`/popover
+    promoted to the top layer *in place* rather than portalled, and only the `<head>` is
+    a real portal. A native driver may still realize an overlay into its own layer, so
+    nothing may be built on ancestor-selector reachability.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as

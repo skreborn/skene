@@ -192,16 +192,38 @@ pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
 
 /// The color scheme the reader chose on a previous visit, when there is one.
 ///
-/// Initialize the setting bound to
-/// [`SimpleTheme::derive_scheme`](crate::SimpleTheme::derive_scheme) from this, so the
-/// choice the page was already painted in is the one the app goes on to hold. A
-/// server-rendered page applies it before the first paint through a script in its head,
-/// and a reader who has chosen nothing gets `None`—the platform's own preference, which
-/// the styling answers with no script at all.
+/// Initialize the setting bound to [`derive_scheme`] from this, so the choice the page
+/// was already painted in is the one the app goes on to hold. A server-rendered page
+/// applies it before the first paint through a script in its head, and a reader who has
+/// chosen nothing gets `None`—the platform's own preference, which the styling answers
+/// with no script at all.
 #[inline(always)]
 #[must_use]
 pub fn stored_scheme() -> Option<ColorScheme> {
   driver::stored_scheme()
+}
+
+/// Paints `scheme` throughout, overriding the reader's preference; `None` returns to
+/// following it.
+///
+/// A scheme is not a theme, and this is not a theme's to set: the platform's own
+/// preference is the document's, so an app's override is too. Nesting [`SimpleTheme`]s
+/// nests palettes; this decides which value each of their conditional tokens takes.
+///
+/// Every token keeps both values and the platform is told which is in force, so a change
+/// re-inks the page without rebuilding anything: the state inside the subtree, the focus,
+/// the scroll position and a half-typed input all survive it.
+#[inline(always)]
+pub fn set_scheme(scheme: Option<ColorScheme>) {
+  driver::set_color_scheme(scheme);
+}
+
+/// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
+///
+/// Bind it to the signal holding the reader's setting.
+#[inline(always)]
+pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
+  skene_reactive::Effect::new(move |_| set_scheme(scheme()));
 }
 
 /// A view that renders nothing.

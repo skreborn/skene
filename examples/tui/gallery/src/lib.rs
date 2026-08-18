@@ -8,7 +8,7 @@ use skene_tui::prelude::*;
 /// that follows the terminal's own background.
 #[must_use]
 pub fn app() -> impl IntoView {
-  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(gallery)
+  SimpleTheme::new(SimplePalette::default()).set_child(gallery)
 }
 
 fn gallery() -> impl IntoView {

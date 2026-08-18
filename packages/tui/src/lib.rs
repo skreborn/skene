@@ -120,6 +120,32 @@ pub use crate::{
   theme::{ControlTheme, TextTheme},
 };
 
+/// Paints `scheme` throughout, overriding the background the terminal detected; `None`
+/// returns to following it.
+///
+/// A scheme is not a theme, and this is not a theme's to set: the detected background is
+/// the terminal's, so an app's override is too. Nesting [`SimpleTheme`]s nests palettes;
+/// this decides which value each of their conditional tokens takes.
+///
+/// Every token keeps both values and the paint is told which is in force, so a change
+/// re-inks the next frame without rebuilding anything: the state inside the subtree, the
+/// focus, the scroll position and a half-typed input all survive it.
+#[inline(always)]
+pub fn set_scheme(scheme: Option<skene_core::ColorScheme>) {
+  with_state(|state| {
+    state.scheme.set(scheme);
+    state.dirty.set(true);
+  });
+}
+
+/// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
+///
+/// Bind it to the signal holding the reader's setting.
+#[inline(always)]
+pub fn derive_scheme(scheme: impl Fn() -> Option<skene_core::ColorScheme> + 'static) {
+  skene_reactive::Effect::new(move |_| set_scheme(scheme()));
+}
+
 /// A suspense view over the terminal tree; see [`skene_core::Suspense`].
 pub type Suspense = skene_core::Suspense<TuiOps>;
 /// An error boundary over the terminal tree; see [`skene_core::ErrorBoundary`].

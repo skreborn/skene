@@ -107,12 +107,6 @@ impl<T, C> Adaptive<T, C> {
 }
 
 impl<T, C: Composable> Adaptive<T, C> {
-  /// A value that follows the platform's color scheme.
-  #[inline(always)]
-  pub fn schemes(light: T, dark: T) -> Self {
-    Self::Fixed(light).when(C::dark_mode(), dark)
-  }
-
   /// Every value this takes while `condition` also holds, base included—for a setter
   /// applying a token under a condition of its own, which narrows the token's own
   /// conditions rather than discarding them.

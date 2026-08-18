@@ -52,7 +52,7 @@ impl StaticRoutes for Page {
 fn app() -> impl IntoView {
   let router = install_static_router(Page::Home);
 
-  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(move || {
+  SimpleTheme::new(SimplePalette::default()).set_child(move || {
     Container::new()
       .set_color(SimplePalette::current().background)
       .set_child(

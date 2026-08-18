@@ -27,6 +27,7 @@ pub use skene_core::{
   Prevent,
   RunStyle,
   StyleProperty,
+  Token,
   TrackLimit,
   Transition,
   View,
@@ -101,8 +102,10 @@ pub use crate::{
   WebPicker,
   WebRadio,
   WebSlider,
+  derive_scheme,
   lazy,
   main,
+  set_scheme,
   stored_scheme,
 };
 #[cfg(feature = "simple-views")]

@@ -347,12 +347,13 @@ fn a_theme_following_the_platform_renders_a_color_scheme_query() {
   use skene_gui::{SimplePalette, SimpleTheme};
 
   let rendered = render_to_string(|| {
-    SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+    SimpleTheme::new(SimplePalette::default())
       .set_child(|| Container::new().set_color(SimplePalette::current().card))
   });
   let class = root_class(rendered.body());
-  let light = css_color(*SimplePalette::light().card.base());
-  let dark = css_color(*SimplePalette::dark().card.base());
+  let card = SimplePalette::default().card;
+  let light = css_color(*card.base());
+  let dark = css_color(card.variants()[0].1);
 
   assert!(
     rendered
@@ -416,22 +417,24 @@ fn a_scheme_variant_keeps_its_states_on_both_rules() {
   );
 }
 
-/// A fixed scheme renders one value and no query: nothing is left for the platform to
-/// answer.
+/// A token naming no condition renders one value and no query: nothing is left for the
+/// platform to answer, and a palette says so per property.
 #[test]
-fn a_theme_fixed_to_a_scheme_renders_no_color_scheme_query() {
-  use skene_gui::{SimplePalette, SimpleTheme};
+fn an_unconditional_token_renders_no_color_scheme_query() {
+  use skene_gui::{SimplePalette, SimpleTheme, core::Color};
 
-  let rendered = render_to_string(|| {
-    SimpleTheme::new(SimplePalette::dark())
+  let flat = Color::srgb(0.2, 0.4, 0.8);
+  let rendered = render_to_string(move || {
+    SimpleTheme::new(SimplePalette::default().set_card(flat))
       .set_child(|| Container::new().set_color(SimplePalette::current().card))
   });
   let class = root_class(rendered.body());
 
-  assert!(rendered.styles().contains(&format!(
-    "background-color:{};",
-    css_color(*SimplePalette::dark().card.base())
-  )));
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!("background-color:{};", css_color(flat)))
+  );
 
   // The stylesheet is the whole interned sheet, so the class names what to look for.
   assert!(

@@ -8,7 +8,7 @@ use skene_gui::{Overlay, prelude::*};
 fn app() -> impl IntoView {
   // The theme follows the OS scheme, and it carries the ambient ink and selection
   // colors with it, so nothing here names a color that a palette already holds.
-  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(|| {
+  SimpleTheme::new(SimplePalette::default()).set_child(|| {
     Container::new()
       .set_color(SimplePalette::current().background)
       .set_child(

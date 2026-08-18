@@ -5,7 +5,7 @@ use skene_tui::prelude::*;
 pub(crate) fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
-  SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark()).set_child(move || {
+  SimpleTheme::new(SimplePalette::default()).set_child(move || {
     Container::new()
       .set_color(SimplePalette::current().background)
       .set_child(

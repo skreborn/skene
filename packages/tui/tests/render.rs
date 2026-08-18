@@ -3075,7 +3075,7 @@ fn has_focus_forwards_through_a_raw_control() {
 fn a_theme_follows_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
+      SimpleTheme::new(SimplePalette::default())
         .set_child(|| {
           Container::new()
             .set_width(4)
@@ -3099,13 +3099,13 @@ fn a_theme_follows_the_terminals_background() {
   );
 }
 
-/// A fixed scheme ignores the terminal's background, so a subtree pinned to one palette
-/// paints the same however the terminal reports itself.
+/// An unconditional token ignores the terminal's background, so a subtree whose palette
+/// names no condition paints the same however the terminal reports itself.
 #[test]
-fn a_fixed_scheme_ignores_the_terminals_background() {
+fn an_unconditional_token_ignores_the_terminals_background() {
   let (dark, light) = with_driver(|| {
     tui::mount(|| {
-      SimpleTheme::new(SimplePalette::light())
+      SimpleTheme::new(SimplePalette::default().set_card(Color::srgb(0.2, 0.4, 0.8)))
         .set_child(|| {
           Container::new()
             .set_width(4)
@@ -3136,9 +3136,9 @@ fn a_derived_scheme_repaints_without_rebuilding() {
     let counted = Rc::clone(&builds);
 
     tui::mount(move || {
-      SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
-        .derive_scheme(move || scheme.get())
+      SimpleTheme::new(SimplePalette::default())
         .set_child(move || {
+          tui::derive_scheme(move || Some(scheme.get()));
           counted.set(counted.get() + 1);
 
           Container::new()

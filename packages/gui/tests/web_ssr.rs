@@ -629,9 +629,11 @@ fn a_chooseable_scheme_preempts_its_own_flash() {
   use skene_gui::{SimplePalette, SimpleTheme, core::ColorScheme};
 
   let rendered = render_to_string(|| {
-    SimpleTheme::adaptive(SimplePalette::light(), SimplePalette::dark())
-      .derive_scheme(|| ColorScheme::Dark)
-      .set_child(|| Text::new("themed"))
+    SimpleTheme::new(SimplePalette::default()).set_child(|| {
+      skene_gui::derive_scheme(|| Some(ColorScheme::Dark));
+
+      Text::new("themed")
+    })
   });
   let head = rendered.head();
 

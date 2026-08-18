@@ -1,0 +1,18 @@
+[package]
+name = "theme"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "theme-server"
+path = "src/main.rs"
+
+[dependencies]
+skene-gui = { workspace = true }
+
+[lints]
+workspace = true

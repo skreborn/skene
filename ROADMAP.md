@@ -2,10 +2,9 @@
 
 The phased migration to the driver-vocabulary architecture (`DESIGN.md`), then the platform build-out.
 Phases are ordered; later phases assume the earlier ones. Native is deliberately
-last—not a current priority. **Current focus: picking the next phase—the TUI polish,
-wasm-split lazy loading, progressive enhancement (hydrating static output, `Link`),
-the targeted examples (counter, router, the gui and tui galleries), the raw/Simple
-control split, and light/dark theming landed.**
+last—not a current priority. **Current focus: the redesign to one spine and thin
+facades (the section at the end of this file), phases R1 and R2 in flight.** Everything
+above that section describes the code as it stood when the redesign began.
 
 ## Phase 1—Reactive engine internals ✅
 
@@ -1067,3 +1066,166 @@ already-complete vocabulary once, instead of chasing additions.
 - A loop-integrated timer (the one sanctioned exception to timers-are-userland).
 - Per-OS glue in leaves: IME, clipboard, menus, window management.
 
+
+## The redesign—one spine, thin facades (in flight)
+
+A full audit of every layer (reactive engine, spine, composition, controls, drivers,
+theming) settled a redesign whose target is in `DESIGN.md` and whose doctrine is in
+`AGENTS.md`. The public vocabulary stays; four of the five layers beneath it are
+rebuilt. The structural move: core gains a retained scene and a zero-sized `Driver`
+trait, `skene-views` hosts every built-in view once, generic over the driver, and the
+facades shrink to a scalar, a condition set, a style extension and aliases. Phases are
+ordered by dependency; R1 and R2 are independent and run in parallel. Every phase leaves
+the workspace green on all three tiers.
+
+### Defects the audit found
+
+Independent of the redesign; each is wrong today and each phase below names the ones it
+closes.
+
+- `derive_child` never rebuilds: it builds its closure untracked through `reconcile`
+  (verified with a throwaway host test). R3.
+- A derived property is an inline style on the web and outranks every variant; the
+  terminal overlays variants over it. R4.
+- A GUI `RawButton` with a plain handler yields `Prevent::None` and bubbles to its row;
+  the terminal's returns `Bubbling`. R6.
+- Every drawn Simple control styles `Condition::Focused` on a child of the focusable
+  node, so no focus ring ever renders. R6.
+- Hydration injects the reset and one `<style>` per class beside the server's block:
+  two resets, two copies of every rule. R4.
+- Streaming renders styles once at the shell; a `Deferred` boundary introducing a new
+  class streams unstyled forever. R4.
+- `Suspense` and `ErrorBoundary` never destroy the branch they detached. R3.
+- A memo is queued as an effect and recomputes unconditionally; a read inside a batch
+  pulls it fresh and the flush computes it again; unobserved memos recompute. R1.
+- `batch` and `Owner::enter` have no drop guard; a panic poisons the runtime. R1.
+- `set_sync_effect_waker` has no caller; off-thread sync writes never drain. R1.
+- `Roster` is read untracked inside a focus-order closure and members join after they
+  build; a radio group with nothing chosen has no tab stop. R6.
+- The recording driver runs only the target's click handlers, does not unlink on
+  reparent, and numbers nodes from 0. R2.
+- Class naming depends on intern order and liveness; rule order differs between the
+  browser and the server. R4.
+- A group node is a real `<div>` and a real taffy node, so a derived subtree in a `Row`
+  is one flex item and a wrapper around it annotates the group. R2.
+- The terminal calls `set_style` on every node every frame: one dirty bit is a full
+  relayout and repaint. R5.
+- Three control doc blocks describe the retired handler override as shipped. R6.
+
+### R1—Reactive internals (in flight)
+
+Public API unchanged, with additions (`EffectHandle`, `Effect::render`, first-class
+`watch`, `Memo::new_with`, `Selector`, `Runtime::set_scheduler`/`flush_sync`).
+Internals rewritten: split arenas, intrusive doubly-linked dependency edges with reuse,
+two-color propagation with a dependency-ordered effect queue (no sort, truly lazy memos,
+one compute per flush), drop guards on `batch` and `Owner::enter`, no user code under a
+runtime borrow, the `test` feature no longer changing a type, the sync waker routed
+through the scheduler.
+**Gate:** the reactive suite passes with the eager-recompute test inverted; new tests
+count memo computes in a batch (one), survive a panic in `batch`, dispose and pause an
+effect, order render effects before ordinary ones, exercise `Selector`, coalesce N
+writes into one scheduled flush, and drain an off-thread write through the scheduler;
+criterion numbers recorded before and after.
+
+### R2—Scene, driver trait, property model, on the headless driver (in flight)
+
+R2b (the data model, additive under `skene_core::next`): `Scalar`, `Shape`
+(`Declared`/`Static`/`Plain`), `BoxStyle<N, S, X>`/`RunStyle<S, X>` with visitors and
+`overlay`/`split` written once, `StyleExtension`, `StaticLeaf`/`Leaf`/`Conditional`/
+`Value`/`Definition` and the `When` extension, typed `Expr` (lengths and numbers with
+ring arithmetic, colors with the named functions, nothing else), `Media`/`State`/
+`Condition` with container queries, `TokenName`/`TokenRef`/`Token`/`TokenSet`/`Themed`.
+R2a: `Scene<D>` with generational node ids, anchors and per-child annotations; the
+`Driver` trait with associated `Sink`, `Scalar`, `Media`, `State`, `StyleExt`,
+`TokenValue`; event dispatch in core over the scene; `skene-headless` implementing the
+whole trait; a minimal `Container`/`Text`/`Theme` over `D` to exercise it.
+**Gate:** headless tests pin the outline of a derived child (no extra node), a wrapper
+annotation landing on the content of a derived subtree, a reconciled item's scope being
+disposed, a click bubbling to a parent container and stopping on `Bubbling::Stop`, a
+themed color resolving through a nested theme, a palette flip on the same node id with
+local state intact, an expression over a token, and a container condition against a
+supplied size; adding one property touches the struct, the visitor and the two mappings
+only; `cargo hack --feature-powerset` passes on all three tiers.
+
+### R3—`skene-views`, and the facades thinned
+
+Every built-in view generic over `D`: `Container`, the layouts and `LayoutBox`, the
+wrappers (annotating before creation), `Text`/`Span`/`RichText`, `Overlay`,
+`LazyColumn`, `Suspense`/`ErrorBoundary`/`Deferred` on `Show`/`Switch`, `Theme`.
+`Children` as segments with a sealed kind; `derive_child` on `derived`; `Show`/`Switch`
+attach and detach pre-built branches. Both facades reduced to scalar, leaves,
+extension, `Typography`, `media` and aliases; `skene-record` deleted.
+**Gate:** no same-named file remains in both facades beyond `lib.rs`, `prelude.rs` and
+the medium's own modules; the galleries compile against the aliases with their source
+unchanged beyond the theming renames; a `Suspense` swap preserves a signal inside its
+content; a third-party crate under `examples/` ships a component library generic over
+`D` used by both galleries, a web view bound on `WebDom`, and a terminal view bound on
+`CellPainter`, each through public types alone.
+
+### R4—Web driver
+
+The `Driver` impl over one node record for both leaves; content-addressed naming with a
+wide hash and interning-order emission on both leaves; a class cache keyed by the props
+hash; one stylesheet after hydration; a delta `<style>` per streamed chunk; one handler
+record per node, taken not cloned; scroll, enter and leave delegated; one shared
+`ResizeObserver`; tokens as custom properties, expressions as CSS math, derived slots,
+`@property` registration, scope and root templates, `@container`, control-state
+selectors, `MediaQueryList` signals, client-hint intake through the runner, scroll and
+focus restoration.
+**Gate:** `web_style` re-baselined once and reviewed; a hydrated page holds one reset and
+one rule per class; a streamed boundary introducing a new class renders styled with
+script disabled; a derived base with a hover variant reads the hovered color; a palette
+flip keeps `1`; a page rendered with a dark scheme hint serializes the dark value of a
+derived leaf.
+
+### R5—Terminal driver
+
+The `Driver` impl replacing direct state mutation; effective style cached under a
+generation covering environment, interaction and definitions, with `set_style` only on
+change; `layout_dirty` and `paint_dirty` split, then damage rectangles; the hover path
+as a set; scrollables indexed; resolver, expressions, second-pass container resolution,
+media signals; asynchronous launch detection.
+**Gate:** a render test counts `set_style` calls across a keystroke (changed subtree
+only); a hover change triggers no relayout; palette and container-query render tests
+cell for cell; the scheme tests unchanged.
+
+### R6—Controls
+
+`Control<B: Behavior>`, the shipped behaviors, parts, lazy registration, controlled
+semantics on both facades, the terminal's controls as composed trees with roles and
+focus order, the accessibility additions; checkbox, radio and slider without a swap;
+the picker's swap carrying the value; hydration writing a changed live value into the
+bound signal; `Simple*` rebuilt over `Control`.
+**Gate:** a button click inside a container does not reach the container on either
+facade; a focused drawn checkbox shows its ring in a browser test; a terminal radio
+group with nothing chosen is reachable by Tab; a served page's checkbox ticked before
+hydration is ticked after with the signal true; a third-party control built in a test
+implements focus and decoration through public types alone.
+
+### R7—Motion
+
+The terminal clock and interpolators, reduced-motion gating on the web, token-aware
+keyframes, `set_transition_name`, the router's view-transition wrap and the
+cross-document opt-in; core's `transition` renamed `settled`.
+**Gate:** a terminal render test steps a color transition across frames; a browser test
+observes `startViewTransition` around a route change; SSG output carries
+`@view-transition` when opted in.
+
+### R8—Store, snapshot, resource
+
+The store as a trie with interned paths and a keyed `AtKey`; the derive's `skip`,
+`tag`, generics and a non-colliding surface; snapshot identity by owner path and
+sequence with tags as anchors; serde bounds on `Signal::new` with an opt-out
+constructor; `Resource` in the engine with a `Refetching` state; the `snapshot` and
+`test` features deleted.
+**Gate:** a snapshot survives a branch flip and a program edit that adds a signal; a
+store with ten thousand tracked cells notifies one row edit in constant time in a bench.
+
+### R9—Delete and rewrite
+
+The `_when` families, `Adaptive`, `SimpleTheme`, the text and control themes, the
+`Web*` toggles and range, the per-control `Raw*` structs, `Source` from public
+builders, `simple-views`; the examples gain a live palette control and a theme example;
+`AGENTS.md`, `DESIGN.md` and this file rewritten to read as one story.
+**Gate:** no deleted name compiles anywhere; every example builds on all three tiers;
+the design doc's crate map matches `Cargo.toml`.

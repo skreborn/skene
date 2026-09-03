@@ -17,81 +17,109 @@ throughout—there is no separate "widget" concept.
 ## Crates
 
 ```
-skene-reactive   reactive engine: signals, effects, memos, scopes, contexts
+skene-reactive   the engine: signals, memos, effects, owners, contexts, the scheduler seam
       │
-skene-core       the spine: view spine, the typed property vocabulary (BoxProps,
-      │          RunProps, later StyleSet), Source, Boundary, Reorder, generic
-      │          geometry, universal values. Knows nothing of platforms.
+skene-core       the spine: Scene<D> (parents, children, annotations, token definitions,
+      │          generational node ids), the Driver trait, event dispatch over the
+      │          scene, the property model (BoxStyle<N, S>, RunStyle<S>, visitors),
+      │          Value/Leaf/Expr, Media/State/Condition, Token/TokenSet, Boundary,
+      │          generic geometry, universal values. Knows nothing of platforms.
       │
-      ├── skene-web       web driver: DOM sink (csr) + HTML/CSS serializer (ssr), the
-      │                   CSSOM stylesheet and interner, hydration, the WASI reactor
-      ├── skene-native    painted-native driver family: taffy layout, vello paint,
-      │                   parley text, AccessKit; per-OS leaves
-      ├── skene-tui       terminal driver: taffy layout in cells, buffer renderer
+skene-views      every built-in view ONCE, generic over D: Driver—Container, Row/Column/
+      │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
+      │          Control<B: Behavior> and the shipped behaviors, Overlay, LazyColumn,
+      │          Suspense/ErrorBoundary/Deferred, Theme
       │
-skene-gui        the GUI facade and a GUI app's single dependency: the built-in views
-                 realized ONCE against the active pixel driver (web today, native
-                 later), prelude, launch, #[main], spawn, Resource, Deferred,
-                 client_only
+      ├── skene-web       Driver for the web: DOM sink (csr) + HTML/CSS serializer (ssr)
+      │                   over one node record, the interner, hydration, the WASI reactor;
+      │                   escape traits WebMarkup (both leaves) and WebDom (browser only)
+      ├── skene-native    Driver for the painted-native family: taffy, vello, parley,
+      │                   AccessKit; per-OS leaves; escape trait PlatformView
+      ├── skene-headless  Driver for the host: realizes into an inspectable tree so view
+      │                   logic tests run without a platform; implements the whole trait
+      └── skene-tui       the terminal facade AND its driver: taffy in cells, a cell
+                          buffer; escape trait CellPainter
 
-skene-tui        the terminal facade and a terminal app's single dependency, EQUAL in
-                 standing to skene-gui: its own views typed to the medium (u32 cells,
-                 bool bold, one-cell borders—no radius, font size, or transition
-                 exists to call), its own driver internals, launch
-
-skene-simple     the Simple design language shared by both facades' Simple* views:
-                 the neutral palette and the emphasis variants, over core's Color
+skene-gui        the GUI facade and a GUI app's single dependency: f32, the GUI Media and
+                 State leaves, the GUI style extension (radius, transitions), Typography,
+                 media::*, launch, #[main], driver selection by target, and aliases
+                 (type Container = skene_views::Container<ActiveDriver>)
+skene-tui        the terminal facade, EQUAL in standing: u32 cells, the terminal's leaves,
+                 its extension (glyphs, shadow), Typography, Glyphs, media::*, launch
+skene-simple     the Simple design language over skene-views, generic over D: the palette
+                 (a TokenSet) and the Simple* views over Control<B>
 skene-router     routing over signals; a small per-facade URL binding seam
 skene-runner     host-side library embedding a wasm runtime; exposes the app's render
-                 functions to a user's server, and powers SSG
-skene-macros     the #[skene_gui::main] entry proc-macro
+                 functions to a user's server, seeds media from client hints, powers SSG
+skene-macros     the #[skene_gui::main] entry proc-macro, #[lazy], the Store derive
 ```
 
 **Two facades, one spine.** GUI and TUI are different media, not one medium with
 fallbacks: a GUI app targets any combination of web and native and genuinely converges;
 a terminal app is written for the terminal on purpose, and never cross-compiles into the
 other family. Each facade therefore owns its builder vocabulary outright, typed to
-exactly its capabilities—while everything beneath (the reactive engine, the view
-trait, `Color`, `Inset<T>`, the alignments, `KeyEvent`, and the structural machinery) is
-written once in the spine.
+exactly its capabilities—and everything beneath it is written once in the spine. The
+facade's own contribution is small by design: a scalar, the medium's condition leaves,
+the properties only that medium has, the driver it selects, and the aliases that give
+app code a flat, medium-typed surface. What a medium lacks is absent at compile time
+because the driver's associated types say so.
 
 Dependency arrows only point down; drivers depend on core (never on each other); each
-facade names only its own drivers.
+facade names only its own drivers and publishes the selected one as `ActiveDriver`.
 
-**The structural machinery is shared through `TreeOps`.** `Children`, `reconcile`,
-`derived`, `DerivedView` and `empty` live in core, generic over a zero-sized driver-ops
-parameter each facade implements (`GuiOps`, `TuiOps`) and hides behind plain type
-aliases—so app code sees `Children`, not `Children<Ops>`. The parameter monomorphizes:
-every call statically resolves and inlines into the one compiled driver, at zero runtime
-cost (a binary holds exactly one facade, so exactly one instantiation ever exists). If
-externally-implementable items land in Rust, the parameter can disappear without
-touching app code, since only the aliases are public.
+## The scene and the driver
 
-## The typed driver vocabulary
+**Core owns the tree; a driver owns a sink.** `Scene<D: Driver>` is a generational arena
+of node records—parent, children, the annotation a wrapper asked for the child, the
+token definitions a theme placed on the node, the query-container name, and the driver's
+sink handle (`Element`, a taffy id, a string node, a record). Every structural mutation
+(`attach`, `detach`, `destroy`, reorder) is implemented once in core; the driver is
+called only to mirror it into the sink. `NodeId` carries a generation, so a stale id
+resolves to nothing rather than to a recycled node. Token resolution and event dispatch
+walk this tree; nothing reads structure back from a platform.
 
-Views are realized **once**, in the umbrella, against a driver-neutral vocabulary of
-typed functions every driver crate exports under the same names—`create_box(&BoxProps)`,
-`update_box(node, &BoxProp)`, `create_run(&RunProps)`, `update_run`, `set_text`,
-`create_group`, `attach`/`detach`/`destroy`, `handle_click`, plus the async and hydration
-seams (`drive`, `is_server`, `adopt_next`, `register_source`). The umbrella resolves
-`driver::` to the enabled driver at compile time and writes each `impl View` exactly one
-time; a driver maps the typed data to its own sink and keeps its own retained state.
+**`Driver` is a zero-sized trait with associated types**, monomorphized, hidden behind
+each facade's aliases: `Sink`, `Scalar` (`f32` or `u32`), `Media` and `State` (the
+medium's condition leaves), `StyleExt` (the medium's own properties), `TokenValue` (the
+erased definition the medium accepts). Its methods are the portable sink vocabulary:
+create and update boxes and runs, create anchors, mirror tree mutations, define tokens on
+a scope, register event kinds, focus, set values, observe sizes, report media. `Painted`
+and embeds are deliberately outside it—their payloads never cross a crate boundary—and
+arrive through extension traits (`Painting`; each driver's escape trait). The leaf-only
+surface (`document`, `element`, `render_to_string`, `launch`) stays free functions in the
+driver crate, since it is not a shared contract.
 
-- **Statics batch, deriveds bind.** A builder's fixed properties arrive together in the
-  create call—the web driver folds them into one content-addressed class—while each
-  `derive_` property binds an effect that re-applies through the per-property update call
-  (web: a single-declaration inline override). The split is written once, in the umbrella.
+- **Why a trait and not name-resolved free functions.** The previous vocabulary was
+  sixty-nine functions the host driver silently lacked a third of, because a missing
+  name is only an error on a path that names it, and those paths were target-gated. A
+  trait makes the gap a hard error, which is what let the host driver implement all of
+  it and made `Resource`, `Deferred`, `Lazy`, `Link`, the head and the router testable
+  headlessly.
+- **Why the scene is in core when a core-owned tree was once rejected.** The rejection
+  was of a tree that *calls* drivers, which by-name dispatch made impossible. The scene
+  calls nothing; core mutates it and then calls the driver through the generic
+  parameter, exactly as `reconcile` always called `TreeOps`. Every driver already kept
+  this structure privately, with four subtly different reparent semantics; one
+  implementation is smaller and correct.
+- **Dispatch is core's.** A driver reports an event at a node; core walks the scene's
+  parents, runs handlers deepest first, folds `Prevented`, and tells the driver what the
+  platform may still do. The browser's root delegation, the terminal's hit path and the
+  headless driver share one bubbling implementation, so the rule that a view owns the
+  interactions it handles is enforced, and testable, in one place.
+- **Statics batch, deriveds bind.** A builder's fixed properties, token references and
+  expressions arrive together in the create call—the web folds them into one
+  content-addressed class—while each derived leaf binds a render effect that writes its
+  per-node slot. The split is written once against the property visitor.
 - **`Role` guides the driver's concrete choice** (web: `Role::Navigation` → `<nav>`); the
   vocabulary stays semantic, never platform-worded.
-- **Painted**—a future vocabulary entry: a vello paint callback plus a layout size,
-  portable across every *interactive* target. Native drivers paint it into a layer; the
-  web driver paints it into a `<canvas>` via wgpu (WebGPU; the vello CPU/hybrid path is
-  the fallback where WebGPU is absent). SSR/SSG render it empty—the client fills it after
-  hydration—and the TUI driver does not realize it. Vello is the one renderer, everywhere.
-- **Embeds are driver-specific views**, not vocabulary: a driver crate exposes its own
-  constructors (`web::element` and `client_only` for raw DOM today; later
-  `ios::native_view`, an Android map view). The payload never crosses a crate boundary,
-  so there is no `Any` and no downcast.
+- **Painted**—a vello paint callback plus a layout size, portable across every
+  *interactive* pixel target through the `Painting` extension. Native drivers paint it
+  into a layer; the web driver paints it into a `<canvas>` via wgpu (the vello CPU/hybrid
+  path is the fallback where WebGPU is absent). SSR/SSG render it empty and the terminal
+  does not realize it. Vello is the one renderer, everywhere.
+- **Embeds are driver-specific views**, written against a driver's escape trait: raw DOM
+  through `WebDom`, later a `UITextField` or a map through `PlatformView`. There is no
+  `Any` and no downcast.
 
   **Why a typed vocabulary and not per-platform realization.** The orphan rule: with
   views in one crate and drivers in others, `impl View for Container` can live in neither
@@ -99,160 +127,261 @@ time; a driver maps the typed data to its own sink and keeps its own retained st
   the vocabulary moves the platform decision (CSS text, native styles) into the driver
   while realization is written once above it.
 
-  **Why not a persistent scene tree in core.** A core-owned retained tree was considered
-  and rejected: compile-time by-name dispatch requires the caller to sit above the callee
-  in the crate graph, so core could never call driver functions—every workaround was a
-  `dyn` driver or a function-pointer table in disguise—and the tree would double the
-  bookkeeping every driver already keeps for its sink. The umbrella naming the driver is
-  the one place static dispatch works, so that is where realization lives.
-
   **No mock driver—but headless tests.** Because the vocabulary carries typed data, the
-  host-compilable *recording* driver (`skene-record`) captures exactly what any real
-  driver receives, giving view logic fast headless tests without pretending to be a
+  host driver (`skene-headless`) realizes exactly what any real driver receives into an
+  inspectable tree, giving view logic fast headless tests without pretending to be a
   platform. Drivers test against their real sinks (web: a browser DOM via
   `wasm-bindgen-test`; ssr: wasmtime under a byte-exact snapshot; native: its toolkit).
 
-## Controls: raw and Simple
+## Composition
 
-Form controls come in two layers, in each facade.
+`View::build(self) -> NodeId` is the whole trait: a one-shot, side-effecting descent that
+mints scene nodes, binds effects, attaches children and returns its root. There is no
+update path on a view; updates are the effects a build left behind. This is the Solid
+model, and it is kept because fine-grained signals make a diffing view tree unnecessary
+and its cost unjustified.
 
-- **The `Raw*` controls** (`RawButton`, `RawCheckbox`, `RawRadio`, `RawPicker`,
-  `RawSlider`, `RawTextField`, GUI-only `RawTextEditor`) are the unstyled, infinitely
-  extensible bases every component library builds on: the platform's full keyboard,
-  focus, and accessibility behavior, the shared builder surface (`ControlBase`, reached
-  through `HasFocus`/`HasStyle`), two-way signal binding, and zero opinion about looks
-  beyond the built-in interaction feedback.
-- **The `Simple*` components** (`SimpleButton` with its `SimpleVariant` emphases,
-  `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`,
-  `SimpleTextField`, GUI-only `SimpleTextEditor`) are the first-party ready-made
-  library over them: one neutral palette (`SimplePalette`) and one shape language,
-  shared across the GUI and the terminal wherever the medium allows (the web's corner
-  radius becomes the terminal's arc-cornered border glyphs; terminal hover and focus
-  feedback rides the border, never the backdrop). Examples use the Simple components
-  rather than hand-styling raw ones.
+- **Anchors, not groups.** A reactive subtree—`derived`, `Suspense`, `ErrorBoundary`,
+  `Deferred`, `Lazy`, `empty`—mounts between two anchors (a comment pair on the web, a
+  non-layout record in the terminal) rather than inside a box of its own. Its nodes are
+  therefore its parent's children for layout, and a wrapper around it annotates the
+  content. A group node that was a real `<div>` and a real taffy node made every
+  derived subtree one flex item.
+- **`Children` is a list of segments**, static or keyed, each between its own anchors;
+  `set_children` and `derive_children` append. A header beside a reconciled list in one
+  `Row` needs no nested container. The child kind is carried on `Children<D, Kind>` and
+  the setter that bypassed it is sealed.
+- **Keyed reconcile** keeps its LIS-minimal reorder, its reused scratch buffers, and
+  builds items untracked; a rebuild closure (`derived`) tracks. The two names say which.
+- **Structural change is a last resort with a cheap alternative.** `derived` destroys
+  and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
+  branches once and attach or detach them, preserving state. `Suspense` and
+  `ErrorBoundary` are built on them and destroy the losing branch on disposal.
+- **Wrappers annotate before creation.** `Flexible`, `Pinned` and `GridCell` write their
+  annotation into the scene slot the next box built under them consumes into its own
+  props, so per-child layout is an ordinary property of the child's style: in the class
+  on the web, conditional, token-valued or derived like any other.
+- **Owners** are created per reconciled item, per rebuild, and where context is
+  provided; everything else inherits the ambient owner. `on_cleanup` returns a handle so
+  a finished task removes its entry.
 
-The palette and the variants' resolved colors live in `skene-simple`, one crate both
-facades import; each facade keeps its own component builders, typed to its medium, and
-gates the whole layer behind a default-on `simple-views` feature. Beyond looks, every
-Simple component stays fully configurable: its semantic knobs come in `set_`/`derive_`
-pairs where the machinery supports reactivity (labels, spacing, alignment, every bound
-value), and the raw controls' non-styling surface—focus order, autofocus, focus and
-anchor binding, focus/blur/key handlers—forwards through. The Simple layer composes
-the raw controls through their public surface alone—it is deliberately nothing a
-third-party component library could not build on the same footing.
+## Controls
+
+A control is `Control<D, B: Behavior>`: one builder carrying focus, events, decoration,
+label, parts and accessibility once, over a public `Behavior` that says what the
+interaction *is*—its role, its keys, its pointer handling, what it reports to assistive
+technology, where it sits in the tab order, and which parts it exposes. `Toggle`,
+`Range`, `Roving`, `Popup`, `Activate` and `TextEntry` ship; `RawCheckbox`,
+`RawSlider`, `RawRadioGroup`, `RawPicker`, `RawButton` and the text fields are aliases
+over them. The `Simple*` components (`skene-simple`) are the ready-made library over the
+same builder: one palette, one shape language, shared across the GUI and the terminal
+wherever the medium allows, and deliberately nothing a third-party library could not
+build on the same footing.
+
+- **A control decides its verdict.** The behavior runs first and its verdict is the
+  whole verdict; a user's handler observes. A button's click never reaches the row it
+  sits in, on any facade.
+- **A control is controlled.** It reports; the bound signal is the truth. Two-way
+  binding is a derived read plus a handler write, on every facade, and the terminal no
+  longer mutates its own bit.
+- **Parts and control state.** A part is a named child the styling targets (`Track`,
+  `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
+  to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,
+  `Disabled`, `Invalid`, `Open`) resolves against the enclosing control; a node's own
+  `Hovered` and `Focused` stay its own. On the web a control that owns a native input
+  compiles control state to a selector anchored on that input; natively it is the
+  control's own state.
+- **The scriptless form is the control.** Checkbox, radio, slider and the text fields
+  keep their native input inside the label, visually hidden but focusable, so keyboard,
+  form participation and accessibility are the browser's before and after hydration and
+  nothing is swapped. The picker keeps a swap (no engine but Chromium restyles an open
+  `<select>` yet) and the swap carries the reader's value.
+- **The terminal's controls are composed trees**—a `Container`, a `Text` mark from a
+  glyph token—painted by the same painters as everything else, so they carry roles,
+  accessibility properties and focus order, and the keyboard tables live in the
+  behaviors rather than in a closed match per medium.
 
 ## The style model
 
 Styling is **data**, not closures, because two requirements demand it: server-rendered and
-statically-generated pages must be responsive and animated with **no JS/WASM**, and every
-platform speaks the same layout semantics. A closure (`derive_color(move || …)`) is opaque
-—a server can only serialize its current value; style data compiles to real CSS.
+statically-generated pages must be responsive, themed and animated with **no JS/WASM**,
+and every platform speaks the same layout semantics. A closure is opaque—a server can
+only serialize its current value; style data compiles to real CSS and evaluates natively.
 
-The typed props carry the full static style (implemented for boxes and text runs):
+**One property model, spelled once.** `BoxStyle<N: Scalar, S: Shape, X: StyleExtension>`
+and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
+(`Declared` for a builder, `Static` for a driver, `Plain` for a keyframe or a resolved
+style) and the medium's own properties come through the extension. A visitor written once
+gives overlay, the static/derived split, CSS rendering and taffy application their
+iteration; what remains per property is the field, its CSS name and its taffy mapping.
+
+**A property value is a base and its conditions, and each leaf is one of five kinds.**
 
 ```
-BoxProps/RunProps {
-  style:       BoxStyle/RunStyle,             // the fixed base properties
-  variants:    Vec<(Condition, Style)>,       // applies while it holds; later wins
-  transitions: Vec<Transition>,               // property, duration, delay, easing
-  animations:  Vec<Animation<Style>>,         // keyframes over the same style type
-}
-Condition = MinWidth | MaxWidth | MinHeight | MaxHeight | DarkMode | LightMode
-          | ReducedMotion | Hovered | Focused | FocusVisible | Pressed | Disabled
-          | And(Vec<Condition>) | Or(Vec<Condition>)    // composable to any depth
+StaticLeaf<T> = Fixed(T) | Token(TokenRef<T>) | Expr(Expr<T>)
+Leaf<T>       = Static(StaticLeaf<T>) | Derived(Rc<dyn Fn() -> T>)
+Value<T>      = Conditional<Leaf<T>, Condition>          // what a setter takes
+Definition<T> = Conditional<StaticLeaf<T>, Media>        // what a token is; no closures
+Media         = MinWidth | MaxWidth | MinHeight | MaxHeight | Dark | Light | ReducedMotion
+              | ReducedTransparency | HighContrast | Container { name, query } | And | Or
+State         = Hovered | Focused | FocusVisible | Pressed              // the node's own
+              | Checked | Indeterminate | Disabled | Invalid | Open      // the control's
+Condition     = Media | State | And | Or
 ```
 
-Each facade owns its own `Condition` enum—leaves typed to its medium—but the composition
-machinery is one generic in the spine (`Composable`): an interpreting driver evaluates the
-tree against live state, and the web driver flattens it to disjunctive normal form and
-emits one CSS rule per conjunction (`@media` wrapping, pseudo-classes suffixing). This is
-the same sharing shape as `TreeOps`—never feature-gated variants, which cargo's additive
-feature unification would break in any build containing both facades.
-
-- **Layout** runs on taffy at full capability, statically constrained per layout:
-  each mode is its own container view (`Row`/`Column`, `Grid`, `Stack`) carrying layout
-  properties alone—a third-party layout is built from the public `LayoutBox` the same
-  way—while `Container` is the one decorated box, sizing and styling exactly one child.
-  Each exposes only what it honors—a `Row` has `arrangement`,
-  `item_alignment`, `spacing`, `wrap`; a `Grid` has `columns`/`rows`, implicit
-  tracks, `flow`, and two-axis arrangement and `Alignment`. Per-child properties ride
-  in wrapper views the matching container alone accepts (`Flexible` with
-  grow/shrink factors and an `initial` size, `Pinned` against a stack's edges,
-  `GridCell` placements); wrappers create no node. `Dimension` is a fixed length, a
-  `Fraction` of the parent, or auto. The property types are mirrored in core,
-  scalar-generic so the GUI facade instantiates logical pixels and the TUI cells; the
-  web renders them to CSS text (the only place CSS nomenclature exists), the terminal
-  feeds taffy directly. The framework invents no layout system.
-- **Decoration and text** are skene's typed properties (background, border, radius,
-  cursor, text color/size/weight, …), growing as views need them.
+- **Fixed** leaves render as literals. **Tokens** render as `var(--name)` on the web and
+  resolve through the scene elsewhere. **Expressions** are typed arithmetic that compiles
+  to `calc()`, `clamp()`, `color-mix()` and relative color and evaluates natively:
+  lengths and numbers have the ring operations CSS type-checks, colors have only the named
+  functions, and there is no boolean expression, so an ill-formed expression does not
+  compile. **Derived** leaves are the script-only kind: on the web a per-node custom
+  property slot the class references (registered `inherits: false`), written by a render
+  effect, so a derived base never outranks a variant; on the server, evaluated once. A
+  definition admits no closure, which is what keeps a palette plain data that
+  serializes, hashes and renders without script.
+- Conditions ride the value: `value.when(condition, other)`. Each facade owns its
+  `Media` and `State` leaves, and the composition machinery (`Composable`: `holds`,
+  DNF expansion) is one generic in the spine; the web emits one rule per conjunction and
+  groups a node's properties by canonical condition, the terminal and native evaluate
+  against live state. Container queries are `Media::Container` leaves against a box that
+  named itself; the web stamps `container-type` and emits `@container`, the terminal and
+  native resolve them in a second pass with the container's measured axis fixed, which is
+  sound for the reason CSS makes it sound.
+- **Layout** runs on taffy at full capability, statically constrained per layout: each
+  mode is its own container view carrying layout properties alone, `Container` is the one
+  decorated box, and per-child properties ride in wrappers. `Dimension` is a fixed length,
+  a `Fraction` of the parent, or auto. The framework invents no layout system.
 - **Passthrough** keeps the vocabulary open: a per-family extension (web: raw CSS
-  declarations) for everything the typed core doesn't model. Portable code sticks to the
-  core; web-only code can reach all of CSS.
-- **Web** renders the whole set into one interned **rule template**: base declarations,
-  `@media` blocks, `:hover`/`:focus`/`:active` rules, `transition:`, content-addressed
-  `@keyframes`. State- and media-driven styling therefore works in a static document with
-  zero script.
-- **Native/TUI** resolve `Condition` against driver signals (window size, pointer state,
-  focus) and run transitions/animations on the driver's frame ticker—not through the
-  reactive graph per frame. `derive_` properties remain for genuinely dynamic values; they
-  are the escape hatch, not the mechanism.
+  declarations) for everything the typed core does not model.
+- **Web** renders the whole set into one interned rule template: base declarations,
+  `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
+  `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
+  therefore works in a static document with zero script.
+- **Native/TUI** resolve every property at one point—token lookup, expression
+  evaluation, variant overlay—cached per node under a generation covering environment,
+  interaction and definitions, and reporting whether the resolved value changed. That
+  report is where a transition starts.
+
+### Tokens and themes
+
+A design token is a named, inherited slot. `TokenRef<T>` names it (a `const`; the name is
+an implementation detail on every platform), `Token<T>` pairs the name with the
+definition a palette gives it, and a consumer emits only the name, so two boxes under two
+palettes intern one class and a theme change never touches a consumer. A token's own
+conditions live in its definition, once.
+
+`Theme<D, P: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
+(`display: contents` on the web, a group record in the terminal), provides `Memo<P>`
+through context, and runs one effect that writes `P::definitions()` onto the scope. A
+palette change therefore costs the number of tokens, never the number of nodes, and
+nothing rebuilds; nesting a theme redefines beneath it. On the web the static definitions
+are an interned class on the scope element (with `@media` blocks and the scheme double
+emission where a definition conditions on the scheme), an unconditional redefinition is
+written inline, a conditional one re-interns and swaps the class; a token set used with
+no theme above registers its default under `:root` once. `Typography` (all text
+inheritance on both facades) and the terminal's `Glyphs` are token sets, so the framework
+has one inheritance mechanism. Nothing below a component library knows what a palette
+is: `skene-simple` owns `SimplePalette`, and a third party's `AcmePalette` gets
+`Theme<D, AcmePalette>`, `current()` and `watch()` from the same blanket.
+
+The color scheme is one `Media` leaf, answered per property in a definition or a value.
+The scheme *in force* is the document's: `media::set_scheme` writes `data-skene-scheme`
+on the root (with `color-scheme`), every scheme-conditional rule is emitted twice—the
+preference query guarded by `:where(:root:not([data-skene-scheme="light"]))` and the
+choice as `:where(:root[data-skene-scheme="dark"])`, both in `:where()` so they add no
+specificity—and the terminal keeps the choice beside its detected background. A
+server-rendered page that offers a choice emits one inline blocking script that applies
+the stored choice before first paint. Scoping a scheme to a subtree is not wanted.
+
+### Environment
+
+`media::viewport()`, `media::scheme()` and `media::reduced_motion()` are signals on every
+facade, backed by the driver: `MediaQueryList` and `resize` in the browser, the
+terminal's size and background, the native window. `Media::watch()` turns any declared
+condition into a memo rendered from the same query text the class compiler renders, so
+the signal and the stylesheet cannot disagree. A `SizeHandle` bound to a box reports its
+measured size. On the server these hold the client hints the runner was given
+(`Sec-CH-Prefers-Color-Scheme`, `Sec-CH-Viewport-Width`, `Sec-CH-Prefers-Reduced-Motion`;
+Chromium only, opt-in through `Accept-CH`/`Critical-CH`), else documented defaults.
 
 ### The interner
 
-The content-addressed class interner is load-bearing: a node's complete rule template
-(base rule, variants, `@media` blocks, `@keyframes`, with the class as a placeholder) is
-hashed to a deterministic name (`skene-{hash:x}`, forward probe on collision), interned
-once, reference-counted by live node, collected when unused. Identical styles collapse to
-one class; determinism makes the server's stylesheet byte-compatible with the client's,
-which hydration relies on. The interner is pure and shared by the web leaves; each layers
-its sink on the outcomes (csr: one `<style>` element per class, appended on intern and
-removed on collect—one operation either way, however many rules the template holds; ssr:
-render live templates once at the end, sorted by class). On native the same interning
-shares resolved style objects across nodes—the computed-style sharing browsers get from
-classes.
+The content-addressed class interner is load-bearing: a node's complete rule template is
+hashed with a wide hash to a deterministic name, interned once, reference-counted by live
+node, collected when unused; naming never depends on intern order or liveness. Identical
+styles collapse to one class; both leaves emit rules in interning order, which is build
+order, so the server's stylesheet is byte-compatible with the client's and the cascade
+order is identical, which hydration relies on. A class cache keyed by the hash of the
+typed props renders the template text on a miss only. The interner is pure and shared by
+the web leaves; each layers its sink (csr: one `<style>` element per class; ssr: the live
+templates rendered once at the end, plus a delta `<style>` per streamed chunk for classes
+interned since the previous flush). On native the same interning shares resolved style
+objects across nodes.
 
 ## Reactive engine
 
 The public API speaks the ecosystem's standard reactive vocabulary:
-`Signal`/`ReadSignal`/`WriteSignal` (Copy handles), `Memo`, `Effect`, `Trigger`,
-`Owner`, `provide_context`/`use_context`, `batch`/`untrack`, the access traits
-(`Get`/`With`/`Read`/`Set`/`Update`/`Write`/`Track`), the `Sync`/local storage split,
-and the `set_`/`derive_`/`handle_` builder convention above it. The internals contract:
+`Signal`/`ReadSignal`/`WriteSignal` (Copy handles), `Memo`, `Effect` with an
+`EffectHandle`, `Trigger`, `Selector`, `Owner`, `provide_context`/`use_context`,
+`batch`/`untrack`, the access traits, the `Sync`/local storage split, and the
+`set_`/`derive_`/`handle_` builder convention above it. The internals contract:
 
-- **Eager staleness, lazy recomputation.** A write marks dependent memos stale
-  transitively at write time; a memo read pulls freshness through the chain. A memo is
-  therefore never stale to a reader—including inside `batch`—and a memo whose recomputed
-  value is unchanged still notifies no one (memos filter change).
-- **Non-reentrant flushing.** Effects triggered while a flush is running are enqueued and
-  drained by the same flush, not run recursively. Driver event dispatch wraps in an
-  implicit batch, so N writes in one handler run each dependent effect once.
-- **Arena storage.** Every local entity—signal, effect, owner—is one slot in a
-  generational arena per thread, addressed by index and validated by generation;
-  subscription edges are small-vector lists. An id carries its realm (local or sync)
-  and its runtime's nonce, so a stale or foreign id resolves to nothing rather than to
-  a different entity. Sync signals live in a generational slab in the process-wide
-  registry.
+- **Split arenas, intrusive edges.** Signals, computations and owners live in separate
+  generational arenas selected by id bits; a signal costs one allocation. Dependency
+  edges are a pooled doubly-linked list (the alien-signals shape): subscribe and
+  unsubscribe are O(1), and a re-run walks its previous edges and reuses each unchanged
+  one, so a steady-state effect run allocates nothing.
+- **Two-color propagation.** A write marks direct subscribers dirty and transitive
+  computations pending-check; only effects enter the run queue, already in dependency
+  order. Memos are lazy: an unobserved memo never runs, a memo read once in a batch
+  computes once, and a memo whose recomputed value is unchanged (per its comparator)
+  notifies no one. A memo is never stale to a reader, including inside a batch.
+- **Effects have handles and flavors.** `RenderEffect`s flush before ordinary effects in
+  owner-depth order and are what property binders are; `watch` is the fine-grained
+  binder; a handle disposes or pauses.
+- **A pluggable scheduler.** Synchronous at write end by default; a driver installs a
+  frame-tied flush with `flush_sync` for the cases that need it. The sync waker routes
+  through the same scheduler. The animation clock on native and the terminal lives here.
+- **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
+  runs under a runtime borrow; an entity is moved out of its arena before its cleanups
+  run.
 - **Threading.** The UI thread owns the local runtime. `Sync` signals live in a global
-  runtime; an off-thread write enqueues its subscribed effects and pokes the installed
-  waker; the driver drains on its loop (`drain_pending_work`). The browser build is
+  registry; an off-thread write enqueues and pokes the scheduler. The browser build is
   single-threaded and never queues; the machinery earns its keep on native.
+
+## Motion
+
+`Transition` and keyframe `Animation` are data. The web compiles them to CSS; native and
+the terminal run them on the driver's frame clock, per value type (colors in Oklab,
+lengths linearly, the terminal quantizing to cells and truecolor), from the resolution
+point that reports a changed value—never through the reactive graph per frame. Every
+change source animates: a condition flipping, a token redefined, an expression input
+moving, a derived write. Reduced motion is respected by default. Keyframes may hold
+tokens. `set_transition_name` maps to `view-transition-name`; the router wraps a
+same-document navigation in `startViewTransition` when the app opts in, the stylesheet
+emits `@view-transition` for cross-document navigations, and native snapshots the
+outgoing tree into a layer and interpolates named pairs; all degrade to a cut.
 
 ## Drivers
 
 ### Web (`skene-web`)
 
-Two leaves, selected by target and enforced by it—`web-sys` does not exist on
-`wasm32-wasip2`, so the server leaf *cannot* touch the DOM:
+Two leaves over one node record, selected by target and enforced by it—`web-sys` does not
+exist on `wasm32-wasip2`, so the server leaf *cannot* touch the DOM:
 
-- **csr** (`target_os = "unknown"`)—the browser. DOM artifacts, the CSSOM stylesheet
-  sink, hydration (creation-order `data-h` markers, loud mismatch), the raw
-  `element`/`document` escape hatch; later root-level event delegation and `Painted` via
-  `<canvas>` + wgpu.
+- **csr** (`target_os = "unknown"`)—the browser. DOM sink, the CSSOM stylesheet sink,
+  root-level event delegation with a stamped node id (one listener per event type,
+  `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
+  (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
+  than duplicated, a live input value that differs from the serialized one written into
+  its signal), scroll and focus restoration by node id, the `WebDom` escape trait, later
+  `Painted` via `<canvas>` + wgpu.
 - **ssr** (`target_os = "wasi"`)—the serializer. Renders its string tree to HTML plus the
   interned stylesheet; drives async to a fixpoint on a WASI-`poll` reactor before
-  serializing; streams in document order around `Deferred` boundaries; serializes
-  resource state for the client to adopt. The raw handles do not exist here (`web-sys` is
-  absent on wasi), painted/embedded content renders empty, and handlers are inert.
+  serializing; streams in document order around `Deferred` boundaries with a style delta
+  per chunk; serializes resource state for the client to adopt; takes client hints as
+  render input. The raw handles do not exist here, painted/embedded content renders
+  empty, and handlers are inert.
 
 The app compiles to wasm for both leaves; the same module serves CSR in the browser and
 SSR/SSG in a runner.
@@ -262,59 +391,74 @@ SSR/SSG in a runner.
 One family; the design premise is that **the platform composites**. Where the OS has a
 real view hierarchy (iOS, Android, macOS), the driver realizes the tree *into* it: taffy
 computes frames, painted content renders through vello into layers that are themselves
-views in that hierarchy, and an `Embed` is an ordinary native view (a `UITextField`, a
-map). Sibling order is z-order, so custom-painted content and real platform controls
-interleave for free—compositing is the platform's duty, not the framework's. The driver
-decides its own realization granularity internally (view-per-node versus flattened painted
-layers); the invariant is only that tree order maps to compositor order.
+views in that hierarchy, and an embed is an ordinary native view. Sibling order is
+z-order, so custom-painted content and real platform controls interleave for free. The
+driver decides its own realization granularity internally; the invariant is only that
+tree order maps to compositor order. The resolution cache tells it whether a
+layout-affecting value moved, so a palette write restyles taffy only when it must.
 
 The Linux desktop leaf has no native control set to embed, so it is the plain
-winit + single-vello-surface case; Windows sits between (composition visuals) and its leaf
-chooses. Text is parley; accessibility is AccessKit; per-OS glue (IME, clipboard, menus)
-lives in each leaf. Off-thread work uses the reactive engine's waker/drain pair wired to
-the event-loop proxy, and a loop-integrated timer is fair game here (the loop is ours).
+winit + single-vello-surface case; Windows sits between and its leaf chooses. Text is
+parley; accessibility is AccessKit; per-OS glue (IME, clipboard, menus) lives in each
+leaf. Off-thread work uses the engine's scheduler wired to the event-loop proxy, and a
+loop-integrated timer is fair game here (the loop is ours).
 
 ### TUI (`skene-tui`)
 
-A facade in its own right, not a driver of the GUI vocabulary. Its `Container`, `Text`
-and `RawTextField` are typed to the terminal: lengths are `u32` cells, text is a color plus a
-`bool` bold, a border is one cell of box-drawing characters in a color, and conditions
-are the terminal's (`MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight` in cells, `Focused`,
-`Hovered`). Nothing the medium lacks exists to call—no font size, no transition—so a
-terminal app is first-class at compile time rather than best-effort at run time.
+A facade in its own right, not a driver of the GUI vocabulary. Its views are the shared
+ones typed to the terminal: lengths are `u32` cells, text is a color plus a `bool` bold,
+a border is one cell of box-drawing characters in a color, its conditions are cells and
+its own background. Nothing the medium lacks exists to call, so a terminal app is
+first-class at compile time rather than best-effort at run time.
 
-The mouse is in-capability: motion drives `Hovered` variants and pointer enter/leave
-handlers, a left click hits the topmost node (hit-tested against the taffy layout),
-focuses it, and runs its click handlers, and a hovered node's `cursor` sets the pointer
-shape via OSC 22—terminals without mouse reporting or pointer shapes degrade quietly.
-Pointer down/up/move handlers receive the terminal's own `PointerEvent`: `u32` cell
-coordinates, both terminal-absolute and view-relative, plus the button and modifiers.
-`set_title`/`derive_title` name the terminal window via OSC 2, and `FocusHandle` and
-`set_autofocus` manage keyboard focus programmatically—the same surface the GUI facade
-offers, each typed to its own medium. Focus belongs to controls: `RawButton` is the
-focus-taking box (`Tab` reaches it, `Enter` and `Space` activate it), and a plain
-container never enters the tab order, exactly as on the web.
+The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
+left click hits the topmost node and runs its handlers through core's dispatch, a
+hovered node's `cursor` sets the pointer shape via OSC 22—terminals without mouse
+reporting or pointer shapes degrade quietly. Selection is anchored in source space so it
+survives reflow; wheel gestures latch their target. Focus belongs to controls, which are
+composed trees with roles and focus order, exactly as on the GUI.
 
-Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
-through `launch` (crossterm: raw mode, truecolor, mouse capture, `Tab`/`Enter` keyboard
-focus), or to plain text through `render_to_text` for headless tests
-(`trigger_key`/`trigger_mouse_move`/`trigger_mouse_click` drive it without a terminal).
-Terminal apps never cross-compile into the GUI family; the write-once promise belongs to
-web+native.
+Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
+`set_style` called only on change, so a keystroke relays out the changed subtree and a
+hover change repaints without relayout. Frames paint into a cell buffer—to the terminal
+through `launch` (crossterm: raw mode, truecolor, mouse capture), or to plain text
+through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
+`trigger_mouse_click` drive it without a terminal). Terminal detection is asynchronous;
+the loop starts immediately and the answers arrive as signal writes. Terminal apps never
+cross-compile into the GUI family; the write-once promise belongs to web+native.
+
+## Third parties and platforms
+
+Two guarantees, both properties of what is public rather than of any one API.
+
+- **A component library, for every platform, from one crate.** It depends on
+  `skene-views`, writes generic over `D: Driver` exactly as the built-ins are written, and
+  states what it needs from a medium as a bound on the driver's associated types
+  (`D::StyleExt: HasCornerRadius`). Each facade's aliases make it concrete for the app
+  that uses it. Nothing on the path a built-in takes is crate-private.
+- **A low-level view, against the platform, like a built-in.** It is written against a
+  driver's escape trait (`impl<D: Driver + WebDom> View for Map<D>`) and realized through
+  the same scene and node ids as a `Container`, so it composes with wrappers, themes,
+  conditions and events. Selecting the driver is what selecting the facade already does.
+  The portable low-level path for pixel media is `Painted`.
+
+A driver need not be first-party: a crate that implements `Driver`, provides its scalar,
+leaves, extension, a `launch` and aliases over `skene-views` is a facade. `Driver` is not
+sealed, and the shared machinery bounds only on it and the public extension traits; the
+headless driver is exactly such a crate in all but ownership.
 
 ## Selection and entry
 
 Selection is by **facade dependency** first—a GUI app depends on `skene-gui`, a
 terminal app on `skene-tui`—and by target within a facade: `skene-gui` resolves wasm32
 to the web driver and will resolve native triples to the native driver, with no feature
-flag anywhere. Target-gating stays the enforcement layer where it applies (`target_os`
-splits csr/ssr; `web-sys` cannot exist off the browser target).
+flag anywhere. Target-gating stays the enforcement layer where it applies. A cargo
+feature may only add items; never a bound, a type, a variant or a driver.
 
 A facade is the one place allowed to name its drivers, which is why the shared
 driver-adjacent surface lives there: `launch`, `#[main]` (per-driver entry glue),
-`spawn` (scope-bound cancellation over the driver's executor seam), `Resource`
-(serialize-by-default across the SSR boundary, `Resource::client` opt-out), `Deferred`,
-`client_only`, and the interactive-only wrappers. App code names no platform.
+`spawn`, `Deferred`, `client_only`, `media`, and the interactive-only wrappers. App code
+names no platform.
 
 ## Async, data, and third parties
 
@@ -324,18 +468,19 @@ external crate can provide, and ships it as *public seams* so third-party integr
 on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
-- `Resource`—load into a signal, hydrate across the SSR boundary, reload.
+- `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
+  state that keeps the last value; the web leaf adds hydration across the SSR boundary.
 - The SSR reactor's `register(pollable, waker)`—public in `skene-web`, so any client
-  library that speaks `wasi:*` pollables (an HTTP client on `wasi:http`) blocks the render
-  until its load settles, exactly as the built-in `sleep` does.
+  library that speaks `wasi:*` pollables blocks the render until its load settles.
 - `Boundary`/`Deferred`—any async inside a boundary defers its streamed chunk.
 
 ## Router (`skene-router`)
 
 Routing is state: a typed route as a signal, shared by every platform. Each driver binds
-it thinly—web csr to the History API, ssr takes the route as render input, native/tui keep
-it in memory (deep links later). SSG enumerates the route table to know what to render.
-The router depends on `skene-reactive` only.
+it thinly—web csr to the History API (wrapping a navigation in a view transition when
+the app opts in), ssr takes the route as render input, native/tui keep it in memory. SSG
+enumerates the route table to know what to render. The router depends on
+`skene-reactive` only.
 
 ## SSR, SSG, and the runner (`skene-runner`)
 
@@ -343,35 +488,46 @@ Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
 `Rendered::page` assembles a document. The app compiles once to `wasm32-wasip2`; the
 runner—a plain Rust library embedding wasmtime—loads that module and exposes the render
-calls to whatever server the user already has, plus a dev server. SSG is the same runner
-run at build time: enumerate routes, render each, write files. Static output is fully
-functional without script (styling, media queries, hover, transitions, animations—all
-CSS); hydration upgrades it to interactive when the wasm loads.
+calls to whatever server the user already has, parses client hints into `RenderHints`
+and emits the response headers that request them, plus a dev server. SSG is the same
+runner run at build time. Static output is fully functional without script (styling,
+media and container queries, hover, themes, transitions, animations—all CSS); hydration
+upgrades it to interactive when the wasm loads.
 
 ## Logging
 
 Framework and app code log through `tracing`. Each driver installs its subscriber at
-launch (web → console; native → logcat / `os_log` / stderr). The spine carries no
-subscriber.
+launch. The spine carries no subscriber.
 
 ## Superseded decisions
 
 Recorded because they were load-bearing and the reasons they fell matter:
 
-- **Per-platform view realization** (shared builder, per-platform `impl View`) fell to the
-  orphan rule the moment drivers became separate crates, and to the duplication it forced
-  it forced (each leaf re-derived the same realization decisions). The typed vocabulary
-  replaces it: the decision moves to data, the mapping to the driver.
+- **Per-platform view realization** fell to the orphan rule the moment drivers became
+  separate crates, and to the duplication it forced. The typed vocabulary replaces it.
 - **"No framework style model"** existed so no platform would be forced onto a foreign
   vocabulary. Taffy-everywhere plus no-JS responsive SSG *is* a shared vocabulary by
-  requirement; the model is now framework-defined but open (passthrough), and each driver
-  still owns its sink.
+  requirement; the model is framework-defined but open (passthrough).
 - **"Selection is the target, only"** cannot distinguish desktop from TUI on one triple.
   Target-gating is demoted from selector to enforcement.
-- **"No generic platform to test against"** was true when the realization interface was
-  per-platform text. The typed vocabulary is real data; a recording driver can capture it
-  faithfully for headless view tests.
-- **A `Backend` trait object** (pre-redesign) cost `unsafe`, `Box::leak`, and a fallible
-  downcast to re-discover what the compiler knew. Still rejected: drivers are statically
-  selected, and the generic driver-ops parameter monomorphizes—there is no `dyn` driver
-  anywhere.
+- **A `Backend` trait object** cost `unsafe`, `Box::leak`, and a fallible downcast. Still
+  rejected: drivers are statically selected and the driver parameter monomorphizes.
+- **"The built-in views live in the umbrella."** True with one facade; with two it
+  produced two umbrellas and two copies, sixty-five percent of them character-identical.
+  The generic parameter already used for `Children` is applied to every view in
+  `skene-views`.
+- **"No persistent scene tree in core."** The objection stood for a tree that calls
+  drivers. The scene calls none; every driver kept the structure anyway, four ways.
+- **"The vocabulary is free functions resolved by name."** A missing function was only an
+  error on a target-gated path, which let the host driver lack a third of it. A
+  zero-sized trait makes the contract complete.
+- **"A token's conditions land beside the property as ordinary variants."** They were
+  copied into every use site, doubled by the scheme guard, and a palette could change
+  only by a rebuild that lost state. A token is a named inherited slot; its conditions
+  live in its definition; a theme redefines it by one effect.
+- **"A derived value is an inline override."** Inline outranks every variant on the web
+  and not in the terminal. A derived leaf is a per-node custom-property slot the class
+  references.
+- **`set_<prop>_when`, `SimpleTheme`, `TextTheme`, `ControlTheme`, the `Web*` toggles and
+  range, the per-control `Raw*` structs, group nodes, `skene-record`.** Each is replaced
+  by a construct named above; the reasons are recorded in `ROADMAP.md`'s redesign entry.

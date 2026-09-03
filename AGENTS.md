@@ -5,26 +5,41 @@
 - Skene is a **client-side** framework. No server-side features, ever: no server
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
   runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
-- The spine (`skene-reactive` + `skene-core`) stays platform-agnostic: no platform
-  assumptions or nomenclature. Core hosts the reactive engine, the view spine, the typed
-  property vocabulary (`BoxProps`, `RunProps`, later `StyleSet`), `Boundary`, generic
-  geometry (over a plain `f32` scalar), and universal values.
+- The spine (`skene-reactive` + `skene-core` + `skene-views`) stays platform-agnostic: no
+  platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<D>`:
+  parents, children, per-child annotations, token definitions, generational node ids),
+  the zero-sized **`Driver`** trait every driver implements, event dispatch over the
+  scene, the property model (`BoxStyle<N, S>`, `RunStyle<S>` and their visitors), values
+  and expressions (`Value`, `Leaf`, `Expr`), conditions (`Media`, `State`, `Condition`),
+  tokens (`Token`, `TokenSet`), `Boundary`, generic geometry over the driver's scalar, and
+  universal values. `skene-views` hosts every built-in view once, generic over
+  `D: Driver`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
   terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
   the blessed one. Within a facade, views are realized **once** against its typed driver
   vocabulary—no per-platform `impl View`, no "backend" concept.
-- A GUI **driver** is a separate crate (`skene-web`, later `skene-native`) exporting the
-  same typed vocabulary mapped to its own sink; `skene-tui` carries its driver
-  internally. Drivers depend on core, never on each other; a facade is the only place
-  that names its drivers. The structural machinery (`Children`, `reconcile`, `derived`)
-  lives in core, generic over a zero-sized `TreeOps` parameter each facade aliases
-  away—monomorphized, so there is no `dyn` driver, no downcast, and no runtime swap.
+- A **driver** is a crate implementing `Driver`: `skene-web` (the csr and ssr leaves),
+  `skene-headless` (the host driver every facade compiles against off its target, driven
+  by tests), later `skene-native`; `skene-tui` carries its own. Drivers depend on core,
+  never on each other; a facade is the only place that names its drivers, and it
+  publishes the selected one as `ActiveDriver`. The trait is zero-sized and
+  monomorphized: no `dyn` driver, no downcast, no runtime swap. It is **not sealed**, and
+  the shared machinery bounds only on it and the public extension traits, so a
+  third-party driver is a facade in all but ownership. Each driver crate also exposes an
+  **escape trait** beside the portable one (`WebMarkup` on both web leaves, `WebDom` on
+  the browser leaf only, `CellPainter` in the terminal, later `PlatformView`), so a
+  low-level view is written against exactly the bound it needs and is realized through
+  the same scene and node ids as a built-in. `Painted` (vello) is the portable
+  low-level path for pixel media, through a `Painting` extension both pixel drivers
+  implement.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
   `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
   native driver, later). No feature flags. Target-gating is the enforcement layer: the
   web csr/ssr leaves stay split on `target_os` (`unknown`/`wasi`), so the server leaf
-  physically cannot touch the DOM.
+  physically cannot touch the DOM. A cargo feature may only **add items**: never a trait
+  bound, a type, a variant or a driver. The three that did (`snapshot`, `test`,
+  `simple-views`) are gone, and `cargo hack --feature-powerset` is part of the gate.
 - The **style model is data** (`StyleSet`: typed props + open per-family passthrough,
   media/state variants, transitions, keyframes). Layout **runs on taffy**—the framework
   invents no layout system and exposes taffy's full capability—but the **public
@@ -43,53 +58,64 @@
   `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
   travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the
   matching container through its child kind (`HasChildren::Kind`). Wrappers create no
-  node; they annotate their child's. `Container` is decoration and sizing around
+  node; their properties become ordinary properties of the child's own style, folded in
+  before the child is created, so they compile into the class and take conditions,
+  tokens and derived values like any property. `Container` is decoration and sizing around
   **exactly one** child—no multi-child flow; `Column`, `Row`, and `Wrap` cover those
   cases. **Only `Container` is decorated**: it is the one freely-stylable box—
   decoration, sizing, events, alignment, and a single child—and every layout view
   carries layout properties plus its own padding and nothing else, so decorating a
-  layout means wrapping it. Conditional styling is per property (`set_spacing_when`)
-  rather than a whole style under one condition, which keeps a variant expressible only
-  where the property is. There is no box-surface forwarding to solve, and no trait for
-  it. A control that draws nothing needs none of it either—its chrome is the `Container`
-  its child is made of. A control that owns an element of its own spells that element's
-  decoration per property too, through `HasDecoration` (`HasMarks` in the terminal,
-  where a control decorates its marks rather than a surface); the `BoxStyle` blob is
-  gone from every control surface. A
-  third-party layout view is built from the public `LayoutBox` exactly as `Row` is;
-  there is no privileged base.
-  On the web a `StyleSet` compiles to real CSS inside one interned class, so SSR/SSG
-  output is responsive, hoverable and animated with **no JS/WASM**. `derive_` closures
-  remain for genuinely dynamic values only.
-- **A design token is a value, and a palette belongs to its library.** `Adaptive<T>`—a
-  base plus conditional overrides, generic over the facade's condition vocabulary—is what
-  every color and border setter takes, so `set_color(Color::WHITE)` and
-  `set_color(palette.card)` are the same call and a token's own conditions land beside
-  the property as ordinary variants. Setting one under a condition (`set_color_when`)
-  *narrows* the token's conditions rather than dropping them. Nothing below a component
-  library knows what a palette is: `skene-simple` owns `SimplePalette`—named for its
-  library, so a third-party palette is free to be `AcmePalette`—as a plain struct of
-  `Token`s, and defines nothing a third-party library could not define for itself.
-  There is no themed twin of any setter—that surface existed briefly, welded `Container`
-  to one concrete palette type, and is gone.
-  - **Light and dark are not two themes.** A theme carries exactly one palette, and a
-    palette answers the color scheme the same way it answers a viewport or a pointer:
-    per property, through `set_<prop>` and `set_<prop>_when(condition, value)`. There is
-    no `adaptive` constructor, no light/dark pair, and no palette-level conditional—the
-    whole-palette overlay was considered and rejected, because a palette that switches
-    wholesale re-privileges the very separation the per-property form removes.
-    `SimplePalette::default()` is the built-in palette, built from those same public
-    setters, so what the library does is exactly what a third party can do.
-  - `SimpleTheme::new(palette)` provides one palette through context, and nesting one
-    replaces the palette beneath it—inheritance by *our* view tree, through the reactive
-    `Context`, never by anything a platform does with the tree. The theme's child is a
-    closure: `SimplePalette::current()` reads context, and an argument is evaluated
-    before the call it is an argument to, so a child passed by value would be built
-    before the theme provided anything.
+  layout means wrapping it. Conditional styling rides the value:
+  `set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))`. One setter per
+  property plus its `derive_` twin, no `set_<prop>_when`, and a variant is expressible
+  only where the property is. There is no box-surface forwarding to solve, and no trait
+  for it. A control that draws nothing needs none of it either—its chrome is the
+  `Container` its child is made of. A control that owns an element of its own spells that
+  element's decoration per property too; the `BoxStyle` blob is gone from every control
+  surface. A third-party layout view is built from the public `LayoutBox` exactly as
+  `Row` is; there is no privileged base.
+  A property value has five kinds of leaf and the type says which: fixed; a **token**
+  reference; an **expression** (`Expr<Length>`/`Expr<Number>` with ring arithmetic,
+  `Expr<Color>` with the named color functions and nothing else, typed so an ill-formed
+  expression does not compile); **derived** from signals by a closure; and any of those
+  under a condition. The first three and the conditions compile to CSS, so SSR/SSG
+  output is responsive, hoverable, themed and animated with **no JS/WASM**; a derived
+  leaf is a per-node custom-property slot the class references, so it never outranks a
+  variant. `derive_` closures are for **state**, never for environment or arithmetic.
+- **A design token is a named, inherited slot; a theme defines it; a palette belongs to
+  its library.** `TokenRef<T>` names a slot (a `const`; the name is an implementation
+  detail on every platform, never a public hook), `Token<T>` pairs the name with the
+  definition a palette gives it, and every setter takes `impl Into<Value<T>>`, so
+  `set_color(Color::WHITE)`, `set_color(palette.card)` and
+  `set_color(SimplePalette::CARD)` are the same call and a consumer emits only the name.
+  A token's own conditions live in its **definition**, once: `Definition<T>` conditions
+  on `Media` only and holds no closure, so a palette is plain data that serializes and
+  hashes. On the web a token is a custom property defined on the theme's scope and
+  referenced with `var()`; in the terminal and on native it resolves through the scene to
+  the nearest defining ancestor, cached per node. Nothing below a component library
+  knows what a palette is: `skene-simple` owns `SimplePalette` as a struct of `Token`s
+  implementing `TokenSet`, and a third party's `AcmePalette` is on identical footing.
+  - **`Theme<P: TokenSet>` is the one theme view**, in `skene-views`:
+    `Theme::new(palette)` or `Theme::derive(|| palette.get())`, then
+    `set_child_builder(|| child)`. It realizes one layout-invisible scope node, provides
+    `Memo<P>` through context (`P::current()`, `P::watch()`), and one effect rewrites its
+    definitions when the palette changes: no consumer is touched and nothing rebuilds, so
+    a palette change costs the number of tokens, never the number of nodes. Nesting a
+    theme redefines beneath it. The child is a builder closure because context is
+    owner-scoped and an argument is evaluated before the call it belongs to.
+    `Typography` (all text inheritance, on both facades) and the terminal's `Glyphs` are
+    token sets on the same mechanism; there is no `TextTheme`, `ControlTheme` or
+    `SimpleTheme`, and `SimplePalette::default()` is built from public constructors, so
+    what the library does is exactly what a third party can do.
+  - **Light and dark are one condition**, `Media::Dark`, answered per property in a
+    definition or a value like a viewport or a pointer. There is no light/dark pair and
+    no palette-level conditional—the whole-palette overlay was considered and rejected,
+    because a palette that switches wholesale re-privileges the very separation the
+    per-property form removes.
   - **The scheme in force is the document's, not a theme's**, exactly as the platform's
-    own preference is—so `set_scheme(Option<ColorScheme>)` and `derive_scheme` are
-    facade functions rather than theme methods, and `None` returns to following the
-    platform. Nesting themes nests palettes; the scheme decides which value each of
+    own preference is—so `set_scheme(Option<ColorScheme>)` and `derive_scheme` live in
+    the facade's `media` module rather than on a theme, and `None` returns to following
+    the platform. Nesting themes nests palettes; the scheme decides which value each of
     their conditional tokens takes.
   - **A scheme an app controls is resolved by the driver, never by a rebuild.** A
     `derived` rebuild destroys the old nodes and disposes their scope—measured: a signal
@@ -110,12 +136,21 @@
       its head, applying the stored scheme before the first paint; deferred would run
       after the paint, which is the flash it exists to prevent. `stored_scheme()` reads
       the same key so an app's setting starts where the page already is.
-  - **The view tree and the DOM tree do not diverge today, and we do not lean on it.**
-    Every view attaches its child to its own node and the annotating wrappers realize
-    none, so the DOM is a contraction of the view tree; overlays are `<dialog>`/popover
-    promoted to the top layer *in place* rather than portalled, and only the `<head>` is
-    a real portal. A native driver may still realize an overlay into its own layer, so
-    nothing may be built on ancestor-selector reachability.
+  - **The scene is the tree.** Every view attaches to its parent's scene node, wrappers
+    realize nothing, and `derived`, `Suspense`, `ErrorBoundary`, `Deferred` and `empty`
+    mount between **anchors** rather than inside a box, so a reactive subtree contributes
+    its own nodes to its parent's layout. The platform's tree is a sink written from the
+    scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
+    top layer *in place* rather than portalled, and only the `<head>` is a real portal. A
+    native driver may still realize an overlay into its own layer, so nothing is built on
+    ancestor-selector reachability beyond a control's own subtree.
+  - **Environment is queryable.** `media::viewport()`, `media::scheme()` and
+    `media::reduced_motion()` are signals on every facade, `Media::watch()` turns any
+    declared condition into a memo, and a `SizeHandle` bound to a box reports its
+    measured size. On the web they are live after hydration and hold the server's answer
+    before it; the server's answer comes from client hints when the runner is given them,
+    else from documented defaults. Declare what must be right before the bundle arrives;
+    derive what may wait for it.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
@@ -161,17 +196,56 @@
   the event from the ancestors—so a box chooses whether it consumes, and a control has
   that chosen for it. The name is deliberate: it is about onward travel only, since a
   view may handle an event and still let it climb. Nothing above a driver states more.
-- View logic tests run headless where possible, via the recording driver
-  (`skene-record`, the host driver). Drivers test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr:
-  wasmtime under a byte-exact snapshot; native: its toolkit). There is no mock driver.
+  Dispatch itself lives in core over the scene: a driver reports an event at a node, core
+  walks the parents, runs handlers deepest first, folds the verdicts and tells the driver
+  what the platform may do—so every driver, the headless one included, bubbles by one
+  implementation.
+- **A control is `Control<B: Behavior>`**: one builder in `skene-views` carrying focus,
+  events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Roving`,
+  `Popup`, `Activate` and `TextEntry` are the shipped behaviors, `Behavior` is public,
+  and the keyboard tables live in the behaviors, so a third party's control and the
+  terminal's slider get the same keys as the browser's. A control is **controlled** on
+  every facade: it reports, and the bound signal is the truth. A `State` a box cannot
+  have on its own (`Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves
+  against the enclosing control; a node's own `Hovered`/`Focused` stay its own. Parts
+  (`Track`, `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling
+  targets a control exposes; in the terminal a part maps to a glyph token. On the web a
+  control that owns a native input keeps it as its scriptless form—checkbox, radio,
+  slider and the text fields need no swap after hydration—and the picker keeps a swap
+  that carries the reader's value. The terminal's controls are composed trees painted by
+  the same box and run painters as everything else, so they carry roles, accessibility
+  and focus order like the GUI's.
+- **Third parties are first-class by construction.** A component library depends on
+  `skene-views`, writes generic over `D: Driver` exactly as the built-ins do
+  (`Container<D>`, `Control<D, Toggle>`, `Theme<D, AcmePalette>`), states what it needs
+  from a medium as a bound on the driver's associated types (a card that rounds its
+  corners requires `D::StyleExt: HasCornerRadius` and does not exist elsewhere), and
+  works on every facade from one crate. A low-level view is written against a driver's
+  escape trait and selected through the facade's `ActiveDriver`. Nothing on the path a
+  built-in takes is crate-private; making something `pub(crate)` on that path is a
+  regression.
+- **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
+  are data. The web compiles them to CSS; native and the terminal run them on the
+  driver's frame clock from the resolution point that reports a changed value, never
+  through the reactive graph per frame. Every change source animates: a condition
+  flipping, a token redefined, an expression input moving, a derived write. Reduced
+  motion is respected by default. `set_transition_name` and the router's view-transition
+  wrap cover same-document transitions, `@view-transition` the cross-document ones, and
+  both degrade to a cut.
+- View logic tests run headless via `skene-headless`, the host driver, which implements
+  the whole `Driver` trait so nothing is wasm-gated for want of a driver. Drivers test
+  against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime under a
+  byte-exact snapshot; native: its toolkit). There is no mock driver.
 - HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
   `Resource`, the SSR reactor's public `register`, `Boundary`—so third-party integrations
   sit on the same footing first-party ones would. (Exception: a native driver owning its
   event loop may ship a loop-integrated timer.)
 
-> **Transition.** The crate split and realize-once views are in place (`packages/skene`,
-> `packages/web`). `DESIGN.md` is the target; `ROADMAP.md` tracks which phase the code is
-> in. New work follows the target.
+> **Transition.** The redesign to one spine and thin facades is in flight; `ROADMAP.md`
+> records which of its nine phases has landed. Until phase 3 the facades still build on
+> the flat `skene-core` exports (`BoxProps`, `Condition`, `Adaptive`, `TreeOps`,
+> `skene-record`) and the new model lives beside them under `skene_core::next`. New work
+> follows the target described here and in `DESIGN.md`.
 
 ## Style and documentation conventions
 
@@ -200,10 +274,11 @@
 
 ## Naming & API conventions
 
-- The spine stays minimal and structural. The built-in views live in the umbrella
-  (`skene`), realized once against the driver vocabulary; users extend by composing
-  built-ins, painting a `Painted` node (once it lands), or authoring a driver-specific
-  view against the driver's escape hatch.
+- The spine stays minimal and structural. The built-in views live in `skene-views`,
+  written once against `Driver`; a facade aliases them
+  (`type Container = skene_views::Container<ActiveDriver>`). Users extend by composing
+  built-ins, painting a `Painted` node, or authoring a view against a driver's escape
+  trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.
@@ -220,15 +295,17 @@
   a chain ends with them: properties first, content last. This is Flutter's
   `sort_child_properties_last` rule, and for the same reason—a nested child is visually
   large, so anything after it is easy to miss. A view that exists only to wrap something
-  (`Flexible`, `Pinned`, `GridCell`, the themes) goes further and requires the child in
+  (`Flexible`, `Pinned`, `GridCell`, `Theme`) goes further and requires the child in
   the type system: it holds the child as a type parameter, starting at `NoChild`, and
-  only the form carrying one is a view.
+  only the form carrying one is a view. `Theme` alone takes its child as a builder
+  closure, `set_child_builder`, because it provides context the child is built under.
 - **One property, one setter.** Every property is settable exactly one way (plus its
   `derive_` twin). A concept with components gets one shared value type set as a
   whole—`Inset` for padding/margin, `Spacing` for per-axis spacing, `Flexibility` for
   grow/shrink/initial—never per-component setters (`set_padding_left`, `set_row_gap`).
   Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
-  adding a second path.
+  adding a second path. Conditions ride the value (`value.when(condition, other)`, the
+  `When` extension on any value or token), so there is no `set_<prop>_when` family.
 - A test double's method that simulates an external event is named `trigger_<event>`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,

@@ -1,4 +1,8 @@
+use std::hash::{Hash, Hasher};
+
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Lch, LinearSrgb, Oklab, Oklch, Srgb};
+
+use crate::next::Scalar;
 
 /// One of the two color schemes a surface is painted for.
 ///
@@ -124,6 +128,63 @@ impl Color {
     }
   }
 
+  /// The Oklch lightness, `0` to `1`.
+  #[inline(always)]
+  #[must_use]
+  pub const fn lightness(self) -> f32 {
+    self.lightness
+  }
+
+  /// The Oklch chroma.
+  #[inline(always)]
+  #[must_use]
+  pub const fn chroma(self) -> f32 {
+    self.chroma
+  }
+
+  /// The Oklch hue, in degrees.
+  #[inline(always)]
+  #[must_use]
+  pub const fn hue(self) -> f32 {
+    self.hue
+  }
+
+  /// The alpha component, `0` to `1`.
+  #[inline(always)]
+  #[must_use]
+  pub const fn alpha(self) -> f32 {
+    self.alpha
+  }
+
+  /// This color with its Oklch lightness replaced, `0` to `1`.
+  #[inline(always)]
+  pub const fn with_lightness(self, lightness: f32) -> Self {
+    Self { lightness, ..self }
+  }
+
+  /// This color with its Oklch chroma replaced.
+  #[inline(always)]
+  pub const fn with_chroma(self, chroma: f32) -> Self {
+    Self { chroma, ..self }
+  }
+
+  /// This color with its Oklch hue replaced, in degrees.
+  #[inline(always)]
+  pub const fn with_hue(self, hue: f32) -> Self {
+    Self { hue, ..self }
+  }
+
+  /// This color mixed toward `other` in Oklab: `0.` is this color, `1.` is `other`, and
+  /// every component, alpha included, interpolates linearly.
+  pub fn mix(self, other: Self, amount: f32) -> Self {
+    let from = self.to_oklab();
+    let to = other.to_oklab();
+
+    Self::from_space(AlphaColor::<Oklab>::new(std::array::from_fn(|component| {
+      from[component] + (to[component] - from[component]) * amount
+    })))
+  }
+
   /// This color's `[red, green, blue, alpha]` components in the sRGB color space.
   #[inline(always)]
   #[must_use]
@@ -178,5 +239,14 @@ impl Color {
   #[must_use]
   pub fn to_oklch(self) -> [f32; 4] {
     self.to_space::<Oklch>().components
+  }
+}
+
+impl Hash for Color {
+  /// Hashes the stored components by value, so equal colors hash equally.
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    for component in [self.lightness, self.chroma, self.hue, self.alpha] {
+      state.write_u64(component.hash_bits());
+    }
   }
 }

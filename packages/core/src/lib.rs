@@ -6,6 +6,7 @@ mod condition;
 mod control;
 mod errors;
 mod events;
+pub mod next;
 mod node;
 mod props;
 mod reconcile;

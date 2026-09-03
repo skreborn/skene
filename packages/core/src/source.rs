@@ -21,7 +21,9 @@ impl<T: 'static> Source<T> {
   pub fn bind(self, apply: impl Fn(T) + 'static) {
     match self {
       Source::Static(value) => apply(value),
-      Source::Derived(derive) => Effect::new(move |_| apply(derive())),
+      Source::Derived(derive) => {
+        Effect::new(move |_| apply(derive()));
+      }
     }
   }
 }

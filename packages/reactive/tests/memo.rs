@@ -6,7 +6,7 @@ use std::{
 use skene_reactive::{Effect, Get, Memo, Runtime, Set, Signal, Track};
 
 #[test]
-fn memo_recomputes_eagerly_on_change() {
+fn unobserved_memo_recomputes_only_when_read() {
   let source = Signal::new(0);
   let calls = Rc::new(Cell::new(0));
 
@@ -20,18 +20,20 @@ fn memo_recomputes_eagerly_on_change() {
 
   assert_eq!(calls.get(), 1, "initial compute runs once");
 
-  // Changing the source recomputes immediately.
+  // Changing the source leaves an unobserved memo alone.
   source.set(1);
   Runtime::drain_pending_work();
-  assert_eq!(calls.get(), 2, "recomputed eagerly on change");
+  assert_eq!(calls.get(), 1, "no reader, no recompute");
+  assert_eq!(memo.get(), 2, "a read pulls the fresh value");
+  assert_eq!(calls.get(), 2, "the read recomputed once");
   assert_eq!(memo.get(), 2);
   assert_eq!(calls.get(), 2, "get does not recompute when fresh");
 
   source.set(2);
   Runtime::drain_pending_work();
-  assert_eq!(calls.get(), 3, "recomputed again on change");
+  assert_eq!(calls.get(), 2, "still no recompute without a read");
   assert_eq!(memo.get(), 4);
-  assert_eq!(calls.get(), 3, "get still does not recompute when fresh");
+  assert_eq!(calls.get(), 3, "recomputed once more for the read");
 }
 
 #[test]

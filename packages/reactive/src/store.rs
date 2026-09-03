@@ -17,7 +17,7 @@ use std::{
 
 use rustc_hash::{FxHashMap, FxHasher};
 
-use crate::{Owner, Signal, Trigger, access::With, effect::batch};
+use crate::{Owner, Signal, Trigger, access::With, effect::batch, signal::update_silently};
 
 /// One step of a store path: a struct field by declaration order, or a collection
 /// entry by its position or hashed key.
@@ -62,9 +62,12 @@ impl StoreCore {
       None => {
         let trigger = self.owner.enter(Trigger::new);
 
-        let _ = update_untracked(self.triggers, |triggers| {
-          triggers.insert(path.to_vec(), trigger);
-        });
+        let _ = update_silently(
+          self.triggers.id(),
+          |triggers: &mut FxHashMap<StorePath, Trigger>| {
+            triggers.insert(path.to_vec(), trigger);
+          },
+        );
 
         trigger
       }
@@ -93,18 +96,6 @@ impl StoreCore {
       }
     });
   }
-}
-
-/// Mutates a signal's value without its own notification; the store fans out through
-/// its triggers instead.
-fn update_untracked<T: 'static, R>(
-  signal: Signal<T>,
-  write: impl FnOnce(&mut T) -> R,
-) -> Option<R> {
-  signal
-    .id()
-    .state()
-    .map(|state| state.update_untracked(write))
 }
 
 /// Fine-grained reactive state over one plain value.
@@ -296,7 +287,7 @@ impl<T: 'static> StoreField for Store<T> {
   }
 
   fn write_untracked<R>(&self, write: impl FnOnce(&mut T) -> R) -> Option<R> {
-    update_untracked(self.value, write)
+    update_silently(self.value.id(), write)
   }
 }
 

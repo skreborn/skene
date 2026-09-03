@@ -1,15 +1,14 @@
 #[cfg(debug_assertions)]
 use std::panic::Location;
-use std::{any::Any, cell::RefCell, fmt, marker::PhantomData, ops::Deref, rc::Rc, sync::Arc};
+use std::{any::Any, fmt, marker::PhantomData, rc::Rc, sync::Arc};
 
 use parking_lot::Mutex;
-use rustc_hash::FxHashSet;
-use smallvec::SmallVec;
 
 use crate::{
+  computation,
   guards::{ReadGuard, WriteGuard},
-  id::Id,
-  runtime::{RUNTIME, Runtime},
+  id::{Id, Kind},
+  runtime::{RUNTIME, Runtime, with_graph},
   storage::{LocalStorage, SyncStorage},
   sync::SYNC,
   value::TrackedRefCell,
@@ -131,7 +130,7 @@ impl<T: 'static> Signal<T> {
   pub fn new(value: T) -> Self {
     let id = SignalState::create(value);
 
-    id.set_owner();
+    Runtime::adopt_current(id);
 
     Self::from_id(id)
   }
@@ -146,7 +145,7 @@ impl<T: Send + Sync + 'static> Signal<T, SyncStorage> {
     let id = SignalState::create_sync(value);
 
     if Runtime::is_ui_thread() {
-      id.set_owner();
+      Runtime::adopt_current(id);
     }
 
     Self::from_id(id)
@@ -169,24 +168,12 @@ pub fn sync_signal<T: Send + Sync + 'static>(value: T) -> (SyncReadSignal<T>, Sy
   signal.split()
 }
 
-/// One signal's state: its value cell and subscriber set, shared out of the runtime so
-/// callers can act on it after releasing the runtime borrow.
+/// One signal's value cell, cloned out of its realm so a caller can act on it after
+/// releasing every runtime borrow.
 #[derive(Clone)]
-pub(crate) struct SignalState(Rc<SignalStateInner>);
-
-pub(crate) struct SignalStateInner {
+pub(crate) struct SignalState {
   pub(crate) id: Id,
   pub(crate) value: SignalValue,
-  pub(crate) subscribers: Subscribers,
-}
-
-impl Deref for SignalState {
-  type Target = SignalStateInner;
-
-  #[inline(always)]
-  fn deref(&self) -> &SignalStateInner {
-    &self.0
-  }
 }
 
 /// A signal's value cell: local (single-thread) or sync (cross-thread).
@@ -196,62 +183,28 @@ pub(crate) enum SignalValue {
   Local(Rc<dyn Any>),
 }
 
-/// A signal's subscriber set: local (single-thread) or sync (cross-thread).
-#[derive(Clone)]
-pub(crate) enum Subscribers {
-  Local(Rc<RefCell<SmallVec<[Id; 4]>>>),
-  Sync(Arc<Mutex<FxHashSet<Id>>>),
-}
+impl Id {
+  /// The signal state this id names, resolved in the id's own realm.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub(crate) fn state(self) -> Option<SignalState> {
+    match self.kind() {
+      Kind::Sync => SYNC.get(self),
+      Kind::Signal => {
+        Runtime::assert_ui_thread();
 
-impl Subscribers {
-  pub(crate) fn local() -> Self {
-    Self::Local(Rc::new(RefCell::new(SmallVec::new())))
-  }
-
-  /// Adds `id`, if not already present.
-  fn insert(&self, id: Id) {
-    match self {
-      Self::Local(subscribers) => {
-        let mut subscribers = subscribers.borrow_mut();
-
-        if !subscribers.contains(&id) {
-          subscribers.push(id);
-        }
+        with_graph(|graph| {
+          graph.signal(self).map(|signal| SignalState {
+            id: self,
+            value: SignalValue::Local(signal.value.clone()),
+          })
+        })
       }
-      Self::Sync(subscribers) => {
-        subscribers.lock().insert(id);
-      }
-    }
-  }
-
-  /// Removes `id`, if present.
-  pub(crate) fn remove(&self, id: Id) {
-    match self {
-      Self::Local(subscribers) => subscribers.borrow_mut().retain(|other| *other != id),
-      Self::Sync(subscribers) => {
-        subscribers.lock().remove(&id);
-      }
-    }
-  }
-
-  /// Returns a detached copy of the current subscriber ids.
-  pub(crate) fn snapshot(&self) -> SmallVec<[Id; 4]> {
-    match self {
-      Self::Local(subscribers) => subscribers.borrow().iter().copied().collect(),
-      Self::Sync(subscribers) => subscribers.lock().iter().copied().collect(),
+      Kind::Computation | Kind::Owner => None,
     }
   }
 }
 
 impl SignalState {
-  pub(crate) fn from_parts(id: Id, value: SignalValue, subscribers: Subscribers) -> Self {
-    Self(Rc::new(SignalStateInner {
-      id,
-      value,
-      subscribers,
-    }))
-  }
-
   /// Creates a local signal holding `value` and returns its id, unowned.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn create<T: Any + 'static>(value: T) -> Id {
@@ -259,15 +212,7 @@ impl SignalState {
 
     let value = Rc::new(TrackedRefCell::new(value));
 
-    RUNTIME.with(|runtime| {
-      let mut arena = runtime.arena.borrow_mut();
-      let id = arena.allocate();
-      let state = Self::from_parts(id, SignalValue::Local(value), Subscribers::local());
-
-      arena.get_mut(id).expect("freshly allocated slot").signal = Some(state);
-
-      id
-    })
+    with_graph(|graph| graph.allocate_signal(value))
   }
 
   /// Creates a sync signal holding `value` and returns its id, unowned; the current
@@ -333,17 +278,17 @@ impl SignalState {
     self.with_untracked(f)
   }
 
-  /// Mutates the value through `f` and re-runs subscribers.
+  /// Mutates the value through `f` and notifies subscribers.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn update<U, T: 'static>(&self, f: impl FnOnce(&mut T) -> U) -> U {
     let result = self.update_untracked(f);
 
-    self.run_effects();
+    self.notify();
 
     result
   }
 
-  /// Mutates the value without re-running subscribers, for a caller owning its own
+  /// Mutates the value without notifying subscribers, for a caller owning its own
   /// notification (a store's trigger fan-out).
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn update_untracked<U, T: 'static>(&self, f: impl FnOnce(&mut T) -> U) -> U {
@@ -382,7 +327,7 @@ impl SignalState {
     }
   }
 
-  /// A write guard over the value; dropping it re-runs subscribers.
+  /// A write guard over the value; dropping it notifies subscribers.
   pub(crate) fn write_guard<'a, T: 'static>(&self) -> WriteGuard<'a, T> {
     match &self.value {
       SignalValue::Local(_) => WriteGuard::local(self.id, self.as_local::<T>()),
@@ -390,40 +335,30 @@ impl SignalState {
     }
   }
 
-  /// Marks dependent memos stale and schedules this signal's subscribers, running them
-  /// unless a batch is open; an off-UI write enqueues to the sync registry instead.
-  pub(crate) fn run_effects(&self) {
-    let ids = self.subscribers.snapshot();
+  /// Propagates a change of this signal and flushes unless a batch is open; an off-UI
+  /// write enqueues to the sync registry instead.
+  pub(crate) fn notify(&self) {
+    if self.id.is_sync() {
+      if SYNC.is_subscribed(self.id) {
+        Self::warn_if_undesignated();
+      }
 
-    if !ids.is_empty() && matches!(self.value, SignalValue::Sync(_)) {
-      Self::warn_if_undesignated();
-    }
+      if !Runtime::is_ui_thread() {
+        SYNC.enqueue_write(self.id);
 
-    if !Runtime::is_ui_thread() {
-      SYNC.enqueue_effects(ids);
-
-      return;
+        return;
+      }
     }
 
     RUNTIME.with(|runtime| {
-      // Mark before scheduling, so a read that happens before the effects run (inside a
-      // batch, or mid-flush) pulls a fresh value instead of a stale cache.
-      runtime.mark_stale(&ids);
-
-      for id in &ids {
-        runtime.add_pending_effect(*id);
-      }
-
-      if !runtime.batching.get() {
-        runtime.run_pending_effects();
-      }
+      runtime.graph().propagate(self.id);
+      runtime.request_flush();
     });
   }
 
-  /// Warns once when a sync signal with subscribers runs effects but no UI thread was
-  /// ever designated. Without one, an off-thread write routes its effects to the
-  /// writer's own runtime and they never reach the UI thread—a silent loss this at
-  /// least makes loud.
+  /// Warns once when a sync signal with subscribers is written but no UI thread was
+  /// ever designated. Without one, an off-thread write propagates in the writer's own
+  /// runtime and never reaches the UI thread—a silent loss this at least makes loud.
   fn warn_if_undesignated() {
     if Runtime::ui_thread_designated() {
       return;
@@ -440,20 +375,19 @@ impl SignalState {
     });
   }
 
-  /// Subscribes the running effect to this signal.
+  /// Subscribes the running computation to this signal.
   ///
   /// Sync subscribers must be UI-thread effects; an off-thread read stays untracked.
   pub(crate) fn subscribe(&self) {
-    if matches!(self.value, SignalValue::Sync(_)) && !Runtime::is_ui_thread() {
-      return;
+    if self.id.is_sync() {
+      if !Runtime::is_ui_thread() {
+        return;
+      }
+
+      SYNC.mark_subscribed(self.id);
     }
 
-    RUNTIME.with(|runtime| {
-      if let Some(effect) = runtime.current_effect.borrow().as_ref() {
-        self.subscribers.insert(effect.id());
-        effect.add_observer(self.id);
-      }
-    });
+    computation::subscribe(self.id);
   }
 
   pub(crate) fn as_local<T: 'static>(&self) -> Rc<TrackedRefCell<T>> {
@@ -465,4 +399,10 @@ impl SignalState {
       SignalValue::Sync(_) => unreachable!("expected local signal storage"),
     }
   }
+}
+
+/// Mutates a signal's value without notifying, for a caller owning its own
+/// notification; `None` when the signal is disposed.
+pub(crate) fn update_silently<T: 'static, R>(id: Id, write: impl FnOnce(&mut T) -> R) -> Option<R> {
+  id.state().map(|state| state.update_untracked(write))
 }

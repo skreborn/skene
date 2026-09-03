@@ -1,212 +1,49 @@
 #[cfg(debug_assertions)]
 use std::panic::Location;
+#[cfg(debug_assertions)]
+use std::sync::OnceLock;
 use std::{
-  any::{Any, TypeId},
-  cell::{Cell, RefCell},
-  cmp::Reverse,
+  cell::{Cell, RefCell, RefMut},
+  ops::{Deref, DerefMut},
   rc::Rc,
-  sync::{
-    OnceLock,
-    atomic::{AtomicBool, Ordering},
-  },
-  thread::{self, ThreadId},
+  sync::atomic::{AtomicBool, AtomicU64, Ordering},
+  thread,
 };
 
-use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
-
-use crate::{
-  effect::{AnyEffect, EffectPriority, run_effect},
-  id::{Id, next_nonce},
-  signal::SignalState,
-  sync::SYNC,
-};
-
-/// Context storage within one owner.
-pub(crate) type OwnerContexts = FxHashMap<TypeId, Box<dyn Any>>;
+use crate::{dispose::dispose_sync_local, graph::Graph, id::Id, sync::SYNC};
 
 thread_local! {
   pub(crate) static RUNTIME: Runtime = Runtime::new();
+  /// This thread's token: the process-unique surrogate for its id.
+  static THREAD_TOKEN: u64 = NEXT_THREAD_TOKEN.fetch_add(1, Ordering::Relaxed);
 }
 
-// The designation is a set-once global in production; the `test` feature makes it
-// resettable so a multi-threaded test harness can designate each test's thread in turn
-// (serialized by the test suite).
-#[cfg(not(feature = "test"))]
-static UI_THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
-#[cfg(feature = "test")]
-static UI_THREAD_ID: std::sync::RwLock<Option<ThreadId>> = std::sync::RwLock::new(None);
+static NEXT_THREAD_TOKEN: AtomicU64 = AtomicU64::new(1);
+/// The UI thread's token; `0` while none is designated.
+static UI_THREAD: AtomicU64 = AtomicU64::new(0);
 #[cfg(debug_assertions)]
 static UI_THREAD_SET_LOCATION: OnceLock<&'static Location<'static>> = OnceLock::new();
 static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
 
-/// The designated UI thread, if any.
-fn ui_thread_id() -> Option<ThreadId> {
-  #[cfg(not(feature = "test"))]
-  {
-    UI_THREAD_ID.get().copied()
-  }
+/// The calling thread's token.
+fn thread_token() -> u64 {
+  THREAD_TOKEN.with(|token| *token)
+}
 
-  #[cfg(feature = "test")]
-  {
-    *UI_THREAD_ID.read().expect("read the UI thread id")
+/// Designates the calling thread as the UI thread; returns the existing designation
+/// when one is already set to a different thread.
+fn set_ui_thread() -> Result<(), u64> {
+  let current = thread_token();
+
+  match UI_THREAD.compare_exchange(0, current, Ordering::AcqRel, Ordering::Acquire) {
+    Ok(_) => Ok(()),
+    Err(existing) if existing == current => Ok(()),
+    Err(existing) => Err(existing),
   }
 }
 
-/// Designates `current` as the UI thread; returns the existing designation when one is
-/// already set to a different thread.
-fn set_ui_thread_id(current: ThreadId) -> Result<(), ThreadId> {
-  #[cfg(not(feature = "test"))]
-  {
-    match UI_THREAD_ID.set(current) {
-      Ok(()) => Ok(()),
-      Err(_) => {
-        let existing = *UI_THREAD_ID.get().expect("a set id");
-
-        if existing == current {
-          Ok(())
-        }
-        else {
-          Err(existing)
-        }
-      }
-    }
-  }
-
-  #[cfg(feature = "test")]
-  {
-    let mut slot = UI_THREAD_ID.write().expect("write the UI thread id");
-
-    match *slot {
-      Some(existing) if existing != current => Err(existing),
-      _ => {
-        *slot = Some(current);
-
-        Ok(())
-      }
-    }
-  }
-}
-
-/// The callbacks registered to run when one owner is disposed.
-type Cleanups = Vec<Box<dyn FnOnce()>>;
-
-/// One id's record: whichever of the signal, effect, and owner facets it carries.
-#[derive(Default)]
-pub(crate) struct Entity {
-  pub(crate) signal: Option<SignalState>,
-  pub(crate) effect: Option<Rc<dyn AnyEffect>>,
-  pub(crate) parent: Option<Id>,
-  pub(crate) children: Option<Box<FxHashSet<Id>>>,
-  pub(crate) contexts: Option<Box<OwnerContexts>>,
-  pub(crate) cleanups: Cleanups,
-}
-
-/// One generational slot: the entity it currently holds, if any, and the generation
-/// its ids must carry to resolve.
-struct Slot {
-  generation: u16,
-  entity: Option<Entity>,
-}
-
-/// The generational arena holding one thread's reactive entities.
-///
-/// Slots are reused through a free list; freeing bumps the generation, so ids minted
-/// for the previous occupant resolve to nothing. A slot whose generation is exhausted
-/// is retired instead of reused.
-pub(crate) struct Arena {
-  nonce: u16,
-  slots: Vec<Slot>,
-  free: Vec<u32>,
-}
-
-impl Arena {
-  fn new() -> Self {
-    Self {
-      nonce: next_nonce(),
-      slots: Vec::new(),
-      free: Vec::new(),
-    }
-  }
-
-  /// Allocates a slot holding a fresh entity and returns its id.
-  pub(crate) fn allocate(&mut self) -> Id {
-    if let Some(index) = self.free.pop() {
-      let slot = &mut self.slots[index as usize];
-
-      slot.entity = Some(Entity::default());
-
-      return Id::local(self.nonce, slot.generation, index);
-    }
-
-    let index = self.slots.len() as u32;
-
-    self.slots.push(Slot {
-      generation: 0,
-      entity: Some(Entity::default()),
-    });
-
-    Id::local(self.nonce, 0, index)
-  }
-
-  /// The entity `id` names, when the id is this arena's and still current.
-  #[inline(always)]
-  pub(crate) fn get(&self, id: Id) -> Option<&Entity> {
-    if id.nonce() != self.nonce {
-      return None;
-    }
-
-    let slot = self.slots.get(id.index() as usize)?;
-
-    if slot.generation != id.generation() {
-      return None;
-    }
-
-    slot.entity.as_ref()
-  }
-
-  /// The entity `id` names, mutably; see [`get`](Self::get).
-  #[inline(always)]
-  pub(crate) fn get_mut(&mut self, id: Id) -> Option<&mut Entity> {
-    if id.nonce() != self.nonce {
-      return None;
-    }
-
-    let slot = self.slots.get_mut(id.index() as usize)?;
-
-    if slot.generation != id.generation() {
-      return None;
-    }
-
-    slot.entity.as_mut()
-  }
-
-  /// Removes and returns the entity `id` names, freeing its slot for reuse.
-  pub(crate) fn remove(&mut self, id: Id) -> Option<Entity> {
-    if id.nonce() != self.nonce {
-      return None;
-    }
-
-    let index = id.index();
-    let slot = self.slots.get_mut(index as usize)?;
-
-    if slot.generation != id.generation() {
-      return None;
-    }
-
-    let entity = slot.entity.take()?;
-
-    slot.generation = slot.generation.wrapping_add(1);
-
-    // Retire the slot once its generations are spent; a wrapped generation would
-    // resurrect long-stale ids.
-    if slot.generation != 0 {
-      self.free.push(index);
-    }
-
-    Some(entity)
-  }
-}
+/// The scheduler seam: receives one flush to run later.
+type Scheduler = dyn Fn(Box<dyn FnOnce()>);
 
 /// Clears the flushing flag when the flush unwinds.
 struct FlushGuard<'a>(&'a Cell<bool>);
@@ -217,43 +54,113 @@ impl Drop for FlushGuard<'_> {
   }
 }
 
-/// The reactive runtime: one per thread, holding that thread's entities and the
-/// scheduling state around them.
+/// An exclusive borrow of the graph that, in debug builds, remembers who holds it.
+pub(crate) struct GraphGuard<'a> {
+  graph: RefMut<'a, Graph>,
+  #[cfg(debug_assertions)]
+  holder: &'a Cell<Option<&'static Location<'static>>>,
+}
+
+impl Deref for GraphGuard<'_> {
+  type Target = Graph;
+
+  #[inline(always)]
+  fn deref(&self) -> &Graph {
+    &self.graph
+  }
+}
+
+impl DerefMut for GraphGuard<'_> {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Graph {
+    &mut self.graph
+  }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for GraphGuard<'_> {
+  fn drop(&mut self) {
+    self.holder.set(None);
+  }
+}
+
+/// The reactive runtime: one per thread, holding that thread's graph and the
+/// scheduling state around it.
 pub struct Runtime {
-  pub(crate) current_effect: RefCell<Option<Rc<dyn AnyEffect>>>,
+  graph: RefCell<Graph>,
+  #[cfg(debug_assertions)]
+  graph_holder: Cell<Option<&'static Location<'static>>>,
+  pub(crate) tracking: Cell<Option<Id>>,
   pub(crate) current_owner: Cell<Id>,
-  pub(crate) arena: RefCell<Arena>,
-  pub(crate) batching: Cell<bool>,
-  pending_effects: RefCell<SmallVec<[Id; 10]>>,
-  pending_effects_set: RefCell<FxHashSet<Id>>,
-  /// Whether a flush is currently draining; a write during it enqueues instead of
-  /// re-entering the flush.
+  batch_depth: Cell<u32>,
   flushing: Cell<bool>,
+  scheduler: RefCell<Option<Rc<Scheduler>>>,
+  scheduled: Cell<bool>,
 }
 
 impl Runtime {
   fn new() -> Self {
-    let mut arena = Arena::new();
-    let root = arena.allocate();
+    let mut graph = Graph::new();
+    let root = graph.allocate_owner();
 
     Self {
-      current_effect: RefCell::new(None),
+      graph: RefCell::new(graph),
+      #[cfg(debug_assertions)]
+      graph_holder: Cell::new(None),
+      tracking: Cell::new(None),
       current_owner: Cell::new(root),
-      arena: RefCell::new(arena),
-      batching: Cell::new(false),
-      pending_effects: RefCell::new(SmallVec::new()),
-      pending_effects_set: RefCell::new(FxHashSet::default()),
+      batch_depth: Cell::new(0),
       flushing: Cell::new(false),
+      scheduler: RefCell::new(None),
+      scheduled: Cell::new(false),
+    }
+  }
+
+  /// Borrows the graph exclusively.
+  ///
+  /// # Panics
+  ///
+  /// Panics when the graph is already borrowed: user code ran under a runtime borrow.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub(crate) fn graph(&self) -> GraphGuard<'_> {
+    #[cfg(debug_assertions)]
+    {
+      let caller = Location::caller();
+
+      match self.graph.try_borrow_mut() {
+        Ok(graph) => {
+          self.graph_holder.set(Some(caller));
+
+          GraphGuard {
+            graph,
+            holder: &self.graph_holder,
+          }
+        }
+        Err(_) => {
+          let held = self.graph_holder.get().map_or_else(String::new, |held| {
+            format!(" (held at {}:{})", held.file(), held.line())
+          });
+
+          panic!(
+            "reactive graph re-entered from user code{held}; attempted at {}:{}",
+            caller.file(),
+            caller.line()
+          );
+        }
+      }
+    }
+
+    #[cfg(not(debug_assertions))]
+    GraphGuard {
+      graph: self.graph.borrow_mut(),
     }
   }
 
   /// Records the calling thread as the UI thread; call once during initialization.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn init_on_ui_thread() {
-    let current = thread::current().id();
-
     assert!(
-      set_ui_thread_id(current).is_ok(),
+      set_ui_thread().is_ok(),
       "UI thread id already set to a different thread"
     );
 
@@ -273,51 +180,45 @@ impl Runtime {
       return;
     }
 
-    let current = thread::current().id();
+    let current = thread_token();
+    let ui = UI_THREAD.load(Ordering::Acquire);
 
-    match ui_thread_id() {
-      Some(ui_id) => {
-        if ui_id != current {
-          #[cfg(debug_assertions)]
-          {
-            let caller = Location::caller();
-            let set_at = UI_THREAD_SET_LOCATION.get();
-            let set_info = set_at
-              .map(|loc| format!(" (set at {}:{})", loc.file(), loc.line()))
-              .unwrap_or_default();
+    if ui == 0 {
+      // Once enforcement is on, first access defines the UI thread.
+      let _ = set_ui_thread();
 
-            panic!(
-              "local runtime access from non-UI thread\n  expected UI thread: {:?}{}\n  current thread: {:?}\n  caller: {}:{}",
-              ui_id,
-              set_info,
-              current,
-              caller.file(),
-              caller.line(),
-            );
-          }
-          #[cfg(not(debug_assertions))]
-          {
-            assert_eq!(
-              ui_id, current,
-              "local runtime access from non-UI thread: expected {:?}, got {:?}",
-              ui_id, current
-            );
-          }
-        }
-      }
-      None => {
-        // Once enforcement is on, first access defines the UI thread.
-        let _ = set_ui_thread_id(current);
-      }
+      return;
     }
+
+    if ui == current {
+      return;
+    }
+
+    #[cfg(debug_assertions)]
+    {
+      let caller = Location::caller();
+      let set_info = UI_THREAD_SET_LOCATION
+        .get()
+        .map(|loc| format!(" (set at {}:{})", loc.file(), loc.line()))
+        .unwrap_or_default();
+
+      panic!(
+        "local runtime access from non-UI thread\n  expected UI thread: #{ui}{set_info}\n  current thread: #{current} {:?}\n  caller: {}:{}",
+        thread::current().id(),
+        caller.file(),
+        caller.line(),
+      );
+    }
+
+    #[cfg(not(debug_assertions))]
+    panic!(
+      "local runtime access from non-UI thread: expected #{ui}, got #{current} {:?}",
+      thread::current().id()
+    );
   }
 
   /// Whether a UI thread has been designated via
   /// [`init_on_ui_thread`](Self::init_on_ui_thread).
-  ///
-  /// When it has not, an off-thread sync-signal write cannot be routed to the UI thread
-  /// and its effects are silently dropped—the case
-  /// [`SignalState::warn_if_undesignated`] flags.
   pub(crate) fn ui_thread_designated() -> bool {
     ENFORCE_UI_THREAD.load(Ordering::Relaxed)
   }
@@ -325,115 +226,120 @@ impl Runtime {
   /// Whether the caller is the UI thread, or `true` when enforcement is off.
   pub fn is_ui_thread() -> bool {
     if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
-      true
+      return true;
     }
-    else {
-      ui_thread_id().is_some_and(|thread| thread == thread::current().id())
-    }
+
+    UI_THREAD.load(Ordering::Acquire) == thread_token()
   }
 
   /// Resets the calling thread's reactive runtime to a fresh, empty state.
   ///
-  /// Clears all signals, effects, owners, and pending work. Available only with the
-  /// `test` feature.
+  /// Clears all signals, effects, owners, pending work and the scheduler, and releases
+  /// the UI-thread designation. Cleanups are discarded, not run. Available only with
+  /// the `test` feature.
   #[cfg(feature = "test")]
   pub fn reset() {
-    // Take the arena out and drop it after every borrow is released: an effect's
-    // `Drop` re-enters the runtime (`remove_effect`, `dispose`), and a cleanup may own
-    // anything at all, so clearing in place could borrow twice. The fresh arena's new
-    // nonce makes every pre-reset id stale. Reset discards cleanups rather than running
-    // them: it is a teardown to a blank runtime, not a graceful disposal.
-    let arena = RUNTIME.with(|runtime| {
-      *runtime.current_effect.borrow_mut() = None;
-      runtime.batching.set(false);
-      runtime.pending_effects.borrow_mut().clear();
-      runtime.pending_effects_set.borrow_mut().clear();
+    let (graph, scheduler) = RUNTIME.with(|runtime| {
+      runtime.tracking.set(None);
+      runtime.batch_depth.set(0);
       runtime.flushing.set(false);
+      runtime.scheduled.set(false);
 
-      let mut fresh = Arena::new();
+      let scheduler = runtime.scheduler.borrow_mut().take();
+      let mut fresh = Graph::new();
 
-      runtime.current_owner.set(fresh.allocate());
+      runtime.current_owner.set(fresh.allocate_owner());
 
-      std::mem::replace(&mut *runtime.arena.borrow_mut(), fresh)
+      (std::mem::replace(&mut *runtime.graph(), fresh), scheduler)
     });
 
-    drop(arena);
+    drop(graph);
+    drop(scheduler);
 
     #[cfg(feature = "snapshot")]
     crate::snapshot::clear();
 
-    // Release the process-wide UI-thread designation, so the next (serialized) test can
-    // designate its own thread.
-    *UI_THREAD_ID.write().expect("write the UI thread id") = None;
+    UI_THREAD.store(0, Ordering::Release);
     ENFORCE_UI_THREAD.store(false, Ordering::Relaxed);
   }
 
-  /// Allocates a fresh local id.
-  pub(crate) fn allocate() -> Id {
-    RUNTIME.with(|runtime| runtime.arena.borrow_mut().allocate())
+  /// Attaches `id` to the current owner, so disposing the owner disposes it.
+  pub(crate) fn adopt_current(id: Id) {
+    RUNTIME.with(|runtime| {
+      let owner = runtime.current_owner.get();
+
+      runtime.graph().adopt(id, owner);
+    });
   }
 
-  pub(crate) fn register_effect(&self, effect: &Rc<dyn AnyEffect>) {
-    if let Some(entity) = self.arena.borrow_mut().get_mut(effect.id()) {
-      entity.effect = Some(effect.clone());
-    }
-  }
+  /// Runs `f` with `tracking` as the subscribing computation, restoring the previous
+  /// one afterwards.
+  pub(crate) fn with_tracking<T>(tracking: Option<Id>, f: impl FnOnce() -> T) -> T {
+    struct Restore(Option<Id>);
 
-  pub(crate) fn remove_effect(&self, id: Id) {
-    if let Some(entity) = self.arena.borrow_mut().get_mut(id) {
-      entity.effect = None;
-    }
-  }
-
-  pub(crate) fn get_effect(&self, id: Id) -> Option<Rc<dyn AnyEffect>> {
-    self
-      .arena
-      .borrow()
-      .get(id)
-      .and_then(|entity| entity.effect.clone())
-  }
-
-  pub(crate) fn add_pending_effect(&self, effect_id: Id) {
-    let mut set = self.pending_effects_set.borrow_mut();
-
-    if set.insert(effect_id) {
-      self.pending_effects.borrow_mut().push(effect_id);
-    }
-  }
-
-  /// Marks every stale-able effect among `ids` stale, propagating through each one's
-  /// output signal to its own subscribers—so a read anywhere downstream pulls a fresh
-  /// value before the scheduled re-runs happen.
-  pub(crate) fn mark_stale(&self, ids: &[Id]) {
-    let mut stack: SmallVec<[Id; 8]> = SmallVec::from_slice(ids);
-
-    while let Some(id) = stack.pop() {
-      let Some(effect) = self.get_effect(id)
-      else {
-        continue;
-      };
-
-      let Some(downstream) = effect.mark_stale()
-      else {
-        continue;
-      };
-
-      let subscribers = self
-        .arena
-        .borrow()
-        .get(downstream)
-        .and_then(|entity| entity.signal.as_ref())
-        .map(|signal| signal.subscribers.snapshot());
-
-      if let Some(subscribers) = subscribers {
-        stack.extend(subscribers);
+    impl Drop for Restore {
+      fn drop(&mut self) {
+        let _ = RUNTIME.try_with(|runtime| runtime.tracking.set(self.0));
       }
     }
+
+    let _restore = RUNTIME.with(|runtime| Restore(runtime.tracking.replace(tracking)));
+
+    f()
   }
 
-  /// Drains the pending effects until none remain. Re-entrant calls return immediately:
-  /// the running flush picks up whatever a mid-flush write enqueued.
-  pub(crate) fn run_pending_effects(&self) {
+  /// Runs `f` with `owner` as the current owner, restoring the previous one afterwards.
+  pub(crate) fn with_owner<T>(owner: Id, f: impl FnOnce() -> T) -> T {
+    struct Restore(Id);
+
+    impl Drop for Restore {
+      fn drop(&mut self) {
+        let _ = RUNTIME.try_with(|runtime| runtime.current_owner.set(self.0));
+      }
+    }
+
+    let _restore = RUNTIME.with(|runtime| Restore(runtime.current_owner.replace(owner)));
+
+    f()
+  }
+
+  /// Opens a batch; the returned guard closes it and flushes when it was the outermost.
+  pub(crate) fn enter_batch() -> BatchGuard {
+    RUNTIME.with(|runtime| runtime.batch_depth.set(runtime.batch_depth.get() + 1));
+
+    BatchGuard
+  }
+
+  /// Flushes now, or through the scheduler when one is installed; a no-op inside a
+  /// batch or a running flush, both of which flush on their own.
+  pub(crate) fn request_flush(&self) {
+    if self.batch_depth.get() > 0 || self.flushing.get() {
+      return;
+    }
+
+    let scheduler = self.scheduler.borrow().clone();
+
+    match scheduler {
+      Some(schedule) => {
+        if !self.scheduled.replace(true) {
+          schedule(Box::new(|| {
+            let _ = RUNTIME.try_with(|runtime| {
+              runtime.scheduled.set(false);
+
+              if runtime.batch_depth.get() == 0 {
+                runtime.flush();
+              }
+            });
+          }));
+        }
+      }
+      None => self.flush(),
+    }
+  }
+
+  /// Drains the queues until none remain. Re-entrant calls return immediately: the
+  /// running flush picks up whatever a mid-flush write enqueued.
+  pub(crate) fn flush(&self) {
     if self.flushing.get() {
       return;
     }
@@ -443,87 +349,105 @@ impl Runtime {
     let _guard = FlushGuard(&self.flushing);
 
     loop {
-      let mut pending_effects = self.pending_effects.take();
+      let next = self.graph().pop_queued();
 
-      if pending_effects.is_empty() {
+      let Some(id) = next
+      else {
         break;
-      }
+      };
 
-      pending_effects.sort_by_key(|id| {
-        let priority = self
-          .get_effect(*id)
-          .map(|effect| effect.priority())
-          .unwrap_or(EffectPriority::Normal);
-
-        (Reverse(priority), *id)
-      });
-
-      for effect_id in pending_effects {
-        self.pending_effects_set.borrow_mut().remove(&effect_id);
-
-        if let Some(effect) = self.get_effect(effect_id) {
-          run_effect(effect);
-        }
-      }
+      crate::computation::run_queued(id);
     }
   }
 
-  /// Drains any queued work from the sync registry and runs pending UI effects.
-  pub fn drain_pending_work() {
-    Runtime::assert_ui_thread();
+  /// Installs the scheduler a write outside a batch hands its flush to.
+  ///
+  /// Without one, such a write flushes synchronously. With one, the first write after
+  /// a flush schedules exactly one call; further writes coalesce into it until it runs.
+  /// [`drain_pending_work`](Self::drain_pending_work) routes the same way.
+  pub fn set_scheduler(schedule: impl Fn(Box<dyn FnOnce()>) + 'static) {
+    let previous =
+      RUNTIME.with(|runtime| runtime.scheduler.borrow_mut().replace(Rc::new(schedule)));
 
-    let pending_effects = SYNC.take_pending_effects();
-    let pending_disposals = SYNC.take_pending_disposals();
+    drop(previous);
+  }
+
+  /// Runs every queued effect now, whether or not a scheduled flush is outstanding.
+  pub fn flush_sync() {
+    RUNTIME.with(|runtime| {
+      runtime.scheduled.set(false);
+      runtime.flush();
+    });
+  }
+
+  /// Takes the work other threads queued—sync-signal writes and disposals—into this
+  /// runtime, then flushes as a write would: now, or through the scheduler.
+  pub fn drain_pending_work() {
+    Self::assert_ui_thread();
+
+    let writes = SYNC.take_pending_writes();
+    let disposals = SYNC.take_pending_disposals();
 
     RUNTIME.with(|runtime| {
-      runtime.mark_stale(&pending_effects);
+      let mut graph = runtime.graph();
 
-      for id in pending_effects {
-        runtime.add_pending_effect(id);
+      for id in writes {
+        graph.propagate(id);
       }
+    });
 
-      for id in pending_disposals {
+    for (id, parent) in disposals {
+      if id.is_sync() {
+        dispose_sync_local(id, parent);
+      }
+      else {
         id.dispose();
       }
+    }
 
-      runtime.run_pending_effects();
-    });
+    RUNTIME.with(Self::request_flush);
   }
 
   /// Whether there is queued work for this runtime or the sync registry.
   pub fn has_pending_work() -> bool {
-    RUNTIME.with(|runtime| !runtime.pending_effects.borrow().is_empty())
-      || SYNC.has_pending_effects()
-      || SYNC.has_pending_disposals()
+    RUNTIME.with(|runtime| runtime.graph().has_queued()) || SYNC.has_pending_work()
   }
 
-  /// Sets a waker called when a sync signal is written off the UI thread. The waker
-  /// should nudge the UI event loop (e.g. by sending a proxy event).
+  /// Sets a waker called when a sync signal is written or disposed off the UI thread.
+  /// The waker should nudge the UI event loop into calling
+  /// [`drain_pending_work`](Self::drain_pending_work).
   pub fn set_sync_effect_waker(waker: impl Fn() + Send + Sync + 'static) {
     SYNC.set_waker(waker);
   }
+}
 
-  /// The effect currently tracking signal reads, if any.
-  pub(crate) fn current_effect() -> Option<Rc<dyn AnyEffect>> {
-    RUNTIME.with(|runtime| runtime.current_effect.borrow().clone())
-  }
+/// Closes a batch on drop, flushing when it was the outermost and nothing is unwinding.
+pub(crate) struct BatchGuard;
 
-  /// Runs `f` with `effect` as the tracking effect, restoring the previous one
-  /// afterwards.
-  pub(crate) fn with_effect<T>(effect: Option<Rc<dyn AnyEffect>>, f: impl FnOnce() -> T) -> T {
-    struct EffectRestoreGuard(Option<Rc<dyn AnyEffect>>);
+impl Drop for BatchGuard {
+  fn drop(&mut self) {
+    let _ = RUNTIME.try_with(|runtime| {
+      let depth = runtime.batch_depth.get() - 1;
 
-    impl Drop for EffectRestoreGuard {
-      fn drop(&mut self) {
-        RUNTIME.with(|runtime| *runtime.current_effect.borrow_mut() = self.0.clone());
+      runtime.batch_depth.set(depth);
+
+      if depth == 0 && !thread::panicking() {
+        runtime.request_flush();
       }
-    }
-
-    let saved = Runtime::current_effect();
-    let _restore = EffectRestoreGuard(saved);
-
-    RUNTIME.with(|runtime| *runtime.current_effect.borrow_mut() = effect);
-
-    f()
+    });
   }
+}
+
+/// Runs `f` with the graph borrowed exclusively.
+#[cfg_attr(debug_assertions, track_caller)]
+#[inline(always)]
+pub(crate) fn with_graph<T>(f: impl FnOnce(&mut Graph) -> T) -> T {
+  RUNTIME.with(|runtime| f(&mut runtime.graph()))
+}
+
+/// Runs `f` with the graph borrowed exclusively, or nothing when the runtime is gone.
+#[cfg_attr(debug_assertions, track_caller)]
+#[inline(always)]
+pub(crate) fn try_with_graph<T>(f: impl FnOnce(&mut Graph) -> T) -> Option<T> {
+  RUNTIME.try_with(|runtime| f(&mut runtime.graph())).ok()
 }

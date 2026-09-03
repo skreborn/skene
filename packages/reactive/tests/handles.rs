@@ -20,13 +20,12 @@ use skene_reactive::{
 fn watch_computes_now_and_reports_changes() {
   let source = Signal::new(1);
   let seen = Rc::new(Cell::new(0));
-  let initial = Effect::watch(move || source.get() * 10, {
+  let handle = Effect::watch(move || source.get() * 10, {
     let seen = seen.clone();
 
     move |value| seen.set(value)
   });
 
-  assert_eq!(initial, 10, "the initial compute returns its value");
   assert_eq!(
     seen.get(),
     0,
@@ -40,6 +39,11 @@ fn watch_computes_now_and_reports_changes() {
     20,
     "a dependency change reports the fresh value"
   );
+
+  handle.dispose();
+  source.set(3);
+
+  assert_eq!(seen.get(), 20, "a disposed watcher reports nothing");
 }
 
 #[test]

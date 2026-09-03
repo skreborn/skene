@@ -1,6 +1,9 @@
 //! Context values provided by an owner and visible to its whole subtree.
 
-use std::any::{Any, TypeId};
+use std::{
+  any::{Any, TypeId},
+  rc::Rc,
+};
 
 use crate::runtime::RUNTIME;
 
@@ -13,17 +16,17 @@ where
   T: Clone + 'static,
 {
   let ty = TypeId::of::<T>();
-
-  RUNTIME.with(|runtime| {
+  let value: Rc<dyn Any> = Rc::new(value);
+  let replaced = RUNTIME.with(|runtime| {
     let owner = runtime.current_owner.get();
 
-    if let Some(entity) = runtime.arena.borrow_mut().get_mut(owner) {
-      entity
-        .contexts
-        .get_or_insert_default()
-        .insert(ty, Box::new(value) as Box<dyn Any>);
-    }
+    runtime
+      .graph()
+      .owner_data_mut(owner)
+      .and_then(|data| data.contexts.get_or_insert_default().insert(ty, value))
   });
+
+  drop(replaced);
 }
 
 /// The nearest `T` provided by the current owner or one of its ancestors, if any.
@@ -35,24 +38,22 @@ where
   T: Clone + 'static,
 {
   let ty = TypeId::of::<T>();
-
-  RUNTIME.with(|runtime| {
+  let found: Option<Rc<dyn Any>> = RUNTIME.with(|runtime| {
     let mut owner = runtime.current_owner.get();
-    let arena = runtime.arena.borrow();
+    let graph = runtime.graph();
 
     loop {
-      let entity = arena.get(owner)?;
+      let data = graph.owner_data(owner)?;
 
-      if let Some(contexts) = &entity.contexts
+      if let Some(contexts) = &data.contexts
         && let Some(value) = contexts.get(&ty)
       {
-        return value.downcast_ref::<T>().cloned();
+        return Some(value.clone());
       }
 
-      match entity.parent {
-        Some(parent) => owner = parent,
-        None => return None,
-      }
+      owner = data.parent?;
     }
-  })
+  });
+
+  found?.downcast_ref::<T>().cloned()
 }

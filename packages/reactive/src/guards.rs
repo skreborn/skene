@@ -71,7 +71,7 @@ impl<T> Deref for ReadGuard<'_, T> {
   }
 }
 
-/// An exclusive borrow guard over a signal's value; dropping it re-runs subscribers.
+/// An exclusive borrow guard over a signal's value; dropping it notifies subscribers.
 #[must_use]
 pub struct WriteGuard<'a, T> {
   id: Id,
@@ -135,7 +135,7 @@ impl<T> Drop for WriteGuard<'_, T> {
     }
 
     if let Some(state) = self.id.state() {
-      state.run_effects();
+      state.notify();
     }
   }
 }

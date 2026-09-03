@@ -1,37 +1,30 @@
 use std::{
   any::Any,
   mem::take,
-  sync::{Arc, LazyLock, OnceLock, RwLock},
+  sync::{
+    Arc,
+    LazyLock,
+    OnceLock,
+    RwLock,
+    atomic::{AtomicBool, Ordering},
+  },
 };
 
 use parking_lot::Mutex;
-use rustc_hash::FxHashSet;
 
 use crate::{
   id::Id,
-  signal::{SignalState, SignalValue, Subscribers},
+  signal::{SignalState, SignalValue},
 };
 
 pub(crate) static SYNC: LazyLock<SyncRegistry> = LazyLock::new(SyncRegistry::new);
 
-/// One sync signal's record: its value, its UI-thread subscriber effects, and the
-/// local owner it was created under, if any.
-#[derive(Clone)]
+/// One sync signal's record: its value, the local owner it was created under, if any,
+/// and whether a UI-thread effect ever subscribed to it.
 pub(crate) struct SyncSignal {
-  pub(crate) id: Id,
   pub(crate) value: Arc<dyn Any + Send + Sync>,
-  pub(crate) subscribers: Arc<Mutex<FxHashSet<Id>>>,
   pub(crate) parent: Option<Id>,
-}
-
-impl From<SyncSignal> for SignalState {
-  fn from(sync: SyncSignal) -> Self {
-    SignalState::from_parts(
-      sync.id,
-      SignalValue::Sync(sync.value),
-      Subscribers::Sync(sync.subscribers),
-    )
-  }
+  subscribed: AtomicBool,
 }
 
 /// One generational slot of the sync slab.
@@ -100,8 +93,8 @@ impl SyncSlab {
 /// carrying off-thread work to the UI thread.
 pub(crate) struct SyncRegistry {
   slab: RwLock<SyncSlab>,
-  pending_effects: Mutex<Vec<Id>>,
-  pending_disposals: Mutex<Vec<Id>>,
+  pending_writes: Mutex<Vec<Id>>,
+  pending_disposals: Mutex<Vec<(Id, Option<Id>)>>,
   waker: OnceLock<Arc<dyn Fn() + Send + Sync>>,
 }
 
@@ -109,7 +102,7 @@ impl SyncRegistry {
   fn new() -> Self {
     Self {
       slab: RwLock::new(SyncSlab::default()),
-      pending_effects: Mutex::new(Vec::new()),
+      pending_writes: Mutex::new(Vec::new()),
       pending_disposals: Mutex::new(Vec::new()),
       waker: OnceLock::new(),
     }
@@ -122,63 +115,80 @@ impl SyncRegistry {
     let slot = &mut slab.slots[id.index() as usize];
 
     slot.signal = Some(SyncSignal {
-      id,
       value,
-      subscribers: Arc::new(Mutex::new(FxHashSet::default())),
       parent,
+      subscribed: AtomicBool::new(false),
     });
 
     Some(id)
   }
 
-  pub(crate) fn get(&self, id: Id) -> Option<SyncSignal> {
-    self.slab.read().ok()?.get(id).cloned()
+  /// The signal `id` names, as a state the caller can act on without the lock.
+  pub(crate) fn get(&self, id: Id) -> Option<SignalState> {
+    let slab = self.slab.read().ok()?;
+    let signal = slab.get(id)?;
+
+    Some(SignalState {
+      id,
+      value: SignalValue::Sync(signal.value.clone()),
+    })
   }
 
   pub(crate) fn remove(&self, id: Id) -> Option<SyncSignal> {
     self.slab.write().ok()?.remove(id)
   }
 
-  pub(crate) fn enqueue_effects(&self, ids: impl IntoIterator<Item = Id>) {
-    let waker = {
-      let mut queue = self.pending_effects.lock();
+  /// Records that a UI-thread effect subscribed to `id`.
+  pub(crate) fn mark_subscribed(&self, id: Id) {
+    if let Ok(slab) = self.slab.read()
+      && let Some(signal) = slab.get(id)
+    {
+      signal.subscribed.store(true, Ordering::Relaxed);
+    }
+  }
 
-      queue.extend(ids);
-      self.waker.get().cloned()
-    };
+  /// Whether a UI-thread effect ever subscribed to `id`.
+  pub(crate) fn is_subscribed(&self, id: Id) -> bool {
+    self
+      .slab
+      .read()
+      .ok()
+      .and_then(|slab| {
+        slab
+          .get(id)
+          .map(|signal| signal.subscribed.load(Ordering::Relaxed))
+      })
+      .unwrap_or(false)
+  }
 
-    if let Some(waker) = waker {
+  /// Queues an off-thread write for the UI thread and wakes it.
+  pub(crate) fn enqueue_write(&self, id: Id) {
+    self.pending_writes.lock().push(id);
+    self.wake();
+  }
+
+  /// Queues off-thread disposals for the UI thread and wakes it.
+  pub(crate) fn enqueue_disposals(&self, ids: impl IntoIterator<Item = (Id, Option<Id>)>) {
+    self.pending_disposals.lock().extend(ids);
+    self.wake();
+  }
+
+  fn wake(&self) {
+    if let Some(waker) = self.waker.get() {
       waker();
     }
   }
 
-  pub(crate) fn enqueue_disposals(&self, ids: impl IntoIterator<Item = Id>) {
-    let waker = {
-      let mut queue = self.pending_disposals.lock();
-
-      queue.extend(ids);
-      self.waker.get().cloned()
-    };
-
-    if let Some(waker) = waker {
-      waker();
-    }
+  pub(crate) fn take_pending_writes(&self) -> Vec<Id> {
+    take(&mut *self.pending_writes.lock())
   }
 
-  pub(crate) fn take_pending_effects(&self) -> Vec<Id> {
-    take(&mut *self.pending_effects.lock())
-  }
-
-  pub(crate) fn take_pending_disposals(&self) -> Vec<Id> {
+  pub(crate) fn take_pending_disposals(&self) -> Vec<(Id, Option<Id>)> {
     take(&mut *self.pending_disposals.lock())
   }
 
-  pub(crate) fn has_pending_effects(&self) -> bool {
-    !self.pending_effects.lock().is_empty()
-  }
-
-  pub(crate) fn has_pending_disposals(&self) -> bool {
-    !self.pending_disposals.lock().is_empty()
+  pub(crate) fn has_pending_work(&self) -> bool {
+    !self.pending_writes.lock().is_empty() || !self.pending_disposals.lock().is_empty()
   }
 
   pub(crate) fn set_waker(&self, waker: impl Fn() + Send + Sync + 'static) {

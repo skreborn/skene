@@ -1,6 +1,7 @@
 //! The access traits every readable or writable reactive handle shares.
 
 use crate::{
+  computation::track_id,
   guards::{ReadGuard, WriteGuard},
   id::Id,
 };
@@ -17,15 +18,13 @@ pub trait Track {
   /// Panics when the signal is disposed.
   #[cfg_attr(debug_assertions, track_caller)]
   fn track(&self) {
-    self.id().state().expect("signal disposed").subscribe();
+    assert!(track_id(self.id()), "signal disposed");
   }
 
   /// Subscribes the running effect to the signal, if it is live.
   #[cfg_attr(debug_assertions, track_caller)]
   fn try_track(&self) {
-    if let Some(state) = self.id().state() {
-      state.subscribe();
-    }
+    track_id(self.id());
   }
 }
 

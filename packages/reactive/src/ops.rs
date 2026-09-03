@@ -107,4 +107,4 @@ macro_rules! impl_all_ops {
 impl_all_ops!(Signal, []);
 impl_assign_ops!(WriteSignal, []);
 impl_with_ops!(ReadSignal, []);
-impl_with_ops!(Memo, [PartialEq]);
+impl_with_ops!(Memo, []);

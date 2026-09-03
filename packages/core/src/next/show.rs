@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use skene_reactive::{Effect, on_cleanup};
 
-use super::{AnyView, Driver, IntoView, NoChild, NodeId, Scene, View};
+use super::{AnyKind, AnyView, Driver, IntoView, NoChild, NodeId, Scene, View};
 
 /// Shows or hides one child, preserving its state: the child is built once and
 /// attached or detached between a pair of anchors as the condition changes.
@@ -64,6 +64,8 @@ impl<D: Driver, C> Show<D, C> {
     }
   }
 }
+
+impl<D: Driver, C> AnyKind for Show<D, C> {}
 
 impl<D: Driver> View<D> for Show<D, AnyView<D>> {
   fn build(self) -> NodeId {

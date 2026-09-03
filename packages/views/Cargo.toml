@@ -1,0 +1,14 @@
+[package]
+name = "skene-views"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+skene-core.workspace = true
+skene-reactive.workspace = true
+
+[dev-dependencies]
+skene-headless.workspace = true
+
+[lints]
+workspace = true

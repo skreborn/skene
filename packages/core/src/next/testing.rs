@@ -9,6 +9,7 @@ use std::{
 use skene_reactive::signal;
 
 use super::{
+  AnyKind,
   BoxProps,
   BoxValue,
   Children,
@@ -206,6 +207,8 @@ impl HasChildren<TestDriver> for TestBox {
     &mut self.children
   }
 }
+
+impl AnyKind for TestBox {}
 
 impl View<TestDriver> for TestBox {
   fn build(self) -> NodeId {

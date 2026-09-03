@@ -132,6 +132,7 @@ pub use shape::{Declared, Plain, Shape, Static};
 pub use show::Show;
 pub use token::{Definitions, IntoTokenValue, Themed, Token, TokenName, TokenRef, TokenSet};
 pub use view::{
+  AnyKind,
   AnyView,
   FlexChild,
   GridChild,

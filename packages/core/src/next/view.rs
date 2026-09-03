@@ -4,11 +4,22 @@ use std::marker::PhantomData;
 
 use super::{Driver, NodeId};
 
+/// A view accepted as a child of every kind.
+///
+/// Every view has it; a wrapper carrying per-child properties (`Flexible`, `Pinned`,
+/// `GridCell`) does not, and implements [`IntoChildOf`] for the one kind that
+/// understands them instead.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a view of every kind",
+  label = "a view implements `AnyKind`; a wrapper implements `IntoChildOf` for its one kind instead"
+)]
+pub trait AnyKind {}
+
 /// A view: a one-shot build that mints scene nodes, binds effects, attaches children
 /// and returns its root.
 ///
 /// There is no update path; updates are the effects a build left behind.
-pub trait View<D: Driver>: 'static {
+pub trait View<D: Driver>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
 
@@ -54,6 +65,8 @@ impl<D: Driver> AnyView<D> {
   }
 }
 
+impl<D: Driver> AnyKind for AnyView<D> {}
+
 impl<D: Driver> View<D> for AnyView<D> {
   #[inline(always)]
   fn build(self) -> NodeId {
@@ -68,6 +81,8 @@ impl<D: Driver> View<D> for AnyView<D> {
     self
   }
 }
+
+impl AnyKind for NodeId {}
 
 impl<D: Driver> View<D> for NodeId {
   #[inline(always)]
@@ -127,11 +142,12 @@ pub struct GridChild;
 /// A value accepted as one child of a container of kind `Kind`.
 ///
 /// Every view is a child of every kind; a wrapper view implements only the kind of the
-/// container that understands its properties.
+/// container that understands its properties, and is not [`AnyKind`].
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a compatible and complete view",
   label = "not a compatible and complete view",
   note = "check that it is indeed a compatible view type",
+  note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it",
   note = "see its documentation to determine what completes it"
 )]
 pub trait IntoChildOf<D: Driver, Kind> {
@@ -140,7 +156,7 @@ pub trait IntoChildOf<D: Driver, Kind> {
 }
 
 #[diagnostic::do_not_recommend]
-impl<D: Driver, Kind, V: IntoView<D>> IntoChildOf<D, Kind> for V {
+impl<D: Driver, Kind, V: IntoView<D> + AnyKind> IntoChildOf<D, Kind> for V {
   #[inline(always)]
   fn into_child(self) -> AnyView<D> {
     self.into_view()

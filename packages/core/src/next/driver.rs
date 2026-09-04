@@ -16,7 +16,7 @@ use super::{
   Slot,
   StyleExtension,
 };
-use crate::{Color, Size};
+use crate::{AccessProp, Color, FocusOrder, Size};
 
 /// A medium that realizes the portable vocabulary: boxes, runs, anchors, scopes, tree
 /// mutations, tokens, event registration, focus, values, sizes and media.
@@ -60,6 +60,12 @@ pub trait Driver: Copy + Default + 'static {
     slot: Slot,
     value: &BoxValue<Self::Scalar, Self::StyleExt>,
   );
+
+  /// Replaces a box's place in focus traversal; `None` takes it out of focus.
+  fn update_focus_order(&self, sink: &Self::Sink, focus_order: Option<FocusOrder>);
+
+  /// Replaces the accessibility properties a box reports.
+  fn update_access(&self, sink: &Self::Sink, access: &[AccessProp]);
 
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;

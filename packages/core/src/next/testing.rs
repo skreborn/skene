@@ -30,7 +30,7 @@ use super::{
   Slot,
   View,
 };
-use crate::{Color, ColorScheme, Size};
+use crate::{AccessProp, Color, ColorScheme, FocusOrder, Size};
 
 /// One call the driver received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,6 +115,10 @@ impl Driver for TestDriver {
   }
 
   fn update_box(&self, _: &u32, _: Slot, _: &BoxValue<f32>) {}
+
+  fn update_focus_order(&self, _: &u32, _: Option<FocusOrder>) {}
+
+  fn update_access(&self, _: &u32, _: &[AccessProp]) {}
 
   fn create_run(&self, _: &RunProps<Self>) -> u32 {
     Self::next_sink()

@@ -8,6 +8,7 @@ use skene_core::{
   Dimension,
   Size,
   next::{
+    Border,
     BoxValue,
     BoxVisitor,
     Condition,
@@ -24,6 +25,7 @@ use skene_core::{
     NoProperty,
     NodeId,
     NodeRecord,
+    Property,
     PropertyKey,
     RunValue,
     RunVisitor,
@@ -415,4 +417,20 @@ pub fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> 
     }
     Kind::Anchor | Kind::Scope => None,
   }
+}
+
+/// The border of the box `node`, its color leaf resolved to a fixed color.
+pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
+  let SlotValue::Box(BoxValue::Border(border)) =
+    resolve(node, PropertyKey::Shared(Property::Border))?
+  else {
+    return None;
+  };
+  let env = Env::of(node)?;
+  let Resolved::Color(color) = env.static_leaf(&border.color, 0)?
+  else {
+    return None;
+  };
+
+  Some(Border::new(border.width, color))
 }

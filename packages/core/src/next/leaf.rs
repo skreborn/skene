@@ -4,7 +4,8 @@ use std::{fmt::Debug, rc::Rc};
 
 use smallvec::SmallVec;
 
-use super::{Expr, Media, Scalar, Token, TokenRef};
+use super::{Condition, Expr, Media, Scalar, State, Token, TokenRef};
+use crate::{Dimension, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
 ///
@@ -184,6 +185,18 @@ impl<L, C> Conditional<L, C> {
         .collect(),
     }
   }
+
+  /// This value with `map` applied to every condition, in declaration order.
+  pub fn map_conditions<M>(self, mut map: impl FnMut(C) -> M) -> Conditional<L, M> {
+    Conditional {
+      base: self.base,
+      variants: self
+        .variants
+        .into_iter()
+        .map(|(condition, leaf)| (map(condition), leaf))
+        .collect(),
+    }
+  }
 }
 
 impl<T, C> Value<T, C> {
@@ -228,7 +241,10 @@ impl<T, C> Value<T, C> {
 /// `Color::WHITE.when(State::Hovered, Color::BLACK)`.
 ///
 /// Every plain value has it; a [`TokenRef`], [`Token`] and [`Expr`] carry the same
-/// `when` as an inherent method.
+/// `when` as an inherent method. The condition fixes the value's condition type, and a
+/// value under [`Media`] or [`State`] alone converts into one under [`Condition`], so
+/// `8f32.when(Media::MinWidth(900.), 16.)` is accepted where a
+/// `Value<f32, Condition<N>>` is.
 pub trait When<T>: Into<Leaf<T>> {
   /// This value, overridden by `value` while `condition` holds.
   #[inline(always)]
@@ -371,6 +387,63 @@ impl<T, C> From<Leaf<T>> for Value<T, C> {
     Self::new(leaf)
   }
 }
+
+impl<L, N> From<Conditional<L, Media<N>>> for Conditional<L, Condition<N>> {
+  #[inline(always)]
+  fn from(value: Conditional<L, Media<N>>) -> Self {
+    value.map_conditions(Condition::from)
+  }
+}
+
+impl<L, N> From<Conditional<L, State>> for Conditional<L, Condition<N>> {
+  #[inline(always)]
+  fn from(value: Conditional<L, State>) -> Self {
+    value.map_conditions(Condition::from)
+  }
+}
+
+impl<T, N> From<Definition<T, N>> for Value<T, Condition<N>> {
+  #[inline(always)]
+  fn from(definition: Definition<T, N>) -> Self {
+    definition.map(Leaf::Static).map_conditions(Condition::from)
+  }
+}
+
+/// The conversions letting a plain length stand for a uniform value of a type built
+/// from one, at every leaf: `set_spacing(8.)`, `set_width(10.)`, `when(.., 16.)`.
+macro_rules! uniform_leaves {
+  ($($wrapper:ident),+ $(,)?) => {$(
+    impl<T: Copy> From<T> for StaticLeaf<$wrapper<T>> {
+      #[inline(always)]
+      fn from(value: T) -> Self {
+        Self::Fixed($wrapper::from(value))
+      }
+    }
+
+    impl<T: Copy> From<T> for Leaf<$wrapper<T>> {
+      #[inline(always)]
+      fn from(value: T) -> Self {
+        Self::Static(StaticLeaf::from(value))
+      }
+    }
+
+    impl<T: Copy, C> From<T> for Value<$wrapper<T>, C> {
+      #[inline(always)]
+      fn from(value: T) -> Self {
+        Self::new(Leaf::from(value))
+      }
+    }
+
+    impl<T: Copy, N: Scalar> From<T> for Definition<$wrapper<T>, N> {
+      #[inline(always)]
+      fn from(value: T) -> Self {
+        Self::new(StaticLeaf::from(value))
+      }
+    }
+  )+};
+}
+
+uniform_leaves!(Spacing, Dimension);
 
 impl<T, N: Scalar> From<T> for Definition<T, N> {
   #[inline(always)]

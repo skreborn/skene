@@ -3,44 +3,93 @@
 use std::rc::Rc;
 
 use skene_core::{
+  AccessProp,
+  Alignment,
+  Animation,
+  Arrangement,
   Bubbling,
   ClickHandler,
+  FocusOrder,
+  GridFlow,
+  GridTrack,
+  Inset,
+  ItemAlignment,
+  KeyEvent,
+  KeyHandler,
   Layout,
+  PointerEvent,
+  PointerHandler,
   Prevent,
   Role,
+  ScrollEvent,
+  Spacing,
+  Transition,
+  Wrap,
   next::{
     AnyKind,
     BoxDynamics,
     BoxProps,
+    BoxStyle,
     Children,
+    Condition,
     ContainerName,
     DeclaredBoxStyle,
     Driver,
     HasChildren,
+    Leaf,
     NodeId,
     NodeKind,
+    Plain,
     PlainChild,
+    PlainHandler,
     Scene,
+    ScrollHandler,
     Seal,
+    StaticLeaf,
+    TokenRef,
+    Value,
     View,
   },
 };
 
-use crate::realize::bind_box_slot;
+use crate::{
+  macros::properties,
+  realize::{Source, bind_box_slot},
+};
 
-/// A box with a layout mode, a declared style, a role, a container name, click
-/// handlers and children of kind `Kind`.
+/// The handlers a box registers on its node, by event.
+#[derive(Default)]
+struct Handlers {
+  click: Vec<Rc<ClickHandler>>,
+  key_down: Vec<Rc<KeyHandler>>,
+  pointer_down: Vec<Rc<PointerHandler>>,
+  pointer_up: Vec<Rc<PointerHandler>>,
+  pointer_move: Vec<Rc<PointerHandler>>,
+  pointer_enter: Vec<Rc<PlainHandler>>,
+  pointer_leave: Vec<Rc<PlainHandler>>,
+  focus: Vec<Rc<PlainHandler>>,
+  blur: Vec<Rc<PlainHandler>>,
+  scroll: Vec<Rc<ScrollHandler>>,
+}
+
+/// A box with a layout mode, a declared style, a role, a container name, focus and
+/// accessibility, motion, handlers and children of kind `Kind`.
 ///
-/// The one build every box shares: a view over it sets the properties its vocabulary
-/// exposes into [`style_mut`](Self::style_mut) and delegates its children; a third
-/// party's layout view does the same.
+/// The one build every box shares, carrying the whole layout vocabulary: a view over
+/// it exposes the properties its layout honors and delegates its children, and a
+/// third party's layout view does the same. Decoration and sizing are set through
+/// [`style_mut`](Self::style_mut) by the one view that offers them,
+/// [`Container`](crate::Container).
 #[must_use]
 pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   layout: Layout,
   role: Option<Role>,
   container: Option<ContainerName>,
+  focus_order: Option<Source<FocusOrder>>,
+  access: Option<Source<Vec<AccessProp>>>,
   style: DeclaredBoxStyle<D>,
-  click: Vec<Rc<ClickHandler>>,
+  dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
+  handlers: Handlers,
   children: Children<D, Kind>,
 }
 
@@ -52,8 +101,11 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       layout,
       role: None,
       container: None,
+      focus_order: None,
+      access: None,
       style: DeclaredBoxStyle::<D>::default(),
-      click: Vec::new(),
+      dynamics: BoxDynamics::default(),
+      handlers: Handlers::default(),
       children: Children::new(),
     }
   }
@@ -62,6 +114,60 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
     &mut self.style
+  }
+
+  properties! { style_mut;
+    set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
+      "the inset between the box and the children it arranges";
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<D::Scalar>,
+      "the spacing between children, per axis";
+    set_arrangement / derive_arrangement (arrangement) => arrangement: Arrangement,
+      "the distribution of children along the main or inline axis";
+    set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,
+      "the alignment of each child on the cross or block axis";
+    set_line_arrangement / derive_line_arrangement (arrangement) => line_arrangement: Arrangement,
+      "the distribution of wrapped lines or grid tracks along the cross or block axis";
+    set_item_horizontal_alignment / derive_item_horizontal_alignment (alignment)
+      => item_horizontal_alignment: ItemAlignment,
+      "the alignment of each grid child on the inline axis";
+    set_wrap / derive_wrap (wrap) => wrap: Wrap,
+      "whether and how children wrap onto further lines";
+    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<D::Scalar>>,
+      "the explicit column tracks";
+    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<D::Scalar>>,
+      "the explicit row tracks";
+    set_implicit_columns / derive_implicit_columns (tracks)
+      => grid_implicit_columns: Vec<GridTrack<D::Scalar>>,
+      "the sizes given to implicitly created columns, cycled";
+    set_implicit_rows / derive_implicit_rows (tracks)
+      => grid_implicit_rows: Vec<GridTrack<D::Scalar>>,
+      "the sizes given to implicitly created rows, cycled";
+    set_flow / derive_flow (flow) => grid_flow: GridFlow,
+      "the direction auto-placed children fill";
+  }
+
+  /// Sets the alignment of each child on both axes: the horizontal component lands on
+  /// the inline axis, the vertical one on the cross or block axis.
+  #[inline(always)]
+  pub fn set_alignment(
+    mut self,
+    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+  ) -> Self {
+    let (horizontal, vertical) = split_alignment(&alignment.into());
+
+    self.style.item_horizontal_alignment = Some(horizontal);
+    self.style.item_alignment = Some(vertical);
+
+    self
+  }
+
+  /// Derives the alignment of each child on both axes from the signals `alignment`
+  /// reads.
+  #[inline(always)]
+  pub fn derive_alignment(self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+    self.set_alignment(Value::<Alignment, Condition<D::Scalar>>::new(
+      Leaf::Derived(Rc::new(alignment)),
+    ))
   }
 
   /// Sets the semantic role, guiding the driver's concrete choice of element.
@@ -80,18 +186,202 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
     self
   }
 
+  /// Sets the box's place in sequential focus traversal; a box without one takes no
+  /// focus.
+  #[inline(always)]
+  pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
+    self.focus_order = Some(Source::Fixed(focus_order));
+
+    self
+  }
+
+  /// Derives the box's place in sequential focus traversal from the signals
+  /// `focus_order` reads.
+  #[inline(always)]
+  pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
+    self.focus_order = Some(Source::derive(focus_order));
+
+    self
+  }
+
+  /// Sets what the box reports to assistive technology, beside its role.
+  #[inline(always)]
+  pub fn set_accessibility(mut self, access: impl IntoIterator<Item = AccessProp>) -> Self {
+    self.access = Some(Source::Fixed(access.into_iter().collect()));
+
+    self
+  }
+
+  /// Derives what the box reports to assistive technology from the signals `access`
+  /// reads.
+  #[inline(always)]
+  pub fn derive_accessibility(mut self, access: impl Fn() -> Vec<AccessProp> + 'static) -> Self {
+    self.access = Some(Source::derive(access));
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value
+  /// changes.
+  #[inline(always)]
+  pub fn set_transition(mut self, transition: Transition) -> Self {
+    self.dynamics.transitions.push(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(
+    mut self,
+    animation: Animation<BoxStyle<D::Scalar, Plain, D::StyleExt>>,
+  ) -> Self {
+    self.dynamics.animations.push(animation);
+
+    self
+  }
+
   /// Runs `action` on a click; its verdict says whether the click carries on to the
   /// ancestors.
   #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.click.push(Rc::new(move || {
-      let bubbling: Bubbling = action().into();
-
-      Prevent::from(bubbling)
-    }));
+    self.handlers.click.push(Rc::new(move || verdict(action())));
 
     self
   }
+
+  /// Runs `action` on a key pressed while the box or a descendant holds focus; its
+  /// verdict says whether the key carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_key_down<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&KeyEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .key_down
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
+  /// Runs `action` on a pointer button pressed over the box; its verdict says whether
+  /// the press carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_pointer_down<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .pointer_down
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
+  /// Runs `action` on a pointer button released over the box; its verdict says whether
+  /// the release carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_pointer_up<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .pointer_up
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
+  /// Runs `action` on the pointer moving over the box; its verdict says whether the
+  /// move carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_pointer_move<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .pointer_move
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
+  /// Runs `action` when the pointer enters the box.
+  #[inline(always)]
+  pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.handlers.pointer_enter.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the pointer leaves the box.
+  #[inline(always)]
+  pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.handlers.pointer_leave.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the box gains focus.
+  #[inline(always)]
+  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
+    self.handlers.focus.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the box loses focus.
+  #[inline(always)]
+  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
+    self.handlers.blur.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` with the box's new offsets when it scrolls.
+  #[inline(always)]
+  pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.handlers.scroll.push(Rc::new(action));
+
+    self
+  }
+}
+
+/// A handler's verdict as dispatch stores it.
+#[inline(always)]
+fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
+  let bubbling: Bubbling = result.into();
+
+  Prevent::from(bubbling)
+}
+
+/// One axis of a two-axis alignment value: each leaf projected through `pick`.
+fn alignment_axis<C: Clone>(
+  value: &Value<Alignment, C>,
+  pick: fn(Alignment) -> ItemAlignment,
+) -> Value<ItemAlignment, C> {
+  value.clone().map(|leaf| match leaf {
+    Leaf::Static(StaticLeaf::Fixed(alignment)) => Leaf::from(pick(alignment)),
+    Leaf::Static(StaticLeaf::Token(reference)) => {
+      Leaf::from(TokenRef::<ItemAlignment>::new(reference.name().as_str()))
+    }
+    Leaf::Static(StaticLeaf::Expr(_)) => unreachable!("no expression has an alignment type"),
+    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || pick(compute()))),
+  })
+}
+
+/// Splits a two-axis alignment value into its horizontal and vertical axes.
+pub(crate) fn split_alignment<C: Clone>(
+  value: &Value<Alignment, C>,
+) -> (Value<ItemAlignment, C>, Value<ItemAlignment, C>) {
+  (
+    alignment_axis(value, |alignment| alignment.horizontal),
+    alignment_axis(value, |alignment| alignment.vertical),
+  )
 }
 
 impl<D: Driver, Kind: 'static> HasChildren<D> for LayoutBox<D, Kind> {
@@ -112,14 +402,22 @@ impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
     }
 
     let (style, slots) = self.style.split();
+    let focus_order = match &self.focus_order {
+      Some(Source::Fixed(focus_order)) => Some(*focus_order),
+      Some(Source::Derived(_)) | None => None,
+    };
+    let access = match &self.access {
+      Some(Source::Fixed(access)) => access.clone(),
+      Some(Source::Derived(_)) | None => Vec::new(),
+    };
     let props = BoxProps {
       layout: self.layout,
       role: self.role,
       style,
-      dynamics: BoxDynamics::default(),
+      dynamics: self.dynamics,
       container: self.container,
-      focus_order: None,
-      access: Vec::new(),
+      focus_order,
+      access,
     };
     let driver = D::default();
     let sink = driver.create_box(&props);
@@ -138,9 +436,72 @@ impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
       bind_box_slot::<D>(node, slot);
     }
 
-    for handler in self.click {
-      Scene::<D>::with(|scene| scene.handle_click(node, handler));
+    if let Some(focus_order @ Source::Derived(_)) = self.focus_order {
+      focus_order.bind::<D>(node, |sink, focus_order| {
+        D::default().update_focus_order(sink, Some(*focus_order));
+      });
     }
+
+    if let Some(access @ Source::Derived(_)) = self.access {
+      access.bind::<D>(node, |sink, access| {
+        D::default().update_access(sink, access);
+      });
+    }
+
+    let Handlers {
+      click,
+      key_down,
+      pointer_down,
+      pointer_up,
+      pointer_move,
+      pointer_enter,
+      pointer_leave,
+      focus,
+      blur,
+      scroll,
+    } = self.handlers;
+
+    Scene::<D>::with(|scene| {
+      for handler in click {
+        scene.handle_click(node, handler);
+      }
+
+      for handler in key_down {
+        scene.handle_key_down(node, handler);
+      }
+
+      for handler in pointer_down {
+        scene.handle_pointer_down(node, handler);
+      }
+
+      for handler in pointer_up {
+        scene.handle_pointer_up(node, handler);
+      }
+
+      for handler in pointer_move {
+        scene.handle_pointer_move(node, handler);
+      }
+
+      for handler in pointer_enter {
+        scene.handle_pointer_enter(node, handler);
+      }
+
+      for handler in pointer_leave {
+        scene.handle_pointer_leave(node, handler);
+      }
+
+      for handler in focus {
+        scene.handle_focus(node, handler);
+      }
+
+      for handler in blur {
+        scene.handle_blur(node, handler);
+      }
+
+      for handler in scroll {
+        scene.handle_scroll(node, handler);
+      }
+    });
 
     self.children.mount(node);
 

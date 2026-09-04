@@ -1,8 +1,8 @@
 //! The retained tree every view attaches to, owned by core and mirrored into a driver.
 
-use std::{fmt::Debug, rc::Rc};
+use std::{any::TypeId, fmt::Debug, rc::Rc};
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use super::{
@@ -378,6 +378,7 @@ pub struct Scene<D: Driver> {
   free: Vec<u32>,
   pending_annotation: Option<Annotation<D>>,
   root_definitions: Definitions<D::TokenValue>,
+  root_sets: FxHashSet<TypeId>,
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
 }
@@ -398,6 +399,7 @@ impl<D: Driver> Scene<D> {
       free: Vec::new(),
       pending_annotation: None,
       root_definitions: Definitions::from(Vec::new()),
+      root_sets: FxHashSet::default(),
       definitions_generation: 0,
       graveyard: Vec::new(),
     }
@@ -670,27 +672,44 @@ impl<D: Driver> Scene<D> {
     }
   }
 
-  /// The nodes mounted in the segment `start` begins, in order.
+  /// The nodes mounted in the segment `start` begins, in order; a nested segment counts
+  /// as its start anchor, its own content and end excluded.
   #[must_use]
   pub fn segment_nodes(&self, start: NodeId) -> Vec<NodeId> {
     let Some((parent, end)) = self.segment_place(start)
     else {
       return Vec::new();
     };
-
-    match parent {
-      Some(parent) => self
-        .children(parent)
-        .skip_while(|child| *child != start)
-        .skip(1)
-        .take_while(|child| *child != end)
-        .collect(),
-      None => self
+    let Some(parent) = parent
+    else {
+      return self
         .record(start)
         .and_then(|record| record.segment.as_ref())
         .map(|segment| segment.pending.clone())
-        .unwrap_or_default(),
+        .unwrap_or_default();
+    };
+    let mut nodes = Vec::new();
+    let mut nested_end = None;
+
+    for child in self
+      .children(parent)
+      .skip_while(|child| *child != start)
+      .skip(1)
+      .take_while(|child| *child != end)
+    {
+      if let Some(until) = nested_end {
+        if child == until {
+          nested_end = None;
+        }
+
+        continue;
+      }
+
+      nodes.push(child);
+      nested_end = self.segment_end(child);
     }
+
+    nodes
   }
 
   /// Destroys everything mounted in the segment `start` begins.
@@ -739,6 +758,26 @@ impl<D: Driver> Scene<D> {
     D::default().define_root_tokens(&definitions);
     self.root_definitions = definitions;
     self.definitions_generation += 1;
+  }
+
+  /// Lays the definitions `define` produces over the tokens every node falls back to,
+  /// once per `set`: a later call for the same set does nothing and returns `false`.
+  pub fn define_root_tokens_once(
+    &mut self,
+    set: TypeId,
+    define: impl FnOnce() -> Definitions<D::TokenValue>,
+  ) -> bool {
+    if !self.root_sets.insert(set) {
+      return false;
+    }
+
+    let mut definitions =
+      std::mem::replace(&mut self.root_definitions, Definitions::from(Vec::new()));
+
+    definitions.overlay(define());
+    self.define_root_tokens(definitions);
+
+    true
   }
 
   /// The tokens every node falls back to.
@@ -991,7 +1030,8 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Removes a segment start, its content and its end anchor from under `parent`, and
-  /// keeps the content pending.
+  /// keeps the content pending; a nested segment is unlinked as one, keeping its own
+  /// content pending in turn.
   fn unlink_segment(&mut self, parent: NodeId, start: NodeId) {
     let content = self.segment_nodes(start);
     let end = self.segment_end(start);
@@ -999,7 +1039,7 @@ impl<D: Driver> Scene<D> {
     self.unlink_one(parent, start);
 
     for node in &content {
-      self.unlink_one(parent, *node);
+      self.unlink(*node);
     }
 
     if let Some(end) = end {
@@ -1258,5 +1298,52 @@ mod tests {
     assert_eq!(destroyed.len(), 3);
     assert!(with(|scene| scene.record(content).is_none()));
     assert!(with(|scene| scene.record(end).is_none()));
+  }
+
+  /// A segment nested in a detached segment keeps its own content pending, so a
+  /// removal from it while detached holds when the outer segment is reattached.
+  #[test]
+  fn nested_segments_keep_their_own_content_while_detached() {
+    TestDriver::reset();
+
+    let parent = TestBox::node();
+    let before = TestBox::node();
+    let inner_content = TestBox::node();
+    let (outer, outer_end) = with(Scene::create_segment);
+    let (inner, inner_end) = with(Scene::create_segment);
+
+    with(|scene| {
+      scene.attach(parent, outer, None);
+      scene.insert_in_segment(outer, before, None);
+      scene.insert_in_segment(outer, inner, None);
+      scene.insert_in_segment(inner, inner_content, None);
+    });
+
+    assert_eq!(
+      children(parent),
+      [outer, before, inner, inner_content, inner_end, outer_end]
+    );
+    assert_eq!(with(|scene| scene.segment_nodes(outer)), [before, inner]);
+
+    with(|scene| scene.detach(parent, outer));
+
+    assert_eq!(with(|scene| scene.segment_nodes(outer)), [before, inner]);
+    assert_eq!(with(|scene| scene.segment_nodes(inner)), [inner_content]);
+
+    with(|scene| scene.remove_from_segment(inner, inner_content));
+    with(|scene| scene.attach(parent, outer, None));
+
+    assert_eq!(
+      children(parent),
+      [outer, before, inner, inner_end, outer_end]
+    );
+    assert!(with(|scene| scene.record(inner_content).is_some()));
+
+    with(|scene| scene.insert_in_segment(inner, inner_content, None));
+
+    assert_eq!(
+      children(parent),
+      [outer, before, inner, inner_content, inner_end, outer_end]
+    );
   }
 }

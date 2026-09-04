@@ -5,9 +5,11 @@ use std::{marker::PhantomData, rc::Rc};
 use skene_core::{
   Dimension,
   Flexibility,
+  ItemAlignment,
   next::{
     Annotation,
     AnyView,
+    Condition,
     Driver,
     FlexChild,
     IntoChildOf,
@@ -26,17 +28,19 @@ enum Factor {
   Derived(Rc<dyn Fn() -> f32>),
 }
 
-/// Gives the child it wraps its flexibility in a [`Column`](crate::Column) or a row.
+/// Gives the child it wraps its flexibility in a [`Row`](crate::Row) or a
+/// [`Column`](crate::Column).
 ///
 /// Creates no node: the flexibility becomes the `flex` property of the child's own
-/// style, so it compiles, conditions and derives like any property. Accepted only
-/// where a flex container's children are; holds [`NoChild`] until `set_child` supplies
-/// the child.
+/// style, and the alignment its `self_alignment`, so they compile, condition and
+/// derive like any property. Accepted only where a flex container's children are;
+/// holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
 pub struct Flexible<D: Driver, C = NoChild> {
   initial: Dimension<D::Scalar>,
   grow: Factor,
   shrink: f32,
+  alignment: Option<Value<ItemAlignment, Condition<D::Scalar>>>,
   child: C,
   driver: PhantomData<fn() -> D>,
 }
@@ -62,6 +66,7 @@ impl<D: Driver> Flexible<D> {
       initial,
       grow: Factor::Fixed(grow_factor),
       shrink: shrink_factor,
+      alignment: None,
       child: NoChild,
       driver: PhantomData,
     }
@@ -101,6 +106,25 @@ impl<D: Driver, C> Flexible<D, C> {
     self
   }
 
+  /// Sets the child's own cross-axis alignment, overriding the container's.
+  #[inline(always)]
+  pub fn set_item_alignment(
+    mut self,
+    alignment: impl Into<Value<ItemAlignment, Condition<D::Scalar>>>,
+  ) -> Self {
+    self.alignment = Some(alignment.into());
+
+    self
+  }
+
+  /// Derives the child's own cross-axis alignment from the signals `alignment` reads.
+  #[inline(always)]
+  pub fn derive_item_alignment(mut self, alignment: impl Fn() -> ItemAlignment + 'static) -> Self {
+    self.alignment = Some(Value::new(Leaf::Derived(Rc::new(alignment))));
+
+    self
+  }
+
   /// Sets the child.
   #[inline(always)]
   pub fn set_child(self, child: impl IntoView<D>) -> Flexible<D, AnyView<D>> {
@@ -108,6 +132,7 @@ impl<D: Driver, C> Flexible<D, C> {
       initial: self.initial,
       grow: self.grow,
       shrink: self.shrink,
+      alignment: self.alignment,
       child: child.into_view(),
       driver: PhantomData,
     }
@@ -129,6 +154,7 @@ impl<D: Driver> IntoChildOf<D, FlexChild> for Flexible<D, AnyView<D>> {
       Scene::<D>::with(|scene| {
         scene.set_pending_annotation(Annotation {
           flex: Some(flex),
+          self_alignment: self.alignment,
           ..Annotation::default()
         });
       });

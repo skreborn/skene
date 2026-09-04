@@ -17,9 +17,11 @@ mod store;
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey};
 
 use skene_core::{
+  AccessProp,
   Color,
   ColorScheme,
   Dimension,
+  FocusOrder,
   Inset,
   KeyEvent,
   PointerEvent,
@@ -28,6 +30,7 @@ use skene_core::{
   Size,
   Spacing,
   next::{
+    Border,
     BoxProps,
     BoxValue,
     ContainerName,
@@ -173,6 +176,22 @@ impl Driver for Headless {
     });
   }
 
+  fn update_focus_order(&self, sink: &Handle, focus_order: Option<FocusOrder>) {
+    with_record(*sink, |record| {
+      if let Kind::Box(props) = &mut record.kind {
+        props.focus_order = focus_order;
+      }
+    });
+  }
+
+  fn update_access(&self, sink: &Handle, access: &[AccessProp]) {
+    with_record(*sink, |record| {
+      if let Kind::Box(props) = &mut record.kind {
+        access.clone_into(&mut props.access);
+      }
+    });
+  }
+
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Run(Box::new(props.clone())))))
   }
@@ -224,7 +243,10 @@ impl Driver for Headless {
   }
 
   fn define_root_tokens(&self, definitions: &Definitions<HeadlessTokenValue>) {
-    with_store(|store| store.root_definitions = definitions.clone());
+    with_store(|store| {
+      store.root_definitions = definitions.clone();
+      store.root_definition_writes += 1;
+    });
   }
 
   fn listen(&self, sink: &Handle, kind: EventKind) {
@@ -504,7 +526,14 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
   }
 }
 
-/// The props the box `node` was created with.
+/// Whether `node` is live in the scene, attached or not.
+#[must_use]
+pub fn is_live(node: NodeId) -> bool {
+  handle(node).is_some()
+}
+
+/// The props the box `node` was created with, carrying the focus order and
+/// accessibility properties last written to it.
 #[must_use]
 pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
   with_record(handle(node)?, |record| match &record.kind {
@@ -568,6 +597,12 @@ pub fn root_definitions() -> Definitions<HeadlessTokenValue> {
   with_store(|store| store.root_definitions.clone())
 }
 
+/// How many times the root definitions have been written since the last reset.
+#[must_use]
+pub fn root_definition_writes() -> usize {
+  with_store(|store| store.root_definition_writes)
+}
+
 /// The children of `node` as the scene holds them, in order.
 #[must_use]
 pub fn children(node: NodeId) -> Vec<NodeId> {
@@ -591,6 +626,13 @@ pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color
     SlotValue::Box(BoxValue::Color(color)) | SlotValue::Run(RunValue::Color(color)) => Some(color),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
   }
+}
+
+/// The border of the box `node`, by the same resolution as [`resolve_color`], with its
+/// color leaf resolved to a fixed color.
+#[must_use]
+pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
+  resolve::resolve_border(node)
 }
 
 /// The length the property `key` of `node` resolves to, by the same resolution as

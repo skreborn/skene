@@ -19,8 +19,15 @@ pub struct Errors {
   errors: Signal<Vec<Rc<dyn Error>>>,
 }
 
+impl Default for Errors {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl Errors {
-  fn new() -> Self {
+  /// A fresh handle holding no errors.
+  pub fn new() -> Self {
     Self {
       errors: Signal::new(Vec::new()),
     }

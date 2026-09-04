@@ -299,6 +299,17 @@ impl<V> Definitions<V> {
   pub fn is_empty(&self) -> bool {
     self.0.is_empty()
   }
+
+  /// Lays `over` on this set: every token `over` defines replaces this set's
+  /// definition of the same name, and the rest are appended in `over`'s order.
+  pub fn overlay(&mut self, over: Self) {
+    for (name, value) in over.0 {
+      match self.0.iter_mut().find(|(defined, _)| *defined == name) {
+        Some(slot) => slot.1 = value,
+        None => self.0.push((name, value)),
+      }
+    }
+  }
 }
 
 impl<V> From<Vec<(TokenName, V)>> for Definitions<V> {

@@ -1,20 +1,21 @@
 //! Asynchronously loaded data, from the load to the swapped-in tree.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_resource`.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use std::{cell::Cell, rc::Rc};
 
 use skene_gui::{
   Container,
-  DerivedView,
+  HasChildren,
   Resource,
   Text,
   View,
+  derived,
   reactive::Owner,
   wasm_bindgen::JsValue,
-  web::{self, mount},
+  web::next::{self as web, mount},
 };
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
@@ -29,7 +30,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the web platform when it drops, isolating each test.
+/// Uninstalls the driver when it drops, isolating each test.
 struct Installed;
 
 impl Drop for Installed {
@@ -100,28 +101,23 @@ async fn a_resource_can_load_a_result() {
 async fn a_loading_tree_is_swapped_for_the_loaded_one() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     let user = Resource::new(|| async {
       tick().await;
 
       "Ada".to_owned()
     });
 
-    DerivedView::new(move || {
+    derived(move || {
       user.with(|user| match user {
-        None => Text::new("Loading…").into_any(),
-        Some(name) => Container::new()
-          .set_child(Text::new(name.clone()))
-          .into_any(),
+        None => Text::new("Loading…").build(),
+        Some(name) => Container::new().set_child(Text::new(name.clone())).build(),
       })
     })
-    .build()
   });
 
-  let anchor = root.first_element_child().expect("the dynamic anchor");
-
   assert_eq!(
-    anchor
+    root
       .first_element_child()
       .unwrap()
       .text_content()
@@ -132,20 +128,16 @@ async fn a_loading_tree_is_swapped_for_the_loaded_one() {
 
   settle().await;
 
-  let loaded = anchor.first_element_child().unwrap();
+  let loaded = root.first_element_child().unwrap();
 
-  assert_eq!(
-    anchor.children().length(),
-    1,
-    "the placeholder is torn down"
-  );
+  assert_eq!(root.children().length(), 1, "the placeholder is torn down");
 
   assert_eq!(loaded.tag_name(), "DIV");
   assert_eq!(loaded.text_content().as_deref(), Some("Ada"));
 }
 
-/// A resource's load is scope-bound like any other task: disposing the scope stops it, so it
-/// never lands in a torn-down tree.
+/// A resource's load is scope-bound like any other task: disposing the scope stops it,
+/// so it never lands in a torn-down tree.
 #[wasm_bindgen_test]
 async fn disposing_the_scope_cancels_the_load() {
   let scope = Owner::new();
@@ -182,7 +174,8 @@ async fn disposing_the_scope_cancels_the_load() {
   assert!(!finished.get(), "the load stopped rather than completing");
 }
 
-/// `reload` re-runs the retained loader into the value, so a resource can reload on demand.
+/// `reload` re-runs the retained loader into the value, so a resource can reload on
+/// demand.
 #[wasm_bindgen_test]
 async fn reload_reruns_the_loader() {
   let scope = Owner::new();

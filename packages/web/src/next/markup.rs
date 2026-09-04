@@ -18,6 +18,10 @@ pub(crate) const NATIVE_CLASS: &str = "skene-native";
 /// The id of the server's `<style>` block, which the browser leaf adopts.
 pub(crate) const STYLE_ID: &str = "skene-styles";
 
+/// The attribute every further `<style>` block the driver owns carries: the browser
+/// leaf's per-class rules, and the delta a streamed chunk brings.
+pub(crate) const STYLE_ATTRIBUTE: &str = "data-skene-style";
+
 /// The attribute carrying an element's creation-order hydration marker.
 pub(crate) const MARKER_ATTRIBUTE: &str = "data-h";
 

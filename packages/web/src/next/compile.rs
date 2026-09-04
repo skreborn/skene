@@ -616,9 +616,20 @@ fn compile_box_with<D: PixelDriver>(props: &BoxProps<D>, base: Declarations) -> 
   rules.finish(out)
 }
 
-/// The rule template of a box.
+/// The rule template of a box; a stack's places every child in its one cell.
 pub(crate) fn compile_box<D: PixelDriver>(props: &BoxProps<D>) -> Compiled {
-  compile_box_with(props, box_base(props))
+  let mut compiled = compile_box_with(props, box_base(props));
+
+  if props.layout == Layout::Stack {
+    Conjunction::default().emit(
+      &mut compiled.template,
+      None,
+      ">*",
+      &Declarations::new().set("grid-area", "1 / 1").render(),
+    );
+  }
+
+  compiled
 }
 
 /// The rule template of a control: its box's, over the control reset that strips the

@@ -7,105 +7,121 @@
 use skene_gui::{
   Border,
   Column,
+  Condition,
   Container,
   Grid,
   HasChildren,
   Inset,
+  Media,
+  PixelExt,
   RichText,
   Role,
   Row,
   Span,
   Stack,
+  State,
   Text,
-  TextStyle,
-  TextTheme,
+  Theme,
+  Typography,
   View,
+  When,
   core::{
     Animation,
     Arrangement,
-    BoxStyle,
     Color,
-    Condition,
+    Dimension,
     ItemAlignment,
     MouseCursor,
     StyleProperty,
     Transition,
+    next::{BoxStyle, Plain},
   },
   empty,
   render_to_string,
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
+
+/// A plain box style rounding its corners by `radius`, for a keyframe.
+fn rounded(radius: f32) -> BoxStyle<f32, Plain, PixelExt> {
+  let mut style: BoxStyle<f32, Plain, PixelExt> = BoxStyle::default();
+
+  style.ext.corner_radius = Some(radius);
+
+  style
+}
 
 /// A tree exercising every built-in view and property path: static and derived box
-/// properties, roles, stack placement, text styling and links, theme cascade, span groups,
-/// inline views, and the empty view.
+/// properties, roles, stack placement, text styling and links, the typography tokens,
+/// span groups, inline views, and the empty view.
 fn representative_tree() -> impl skene_gui::IntoView {
-  TextTheme::new()
-    .set_child(
-      Container::new()
-        .set_color(Color::srgb(0.1, 0.2, 0.3))
-        .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
-        .set_border_radius(6.)
-        .set_min_width(200.)
-        .set_max_height(800.)
-        .set_child(
-          Column::new()
-            .set_arrangement(Arrangement::Center)
-            .set_item_alignment(ItemAlignment::Stretch)
-            .set_spacing(12.)
-            .set_padding(Inset::symmetric(16., 24.))
-            .set_children((
-              Text::new("Title & <escaped>")
-                .set_font_size(24.)
-                .set_font_weight(700.)
-                .set_color(Color::srgb(0.9, 0.9, 0.9)),
-              Text::new("linked").set_link("https://example.com/?a=1&b=2"),
-              Container::new()
-                .set_role(Role::Section)
-                .set_cursor(MouseCursor::Click)
-                .set_width(120.)
-                .set_height(40.)
-                .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
-                .handle_click(|| {})
-                .set_child(Row::new().set_spacing(4.).set_child(Text::new("Press"))),
-              Grid::uniform(3).set_spacing(4.).set_children((
-                Text::new("a"),
-                Text::new("b"),
-                Text::new("c"),
-              )),
-              Stack::new().set_children((Text::new("under"), Text::new("over"))),
-              RichText::new([
-                Span::text("plain "),
-                Span::group([Span::text("in "), Span::text("group").set_font_weight(600.)])
-                  .set_color(Color::srgb(1.0, 0.5, 0.0)),
-                Span::view(Container::new().set_width(10.).set_height(10.)),
-                Span::text(" tail").set_link("/rel"),
-              ]),
-              // Two identically-styled boxes: their class must intern once.
-              Container::new().set_padding(Inset::all(8.)),
-              Container::new().set_padding(Inset::all(8.)),
-              // Declarative dynamics: a hover variant, a media variant, a transition, and an
-              // animation, all compiled into the interned class.
-              Container::new()
-                .set_width(50.)
-                .set_width_when(Condition::Hovered, 60.)
-                .set_width_when(Condition::MaxWidth(480.), 40.)
-                .set_transition(Transition::new(StyleProperty::Width, 0.2))
-                .set_animation(Animation::new(
-                  1.,
-                  [
-                    (0., BoxStyle::new().set_border_radius(0.)),
-                    (100., BoxStyle::new().set_border_radius(8.)),
-                  ],
-                )),
-              empty().into_any(),
+  Theme::new(
+    Typography::default()
+      .set_ink(Color::srgb(0.8, 0.8, 0.8))
+      .set_link_ink(Color::srgb(0.4, 0.6, 1.)),
+  )
+  .set_child_builder(|| {
+    Container::new()
+      .set_color(Color::srgb(0.1, 0.2, 0.3))
+      .set_border(Border::new(2., Color::oklch(0.5, 0.1, 200.)))
+      .set_corner_radius(6.)
+      .set_min_width(Dimension::Length(200.))
+      .set_max_height(Dimension::Length(800.))
+      .set_child(
+        Column::new()
+          .set_arrangement(Arrangement::Center)
+          .set_item_alignment(ItemAlignment::Stretch)
+          .set_spacing(12.)
+          .set_padding(Inset::symmetric(16., 24.))
+          .set_children((
+            Text::new("Title & <escaped>")
+              .set_font_size(24.)
+              .set_font_weight(700.)
+              .set_color(Color::srgb(0.9, 0.9, 0.9)),
+            Text::new("linked").set_link("https://example.com/?a=1&b=2"),
+            Container::new()
+              .set_role(Role::Section)
+              .set_cursor(MouseCursor::Click)
+              .set_width(Dimension::Length(120.))
+              .set_height(Dimension::Length(40.))
+              .derive_color(|| Color::srgb(0.5, 0.5, 0.5))
+              .handle_click(|| {})
+              .set_child(Row::new().set_spacing(4.).set_child(Text::new("Press"))),
+            Grid::uniform(3).set_spacing(4.).set_children((
+              Text::new("a"),
+              Text::new("b"),
+              Text::new("c"),
             )),
-        ),
-    )
-    .set_base(TextStyle::new().set_color(Color::srgb(0.8, 0.8, 0.8)))
-    .set_link(TextStyle::new().set_font_weight(500.))
+            Stack::new().set_children((Text::new("under"), Text::new("over"))),
+            RichText::new().set_spans([
+              Span::new("plain "),
+              Span::group([Span::new("in "), Span::new("group").set_font_weight(600.)])
+                .set_color(Color::srgb(1.0, 0.5, 0.0)),
+              Span::view(
+                Container::new()
+                  .set_width(Dimension::Length(10.))
+                  .set_height(Dimension::Length(10.)),
+              ),
+              Span::new(" tail").set_link("/rel"),
+            ]),
+            // Two identically-styled boxes: their class must intern once.
+            Container::new().set_padding(Inset::all(8.)),
+            Container::new().set_padding(Inset::all(8.)),
+            // Declarative dynamics: a hover variant, a media variant, a transition, and an
+            // animation, all compiled into the interned class.
+            Container::new()
+              .set_width(
+                Dimension::Length(50.)
+                  .when(Condition::from(State::Hovered), Dimension::Length(60.))
+                  .when(
+                    Condition::from(Media::MaxWidth(480.)),
+                    Dimension::Length(40.),
+                  ),
+              )
+              .set_transition(Transition::new(StyleProperty::Width, 0.2))
+              .set_animation(Animation::new(1., [(0., rounded(0.)), (100., rounded(8.))])),
+            empty().into_any(),
+          )),
+      )
+  })
 }
 
 #[test]
@@ -113,7 +129,7 @@ fn representative_render_is_stable() {
   let rendered = render_to_string(representative_tree);
 
   assert_eq!(rendered.state(), "[[],[]]");
-  assert!(rendered.styles().starts_with("<style>"));
+  assert!(rendered.styles().starts_with("<style id=\"skene-styles\">"));
   assert!(
     rendered.styles().ends_with(SNAPSHOT_RULES),
     "interned rules changed:\n{}",
@@ -123,7 +139,8 @@ fn representative_render_is_stable() {
   assert_eq!(rendered.body(), SNAPSHOT_BODY);
 }
 
-/// The interned rule block (the styles after the reset), in interning order.
-const SNAPSHOT_RULES: &str = ".skene-724477ae60473c1c9fa4d726dc94333a{background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border-color:oklch(0.5 0.1 200 / 1);border-radius:6px;border-style:solid;border-width:2px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;max-height:800px;min-width:200px;}.skene-becc59dceaee8efaef2006f2ecea3515{align-items:stretch;column-gap:0px;display:flex;flex-direction:column;justify-content:center;padding:24px 16px 24px 16px;row-gap:12px;}.skene-95524721ac58c9490ba5f45340bfc5a7{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}.skene-df4689990dd402a0c362ffa9092704f4{display:block;font-weight:500;}.skene-0f71e67d4b6b250ab4e4f3103c9baed1{cursor:pointer;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:40px;width:120px;}.skene-02aeabf62770f71c6f84daec54b3d382{column-gap:4px;display:flex;flex-direction:row;row-gap:0px;}.skene-3c1a9074e0ae4dd23c42d406382096f9{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:block;}.skene-364525340079d54896621b7a9d017d0c{column-gap:4px;display:grid;grid-template-columns:1fr 1fr 1fr;row-gap:4px;}.skene-829dba803277982936be2a74a896eb85{display:grid;position:relative;}.skene-950d83bfa8dfd60cfb3f4c92d378392b{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);}.skene-7f5322e9eb3d27e76a3bb4928e6c79d3{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-b6e63de7c15f4051acac0bf6ecd8c660{color:oklch(0.7311429 0.18611379 52.775707 / 1);font-weight:600;}.skene-b0b70068b405f9a159e53ce3bcddb2f9{color:oklch(0.8452223 0.00000006664002 116.56505 / 1);display:inline-block;}.skene-a4a1c8bdbfb03d27a40dacf906ed7d1e{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:10px;width:10px;}.skene-a31a8224191a5af8bde3d56b00abaafe{font-weight:500;}.skene-79e24d102c727cb6f45ff3040941cc05{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;padding:8px 8px 8px 8px;}@keyframes skene-k-c792549e{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-a0712251029b125aef07c5b101ec3ae2{animation:skene-k-c792549e 1s ease 0s 1 normal both;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;transition:width 0.2s ease 0s;width:50px;}.skene-a0712251029b125aef07c5b101ec3ae2:hover{width:60px;}@media (max-width: 480px){.skene-a0712251029b125aef07c5b101ec3ae2{width:40px;}}</style>";
+/// The interned rule block (the styles after the reset and the slot registrations), in
+/// interning order.
+const SNAPSHOT_RULES: &str = ".skene-fb86615449d01df0a87c47664d8e6ab6{--typography-ink:oklch(0.8452223 0.00000006664002 116.56505 / 1);--typography-link-ink:oklch(0.6940848 0.16008389 262.85895 / 1);--typography-selection-ink:oklch(1 0.000000059604645 90 / 1);--typography-selection-surface:oklch(0.598701 0.19566481 261.77707 / 1);--typography-size:16;--typography-weight:400;--typography-line-height:1.5;--typography-letter-spacing:0;}@media (prefers-color-scheme: dark){:where(:root:not([data-skene-scheme=\"light\"])) .skene-fb86615449d01df0a87c47664d8e6ab6{--typography-selection-ink:oklch(0.17225757 0.0105220685 285.24274 / 1);--typography-selection-surface:oklch(0.7083985 0.14304367 263.9679 / 1);}}:where(:root[data-skene-scheme=\"dark\"]) .skene-fb86615449d01df0a87c47664d8e6ab6{--typography-selection-ink:oklch(0.17225757 0.0105220685 285.24274 / 1);--typography-selection-surface:oklch(0.7083985 0.14304367 263.9679 / 1);}.skene-d4c4032694527bb8dec2dbbd5bbfda45{background-color:oklch(0.3138341 0.055889927 250.02753 / 1);border:2px solid oklch(0.5 0.1 200 / 1);border-radius:6px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;max-height:800px;min-width:200px;}.skene-184a4ee79eeced6666de2eab3621a15f{align-items:stretch;display:flex;flex-direction:column;gap:12px 12px;justify-content:center;padding:24px 16px 24px 16px;}.skene-3ad621eb69e816fbe9ecf89dd7ea72b6{color:oklch(0.9234231 0.000000059604645 0 / 1);display:block;font-size:24px;font-weight:700;}.skene-3ad621eb69e816fbe9ecf89dd7ea72b6::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-3d4161193dce5f9f4d7c8e3c735fdb60{color:var(--typography-link-ink);display:block;}.skene-3d4161193dce5f9f4d7c8e3c735fdb60::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-661b20a203dce58168202ad302aebd34{background-color:var(--skene-color);cursor:pointer;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:40px;width:120px;}.skene-728b07255fd8e205c74ba2eb010a1c9b{display:flex;flex-direction:row;gap:4px 4px;}.skene-192caaf1c24a93affaf93c345a5626c1{color:var(--typography-ink);display:block;}.skene-192caaf1c24a93affaf93c345a5626c1::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-e7d93f2e888f043c41a3f2a699c4dccd{display:grid;gap:4px 4px;grid-template-columns:1fr 1fr 1fr;}.skene-10d7c809f0d866668b624a0959d212b2{display:grid;position:relative;}.skene-10d7c809f0d866668b624a0959d212b2>*{grid-area:1 / 1;}.skene-2dec8200e24e87fd393c28f671610b88{display:flow-root;}.skene-72f98cf449c8cc2023ddb52c7dfde077{color:var(--typography-ink);}.skene-72f98cf449c8cc2023ddb52c7dfde077::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-e4a56d0e246b4ffe18b44544750a6402{color:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-e4a56d0e246b4ffe18b44544750a6402::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-2bf900ccb708a24e72d55e0ad3841e4c{--typography-ink:oklch(0.7311429 0.18611379 52.775707 / 1);}.skene-a15bcf57cecc68e85e61d45ca25484e8{color:var(--typography-ink);font-weight:600;}.skene-a15bcf57cecc68e85e61d45ca25484e8::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-15d26de5dfb9838e9b513afe0c61995f{color:var(--typography-ink);display:inline-block;}.skene-15d26de5dfb9838e9b513afe0c61995f::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-a4a1c8bdbfb03d27a40dacf906ed7d1e{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;height:10px;width:10px;}.skene-0704dd5a371a783c71c17e46d8213a7e{color:var(--typography-link-ink);}.skene-0704dd5a371a783c71c17e46d8213a7e::selection{background-color:var(--typography-selection-surface);color:var(--typography-selection-ink);}.skene-79e24d102c727cb6f45ff3040941cc05{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;padding:8px 8px 8px 8px;}@keyframes skene-k-a5c6344e07d25374b76d16a97cd1a03c{0%{border-radius:0px;}100%{border-radius:8px;}}.skene-2114b4b6a3911d42f6e70bd522e9c844{animation:skene-k-a5c6344e07d25374b76d16a97cd1a03c 1s ease 0s 1 normal both;display:grid;grid-template-columns:1fr;grid-template-rows:1fr;transition:width 0.2s ease 0s;width:50px;}.skene-2114b4b6a3911d42f6e70bd522e9c844:hover{width:60px;}@media (max-width: 480px){.skene-2114b4b6a3911d42f6e70bd522e9c844{width:40px;}}</style>";
 
-const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-724477ae60473c1c9fa4d726dc94333a\"><div data-h=\"2\" class=\"skene-becc59dceaee8efaef2006f2ecea3515\"><span data-h=\"3\" class=\"skene-95524721ac58c9490ba5f45340bfc5a7\">Title &amp; &lt;escaped&gt;</span><a data-h=\"4\" href=\"https://example.com/?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"skene-df4689990dd402a0c362ffa9092704f4\">linked</a><section data-h=\"5\" class=\"skene-0f71e67d4b6b250ab4e4f3103c9baed1\" style=\"background-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><div data-h=\"6\" class=\"skene-02aeabf62770f71c6f84daec54b3d382\"><span data-h=\"7\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\">Press</span></div></section><div data-h=\"8\" class=\"skene-364525340079d54896621b7a9d017d0c\"><span data-h=\"9\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\">a</span><span data-h=\"10\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\">b</span><span data-h=\"11\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\">c</span></div><div data-h=\"12\" class=\"skene-829dba803277982936be2a74a896eb85\"><span data-h=\"13\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\" style=\"grid-area:1 / 1;\">under</span><span data-h=\"14\" class=\"skene-3c1a9074e0ae4dd23c42d406382096f9\" style=\"grid-area:1 / 1;\">over</span></div><div data-h=\"15\"><span data-h=\"16\" class=\"skene-950d83bfa8dfd60cfb3f4c92d378392b\">plain </span><span data-h=\"17\" class=\"skene-7f5322e9eb3d27e76a3bb4928e6c79d3\"><span data-h=\"18\" class=\"skene-7f5322e9eb3d27e76a3bb4928e6c79d3\">in </span><span data-h=\"19\" class=\"skene-b6e63de7c15f4051acac0bf6ecd8c660\">group</span></span><span data-h=\"20\" class=\"skene-b0b70068b405f9a159e53ce3bcddb2f9\"><div data-h=\"21\" class=\"skene-a4a1c8bdbfb03d27a40dacf906ed7d1e\"></div></span><a data-h=\"22\" href=\"/rel\" class=\"skene-a31a8224191a5af8bde3d56b00abaafe\"> tail</a></div><div data-h=\"23\" class=\"skene-79e24d102c727cb6f45ff3040941cc05\"></div><div data-h=\"24\" class=\"skene-79e24d102c727cb6f45ff3040941cc05\"></div><div data-h=\"25\" class=\"skene-a0712251029b125aef07c5b101ec3ae2\"></div><div data-h=\"26\"></div></div></div>";
+const SNAPSHOT_BODY: &str = "<div data-h=\"1\" class=\"skene-fb86615449d01df0a87c47664d8e6ab6\" style=\"display:contents;\"><div data-h=\"2\" class=\"skene-d4c4032694527bb8dec2dbbd5bbfda45\"><!--s:0--><div data-h=\"3\" class=\"skene-184a4ee79eeced6666de2eab3621a15f\"><!--s:1--><span data-h=\"4\" class=\"skene-3ad621eb69e816fbe9ecf89dd7ea72b6\">Title &amp; &lt;escaped&gt;</span><a data-h=\"5\" href=\"https://example.com/?a=1&amp;b=2\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"skene-3d4161193dce5f9f4d7c8e3c735fdb60\">linked</a><section data-h=\"6\" class=\"skene-661b20a203dce58168202ad302aebd34\" style=\"--skene-color:oklch(0.5981807 0.00000011920929 0 / 1);\"><!--s:2--><div data-h=\"7\" class=\"skene-728b07255fd8e205c74ba2eb010a1c9b\"><!--s:3--><span data-h=\"8\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">Press</span><!--e:3--></div><!--e:2--></section><div data-h=\"9\" class=\"skene-e7d93f2e888f043c41a3f2a699c4dccd\"><!--s:4--><span data-h=\"10\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">a</span><span data-h=\"11\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">b</span><span data-h=\"12\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">c</span><!--e:4--></div><div data-h=\"13\" class=\"skene-10d7c809f0d866668b624a0959d212b2\"><!--s:5--><span data-h=\"14\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">under</span><span data-h=\"15\" class=\"skene-192caaf1c24a93affaf93c345a5626c1\">over</span><!--e:5--></div><div data-h=\"16\" class=\"skene-2dec8200e24e87fd393c28f671610b88\"><span data-h=\"17\" class=\"skene-72f98cf449c8cc2023ddb52c7dfde077\">plain </span><span data-h=\"18\" class=\"skene-e4a56d0e246b4ffe18b44544750a6402 skene-2bf900ccb708a24e72d55e0ad3841e4c\"><span data-h=\"19\" class=\"skene-72f98cf449c8cc2023ddb52c7dfde077\">in </span><span data-h=\"20\" class=\"skene-a15bcf57cecc68e85e61d45ca25484e8\">group</span></span><span data-h=\"21\" class=\"skene-15d26de5dfb9838e9b513afe0c61995f\"><div data-h=\"22\" class=\"skene-a4a1c8bdbfb03d27a40dacf906ed7d1e\"></div></span><a data-h=\"23\" href=\"/rel\" class=\"skene-0704dd5a371a783c71c17e46d8213a7e\"> tail</a></div><div data-h=\"24\" class=\"skene-79e24d102c727cb6f45ff3040941cc05\"></div><div data-h=\"25\" class=\"skene-79e24d102c727cb6f45ff3040941cc05\"></div><div data-h=\"26\" class=\"skene-2114b4b6a3911d42f6e70bd522e9c844\"></div><!--s:6--><!--e:6--><!--e:1--></div><!--e:0--></div></div>";

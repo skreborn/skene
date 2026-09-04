@@ -3,9 +3,6 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
 use skene_gui::{LazyColumn, Text, render_to_string};
 
 /// A server render carries the scroll box, the overscan slice, and a trailing spacer
@@ -13,7 +10,14 @@ use skene_gui::{LazyColumn, Text, render_to_string};
 #[test]
 fn virtual_list_serializes_the_overscan_slice() {
   let rendered = render_to_string(|| {
-    LazyColumn::new(24.0, || 1000, |index| Text::new(format!("row {index}"))).set_overscan(3)
+    LazyColumn::new()
+      .set_item_height(24.)
+      .set_overscan(3)
+      .derive_items(
+        || 0..1000,
+        |index| *index,
+        |index| Text::new(format!("row {index}")),
+      )
   });
 
   let body = rendered.body();
@@ -26,6 +30,6 @@ fn virtual_list_serializes_the_overscan_slice() {
   assert!(rendered.styles().contains("overflow:auto;"));
   assert!(rendered.styles().contains("height:24px;"));
 
-  // The derived spacer heights serialize inline: 997 unbuilt items x 24px.
-  assert!(body.contains("height:23928px;"));
+  // The derived spacer heights serialize into their slots: 997 unbuilt items x 24px.
+  assert!(body.contains("--skene-height:23928px;"), "{body}");
 }

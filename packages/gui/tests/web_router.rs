@@ -3,17 +3,14 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  DerivedView,
   Text,
   View,
+  derived,
   install_router,
   install_static_router,
   render_to_string_at,
   router::{Route, Router, StaticRoutes},
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
 
 #[derive(Clone, PartialEq)]
 enum Page {
@@ -47,9 +44,9 @@ impl StaticRoutes for Page {
 fn app() -> impl skene_gui::IntoView {
   let router = install_router(Page::Home);
 
-  DerivedView::new(move || match router.route() {
-    Page::Home => Text::new("home page").into_any(),
-    Page::About => Text::new("about page").into_any(),
+  derived(move || match router.route() {
+    Page::Home => Text::new("home page").build(),
+    Page::About => Text::new("about page").build(),
   })
 }
 
@@ -76,10 +73,10 @@ fn router_flows_through_context() {
   let rendered = render_to_string_at("/about", || {
     let _ = install_router(Page::Home);
 
-    DerivedView::new(|| {
+    derived(|| {
       let router = Router::<Page>::get().expect("a provided router");
 
-      Text::new(router.route().to_path()).into_any()
+      Text::new(router.route().to_path()).build()
     })
   });
 
@@ -93,9 +90,9 @@ fn static_router_records_its_routes() {
   let _ = render_to_string_at("/", || {
     let router = install_static_router(Page::Home);
 
-    DerivedView::new(move || match router.route() {
-      Page::Home => Text::new("home page").into_any(),
-      Page::About => Text::new("about page").into_any(),
+    derived(move || match router.route() {
+      Page::Home => Text::new("home page").build(),
+      Page::About => Text::new("about page").build(),
     })
   });
 

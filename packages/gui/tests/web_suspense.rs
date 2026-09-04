@@ -3,24 +3,22 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
-use skene_gui::{DerivedView, Resource, Suspense, Text, View, render_to_string};
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
+use skene_gui::{ErrorBoundary, Errors, Resource, Suspense, Text, View, derived, render_to_string};
 
 /// The server drives the resource to its value and serializes the settled content.
 #[test]
 fn suspense_serializes_settled_content() {
   let rendered = render_to_string(|| {
-    Suspense::new(|| {
-      let value = Resource::new(|| async { 7u32 });
+    Suspense::new()
+      .set_fallback(Text::new("FALLBACK"))
+      .set_child_builder(|| {
+        let value = Resource::new(|| async { 7u32 });
 
-      DerivedView::new(move || match value.get() {
-        None => Text::new("hold").into_any(),
-        Some(value) => Text::new(format!("ready {value}")).into_any(),
+        derived(move || match value.get() {
+          None => Text::new("hold").build(),
+          Some(value) => Text::new(format!("ready {value}")).build(),
+        })
       })
-    })
-    .set_fallback(|| Text::new("FALLBACK"))
   });
 
   let body = rendered.body();
@@ -35,15 +33,16 @@ fn suspense_serializes_settled_content() {
 #[test]
 fn suspense_settles_through_the_stream() {
   let stream = skene_gui::render_to_stream(|| {
-    Suspense::new(|| {
-      let value = Resource::new(|| async { 3u32 });
+    Suspense::new()
+      .set_fallback(Text::new("FALLBACK"))
+      .set_child_builder(|| {
+        let value = Resource::new(|| async { 3u32 });
 
-      DerivedView::new(move || match value.get() {
-        None => Text::new("hold").into_any(),
-        Some(value) => Text::new(format!("streamed {value}")).into_any(),
+        derived(move || match value.get() {
+          None => Text::new("hold").build(),
+          Some(value) => Text::new(format!("streamed {value}")).build(),
+        })
       })
-    })
-    .set_fallback(|| Text::new("FALLBACK"))
   });
 
   let body: String = stream.into_chunks().concat();
@@ -52,12 +51,57 @@ fn suspense_settles_through_the_stream() {
   assert!(!body.contains("FALLBACK"));
 }
 
+/// A suspense inside a `Deferred` boundary holds that boundary's chunk, not the shell:
+/// the shell flushes first and the chunk carries the settled content.
+#[test]
+fn suspense_inside_a_deferred_boundary_settles_its_chunk() {
+  use std::time::Duration;
+
+  use skene_gui::{Deferred, HasChildren, Row, web};
+
+  let stream = skene_gui::render_to_stream(|| {
+    Row::new().set_children([
+      Text::new("shell").into_any(),
+      Deferred::new(|| {
+        Suspense::new()
+          .set_fallback(Text::new("FALLBACK"))
+          .set_child_builder(|| {
+            let value = Resource::new(|| async {
+              web::sleep(Duration::from_millis(5)).await;
+
+              5u32
+            });
+
+            derived(move || match value.get() {
+              None => Text::new("hold").build(),
+              Some(value) => Text::new(format!("deferred {value}")).build(),
+            })
+          })
+      })
+      .into_any(),
+    ])
+  });
+
+  assert!(stream.chunks().len() >= 2, "{:?}", stream.chunks());
+  assert!(stream.chunks()[0].contains(">shell</span>"));
+  assert!(!stream.chunks()[0].contains("deferred 5"));
+
+  let body = stream.document();
+
+  assert!(body.contains("deferred 5"));
+  assert!(!body.contains("FALLBACK"));
+  assert!(!body.contains(">hold<"));
+}
+
 /// An error boundary with nothing reported serializes its content alone.
 #[test]
 fn error_boundary_passes_content_through() {
   let rendered = render_to_string(|| {
-    skene_gui::ErrorBoundary::new(|| Text::new("CONTENT"))
-      .set_fallback(|errors| Text::new(errors.with(|errors| format!("failed: {}", errors[0]))))
+    ErrorBoundary::new()
+      .set_fallback_builder(|errors| {
+        Text::new(errors.with(|errors| format!("failed: {}", errors[0])))
+      })
+      .set_child_builder(|| Text::new("CONTENT"))
   });
 
   let body = rendered.body();
@@ -70,39 +114,21 @@ fn error_boundary_passes_content_through() {
 #[test]
 fn error_boundary_serializes_reported_fallback() {
   let rendered = render_to_string(|| {
-    skene_gui::ErrorBoundary::new(|| {
-      let errors = skene_gui::Errors::current().expect("a boundary handle");
+    ErrorBoundary::new()
+      .set_fallback_builder(|errors| {
+        Text::new(errors.with(|errors| format!("failed: {}", errors[0])))
+      })
+      .set_child_builder(|| {
+        let errors = Errors::current().expect("a boundary handle");
 
-      errors.report(std::io::Error::other("broken"));
+        errors.report(std::io::Error::other("broken"));
 
-      Text::new("CONTENT")
-    })
-    .set_fallback(|errors| Text::new(errors.with(|errors| format!("failed: {}", errors[0]))))
+        Text::new("CONTENT")
+      })
   });
 
   let body = rendered.body();
 
   assert!(body.contains("failed: broken"));
   assert!(!body.contains("CONTENT"));
-}
-
-/// A transitional rebuild counts toward the enclosing boundary, so a stream settles
-/// through it to the resolved content.
-#[test]
-fn transition_settles_through_the_stream() {
-  let stream = skene_gui::render_to_stream(|| {
-    skene_gui::DerivedView::transitional(|| {
-      let value = Resource::new(|| async { 9u32 });
-
-      DerivedView::new(move || match value.get() {
-        None => Text::new("hold").into_any(),
-        Some(value) => Text::new(format!("landed {value}")).into_any(),
-      })
-    })
-  });
-
-  let body: String = stream.into_chunks().concat();
-
-  assert!(body.contains("landed 9"));
-  assert!(!body.contains(">hold<"));
 }

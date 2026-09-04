@@ -3,15 +3,20 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
-  HasChildren,
+  Inset,
   Overlay,
   Text,
-  core::{BoxStyle, Color, Placement},
+  core::{Color, Placement},
   render_to_string,
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
+
+/// The class of the first classed element in `body`.
+fn first_class(body: &str) -> &str {
+  let start = body.find("class=\"").expect("a class") + 7;
+  let end = body[start..].find('"').expect("a closing quote") + start;
+
+  &body[start..end]
+}
 
 /// A modal serializes as a closed dialog carrying its placement margins and its
 /// backdrop rule.
@@ -19,8 +24,8 @@ use skene_gui::{HasDecoration, HasFocus};
 fn modal_serializes_as_a_closed_dialog() {
   let rendered = render_to_string(|| {
     Overlay::modal()
-      .set_backdrop(Color::srgb(0., 0., 0.))
-      .set_style(BoxStyle::new().set_padding(skene_gui::Inset::all(16.)))
+      .set_backdrop(Some(Color::srgb(0., 0., 0.)))
+      .set_padding(Inset::all(16.))
       .set_child(Text::new("dialog content"))
   });
 
@@ -31,14 +36,17 @@ fn modal_serializes_as_a_closed_dialog() {
   assert!(body.contains("dialog content"));
   assert!(body.ends_with("</dialog>"));
 
-  let start = body.find("class=\"").expect("a class") + 7;
-  let end = body[start..].find('"').expect("a closing quote") + start;
-  let class = &body[start..end];
+  let class = first_class(body);
 
-  assert!(rendered.styles().contains(&format!(
-    ".{class}{{border:none;padding:0;background:none;color:inherit;overflow:visible;\
-     margin:auto;padding:16px 16px 16px 16px;}}"
-  )));
+  assert!(
+    rendered.styles().contains(&format!(
+      ".{class}{{background:none;border:none;color:inherit;display:grid;\
+       grid-template-columns:1fr;grid-template-rows:1fr;margin:auto;overflow:visible;\
+       padding:16px 16px 16px 16px;}}"
+    )),
+    "{}",
+    rendered.styles()
+  );
 
   assert!(
     rendered

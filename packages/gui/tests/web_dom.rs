@@ -1,11 +1,11 @@
 //! Real-DOM integration tests for the web realization of the built-in views.
 //!
-//! Each test installs the web platform rooted at a detached `<div>`, builds a view under
-//! it, and asserts against the actual DOM the browser produced. The guard uninstalls and
-//! resets the reactive runtime when it drops, isolating each test.
+//! Each test installs the web driver rooted at a connected `<div>`, builds a view under
+//! it, and asserts against the actual DOM the browser produced. The guard uninstalls
+//! the driver and removes the root when it drops, isolating each test.
 //!
 //! Run in a headless browser:
-//! `cargo test -p skene-gui --target wasm32-unknown-unknown`.
+//! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_dom`.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use std::{
@@ -13,9 +13,6 @@ use std::{
   rc::Rc,
 };
 
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::HasFocus;
 use skene_gui::{
   AnyView,
   Border,
@@ -23,31 +20,35 @@ use skene_gui::{
   Column,
   Container,
   Deferred,
-  DerivedView,
   FocusHandle,
   Grid,
   HasChildren,
   Inset,
-  PointerButton,
+  RadioMember,
+  RawCheckbox,
+  RawRadio,
+  RawRadioGroup,
   RawTextField,
   Role,
+  Roving,
   Row,
   Stack,
   Text,
-  TextStyle,
-  TextTheme,
+  TextEntry,
+  Theme,
+  Toggle,
+  Typography,
   View,
-  WebCheckbox,
+  core::PointerButton,
   derived,
   empty,
   head,
-  reactive::{Get, Runtime, Set, Signal},
-  reconcile,
+  reactive::{Get, Set, Signal},
   wasm_bindgen::JsCast,
-  web::{self, mount},
+  web::next::{self as web, mount},
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element, HtmlElement};
+use web_sys::{Document, Element, HtmlElement, HtmlInputElement};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -58,24 +59,30 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the web platform when it drops, isolating each test.
-struct Installed;
+/// Uninstalls the driver and removes the root when it drops, isolating each test.
+struct Installed(Element);
 
 impl Drop for Installed {
   fn drop(&mut self) {
     web::uninstall();
+    self.0.remove();
   }
 }
 
-/// Installs the web platform rooted at a new detached `<div>`, returning the guard (drop it
-/// to reset) and that root. Build a view under it with [`web::mount`], then read the root's
-/// subtree.
+/// Installs the driver rooted at a fresh connected `<div>`, returning the guard (drop
+/// it to reset) and that root. Build a view under it with [`mount`], then read the
+/// root's subtree; computed styles resolve because the root is connected.
 fn fresh_root() -> (Installed, Element) {
   let root = document().create_element("div").expect("create root div");
 
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect root");
   web::install(root.clone());
 
-  (Installed, root)
+  (Installed(root.clone()), root)
 }
 
 /// The single view element built directly under the root.
@@ -83,30 +90,41 @@ fn only_child(root: &Element) -> Element {
   root.first_element_child().expect("root has a built child")
 }
 
-/// Connects `root` to the document, reads a computed style `property` off its only child,
-/// then disconnects. Computed styles resolve only for a connected element.
-fn computed_style(root: &Element, property: &str) -> String {
-  document()
-    .body()
-    .expect("a body")
-    .append_child(root)
-    .expect("connect root");
-
-  let element = only_child(root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
-
-  let value = web_sys::window()
-    .unwrap()
-    .get_computed_style(&element)
-    .unwrap()
+/// A computed style `property` of `element`.
+fn computed(element: &Element, property: &str) -> String {
+  web_sys::window()
+    .expect("a window")
+    .get_computed_style(element)
     .expect("computed style")
+    .expect("a computed style")
     .get_property_value(property)
-    .unwrap();
+    .expect("a property value")
+}
 
-  root.remove();
+/// The computed color a `<div>` under `parent` gets from `color: <value>`, so colors
+/// compare as the engine serializes them.
+fn probe(parent: &Element, value: &str) -> String {
+  let element = document().create_element("div").expect("a probe");
 
-  value
+  let _ = element.set_attribute("style", &format!("color:{value}"));
+  let _ = parent.append_child(&element);
+
+  let color = computed(&element, "color");
+
+  element.remove();
+
+  color
+}
+
+/// A color as the driver renders it.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
+fn html(element: &Element) -> HtmlElement {
+  element.clone().dyn_into().expect("an HTML element")
 }
 
 /// The text content of each of `parent`'s element children, in order.
@@ -118,25 +136,40 @@ fn child_texts(parent: &Element) -> Vec<String> {
     .collect()
 }
 
+/// Dispatches a bubbling `name` event on `target`.
+fn dispatch(target: &Element, name: &str) {
+  let init = web_sys::EventInit::new();
+
+  init.set_bubbles(true);
+
+  let event = web_sys::Event::new_with_event_init_dict(name, &init).expect("an event");
+  let _ = target.dispatch_event(&event);
+}
+
+/// A `Deferred` is a streaming boundary only on the server; on the client it builds
+/// its content directly, between anchors of its own.
 #[wasm_bindgen_test]
 fn deferred_builds_its_content_on_the_client() {
   let (_guard, root) = fresh_root();
 
-  // A `Deferred` is a streaming boundary only on the server; on the client it builds its
-  // content directly, under a grouping `<div>`.
-  mount(|| Deferred::new(|| Text::new("content")).build());
+  let _ = mount(|| Deferred::new(|| Text::new("content")).build());
 
-  let group = only_child(&root);
+  let content = only_child(&root);
 
-  assert_eq!(group.tag_name(), "DIV");
-  assert_eq!(child_texts(&group), vec!["content".to_owned()]);
+  assert_eq!(content.tag_name(), "SPAN");
+  assert_eq!(content.text_content().as_deref(), Some("content"));
+  assert_eq!(
+    root.child_nodes().length(),
+    3,
+    "the content between its two anchors"
+  );
 }
 
 #[wasm_bindgen_test]
 fn container_is_a_div() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::new().build());
+  let _ = mount(|| Container::new().build());
 
   assert_eq!(only_child(&root).tag_name(), "DIV");
 }
@@ -145,7 +178,7 @@ fn container_is_a_div() {
 fn role_realizes_its_semantic_element() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::new().set_role(Role::Navigation).build());
+  let _ = mount(|| Container::new().set_role(Role::Navigation).build());
 
   assert_eq!(only_child(&root).tag_name(), "NAV");
 }
@@ -154,7 +187,7 @@ fn role_realizes_its_semantic_element() {
 fn text_is_a_span_with_its_content() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Text::new("hello").build());
+  let _ = mount(|| Text::new("hello").build());
 
   let element = only_child(&root);
 
@@ -166,7 +199,7 @@ fn text_is_a_span_with_its_content() {
 fn linked_text_is_an_anchor_element() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Text::new("go").set_link("https://example.com/").build());
+  let _ = mount(|| Text::new("go").set_link("https://example.com/").build());
 
   let element = only_child(&root);
 
@@ -181,32 +214,22 @@ fn linked_text_is_an_anchor_element() {
 fn children_mount_in_order() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     Row::new()
       .set_children((Text::new("a"), Text::new("b"), Text::new("c")))
       .build()
   });
 
   let container = only_child(&root);
-  let children = container.children();
 
-  assert_eq!(children.length(), 3);
-  assert_eq!(
-    children.item(0).and_then(|c| c.text_content()).as_deref(),
-    Some("a"),
-  );
-
-  assert_eq!(
-    children.item(2).and_then(|c| c.text_content()).as_deref(),
-    Some("c"),
-  );
+  assert_eq!(child_texts(&container), ["a", "b", "c"]);
 }
 
 #[wasm_bindgen_test]
 fn styling_interns_a_generated_class() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     Container::new()
       .set_color(Color::srgb(1.0, 0.0, 0.0))
       .build()
@@ -228,50 +251,41 @@ fn styling_interns_a_generated_class() {
 fn interned_class_actually_applies_its_style() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     Container::new()
       .set_padding(Inset::all(10.0))
       .set_border(Border::new(2.0, Color::srgb(0.0, 0.0, 0.0)))
       .build()
   });
 
-  // Computed style resolves only for a connected element; the sheet lives in `<head>`.
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect root");
+  let element = only_child(&root);
 
-  let element = only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
-
-  let style = web_sys::window()
-    .unwrap()
-    .get_computed_style(&element)
-    .unwrap()
-    .expect("computed style");
-
-  assert_eq!(style.get_property_value("padding-top").unwrap(), "10px");
-  assert_eq!(style.get_property_value("border-top-width").unwrap(), "2px");
-
-  root.remove();
+  assert_eq!(computed(&element, "padding-top"), "10px");
+  assert_eq!(computed(&element, "border-top-width"), "2px");
 }
 
+/// A stack's children share its one grid cell, so they overlap.
 #[wasm_bindgen_test]
 fn stack_children_share_one_grid_cell() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Stack::new().set_child(Text::new("only")).build());
+  let _ = mount(|| {
+    Stack::new()
+      .set_children((Text::new("under"), Text::new("over")))
+      .build()
+  });
 
-  let child = only_child(&only_child(&root))
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let stack = only_child(&root);
+  let children = stack.children();
 
-  assert_eq!(
-    child.style().get_property_value("grid-area").unwrap(),
-    "1 / 1"
-  );
+  assert_eq!(children.length(), 2);
+
+  for index in 0..2 {
+    let child = children.item(index).expect("a child");
+
+    assert_eq!(computed(&child, "grid-row-start"), "1");
+    assert_eq!(computed(&child, "grid-column-start"), "1");
+  }
 }
 
 #[wasm_bindgen_test]
@@ -279,7 +293,7 @@ fn click_handler_runs_on_a_real_click() {
   let (_guard, root) = fresh_root();
   let clicks = Rc::new(Cell::new(0u32));
 
-  mount({
+  let _ = mount({
     let clicks = Rc::clone(&clicks);
 
     move || {
@@ -289,9 +303,7 @@ fn click_handler_runs_on_a_real_click() {
     }
   });
 
-  let button = only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let button = html(&only_child(&root));
 
   button.click();
   button.click();
@@ -305,7 +317,7 @@ fn pointer_down_handler_receives_the_event() {
   let (_guard, root) = fresh_root();
   let seen = Rc::new(Cell::new(None));
 
-  mount({
+  let _ = mount({
     let seen = Rc::clone(&seen);
 
     move || {
@@ -331,45 +343,45 @@ fn pointer_down_handler_receives_the_event() {
   assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
 }
 
-/// A change handler receives the value, in real time, when an input event fires.
+/// A change handler receives the value, in real time, when an input event fires on
+/// the text field's native input.
 #[wasm_bindgen_test]
 fn change_handler_receives_the_committed_value() {
   let (_guard, root) = fresh_root();
   let seen = Rc::new(RefCell::new(String::new()));
 
-  mount({
+  let _ = mount({
     let seen = Rc::clone(&seen);
 
     move || {
-      RawTextField::new()
-        .set_value("committed")
-        .handle_change(move |value| value.clone_into(&mut seen.borrow_mut()))
-        .build()
+      RawTextField::new(
+        TextEntry::new()
+          .set_value("committed")
+          .handle_change(move |value| value.clone_into(&mut seen.borrow_mut())),
+      )
+      .build()
     }
   });
 
-  let target = only_child(&root);
-  let init = web_sys::EventInit::new();
+  let input = only_child(&only_child(&root));
 
-  init.set_bubbles(true);
-
-  let event = web_sys::Event::new_with_event_init_dict("input", &init).expect("an event");
-  let _ = target.dispatch_event(&event);
+  assert_eq!(input.tag_name(), "INPUT");
+  dispatch(&input, "input");
 
   assert_eq!(&*seen.borrow(), "committed");
 }
 
-/// A checkbox bound to a signal reflects it and writes toggles back through a real
-/// input event.
+/// A checkbox bound to a signal reflects it on its native input and writes toggles
+/// back through a real change event.
 #[wasm_bindgen_test]
 fn checkbox_binding_round_trips() {
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  mount(move || WebCheckbox::new().bind_checked(checked).build());
+  let _ = mount(move || RawCheckbox::new(Toggle::new().bind_checked(checked)).build());
 
-  let target = only_child(&root)
-    .dyn_into::<web_sys::HtmlInputElement>()
+  let target: HtmlInputElement = only_child(&only_child(&root))
+    .dyn_into()
     .expect("an input element");
 
   assert_eq!(target.get_attribute("type").as_deref(), Some("checkbox"));
@@ -380,13 +392,7 @@ fn checkbox_binding_round_trips() {
   assert!(target.checked());
 
   target.set_checked(false);
-
-  let init = web_sys::EventInit::new();
-
-  init.set_bubbles(true);
-
-  let event = web_sys::Event::new_with_event_init_dict("input", &init).expect("an event");
-  let _ = target.dispatch_event(&event);
+  dispatch(&target, "change");
 
   assert!(!checked.get());
 }
@@ -418,57 +424,48 @@ fn head_registrations_apply_once() {
   assert_eq!(matches, 1);
 }
 
-/// A focus handle moves real keyboard focus to its bound view.
+/// A focus handle moves real keyboard focus to the native input of its bound control.
 #[wasm_bindgen_test]
 fn focus_handle_focuses_the_bound_view() {
   let (_guard, root) = fresh_root();
   let handle = FocusHandle::new();
 
-  // A detached root cannot take focus; attach it to the live document for this test.
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("attach the test root");
-
-  mount({
+  let _ = mount({
     let handle = handle.clone();
 
-    move || RawTextField::new().bind_focus(&handle).build()
+    move || {
+      RawTextField::new(TextEntry::new())
+        .bind_focus(&handle)
+        .build()
+    }
   });
 
   handle.focus();
 
-  let target = only_child(&root);
+  let input = only_child(&only_child(&root));
 
-  assert_eq!(document().active_element(), Some(target));
+  assert_eq!(document().active_element(), Some(input.clone()));
 
   handle.blur();
 
-  assert_ne!(document().active_element(), Some(only_child(&root)));
-
-  root.remove();
+  assert_ne!(document().active_element(), Some(input));
 }
 
-/// A handler may re-enter the platform—the click path clones handlers out before running
-/// them so building or destroying nodes from inside one does not deadlock the state borrow.
+/// A handler may re-enter the driver—building nodes from inside one does not deadlock
+/// the scene or the DOM state.
 #[wasm_bindgen_test]
 fn a_click_handler_may_build_nodes() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     Container::new()
       .handle_click(|| {
-        // Re-enter the platform from inside a handler.
-        let _ = web::create_element("div");
+        let _ = Container::new().build();
       })
       .build()
   });
 
-  only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element")
-    .click();
+  html(&only_child(&root)).click();
 }
 
 #[wasm_bindgen_test]
@@ -476,122 +473,101 @@ fn derived_text_updates_the_dom_on_change() {
   let (_guard, root) = fresh_root();
   let count = Signal::new(0);
 
-  mount(move || Text::derive(move || count.get().to_string()).build());
+  let _ = mount(move || Text::derive(move || count.get().to_string()).build());
 
   let element = only_child(&root);
 
   assert_eq!(element.text_content().as_deref(), Some("0"));
 
   count.set(5);
-  Runtime::drain_pending_work();
 
   assert_eq!(element.text_content().as_deref(), Some("5"));
 }
 
+/// A derived property writes its slot on change, and the class reading the slot
+/// applies it.
 #[wasm_bindgen_test]
-fn derived_style_overrides_inline_on_change() {
+fn derived_style_updates_its_slot_on_change() {
   let (_guard, root) = fresh_root();
   let size = Signal::new(12.0f32);
 
-  mount(move || Text::new("t").derive_font_size(move || size.get()).build());
+  let _ = mount(move || Text::new("t").derive_font_size(move || size.get()).build());
 
-  let element = only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let element = only_child(&root);
 
-  assert_eq!(
-    element.style().get_property_value("font-size").unwrap(),
-    "12px"
-  );
+  assert_eq!(computed(&element, "font-size"), "12px");
 
   size.set(20.0);
-  Runtime::drain_pending_work();
 
-  assert_eq!(
-    element.style().get_property_value("font-size").unwrap(),
-    "20px"
-  );
+  assert_eq!(computed(&element, "font-size"), "20px");
 }
 
+/// The typography's link ink reaches a link and follows the palette as it changes.
 #[wasm_bindgen_test]
-fn theme_link_style_inherits_and_updates_on_a_link() {
+fn typography_link_ink_reaches_a_link_and_updates() {
   let (_guard, root) = fresh_root();
-  let weight = Signal::new(400.0f32);
+  let link_ink = Signal::new(Color::srgb(1., 0., 0.));
 
-  mount(move || {
-    TextTheme::new()
-      .set_child(Text::new("go").set_link("https://example.com/"))
-      .set_link(TextStyle::new().derive_font_weight(move || weight.get()))
+  let _ = mount(move || {
+    Theme::derive(move || Typography::default().set_link_ink(link_ink.get()))
+      .set_child_builder(|| Text::new("go").set_link("https://example.com/"))
       .build()
   });
 
-  let link = only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let scope = only_child(&root);
+  let link = only_child(&scope);
 
   assert_eq!(link.tag_name(), "A");
   assert_eq!(
-    link.style().get_property_value("font-weight").unwrap(),
-    "400"
+    computed(&link, "color"),
+    probe(&scope, &css(Color::srgb(1., 0., 0.)))
   );
 
-  weight.set(700.0);
-  Runtime::drain_pending_work();
+  link_ink.set(Color::srgb(0., 0., 1.));
 
   assert_eq!(
-    link.style().get_property_value("font-weight").unwrap(),
-    "700"
+    computed(&link, "color"),
+    probe(&scope, &css(Color::srgb(0., 0., 1.)))
   );
 }
 
+/// The link ink never reaches a run that is not a link.
 #[wasm_bindgen_test]
-fn theme_link_style_skips_non_link_text() {
+fn typography_link_ink_skips_non_link_text() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
-    TextTheme::new()
-      .set_child(Text::new("plain"))
-      .set_link(TextStyle::new().set_font_weight(700.0))
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_link_ink(Color::srgb(1., 0., 0.)))
+      .set_child_builder(|| Text::new("plain"))
       .build()
   });
 
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect root");
-
-  let text = only_child(&root)
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let scope = only_child(&root);
+  let text = only_child(&scope);
 
   assert_eq!(text.tag_name(), "SPAN");
-
-  // Computed weight is the default, not the theme's link weight: the link style reached
-  // the non-link node through neither the interned class nor an inline override.
-  let weight = web_sys::window()
-    .unwrap()
-    .get_computed_style(&text)
-    .unwrap()
-    .expect("computed style")
-    .get_property_value("font-weight")
-    .unwrap();
-
-  assert_eq!(weight, "400");
-
-  root.remove();
+  assert_eq!(
+    computed(&text, "color"),
+    probe(&scope, "var(--typography-ink)")
+  );
+  assert_ne!(
+    computed(&text, "color"),
+    probe(&scope, &css(Color::srgb(1., 0., 0.)))
+  );
 }
 
 #[wasm_bindgen_test]
 fn container_is_a_single_cell_grid() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Container::new().build());
+  let _ = mount(|| Container::new().build());
 
-  assert_eq!(computed_style(&root, "display"), "grid");
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "display"), "grid");
 
   // One track each way. The resolved size follows the viewport; the count does not.
-  let tracks = |axis| computed_style(&root, axis).split_whitespace().count();
+  let tracks = |axis| computed(&element, axis).split_whitespace().count();
 
   assert_eq!(tracks("grid-template-columns"), 1);
   assert_eq!(tracks("grid-template-rows"), 1);
@@ -601,40 +577,46 @@ fn container_is_a_single_cell_grid() {
 fn column_container_is_a_flex_column() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Column::new().build());
+  let _ = mount(|| Column::new().build());
 
-  assert_eq!(computed_style(&root, "display"), "flex");
-  assert_eq!(computed_style(&root, "flex-direction"), "column");
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "display"), "flex");
+  assert_eq!(computed(&element, "flex-direction"), "column");
 }
 
 #[wasm_bindgen_test]
 fn grid_container_is_a_grid() {
   let (_guard, root) = fresh_root();
 
-  mount(|| Grid::uniform(2).build());
+  let _ = mount(|| Grid::uniform(2).build());
 
-  assert_eq!(computed_style(&root, "display"), "grid");
+  assert_eq!(computed(&only_child(&root), "display"), "grid");
 }
 
+/// `empty` renders no element at all: an empty segment, its two anchors alone.
 #[wasm_bindgen_test]
-fn empty_renders_an_element_with_no_children() {
+fn empty_renders_no_element() {
   let (_guard, root) = fresh_root();
 
-  mount(|| empty().build());
+  let _ = mount(|| empty().build());
 
-  assert_eq!(only_child(&root).children().length(), 0);
+  assert_eq!(root.children().length(), 0);
+  assert_eq!(root.child_nodes().length(), 2);
 }
 
+/// The escape hatch: a view that builds a node and then reaches its real element
+/// through the driver, no trait involved.
 #[wasm_bindgen_test]
 fn a_low_level_view_reaches_the_platform_directly() {
   let (_guard, root) = fresh_root();
 
-  // The escape hatch: a view that calls the platform's own functions, no trait involved.
-  mount(|| {
+  let _ = mount(|| {
     AnyView::new(|| {
-      let node = web::create_element("section");
+      let node = Container::new().set_role(Role::Section).build();
+      let element = web::element(node).expect("the realized element");
 
-      web::set_text(node, "raw");
+      element.set_text_content(Some("raw"));
 
       node
     })
@@ -652,23 +634,14 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
   let (_guard, root) = fresh_root();
   let items = Signal::new(vec![1, 2, 3]);
 
-  mount(move || {
-    let parent = web::create_element("div");
-
-    reconcile(
-      parent,
-      move || items.get(),
-      |item| *item,
-      |item| {
-        let node = web::create_element("span");
-
-        web::set_text(node, &item.to_string());
-
-        node
-      },
-    );
-
-    parent
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        |item| Text::new(item.to_string()),
+      )
+      .build()
   });
 
   let parent = only_child(&root);
@@ -684,7 +657,6 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
     .unwrap();
 
   items.set(vec![3, 1, 2]);
-  Runtime::drain_pending_work();
 
   assert_eq!(child_texts(&parent), ["3", "1", "2"]);
 
@@ -694,56 +666,33 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
   assert_eq!(moved.get_attribute("data-keep").as_deref(), Some("yes"));
 }
 
-/// The primitive a library user reaches for: swap between two whole trees on a state change.
+/// The primitive a library user reaches for: swap between two whole trees on a state
+/// change, in place between the subtree's anchors.
 #[wasm_bindgen_test]
-fn dynamic_view_swaps_between_trees_on_state_change() {
+fn derived_view_swaps_between_trees_on_state_change() {
   let (_guard, root) = fresh_root();
   let logged_in = Signal::new(false);
 
-  mount(move || {
-    DerivedView::new(move || {
+  let _ = mount(move || {
+    derived(move || {
       if logged_in.get() {
-        Text::new("welcome").into_any()
+        Text::new("welcome").build()
       }
       else {
-        Container::new().set_role(Role::Navigation).into_any()
+        Container::new().set_role(Role::Navigation).build()
       }
     })
-    .build()
   });
 
-  // `DerivedView` anchors its subtree under a group node.
-  let anchor = only_child(&root);
-
-  assert_eq!(anchor.first_element_child().unwrap().tag_name(), "NAV");
+  assert_eq!(only_child(&root).tag_name(), "NAV");
 
   logged_in.set(true);
-  Runtime::drain_pending_work();
 
-  let swapped = anchor.first_element_child().unwrap();
+  let swapped = only_child(&root);
 
-  assert_eq!(anchor.children().length(), 1, "the old tree is torn down");
+  assert_eq!(root.children().length(), 1, "the old tree is torn down");
   assert_eq!(swapped.tag_name(), "SPAN");
   assert_eq!(swapped.text_content().as_deref(), Some("welcome"));
-}
-
-#[wasm_bindgen_test]
-fn dynamic_swaps_the_real_dom() {
-  let (_guard, root) = fresh_root();
-  let flag = Signal::new(true);
-
-  mount(move || {
-    derived(move || web::create_element(if flag.get() { "section" } else { "article" }))
-  });
-
-  let anchor = only_child(&root);
-
-  assert_eq!(anchor.first_element_child().unwrap().tag_name(), "SECTION");
-
-  flag.set(false);
-  Runtime::drain_pending_work();
-
-  assert_eq!(anchor.first_element_child().unwrap().tag_name(), "ARTICLE");
 }
 
 /// Only `items` decides when the list is diffed: a signal an item happens to read while
@@ -755,42 +704,32 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
   let extra = Signal::new(0u32);
   let runs = Rc::new(Cell::new(0u32));
 
-  mount({
+  let _ = mount({
     let runs = Rc::clone(&runs);
 
     move || {
-      let parent = web::create_element("div");
+      Column::new()
+        .derive_children(
+          {
+            let runs = Rc::clone(&runs);
 
-      reconcile(
-        parent,
-        {
-          let runs = Rc::clone(&runs);
+            move || {
+              runs.set(runs.get() + 1);
 
-          move || {
-            runs.set(runs.get() + 1);
-
-            items.get()
-          }
-        },
-        |item| *item,
-        move |item| {
-          let node = web::create_element("span");
-
+              items.get()
+            }
+          },
+          |item: &i32| *item,
           // Read a signal directly while building this item.
-          web::set_text(node, &format!("{item}-{}", extra.get()));
-
-          node
-        },
-      );
-
-      parent
+          move |item| Text::new(format!("{item}-{}", extra.get())),
+        )
+        .build()
     }
   });
 
   assert_eq!(runs.get(), 1, "one diff on mount");
 
   extra.set(9);
-  Runtime::drain_pending_work();
 
   assert_eq!(
     runs.get(),
@@ -800,7 +739,6 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
 
   // The list itself still drives the diff.
   items.set(vec![1, 2, 3]);
-  Runtime::drain_pending_work();
 
   assert_eq!(runs.get(), 2, "changing the list re-runs the diff");
   assert_eq!(child_texts(&only_child(&root)).len(), 3);
@@ -814,39 +752,23 @@ fn a_derived_property_inside_an_item_still_updates() {
   let items = Signal::new(vec![1]);
   let size = Signal::new(12.0f32);
 
-  mount(move || {
-    let parent = web::create_element("div");
-
-    reconcile(
-      parent,
-      move || items.get(),
-      |item| *item,
-      move |item| {
-        Text::new(item.to_string())
-          .derive_font_size(move || size.get())
-          .build()
-      },
-    );
-
-    parent
+  let _ = mount(move || {
+    Column::new()
+      .derive_children(
+        move || items.get(),
+        |item: &i32| *item,
+        move |item| Text::new(item.to_string()).derive_font_size(move || size.get()),
+      )
+      .build()
   });
 
-  let item = only_child(&only_child(&root))
-    .dyn_into::<HtmlElement>()
-    .expect("an HTML element");
+  let item = only_child(&only_child(&root));
 
-  assert_eq!(
-    item.style().get_property_value("font-size").unwrap(),
-    "12px"
-  );
+  assert_eq!(computed(&item, "font-size"), "12px");
 
   size.set(24.0);
-  Runtime::drain_pending_work();
 
-  assert_eq!(
-    item.style().get_property_value("font-size").unwrap(),
-    "24px"
-  );
+  assert_eq!(computed(&item, "font-size"), "24px");
 }
 
 /// Selection is opt-in: a plain run computes `user-select: none` through the reset,
@@ -855,7 +777,7 @@ fn a_derived_property_inside_an_item_still_updates() {
 fn unselectable_text_computes_user_select_none() {
   let (_guard, root) = fresh_root();
 
-  mount(|| {
+  let _ = mount(|| {
     Column::new()
       .set_children((
         Text::new("content").set_selectable(true),
@@ -864,71 +786,52 @@ fn unselectable_text_computes_user_select_none() {
       .build()
   });
 
-  document()
-    .body()
-    .expect("a body")
-    .append_child(&root)
-    .expect("connect root");
-
   let children = only_child(&root).children();
-  let computed = |index: u32| {
-    let element = children
-      .item(index)
-      .expect("a run")
-      .dyn_into::<HtmlElement>()
-      .expect("an HTML element");
-
-    web_sys::window()
-      .unwrap()
-      .get_computed_style(&element)
-      .unwrap()
-      .expect("computed style")
-      .get_property_value("user-select")
-      .unwrap()
-  };
+  let run = |index: u32| computed(&children.item(index).expect("a run"), "user-select");
 
   // A plain run computes `auto`, which resolves to the body's `none` at use time—the
   // reset is what turns selection off; the opt-in overrides it in place.
-  let body_select = web_sys::window()
-    .unwrap()
-    .get_computed_style(&document().body().expect("a body"))
-    .unwrap()
-    .expect("computed style")
-    .get_property_value("user-select")
-    .unwrap();
-
-  assert_eq!(body_select, "none");
-  assert_eq!(computed(0), "text");
-  assert_eq!(computed(1), "auto");
-
-  root.remove();
+  assert_eq!(
+    computed(&document().body().expect("a body").into(), "user-select"),
+    "none"
+  );
+  assert_eq!(run(0), "text");
+  assert_eq!(run(1), "auto");
 }
 
-/// An unstyled link keeps the reset's defaults—the scheme's link blue and the
-/// underline—while a themed base ink never colors it.
+/// A link is inked in the link ink and underlined, while the base ink never colors it.
 #[wasm_bindgen_test]
-fn links_default_to_blue_and_underline() {
-  let (_installed, root) = fresh_root();
+fn links_are_inked_in_the_link_ink_and_underlined() {
+  let (_guard, root) = fresh_root();
 
-  mount(|| {
-    TextTheme::new()
-      .set_child(Text::new("docs").set_link("https://example.com"))
-      .set_base(TextStyle::new().set_color(Color::srgb(0.9, 0.9, 0.9)))
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_ink(Color::srgb(0.9, 0.9, 0.9)))
+      .set_child_builder(|| Text::new("docs").set_link("https://example.com"))
       .build()
   });
 
-  assert_eq!(computed_style(&root, "color"), "rgb(0, 102, 204)");
-  assert_eq!(computed_style(&root, "text-decoration-line"), "underline");
+  let scope = only_child(&root);
+  let link = only_child(&scope);
+
+  assert_eq!(
+    computed(&link, "color"),
+    probe(&scope, "var(--typography-link-ink)")
+  );
+  assert_ne!(
+    computed(&link, "color"),
+    probe(&scope, &css(Color::srgb(0.9, 0.9, 0.9)))
+  );
+  assert_eq!(computed(&link, "text-decoration-line"), "underline");
 }
 
 #[wasm_bindgen_test]
 fn a_widget_role_and_state_reach_the_real_dom() {
-  use skene_gui::core::{AccessProp, Role};
+  use skene_gui::core::AccessProp;
 
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  mount(move || {
+  let _ = mount(move || {
     Container::new()
       .set_role(Role::Checkbox)
       .derive_accessibility(move || vec![AccessProp::Checked(checked.get().into())])
@@ -953,68 +856,60 @@ fn a_widget_role_and_state_reach_the_real_dom() {
   );
 }
 
+/// A checkbox is a label over the browser's own input, which carries its focus, its
+/// accessible name and its state; a real click on it flips the bound signal.
 #[wasm_bindgen_test]
-fn a_drawn_checkbox_is_an_accessible_div_in_the_real_dom() {
-  use skene_gui::RawCheckbox;
-
+fn a_checkbox_is_a_label_over_a_native_input() {
   let (_guard, root) = fresh_root();
   let checked = Signal::new(false);
 
-  mount(move || {
-    RawCheckbox::new()
-      .bind_checked(checked)
+  let _ = mount(move || {
+    RawCheckbox::new(Toggle::new().bind_checked(checked))
       .set_label("Subscribed")
-      .set_child(Text::new("mark"))
       .build()
   });
 
-  let element = only_child(&root);
+  let label = only_child(&root);
+  let input = only_child(&label);
 
-  assert_eq!(element.tag_name(), "DIV", "no native input is involved");
-  assert_eq!(element.get_attribute("role").as_deref(), Some("checkbox"));
-  assert_eq!(element.get_attribute("tabindex").as_deref(), Some("0"));
+  assert_eq!(label.tag_name(), "LABEL");
+  assert_eq!(input.tag_name(), "INPUT");
+  assert_eq!(input.get_attribute("type").as_deref(), Some("checkbox"));
+  assert_eq!(input.get_attribute("tabindex").as_deref(), Some("0"));
   assert_eq!(
-    element.get_attribute("aria-label").as_deref(),
+    input.get_attribute("aria-label").as_deref(),
     Some("Subscribed"),
   );
-  assert_eq!(
-    element.get_attribute("aria-checked").as_deref(),
-    Some("false"),
-  );
 
-  element
-    .dyn_ref::<HtmlElement>()
-    .expect("an HTML element")
-    .click();
+  html(&input).click();
 
   assert!(checked.get(), "a real click toggles it");
-  assert_eq!(
-    element.get_attribute("aria-checked").as_deref(),
-    Some("true"),
+  assert!(
+    input
+      .dyn_ref::<HtmlInputElement>()
+      .expect("an input")
+      .checked()
   );
 }
 
 /// A radio group's arrow traversal follows document order, including a member
 /// reconciled into the middle of the set after the group was built.
 ///
-/// The host tier pins the same thing against the recording driver. This pins it against
+/// The host tier pins the same thing against the headless driver. This pins it against
 /// the browser's: real reconcile, real elements, and a real `keydown`, so the order the
 /// driver reports is checked against the order the document actually renders.
 #[wasm_bindgen_test]
 fn a_radio_group_traverses_in_document_order() {
-  use skene_gui::{HasChildren, RawRadio, RawRadioGroup};
-
   let (_guard, root) = fresh_root();
   let flavors = Signal::new(vec![String::from("mint"), String::from("fig")]);
-  let chosen = Signal::new(String::from("mint"));
+  let chosen: Signal<Option<String>> = Signal::new(Some(String::from("mint")));
 
-  mount(move || {
-    RawRadioGroup::new()
-      .bind_chosen(chosen)
+  let _ = mount(move || {
+    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
       .set_child(Column::new().derive_children(
         move || flavors.get(),
         |flavor: &String| flavor.clone(),
-        |flavor| RawRadio::new(flavor.clone()).set_child(Text::new(flavor)),
+        |flavor| RawRadio::new(RadioMember::new(flavor.clone())).set_label(flavor),
       ))
       .build()
   });
@@ -1043,9 +938,9 @@ fn a_radio_group_traverses_in_document_order() {
 
   press(&rows()[0], "ArrowDown");
 
-  assert_eq!(chosen.get(), "fig");
+  assert_eq!(chosen.get().as_deref(), Some("fig"));
 
-  chosen.set(String::from("mint"));
+  chosen.set(Some(String::from("mint")));
   flavors.set(vec![
     String::from("mint"),
     String::from("plum"),
@@ -1054,7 +949,7 @@ fn a_radio_group_traverses_in_document_order() {
 
   assert_eq!(rows().len(), 3, "the newcomer is in the document");
   assert_eq!(
-    rows()[1].get_attribute("role").as_deref(),
+    only_child(&rows()[1]).get_attribute("type").as_deref(),
     Some("radio"),
     "and it is the middle one",
   );
@@ -1062,61 +957,8 @@ fn a_radio_group_traverses_in_document_order() {
   press(&rows()[0], "ArrowDown");
 
   assert_eq!(
-    chosen.get(),
-    "plum",
+    chosen.get().as_deref(),
+    Some("plum"),
     "traversal follows the document, not the order members joined",
   );
-}
-
-/// The scriptless form occupies the same box as the drawn one, so replacing it at
-/// hydration shifts no layout.
-///
-/// Only a real browser answers this: it turns on whether a native `<input>` honors the
-/// width and height a stylesheet gives it, which nothing on the host can tell us.
-#[wasm_bindgen_test]
-fn a_fallback_occupies_the_drawn_forms_box() {
-  use skene_gui::{HasDecoration, RawCheckbox, WebCheckbox};
-
-  let (_guard, root) = fresh_root();
-
-  mount(|| {
-    Column::new()
-      .set_children((
-        WebCheckbox::new()
-          .set_width(16.)
-          .set_height(16.)
-          .set_border_radius(4.),
-        RawCheckbox::new().set_child(
-          Container::new()
-            .set_width(16.)
-            .set_height(16.)
-            .set_border_radius(4.),
-        ),
-      ))
-      .build()
-  });
-
-  document().body().expect("a body").append_child(&root).ok();
-
-  let children = root.first_element_child().expect("the column").children();
-  let native = children.item(0).expect("the native form");
-  let drawn = children.item(1).expect("the drawn form");
-  let native_box = native.get_bounding_client_rect();
-  let drawn_box = drawn.get_bounding_client_rect();
-
-  let measured = (
-    native_box.width(),
-    native_box.height(),
-    drawn_box.width(),
-    drawn_box.height(),
-  );
-
-  root.remove();
-
-  assert_eq!(
-    (measured.0, measured.1),
-    (measured.2, measured.3),
-    "the two forms claim the same box: native {measured:?}"
-  );
-  assert!(measured.1 > 0., "and it is a real one: {measured:?}");
 }

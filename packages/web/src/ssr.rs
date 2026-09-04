@@ -715,6 +715,11 @@ pub fn recorded_static_routes() -> Option<Vec<String>> {
   STATIC_ROUTES.with(|recorded| recorded.borrow().clone())
 }
 
+/// Forgets the routes the last render recorded, so the next starts clean.
+pub(crate) fn forget_static_routes() {
+  STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
+}
+
 /// Sets the document title, serialized into the page head.
 pub fn set_document_title(title: &str) {
   with_state(|state| state.document_title = Some(title.to_owned()));

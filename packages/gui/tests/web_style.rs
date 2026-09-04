@@ -4,44 +4,65 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Condition,
   Container,
   Flexible,
   Grid,
   GridCell,
   HasChildren,
+  Inset,
+  Media,
   Pinned,
+  PixelExt,
   Row,
+  SimplePalette,
   Stack,
+  State,
   Text,
+  Theme,
+  ThemedIn,
+  When,
   core::{
     Animation,
-    BoxStyle,
-    Condition,
+    Color,
     Dimension,
     Easing,
     GridTrack,
-    Inset,
     ItemAlignment,
     Line,
     Overflow,
-    RunStyle,
     StyleProperty,
     TrackLimit,
     Transition,
     Wrap,
+    next::{BoxStyle, Plain, StaticLeaf},
   },
   render_to_string,
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
+
+/// Every class named in `body`, in document order.
+fn classes(body: &str) -> Vec<String> {
+  body
+    .match_indices("class=\"")
+    .map(|(start, _)| {
+      let rest = &body[start + 7..];
+
+      rest[..rest.find('"').expect("class end")].to_owned()
+    })
+    .collect()
+}
 
 /// The class assigned to the first (only) top-level element of a render.
 fn root_class(body: &str) -> String {
-  let start = body.find("class=\"").expect("a class") + 7;
-  let end = body[start..].find('"').expect("a closing quote") + start;
+  classes(body).into_iter().next().expect("a class")
+}
 
-  body[start..end].to_owned()
+/// The declarations of the rule `selector` opens in `styles`.
+fn rule<'a>(styles: &'a str, selector: &str) -> &'a str {
+  let start = styles.find(&format!("{selector}{{")).expect("the rule") + selector.len() + 1;
+  let rest = &styles[start..];
+
+  &rest[..rest.find('}').expect("rule end")]
 }
 
 /// The root selector under which the platform's preference still decides.
@@ -50,19 +71,36 @@ const DEFERRING: &str = ":where(:root:not([data-skene-scheme=\"light\"]))";
 const CHOSEN: &str = ":where(:root[data-skene-scheme=\"dark\"])";
 
 /// A color as the CSS the driver renders it to.
-fn css_color(color: skene_gui::core::Color) -> String {
+fn css_color(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 
   format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
+/// The fixed color a token's leaf holds.
+fn fixed(leaf: &StaticLeaf<Color>) -> Color {
+  match leaf {
+    StaticLeaf::Fixed(color) => *color,
+    _ => panic!("a fixed color"),
+  }
+}
+
+/// A plain box style rounding its corners by `radius`, for a keyframe.
+fn rounded(radius: f32) -> BoxStyle<f32, Plain, PixelExt> {
+  let mut style: BoxStyle<f32, Plain, PixelExt> = BoxStyle::default();
+
+  style.ext.corner_radius = Some(radius);
+
+  style
 }
 
 /// A hover variant renders as a `:hover` rule on the same class.
 #[test]
 fn state_variant_renders_a_pseudo_class_rule() {
   let rendered = render_to_string(|| {
-    Container::new()
-      .set_width(10.)
-      .set_width_when(Condition::Hovered, 20.)
+    Container::new().set_width(
+      Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
+    )
   });
 
   let class = root_class(rendered.body());
@@ -81,8 +119,9 @@ fn state_variant_renders_a_pseudo_class_rule() {
 /// A media variant wraps its rule in an `@media` block.
 #[test]
 fn media_variant_renders_an_at_media_block() {
-  let rendered =
-    render_to_string(|| Container::new().set_border_radius_when(Condition::MaxWidth(600.), 4.));
+  let rendered = render_to_string(|| {
+    Container::new().set_corner_radius(0f32.when(Condition::from(Media::MaxWidth(600.)), 4.))
+  });
 
   let class = root_class(rendered.body());
 
@@ -95,17 +134,21 @@ fn media_variant_renders_an_at_media_block() {
 #[test]
 fn combined_conditions_nest_media_around_states() {
   let rendered = render_to_string(|| {
-    Container::new().set_border_radius_when(
-      Condition::and([Condition::Hovered, Condition::DarkMode]),
+    Container::new().set_corner_radius(0f32.when(
+      Condition::and([State::Hovered.into(), Media::Dark.into()]),
       8.,
-    )
+    ))
   });
 
   let class = root_class(rendered.body());
 
-  assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:8px;}}}}"
-  )));
+  assert!(
+    rendered.styles().contains(&format!(
+      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:8px;}}}}"
+    )),
+    "{}",
+    rendered.styles()
+  );
 }
 
 /// An `or` condition emits one rule per alternative; a nested `and` expands into its
@@ -113,26 +156,32 @@ fn combined_conditions_nest_media_around_states() {
 #[test]
 fn or_composition_emits_a_rule_per_alternative() {
   let rendered = render_to_string(|| {
-    Container::new().set_border_radius_when(
+    Container::new().set_corner_radius(0f32.when(
       Condition::or([
-        Condition::Hovered,
-        Condition::and([Condition::DarkMode, Condition::Focused]),
+        Media::MaxWidth(600.).into(),
+        Condition::and([Media::Dark.into(), State::Hovered.into()]),
       ]),
       2.,
-    )
+    ))
   });
 
   let class = root_class(rendered.body());
 
   assert!(
-    rendered
-      .styles()
-      .contains(&format!(".{class}:hover{{border-radius:2px;}}"))
+    rendered.styles().contains(&format!(
+      "@media (max-width: 600px){{.{class}{{border-radius:2px;}}}}"
+    )),
+    "{}",
+    rendered.styles()
   );
 
-  assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:focus{{border-radius:2px;}}}}"
-  )));
+  assert!(
+    rendered.styles().contains(&format!(
+      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:2px;}}}}"
+    )),
+    "{}",
+    rendered.styles()
+  );
 }
 
 /// Overflow renders into the interned class.
@@ -152,7 +201,7 @@ fn overflow_renders() {
 fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
     Container::new()
-      .set_width(10.)
+      .set_width(Dimension::Length(10.))
       .set_transition(Transition::new(StyleProperty::Background, 0.3))
       .set_transition(
         Transition::new(StyleProperty::Width, 1.)
@@ -164,7 +213,9 @@ fn transitions_render_into_the_base_rule() {
   assert!(
     rendered
       .styles()
-      .contains("transition:background-color 0.3s ease 0s, width 1s ease-in-out 0.5s;")
+      .contains("transition:background-color 0.3s ease 0s, width 1s ease-in-out 0.5s;"),
+    "{}",
+    rendered.styles()
   );
 }
 
@@ -174,15 +225,9 @@ fn transitions_render_into_the_base_rule() {
 fn animations_render_keyframes_and_reference_them() {
   let rendered = render_to_string(|| {
     Container::new().set_animation(
-      Animation::new(
-        2.,
-        [
-          (0., BoxStyle::new().set_border_radius(0.)),
-          (100., BoxStyle::new().set_border_radius(16.)),
-        ],
-      )
-      .set_infinite()
-      .set_alternate(),
+      Animation::new(2., [(0., rounded(0.)), (100., rounded(16.))])
+        .set_infinite()
+        .set_alternate(),
     )
   });
 
@@ -194,13 +239,19 @@ fn animations_render_keyframes_and_reference_them() {
   let end = styles[start..].find('{').expect("a body") + start;
   let name = &styles[start..end];
 
-  assert!(styles.contains(&format!(
-    "@keyframes {name}{{0%{{border-radius:0px;}}100%{{border-radius:16px;}}}}"
-  )));
+  assert!(
+    styles.contains(&format!(
+      "@keyframes {name}{{0%{{border-radius:0px;}}100%{{border-radius:16px;}}}}"
+    )),
+    "{styles}"
+  );
 
-  assert!(styles.contains(&format!(
-    "animation:{name} 2s ease 0s infinite alternate both;"
-  )));
+  assert!(
+    styles.contains(&format!(
+      "animation:{name} 2s ease 0s infinite alternate both;"
+    )),
+    "{styles}"
+  );
 }
 
 /// Text runs carry variants too, and identical dynamic styles intern to one class.
@@ -208,15 +259,15 @@ fn animations_render_keyframes_and_reference_them() {
 fn run_variants_intern_and_render() {
   let rendered = render_to_string(|| {
     Row::new().set_children((
-      Text::new("a").set_when(Condition::Hovered, RunStyle::new().set_font_weight(700.)),
-      Text::new("b").set_when(Condition::Hovered, RunStyle::new().set_font_weight(700.)),
+      Text::new("a").set_font_weight(400f32.when(Condition::from(State::Hovered), 700.)),
+      Text::new("b").set_font_weight(400f32.when(Condition::from(State::Hovered), 700.)),
     ))
   });
 
   let styles = rendered.styles();
   let hover_rules = styles.matches(":hover{font-weight:700;}").count();
 
-  assert_eq!(hover_rules, 1);
+  assert_eq!(hover_rules, 1, "{styles}");
 }
 
 /// Identical full styles still collapse to one class; a differing variant splits them.
@@ -224,29 +275,19 @@ fn run_variants_intern_and_render() {
 fn variants_participate_in_content_addressing() {
   let rendered = render_to_string(|| {
     Row::new().set_children((
-      Container::new()
-        .set_width(10.)
-        .set_width_when(Condition::Hovered, 20.),
-      Container::new()
-        .set_width(10.)
-        .set_width_when(Condition::Hovered, 20.),
-      Container::new()
-        .set_width(10.)
-        .set_width_when(Condition::Hovered, 30.),
+      Container::new().set_width(
+        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
+      ),
+      Container::new().set_width(
+        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(20.)),
+      ),
+      Container::new().set_width(
+        Dimension::Length(10.).when(Condition::from(State::Hovered), Dimension::Length(30.)),
+      ),
     ))
   });
 
-  let body = rendered.body();
-  let mut classes: Vec<String> = Vec::new();
-  let mut rest = body;
-
-  while let Some(index) = rest.find("class=\"") {
-    let start = index + 7;
-    let end = rest[start..].find('"').expect("a closing quote") + start;
-
-    classes.push(rest[start..end].to_owned());
-    rest = &rest[end..];
-  }
+  let classes = classes(rendered.body());
 
   // The outer box plus three children; the two identical children share one class.
   assert_eq!(classes.len(), 4);
@@ -255,13 +296,18 @@ fn variants_participate_in_content_addressing() {
 }
 
 /// The flex vocabulary compiles end to end: the container's wrap and the wrapped
-/// child's flexibility, alignment override, fraction width, and auto margins.
+/// child's flexibility, alignment override, fraction width, and auto margins, all in
+/// the child's own class.
 #[test]
 fn flex_properties_render() {
   let rendered = render_to_string(|| {
     Row::new()
       .set_wrap(Wrap::Forward)
       .set_children((Flexible::new()
+        .set_grow_factor(2.)
+        .set_shrink_factor(0.)
+        .set_initial(120.)
+        .set_item_alignment(ItemAlignment::Center)
         .set_child(
           Container::new()
             .set_width(Dimension::Fraction(0.5))
@@ -271,23 +317,21 @@ fn flex_properties_render() {
               bottom: Dimension::Length(4.),
               left: Dimension::Auto,
             }),
-        )
-        .set_grow_factor(2.)
-        .set_shrink_factor(0.)
-        .set_initial(120.)
-        .set_item_alignment(ItemAlignment::Center),))
+        ),))
   });
 
   let class = root_class(rendered.body());
   let styles = rendered.styles();
-  let body = rendered.body();
 
   assert!(styles.contains(&format!(
     ".{class}{{display:flex;flex-direction:row;flex-wrap:wrap;}}"
   )));
-  assert!(styles.contains("margin:4px auto 4px auto;width:50%;"));
-  assert!(body.contains("flex-basis:120px;flex-grow:2;flex-shrink:0;"));
-  assert!(body.contains("align-self:center;"));
+  assert!(
+    styles.contains("margin:4px auto 4px auto;width:50%;"),
+    "{styles}"
+  );
+  assert!(styles.contains("flex:2 0 120px;"), "{styles}");
+  assert!(styles.contains("align-self:center;"), "{styles}");
 }
 
 /// A pinned stack child renders out of flow against the stack's edges.
@@ -304,9 +348,28 @@ fn pinned_child_renders_out_of_flow() {
       .set_child(Container::new()),))
   });
 
-  let body = rendered.body();
+  let styles = rendered.styles();
 
-  assert!(body.contains("inset:0px 8px auto 10%;position:absolute;"));
+  assert!(
+    styles.contains("inset:0px 8px auto 10%;position:absolute;"),
+    "{styles}"
+  );
+}
+
+/// A stack's children share its one grid cell, so they overlap.
+#[test]
+fn stack_children_share_one_grid_cell() {
+  let rendered =
+    render_to_string(|| Stack::new().set_children((Text::new("under"), Text::new("over"))));
+  let class = root_class(rendered.body());
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!(".{class}>*{{grid-area:1 / 1;}}")),
+    "{}",
+    rendered.styles()
+  );
 }
 
 /// Grid templates render taffy's full track vocabulary, and placements pin children.
@@ -314,14 +377,14 @@ fn pinned_child_renders_out_of_flow() {
 fn grid_tracks_and_placements_render() {
   let rendered = render_to_string(|| {
     Grid::new()
-      .set_columns([
+      .set_columns(vec![
         GridTrack::Length(100.),
         GridTrack::Flex(1.),
         GridTrack::Minmax(TrackLimit::Length(50.), TrackLimit::Flex(2.)),
         GridTrack::FitContent(200.),
       ])
-      .set_rows(GridTrack::Auto.repeated(2))
-      .set_implicit_rows([GridTrack::MinContent])
+      .set_rows(GridTrack::Auto.repeated(2).collect::<Vec<_>>())
+      .set_implicit_rows(vec![GridTrack::MinContent])
       .set_children((GridCell::new()
         .set_column(Line::between(1, 3))
         .set_row(Line::span(2))
@@ -333,44 +396,46 @@ fn grid_tracks_and_placements_render() {
   assert!(styles.contains("grid-template-columns:100px 1fr minmax(50px, 2fr) fit-content(200px);"));
   assert!(styles.contains("grid-template-rows:auto auto;"));
   assert!(styles.contains("grid-auto-rows:min-content;"));
-  let body = rendered.body();
-
-  assert!(body.contains("grid-column:1 / 3;"));
-  assert!(body.contains("grid-row:auto / span 2;"));
+  assert!(styles.contains("grid-column:1 / 3;"), "{styles}");
+  assert!(styles.contains("grid-row:auto / span 2;"), "{styles}");
 }
 
-/// The theme's scheme is real CSS: a server-rendered page carries the light value on the
-/// class and the dark one inside a `prefers-color-scheme` block, so it answers the
-/// reader's preference with no bundle loaded at all.
+/// A theme's scheme is real CSS: a consumer emits the token's name alone, and the
+/// theme's scope carries the light value on its class and the dark one inside a
+/// `prefers-color-scheme` block, so a server-rendered page answers the reader's
+/// preference with no bundle loaded at all.
 #[test]
 fn a_theme_following_the_platform_renders_a_color_scheme_query() {
-  use skene_gui::{SimplePalette, SimpleTheme};
-
   let rendered = render_to_string(|| {
-    SimpleTheme::new(SimplePalette::default())
-      .set_child(|| Container::new().set_color(SimplePalette::current().card))
+    Theme::new(SimplePalette::default())
+      .set_child_builder(|| Container::new().set_color(SimplePalette::current().card))
   });
-  let class = root_class(rendered.body());
+  let classes = classes(rendered.body());
+  let (scope, consumer) = (&classes[0], &classes[1]);
   let card = SimplePalette::default().card;
-  let light = css_color(*card.base());
-  let dark = css_color(card.variants()[0].1);
+  let light = css_color(fixed(card.definition().base()));
+  let dark = css_color(fixed(&card.definition().variants()[0].1));
+  let styles = rendered.styles();
 
   assert!(
-    rendered
-      .styles()
-      .contains(&format!("background-color:{light};")),
-    "the light value is the class's own"
+    rule(styles, &format!(".{consumer}")).contains("background-color:var(--simple-card);"),
+    "the consumer names the token: {styles}"
   );
-
-  assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}{{background-color:{dark};}}}}"
-  )));
-
   assert!(
-    rendered
-      .styles()
-      .contains(&format!("{CHOSEN} .{class}{{background-color:{dark};}}")),
-    "and the same value under a scheme the app chooses at runtime"
+    rule(styles, &format!(".{scope}")).contains(&format!("--simple-card:{light};")),
+    "the light value is the scope's own: {styles}"
+  );
+  assert!(
+    rule(
+      styles,
+      &format!("@media (prefers-color-scheme: dark){{{DEFERRING} .{scope}")
+    )
+    .contains(&format!("--simple-card:{dark};")),
+    "{styles}"
+  );
+  assert!(
+    rule(styles, &format!("{CHOSEN} .{scope}")).contains(&format!("--simple-card:{dark};")),
+    "and the same value under a scheme the app chooses at runtime: {styles}"
   );
 }
 
@@ -379,8 +444,9 @@ fn a_theme_following_the_platform_renders_a_color_scheme_query() {
 /// `:where()`, so neither adds specificity and the cascade decides what it always did.
 #[test]
 fn a_scheme_variant_renders_the_preference_and_the_choice() {
-  let rendered =
-    render_to_string(|| Container::new().set_border_radius_when(Condition::DarkMode, 8.));
+  let rendered = render_to_string(|| {
+    Container::new().set_corner_radius(0f32.when(Condition::from(Media::Dark), 8.))
+  });
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
@@ -399,10 +465,10 @@ fn a_scheme_variant_renders_the_preference_and_the_choice() {
 #[test]
 fn a_scheme_variant_keeps_its_states_on_both_rules() {
   let rendered = render_to_string(|| {
-    Container::new().set_border_radius_when(
-      Condition::and([Condition::Hovered, Condition::DarkMode]),
+    Container::new().set_corner_radius(0f32.when(
+      Condition::and([State::Hovered.into(), Media::Dark.into()]),
       4.,
-    )
+    ))
   });
   let class = root_class(rendered.body());
 
@@ -421,25 +487,24 @@ fn a_scheme_variant_keeps_its_states_on_both_rules() {
 /// platform to answer, and a palette says so per property.
 #[test]
 fn an_unconditional_token_renders_no_color_scheme_query() {
-  use skene_gui::{SimplePalette, SimpleTheme, core::Color};
-
   let flat = Color::srgb(0.2, 0.4, 0.8);
   let rendered = render_to_string(move || {
-    SimpleTheme::new(SimplePalette::default().set_card(flat))
-      .set_child(|| Container::new().set_color(SimplePalette::current().card))
+    Theme::new(SimplePalette::default().set_card(flat))
+      .set_child_builder(|| Container::new().set_color(SimplePalette::current().card))
   });
-  let class = root_class(rendered.body());
+  let scope = root_class(rendered.body());
+  let styles = rendered.styles();
 
   assert!(
-    rendered
-      .styles()
-      .contains(&format!("background-color:{};", css_color(flat)))
+    rule(styles, &format!(".{scope}")).contains(&format!("--simple-card:{};", css_color(flat))),
+    "{styles}"
   );
-
-  // The stylesheet is the whole interned sheet, so the class names what to look for.
   assert!(
-    !rendered
-      .styles()
-      .contains(&format!("@media (prefers-color-scheme: dark){{.{class}"))
+    !rule(
+      styles,
+      &format!("@media (prefers-color-scheme: dark){{{DEFERRING} .{scope}")
+    )
+    .contains("--simple-card:"),
+    "the dark block leaves the flat token alone: {styles}"
   );
 }

@@ -1,10 +1,12 @@
 //! The server leaf's realization of the driver: a string tree serialized to HTML with
-//! the interned stylesheet, the head and the hydration state.
+//! the interned stylesheet, the head and the hydration state, whole or as an in-order
+//! stream around deferred boundaries.
 //!
-//! Every element carries a creation-order `data-h` marker the browser leaf adopts by;
-//! an anchor is a comment pair (`<!--s:N-->`, `<!--e:N-->`); a scope is a
-//! `display: contents` element. Handlers are inert, focus and sizes are the client's,
-//! and an overlay serializes closed.
+//! Every element carries a `data-h` marker counting elements in creation order, which
+//! the browser leaf adopts by; an anchor is a comment pair (`<!--s:N-->`, `<!--e:N-->`)
+//! counting segments the same way; a scope is a `display: contents` element. Handlers are inert,
+//! focus and sizes are the client's, and an overlay serializes closed. A streamed chunk opens with
+//! a `<style>` delta holding the registrations and rules interned since the previous flush.
 
 use std::{
   cell::{Cell, RefCell},
@@ -15,6 +17,7 @@ use std::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
   AccessProp,
+  Boundary,
   ColorScheme,
   FocusOrder,
   Size,
@@ -42,7 +45,7 @@ use skene_core::{
     View,
   },
 };
-use skene_reactive::{Set, WriteSignal, signal};
+use skene_reactive::{Owner, Set, WriteSignal, provide_context, signal};
 
 use super::{
   Web,
@@ -68,6 +71,7 @@ use super::{
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_CLASS,
+    STYLE_ATTRIBUTE,
     STYLE_ID,
     access_attribute,
     anchor_text,
@@ -88,6 +92,17 @@ use crate::{
 /// The root of the string tree; its children are the page body.
 const ROOT: u32 = 0;
 
+/// A probe for whether a deferred boundary's content has settled.
+type BoundarySettled = Box<dyn Fn() -> bool>;
+
+/// A position in the in-order stream walk: a node whose opening tag is emitted and how
+/// many of its children have been serialized.
+#[derive(Clone, Copy)]
+struct Frame {
+  index: u32,
+  next_child: usize,
+}
+
 /// What a node is in the string tree.
 enum Content {
   Element(&'static str),
@@ -97,6 +112,8 @@ enum Content {
 /// One node of the string tree.
 struct Node {
   content: Content,
+  /// The element's hydration marker: its place in element creation order.
+  marker: u32,
   attributes: Vec<(String, String)>,
   style_class: Option<Rc<str>>,
   token_class: Option<Rc<str>>,
@@ -115,6 +132,7 @@ impl Node {
   fn element(tag: &'static str) -> Self {
     Self {
       content: Content::Element(tag),
+      marker: 0,
       attributes: Vec::new(),
       style_class: None,
       token_class: None,
@@ -181,13 +199,19 @@ impl Node {
     matches!(self.tag(), "input" | "br" | "hr" | "img")
   }
 
-  fn emit_open(&self, index: u32, out: &mut String) {
+  fn emit_comment(text: &str, out: &mut String) {
+    out.push_str("<!--");
+    out.push_str(text);
+    out.push_str("-->");
+  }
+
+  fn emit_open(&self, out: &mut String) {
     out.push('<');
     out.push_str(self.tag());
     out.push(' ');
     out.push_str(MARKER_ATTRIBUTE);
     out.push_str("=\"");
-    out.push_str(&index.to_string());
+    out.push_str(&self.marker.to_string());
     out.push('"');
 
     for (name, value) in &self.attributes {
@@ -251,7 +275,10 @@ struct Tree {
   cache: FxHashMap<u64, Rc<Compiled>>,
   registered: FxHashSet<TokenName>,
   registrations: String,
+  registrations_emitted: usize,
+  emitted: FxHashSet<Rc<str>>,
   root_class: Option<Rc<str>>,
+  markers: u32,
   anchors: u32,
   title: Option<String>,
   head: Vec<(String, Vec<(String, String)>)>,
@@ -265,7 +292,10 @@ impl Tree {
       cache: FxHashMap::default(),
       registered: FxHashSet::default(),
       registrations: String::new(),
+      registrations_emitted: 0,
+      emitted: FxHashSet::default(),
       root_class: None,
+      markers: 0,
       anchors: 0,
       title: None,
       head: Vec::new(),
@@ -281,7 +311,13 @@ impl Tree {
   }
 
   fn element(&mut self, tag: &'static str) -> u32 {
-    self.create(Node::element(tag))
+    self.markers += 1;
+
+    let mut node = Node::element(tag);
+
+    node.marker = self.markers;
+
+    self.create(node)
   }
 
   fn node(&mut self, index: u32) -> Option<&mut Node> {
@@ -382,20 +418,47 @@ impl Tree {
     }
   }
 
-  fn render_styles(&self) -> String {
+  /// The `<style>` block a document opens with: the reset, the slot registrations, and
+  /// every token registration and live rule not emitted yet, in interning order.
+  fn render_styles(&mut self) -> String {
     let mut out = format!("<style id=\"{STYLE_ID}\">");
 
     out.push_str(RESET_CSS);
     out.push_str(&slot_registrations());
-    out.push_str(&self.registrations);
-
-    for (class, template) in self.styles.live_rules() {
-      out.push_str(&template.replace(CLASS_PLACEHOLDER, class));
-    }
-
+    self.render_new_styles(&mut out);
     out.push_str("</style>");
 
     out
+  }
+
+  /// The `<style>` block a later chunk opens with: the token registrations and live
+  /// rules not emitted yet, in interning order; empty when there are none.
+  fn render_style_delta(&mut self) -> String {
+    let mut delta = String::new();
+
+    self.render_new_styles(&mut delta);
+
+    if delta.is_empty() {
+      return delta;
+    }
+
+    format!("<style {STYLE_ATTRIBUTE}>{delta}</style>")
+  }
+
+  /// Appends the token registrations and live rules not emitted yet, marking them
+  /// emitted.
+  fn render_new_styles(&mut self, out: &mut String) {
+    out.push_str(&self.registrations[self.registrations_emitted..]);
+    self.registrations_emitted = self.registrations.len();
+
+    for (class, template) in self.styles.live_rules() {
+      if self.emitted.contains(class) {
+        continue;
+      }
+
+      out.push_str(&template.replace(CLASS_PLACEHOLDER, class));
+      self.emitted.insert(Rc::from(class));
+    }
   }
 
   fn render_head(&self) -> String {
@@ -454,14 +517,12 @@ impl Tree {
     };
 
     if let Content::Comment(text) = &node.content {
-      out.push_str("<!--");
-      out.push_str(text);
-      out.push_str("-->");
+      Node::emit_comment(text, out);
 
       return;
     }
 
-    node.emit_open(index, out);
+    node.emit_open(out);
 
     match &node.text {
       Some(text) => escape_text(text, out),
@@ -473,6 +534,73 @@ impl Tree {
     }
 
     node.emit_close(out);
+  }
+
+  /// Serializes the tree in document order from `cursor`, pausing before a child
+  /// `pending` reports as an unsettled boundary.
+  ///
+  /// Appends to `out` until it reaches such a child, returning that node with the
+  /// cursor poised to emit it next; ancestors stay open across the pause, exactly as a
+  /// streamed document expects. `None` means the whole tree is serialized.
+  fn stream(
+    &self,
+    cursor: &mut Vec<Frame>,
+    out: &mut String,
+    pending: impl Fn(u32) -> bool,
+  ) -> Option<u32> {
+    while let Some(&Frame { index, next_child }) = cursor.last() {
+      let Some(Some(node)) = self.nodes.get(index as usize)
+      else {
+        cursor.pop();
+
+        continue;
+      };
+
+      if next_child == node.children.len() {
+        if index != ROOT {
+          node.emit_close(out);
+        }
+
+        cursor.pop();
+
+        continue;
+      }
+
+      let child = node.children[next_child];
+
+      if pending(child) {
+        return Some(child);
+      }
+
+      cursor.last_mut().expect("the frame just read").next_child += 1;
+
+      let Some(Some(child_node)) = self.nodes.get(child as usize)
+      else {
+        continue;
+      };
+
+      if let Content::Comment(text) = &child_node.content {
+        Node::emit_comment(text, out);
+
+        continue;
+      }
+
+      child_node.emit_open(out);
+
+      match &child_node.text {
+        Some(text) => {
+          escape_text(text, out);
+          child_node.emit_close(out);
+        }
+        None if child_node.children.is_empty() => child_node.emit_close(out),
+        None => cursor.push(Frame {
+          index: child,
+          next_child: 0,
+        }),
+      }
+    }
+
+    None
   }
 }
 
@@ -521,6 +649,9 @@ thread_local! {
   static HINTS: Cell<RenderHints> = const { Cell::new(RenderHints::DEFAULT) };
   static MEDIA: RefCell<Option<MediaState>> = const { RefCell::new(None) };
   static PREEMPT_SCHEME: Cell<bool> = const { Cell::new(false) };
+  /// Each deferred boundary's start anchor, mapped to a probe for whether its content
+  /// has settled; consulted by the streaming walk to decide where to pause.
+  static BOUNDARIES: RefCell<FxHashMap<u32, BoundarySettled>> = RefCell::new(FxHashMap::default());
 }
 
 /// Runs `operation` on the tree.
@@ -1067,6 +1198,69 @@ impl Rendered {
   }
 }
 
+/// Registers the segment `start` begins as a deferred boundary: a streaming render
+/// flushes what precedes it, waits until `settled` reports true, then emits its
+/// content in place. A whole render never consults it.
+pub fn register_boundary(start: NodeId, settled: BoundarySettled) {
+  if let Some(sink) = Scene::<Web>::with(|scene| scene.sink(start)) {
+    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(sink, settled));
+  }
+}
+
+/// Whether `index` starts a boundary whose content has not settled: the streaming
+/// walk's pause test.
+fn boundary_pending(index: u32) -> bool {
+  BOUNDARIES.with(|boundaries| {
+    boundaries
+      .borrow()
+      .get(&index)
+      .is_some_and(|settled| !settled())
+  })
+}
+
+/// Starts a render clean: a fresh tree and scene, the root node, and the scope the app
+/// builds under.
+fn begin_render() -> (NodeId, Owner) {
+  TREE.with(|tree| *tree.borrow_mut() = Tree::new());
+  Scene::<Web>::with(|scene| *scene = Scene::new());
+  PREEMPT_SCHEME.with(|preempt| preempt.set(false));
+  BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
+  crate::ssr::reset_hydration_sources();
+  crate::ssr::forget_static_routes();
+
+  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
+
+  (root, skene_core::root_owner().child())
+}
+
+/// Builds `app` under `scope` as the child of `root`, with `boundary` in context for
+/// the tasks it starts when one is given.
+fn build_app<V, F>(root: NodeId, scope: &Owner, boundary: Option<Boundary>, app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView<Web>,
+{
+  scope.enter(|| {
+    if let Some(boundary) = boundary {
+      provide_context(boundary);
+    }
+
+    let node = app().into_view().build();
+
+    Scene::<Web>::with(|scene| scene.attach(root, node, None));
+  });
+}
+
+/// Tears a render down so the next one starts clean.
+fn end_render(scope: Owner) {
+  scope.dispose();
+  crate::ssr::task::clear();
+  crate::ssr::reset_hydration_sources();
+  BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
+  Scene::<Web>::with(|scene| *scene = Scene::new());
+  TREE.with(|tree| *tree.borrow_mut() = Tree::new());
+}
+
 /// Renders `app` over the new tree: builds it under a fresh scope, drives its async
 /// work to a fixpoint, serializes the settled tree with its stylesheet, head and
 /// resource state, and tears the render down so the next call starts clean.
@@ -1075,31 +1269,16 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView<Web>,
 {
-  TREE.with(|tree| *tree.borrow_mut() = Tree::new());
-  Scene::<Web>::with(|scene| *scene = Scene::new());
-  PREEMPT_SCHEME.with(|preempt| preempt.set(false));
-  crate::ssr::reset_hydration_sources();
+  let (root, scope) = begin_render();
 
-  let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
-  let scope = skene_core::root_owner().child();
-
-  scope.enter(|| {
-    let node = app().into_view().build();
-
-    Scene::<Web>::with(|scene| scene.attach(root, node, None));
-  });
-
+  build_app(root, &scope, None, app);
   crate::ssr::task::stabilize();
 
   let state = crate::ssr::collect_hydration_state();
   let (styles, head, body) =
     with_tree(|tree| (tree.render_styles(), tree.render_head(), tree.render_body()));
 
-  scope.dispose();
-  crate::ssr::task::clear();
-  crate::ssr::reset_hydration_sources();
-  Scene::<Web>::with(|scene| *scene = Scene::new());
-  TREE.with(|tree| *tree.borrow_mut() = Tree::new());
+  end_render(scope);
 
   Rendered {
     styles,
@@ -1107,4 +1286,105 @@ where
     body,
     state,
   }
+}
+
+/// One piece of a streamed render, in emission order.
+pub enum StreamPiece<'a> {
+  /// The settled shell's styles and head, before any body chunk.
+  Shell {
+    /// The `<style>` block.
+    styles: &'a str,
+    /// The registered head content.
+    head: &'a str,
+  },
+  /// One body chunk: a `<style>` delta for what was interned since the previous
+  /// flush, when anything was, then the markup up to the next deferred boundary, or
+  /// after the last.
+  Chunk(String),
+  /// The encoded hydration state, once the walk completes.
+  Tail(String),
+}
+
+/// Renders `app` as an in-order stream, each piece handed to `flush` as it is
+/// produced: the shell once it settles, a body chunk at each deferred boundary, and
+/// the hydration state last.
+///
+/// The shell settles against a boundary of its own and its styles render, then the
+/// body walks in document order. At each deferred boundary the walk flushes the chunk
+/// built so far, blocks until that boundary's content settles, and resumes emitting it
+/// in place, opening the chunk with the styles interned since the previous flush, so a
+/// client with no JavaScript receives a correct, styled document progressively, each
+/// chunk appended to the last.
+pub fn render_to_stream_with<V, F>(app: F, mut flush: impl FnMut(StreamPiece<'_>))
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView<Web>,
+{
+  let (root, scope) = begin_render();
+  let shell = Boundary::new();
+
+  build_app(root, &scope, Some(shell), app);
+  crate::ssr::task::stabilize_until(move || shell.is_settled());
+
+  let (styles, head) = with_tree(|tree| (tree.render_styles(), tree.render_head()));
+
+  flush(StreamPiece::Shell {
+    styles: &styles,
+    head: &head,
+  });
+
+  let mut cursor = vec![Frame {
+    index: ROOT,
+    next_child: 0,
+  }];
+
+  loop {
+    let mut chunk = String::new();
+    let pending = with_tree(|tree| {
+      chunk.push_str(&tree.render_style_delta());
+
+      tree.stream(&mut cursor, &mut chunk, boundary_pending)
+    });
+
+    flush(StreamPiece::Chunk(chunk));
+
+    let Some(index) = pending
+    else {
+      break;
+    };
+
+    crate::ssr::task::stabilize_until(|| !boundary_pending(index));
+    // Dropped whether or not it settled: settled emits its content, unsettled emits
+    // what it has, and either way the walk must not pause on it again.
+    BOUNDARIES.with(|boundaries| boundaries.borrow_mut().remove(&index));
+  }
+
+  flush(StreamPiece::Tail(crate::ssr::collect_hydration_state()));
+  end_render(scope);
+}
+
+/// [`render_to_stream_with`], collected: `(styles, head, body_chunks, state)`.
+pub fn render_to_stream<V, F>(app: F) -> (String, String, Vec<String>, String)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView<Web>,
+{
+  let mut styles = String::new();
+  let mut head = String::new();
+  let mut chunks = Vec::new();
+  let mut state = String::new();
+
+  render_to_stream_with(app, |piece| match piece {
+    StreamPiece::Shell {
+      styles: shell_styles,
+      head: shell_head,
+    } => {
+      shell_styles.clone_into(&mut styles);
+      shell_head.clone_into(&mut head);
+    }
+    StreamPiece::Chunk(chunk) => chunks.push(chunk),
+    StreamPiece::Tail(tail) => state = tail,
+  });
+
+  (styles, head, chunks, state)
 }

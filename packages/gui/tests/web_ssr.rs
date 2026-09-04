@@ -11,31 +11,57 @@ use skene_gui::{
   Column,
   Container,
   Deferred,
-  DerivedView,
   HasChildren,
   Resource,
   RichText,
   Row,
   Span,
   Text,
-  TextTheme,
+  Theme,
+  Typography,
   View,
   client_only,
+  derived,
   render_page_stream,
   render_to_stream,
   render_to_string,
   web,
 };
-// The csr and ssr halves each use a different subset of the surface traits.
-#[allow(unused_imports)]
-use skene_gui::{HasDecoration, HasFocus};
+
+/// Every class named in `body`, in document order.
+fn classes(body: &str) -> Vec<String> {
+  body
+    .match_indices("class=\"")
+    .map(|(start, _)| {
+      let rest = &body[start + 7..];
+
+      rest[..rest.find('"').expect("class end")].to_owned()
+    })
+    .collect()
+}
 
 /// The class of the first classed element in `body`.
-fn first_class(body: &str) -> &str {
-  let start = body.find("class=\"").expect("a classed element") + "class=\"".len();
-  let rest = &body[start..];
+fn first_class(body: &str) -> String {
+  classes(body).into_iter().next().expect("a classed element")
+}
 
-  &rest[..rest.find('"').expect("class end")]
+/// The base rule of `class` in `styles`: the declarations between its braces.
+fn base_rule<'a>(styles: &'a str, class: &str) -> &'a str {
+  let start = styles
+    .find(&format!(".{class}{{"))
+    .expect("the class's base rule")
+    + class.len()
+    + 2;
+  let rest = &styles[start..];
+
+  &rest[..rest.find('}').expect("rule end")]
+}
+
+/// A color as the CSS the driver renders it to.
+fn css(color: Color) -> String {
+  let [lightness, chroma, hue, alpha] = color.to_oklch();
+
+  format!("oklch({lightness} {chroma} {hue} / {alpha})")
 }
 
 #[test]
@@ -87,7 +113,7 @@ fn identical_styles_share_one_rule() {
   let class = first_class(&body[span..]);
 
   assert_eq!(
-    body.matches(class).count(),
+    body.matches(&class).count(),
     2,
     "both spans carry the shared class: {body}",
   );
@@ -111,19 +137,17 @@ fn text_and_attributes_are_escaped() {
   );
 }
 
-/// The payoff: an immediately-ready resource settles during the render, so the *loaded* tree
-/// serializes, not the placeholder—the SSR fixpoint at work.
+/// The payoff: an immediately-ready resource settles during the render, so the *loaded*
+/// tree serializes, not the placeholder—the SSR fixpoint at work.
 #[test]
 fn a_resolved_resource_serializes_its_loaded_tree() {
   let page = render_to_string(|| {
     let greeting = Resource::new(|| async { "Ada".to_owned() });
 
-    DerivedView::new(move || {
+    derived(move || {
       greeting.with(|value| match value {
-        None => Text::new("Loading…").into_any(),
-        Some(name) => Container::new()
-          .set_child(Text::new(name.clone()))
-          .into_any(),
+        None => Text::new("Loading…").build(),
+        Some(name) => Container::new().set_child(Text::new(name.clone())).build(),
       })
     })
   });
@@ -142,7 +166,8 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
 }
 
 /// An *async* load—one that parks on a host operation—settles before serialization: the
-/// runner blocks on the WASI reactor until the sleep resolves, so the loaded tree serializes.
+/// runner blocks on the WASI reactor until the sleep resolves, so the loaded tree
+/// serializes.
 #[test]
 fn an_async_load_settles_before_serialization() {
   let page = render_to_string(|| {
@@ -152,12 +177,10 @@ fn an_async_load_settles_before_serialization() {
       "Ada".to_owned()
     });
 
-    DerivedView::new(move || {
+    derived(move || {
       greeting.with(|value| match value {
-        None => Text::new("Loading…").into_any(),
-        Some(name) => Container::new()
-          .set_child(Text::new(name.clone()))
-          .into_any(),
+        None => Text::new("Loading…").build(),
+        Some(name) => Container::new().set_child(Text::new(name.clone())).build(),
       })
     })
   });
@@ -175,8 +198,8 @@ fn an_async_load_settles_before_serialization() {
   );
 }
 
-/// A complete document assembles the styles into `<head>`, the tree into `<body>`, and the state
-/// into the script `hydrate_page` reads back.
+/// A complete document assembles the styles into `<head>`, the tree into `<body>`, and
+/// the state into the script `hydrate_page` reads back.
 #[test]
 fn page_assembles_a_full_document() {
   let page = render_to_string(|| {
@@ -188,7 +211,7 @@ fn page_assembles_a_full_document() {
   let document = page.page();
 
   assert!(
-    document.starts_with("<!DOCTYPE html><html><head><style>"),
+    document.starts_with("<!DOCTYPE html><html><head><style id=\"skene-styles\">"),
     "the styles open the head: {document}",
   );
 
@@ -209,7 +232,8 @@ fn page_assembles_a_full_document() {
   );
 }
 
-/// A `client_only` view yields nothing on the server; its build closure never runs here.
+/// A `client_only` view yields nothing on the server; its build closure never runs
+/// here.
 #[test]
 fn client_only_is_empty_on_the_server() {
   let page =
@@ -217,14 +241,14 @@ fn client_only_is_empty_on_the_server() {
 
   assert_eq!(
     page.body(),
-    "<div data-h=\"1\"></div>",
-    "an empty, marked grouping node: {}",
+    "<!--s:0--><!--e:0-->",
+    "an empty segment, nothing between its anchors: {}",
     page.body(),
   );
 }
 
-/// Each resource's settled value is serialized into the render's state, by creation order, for
-/// the client to adopt on hydration.
+/// Each resource's settled value is serialized into the render's state, by creation
+/// order, for the client to adopt on hydration.
 #[test]
 fn resources_serialize_their_state() {
   let page = render_to_string(|| {
@@ -241,7 +265,8 @@ fn resources_serialize_their_state() {
   );
 }
 
-/// A client-only resource takes no part in the render's state, nor does it run on the server.
+/// A client-only resource takes no part in the render's state, nor does it run on the
+/// server.
 #[test]
 fn a_client_resource_is_not_serialized() {
   let page = render_to_string(|| {
@@ -258,17 +283,28 @@ fn a_client_resource_is_not_serialized() {
   );
 }
 
-/// An inline `Span` is a classless, inline run—unlike a block `Text`, which carries a
-/// `display:block` class.
+/// An inline `Span` flows inline—its rule carries no `display:block`—unlike a block
+/// `Text`, whose rule does.
 #[test]
-fn an_inline_span_is_classless_unlike_a_block_text() {
-  let page = render_to_string(|| RichText::new([Span::text("x")]));
+fn an_inline_span_flows_inline_unlike_a_block_text() {
+  let inline = render_to_string(|| RichText::new().set_spans([Span::new("x")]));
+  let block = render_to_string(|| Text::new("x"));
+  let span = classes(inline.body())[1].clone();
 
-  assert_eq!(
-    page.body(),
-    "<div data-h=\"1\"><span data-h=\"2\">x</span></div>",
-    "an unstyled inline run has no class (no display:block): {}",
-    page.body(),
+  assert!(
+    inline.body().starts_with("<div data-h=\"1\"") && inline.body().contains("<span data-h=\"2\""),
+    "a paragraph is a block holding its runs: {}",
+    inline.body(),
+  );
+  assert!(
+    !base_rule(inline.styles(), &span).contains("display:"),
+    "an inline run sets no display: {}",
+    inline.styles(),
+  );
+  assert!(
+    base_rule(block.styles(), &first_class(block.body())).contains("display:block"),
+    "a block run does: {}",
+    block.styles(),
   );
 }
 
@@ -276,8 +312,8 @@ fn an_inline_span_is_classless_unlike_a_block_text() {
 #[test]
 fn rich_text_nests_groups_and_embeds_views() {
   let page = render_to_string(|| {
-    RichText::new([
-      Span::group([Span::text("a"), Span::text("b")]),
+    RichText::new().set_spans([
+      Span::group([Span::new("a"), Span::new("b")]),
       Span::view(Container::new()),
     ])
   });
@@ -302,8 +338,8 @@ fn rich_text_nests_groups_and_embeds_views() {
   );
 }
 
-/// A page with no `Deferred` streams as a single chunk: the walk never pauses, so the one chunk
-/// is the whole document—the same markup `render_to_string` would assemble.
+/// A page with no `Deferred` streams as a single chunk: the walk never pauses, so the
+/// one chunk is the whole document—the same markup `render_to_string` would assemble.
 #[test]
 fn a_page_without_deferred_streams_as_one_chunk() {
   let stream = render_to_stream(|| Text::new("hi"));
@@ -320,6 +356,37 @@ fn a_page_without_deferred_streams_as_one_chunk() {
     "and carries the whole body: {}",
     stream.document(),
   );
+
+  assert_eq!(
+    stream.document(),
+    render_to_string(|| Text::new("hi")).page(),
+    "and is the page a whole render assembles",
+  );
+}
+
+/// A page whose slow content sits behind a `Deferred` boundary.
+fn deferred_app() -> impl skene_gui::IntoView {
+  Row::new().set_children([
+    Text::new("shell").into_any(),
+    Deferred::new(|| {
+      let data = Resource::new(|| async {
+        web::sleep(Duration::from_millis(5)).await;
+
+        "late".to_owned()
+      });
+
+      derived(move || {
+        data.with(|value| match value {
+          None => Text::new("loading").build(),
+          Some(text) => Container::new()
+            .set_color(Color::srgb(0.1, 0.2, 0.3))
+            .set_child(Text::new(text.clone()))
+            .build(),
+        })
+      })
+    })
+    .into_any(),
+  ])
 }
 
 /// The piece-driven stream: the sink receives the opening shell, a chunk per deferred
@@ -327,30 +394,9 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 /// document the collected stream assembles.
 #[test]
 fn page_stream_pieces_concatenate_to_the_document() {
-  fn app() -> impl skene_gui::IntoView {
-    Row::new().set_children([
-      Text::new("shell").into_any(),
-      Deferred::new(|| {
-        let data = Resource::new(|| async {
-          web::sleep(Duration::from_millis(5)).await;
-
-          "late".to_owned()
-        });
-
-        DerivedView::new(move || {
-          data.with(|value| match value {
-            None => Text::new("loading").into_any(),
-            Some(text) => Text::new(text.clone()).into_any(),
-          })
-        })
-      })
-      .into_any(),
-    ])
-  }
-
   let mut pieces: Vec<String> = Vec::new();
 
-  render_page_stream(app, |piece| pieces.push(piece.to_owned()));
+  render_page_stream(deferred_app, |piece| pieces.push(piece.to_owned()));
 
   assert!(
     pieces.len() >= 4,
@@ -362,36 +408,18 @@ fn page_stream_pieces_concatenate_to_the_document() {
   assert!(pieces[pieces.len() - 1].ends_with("</body></html>"));
   assert_eq!(
     pieces.concat(),
-    render_to_stream(app).document(),
+    render_to_stream(deferred_app).document(),
     "the pieces concatenate to the collected stream's document",
   );
 }
 
-/// The payoff: the shell flushes before a `Deferred` boundary's slow content settles. The first
-/// chunk carries the shell and stops *before* the boundary; the boundary's loaded content arrives
-/// in a later chunk, in document order—no placeholder, and no JavaScript.
+/// The payoff: the shell flushes before a `Deferred` boundary's slow content settles.
+/// The first chunk carries the shell and stops *before* the boundary; the boundary's
+/// loaded content arrives in a later chunk, in document order—no placeholder, and no
+/// JavaScript.
 #[test]
 fn deferred_content_streams_after_the_shell() {
-  let stream = render_to_stream(|| {
-    Row::new().set_children([
-      Text::new("shell").into_any(),
-      Deferred::new(|| {
-        let data = Resource::new(|| async {
-          web::sleep(Duration::from_millis(5)).await;
-
-          "late".to_owned()
-        });
-
-        DerivedView::new(move || {
-          data.with(|value| match value {
-            None => Text::new("loading").into_any(),
-            Some(text) => Text::new(text.clone()).into_any(),
-          })
-        })
-      })
-      .into_any(),
-    ])
-  });
+  let stream = render_to_stream(deferred_app);
 
   assert!(
     stream.chunks().len() >= 2,
@@ -424,19 +452,79 @@ fn deferred_content_streams_after_the_shell() {
   );
 }
 
-/// A group's style cascades to its nested runs: a colorless child adopts the group's color, so
-/// both the group and the child carry the shared class.
+/// A boundary whose loaded content introduces a class the shell never used streams
+/// that class's rule ahead of the content, in the same chunk, so a client with no
+/// JavaScript paints it styled; the whole document holds each rule once.
+#[test]
+fn a_streamed_boundary_carries_the_styles_it_introduces() {
+  let stream = render_to_stream(deferred_app);
+  let document = stream.document();
+  let late = document.find(">late</span>").expect("the late content");
+  let before = classes(&document[..late]);
+  // The loaded container's class: the one before the run's own.
+  let late_class = before[before.len() - 2].clone();
+  let rule = format!(".{late_class}{{");
+
+  assert!(
+    !stream.chunks()[0].contains(&rule),
+    "the shell does not know the class yet: {}",
+    stream.chunks()[0],
+  );
+
+  let chunk = stream
+    .chunks()
+    .iter()
+    .find(|chunk| chunk.contains(">late</span>"))
+    .expect("the chunk carrying the content");
+  let delta = chunk
+    .find("<style data-skene-style>")
+    .expect("the chunk opens with a style delta");
+
+  assert!(
+    chunk[delta..].find(&rule) < chunk.find(">late</span>"),
+    "the rule precedes the content it styles: {chunk}",
+  );
+  assert_eq!(
+    document.matches(&rule).count(),
+    1,
+    "the rule is emitted once: {document}"
+  );
+  assert!(
+    document.contains(&format!(
+      "background-color:{};",
+      css(Color::srgb(0.1, 0.2, 0.3))
+    )),
+    "{document}"
+  );
+}
+
+/// A group's style cascades to its nested runs: the group redefines the ink token on
+/// its own run, and a colorless child reads the token.
 #[test]
 fn a_groups_style_cascades_to_its_children() {
-  let page = render_to_string(|| {
-    RichText::new([Span::group([Span::text("a")]).set_color(Color::srgb(1.0, 0.0, 0.0))])
+  let red = Color::srgb(1.0, 0.0, 0.0);
+  let page = render_to_string(move || {
+    RichText::new().set_spans([Span::group([Span::new("a")]).set_color(red)])
   });
+  let classes = classes(page.body());
 
   assert_eq!(
-    page.body().matches("class=\"skene-").count(),
-    2,
-    "the group and its inheriting child share the color class: {}",
-    page.body(),
+    classes.len(),
+    3,
+    "the block, the group and the child: {}",
+    page.body()
+  );
+  assert!(
+    page
+      .styles()
+      .contains(&format!("{{--typography-ink:{};}}", css(red))),
+    "the group defines the ink beneath it: {}",
+    page.styles(),
+  );
+  assert!(
+    base_rule(page.styles(), &classes[2]).contains("color:var(--typography-ink)"),
+    "the child inherits it through the token: {}",
+    page.styles(),
   );
 }
 
@@ -453,9 +541,9 @@ fn render_deadline_cuts_off_unsettled_work() {
       1u32
     });
 
-    DerivedView::new(move || match value.get() {
-      None => Text::new("still waiting").into_any(),
-      Some(value) => Text::new(format!("done {value}")).into_any(),
+    derived(move || match value.get() {
+      None => Text::new("still waiting").build(),
+      Some(value) => Text::new(format!("done {value}")).build(),
     })
   });
 
@@ -472,9 +560,9 @@ fn tagged_resource_serializes_under_its_tag() {
   let rendered = render_to_string(|| {
     let value = Resource::tagged("answer", || async { 41u32 });
 
-    DerivedView::new(move || match value.get() {
-      None => Text::new("hold").into_any(),
-      Some(value) => Text::new(format!("tagged {value}")).into_any(),
+    derived(move || match value.get() {
+      None => Text::new("hold").build(),
+      Some(value) => Text::new(format!("tagged {value}")).build(),
     })
   });
 
@@ -513,23 +601,33 @@ fn selection_styling_compiles_into_the_class() {
   );
 }
 
-/// A theme's selection colors inherit down to its runs through the base text style.
+/// The typography's selection colors inherit down to its runs through the selection
+/// tokens.
 #[test]
-fn text_theme_selection_colors_inherit() {
-  let page = render_to_string(|| {
-    TextTheme::new()
-      .set_base(
-        skene_gui::TextStyle::new()
-          .set_selection_color(Color::srgb(0., 0., 0.))
-          .set_selection_background(Color::srgb(0., 1., 0.)),
-      )
-      .set_child(Text::new("themed"))
+fn typography_selection_colors_inherit() {
+  let surface = Color::srgb(0., 1., 0.);
+  let page = render_to_string(move || {
+    Theme::new(
+      Typography::default()
+        .set_selection_ink(Color::srgb(0., 0., 0.))
+        .set_selection_surface(surface),
+    )
+    .set_child_builder(|| Text::new("themed"))
   });
-  let class = first_class(page.body());
+  let run = classes(page.body())[1].clone();
 
   assert!(
-    page.styles().contains(&format!(".{class}::selection{{")),
-    "the inherited selection colors intern with the run: {}",
+    page.styles().contains(&format!(
+      ".{run}::selection{{background-color:var(--typography-selection-surface);"
+    )),
+    "the run selects in the token: {}",
+    page.styles(),
+  );
+  assert!(
+    page
+      .styles()
+      .contains(&format!("--typography-selection-surface:{};", css(surface))),
+    "which the theme defines: {}",
     page.styles(),
   );
 }
@@ -570,66 +668,15 @@ fn a_widget_role_and_state_serialize_as_aria() {
   );
 }
 
-/// An enhancement serializes its fallback, so a scriptless client is handed the
-/// browser's own working control rather than an inert drawn one.
-#[test]
-fn an_enhancement_serializes_its_fallback() {
-  use skene_gui::{Enhanced, RawCheckbox, WebCheckbox};
-
-  let page = render_to_string(|| {
-    Container::new().set_child(
-      Enhanced::new(|| WebCheckbox::new())
-        .set_child(|| RawCheckbox::new().set_child(Text::new("mark"))),
-    )
-  });
-  let html = page.body();
-
-  assert!(
-    html.contains("type=\"checkbox\""),
-    "the browser's own control is what a server render emits: {html}"
-  );
-  assert!(
-    !html.contains("role=\"checkbox\""),
-    "and the drawn one is not serialized beside it: {html}"
-  );
-}
-
-/// Turning the scriptless fallback off makes the server serialize the enhanced form
-/// instead, so an app that does not want one pays nothing for it.
-#[test]
-fn a_disabled_fallback_serializes_the_enhanced_form() {
-  use skene_gui::{Enhanced, RawCheckbox, WebCheckbox, set_scriptless_fallback};
-
-  set_scriptless_fallback(false);
-
-  let page = render_to_string(|| {
-    Container::new().set_child(
-      Enhanced::new(WebCheckbox::new).set_child(|| RawCheckbox::new().set_child(Text::new("mark"))),
-    )
-  });
-  let html = page.body();
-
-  set_scriptless_fallback(true);
-
-  assert!(
-    html.contains("role=\"checkbox\""),
-    "the drawn form is what a server render emits now: {html}"
-  );
-  assert!(
-    !html.contains("type=\"checkbox\""),
-    "and the browser's own is not: {html}"
-  );
-}
-
 /// A page whose reader may have chosen a scheme carries the script that applies that
 /// choice before the first paint—inline and blocking in the head, since a deferred one
 /// would run after the page had already been painted in the platform's scheme.
 #[test]
 fn a_chooseable_scheme_preempts_its_own_flash() {
-  use skene_gui::{SimplePalette, SimpleTheme, core::ColorScheme};
+  use skene_gui::{SimplePalette, core::ColorScheme};
 
   let rendered = render_to_string(|| {
-    SimpleTheme::new(SimplePalette::default()).set_child(|| {
+    Theme::new(SimplePalette::default()).set_child_builder(|| {
       skene_gui::derive_scheme(|| Some(ColorScheme::Dark));
 
       Text::new("themed")

@@ -49,8 +49,12 @@ pub use self::csr::{
 pub use self::ssr::{
   RenderHints,
   Rendered,
+  StreamPiece,
   add_head_element,
   create_link,
+  register_boundary,
+  render_to_stream,
+  render_to_stream_with,
   render_to_string,
   set_document_title,
   set_render_hints,

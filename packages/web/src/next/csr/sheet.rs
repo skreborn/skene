@@ -1,11 +1,12 @@
 //! The browser's stylesheet sink over the shared interner: one base `<style>` holding
 //! the reset and the registrations, one `<style>` per interned class, and the server's
-//! block adopted in place of both when a page hydrates.
+//! blocks adopted in place of both when a page hydrates.
 
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::next::{Definitions, TokenName};
+use wasm_bindgen::JsCast;
 use web_sys::{Document, Element, HtmlHeadElement};
 
 use crate::{
@@ -14,12 +15,10 @@ use crate::{
   next::{
     compile::{Compiled, slot_registrations},
     condition::CLASS_PLACEHOLDER,
+    markup::STYLE_ATTRIBUTE,
     token::WebTokenValue,
   },
 };
-
-/// The attribute every `<style>` element this sink owns carries.
-pub(super) const STYLE_ATTRIBUTE: &str = "data-skene-style";
 
 pub(super) struct Sheet {
   document: Document,
@@ -31,6 +30,8 @@ pub(super) struct Sheet {
   base: Element,
   base_text: String,
   adopted: Option<String>,
+  #[cfg_attr(not(feature = "test"), expect(dead_code))]
+  deltas: Vec<Element>,
 }
 
 impl Sheet {
@@ -52,15 +53,32 @@ impl Sheet {
       base,
       base_text,
       adopted: None,
+      deltas: Vec::new(),
     }
   }
 
-  /// A sink adopting the server's `block`: every rule already in it is left alone, and
-  /// only what the block lacks is added.
+  /// A sink adopting the server's `block` and the delta blocks a streamed render left
+  /// in the body: every rule already in them is left alone, and only what they lack is
+  /// added.
   pub(super) fn adopt(document: &Document, head: &HtmlHeadElement, block: Element) -> Self {
-    let text = block.text_content().unwrap_or_default();
+    let base_text = block.text_content().unwrap_or_default();
+    let mut adopted = base_text.clone();
+    let mut deltas = Vec::new();
 
     let _ = block.set_attribute(STYLE_ATTRIBUTE, "");
+
+    if let Ok(blocks) = document.query_selector_all(&format!("style[{STYLE_ATTRIBUTE}]")) {
+      for index in 0..blocks.length() {
+        if let Some(delta) = blocks
+          .item(index)
+          .and_then(|node| node.dyn_into::<Element>().ok())
+          && delta != block
+        {
+          adopted.push_str(&delta.text_content().unwrap_or_default());
+          deltas.push(delta);
+        }
+      }
+    }
 
     Self {
       document: document.clone(),
@@ -70,8 +88,9 @@ impl Sheet {
       elements: FxHashMap::default(),
       registered: FxHashSet::default(),
       base: block,
-      base_text: text.clone(),
-      adopted: Some(text),
+      base_text,
+      adopted: Some(adopted),
+      deltas,
     }
   }
 
@@ -150,6 +169,10 @@ impl Sheet {
   #[cfg(feature = "test")]
   pub(super) fn remove_all(&mut self) {
     self.base.remove();
+
+    for element in self.deltas.drain(..) {
+      element.remove();
+    }
 
     for (_, element) in self.elements.drain() {
       element.remove();

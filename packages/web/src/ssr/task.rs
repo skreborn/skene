@@ -195,7 +195,7 @@ pub(crate) fn stabilize() {
 /// deferred boundary settles against its own, so the render can flush what is ready and block only
 /// on the next thing it needs. Like [`stabilize`] it also returns once nothing is ready and
 /// nothing is outstanding, or after [`MAX_ROUNDS`].
-pub(super) fn stabilize_until(done: impl Fn() -> bool) {
+pub(crate) fn stabilize_until(done: impl Fn() -> bool) {
   let budget = BUDGET.with(Cell::get);
   let deadline =
     monotonic_clock::now().saturating_add(u64::try_from(budget.as_nanos()).unwrap_or(u64::MAX));

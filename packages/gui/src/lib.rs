@@ -5,8 +5,8 @@
 //! the headless host driver elsewhere) and aliases every built-in view and every
 //! `Simple*` view to it, so app code names no platform. The medium's own contribution
 //! is [`Typography`], the [`media`] module and the entry points: `launch` in the
-//! browser, `render_to_string` and `render_main` on the server leaf, and
-//! [`macro@main`] expanding to whichever the target has.
+//! browser, `render_to_string`, `render_to_stream` and `render_main` on the server
+//! leaf, and [`macro@main`] expanding to whichever the target has.
 
 pub mod media;
 pub mod prelude;
@@ -480,7 +480,7 @@ where
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
 /// the statically-renderable routes one per line (see [`install_static_router`]), or,
-/// given `--stream <path>`, writes the page as one flush.
+/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it.
 ///
 /// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
 /// prints the document—which is exactly the interface the runner embeds.
@@ -504,15 +504,124 @@ where
     return;
   }
 
-  let path = if argument == "--stream" {
-    std::env::args().nth(2).unwrap_or_else(|| "/".to_owned())
+  if argument == "--stream" {
+    let path = std::env::args().nth(2).unwrap_or_else(|| "/".to_owned());
+
+    skene_web::next::set_request_path(&path);
+    render_page_stream(app, |piece| {
+      print!("{piece}");
+
+      let _ = std::io::stdout().flush();
+    });
+
+    return;
   }
-  else {
-    argument
-  };
-  let rendered = render_to_string_at(&path, app);
+
+  let rendered = render_to_string_at(&argument, app);
 
   print!("{}", rendered.page());
 
   let _ = std::io::stdout().flush();
+}
+
+/// A server render as an ordered sequence of HTML chunks, ready to flush one after
+/// another.
+///
+/// The first chunk opens the document and carries the shell; each subsequent one
+/// carries a [`Deferred`] boundary's content, streamed once it settled, behind a
+/// `<style>` delta for the classes it introduces; the last closes the document. A
+/// client with no JavaScript receives a correct, styled document progressively, since
+/// the chunks concatenate, in order, into the markup [`render_to_string`] would
+/// produce with the deltas beside the content they style.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[must_use]
+pub struct Stream {
+  chunks: Vec<String>,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+impl Stream {
+  /// The chunks, in flush order.
+  #[inline(always)]
+  #[must_use]
+  pub fn chunks(&self) -> &[String] {
+    &self.chunks
+  }
+
+  /// Consumes the stream into its chunks, in flush order.
+  #[inline(always)]
+  #[must_use]
+  pub fn into_chunks(self) -> Vec<String> {
+    self.chunks
+  }
+
+  /// The whole document, the chunks concatenated in order: what a no-JavaScript client
+  /// ends up with once every chunk has arrived.
+  #[inline(always)]
+  #[must_use]
+  pub fn document(&self) -> String {
+    self.chunks.concat()
+  }
+}
+
+/// The opening of a streamed document: the head with its styles, up to the body.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+fn page_opening(head: &str, styles: &str) -> String {
+  format!("<!DOCTYPE html><html><head>{head}{styles}</head><body>")
+}
+
+/// The closing of a streamed document: the state script and the end of the body.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+fn page_closing(state: &str) -> String {
+  format!(
+    "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
+    id = skene_web::STATE_SCRIPT_ID,
+    // `<` keeps a value's `<` from closing the script early, and is valid JSON that
+    // decodes back to `<`.
+    state = state.replace('<', "\\u003c"),
+  )
+}
+
+/// Renders the application as an in-order HTML stream, for a server-rendering
+/// platform.
+///
+/// Like [`render_to_string`], but flushes the shell before every [`Deferred`]
+/// boundary's slow content: the returned [`Stream`]'s chunks are written to the
+/// response as they are produced, so the client sees the page progressively without
+/// waiting on the slowest data, and, because the chunks are emitted in document order
+/// with their styles, with no JavaScript required.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_to_stream<V, F>(app: F) -> Stream
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  let (styles, head, mut chunks, state) = skene_web::next::render_to_stream(app);
+
+  if let Some(first) = chunks.first_mut() {
+    first.insert_str(0, &page_opening(&head, &styles));
+  }
+
+  if let Some(last) = chunks.last_mut() {
+    last.push_str(&page_closing(&state));
+  }
+
+  Stream { chunks }
+}
+
+/// Renders the application as a progressive page, each flush handed to `sink` as it
+/// is produced: the opening shell, a body chunk per settled [`Deferred`] boundary, and
+/// the closing tail. The flushes concatenate to [`render_to_stream`]'s
+/// [`document`](Stream::document), so writing each one to a response streams the page.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  skene_web::next::render_to_stream_with(app, |piece| match piece {
+    skene_web::next::StreamPiece::Shell { styles, head } => sink(&page_opening(head, styles)),
+    skene_web::next::StreamPiece::Chunk(chunk) => sink(&chunk),
+    skene_web::next::StreamPiece::Tail(state) => sink(&page_closing(&state)),
+  });
 }

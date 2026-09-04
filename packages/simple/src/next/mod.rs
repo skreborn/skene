@@ -1,0 +1,37 @@
+//! # The Simple library over the generic views
+//!
+//! The Simple component library built once over [`skene_views`], generic over the
+//! [`Driver`](skene_views::Driver) a facade names: one palette, one shape language, and
+//! every `Simple*` view composed from the public views alone, so a third-party library
+//! sits on the same footing. Replaces the crate's flat exports once every facade builds
+//! on the generic views.
+//!
+//! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
+//! beneath the theme, every Simple view references its tokens by name, and a Simple
+//! view with no theme above defines the default at the root. The palette also defines
+//! the views' typography tokens, so a plain text under a Simple theme is inked in the
+//! palette's foreground. Corners round where the medium has a
+//! [`CornerRadius`](skene_views::CornerRadius) and stay square where it has none. A
+//! `SimplePicker` waits on overlays.
+
+mod button;
+mod card;
+mod checkbox;
+mod palette;
+mod radio;
+mod shape;
+mod slider;
+mod text_editor;
+mod text_field;
+
+pub use self::{
+  button::SimpleButton,
+  card::SimpleCard,
+  checkbox::SimpleCheckbox,
+  palette::{SimpleLook, SimplePalette},
+  radio::{SimpleRadio, SimpleRadioGroup},
+  slider::SimpleSlider,
+  text_editor::SimpleTextEditor,
+  text_field::SimpleTextField,
+};
+pub use crate::palette::SimpleVariant;

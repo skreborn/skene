@@ -69,6 +69,42 @@ macro_rules! decoration {
       set_overflow / derive_overflow (overflow) => overflow: ::skene_core::Overflow,
         "how content exceeding the box's bounds is treated; `Scroll` and `Auto` make it scrollable";
     }
+
+    /// Sets the corner radius, in the medium's unit, where the medium rounds corners; a
+    /// medium without radii accepts and ignores it.
+    #[inline(always)]
+    pub fn set_corner_radius(
+      mut self,
+      radius: impl Into<::skene_core::next::Value<f32, ::skene_core::next::Condition<D::Scalar>>>,
+    ) -> Self
+    where
+      D::StyleExt: $crate::CornerRadius,
+    {
+      <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+      >(&mut self.$access().ext, Some(radius.into()));
+
+      self
+    }
+
+    /// Derives the corner radius from the signals `radius` reads, where the medium
+    /// rounds corners; a medium without radii accepts and ignores it.
+    #[inline(always)]
+    pub fn derive_corner_radius(mut self, radius: impl Fn() -> f32 + 'static) -> Self
+    where
+      D::StyleExt: $crate::CornerRadius,
+    {
+      <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+      >(
+        &mut self.$access().ext,
+        Some(::skene_core::next::Value::new(
+          ::skene_core::next::Leaf::Derived(::std::rc::Rc::new(radius)),
+        )),
+      );
+
+      self
+    }
   };
 }
 

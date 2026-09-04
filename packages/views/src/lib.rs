@@ -17,10 +17,12 @@
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
 //! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Range`],
 //! [`Roving`] with [`RadioMember`], and [`TextEntry`] ship, and the `Raw*` aliases name
-//! the control over each.
+//! the control over each. [`CornerRadius`] is what a decorated box asks of a medium's
+//! style extension to round its corners, silently declined by a medium without radii.
 
 mod container;
 mod control;
+mod corner_radius;
 mod error_boundary;
 mod flex;
 mod flexible;
@@ -85,6 +87,7 @@ pub use crate::{
     TextEntry,
     Toggle,
   },
+  corner_radius::CornerRadius,
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,

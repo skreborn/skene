@@ -6,6 +6,10 @@ edition.workspace = true
 [dependencies]
 skene-core.workspace = true
 skene-reactive.workspace = true
+skene-views.workspace = true
+
+[dev-dependencies]
+skene-headless.workspace = true
 
 [lints]
 workspace = true

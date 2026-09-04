@@ -11,7 +11,7 @@
 pub(crate) mod tree;
 
 mod stylesheet;
-mod task;
+pub(crate) mod task;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -915,8 +915,14 @@ where
   (styles, head, chunks, state)
 }
 
+/// Forgets every registered resource serializer, so a render starts clean.
+pub(crate) fn reset_hydration_sources() {
+  SOURCES.with(|sources| sources.borrow_mut().clear());
+  TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
+}
+
 /// Drains the registered sources into the encoded hydration state.
-fn collect_hydration_state() -> String {
+pub(crate) fn collect_hydration_state() -> String {
   let values: Vec<Option<String>> =
     SOURCES.with(|sources| sources.borrow().iter().map(|source| source()).collect());
   let mut tagged: Vec<(String, String)> = TAGGED_SOURCES.with(|sources| {
@@ -932,7 +938,7 @@ fn collect_hydration_state() -> String {
   crate::hydration::encode_state(&values, &tagged)
 }
 
-fn escape_text(text: &str, out: &mut String) {
+pub(crate) fn escape_text(text: &str, out: &mut String) {
   for character in text.chars() {
     match character {
       '&' => out.push_str("&amp;"),
@@ -943,7 +949,7 @@ fn escape_text(text: &str, out: &mut String) {
   }
 }
 
-fn escape_attr(value: &str, out: &mut String) {
+pub(crate) fn escape_attr(value: &str, out: &mut String) {
   for character in value.chars() {
     match character {
       '&' => out.push_str("&amp;"),

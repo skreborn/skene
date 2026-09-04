@@ -8,7 +8,7 @@ use crate::next::Scalar;
 ///
 /// Names a scheme outright, where [`Condition::DarkMode`](crate::Condition::DarkMode)
 /// and its light twin ask the platform which one is in force.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum ColorScheme {
   /// Dark ink on a light surface.

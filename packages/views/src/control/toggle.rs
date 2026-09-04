@@ -13,7 +13,7 @@ use skene_reactive::{Get, Set, Signal};
 
 use super::{Behavior, ControlHandle};
 
-/// A checkbox: a click or `Space` flips it.
+/// A checkbox: a click, `Space` or the platform's own toggle flips it.
 ///
 /// Controlled: the checked state it reports is what
 /// [`derive_checked`](Self::derive_checked) reads, and a flip only calls
@@ -71,11 +71,17 @@ impl Toggle {
     self.checked.as_ref().is_some_and(|checked| checked())
   }
 
-  /// Asks for the opposite state.
-  fn flip(&self) {
+  /// Asks for `checked`.
+  fn ask(&self, checked: bool) {
     if let Some(action) = &self.on_toggle {
-      action(!self.read());
+      action(checked);
     }
+  }
+
+  /// Asks for the opposite state.
+  #[inline(always)]
+  fn flip(&self) {
+    self.ask(!self.read());
   }
 }
 
@@ -92,7 +98,7 @@ impl<D: Driver> Behavior<D> for Toggle {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::Click, EventKind::KeyDown]
+    &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
   }
 
   fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
@@ -109,6 +115,10 @@ impl<D: Driver> Behavior<D> for Toggle {
     }
 
     Prevent::None
+  }
+
+  fn on_toggle(&self, checked: bool, _control: &ControlHandle<D>) {
+    self.ask(checked);
   }
 
   fn access(&self) -> Vec<AccessProp> {

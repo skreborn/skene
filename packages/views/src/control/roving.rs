@@ -178,9 +178,9 @@ impl<D: Driver> Behavior<D> for Roving {
   }
 }
 
-/// One choice within a [`Roving`] group: a click or `Space` chooses it, the arrow keys
-/// move the choice to a neighbour, and it is the group's tab stop while chosen or, with
-/// nothing chosen, while first.
+/// One choice within a [`Roving`] group: a click, `Space` or the platform's own check
+/// chooses it, the arrow keys move the choice to a neighbour, and it is the group's tab
+/// stop while chosen or, with nothing chosen, while first.
 ///
 /// Outside a group it reports its role, is never checked and takes focus like any
 /// control.
@@ -234,7 +234,7 @@ impl<D: Driver> Behavior<D> for RadioMember {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::Click, EventKind::KeyDown]
+    &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
   }
 
   fn attach(&self, control: &ControlHandle<D>) {
@@ -275,6 +275,16 @@ impl<D: Driver> Behavior<D> for RadioMember {
     }
 
     Prevent::All
+  }
+
+  fn on_toggle(&self, checked: bool, _control: &ControlHandle<D>) {
+    if !checked {
+      return;
+    }
+
+    if let Some(group) = self.group() {
+      group.choose(self.value.clone());
+    }
   }
 
   fn access(&self) -> Vec<AccessProp> {

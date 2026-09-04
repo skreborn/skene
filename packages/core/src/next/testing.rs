@@ -24,6 +24,7 @@ use super::{
   MediaSignals,
   NodeId,
   NodeKind,
+  OverlayProps,
   PlainChild,
   RunProps,
   RunValue,
@@ -127,6 +128,12 @@ impl Driver for TestDriver {
   }
 
   fn set_control_state(&self, _: &u32, _: &ControlState) {}
+
+  fn create_overlay(&self, _: &OverlayProps<Self>) -> u32 {
+    Self::next_sink()
+  }
+
+  fn set_overlay_open(&self, _: &u32, _: bool, _: Option<&u32>) {}
 
   fn create_run(&self, _: &RunProps<Self>) -> u32 {
     Self::next_sink()

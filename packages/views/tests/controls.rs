@@ -561,7 +561,10 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
     )
   });
 
-  assert_eq!(listened(checkbox), [EventKind::Click, EventKind::KeyDown]);
+  assert_eq!(
+    listened(checkbox),
+    [EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
+  );
   assert_eq!(
     listened(slider),
     [

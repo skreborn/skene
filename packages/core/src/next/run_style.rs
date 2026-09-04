@@ -5,6 +5,7 @@ use std::{fmt::Debug, rc::Rc};
 use super::{
   Declared,
   DerivedSlot,
+  Fingerprint,
   Plain,
   Property,
   PropertyKey,
@@ -49,7 +50,9 @@ pub enum RunValue<X: StyleExtension = ()> {
   message = "`{Self}` is not a run property type under this extension",
   label = "a run property holds a shared value type, or one of the medium's own"
 )]
-pub trait IntoRunValue<X: StyleExtension>: Clone + PartialEq + Debug + 'static {
+pub trait IntoRunValue<X: StyleExtension>:
+  Clone + PartialEq + Debug + Fingerprint + 'static
+{
   /// This value, erased.
   fn into_run_value(self) -> RunValue<X>;
 }

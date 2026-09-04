@@ -6,6 +6,7 @@ use super::{
   Border,
   Declared,
   DerivedSlot,
+  Fingerprint,
   Plain,
   Property,
   PropertyKey,
@@ -162,7 +163,9 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   message = "`{Self}` is not a box property type under this extension",
   label = "a box property holds a shared value type, or one of the medium's own"
 )]
-pub trait IntoBoxValue<N: Scalar, X: StyleExtension>: Clone + PartialEq + Debug + 'static {
+pub trait IntoBoxValue<N: Scalar, X: StyleExtension>:
+  Clone + PartialEq + Debug + Fingerprint + 'static
+{
   /// This value, erased.
   fn into_box_value(self) -> BoxValue<N, X>;
 }

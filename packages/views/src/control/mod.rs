@@ -161,6 +161,10 @@ pub trait Behavior<D: Driver>: 'static {
   #[inline(always)]
   fn on_change(&self, _value: &str, _control: &ControlHandle<D>) {}
 
+  /// What the behavior does when the driver reports a new checked state.
+  #[inline(always)]
+  fn on_toggle(&self, _checked: bool, _control: &ControlHandle<D>) {}
+
   /// What the control reports to assistive technology, beside its role.
   #[inline(always)]
   fn access(&self) -> Vec<AccessProp> {
@@ -845,6 +849,12 @@ fn register<D: Driver, B: Behavior<D>>(
 
     Rc::new(move |value: &str| behavior.on_change(value, &handle))
   });
+  let toggle = acts(EventKind::Toggle).then(|| {
+    let behavior = Rc::clone(behavior);
+    let handle = Rc::clone(handle);
+
+    Rc::new(move |checked: bool| behavior.on_toggle(checked, &handle))
+  });
 
   Scene::<D>::with(|scene| {
     if let Some(handler) = click {
@@ -869,6 +879,10 @@ fn register<D: Driver, B: Behavior<D>>(
 
     if let Some(handler) = change {
       scene.handle_change(node, handler);
+    }
+
+    if let Some(handler) = toggle {
+      scene.handle_toggle(node, handler);
     }
 
     for observer in pointer_enter {

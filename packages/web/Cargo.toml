@@ -62,5 +62,8 @@ web-sys = { version = "0.3", features = [
 [target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
 wasi = "0.14"
 
+[dev-dependencies]
+skene-views.workspace = true
+
 [lints]
 workspace = true

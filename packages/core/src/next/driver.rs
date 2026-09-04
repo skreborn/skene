@@ -11,6 +11,7 @@ use super::{
   Definitions,
   EventKind,
   MediaSignals,
+  OverlayProps,
   RunProps,
   RunValue,
   Scalar,
@@ -20,8 +21,9 @@ use super::{
 };
 use crate::{AccessProp, Color, FocusOrder, Size};
 
-/// A medium that realizes the portable vocabulary: boxes, runs, anchors, scopes, tree
-/// mutations, tokens, event registration, focus, values, sizes and media.
+/// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
+/// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes
+/// and media.
 ///
 /// Zero-sized and monomorphized: a facade names exactly one driver, and every view is
 /// written once against the trait. Conditions follow from [`Scalar`](Self::Scalar) as
@@ -74,6 +76,13 @@ pub trait Driver: Copy + Default + 'static {
 
   /// Mirrors a control's state, for a driver whose platform holds it too.
   fn set_control_state(&self, sink: &Self::Sink, state: &ControlState);
+
+  /// Realizes an overlay: a box shown above the app while open, closed at first.
+  fn create_overlay(&self, props: &OverlayProps<Self>) -> Self::Sink;
+
+  /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
+  /// rather than by the viewport.
+  fn set_overlay_open(&self, sink: &Self::Sink, open: bool, anchor: Option<&Self::Sink>);
 
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;

@@ -20,7 +20,9 @@
 //! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
 //! holds one field per property in a [`Shape`]: what a builder collects, what a driver
 //! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
-//! in and the [`StyleExtension`] holding the properties only its medium has.
+//! in and the [`StyleExtension`] holding the properties only its medium has;
+//! [`PixelExt`] is the extension the pixel media share. A style's [`Fingerprint`] keys
+//! what a driver compiled from it.
 
 mod border;
 mod box_style;
@@ -32,8 +34,10 @@ mod dispatch;
 mod driver;
 mod expr;
 mod extension;
+mod fingerprint;
 mod leaf;
 mod node;
+mod pixel;
 mod property;
 mod props;
 mod run_style;
@@ -71,6 +75,7 @@ pub use dispatch::{
   dispatch_pointer_up,
   notify_blur,
   notify_change,
+  notify_dismiss,
   notify_focus,
   notify_pointer_enter,
   notify_pointer_leave,
@@ -80,6 +85,7 @@ pub use dispatch::{
 pub use driver::Driver;
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};
+pub use fingerprint::Fingerprint;
 pub use leaf::{
   Conditional,
   Definition,
@@ -93,6 +99,7 @@ pub use leaf::{
   When,
 };
 pub use node::NodeId;
+pub use pixel::{PixelBoxFields, PixelExt, PixelProperty, PixelRunFields, pixel_fields};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
   BoxProps,
@@ -101,6 +108,7 @@ pub use props::{
   DeclaredRunStyle,
   EventKind,
   MediaSignals,
+  OverlayProps,
   RunProps,
   StaticBoxStyle,
   StaticRunStyle,

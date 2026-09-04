@@ -18,8 +18,10 @@
 //!   `render_to_string`/`render_to_stream`.
 
 mod declarations;
-#[cfg(target_arch = "wasm32")]
+// Consumed by the leaves' stylesheet sinks, which only compile on wasm targets.
+#[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
 mod interner;
+pub mod next;
 
 pub use declarations::Declarations;
 

@@ -258,3 +258,23 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
 :where(:focus-visible) {
   outline: none;
 }
+
+/* A control's native input under the new driver: the first child of the control's
+   label. A checkbox, radio or range is drawn by the control's parts, so its input is
+   visually hidden yet focusable; a text entry's input is the visible field. */
+label[data-skene-control] {
+  position: relative;
+}
+
+.skene-native:is([type="checkbox"], [type="radio"], [type="range"]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
+}

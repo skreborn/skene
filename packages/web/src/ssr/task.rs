@@ -184,7 +184,7 @@ pub fn drive(future: impl Future<Output = ()> + 'static) {
 ///
 /// Returns once nothing is ready and nothing is outstanding, or after [`MAX_ROUNDS`] so a
 /// self-waking task cannot hang the render.
-pub(super) fn stabilize() {
+pub(crate) fn stabilize() {
   stabilize_until(|| false);
 }
 
@@ -255,7 +255,7 @@ fn report_unsettled(cutoff: &str, budget: Duration) {
 }
 
 /// Drops every task and outstanding operation, readying the executor for the next render.
-pub(super) fn clear() {
+pub(crate) fn clear() {
   EXECUTOR.with(|executor| {
     let mut executor = executor.borrow_mut();
 

@@ -15,7 +15,18 @@ use super::{
   Scalar,
   Static,
 };
-use crate::{AccessProp, ColorScheme, FocusOrder, Layout, LinkPolicy, Role, RunDisplay, Size};
+use crate::{
+  AccessProp,
+  Color,
+  ColorScheme,
+  FocusOrder,
+  Layout,
+  LinkPolicy,
+  Placement,
+  Role,
+  RunDisplay,
+  Size,
+};
 
 /// A box's style as a builder declares it: values under the driver's conditions,
 /// possibly derived.
@@ -76,6 +87,21 @@ pub struct RunProps<D: Driver> {
   pub style: StaticRunStyle<D>,
   /// The transitions and animations.
   pub dynamics: RunDynamics<D::StyleExt>,
+}
+
+/// Everything a driver needs to realize an overlay: a box shown above the app while
+/// open, opened and closed through [`Driver::set_overlay_open`].
+#[derive(Clone)]
+#[must_use]
+pub struct OverlayProps<D: Driver> {
+  /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
+  pub modal: bool,
+  /// Where the overlay sits.
+  pub placement: Placement,
+  /// The backdrop color painted over the app while open, if any.
+  pub backdrop: Option<Color>,
+  /// The box the overlay's content is realized as.
+  pub box_props: BoxProps<D>,
 }
 
 /// The measured sizes of the named query containers, filled by the driver.
@@ -166,4 +192,6 @@ pub enum EventKind {
   Change,
   /// A control's checked state changed.
   Toggle,
+  /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.
+  Dismiss,
 }

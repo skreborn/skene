@@ -16,6 +16,7 @@ use skene_core::{
     Definitions,
     EventKind,
     MediaSignals,
+    OverlayProps,
     RunProps,
     RunValue,
     Slot,
@@ -34,6 +35,8 @@ pub enum Kind {
   Box(Box<BoxProps<Headless>>),
   /// A control, with the props it was created from.
   Control(Box<ControlProps<Headless>>),
+  /// An overlay, with the props it was created from.
+  Overlay(Box<OverlayProps<Headless>>),
   /// A text run, with the props it was created from.
   Run(Box<RunProps<Headless>>),
   /// An anchor.
@@ -58,6 +61,7 @@ pub struct Record {
   pub text: String,
   pub value: String,
   pub checked: bool,
+  pub open: bool,
   pub control_state: ControlState,
   pub hovered: bool,
   pub slots: FxHashMap<Slot, SlotValue>,
@@ -73,6 +77,7 @@ impl Kind {
     match self {
       Self::Box(props) => Some(props),
       Self::Control(props) => Some(&props.box_props),
+      Self::Overlay(props) => Some(&props.box_props),
       Self::Run(_) | Self::Anchor | Self::Scope => None,
     }
   }
@@ -82,6 +87,7 @@ impl Kind {
     match self {
       Self::Box(props) => Some(props),
       Self::Control(props) => Some(&mut props.box_props),
+      Self::Overlay(props) => Some(&mut props.box_props),
       Self::Run(_) | Self::Anchor | Self::Scope => None,
     }
   }
@@ -94,6 +100,7 @@ impl Record {
       text: String::new(),
       value: String::new(),
       checked: false,
+      open: false,
       control_state: ControlState::DEFAULT,
       hovered: false,
       slots: FxHashMap::default(),

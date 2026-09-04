@@ -11,7 +11,8 @@
 //! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it, and the
 //! signals [`Driver::media`] reports follow.
 //!
-//! A control is realized as a box carrying its [`ControlProps`]; [`control_state`],
+//! A control is realized as a box carrying its [`ControlProps`], an overlay as one
+//! carrying its [`OverlayProps`] and an open flag ([`is_open`]); [`control_state`],
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
 //! its pointer handling maps a position onto.
@@ -49,6 +50,7 @@ use skene_core::{
     NoProperty,
     NodeId,
     NodeRecord,
+    OverlayProps,
     Part,
     PropertyKey,
     RunProps,
@@ -62,6 +64,7 @@ use skene_core::{
     dispatch_pointer_up,
     notify_blur,
     notify_change,
+    notify_dismiss,
     notify_focus,
     notify_pointer_enter,
     notify_pointer_leave,
@@ -206,6 +209,14 @@ impl Driver for Headless {
 
   fn set_control_state(&self, sink: &Handle, state: &ControlState) {
     with_record(*sink, |record| record.control_state = *state);
+  }
+
+  fn create_overlay(&self, props: &OverlayProps<Self>) -> Handle {
+    with_store(|store| store.create(Record::new(Kind::Overlay(Box::new(props.clone())))))
+  }
+
+  fn set_overlay_open(&self, sink: &Handle, open: bool, _: Option<&Handle>) {
+    with_record(*sink, |record| record.open = open);
   }
 
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
@@ -389,6 +400,15 @@ pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
   notify_scroll::<Headless>(node, event);
 }
 
+/// Records the overlay `node` as closed and notifies its dismiss handlers.
+pub fn trigger_dismiss(node: NodeId) {
+  if let Some(handle) = handle(node) {
+    Headless.set_overlay_open(&handle, false, None);
+  }
+
+  notify_dismiss::<Headless>(node);
+}
+
 /// Reports `size` as the measured size of `node` to every observer bound to it; a box
 /// named for container queries also publishes it as that container's size.
 pub fn trigger_size(node: NodeId, size: Size<f32>) {
@@ -515,6 +535,10 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
       Kind::Control(props) => Some(format!("Control {:?}", props.kind)),
+      Kind::Overlay(props) => Some(format!(
+        "Overlay {}",
+        if props.modal { "modal" } else { "popup" }
+      )),
       Kind::Run(_) => Some(format!("Run {:?}", record.text)),
       Kind::Anchor => full.then(|| "Anchor".to_owned()),
       Kind::Scope => full.then(|| "Scope".to_owned()),
@@ -561,8 +585,23 @@ pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
 pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Control(props) => Some((**props).clone()),
-    Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
+}
+
+/// The props the overlay `node` was created with.
+#[must_use]
+pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
+  with_record(handle(node)?, |record| match &record.kind {
+    Kind::Overlay(props) => Some((**props).clone()),
+    Kind::Box(_) | Kind::Control(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+  })?
+}
+
+/// Whether the overlay `node` is open.
+#[must_use]
+pub fn is_open(node: NodeId) -> bool {
+  handle(node).is_some_and(|handle| with_record(handle, |record| record.open) == Some(true))
 }
 
 /// The state last mirrored into the control `node`.
@@ -570,7 +609,7 @@ pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
 pub fn control_state(node: NodeId) -> Option<ControlState> {
   with_record(handle(node)?, |record| match record.kind {
     Kind::Control(_) => Some(record.control_state),
-    Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
 }
 
@@ -652,7 +691,7 @@ fn subtree_text(node: NodeId) -> String {
 pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Run(props) => Some((**props).clone()),
-    Kind::Box(_) | Kind::Control(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
   })?
 }
 
@@ -661,7 +700,7 @@ pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
 pub fn text(node: NodeId) -> Option<String> {
   with_record(handle(node)?, |record| match record.kind {
     Kind::Run(_) => Some(record.text.clone()),
-    Kind::Box(_) | Kind::Control(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
   })?
 }
 

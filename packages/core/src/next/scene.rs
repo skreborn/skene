@@ -31,7 +31,7 @@ use crate::{
   ScrollEvent,
 };
 
-/// A handler taking nothing: pointer enter and leave, focus and blur.
+/// A handler taking nothing: pointer enter and leave, focus and blur, dismiss.
 pub type PlainHandler = dyn Fn();
 /// A scroll handler: the container's new offsets.
 pub type ScrollHandler = dyn Fn(&ScrollEvent);
@@ -55,6 +55,8 @@ pub enum NodeKind {
   Anchor,
   /// A scope: a layout-invisible node token definitions hang off.
   Scope,
+  /// An overlay: a box shown above the app while open.
+  Overlay,
 }
 
 /// The per-child properties a wrapper asked for the next box built under it.
@@ -181,6 +183,7 @@ pub struct HandlerSet {
   scroll: Vec<Rc<ScrollHandler>>,
   change: Vec<Rc<ChangeHandler>>,
   toggle: Vec<Rc<ToggleHandler>>,
+  dismiss: Vec<Rc<PlainHandler>>,
 }
 
 impl HandlerSet {
@@ -266,6 +269,13 @@ impl HandlerSet {
   #[must_use]
   pub fn toggle(&self) -> &[Rc<ToggleHandler>] {
     &self.toggle
+  }
+
+  /// The dismiss handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn dismiss(&self) -> &[Rc<PlainHandler>] {
+    &self.dismiss
   }
 }
 
@@ -997,6 +1007,11 @@ impl<D: Driver> Scene<D> {
   /// Adds a toggle handler to `node`.
   pub fn handle_toggle(&mut self, node: NodeId, handler: Rc<ToggleHandler>) {
     self.register(node, EventKind::Toggle, |set| set.toggle.push(handler));
+  }
+
+  /// Adds a dismiss handler to `node`.
+  pub fn handle_dismiss(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
+    self.register(node, EventKind::Dismiss, |set| set.dismiss.push(handler));
   }
 
   /// The handlers `node` carries.

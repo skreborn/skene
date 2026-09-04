@@ -37,15 +37,11 @@ impl StyleStore {
     self.interner.release(class);
   }
 
-  /// Renders every live rule, in class-name order so the output is deterministic.
+  /// Renders every live rule, in interning order.
   pub(super) fn render(&self) -> String {
-    let mut live: Vec<(&str, &str)> = self.interner.live_rules().collect();
-
-    live.sort_unstable_by_key(|(class, _)| *class);
-
     let mut out = String::new();
 
-    for (class, template) in live {
+    for (class, template) in self.interner.live_rules() {
       out.push_str(&template.replace(CLASS_PLACEHOLDER, class));
     }
 

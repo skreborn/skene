@@ -87,6 +87,12 @@ pub fn notify_toggle<D: Driver>(node: NodeId, checked: bool) {
   notify::<D, _>(node, HandlerSet::toggle, |handler| handler(checked));
 }
 
+/// Notifies the overlay `node` that the platform dismissed it.
+#[inline(always)]
+pub fn notify_dismiss<D: Driver>(node: NodeId) {
+  notify::<D, _>(node, HandlerSet::dismiss, |handler| handler());
+}
+
 /// The handlers of one kind on one node, cloned out so the scene is released before
 /// any runs; with the node's parent.
 fn snapshot<D: Driver, H: ?Sized>(

@@ -17,15 +17,12 @@ use skene_core::{
   AccessProp,
   ColorScheme,
   FocusOrder,
-  LinkAnnotation,
-  Role,
   Size,
   Toggle,
   next::{
     BoxProps,
     BoxValue,
     ContainerSizes,
-    ControlKind,
     ControlProps,
     ControlState,
     Definitions,
@@ -67,6 +64,18 @@ use super::{
     slot_registrations,
   },
   condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE},
+  markup::{
+    MARKER_ATTRIBUTE,
+    NATIVE_CLASS,
+    STYLE_ID,
+    access_attribute,
+    anchor_text,
+    drawn_element,
+    element_tag,
+    focus_order_attribute,
+    link_attributes,
+    native_element,
+  },
   token::WebTokenValue,
 };
 use crate::{
@@ -74,9 +83,6 @@ use crate::{
   interner::ClassInterner,
   ssr::{escape_attr, escape_text},
 };
-
-/// The class the native input inside a control's label carries.
-const NATIVE_CLASS: &str = "skene-native";
 
 /// The root of the string tree; its children are the page body.
 const ROOT: u32 = 0;
@@ -177,7 +183,9 @@ impl Node {
   fn emit_open(&self, index: u32, out: &mut String) {
     out.push('<');
     out.push_str(self.tag());
-    out.push_str(" data-h=\"");
+    out.push(' ');
+    out.push_str(MARKER_ATTRIBUTE);
+    out.push_str("=\"");
     out.push_str(&index.to_string());
     out.push('"');
 
@@ -374,7 +382,7 @@ impl Tree {
   }
 
   fn render_styles(&self) -> String {
-    let mut out = String::from("<style>");
+    let mut out = format!("<style id=\"{STYLE_ID}\">");
 
     out.push_str(RESET_CSS);
     out.push_str(&slot_registrations());
@@ -559,37 +567,11 @@ fn media_signals() -> MediaSignals<f32> {
   })
 }
 
-/// The element a box of `role` is realized as.
-const fn element_tag(role: Option<Role>) -> &'static str {
-  match role {
-    Some(Role::Navigation) => "nav",
-    Some(Role::Main) => "main",
-    Some(Role::Header) => "header",
-    Some(Role::Footer) => "footer",
-    Some(Role::Aside) => "aside",
-    Some(Role::Section) => "section",
-    Some(Role::Article) => "article",
-    Some(Role::Heading(level)) => match level {
-      0 | 1 => "h1",
-      2 => "h2",
-      3 => "h3",
-      4 => "h4",
-      5 => "h5",
-      _ => "h6",
-    },
-    Some(Role::List) => "ul",
-    Some(Role::ListItem) => "li",
-    Some(Role::Label) => "label",
-    Some(_) | None => "div",
-  }
-}
-
 /// Writes `focus_order` as `tabindex` on `node`; `None` takes a control out of focus
 /// and leaves a box without one.
 fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
-  match focus_order {
-    Some(focus_order) => node.set_attribute("tabindex", &crate::render_focus_order(focus_order)),
-    None if node.control => node.set_attribute("tabindex", "-1"),
+  match focus_order_attribute(focus_order, node.control) {
+    Some(tabindex) => node.set_attribute("tabindex", &tabindex),
     None => node.remove_attribute("tabindex"),
   }
 }
@@ -601,24 +583,7 @@ fn write_access(node: &mut Node, access: &[AccessProp]) {
     .retain(|(name, _)| !name.starts_with("aria-"));
 
   for prop in access {
-    let (name, value) = match prop {
-      AccessProp::Checked(toggle) => (
-        "aria-checked",
-        match toggle {
-          Toggle::On => "true".to_owned(),
-          Toggle::Off => "false".to_owned(),
-          Toggle::Mixed => "mixed".to_owned(),
-        },
-      ),
-      AccessProp::Value(value) => ("aria-valuenow", value.to_string()),
-      AccessProp::ValueMin(value) => ("aria-valuemin", value.to_string()),
-      AccessProp::ValueMax(value) => ("aria-valuemax", value.to_string()),
-      AccessProp::ValueText(text) => ("aria-valuetext", text.clone()),
-      AccessProp::Expanded(state) => ("aria-expanded", state.to_string()),
-      AccessProp::Selected(state) => ("aria-selected", state.to_string()),
-      AccessProp::Disabled(state) => ("aria-disabled", state.to_string()),
-      AccessProp::Label(text) => ("aria-label", text.clone()),
-    };
+    let (name, value) = access_attribute(prop);
 
     node.set_attribute(name, &value);
   }
@@ -706,76 +671,54 @@ impl Driver for Web {
   }
 
   fn create_control(&self, props: &ControlProps<Self>) -> u32 {
-    let native: Option<(&'static str, Option<&'static str>)> = match props.kind {
-      ControlKind::Checkbox => Some(("input", Some("checkbox"))),
-      ControlKind::Radio => Some(("input", Some("radio"))),
-      ControlKind::Range => Some(("input", Some("range"))),
-      ControlKind::TextField => Some(("input", Some("text"))),
-      ControlKind::TextEditor => Some(("textarea", None)),
-      ControlKind::Button
-      | ControlKind::RadioGroup
-      | ControlKind::Listbox
-      | ControlKind::Combobox => None,
-    };
     let (index, compiled) = with_tree(|tree| {
-      let index = match native {
-        Some((tag, kind)) => {
-          let root = tree.element("label");
-          let input = tree.element(tag);
+      let index = if let Some(native) = native_element(props.kind) {
+        let root = tree.element("label");
+        let input = tree.element(native.tag);
 
-          if let Some(node) = tree.node(input) {
-            if let Some(kind) = kind {
-              node.set_attribute("type", kind);
-            }
-
-            node.set_attribute("class", NATIVE_CLASS);
-
-            if let Some(placeholder) = &props.placeholder {
-              node.set_attribute("placeholder", placeholder);
-            }
-
-            if props.kind == ControlKind::TextEditor {
-              node.set_attribute("rows", &props.lines.to_string());
-            }
-
-            if let Some(label) = &props.label {
-              node.set_attribute("aria-label", label);
-            }
+        if let Some(node) = tree.node(input) {
+          if let Some(kind) = native.kind {
+            node.set_attribute("type", kind);
           }
 
-          tree.attach(root, input, None);
+          node.set_attribute("class", NATIVE_CLASS);
 
-          if let Some(node) = tree.node(root) {
-            node.carrier = Some(input);
+          if let Some(placeholder) = &props.placeholder {
+            node.set_attribute("placeholder", placeholder);
           }
 
-          root
+          if native.tag == "textarea" {
+            node.set_attribute("rows", &props.lines.to_string());
+          }
+
+          if let Some(label) = &props.label {
+            node.set_attribute("aria-label", label);
+          }
         }
-        None => {
-          let tag = if props.kind == ControlKind::Button {
-            "button"
-          }
-          else {
-            "div"
-          };
-          let root = tree.element(tag);
 
-          if let Some(node) = tree.node(root) {
-            match props.kind {
-              ControlKind::Button => node.set_attribute("type", "button"),
-              ControlKind::RadioGroup => node.set_attribute("role", "radiogroup"),
-              ControlKind::Listbox => node.set_attribute("role", "listbox"),
-              ControlKind::Combobox => node.set_attribute("role", "combobox"),
-              _ => {}
-            }
+        tree.attach(root, input, None);
 
-            if let Some(label) = &props.label {
-              node.set_attribute("aria-label", label);
-            }
-          }
-
-          root
+        if let Some(node) = tree.node(root) {
+          node.carrier = Some(input);
         }
+
+        root
+      }
+      else {
+        let (tag, attribute) = drawn_element(props.kind);
+        let root = tree.element(tag);
+
+        if let Some(node) = tree.node(root) {
+          if let Some((name, value)) = attribute {
+            node.set_attribute(name, value);
+          }
+
+          if let Some(label) = &props.label {
+            node.set_attribute("aria-label", label);
+          }
+        }
+
+        root
       };
 
       if let Some(node) = tree.node(index) {
@@ -864,35 +807,10 @@ impl Driver for Web {
       let index = match props.link.as_deref() {
         Some(href) => {
           let index = tree.element("a");
-          let external = href.starts_with("//") || href.contains("://");
-          let policy = props.link_policy;
-          let new_page = policy.new_page.unwrap_or(external);
-          let mut rel = Vec::new();
-
-          if new_page && !policy.expose_opener {
-            rel.push("noopener");
-          }
-
-          if external && !policy.send_referrer {
-            rel.push("noreferrer");
-          }
-
-          match policy.annotation {
-            Some(LinkAnnotation::NoFollow) => rel.push("nofollow"),
-            Some(LinkAnnotation::Sponsored) => rel.push("sponsored"),
-            Some(LinkAnnotation::Ugc) => rel.push("ugc"),
-            None => {}
-          }
 
           if let Some(node) = tree.node(index) {
-            node.set_attribute("href", href);
-
-            if new_page {
-              node.set_attribute("target", "_blank");
-            }
-
-            if !rel.is_empty() {
-              node.set_attribute("rel", &rel.join(" "));
+            for (name, value) in link_attributes(href, props.link_policy) {
+              node.set_attribute(name, &value);
             }
           }
 
@@ -935,14 +853,7 @@ impl Driver for Web {
 
       tree.anchors += 1;
 
-      let text = if ordinal % 2 == 0 {
-        format!("s:{}", ordinal / 2)
-      }
-      else {
-        format!("e:{}", ordinal / 2)
-      };
-
-      tree.create(Node::comment(text))
+      tree.create(Node::comment(anchor_text(ordinal)))
     })
   }
 

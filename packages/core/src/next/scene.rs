@@ -509,22 +509,29 @@ impl<D: Driver> Scene<D> {
       part: is_control.then_some(Part::Root),
     };
 
-    if let Some(index) = self.free.pop() {
+    let id = if let Some(index) = self.free.pop() {
       let entry = &mut self.entries[index as usize];
 
       entry.record = Some(record);
 
-      return NodeId::new(index, entry.generation);
+      NodeId::new(index, entry.generation)
+    }
+    else {
+      let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
+
+      self.entries.push(Entry {
+        generation: 0,
+        record: Some(record),
+      });
+
+      NodeId::new(index, 0)
+    };
+
+    if let Some(record) = self.record(id) {
+      D::default().bind_node(&record.sink, id);
     }
 
-    let index = u32::try_from(self.entries.len()).expect("a scene holds at most 2^32 nodes");
-
-    self.entries.push(Entry {
-      generation: 0,
-      record: Some(record),
-    });
-
-    NodeId::new(index, 0)
+    id
   }
 
   /// Mints a detached segment: a start and an end anchor, attached and detached as one

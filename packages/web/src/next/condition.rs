@@ -90,6 +90,16 @@ impl Conjunction {
     out
   }
 
+  /// What a live query of this conjunction asks the environment: the media features
+  /// as one query text (`None` without any), the scheme it names, and whether it has
+  /// container queries, which no media query answers.
+  #[cfg(target_os = "unknown")]
+  pub(crate) fn query(&self) -> (Option<String>, Option<ColorScheme>, bool) {
+    let text = (!self.media.is_empty()).then(|| self.media.join(" and "));
+
+    (text, self.scheme, !self.containers.is_empty())
+  }
+
   fn push_state(&mut self, state: State) {
     self.states.push(state);
   }

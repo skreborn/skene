@@ -11,6 +11,7 @@ use super::{
   Definitions,
   EventKind,
   MediaSignals,
+  NodeId,
   OverlayProps,
   RunProps,
   RunValue,
@@ -53,6 +54,11 @@ pub trait Driver: Copy + Default + 'static {
 
   /// The thread-local holding this driver's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
+
+  /// Tells the driver the id the scene minted for `sink`, once, right after the sink
+  /// was created.
+  #[inline(always)]
+  fn bind_node(&self, _sink: &Self::Sink, _node: NodeId) {}
 
   /// Realizes a box.
   fn create_box(&self, props: &BoxProps<Self>) -> Self::Sink;

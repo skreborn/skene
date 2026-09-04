@@ -15,7 +15,7 @@ use wasm_bindgen::JsValue;
 /// Routes each `tracing` event to the browser console, by level: `error!` to
 /// `console.error`, `warn!` to `console.warn`, everything else to `console.log`. Spans are
 /// ignored.
-pub(super) struct ConsoleSubscriber;
+pub(crate) struct ConsoleSubscriber;
 
 impl Subscriber for ConsoleSubscriber {
   fn enabled(&self, _metadata: &Metadata<'_>) -> bool {

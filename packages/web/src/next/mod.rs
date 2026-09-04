@@ -2,21 +2,44 @@
 //! the property model to CSS, and the server leaf's entry points.
 //!
 //! Beside the crate's flat vocabulary until every facade builds on
-//! [`skene_core::next`]. The compiler ([`compile`](self) internals) is shared by both
-//! leaves; [`Driver`](skene_core::next::Driver) is implemented for [`Web`] on the server
-//! leaf (`target_os = "wasi"`) here, and on the browser leaf later.
+//! [`skene_core::next`]. The compiler ([`compile`](self) internals) and the element
+//! choices ([`markup`](self) internals) are shared by both leaves;
+//! [`Driver`](skene_core::next::Driver) is implemented for [`Web`] on the server leaf
+//! (`target_os = "wasi"`) and on the browser leaf (`target_os = "unknown"`), each
+//! exposing its own entry points.
 
 // The compiler is consumed by the leaves, which only compile on wasm targets.
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
 mod compile;
 mod condition;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+mod csr;
 mod expr;
+#[cfg(target_arch = "wasm32")]
+mod markup;
 mod motion;
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 mod ssr;
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
 mod token;
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "test"))]
+pub use self::csr::uninstall;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub use self::csr::{
+  document,
+  element,
+  hydrate,
+  hydrate_page,
+  hydration_mismatches,
+  install,
+  launch,
+  media_query,
+  mount,
+  set_scheme,
+  stored_scheme,
+  watch_media,
+};
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub use self::ssr::{
   RenderHints,

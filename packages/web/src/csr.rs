@@ -11,7 +11,7 @@ pub(crate) mod tree;
 mod dev;
 mod events;
 mod history;
-mod logging;
+pub(crate) mod logging;
 mod stylesheet;
 mod task;
 
@@ -966,6 +966,23 @@ pub fn adopt_next() -> Option<String> {
 #[inline(always)]
 pub fn register_source(_source: crate::HydrationSource) {}
 
+/// Stages the server's serialized resource `state` for the resources built next to
+/// adopt, by creation order and by tag.
+pub(crate) fn stage_hydration_state(state: &str) {
+  let (ordered, tagged) = crate::hydration::decode_state(state);
+
+  NEXT_SLOT.set(0);
+  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
+  TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
+}
+
+/// Sets whether the client owns the page; see [`settled`].
+pub(crate) fn set_settled(value: bool) {
+  use skene_reactive::Set;
+
+  SETTLED.with(|settled| settled.set(value));
+}
+
 /// Takes the adopted server value registered under `tag`, if hydrating left one.
 #[must_use]
 pub fn adopt_tagged(tag: &str) -> Option<String> {
@@ -1013,7 +1030,9 @@ thread_local! {
 /// `color-scheme` rides along so the user agent's own widgets, scrollbars and form
 /// controls follow the choice too.
 pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
-  let Some(root) = document().document_element()
+  let Some(root) = web_sys::window()
+    .and_then(|window| window.document())
+    .and_then(|document| document.document_element())
   else {
     return;
   };

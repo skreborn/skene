@@ -24,6 +24,10 @@ use rustc_hash::FxHashMap;
 struct Rule {
   template: Rc<str>,
   count: u32,
+  #[cfg_attr(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    expect(dead_code)
+  )]
   order: u64,
 }
 

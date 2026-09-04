@@ -100,11 +100,12 @@ impl Drop for Listener {
   }
 }
 
-/// The root's delegated listeners and the popups currently open.
+/// The root's delegated listeners and the popups currently open, each with the anchor
+/// it was opened against.
 pub(super) struct Events {
   root: Element,
   listeners: FxHashMap<&'static str, Listener>,
-  pub(super) open_popups: FxHashSet<u32>,
+  pub(super) open_popups: FxHashMap<u32, Option<u32>>,
 }
 
 impl Events {
@@ -112,7 +113,7 @@ impl Events {
     Self {
       root,
       listeners: FxHashMap::default(),
-      open_popups: FxHashSet::default(),
+      open_popups: FxHashMap::default(),
     }
   }
 
@@ -309,7 +310,7 @@ fn open_popups() -> Vec<NodeId> {
     dom
       .events
       .open_popups
-      .iter()
+      .keys()
       .filter_map(|sink| dom.node(*sink).and_then(|node| node.id))
       .collect()
   })
@@ -360,13 +361,18 @@ fn on_pointer_down(event: &web_sys::Event) {
     .target()
     .and_then(|target| target.dyn_into::<web_sys::Node>().ok());
   let outside: Vec<NodeId> = with_dom(|dom| {
+    let contains = |sink: u32| {
+      dom
+        .node(sink)
+        .is_some_and(|node| node.dom.contains(target.as_ref()))
+    };
+
     dom
       .events
       .open_popups
       .iter()
-      .filter_map(|sink| dom.node(*sink))
-      .filter(|popup| !popup.dom.contains(target.as_ref()))
-      .filter_map(|popup| popup.id)
+      .filter(|(popup, anchor)| !contains(**popup) && !anchor.is_some_and(contains))
+      .filter_map(|(popup, _)| dom.node(*popup).and_then(|node| node.id))
       .collect()
   });
 

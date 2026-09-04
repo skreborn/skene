@@ -1,6 +1,8 @@
 //! The one control builder, the behavior it is given, and the behaviors that ship.
 
 mod activate;
+mod listbox;
+mod popup;
 mod range;
 mod roster;
 mod roving;
@@ -54,6 +56,8 @@ use skene_reactive::{Effect, Owner, Trigger, batch, use_context};
 
 pub use self::{
   activate::Activate,
+  listbox::{ListItem, Listbox, ListboxGroup},
+  popup::Popup,
   range::Range,
   roster::Roster,
   roving::{RadioMember, Roving, RovingGroup},
@@ -61,6 +65,8 @@ pub use self::{
   toggle::Toggle,
 };
 use crate::{
+  Anchor,
+  FocusHandle,
   LayoutBox,
   Text,
   macros::decoration,
@@ -387,12 +393,30 @@ impl<D: Driver, B: Behavior<D> + Default> Default for Control<D, B> {
 }
 
 impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
+  /// The declared style, for a composite control to write the decoration it forwards
+  /// into.
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
     self.inner.style_mut()
   }
 
   decoration! { style_mut }
+
+  /// Binds `anchor` to the control once built, so an overlay is placed against it.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
+    self.inner = self.inner.bind_anchor(anchor);
+
+    self
+  }
+
+  /// Binds `focus` to the control once built, so focus moves to it programmatically.
+  #[inline(always)]
+  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+    self.inner = self.inner.bind_focus(focus);
+
+    self
+  }
 
   /// The behavior driving the control.
   #[inline(always)]
@@ -928,3 +952,7 @@ pub type RawTextField<D, C = NoChild> = Control<D, TextEntry, C>;
 /// A multi-line text editor: [`Control`] over [`TextEntry`] with
 /// [`set_lines`](TextEntry::set_lines) above one.
 pub type RawTextEditor<D, C = NoChild> = Control<D, TextEntry, C>;
+/// A listbox: [`Control`] over [`Listbox`].
+pub type RawListbox<D, C = NoChild> = Control<D, Listbox, C>;
+/// One option within a listbox: [`Control`] over [`ListItem`].
+pub type RawOption<D, C = NoChild> = Control<D, ListItem, C>;

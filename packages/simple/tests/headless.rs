@@ -6,6 +6,8 @@ use skene_core::{
   Color,
   ColorScheme,
   Dimension,
+  KeyEvent,
+  Modifiers,
   next::{
     Border,
     BoxValue,
@@ -31,6 +33,8 @@ use skene_headless::{
   accessible_name,
   children,
   control_props,
+  is_focused,
+  is_open,
   part,
   reset,
   resolve_border,
@@ -39,10 +43,12 @@ use skene_headless::{
   set_hovered,
   set_scheme,
   slot_value,
+  text,
   trigger_blur,
   trigger_change,
   trigger_click,
   trigger_focus,
+  trigger_key_down,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 use skene_simple::next::SimpleVariant;
@@ -57,6 +63,7 @@ type SimpleRadio = skene_simple::next::SimpleRadio<Headless>;
 type SimpleSlider = skene_simple::next::SimpleSlider<Headless>;
 type SimpleTextField = skene_simple::next::SimpleTextField<Headless>;
 type SimpleTextEditor = skene_simple::next::SimpleTextEditor<Headless>;
+type SimplePicker = skene_simple::next::SimplePicker<Headless>;
 type Container = skene_views::Container<Headless>;
 type Column = skene_views::Column<Headless>;
 type Text = skene_views::Text<Headless>;
@@ -536,6 +543,118 @@ fn a_third_party_palette_works_under_theme_like_the_simple_one() {
 
   assert_eq!(resolve_color(accent, COLOR), Some(Color::srgb(0., 0., 1.)));
   assert_eq!(resolve_color(card, COLOR), Some(dark(&palette.card)));
+
+  owner.dispose();
+}
+
+/// A picker wears the field chrome and rings while focused; its indicator is the face
+/// part and follows the open state; its list surface is the list part on the card; the
+/// chosen row fills in the primary look with its check and caption inked to match, and
+/// the focused row highlights.
+#[test]
+fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
+  reset();
+
+  let owner = Owner::new();
+  let palette = SimplePalette::default();
+  let value = Signal::new("md".to_owned());
+  let picker = themed(owner, move || {
+    SimplePicker::new()
+      .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
+      .bind_value(value)
+  });
+  let face = children(picker)[0];
+  let shown = children(face)[1];
+  let indicator = children(face)[2];
+  let overlay = children(picker)[1];
+  let listbox = children(overlay)[1];
+  let surface = children(children(listbox)[0])[1];
+  let column = children(surface)[1];
+  let row = |index: usize| children(column)[index + 1];
+  let check = |index: usize| children(row(index))[0];
+  let caption = |index: usize| children(row(index))[1];
+  let key = |key: &str| KeyEvent {
+    key: key.to_owned(),
+    modifiers: Modifiers::default(),
+  };
+
+  assert_eq!(text(shown), Some("Medium".to_owned()));
+  assert_eq!(part(indicator), Some(Part::Face));
+  assert_eq!(resolve_color(picker, COLOR), Some(light(&palette.card)));
+  assert_eq!(
+    resolve_border(picker),
+    Some(Border::new(1., light(&palette.border)))
+  );
+  assert_eq!(
+    resolve_color(indicator, TEXT_COLOR),
+    Some(light(&palette.muted_foreground))
+  );
+
+  trigger_focus(picker);
+
+  assert_eq!(
+    resolve_border(picker),
+    Some(Border::new(1., light(&palette.ring)))
+  );
+
+  assert_eq!(part(surface), Some(Part::List));
+  assert_eq!(resolve_color(surface, COLOR), Some(light(&palette.card)));
+  assert_eq!(part(check(1)), Some(Part::Item));
+  assert_eq!(part(caption(1)), Some(Part::Label));
+  assert_eq!(accessible_name(row(1)), Some("Medium".to_owned()));
+  assert_eq!(
+    resolve_color(row(1), COLOR),
+    Some(light(&palette.primary.surface))
+  );
+  assert_eq!(
+    resolve_color(check(1), TEXT_COLOR),
+    Some(light(&palette.primary.ink))
+  );
+  assert_eq!(
+    resolve_color(caption(1), TEXT_COLOR),
+    Some(light(&palette.primary.ink))
+  );
+  assert_eq!(resolve_color(row(0), COLOR), Some(Color::TRANSPARENT));
+  assert_eq!(
+    resolve_color(check(0), TEXT_COLOR),
+    Some(Color::TRANSPARENT)
+  );
+  assert_eq!(
+    resolve_color(caption(0), TEXT_COLOR),
+    Some(light(&palette.foreground))
+  );
+
+  let _ = trigger_key_down(picker, &key("ArrowDown"));
+
+  assert!(is_open(overlay));
+  assert!(is_focused(row(1)));
+  assert_eq!(
+    resolve_color(indicator, TEXT_COLOR),
+    Some(light(&palette.foreground))
+  );
+
+  let _ = trigger_key_down(row(1), &key("ArrowUp"));
+
+  assert!(is_focused(row(0)));
+  assert_eq!(
+    resolve_color(row(0), COLOR),
+    Some(light(&palette.secondary.surface))
+  );
+  assert_eq!(
+    resolve_color(row(1), COLOR),
+    Some(light(&palette.primary.surface))
+  );
+
+  let _ = trigger_key_down(row(0), &key("Enter"));
+
+  assert_eq!(value.get(), "sm");
+  assert!(!is_open(overlay));
+  assert_eq!(text(shown), Some("Small".to_owned()));
+  assert_eq!(
+    resolve_color(row(0), COLOR),
+    Some(light(&palette.primary.surface))
+  );
+  assert_eq!(resolve_color(row(1), COLOR), Some(Color::TRANSPARENT));
 
   owner.dispose();
 }

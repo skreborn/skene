@@ -73,6 +73,8 @@ pub enum ControlKind {
   TextEditor,
   /// A list of choices to select from.
   Listbox,
+  /// One choice within a listbox.
+  ListboxOption,
   /// A control pairing a text entry with a list of choices.
   Combobox,
 }

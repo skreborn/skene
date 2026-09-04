@@ -20,7 +20,7 @@ use super::{
   Slot,
   StyleExtension,
 };
-use crate::{AccessProp, Color, FocusOrder, Size};
+use crate::{AccessProp, Color, FocusOrder, Placement, Size};
 
 /// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes
@@ -89,6 +89,11 @@ pub trait Driver: Copy + Default + 'static {
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
   fn set_overlay_open(&self, sink: &Self::Sink, open: bool, anchor: Option<&Self::Sink>);
+
+  /// Replaces where an overlay sits; an open overlay is re-placed by the
+  /// [`set_overlay_open`](Self::set_overlay_open) that follows.
+  #[inline(always)]
+  fn set_overlay_placement(&self, _sink: &Self::Sink, _placement: Placement) {}
 
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;

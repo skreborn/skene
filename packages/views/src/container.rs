@@ -30,7 +30,7 @@ use skene_core::{
   },
 };
 
-use crate::{LayoutBox, macros::decoration};
+use crate::{Anchor, FocusHandle, LayoutBox, macros::decoration};
 
 /// Decoration and sizing around exactly one child.
 ///
@@ -133,6 +133,23 @@ impl<D: Driver> Container<D> {
   #[inline(always)]
   pub fn derive_accessibility(mut self, access: impl Fn() -> Vec<AccessProp> + 'static) -> Self {
     self.inner = self.inner.derive_accessibility(access);
+
+    self
+  }
+
+  /// Binds `anchor` to the box once built, so an overlay is placed against it.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
+    self.inner = self.inner.bind_anchor(anchor);
+
+    self
+  }
+
+  /// Binds `focus` to the box once built, so focus moves to it programmatically; the
+  /// box takes focus only with a focus order.
+  #[inline(always)]
+  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+    self.inner = self.inner.bind_focus(focus);
 
     self
   }

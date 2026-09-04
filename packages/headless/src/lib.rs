@@ -12,7 +12,8 @@
 //! signals [`Driver::media`] reports follow.
 //!
 //! A control is realized as a box carrying its [`ControlProps`], an overlay as one
-//! carrying its [`OverlayProps`] and an open flag ([`is_open`]); [`control_state`],
+//! carrying its [`OverlayProps`], an open flag ([`is_open`]) and the anchor it was last
+//! opened against ([`overlay_anchor`]); [`control_state`],
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
 //! its pointer handling maps a position onto.
@@ -30,6 +31,7 @@ use skene_core::{
   FocusOrder,
   Inset,
   KeyEvent,
+  Placement,
   PointerEvent,
   Prevented,
   ScrollEvent,
@@ -215,8 +217,19 @@ impl Driver for Headless {
     with_store(|store| store.create(Record::new(Kind::Overlay(Box::new(props.clone())))))
   }
 
-  fn set_overlay_open(&self, sink: &Handle, open: bool, _: Option<&Handle>) {
-    with_record(*sink, |record| record.open = open);
+  fn set_overlay_open(&self, sink: &Handle, open: bool, anchor: Option<&Handle>) {
+    with_record(*sink, |record| {
+      record.open = open;
+      record.anchor = anchor.copied();
+    });
+  }
+
+  fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {
+    with_record(*sink, |record| {
+      if let Kind::Overlay(props) = &mut record.kind {
+        props.placement = placement;
+      }
+    });
   }
 
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
@@ -400,12 +413,9 @@ pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
   notify_scroll::<Headless>(node, event);
 }
 
-/// Records the overlay `node` as closed and notifies its dismiss handlers.
+/// Notifies the overlay `node` that the platform asked it to close; it stays open until
+/// the app closes it.
 pub fn trigger_dismiss(node: NodeId) {
-  if let Some(handle) = handle(node) {
-    Headless.set_overlay_open(&handle, false, None);
-  }
-
   notify_dismiss::<Headless>(node);
 }
 
@@ -602,6 +612,12 @@ pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
 #[must_use]
 pub fn is_open(node: NodeId) -> bool {
   handle(node).is_some_and(|handle| with_record(handle, |record| record.open) == Some(true))
+}
+
+/// The anchor the overlay `node` was last opened or closed against.
+#[must_use]
+pub fn overlay_anchor(node: NodeId) -> Option<Handle> {
+  with_record(handle(node)?, |record| record.anchor)?
 }
 
 /// The state last mirrored into the control `node`.

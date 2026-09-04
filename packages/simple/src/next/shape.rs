@@ -40,6 +40,12 @@ pub const TRACK_RADIUS: f32 = 3.;
 pub const CONTROL_INSET: Expr<Length> = Expr::em(0.5);
 /// The inset between a card's edge and its content.
 pub const CARD_INSET: Expr<Length> = Expr::em(1.5);
+/// The inset between a picker's list surface and its rows.
+pub const LIST_INSET: Expr<Length> = Expr::em(0.25);
+/// The inset between a picker row's edge and its caption.
+pub const ROW_INSET: Expr<Length> = Expr::em(0.375);
+/// The spacing between a picker's label and its indicator.
+pub const INDICATOR_GAP: Expr<Length> = Expr::em(0.5);
 /// The spacing between a card's children.
 pub const CARD_SPACING: Expr<Length> = Expr::em(1.);
 /// The edge of a checkbox mark or a radio ring.

@@ -76,6 +76,7 @@ pub(crate) const fn native_element(kind: ControlKind) -> Option<NativeElement> {
     ControlKind::Button
     | ControlKind::RadioGroup
     | ControlKind::Listbox
+    | ControlKind::ListboxOption
     | ControlKind::Combobox => return None,
   };
 
@@ -91,6 +92,7 @@ pub(crate) const fn drawn_element(
     ControlKind::Button => ("button", Some(("type", "button"))),
     ControlKind::RadioGroup => ("div", Some(("role", "radiogroup"))),
     ControlKind::Listbox => ("div", Some(("role", "listbox"))),
+    ControlKind::ListboxOption => ("div", Some(("role", "option"))),
     ControlKind::Combobox => ("div", Some(("role", "combobox"))),
     ControlKind::Checkbox
     | ControlKind::Radio

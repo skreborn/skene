@@ -809,18 +809,18 @@ impl Driver for Web {
         return None;
       };
       let element = node.element()?.clone();
-      let anchor = anchor.and_then(|anchor| dom.node(*anchor)?.element().cloned());
+      let anchor_element = anchor.and_then(|anchor| dom.node(*anchor)?.element().cloned());
 
       if !modal {
         if open {
-          dom.events.open_popups.insert(*sink);
+          dom.events.open_popups.insert(*sink, anchor.copied());
         }
         else {
           dom.events.open_popups.remove(sink);
         }
       }
 
-      Some((element, modal, placement, anchor))
+      Some((element, modal, placement, anchor_element))
     })
     else {
       return;
@@ -854,6 +854,18 @@ impl Driver for Web {
     else {
       let _ = html.hide_popover();
     }
+  }
+
+  fn set_overlay_placement(&self, sink: &u32, placement: Placement) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node_mut(*sink)
+        && let Realized::Overlay {
+          placement: held, ..
+        } = &mut node.realized
+      {
+        *held = placement;
+      }
+    });
   }
 
   fn create_run(&self, props: &RunProps<Self>) -> u32 {

@@ -27,12 +27,12 @@ use skene_core::{
   },
 };
 use skene_reactive::{Get, Set, Signal};
-use skene_simple::next::{SimpleButton, SimpleCheckbox};
+use skene_simple::next::{SimpleButton, SimpleCheckbox, SimplePicker};
 use skene_views::{Container, RawCheckbox, Text, Theme, Toggle, View};
 use skene_web::next::{self, Web, WebTokenValue};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
-use web_sys::{Document, Element, HtmlElement, HtmlInputElement};
+use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -646,4 +646,95 @@ fn a_ticked_input_reports_on_hydration() {
   checked.set(false);
 
   assert!(!input.checked());
+}
+
+/// Presses `key` on `element`, as the keyboard would: a bubbling `keydown`.
+fn press(element: &Element, key: &str) {
+  let init = KeyboardEventInit::new();
+
+  init.set_key(key);
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+
+  let event =
+    KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key event");
+
+  let _ = element.dispatch_event(&event);
+}
+
+/// A picker's face is a combobox over a manual popover: `ArrowDown` opens it with
+/// focus on the chosen option, the arrows move focus, and `Enter` chooses, closes and
+/// returns focus to the face with the signal written.
+#[wasm_bindgen_test]
+fn a_picker_opens_and_chooses_with_the_keyboard() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("md".to_owned());
+
+  let _ = next::mount(move || {
+    SimplePicker::<Web>::new()
+      .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
+      .bind_value(value)
+      .build()
+  });
+
+  let face = only_child(&root);
+
+  assert_eq!(face.get_attribute("role").as_deref(), Some("combobox"));
+  assert_eq!(
+    face.get_attribute("aria-expanded").as_deref(),
+    Some("false")
+  );
+
+  let popup = face.last_element_child().expect("the popup");
+
+  assert_eq!(popup.get_attribute("popover").as_deref(), Some("manual"));
+  assert!(!popup.matches(":popover-open").unwrap_or(true));
+
+  let options = popup
+    .query_selector_all("[role=option]")
+    .expect("the options");
+
+  assert_eq!(options.length(), 3);
+
+  let option = |index: u32| -> Element {
+    options
+      .item(index)
+      .expect("an option")
+      .dyn_into()
+      .expect("an element")
+  };
+
+  assert_eq!(
+    option(1).get_attribute("aria-selected").as_deref(),
+    Some("true")
+  );
+  html(&face).focus().expect("focus the face");
+  press(&face, "ArrowDown");
+
+  assert!(popup.matches(":popover-open").unwrap_or(false));
+  assert_eq!(face.get_attribute("aria-expanded").as_deref(), Some("true"));
+  assert_eq!(
+    document().active_element().as_ref(),
+    Some(option(1).unchecked_ref())
+  );
+
+  press(&option(1), "ArrowUp");
+
+  assert_eq!(
+    document().active_element().as_ref(),
+    Some(option(0).unchecked_ref())
+  );
+
+  press(&option(0), "Enter");
+
+  assert_eq!(value.get(), "sm");
+  assert!(!popup.matches(":popover-open").unwrap_or(true));
+  assert_eq!(
+    option(0).get_attribute("aria-selected").as_deref(),
+    Some("true")
+  );
+  assert_eq!(
+    document().active_element().as_ref(),
+    Some(face.unchecked_ref())
+  );
 }

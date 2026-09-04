@@ -16,20 +16,30 @@
 //! keep the branches they hide. [`Theme`] defines a token set beneath it, and
 //! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
 //! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Range`],
-//! [`Roving`] with [`RadioMember`], and [`TextEntry`] ship, and the `Raw*` aliases name
-//! the control over each. [`CornerRadius`] is what a decorated box asks of a medium's
-//! style extension to round its corners, silently declined by a medium without radii.
+//! [`Roving`] with [`RadioMember`], [`Popup`], [`Listbox`] with [`ListItem`], and
+//! [`TextEntry`] ship, and the `Raw*` aliases name the control over each. [`Overlay`]
+//! is content above the app, opened and closed by the app and placed against an
+//! [`Anchor`]; [`RawPicker`] composes a popup face, an overlay and a listbox; a
+//! [`FocusHandle`] moves focus to the view it is bound to. [`LazyColumn`] scrolls a
+//! keyed list building only the slice in view. [`CornerRadius`] is what a decorated
+//! box asks of a medium's style extension to round its corners, silently declined by a
+//! medium without radii.
 
+mod anchor;
 mod container;
 mod control;
 mod corner_radius;
 mod error_boundary;
 mod flex;
 mod flexible;
+mod focus;
 mod grid;
 mod grid_cell;
 mod layout_box;
+mod lazy_column;
 mod macros;
+mod overlay;
+mod picker;
 mod pinned;
 pub mod realize;
 mod run;
@@ -63,6 +73,7 @@ pub use skene_core::{
 };
 
 pub use crate::{
+  anchor::Anchor,
   container::Container,
   control::{
     Activate,
@@ -71,11 +82,17 @@ pub use crate::{
     ControlChild,
     ControlHandle,
     Label,
+    ListItem,
+    Listbox,
+    ListboxGroup,
     PointerPhase,
+    Popup,
     RadioMember,
     Range,
     RawButton,
     RawCheckbox,
+    RawListbox,
+    RawOption,
     RawRadio,
     RawRadioGroup,
     RawSlider,
@@ -91,9 +108,13 @@ pub use crate::{
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,
+  focus::FocusHandle,
   grid::Grid,
   grid_cell::GridCell,
   layout_box::LayoutBox,
+  lazy_column::LazyColumn,
+  overlay::Overlay,
+  picker::{Face, RawPicker},
   pinned::Pinned,
   realize::ChildBuilder,
   span::{RichText, Span},

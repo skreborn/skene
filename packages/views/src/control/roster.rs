@@ -8,6 +8,8 @@ use std::{
 use skene_core::next::{Driver, NodeId, Scene};
 use skene_reactive::Trigger;
 
+use crate::realize::with_sink;
+
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
 ///
 /// A member joins as it builds and leaves as it is disposed; order comes from the scene,
@@ -57,6 +59,25 @@ impl Roster {
   pub fn leave(&self, node: NodeId) {
     self.members.borrow_mut().retain(|(held, _)| *held != node);
     self.changed.notify();
+  }
+
+  /// Focuses the member at `index` in tree order, if there is one.
+  pub fn focus_at<D: Driver>(&self, index: usize) {
+    if let Some((node, _)) = self.ordered::<D>().get(index) {
+      with_sink::<D, _>(*node, |sink| D::default().focus(sink));
+    }
+  }
+
+  /// Focuses the member holding `value`, or the first member when none holds it.
+  pub fn focus_value<D: Driver>(&self, value: Option<&str>) {
+    let members = self.ordered::<D>();
+    let index = value
+      .and_then(|value| members.iter().position(|(_, held)| held == value))
+      .unwrap_or(0);
+
+    if let Some((node, _)) = members.get(index) {
+      with_sink::<D, _>(*node, |sink| D::default().focus(sink));
+    }
   }
 
   /// The members in tree order under `D`'s scene, tracked.

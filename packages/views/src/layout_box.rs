@@ -53,6 +53,8 @@ use skene_core::{
 };
 
 use crate::{
+  Anchor,
+  FocusHandle,
   macros::properties,
   realize::{Source, bind_box_slot},
 };
@@ -79,7 +81,8 @@ struct Handlers {
 /// it exposes the properties its layout honors and delegates its children, and a
 /// third party's layout view does the same. Decoration and sizing are set through
 /// [`style_mut`](Self::style_mut) by the one view that offers them,
-/// [`Container`](crate::Container).
+/// [`Container`](crate::Container). An [`Anchor`] or a [`FocusHandle`] bound to the box
+/// names its node once built.
 #[must_use]
 pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   layout: Layout,
@@ -90,6 +93,8 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   style: DeclaredBoxStyle<D>,
   dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
   handlers: Handlers,
+  anchor: Option<Anchor>,
+  focus: Option<FocusHandle<D>>,
   children: Children<D, Kind>,
 }
 
@@ -106,6 +111,8 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       style: DeclaredBoxStyle::<D>::default(),
       dynamics: BoxDynamics::default(),
       handlers: Handlers::default(),
+      anchor: None,
+      focus: None,
       children: Children::new(),
     }
   }
@@ -217,6 +224,22 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn derive_accessibility(mut self, access: impl Fn() -> Vec<AccessProp> + 'static) -> Self {
     self.access = Some(Source::derive(access));
+
+    self
+  }
+
+  /// Binds `anchor` to the box once built, so an overlay is placed against it.
+  #[inline(always)]
+  pub fn bind_anchor(mut self, anchor: &Anchor) -> Self {
+    self.anchor = Some(anchor.clone());
+
+    self
+  }
+
+  /// Binds `focus` to the box once built, so focus moves to it programmatically.
+  #[inline(always)]
+  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+    self.focus = Some(focus.clone());
 
     self
   }
@@ -437,6 +460,14 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
       node
     });
+
+    if let Some(anchor) = &self.anchor {
+      anchor.assign(node);
+    }
+
+    if let Some(focus) = &self.focus {
+      focus.assign(node);
+    }
 
     for slot in slots {
       bind_box_slot::<D>(node, slot);

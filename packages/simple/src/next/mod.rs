@@ -11,13 +11,13 @@
 //! view with no theme above defines the default at the root. The palette also defines
 //! the views' typography tokens, so a plain text under a Simple theme is inked in the
 //! palette's foreground. Corners round where the medium has a
-//! [`CornerRadius`](skene_views::CornerRadius) and stay square where it has none. A
-//! `SimplePicker` waits on overlays.
+//! [`CornerRadius`](skene_views::CornerRadius) and stay square where it has none.
 
 mod button;
 mod card;
 mod checkbox;
 mod palette;
+mod picker;
 mod radio;
 mod shape;
 mod slider;
@@ -29,6 +29,7 @@ pub use self::{
   card::SimpleCard,
   checkbox::SimpleCheckbox,
   palette::{SimpleLook, SimplePalette},
+  picker::SimplePicker,
   radio::{SimpleRadio, SimpleRadioGroup},
   slider::SimpleSlider,
   text_editor::SimpleTextEditor,

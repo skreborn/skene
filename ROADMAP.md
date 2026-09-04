@@ -1112,7 +1112,7 @@ closes.
   relayout and repaint. R5.
 - Three control doc blocks describe the retired handler override as shipped. R6.
 
-### R1—Reactive internals (in flight)
+### R1—Reactive internals ✅
 
 Public API unchanged, with additions (`EffectHandle`, `Effect::render`, first-class
 `watch`, `Memo::new_with`, `Selector`, `Runtime::set_scheduler`/`flush_sync`).
@@ -1127,7 +1127,15 @@ effect, order render effects before ordinary ones, exercise `Selector`, coalesce
 writes into one scheduled flush, and drain an off-thread write through the scheduler;
 criterion numbers recorded before and after.
 
-### R2—Scene, driver trait, property model, on the headless driver (in flight)
+### R2—Scene, driver trait, property model, on the headless driver ✅
+
+Landed as `skene_core::next` (the model, the scene, `Driver`, dispatch, `View`/`Children`/
+`derived`/`reconcile`/`Show` over anchors), `skene-headless` (the whole trait plus the
+test seams) and a `skene-views` skeleton (`Container`, `Column`, `Text`, `Flexible`,
+`Theme`), with the nine gate tests in `packages/views/tests/headless.rs`. Two notes for
+R3: a token set with no theme above does not yet register its defaults at the root, and
+`Value<T, Media<N>>` does not yet convert into `Value<T, Condition<N>>`, so the
+`Spacing::from(8.).when(Media::MinWidth(900.), 16.)` spelling needs that conversion.
 
 R2b (the data model, additive under `skene_core::next`): `Scalar`, `Shape`
 (`Declared`/`Static`/`Plain`), `BoxStyle<N, S, X>`/`RunStyle<S, X>` with visitors and
@@ -1155,12 +1163,17 @@ wrappers (annotating before creation), `Text`/`Span`/`RichText`, `Overlay`,
 `Children` as segments with a sealed kind; `derive_child` on `derived`; `Show`/`Switch`
 attach and detach pre-built branches. Both facades reduced to scalar, leaves,
 extension, `Typography`, `media` and aliases; `skene-record` deleted.
-**Gate:** no same-named file remains in both facades beyond `lib.rs`, `prelude.rs` and
-the medium's own modules; the galleries compile against the aliases with their source
-unchanged beyond the theming renames; a `Suspense` swap preserves a signal inside its
-content; a third-party crate under `examples/` ships a component library generic over
-`D` used by both galleries, a web view bound on `WebDom`, and a terminal view bound on
-`CellPainter`, each through public types alone.
+Re-cut after R2: a facade can only rewire once its driver implements `Driver`, so R3
+completes `skene-views` against the headless driver, R4 rewires the GUI facade with the
+web driver, and R5 the terminal facade with its own.
+**Gate:** every built-in view exists once in `skene-views` with a headless test per view;
+a `Suspense` swap preserves a signal inside its content; `Show`/`Switch` keep a branch's
+state; wrapper annotations land on the content of a derived subtree; a token set used
+with no theme above resolves its defaults from the root. The facade gates (no same-named
+file in both facades beyond `lib.rs`, `prelude.rs` and the medium's own modules; the
+galleries unchanged beyond the theming renames; a third-party crate under `examples/`
+with a component library generic over `D`, a web view bound on `WebDom` and a terminal
+view bound on `CellPainter`) move to the end of R5.
 
 ### R4—Web driver
 

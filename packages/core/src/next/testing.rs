@@ -14,6 +14,8 @@ use super::{
   BoxValue,
   Children,
   ContainerSizes,
+  ControlProps,
+  ControlState,
   Definition,
   Definitions,
   Driver,
@@ -119,6 +121,12 @@ impl Driver for TestDriver {
   fn update_focus_order(&self, _: &u32, _: Option<FocusOrder>) {}
 
   fn update_access(&self, _: &u32, _: &[AccessProp]) {}
+
+  fn create_control(&self, _: &ControlProps<Self>) -> u32 {
+    Self::next_sink()
+  }
+
+  fn set_control_state(&self, _: &u32, _: &ControlState) {}
 
   fn create_run(&self, _: &RunProps<Self>) -> u32 {
     Self::next_sink()

@@ -395,8 +395,15 @@ impl<D: Driver, Kind: 'static> HasChildren<D> for LayoutBox<D, Kind> {
 
 impl<D: Driver, Kind: 'static> AnyKind for LayoutBox<D, Kind> {}
 
-impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
-  fn build(mut self) -> NodeId {
+impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
+  /// Realizes the box as a node of `kind` whose sink `create` mints from the props:
+  /// folds the pending annotation into the style, splits it, binds every derived slot,
+  /// the focus order, the accessibility and the handlers, mounts the children and
+  /// returns the node.
+  ///
+  /// A box builds through this with [`NodeKind::Box`] and [`Driver::create_box`]; a
+  /// view realized as another kind supplies its own creation.
+  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<D>) -> D::Sink) -> NodeId {
     if let Some(annotation) = Scene::<D>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
     }
@@ -419,11 +426,10 @@ impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
       focus_order,
       access,
     };
-    let driver = D::default();
-    let sink = driver.create_box(&props);
+    let sink = create(props);
     let container = self.container;
     let node = Scene::<D>::with(|scene| {
-      let node = scene.create(NodeKind::Box, sink);
+      let node = scene.create(kind, sink);
 
       if let Some(name) = container {
         scene.set_container(node, name);
@@ -506,5 +512,12 @@ impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
     self.children.mount(node);
 
     node
+  }
+}
+
+impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    self.realize(NodeKind::Box, |props| D::default().create_box(&props))
   }
 }

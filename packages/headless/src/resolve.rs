@@ -14,6 +14,7 @@ use skene_core::{
     Condition,
     Conditional,
     ContainerName,
+    ControlState,
     DriverLeaf,
     ExprEnv,
     ExprNode,
@@ -118,8 +119,8 @@ impl From<Dimension<f32>> for Resolved {
   }
 }
 
-/// What one node's properties resolve against: the environment, the node's state, and
-/// the named containers above it.
+/// What one node's properties resolve against: the environment, the node's state, the
+/// enclosing control's state and focus, and the named containers above it.
 pub struct Env {
   node: NodeId,
   viewport: Size<f32>,
@@ -127,14 +128,20 @@ pub struct Env {
   reduced_motion: bool,
   hovered: bool,
   focused: bool,
+  control: Option<ControlState>,
   containers: Vec<(ContainerName, Option<Size<f32>>)>,
 }
 
 impl Env {
   /// The environment of `node`; `None` for a stale id.
   pub fn of(node: NodeId) -> Option<Self> {
-    let (handle, names) = Scene::<Headless>::with(|scene| {
+    let (handle, control, names) = Scene::<Headless>::with(|scene| {
       let handle = *scene.record(node)?.sink();
+      let control = scene.enclosing_control(node).and_then(|control| {
+        let record = scene.record(control)?;
+
+        Some((*record.sink(), record.control_state()?))
+      });
       let mut names = Vec::new();
       let mut current = scene.parent(node);
 
@@ -146,11 +153,12 @@ impl Env {
         current = scene.parent(ancestor);
       }
 
-      Some((handle, names))
+      Some((handle, control, names))
     })?;
 
     with_store(|store| {
       let record = store.record(handle)?;
+      let focus_holder = control.map_or(handle, |(control, _)| control);
 
       Some(Self {
         node,
@@ -158,7 +166,8 @@ impl Env {
         scheme: store.scheme.unwrap_or(ColorScheme::Light),
         reduced_motion: store.reduced_motion.unwrap_or(false),
         hovered: record.hovered,
-        focused: store.focused == Some(handle),
+        focused: store.focused == Some(focus_holder),
+        control: control.map(|(_, state)| state),
         containers: names
           .into_iter()
           .map(|name| (name, store.container_sizes.get(&name).copied()))
@@ -177,6 +186,10 @@ impl Env {
   }
 
   fn state(&self, state: State) -> bool {
+    if state.is_control_state() {
+      return self.control.is_some_and(|control| control.holds(state));
+    }
+
     match state {
       State::Hovered => self.hovered,
       State::Focused | State::FocusVisible => self.focused,
@@ -388,22 +401,29 @@ pub fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> 
   let handle = Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
   let kind = with_store(|store| match &store.record(handle)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),
+    Kind::Control(props) => Some(Kind::Control(props.clone())),
     Kind::Run(props) => Some(Kind::Run(props.clone())),
     Kind::Anchor | Kind::Scope => None,
   })?;
+  let box_style = match &kind {
+    Kind::Box(props) => Some(&props.style),
+    Kind::Control(props) => Some(&props.box_props.style),
+    Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+  };
+
+  if let Some(style) = box_style {
+    let mut find = FindBox {
+      key,
+      env: &env,
+      found: None,
+    };
+
+    style.visit(&mut find);
+
+    return find.found.map(SlotValue::Box);
+  }
 
   match kind {
-    Kind::Box(props) => {
-      let mut find = FindBox {
-        key,
-        env: &env,
-        found: None,
-      };
-
-      props.style.visit(&mut find);
-
-      find.found.map(SlotValue::Box)
-    }
     Kind::Run(props) => {
       let mut find = FindRun {
         key,
@@ -415,7 +435,7 @@ pub fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> 
 
       find.found.map(SlotValue::Run)
     }
-    Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Control(_) | Kind::Anchor | Kind::Scope => None,
   }
 }
 

@@ -10,6 +10,11 @@
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
 //! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it, and the
 //! signals [`Driver::media`] reports follow.
+//!
+//! A control is realized as a box carrying its [`ControlProps`]; [`control_state`],
+//! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
+//! control and its parts report, and [`trigger_size`] gives a control the measured size
+//! its pointer handling maps a position onto.
 
 mod resolve;
 mod store;
@@ -34,6 +39,8 @@ use skene_core::{
     BoxProps,
     BoxValue,
     ContainerName,
+    ControlProps,
+    ControlState,
     Definition,
     Definitions,
     Driver,
@@ -42,6 +49,7 @@ use skene_core::{
     NoProperty,
     NodeId,
     NodeRecord,
+    Part,
     PropertyKey,
     RunProps,
     RunValue,
@@ -178,7 +186,7 @@ impl Driver for Headless {
 
   fn update_focus_order(&self, sink: &Handle, focus_order: Option<FocusOrder>) {
     with_record(*sink, |record| {
-      if let Kind::Box(props) = &mut record.kind {
+      if let Some(props) = record.kind.box_props_mut() {
         props.focus_order = focus_order;
       }
     });
@@ -186,10 +194,18 @@ impl Driver for Headless {
 
   fn update_access(&self, sink: &Handle, access: &[AccessProp]) {
     with_record(*sink, |record| {
-      if let Kind::Box(props) = &mut record.kind {
+      if let Some(props) = record.kind.box_props_mut() {
         access.clone_into(&mut props.access);
       }
     });
+  }
+
+  fn create_control(&self, props: &ControlProps<Self>) -> Handle {
+    with_store(|store| store.create(Record::new(Kind::Control(Box::new(props.clone())))))
+  }
+
+  fn set_control_state(&self, sink: &Handle, state: &ControlState) {
+    with_record(*sink, |record| record.control_state = *state);
   }
 
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
@@ -498,6 +514,7 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
     let record = store.record(handle)?;
     let line = match &record.kind {
       Kind::Box(_) => Some("Box".to_owned()),
+      Kind::Control(props) => Some(format!("Control {:?}", props.kind)),
       Kind::Run(_) => Some(format!("Run {:?}", record.text)),
       Kind::Anchor => full.then(|| "Anchor".to_owned()),
       Kind::Scope => full.then(|| "Scope".to_owned()),
@@ -532,14 +549,102 @@ pub fn is_live(node: NodeId) -> bool {
   handle(node).is_some()
 }
 
-/// The props the box `node` was created with, carrying the focus order and
+/// The props the box or control `node` was created with, carrying the focus order and
 /// accessibility properties last written to it.
 #[must_use]
 pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
+  with_record(handle(node)?, |record| record.kind.box_props().cloned())?
+}
+
+/// The props the control `node` was created with.
+#[must_use]
+pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
   with_record(handle(node)?, |record| match &record.kind {
-    Kind::Box(props) => Some((**props).clone()),
-    Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Control(props) => Some((**props).clone()),
+    Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
   })?
+}
+
+/// The state last mirrored into the control `node`.
+#[must_use]
+pub fn control_state(node: NodeId) -> Option<ControlState> {
+  with_record(handle(node)?, |record| match record.kind {
+    Kind::Control(_) => Some(record.control_state),
+    Kind::Box(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
+  })?
+}
+
+/// The part of its enclosing control `node` is recorded as; a control node is its own
+/// [`Part::Root`].
+#[must_use]
+pub fn part(node: NodeId) -> Option<Part> {
+  Scene::<Headless>::with(|scene| scene.part(node))
+}
+
+/// The place in focus traversal last written to the box or control `node`; `None`
+/// when it takes no focus.
+#[must_use]
+pub fn focus_order(node: NodeId) -> Option<FocusOrder> {
+  box_props(node)?.focus_order
+}
+
+/// Whether sequential focus traversal reaches `node`: it takes focus and is not
+/// skipped.
+#[must_use]
+pub fn is_tab_stop(node: NodeId) -> bool {
+  matches!(
+    focus_order(node),
+    Some(FocusOrder::Auto | FocusOrder::Position(_))
+  )
+}
+
+/// The name the control `node` reports to assistive technology: the text of its
+/// [`Part::Label`], else the label its accessibility properties carry, else the one its
+/// props were created with.
+#[must_use]
+pub fn accessible_name(node: NodeId) -> Option<String> {
+  let props = control_props(node)?;
+  let label = Scene::<Headless>::with(|scene| {
+    scene
+      .children(node)
+      .find(|child| scene.part(*child) == Some(Part::Label))
+  });
+
+  if let Some(label) = label {
+    let text = subtree_text(label);
+
+    if !text.is_empty() {
+      return Some(text);
+    }
+  }
+
+  props
+    .box_props
+    .access
+    .iter()
+    .find_map(|prop| match prop {
+      AccessProp::Label(label) => Some(label.clone()),
+      _ => None,
+    })
+    .or(props.label)
+}
+
+/// The text of every run under `node`, in order.
+fn subtree_text(node: NodeId) -> String {
+  let mut out = String::new();
+  let mut pending = vec![node];
+
+  while let Some(node) = pending.pop() {
+    if let Some(text) = text(node) {
+      out.push_str(&text);
+    }
+
+    let children: Vec<NodeId> = children(node);
+
+    pending.extend(children.into_iter().rev());
+  }
+
+  out
 }
 
 /// The props the run `node` was created with.
@@ -547,7 +652,7 @@ pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
 pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Run(props) => Some((**props).clone()),
-    Kind::Box(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Control(_) | Kind::Anchor | Kind::Scope => None,
   })?
 }
 
@@ -556,7 +661,7 @@ pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
 pub fn text(node: NodeId) -> Option<String> {
   with_record(handle(node)?, |record| match record.kind {
     Kind::Run(_) => Some(record.text.clone()),
-    Kind::Box(_) | Kind::Anchor | Kind::Scope => None,
+    Kind::Box(_) | Kind::Control(_) | Kind::Anchor | Kind::Scope => None,
   })?
 }
 

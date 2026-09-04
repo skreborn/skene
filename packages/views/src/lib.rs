@@ -14,9 +14,13 @@
 //! ([`Text`], [`Span`], [`RichText`]) inherits through the [`typography`] tokens.
 //! [`Show`], [`Switch`], [`Suspense`] and [`ErrorBoundary`] mount between anchors and
 //! keep the branches they hide. [`Theme`] defines a token set beneath it, and
-//! [`ThemedIn`] reads the set in force.
+//! [`ThemedIn`] reads the set in force. [`Control`] is the one control builder, over a
+//! [`Behavior`] saying what the interaction is; [`Activate`], [`Toggle`], [`Range`],
+//! [`Roving`] with [`RadioMember`], and [`TextEntry`] ship, and the `Raw*` aliases name
+//! the control over each.
 
 mod container;
+mod control;
 mod error_boundary;
 mod flex;
 mod flexible;
@@ -41,12 +45,15 @@ pub use skene_core::{
   next::{
     AnyKind,
     AnyView,
+    ControlKind,
+    ControlState,
     Driver,
     HasChildren,
     IntoChildOf,
     IntoChildren,
     IntoView,
     NoChild,
+    Part,
     Scene,
     Show,
     View,
@@ -55,6 +62,29 @@ pub use skene_core::{
 
 pub use crate::{
   container::Container,
+  control::{
+    Activate,
+    Behavior,
+    Control,
+    ControlChild,
+    ControlHandle,
+    Label,
+    PointerPhase,
+    RadioMember,
+    Range,
+    RawButton,
+    RawCheckbox,
+    RawRadio,
+    RawRadioGroup,
+    RawSlider,
+    RawTextEditor,
+    RawTextField,
+    Roster,
+    Roving,
+    RovingGroup,
+    TextEntry,
+    Toggle,
+  },
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,

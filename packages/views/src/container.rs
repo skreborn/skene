@@ -5,21 +5,15 @@ use skene_core::{
   Alignment,
   Animation,
   Bubbling,
-  Color,
-  Dimension,
   FocusOrder,
-  Inset,
   KeyEvent,
   Layout,
-  MouseCursor,
-  Overflow,
   PointerEvent,
   Role,
   ScrollEvent,
   Transition,
   next::{
     AnyKind,
-    Border,
     BoxStyle,
     Children,
     Condition,
@@ -36,7 +30,7 @@ use skene_core::{
   },
 };
 
-use crate::{LayoutBox, macros::properties};
+use crate::{LayoutBox, macros::decoration};
 
 /// Decoration and sizing around exactly one child.
 ///
@@ -71,36 +65,7 @@ impl<D: Driver> Container<D> {
     self.inner.style_mut()
   }
 
-  properties! { style_mut;
-    set_width / derive_width (width) => width: Dimension<D::Scalar>,
-      "the width";
-    set_height / derive_height (height) => height: Dimension<D::Scalar>,
-      "the height";
-    set_min_width / derive_min_width (min_width) => min_width: Dimension<D::Scalar>,
-      "the minimum width";
-    set_min_height / derive_min_height (min_height) => min_height: Dimension<D::Scalar>,
-      "the minimum height";
-    set_max_width / derive_max_width (max_width) => max_width: Dimension<D::Scalar>,
-      "the maximum width";
-    set_max_height / derive_max_height (max_height) => max_height: Dimension<D::Scalar>,
-      "the maximum height";
-    set_aspect_ratio / derive_aspect_ratio (aspect_ratio) => aspect_ratio: f32,
-      "the width-to-height ratio the unsized axis follows";
-    set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
-      "the padding on each edge";
-    set_margin / derive_margin (margin) => margin: Inset<Dimension<D::Scalar>>,
-      "the margin on each edge";
-    set_offset / derive_offset (offset) => offset: Inset<Dimension<D::Scalar>>,
-      "the shift from each edge, keeping the box in flow";
-    set_color / derive_color (color) => color: Color,
-      "the background color";
-    set_border / derive_border (border) => border: Border<D::Scalar>,
-      "the border";
-    set_cursor / derive_cursor (cursor) => cursor: MouseCursor,
-      "the mouse cursor shown over the box";
-    set_overflow / derive_overflow (overflow) => overflow: Overflow,
-      "how content exceeding the box's bounds is treated; `Scroll` and `Auto` make it scrollable";
-  }
+  decoration! { style_mut }
 
   /// Sets where the child sits when it fills neither axis.
   #[inline(always)]

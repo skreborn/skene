@@ -26,6 +26,7 @@ mod border;
 mod box_style;
 mod children;
 mod condition;
+mod control;
 mod derived;
 mod dispatch;
 mod driver;
@@ -60,6 +61,7 @@ pub use box_style::{
 };
 pub use children::{Children, HasChildren, IntoChildren, Seal};
 pub use condition::{Condition, ContainerName, ContainerQuery, Media, MediaEnv, State};
+pub use control::{ControlKind, ControlProps, ControlState, Part};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,

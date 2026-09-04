@@ -1,0 +1,916 @@
+//! The one control builder, the behavior it is given, and the behaviors that ship.
+
+mod activate;
+mod range;
+mod roster;
+mod roving;
+mod text_entry;
+mod toggle;
+
+use std::{marker::PhantomData, rc::Rc};
+
+use skene_core::{
+  AccessProp,
+  Alignment,
+  Animation,
+  FocusOrder,
+  KeyEvent,
+  Layout,
+  PointerEvent,
+  PointerHandler,
+  Prevent,
+  Prevented,
+  Role,
+  ScrollEvent,
+  Transition,
+  next::{
+    AnyKind,
+    AnyView,
+    BoxStyle,
+    Condition,
+    ContainerName,
+    ControlKind,
+    ControlProps,
+    ControlState,
+    DeclaredBoxStyle,
+    Driver,
+    EventKind,
+    IntoView,
+    NoChild,
+    NodeId,
+    NodeKind,
+    Part,
+    Plain,
+    PlainChild,
+    PlainHandler,
+    Scene,
+    ScrollHandler,
+    Value,
+    View,
+    dispatch_click,
+  },
+};
+use skene_reactive::{Effect, Owner, Trigger, batch, use_context};
+
+pub use self::{
+  activate::Activate,
+  range::Range,
+  roster::Roster,
+  roving::{RadioMember, Roving, RovingGroup},
+  text_entry::TextEntry,
+  toggle::Toggle,
+};
+use crate::{
+  LayoutBox,
+  Text,
+  macros::decoration,
+  realize::{Source, with_sink},
+};
+
+/// An observer of an event carrying `E`: a handler with no verdict.
+type Observer<E> = dyn Fn(&E);
+/// A key observer.
+type KeyObserver = Observer<KeyEvent>;
+/// A pointer observer.
+type PointerObserver = Observer<PointerEvent>;
+/// A handler of an event carrying `E`, with its verdict.
+type Acting<E> = dyn Fn(&E) -> Prevent;
+
+/// Which pointer transition a behavior is told of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum PointerPhase {
+  /// A button pressed over the control.
+  Down,
+  /// The pointer moved over the control.
+  Move,
+  /// A button released over the control.
+  Up,
+}
+
+/// What a control's interaction is: its kind and role, the events it acts on and what
+/// it does with them, and what it reports.
+///
+/// A [`Control`] runs its behavior first on every event it acts on, and the behavior's
+/// verdict is the whole verdict; the control's own handlers observe. [`access`],
+/// [`focus_order`] and [`state`] are read under render effects, so what they read from
+/// signals re-applies when it changes. Only the events in [`listens`] and those the
+/// control's handlers want are registered.
+///
+/// [`access`]: Self::access
+/// [`focus_order`]: Self::focus_order
+/// [`state`]: Self::state
+/// [`listens`]: Self::listens
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a control behavior",
+  label = "a behavior states a control's kind, role, the events it acts on, and what it reports"
+)]
+pub trait Behavior<D: Driver>: 'static {
+  /// What the control is.
+  fn kind(&self) -> ControlKind;
+
+  /// The semantic role the control's node carries; `None` where the kind says enough.
+  fn role(&self) -> Option<Role>;
+
+  /// The events the behavior acts on.
+  fn listens(&self) -> &'static [EventKind];
+
+  /// The hint a text entry shows while its value is empty.
+  #[inline(always)]
+  fn placeholder(&self) -> Option<String> {
+    None
+  }
+
+  /// The lines a text entry shows at once.
+  #[inline(always)]
+  fn lines(&self) -> u16 {
+    1
+  }
+
+  /// Runs once the control's node exists and its reports have been read, before its
+  /// parts and child build, under the control's owner: what a behavior binds to the
+  /// node, provides to its subtree or joins goes here. A behavior whose reports change
+  /// here calls [`ControlHandle::refresh`].
+  #[inline(always)]
+  fn attach(&self, _control: &ControlHandle<D>) {}
+
+  /// What the behavior does on a click.
+  #[inline(always)]
+  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+    Prevent::None
+  }
+
+  /// What the behavior does on a key pressed while the control holds focus.
+  #[inline(always)]
+  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+    Prevent::None
+  }
+
+  /// What the behavior does on a pointer transition over the control.
+  #[inline(always)]
+  fn on_pointer(
+    &self,
+    _phase: PointerPhase,
+    _event: &PointerEvent,
+    _control: &ControlHandle<D>,
+  ) -> Prevent {
+    Prevent::None
+  }
+
+  /// What the behavior does when the driver reports a new textual value.
+  #[inline(always)]
+  fn on_change(&self, _value: &str, _control: &ControlHandle<D>) {}
+
+  /// What the control reports to assistive technology, beside its role.
+  #[inline(always)]
+  fn access(&self) -> Vec<AccessProp> {
+    Vec::new()
+  }
+
+  /// The control's place in focus traversal; `None` for a control that takes no focus.
+  #[inline(always)]
+  fn focus_order(&self) -> Option<FocusOrder> {
+    Some(FocusOrder::Auto)
+  }
+
+  /// The state the control-scoped conditions inside the control resolve against.
+  #[inline(always)]
+  fn state(&self) -> ControlState {
+    ControlState::DEFAULT
+  }
+}
+
+/// A behavior's access to the control it drives: the node, its sink, focus, a click
+/// dispatched at it, a re-read of its reports, and the roster the control was built
+/// inside if any.
+#[must_use]
+pub struct ControlHandle<D: Driver> {
+  node: NodeId,
+  roster: Option<Roster>,
+  changed: Trigger,
+  driver: PhantomData<fn() -> D>,
+}
+
+impl<D: Driver> ControlHandle<D> {
+  /// The control's node.
+  #[inline(always)]
+  pub const fn node(&self) -> NodeId {
+    self.node
+  }
+
+  /// The roster in force where the control was built, if any.
+  #[inline(always)]
+  #[must_use]
+  pub const fn roster(&self) -> Option<&Roster> {
+    self.roster.as_ref()
+  }
+
+  /// Runs `operation` on the control's sink, if the node is live.
+  #[inline(always)]
+  pub fn with_sink<R>(&self, operation: impl FnOnce(&D::Sink) -> R) -> Option<R> {
+    with_sink::<D, _>(self.node, operation)
+  }
+
+  /// Moves focus to the control.
+  #[inline(always)]
+  pub fn focus(&self) {
+    self.with_sink(|sink| D::default().focus(sink));
+  }
+
+  /// Dispatches a click at the control, so its behavior and handlers see it.
+  #[inline(always)]
+  pub fn click(&self) -> Prevented {
+    dispatch_click::<D>(self.node)
+  }
+
+  /// Re-reads what the behavior reports: its state, accessibility and focus order.
+  ///
+  /// For a change no signal carries; a report that reads signals re-applies on its own.
+  #[inline(always)]
+  pub fn refresh(&self) {
+    self.changed.notify();
+  }
+}
+
+/// A control's caption: a view mounted as its [`Part::Label`], with the accessible
+/// name it supplies when its text is known at build.
+#[must_use]
+pub struct Label<D: Driver> {
+  view: AnyView<D>,
+  name: Option<String>,
+}
+
+impl<D: Driver> Label<D> {
+  /// A caption drawn by `view`; the name is the driver's to read from the part.
+  #[inline(always)]
+  pub fn new(view: impl IntoView<D>) -> Self {
+    Self {
+      view: view.into_view(),
+      name: None,
+    }
+  }
+}
+
+impl<D: Driver> From<String> for Label<D> {
+  #[inline(always)]
+  fn from(text: String) -> Self {
+    Self {
+      view: Text::new(text.clone()).into_view(),
+      name: Some(text),
+    }
+  }
+}
+
+impl<D: Driver> From<&str> for Label<D> {
+  #[inline(always)]
+  fn from(text: &str) -> Self {
+    Self::from(text.to_owned())
+  }
+}
+
+/// The drawn body a control holds: nothing yet, or one view.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` is not a control's body",
+  label = "a control holds `NoChild` or the one view `set_child` gave it"
+)]
+pub trait ControlChild<D: Driver>: 'static {
+  /// Builds the body, if there is one.
+  fn build_body(self) -> Option<NodeId>;
+}
+
+impl<D: Driver> ControlChild<D> for NoChild {
+  #[inline(always)]
+  fn build_body(self) -> Option<NodeId> {
+    None
+  }
+}
+
+impl<D: Driver> ControlChild<D> for AnyView<D> {
+  #[inline(always)]
+  fn build_body(self) -> Option<NodeId> {
+    Some(self.build())
+  }
+}
+
+/// The handlers a control's user installs, each observing what the behavior did.
+#[derive(Default)]
+struct Observers {
+  click: Vec<Rc<PlainHandler>>,
+  key_down: Vec<Rc<KeyObserver>>,
+  pointer_down: Vec<Rc<PointerObserver>>,
+  pointer_up: Vec<Rc<PointerObserver>>,
+  pointer_move: Vec<Rc<PointerObserver>>,
+  pointer_enter: Vec<Rc<PlainHandler>>,
+  pointer_leave: Vec<Rc<PlainHandler>>,
+  focus: Vec<Rc<PlainHandler>>,
+  blur: Vec<Rc<PlainHandler>>,
+  scroll: Vec<Rc<ScrollHandler>>,
+}
+
+/// A control: focus, events, decoration, a label, parts and accessibility once, over
+/// the [`Behavior`] that says what the interaction is.
+///
+/// The behavior runs first on every event it acts on and its verdict is the whole
+/// verdict; every `handle_` here observes. The control is controlled: it reports, and
+/// the signal its behavior is bound to is the truth. Its parts and its child resolve
+/// the control-scoped conditions (`Checked`, `Disabled`, …) and their focus against it.
+/// Holds [`NoChild`] until [`set_child`](Self::set_child) or
+/// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
+/// with a label or parts alone builds without one. The build runs in one batch, so
+/// what its subtree notifies while building is delivered once the subtree is mounted.
+#[must_use]
+pub struct Control<D: Driver, B: Behavior<D>, C = NoChild> {
+  behavior: B,
+  inner: LayoutBox<D, PlainChild>,
+  label: Option<Label<D>>,
+  disabled: Option<Source<bool>>,
+  focus_order: Option<Source<FocusOrder>>,
+  parts: Vec<(Part, AnyView<D>)>,
+  observers: Observers,
+  child: C,
+}
+
+impl<D: Driver, B: Behavior<D>> Control<D, B> {
+  /// A control driven by `behavior`, undecorated and without a body.
+  #[inline(always)]
+  pub fn new(behavior: B) -> Self {
+    Self {
+      behavior,
+      inner: LayoutBox::new(Layout::Single),
+      label: None,
+      disabled: None,
+      focus_order: None,
+      parts: Vec::new(),
+      observers: Observers::default(),
+      child: NoChild,
+    }
+  }
+
+  /// Sets the drawn body.
+  #[inline(always)]
+  pub fn set_child(self, child: impl IntoView<D>) -> Control<D, B, AnyView<D>> {
+    self.with_child(child.into_view())
+  }
+
+  /// Sets the drawn body, built by `child` under the control.
+  #[inline(always)]
+  pub fn set_child_builder<V: IntoView<D>>(
+    self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> Control<D, B, AnyView<D>> {
+    self.with_child(AnyView::new(move || child().into_view().build()))
+  }
+
+  fn with_child(self, child: AnyView<D>) -> Control<D, B, AnyView<D>> {
+    Control {
+      behavior: self.behavior,
+      inner: self.inner,
+      label: self.label,
+      disabled: self.disabled,
+      focus_order: self.focus_order,
+      parts: self.parts,
+      observers: self.observers,
+      child,
+    }
+  }
+}
+
+impl<D: Driver, B: Behavior<D> + Default> Default for Control<D, B> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new(B::default())
+  }
+}
+
+impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
+  #[inline(always)]
+  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+    self.inner.style_mut()
+  }
+
+  decoration! { style_mut }
+
+  /// The behavior driving the control.
+  #[inline(always)]
+  pub const fn behavior(&self) -> &B {
+    &self.behavior
+  }
+
+  /// Sets where the body sits when it fills neither axis.
+  #[inline(always)]
+  pub fn set_alignment(
+    mut self,
+    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+  ) -> Self {
+    self.inner = self.inner.set_alignment(alignment);
+
+    self
+  }
+
+  /// Derives where the body sits from the signals `alignment` reads.
+  #[inline(always)]
+  pub fn derive_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+    self.inner = self.inner.derive_alignment(alignment);
+
+    self
+  }
+
+  /// Names the control for container queries against its size.
+  #[inline(always)]
+  pub fn set_container_name(mut self, name: ContainerName) -> Self {
+    self.inner = self.inner.set_container_name(name);
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value
+  /// changes.
+  #[inline(always)]
+  pub fn set_transition(mut self, transition: Transition) -> Self {
+    self.inner = self.inner.set_transition(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(
+    mut self,
+    animation: Animation<BoxStyle<D::Scalar, Plain, D::StyleExt>>,
+  ) -> Self {
+    self.inner = self.inner.set_animation(animation);
+
+    self
+  }
+
+  /// Sets the caption: a [`Part::Label`] child whose text is the accessible name.
+  ///
+  /// A string builds a [`Text`] and names the control; [`Label::new`] mounts any view
+  /// and leaves the name to the driver.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<Label<D>>) -> Self {
+    self.label = Some(label.into());
+
+    self
+  }
+
+  /// Sets whether the control is present but not operable: a disabled control takes
+  /// no focus, ignores every event it would act on and reports
+  /// [`AccessProp::Disabled`].
+  #[inline(always)]
+  pub fn set_disabled(mut self, disabled: bool) -> Self {
+    self.disabled = Some(Source::Fixed(disabled));
+
+    self
+  }
+
+  /// Derives whether the control is disabled from the signals `disabled` reads.
+  #[inline(always)]
+  pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
+    self.disabled = Some(Source::derive(disabled));
+
+    self
+  }
+
+  /// Sets the control's place in focus traversal, over the behavior's default.
+  #[inline(always)]
+  pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
+    self.focus_order = Some(Source::Fixed(focus_order));
+
+    self
+  }
+
+  /// Derives the control's place in focus traversal from the signals `focus_order`
+  /// reads, over the behavior's default.
+  #[inline(always)]
+  pub fn derive_focus_order(mut self, focus_order: impl Fn() -> FocusOrder + 'static) -> Self {
+    self.focus_order = Some(Source::derive(focus_order));
+
+    self
+  }
+
+  /// Adds `view` as the part `part` of the control, a styling target its conditions
+  /// resolve against the control.
+  #[inline(always)]
+  pub fn set_part(mut self, part: Part, view: impl IntoView<D>) -> Self {
+    self.parts.push((part, view.into_view()));
+
+    self
+  }
+
+  /// Runs `action` after the behavior has acted on a click.
+  #[inline(always)]
+  pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {
+    self.observers.click.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` after the behavior has acted on a key pressed while the control
+  /// holds focus.
+  #[inline(always)]
+  pub fn handle_key_down(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    self.observers.key_down.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` after the behavior has acted on a pointer button pressed over the
+  /// control.
+  #[inline(always)]
+  pub fn handle_pointer_down(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.observers.pointer_down.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` after the behavior has acted on a pointer button released over the
+  /// control.
+  #[inline(always)]
+  pub fn handle_pointer_up(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.observers.pointer_up.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` after the behavior has acted on the pointer moving over the control.
+  #[inline(always)]
+  pub fn handle_pointer_move(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.observers.pointer_move.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the pointer enters the control.
+  #[inline(always)]
+  pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
+    self.observers.pointer_enter.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the pointer leaves the control.
+  #[inline(always)]
+  pub fn handle_pointer_leave(mut self, action: impl Fn() + 'static) -> Self {
+    self.observers.pointer_leave.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the control gains focus.
+  #[inline(always)]
+  pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
+    self.observers.focus.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` when the control loses focus.
+  #[inline(always)]
+  pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
+    self.observers.blur.push(Rc::new(action));
+
+    self
+  }
+
+  /// Runs `action` with the control's new offsets when it scrolls.
+  #[inline(always)]
+  pub fn handle_scroll(mut self, action: impl Fn(&ScrollEvent) + 'static) -> Self {
+    self.observers.scroll.push(Rc::new(action));
+
+    self
+  }
+}
+
+impl<D: Driver, B: Behavior<D>, C> AnyKind for Control<D, B, C> {}
+
+impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C> {
+  fn build(self) -> NodeId {
+    let Self {
+      behavior,
+      mut inner,
+      label,
+      disabled,
+      focus_order,
+      parts,
+      observers,
+      child,
+    } = self;
+    let behavior = Rc::new(behavior);
+    let owner = Owner::current().child();
+
+    batch(|| {
+      owner.enter(move || {
+        let kind = behavior.kind();
+        let placeholder = behavior.placeholder();
+        let lines = behavior.lines();
+        let name = label.as_ref().and_then(|label| label.name.clone());
+
+        if let Some(role) = behavior.role() {
+          inner = inner.set_role(role);
+        }
+
+        let node = inner.realize(NodeKind::Control, |box_props| {
+          D::default().create_control(&ControlProps {
+            kind,
+            box_props,
+            label: name,
+            placeholder,
+            lines,
+          })
+        });
+        let handle = Rc::new(ControlHandle {
+          node,
+          roster: use_context::<Roster>(),
+          changed: Trigger::new(),
+          driver: PhantomData,
+        });
+        let disabled = read_bool(disabled);
+
+        bind_reports(&handle, &behavior, &disabled, focus_order);
+        behavior.attach(&handle);
+        register(node, &behavior, &handle, &disabled, observers);
+
+        for (part, view) in parts {
+          mount_part::<D>(node, part, view.build());
+        }
+
+        if let Some(child) = child.build_body() {
+          Scene::<D>::with(|scene| scene.attach(node, child, None));
+        }
+
+        if let Some(label) = label {
+          mount_part::<D>(node, Part::Label, label.view.build());
+        }
+
+        node
+      })
+    })
+  }
+}
+
+/// A boolean setting as a closure: `false` when unset.
+fn read_bool(source: Option<Source<bool>>) -> Rc<dyn Fn() -> bool> {
+  match source {
+    None => Rc::new(|| false),
+    Some(Source::Fixed(value)) => Rc::new(move || value),
+    Some(Source::Derived(compute)) => compute,
+  }
+}
+
+/// Attaches `child` under `node` as its `part`.
+fn mount_part<D: Driver>(node: NodeId, part: Part, child: NodeId) {
+  Scene::<D>::with(|scene| {
+    scene.set_part(child, part);
+    scene.attach(node, child, None);
+  });
+}
+
+/// Binds the render effects writing the control's state, accessibility and focus
+/// order, each re-applied when what it reads changes or the handle is refreshed.
+fn bind_reports<D: Driver, B: Behavior<D>>(
+  handle: &Rc<ControlHandle<D>>,
+  behavior: &Rc<B>,
+  disabled: &Rc<dyn Fn() -> bool>,
+  focus_order: Option<Source<FocusOrder>>,
+) {
+  let node = handle.node;
+  let changed = handle.changed;
+
+  {
+    let behavior = Rc::clone(behavior);
+    let disabled = Rc::clone(disabled);
+
+    Effect::render(move |_: Option<()>| {
+      changed.track();
+
+      let mut state = behavior.state();
+
+      state.disabled |= disabled();
+      Scene::<D>::with(|scene| scene.set_control_state(node, state));
+    });
+  }
+
+  {
+    let behavior = Rc::clone(behavior);
+    let disabled = Rc::clone(disabled);
+
+    Effect::render(move |_: Option<()>| {
+      changed.track();
+
+      let mut access = behavior.access();
+
+      if disabled() {
+        access.push(AccessProp::Disabled(true));
+      }
+
+      with_sink::<D, _>(node, |sink| D::default().update_access(sink, &access));
+    });
+  }
+
+  {
+    let behavior = Rc::clone(behavior);
+    let disabled = Rc::clone(disabled);
+    let chosen: Option<Rc<dyn Fn() -> FocusOrder>> = match focus_order {
+      None => None,
+      Some(Source::Fixed(order)) => Some(Rc::new(move || order)),
+      Some(Source::Derived(compute)) => Some(compute),
+    };
+
+    Effect::render(move |_: Option<()>| {
+      changed.track();
+
+      let order = if disabled() {
+        None
+      }
+      else if let Some(chosen) = &chosen {
+        Some(chosen())
+      }
+      else {
+        behavior.focus_order()
+      };
+
+      with_sink::<D, _>(node, |sink| D::default().update_focus_order(sink, order));
+    });
+  }
+}
+
+/// What every acting handler shares: the behavior, its handle and the disabled read.
+struct Actor<D: Driver, B: Behavior<D>> {
+  behavior: Rc<B>,
+  handle: Rc<ControlHandle<D>>,
+  disabled: Rc<dyn Fn() -> bool>,
+}
+
+impl<D: Driver, B: Behavior<D>> Clone for Actor<D, B> {
+  fn clone(&self) -> Self {
+    Self {
+      behavior: Rc::clone(&self.behavior),
+      handle: Rc::clone(&self.handle),
+      disabled: Rc::clone(&self.disabled),
+    }
+  }
+}
+
+impl<D: Driver, B: Behavior<D>> Actor<D, B> {
+  /// One handler for an event carrying `E`: a disabled control swallows it, else the
+  /// behavior acts through `act` when `acts`, the observers see the event after, and
+  /// the behavior's verdict stands.
+  ///
+  /// `None` when neither the behavior nor an observer wants the event.
+  fn handler<E: ?Sized + 'static>(
+    &self,
+    acts: bool,
+    act: impl Fn(&B, &E, &ControlHandle<D>) -> Prevent + 'static,
+    observers: Vec<Rc<Observer<E>>>,
+  ) -> Option<Rc<Acting<E>>> {
+    if !acts && observers.is_empty() {
+      return None;
+    }
+
+    let actor = self.clone();
+
+    Some(Rc::new(move |event: &E| {
+      if (actor.disabled)() {
+        return Prevent::All;
+      }
+
+      let verdict = if acts {
+        act(&actor.behavior, event, &actor.handle)
+      }
+      else {
+        Prevent::None
+      };
+
+      for observer in &observers {
+        observer(event);
+      }
+
+      verdict
+    }))
+  }
+}
+
+/// Registers one handler per event the behavior or an observer wants: the behavior
+/// acts first and its verdict stands, the observers see the event after, and a
+/// disabled control swallows every event it would act on.
+fn register<D: Driver, B: Behavior<D>>(
+  node: NodeId,
+  behavior: &Rc<B>,
+  handle: &Rc<ControlHandle<D>>,
+  disabled: &Rc<dyn Fn() -> bool>,
+  observers: Observers,
+) {
+  let listens = behavior.listens();
+  let acts = |kind: EventKind| listens.contains(&kind);
+  let actor = Actor {
+    behavior: Rc::clone(behavior),
+    handle: Rc::clone(handle),
+    disabled: Rc::clone(disabled),
+  };
+  let Observers {
+    click,
+    key_down,
+    pointer_down,
+    pointer_up,
+    pointer_move,
+    pointer_enter,
+    pointer_leave,
+    focus,
+    blur,
+    scroll,
+  } = observers;
+  let click = actor.handler(
+    acts(EventKind::Click),
+    |behavior, (): &(), handle| behavior.on_click(handle),
+    click
+      .into_iter()
+      .map(|observer| -> Rc<Observer<()>> { Rc::new(move |()| observer()) })
+      .collect(),
+  );
+  let key_down = actor.handler(acts(EventKind::KeyDown), B::on_key, key_down);
+  let pointer = |phase: PointerPhase, kind: EventKind, observers: Vec<Rc<PointerObserver>>| {
+    actor.handler(
+      acts(kind),
+      move |behavior: &B, event: &PointerEvent, handle| behavior.on_pointer(phase, event, handle),
+      observers,
+    )
+  };
+  let pointer_down = pointer(PointerPhase::Down, EventKind::PointerDown, pointer_down);
+  let pointer_up = pointer(PointerPhase::Up, EventKind::PointerUp, pointer_up);
+  let pointer_move = pointer(PointerPhase::Move, EventKind::PointerMove, pointer_move);
+  let change = acts(EventKind::Change).then(|| {
+    let behavior = Rc::clone(behavior);
+    let handle = Rc::clone(handle);
+
+    Rc::new(move |value: &str| behavior.on_change(value, &handle))
+  });
+
+  Scene::<D>::with(|scene| {
+    if let Some(handler) = click {
+      scene.handle_click(node, Rc::new(move || handler(&())));
+    }
+
+    if let Some(handler) = key_down {
+      scene.handle_key_down(node, handler);
+    }
+
+    if let Some(handler) = pointer_down {
+      scene.handle_pointer_down(node, as_pointer_handler(handler));
+    }
+
+    if let Some(handler) = pointer_up {
+      scene.handle_pointer_up(node, as_pointer_handler(handler));
+    }
+
+    if let Some(handler) = pointer_move {
+      scene.handle_pointer_move(node, as_pointer_handler(handler));
+    }
+
+    if let Some(handler) = change {
+      scene.handle_change(node, handler);
+    }
+
+    for observer in pointer_enter {
+      scene.handle_pointer_enter(node, observer);
+    }
+
+    for observer in pointer_leave {
+      scene.handle_pointer_leave(node, observer);
+    }
+
+    for observer in focus {
+      scene.handle_focus(node, observer);
+    }
+
+    for observer in blur {
+      scene.handle_blur(node, observer);
+    }
+
+    for observer in scroll {
+      scene.handle_scroll(node, observer);
+    }
+  });
+}
+
+/// A pointer handler as dispatch stores it.
+#[inline(always)]
+fn as_pointer_handler(handler: Rc<Acting<PointerEvent>>) -> Rc<PointerHandler> {
+  handler
+}
+
+/// A button: [`Control`] over [`Activate`].
+pub type RawButton<D, C = NoChild> = Control<D, Activate, C>;
+/// A checkbox: [`Control`] over [`Toggle`].
+pub type RawCheckbox<D, C = NoChild> = Control<D, Toggle, C>;
+/// A slider: [`Control`] over [`Range`].
+pub type RawSlider<D, C = NoChild> = Control<D, Range, C>;
+/// A radio group: [`Control`] over [`Roving`].
+pub type RawRadioGroup<D, C = NoChild> = Control<D, Roving, C>;
+/// One radio choice: [`Control`] over [`RadioMember`].
+pub type RawRadio<D, C = NoChild> = Control<D, RadioMember, C>;
+/// A single-line text field: [`Control`] over [`TextEntry`].
+pub type RawTextField<D, C = NoChild> = Control<D, TextEntry, C>;
+/// A multi-line text editor: [`Control`] over [`TextEntry`] with
+/// [`set_lines`](TextEntry::set_lines) above one.
+pub type RawTextEditor<D, C = NoChild> = Control<D, TextEntry, C>;

@@ -5,6 +5,8 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey};
 use super::{
   BoxProps,
   BoxValue,
+  ControlProps,
+  ControlState,
   Definition,
   Definitions,
   EventKind,
@@ -66,6 +68,12 @@ pub trait Driver: Copy + Default + 'static {
 
   /// Replaces the accessibility properties a box reports.
   fn update_access(&self, sink: &Self::Sink, access: &[AccessProp]);
+
+  /// Realizes a control: a box a driver may stand a native element in for.
+  fn create_control(&self, props: &ControlProps<Self>) -> Self::Sink;
+
+  /// Mirrors a control's state, for a driver whose platform holds it too.
+  fn set_control_state(&self, sink: &Self::Sink, state: &ControlState);
 
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;

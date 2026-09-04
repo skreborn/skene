@@ -8,11 +8,13 @@ use smallvec::SmallVec;
 use super::{
   Condition,
   ContainerName,
+  ControlState,
   DeclaredBoxStyle,
   Definitions,
   Driver,
   EventKind,
   NodeId,
+  Part,
   TokenName,
   Value,
 };
@@ -44,6 +46,9 @@ pub type ToggleHandler = dyn Fn(bool);
 pub enum NodeKind {
   /// A box: a layout node with decoration.
   Box,
+  /// A control: a box carrying the state a box cannot, which the control-scoped
+  /// conditions inside it resolve against.
+  Control,
   /// A text run.
   Run,
   /// An anchor: a layout-invisible marker a reactive subtree mounts between.
@@ -290,6 +295,8 @@ pub struct NodeRecord<D: Driver> {
   sink: D::Sink,
   segment: Option<Box<Segment>>,
   cache: Option<Box<TokenCache<D::TokenValue>>>,
+  control: Option<ControlState>,
+  part: Option<Part>,
 }
 
 impl<D: Driver> NodeRecord<D> {
@@ -338,6 +345,21 @@ impl<D: Driver> NodeRecord<D> {
   #[must_use]
   pub fn handlers(&self) -> Option<&HandlerSet> {
     self.handlers.as_deref()
+  }
+
+  /// The state of this node as a control; `None` for a node of any other kind.
+  #[inline(always)]
+  #[must_use]
+  pub const fn control_state(&self) -> Option<ControlState> {
+    self.control
+  }
+
+  /// The part of the enclosing control this node is recorded as; a control node is its
+  /// own [`Part::Root`].
+  #[inline(always)]
+  #[must_use]
+  pub const fn part(&self) -> Option<Part> {
+    self.part
   }
 
   /// The driver's handle for this node.
@@ -448,14 +470,15 @@ impl<D: Driver> Scene<D> {
       .and_then(|entry| entry.record.as_mut())
   }
 
-  /// Mints a detached node of `kind` owning `sink`; a box consumes the pending
-  /// annotation.
+  /// Mints a detached node of `kind` owning `sink`; a box or a control consumes the
+  /// pending annotation, and a control starts in the default [`ControlState`].
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
   pub fn create(&mut self, kind: NodeKind, sink: D::Sink) -> NodeId {
-    let annotation = if kind == NodeKind::Box {
+    let is_control = kind == NodeKind::Control;
+    let annotation = if kind == NodeKind::Box || is_control {
       self.pending_annotation.take()
     }
     else {
@@ -472,6 +495,8 @@ impl<D: Driver> Scene<D> {
       sink,
       segment: None,
       cache: None,
+      control: is_control.then_some(ControlState::DEFAULT),
+      part: is_control.then_some(Part::Root),
     };
 
     if let Some(index) = self.free.pop() {
@@ -846,6 +871,62 @@ impl<D: Driver> Scene<D> {
     if let Some(record) = self.record_mut(node) {
       record.container = Some(name);
     }
+  }
+
+  /// Writes the state of the control `node` and mirrors it; a node of any other kind
+  /// is left alone.
+  pub fn set_control_state(&mut self, node: NodeId, state: ControlState) {
+    let Some(record) = self.record_mut(node)
+    else {
+      return;
+    };
+
+    if record.kind != NodeKind::Control {
+      return;
+    }
+
+    record.control = Some(state);
+    D::default().set_control_state(&record.sink, &state);
+  }
+
+  /// The state of the control `node`; `None` for a node of any other kind.
+  #[inline(always)]
+  #[must_use]
+  pub fn control_state(&self, node: NodeId) -> Option<ControlState> {
+    self.record(node).and_then(NodeRecord::control_state)
+  }
+
+  /// The nearest control at or above `node`.
+  #[must_use]
+  pub fn enclosing_control(&self, node: NodeId) -> Option<NodeId> {
+    let mut current = Some(node);
+
+    while let Some(visited) = current {
+      let record = self.record(visited)?;
+
+      if record.kind == NodeKind::Control {
+        return Some(visited);
+      }
+
+      current = record.parent;
+    }
+
+    None
+  }
+
+  /// Records `node` as `part` of the control enclosing it.
+  #[inline(always)]
+  pub fn set_part(&mut self, node: NodeId, part: Part) {
+    if let Some(record) = self.record_mut(node) {
+      record.part = Some(part);
+    }
+  }
+
+  /// The part of its enclosing control `node` is recorded as.
+  #[inline(always)]
+  #[must_use]
+  pub fn part(&self, node: NodeId) -> Option<Part> {
+    self.record(node).and_then(NodeRecord::part)
   }
 
   /// Adds a click handler to `node`.

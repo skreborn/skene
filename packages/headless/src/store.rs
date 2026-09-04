@@ -11,6 +11,8 @@ use skene_core::{
     BoxValue,
     ContainerName,
     ContainerSizes,
+    ControlProps,
+    ControlState,
     Definitions,
     EventKind,
     MediaSignals,
@@ -30,6 +32,8 @@ pub const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
 pub enum Kind {
   /// A box, with the props it was created from.
   Box(Box<BoxProps<Headless>>),
+  /// A control, with the props it was created from.
+  Control(Box<ControlProps<Headless>>),
   /// A text run, with the props it was created from.
   Run(Box<RunProps<Headless>>),
   /// An anchor.
@@ -54,12 +58,33 @@ pub struct Record {
   pub text: String,
   pub value: String,
   pub checked: bool,
+  pub control_state: ControlState,
   pub hovered: bool,
   pub slots: FxHashMap<Slot, SlotValue>,
   pub definitions: Option<Definitions<HeadlessTokenValue>>,
   pub listened: Vec<EventKind>,
   pub children: Vec<Handle>,
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
+}
+
+impl Kind {
+  /// The box props of a box or a control.
+  pub fn box_props(&self) -> Option<&BoxProps<Headless>> {
+    match self {
+      Self::Box(props) => Some(props),
+      Self::Control(props) => Some(&props.box_props),
+      Self::Run(_) | Self::Anchor | Self::Scope => None,
+    }
+  }
+
+  /// The box props of a box or a control, mutably.
+  pub fn box_props_mut(&mut self) -> Option<&mut BoxProps<Headless>> {
+    match self {
+      Self::Box(props) => Some(props),
+      Self::Control(props) => Some(&mut props.box_props),
+      Self::Run(_) | Self::Anchor | Self::Scope => None,
+    }
+  }
 }
 
 impl Record {
@@ -69,6 +94,7 @@ impl Record {
       text: String::new(),
       value: String::new(),
       checked: false,
+      control_state: ControlState::DEFAULT,
       hovered: false,
       slots: FxHashMap::default(),
       definitions: None,

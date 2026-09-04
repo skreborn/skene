@@ -22,8 +22,9 @@
 //! [`Anchor`]; [`RawPicker`] composes a popup face, an overlay and a listbox; a
 //! [`FocusHandle`] moves focus to the view it is bound to. [`LazyColumn`] scrolls a
 //! keyed list building only the slice in view. [`CornerRadius`] is what a decorated
-//! box asks of a medium's style extension to round its corners, silently declined by a
-//! medium without radii.
+//! box asks of a medium's style extension to round its corners, and [`TypeMetrics`]
+//! what a run asks of it to size its type; both are silently declined by a medium
+//! without them.
 
 mod anchor;
 mod container;
@@ -49,6 +50,7 @@ mod suspense;
 mod switch;
 mod text;
 mod theme;
+mod type_metrics;
 pub mod typography;
 
 pub use skene_core::{
@@ -123,4 +125,5 @@ pub use crate::{
   switch::Switch,
   text::Text,
   theme::{Theme, ThemedIn},
+  type_metrics::TypeMetrics,
 };

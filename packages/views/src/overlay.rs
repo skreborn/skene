@@ -16,7 +16,6 @@ use skene_core::{
     NoChild,
     NodeId,
     NodeKind,
-    NodeRecord,
     OverlayProps,
     PlainChild,
     PlainHandler,
@@ -219,23 +218,21 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
       let open = open();
       let anchor = anchor.as_ref().and_then(Anchor::node);
 
-      Scene::<D>::with(|scene| {
-        let Some(record) = scene.record(node)
-        else {
-          return;
-        };
-        let driver = D::default();
+      let Some((sink, anchor)) = Scene::<D>::with(|scene| {
+        let sink = scene.sink(node)?;
 
-        if let Some(placement) = placement {
-          driver.set_overlay_placement(record.sink(), placement);
-        }
+        Some((sink, anchor.and_then(|anchor| scene.sink(anchor))))
+      })
+      else {
+        return;
+      };
+      let driver = D::default();
 
-        let anchor = anchor
-          .and_then(|anchor| scene.record(anchor))
-          .map(NodeRecord::sink);
+      if let Some(placement) = placement {
+        driver.set_overlay_placement(&sink, placement);
+      }
 
-        driver.set_overlay_open(record.sink(), open, anchor);
-      });
+      driver.set_overlay_open(&sink, open, anchor.as_ref());
     });
 
     node

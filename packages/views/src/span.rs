@@ -8,7 +8,12 @@ use skene_core::{
   next::{AnyKind, AnyView, DeclaredRunStyle, Driver, IntoView, NodeId, PlainChild, Scene, View},
 };
 
-use crate::{LayoutBox, macros::properties, realize::Source, run::Run};
+use crate::{
+  LayoutBox,
+  macros::{properties, run_type_metrics},
+  realize::Source,
+  run::Run,
+};
 
 /// What a span renders.
 enum Content<D: Driver> {
@@ -79,6 +84,8 @@ impl<D: Driver> Span<D> {
     set_selection_background / derive_selection_background (color) => selection_background: Color,
       "the background behind selected text";
   }
+
+  run_type_metrics! { style_mut }
 
   /// Sets whether the reader can select and copy the text; off by default.
   #[inline(always)]

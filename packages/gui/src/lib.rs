@@ -1,64 +1,113 @@
-//! # skene
+//! # skene-gui
 //!
-//! The single dependency an app pulls in. Holds the built-in views, realized once against
-//! the active driver's typed vocabulary, the composition helpers, the transparent entry
-//! point, and re-exports the spine + reactive engine. App code names no driver: write a
-//! view function, mark it [`macro@main`], and it runs on whatever driver the build
-//! selects.
+//! The GUI facade: a GUI app's single dependency. It fixes the scalar (logical pixels,
+//! `f32`), names the driver the build selects ([`ActiveDriver`]: the web on `wasm32`,
+//! the headless host driver elsewhere) and aliases every built-in view and every
+//! `Simple*` view to it, so app code names no platform. The medium's own contribution
+//! is [`Typography`], the [`media`] module and the entry points: `launch` in the
+//! browser, `render_to_string` and `render_main` on the server leaf, and
+//! [`macro@main`] expanding to whichever the target has.
 
+pub mod media;
 pub mod prelude;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub mod split;
 
-mod box_node;
-mod container;
-mod containers;
-mod control;
 #[cfg(target_arch = "wasm32")]
 mod deferred;
-mod enhanced;
-mod focus;
 #[cfg(target_arch = "wasm32")]
 pub mod head;
-mod layout_box;
+#[cfg(target_arch = "wasm32")]
 mod lazy;
 #[cfg(target_arch = "wasm32")]
 mod link;
-mod overlay;
-mod raw;
-mod realize;
 #[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
-#[cfg(feature = "simple-views")]
-mod simple;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub mod split;
-mod surface;
 #[cfg(target_arch = "wasm32")]
 mod task;
-mod text;
-mod web_controls;
+mod typography_set;
 
-pub use skene_core::{self as core, *};
+pub use skene_core as core;
+pub use skene_core::{
+  Bubbling,
+  Color,
+  ColorScheme,
+  Errors,
+  FocusOrder,
+  KeyEvent,
+  Modifiers,
+  PointerEvent,
+  Prevent,
+  Prevented,
+  Role,
+  ScrollEvent,
+  next::{
+    AnyKind,
+    Children,
+    ContainerName,
+    ControlKind,
+    ControlState,
+    Definitions,
+    Expr,
+    HasChildren,
+    IntoChildOf,
+    IntoChildren,
+    Leaf,
+    Length,
+    NoChild,
+    NodeId,
+    Number,
+    Part,
+    PixelExt,
+    Scene,
+    State,
+    StaticLeaf,
+    TokenName,
+    TokenRef,
+    TokenSet,
+    When,
+  },
+};
+/// The host driver's test seams (`trigger_` events, tree inspection), for headless
+/// view tests on the host.
+#[cfg(not(target_arch = "wasm32"))]
+pub use skene_headless as headless;
 pub use skene_macros::{lazy, main};
-pub use skene_reactive::{self as reactive};
-// The active driver, reached by name from the shared realization: the web on wasm
-// targets, the recording driver on the host, for headless view tests.
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use skene_record as driver;
-/// The recording driver's test seams (`trigger_` events, tree inspection), for
-/// headless view tests on the host.
-#[cfg(not(target_arch = "wasm32"))]
-pub use skene_record as record;
+pub use skene_reactive as reactive;
 pub use skene_router as router;
-#[cfg(target_arch = "wasm32")]
-pub(crate) use skene_web as driver;
-/// The web driver, for a library author writing a view directly against the browser DOM.
+pub use skene_simple::next::SimpleVariant;
+pub use skene_views::{
+  Activate,
+  Anchor,
+  Behavior,
+  ControlChild,
+  CornerRadius,
+  ListItem,
+  Listbox,
+  ListboxGroup,
+  PointerPhase,
+  Popup,
+  RadioMember,
+  Range,
+  Roster,
+  Roving,
+  RovingGroup,
+  TextEntry,
+  Toggle,
+  TypeMetrics,
+  typography,
+};
+/// The web driver, for a library author writing a view directly against the browser
+/// DOM or the server's markup.
 ///
-/// These are the only web-specific names the facade exposes, and they are deliberately kept
-/// out of [`prelude`] so portable app code never names a driver.
+/// The only web-specific names the facade exposes, kept out of [`prelude`] so portable
+/// app code never names a driver.
 #[cfg(target_arch = "wasm32")]
 pub use skene_web as web;
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub use skene_web::next::Rendered;
 pub use tracing;
 #[cfg(target_arch = "wasm32")]
 #[doc(hidden)]
@@ -74,167 +123,210 @@ pub use crate::link::Link;
 pub use crate::resource::Resource;
 #[cfg(target_arch = "wasm32")]
 pub use crate::routing::{install_router, install_static_router};
-#[cfg(feature = "simple-views")]
-pub use crate::simple::{
-  SimpleButton,
-  SimpleCard,
-  SimpleCheckbox,
-  SimpleLook,
-  SimplePalette,
-  SimplePicker,
-  SimpleRadio,
-  SimpleRadioGroup,
-  SimpleSlider,
-  SimpleTextEditor,
-  SimpleTextField,
-  SimpleTheme,
-  SimpleVariant,
-};
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
-  container::Container,
-  containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
-  control::{Behavior, DecorationCore, EventCore, FocusCore},
-  enhanced::{Enhanced, set_scriptless_fallback},
-  focus::FocusHandle,
-  layout_box::LayoutBox,
-  lazy::LazyColumn,
-  overlay::{Anchor, Overlay},
-  raw::{
-    RawButton,
-    RawCheckbox,
-    RawOption,
-    RawPicker,
-    RawRadio,
-    RawRadioGroup,
-    RawSlider,
-    RawTextEditor,
-    RawTextField,
-  },
-  surface::{HasDecoration, HasEvents, HasFocus},
-  text::{RichText, Span, Text, TextStyle, TextTheme},
-  web_controls::{WebCheckbox, WebPicker, WebRadio, WebSlider},
+  media::{derive_scheme, set_scheme, stored_scheme},
+  typography_set::Typography,
 };
 
-/// The active driver's tree mutations, instantiating the spine's shared structural
-/// machinery. App code sees it only through the [`Children`] and [`DerivedView`]
-/// aliases.
-#[derive(Clone, Copy, Default)]
-pub struct GuiOps;
+/// The driver the build selected: the web driver on `wasm32` (the browser leaf on
+/// `wasm32-unknown-unknown`, the server leaf on `wasm32-wasip2`), the headless host
+/// driver elsewhere.
+#[cfg(target_arch = "wasm32")]
+pub type ActiveDriver = skene_web::next::Web;
+/// The driver the build selected: the web driver on `wasm32` (the browser leaf on
+/// `wasm32-unknown-unknown`, the server leaf on `wasm32-wasip2`), the headless host
+/// driver elsewhere.
+#[cfg(not(target_arch = "wasm32"))]
+pub type ActiveDriver = skene_headless::Headless;
 
-impl skene_core::TreeOps for GuiOps {
+/// The erased token definition the active driver stores per token.
+pub type TokenValue = <ActiveDriver as skene_core::next::Driver>::TokenValue;
+
+/// A view on the active driver; see [`skene_core::next::View`].
+pub trait View: skene_core::next::View<ActiveDriver> {
+  /// Realizes this view and returns its root node.
   #[inline(always)]
-  fn create_group(self) -> NodeId {
-    driver::create_group()
+  fn build(self) -> NodeId
+  where
+    Self: Sized,
+  {
+    skene_core::next::View::build(self)
   }
 
+  /// Erases this view's concrete type.
   #[inline(always)]
-  fn attach(self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    driver::attach(parent, child, before);
-  }
-
-  #[inline(always)]
-  fn detach(self, parent: NodeId, child: NodeId) {
-    driver::detach(parent, child);
-  }
-
-  #[inline(always)]
-  fn destroy(self, node: NodeId) {
-    driver::destroy(node);
-  }
-
-  #[inline(always)]
-  fn children(self, node: NodeId) -> Vec<NodeId> {
-    driver::children(node)
+  fn into_any(self) -> AnyView
+  where
+    Self: Sized,
+  {
+    skene_core::next::View::into_any(self)
   }
 }
 
-/// A container's children.
-pub type Children = skene_core::Children<GuiOps>;
-/// The members a grouping control tracks; see [`skene_core::Roster`].
-pub type Roster<T> = skene_core::Roster<GuiOps, T>;
-/// A suspense view over the active driver's tree; see [`skene_core::Suspense`].
-pub type Suspense = skene_core::Suspense<GuiOps>;
-/// An error boundary over the active driver's tree; see [`skene_core::ErrorBoundary`].
-pub type ErrorBoundary = skene_core::ErrorBoundary<GuiOps>;
-/// A reactive subtree.
-pub type DerivedView = skene_core::DerivedView<GuiOps>;
+impl<V: skene_core::next::View<ActiveDriver>> View for V {}
 
-/// Reactively reconciles a parent's children from a keyed collection; see
-/// [`skene_core::reconcile`].
-#[inline(always)]
-pub fn reconcile<T, I, K>(
-  parent: NodeId,
-  items: impl Fn() -> I + 'static,
-  key: impl Fn(&T) -> K + 'static,
-  build: impl Fn(T) -> NodeId + 'static,
-) where
-  I: IntoIterator<Item = T>,
-  K: Eq + std::hash::Hash + 'static,
-{
-  skene_core::reconcile::<GuiOps, T, I, K>(parent, items, key, build);
+/// A value that can be turned into a view on the active driver, accepted as a child
+/// of every kind; see [`skene_core::next::IntoView`] and [`AnyKind`].
+pub trait IntoView: skene_core::next::IntoView<ActiveDriver> + AnyKind {
+  /// Converts this value into a view.
+  #[inline(always)]
+  fn into_view(self) -> AnyView
+  where
+    Self: Sized,
+  {
+    skene_core::next::IntoView::into_view(self)
+  }
 }
 
-/// Anchors a reactive subtree under a fresh group node, returning that node; see
-/// [`skene_core::derived`].
-#[inline(always)]
-pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::derived::<GuiOps>(build)
-}
+impl<V: skene_core::next::IntoView<ActiveDriver> + AnyKind> IntoView for V {}
 
-/// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;
-/// see [`skene_core::transition`].
-#[inline(always)]
-pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::transition::<GuiOps>(build)
-}
-
-/// The color scheme the reader chose on a previous visit, when there is one.
+/// A token set read from the theme in force on the active driver; see
+/// [`skene_views::ThemedIn`].
 ///
-/// Initialize the setting bound to [`derive_scheme`] from this, so the choice the page
-/// was already painted in is the one the app goes on to hold. A server-rendered page
-/// applies it before the first paint through a script in its head, and a reader who has
-/// chosen nothing gets `None`—the platform's own preference, which the styling answers
-/// with no script at all.
-#[inline(always)]
-#[must_use]
-pub fn stored_scheme() -> Option<ColorScheme> {
-  driver::stored_scheme()
+/// Every [`TokenSet`] with a default has it: `SimplePalette::current()` reads the
+/// nearest theme's palette, or the default when no theme is above.
+pub trait ThemedIn: skene_views::ThemedIn<ActiveDriver> {
+  /// The set the nearest theme provides, or the default without one.
+  #[inline(always)]
+  #[must_use]
+  fn current() -> Self {
+    <Self as skene_views::ThemedIn<ActiveDriver>>::current()
+  }
+
+  /// The nearest theme's set as a memo, or a memo of the default without one.
+  #[inline(always)]
+  fn watch() -> skene_reactive::Memo<Self> {
+    <Self as skene_views::ThemedIn<ActiveDriver>>::watch()
+  }
 }
 
-/// Paints `scheme` throughout, overriding the reader's preference; `None` returns to
-/// following it.
-///
-/// A scheme is not a theme, and this is not a theme's to set: the platform's own
-/// preference is the document's, so an app's override is too. Nesting [`SimpleTheme`]s
-/// nests palettes; this decides which value each of their conditional tokens takes.
-///
-/// Every token keeps both values and the platform is told which is in force, so a change
-/// re-inks the page without rebuilding anything: the state inside the subtree, the focus,
-/// the scroll position and a half-typed input all survive it.
-#[inline(always)]
-pub fn set_scheme(scheme: Option<ColorScheme>) {
-  driver::set_color_scheme(scheme);
-}
+impl<P: skene_views::ThemedIn<ActiveDriver>> ThemedIn for P {}
 
-/// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
-///
-/// Bind it to the signal holding the reader's setting.
-#[inline(always)]
-pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
-  skene_reactive::Effect::new(move |_| set_scheme(scheme()));
-}
+/// A type-erased view.
+pub type AnyView = skene_core::next::AnyView<ActiveDriver>;
+/// The one freely-decorated box around exactly one child; see
+/// [`skene_views::Container`].
+pub type Container = skene_views::Container<ActiveDriver>;
+/// A horizontal flex layout; see [`skene_views::Row`].
+pub type Row = skene_views::Row<ActiveDriver>;
+/// A vertical flex layout; see [`skene_views::Column`].
+pub type Column = skene_views::Column<ActiveDriver>;
+/// A grid layout; see [`skene_views::Grid`].
+pub type Grid = skene_views::Grid<ActiveDriver>;
+/// A stack layout; see [`skene_views::Stack`].
+pub type Stack = skene_views::Stack<ActiveDriver>;
+/// The box every layout view is built from, accepting children of `Kind`; see
+/// [`skene_views::LayoutBox`].
+pub type LayoutBox<Kind> = skene_views::LayoutBox<ActiveDriver, Kind>;
+/// A flex child's grow, shrink and initial size; see [`skene_views::Flexible`].
+pub type Flexible<C = NoChild> = skene_views::Flexible<ActiveDriver, C>;
+/// A stack child pinned to its edges; see [`skene_views::Pinned`].
+pub type Pinned<C = NoChild> = skene_views::Pinned<ActiveDriver, C>;
+/// A grid child's placement; see [`skene_views::GridCell`].
+pub type GridCell<C = NoChild> = skene_views::GridCell<ActiveDriver, C>;
+/// A run of text on its own line; see [`skene_views::Text`].
+pub type Text = skene_views::Text<ActiveDriver>;
+/// A run inside a paragraph; see [`skene_views::Span`].
+pub type Span = skene_views::Span<ActiveDriver>;
+/// A paragraph of spans; see [`skene_views::RichText`].
+pub type RichText = skene_views::RichText<ActiveDriver>;
+/// A branch shown or hidden by a condition; see [`skene_views::Show`].
+pub type Show<C = NoChild> = skene_views::Show<ActiveDriver, C>;
+/// One of several branches, by key; see [`skene_views::Switch`].
+pub type Switch<K> = skene_views::Switch<ActiveDriver, K>;
+/// Fallback content while a subtree's async work is pending; see
+/// [`skene_views::Suspense`].
+pub type Suspense<C = NoChild> = skene_views::Suspense<ActiveDriver, C>;
+/// Fallback content when a subtree reports an error; see
+/// [`skene_views::ErrorBoundary`].
+pub type ErrorBoundary<C = NoChild> = skene_views::ErrorBoundary<ActiveDriver, C>;
+/// The one theme view, defining the token set `P` beneath it; see
+/// [`skene_views::Theme`].
+pub type Theme<P, C = NoChild> = skene_views::Theme<ActiveDriver, P, C>;
+/// The one control builder over a behavior; see [`skene_views::Control`].
+pub type Control<B, C = NoChild> = skene_views::Control<ActiveDriver, B, C>;
+/// A built control, for a behavior to act on; see [`skene_views::ControlHandle`].
+pub type ControlHandle = skene_views::ControlHandle<ActiveDriver>;
+/// A control's label; see [`skene_views::Label`].
+pub type Label = skene_views::Label<ActiveDriver>;
+/// A button; see [`skene_views::RawButton`].
+pub type RawButton<C = NoChild> = skene_views::RawButton<ActiveDriver, C>;
+/// A checkbox; see [`skene_views::RawCheckbox`].
+pub type RawCheckbox<C = NoChild> = skene_views::RawCheckbox<ActiveDriver, C>;
+/// A slider; see [`skene_views::RawSlider`].
+pub type RawSlider<C = NoChild> = skene_views::RawSlider<ActiveDriver, C>;
+/// A radio group; see [`skene_views::RawRadioGroup`].
+pub type RawRadioGroup<C = NoChild> = skene_views::RawRadioGroup<ActiveDriver, C>;
+/// A radio inside a group; see [`skene_views::RawRadio`].
+pub type RawRadio<C = NoChild> = skene_views::RawRadio<ActiveDriver, C>;
+/// A single-line text input; see [`skene_views::RawTextField`].
+pub type RawTextField<C = NoChild> = skene_views::RawTextField<ActiveDriver, C>;
+/// A multi-line text input; see [`skene_views::RawTextEditor`].
+pub type RawTextEditor<C = NoChild> = skene_views::RawTextEditor<ActiveDriver, C>;
+/// A listbox; see [`skene_views::RawListbox`].
+pub type RawListbox<C = NoChild> = skene_views::RawListbox<ActiveDriver, C>;
+/// An option inside a listbox or a picker; see [`skene_views::RawOption`].
+pub type RawOption<C = NoChild> = skene_views::RawOption<ActiveDriver, C>;
+/// A picker: a popup face, an overlay and a listbox; see [`skene_views::RawPicker`].
+pub type RawPicker<F = NoChild> = skene_views::RawPicker<ActiveDriver, F>;
+/// A picker's face; see [`skene_views::Face`].
+pub type Face = skene_views::Face<ActiveDriver>;
+/// Content above the app; see [`skene_views::Overlay`].
+pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
+/// A handle moving focus to a built view; see [`skene_views::FocusHandle`].
+pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
+/// A scrolling keyed list building only the slice in view; see
+/// [`skene_views::LazyColumn`].
+pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
+/// The closure building a view's child under the context the view provides; see
+/// [`skene_views::ChildBuilder`].
+pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
 
-/// A view that renders nothing.
-#[inline(always)]
-#[must_use]
-pub fn empty() -> impl View {
-  skene_core::empty::<GuiOps>()
-}
+/// The Simple design language's palette; see [`skene_simple::next::SimplePalette`].
+pub type SimplePalette = skene_simple::next::SimplePalette<f32>;
+/// One emphasis variant's colors; see [`skene_simple::next::SimpleLook`].
+pub type SimpleLook = skene_simple::next::SimpleLook<f32>;
+/// See [`skene_simple::next::SimpleButton`].
+pub type SimpleButton = skene_simple::next::SimpleButton<ActiveDriver>;
+/// See [`skene_simple::next::SimpleCard`].
+pub type SimpleCard = skene_simple::next::SimpleCard<ActiveDriver>;
+/// See [`skene_simple::next::SimpleCheckbox`].
+pub type SimpleCheckbox = skene_simple::next::SimpleCheckbox<ActiveDriver>;
+/// See [`skene_simple::next::SimplePicker`].
+pub type SimplePicker = skene_simple::next::SimplePicker<ActiveDriver>;
+/// See [`skene_simple::next::SimpleRadio`].
+pub type SimpleRadio = skene_simple::next::SimpleRadio<ActiveDriver>;
+/// See [`skene_simple::next::SimpleRadioGroup`].
+pub type SimpleRadioGroup<C = NoChild> = skene_simple::next::SimpleRadioGroup<ActiveDriver, C>;
+/// See [`skene_simple::next::SimpleSlider`].
+pub type SimpleSlider = skene_simple::next::SimpleSlider<ActiveDriver>;
+/// See [`skene_simple::next::SimpleTextEditor`].
+pub type SimpleTextEditor = skene_simple::next::SimpleTextEditor<ActiveDriver>;
+/// See [`skene_simple::next::SimpleTextField`].
+pub type SimpleTextField = skene_simple::next::SimpleTextField<ActiveDriver>;
 
+/// A condition on the environment, in logical pixels; see [`skene_core::next::Media`].
+pub type Media = skene_core::next::Media<f32>;
+/// A condition a property varies under; see [`skene_core::next::Condition`].
+pub type Condition = skene_core::next::Condition<f32>;
+/// A test of a container's size; see [`skene_core::next::ContainerQuery`].
+pub type ContainerQuery = skene_core::next::ContainerQuery<f32>;
+/// A property's value: a leaf under conditions; see [`skene_core::next::Value`].
+pub type Value<T> = skene_core::next::Value<T, Condition>;
+/// A token's definition; see [`skene_core::next::Definition`].
+pub type Definition<T> = skene_core::next::Definition<T, f32>;
+/// A token as a palette holds it; see [`skene_core::next::Token`].
+pub type Token<T> = skene_core::next::Token<T, f32>;
+/// A border, in logical pixels; see [`skene_core::next::Border`].
+pub type Border = skene_core::next::Border<f32>;
 /// Spacing on the four edges of a box, in logical pixels.
-pub type Inset = skene_core::Inset<f32>;
+pub type Inset<T = f32> = skene_core::Inset<T>;
+/// A dimension, in logical pixels or as a fraction of the parent.
+pub type Dimension = skene_core::Dimension<f32>;
+/// Per-axis spacing between children, in logical pixels.
+pub type Spacing = skene_core::Spacing<f32>;
 /// A 2D size, in logical pixels.
 pub type Size = skene_core::Size<f32>;
 /// A point in the logical-pixel coordinate space.
@@ -242,28 +334,58 @@ pub type Point = skene_core::Point<f32>;
 /// A positioned, sized rectangle, in logical pixels.
 pub type Rect = skene_core::Rect<f32>;
 
-/// Wraps a view that only a client can realize, so it renders on an interactive platform and
-/// falls back to [`empty`] where it cannot run.
-///
-/// The place for a low-level view that reaches a platform's raw handles—a `<canvas>` driven
-/// through `web::element`, a JS charting library—which have no meaning off the client. On a
-/// server-rendering platform this yields nothing; the real content arrives when the client
-/// hydrates. `build` returns the node it realizes, exactly as a view's `build` does.
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+/// Mounts a reactive subtree between anchors, rebuilt whenever a signal `build` reads
+/// changes; see [`skene_core::next::derived`].
 #[inline(always)]
-pub fn client_only(build: impl FnOnce() -> skene_core::NodeId + 'static) -> impl View {
-  skene_core::AnyView::new(build)
+pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::next::derived::<ActiveDriver>(build)
 }
 
-/// On a server-rendering platform this yields nothing; the real content arrives when the
-/// client hydrates.
+/// Reactively reconciles the content of the segment `start` begins from a keyed
+/// collection; see [`skene_core::next::reconcile`].
+#[inline(always)]
+pub fn reconcile<T, I, K>(
+  start: NodeId,
+  items: impl Fn() -> I + 'static,
+  key: impl Fn(&T) -> K + 'static,
+  build: impl Fn(T) -> NodeId + 'static,
+) where
+  I: IntoIterator<Item = T>,
+  K: Eq + std::hash::Hash + 'static,
+{
+  skene_core::next::reconcile::<ActiveDriver, T, I, K>(start, items, key, build);
+}
+
+/// A view that renders nothing.
+#[inline(always)]
+#[must_use]
+pub fn empty() -> impl View {
+  skene_core::next::empty::<ActiveDriver>()
+}
+
+/// Wraps a view that only a client can realize, so it renders on an interactive
+/// platform and falls back to [`empty`] where it cannot run.
+///
+/// The place for a low-level view that reaches a platform's raw handles, which have no
+/// meaning off the client. On a server-rendering platform this yields nothing; the
+/// real content arrives when the client hydrates. `build` returns the node it
+/// realizes, exactly as a view's `build` does.
+#[cfg(not(all(target_arch = "wasm32", target_os = "wasi")))]
+#[inline(always)]
+pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
+  AnyView::new(build)
+}
+
+/// On a server-rendering platform this yields nothing; the real content arrives when
+/// the client hydrates.
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 #[inline(always)]
-pub fn client_only(_build: impl FnOnce() -> skene_core::NodeId + 'static) -> impl View {
+pub fn client_only(_build: impl FnOnce() -> NodeId + 'static) -> impl View {
   empty()
 }
 
-/// Mounts and runs the application in the browser.
+/// Mounts and runs the application in the browser; a server-rendered page is hydrated
+/// in place.
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 #[inline(always)]
 pub fn launch<V, F>(app: F)
@@ -272,25 +394,23 @@ where
   V: IntoView,
 {
   #[cfg(feature = "snapshot")]
-  driver::boot_with_dev_state(move || {
-    driver::launch(app);
+  skene_web::boot_with_dev_state(move || {
+    skene_web::next::launch(app);
 
     tracing::info!("application mounted");
   });
 
   #[cfg(not(feature = "snapshot"))]
   {
-    driver::launch(app);
+    skene_web::next::launch(app);
 
     tracing::info!("application mounted");
   }
 }
 
-/// Hydrates a server-rendered page: adopts the document body and reads the embedded state, so
-/// the client takes over the markup `render_to_string` produced without a rebuild.
-///
-/// The client entry point for a server-rendered app, the counterpart to [`launch`] for a
-/// fresh client render.
+/// Hydrates a server-rendered page: adopts the document body and reads the embedded
+/// state, so the client takes over the markup [`render_to_string`] produced without a
+/// rebuild.
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 #[inline(always)]
 pub fn hydrate_page<V, F>(app: F)
@@ -299,89 +419,40 @@ where
   V: IntoView,
 {
   #[cfg(feature = "snapshot")]
-  driver::boot_with_dev_state(move || {
-    driver::hydrate_page(app);
+  skene_web::boot_with_dev_state(move || {
+    skene_web::next::hydrate_page(app);
 
     tracing::info!("application hydrated");
   });
 
   #[cfg(not(feature = "snapshot"))]
   {
-    driver::hydrate_page(app);
+    skene_web::next::hydrate_page(app);
 
     tracing::info!("application hydrated");
   }
 }
 
-/// A server render, in parts: the stylesheet, the body markup, and the hydration state.
+/// Builds the application against the headless driver, under the root owner.
 ///
-/// Assemble a full document with [`page`](Self::page), or place the parts yourself—the
-/// [`styles`](Self::styles) in `<head>`, the [`body`](Self::body) as the app root, and the
-/// [`state`](Self::state) wherever the client's `hydrate_page` can read it back. The client boot
-/// pairs with `page`; a custom placement pairs with the lower-level `web::hydrate`.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-#[must_use]
-pub struct Rendered {
-  styles: String,
-  head: String,
-  body: String,
-  state: String,
+/// The host has no platform to show it on; this is the entry a host build of an app
+/// runs, so the same `#[main]` compiles everywhere.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn launch<V, F>(app: F)
+where
+  F: FnOnce() -> V + 'static,
+  V: IntoView,
+{
+  skene_core::root_owner().enter(|| {
+    let _ = skene_core::next::IntoView::into_view(app()).build();
+  });
+
+  tracing::info!("application built against the headless driver");
 }
 
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-impl Rendered {
-  /// The `<style>` block: the reset plus the interned rules.
-  #[must_use]
-  #[inline(always)]
-  pub fn styles(&self) -> &str {
-    &self.styles
-  }
-
-  /// The registered head content: the title and the elements added through
-  /// [`head`](crate::head).
-  #[must_use]
-  #[inline(always)]
-  pub fn head(&self) -> &str {
-    &self.head
-  }
-
-  /// The settled view tree—the page body.
-  #[must_use]
-  #[inline(always)]
-  pub fn body(&self) -> &str {
-    &self.body
-  }
-
-  /// The encoded resource state, or `[]` when there is none.
-  #[must_use]
-  #[inline(always)]
-  pub fn state(&self) -> &str {
-    &self.state
-  }
-
-  /// Assembles a complete HTML document: the styles in `<head>`, the tree in `<body>`, and the
-  /// state in a `<script>` the client's `hydrate_page` reads back.
-  #[must_use]
-  pub fn page(&self) -> String {
-    format!(
-      "<!DOCTYPE html><html><head>{head}{styles}</head><body>{body}<script id=\"{id}\" \
-       type=\"application/json\">{state}</script></body></html>",
-      head = self.head,
-      styles = self.styles,
-      body = self.body,
-      id = driver::STATE_SCRIPT_ID,
-      // `<` keeps a value's `<` from closing the script early, and is valid JSON that
-      // decodes back to `<`.
-      state = self.state.replace('<', "\\u003c"),
-    )
-  }
-}
-
-/// Renders the application, for a server-rendering platform.
-///
-/// Builds the tree, drives its resources until they settle, and serializes the result plus the
-/// resource state for hydration. The render is self-contained—state is set up and torn down
-/// per call—so a runner can serve many requests from one instance.
+/// Renders the application, for a server-rendering platform: builds the tree, drives
+/// its resources until they settle, and serializes the result plus the resource state
+/// for hydration; see [`skene_web::next::render_to_string`].
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 #[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
@@ -389,14 +460,7 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  let (styles, head, body, state) = driver::render_to_string(app);
-
-  Rendered {
-    styles,
-    head,
-    body,
-    state,
-  }
+  skene_web::next::render_to_string(app)
 }
 
 /// Renders the application for the given request path: the router (when installed via
@@ -408,16 +472,15 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  driver::set_request_path(path);
+  skene_web::next::set_request_path(path);
 
   render_to_string(app)
 }
 
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
-/// the statically-renderable routes one per line (see
-/// [`install_static_router`]), or, given `--stream <path>`, writes the page flush by
-/// flush, each one followed through to stdout as it is produced.
+/// the statically-renderable routes one per line (see [`install_static_router`]), or,
+/// given `--stream <path>`, writes the page as one flush.
 ///
 /// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
 /// prints the document—which is exactly the interface the runner embeds.
@@ -427,133 +490,29 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
+  use std::io::Write as _;
+
   let argument = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
 
   if argument == "--routes" {
     let _ = render_to_string_at("/", app);
 
-    for route in driver::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]) {
+    for route in skene_web::next::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]) {
       println!("{route}");
     }
 
     return;
   }
 
-  if argument == "--stream" {
-    let path = std::env::args().nth(2).unwrap_or_else(|| "/".to_owned());
-
-    driver::set_request_path(&path);
-    render_page_stream(app, |piece| {
-      use std::io::Write;
-
-      print!("{piece}");
-
-      let _ = std::io::stdout().flush();
-    });
-
-    return;
+  let path = if argument == "--stream" {
+    std::env::args().nth(2).unwrap_or_else(|| "/".to_owned())
   }
-
-  let rendered = render_to_string_at(&argument, app);
+  else {
+    argument
+  };
+  let rendered = render_to_string_at(&path, app);
 
   print!("{}", rendered.page());
-}
 
-/// A server render as an ordered sequence of HTML chunks, ready to flush one after another.
-///
-/// Each chunk is written to the response as it is produced: the first opens the document and
-/// carries the shell, and each subsequent one carries a [`Deferred`] boundary's content, streamed
-/// once it settled. A client with no JavaScript receives a correct document progressively, since
-/// the chunks concatenate—in order—into the same markup [`render_to_string`] would produce.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-#[must_use]
-pub struct Stream {
-  chunks: Vec<String>,
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-impl Stream {
-  /// The chunks, in flush order.
-  #[must_use]
-  #[inline(always)]
-  pub fn chunks(&self) -> &[String] {
-    &self.chunks
-  }
-
-  /// Consumes the stream into its chunks, in flush order.
-  #[must_use]
-  #[inline(always)]
-  pub fn into_chunks(self) -> Vec<String> {
-    self.chunks
-  }
-
-  /// The whole document, the chunks concatenated in order—what a no-JavaScript client ends up
-  /// with once every chunk has arrived.
-  #[must_use]
-  #[inline(always)]
-  pub fn document(&self) -> String {
-    self.chunks.concat()
-  }
-}
-
-/// Renders the application as an in-order HTML stream, for a server-rendering platform.
-///
-/// Like [`render_to_string`], but flushes the shell before every [`Deferred`] boundary's slow
-/// content: the returned [`Stream`]'s chunks are written to the response as they are produced, so
-/// the client sees the page progressively without waiting on the slowest data—and, because the
-/// chunks are emitted in document order, with no JavaScript required.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-pub fn render_to_stream<V, F>(app: F) -> Stream
-where
-  F: FnOnce() -> V + 'static,
-  V: IntoView,
-{
-  let (styles, head, mut chunks, state) = driver::render_to_stream(app);
-  let head = format!("<!DOCTYPE html><html><head>{head}{styles}</head><body>");
-  let tail = format!(
-    "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
-    id = driver::STATE_SCRIPT_ID,
-    // `<` keeps a value's `<` from closing the script early, and is valid JSON that decodes
-    // back to `<`.
-    state = state.replace('<', "\\u003c"),
-  );
-
-  if let Some(first) = chunks.first_mut() {
-    first.insert_str(0, &head);
-  }
-
-  if let Some(last) = chunks.last_mut() {
-    last.push_str(&tail);
-  }
-
-  Stream { chunks }
-}
-
-/// Renders the application as a progressive page, each flush handed to `sink` as it is
-/// produced: the opening shell, a body chunk per settled [`Deferred`] boundary, and the
-/// closing tail. The flushes concatenate to [`render_to_stream`]'s
-/// [`document`](Stream::document), so writing each one to a response streams the page.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
-where
-  F: FnOnce() -> V + 'static,
-  V: IntoView,
-{
-  driver::render_to_stream_with(app, |piece| match piece {
-    driver::StreamPiece::Shell { styles, head } => {
-      sink(&format!(
-        "<!DOCTYPE html><html><head>{head}{styles}</head><body>"
-      ));
-    }
-    driver::StreamPiece::Chunk(chunk) => sink(&chunk),
-    driver::StreamPiece::Tail(state) => {
-      sink(&format!(
-        "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
-        id = driver::STATE_SCRIPT_ID,
-        // `<` keeps a value's `<` from closing the script early, and is valid JSON that decodes
-        // back to `<`.
-        state = state.replace('<', "\\u003c"),
-      ));
-    }
-  });
+  let _ = std::io::stdout().flush();
 }

@@ -1,16 +1,14 @@
 //! The gallery: every built-in view and Simple component, live.
 
-#![cfg(target_arch = "wasm32")]
-
-use skene_gui::{Overlay, prelude::*};
+use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
   // The theme follows the OS scheme, and it carries the ambient ink and selection
   // colors with it, so nothing here names a color that a palette already holds.
-  SimpleTheme::new(SimplePalette::default()).set_child(|| {
+  Theme::new(SimplePalette::default()).set_child_builder(|| {
     Container::new()
-      .set_color(SimplePalette::current().background)
+      .set_color(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_item_alignment(ItemAlignment::Center)
@@ -21,7 +19,7 @@ fn app() -> impl IntoView {
                 Text::new("GALLERY")
                   .set_font_size(13.)
                   .set_font_weight(500.)
-                  .set_color(SimplePalette::current().muted_foreground),
+                  .set_color(SimplePalette::MUTED_FOREGROUND),
                 typography(),
                 buttons(),
                 toggles(),
@@ -36,8 +34,6 @@ fn app() -> impl IntoView {
 }
 
 fn typography() -> impl IntoView {
-  let palette = SimplePalette::current();
-
   section(
     "Text",
     // The paragraph rhythm: text-box trimming removes the leading, so the spacing
@@ -50,14 +46,14 @@ fn typography() -> impl IntoView {
       )
       .set_selectable(true)
       .set_font_size(14.)
-      .set_color(palette.muted_foreground.clone()),
-      RichText::new([
+      .set_color(SimplePalette::MUTED_FOREGROUND),
+      RichText::new().set_spans([
         plain("Rich text mixes "),
         plain("weights").set_font_weight(700.),
         plain(", "),
         plain("colors").set_color(Color::srgb(1., 0.62, 0.25)),
         plain(", and "),
-        Span::text("links")
+        Span::new("links")
           .set_font_size(14.)
           .set_link("https://example.com"),
         plain(" in one paragraph."),
@@ -67,8 +63,6 @@ fn typography() -> impl IntoView {
 }
 
 fn buttons() -> impl IntoView {
-  let palette = SimplePalette::current();
-
   let count = Signal::tagged("clicks", 0u32);
 
   section(
@@ -87,16 +81,14 @@ fn buttons() -> impl IntoView {
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
         .set_font_size(13.)
-        .set_color(palette.muted_foreground.clone()),
+        .set_color(SimplePalette::MUTED_FOREGROUND),
     )),
   )
 }
 
 fn toggles() -> impl IntoView {
-  let palette = SimplePalette::current();
-
   let agreed = Signal::tagged("agreed", true);
-  let flavor = Signal::tagged("flavor", "mint".to_owned());
+  let flavor = Signal::tagged("flavor", Some("mint".to_owned()));
 
   section(
     "Checkbox & Radio",
@@ -117,9 +109,9 @@ fn toggles() -> impl IntoView {
             }
           })
           .set_font_size(13.)
-          .set_color(palette.muted_foreground.clone()),
+          .set_color(SimplePalette::MUTED_FOREGROUND),
         )),
-      SimpleRadioGroup::new("flavor")
+      SimpleRadioGroup::new()
         .bind_chosen(flavor)
         .set_label("Flavor")
         .set_child(Row::new().set_spacing(16.).set_children((
@@ -136,8 +128,6 @@ fn radio_choice(value: &'static str) -> impl IntoView {
 }
 
 fn inputs() -> impl IntoView {
-  let palette = SimplePalette::current();
-
   let name = Signal::tagged("name", String::new());
   let bio = Signal::tagged("bio", String::new());
   let volume = Signal::tagged("volume", 40.0f32);
@@ -157,10 +147,14 @@ fn inputs() -> impl IntoView {
         .set_spacing(12.)
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
-          SimpleSlider::new(0., 100.).set_step(1.).bind_value(volume),
+          SimpleSlider::new()
+            .set_min(0.)
+            .set_max(100.)
+            .set_step(1.)
+            .bind_value(volume),
           Text::derive(move || format!("{:.0}%", volume.get()))
             .set_font_size(13.)
-            .set_color(palette.muted_foreground.clone()),
+            .set_color(SimplePalette::MUTED_FOREGROUND),
         )),
       SimplePicker::new()
         .set_options([
@@ -175,8 +169,6 @@ fn inputs() -> impl IntoView {
 }
 
 fn layouts() -> impl IntoView {
-  let palette = SimplePalette::current();
-
   let open = Signal::new(false);
 
   section(
@@ -194,12 +186,12 @@ fn layouts() -> impl IntoView {
       )),
       Container::new()
         .set_height(64.)
-        .set_color(palette.secondary.surface)
-        .set_border_radius(8.)
+        .set_color(SimplePalette::SECONDARY_SURFACE)
+        .set_corner_radius(8.)
         .set_child(
           Stack::new().set_child(
             Pinned::new()
-              .set_edges(skene_gui::core::Inset {
+              .set_edges(Inset {
                 top: Dimension::Auto,
                 right: Dimension::Length(8.),
                 bottom: Dimension::Length(8.),
@@ -230,63 +222,55 @@ fn layouts() -> impl IntoView {
 }
 
 fn list() -> impl IntoView {
-  let palette = SimplePalette::current();
-  let muted = palette.muted_foreground.clone();
-
   section(
     "LazyColumn",
-    LazyColumn::new(
-      32.,
-      || 1000,
-      move |index| {
-        Row::new()
-          .set_spacing(8.)
-          .set_padding(Inset::symmetric(12., 6.))
-          .set_item_alignment(ItemAlignment::Center)
-          .set_children((
-            Text::new(format!("Row {index}")).set_font_size(13.),
-            Text::new("virtualized: only the visible rows exist")
-              .set_font_size(12.)
-              .set_color(muted.clone()),
-          ))
-      },
-    )
-    .set_style(BoxStyle::new().set_height(160.)),
+    Container::new().set_height(160.).set_child(
+      LazyColumn::new().set_item_height(32.).derive_items(
+        || 0..1000,
+        |index| *index,
+        move |index| {
+          Row::new()
+            .set_spacing(8.)
+            .set_padding(Inset::symmetric(12., 6.))
+            .set_item_alignment(ItemAlignment::Center)
+            .set_children((
+              Text::new(format!("Row {index}")).set_font_size(13.),
+              Text::new("virtualized: only the visible rows exist")
+                .set_font_size(12.)
+                .set_color(SimplePalette::MUTED_FOREGROUND),
+            ))
+        },
+      ),
+    ),
   )
 }
 
 /// A titled card around one section's content.
 fn section(title: &'static str, content: impl IntoView) -> impl IntoView {
-  let palette = SimplePalette::current();
-
   SimpleCard::new().set_children((
     Text::new(title)
       .set_font_size(12.)
       .set_font_weight(600.)
-      .set_color(palette.muted_foreground.clone()),
+      .set_color(SimplePalette::MUTED_FOREGROUND),
     content,
   ))
 }
 
 fn plain(text: &'static str) -> Span {
-  let palette = SimplePalette::current();
-
-  Span::text(text)
+  Span::new(text)
     .set_font_size(14.)
-    .set_color(palette.muted_foreground.clone())
+    .set_color(SimplePalette::MUTED_FOREGROUND)
 }
 
 fn badge(text: &'static str) -> impl IntoView {
-  let palette = SimplePalette::current();
-
   Container::new()
     .set_padding(Inset::symmetric(8., 4.))
-    .set_color(palette.card)
-    .set_border_radius(6.)
+    .set_color(SimplePalette::CARD)
+    .set_corner_radius(6.)
     .set_child(
       Text::new(text)
         .set_font_size(12.)
-        .set_color(palette.muted_foreground.clone()),
+        .set_color(SimplePalette::MUTED_FOREGROUND),
     )
 }
 
@@ -294,5 +278,5 @@ fn swatch(brightness: f32) -> impl IntoView {
   Container::new()
     .set_height(32.)
     .set_color(Color::srgb(brightness * 0.5, brightness, brightness * 0.55))
-    .set_border_radius(6.)
+    .set_corner_radius(6.)
 }

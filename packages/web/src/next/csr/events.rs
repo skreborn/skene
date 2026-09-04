@@ -7,6 +7,8 @@
 //! against the scene's ancestry, and a native toggle's `change` reports the platform's
 //! flip. The only per-node listener is a `<dialog>`'s `cancel`.
 
+use std::rc::Rc;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
   KeyEvent,
@@ -53,15 +55,28 @@ pub(super) struct Listener {
 
 impl Listener {
   /// Listens for `name` on `target`, running `handler` with each event.
+  ///
+  /// An event arriving while the scene is borrowed is delivered from a microtask
+  /// instead, once the borrow is released; its verdict then no longer reaches the
+  /// platform's default.
   pub(super) fn new(
     target: EventTarget,
     name: &'static str,
     capture: bool,
     handler: impl Fn(&web_sys::Event) + 'static,
   ) -> Self {
-    let closure = Closure::wrap(
-      Box::new(move |event: web_sys::Event| handler(&event)) as Box<dyn FnMut(web_sys::Event)>
-    );
+    let handler = Rc::new(handler);
+    let closure = Closure::wrap(Box::new(move |event: web_sys::Event| {
+      if Scene::<Web>::is_borrowed() {
+        let handler = Rc::clone(&handler);
+
+        wasm_bindgen_futures::spawn_local(async move { handler(&event) });
+
+        return;
+      }
+
+      handler(&event);
+    }) as Box<dyn FnMut(web_sys::Event)>);
 
     let _ = target.add_event_listener_with_callback_and_bool(
       name,

@@ -507,7 +507,7 @@ pub const fn stored_scheme() -> Option<skene_core::ColorScheme> {
 /// after the page has already been painted in the platform's scheme, which is the flash
 /// it exists to prevent. It writes exactly what the driver's own rules are gated on, and
 /// reads only its own key, so a page that never chose a scheme is untouched.
-const PREEMPT_SCHEME: &str = "try{var r=document.documentElement,\
+pub(crate) const PREEMPT_SCHEME: &str = "try{var r=document.documentElement,\
 s=localStorage.getItem('skene-scheme');\
 if(s==='dark'||s==='light'){r.setAttribute('data-skene-scheme',s);r.style.colorScheme=s}}catch(e){}";
 

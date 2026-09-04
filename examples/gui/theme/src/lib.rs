@@ -6,29 +6,34 @@
 //! why the page below is already correct with no script running at all, and why the
 //! toggle re-inks it without rebuilding anything.
 
-#![cfg(target_arch = "wasm32")]
-
 use skene_gui::prelude::*;
+
+/// A definition taking `dark`'s value under the dark scheme and `light`'s otherwise.
+fn pair(light: Color, dark: Color) -> Definition<Color> {
+  Definition::from(light).when(Media::Dark, dark)
+}
 
 /// The app's palette: the built-in one with a brand accent layered on, per property.
 ///
-/// `set_primary` replaces one look wholesale; a look's own conditions sit on the look's
-/// own setters. Every `set_<prop>_when` here names `DarkMode`, but nothing about the
-/// setter is the scheme's—`Condition::MinWidth(900.)` would sit in exactly the same
-/// place.
+/// `set_primary` replaces one look wholesale; a look's own conditions ride its
+/// definitions. Every `.when` here names `Media::Dark`, but nothing about the setter
+/// is the scheme's—`Media::MinWidth(900.)` would sit in exactly the same place.
 fn palette() -> SimplePalette {
   let brand = Color::srgb(0.29, 0.33, 0.86);
   let brand_dark = Color::srgb(0.51, 0.55, 0.97);
 
   SimplePalette::default()
-    .set_ring(brand)
-    .set_ring_when(Condition::DarkMode, brand_dark)
+    .set_ring(pair(brand, brand_dark))
     .set_primary(
-      SimpleLook::new(brand, Color::srgb(1., 1., 1.))
-        .set_surface_when(Condition::DarkMode, brand_dark)
-        .set_ink_when(Condition::DarkMode, Color::srgb(0.09, 0.09, 0.14))
-        .set_hover(Color::srgb(0.24, 0.27, 0.75))
-        .set_hover_when(Condition::DarkMode, Color::srgb(0.62, 0.65, 0.99)),
+      SimpleLook::new(
+        SimpleVariant::Primary,
+        pair(brand, brand_dark),
+        pair(Color::srgb(1., 1., 1.), Color::srgb(0.09, 0.09, 0.14)),
+      )
+      .set_hover(pair(
+        Color::srgb(0.24, 0.27, 0.75),
+        Color::srgb(0.62, 0.65, 0.99),
+      )),
     )
 }
 
@@ -36,10 +41,14 @@ fn palette() -> SimplePalette {
 /// palette beneath it and leaves the one above alone.
 fn warm() -> SimplePalette {
   palette()
-    .set_card(Color::srgb(0.99, 0.96, 0.91))
-    .set_card_when(Condition::DarkMode, Color::srgb(0.16, 0.13, 0.09))
-    .set_border(Color::srgb(0.93, 0.87, 0.78))
-    .set_border_when(Condition::DarkMode, Color::srgb(0.27, 0.22, 0.16))
+    .set_card(pair(
+      Color::srgb(0.99, 0.96, 0.91),
+      Color::srgb(0.16, 0.13, 0.09),
+    ))
+    .set_border(pair(
+      Color::srgb(0.93, 0.87, 0.78),
+      Color::srgb(0.27, 0.22, 0.16),
+    ))
 }
 
 #[main]
@@ -48,11 +57,11 @@ fn app() -> impl IntoView {
   // force, answered by the compiled media query with no script at all.
   let scheme = Signal::new(stored_scheme());
 
-  SimpleTheme::new(palette()).set_child(move || {
+  Theme::new(palette()).set_child_builder(move || {
     derive_scheme(move || scheme.get());
 
     Container::new()
-      .set_color(SimplePalette::current().background)
+      .set_color(SimplePalette::BACKGROUND)
       .set_min_height(Dimension::Fraction(1.))
       .set_child(
         Column::new()
@@ -75,7 +84,7 @@ fn heading() -> impl IntoView {
     Text::new("THEME")
       .set_font_size(13.)
       .set_font_weight(500.)
-      .set_color(SimplePalette::current().muted_foreground),
+      .set_color(SimplePalette::MUTED_FOREGROUND),
     Text::new("One palette, whose tokens answer conditions.").set_font_size(15.),
   ))
 }
@@ -98,33 +107,32 @@ fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl IntoView {
 }
 
 fn swatches() -> impl IntoView {
-  let palette = SimplePalette::current();
-  let swatch = |token: Token, label: &'static str| {
+  let swatch = |token: TokenRef<Color>, label: &'static str| {
     Column::new().set_spacing(6.).set_children((
       Container::new()
         .set_height(44.)
-        .set_border_radius(8.)
+        .set_corner_radius(8.)
         .set_color(token)
-        .set_border(palette.border.clone().map(|color| Border::new(1., color))),
+        .set_border(Border::new(1., SimplePalette::BORDER)),
       Text::new(label)
         .set_font_size(12.)
-        .set_color(palette.muted_foreground.clone()),
+        .set_color(SimplePalette::MUTED_FOREGROUND),
     ))
   };
 
   SimpleCard::new().set_spacing(16.).set_children((
     Text::new("Tokens").set_font_weight(600.),
     Grid::new()
-      .set_columns([
+      .set_columns(vec![
         GridTrack::Flex(1.),
         GridTrack::Flex(1.),
         GridTrack::Flex(1.),
       ])
       .set_spacing(12.)
       .set_children((
-        swatch(palette.card.clone(), "card"),
-        swatch(palette.primary.surface.clone(), "primary"),
-        swatch(palette.destructive.surface.clone(), "destructive"),
+        swatch(SimplePalette::CARD, "card"),
+        swatch(SimplePalette::PRIMARY_SURFACE, "primary"),
+        swatch(SimplePalette::DESTRUCTIVE_SURFACE, "destructive"),
       )),
     Row::new().set_spacing(12.).set_children((
       SimpleButton::new("Primary"),
@@ -134,7 +142,7 @@ fn swatches() -> impl IntoView {
 }
 
 fn nested() -> impl IntoView {
-  SimpleTheme::new(warm()).set_child(|| {
+  Theme::new(warm()).set_child_builder(|| {
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new("Nested theme").set_font_weight(600.),
       Text::new("A theme inside a theme replaces the palette for its subtree only.")

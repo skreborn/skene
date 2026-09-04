@@ -1,60 +1,63 @@
-//! A streaming boundary: a subtree the server can flush around and stream in place.
+//! A streaming boundary: a subtree the server can flush around.
 //!
-//! Wrap slow content in a [`Deferred`]. On the server the render emits everything up to the
-//! boundary, blocks until the boundary's async work settles, then streams the content in document
-//! order—so a client with no JavaScript still receives a correct, progressively-rendered page.
-//! On the client the content builds directly; its own reactive subtrees show their placeholders
-//! until they load, and hydration adopts the server's already-settled markup.
+//! Wrap slow content in a [`Deferred`]. Its content builds in place, between anchors
+//! of its own; on the server its async work reports to a boundary of its own rather
+//! than the shell's, so the page around it settles without waiting on it. Streaming the
+//! content as a later chunk is the server leaf's to add; until then a render settles
+//! through the boundary and serializes it in place.
 
-use skene_core::{IntoView, NodeId, View};
+#[cfg(target_os = "wasi")]
+use skene_core::Boundary;
+use skene_core::next::{AnyKind, IntoView, NodeId, Scene, View};
 
-use crate::driver as tree;
+use crate::ActiveDriver;
 
-/// A subtree whose async work the server streams around, flushing the shell before it settles.
+/// A subtree whose async work the server settles apart from the shell's.
 #[must_use]
 pub struct Deferred {
   content: Box<dyn FnOnce() -> NodeId>,
 }
 
 impl Deferred {
-  /// Defers `content` to a streamed chunk: the server flushes the surrounding page, then streams
-  /// this subtree once its async work settles.
+  /// Defers `content`: its async work reports to a boundary of its own.
   #[inline(always)]
-  pub fn new<V: IntoView>(content: impl FnOnce() -> V + 'static) -> Self {
+  pub fn new<V: IntoView<ActiveDriver>>(content: impl FnOnce() -> V + 'static) -> Self {
     Self {
       content: Box::new(move || content().into_view().build()),
     }
   }
-}
 
-impl View for Deferred {
-  #[cfg(target_os = "unknown")]
-  fn build(self) -> NodeId {
-    let node = tree::create_group();
-    let content = (self.content)();
-
-    tree::attach(node, content, None);
-
-    node
-  }
-
+  /// Builds the content under a boundary of its own.
   #[cfg(target_os = "wasi")]
-  fn build(self) -> NodeId {
-    let node = tree::create_group();
-    let boundary = skene_core::Boundary::new();
-    // A child scope so the boundary is in `Context` for the content's tasks only, not its
-    // siblings; it holds no state of its own and disposes with the render.
+  fn build_content(self) -> NodeId {
+    let boundary = Boundary::new();
+    // A child scope so the boundary is in `Context` for the content's tasks only, not
+    // its siblings; it holds no state of its own and disposes with the render.
     let scope = skene_reactive::Owner::current().child();
 
-    let content = scope.enter(|| {
+    scope.enter(|| {
       skene_reactive::provide_context(boundary);
 
       (self.content)()
-    });
+    })
+  }
 
-    tree::attach(node, content, None);
-    crate::driver::register_boundary(node, Box::new(move || boundary.is_settled()));
+  /// Builds the content directly; the client streams nothing.
+  #[cfg(target_os = "unknown")]
+  fn build_content(self) -> NodeId {
+    (self.content)()
+  }
+}
 
-    node
+impl AnyKind for Deferred {}
+
+impl View<ActiveDriver> for Deferred {
+  fn build(self) -> NodeId {
+    let (start, _) = Scene::<ActiveDriver>::with(Scene::create_segment);
+    let content = self.build_content();
+
+    Scene::<ActiveDriver>::with(|scene| scene.insert_in_segment(start, content, None));
+
+    start
   }
 }

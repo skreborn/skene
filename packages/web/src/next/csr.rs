@@ -1316,6 +1316,123 @@ where
   let _ = mount(|| app().into_view().build());
 }
 
+/// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
+/// handlers are the scene's, returned detached.
+pub fn create_link(href: &str) -> NodeId {
+  let sink = with_dom(|dom| {
+    let sink = dom.create_element("a", Realized::Box);
+
+    if let Some(element) = dom.node(sink).and_then(Node::element) {
+      let _ = element.set_attribute("href", href);
+    }
+
+    sink
+  });
+
+  Scene::<Web>::with(|scene| scene.create(NodeKind::Box, sink))
+}
+
+/// The DOM nodes between the anchors of the segment `start` begins, in order.
+fn segment_dom(start: NodeId) -> Vec<web_sys::Node> {
+  let Some((start, end)) = Scene::<Web>::with(|scene| {
+    let end = scene.segment_end(start)?;
+
+    Some((scene.sink(start)?, scene.sink(end)?))
+  })
+  else {
+    return Vec::new();
+  };
+
+  with_dom(|dom| {
+    let (Some(start), Some(end)) = (
+      dom.node(start).map(|node| node.dom.clone()),
+      dom.node(end).map(|node| node.dom.clone()),
+    )
+    else {
+      return Vec::new();
+    };
+    let mut between = Vec::new();
+    let mut current = start.next_sibling();
+
+    while let Some(node) = current {
+      if node == end {
+        break;
+      }
+
+      current = node.next_sibling();
+
+      between.push(node);
+    }
+
+    between
+  })
+}
+
+/// Claims the server's markup between the anchors of the segment `start` begins, so it
+/// stays in place and counts as adopted while the segment's real content is on its
+/// way; `false` when not hydrating or when the server rendered nothing there.
+#[must_use]
+pub fn claim_lazy(start: NodeId) -> bool {
+  let between = segment_dom(start);
+
+  if between.is_empty() {
+    return false;
+  }
+
+  with_dom(|dom| {
+    let Some(hydration) = dom.hydration.as_mut()
+    else {
+      return false;
+    };
+    let mut claimed = false;
+
+    for node in between {
+      let mut pending = vec![node];
+
+      while let Some(node) = pending.pop() {
+        if node.node_type() == COMMENT_NODE {
+          hydration
+            .comments
+            .remove(&node.node_value().unwrap_or_default());
+          claimed = true;
+
+          continue;
+        }
+
+        if let Some(element) = node.dyn_ref::<Element>() {
+          if let Some(marker) = element
+            .get_attribute(MARKER_ATTRIBUTE)
+            .and_then(|value| value.parse::<u32>().ok())
+          {
+            hydration.elements.remove(&marker);
+            claimed = true;
+          }
+
+          let children = node.child_nodes();
+
+          for index in 0..children.length() {
+            if let Some(child) = children.item(index) {
+              pending.push(child);
+            }
+          }
+        }
+      }
+    }
+
+    claimed
+  })
+}
+
+/// Removes the claimed markup between the anchors of the segment `start` begins, as
+/// the segment's real content arrives to take its place.
+pub fn discard_lazy(start: NodeId) {
+  for node in segment_dom(start) {
+    if let Some(parent) = node.parent_node() {
+      let _ = parent.remove_child(&node);
+    }
+  }
+}
+
 /// The owning [`Document`].
 #[must_use]
 pub fn document() -> Document {

@@ -4,8 +4,9 @@ use std::{future::Future, pin::Pin, rc::Rc};
 
 use serde::{Serialize, de::DeserializeOwned};
 use skene_reactive::{Get, Set, Signal, With};
+use skene_web::next as driver;
 
-use crate::{driver, spawn};
+use crate::spawn;
 
 /// A resource's loader, boxed so it can be stored and re-run on [`reload`](Resource::reload).
 type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
@@ -14,15 +15,15 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 ///
 /// The load starts on creation and is bound to the current scope, so it ends with the view
 /// that asked for it. Reading tracks, so a view that reads a resource re-runs when the value
-/// arrives—pair it with a [`DerivedView`](crate::DerivedView) to swap a placeholder for the
-/// loaded tree:
+/// arrives—pair it with a [`derived`](crate::derived) subtree to swap a placeholder for
+/// the loaded tree:
 ///
 /// ```ignore
 /// let user = Resource::new(|| async { load_user().await });
 ///
-/// DerivedView::new(move || match user.get() {
-///   None => Text::new("Loading…").into_any(),
-///   Some(user) => profile(user).into_any(),
+/// derived(move || match user.get() {
+///   None => Text::new("Loading…").build(),
+///   Some(user) => profile(user).build(),
 /// })
 /// ```
 ///

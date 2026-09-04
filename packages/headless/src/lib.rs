@@ -8,8 +8,9 @@
 //! core's dispatch so bubbling is the one implementation every driver shares.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
-//! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it, and the
-//! signals [`Driver::media`] reports follow.
+//! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it,
+//! [`choose_scheme`] lets the app override the platform's scheme, and the signals
+//! [`Driver::media`] reports follow.
 //!
 //! A control is realized as a box carrying its [`ControlProps`], an overlay as one
 //! carrying its [`OverlayProps`], an open flag ([`is_open`]) and the anchor it was last
@@ -455,15 +456,34 @@ pub fn set_viewport(size: Size<f32>) {
   write.set(size);
 }
 
-/// Sets the color scheme in force.
+/// Sets the platform's color scheme; the scheme in force follows it unless the app
+/// chose one through [`choose_scheme`].
 pub fn set_scheme(scheme: ColorScheme) {
-  let write = with_store(|store| {
+  let (write, in_force) = with_store(|store| {
     store.scheme = Some(scheme);
 
-    store.media().set_scheme
+    (store.media().set_scheme, store.scheme_in_force())
   });
 
-  write.set(scheme);
+  write.set(in_force);
+}
+
+/// Sets the scheme the app chose, overriding the platform's; `None` returns to
+/// following the platform.
+pub fn choose_scheme(scheme: Option<ColorScheme>) {
+  let (write, in_force) = with_store(|store| {
+    store.chosen_scheme = scheme;
+
+    (store.media().set_scheme, store.scheme_in_force())
+  });
+
+  write.set(in_force);
+}
+
+/// The scheme the app chose through [`choose_scheme`], if any.
+#[must_use]
+pub fn chosen_scheme() -> Option<ColorScheme> {
+  with_store(|store| store.chosen_scheme)
 }
 
 /// Sets whether the reader prefers reduced motion.

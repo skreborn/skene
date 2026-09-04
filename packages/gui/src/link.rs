@@ -2,10 +2,15 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{IntoView, Modifiers, NodeId, Prevent, View};
+use skene_core::{
+  Modifiers,
+  PointerEvent,
+  Prevent,
+  next::{AnyKind, IntoView, NodeId, Scene, View},
+};
 use skene_router::{Route, Router};
 
-use crate::driver;
+use crate::ActiveDriver;
 
 /// A link to a route: a real anchor carrying the route's path, so a page without
 /// JavaScript navigates by full page load, and a running app intercepts the click
@@ -28,59 +33,65 @@ impl<R: Route> Link<R> {
 
   /// Sets the link's content.
   #[inline(always)]
-  pub fn set_child<V: IntoView>(mut self, child: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_child<V: IntoView<ActiveDriver>>(
+    mut self,
+    child: impl FnOnce() -> V + 'static,
+  ) -> Self {
     self.child = Some(Box::new(move || child().into_view().build()));
 
     self
   }
 }
 
-impl<R: Route> View for Link<R> {
-  fn build(self) -> NodeId {
-    let node = driver::create_element("a");
+impl<R: Route> AnyKind for Link<R> {}
 
-    driver::set_attribute(node, "href", &self.route.to_path());
+impl<R: Route> View<ActiveDriver> for Link<R> {
+  fn build(self) -> NodeId {
+    let node = skene_web::next::create_link(&self.route.to_path());
 
     if let Some(child) = self.child {
-      driver::attach(node, child(), None);
+      let child = child();
+
+      Scene::<ActiveDriver>::with(|scene| scene.attach(node, child, None));
     }
 
     let held = Rc::new(Cell::new(Modifiers::default()));
-
-    driver::handle_pointer_down(node, {
-      let held = Rc::clone(&held);
-
-      Rc::new(move |event: &skene_core::PointerEvent| {
-        held.set(event.modifiers);
-
-        Prevent::None
-      })
-    });
-
     let route = self.route;
     // Captured while building, where an ancestor's `provide` is in scope; a click
     // arrives outside any scope. No router leaves the anchor plain.
     let router = Router::<R>::get();
 
-    driver::handle_click(
-      node,
-      Rc::new(move || {
-        let modifiers = held.replace(Modifiers::default());
+    Scene::<ActiveDriver>::with(|scene| {
+      scene.handle_pointer_down(node, {
+        let held = Rc::clone(&held);
 
-        if modifiers.ctrl || modifiers.shift || modifiers.alt || modifiers.meta {
-          return Prevent::None;
-        }
+        Rc::new(move |event: &PointerEvent| {
+          held.set(event.modifiers);
 
-        let Some(router) = router.clone()
-        else {
-          return Prevent::None;
-        };
+          Prevent::None
+        })
+      });
 
-        router.navigate(route.clone());
+      scene.handle_click(
+        node,
+        Rc::new(move || {
+          let modifiers = held.replace(Modifiers::default());
 
-        Prevent::Platform
-      }),
-    );
+          if modifiers.ctrl || modifiers.shift || modifiers.alt || modifiers.meta {
+            return Prevent::None;
+          }
+
+          let Some(router) = router.clone()
+          else {
+            return Prevent::None;
+          };
+
+          router.navigate(route.clone());
+
+          Prevent::Platform
+        }),
+      );
+    });
 
     node
   }

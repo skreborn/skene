@@ -108,5 +108,61 @@ macro_rules! decoration {
   };
 }
 
+/// Generates the type-metric setters every run shares, over the style `$access`
+/// returns, each writing through the extension's [`TypeMetrics`](crate::TypeMetrics).
+macro_rules! type_metrics {
+  ($access:ident; $($set:ident / $derive:ident ($param:ident) => $write:ident, $doc:literal;)+) => {$(
+    #[doc = concat!("Sets ", $doc, ", where the medium sizes type; a medium without type metrics accepts and ignores it.")]
+    #[inline(always)]
+    pub fn $set(
+      mut self,
+      $param: impl Into<::skene_core::next::Value<f32, ::skene_core::next::Condition<D::Scalar>>>,
+    ) -> Self
+    where
+      D::StyleExt: $crate::TypeMetrics,
+    {
+      <D::StyleExt as $crate::TypeMetrics>::$write::<
+        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+      >(&mut self.$access().ext, Some($param.into()));
+
+      self
+    }
+
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads, where the medium sizes type; a medium without type metrics accepts and ignores it.")]
+    #[inline(always)]
+    pub fn $derive(mut self, $param: impl Fn() -> f32 + 'static) -> Self
+    where
+      D::StyleExt: $crate::TypeMetrics,
+    {
+      <D::StyleExt as $crate::TypeMetrics>::$write::<
+        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+      >(
+        &mut self.$access().ext,
+        Some(::skene_core::next::Value::new(
+          ::skene_core::next::Leaf::Derived(::std::rc::Rc::new($param)),
+        )),
+      );
+
+      self
+    }
+  )+};
+}
+
+/// The four type-metric setter pairs a run exposes.
+macro_rules! run_type_metrics {
+  ($access:ident) => {
+    $crate::macros::type_metrics! { $access;
+      set_font_size / derive_font_size (size) => set_font_size, "the font size";
+      set_font_weight / derive_font_weight (weight) => set_font_weight, "the font weight";
+      set_line_height / derive_line_height (height) => set_line_height,
+        "the line height, as a multiple of the font size";
+      set_letter_spacing / derive_letter_spacing (spacing) => set_letter_spacing,
+        "the extra space between letters";
+    }
+  };
+}
+
 pub(crate) use decoration;
 pub(crate) use properties;
+pub(crate) use run_type_metrics;
+pub(crate) use type_metrics;

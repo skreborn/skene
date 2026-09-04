@@ -215,7 +215,8 @@ impl<D: Driver> ControlHandle<D> {
     self.roster.as_ref()
   }
 
-  /// Runs `operation` on the control's sink, if the node is live.
+  /// Runs `operation` on a copy of the control's sink, if the node is live; the scene
+  /// is released before it runs.
   #[inline(always)]
   pub fn with_sink<R>(&self, operation: impl FnOnce(&D::Sink) -> R) -> Option<R> {
     with_sink::<D, _>(self.node, operation)

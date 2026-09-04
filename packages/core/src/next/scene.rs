@@ -398,12 +398,60 @@ struct Entry<D: Driver> {
   record: Option<NodeRecord<D>>,
 }
 
+/// A mutation the scene owes its driver, mirrored once the scene is released.
+enum Mirror<D: Driver> {
+  Attach {
+    parent: D::Sink,
+    child: D::Sink,
+    before: Option<D::Sink>,
+  },
+  Detach {
+    parent: D::Sink,
+    child: D::Sink,
+  },
+  Destroy(D::Sink),
+  DefineTokens {
+    scope: D::Sink,
+    definitions: Definitions<D::TokenValue>,
+  },
+  DefineRootTokens(Definitions<D::TokenValue>),
+  ControlState {
+    sink: D::Sink,
+    state: ControlState,
+  },
+}
+
+impl<D: Driver> Mirror<D> {
+  /// Hands the mutation to the driver.
+  fn run(self) {
+    let driver = D::default();
+
+    match self {
+      Self::Attach {
+        parent,
+        child,
+        before,
+      } => driver.attach(&parent, &child, before.as_ref()),
+      Self::Detach { parent, child } => driver.detach(&parent, &child),
+      Self::Destroy(sink) => driver.destroy(sink),
+      Self::DefineTokens { scope, definitions } => driver.define_tokens(&scope, &definitions),
+      Self::DefineRootTokens(definitions) => driver.define_root_tokens(&definitions),
+      Self::ControlState { sink, state } => driver.set_control_state(&sink, &state),
+    }
+  }
+}
+
 /// The retained tree: a generational arena of [`NodeRecord`]s, every mutation mirrored
 /// into the driver's sink.
 ///
 /// Reached through [`with`](Self::with). No borrow of the scene is held while a user
-/// callback runs: dispatch and every handler invocation snapshot what they need and
-/// release the scene first.
+/// callback or a driver's mutation runs: dispatch and every handler invocation snapshot
+/// what they need and release the scene first, and the mutations the scene mirrors into
+/// the driver ([`attach`](Self::attach), [`detach`](Self::detach),
+/// [`destroy`](Self::destroy), [`define_tokens`](Self::define_tokens),
+/// [`define_root_tokens`](Self::define_root_tokens),
+/// [`set_control_state`](Self::set_control_state)) reach it in order once the borrow
+/// that recorded them is released.
 #[must_use]
 pub struct Scene<D: Driver> {
   entries: Vec<Entry<D>>,
@@ -413,6 +461,7 @@ pub struct Scene<D: Driver> {
   root_sets: FxHashSet<TypeId>,
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
+  mirrors: Vec<Mirror<D>>,
 }
 
 impl<D: Driver> Default for Scene<D> {
@@ -434,13 +483,15 @@ impl<D: Driver> Scene<D> {
       root_sets: FxHashSet::default(),
       definitions_generation: 0,
       graveyard: Vec::new(),
+      mirrors: Vec::new(),
     }
   }
 
   /// Runs `f` on the driver's scene.
   ///
-  /// Handlers released inside `f` are dropped after the scene is released, so a
-  /// captured value's drop may reach the scene again.
+  /// The mutations `f` recorded are mirrored into the driver after the scene is
+  /// released, in order, and handlers released inside `f` are dropped after that, so
+  /// a driver's mutation or a captured value's drop may reach the scene again.
   ///
   /// # Panics
   ///
@@ -449,13 +500,26 @@ impl<D: Driver> Scene<D> {
     D::scene().with(|cell| {
       let mut scene = cell.borrow_mut();
       let result = operation(&mut scene);
+      let mirrors = std::mem::take(&mut scene.mirrors);
       let graveyard = std::mem::take(&mut scene.graveyard);
 
       drop(scene);
+
+      for mirror in mirrors {
+        mirror.run();
+      }
+
       drop(graveyard);
 
       result
     })
+  }
+
+  /// Whether the scene is borrowed right now, so a [`with`](Self::with) would panic.
+  #[inline(always)]
+  #[must_use]
+  pub fn is_borrowed() -> bool {
+    D::scene().with(|cell| cell.try_borrow_mut().is_err())
   }
 
   /// The record of `node`, if it is live.
@@ -478,6 +542,15 @@ impl<D: Driver> Scene<D> {
       .get_mut(node.index() as usize)
       .filter(|entry| entry.generation == node.generation())
       .and_then(|entry| entry.record.as_mut())
+  }
+
+  /// The driver's handle for `node`, cloned out, if the node is live.
+  ///
+  /// Copy it out and release the scene before calling the driver with it.
+  #[inline(always)]
+  #[must_use]
+  pub fn sink(&self, node: NodeId) -> Option<D::Sink> {
+    self.record(node).map(|record| record.sink.clone())
   }
 
   /// Mints a detached node of `kind` owning `sink`; a box or a control consumes the
@@ -630,7 +703,6 @@ impl<D: Driver> Scene<D> {
   pub fn destroy(&mut self, node: NodeId) {
     self.unlink(node);
 
-    let driver = D::default();
     let mut stack = vec![node];
 
     while let Some(node) = stack.pop() {
@@ -650,7 +722,7 @@ impl<D: Driver> Scene<D> {
         self.graveyard.push(*handlers);
       }
 
-      driver.destroy(record.sink);
+      self.mirrors.push(Mirror::Destroy(record.sink));
     }
 
     self.definitions_generation += 1;
@@ -790,14 +862,20 @@ impl<D: Driver> Scene<D> {
       return;
     };
 
-    D::default().define_tokens(&record.sink, &definitions);
-    record.definitions = Some(Box::new(definitions));
+    let scope = record.sink.clone();
+
+    record.definitions = Some(Box::new(definitions.clone()));
+    self
+      .mirrors
+      .push(Mirror::DefineTokens { scope, definitions });
     self.definitions_generation += 1;
   }
 
   /// Defines the tokens every node falls back to, replacing the previous set.
   pub fn define_root_tokens(&mut self, definitions: Definitions<D::TokenValue>) {
-    D::default().define_root_tokens(&definitions);
+    self
+      .mirrors
+      .push(Mirror::DefineRootTokens(definitions.clone()));
     self.root_definitions = definitions;
     self.definitions_generation += 1;
   }
@@ -903,7 +981,10 @@ impl<D: Driver> Scene<D> {
     }
 
     record.control = Some(state);
-    D::default().set_control_state(&record.sink, &state);
+
+    let sink = record.sink.clone();
+
+    self.mirrors.push(Mirror::ControlState { sink, state });
   }
 
   /// The state of the control `node`; `None` for a node of any other kind.
@@ -1085,15 +1166,17 @@ impl<D: Driver> Scene<D> {
 
     child_record.parent = Some(parent);
 
-    let (Some(parent_record), Some(child_record)) = (self.record(parent), self.record(child))
+    let (Some(parent), Some(child)) = (self.sink(parent), self.sink(child))
     else {
       return;
     };
-    let before_sink = before
-      .and_then(|before| self.record(before))
-      .map(NodeRecord::sink);
+    let before = before.and_then(|before| self.sink(before));
 
-    D::default().attach(&parent_record.sink, &child_record.sink, before_sink);
+    self.mirrors.push(Mirror::Attach {
+      parent,
+      child,
+      before,
+    });
   }
 
   /// Removes `child` from under its parent, if any, and mirrors it; a segment start
@@ -1127,8 +1210,8 @@ impl<D: Driver> Scene<D> {
       child_record.parent = None;
     }
 
-    if let (Some(parent_record), Some(child_record)) = (self.record(parent), self.record(child)) {
-      D::default().detach(&parent_record.sink, &child_record.sink);
+    if let (Some(parent), Some(child)) = (self.sink(parent), self.sink(child)) {
+      self.mirrors.push(Mirror::Detach { parent, child });
     }
   }
 

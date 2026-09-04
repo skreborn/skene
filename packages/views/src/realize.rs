@@ -7,10 +7,15 @@ use std::rc::Rc;
 use skene_core::next::{AnyView, BoxSlot, Driver, IntoView, NodeId, RunSlot, Scene, View};
 use skene_reactive::Effect;
 
-/// Runs `operation` on the sink of `node`, if the node is live.
+/// Runs `operation` on a copy of the sink of `node`, if the node is live.
+///
+/// The scene is released before `operation` runs, so a driver call inside it may
+/// reach the scene again.
 #[inline(always)]
 pub fn with_sink<D: Driver, R>(node: NodeId, operation: impl FnOnce(&D::Sink) -> R) -> Option<R> {
-  Scene::<D>::with(|scene| scene.record(node).map(|record| operation(record.sink())))
+  let sink = Scene::<D>::with(|scene| scene.sink(node))?;
+
+  Some(operation(&sink))
 }
 
 /// Binds a render effect that computes `slot`'s leaf and writes it into the box

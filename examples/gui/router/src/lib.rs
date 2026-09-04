@@ -5,12 +5,14 @@
 //! route as full markup, so both pages read and navigate with JavaScript disabled; a
 //! running client upgrades the links to instant in-app navigation and fetches the
 //! split module in the background.
+//!
+//! Gated to `wasm32`: links and lazy modules are the web's, so the host has no driver
+//! for them.
 
 #![cfg(target_arch = "wasm32")]
 
 use skene_gui::{
   AnyView,
-  DerivedView,
   Lazy,
   Link,
   install_static_router,
@@ -52,9 +54,9 @@ impl StaticRoutes for Page {
 fn app() -> impl IntoView {
   let router = install_static_router(Page::Home);
 
-  SimpleTheme::new(SimplePalette::default()).set_child(move || {
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
-      .set_color(SimplePalette::current().background)
+      .set_color(SimplePalette::BACKGROUND)
       .set_child(
         Column::new()
           .set_spacing(32.)
@@ -64,9 +66,9 @@ fn app() -> impl IntoView {
               Link::new(Page::Home).set_child(|| navigation("Home")),
               Link::new(Page::About).set_child(|| navigation("About")),
             )),
-            DerivedView::new(move || match router.route() {
-              Page::Home => home().into_view().into_any(),
-              Page::About => Lazy::new(about).into_any(),
+            derived(move || match router.route() {
+              Page::Home => home().into_view().build(),
+              Page::About => Lazy::new(about).build(),
             }),
           )),
       )
@@ -89,21 +91,18 @@ async fn about() -> AnyView {
     "This page's code lives in a split module, fetched when you first navigated here.",
   )
   .into_view()
-  .into_any()
 }
 
 fn page(title: &'static str, body: &'static str) -> impl IntoView {
-  let palette = SimplePalette::current();
-
   Container::new().set_max_width(420.).set_child(
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new(title)
         .set_font_size(13.)
         .set_font_weight(500.)
-        .set_color(palette.muted_foreground),
+        .set_color(SimplePalette::MUTED_FOREGROUND),
       Text::new(body)
         .set_font_size(16.)
-        .set_color(palette.foreground),
+        .set_color(SimplePalette::FOREGROUND),
     )),
   )
 }
@@ -112,5 +111,5 @@ fn navigation(label: &'static str) -> impl IntoView {
   Text::new(label)
     .set_font_size(14.)
     .set_font_weight(600.)
-    .set_color(SimplePalette::current().foreground)
+    .set_color(SimplePalette::FOREGROUND)
 }

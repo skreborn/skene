@@ -7,7 +7,11 @@ use skene_core::{
   next::{AnyKind, DeclaredRunStyle, Driver, NodeId, View},
 };
 
-use crate::{macros::properties, realize::Source, run::Run};
+use crate::{
+  macros::{properties, run_type_metrics},
+  realize::Source,
+  run::Run,
+};
 
 /// A run of text on its own line.
 ///
@@ -51,6 +55,8 @@ impl<D: Driver> Text<D> {
     set_selection_background / derive_selection_background (color) => selection_background: Color,
       "the background behind selected text";
   }
+
+  run_type_metrics! { style_mut }
 
   /// Sets whether the reader can select and copy the text; off by default.
   #[inline(always)]

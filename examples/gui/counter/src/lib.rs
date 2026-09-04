@@ -1,12 +1,8 @@
-//! A counter demo: one app crate, depending only on `skene`, that runs on any GUI
+//! A counter demo: one app crate, depending only on `skene-gui`, that runs on any GUI
 //! platform the build targets.
 //!
-//! Gated to `wasm32` (both web leaves): in the browser `#[main]` launches it; on the
-//! server leaf the same entry renders a requested path to stdout. Building a view for a
-//! target with no driver is a compile error, so an app is built for the platform(s) it
-//! targets.
-
-#![cfg(target_arch = "wasm32")]
+//! In the browser `#[main]` launches it; on the server leaf the same entry renders a
+//! requested path to stdout; on the host it builds against the headless driver.
 
 use skene_gui::prelude::*;
 
@@ -14,7 +10,7 @@ use skene_gui::prelude::*;
 fn app() -> impl IntoView {
   let count = Signal::tagged("count", 0u64);
 
-  SimpleTheme::new(SimplePalette::default()).set_child(move || {
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
     Container::new()
       .set_color(SimplePalette::current().background)
       .set_child(

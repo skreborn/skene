@@ -6,7 +6,9 @@
 //! choices ([`markup`](self) internals) are shared by both leaves;
 //! [`Driver`](skene_core::next::Driver) is implemented for [`Web`] on the server leaf
 //! (`target_os = "wasi"`) and on the browser leaf (`target_os = "unknown"`), each
-//! exposing its own entry points.
+//! exposing its own entry points. The seams a facade's satellites need beyond the
+//! driver ([`drive`], the hydration state channel, [`claim_lazy`] and
+//! [`discard_lazy`], [`create_link`], the head and the request path) sit beside them.
 
 // The compiler is consumed by the leaves, which only compile on wasm targets.
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
@@ -27,6 +29,9 @@ mod token;
 pub use self::csr::uninstall;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use self::csr::{
+  claim_lazy,
+  create_link,
+  discard_lazy,
   document,
   element,
   hydrate,
@@ -45,13 +50,47 @@ pub use self::ssr::{
   RenderHints,
   Rendered,
   add_head_element,
+  create_link,
   render_to_string,
   set_document_title,
   set_render_hints,
+  set_scheme,
+  stored_scheme,
 };
 pub use self::{
   condition::{CONTROL_ATTRIBUTE, SCHEME_ATTRIBUTE},
   token::WebTokenValue,
+};
+/// The seams a facade's satellites share with the crate's flat surface: the executor,
+/// the hydration state channel and the document head in the browser.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub use crate::{
+  add_head_element,
+  adopt_next,
+  adopt_tagged,
+  current_path,
+  drive,
+  is_server,
+  on_pop,
+  push_path,
+  register_source,
+  register_tagged_source,
+  set_document_title,
+};
+/// The seams a facade's satellites share with the crate's flat surface: the executor,
+/// the hydration state channel and the request the render is for.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub use crate::{
+  adopt_next,
+  adopt_tagged,
+  current_path,
+  drive,
+  is_server,
+  record_static_routes,
+  recorded_static_routes,
+  register_source,
+  register_tagged_source,
+  set_request_path,
 };
 
 /// The web driver: zero-sized, implementing the portable vocabulary over the DOM in the

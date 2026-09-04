@@ -30,6 +30,7 @@ use skene_core::{
     EventKind,
     IntoView,
     MediaSignals,
+    NodeId,
     NodeKind,
     OverlayProps,
     PixelExt,
@@ -400,6 +401,12 @@ impl Tree {
   fn render_head(&self) -> String {
     let mut out = String::new();
 
+    if PREEMPT_SCHEME.with(Cell::get) {
+      out.push_str("<script>");
+      out.push_str(crate::ssr::PREEMPT_SCHEME);
+      out.push_str("</script>");
+    }
+
     if let Some(title) = &self.title {
       out.push_str("<title>");
       escape_text(title, &mut out);
@@ -513,6 +520,7 @@ thread_local! {
   static TREE: RefCell<Tree> = RefCell::new(Tree::new());
   static HINTS: Cell<RenderHints> = const { Cell::new(RenderHints::DEFAULT) };
   static MEDIA: RefCell<Option<MediaState>> = const { RefCell::new(None) };
+  static PREEMPT_SCHEME: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Runs `operation` on the tree.
@@ -954,6 +962,36 @@ impl Driver for Web {
   }
 }
 
+/// Marks the page as one whose reader may choose a scheme, so its head carries the
+/// blocking script applying the stored choice before the first paint; the choice
+/// itself is the reader's and never known to a server.
+pub fn set_scheme(_scheme: Option<ColorScheme>) {
+  PREEMPT_SCHEME.with(|preempt| preempt.set(true));
+}
+
+/// The color scheme the reader chose on a previous visit; never known to a server.
+#[inline(always)]
+#[must_use]
+pub const fn stored_scheme() -> Option<ColorScheme> {
+  None
+}
+
+/// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
+/// handlers are the scene's, returned detached.
+pub fn create_link(href: &str) -> NodeId {
+  let sink = with_tree(|tree| {
+    let index = tree.element("a");
+
+    if let Some(node) = tree.node(index) {
+      node.set_attribute("href", href);
+    }
+
+    index
+  });
+
+  Scene::<Web>::with(|scene| scene.create(NodeKind::Box, sink))
+}
+
 /// Sets the document title, serialized into the page head.
 pub fn set_document_title(title: &str) {
   with_tree(|tree| tree.title = Some(title.to_owned()));
@@ -1039,6 +1077,7 @@ where
 {
   TREE.with(|tree| *tree.borrow_mut() = Tree::new());
   Scene::<Web>::with(|scene| *scene = Scene::new());
+  PREEMPT_SCHEME.with(|preempt| preempt.set(false));
   crate::ssr::reset_hydration_sources();
 
   let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));

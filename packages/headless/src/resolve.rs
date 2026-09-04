@@ -163,7 +163,7 @@ impl Env {
       Some(Self {
         node,
         viewport: store.viewport.unwrap_or(DEFAULT_VIEWPORT),
-        scheme: store.scheme.unwrap_or(ColorScheme::Light),
+        scheme: store.scheme_in_force(),
         reduced_motion: store.reduced_motion.unwrap_or(false),
         hovered: record.hovered,
         focused: store.focused == Some(focus_holder),

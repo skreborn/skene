@@ -39,7 +39,10 @@ use crate::{AccessProp, Color, FocusOrder, Placement, Size};
 )]
 pub trait Driver: Copy + Default + 'static {
   /// The platform handle a node owns: an element, a layout id, a record.
-  type Sink: 'static;
+  ///
+  /// Cloned out of the scene before the driver is called with it, so a driver call
+  /// never runs under the scene's borrow and may reach the scene itself.
+  type Sink: Clone + 'static;
   /// The unit lengths are measured in.
   type Scalar: Scalar;
   /// The properties only this medium has.

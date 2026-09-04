@@ -138,6 +138,7 @@ pub struct Store {
   pub container_sizes: FxHashMap<ContainerName, Size<f32>>,
   pub viewport: Option<Size<f32>>,
   pub scheme: Option<ColorScheme>,
+  pub chosen_scheme: Option<ColorScheme>,
   pub reduced_motion: Option<bool>,
   media: Option<MediaState>,
 }
@@ -153,6 +154,7 @@ impl Default for Store {
       container_sizes: FxHashMap::default(),
       viewport: None,
       scheme: None,
+      chosen_scheme: None,
       reduced_motion: None,
       media: None,
     }
@@ -222,10 +224,19 @@ impl Store {
     }
   }
 
+  /// The color scheme in force: the app's choice, else the platform's.
+  #[inline(always)]
+  pub fn scheme_in_force(&self) -> ColorScheme {
+    self
+      .chosen_scheme
+      .or(self.scheme)
+      .unwrap_or(ColorScheme::Light)
+  }
+
   /// The environment's signals, created on first use under a root owner of their own.
   pub fn media(&mut self) -> &MediaState {
     let viewport = self.viewport.unwrap_or(DEFAULT_VIEWPORT);
-    let scheme = self.scheme.unwrap_or(ColorScheme::Light);
+    let scheme = self.scheme_in_force();
     let reduced_motion = self.reduced_motion.unwrap_or(false);
 
     self.media.get_or_insert_with(|| {

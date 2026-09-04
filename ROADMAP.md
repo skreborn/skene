@@ -1163,9 +1163,11 @@ wrappers (annotating before creation), `Text`/`Span`/`RichText`, `Overlay`,
 `Children` as segments with a sealed kind; `derive_child` on `derived`; `Show`/`Switch`
 attach and detach pre-built branches. Both facades reduced to scalar, leaves,
 extension, `Typography`, `media` and aliases; `skene-record` deleted.
-Re-cut after R2: a facade can only rewire once its driver implements `Driver`, so R3
-completes `skene-views` against the headless driver, R4 rewires the GUI facade with the
-web driver, and R5 the terminal facade with its own.
+Re-cut after R2: a facade can only rewire once its driver implements `Driver` and once
+the controls its examples use exist, so R3 completes `skene-views` against the headless
+driver, R6 (controls, also on the headless driver) runs next, then R4 rewires the GUI
+facade with the web driver and R5 the terminal facade with its own. **R3 landed** apart
+from `Overlay`, `LazyColumn` and `Deferred`, which wait for the drivers.
 **Gate:** every built-in view exists once in `skene-views` with a headless test per view;
 a `Suspense` swap preserves a signal inside its content; `Show`/`Switch` keep a branch's
 state; wrapper annotations land on the content of a derived subtree; a token set used

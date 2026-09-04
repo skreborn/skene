@@ -1185,9 +1185,20 @@ content-addressed class names (a 128-bit hash, no probe, interning-order emissio
 both leaves; the old snapshot re-baselined once, names and order only), root delegation
 routed through core's dispatch, hydration of the new tree with the server's stylesheet
 adopted rather than duplicated, the reader-got-there-first value carry, `matchMedia`
-signals, and browser and wasi tests for each. **Open:** client-hint intake, a style delta
-per streamed chunk, scroll and focus restoration, and the GUI facade's rewire, which
-waits for overlays, the picker and the lazy column (R6c). **Caveat to revisit:** on the
+signals, and browser and wasi tests for each. **Also landed:** the GUI facade rewired
+onto `skene-views` (aliases over `ActiveDriver`, `Typography`, `media`, the satellites
+ported, the counter, gallery and theme examples on all three targets, the old views and
+`simple-views` feature deleted, `skene-record` dropped as a dependency), and the scene
+no longer calls a driver under its own borrow (mirrors run after release; the browser
+re-delivers an event that arrives mid-borrow). **Also landed:** the old `packages/gui/tests/web_*.rs` binaries
+ported to the new facade (the `Enhanced`/`Web*` and transitional-derived tests deleted
+with their subjects, the snapshot re-baselined once), streaming on the new tree
+(`Deferred` registers its segment as a boundary, the walk pauses at its start anchor,
+and every chunk opens with a `<style>` delta for the classes interned since the previous
+flush, which hydration adopts with the head's block), server markers counting elements
+in creation order as the browser does, and a stack placing its children in its one cell
+on the web. **Open:** client-hint intake; scroll and focus restoration; deleting the old
+`skene-web` vocabulary and `skene-record` once nothing builds on them. **Caveat to revisit:** on the
 web a click on a native checkbox or radio is not dispatched as a click at all (the
 platform toggles and `change` reports it, so one press is one flip), which means a
 `handle_click` observer on a web toggle never fires; the headless driver dispatches it.

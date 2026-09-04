@@ -1177,7 +1177,21 @@ galleries unchanged beyond the theming renames; a third-party crate under `examp
 with a component library generic over `D`, a web view bound on `WebDom` and a terminal
 view bound on `CellPainter`) move to the end of R5.
 
-### R4—Web driver
+### R4—Web driver (in flight)
+
+**Landed:** the shared compiler for the new model (`skene_web::next::compile`), the
+server and browser leaves' `Driver` impls over one record per node beside the scene,
+content-addressed class names (a 128-bit hash, no probe, interning-order emission on
+both leaves; the old snapshot re-baselined once, names and order only), root delegation
+routed through core's dispatch, hydration of the new tree with the server's stylesheet
+adopted rather than duplicated, the reader-got-there-first value carry, `matchMedia`
+signals, and browser and wasi tests for each. **Open:** client-hint intake, a style delta
+per streamed chunk, scroll and focus restoration, and the GUI facade's rewire, which
+waits for overlays, the picker and the lazy column (R6c). **Caveat to revisit:** on the
+web a click on a native checkbox or radio is not dispatched as a click at all (the
+platform toggles and `change` reports it, so one press is one flip), which means a
+`handle_click` observer on a web toggle never fires; the headless driver dispatches it.
+Either dispatch an observe-only pass on the web or document the divergence.
 
 The `Driver` impl over one node record for both leaves; content-addressed naming with a
 wide hash and interning-order emission on both leaves; a class cache keyed by the props

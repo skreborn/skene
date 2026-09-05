@@ -7,6 +7,7 @@ use skene_core::{
   AnyKind,
   AnyView,
   Color,
+  Definition,
   Dimension,
   Driver,
   HasChildren,
@@ -19,12 +20,21 @@ use skene_core::{
   View,
   When,
 };
-use skene_reactive::Signal;
-use skene_views::{Container, CornerRadius, RadioMember, RawRadio, RawRadioGroup, Roving};
+use skene_reactive::{Get, Signal, use_context};
+use skene_views::{
+  Container,
+  CornerRadius,
+  RadioMember,
+  RawRadio,
+  RawRadioGroup,
+  Roving,
+  RovingGroup,
+  Text,
+};
 
 use super::{
   SimplePalette,
-  shape::{ROUND, SimpleUnit, border, define_defaults, shape},
+  shape::{Marks, ROUND, SimpleUnit, border, define_defaults, glyphs, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -168,39 +178,35 @@ impl<D: Driver> View<D> for SimpleRadio<D>
 where
   D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
+  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
-    let shape = shape::<D>();
-    let dot = Container::<D>::new()
-      .set_width(Dimension::Length(shape.dot_size))
-      .set_height(Dimension::Length(shape.dot_size))
-      .set_corner_radius(ROUND / 2.)
-      .set_color(
-        Color::TRANSPARENT.when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
-      );
-    let ring = Container::<D>::new()
-      .set_width(Dimension::Length(shape.mark_size))
-      .set_height(Dimension::Length(shape.mark_size))
-      .set_color(shape.mark_surface)
-      .set_border(
-        border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
-          .when(
-            State::Checked,
-            border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
-          )
-          .when(
-            State::FocusVisible,
-            border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
-          ),
-      )
-      .set_corner_radius(ROUND)
-      .set_alignment(Alignment::CENTER)
-      .set_child(dot);
+    let mark: AnyView<D> = match D::Scalar::MARKS {
+      Marks::Drawn => drawn_mark::<D>().into_view(),
+      Marks::Glyph => {
+        let glyphs = glyphs::<D>();
+        let group = use_context::<RovingGroup>();
+        let value = self.member.value().to_owned();
+
+        Text::<D>::derive(move || {
+          let checked = group
+            .as_ref()
+            .is_some_and(|group| group.chosen().as_deref() == Some(value.as_str()));
+
+          glyphs.get().radio(checked)
+        })
+        .set_color(
+          SimplePalette::<D::Scalar>::FOREGROUND
+            .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
+        )
+        .into_view()
+      }
+    };
     let mut control = RawRadio::new(self.member)
       .set_cursor(MouseCursor::Click)
-      .set_part(Part::Mark, ring);
+      .set_part(Part::Mark, mark);
 
     if let Some(label) = self.label {
       control = control.set_label(label);
@@ -208,4 +214,40 @@ where
 
     control.build()
   }
+}
+
+/// The drawn mark: a ring on the card surface holding a dot that fills with the primary
+/// surface while checked, ringing while focused.
+fn drawn_mark<D: Driver>() -> Container<D>
+where
+  D::Scalar: SimpleUnit,
+  D::StyleExt: CornerRadius,
+{
+  let shape = shape::<D>();
+  let dot = Container::<D>::new()
+    .set_width(Dimension::Length(shape.dot_size))
+    .set_height(Dimension::Length(shape.dot_size))
+    .set_corner_radius(ROUND / 2.)
+    .set_color(
+      Color::TRANSPARENT.when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+    );
+
+  Container::<D>::new()
+    .set_width(Dimension::Length(shape.mark_size))
+    .set_height(Dimension::Length(shape.mark_size))
+    .set_color(shape.mark_surface)
+    .set_border(
+      border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
+        .when(
+          State::Checked,
+          border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+        )
+        .when(
+          State::FocusVisible,
+          border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
+        ),
+    )
+    .set_corner_radius(ROUND)
+    .set_alignment(Alignment::CENTER)
+    .set_child(dot)
 }

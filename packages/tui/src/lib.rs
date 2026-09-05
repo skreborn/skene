@@ -29,7 +29,6 @@ mod driver;
 mod ext;
 mod field;
 mod frame;
-mod glyphs;
 mod interaction;
 mod layout;
 mod motion;
@@ -124,7 +123,6 @@ pub use crate::{
     TerminalValue,
     terminal_fields,
   },
-  glyphs::Glyphs,
   media::{derive_scheme, set_scheme, stored_scheme},
   routing::install_router,
   store::Handle,
@@ -162,16 +160,18 @@ pub type ActiveDriver = Tui;
 
 /// The named glyph tokens; see [`Glyphs`].
 pub mod glyph {
-  pub use crate::glyphs::{
+  pub use skene_views::glyphs::{
     CHECKBOX_CHECKED,
     CHECKBOX_UNCHECKED,
     PICKER_INDICATOR,
     RADIO_CHECKED,
     RADIO_UNCHECKED,
-    SLIDER_THUMB,
-    SLIDER_TRACK,
   };
 }
+
+/// The glyphs the terminal's checkbox and radio marks and picker indicator are drawn
+/// with; see [`skene_views::Glyphs`].
+pub type Glyphs = skene_views::Glyphs<u32>;
 
 /// A view on the active driver; see [`skene_core::View`].
 pub trait View: skene_core::View<ActiveDriver> {

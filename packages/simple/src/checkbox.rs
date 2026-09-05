@@ -5,9 +5,12 @@ use std::marker::PhantomData;
 use skene_core::{
   Alignment,
   AnyKind,
+  AnyView,
+  Definition,
   Dimension,
   Driver,
   HasChildren,
+  IntoView,
   MouseCursor,
   NodeId,
   Part,
@@ -15,12 +18,12 @@ use skene_core::{
   View,
   When,
 };
-use skene_reactive::Signal;
+use skene_reactive::{Get, Signal};
 use skene_views::{Container, CornerRadius, RawCheckbox, Text, Toggle};
 
 use super::{
   SimplePalette,
-  shape::{MARK_RADIUS, SimpleUnit, border, define_defaults, shape},
+  shape::{MARK_RADIUS, Marks, SimpleUnit, border, define_defaults, glyphs, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -101,39 +104,25 @@ impl<D: Driver> View<D> for SimpleCheckbox<D>
 where
   D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
+  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
-    let shape = shape::<D>();
-    let mark = Container::<D>::new()
-      .set_width(Dimension::Length(shape.mark_size))
-      .set_height(Dimension::Length(shape.mark_size))
-      .set_color(
-        shape
-          .mark_surface
-          .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
-      )
-      .set_border(
-        border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
-          .when(
-            State::Checked,
-            border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+    let mark: AnyView<D> = match D::Scalar::MARKS {
+      Marks::Drawn => drawn_mark::<D>().into_view(),
+      Marks::Glyph => {
+        let glyphs = glyphs::<D>();
+        let checked = self.toggle.reads_checked();
+
+        Text::<D>::derive(move || glyphs.get().checkbox(checked()))
+          .set_color(
+            SimplePalette::<D::Scalar>::FOREGROUND
+              .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
           )
-          .when(
-            State::FocusVisible,
-            border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
-          ),
-      )
-      .set_corner_radius(MARK_RADIUS)
-      .set_alignment(Alignment::CENTER)
-      // An unchecked mark's check is inked in the mark's own surface, so it hides on
-      // every medium.
-      .set_child(Text::new("✓").set_color(
-        shape
-          .mark_surface
-          .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
-      ));
+          .into_view()
+      }
+    };
     let mut control = RawCheckbox::new(self.toggle)
       .set_cursor(MouseCursor::Click)
       .set_part(Part::Mark, mark);
@@ -144,4 +133,44 @@ where
 
     control.build()
   }
+}
+
+/// The drawn mark: a rounded box on the card surface that fills with the primary
+/// surface while checked and rings while focused; its check is inked in the mark's own
+/// surface until checked, so it hides on every medium.
+fn drawn_mark<D: Driver>() -> Container<D>
+where
+  D::Scalar: SimpleUnit,
+  D::StyleExt: CornerRadius,
+{
+  let shape = shape::<D>();
+
+  Container::<D>::new()
+    .set_width(Dimension::Length(shape.mark_size))
+    .set_height(Dimension::Length(shape.mark_size))
+    .set_color(
+      shape
+        .mark_surface
+        .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+    )
+    .set_border(
+      border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
+        .when(
+          State::Checked,
+          border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+        )
+        .when(
+          State::FocusVisible,
+          border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
+        ),
+    )
+    .set_corner_radius(MARK_RADIUS)
+    .set_alignment(Alignment::CENTER)
+    .set_child(
+      Text::new("✓").set_color(
+        shape
+          .mark_surface
+          .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
+      ),
+    )
 }

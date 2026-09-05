@@ -101,8 +101,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
   - `packages/web/src/csr/media.rs` carries one pre-existing `single_match_else` clippy
     warning; the workspace is otherwise clippy-clean.
 - **Terminal**
-  - `Glyphs` is a token set with no consumer yet: the composed controls draw their marks
-    through the Simple shape, not through the glyph tokens.
   - Keyframe token leaves resolve every frame rather than once per generation.
   - Selection and clipboard inside a text input: the source-anchored selection model
     extended over an input's value (drag, shift-arrows, double and triple click,

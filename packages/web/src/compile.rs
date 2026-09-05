@@ -803,7 +803,13 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
     WebTokenValue::Dimension(definition) => {
       leaf(definition, position, Declarations::render_dimension)
     }
+    WebTokenValue::Text(definition) => leaf(definition, position, |text| render_string(&text)),
   }
+}
+
+/// A CSS string literal holding `text`.
+fn render_string(text: &str) -> String {
+  format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 /// The media conditions of a definition's variants, in order.
@@ -820,6 +826,11 @@ fn definition_conditions(value: &WebTokenValue) -> Vec<skene_core::Media<f32>> {
       .map(|(media, _)| media.clone())
       .collect(),
     WebTokenValue::Dimension(definition) => definition
+      .variants()
+      .iter()
+      .map(|(media, _)| media.clone())
+      .collect(),
+    WebTokenValue::Text(definition) => definition
       .variants()
       .iter()
       .map(|(media, _)| media.clone())

@@ -78,7 +78,7 @@ fn mouse_click_hits_and_focuses() {
 }
 
 /// A checkbox toggles by `Space` and by mouse click, both directions of the binding,
-/// and its mark repaints in the checked surface.
+/// and its mark repaints as the checked glyph.
 #[test]
 fn checkbox_toggles_by_key_and_click() {
   with_driver(|| {
@@ -86,18 +86,18 @@ fn checkbox_toggles_by_key_and_click() {
 
     let _ = tui::mount(|| SimpleCheckbox::new().bind_checked(on).into_any().build());
 
-    let unchecked = colors_at(6, 1, 0, 0).1;
+    assert!(tui::render_to_text(6, 1).contains("[ ]"));
 
     tui::trigger_key("Tab");
     tui::trigger_key(" ");
 
     assert!(on.get_untracked());
-    assert_ne!(colors_at(6, 1, 0, 0).1, unchecked);
+    assert!(tui::render_to_text(6, 1).contains("[x]"));
 
     tui::trigger_mouse_click(0, 0);
 
     assert!(!on.get_untracked());
-    assert_eq!(colors_at(6, 1, 0, 0).1, unchecked);
+    assert!(tui::render_to_text(6, 1).contains("[ ]"));
   });
 }
 
@@ -149,21 +149,32 @@ fn radio_group_moves_the_check() {
         .into_any()
         .build()
     });
-    let frame = tui::render_to_text(6, 3);
+    let frame = tui::render_to_text(8, 3);
     let (_, row_a) = locate(&frame, "a");
     let (_, row_c) = locate(&frame, "c");
-    let mark = |row: u16| colors_at(6, 3, 0, usize::from(row)).1;
-    let (chosen, plain) = (mark(row_a), mark(row_c));
+    let line = |frame: &str, row: u16| frame.lines().nth(usize::from(row)).unwrap().to_owned();
 
-    assert_ne!(chosen, plain, "the chosen mark fills");
+    assert!(
+      line(&frame, row_a).contains("(x)"),
+      "the chosen mark: {frame}"
+    );
+    assert!(line(&frame, row_c).contains("( )"), "a plain mark: {frame}");
 
     tui::trigger_key("Tab");
     tui::trigger_key("ArrowDown");
     tui::trigger_key("ArrowDown");
 
+    let frame = tui::render_to_text(8, 3);
+
     assert_eq!(choice.get_untracked().as_deref(), Some("c"));
-    assert_eq!(mark(row_c), chosen);
-    assert_eq!(mark(row_a), plain);
+    assert!(
+      line(&frame, row_c).contains("(x)"),
+      "the check moved: {frame}"
+    );
+    assert!(
+      line(&frame, row_a).contains("( )"),
+      "the check left: {frame}"
+    );
   });
 }
 
@@ -617,17 +628,53 @@ fn a_container_frames_a_checkbox_mark() {
     let _ = tui::mount(|| {
       Container::new()
         .set_border(Border::new(1, white()))
-        .set_width(3)
+        .set_width(5)
         .set_height(3)
         .set_child(SimpleCheckbox::new().set_checked(true))
         .into_any()
         .build()
     });
 
-    let frame = tui::render_to_text(5, 3);
+    let frame = tui::render_to_text(7, 3);
 
     assert!(frame.contains('┌'), "{frame}");
-    assert!(frame.contains('✓'), "{frame}");
-    assert!(colors_at(5, 3, 1, 1).1.is_some(), "the mark fills its cell");
+    assert!(
+      frame.contains("│[x]│"),
+      "the mark paints inside the frame: {frame}"
+    );
+  });
+}
+
+/// A theme defining the glyph set re-inks the marks beneath it: the checkbox and radio
+/// marks and the picker's indicator are its glyphs.
+#[test]
+fn a_themed_glyph_set_draws_the_marks() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      Theme::new(
+        Glyphs::default()
+          .set_checkbox("\u{2611}", "\u{2610}")
+          .set_radio("\u{25c9}", "\u{25cb}"),
+      )
+      .set_child_builder(|| {
+        Column::new().set_children((
+          SimpleCheckbox::new().set_checked(true).set_label("agree"),
+          SimpleRadioGroup::new()
+            .set_chosen("a")
+            .set_child(Column::new().set_children((
+              SimpleRadio::new("a").set_label("a"),
+              SimpleRadio::new("b").set_label("b"),
+            ))),
+        ))
+      })
+      .into_any()
+      .build()
+    });
+
+    let frame = tui::render_to_text(12, 3);
+
+    assert!(frame.contains("\u{2611} agree"), "{frame}");
+    assert!(frame.contains("\u{25c9} a"), "{frame}");
+    assert!(frame.contains("\u{25cb} b"), "{frame}");
   });
 }

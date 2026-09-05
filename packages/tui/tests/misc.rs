@@ -132,12 +132,15 @@ fn simple_controls_take_the_cell_shape() {
     );
     assert_eq!(
       (agree_column, agree_row),
-      (2, 4),
-      "a mark, a gap, the label: {frame}"
+      (4, 4),
+      "a glyph mark, a gap, the label: {frame}"
     );
     assert!(
-      colors_at(20, 8, 0, 4).1.is_some(),
-      "the mark fills its cell"
+      frame
+        .lines()
+        .nth(4)
+        .is_some_and(|line| line.starts_with("[ ] agree")),
+      "the mark is the unchecked glyph: {frame}"
     );
   });
 }

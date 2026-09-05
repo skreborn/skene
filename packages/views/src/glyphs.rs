@@ -1,8 +1,6 @@
-//! The glyphs terminal controls draw with, as a token set.
+//! The glyphs a medium that draws with characters shows its marks as, as a token set.
 
-use skene_core::{TokenName, TokenRef, TokenSet};
-
-use crate::{Definition, Token};
+use skene_core::{Definition, Scalar, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
 
 /// A checkbox's checked mark.
 pub const CHECKBOX_CHECKED: TokenRef<String> = TokenRef::new("glyph-checkbox-checked");
@@ -19,38 +17,29 @@ pub const RADIO_UNCHECKED: TokenRef<String> = TokenRef::new("glyph-radio-uncheck
 /// The indicator after a picker's chosen label.
 pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("glyph-picker-indicator");
 
-/// A slider's track.
-pub const SLIDER_TRACK: TokenRef<String> = TokenRef::new("glyph-slider-track");
-
-/// A slider's thumb.
-pub const SLIDER_THUMB: TokenRef<String> = TokenRef::new("glyph-slider-thumb");
-
-/// The glyphs terminal controls draw with: a token set a theme defines beneath it, and
-/// a terminal-aware view reads through [`ThemedIn`](crate::ThemedIn).
+/// The glyphs a control's marks are drawn with where the medium draws with characters:
+/// a token set a theme defines beneath it, over the facade's scalar `N`.
 ///
-/// Every default is one cell per character in every terminal. Box-symbol marks (`☑`,
-/// `◉`) render two cells wide in some emulators; a theme opting into them takes that
-/// on itself.
+/// The terminal's checkbox and radio marks and its picker indicator are these glyphs; a
+/// pixel medium draws its marks and defines the set to no effect. Every default is one
+/// cell per character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells
+/// wide in some emulators; a theme opting into them takes that on itself.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
-pub struct Glyphs {
+pub struct Glyphs<N: Scalar> {
   /// A checkbox's checked mark.
-  pub checkbox_checked: Token<String>,
+  pub checkbox_checked: Token<String, N>,
   /// A checkbox's unchecked mark.
-  pub checkbox_unchecked: Token<String>,
+  pub checkbox_unchecked: Token<String, N>,
   /// A radio's checked mark.
-  pub radio_checked: Token<String>,
+  pub radio_checked: Token<String, N>,
   /// A radio's unchecked mark.
-  pub radio_unchecked: Token<String>,
+  pub radio_unchecked: Token<String, N>,
   /// The indicator after a picker's chosen label.
-  pub picker_indicator: Token<String>,
-  /// A slider's track.
-  pub slider_track: Token<String>,
-  /// A slider's thumb.
-  pub slider_thumb: Token<String>,
+  pub picker_indicator: Token<String, N>,
 }
 
-impl Glyphs {
+impl<N: Scalar> Glyphs<N> {
   /// Sets the checked and unchecked marks of a checkbox.
   #[inline(always)]
   pub fn set_checkbox(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
@@ -77,19 +66,49 @@ impl Glyphs {
     self
   }
 
-  /// Sets the track and thumb of a slider.
+  /// The checkbox mark for `checked`.
   #[inline(always)]
-  pub fn set_slider(mut self, track: impl Into<String>, thumb: impl Into<String>) -> Self {
-    self.slider_track = self.slider_track.redefine(track.into());
-    self.slider_thumb = self.slider_thumb.redefine(thumb.into());
+  #[must_use]
+  pub fn checkbox(&self, checked: bool) -> String {
+    if checked {
+      glyph(self.checkbox_checked.definition())
+    }
+    else {
+      glyph(self.checkbox_unchecked.definition())
+    }
+  }
 
-    self
+  /// The radio mark for `checked`.
+  #[inline(always)]
+  #[must_use]
+  pub fn radio(&self, checked: bool) -> String {
+    if checked {
+      glyph(self.radio_checked.definition())
+    }
+    else {
+      glyph(self.radio_unchecked.definition())
+    }
+  }
+
+  /// The indicator after a picker's chosen label.
+  #[inline(always)]
+  #[must_use]
+  pub fn indicator(&self) -> String {
+    glyph(self.picker_indicator.definition())
   }
 }
 
-impl Default for Glyphs {
-  /// `[x]`/`[ ]` for a checkbox, `(x)`/`( )` for a radio, `▾` for the picker indicator,
-  /// and `█`/`█` for a slider.
+/// The glyph a definition fixes; the setters admit nothing else.
+fn glyph<N: Scalar>(definition: &Definition<String, N>) -> String {
+  match definition.base() {
+    StaticLeaf::Fixed(glyph) => glyph.clone(),
+    StaticLeaf::Token(_) | StaticLeaf::Expr(_) => String::new(),
+  }
+}
+
+impl<N: Scalar> Default for Glyphs<N> {
+  /// `[x]`/`[ ]` for a checkbox, `(x)`/`( )` for a radio and `▾` for the picker
+  /// indicator.
   fn default() -> Self {
     let define = |reference: TokenRef<String>, glyph: &str| {
       Token::new(reference.name().as_str(), glyph.to_owned())
@@ -101,13 +120,11 @@ impl Default for Glyphs {
       radio_checked: define(RADIO_CHECKED, "(x)"),
       radio_unchecked: define(RADIO_UNCHECKED, "( )"),
       picker_indicator: define(PICKER_INDICATOR, "\u{25be}"),
-      slider_track: define(SLIDER_TRACK, "\u{2588}"),
-      slider_thumb: define(SLIDER_THUMB, "\u{2588}"),
     }
   }
 }
 
-impl<V: From<Definition<String>> + 'static> TokenSet<V> for Glyphs {
+impl<N: Scalar, V: From<Definition<String, N>> + 'static> TokenSet<V> for Glyphs<N> {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![
       self.checkbox_checked.define(),
@@ -115,8 +132,6 @@ impl<V: From<Definition<String>> + 'static> TokenSet<V> for Glyphs {
       self.radio_checked.define(),
       self.radio_unchecked.define(),
       self.picker_indicator.define(),
-      self.slider_track.define(),
-      self.slider_thumb.define(),
     ]
   }
 }

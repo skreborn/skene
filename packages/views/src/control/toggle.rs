@@ -36,6 +36,13 @@ impl Toggle {
     Self::default()
   }
 
+  /// The closure the checked state is read through; `false` with none set.
+  #[inline(always)]
+  #[must_use]
+  pub fn reads_checked(&self) -> Rc<dyn Fn() -> bool> {
+    self.checked.clone().unwrap_or_else(|| Rc::new(|| false))
+  }
+
   /// Sets the checked state.
   #[inline(always)]
   pub fn set_checked(mut self, checked: bool) -> Self {

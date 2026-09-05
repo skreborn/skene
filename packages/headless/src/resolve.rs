@@ -263,6 +263,7 @@ impl Env {
       HeadlessTokenValue::Dimension(definition) => {
         self.static_leaf(self.winning_media(&definition), depth)
       }
+      HeadlessTokenValue::Text(_) => None,
     }
   }
 

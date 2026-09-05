@@ -223,7 +223,9 @@
   `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves against the enclosing
   control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`, `Fill`,
   `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling targets a control
-  exposes; in the terminal a part maps to a glyph token. On the web a control that owns
+  exposes; in the terminal the checkbox and radio `Mark` and the picker's indicator are
+  glyphs from the `Glyphs` token set, and the slider's track, fill and thumb are boxes
+  there as everywhere. On the web a control that owns
   a native input keeps it as its scriptless form—checkbox, radio, slider and the text
   fields need no swap after hydration—and the picker keeps a swap that carries the
   reader's value. The terminal's controls are composed trees painted by the same box

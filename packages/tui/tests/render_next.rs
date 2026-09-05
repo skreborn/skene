@@ -162,8 +162,8 @@ fn a_button_click_does_not_reach_the_container_around_it() {
   });
 }
 
-/// `Space` on a focused checkbox flips the bound signal, and the mark repaints in the
-/// checked surface.
+/// `Space` on a focused checkbox flips the bound signal, and the mark repaints as the
+/// checked glyph.
 #[test]
 fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
   with_driver(|| {
@@ -180,13 +180,13 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
         .build()
     });
 
-    let before = colors_at(20, 5, 0, 0).1;
+    assert!(tui::render_to_text(20, 5).starts_with("[ ] agree"));
 
     tui::trigger_key("Tab");
     tui::trigger_key(" ");
 
     assert!(agreed.get());
-    assert_ne!(colors_at(20, 5, 0, 0).1, before);
+    assert!(tui::render_to_text(20, 5).starts_with("[x] agree"));
   });
 }
 

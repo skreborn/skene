@@ -296,6 +296,11 @@ impl<D: Driver> Behavior<D> for ListItem {
       "Home" => group.step_from::<D>(&self.value, isize::MIN),
       "End" => group.step_from::<D>(&self.value, isize::MAX),
       "Enter" | " " => group.choose(self.value.clone()),
+      "Tab" => {
+        group.choose(self.value.clone());
+
+        return Prevent::None;
+      }
       _ => return Prevent::None,
     }
 

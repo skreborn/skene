@@ -72,8 +72,9 @@ Each is fixed where its mechanism now lives:
 Follow-ups the redesign noted and left; none blocks a release, each is scoped.
 
 - **Spine and views**
-  - The picker has no `Tab` commit and no type-ahead. Type-ahead needs a timer to reset
-    its buffer, and timers are userland; the terminal's picker lacks both as well.
+  - The picker has no type-ahead. Type-ahead needs a timer to reset its buffer, timers
+    are userland, and no driver exposes a clock to a behavior; the terminal's picker
+    lacks it as well. `Tab` commits the focused option on both.
   - `Property::Border` transitions the width and the ink together with one timing; the
     terminal draws any width as one cell, so only the ink is visible there.
   - `ErrorBoundary` stays on probation: it exists only for errors with no render site

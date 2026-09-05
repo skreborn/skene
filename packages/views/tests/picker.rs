@@ -340,3 +340,27 @@ fn the_face_reports_its_popup_and_the_list_it_controls() {
 
   owner.dispose();
 }
+
+/// `Tab` on a focused option commits it and lets focus travel on: the value follows,
+/// the list closes, and the key is left to the platform.
+#[test]
+fn tab_on_an_option_commits_it_and_closes_the_list() {
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("a".to_owned());
+  let parts = picker(owner, value);
+
+  let _ = trigger_key_down(parts.face, &key("ArrowDown"));
+
+  assert!(is_open(parts.overlay));
+
+  let _ = trigger_key_down(parts.options[0], &key("ArrowDown"));
+  let verdict = trigger_key_down(parts.options[1], &key("Tab"));
+
+  assert!(!verdict.platform, "Tab travels on");
+  assert_eq!(value.get(), "b");
+  assert!(!is_open(parts.overlay));
+
+  owner.dispose();
+}

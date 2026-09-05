@@ -5,8 +5,9 @@
 //! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view and every `Simple*` view
 //! to it, so app code names no platform. The medium's own contribution is
 //! [`Typography`], [`Glyphs`], the [`media`] module, the terminal's decoration
-//! ([`TerminalDecoration`], [`TerminalText`]) and the entry points: [`launch`] in a
-//! terminal, [`render_to_text`] for a headless test.
+//! ([`TerminalDecoration`], [`TerminalText`]), the escape trait a low-level view is
+//! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
+//! [`launch`] in a terminal, [`render_to_text`] for a headless test.
 //!
 //! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
 //! to the layout tree only on change; frames paint into a cell buffer. Interaction
@@ -21,6 +22,7 @@
 pub mod media;
 pub mod prelude;
 
+mod cells;
 mod detect;
 #[cfg(feature = "snapshot")]
 mod dev;
@@ -136,6 +138,7 @@ pub use crate::terminal::{
   trigger_resize,
 };
 pub use crate::{
+  cells::{CellPainter, Cells},
   driver::{Tui, handle, install, mount},
   ext::{
     BOLD_WEIGHT,

@@ -38,6 +38,7 @@ mod fingerprint;
 mod leaf;
 mod motion;
 mod node;
+mod painting;
 mod pixel;
 mod property;
 mod props;
@@ -77,6 +78,7 @@ pub use control::{ControlKind, ControlProps, ControlState, Part, Ring, SliderRan
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,
+  dispatch_click_observed,
   dispatch_key_down,
   dispatch_pointer_down,
   dispatch_pointer_move,
@@ -122,6 +124,7 @@ pub use leaf::{
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition};
 pub use node::NodeId;
+pub use painting::{Canvas, Painter, Painting};
 pub use pixel::{PixelBoxFields, PixelExt, PixelProperty, PixelRunFields, pixel_fields};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{

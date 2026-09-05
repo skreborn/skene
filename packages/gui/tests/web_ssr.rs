@@ -668,6 +668,41 @@ fn a_widget_role_and_state_serialize_as_aria() {
   );
 }
 
+/// A render given a dark scheme hint answers a derived leaf with its dark value.
+#[test]
+fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
+  use skene_gui::{core::ColorScheme, reactive::Get};
+
+  let black = Color::srgb(0., 0., 0.);
+  let white = Color::srgb(1., 1., 1.);
+
+  web::set_render_hints(web::RenderHints::from_headers([(
+    "Sec-CH-Prefers-Color-Scheme",
+    "dark",
+  )]));
+
+  let page = render_to_string(move || {
+    Container::new().derive_color(move || {
+      if skene_gui::media::scheme().get() == ColorScheme::Dark {
+        black
+      }
+      else {
+        white
+      }
+    })
+  });
+
+  web::set_render_hints(web::RenderHints::DEFAULT);
+
+  assert!(
+    page
+      .body()
+      .contains(&format!("style=\"--skene-color:{};\"", css(black))),
+    "the dark value is the slot's serialized value: {}",
+    page.body(),
+  );
+}
+
 /// A page whose reader may have chosen a scheme carries the script that applies that
 /// choice before the first paint—inline and blocking in the head, since a deferred one
 /// would run after the page had already been painted in the platform's scheme.

@@ -12,9 +12,11 @@
 //! twins, `is_server`), the document head, the path (the browser's history, the
 //! server's request) and, in the browser, `claim_lazy` and `discard_lazy`.
 //!
-//! [`Declarations`] is the raw CSS a low-level view written against the web passes
-//! through; the browser leaf's `element` and `document` handles do not exist on the
-//! server leaf, so DOM-reaching code fails to compile there.
+//! A low-level view states an escape trait as its bound: [`WebMarkup`] (an element,
+//! its attributes, raw [`Declarations`] and text) is implemented on both leaves, and
+//! `WebDom` (the live element and document) on the browser leaf alone, so
+//! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
+//! environment a server render answers with, parsed from a request's client hints.
 
 // The compiler is consumed by the leaves, which only compile on wasm targets.
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
@@ -23,7 +25,9 @@ mod condition;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod csr;
 mod declarations;
+mod escape;
 mod expr;
+mod hints;
 mod hydration;
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
 mod interner;
@@ -63,6 +67,8 @@ pub use self::csr::{
   stored_scheme,
   watch_media,
 };
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub use self::escape::WebDom;
 #[cfg(target_arch = "wasm32")]
 pub use self::hydration::{
   adopt_next,
@@ -73,7 +79,6 @@ pub use self::hydration::{
 };
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub use self::ssr::{
-  RenderHints,
   Rendered,
   StreamPiece,
   add_head_element,
@@ -97,6 +102,8 @@ pub use self::ssr::{
 pub use self::{
   condition::{CONTROL_ATTRIBUTE, SCHEME_ATTRIBUTE},
   declarations::Declarations,
+  escape::WebMarkup,
+  hints::RenderHints,
   hydration::{HydrationSource, STATE_SCRIPT_ID},
   token::WebTokenValue,
 };

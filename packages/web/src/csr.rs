@@ -7,7 +7,13 @@
 //! element carrying a control's state, the classes and slots the node was compiled to,
 //! and what it listens for; the scene alone holds structure. Elements are the same
 //! choices the server leaf makes, so a served page adopts by its creation-order
-//! markers and its anchor comments without a rebuild.
+//! markers and its anchor comments without a rebuild, keeping the scroll offsets and
+//! the focus the reader gave it before the bundle arrived.
+//!
+//! Content leaving a segment (a `derived` rebuild, a lazy placeholder discarded)
+//! leaves its scroll offsets and focus behind on the segment's end anchor, whose node
+//! id is stable across the rebuild; the content that next enters the segment with the
+//! same shape takes them back.
 
 #[cfg(feature = "snapshot")]
 mod dev;
@@ -110,7 +116,7 @@ use super::{
   },
   token::WebTokenValue,
 };
-use crate::hydration::STATE_SCRIPT_ID;
+use crate::{Declarations, WebDom, WebMarkup, hydration::STATE_SCRIPT_ID};
 
 /// The sink of the mount root; its children are the app.
 const ROOT: u32 = 0;
@@ -193,6 +199,97 @@ enum Pending {
   Change(String),
 }
 
+/// What content leaving a segment held, keyed by the element's index in the
+/// content's document order: the scrolled offsets and the focused element.
+struct Saved {
+  tags: Vec<String>,
+  scrolls: Vec<(usize, f64, f64)>,
+  focused: Option<usize>,
+}
+
+impl Saved {
+  /// What the subtrees `roots` hold, in document order; `None` when nothing is
+  /// scrolled or focused inside them.
+  fn capture(document: &Document, roots: &[web_sys::Node]) -> Option<Self> {
+    let elements = subtree_elements(roots);
+    let active = document.active_element();
+    let mut saved = Self {
+      tags: elements.iter().map(Element::tag_name).collect(),
+      scrolls: Vec::new(),
+      focused: None,
+    };
+
+    for (index, element) in elements.iter().enumerate() {
+      let (left, top) = (element.scroll_left(), element.scroll_top());
+
+      if left != 0 || top != 0 {
+        saved.scrolls.push((index, f64::from(left), f64::from(top)));
+      }
+
+      if active.as_ref() == Some(element) {
+        saved.focused = Some(index);
+      }
+    }
+
+    (!saved.scrolls.is_empty() || saved.focused.is_some()).then_some(saved)
+  }
+
+  /// Gives what was held to `root`'s subtree, when it has the shape the content had.
+  fn restore(self, root: &web_sys::Node) {
+    let elements = subtree_elements(std::slice::from_ref(root));
+
+    if elements.len() != self.tags.len()
+      || elements
+        .iter()
+        .zip(&self.tags)
+        .any(|(element, tag)| element.tag_name() != *tag)
+    {
+      return;
+    }
+
+    // Focus lands before the offsets, which it would otherwise scroll away.
+    if let Some(html) = self
+      .focused
+      .and_then(|index| elements.get(index))
+      .and_then(|element| element.dyn_ref::<HtmlElement>())
+    {
+      let _ = html.focus();
+    }
+
+    for (index, left, top) in self.scrolls {
+      #[expect(clippy::cast_possible_truncation)]
+      if let Some(element) = elements.get(index) {
+        element.set_scroll_left(left as i32);
+        element.set_scroll_top(top as i32);
+      }
+    }
+  }
+}
+
+/// Every element under `roots`, each root first, in document order.
+fn subtree_elements(roots: &[web_sys::Node]) -> Vec<Element> {
+  let mut elements = Vec::new();
+
+  for root in roots {
+    let Some(element) = root.dyn_ref::<Element>()
+    else {
+      continue;
+    };
+
+    elements.push(element.clone());
+
+    let descendants = element.query_selector_all("*").expect("query the subtree");
+
+    elements.extend((0..descendants.length()).filter_map(|index| {
+      descendants
+        .item(index)
+        .and_then(|node| node.dyn_into::<Element>().ok())
+    }));
+  }
+
+  elements
+}
+
 /// The server's nodes awaiting adoption, and what adoption found.
 struct Hydration {
   elements: FxHashMap<u32, Element>,
@@ -263,6 +360,7 @@ struct Dom {
   mismatches: u32,
   resize: Option<SizeObserver>,
   root_node: Option<NodeId>,
+  saved: FxHashMap<u32, Saved>,
 }
 
 thread_local! {
@@ -313,6 +411,7 @@ impl Dom {
       mismatches: 0,
       resize: None,
       root_node: None,
+      saved: FxHashMap::default(),
     }
   }
 
@@ -536,6 +635,36 @@ impl Dom {
     self.resize = Some((observer.clone(), closure));
 
     observer
+  }
+
+  /// The sink of the anchor realized as the comment `node`, if any.
+  fn anchor_sink(&self, node: &web_sys::Node) -> Option<u32> {
+    if node.node_type() != COMMENT_NODE {
+      return None;
+    }
+
+    self
+      .nodes
+      .iter()
+      .position(|record| {
+        record
+          .as_ref()
+          .is_some_and(|record| matches!(record.realized, Realized::Anchor) && record.dom == *node)
+      })
+      .and_then(|index| u32::try_from(index).ok())
+  }
+
+  /// Keeps what `roots` hold on the anchor `following` them, for the content that next
+  /// enters the segment before it.
+  fn save(&mut self, roots: &[web_sys::Node], following: Option<web_sys::Node>) {
+    let Some(saved) = Saved::capture(&self.document, roots)
+    else {
+      return;
+    };
+
+    if let Some(anchor) = following.and_then(|node| self.anchor_sink(&node)) {
+      self.saved.insert(anchor, saved);
+    }
   }
 
   /// Ends hydration: reports what the server rendered and the client never built, and
@@ -956,7 +1085,7 @@ impl Driver for Web {
   }
 
   fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
-    let Some((parent, child, before)) = with_dom(|dom| {
+    let Some((parent, child, before, saved)) = with_dom(|dom| {
       let parent = dom.node(*parent)?.dom.clone();
       let child_node = dom.node(*child)?;
 
@@ -964,17 +1093,23 @@ impl Driver for Web {
         return None;
       }
 
+      let child = child_node.dom.clone();
+      let saved = before.and_then(|before| dom.saved.remove(before));
       let before = before
         .and_then(|before| dom.node(*before))
         .map(|node| node.dom.clone());
 
-      Some((parent, child_node.dom.clone(), before))
+      Some((parent, child, before, saved))
     })
     else {
       return;
     };
 
     let _ = parent.insert_before(&child, before.as_ref());
+
+    if let Some(saved) = saved {
+      saved.restore(&child);
+    }
   }
 
   fn detach(&self, parent: &u32, child: &u32) {
@@ -989,6 +1124,8 @@ impl Driver for Web {
     };
 
     if child.parent_node().as_ref() == Some(&parent) {
+      with_dom(|dom| dom.save(std::slice::from_ref(&child), child.next_sibling()));
+
       let _ = parent.remove_child(&child);
     }
   }
@@ -1013,6 +1150,7 @@ impl Driver for Web {
       }
 
       dom.events.open_popups.remove(&sink);
+      dom.saved.remove(&sink);
     });
   }
 
@@ -1164,6 +1302,46 @@ impl Driver for Web {
 
   fn media(&self) -> MediaSignals<f32> {
     media::signals()
+  }
+}
+
+impl WebMarkup for Web {
+  fn create_element(&self, tag: &'static str) -> u32 {
+    with_dom(|dom| dom.create_element(tag, Realized::Box))
+  }
+
+  fn set_attribute(&self, sink: &u32, name: &str, value: &str) {
+    with_dom(|dom| {
+      if let Some(element) = dom.node(*sink).and_then(Node::element) {
+        let _ = element.set_attribute(name, value);
+      }
+    });
+  }
+
+  fn set_declarations(&self, sink: &u32, declarations: &Declarations) {
+    with_dom(|dom| {
+      if let Some(html) = dom.node(*sink).and_then(Node::html) {
+        let style = html.style();
+
+        for (property, value) in declarations.iter() {
+          let _ = style.set_property(property, value);
+        }
+      }
+    });
+  }
+
+  fn set_text_content(&self, sink: &u32, text: &str) {
+    Driver::set_text(self, sink, text);
+  }
+}
+
+impl WebDom for Web {
+  fn element(&self, sink: &u32) -> Option<Element> {
+    with_dom(|dom| dom.node(*sink).and_then(Node::element).cloned())
+  }
+
+  fn document(&self) -> Document {
+    document()
   }
 }
 
@@ -1434,9 +1612,15 @@ pub fn claim_lazy(start: NodeId) -> bool {
 }
 
 /// Removes the claimed markup between the anchors of the segment `start` begins, as
-/// the segment's real content arrives to take its place.
+/// the segment's real content arrives to take its place; a scroll offset or the focus
+/// inside it passes to that content when it has the same shape.
 pub fn discard_lazy(start: NodeId) {
-  for node in segment_dom(start) {
+  let between = segment_dom(start);
+  let following = between.last().and_then(web_sys::Node::next_sibling);
+
+  with_dom(|dom| dom.save(&between, following));
+
+  for node in between {
     if let Some(parent) = node.parent_node() {
       let _ = parent.remove_child(&node);
     }

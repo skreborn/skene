@@ -416,6 +416,57 @@ fn a_checkbox_flips_once_per_click() {
   assert_eq!(computed(&mark, "background-color"), card);
 }
 
+/// A click on a native toggle is observed, not acted on: the platform flipped it once,
+/// the control's own observer and the container above it each hear one click per
+/// press, whether the press lands on the input or on its caption.
+#[wasm_bindgen_test]
+fn a_native_toggle_click_is_observed_once_per_press() {
+  let (_guard, root) = fresh_root();
+  let checked = Signal::new(false);
+  let observed = Rc::new(Cell::new(0));
+  let container_clicks = Rc::new(Cell::new(0));
+
+  let _ = skene_web::mount({
+    let observed = Rc::clone(&observed);
+    let container_clicks = Rc::clone(&container_clicks);
+
+    move || {
+      Box_::new()
+        .handle_click(move || container_clicks.set(container_clicks.get() + 1))
+        .set_child(
+          RawCheckbox::<Web>::new(Toggle::new().bind_checked(checked))
+            .set_label("Agree")
+            .handle_click(move || observed.set(observed.get() + 1)),
+        )
+        .build()
+    }
+  });
+
+  let container = only_child(&root);
+  let label = only_child(&container);
+  let input: HtmlInputElement = only_child(&label).dyn_into().expect("an input");
+
+  input.click();
+
+  assert_eq!(observed.get(), 1, "the observer hears the press once");
+  assert_eq!(
+    container_clicks.get(),
+    1,
+    "the click climbs to the container once"
+  );
+  assert!(checked.get(), "the platform's flip reached the signal");
+  assert!(input.checked(), "the platform's flip stands");
+
+  // A press on the label reaches the root twice: at the label, then synthesized at
+  // the input.
+  html(&label).click();
+
+  assert_eq!(observed.get(), 2, "a press on the caption is one click too");
+  assert_eq!(container_clicks.get(), 2);
+  assert!(!checked.get());
+  assert!(!input.checked());
+}
+
 /// A button owns its click: the container around it never sees it, while a click on
 /// the container itself does reach it.
 #[wasm_bindgen_test]

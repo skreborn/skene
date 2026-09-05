@@ -85,7 +85,14 @@ use super::{
   },
   token::WebTokenValue,
 };
-use crate::{RESET_CSS, hydration::STATE_SCRIPT_ID, interner::ClassInterner};
+use crate::{
+  Declarations,
+  RESET_CSS,
+  RenderHints,
+  WebMarkup,
+  hydration::STATE_SCRIPT_ID,
+  interner::ClassInterner,
+};
 
 /// The root of the string tree; its children are the page body.
 const ROOT: u32 = 0;
@@ -599,37 +606,6 @@ impl Tree {
     }
 
     None
-  }
-}
-
-/// The environment a render answers with: what the client hints say, else the defaults.
-///
-/// Without hints a render assumes a 1024 by 768 viewport, the light scheme and no
-/// reduced-motion preference.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[must_use]
-pub struct RenderHints {
-  /// The viewport's size, in logical pixels.
-  pub viewport: Size<f32>,
-  /// The color scheme in force.
-  pub scheme: ColorScheme,
-  /// Whether the reader prefers reduced motion.
-  pub reduced_motion: bool,
-}
-
-impl RenderHints {
-  /// The defaults a render assumes without hints.
-  pub const DEFAULT: Self = Self {
-    viewport: Size::new(1024., 768.),
-    scheme: ColorScheme::Light,
-    reduced_motion: false,
-  };
-}
-
-impl Default for RenderHints {
-  #[inline(always)]
-  fn default() -> Self {
-    Self::DEFAULT
   }
 }
 
@@ -1154,6 +1130,28 @@ impl Driver for Web {
 
   fn media(&self) -> MediaSignals<f32> {
     media_signals()
+  }
+}
+
+impl WebMarkup for Web {
+  fn create_element(&self, tag: &'static str) -> u32 {
+    with_tree(|tree| tree.element(tag))
+  }
+
+  fn set_attribute(&self, sink: &u32, name: &str, value: &str) {
+    with_node(*sink, |node| node.set_attribute(name, value));
+  }
+
+  fn set_declarations(&self, sink: &u32, declarations: &Declarations) {
+    with_node(*sink, |node| {
+      for (property, value) in declarations.iter() {
+        node.set_inline(property.to_owned(), value.to_owned());
+      }
+    });
+  }
+
+  fn set_text_content(&self, sink: &u32, text: &str) {
+    with_node(*sink, |node| node.text = Some(text.to_owned()));
   }
 }
 

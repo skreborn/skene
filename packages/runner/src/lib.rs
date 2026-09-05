@@ -1,9 +1,12 @@
 //! Embeds a skene app's server build into any Rust program.
 //!
 //! The app's `wasm32-wasip2` build is a plain command: given a path argument, it writes
-//! the rendered page to stdout. [`Runner`] wraps a wasm runtime around that contract so a
-//! server renders routes with a function call—no protocol, no bindings, and the same
-//! artifact still works standalone (`wasmtime app.wasm /path`).
+//! the rendered page to stdout, answering the client hints the `SKENE_HINTS` variable
+//! carries. [`Runner`] wraps a wasm runtime around that contract so a server renders
+//! routes with a function call—no protocol, no bindings, and the same artifact still
+//! works standalone (`wasmtime app.wasm /path`). A server hands each request's headers
+//! to [`Runner::render_with_headers`] and adds [`hint_response_headers`] to its
+//! response, so a client that can send hints does.
 //!
 //! This is a *library* a user's server embeds; skene ships no server. It is host-only:
 //! on a wasm target the crate is empty.
@@ -30,6 +33,39 @@ use wasmtime_wasi::p2::{
   WasiView,
   pipe::MemoryOutputPipe,
 };
+
+/// The environment variable the app reads its client hints from: the request's
+/// `Sec-CH-*` headers, one `Name: value` per line.
+const HINTS_VARIABLE: &str = "SKENE_HINTS";
+
+/// The client hints a render reads, as the response asks for them.
+const HINT_NAMES: &str = "Sec-CH-Prefers-Color-Scheme, Sec-CH-Prefers-Reduced-Motion, \
+                          Sec-CH-Viewport-Width, Sec-CH-Viewport-Height, Sec-CH-DPR";
+
+/// The response headers a server adds beside a rendered page, so a client sends the
+/// hints the next render answers with: `Accept-CH`, `Critical-CH` and `Vary`.
+#[must_use]
+pub const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
+  [
+    ("Accept-CH", HINT_NAMES),
+    ("Critical-CH", HINT_NAMES),
+    ("Vary", HINT_NAMES),
+  ]
+}
+
+/// The `Sec-CH-*` headers among `headers`, in the form the app reads.
+fn hint_lines<'a>(headers: impl IntoIterator<Item = (&'a str, &'a str)>) -> String {
+  use std::fmt::Write as _;
+
+  headers
+    .into_iter()
+    .filter(|(name, _)| name.len() >= 7 && name[..7].eq_ignore_ascii_case("sec-ch-"))
+    .fold(String::new(), |mut lines, (name, value)| {
+      let _ = writeln!(lines, "{name}: {value}");
+
+      lines
+    })
+}
 
 /// A loaded skene app, ready to render routes.
 ///
@@ -88,7 +124,22 @@ impl Runner {
   ///
   /// Fails when the app traps, exits with failure, or writes non-UTF-8 output.
   pub fn render(&self, route_path: &str) -> Result<String> {
-    self.invoke(route_path)
+    self.invoke(route_path, "")
+  }
+
+  /// Renders `route_path` against the client hints among the request `headers`
+  /// (`Sec-CH-Prefers-Color-Scheme`, `Sec-CH-Viewport-Width` and their kin); every
+  /// other header is dropped before the app sees it.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the app traps, exits with failure, or writes non-UTF-8 output.
+  pub fn render_with_headers<'a>(
+    &self,
+    route_path: &str,
+    headers: impl IntoIterator<Item = (&'a str, &'a str)>,
+  ) -> Result<String> {
+    self.invoke(route_path, &hint_lines(headers))
   }
 
   /// The routes the app declares statically renderable, in declaration order; `/`
@@ -98,7 +149,7 @@ impl Runner {
   ///
   /// Fails when the app traps, exits with failure, or writes non-UTF-8 output.
   pub fn routes(&self) -> Result<Vec<String>> {
-    let output = self.invoke("--routes")?;
+    let output = self.invoke("--routes", "")?;
 
     Ok(
       output
@@ -118,12 +169,28 @@ impl Runner {
   /// # Errors
   ///
   /// Fails when the app traps or exits with failure.
-  pub fn render_stream(&self, route_path: &str, mut sink: impl FnMut(&[u8])) -> Result<()> {
+  pub fn render_stream(&self, route_path: &str, sink: impl FnMut(&[u8])) -> Result<()> {
+    self.render_stream_with_headers(route_path, [], sink)
+  }
+
+  /// [`render_stream`](Self::render_stream) against the client hints among the request
+  /// `headers`, as [`render_with_headers`](Self::render_with_headers) reads them.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the app traps or exits with failure.
+  pub fn render_stream_with_headers<'a>(
+    &self,
+    route_path: &str,
+    headers: impl IntoIterator<Item = (&'a str, &'a str)>,
+    mut sink: impl FnMut(&[u8]),
+  ) -> Result<()> {
     let (sender, receiver) = mpsc::channel();
     let pipe = ChannelPipe { sender };
+    let hints = hint_lines(headers);
 
     std::thread::scope(|scope| {
-      let guest = scope.spawn(move || self.run(&["app", "--stream", route_path], pipe));
+      let guest = scope.spawn(move || self.run(&["app", "--stream", route_path], &hints, pipe));
 
       // Every sender lives in the guest's store; the loop ends when the run finishes
       // and drops it.
@@ -137,25 +204,35 @@ impl Runner {
     })
   }
 
-  /// Runs one fresh instance of the app with `argument`, returning its stdout.
-  fn invoke(&self, argument: &str) -> Result<String> {
+  /// Runs one fresh instance of the app with `argument` and the hint lines `hints`,
+  /// returning its stdout.
+  fn invoke(&self, argument: &str, hints: &str) -> Result<String> {
     let stdout = MemoryOutputPipe::new(usize::MAX);
 
-    self.run(&["app", argument], stdout.clone())?;
+    self.run(&["app", argument], hints, stdout.clone())?;
 
     let bytes = stdout.contents();
 
     String::from_utf8(bytes.to_vec()).context("rendered output is not UTF-8")
   }
 
-  /// Runs one fresh instance of the app with `arguments`, its stdout wired to
-  /// `stdout`.
-  fn run(&self, arguments: &[&str], stdout: impl StdoutStream + 'static) -> Result<()> {
-    let ctx = WasiCtxBuilder::new()
-      .stdout(stdout)
-      .inherit_stderr()
-      .args(arguments)
-      .build();
+  /// Runs one fresh instance of the app with `arguments` and the hint lines `hints`,
+  /// its stdout wired to `stdout`.
+  fn run(
+    &self,
+    arguments: &[&str],
+    hints: &str,
+    stdout: impl StdoutStream + 'static,
+  ) -> Result<()> {
+    let mut builder = WasiCtxBuilder::new();
+
+    builder.stdout(stdout).inherit_stderr().args(arguments);
+
+    if !hints.is_empty() {
+      builder.env(HINTS_VARIABLE, hints);
+    }
+
+    let ctx = builder.build();
 
     let host = Host {
       ctx,

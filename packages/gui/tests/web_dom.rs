@@ -695,6 +695,63 @@ fn derived_view_swaps_between_trees_on_state_change() {
   assert_eq!(swapped.text_content().as_deref(), Some("welcome"));
 }
 
+/// A scrollable box inside a rebuilt subtree of the same shape: the content that
+/// enters the segment takes the scroll offset and the focus the content that left it
+/// held.
+#[wasm_bindgen_test]
+fn a_derived_rebuild_restores_scroll_and_focus() {
+  let (_guard, root) = fresh_root();
+  let generation = Signal::new(0);
+
+  let _ = mount(move || {
+    derived(move || {
+      let _ = generation.get();
+
+      Container::new()
+        .set_height(40.)
+        .set_overflow(skene_gui::core::Overflow::Auto)
+        .set_child(
+          Column::new().set_children((
+            Container::new()
+              .set_min_height(20.)
+              .set_focus_order(skene_gui::FocusOrder::Auto),
+            Container::new().set_min_height(200.),
+          )),
+        )
+        .build()
+    })
+  });
+
+  let scroller = only_child(&root);
+  let focusable = scroller
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the focusable box");
+
+  // Focus first: focusing scrolls the box into view, which would undo the offset.
+  html(&focusable).focus().expect("focus the box");
+  scroller.set_scroll_top(30);
+
+  assert_eq!(scroller.scroll_top(), 30);
+  assert_eq!(document().active_element(), Some(focusable));
+
+  generation.set(1);
+
+  let rebuilt = only_child(&root);
+  let refocused = rebuilt
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the rebuilt focusable box");
+
+  assert!(rebuilt != scroller, "the subtree was rebuilt");
+  assert_eq!(rebuilt.scroll_top(), 30, "the offset carried over");
+  assert_eq!(
+    document().active_element(),
+    Some(refocused),
+    "the focus carried over",
+  );
+}
+
 /// Only `items` decides when the list is diffed: a signal an item happens to read while
 /// building must not subscribe the reconcile effect and re-run the whole diff.
 #[wasm_bindgen_test]

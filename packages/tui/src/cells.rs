@@ -1,0 +1,103 @@
+//! The escape trait a low-level terminal view states as its bound, and the handle it
+//! paints through.
+
+use skene_core::{Color, Driver, Point, Rect, Size};
+
+use crate::paint::{Buffer, terminal_rgb};
+
+/// A cell painter: draws into the node's rectangle every time the node repaints.
+///
+/// The rectangle is the box's content area on the screen, in cells; the [`Cells`]
+/// handle addresses it from its own origin.
+pub type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
+
+/// A terminal driver that runs a painter inside a box.
+///
+/// The bound a low-level terminal view states: the view builds an ordinary
+/// [`Container`](crate::Container) for its sizing and hands the driver a painter for
+/// it, which the driver runs with the box's laid-out rectangle whenever the box
+/// repaints, after the box's own background and border and before its children.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` does not paint cells",
+  label = "a view bound on `CellPainter` exists on the terminal driver alone"
+)]
+pub trait CellPainter: Driver {
+  /// Runs `painter` inside the box `sink` on every repaint; a later call replaces the
+  /// painter.
+  fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);
+}
+
+/// A window onto the frame being painted: the cells of one box's content rectangle,
+/// addressed from its top-left corner. A write outside the rectangle, or outside the
+/// clip a scrolling ancestor imposes, is dropped.
+#[must_use]
+pub struct Cells<'a> {
+  buffer: &'a mut Buffer,
+  origin: (isize, isize),
+  size: Size<u32>,
+}
+
+impl<'a> Cells<'a> {
+  pub(crate) const fn new(buffer: &'a mut Buffer, origin: (isize, isize), size: Size<u32>) -> Self {
+    Self {
+      buffer,
+      origin,
+      size,
+    }
+  }
+
+  /// The rectangle's size, in cells.
+  #[inline(always)]
+  pub const fn size(&self) -> Size<u32> {
+    self.size
+  }
+
+  /// The rectangle on the screen: its origin in frame cells and its size.
+  #[inline(always)]
+  pub fn rect(&self) -> Rect<u32> {
+    Rect::new(
+      Point::new(
+        u32::try_from(self.origin.0).unwrap_or(0),
+        u32::try_from(self.origin.1).unwrap_or(0),
+      ),
+      self.size,
+    )
+  }
+
+  /// The frame cell at (`x`, `y`) of the rectangle, when it is inside and painted.
+  fn cell(&mut self, x: u32, y: u32) -> Option<&mut crate::paint::TerminalCell> {
+    if x >= self.size.width || y >= self.size.height {
+      return None;
+    }
+
+    self.buffer.cell_mut(
+      self.origin.0 + isize::try_from(x).ok()?,
+      self.origin.1 + isize::try_from(y).ok()?,
+    )
+  }
+
+  /// Writes `character` at (`x`, `y`), keeping the cell's colors.
+  pub fn put(&mut self, x: u32, y: u32, character: char) {
+    if let Some(cell) = self.cell(x, y) {
+      cell.character = character;
+    }
+  }
+
+  /// Sets the foreground at (`x`, `y`); a transparent color clears it.
+  pub fn set_foreground(&mut self, x: u32, y: u32, color: Color) {
+    let rgb = terminal_rgb(color);
+
+    if let Some(cell) = self.cell(x, y) {
+      cell.foreground = rgb;
+    }
+  }
+
+  /// Sets the background at (`x`, `y`); a transparent color clears it.
+  pub fn set_background(&mut self, x: u32, y: u32, color: Color) {
+    let rgb = terminal_rgb(color);
+
+    if let Some(cell) = self.cell(x, y) {
+      cell.background = rgb;
+    }
+  }
+}

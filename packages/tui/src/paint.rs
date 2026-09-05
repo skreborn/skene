@@ -8,6 +8,7 @@ use skene_core::{Color, ControlKind};
 
 use crate::{
   BorderGlyphs,
+  cells::Cells,
   layout::{
     INLINE_BOX,
     has_border,
@@ -113,7 +114,7 @@ impl Buffer {
     x < self.width && y < self.height
   }
 
-  fn cell_mut(&mut self, x: isize, y: isize) -> Option<&mut TerminalCell> {
+  pub(crate) fn cell_mut(&mut self, x: isize, y: isize) -> Option<&mut TerminalCell> {
     if !self.in_clip(x, y) {
       return None;
     }
@@ -549,6 +550,7 @@ fn paint_node(
     isize::try_from(border.2).unwrap_or(0),
     isize::try_from(border.3).unwrap_or(0),
   );
+  let edges = border;
   let focused = store.focused == Some(handle);
   let dark = store.dark();
   let paragraph = is_paragraph(store, handle);
@@ -630,6 +632,17 @@ fn paint_node(
         && border.color.is_some()
       {
         draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+      }
+
+      if let Some(painter) = &record.painter {
+        let size = skene_core::Size::new(
+          u32::try_from(isize::try_from(width).unwrap_or(0) - edges.0 - edges.2).unwrap_or(0),
+          u32::try_from(isize::try_from(height).unwrap_or(0) - edges.1 - edges.3).unwrap_or(0),
+        );
+        let mut cells = Cells::new(buffer, (x + edges.0, y + edges.1), size);
+        let rect = cells.rect();
+
+        painter(&mut cells, rect);
       }
     }
     NodePaint::Text {

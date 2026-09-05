@@ -475,10 +475,18 @@ where
   render_to_string(app)
 }
 
+/// The environment variable carrying a render's client hints: the request's hint
+/// headers, one `Name: value` per line, read into
+/// [`RenderHints`](skene_web::RenderHints) before the render.
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
+
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
 /// the statically-renderable routes one per line (see [`install_static_router`]), or,
-/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it.
+/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it. The
+/// client hints in [`HINTS_VARIABLE`], when set, are the environment the render
+/// answers with.
 ///
 /// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
 /// prints the document—which is exactly the interface the runner embeds.
@@ -489,6 +497,15 @@ where
   V: IntoView,
 {
   use std::io::Write as _;
+
+  if let Ok(hints) = std::env::var(HINTS_VARIABLE) {
+    let headers = hints
+      .lines()
+      .filter_map(|line| line.split_once(':'))
+      .map(|(name, value)| (name.trim(), value.trim()));
+
+    skene_web::set_render_hints(skene_web::RenderHints::from_headers(headers));
+  }
 
   let argument = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
 

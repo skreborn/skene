@@ -57,6 +57,115 @@ fn only_child(root: &Element) -> Element {
   root.first_element_child().expect("a built child")
 }
 
+/// The markup and the stylesheet the server leaf would have produced for `app`:
+/// built once in the browser, every element marked in document order, then torn
+/// down.
+fn served(app: impl FnOnce() -> skene_gui::AnyView + 'static) -> (String, String) {
+  let root = server_root("");
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  web::install(root.clone());
+
+  let _ = web::mount(|| skene_gui::View::build(app()));
+
+  let elements = root.query_selector_all("*").expect("query the elements");
+
+  for index in 0..elements.length() {
+    if let Some(element) = elements
+      .item(index)
+      .and_then(|node| node.dyn_into::<Element>().ok())
+    {
+      let _ = element.set_attribute("data-h", &(index + 1).to_string());
+    }
+  }
+
+  let styles = document()
+    .query_selector_all("style[data-skene-style]")
+    .expect("query the styles");
+  let styles: String = (0..styles.length())
+    .filter_map(|index| styles.item(index))
+    .filter_map(|style| style.text_content())
+    .collect();
+  let markup = root.inner_html();
+
+  web::uninstall();
+  root.remove();
+
+  (markup, styles)
+}
+
+/// A scrollable box the reader scrolled and a box the reader focused before the bundle
+/// arrived keep their offset and focus through hydration.
+#[wasm_bindgen_test]
+fn hydrate_keeps_the_readers_scroll_and_focus() {
+  let app = || {
+    Container::new()
+      .set_height(40.)
+      .set_overflow(skene_gui::core::Overflow::Auto)
+      .set_child(
+        skene_gui::Column::new().set_children((
+          Container::new()
+            .set_min_height(20.)
+            .set_focus_order(skene_gui::FocusOrder::Auto),
+          Container::new().set_min_height(200.),
+        )),
+      )
+  };
+  let (markup, styles) = served(move || skene_gui::IntoView::into_view(app()));
+  let block = document().create_element("style").expect("a style");
+
+  let _ = block.set_attribute("id", "skene-styles");
+  block.set_text_content(Some(&styles));
+  document()
+    .head()
+    .expect("a head")
+    .append_child(&block)
+    .expect("append the block");
+
+  let root = server_root(&markup);
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  let scroller = only_child(&root);
+  let focusable = scroller
+    .query_selector("[tabindex]")
+    .expect("query")
+    .expect("the focusable box");
+
+  // Focus first: focusing scrolls the box into view, which would undo the offset.
+  focusable
+    .dyn_ref::<HtmlElement>()
+    .expect("an HTML element")
+    .focus()
+    .expect("focus the box");
+  scroller.set_scroll_top(30);
+
+  assert_eq!(scroller.scroll_top(), 30);
+
+  hydrate(root.clone(), "", app);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert!(only_child(&root) == scroller, "the scroller was adopted");
+  assert_eq!(scroller.scroll_top(), 30, "the offset survived hydration");
+  assert_eq!(
+    document().active_element(),
+    Some(focusable),
+    "the focus survived hydration",
+  );
+
+  web::uninstall();
+  root.remove();
+  block.remove();
+}
+
 /// A container's static child sits between the anchors of a segment of its own: the
 /// container builds as element 1, its text as element 2, around the first segment.
 #[wasm_bindgen_test]

@@ -210,6 +210,12 @@ impl Declarations {
     }
   }
 
+  /// Every declaration as `(property, value)`, in canonical order.
+  #[inline(always)]
+  pub fn iter(&self) -> impl Iterator<Item = (&'static str, &str)> {
+    self.0.iter().map(|(property, value)| (*property, &**value))
+  }
+
   /// Renders the declaration block (`prop:value;…`) in canonical order.
   pub(super) fn render(&self) -> String {
     let mut out = String::new();

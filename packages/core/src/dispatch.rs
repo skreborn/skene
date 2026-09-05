@@ -18,92 +18,120 @@ use crate::{KeyEvent, PointerEvent, Prevent, Prevented, ScrollEvent};
 /// Dispatches a click at `node`.
 #[inline(always)]
 pub fn dispatch_click<D: Driver>(node: NodeId) -> Prevented {
-  bubble::<D, _>(node, HandlerSet::click, |handler| handler())
+  bubble::<D, _>(
+    node,
+    |set, out| {
+      out.extend(set.acting_click().iter().cloned());
+      out.extend(set.click().iter().cloned());
+    },
+    |handler| handler(),
+  )
+}
+
+/// Dispatches a click the platform already acted on at `node`: every click handler
+/// up the path runs except the acting ones, so a control's observers see the click
+/// and its behavior does not act a second time.
+#[inline(always)]
+pub fn dispatch_click_observed<D: Driver>(node: NodeId) -> Prevented {
+  bubble::<D, _>(node, all(HandlerSet::click), |handler| handler())
 }
 
 /// Dispatches a key press at `node`, the focused node.
 #[inline(always)]
 pub fn dispatch_key_down<D: Driver>(node: NodeId, event: &KeyEvent) -> Prevented {
-  bubble::<D, _>(node, HandlerSet::key_down, |handler| handler(event))
+  bubble::<D, _>(node, all(HandlerSet::key_down), |handler| handler(event))
 }
 
 /// Dispatches a pointer press at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_down<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, HandlerSet::pointer_down, |handler| handler(event))
+  bubble::<D, _>(node, all(HandlerSet::pointer_down), |handler| {
+    handler(event)
+  })
 }
 
 /// Dispatches a pointer release at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_up<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, HandlerSet::pointer_up, |handler| handler(event))
+  bubble::<D, _>(node, all(HandlerSet::pointer_up), |handler| handler(event))
 }
 
 /// Dispatches a pointer move at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_move<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, HandlerSet::pointer_move, |handler| handler(event))
+  bubble::<D, _>(node, all(HandlerSet::pointer_move), |handler| {
+    handler(event)
+  })
 }
 
 /// Notifies `node` that the pointer entered it.
 #[inline(always)]
 pub fn notify_pointer_enter<D: Driver>(node: NodeId) {
-  notify::<D, _>(node, HandlerSet::pointer_enter, |handler| handler());
+  notify::<D, _>(node, all(HandlerSet::pointer_enter), |handler| handler());
 }
 
 /// Notifies `node` that the pointer left it.
 #[inline(always)]
 pub fn notify_pointer_leave<D: Driver>(node: NodeId) {
-  notify::<D, _>(node, HandlerSet::pointer_leave, |handler| handler());
+  notify::<D, _>(node, all(HandlerSet::pointer_leave), |handler| handler());
 }
 
 /// Notifies `node` that it gained focus.
 #[inline(always)]
 pub fn notify_focus<D: Driver>(node: NodeId) {
-  notify::<D, _>(node, HandlerSet::focus, |handler| handler());
+  notify::<D, _>(node, all(HandlerSet::focus), |handler| handler());
 }
 
 /// Notifies `node` that it lost focus.
 #[inline(always)]
 pub fn notify_blur<D: Driver>(node: NodeId) {
-  notify::<D, _>(node, HandlerSet::blur, |handler| handler());
+  notify::<D, _>(node, all(HandlerSet::blur), |handler| handler());
 }
 
 /// Notifies `node` of its new scroll offsets.
 #[inline(always)]
 pub fn notify_scroll<D: Driver>(node: NodeId, event: &ScrollEvent) {
-  notify::<D, _>(node, HandlerSet::scroll, |handler| handler(event));
+  notify::<D, _>(node, all(HandlerSet::scroll), |handler| handler(event));
 }
 
 /// Notifies `node` of its new textual value.
 #[inline(always)]
 pub fn notify_change<D: Driver>(node: NodeId, value: &str) {
-  notify::<D, _>(node, HandlerSet::change, |handler| handler(value));
+  notify::<D, _>(node, all(HandlerSet::change), |handler| handler(value));
 }
 
 /// Notifies `node` of its new checked state.
 #[inline(always)]
 pub fn notify_toggle<D: Driver>(node: NodeId, checked: bool) {
-  notify::<D, _>(node, HandlerSet::toggle, |handler| handler(checked));
+  notify::<D, _>(node, all(HandlerSet::toggle), |handler| handler(checked));
 }
 
 /// Notifies the overlay `node` that the platform dismissed it.
 #[inline(always)]
 pub fn notify_dismiss<D: Driver>(node: NodeId) {
-  notify::<D, _>(node, HandlerSet::dismiss, |handler| handler());
+  notify::<D, _>(node, all(HandlerSet::dismiss), |handler| handler());
 }
 
-/// The handlers of one kind on one node, cloned out so the scene is released before
-/// any runs; with the node's parent.
+/// The handlers a dispatch runs on one node, in order.
+type Selected<H> = SmallVec<[Rc<H>; 2]>;
+
+/// A selection taking every handler of one list.
+fn all<H: ?Sized>(list: fn(&HandlerSet) -> &[Rc<H>]) -> impl Fn(&HandlerSet, &mut Selected<H>) {
+  move |set, out| out.extend(list(set).iter().cloned())
+}
+
+/// The handlers `select` picks on one node, cloned out so the scene is released
+/// before any runs; with the node's parent.
 fn snapshot<D: Driver, H: ?Sized>(
   node: NodeId,
-  select: impl Fn(&HandlerSet) -> &[Rc<H>],
-) -> (SmallVec<[Rc<H>; 2]>, Option<NodeId>) {
+  select: impl Fn(&HandlerSet, &mut Selected<H>),
+) -> (Selected<H>, Option<NodeId>) {
   Scene::<D>::with(|scene| {
-    let handlers = scene
-      .handlers(node)
-      .map(|set| select(set).iter().cloned().collect())
-      .unwrap_or_default();
+    let mut handlers = Selected::new();
+
+    if let Some(set) = scene.handlers(node) {
+      select(set, &mut handlers);
+    }
 
     (handlers, scene.parent(node))
   })
@@ -111,7 +139,7 @@ fn snapshot<D: Driver, H: ?Sized>(
 
 fn bubble<D: Driver, H: ?Sized>(
   node: NodeId,
-  select: impl Fn(&HandlerSet) -> &[Rc<H>],
+  select: impl Fn(&HandlerSet, &mut Selected<H>),
   run: impl Fn(&H) -> Prevent,
 ) -> Prevented {
   batch(|| {
@@ -138,7 +166,7 @@ fn bubble<D: Driver, H: ?Sized>(
 
 fn notify<D: Driver, H: ?Sized>(
   node: NodeId,
-  select: impl Fn(&HandlerSet) -> &[Rc<H>],
+  select: impl Fn(&HandlerSet, &mut Selected<H>),
   run: impl Fn(&H),
 ) {
   batch(|| {
@@ -154,7 +182,7 @@ fn notify<D: Driver, H: ?Sized>(
 mod tests {
   use std::{cell::RefCell, rc::Rc};
 
-  use super::{dispatch_click, notify_focus};
+  use super::{dispatch_click, dispatch_click_observed, notify_focus};
   use crate::{
     Bubbling,
     EventKind,
@@ -295,6 +323,33 @@ mod tests {
       }
     );
     assert_eq!(*log.borrow(), ["control", "outer"]);
+  }
+
+  /// An acting handler runs before the node's observers on a click, and an observed
+  /// click skips it while the observers and the ancestors still run.
+  #[test]
+  fn observed_click_skips_the_acting_handler() {
+    TestDriver::reset();
+
+    let (outer, _, inner) = chain();
+    let log = Rc::new(RefCell::new(Vec::new()));
+
+    Scene::<TestDriver>::with(|scene| {
+      scene.handle_click(inner, record(&log, "observer"));
+      scene.handle_click_acting(inner, record(&log, "acting"));
+      scene.handle_click(outer, record(&log, "outer"));
+    });
+
+    assert_eq!(dispatch_click::<TestDriver>(inner), Prevented::default());
+    assert_eq!(*log.borrow(), ["acting", "observer", "outer"]);
+
+    log.borrow_mut().clear();
+
+    assert_eq!(
+      dispatch_click_observed::<TestDriver>(inner),
+      Prevented::default()
+    );
+    assert_eq!(*log.borrow(), ["observer", "outer"]);
   }
 
   /// A notification runs the node's own handlers only.

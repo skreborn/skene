@@ -167,10 +167,13 @@ impl<D: Driver> Debug for Annotation<D> {
 /// The handlers a node carries, by event.
 ///
 /// Every handler on a node runs when its event reaches the node; bubbling is between
-/// nodes.
+/// nodes. A control's behavior registers its click as *acting*, apart from the
+/// observers, so a driver whose platform performed the action can dispatch the
+/// observers alone.
 #[derive(Default)]
 #[must_use]
 pub struct HandlerSet {
+  acting_click: Vec<Rc<ClickHandler>>,
   click: Vec<Rc<ClickHandler>>,
   key_down: Vec<Rc<KeyHandler>>,
   pointer_down: Vec<Rc<PointerHandler>>,
@@ -187,6 +190,14 @@ pub struct HandlerSet {
 }
 
 impl HandlerSet {
+  /// The acting click handlers, in registration order: a control's own response to a
+  /// click, run before the observers.
+  #[inline(always)]
+  #[must_use]
+  pub fn acting_click(&self) -> &[Rc<ClickHandler>] {
+    &self.acting_click
+  }
+
   /// The click handlers, in registration order.
   #[inline(always)]
   #[must_use]
@@ -1033,6 +1044,12 @@ impl<D: Driver> Scene<D> {
   /// Adds a click handler to `node`.
   pub fn handle_click(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
     self.register(node, EventKind::Click, |set| set.click.push(handler));
+  }
+
+  /// Adds an acting click handler to `node`: a control's own response, run before the
+  /// node's other click handlers and skipped by an observed dispatch.
+  pub fn handle_click_acting(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
+    self.register(node, EventKind::Click, |set| set.acting_click.push(handler));
   }
 
   /// Adds a key-down handler to `node`.

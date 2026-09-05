@@ -1,10 +1,10 @@
 //! What every view's build shares: reaching a node's sink, binding the render effect
-//! behind each derived slot, writing a value that is fixed or derived, and building a
-//! child under a provided context.
+//! behind each derived slot, writing a value that is fixed or derived, building a
+//! child under a provided context, and registering a driver-made sink as a node.
 
-use std::rc::Rc;
+use std::{marker::PhantomData, rc::Rc};
 
-use skene_core::{AnyView, BoxSlot, Driver, IntoView, NodeId, RunSlot, Scene, View};
+use skene_core::{AnyView, BoxSlot, Driver, IntoView, NodeId, NodeKind, RunSlot, Scene, View};
 use skene_reactive::Effect;
 
 /// Runs `operation` on a copy of the sink of `node`, if the node is live.
@@ -91,5 +91,24 @@ impl<D: Driver> ChildBuilder<D> {
   #[inline(always)]
   pub fn build(self) -> NodeId {
     (self.0)().build()
+  }
+}
+
+/// The entry a low-level view realizes through: a sink the view made against a
+/// driver's escape trait, registered in the scene as an ordinary node.
+///
+/// The node it returns is a [`View`], so it composes as a built-in does: as the child
+/// of a [`Container`](crate::Container) that sizes and decorates it, under a theme,
+/// inside a wrapper, with handlers registered on it through the [`Scene`]. A box the
+/// view creates through [`Driver::create_box`] instead needs no registration beyond
+/// the [`LayoutBox`](crate::LayoutBox) that made it.
+#[must_use]
+pub struct LowLevel<D: Driver>(PhantomData<fn() -> D>);
+
+impl<D: Driver> LowLevel<D> {
+  /// Registers `sink` as a detached node of `kind` and returns its id.
+  #[inline(always)]
+  pub fn realize(sink: D::Sink, kind: NodeKind) -> NodeId {
+    Scene::<D>::with(|scene| scene.create(kind, sink))
   }
 }

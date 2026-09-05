@@ -276,7 +276,7 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
 
 /// Adds the client bundle's boot script to a rendered page: the content stands on its
 /// own as markup, and the script hydrates it into the running app when it runs.
-fn inject_client(page: &str, stem: &str) -> String {
+pub fn inject_client(page: &str, stem: &str) -> String {
   let script = format!("<script type=\"module\">import init from \"/{stem}.js\"; init();</script>");
 
   match page.rfind("</body>") {

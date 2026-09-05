@@ -105,6 +105,10 @@ mod host {
       /// Build with optimizations (dev builds are unoptimized by default).
       #[arg(long)]
       release: bool,
+      /// Render each route per request through the server binary, forwarding the
+      /// request's client hints, instead of serving the generated page.
+      #[arg(long)]
+      ssr: bool,
     },
     /// The terminal dev loop: build and run the binary, rebuild and restart on
     /// change—state carried across the restart.
@@ -133,19 +137,25 @@ mod host {
 
       Command::Build(BuildTarget::Tui { debug }) => pipeline::build_tui(&app, !debug),
 
-      Command::Run(RunTarget::Web { port, release }) => dev(app, port, release),
+      Command::Run(RunTarget::Web { port, release, ssr }) => dev(app, port, release, ssr),
 
       Command::Run(RunTarget::Tui { release }) => run_tui(&app, release),
     }
   }
 
   /// The web dev loop: build once, then serve while watching for changes; each
-  /// successful rebuild tells every open page to reload.
-  fn dev(app: App, port: u16, release: bool) -> Result<(), String> {
+  /// successful rebuild tells every open page to reload. With `ssr` the server binary
+  /// is built too and every route is rendered per request through it.
+  fn dev(app: App, port: u16, release: bool, ssr: bool) -> Result<(), String> {
     pipeline::build_web(&app, release, true)?;
 
     let app = Arc::new(app);
     let dev = Dev::default();
+
+    if ssr {
+      dev.set_renderer(Some(load_renderer(&app, release)?));
+    }
+
     let (changes, watcher) = watch_sources(&app)?;
 
     {
@@ -160,7 +170,15 @@ mod host {
           drain_burst(&changes);
           println!("change detected; rebuilding…");
 
-          match pipeline::build_web(&app, release, true) {
+          let rebuilt = pipeline::build_web(&app, release, true).and_then(|()| {
+            if ssr {
+              dev.set_renderer(Some(load_renderer(&app, release)?));
+            }
+
+            Ok(())
+          });
+
+          match rebuilt {
             Ok(()) => {
               dev.trigger();
               println!("rebuilt; reloading");
@@ -172,6 +190,13 @@ mod host {
     }
 
     serve(&app, port, Some(&dev))
+  }
+
+  /// Builds the app's server binary and loads it into a runner.
+  fn load_renderer(app: &App, release: bool) -> Result<skene_runner::Runner, String> {
+    let artifact = pipeline::build_server(app, release)?;
+
+    skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))
   }
 
   /// The terminal dev loop: run the binary with the state handshake, and on each

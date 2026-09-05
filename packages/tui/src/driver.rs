@@ -29,6 +29,7 @@ use skene_core::{
 use crate::{
   TerminalExt,
   Typography,
+  cells::{CellPainter, Painter},
   interaction,
   store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
   token::TokenValue,
@@ -400,6 +401,17 @@ impl Driver for Tui {
 
   fn media(&self) -> MediaSignals<u32> {
     with_store(|store| store.media().signals)
+  }
+}
+
+impl CellPainter for Tui {
+  fn paint(&self, sink: &Handle, painter: Box<Painter>) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.painter = Some(painter);
+        store.damage(*sink);
+      }
+    });
   }
 }
 

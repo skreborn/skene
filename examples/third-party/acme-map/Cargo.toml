@@ -1,0 +1,33 @@
+[package]
+name = "acme-map"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+skene-core.workspace = true
+skene-views.workspace = true
+skene-web.workspace = true
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+wasm-bindgen.workspace = true
+web-sys = { version = "0.3", features = [
+  "CanvasRenderingContext2d",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+skene-web = { features = ["test"], workspace = true }
+wasm-bindgen-test = "0.3"
+web-sys = { version = "0.3", features = [
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
+  "Window",
+] }
+
+[lints]
+workspace = true

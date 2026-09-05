@@ -224,6 +224,8 @@ pub(crate) struct Record {
   pub(crate) scroll: (u32, u32),
   /// The screen rectangle the node covered at the last paint.
   pub(crate) painted: Option<CellRect>,
+  /// The painter a low-level view runs inside the box on every repaint.
+  pub(crate) painter: Option<Box<crate::cells::Painter>>,
 }
 
 impl Record {
@@ -244,6 +246,7 @@ impl Record {
       reported: None,
       scroll: (0, 0),
       painted: None,
+      painter: None,
     }
   }
 

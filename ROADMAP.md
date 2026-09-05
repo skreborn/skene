@@ -1197,12 +1197,26 @@ with their subjects, the snapshot re-baselined once), streaming on the new tree
 and every chunk opens with a `<style>` delta for the classes interned since the previous
 flush, which hydration adopts with the head's block), server markers counting elements
 in creation order as the browser does, and a stack placing its children in its one cell
-on the web. **Open:** client-hint intake; scroll and focus restoration. (The old `skene-web`
-vocabulary and `skene-record` are deleted in R9a.) **Caveat to revisit:** on the
-web a click on a native checkbox or radio is not dispatched as a click at all (the
-platform toggles and `change` reports it, so one press is one flip), which means a
-`handle_click` observer on a web toggle never fires; the headless driver dispatches it.
-Either dispatch an observe-only pass on the web or document the divergence.
+on the web. **Also landed (R4e):** the escape traits (`WebMarkup` on both leaves,
+`WebDom` on the browser leaf, `CellPainter` in the terminal, `Painting` in core with a
+`Canvas` placeholder the headless driver records against) and `skene_views::LowLevel`
+registering a driver-made sink as a node; the third-party gate under
+`examples/third-party/` (`acme-ui` generic over `D`, `acme-map` on `WebDom` with a
+`WebMarkup` placeholder, `acme-sparkline` on `CellPainter`), each used by a gallery and
+tested on its driver; client hints (`RenderHints::from_headers`/`response_headers`, the
+runner's `render_with_headers` carrying the `Sec-CH-*` headers to the guest through
+`SKENE_HINTS`, `render_main` seeding the render from it, and `skene run web --ssr`
+rendering each route per request with the request's headers forwarded); scroll and
+focus restoration keyed by the segment's end anchor, whose node id is stable across a
+`derived` rebuild or a lazy placeholder's discard, applied to content of the same
+shape, while hydration adopts the reader's offsets and focus in place. (The old
+`skene-web` vocabulary and `skene-record` are deleted in R9a.) **Caveat closed:** a
+click on a native checkbox or radio (or its label) is dispatched *observed*: core's
+`dispatch_click_observed` runs every click handler up the scene path except the
+acting one a control's behavior registered, so a `handle_click` observer on a web
+toggle fires exactly once per press while the platform's flip, reported by `change`,
+happens once; the headless driver dispatches the full click, since nothing toggles
+there but the behavior.
 
 The `Driver` impl over one node record for both leaves; content-addressed naming with a
 wide hash and interning-order emission on both leaves; a class cache keyed by the props

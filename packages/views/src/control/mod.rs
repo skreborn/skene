@@ -874,9 +874,14 @@ fn register<D: Driver, B: Behavior<D>>(
     blur,
     scroll,
   } = observers;
-  let click = actor.handler(
+  let acting_click = actor.handler(
     acts(EventKind::Click),
     |behavior, (): &(), handle| behavior.on_click(handle),
+    Vec::new(),
+  );
+  let click = actor.handler(
+    false,
+    |_, (): &(), _| Prevent::None,
     click
       .into_iter()
       .map(|observer| -> Rc<Observer<()>> { Rc::new(move |()| observer()) })
@@ -907,6 +912,10 @@ fn register<D: Driver, B: Behavior<D>>(
   });
 
   Scene::<D>::with(|scene| {
+    if let Some(handler) = acting_click {
+      scene.handle_click_acting(node, Rc::new(move || handler(&())));
+    }
+
     if let Some(handler) = click {
       scene.handle_click(node, Rc::new(move || handler(&())));
     }

@@ -1,0 +1,16 @@
+[package]
+name = "acme-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+skene-core.workspace = true
+skene-views.workspace = true
+
+[dev-dependencies]
+skene-headless.workspace = true
+skene-reactive.workspace = true
+
+[lints]
+workspace = true

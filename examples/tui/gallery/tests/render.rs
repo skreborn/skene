@@ -45,6 +45,7 @@ fn the_gallery_renders_and_responds() {
     "BorderGlyphs",
     "Grid, Stack & Overlay",
     "LazyColumn",
+    "Third party",
   ] {
     assert!(
       frame.contains(title),
@@ -56,6 +57,8 @@ fn the_gallery_renders_and_responds() {
   assert!(frame.contains('║'), "double borders did not paint");
   assert!(frame.contains('+'), "ascii borders did not paint");
   assert!(frame.contains("Row 0"), "the lazy column did not paint");
+  assert!(frame.contains("acme-ui"), "the badge did not paint");
+  assert!(frame.contains('█'), "the sparkline did not paint");
   assert!(
     !frame.contains("Row 999"),
     "the lazy column painted beyond its viewport",

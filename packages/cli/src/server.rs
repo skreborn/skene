@@ -1,5 +1,6 @@
-//! The dev server: static files, manifest assets, live-reload over SSE, and the
-//! authoritative state snapshot held across reloads.
+//! The dev server: static files, manifest assets, live-reload over SSE, the
+//! authoritative state snapshot held across reloads, and—given a renderer—a route
+//! rendered per request through the runner against the request's client hints.
 
 use std::{
   ffi::OsStr,
@@ -12,9 +13,13 @@ use std::{
 };
 
 use percent_encoding::percent_decode_str;
+use skene_runner::{Runner, hint_response_headers};
 use url::Url;
 
 use crate::manifest::App;
+
+/// A request's headers, as `(name, value)` in arrival order.
+type Headers = Vec<(String, String)>;
 
 /// The dev channel: the open live-reload streams, the authoritative state snapshot
 /// held across reloads, and the rebuild-failure notice the running app polls.
@@ -23,6 +28,7 @@ pub struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
   state: Arc<Mutex<Option<Vec<u8>>>>,
   notice: Arc<Mutex<Notice>>,
+  renderer: Arc<Mutex<Option<Runner>>>,
 }
 
 /// The rebuild-failure notice: its text, a version bumped on every change so the app
@@ -35,6 +41,33 @@ struct Notice {
 }
 
 impl Dev {
+  /// Renders routes through `runner` from now on, each request's client hints
+  /// forwarded; `None` returns to serving the generated page.
+  pub fn set_renderer(&self, runner: Option<Runner>) {
+    *self
+      .renderer
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner) = runner;
+  }
+
+  /// Renders `route` against the client hints among `headers`, when a renderer is set.
+  fn render(&self, route: &str, headers: &[(String, String)]) -> Option<Result<String, String>> {
+    let renderer = self
+      .renderer
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let runner = renderer.as_ref()?;
+    let headers = headers
+      .iter()
+      .map(|(name, value)| (name.as_str(), value.as_str()));
+
+    Some(
+      runner
+        .render_with_headers(route, headers)
+        .map_err(|error| format!("{error:#}")),
+    )
+  }
+
   /// Tells every connected page to reload, dropping streams that went away.
   pub fn trigger(&self) {
     let mut clients = self
@@ -253,6 +286,13 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
     return;
   };
 
+  let headers = if method == "GET" {
+    read_headers(&mut reader).unwrap_or_default()
+  }
+  else {
+    Vec::new()
+  };
+
   match (method, relative.as_str(), dev) {
     ("GET", "skene:reload", Some(dev)) => {
       drop(reader);
@@ -279,6 +319,29 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       }
     },
 
+    ("GET", relative, Some(dev)) if is_route(relative) => {
+      match dev.render(&format!("/{relative}"), &headers) {
+        Some(Ok(page)) => {
+          let _ = write_response_with(
+            &mut stream,
+            "200 OK",
+            "text/html; charset=utf-8",
+            &hint_response_headers(),
+            crate::pipeline::inject_client(&page, &app.stem).as_bytes(),
+          );
+        }
+        Some(Err(error)) => {
+          let _ = write_response(
+            &mut stream,
+            "500 Internal Server Error",
+            "text/plain; charset=utf-8",
+            error.as_bytes(),
+          );
+        }
+        None => serve_file(&mut stream, app, relative),
+      }
+    }
+
     ("GET", relative, _) => serve_file(&mut stream, app, relative),
 
     _ => {
@@ -287,10 +350,19 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
   }
 }
 
-/// Reads the request body: the remaining headers for `Content-Length`, then exactly
-/// that many bytes.
-fn read_body(reader: &mut BufReader<TcpStream>) -> Option<Vec<u8>> {
-  let mut length: Option<usize> = None;
+/// Whether a request path names a route rather than a file: no extension in its last
+/// segment.
+fn is_route(relative: &str) -> bool {
+  !relative
+    .rsplit('/')
+    .next()
+    .unwrap_or_default()
+    .contains('.')
+}
+
+/// Reads the request headers up to the blank line ending them.
+fn read_headers(reader: &mut BufReader<TcpStream>) -> Option<Headers> {
+  let mut headers = Vec::new();
 
   loop {
     let mut line = String::new();
@@ -300,17 +372,22 @@ fn read_body(reader: &mut BufReader<TcpStream>) -> Option<Vec<u8>> {
     let line = line.trim_end();
 
     if line.is_empty() {
-      break;
+      return Some(headers);
     }
 
-    if let Some(value) = line
-      .to_ascii_lowercase()
-      .strip_prefix("content-length:")
-      .map(str::trim)
-    {
-      length = value.parse().ok();
+    if let Some((name, value)) = line.split_once(':') {
+      headers.push((name.trim().to_owned(), value.trim().to_owned()));
     }
   }
+}
+
+/// Reads the request body: the remaining headers for `Content-Length`, then exactly
+/// that many bytes.
+fn read_body(reader: &mut BufReader<TcpStream>) -> Option<Vec<u8>> {
+  let length = read_headers(reader)?
+    .into_iter()
+    .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+    .and_then(|(_, value)| value.parse::<usize>().ok());
 
   let mut body = vec![0; length?];
 
@@ -404,14 +481,31 @@ fn write_response(
   content_type: &str,
   body: &[u8],
 ) -> std::io::Result<()> {
-  let header = format!(
+  write_response_with(stream, status, content_type, &[], body)
+}
+
+/// Writes a response carrying `extra` headers beside the content ones.
+fn write_response_with(
+  stream: &mut TcpStream,
+  status: &str,
+  content_type: &str,
+  extra: &[(&str, &str)],
+  body: &[u8],
+) -> std::io::Result<()> {
+  let mut header = format!(
     "HTTP/1.1 {status}\r\n\
      Content-Type: {content_type}\r\n\
-     Content-Length: {}\r\n\
-     Connection: close\r\n\r\n",
+     Content-Length: {}\r\n",
     body.len()
   );
 
+  for (name, value) in extra {
+    use std::fmt::Write as _;
+
+    let _ = write!(header, "{name}: {value}\r\n");
+  }
+
+  header.push_str("Connection: close\r\n\r\n");
   stream.write_all(header.as_bytes())?;
   stream.write_all(body)?;
   stream.flush()

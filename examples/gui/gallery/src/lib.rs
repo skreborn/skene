@@ -1,6 +1,6 @@
 //! The gallery: every built-in view and Simple component, live.
 
-use skene_gui::prelude::*;
+use skene_gui::{ActiveDriver, prelude::*};
 
 #[main]
 fn app() -> impl IntoView {
@@ -26,6 +26,7 @@ fn app() -> impl IntoView {
                 inputs(),
                 layouts(),
                 list(),
+                third_party(),
               )),
             ),
           ),
@@ -243,6 +244,47 @@ fn list() -> impl IntoView {
       ),
     ),
   )
+}
+
+/// A component library and a low-level view from outside the framework: the badge is
+/// written once over any driver, the map against the browser's DOM alone.
+fn third_party() -> impl IntoView {
+  section(
+    "Third party",
+    Column::new().set_spacing(12.).set_children((
+      Row::new()
+        .set_spacing(8.)
+        .set_item_alignment(ItemAlignment::Center)
+        .set_children((
+          acme_ui::AcmeBadge::<ActiveDriver>::new("acme-ui"),
+          Text::new("a badge from a library that names no platform")
+            .set_font_size(13.)
+            .set_color(SimplePalette::MUTED_FOREGROUND),
+        )),
+      map(),
+    )),
+  )
+}
+
+/// The map paints a canvas in the browser, serializes as a placeholder on the server,
+/// and has no medium on the host.
+fn map() -> impl IntoView {
+  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+  {
+    skene_gui::client_only(|| acme_map::Map::<ActiveDriver>::new().build())
+  }
+
+  #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+  {
+    acme_map::Map::<ActiveDriver>::new().placeholder()
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  {
+    Text::new("the map needs a browser")
+      .set_font_size(13.)
+      .set_color(SimplePalette::MUTED_FOREGROUND)
+  }
 }
 
 /// A titled card around one section's content.

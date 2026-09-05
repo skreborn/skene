@@ -17,7 +17,8 @@
 //! opened against ([`overlay_anchor`]); [`control_state`],
 //! [`part`], [`focus_order`], [`is_tab_stop`] and [`accessible_name`] read what the
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
-//! its pointer handling maps a position onto.
+//! its pointer handling maps a position onto. A painted box records that a painter was
+//! bound to it ([`is_painted`]); nothing is drawn.
 
 mod resolve;
 mod store;
@@ -47,6 +48,8 @@ use skene_core::{
   NodeId,
   NodeRecord,
   OverlayProps,
+  Painter,
+  Painting,
   Part,
   Placement,
   PointerEvent,
@@ -323,6 +326,18 @@ impl Driver for Headless {
   fn media(&self) -> MediaSignals<f32> {
     with_store(|store| store.media().signals)
   }
+}
+
+impl Painting for Headless {
+  fn paint(&self, sink: &Handle, _painter: Box<Painter>) {
+    with_record(*sink, |record| record.painted = true);
+  }
+}
+
+/// Whether a paint callback was handed to the box `node` through [`Painting`].
+#[must_use]
+pub fn is_painted(node: NodeId) -> bool {
+  handle(node).is_some_and(|handle| with_record(handle, |record| record.painted) == Some(true))
 }
 
 /// Empties the scene and the store and returns the environment to its defaults.

@@ -24,7 +24,8 @@
 //! keyed list building only the slice in view. [`CornerRadius`] is what a decorated
 //! box asks of a medium's style extension to round its corners, and [`TypeMetrics`]
 //! what a run asks of it to size its type; both are silently declined by a medium
-//! without them.
+//! without them. [`LowLevel`] registers a sink a low-level view made against a
+//! driver's escape trait as a node, so it composes like a built-in.
 
 mod anchor;
 mod container;
@@ -66,6 +67,7 @@ pub use skene_core::{
   IntoChildren,
   IntoView,
   NoChild,
+  NodeKind,
   Part,
   Scene,
   Show,
@@ -116,7 +118,7 @@ pub use crate::{
   overlay::Overlay,
   picker::{Face, RawPicker},
   pinned::Pinned,
-  realize::ChildBuilder,
+  realize::{ChildBuilder, LowLevel},
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,

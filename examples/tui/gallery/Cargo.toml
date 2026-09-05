@@ -5,6 +5,8 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+acme-sparkline = { path = "../../third-party/acme-sparkline" }
+acme-ui = { path = "../../third-party/acme-ui" }
 skene-tui = { features = ["snapshot"], workspace = true }
 
 [dev-dependencies]

@@ -5,7 +5,9 @@
 //! the scene; the folded verdict decides `preventDefault`. `scroll` is taken in the
 //! capture phase, enter and leave are synthesized from `pointerover` and `pointerout`
 //! against the scene's ancestry, and a native toggle's `change` reports the platform's
-//! flip. The only per-node listener is a `<dialog>`'s `cancel`.
+//! flip while its click is dispatched observed: the observers up the path run once per
+//! press and the behavior, whose flip the platform performed, is skipped. The only
+//! per-node listener is a `<dialog>`'s `cancel`.
 
 use std::rc::Rc;
 
@@ -21,6 +23,7 @@ use skene_core::{
   Scene,
   ScrollEvent,
   dispatch_click,
+  dispatch_click_observed,
   dispatch_key_down,
   dispatch_pointer_down,
   dispatch_pointer_move,
@@ -282,6 +285,13 @@ fn on_click(event: &web_sys::Event) {
   }
 
   if inside_native_toggle(node) {
+    // A press on the label reaches here twice, once at the label and once
+    // synthesized at the input; the input's is the one that toggled, and its verdict
+    // never reaches the platform, whose flip `change` reports.
+    if toggle_input(event).is_some() {
+      let _ = dispatch_click_observed::<Web>(node);
+    }
+
     return;
   }
 

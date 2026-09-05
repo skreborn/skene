@@ -166,9 +166,11 @@
   (`skene-{hash:x}` from a wide hash), reference-counted, deterministic and identical
   across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
   in `skene-web` and is shared by both leaves; each layers only its sink.
-- **Painted** content is vello wherever it is realized: native layers, web `<canvas>`
-  via wgpu (both on the roadmap). SSR/SSG render it empty; TUI does not realize it.
-  **Embeds** are
+- **Painted** content is vello wherever it is realized. Today only the headless driver
+  implements `Painting`, recording the bound painter; the web `<canvas>` + wgpu and the
+  native layer realizations are on the roadmap, and until they land a `Painted` node
+  draws nothing on any interactive target. SSR/SSG render it empty; TUI does not realize
+  it. **Embeds** are
   driver-specific views with driver-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
@@ -286,8 +288,8 @@
 - The spine stays minimal and structural. The built-in views live in `skene-views`,
   written once against `Driver`; a facade aliases them
   (`type Container = skene_views::Container<ActiveDriver>`). Users extend by composing
-  built-ins, painting a `Painted` node, or authoring a view against a driver's escape
-  trait.
+  built-ins or authoring a view against a driver's escape trait; painting a `Painted`
+  node joins them when a pixel driver realizes `Painting`.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.

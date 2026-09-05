@@ -109,7 +109,7 @@ pub use skene_views::{
 pub(crate) use crate::driver::{try_with_store, with_store};
 pub use crate::{
   cells::{CellPainter, Cells},
-  dev::{adopt_scroll, notice_view as dev_notice_view},
+  dev::{adopt_restoration, notice_view as dev_notice_view},
   driver::{Tui, handle, install, mount, uninstall},
   ext::{
     BOLD_WEIGHT,

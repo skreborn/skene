@@ -1167,3 +1167,67 @@ fn a_token_keyframe_animation_applies() {
     "{text}"
   );
 }
+
+/// Focus and scroll offsets ride the state snapshot: restored into a fresh install of
+/// the same tree, the same field holds focus and the same box holds its offset.
+#[wasm_bindgen_test]
+fn focus_and_scroll_survive_a_snapshot_roundtrip() {
+  use skene_gui::{
+    NodeId,
+    RawTextField,
+    TextEntry,
+    core::{Dimension, Overflow},
+    reactive,
+  };
+
+  fn build() -> NodeId {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_height(Dimension::Length(40.))
+          .set_overflow(Overflow::Scroll)
+          .set_child(Container::new().set_height(Dimension::Length(400.))),
+        RawTextField::new(TextEntry::new()),
+      ))
+      .build()
+  }
+
+  let bytes = {
+    let (_installed, root) = fresh_root();
+    let _ = mount(build);
+    let column = only_child(&root);
+    let scroller = column.first_element_child().expect("the scroller");
+    let field = column
+      .query_selector("input")
+      .expect("query")
+      .expect("the field");
+
+    scroller.set_scroll_top(120);
+    html(&field).focus().expect("focus the field");
+
+    assert_eq!(document().active_element().as_ref(), Some(&field));
+
+    reactive::snapshot()
+  };
+  let (_installed, root) = fresh_root();
+
+  reactive::restore(&bytes);
+
+  let _ = mount(build);
+
+  web::adopt_restoration();
+
+  let column = only_child(&root);
+  let scroller = column.first_element_child().expect("the scroller");
+  let field = column
+    .query_selector("input")
+    .expect("query")
+    .expect("the field");
+
+  assert_eq!(scroller.scroll_top(), 120, "the offset resumed");
+  assert_eq!(
+    document().active_element().as_ref(),
+    Some(&field),
+    "focus resumed on the field"
+  );
+}

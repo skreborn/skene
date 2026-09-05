@@ -29,6 +29,9 @@ const NOTICE_EVERY: Duration = Duration::from_millis(500);
 /// The snapshot tag carrying every scrolled node's offsets.
 const SCROLL_TAG: &str = "skene-tui:scroll";
 
+/// The snapshot tag of the focused node.
+const FOCUS_TAG: &str = "skene-tui:focus";
+
 /// The dev channel, present when the CLI launched the app.
 struct Channel {
   sender: mpsc::Sender<Vec<u8>>,
@@ -171,19 +174,45 @@ fn scroll_snapshot() -> Option<Vec<(u32, u32, u32)>> {
   })
 }
 
-/// Registers the driver's scroll offsets as a snapshot provider; the entry rides
-/// every snapshot alongside the tagged signals.
-pub(crate) fn provide_scroll() {
+/// Registers the driver's scroll offsets and focused node as snapshot providers; the
+/// entries ride every snapshot alongside the tagged signals.
+pub(crate) fn provide_restoration() {
   skene_reactive::provide(SCROLL_TAG, || {
     scroll_snapshot()
       .filter(|entries| !entries.is_empty())
       .map(|entries| postcard::to_allocvec(&entries).unwrap_or_default())
   });
+  skene_reactive::provide(FOCUS_TAG, || {
+    crate::try_with_store(|store| store.focused.map(Handle::index))
+      .flatten()
+      .map(|index| index.to_le_bytes().to_vec())
+  });
 }
 
-/// Adopts the scroll offsets a restore staged, once the tree is mounted: entries no
-/// live node carries are dropped, and reads clamp to the next layout.
-pub fn adopt_scroll() {
+/// Adopts the focus and scroll offsets a restore staged, once the tree is mounted:
+/// entries no live node carries are dropped, and reads clamp to the next layout.
+pub fn adopt_restoration() {
+  adopt_focus();
+  adopt_scroll();
+}
+
+/// Adopts the focused node a restore staged.
+fn adopt_focus() {
+  let Some(index) = skene_reactive::staged(FOCUS_TAG)
+    .and_then(|bytes| bytes.try_into().ok())
+    .map(u32::from_le_bytes)
+  else {
+    return;
+  };
+  let handle = crate::with_store(|store| store.handle_at(index));
+
+  if handle.is_some() {
+    crate::interaction::set_focus(handle);
+  }
+}
+
+/// Adopts the scroll offsets a restore staged.
+fn adopt_scroll() {
   let Some(bytes) = skene_reactive::staged(SCROLL_TAG)
   else {
     return;

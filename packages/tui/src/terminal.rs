@@ -116,7 +116,7 @@ where
   let mut detection = Some(detect::start());
 
   {
-    crate::dev::adopt_scroll();
+    crate::dev::adopt_restoration();
 
     if let Some(notice) = crate::dev::notice_signal() {
       let _ = crate::mount(|| crate::dev::notice_view(notice).into_view().build());

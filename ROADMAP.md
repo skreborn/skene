@@ -87,9 +87,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
     binding; the server leaf renders it empty by design.
   - `WebMarkup::set_text_content` carries the DOM's name for a method that also exists on
     the server leaf; a driver-neutral name is wanted.
-  - The web leaf registers no snapshot provider, so a dev reload restores neither focus
-    nor scroll; the terminal's provider carries scroll offsets alone. Focus restoration
-    by the same anchor key scroll uses comes first, on both.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
   - `packages/web/src/csr/media.rs` carries one pre-existing `single_match_else` clippy

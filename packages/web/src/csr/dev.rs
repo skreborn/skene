@@ -3,7 +3,9 @@
 //! The handshake pairs with the `skene` CLI's dev server: the served page carries a
 //! `skene-dev` meta marker and the reload script, the wasm boot fetches `/skene:state`
 //! and stages it, and the reload script beacons `skene_snapshot()` back before every
-//! reload. Without the marker (a production page) boot runs immediately, fetch-free.
+//! reload; the focused node and the scroll offsets ride the snapshot and are adopted
+//! once the tree is mounted. Without the marker (a production page) boot runs
+//! immediately, fetch-free.
 
 use js_sys::{Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
@@ -26,6 +28,7 @@ pub fn boot_with_dev_state(boot: impl FnOnce() + 'static) {
 
     expose_snapshot();
     boot();
+    super::restore::adopt_restoration();
   });
 }
 

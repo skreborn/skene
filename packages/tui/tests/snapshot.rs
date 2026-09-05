@@ -1,5 +1,5 @@
-//! The state snapshot in cells: scroll offsets riding it into a fresh driver, and the
-//! dev loop's rebuild notice.
+//! The state snapshot in cells: scroll offsets and focus riding it into a fresh driver,
+//! and the dev loop's rebuild notice.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -45,7 +45,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
   let restored = with_driver(|| {
     tui::reactive::restore(&bytes);
     build();
-    tui::adopt_scroll();
+    tui::adopt_restoration();
 
     tui::render_to_text(6, 4)
   });
@@ -93,7 +93,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
   let restored = with_driver(|| {
     tui::reactive::restore(&bytes);
     build();
-    tui::adopt_scroll();
+    tui::adopt_restoration();
 
     let _ = tui::render_to_text(12, 6);
 
@@ -132,5 +132,50 @@ fn dev_notice_modal_presents_and_dismisses() {
       !dismissed.contains("Rebuild failed") && dismissed.contains("app content"),
       "Escape dismissed the notice: {dismissed}"
     );
+  });
+}
+
+/// Focus rides the state snapshot: restored into a fresh driver, the same control holds
+/// focus without a keystroke, so the next `Space` activates it.
+#[test]
+fn focus_survives_a_snapshot_roundtrip() {
+  use std::{cell::Cell, rc::Rc};
+
+  fn build(hits: &Rc<Cell<u32>>) {
+    let hits = Rc::clone(hits);
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          SimpleButton::new("first"),
+          SimpleButton::new("second").handle_click(move || hits.set(hits.get() + 1)),
+        ))
+        .into_any()
+        .build()
+    });
+  }
+
+  let hits = Rc::new(Cell::new(0));
+  let bytes = with_driver(|| {
+    build(&hits);
+
+    let _ = tui::render_to_text(12, 2);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Tab");
+
+    tui::reactive::snapshot()
+  });
+
+  with_driver(|| {
+    tui::reactive::restore(&bytes);
+    build(&hits);
+    tui::adopt_restoration();
+
+    let _ = tui::render_to_text(12, 2);
+
+    tui::trigger_key(" ");
+
+    assert_eq!(hits.get(), 1, "the second button resumed focused");
   });
 }

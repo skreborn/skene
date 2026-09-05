@@ -452,7 +452,7 @@ pub fn install() {
 
   ROOT.with(|held| *held.borrow_mut() = Some(node));
 
-  crate::dev::provide_scroll();
+  crate::dev::provide_restoration();
 }
 
 /// Uninstalls the terminal driver: empties the scene and the store, and resets the

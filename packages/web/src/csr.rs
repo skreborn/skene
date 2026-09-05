@@ -21,6 +21,7 @@ mod head;
 mod history;
 mod logging;
 mod media;
+mod restore;
 mod sheet;
 mod task;
 mod view_transition;
@@ -73,6 +74,7 @@ pub use self::{
   head::{add_head_element, set_document_title},
   history::{current_path, on_pop, push_path},
   media::{media_query, set_scheme, stored_scheme, watch_media},
+  restore::adopt_restoration,
   task::{drive, install_executor},
   view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},
 };
@@ -1413,6 +1415,7 @@ fn install_at(root: Element, hydrating: bool) {
   let root_node = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
 
   with_dom(|dom| dom.root_node = Some(root_node));
+  restore::provide_restoration();
 }
 
 /// Installs the browser leaf for this thread, rooted at `root`: the element every

@@ -46,6 +46,7 @@ pub use self::csr::uninstall;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use self::csr::{
   add_head_element,
+  adopt_restoration,
   claim_lazy,
   commit_navigation,
   current_path,

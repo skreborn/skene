@@ -22,6 +22,12 @@ wasi and browser suites; every example on every target it supports; the third-pa
 crates under `examples/third-party` building and testing on their drivers; the design
 doc's crate map matching `Cargo.toml`.
 
+The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
+development machine at the redesign's close (2026-09-05), against which a change to
+the engine is measured: creating a thousand signals 78 µs; a signal read outside an
+effect 11 ns; a write reaching ten effects 260 ns; a write through a chain of ten memos
+393 ns.
+
 ### The audit's defects, closed
 
 Each is fixed where its mechanism now lives:

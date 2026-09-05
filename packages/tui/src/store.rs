@@ -101,6 +101,8 @@ pub(crate) struct BoxCache {
   pub(crate) border_ink: Option<Color>,
   /// The border's color leaf resolved.
   pub(crate) target_ink: Option<Color>,
+  /// The keyframes resolved at the node, reused across the frames of a running motion.
+  pub(crate) keyframes: Vec<skene_core::Animation<PlainBox>>,
 }
 
 /// A run's style resolved under one generation and interaction, with the per-child
@@ -113,6 +115,8 @@ pub(crate) struct RunCache {
   /// The style the resolution produced, which a change is judged against.
   pub(crate) target: PlainRun,
   pub(crate) layout: PlainBox,
+  /// The keyframes resolved at the node, reused across the frames of a running motion.
+  pub(crate) keyframes: Vec<skene_core::Animation<PlainRun>>,
 }
 
 /// A box-like node's props, its resolution and its motion.
@@ -452,6 +456,8 @@ pub(crate) struct Store {
   pub(crate) layout_generation: u64,
   /// How many taffy styles have been written.
   pub(crate) set_style_calls: u64,
+  /// How many node styles have been resolved from their declarations.
+  pub(crate) style_resolutions: u64,
   pub(crate) structure_dirty: bool,
   pub(crate) layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
@@ -550,6 +556,7 @@ impl Store {
       generation: 1,
       layout_generation: 0,
       set_style_calls: 0,
+      style_resolutions: 0,
       structure_dirty: true,
       layout_dirty: true,
       paint_dirty: true,

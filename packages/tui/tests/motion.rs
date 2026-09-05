@@ -201,6 +201,8 @@ fn a_keyframe_animation_samples_its_frames() {
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
 
+    let resolved = tui::style_resolutions();
+
     tui::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
@@ -208,6 +210,11 @@ fn a_keyframe_animation_samples_its_frames() {
     tui::trigger_frame(Duration::from_millis(500));
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+    assert_eq!(
+      tui::style_resolutions(),
+      resolved,
+      "a running animation samples its resolved keyframes, resolving nothing per frame"
+    );
 
     tui::trigger_frame(Duration::from_secs(2));
 

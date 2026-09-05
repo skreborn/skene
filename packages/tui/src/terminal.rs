@@ -764,6 +764,13 @@ pub fn set_style_calls() -> u64 {
   with_store(|store| store.set_style_calls)
 }
 
+/// How many node styles have been resolved from their declarations since the driver
+/// was installed, for a test counting what a frame or a change resolved.
+#[must_use]
+pub fn style_resolutions() -> u64 {
+  with_store(|store| store.style_resolutions)
+}
+
 /// The rows the last render rewrote, for a test asserting that a change repainted only
 /// the rows it touched.
 #[must_use]

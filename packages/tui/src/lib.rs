@@ -135,6 +135,7 @@ pub use crate::{
     layout_generation,
     repainted_rows,
     set_style_calls,
+    style_resolutions,
     take_copied,
     take_opened,
     trigger_clipboard_support,

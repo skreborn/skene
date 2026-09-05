@@ -91,7 +91,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
 - **Terminal**
-  - Keyframe token leaves resolve every frame rather than once per generation.
   - Selection and clipboard inside a text input: the source-anchored selection model
     extended over an input's value (drag, shift-arrows, double and triple click,
     insertion replacing the selection), with `Cut` and `Paste` in the menu. Paste is the

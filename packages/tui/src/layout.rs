@@ -279,31 +279,71 @@ fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
   let in_motion = record.in_motion;
 
   if !fresh || in_motion {
-    let env = Env::of(store, handle);
-    let resolved_box = env.resolve_box();
-    let resolved_run = env.resolve_run();
-    let resolved_layout = env.resolve_run_layout();
-    let box_keyframes = record
-      .kind
-      .box_record()
-      .map(|inner| &inner.props)
-      .map(|props| {
-        props
+    // A fresh node in motion samples its clock over the targets and keyframes it
+    // already resolved; only a stale one resolves again.
+    let (resolved_box, resolved_run, resolved_layout, box_keyframes, run_keyframes) = if fresh {
+      match &record.kind {
+        Kind::Run { cache, .. } => {
+          let cache = cache.as_ref()?;
+
+          (
+            None,
+            Some(cache.target.clone()),
+            cache.layout.clone(),
+            Vec::new(),
+            cache.keyframes.clone(),
+          )
+        }
+        kind => {
+          let cache = kind.box_record()?.cache.as_ref()?;
+
+          (
+            Some((cache.target.clone(), cache.target_ink)),
+            None,
+            PlainBox::default(),
+            cache.keyframes.clone(),
+            Vec::new(),
+          )
+        }
+      }
+    }
+    else {
+      let env = Env::of(store, handle);
+      let resolved_box = env.resolve_box();
+      let resolved_run = env.resolve_run();
+      let resolved_layout = env.resolve_run_layout();
+      let box_keyframes = record
+        .kind
+        .box_record()
+        .map(|inner| &inner.props)
+        .map(|props| {
+          props
+            .dynamics
+            .animations
+            .iter()
+            .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
+            .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+      let run_keyframes = match &record.kind {
+        Kind::Run { props, .. } => props
           .dynamics
           .animations
           .iter()
-          .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
-          .collect::<Vec<_>>()
-      })
-      .unwrap_or_default();
-    let run_keyframes = match &record.kind {
-      Kind::Run { props, .. } => props
-        .dynamics
-        .animations
-        .iter()
-        .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
-        .collect::<Vec<_>>(),
-      _ => Vec::new(),
+          .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
+          .collect::<Vec<_>>(),
+        _ => Vec::new(),
+      };
+
+      store.style_resolutions += 1;
+
+      (
+        resolved_box,
+        resolved_run,
+        resolved_layout,
+        box_keyframes,
+        run_keyframes,
+      )
     };
     let record = store.record_mut(handle)?;
     let frame = Frame {
@@ -389,6 +429,7 @@ fn present_run(
     style,
     target,
     layout,
+    keyframes: keyframes.to_vec(),
   });
 
   (repaint, active)
@@ -442,6 +483,7 @@ fn present_box(
     target,
     border_ink,
     target_ink,
+    keyframes: keyframes.to_vec(),
   });
 
   (repaint, running || inking)

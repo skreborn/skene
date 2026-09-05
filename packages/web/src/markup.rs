@@ -17,6 +17,12 @@ pub(crate) const STYLE_ATTRIBUTE: &str = "data-skene-style";
 /// The attribute carrying an element's creation-order hydration marker.
 pub(crate) const MARKER_ATTRIBUTE: &str = "data-h";
 
+/// The element a box is realized as: an anchor when it has a destination, else the
+/// element its role names.
+pub(crate) const fn box_tag(role: Option<Role>, destination: bool) -> &'static str {
+  if destination { "a" } else { element_tag(role) }
+}
+
 /// The element a box of `role` is realized as.
 pub(crate) const fn element_tag(role: Option<Role>) -> &'static str {
   match role {

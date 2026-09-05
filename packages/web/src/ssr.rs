@@ -77,8 +77,8 @@ use super::{
     access_attribute,
     anchor_text,
     aria_role,
+    box_tag,
     drawn_element,
-    element_tag,
     focus_order_attribute,
     link_attributes,
     native_element,
@@ -803,12 +803,16 @@ impl Driver for Web {
 
   fn create_box(&self, props: &BoxProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
-      let index = tree.element(element_tag(props.role));
+      let index = tree.element(box_tag(props.role, props.destination.is_some()));
 
-      if let Some(role) = props.role.filter(|role| role.is_widget())
-        && let Some(node) = tree.node(index)
-      {
-        node.set_attribute("role", aria_role(role));
+      if let Some(node) = tree.node(index) {
+        if let Some(role) = props.role.filter(|role| role.is_widget()) {
+          node.set_attribute("role", aria_role(role));
+        }
+
+        if let Some(href) = &props.destination {
+          node.set_attribute("href", href);
+        }
       }
 
       let compiled = tree.compiled(box_fingerprint(props, 0), || compile_box(props));
@@ -1183,22 +1187,6 @@ pub const fn stored_scheme() -> Option<ColorScheme> {
 /// cross-document navigations between the served pages; one that does not cuts.
 pub fn enable_view_transitions() {
   VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
-}
-
-/// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
-/// handlers are the scene's, returned detached.
-pub fn create_link(href: &str) -> NodeId {
-  let sink = with_tree(|tree| {
-    let index = tree.element("a");
-
-    if let Some(node) = tree.node(index) {
-      node.set_attribute("href", href);
-    }
-
-    index
-  });
-
-  Scene::<Web>::with(|scene| scene.create(NodeKind::Box, sink))
 }
 
 /// Sets the document title, serialized into the page head.

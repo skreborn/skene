@@ -14,18 +14,12 @@ pub mod prelude;
 pub mod split;
 pub mod view_transitions;
 
-#[cfg(target_arch = "wasm32")]
 mod deferred;
-#[cfg(target_arch = "wasm32")]
 pub mod head;
-#[cfg(target_arch = "wasm32")]
 mod lazy;
-#[cfg(target_arch = "wasm32")]
 mod link;
 mod resource;
-#[cfg(target_arch = "wasm32")]
 mod routing;
-#[cfg(target_arch = "wasm32")]
 mod task;
 mod typography_set;
 
@@ -111,19 +105,14 @@ pub use tracing;
 #[doc(hidden)]
 pub use wasm_bindgen;
 
-#[cfg(target_arch = "wasm32")]
-pub use crate::deferred::Deferred;
-#[cfg(target_arch = "wasm32")]
-pub use crate::lazy::Lazy;
-#[cfg(target_arch = "wasm32")]
-pub use crate::link::Link;
-#[cfg(target_arch = "wasm32")]
-pub use crate::routing::{install_router, install_static_router};
-#[cfg(target_arch = "wasm32")]
-pub use crate::task::spawn;
 pub use crate::{
+  deferred::Deferred,
+  lazy::Lazy,
+  link::Link,
   media::{derive_scheme, set_scheme, stored_scheme},
   resource::{LoadState, Resource},
+  routing::{install_router, install_static_router},
+  task::spawn,
   typography_set::Typography,
 };
 

@@ -174,7 +174,18 @@ pub struct Store {
   pub reduced_motion: Option<bool>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
+  pub title: Option<String>,
+  pub head: Vec<HeadElement>,
   media: Option<MediaState>,
+}
+
+/// An element registered for the document head.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HeadElement {
+  /// The element's tag.
+  pub tag: String,
+  /// The element's attributes, in registration order.
+  pub attributes: Vec<(String, String)>,
 }
 
 impl Default for Store {
@@ -191,6 +202,8 @@ impl Default for Store {
       chosen_scheme: None,
       reduced_motion: None,
       clock: 0.,
+      title: None,
+      head: Vec::new(),
       media: None,
     }
   }

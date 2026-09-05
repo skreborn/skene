@@ -1,40 +1,56 @@
-//! A navigation link: a real anchor, upgraded to router navigation when running.
+//! A navigation link: a box with a destination, upgraded to router navigation when
+//! running.
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{AnyKind, IntoView, Modifiers, NodeId, PointerEvent, Prevent, Scene, View};
+use skene_core::{
+  AnyKind,
+  Children,
+  HasChildren,
+  Layout,
+  Modifiers,
+  NodeId,
+  PlainChild,
+  PointerEvent,
+  Prevent,
+  Scene,
+  Seal,
+  View,
+};
 use skene_router::{Route, Router};
+use skene_views::LayoutBox;
 
 use crate::ActiveDriver;
 
-/// A link to a route: a real anchor carrying the route's path, so a page without
+/// A link to a route: a box whose destination is the route's path, so a page without
 /// JavaScript navigates by full page load, and a running app intercepts the click
-/// into [`Router::navigate`] instead.
+/// into [`Router::navigate`] instead. Takes its content through
+/// [`set_child`](HasChildren::set_child).
 ///
-/// A modified click—control, shift, alt, or command held—is left to the browser, so
+/// A modified click—control, shift, alt, or command held—is left to the platform, so
 /// open-in-new-tab and friends keep working.
 #[must_use]
 pub struct Link<R: Route> {
   route: R,
-  child: Option<Box<dyn FnOnce() -> NodeId>>,
+  inner: LayoutBox<ActiveDriver>,
 }
 
 impl<R: Route> Link<R> {
-  /// Creates a link to `route`; the anchor shows [`set_child`](Self::set_child).
+  /// Creates a link to `route`.
   #[inline(always)]
   pub fn new(route: R) -> Self {
-    Self { route, child: None }
+    let inner = LayoutBox::new(Layout::Flow).set_destination(route.to_path());
+
+    Self { route, inner }
   }
+}
 
-  /// Sets the link's content.
+impl<R: Route> HasChildren<ActiveDriver> for Link<R> {
+  type Kind = PlainChild;
+
   #[inline(always)]
-  pub fn set_child<V: IntoView<ActiveDriver>>(
-    mut self,
-    child: impl FnOnce() -> V + 'static,
-  ) -> Self {
-    self.child = Some(Box::new(move || child().into_view().build()));
-
-    self
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<ActiveDriver, PlainChild> {
+    self.inner.children_mut(seal)
   }
 }
 
@@ -42,14 +58,7 @@ impl<R: Route> AnyKind for Link<R> {}
 
 impl<R: Route> View<ActiveDriver> for Link<R> {
   fn build(self) -> NodeId {
-    let node = skene_web::create_link(&self.route.to_path());
-
-    if let Some(child) = self.child {
-      let child = child();
-
-      Scene::<ActiveDriver>::with(|scene| scene.attach(node, child, None));
-    }
-
+    let node = self.inner.build();
     let held = Rc::new(Cell::new(Modifiers::default()));
     let route = self.route;
     // Captured while building, where an ancestor's `provide` is in scope; a click

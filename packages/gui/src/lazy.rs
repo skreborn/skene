@@ -67,12 +67,12 @@ impl Lazy {
 /// Claims the server's markup in the segment, when hydrating over some.
 #[inline(always)]
 fn claim(start: NodeId) -> bool {
-  #[cfg(target_os = "unknown")]
+  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
   {
     skene_web::claim_lazy(start)
   }
 
-  #[cfg(target_os = "wasi")]
+  #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
   {
     let _ = start;
 
@@ -83,10 +83,10 @@ fn claim(start: NodeId) -> bool {
 /// Removes the claimed markup, as the real content arrives.
 #[inline(always)]
 fn discard(start: NodeId) {
-  #[cfg(target_os = "unknown")]
+  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
   skene_web::discard_lazy(start);
 
-  #[cfg(target_os = "wasi")]
+  #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
   let _ = start;
 }
 

@@ -511,6 +511,7 @@ impl Store {
       container: None,
       focus_order: None,
       access: Vec::new(),
+      destination: None,
     };
     let mut store = Self {
       entries: Vec::new(),

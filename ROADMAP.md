@@ -93,9 +93,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
   - A public pollable registration on the server leaf's reactor, so a third-party
     `wasi:*` client blocks the render until its load settles. The reactor exposes `sleep`
     and the render deadline today.
-  - `Deferred`, `Lazy`, `Link`, `head` and the router binding in `skene-gui` are gated to
-    `wasm32`, so a host build of an app that uses them does not compile against the
-    headless driver.
   - The web leaf registers no snapshot provider, so a dev reload restores neither focus
     nor scroll; the terminal's provider carries scroll offsets alone. Focus restoration
     by the same anchor key scroll uses comes first, on both.

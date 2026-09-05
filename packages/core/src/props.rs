@@ -78,6 +78,9 @@ pub struct BoxProps<D: Driver> {
   pub focus_order: Option<FocusOrder>,
   /// The accessibility properties the box reports.
   pub access: Vec<AccessProp>,
+  /// The path the box navigates to when activated; a real link where the medium has
+  /// one.
+  pub destination: Option<String>,
 }
 
 /// Everything a driver needs to realize a text run.

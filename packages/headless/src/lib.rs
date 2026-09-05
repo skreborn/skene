@@ -88,7 +88,7 @@ use skene_core::{
 };
 use skene_reactive::Set;
 
-pub use crate::store::SlotValue;
+pub use crate::store::{HeadElement, SlotValue};
 use crate::store::{Kind, Record, Store};
 
 /// The host driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
@@ -376,6 +376,36 @@ pub fn install_executor() {
 #[must_use]
 pub fn pump_tasks() -> bool {
   task::pump()
+}
+
+/// Sets the document title.
+pub fn set_document_title(title: &str) {
+  with_store(|store| store.title = Some(title.to_owned()));
+}
+
+/// Registers an element for the document head.
+pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
+  let element = HeadElement {
+    tag: tag.to_owned(),
+    attributes: attributes
+      .iter()
+      .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
+      .collect(),
+  };
+
+  with_store(|store| store.head.push(element));
+}
+
+/// The document title last set.
+#[must_use]
+pub fn document_title() -> Option<String> {
+  with_store(|store| store.title.clone())
+}
+
+/// The elements registered for the document head, in order.
+#[must_use]
+pub fn head_elements() -> Vec<HeadElement> {
+  with_store(|store| store.head.clone())
 }
 
 /// Dispatches a click at `node`, bubbling through the scene.

@@ -91,6 +91,7 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   style: DeclaredBoxStyle<D>,
   dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
   transition_name: Option<String>,
+  destination: Option<String>,
   handlers: Handlers,
   anchor: Option<Anchor>,
   focus: Option<FocusHandle<D>>,
@@ -110,6 +111,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       style: DeclaredBoxStyle::<D>::default(),
       dynamics: BoxDynamics::default(),
       transition_name: None,
+      destination: None,
       handlers: Handlers::default(),
       anchor: None,
       focus: None,
@@ -269,6 +271,15 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.transition_name = Some(name.into());
+
+    self
+  }
+
+  /// Sets the path the box navigates to when activated; the medium realizes it as a
+  /// real link where it has one.
+  #[inline(always)]
+  pub fn set_destination(mut self, path: impl Into<String>) -> Self {
+    self.destination = Some(path.into());
 
     self
   }
@@ -458,6 +469,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       container: self.container,
       focus_order,
       access,
+      destination: self.destination,
     };
     let sink = create(props);
     let container = self.container;

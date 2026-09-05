@@ -387,3 +387,207 @@ fn a_resource_loads_when_the_tasks_are_pumped() {
 
   owner.dispose();
 }
+
+/// A page's routes, for the host-side link and router tests.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Page {
+  Home,
+  About,
+}
+
+impl skene_gui::router::Route for Page {
+  fn parse(path: &str) -> Option<Self> {
+    match path {
+      "/" => Some(Self::Home),
+      "/about" => Some(Self::About),
+      _ => None,
+    }
+  }
+
+  fn to_path(&self) -> String {
+    match self {
+      Self::Home => "/".to_owned(),
+      Self::About => "/about".to_owned(),
+    }
+  }
+}
+
+/// A pointer press with `modifiers` held.
+fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
+  skene_gui::core::PointerEvent {
+    x: 0.,
+    y: 0.,
+    local_x: 0.,
+    local_y: 0.,
+    button: Some(skene_gui::core::PointerButton::Primary),
+    modifiers,
+  }
+}
+
+/// A link is a box carrying its route's path as destination; a plain click navigates
+/// the router and suppresses the platform's own navigation, a modified click leaves
+/// both to the platform.
+#[test]
+fn a_link_carries_its_destination_and_navigates_the_router() {
+  use skene_gui::{Link, core::Modifiers, headless::trigger_pointer_down};
+
+  reset();
+
+  let owner = Owner::new();
+  let (router, link) = owner.enter(|| {
+    let router = skene_gui::install_router(Page::Home);
+    let link = Link::new(Page::About).set_child(Text::new("about")).build();
+
+    (router, link)
+  });
+
+  assert_eq!(
+    box_props(link).and_then(|props| props.destination),
+    Some("/about".to_owned())
+  );
+  assert_eq!(outline(link), "Box\n  Run \"about\"\n");
+
+  let _ = trigger_pointer_down(link, &press(Modifiers::default()));
+  let verdict = trigger_click(link);
+
+  assert!(verdict.platform, "a plain click is the router's");
+  assert_eq!(router.route(), Page::About);
+
+  router.navigate(Page::Home);
+
+  let _ = trigger_pointer_down(
+    link,
+    &press(Modifiers {
+      ctrl: true,
+      ..Modifiers::default()
+    }),
+  );
+  let verdict = trigger_click(link);
+
+  assert!(!verdict.platform, "a modified click is the platform's");
+  assert_eq!(router.route(), Page::Home);
+
+  owner.dispose();
+}
+
+/// Off the server leaf a deferred subtree builds its content directly, between anchors
+/// of its own.
+#[test]
+fn a_deferred_subtree_builds_its_content_on_the_host() {
+  use skene_gui::Deferred;
+
+  reset();
+
+  let owner = Owner::new();
+  let root = owner.enter(|| {
+    Container::new()
+      .set_child(Deferred::new(|| Text::new("late")))
+      .build()
+  });
+
+  assert_eq!(outline(root), "Box\n  Run \"late\"\n");
+
+  owner.dispose();
+}
+
+/// A lazy subtree mounts its content once its future completes on the headless queue.
+#[test]
+fn a_lazy_subtree_mounts_when_the_tasks_are_pumped() {
+  use skene_gui::Lazy;
+
+  reset();
+
+  let owner = Owner::new();
+  let root = owner.enter(|| {
+    Container::new()
+      .set_child(Lazy::new(|| async { Text::new("loaded") }))
+      .build()
+  });
+
+  assert_eq!(outline(root), "Box\n");
+  assert!(pump_tasks());
+  assert_eq!(outline(root), "Box\n  Run \"loaded\"\n");
+
+  owner.dispose();
+}
+
+/// A spawned task runs on the headless queue and ends with its owner.
+#[test]
+fn a_spawned_task_runs_when_pumped_and_ends_with_its_owner() {
+  reset();
+
+  let ran = Rc::new(Cell::new(0));
+  let owner = Owner::new();
+
+  owner.enter(|| {
+    let ran = Rc::clone(&ran);
+
+    skene_gui::spawn(async move { ran.set(ran.get() + 1) });
+  });
+
+  assert_eq!(ran.get(), 0);
+  assert!(pump_tasks());
+  assert_eq!(ran.get(), 1);
+
+  let disposed = Owner::new();
+
+  disposed.enter(|| {
+    let ran = Rc::clone(&ran);
+
+    skene_gui::spawn(async move { ran.set(ran.get() + 1) });
+  });
+  disposed.dispose();
+
+  let _ = pump_tasks();
+
+  assert_eq!(ran.get(), 1, "a disposed owner's task never runs");
+
+  owner.dispose();
+}
+
+/// The head registrations reach the headless driver for a test to read back.
+#[test]
+fn head_registrations_are_recorded_on_the_host() {
+  use skene_gui::{
+    head,
+    headless::{HeadElement, document_title, head_elements},
+  };
+
+  reset();
+
+  let owner = Owner::new();
+  let title = Signal::new("Home".to_owned());
+
+  owner.enter(|| {
+    head::derive_title(move || format!("{} — skene", title.get()));
+    head::add_meta("description", "A tiny page");
+    head::add_stylesheet("/site.css");
+  });
+
+  assert_eq!(document_title().as_deref(), Some("Home — skene"));
+
+  title.set("About".to_owned());
+
+  assert_eq!(document_title().as_deref(), Some("About — skene"));
+  assert_eq!(
+    head_elements(),
+    vec![
+      HeadElement {
+        tag: "meta".to_owned(),
+        attributes: vec![
+          ("name".to_owned(), "description".to_owned()),
+          ("content".to_owned(), "A tiny page".to_owned()),
+        ],
+      },
+      HeadElement {
+        tag: "link".to_owned(),
+        attributes: vec![
+          ("rel".to_owned(), "stylesheet".to_owned()),
+          ("href".to_owned(), "/site.css".to_owned()),
+        ],
+      },
+    ]
+  );
+
+  owner.dispose();
+}

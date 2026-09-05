@@ -108,8 +108,8 @@ use super::{
     access_attribute,
     anchor_text,
     aria_role,
+    box_tag,
     drawn_element,
-    element_tag,
     focus_order_attribute,
     link_attributes,
     native_element,
@@ -757,12 +757,19 @@ impl Driver for Web {
 
   fn create_box(&self, props: &BoxProps<Self>) -> u32 {
     with_dom(|dom| {
-      let sink = dom.create_element(element_tag(props.role), Realized::Box);
+      let sink = dom.create_element(
+        box_tag(props.role, props.destination.is_some()),
+        Realized::Box,
+      );
 
-      if let Some(role) = props.role.filter(|role| role.is_widget())
-        && let Some(element) = dom.node(sink).and_then(Node::element)
-      {
-        let _ = element.set_attribute("role", aria_role(role));
+      if let Some(element) = dom.node(sink).and_then(Node::element) {
+        if let Some(role) = props.role.filter(|role| role.is_widget()) {
+          let _ = element.set_attribute("role", aria_role(role));
+        }
+
+        if let Some(href) = &props.destination {
+          let _ = element.set_attribute("href", href);
+        }
       }
 
       let compiled = dom
@@ -1509,22 +1516,6 @@ where
   install(body.into());
 
   let _ = mount(|| app().into_view().build());
-}
-
-/// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
-/// handlers are the scene's, returned detached.
-pub fn create_link(href: &str) -> NodeId {
-  let sink = with_dom(|dom| {
-    let sink = dom.create_element("a", Realized::Box);
-
-    if let Some(element) = dom.node(sink).and_then(Node::element) {
-      let _ = element.set_attribute("href", href);
-    }
-
-    sink
-  });
-
-  Scene::<Web>::with(|scene| scene.create(NodeKind::Box, sink))
 }
 
 /// The DOM nodes between the anchors of the segment `start` begins, in order.

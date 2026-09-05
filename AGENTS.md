@@ -32,8 +32,9 @@
   low-level view is written against exactly the bound it needs and is realized through
   the same scene and node ids as a built-in (`skene_views::LowLevel` registers the sink
   it made as a node). `Painted` (vello) is the portable low-level path for pixel media,
-  through core's `Painting` extension: the headless driver records it, and the web and
-  native realizations are on the roadmap.
+  through core's `Painting` extension: the browser leaf renders the scene on the CPU
+  into a canvas, the headless driver renders it to pixels a test reads, the server leaf
+  renders it empty; the native realization comes with the native driver.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
   `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
   native driver, later; every other host → the headless driver). No feature flags.
@@ -166,11 +167,12 @@
   (`skene-{hash:x}` from a wide hash), reference-counted, deterministic and identical
   across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
   in `skene-web` and is shared by both leaves; each layers only its sink.
-- **Painted** content is vello wherever it is realized. Today only the headless driver
-  implements `Painting`, recording the bound painter; the web `<canvas>` + wgpu and the
-  native layer realizations are on the roadmap, and until they land a `Painted` node
-  draws nothing on any interactive target. SSR/SSG render it empty; TUI does not realize
-  it. **Embeds** are
+- **Painted** content is vello wherever it is realized: a `Canvas` is a vello scene in
+  device pixels, drawn with kurbo shapes and peniko brushes. The browser leaf renders it
+  with vello's CPU renderer into a `<canvas>` sized to the box at the device pixel
+  ratio, repainting on resize (a WebGPU renderer is a later upgrade behind the same
+  `Canvas`); native layers come with the native driver. SSR/SSG render it empty; TUI
+  does not realize it. **Embeds** are
   driver-specific views with driver-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
@@ -290,8 +292,8 @@
 - The spine stays minimal and structural. The built-in views live in `skene-views`,
   written once against `Driver`; a facade aliases them
   (`type Container = skene_views::Container<ActiveDriver>`). Users extend by composing
-  built-ins or authoring a view against a driver's escape trait; painting a `Painted`
-  node joins them when a pixel driver realizes `Painting`.
+  built-ins, painting a `Painted` node, or authoring a view against a driver's escape
+  trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
   `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
   function that realizes the handler is named the same.

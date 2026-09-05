@@ -83,6 +83,7 @@ pub use crate::{
   LazyColumn,
   Media,
   Overlay,
+  Painted,
   Pinned,
   Point,
   RawButton,

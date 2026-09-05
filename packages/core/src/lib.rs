@@ -124,7 +124,7 @@ pub use leaf::{
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
 pub use node::NodeId;
-pub use painting::{Canvas, Painter, Painting};
+pub use painting::{Canvas, Painter, Painting, kurbo, peniko};
 pub use pixel::{PixelBoxFields, PixelExt, PixelProperty, PixelRunFields, pixel_fields};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{

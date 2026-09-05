@@ -33,6 +33,7 @@ use skene_core::{
   AccessProp,
   BoxProps,
   BoxValue,
+  Canvas,
   ControlProps,
   ControlState,
   Definitions,
@@ -44,6 +45,8 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
+  Painter,
+  Painting,
   PixelExt,
   Placement,
   RunProps,
@@ -59,12 +62,15 @@ use skene_core::{
 };
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{
+  CanvasRenderingContext2d,
   Document,
   Element,
+  HtmlCanvasElement,
   HtmlDialogElement,
   HtmlElement,
   HtmlInputElement,
   HtmlTextAreaElement,
+  ImageData,
   ResizeObserver,
   ResizeObserverEntry,
 };
@@ -162,6 +168,8 @@ struct Node {
   observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   cancel: Option<Listener>,
   adopted: bool,
+  painter: Option<Rc<Painter>>,
+  canvas: Option<HtmlCanvasElement>,
 }
 
 impl Node {
@@ -178,6 +186,8 @@ impl Node {
       observers: Vec::new(),
       cancel: None,
       adopted,
+      painter: None,
+      canvas: None,
     }
   }
 
@@ -766,6 +776,103 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, placement: Placemen
   let _ = style.set_property("position", "fixed");
   let _ = style.set_property("left", &format!("{}px", rect.left()));
   let _ = style.set_property("top", &format!("{top}px"));
+}
+
+impl Painting for Web {
+  fn paint(&self, sink: &u32, painter: Box<Painter>) {
+    let sink = *sink;
+    let first = with_dom(|dom| {
+      let document = dom.document.clone();
+      let Some(node) = dom.node_mut(sink)
+      else {
+        return false;
+      };
+      let first = node.painter.is_none();
+
+      node.painter = Some(Rc::from(painter));
+
+      if node.canvas.is_none()
+        && let Some(element) = node.element()
+        && let Ok(canvas) = document.create_element("canvas")
+        && let Ok(canvas) = canvas.dyn_into::<HtmlCanvasElement>()
+      {
+        let _ = canvas.set_attribute("style", "display:block;width:100%;height:100%");
+        let _ = element.append_child(&canvas);
+
+        node.canvas = Some(canvas);
+      }
+
+      first
+    });
+
+    if first {
+      self.observe_size(&sink, Rc::new(move |size| repaint(sink, size)));
+    }
+
+    let size = with_dom(|dom| {
+      dom.node(sink).and_then(Node::element).map(|element| {
+        let rect = element.get_bounding_client_rect();
+
+        #[expect(clippy::cast_possible_truncation)]
+        Size::new(rect.width() as f32, rect.height() as f32)
+      })
+    });
+
+    if let Some(size) = size {
+      repaint(sink, size);
+    }
+  }
+}
+
+/// Runs the painter of `sink` at `size` logical pixels into its canvas, at the device
+/// pixel ratio.
+fn repaint(sink: u32, size: Size<f32>) {
+  let Some((painter, canvas)) = with_dom(|dom| {
+    dom
+      .node(sink)
+      .and_then(|node| Some((node.painter.clone()?, node.canvas.clone()?)))
+  })
+  else {
+    return;
+  };
+
+  if size.width <= 0. || size.height <= 0. {
+    return;
+  }
+
+  #[expect(clippy::cast_possible_truncation)]
+  let ratio = web_sys::window().map_or(1., |window| window.device_pixel_ratio()) as f32;
+  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  let (width, height) = (
+    (size.width * ratio).round() as u16,
+    (size.height * ratio).round() as u16,
+  );
+
+  canvas.set_width(u32::from(width));
+  canvas.set_height(u32::from(height));
+
+  let mut surface = Canvas::new(width, height);
+
+  surface.set_transform(skene_core::kurbo::Affine::scale(f64::from(ratio)));
+  painter(&mut surface, size);
+
+  let pixels = surface.pixels();
+  let Ok(Some(context)) = canvas.get_context("2d")
+  else {
+    return;
+  };
+  let Ok(context) = context.dyn_into::<CanvasRenderingContext2d>()
+  else {
+    return;
+  };
+
+  if let Ok(image) = ImageData::new_with_u8_clamped_array_and_sh(
+    wasm_bindgen::Clamped(&pixels),
+    u32::from(width),
+    u32::from(height),
+  ) {
+    let _ = context.put_image_data(&image, 0., 0.);
+  }
 }
 
 impl Driver for Web {

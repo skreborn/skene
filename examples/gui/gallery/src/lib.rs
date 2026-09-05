@@ -32,6 +32,7 @@ fn app() -> impl IntoView {
                   inputs(),
                   layouts(),
                   list(),
+                  painted(),
                   third_party(),
                 )),
               ),
@@ -305,6 +306,38 @@ fn list() -> impl IntoView {
         },
       ),
     ),
+  )
+}
+
+/// A box painted through vello: the portable low-level path for pixel media, drawn on
+/// the CPU into a canvas in the browser and left empty by a server render.
+fn painted() -> impl IntoView {
+  use skene_gui::core::kurbo::{Circle, Rect};
+
+  section(
+    "Painted",
+    Row::new()
+      .set_spacing(12.)
+      .set_item_alignment(ItemAlignment::Center)
+      .set_children((
+        Painted::new(|canvas, size| {
+          let (width, height) = (f64::from(size.width), f64::from(size.height));
+
+          canvas.fill(
+            &Rect::new(0., 0., width, height),
+            Color::srgb(0.16, 0.25, 0.45),
+          );
+          canvas.fill(
+            &Circle::new((width / 2., height / 2.), height.min(width) / 3.),
+            Color::srgb(0.98, 0.80, 0.30),
+          );
+        })
+        .set_width(Dimension::Length(120.))
+        .set_height(Dimension::Length(64.)),
+        Text::new("a vello scene sized by its box")
+          .set_font_size(13.)
+          .set_color(SimplePalette::MUTED_FOREGROUND),
+      )),
   )
 }
 

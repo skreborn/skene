@@ -83,9 +83,9 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
     through the same alignment as signals. `set_key` is the name to weigh; it should be
     the concept `reconcile` keys lists by rather than a second one.
 - **Web**
-  - `Painting` has no web realization: `Painted` content through `<canvas>` + wgpu, with
-    the vello CPU/hybrid path where WebGPU is absent. The headless driver records the
-    binding; the server leaf renders it empty by design.
+  - `Painted` renders through vello's CPU renderer in the browser; the WebGPU renderer
+    (vello over wgpu, for large or animated scenes) is the upgrade behind the same
+    `Canvas`, and the test browser has no WebGPU to prove it with yet.
   - `WebMarkup::set_text_content` carries the DOM's name for a method that also exists on
     the server leaf; a driver-neutral name is wanted.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the

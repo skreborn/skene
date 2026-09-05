@@ -54,6 +54,13 @@ impl Color {
     AlphaColor::<Oklch>::new([self.lightness, self.chroma, self.hue, self.alpha]).convert::<S>()
   }
 
+  /// The color as an sRGB alpha color, for a renderer.
+  #[inline(always)]
+  #[must_use]
+  pub fn to_alpha_color(self) -> AlphaColor<Srgb> {
+    self.to_space::<Srgb>()
+  }
+
   /// Creates an opaque color in the sRGB color space.
   ///
   /// Components on a scale of `0` to `1`.

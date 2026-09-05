@@ -626,3 +626,47 @@ fn a_size_handle_reports_the_measured_size() {
 
   owner.dispose();
 }
+
+/// A painted box hands its painter to the driver and draws through vello: the pixels
+/// the headless driver renders carry the fill.
+#[test]
+fn a_painted_box_draws_through_vello() {
+  use skene_gui::{
+    Painted,
+    core::{Size, kurbo::Rect},
+    headless::{is_painted, paint},
+  };
+
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    Painted::new(|canvas, size| {
+      canvas.fill(
+        &Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),
+        Color::srgb(1., 0., 0.),
+      );
+    })
+    .set_width(Dimension::Length(8.))
+    .set_height(Dimension::Length(4.))
+    .build()
+  });
+
+  assert!(is_painted(node));
+
+  let pixels = paint(node, Size::new(8., 4.)).expect("a painted box");
+
+  assert_eq!(pixels.len(), 8 * 4 * 4);
+  assert_eq!(
+    &pixels[0..4],
+    &[255, 0, 0, 255],
+    "the top-left pixel is the fill"
+  );
+  assert_eq!(
+    &pixels[pixels.len() - 4..],
+    &[255, 0, 0, 255],
+    "so is the last"
+  );
+
+  owner.dispose();
+}

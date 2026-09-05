@@ -265,6 +265,8 @@ pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
 pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
 /// A handle reporting a built view's measured size; see [`skene_views::SizeHandle`].
 pub type SizeHandle = skene_views::SizeHandle<ActiveDriver>;
+/// A box drawn by a paint callback; see [`skene_views::Painted`].
+pub type Painted = skene_views::Painted<ActiveDriver>;
 /// A scrolling keyed list building only the slice in view; see
 /// [`skene_views::LazyColumn`].
 pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;

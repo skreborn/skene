@@ -1,30 +1,131 @@
-//! The portable low-level path for pixel media: a paint callback on a box.
+//! The portable low-level path for pixel media: a paint callback on a box, drawing
+//! through vello.
+
+use vello_cpu::{Pixmap, RenderContext, Resources};
+pub use vello_cpu::{kurbo, peniko};
 
 use super::Driver;
-use crate::Size;
+use crate::{Color, Size};
 
-/// The surface a paint callback draws on.
+/// The surface a paint callback draws on: a vello scene the size of the box, in device
+/// pixels, rendered by the driver once the callback returns.
 ///
-/// A placeholder until a pixel driver realizes it: no driver constructs one yet, so a
-/// callback taking it compiles against every driver and runs on none.
-#[derive(Debug)]
+/// Geometry is [`kurbo`]'s and paint is [`peniko`]'s; the framework's [`Color`]
+/// converts into a brush. Coordinates are device pixels from the box's top-left corner.
 #[must_use]
 pub struct Canvas {
-  _private: (),
+  context: RenderContext,
+  resources: Resources,
+  width: u16,
+  height: u16,
 }
 
-/// A paint callback: draws into the canvas at the node's laid-out size.
+impl Canvas {
+  /// A blank canvas of `width` by `height` device pixels.
+  pub fn new(width: u16, height: u16) -> Self {
+    Self {
+      context: RenderContext::new(width.max(1), height.max(1)),
+      resources: Resources::new(),
+      width: width.max(1),
+      height: height.max(1),
+    }
+  }
+
+  /// The canvas size, in device pixels.
+  #[inline(always)]
+  #[must_use]
+  pub const fn size(&self) -> (u16, u16) {
+    (self.width, self.height)
+  }
+
+  /// Sets the transform every later shape is drawn under.
+  #[inline(always)]
+  pub fn set_transform(&mut self, transform: kurbo::Affine) {
+    self.context.set_transform(transform);
+  }
+
+  /// Fills `shape` with `brush`.
+  pub fn fill(&mut self, shape: &impl kurbo::Shape, brush: impl Into<peniko::Brush>) {
+    self.context.set_paint(brush_paint(brush.into()));
+    self.context.fill_path(&shape.to_path(0.1));
+  }
+
+  /// Strokes `shape` with `brush` along `stroke`.
+  pub fn stroke(
+    &mut self,
+    shape: &impl kurbo::Shape,
+    stroke: &kurbo::Stroke,
+    brush: impl Into<peniko::Brush>,
+  ) {
+    self.context.set_stroke(stroke.clone());
+    self.context.set_paint(brush_paint(brush.into()));
+    self.context.stroke_path(&shape.to_path(0.1));
+  }
+
+  /// Clips every later shape to `shape` until the matching [`pop`](Self::pop).
+  pub fn push_clip(&mut self, shape: &impl kurbo::Shape) {
+    self.context.push_clip_layer(&shape.to_path(0.1));
+  }
+
+  /// Ends the innermost [`push_clip`](Self::push_clip).
+  #[inline(always)]
+  pub fn pop(&mut self) {
+    self.context.pop_layer();
+  }
+
+  /// Renders the scene: the pixels as unpremultiplied RGBA8, rows top to bottom.
+  #[must_use]
+  pub fn pixels(&mut self) -> Vec<u8> {
+    let mut pixmap = Pixmap::new(self.width, self.height);
+
+    self.context.flush();
+    self.context.render(&mut pixmap, &mut self.resources);
+
+    pixmap
+      .take_unpremultiplied()
+      .into_iter()
+      .flat_map(|pixel| [pixel.r, pixel.g, pixel.b, pixel.a])
+      .collect()
+  }
+}
+
+/// A peniko brush as the paint `vello_cpu` takes.
+fn brush_paint(brush: peniko::Brush) -> vello_cpu::PaintType {
+  match brush {
+    peniko::Brush::Solid(color) => vello_cpu::PaintType::Solid(color),
+    peniko::Brush::Gradient(gradient) => vello_cpu::PaintType::Gradient(gradient),
+    peniko::Brush::Image(_) => vello_cpu::PaintType::Solid(peniko::Color::TRANSPARENT),
+  }
+}
+
+impl From<Color> for peniko::Brush {
+  #[inline(always)]
+  fn from(color: Color) -> Self {
+    Self::Solid(color.to_alpha_color())
+  }
+}
+
+impl From<Color> for peniko::Color {
+  #[inline(always)]
+  fn from(color: Color) -> Self {
+    color.to_alpha_color()
+  }
+}
+
+/// A paint callback: draws into the canvas at the node's laid-out size, in the
+/// medium's logical units; the canvas is scaled so one unit is one logical pixel.
 pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
 
 /// A driver that paints a callback into a box.
 ///
 /// The bound a portable low-level view states for pixel media: the view builds an
 /// ordinary box for its sizing and hands the driver a painter for it, which the driver
-/// runs whenever the box repaints. A driver that cannot paint (the terminal, a server)
-/// does not implement it, so the view does not exist there.
+/// runs whenever the box repaints. The terminal does not implement it, so the view does
+/// not exist there; the server leaf implements it as nothing, so a page renders the box
+/// empty.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint",
-  label = "a painted view is written against a pixel driver implementing `Painting`; the terminal and the server leaf do not"
+  label = "a painted view is written against a pixel driver implementing `Painting`; the terminal does not"
 )]
 pub trait Painting: Driver {
   /// Paints `painter` into the box `sink` at its laid-out size, now and whenever the

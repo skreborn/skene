@@ -200,7 +200,8 @@ A component library depends on `skene-views`, writes generic over `D: Driver` ex
 the built-ins do, states what it needs from a medium as a bound on the driver's
 associated types, and works on every facade from one crate. A low-level view is written
 against a driver's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
-through the same scene as a built-in. `examples/third-party` shows all three: `acme-ui`
+through the same scene as a built-in; `Painted` is the portable one for pixel media, a
+vello scene the driver renders. `examples/third-party` shows all three: `acme-ui`
 (a palette and a badge over any driver), `acme-map` (a canvas on the browser leaf with a
 server placeholder) and `acme-sparkline` (bars painted into the terminal's cells), each
 used by a gallery and tested on its driver.

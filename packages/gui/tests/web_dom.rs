@@ -1231,3 +1231,76 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
     "focus resumed on the field"
   );
 }
+
+/// A painted box carries a canvas the size of the box, drawn through vello on the CPU
+/// and blitted, so the browser shows the fill without WebGPU.
+#[wasm_bindgen_test]
+async fn a_painted_box_draws_into_its_canvas() {
+  use skene_gui::{
+    Painted,
+    core::{Dimension, kurbo::Rect},
+  };
+  use wasm_bindgen_futures::JsFuture;
+  use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
+  /// Waits for the browser's next rendering step, after which the box is measured and
+  /// painted.
+  async fn next_frame() {
+    let promise = js_sys::Promise::new(&mut |resolve, _| {
+      let _ = web_sys::window()
+        .expect("a window")
+        .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 20);
+    });
+
+    let _ = JsFuture::from(promise).await;
+  }
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Painted::new(|canvas, size| {
+      canvas.fill(
+        &Rect::new(0., 0., f64::from(size.width), f64::from(size.height)),
+        Color::srgb(0., 0., 1.),
+      );
+    })
+    .set_width(Dimension::Length(40.))
+    .set_height(Dimension::Length(20.))
+    .build()
+  });
+  next_frame().await;
+  next_frame().await;
+
+  let painted = only_child(&root);
+  let canvas: HtmlCanvasElement = painted
+    .first_element_child()
+    .expect("the canvas")
+    .dyn_into()
+    .expect("a canvas element");
+
+  assert!(
+    canvas.width() >= 40 && canvas.height() >= 20,
+    "sized to the box"
+  );
+
+  let context: CanvasRenderingContext2d = canvas
+    .get_context("2d")
+    .expect("a context")
+    .expect("the 2d context")
+    .dyn_into()
+    .expect("a 2d context");
+  let pixel = context
+    .get_image_data(
+      f64::from(canvas.width() / 2),
+      f64::from(canvas.height() / 2),
+      1.,
+      1.,
+    )
+    .expect("image data")
+    .data();
+
+  assert_eq!(
+    &pixel[0..4],
+    &[0, 0, 255, 255],
+    "the center pixel is the fill"
+  );
+}

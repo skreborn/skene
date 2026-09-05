@@ -40,6 +40,7 @@ use skene_core::{
   Border,
   BoxProps,
   BoxValue,
+  Canvas,
   Color,
   ColorScheme,
   ContainerName,
@@ -348,15 +349,30 @@ impl Driver for Headless {
 }
 
 impl Painting for Headless {
-  fn paint(&self, sink: &Handle, _painter: Box<Painter>) {
-    with_record(*sink, |record| record.painted = true);
+  fn paint(&self, sink: &Handle, painter: Box<Painter>) {
+    with_record(*sink, |record| record.painter = Some(Rc::from(painter)));
   }
 }
 
 /// Whether a paint callback was handed to the box `node` through [`Painting`].
 #[must_use]
 pub fn is_painted(node: NodeId) -> bool {
-  handle(node).is_some_and(|handle| with_record(handle, |record| record.painted) == Some(true))
+  handle(node)
+    .is_some_and(|handle| with_record(handle, |record| record.painter.is_some()) == Some(true))
+}
+
+/// Paints the box `node` at `size` logical pixels, one device pixel each, and returns
+/// the unpremultiplied RGBA8 pixels row by row; `None` for a box nothing paints.
+#[must_use]
+pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
+  let painter =
+    handle(node).and_then(|handle| with_record(handle, |record| record.painter.clone()))??;
+  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  let mut canvas = Canvas::new(size.width as u16, size.height as u16);
+
+  painter(&mut canvas, size);
+
+  Some(canvas.pixels())
 }
 
 /// Empties the scene, the store and the task queue, returns the environment to its

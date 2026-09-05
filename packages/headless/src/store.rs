@@ -17,6 +17,7 @@ use skene_core::{
   NoProperty,
   NodeId,
   OverlayProps,
+  Painter,
   PropertyKey,
   RunProps,
   RunValue,
@@ -83,7 +84,6 @@ pub struct Motion {
 
 /// One realized node.
 // Each flag is an independent fact a driver call recorded.
-#[expect(clippy::struct_excessive_bools)]
 pub struct Record {
   pub kind: Kind,
   pub text: String,
@@ -98,7 +98,7 @@ pub struct Record {
   pub listened: Vec<EventKind>,
   pub children: Vec<Handle>,
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
-  pub painted: bool,
+  pub painter: Option<Rc<Painter>>,
   pub motion: Motion,
 }
 
@@ -140,7 +140,7 @@ impl Record {
       listened: Vec::new(),
       children: Vec::new(),
       size_observers: Vec::new(),
-      painted: false,
+      painter: None,
       motion: Motion::default(),
     }
   }

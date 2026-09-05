@@ -35,6 +35,8 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
+  Painter,
+  Painting,
   PixelExt,
   RunProps,
   RunValue,
@@ -822,6 +824,10 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
 
     write_referenced_ids(tree, &props.access);
   });
+}
+
+impl Painting for Web {
+  fn paint(&self, _sink: &u32, _painter: Box<Painter>) {}
 }
 
 impl Driver for Web {

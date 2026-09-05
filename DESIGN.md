@@ -121,10 +121,13 @@ driver crate, since it is not a shared contract.
 - **`Role` guides the driver's concrete choice** (web: `Role::Navigation` → `<nav>`); the
   vocabulary stays semantic, never platform-worded.
 - **Painted**—a vello paint callback plus a layout size, portable across every
-  *interactive* pixel target through the `Painting` extension. The headless driver
-  records that a painter was bound; the web driver's `<canvas>` + wgpu realization and
-  the native layers are on the roadmap. SSR/SSG render it empty and the terminal does
-  not realize it. Vello is the one renderer, everywhere.
+  *interactive* pixel target through the `Painting` extension. A `Canvas` is a vello
+  scene in device pixels (kurbo shapes, peniko brushes, the framework's `Color`
+  converting to a brush). The browser leaf renders it with vello's CPU renderer into a
+  `<canvas>` child sized to the box at the device pixel ratio and repaints on resize;
+  the headless driver renders it to pixels a test reads (`headless::paint`); the server
+  leaf renders it empty and the terminal does not realize it. A WebGPU renderer and the
+  native layers sit behind the same `Canvas`. Vello is the one renderer, everywhere.
 - **Embeds are driver-specific views**, written against a driver's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
   platform view through `PlatformView`. `LowLevel::realize` registers a driver-made sink

@@ -22,7 +22,7 @@ fn switch_keeps_a_branch_and_its_state_across_a_flip() {
   reset();
 
   let owner = Owner::new();
-  let key = Signal::new("a");
+  let key = Signal::opaque("a");
   let builds = Rc::new(Cell::new(0));
   let local = Rc::new(Cell::new(None::<Signal<i32>>));
   let root = owner.enter(|| {

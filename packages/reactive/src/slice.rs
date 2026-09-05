@@ -58,8 +58,8 @@ where
   pub fn new(signal: Signal<T>, read: GF, write: UF) -> Self {
     Self {
       signal,
-      read: Signal::new(read),
-      write: Signal::new(write),
+      read: Signal::opaque(read),
+      write: Signal::opaque(write),
       ty: PhantomData,
     }
   }

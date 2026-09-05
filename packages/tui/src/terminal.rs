@@ -31,9 +31,7 @@ use crossterm::{
   },
   terminal,
 };
-#[cfg(feature = "test")]
-use skene_core::ColorScheme;
-use skene_core::{IntoView, KeyEvent, Modifiers, MouseCursor, PointerButton};
+use skene_core::{ColorScheme, IntoView, KeyEvent, Modifiers, MouseCursor, PointerButton};
 
 /// How long the loop waits for input while nothing moves.
 const IDLE_POLL: Duration = Duration::from_millis(100);
@@ -107,7 +105,6 @@ where
   crate::install();
   with_store(|store| store.clock = crate::store::Clock::Real(std::time::Instant::now()));
 
-  #[cfg(feature = "snapshot")]
   crate::dev::install();
 
   let _ = crate::mount(|| app().into_view().build());
@@ -118,7 +115,6 @@ where
   let depth = detect::ColorDepth::detect();
   let mut detection = Some(detect::start());
 
-  #[cfg(feature = "snapshot")]
   {
     crate::dev::adopt_scroll();
 
@@ -204,7 +200,6 @@ where
       break;
     }
 
-    #[cfg(feature = "snapshot")]
     crate::dev::tick();
 
     // While detection reads its replies from stdin the loop leaves the input alone.
@@ -226,13 +221,11 @@ where
         Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
           dispatch_key(&key);
 
-          #[cfg(feature = "snapshot")]
           crate::dev::mark_changed();
         }
         Ok(Event::Mouse(mouse)) => {
           dispatch_mouse(mouse);
 
-          #[cfg(feature = "snapshot")]
           crate::dev::mark_changed();
         }
         Ok(Event::Resize(..)) => {
@@ -247,7 +240,6 @@ where
     }
   }
 
-  #[cfg(feature = "snapshot")]
   crate::dev::flush();
 }
 
@@ -587,7 +579,6 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
 /// Simulates one key press by its portable W3C key value (`"a"`, `"Enter"`, `"Tab"`,
 /// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
 /// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`, `"Shift+Tab"`).
-#[cfg(feature = "test")]
 pub fn trigger_key(key: &str) {
   let mut modifiers = Modifiers::default();
   let mut key = key;
@@ -612,7 +603,6 @@ pub fn trigger_key(key: &str) {
 }
 
 /// The node holding focus, for a test asserting focus movement.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn focused_node() -> Option<skene_core::NodeId> {
   with_store(|store| {
@@ -624,14 +614,12 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
 
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
 /// headlessly. Hit-testing resolves against the last render's layout.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_move(x: u16, y: u16) {
   skene_reactive::batch(|| interaction::pointer_move(x, y, None, Modifiers::default()));
 }
 
 /// Simulates a left click at the cell (`x`, `y`), for a test driving mouse interaction
 /// headlessly. Hit-testing resolves against the last render's layout.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_click(x: u16, y: u16) {
   trigger_mouse_press(x, y);
   trigger_mouse_release(x, y);
@@ -639,7 +627,6 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 
 /// Simulates pressing the left button at (`x`, `y`) without releasing—the start of a
 /// drag—for a test driving drags headlessly.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_press(x: u16, y: u16) {
   skene_reactive::batch(|| {
     with_store(|store| store.left_held = true);
@@ -649,7 +636,6 @@ pub fn trigger_mouse_press(x: u16, y: u16) {
 
 /// Simulates dragging to (`x`, `y`) with the left button held, after
 /// [`trigger_mouse_press`].
-#[cfg(feature = "test")]
 pub fn trigger_mouse_drag(x: u16, y: u16) {
   skene_reactive::batch(|| {
     interaction::pointer_move(x, y, Some(PointerButton::Primary), Modifiers::default());
@@ -658,7 +644,6 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
 
 /// Simulates releasing the left button at (`x`, `y`), ending a drag. A release with no
 /// press delivered stands in for the whole click, as the interactive loop's does.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_release(x: u16, y: u16) {
   skene_reactive::batch(|| {
     if !with_store(|store| store.left_held) {
@@ -673,7 +658,6 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 
 /// Simulates a right click at the cell (`x`, `y`)—the copy-menu gesture—for a test
 /// driving selection headlessly.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
   skene_reactive::batch(|| {
     with_store(|store| store.right_held = true);
@@ -686,27 +670,23 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
 /// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving
 /// scrolling. Positive deltas scroll right and down, one cell per unit; hit-testing
 /// resolves against the last render's layout.
-#[cfg(feature = "test")]
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
   skene_reactive::batch(|| interaction::wheel(x, y, delta_columns, delta_rows));
 }
 
 /// Takes the text the last `Copy` staged for the clipboard, for a headless test.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn take_copied() -> Option<String> {
   with_store(|store| store.pending_copy.take())
 }
 
 /// Takes the link the last click staged for the system handler, for a headless test.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn take_opened() -> Option<String> {
   with_store(|store| store.pending_open.take())
 }
 
 /// The current terminal title, for a headless test.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn current_title() -> Option<String> {
   with_store(|store| store.title.clone())
@@ -714,7 +694,6 @@ pub fn current_title() -> Option<String> {
 
 /// Simulates the terminal reporting `scheme` as its background, for a headless test
 /// driving the scheme conditions; the app's own choice still wins.
-#[cfg(feature = "test")]
 pub fn trigger_color_scheme(scheme: ColorScheme) {
   set_detected_scheme(scheme == ColorScheme::Dark);
 }
@@ -724,7 +703,6 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 ///
 /// A headless driver's clock stands still otherwise, so a render shows a transition
 /// at the point the last step left it.
-#[cfg(feature = "test")]
 pub fn trigger_frame(elapsed: Duration) {
   with_store(|store| {
     store.clock.advance(elapsed.as_secs_f64());
@@ -734,7 +712,6 @@ pub fn trigger_frame(elapsed: Duration) {
 
 /// Simulates the reader's reduced-motion preference, for a headless test driving the
 /// reduced-motion condition and the motion that respects it.
-#[cfg(feature = "test")]
 pub fn trigger_reduced_motion(reduced: bool) {
   let write = with_store(|store| {
     if store.reduced_motion == reduced {
@@ -754,14 +731,12 @@ pub fn trigger_reduced_motion(reduced: bool) {
 
 /// Simulates the terminal resizing to `columns` x `rows`, for a headless test driving
 /// the size conditions; the next render lays out at the size it is given.
-#[cfg(feature = "test")]
 pub fn trigger_resize(columns: u16, rows: u16) {
   frame::resize(columns, rows);
 }
 
 /// Simulates the clipboard-support detection, for a headless test driving the copy
 /// menu's disabled state.
-#[cfg(feature = "test")]
 pub fn trigger_clipboard_support(supported: bool) {
   with_store(|store| {
     store.clipboard = supported;
@@ -770,7 +745,6 @@ pub fn trigger_clipboard_support(supported: bool) {
 }
 
 /// The pointer shape the current hover resolves to, for a headless test.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn current_cursor() -> Option<MouseCursor> {
   with_store(|store| store.hover_cursor())
@@ -778,7 +752,6 @@ pub fn current_cursor() -> Option<MouseCursor> {
 
 /// How many layouts have been computed since the driver was installed, for a test
 /// asserting that a change repainted without a relayout.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn layout_generation() -> u64 {
   with_store(|store| store.layout_generation)
@@ -786,7 +759,6 @@ pub fn layout_generation() -> u64 {
 
 /// How many taffy styles have been written since the driver was installed, for a test
 /// counting the restyles a change caused.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn set_style_calls() -> u64 {
   with_store(|store| store.set_style_calls)
@@ -794,7 +766,6 @@ pub fn set_style_calls() -> u64 {
 
 /// The rows the last render rewrote, for a test asserting that a change repainted only
 /// the rows it touched.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn repainted_rows() -> Vec<usize> {
   with_store(|store| store.repainted.clone())

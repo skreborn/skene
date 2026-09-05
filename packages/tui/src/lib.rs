@@ -24,7 +24,6 @@ pub mod prelude;
 
 mod cells;
 mod detect;
-#[cfg(feature = "snapshot")]
 mod dev;
 mod driver;
 mod ext;
@@ -36,7 +35,6 @@ mod layout;
 mod motion;
 mod paint;
 mod resolve;
-mod resource;
 mod routing;
 mod selection;
 mod store;
@@ -84,7 +82,7 @@ pub use skene_core::{
   TokenSet,
   When,
 };
-pub use skene_reactive as reactive;
+pub use skene_reactive::{self as reactive, LoadState, Resource};
 pub use skene_router as router;
 pub use skene_simple::SimpleVariant;
 pub use skene_views::{
@@ -109,40 +107,11 @@ pub use skene_views::{
   typography,
 };
 
-#[cfg(all(feature = "snapshot", feature = "test"))]
-pub use crate::dev::{adopt_scroll, notice_view as dev_notice_view};
-#[cfg(feature = "snapshot")]
-pub(crate) use crate::driver::try_with_store;
-#[cfg(feature = "test")]
-pub use crate::driver::uninstall;
-pub(crate) use crate::driver::with_store;
-#[cfg(feature = "test")]
-pub use crate::terminal::{
-  current_cursor,
-  current_title,
-  focused_node,
-  layout_generation,
-  repainted_rows,
-  set_style_calls,
-  take_copied,
-  take_opened,
-  trigger_clipboard_support,
-  trigger_color_scheme,
-  trigger_frame,
-  trigger_key,
-  trigger_mouse_click,
-  trigger_mouse_drag,
-  trigger_mouse_move,
-  trigger_mouse_press,
-  trigger_mouse_release,
-  trigger_mouse_right_click,
-  trigger_mouse_scroll,
-  trigger_reduced_motion,
-  trigger_resize,
-};
+pub(crate) use crate::driver::{try_with_store, with_store};
 pub use crate::{
   cells::{CellPainter, Cells},
-  driver::{Tui, handle, install, mount},
+  dev::{adopt_scroll, notice_view as dev_notice_view},
+  driver::{Tui, handle, install, mount, uninstall},
   ext::{
     BOLD_WEIGHT,
     BorderGlyphs,
@@ -157,11 +126,33 @@ pub use crate::{
   },
   glyphs::Glyphs,
   media::{derive_scheme, set_scheme, stored_scheme},
-  resource::Resource,
   routing::install_router,
   store::Handle,
   task::spawn,
-  terminal::launch,
+  terminal::{
+    current_cursor,
+    current_title,
+    focused_node,
+    launch,
+    layout_generation,
+    repainted_rows,
+    set_style_calls,
+    take_copied,
+    take_opened,
+    trigger_clipboard_support,
+    trigger_color_scheme,
+    trigger_frame,
+    trigger_key,
+    trigger_mouse_click,
+    trigger_mouse_drag,
+    trigger_mouse_move,
+    trigger_mouse_press,
+    trigger_mouse_release,
+    trigger_mouse_right_click,
+    trigger_mouse_scroll,
+    trigger_reduced_motion,
+    trigger_resize,
+  },
   token::TokenValue,
   typography_set::Typography,
 };
@@ -427,7 +418,6 @@ pub fn render_to_text(width: u16, height: u16) -> String {
 
 /// The painted frame's caret cell at `width` x `height`—where the terminal's bar
 /// cursor shows—for a headless test asserting caret placement.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
   frame::render(width, height).caret
@@ -435,7 +425,6 @@ pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
 
 /// The painted frame's colors at `width` x `height`: each cell's foreground and
 /// background, row-major, for a headless test asserting paint.
-#[cfg(feature = "test")]
 #[must_use]
 #[expect(clippy::type_complexity)]
 pub fn render_to_colors(
@@ -451,7 +440,6 @@ pub fn render_to_colors(
 
 /// Polls every ready task, as the interactive loop does between events; `true` when any
 /// ran. For a headless test driving async work.
-#[cfg(feature = "test")]
 #[must_use]
 pub fn pump_tasks() -> bool {
   task::pump()

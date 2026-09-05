@@ -6,7 +6,7 @@ use std::{
   thread::LocalKey,
 };
 
-use skene_reactive::signal;
+use skene_reactive::Signal;
 
 use super::{
   AnyKind,
@@ -188,13 +188,13 @@ impl Driver for TestDriver {
   fn media(&self) -> MediaSignals<f32> {
     MEDIA.with(|media| {
       *media.borrow_mut().get_or_insert_with(|| MediaSignals {
-        viewport: signal(Size {
+        viewport: Signal::opaque(Size {
           width: 1024.,
           height: 768.,
         })
-        .0,
-        scheme: signal(ColorScheme::Light).0,
-        reduced_motion: signal(false).0,
+        .read_only(),
+        scheme: Signal::opaque(ColorScheme::Light).read_only(),
+        reduced_motion: Signal::opaque(false).read_only(),
         container_sizes: ContainerSizes::new(),
       })
     })

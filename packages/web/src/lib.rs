@@ -39,9 +39,9 @@ mod ssr;
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
 mod token;
 
-#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "snapshot"))]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use self::csr::boot_with_dev_state;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown", feature = "test"))]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use self::csr::uninstall;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use self::csr::{
@@ -59,6 +59,7 @@ pub use self::csr::{
   hydrate_page,
   hydration_mismatches,
   install,
+  install_executor,
   launch,
   media_query,
   mount,
@@ -89,6 +90,7 @@ pub use self::ssr::{
   current_path,
   drive,
   enable_view_transitions,
+  install_executor,
   record_static_routes,
   recorded_static_routes,
   register_boundary,

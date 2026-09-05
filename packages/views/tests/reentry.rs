@@ -37,7 +37,7 @@ use skene_core::{
   TokenSet,
   View,
 };
-use skene_reactive::{Get, Owner, Set, Signal, signal};
+use skene_reactive::{Get, Owner, Set, Signal};
 use skene_views::{Column, Container, FocusHandle, RawCheckbox, Text, Theme, Toggle};
 
 /// The driver under test: every mirrored call re-enters the scene before recording
@@ -209,9 +209,9 @@ impl Driver for Reentrant {
         .get_or_insert_with(|| {
           let owner = Owner::new();
           let signals = owner.enter(|| MediaSignals {
-            viewport: signal(Size::new(1024., 768.)).0,
-            scheme: signal(ColorScheme::Light).0,
-            reduced_motion: signal(false).0,
+            viewport: Signal::opaque(Size::new(1024., 768.)).read_only(),
+            scheme: Signal::opaque(ColorScheme::Light).read_only(),
+            reduced_motion: Signal::opaque(false).read_only(),
             container_sizes: ContainerSizes::new(),
           });
 
@@ -247,7 +247,7 @@ impl TokenSet<Erased> for Palette {
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
   let owner = Owner::new();
-  let palette = Signal::new(Palette::default());
+  let palette = Signal::opaque(Palette::default());
   let label = Signal::new("one".to_owned());
   let checked = Signal::new(false);
   let focus = FocusHandle::<Reentrant>::new();

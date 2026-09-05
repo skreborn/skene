@@ -6,8 +6,5 @@ edition.workspace = true
 [dependencies]
 skene-reactive.workspace = true
 
-[dev-dependencies]
-skene-reactive = { workspace = true, features = ["test"] }
-
 [lints]
 workspace = true

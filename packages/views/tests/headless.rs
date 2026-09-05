@@ -393,7 +393,7 @@ fn derived_theme_redefines_without_rebuilding() {
   reset();
 
   let owner = Owner::new();
-  let palette = Signal::new(TestPalette::default());
+  let palette = Signal::opaque(TestPalette::default());
   let local = Rc::new(Cell::new(None::<Signal<i32>>));
   let root = owner.enter(|| {
     let local = Rc::clone(&local);

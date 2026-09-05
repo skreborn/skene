@@ -9,8 +9,5 @@ skene-core.workspace = true
 skene-tui.workspace = true
 skene-views.workspace = true
 
-[dev-dependencies]
-skene-tui = { features = ["test"], workspace = true }
-
 [lints]
 workspace = true

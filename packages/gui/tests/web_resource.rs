@@ -174,8 +174,8 @@ async fn disposing_the_scope_cancels_the_load() {
   assert!(!finished.get(), "the load stopped rather than completing");
 }
 
-/// `reload` re-runs the retained loader into the value, so a resource can reload on
-/// demand.
+/// `reload` re-runs the retained loader into the value, keeping the last value
+/// readable until the next one lands.
 #[wasm_bindgen_test]
 async fn reload_reruns_the_loader() {
   let scope = Owner::new();
@@ -206,9 +206,10 @@ async fn reload_reruns_the_loader() {
 
   assert_eq!(
     resource.get(),
-    None,
-    "reload clears the value while it reloads"
+    Some(0),
+    "the last value stays readable while it reloads"
   );
+  assert!(resource.is_refetching());
 
   settle().await;
 

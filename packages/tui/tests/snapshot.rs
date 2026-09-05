@@ -1,7 +1,7 @@
 //! The state snapshot in cells: scroll offsets riding it into a fresh driver, and the
 //! dev loop's rebuild notice.
 
-#![cfg(all(not(target_arch = "wasm32"), feature = "snapshot"))]
+#![cfg(not(target_arch = "wasm32"))]
 
 mod common;
 

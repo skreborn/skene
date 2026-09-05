@@ -63,7 +63,7 @@ fn a_row_lays_its_children_out_in_cells() {
 #[test]
 fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
   with_driver(|| {
-    let palette = Signal::new(SimplePalette::default().set_card(red()));
+    let palette = Signal::opaque(SimplePalette::default().set_card(red()));
     let builds = Rc::new(Cell::new(0));
     let inner = Rc::new(Cell::new(None::<Signal<u32>>));
     let counted = Rc::clone(&builds);

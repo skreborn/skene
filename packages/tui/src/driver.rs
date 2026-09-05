@@ -65,7 +65,6 @@ pub(crate) fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
 }
 
 /// Runs `operation` on the store, or `None` when none is installed.
-#[cfg(feature = "snapshot")]
 pub(crate) fn try_with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> Option<R> {
   STORE.with(|store| store.borrow_mut().as_mut().map(operation))
 }
@@ -427,6 +426,7 @@ impl CellPainter for Tui {
 /// Panics if it is already installed.
 pub fn install() {
   skene_reactive::Runtime::init_on_ui_thread();
+  skene_reactive::set_spawner(|task| crate::task::drive(skene_core::scope_bound(task)));
 
   STORE.with(|store| {
     let mut store = store.borrow_mut();
@@ -452,13 +452,11 @@ pub fn install() {
 
   ROOT.with(|held| *held.borrow_mut() = Some(node));
 
-  #[cfg(feature = "snapshot")]
   crate::dev::provide_scroll();
 }
 
 /// Uninstalls the terminal driver: empties the scene and the store, and resets the
 /// reactive runtime and root scope, so one thread can run many independent mounts.
-#[cfg(feature = "test")]
 pub fn uninstall() {
   let owner = STORE.with(|store| {
     store

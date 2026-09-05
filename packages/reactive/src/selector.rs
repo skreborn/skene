@@ -41,7 +41,7 @@ impl<K: Eq + Hash + Clone + 'static> Selector<K> {
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(source: impl Fn() -> K + 'static) -> Self {
     let owner = Owner::current();
-    let state = Signal::new(SelectorState {
+    let state = Signal::opaque(SelectorState {
       current: None,
       keys: FxHashMap::default(),
     });

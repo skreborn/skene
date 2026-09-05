@@ -125,7 +125,7 @@ impl<N: Scalar> ContainerSizes<N> {
   /// An empty lookup, owned by the current owner.
   #[inline(always)]
   pub fn new() -> Self {
-    Self(Signal::new(FxHashMap::default()))
+    Self(Signal::opaque(FxHashMap::default()))
   }
 
   /// The last size reported for `name`, tracked.

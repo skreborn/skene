@@ -45,9 +45,9 @@ use skene_core::{
   TokenName,
   View,
 };
-use skene_reactive::{Owner, Set, WriteSignal, provide_context, signal};
+use skene_reactive::{Owner, Set, Signal, WriteSignal, provide_context};
 
-pub use self::task::{drive, set_render_deadline, sleep};
+pub use self::task::{drive, install_executor, set_render_deadline, sleep};
 use super::{
   Web,
   compile::{
@@ -734,9 +734,9 @@ fn media_signals() -> MediaSignals<f32> {
         let hints = HINTS.with(Cell::get);
 
         skene_core::root_owner().enter(|| {
-          let (viewport, set_viewport) = signal(hints.viewport);
-          let (scheme, set_scheme) = signal(hints.scheme);
-          let (reduced_motion, set_reduced_motion) = signal(hints.reduced_motion);
+          let (viewport, set_viewport) = Signal::opaque(hints.viewport).split();
+          let (scheme, set_scheme) = Signal::opaque(hints.scheme).split();
+          let (reduced_motion, set_reduced_motion) = Signal::opaque(hints.reduced_motion).split();
 
           MediaState {
             signals: MediaSignals {
@@ -1306,6 +1306,7 @@ fn begin_render() -> (NodeId, Owner) {
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   crate::hydration::reset_sources();
   forget_static_routes();
+  task::install_executor();
 
   let root = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
 

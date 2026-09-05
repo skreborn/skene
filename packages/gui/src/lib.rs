@@ -22,7 +22,6 @@ pub mod head;
 mod lazy;
 #[cfg(target_arch = "wasm32")]
 mod link;
-#[cfg(target_arch = "wasm32")]
 mod resource;
 #[cfg(target_arch = "wasm32")]
 mod routing;
@@ -119,13 +118,12 @@ pub use crate::lazy::Lazy;
 #[cfg(target_arch = "wasm32")]
 pub use crate::link::Link;
 #[cfg(target_arch = "wasm32")]
-pub use crate::resource::Resource;
-#[cfg(target_arch = "wasm32")]
 pub use crate::routing::{install_router, install_static_router};
 #[cfg(target_arch = "wasm32")]
 pub use crate::task::spawn;
 pub use crate::{
   media::{derive_scheme, set_scheme, stored_scheme},
+  resource::{LoadState, Resource},
   typography_set::Typography,
 };
 
@@ -392,19 +390,11 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  #[cfg(feature = "snapshot")]
   skene_web::boot_with_dev_state(move || {
     skene_web::launch(app);
 
     tracing::info!("application mounted");
   });
-
-  #[cfg(not(feature = "snapshot"))]
-  {
-    skene_web::launch(app);
-
-    tracing::info!("application mounted");
-  }
 }
 
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded
@@ -417,19 +407,11 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  #[cfg(feature = "snapshot")]
   skene_web::boot_with_dev_state(move || {
     skene_web::hydrate_page(app);
 
     tracing::info!("application hydrated");
   });
-
-  #[cfg(not(feature = "snapshot"))]
-  {
-    skene_web::hydrate_page(app);
-
-    tracing::info!("application hydrated");
-  }
 }
 
 /// Builds the application against the headless driver, under the root owner.

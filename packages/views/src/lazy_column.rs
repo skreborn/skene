@@ -161,8 +161,8 @@ impl<D: Driver> View<D> for LazyColumn<D> {
       overscan,
       items,
     } = self;
-    let offset = Signal::new(0.);
-    let viewport = Signal::new(0.);
+    let offset = Signal::opaque(0.);
+    let viewport = Signal::opaque(0.);
     let (count, install) = match items {
       Some(Items { count, install }) => (count, Some(install)),
       None => (Rc::new(|| 0_usize) as Rc<dyn Fn() -> usize>, None),

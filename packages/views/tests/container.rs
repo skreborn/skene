@@ -214,7 +214,7 @@ fn focus_order_and_accessibility_follow_their_signals() {
   reset();
 
   let owner = Owner::new();
-  let position = Signal::new(FocusOrder::Position(1));
+  let position = Signal::opaque(FocusOrder::Position(1));
   let expanded = Signal::new(false);
   let (fixed, derived) = owner.enter(|| {
     (

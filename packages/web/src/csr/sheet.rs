@@ -28,7 +28,6 @@ pub(super) struct Sheet {
   base: Element,
   base_text: String,
   adopted: Option<String>,
-  #[cfg_attr(not(feature = "test"), expect(dead_code))]
   deltas: Vec<Element>,
 }
 
@@ -179,7 +178,6 @@ impl Sheet {
   }
 
   /// Removes every `<style>` element the sink owns.
-  #[cfg(feature = "test")]
   pub(super) fn remove_all(&mut self) {
     self.base.remove();
 

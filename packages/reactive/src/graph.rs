@@ -51,6 +51,14 @@ pub(crate) struct OwnerData {
   pub(crate) children: Option<Box<FxHashSet<Id>>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
+  /// The position among the parent's owner children, or among the detached roots.
+  ordinal: Option<u32>,
+  /// The next owner child's ordinal.
+  next_child: u32,
+  /// The next snapshot-participating signal's sequence index.
+  next_signal: u32,
+  /// The path of ordinals from the runtime root, cached once computed.
+  path: Option<Rc<[u32]>>,
 }
 
 /// A local signal: its value cell and its subscriber list.
@@ -59,6 +67,8 @@ pub(crate) struct SignalRecord {
   parent: Option<Id>,
   subs: LinkList,
   version: u32,
+  /// Registered in the state snapshot, to be unregistered on removal.
+  snapshotted: bool,
 }
 
 /// An effect or memo: its body, state bits, both link lists and its ownership facet.
@@ -86,6 +96,7 @@ struct SyncSubs {
 pub(crate) struct RemovedSignal {
   pub(crate) value: Rc<dyn Any>,
   pub(crate) subs: SmallVec<[Id; 4]>,
+  pub(crate) snapshotted: bool,
 }
 
 /// What removing an owner or computation leaves to finish once the graph is released.
@@ -106,6 +117,8 @@ pub(crate) struct Graph {
   links: LinkPool,
   sync_subs: FxHashMap<Id, SyncSubs>,
   next_order: u64,
+  /// The next detached root's ordinal.
+  next_root: u32,
   render_queue: BinaryHeap<Reverse<(u32, u64, Id)>>,
   queue: VecDeque<Id>,
 }
@@ -120,6 +133,7 @@ impl Graph {
       links: LinkPool::new(),
       sync_subs: FxHashMap::default(),
       next_order: 0,
+      next_root: 0,
       render_queue: BinaryHeap::new(),
       queue: VecDeque::new(),
     }
@@ -200,9 +214,147 @@ impl Graph {
       parent: None,
       subs: LinkList::EMPTY,
       version: 0,
+      snapshotted: false,
     });
 
     Id::local(Kind::Signal, self.nonce, generation, index)
+  }
+
+  /// Allocates the runtime's root owner, whose path is empty.
+  pub(crate) fn allocate_root_owner(&mut self) -> Id {
+    let id = self.allocate_owner();
+
+    if let Some(data) = self.owner_data_mut(id) {
+      data.path = Some(Rc::from([]));
+    }
+
+    id
+  }
+
+  /// Gives a detached owner its ordinal among the detached roots, unless it has one.
+  pub(crate) fn assign_root_ordinal(&mut self, id: Id) {
+    let next = self.next_root;
+
+    if let Some(data) = self.owner_data_mut(id)
+      && data.ordinal.is_none()
+    {
+      data.ordinal = Some(next);
+      self.next_root += 1;
+    }
+  }
+
+  /// Allocates an owner in `previous`'s place: the same parent and ordinal, so its
+  /// path is `previous`'s path.
+  pub(crate) fn allocate_replacement(&mut self, previous: Id) -> Id {
+    let Some((parent, ordinal, path)) = self
+      .owner_data(previous)
+      .map(|data| (data.parent, data.ordinal, data.path.clone()))
+    else {
+      return self.allocate_owner();
+    };
+    let id = self.allocate_owner();
+
+    if let Some(parent) = parent {
+      self.adopt(id, parent);
+    }
+
+    if let Some(data) = self.owner_data_mut(id) {
+      data.ordinal = ordinal;
+      data.path = path;
+    }
+
+    id
+  }
+
+  /// The path of ordinals from the runtime root to the owner or computation `id`,
+  /// computed once and cached; a detached owner is a root of its own.
+  pub(crate) fn owner_path(&mut self, id: Id) -> Rc<[u32]> {
+    let Some(data) = self.owner_data(id)
+    else {
+      return Rc::from([]);
+    };
+
+    if let Some(path) = &data.path {
+      return path.clone();
+    }
+
+    let parent = data.parent;
+    let path: Rc<[u32]> = match parent {
+      Some(parent) => {
+        let prefix = self.owner_path(parent);
+        let ordinal = self
+          .owner_data(id)
+          .and_then(|data| data.ordinal)
+          .unwrap_or(0);
+
+        prefix.iter().copied().chain([ordinal]).collect()
+      }
+      None => {
+        self.assign_root_ordinal(id);
+
+        let ordinal = self
+          .owner_data(id)
+          .and_then(|data| data.ordinal)
+          .unwrap_or(0);
+
+        Rc::from([ordinal])
+      }
+    };
+
+    if let Some(data) = self.owner_data_mut(id) {
+      data.path = Some(path.clone());
+    }
+
+    path
+  }
+
+  /// Takes the next signal sequence index of the owner or computation `id`.
+  pub(crate) fn next_signal_index(&mut self, id: Id) -> u32 {
+    let Some(data) = self.owner_data_mut(id)
+    else {
+      return 0;
+    };
+    let index = data.next_signal;
+
+    data.next_signal += 1;
+
+    index
+  }
+
+  /// Rewinds `id`'s child ordinals and signal indexes, for a computation about to
+  /// re-run after disposing its children.
+  pub(crate) fn reset_creation_counters(&mut self, id: Id) {
+    if let Some(data) = self.owner_data_mut(id) {
+      data.next_child = 0;
+      data.next_signal = 0;
+    }
+  }
+
+  /// Marks a signal as registered in the state snapshot.
+  pub(crate) fn mark_snapshotted(&mut self, id: Id) {
+    if let Some(signal) = self.signal_mut(id) {
+      signal.snapshotted = true;
+    }
+  }
+
+  /// Drops the cached paths of `id`'s owner subtree, after `id` moved.
+  fn clear_paths(&mut self, id: Id) {
+    let Some(data) = self.owner_data_mut(id)
+    else {
+      return;
+    };
+
+    data.path = None;
+
+    let children: SmallVec<[Id; 8]> = data
+      .children
+      .as_ref()
+      .map(|children| children.iter().copied().collect())
+      .unwrap_or_default();
+
+    for child in children {
+      self.clear_paths(child);
+    }
   }
 
   pub(crate) fn allocate_owner(&mut self) -> Id {
@@ -234,7 +386,7 @@ impl Graph {
   /// Makes `child` a child of `parent`, unlinking it from a previous parent first.
   /// Does nothing when `parent` is gone.
   pub(crate) fn adopt(&mut self, child: Id, parent: Id) {
-    self.orphan(child);
+    let moved = self.orphan(child);
 
     let Some(parent_data) = self.owner_data_mut(parent)
     else {
@@ -252,17 +404,27 @@ impl Graph {
         }
       }
       Kind::Computation | Kind::Owner => {
+        let ordinal = parent_data.next_child;
+
+        parent_data.next_child += 1;
+
         if let Some(data) = self.owner_data_mut(child) {
           data.parent = Some(parent);
           data.depth = depth;
+          data.ordinal = Some(ordinal);
+        }
+
+        if moved {
+          self.clear_paths(child);
         }
       }
       Kind::Sync => {}
     }
   }
 
-  /// Removes `child` from its parent's children, keeping `child` itself.
-  pub(crate) fn orphan(&mut self, child: Id) {
+  /// Removes `child` from its parent's children, keeping `child` itself; `true` when
+  /// it had a parent.
+  pub(crate) fn orphan(&mut self, child: Id) -> bool {
     let parent = match child.kind() {
       Kind::Signal => self
         .signal_mut(child)
@@ -275,7 +437,11 @@ impl Graph {
 
     if let Some(parent) = parent {
       self.detach_child(parent, child);
+
+      return true;
     }
+
+    false
   }
 
   /// Removes `child` from `parent`'s children.
@@ -308,6 +474,7 @@ impl Graph {
     Some(RemovedSignal {
       value: record.value,
       subs,
+      snapshotted: record.snapshotted,
     })
   }
 

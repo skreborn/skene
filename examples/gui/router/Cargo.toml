@@ -12,7 +12,7 @@ name = "router-server"
 path = "src/main.rs"
 
 [dependencies]
-skene-gui = { features = ["snapshot"], workspace = true }
+skene-gui.workspace = true
 
 [lints]
 workspace = true

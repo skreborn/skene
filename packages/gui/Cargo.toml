@@ -3,16 +3,8 @@ name = "skene-gui"
 version.workspace = true
 edition.workspace = true
 
-[features]
-# Serialize tagged signals to a byte snapshot and restore them on creation; see
-# `skene-reactive`'s feature of the same name.
-snapshot = ["skene-reactive/snapshot", "skene-web/snapshot"]
-# Expose the driver teardown (`web::uninstall`) so one thread can run many
-# independent mounts. Enabled automatically for this crate's own tests via the self
-# dev-dependency.
-test = ["skene-reactive/test", "skene-web/test"]
-
 [dependencies]
+serde = "1"
 skene-core.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
@@ -25,15 +17,9 @@ tracing.workspace = true
 skene-headless.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-serde = "1"
 serde_json = "1"
 skene-web.workspace = true
 wasm-bindgen.workspace = true
-
-[dev-dependencies]
-# Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
-# `--features` flag.
-skene-gui = { path = ".", features = ["test"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-headless.workspace = true

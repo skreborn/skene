@@ -101,7 +101,7 @@ pub struct Runtime {
 impl Runtime {
   fn new() -> Self {
     let mut graph = Graph::new();
-    let root = graph.allocate_owner();
+    let root = graph.allocate_root_owner();
 
     Self {
       graph: RefCell::new(graph),
@@ -234,10 +234,9 @@ impl Runtime {
 
   /// Resets the calling thread's reactive runtime to a fresh, empty state.
   ///
-  /// Clears all signals, effects, owners, pending work and the scheduler, and releases
-  /// the UI-thread designation. Cleanups are discarded, not run. Available only with
-  /// the `test` feature.
-  #[cfg(feature = "test")]
+  /// Clears all signals, effects, owners, pending work, snapshot registrations and the
+  /// scheduler, and releases the UI-thread designation. Cleanups are discarded, not
+  /// run.
   pub fn reset() {
     let (graph, scheduler) = RUNTIME.with(|runtime| {
       runtime.tracking.set(None);
@@ -248,15 +247,13 @@ impl Runtime {
       let scheduler = runtime.scheduler.borrow_mut().take();
       let mut fresh = Graph::new();
 
-      runtime.current_owner.set(fresh.allocate_owner());
+      runtime.current_owner.set(fresh.allocate_root_owner());
 
       (std::mem::replace(&mut *runtime.graph(), fresh), scheduler)
     });
 
     drop(graph);
     drop(scheduler);
-
-    #[cfg(feature = "snapshot")]
     crate::snapshot::clear();
 
     UI_THREAD.store(0, Ordering::Release);

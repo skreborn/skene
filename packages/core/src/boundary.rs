@@ -20,7 +20,7 @@ impl Boundary {
   /// A fresh boundary with nothing pending.
   pub fn new() -> Self {
     Self {
-      pending: Signal::new(0),
+      pending: Signal::opaque(0),
     }
   }
 

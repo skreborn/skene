@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use rustc_hash::FxHashMap;
 use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, Size};
-use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, signal};
+use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal};
 use web_sys::MediaQueryList;
 
 use super::events::Listener;
@@ -60,7 +60,7 @@ fn query(state: &mut MediaState, text: &str) -> ReadSignal<bool> {
   let list: Option<MediaQueryList> = web_sys::window()
     .and_then(|window| window.match_media(text).ok())
     .flatten();
-  let (read, write) = signal(list.as_ref().is_some_and(MediaQueryList::matches));
+  let (read, write) = Signal::opaque(list.as_ref().is_some_and(MediaQueryList::matches)).split();
   let listener = match list {
     Some(list) => {
       let source = list.clone();
@@ -103,10 +103,10 @@ fn with_media<R>(operation: impl FnOnce(&mut MediaState) -> R) -> R {
 
 /// The environment state: its signals, and the effects keeping the composed ones current.
 fn create() -> MediaState {
-  let (viewport, set_viewport) = signal(window_size());
-  let (scheme, set_scheme) = signal(ColorScheme::Light);
-  let (reduced_motion, set_reduced_motion) = signal(false);
-  let choice = Signal::new(None);
+  let (viewport, set_viewport) = Signal::opaque(window_size()).split();
+  let (scheme, set_scheme) = Signal::opaque(ColorScheme::Light).split();
+  let (reduced_motion, set_reduced_motion) = Signal::opaque(false).split();
+  let choice = Signal::opaque(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
     "resize",
@@ -148,7 +148,6 @@ pub(super) fn signals() -> MediaSignals<f32> {
 }
 
 /// Forgets the environment state, so the next use creates it afresh.
-#[cfg(feature = "test")]
 pub(super) fn reset() {
   MEDIA.with(|media| *media.borrow_mut() = None);
 }

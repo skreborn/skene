@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Lch, LinearSrgb, Oklab, Oklch, Srgb};
+use serde::{Deserialize, Serialize};
 
 use crate::Scalar;
 
@@ -8,7 +9,7 @@ use crate::Scalar;
 ///
 /// Names a scheme outright, where [`Media::Dark`](crate::Media::Dark)
 /// and its light twin ask the platform which one is in force.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[must_use]
 pub enum ColorScheme {
   /// Dark ink on a light surface.
@@ -18,7 +19,7 @@ pub enum ColorScheme {
 }
 
 /// Color value, stored as its Oklch `[lightness, chroma, hue, alpha]` components.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[must_use]
 pub struct Color {
   lightness: f32,

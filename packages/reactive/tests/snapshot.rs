@@ -1,104 +1,255 @@
-//! Tagged-signal snapshots: serialize on one run, stage and adopt on the next.
+//! State snapshots: serialize on one run, stage and adopt on the next, by position.
 //!
 //! Each test thread carries its own runtime, so a spawned thread stands in for the
 //! next run of the application.
 
-use skene_reactive::{Get, Owner, Set, Signal, restore, snapshot};
+use skene_reactive::{Effect, Get, Owner, Set, Signal, restore, snapshot};
 
-/// A snapshot restores tagged state across runs: staged values are adopted, tags with
-/// no staged value fall back to their defaults, and untagged signals stay out of it.
-#[test]
-fn snapshot_round_trips_tagged_state() {
-  let bytes = std::thread::spawn(|| {
-    let count = Signal::tagged("count", 1u32);
-    let name = Signal::tagged("name", String::from("fresh"));
-    let _untagged = Signal::new(9u8);
-
-    count.set(41);
-    name.set("skene".to_owned());
+/// Runs `first`, then `second` on a fresh runtime with `first`'s snapshot staged.
+fn across_runs<R: Send + 'static>(
+  first: impl FnOnce() + Send + 'static,
+  second: impl FnOnce() -> R + Send + 'static,
+) -> R {
+  let bytes = std::thread::spawn(move || {
+    first();
 
     snapshot()
   })
   .join()
   .expect("the first run");
 
-  let (count, name, missing) = std::thread::spawn(move || {
+  std::thread::spawn(move || {
     restore(&bytes);
 
-    (
-      Signal::tagged("count", 1u32).get(),
-      Signal::tagged("name", String::from("fresh")).get(),
-      Signal::tagged("missing", 7u8).get(),
-    )
+    second()
   })
   .join()
-  .expect("the second run");
-
-  assert_eq!(count, 41);
-  assert_eq!(name, "skene");
-  assert_eq!(missing, 7);
+  .expect("the second run")
 }
 
-/// A staged value whose type changed fails to decode and degrades to the default.
+/// Untagged signals restore by position: the same program adopts every value, and
+/// an opaque signal neither serializes nor occupies a position.
+#[test]
+fn positional_state_round_trips() {
+  let (count, name, flag) = across_runs(
+    || {
+      let count = Signal::new(1u32);
+      let _opaque = Signal::opaque(vec![Box::new(9u8)]);
+      let name = Signal::new(String::from("fresh"));
+      let flag = Signal::new(false);
+
+      count.set(41);
+      name.set("skene".to_owned());
+      flag.set(true);
+    },
+    || {
+      let count = Signal::new(1u32);
+      let name = Signal::new(String::from("fresh"));
+      let flag = Signal::new(false);
+
+      (count.get(), name.get(), flag.get())
+    },
+  );
+
+  assert_eq!((count, name, flag), (41, "skene".to_owned(), true));
+}
+
+/// A program edit that adds a signal before existing ones: tagged signals restore by
+/// tag, the new one takes its default, and the moved ones match by shape.
+#[test]
+fn an_added_signal_shifts_nothing_it_can_be_told_apart_from() {
+  let (added, tagged, moved, trailing) = across_runs(
+    || {
+      let tagged = Signal::tagged("chosen", 0u32);
+      let moved = Signal::new(String::new());
+      let trailing = Signal::new(0u64);
+
+      tagged.set(7);
+      moved.set("moved".to_owned());
+      trailing.set(99);
+    },
+    || {
+      let added = Signal::new(false);
+      let tagged = Signal::tagged("chosen", 0u32);
+      let moved = Signal::new(String::new());
+      let trailing = Signal::new(0u64);
+
+      (added.get(), tagged.get(), moved.get(), trailing.get())
+    },
+  );
+
+  assert!(!added, "the added signal starts from its default");
+  assert_eq!(tagged, 7, "the tagged signal restores by tag");
+  assert_eq!(moved, "moved", "the moved signal matches by shape");
+  assert_eq!(trailing, 99);
+}
+
+/// Content rebuilt in place—a `derived` branch flipping away and back—keeps its
+/// identity: the rebuilt scope takes the previous one's place.
+#[test]
+fn a_branch_flip_keeps_identity() {
+  fn build(scope: Owner, dark: bool) -> Signal<u32> {
+    scope.enter(|| {
+      if dark {
+        let _other = Signal::new(String::from("dark"));
+      }
+
+      Signal::new(0u32)
+    })
+  }
+
+  let restored = across_runs(
+    || {
+      let parent = Owner::new();
+      let mut scope = parent.child();
+      let mut count = build(scope, false);
+
+      count.set(5);
+
+      for dark in [true, false] {
+        let next = scope.replacement();
+
+        scope.dispose();
+        scope = next;
+        count = build(scope, dark);
+      }
+
+      count.set(11);
+    },
+    || {
+      let parent = Owner::new();
+      let scope = parent.child();
+
+      build(scope, false).get()
+    },
+  );
+
+  assert_eq!(restored, 11);
+}
+
+/// A signal created inside an effect keeps its position across the effect's re-runs.
+#[test]
+fn an_effect_rerun_keeps_positions() {
+  let restored = across_runs(
+    || {
+      let trigger = Signal::new(0u8);
+      let latest = std::rc::Rc::new(std::cell::Cell::new(None::<Signal<u32>>));
+
+      Effect::new({
+        let latest = std::rc::Rc::clone(&latest);
+
+        move |_| {
+          let _ = trigger.get();
+
+          latest.set(Some(Signal::new(0u32)));
+        }
+      });
+
+      trigger.set(1);
+      trigger.set(2);
+      latest.get().expect("the effect ran").set(23);
+    },
+    || {
+      let _trigger = Signal::new(0u8);
+      let latest = std::rc::Rc::new(std::cell::Cell::new(None::<Signal<u32>>));
+
+      Effect::new({
+        let latest = std::rc::Rc::clone(&latest);
+
+        move |_| latest.set(Some(Signal::new(0u32)))
+      });
+
+      latest.get().expect("the effect ran").get()
+    },
+  );
+
+  assert_eq!(restored, 23);
+}
+
+/// A staged value whose type changed is not matched and the signal takes its default.
 #[test]
 fn changed_type_degrades_to_the_default() {
-  let bytes = std::thread::spawn(|| {
-    let value = Signal::tagged("value", 0u32);
+  let (positional, tagged) = across_runs(
+    || {
+      Signal::new(0u32).set(300);
+      Signal::tagged("value", 0u32).set(301);
+    },
+    || {
+      (
+        Signal::new(String::from("fallback")).get(),
+        Signal::tagged("value", String::from("fallback")).get(),
+      )
+    },
+  );
 
-    value.set(300);
-
-    snapshot()
-  })
-  .join()
-  .expect("the first run");
-
-  let value = std::thread::spawn(move || {
-    restore(&bytes);
-
-    Signal::tagged("value", String::from("fallback")).get()
-  })
-  .join()
-  .expect("the second run");
-
-  assert_eq!(value, "fallback");
+  assert_eq!(positional, "fallback");
+  assert_eq!(tagged, "fallback");
 }
 
-/// A staged value applies exactly once: a recreation of the same tag starts from its
-/// default, and a disposed tag may be re-registered.
+/// A disposed signal leaves the snapshot, and its position and tag are free again.
+#[test]
+fn disposal_unregisters() {
+  let (first, second) = across_runs(
+    || {
+      let scope = Owner::new();
+
+      scope.enter(|| {
+        Signal::new(0u32).set(5);
+        Signal::tagged("once", 0u32).set(6);
+      });
+      scope.dispose();
+
+      let scope = Owner::new();
+
+      scope.enter(|| {
+        Signal::new(0u32).set(7);
+        Signal::tagged("once", 0u32).set(8);
+      });
+    },
+    || {
+      let scope = Owner::new();
+      let scope_two = Owner::new();
+      let first = scope.enter(|| (Signal::new(1u32).get(), Signal::tagged("once", 1u32).get()));
+      let second =
+        scope_two.enter(|| (Signal::new(1u32).get(), Signal::tagged("once", 1u32).get()));
+
+      (first, second)
+    },
+  );
+
+  assert_eq!(first, (1, 1), "the disposed scope's values are gone");
+  assert_eq!(second, (7, 8), "the live scope's values restore");
+}
+
+/// A staged value applies exactly once: a recreation at the same position starts from
+/// its default.
 #[test]
 fn staged_value_applies_exactly_once() {
-  let bytes = std::thread::spawn(|| {
-    Signal::tagged("once", 0u32).set(5);
+  let (first, second) = across_runs(
+    || {
+      Signal::tagged("once", 0u32).set(5);
+    },
+    || {
+      let scope = Owner::new();
+      let first = scope.enter(|| Signal::tagged("once", 1u32).get());
 
-    snapshot()
-  })
-  .join()
-  .expect("the first run");
+      scope.dispose();
 
-  let (first, second) = std::thread::spawn(move || {
-    restore(&bytes);
+      (first, Signal::tagged("once", 1u32).get())
+    },
+  );
 
-    let scope = Owner::new();
-    let first = scope.enter(|| Signal::tagged("once", 1u32).get());
-
-    scope.dispose();
-
-    (first, Signal::tagged("once", 1u32).get())
-  })
-  .join()
-  .expect("the second run");
-
-  assert_eq!(first, 5);
-  assert_eq!(second, 1);
+  assert_eq!(first, 1, "another owner has no staged value under the tag");
+  assert_eq!(second, 5, "the root owner's staged value applies once");
 }
 
-/// Garbage bytes stage nothing and every tag falls back to its default.
+/// Garbage bytes stage nothing and every signal falls back to its default.
 #[test]
 fn corrupt_snapshot_stages_nothing() {
   let value = std::thread::spawn(|| {
     restore(b"not a snapshot");
 
-    Signal::tagged("value", 3u16).get()
+    Signal::new(3u16).get()
   })
   .join()
   .expect("the run");
@@ -106,10 +257,26 @@ fn corrupt_snapshot_stages_nothing() {
   assert_eq!(value, 3);
 }
 
-/// Two live signals cannot share a tag.
+/// Provided extras ride the snapshot beside the signals and are adopted by tag.
 #[test]
-#[should_panic(expected = "duplicate snapshot tag: dup")]
-fn duplicate_live_tag_panics() {
+fn provided_extras_ride_the_snapshot() {
+  let staged = across_runs(
+    || skene_reactive::provide("extra", || Some(vec![1, 2, 3])),
+    || skene_reactive::staged("extra"),
+  );
+
+  assert_eq!(staged, Some(vec![1, 2, 3]));
+}
+
+/// Two live signals of one owner cannot share a tag; two owners may.
+#[test]
+fn tags_are_unique_per_owner() {
+  let scope = Owner::new();
   let _first = Signal::tagged("dup", 1u32);
-  let _second = Signal::tagged("dup", 2u32);
+  let _second = scope.enter(|| Signal::tagged("dup", 2u32));
+  let panicked = std::panic::catch_unwind(|| {
+    let _third = Signal::tagged("dup", 3u32);
+  });
+
+  assert!(panicked.is_err(), "a duplicate tag in one owner panics");
 }

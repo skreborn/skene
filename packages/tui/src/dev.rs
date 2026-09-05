@@ -102,7 +102,7 @@ pub(crate) fn install() {
     *channel.borrow_mut() = Some(Channel {
       sender,
       notices,
-      notice: Signal::new(None),
+      notice: Signal::opaque(None),
       changed: Cell::new(false),
       last: Cell::new(Instant::now()),
     });

@@ -23,7 +23,7 @@ impl Trigger {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      signal: Signal::new(()),
+      signal: Signal::opaque(()),
     }
   }
 

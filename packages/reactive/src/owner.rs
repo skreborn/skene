@@ -35,7 +35,13 @@ impl Owner {
   /// Creates a detached root owner, disposed only by [`dispose`](Self::dispose).
   #[inline(always)]
   pub fn new() -> Self {
-    Self::from_id(with_graph(|graph| graph.allocate_owner()))
+    Self::from_id(with_graph(|graph| {
+      let owner = graph.allocate_owner();
+
+      graph.assign_root_ordinal(owner);
+
+      owner
+    }))
   }
 
   pub(crate) const fn from_id(id: Id) -> Self {
@@ -63,6 +69,13 @@ impl Owner {
 
       child
     }))
+  }
+
+  /// Creates an owner taking this one's place: the same parent and the same position
+  /// in it, so state created under the replacement keeps this owner's snapshot
+  /// identity. For a subtree rebuilt in place; this owner is disposed by its caller.
+  pub fn replacement(&self) -> Self {
+    Self::from_id(with_graph(|graph| graph.allocate_replacement(self.0)))
   }
 
   /// Reparents this owner under `parent`, unlinking it from its previous parent.

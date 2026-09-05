@@ -25,7 +25,11 @@ pub fn derived<D: Driver>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let current = Rc::new(Cell::new(None::<Owner>));
 
   Effect::new(move |_: Option<()>| {
-    let scope = parent_scope.child();
+    // The rebuilt content takes the previous content's place in the owner tree, so
+    // state under it keeps its snapshot identity across the rebuild.
+    let scope = current
+      .get()
+      .map_or_else(|| parent_scope.child(), |previous| previous.replacement());
 
     if let Some(annotation) = &annotation {
       Scene::<D>::with(|scene| scene.set_pending_annotation(annotation.clone()));

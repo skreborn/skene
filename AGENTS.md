@@ -345,10 +345,13 @@
 - All reactive-system work keeps the state-snapshot use case in mind (ROADMAP backlog:
   serializable reactive state): signal identities must be able to stay stable across two runs
   of the same binary. Store/restore is on by default and opt-out—the built-in and simple types
-  just work with no tag—so `Signal::new` carries the serde bounds, an explicit constructor
-  opts a signal out and asks nothing of its type, and a tag is only an override for the
-  positional diff. (This reverses the former opt-in-only rule and retires the `snapshot`
-  cargo feature: an additive feature can never gate a trait bound.)
+  just work with no tag—so `Signal::new` carries the serde bounds and registers the signal by
+  position (owner path, index within the owner, type), `Signal::opaque` opts a signal out and
+  asks nothing of its type, and `Signal::tagged` is only an anchor for the positional diff,
+  unique per owner. A view that rebuilds content in place builds it under
+  `Owner::replacement()` so the rebuilt state keeps its position, as `derived` does. (This
+  reverses the former opt-in-only rule and retired the `snapshot` cargo feature: an additive
+  feature can never gate a trait bound.)
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
   when facades need the same machinery over different vocabularies, the spine hosts it once as
   a small monomorphized generic (`TreeOps`, `Composable`), each facade keeping its own flat,

@@ -153,7 +153,7 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
 
   let owner = Owner::new();
   let open = Signal::new(false);
-  let placement = Signal::new(Placement::Bottom);
+  let placement = Signal::opaque(Placement::Bottom);
   let anchor = Anchor::new();
   let column = owner.enter({
     let anchor = anchor.clone();

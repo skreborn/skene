@@ -803,60 +803,24 @@ sink are just different sinks for the same paths.)
   the code side, and the forwarding item above is what makes a third-party view as
   capable as a built-in one.
 - **Serializable reactive state**: the signal graph snapshots to a byte stream and
-  restores on startup. **Direction settled: on by default, opt-out**—the built-in and
-  simple types restore with no tag and no feature, an explicit constructor opts a signal
-  out, and a tag is only an override for the positional diff (see the two exploration
-  items below; the opt-in-only shape below it is what landed first, not the target). The
-  snapshot also carries the extras that
-  live outside the graph—the focused node, scroll positions, and similar platform
-  particularities—which the drivers fully own and can replay. Powers state-preserving
-  dev reloads (full restart, no hot-patching) and stands on its own (session restore,
-  crash recovery). **Core landed:** the opt-in `snapshot` cargo feature (forwarded by
-  both facades) gives `Signal::tagged("tag", default)`—the tag is the identity across
-  runs, so the arena redesign is decoupled—plus `snapshot()`/`restore()` over
-  serde+postcard: staged values apply exactly once on creation, failed decodes degrade
-  to the default, corrupt snapshots stage nothing, duplicate live tags panic.
-  Remaining: driver extras riding along (focus, scroll), and the CLI holding the
-  snapshot across dev reloads.
-- **Explore: positional store/restore, tags as an override.** Tagging every signal by
-  hand is the price of restoration today, and a tag is a process-global key: `snapshot.rs`
-  holds one flat map from `&'static str`, so a duplicate live tag panics no matter how far
-  apart the two declarations sit. Target shape: a signal's identity comes from *where* it
-  was created and *what type* it holds, a tag is an explicit override that only
-  disambiguates where the automatic match would go wrong, and a tag needs to be unique
-  only within the function declaring it.
-  - **Identity.** Candidates, cheapest first: `#[track_caller]` creation sites
-    (file+line+column—stable until an edit moves the line, which is precisely when the
-    diff must work); a proc-macro stamping a per-function id plus a creation counter; or
-    the owner tree, where identity is the path of child indexes from the root owner plus
-    the index within the owner. The owner path looks strongest—the engine already builds
-    it, and it survives edits that don't change the tree's shape—but it must be checked
-    against conditional and looped creation.
-  - **The diff.** Per owner (or per function invocation) both sides are a sequence of
-    entries keyed by (type, optional tag); align them, restore the matches, and let
-    additions and deletions fall to the default. Myers LCS is the obvious tool, but
-    **patience diff fits better**: tagged entries are exactly patience's unique anchors,
-    and untagged runs align by index between anchors. Per the rule that makes this
-    tractable, a tag present on only one side matches nothing—adding or removing a tag is
-    a delete plus an insert, and the untagged neighbours realign around it. A true
-    conflict (incompatible type at a matched position, or an ambiguous alignment) resets
-    to the default, which is also what a failed decode already does.
-  - **Serializability, and the end of the `snapshot` feature.** Store/restore becomes
-    on-by-default and opt-out: the built-in and simple types just work, with no tag and
-    no feature to remember. So `Signal::new` carries `Serialize`/`Deserialize`
-    unconditionally and the `snapshot` cargo feature is deleted—it could never gate the
-    bound anyway, since features are additive and a crate compiling alone would break the
-    moment anything in the graph enabled it. The opt-out is an explicit constructor for
-    values that cannot or should not round-trip (`Signal::transient` and friends—name to
-    settle), which asks nothing of `T`; it also covers the type that is serializable but
-    whose restored value would be wrong, like a live handle. Non-obvious consequence to
-    design for: with restoration on by default, a stale snapshot reaching a changed
-    program is the normal case, not the exception—so the diff's conflict-resets-to-default
-    rule and the failed-decode degrade path carry the whole burden of correctness, and
-    both need tests that edit the program between snapshot and restore.
-  - Must keep working alongside it: `Store::tagged` (a store snapshots as one unit),
-    `Resource::tagged` and its order-keyed default, and the dev-loop `/skene:state`
-    protocol.
+  restores on startup. **Landed in R8, on by default and opt-out**: `Signal::new`
+  carries the serde bounds and registers the signal by position—the owner path from
+  the runtime root, the index among the owner's snapshot signals, the type—so the
+  built-in and simple types restore with no tag and no feature; `Signal::opaque` opts a
+  signal out and asks nothing of its type; `Signal::tagged` is an anchor the positional
+  diff aligns around, unique per owner rather than per process; `Store::new`/`tagged`
+  snapshot the whole value as one unit at the store's position. Restore aligns per
+  owner online as the live side is created (tags by lookup, untagged entries by type
+  from a monotone cursor), and every mismatch—type, missing entry, failed decode—falls
+  back to the default, so a stale snapshot reaching an edited program is the ordinary
+  case and never fails. A computation rewinds its counters per run and `derived`
+  rebuilds into `Owner::replacement()`, so conditional and looped creation keep their
+  identity; a keyed list item's identity is still its creation position, which the
+  view-key exploration below would anchor. The drivers' extras ride the same snapshot
+  through `provide`/`staged` (the terminal's scroll offsets today); the dev loop's
+  `/skene:state` protocol carries it across restarts on both facades, selected at run
+  time by the CLI's page marker or `SKENE_DEV`. Remaining: focus and caret riding the
+  extras, and view keys below.
 - **Explore: optional keys on every view, so driver extras restore the same way.** Scroll
   offsets ride the snapshot keyed by build-order node id and focus does not restore at
   all. If a view can carry an optional identity—by index by default, an explicit key
@@ -1316,11 +1280,52 @@ observes `startViewTransition` around a route change; SSG output carries
 
 ### R8—Store, snapshot, resource
 
-The store as a trie with interned paths and a keyed `AtKey`; the derive's `skip`,
-`tag`, generics and a non-colliding surface; snapshot identity by owner path and
-sequence with tags as anchors; serde bounds on `Signal::new` with an opt-out
-constructor; `Resource` in the engine with a `Refetching` state; the `snapshot` and
-`test` features deleted.
+**Landed.** The store is a trie: one node per location ever addressed, interned to a
+`StoreLocation` (`u32`) through `StoreCore::field`/`index`/`key`, so `track` and
+`notify` allocate nothing and cost the location's depth. Each node carries two lazily
+created triggers—`below` (a write here or beneath) and `here` (a write exactly here); a
+reader tracks its own `below` and every ancestor's `here`, a write notifies its own
+`here` and the `below` of itself and its ancestors, so a row edit over ten thousand
+tracked cells costs the same as over a hundred (`tests/store.rs` times it). `AtKey`
+keeps the real key: a bucket by hash, equality by the key itself, so colliding hashes
+never alias. Field keys are a hash of the field name, stable under reordering; the
+derive grows `#[store(skip)]`, `#[store(tag = "...")]` (keys by the tag, surviving a
+rename), generics and tuple structs (`field_0`), and a field named after a
+`StoreField`/`Clone` method is addressed as `<name>_field`. `PathSegment`/`StorePath`
+are gone; `Store::new`/`tagged`/`opaque` mirror the signal constructors.
+
+Snapshot identity is positional: (the path of child ordinals from the runtime's root
+owner—a detached `Owner::new` is a root of its own—, the signal's index among its
+owner's snapshot signals, the hash of its type name). `Signal::new` carries
+`Serialize + DeserializeOwned` and registers; `Signal::opaque` asks nothing of `T`,
+registers nothing and occupies no position; `Signal::tagged` is an anchor, unique per
+owner. A computation rewinds its counters on every re-run and `derived` rebuilds into
+`Owner::replacement()`—the same parent and ordinal—so a branch flip keeps identity.
+Restore aligns per owner as the live side is created: a tagged signal takes its tag's
+entry wherever it sits; an untagged one takes the next unconsumed untagged entry of its
+type from a monotone cursor, so an added signal defaults and the ones after it match by
+shape. A type change, a missing entry and a failed decode all default; disposal
+unregisters; a sync signal never takes part. `provide`/`staged` carry the drivers'
+extras (the terminal's scroll offsets) beside the signals.
+
+`Resource` lives in `skene-reactive` over the `set_spawner`/`spawn` seam every driver
+installs (`scope_bound` from core wrapped around its executor), with
+`Loading`/`Ready`/`Refetching`: a reload keeps the last value readable, an overtaken
+load lands nowhere, and the loader is read untracked. `skene-gui` keeps a `Deref`
+newtype adding only hydration (`new` by order, `tagged` by tag, `client` opting out
+through `Resource::unloaded` on the server); the terminal re-exports the engine's.
+
+The `snapshot` and `test` features are deleted everywhere: `Runtime::reset`,
+`uninstall`, the `trigger_*` seams and the dev-state handshake always compile, and no
+cargo feature remains in the workspace. The handshake stays a runtime choice the CLI
+makes: the web boots through it only when the served page carries the `skene-dev` meta
+marker the dev server injects, the terminal only when `SKENE_DEV` names the state port.
+`serde` and `postcard` are plain dependencies of `skene-reactive`; `Color` and
+`ColorScheme` derive serde so the common scheme signal restores. Known costs: a
+`&'static str` signal is `opaque` (it cannot be deserialized owned); a positional
+identity shifts when an owner or effect is added before it, which is what a tag is
+for; the host has no executor, so `Resource::new` under the headless driver panics until
+one is installed.
 **Gate:** a snapshot survives a branch flip and a program edit that adds a signal; a
 store with ten thousand tracked cells notifies one row edit in constant time in a bench.
 

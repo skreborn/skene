@@ -148,7 +148,7 @@ fn reduced_motion_cuts_a_respecting_transition() {
 #[test]
 fn a_palette_flip_transitions_a_token_driven_color() {
   with_driver(|| {
-    let palette = Signal::new(SimplePalette::default().set_card(red()));
+    let palette = Signal::opaque(SimplePalette::default().set_card(red()));
     let _ = tui::mount(move || {
       Theme::derive(move || palette.get())
         .set_child_builder(|| {

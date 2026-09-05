@@ -179,6 +179,21 @@ pub fn drive(future: impl Future<Output = ()> + 'static) {
   });
 }
 
+thread_local! {
+  static EXECUTOR_INSTALLED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Installs this leaf's executor as the engine's task seam, once per thread: every
+/// [`skene_reactive::spawn`] then runs its future through [`drive`], bound to the
+/// spawning owner.
+pub fn install_executor() {
+  if EXECUTOR_INSTALLED.replace(true) {
+    return;
+  }
+
+  skene_reactive::set_spawner(|task| drive(skene_core::scope_bound(task)));
+}
+
 /// Polls every ready task, blocking on the reactor when none are ready but host operations are
 /// outstanding, until the render settles.
 ///

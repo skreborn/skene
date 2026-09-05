@@ -27,7 +27,7 @@ use skene_core::{
   Size,
   Slot,
 };
-use skene_reactive::{Owner, WriteSignal, signal};
+use skene_reactive::{Owner, Signal, WriteSignal};
 
 use crate::{
   TerminalExt,
@@ -375,11 +375,9 @@ pub(crate) struct Press {
 
 /// The environment as signals, with the write halves the driver drives.
 pub(crate) struct MediaState {
-  #[cfg_attr(not(feature = "test"), expect(dead_code))]
   pub(crate) owner: Owner,
   pub(crate) set_viewport: WriteSignal<Size<u32>>,
   pub(crate) set_scheme: WriteSignal<ColorScheme>,
-  #[cfg_attr(not(feature = "test"), expect(dead_code))]
   pub(crate) set_reduced_motion: WriteSignal<bool>,
   pub(crate) signals: MediaSignals<u32>,
 }
@@ -490,7 +488,6 @@ impl Clock {
 
   /// Steps the reading forward by `seconds`; a wall clock becomes a hand-stepped one
   /// at its current reading.
-  #[cfg(feature = "test")]
   #[inline(always)]
   pub(crate) fn advance(&mut self, seconds: f64) {
     *self = Self::Manual(self.now() + seconds);
@@ -622,7 +619,6 @@ impl Store {
   }
 
   /// The live record at creation index `index`.
-  #[cfg(feature = "snapshot")]
   #[inline(always)]
   pub(crate) fn handle_at(&self, index: u32) -> Option<Handle> {
     self
@@ -955,9 +951,9 @@ impl Store {
       let owner = Owner::new();
 
       owner.enter(|| {
-        let (viewport, set_viewport) = signal(viewport);
-        let (scheme, set_scheme) = signal(scheme);
-        let (reduced_motion, set_reduced_motion) = signal(reduced);
+        let (viewport, set_viewport) = Signal::opaque(viewport).split();
+        let (scheme, set_scheme) = Signal::opaque(scheme).split();
+        let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced).split();
 
         MediaState {
           owner,
@@ -976,7 +972,6 @@ impl Store {
   }
 
   /// The owner of the environment's signals, for a teardown to dispose.
-  #[cfg(feature = "test")]
   pub(crate) fn take_media_owner(&mut self) -> Option<Owner> {
     self.media.take().map(|media| media.owner)
   }

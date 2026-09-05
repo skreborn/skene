@@ -1,97 +1,256 @@
 //! Fine-grained reactive stores: one plain value, field- and key-level subscriptions.
 //!
-//! A [`Store`] owns a single value of a plain type—methods on it keep working, and a
-//! tagged store snapshots as one unit. `#[derive(Store)]` on the type generates an
+//! A [`Store`] owns a single value of a plain type—methods on it keep working, and the
+//! whole value snapshots as one unit. `#[derive(Store)]` on the type generates an
 //! accessor per field returning a lens into the store; reading through a lens
 //! subscribes the running effect to exactly that location, and a write notifies
 //! exactly the readers it can affect: the location itself, the locations containing
 //! it, and everything beneath it. `Vec` fields address elements by position
 //! ([`IndexedField::at`]); keyed collections address entries by key
 //! ([`KeyedField::key`]).
+//!
+//! Locations intern into a trie of [`StoreLocation`]s, one node per location ever
+//! addressed, so tracking and notifying cost the location's depth and nothing of the
+//! number of locations tracked.
 
 use std::{
+  any::Any,
   collections::{BTreeMap, HashMap},
   hash::{BuildHasher, Hash, Hasher},
   marker::PhantomData,
+  rc::Rc,
 };
 
 use rustc_hash::{FxHashMap, FxHasher};
+use serde::{Serialize, de::DeserializeOwned};
+use smallvec::SmallVec;
 
 use crate::{Owner, Signal, Trigger, access::With, effect::batch, signal::update_silently};
 
-/// One step of a store path: a struct field by declaration order, or a collection
-/// entry by its position or hashed key.
+/// An interned location inside a store's value: the root, or one path of fields,
+/// indexes and keys beneath it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PathSegment {
-  /// A named field, by declaration order.
-  Field(u32),
-  /// A collection entry, by its index or its key's hash.
-  Key(u64),
+#[must_use]
+pub struct StoreLocation(u32);
+
+impl StoreLocation {
+  /// The store's own value.
+  pub const ROOT: Self = Self(0);
 }
 
-/// The address of a location inside a store's value, from the root.
-pub type StorePath = Vec<PathSegment>;
+/// A key compared exactly against another of any type.
+trait DynKey: Any {
+  fn eq_dyn(&self, other: &dyn Any) -> bool;
+}
 
-/// A store's shared plumbing: the trigger registry and the owning owner.
+impl<K: Eq + 'static> DynKey for K {
+  fn eq_dyn(&self, other: &dyn Any) -> bool {
+    other.downcast_ref::<K>() == Some(self)
+  }
+}
+
+/// The step from a location to one child.
+enum Edge {
+  Field(u32),
+  Index(usize),
+  Key(Rc<dyn DynKey>),
+}
+
+/// The absent parent, on the root.
+const NO_PARENT: u32 = u32::MAX;
+
+/// One location: its parent and its two triggers, created on first use.
 ///
-/// Every lens of one store carries the same core; custom lenses only forward it.
+/// `below` wakes on a write at this location or beneath it; `here` wakes on a write
+/// exactly at this location. A reader tracks its own `below` and every ancestor's
+/// `here`; a write notifies its own `here` and the `below` of itself and every
+/// ancestor.
+struct Node {
+  parent: u32,
+  here: Option<Trigger>,
+  below: Option<Trigger>,
+}
+
+/// The children of one location sharing an edge hash, with their node ids.
+type Bucket = SmallVec<[(Edge, u32); 1]>;
+
+/// The trie of addressed locations.
+struct Trie {
+  nodes: Vec<Node>,
+  edges: FxHashMap<(u32, u64), Bucket>,
+}
+
+impl Trie {
+  fn new() -> Self {
+    Self {
+      nodes: vec![Node {
+        parent: NO_PARENT,
+        here: None,
+        below: None,
+      }],
+      edges: FxHashMap::default(),
+    }
+  }
+
+  /// The child of `parent` along the edge `matches` recognizes, created by `make`
+  /// when absent.
+  fn child(
+    &mut self,
+    parent: u32,
+    hash: u64,
+    matches: impl Fn(&Edge) -> bool,
+    make: impl FnOnce() -> Edge,
+  ) -> u32 {
+    let next = u32::try_from(self.nodes.len()).expect("store locations exhausted");
+    let bucket = HashMap::entry(&mut self.edges, (parent, hash)).or_default();
+
+    if let Some((_, node)) = bucket.iter().find(|(edge, _)| matches(edge)) {
+      return *node;
+    }
+
+    bucket.push((make(), next));
+    self.nodes.push(Node {
+      parent,
+      here: None,
+      below: None,
+    });
+
+    next
+  }
+}
+
+/// The bucket hash of one edge kind and its key.
+fn edge_hash(kind: u8, key: impl Hash) -> u64 {
+  let mut hasher = FxHasher::default();
+
+  kind.hash(&mut hasher);
+  key.hash(&mut hasher);
+
+  hasher.finish()
+}
+
+/// A store's shared plumbing: the location trie and the owning owner.
+///
+/// Every lens of one store carries the same core; custom lenses only forward it and
+/// intern their locations through it.
 #[derive(Clone, Copy)]
 #[must_use]
 pub struct StoreCore {
-  triggers: Signal<FxHashMap<StorePath, Trigger>>,
+  trie: Signal<Trie>,
   owner: Owner,
 }
 
 impl StoreCore {
   fn new() -> Self {
     Self {
-      triggers: Signal::new(FxHashMap::default()),
+      trie: Signal::opaque(Trie::new()),
       owner: Owner::current(),
     }
   }
 
-  /// Subscribes the running effect to the location at `path`.
-  fn track(&self, path: &[PathSegment]) {
-    let existing = self
-      .triggers
-      .try_with_untracked(|triggers| triggers.get(path).copied())
-      .flatten();
-
-    let trigger = match existing {
-      Some(trigger) => trigger,
-      None => {
-        let trigger = self.owner.enter(Trigger::new);
-
-        let _ = update_silently(
-          self.triggers.id(),
-          |triggers: &mut FxHashMap<StorePath, Trigger>| {
-            triggers.insert(path.to_vec(), trigger);
-          },
-        );
-
-        trigger
-      }
-    };
-
-    trigger.track();
+  /// The location of the field keyed `key` under `parent`.
+  pub fn field(&self, parent: StoreLocation, key: u32) -> StoreLocation {
+    self.intern(
+      parent,
+      edge_hash(0, key),
+      |edge| matches!(edge, Edge::Field(existing) if *existing == key),
+      || Edge::Field(key),
+    )
   }
 
-  /// Notifies every reader a write at `path` can affect: the location itself, the
-  /// locations containing it, and everything beneath it.
-  fn notify(&self, path: &[PathSegment]) {
-    let affected: Vec<Trigger> = self
-      .triggers
-      .try_with_untracked(|triggers| {
+  /// The location of the element at `index` under `parent`.
+  pub fn index(&self, parent: StoreLocation, index: usize) -> StoreLocation {
+    self.intern(
+      parent,
+      edge_hash(1, index),
+      |edge| matches!(edge, Edge::Index(existing) if *existing == index),
+      || Edge::Index(index),
+    )
+  }
+
+  /// The location of the entry under `key` beneath `parent`; distinct keys never
+  /// share a location.
+  pub fn key<K: Hash + Eq + Clone + 'static>(
+    &self,
+    parent: StoreLocation,
+    key: &K,
+  ) -> StoreLocation {
+    self.intern(
+      parent,
+      edge_hash(2, key),
+      |edge| matches!(edge, Edge::Key(existing) if existing.eq_dyn(key)),
+      || Edge::Key(Rc::new(key.clone())),
+    )
+  }
+
+  fn intern(
+    &self,
+    parent: StoreLocation,
+    hash: u64,
+    matches: impl Fn(&Edge) -> bool,
+    make: impl FnOnce() -> Edge,
+  ) -> StoreLocation {
+    update_silently(self.trie.id(), |trie: &mut Trie| {
+      trie.child(parent.0, hash, matches, make)
+    })
+    .map_or(StoreLocation::ROOT, StoreLocation)
+  }
+
+  /// Subscribes the running effect to `location`.
+  fn track(&self, location: StoreLocation) {
+    let owner = self.owner;
+    let triggers: SmallVec<[Trigger; 8]> = update_silently(self.trie.id(), |trie: &mut Trie| {
+      owner.enter(|| {
+        let mut triggers = SmallVec::new();
+        let mut node = location.0 as usize;
+
+        triggers.push(*trie.nodes[node].below.get_or_insert_with(Trigger::new));
+
+        while trie.nodes[node].parent != NO_PARENT {
+          node = trie.nodes[node].parent as usize;
+
+          triggers.push(*trie.nodes[node].here.get_or_insert_with(Trigger::new));
+        }
+
         triggers
-          .iter()
-          .filter(|(tracked, _)| tracked.starts_with(path) || path.starts_with(tracked))
-          .map(|(_, trigger)| *trigger)
-          .collect()
+      })
+    })
+    .unwrap_or_default();
+
+    for trigger in triggers {
+      trigger.track();
+    }
+  }
+
+  /// Notifies every reader a write at `location` can affect: the location itself, the
+  /// locations containing it, and everything beneath it.
+  fn notify(&self, location: StoreLocation) {
+    let triggers: SmallVec<[Trigger; 8]> = self
+      .trie
+      .try_with_untracked(|trie| {
+        let mut triggers = SmallVec::new();
+        let mut node = location.0 as usize;
+
+        triggers.extend(trie.nodes[node].here);
+
+        loop {
+          triggers.extend(trie.nodes[node].below);
+
+          let parent = trie.nodes[node].parent;
+
+          if parent == NO_PARENT {
+            break;
+          }
+
+          node = parent as usize;
+        }
+
+        triggers
       })
       .unwrap_or_default();
 
     batch(|| {
-      for trigger in affected {
+      for trigger in triggers {
         trigger.notify();
       }
     });
@@ -100,10 +259,12 @@ impl StoreCore {
 
 /// Fine-grained reactive state over one plain value.
 ///
-/// Created with [`new`](Self::new) (or [`tagged`](Self::tagged) to join state
-/// snapshots). The store itself is the root location—[`StoreField`] gives it and every
-/// lens the same read/write surface—and `#[derive(Store)]` on the value's type
-/// generates the per-field accessors that descend into it.
+/// Created with [`new`](Self::new), [`tagged`](Self::tagged) or
+/// [`opaque`](Self::opaque), which take part in state snapshots exactly as the
+/// [`Signal`] constructors of the same names do. The store itself is the root
+/// location—[`StoreField`] gives it and every lens the same read/write surface—and
+/// `#[derive(Store)]` on the value's type generates the per-field accessors that
+/// descend into it.
 #[must_use]
 pub struct Store<T: 'static> {
   value: Signal<T>,
@@ -119,45 +280,36 @@ impl<T: 'static> Clone for Store<T> {
 
 impl<T: 'static> Copy for Store<T> {}
 
-impl<T: 'static> Store<T> {
-  /// Creates a store owned by the current [`Owner`].
+impl<T: Serialize + DeserializeOwned + 'static> Store<T> {
+  /// Creates a store owned by the current [`Owner`]; the whole value is one snapshot
+  /// signal at the owner's next position, see [`Signal::new`].
   pub fn new(value: T) -> Self {
-    Self {
-      value: Signal::new(value),
-      core: StoreCore::new(),
-    }
+    Self::over(Signal::new(value))
   }
-}
 
-#[cfg(feature = "snapshot")]
-impl<T: serde::Serialize + serde::de::DeserializeOwned + 'static> Store<T> {
-  /// Creates a store whose `tag` is its identity in state snapshots.
-  ///
-  /// The whole value serializes as one unit under the tag, exactly as
-  /// [`Signal::tagged`] does for a single value: the store starts from the value
-  /// staged under its tag by [`restore`](crate::restore) when one is present and
-  /// decodes as `T`, and from `value` otherwise.
+  /// Creates a store whose `tag` names its position in state snapshots; see
+  /// [`Signal::tagged`].
   ///
   /// # Panics
   ///
-  /// Panics if `tag` is already carried by a live tagged signal or store.
+  /// Panics if `tag` is already carried by a live tagged signal of the same owner.
   pub fn tagged(tag: &'static str, value: T) -> Self {
-    let value = crate::snapshot::take_staged(tag)
-      .and_then(|bytes| postcard::from_bytes(&bytes).ok())
-      .unwrap_or(value);
-    let store = Self::new(value);
-    let cell = store.value;
+    Self::over(Signal::tagged(tag, value))
+  }
+}
 
-    crate::snapshot::register(
-      tag,
-      Box::new(move || {
-        cell
-          .try_with_untracked(|value| postcard::to_allocvec(value).ok())
-          .flatten()
-      }),
-    );
+impl<T: 'static> Store<T> {
+  /// Creates a store owned by the current [`Owner`] that takes no part in state
+  /// snapshots; see [`Signal::opaque`].
+  pub fn opaque(value: T) -> Self {
+    Self::over(Signal::opaque(value))
+  }
 
-    store
+  fn over(value: Signal<T>) -> Self {
+    Self {
+      value,
+      core: StoreCore::new(),
+    }
   }
 }
 
@@ -175,8 +327,8 @@ pub trait StoreField: Clone {
   /// The owning store's shared plumbing.
   fn core(&self) -> StoreCore;
 
-  /// Appends this location's address onto `path`.
-  fn write_path(&self, path: &mut StorePath);
+  /// This location, interned in the store's trie.
+  fn location(&self) -> StoreLocation;
 
   /// Runs `read` on the addressed value without subscribing; `None` when the location
   /// no longer exists.
@@ -186,18 +338,9 @@ pub trait StoreField: Clone {
   /// no longer exists.
   fn write_untracked<R>(&self, write: impl FnOnce(&mut Self::Value) -> R) -> Option<R>;
 
-  /// This location's address from the store's root.
-  fn path(&self) -> StorePath {
-    let mut path = StorePath::new();
-
-    self.write_path(&mut path);
-
-    path
-  }
-
   /// Subscribes the running effect to this location.
   fn track(&self) {
-    self.core().track(&self.path());
+    self.core().track(self.location());
   }
 
   /// Runs `read` on the value, subscribed; `None` when the location no longer exists.
@@ -245,7 +388,7 @@ pub trait StoreField: Clone {
   fn try_update<R>(&self, write: impl FnOnce(&mut Self::Value) -> R) -> Option<R> {
     let result = self.write_untracked(write)?;
 
-    self.core().notify(&self.path());
+    self.core().notify(self.location());
 
     Some(result)
   }
@@ -280,7 +423,9 @@ impl<T: 'static> StoreField for Store<T> {
   }
 
   #[inline(always)]
-  fn write_path(&self, _path: &mut StorePath) {}
+  fn location(&self) -> StoreLocation {
+    StoreLocation::ROOT
+  }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&T) -> R) -> Option<R> {
     self.value.try_with_untracked(read)
@@ -296,23 +441,24 @@ impl<T: 'static> StoreField for Store<T> {
 #[must_use]
 pub struct Subfield<Parent: StoreField, T> {
   parent: Parent,
-  ordinal: u32,
+  key: u32,
   read: fn(&Parent::Value) -> &T,
   write: fn(&mut Parent::Value) -> &mut T,
 }
 
 impl<Parent: StoreField, T> Subfield<Parent, T> {
-  /// Builds a field lens: the field's declaration ordinal plus its two projections.
+  /// Builds a field lens: the field's key—stable under reordering, a hash of its
+  /// name—plus its two projections.
   #[inline(always)]
   pub fn new(
     parent: Parent,
-    ordinal: u32,
+    key: u32,
     read: fn(&Parent::Value) -> &T,
     write: fn(&mut Parent::Value) -> &mut T,
   ) -> Self {
     Self {
       parent,
-      ordinal,
+      key,
       read,
       write,
     }
@@ -324,7 +470,7 @@ impl<Parent: StoreField, T> Clone for Subfield<Parent, T> {
   fn clone(&self) -> Self {
     Self {
       parent: self.parent.clone(),
-      ordinal: self.ordinal,
+      key: self.key,
       read: self.read,
       write: self.write,
     }
@@ -341,9 +487,8 @@ impl<Parent: StoreField, T: 'static> StoreField for Subfield<Parent, T> {
     self.parent.core()
   }
 
-  fn write_path(&self, path: &mut StorePath) {
-    self.parent.write_path(path);
-    path.push(PathSegment::Field(self.ordinal));
+  fn location(&self) -> StoreLocation {
+    self.core().field(self.parent.location(), self.key)
   }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&T) -> R) -> Option<R> {
@@ -389,9 +534,8 @@ impl<Parent: StoreField<Value = Vec<T>>, T: 'static> StoreField for AtIndex<Pare
     self.parent.core()
   }
 
-  fn write_path(&self, path: &mut StorePath) {
-    self.parent.write_path(path);
-    path.push(PathSegment::Key(self.index as u64));
+  fn location(&self) -> StoreLocation {
+    self.core().index(self.parent.location(), self.index)
   }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&T) -> R) -> Option<R> {
@@ -426,7 +570,7 @@ impl<S: StoreField<Value = Vec<T>>, T: 'static> IndexedField<T> for S {}
 /// A collection a store addresses entry-by-entry, by key.
 pub trait KeyedCollection: 'static {
   /// The key addressing an entry.
-  type Key: Hash + Clone + 'static;
+  type Key: Hash + Eq + Clone + 'static;
   /// The entry type.
   type Entry: 'static;
 
@@ -506,12 +650,8 @@ where
     self.parent.core()
   }
 
-  fn write_path(&self, path: &mut StorePath) {
-    let mut hasher = FxHasher::default();
-
-    self.key.hash(&mut hasher);
-    self.parent.write_path(path);
-    path.push(PathSegment::Key(hasher.finish()));
+  fn location(&self) -> StoreLocation {
+    self.core().key(self.parent.location(), &self.key)
   }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&Self::Value) -> R) -> Option<R> {

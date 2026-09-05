@@ -15,7 +15,6 @@
 //! id is stable across the rebuild; the content that next enters the segment with the
 //! same shape takes them back.
 
-#[cfg(feature = "snapshot")]
 mod dev;
 mod events;
 mod head;
@@ -69,18 +68,17 @@ use web_sys::{
   ResizeObserverEntry,
 };
 
-#[cfg(feature = "snapshot")]
-pub use self::dev::boot_with_dev_state;
-use self::{
-  events::{Events, Listener},
-  sheet::Sheet,
-};
 pub use self::{
+  dev::boot_with_dev_state,
   head::{add_head_element, set_document_title},
   history::{current_path, on_pop, push_path},
   media::{media_query, set_scheme, stored_scheme, watch_media},
-  task::drive,
+  task::{drive, install_executor},
   view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},
+};
+use self::{
+  events::{Events, Listener},
+  sheet::Sheet,
 };
 use super::{
   Web,
@@ -1357,6 +1355,7 @@ impl WebDom for Web {
 /// nodes under it when `hydrating`.
 fn install_at(root: Element, hydrating: bool) {
   skene_reactive::Runtime::init_on_ui_thread();
+  task::install_executor();
 
   let document = web_sys::window()
     .expect("a window")
@@ -1652,7 +1651,6 @@ pub fn element(node: NodeId) -> Option<Element> {
 /// Uninstalls the browser leaf: removes its stylesheet and listeners, empties the
 /// scene and resets the reactive runtime, so one thread can run many independent
 /// mounts.
-#[cfg(feature = "test")]
 pub fn uninstall() {
   DOM.with(|dom| {
     if let Some(mut dom) = dom.borrow_mut().take() {

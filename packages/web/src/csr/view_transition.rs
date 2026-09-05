@@ -63,7 +63,6 @@ pub fn commit_navigation(update: Box<dyn FnOnce()>) {
 }
 
 /// Forgets the opt-in, for a teardown.
-#[cfg(feature = "test")]
 pub(super) fn reset() {
   ENABLED.with(|enabled| enabled.set(false));
 }

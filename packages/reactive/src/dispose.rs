@@ -43,6 +43,10 @@ fn dispose_local(id: Id) {
         return;
       };
 
+      if removed.snapshotted {
+        crate::snapshot::unregister(id);
+      }
+
       for sub in removed.subs {
         sub.dispose();
       }

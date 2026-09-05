@@ -3,6 +3,7 @@ use std::panic::Location;
 use std::{any::Any, fmt, marker::PhantomData, rc::Rc, sync::Arc};
 
 use parking_lot::Mutex;
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
   computation,
@@ -118,16 +119,36 @@ impl<T, S> Signal<T, S> {
   }
 }
 
-impl<T: Default + 'static> Default for Signal<T> {
+impl<T: Default + Serialize + DeserializeOwned + 'static> Default for Signal<T> {
   fn default() -> Self {
     Self::new(T::default())
   }
 }
 
-impl<T: 'static> Signal<T> {
+impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
   /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner).
+  ///
+  /// The signal takes part in state snapshots: its identity is its position—the
+  /// owner's path and the signal's index among the owner's snapshot signals, plus its
+  /// type—so a [`restore`](crate::restore)d run adopts the value a prior run held at
+  /// that position, when one was staged and decodes as `T`, and `value` otherwise.
+  /// [`tagged`](Self::tagged) names the position instead; [`opaque`](Self::opaque)
+  /// stays out of snapshots and needs no serde.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(value: T) -> Self {
+    Self::snapshotted(None, value)
+  }
+}
+
+impl<T: 'static> Signal<T> {
+  /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner),
+  /// that takes no part in state snapshots.
+  ///
+  /// For a value that cannot or should not round-trip: a closure, a handle, driver
+  /// state the platform owns. It occupies no snapshot position, so adding or removing
+  /// one shifts nothing around it.
+  #[cfg_attr(debug_assertions, track_caller)]
+  pub fn opaque(value: T) -> Self {
     let id = SignalState::create(value);
 
     Runtime::adopt_current(id);
@@ -152,9 +173,11 @@ impl<T: Send + Sync + 'static> Signal<T, SyncStorage> {
   }
 }
 
-/// Creates a signal holding `value` and returns its two halves.
+/// Creates a signal holding `value` and returns its two halves; see [`Signal::new`].
 #[cfg_attr(debug_assertions, track_caller)]
-pub fn signal<T: 'static>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
+pub fn signal<T: Serialize + DeserializeOwned + 'static>(
+  value: T,
+) -> (ReadSignal<T>, WriteSignal<T>) {
   let signal = Signal::new(value);
 
   signal.split()

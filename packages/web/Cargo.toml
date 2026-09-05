@@ -3,15 +3,6 @@ name = "skene-web"
 version.workspace = true
 edition.workspace = true
 
-
-[features]
-# The dev-loop state handshake with the skene CLI: fetch and stage the held snapshot
-# before boot, expose `skene_snapshot` for the reload beacon.
-snapshot = ["skene-reactive/snapshot", "web-sys/Response"]
-# Expose the platform teardown (`uninstall`) so one thread can run many independent
-# mounts, as a test suite does.
-test = ["skene-reactive/test"]
-
 [dependencies]
 rustc-hash.workspace = true
 skene-core.workspace = true
@@ -54,6 +45,7 @@ web-sys = { version = "0.3", features = [
   "NodeList",
   "PointerEvent",
   "ResizeObserver",
+  "Response",
   "Selection",
   "StyleSheet",
   "Comment",
@@ -69,9 +61,6 @@ wasi = "0.14"
 skene-reactive.workspace = true
 skene-simple.workspace = true
 skene-views.workspace = true
-# Depend on ourselves with `test` on, so `cargo test` gets the driver teardown without a
-# `--features` flag.
-skene-web = { path = ".", features = ["test"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"

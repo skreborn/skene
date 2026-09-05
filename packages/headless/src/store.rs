@@ -24,7 +24,7 @@ use skene_core::{
   Slot,
   interpolate::{Interpolate, Tween, snap},
 };
-use skene_reactive::{Owner, WriteSignal, signal};
+use skene_reactive::{Owner, Signal, WriteSignal};
 
 use crate::{Handle, Headless, HeadlessTokenValue};
 
@@ -280,9 +280,9 @@ impl Store {
       let owner = Owner::new();
 
       owner.enter(|| {
-        let (viewport, set_viewport) = signal(viewport);
-        let (scheme, set_scheme) = signal(scheme);
-        let (reduced_motion, set_reduced_motion) = signal(reduced_motion);
+        let (viewport, set_viewport) = Signal::opaque(viewport).split();
+        let (scheme, set_scheme) = Signal::opaque(scheme).split();
+        let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced_motion).split();
 
         MediaState {
           owner,

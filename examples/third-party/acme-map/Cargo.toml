@@ -19,7 +19,6 @@ web-sys = { version = "0.3", features = [
 ] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
-skene-web = { features = ["test"], workspace = true }
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3", features = [
   "Document",

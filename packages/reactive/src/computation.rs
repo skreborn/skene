@@ -63,6 +63,7 @@ pub(crate) fn run(id: Id) {
   };
 
   id.dispose_children();
+  with_graph(|graph| graph.reset_creation_counters(id));
 
   let changed = track(id, || body.run());
 

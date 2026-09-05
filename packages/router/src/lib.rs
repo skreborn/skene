@@ -57,7 +57,7 @@ impl<R: Route> Router<R> {
   /// Creates a router at `initial`.
   pub fn new(initial: R) -> Self {
     Self {
-      current: Signal::new(initial),
+      current: Signal::opaque(initial),
       sink: Rc::new(RefCell::new(None)),
       commit: Rc::new(RefCell::new(None)),
     }

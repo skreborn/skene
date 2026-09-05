@@ -3,19 +3,10 @@ name = "skene-tui"
 version.workspace = true
 edition.workspace = true
 
-[features]
-# Serialize tagged signals to a byte snapshot and restore them on creation, and run the
-# dev-loop handshake with the `skene` CLI; see `skene-reactive`'s feature of the same
-# name.
-snapshot = ["dep:postcard", "skene-reactive/snapshot"]
-# Expose the driver teardown (`uninstall`) and the `trigger_` seams, so one thread can
-# run many independent mounts and drive them without a terminal, as a test suite does.
-test = ["skene-reactive/test"]
-
 # Host-only: the terminal driver never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossterm = "0.29"
-postcard = { default-features = false, features = ["alloc"], optional = true, version = "1" }
+postcard = { default-features = false, features = ["alloc"], version = "1" }
 rustc-hash.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
@@ -27,11 +18,6 @@ taffy = "0.9"
 # The OSC 11 background query polls stdin for the reply.
 [target.'cfg(all(not(target_arch = "wasm32"), unix))'.dependencies]
 libc = "0.2"
-
-[dev-dependencies]
-# Depend on ourselves with `test` and `snapshot` on, so `cargo test` gets the driver
-# teardown and the seams without a `--features` flag.
-skene-tui = { path = ".", features = ["snapshot", "test"] }
 
 [lints]
 workspace = true

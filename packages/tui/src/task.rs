@@ -134,7 +134,6 @@ pub(crate) fn pump() -> bool {
 }
 
 /// Drops every task and queued wake, readying the executor for an independent mount.
-#[cfg(feature = "test")]
 pub(crate) fn clear() {
   EXECUTOR.with(|executor| {
     let mut executor = executor.borrow_mut();

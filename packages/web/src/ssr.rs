@@ -71,6 +71,7 @@ use super::{
   condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE},
   markup::{
     MARKER_ATTRIBUTE,
+    NATIVE_ACCESS_ATTRIBUTES,
     NATIVE_CLASS,
     STYLE_ATTRIBUTE,
     STYLE_ID,
@@ -79,9 +80,13 @@ use super::{
     aria_role,
     box_tag,
     drawn_element,
+    element_id,
     focus_order_attribute,
+    is_form_element,
     link_attributes,
+    native_attribute,
     native_element,
+    referenced_nodes,
   },
   motion::VIEW_TRANSITION_RULE,
   token::WebTokenValue,
@@ -764,16 +769,42 @@ fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
   }
 }
 
-/// Replaces the ARIA attributes of `node` with those `access` maps to.
+/// Replaces the ARIA attributes of `node` with those `access` maps to; a form element
+/// takes the native attribute where one exists.
 fn write_access(node: &mut Node, access: &[AccessProp]) {
-  node
-    .attributes
-    .retain(|(name, _)| !name.starts_with("aria-"));
+  let form = matches!(node.content, Content::Element(tag) if is_form_element(tag));
+
+  node.attributes.retain(|(name, _)| {
+    let native = form && NATIVE_ACCESS_ATTRIBUTES.contains(&name.as_str());
+
+    !native && !name.starts_with("aria-")
+  });
 
   for prop in access {
+    if form && let Some(name) = native_attribute(prop) {
+      node.set_attribute(name, "");
+
+      continue;
+    }
+
     let (name, value) = access_attribute(prop);
 
     node.set_attribute(name, &value);
+  }
+}
+
+/// Gives every node `access` refers to the id the reference names.
+fn write_referenced_ids(tree: &mut Tree, access: &[AccessProp]) {
+  for node in referenced_nodes(access) {
+    let Some(sink) = Scene::<Web>::with(|scene| scene.sink(node))
+    else {
+      continue;
+    };
+    let target = tree.carrier(sink);
+
+    if let Some(target) = tree.node(target) {
+      target.set_attribute("id", &element_id(node));
+    }
   }
 }
 
@@ -788,6 +819,8 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
       write_focus_order(node, props.focus_order);
       write_access(node, &props.access);
     }
+
+    write_referenced_ids(tree, &props.access);
   });
 }
 
@@ -859,6 +892,8 @@ impl Driver for Web {
       if let Some(node) = tree.node(target) {
         write_access(node, access);
       }
+
+      write_referenced_ids(tree, access);
     });
   }
 

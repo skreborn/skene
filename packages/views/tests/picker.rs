@@ -313,3 +313,30 @@ fn escape_and_a_dismiss_close_without_changing_the_value() {
 
   owner.dispose();
 }
+
+/// The face reports what it opens: a listbox popup, and the listbox node it controls
+/// once the list is built.
+#[test]
+fn the_face_reports_its_popup_and_the_list_it_controls() {
+  use skene_core::PopupKind;
+
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("a".to_owned());
+  let parts = picker(owner, value);
+  let access = box_props(parts.face)
+    .map(|props| props.access)
+    .unwrap_or_default();
+
+  assert!(
+    access.contains(&AccessProp::HasPopup(PopupKind::Listbox)),
+    "{access:?}"
+  );
+  assert!(
+    access.contains(&AccessProp::Controls(parts.listbox)),
+    "{access:?}"
+  );
+
+  owner.dispose();
+}

@@ -270,6 +270,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
       AccessProp::Value(50.),
       AccessProp::ValueMin(0.),
       AccessProp::ValueMax(100.),
+      AccessProp::Orientation(skene_core::Axis::Horizontal),
     ])
   );
   assert_eq!(trigger_key_down(node, &key("ArrowRight")), CONSUMED);
@@ -295,6 +296,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
       AccessProp::Value(100.),
       AccessProp::ValueMin(0.),
       AccessProp::ValueMax(100.),
+      AccessProp::Orientation(skene_core::Axis::Horizontal),
     ])
   );
 
@@ -669,6 +671,86 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
   trigger_focus(node);
 
   assert_eq!(resolve_color(node, COLOR), Some(blue()));
+
+  owner.dispose();
+}
+
+/// A control's required, read-only and invalid flags report as accessibility, the
+/// invalid flag reaches the control-scoped state, and a described-by names its node.
+#[test]
+fn a_controls_flags_report_as_accessibility_and_state() {
+  reset();
+
+  let owner = Owner::new();
+  let invalid = Signal::new(false);
+  let (hint, field) = owner.enter(|| {
+    let hint = Text::new("Required").build();
+    let field = RawTextField::new(TextEntry::new())
+      .set_required(true)
+      .set_read_only(true)
+      .derive_invalid(move || invalid.get())
+      .set_described_by(hint)
+      .build();
+
+    (hint, field)
+  });
+
+  assert_eq!(
+    box_props(field).map(|props| props.access),
+    Some(vec![
+      AccessProp::Required(true),
+      AccessProp::ReadOnly(true),
+      AccessProp::DescribedBy(hint),
+    ])
+  );
+  assert_eq!(control_state(field).map(|state| state.invalid), Some(false));
+
+  invalid.set(true);
+
+  assert!(box_props(field).is_some_and(|props| props.access.contains(&AccessProp::Invalid(true))));
+  assert_eq!(control_state(field).map(|state| state.invalid), Some(true));
+
+  owner.dispose();
+}
+
+/// A vertical range reports its orientation and reads the pointer along its height,
+/// bottom to top.
+#[test]
+fn a_vertical_range_reads_the_pointer_bottom_to_top() {
+  use skene_core::Axis;
+
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new(50.);
+  let node =
+    owner.enter(|| RawSlider::new(Range::new().set_axis(Axis::Vertical).bind_value(bound)).build());
+
+  assert!(box_props(node).is_some_and(|props| {
+    props
+      .access
+      .contains(&AccessProp::Orientation(Axis::Vertical))
+  }));
+
+  trigger_size(node, Size::new(10., 100.));
+
+  let _ = trigger_pointer_down(
+    node,
+    &PointerEvent {
+      x: 5.,
+      y: 9.5,
+      local_x: 5.,
+      local_y: 9.5,
+      button: Some(PointerButton::Primary),
+      modifiers: Modifiers::default(),
+    },
+  );
+
+  assert!(
+    (bound.get() - 90.).abs() < 0.01,
+    "near the top reads high: {}",
+    bound.get()
+  );
 
   owner.dispose();
 }

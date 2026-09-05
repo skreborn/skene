@@ -4,6 +4,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_core::{
   AccessProp,
+  Axis,
   ControlKind,
   Driver,
   EventKind,
@@ -23,7 +24,7 @@ const PAGE_STEPS: f32 = 10.;
 
 /// A slider over a closed range: arrows move by a step, `Home` and `End` reach the
 /// ends, the page keys move by ten steps, and a press or drag along the control's
-/// width jumps to that fraction of the range.
+/// axis jumps to that fraction of the range; a vertical range runs bottom to top.
 ///
 /// Controlled: the value it reports is what [`derive_value`](Self::derive_value)
 /// reads, and a move only calls [`handle_change`](Self::handle_change) with the value
@@ -39,6 +40,7 @@ pub struct Range {
   on_change: Option<Rc<dyn Fn(f32)>>,
   extent: Rc<Cell<f32>>,
   pressed: Cell<bool>,
+  axis: Axis,
 }
 
 impl Range {
@@ -53,7 +55,16 @@ impl Range {
       on_change: None,
       extent: Rc::new(Cell::new(0.)),
       pressed: Cell::new(false),
+      axis: Axis::Horizontal,
     }
+  }
+
+  /// Sets the axis the range runs along.
+  #[inline(always)]
+  pub const fn set_axis(mut self, axis: Axis) -> Self {
+    self.axis = axis;
+
+    self
   }
 
   /// Sets the lowest value.
@@ -137,12 +148,17 @@ impl Range {
   }
 
   /// Asks for the value under the pointer—the center of the unit it names—along the
-  /// measured width, so the last unit reaches the end.
+  /// measured extent, so the last unit reaches the end.
   fn slide(&self, event: &PointerEvent) {
     let extent = self.extent.get();
 
     if extent > 0. {
-      self.write(self.range().value_at((event.local_x + 0.5) / extent));
+      let fraction = match self.axis {
+        Axis::Horizontal => (event.local_x + 0.5) / extent,
+        Axis::Vertical => (extent - event.local_y - 0.5) / extent,
+      };
+
+      self.write(self.range().value_at(fraction));
     }
   }
 
@@ -193,9 +209,18 @@ impl<D: Driver> Behavior<D> for Range {
 
   fn attach(&self, control: &ControlHandle<D>) {
     let extent = Rc::clone(&self.extent);
+    let axis = self.axis;
 
     control.with_sink(|sink| {
-      D::default().observe_size(sink, Rc::new(move |size| extent.set(size.width.to_f32())));
+      D::default().observe_size(
+        sink,
+        Rc::new(move |size| {
+          extent.set(match axis {
+            Axis::Horizontal => size.width.to_f32(),
+            Axis::Vertical => size.height.to_f32(),
+          });
+        }),
+      );
     });
   }
 
@@ -247,6 +272,7 @@ impl<D: Driver> Behavior<D> for Range {
       AccessProp::Value(self.read()),
       AccessProp::ValueMin(self.min),
       AccessProp::ValueMax(self.max),
+      AccessProp::Orientation(self.axis),
     ]
   }
 }

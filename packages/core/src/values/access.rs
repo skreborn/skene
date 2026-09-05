@@ -1,4 +1,5 @@
-use super::Toggle;
+use super::{Axis, Toggle};
+use crate::NodeId;
 
 /// One accessibility property a widget reports, for a reactive update.
 ///
@@ -28,4 +29,31 @@ pub enum AccessProp {
   Disabled(bool),
   /// The control's accessible name, when nothing visible supplies one.
   Label(String),
+  /// Whether a value must be supplied before the form the control is in submits.
+  Required(bool),
+  /// Whether the control holds an invalid value.
+  Invalid(bool),
+  /// Whether the control's value is shown but not editable.
+  ReadOnly(bool),
+  /// The kind of popup the control opens.
+  HasPopup(PopupKind),
+  /// The node the control operates: its popup's list, the region it expands.
+  Controls(NodeId),
+  /// The node whose text describes the control.
+  DescribedBy(NodeId),
+  /// The axis a range control runs along.
+  Orientation(Axis),
+}
+
+/// What a control's popup is; a list of options unless told otherwise.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[must_use]
+pub enum PopupKind {
+  /// A list of options.
+  #[default]
+  Listbox,
+  /// A menu of commands.
+  Menu,
+  /// A dialog.
+  Dialog,
 }

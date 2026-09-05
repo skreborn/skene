@@ -345,6 +345,10 @@ pub struct Control<D: Driver, B: Behavior<D>, C = NoChild> {
   inner: LayoutBox<D, PlainChild>,
   label: Option<Label<D>>,
   disabled: Option<Source<bool>>,
+  required: Option<Source<bool>>,
+  read_only: Option<Source<bool>>,
+  invalid: Option<Source<bool>>,
+  described_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
   parts: Vec<(Part, AnyView<D>)>,
   observers: Observers,
@@ -367,6 +371,10 @@ impl<D: Driver, B: Behavior<D>> Control<D, B> {
       inner,
       label: None,
       disabled: None,
+      required: None,
+      read_only: None,
+      invalid: None,
+      described_by: None,
       focus_order: None,
       parts: Vec::new(),
       observers: Observers::default(),
@@ -395,6 +403,10 @@ impl<D: Driver, B: Behavior<D>> Control<D, B> {
       inner: self.inner,
       label: self.label,
       disabled: self.disabled,
+      required: self.required,
+      read_only: self.read_only,
+      invalid: self.invalid,
+      described_by: self.described_by,
       focus_order: self.focus_order,
       parts: self.parts,
       observers: self.observers,
@@ -527,6 +539,63 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
     self
   }
 
+  /// Sets whether a value must be supplied before the form the control is in submits.
+  #[inline(always)]
+  pub fn set_required(mut self, required: bool) -> Self {
+    self.required = Some(Source::Fixed(required));
+
+    self
+  }
+
+  /// Derives whether the control is required from the signals `required` reads.
+  #[inline(always)]
+  pub fn derive_required(mut self, required: impl Fn() -> bool + 'static) -> Self {
+    self.required = Some(Source::derive(required));
+
+    self
+  }
+
+  /// Sets whether the control's value is shown but not editable.
+  #[inline(always)]
+  pub fn set_read_only(mut self, read_only: bool) -> Self {
+    self.read_only = Some(Source::Fixed(read_only));
+
+    self
+  }
+
+  /// Derives whether the control is read-only from the signals `read_only` reads.
+  #[inline(always)]
+  pub fn derive_read_only(mut self, read_only: impl Fn() -> bool + 'static) -> Self {
+    self.read_only = Some(Source::derive(read_only));
+
+    self
+  }
+
+  /// Sets whether the control holds an invalid value; the `Invalid` state inside it
+  /// follows.
+  #[inline(always)]
+  pub fn set_invalid(mut self, invalid: bool) -> Self {
+    self.invalid = Some(Source::Fixed(invalid));
+
+    self
+  }
+
+  /// Derives whether the control is invalid from the signals `invalid` reads.
+  #[inline(always)]
+  pub fn derive_invalid(mut self, invalid: impl Fn() -> bool + 'static) -> Self {
+    self.invalid = Some(Source::derive(invalid));
+
+    self
+  }
+
+  /// Sets the node whose text describes the control, for assistive technology.
+  #[inline(always)]
+  pub fn set_described_by(mut self, node: NodeId) -> Self {
+    self.described_by = Some(node);
+
+    self
+  }
+
   /// Sets the control's place in focus traversal, over the behavior's default.
   #[inline(always)]
   pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
@@ -646,6 +715,10 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
       mut inner,
       label,
       disabled,
+      required,
+      read_only,
+      invalid,
+      described_by,
       focus_order,
       parts,
       observers,
@@ -681,8 +754,15 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
           driver: PhantomData,
         });
         let disabled = read_bool(disabled);
+        let flags = Flags {
+          disabled: Rc::clone(&disabled),
+          required: read_bool(required),
+          read_only: read_bool(read_only),
+          invalid: read_bool(invalid),
+          described_by,
+        };
 
-        bind_reports(&handle, &behavior, &disabled, focus_order);
+        bind_reports(&handle, &behavior, &flags, focus_order);
         behavior.attach(&handle);
         register(node, &behavior, &handle, &disabled, observers);
 
@@ -729,12 +809,23 @@ fn mount_part<D: Driver>(node: NodeId, part: Part, child: NodeId) {
   });
 }
 
+/// What the control's user set beside the behavior: the flags every control may carry
+/// and the node describing it.
+#[derive(Clone)]
+struct Flags {
+  disabled: Rc<dyn Fn() -> bool>,
+  required: Rc<dyn Fn() -> bool>,
+  read_only: Rc<dyn Fn() -> bool>,
+  invalid: Rc<dyn Fn() -> bool>,
+  described_by: Option<NodeId>,
+}
+
 /// Binds the render effects writing the control's state, accessibility and focus
 /// order, each re-applied when what it reads changes or the handle is refreshed.
 fn bind_reports<D: Driver, B: Behavior<D>>(
   handle: &Rc<ControlHandle<D>>,
   behavior: &Rc<B>,
-  disabled: &Rc<dyn Fn() -> bool>,
+  flags: &Flags,
   focus_order: Option<Source<FocusOrder>>,
 ) {
   let node = handle.node;
@@ -742,7 +833,8 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
 
   {
     let behavior = Rc::clone(behavior);
-    let disabled = Rc::clone(disabled);
+    let disabled = Rc::clone(&flags.disabled);
+    let invalid = Rc::clone(&flags.invalid);
 
     Effect::render(move |_: Option<()>| {
       changed.track();
@@ -750,21 +842,38 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
       let mut state = behavior.state();
 
       state.disabled |= disabled();
+      state.invalid |= invalid();
       Scene::<D>::with(|scene| scene.set_control_state(node, state));
     });
   }
 
   {
     let behavior = Rc::clone(behavior);
-    let disabled = Rc::clone(disabled);
+    let flags = flags.clone();
 
     Effect::render(move |_: Option<()>| {
       changed.track();
 
       let mut access = behavior.access();
 
-      if disabled() {
+      if (flags.disabled)() {
         access.push(AccessProp::Disabled(true));
+      }
+
+      if (flags.required)() {
+        access.push(AccessProp::Required(true));
+      }
+
+      if (flags.read_only)() {
+        access.push(AccessProp::ReadOnly(true));
+      }
+
+      if (flags.invalid)() {
+        access.push(AccessProp::Invalid(true));
+      }
+
+      if let Some(described_by) = flags.described_by {
+        access.push(AccessProp::DescribedBy(described_by));
       }
 
       with_sink::<D, _>(node, |sink| D::default().update_access(sink, &access));
@@ -773,7 +882,7 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
 
   {
     let behavior = Rc::clone(behavior);
-    let disabled = Rc::clone(disabled);
+    let disabled = Rc::clone(&flags.disabled);
     let chosen: Option<Rc<dyn Fn() -> FocusOrder>> = match focus_order {
       None => None,
       Some(Source::Fixed(order)) => Some(Rc::new(move || order)),

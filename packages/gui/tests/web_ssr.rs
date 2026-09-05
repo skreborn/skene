@@ -732,3 +732,53 @@ fn a_page_with_no_chooseable_scheme_carries_no_script() {
 
   assert!(!rendered.head().contains("<script>"));
 }
+
+/// A required, read-only text field serializes the native attributes a form enforces
+/// without script; its description gets the id the field names; a picker's face names
+/// the listbox it controls.
+#[test]
+fn control_flags_serialize_natively_and_references_carry_ids() {
+  use skene_gui::{ListItem, RawOption, RawPicker, RawTextField, TextEntry, reactive::Get};
+
+  let rendered = render_to_string(|| {
+    let hint = Text::new("Required").build();
+
+    Column::new().set_children((
+      skene_gui::core::AnyView::node(hint),
+      RawTextField::new(TextEntry::new())
+        .set_required(true)
+        .set_read_only(true)
+        .set_invalid(true)
+        .set_described_by(hint),
+      RawPicker::new()
+        .set_options(["a", "b"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+        .set_face(|shown| Text::derive(move || shown.get())),
+    ))
+  });
+  let body = rendered.body();
+
+  assert!(body.contains(" required"), "{body}");
+  assert!(body.contains(" readonly"), "{body}");
+  assert!(
+    !body.contains("aria-required"),
+    "a form element takes the native form: {body}"
+  );
+  assert!(body.contains("aria-invalid=\"true\""), "{body}");
+
+  let described = body
+    .split("aria-describedby=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("a description reference");
+
+  assert!(body.contains(&format!("id=\"{described}\"")), "{body}");
+  assert!(body.contains("aria-haspopup=\"listbox\""), "{body}");
+
+  let controls = body
+    .split("aria-controls=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("a controls reference");
+
+  assert!(body.contains(&format!("id=\"{controls}\"")), "{body}");
+}

@@ -2,7 +2,18 @@
 //! realizes as, the attributes a link, a focus order and an accessibility property
 //! carry, and the markers hydration matches by.
 
-use skene_core::{AccessProp, ControlKind, FocusOrder, LinkAnnotation, LinkPolicy, Role, Toggle};
+use skene_core::{
+  AccessProp,
+  Axis,
+  ControlKind,
+  FocusOrder,
+  LinkAnnotation,
+  LinkPolicy,
+  NodeId,
+  PopupKind,
+  Role,
+  Toggle,
+};
 
 /// The class the native input inside a control's label carries.
 pub(crate) const NATIVE_CLASS: &str = "skene-native";
@@ -157,7 +168,62 @@ pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
     AccessProp::Selected(state) => ("aria-selected", state.to_string()),
     AccessProp::Disabled(state) => ("aria-disabled", state.to_string()),
     AccessProp::Label(text) => ("aria-label", text.clone()),
+    AccessProp::Required(state) => ("aria-required", state.to_string()),
+    AccessProp::Invalid(state) => ("aria-invalid", state.to_string()),
+    AccessProp::ReadOnly(state) => ("aria-readonly", state.to_string()),
+    AccessProp::HasPopup(kind) => (
+      "aria-haspopup",
+      match kind {
+        PopupKind::Listbox => "listbox",
+        PopupKind::Menu => "menu",
+        PopupKind::Dialog => "dialog",
+      }
+      .to_owned(),
+    ),
+    AccessProp::Controls(node) => ("aria-controls", element_id(*node)),
+    AccessProp::DescribedBy(node) => ("aria-describedby", element_id(*node)),
+    AccessProp::Orientation(axis) => (
+      "aria-orientation",
+      match axis {
+        Axis::Horizontal => "horizontal",
+        Axis::Vertical => "vertical",
+      }
+      .to_owned(),
+    ),
   }
+}
+
+/// The native attribute carrying `prop` on a form element, where one exists; the form
+/// element then enforces it without script.
+pub(crate) const fn native_attribute(prop: &AccessProp) -> Option<&'static str> {
+  match prop {
+    AccessProp::Required(true) => Some("required"),
+    AccessProp::ReadOnly(true) => Some("readonly"),
+    _ => None,
+  }
+}
+
+/// The native attributes [`native_attribute`] may set, cleared before a rewrite.
+pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 2] = ["required", "readonly"];
+
+/// Whether `tag` is a form element that enforces its native attributes.
+pub(crate) fn is_form_element(tag: &str) -> bool {
+  tag.eq_ignore_ascii_case("input")
+    || tag.eq_ignore_ascii_case("textarea")
+    || tag.eq_ignore_ascii_case("select")
+}
+
+/// The node another node's accessibility refers to, as an element id.
+pub(crate) fn element_id(node: NodeId) -> String {
+  format!("skene-{}-{}", node.index(), node.generation())
+}
+
+/// The nodes `access` refers to by id.
+pub(crate) fn referenced_nodes(access: &[AccessProp]) -> impl Iterator<Item = NodeId> + '_ {
+  access.iter().filter_map(|prop| match prop {
+    AccessProp::Controls(node) | AccessProp::DescribedBy(node) => Some(*node),
+    _ => None,
+  })
 }
 
 /// The `tabindex` a node carries for `focus_order`; `None` removes it. A control out

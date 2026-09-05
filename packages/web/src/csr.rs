@@ -102,6 +102,7 @@ use super::{
   condition::CONTROL_ATTRIBUTE,
   markup::{
     MARKER_ATTRIBUTE,
+    NATIVE_ACCESS_ATTRIBUTES,
     NATIVE_CLASS,
     NativeElement,
     STYLE_ID,
@@ -110,9 +111,13 @@ use super::{
     aria_role,
     box_tag,
     drawn_element,
+    element_id,
     focus_order_attribute,
+    is_form_element,
     link_attributes,
+    native_attribute,
     native_element,
+    referenced_nodes,
   },
   token::WebTokenValue,
 };
@@ -543,6 +548,7 @@ impl Dom {
       return;
     };
     let names = carrier.get_attribute_names();
+    let form = is_form_element(&carrier.tag_name());
 
     for index in 0..names.length() {
       if let Some(name) = names.get(index).as_string()
@@ -553,10 +559,33 @@ impl Dom {
       }
     }
 
+    if form {
+      for name in NATIVE_ACCESS_ATTRIBUTES {
+        let _ = carrier.remove_attribute(name);
+      }
+    }
+
     for prop in access {
+      if form && let Some(name) = native_attribute(prop) {
+        let _ = carrier.set_attribute(name, "");
+
+        continue;
+      }
+
       let (name, value) = access_attribute(prop);
 
       let _ = carrier.set_attribute(name, &value);
+    }
+
+    for node in referenced_nodes(access) {
+      let Some(target) = Scene::<Web>::with(|scene| scene.sink(node))
+      else {
+        continue;
+      };
+
+      if let Some(element) = self.node(target).and_then(Node::carrier) {
+        let _ = element.set_attribute("id", &element_id(node));
+      }
     }
   }
 

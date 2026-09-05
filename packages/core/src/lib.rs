@@ -196,6 +196,7 @@ pub use values::{
   Overflow,
   Placement,
   Point,
+  PopupKind,
   Rect,
   Role,
   RunDisplay,

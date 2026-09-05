@@ -246,17 +246,22 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
         }
       });
     let roster = listbox.roster().clone();
-    let popup = Popup::new().derive_open(move || open.get()).handle_open({
-      let focus = focus.clone();
+    let list_anchor = Anchor::new();
+    let list_node: Signal<Option<NodeId>> = Signal::opaque(None);
+    let popup = Popup::new()
+      .derive_open(move || open.get())
+      .derive_controls(move || list_node.get())
+      .handle_open({
+        let focus = focus.clone();
 
-      move |next| {
-        open.set(next);
+        move |next| {
+          open.set(next);
 
-        if !next {
-          focus.focus();
+          if !next {
+            focus.focus();
+          }
         }
-      }
-    });
+      });
     let mut control = Control::new(popup)
       .bind_anchor(&anchor)
       .bind_focus(&focus)
@@ -281,10 +286,15 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
       .set_anchor(&anchor)
       .set_placement(Placement::Bottom)
       .bind_open(open)
-      .set_child(Control::new(listbox).set_child(list))
+      .set_child(
+        Control::new(listbox)
+          .bind_anchor(&list_anchor)
+          .set_child(list),
+      )
       .build();
 
     Scene::<D>::with(|scene| scene.attach(node, overlay, None));
+    list_node.set(list_anchor.node());
     Effect::render(move |_: Option<()>| {
       if open.get() {
         untrack(|| roster.focus_value::<D>(chosen().as_deref()));

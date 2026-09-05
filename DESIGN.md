@@ -210,6 +210,14 @@ same footing.
   form participation and accessibility are the browser's before and after hydration and
   nothing is swapped. The picker keeps a swap (no engine but Chromium restyles an open
   `<select>` yet) and the swap carries the reader's value.
+- **Accessibility is reported, never spelled.** A behavior reports what it is
+  (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
+  user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
+  `DescribedBy`, `Disabled`); the driver maps each to its layer. On the web a form
+  element takes the native attribute where one exists (`required`, `readonly`), so the
+  form enforces it without script, and ARIA otherwise; a property naming another node
+  (`Controls`, `DescribedBy`) gives that node an id derived from its node id, identical
+  on both leaves.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot

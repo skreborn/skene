@@ -9,6 +9,8 @@ use skene_core::{
   Driver,
   EventKind,
   KeyEvent,
+  NodeId,
+  PopupKind,
   Prevent,
   Role,
 };
@@ -28,6 +30,8 @@ use super::{Behavior, ControlHandle};
 pub struct Popup {
   open: Option<Rc<dyn Fn() -> bool>>,
   on_open: Option<Rc<dyn Fn(bool)>>,
+  kind: PopupKind,
+  controls: Option<Rc<dyn Fn() -> Option<NodeId>>>,
 }
 
 impl Popup {
@@ -35,6 +39,23 @@ impl Popup {
   #[inline(always)]
   pub fn new() -> Self {
     Self::default()
+  }
+
+  /// Sets what the popup is; a list of options unless told otherwise.
+  #[inline(always)]
+  pub const fn set_kind(mut self, kind: PopupKind) -> Self {
+    self.kind = kind;
+
+    self
+  }
+
+  /// Derives the node the popup shows, reported as the node the control operates once
+  /// `controls` yields it.
+  #[inline(always)]
+  pub fn derive_controls(mut self, controls: impl Fn() -> Option<NodeId> + 'static) -> Self {
+    self.controls = Some(Rc::new(controls));
+
+    self
   }
 
   /// Sets whether the popup is open.
@@ -117,7 +138,16 @@ impl<D: Driver> Behavior<D> for Popup {
   }
 
   fn access(&self) -> Vec<AccessProp> {
-    vec![AccessProp::Expanded(self.read())]
+    let mut access = vec![
+      AccessProp::HasPopup(self.kind),
+      AccessProp::Expanded(self.read()),
+    ];
+
+    if let Some(node) = self.controls.as_ref().and_then(|controls| controls()) {
+      access.push(AccessProp::Controls(node));
+    }
+
+    access
   }
 
   fn state(&self) -> ControlState {

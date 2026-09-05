@@ -47,7 +47,7 @@ use skene_core::{
 };
 use skene_reactive::{Owner, Set, Signal, WriteSignal, provide_context};
 
-pub use self::task::{drive, install_executor, set_render_deadline, sleep};
+pub use self::task::{drive, install_executor, register, set_render_deadline, sleep};
 use super::{
   Web,
   compile::{

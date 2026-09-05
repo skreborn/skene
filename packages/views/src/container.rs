@@ -28,7 +28,7 @@ use skene_core::{
   View,
 };
 
-use crate::{Anchor, FocusHandle, LayoutBox, decoration};
+use crate::{Anchor, FocusHandle, LayoutBox, SizeHandle, decoration};
 
 /// Decoration and sizing around exactly one child.
 ///
@@ -149,6 +149,14 @@ impl<D: Driver> Container<D> {
   #[inline(always)]
   pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
     self.inner = self.inner.bind_focus(focus);
+
+    self
+  }
+
+  /// Binds `size` to the box once built, so its measured size is reported through it.
+  #[inline(always)]
+  pub fn bind_size(mut self, size: &SizeHandle<D>) -> Self {
+    self.inner = self.inner.bind_size(size);
 
     self
   }

@@ -255,9 +255,9 @@
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime
   under a byte-exact snapshot; native: its toolkit). There is no mock driver.
 - HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
-  `Resource`, `Boundary`, the server leaf's reactor (`sleep`, the render deadline)—so
-  third-party integrations sit on the same footing first-party ones would; a public
-  pollable registration on that reactor is on the roadmap. (Exception: a native driver
+  `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
+  pollable, `sleep`, the render deadline)—so third-party integrations sit on the same
+  footing first-party ones would. (Exception: a native driver
   owning its event loop may ship a loop-integrated timer.)
 
 ## Style and documentation conventions

@@ -20,7 +20,8 @@
 //! [`TextEntry`] ship, and the `Raw*` aliases name the control over each. [`Overlay`]
 //! is content above the app, opened and closed by the app and placed against an
 //! [`Anchor`]; [`RawPicker`] composes a popup face, an overlay and a listbox; a
-//! [`FocusHandle`] moves focus to the view it is bound to. [`LazyColumn`] scrolls a
+//! [`FocusHandle`] moves focus to the view it is bound to, [`SizeHandle`] reports its
+//! measured size. [`LazyColumn`] scrolls a
 //! keyed list building only the slice in view. [`CornerRadius`] is what a decorated
 //! box asks of a medium's style extension to round its corners, and [`TypeMetrics`]
 //! what a run asks of it to size its type; both are silently declined by a medium
@@ -46,6 +47,7 @@ mod picker;
 mod pinned;
 pub mod realize;
 mod run;
+mod size;
 mod span;
 mod stack;
 mod suspense;
@@ -123,6 +125,7 @@ pub use crate::{
   picker::{Face, RawPicker},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},
+  size::SizeHandle,
   span::{RichText, Span},
   stack::Stack,
   suspense::Suspense,

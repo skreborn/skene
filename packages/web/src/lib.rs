@@ -91,6 +91,7 @@ pub use self::ssr::{
   install_executor,
   record_static_routes,
   recorded_static_routes,
+  register,
   register_boundary,
   render_to_stream,
   render_to_stream_with,

@@ -111,6 +111,7 @@ pub use crate::{
   SimpleTextField,
   SimpleVariant,
   Size,
+  SizeHandle,
   Spacing,
   Span,
   Stack,

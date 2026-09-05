@@ -591,3 +591,38 @@ fn head_registrations_are_recorded_on_the_host() {
 
   owner.dispose();
 }
+
+/// A size handle bound to a box reports the box's measured size, tracked, and nothing
+/// before the first measurement.
+#[test]
+fn a_size_handle_reports_the_measured_size() {
+  use skene_gui::{SizeHandle, core::Size, headless::trigger_size};
+
+  reset();
+
+  let owner = Owner::new();
+  let handle = SizeHandle::new();
+  let seen = Rc::new(Cell::new(0));
+  let node = owner.enter(|| {
+    let watched = handle.clone();
+    let seen = Rc::clone(&seen);
+
+    skene_gui::reactive::Effect::new(move |_: Option<()>| {
+      let _ = watched.size();
+
+      seen.set(seen.get() + 1);
+    });
+
+    Container::new().bind_size(&handle).build()
+  });
+
+  assert_eq!(handle.size(), None);
+  assert_eq!(seen.get(), 1);
+
+  trigger_size(node, Size::new(320., 200.));
+
+  assert_eq!(handle.size(), Some(Size::new(320., 200.)));
+  assert_eq!(seen.get(), 2, "the measurement notified the effect");
+
+  owner.dispose();
+}

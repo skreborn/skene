@@ -116,9 +116,13 @@ impl Reactor {
   }
 }
 
-/// Registers a host operation's pollable and the waker to fire when it completes. A future
-/// returning [`Poll::Pending`] on a host operation calls this so [`stabilize`] can wait on it.
-pub(super) fn register(pollable: Pollable, waker: Waker) {
+/// Registers a host operation's pollable and the waker to fire when it completes.
+///
+/// A future returning [`Poll::Pending`](std::task::Poll::Pending) on a host operation
+/// calls this, so the render blocks on the operation and resumes when it is ready; a
+/// third-party `wasi:*` client integrates with the server render through it exactly as
+/// [`sleep`] does.
+pub fn register(pollable: Pollable, waker: Waker) {
   REACTOR.with(|reactor| reactor.borrow_mut().waiters.push((pollable, waker)));
 }
 

@@ -55,6 +55,7 @@ use crate::{
   FocusHandle,
   properties,
   realize::{Source, bind_box_slot},
+  size::SizeHandle,
 };
 
 /// The handlers a box registers on its node, by event.
@@ -95,6 +96,7 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   handlers: Handlers,
   anchor: Option<Anchor>,
   focus: Option<FocusHandle<D>>,
+  size: Option<SizeHandle<D>>,
   children: Children<D, Kind>,
 }
 
@@ -115,6 +117,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       handlers: Handlers::default(),
       anchor: None,
       focus: None,
+      size: None,
       children: Children::new(),
     }
   }
@@ -242,6 +245,14 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
     self.focus = Some(focus.clone());
+
+    self
+  }
+
+  /// Binds `size` to the box once built, so its measured size is reported through it.
+  #[inline(always)]
+  pub fn bind_size(mut self, size: &SizeHandle<D>) -> Self {
+    self.size = Some(size.clone());
 
     self
   }
@@ -489,6 +500,10 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
     if let Some(focus) = &self.focus {
       focus.assign(node);
+    }
+
+    if let Some(size) = &self.size {
+      size.assign(node);
     }
 
     for slot in slots {

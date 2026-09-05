@@ -72,9 +72,6 @@ Each is fixed where its mechanism now lives:
 Follow-ups the redesign noted and left; none blocks a release, each is scoped.
 
 - **Spine and views**
-  - A public handle reporting a box's measured size to app code. The built-ins read
-    `Driver::observe_size` directly (the lazy column, the slider); an app has no setter
-    for it yet.
   - The picker has no `Tab` commit and no type-ahead. Type-ahead needs a timer to reset
     its buffer, and timers are userland; the terminal's picker lacks both as well.
   - `Property::Border` transitions the width and the ink together with one timing; the
@@ -90,9 +87,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
     binding; the server leaf renders it empty by design.
   - `WebMarkup::set_text_content` carries the DOM's name for a method that also exists on
     the server leaf; a driver-neutral name is wanted.
-  - A public pollable registration on the server leaf's reactor, so a third-party
-    `wasi:*` client blocks the render until its load settles. The reactor exposes `sleep`
-    and the render deadline today.
   - The web leaf registers no snapshot provider, so a dev reload restores neither focus
     nor scroll; the terminal's provider carries scroll offsets alone. Focus restoration
     by the same anchor key scroll uses comes first, on both.

@@ -45,7 +45,7 @@ use skene_gui::{
   head,
   reactive::{Get, Set, Signal},
   wasm_bindgen::JsCast,
-  web::next::{self as web, mount},
+  web::{self, mount},
 };
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement};

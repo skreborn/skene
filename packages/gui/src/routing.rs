@@ -16,14 +16,14 @@ use skene_router::{Route, Router, StaticRoutes};
 #[cfg(target_os = "unknown")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
-  let _ = router.apply_path(&skene_web::next::current_path());
+  let _ = router.apply_path(&skene_web::current_path());
 
-  router.set_sink(skene_web::next::push_path);
+  router.set_sink(skene_web::push_path);
 
   {
     let router = router.clone();
 
-    skene_web::next::on_pop(move |path| {
+    skene_web::on_pop(move |path| {
       let _ = router.apply_path(&path);
     });
   }
@@ -38,7 +38,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 #[cfg(target_os = "wasi")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
-  let _ = router.apply_path(&skene_web::next::current_path());
+  let _ = router.apply_path(&skene_web::current_path());
 
   router.provide();
 
@@ -58,7 +58,7 @@ pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
 /// build web --static` renders every route without being told them.
 #[cfg(target_os = "wasi")]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
-  skene_web::next::record_static_routes(R::all().iter().map(Route::to_path).collect());
+  skene_web::record_static_routes(R::all().iter().map(Route::to_path).collect());
 
   install_router(fallback)
 }

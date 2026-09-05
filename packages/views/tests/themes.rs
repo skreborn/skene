@@ -3,10 +3,7 @@
 
 mod common;
 
-use skene_core::{
-  Inset,
-  next::{HasChildren, TokenName, View},
-};
+use skene_core::{HasChildren, Inset, TokenName, View};
 use skene_headless::{
   Headless,
   children,

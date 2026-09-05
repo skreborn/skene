@@ -3,24 +3,22 @@
 use std::rc::Rc;
 
 use skene_core::{
+  AnyKind,
+  AnyView,
+  DeclaredBoxStyle,
+  Driver,
   FlexDirection,
+  HasChildren,
+  IntoChildOf,
+  IntoChildren,
+  IntoView,
   Layout,
+  NoChild,
+  NodeId,
   Placement,
-  next::{
-    AnyKind,
-    AnyView,
-    DeclaredBoxStyle,
-    Driver,
-    HasChildren,
-    IntoChildOf,
-    IntoChildren,
-    IntoView,
-    NoChild,
-    NodeId,
-    PlainChild,
-    Scene,
-    View,
-  },
+  PlainChild,
+  Scene,
+  View,
 };
 use skene_reactive::{Effect, Get, Memo, Set, Signal, untrack};
 

@@ -1,95 +1,436 @@
-//! Boolean composition of conditions, shared by every facade.
-//!
-//! Each facade owns its condition enum—its leaves are typed to its medium—and adds
-//! `And`/`Or` variants for composition. Implementing [`Composable`] (exposing the shape
-//! of one level) gives it the shared machinery: [`holds`](Composable::holds) for a
-//! driver that interprets conditions against live state, and
-//! [`disjunctive_leaves`](Composable::disjunctive_leaves) for a driver that compiles
-//! them into another language (the web driver's CSS rules).
+//! The conditions a value varies under: the environment, and a node's state.
 
-/// One level of a composed condition: a leaf, or a combination of subconditions.
-pub enum ConditionShape<'condition, C> {
-  /// A facade-specific leaf condition.
-  Leaf(&'condition C),
-  /// Holds when every subcondition holds; empty always holds.
-  And(&'condition [C]),
-  /// Holds when any subcondition holds; empty never holds.
-  Or(&'condition [C]),
+use std::hash::{Hash, Hasher};
+
+use super::Scalar;
+use crate::{
+  ColorScheme,
+  Size,
+  composable::{Composable, ConditionShape},
+};
+
+/// The name a box publishes for container queries against its size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
+pub struct ContainerName(pub &'static str);
+
+/// A test of a named container's size.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[must_use]
+pub enum ContainerQuery<N> {
+  /// The container is at least this wide.
+  MinWidth(N),
+  /// The container is at most this wide.
+  MaxWidth(N),
+  /// The container is at least this tall.
+  MinHeight(N),
+  /// The container is at most this tall.
+  MaxHeight(N),
 }
 
-/// A condition type composed of facade-specific leaves under `and`/`or`.
-pub trait Composable: Clone + Sized {
-  /// This condition's top-level shape. A value reported as [`ConditionShape::Leaf`] must not be
-  /// a composite.
-  fn shape(&self) -> ConditionShape<'_, Self>;
-
-  /// The leaf holding while the platform's dark color scheme is in force.
-  ///
-  /// Every medium answers this one—a browser from the reader's preference, a terminal
-  /// from its own background—so the shared machinery can name it without knowing the
-  /// vocabulary it belongs to.
-  fn dark_mode() -> Self;
-
-  /// The condition holding while both this one and `other` hold.
-  #[must_use]
-  fn both(self, other: Self) -> Self;
-
-  /// Whether the condition holds, with `leaf` deciding each leaf.
-  fn holds(&self, leaf: &impl Fn(&Self) -> bool) -> bool {
-    match self.shape() {
-      ConditionShape::Leaf(condition) => leaf(condition),
-      ConditionShape::And(subconditions) => subconditions
-        .iter()
-        .all(|subcondition| subcondition.holds(leaf)),
-      ConditionShape::Or(subconditions) => subconditions
-        .iter()
-        .any(|subcondition| subcondition.holds(leaf)),
+impl<N: Scalar> ContainerQuery<N> {
+  /// Whether a container of `size` satisfies the query.
+  #[inline(always)]
+  pub fn holds_for(&self, size: Size<N>) -> bool {
+    match *self {
+      Self::MinWidth(width) => size.width >= width,
+      Self::MaxWidth(width) => size.width <= width,
+      Self::MinHeight(height) => size.height >= height,
+      Self::MaxHeight(height) => size.height <= height,
     }
   }
+}
 
-  /// Whether any leaf of the condition satisfies `predicate`.
-  fn involves(&self, predicate: &impl Fn(&Self) -> bool) -> bool {
-    match self.shape() {
-      ConditionShape::Leaf(condition) => predicate(condition),
-      ConditionShape::And(subconditions) | ConditionShape::Or(subconditions) => subconditions
-        .iter()
-        .any(|subcondition| subcondition.involves(predicate)),
+impl<N: Scalar> Hash for ContainerQuery<N> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::MinWidth(value)
+      | Self::MaxWidth(value)
+      | Self::MinHeight(value)
+      | Self::MaxHeight(value) => state.write_u64(value.hash_bits()),
     }
   }
+}
 
-  /// The condition's disjunctive normal form: the conjunctions of leaves of which any
-  /// one holding entirely makes the condition hold.
-  ///
-  /// An empty result never holds (`or` of nothing); an empty conjunction within the
-  /// result always holds (`and` of nothing). A compiling driver emits one rule per
-  /// conjunction.
-  fn disjunctive_leaves(&self) -> Vec<Vec<&Self>> {
-    match self.shape() {
-      ConditionShape::Leaf(condition) => vec![vec![condition]],
-      ConditionShape::Or(subconditions) => subconditions
-        .iter()
-        .flat_map(Self::disjunctive_leaves)
-        .collect(),
-      ConditionShape::And(subconditions) => {
-        subconditions
-          .iter()
-          .fold(vec![Vec::new()], |terms, subcondition| {
-            let subterms = subcondition.disjunctive_leaves();
+/// A condition on the environment: the viewport, the scheme, the reader's preferences,
+/// or a named container's size—composable to any depth.
+///
+/// The one kind of condition a token's definition takes, and what a driver compiles
+/// ahead of time; lengths are in the facade's scalar unit.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub enum Media<N> {
+  /// The viewport is at least this wide.
+  MinWidth(N),
+  /// The viewport is at most this wide.
+  MaxWidth(N),
+  /// The viewport is at least this tall.
+  MinHeight(N),
+  /// The viewport is at most this tall.
+  MaxHeight(N),
+  /// The dark color scheme is in force.
+  Dark,
+  /// The light color scheme is in force.
+  Light,
+  /// The reader prefers reduced motion.
+  ReducedMotion,
+  /// The reader prefers reduced transparency.
+  ReducedTransparency,
+  /// The reader prefers more contrast.
+  HighContrast,
+  /// A container's size satisfies a query: the nearest container of any name without
+  /// a name, the nearest one of that name with it.
+  Container {
+    /// The container's name; the nearest container when absent.
+    name: Option<ContainerName>,
+    /// The test of its size.
+    query: ContainerQuery<N>,
+  },
+  /// Every subcondition holds; empty always holds.
+  And(Vec<Self>),
+  /// Any subcondition holds; empty never holds.
+  Or(Vec<Self>),
+}
 
-            terms
-              .iter()
-              .flat_map(|term| {
-                subterms.iter().map(move |subterm| {
-                  term
-                    .iter()
-                    .copied()
-                    .chain(subterm.iter().copied())
-                    .collect()
-                })
-              })
-              .collect()
-          })
+impl<N: Scalar> Media<N> {
+  /// A condition holding while every one of `conditions` holds; empty always holds.
+  #[inline(always)]
+  pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::And(conditions.into_iter().collect())
+  }
+
+  /// A condition holding while any one of `conditions` holds; empty never holds.
+  #[inline(always)]
+  pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::Or(conditions.into_iter().collect())
+  }
+
+  /// Whether the condition holds in `env`.
+  pub fn holds_in(&self, env: &MediaEnv<'_, N>) -> bool {
+    self.holds(&|leaf| leaf.leaf_holds_in(env))
+  }
+
+  fn leaf_holds_in(&self, env: &MediaEnv<'_, N>) -> bool {
+    match self {
+      Self::MinWidth(width) => env.viewport.width >= *width,
+      Self::MaxWidth(width) => env.viewport.width <= *width,
+      Self::MinHeight(height) => env.viewport.height >= *height,
+      Self::MaxHeight(height) => env.viewport.height <= *height,
+      Self::Dark => env.scheme == ColorScheme::Dark,
+      Self::Light => env.scheme == ColorScheme::Light,
+      Self::ReducedMotion => env.reduced_motion,
+      Self::ReducedTransparency => env.reduced_transparency,
+      Self::HighContrast => env.high_contrast,
+      Self::Container { name, query } => {
+        (env.container)(*name).is_some_and(|size| query.holds_for(size))
       }
+      Self::And(_) | Self::Or(_) => false,
     }
+  }
+}
+
+impl<N: Scalar> Composable for Media<N> {
+  #[inline(always)]
+  fn shape(&self) -> ConditionShape<'_, Self> {
+    match self {
+      Self::And(subconditions) => ConditionShape::And(subconditions),
+      Self::Or(subconditions) => ConditionShape::Or(subconditions),
+      _ => ConditionShape::Leaf(self),
+    }
+  }
+
+  #[inline(always)]
+  fn dark_mode() -> Self {
+    Self::Dark
+  }
+
+  #[inline(always)]
+  fn both(self, other: Self) -> Self {
+    Self::And(vec![self, other])
+  }
+}
+
+impl<N: Scalar> Hash for Media<N> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::MinWidth(value)
+      | Self::MaxWidth(value)
+      | Self::MinHeight(value)
+      | Self::MaxHeight(value) => state.write_u64(value.hash_bits()),
+      Self::Dark
+      | Self::Light
+      | Self::ReducedMotion
+      | Self::ReducedTransparency
+      | Self::HighContrast => {}
+      Self::Container { name, query } => {
+        name.hash(state);
+        query.hash(state);
+      }
+      Self::And(subconditions) | Self::Or(subconditions) => subconditions.hash(state),
+    }
+  }
+}
+
+/// What the environment answers when a [`Media`] condition is evaluated.
+#[derive(Clone, Copy)]
+#[must_use]
+pub struct MediaEnv<'a, N> {
+  /// The viewport's size.
+  pub viewport: Size<N>,
+  /// The color scheme in force.
+  pub scheme: ColorScheme,
+  /// Whether the reader prefers reduced motion.
+  pub reduced_motion: bool,
+  /// Whether the reader prefers reduced transparency.
+  pub reduced_transparency: bool,
+  /// Whether the reader prefers more contrast.
+  pub high_contrast: bool,
+  /// The size of the nearest container of a name—of any name for `None`—when the node
+  /// is inside one.
+  pub container: &'a dyn Fn(Option<ContainerName>) -> Option<Size<N>>,
+}
+
+/// A condition on a node's own interaction state, or on the state of the control it is
+/// part of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum State {
+  /// The pointer is over the node.
+  Hovered,
+  /// The node has focus.
+  Focused,
+  /// The node has visibly-indicated (keyboard) focus.
+  FocusVisible,
+  /// The node is being pressed.
+  Pressed,
+  /// The enclosing control is checked.
+  Checked,
+  /// The enclosing control is neither checked nor unchecked.
+  Indeterminate,
+  /// The enclosing control is disabled.
+  Disabled,
+  /// The enclosing control holds an invalid value.
+  Invalid,
+  /// The enclosing control's popup is open.
+  Open,
+}
+
+impl State {
+  /// Whether the state is the enclosing control's rather than the node's own.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_control_state(self) -> bool {
+    matches!(
+      self,
+      Self::Checked | Self::Indeterminate | Self::Disabled | Self::Invalid | Self::Open
+    )
+  }
+}
+
+/// A condition a property value varies under: the environment or a state, composable
+/// to any depth.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub enum Condition<N> {
+  /// A condition on the environment.
+  Media(Media<N>),
+  /// A condition on a node's state.
+  State(State),
+  /// Every subcondition holds; empty always holds.
+  And(Vec<Self>),
+  /// Any subcondition holds; empty never holds.
+  Or(Vec<Self>),
+}
+
+impl<N: Scalar> Condition<N> {
+  /// A condition holding while every one of `conditions` holds; empty always holds.
+  #[inline(always)]
+  pub fn and(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::And(conditions.into_iter().collect())
+  }
+
+  /// A condition holding while any one of `conditions` holds; empty never holds.
+  #[inline(always)]
+  pub fn or(conditions: impl IntoIterator<Item = Self>) -> Self {
+    Self::Or(conditions.into_iter().collect())
+  }
+
+  /// Whether the condition holds in `env`, with `state` answering each state leaf.
+  pub fn holds_in(&self, env: &MediaEnv<'_, N>, state: &impl Fn(State) -> bool) -> bool {
+    self.holds(&|leaf| match leaf {
+      Self::Media(media) => media.holds_in(env),
+      Self::State(leaf) => state(*leaf),
+      Self::And(_) | Self::Or(_) => false,
+    })
+  }
+
+  /// Whether any leaf is a state condition.
+  #[inline(always)]
+  pub fn involves_state(&self) -> bool {
+    self.involves(&|leaf| matches!(leaf, Self::State(_)))
+  }
+}
+
+impl<N: Scalar> Composable for Condition<N> {
+  #[inline(always)]
+  fn shape(&self) -> ConditionShape<'_, Self> {
+    match self {
+      Self::And(subconditions) => ConditionShape::And(subconditions),
+      Self::Or(subconditions) => ConditionShape::Or(subconditions),
+      _ => ConditionShape::Leaf(self),
+    }
+  }
+
+  #[inline(always)]
+  fn dark_mode() -> Self {
+    Self::Media(Media::Dark)
+  }
+
+  #[inline(always)]
+  fn both(self, other: Self) -> Self {
+    Self::And(vec![self, other])
+  }
+}
+
+impl<N: Scalar> Hash for Condition<N> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+
+    match self {
+      Self::Media(media) => media.hash(state),
+      Self::State(leaf) => leaf.hash(state),
+      Self::And(subconditions) | Self::Or(subconditions) => subconditions.hash(state),
+    }
+  }
+}
+
+impl<N> From<Media<N>> for Condition<N> {
+  #[inline(always)]
+  fn from(media: Media<N>) -> Self {
+    Self::Media(media)
+  }
+}
+
+impl<N> From<State> for Condition<N> {
+  #[inline(always)]
+  fn from(state: State) -> Self {
+    Self::State(state)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{Condition, ContainerName, ContainerQuery, Media, MediaEnv, State};
+  use crate::{ColorScheme, Composable, Size};
+
+  fn env(container: &dyn Fn(Option<ContainerName>) -> Option<Size<f32>>) -> MediaEnv<'_, f32> {
+    MediaEnv {
+      viewport: Size::new(1200., 800.),
+      scheme: ColorScheme::Dark,
+      reduced_motion: true,
+      reduced_transparency: false,
+      high_contrast: false,
+      container,
+    }
+  }
+
+  fn containers(name: Option<ContainerName>) -> Option<Size<f32>> {
+    match name {
+      None => Some(Size::new(300., 200.)),
+      Some(ContainerName("sidebar")) => Some(Size::new(240., 800.)),
+      Some(_) => None,
+    }
+  }
+
+  /// A conjunction over a disjunction expands to one conjunction per alternative.
+  #[test]
+  fn media_expands_to_disjunctive_normal_form() {
+    let condition = Media::and([
+      Media::or([Media::MinWidth(900.), Media::Dark]),
+      Media::ReducedMotion,
+    ]);
+
+    assert_eq!(
+      condition.disjunctive_leaves(),
+      [
+        vec![&Media::MinWidth(900.), &Media::ReducedMotion],
+        vec![&Media::Dark, &Media::ReducedMotion],
+      ]
+    );
+  }
+
+  /// Every media leaf reads its answer from the environment.
+  #[test]
+  fn media_holds_against_the_environment() {
+    let env = env(&containers);
+
+    assert!(Media::MinWidth(1200.).holds_in(&env));
+    assert!(!Media::MaxWidth(1199.).holds_in(&env));
+    assert!(Media::MaxHeight(800.).holds_in(&env));
+    assert!(Media::Dark.holds_in(&env));
+    assert!(!Media::Light.holds_in(&env));
+    assert!(Media::ReducedMotion.holds_in(&env));
+    assert!(!Media::HighContrast.holds_in(&env));
+    assert!(
+      Media::Container {
+        name: None,
+        query: ContainerQuery::MinWidth(300.),
+      }
+      .holds_in(&env)
+    );
+    assert!(
+      Media::Container {
+        name: Some(ContainerName("sidebar")),
+        query: ContainerQuery::MaxWidth(250.),
+      }
+      .holds_in(&env)
+    );
+    assert!(
+      !Media::Container {
+        name: Some(ContainerName("missing")),
+        query: ContainerQuery::MinHeight(0.),
+      }
+      .holds_in(&env)
+    );
+    assert!(!Media::and([Media::Dark, Media::or([])]).holds_in(&env));
+    assert!(Media::<f32>::and([]).holds_in(&env));
+  }
+
+  /// A condition folds media through the environment and state through the callback.
+  #[test]
+  fn conditions_combine_media_and_state() {
+    let env = env(&containers);
+    let hovered_in_dark = Condition::and([State::Hovered.into(), Media::Dark.into()]);
+
+    assert!(hovered_in_dark.holds_in(&env, &|state| state == State::Hovered));
+    assert!(!hovered_in_dark.holds_in(&env, &|_| false));
+    assert!(hovered_in_dark.involves_state());
+    assert!(!Condition::<f32>::from(Media::Light).involves_state());
+    assert_eq!(Condition::<f32>::dark_mode(), Condition::Media(Media::Dark));
+  }
+
+  /// The control states are exactly those a plain box cannot have on its own.
+  #[test]
+  fn control_states_resolve_against_the_control() {
+    let own = [
+      State::Hovered,
+      State::Focused,
+      State::FocusVisible,
+      State::Pressed,
+    ];
+    let control = [
+      State::Checked,
+      State::Indeterminate,
+      State::Disabled,
+      State::Invalid,
+      State::Open,
+    ];
+
+    assert!(own.iter().all(|state| !state.is_control_state()));
+    assert!(control.iter().all(|state| state.is_control_state()));
   }
 }

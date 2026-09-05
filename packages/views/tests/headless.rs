@@ -7,44 +7,42 @@ use std::{
 };
 
 use skene_core::{
+  BoxValue,
   Bubbling,
   Color,
+  Condition,
+  ContainerName,
+  ContainerQuery,
+  Definition,
   Dimension,
+  Driver,
+  EventKind,
+  Expr,
   Flexibility,
+  HasChildren,
   Inset,
+  Leaf,
+  Length,
+  Media,
+  NoChild,
+  NodeId,
   Prevented,
+  Property,
+  PropertyKey,
+  Scene,
   Size,
-  next::{
-    BoxValue,
-    Condition,
-    ContainerName,
-    ContainerQuery,
-    Definition,
-    Driver,
-    EventKind,
-    Expr,
-    HasChildren,
-    Leaf,
-    Length,
-    Media,
-    NoChild,
-    NodeId,
-    Property,
-    PropertyKey,
-    Scene,
-    Slot,
-    State,
-    StaticLeaf,
-    StaticValue,
-    Themed,
-    Token,
-    TokenName,
-    TokenRef,
-    TokenSet,
-    Value,
-    View,
-    When,
-  },
+  Slot,
+  State,
+  StaticLeaf,
+  StaticValue,
+  Themed,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenSet,
+  Value,
+  View,
+  When,
 };
 use skene_headless::{
   Headless,
@@ -84,9 +82,9 @@ type Text = skene_views::Text<Headless>;
 type Flexible<C = NoChild> = skene_views::Flexible<Headless, C>;
 type Theme<P, C = NoChild> = skene_views::Theme<Headless, P, C>;
 
-const COLOR: PropertyKey<skene_core::next::NoProperty> = PropertyKey::Shared(Property::Color);
-const WIDTH: PropertyKey<skene_core::next::NoProperty> = PropertyKey::Shared(Property::Width);
-const PADDING: PropertyKey<skene_core::next::NoProperty> = PropertyKey::Shared(Property::Padding);
+const COLOR: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Color);
+const WIDTH: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Width);
+const PADDING: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Padding);
 const SIDEBAR: ContainerName = ContainerName("sidebar");
 
 const WHITE: Color = Color::TRANSPARENT;

@@ -33,7 +33,7 @@ use crossterm::{
 };
 #[cfg(feature = "test")]
 use skene_core::ColorScheme;
-use skene_core::{KeyEvent, Modifiers, MouseCursor, PointerButton, next::IntoView};
+use skene_core::{IntoView, KeyEvent, Modifiers, MouseCursor, PointerButton};
 
 use crate::{
   Tui,
@@ -599,7 +599,7 @@ pub fn trigger_key(key: &str) {
 /// The node holding focus, for a test asserting focus movement.
 #[cfg(feature = "test")]
 #[must_use]
-pub fn focused_node() -> Option<skene_core::next::NodeId> {
+pub fn focused_node() -> Option<skene_core::NodeId> {
   with_store(|store| {
     store
       .focused

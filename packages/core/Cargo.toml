@@ -3,9 +3,6 @@ name = "skene-core"
 version.workspace = true
 edition.workspace = true
 
-[features]
-test = ["skene-reactive/test"]
-
 [dependencies]
 color.workspace = true
 longest-increasing-subsequence = "0.1"

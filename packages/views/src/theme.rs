@@ -3,7 +3,7 @@
 
 use std::{any::TypeId, marker::PhantomData};
 
-use skene_core::next::{
+use skene_core::{
   AnyKind,
   Definitions,
   Driver,
@@ -117,7 +117,7 @@ impl<D: Driver, P: TokenSet<D::TokenValue>> View<D> for Theme<D, P, ChildBuilder
 /// A theme provides `Memo<Self>` through context. On a miss the set's default is
 /// returned and its definitions are laid over the root definitions of `D`'s scene,
 /// once per set, so a consumer below no theme still resolves the tokens. Core's
-/// [`Themed`](skene_core::next::Themed) reads the context alone and defines nothing: a
+/// [`Themed`](skene_core::Themed) reads the context alone and defines nothing: a
 /// root definition lives in one driver's scene, so the trait registering it is bound
 /// on the driver. Every [`TokenSet`] with a default has it.
 #[diagnostic::on_unimplemented(

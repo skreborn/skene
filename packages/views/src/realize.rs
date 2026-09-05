@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use skene_core::next::{AnyView, BoxSlot, Driver, IntoView, NodeId, RunSlot, Scene, View};
+use skene_core::{AnyView, BoxSlot, Driver, IntoView, NodeId, RunSlot, Scene, View};
 use skene_reactive::Effect;
 
 /// Runs `operation` on a copy of the sink of `node`, if the node is live.

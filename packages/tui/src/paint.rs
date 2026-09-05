@@ -4,7 +4,7 @@
 //! it; the buffer serializes to plain text for tests or to the terminal for the
 //! interactive loop.
 
-use skene_core::{Color, next::ControlKind};
+use skene_core::{Color, ControlKind};
 
 use crate::{
   BorderGlyphs,

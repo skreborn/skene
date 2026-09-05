@@ -4,22 +4,20 @@ use std::{marker::PhantomData, rc::Rc};
 
 use skene_core::{
   Alignment,
+  Annotation,
+  AnyView,
+  Condition,
+  Driver,
+  GridChild,
   GridPlacement,
+  IntoChildOf,
+  IntoView,
+  Leaf,
   Line,
-  next::{
-    Annotation,
-    AnyView,
-    Condition,
-    Driver,
-    GridChild,
-    IntoChildOf,
-    IntoView,
-    Leaf,
-    NoChild,
-    Scene,
-    Value,
-    View,
-  },
+  NoChild,
+  Scene,
+  Value,
+  View,
 };
 
 use crate::layout_box::split_alignment;

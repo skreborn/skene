@@ -76,7 +76,6 @@ skene-simple       the Simple design language both facades import: the neutral
 | `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
 | `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u32` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
 | `skene-simple` | The Simple design language shared by both facades' `Simple*` components: the neutral palette (`SimplePalette`) and the emphasis variants (`SimpleVariant`), over core's `Color`. |
-| `skene-record` | The recording driver: the host sink behind `skene-gui`'s headless view tests, capturing exactly what a real driver receives, plus the `trigger_*` test seams. |
 | `skene-macros` | The `#[main]` and `#[lazy]` proc-macros. |
 | `skene-cli` | The `skene` command: `run web`, `build web --static`, `run tui`, serving, live reload. |
 
@@ -192,7 +191,7 @@ The example is a single crate (`examples/gui/counter`) depending only on `skene-
 ## Testing
 
 ```sh
-cargo test --workspace      # host: reactive, the spine, headless views (recording driver)
+cargo test --workspace      # host: reactive, the spine, headless views (headless driver)
 cargo test -p skene-gui --target wasm32-unknown-unknown   # browser: real DOM, headless browser
 cargo test -p skene-gui --target wasm32-wasip2            # server: wasmtime, incl. snapshot
 ```

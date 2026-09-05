@@ -1,18 +1,151 @@
-//! The medium-agnostic control state machines: the interaction a control *is*, apart
-//! from how any facade draws it.
-//!
-//! A terminal has no native controls and draws its own; a GUI driver that draws its own
-//! needs the same answers. These types hold that logic once, over a normalized fraction
-//! rather than any medium's units, so each facade converts its own cells or pixels at
-//! the edge and shares everything after.
+//! What a control is to the scene and to a driver: its kind, the state a box cannot
+//! hold, and the parts it exposes.
 
-use std::{
-  cell::{Cell, RefCell},
-  marker::PhantomData,
-  rc::Rc,
-};
+use std::fmt::Debug;
 
-use crate::{NodeId, TreeOps};
+use super::{BoxProps, Driver, State};
+use crate::Toggle;
+
+/// The state a control holds that a box cannot: what the control-scoped [`State`]
+/// conditions of the control and everything inside it resolve against.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct ControlState {
+  /// Whether the control is checked.
+  pub checked: Toggle,
+  /// Whether the control is present but not operable.
+  pub disabled: bool,
+  /// Whether the control holds an invalid value.
+  pub invalid: bool,
+  /// Whether the control's popup is open.
+  pub open: bool,
+}
+
+impl ControlState {
+  /// Unchecked, enabled, valid and closed.
+  pub const DEFAULT: Self = Self {
+    checked: Toggle::Off,
+    disabled: false,
+    invalid: false,
+    open: false,
+  };
+
+  /// Whether `state` holds; `false` for a state that is a node's own rather than the
+  /// control's.
+  #[inline(always)]
+  #[must_use]
+  pub const fn holds(self, state: State) -> bool {
+    match state {
+      State::Checked => matches!(self.checked, Toggle::On),
+      State::Indeterminate => matches!(self.checked, Toggle::Mixed),
+      State::Disabled => self.disabled,
+      State::Invalid => self.invalid,
+      State::Open => self.open,
+      State::Hovered | State::Focused | State::FocusVisible | State::Pressed => false,
+    }
+  }
+}
+
+impl Default for ControlState {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::DEFAULT
+  }
+}
+
+/// What a control is, guiding a driver that realizes some kinds natively.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum ControlKind {
+  /// A control that activates on press.
+  Button,
+  /// A control toggling between checked and unchecked.
+  Checkbox,
+  /// The group a set of mutually-exclusive choices belongs to.
+  RadioGroup,
+  /// One mutually-exclusive choice within a group.
+  Radio,
+  /// A control picking a number within a range.
+  Range,
+  /// A single-line text entry.
+  TextField,
+  /// A multi-line text entry.
+  TextEditor,
+  /// A list of choices to select from.
+  Listbox,
+  /// One choice within a listbox.
+  ListboxOption,
+  /// A control pairing a text entry with a list of choices.
+  Combobox,
+}
+
+/// Everything a driver needs to realize a control: a box with a kind and, where
+/// nothing visible supplies one, an accessible name.
+#[must_use]
+pub struct ControlProps<D: Driver> {
+  /// What the control is.
+  pub kind: ControlKind,
+  /// The box the control is realized as.
+  pub box_props: BoxProps<D>,
+  /// The accessible name, when nothing visible supplies one.
+  pub label: Option<String>,
+  /// The hint a text entry shows while its value is empty.
+  pub placeholder: Option<String>,
+  /// The lines a text entry shows at once; `1` for every other kind.
+  pub lines: u16,
+}
+
+impl<D: Driver> Clone for ControlProps<D> {
+  fn clone(&self) -> Self {
+    Self {
+      kind: self.kind,
+      box_props: self.box_props.clone(),
+      label: self.label.clone(),
+      placeholder: self.placeholder.clone(),
+      lines: self.lines,
+    }
+  }
+}
+
+impl<D: Driver> Debug for ControlProps<D> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ControlProps")
+      .field("kind", &self.kind)
+      .field("label", &self.label)
+      .field("placeholder", &self.placeholder)
+      .field("lines", &self.lines)
+      .finish_non_exhaustive()
+  }
+}
+
+/// A styling target a control exposes: the node a part is recorded on is that part of
+/// the nearest enclosing control.
+///
+/// A part's focus is its control's: `Focused`, `FocusVisible` and `Pressed` on a node
+/// inside a control resolve against the control, while `Hovered` stays the node's own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Part {
+  /// The control's own node.
+  Root,
+  /// The extent a range's value moves along.
+  Track,
+  /// The portion of the track up to the value.
+  Fill,
+  /// The handle at the value.
+  Thumb,
+  /// The mark a toggle shows while checked.
+  Mark,
+  /// The face a toggle or button draws.
+  Face,
+  /// The list of choices a popup shows.
+  List,
+  /// One choice within the list.
+  Item,
+  /// The caption naming the control.
+  Label,
+}
 
 /// A slider's value model: a closed range with an optional snap step.
 ///
@@ -135,108 +268,6 @@ impl Ring {
     let from = isize::try_from(from).ok()?;
 
     usize::try_from((from + step).rem_euclid(count)).ok()
-  }
-}
-
-/// The members a grouping control tracks: a radio group's choices, a picker's options.
-///
-/// A member joins as it builds and leaves as it is disposed. `T` is whatever the facade
-/// needs to act on one—on a GUI, the handle that focuses it.
-///
-/// Order comes from the tree, not from the order members joined: [`ordered`](Self::ordered)
-/// walks the subtree under the [root](Self::root_at) and reports the members it meets. A
-/// set that reconciles therefore stays in document order however it changes, and a
-/// destroyed member is absent because the walk cannot reach it.
-#[must_use]
-pub struct Roster<Ops, T> {
-  members: Rc<RefCell<Vec<(NodeId, String, T)>>>,
-  root: Rc<Cell<Option<NodeId>>>,
-  ops: PhantomData<Ops>,
-}
-
-impl<Ops: TreeOps, T> Roster<Ops, T> {
-  /// Creates a roster with no members and no root.
-  #[inline(always)]
-  pub fn new() -> Self {
-    Self::default()
-  }
-
-  /// Sets the node whose subtree holds the members, which orders them.
-  ///
-  /// Until one is set a roster reports its members in join order, since there is
-  /// nothing to walk.
-  #[inline(always)]
-  pub fn root_at(&self, node: NodeId) {
-    self.root.set(Some(node));
-  }
-
-  /// Adds the member `node` holding `value`, replacing any member already at that node.
-  pub fn join(&self, node: NodeId, value: impl Into<String>, member: T) {
-    let mut members = self.members.borrow_mut();
-
-    members.retain(|(held, _, _)| *held != node);
-    members.push((node, value.into(), member));
-  }
-
-  /// Removes the member at `node`.
-  pub fn leave(&self, node: NodeId) {
-    self
-      .members
-      .borrow_mut()
-      .retain(|(held, _, _)| *held != node);
-  }
-}
-
-impl<Ops: TreeOps, T: Clone> Roster<Ops, T> {
-  /// The members in document order.
-  ///
-  /// One walk answers every question about the set, so a caller that needs a position,
-  /// a count, and a neighbour takes this once rather than asking three times.
-  #[must_use]
-  pub fn ordered(&self) -> Vec<(String, T)> {
-    let members = self.members.borrow();
-    let Some(root) = self.root.get()
-    else {
-      return members
-        .iter()
-        .map(|(_, value, member)| (value.clone(), member.clone()))
-        .collect();
-    };
-    let mut ordered = Vec::with_capacity(members.len());
-    let mut pending = vec![root];
-
-    while let Some(node) = pending.pop() {
-      if let Some((_, value, member)) = members.iter().find(|(held, _, _)| *held == node) {
-        ordered.push((value.clone(), member.clone()));
-      }
-
-      // Reversed, so the children come back off the stack in document order.
-      pending.extend(Ops::default().children(node).into_iter().rev());
-    }
-
-    ordered
-  }
-}
-
-impl<Ops, T> Clone for Roster<Ops, T> {
-  #[inline(always)]
-  fn clone(&self) -> Self {
-    Self {
-      members: Rc::clone(&self.members),
-      root: Rc::clone(&self.root),
-      ops: PhantomData,
-    }
-  }
-}
-
-impl<Ops, T> Default for Roster<Ops, T> {
-  #[inline(always)]
-  fn default() -> Self {
-    Self {
-      members: Rc::new(RefCell::new(Vec::new())),
-      root: Rc::new(Cell::new(None)),
-      ops: PhantomData,
-    }
   }
 }
 

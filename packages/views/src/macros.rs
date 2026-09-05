@@ -1,7 +1,7 @@
 //! The setter pair every property has.
 
 /// Generates a `set_`/`derive_` pair per property: the setter takes anything
-/// convertible into the property's [`Value`](skene_core::next::Value) under the
+/// convertible into the property's [`Value`](skene_core::Value) under the
 /// driver's conditions, the deriver a closure over signals, and both write the field
 /// named on the style `$access` returns.
 macro_rules! properties {
@@ -11,7 +11,7 @@ macro_rules! properties {
     pub fn $set(
       mut self,
       $param: impl Into<
-        ::skene_core::next::Value<$type, ::skene_core::next::Condition<D::Scalar>>,
+        ::skene_core::Value<$type, ::skene_core::Condition<D::Scalar>>,
       >,
     ) -> Self {
       self.$access().$field = Some($param.into());
@@ -22,8 +22,8 @@ macro_rules! properties {
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads.")]
     #[inline(always)]
     pub fn $derive(mut self, $param: impl Fn() -> $type + 'static) -> Self {
-      self.$access().$field = Some(::skene_core::next::Value::new(
-        ::skene_core::next::Leaf::Derived(::std::rc::Rc::new($param)),
+      self.$access().$field = Some(::skene_core::Value::new(
+        ::skene_core::Leaf::Derived(::std::rc::Rc::new($param)),
       ));
 
       self
@@ -62,7 +62,7 @@ macro_rules! decoration {
         "the shift from each edge, keeping the box in flow";
       set_color / derive_color (color) => color: ::skene_core::Color,
         "the background color";
-      set_border / derive_border (border) => border: ::skene_core::next::Border<D::Scalar>,
+      set_border / derive_border (border) => border: ::skene_core::Border<D::Scalar>,
         "the border";
       set_cursor / derive_cursor (cursor) => cursor: ::skene_core::MouseCursor,
         "the mouse cursor shown over the box";
@@ -75,13 +75,13 @@ macro_rules! decoration {
     #[inline(always)]
     pub fn set_corner_radius(
       mut self,
-      radius: impl Into<::skene_core::next::Value<f32, ::skene_core::next::Condition<D::Scalar>>>,
+      radius: impl Into<::skene_core::Value<f32, ::skene_core::Condition<D::Scalar>>>,
     ) -> Self
     where
       D::StyleExt: $crate::CornerRadius,
     {
       <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
       >(&mut self.$access().ext, Some(radius.into()));
 
       self
@@ -95,12 +95,12 @@ macro_rules! decoration {
       D::StyleExt: $crate::CornerRadius,
     {
       <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some(::skene_core::next::Value::new(
-          ::skene_core::next::Leaf::Derived(::std::rc::Rc::new(radius)),
-        )),
+        Some(::skene_core::Value::new(::skene_core::Leaf::Derived(
+          ::std::rc::Rc::new(radius),
+        ))),
       );
 
       self
@@ -116,13 +116,13 @@ macro_rules! type_metrics {
     #[inline(always)]
     pub fn $set(
       mut self,
-      $param: impl Into<::skene_core::next::Value<f32, ::skene_core::next::Condition<D::Scalar>>>,
+      $param: impl Into<::skene_core::Value<f32, ::skene_core::Condition<D::Scalar>>>,
     ) -> Self
     where
       D::StyleExt: $crate::TypeMetrics,
     {
       <D::StyleExt as $crate::TypeMetrics>::$write::<
-        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
       >(&mut self.$access().ext, Some($param.into()));
 
       self
@@ -135,11 +135,11 @@ macro_rules! type_metrics {
       D::StyleExt: $crate::TypeMetrics,
     {
       <D::StyleExt as $crate::TypeMetrics>::$write::<
-        ::skene_core::next::Declared<::skene_core::next::Condition<D::Scalar>>,
+        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some(::skene_core::next::Value::new(
-          ::skene_core::next::Leaf::Derived(::std::rc::Rc::new($param)),
+        Some(::skene_core::Value::new(
+          ::skene_core::Leaf::Derived(::std::rc::Rc::new($param)),
         )),
       );
 

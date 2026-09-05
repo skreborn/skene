@@ -3,8 +3,16 @@
 use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
 use skene_core::{
+  AnyKind,
+  AnyView,
   Boundary,
-  next::{AnyKind, AnyView, Driver, IntoView, NoChild, NodeId, Scene, Show, View},
+  Driver,
+  IntoView,
+  NoChild,
+  NodeId,
+  Scene,
+  Show,
+  View,
 };
 use skene_reactive::{Effect, Owner, on_cleanup, provide_context};
 

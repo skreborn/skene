@@ -25,14 +25,7 @@ use skene_gui::{
   Text,
   TextEntry,
   View,
-  core::{
-    Color,
-    Dimension,
-    FlexChild,
-    FlexDirection,
-    Layout,
-    next::{NoProperty, Property, PropertyKey},
-  },
+  core::{Color, Dimension, FlexChild, FlexDirection, Layout, NoProperty, Property, PropertyKey},
   headless::{
     box_props,
     children,
@@ -347,7 +340,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl skene_gui::AnyKind for Toolbar {}
 
-  impl skene_gui::core::next::View<skene_gui::ActiveDriver> for Toolbar {
+  impl skene_gui::core::View<skene_gui::ActiveDriver> for Toolbar {
     fn build(self) -> NodeId {
       skene_gui::View::build(self.base)
     }

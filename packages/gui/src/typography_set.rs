@@ -1,9 +1,6 @@
 //! The token set every run inherits its text properties through.
 
-use skene_core::{
-  Color,
-  next::{Media, TokenName, TokenSet},
-};
+use skene_core::{Color, Media, TokenName, TokenSet};
 use skene_views::typography;
 
 use crate::{Definition, Token};

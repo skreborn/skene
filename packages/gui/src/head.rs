@@ -5,7 +5,7 @@
 //! element added once (an identical element left by a server render is adopted, not
 //! duplicated).
 
-use skene_web::next::{add_head_element, set_document_title};
+use skene_web::{add_head_element, set_document_title};
 
 /// Sets the document title.
 #[inline(always)]

@@ -20,7 +20,7 @@ use skene_gui::{
   Resource,
   Text,
   wasm_bindgen::{JsCast, JsValue},
-  web::next::{self as web, hydrate},
+  web::{self, hydrate},
 };
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};

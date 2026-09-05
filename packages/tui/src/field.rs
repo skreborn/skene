@@ -1,7 +1,7 @@
 //! The terminal's editing of a text entry: the caret, the visible window over the
 //! value, and the keys that move and edit.
 
-use skene_core::{KeyEvent, next::notify_change};
+use skene_core::{KeyEvent, notify_change};
 
 use crate::{
   Tui,

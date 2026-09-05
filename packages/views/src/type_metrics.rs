@@ -1,6 +1,6 @@
 //! The type metrics a medium may have, asked of a driver's style extension.
 
-use skene_core::next::{PixelExt, Shape, StyleExtension};
+use skene_core::{PixelExt, Shape, StyleExtension};
 
 /// A style extension that can size, weight and space a run's type.
 ///

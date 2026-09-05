@@ -8,12 +8,14 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   AccessProp,
+  ControlKind,
   KeyEvent,
   Modifiers,
+  NodeId,
   Prevented,
   Role,
   Toggle as Checked,
-  next::{ControlKind, NodeId, View},
+  View,
 };
 use skene_headless::{
   Headless,

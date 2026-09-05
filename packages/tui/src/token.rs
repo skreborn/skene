@@ -1,6 +1,6 @@
 //! The erased token definition the terminal stores per token.
 
-use skene_core::{Color, Dimension, next::Definition};
+use skene_core::{Color, Definition, Dimension};
 
 /// The erased token definition the terminal accepts: a color, a number, a dimension in
 /// cells, or a text such as a control's glyph.

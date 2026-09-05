@@ -1,10 +1,9 @@
-//! Raw CSS declarations: the escape hatch for styling a node with arbitrary CSS.
+//! Raw CSS declarations: what the compiler renders a style's properties into, and the
+//! escape hatch for styling a node with arbitrary CSS.
 //!
-//! A low-level custom view builds [`Declarations`] and applies them with
-//! [`set_style`](super::set_style), or drives the batched path
-//! through [`Styler`](super::Styler). A declaration's value is CSS text the caller
-//! renders—`"8px"`, `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`—so the
-//! full open-ended CSS value space is reachable and nothing is special-cased.
+//! A declaration's value is CSS text the caller renders—`"8px"`,
+//! `"oklch(0.7 0.1 250 / 1)"`, `"flex"`, `"repeat(3, 1fr)"`—so the full open-ended CSS
+//! value space is reachable and nothing is special-cased.
 //!
 //! Declarations are keyed by property and sorted, so a set is deterministic and
 //! content-addressed for class dedup and server-side rendering.
@@ -211,16 +210,7 @@ impl Declarations {
     }
   }
 
-  /// Iterates the declarations as `(property, value)` in canonical order.
-  // Consumed by the leaves' override paths, which only compile on wasm targets.
-  #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-  pub(super) fn iter(&self) -> impl Iterator<Item = (&'static str, &str)> {
-    self.0.iter().map(|(property, value)| (*property, &**value))
-  }
-
   /// Renders the declaration block (`prop:value;…`) in canonical order.
-  // Consumed by the leaves' stylesheet sinks, which only compile on wasm targets.
-  #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
   pub(super) fn render(&self) -> String {
     let mut out = String::new();
 

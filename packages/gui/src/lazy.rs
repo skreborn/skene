@@ -2,7 +2,7 @@
 
 use std::future::Future;
 
-use skene_core::next::{AnyKind, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 use skene_reactive::Owner;
 
 use crate::ActiveDriver;
@@ -69,7 +69,7 @@ impl Lazy {
 fn claim(start: NodeId) -> bool {
   #[cfg(target_os = "unknown")]
   {
-    skene_web::next::claim_lazy(start)
+    skene_web::claim_lazy(start)
   }
 
   #[cfg(target_os = "wasi")]
@@ -84,7 +84,7 @@ fn claim(start: NodeId) -> bool {
 #[inline(always)]
 fn discard(start: NodeId) {
   #[cfg(target_os = "unknown")]
-  skene_web::next::discard_lazy(start);
+  skene_web::discard_lazy(start);
 
   #[cfg(target_os = "wasi")]
   let _ = start;

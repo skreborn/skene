@@ -4,10 +4,13 @@ use std::rc::Rc;
 
 use skene_core::{
   AccessProp,
+  ControlKind,
+  ControlState,
+  Driver,
+  EventKind,
   KeyEvent,
   Prevent,
   Role,
-  next::{ControlKind, ControlState, Driver, EventKind},
 };
 use skene_reactive::{Get, Set, Signal};
 

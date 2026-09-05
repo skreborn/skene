@@ -4,12 +4,15 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_core::{
   AccessProp,
+  ControlKind,
+  Driver,
+  EventKind,
   KeyEvent,
   PointerEvent,
   Prevent,
   Role,
+  Scalar,
   SliderRange,
-  next::{ControlKind, Driver, EventKind, Scalar},
 };
 use skene_reactive::{Get, Set, Signal};
 

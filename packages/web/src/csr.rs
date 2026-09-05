@@ -1,530 +1,852 @@
-//! The web platform: a browser DOM.
+//! The browser leaf's realization of the driver: a DOM sink under one mount root, the
+//! stylesheet mirrored from the shared interner, root-delegated events routed through
+//! core's dispatch, hydration of the server leaf's markup, and the environment as
+//! signals.
 //!
-//! Creates elements, styles them through a shared stylesheet, sets text and wires click
-//! listeners—what the built-in views realize against, and the escape hatch a low-level
-//! web view calls directly. Layout, painting, text shaping and hit-testing are the
-//! browser's. Mount with [`launch`].
-
-pub(crate) mod tree;
+//! One record per node sits beside the scene, holding the DOM node, the native
+//! element carrying a control's state, the classes and slots the node was compiled to,
+//! and what it listens for; the scene alone holds structure. Elements are the same
+//! choices the server leaf makes, so a served page adopts by its creation-order
+//! markers and its anchor comments without a rebuild.
 
 #[cfg(feature = "snapshot")]
 mod dev;
 mod events;
+mod head;
 mod history;
-pub(crate) mod logging;
-mod stylesheet;
+mod logging;
+mod media;
+mod sheet;
 mod task;
 
-use std::{
-  cell::{Cell, RefCell},
-  rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use skene_core::{
+  AccessProp,
+  BoxProps,
+  BoxValue,
+  ControlProps,
+  ControlState,
+  Definitions,
+  Driver,
+  EventKind,
+  FocusOrder,
   IntoView,
-  KeyEvent,
-  Modifiers,
+  MediaSignals,
   NodeId,
+  NodeKind,
+  OverlayProps,
+  PixelExt,
   Placement,
-  PointerButton,
-  PointerEvent,
-  Prevented,
-  ScrollEvent,
+  RunProps,
+  RunValue,
+  Scene,
+  Size,
+  Slot,
+  Toggle,
   View,
+  notify_change,
+  notify_dismiss,
+  notify_toggle,
 };
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{
   Document,
   Element,
+  HtmlDialogElement,
   HtmlElement,
   HtmlInputElement,
-  HtmlSelectElement,
   HtmlTextAreaElement,
-  KeyboardEvent,
+  ResizeObserver,
+  ResizeObserverEntry,
 };
 
 #[cfg(feature = "snapshot")]
 pub use self::dev::boot_with_dev_state;
-use self::stylesheet::StyleStore;
+use self::{
+  events::{Events, Listener},
+  sheet::Sheet,
+};
 pub use self::{
+  head::{add_head_element, set_document_title},
   history::{current_path, on_pop, push_path},
+  media::{media_query, set_scheme, stored_scheme, watch_media},
   task::drive,
 };
-// The CSS declaration set is web-family shared; this leaf takes it in `set_style`.
-use crate::Declarations;
+use super::{
+  Web,
+  compile::{
+    Compiled,
+    SlotBinding,
+    all_unconditional,
+    box_fingerprint,
+    compile_box,
+    compile_control,
+    compile_definitions,
+    compile_overlay,
+    compile_root_definitions,
+    compile_run,
+    inline_definitions,
+    overlay_fingerprint,
+    render_box_value,
+    render_run_value,
+    run_fingerprint,
+  },
+  condition::CONTROL_ATTRIBUTE,
+  markup::{
+    MARKER_ATTRIBUTE,
+    NATIVE_CLASS,
+    NativeElement,
+    STYLE_ID,
+    access_attribute,
+    anchor_text,
+    aria_role,
+    drawn_element,
+    element_tag,
+    focus_order_attribute,
+    link_attributes,
+    native_element,
+  },
+  token::WebTokenValue,
+};
+use crate::hydration::STATE_SCRIPT_ID;
 
-const ROOT_ID: NodeId = NodeId::new(0);
+/// The sink of the mount root; its children are the app.
+const ROOT: u32 = 0;
 
-/// The web platform's state: the element registry, the stylesheet store, and the live
-/// event-listener closures. Private—reached only through this module's functions.
-#[must_use]
-struct State {
-  /// The owning document, used to create elements.
-  document: Document,
-  /// Each node's DOM element.
-  nodes: RefCell<FxHashMap<NodeId, Element>>,
-  /// The generated style class currently assigned to each node (so it can be
-  /// swapped when the node's declarations change). A shared [`Rc<str>`] with the
-  /// stylesheet store, so the class name lives once no matter how many nodes use it.
-  node_class: RefCell<FxHashMap<NodeId, Rc<str>>>,
-  /// Each node's ordered children: the driver's own record of the tree, which the DOM
-  /// is a sink for rather than a second copy of. Tears a subtree down on [`destroy`]
-  /// and answers [`children`](Self::children).
-  children: RefCell<FxHashMap<NodeId, Vec<NodeId>>>,
-  /// Each node's current parent.
-  parents: RefCell<FxHashMap<NodeId, NodeId>>,
-  /// The shared stylesheet store.
-  styles: RefCell<StyleStore>,
-  /// The next node id to allocate.
-  next_id: Cell<u64>,
-  /// The event registries and live listeners.
-  events: events::Events,
-  /// While hydrating, the server-rendered elements indexed by their creation-order marker;
-  /// `None` in normal operation, when nodes are created fresh.
-  hydration: RefCell<Option<FxHashMap<u64, Element>>>,
-  /// The nodes adopted in place during hydration, so their attach skips the DOM insert; cleared
-  /// when hydration ends.
-  adopted: RefCell<FxHashSet<NodeId>>,
-  /// Each overlay node's realization config.
-  overlays: RefCell<FxHashMap<NodeId, (bool, Placement)>>,
-  /// Each watched node's size observer and its live callback closure.
-  #[expect(clippy::type_complexity)]
-  observers: RefCell<
-    FxHashMap<
-      NodeId,
-      (
-        web_sys::ResizeObserver,
-        wasm_bindgen::closure::Closure<dyn FnMut()>,
-      ),
-    >,
-  >,
+/// The DOM node type of a comment.
+const COMMENT_NODE: u16 = 8;
+
+/// The shared size observer with its live callback.
+type SizeObserver = (ResizeObserver, Closure<dyn FnMut(js_sys::Array)>);
+
+/// One observer of a node's size, with the size to report to it.
+type SizeReport = (Rc<dyn Fn(Size<f32>)>, Size<f32>);
+
+/// What a node's DOM handle is realized as.
+enum Realized {
+  Box,
+  Control { native: Option<NativeElement> },
+  Overlay { modal: bool, placement: Placement },
+  Run,
+  Anchor,
+  Scope,
 }
 
-impl State {
-  /// Creates the state rooted at `mount` (the element new views are inserted under).
-  ///
-  /// # Panics
-  ///
-  /// Panics if there is no `window`/`document` (i.e. not running in a browser).
-  pub fn new(mount: Element) -> State {
-    let document = web_sys::window()
-      .expect("a window")
-      .document()
-      .expect("a document");
+/// One node's record beside the scene: its DOM node, the native element carrying a
+/// control's state, focus and value when the control has one apart from its root, and
+/// what the driver keeps per node.
+struct Node {
+  dom: web_sys::Node,
+  carrier: Option<Element>,
+  realized: Realized,
+  id: Option<NodeId>,
+  style_class: Option<Rc<str>>,
+  token_class: Option<Rc<str>>,
+  slots: Rc<[SlotBinding]>,
+  listened: u16,
+  observers: Vec<Rc<dyn Fn(Size<f32>)>>,
+  cancel: Option<Listener>,
+  adopted: bool,
+}
 
-    let head = document.head().expect("a head");
-
-    let reset = document.create_element("style").expect("a style element");
-
-    reset.set_text_content(Some(crate::RESET_CSS));
-
-    head
-      .append_child(&reset)
-      .expect("a style element to be appended to the head");
-
-    let styles = StyleStore::new(&document, &head);
-    let mut nodes = FxHashMap::default();
-
-    nodes.insert(ROOT_ID, mount);
-
-    State {
-      document,
-      nodes: RefCell::new(nodes),
-      node_class: RefCell::new(FxHashMap::default()),
-      children: RefCell::new(FxHashMap::default()),
-      parents: RefCell::new(FxHashMap::default()),
-      styles: RefCell::new(styles),
-      next_id: Cell::new(1),
-      events: events::Events::new(),
-      hydration: RefCell::new(None),
-      adopted: RefCell::new(FxHashSet::default()),
-      overlays: RefCell::new(FxHashMap::default()),
-      observers: RefCell::new(FxHashMap::default()),
+impl Node {
+  fn new(dom: impl Into<web_sys::Node>, realized: Realized, adopted: bool) -> Self {
+    Self {
+      dom: dom.into(),
+      carrier: None,
+      realized,
+      id: None,
+      style_class: None,
+      token_class: None,
+      slots: Rc::from([]),
+      listened: 0,
+      observers: Vec::new(),
+      cancel: None,
+      adopted,
     }
   }
 
-  /// Creates a DOM element with the given `tag` as a detached, tree-participating node.
-  ///
-  /// # Panics
-  ///
-  /// Panics if the document cannot create the element.
-  pub fn create_element(&self, tag: &str) -> NodeId {
-    self.build_node(tag)
+  /// The node's element; `None` for an anchor.
+  fn element(&self) -> Option<&Element> {
+    self.dom.dyn_ref::<Element>()
   }
 
-  /// The DOM element backing `node`, to manipulate directly: set attributes, append
-  /// children, or hand it to a JS library.
-  ///
-  /// # Panics
-  ///
-  /// Panics if `node` is not a node of this platform.
-  #[must_use]
-  pub fn element(&self, node: NodeId) -> Element {
-    self.with_element(node, Clone::clone)
+  /// The element carrying the node's state: its native input, else itself.
+  fn carrier(&self) -> Option<&Element> {
+    self.carrier.as_ref().or_else(|| self.element())
   }
 
-  /// Interns `template` as a shared, content-addressed class and assigns it to `node`,
-  /// refcounting rules so unused ones are collected. The batched path—apply a node's
-  /// full style once. It stays SSR-compatible (the class is content-addressed).
-  pub fn assign_class(&self, node: NodeId, template: &str) {
-    let previous = self.node_class.borrow().get(&node).cloned();
-
-    // Intern and swap the refcounts in one borrow. No change? leave the DOM and the
-    // class's refcount alone.
-    let class = {
-      let mut styles = self.styles.borrow_mut();
-      let class = styles.class_for(template);
-
-      if previous.as_deref() == Some(&*class) {
-        return;
-      }
-
-      styles.retain(&class);
-
-      if let Some(old) = &previous {
-        styles.release(old);
-      }
-
-      class
-    };
-
-    self.with_element(node, |element| {
-      let list = element.class_list();
-
-      if let Some(old) = &previous {
-        let _ = list.remove_1(old);
-      }
-
-      let _ = list.add_1(&class);
-    });
-
-    self.node_class.borrow_mut().insert(node, class);
+  fn html(&self) -> Option<&HtmlElement> {
+    self.dom.dyn_ref::<HtmlElement>()
   }
 
-  /// Applies each of `declarations` as an inline override on `node`, winning over its
-  /// interned class—the path for a reactive change, so an animating property never
-  /// rewrites the shared stylesheet.
-  pub fn override_style(&self, node: NodeId, declarations: &Declarations) {
-    self.with_element(node, |element| {
-      if let Some(html) = element.dyn_ref::<HtmlElement>() {
-        let style = html.style();
+  const fn is_control(&self) -> bool {
+    matches!(self.realized, Realized::Control { .. })
+  }
+}
 
-        for (property, value) in declarations.iter() {
-          let _ = style.set_property(property, value);
+/// What the reader changed on a native element before the client arrived.
+enum Pending {
+  Toggle(bool),
+  Change(String),
+}
+
+/// The server's nodes awaiting adoption, and what adoption found.
+struct Hydration {
+  elements: FxHashMap<u32, Element>,
+  comments: FxHashMap<String, web_sys::Node>,
+  mismatches: u32,
+  pending: Vec<(u32, Pending)>,
+}
+
+impl Hydration {
+  /// Indexes the server's elements under `root` by marker and its anchors by text.
+  fn seed(root: &Element) -> Self {
+    let mut elements = FxHashMap::default();
+    let marked = root
+      .query_selector_all(&format!("[{MARKER_ATTRIBUTE}]"))
+      .expect("query the hydration markers");
+
+    for index in 0..marked.length() {
+      if let Some(element) = marked
+        .item(index)
+        .and_then(|node| node.dyn_into::<Element>().ok())
+        && let Some(marker) = element
+          .get_attribute(MARKER_ATTRIBUTE)
+          .and_then(|value| value.parse::<u32>().ok())
+      {
+        elements.insert(marker, element);
+      }
+    }
+
+    let mut comments = FxHashMap::default();
+    let mut pending: Vec<web_sys::Node> = vec![root.clone().into()];
+
+    while let Some(node) = pending.pop() {
+      let children = node.child_nodes();
+
+      for index in 0..children.length() {
+        if let Some(child) = children.item(index) {
+          if child.node_type() == COMMENT_NODE {
+            comments.insert(child.node_value().unwrap_or_default(), child);
+          }
+          else {
+            pending.push(child);
+          }
         }
       }
-    });
+    }
+
+    Self {
+      elements,
+      comments,
+      mismatches: 0,
+      pending: Vec::new(),
+    }
   }
+}
 
-  /// Sets a node's text content.
-  pub fn set_text(&self, node: NodeId, text: &str) {
-    self.with_element(node, |element| element.set_text_content(Some(text)));
-  }
+/// The browser leaf's state: the document, the node records, the stylesheet sink, the
+/// delegated events and the hydration in progress.
+struct Dom {
+  document: Document,
+  nodes: Vec<Option<Node>>,
+  free: Vec<u32>,
+  markers: u32,
+  anchors: u32,
+  sheet: Sheet,
+  events: Events,
+  root_class: Option<Rc<str>>,
+  hydration: Option<Hydration>,
+  mismatches: u32,
+  resize: Option<SizeObserver>,
+  root_node: Option<NodeId>,
+}
 
-  /// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles
-  /// to it), until the node is destroyed. Delivered by delegation: one listener on the
-  /// mount root serves every node.
-  pub fn handle_click(&self, node: NodeId, handler: Rc<skene_core::ClickHandler>) {
-    self
-      .events
-      .click
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
+thread_local! {
+  static SCENE: RefCell<Scene<Web>> = RefCell::new(Scene::new());
+  static DOM: RefCell<Option<Dom>> = const { RefCell::new(None) };
+}
 
-    let handlers = Rc::clone(&self.events.click);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "click", move |id, _element, _event| {
-          events::run_preventable(&handlers, id, (), |run, ()| run())
-        });
-    });
-  }
-
-  /// Registers `handler` to run when `node` gains focus, until the node is destroyed.
-  pub fn handle_focus(&self, node: NodeId, handler: Rc<dyn Fn()>) {
-    self
-      .events
-      .focus
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    let handlers = Rc::clone(&self.events.focus);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "focusin", move |id, _element, _event| {
-          events::run_handlers(&handlers, id, (), |run, ()| run());
-
-          Prevented::default()
-        });
-    });
-  }
-
-  /// Registers `handler` to run when `node` loses focus, until the node is destroyed.
-  pub fn handle_blur(&self, node: NodeId, handler: Rc<dyn Fn()>) {
-    self
-      .events
-      .blur
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    let handlers = Rc::clone(&self.events.blur);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "focusout", move |id, _element, _event| {
-          events::run_handlers(&handlers, id, (), |run, ()| run());
-
-          Prevented::default()
-        });
-    });
-  }
-
-  /// Registers `handler` to run when a key is pressed on `node` or within it, until the
-  /// node is destroyed.
-  pub fn handle_key_down(&self, node: NodeId, handler: Rc<skene_core::KeyHandler>) {
-    self
-      .events
-      .key_down
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    let handlers = Rc::clone(&self.events.key_down);
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "keydown", move |id, _element, event| {
-          let Some(keyboard) = event.dyn_ref::<KeyboardEvent>()
-          else {
-            return Prevented::default();
-          };
-
-          let key_event = KeyEvent {
-            key: keyboard.key(),
-            modifiers: Modifiers {
-              ctrl: keyboard.ctrl_key(),
-              shift: keyboard.shift_key(),
-              alt: keyboard.alt_key(),
-              meta: keyboard.meta_key(),
-            },
-          };
-
-          events::run_preventable(&handlers, id, &key_event, |run, key_event| run(key_event))
-        });
-    });
-  }
-
-  /// Registers `handler` to run when the pointer enters `node`, until the node is
-  /// destroyed.
-  pub fn handle_pointer_enter(&self, node: NodeId, handler: Rc<dyn Fn()>) {
-    self.with_element(node, |element| {
-      self
-        .events
-        .add_direct_listener(node, element, "pointerenter", move |_| handler());
-    });
-  }
-
-  /// Registers `handler` to run when the pointer leaves `node`, until the node is
-  /// destroyed.
-  pub fn handle_pointer_leave(&self, node: NodeId, handler: Rc<dyn Fn()>) {
-    self.with_element(node, |element| {
-      self
-        .events
-        .add_direct_listener(node, element, "pointerleave", move |_| handler());
-    });
-  }
-
-  /// Registers `handler` to run when a pointer button is pressed on `node` or within it,
-  /// until the node is destroyed.
-  pub fn handle_pointer_down(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-    self.delegate_pointer(node, handler, |events| &events.pointer_down, "pointerdown");
-  }
-
-  /// Registers `handler` to run when a pointer button is released on `node` or within
-  /// it, until the node is destroyed.
-  pub fn handle_pointer_up(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-    self.delegate_pointer(node, handler, |events| &events.pointer_up, "pointerup");
-  }
-
-  /// Registers `handler` to run when the pointer moves over `node` or within it, until
-  /// the node is destroyed.
-  pub fn handle_pointer_move(&self, node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-    self.delegate_pointer(node, handler, |events| &events.pointer_move, "pointermove");
-  }
-
-  /// Registers a delegated pointer handler for `event_name`, backed by the registry
-  /// `registry` selects.
-  fn delegate_pointer(
-    &self,
-    node: NodeId,
-    handler: Rc<skene_core::PointerHandler>,
-    registry: impl Fn(&events::Events) -> &events::Handlers<skene_core::PointerHandler>,
-    event_name: &'static str,
-  ) {
-    registry(&self.events)
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    let handlers = Rc::clone(registry(&self.events));
-
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, event_name, move |id, element, event| {
-          let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
-          else {
-            return Prevented::default();
-          };
-
-          let payload = pointer_payload(pointer, element);
-
-          events::run_preventable(&handlers, id, &payload, |run, payload| run(payload))
-        });
-    });
-  }
-
-  /// Watches `node`'s content size, running `handler` with its width and height in
-  /// logical pixels once observed and on every change, until the node is destroyed.
-  pub fn observe_size(&self, node: NodeId, handler: Rc<dyn Fn(f32, f32)>) {
-    self.with_element(node, |element| {
-      let target = element.clone();
-      let closure = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
-        #[expect(clippy::cast_precision_loss)]
-        handler(target.client_width() as f32, target.client_height() as f32);
-      });
-      let observer =
-        web_sys::ResizeObserver::new(closure.as_ref().unchecked_ref()).expect("a resize observer");
-
-      observer.observe(element);
-      self
-        .observers
+/// Runs `operation` on the installed state; nothing of the user's runs inside it.
+///
+/// # Panics
+///
+/// Panics if the browser leaf is not installed for this thread.
+fn with_dom<R>(operation: impl FnOnce(&mut Dom) -> R) -> R {
+  DOM.with(|dom| {
+    operation(
+      dom
         .borrow_mut()
-        .insert(node, (observer, closure));
-    });
+        .as_mut()
+        .expect("the web driver to be installed for this thread"),
+    )
+  })
+}
+
+impl Dom {
+  fn new(document: Document, root: Element, hydration: Option<Hydration>) -> Self {
+    let head = document.head().expect("a head");
+    let sheet = match hydration
+      .as_ref()
+      .and_then(|_| document.get_element_by_id(STYLE_ID))
+    {
+      Some(block) => Sheet::adopt(&document, &head, block),
+      None => Sheet::new(&document, &head),
+    };
+    let events = Events::new(root.clone());
+
+    events::stamp(&root, ROOT);
+
+    Self {
+      document,
+      nodes: vec![Some(Node::new(root, Realized::Box, false))],
+      free: Vec::new(),
+      markers: 1,
+      anchors: 0,
+      sheet,
+      events,
+      root_class: None,
+      hydration,
+      mismatches: 0,
+      resize: None,
+      root_node: None,
+    }
   }
 
-  /// Registers `handler` to run with the scrolled offsets when `node` scrolls, until the
-  /// node is destroyed.
-  pub fn handle_scroll(&self, node: NodeId, handler: Rc<dyn Fn(&ScrollEvent)>) {
-    self.with_element(node, |element| {
-      self
-        .events
-        .add_direct_listener(node, element, "scroll", move |event| {
-          let Some(target) = event
-            .target()
-            .and_then(|target| target.dyn_into::<Element>().ok())
-          else {
-            return;
-          };
-
-          #[expect(clippy::cast_precision_loss)]
-          handler(&ScrollEvent {
-            x: target.scroll_left() as f32,
-            y: target.scroll_top() as f32,
-          });
-        });
-    });
+  fn node(&self, sink: u32) -> Option<&Node> {
+    self.nodes.get(sink as usize).and_then(Option::as_ref)
   }
 
-  /// Registers `handler` to run with the new value on every change of `node`'s (or a
-  /// descendant control's) value, in real time, until the node is destroyed.
-  pub fn handle_change(&self, node: NodeId, handler: Rc<dyn Fn(&str)>) {
-    self
-      .events
-      .change
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
-
-    self.ensure_input_listener();
+  fn node_mut(&mut self, sink: u32) -> Option<&mut Node> {
+    self.nodes.get_mut(sink as usize).and_then(Option::as_mut)
   }
 
-  /// Registers `handler` to run with the new checked state, in real time, when `node`'s
-  /// (or a descendant toggle's) state changes, until the node is destroyed.
-  pub fn handle_toggle(&self, node: NodeId, handler: Rc<dyn Fn(bool)>) {
-    self
-      .events
-      .toggle
-      .borrow_mut()
-      .entry(node)
-      .or_default()
-      .push(handler);
+  fn insert(&mut self, node: Node) -> u32 {
+    if let Some(element) = node.element() {
+      let sink = self
+        .free
+        .last()
+        .copied()
+        .unwrap_or_else(|| u32::try_from(self.nodes.len()).expect("at most 2^32 nodes"));
 
-    self.ensure_input_listener();
+      events::stamp(element, sink);
+    }
+
+    if let Some(sink) = self.free.pop() {
+      self.nodes[sink as usize] = Some(node);
+
+      return sink;
+    }
+
+    let sink = u32::try_from(self.nodes.len()).expect("at most 2^32 nodes");
+
+    self.nodes.push(Some(node));
+
+    sink
   }
 
-  /// Installs the one delegated `input` listener serving both the change and toggle
-  /// registries—the two share the event, so a lone per-registry listener would starve
-  /// whichever registered second.
-  fn ensure_input_listener(&self) {
-    let change = Rc::clone(&self.events.change);
-    let toggle = Rc::clone(&self.events.toggle);
+  /// The element for the node created next: the server's element at this creation
+  /// index while hydrating, else a fresh `tag`; with whether it was adopted.
+  fn take_element(&mut self, tag: &str) -> (Element, bool) {
+    let marker = self.markers;
 
-    self.with_element(ROOT_ID, |root| {
-      self
-        .events
-        .ensure_root_listener(root, "input", move |id, _element, event| {
-          if let Some(value) = element_value(event) {
-            events::run_handlers(&change, id, value.as_str(), |run, value| run(value));
-          }
+    self.markers += 1;
 
-          if let Some(input) = event
-            .target()
-            .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
-          {
-            refresh_slider_fill(&input);
-            events::run_handlers(&toggle, id, input.checked(), |run, checked| run(checked));
-          }
+    if let Some(hydration) = &mut self.hydration {
+      match hydration.elements.remove(&marker) {
+        Some(element) if element.tag_name().eq_ignore_ascii_case(tag) => {
+          let _ = element.remove_attribute(MARKER_ATTRIBUTE);
 
-          Prevented::default()
-        });
-    });
+          return (element, true);
+        }
+        Some(element) => {
+          hydration.mismatches += 1;
+          tracing::error!(
+            "hydration mismatch: server rendered <{}> where the client builds <{tag}> (marker {marker})",
+            element.tag_name().to_lowercase(),
+          );
+        }
+        None => {
+          tracing::debug!("no serialized <{tag}> for marker {marker}; building fresh");
+        }
+      }
+    }
+
+    (
+      self.document.create_element(tag).expect("an element"),
+      false,
+    )
   }
 
-  /// Records an overlay's realization config, consulted when it opens.
-  pub fn register_overlay(&self, node: NodeId, modal: bool, placement: Placement) {
-    self.overlays.borrow_mut().insert(node, (modal, placement));
+  /// The comment for the anchor created next: the server's comment of `text` while
+  /// hydrating, else a fresh one; with whether it was adopted.
+  fn take_comment(&mut self, text: &str) -> (web_sys::Node, bool) {
+    if let Some(hydration) = &mut self.hydration {
+      if let Some(comment) = hydration.comments.remove(text) {
+        return (comment, true);
+      }
+
+      tracing::debug!("no serialized anchor {text}; building fresh");
+    }
+
+    (self.document.create_comment(text).into(), false)
   }
 
-  /// Opens or closes an overlay: a modal shows as a dialog (top layer, focus trapped),
-  /// a popup shows as a popover—positioned against `anchor` when one is bound.
-  pub fn set_overlay_open(&self, node: NodeId, open: bool, anchor: Option<NodeId>) {
-    let Some((modal, placement)) = self.overlays.borrow().get(&node).copied()
+  fn create_element(&mut self, tag: &str, realized: Realized) -> u32 {
+    let (element, adopted) = self.take_element(tag);
+
+    self.insert(Node::new(element, realized, adopted))
+  }
+
+  fn assign_style(&mut self, sink: u32, compiled: &Rc<Compiled>) {
+    let previous = self.node(sink).and_then(|node| node.style_class.clone());
+    let class = self
+      .sheet
+      .swap_class(&compiled.template, previous.as_deref());
+
+    if let Some(node) = self.node_mut(sink) {
+      if let Some(element) = node.element() {
+        swap_class_attribute(element, previous.as_deref(), &class);
+      }
+
+      node.style_class = Some(class);
+      node.slots = Rc::from(compiled.slots.as_slice());
+    }
+  }
+
+  fn write_focus_order(&self, sink: u32, focus_order: Option<FocusOrder>) {
+    if let Some(node) = self.node(sink)
+      && let Some(carrier) = node.carrier()
+    {
+      match focus_order_attribute(focus_order, node.is_control()) {
+        Some(tabindex) => {
+          let _ = carrier.set_attribute("tabindex", &tabindex);
+        }
+        None => {
+          let _ = carrier.remove_attribute("tabindex");
+        }
+      }
+    }
+  }
+
+  fn write_access(&self, sink: u32, access: &[AccessProp]) {
+    let Some(carrier) = self.node(sink).and_then(Node::carrier)
     else {
       return;
     };
+    let names = carrier.get_attribute_names();
 
-    let element = self.element(node);
-    let anchor = anchor.map(|anchor| self.element(anchor));
+    for index in 0..names.length() {
+      if let Some(name) = names.get(index).as_string()
+        && name.starts_with("aria-")
+        && name != "aria-label"
+      {
+        let _ = carrier.remove_attribute(&name);
+      }
+    }
 
-    if modal {
-      let Some(dialog) = element.dyn_ref::<web_sys::HtmlDialogElement>()
+    for prop in access {
+      let (name, value) = access_attribute(prop);
+
+      let _ = carrier.set_attribute(name, &value);
+    }
+  }
+
+  /// Realizes the props every box-like node shares onto `sink`.
+  fn finish_box(&mut self, sink: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
+    self.assign_style(sink, compiled);
+    self.write_focus_order(sink, props.focus_order);
+    self.write_access(sink, &props.access);
+  }
+
+  /// Notes what the reader changed on the adopted native `input` of `sink` before the
+  /// client arrived, against what the server serialized.
+  fn note_live_state(&mut self, sink: u32, input: &Element, native: NativeElement) {
+    let pending = if let Some(input) = input.dyn_ref::<HtmlInputElement>() {
+      if native.is_toggle() {
+        let serialized = input.has_attribute("checked");
+
+        (input.checked() != serialized).then(|| Pending::Toggle(input.checked()))
+      }
+      else {
+        let serialized = input.get_attribute("value").unwrap_or_default();
+
+        (input.value() != serialized).then(|| Pending::Change(input.value()))
+      }
+    }
+    else if let Some(area) = input.dyn_ref::<HtmlTextAreaElement>() {
+      let serialized = area.text_content().unwrap_or_default();
+
+      (area.value() != serialized).then(|| Pending::Change(area.value()))
+    }
+    else {
+      None
+    };
+
+    if let (Some(pending), Some(hydration)) = (pending, &mut self.hydration) {
+      hydration.pending.push((sink, pending));
+    }
+  }
+
+  /// The shared observer, created on first use.
+  fn resize_observer(&mut self) -> ResizeObserver {
+    if let Some((observer, _)) = &self.resize {
+      return observer.clone();
+    }
+
+    let closure = Closure::<dyn FnMut(js_sys::Array)>::new(move |entries: js_sys::Array| {
+      let mut reports: Vec<SizeReport> = Vec::new();
+
+      for entry in entries.iter() {
+        let entry: ResizeObserverEntry = entry.unchecked_into();
+        let target = entry.target();
+        let Some(sink) = events::sink_of(&target)
+        else {
+          continue;
+        };
+
+        #[expect(clippy::cast_precision_loss)]
+        let size = Size {
+          width: target.client_width() as f32,
+          height: target.client_height() as f32,
+        };
+
+        with_dom(|dom| {
+          if let Some(node) = dom.node(sink) {
+            reports.extend(
+              node
+                .observers
+                .iter()
+                .map(|observer| (Rc::clone(observer), size)),
+            );
+          }
+        });
+      }
+
+      for (report, size) in reports {
+        report(size);
+      }
+    });
+    let observer =
+      ResizeObserver::new(closure.as_ref().unchecked_ref()).expect("a resize observer");
+
+    self.resize = Some((observer.clone(), closure));
+
+    observer
+  }
+
+  /// Ends hydration: reports what the server rendered and the client never built, and
+  /// forgets which nodes were adopted.
+  fn finish_hydration(&mut self) -> Vec<(u32, Pending)> {
+    let Some(hydration) = self.hydration.take()
+    else {
+      return Vec::new();
+    };
+    let unadopted = hydration.elements.len() + hydration.comments.len();
+
+    if unadopted > 0 {
+      tracing::error!("hydration mismatch: {unadopted} server node(s) were never adopted");
+    }
+
+    self.mismatches = hydration.mismatches + u32::try_from(unadopted).unwrap_or(u32::MAX);
+
+    for node in self.nodes.iter_mut().flatten() {
+      node.adopted = false;
+    }
+
+    hydration.pending
+  }
+}
+
+/// Replaces `previous` with `class` in `element`'s class list.
+fn swap_class_attribute(element: &Element, previous: Option<&str>, class: &str) {
+  let list = element.class_list();
+
+  if let Some(previous) = previous
+    && previous != class
+  {
+    let _ = list.remove_1(previous);
+  }
+
+  let _ = list.add_1(class);
+}
+
+/// Writes `on` as the presence of the attribute `name` on `element`.
+fn set_flag(element: &Element, name: &str, on: bool) {
+  if on {
+    let _ = element.set_attribute(name, "");
+  }
+  else {
+    let _ = element.remove_attribute(name);
+  }
+}
+
+/// Positions an open popup against its anchor: below it for `Bottom`, above it for
+/// `Top`, start-aligned either way; other placements keep their viewport position.
+fn position_at_anchor(popup: &HtmlElement, anchor: &Element, placement: Placement) {
+  let rect = anchor.get_bounding_client_rect();
+  let style = popup.style();
+  let top = match placement {
+    Placement::Top => rect.top() - f64::from(popup.offset_height()),
+    Placement::Bottom => rect.bottom(),
+    _ => return,
+  };
+
+  let _ = style.set_property("inset", "auto");
+  let _ = style.set_property("margin", "0");
+  let _ = style.set_property("position", "fixed");
+  let _ = style.set_property("left", &format!("{}px", rect.left()));
+  let _ = style.set_property("top", &format!("{top}px"));
+}
+
+impl Driver for Web {
+  type Scalar = f32;
+  type Sink = u32;
+  type StyleExt = PixelExt;
+  type TokenValue = WebTokenValue;
+
+  fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
+    &SCENE
+  }
+
+  fn bind_node(&self, sink: &u32, node: NodeId) {
+    with_dom(|dom| {
+      if let Some(record) = dom.node_mut(*sink) {
+        record.id = Some(node);
+      }
+    });
+  }
+
+  fn create_box(&self, props: &BoxProps<Self>) -> u32 {
+    with_dom(|dom| {
+      let sink = dom.create_element(element_tag(props.role), Realized::Box);
+
+      if let Some(role) = props.role.filter(|role| role.is_widget())
+        && let Some(element) = dom.node(sink).and_then(Node::element)
+      {
+        let _ = element.set_attribute("role", aria_role(role));
+      }
+
+      let compiled = dom
+        .sheet
+        .compiled(box_fingerprint(props, 0), || compile_box(props));
+
+      dom.finish_box(sink, props, &compiled);
+
+      sink
+    })
+  }
+
+  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, PixelExt>) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node(*sink)
+        && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
+        && let Some(html) = node.html()
+      {
+        let _ = html.style().set_property(
+          &binding.custom_property(),
+          &render_box_value(binding.property, value),
+        );
+      }
+    });
+  }
+
+  fn update_focus_order(&self, sink: &u32, focus_order: Option<FocusOrder>) {
+    with_dom(|dom| dom.write_focus_order(*sink, focus_order));
+  }
+
+  fn update_access(&self, sink: &u32, access: &[AccessProp]) {
+    with_dom(|dom| dom.write_access(*sink, access));
+  }
+
+  fn create_control(&self, props: &ControlProps<Self>) -> u32 {
+    with_dom(|dom| {
+      let sink = if let Some(native) = native_element(props.kind) {
+        let root = dom.create_element(
+          "label",
+          Realized::Control {
+            native: Some(native),
+          },
+        );
+        let (input, adopted) = dom.take_element(native.tag);
+
+        if let Some(kind) = native.kind {
+          let _ = input.set_attribute("type", kind);
+        }
+
+        let _ = input.set_attribute("class", NATIVE_CLASS);
+
+        if let Some(placeholder) = &props.placeholder {
+          let _ = input.set_attribute("placeholder", placeholder);
+        }
+
+        if native.tag == "textarea" {
+          let _ = input.set_attribute("rows", &props.lines.to_string());
+        }
+
+        if let Some(label) = &props.label {
+          let _ = input.set_attribute("aria-label", label);
+        }
+
+        if adopted {
+          dom.note_live_state(root, &input, native);
+        }
+        else if let Some(node) = dom.node(root) {
+          let _ = node.dom.append_child(&input);
+        }
+
+        if let Some(node) = dom.node_mut(root) {
+          node.carrier = Some(input);
+        }
+
+        root
+      }
+      else {
+        let (tag, attribute) = drawn_element(props.kind);
+        let root = dom.create_element(tag, Realized::Control { native: None });
+
+        if let Some(element) = dom.node(root).and_then(Node::element) {
+          if let Some((name, value)) = attribute {
+            let _ = element.set_attribute(name, value);
+          }
+
+          if let Some(label) = &props.label {
+            let _ = element.set_attribute("aria-label", label);
+          }
+        }
+
+        root
+      };
+
+      if let Some(element) = dom.node(sink).and_then(Node::element) {
+        let _ = element.set_attribute(CONTROL_ATTRIBUTE, "");
+      }
+
+      let compiled = dom
+        .sheet
+        .compiled(box_fingerprint(&props.box_props, 1), || {
+          compile_control(props)
+        });
+
+      dom.finish_box(sink, &props.box_props, &compiled);
+
+      sink
+    })
+  }
+
+  fn set_control_state(&self, sink: &u32, state: &ControlState) {
+    with_dom(|dom| {
+      let Some(node) = dom.node(*sink)
+      else {
+        return;
+      };
+      let Some(root) = node.element()
       else {
         return;
       };
 
-      if open {
-        let _ = dialog.show_modal();
+      match &node.carrier {
+        None => {
+          set_flag(root, "data-skene-checked", state.checked == Toggle::On);
+          set_flag(
+            root,
+            "data-skene-indeterminate",
+            state.checked == Toggle::Mixed,
+          );
+          set_flag(root, "data-skene-disabled", state.disabled);
+          set_flag(root, "data-skene-invalid", state.invalid);
+
+          if root.tag_name().eq_ignore_ascii_case("button") {
+            set_flag(root, "disabled", state.disabled);
+          }
+        }
+        Some(carrier) => {
+          if let Some(input) = carrier.dyn_ref::<HtmlInputElement>() {
+            input.set_checked(state.checked == Toggle::On);
+            input.set_indeterminate(state.checked == Toggle::Mixed);
+            input.set_disabled(state.disabled);
+          }
+          else if let Some(area) = carrier.dyn_ref::<HtmlTextAreaElement>() {
+            area.set_disabled(state.disabled);
+          }
+
+          if state.invalid {
+            let _ = carrier.set_attribute("aria-invalid", "true");
+          }
+          else {
+            let _ = carrier.remove_attribute("aria-invalid");
+          }
+        }
+      }
+
+      set_flag(root, "data-skene-open", state.open);
+    });
+  }
+
+  fn create_overlay(&self, props: &OverlayProps<Self>) -> u32 {
+    with_dom(|dom| {
+      let realized = Realized::Overlay {
+        modal: props.modal,
+        placement: props.placement,
+      };
+      let sink = if props.modal {
+        dom.create_element("dialog", realized)
       }
       else {
-        dialog.close();
+        let sink = dom.create_element("div", realized);
+
+        if let Some(element) = dom.node(sink).and_then(Node::element) {
+          let _ = element.set_attribute("popover", "manual");
+        }
+
+        sink
+      };
+      let compiled = dom
+        .sheet
+        .compiled(overlay_fingerprint(props), || compile_overlay(props));
+
+      dom.finish_box(sink, &props.box_props, &compiled);
+
+      sink
+    })
+  }
+
+  fn set_overlay_open(&self, sink: &u32, open: bool, anchor: Option<&u32>) {
+    let Some((element, modal, placement, anchor)) = with_dom(|dom| {
+      let node = dom.node(*sink)?;
+      let Realized::Overlay { modal, placement } = node.realized
+      else {
+        return None;
+      };
+      let element = node.element()?.clone();
+      let anchor_element = anchor.and_then(|anchor| dom.node(*anchor)?.element().cloned());
+
+      if !modal {
+        if open {
+          dom.events.open_popups.insert(*sink, anchor.copied());
+        }
+        else {
+          dom.events.open_popups.remove(sink);
+        }
+      }
+
+      Some((element, modal, placement, anchor_element))
+    })
+    else {
+      return;
+    };
+
+    if modal {
+      if let Some(dialog) = element.dyn_ref::<HtmlDialogElement>() {
+        if open {
+          let _ = dialog.show_modal();
+        }
+        else {
+          dialog.close();
+        }
       }
 
       return;
@@ -547,963 +869,410 @@ impl State {
     }
   }
 
-  /// Registers `handler` to run when the user asks the overlay to close: Escape, a
-  /// modal's backdrop click, or a pointer press outside a popup. The overlay never
-  /// closes itself—the handler owns the open state.
-  pub fn handle_overlay_dismiss(&self, node: NodeId, handler: Rc<dyn Fn()>) {
-    let Some((modal, _)) = self.overlays.borrow().get(&node).copied()
+  fn set_overlay_placement(&self, sink: &u32, placement: Placement) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node_mut(*sink)
+        && let Realized::Overlay {
+          placement: held, ..
+        } = &mut node.realized
+      {
+        *held = placement;
+      }
+    });
+  }
+
+  fn create_run(&self, props: &RunProps<Self>) -> u32 {
+    with_dom(|dom| {
+      let sink = match props.link.as_deref() {
+        Some(href) => {
+          let sink = dom.create_element("a", Realized::Run);
+
+          if let Some(element) = dom.node(sink).and_then(Node::element) {
+            for (name, value) in link_attributes(href, props.link_policy) {
+              let _ = element.set_attribute(name, &value);
+            }
+          }
+
+          sink
+        }
+        None => dom.create_element("span", Realized::Run),
+      };
+      let compiled = dom
+        .sheet
+        .compiled(run_fingerprint(props), || compile_run(props));
+
+      dom.assign_style(sink, &compiled);
+
+      sink
+    })
+  }
+
+  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<PixelExt>) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node(*sink)
+        && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
+        && let Some(html) = node.html()
+      {
+        let _ = html.style().set_property(
+          &binding.custom_property(),
+          &render_run_value(binding.property, value),
+        );
+      }
+    });
+  }
+
+  fn set_text(&self, sink: &u32, text: &str) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node(*sink)
+        && !(node.adopted && node.dom.text_content().as_deref() == Some(text))
+      {
+        node.dom.set_text_content(Some(text));
+      }
+    });
+  }
+
+  fn create_anchor(&self) -> u32 {
+    with_dom(|dom| {
+      let text = anchor_text(dom.anchors);
+
+      dom.anchors += 1;
+
+      let (comment, adopted) = dom.take_comment(&text);
+
+      dom.insert(Node::new(comment, Realized::Anchor, adopted))
+    })
+  }
+
+  fn create_scope(&self) -> u32 {
+    with_dom(|dom| {
+      let sink = dom.create_element("div", Realized::Scope);
+
+      if let Some(html) = dom.node(sink).and_then(Node::html) {
+        let _ = html.style().set_property("display", "contents");
+      }
+
+      sink
+    })
+  }
+
+  fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
+    let Some((parent, child, before)) = with_dom(|dom| {
+      let parent = dom.node(*parent)?.dom.clone();
+      let child_node = dom.node(*child)?;
+
+      if child_node.adopted && child_node.dom.parent_node().as_ref() == Some(&parent) {
+        return None;
+      }
+
+      let before = before
+        .and_then(|before| dom.node(*before))
+        .map(|node| node.dom.clone());
+
+      Some((parent, child_node.dom.clone(), before))
+    })
     else {
       return;
     };
 
-    if modal {
-      self.with_element(node, |element| {
-        {
-          let handler = Rc::clone(&handler);
+    let _ = parent.insert_before(&child, before.as_ref());
+  }
 
-          self
-            .events
-            .add_direct_listener(node, element, "cancel", move |event| {
-              event.prevent_default();
-              handler();
-            });
-        }
-
-        let dialog = element.clone();
-
-        // A backdrop click targets the dialog element itself, but so does a click on
-        // the dialog's own padding—only coordinates outside the dialog's box dismiss.
-        self
-          .events
-          .add_direct_listener(node, element, "click", move |event| {
-            if event.target().as_ref() != Some(dialog.unchecked_ref()) {
-              return;
-            }
-
-            let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>()
-            else {
-              return;
-            };
-
-            let rect = dialog.get_bounding_client_rect();
-            let x = f64::from(mouse.client_x());
-            let y = f64::from(mouse.client_y());
-
-            if x < rect.left() || x > rect.right() || y < rect.top() || y > rect.bottom() {
-              handler();
-            }
-          });
-      });
-
+  fn detach(&self, parent: &u32, child: &u32) {
+    let Some((parent, child)) = with_dom(|dom| {
+      Some((
+        dom.node(*parent)?.dom.clone(),
+        dom.node(*child)?.dom.clone(),
+      ))
+    })
+    else {
       return;
+    };
+
+    if child.parent_node().as_ref() == Some(&parent) {
+      let _ = parent.remove_child(&child);
     }
+  }
 
-    // A popup dismisses from anywhere: Escape and outside presses reach the document
-    // root, gated on the popover actually being shown.
-    let root = self
-      .document
-      .document_element()
-      .expect("a document element");
-    let popup = self.element(node);
+  fn destroy(&self, sink: u32) {
+    with_dom(|dom| {
+      let Some(node) = dom.nodes.get_mut(sink as usize).and_then(Option::take)
+      else {
+        return;
+      };
 
-    {
-      let popup = popup.clone();
-      let handler = Rc::clone(&handler);
+      dom.free.push(sink);
 
-      self
-        .events
-        .add_direct_listener(node, &root, "keydown", move |event| {
-          if popup.matches(":popover-open").unwrap_or(false)
-            && event
-              .dyn_ref::<KeyboardEvent>()
-              .is_some_and(|event| event.key() == "Escape")
-          {
-            handler();
+      for class in node.style_class.iter().chain(&node.token_class) {
+        dom.sheet.release(class);
+      }
+
+      if !node.observers.is_empty()
+        && let (Some((observer, _)), Some(element)) = (&dom.resize, node.element())
+      {
+        observer.unobserve(element);
+      }
+
+      dom.events.open_popups.remove(&sink);
+    });
+  }
+
+  fn define_tokens(&self, scope: &u32, definitions: &Definitions<WebTokenValue>) {
+    with_dom(|dom| {
+      dom.sheet.register(definitions);
+
+      let previous = dom.node(*scope).and_then(|node| node.token_class.clone());
+
+      if previous.is_some() && all_unconditional(definitions) {
+        if let Some(html) = dom.node(*scope).and_then(Node::html) {
+          let style = html.style();
+
+          for (property, value) in inline_definitions(definitions) {
+            let _ = style.set_property(&property, &value);
           }
-        });
-    }
-
-    self
-      .events
-      .add_direct_listener(node, &root, "pointerdown", move |event| {
-        let outside = event
-          .target()
-          .and_then(|target| target.dyn_into::<web_sys::Node>().ok())
-          .is_some_and(|target| !popup.contains(Some(&target)));
-
-        if popup.matches(":popover-open").unwrap_or(false) && outside {
-          handler();
         }
-      });
-  }
 
-  /// Moves keyboard focus to `node`.
-  pub fn focus_node(&self, node: NodeId) {
-    self.with_element(node, |element| {
-      if let Some(html) = element.dyn_ref::<HtmlElement>() {
-        let _ = html.focus();
+        return;
+      }
+
+      let class = dom
+        .sheet
+        .swap_class(&compile_definitions(definitions), previous.as_deref());
+
+      if let Some(node) = dom.node_mut(*scope) {
+        if let Some(element) = node.element() {
+          swap_class_attribute(element, previous.as_deref(), &class);
+        }
+
+        node.token_class = Some(class);
       }
     });
   }
 
-  /// Removes keyboard focus from `node`.
-  pub fn blur_node(&self, node: NodeId) {
-    self.with_element(node, |element| {
-      if let Some(html) = element.dyn_ref::<HtmlElement>() {
-        let _ = html.blur();
+  fn define_root_tokens(&self, definitions: &Definitions<WebTokenValue>) {
+    with_dom(|dom| {
+      dom.sheet.register(definitions);
+
+      let previous = dom.root_class.take();
+      let class = dom
+        .sheet
+        .swap_class(&compile_root_definitions(definitions), previous.as_deref());
+
+      dom.root_class = Some(class);
+    });
+  }
+
+  fn listen(&self, sink: &u32, kind: EventKind) {
+    with_dom(|dom| {
+      dom.events.ensure(kind);
+
+      let sink = *sink;
+      let Some(node) = dom.node_mut(sink)
+      else {
+        return;
+      };
+
+      node.listened |= 1 << (kind as u16);
+
+      if kind == EventKind::Dismiss
+        && node.cancel.is_none()
+        && matches!(node.realized, Realized::Overlay { modal: true, .. })
+        && let Some(element) = node.element()
+      {
+        node.cancel = Some(Listener::new(
+          element.clone().into(),
+          "cancel",
+          false,
+          move |event| {
+            event.prevent_default();
+
+            if let Some(node) = with_dom(|dom| dom.node(sink).and_then(|node| node.id)) {
+              notify_dismiss::<Web>(node);
+            }
+          },
+        ));
       }
     });
   }
 
-  /// Sets the live value of an input, text area, or select node.
-  pub fn set_value(&self, node: NodeId, value: &str) {
-    self.with_element(node, |element| {
-      if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+  fn focus(&self, sink: &u32) {
+    let carrier = with_dom(|dom| dom.node(*sink).and_then(Node::carrier).cloned());
+
+    if let Some(html) = carrier
+      .as_ref()
+      .and_then(|carrier| carrier.dyn_ref::<HtmlElement>())
+    {
+      let _ = html.focus();
+    }
+  }
+
+  fn blur(&self, sink: &u32) {
+    let carrier = with_dom(|dom| dom.node(*sink).and_then(Node::carrier).cloned());
+
+    if let Some(html) = carrier
+      .as_ref()
+      .and_then(|carrier| carrier.dyn_ref::<HtmlElement>())
+    {
+      let _ = html.blur();
+    }
+  }
+
+  fn set_value(&self, sink: &u32, value: &str) {
+    with_dom(|dom| {
+      let Some(carrier) = dom.node(*sink).and_then(Node::carrier)
+      else {
+        return;
+      };
+
+      if let Some(input) = carrier.dyn_ref::<HtmlInputElement>() {
         input.set_value(value);
-        refresh_slider_fill(input);
       }
-      else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
+      else if let Some(area) = carrier.dyn_ref::<HtmlTextAreaElement>() {
         area.set_value(value);
       }
-      else if let Some(select) = element.dyn_ref::<HtmlSelectElement>() {
-        select.set_value(value);
-      }
     });
   }
 
-  /// Sets the live checked state of a checkbox or radio node.
-  pub fn set_checked(&self, node: NodeId, checked: bool) {
-    self.with_element(node, |element| {
-      if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+  fn set_checked(&self, sink: &u32, checked: bool) {
+    with_dom(|dom| {
+      if let Some(input) = dom
+        .node(*sink)
+        .and_then(Node::carrier)
+        .and_then(|carrier| carrier.dyn_ref::<HtmlInputElement>())
+      {
         input.set_checked(checked);
       }
     });
   }
 
-  fn alloc_id(&self) -> NodeId {
-    let id = NodeId::new(self.next_id.get());
+  fn observe_size(&self, sink: &u32, report: Rc<dyn Fn(Size<f32>)>) {
+    with_dom(|dom| {
+      let observer = dom.resize_observer();
+      let Some(node) = dom.node_mut(*sink)
+      else {
+        return;
+      };
 
-    self.next_id.set(self.next_id.get() + 1);
+      if let Some(element) = node.element() {
+        if node.observers.is_empty() {
+          observer.observe(element);
+        }
 
-    id
-  }
-
-  /// Creates a tree-participating node for the given `tag`, adopting the matching
-  /// server-rendered element while hydrating and creating a fresh one otherwise.
-  fn build_node(&self, tag: &str) -> NodeId {
-    let id = self.alloc_id();
-    let element = self.element_for(id, tag);
-
-    events::stamp_node_id(&element, id);
-    self.nodes.borrow_mut().insert(id, element);
-
-    id
-  }
-
-  /// The DOM element for a freshly built node `id`: during hydration the server element whose
-  /// marker matches `id` is adopted (and its marker stripped); otherwise a fresh `tag` element
-  /// is created. A marker the serialized page lacks builds fresh quietly—a subtree the server
-  /// built detached (a suspense fallback) never serializes—while a tag disagreement is a loud
-  /// mismatch, built fresh in the divergent node's place.
-  fn element_for(&self, id: NodeId, tag: &str) -> Element {
-    let candidate = match self.hydration.borrow_mut().as_mut() {
-      Some(markers) => Some(markers.remove(&id.value())),
-      None => None,
-    };
-
-    match candidate {
-      Some(Some(element)) if element.tag_name().eq_ignore_ascii_case(tag) => {
-        let _ = element.remove_attribute("data-h");
-
-        self.adopted.borrow_mut().insert(id);
-
-        element
+        node.observers.push(report);
       }
-      Some(Some(element)) => {
-        tracing::error!(
-          "hydration mismatch: server rendered <{}> where the client builds <{tag}> (node {})",
-          element.tag_name().to_lowercase(),
-          id.value()
-        );
-
-        self.document.create_element(tag).expect("create element")
-      }
-      Some(None) => {
-        tracing::debug!(
-          "no serialized <{tag}> for node {}; building fresh",
-          id.value()
-        );
-
-        self.document.create_element(tag).expect("create element")
-      }
-      None => self.document.create_element(tag).expect("create element"),
-    }
+    });
   }
 
-  /// Indexes the root's server-rendered elements by their hydration marker, so each built node
-  /// adopts the server element carrying its id.
-  fn seed_hydration(&self) {
-    let markers = {
-      let nodes = self.nodes.borrow();
-      let root = nodes.get(&ROOT_ID).expect("the root is registered");
-
-      root
-        .query_selector_all("[data-h]")
-        .expect("query the hydration markers")
-    };
-
-    let mut map = FxHashMap::default();
-
-    for index in 0..markers.length() {
-      let element = markers
-        .item(index)
-        .expect("a node at a valid index")
-        .dyn_into::<Element>()
-        .expect("a marked node is an element");
-
-      if let Some(id) = element
-        .get_attribute("data-h")
-        .and_then(|value| value.parse::<u64>().ok())
-      {
-        map.insert(id, element);
-      }
-    }
-
-    *self.hydration.borrow_mut() = Some(map);
-  }
-
-  /// Claims a lazy group's server-rendered subtree while hydrating: the markup stays
-  /// in place, visible until the real content arrives, and its markers leave the
-  /// adoption map so nothing else adopts into it. Whether there was server content to
-  /// keep.
-  fn claim_lazy(&self, node: NodeId) -> bool {
-    let mut hydration = self.hydration.borrow_mut();
-    let Some(markers) = hydration.as_mut()
-    else {
-      return false;
-    };
-
-    let element = self.element(node);
-    let descendants = element
-      .query_selector_all("[data-h]")
-      .expect("query the claimed markers");
-
-    for index in 0..descendants.length() {
-      if let Some(id) = descendants
-        .item(index)
-        .and_then(|descendant| descendant.dyn_into::<Element>().ok())
-        .and_then(|descendant| descendant.get_attribute("data-h"))
-        .and_then(|value| value.parse::<u64>().ok())
-      {
-        markers.remove(&id);
-      }
-    }
-
-    element.first_child().is_some()
-  }
-
-  /// Removes a claimed lazy group's server-rendered children, as the real content
-  /// arrives to take their place.
-  fn discard_lazy(&self, node: NodeId) {
-    let element = self.element(node);
-
-    while let Some(child) = element.first_child() {
-      let _ = element.remove_child(&child);
-    }
-  }
-
-  /// Ends hydration: later builds create fresh nodes and attach them to the DOM. Server
-  /// elements the client never built are a loud mismatch—they linger in the document
-  /// unmanaged.
-  fn finish_hydration(&self) {
-    if let Some(markers) = self.hydration.borrow_mut().take()
-      && !markers.is_empty()
-    {
-      tracing::error!(
-        "hydration mismatch: {} server element(s) were never adopted",
-        markers.len()
-      );
-    }
-
-    self.adopted.borrow_mut().clear();
-  }
-
-  /// Runs `f` with the node's element, without cloning the handle. `f` must not make
-  /// a call that inserts or removes nodes (which would borrow `nodes` again).
-  /// The node's children, in document order; empty for one the platform no longer holds.
-  pub fn children(&self, node: NodeId) -> Vec<NodeId> {
-    self
-      .children
-      .borrow()
-      .get(&node)
-      .cloned()
-      .unwrap_or_default()
-  }
-
-  fn with_element<R>(&self, node: NodeId, apply: impl FnOnce(&Element) -> R) -> R {
-    let nodes = self.nodes.borrow();
-    let element = nodes.get(&node).expect("web platform: unknown node id");
-
-    apply(element)
+  fn media(&self) -> MediaSignals<f32> {
+    media::signals()
   }
 }
 
-impl State {
-  fn create_group(&self) -> NodeId {
-    self.build_node("div")
-  }
-
-  fn attach_child(&self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    {
-      // Mirror the move in the children map (detach from any current parent first).
-      let mut children = self.children.borrow_mut();
-
-      if let Some(old_parent) = self.parents.borrow_mut().insert(child, parent)
-        && let Some(list) = children.get_mut(&old_parent)
-      {
-        list.retain(|node| *node != child);
-      }
-
-      let list = children.entry(parent).or_default();
-
-      match before.and_then(|before| list.iter().position(|node| *node == before)) {
-        Some(i) => list.insert(i, child),
-        None => list.push(child),
-      }
-    }
-
-    // A node adopted in place already sits under its parent in the server DOM; a freshly built
-    // one—a normal build, or a hydration-mismatch fallback—must be inserted.
-    if self.adopted.borrow().contains(&child) {
-      return;
-    }
-
-    let nodes = self.nodes.borrow();
-    let parent_el = nodes.get(&parent).expect("web platform: unknown node id");
-    let child_el = nodes.get(&child).expect("web platform: unknown node id");
-
-    match before {
-      Some(before) => {
-        let before_el = nodes.get(&before).expect("web platform: unknown node id");
-        let _ = parent_el.insert_before(child_el.as_ref(), Some(before_el.as_ref()));
-      }
-      None => {
-        let _ = parent_el.append_child(child_el.as_ref());
-      }
-    }
-  }
-
-  fn detach_child(&self, parent: NodeId, child: NodeId) {
-    if let Some(list) = self.children.borrow_mut().get_mut(&parent) {
-      list.retain(|node| *node != child);
-    }
-
-    self.parents.borrow_mut().remove(&child);
-
-    let nodes = self.nodes.borrow();
-    let parent_el = nodes.get(&parent).expect("web platform: unknown node id");
-    let child_el = nodes.get(&child).expect("web platform: unknown node id");
-    let _ = parent_el.remove_child(child_el.as_ref());
-  }
-
-  fn destroy(&self, node: NodeId) {
-    // Tear down the whole detached subtree, releasing each node's element, class, handlers and
-    // listener closures. Dropping a closure detaches its DOM listener, so no `removeEventListener`
-    // is needed. No user code runs during teardown, so the structural maps are borrowed once up
-    // front; the event registries hold their own cells.
-    let mut stack = vec![node];
-
-    let mut children = self.children.borrow_mut();
-    let mut parents = self.parents.borrow_mut();
-    let mut nodes = self.nodes.borrow_mut();
-    let mut node_class = self.node_class.borrow_mut();
-    let mut styles = self.styles.borrow_mut();
-    let mut observers = self.observers.borrow_mut();
-
-    while let Some(current) = stack.pop() {
-      if let Some(descendants) = children.remove(&current) {
-        stack.extend(descendants);
-      }
-
-      parents.remove(&current);
-      nodes.remove(&current);
-
-      if let Some(class) = node_class.remove(&current) {
-        styles.release(&class);
-      }
-
-      if let Some((observer, closure)) = observers.remove(&current) {
-        observer.disconnect();
-        drop(closure);
-      }
-
-      self.events.remove(current);
-    }
-  }
-}
-
-thread_local! {
-  static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
-  /// The server-rendered resource values to adopt during hydration, in creation order.
-  static ADOPTED: RefCell<Vec<Option<String>>> = const { RefCell::new(Vec::new()) };
-  /// The next resource's creation-order slot, matched against [`ADOPTED`].
-  static NEXT_SLOT: Cell<usize> = const { Cell::new(0) };
-  /// The server-rendered tag-keyed values to adopt during hydration.
-  static TAGGED: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
-}
-
-/// Advances to the next resource slot, returning its adopted server value if hydrating.
-#[must_use]
-pub fn adopt_next() -> Option<String> {
-  let slot = NEXT_SLOT.get();
-
-  NEXT_SLOT.set(slot + 1);
-
-  ADOPTED.with(|adopted| adopted.borrow().get(slot).cloned().flatten())
-}
-
-/// A no-op on the client: it adopts server state rather than producing it.
-#[inline(always)]
-pub fn register_source(_source: crate::HydrationSource) {}
-
-/// Stages the server's serialized resource `state` for the resources built next to
-/// adopt, by creation order and by tag.
-pub(crate) fn stage_hydration_state(state: &str) {
-  let (ordered, tagged) = crate::hydration::decode_state(state);
-
-  NEXT_SLOT.set(0);
-  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
-  TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
-}
-
-/// Sets whether the client owns the page; see [`settled`].
-pub(crate) fn set_settled(value: bool) {
-  use skene_reactive::Set;
-
-  SETTLED.with(|settled| settled.set(value));
-}
-
-/// Takes the adopted server value registered under `tag`, if hydrating left one.
-#[must_use]
-pub fn adopt_tagged(tag: &str) -> Option<String> {
-  TAGGED.with(|tagged| {
-    let mut tagged = tagged.borrow_mut();
-    let index = tagged.iter().position(|(existing, _)| existing == tag)?;
-
-    Some(tagged.remove(index).1)
-  })
-}
-
-/// A no-op on the client: it adopts server state rather than producing it.
-#[inline(always)]
-pub fn register_tagged_source(_tag: &str, _source: crate::HydrationSource) {}
-
-/// The browser is a client, not the server.
-#[inline(always)]
-#[must_use]
-pub fn is_server() -> bool {
-  false
-}
-
-/// Whether the client owns the page: `false` only while hydration is reproducing the
-/// server's tree, `true` at every other moment, including a fresh client-side launch.
-///
-/// Reactive, so a view can render the scriptless form while it is false and rebuild into
-/// the enhanced one when it flips.
-#[must_use]
-pub fn settled() -> bool {
-  use skene_reactive::Get;
-
-  SETTLED.with(|settled| settled.get())
-}
-
-thread_local! {
-  /// Flipped once hydration finishes; already true when there was none to do.
-  static SETTLED: skene_reactive::Signal<bool> = skene_reactive::Signal::new(true);
-}
-
-/// Writes the app's chosen color scheme onto the document root, or clears it so the
-/// platform's preference decides again.
-///
-/// Every scheme-conditional rule the driver compiles is gated on this attribute, so one
-/// write re-inks the whole document—no node is touched, and nothing built is rebuilt.
-/// `color-scheme` rides along so the user agent's own widgets, scrollbars and form
-/// controls follow the choice too.
-pub fn set_color_scheme(scheme: Option<skene_core::ColorScheme>) {
-  let Some(root) = web_sys::window()
-    .and_then(|window| window.document())
-    .and_then(|document| document.document_element())
-  else {
-    return;
-  };
-  let Some(name) = scheme.map(scheme_name)
-  else {
-    let _ = root.remove_attribute(crate::mapping::SCHEME_ATTRIBUTE);
-    let _ = root.remove_attribute("style");
-    let _ = storage().map(|storage| storage.remove_item(SCHEME_KEY));
-
-    return;
-  };
-
-  let _ = root.set_attribute(crate::mapping::SCHEME_ATTRIBUTE, name);
-  let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
-  // Stored so the next visit's head script applies it before anything is painted; an app
-  // restores its own setting from the same place through `stored_scheme`.
-  let _ = storage().map(|storage| storage.set_item(SCHEME_KEY, name));
-}
-
-/// The color scheme the reader chose on a previous visit.
-///
-/// Read it where an app initializes the setting it binds to `derive_scheme`, so the
-/// choice the head script already applied is the one the app goes on to hold.
-#[must_use]
-pub fn stored_scheme() -> Option<skene_core::ColorScheme> {
-  match storage()?.get_item(SCHEME_KEY).ok().flatten()?.as_str() {
-    "light" => Some(skene_core::ColorScheme::Light),
-    "dark" => Some(skene_core::ColorScheme::Dark),
-    _ => None,
-  }
-}
-
-/// That scheme's name, as the attribute and the store spell it.
-const fn scheme_name(scheme: skene_core::ColorScheme) -> &'static str {
-  match scheme {
-    skene_core::ColorScheme::Light => "light",
-    skene_core::ColorScheme::Dark => "dark",
-  }
-}
-
-/// The key a chosen scheme is stored under, which the head script reads.
-const SCHEME_KEY: &str = "skene-scheme";
-
-/// The reader's local storage, when the browser grants it—a page in a partitioned or
-/// private context may not.
-fn storage() -> Option<web_sys::Storage> {
-  web_sys::window()?.local_storage().ok().flatten()
-}
-
-/// Runs `apply` against the installed platform state.
-///
-/// Only ever takes a shared borrow, so a click handler may re-enter and build or destroy
-/// nodes.
-///
-/// # Panics
-///
-/// Panics if the web platform is not installed for this thread.
-#[inline(always)]
-fn with_state<R>(apply: impl FnOnce(&State) -> R) -> R {
-  STATE.with(|state| {
-    apply(
-      state
-        .borrow()
-        .as_ref()
-        .expect("the web platform to be installed for this thread"),
-    )
-  })
-}
-
-/// Installs the web platform for this thread, rooted at `root`—the element views are
-/// inserted under.
-///
-/// # Panics
-///
-/// Panics if it is already installed, or if there is no `window`/`document`.
-pub fn install(root: Element) {
+/// Installs the browser leaf for this thread, rooted at `root`, adopting the server's
+/// nodes under it when `hydrating`.
+fn install_at(root: Element, hydrating: bool) {
   skene_reactive::Runtime::init_on_ui_thread();
 
-  STATE.with(|state| {
-    let mut state = state.borrow_mut();
+  let document = web_sys::window()
+    .expect("a window")
+    .document()
+    .expect("a document");
+  let hydration = hydrating.then(|| Hydration::seed(&root));
+
+  DOM.with(|dom| {
+    let mut dom = dom.borrow_mut();
 
     assert!(
-      state.is_none(),
-      "the web platform is already installed for this thread",
+      dom.is_none(),
+      "the web driver is already installed for this thread",
     );
 
-    *state = Some(State::new(root));
+    *dom = Some(Dom::new(document, root, hydration));
   });
 
-  install_deselection();
+  let root_node = Scene::<Web>::with(|scene| scene.create(NodeKind::Box, ROOT));
+
+  with_dom(|dom| dom.root_node = Some(root_node));
 }
 
-/// Keeps a range input's `--skene-slider-fill` at the value's fraction of its span,
-/// painting the filled run on engines without a native progress part.
-fn refresh_slider_fill(input: &HtmlInputElement) {
-  if input.type_() != "range" {
-    return;
-  }
-
-  let number = |raw: String, fallback: f32| raw.parse::<f32>().unwrap_or(fallback);
-  let min = number(input.min(), 0.0);
-  let value = number(input.value(), min);
-  let fraction =
-    skene_core::SliderRange::new(min, number(input.max(), 100.0), 0.0).fraction_of(value);
-
-  if let Some(html) = input.dyn_ref::<HtmlElement>() {
-    let _ = html
-      .style()
-      .set_property("--skene-slider-fill", &format!("{}%", fraction * 100.0));
-  }
-}
-
-/// Collapses the document selection when a primary press lands on unselectable
-/// content: selection is opt-in, but clearing one is not—a click anywhere outside
-/// selectable text deselects, as it would on a plain page. Presses on selectable text
-/// keep the browser's own anchoring, and a `Shift`-press keeps its extension.
-fn install_deselection() {
-  let Some(window) = web_sys::window()
-  else {
-    return;
-  };
-  let Some(document) = window.document()
-  else {
-    return;
-  };
-  let closure = wasm_bindgen::closure::Closure::<dyn Fn(web_sys::PointerEvent)>::new(
-    move |event: web_sys::PointerEvent| {
-      if event.button() != 0 || event.shift_key() {
-        return;
-      }
-
-      let Some(window) = web_sys::window()
-      else {
-        return;
-      };
-      let Ok(Some(selection)) = window.get_selection()
-      else {
-        return;
-      };
-
-      if selection.is_collapsed() {
-        return;
-      }
-
-      let Some(target) = event
-        .target()
-        .and_then(|target| target.dyn_into::<Element>().ok())
-      else {
-        return;
-      };
-      let selectable = window
-        .get_computed_style(&target)
-        .ok()
-        .flatten()
-        .and_then(|style| style.get_property_value("user-select").ok())
-        .is_some_and(|value| value != "none");
-
-      if !selectable {
-        let _ = selection.remove_all_ranges();
-      }
-    },
-  );
-
-  let _ =
-    document.add_event_listener_with_callback("pointerdown", closure.as_ref().unchecked_ref());
-
-  closure.forget();
-}
-
-/// Uninstalls the web platform and resets the reactive runtime and root scope.
+/// Installs the browser leaf for this thread, rooted at `root`: the element every
+/// mounted view is inserted under.
 ///
-/// Lets one thread run many independent mounts, as a test suite does.
-#[cfg(feature = "test")]
-pub fn uninstall() {
-  skene_reactive::Runtime::reset();
-  skene_core::reset_root_owner();
-
-  STATE.with(|state| *state.borrow_mut() = None);
-}
-
-/// The owning [`Document`], for DOM work beyond the other functions (creating text nodes,
-/// running arbitrary DOM APIs).
-#[must_use]
-pub fn document() -> Document {
-  with_state(|state| state.document.clone())
-}
-
-/// Creates a DOM element with the given `tag` as a detached, tree-participating node.
-#[must_use]
-pub fn create_element(tag: &str) -> NodeId {
-  with_state(|state| state.create_element(tag))
-}
-
-/// The DOM element backing `node`, to manipulate directly: set attributes, append children,
-/// or hand it to a JS library.
+/// # Panics
 ///
-/// The raw-handle escape hatch, specific to this platform—not part of the shared
-/// vocabulary, so a portable view reaches for [`set_attribute`] instead.
-#[must_use]
-pub fn element(node: NodeId) -> Element {
-  with_state(|state| state.element(node))
-}
-
-/// Claims a lazy view's server-rendered subtree while hydrating: the markup stays in
-/// place, visible until the real content arrives, and its markers leave the adoption
-/// map. `false` when not hydrating, or when the server rendered nothing there.
-#[must_use]
-pub fn claim_lazy(node: NodeId) -> bool {
-  with_state(|state| state.claim_lazy(node))
-}
-
-/// Removes a claimed lazy view's server-rendered children, as the real content
-/// arrives to take their place.
-pub fn discard_lazy(node: NodeId) {
-  with_state(|state| state.discard_lazy(node));
-}
-
-/// Sets `node`'s `name` attribute to `value`.
-pub fn set_attribute(node: NodeId, name: &str, value: &str) {
-  with_state(|state| {
-    let _ = state.element(node).set_attribute(name, value);
-  });
-}
-
-/// Interns `declarations` as a shared, content-addressed class and assigns it to `node`.
-pub fn set_style(node: NodeId, declarations: &Declarations) {
-  with_state(|state| {
-    state.assign_class(node, &crate::mapping::declarations_template(declarations));
-  });
-}
-
-/// Interns a full rule template as a shared, content-addressed class and assigns it to
-/// `node`.
-pub(crate) fn assign_class(node: NodeId, template: &str) {
-  with_state(|state| state.assign_class(node, template));
-}
-
-/// Applies each of `declarations` as an inline override on `node`, winning over its
-/// interned class.
-pub fn override_style(node: NodeId, declarations: &Declarations) {
-  with_state(|state| state.override_style(node, declarations));
-}
-
-/// Sets a node's text content.
-pub fn set_text(node: NodeId, text: &str) {
-  with_state(|state| state.set_text(node, text));
-}
-
-/// Registers `handler` to run when `node` is clicked (or a descendant's click bubbles to
-/// it), until the node is destroyed.
-pub fn handle_click(node: NodeId, handler: Rc<skene_core::ClickHandler>) {
-  with_state(|state| state.handle_click(node, handler));
-}
-
-/// Registers `handler` to run when the pointer enters `node`, until the node is destroyed.
-pub fn handle_pointer_enter(node: NodeId, handler: Rc<dyn Fn()>) {
-  with_state(|state| state.handle_pointer_enter(node, handler));
-}
-
-/// Registers `handler` to run when the pointer leaves `node`, until the node is destroyed.
-pub fn handle_pointer_leave(node: NodeId, handler: Rc<dyn Fn()>) {
-  with_state(|state| state.handle_pointer_leave(node, handler));
-}
-
-/// Registers `handler` to run when `node` gains focus, until the node is destroyed.
-pub fn handle_focus(node: NodeId, handler: Rc<dyn Fn()>) {
-  with_state(|state| state.handle_focus(node, handler));
-}
-
-/// Registers `handler` to run when `node` loses focus, until the node is destroyed.
-pub fn handle_blur(node: NodeId, handler: Rc<dyn Fn()>) {
-  with_state(|state| state.handle_blur(node, handler));
-}
-
-/// Registers `handler` to run when a key is pressed on `node` or within it, until the
-/// node is destroyed.
-pub fn handle_key_down(node: NodeId, handler: Rc<skene_core::KeyHandler>) {
-  with_state(|state| state.handle_key_down(node, handler));
-}
-
-/// Registers `handler` to run with the new value when text is entered on `node` or an
-/// Registers a delegated committed-change handler on `node`; see
-/// [`State::handle_change`].
-pub fn handle_change(node: NodeId, handler: Rc<dyn Fn(&str)>) {
-  with_state(|state| state.handle_change(node, handler));
-}
-
-/// Registers a delegated pointer-down handler on `node`; see
-/// [`State::handle_pointer_down`].
-pub fn handle_pointer_down(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-  with_state(|state| state.handle_pointer_down(node, handler));
-}
-
-/// Registers a delegated pointer-up handler on `node`; see
-/// [`State::handle_pointer_up`].
-pub fn handle_pointer_up(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-  with_state(|state| state.handle_pointer_up(node, handler));
-}
-
-/// Registers a delegated pointer-move handler on `node`; see
-/// [`State::handle_pointer_move`].
-pub fn handle_pointer_move(node: NodeId, handler: Rc<skene_core::PointerHandler>) {
-  with_state(|state| state.handle_pointer_move(node, handler));
-}
-
-/// Registers a scroll handler on `node`; see [`State::handle_scroll`].
-pub fn handle_scroll(node: NodeId, handler: Rc<dyn Fn(&ScrollEvent)>) {
-  with_state(|state| state.handle_scroll(node, handler));
-}
-
-/// Watches a node's content size; see [`State::observe_size`].
-pub fn observe_size(node: NodeId, handler: Rc<dyn Fn(f32, f32)>) {
-  with_state(|state| state.observe_size(node, handler));
-}
-
-/// Moves keyboard focus to `node`.
-pub fn focus_node(node: NodeId) {
-  with_state(|state| state.focus_node(node));
-}
-
-/// Removes keyboard focus from `node`.
-pub fn blur_node(node: NodeId) {
-  with_state(|state| state.blur_node(node));
-}
-
-/// Registers a delegated toggle handler on `node`; see [`State::handle_toggle`].
-pub fn handle_toggle(node: NodeId, handler: Rc<dyn Fn(bool)>) {
-  with_state(|state| state.handle_toggle(node, handler));
-}
-
-/// Sets the live checked state of a checkbox or radio node.
-pub fn set_checked(node: NodeId, checked: bool) {
-  with_state(|state| state.set_checked(node, checked));
-}
-
-/// Sets the document title.
-pub fn set_document_title(title: &str) {
-  if let Some(document) = web_sys::window().and_then(|window| window.document()) {
-    document.set_title(title);
-  }
-}
-
-/// Adds an element to the document head, unless an identical one is already present
-/// (as after hydrating a server render that registered the same element).
-pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
-  let Some(head) = web_sys::window()
-    .and_then(|window| window.document())
-    .and_then(|document| document.head())
-  else {
-    return;
-  };
-
-  let children = head.children();
-
-  for index in 0..children.length() {
-    let Some(existing) = children.item(index)
-    else {
-      continue;
-    };
-
-    let matches = existing.tag_name().eq_ignore_ascii_case(tag)
-      && attributes
-        .iter()
-        .all(|(name, value)| existing.get_attribute(name).as_deref() == Some(*value));
-
-    if matches {
-      return;
-    }
-  }
-
-  let Some(document) = web_sys::window().and_then(|window| window.document())
-  else {
-    return;
-  };
-
-  let Ok(element) = document.create_element(tag)
-  else {
-    return;
-  };
-
-  for (name, value) in attributes {
-    let _ = element.set_attribute(name, value);
-  }
-
-  let _ = head.append_child(&element);
-}
-
-/// Sets the live value of an input node.
-pub fn set_value(node: NodeId, value: &str) {
-  with_state(|state| state.set_value(node, value));
+/// Panics if it is already installed, or if there is no `window` or `document`.
+pub fn install(root: Element) {
+  install_at(root, false);
 }
 
 /// Builds `view` under the installed root, returning its node.
+///
+/// # Panics
+///
+/// Panics if the driver is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   skene_core::root_owner().enter(|| {
     let node = view();
+    let root = with_dom(|dom| dom.root_node).expect("the root node exists once installed");
 
-    with_state(|state| state.attach_child(ROOT_ID, node, None));
+    Scene::<Web>::with(|scene| scene.attach(root, node, None));
 
     node
   })
 }
 
-/// Hydrates a server-rendered tree under `root`, adopting its existing elements and the `state`
-/// serialized alongside them.
+/// Hydrates a server-rendered tree under `root`, adopting its elements by their
+/// creation-order markers and its anchors by their comments, the server's `<style>`
+/// block in place of a fresh one, and the resource `state` serialized alongside them.
 ///
-/// Builds `app` but, rather than creating DOM nodes, takes over the server-rendered ones in
-/// document order—wiring event listeners and reactive bindings onto them—so the markup is
-/// reused in place, with no rebuild and no flash. Critical resources adopt their server value
-/// from `state` (as produced by `render_to_string`) instead of loading again. The build must
-/// produce the same structure the server did.
+/// A native element whose live value or checked state differs from the serialized one
+/// reports the difference through the control's change or toggle path once the tree
+/// is built. Every mismatch is reported to the console and counted in
+/// [`hydration_mismatches`].
 ///
 /// # Panics
 ///
-/// Panics if the platform is already installed for this thread.
+/// Panics if the driver is already installed for this thread.
 pub fn hydrate<V, F>(root: Element, state: &str, app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: IntoView<Web>,
 {
-  skene_reactive::Runtime::init_on_ui_thread();
+  install_at(root, true);
+  crate::hydration::stage(state);
+  let _ = mount(|| app().into_view().build());
 
-  STATE.with(|state| {
-    let mut state = state.borrow_mut();
+  let pending = with_dom(Dom::finish_hydration);
 
-    assert!(
-      state.is_none(),
-      "the web platform is already installed for this thread",
-    );
+  for (sink, pending) in pending {
+    let Some(node) = with_dom(|dom| dom.node(sink).and_then(|node| node.id))
+    else {
+      continue;
+    };
 
-    *state = Some(State::new(root));
-  });
-
-  NEXT_SLOT.set(0);
-
-  {
-    use skene_reactive::Set;
-
-    SETTLED.with(|settled| settled.set(false));
-  }
-
-  let (ordered, tagged) = crate::hydration::decode_state(state);
-
-  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
-  TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
-
-  with_state(State::seed_hydration);
-
-  mount(|| app().into_view().build());
-
-  with_state(State::finish_hydration);
-
-  // The client owns the page now: a view that rendered its scriptless form rebuilds
-  // into the enhanced one, in a tree whose ids are no longer being matched.
-  {
-    use skene_reactive::Set;
-
-    SETTLED.with(|settled| settled.set(true));
+    match pending {
+      Pending::Toggle(checked) => notify_toggle::<Web>(node, checked),
+      Pending::Change(value) => notify_change::<Web>(node, &value),
+    }
   }
 }
 
-/// Hydrates the server-rendered page: adopts `<body>` and reads the state script embedded by
-/// the server's page assembly, so the client takes over without a rebuild.
+/// How many nodes the last hydration failed to adopt: server nodes the client built
+/// differently, and server nodes the client never built.
+#[must_use]
+pub fn hydration_mismatches() -> u32 {
+  with_dom(|dom| dom.mismatches)
+}
+
+/// Hydrates the server-rendered page: adopts `<body>` and reads the state script the
+/// server's page assembly embedded.
 ///
 /// # Panics
 ///
-/// Panics if there is no `window`, `document`, or `<body>` (i.e. not running in a browser).
+/// Panics if there is no `window`, `document` or `<body>`.
 pub fn hydrate_page<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: IntoView<Web>,
 {
   console_error_panic_hook::set_once();
 
@@ -1513,39 +1282,34 @@ where
     .expect("a window")
     .document()
     .expect("a document");
-
   let body = document.body().expect("a body");
   let state = document
-    .get_element_by_id(crate::STATE_SCRIPT_ID)
+    .get_element_by_id(STATE_SCRIPT_ID)
     .and_then(|script| script.text_content())
     .unwrap_or_default();
 
   hydrate(body.into(), &state, app);
 }
 
-/// Mounts and runs a skene application in the browser.
+/// Mounts and runs a skene application in the browser, rooted at `<body>`.
 ///
-/// Installs the web platform rooted at `<body>` and builds `app` under it. The reactive
-/// runtime, event listeners and view tree are kept alive for the lifetime of the page.
-///
-/// A server-rendered page—recognized by its embedded state script—is adopted in place
-/// instead of rebuilt, as [`hydrate_page`] does: a statically generated page carries
-/// its content as plain markup and this entry enhances it.
+/// A server-rendered page, recognized by its embedded state script, is adopted in
+/// place as [`hydrate_page`] does.
 ///
 /// # Panics
 ///
-/// Panics if there is no `window`, `document` or `<body>` (i.e. not running in a browser).
+/// Panics if there is no `window`, `document` or `<body>`.
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: IntoView<Web>,
 {
   let document = web_sys::window()
     .expect("a window")
     .document()
     .expect("a document");
 
-  if document.get_element_by_id(crate::STATE_SCRIPT_ID).is_some() {
+  if document.get_element_by_id(STATE_SCRIPT_ID).is_some() {
     hydrate_page(app);
 
     return;
@@ -1558,83 +1322,157 @@ where
   let body = document.body().expect("a body");
 
   install(body.into());
-  mount(|| app().into_view().build());
+
+  let _ = mount(|| app().into_view().build());
 }
 
-/// The portable payload of a DOM pointer event, with local coordinates relative to the
-/// handling `element`.
-fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
-  let rect = element.get_bounding_client_rect();
+/// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
+/// handlers are the scene's, returned detached.
+pub fn create_link(href: &str) -> NodeId {
+  let sink = with_dom(|dom| {
+    let sink = dom.create_element("a", Realized::Box);
 
-  #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-  PointerEvent {
-    x: pointer.client_x() as f32,
-    y: pointer.client_y() as f32,
-    local_x: pointer.client_x() as f32 - rect.left() as f32,
-    local_y: pointer.client_y() as f32 - rect.top() as f32,
-    button: match pointer.button() {
-      0 => Some(PointerButton::Primary),
-      1 => Some(PointerButton::Auxiliary),
-      2 => Some(PointerButton::Secondary),
-      _ => None,
-    },
-    modifiers: Modifiers {
-      ctrl: pointer.ctrl_key(),
-      shift: pointer.shift_key(),
-      alt: pointer.alt_key(),
-      meta: pointer.meta_key(),
-    },
-  }
+    if let Some(element) = dom.node(sink).and_then(Node::element) {
+      let _ = element.set_attribute("href", href);
+    }
+
+    sink
+  });
+
+  Scene::<Web>::with(|scene| scene.create(NodeKind::Box, sink))
 }
 
-/// The current value of the control an event targets, whichever control kind it is.
-fn element_value(event: &web_sys::Event) -> Option<String> {
-  let target = event.target()?;
+/// The DOM nodes between the anchors of the segment `start` begins, in order.
+fn segment_dom(start: NodeId) -> Vec<web_sys::Node> {
+  let Some((start, end)) = Scene::<Web>::with(|scene| {
+    let end = scene.segment_end(start)?;
 
-  if let Some(input) = target.dyn_ref::<HtmlInputElement>() {
-    return Some(input.value());
-  }
-
-  if let Some(area) = target.dyn_ref::<HtmlTextAreaElement>() {
-    return Some(area.value());
-  }
-
-  if let Some(select) = target.dyn_ref::<HtmlSelectElement>() {
-    return Some(select.value());
-  }
-
-  None
-}
-
-/// Positions an open popup against its anchor: below it for `Bottom`, above it for
-/// `Top`, start-aligned either way; other placements keep their viewport position.
-fn position_at_anchor(popup: &HtmlElement, anchor: &Element, placement: Placement) {
-  let rect = anchor.get_bounding_client_rect();
-  let style = popup.style();
-  let top = match placement {
-    Placement::Top => rect.top() - f64::from(popup.offset_height()),
-    Placement::Bottom => rect.bottom(),
-    _ => return,
+    Some((scene.sink(start)?, scene.sink(end)?))
+  })
+  else {
+    return Vec::new();
   };
 
-  let _ = style.set_property("inset", "auto");
-  let _ = style.set_property("margin", "0");
-  let _ = style.set_property("position", "fixed");
-  let _ = style.set_property("left", &format!("{}px", rect.left()));
-  let _ = style.set_property("top", &format!("{top}px"));
+  with_dom(|dom| {
+    let (Some(start), Some(end)) = (
+      dom.node(start).map(|node| node.dom.clone()),
+      dom.node(end).map(|node| node.dom.clone()),
+    )
+    else {
+      return Vec::new();
+    };
+    let mut between = Vec::new();
+    let mut current = start.next_sibling();
+
+    while let Some(node) = current {
+      if node == end {
+        break;
+      }
+
+      current = node.next_sibling();
+
+      between.push(node);
+    }
+
+    between
+  })
 }
 
-/// Records an overlay's realization config; see [`State::register_overlay`].
-pub fn register_overlay(node: NodeId, modal: bool, placement: Placement) {
-  with_state(|state| state.register_overlay(node, modal, placement));
+/// Claims the server's markup between the anchors of the segment `start` begins, so it
+/// stays in place and counts as adopted while the segment's real content is on its
+/// way; `false` when not hydrating or when the server rendered nothing there.
+#[must_use]
+pub fn claim_lazy(start: NodeId) -> bool {
+  let between = segment_dom(start);
+
+  if between.is_empty() {
+    return false;
+  }
+
+  with_dom(|dom| {
+    let Some(hydration) = dom.hydration.as_mut()
+    else {
+      return false;
+    };
+    let mut claimed = false;
+
+    for node in between {
+      let mut pending = vec![node];
+
+      while let Some(node) = pending.pop() {
+        if node.node_type() == COMMENT_NODE {
+          hydration
+            .comments
+            .remove(&node.node_value().unwrap_or_default());
+          claimed = true;
+
+          continue;
+        }
+
+        if let Some(element) = node.dyn_ref::<Element>() {
+          if let Some(marker) = element
+            .get_attribute(MARKER_ATTRIBUTE)
+            .and_then(|value| value.parse::<u32>().ok())
+          {
+            hydration.elements.remove(&marker);
+            claimed = true;
+          }
+
+          let children = node.child_nodes();
+
+          for index in 0..children.length() {
+            if let Some(child) = children.item(index) {
+              pending.push(child);
+            }
+          }
+        }
+      }
+    }
+
+    claimed
+  })
 }
 
-/// Opens or closes an overlay; see [`State::set_overlay_open`].
-pub fn set_overlay_open(node: NodeId, open: bool, anchor: Option<NodeId>) {
-  with_state(|state| state.set_overlay_open(node, open, anchor));
+/// Removes the claimed markup between the anchors of the segment `start` begins, as
+/// the segment's real content arrives to take its place.
+pub fn discard_lazy(start: NodeId) {
+  for node in segment_dom(start) {
+    if let Some(parent) = node.parent_node() {
+      let _ = parent.remove_child(&node);
+    }
+  }
 }
 
-/// Registers an overlay dismiss handler; see [`State::handle_overlay_dismiss`].
-pub fn handle_overlay_dismiss(node: NodeId, handler: Rc<dyn Fn()>) {
-  with_state(|state| state.handle_overlay_dismiss(node, handler));
+/// The owning [`Document`].
+#[must_use]
+pub fn document() -> Document {
+  with_dom(|dom| dom.document.clone())
+}
+
+/// The element realizing `node`; `None` for an anchor or a node no longer live.
+#[must_use]
+pub fn element(node: NodeId) -> Option<Element> {
+  let sink = Scene::<Web>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
+
+  with_dom(|dom| dom.node(sink).and_then(Node::element).cloned())
+}
+
+/// Uninstalls the browser leaf: removes its stylesheet and listeners, empties the
+/// scene and resets the reactive runtime, so one thread can run many independent
+/// mounts.
+#[cfg(feature = "test")]
+pub fn uninstall() {
+  DOM.with(|dom| {
+    if let Some(mut dom) = dom.borrow_mut().take() {
+      dom.sheet.remove_all();
+
+      if let Some((observer, _)) = &dom.resize {
+        observer.disconnect();
+      }
+    }
+  });
+  media::reset();
+  Scene::<Web>::with(|scene| *scene = Scene::new());
+  skene_reactive::Runtime::reset();
+  skene_core::reset_root_owner();
 }

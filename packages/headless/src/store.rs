@@ -4,23 +4,21 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  BoxProps,
+  BoxValue,
   ColorScheme,
+  ContainerName,
+  ContainerSizes,
+  ControlProps,
+  ControlState,
+  Definitions,
+  EventKind,
+  MediaSignals,
+  OverlayProps,
+  RunProps,
+  RunValue,
   Size,
-  next::{
-    BoxProps,
-    BoxValue,
-    ContainerName,
-    ContainerSizes,
-    ControlProps,
-    ControlState,
-    Definitions,
-    EventKind,
-    MediaSignals,
-    OverlayProps,
-    RunProps,
-    RunValue,
-    Slot,
-  },
+  Slot,
 };
 use skene_reactive::{Owner, WriteSignal, signal};
 

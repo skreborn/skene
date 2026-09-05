@@ -1,6 +1,6 @@
 //! The glyphs terminal controls draw with, as a token set.
 
-use skene_core::next::{TokenName, TokenRef, TokenSet};
+use skene_core::{TokenName, TokenRef, TokenSet};
 
 use crate::{Definition, Token};
 

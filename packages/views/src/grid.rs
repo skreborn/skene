@@ -2,25 +2,23 @@
 
 use skene_core::{
   Alignment,
+  AnyKind,
   Arrangement,
+  Children,
+  Condition,
+  DeclaredBoxStyle,
+  Driver,
+  GridChild,
   GridFlow,
   GridTrack,
+  HasChildren,
   Inset,
   Layout,
+  NodeId,
+  Seal,
   Spacing,
-  next::{
-    AnyKind,
-    Children,
-    Condition,
-    DeclaredBoxStyle,
-    Driver,
-    GridChild,
-    HasChildren,
-    NodeId,
-    Seal,
-    Value,
-    View,
-  },
+  Value,
+  View,
 };
 
 use crate::{LayoutBox, macros::properties};

@@ -30,7 +30,7 @@ type Sink = Rc<RefCell<Option<Box<dyn Fn(&str)>>>>;
 
 /// The current route as reactive state.
 ///
-/// Cheap to clone and thread through the reactive [`Context`]
+/// Cheap to clone and thread through the reactive context
 /// ([`provide`](Self::provide) / [`get`](Self::get)), so any view can read or navigate.
 #[must_use]
 pub struct Router<R: Route> {

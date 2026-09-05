@@ -17,11 +17,7 @@ use skene_gui::{
   ThemedIn,
   Typography,
   View,
-  core::{
-    Color,
-    ColorScheme,
-    next::{Media, NoProperty, Property, PropertyKey, StaticLeaf},
-  },
+  core::{Color, ColorScheme, Media, NoProperty, Property, PropertyKey, StaticLeaf},
   headless::{children, reset, resolve_color, text, trigger_click},
   media,
   prelude::{Get, Owner, Set, Signal, Update},

@@ -1,11 +1,6 @@
 //! A button's behavior.
 
-use skene_core::{
-  KeyEvent,
-  Prevent,
-  Role,
-  next::{ControlKind, Driver, EventKind},
-};
+use skene_core::{ControlKind, Driver, EventKind, KeyEvent, Prevent, Role};
 
 use super::{Behavior, ControlHandle};
 

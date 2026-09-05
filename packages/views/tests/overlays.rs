@@ -9,12 +9,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_core::{
-  Color,
-  FocusOrder,
-  Placement,
-  next::{EventKind, HasChildren, View},
-};
+use skene_core::{Color, EventKind, FocusOrder, HasChildren, Placement, View};
 use skene_headless::{
   Headless,
   children,

@@ -242,10 +242,13 @@
   event loop may ship a loop-integrated timer.)
 
 > **Transition.** The redesign to one spine and thin facades is in flight; `ROADMAP.md`
-> records which of its nine phases has landed. Until phase 3 the facades still build on
-> the flat `skene-core` exports (`BoxProps`, `Condition`, `Adaptive`, `TreeOps`,
-> `skene-record`) and the new model lives beside them under `skene_core::next`. New work
-> follows the target described here and in `DESIGN.md`.
+> records which of its nine phases has landed. Both facades build on the spine described
+> here: the flat `skene-core` exports are the new model, the transitional
+> `skene_core::next`, `skene_web::next` and `skene_simple::next` namespaces are flattened
+> into their crate roots, and the old vocabulary they sat beside (`BoxProps` over
+> `BoxStyle` blobs, `Adaptive`, `TreeOps`, the free-function web vocabulary,
+> `skene-record`) is gone. New work follows the target described here and in
+> `DESIGN.md`.
 
 ## Style and documentation conventions
 

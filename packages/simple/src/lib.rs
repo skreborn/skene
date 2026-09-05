@@ -1,19 +1,38 @@
 //! # skene-simple
 //!
-//! The Simple component library's shared design language: the palette and the emphasis
-//! variants, expressed over the platform-agnostic color vocabulary and generic over the
-//! condition vocabulary each facade owns. Each facade builds its own `Simple*` views
-//! over its raw controls and imports this crate for the colors, so the GUI and the
-//! terminal read as one design wherever the medium allows.
+//! The Simple component library built once over [`skene_views`], generic over the
+//! [`Driver`](skene_views::Driver) a facade names: one palette, one shape language, and
+//! every `Simple*` view composed from the public views alone, so a third-party library
+//! sits on the same footing.
 //!
-//! A palette is data—a struct of [`Token`](skene_core::Token)s—and this crate holds no
-//! machinery a third-party component library could not write for its own palette type.
-//!
-//! [`next`] is the library rebuilt over the generic views: the palette as a token set
-//! and every `Simple*` view once, generic over the driver a facade names. It replaces
-//! the flat exports once the facades build on the generic views.
+//! [`SimplePalette`] is a token set: `Theme::new(SimplePalette::default())` defines it
+//! beneath the theme, every Simple view references its tokens by name, and a Simple
+//! view with no theme above defines the default at the root. The palette also defines
+//! the views' typography tokens, so a plain text under a Simple theme is inked in the
+//! palette's foreground. Corners round where the medium has a
+//! [`CornerRadius`](skene_views::CornerRadius) and stay square where it has none, and
+//! the lengths come from the [`SimpleShape`] of the medium's unit.
 
-pub mod next;
+mod button;
+mod card;
+mod checkbox;
 mod palette;
+mod picker;
+mod radio;
+mod shape;
+mod slider;
+mod text_editor;
+mod text_field;
 
-pub use self::palette::{SimpleLook, SimplePalette, SimpleVariant};
+pub use self::{
+  button::SimpleButton,
+  card::SimpleCard,
+  checkbox::SimpleCheckbox,
+  palette::{SimpleLook, SimplePalette, SimpleVariant},
+  picker::SimplePicker,
+  radio::{SimpleRadio, SimpleRadioGroup},
+  shape::{SimpleShape, SimpleUnit},
+  slider::SimpleSlider,
+  text_editor::SimpleTextEditor,
+  text_field::SimpleTextField,
+};

@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
-use skene_core::next::{Driver, NodeId};
+use skene_core::{Driver, NodeId};
 
 use crate::realize::with_sink;
 

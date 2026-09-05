@@ -3,22 +3,20 @@
 use std::{marker::PhantomData, rc::Rc};
 
 use skene_core::{
+  Annotation,
+  AnyView,
+  Condition,
   Dimension,
+  Driver,
   Inset,
-  next::{
-    Annotation,
-    AnyView,
-    Condition,
-    Driver,
-    IntoChildOf,
-    IntoView,
-    Leaf,
-    NoChild,
-    Scene,
-    StackChild,
-    Value,
-    View,
-  },
+  IntoChildOf,
+  IntoView,
+  Leaf,
+  NoChild,
+  Scene,
+  StackChild,
+  Value,
+  View,
 };
 
 /// Pins the child it wraps against the edges of a [`Stack`](crate::Stack), out of

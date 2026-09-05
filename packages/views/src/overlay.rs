@@ -3,25 +3,23 @@
 use std::rc::Rc;
 
 use skene_core::{
+  AnyKind,
+  AnyView,
   Color,
+  DeclaredBoxStyle,
+  Driver,
+  HasChildren,
+  IntoView,
   Layout,
+  NoChild,
+  NodeId,
+  NodeKind,
+  OverlayProps,
   Placement,
-  next::{
-    AnyKind,
-    AnyView,
-    DeclaredBoxStyle,
-    Driver,
-    HasChildren,
-    IntoView,
-    NoChild,
-    NodeId,
-    NodeKind,
-    OverlayProps,
-    PlainChild,
-    PlainHandler,
-    Scene,
-    View,
-  },
+  PlainChild,
+  PlainHandler,
+  Scene,
+  View,
 };
 use skene_reactive::{Effect, Get, Set, Signal, untrack};
 

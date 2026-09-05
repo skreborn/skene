@@ -2,10 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{
-  Role,
-  next::{ChangeHandler, ControlKind, Driver, EventKind},
-};
+use skene_core::{ChangeHandler, ControlKind, Driver, EventKind, Role};
 use skene_reactive::{Effect, Get, Set, Signal};
 
 use super::{Behavior, ControlHandle};

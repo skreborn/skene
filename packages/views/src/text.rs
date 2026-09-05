@@ -1,11 +1,6 @@
 //! A text run on its own line.
 
-use skene_core::{
-  Color,
-  LinkPolicy,
-  RunDisplay,
-  next::{AnyKind, DeclaredRunStyle, Driver, NodeId, View},
-};
+use skene_core::{AnyKind, Color, DeclaredRunStyle, Driver, LinkPolicy, NodeId, RunDisplay, View};
 
 use crate::{
   macros::{properties, run_type_metrics},

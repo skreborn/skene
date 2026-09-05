@@ -15,7 +15,7 @@ use skene_gui::{
   derived,
   reactive::Owner,
   wasm_bindgen::JsValue,
-  web::next::{self as web, mount},
+  web::{self, mount},
 };
 use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};

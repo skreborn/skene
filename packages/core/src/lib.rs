@@ -1,42 +1,97 @@
-//! The shared foundation.
+//! The spine: the scene, the driver seam, event dispatch, composition, and the
+//! property, condition, expression and token model.
+//!
+//! Core owns the retained tree: a [`Scene`] of [`NodeRecord`]s addressed by generational
+//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Driver`] a facade
+//! names. Dispatch ([`dispatch_click`] and its kin) climbs that tree once for every
+//! driver. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
+//! [`Show`]) mounts between a segment's anchors, and a container's [`Children`] is a
+//! list of such segments.
+//!
+//! A property's value is a [`Value`]: a [`Leaf`]—fixed, a token reference, an expression,
+//! or derived from signals—under conditions ([`Condition`]) that pick a variant. A
+//! [`Token`]'s [`Definition`] is the same shape without the derived leaf and with only
+//! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
+//! holds one field per property in a [`Shape`]: what a builder collects, what a driver
+//! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
+//! in and the [`StyleExtension`] holding the properties only its medium has;
+//! [`PixelExt`] is the extension the pixel media share. A style's [`Fingerprint`] keys
+//! what a driver compiled from it. Motion ([`Transition`], [`Animation`]) is data every
+//! driver compiles or runs, and the universal values ([`Color`], the geometry, the
+//! layout vocabulary) are what every medium's properties are made of.
 
+mod border;
 mod boundary;
+mod box_style;
 mod children;
+mod composable;
 mod condition;
 mod control;
+mod derived;
+mod dispatch;
+mod driver;
 mod errors;
 mod events;
-pub mod next;
+mod expr;
+mod extension;
+mod fingerprint;
+mod leaf;
+mod motion;
 mod node;
+mod pixel;
+mod property;
 mod props;
-mod reconcile;
 mod reorder;
+mod run_style;
 mod runtime;
-mod source;
-mod style;
-mod suspense;
+mod scalar;
+mod scene;
+mod shape;
+mod show;
 mod task;
-mod transition;
-mod tree;
+#[cfg(test)]
+mod testing;
+mod token;
 mod values;
 mod view;
 mod window;
 
+pub use border::Border;
 pub use boundary::Boundary;
-pub use children::{
-  Children,
-  FlexChild,
-  GridChild,
-  HasChildren,
-  IntoChildOf,
-  IntoChildren,
-  NoChild,
-  PlainChild,
-  StackChild,
+pub use box_style::{
+  BoxDynamics,
+  BoxField,
+  BoxFieldVisitor,
+  BoxSlot,
+  BoxStyle,
+  BoxValue,
+  BoxVisitor,
+  BoxVisitorMut,
+  IntoBoxValue,
+  box_fields,
 };
-pub use condition::{Composable, ConditionShape};
-pub use control::{Ring, Roster, SliderRange};
-pub use errors::{ErrorBoundary, Errors};
+pub use children::{Children, HasChildren, IntoChildren, Seal};
+pub use composable::{Composable, ConditionShape};
+pub use condition::{Condition, ContainerName, ContainerQuery, Media, MediaEnv, State};
+pub use control::{ControlKind, ControlProps, ControlState, Part, Ring, SliderRange};
+pub use derived::{derived, empty, reconcile};
+pub use dispatch::{
+  dispatch_click,
+  dispatch_key_down,
+  dispatch_pointer_down,
+  dispatch_pointer_move,
+  dispatch_pointer_up,
+  notify_blur,
+  notify_change,
+  notify_dismiss,
+  notify_focus,
+  notify_pointer_enter,
+  notify_pointer_leave,
+  notify_scroll,
+  notify_toggle,
+};
+pub use driver::Driver;
+pub use errors::Errors;
 pub use events::{
   Bubbling,
   ClickHandler,
@@ -50,41 +105,73 @@ pub use events::{
   Prevented,
   ScrollEvent,
 };
-pub use node::NodeId;
-pub use props::{
-  AccessProp,
-  BoxProp,
-  BoxProps,
-  BoxStyle,
-  ButtonProps,
-  CheckboxProps,
-  ControlProps,
-  OverlayProps,
-  PickerOption,
-  PickerProps,
-  RadioProps,
-  RunDisplay,
-  RunProp,
-  RunProps,
-  RunStyle,
-  SliderProps,
-  TextEditorProps,
-  TextFieldProps,
+pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
+pub use extension::{NoProperty, NoValue, StyleExtension};
+pub use fingerprint::Fingerprint;
+pub use leaf::{
+  Conditional,
+  Definition,
+  DerivedSlot,
+  DriverLeaf,
+  Leaf,
+  Slot,
+  StaticLeaf,
+  StaticValue,
+  Value,
+  When,
 };
-pub use reconcile::{DerivedView, derived, empty, reconcile};
+pub use motion::{Animation, Easing, StyleProperty, Transition};
+pub use node::NodeId;
+pub use pixel::{PixelBoxFields, PixelExt, PixelProperty, PixelRunFields, pixel_fields};
+pub use property::{Property, PropertyKey, PropertyName};
+pub use props::{
+  BoxProps,
+  ContainerSizes,
+  DeclaredBoxStyle,
+  DeclaredRunStyle,
+  EventKind,
+  MediaSignals,
+  OverlayProps,
+  RunProps,
+  StaticBoxStyle,
+  StaticRunStyle,
+};
 pub use reorder::Reorder;
+pub use run_style::{
+  IntoRunValue,
+  RunDynamics,
+  RunField,
+  RunFieldVisitor,
+  RunSlot,
+  RunStyle,
+  RunValue,
+  RunVisitor,
+  RunVisitorMut,
+  run_fields,
+};
 pub use runtime::{reset_root_owner, root_owner};
-pub use source::Source;
-pub use style::{Adaptive, Animation, Condition, Easing, StyleProperty, Token, Transition};
-pub use suspense::Suspense;
+pub use scalar::Scalar;
+pub use scene::{
+  Annotated,
+  Annotation,
+  ChangeHandler,
+  HandlerSet,
+  NodeKind,
+  NodeRecord,
+  PlainHandler,
+  Scene,
+  ScrollHandler,
+  ToggleHandler,
+};
+pub use shape::{Declared, Plain, Shape, Static};
+pub use show::Show;
 pub use task::scope_bound;
-pub use transition::transition;
-pub use tree::TreeOps;
+pub use token::{Definitions, IntoTokenValue, Themed, Token, TokenName, TokenRef, TokenSet};
 pub use values::{
+  AccessProp,
   Alignment,
   Arrangement,
   Axis,
-  Border,
   Color,
   ColorScheme,
   Dimension,
@@ -106,11 +193,23 @@ pub use values::{
   Point,
   Rect,
   Role,
+  RunDisplay,
   Size,
   Spacing,
   Toggle,
   TrackLimit,
   Wrap,
 };
-pub use view::{AnyView, IntoView, View};
+pub use view::{
+  AnyKind,
+  AnyView,
+  FlexChild,
+  GridChild,
+  IntoChildOf,
+  IntoView,
+  NoChild,
+  PlainChild,
+  StackChild,
+  View,
+};
 pub use window::{ItemWindow, item_window};

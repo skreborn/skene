@@ -24,6 +24,7 @@ use skene_gui::{
   When,
   core::{
     Animation,
+    BoxStyle,
     Color,
     Dimension,
     Easing,
@@ -31,11 +32,12 @@ use skene_gui::{
     ItemAlignment,
     Line,
     Overflow,
+    Plain,
+    StaticLeaf,
     StyleProperty,
     TrackLimit,
     Transition,
     Wrap,
-    next::{BoxStyle, Plain, StaticLeaf},
   },
   render_to_string,
 };

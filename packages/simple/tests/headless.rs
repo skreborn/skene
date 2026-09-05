@@ -3,28 +3,26 @@
 //! third-party palette works under the same theme.
 
 use skene_core::{
+  Border,
+  BoxValue,
   Color,
   ColorScheme,
   Dimension,
+  HasChildren,
   KeyEvent,
+  Media,
   Modifiers,
-  next::{
-    Border,
-    BoxValue,
-    HasChildren,
-    Media,
-    NoProperty,
-    Part,
-    Property,
-    PropertyKey,
-    Slot,
-    StaticLeaf,
-    Token,
-    TokenName,
-    TokenRef,
-    TokenSet,
-    View,
-  },
+  NoProperty,
+  Part,
+  Property,
+  PropertyKey,
+  Slot,
+  StaticLeaf,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenSet,
+  View,
 };
 use skene_headless::{
   Headless,
@@ -51,19 +49,19 @@ use skene_headless::{
   trigger_key_down,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
-use skene_simple::next::SimpleVariant;
+use skene_simple::SimpleVariant;
 use skene_views::ThemedIn;
 
-type SimplePalette = skene_simple::next::SimplePalette<f32>;
-type SimpleButton = skene_simple::next::SimpleButton<Headless>;
-type SimpleCard = skene_simple::next::SimpleCard<Headless>;
-type SimpleCheckbox = skene_simple::next::SimpleCheckbox<Headless>;
-type SimpleRadioGroup = skene_simple::next::SimpleRadioGroup<Headless>;
-type SimpleRadio = skene_simple::next::SimpleRadio<Headless>;
-type SimpleSlider = skene_simple::next::SimpleSlider<Headless>;
-type SimpleTextField = skene_simple::next::SimpleTextField<Headless>;
-type SimpleTextEditor = skene_simple::next::SimpleTextEditor<Headless>;
-type SimplePicker = skene_simple::next::SimplePicker<Headless>;
+type SimplePalette = skene_simple::SimplePalette<f32>;
+type SimpleButton = skene_simple::SimpleButton<Headless>;
+type SimpleCard = skene_simple::SimpleCard<Headless>;
+type SimpleCheckbox = skene_simple::SimpleCheckbox<Headless>;
+type SimpleRadioGroup = skene_simple::SimpleRadioGroup<Headless>;
+type SimpleRadio = skene_simple::SimpleRadio<Headless>;
+type SimpleSlider = skene_simple::SimpleSlider<Headless>;
+type SimpleTextField = skene_simple::SimpleTextField<Headless>;
+type SimpleTextEditor = skene_simple::SimpleTextEditor<Headless>;
+type SimplePicker = skene_simple::SimplePicker<Headless>;
 type Container = skene_views::Container<Headless>;
 type Column = skene_views::Column<Headless>;
 type Text = skene_views::Text<Headless>;
@@ -105,7 +103,7 @@ fn dark(token: &Token<Color, f32>) -> Color {
 fn themed<V: View<Headless>>(
   owner: Owner,
   view: impl FnOnce() -> V + 'static,
-) -> skene_core::next::NodeId {
+) -> skene_core::NodeId {
   let theme = owner.enter(|| {
     Theme::new(SimplePalette::default())
       .set_child_builder(view)

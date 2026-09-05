@@ -2,12 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{
-  Modifiers,
-  PointerEvent,
-  Prevent,
-  next::{AnyKind, IntoView, NodeId, Scene, View},
-};
+use skene_core::{AnyKind, IntoView, Modifiers, NodeId, PointerEvent, Prevent, Scene, View};
 use skene_router::{Route, Router};
 
 use crate::ActiveDriver;
@@ -47,7 +42,7 @@ impl<R: Route> AnyKind for Link<R> {}
 
 impl<R: Route> View<ActiveDriver> for Link<R> {
   fn build(self) -> NodeId {
-    let node = skene_web::next::create_link(&self.route.to_path());
+    let node = skene_web::create_link(&self.route.to_path());
 
     if let Some(child) = self.child {
       let child = child();

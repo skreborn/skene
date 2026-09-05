@@ -5,19 +5,17 @@
 
 use skene_core::{
   Color,
+  Length,
+  Media,
+  NoProperty,
+  NodeId,
+  Property,
+  PropertyKey,
   Spacing,
-  next::{
-    Length,
-    Media,
-    NoProperty,
-    NodeId,
-    Property,
-    PropertyKey,
-    Token,
-    TokenName,
-    TokenRef,
-    TokenSet,
-  },
+  Token,
+  TokenName,
+  TokenRef,
+  TokenSet,
 };
 use skene_headless::{HeadlessTokenValue, children};
 use skene_views::typography;

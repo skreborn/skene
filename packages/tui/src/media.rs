@@ -9,10 +9,7 @@
 //! [`derive_scheme`] tell the driver which scheme paints, touching no node, and `None`
 //! returns to following the detected background.
 
-use skene_core::{
-  ColorScheme,
-  next::{ContainerName, Driver, MediaEnv},
-};
+use skene_core::{ColorScheme, ContainerName, Driver, MediaEnv};
 use skene_reactive::{Effect, Get, Memo, ReadSignal, Set};
 
 use crate::{ActiveDriver, Media, Size, with_store};

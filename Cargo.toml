@@ -18,7 +18,6 @@ skene-core = { path = "packages/core", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
-skene-record = { path = "packages/record", version = "0.1.0" }
 skene-router = { path = "packages/router", version = "0.1.0" }
 skene-runner = { path = "packages/runner", version = "0.1.0" }
 skene-simple = { path = "packages/simple", version = "0.1.0" }

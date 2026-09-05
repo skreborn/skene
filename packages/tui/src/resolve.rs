@@ -3,41 +3,39 @@
 //! through tokens, expressions and slots to a plain value.
 
 use skene_core::{
+  Annotation,
+  BoxField,
+  BoxFieldVisitor,
+  BoxStyle,
+  BoxValue,
   Color,
   ColorScheme,
+  Condition,
+  Conditional,
+  ContainerName,
   Dimension,
+  DriverLeaf,
+  ExprEnv,
+  ExprNode,
+  ExprValue,
+  IntoBoxValue,
+  IntoRunValue,
+  Leaf,
+  Media,
+  MediaEnv,
+  NodeId,
+  RunField,
+  RunFieldVisitor,
+  RunStyle,
+  Scalar,
+  Scene,
   Size,
-  next::{
-    Annotation,
-    BoxField,
-    BoxFieldVisitor,
-    BoxStyle,
-    BoxValue,
-    Condition,
-    Conditional,
-    ContainerName,
-    DriverLeaf,
-    ExprEnv,
-    ExprNode,
-    ExprValue,
-    IntoBoxValue,
-    IntoRunValue,
-    Leaf,
-    Media,
-    MediaEnv,
-    NodeId,
-    RunField,
-    RunFieldVisitor,
-    RunStyle,
-    Scalar,
-    Scene,
-    Slot,
-    State,
-    StaticLeaf,
-    StaticValue,
-    TokenName,
-    Value,
-  },
+  Slot,
+  State,
+  StaticLeaf,
+  StaticValue,
+  TokenName,
+  Value,
 };
 use skene_reactive::untrack;
 
@@ -75,10 +73,10 @@ impl Resolved {
     }
   }
 
-  fn into_run_value(self) -> Option<skene_core::next::RunValue<TerminalExt>> {
+  fn into_run_value(self) -> Option<skene_core::RunValue<TerminalExt>> {
     match self {
-      Self::Color(color) => Some(skene_core::next::RunValue::Color(color)),
-      Self::Number(number) => Some(skene_core::next::RunValue::Extension(TerminalValue::Bold(
+      Self::Color(color) => Some(skene_core::RunValue::Color(color)),
+      Self::Number(number) => Some(skene_core::RunValue::Extension(TerminalValue::Bold(
         number >= BOLD_WEIGHT,
       ))),
       Self::Dimension(_) | Self::Text(_) => None,
@@ -373,9 +371,7 @@ impl<'a> Env<'a> {
       target: PlainBox::default(),
     };
 
-    BoxStyle::<u32, skene_core::next::Static<Condition<u32>>, TerminalExt>::for_each_field(
-      &mut visitor,
-    );
+    BoxStyle::<u32, skene_core::Static<Condition<u32>>, TerminalExt>::for_each_field(&mut visitor);
 
     let mut style = visitor.target;
 
@@ -406,7 +402,7 @@ impl<'a> Env<'a> {
       target: PlainRun::default(),
     };
 
-    RunStyle::<skene_core::next::Static<Condition<u32>>, TerminalExt>::for_each_field(&mut visitor);
+    RunStyle::<skene_core::Static<Condition<u32>>, TerminalExt>::for_each_field(&mut visitor);
 
     let mut style = visitor.target;
 
@@ -449,7 +445,7 @@ impl From<String> for Resolved {
 /// Resolves every box property of the source into the target.
 struct ResolveBox<'a, 'e> {
   env: &'a Env<'e>,
-  source: &'a BoxStyle<u32, skene_core::next::Static<Condition<u32>>, TerminalExt>,
+  source: &'a BoxStyle<u32, skene_core::Static<Condition<u32>>, TerminalExt>,
   target: PlainBox,
 }
 
@@ -464,7 +460,7 @@ impl BoxFieldVisitor<u32, TerminalExt> for ResolveBox<'_, '_> {
 /// Resolves every run property of the source into the target.
 struct ResolveRun<'a, 'e> {
   env: &'a Env<'e>,
-  source: &'a RunStyle<skene_core::next::Static<Condition<u32>>, TerminalExt>,
+  source: &'a RunStyle<skene_core::Static<Condition<u32>>, TerminalExt>,
   target: PlainRun,
 }
 

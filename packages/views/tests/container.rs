@@ -7,8 +7,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   AccessProp,
+  Border,
   Bubbling,
+  EventKind,
   FocusOrder,
+  HasChildren,
   KeyEvent,
   Modifiers,
   Overflow,
@@ -18,7 +21,7 @@ use skene_core::{
   ScrollEvent,
   StyleProperty,
   Transition,
-  next::{Border, EventKind, HasChildren, View},
+  View,
 };
 use skene_headless::{
   Headless,

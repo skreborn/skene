@@ -5,7 +5,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_core::next::{Driver, NodeId, Scene};
+use skene_core::{Driver, NodeId, Scene};
 use skene_reactive::Trigger;
 
 use crate::realize::with_sink;

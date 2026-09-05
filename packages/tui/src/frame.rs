@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{Size, next::ContainerName};
+use skene_core::{ContainerName, Size};
 use skene_reactive::Set;
 
 use crate::{

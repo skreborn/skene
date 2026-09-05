@@ -6,10 +6,13 @@ mod common;
 use skene_core::{
   Dimension,
   GridPlacement,
+  HasChildren,
   Inset,
   ItemAlignment,
   Line,
-  next::{HasChildren, NodeId, StaticValue, View},
+  NodeId,
+  StaticValue,
+  View,
 };
 use skene_headless::{Headless, box_props, children, outline, reset};
 use skene_reactive::{Owner, Set, Track, signal};

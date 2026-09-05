@@ -4,26 +4,24 @@
 use std::hash::{Hash, Hasher};
 
 use skene_core::{
+  BoxFieldVisitor,
+  BoxStyle,
+  BoxValue,
   Color,
-  next::{
-    BoxFieldVisitor,
-    BoxStyle,
-    BoxValue,
-    Condition,
-    Declared,
-    Fingerprint,
-    IntoBoxValue,
-    IntoRunValue,
-    Leaf,
-    PropertyName,
-    RunFieldVisitor,
-    RunStyle,
-    RunValue,
-    Scalar,
-    Shape,
-    StyleExtension,
-    Value,
-  },
+  Condition,
+  Declared,
+  Fingerprint,
+  IntoBoxValue,
+  IntoRunValue,
+  Leaf,
+  PropertyName,
+  RunFieldVisitor,
+  RunStyle,
+  RunValue,
+  Scalar,
+  Shape,
+  StyleExtension,
+  Value,
 };
 use skene_views::{CornerRadius, TypeMetrics};
 
@@ -231,10 +229,7 @@ pub const BOLD_WEIGHT: f32 = 600.;
 
 /// The terminal's own properties, addressed by type.
 pub mod terminal_fields {
-  use skene_core::{
-    Color,
-    next::{BoxField, BoxStyle, PropertyKey, RunField, RunStyle, Scalar, Shape},
-  };
+  use skene_core::{BoxField, BoxStyle, Color, PropertyKey, RunField, RunStyle, Scalar, Shape};
 
   use super::{BorderGlyphs as Glyphs, TerminalExt, TerminalProperty};
 

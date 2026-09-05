@@ -11,18 +11,25 @@ use std::{
 
 use skene_core::{
   AccessProp,
+  Condition,
+  ControlKind,
   Dimension,
+  EventKind,
   FocusOrder,
+  HasChildren,
   KeyEvent,
   Modifiers,
+  Part,
   PointerButton,
   PointerEvent,
   Prevent,
   Prevented,
   Role,
   Size,
+  State,
   Toggle as Checked,
-  next::{Condition, ControlKind, EventKind, HasChildren, Part, State, View, When},
+  View,
+  When,
 };
 use skene_headless::{
   Headless,

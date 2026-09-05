@@ -9,7 +9,7 @@
 
 #[cfg(target_os = "wasi")]
 use skene_core::Boundary;
-use skene_core::next::{AnyKind, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 
 use crate::ActiveDriver;
 
@@ -44,7 +44,7 @@ impl Deferred {
       (self.content)()
     });
 
-    skene_web::next::register_boundary(start, Box::new(move || boundary.is_settled()));
+    skene_web::register_boundary(start, Box::new(move || boundary.is_settled()));
 
     content
   }

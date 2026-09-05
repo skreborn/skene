@@ -3,23 +3,21 @@
 use std::{marker::PhantomData, rc::Rc};
 
 use skene_core::{
+  Annotation,
+  AnyView,
+  Condition,
   Dimension,
+  Driver,
+  FlexChild,
   Flexibility,
+  IntoChildOf,
+  IntoView,
   ItemAlignment,
-  next::{
-    Annotation,
-    AnyView,
-    Condition,
-    Driver,
-    FlexChild,
-    IntoChildOf,
-    IntoView,
-    Leaf,
-    NoChild,
-    Scene,
-    Value,
-    View,
-  },
+  Leaf,
+  NoChild,
+  Scene,
+  Value,
+  View,
 };
 
 /// A grow weight: fixed, or recomputed from the signals it reads.

@@ -1129,7 +1129,7 @@ criterion numbers recorded before and after.
 
 ### R2—Scene, driver trait, property model, on the headless driver ✅
 
-Landed as `skene_core::next` (the model, the scene, `Driver`, dispatch, `View`/`Children`/
+Landed as `skene_core::next` (since R9a the crate root: the model, the scene, `Driver`, dispatch, `View`/`Children`/
 `derived`/`reconcile`/`Show` over anchors), `skene-headless` (the whole trait plus the
 test seams) and a `skene-views` skeleton (`Container`, `Column`, `Text`, `Flexible`,
 `Theme`), with the nine gate tests in `packages/views/tests/headless.rs`. Two notes for
@@ -1197,8 +1197,8 @@ with their subjects, the snapshot re-baselined once), streaming on the new tree
 and every chunk opens with a `<style>` delta for the classes interned since the previous
 flush, which hydration adopts with the head's block), server markers counting elements
 in creation order as the browser does, and a stack placing its children in its one cell
-on the web. **Open:** client-hint intake; scroll and focus restoration; deleting the old
-`skene-web` vocabulary and `skene-record` once nothing builds on them. **Caveat to revisit:** on the
+on the web. **Open:** client-hint intake; scroll and focus restoration. (The old `skene-web`
+vocabulary and `skene-record` are deleted in R9a.) **Caveat to revisit:** on the
 web a click on a native checkbox or radio is not dispatched as a click at all (the
 platform toggles and `change` reports it, so one press is one flip), which means a
 `handle_click` observer on a web toggle never fires; the headless driver dispatches it.
@@ -1281,5 +1281,28 @@ The `_when` families, `Adaptive`, `SimpleTheme`, the text and control themes, th
 `Web*` toggles and range, the per-control `Raw*` structs, `Source` from public
 builders, `simple-views`; the examples gain a live palette control and a theme example;
 `AGENTS.md`, `DESIGN.md` and this file rewritten to read as one story.
+**Landed (R9a):** the old vocabulary deleted now that both facades build on the new
+one, and the transitional namespaces flattened. In `skene-core`: `BoxProps`/`BoxProp`/
+`RunProps`/`RunProp` over `BoxStyle`/`RunStyle` blobs and the per-control `*Props`,
+`Adaptive`, the old `Condition` and `Token`, `TreeOps`, `Children<Ops>`, the old
+`View`/`AnyView`/`IntoView`/`IntoChildOf`/`HasChildren`, `derived`/`reconcile`/`empty`/
+`transition` over `TreeOps`, `Suspense`, `ErrorBoundary`, `Source`, `Roster`, `Styler`,
+the old `NodeId` and the old `Border`; `AccessProp` and `RunDisplay` moved under
+`values`, `Composable`/`ConditionShape` to `composable`, `Transition`/`Animation`/
+`Easing`/`StyleProperty` to `motion`, `SliderRange`/`Ring` beside the control
+vocabulary; `skene_core::next::*` is `skene_core::*`, and the crate's `test` feature
+(a bare forward) is gone. In `skene-web`: `create_box`/`update_box`/`create_run` and
+the rest of the free-function vocabulary, `mapping`, `styler`, the old `csr`/`ssr`
+leaves and their sinks; the seams the new leaves borrowed from them (the executors, the
+hydration state channel in `hydration`, the browser's history and head, the server's
+request path, static routes and pre-paint scheme script) live in the new module tree;
+`skene_web::next::*` is `skene_web::*`, and the web tests are `web_dom`/`web_ssr`.
+`skene_simple::next::*` is `skene_simple::*` with `SimpleVariant` in the new palette.
+`skene-record` is deleted with its workspace entry. `cargo hack check
+--feature-powerset --workspace` passes on the host. The `snapshot` and `test` features
+of `skene-web`, `skene-gui` and `skene-tui` stay until R8 deletes the `skene-reactive`
+features they forward to (`uninstall` needs `Runtime::reset`, the dev-loop handshake
+needs `restore`/`snapshot`). **Open:** the examples' live palette control, and the
+three documents rewritten as one story.
 **Gate:** no deleted name compiles anywhere; every example builds on all three tiers;
 the design doc's crate map matches `Cargo.toml`.

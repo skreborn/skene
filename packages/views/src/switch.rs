@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_core::next::{AnyKind, AnyView, Driver, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, AnyView, Driver, IntoView, NodeId, Scene, View};
 use skene_reactive::{Effect, Owner, on_cleanup, untrack};
 
 /// One branch: its key, its builder until it is built, and its node afterwards.

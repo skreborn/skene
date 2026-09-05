@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::next::NodeId;
+use skene_core::NodeId;
 
 /// A handle naming a built view as an overlay's anchor.
 ///

@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, rc::Rc};
 
 use serde::{Serialize, de::DeserializeOwned};
 use skene_reactive::{Get, Set, Signal, With};
-use skene_web::next as driver;
+use skene_web as driver;
 
 use crate::spawn;
 

@@ -2,11 +2,11 @@ use std::hash::{Hash, Hasher};
 
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Lch, LinearSrgb, Oklab, Oklch, Srgb};
 
-use crate::next::Scalar;
+use crate::Scalar;
 
 /// One of the two color schemes a surface is painted for.
 ///
-/// Names a scheme outright, where [`Condition::DarkMode`](crate::Condition::DarkMode)
+/// Names a scheme outright, where [`Media::Dark`](crate::Media::Dark)
 /// and its light twin ask the platform which one is in force.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]

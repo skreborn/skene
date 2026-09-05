@@ -9,7 +9,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{
   self as tui,
-  core::next::{AnyKind, Children, FlexChild, Seal},
+  core::{AnyKind, Children, FlexChild, Seal},
   prelude::*,
 };
 
@@ -381,9 +381,9 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl AnyKind for Toolbar {}
 
-  impl skene_tui::core::next::View<tui::Tui> for Toolbar {
+  impl skene_tui::core::View<tui::Tui> for Toolbar {
     fn build(self) -> tui::NodeId {
-      skene_tui::core::next::View::build(self.base)
+      skene_tui::core::View::build(self.base)
     }
   }
 

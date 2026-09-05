@@ -5,10 +5,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{
-  Flexibility,
-  next::{HasChildren, StaticValue, View},
-};
+use skene_core::{Flexibility, HasChildren, StaticValue, View};
 use skene_headless::{Headless, box_props, children, is_live, outline, reset};
 use skene_reactive::{Get, Owner, Set, Signal};
 

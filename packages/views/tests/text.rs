@@ -3,10 +3,7 @@
 
 mod common;
 
-use skene_core::{
-  RunDisplay,
-  next::{HasChildren, StaticLeaf, StaticValue, View},
-};
+use skene_core::{HasChildren, RunDisplay, StaticLeaf, StaticValue, View};
 use skene_headless::{
   Headless,
   children,

@@ -6,7 +6,7 @@
 //! [`SELECTION_INK`] on [`SELECTION_SURFACE`]. [`SIZE`], [`WEIGHT`], [`LINE_HEIGHT`] and
 //! [`LETTER_SPACING`] are for the text properties a medium's style extension carries.
 
-use skene_core::{Color, next::TokenRef};
+use skene_core::{Color, TokenRef};
 
 /// The text color.
 pub const INK: TokenRef<Color> = TokenRef::new("typography-ink");

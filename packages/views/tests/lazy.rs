@@ -5,11 +5,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_core::{
-  ScrollEvent,
-  Size,
-  next::{EventKind, NoProperty, NodeId, Property, PropertyKey, View},
-};
+use skene_core::{EventKind, NoProperty, NodeId, Property, PropertyKey, ScrollEvent, Size, View};
 use skene_headless::{
   Headless,
   children,

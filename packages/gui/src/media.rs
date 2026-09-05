@@ -10,7 +10,7 @@
 //! returns to following the platform. [`stored_scheme`] reads the choice a previous
 //! visit stored, so an app's setting starts where the page already is.
 
-use skene_core::{ColorScheme, next::Driver};
+use skene_core::{ColorScheme, Driver};
 use skene_reactive::{Effect, Memo, ReadSignal};
 
 use crate::{ActiveDriver, Media, Size};
@@ -41,12 +41,12 @@ pub fn reduced_motion() -> ReadSignal<bool> {
 pub fn watch(media: &Media) -> Memo<bool> {
   #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
   {
-    skene_web::next::watch_media(media)
+    skene_web::watch_media(media)
   }
 
   #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
   {
-    use skene_core::next::{ContainerName, MediaEnv};
+    use skene_core::{ContainerName, MediaEnv};
     use skene_reactive::Get;
 
     let media = media.clone();
@@ -78,7 +78,7 @@ pub fn watch(media: &Media) -> Memo<bool> {
 #[inline(always)]
 pub fn set_scheme(scheme: Option<ColorScheme>) {
   #[cfg(target_arch = "wasm32")]
-  skene_web::next::set_scheme(scheme);
+  skene_web::set_scheme(scheme);
 
   #[cfg(not(target_arch = "wasm32"))]
   skene_headless::choose_scheme(scheme);
@@ -103,7 +103,7 @@ pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
 pub fn stored_scheme() -> Option<ColorScheme> {
   #[cfg(target_arch = "wasm32")]
   {
-    skene_web::next::stored_scheme()
+    skene_web::stored_scheme()
   }
 
   #[cfg(not(target_arch = "wasm32"))]

@@ -14,5 +14,5 @@ use std::future::Future;
 /// await stops there rather than resuming into a disposed tree.
 #[inline(always)]
 pub fn spawn(future: impl Future<Output = ()> + 'static) {
-  skene_web::next::drive(skene_core::scope_bound(future));
+  skene_web::drive(skene_core::scope_bound(future));
 }

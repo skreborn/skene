@@ -15,7 +15,7 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_core::{Color, next::HasChildren};
+use skene_core::{Color, HasChildren};
 use skene_reactive::{Get, Set, Signal};
 
 use crate::{Column, IntoView as _, Overlay, TerminalText, Text, store::Handle};

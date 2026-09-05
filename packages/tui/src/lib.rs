@@ -44,48 +44,46 @@ mod typography_set;
 
 pub use skene_core as core;
 pub use skene_core::{
+  AnyKind,
   Bubbling,
+  Children,
   Color,
   ColorScheme,
+  ContainerName,
+  ControlKind,
+  ControlState,
+  Definitions,
   Errors,
+  Expr,
   FocusOrder,
+  HasChildren,
+  IntoChildOf,
+  IntoChildren,
   KeyEvent,
+  Leaf,
+  Length,
   Modifiers,
+  NoChild,
+  NodeId,
+  Number,
+  Part,
   PointerButton,
   PointerEvent,
   Prevent,
   Prevented,
   Role,
+  Scene,
   ScrollEvent,
-  next::{
-    AnyKind,
-    Children,
-    ContainerName,
-    ControlKind,
-    ControlState,
-    Definitions,
-    Expr,
-    HasChildren,
-    IntoChildOf,
-    IntoChildren,
-    Leaf,
-    Length,
-    NoChild,
-    NodeId,
-    Number,
-    Part,
-    Scene,
-    State,
-    StaticLeaf,
-    TokenName,
-    TokenRef,
-    TokenSet,
-    When,
-  },
+  State,
+  StaticLeaf,
+  TokenName,
+  TokenRef,
+  TokenSet,
+  When,
 };
 pub use skene_reactive as reactive;
 pub use skene_router as router;
-pub use skene_simple::next::SimpleVariant;
+pub use skene_simple::SimpleVariant;
 pub use skene_views::{
   Activate,
   Anchor,
@@ -178,15 +176,15 @@ pub mod glyph {
   };
 }
 
-/// A view on the active driver; see [`skene_core::next::View`].
-pub trait View: skene_core::next::View<ActiveDriver> {
+/// A view on the active driver; see [`skene_core::View`].
+pub trait View: skene_core::View<ActiveDriver> {
   /// Realizes this view and returns its root node.
   #[inline(always)]
   fn build(self) -> NodeId
   where
     Self: Sized,
   {
-    skene_core::next::View::build(self)
+    skene_core::View::build(self)
   }
 
   /// Erases this view's concrete type.
@@ -195,26 +193,26 @@ pub trait View: skene_core::next::View<ActiveDriver> {
   where
     Self: Sized,
   {
-    skene_core::next::View::into_any(self)
+    skene_core::View::into_any(self)
   }
 }
 
-impl<V: skene_core::next::View<ActiveDriver>> View for V {}
+impl<V: skene_core::View<ActiveDriver>> View for V {}
 
 /// A value that can be turned into a view on the active driver, accepted as a child
-/// of every kind; see [`skene_core::next::IntoView`] and [`AnyKind`].
-pub trait IntoView: skene_core::next::IntoView<ActiveDriver> + AnyKind {
+/// of every kind; see [`skene_core::IntoView`] and [`AnyKind`].
+pub trait IntoView: skene_core::IntoView<ActiveDriver> + AnyKind {
   /// Converts this value into a view.
   #[inline(always)]
   fn into_view(self) -> AnyView
   where
     Self: Sized,
   {
-    skene_core::next::IntoView::into_view(self)
+    skene_core::IntoView::into_view(self)
   }
 }
 
-impl<V: skene_core::next::IntoView<ActiveDriver> + AnyKind> IntoView for V {}
+impl<V: skene_core::IntoView<ActiveDriver> + AnyKind> IntoView for V {}
 
 /// A token set read from the theme in force on the active driver; see
 /// [`skene_views::ThemedIn`].
@@ -239,7 +237,7 @@ pub trait ThemedIn: skene_views::ThemedIn<ActiveDriver> {
 impl<P: skene_views::ThemedIn<ActiveDriver>> ThemedIn for P {}
 
 /// A type-erased view.
-pub type AnyView = skene_core::next::AnyView<ActiveDriver>;
+pub type AnyView = skene_core::AnyView<ActiveDriver>;
 /// The one freely-decorated box around exactly one child; see
 /// [`skene_views::Container`].
 pub type Container = skene_views::Container<ActiveDriver>;
@@ -318,43 +316,43 @@ pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
 /// [`skene_views::ChildBuilder`].
 pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
 
-/// The Simple design language's palette; see [`skene_simple::next::SimplePalette`].
-pub type SimplePalette = skene_simple::next::SimplePalette<u32>;
-/// One emphasis variant's colors; see [`skene_simple::next::SimpleLook`].
-pub type SimpleLook = skene_simple::next::SimpleLook<u32>;
-/// See [`skene_simple::next::SimpleButton`].
-pub type SimpleButton = skene_simple::next::SimpleButton<ActiveDriver>;
-/// See [`skene_simple::next::SimpleCard`].
-pub type SimpleCard = skene_simple::next::SimpleCard<ActiveDriver>;
-/// See [`skene_simple::next::SimpleCheckbox`].
-pub type SimpleCheckbox = skene_simple::next::SimpleCheckbox<ActiveDriver>;
-/// See [`skene_simple::next::SimplePicker`].
-pub type SimplePicker = skene_simple::next::SimplePicker<ActiveDriver>;
-/// See [`skene_simple::next::SimpleRadio`].
-pub type SimpleRadio = skene_simple::next::SimpleRadio<ActiveDriver>;
-/// See [`skene_simple::next::SimpleRadioGroup`].
-pub type SimpleRadioGroup<C = NoChild> = skene_simple::next::SimpleRadioGroup<ActiveDriver, C>;
-/// See [`skene_simple::next::SimpleSlider`].
-pub type SimpleSlider = skene_simple::next::SimpleSlider<ActiveDriver>;
-/// See [`skene_simple::next::SimpleTextEditor`].
-pub type SimpleTextEditor = skene_simple::next::SimpleTextEditor<ActiveDriver>;
-/// See [`skene_simple::next::SimpleTextField`].
-pub type SimpleTextField = skene_simple::next::SimpleTextField<ActiveDriver>;
+/// The Simple design language's palette; see [`skene_simple::SimplePalette`].
+pub type SimplePalette = skene_simple::SimplePalette<u32>;
+/// One emphasis variant's colors; see [`skene_simple::SimpleLook`].
+pub type SimpleLook = skene_simple::SimpleLook<u32>;
+/// See [`skene_simple::SimpleButton`].
+pub type SimpleButton = skene_simple::SimpleButton<ActiveDriver>;
+/// See [`skene_simple::SimpleCard`].
+pub type SimpleCard = skene_simple::SimpleCard<ActiveDriver>;
+/// See [`skene_simple::SimpleCheckbox`].
+pub type SimpleCheckbox = skene_simple::SimpleCheckbox<ActiveDriver>;
+/// See [`skene_simple::SimplePicker`].
+pub type SimplePicker = skene_simple::SimplePicker<ActiveDriver>;
+/// See [`skene_simple::SimpleRadio`].
+pub type SimpleRadio = skene_simple::SimpleRadio<ActiveDriver>;
+/// See [`skene_simple::SimpleRadioGroup`].
+pub type SimpleRadioGroup<C = NoChild> = skene_simple::SimpleRadioGroup<ActiveDriver, C>;
+/// See [`skene_simple::SimpleSlider`].
+pub type SimpleSlider = skene_simple::SimpleSlider<ActiveDriver>;
+/// See [`skene_simple::SimpleTextEditor`].
+pub type SimpleTextEditor = skene_simple::SimpleTextEditor<ActiveDriver>;
+/// See [`skene_simple::SimpleTextField`].
+pub type SimpleTextField = skene_simple::SimpleTextField<ActiveDriver>;
 
-/// A condition on the environment, in cells; see [`skene_core::next::Media`].
-pub type Media = skene_core::next::Media<u32>;
-/// A condition a property varies under; see [`skene_core::next::Condition`].
-pub type Condition = skene_core::next::Condition<u32>;
-/// A test of a container's size, in cells; see [`skene_core::next::ContainerQuery`].
-pub type ContainerQuery = skene_core::next::ContainerQuery<u32>;
-/// A property's value: a leaf under conditions; see [`skene_core::next::Value`].
-pub type Value<T> = skene_core::next::Value<T, Condition>;
-/// A token's definition; see [`skene_core::next::Definition`].
-pub type Definition<T> = skene_core::next::Definition<T, u32>;
-/// A token as a palette holds it; see [`skene_core::next::Token`].
-pub type Token<T> = skene_core::next::Token<T, u32>;
-/// A border: one cell of glyphs in a color; see [`skene_core::next::Border`].
-pub type Border = skene_core::next::Border<u32>;
+/// A condition on the environment, in cells; see [`skene_core::Media`].
+pub type Media = skene_core::Media<u32>;
+/// A condition a property varies under; see [`skene_core::Condition`].
+pub type Condition = skene_core::Condition<u32>;
+/// A test of a container's size, in cells; see [`skene_core::ContainerQuery`].
+pub type ContainerQuery = skene_core::ContainerQuery<u32>;
+/// A property's value: a leaf under conditions; see [`skene_core::Value`].
+pub type Value<T> = skene_core::Value<T, Condition>;
+/// A token's definition; see [`skene_core::Definition`].
+pub type Definition<T> = skene_core::Definition<T, u32>;
+/// A token as a palette holds it; see [`skene_core::Token`].
+pub type Token<T> = skene_core::Token<T, u32>;
+/// A border: one cell of glyphs in a color; see [`skene_core::Border`].
+pub type Border = skene_core::Border<u32>;
 /// Spacing on the four edges of a box, in cells.
 pub type Inset<T = u32> = skene_core::Inset<T>;
 /// A dimension, in cells or as a fraction of the parent.
@@ -369,14 +367,14 @@ pub type Point = skene_core::Point<u32>;
 pub type Rect = skene_core::Rect<u32>;
 
 /// Mounts a reactive subtree between anchors, rebuilt whenever a signal `build` reads
-/// changes; see [`skene_core::next::derived`].
+/// changes; see [`skene_core::derived`].
 #[inline(always)]
 pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::next::derived::<ActiveDriver>(build)
+  skene_core::derived::<ActiveDriver>(build)
 }
 
 /// Reactively reconciles the content of the segment `start` begins from a keyed
-/// collection; see [`skene_core::next::reconcile`].
+/// collection; see [`skene_core::reconcile`].
 #[inline(always)]
 pub fn reconcile<T, I, K>(
   start: NodeId,
@@ -387,14 +385,14 @@ pub fn reconcile<T, I, K>(
   I: IntoIterator<Item = T>,
   K: Eq + std::hash::Hash + 'static,
 {
-  skene_core::next::reconcile::<ActiveDriver, T, I, K>(start, items, key, build);
+  skene_core::reconcile::<ActiveDriver, T, I, K>(start, items, key, build);
 }
 
 /// A view that renders nothing.
 #[inline(always)]
 #[must_use]
 pub fn empty() -> impl View {
-  skene_core::next::empty::<ActiveDriver>()
+  skene_core::empty::<ActiveDriver>()
 }
 
 /// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.

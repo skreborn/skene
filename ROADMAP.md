@@ -86,8 +86,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
   - `Painted` renders through vello's CPU renderer in the browser; the WebGPU renderer
     (vello over wgpu, for large or animated scenes) is the upgrade behind the same
     `Canvas`, and the test browser has no WebGPU to prove it with yet.
-  - `WebMarkup::set_text_content` carries the DOM's name for a method that also exists on
-    the server leaf; a driver-neutral name is wanted.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
 - **Terminal**

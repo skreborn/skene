@@ -1481,7 +1481,7 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_text_content(&self, sink: &u32, text: &str) {
+  fn set_text(&self, sink: &u32, text: &str) {
     Driver::set_text(self, sink, text);
   }
 }

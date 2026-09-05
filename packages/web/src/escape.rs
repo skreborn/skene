@@ -33,7 +33,7 @@ pub trait WebMarkup: Driver {
   fn set_declarations(&self, sink: &Self::Sink, declarations: &Declarations);
 
   /// Replaces the element's text content.
-  fn set_text_content(&self, sink: &Self::Sink, text: &str);
+  fn set_text(&self, sink: &Self::Sink, text: &str);
 }
 
 /// The browser leaf: the live DOM behind a sink.

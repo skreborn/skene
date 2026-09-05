@@ -151,7 +151,7 @@
   - **Environment is queryable.** `media::viewport()`, `media::scheme()` and
     `media::reduced_motion()` are signals on every facade, `media::watch(&condition)`
     turns any declared condition into a memo, and a box's measured size reaches a view
-    through `Driver::observe_size` (a public handle for app code is on the roadmap). On
+    through `Driver::observe_size` and an app through a `SizeHandle` bound to the box. On
     the web they are live after hydration and hold the server's answer before it; the
     server's answer comes from client hints when the runner is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive

@@ -1204,7 +1204,7 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_text_content(&self, sink: &u32, text: &str) {
+  fn set_text(&self, sink: &u32, text: &str) {
     with_node(*sink, |node| node.text = Some(text.to_owned()));
   }
 }

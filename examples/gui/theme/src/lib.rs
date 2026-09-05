@@ -1,10 +1,11 @@
-//! Theming: a palette built property by property, a nested theme, and a scheme the
-//! reader chooses.
+//! Theming: a palette built property by property, an accent the reader switches at run
+//! time, a nested theme, and a scheme the reader chooses.
 //!
 //! Nothing here treats light and dark as a pair of themes. A palette is one value whose
 //! tokens answer conditions, and the color scheme is one of those conditions—which is
 //! why the page below is already correct with no script running at all, and why the
-//! toggle re-inks it without rebuilding anything.
+//! toggle re-inks it without rebuilding anything. A palette change is the same: the
+//! theme redefines its tokens in place, and the tree beneath it stands.
 
 use skene_gui::prelude::*;
 
@@ -13,34 +14,56 @@ fn pair(light: Color, dark: Color) -> Definition<Color> {
   Definition::from(light).when(Media::Dark, dark)
 }
 
-/// The app's palette: the built-in one with a brand accent layered on, per property.
+/// A brand accent: its surface in each scheme, and the surface under the pointer.
+struct Accent {
+  brand: Color,
+  brand_dark: Color,
+  hover: Color,
+  hover_dark: Color,
+}
+
+/// The accent `name` selects; indigo unless the reader chose teal.
+fn accent(name: Option<&str>) -> Accent {
+  match name {
+    Some("teal") => Accent {
+      brand: Color::srgb(0.05, 0.55, 0.53),
+      brand_dark: Color::srgb(0.30, 0.80, 0.76),
+      hover: Color::srgb(0.04, 0.46, 0.44),
+      hover_dark: Color::srgb(0.42, 0.88, 0.84),
+    },
+    _ => Accent {
+      brand: Color::srgb(0.29, 0.33, 0.86),
+      brand_dark: Color::srgb(0.51, 0.55, 0.97),
+      hover: Color::srgb(0.24, 0.27, 0.75),
+      hover_dark: Color::srgb(0.62, 0.65, 0.99),
+    },
+  }
+}
+
+/// The app's palette: the built-in one with the brand accent layered on, per property.
 ///
 /// `set_primary` replaces one look wholesale; a look's own conditions ride its
 /// definitions. Every `.when` here names `Media::Dark`, but nothing about the setter
 /// is the scheme's—`Media::MinWidth(900.)` would sit in exactly the same place.
-fn palette() -> SimplePalette {
-  let brand = Color::srgb(0.29, 0.33, 0.86);
-  let brand_dark = Color::srgb(0.51, 0.55, 0.97);
+fn palette(accent_name: Option<&str>) -> SimplePalette {
+  let accent = accent(accent_name);
 
   SimplePalette::default()
-    .set_ring(pair(brand, brand_dark))
+    .set_ring(pair(accent.brand, accent.brand_dark))
     .set_primary(
       SimpleLook::new(
         SimpleVariant::Primary,
-        pair(brand, brand_dark),
+        pair(accent.brand, accent.brand_dark),
         pair(Color::srgb(1., 1., 1.), Color::srgb(0.09, 0.09, 0.14)),
       )
-      .set_hover(pair(
-        Color::srgb(0.24, 0.27, 0.75),
-        Color::srgb(0.62, 0.65, 0.99),
-      )),
+      .set_hover(pair(accent.hover, accent.hover_dark)),
     )
 }
 
 /// A palette for one subtree: the same tokens, warmed over. A nested theme replaces the
 /// palette beneath it and leaves the one above alone.
-fn warm() -> SimplePalette {
-  palette()
+fn warm(accent_name: Option<&str>) -> SimplePalette {
+  palette(accent_name)
     .set_card(pair(
       Color::srgb(0.99, 0.96, 0.91),
       Color::srgb(0.16, 0.13, 0.09),
@@ -56,8 +79,11 @@ fn app() -> impl IntoView {
   // The reader's stored choice, or `None`—which leaves the platform's own preference in
   // force, answered by the compiled media query with no script at all.
   let scheme = Signal::new(stored_scheme());
+  // The accent is a signal the theme derives its palette from: a switch redefines the
+  // tokens in place and rebuilds nothing beneath the theme.
+  let accent = Signal::tagged("accent", Some("indigo".to_owned()));
 
-  Theme::new(palette()).set_child_builder(move || {
+  Theme::derive(move || accent.with(|name| palette(name.as_deref()))).set_child_builder(move || {
     derive_scheme(move || scheme.get());
 
     Container::new()
@@ -71,8 +97,9 @@ fn app() -> impl IntoView {
             Column::new().set_spacing(24.).set_children((
               heading(),
               chooser(scheme),
+              accents(accent),
               swatches(),
-              nested(),
+              nested(accent),
             )),
           )),
       )
@@ -104,6 +131,17 @@ fn chooser(scheme: Signal<Option<ColorScheme>>) -> impl IntoView {
     choice("Light", Some(ColorScheme::Light)),
     choice("Dark", Some(ColorScheme::Dark)),
   ))
+}
+
+/// The accent chooser: the radio group writes the signal the theme derives from.
+fn accents(accent: Signal<Option<String>>) -> impl IntoView {
+  SimpleRadioGroup::new()
+    .bind_chosen(accent)
+    .set_label("Accent")
+    .set_child(Row::new().set_spacing(16.).set_children((
+      SimpleRadio::new("indigo").set_label("Indigo"),
+      SimpleRadio::new("teal").set_label("Teal"),
+    )))
 }
 
 fn swatches() -> impl IntoView {
@@ -141,8 +179,10 @@ fn swatches() -> impl IntoView {
   ))
 }
 
-fn nested() -> impl IntoView {
-  Theme::new(warm()).set_child_builder(|| {
+/// A nested theme follows the same accent, warmed over: it derives its palette from the
+/// signal too, and replaces the palette for its subtree only.
+fn nested(accent: Signal<Option<String>>) -> impl IntoView {
+  Theme::derive(move || accent.with(|name| warm(name.as_deref()))).set_child_builder(|| {
     SimpleCard::new().set_spacing(12.).set_children((
       Text::new("Nested theme").set_font_weight(600.),
       Text::new("A theme inside a theme replaces the palette for its subtree only.")

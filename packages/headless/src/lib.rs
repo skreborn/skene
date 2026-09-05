@@ -24,9 +24,14 @@
 //! control and its parts report, and [`trigger_size`] gives a control the measured size
 //! its pointer handling maps a position onto. A painted box records that a painter was
 //! bound to it ([`is_painted`]); nothing is drawn.
+//!
+//! Tasks run on an executor that stands still until [`pump_tasks`] drains it:
+//! [`install_executor`] makes it the thread's spawner ([`reset`] does too), so a
+//! `Resource` built in a test loads when the test pumps.
 
 mod resolve;
 mod store;
+mod task;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey};
 
@@ -345,7 +350,8 @@ pub fn is_painted(node: NodeId) -> bool {
   handle(node).is_some_and(|handle| with_record(handle, |record| record.painted) == Some(true))
 }
 
-/// Empties the scene and the store and returns the environment to its defaults.
+/// Empties the scene, the store and the task queue, returns the environment to its
+/// defaults and installs the executor.
 pub fn reset() {
   SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
 
@@ -354,6 +360,22 @@ pub fn reset() {
   if let Some(owner) = owner {
     owner.dispose();
   }
+
+  task::clear();
+  install_executor();
+}
+
+/// Installs the headless executor as this thread's spawner: every task `spawn` and
+/// `Resource` start on this thread queues here until [`pump_tasks`] polls it.
+pub fn install_executor() {
+  skene_reactive::set_spawner(|task| task::drive(skene_core::scope_bound(task)));
+}
+
+/// Polls every queued task until none is ready, so a resource whose loader is ready
+/// lands its value; `true` when any task ran.
+#[must_use]
+pub fn pump_tasks() -> bool {
+  task::pump()
 }
 
 /// Dispatches a click at `node`, bubbling through the scene.

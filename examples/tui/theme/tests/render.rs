@@ -1,0 +1,70 @@
+//! The theme example rendered headlessly: every section paints, an accent switch
+//! re-inks the frame, and a scheme choice re-inks it again.
+
+#![cfg(not(target_arch = "wasm32"))]
+
+use skene_tui::{self as tui, prelude::*};
+
+/// Serializes the tests: the UI-thread designation is process-wide, so each test must
+/// install, run, and uninstall without another test's thread interleaving.
+static DRIVER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Installs a fresh driver, runs `body`, and uninstalls afterwards.
+fn with_driver<R>(body: impl FnOnce() -> R) -> R {
+  let _serialized = DRIVER
+    .lock()
+    .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+  tui::install();
+
+  let result = body();
+
+  tui::uninstall();
+
+  result
+}
+
+#[test]
+fn the_theme_renders_and_switches() {
+  let (frame, indigo, teal, dark) = with_driver(|| {
+    let _ = tui::mount(|| tui_theme::app().into_view().build());
+
+    let frame = tui::render_to_text(60, 60);
+    let indigo = tui::render_to_colors(60, 60);
+
+    // `Tab` walks the scheme buttons, then lands on the accent's chosen radio;
+    // `ArrowRight` chooses teal.
+    for _ in 0..4 {
+      tui::trigger_key("Tab");
+    }
+
+    tui::trigger_key("ArrowRight");
+
+    let teal = tui::render_to_colors(60, 60);
+
+    // Back to the `Dark` button: the scheme changes and the tree stands.
+    tui::trigger_key("Shift+Tab");
+    tui::trigger_key("Enter");
+
+    (frame, indigo, teal, tui::render_to_colors(60, 60))
+  });
+
+  for title in [
+    "THEME",
+    "System",
+    "Light",
+    "Dark",
+    "Accent",
+    "Tokens",
+    "Nested theme",
+  ] {
+    assert!(
+      frame.contains(title),
+      "section {title} did not paint:\n{frame}"
+    );
+  }
+
+  assert!(frame.contains('╭'), "rounded swatch borders did not paint");
+  assert_ne!(indigo, teal, "the accent switch did not re-ink the frame");
+  assert_ne!(teal, dark, "the scheme choice did not re-ink the frame");
+}

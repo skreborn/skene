@@ -14,11 +14,13 @@ use skene_gui::{
   Container,
   HasChildren,
   LayoutBox,
+  LoadState,
   Overlay,
   RadioMember,
   RawRadio,
   RawRadioGroup,
   RawTextField,
+  Resource,
   Role,
   Roving,
   Row,
@@ -32,6 +34,7 @@ use skene_gui::{
     is_open,
     is_tab_stop,
     outline,
+    pump_tasks,
     reset,
     resolve_color,
     resolve_length,
@@ -362,6 +365,25 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   assert_eq!(toolbar.layout, row.layout);
   assert_eq!(toolbar.style, row.style);
+
+  owner.dispose();
+}
+
+/// A resource loads through the headless executor: loading until the test pumps the
+/// tasks, ready with its value once it has.
+#[test]
+fn a_resource_loads_when_the_tasks_are_pumped() {
+  reset();
+
+  let owner = Owner::new();
+  let resource = owner.enter(|| Resource::new(|| async { 42u32 }));
+
+  assert_eq!(resource.state(), LoadState::Loading);
+  assert_eq!(resource.get(), None);
+  assert!(pump_tasks());
+  assert_eq!(resource.state(), LoadState::Ready);
+  assert_eq!(resource.get(), Some(42));
+  assert!(!pump_tasks());
 
   owner.dispose();
 }

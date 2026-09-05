@@ -424,6 +424,8 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
+  skene_headless::install_executor();
+
   skene_core::root_owner().enter(|| {
     let _ = skene_core::IntoView::into_view(app()).build();
   });

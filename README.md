@@ -1,158 +1,154 @@
 # Skene
 
-A client-side Rust UI framework. Write a GUI app once against one dependency, and it
-runs on whatever driver the build selects—the web today (client-rendered,
-server-rendered, or statically generated), native as it lands—while the terminal is a
-facade of its own, equal in standing, with its own vocabulary typed to the medium. The
-building block is a **view**; the reactive engine is fine-grained and vdom-free.
+A client-side Rust UI framework: one spine, two facades. A GUI app depends on
+`skene-gui` and runs wherever the build targets it—the browser, client-rendered; a
+server, rendering or statically generating pages from the same wasm module; native as
+it lands. A terminal app depends on `skene-tui`, a facade of equal standing with its own
+vocabulary typed to the medium. Every built-in view is written once, generic over the
+driver a facade selects; the reactive engine is signal-based, fine-grained and vdom-free;
+styling is data, compiled to CSS on the web and resolved natively elsewhere, so a
+server-rendered page is responsive, themed, hoverable and animated with no script at all.
 
 ## Reactivity
-
-A signal write re-runs exactly the effects that depend on it, and each effect patches the
-node it owns—no virtual DOM, no tree diffing. Effects run synchronously on write.
 
 ```rust
 let count = Signal::new(0);
 count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 ```
 
-## Hello, counter
+A signal write re-runs exactly the effects that depend on it, and each effect patches
+the node it owns—no virtual DOM, no tree diffing. Signals snapshot by default, so a
+dev-loop restart resumes where the last run stood.
 
-A GUI app depends only on `skene-gui`, marks its entry with `#[main]`, and names no driver:
+## A GUI app
+
+A GUI app depends only on `skene-gui`, marks its entry with `#[main]`, and names no
+driver (`examples/gui/counter`):
 
 ```rust
 use skene_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
-  let count = Signal::new(0u64);
+  let count = Signal::tagged("count", 0u64);
 
-  Column::new()
-    .set_spacing(20.)
-    .set_children((
-      Text::derive(move || format!("Count: {}", count.get())).set_font_size(32.),
-      Row::new().set_spacing(12.).set_children((
-        SimpleButton::new("−").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
-        SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
-      )),
-    ))
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
+    Container::new()
+      .set_color(SimplePalette::BACKGROUND)
+      .set_child(
+        Column::new()
+          .set_arrangement(Arrangement::Center)
+          .set_item_alignment(ItemAlignment::Center)
+          .set_child(
+            SimpleCard::new().set_spacing(24.).set_children((
+              Text::derive(move || count.get().to_string()).set_font_size(56.),
+              Row::new().set_spacing(12.).set_children((
+                SimpleButton::new("−").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
+                SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
+              )),
+            )),
+          ),
+      )
+  })
 }
 ```
 
-`#[main]` expands to the target's entry glue (on the web, a `wasm-bindgen` start that calls
-`launch`). Nothing in this code names the platform.
+`#[main]` expands to whichever entry the target has: in the browser it launches the
+app, hydrating a server-rendered page in place; on the server leaf it renders the
+requested path to stdout (`wasmtime counter-server.wasm /` prints the page); on the
+host it builds the tree against the headless driver, which is what view tests run on.
 
-## Architecture
+## A terminal app
+
+A terminal app depends only on `skene-tui` and calls `launch` (`examples/tui/counter`):
+
+```rust
+use skene_tui::prelude::*;
+
+fn app() -> impl IntoView {
+  let count = Signal::tagged("count", 0u64);
+
+  Theme::new(SimplePalette::default()).set_child_builder(move || {
+    SimpleCard::new().set_children((
+      Text::derive(move || count.get().to_string()).set_color(SimplePalette::FOREGROUND),
+      Row::new().set_spacing(2).set_children((
+        SimpleButton::new("-").handle_click(move || count.update(|n| *n = n.saturating_sub(1))),
+        SimpleButton::new("+").handle_click(move || count.update(|n| *n = n.saturating_add(1))),
+      )),
+    ))
+  })
+}
+
+fn main() {
+  skene_tui::launch(app);
+}
+```
+
+Lengths are cells (`u32`), text is a color and a bold flag, a border is one cell of
+box-drawing glyphs; what the terminal cannot draw does not exist to call. `Tab` moves
+focus, the controls own their keys, the mouse clicks, drags, scrolls and selects, and
+`Ctrl-C` quits.
+
+## Crates
 
 ```
-skene-reactive     the reactive engine—standalone
+skene-reactive        the engine
       │
-skene-core         + reactive: the view spine, the typed property vocabulary, Source,
-      │            Boundary, Reorder, IntoChildren, generic geometry, and the value
-      │            vocabulary. No views, no platforms.
+skene-core            the spine: the scene, the Driver trait, dispatch, the property model
       │
-      ├── skene-web      the web driver: the typed vocabulary mapped to a live DOM
-      │         │        (browser) or an HTML string (server), the content-addressed
-      │         │        stylesheet, hydration, and the WASI reactor
-      │         │
-      │    skene-gui     the GUI facade and the single dependency a GUI app pulls in:
-      │                  the built-in views realized once against the active driver,
-      │                  the composition helpers, and the transparent entry
+skene-views           every built-in view once, generic over the driver
       │
-      └── skene-tui      the terminal facade, equal in standing: its own views typed
-                         to the medium, its driver carried in-crate
-
-skene-simple       the Simple design language both facades import: the neutral
-                   palette and the emphasis variants
+      ├── skene-web        the web driver: browser (csr) and server (ssr) leaves
+      ├── skene-headless   the host driver: an inspectable record store for tests
+      └── skene-tui        the terminal facade and its driver
+skene-gui             the GUI facade: aliases over the selected driver
+skene-simple          the Simple component library over skene-views
+skene-router          routing as reactive state
+skene-runner          a host library embedding wasmtime around the server build
+skene-macros          #[main], #[lazy], #[derive(Store)]
+skene-cli             the `skene` command
 ```
 
-| Crate | Role |
-|-------|------|
-| `skene-reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Trigger`. Synchronous on write. |
-| `skene-core` | The spine: `NodeId`, the view spine (`View`, `AnyView`, `IntoView`), the typed props (`BoxProps`, `RunProps`), `IntoChildren`, `Reorder`, `Source`, `Boundary`, generic geometry, and the value vocabulary (`Color`, `Axis`, `Layout`, `Role`, `Border`, alignments, `MouseCursor`). Knows nothing of platforms. |
-| `skene-web` | The web driver: two target-selected leaves (browser DOM, server string tree) implementing the typed vocabulary, the interned stylesheet, hydration, streaming, and the raw-DOM escape hatch. |
-| `skene-gui` | The GUI facade: the built-in views (`Container`, `Text`, `RichText`, `TextTheme`), the raw controls (`RawButton`, `RawTextField`, …) and the `Simple*` components over them, realized once against `driver::*`; `spawn`/`Resource`/`Deferred`; `install_router` + `Link`; `#[lazy]` + `Lazy` for split-out modules; the transparent `launch` + `#[main]`, hydrating a server-rendered page in place. Re-exports core + reactive + `tracing`. |
-| `skene-router` | Routing as reactive state: a typed `Route` in a signal, bound to the browser History API or the server's requested path. |
-| `skene-runner` | Host-only library embedding a wasm runtime around the app's server build, so any server renders routes with a function call. Powers `skene ssg`. |
-| `skene-tui` | The terminal facade, equal in standing to `skene-gui`: its own views typed to the medium (`u32` cells, `bool` bold, one-cell borders), taffy layout at `1.0 = 1 cell`, a cell-buffer renderer, keyboard focus. See `examples/tui/counter` (`cargo run -p tui-counter`). |
-| `skene-simple` | The Simple design language shared by both facades' `Simple*` components: the neutral palette (`SimplePalette`) and the emphasis variants (`SimpleVariant`), over core's `Color`. |
-| `skene-macros` | The `#[main]` and `#[lazy]` proc-macros. |
-| `skene-cli` | The `skene` command: `run web`, `build web --static`, `run tui`, serving, live reload. |
+| Crate | Path | Role |
+|-------|------|------|
+| `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position, the `spawn` seam a driver installs an executor into. |
+| `skene-core` | `packages/core` | `Scene<D>`, the zero-sized `Driver` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
+| `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry` and the `Raw*` aliases, `Overlay`, `LazyColumn`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`, `Theme`, `typography`. |
+| `skene-web` | `packages/web` | The web `Driver`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
+| `skene-headless` | `packages/headless` | The host `Driver`: records what any driver receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
+| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view and `Simple*` component, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
+| `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `Glyphs`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver. |
+| `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
+| `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
+| `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
+| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui`: bundling, the dev server with live reload and state-preserving restarts, static generation, `skene.toml` assets. |
 
-**Realize once, drive per platform.** Views are realized a single time against a typed,
-driver-neutral vocabulary (`create_box(&BoxProps)`, `update_box`, `create_run`, tree
-mutations); each driver crate exports that vocabulary mapped to its own sink. Exactly one
-driver is compiled, resolved by the umbrella at compile time—no "backend" trait, no
-`dyn` dispatch, no runtime swap.
+## Views, controls, themes
 
-### Styling on the web platform
+A view is its own builder and a `View`: chain typed setters and pass it to a parent.
+One convention: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
+`handle_<event>` for a handler, and children last. Every setter takes a value that may
+be fixed, a token, an expression, derived from signals, or any of those under a
+condition: `set_spacing(Spacing::from(8.).when(Media::MinWidth(900.), 16.))`.
 
-Styling reaches the web platform as CSS `Declarations`; each declaration block is hashed to a
-deterministic class and interned once in a single `<style>` element, reference-counted by
-live node so identical styles collapse to one class and unused ones are collected. A view's
-initial style is a shared class; reactive changes apply as inline overrides, so a running
-animation never rewrites the shared rule. The determinism keeps it server-side-render-ready.
-
-## Views
-
-A view *is* its own builder *is* a `View`: chain typed setters and pass it to a parent—no
-separate builder type, no `.build()` to call. One setter convention: `set_<prop>` for a fixed
-value, `derive_<prop>` for a reactive one, `handle_<event>` for a handler.
-
-Every layout is its own view—`Row`, `Column`, `Grid`, `Stack`, with the plain
-`Container` decorating exactly one child—so only the properties a view honors exist to
-call: a `Row` has an
-`arrangement`, a `Grid` has `columns`, and nothing else compiles. Per-child properties
-travel the same way, in wrapper views only the matching container accepts—`Flexible`
-(take or give up space in a `Row`/`Column`), `Pinned` (against a `Stack`'s edges),
-`GridCell` (placement in a `Grid`)—which create no node of their own. All of them share
-one decoration surface (color, border, padding, events), defined once and generated onto
-each.
-
-### Controls: raw and Simple
-
-Form controls come in two layers. The `Raw*` controls (`RawButton`, `RawCheckbox`,
-`RawTextField`, …) are the unstyled, infinitely extensible bases every component
-library builds on: full platform behavior, zero opinion about looks. The `Simple*`
-components (`SimpleButton`, `SimpleCard`, `SimpleTextField`, …) are the ready-made
-library on top—one neutral palette (`SimplePalette`, from the shared `skene-simple`
-crate) and shape language, shared by the GUI and the terminal wherever the medium
-allows, behind a default-on `simple-views` feature—so an app is presentable with no
-styling at all:
+Each layout is its own view—`Row`, `Column`, `Grid`, `Stack`—exposing only the
+properties it honors; per-child properties ride in `Flexible`, `Pinned` and `GridCell`,
+accepted only by the matching container. `Container` is the one decorated box around
+exactly one child. A control is `Control<B: Behavior>`; `RawButton`, `RawCheckbox`,
+`RawSlider`, `RawRadioGroup`, `RawPicker`, `RawTextField` and `RawTextEditor` are
+aliases over the shipped behaviors, and the `Simple*` components dress them:
 
 ```rust
 SimpleButton::new("Save").handle_click(save),
 SimpleButton::new("Delete").set_variant(SimpleVariant::Destructive).handle_click(delete),
 ```
 
-### Defining your own view
-
-The common case composes built-ins and implements `View` by delegating:
-
-```rust
-impl View for Labeled {
-  fn build(self) -> NodeId {
-    Column::new()
-      .set_children((Text::new(self.label), self.child))
-      .build()
-  }
-}
-```
-
-For web-specific work beyond the built-ins, just call the driver's functions from a
-view, cfg-gated to that target—there is no helper in between (`empty()` is the no-op for
-platforms a view doesn't support):
-
-```rust
-#[cfg(target_arch = "wasm32")]
-fn canvas() -> impl IntoView {
-  AnyView::new(|| {
-    let node = web::create_element("canvas");
-    // …raw DOM / JS interop the framework doesn't model…
-    node
-  })
-}
-```
+`Theme::new(palette)` defines a token set beneath it and `Theme::derive(|| palette.get())`
+follows a signal, redefining the tokens in place so nothing rebuilds; `SimplePalette`
+is one such set, and a third party's palette is on identical footing. Light and dark
+are one condition, `Media::Dark`, answered per token; `media::set_scheme` puts a scheme
+in force for the whole document.
 
 ## Build & run
 
@@ -160,42 +156,51 @@ fn canvas() -> impl IntoView {
 rustup target add wasm32-unknown-unknown wasm32-wasip2
 cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
-cargo skene --dir examples/gui/counter run web        # build, serve on :8080, live-reload
+cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
-cargo skene --dir examples/tui/counter run tui    # build and run the terminal demo
+cargo skene --dir examples/tui/counter run tui             # build and run in the terminal
 ```
 
-Targeted examples live under `examples/gui` and `examples/tui`, one folder per
-feature: `counter` (state, snapshot-preserving reloads), `router` (typed routes behind
-real links, the about page split out and lazily loaded via `#[lazy]`), and `gallery`
-(every built-in view and control, live)—the terminal has its own `counter` and
-`gallery`.
+Examples live under `examples/gui` and `examples/tui`, one folder per feature, the same
+names on both facades where the feature exists: `counter` (state, snapshot-preserving
+reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
+(a palette built per property, an accent the reader switches, a nested theme, the color
+scheme), and the GUI-only `router` (typed routes behind real links, the about page split
+out with `#[lazy]`). `examples/third-party` holds the crates written from outside the
+framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
+workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
 
-The same app also renders server-side with no integration at all—its `wasm32-wasip2`
-build is a plain command:
+The server build of a GUI app is a plain command, with no integration at all:
 
 ```sh
 cargo build -p counter --target wasm32-wasip2
 wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 ```
 
-Then open <http://localhost:8080>. `skene run web` builds the `counter` example to
-wasm, generates the bindings into `examples/gui/counter/dist/web`, serves it with the
-assets its `skene.toml` declares, and rebuilds + reloads the page on change; pass
-`--port <n>` or `--release`. Every build lands under `dist/<target>`—`web` (CSR and
-static alike, the folder replaced wholesale each build), `tui`, `ios` and the rest as
-they arrive. (`cargo skene` runs the
-workspace-local CLI; `cargo install --path packages/cli` makes it a plain `skene`.)
-The example is a single crate (`examples/gui/counter`) depending only on `skene-gui`.
-
 ## Testing
 
+Three tiers, and the host tier alone proves nothing about the web:
+
 ```sh
-cargo test --workspace      # host: reactive, the spine, headless views (headless driver)
-cargo test -p skene-gui --target wasm32-unknown-unknown   # browser: real DOM, headless browser
-cargo test -p skene-gui --target wasm32-wasip2            # server: wasmtime, incl. snapshot
+cargo test --workspace                                    # host: the engine, the spine, every view on the headless driver
+cargo test -p skene-gui --target wasm32-wasip2            # server leaf: wasmtime, a byte-exact render snapshot
+cargo test -p skene-gui --target wasm32-unknown-unknown   # browser leaf: a real DOM through geckodriver
 ```
 
-Drivers test against their real sinks: the browser suite drives a real DOM via
-`wasm-bindgen-test`; the server suite runs under wasmtime and pins a byte-exact render
-snapshot.
+Read the `test result:` lines rather than the exit codes: wasmtime aborts on the first
+panic and prints `Error: failed to run main module` instead of a `FAILED` line, and the
+browser runner panics on cleanup after reporting, which stops cargo before the
+remaining binaries run—so run each browser binary by name (`--test web_dom`,
+`web_hydrate`, `web_resource`, `web_task`) and add the totals. `skene-web` carries its
+own `web_dom` and `web_ssr` binaries on the same two targets.
+
+## Extending
+
+A component library depends on `skene-views`, writes generic over `D: Driver` exactly as
+the built-ins do, states what it needs from a medium as a bound on the driver's
+associated types, and works on every facade from one crate. A low-level view is written
+against a driver's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
+through the same scene as a built-in. `examples/third-party` shows all three: `acme-ui`
+(a palette and a badge over any driver), `acme-map` (a canvas on the browser leaf with a
+server placeholder) and `acme-sparkline` (bars painted into the terminal's cells), each
+used by a gallery and tested on its driver.

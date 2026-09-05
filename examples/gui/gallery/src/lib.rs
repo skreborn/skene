@@ -4,34 +4,96 @@ use skene_gui::{ActiveDriver, prelude::*};
 
 #[main]
 fn app() -> impl IntoView {
-  // The theme follows the OS scheme, and it carries the ambient ink and selection
-  // colors with it, so nothing here names a color that a palette already holds.
-  Theme::new(SimplePalette::default()).set_child_builder(|| {
-    Container::new()
-      .set_color(SimplePalette::BACKGROUND)
-      .set_child(
-        Column::new()
-          .set_item_alignment(ItemAlignment::Center)
-          .set_padding(Inset::symmetric(24., 48.))
-          .set_child(
-            Container::new().set_max_width(560.).set_child(
-              Column::new().set_spacing(24.).set_children((
-                Text::new("GALLERY")
-                  .set_font_size(13.)
-                  .set_font_weight(500.)
-                  .set_color(SimplePalette::MUTED_FOREGROUND),
-                typography(),
-                buttons(),
-                toggles(),
-                inputs(),
-                layouts(),
-                list(),
-                third_party(),
-              )),
+  // The palette in force is a signal the gallery switches from inside itself: the theme
+  // redefines its tokens in place and rebuilds nothing, so every counter below keeps its
+  // value across a switch. Each palette follows the OS scheme per token, and carries
+  // the ambient ink and selection colors, so nothing here names a color a palette holds.
+  let palette = Signal::tagged("palette", Some("neutral".to_owned()));
+
+  Theme::derive(move || palette.with(|name| named_palette(name.as_deref()))).set_child_builder(
+    move || {
+      Container::new()
+        .set_color(SimplePalette::BACKGROUND)
+        .set_child(
+          Column::new()
+            .set_item_alignment(ItemAlignment::Center)
+            .set_padding(Inset::symmetric(24., 48.))
+            .set_child(
+              Container::new().set_max_width(560.).set_child(
+                Column::new().set_spacing(24.).set_children((
+                  Text::new("GALLERY")
+                    .set_font_size(13.)
+                    .set_font_weight(500.)
+                    .set_color(SimplePalette::MUTED_FOREGROUND),
+                  palettes(palette),
+                  typography(),
+                  buttons(),
+                  toggles(),
+                  inputs(),
+                  layouts(),
+                  list(),
+                  third_party(),
+                )),
+              ),
             ),
-          ),
+        )
+    },
+  )
+}
+
+/// The palette `name` selects, each from the public constructors: the neutral default,
+/// or the default with a brand accent laid over its ring, its link and its primary look.
+fn named_palette(name: Option<&str>) -> SimplePalette {
+  let (brand, brand_dark, hover, hover_dark) = match name {
+    Some("indigo") => (
+      Color::srgb(0.29, 0.33, 0.86),
+      Color::srgb(0.51, 0.55, 0.97),
+      Color::srgb(0.24, 0.27, 0.75),
+      Color::srgb(0.62, 0.65, 0.99),
+    ),
+    Some("rose") => (
+      Color::srgb(0.80, 0.16, 0.40),
+      Color::srgb(0.96, 0.45, 0.65),
+      Color::srgb(0.68, 0.12, 0.33),
+      Color::srgb(0.98, 0.58, 0.74),
+    ),
+    _ => return SimplePalette::default(),
+  };
+  let pair = |light: Color, dark: Color| Definition::from(light).when(Media::Dark, dark);
+
+  SimplePalette::default()
+    .set_ring(pair(brand, brand_dark))
+    .set_link(pair(brand, brand_dark))
+    .set_primary(
+      SimpleLook::new(
+        SimpleVariant::Primary,
+        pair(brand, brand_dark),
+        pair(Color::srgb(1., 1., 1.), Color::srgb(0.09, 0.09, 0.14)),
       )
-  })
+      .set_hover(pair(hover, hover_dark)),
+    )
+}
+
+fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
+  section(
+    "Palette",
+    Column::new().set_spacing(12.).set_children((
+      SimpleRadioGroup::new()
+        .bind_chosen(palette)
+        .set_label("Palette")
+        .set_child(Row::new().set_spacing(16.).set_children((
+          radio_choice("neutral"),
+          radio_choice("indigo"),
+          radio_choice("rose"),
+        ))),
+      Text::new(
+        "The theme redefines its tokens in place: switch, and the click count below keeps \
+         its value.",
+      )
+      .set_font_size(13.)
+      .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
 }
 
 fn typography() -> impl IntoView {

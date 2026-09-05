@@ -5,13 +5,52 @@
 use skene_tui::{ActiveDriver, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
-/// that follows the terminal's own background.
+/// whose palette the gallery switches from inside itself and whose tokens follow the
+/// terminal's own background.
 #[must_use]
 pub fn app() -> impl IntoView {
-  Theme::new(SimplePalette::default()).set_child_builder(gallery)
+  // The theme redefines its tokens in place and rebuilds nothing, so every counter
+  // below keeps its value across a switch.
+  let palette = Signal::tagged("palette", Some("neutral".to_owned()));
+
+  Theme::derive(move || palette.with(|name| named_palette(name.as_deref())))
+    .set_child_builder(move || gallery(palette))
 }
 
-fn gallery() -> impl IntoView {
+/// The palette `name` selects, each from the public constructors: the neutral default,
+/// or the default with a brand accent laid over its ring, its link and its primary look.
+fn named_palette(name: Option<&str>) -> SimplePalette {
+  let (brand, brand_dark, hover, hover_dark) = match name {
+    Some("indigo") => (
+      Color::srgb(0.29, 0.33, 0.86),
+      Color::srgb(0.51, 0.55, 0.97),
+      Color::srgb(0.24, 0.27, 0.75),
+      Color::srgb(0.62, 0.65, 0.99),
+    ),
+    Some("rose") => (
+      Color::srgb(0.80, 0.16, 0.40),
+      Color::srgb(0.96, 0.45, 0.65),
+      Color::srgb(0.68, 0.12, 0.33),
+      Color::srgb(0.98, 0.58, 0.74),
+    ),
+    _ => return SimplePalette::default(),
+  };
+  let pair = |light: Color, dark: Color| Definition::from(light).when(Media::Dark, dark);
+
+  SimplePalette::default()
+    .set_ring(pair(brand, brand_dark))
+    .set_link(pair(brand, brand_dark))
+    .set_primary(
+      SimpleLook::new(
+        SimpleVariant::Primary,
+        pair(brand, brand_dark),
+        pair(Color::srgb(1., 1., 1.), Color::srgb(0.09, 0.09, 0.14)),
+      )
+      .set_hover(pair(hover, hover_dark)),
+    )
+}
+
+fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
   Container::new()
     .set_overflow(Overflow::Auto)
     .set_color(SimplePalette::BACKGROUND)
@@ -27,6 +66,7 @@ fn gallery() -> impl IntoView {
                 Text::new("GALLERY")
                   .set_bold(true)
                   .set_color(SimplePalette::MUTED_FOREGROUND),
+                palettes(palette),
                 text(),
                 buttons(),
                 toggles(),
@@ -39,6 +79,27 @@ fn gallery() -> impl IntoView {
           ),
         ),
     )
+}
+
+fn palettes(palette: Signal<Option<String>>) -> impl IntoView {
+  section(
+    "Palette",
+    Column::new().set_spacing(1).set_children((
+      SimpleRadioGroup::new()
+        .bind_chosen(palette)
+        .set_label("Palette")
+        .set_child(Row::new().set_spacing(2).set_children((
+          radio_choice("neutral"),
+          radio_choice("indigo"),
+          radio_choice("rose"),
+        ))),
+      Text::new(
+        "The theme redefines its tokens in place: switch, and the click count below keeps \
+         its value.",
+      )
+      .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
 }
 
 fn text() -> impl IntoView {

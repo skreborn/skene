@@ -25,15 +25,35 @@ fn with_driver<R>(body: impl FnOnce() -> R) -> R {
 
 #[test]
 fn the_gallery_renders_and_responds() {
-  let (frame, clicked) = with_driver(|| {
+  let (frame, clicked, switched, neutral, indigo) = with_driver(|| {
     let _ = tui::mount(|| tui_gallery::app().into_view().build());
 
     let frame = tui::render_to_text(60, 160);
+    let neutral = tui::render_to_colors(60, 160);
 
+    // `Tab` lands on the palette's chosen radio; `ArrowRight` chooses the next palette.
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowRight");
+
+    let indigo = tui::render_to_colors(60, 160);
+
+    // The next `Tab` is the primary button.
     tui::trigger_key("Tab");
     tui::trigger_key("Enter");
 
-    (frame, tui::render_to_text(60, 160))
+    let clicked = tui::render_to_text(60, 160);
+
+    // Back on the radio group, a third palette redefines the tokens beneath the click.
+    tui::trigger_key("Shift+Tab");
+    tui::trigger_key("ArrowRight");
+
+    (
+      frame,
+      clicked,
+      tui::render_to_text(60, 160),
+      neutral,
+      indigo,
+    )
   });
 
   for title in [
@@ -66,5 +86,13 @@ fn the_gallery_renders_and_responds() {
   assert!(
     clicked.contains("clicked 1 time(s)"),
     "the button did not respond:\n{clicked}"
+  );
+  assert_ne!(
+    neutral, indigo,
+    "the palette switch did not re-ink the frame"
+  );
+  assert!(
+    switched.contains("clicked 1 time(s)"),
+    "the palette switch lost the click count:\n{switched}"
   );
 }

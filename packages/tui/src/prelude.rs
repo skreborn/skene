@@ -135,4 +135,5 @@ pub use crate::{
   set_scheme,
   set_title,
   spawn,
+  stored_scheme,
 };

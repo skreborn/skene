@@ -122,12 +122,13 @@ pub use leaf::{
   Value,
   When,
 };
-pub use motion::{Animation, Easing, StyleProperty, Transition};
+pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
 pub use node::NodeId;
 pub use painting::{Canvas, Painter, Painting};
 pub use pixel::{PixelBoxFields, PixelExt, PixelProperty, PixelRunFields, pixel_fields};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
+  BoxKeyframe,
   BoxProps,
   ContainerSizes,
   DeclaredBoxStyle,
@@ -135,6 +136,7 @@ pub use props::{
   EventKind,
   MediaSignals,
   OverlayProps,
+  RunKeyframe,
   RunProps,
   StaticBoxStyle,
   StaticRunStyle,
@@ -166,7 +168,7 @@ pub use scene::{
   ScrollHandler,
   ToggleHandler,
 };
-pub use shape::{Declared, Plain, Shape, Static};
+pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::Show;
 pub use task::scope_bound;
 pub use token::{Definitions, IntoTokenValue, Themed, Token, TokenName, TokenRef, TokenSet};

@@ -12,9 +12,11 @@ use skene_core::{
   IntoView,
   MouseCursor,
   NodeId,
+  Property,
   Scene,
   State,
   TokenRef,
+  Transition,
   View,
 };
 use skene_reactive::{Effect, With};
@@ -34,6 +36,8 @@ const INK: TokenRef<Color> = TokenRef::new("simple-look-ink");
 const BORDER: TokenRef<Color> = TokenRef::new("simple-look-border");
 /// The hover surface of the look in force on a button.
 const HOVER: TokenRef<Color> = TokenRef::new("simple-look-hover");
+/// How long the surface takes to settle on a hover or focus change, in seconds.
+const SURFACE_SETTLE: f32 = 0.15;
 /// The focus surface of the look in force on a button.
 const FOCUS: TokenRef<Color> = TokenRef::new("simple-look-focus");
 
@@ -152,7 +156,8 @@ where
       )
       .set_border(border(shape.control_ring, BORDER))
       .set_corner_radius(RADIUS)
-      .set_cursor(MouseCursor::Click);
+      .set_cursor(MouseCursor::Click)
+      .set_transition(Transition::new(Property::Color, SURFACE_SETTLE));
     let node = match self.content {
       Content::Text(Source::Fixed(label)) => raw.set_label(label).build(),
       Content::Text(Source::Derived(label)) => raw

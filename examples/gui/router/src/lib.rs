@@ -52,6 +52,8 @@ impl StaticRoutes for Page {
 
 #[main]
 fn app() -> impl IntoView {
+  skene_gui::view_transitions::enable();
+
   let router = install_static_router(Page::Home);
 
   Theme::new(SimplePalette::default()).set_child_builder(move || {

@@ -30,6 +30,7 @@ use skene_core::{
   GridFlow,
   IntoBoxValue,
   IntoRunValue,
+  Keyframe,
   Layout,
   Overflow,
   OverlayProps,
@@ -54,7 +55,7 @@ use skene_core::{
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},
   expr::render_expr,
-  motion::{render_animation_values, render_keyframes, render_transitions},
+  motion::{NO_PREFERENCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
 use crate::Declarations;
@@ -120,8 +121,8 @@ enum Unit {
 }
 
 /// The CSS a property compiles to.
-struct Target {
-  name: &'static str,
+pub(crate) struct Target {
+  pub(crate) name: &'static str,
   pseudo: &'static str,
   unit: Unit,
   position: Option<&'static str>,
@@ -146,7 +147,7 @@ const fn pixels(name: &'static str) -> Target {
 }
 
 /// The CSS property, pseudo-element, unit and positioning `key` compiles to.
-const fn target(key: Key) -> Target {
+pub(crate) const fn target(key: Key) -> Target {
   match key {
     PropertyKey::Shared(property) => match property {
       Property::Width => plain("width"),
@@ -426,8 +427,9 @@ impl Rules {
     }
   }
 
-  /// Renders every rule after `prefix`: the base rules, then the variants in order.
-  fn finish(self, mut out: String) -> Compiled {
+  /// Renders every rule after `prefix`: the base rules, the variants in order, then
+  /// `trailer`.
+  fn finish(self, mut out: String, trailer: &str) -> Compiled {
     for group in self.base.iter().chain(&self.variants) {
       if group.declarations.is_empty() {
         continue;
@@ -437,6 +439,8 @@ impl Rules {
         .conjunction
         .emit(&mut out, None, group.pseudo, &group.declarations.render());
     }
+
+    out.push_str(trailer);
 
     Compiled {
       template: out,
@@ -479,15 +483,30 @@ impl RunVisitor<Static<Condition<f32>>, PixelExt> for RunRules<'_> {
   }
 }
 
-/// Renders a plain box style as declarations: a keyframe.
-struct PlainBox(Declarations);
+/// The text of a keyframe's static leaf of `key`.
+fn keyframe_leaf<T: Clone>(
+  key: Key,
+  leaf: &StaticLeaf<T>,
+  fixed: impl FnOnce(T) -> String,
+) -> String {
+  match leaf {
+    StaticLeaf::Fixed(value) => fixed(value.clone()),
+    StaticLeaf::Token(reference) => token_reference(target(key).unit, reference.name()),
+    StaticLeaf::Expr(expr) => render_expr(expr.node()),
+  }
+}
 
-impl BoxVisitor<f32, Plain, PixelExt> for PlainBox {
-  fn value<T: IntoBoxValue<f32, PixelExt>>(&mut self, key: Key, value: &Option<T>) {
-    if let Some(value) = value {
+/// Renders a box keyframe as declarations.
+struct KeyframeBox(Declarations);
+
+impl BoxVisitor<f32, Keyframe, PixelExt> for KeyframeBox {
+  fn value<T: IntoBoxValue<f32, PixelExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+    if let Some(leaf) = value {
       let Target { name, position, .. } = target(key);
-      let declarations = std::mem::take(&mut self.0)
-        .set(name, render_box_value(key, &value.clone().into_box_value()));
+      let text = keyframe_leaf(key, leaf, |fixed: T| {
+        render_box_value(key, &fixed.into_box_value())
+      });
+      let declarations = std::mem::take(&mut self.0).set(name, text);
 
       self.0 = match position {
         Some(position) => declarations.set("position", position),
@@ -497,48 +516,68 @@ impl BoxVisitor<f32, Plain, PixelExt> for PlainBox {
   }
 }
 
-/// Renders a plain run style as declarations: a keyframe.
-struct PlainRun(Declarations);
+/// Renders a run keyframe as declarations.
+struct KeyframeRun(Declarations);
 
-impl RunVisitor<Plain, PixelExt> for PlainRun {
-  fn value<T: IntoRunValue<PixelExt>>(&mut self, key: Key, value: &Option<T>) {
-    if let Some(value) = value {
-      self.0 = std::mem::take(&mut self.0).set(
-        target(key).name,
-        render_run_value(key, &value.clone().into_run_value()),
-      );
+impl RunVisitor<Keyframe, PixelExt> for KeyframeRun {
+  fn value<T: IntoRunValue<PixelExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+    if let Some(leaf) = value {
+      let text = keyframe_leaf(key, leaf, |fixed: T| {
+        render_run_value(key, &fixed.into_run_value())
+      });
+
+      self.0 = std::mem::take(&mut self.0).set(target(key).name, text);
     }
   }
 }
 
-fn plain_box_declarations(style: &BoxStyle<f32, Plain, PixelExt>) -> Declarations {
-  let mut plain = PlainBox(Declarations::new());
+fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, PixelExt>) -> Declarations {
+  let mut keyframe = KeyframeBox(Declarations::new());
 
-  style.visit(&mut plain);
+  style.visit(&mut keyframe);
 
-  plain.0
+  keyframe.0
 }
 
-fn plain_run_declarations(style: &RunStyle<Plain, PixelExt>) -> Declarations {
-  let mut plain = PlainRun(Declarations::new());
+fn run_keyframe_declarations(style: &RunStyle<Keyframe, PixelExt>) -> Declarations {
+  let mut keyframe = KeyframeRun(Declarations::new());
 
-  style.visit(&mut plain);
+  style.visit(&mut keyframe);
 
-  plain.0
+  keyframe.0
 }
 
-/// Folds the motion into `base` and appends the `@keyframes` blocks to `out`.
+/// Folds the motion into `base` and appends the `@keyframes` blocks to `out`; the
+/// motion respecting reduced motion goes into the returned trailer, a rule on the
+/// class under the no-preference media query, so a reader preferring reduced motion
+/// sees only the motion that opted out.
 fn motion<S>(
   out: &mut String,
   base: Declarations,
-  transitions: &[skene_core::Transition],
+  transitions: &[skene_core::Transition<PixelProperty>],
   animations: &[Animation<S>],
   declarations: &impl Fn(&S) -> Declarations,
-) -> Declarations {
+) -> (Declarations, String) {
   let mut base = base;
+  let mut respecting = Declarations::new();
+  let insistent =
+    |transition: &skene_core::Transition<PixelProperty>| !transition.respects_reduced_motion;
 
   if !transitions.is_empty() {
-    base = base.set("transition", render_transitions(transitions));
+    if transitions.iter().any(&insistent) {
+      base = base.set(
+        "transition",
+        render_transitions(
+          transitions
+            .iter()
+            .filter(|transition| insistent(transition)),
+        ),
+      );
+    }
+
+    if !transitions.iter().all(&insistent) {
+      respecting = respecting.set("transition", render_transitions(transitions));
+    }
   }
 
   if !animations.is_empty() {
@@ -546,11 +585,32 @@ fn motion<S>(
       .iter()
       .map(|animation| render_keyframes(out, animation, declarations))
       .collect();
+    let entries = || animations.iter().zip(names.iter().map(String::as_str));
+    let insistent = |(animation, _): &(&Animation<S>, &str)| !animation.respects_reduced_motion;
 
-    base = base.set("animation", render_animation_values(animations, &names));
+    if entries().any(|entry| insistent(&entry)) {
+      base = base.set(
+        "animation",
+        render_animation_values(entries().filter(insistent)),
+      );
+    }
+
+    if !entries().all(|entry| insistent(&entry)) {
+      respecting = respecting.set("animation", render_animation_values(entries()));
+    }
   }
 
-  base
+  let trailer = if respecting.is_empty() {
+    String::new()
+  }
+  else {
+    format!(
+      "@media {NO_PREFERENCE}{{.{CLASS_PLACEHOLDER}{{{}}}}}",
+      respecting.render()
+    )
+  };
+
+  (base, trailer)
 }
 
 /// The static display declarations for a [`Layout`].
@@ -594,24 +654,28 @@ fn box_base<D: PixelDriver>(props: &BoxProps<D>) -> Declarations {
     base = base.set("container", format!("{} / {containment}", name.0));
   }
 
+  if let Some(name) = &props.transition_name {
+    base = base.set("view-transition-name", name.clone());
+  }
+
   base
 }
 
 /// Compiles a box's props with `reset` and `base` ahead of its own declarations.
 fn compile_box_with<D: PixelDriver>(props: &BoxProps<D>, base: Declarations) -> Compiled {
   let mut out = String::new();
-  let base = motion(
+  let (base, trailer) = motion(
     &mut out,
     base,
     &props.dynamics.transitions,
     &props.dynamics.animations,
-    &plain_box_declarations,
+    &box_keyframe_declarations,
   );
   let mut rules = Rules::new(base);
 
   props.style.visit(&mut BoxRules(&mut rules));
 
-  rules.finish(out)
+  rules.finish(out, &trailer)
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
@@ -698,18 +762,18 @@ pub(crate) fn compile_run<D: PixelDriver>(props: &RunProps<D>) -> Compiled {
   }
 
   let mut out = String::new();
-  let base = motion(
+  let (base, trailer) = motion(
     &mut out,
     base,
     &props.dynamics.transitions,
     &props.dynamics.animations,
-    &plain_run_declarations,
+    &run_keyframe_declarations,
   );
   let mut rules = Rules::new(base);
 
   props.style.visit(&mut RunRules(&mut rules));
 
-  rules.finish(out)
+  rules.finish(out, &trailer)
 }
 
 /// The text of a token definition's leaf.
@@ -896,6 +960,7 @@ pub(crate) fn box_fingerprint<D: PixelDriver>(props: &BoxProps<D>, reset: u8) ->
   hasher.write_u8(reset);
   props.layout.hash(&mut hasher);
   props.container.hash(&mut hasher);
+  props.transition_name.hash(&mut hasher);
   props.style.fingerprint(&mut hasher);
   props.dynamics.fingerprint(&mut hasher);
 

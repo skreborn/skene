@@ -6,6 +6,7 @@ use super::{
   Declared,
   DerivedSlot,
   Fingerprint,
+  Keyframe,
   Plain,
   Property,
   PropertyKey,
@@ -286,13 +287,23 @@ impl<C: Clone + PartialEq + Debug + 'static, X: StyleExtension> RunFieldVisitor<
 
 /// A run's motion: the transitions between its values and the keyframe animations it
 /// plays.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[must_use]
 pub struct RunDynamics<X: StyleExtension = ()> {
   /// The property transitions.
-  pub transitions: Vec<Transition>,
-  /// The keyframe animations, each keyframe a plain style.
-  pub animations: Vec<Animation<RunStyle<Plain, X>>>,
+  pub transitions: Vec<Transition<X::Property>>,
+  /// The keyframe animations, each keyframe a style of static leaves.
+  pub animations: Vec<Animation<RunStyle<Keyframe, X>>>,
+}
+
+impl<X: StyleExtension> Default for RunDynamics<X> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self {
+      transitions: Vec::new(),
+      animations: Vec::new(),
+    }
+  }
 }
 
 #[cfg(test)]

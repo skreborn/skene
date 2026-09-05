@@ -399,7 +399,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         .enumerate()
         .map(|(index, run)| {
           let record = store.record(*run).expect("a live run");
-          let Kind::Run { props, cache } = &record.kind
+          let Kind::Run { props, cache, .. } = &record.kind
           else {
             unreachable!("paragraph runs are runs");
           };
@@ -483,7 +483,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
       }
     }
     Kind::Run { .. } if is_inline_box(store, handle) => NodePaint::None,
-    Kind::Run { props, cache } => {
+    Kind::Run { props, cache, .. } => {
       let style = cache.as_ref().map(|cache| &cache.style);
       let spans = wrap_spans(&record.text, width);
       let selection = props

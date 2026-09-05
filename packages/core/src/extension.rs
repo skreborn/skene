@@ -29,6 +29,14 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
 
   /// Visits every run field, in declaration order.
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V);
+
+  /// The value `amount` of the way from `from` to `to`, for a driver running motion on
+  /// its own clock; an extension whose values have no in-between cuts over halfway.
+  #[inline(always)]
+  #[must_use]
+  fn interpolate_value(from: &Self::Value, to: &Self::Value, amount: f32) -> Self::Value {
+    crate::motion::interpolate::snap(from, to, amount)
+  }
 }
 
 /// The property names of an extension with no properties.

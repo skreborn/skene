@@ -3,7 +3,8 @@
 //! [`viewport`], [`scheme`] and [`reduced_motion`] are the driver's signals; [`watch`]
 //! turns any declared [`Media`] condition into a memo. The viewport follows the last
 //! rendered size, in cells; the scheme composes the app's choice with the background
-//! the terminal detected; the terminal reports no reduced-motion preference.
+//! the terminal detected; the terminal reports no reduced-motion preference of its
+//! own, and a headless test sets one through `trigger_reduced_motion`.
 //!
 //! The scheme in force is the terminal's, not a theme's: [`set_scheme`] and
 //! [`derive_scheme`] tell the driver which scheme paints, touching no node, and `None`
@@ -26,7 +27,8 @@ pub fn scheme() -> ReadSignal<ColorScheme> {
   ActiveDriver::default().media().scheme
 }
 
-/// Whether the reader prefers reduced motion; the terminal reports no preference.
+/// Whether the reader prefers reduced motion; the terminal reports no preference of
+/// its own.
 #[inline(always)]
 pub fn reduced_motion() -> ReadSignal<bool> {
   ActiveDriver::default().media().reduced_motion

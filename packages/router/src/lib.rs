@@ -28,6 +28,10 @@ pub trait StaticRoutes: Route {
 /// navigation.
 type Sink = Rc<RefCell<Option<Box<dyn Fn(&str)>>>>;
 
+/// The commit a platform installs: runs a navigation's state change, wrapping it in a
+/// view transition where the platform has one.
+type Commit = Rc<RefCell<Option<Box<dyn Fn(Box<dyn FnOnce()>)>>>>;
+
 /// The current route as reactive state.
 ///
 /// Cheap to clone and thread through the reactive context
@@ -36,6 +40,7 @@ type Sink = Rc<RefCell<Option<Box<dyn Fn(&str)>>>>;
 pub struct Router<R: Route> {
   current: Signal<R>,
   sink: Sink,
+  commit: Commit,
 }
 
 impl<R: Route> Clone for Router<R> {
@@ -43,6 +48,7 @@ impl<R: Route> Clone for Router<R> {
     Self {
       current: self.current,
       sink: Rc::clone(&self.sink),
+      commit: Rc::clone(&self.commit),
     }
   }
 }
@@ -53,6 +59,7 @@ impl<R: Route> Router<R> {
     Self {
       current: Signal::new(initial),
       sink: Rc::new(RefCell::new(None)),
+      commit: Rc::new(RefCell::new(None)),
     }
   }
 
@@ -63,7 +70,7 @@ impl<R: Route> Router<R> {
   }
 
   /// Navigates to `route`: reports the new path to the platform's sink (the browser
-  /// pushes a history entry), then updates the state.
+  /// pushes a history entry), then updates the state through the platform's commit.
   ///
   /// The sink runs first so anything reacting to the state—a derived document title
   /// above all—applies to the new history entry, never retroactively to the departed
@@ -75,7 +82,19 @@ impl<R: Route> Router<R> {
       sink(&path);
     }
 
-    self.current.set(route);
+    self.commit(route);
+  }
+
+  /// Writes `route` into the state, through the platform's commit when one is
+  /// installed.
+  fn commit(&self, route: R) {
+    let current = self.current;
+    let commit = self.commit.borrow();
+
+    match commit.as_ref() {
+      Some(commit) => commit(Box::new(move || current.set(route))),
+      None => current.set(route),
+    }
   }
 
   /// Applies an externally-changed path (back/forward navigation, the initial URL)
@@ -90,7 +109,7 @@ impl<R: Route> Router<R> {
 
     match R::parse(path) {
       Some(route) => {
-        self.current.set(route);
+        self.commit(route);
 
         true
       }
@@ -102,6 +121,12 @@ impl<R: Route> Router<R> {
   /// [`navigate`](Self::navigate).
   pub fn set_sink(&self, sink: impl Fn(&str) + 'static) {
     *self.sink.borrow_mut() = Some(Box::new(sink));
+  }
+
+  /// Installs the platform's commit: every state change of a navigation runs through
+  /// it, so a platform with view transitions wraps the change in one.
+  pub fn set_commit(&self, commit: impl Fn(Box<dyn FnOnce()>) + 'static) {
+    *self.commit.borrow_mut() = Some(Box::new(commit));
   }
 
   /// Stores this router in the current reactive scope, for [`get`](Self::get) anywhere

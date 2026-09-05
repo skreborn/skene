@@ -11,8 +11,10 @@ use super::{
   DriverLeaf,
   IntoBoxValue,
   IntoRunValue,
+  Keyframe,
   Plain,
   PropertyKey,
+  PropertyName,
   RunDynamics,
   RunStyle,
   RunVisitor,
@@ -77,10 +79,16 @@ hashed!(
   GridFlow,
   GridPlacement,
   Overflow,
-  StyleProperty,
   bool,
   u16,
 );
+
+impl<P: PropertyName> Fingerprint for StyleProperty<P> {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.hash(state);
+  }
+}
 
 impl<N: Scalar> Fingerprint for N {
   #[inline(always)]
@@ -247,12 +255,13 @@ impl Fingerprint for Easing {
   }
 }
 
-impl Fingerprint for Transition {
+impl<P: PropertyName> Fingerprint for Transition<P> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.property.fingerprint(state);
     self.duration.fingerprint(state);
     self.delay.fingerprint(state);
     self.easing.fingerprint(state);
+    self.respects_reduced_motion.fingerprint(state);
   }
 }
 
@@ -269,6 +278,7 @@ impl<S: Fingerprint> Fingerprint for Animation<S> {
     self.delay.fingerprint(state);
     self.easing.fingerprint(state);
     self.iterations.fingerprint(state);
+    self.respects_reduced_motion.fingerprint(state);
     self.alternate.fingerprint(state);
   }
 }
@@ -302,8 +312,30 @@ impl<
   }
 }
 
+impl<N: Scalar, X: StyleExtension, H: Hasher> BoxVisitor<N, Keyframe, X> for Feed<'_, H> {
+  fn value<T: IntoBoxValue<N, X>>(
+    &mut self,
+    key: PropertyKey<X::Property>,
+    value: &Option<StaticLeaf<T>>,
+  ) {
+    key.hash(self.state);
+    value.fingerprint(self.state);
+  }
+}
+
 impl<X: StyleExtension, H: Hasher> RunVisitor<Plain, X> for Feed<'_, H> {
   fn value<T: IntoRunValue<X>>(&mut self, key: PropertyKey<X::Property>, value: &Option<T>) {
+    key.hash(self.state);
+    value.fingerprint(self.state);
+  }
+}
+
+impl<X: StyleExtension, H: Hasher> RunVisitor<Keyframe, X> for Feed<'_, H> {
+  fn value<T: IntoRunValue<X>>(
+    &mut self,
+    key: PropertyKey<X::Property>,
+    value: &Option<StaticLeaf<T>>,
+  ) {
     key.hash(self.state);
     value.fingerprint(self.state);
   }
@@ -332,6 +364,20 @@ impl<N: Scalar, X: StyleExtension> Fingerprint for BoxStyle<N, Plain, X> {
 impl<N: Scalar, C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension>
   Fingerprint for BoxStyle<N, Static<C>, X>
 {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.visit(&mut Feed { state });
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> Fingerprint for BoxStyle<N, Keyframe, X> {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.visit(&mut Feed { state });
+  }
+}
+
+impl<X: StyleExtension> Fingerprint for RunStyle<Keyframe, X> {
   #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.visit(&mut Feed { state });

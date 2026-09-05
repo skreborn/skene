@@ -7,6 +7,7 @@ use super::{
   Declared,
   DerivedSlot,
   Fingerprint,
+  Keyframe,
   Plain,
   Property,
   PropertyKey,
@@ -465,13 +466,23 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension> BoxFi
 
 /// A box's motion: the transitions between its values and the keyframe animations it
 /// plays.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[must_use]
 pub struct BoxDynamics<N: Scalar, X: StyleExtension = ()> {
   /// The property transitions.
-  pub transitions: Vec<Transition>,
-  /// The keyframe animations, each keyframe a plain style.
-  pub animations: Vec<Animation<BoxStyle<N, Plain, X>>>,
+  pub transitions: Vec<Transition<X::Property>>,
+  /// The keyframe animations, each keyframe a style of static leaves.
+  pub animations: Vec<Animation<BoxStyle<N, Keyframe, X>>>,
+}
+
+impl<N: Scalar, X: StyleExtension> Default for BoxDynamics<N, X> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self {
+      transitions: Vec::new(),
+      animations: Vec::new(),
+    }
+  }
 }
 
 #[cfg(test)]

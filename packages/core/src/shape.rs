@@ -2,7 +2,7 @@
 
 use std::{fmt::Debug, marker::PhantomData};
 
-use super::{Conditional, DriverLeaf, Value};
+use super::{Conditional, DriverLeaf, StaticLeaf, Value};
 
 /// The stage a style is at, fixing what each of its fields holds.
 ///
@@ -10,7 +10,7 @@ use super::{Conditional, DriverLeaf, Value};
 /// and a keyframe alike.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a style shape",
-  label = "a style is `Declared` by a builder, `Static` for a driver, or `Plain`"
+  label = "a style is `Declared` by a builder, `Static` for a driver, a `Keyframe` of an animation, or `Plain`"
 )]
 pub trait Shape: Copy + Default + PartialEq + Debug + 'static {
   /// A field holding a `T`.
@@ -33,13 +33,21 @@ impl<C: Clone + PartialEq + Debug + 'static> Shape for Static<C> {
   type Of<T: Clone + PartialEq + Debug + 'static> = Option<Conditional<DriverLeaf<T>, C>>;
 }
 
-/// A plain value per set property: an animation keyframe, or a style resolved against
-/// live state.
+/// A plain value per set property: a style resolved against live state.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Plain;
 
 impl Shape for Plain {
   type Of<T: Clone + PartialEq + Debug + 'static> = Option<T>;
+}
+
+/// A static leaf per set property: an animation keyframe, each leaf a fixed value, a
+/// token or an expression.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Keyframe;
+
+impl Shape for Keyframe {
+  type Of<T: Clone + PartialEq + Debug + 'static> = Option<StaticLeaf<T>>;
 }
 
 /// The marker impls a shape needs, free of bounds on the condition it carries.

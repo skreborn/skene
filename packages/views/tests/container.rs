@@ -18,6 +18,7 @@ use skene_core::{
   PointerButton,
   PointerEvent,
   Prevented,
+  Property,
   ScrollEvent,
   StyleProperty,
   Transition,
@@ -189,7 +190,7 @@ fn border_with_a_token_color_resolves_through_the_theme() {
       .set_child_builder(|| {
         Container::new()
           .set_border(Border::new(2., TestPalette::CARD))
-          .set_transition(Transition::new(StyleProperty::Background, 0.2))
+          .set_transition(Transition::new(Property::Color, 0.2))
       })
       .build()
   });
@@ -200,7 +201,7 @@ fn border_with_a_token_color_resolves_through_the_theme() {
   assert_eq!(props.dynamics.transitions.len(), 1);
   assert_eq!(
     props.dynamics.transitions[0].property,
-    StyleProperty::Background
+    StyleProperty::Shared(Property::Color)
   );
 
   owner.dispose();

@@ -83,6 +83,7 @@ use super::{
     link_attributes,
     native_element,
   },
+  motion::VIEW_TRANSITION_RULE,
   token::WebTokenValue,
 };
 use crate::{
@@ -430,6 +431,11 @@ impl Tree {
 
     out.push_str(RESET_CSS);
     out.push_str(&slot_registrations());
+
+    if VIEW_TRANSITIONS.with(Cell::get) {
+      out.push_str(VIEW_TRANSITION_RULE);
+    }
+
     self.render_new_styles(&mut out);
     out.push_str("</style>");
 
@@ -623,6 +629,9 @@ thread_local! {
   static HINTS: Cell<RenderHints> = const { Cell::new(RenderHints::DEFAULT) };
   static MEDIA: RefCell<Option<MediaState>> = const { RefCell::new(None) };
   static PREEMPT_SCHEME: Cell<bool> = const { Cell::new(false) };
+  /// Whether the app opted into view transitions, so the stylesheet carries the
+  /// cross-document rule.
+  static VIEW_TRANSITIONS: Cell<bool> = const { Cell::new(false) };
   /// The path being rendered, as supplied by the runner; `/` when none was.
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// The statically-renderable routes the app recorded during the last render.
@@ -1169,6 +1178,13 @@ pub const fn stored_scheme() -> Option<ColorScheme> {
   None
 }
 
+/// Opts the page into view transitions: the stylesheet carries
+/// `@view-transition { navigation: auto }`, so a browser that has them animates the
+/// cross-document navigations between the served pages; one that does not cuts.
+pub fn enable_view_transitions() {
+  VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
+}
+
 /// Realizes a link to `href` as a box the scene holds: an `<a>` whose children and
 /// handlers are the scene's, returned detached.
 pub fn create_link(href: &str) -> NodeId {
@@ -1286,6 +1302,7 @@ fn begin_render() -> (NodeId, Owner) {
   TREE.with(|tree| *tree.borrow_mut() = Tree::new());
   Scene::<Web>::with(|scene| *scene = Scene::new());
   PREEMPT_SCHEME.with(|preempt| preempt.set(false));
+  VIEW_TRANSITIONS.with(|enabled| enabled.set(false));
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   crate::hydration::reset_sources();
   forget_static_routes();

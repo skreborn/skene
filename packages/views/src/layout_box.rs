@@ -9,8 +9,8 @@ use skene_core::{
   AnyKind,
   Arrangement,
   BoxDynamics,
+  BoxKeyframe,
   BoxProps,
-  BoxStyle,
   Bubbling,
   Children,
   ClickHandler,
@@ -30,7 +30,6 @@ use skene_core::{
   Leaf,
   NodeId,
   NodeKind,
-  Plain,
   PlainChild,
   PlainHandler,
   PointerEvent,
@@ -43,6 +42,7 @@ use skene_core::{
   Seal,
   Spacing,
   StaticLeaf,
+  StyleExtension,
   TokenRef,
   Transition,
   Value,
@@ -90,6 +90,7 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   access: Option<Source<Vec<AccessProp>>>,
   style: DeclaredBoxStyle<D>,
   dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
+  transition_name: Option<String>,
   handlers: Handlers,
   anchor: Option<Anchor>,
   focus: Option<FocusHandle<D>>,
@@ -108,6 +109,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       access: None,
       style: DeclaredBoxStyle::<D>::default(),
       dynamics: BoxDynamics::default(),
+      transition_name: None,
       handlers: Handlers::default(),
       anchor: None,
       focus: None,
@@ -245,7 +247,10 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub fn set_transition(mut self, transition: Transition) -> Self {
+  pub fn set_transition(
+    mut self,
+    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
     self.dynamics.transitions.push(transition);
 
     self
@@ -253,11 +258,17 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(
-    mut self,
-    animation: Animation<BoxStyle<D::Scalar, Plain, D::StyleExt>>,
-  ) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
     self.dynamics.animations.push(animation);
+
+    self
+  }
+
+  /// Names the box for view transitions: the box is paired with the box of the same
+  /// name across a navigation, where the driver animates between them.
+  #[inline(always)]
+  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
+    self.transition_name = Some(name.into());
 
     self
   }
@@ -443,6 +454,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       role: self.role,
       style,
       dynamics: self.dynamics,
+      transition_name: self.transition_name,
       container: self.container,
       focus_order,
       access,

@@ -33,6 +33,7 @@ mod frame;
 mod glyphs;
 mod interaction;
 mod layout;
+mod motion;
 mod paint;
 mod resolve;
 mod resource;
@@ -127,6 +128,7 @@ pub use crate::terminal::{
   take_opened,
   trigger_clipboard_support,
   trigger_color_scheme,
+  trigger_frame,
   trigger_key,
   trigger_mouse_click,
   trigger_mouse_drag,
@@ -135,6 +137,7 @@ pub use crate::terminal::{
   trigger_mouse_release,
   trigger_mouse_right_click,
   trigger_mouse_scroll,
+  trigger_reduced_motion,
   trigger_resize,
 };
 pub use crate::{

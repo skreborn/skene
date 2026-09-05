@@ -47,12 +47,14 @@ pub use self::csr::uninstall;
 pub use self::csr::{
   add_head_element,
   claim_lazy,
+  commit_navigation,
   create_link,
   current_path,
   discard_lazy,
   document,
   drive,
   element,
+  enable_view_transitions,
   hydrate,
   hydrate_page,
   hydration_mismatches,
@@ -65,6 +67,7 @@ pub use self::csr::{
   set_document_title,
   set_scheme,
   stored_scheme,
+  view_transitions_enabled,
   watch_media,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -85,6 +88,7 @@ pub use self::ssr::{
   create_link,
   current_path,
   drive,
+  enable_view_transitions,
   record_static_routes,
   recorded_static_routes,
   register_boundary,

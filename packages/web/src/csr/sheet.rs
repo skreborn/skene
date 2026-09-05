@@ -163,6 +163,21 @@ impl Sheet {
     }
   }
 
+  /// Appends `rule` to the base block, unless the adopted blocks already carry it.
+  pub(super) fn add_rule(&mut self, rule: &str) {
+    if self.base_text.contains(rule)
+      || self
+        .adopted
+        .as_ref()
+        .is_some_and(|adopted| adopted.contains(rule))
+    {
+      return;
+    }
+
+    self.base_text.push_str(rule);
+    self.base.set_text_content(Some(&self.base_text));
+  }
+
   /// Removes every `<style>` element the sink owns.
   #[cfg(feature = "test")]
   pub(super) fn remove_all(&mut self) {

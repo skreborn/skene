@@ -22,9 +22,10 @@ use taffy::{
 };
 
 use crate::{
+  motion::{Presented, Previous},
   paint::{longest_word, wrap_spans, wrap_text},
   resolve::Env,
-  store::{BoxCache, Handle, Kind, PlainBox, Record, RunCache, Store},
+  store::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, RunCache, Store},
 };
 
 /// The character standing in for one cell of an inline box in its paragraph's text.
@@ -212,6 +213,8 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
   let handles = store.handles();
   let mut changed = false;
 
+  store.motion_active = false;
+
   for handle in handles {
     let Some(restyled) = restyle_one(store, handle)
     else {
@@ -251,10 +254,12 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
   changed
 }
 
-/// Resolves `handle`'s style if stale, and returns the taffy style it maps to; `None`
-/// for a node outside the layout.
+/// Resolves `handle`'s style if stale or in motion, and returns the taffy style it maps
+/// to; `None` for a node outside the layout.
 fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
   let generation = store.generation;
+  let now = store.now();
+  let reduced = store.reduced_motion;
   let record = store.record(handle)?;
 
   if !record.kind.is_laid_out() {
@@ -271,47 +276,61 @@ fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
       .and_then(|inner| inner.cache.as_ref())
       .is_some_and(|cache| cache.generation == generation && cache.interaction == interaction),
   };
+  let in_motion = record.in_motion;
 
-  if !fresh {
+  if !fresh || in_motion {
     let env = Env::of(store, handle);
     let resolved_box = env.resolve_box();
     let resolved_run = env.resolve_run();
     let resolved_layout = env.resolve_run_layout();
+    let box_keyframes = record
+      .kind
+      .box_record()
+      .map(|inner| &inner.props)
+      .map(|props| {
+        props
+          .dynamics
+          .animations
+          .iter()
+          .map(|animation| animation.map_keyframes(|frame| env.resolve_box_keyframe(frame)))
+          .collect::<Vec<_>>()
+      })
+      .unwrap_or_default();
+    let run_keyframes = match &record.kind {
+      Kind::Run { props, .. } => props
+        .dynamics
+        .animations
+        .iter()
+        .map(|animation| animation.map_keyframes(|frame| env.resolve_run_keyframe(frame)))
+        .collect::<Vec<_>>(),
+      _ => Vec::new(),
+    };
     let record = store.record_mut(handle)?;
+    let frame = Frame {
+      generation,
+      interaction,
+      now,
+      reduced,
+    };
+    // A node whose presentation came out different from the last one repaints.
+    let (repaint, active) = match &mut record.kind {
+      Kind::Run {
+        props,
+        cache,
+        motion,
+      } => {
+        let target = resolved_run.map(|target| (target, resolved_layout));
 
-    // A node whose resolution came out different from the last one repaints.
-    let repaint = match &mut record.kind {
-      Kind::Run { cache, .. } => {
-        let repaint = cache.as_ref().map(|cache| &cache.style) != resolved_run.as_ref();
-
-        *cache = resolved_run.map(|style| RunCache {
-          generation,
-          interaction,
-          style,
-          layout: resolved_layout,
-        });
-
-        repaint
+        present_run(props, cache, motion, target, &run_keyframes, &frame)
       }
-      kind => match (kind.box_record_mut(), resolved_box) {
-        (Some(inner), Some((style, border_ink))) => {
-          let repaint = inner
-            .cache
-            .as_ref()
-            .is_none_or(|cache| cache.style != style || cache.border_ink != border_ink);
-
-          inner.cache = Some(BoxCache {
-            generation,
-            interaction,
-            style,
-            border_ink,
-          });
-
-          repaint
-        }
-        _ => false,
+      kind => match kind.box_record_mut() {
+        Some(inner) => present_box(inner, resolved_box, &box_keyframes, &frame),
+        None => (false, false),
       },
     };
+
+    record.in_motion = active;
+    store.motion_active |= active;
 
     if repaint {
       store.damage(handle);
@@ -319,6 +338,113 @@ fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
   }
 
   Some(taffy_style_of(store, handle))
+}
+
+/// What one restyle resolves under: the generation and interaction it is cached as,
+/// and the clock and preference its motion samples with.
+struct Frame {
+  generation: u64,
+  interaction: crate::store::Interaction,
+  now: f64,
+  reduced: bool,
+}
+
+/// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
+fn present_run(
+  props: &skene_core::RunProps<crate::Tui>,
+  cache: &mut Option<RunCache>,
+  motion: &mut crate::motion::RunMotion,
+  resolved: Option<(PlainRun, PlainBox)>,
+  keyframes: &[skene_core::Animation<PlainRun>],
+  frame: &Frame,
+) -> (bool, bool) {
+  let mut active = false;
+  let previous = cache.as_ref().map(|cache| Previous {
+    presented: &cache.style,
+    target: &cache.target,
+  });
+  let presented = resolved.map(|(target, layout)| {
+    let Presented {
+      style,
+      active: running,
+    } = motion.present(
+      previous.as_ref(),
+      target.clone(),
+      &props.dynamics,
+      keyframes,
+      frame.now,
+      frame.reduced,
+    );
+
+    active |= running;
+
+    (style, target, layout)
+  });
+  let repaint =
+    cache.as_ref().map(|cache| &cache.style) != presented.as_ref().map(|(style, _, _)| style);
+
+  *cache = presented.map(|(style, target, layout)| RunCache {
+    generation: frame.generation,
+    interaction: frame.interaction,
+    style,
+    target,
+    layout,
+  });
+
+  (repaint, active)
+}
+
+/// Presents a box's resolution over its motion and caches it; `(repaint, active)`.
+fn present_box(
+  inner: &mut crate::store::BoxRecord,
+  resolved: Option<(PlainBox, Option<skene_core::Color>)>,
+  keyframes: &[skene_core::Animation<PlainBox>],
+  frame: &Frame,
+) -> (bool, bool) {
+  let Some((target, target_ink)) = resolved
+  else {
+    return (false, false);
+  };
+  let previous = inner.cache.as_ref().map(|cache| Previous {
+    presented: &cache.style,
+    target: &cache.target,
+  });
+  let Presented {
+    style,
+    active: running,
+  } = inner.motion.present(
+    previous.as_ref(),
+    target.clone(),
+    &inner.props.dynamics,
+    keyframes,
+    frame.now,
+    frame.reduced,
+  );
+  let (border_ink, inking) = inner.motion.present_ink(
+    inner
+      .cache
+      .as_ref()
+      .map(|cache| (cache.border_ink, cache.target_ink)),
+    target_ink,
+    &inner.props.dynamics,
+    frame.now,
+    frame.reduced,
+  );
+  let repaint = inner
+    .cache
+    .as_ref()
+    .is_none_or(|cache| cache.style != style || cache.border_ink != border_ink);
+
+  inner.cache = Some(BoxCache {
+    generation: frame.generation,
+    interaction: frame.interaction,
+    style,
+    target,
+    border_ink,
+    target_ink,
+  });
+
+  (repaint, running || inking)
 }
 
 /// The taffy style `handle` takes from its resolved style and its place in the tree.
@@ -338,7 +464,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
       .is_none_or(|style| style.height.is_none());
 
   match &record.kind {
-    Kind::Run { props, cache } => {
+    Kind::Run { props, cache, .. } => {
       let mut style = Style::default();
       let inline = props.display != RunDisplay::Block;
       let has_children = !store.layout_children(handle).is_empty();

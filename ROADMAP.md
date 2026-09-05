@@ -1275,6 +1275,41 @@ implements focus and decoration through public types alone.
 The terminal clock and interpolators, reduced-motion gating on the web, token-aware
 keyframes, `set_transition_name`, the router's view-transition wrap and the
 cross-document opt-in; core's `transition` renamed `settled`.
+**Landed:** a transition names a `StyleProperty<P>`—`All`, a shared `Property`, or the
+medium's own—so `Transition::new(Property::Color, 0.3)` reads the same on every facade
+and the web spells the CSS name through the one property mapping; `Transition` and
+`Animation` carry `respects_reduced_motion` (on by default, `set_respect_reduced_motion`
+opts out); a keyframe is a style in the new `Keyframe` shape (`BoxKeyframe<D>`,
+`RunKeyframe<D>`: a `StaticLeaf` per property, so a frame holds a token or an
+expression); `set_transition`/`set_animation` sit on `LayoutBox`, `Container`,
+`Control`, `Overlay`, `Text` and `Span`, `set_transition_name` on the boxes, carried in
+`BoxProps::transition_name`. `skene_core::interpolate` is the shared interpolation both
+native-clock drivers call: the easing curves solved, `Interpolate` for colors (Oklab
+through `Color::mix`), numbers, lengths (rounded back into the medium's unit at the
+sample), insets, spacing, dimensions, flexibility and borders, `snap` for values with
+no in-between, `Tween` and `sample_keyframes`; `Animation::offset` folds delay,
+iterations and alternation. The web wraps the motion that respects reduced motion in
+`@media (prefers-reduced-motion: no-preference)` as a trailing rule on the class (the
+opted-out motion stays in the base rule, the query then carries both), renders a token
+keyframe leaf as `var()`, compiles `view-transition-name` into the class,
+`skene_gui::view_transitions::enable()` makes the router commit every navigation
+(`navigate` and an applied path alike, through the new `Router::set_commit`) under
+`document.startViewTransition` where the browser has it and the stylesheet carry
+`@view-transition{navigation:auto}` on both leaves. The terminal keeps a per-record
+motion (tweens by property, the border ink's tween, an animation start) beside a cache
+that now holds the presented style and the resolved target: a resolution that moved
+under a covering transition starts a tween from the presented value, every frame with
+motion re-resolves and re-samples, `needs_frame` holds while anything runs and the loop
+polls at a 16 ms cap; a derived write marks the cache stale rather than dropping it,
+so it tweens too. The headless driver runs the same interpolation per resolved
+property: `advance(elapsed)` passes a frame (every observed property is judged again,
+then the clock steps) and `resolve_color`/`resolve_length` read the in-flight value.
+`SimpleButton` transitions its surface over 150 ms. Seams: `trigger_frame` and
+`trigger_reduced_motion` on the terminal, `advance` and `set_reduced_motion` headless.
+**Open:** `Property::Border` transitions the width and the ink together with one
+timing (the terminal draws any width as one cell, so only the ink is visible); the
+terminal resolves keyframe token leaves every frame rather than per generation; the
+snapshot hydration path is unchanged.
 **Gate:** a terminal render test steps a color transition across frames; a browser test
 observes `startViewTransition` around a route change; SSG output carries
 `@view-transition` when opted in.

@@ -35,6 +35,13 @@ use crossterm::{
 use skene_core::ColorScheme;
 use skene_core::{IntoView, KeyEvent, Modifiers, MouseCursor, PointerButton};
 
+/// How long the loop waits for input while nothing moves.
+const IDLE_POLL: Duration = Duration::from_millis(100);
+
+/// How long the loop waits for input between frames while a tween or an animation
+/// runs: the frame rate's cap.
+const FRAME_INTERVAL: Duration = Duration::from_millis(16);
+
 use crate::{
   Tui,
   View as _,
@@ -98,6 +105,7 @@ where
   }));
 
   crate::install();
+  with_store(|store| store.clock = crate::store::Clock::Real(std::time::Instant::now()));
 
   #[cfg(feature = "snapshot")]
   crate::dev::install();
@@ -206,7 +214,14 @@ where
       continue;
     }
 
-    if event::poll(Duration::from_millis(100)).unwrap_or(false) {
+    let wait = if with_store(|store| store.motion_active) {
+      FRAME_INTERVAL
+    }
+    else {
+      IDLE_POLL
+    };
+
+    if event::poll(wait).unwrap_or(false) {
       match event::read() {
         Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
           dispatch_key(&key);
@@ -702,6 +717,39 @@ pub fn current_title() -> Option<String> {
 #[cfg(feature = "test")]
 pub fn trigger_color_scheme(scheme: ColorScheme) {
   set_detected_scheme(scheme == ColorScheme::Dark);
+}
+
+/// Steps the motion clock forward by `elapsed`, for a headless test driving transitions
+/// and animations frame by frame; the next render samples them at the new reading.
+///
+/// A headless driver's clock stands still otherwise, so a render shows a transition
+/// at the point the last step left it.
+#[cfg(feature = "test")]
+pub fn trigger_frame(elapsed: Duration) {
+  with_store(|store| {
+    store.clock.advance(elapsed.as_secs_f64());
+    store.motion_active = true;
+  });
+}
+
+/// Simulates the reader's reduced-motion preference, for a headless test driving the
+/// reduced-motion condition and the motion that respects it.
+#[cfg(feature = "test")]
+pub fn trigger_reduced_motion(reduced: bool) {
+  let write = with_store(|store| {
+    if store.reduced_motion == reduced {
+      return None;
+    }
+
+    store.reduced_motion = reduced;
+    store.invalidate_styles();
+
+    Some(store.media().set_reduced_motion)
+  });
+
+  if let Some(write) = write {
+    skene_reactive::Set::set(&write, reduced);
+  }
 }
 
 /// Simulates the terminal resizing to `columns` x `rows`, for a headless test driving

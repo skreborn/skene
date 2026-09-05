@@ -3,8 +3,10 @@
 use std::rc::Rc;
 
 use skene_core::{
+  Animation,
   AnyKind,
   AnyView,
+  BoxKeyframe,
   Color,
   DeclaredBoxStyle,
   Driver,
@@ -19,6 +21,8 @@ use skene_core::{
   PlainChild,
   PlainHandler,
   Scene,
+  StyleExtension,
+  Transition,
   View,
 };
 use skene_reactive::{Effect, Get, Set, Signal, untrack};
@@ -105,6 +109,35 @@ impl<D: Driver, C> Overlay<D, C> {
   }
 
   decoration! { style_mut }
+
+  /// Adds a property transition, interpolating that property whenever its value
+  /// changes.
+  #[inline(always)]
+  pub fn set_transition(
+    mut self,
+    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
+    self.inner = self.inner.set_transition(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
+    self.inner = self.inner.set_animation(animation);
+
+    self
+  }
+
+  /// Names the box for view transitions: it is paired with the box of the same name
+  /// across a navigation, where the driver animates between them.
+  #[inline(always)]
+  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
+    self.inner = self.inner.set_transition_name(name);
+
+    self
+  }
 
   /// Sets where the overlay sits; anchored, `Bottom` and `Top` open below and above
   /// the anchor.

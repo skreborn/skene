@@ -24,6 +24,7 @@ mod logging;
 mod media;
 mod sheet;
 mod task;
+mod view_transition;
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
@@ -79,6 +80,7 @@ pub use self::{
   history::{current_path, on_pop, push_path},
   media::{media_query, set_scheme, stored_scheme, watch_media},
   task::drive,
+  view_transition::{commit_navigation, enable_view_transitions, view_transitions_enabled},
 };
 use super::{
   Web,
@@ -366,6 +368,12 @@ struct Dom {
 thread_local! {
   static SCENE: RefCell<Scene<Web>> = RefCell::new(Scene::new());
   static DOM: RefCell<Option<Dom>> = const { RefCell::new(None) };
+}
+
+/// Runs `operation` on the installed state, if the browser leaf is installed; nothing
+/// of the user's runs inside it.
+fn try_with_dom<R>(operation: impl FnOnce(&mut Dom) -> R) -> Option<R> {
+  DOM.with(|dom| dom.borrow_mut().as_mut().map(operation))
 }
 
 /// Runs `operation` on the installed state; nothing of the user's runs inside it.
@@ -1656,6 +1664,7 @@ pub fn uninstall() {
     }
   });
   media::reset();
+  view_transition::reset();
   Scene::<Web>::with(|scene| *scene = Scene::new());
   skene_reactive::Runtime::reset();
   skene_core::reset_root_owner();

@@ -1,6 +1,7 @@
 //! Inline runs, and the paragraph they flow in.
 
 use skene_core::{
+  Animation,
   AnyKind,
   AnyView,
   Color,
@@ -12,7 +13,10 @@ use skene_core::{
   NodeId,
   PlainChild,
   RunDisplay,
+  RunKeyframe,
   Scene,
+  StyleExtension,
+  Transition,
   View,
 };
 
@@ -117,6 +121,26 @@ impl<D: Driver> Span<D> {
   #[inline(always)]
   pub fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
     self.run = self.run.set_link_policy(link_policy);
+
+    self
+  }
+
+  /// Adds a property transition, interpolating that property whenever its value
+  /// changes.
+  #[inline(always)]
+  pub fn set_transition(
+    mut self,
+    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
+    self.run = self.run.set_transition(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<D>>) -> Self {
+    self.run = self.run.set_animation(animation);
 
     self
   }

@@ -30,11 +30,11 @@ use skene_gui::{
     Easing,
     GridTrack,
     ItemAlignment,
+    Keyframe,
     Line,
     Overflow,
-    Plain,
+    Property,
     StaticLeaf,
-    StyleProperty,
     TrackLimit,
     Transition,
     Wrap,
@@ -88,10 +88,10 @@ fn fixed(leaf: &StaticLeaf<Color>) -> Color {
 }
 
 /// A plain box style rounding its corners by `radius`, for a keyframe.
-fn rounded(radius: f32) -> BoxStyle<f32, Plain, PixelExt> {
-  let mut style: BoxStyle<f32, Plain, PixelExt> = BoxStyle::default();
+fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, PixelExt> {
+  let mut style: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
 
-  style.ext.corner_radius = Some(radius);
+  style.ext.corner_radius = Some(radius.into());
 
   style
 }
@@ -204,9 +204,9 @@ fn transitions_render_into_the_base_rule() {
   let rendered = render_to_string(|| {
     Container::new()
       .set_width(Dimension::Length(10.))
-      .set_transition(Transition::new(StyleProperty::Background, 0.3))
+      .set_transition(Transition::new(Property::Color, 0.3))
       .set_transition(
-        Transition::new(StyleProperty::Width, 1.)
+        Transition::new(Property::Width, 1.)
           .set_delay(0.5)
           .set_easing(Easing::EaseInOut),
       )
@@ -509,4 +509,115 @@ fn an_unconditional_token_renders_no_color_scheme_query() {
     .contains("--simple-card:"),
     "the dark block leaves the flat token alone: {styles}"
   );
+}
+
+/// The base rule of `class` in `styles`: the declarations between its braces.
+fn base_rule<'a>(styles: &'a str, class: &str) -> &'a str {
+  let start = styles
+    .find(&format!(".{class}{{"))
+    .expect("the class's base rule")
+    + class.len()
+    + 2;
+  let rest = &styles[start..];
+
+  &rest[..rest.find('}').expect("rule end")]
+}
+
+/// A transition respecting reduced motion lands under the no-preference media query;
+/// one that opted out stays in the base rule, and the query then carries both.
+#[test]
+fn reduced_motion_gates_the_motion_that_respects_it() {
+  let rendered = render_to_string(|| {
+    Container::new()
+      .set_transition(Transition::new(Property::Color, 0.3))
+      .set_transition(Transition::new(Property::Width, 1.).set_respect_reduced_motion(false))
+  });
+  let class = root_class(rendered.body());
+  let styles = rendered.styles();
+
+  assert!(
+    base_rule(styles, &class).contains("transition:width 1s ease 0s;"),
+    "{styles}"
+  );
+  assert!(
+    styles.contains(&format!(
+      "@media (prefers-reduced-motion: no-preference){{.{class}{{transition:background-color \
+       0.3s ease 0s, width 1s ease 0s;}}}}"
+    )),
+    "{styles}"
+  );
+
+  let respecting =
+    render_to_string(|| Container::new().set_transition(Transition::new(Property::Color, 0.3)));
+  let class = root_class(respecting.body());
+
+  assert!(
+    !base_rule(respecting.styles(), &class).contains("transition"),
+    "{}",
+    respecting.styles()
+  );
+  assert!(
+    respecting.styles().contains(&format!(
+      "@media (prefers-reduced-motion: no-preference){{.{class}{{transition:background-color \
+       0.3s ease 0s;}}}}"
+    )),
+    "{}",
+    respecting.styles()
+  );
+}
+
+/// A keyframe holding a token renders its `var()`, so a palette or scheme change moves
+/// the animation's frames.
+#[test]
+fn a_token_keyframe_renders_its_variable() {
+  let rendered = render_to_string(|| {
+    Theme::new(SimplePalette::default()).set_child_builder(|| {
+      let mut start: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
+      let mut end: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
+
+      start.color = Some(SimplePalette::CARD.into());
+      end.color = Some(Color::srgb(1., 0., 0.).into());
+
+      Container::new().set_animation(Animation::new(2., [(0., start), (100., end)]))
+    })
+  });
+  let styles = rendered.styles();
+
+  assert!(
+    styles.contains("0%{background-color:var(--simple-card);}"),
+    "{styles}"
+  );
+  assert!(
+    styles.contains("@property --simple-card{syntax:\"<color>\""),
+    "{styles}"
+  );
+}
+
+/// The view-transition opt-in emits the cross-document rule, and a named box carries
+/// its `view-transition-name`; without the opt-in the rule is absent.
+#[test]
+fn view_transitions_opt_in_reaches_the_stylesheet() {
+  let rendered = render_to_string(|| {
+    skene_gui::view_transitions::enable();
+
+    Container::new().set_transition_name("hero")
+  });
+  let class = root_class(rendered.body());
+
+  assert!(
+    rendered
+      .styles()
+      .contains("@view-transition{navigation:auto}"),
+    "{}",
+    rendered.styles()
+  );
+  assert!(
+    base_rule(rendered.styles(), &class).contains("view-transition-name:hero;"),
+    "{}",
+    rendered.styles()
+  );
+
+  let plain = render_to_string(Container::new);
+
+  assert!(!plain.styles().contains("@view-transition"));
 }

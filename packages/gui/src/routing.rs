@@ -7,8 +7,10 @@ use skene_router::{Route, Router, StaticRoutes};
 ///
 /// In the browser the initial route parses from `location.pathname` (or `fallback` when
 /// nothing matches), [`navigate`](Router::navigate) pushes a history entry, and
-/// back/forward navigation flows back into the route. On a server render the route
-/// parses from the requested path and navigation stays in memory.
+/// back/forward navigation flows back into the route; with
+/// [`view_transitions::enable`](crate::view_transitions::enable) each change runs under
+/// a view transition. On a server render the route parses from the requested path and
+/// navigation stays in memory.
 ///
 /// Pair the returned router with a [`derived`](crate::derived) subtree or a
 /// [`Switch`](crate::Switch) keyed on [`route`](Router::route); read it anywhere
@@ -19,6 +21,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let _ = router.apply_path(&skene_web::current_path());
 
   router.set_sink(skene_web::push_path);
+  router.set_commit(skene_web::commit_navigation);
 
   {
     let router = router.clone();

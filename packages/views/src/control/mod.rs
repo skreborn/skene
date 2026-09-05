@@ -17,7 +17,7 @@ use skene_core::{
   Animation,
   AnyKind,
   AnyView,
-  BoxStyle,
+  BoxKeyframe,
   Condition,
   ContainerName,
   ControlKind,
@@ -37,7 +37,6 @@ use skene_core::{
   NodeId,
   NodeKind,
   Part,
-  Plain,
   PlainChild,
   PlainHandler,
   PointerEvent,
@@ -48,6 +47,7 @@ use skene_core::{
   Scene,
   ScrollEvent,
   ScrollHandler,
+  StyleExtension,
   Transition,
   Value,
   View,
@@ -472,7 +472,10 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub fn set_transition(mut self, transition: Transition) -> Self {
+  pub fn set_transition(
+    mut self,
+    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
     self.inner = self.inner.set_transition(transition);
 
     self
@@ -480,11 +483,17 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(
-    mut self,
-    animation: Animation<BoxStyle<D::Scalar, Plain, D::StyleExt>>,
-  ) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
     self.inner = self.inner.set_animation(animation);
+
+    self
+  }
+
+  /// Names the box for view transitions: it is paired with the box of the same name
+  /// across a navigation, where the driver animates between them.
+  #[inline(always)]
+  pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
+    self.inner = self.inner.set_transition_name(name);
 
     self
   }

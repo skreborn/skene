@@ -1019,3 +1019,151 @@ fn a_radio_group_traverses_in_document_order() {
     "traversal follows the document, not the order members joined",
   );
 }
+
+/// Every page of the routed test app.
+#[derive(Clone, PartialEq)]
+enum Page {
+  Home,
+  About,
+}
+
+impl skene_gui::router::Route for Page {
+  fn parse(path: &str) -> Option<Self> {
+    match path {
+      "/about" => Some(Self::About),
+      _ => Some(Self::Home),
+    }
+  }
+
+  fn to_path(&self) -> String {
+    match self {
+      Self::Home => "/".to_owned(),
+      Self::About => "/about".to_owned(),
+    }
+  }
+}
+
+/// With the opt-in, a route change commits inside `document.startViewTransition`, and
+/// the new route is in the DOM once the transition's callback ran.
+#[wasm_bindgen_test]
+fn a_route_change_commits_under_a_view_transition() {
+  use skene_gui::{install_router, router::Router, view_transitions};
+  use wasm_bindgen::{JsValue, closure::Closure};
+
+  let (_guard, root) = fresh_root();
+  let calls = Rc::new(Cell::new(0u32));
+  let counted = Rc::clone(&calls);
+  let stub = Closure::wrap(Box::new(move |callback: js_sys::Function| {
+    counted.set(counted.get() + 1);
+
+    let _ = callback.call0(&JsValue::NULL);
+  }) as Box<dyn FnMut(js_sys::Function)>);
+  let document: JsValue = document().into();
+  let key = JsValue::from_str("startViewTransition");
+  let had_native = js_sys::Reflect::has(&document, &key).unwrap_or(false);
+
+  js_sys::Reflect::set(&document, &key, stub.as_ref()).expect("stub the transition");
+
+  let router: Rc<RefCell<Option<Router<Page>>>> = Rc::new(RefCell::new(None));
+  let held = Rc::clone(&router);
+  let _ = mount(move || {
+    view_transitions::enable();
+
+    let installed = install_router(Page::Home);
+
+    *held.borrow_mut() = Some(installed.clone());
+
+    derived(move || match installed.route() {
+      Page::Home => Text::new("home page").build(),
+      Page::About => Text::new("about page").build(),
+    })
+  });
+
+  assert!(
+    root
+      .text_content()
+      .unwrap_or_default()
+      .contains("home page")
+  );
+
+  router
+    .borrow()
+    .as_ref()
+    .expect("a router")
+    .navigate(Page::About);
+
+  assert_eq!(calls.get(), 1, "the navigation ran under the transition");
+  assert!(
+    root
+      .text_content()
+      .unwrap_or_default()
+      .contains("about page")
+  );
+
+  let _ = router.borrow().as_ref().expect("a router").apply_path("/");
+
+  assert_eq!(calls.get(), 2, "an applied path commits the same way");
+  web::push_path("/");
+
+  if !had_native {
+    let _ = js_sys::Reflect::delete_property(&document.unchecked_into::<js_sys::Object>(), &key);
+  }
+
+  drop(stub);
+}
+
+/// A keyframe animation whose frames hold a token applies in the real engine, its
+/// keyframes referencing the token's variable.
+#[wasm_bindgen_test]
+fn a_token_keyframe_animation_applies() {
+  use skene_gui::{
+    SimplePalette,
+    core::{Animation, BoxStyle, Keyframe, PixelExt},
+  };
+
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(SimplePalette::default())
+      .set_child_builder(|| {
+        let mut start: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
+        let mut end: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
+
+        start.color = Some(SimplePalette::CARD.into());
+        end.color = Some(Color::srgb(1., 0., 0.).into());
+
+        Container::new().set_animation(
+          Animation::new(2., [(0., start), (100., end)]).set_respect_reduced_motion(false),
+        )
+      })
+      .build()
+  });
+
+  let scope = only_child(&root);
+  let element = only_child(&scope);
+
+  assert!(
+    computed(&element, "animation-name").starts_with("skene-k-"),
+    "{}",
+    computed(&element, "animation-name")
+  );
+
+  let sheets = document()
+    .query_selector_all("style[data-skene-style]")
+    .expect("the style blocks");
+  let mut text = String::new();
+
+  for index in 0..sheets.length() {
+    text.push_str(
+      &sheets
+        .item(index)
+        .and_then(|node| node.text_content())
+        .unwrap_or_default(),
+    );
+  }
+
+  assert!(
+    text.contains("0%{background-color:var(--simple-card);}"),
+    "{text}"
+  );
+}

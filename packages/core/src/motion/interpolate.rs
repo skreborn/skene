@@ -1,0 +1,390 @@
+//! The interpolation every driver running motion on its own clock shares: the easing
+//! curves, the in-between value per value type, and the tween that samples them.
+
+use super::{Easing, Transition};
+use crate::{
+  Border,
+  BoxValue,
+  Color,
+  Dimension,
+  Flexibility,
+  Inset,
+  RunValue,
+  Scalar,
+  Spacing,
+  StaticLeaf,
+  StyleExtension,
+};
+
+/// How many halvings the bezier solve refines the parameter through.
+const BEZIER_STEPS: u32 = 24;
+
+impl Easing {
+  /// The eased progress at the linear `progress`, both `0.` to `1.`.
+  #[must_use]
+  pub fn apply(self, progress: f32) -> f32 {
+    let progress = progress.clamp(0., 1.);
+
+    match self {
+      Self::Linear => progress,
+      Self::Ease => cubic_bezier(0.25, 0.1, 0.25, 1., progress),
+      Self::EaseIn => cubic_bezier(0.42, 0., 1., 1., progress),
+      Self::EaseOut => cubic_bezier(0., 0., 0.58, 1., progress),
+      Self::EaseInOut => cubic_bezier(0.42, 0., 0.58, 1., progress),
+      Self::CubicBezier(x1, y1, x2, y2) => cubic_bezier(x1, y1, x2, y2, progress),
+    }
+  }
+}
+
+/// The `y` of the cubic bezier through `(0, 0)`, `(x1, y1)`, `(x2, y2)`, `(1, 1)` at
+/// `x`, the parameter found by bisection.
+fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
+  let axis = |control_1: f32, control_2: f32, parameter: f32| {
+    let inverse = 1. - parameter;
+
+    3. * inverse * inverse * parameter * control_1
+      + 3. * inverse * parameter * parameter * control_2
+      + parameter * parameter * parameter
+  };
+  let (mut low, mut high) = (0f32, 1f32);
+  let mut parameter = x;
+
+  for _ in 0..BEZIER_STEPS {
+    parameter = f32::midpoint(low, high);
+
+    if axis(x1, x2, parameter) < x {
+      low = parameter;
+    }
+    else {
+      high = parameter;
+    }
+  }
+
+  axis(y1, y2, parameter)
+}
+
+/// A value with an in-between: what a transition or a keyframe animation samples.
+///
+/// Colors mix in Oklab, lengths and numbers move linearly and land back in the
+/// medium's unit, a value per edge or axis moves per component, and a value with no
+/// in-between (a keyword, a mode) cuts over halfway.
+#[diagnostic::on_unimplemented(
+  message = "`{Self}` has no in-between value",
+  label = "a value a transition samples implements `Interpolate`; one without an in-between snaps through `snap`"
+)]
+pub trait Interpolate: Clone {
+  /// The value `amount` of the way from this one to `to`: `0.` is this value, `1.` is
+  /// `to`.
+  #[must_use]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self;
+}
+
+/// The in-between of a value with none: `from` until halfway, `to` after.
+#[inline(always)]
+#[must_use]
+pub fn snap<T: Clone>(from: &T, to: &T, amount: f32) -> T {
+  if amount < 0.5 {
+    from.clone()
+  }
+  else {
+    to.clone()
+  }
+}
+
+#[inline(always)]
+fn lerp(from: f32, to: f32, amount: f32) -> f32 {
+  from + (to - from) * amount
+}
+
+impl Interpolate for f32 {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    lerp(*self, *to, amount)
+  }
+}
+
+impl Interpolate for u32 {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    Self::from_f32(lerp(self.to_f32(), to.to_f32(), amount))
+  }
+}
+
+impl Interpolate for Color {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    self.mix(*to, amount)
+  }
+}
+
+impl<T: Interpolate> Interpolate for Inset<T> {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    Self {
+      top: self.top.interpolate(&to.top, amount),
+      right: self.right.interpolate(&to.right, amount),
+      bottom: self.bottom.interpolate(&to.bottom, amount),
+      left: self.left.interpolate(&to.left, amount),
+    }
+  }
+}
+
+impl<T: Interpolate> Interpolate for Spacing<T> {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    Self {
+      row: self.row.interpolate(&to.row, amount),
+      column: self.column.interpolate(&to.column, amount),
+    }
+  }
+}
+
+impl<T: Interpolate> Interpolate for Dimension<T> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    match (self, to) {
+      (Self::Length(from), Self::Length(to)) => Self::Length(from.interpolate(to, amount)),
+      (Self::Fraction(from), Self::Fraction(to)) => Self::Fraction(lerp(*from, *to, amount)),
+      _ => snap(self, to, amount),
+    }
+  }
+}
+
+impl<N: Interpolate> Interpolate for Flexibility<N> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    Self {
+      grow_factor: lerp(self.grow_factor, to.grow_factor, amount),
+      shrink_factor: lerp(self.shrink_factor, to.shrink_factor, amount),
+      initial: self.initial.interpolate(&to.initial, amount),
+    }
+  }
+}
+
+impl<N: Interpolate> Interpolate for Border<N> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    let color = match (&self.color, &to.color) {
+      (StaticLeaf::Fixed(from), StaticLeaf::Fixed(to)) => {
+        StaticLeaf::Fixed(from.interpolate(to, amount))
+      }
+      _ => snap(&self.color, &to.color, amount),
+    };
+
+    Self {
+      width: self.width.interpolate(&to.width, amount),
+      color,
+    }
+  }
+}
+
+impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    match (self, to) {
+      (Self::Dimension(from), Self::Dimension(to)) => Self::Dimension(from.interpolate(to, amount)),
+      (Self::Number(from), Self::Number(to)) => Self::Number(from.interpolate(to, amount)),
+      (Self::DimensionInset(from), Self::DimensionInset(to)) => {
+        Self::DimensionInset(from.interpolate(to, amount))
+      }
+      (Self::Inset(from), Self::Inset(to)) => Self::Inset(from.interpolate(to, amount)),
+      (Self::Color(from), Self::Color(to)) => Self::Color(from.interpolate(to, amount)),
+      (Self::Border(from), Self::Border(to)) => Self::Border(from.interpolate(to, amount)),
+      (Self::Spacing(from), Self::Spacing(to)) => Self::Spacing(from.interpolate(to, amount)),
+      (Self::Flexibility(from), Self::Flexibility(to)) => {
+        Self::Flexibility(from.interpolate(to, amount))
+      }
+      (Self::Extension(from), Self::Extension(to)) => {
+        Self::Extension(X::interpolate_value(from, to, amount))
+      }
+      _ => snap(self, to, amount),
+    }
+  }
+}
+
+impl<X: StyleExtension> Interpolate for RunValue<X> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    match (self, to) {
+      (Self::Color(from), Self::Color(to)) => Self::Color(from.interpolate(to, amount)),
+      (Self::Extension(from), Self::Extension(to)) => {
+        Self::Extension(X::interpolate_value(from, to, amount))
+      }
+      _ => snap(self, to, amount),
+    }
+  }
+}
+
+/// One property in flight: from the value it showed to the value it is due, over a
+/// transition's timing, against a clock in seconds.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub struct Tween<V> {
+  /// The value the property showed when the change arrived.
+  pub from: V,
+  /// The value the property is due.
+  pub to: V,
+  /// The clock reading the change arrived at.
+  pub start: f64,
+  /// The interpolation length, in seconds.
+  pub duration: f32,
+  /// The delay before it starts, in seconds.
+  pub delay: f32,
+  /// The timing curve.
+  pub easing: Easing,
+}
+
+impl<V: Interpolate> Tween<V> {
+  /// A tween from `from` to `to` starting at `start`, timed by `transition`.
+  #[inline(always)]
+  pub fn new<P>(from: V, to: V, start: f64, transition: &Transition<P>) -> Self {
+    Self {
+      from,
+      to,
+      start,
+      duration: transition.duration,
+      delay: transition.delay,
+      easing: transition.easing,
+    }
+  }
+
+  /// The linear progress at clock reading `now`, `0.` to `1.`.
+  #[must_use]
+  pub fn progress(&self, now: f64) -> f32 {
+    let played = now - self.start - f64::from(self.delay);
+
+    if played <= 0. {
+      return 0.;
+    }
+
+    if self.duration <= 0. {
+      return 1.;
+    }
+
+    #[expect(clippy::cast_possible_truncation)]
+    let progress = (played / f64::from(self.duration)).min(1.) as f32;
+
+    progress
+  }
+
+  /// Whether the tween has reached its end at clock reading `now`.
+  #[inline(always)]
+  #[must_use]
+  pub fn is_done(&self, now: f64) -> bool {
+    self.progress(now) >= 1.
+  }
+
+  /// The value shown at clock reading `now`.
+  #[inline(always)]
+  pub fn sample(&self, now: f64) -> V {
+    self
+      .from
+      .interpolate(&self.to, self.easing.apply(self.progress(now)))
+  }
+}
+
+/// The value of `frames` at `offset` percent: the two frames around it interpolated,
+/// the nearest one alone past either end; `None` for no frames.
+pub fn sample_keyframes<V: Interpolate>(frames: &[(f32, V)], offset: f32) -> Option<V> {
+  let before = frames
+    .iter()
+    .filter(|(percent, _)| *percent <= offset)
+    .max_by(|(left, _), (right, _)| left.total_cmp(right));
+  let after = frames
+    .iter()
+    .filter(|(percent, _)| *percent >= offset)
+    .min_by(|(left, _), (right, _)| left.total_cmp(right));
+
+  match (before, after) {
+    (Some((from_percent, from)), Some((to_percent, to))) => {
+      let span = to_percent - from_percent;
+
+      if span <= 0. {
+        return Some(to.clone());
+      }
+
+      Some(from.interpolate(to, (offset - from_percent) / span))
+    }
+    (Some((_, value)), None) | (None, Some((_, value))) => Some(value.clone()),
+    (None, None) => None,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{Interpolate, Tween, sample_keyframes};
+  use crate::{Color, Dimension, Easing, Inset, NoProperty, Property, Transition};
+
+  /// The named curves start at rest and end at rest, and the linear one is the
+  /// identity.
+  #[test]
+  fn easings_run_from_zero_to_one() {
+    for easing in [
+      Easing::Linear,
+      Easing::Ease,
+      Easing::EaseIn,
+      Easing::EaseOut,
+      Easing::EaseInOut,
+      Easing::CubicBezier(0.3, 0., 0.7, 1.),
+    ] {
+      assert!(easing.apply(0.).abs() < 1e-4, "{easing:?} at 0");
+      assert!((easing.apply(1.) - 1.).abs() < 1e-4, "{easing:?} at 1");
+    }
+
+    assert!((Easing::Linear.apply(0.3) - 0.3).abs() < 1e-6);
+    assert!(Easing::EaseIn.apply(0.5) < 0.5);
+    assert!(Easing::EaseOut.apply(0.5) > 0.5);
+  }
+
+  /// Cells round at the sample, lengths keep their kind, and a mixed pair cuts over
+  /// halfway.
+  #[test]
+  fn lengths_interpolate_per_kind() {
+    assert_eq!(0u32.interpolate(&10, 0.26), 3);
+    assert_eq!(
+      Dimension::Length(0f32).interpolate(&Dimension::Length(10.), 0.5),
+      Dimension::Length(5.)
+    );
+    assert_eq!(
+      Dimension::<f32>::Auto.interpolate(&Dimension::Length(10.), 0.4),
+      Dimension::Auto
+    );
+    assert_eq!(
+      Dimension::<f32>::Auto.interpolate(&Dimension::Length(10.), 0.6),
+      Dimension::Length(10.)
+    );
+    assert_eq!(
+      Inset::all(0f32).interpolate(&Inset::all(4.), 0.25),
+      Inset::all(1.)
+    );
+  }
+
+  /// A tween waits out its delay, samples its curve, and reports when it is done.
+  #[test]
+  #[expect(clippy::float_cmp)]
+  fn tweens_sample_their_transition() {
+    let transition = Transition::<NoProperty>::new(Property::Width, 1.)
+      .set_delay(0.5)
+      .set_easing(Easing::Linear);
+    let tween = Tween::new(0f32, 100., 2., &transition);
+
+    assert_eq!(tween.sample(2.25), 0.);
+    assert!((tween.sample(3.) - 50.).abs() < 1e-4);
+    assert_eq!(tween.sample(4.), 100.);
+    assert!(!tween.is_done(3.4));
+    assert!(tween.is_done(3.5));
+  }
+
+  /// Keyframes interpolate between their neighbours and hold past either end; colors
+  /// mix in Oklab.
+  #[test]
+  fn keyframes_sample_between_neighbours() {
+    let frames = [(0., 0f32), (50., 10.), (100., 30.)];
+
+    assert_eq!(sample_keyframes(&frames, 25.), Some(5.));
+    assert_eq!(sample_keyframes(&frames, 75.), Some(20.));
+    assert_eq!(sample_keyframes(&frames[1..], 10.), Some(10.));
+
+    let black = Color::srgb(0., 0., 0.);
+    let white = Color::srgb(1., 1., 1.);
+    let mid = sample_keyframes(&[(0., black), (100., white)], 50.).unwrap();
+
+    assert_eq!(mid, black.mix(white, 0.5));
+    assert_eq!(sample_keyframes::<f32>(&[], 50.), None);
+  }
+}

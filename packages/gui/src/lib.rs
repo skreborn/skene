@@ -12,6 +12,7 @@ pub mod media;
 pub mod prelude;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod split;
+pub mod view_transitions;
 
 #[cfg(target_arch = "wasm32")]
 mod deferred;

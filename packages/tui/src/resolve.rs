@@ -20,6 +20,7 @@ use skene_core::{
   ExprValue,
   IntoBoxValue,
   IntoRunValue,
+  Keyframe,
   Leaf,
   Media,
   MediaEnv,
@@ -111,6 +112,7 @@ pub(crate) struct Env<'a> {
   node: Option<NodeId>,
   viewport: Size<u32>,
   scheme: ColorScheme,
+  reduced_motion: bool,
   interaction: Interaction,
   containers: Vec<(ContainerName, Option<Size<u32>>)>,
 }
@@ -124,6 +126,7 @@ impl<'a> Env<'a> {
       node: store.record(handle).and_then(|record| record.node),
       viewport: store.viewport(),
       scheme: store.scheme(),
+      reduced_motion: store.reduced_motion,
       interaction: store.interaction(handle),
       containers: store.containers_above(handle),
     }
@@ -162,7 +165,7 @@ impl<'a> Env<'a> {
     operation(&MediaEnv {
       viewport: self.viewport,
       scheme: self.scheme,
-      reduced_motion: false,
+      reduced_motion: self.reduced_motion,
       reduced_transparency: false,
       high_contrast: false,
       container: &container,
@@ -302,6 +305,71 @@ impl<'a> Env<'a> {
         SlotValue::Box(_) => None,
       },
     }
+  }
+
+  /// A keyframe's static leaf, resolved to the property's type.
+  fn keyframe_box_value<T: IntoBoxValue<u32, TerminalExt>>(
+    &self,
+    leaf: &StaticLeaf<T>,
+  ) -> Option<T> {
+    match leaf {
+      StaticLeaf::Fixed(fixed) => Some(fixed.clone()),
+      StaticLeaf::Token(reference) => self
+        .token(reference.name(), 0)
+        .and_then(Resolved::into_box_value)
+        .and_then(T::from_box_value),
+      StaticLeaf::Expr(expr) => self
+        .expr(expr.node(), 0)
+        .and_then(Resolved::into_box_value)
+        .and_then(T::from_box_value),
+    }
+  }
+
+  /// A run keyframe's static leaf, resolved to the property's type.
+  fn keyframe_run_value<T: IntoRunValue<TerminalExt>>(&self, leaf: &StaticLeaf<T>) -> Option<T> {
+    match leaf {
+      StaticLeaf::Fixed(fixed) => Some(fixed.clone()),
+      StaticLeaf::Token(reference) => self
+        .token(reference.name(), 0)
+        .and_then(Resolved::into_run_value)
+        .and_then(T::from_run_value),
+      StaticLeaf::Expr(expr) => self
+        .expr(expr.node(), 0)
+        .and_then(Resolved::into_run_value)
+        .and_then(T::from_run_value),
+    }
+  }
+
+  /// A box keyframe with every leaf resolved at the node.
+  pub(crate) fn resolve_box_keyframe(
+    &self,
+    keyframe: &BoxStyle<u32, Keyframe, TerminalExt>,
+  ) -> PlainBox {
+    let mut visitor = ResolveBoxKeyframe {
+      env: self,
+      source: keyframe,
+      target: PlainBox::default(),
+    };
+
+    BoxStyle::<u32, Keyframe, TerminalExt>::for_each_field(&mut visitor);
+
+    visitor.target
+  }
+
+  /// A run keyframe with every leaf resolved at the node.
+  pub(crate) fn resolve_run_keyframe(
+    &self,
+    keyframe: &RunStyle<Keyframe, TerminalExt>,
+  ) -> PlainRun {
+    let mut visitor = ResolveRunKeyframe {
+      env: self,
+      source: keyframe,
+      target: PlainRun::default(),
+    };
+
+    RunStyle::<Keyframe, TerminalExt>::for_each_field(&mut visitor);
+
+    visitor.target
   }
 
   /// The winning leaf of a declared value, resolved to the property's type; a derived
@@ -453,6 +521,36 @@ impl BoxFieldVisitor<u32, TerminalExt> for ResolveBox<'_, '_> {
   fn field<F: BoxField<u32, TerminalExt>>(&mut self) {
     if let Some(value) = F::get(self.source) {
       *F::get_mut(&mut self.target) = self.env.box_value(value);
+    }
+  }
+}
+
+/// Resolves every leaf of a box keyframe into the target.
+struct ResolveBoxKeyframe<'a, 'e> {
+  env: &'a Env<'e>,
+  source: &'a BoxStyle<u32, Keyframe, TerminalExt>,
+  target: PlainBox,
+}
+
+impl BoxFieldVisitor<u32, TerminalExt> for ResolveBoxKeyframe<'_, '_> {
+  fn field<F: BoxField<u32, TerminalExt>>(&mut self) {
+    if let Some(leaf) = F::get(self.source) {
+      *F::get_mut(&mut self.target) = self.env.keyframe_box_value(leaf);
+    }
+  }
+}
+
+/// Resolves every leaf of a run keyframe into the target.
+struct ResolveRunKeyframe<'a, 'e> {
+  env: &'a Env<'e>,
+  source: &'a RunStyle<Keyframe, TerminalExt>,
+  target: PlainRun,
+}
+
+impl RunFieldVisitor<TerminalExt> for ResolveRunKeyframe<'_, '_> {
+  fn field<F: RunField<TerminalExt>>(&mut self) {
+    if let Some(leaf) = F::get(self.source) {
+      *F::get_mut(&mut self.target) = self.env.keyframe_run_value(leaf);
     }
   }
 }

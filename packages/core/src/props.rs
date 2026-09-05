@@ -10,6 +10,7 @@ use super::{
   ContainerName,
   Declared,
   Driver,
+  Keyframe,
   RunDynamics,
   RunStyle,
   Scalar,
@@ -51,6 +52,12 @@ pub type DeclaredRunStyle<D> =
 pub type StaticRunStyle<D> =
   RunStyle<Static<Condition<<D as Driver>::Scalar>>, <D as Driver>::StyleExt>;
 
+/// A box's style as one keyframe of an animation: a static leaf per set property.
+pub type BoxKeyframe<D> = BoxStyle<<D as Driver>::Scalar, Keyframe, <D as Driver>::StyleExt>;
+
+/// A run's style as one keyframe of an animation: a static leaf per set property.
+pub type RunKeyframe<D> = RunStyle<Keyframe, <D as Driver>::StyleExt>;
+
 /// Everything a driver needs to realize a box.
 #[derive(Clone)]
 #[must_use]
@@ -63,6 +70,8 @@ pub struct BoxProps<D: Driver> {
   pub style: StaticBoxStyle<D>,
   /// The transitions and animations.
   pub dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
+  /// The name pairing the box with its counterpart across a view transition.
+  pub transition_name: Option<String>,
   /// The name the box publishes for container queries against its size.
   pub container: Option<ContainerName>,
   /// The box's place in focus traversal; `None` for a box that takes no focus.

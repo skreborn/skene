@@ -16,6 +16,7 @@ use super::{
   Scalar,
   Shape,
   StyleExtension,
+  StyleProperty,
 };
 
 /// The style extension of a pixel medium: a box rounds its corners, and a run carries
@@ -93,6 +94,13 @@ impl PropertyName for PixelProperty {
   #[inline(always)]
   fn name(&self) -> &'static str {
     Self::name(*self)
+  }
+}
+
+impl From<PixelProperty> for StyleProperty<PixelProperty> {
+  #[inline(always)]
+  fn from(property: PixelProperty) -> Self {
+    Self::Extension(property)
   }
 }
 
@@ -189,6 +197,11 @@ macro_rules! pixel_fields {
       #[inline(always)]
       fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
         $(visitor.field::<pixel_fields::$run_property>();)+
+      }
+
+      #[inline(always)]
+      fn interpolate_value(from: &f32, to: &f32, amount: f32) -> f32 {
+        from + (to - from) * amount
       }
     }
   };

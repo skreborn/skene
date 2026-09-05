@@ -2,6 +2,8 @@
 //! through the one theme mechanism, the controls' parts follow the control, and a
 //! third-party palette works under the same theme.
 
+use std::time::Duration;
+
 use skene_core::{
   Border,
   BoxValue,
@@ -29,6 +31,7 @@ use skene_headless::{
   HeadlessTokenValue,
   SlotValue,
   accessible_name,
+  advance,
   children,
   control_props,
   is_focused,
@@ -141,6 +144,7 @@ fn a_buttons_surface_hover_and_focus_resolve_the_primary_look_on_the_control() {
   );
 
   set_hovered(button, true);
+  advance(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),
@@ -149,6 +153,7 @@ fn a_buttons_surface_hover_and_focus_resolve_the_primary_look_on_the_control() {
 
   set_hovered(button, false);
   trigger_focus(button);
+  advance(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),
@@ -177,6 +182,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   );
 
   variant.set(SimpleVariant::Outline);
+  advance(Duration::from_secs(1));
 
   assert_eq!(resolve_color(button, COLOR), Some(Color::TRANSPARENT));
   assert_eq!(
@@ -188,6 +194,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   );
 
   variant.set(SimpleVariant::Destructive);
+  advance(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),

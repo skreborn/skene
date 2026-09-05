@@ -2,34 +2,30 @@
 
 use std::fmt::Write as _;
 
-use skene_core::{Animation, Easing, StyleProperty, Transition};
+use skene_core::{Animation, Easing, PixelProperty, PropertyKey, StyleProperty, Transition};
 
-use crate::{Declarations, interner::content_hash};
+use crate::{
+  Declarations,
+  compile::{Key, target},
+  interner::content_hash,
+};
 
-/// The CSS property name a [`StyleProperty`] transitions.
-const fn style_property_name(property: StyleProperty) -> &'static str {
-  match property {
-    StyleProperty::All => "all",
-    StyleProperty::Width => "width",
-    StyleProperty::Height => "height",
-    StyleProperty::MinWidth => "min-width",
-    StyleProperty::MinHeight => "min-height",
-    StyleProperty::MaxWidth => "max-width",
-    StyleProperty::MaxHeight => "max-height",
-    StyleProperty::AspectRatio => "aspect-ratio",
-    StyleProperty::Margin => "margin",
-    StyleProperty::Padding => "padding",
-    StyleProperty::Inset => "inset",
-    StyleProperty::Background => "background-color",
-    StyleProperty::BorderColor => "border-color",
-    StyleProperty::BorderWidth => "border-width",
-    StyleProperty::BorderRadius => "border-radius",
-    StyleProperty::Spacing => "gap",
-    StyleProperty::Flex => "flex",
-    StyleProperty::TextColor => "color",
-    StyleProperty::FontSize => "font-size",
-    StyleProperty::FontWeight => "font-weight",
-  }
+/// The media query under which motion respecting the reduced-motion preference runs.
+pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)";
+
+/// The rule opting a document into cross-document view transitions.
+#[cfg(target_arch = "wasm32")]
+pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
+
+/// The CSS property name a transition targets.
+fn style_property_name(property: StyleProperty<PixelProperty>) -> &'static str {
+  let key: Key = match property {
+    StyleProperty::All => return "all",
+    StyleProperty::Shared(property) => PropertyKey::Shared(property),
+    StyleProperty::Extension(property) => PropertyKey::Extension(property),
+  };
+
+  target(key).name
 }
 
 /// A timing curve's CSS text.
@@ -45,10 +41,12 @@ fn render_easing(easing: Easing) -> String {
 }
 
 /// The `transition` declaration value for a set of transitions.
-pub(crate) fn render_transitions(transitions: &[Transition]) -> String {
+pub(crate) fn render_transitions<'a>(
+  transitions: impl IntoIterator<Item = &'a Transition<PixelProperty>>,
+) -> String {
   let mut out = String::new();
 
-  for (index, transition) in transitions.iter().enumerate() {
+  for (index, transition) in transitions.into_iter().enumerate() {
     if index > 0 {
       out.push_str(", ");
     }
@@ -96,10 +94,12 @@ pub(crate) fn render_keyframes<S>(
 }
 
 /// The `animation` declaration value for a set of animations and their keyframes names.
-pub(crate) fn render_animation_values<S>(animations: &[Animation<S>], names: &[String]) -> String {
+pub(crate) fn render_animation_values<'a, S: 'a>(
+  animations: impl IntoIterator<Item = (&'a Animation<S>, &'a str)>,
+) -> String {
   let mut out = String::new();
 
-  for (index, animation) in animations.iter().enumerate() {
+  for (index, (animation, name)) in animations.into_iter().enumerate() {
     if index > 0 {
       out.push_str(", ");
     }
@@ -107,7 +107,7 @@ pub(crate) fn render_animation_values<S>(animations: &[Animation<S>], names: &[S
     let _ = write!(
       out,
       "{} {}s {} {}s {} {} both",
-      names[index],
+      name,
       animation.duration,
       render_easing(animation.easing),
       animation.delay,

@@ -31,6 +31,7 @@ use crate::{
   Typography,
   cells::{CellPainter, Painter},
   interaction,
+  motion::RunMotion,
   store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
   token::TokenValue,
 };
@@ -108,7 +109,7 @@ impl Driver for Tui {
         record.slots.insert(slot, SlotValue::Box(value.clone()));
 
         if let Some(inner) = record.kind.box_record_mut() {
-          inner.cache = None;
+          inner.mark_stale();
         }
 
         store.layout_dirty = true;
@@ -224,6 +225,7 @@ impl Driver for Tui {
       let handle = store.create_laid_out(Kind::Run {
         props: props.clone(),
         cache: None,
+        motion: RunMotion::default(),
       });
 
       // An inline box starts one cell wide; its own layout resizes the placeholder.
@@ -240,8 +242,11 @@ impl Driver for Tui {
       if let Some(record) = store.record_mut(*sink) {
         record.slots.insert(slot, SlotValue::Run(value.clone()));
 
-        if let Kind::Run { cache, .. } = &mut record.kind {
-          *cache = None;
+        if let Kind::Run {
+          cache: Some(cache), ..
+        } = &mut record.kind
+        {
+          cache.generation = 0;
         }
 
         store.layout_dirty = true;

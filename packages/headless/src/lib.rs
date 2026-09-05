@@ -12,6 +12,11 @@
 //! [`choose_scheme`] lets the app override the platform's scheme, and the signals
 //! [`Driver::media`] reports follow.
 //!
+//! Motion runs on a clock that stands still until [`advance`] steps it: a property
+//! whose resolved value moved under a transition, or that an animation sets, resolves
+//! to the in-flight value at the clock's reading, so [`resolve_color`] and
+//! [`resolve_length`] read what a frame would show.
+//!
 //! A control is realized as a box carrying its [`ControlProps`], an overlay as one
 //! carrying its [`OverlayProps`], an open flag ([`is_open`]) and the anchor it was last
 //! opened against ([`overlay_anchor`]); [`control_state`],
@@ -508,6 +513,22 @@ pub fn set_reduced_motion(reduced: bool) {
   });
 
   write.set(reduced);
+}
+
+/// Passes a frame: every property a resolution has observed is judged again at the
+/// clock's reading, so a value that moved since starts its transition there, and the
+/// clock then steps forward by `elapsed`; the next resolution samples every transition
+/// and animation at the new reading.
+pub fn advance(elapsed: std::time::Duration) {
+  let tracked = with_store(|store| store.tracked());
+
+  for (node, keys) in tracked {
+    for key in keys {
+      let _ = resolve::resolve(node, key);
+    }
+  }
+
+  with_store(|store| store.clock += elapsed.as_secs_f64());
 }
 
 /// Sets the measured size of the query container `name`.

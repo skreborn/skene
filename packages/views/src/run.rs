@@ -1,6 +1,7 @@
 //! The run every text view is realized through.
 
 use skene_core::{
+  Animation,
   Color,
   Condition,
   DeclaredRunStyle,
@@ -13,11 +14,14 @@ use skene_core::{
   NodeKind,
   RunDisplay,
   RunDynamics,
+  RunKeyframe,
   RunProps,
   Scalar,
   Scene,
   StaticLeaf,
+  StyleExtension,
   TokenName,
+  Transition,
   Value,
 };
 use skene_reactive::Effect;
@@ -31,6 +35,7 @@ pub struct Run<D: Driver> {
   link: Option<String>,
   link_policy: LinkPolicy,
   style: DeclaredRunStyle<D>,
+  dynamics: RunDynamics<D::StyleExt>,
 }
 
 impl<D: Driver> Run<D> {
@@ -42,6 +47,7 @@ impl<D: Driver> Run<D> {
       link: None,
       link_policy: LinkPolicy::new(),
       style: DeclaredRunStyle::<D>::default(),
+      dynamics: RunDynamics::default(),
     }
   }
 
@@ -75,6 +81,26 @@ impl<D: Driver> Run<D> {
     self
   }
 
+  /// Adds a property transition, interpolating that property whenever its value
+  /// changes.
+  #[inline(always)]
+  pub fn set_transition(
+    mut self,
+    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+  ) -> Self {
+    self.dynamics.transitions.push(transition);
+
+    self
+  }
+
+  /// Adds a keyframe animation.
+  #[inline(always)]
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<D>>) -> Self {
+    self.dynamics.animations.push(animation);
+
+    self
+  }
+
   /// Realizes the run as a detached node with `display`.
   ///
   /// A property the run leaves unset references its typography token; a `group` also
@@ -104,7 +130,7 @@ impl<D: Driver> Run<D> {
       link: self.link,
       link_policy: self.link_policy,
       style,
-      dynamics: RunDynamics::default(),
+      dynamics: self.dynamics,
     };
     let sink = D::default().create_run(&props);
     let node = Scene::<D>::with(|scene| scene.create(NodeKind::Run, sink));

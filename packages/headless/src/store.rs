@@ -14,11 +14,15 @@ use skene_core::{
   Definitions,
   EventKind,
   MediaSignals,
+  NoProperty,
+  NodeId,
   OverlayProps,
+  PropertyKey,
   RunProps,
   RunValue,
   Size,
   Slot,
+  interpolate::{Interpolate, Tween, snap},
 };
 use skene_reactive::{Owner, WriteSignal, signal};
 
@@ -53,6 +57,30 @@ pub enum SlotValue {
   Run(RunValue),
 }
 
+impl Interpolate for SlotValue {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    match (self, to) {
+      (Self::Box(from), Self::Box(to)) => Self::Box(from.interpolate(to, amount)),
+      (Self::Run(from), Self::Run(to)) => Self::Run(from.interpolate(to, amount)),
+      _ => snap(self, to, amount),
+    }
+  }
+}
+
+/// The motion a node runs: the value each resolved property is heading for, the tween
+/// of each property in flight, and the clock reading the node was created at.
+#[derive(Default)]
+pub struct Motion {
+  /// The node the record realizes, once a resolution named it.
+  pub node: Option<NodeId>,
+  /// The value last resolved per property, which a change is judged against.
+  pub targets: FxHashMap<PropertyKey<NoProperty>, SlotValue>,
+  /// The tween of each property in flight.
+  pub tweens: FxHashMap<PropertyKey<NoProperty>, Tween<SlotValue>>,
+  /// The clock reading the node was created at, which its animations count from.
+  pub started: f64,
+}
+
 /// One realized node.
 // Each flag is an independent fact a driver call recorded.
 #[expect(clippy::struct_excessive_bools)]
@@ -71,6 +99,7 @@ pub struct Record {
   pub children: Vec<Handle>,
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   pub painted: bool,
+  pub motion: Motion,
 }
 
 impl Kind {
@@ -112,6 +141,7 @@ impl Record {
       children: Vec::new(),
       size_observers: Vec::new(),
       painted: false,
+      motion: Motion::default(),
     }
   }
 }
@@ -142,6 +172,8 @@ pub struct Store {
   pub scheme: Option<ColorScheme>,
   pub chosen_scheme: Option<ColorScheme>,
   pub reduced_motion: Option<bool>,
+  /// The motion clock, in seconds; stands still until advanced.
+  pub clock: f64,
   media: Option<MediaState>,
 }
 
@@ -158,6 +190,7 @@ impl Default for Store {
       scheme: None,
       chosen_scheme: None,
       reduced_motion: None,
+      clock: 0.,
       media: None,
     }
   }
@@ -165,7 +198,9 @@ impl Default for Store {
 
 impl Store {
   /// Mints a record and returns its handle.
-  pub fn create(&mut self, record: Record) -> Handle {
+  pub fn create(&mut self, mut record: Record) -> Handle {
+    record.motion.started = self.clock;
+
     if let Some(index) = self.free.pop() {
       let entry = &mut self.entries[index as usize];
 
@@ -263,6 +298,21 @@ impl Store {
         }
       })
     })
+  }
+
+  /// Every property a resolution has observed, by node, for a frame to judge again.
+  #[must_use]
+  pub fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<NoProperty>>)> {
+    self
+      .entries
+      .iter()
+      .filter_map(|entry| {
+        let motion = &entry.record.as_ref()?.motion;
+        let node = motion.node?;
+
+        (!motion.targets.is_empty()).then(|| (node, motion.targets.keys().copied().collect()))
+      })
+      .collect()
   }
 
   /// Forgets everything and hands back the owner of the environment's signals, for

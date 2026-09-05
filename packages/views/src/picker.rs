@@ -31,7 +31,7 @@ use crate::{
   Listbox,
   Overlay,
   Popup,
-  macros::decoration,
+  decoration,
   realize::Source,
 };
 

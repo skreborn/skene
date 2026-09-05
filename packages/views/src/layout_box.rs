@@ -53,7 +53,7 @@ use skene_core::{
 use crate::{
   Anchor,
   FocusHandle,
-  macros::properties,
+  properties,
   realize::{Source, bind_box_slot},
 };
 

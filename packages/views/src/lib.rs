@@ -54,6 +54,8 @@ mod theme;
 mod type_metrics;
 pub mod typography;
 
+#[doc(hidden)]
+pub use skene_core as __core;
 pub use skene_core::{
   AnyKind,
   AnyView,

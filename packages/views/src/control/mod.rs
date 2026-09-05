@@ -70,7 +70,7 @@ use crate::{
   FocusHandle,
   LayoutBox,
   Text,
-  macros::decoration,
+  decoration,
   realize::{Source, with_sink},
 };
 

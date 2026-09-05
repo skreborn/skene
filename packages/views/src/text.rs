@@ -15,11 +15,7 @@ use skene_core::{
   View,
 };
 
-use crate::{
-  macros::{properties, run_type_metrics},
-  realize::Source,
-  run::Run,
-};
+use crate::{properties, realize::Source, run::Run, run_type_metrics};
 
 /// A run of text on its own line.
 ///

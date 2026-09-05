@@ -19,7 +19,7 @@ use skene_core::{
   Wrap,
 };
 
-use crate::{LayoutBox, macros::properties};
+use crate::{LayoutBox, properties};
 
 /// Generates a flex layout view over [`LayoutBox`], exposing the properties a flex
 /// container honors.

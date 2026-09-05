@@ -20,12 +20,7 @@ use skene_core::{
   View,
 };
 
-use crate::{
-  LayoutBox,
-  macros::{properties, run_type_metrics},
-  realize::Source,
-  run::Run,
-};
+use crate::{LayoutBox, properties, realize::Source, run::Run, run_type_metrics};
 
 /// What a span renders.
 enum Content<D: Driver> {

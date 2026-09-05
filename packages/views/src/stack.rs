@@ -17,7 +17,7 @@ use skene_core::{
   View,
 };
 
-use crate::{LayoutBox, macros::properties};
+use crate::{LayoutBox, properties};
 
 /// Children overlapping in one cell, stacked in order with the last on top.
 ///

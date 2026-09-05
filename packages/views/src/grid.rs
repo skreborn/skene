@@ -21,7 +21,7 @@ use skene_core::{
   View,
 };
 
-use crate::{LayoutBox, macros::properties};
+use crate::{LayoutBox, properties};
 
 /// Children placed into tracks.
 ///

@@ -1,9 +1,11 @@
-//! The setter pair every property has.
+//! The setter pair every property has, and the setter surfaces built from it; a view
+//! outside this crate generates its setters with the same macros.
 
 /// Generates a `set_`/`derive_` pair per property: the setter takes anything
 /// convertible into the property's [`Value`](skene_core::Value) under the
 /// driver's conditions, the deriver a closure over signals, and both write the field
 /// named on the style `$access` returns.
+#[macro_export]
 macro_rules! properties {
   ($access:ident; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ".")]
@@ -11,7 +13,7 @@ macro_rules! properties {
     pub fn $set(
       mut self,
       $param: impl Into<
-        ::skene_core::Value<$type, ::skene_core::Condition<D::Scalar>>,
+        $crate::__core::Value<$type, $crate::__core::Condition<D::Scalar>>,
       >,
     ) -> Self {
       self.$access().$field = Some($param.into());
@@ -22,8 +24,8 @@ macro_rules! properties {
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads.")]
     #[inline(always)]
     pub fn $derive(mut self, $param: impl Fn() -> $type + 'static) -> Self {
-      self.$access().$field = Some(::skene_core::Value::new(
-        ::skene_core::Leaf::Derived(::std::rc::Rc::new($param)),
+      self.$access().$field = Some($crate::__core::Value::new(
+        $crate::__core::Leaf::Derived(::std::rc::Rc::new($param)),
       ));
 
       self
@@ -33,40 +35,41 @@ macro_rules! properties {
 
 /// Generates the decoration and sizing surface the one decorated box and every control
 /// share, over the style `$access` returns.
+#[macro_export]
 macro_rules! decoration {
   ($access:ident) => {
-    $crate::macros::properties! { $access;
-      set_width / derive_width (width) => width: ::skene_core::Dimension<D::Scalar>,
+    $crate::properties! { $access;
+      set_width / derive_width (width) => width: $crate::__core::Dimension<D::Scalar>,
         "the width";
-      set_height / derive_height (height) => height: ::skene_core::Dimension<D::Scalar>,
+      set_height / derive_height (height) => height: $crate::__core::Dimension<D::Scalar>,
         "the height";
-      set_min_width / derive_min_width (min_width) => min_width: ::skene_core::Dimension<D::Scalar>,
+      set_min_width / derive_min_width (min_width) => min_width: $crate::__core::Dimension<D::Scalar>,
         "the minimum width";
       set_min_height / derive_min_height (min_height)
-        => min_height: ::skene_core::Dimension<D::Scalar>,
+        => min_height: $crate::__core::Dimension<D::Scalar>,
         "the minimum height";
-      set_max_width / derive_max_width (max_width) => max_width: ::skene_core::Dimension<D::Scalar>,
+      set_max_width / derive_max_width (max_width) => max_width: $crate::__core::Dimension<D::Scalar>,
         "the maximum width";
       set_max_height / derive_max_height (max_height)
-        => max_height: ::skene_core::Dimension<D::Scalar>,
+        => max_height: $crate::__core::Dimension<D::Scalar>,
         "the maximum height";
       set_aspect_ratio / derive_aspect_ratio (aspect_ratio) => aspect_ratio: f32,
         "the width-to-height ratio the unsized axis follows";
-      set_padding / derive_padding (padding) => padding: ::skene_core::Inset<D::Scalar>,
+      set_padding / derive_padding (padding) => padding: $crate::__core::Inset<D::Scalar>,
         "the padding on each edge";
       set_margin / derive_margin (margin)
-        => margin: ::skene_core::Inset<::skene_core::Dimension<D::Scalar>>,
+        => margin: $crate::__core::Inset<$crate::__core::Dimension<D::Scalar>>,
         "the margin on each edge";
       set_offset / derive_offset (offset)
-        => offset: ::skene_core::Inset<::skene_core::Dimension<D::Scalar>>,
+        => offset: $crate::__core::Inset<$crate::__core::Dimension<D::Scalar>>,
         "the shift from each edge, keeping the box in flow";
-      set_color / derive_color (color) => color: ::skene_core::Color,
+      set_color / derive_color (color) => color: $crate::__core::Color,
         "the background color";
-      set_border / derive_border (border) => border: ::skene_core::Border<D::Scalar>,
+      set_border / derive_border (border) => border: $crate::__core::Border<D::Scalar>,
         "the border";
-      set_cursor / derive_cursor (cursor) => cursor: ::skene_core::MouseCursor,
+      set_cursor / derive_cursor (cursor) => cursor: $crate::__core::MouseCursor,
         "the mouse cursor shown over the box";
-      set_overflow / derive_overflow (overflow) => overflow: ::skene_core::Overflow,
+      set_overflow / derive_overflow (overflow) => overflow: $crate::__core::Overflow,
         "how content exceeding the box's bounds is treated; `Scroll` and `Auto` make it scrollable";
     }
 
@@ -75,13 +78,13 @@ macro_rules! decoration {
     #[inline(always)]
     pub fn set_corner_radius(
       mut self,
-      radius: impl Into<::skene_core::Value<f32, ::skene_core::Condition<D::Scalar>>>,
+      radius: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<D::Scalar>>>,
     ) -> Self
     where
       D::StyleExt: $crate::CornerRadius,
     {
       <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
+        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(&mut self.$access().ext, Some(radius.into()));
 
       self
@@ -95,10 +98,10 @@ macro_rules! decoration {
       D::StyleExt: $crate::CornerRadius,
     {
       <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
+        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some(::skene_core::Value::new(::skene_core::Leaf::Derived(
+        Some($crate::__core::Value::new($crate::__core::Leaf::Derived(
           ::std::rc::Rc::new(radius),
         ))),
       );
@@ -110,19 +113,20 @@ macro_rules! decoration {
 
 /// Generates the type-metric setters every run shares, over the style `$access`
 /// returns, each writing through the extension's [`TypeMetrics`](crate::TypeMetrics).
+#[macro_export]
 macro_rules! type_metrics {
   ($access:ident; $($set:ident / $derive:ident ($param:ident) => $write:ident, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ", where the medium sizes type; a medium without type metrics accepts and ignores it.")]
     #[inline(always)]
     pub fn $set(
       mut self,
-      $param: impl Into<::skene_core::Value<f32, ::skene_core::Condition<D::Scalar>>>,
+      $param: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<D::Scalar>>>,
     ) -> Self
     where
       D::StyleExt: $crate::TypeMetrics,
     {
       <D::StyleExt as $crate::TypeMetrics>::$write::<
-        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
+        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(&mut self.$access().ext, Some($param.into()));
 
       self
@@ -135,11 +139,11 @@ macro_rules! type_metrics {
       D::StyleExt: $crate::TypeMetrics,
     {
       <D::StyleExt as $crate::TypeMetrics>::$write::<
-        ::skene_core::Declared<::skene_core::Condition<D::Scalar>>,
+        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some(::skene_core::Value::new(
-          ::skene_core::Leaf::Derived(::std::rc::Rc::new($param)),
+        Some($crate::__core::Value::new(
+          $crate::__core::Leaf::Derived(::std::rc::Rc::new($param)),
         )),
       );
 
@@ -149,9 +153,10 @@ macro_rules! type_metrics {
 }
 
 /// The four type-metric setter pairs a run exposes.
+#[macro_export]
 macro_rules! run_type_metrics {
   ($access:ident) => {
-    $crate::macros::type_metrics! { $access;
+    $crate::type_metrics! { $access;
       set_font_size / derive_font_size (size) => set_font_size, "the font size";
       set_font_weight / derive_font_weight (weight) => set_font_weight, "the font weight";
       set_line_height / derive_line_height (height) => set_line_height,
@@ -161,8 +166,3 @@ macro_rules! run_type_metrics {
     }
   };
 }
-
-pub(crate) use decoration;
-pub(crate) use properties;
-pub(crate) use run_type_metrics;
-pub(crate) use type_metrics;

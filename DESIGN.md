@@ -499,7 +499,10 @@ Two guarantees, both properties of what is public rather than of any one API.
   `skene-views`, writes generic over `D: Driver` exactly as the built-ins are written, and
   states what it needs from a medium as a bound on the driver's associated types
   (`D::StyleExt: CornerRadius`). Each facade's aliases make it concrete for the app
-  that uses it. Nothing on the path a built-in takes is crate-private.
+  that uses it. Nothing on the path a built-in takes is crate-private: the setter
+  macros the built-ins generate their `set_`/`derive_` pairs with (`properties!`,
+  `decoration!`, `type_metrics!`) are exported, so a third-party layout view built on
+  `LayoutBox` spells its surface the way `Row` does.
   `examples/third-party/acme-ui` is the standing proof: a palette and a badge, used by
   both galleries.
 - **A low-level view, against the platform, like a built-in.** It is written against a

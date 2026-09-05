@@ -28,7 +28,7 @@ use skene_core::{
   View,
 };
 
-use crate::{Anchor, FocusHandle, LayoutBox, macros::decoration};
+use crate::{Anchor, FocusHandle, LayoutBox, decoration};
 
 /// Decoration and sizing around exactly one child.
 ///

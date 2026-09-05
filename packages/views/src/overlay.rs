@@ -27,7 +27,7 @@ use skene_core::{
 };
 use skene_reactive::{Effect, Get, Set, Signal, untrack};
 
-use crate::{Anchor, LayoutBox, macros::decoration, realize::Source};
+use crate::{Anchor, LayoutBox, decoration, realize::Source};
 
 /// The backdrop a modal paints unless told otherwise: half-transparent black.
 #[inline(always)]

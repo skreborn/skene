@@ -4,15 +4,12 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["simple-views"]
-# The ready-made Simple component library (`SimpleButton`, `SimpleCard`, …) over the
-# raw controls.
-simple-views = ["dep:skene-simple"]
-# Serialize tagged signals to a byte snapshot and restore them on creation; see
-# `skene-reactive`'s feature of the same name.
+# Serialize tagged signals to a byte snapshot and restore them on creation, and run the
+# dev-loop handshake with the `skene` CLI; see `skene-reactive`'s feature of the same
+# name.
 snapshot = ["dep:postcard", "skene-reactive/snapshot"]
-# Expose the driver teardown (`uninstall`) so one thread can run many independent
-# mounts, as a test suite does.
+# Expose the driver teardown (`uninstall`) and the `trigger_` seams, so one thread can
+# run many independent mounts and drive them without a terminal, as a test suite does.
 test = ["skene-reactive/test"]
 
 # Host-only: the terminal driver never itself compiles to wasm.
@@ -23,7 +20,8 @@ rustc-hash.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
 skene-router.workspace = true
-skene-simple = { optional = true, workspace = true }
+skene-simple.workspace = true
+skene-views.workspace = true
 taffy = "0.9"
 
 # The OSC 11 background query polls stdin for the reply.
@@ -32,7 +30,7 @@ libc = "0.2"
 
 [dev-dependencies]
 # Depend on ourselves with `test` and `snapshot` on, so `cargo test` gets the driver
-# teardown and the state-snapshot seams without a `--features` flag.
+# teardown and the seams without a `--features` flag.
 skene-tui = { path = ".", features = ["snapshot", "test"] }
 
 [lints]

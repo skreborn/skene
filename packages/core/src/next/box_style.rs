@@ -168,37 +168,51 @@ pub trait IntoBoxValue<N: Scalar, X: StyleExtension>:
 {
   /// This value, erased.
   fn into_box_value(self) -> BoxValue<N, X>;
+
+  /// This type's reading of an erased value; `None` when it holds another type. A type
+  /// made of one length also reads a fixed-length dimension as a uniform value.
+  fn from_box_value(value: BoxValue<N, X>) -> Option<Self>;
 }
 
-/// The shared property types, each erasing into its own [`BoxValue`] variant.
+/// The shared property types, each erasing into its own [`BoxValue`] variant and
+/// reading it back.
 macro_rules! box_values {
-  ($($value:ty => $variant:ident),+ $(,)?) => {$(
+  ($($value:ty => $variant:ident $(, $lenient:expr)?);+ $(;)?) => {$(
     impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for $value {
       #[inline(always)]
       fn into_box_value(self) -> BoxValue<N, X> {
         BoxValue::$variant(self)
+      }
+
+      #[inline(always)]
+      fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
+        match value {
+          BoxValue::$variant(value) => Some(value),
+          $(BoxValue::Dimension(Dimension::Length(length)) => Some($lenient(length)),)?
+          _ => None,
+        }
       }
     }
   )+};
 }
 
 box_values!(
-  Dimension<N> => Dimension,
-  f32 => Number,
-  Inset<Dimension<N>> => DimensionInset,
-  Inset<N> => Inset,
-  Color => Color,
-  Border<N> => Border,
-  MouseCursor => Cursor,
-  Spacing<N> => Spacing,
-  Wrap => Wrap,
-  Flexibility<N> => Flexibility,
-  Arrangement => Arrangement,
-  ItemAlignment => ItemAlignment,
-  Vec<GridTrack<N>> => Tracks,
-  GridFlow => GridFlow,
-  Line<GridPlacement> => Placement,
-  Overflow => Overflow,
+  Dimension<N> => Dimension;
+  f32 => Number;
+  Inset<Dimension<N>> => DimensionInset, |length| Inset::all(Dimension::Length(length));
+  Inset<N> => Inset, Inset::all;
+  Color => Color;
+  Border<N> => Border;
+  MouseCursor => Cursor;
+  Spacing<N> => Spacing, Spacing::all;
+  Wrap => Wrap;
+  Flexibility<N> => Flexibility;
+  Arrangement => Arrangement;
+  ItemAlignment => ItemAlignment;
+  Vec<GridTrack<N>> => Tracks;
+  GridFlow => GridFlow;
+  Line<GridPlacement> => Placement;
+  Overflow => Overflow;
 );
 
 /// One property of a [`BoxStyle`], addressed by type, in whatever shape the style is.

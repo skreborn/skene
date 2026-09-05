@@ -15,7 +15,10 @@ use std::{
   time::{Duration, Instant},
 };
 
+use skene_core::{Color, next::HasChildren};
 use skene_reactive::{Get, Set, Signal};
+
+use crate::{Column, IntoView as _, Overlay, TerminalText, Text, store::Handle};
 
 /// The least time between two checkpoints.
 const CHECKPOINT_EVERY: Duration = Duration::from_millis(200);
@@ -148,25 +151,58 @@ pub(crate) fn flush() {
   }
 }
 
+/// Every scrolled node's offsets, keyed by the node's creation index and ordered by
+/// it: the dev loop's carry across a restart.
+fn scroll_snapshot() -> Option<Vec<(u32, u32, u32)>> {
+  crate::try_with_store(|store| {
+    let mut entries: Vec<(u32, u32, u32)> = store
+      .handles()
+      .into_iter()
+      .filter_map(|handle| {
+        let (x, y) = store.record(handle)?.scroll;
+
+        (x > 0 || y > 0).then_some((handle.index(), x, y))
+      })
+      .collect();
+
+    entries.sort_unstable();
+
+    entries
+  })
+}
+
 /// Registers the driver's scroll offsets as a snapshot provider; the entry rides
 /// every snapshot alongside the tagged signals.
 pub(crate) fn provide_scroll() {
   skene_reactive::provide(SCROLL_TAG, || {
-    crate::try_with_state(|state| {
-      let entries = state.scroll_snapshot();
-
-      (!entries.is_empty()).then(|| postcard::to_allocvec(&entries).unwrap_or_default())
-    })
-    .flatten()
+    scroll_snapshot()
+      .filter(|entries| !entries.is_empty())
+      .map(|entries| postcard::to_allocvec(&entries).unwrap_or_default())
   });
 }
 
-/// Adopts the scroll offsets a restore staged, once the tree is mounted.
+/// Adopts the scroll offsets a restore staged, once the tree is mounted: entries no
+/// live node carries are dropped, and reads clamp to the next layout.
 pub fn adopt_scroll() {
-  if let Some(bytes) = skene_reactive::staged(SCROLL_TAG)
-    && let Ok(entries) = postcard::from_bytes::<Vec<(u64, u32, u32)>>(&bytes)
-  {
-    crate::with_state(|state| state.restore_scroll(&entries));
+  let Some(bytes) = skene_reactive::staged(SCROLL_TAG)
+  else {
+    return;
+  };
+  let Ok(entries) = postcard::from_bytes::<Vec<(u32, u32, u32)>>(&bytes)
+  else {
+    return;
+  };
+  let restored: Vec<(Handle, (u32, u32))> = crate::with_store(|store| {
+    entries
+      .into_iter()
+      .filter_map(|(index, x, y)| Some((store.handle_at(index)?, (x, y))))
+      .collect()
+  });
+
+  // The scroll handlers hear the restored offsets, so a lazy column rebuilds its
+  // window at the resumed position.
+  for (handle, offsets) in restored {
+    crate::interaction::scroll_to(handle, offsets);
   }
 }
 
@@ -179,9 +215,7 @@ pub(crate) fn notice_signal() -> Option<Signal<Option<String>>> {
 /// `notice` holds one, dismissed back to `None` by Escape or a press outside.
 #[must_use]
 pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
-  use skene_core::{Color, HasChildren};
-
-  let dark = crate::with_state(crate::state::State::dark);
+  let dark = crate::with_store(|store| store.dark());
   let fill = if dark {
     Color::srgb(0., 0., 0.)
   }
@@ -189,28 +223,30 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
     Color::srgb(1., 1., 1.)
   };
 
-  crate::Overlay::modal()
+  Overlay::modal()
     .derive_open(move || notice.get().is_some())
     .handle_dismiss(move || notice.set(None))
-    .set_style(
-      crate::props::BoxStyle::new()
-        .set_color(fill)
-        .set_border(Color::srgb(0.8, 0.2, 0.2))
-        .set_padding(crate::Inset {
-          top: 1,
-          right: 2,
-          bottom: 1,
-          left: 2,
-        })
-        .set_max_width(76),
-    )
+    .set_color(fill)
+    .set_border(crate::Border::new(1, Color::srgb(0.8, 0.2, 0.2)))
+    .set_padding(crate::Inset {
+      top: 1,
+      right: 2,
+      bottom: 1,
+      left: 2,
+    })
+    .set_max_width(76)
     .set_child(
-      crate::Column::new().set_spacing(1).set_children((
-        crate::Text::new("Rebuild failed")
+      Column::new().set_spacing(1).set_children((
+        Text::new("Rebuild failed")
           .set_bold(true)
-          .set_color(Color::srgb(0.8, 0.2, 0.2)),
-        crate::Text::derive(move || notice.get().unwrap_or_default()).set_selectable(true),
-        crate::Text::new("Esc to dismiss").set_color(Color::srgb(0.5, 0.5, 0.5)),
+          .set_color(Color::srgb(0.8, 0.2, 0.2))
+          .into_view(),
+        Text::derive(move || notice.get().unwrap_or_default())
+          .set_selectable(true)
+          .into_view(),
+        Text::new("Esc to dismiss")
+          .set_color(Color::srgb(0.5, 0.5, 0.5))
+          .into_view(),
       )),
     )
 }

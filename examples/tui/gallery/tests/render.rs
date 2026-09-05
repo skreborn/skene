@@ -26,14 +26,14 @@ fn with_driver<R>(body: impl FnOnce() -> R) -> R {
 #[test]
 fn the_gallery_renders_and_responds() {
   let (frame, clicked) = with_driver(|| {
-    tui::mount(|| tui_gallery::app().into_view().build());
+    let _ = tui::mount(|| tui_gallery::app().into_view().build());
 
-    let frame = tui::render_to_text(60, 140);
+    let frame = tui::render_to_text(60, 160);
 
     tui::trigger_key("Tab");
     tui::trigger_key("Enter");
 
-    (frame, tui::render_to_text(60, 140))
+    (frame, tui::render_to_text(60, 160))
   });
 
   for title in [
@@ -41,12 +41,15 @@ fn the_gallery_renders_and_responds() {
     "Text",
     "Button",
     "Checkbox & Radio",
-    "TextField, Slider & Picker",
+    "TextField, TextEditor, Slider & Picker",
     "BorderGlyphs",
     "Grid, Stack & Overlay",
     "LazyColumn",
   ] {
-    assert!(frame.contains(title), "section {title} did not paint");
+    assert!(
+      frame.contains(title),
+      "section {title} did not paint:\n{frame}"
+    );
   }
 
   assert!(frame.contains('╭'), "rounded borders did not paint");
@@ -59,6 +62,6 @@ fn the_gallery_renders_and_responds() {
   );
   assert!(
     clicked.contains("clicked 1 time(s)"),
-    "the button did not respond"
+    "the button did not respond:\n{clicked}"
   );
 }

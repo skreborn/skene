@@ -101,6 +101,14 @@ impl IntoRunValue<PixelExt> for f32 {
   fn into_run_value(self) -> RunValue<PixelExt> {
     RunValue::Extension(self)
   }
+
+  #[inline(always)]
+  fn from_run_value(value: RunValue<PixelExt>) -> Option<Self> {
+    match value {
+      RunValue::Extension(number) => Some(number),
+      RunValue::Color(_) => None,
+    }
+  }
 }
 
 /// The pixel medium's properties as types, and the enumerations walking them.

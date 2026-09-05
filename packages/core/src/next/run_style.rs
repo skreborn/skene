@@ -55,12 +55,23 @@ pub trait IntoRunValue<X: StyleExtension>:
 {
   /// This value, erased.
   fn into_run_value(self) -> RunValue<X>;
+
+  /// This type's reading of an erased value; `None` when it holds another type.
+  fn from_run_value(value: RunValue<X>) -> Option<Self>;
 }
 
 impl<X: StyleExtension> IntoRunValue<X> for Color {
   #[inline(always)]
   fn into_run_value(self) -> RunValue<X> {
     RunValue::Color(self)
+  }
+
+  #[inline(always)]
+  fn from_run_value(value: RunValue<X>) -> Option<Self> {
+    match value {
+      RunValue::Color(color) => Some(color),
+      RunValue::Extension(_) => None,
+    }
   }
 }
 

@@ -60,8 +60,9 @@ impl<D: Driver> Container<D> {
     }
   }
 
+  /// The declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
     self.inner.style_mut()
   }
 

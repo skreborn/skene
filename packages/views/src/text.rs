@@ -42,8 +42,9 @@ impl<D: Driver> Text<D> {
     }
   }
 
+  /// The declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredRunStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<D> {
     self.run.style_mut()
   }
 

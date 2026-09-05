@@ -1,25 +1,15 @@
-//! Layout and painting into a cell buffer.
+//! Painting the laid-out tree into a cell buffer.
 //!
-//! Each render refreshes every node's taffy style from its effective style (base plus
-//! the variants holding in the current environment), computes the layout, and paints the
-//! tree back-to-front into a [`Buffer`]—which serializes to plain text for tests or to
-//! the terminal for the interactive loop.
+//! The tree paints back-to-front into a [`Buffer`], overlays in a second pass over
+//! it; the buffer serializes to plain text for tests or to the terminal for the
+//! interactive loop.
 
-use skene_core::{Color, NodeId};
-use taffy::prelude::{AvailableSpace, length};
+use skene_core::{Color, next::ControlKind};
 
 use crate::{
-  state::{NodeKind, NodeRecord, ROOT_ID, State},
-  style::{
-    Environment,
-    Interaction,
-    apply_box_sizing,
-    box_taffy_style,
-    effective_box_style,
-    effective_control_style,
-    effective_run_style,
-    terminal_rgb,
-  },
+  BorderGlyphs,
+  layout::{is_paragraph, paragraph_runs, paragraph_text},
+  store::{Handle, Kind, PlainRun, Record, Store},
 };
 
 /// One terminal cell's paint state.
@@ -30,17 +20,20 @@ pub(crate) struct TerminalCell {
   pub(crate) background: Option<(u8, u8, u8)>,
   pub(crate) bold: bool,
   pub(crate) underline: bool,
+  /// Whether the cell paints in reverse video.
+  pub(crate) reverse: bool,
   /// The cell's hyperlink, an index into the frame's [`Buffer::links`].
   pub(crate) link: Option<u16>,
 }
 
 impl TerminalCell {
-  const EMPTY: Self = Self {
+  pub(crate) const EMPTY: Self = Self {
     character: ' ',
     foreground: None,
     background: None,
     bold: false,
     underline: false,
+    reverse: false,
     link: None,
   };
 }
@@ -50,7 +43,7 @@ pub(crate) struct Buffer {
   pub(crate) width: usize,
   pub(crate) height: usize,
   pub(crate) cells: Vec<TerminalCell>,
-  /// The focused input's caret cell, shown as the terminal's own bar cursor.
+  /// The focused entry's caret cell, shown as the terminal's own bar cursor.
   pub(crate) caret: Option<(u16, u16)>,
   /// The frame's hyperlink destinations, indexed by [`TerminalCell::link`], emitted as
   /// OSC 8 anchors.
@@ -61,7 +54,7 @@ pub(crate) struct Buffer {
 }
 
 impl Buffer {
-  fn new(width: usize, height: usize) -> Self {
+  pub(crate) fn new(width: usize, height: usize) -> Self {
     Self {
       width,
       height,
@@ -107,116 +100,6 @@ impl Buffer {
     }
 
     out
-  }
-}
-
-/// Lays the tree out at `width` x `height` and paints it.
-///
-/// A pending scroll-into-view and the viewport watchers resolve between layout and
-/// paint; the handlers they fire may rebuild content, so the layout is computed again
-/// until it settles (bounded, so a pathological feedback loop still paints).
-pub(crate) fn render(state: &State, width: u16, height: u16) -> Buffer {
-  let environment = Environment {
-    columns: width,
-    rows: height,
-    dark: state.dark(),
-  };
-
-  state.last_size.set((width, height));
-  compute_layout(state, environment, width, height);
-
-  for _ in 0..3 {
-    let revealed = state.resolve_reveal();
-    let viewports = state.notify_viewports();
-
-    if !(revealed || viewports) {
-      break;
-    }
-
-    compute_layout(state, environment, width, height);
-  }
-
-  let mut buffer = Buffer::new(usize::from(width), usize::from(height));
-
-  paint_node(state, environment, &mut buffer, ROOT_ID, 0, 0);
-
-  for overlay in state.open_overlays() {
-    paint_overlay(state, environment, &mut buffer, overlay);
-  }
-
-  draw_menu(state, &mut buffer, environment.dark);
-
-  buffer
-}
-
-/// Refreshes every taffy style and computes the layout at `width` x `height`.
-fn compute_layout(state: &State, environment: Environment, width: u16, height: u16) {
-  refresh_styles(state, environment);
-
-  let root_taffy = state.nodes.borrow()[&ROOT_ID].taffy;
-  let mut taffy = state.taffy.borrow_mut();
-
-  taffy
-    .set_style(
-      root_taffy,
-      taffy::style::Style {
-        display: taffy::style::Display::Flex,
-        flex_direction: taffy::style::FlexDirection::Column,
-        size: taffy::geometry::Size {
-          width: length(f32::from(width)),
-          height: length(f32::from(height)),
-        },
-        ..taffy::style::Style::default()
-      },
-    )
-    .expect("style the root");
-
-  taffy
-    .compute_layout_with_measure(
-      root_taffy,
-      taffy::geometry::Size {
-        width: AvailableSpace::Definite(f32::from(width)),
-        height: AvailableSpace::Definite(f32::from(height)),
-      },
-      |known, available, _, text, _| measure_run(known, available, text),
-    )
-    .expect("compute the layout");
-}
-
-/// Measures a text run's leaf: its text wrapped at the width constraint, in cells.
-///
-/// A leaf carrying no text measures to its known dimensions or zero.
-fn measure_run(
-  known: taffy::geometry::Size<Option<f32>>,
-  available: taffy::geometry::Size<AvailableSpace>,
-  text: Option<&mut String>,
-) -> taffy::geometry::Size<f32> {
-  let Some(text) = text
-  else {
-    return taffy::geometry::Size {
-      width: known.width.unwrap_or(0.0),
-      height: known.height.unwrap_or(0.0),
-    };
-  };
-
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-  let limit = match (known.width, available.width) {
-    (Some(width), _) | (None, AvailableSpace::Definite(width)) => width.max(0.0) as usize,
-    (None, AvailableSpace::MinContent) => longest_word(text),
-    (None, AvailableSpace::MaxContent) => usize::MAX,
-  };
-  let lines = wrap_text(text, limit);
-
-  #[expect(clippy::cast_precision_loss)]
-  taffy::geometry::Size {
-    width: known.width.unwrap_or_else(|| {
-      lines
-        .iter()
-        .map(|line| line.chars().count())
-        .max()
-        .unwrap_or(0) as f32
-    }),
-    height: known.height.unwrap_or(lines.len() as f32),
   }
 }
 
@@ -272,21 +155,21 @@ pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
 }
 
 /// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
-fn wrap_text(text: &str, width: usize) -> Vec<String> {
+pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
   wrap_spans(text, width)
     .into_iter()
     .map(|(_, line)| line)
     .collect()
 }
 
-/// The first visible column of an input's value: zero until the caret passes the inner
+/// The first visible column of an entry's value: zero until the caret passes the inner
 /// width, then sliding to keep the caret on the last cell.
 pub(crate) const fn field_window(caret: usize, inner: usize) -> usize {
   caret.saturating_sub(inner.saturating_sub(1))
 }
 
 /// The longest unbreakable word's width in cells: the narrowest a wrap can go.
-fn longest_word(text: &str) -> usize {
+pub(crate) fn longest_word(text: &str) -> usize {
   text
     .split([' ', '\n'])
     .map(|word| word.chars().count())
@@ -294,619 +177,337 @@ fn longest_word(text: &str) -> usize {
     .unwrap_or(0)
 }
 
+/// Paints the whole frame: the tree, then every open overlay, then the copy menu.
+pub(crate) fn paint(store: &Store, width: u16, height: u16) -> Buffer {
+  let mut buffer = Buffer::new(usize::from(width), usize::from(height));
+
+  paint_node(store, &mut buffer, store.root, 0, 0);
+
+  for overlay in store.open_overlays() {
+    paint_overlay(store, &mut buffer, overlay);
+  }
+
+  draw_menu(store, &mut buffer, store.dark());
+
+  buffer
+}
+
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
 /// computed origin.
-fn paint_overlay(state: &State, environment: Environment, buffer: &mut Buffer, overlay: NodeId) {
-  let backdrop = {
-    let nodes = state.nodes.borrow();
-
-    match nodes.get(&overlay).map(|record| &record.kind) {
-      Some(NodeKind::Overlay { backdrop, .. }) => *backdrop,
-      _ => return,
-    }
+fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
+  let Some(Kind::Overlay {
+    backdrop, modal, ..
+  }) = store.record(overlay).map(|record| &record.kind)
+  else {
+    return;
   };
+  let dark = store.dark();
 
   if let Some(color) = backdrop {
     let [red, green, blue, alpha] = color.to_rgba();
 
-    if alpha > 0.0 {
+    if alpha > 0. {
       for cell in &mut buffer.cells {
-        tint(cell, red, green, blue, alpha, environment.dark);
+        tint(cell, red, green, blue, alpha, dark);
       }
     }
   }
 
-  let (origin_x, origin_y) = state.overlay_origin(overlay);
+  let (origin_x, origin_y) = store.overlay_origin(overlay);
 
   // A modal makes everything beneath inert, taking the caret with it; a popup hides
   // the caret only when it covers the cell. Either way the overlay's own content may
   // set a fresh one while it paints.
   if let Some((caret_x, caret_y)) = buffer.caret {
-    let modal = matches!(
-      state
-        .nodes
-        .borrow()
-        .get(&overlay)
-        .map(|record| &record.kind),
-      Some(NodeKind::Overlay { modal: true, .. })
-    );
-    let (overlay_width, overlay_height) = state.node_size(overlay);
+    let (overlay_width, overlay_height) = store.node_size(overlay);
     let covered = i64::from(caret_x) >= origin_x
       && i64::from(caret_x) < origin_x + overlay_width
       && i64::from(caret_y) >= origin_y
       && i64::from(caret_y) < origin_y + overlay_height;
 
-    if modal || covered {
+    if *modal || covered {
       buffer.caret = None;
     }
   }
 
-  let (location_x, location_y) = {
-    let nodes = state.nodes.borrow();
-    let Some(record) = nodes.get(&overlay)
-    else {
-      return;
-    };
-
-    match state.taffy.borrow().layout(record.taffy) {
-      #[expect(clippy::cast_possible_truncation)]
-      Ok(layout) => (
-        layout.location.x.round() as isize,
-        layout.location.y.round() as isize,
-      ),
-      Err(_) => (0, 0),
-    }
-  };
+  let (location_x, location_y) = store.node_location(overlay);
 
   paint_node(
-    state,
-    environment,
+    store,
     buffer,
     overlay,
-    isize::try_from(origin_x).unwrap_or(0) - location_x,
-    isize::try_from(origin_y).unwrap_or(0) - location_y,
+    isize::try_from(origin_x - location_x).unwrap_or(0),
+    isize::try_from(origin_y - location_y).unwrap_or(0),
   );
 }
 
-/// Applies a node's wrapper annotations—and its stack membership—to its taffy style,
-/// for a kind that carries no box style of its own.
-fn apply_annotations(out: &mut taffy::style::Style, record: &NodeRecord) {
-  if let Some(annotations) = &record.annotations {
-    apply_box_sizing(out, annotations, record.in_stack);
-  }
-  else if record.in_stack {
-    apply_box_sizing(out, &crate::props::BoxStyle::default(), true);
+/// A selection's ink and highlight.
+type SelectionColors = ((u8, u8, u8), (u8, u8, u8));
+
+/// A border's paint: its character set and its color—`None` for a fully transparent
+/// border, which keeps its cells but paints no glyphs.
+struct BorderPaint {
+  glyphs: BorderGlyphs,
+  color: Option<(u8, u8, u8)>,
+}
+
+/// One paragraph span's paint: its ink, weight, underline, and link.
+struct SpanPaint {
+  foreground: Option<(u8, u8, u8)>,
+  bold: bool,
+  underline: bool,
+  link: Option<u16>,
+  selection: Option<SelectionColors>,
+}
+
+/// A run's selection highlight: the selected source range, each painted line's start
+/// offset in the source, and the ink and highlight colors, `None` for reverse video.
+struct SelectionPaint {
+  range: (usize, usize),
+  starts: Vec<usize>,
+  colors: Option<SelectionColors>,
+}
+
+/// What one node contributes to the frame.
+enum NodePaint {
+  Paragraph {
+    /// Wrapped lines over the concatenated text, each with its start offset.
+    lines: Vec<(usize, String)>,
+    /// Each concatenated character's span index.
+    attribution: Vec<u16>,
+    spans: Vec<SpanPaint>,
+    links: Vec<String>,
+    selection: Option<(usize, usize)>,
+  },
+  Box {
+    background: Option<(u8, u8, u8)>,
+    border: Option<BorderPaint>,
+    shadow: Option<Color>,
+  },
+  Text {
+    lines: Vec<String>,
+    foreground: Option<(u8, u8, u8)>,
+    bold: bool,
+    underline: bool,
+    link: Option<String>,
+    selection: Option<SelectionPaint>,
+  },
+  Field {
+    background: Option<(u8, u8, u8)>,
+    border: Option<BorderPaint>,
+    shadow: Option<Color>,
+    /// The visible rows, and the caret's row and column within them.
+    rows: Vec<String>,
+    dim: bool,
+    caret: Option<(usize, usize)>,
+    inset: (isize, isize),
+  },
+  None,
+}
+
+/// The border paint of a resolved box style.
+fn border_paint(store: &Store, handle: Handle) -> Option<BorderPaint> {
+  let cache = store.record(handle)?.kind.box_record()?.cache.as_ref()?;
+
+  cache.style.border.as_ref().map(|_| BorderPaint {
+    glyphs: cache.style.ext.border_glyphs.unwrap_or_default(),
+    color: cache.border_ink.and_then(terminal_rgb),
+  })
+}
+
+/// The selection colors of a resolved run: its own, or reverse video when both are
+/// unset or transparent.
+fn selection_colors(style: &PlainRun) -> Option<SelectionColors> {
+  let ink = style.selection_color.and_then(terminal_rgb);
+  let surface = style.selection_background.and_then(terminal_rgb);
+
+  match (ink, surface) {
+    (None, None) => None,
+    (ink, surface) => Some((
+      ink.unwrap_or((255, 255, 255)),
+      surface.unwrap_or((52, 88, 134)),
+    )),
   }
 }
 
-/// Refreshes every node's taffy style from its effective style in `environment`.
-// A match dispatch over the node kinds; length is the kind count, not complexity.
+/// What `handle` paints, from its resolved style.
+// A match dispatch over the record kinds; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
-fn refresh_styles(state: &State, environment: Environment) {
-  let nodes = state.nodes.borrow();
-  let focused = state.focused.get();
-  let mut taffy = state.taffy.borrow_mut();
+fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> NodePaint {
+  let Some(record) = store.record(handle)
+  else {
+    return NodePaint::None;
+  };
 
-  let hovered = state.hovered.borrow();
+  match &record.kind {
+    Kind::Anchor | Kind::Scope => NodePaint::None,
+    Kind::Box(inner) if is_paragraph(store, handle) => {
+      let _ = inner;
+      let text = paragraph_text(store, handle);
+      let lines = wrap_spans(&text, width);
+      let runs = paragraph_runs(store, handle);
+      let mut destinations = Vec::new();
+      let mut attribution = Vec::new();
+      let spans: Vec<SpanPaint> = runs
+        .iter()
+        .enumerate()
+        .map(|(index, run)| {
+          let record = store.record(*run).expect("a live run");
+          let Kind::Run { props, cache } = &record.kind
+          else {
+            unreachable!("paragraph runs are runs");
+          };
+          let style = cache.as_ref().map(|cache| &cache.style);
+          let link = props.link.as_ref().map(|url| {
+            destinations.push(url.clone());
+            u16::try_from(destinations.len() - 1).unwrap_or(0)
+          });
 
-  for (id, record) in nodes.iter() {
-    let interaction = Interaction {
-      focused: focused == Some(*id),
-      hovered: hovered.contains(id),
-    };
+          attribution.extend(std::iter::repeat_n(
+            u16::try_from(index).unwrap_or(0),
+            record.text.chars().count(),
+          ));
 
-    // The single mounted child fills the viewport, as the web reset's `body > *` does.
-    let fills_root = record.parent == Some(ROOT_ID);
+          SpanPaint {
+            foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
+            bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
+            underline: link.is_some(),
+            link,
+            selection: style.and_then(selection_colors),
+          }
+        })
+        .collect();
 
-    match &record.kind {
-      NodeKind::Box {
-        layout,
-        style,
-        variants,
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let mut out = box_taffy_style(*layout, &effective, record.in_stack);
-
-        if fills_root {
-          out.flex_grow = 1.0;
-        }
-
-        taffy.set_style(record.taffy, out).expect("style a box");
+      NodePaint::Paragraph {
+        lines,
+        attribution,
+        spans,
+        links: destinations,
+        selection: store.selection_range(handle),
       }
-      NodeKind::Paragraph { spans, .. } => {
-        let mut out = taffy::style::Style::default();
-        let text: String = spans.iter().map(|span| span.text.as_str()).collect();
+    }
+    Kind::Box(inner) | Kind::Overlay { inner, .. } => {
+      let style = inner.style();
 
-        taffy
-          .set_node_context(record.taffy, Some(text))
-          .expect("carry a paragraph's text");
-        apply_annotations(&mut out, record);
-        taffy
-          .set_style(record.taffy, out)
-          .expect("style a paragraph");
+      NodePaint::Box {
+        background: style.and_then(|style| style.color).and_then(terminal_rgb),
+        border: border_paint(store, handle),
+        shadow: style.and_then(|style| style.ext.shadow),
       }
-      NodeKind::Run { text, .. } => {
-        let mut out = taffy::style::Style::default();
+    }
+    Kind::Control { inner, field, .. } => {
+      let style = inner.style();
+      let background = style.and_then(|style| style.color).and_then(terminal_rgb);
+      let shadow = style.and_then(|style| style.ext.shadow);
+      let border = border_paint(store, handle);
 
-        if text.is_empty() && !record.children.is_empty() {
-          // A group or embedded-view run: lay its children out in a row.
-          out.display = taffy::style::Display::Flex;
-
-          taffy
-            .set_node_context(record.taffy, None)
-            .expect("clear a run's text");
-        }
-        else {
-          // The leaf stays auto-sized; the measure function wraps the text.
-          taffy
-            .set_node_context(record.taffy, Some(text.clone()))
-            .expect("carry a run's text");
-        }
-
-        apply_annotations(&mut out, record);
-        taffy.set_style(record.taffy, out).expect("style a run");
-      }
-      NodeKind::TextField {
-        style,
-        variants,
-        value,
-        placeholder,
-        ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let mut out = taffy::style::Style::default();
-
-        apply_box_sizing(&mut out, &effective, record.in_stack);
-
-        if effective.width.is_none() {
-          // One cell past the value keeps the caret inside the box at the end.
-          #[expect(clippy::cast_precision_loss)]
-          let content = (value.chars().count() + 1)
-            .max(placeholder.as_ref().map_or(0, |text| text.chars().count()))
-            .max(8) as f32;
-
-          out.size.width = length(content);
-        }
-
-        if effective.height.is_none() {
-          out.size.height = length(if effective.border.is_some() { 3.0 } else { 1.0 });
-        }
-
-        taffy.set_style(record.taffy, out).expect("style an input");
-      }
-      NodeKind::Checkbox { marks, label, .. } | NodeKind::Radio { marks, label, .. } => {
-        let mut out = taffy::style::Style::default();
-
-        apply_annotations(&mut out, record);
-
-        #[expect(clippy::cast_precision_loss)]
-        let width = (marks.0.chars().count().max(marks.1.chars().count())
-          + label.as_ref().map_or(0, |label| label.chars().count() + 1)) as f32;
-
-        out.size = taffy::geometry::Size {
-          width: length(width),
-          height: length(1.0),
+      let Some(field) = field
+      else {
+        return NodePaint::Box {
+          background,
+          border,
+          shadow,
         };
-
-        taffy.set_style(record.taffy, out).expect("style a control");
+      };
+      let padding = style.and_then(|style| style.padding).unwrap_or_default();
+      let border_cells = usize::from(border.is_some());
+      let inset = (
+        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.left).unwrap_or(0),
+        isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
+      );
+      let inner_width = width
+        .saturating_sub(2 * border_cells)
+        .saturating_sub(usize::try_from(padding.left + padding.right).unwrap_or(0));
+      let (text, dim) = if field.value.is_empty() {
+        (field.placeholder.clone().unwrap_or_default(), true)
       }
-      NodeKind::Picker { options, .. } => {
-        let mut out = taffy::style::Style::default();
+      else {
+        (field.value.clone(), false)
+      };
+      let (rows, caret) = crate::field::visible_rows(&text, field.caret, inner_width, field.lines);
 
-        apply_annotations(&mut out, record);
-
-        #[expect(clippy::cast_precision_loss)]
-        let longest = options
-          .iter()
-          .map(|(_, label)| label.chars().count())
-          .max()
-          .unwrap_or(0) as f32;
-
-        out.size = taffy::geometry::Size {
-          width: length(longest + 2.0),
-          height: length(1.0),
-        };
-
-        taffy.set_style(record.taffy, out).expect("style a control");
+      NodePaint::Field {
+        background,
+        border,
+        shadow,
+        rows,
+        dim,
+        caret: (focused && inner_width > 0).then_some(caret),
+        inset,
       }
-      NodeKind::Slider { .. } => {
-        // The track fills its container's width; wrap in a sized `BoxNode` to bound
-        // it.
-        let mut out = taffy::style::Style::default();
+    }
+    Kind::Run { props, cache } => {
+      let style = cache.as_ref().map(|cache| &cache.style);
+      let spans = wrap_spans(&record.text, width);
+      let selection = props
+        .selectable
+        .then(|| {
+          store.selection_range(handle).map(|range| SelectionPaint {
+            range,
+            starts: spans.iter().map(|(start, _)| *start).collect(),
+            colors: style.and_then(selection_colors),
+          })
+        })
+        .flatten();
 
-        apply_annotations(&mut out, record);
-
-        out.size = taffy::geometry::Size {
-          width: taffy::prelude::percent(1.0),
-          height: length(1.0),
-        };
-
-        taffy.set_style(record.taffy, out).expect("style a control");
-      }
-      NodeKind::Overlay {
-        open,
-        style,
-        variants,
-        ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let mut out = taffy::style::Style {
-          position: taffy::style::Position::Absolute,
-          ..taffy::style::Style::default()
-        };
-
-        apply_box_sizing(&mut out, &effective, false);
-
-        if !*open {
-          out.display = taffy::style::Display::None;
-        }
-
-        taffy
-          .set_style(record.taffy, out)
-          .expect("style an overlay");
-      }
-      NodeKind::Group => {
-        if fills_root {
-          taffy
-            .set_style(
-              record.taffy,
-              taffy::style::Style {
-                display: taffy::style::Display::Block,
-                flex_grow: 1.0,
-                ..taffy::style::Style::default()
-              },
-            )
-            .expect("style a group");
-        }
-        else if record.in_stack || record.annotations.is_some() {
-          let mut out = taffy::style::Style::default();
-
-          apply_annotations(&mut out, record);
-          taffy.set_style(record.taffy, out).expect("style a group");
-        }
+      NodePaint::Text {
+        lines: spans.into_iter().map(|(_, line)| line).collect(),
+        foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
+        bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
+        underline: props.link.is_some(),
+        link: props.link.clone(),
+        selection,
       }
     }
   }
 }
 
-/// Paints `node` at its layout position offset by (`offset_x`, `offset_y`), then its
+/// Paints `handle` at its layout position offset by (`offset_x`, `offset_y`), then its
 /// children.
-// A match dispatch over the node kinds; length is the kind count, not complexity.
+// A match dispatch over the paints; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
 fn paint_node(
-  state: &State,
-  environment: Environment,
+  store: &Store,
   buffer: &mut Buffer,
-  node: NodeId,
+  handle: Handle,
   offset_x: isize,
   offset_y: isize,
 ) {
-  let (kind_paint, children, x, y, width, height, border) = {
-    let nodes = state.nodes.borrow();
-    let Some(record) = nodes.get(&node)
-    else {
-      return;
-    };
-
-    let layout = *state
-      .taffy
-      .borrow()
-      .layout(record.taffy)
-      .expect("a computed layout");
-
-    #[expect(clippy::cast_possible_truncation)]
-    let (x, y) = (
-      offset_x + layout.location.x.round() as isize,
-      offset_y + layout.location.y.round() as isize,
-    );
-
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let (width, height) = (
-      layout.size.width.round().max(0.0) as usize,
-      layout.size.height.round().max(0.0) as usize,
-    );
-
-    #[expect(clippy::cast_possible_truncation)]
-    let border = (
-      layout.border.left.round() as isize,
-      layout.border.top.round() as isize,
-      layout.border.right.round() as isize,
-      layout.border.bottom.round() as isize,
-    );
-
-    let interaction = Interaction {
-      focused: state.focused.get() == Some(node),
-      hovered: state.hovered.borrow().contains(&node),
-    };
-
-    let focused = interaction.focused;
-    let paint = match &record.kind {
-      NodeKind::Box {
-        style, variants, ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let background = effective.color.and_then(terminal_rgb);
-        // Only a control—a button—gets the built-in feedback; a plain box stays as
-        // authored.
-        let background = if state.controls.borrow().contains(&node) {
-          interaction_background(
-            background,
-            environment.dark,
-            interaction_sixteenths(variants, interaction),
-          )
-        }
-        else {
-          background
-        };
-
-        NodePaint::Box {
-          background,
-          border: effective.border.map(|border| BorderPaint {
-            glyphs: effective.border_glyphs.unwrap_or_default(),
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
-        }
-      }
-      NodeKind::Run {
-        style,
-        variants,
-        text,
-        selectable,
-      } => {
-        let effective = effective_run_style(style, variants, environment, interaction);
-        let spans = wrap_spans(text, width);
-        let selection = selectable
-          .then(|| {
-            state.selection_range(node).map(|range| SelectionPaint {
-              range,
-              starts: spans.iter().map(|(start, _)| *start).collect(),
-              colors: selection_colors(&effective, environment.dark),
-            })
-          })
-          .flatten();
-
-        NodePaint::Text {
-          lines: spans.into_iter().map(|(_, line)| line).collect(),
-          foreground: effective.color.and_then(terminal_rgb),
-          background: None,
-          bold: effective.bold.unwrap_or(false),
-          dim: false,
-          selection,
-        }
-      }
-      NodeKind::Paragraph {
-        spans,
-        selectable,
-        selection_color,
-        selection_background,
-      } => {
-        let text: String = spans.iter().map(|span| span.text.as_str()).collect();
-        let lines = wrap_spans(&text, width);
-        let mut destinations = Vec::new();
-        let paints: Vec<SpanPaint> = spans
-          .iter()
-          .map(|span| {
-            let link = span.link.as_ref().map(|url| {
-              destinations.push(url.clone());
-              u16::try_from(destinations.len() - 1).unwrap_or(0)
-            });
-            // A link inks in the scheme's link blue unless the span sets its own.
-            let foreground = span
-              .color
-              .and_then(terminal_rgb)
-              .or_else(|| link.map(|_| link_blue(environment.dark)));
-
-            SpanPaint {
-              foreground,
-              bold: span.bold,
-              underline: link.is_some(),
-              link,
-            }
-          })
-          .collect();
-        let attribution: Vec<u16> = spans
-          .iter()
-          .enumerate()
-          .flat_map(|(index, span)| {
-            let index = u16::try_from(index).unwrap_or(0);
-
-            span.text.chars().map(move |_| index)
-          })
-          .collect();
-        let selection = selectable
-          .then(|| {
-            state.selection_range(node).map(|range| SelectionPaint {
-              range,
-              starts: lines.iter().map(|(start, _)| *start).collect(),
-              colors: {
-                let default = if environment.dark {
-                  DARK_SELECTION
-                }
-                else {
-                  LIGHT_SELECTION
-                };
-
-                (
-                  selection_color.and_then(terminal_rgb).unwrap_or(default.0),
-                  selection_background
-                    .and_then(terminal_rgb)
-                    .unwrap_or(default.1),
-                )
-              },
-            })
-          })
-          .flatten();
-
-        NodePaint::Paragraph {
-          lines,
-          attribution,
-          spans: paints,
-          links: destinations,
-          selection,
-        }
-      }
-      NodeKind::TextField {
-        style,
-        variants,
-        value,
-        placeholder,
-        caret,
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-        let (text, dim) = if value.is_empty() {
-          (placeholder.clone().unwrap_or_default(), true)
-        }
-        else {
-          (value.clone(), false)
-        };
-
-        let inset = usize::from(effective.border.is_some());
-        let inner = width.saturating_sub(2 * inset);
-        let window = field_window(*caret, inner);
-        let text: String = text.chars().skip(window).take(inner).collect();
-
-        NodePaint::TextField {
-          background: interaction_background(
-            effective.color.and_then(terminal_rgb),
-            environment.dark,
-            interaction_sixteenths(variants, interaction),
-          ),
-          border: effective.border.map(|border| BorderPaint {
-            glyphs: effective.border_glyphs.unwrap_or_default(),
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
-          text,
-          dim,
-          caret: (focused && inner > 0).then(|| caret - window),
-        }
-      }
-      NodeKind::Overlay {
-        style, variants, ..
-      } => {
-        let effective = effective_box_style(style, variants, environment, interaction);
-
-        NodePaint::Box {
-          background: effective.color.and_then(terminal_rgb),
-          border: effective.border.map(|border| BorderPaint {
-            glyphs: effective.border_glyphs.unwrap_or_default(),
-            color: terminal_rgb(border),
-          }),
-          shadow: effective.shadow,
-        }
-      }
-      NodeKind::Checkbox {
-        style,
-        variants,
-        marks,
-        label,
-        checked,
-      }
-      | NodeKind::Radio {
-        style,
-        variants,
-        marks,
-        label,
-        checked,
-        ..
-      } => {
-        let effective = effective_control_style(style, variants, environment, interaction);
-        let mark = if *checked { &marks.0 } else { &marks.1 };
-        let text = match label {
-          Some(label) => format!("{mark} {label}"),
-          None => mark.clone(),
-        };
-
-        NodePaint::Text {
-          lines: vec![text],
-          foreground: effective.color.and_then(terminal_rgb),
-          background: interaction_background(
-            None,
-            environment.dark,
-            interaction_sixteenths(variants, interaction),
-          ),
-          bold: effective.bold.unwrap_or(false),
-          dim: false,
-          selection: None,
-        }
-      }
-      NodeKind::Picker {
-        style,
-        variants,
-        options,
-        indicator,
-        value,
-      } => {
-        let effective = effective_control_style(style, variants, environment, interaction);
-        let label = options
-          .iter()
-          .find(|(option, _)| option == value)
-          .map_or_else(|| value.clone(), |(_, label)| label.clone());
-
-        NodePaint::Text {
-          lines: vec![format!("{label} {indicator}")],
-          foreground: effective.color.and_then(terminal_rgb),
-          background: interaction_background(
-            None,
-            environment.dark,
-            interaction_sixteenths(variants, interaction),
-          ),
-          bold: effective.bold.unwrap_or(false),
-          dim: false,
-          selection: None,
-        }
-      }
-      NodeKind::Slider {
-        style,
-        variants,
-        glyphs,
-        min,
-        max,
-        value,
-        ..
-      } => {
-        let effective = effective_control_style(style, variants, environment, interaction);
-        let span = max - min;
-        let fraction = if span > 0.0 {
-          ((value - min) / span).clamp(0.0, 1.0)
-        }
-        else {
-          0.0
-        };
-
-        // The default full-block glyphs take the smooth path: a dimmed block track
-        // under a full-ink thumb at eighth-cell precision. Themed glyphs keep the
-        // classic per-cell rendering.
-        if *glyphs == ('█', '█') {
-          NodePaint::Slider {
-            fraction,
-            ink: effective.color.and_then(terminal_rgb),
-            wash_sixteenths: interaction_sixteenths(variants, interaction),
-          }
-        }
-        else {
-          NodePaint::Text {
-            lines: vec![slider_track(width, fraction, *glyphs)],
-            foreground: effective.color.and_then(terminal_rgb),
-            background: interaction_background(
-              None,
-              environment.dark,
-              interaction_sixteenths(variants, interaction),
-            ),
-            bold: effective.bold.unwrap_or(false),
-            dim: false,
-            selection: None,
-          }
-        }
-      }
-      NodeKind::Group => NodePaint::None,
-    };
-
-    (paint, record.children.clone(), x, y, width, height, border)
+  let Some(record) = store.record(handle)
+  else {
+    return;
   };
 
-  match kind_paint {
+  if !record.kind.is_laid_out() {
+    for child in record.children.clone() {
+      paint_node(store, buffer, child, offset_x, offset_y);
+    }
+
+    return;
+  }
+
+  let (location_x, location_y) = store.node_location(handle);
+  let (x, y) = (
+    offset_x + isize::try_from(location_x).unwrap_or(0),
+    offset_y + isize::try_from(location_y).unwrap_or(0),
+  );
+  let (width, height) = store.node_size(handle);
+  let (width, height) = (
+    usize::try_from(width).unwrap_or(0),
+    usize::try_from(height).unwrap_or(0),
+  );
+  let border = store.node_border(handle);
+  let border = (
+    isize::try_from(border.0).unwrap_or(0),
+    isize::try_from(border.1).unwrap_or(0),
+    isize::try_from(border.2).unwrap_or(0),
+    isize::try_from(border.3).unwrap_or(0),
+  );
+  let focused = store.focused == Some(handle);
+  let dark = store.dark();
+  let paragraph = is_paragraph(store, handle);
+
+  match node_paint(store, handle, width, focused) {
     NodePaint::Paragraph {
       lines,
       attribution,
@@ -927,8 +528,9 @@ fn paint_node(
           else {
             continue;
           };
+          let offset = start + column;
           let Some(paint) = attribution
-            .get(start + column)
+            .get(offset)
             .and_then(|index| spans.get(usize::from(*index)))
           else {
             continue;
@@ -943,13 +545,11 @@ fn paint_node(
           cell.bold = paint.bold;
           cell.underline = paint.underline;
           cell.link = paint.link.map(|index| base + index);
+
+          if selection.is_some_and(|(from, to)| offset >= from && offset < to) {
+            select_cell(cell, paint.selection);
+          }
         }
-      }
-
-      if let Some(selection) = selection {
-        let plain: Vec<String> = lines.into_iter().map(|(_, line)| line).collect();
-
-        draw_selection(buffer, x, y, &plain, &selection);
       }
     }
     NodePaint::Box {
@@ -958,7 +558,7 @@ fn paint_node(
       shadow,
     } => {
       if let Some(shadow) = shadow {
-        draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
+        draw_shadow(buffer, x, y, width, height, shadow, dark);
       }
 
       fill(buffer, x, y, width, height, background);
@@ -972,20 +572,27 @@ fn paint_node(
     NodePaint::Text {
       lines,
       foreground,
-      background,
       bold,
-      dim,
+      underline,
+      link,
       selection,
     } => {
+      let link = link.map(|url| {
+        buffer.links.push(url);
+
+        u16::try_from(buffer.links.len() - 1).unwrap_or(0)
+      });
+
       for (row, line) in lines.iter().enumerate() {
         let row_y = y + isize::try_from(row).expect("fits");
 
-        draw_text(buffer, x, row_y, line, foreground, bold, dim);
+        draw_text(buffer, x, row_y, line, foreground, bold, false);
 
-        if let Some(background) = background {
+        if underline {
           for column in 0..line.chars().count() {
             if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
-              cell.background = Some(background);
+              cell.underline = true;
+              cell.link = link;
             }
           }
         }
@@ -995,39 +602,45 @@ fn paint_node(
         draw_selection(buffer, x, y, &lines, &selection);
       }
     }
-    NodePaint::TextField {
+    NodePaint::Field {
       background,
       border,
       shadow,
-      text,
+      rows,
       dim,
       caret,
+      inset,
     } => {
       if let Some(shadow) = shadow {
-        draw_shadow(buffer, x, y, width, height, shadow, environment.dark);
+        draw_shadow(buffer, x, y, width, height, shadow, dark);
       }
 
       fill(buffer, x, y, width, height, background);
 
-      let inset = if let Some(border) = border {
-        if border.color.is_some() {
-          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
-        }
-
-        1
+      if let Some(border) = border
+        && border.color.is_some()
+      {
+        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
       }
-      else {
-        0
-      };
 
-      draw_text(buffer, x + inset, y + inset, &text, None, false, dim);
+      for (row, text) in rows.iter().enumerate() {
+        draw_text(
+          buffer,
+          x + inset.0,
+          y + inset.1 + isize::try_from(row).expect("fits"),
+          text,
+          None,
+          false,
+          dim,
+        );
+      }
 
       // The caret: the terminal's own bar cursor at the cell, recorded only while the
       // cell is visible under the current clip.
-      if let Some(column) = caret {
+      if let Some((row, column)) = caret {
         let (caret_x, caret_y) = (
-          x + inset + isize::try_from(column).expect("fits"),
-          y + inset,
+          x + inset.0 + isize::try_from(column).expect("fits"),
+          y + inset.1 + isize::try_from(row).expect("fits"),
         );
 
         if buffer.cell_mut(caret_x, caret_y).is_some() {
@@ -1035,28 +648,16 @@ fn paint_node(
         }
       }
     }
-    NodePaint::Slider {
-      fraction,
-      ink,
-      wash_sixteenths,
-    } => {
-      draw_slider(
-        buffer,
-        x,
-        y,
-        width,
-        fraction,
-        ink,
-        wash_sixteenths,
-        environment.dark,
-      );
-    }
     NodePaint::None => {}
+  }
+
+  if paragraph {
+    return;
   }
 
   let saved_clip = buffer.clip;
 
-  if state.clips(node) {
+  if store.clips(handle) {
     let rect = (
       x + border.0,
       y + border.1,
@@ -1070,24 +671,24 @@ fn paint_node(
     });
   }
 
-  let (scroll_x, scroll_y) = state.scroll_offset(node);
+  let (scroll_x, scroll_y) = store.scroll_offset(handle);
   let (child_x, child_y) = (
     x - isize::try_from(scroll_x).unwrap_or(0),
     y - isize::try_from(scroll_y).unwrap_or(0),
   );
 
-  for child in children {
-    if state.is_overlay(child) {
+  for child in store.children(handle).to_vec() {
+    if store.record(child).is_some_and(Record::is_overlay) {
       continue;
     }
 
-    paint_node(state, environment, buffer, child, child_x, child_y);
+    paint_node(store, buffer, child, child_x, child_y);
   }
 
   buffer.clip = saved_clip;
 
-  if state.is_scrollable(node) {
-    draw_scrollbars(state, buffer, node, x, y, width, height, border);
+  if store.is_scrollable(handle) {
+    draw_scrollbars(store, buffer, handle, x, y, width, height, border);
   }
 }
 
@@ -1128,23 +729,22 @@ const fn intersect(
 /// each drawn only while its axis overflows.
 #[expect(clippy::too_many_arguments)]
 fn draw_scrollbars(
-  state: &State,
+  store: &Store,
   buffer: &mut Buffer,
-  node: NodeId,
+  handle: Handle,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
   border: (isize, isize, isize, isize),
 ) {
-  let (offset_x, offset_y) = state.scroll_offset(node);
-  let (limit_x, limit_y) = state.scroll_limits(node);
+  let (offset_x, offset_y) = store.scroll_offset(handle);
+  let (limit_x, limit_y) = store.scroll_limits(handle);
   let (width, height) = (
     isize::try_from(width).unwrap_or(0),
     isize::try_from(height).unwrap_or(0),
   );
-
-  let dark = state.dark();
+  let dark = store.dark();
 
   if limit_y > 0 {
     let track = height - border.1 - border.3;
@@ -1166,6 +766,7 @@ fn draw_scrollbars(
         cell.foreground = Some(foreground);
         cell.background = Some(background);
         cell.bold = false;
+        cell.reverse = false;
       }
     }
   }
@@ -1190,70 +791,14 @@ fn draw_scrollbars(
         cell.foreground = Some(foreground);
         cell.background = Some(background);
         cell.bold = false;
+        cell.reverse = false;
       }
     }
   }
 }
 
-/// A slider: full-block track cells in a dimmed ink under a one-cell thumb in the full
-/// ink, the thumb placed at eighth-cell precision through partial-width blocks, the
-/// track brightening with the built-in interaction feedback.
-#[expect(clippy::too_many_arguments)]
-fn draw_slider(
-  buffer: &mut Buffer,
-  x: isize,
-  y: isize,
-  width: usize,
-  fraction: f32,
-  ink: Option<(u8, u8, u8)>,
-  wash_sixteenths: u16,
-  dark: bool,
-) {
-  let track = isize::try_from(width).unwrap_or(0);
-
-  if track <= 0 {
-    return;
-  }
-
-  #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-  let start = (fraction * ((track * 8 - 8) as f32)).round() as isize;
-
-  for column in 0..track {
-    if let Some(cell) = buffer.cell_mut(x + column, y) {
-      let ink = ink.unwrap_or(if dark { (255, 255, 255) } else { (0, 0, 0) });
-      let beneath = cell
-        .background
-        .unwrap_or(if dark { (0, 0, 0) } else { (255, 255, 255) });
-      let sixteenths = (4 + wash_sixteenths).min(16);
-      let mix = |over: u8, under: u8| -> u8 {
-        u8::try_from((u16::from(over) * sixteenths + u16::from(under) * (16 - sixteenths) + 8) / 16)
-          .unwrap_or(u8::MAX)
-      };
-      let tint = (
-        mix(ink.0, beneath.0),
-        mix(ink.1, beneath.1),
-        mix(ink.2, beneath.2),
-      );
-      // A trailing partial paints the complement glyph with the colors swapped, in
-      // place of the right-block run Unicode lacks.
-      let (character, foreground, background) = match eighth_coverage(column, start, 8) {
-        Coverage::Full => ('█', ink, beneath),
-        Coverage::Leading(eighths) => (left_block(eighths), ink, tint),
-        Coverage::Trailing(eighths) => (left_block(8 - eighths), tint, ink),
-        Coverage::None => ('█', tint, beneath),
-      };
-
-      cell.character = character;
-      cell.foreground = Some(foreground);
-      cell.background = Some(background);
-      cell.bold = false;
-    }
-  }
-}
-
 /// One scrollbar cell's ink and track: the terminal default foreground for the
-/// detected background, and a quarter of that ink over the cell beneath—so a
-/// partially covered cell's remainder matches the track exactly.
+/// detected background, and a quarter of that ink over the cell beneath.
 fn track_colors(cell: &TerminalCell, dark: bool) -> ((u8, u8, u8), (u8, u8, u8)) {
   let (ink, base) = if dark {
     ((255, 255, 255), (0, 0, 0))
@@ -1348,8 +893,7 @@ const fn left_block(eighths: u8) -> char {
 }
 
 /// A scrollbar thumb's start and length along a track, proportional to the viewport
-/// within the scrollable content, in whole cells. The grab arithmetic works at this
-/// resolution; the paint refines to eighths.
+/// within the scrollable content, in whole cells.
 pub(crate) fn thumb_span(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   if track <= 0 {
     return (0, 0);
@@ -1378,73 +922,6 @@ fn thumb_span_eighths(track: isize, offset: u32, limit: u32) -> (isize, isize) {
   (start, thumb)
 }
 
-/// A border's paint: present, with its character set and its color—`None` for a fully
-/// transparent border, which keeps its cells but paints no glyphs.
-struct BorderPaint {
-  glyphs: crate::BorderGlyphs,
-  color: Option<(u8, u8, u8)>,
-}
-
-/// What one node contributes to the frame.
-/// One paragraph span's paint: its ink, weight, underline, and link.
-struct SpanPaint {
-  foreground: Option<(u8, u8, u8)>,
-  bold: bool,
-  underline: bool,
-  link: Option<u16>,
-}
-
-/// A run's selection highlight: the selected source range, each painted line's start
-/// offset in the source, and the ink and highlight colors.
-struct SelectionPaint {
-  range: (usize, usize),
-  starts: Vec<usize>,
-  colors: ((u8, u8, u8), (u8, u8, u8)),
-}
-
-enum NodePaint {
-  Paragraph {
-    /// Wrapped lines over the concatenated text, each with its start offset.
-    lines: Vec<(usize, String)>,
-    /// Each concatenated character's span index.
-    attribution: Vec<u16>,
-    /// Per-span paint: ink, weight, underline, and the link index into `links`.
-    spans: Vec<SpanPaint>,
-    links: Vec<String>,
-    selection: Option<SelectionPaint>,
-  },
-  Box {
-    background: Option<(u8, u8, u8)>,
-    border: Option<BorderPaint>,
-    shadow: Option<Color>,
-  },
-  Text {
-    lines: Vec<String>,
-    foreground: Option<(u8, u8, u8)>,
-    background: Option<(u8, u8, u8)>,
-    bold: bool,
-    dim: bool,
-    selection: Option<SelectionPaint>,
-  },
-  TextField {
-    background: Option<(u8, u8, u8)>,
-    border: Option<BorderPaint>,
-    shadow: Option<Color>,
-    text: String,
-    dim: bool,
-    caret: Option<usize>,
-  },
-  Slider {
-    /// The value's position along the track, `0.0..=1.0`.
-    fraction: f32,
-    /// The thumb's ink; the scheme's default when unset.
-    ink: Option<(u8, u8, u8)>,
-    /// The built-in interaction feedback, brightening the track.
-    wash_sixteenths: u16,
-  },
-  None,
-}
-
 /// Fills a rectangle: a background paints opaquely, clearing whatever was beneath.
 fn fill(
   buffer: &mut Buffer,
@@ -1464,25 +941,23 @@ fn fill(
         x + isize::try_from(column).expect("fits"),
         y + isize::try_from(row).expect("fits"),
       ) {
-        cell.character = ' ';
-        cell.foreground = None;
-        cell.bold = false;
-        cell.underline = false;
-        cell.link = None;
-        cell.background = background;
+        *cell = TerminalCell {
+          background,
+          ..TerminalCell::EMPTY
+        };
       }
     }
   }
 }
 
 /// Draws a one-cell box border with the given character set.
-fn draw_border(
+pub(crate) fn draw_border(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
-  glyphs: crate::BorderGlyphs,
+  glyphs: BorderGlyphs,
   color: Option<(u8, u8, u8)>,
 ) {
   if width < 2 || height < 2 {
@@ -1550,91 +1025,18 @@ fn draw_text(
   }
 }
 
-/// The built-in interaction feedback in sixteenths of ink: three for hover, four for
-/// focus, five for both—each state counted only while no variant of the node
-/// conditions on it, so authored styling wins over the default.
-fn interaction_sixteenths<S>(
-  variants: &[(crate::props::Condition, S)],
-  interaction: Interaction,
-) -> u16 {
-  use skene_core::Composable;
-
-  let authored_hover = variants.iter().any(|(condition, _)| {
-    condition.involves(&|leaf| matches!(leaf, crate::props::Condition::Hovered))
-  });
-  let authored_focus = variants.iter().any(|(condition, _)| {
-    condition.involves(&|leaf| matches!(leaf, crate::props::Condition::Focused))
-  });
-  let hover = interaction.hovered && !authored_hover;
-  let focus = interaction.focused && !authored_focus;
-
-  match (hover, focus) {
-    (false, false) => 0,
-    (true, false) => 3,
-    (false, true) => 4,
-    (true, true) => 5,
+/// Paints one cell as selected: in the selection colors, or in reverse video.
+fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
+  match colors {
+    Some((ink, surface)) => {
+      cell.foreground = Some(ink);
+      cell.background = Some(surface);
+    }
+    None => cell.reverse = true,
   }
 }
 
-/// Mixes `sixteenths`/16 of the scheme's ink into `base`—the terminal default
-/// background when unset—for the built-in hover and focus feedback.
-fn interaction_background(
-  base: Option<(u8, u8, u8)>,
-  dark: bool,
-  sixteenths: u16,
-) -> Option<(u8, u8, u8)> {
-  if sixteenths == 0 {
-    return base;
-  }
-
-  let ink: (u8, u8, u8) = if dark { (255, 255, 255) } else { (0, 0, 0) };
-  let under = base.unwrap_or(if dark { (0, 0, 0) } else { (255, 255, 255) });
-  let mix = |over: u8, under: u8| {
-    u8::try_from((u16::from(over) * sixteenths + u16::from(under) * (16 - sixteenths)) / 16)
-      .unwrap_or(u8::MAX)
-  };
-
-  Some((
-    mix(ink.0, under.0),
-    mix(ink.1, under.1),
-    mix(ink.2, under.2),
-  ))
-}
-
-/// The scheme's link ink, when a linked span sets no color of its own.
-const fn link_blue(dark: bool) -> (u8, u8, u8) {
-  if dark { (102, 153, 255) } else { (0, 102, 204) }
-}
-
-/// The selection ink and highlight for a dark terminal, when no theme sets them.
-const DARK_SELECTION: ((u8, u8, u8), (u8, u8, u8)) = ((255, 255, 255), (52, 88, 134));
-
-/// The selection ink and highlight for a light terminal, when no theme sets them.
-const LIGHT_SELECTION: ((u8, u8, u8), (u8, u8, u8)) = ((0, 0, 0), (174, 208, 250));
-
-/// A run's selection ink and highlight: its effective style's, or the defaults for the
-/// detected background.
-fn selection_colors(style: &crate::props::RunStyle, dark: bool) -> ((u8, u8, u8), (u8, u8, u8)) {
-  let default = if dark {
-    DARK_SELECTION
-  }
-  else {
-    LIGHT_SELECTION
-  };
-
-  (
-    style
-      .selection_color
-      .and_then(terminal_rgb)
-      .unwrap_or(default.0),
-    style
-      .selection_background
-      .and_then(terminal_rgb)
-      .unwrap_or(default.1),
-  )
-}
-
-/// Recolors a run's selected cells: the selection ink over its highlight.
+/// Recolors a run's selected cells.
 fn draw_selection(
   buffer: &mut Buffer,
   x: isize,
@@ -1658,8 +1060,7 @@ fn draw_selection(
         x + isize::try_from(column).expect("fits"),
         y + isize::try_from(row).expect("fits"),
       ) {
-        cell.foreground = Some(selection.colors.0);
-        cell.background = Some(selection.colors.1);
+        select_cell(cell, selection.colors);
       }
     }
   }
@@ -1667,8 +1068,8 @@ fn draw_selection(
 
 /// Paints the copy menu over everything at its anchored cell, the `Copy` item
 /// highlighted while the pointer is on it.
-fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
-  let Some((menu_x, menu_y, menu_width, menu_height)) = state.menu_bounds()
+fn draw_menu(store: &Store, buffer: &mut Buffer, dark: bool) {
+  let Some((menu_x, menu_y, menu_width, menu_height)) = store.menu_bounds()
   else {
     return;
   };
@@ -1700,24 +1101,18 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     y,
     width,
     height,
-    crate::BorderGlyphs::default(),
+    BorderGlyphs::default(),
     Some((128, 128, 128)),
   );
 
-  let enabled = state.clipboard.get();
-  let (pointer_x, pointer_y) = state.last_pointer.get();
-  let hovered = enabled && state.copy_hit(pointer_x, pointer_y);
-  let (ink, highlight) = if dark {
-    DARK_SELECTION
-  }
-  else {
-    LIGHT_SELECTION
-  };
+  let enabled = store.clipboard;
+  let (pointer_x, pointer_y) = store.last_pointer;
+  let hovered = enabled && store.copy_hit(pointer_x, pointer_y);
 
   if hovered {
     for column in 1..width.saturating_sub(1) {
       if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), y + 1) {
-        cell.background = Some(highlight);
+        cell.reverse = true;
       }
     }
   }
@@ -1727,7 +1122,7 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
     x + 2,
     y + 1,
     crate::selection::MENU_ITEM,
-    hovered.then_some(ink),
+    None,
     false,
     !enabled,
   );
@@ -1745,24 +1140,6 @@ fn draw_menu(state: &State, buffer: &mut Buffer, dark: bool) {
   }
 }
 
-/// A themed slider's track over `width` cells, the thumb at the value's cell.
-fn slider_track(width: usize, fraction: f32, glyphs: (char, char)) -> String {
-  if width == 0 {
-    return String::new();
-  }
-
-  #[expect(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-  )]
-  let thumb = (fraction * (width - 1) as f32).round() as usize;
-
-  (0..width)
-    .map(|cell| if cell == thumb { glyphs.1 } else { glyphs.0 })
-    .collect()
-}
-
 /// Casts a box's shadow: the one-cell band below and to the right, the shadow color
 /// mixed into both the foreground and the background of each covered cell by its
 /// alpha. An unset color beneath mixes against the terminal's default for the detected
@@ -1777,9 +1154,9 @@ fn draw_shadow(
   dark: bool,
 ) {
   let [red, green, blue, alpha] = color.to_rgba();
-  let alpha = alpha.clamp(0.0, 1.0);
+  let alpha = alpha.clamp(0., 1.);
 
-  if alpha <= 0.0 || width == 0 || height == 0 {
+  if alpha <= 0. || width == 0 || height == 0 {
     return;
   }
 
@@ -1805,7 +1182,7 @@ fn draw_shadow(
 /// Mixes a color into both of a cell's colors by `alpha`, an unset color mixing
 /// against the terminal default for the detected `dark` background.
 fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, dark: bool) {
-  let alpha = alpha.clamp(0.0, 1.0);
+  let alpha = alpha.clamp(0., 1.);
   let (foreground_base, background_base) = if dark {
     ((255, 255, 255), (0, 0, 0))
   }
@@ -1816,8 +1193,8 @@ fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, da
     let (base_red, base_green, base_blue) = existing.unwrap_or(base);
     let channel = |over: f32, beneath: u8| -> u8 {
       #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-      let mixed = (over.clamp(0.0, 1.0) * 255.0)
-        .mul_add(alpha, f32::from(beneath) * (1.0 - alpha))
+      let mixed = (over.clamp(0., 1.) * 255.)
+        .mul_add(alpha, f32::from(beneath) * (1. - alpha))
         .round() as u8;
 
       mixed
@@ -1834,6 +1211,22 @@ fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, da
   cell.background = Some(mix(cell.background, background_base));
 }
 
+/// A [`Color`]'s terminal RGB, or `None` when fully transparent.
+pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
+  let [red, green, blue, alpha] = color.to_rgba();
+
+  if alpha <= 0. {
+    return None;
+  }
+
+  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  Some((
+    (red.clamp(0., 1.) * 255.).round() as u8,
+    (green.clamp(0., 1.) * 255.).round() as u8,
+    (blue.clamp(0., 1.) * 255.).round() as u8,
+  ))
+}
+
 /// Whether `row` must be rewritten: the previous frame is absent, differently sized, or
 /// differs in that row.
 pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) -> bool {
@@ -1843,6 +1236,14 @@ pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) 
         != next.cells[row * next.width..(row + 1) * next.width]
     }
     _ => true,
+  }
+}
+
+/// The kind of the control `handle`, if it is one.
+pub(crate) fn control_kind(store: &Store, handle: Handle) -> Option<ControlKind> {
+  match store.record(handle)?.kind {
+    Kind::Control { kind, .. } => Some(kind),
+    _ => None,
   }
 }
 
@@ -1876,14 +1277,5 @@ mod tests {
     assert_eq!(wrap_text("ab\ncd", 10), ["ab", "cd"]);
     assert_eq!(wrap_text("", 5), [""]);
     assert_eq!(wrap_text("ab  ", 2), ["ab"]);
-  }
-
-  #[test]
-  fn slider_tracks_place_the_thumb() {
-    let glyphs = ('-', '*');
-
-    assert_eq!(slider_track(5, 0.0, glyphs), "*----");
-    assert_eq!(slider_track(5, 0.5, glyphs), "--*--");
-    assert_eq!(slider_track(5, 1.0, glyphs), "----*");
   }
 }

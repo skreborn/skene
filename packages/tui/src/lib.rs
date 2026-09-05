@@ -1,77 +1,127 @@
 //! # skene-tui
 //!
-//! The terminal facade: the single dependency a terminal app pulls in, equal in standing
-//! to `skene-gui` and sharing the same spine (the reactive engine, the view trait, the
-//! reconciliation machinery)—but with its own vocabulary, typed to what a terminal
-//! renders: lengths are `u32` cells, text is a color and a `bool` bold, borders are one
-//! cell of box-drawing characters. What the medium lacks, the types lack.
+//! The terminal facade and its driver: a terminal app's single dependency, equal in
+//! standing to `skene-gui`. It fixes the scalar (cells, `u32`), names the driver
+//! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view and every `Simple*` view
+//! to it, so app code names no platform. The medium's own contribution is
+//! [`Typography`], [`Glyphs`], the [`media`] module, the terminal's decoration
+//! ([`TerminalDecoration`], [`TerminalText`]) and the entry points: [`launch`] in a
+//! terminal, [`render_to_text`] for a headless test.
 //!
-//! Layout is taffy at `1.0 = 1 cell`; frames paint into a cell buffer—to the terminal
-//! through [`launch`], or to plain text through [`render_to_text`] for headless tests.
-//! Interaction is keyboard-first: `Tab`/`Shift-Tab` move focus across inputs and
-//! clickable boxes, `Enter` clicks the focused node, printable keys edit the focused
-//! input, and `Ctrl-C` quits. Every dispatch runs inside a reactive batch.
+//! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
+//! to the layout tree only on change; frames paint into a cell buffer. Interaction
+//! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
+//! own their keys, a click fires on press and release over one target, and `Ctrl-C`
+//! quits. Every dispatch runs inside a reactive batch.
 //!
 //! Host-only: on a wasm target the crate is empty.
 
 #![cfg(not(target_arch = "wasm32"))]
 
+pub mod media;
 pub mod prelude;
 
-mod box_node;
-mod container;
-mod containers;
-mod control;
 mod detect;
 #[cfg(feature = "snapshot")]
 mod dev;
-mod events;
-mod focus;
-mod layout_box;
-mod lazy;
-mod overlay;
+mod driver;
+mod ext;
+mod field;
+mod frame;
+mod glyphs;
+mod interaction;
+mod layout;
 mod paint;
-mod props;
-mod raw;
-mod realize;
+mod resolve;
 mod resource;
 mod routing;
 mod selection;
-#[cfg(feature = "simple-views")]
-mod simple;
-mod state;
-mod style;
-mod surface;
+mod store;
 mod task;
 mod terminal;
-mod text;
-mod theme;
+mod token;
+mod typography_set;
 
-use std::cell::RefCell;
+pub use skene_core as core;
+pub use skene_core::{
+  Bubbling,
+  Color,
+  ColorScheme,
+  Errors,
+  FocusOrder,
+  KeyEvent,
+  Modifiers,
+  PointerButton,
+  PointerEvent,
+  Prevent,
+  Prevented,
+  Role,
+  ScrollEvent,
+  next::{
+    AnyKind,
+    Children,
+    ContainerName,
+    ControlKind,
+    ControlState,
+    Definitions,
+    Expr,
+    HasChildren,
+    IntoChildOf,
+    IntoChildren,
+    Leaf,
+    Length,
+    NoChild,
+    NodeId,
+    Number,
+    Part,
+    Scene,
+    State,
+    StaticLeaf,
+    TokenName,
+    TokenRef,
+    TokenSet,
+    When,
+  },
+};
+pub use skene_reactive as reactive;
+pub use skene_router as router;
+pub use skene_simple::next::SimpleVariant;
+pub use skene_views::{
+  Activate,
+  Anchor,
+  Behavior,
+  ControlChild,
+  CornerRadius,
+  ListItem,
+  Listbox,
+  ListboxGroup,
+  PointerPhase,
+  Popup,
+  RadioMember,
+  Range,
+  Roster,
+  Roving,
+  RovingGroup,
+  TextEntry,
+  Toggle,
+  TypeMetrics,
+  typography,
+};
 
 #[cfg(all(feature = "snapshot", feature = "test"))]
-pub use dev::{adopt_scroll, notice_view as dev_notice_view};
-pub use skene_core::{
-  self as core,
-  Errors,
-  HasChildren,
-  IntoView,
-  KeyEvent,
-  Layout,
-  Modifiers,
-  NodeId,
-  PointerButton,
-  View,
-};
-pub use skene_reactive::{self as reactive};
-pub use skene_router as router;
-use state::{NodeKind, State};
-pub use terminal::launch;
+pub use crate::dev::{adopt_scroll, notice_view as dev_notice_view};
+#[cfg(feature = "snapshot")]
+pub(crate) use crate::driver::try_with_store;
 #[cfg(feature = "test")]
-pub use terminal::{
+pub use crate::driver::uninstall;
+pub(crate) use crate::driver::with_store;
+#[cfg(feature = "test")]
+pub use crate::terminal::{
   current_cursor,
   current_title,
   focused_node,
+  layout_generation,
+  set_style_calls,
   take_copied,
   take_opened,
   trigger_clipboard_support,
@@ -84,121 +134,251 @@ pub use terminal::{
   trigger_mouse_release,
   trigger_mouse_right_click,
   trigger_mouse_scroll,
-};
-
-#[cfg(feature = "simple-views")]
-pub use crate::simple::{
-  SimpleButton,
-  SimpleCard,
-  SimpleCheckbox,
-  SimpleLook,
-  SimplePalette,
-  SimplePicker,
-  SimpleRadio,
-  SimpleSlider,
-  SimpleTextField,
-  SimpleTheme,
-  SimpleVariant,
-  painted,
+  trigger_resize,
 };
 pub use crate::{
-  container::Container,
-  containers::{Column, Flexible, Grid, GridCell, Pinned, Row, Stack},
-  control::{Behavior, DecorationCore, EventCore, FocusCore, MarkCore},
-  events::{PointerEvent, ScrollEvent},
-  focus::FocusHandle,
-  layout_box::LayoutBox,
-  lazy::LazyColumn,
-  overlay::{Anchor, Overlay},
-  props::{BorderGlyphs, BoxStyle, Condition, ControlStyle, RunStyle},
-  raw::{RawButton, RawCheckbox, RawPicker, RawRadio, RawSlider, RawTextField},
+  driver::{Tui, handle, install, mount},
+  ext::{
+    BOLD_WEIGHT,
+    BorderGlyphs,
+    TerminalBoxFields,
+    TerminalDecoration,
+    TerminalExt,
+    TerminalProperty,
+    TerminalRunFields,
+    TerminalText,
+    TerminalValue,
+    terminal_fields,
+  },
+  glyphs::Glyphs,
+  media::{derive_scheme, set_scheme, stored_scheme},
   resource::Resource,
   routing::install_router,
-  surface::{HasDecoration, HasEvents, HasFocus, HasMarks},
+  store::Handle,
   task::spawn,
-  text::{RichText, Span, Text},
-  theme::{ControlTheme, TextTheme},
+  terminal::launch,
+  token::TokenValue,
+  typography_set::Typography,
 };
 
-/// Paints `scheme` throughout, overriding the background the terminal detected; `None`
-/// returns to following it.
-///
-/// A scheme is not a theme, and this is not a theme's to set: the detected background is
-/// the terminal's, so an app's override is too. Nesting [`SimpleTheme`]s nests palettes;
-/// this decides which value each of their conditional tokens takes.
-///
-/// Every token keeps both values and the paint is told which is in force, so a change
-/// re-inks the next frame without rebuilding anything: the state inside the subtree, the
-/// focus, the scroll position and a half-typed input all survive it.
-#[inline(always)]
-pub fn set_scheme(scheme: Option<skene_core::ColorScheme>) {
-  with_state(|state| {
-    state.scheme.set(scheme);
-    state.dirty.set(true);
-  });
+/// The driver the build selected: the terminal driver, on every host target.
+pub type ActiveDriver = Tui;
+
+/// The named glyph tokens; see [`Glyphs`].
+pub mod glyph {
+  pub use crate::glyphs::{
+    CHECKBOX_CHECKED,
+    CHECKBOX_UNCHECKED,
+    PICKER_INDICATOR,
+    RADIO_CHECKED,
+    RADIO_UNCHECKED,
+    SLIDER_THUMB,
+    SLIDER_TRACK,
+  };
 }
 
-/// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
-///
-/// Bind it to the signal holding the reader's setting.
-#[inline(always)]
-pub fn derive_scheme(scheme: impl Fn() -> Option<skene_core::ColorScheme> + 'static) {
-  skene_reactive::Effect::new(move |_| set_scheme(scheme()));
+/// A view on the active driver; see [`skene_core::next::View`].
+pub trait View: skene_core::next::View<ActiveDriver> {
+  /// Realizes this view and returns its root node.
+  #[inline(always)]
+  fn build(self) -> NodeId
+  where
+    Self: Sized,
+  {
+    skene_core::next::View::build(self)
+  }
+
+  /// Erases this view's concrete type.
+  #[inline(always)]
+  fn into_any(self) -> AnyView
+  where
+    Self: Sized,
+  {
+    skene_core::next::View::into_any(self)
+  }
 }
 
-/// A suspense view over the terminal tree; see [`skene_core::Suspense`].
-pub type Suspense = skene_core::Suspense<TuiOps>;
-/// An error boundary over the terminal tree; see [`skene_core::ErrorBoundary`].
-pub type ErrorBoundary = skene_core::ErrorBoundary<TuiOps>;
+impl<V: skene_core::next::View<ActiveDriver>> View for V {}
 
+/// A value that can be turned into a view on the active driver, accepted as a child
+/// of every kind; see [`skene_core::next::IntoView`] and [`AnyKind`].
+pub trait IntoView: skene_core::next::IntoView<ActiveDriver> + AnyKind {
+  /// Converts this value into a view.
+  #[inline(always)]
+  fn into_view(self) -> AnyView
+  where
+    Self: Sized,
+  {
+    skene_core::next::IntoView::into_view(self)
+  }
+}
+
+impl<V: skene_core::next::IntoView<ActiveDriver> + AnyKind> IntoView for V {}
+
+/// A token set read from the theme in force on the active driver; see
+/// [`skene_views::ThemedIn`].
+///
+/// Every [`TokenSet`] with a default has it: `SimplePalette::current()` reads the
+/// nearest theme's palette, or the default when no theme is above.
+pub trait ThemedIn: skene_views::ThemedIn<ActiveDriver> {
+  /// The set the nearest theme provides, or the default without one.
+  #[inline(always)]
+  #[must_use]
+  fn current() -> Self {
+    <Self as skene_views::ThemedIn<ActiveDriver>>::current()
+  }
+
+  /// The nearest theme's set as a memo, or a memo of the default without one.
+  #[inline(always)]
+  fn watch() -> skene_reactive::Memo<Self> {
+    <Self as skene_views::ThemedIn<ActiveDriver>>::watch()
+  }
+}
+
+impl<P: skene_views::ThemedIn<ActiveDriver>> ThemedIn for P {}
+
+/// A type-erased view.
+pub type AnyView = skene_core::next::AnyView<ActiveDriver>;
+/// The one freely-decorated box around exactly one child; see
+/// [`skene_views::Container`].
+pub type Container = skene_views::Container<ActiveDriver>;
+/// A horizontal flex layout; see [`skene_views::Row`].
+pub type Row = skene_views::Row<ActiveDriver>;
+/// A vertical flex layout; see [`skene_views::Column`].
+pub type Column = skene_views::Column<ActiveDriver>;
+/// A grid layout; see [`skene_views::Grid`].
+pub type Grid = skene_views::Grid<ActiveDriver>;
+/// A stack layout; see [`skene_views::Stack`].
+pub type Stack = skene_views::Stack<ActiveDriver>;
+/// The box every layout view is built from, accepting children of `Kind`; see
+/// [`skene_views::LayoutBox`].
+pub type LayoutBox<Kind> = skene_views::LayoutBox<ActiveDriver, Kind>;
+/// A flex child's grow, shrink and initial size; see [`skene_views::Flexible`].
+pub type Flexible<C = NoChild> = skene_views::Flexible<ActiveDriver, C>;
+/// A stack child pinned to its edges; see [`skene_views::Pinned`].
+pub type Pinned<C = NoChild> = skene_views::Pinned<ActiveDriver, C>;
+/// A grid child's placement; see [`skene_views::GridCell`].
+pub type GridCell<C = NoChild> = skene_views::GridCell<ActiveDriver, C>;
+/// A run of text on its own line; see [`skene_views::Text`].
+pub type Text = skene_views::Text<ActiveDriver>;
+/// A run inside a paragraph; see [`skene_views::Span`].
+pub type Span = skene_views::Span<ActiveDriver>;
+/// A paragraph of spans; see [`skene_views::RichText`].
+pub type RichText = skene_views::RichText<ActiveDriver>;
+/// A branch shown or hidden by a condition; see [`skene_views::Show`].
+pub type Show<C = NoChild> = skene_views::Show<ActiveDriver, C>;
+/// One of several branches, by key; see [`skene_views::Switch`].
+pub type Switch<K> = skene_views::Switch<ActiveDriver, K>;
+/// Fallback content while a subtree's async work is pending; see
+/// [`skene_views::Suspense`].
+pub type Suspense<C = NoChild> = skene_views::Suspense<ActiveDriver, C>;
+/// Fallback content when a subtree reports an error; see
+/// [`skene_views::ErrorBoundary`].
+pub type ErrorBoundary<C = NoChild> = skene_views::ErrorBoundary<ActiveDriver, C>;
+/// The one theme view, defining the token set `P` beneath it; see
+/// [`skene_views::Theme`].
+pub type Theme<P, C = NoChild> = skene_views::Theme<ActiveDriver, P, C>;
+/// The one control builder over a behavior; see [`skene_views::Control`].
+pub type Control<B, C = NoChild> = skene_views::Control<ActiveDriver, B, C>;
+/// A built control, for a behavior to act on; see [`skene_views::ControlHandle`].
+pub type ControlHandle = skene_views::ControlHandle<ActiveDriver>;
+/// A control's label; see [`skene_views::Label`].
+pub type Label = skene_views::Label<ActiveDriver>;
+/// A button; see [`skene_views::RawButton`].
+pub type RawButton<C = NoChild> = skene_views::RawButton<ActiveDriver, C>;
+/// A checkbox; see [`skene_views::RawCheckbox`].
+pub type RawCheckbox<C = NoChild> = skene_views::RawCheckbox<ActiveDriver, C>;
+/// A slider; see [`skene_views::RawSlider`].
+pub type RawSlider<C = NoChild> = skene_views::RawSlider<ActiveDriver, C>;
+/// A radio group; see [`skene_views::RawRadioGroup`].
+pub type RawRadioGroup<C = NoChild> = skene_views::RawRadioGroup<ActiveDriver, C>;
+/// A radio inside a group; see [`skene_views::RawRadio`].
+pub type RawRadio<C = NoChild> = skene_views::RawRadio<ActiveDriver, C>;
+/// A single-line text entry; see [`skene_views::RawTextField`].
+pub type RawTextField<C = NoChild> = skene_views::RawTextField<ActiveDriver, C>;
+/// A multi-line text entry; see [`skene_views::RawTextEditor`].
+pub type RawTextEditor<C = NoChild> = skene_views::RawTextEditor<ActiveDriver, C>;
+/// A listbox; see [`skene_views::RawListbox`].
+pub type RawListbox<C = NoChild> = skene_views::RawListbox<ActiveDriver, C>;
+/// An option inside a listbox or a picker; see [`skene_views::RawOption`].
+pub type RawOption<C = NoChild> = skene_views::RawOption<ActiveDriver, C>;
+/// A picker: a popup face, an overlay and a listbox; see [`skene_views::RawPicker`].
+pub type RawPicker<F = NoChild> = skene_views::RawPicker<ActiveDriver, F>;
+/// A picker's face; see [`skene_views::Face`].
+pub type Face = skene_views::Face<ActiveDriver>;
+/// Content above the app; see [`skene_views::Overlay`].
+pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
+/// A handle moving focus to a built view; see [`skene_views::FocusHandle`].
+pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
+/// A scrolling keyed list building only the slice in view; see
+/// [`skene_views::LazyColumn`].
+pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
+/// The closure building a view's child under the context the view provides; see
+/// [`skene_views::ChildBuilder`].
+pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
+
+/// The Simple design language's palette; see [`skene_simple::next::SimplePalette`].
+pub type SimplePalette = skene_simple::next::SimplePalette<u32>;
+/// One emphasis variant's colors; see [`skene_simple::next::SimpleLook`].
+pub type SimpleLook = skene_simple::next::SimpleLook<u32>;
+/// See [`skene_simple::next::SimpleButton`].
+pub type SimpleButton = skene_simple::next::SimpleButton<ActiveDriver>;
+/// See [`skene_simple::next::SimpleCard`].
+pub type SimpleCard = skene_simple::next::SimpleCard<ActiveDriver>;
+/// See [`skene_simple::next::SimpleCheckbox`].
+pub type SimpleCheckbox = skene_simple::next::SimpleCheckbox<ActiveDriver>;
+/// See [`skene_simple::next::SimplePicker`].
+pub type SimplePicker = skene_simple::next::SimplePicker<ActiveDriver>;
+/// See [`skene_simple::next::SimpleRadio`].
+pub type SimpleRadio = skene_simple::next::SimpleRadio<ActiveDriver>;
+/// See [`skene_simple::next::SimpleRadioGroup`].
+pub type SimpleRadioGroup<C = NoChild> = skene_simple::next::SimpleRadioGroup<ActiveDriver, C>;
+/// See [`skene_simple::next::SimpleSlider`].
+pub type SimpleSlider = skene_simple::next::SimpleSlider<ActiveDriver>;
+/// See [`skene_simple::next::SimpleTextEditor`].
+pub type SimpleTextEditor = skene_simple::next::SimpleTextEditor<ActiveDriver>;
+/// See [`skene_simple::next::SimpleTextField`].
+pub type SimpleTextField = skene_simple::next::SimpleTextField<ActiveDriver>;
+
+/// A condition on the environment, in cells; see [`skene_core::next::Media`].
+pub type Media = skene_core::next::Media<u32>;
+/// A condition a property varies under; see [`skene_core::next::Condition`].
+pub type Condition = skene_core::next::Condition<u32>;
+/// A test of a container's size, in cells; see [`skene_core::next::ContainerQuery`].
+pub type ContainerQuery = skene_core::next::ContainerQuery<u32>;
+/// A property's value: a leaf under conditions; see [`skene_core::next::Value`].
+pub type Value<T> = skene_core::next::Value<T, Condition>;
+/// A token's definition; see [`skene_core::next::Definition`].
+pub type Definition<T> = skene_core::next::Definition<T, u32>;
+/// A token as a palette holds it; see [`skene_core::next::Token`].
+pub type Token<T> = skene_core::next::Token<T, u32>;
+/// A border: one cell of glyphs in a color; see [`skene_core::next::Border`].
+pub type Border = skene_core::next::Border<u32>;
 /// Spacing on the four edges of a box, in cells.
-pub type Inset = skene_core::Inset<u32>;
+pub type Inset<T = u32> = skene_core::Inset<T>;
+/// A dimension, in cells or as a fraction of the parent.
+pub type Dimension = skene_core::Dimension<u32>;
+/// Per-axis spacing between children, in cells.
+pub type Spacing = skene_core::Spacing<u32>;
+/// A 2D size, in cells.
+pub type Size = skene_core::Size<u32>;
+/// A point in the cell coordinate space.
+pub type Point = skene_core::Point<u32>;
+/// A positioned, sized rectangle, in cells.
+pub type Rect = skene_core::Rect<u32>;
 
-/// The terminal driver's tree mutations, instantiating the spine's shared structural
-/// machinery. App code sees it only through the [`Children`] and [`DerivedView`]
-/// aliases.
-#[derive(Clone, Copy, Default)]
-pub struct TuiOps;
-
-impl skene_core::TreeOps for TuiOps {
-  #[inline(always)]
-  fn create_group(self) -> NodeId {
-    create_group()
-  }
-
-  #[inline(always)]
-  fn attach(self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    with_state(|state| state.attach_child(parent, child, before));
-  }
-
-  #[inline(always)]
-  fn detach(self, parent: NodeId, child: NodeId) {
-    with_state(|state| state.detach_child(parent, child));
-  }
-
-  #[inline(always)]
-  fn destroy(self, node: NodeId) {
-    with_state(|state| state.destroy(node));
-  }
-
-  #[inline(always)]
-  fn children(self, node: NodeId) -> Vec<NodeId> {
-    with_state(|state| state.children(node))
-  }
+/// Mounts a reactive subtree between anchors, rebuilt whenever a signal `build` reads
+/// changes; see [`skene_core::next::derived`].
+#[inline(always)]
+pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
+  skene_core::next::derived::<ActiveDriver>(build)
 }
 
-/// A container's children.
-pub type Children = skene_core::Children<TuiOps>;
-/// The members a grouping control tracks; see [`skene_core::Roster`].
-pub type Roster<T> = skene_core::Roster<TuiOps, T>;
-/// A reactive subtree.
-pub type DerivedView = skene_core::DerivedView<TuiOps>;
-
-/// Reactively reconciles a parent's children from a keyed collection; see
-/// [`skene_core::reconcile`].
+/// Reactively reconciles the content of the segment `start` begins from a keyed
+/// collection; see [`skene_core::next::reconcile`].
 #[inline(always)]
 pub fn reconcile<T, I, K>(
-  parent: NodeId,
+  start: NodeId,
   items: impl Fn() -> I + 'static,
   key: impl Fn(&T) -> K + 'static,
   build: impl Fn(T) -> NodeId + 'static,
@@ -206,89 +386,62 @@ pub fn reconcile<T, I, K>(
   I: IntoIterator<Item = T>,
   K: Eq + std::hash::Hash + 'static,
 {
-  skene_core::reconcile::<TuiOps, T, I, K>(parent, items, key, build);
-}
-
-/// Anchors a reactive subtree under a fresh group node, returning that node; see
-/// [`skene_core::derived`].
-#[inline(always)]
-pub fn derived(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::derived::<TuiOps>(build)
-}
-
-/// Anchors a transitional reactive subtree, each rebuild swapping in once it settles;
-/// see [`skene_core::transition`].
-#[inline(always)]
-pub fn transition(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  skene_core::transition::<TuiOps>(build)
+  skene_core::next::reconcile::<ActiveDriver, T, I, K>(start, items, key, build);
 }
 
 /// A view that renders nothing.
 #[inline(always)]
 #[must_use]
 pub fn empty() -> impl View {
-  skene_core::empty::<TuiOps>()
+  skene_core::next::empty::<ActiveDriver>()
 }
 
-thread_local! {
-  static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
-}
+/// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.
+#[inline(always)]
+pub fn set_title(title: impl Into<String>) {
+  let title = title.into();
 
-/// Runs `apply` against the installed driver state.
-///
-/// # Panics
-///
-/// Panics if the terminal driver is not installed for this thread.
-pub(crate) fn with_state<R>(apply: impl FnOnce(&State) -> R) -> R {
-  STATE.with(|state| {
-    apply(
-      state
-        .borrow()
-        .as_ref()
-        .expect("the terminal driver to be installed for this thread"),
-    )
-  })
-}
-
-/// Runs `apply` against the driver state, or `None` when none is installed.
-#[cfg(feature = "snapshot")]
-pub(crate) fn try_with_state<R>(apply: impl FnOnce(&State) -> R) -> Option<R> {
-  STATE.with(|state| state.borrow().as_ref().map(apply))
-}
-
-/// Installs the terminal driver for this thread.
-///
-/// # Panics
-///
-/// Panics if it is already installed.
-pub fn install() {
-  skene_reactive::Runtime::init_on_ui_thread();
-
-  STATE.with(|state| {
-    let mut state = state.borrow_mut();
-
-    assert!(
-      state.is_none(),
-      "the terminal driver is already installed for this thread",
-    );
-
-    *state = Some(State::new());
+  with_store(move |store| {
+    store.title = Some(title);
+    store.title_dirty = true;
   });
-
-  #[cfg(feature = "snapshot")]
-  dev::provide_scroll();
 }
 
-/// Uninstalls the terminal driver and resets the reactive runtime and root scope.
-///
-/// Lets one thread run many independent mounts, as a test suite does.
-#[cfg(feature = "test")]
-pub fn uninstall() {
-  skene_reactive::Runtime::reset();
-  skene_core::reset_root_owner();
-  task::clear();
+/// Derives the terminal title, re-emitted whenever it changes.
+#[inline(always)]
+pub fn derive_title(title: impl Fn() -> String + 'static) {
+  skene_reactive::Effect::new(move |_: Option<()>| set_title(title()));
+}
 
-  STATE.with(|state| *state.borrow_mut() = None);
+/// Lays the mounted tree out at `width` x `height` cells and paints it to plain text:
+/// the headless render a test asserts against.
+#[must_use]
+pub fn render_to_text(width: u16, height: u16) -> String {
+  frame::render(width, height).to_text()
+}
+
+/// The painted frame's caret cell at `width` x `height`—where the terminal's bar
+/// cursor shows—for a headless test asserting caret placement.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
+  frame::render(width, height).caret
+}
+
+/// The painted frame's colors at `width` x `height`: each cell's foreground and
+/// background, row-major, for a headless test asserting paint.
+#[cfg(feature = "test")]
+#[must_use]
+#[expect(clippy::type_complexity)]
+pub fn render_to_colors(
+  width: u16,
+  height: u16,
+) -> Vec<(Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)> {
+  frame::render(width, height)
+    .cells
+    .iter()
+    .map(|cell| (cell.foreground, cell.background))
+    .collect()
 }
 
 /// Polls every ready task, as the interactive loop does between events; `true` when any
@@ -297,79 +450,4 @@ pub fn uninstall() {
 #[must_use]
 pub fn pump_tasks() -> bool {
   task::pump()
-}
-
-/// Builds `view` under the installed root, returning its node.
-pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  skene_core::root_owner().enter(|| {
-    let node = view();
-
-    with_state(|state| state.attach_child(state::ROOT_ID, node, None));
-
-    node
-  })
-}
-
-/// Sets the terminal title, emitted via OSC 2; terminals without support ignore it.
-#[inline(always)]
-pub fn set_title(title: impl Into<String>) {
-  let title = title.into();
-
-  with_state(move |state| {
-    *state.title.borrow_mut() = Some(title);
-
-    state.title_dirty.set(true);
-  });
-}
-
-/// Derives the terminal title, re-emitted whenever it changes.
-#[inline(always)]
-pub fn derive_title(title: impl Fn() -> String + 'static) {
-  skene_reactive::Effect::new(move |_| set_title(title()));
-}
-
-/// Lays the mounted tree out at `width` x `height` cells and paints it to plain text—the
-/// headless render a test asserts against.
-#[must_use]
-pub fn render_to_text(width: u16, height: u16) -> String {
-  with_state(|state| paint::render(state, width, height).to_text())
-}
-
-/// The painted frame's caret cell at `width` x `height`—where the terminal's bar
-/// cursor shows—for a headless test asserting caret placement.
-#[cfg(feature = "test")]
-#[must_use]
-pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
-  with_state(|state| paint::render(state, width, height).caret)
-}
-
-/// The painted frame's colors at `width` x `height`: each cell's foreground and
-/// background, row-major—for a headless test asserting paint, such as a shadow's mix.
-#[cfg(feature = "test")]
-#[must_use]
-#[expect(clippy::type_complexity)]
-pub fn render_to_colors(
-  width: u16,
-  height: u16,
-) -> Vec<(Option<(u8, u8, u8)>, Option<(u8, u8, u8)>)> {
-  with_state(|state| {
-    paint::render(state, width, height)
-      .cells
-      .iter()
-      .map(|cell| (cell.foreground, cell.background))
-      .collect()
-  })
-}
-
-/// Allocates a detached grouping node—a block box, as every facade's group is.
-pub(crate) fn create_group() -> NodeId {
-  with_state(|state| {
-    state.insert_node(
-      NodeKind::Group,
-      taffy::style::Style {
-        display: taffy::style::Display::Block,
-        ..taffy::style::Style::default()
-      },
-    )
-  })
 }

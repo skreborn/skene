@@ -1,7 +1,7 @@
 //! In-app text selection: source-anchored ranges over selectable runs, and the copy
 //! menu.
 //!
-//! A selection's ends live in source space—a run node and a character offset into its
+//! A selection's ends live in source space—a run and a character offset into its
 //! source text—so it survives reflow and copies as the text appears in the source, soft
 //! wraps excluded. A press anchors it, a drag extends it across runs in document order,
 //! a double click takes the word, a triple click the run. Right-clicking while a
@@ -10,17 +10,16 @@
 
 use std::time::{Duration, Instant};
 
-use skene_core::NodeId;
-
 use crate::{
+  layout::{is_paragraph, paragraph_runs, paragraph_text},
   paint::wrap_spans,
-  state::{NodeKind, ROOT_ID, State},
+  store::{Drag, Handle, Kind, Store},
 };
 
 /// One end of a selection: a run and a character offset into its source text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SelectionPoint {
-  pub(crate) node: NodeId,
+  pub(crate) node: Handle,
   pub(crate) offset: usize,
 }
 
@@ -62,12 +61,12 @@ fn character_class(character: char) -> CharacterClass {
   }
 }
 
-impl State {
+impl Store {
   /// Counts a press at (`x`, `y`) into its multi-click sequence: 1 for a fresh press,
   /// 2 for a double click, 3 for a triple; a fourth begins a new sequence.
-  pub(crate) fn register_press(&self, x: u16, y: u16) -> u8 {
+  pub(crate) fn register_press(&mut self, x: u16, y: u16) -> u8 {
     let now = Instant::now();
-    let count = match self.last_press.get() {
+    let count = match self.last_press {
       Some((at, press_x, press_y, count))
         if press_x == x && press_y == y && now.duration_since(at) <= MULTI_CLICK && count < 3 =>
       {
@@ -76,25 +75,39 @@ impl State {
       _ => 1,
     };
 
-    self.last_press.set(Some((now, x, y, count)));
+    self.last_press = Some((now, x, y, count));
 
     count
   }
 
-  /// The run's source text, when `node` is a selectable, non-empty text run.
-  fn run_text(&self, node: NodeId) -> Option<String> {
-    let nodes = self.nodes.borrow();
+  /// The node's source text, when it is a selectable, non-empty run or paragraph.
+  pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
+    let record = self.record(handle)?;
 
-    nodes
-      .get(&node)
-      .and_then(|record| record.kind.selectable_text())
+    match &record.kind {
+      Kind::Run { props, .. } if props.selectable && !record.text.is_empty() => {
+        Some(record.text.clone())
+      }
+      Kind::Box(_) if is_paragraph(self, handle) => {
+        let selectable = paragraph_runs(self, handle).iter().any(|run| {
+          matches!(
+            self.record(*run).map(|record| &record.kind),
+            Some(Kind::Run { props, .. }) if props.selectable
+          )
+        });
+        let text = paragraph_text(self, handle);
+
+        (selectable && !text.is_empty()).then_some(text)
+      }
+      _ => None,
+    }
   }
 
-  /// The character offset within `node`'s source at the run-local cell, clamped into
-  /// the nearest wrapped line and its ends, against the last layout.
-  fn run_offset(&self, node: NodeId, local_x: i64, local_y: i64) -> Option<usize> {
-    let text = self.run_text(node)?;
-    let (width, _) = self.node_size(node);
+  /// The character offset within the node's source at the node-local cell, clamped
+  /// into the nearest wrapped line and its ends, against the last layout.
+  fn run_offset(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
+    let text = self.selectable_text(handle)?;
+    let (width, _) = self.node_size(handle);
     let lines = wrap_spans(&text, usize::try_from(width).unwrap_or(1));
     let row = usize::try_from(local_y.max(0))
       .unwrap_or(0)
@@ -115,21 +128,31 @@ impl State {
     Some(SelectionPoint { node, offset })
   }
 
-  /// The link destination at the cell (`x`, `y`), when the cell carries a linked
-  /// span's character—exact hits only, never clamped into a neighboring line.
+  /// The link destination at the cell (`x`, `y`), when the cell carries a linked run's
+  /// character—exact hits only, never clamped into a neighboring line.
   pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<String> {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = *path.last()?;
     let (width, _) = self.node_size(node);
-    let nodes = self.nodes.borrow();
-    let NodeKind::Paragraph { spans, .. } = &nodes.get(&node)?.kind
-    else {
-      return None;
-    };
-    let text: String = spans.iter().map(|span| span.text.as_str()).collect();
-    let lines = wrap_spans(&text, usize::try_from(width).unwrap_or(1));
+    let record = self.record(node)?;
     let row = usize::try_from(i64::from(y) - origin_y).ok()?;
     let column = usize::try_from(i64::from(x) - origin_x).ok()?;
+
+    if let Kind::Run { props, .. } = &record.kind {
+      let lines = wrap_spans(&record.text, usize::try_from(width).unwrap_or(1));
+      let (_, line) = lines.get(row)?;
+
+      return (column < line.chars().count())
+        .then(|| props.link.clone())
+        .flatten();
+    }
+
+    if !is_paragraph(self, node) {
+      return None;
+    }
+
+    let text = paragraph_text(self, node);
+    let lines = wrap_spans(&text, usize::try_from(width).unwrap_or(1));
     let (start, line) = lines.get(row)?;
 
     if column >= line.chars().count() {
@@ -139,13 +162,17 @@ impl State {
     let offset = start + column;
     let mut cursor = 0;
 
-    spans.iter().find_map(|span| {
-      let end = cursor + span.text.chars().count();
+    paragraph_runs(self, node).into_iter().find_map(|run| {
+      let record = self.record(run)?;
+      let end = cursor + record.text.chars().count();
       let hit = (cursor..end).contains(&offset);
 
       cursor = end;
 
-      if hit { span.link.clone() } else { None }
+      match &record.kind {
+        Kind::Run { props, .. } if hit => props.link.clone(),
+        _ => None,
+      }
     })
   }
 
@@ -159,7 +186,7 @@ impl State {
     };
     let (pointer_x, pointer_y) = (i64::from(x), i64::from(y));
     let mut best: Option<(i64, i64)> = None;
-    let mut nearest: Option<(NodeId, (i64, i64))> = None;
+    let mut nearest: Option<(Handle, (i64, i64))> = None;
 
     for node in self.document_runs() {
       if let Some(modal) = modal
@@ -187,27 +214,30 @@ impl State {
     Some(SelectionPoint { node, offset })
   }
 
-  /// Every selectable run in document order, the subtrees of closed overlays excluded.
-  fn document_runs(&self) -> Vec<NodeId> {
-    let nodes = self.nodes.borrow();
+  /// Every selectable run in document order, the subtrees of closed overlays and the
+  /// runs inside a paragraph excluded.
+  fn document_runs(&self) -> Vec<Handle> {
     let mut order = Vec::new();
-    let mut stack = vec![ROOT_ID];
+    let mut stack = vec![self.root];
 
     while let Some(current) = stack.pop() {
-      let Some(record) = nodes.get(&current)
+      let Some(record) = self.record(current)
       else {
         continue;
       };
 
-      if let NodeKind::Overlay { open: false, .. } = record.kind {
+      if record.is_overlay() && !record.is_open_overlay() {
         continue;
       }
 
-      if record.kind.selectable_text().is_some() {
+      if self.selectable_text(current).is_some() {
         order.push(current);
+
+        if is_paragraph(self, current) {
+          continue;
+        }
       }
 
-      // Reverse, so the stack pops children in tree order.
       stack.extend(record.children.iter().rev());
     }
 
@@ -215,8 +245,8 @@ impl State {
   }
 
   /// The selection's ends in document order, with every selectable run it spans.
-  fn selection_span(&self) -> Option<(SelectionPoint, SelectionPoint, Vec<NodeId>)> {
-    let selection = self.selection.get()?;
+  fn selection_span(&self) -> Option<(SelectionPoint, SelectionPoint, Vec<Handle>)> {
+    let selection = self.selection?;
     let runs = self.document_runs();
     let anchor_at = runs
       .iter()
@@ -234,17 +264,22 @@ impl State {
     Some((start, end, runs[from..=to].to_vec()))
   }
 
-  /// The selected character range within `node`'s source, when the selection touches
+  /// The selected character range within the node's source, when the selection touches
   /// it; a range running past the node's end is `usize::MAX`, clamped by the caller.
-  pub(crate) fn selection_range(&self, node: NodeId) -> Option<(usize, usize)> {
+  pub(crate) fn selection_range(&self, handle: Handle) -> Option<(usize, usize)> {
     let (start, end, runs) = self.selection_span()?;
 
-    if !runs.contains(&node) {
+    if !runs.contains(&handle) {
       return None;
     }
 
-    let from = if node == start.node { start.offset } else { 0 };
-    let to = if node == end.node {
+    let from = if handle == start.node {
+      start.offset
+    }
+    else {
+      0
+    };
+    let to = if handle == end.node {
       end.offset
     }
     else {
@@ -261,11 +296,10 @@ impl State {
     let mut parts = Vec::new();
 
     for node in runs {
-      let Some(text) = self.run_text(node)
+      let Some(text) = self.selectable_text(node)
       else {
         continue;
       };
-
       let count = text.chars().count();
       let from = if node == start.node {
         start.offset.min(count)
@@ -289,45 +323,43 @@ impl State {
   }
 
   /// Anchors a fresh selection at `point` and starts its drag.
-  pub(crate) fn anchor_selection(&self, point: SelectionPoint) {
-    self.selection.set(Some(Selection {
+  pub(crate) fn anchor_selection(&mut self, point: SelectionPoint) {
+    self.selection = Some(Selection {
       anchor: point,
       focus: point,
-    }));
-    self.drag.set(Some(crate::state::Drag::Selection));
-    self.dirty.set(true);
+    });
+    self.drag = Some(Drag::Selection);
+    self.paint_dirty = true;
   }
 
   /// Follows a selection drag to (`x`, `y`): the exact position under the pointer, or
   /// the nearest one.
-  pub(crate) fn extend_selection(&self, x: u16, y: u16) {
+  pub(crate) fn extend_selection(&mut self, x: u16, y: u16) {
     let Some(point) = self
       .text_position_at(x, y)
       .or_else(|| self.nearest_text_position(x, y))
     else {
       return;
     };
-
-    let Some(mut selection) = self.selection.get()
+    let Some(mut selection) = self.selection
     else {
       return;
     };
 
     if selection.focus != point {
       selection.focus = point;
-      self.selection.set(Some(selection));
-      self.dirty.set(true);
+      self.selection = Some(selection);
+      self.paint_dirty = true;
     }
   }
 
   /// Selects the characters around `point` sharing its class: a word, a whitespace gap,
   /// or a punctuation run.
-  pub(crate) fn select_word(&self, point: SelectionPoint) {
-    let Some(text) = self.run_text(point.node)
+  pub(crate) fn select_word(&mut self, point: SelectionPoint) {
+    let Some(text) = self.selectable_text(point.node)
     else {
       return;
     };
-
     let characters: Vec<char> = text.chars().collect();
     let at = point.offset.min(characters.len() - 1);
     let class = character_class(characters[at]);
@@ -342,7 +374,7 @@ impl State {
       to += 1;
     }
 
-    self.selection.set(Some(Selection {
+    self.selection = Some(Selection {
       anchor: SelectionPoint {
         node: point.node,
         offset: from,
@@ -351,18 +383,18 @@ impl State {
         node: point.node,
         offset: to,
       },
-    }));
-    self.dirty.set(true);
+    });
+    self.paint_dirty = true;
   }
 
   /// Selects the whole run at `point`.
-  pub(crate) fn select_run(&self, point: SelectionPoint) {
-    let Some(text) = self.run_text(point.node)
+  pub(crate) fn select_run(&mut self, point: SelectionPoint) {
+    let Some(text) = self.selectable_text(point.node)
     else {
       return;
     };
 
-    self.selection.set(Some(Selection {
+    self.selection = Some(Selection {
       anchor: SelectionPoint {
         node: point.node,
         offset: 0,
@@ -371,25 +403,25 @@ impl State {
         node: point.node,
         offset: text.chars().count(),
       },
-    }));
-    self.dirty.set(true);
+    });
+    self.paint_dirty = true;
   }
 
   /// Clears the selection and closes the copy menu.
-  pub(crate) fn clear_selection(&self) {
+  pub(crate) fn clear_selection(&mut self) {
     let selection = self.selection.take().is_some();
     let menu = self.menu.take().is_some();
 
     if selection || menu {
-      self.dirty.set(true);
+      self.paint_dirty = true;
     }
   }
 
-  /// Drops the selection when one of its ends lives in `node`, on the node's text
+  /// Drops the selection when one of its ends lives in `handle`, on the node's text
   /// change or removal.
-  pub(crate) fn invalidate_selection(&self, node: NodeId) {
-    if let Some(selection) = self.selection.get()
-      && (selection.anchor.node == node || selection.focus.node == node)
+  pub(crate) fn invalidate_selection(&mut self, handle: Handle) {
+    if let Some(selection) = self.selection
+      && (selection.anchor.node == handle || selection.focus.node == handle)
     {
       self.clear_selection();
     }
@@ -397,26 +429,26 @@ impl State {
 
   /// Opens the copy menu with its top-left at the pressed cell, when a selection
   /// exists.
-  pub(crate) fn open_menu(&self, x: u16, y: u16) {
+  fn open_menu(&mut self, x: u16, y: u16) {
     if self.selected_text().is_some() {
-      self.menu.set(Some((x, y)));
-      self.dirty.set(true);
+      self.menu = Some((x, y));
+      self.paint_dirty = true;
     }
   }
 
   /// Closes the copy menu.
-  pub(crate) fn close_menu(&self) {
+  pub(crate) fn close_menu(&mut self) {
     if self.menu.take().is_some() {
-      self.dirty.set(true);
+      self.paint_dirty = true;
     }
   }
 
   /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal;
   /// a disabled menu grows a row for its hint.
   pub(crate) fn menu_bounds(&self) -> Option<(i64, i64, i64, i64)> {
-    let (x, y) = self.menu.get()?;
-    let (columns, rows) = self.last_size.get();
-    let (label, height) = if self.clipboard.get() {
+    let (x, y) = self.menu?;
+    let (columns, rows) = self.last_size;
+    let (label, height) = if self.clipboard {
       (MENU_ITEM.chars().count(), 3)
     }
     else {
@@ -435,23 +467,22 @@ impl State {
     else {
       return false;
     };
-
     let (x, y) = (i64::from(x), i64::from(y));
 
     y == menu_y + 1 && x > menu_x && x < menu_x + width - 1
   }
 
   /// Stages the selected text for the terminal loop's clipboard write.
-  pub(crate) fn copy_selection(&self) {
+  pub(crate) fn copy_selection(&mut self) {
     if let Some(text) = self.selected_text() {
-      *self.pending_copy.borrow_mut() = Some(text);
+      self.pending_copy = Some(text);
     }
   }
 
   /// A right press: opens the copy menu at the cell while a selection exists, and
   /// closes it otherwise.
-  pub(crate) fn right_press(&self, x: u16, y: u16) {
-    if self.selection.get().is_some() {
+  pub(crate) fn right_press(&mut self, x: u16, y: u16) {
+    if self.selection.is_some() {
       self.open_menu(x, y);
     }
     else {

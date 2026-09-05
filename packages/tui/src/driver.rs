@@ -1,0 +1,463 @@
+//! The terminal's realization of the driver: one record per node beside the scene,
+//! the taffy tree those records lay out in, and the environment as signals.
+
+use std::{cell::RefCell, rc::Rc, thread::LocalKey};
+
+use skene_core::{
+  AccessProp,
+  FocusOrder,
+  Placement,
+  Size,
+  next::{
+    BoxProps,
+    BoxValue,
+    ControlKind,
+    ControlProps,
+    ControlState,
+    Definitions,
+    Driver,
+    EventKind,
+    MediaSignals,
+    NodeId,
+    NodeKind,
+    OverlayProps,
+    RunProps,
+    RunValue,
+    Scene,
+    Slot,
+  },
+};
+
+use crate::{
+  TerminalExt,
+  interaction,
+  store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
+  token::TokenValue,
+};
+
+/// The terminal driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
+/// crate's record store.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct Tui;
+
+thread_local! {
+  static SCENE: RefCell<Scene<Tui>> = RefCell::new(Scene::new());
+  static STORE: RefCell<Option<Store>> = const { RefCell::new(None) };
+  static ROOT: RefCell<Option<NodeId>> = const { RefCell::new(None) };
+}
+
+/// Runs `operation` on the installed store; nothing of the user's runs inside it.
+///
+/// # Panics
+///
+/// Panics if the terminal driver is not installed for this thread.
+pub(crate) fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
+  STORE.with(|store| {
+    operation(
+      store
+        .borrow_mut()
+        .as_mut()
+        .expect("the terminal driver to be installed for this thread"),
+    )
+  })
+}
+
+/// Runs `operation` on the store, or `None` when none is installed.
+#[cfg(feature = "snapshot")]
+pub(crate) fn try_with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> Option<R> {
+  STORE.with(|store| store.borrow_mut().as_mut().map(operation))
+}
+
+/// The handle of `node`, if it is live.
+#[must_use]
+pub fn handle(node: NodeId) -> Option<Handle> {
+  Scene::<Tui>::with(|scene| scene.record(node).map(|record| *record.sink()))
+}
+
+/// The scene node every mounted view attaches under.
+pub(crate) fn root_node() -> Option<NodeId> {
+  ROOT.with(|root| *root.borrow())
+}
+
+impl Driver for Tui {
+  type Scalar = u32;
+  type Sink = Handle;
+  type StyleExt = TerminalExt;
+  type TokenValue = TokenValue;
+
+  fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
+    &SCENE
+  }
+
+  fn bind_node(&self, sink: &Handle, node: NodeId) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.node = Some(node);
+      }
+    });
+  }
+
+  fn create_box(&self, props: &BoxProps<Self>) -> Handle {
+    with_store(|store| store.create_laid_out(Kind::Box(BoxRecord::new(props.clone()))))
+  }
+
+  fn update_box(&self, sink: &Handle, slot: Slot, value: &BoxValue<u32, TerminalExt>) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.slots.insert(slot, SlotValue::Box(value.clone()));
+
+        if let Some(inner) = record.kind.box_record_mut() {
+          inner.cache = None;
+        }
+
+        store.layout_dirty = true;
+        store.paint_dirty = true;
+      }
+    });
+  }
+
+  fn update_focus_order(&self, sink: &Handle, focus_order: Option<FocusOrder>) {
+    with_store(|store| {
+      if let Some(inner) = store
+        .record_mut(*sink)
+        .and_then(|record| record.kind.box_record_mut())
+      {
+        inner.props.focus_order = focus_order;
+      }
+    });
+  }
+
+  fn update_access(&self, sink: &Handle, access: &[AccessProp]) {
+    with_store(|store| {
+      if let Some(inner) = store
+        .record_mut(*sink)
+        .and_then(|record| record.kind.box_record_mut())
+      {
+        access.clone_into(&mut inner.props.access);
+      }
+    });
+  }
+
+  fn create_control(&self, props: &ControlProps<Self>) -> Handle {
+    let field =
+      matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor).then(|| Field {
+        value: String::new(),
+        caret: 0,
+        placeholder: props.placeholder.clone(),
+        lines: props.lines.max(1),
+      });
+
+    with_store(|store| {
+      store.create_laid_out(Kind::Control {
+        kind: props.kind,
+        inner: BoxRecord::new(props.box_props.clone()),
+        state: ControlState::DEFAULT,
+        field,
+        checked: false,
+      })
+    })
+  }
+
+  fn set_control_state(&self, sink: &Handle, state: &ControlState) {
+    with_store(|store| {
+      if let Some(Kind::Control { state: held, .. }) =
+        store.record_mut(*sink).map(|record| &mut record.kind)
+        && *held != *state
+      {
+        *held = *state;
+        store.layout_dirty = true;
+        store.paint_dirty = true;
+      }
+    });
+  }
+
+  fn create_overlay(&self, props: &OverlayProps<Self>) -> Handle {
+    with_store(|store| {
+      let handle = store.create_laid_out(Kind::Overlay {
+        inner: BoxRecord::new(props.box_props.clone()),
+        modal: props.modal,
+        placement: props.placement,
+        backdrop: props.backdrop,
+        open: false,
+        anchor: None,
+      });
+
+      store.overlays.push(handle);
+
+      handle
+    })
+  }
+
+  fn set_overlay_open(&self, sink: &Handle, open: bool, anchor: Option<&Handle>) {
+    with_store(|store| {
+      if let Some(Kind::Overlay {
+        open: held,
+        anchor: bound,
+        ..
+      }) = store.record_mut(*sink).map(|record| &mut record.kind)
+      {
+        *held = open;
+        *bound = anchor.copied();
+        store.layout_dirty = true;
+        store.paint_dirty = true;
+      }
+    });
+  }
+
+  fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {
+    with_store(|store| {
+      if let Some(Kind::Overlay {
+        placement: held, ..
+      }) = store.record_mut(*sink).map(|record| &mut record.kind)
+      {
+        *held = placement;
+        store.paint_dirty = true;
+      }
+    });
+  }
+
+  fn create_run(&self, props: &RunProps<Self>) -> Handle {
+    with_store(|store| {
+      store.create_laid_out(Kind::Run {
+        props: props.clone(),
+        cache: None,
+      })
+    })
+  }
+
+  fn update_run(&self, sink: &Handle, slot: Slot, value: &RunValue<TerminalExt>) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.slots.insert(slot, SlotValue::Run(value.clone()));
+
+        if let Kind::Run { cache, .. } = &mut record.kind {
+          *cache = None;
+        }
+
+        store.layout_dirty = true;
+        store.paint_dirty = true;
+      }
+    });
+  }
+
+  fn set_text(&self, sink: &Handle, text: &str) {
+    with_store(|store| {
+      let Some(record) = store.record_mut(*sink)
+      else {
+        return;
+      };
+
+      if record.text == text {
+        return;
+      }
+
+      text.clone_into(&mut record.text);
+      store.invalidate_selection(*sink);
+      store.layout_dirty = true;
+      store.paint_dirty = true;
+    });
+  }
+
+  fn create_anchor(&self) -> Handle {
+    with_store(|store| store.create(Kind::Anchor, None))
+  }
+
+  fn create_scope(&self) -> Handle {
+    with_store(|store| store.create(Kind::Scope, None))
+  }
+
+  fn attach(&self, parent: &Handle, child: &Handle, before: Option<&Handle>) {
+    with_store(|store| {
+      let previous = store.parent(*child);
+
+      if let Some(previous) = previous
+        && let Some(record) = store.record_mut(previous)
+      {
+        record.children.retain(|existing| existing != child);
+      }
+
+      let Some(record) = store.record_mut(*parent)
+      else {
+        return;
+      };
+
+      record.children.retain(|existing| existing != child);
+
+      let index = before
+        .and_then(|before| record.children.iter().position(|node| node == before))
+        .unwrap_or(record.children.len());
+
+      record.children.insert(index, *child);
+
+      if let Some(record) = store.record_mut(*child) {
+        record.parent = Some(*parent);
+      }
+
+      store.structure_dirty = true;
+      store.paint_dirty = true;
+    });
+  }
+
+  fn detach(&self, parent: &Handle, child: &Handle) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*parent) {
+        record.children.retain(|existing| existing != child);
+      }
+
+      if let Some(record) = store.record_mut(*child)
+        && record.parent == Some(*parent)
+      {
+        record.parent = None;
+      }
+
+      store.structure_dirty = true;
+      store.paint_dirty = true;
+    });
+  }
+
+  fn destroy(&self, sink: Handle) {
+    with_store(|store| store.destroy(sink));
+  }
+
+  fn define_tokens(&self, _scope: &Handle, _definitions: &Definitions<TokenValue>) {
+    with_store(Store::invalidate_styles);
+  }
+
+  fn define_root_tokens(&self, _definitions: &Definitions<TokenValue>) {
+    with_store(Store::invalidate_styles);
+  }
+
+  fn listen(&self, sink: &Handle, kind: EventKind) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.listened |= 1 << (kind as u16);
+      }
+    });
+  }
+
+  fn focus(&self, sink: &Handle) {
+    interaction::set_focus(Some(*sink));
+  }
+
+  fn blur(&self, sink: &Handle) {
+    let holds = with_store(|store| store.focused == Some(*sink));
+
+    if holds {
+      interaction::set_focus(None);
+    }
+  }
+
+  fn set_value(&self, sink: &Handle, value: &str) {
+    with_store(|store| {
+      let Some(record) = store.record_mut(*sink)
+      else {
+        return;
+      };
+      let Some(field) = record.kind.field_mut()
+      else {
+        return;
+      };
+
+      if field.value == value {
+        return;
+      }
+
+      value.clone_into(&mut field.value);
+      field.caret = field.caret.min(field.value.chars().count());
+      store.layout_dirty = true;
+      store.paint_dirty = true;
+    });
+  }
+
+  fn set_checked(&self, sink: &Handle, checked: bool) {
+    with_store(|store| {
+      if let Some(Kind::Control { checked: held, .. }) =
+        store.record_mut(*sink).map(|record| &mut record.kind)
+      {
+        *held = checked;
+      }
+    });
+  }
+
+  fn observe_size(&self, sink: &Handle, report: Rc<dyn Fn(Size<u32>)>) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.observers.push(report);
+        record.reported = None;
+        store.layout_dirty = true;
+      }
+    });
+  }
+
+  fn media(&self) -> MediaSignals<u32> {
+    with_store(|store| store.media().signals)
+  }
+}
+
+/// Installs the terminal driver for this thread.
+///
+/// # Panics
+///
+/// Panics if it is already installed.
+pub fn install() {
+  skene_reactive::Runtime::init_on_ui_thread();
+
+  STORE.with(|store| {
+    let mut store = store.borrow_mut();
+
+    assert!(
+      store.is_none(),
+      "the terminal driver is already installed for this thread",
+    );
+
+    *store = Some(Store::new());
+  });
+
+  let root = with_store(|store| store.root);
+  let node = Scene::<Tui>::with(|scene| scene.create(NodeKind::Box, root));
+
+  ROOT.with(|held| *held.borrow_mut() = Some(node));
+
+  #[cfg(feature = "snapshot")]
+  crate::dev::provide_scroll();
+}
+
+/// Uninstalls the terminal driver: empties the scene and the store, and resets the
+/// reactive runtime and root scope, so one thread can run many independent mounts.
+#[cfg(feature = "test")]
+pub fn uninstall() {
+  let owner = STORE.with(|store| {
+    store
+      .borrow_mut()
+      .as_mut()
+      .and_then(Store::take_media_owner)
+  });
+
+  if let Some(owner) = owner {
+    owner.dispose();
+  }
+
+  skene_reactive::Runtime::reset();
+  skene_core::reset_root_owner();
+  crate::task::clear();
+  Scene::<Tui>::with(|scene| *scene = Scene::new());
+  ROOT.with(|root| *root.borrow_mut() = None);
+  STORE.with(|store| *store.borrow_mut() = None);
+}
+
+/// Builds `view` under the installed root, returning its node.
+///
+/// # Panics
+///
+/// Panics if the driver is not installed for this thread.
+pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
+  skene_core::root_owner().enter(|| {
+    let node = view();
+    let root = root_node().expect("the root node exists once installed");
+
+    Scene::<Tui>::with(|scene| scene.attach(root, node, None));
+
+    node
+  })
+}

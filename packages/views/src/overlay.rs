@@ -99,8 +99,10 @@ impl<D: Driver> Overlay<D> {
 }
 
 impl<D: Driver, C> Overlay<D, C> {
+  /// The declared style of the content box, for a facade's medium-specific setters to
+  /// write into.
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
     self.inner.style_mut()
   }
 

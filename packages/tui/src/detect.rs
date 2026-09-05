@@ -2,9 +2,11 @@
 //! support.
 //!
 //! Every detection degrades quietly: an unresponsive or unknown terminal gets 16
-//! colors, a dark background, and a working clipboard.
+//! colors, a dark background, and a working clipboard. The background and clipboard
+//! queries run on their own thread and report through a channel, so the loop starts
+//! before they answer.
 
-use std::env;
+use std::{env, sync::mpsc};
 #[cfg(unix)]
 use std::{
   io::Write,
@@ -62,6 +64,33 @@ impl ColorDepth {
       Self::Ansi16 => TerminalColor::AnsiValue(nearest_16(red, green, blue)),
     }
   }
+}
+
+/// What the asynchronous detection found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Detected {
+  /// Whether the terminal background is dark.
+  pub(crate) dark: bool,
+  /// Whether OSC 52 clipboard writes reach the system clipboard.
+  pub(crate) clipboard: bool,
+}
+
+/// Starts the background and clipboard detection on its own thread; the answer arrives
+/// on the returned channel once, then the channel closes.
+///
+/// Call with raw mode enabled and before the loop reads input: the replies arrive on
+/// stdin and must not echo or be read by anything else.
+pub(crate) fn start() -> mpsc::Receiver<Detected> {
+  let (sender, receiver) = mpsc::channel();
+
+  std::thread::spawn(move || {
+    let _ = sender.send(Detected {
+      dark: background_is_dark(),
+      clipboard: clipboard_writes_work(),
+    });
+  });
+
+  receiver
 }
 
 /// The squared distance between two RGB colors.
@@ -143,9 +172,7 @@ fn nearest_16(red: u8, green: u8, blue: u8) -> u8 {
 
 /// Whether the terminal background is dark: an OSC 11 query first, `COLORFGBG` when the
 /// terminal stays silent, dark when neither answers.
-///
-/// Call with raw mode enabled: the reply arrives on stdin and must not echo.
-pub(crate) fn background_is_dark() -> bool {
+fn background_is_dark() -> bool {
   if let Some((red, green, blue)) = query_background() {
     return is_dark(red, green, blue);
   }
@@ -185,9 +212,7 @@ fn query_background() -> Option<(u8, u8, u8)> {
 
 /// Whether OSC 52 clipboard writes reach the system clipboard: every terminal is
 /// assumed capable except one identifying as VTE, which discards them.
-///
-/// Call with raw mode enabled: the reply arrives on stdin and must not echo.
-pub(crate) fn clipboard_writes_work() -> bool {
+fn clipboard_writes_work() -> bool {
   terminal_version().is_none_or(|terminal| !terminal.starts_with("VTE("))
 }
 
@@ -223,6 +248,7 @@ fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
       revents: 0,
     };
     let timeout = i32::try_from(remaining.as_millis()).unwrap_or(i32::MAX);
+    // SAFETY: `descriptor` is a valid, initialized `pollfd` living for the call.
     let ready = unsafe { libc::poll(&raw mut descriptor, 1, timeout) };
 
     if ready <= 0 {
@@ -230,6 +256,7 @@ fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
     }
 
     let mut byte = 0u8;
+    // SAFETY: `byte` is a valid one-byte buffer living for the call.
     let count = unsafe { libc::read(0, std::ptr::from_mut(&mut byte).cast(), 1) };
 
     if count != 1 {
@@ -255,6 +282,7 @@ fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
 }
 
 /// Parses an XTVERSION reply (`DCS > | NAME(VERSION) ST`) to its `NAME(VERSION)` text.
+#[cfg(any(unix, test))]
 fn parse_xtversion(response: &[u8]) -> Option<String> {
   let text = std::str::from_utf8(response).ok()?;
   let inner = text
@@ -266,6 +294,7 @@ fn parse_xtversion(response: &[u8]) -> Option<String> {
 }
 
 /// Parses an OSC 11 reply (`ESC ] 11 ; rgb : rrrr / gggg / bbbb BEL|ST`) to RGB.
+#[cfg(any(unix, test))]
 fn parse_osc11(response: &[u8]) -> Option<(u8, u8, u8)> {
   let text = std::str::from_utf8(response).ok()?;
   let spec = text

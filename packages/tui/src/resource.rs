@@ -11,13 +11,13 @@ type Loader<T> = Rc<dyn Fn() -> Pin<Box<dyn Future<Output = T>>>>;
 
 /// Data loaded by a task, `None` until it lands.
 ///
-/// The load starts on creation and is bound to the current scope, so it ends with the view
-/// that asked for it. Reading tracks, so a view that reads a resource re-runs when the value
-/// arrives—pair it with a [`DerivedView`](crate::DerivedView) to swap a placeholder for the
-/// loaded tree, or wrap the subtree in a [`Suspense`](crate::Suspense).
+/// The load starts on creation and is bound to the current scope, so it ends with the
+/// view that asked for it. Reading tracks, so a view that reads a resource re-runs when
+/// the value arrives—pair it with [`derived`](crate::derived) to swap a placeholder for
+/// the loaded tree, or wrap the subtree in a [`Suspense`](crate::Suspense).
 ///
-/// The loader is retained, so [`reload`](Self::reload) can re-run it. Failure is the loaded
-/// type's business, not the resource's: load a `Result` and match on it.
+/// The loader is retained, so [`reload`](Self::reload) can re-run it. Failure is the
+/// loaded type's business, not the resource's: load a `Result` and match on it.
 #[must_use]
 pub struct Resource<T: 'static> {
   value: Signal<Option<T>>,

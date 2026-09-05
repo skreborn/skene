@@ -1,8 +1,8 @@
-//! The interactive terminal loop.
+//! The interactive terminal loop, and the seams that drive it without a terminal.
 //!
 //! [`launch`] takes over the terminal (raw mode, the alternate screen), builds the app,
-//! and runs the event loop: keyboard events dispatch inside a reactive batch, and every
-//! change repaints. `Ctrl-C` quits.
+//! and runs the event loop: keyboard and mouse events dispatch inside a reactive batch
+//! through core's dispatch, and every change repaints. `Ctrl-C` quits.
 
 use std::{io::Write, time::Duration};
 
@@ -31,16 +31,19 @@ use crossterm::{
   },
   terminal,
 };
-use skene_core::{IntoView, KeyEvent, MouseCursor, NodeId, Prevented, View};
+#[cfg(feature = "test")]
+use skene_core::ColorScheme;
+use skene_core::{KeyEvent, Modifiers, MouseCursor, PointerButton, next::IntoView};
 
 use crate::{
+  Tui,
+  View as _,
+  detect,
+  frame,
+  interaction::{self, WHEEL_STEP},
   paint,
-  state::{NodeKind, State},
-  with_state,
+  with_store,
 };
-
-/// The rows or columns one wheel report scrolls: a browser's three lines per notch.
-const WHEEL_STEP: i64 = 3;
 
 /// Restores the terminal when the loop unwinds.
 struct TerminalGuard;
@@ -59,8 +62,7 @@ fn restore_terminal() {
   let _ = execute!(
     out,
     // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`):
-    // idempotent, so the reset holds however many app instances set it before—a
-    // dev-loop swap kills the previous instance without running its restore.
+    // idempotent, so the reset holds however many app instances set it before.
     crossterm::style::Print("\x1b[=0;1u"),
     DisableMouseCapture,
     cursor::SetCursorStyle::DefaultUserShape,
@@ -73,18 +75,20 @@ fn restore_terminal() {
 
 /// Mounts and runs a skene application in the terminal.
 ///
-/// Installs the terminal driver, builds `app`, and runs the keyboard loop until
-/// `Ctrl-C`. The reactive runtime, handlers and tree are kept alive for the run's
-/// lifetime. A panic anywhere in the process restores the terminal before its message
-/// prints.
+/// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-C`.
+/// Terminal detection runs beside the loop: the first frame paints for a dark
+/// background and the answers arrive as signal writes. A panic anywhere in the process
+/// restores the terminal before its message prints.
 ///
 /// # Panics
 ///
 /// Panics if the driver is already installed, or when the terminal cannot be set up.
+// The loop body in one place; length is the event count, not complexity.
+#[expect(clippy::too_many_lines)]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
-  V: IntoView,
+  V: IntoView<Tui>,
 {
   let previous_hook = std::panic::take_hook();
 
@@ -98,26 +102,20 @@ where
   #[cfg(feature = "snapshot")]
   crate::dev::install();
 
-  crate::mount(|| app().into_view().build());
+  let _ = crate::mount(|| app().into_view().build());
 
   terminal::enable_raw_mode().expect("enable raw mode");
 
   let _guard = TerminalGuard;
-  let dark = crate::detect::background_is_dark();
-  let depth = crate::detect::ColorDepth::detect();
-  let clipboard = crate::detect::clipboard_writes_work();
-
-  with_state(|state| {
-    state.dark.set(dark);
-    state.clipboard.set(clipboard);
-  });
+  let depth = detect::ColorDepth::detect();
+  let mut detection = Some(detect::start());
 
   #[cfg(feature = "snapshot")]
   {
     crate::dev::adopt_scroll();
 
     if let Some(notice) = crate::dev::notice_signal() {
-      crate::mount(|| crate::dev::notice_view(notice).into_view().build());
+      let _ = crate::mount(|| crate::dev::notice_view(notice).into_view().build());
     }
   }
 
@@ -131,8 +129,7 @@ where
 
   // A terminal speaking the kitty keyboard protocol disambiguates modified keys—
   // `Ctrl+Backspace` above all; the rest keep the legacy encoding, where `Ctrl+W`
-  // stands in for it. The stackless set form (`CSI = 1 ; 1 u`), not a push: a
-  // dev-loop swap kills an instance without popping, and a set stays balanced.
+  // stands in for it.
   if terminal::supports_keyboard_enhancement().unwrap_or(false) {
     let _ = execute!(std::io::stdout(), crossterm::style::Print("\x1b[=1;1u"));
   }
@@ -142,29 +139,49 @@ where
   loop {
     crate::task::pump();
 
-    let (quit, copy, open) = with_state(|state| {
-      if state.title_dirty.replace(false) {
-        emit_title(state.title.borrow().as_deref().unwrap_or(""));
+    if let Some(receiver) = &detection {
+      match receiver.try_recv() {
+        Ok(detected) => {
+          apply_detection(detected);
+          detection = None;
+        }
+        Err(std::sync::mpsc::TryRecvError::Disconnected) => detection = None,
+        Err(std::sync::mpsc::TryRecvError::Empty) => {}
       }
+    }
 
-      if state.dirty.replace(false) {
-        // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
-        // 80x24 rather than painting nothing.
-        let (width, height) = match terminal::size() {
-          Ok((width, height)) if width > 0 && height > 0 => (width, height),
-          _ => (80, 24),
-        };
+    let title = with_store(|store| {
+      store
+        .title_dirty
+        .then(|| store.title.clone().unwrap_or_default())
+    });
 
-        let frame = paint::render(state, width, height);
+    if let Some(title) = title {
+      with_store(|store| store.title_dirty = false);
+      emit_title(&title);
+    }
 
-        draw(&frame, depth, last_frame.as_ref());
-        last_frame = Some(frame);
-      }
+    let dirty =
+      with_store(|store| store.paint_dirty || store.layout_dirty || store.structure_dirty);
 
+    if dirty {
+      // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
+      // 80x24 rather than painting nothing.
+      let (width, height) = match terminal::size() {
+        Ok((width, height)) if width > 0 && height > 0 => (width, height),
+        _ => crate::store::DEFAULT_SIZE,
+      };
+      let frame = frame::render(width, height);
+
+      draw(&frame, depth, last_frame.as_ref());
+      last_frame = Some(frame);
+    }
+
+    let (quit, copy, open) = with_store(|store| {
       (
-        state.quit.get(),
-        state.pending_copy.borrow_mut().take(),
-        state.pending_open.borrow_mut().take(),
+        store.quit,
+        store.pending_copy.take(),
+        store.pending_open.take(),
       )
     });
 
@@ -183,26 +200,33 @@ where
     #[cfg(feature = "snapshot")]
     crate::dev::tick();
 
+    // While detection reads its replies from stdin the loop leaves the input alone.
+    if detection.is_some() {
+      std::thread::sleep(Duration::from_millis(10));
+
+      continue;
+    }
+
     if event::poll(Duration::from_millis(100)).unwrap_or(false) {
       match event::read() {
         Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
-          with_state(|state| dispatch_key(state, &key));
+          dispatch_key(&key);
 
           #[cfg(feature = "snapshot")]
           crate::dev::mark_changed();
         }
         Ok(Event::Mouse(mouse)) => {
-          with_state(|state| dispatch_mouse(state, mouse));
+          dispatch_mouse(mouse);
 
           #[cfg(feature = "snapshot")]
           crate::dev::mark_changed();
         }
         Ok(Event::Resize(..)) => {
           // A full rewrite: the previous frame no longer matches what the terminal
-          // shows (a resize reflows it, outside prints may have overwritten it).
+          // shows.
           last_frame = None;
 
-          with_state(|state| state.dirty.set(true));
+          with_store(|store| store.paint_dirty = true);
         }
         _ => {}
       }
@@ -213,9 +237,40 @@ where
   crate::dev::flush();
 }
 
+/// Applies what detection found: the background as the platform's scheme, and the
+/// clipboard support.
+fn apply_detection(detected: detect::Detected) {
+  set_detected_scheme(detected.dark);
+  with_store(|store| store.clipboard = detected.clipboard);
+}
+
+/// Records the detected background, moving the scheme in force where it changes.
+fn set_detected_scheme(dark: bool) {
+  let write = with_store(|store| {
+    let before = store.scheme();
+
+    store.detected_dark = dark;
+
+    let after = store.scheme();
+
+    if before == after {
+      return None;
+    }
+
+    store.invalidate_styles();
+
+    Some((store.media().set_scheme, after))
+  });
+
+  if let Some((write, scheme)) = write {
+    skene_reactive::Set::set(&write, scheme);
+  }
+}
+
 /// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer
-/// down/up/move handlers, and left-button clicks—all inside a reactive batch.
-fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
+/// handlers through core's dispatch, and left-button clicks—all inside a reactive
+/// batch.
+fn dispatch_mouse(mouse: event::MouseEvent) {
   let modifiers = portable_modifiers(mouse.modifiers);
 
   skene_reactive::batch(|| match mouse.kind {
@@ -225,112 +280,60 @@ fn dispatch_mouse(state: &State, mouse: event::MouseEvent) {
         _ => None,
       };
 
-      state.set_hover(mouse.column, mouse.row);
-
-      let _ = state.run_pointer(
-        &state.pointer_move,
-        mouse.column,
-        mouse.row,
-        button,
-        modifiers,
-      );
-
-      if matches!(mouse.kind, MouseEventKind::Drag(MouseButton::Left)) {
-        state.drag_to(mouse.column, mouse.row);
-      }
-
-      set_pointer_shape(state.hover_cursor());
+      interaction::pointer_move(mouse.column, mouse.row, button, modifiers);
+      set_pointer_shape(with_store(|store| store.hover_cursor()));
     }
     MouseEventKind::Down(button) => {
-      match button {
-        MouseButton::Left => state.left_held.set(true),
-        MouseButton::Right => state.right_held.set(true),
+      with_store(|store| match button {
+        MouseButton::Left => store.left_held = true,
+        MouseButton::Right => store.right_held = true,
         MouseButton::Middle => {}
-      }
-
-      dispatch_press(state, mouse.column, mouse.row, button, modifiers);
-      set_pointer_shape(state.hover_cursor());
+      });
+      interaction::pointer_press(mouse.column, mouse.row, portable_button(button), modifiers);
+      set_pointer_shape(with_store(|store| store.hover_cursor()));
     }
     MouseEventKind::Up(button) => {
       // A release whose press was never delivered stands in for the whole click: VTE
       // terminals report only the first three presses of a rapid sequence to the app,
       // yet forward every release.
-      let orphan = match button {
-        MouseButton::Left => !state.left_held.replace(false),
-        MouseButton::Right => !state.right_held.replace(false),
+      let orphan = with_store(|store| match button {
+        MouseButton::Left => !std::mem::replace(&mut store.left_held, false),
+        MouseButton::Right => !std::mem::replace(&mut store.right_held, false),
         MouseButton::Middle => false,
-      };
+      });
 
       if orphan {
-        dispatch_press(state, mouse.column, mouse.row, button, modifiers);
+        with_store(|store| {
+          if button == MouseButton::Left {
+            store.left_held = true;
+          }
+        });
+        interaction::pointer_press(mouse.column, mouse.row, portable_button(button), modifiers);
+        with_store(|store| store.left_held = false);
       }
 
-      let _ = state.run_pointer(
-        &state.pointer_up,
-        mouse.column,
-        mouse.row,
-        Some(portable_button(button)),
-        modifiers,
-      );
-
-      if button == MouseButton::Left {
-        state.mouse_release(mouse.column, mouse.row);
-        state.end_drag();
-        set_pointer_shape(state.hover_cursor());
-      }
+      interaction::pointer_release(mouse.column, mouse.row, portable_button(button), modifiers);
+      set_pointer_shape(with_store(|store| store.hover_cursor()));
     }
-    MouseEventKind::ScrollDown => state.mouse_scroll(mouse.column, mouse.row, 0, WHEEL_STEP),
-    MouseEventKind::ScrollUp => state.mouse_scroll(mouse.column, mouse.row, 0, -WHEEL_STEP),
-    MouseEventKind::ScrollRight => state.mouse_scroll(mouse.column, mouse.row, WHEEL_STEP, 0),
-    MouseEventKind::ScrollLeft => state.mouse_scroll(mouse.column, mouse.row, -WHEEL_STEP, 0),
+    MouseEventKind::ScrollDown => interaction::wheel(mouse.column, mouse.row, 0, WHEEL_STEP),
+    MouseEventKind::ScrollUp => interaction::wheel(mouse.column, mouse.row, 0, -WHEEL_STEP),
+    MouseEventKind::ScrollRight => interaction::wheel(mouse.column, mouse.row, WHEEL_STEP, 0),
+    MouseEventKind::ScrollLeft => interaction::wheel(mouse.column, mouse.row, -WHEEL_STEP, 0),
   });
 }
 
-/// Dispatches one press: hover, the pointer-down handlers, then—unless a handler
-/// prevented the default—the left click or the right press's copy menu.
-fn dispatch_press(
-  state: &State,
-  column: u16,
-  row: u16,
-  button: MouseButton,
-  modifiers: skene_core::Modifiers,
-) {
-  state.set_hover(column, row);
-
-  let prevention = state.run_pointer(
-    &state.pointer_down,
-    column,
-    row,
-    Some(portable_button(button)),
-    modifiers,
-  );
-
-  if prevention.platform {
-    return;
-  }
-
-  if button == MouseButton::Left {
-    state.mouse_press(column, row);
-  }
-
-  // A right press opens the copy menu at the pressed cell while a selection exists.
-  if button == MouseButton::Right {
-    state.right_press(column, row);
-  }
-}
-
 /// A crossterm mouse button as the portable vocabulary's.
-fn portable_button(button: MouseButton) -> skene_core::PointerButton {
+fn portable_button(button: MouseButton) -> PointerButton {
   match button {
-    MouseButton::Left => skene_core::PointerButton::Primary,
-    MouseButton::Right => skene_core::PointerButton::Secondary,
-    MouseButton::Middle => skene_core::PointerButton::Auxiliary,
+    MouseButton::Left => PointerButton::Primary,
+    MouseButton::Right => PointerButton::Secondary,
+    MouseButton::Middle => PointerButton::Auxiliary,
   }
 }
 
 /// Crossterm modifier state as the portable vocabulary's.
-fn portable_modifiers(modifiers: KeyModifiers) -> skene_core::Modifiers {
-  skene_core::Modifiers {
+fn portable_modifiers(modifiers: KeyModifiers) -> Modifiers {
+  Modifiers {
     ctrl: modifiers.contains(KeyModifiers::CONTROL),
     shift: modifiers.contains(KeyModifiers::SHIFT),
     alt: modifiers.contains(KeyModifiers::ALT),
@@ -411,11 +414,7 @@ fn set_pointer_shape(cursor: Option<MouseCursor>) {
 
 /// Writes a painted frame to the terminal, quantizing colors to `depth`; rows
 /// unchanged since the previous frame are skipped.
-fn draw(
-  buffer: &paint::Buffer,
-  depth: crate::detect::ColorDepth,
-  previous: Option<&paint::Buffer>,
-) {
+fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&paint::Buffer>) {
   let mut out = std::io::stdout();
   let _ = queue!(out, cursor::MoveTo(0, 0), ResetColor);
 
@@ -431,14 +430,7 @@ fn draw(
       SetAttribute(Attribute::Reset),
     );
 
-    let mut current = paint::TerminalCell {
-      character: ' ',
-      foreground: None,
-      background: None,
-      bold: false,
-      underline: false,
-      link: None,
-    };
+    let mut current = paint::TerminalCell::EMPTY;
 
     for cell in &buffer.cells[row * buffer.width..(row + 1) * buffer.width] {
       if cell.foreground != current.foreground {
@@ -481,6 +473,18 @@ fn draw(
         );
       }
 
+      if cell.reverse != current.reverse {
+        let _ = queue!(
+          out,
+          SetAttribute(if cell.reverse {
+            Attribute::Reverse
+          }
+          else {
+            Attribute::NoReverse
+          })
+        );
+      }
+
       // OSC 8 anchors: close the running link on any change, open the next.
       if cell.link != current.link {
         if current.link.is_some() {
@@ -504,7 +508,7 @@ fn draw(
     }
   }
 
-  // The focused input's caret is the terminal's own bar cursor, blinking as the
+  // The focused entry's caret is the terminal's own bar cursor, blinking as the
   // terminal does.
   match buffer.caret {
     Some((column, row)) => {
@@ -523,357 +527,18 @@ fn draw(
   let _ = out.flush();
 }
 
-/// Dispatches one keyboard event per the shared contract: the key-down handlers run
-/// first (the focused node then its ancestors), then the key's built-in default—focus
-/// movement, activation, control arrows, dismissal, editing—unless a handler prevented
-/// it. All inside a reactive batch; `Ctrl-C` stays unconditional.
-fn dispatch_key(state: &State, key: &event::KeyEvent) {
+/// Dispatches one keyboard event through core's dispatch, then the terminal's own
+/// response unless a handler prevented it; `Ctrl-C` stays unconditional.
+fn dispatch_key(key: &event::KeyEvent) {
   if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-    state.quit.set(true);
+    with_store(|store| store.quit = true);
 
     return;
   }
 
-  skene_reactive::batch(|| {
-    let code = key.code;
-    let key_event = portable_key(code, key.modifiers);
-    let targets = match state.focused.get() {
-      Some(focused) => state.ancestors(focused),
-      None => state.key_down.borrow().keys().copied().collect(),
-    };
-    let mut prevention = Prevented::default();
+  let event = portable_key(key.code, key.modifiers);
 
-    for target in &targets {
-      prevention.merge(State::run_preventable(
-        &state.key_down,
-        *target,
-        &key_event,
-        |run, event| run(event),
-      ));
-
-      if prevention.bubbling {
-        break;
-      }
-    }
-
-    if prevention.platform {
-      return;
-    }
-
-    key_default(state, code, key.modifiers);
-  });
-}
-
-/// Runs a key's built-in default: focus movement, dismissal, activation, control
-/// arrows, page scrolling, and input editing.
-fn key_default(state: &State, code: KeyCode, modifiers: KeyModifiers) {
-  match code {
-    KeyCode::Tab => {
-      state.move_focus(1);
-
-      return;
-    }
-    KeyCode::BackTab => {
-      state.move_focus(-1);
-
-      return;
-    }
-    KeyCode::Esc => {
-      // The most transient layer goes first: the copy menu, then the selection, then
-      // an open overlay.
-      if state.menu.get().is_some() {
-        state.close_menu();
-      }
-      else if state.selection.get().is_some() {
-        state.clear_selection();
-      }
-      else if let Some((top, _)) = state.topmost_open_overlay() {
-        State::run_handlers(&state.dismiss, top, (), |run, ()| run());
-      }
-
-      return;
-    }
-    _ => {}
-  }
-
-  let space_activates = code == KeyCode::Char(' ')
-    && state.focused.get().is_some_and(|focused| {
-      !matches!(
-        state
-          .nodes
-          .borrow()
-          .get(&focused)
-          .map(|record| &record.kind),
-        Some(crate::state::NodeKind::TextField { .. })
-      )
-    });
-
-  if (code == KeyCode::Enter || space_activates)
-    && let Some(focused) = state.focused.get()
-  {
-    state.activate_dispatch(focused);
-  }
-
-  if matches!(
-    code,
-    KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down
-  ) && let Some(focused) = state.focused.get()
-  {
-    control_arrow(state, focused, code);
-  }
-
-  if code == KeyCode::PageDown {
-    state.page_scroll(1);
-  }
-
-  if code == KeyCode::PageUp {
-    state.page_scroll(-1);
-  }
-
-  edit_focused_input(state, code, modifiers);
-}
-
-/// Applies an editing or caret key to the focused input: characters insert at the
-/// caret, `Backspace`/`Delete` remove around it, arrows and `Home`/`End` move it, and
-/// `Ctrl` makes the arrows jump and the removals delete whole words. Input handlers
-/// fire on every value change.
-fn edit_focused_input(state: &State, code: KeyCode, modifiers: KeyModifiers) {
-  enum Edit {
-    Value(String),
-    Caret,
-  }
-
-  let Some(focused) = state.focused.get()
-  else {
-    return;
-  };
-
-  let byte_of = |value: &str, position: usize| {
-    value
-      .char_indices()
-      .nth(position)
-      .map_or(value.len(), |(index, _)| index)
-  };
-
-  let edit: Option<Edit> = state
-    .nodes
-    .borrow_mut()
-    .get_mut(&focused)
-    .and_then(|record| {
-      let NodeKind::TextField { value, caret, .. } = &mut record.kind
-      else {
-        return None;
-      };
-
-      let count = value.chars().count();
-
-      match code {
-        KeyCode::Char(character)
-          if !modifiers.contains(KeyModifiers::CONTROL)
-            && !modifiers.contains(KeyModifiers::ALT) =>
-        {
-          let at = byte_of(value, *caret);
-
-          value.insert(at, character);
-          *caret += 1;
-
-          Some(Edit::Value(value.clone()))
-        }
-        // `Ctrl+W` matches `Ctrl+Backspace`: legacy keyboard encodings cannot express
-        // the latter, and the readline binding is muscle memory anyway.
-        KeyCode::Backspace | KeyCode::Char('w')
-          if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 =>
-        {
-          let target = word_before(value, *caret);
-
-          value.replace_range(byte_of(value, target)..byte_of(value, *caret), "");
-          *caret = target;
-
-          Some(Edit::Value(value.clone()))
-        }
-        KeyCode::Delete if modifiers.contains(KeyModifiers::CONTROL) && *caret < count => {
-          value.replace_range(
-            byte_of(value, *caret)..byte_of(value, word_after(value, *caret)),
-            "",
-          );
-
-          Some(Edit::Value(value.clone()))
-        }
-        // Legacy encodings send `Ctrl+Backspace` as `0x08`—the byte of `Ctrl+H`—with
-        // no way to tell the two apart; deleting one character honors both readings.
-        KeyCode::Backspace | KeyCode::Char('h')
-          if !modifiers.contains(KeyModifiers::ALT) && *caret > 0 =>
-        {
-          *caret -= 1;
-          value.remove(byte_of(value, *caret));
-
-          Some(Edit::Value(value.clone()))
-        }
-        KeyCode::Delete if *caret < count => {
-          value.remove(byte_of(value, *caret));
-
-          Some(Edit::Value(value.clone()))
-        }
-        KeyCode::Left if modifiers.contains(KeyModifiers::CONTROL) && *caret > 0 => {
-          *caret = word_before(value, *caret);
-
-          Some(Edit::Caret)
-        }
-        KeyCode::Right if modifiers.contains(KeyModifiers::CONTROL) && *caret < count => {
-          *caret = word_after(value, *caret);
-
-          Some(Edit::Caret)
-        }
-        KeyCode::Left if *caret > 0 => {
-          *caret -= 1;
-
-          Some(Edit::Caret)
-        }
-        KeyCode::Right if *caret < count => {
-          *caret += 1;
-
-          Some(Edit::Caret)
-        }
-        KeyCode::Home if *caret > 0 => {
-          *caret = 0;
-
-          Some(Edit::Caret)
-        }
-        KeyCode::End if *caret < count => {
-          *caret = count;
-
-          Some(Edit::Caret)
-        }
-        _ => None,
-      }
-    });
-
-  match edit {
-    Some(Edit::Value(value)) => {
-      state.dirty.set(true);
-
-      for target in state.ancestors(focused) {
-        State::run_handlers(&state.input, target, value.as_str(), |run, value| {
-          run(value);
-        });
-      }
-    }
-    Some(Edit::Caret) => state.dirty.set(true),
-    None => {}
-  }
-}
-
-/// A caret-motion character class; each maximal same-class run is one word, so a run
-/// of punctuation breaks like a word of its own.
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum CharClass {
-  Whitespace,
-  Punctuation,
-  Word,
-}
-
-/// The class of one character: word characters are alphanumerics and `_`.
-fn char_class(character: char) -> CharClass {
-  if character.is_whitespace() {
-    CharClass::Whitespace
-  }
-  else if character.is_alphanumeric() || character == '_' {
-    CharClass::Word
-  }
-  else {
-    CharClass::Punctuation
-  }
-}
-
-/// The caret position at the start of the word before `caret`: whitespace skipped,
-/// then one same-class run.
-fn word_before(value: &str, caret: usize) -> usize {
-  let characters: Vec<char> = value.chars().collect();
-  let mut position = caret;
-
-  while position > 0 && char_class(characters[position - 1]) == CharClass::Whitespace {
-    position -= 1;
-  }
-
-  if position > 0 {
-    let class = char_class(characters[position - 1]);
-
-    while position > 0 && char_class(characters[position - 1]) == class {
-      position -= 1;
-    }
-  }
-
-  position
-}
-
-/// The caret position at the end of the word after `caret`: whitespace skipped, then
-/// one same-class run.
-fn word_after(value: &str, caret: usize) -> usize {
-  let characters: Vec<char> = value.chars().collect();
-  let mut position = caret;
-
-  while position < characters.len() && char_class(characters[position]) == CharClass::Whitespace {
-    position += 1;
-  }
-
-  if position < characters.len() {
-    let class = char_class(characters[position]);
-
-    while position < characters.len() && char_class(characters[position]) == class {
-      position += 1;
-    }
-  }
-
-  position
-}
-
-/// Applies an arrow key to the focused control: radios move the check through their
-/// group, selects cycle, sliders nudge by one step.
-fn control_arrow(state: &State, focused: NodeId, code: KeyCode) {
-  enum Move {
-    Radio,
-    Picker,
-    Slider,
-  }
-
-  let target = {
-    let nodes = state.nodes.borrow();
-
-    match nodes.get(&focused).map(|record| &record.kind) {
-      Some(NodeKind::Radio { .. }) => Move::Radio,
-      Some(NodeKind::Picker { .. }) => Move::Picker,
-      Some(NodeKind::Slider { .. }) => Move::Slider,
-      _ => return,
-    }
-  };
-  let forward = matches!(code, KeyCode::Right | KeyCode::Down);
-
-  match target {
-    Move::Radio => {
-      let Some((members, position)) = state.radio_group(focused)
-      else {
-        return;
-      };
-
-      let step: isize = if forward { 1 } else { -1 };
-      let Some(next) = skene_core::Ring::new(members.len()).step_from(position, step)
-      else {
-        return;
-      };
-
-      let next = members[next];
-
-      state.set_focused(Some(next));
-      state.check_radio(next);
-    }
-    Move::Picker => state.cycle_picker(focused, if forward { 1 } else { -1 }),
-    Move::Slider => {
-      // A slider rises on `Up`/`Right`, unlike a group's next-member order.
-      let increase = matches!(code, KeyCode::Right | KeyCode::Up);
-
-      state.nudge_slider(focused, if increase { 1.0 } else { -1.0 });
-    }
-  }
+  skene_reactive::batch(|| interaction::key(&event));
 }
 
 /// Maps a terminal key to the portable W3C key value.
@@ -882,7 +547,7 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyCode::Char(character) => character.to_string(),
     KeyCode::Enter => "Enter".to_owned(),
     KeyCode::Backspace => "Backspace".to_owned(),
-    KeyCode::Tab => "Tab".to_owned(),
+    KeyCode::Tab | KeyCode::BackTab => "Tab".to_owned(),
     KeyCode::Esc => "Escape".to_owned(),
     KeyCode::Delete => "Delete".to_owned(),
     KeyCode::Left => "ArrowLeft".to_owned(),
@@ -896,89 +561,58 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyCode::F(number) => format!("F{number}"),
     _ => "Unidentified".to_owned(),
   };
+  let mut modifiers = portable_modifiers(modifiers);
 
-  KeyEvent {
-    key,
-    modifiers: portable_modifiers(modifiers),
+  if code == KeyCode::BackTab {
+    modifiers.shift = true;
   }
+
+  KeyEvent { key, modifiers }
 }
 
 /// Simulates one key press by its portable W3C key value (`"a"`, `"Enter"`, `"Tab"`,
 /// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
-/// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`).
-///
-/// # Panics
-///
-/// Panics if `key` is not a supported key value.
+/// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`, `"Shift+Tab"`).
 #[cfg(feature = "test")]
 pub fn trigger_key(key: &str) {
-  let mut modifiers = KeyModifiers::NONE;
+  let mut modifiers = Modifiers::default();
   let mut key = key;
 
   while let Some((modifier, rest)) = key.split_once('+') {
     match modifier {
-      "Ctrl" => modifiers |= KeyModifiers::CONTROL,
-      "Alt" => modifiers |= KeyModifiers::ALT,
-      "Shift" => modifiers |= KeyModifiers::SHIFT,
+      "Ctrl" => modifiers.ctrl = true,
+      "Alt" => modifiers.alt = true,
+      "Shift" => modifiers.shift = true,
       _ => break,
     }
 
     key = rest;
   }
 
-  let code = match key {
-    "Enter" => KeyCode::Enter,
-    "Backspace" => KeyCode::Backspace,
-    "Tab" => KeyCode::Tab,
-    "Escape" => KeyCode::Esc,
-    "Delete" => KeyCode::Delete,
-    "ArrowLeft" => KeyCode::Left,
-    "ArrowRight" => KeyCode::Right,
-    "ArrowUp" => KeyCode::Up,
-    "ArrowDown" => KeyCode::Down,
-    "Home" => KeyCode::Home,
-    "End" => KeyCode::End,
-    other => {
-      let mut characters = other.chars();
-      let character = characters.next().expect("a key value");
-
-      assert!(
-        characters.next().is_none(),
-        "unsupported key value: {other}"
-      );
-
-      KeyCode::Char(character)
-    }
+  let event = KeyEvent {
+    key: key.to_owned(),
+    modifiers,
   };
 
-  with_state(|state| {
-    dispatch_key(state, &event::KeyEvent::new(code, modifiers));
-  });
+  skene_reactive::batch(|| interaction::key(&event));
 }
 
-/// The id of the currently-focused node, for a test asserting focus movement.
+/// The node holding focus, for a test asserting focus movement.
 #[cfg(feature = "test")]
 #[must_use]
-pub fn focused_node() -> Option<skene_core::NodeId> {
-  with_state(|state| state.focused.get())
+pub fn focused_node() -> Option<skene_core::next::NodeId> {
+  with_store(|store| {
+    store
+      .focused
+      .and_then(|focused| store.record(focused).and_then(|record| record.node))
+  })
 }
 
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
 /// headlessly. Hit-testing resolves against the last render's layout.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_move(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      state.set_hover(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_move,
-        x,
-        y,
-        None,
-        skene_core::Modifiers::default(),
-      );
-    });
-  });
+  skene_reactive::batch(|| interaction::pointer_move(x, y, None, Modifiers::default()));
 }
 
 /// Simulates a left click at the cell (`x`, `y`), for a test driving mouse interaction
@@ -993,19 +627,9 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 /// drag—for a test driving drags headlessly.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_press(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      state.left_held.set(true);
-      state.set_hover(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_down,
-        x,
-        y,
-        Some(skene_core::PointerButton::Primary),
-        skene_core::Modifiers::default(),
-      );
-      state.mouse_press(x, y);
-    });
+  skene_reactive::batch(|| {
+    with_store(|store| store.left_held = true);
+    interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
   });
 }
 
@@ -1013,18 +637,8 @@ pub fn trigger_mouse_press(x: u16, y: u16) {
 /// [`trigger_mouse_press`].
 #[cfg(feature = "test")]
 pub fn trigger_mouse_drag(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      state.set_hover(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_move,
-        x,
-        y,
-        Some(skene_core::PointerButton::Primary),
-        skene_core::Modifiers::default(),
-      );
-      state.drag_to(x, y);
-    });
+  skene_reactive::batch(|| {
+    interaction::pointer_move(x, y, Some(PointerButton::Primary), Modifiers::default());
   });
 }
 
@@ -1032,30 +646,14 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
 /// press delivered stands in for the whole click, as the interactive loop's does.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_release(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      if !state.left_held.replace(false) {
-        state.set_hover(x, y);
-        let _ = state.run_pointer(
-          &state.pointer_down,
-          x,
-          y,
-          Some(skene_core::PointerButton::Primary),
-          skene_core::Modifiers::default(),
-        );
-        state.mouse_press(x, y);
-      }
+  skene_reactive::batch(|| {
+    if !with_store(|store| store.left_held) {
+      with_store(|store| store.left_held = true);
+      interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
+    }
 
-      let _ = state.run_pointer(
-        &state.pointer_up,
-        x,
-        y,
-        Some(skene_core::PointerButton::Primary),
-        skene_core::Modifiers::default(),
-      );
-      state.mouse_release(x, y);
-      state.end_drag();
-    });
+    with_store(|store| store.left_held = false);
+    interaction::pointer_release(x, y, PointerButton::Primary, Modifiers::default());
   });
 }
 
@@ -1063,76 +661,12 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 /// driving selection headlessly.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
-  with_state(|state| {
-    skene_reactive::batch(|| {
-      state.right_held.set(true);
-      state.set_hover(x, y);
-      let _ = state.run_pointer(
-        &state.pointer_down,
-        x,
-        y,
-        Some(skene_core::PointerButton::Secondary),
-        skene_core::Modifiers::default(),
-      );
-      state.right_press(x, y);
-      state.right_held.set(false);
-      let _ = state.run_pointer(
-        &state.pointer_up,
-        x,
-        y,
-        Some(skene_core::PointerButton::Secondary),
-        skene_core::Modifiers::default(),
-      );
-    });
+  skene_reactive::batch(|| {
+    with_store(|store| store.right_held = true);
+    interaction::pointer_press(x, y, PointerButton::Secondary, Modifiers::default());
+    with_store(|store| store.right_held = false);
+    interaction::pointer_release(x, y, PointerButton::Secondary, Modifiers::default());
   });
-}
-
-/// Takes the text the last `Copy` staged for the clipboard, for a headless test.
-#[cfg(feature = "test")]
-#[must_use]
-pub fn take_copied() -> Option<String> {
-  with_state(|state| state.pending_copy.borrow_mut().take())
-}
-
-/// Takes the link the last click staged for the system handler, for a headless test.
-#[cfg(feature = "test")]
-#[must_use]
-pub fn take_opened() -> Option<String> {
-  with_state(|state| state.pending_open.borrow_mut().take())
-}
-
-/// The current terminal title, for a headless test.
-#[cfg(feature = "test")]
-#[must_use]
-pub fn current_title() -> Option<String> {
-  with_state(|state| state.title.borrow().clone())
-}
-
-/// Simulates the terminal reporting a dark or light background, for a headless test
-/// driving the `DarkMode`/`LightMode` conditions.
-#[cfg(feature = "test")]
-pub fn trigger_color_scheme(dark: bool) {
-  with_state(|state| {
-    state.dark.set(dark);
-    state.dirty.set(true);
-  });
-}
-
-/// Simulates the clipboard-support detection, for a headless test driving the copy
-/// menu's disabled state.
-#[cfg(feature = "test")]
-pub fn trigger_clipboard_support(supported: bool) {
-  with_state(|state| {
-    state.clipboard.set(supported);
-    state.dirty.set(true);
-  });
-}
-
-/// The pointer shape the current hover resolves to, for a headless test.
-#[cfg(feature = "test")]
-#[must_use]
-pub fn current_cursor() -> Option<MouseCursor> {
-  with_state(State::hover_cursor)
 }
 
 /// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving
@@ -1140,7 +674,73 @@ pub fn current_cursor() -> Option<MouseCursor> {
 /// resolves against the last render's layout.
 #[cfg(feature = "test")]
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
-  with_state(|state| {
-    skene_reactive::batch(|| state.mouse_scroll(x, y, delta_columns, delta_rows));
+  skene_reactive::batch(|| interaction::wheel(x, y, delta_columns, delta_rows));
+}
+
+/// Takes the text the last `Copy` staged for the clipboard, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn take_copied() -> Option<String> {
+  with_store(|store| store.pending_copy.take())
+}
+
+/// Takes the link the last click staged for the system handler, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn take_opened() -> Option<String> {
+  with_store(|store| store.pending_open.take())
+}
+
+/// The current terminal title, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn current_title() -> Option<String> {
+  with_store(|store| store.title.clone())
+}
+
+/// Simulates the terminal reporting `scheme` as its background, for a headless test
+/// driving the scheme conditions; the app's own choice still wins.
+#[cfg(feature = "test")]
+pub fn trigger_color_scheme(scheme: ColorScheme) {
+  set_detected_scheme(scheme == ColorScheme::Dark);
+}
+
+/// Simulates the terminal resizing to `columns` x `rows`, for a headless test driving
+/// the size conditions; the next render lays out at the size it is given.
+#[cfg(feature = "test")]
+pub fn trigger_resize(columns: u16, rows: u16) {
+  frame::resize(columns, rows);
+}
+
+/// Simulates the clipboard-support detection, for a headless test driving the copy
+/// menu's disabled state.
+#[cfg(feature = "test")]
+pub fn trigger_clipboard_support(supported: bool) {
+  with_store(|store| {
+    store.clipboard = supported;
+    store.paint_dirty = true;
   });
+}
+
+/// The pointer shape the current hover resolves to, for a headless test.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn current_cursor() -> Option<MouseCursor> {
+  with_store(|store| store.hover_cursor())
+}
+
+/// How many layouts have been computed since the driver was installed, for a test
+/// asserting that a change repainted without a relayout.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn layout_generation() -> u64 {
+  with_store(|store| store.layout_generation)
+}
+
+/// How many taffy styles have been written since the driver was installed, for a test
+/// counting the restyles a change caused.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn set_style_calls() -> u64 {
+  with_store(|store| store.set_style_calls)
 }

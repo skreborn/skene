@@ -3,6 +3,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+mod common;
+
 use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{
@@ -17,56 +19,7 @@ use skene_tui::{
   prelude::*,
 };
 
-/// Serializes the tests: the UI-thread designation is process-wide, so each test must
-/// install, run, and uninstall without another test's thread interleaving.
-static DRIVER: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// Installs a fresh driver, runs `body`, and uninstalls afterwards.
-fn with_driver<R>(body: impl FnOnce() -> R) -> R {
-  let _serialized = DRIVER
-    .lock()
-    .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-  tui::install();
-
-  let result = body();
-
-  tui::uninstall();
-
-  result
-}
-
-/// The column and row at which `needle` first appears in a rendered frame.
-fn locate(frame: &str, needle: &str) -> (u16, u16) {
-  for (row, line) in frame.lines().enumerate() {
-    if let Some(column) = line.find(needle) {
-      let column = line[..column].chars().count();
-
-      return (
-        u16::try_from(column).expect("a narrow frame"),
-        u16::try_from(row).expect("a short frame"),
-      );
-    }
-  }
-
-  panic!("{needle:?} did not paint in:\n{frame}");
-}
-
-/// A cell's foreground and background.
-type CellColors = (Option<(u8, u8, u8)>, Option<(u8, u8, u8)>);
-
-/// The foreground and background of the cell (`x`, `y`) in a `width` x `height` frame.
-fn colors_at(width: u16, height: u16, x: usize, y: usize) -> CellColors {
-  tui::render_to_colors(width, height)[y * usize::from(width) + x]
-}
-
-fn red() -> Color {
-  Color::srgb(1., 0., 0.)
-}
-
-fn blue() -> Color {
-  Color::srgb(0., 0., 1.)
-}
+use crate::common::{blue, colors_at, locate, red, with_driver};
 
 /// A padded, bordered container paints its box-drawing border, in the border color.
 #[test]
@@ -217,9 +170,12 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
     let agreed = Signal::new(false);
 
     let _ = tui::mount(|| {
-      SimpleCheckbox::new()
-        .bind_checked(agreed)
-        .set_label("agree")
+      Column::new()
+        .set_child(
+          SimpleCheckbox::new()
+            .bind_checked(agreed)
+            .set_label("agree"),
+        )
         .into_any()
         .build()
     });

@@ -8,6 +8,7 @@ use skene_core::{
   Dimension,
   Size,
   next::{
+    Annotation,
     BoxField,
     BoxFieldVisitor,
     BoxStyle,
@@ -21,6 +22,7 @@ use skene_core::{
     ExprValue,
     IntoBoxValue,
     IntoRunValue,
+    Leaf,
     Media,
     MediaEnv,
     NodeId,
@@ -34,8 +36,10 @@ use skene_core::{
     StaticLeaf,
     StaticValue,
     TokenName,
+    Value,
   },
 };
+use skene_reactive::untrack;
 
 use crate::{
   BorderGlyphs,
@@ -300,6 +304,63 @@ impl<'a> Env<'a> {
         SlotValue::Box(_) => None,
       },
     }
+  }
+
+  /// The winning leaf of a declared value, resolved to the property's type; a derived
+  /// leaf is read once, untracked.
+  fn declared_value<T: IntoBoxValue<u32, TerminalExt>>(
+    &self,
+    value: &Value<T, Condition<u32>>,
+  ) -> Option<T> {
+    match self.winning(value) {
+      Leaf::Static(StaticLeaf::Fixed(fixed)) => Some(fixed.clone()),
+      Leaf::Static(StaticLeaf::Token(reference)) => self
+        .token(reference.name(), 0)
+        .and_then(Resolved::into_box_value)
+        .and_then(T::from_box_value),
+      Leaf::Static(StaticLeaf::Expr(expr)) => self
+        .expr(expr.node(), 0)
+        .and_then(Resolved::into_box_value)
+        .and_then(T::from_box_value),
+      Leaf::Derived(compute) => Some(untrack(|| compute())),
+    }
+  }
+
+  /// The per-child layout properties a wrapper annotated the node with, resolved into
+  /// an otherwise empty box style.
+  pub(crate) fn resolve_run_layout(&self) -> PlainBox {
+    let mut layout = PlainBox::default();
+    let Some(annotation) = self
+      .node
+      .and_then(|node| Scene::<Tui>::with(|scene| scene.record(node)?.annotation().cloned()))
+    else {
+      return layout;
+    };
+    let Annotation {
+      flex,
+      self_alignment,
+      self_horizontal_alignment,
+      pinned,
+      grid_row_placement,
+      grid_column_placement,
+    } = annotation;
+
+    layout.flex = flex.as_ref().and_then(|value| self.declared_value(value));
+    layout.self_alignment = self_alignment
+      .as_ref()
+      .and_then(|value| self.declared_value(value));
+    layout.self_horizontal_alignment = self_horizontal_alignment
+      .as_ref()
+      .and_then(|value| self.declared_value(value));
+    layout.pinned = pinned.as_ref().and_then(|value| self.declared_value(value));
+    layout.grid_row_placement = grid_row_placement
+      .as_ref()
+      .and_then(|value| self.declared_value(value));
+    layout.grid_column_placement = grid_column_placement
+      .as_ref()
+      .and_then(|value| self.declared_value(value));
+
+    layout
   }
 
   /// The box style of the record, every property resolved; with its border's ink.

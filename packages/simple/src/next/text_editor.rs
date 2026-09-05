@@ -6,7 +6,7 @@ use skene_core::next::{AnyKind, Driver, NodeId, View};
 use skene_reactive::Signal;
 use skene_views::{CornerRadius, RawTextEditor, TextEntry};
 
-use super::shape::{define_defaults, field_chrome};
+use super::shape::{SimpleUnit, define_defaults, field_chrome};
 
 /// The lines an editor shows unless told otherwise.
 const LINES: u16 = 3;
@@ -92,6 +92,7 @@ impl<D: Driver> AnyKind for SimpleTextEditor<D> {}
 
 impl<D: Driver> View<D> for SimpleTextEditor<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {

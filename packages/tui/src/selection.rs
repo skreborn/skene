@@ -80,9 +80,14 @@ impl Store {
     count
   }
 
-  /// The node's source text, when it is a selectable, non-empty run or paragraph.
+  /// The node's source text, when it is a selectable, non-empty run or paragraph
+  /// outside every control: a control's label is chrome, whatever it opts into.
   pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
     let record = self.record(handle)?;
+
+    if self.enclosing_control(handle).is_some() {
+      return None;
+    }
 
     match &record.kind {
       Kind::Run { props, .. } if props.selectable && !record.text.is_empty() => {

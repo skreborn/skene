@@ -8,7 +8,15 @@ use skene_core::{Color, next::ControlKind};
 
 use crate::{
   BorderGlyphs,
-  layout::{is_paragraph, paragraph_runs, paragraph_text},
+  layout::{
+    INLINE_BOX,
+    has_border,
+    inline_box_cells,
+    is_inline_box,
+    is_paragraph,
+    paragraph_runs,
+    paragraph_text,
+  },
   store::{Handle, Kind, PlainRun, Record, Store},
 };
 
@@ -39,6 +47,7 @@ impl TerminalCell {
 }
 
 /// A painted frame: `width` x `height` cells in row-major order.
+#[derive(Clone)]
 pub(crate) struct Buffer {
   pub(crate) width: usize,
   pub(crate) height: usize,
@@ -51,6 +60,8 @@ pub(crate) struct Buffer {
   /// The active clip rectangle (start inclusive, end exclusive), while a clipping box
   /// paints its children.
   clip: Option<(isize, isize, isize, isize)>,
+  /// The rows this paint rewrites; every row when absent.
+  rows: Option<Vec<bool>>,
 }
 
 impl Buffer {
@@ -62,23 +73,54 @@ impl Buffer {
       caret: None,
       links: Vec::new(),
       clip: None,
+      rows: None,
     }
   }
 
-  fn cell_mut(&mut self, x: isize, y: isize) -> Option<&mut TerminalCell> {
+  /// This frame readied for a paint that rewrites `rows` alone: those rows cleared, the
+  /// caret and the links dropped for the paint to record afresh.
+  pub(crate) fn repainting(mut self, rows: &[bool]) -> Self {
+    for (row, repaint) in rows.iter().enumerate() {
+      if *repaint {
+        self.cells[row * self.width..(row + 1) * self.width].fill(TerminalCell::EMPTY);
+      }
+    }
+
+    self.caret = None;
+    self.links.clear();
+    self.rows = Some(rows.to_vec());
+
+    self
+  }
+
+  /// Whether the cell (`x`, `y`) lies on the frame and inside the active clip.
+  fn in_clip(&self, x: isize, y: isize) -> bool {
     if x < 0 || y < 0 {
-      return None;
+      return false;
     }
 
     if let Some((clip_x, clip_y, clip_end_x, clip_end_y)) = self.clip
       && (x < clip_x || y < clip_y || x >= clip_end_x || y >= clip_end_y)
     {
+      return false;
+    }
+
+    let (Ok(x), Ok(y)) = (usize::try_from(x), usize::try_from(y))
+    else {
+      return false;
+    };
+
+    x < self.width && y < self.height
+  }
+
+  fn cell_mut(&mut self, x: isize, y: isize) -> Option<&mut TerminalCell> {
+    if !self.in_clip(x, y) {
       return None;
     }
 
     let (x, y) = (usize::try_from(x).ok()?, usize::try_from(y).ok()?);
 
-    if x >= self.width || y >= self.height {
+    if self.rows.as_ref().is_some_and(|rows| !rows[y]) {
       return None;
     }
 
@@ -177,19 +219,16 @@ pub(crate) fn longest_word(text: &str) -> usize {
     .unwrap_or(0)
 }
 
-/// Paints the whole frame: the tree, then every open overlay, then the copy menu.
-pub(crate) fn paint(store: &Store, width: u16, height: u16) -> Buffer {
-  let mut buffer = Buffer::new(usize::from(width), usize::from(height));
-
-  paint_node(store, &mut buffer, store.root, 0, 0);
+/// Paints the frame into `buffer`: the tree, then every open overlay, then the copy
+/// menu.
+pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
+  paint_node(store, buffer, store.root, 0, 0);
 
   for overlay in store.open_overlays() {
-    paint_overlay(store, &mut buffer, overlay);
+    paint_overlay(store, buffer, overlay);
   }
 
-  draw_menu(store, &mut buffer, store.dark());
-
-  buffer
+  draw_menu(store, buffer, store.dark());
 }
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
@@ -207,8 +246,14 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
     let [red, green, blue, alpha] = color.to_rgba();
 
     if alpha > 0. {
-      for cell in &mut buffer.cells {
-        tint(cell, red, green, blue, alpha, dark);
+      for row in 0..buffer.height {
+        if buffer.rows.as_ref().is_some_and(|rows| !rows[row]) {
+          continue;
+        }
+
+        for cell in &mut buffer.cells[row * buffer.width..(row + 1) * buffer.width] {
+          tint(cell, red, green, blue, alpha, dark);
+        }
       }
     }
   }
@@ -309,7 +354,7 @@ enum NodePaint {
 fn border_paint(store: &Store, handle: Handle) -> Option<BorderPaint> {
   let cache = store.record(handle)?.kind.box_record()?.cache.as_ref()?;
 
-  cache.style.border.as_ref().map(|_| BorderPaint {
+  has_border(&cache.style).then(|| BorderPaint {
     glyphs: cache.style.ext.border_glyphs.unwrap_or_default(),
     color: cache.border_ink.and_then(terminal_rgb),
   })
@@ -436,6 +481,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         inset,
       }
     }
+    Kind::Run { .. } if is_inline_box(store, handle) => NodePaint::None,
     Kind::Run { props, cache } => {
       let style = cache.as_ref().map(|cache| &cache.style);
       let spans = wrap_spans(&record.text, width);
@@ -536,6 +582,10 @@ fn paint_node(
             continue;
           };
 
+          if character == INLINE_BOX {
+            continue;
+          }
+
           cell.character = character;
 
           if paint.foreground.is_some() {
@@ -550,6 +600,19 @@ fn paint_node(
             select_cell(cell, paint.selection);
           }
         }
+      }
+
+      // An inline box paints its own layout at the cell its placeholder flowed into.
+      for (run, (cell_x, cell_y)) in inline_box_cells(store, handle) {
+        let (location_x, location_y) = store.node_location(run);
+
+        paint_node(
+          store,
+          buffer,
+          run,
+          x + isize::try_from(cell_x - location_x).unwrap_or(0),
+          y + isize::try_from(cell_y - location_y).unwrap_or(0),
+        );
       }
     }
     NodePaint::Box {
@@ -643,7 +706,7 @@ fn paint_node(
           y + inset.1 + isize::try_from(row).expect("fits"),
         );
 
-        if buffer.cell_mut(caret_x, caret_y).is_some() {
+        if buffer.in_clip(caret_x, caret_y) {
           buffer.caret = u16::try_from(caret_x).ok().zip(u16::try_from(caret_y).ok());
         }
       }

@@ -9,7 +9,7 @@ use skene_views::{Column, Container, CornerRadius};
 
 use super::{
   SimplePalette,
-  shape::{CARD_INSET, CARD_RADIUS, CARD_SPACING, define_defaults, hairline},
+  shape::{CARD_RADIUS, SimpleUnit, define_defaults, hairline, shape},
 };
 
 /// A ready-made card: a raised, hairline-bordered, rounded surface grouping related
@@ -23,15 +23,20 @@ pub struct SimpleCard<D: Driver> {
   column: Column<D>,
 }
 
-impl<D: Driver> SimpleCard<D> {
+impl<D: Driver> SimpleCard<D>
+where
+  D::Scalar: SimpleUnit,
+{
   /// An empty card.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      column: Column::new().set_spacing(CARD_SPACING),
+      column: Column::new().set_spacing(shape::<D>().card_spacing),
     }
   }
+}
 
+impl<D: Driver> SimpleCard<D> {
   /// Sets the spacing between the card's children.
   #[inline(always)]
   pub fn set_spacing(
@@ -71,7 +76,10 @@ impl<D: Driver> SimpleCard<D> {
   }
 }
 
-impl<D: Driver> Default for SimpleCard<D> {
+impl<D: Driver> Default for SimpleCard<D>
+where
+  D::Scalar: SimpleUnit,
+{
   #[inline(always)]
   fn default() -> Self {
     Self::new()
@@ -91,13 +99,14 @@ impl<D: Driver> AnyKind for SimpleCard<D> {}
 
 impl<D: Driver> View<D> for SimpleCard<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
     Container::new()
-      .set_padding(CARD_INSET)
+      .set_padding(shape::<D>().card_inset)
       .set_color(SimplePalette::<D::Scalar>::CARD)
       .set_border(hairline(SimplePalette::<D::Scalar>::BORDER))
       .set_corner_radius(CARD_RADIUS)

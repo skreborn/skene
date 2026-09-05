@@ -1,0 +1,633 @@
+//! Controls in cells: focus and the keys the behaviors define, the toggles, the slider,
+//! the picker, a disabled control, and the Simple controls' shape.
+
+#![cfg(not(target_arch = "wasm32"))]
+
+mod common;
+
+use std::{cell::Cell, rc::Rc};
+
+use skene_tui::{self as tui, Activate, Range, prelude::*};
+
+use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_driver};
+
+/// Tab focuses a button, a `Focused` variant applies, and `Enter` clicks it.
+#[test]
+fn focus_variant_and_enter_click() {
+  with_driver(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = tui::mount(|| {
+      RawButton::new(Activate::new())
+        .set_width(6)
+        .set_height(3)
+        .set_border(
+          Border::new(1, Color::TRANSPARENT).when(State::Focused, Border::new(1, white())),
+        )
+        .handle_click(move || counted.set(counted.get() + 1))
+        .into_any()
+        .build()
+    });
+
+    assert!(!tui::render_to_text(8, 4).contains('┌'));
+
+    tui::trigger_key("Tab");
+
+    assert!(tui::render_to_text(8, 4).contains('┌'));
+
+    tui::trigger_key("Enter");
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// A mouse click hits the topmost control at the cell, runs its click handlers, and
+/// focuses it, so `Enter` and `Space` click it again.
+#[test]
+fn mouse_click_hits_and_focuses() {
+  with_driver(|| {
+    let first = Rc::new(Cell::new(0u32));
+    let second = Rc::new(Cell::new(0u32));
+    let (count_first, count_second) = (Rc::clone(&first), Rc::clone(&second));
+
+    let _ = tui::mount(|| {
+      Row::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .set_width(4)
+            .set_height(2)
+            .handle_click(move || count_first.set(count_first.get() + 1)),
+          RawButton::new(Activate::new())
+            .set_width(4)
+            .set_height(2)
+            .handle_click(move || count_second.set(count_second.get() + 1)),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_click(5, 0);
+    tui::trigger_key("Enter");
+    tui::trigger_key(" ");
+
+    assert_eq!(first.get(), 0);
+    assert_eq!(second.get(), 3);
+  });
+}
+
+/// A checkbox toggles by `Space` and by mouse click, both directions of the binding,
+/// and its mark repaints in the checked surface.
+#[test]
+fn checkbox_toggles_by_key_and_click() {
+  with_driver(|| {
+    let on = Signal::new(false);
+
+    let _ = tui::mount(|| SimpleCheckbox::new().bind_checked(on).into_any().build());
+
+    let unchecked = colors_at(6, 1, 0, 0).1;
+
+    tui::trigger_key("Tab");
+    tui::trigger_key(" ");
+
+    assert!(on.get_untracked());
+    assert_ne!(colors_at(6, 1, 0, 0).1, unchecked);
+
+    tui::trigger_mouse_click(0, 0);
+
+    assert!(!on.get_untracked());
+    assert_eq!(colors_at(6, 1, 0, 0).1, unchecked);
+  });
+}
+
+/// A labeled checkbox renders the mark and label as one control on one row, and
+/// clicking the label toggles it.
+#[test]
+fn checkbox_labels_render_and_toggle() {
+  with_driver(|| {
+    let on = Signal::new(false);
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_child(
+          SimpleCheckbox::new()
+            .bind_checked(on)
+            .set_label("subscribe"),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(16, 2);
+    let (column, row) = locate(&frame, "subscribe");
+
+    assert_eq!(row, 0, "the label sits beside the mark: {frame}");
+    assert!(column >= 1, "after the mark: {frame}");
+
+    tui::trigger_mouse_click(column + 4, row);
+
+    assert!(on.get_untracked(), "the label click toggled the checkbox");
+  });
+}
+
+/// Radios in a group are exclusive, the arrow keys move the check, and the bound signal
+/// follows the chosen value.
+#[test]
+fn radio_group_moves_the_check() {
+  with_driver(|| {
+    let choice = Signal::new(Some("a".to_owned()));
+
+    let _ = tui::mount(|| {
+      SimpleRadioGroup::new()
+        .bind_chosen(choice)
+        .set_child(Column::new().set_children((
+          SimpleRadio::new("a").set_label("a"),
+          SimpleRadio::new("b").set_label("b"),
+          SimpleRadio::new("c").set_label("c"),
+        )))
+        .into_any()
+        .build()
+    });
+    let frame = tui::render_to_text(6, 3);
+    let (_, row_a) = locate(&frame, "a");
+    let (_, row_c) = locate(&frame, "c");
+    let mark = |row: u16| colors_at(6, 3, 0, usize::from(row)).1;
+    let (chosen, plain) = (mark(row_a), mark(row_c));
+
+    assert_ne!(chosen, plain, "the chosen mark fills");
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("ArrowDown");
+
+    assert_eq!(choice.get_untracked().as_deref(), Some("c"));
+    assert_eq!(mark(row_c), chosen);
+    assert_eq!(mark(row_a), plain);
+  });
+}
+
+/// A slider nudges by its step on arrows, jumps to a clicked cell, and reaches its ends
+/// by `Home`, `End` and the page keys.
+#[test]
+fn slider_nudges_and_jumps() {
+  with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      RawSlider::new(
+        Range::new()
+          .set_min(0.)
+          .set_max(10.)
+          .set_step(1.)
+          .bind_value(volume),
+      )
+      .set_width(11)
+      .set_height(1)
+      .into_any()
+      .build()
+    });
+    let _ = tui::render_to_text(14, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowRight");
+    tui::trigger_key("ArrowRight");
+
+    assert!((volume.get_untracked() - 2.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_click(10, 0);
+
+    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_click(5, 0);
+
+    assert!((volume.get_untracked() - 5.).abs() < f32::EPSILON);
+
+    tui::trigger_key("Home");
+
+    assert!(volume.get_untracked().abs() < f32::EPSILON);
+
+    tui::trigger_key("PageUp");
+
+    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+
+    tui::trigger_key("PageDown");
+
+    assert!(volume.get_untracked().abs() < f32::EPSILON);
+
+    tui::trigger_key("End");
+
+    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+  });
+}
+
+/// A pressed slider drags: motion slides the value to the pointer's column until
+/// release, and motion after release changes nothing.
+#[test]
+fn slider_drags_to_the_pointer() {
+  with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(11)
+        .set_child(
+          RawSlider::new(
+            Range::new()
+              .set_min(0.)
+              .set_max(10.)
+              .set_step(1.)
+              .bind_value(volume),
+          )
+          .set_height(1),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(5, 0);
+
+    assert!((volume.get_untracked() - 5.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_drag(10, 0);
+
+    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_release(10, 0);
+    tui::trigger_mouse_drag(2, 0);
+
+    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+  });
+}
+
+/// A slider shows the open hand at rest and the closed hand while dragging.
+#[test]
+fn slider_shows_the_grab_cursors() {
+  with_driver(|| {
+    let volume = Signal::new(5.0f32);
+
+    let _ = tui::mount(|| {
+      RawSlider::new(
+        Range::new()
+          .set_min(0.)
+          .set_max(10.)
+          .set_step(1.)
+          .bind_value(volume),
+      )
+      .set_width(11)
+      .set_height(1)
+      .into_any()
+      .build()
+    });
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_mouse_move(5, 0);
+
+    assert_eq!(tui::current_cursor(), Some(MouseCursor::Grab));
+
+    tui::trigger_mouse_press(5, 0);
+    tui::trigger_mouse_drag(7, 0);
+
+    assert_eq!(tui::current_cursor(), Some(MouseCursor::Grabbing));
+
+    tui::trigger_mouse_release(7, 0);
+
+    assert_eq!(tui::current_cursor(), Some(MouseCursor::Grab));
+  });
+}
+
+fn picker(unit: Signal<String>) -> SimplePicker {
+  SimplePicker::new()
+    .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
+    .bind_value(unit)
+}
+
+/// Mounts a picker bound to `unit` at the top of the frame.
+fn mount_picker(unit: Signal<String>) {
+  let _ = tui::mount(|| Column::new().set_child(picker(unit)).into_any().build());
+}
+
+/// The row of the last line containing `needle`: the popup's row, beneath the face
+/// that shows the same label.
+fn last_row(frame: &str, needle: &str) -> Option<u16> {
+  frame
+    .lines()
+    .collect::<Vec<_>>()
+    .iter()
+    .rposition(|line| line.contains(needle))
+    .and_then(|row| u16::try_from(row).ok())
+}
+
+/// `Enter` opens the picker's options popup beneath the face with the chosen row
+/// highlighted, a row click selects and closes, and `Escape` dismisses without
+/// selecting.
+#[test]
+fn picker_opens_a_popup_and_selects_by_click() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+
+    let closed = tui::render_to_text(20, 10);
+
+    assert!(!closed.contains("cells"), "closed shows only the label");
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(20, 10);
+    let (face_column, face_row) = locate(&open, "pixels");
+    let chosen_row = last_row(&open, "pixels").expect("the popup lists the chosen option");
+    let other_row = last_row(&open, "cells").expect("the popup lists the other option");
+
+    assert!(
+      chosen_row > face_row,
+      "the popup opens beneath the face: {open}"
+    );
+    assert_ne!(
+      colors_at(20, 10, usize::from(face_column), usize::from(chosen_row)).1,
+      colors_at(20, 10, usize::from(face_column), usize::from(other_row)).1,
+      "the chosen row is highlighted: {open}",
+    );
+
+    tui::trigger_mouse_click(face_column, other_row);
+
+    assert_eq!(unit.get_untracked(), "cell", "the row click selected");
+
+    let after_click = tui::render_to_text(20, 10);
+
+    assert!(
+      !after_click.contains("pixels"),
+      "the selection closed the popup: {after_click}"
+    );
+
+    tui::trigger_key("Enter");
+    tui::trigger_key("Escape");
+
+    let dismissed = tui::render_to_text(20, 10);
+
+    assert!(
+      !dismissed.contains("pixels"),
+      "escape dismissed the reopened popup: {dismissed}"
+    );
+    assert_eq!(unit.get_untracked(), "cell");
+  });
+}
+
+/// Popup keyboard navigation moves focus without committing: `Escape` keeps the old
+/// value, `Enter` chooses the focused option.
+#[test]
+fn picker_popup_navigates_without_committing() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+    let _ = tui::render_to_text(20, 10);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Escape");
+
+    assert_eq!(unit.get_untracked(), "px", "escape keeps the old value");
+
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Enter");
+
+    assert_eq!(
+      unit.get_untracked(),
+      "cell",
+      "enter chooses the focused option"
+    );
+  });
+}
+
+/// `ArrowDown` on a closed picker opens the list rather than cycling the value, and
+/// the list's `End` and `Home` reach its ends.
+#[test]
+fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+    let _ = tui::render_to_text(20, 10);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowDown");
+
+    assert!(
+      tui::render_to_text(20, 10).contains("cells"),
+      "the list opened"
+    );
+    assert_eq!(unit.get_untracked(), "px", "opening chose nothing");
+
+    tui::trigger_key("End");
+    tui::trigger_key("Enter");
+
+    assert_eq!(unit.get_untracked(), "pt");
+
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("Home");
+    tui::trigger_key(" ");
+
+    assert_eq!(unit.get_untracked(), "px");
+  });
+}
+
+/// The options popup anchors beneath the picker and closes when focus leaves it.
+#[test]
+fn picker_popup_anchors_beneath_and_closes_on_blur() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          picker(unit).into_any(),
+          RawButton::new(Activate::new()).set_label("next").into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 12);
+
+    tui::trigger_key("Tab");
+
+    let face = tui::focused_node();
+
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(20, 12);
+    let (_, face_row) = locate(&open, "pixels");
+    let list_row = last_row(&open, "pixels").expect("the list shows");
+
+    assert!(
+      list_row > face_row && open.contains("cells"),
+      "the popup opens beneath the face: {open}"
+    );
+
+    tui::trigger_key("Tab");
+
+    let blurred = tui::render_to_text(20, 12);
+
+    assert!(
+      !blurred.contains("cells"),
+      "focus moving on closes the popup: {blurred}"
+    );
+    assert_ne!(tui::focused_node(), face, "focus moved on");
+    assert_eq!(unit.get_untracked(), "px", "nothing was chosen");
+  });
+}
+
+/// A control consumes its own press, so a clickable ancestor never fires under it—and
+/// the control still does what it does.
+#[test]
+fn a_control_keeps_its_press_from_an_ancestor() {
+  with_driver(|| {
+    let outer_runs = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&outer_runs);
+    let on = Signal::new(false);
+
+    let _ = tui::mount(|| {
+      Container::new()
+        .handle_click(move || counted.set(counted.get() + 1))
+        .set_child(SimpleCheckbox::new().bind_checked(on).set_label("c"))
+        .into_any()
+        .build()
+    });
+    let frame = tui::render_to_text(6, 1);
+    let (column, row) = locate(&frame, "c");
+
+    tui::trigger_mouse_click(column, row);
+
+    assert_eq!(outer_runs.get(), 0, "the press was the checkbox's");
+    assert!(on.get_untracked(), "which still toggled");
+  });
+}
+
+/// An authored state variant paints on a control: a hover color, and a focus color
+/// that wins over it while both hold.
+#[test]
+fn authored_state_variants_paint_on_a_control() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      RawButton::new(Activate::new())
+        .set_width(4)
+        .set_height(1)
+        .set_color(
+          red()
+            .when(State::Hovered, blue())
+            .when(State::FocusVisible, green()),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
+
+    tui::trigger_mouse_move(1, 0);
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(green())));
+
+    tui::trigger_mouse_move(5, 1);
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(green())));
+  });
+}
+
+/// A focus handle moves keyboard focus programmatically, and takes it away.
+#[test]
+fn a_focus_handle_moves_focus() {
+  with_driver(|| {
+    let handle = FocusHandle::new();
+    let bound = handle.clone();
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new()).set_label("first"),
+          RawButton::new(Activate::new())
+            .set_label("second")
+            .bind_focus(&bound),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 3);
+
+    assert_eq!(tui::focused_node(), None);
+
+    handle.focus();
+
+    assert_eq!(tui::focused_node(), handle.node());
+
+    handle.blur();
+
+    assert_eq!(tui::focused_node(), None);
+  });
+}
+
+/// A disabled control takes no focus and swallows the clicks it would act on.
+#[test]
+fn a_disabled_control_takes_no_focus_and_no_click() {
+  with_driver(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .set_label("off")
+            .set_disabled(true)
+            .handle_click(move || counted.set(counted.get() + 1)),
+          RawButton::new(Activate::new()).set_label("on"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = tui::render_to_text(10, 3);
+    let (column, row) = locate(&frame, "off");
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(
+      tui::focused_node(),
+      tui::focused_node().filter(|_| frame.contains("on")),
+    );
+    assert_ne!(tui::focused_node(), None);
+
+    tui::trigger_mouse_click(column, row);
+
+    assert_eq!(clicks.get(), 0);
+  });
+}
+
+/// A wrapping container's border frames a checkbox's mark, which paints inside it.
+#[test]
+fn a_container_frames_a_checkbox_mark() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_border(Border::new(1, white()))
+        .set_width(3)
+        .set_height(3)
+        .set_child(SimpleCheckbox::new().set_checked(true))
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(5, 3);
+
+    assert!(frame.contains('┌'), "{frame}");
+    assert!(frame.contains('✓'), "{frame}");
+    assert!(colors_at(5, 3, 1, 1).1.is_some(), "the mark fills its cell");
+  });
+}

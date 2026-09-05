@@ -313,7 +313,7 @@ impl Store {
       field.caret = start + column.min(line.chars().count());
     }
 
-    self.paint_dirty = true;
+    self.damage(handle);
   }
 }
 
@@ -335,7 +335,7 @@ pub(crate) fn edit_focused(event: &KeyEvent) {
     )?;
     let value = field.value.clone();
 
-    store.paint_dirty = true;
+    store.damage(focused);
 
     match edit {
       Edit::Value => {

@@ -121,6 +121,7 @@ pub use crate::terminal::{
   current_title,
   focused_node,
   layout_generation,
+  repainted_rows,
   set_style_calls,
   take_copied,
   take_opened,

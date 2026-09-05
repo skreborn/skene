@@ -133,12 +133,13 @@ impl Range {
     }
   }
 
-  /// Asks for the value under the pointer, along the measured width.
+  /// Asks for the value under the pointer—the center of the unit it names—along the
+  /// measured width, so the last unit reaches the end.
   fn slide(&self, event: &PointerEvent) {
     let extent = self.extent.get();
 
     if extent > 0. {
-      self.write(self.range().value_at(event.local_x / extent));
+      self.write(self.range().value_at((event.local_x + 0.5) / extent));
     }
   }
 

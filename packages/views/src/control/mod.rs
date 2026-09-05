@@ -15,7 +15,9 @@ use skene_core::{
   AccessProp,
   Alignment,
   Animation,
+  FlexDirection,
   FocusOrder,
+  ItemAlignment,
   KeyEvent,
   Layout,
   PointerEvent,
@@ -37,6 +39,7 @@ use skene_core::{
     DeclaredBoxStyle,
     Driver,
     EventKind,
+    Expr,
     IntoView,
     NoChild,
     NodeId,
@@ -131,6 +134,13 @@ pub trait Behavior<D: Driver>: 'static {
   #[inline(always)]
   fn lines(&self) -> u16 {
     1
+  }
+
+  /// Whether the label leads the control's parts and body, as a group's caption does,
+  /// rather than following them as a mark's does.
+  #[inline(always)]
+  fn label_leads(&self) -> bool {
+    false
   }
 
   /// Runs once the control's node exists and its reports have been read, before its
@@ -327,8 +337,10 @@ struct Observers {
 /// the control-scoped conditions (`Checked`, `Disabled`, …) and their focus against it.
 /// Holds [`NoChild`] until [`set_child`](Self::set_child) or
 /// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
-/// with a label or parts alone builds without one. The build runs in one batch, so
-/// what its subtree notifies while building is delivered once the subtree is mounted.
+/// with a label or parts alone builds without one. Its parts, its body and its label
+/// sit in one row half an em apart, centered on the cross axis, the label leading when
+/// the behavior says so. The build runs in one batch, so what its subtree notifies
+/// while building is delivered once the subtree is mounted.
 #[must_use]
 pub struct Control<D: Driver, B: Behavior<D>, C = NoChild> {
   behavior: B,
@@ -345,9 +357,16 @@ impl<D: Driver, B: Behavior<D>> Control<D, B> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[inline(always)]
   pub fn new(behavior: B) -> Self {
+    let mut inner = LayoutBox::new(Layout::Flex {
+      direction: FlexDirection::Row,
+    });
+
+    inner.style_mut().item_alignment = Some(ItemAlignment::Center.into());
+    inner.style_mut().spacing = Some(Expr::em(0.5).into());
+
     Self {
       behavior,
-      inner: LayoutBox::new(Layout::Single),
+      inner,
       label: None,
       disabled: None,
       focus_order: None,
@@ -659,6 +678,14 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
         bind_reports(&handle, &behavior, &disabled, focus_order);
         behavior.attach(&handle);
         register(node, &behavior, &handle, &disabled, observers);
+
+        let mut label = label;
+
+        if behavior.label_leads()
+          && let Some(label) = label.take()
+        {
+          mount_part::<D>(node, Part::Label, label.view.build());
+        }
 
         for (part, view) in parts {
           mount_part::<D>(node, part, view.build());

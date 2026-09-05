@@ -3,7 +3,7 @@
 
 use std::{rc::Rc, time::Instant};
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
   Color,
   ColorScheme,
@@ -31,7 +31,7 @@ use skene_core::{
 };
 use skene_reactive::{Owner, WriteSignal, signal};
 
-use crate::{TerminalExt, Tui, selection::Selection};
+use crate::{TerminalExt, Tui, paint::Buffer, selection::Selection};
 
 /// The size the driver reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
@@ -41,6 +41,9 @@ pub(crate) type PlainBox = BoxStyle<u32, Plain, TerminalExt>;
 
 /// A run's style resolved against live state.
 pub(crate) type PlainRun = RunStyle<Plain, TerminalExt>;
+
+/// A rectangle of cells on the screen: its origin, then its size.
+pub(crate) type CellRect = (i64, i64, i64, i64);
 
 /// The driver's sink: the index of a node's record and the generation it was minted
 /// in, so a handle whose record was destroyed reaches nothing.
@@ -90,11 +93,13 @@ pub(crate) struct BoxCache {
   pub(crate) border_ink: Option<Color>,
 }
 
-/// A run's style resolved under one generation and interaction.
+/// A run's style resolved under one generation and interaction, with the per-child
+/// layout properties a wrapper annotated the run with.
 pub(crate) struct RunCache {
   pub(crate) generation: u64,
   pub(crate) interaction: Interaction,
   pub(crate) style: PlainRun,
+  pub(crate) layout: PlainBox,
 }
 
 /// A box-like node's props and its resolution.
@@ -219,6 +224,8 @@ pub(crate) struct Record {
   pub(crate) reported: Option<Size<u32>>,
   /// The scroll offsets, in cells.
   pub(crate) scroll: (u32, u32),
+  /// The screen rectangle the node covered at the last paint.
+  pub(crate) painted: Option<CellRect>,
 }
 
 impl Record {
@@ -238,6 +245,7 @@ impl Record {
       observers: Vec::new(),
       reported: None,
       scroll: (0, 0),
+      painted: None,
     }
   }
 
@@ -354,7 +362,18 @@ pub(crate) struct Store {
   pub(crate) overlays: Vec<Handle>,
   pub(crate) focused: Option<Handle>,
   /// The path from the root to the deepest node under the mouse, when known.
-  pub(crate) hovered: Vec<Handle>,
+  hovered: Vec<Handle>,
+  /// The nodes on the hover path, for membership.
+  hovered_set: FxHashSet<Handle>,
+  /// The nodes whose paint changed since the last frame; each repaints the rows it
+  /// covered and covers.
+  damaged: Vec<Handle>,
+  /// Screen rectangles to repaint that no live node covers any more.
+  damaged_rects: Vec<CellRect>,
+  /// The last painted frame, which the next paints over where nothing changed.
+  pub(crate) last_frame: Option<Buffer>,
+  /// The rows the last paint rewrote.
+  pub(crate) repainted: Vec<usize>,
   pub(crate) drag: Option<Drag>,
   pub(crate) press: Option<Press>,
   /// Whether a left or right press has been delivered and not yet released; a release
@@ -400,6 +419,7 @@ pub(crate) struct Store {
   pub(crate) set_style_calls: u64,
   pub(crate) structure_dirty: bool,
   pub(crate) layout_dirty: bool,
+  /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub(crate) paint_dirty: bool,
   pub(crate) quit: bool,
   media: Option<MediaState>,
@@ -430,6 +450,11 @@ impl Store {
       overlays: Vec::new(),
       focused: None,
       hovered: Vec::new(),
+      hovered_set: FxHashSet::default(),
+      damaged: Vec::new(),
+      damaged_rects: Vec::new(),
+      last_frame: None,
+      repainted: Vec::new(),
       drag: None,
       press: None,
       left_held: false,
@@ -570,7 +595,14 @@ impl Store {
     }
 
     self.overlays.retain(|overlay| *overlay != handle);
-    self.hovered.retain(|hovered| *hovered != handle);
+
+    if self.hovered_set.remove(&handle) {
+      self.hovered.retain(|hovered| *hovered != handle);
+    }
+
+    if let Some(rect) = record.painted {
+      self.damaged_rects.push(rect);
+    }
 
     if self.focused == Some(handle) {
       self.focused = None;
@@ -723,7 +755,7 @@ impl Store {
     let holder = control.unwrap_or(handle);
 
     Interaction {
-      hovered: self.hovered.contains(&handle),
+      hovered: self.hovered_set.contains(&handle),
       focused: self.focused == Some(holder),
       pressed: self.left_held
         && self
@@ -752,6 +784,46 @@ impl Store {
     }
 
     names
+  }
+
+  /// The hover path, from the root to the deepest node under the mouse.
+  #[inline(always)]
+  pub(crate) fn hovered(&self) -> &[Handle] {
+    &self.hovered
+  }
+
+  /// Replaces the hover path, returning the previous one.
+  pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) -> Vec<Handle> {
+    self.hovered_set.clear();
+    self.hovered_set.extend(next.iter().copied());
+
+    std::mem::replace(&mut self.hovered, next)
+  }
+
+  /// Marks `handle` for repaint: the rows it covered at the last paint and the rows it
+  /// covers now are rewritten at the next frame.
+  #[inline(always)]
+  pub(crate) fn damage(&mut self, handle: Handle) {
+    self.damaged.push(handle);
+  }
+
+  /// Takes the nodes and rectangles marked for repaint.
+  pub(crate) fn take_damage(&mut self) -> (Vec<Handle>, Vec<CellRect>) {
+    (
+      std::mem::take(&mut self.damaged),
+      std::mem::take(&mut self.damaged_rects),
+    )
+  }
+
+  /// Whether anything is left to paint: a whole-frame repaint, a layout or structure
+  /// change, or a damaged node.
+  #[inline(always)]
+  pub(crate) fn needs_frame(&self) -> bool {
+    self.paint_dirty
+      || self.layout_dirty
+      || self.structure_dirty
+      || !self.damaged.is_empty()
+      || !self.damaged_rects.is_empty()
   }
 
   /// Whether the scheme in force is dark: the app's choice when it has made one, and

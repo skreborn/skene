@@ -227,7 +227,11 @@ fn a_checkbox_mark_follows_the_checked_state() {
     resolve_border(mark),
     Some(Border::new(1., light(&palette.border)))
   );
-  assert_eq!(resolve_color(glyph, TEXT_COLOR), Some(Color::TRANSPARENT));
+  assert_eq!(
+    resolve_color(glyph, TEXT_COLOR),
+    Some(light(&palette.card)),
+    "the unchecked glyph hides in the mark's surface"
+  );
 
   let _clicked = trigger_click(checkbox);
 
@@ -617,7 +621,8 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   assert_eq!(resolve_color(row(0), COLOR), Some(Color::TRANSPARENT));
   assert_eq!(
     resolve_color(check(0), TEXT_COLOR),
-    Some(Color::TRANSPARENT)
+    Some(light(&palette.card)),
+    "an unchosen check hides in the list's surface"
   );
   assert_eq!(
     resolve_color(caption(0), TEXT_COLOR),

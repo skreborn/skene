@@ -553,15 +553,18 @@ impl<D: Driver> Scene<D> {
     self.record(node).map(|record| record.sink.clone())
   }
 
-  /// Mints a detached node of `kind` owning `sink`; a box or a control consumes the
-  /// pending annotation, and a control starts in the default [`ControlState`].
+  /// Mints a detached node of `kind` owning `sink`; a box, a control or a run consumes
+  /// the pending annotation, and a control starts in the default [`ControlState`].
+  ///
+  /// A box folds the annotation into its style before creation; a run keeps it on its
+  /// record, where the driver reads it when it lays the run out.
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
   pub fn create(&mut self, kind: NodeKind, sink: D::Sink) -> NodeId {
     let is_control = kind == NodeKind::Control;
-    let annotation = if kind == NodeKind::Box || is_control {
+    let annotation = if matches!(kind, NodeKind::Box | NodeKind::Control | NodeKind::Run) {
       self.pending_annotation.take()
     }
     else {

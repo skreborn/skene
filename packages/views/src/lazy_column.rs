@@ -5,6 +5,7 @@ use std::{hash::Hash, rc::Rc};
 use skene_core::{
   Dimension,
   FlexDirection,
+  Flexibility,
   ItemWindow,
   Layout,
   Overflow,
@@ -106,9 +107,11 @@ impl<D: Driver> LazyColumn<D> {
           },
           key,
           move |item| {
-            Container::<D>::new()
-              .set_height(Dimension::Length(D::Scalar::from_f32(item_height)))
-              .set_child(view(item).into_view())
+            rigid(
+              Container::<D>::new()
+                .set_height(Dimension::Length(D::Scalar::from_f32(item_height)))
+                .set_child(view(item).into_view()),
+            )
           },
         )
       },
@@ -118,6 +121,21 @@ impl<D: Driver> LazyColumn<D> {
 
     self
   }
+}
+
+/// `container` kept at its own height in the list: a flex item that neither grows nor
+/// shrinks, so the spacers and the items measure the whole content.
+fn rigid<D: Driver>(mut container: Container<D>) -> Container<D> {
+  container.style_mut().flex = Some(
+    Flexibility {
+      initial: Dimension::Auto,
+      grow_factor: 0.,
+      shrink_factor: 0.,
+    }
+    .into(),
+  );
+
+  container
 }
 
 impl<D: Driver> Default for LazyColumn<D> {
@@ -157,7 +175,9 @@ impl<D: Driver> View<D> for LazyColumn<D> {
       direction: FlexDirection::Column,
     })
     .handle_scroll(move |event: &ScrollEvent| offset.set(event.y))
-    .set_child(Container::<D>::new().derive_height(move || extent(window.get().0.start)));
+    .set_child(rigid(
+      Container::<D>::new().derive_height(move || extent(window.get().0.start)),
+    ));
 
     list.style_mut().overflow = Some(Overflow::Auto.into());
 
@@ -166,11 +186,11 @@ impl<D: Driver> View<D> for LazyColumn<D> {
     }
 
     let node = list
-      .set_child(Container::<D>::new().derive_height(move || {
+      .set_child(rigid(Container::<D>::new().derive_height(move || {
         let (window, count) = window.get();
 
         extent(count - window.end)
-      }))
+      })))
       .build();
 
     batch(|| {

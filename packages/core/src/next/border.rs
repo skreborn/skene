@@ -8,8 +8,8 @@ use crate::Color;
 /// A solid border: a width in the facade's scalar unit and a color that may be a token
 /// or an expression.
 ///
-/// The terminal's width is always one cell; the corner radius is a property of the
-/// medium's extension.
+/// The terminal draws any width above zero as one cell and a zero width as no border;
+/// the corner radius is a property of the medium's extension.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Border<N> {

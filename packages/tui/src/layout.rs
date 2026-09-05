@@ -22,10 +22,13 @@ use taffy::{
 };
 
 use crate::{
-  paint::{longest_word, wrap_text},
+  paint::{longest_word, wrap_spans, wrap_text},
   resolve::Env,
   store::{BoxCache, Handle, Kind, PlainBox, Record, RunCache, Store},
 };
+
+/// The character standing in for one cell of an inline box in its paragraph's text.
+pub(crate) const INLINE_BOX: char = '\u{fffc}';
 
 /// What one restyle of a node decided.
 struct Restyled {
@@ -34,7 +37,7 @@ struct Restyled {
 }
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
-/// laid-out child is an inline text run.
+/// laid-out child is an inline text run or an inline box.
 pub(crate) fn is_paragraph(store: &Store, handle: Handle) -> bool {
   if store.record(handle).and_then(Record::layout) != Some(Layout::Flow) {
     return false;
@@ -46,9 +49,118 @@ pub(crate) fn is_paragraph(store: &Store, handle: Handle) -> bool {
     && children.iter().all(|child| {
       matches!(
         store.record(*child).map(|record| &record.kind),
-        Some(Kind::Run { props, .. }) if props.display == RunDisplay::Inline
+        Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
       )
     })
+}
+
+/// Whether `handle` is an inline box: a run laid out as a box among its paragraph's
+/// text, its text the placeholder its measured width fills.
+pub(crate) fn is_inline_box(store: &Store, handle: Handle) -> bool {
+  matches!(
+    store.record(handle).map(|record| &record.kind),
+    Some(Kind::Run { props, .. }) if props.display == RunDisplay::InlineBox
+  )
+}
+
+/// The inline boxes of the paragraph `handle`, each with the cell its placeholder
+/// flowed into, relative to the paragraph's origin, against the last layout.
+pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i64, i64))> {
+  let runs = paragraph_runs(store, handle);
+
+  if !runs.iter().any(|run| is_inline_box(store, *run)) {
+    return Vec::new();
+  }
+
+  let (width, _) = store.node_size(handle);
+  let lines = wrap_spans(
+    &paragraph_text(store, handle),
+    usize::try_from(width).unwrap_or(1),
+  );
+  let mut offset = 0;
+  let mut cells = Vec::new();
+
+  for run in runs {
+    let Some(record) = store.record(run)
+    else {
+      continue;
+    };
+    let start = offset;
+
+    offset += record.text.chars().count();
+
+    if !is_inline_box(store, run) {
+      continue;
+    }
+
+    let Some((row, (line_start, _))) = lines
+      .iter()
+      .enumerate()
+      .rev()
+      .find(|(_, (line_start, _))| *line_start <= start)
+    else {
+      continue;
+    };
+
+    cells.push((
+      run,
+      (
+        i64::try_from(start - line_start).unwrap_or(0),
+        i64::try_from(row).unwrap_or(0),
+      ),
+    ));
+  }
+
+  cells
+}
+
+/// Lays every inline box out on its own and writes the placeholder its width fills
+/// into its text; `true` when a placeholder changed, in which case its paragraph
+/// measures again.
+pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
+  let mut changed = false;
+
+  for handle in store.handles() {
+    if !is_inline_box(store, handle) {
+      continue;
+    }
+
+    let Some(taffy) = store.record(handle).and_then(|record| record.taffy)
+    else {
+      continue;
+    };
+
+    store
+      .taffy
+      .compute_layout_with_measure(
+        taffy,
+        taffy::geometry::Size {
+          width: AvailableSpace::MaxContent,
+          height: AvailableSpace::MaxContent,
+        },
+        |known, available, _, text, _| measure_run(known, available, text),
+      )
+      .expect("compute an inline box's layout");
+
+    let (width, _) = store.node_size(handle);
+    let placeholder: String =
+      std::iter::repeat_n(INLINE_BOX, usize::try_from(width).unwrap_or(1).max(1)).collect();
+    let Some(record) = store.record_mut(handle)
+    else {
+      continue;
+    };
+
+    if record.text != placeholder {
+      record.text = placeholder;
+      changed = true;
+    }
+  }
+
+  if changed {
+    store.layout_dirty = true;
+  }
+
+  changed
 }
 
 /// The text of the paragraph `handle`: every inline run beneath it, in order.
@@ -85,7 +197,7 @@ fn collect_runs(store: &Store, handle: Handle, runs: &mut Vec<Handle>) {
       continue;
     }
 
-    if store.layout_children(child).is_empty() {
+    if is_inline_box(store, child) || store.layout_children(child).is_empty() {
       runs.push(child);
     }
     else {
@@ -164,26 +276,45 @@ fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
     let env = Env::of(store, handle);
     let resolved_box = env.resolve_box();
     let resolved_run = env.resolve_run();
+    let resolved_layout = env.resolve_run_layout();
     let record = store.record_mut(handle)?;
 
-    match &mut record.kind {
+    // A node whose resolution came out different from the last one repaints.
+    let repaint = match &mut record.kind {
       Kind::Run { cache, .. } => {
+        let repaint = cache.as_ref().map(|cache| &cache.style) != resolved_run.as_ref();
+
         *cache = resolved_run.map(|style| RunCache {
           generation,
           interaction,
           style,
+          layout: resolved_layout,
         });
+
+        repaint
       }
-      kind => {
-        if let (Some(inner), Some((style, border_ink))) = (kind.box_record_mut(), resolved_box) {
+      kind => match (kind.box_record_mut(), resolved_box) {
+        (Some(inner), Some((style, border_ink))) => {
+          let repaint = inner
+            .cache
+            .as_ref()
+            .is_none_or(|cache| cache.style != style || cache.border_ink != border_ink);
+
           inner.cache = Some(BoxCache {
             generation,
             interaction,
             style,
             border_ink,
           });
+
+          repaint
         }
-      }
+        _ => false,
+      },
+    };
+
+    if repaint {
+      store.damage(handle);
     }
   }
 
@@ -198,14 +329,33 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
     .and_then(|parent| store.record(parent))
     .and_then(Record::layout)
     == Some(Layout::Stack);
-  let fills_root = layout_parent == Some(store.root) && !record.is_overlay();
+  // The root's child fills the viewport, unless it sizes its own height.
+  let fills_root = layout_parent == Some(store.root)
+    && !record.is_overlay()
+    && record
+      .kind
+      .box_style()
+      .is_none_or(|style| style.height.is_none());
 
   match &record.kind {
-    Kind::Run { props, .. } => {
+    Kind::Run { props, cache } => {
       let mut style = Style::default();
       let inline = props.display != RunDisplay::Block;
       let has_children = !store.layout_children(handle).is_empty();
-      let text = if record.text.is_empty() && has_children {
+
+      // A wrapper's properties on a bare run: its flexibility, alignment, pinning and
+      // grid placement, folded like a box's.
+      if let Some(cache) = cache {
+        apply_box_sizing(&mut style, &cache.layout, in_stack);
+      }
+
+      let text = if props.display == RunDisplay::InlineBox {
+        // An inline box lays out on its own, at its content's size.
+        style.display = Display::Flex;
+
+        None
+      }
+      else if record.text.is_empty() && has_children {
         style.display = Display::Flex;
 
         None
@@ -250,7 +400,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
       let mut style = box_taffy_style(inner.props.layout, &resolved, in_stack);
 
       if let Some(field) = field {
-        let border = u32::from(resolved.border.is_some());
+        let border = u32::from(has_border(&resolved));
         let padding = resolved.padding.unwrap_or_default();
 
         if resolved.width.is_none() {
@@ -641,7 +791,7 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
     out.inset = dimension_rect(offset);
   }
 
-  if style.border.is_some() {
+  if has_border(style) {
     out.border = taffy::geometry::Rect {
       left: length(1.),
       right: length(1.),
@@ -733,6 +883,13 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   if in_stack {
     stack_cell(out);
   }
+}
+
+/// Whether the resolved style draws a border: one of a width above zero, which the
+/// terminal draws as one cell.
+#[inline(always)]
+pub(crate) fn has_border(style: &PlainBox) -> bool {
+  style.border.as_ref().is_some_and(|border| border.width > 0)
 }
 
 /// A cell length as layout units.

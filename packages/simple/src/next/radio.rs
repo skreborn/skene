@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use skene_core::{
   Alignment,
   Color,
+  Dimension,
   MouseCursor,
   next::{
     AnyKind,
@@ -25,7 +26,7 @@ use skene_views::{Container, CornerRadius, RadioMember, RawRadio, RawRadioGroup,
 
 use super::{
   SimplePalette,
-  shape::{DOT_SIZE, MARK_SIZE, ROUND, define_defaults, hairline},
+  shape::{ROUND, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -167,31 +168,33 @@ impl<D: Driver> AnyKind for SimpleRadio<D> {}
 
 impl<D: Driver> View<D> for SimpleRadio<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
+    let shape = shape::<D>();
     let dot = Container::<D>::new()
-      .set_width(DOT_SIZE)
-      .set_height(DOT_SIZE)
+      .set_width(Dimension::Length(shape.dot_size))
+      .set_height(Dimension::Length(shape.dot_size))
       .set_corner_radius(ROUND / 2.)
       .set_color(
         Color::TRANSPARENT.when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
       );
     let ring = Container::<D>::new()
-      .set_width(MARK_SIZE)
-      .set_height(MARK_SIZE)
-      .set_color(SimplePalette::<D::Scalar>::CARD)
+      .set_width(Dimension::Length(shape.mark_size))
+      .set_height(Dimension::Length(shape.mark_size))
+      .set_color(shape.mark_surface)
       .set_border(
-        hairline(SimplePalette::<D::Scalar>::BORDER)
+        border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
           .when(
             State::Checked,
-            hairline::<D::Scalar>(SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+            border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
           )
           .when(
             State::FocusVisible,
-            hairline::<D::Scalar>(SimplePalette::<D::Scalar>::RING),
+            border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
           ),
       )
       .set_corner_radius(ROUND)

@@ -8,9 +8,9 @@ use skene_reactive::Set;
 
 use crate::{
   interaction::scroll_to,
-  layout,
+  layout::{self, is_inline_box, is_paragraph},
   paint::{self, Buffer},
-  store::{Handle, Record, Store},
+  store::{CellRect, Handle, Record, Store},
   with_store,
 };
 
@@ -20,10 +20,12 @@ const SETTLE_ROUNDS: usize = 4;
 
 /// Lays the tree out at `width` x `height` cells and paints it.
 ///
-/// The size reports, container measurements and scroll-into-view resolve between
-/// layout and paint; the handlers they run may rebuild content, so the layout is
-/// computed again until it settles (bounded, so a pathological feedback loop still
-/// paints).
+/// The size reports, container measurements, inline box measurements and
+/// scroll-into-view resolve between layout and paint; the handlers they run may rebuild
+/// content, so the layout is computed again until it settles (bounded, so a
+/// pathological feedback loop still paints). The paint rewrites the rows the changed
+/// nodes covered and cover, over the previous frame; a whole-frame change rewrites
+/// every row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   resize(width, height);
 
@@ -39,28 +41,140 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
 
       store.layout_dirty = false;
       layout::compute(store, width, height);
+      layout::measure_inline_boxes(store);
 
       true
     });
-
-    if !laid_out {
-      break;
-    }
-
-    let containers = measure_containers();
-    let reported = report_sizes();
+    let containers = laid_out && measure_containers();
+    let reported = laid_out && report_sizes();
     let revealed = reveal();
 
-    if !(containers || reported || revealed) {
+    let settled = !(containers || reported || revealed || with_store(|store| store.layout_dirty));
+
+    if settled {
       break;
     }
   }
 
   with_store(|store| {
-    store.paint_dirty = false;
+    let (width, height) = (usize::from(width), usize::from(height));
+    let previous = store
+      .last_frame
+      .take()
+      .filter(|frame| frame.width == width && frame.height == height);
+    let full = std::mem::take(&mut store.paint_dirty) || previous.is_none();
+    let rows = damaged_rows(store, height);
+    let mut buffer = match previous {
+      Some(previous) if !full => previous.repainting(&rows),
+      _ => Buffer::new(width, height),
+    };
 
-    paint::paint(store, width, height)
+    store.repainted = rows
+      .iter()
+      .enumerate()
+      .filter(|(_, repaint)| full || **repaint)
+      .map(|(row, _)| row)
+      .collect();
+
+    paint::paint(store, &mut buffer);
+    record_painted(store);
+
+    store.last_frame = Some(buffer.clone());
+
+    buffer
   })
+}
+
+/// The rows the next paint rewrites: those the damaged nodes covered at the last paint
+/// and cover now, those of the rectangles no node covers any more, and those of every
+/// node the layout moved or resized.
+fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
+  let (damaged, mut rects) = store.take_damage();
+
+  for handle in damaged {
+    let target = paint_owner(store, handle);
+
+    rects.extend(store.record(target).and_then(|record| record.painted));
+    rects.extend(current_rect(store, target));
+  }
+
+  for handle in store.handles() {
+    let Some(record) = store.record(handle)
+    else {
+      continue;
+    };
+
+    if !record.kind.is_laid_out() {
+      continue;
+    }
+
+    let current = current_rect(store, handle);
+
+    if record.painted != current {
+      rects.extend(record.painted);
+      rects.extend(current);
+    }
+  }
+
+  let mut rows = vec![false; height];
+
+  for (_, y, _, extent) in rects {
+    let from = usize::try_from(y.max(0)).unwrap_or(0).min(height);
+    let to = usize::try_from((y + extent).max(0))
+      .unwrap_or(0)
+      .min(height);
+
+    rows[from..to].fill(true);
+  }
+
+  rows
+}
+
+/// The node whose paint covers `handle`: the paragraph an inline run or an inline box
+/// flows in, else the node itself.
+fn paint_owner(store: &Store, handle: Handle) -> Handle {
+  let mut owner = handle;
+
+  while let Some(parent) = store.layout_parent(owner) {
+    if !(is_paragraph(store, parent) || is_inline_box(store, parent)) {
+      break;
+    }
+
+    owner = parent;
+  }
+
+  owner
+}
+
+/// The screen rectangle `handle` paints now, grown by the cell its shadow casts into;
+/// `None` for a node without extent.
+fn current_rect(store: &Store, handle: Handle) -> Option<CellRect> {
+  let (width, height) = store.node_size(handle);
+
+  if width <= 0 || height <= 0 {
+    return None;
+  }
+
+  let (x, y) = store.screen_origin(handle);
+  let shadow = i64::from(
+    store
+      .record(handle)
+      .and_then(|record| record.kind.box_style())
+      .is_some_and(|style| style.ext.shadow.is_some()),
+  );
+
+  Some((x, y, width + shadow, height + shadow))
+}
+
+/// Records the rectangle every laid-out node covers at this paint.
+fn record_painted(store: &mut Store) {
+  for handle in store.handles() {
+    let rect = current_rect(store, handle);
+
+    if let Some(record) = store.record_mut(handle) {
+      record.painted = rect;
+    }
+  }
 }
 
 /// Records the terminal size, moving the viewport signal and every resolved style when

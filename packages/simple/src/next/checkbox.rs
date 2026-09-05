@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use skene_core::{
   Alignment,
-  Color,
+  Dimension,
   MouseCursor,
   next::{AnyKind, Driver, HasChildren, NodeId, Part, State, View, When},
 };
@@ -13,7 +13,7 @@ use skene_views::{Container, CornerRadius, RawCheckbox, Text, Toggle};
 
 use super::{
   SimplePalette,
-  shape::{MARK_RADIUS, MARK_SIZE, define_defaults, hairline},
+  shape::{MARK_RADIUS, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -92,33 +92,40 @@ impl<D: Driver> AnyKind for SimpleCheckbox<D> {}
 
 impl<D: Driver> View<D> for SimpleCheckbox<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
+    let shape = shape::<D>();
     let mark = Container::<D>::new()
-      .set_width(MARK_SIZE)
-      .set_height(MARK_SIZE)
+      .set_width(Dimension::Length(shape.mark_size))
+      .set_height(Dimension::Length(shape.mark_size))
       .set_color(
-        SimplePalette::<D::Scalar>::CARD
+        shape
+          .mark_surface
           .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
       )
       .set_border(
-        hairline(SimplePalette::<D::Scalar>::BORDER)
+        border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
           .when(
             State::Checked,
-            hairline::<D::Scalar>(SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+            border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
           )
           .when(
             State::FocusVisible,
-            hairline::<D::Scalar>(SimplePalette::<D::Scalar>::RING),
+            border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
           ),
       )
       .set_corner_radius(MARK_RADIUS)
       .set_alignment(Alignment::CENTER)
+      // An unchecked mark's check is inked in the mark's own surface, so it hides on
+      // every medium.
       .set_child(Text::new("✓").set_color(
-        Color::TRANSPARENT.when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
+        shape
+          .mark_surface
+          .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
       ));
     let mut control = RawCheckbox::new(self.toggle)
       .set_cursor(MouseCursor::Click)

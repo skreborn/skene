@@ -155,6 +155,11 @@ impl<D: Driver> Behavior<D> for Roving {
     &[]
   }
 
+  #[inline(always)]
+  fn label_leads(&self) -> bool {
+    true
+  }
+
   fn attach(&self, control: &ControlHandle<D>) {
     let chosen = self.chosen.clone();
     let on_choose = self.on_choose.clone();

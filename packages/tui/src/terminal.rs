@@ -161,8 +161,7 @@ where
       emit_title(&title);
     }
 
-    let dirty =
-      with_store(|store| store.paint_dirty || store.layout_dirty || store.structure_dirty);
+    let dirty = with_store(|store| store.needs_frame());
 
     if dirty {
       // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
@@ -743,4 +742,12 @@ pub fn layout_generation() -> u64 {
 #[must_use]
 pub fn set_style_calls() -> u64 {
   with_store(|store| store.set_style_calls)
+}
+
+/// The rows the last render rewrote, for a test asserting that a change repainted only
+/// the rows it touched.
+#[cfg(feature = "test")]
+#[must_use]
+pub fn repainted_rows() -> Vec<usize> {
+  with_store(|store| store.repainted.clone())
 }

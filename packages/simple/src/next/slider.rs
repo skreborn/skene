@@ -15,7 +15,7 @@ use skene_views::{Container, CornerRadius, Range, RawSlider, Stack};
 
 use super::{
   SimplePalette,
-  shape::{ROUND, THUMB_SIZE, TRACK_HEIGHT, TRACK_RADIUS, as_part, border, define_defaults},
+  shape::{ROUND, SimpleUnit, TRACK_RADIUS, as_part, border, define_defaults, shape},
 };
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
@@ -118,11 +118,13 @@ impl<D: Driver> AnyKind for SimpleSlider<D> {}
 
 impl<D: Driver> View<D> for SimpleSlider<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
+    let shape = shape::<D>();
     let Self {
       min,
       max,
@@ -139,7 +141,7 @@ where
       Part::Fill,
       Container::<D>::new()
         .derive_width(move || Dimension::Fraction(range.fraction_of(filled())))
-        .set_height(TRACK_HEIGHT)
+        .set_height(Dimension::Length(shape.track_height))
         .set_corner_radius(TRACK_RADIUS)
         .set_color(SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
     );
@@ -147,7 +149,7 @@ where
       Part::Track,
       Container::<D>::new()
         .set_width(Dimension::Fraction(1.))
-        .set_height(TRACK_HEIGHT)
+        .set_height(Dimension::Length(shape.track_height))
         .set_corner_radius(TRACK_RADIUS)
         .set_color(SimplePalette::<D::Scalar>::SECONDARY_SURFACE)
         .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
@@ -156,18 +158,20 @@ where
     let thumb = as_part::<D>(
       Part::Thumb,
       Container::<D>::new()
-        .set_width(THUMB_SIZE)
-        .set_height(THUMB_SIZE)
+        .set_width(Dimension::Length(shape.thumb_size))
+        .set_height(Dimension::Length(shape.thumb_size))
         .set_corner_radius(ROUND)
         .set_color(SimplePalette::<D::Scalar>::PRIMARY_SURFACE)
-        .set_border(border(2., SimplePalette::<D::Scalar>::BACKGROUND).when(
-          State::FocusVisible,
-          border::<D::Scalar>(2., SimplePalette::<D::Scalar>::RING),
-        )),
+        .set_border(
+          border(shape.thumb_ring, SimplePalette::<D::Scalar>::BACKGROUND).when(
+            State::FocusVisible,
+            border(shape.thumb_ring, SimplePalette::<D::Scalar>::RING),
+          ),
+        ),
     );
     let rail = Container::<D>::new()
       .derive_width(move || Dimension::Fraction(range.fraction_of(placed())))
-      .set_height(THUMB_SIZE)
+      .set_height(Dimension::Length(shape.thumb_size))
       .set_alignment(Alignment::new(ItemAlignment::End, ItemAlignment::Center))
       .set_child(thumb);
     let mut behavior = Range::new()
@@ -186,7 +190,7 @@ where
       .set_child(
         Container::<D>::new()
           .set_width(Dimension::Fraction(1.))
-          .set_height(THUMB_SIZE)
+          .set_height(Dimension::Length(shape.thumb_size))
           .set_child(Stack::new().set_children((track, rail))),
       )
       .build()

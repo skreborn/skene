@@ -34,6 +34,7 @@ use skene_core::{
 
 use crate::{
   Tui,
+  layout::{inline_box_cells, is_paragraph},
   paint::control_kind,
   store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
   with_store,
@@ -167,7 +168,23 @@ impl Store {
 
     path.push((handle, (origin_x, origin_y)));
 
-    if crate::layout::is_paragraph(self, handle) {
+    if is_paragraph(self, handle) {
+      // An inline box hits through the cells its placeholder flowed into.
+      for (run, (cell_x, cell_y)) in inline_box_cells(self, handle) {
+        let (location_x, location_y) = self.node_location(run);
+
+        if self.hit_walk(
+          run,
+          origin_x + cell_x - location_x,
+          origin_y + cell_y - location_y,
+          x,
+          y,
+          path,
+        ) {
+          break;
+        }
+      }
+
       return true;
     }
 
@@ -226,7 +243,7 @@ impl Store {
       };
 
       if record.kind.is_laid_out() {
-        let (location_x, location_y) = self.node_location(visited);
+        let (location_x, location_y) = self.inline_location(visited);
 
         x += location_x;
         y += location_y;
@@ -243,6 +260,22 @@ impl Store {
     }
 
     (x, y)
+  }
+
+  /// A node's position within its layout parent: its laid-out location, or the cell
+  /// its placeholder flowed into for an inline box inside a paragraph.
+  fn inline_location(&self, handle: Handle) -> (i64, i64) {
+    let inline = self
+      .layout_parent(handle)
+      .filter(|parent| is_paragraph(self, *parent));
+
+    match inline {
+      Some(paragraph) => inline_box_cells(self, paragraph)
+        .into_iter()
+        .find(|(run, _)| *run == handle)
+        .map_or((0, 0), |(_, cell)| cell),
+      None => self.node_location(handle),
+    }
   }
 
   /// A node's on-screen origin: like [`absolute_origin`](Self::absolute_origin), but
@@ -264,7 +297,7 @@ impl Store {
       }
 
       if record.kind.is_laid_out() {
-        let (location_x, location_y) = self.node_location(visited);
+        let (location_x, location_y) = self.inline_location(visited);
 
         x += location_x;
         y += location_y;
@@ -340,7 +373,7 @@ impl Store {
   /// The pointer shape for the current hover path: the deepest hovered node with a
   /// cursor set, else the default its kind implies.
   pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
-    if matches!(self.drag, Some(Drag::Scrollbar { .. })) {
+    if matches!(self.drag, Some(Drag::Scrollbar { .. })) || self.drags_range() {
       return Some(MouseCursor::Grabbing);
     }
 
@@ -350,7 +383,7 @@ impl Store {
       return Some(MouseCursor::Click);
     }
 
-    self.hovered.iter().rev().find_map(|handle| {
+    self.hovered().iter().rev().find_map(|handle| {
       let record = self.record(*handle)?;
 
       if let Some(style) = record.kind.box_style()
@@ -375,6 +408,17 @@ impl Store {
         .is_some()
         .then_some(MouseCursor::Text)
     })
+  }
+
+  /// Whether a held left press landed on a slider, which follows the pointer until the
+  /// release.
+  fn drags_range(&self) -> bool {
+    self.left_held
+      && self
+        .press
+        .as_ref()
+        .and_then(|press| press.target)
+        .is_some_and(|target| control_kind(self, target) == Some(ControlKind::Range))
   }
 
   /// A node's resolved overflow, `Visible` when unset or the node has no box style.
@@ -448,7 +492,7 @@ impl Store {
 
   /// Stores a node's offsets and repaints; the scroll notification is the caller's.
   fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
-    self.paint_dirty = true;
+    self.damage(handle);
 
     let record = self.record_mut(handle)?;
 
@@ -528,6 +572,34 @@ impl Store {
     }
   }
 
+  /// The open anchored popups focus leaves when it moves to `next`: neither the popup
+  /// nor the anchor it opened from holds the new focus, so each asks to close.
+  fn popups_left_by(&self, next: Option<Handle>) -> Vec<NodeId> {
+    let ancestors = next.map(|next| self.ancestors(next)).unwrap_or_default();
+
+    self
+      .open_overlays()
+      .into_iter()
+      .filter_map(|overlay| {
+        let record = self.record(overlay)?;
+        let Kind::Overlay {
+          modal: false,
+          anchor: Some(anchor),
+          ..
+        } = &record.kind
+        else {
+          return None;
+        };
+
+        if ancestors.contains(&overlay) || ancestors.contains(anchor) {
+          return None;
+        }
+
+        record.node
+      })
+      .collect()
+  }
+
   /// Whether the record is a text entry.
   pub(crate) fn is_field(&self, handle: Handle) -> bool {
     self
@@ -545,14 +617,16 @@ fn store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
 /// newly focused node is scrolled into view at the next render, and a newly focused
 /// entry's caret moves to the value's end.
 pub(crate) fn set_focus(next: Option<Handle>) {
-  let (previous, gained) = store(|store| {
+  let (previous, gained, dismissed) = store(|store| {
     let previous = std::mem::replace(&mut store.focused, next);
 
     if previous == next {
-      return (None, None);
+      return (None, None, Vec::new());
     }
 
-    store.paint_dirty = true;
+    if let Some(previous) = previous {
+      store.damage(previous);
+    }
 
     if let Some(next) = next {
       if let Some(field) = store
@@ -562,12 +636,14 @@ pub(crate) fn set_focus(next: Option<Handle>) {
         field.caret = field.value.chars().count();
       }
 
+      store.damage(next);
       store.reveal = Some(next);
     }
 
     (
       previous.and_then(|previous| store.record(previous).and_then(|record| record.node)),
       next.and_then(|next| store.record(next).and_then(|record| record.node)),
+      store.popups_left_by(next),
     )
   });
 
@@ -577,6 +653,10 @@ pub(crate) fn set_focus(next: Option<Handle>) {
 
   if let Some(gained) = gained {
     notify_focus::<Tui>(gained);
+  }
+
+  for popup in dismissed {
+    notify_dismiss::<Tui>(popup);
   }
 }
 
@@ -622,7 +702,6 @@ pub(crate) fn move_focus(step: isize) {
 pub(crate) fn set_hover(x: u16, y: u16) {
   let (left, entered) = store(|store| {
     let next: Vec<Handle> = store.hit_test(x, y).iter().map(|(node, _)| *node).collect();
-    let previous = std::mem::take(&mut store.hovered);
 
     if std::mem::replace(&mut store.last_pointer, (x, y)) != (x, y) {
       // A real pointer move releases the wheel's latched target.
@@ -633,28 +712,27 @@ pub(crate) fn set_hover(x: u16, y: u16) {
       }
     }
 
-    if previous == next {
-      store.hovered = next;
-
+    if store.hovered() == next {
       return (Vec::new(), Vec::new());
     }
 
+    // The nodes whose hover state changed repaint through the restyle that follows,
+    // where their resolved style differs.
+    let previous = store.set_hovered(next);
     let node_of =
       |store: &Store, handle: Handle| store.record(handle).and_then(|record| record.node);
     let left: Vec<NodeId> = previous
       .iter()
       .rev()
-      .filter(|node| !next.contains(node))
+      .filter(|node| !store.hovered().contains(node))
       .filter_map(|handle| node_of(store, *handle))
       .collect();
-    let entered: Vec<NodeId> = next
+    let entered: Vec<NodeId> = store
+      .hovered()
       .iter()
       .filter(|node| !previous.contains(node))
       .filter_map(|handle| node_of(store, *handle))
       .collect();
-
-    store.hovered = next;
-    store.paint_dirty = true;
 
     (left, entered)
   });
@@ -787,7 +865,10 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
   }
 
   let (path, dismissed, modal_blocked) = store(|store| {
-    store.clear_selection();
+    // A left press starts over; a right press keeps the selection for the menu.
+    if button == PointerButton::Primary {
+      store.clear_selection();
+    }
 
     let path = store.hit_test(x, y);
     let mut dismissed = None;
@@ -859,6 +940,10 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
         captured: deepest,
         target: focus_target,
       });
+
+      if let Some(target) = focus_target {
+        store.damage(target);
+      }
     }
   });
 
@@ -944,6 +1029,11 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     else {
       return (None, None);
     };
+
+    if let Some(target) = press.target {
+      store.damage(target);
+    }
+
     let released: Vec<Handle> = store.hit_test(x, y).iter().map(|(node, _)| *node).collect();
     let common = press
       .path

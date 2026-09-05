@@ -6,7 +6,7 @@ use skene_core::next::{AnyKind, Driver, NodeId, View};
 use skene_reactive::Signal;
 use skene_views::{CornerRadius, RawTextField, TextEntry};
 
-use super::shape::{define_defaults, field_chrome};
+use super::shape::{SimpleUnit, define_defaults, field_chrome};
 
 /// A ready-made single-line text field: full-width field chrome whose hairline border
 /// becomes the ring while focused.
@@ -81,6 +81,7 @@ impl<D: Driver> AnyKind for SimpleTextField<D> {}
 
 impl<D: Driver> View<D> for SimpleTextField<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {

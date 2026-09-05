@@ -25,7 +25,7 @@ use skene_views::{Activate, CornerRadius, Label, RawButton, Text, realize::Sourc
 use super::{
   SimpleLook,
   SimpleVariant,
-  shape::{CONTROL_INSET, RADIUS, hairline, palette},
+  shape::{RADIUS, SimpleUnit, border, palette, shape},
 };
 
 /// The surface of the look in force on a button.
@@ -134,6 +134,7 @@ impl<D: Driver> AnyKind for SimpleButton<D> {}
 
 impl<D: Driver> View<D> for SimpleButton<D>
 where
+  D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
@@ -142,15 +143,16 @@ where
       Source::Fixed(variant) => Rc::new(move || variant),
       Source::Derived(variant) => variant,
     };
+    let shape = shape::<D>();
     let raw = self
       .raw
-      .set_padding(CONTROL_INSET)
+      .set_padding(shape.control_inset)
       .set_color(
         SURFACE
           .when(State::Hovered, HOVER)
           .when(State::FocusVisible, FOCUS),
       )
-      .set_border(hairline(BORDER))
+      .set_border(border(shape.control_ring, BORDER))
       .set_corner_radius(RADIUS)
       .set_cursor(MouseCursor::Click);
     let node = match self.content {

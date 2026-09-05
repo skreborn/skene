@@ -30,6 +30,7 @@ use skene_core::{
 
 use crate::{
   TerminalExt,
+  Typography,
   interaction,
   store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
   token::TokenValue,
@@ -112,7 +113,7 @@ impl Driver for Tui {
         }
 
         store.layout_dirty = true;
-        store.paint_dirty = true;
+        store.damage(*sink);
       }
     });
   }
@@ -167,7 +168,7 @@ impl Driver for Tui {
       {
         *held = *state;
         store.layout_dirty = true;
-        store.paint_dirty = true;
+        store.damage(*sink);
       }
     });
   }
@@ -218,11 +219,20 @@ impl Driver for Tui {
   }
 
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
+    let inline_box = props.display == skene_core::RunDisplay::InlineBox;
+
     with_store(|store| {
-      store.create_laid_out(Kind::Run {
+      let handle = store.create_laid_out(Kind::Run {
         props: props.clone(),
         cache: None,
-      })
+      });
+
+      // An inline box starts one cell wide; its own layout resizes the placeholder.
+      if inline_box && let Some(record) = store.record_mut(handle) {
+        record.text = crate::layout::INLINE_BOX.to_string();
+      }
+
+      handle
     })
   }
 
@@ -236,7 +246,7 @@ impl Driver for Tui {
         }
 
         store.layout_dirty = true;
-        store.paint_dirty = true;
+        store.damage(*sink);
       }
     });
   }
@@ -255,7 +265,7 @@ impl Driver for Tui {
       text.clone_into(&mut record.text);
       store.invalidate_selection(*sink);
       store.layout_dirty = true;
-      store.paint_dirty = true;
+      store.damage(*sink);
     });
   }
 
@@ -366,7 +376,7 @@ impl Driver for Tui {
       value.clone_into(&mut field.value);
       field.caret = field.caret.min(field.value.chars().count());
       store.layout_dirty = true;
-      store.paint_dirty = true;
+      store.damage(*sink);
     });
   }
 
@@ -415,7 +425,15 @@ pub fn install() {
   });
 
   let root = with_store(|store| store.root);
-  let node = Scene::<Tui>::with(|scene| scene.create(NodeKind::Box, root));
+  let node = Scene::<Tui>::with(|scene| {
+    // Every run inherits its text properties through the typography tokens, so the
+    // terminal's defaults are defined at the root before any theme redefines them.
+    scene.define_root_tokens_once(std::any::TypeId::of::<Typography>(), || {
+      Definitions::of(&Typography::default())
+    });
+
+    scene.create(NodeKind::Box, root)
+  });
 
   ROOT.with(|held| *held.borrow_mut() = Some(node));
 

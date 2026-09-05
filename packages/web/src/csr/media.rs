@@ -196,17 +196,15 @@ pub fn set_scheme(scheme: Option<ColorScheme>) {
     .and_then(|window| window.document())
     .and_then(|document| document.document_element())
   {
-    match scheme.map(scheme_name) {
-      Some(name) => {
-        let _ = root.set_attribute(SCHEME_ATTRIBUTE, name);
-        let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
-        let _ = storage().map(|storage| storage.set_item(SCHEME_KEY, name));
-      }
-      None => {
-        let _ = root.remove_attribute(SCHEME_ATTRIBUTE);
-        let _ = root.remove_attribute("style");
-        let _ = storage().map(|storage| storage.remove_item(SCHEME_KEY));
-      }
+    if let Some(name) = scheme.map(scheme_name) {
+      let _ = root.set_attribute(SCHEME_ATTRIBUTE, name);
+      let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
+      let _ = storage().map(|storage| storage.set_item(SCHEME_KEY, name));
+    }
+    else {
+      let _ = root.remove_attribute(SCHEME_ATTRIBUTE);
+      let _ = root.remove_attribute("style");
+      let _ = storage().map(|storage| storage.remove_item(SCHEME_KEY));
     }
   }
 

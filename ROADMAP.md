@@ -89,8 +89,6 @@ Follow-ups the redesign noted and left; none blocks a release, each is scoped.
     the server leaf; a driver-neutral name is wanted.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
-  - `packages/web/src/csr/media.rs` carries one pre-existing `single_match_else` clippy
-    warning; the workspace is otherwise clippy-clean.
 - **Terminal**
   - Keyframe token leaves resolve every frame rather than once per generation.
   - Selection and clipboard inside a text input: the source-anchored selection model

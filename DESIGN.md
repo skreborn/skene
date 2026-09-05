@@ -420,7 +420,13 @@ composed trees with roles and focus order, exactly as on the GUI.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a
-hover change repaints without relayout. Frames paint into a cell buffer—to the terminal
+hover change repaints without relayout. A frame paints over the previous one, rewriting
+only the rows the changed nodes covered and cover—a node whose resolution, text, caret,
+scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
+then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
+text, and a view inside it flows as an inline box: laid out on its own, standing in the
+text as a placeholder of its width, painted and hit at the cells it flowed into. A
+border of zero width takes no cells. Frames paint into a cell buffer—to the terminal
 through `launch` (crossterm: raw mode, truecolor, mouse capture), or to plain text
 through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click` drive it without a terminal). Terminal detection is asynchronous;

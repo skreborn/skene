@@ -1218,7 +1218,21 @@ script disabled; a derived base with a hover variant reads the hovered color; a 
 flip keeps `1`; a page rendered with a dark scheme hint serializes the dark value of a
 derived leaf.
 
-### R5—Terminal driver
+### R5—Terminal driver (in flight)
+
+**Landed:** `Tui` implements `Driver` over the scene with one record per node, one
+resolution entry point cached per node under a generation covering definitions,
+environment and interaction, `set_style` only on change, `structure`/`layout`/`paint`
+dirty flags, container queries in a second pass, input routed through core's dispatch
+(the closed activation and arrow matches are gone), asynchronous launch detection, and
+the facade rewired onto `skene-views` with `Typography`, `Glyphs`, `media` and the test
+seams; both terminal examples ported; thirteen new render tests. **R5b landed:** the
+old `render.rs` invariants ported by subject (`layout`, `conditions`, `text_entry`,
+`controls`, `pointer`, `overlays`, `scrolling`, `selection`, `async`, `snapshot`,
+`misc`), the hover path as a set, damage rows (the union of the changed nodes' last and
+current rectangles, over the previous frame; `repainted_rows()` under `test`), inline
+boxes inside `RichText` measured by their own layout, and the Simple controls' cell
+shape through `SimpleShape`/`SimpleUnit` per scalar.
 
 The `Driver` impl replacing direct state mutation; effective style cached under a
 generation covering environment, interaction and definitions, with `set_style` only on

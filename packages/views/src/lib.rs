@@ -36,7 +36,6 @@ mod error_boundary;
 mod flex;
 mod flexible;
 mod focus;
-pub mod glyphs;
 mod grid;
 mod grid_cell;
 mod layout_box;
@@ -117,7 +116,6 @@ pub use crate::{
   flex::{Column, Row},
   flexible::Flexible,
   focus::FocusHandle,
-  glyphs::Glyphs,
   grid::Grid,
   grid_cell::GridCell,
   layout_box::LayoutBox,

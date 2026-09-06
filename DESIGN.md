@@ -315,7 +315,9 @@ emission where a definition conditions on the scheme) and each token kind regist
 custom property with `@property`, so it interpolates and inherits as a typed value; a
 token set used with no theme above registers its default under `:root` once
 (`ThemedIn::current`/`watch`). `Typography` (all text inheritance on both facades) and
-the terminal's `Glyphs` are token sets, so the framework has one inheritance mechanism.
+the Simple library's `SimpleGlyphs` (its terminal marks, a set only a driver with text
+tokens over cells can theme) are token sets, so the framework has one inheritance
+mechanism.
 Nothing below a component library knows what a palette is: `skene-simple` owns
 `SimplePalette`, and a third party's `AcmePalette` gets `Theme<D, AcmePalette>`,
 `current()` and `watch()` from the same blanket.
@@ -630,7 +632,8 @@ Recorded because they were load-bearing and the reasons they fell matter:
 - **`theme_<prop>` setters taking `Fn(&Palette) -> Color`.** They welded the framework's
   box view to one library's palette type. A token is a value the ordinary setters accept.
 - **`TextTheme`, `ControlTheme`, `SimpleTheme`.** Three inheritance mechanisms for one
-  need; `Typography`, `Glyphs` and `SimplePalette` are token sets under the one `Theme`.
+  need; `Typography`, `SimpleGlyphs` and `SimplePalette` are token sets under the one
+  `Theme`.
 - **A `derived`-based `derive_scheme`.** A rebuild disposes the subtree's scope with its
   state—measured: a signal inside went back to its initial value. The driver is told the
   scheme and one write re-inks the page.

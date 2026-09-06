@@ -6,7 +6,6 @@ use skene_core::{
   Alignment,
   AnyKind,
   AnyView,
-  Definition,
   Dimension,
   Driver,
   HasChildren,
@@ -18,12 +17,13 @@ use skene_core::{
   View,
   When,
 };
-use skene_reactive::{Get, Signal};
+use skene_reactive::{Get, Memo, Signal, use_context};
 use skene_views::{Container, CornerRadius, RawCheckbox, Text, Toggle};
 
 use super::{
+  SimpleGlyphs,
   SimplePalette,
-  shape::{MARK_RADIUS, Marks, SimpleUnit, border, define_defaults, glyphs, shape},
+  shape::{MARK_RADIUS, SimpleMarks, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -104,23 +104,26 @@ impl<D: Driver> View<D> for SimpleCheckbox<D>
 where
   D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
-  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
     let mark: AnyView<D> = match D::Scalar::MARKS {
-      Marks::Drawn => drawn_mark::<D>().into_view(),
-      Marks::Glyph => {
-        let glyphs = glyphs::<D>();
+      SimpleMarks::Drawn => drawn_mark::<D>().into_view(),
+      SimpleMarks::Glyph => {
+        let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let checked = self.toggle.reads_checked();
 
-        Text::<D>::derive(move || glyphs.get().checkbox(checked()))
-          .set_color(
-            SimplePalette::<D::Scalar>::FOREGROUND
-              .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
-          )
-          .into_view()
+        Text::<D>::derive(move || {
+          glyphs
+            .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
+            .checkbox(checked())
+        })
+        .set_color(
+          SimplePalette::<D::Scalar>::FOREGROUND
+            .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
+        )
+        .into_view()
       }
     };
     let mut control = RawCheckbox::new(self.toggle)

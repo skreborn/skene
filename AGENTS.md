@@ -108,7 +108,8 @@
     of nodes. Nesting a theme redefines beneath it. The child is a builder closure
     because context is owner-scoped and an argument is evaluated before the call it
     belongs to. `Typography` (all text inheritance, on both facades) and the terminal's
-    `Glyphs` are token sets on the same mechanism; there is no text theme, control theme
+    `SimpleGlyphs` (the Simple library's terminal marks) are token sets on the same
+    mechanism; there is no text theme, control theme
     or Simple theme, and `SimplePalette::default()` is built from public constructors,
     so what the library does is exactly what a third party can do.
   - **Light and dark are one condition**, `Media::Dark`, answered per property in a
@@ -226,7 +227,7 @@
   control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`, `Fill`,
   `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling targets a control
   exposes; in the terminal the checkbox and radio `Mark` and the picker's indicator are
-  glyphs from the `Glyphs` token set, and the slider's track, fill and thumb are boxes
+  glyphs from the Simple library's `SimpleGlyphs` token set, and the slider's track, fill and thumb are boxes
   there as everywhere. On the web a control that owns
   a native input keeps it as its scriptless form—checkbox, radio, slider and the text
   fields need no swap after hydration—and the picker keeps a swap that carries the

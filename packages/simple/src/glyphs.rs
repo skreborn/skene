@@ -1,45 +1,54 @@
-//! The glyphs a medium that draws with characters shows its marks as, as a token set.
+//! The glyphs the Simple controls show their marks as where the medium draws with
+//! characters, as a token set.
 
-use skene_core::{Definition, Scalar, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
+use skene_core::{Definition, StaticLeaf, Token, TokenName, TokenRef, TokenSet};
+use skene_reactive::{Get, Memo, use_context};
 
 /// A checkbox's checked mark.
-pub const CHECKBOX_CHECKED: TokenRef<String> = TokenRef::new("glyph-checkbox-checked");
+pub const CHECKBOX_CHECKED: TokenRef<String> = TokenRef::new("simple-glyph-checkbox-checked");
 
 /// A checkbox's unchecked mark.
-pub const CHECKBOX_UNCHECKED: TokenRef<String> = TokenRef::new("glyph-checkbox-unchecked");
+pub const CHECKBOX_UNCHECKED: TokenRef<String> = TokenRef::new("simple-glyph-checkbox-unchecked");
 
 /// A radio's checked mark.
-pub const RADIO_CHECKED: TokenRef<String> = TokenRef::new("glyph-radio-checked");
+pub const RADIO_CHECKED: TokenRef<String> = TokenRef::new("simple-glyph-radio-checked");
 
 /// A radio's unchecked mark.
-pub const RADIO_UNCHECKED: TokenRef<String> = TokenRef::new("glyph-radio-unchecked");
+pub const RADIO_UNCHECKED: TokenRef<String> = TokenRef::new("simple-glyph-radio-unchecked");
 
 /// The indicator after a picker's chosen label.
-pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("glyph-picker-indicator");
+pub const PICKER_INDICATOR: TokenRef<String> = TokenRef::new("simple-glyph-picker-indicator");
 
-/// The glyphs a control's marks are drawn with where the medium draws with characters:
-/// a token set a theme defines beneath it, over the facade's scalar `N`.
+/// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with
+/// where the medium draws with characters: a token set a theme defines beneath it, in
+/// cells.
 ///
-/// The terminal's checkbox and radio marks and its picker indicator are these glyphs; a
-/// pixel medium draws its marks and defines the set to no effect. Every default is one
-/// cell per character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells
-/// wide in some emulators; a theme opting into them takes that on itself.
+/// It exists only for a driver whose tokens hold text over cells—the terminal—so a
+/// pixel medium, which draws its marks, cannot theme it. Every default is one cell per
+/// character in every terminal. Box-symbol marks (`☑`, `◉`) render two cells wide in
+/// some emulators; a theme opting into them takes that on itself.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
-pub struct Glyphs<N: Scalar> {
+pub struct SimpleGlyphs {
   /// A checkbox's checked mark.
-  pub checkbox_checked: Token<String, N>,
+  pub checkbox_checked: Token<String, u32>,
   /// A checkbox's unchecked mark.
-  pub checkbox_unchecked: Token<String, N>,
+  pub checkbox_unchecked: Token<String, u32>,
   /// A radio's checked mark.
-  pub radio_checked: Token<String, N>,
+  pub radio_checked: Token<String, u32>,
   /// A radio's unchecked mark.
-  pub radio_unchecked: Token<String, N>,
+  pub radio_unchecked: Token<String, u32>,
   /// The indicator after a picker's chosen label.
-  pub picker_indicator: Token<String, N>,
+  pub picker_indicator: Token<String, u32>,
 }
 
-impl<N: Scalar> Glyphs<N> {
+impl SimpleGlyphs {
+  /// The set the nearest theme provides, read tracked; the default without one.
+  #[inline(always)]
+  pub fn current() -> Self {
+    use_context::<Memo<Self>>().map_or_else(Self::default, |glyphs| glyphs.get())
+  }
+
   /// Sets the checked and unchecked marks of a checkbox.
   #[inline(always)]
   pub fn set_checkbox(mut self, checked: impl Into<String>, unchecked: impl Into<String>) -> Self {
@@ -99,14 +108,14 @@ impl<N: Scalar> Glyphs<N> {
 }
 
 /// The glyph a definition fixes; the setters admit nothing else.
-fn glyph<N: Scalar>(definition: &Definition<String, N>) -> String {
+fn glyph(definition: &Definition<String, u32>) -> String {
   match definition.base() {
     StaticLeaf::Fixed(glyph) => glyph.clone(),
     StaticLeaf::Token(_) | StaticLeaf::Expr(_) => String::new(),
   }
 }
 
-impl<N: Scalar> Default for Glyphs<N> {
+impl Default for SimpleGlyphs {
   /// `[x]`/`[ ]` for a checkbox, `(x)`/`( )` for a radio and `▾` for the picker
   /// indicator.
   fn default() -> Self {
@@ -124,7 +133,7 @@ impl<N: Scalar> Default for Glyphs<N> {
   }
 }
 
-impl<N: Scalar, V: From<Definition<String, N>> + 'static> TokenSet<V> for Glyphs<N> {
+impl<V: From<Definition<String, u32>> + 'static> TokenSet<V> for SimpleGlyphs {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![
       self.checkbox_checked.define(),

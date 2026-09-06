@@ -7,7 +7,6 @@ use skene_core::{
   AnyView,
   Arrangement,
   Color,
-  Definition,
   Dimension,
   Driver,
   HasChildren,
@@ -20,7 +19,7 @@ use skene_core::{
   View,
   When,
 };
-use skene_reactive::{Get, Memo, Signal};
+use skene_reactive::{Get, Memo, Signal, use_context};
 use skene_views::{
   Column,
   Container,
@@ -34,16 +33,16 @@ use skene_views::{
 };
 
 use super::{
+  SimpleGlyphs,
   SimplePalette,
   shape::{
     MARK_RADIUS,
-    Marks,
     RADIUS,
+    SimpleMarks,
     SimpleUnit,
     as_part,
     border,
     define_defaults,
-    glyphs,
     hairline,
     shape,
   },
@@ -162,7 +161,6 @@ impl<D: Driver> View<D> for SimplePicker<D>
 where
   D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
-  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
@@ -203,7 +201,6 @@ where
 fn face<D: Driver>(labels: &Rc<Vec<(String, String)>>, value: Memo<String>) -> Row<D>
 where
   D::Scalar: SimpleUnit,
-  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   let labels = Rc::clone(labels);
   let shown = move || {
@@ -215,11 +212,15 @@ where
       .map_or(chosen, |(_, label)| label.clone())
   };
   let indicator = match D::Scalar::MARKS {
-    Marks::Drawn => Text::<D>::new(INDICATOR),
-    Marks::Glyph => {
-      let glyphs = glyphs::<D>();
+    SimpleMarks::Drawn => Text::<D>::new(INDICATOR),
+    SimpleMarks::Glyph => {
+      let glyphs = use_context::<Memo<SimpleGlyphs>>();
 
-      Text::<D>::derive(move || glyphs.get().indicator())
+      Text::<D>::derive(move || {
+        glyphs
+          .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
+          .indicator()
+      })
     }
   }
   .set_color(

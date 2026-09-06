@@ -136,8 +136,6 @@ pub enum HeadlessTokenValue {
   Color(Definition<Color, f32>),
   /// A unitless number token.
   Number(Definition<f32, f32>),
-  /// A text token.
-  Text(Definition<String, f32>),
   /// A dimension token.
   Dimension(Definition<Dimension<f32>, f32>),
 }
@@ -160,13 +158,6 @@ impl From<Definition<Dimension<f32>, f32>> for HeadlessTokenValue {
   #[inline(always)]
   fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
     Self::Dimension(definition)
-  }
-}
-
-impl From<Definition<String, f32>> for HeadlessTokenValue {
-  #[inline(always)]
-  fn from(definition: Definition<String, f32>) -> Self {
-    Self::Text(definition)
   }
 }
 

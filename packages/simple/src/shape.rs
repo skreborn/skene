@@ -4,7 +4,6 @@
 use skene_core::{
   Border,
   Color,
-  Definition,
   Dimension,
   Driver,
   Inset,
@@ -20,7 +19,7 @@ use skene_core::{
   When,
 };
 use skene_reactive::Memo;
-use skene_views::{Behavior, Control, CornerRadius, Glyphs, ThemedIn};
+use skene_views::{Behavior, Control, CornerRadius, ThemedIn};
 
 use super::SimplePalette;
 
@@ -85,15 +84,15 @@ pub trait SimpleUnit: Scalar {
   /// The shape in this unit.
   const SHAPE: SimpleShape<Self>;
   /// How the medium shows a control's marks.
-  const MARKS: Marks;
+  const MARKS: SimpleMarks;
 }
 
 /// How a medium shows a checkbox or radio mark and a picker's indicator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Marks {
+pub enum SimpleMarks {
   /// Boxes the medium draws: a ring, a dot, a check.
   Drawn,
-  /// Glyphs from the [`Glyphs`] token set.
+  /// Glyphs from the [`SimpleGlyphs`] token set.
   Glyph,
 }
 
@@ -115,7 +114,7 @@ impl SimpleUnit for f32 {
     thumb_size: 16.,
     thumb_ring: 2.,
   };
-  const MARKS: Marks = Marks::Drawn;
+  const MARKS: SimpleMarks = SimpleMarks::Drawn;
 }
 
 impl SimpleUnit for u32 {
@@ -136,7 +135,7 @@ impl SimpleUnit for u32 {
     thumb_size: 1,
     thumb_ring: 0,
   };
-  const MARKS: Marks = Marks::Glyph;
+  const MARKS: SimpleMarks = SimpleMarks::Glyph;
 }
 
 /// The shape of the driver's unit.
@@ -165,16 +164,6 @@ pub fn hairline<N: Scalar>(color: TokenRef<Color>) -> Border<N> {
 #[inline(always)]
 pub fn palette<D: Driver>() -> Memo<SimplePalette<D::Scalar>> {
   <SimplePalette<D::Scalar> as ThemedIn<D>>::watch()
-}
-
-/// The glyph set in force: the nearest theme's, or the default where no theme provides
-/// one.
-#[inline(always)]
-pub fn glyphs<D: Driver>() -> Memo<Glyphs<D::Scalar>>
-where
-  D::TokenValue: From<Definition<String, D::Scalar>>,
-{
-  <Glyphs<D::Scalar> as ThemedIn<D>>::watch()
 }
 
 /// Defines the default palette at the root where no theme provides one, so a view

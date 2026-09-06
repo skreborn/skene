@@ -4,7 +4,7 @@
 //! standing to `skene-gui`. It fixes the scalar (cells, `u32`), names the driver
 //! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view and every `Simple*` view
 //! to it, so app code names no platform. The medium's own contribution is
-//! [`Typography`], [`Glyphs`], the [`media`] module, the terminal's decoration
+//! [`Typography`], [`SimpleGlyphs`], the [`media`] module, the terminal's decoration
 //! ([`TerminalDecoration`], [`TerminalText`]), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal, [`render_to_text`] for a headless test.
@@ -159,9 +159,9 @@ pub use crate::{
 /// The driver the build selected: the terminal driver, on every host target.
 pub type ActiveDriver = Tui;
 
-/// The named glyph tokens; see [`Glyphs`].
+/// The named glyph tokens; see [`SimpleGlyphs`].
 pub mod glyph {
-  pub use skene_views::glyphs::{
+  pub use skene_simple::glyphs::{
     CHECKBOX_CHECKED,
     CHECKBOX_UNCHECKED,
     PICKER_INDICATOR,
@@ -170,9 +170,9 @@ pub mod glyph {
   };
 }
 
-/// The glyphs the terminal's checkbox and radio marks and picker indicator are drawn
-/// with; see [`skene_views::Glyphs`].
-pub type Glyphs = skene_views::Glyphs<u32>;
+/// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with;
+/// see [`skene_simple::SimpleGlyphs`].
+pub use skene_simple::SimpleGlyphs;
 
 /// A view on the active driver; see [`skene_core::View`].
 pub trait View: skene_core::View<ActiveDriver> {

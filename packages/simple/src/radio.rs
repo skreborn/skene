@@ -7,7 +7,6 @@ use skene_core::{
   AnyKind,
   AnyView,
   Color,
-  Definition,
   Dimension,
   Driver,
   HasChildren,
@@ -20,7 +19,7 @@ use skene_core::{
   View,
   When,
 };
-use skene_reactive::{Get, Signal, use_context};
+use skene_reactive::{Get, Memo, Signal, use_context};
 use skene_views::{
   Container,
   CornerRadius,
@@ -33,8 +32,9 @@ use skene_views::{
 };
 
 use super::{
+  SimpleGlyphs,
   SimplePalette,
-  shape::{Marks, ROUND, SimpleUnit, border, define_defaults, glyphs, shape},
+  shape::{ROUND, SimpleMarks, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -178,15 +178,14 @@ impl<D: Driver> View<D> for SimpleRadio<D>
 where
   D::Scalar: SimpleUnit,
   D::StyleExt: CornerRadius,
-  D::TokenValue: From<Definition<String, D::Scalar>>,
 {
   fn build(self) -> NodeId {
     define_defaults::<D>();
 
     let mark: AnyView<D> = match D::Scalar::MARKS {
-      Marks::Drawn => drawn_mark::<D>().into_view(),
-      Marks::Glyph => {
-        let glyphs = glyphs::<D>();
+      SimpleMarks::Drawn => drawn_mark::<D>().into_view(),
+      SimpleMarks::Glyph => {
+        let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let group = use_context::<RovingGroup>();
         let value = self.member.value().to_owned();
 
@@ -195,7 +194,9 @@ where
             .as_ref()
             .is_some_and(|group| group.chosen().as_deref() == Some(value.as_str()));
 
-          glyphs.get().radio(checked)
+          glyphs
+            .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
+            .radio(checked)
         })
         .set_color(
           SimplePalette::<D::Scalar>::FOREGROUND

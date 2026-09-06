@@ -652,7 +652,7 @@ fn a_themed_glyph_set_draws_the_marks() {
   with_driver(|| {
     let _ = tui::mount(|| {
       Theme::new(
-        Glyphs::default()
+        SimpleGlyphs::default()
           .set_checkbox("\u{2611}", "\u{2610}")
           .set_radio("\u{25c9}", "\u{25cb}"),
       )

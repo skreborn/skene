@@ -16,8 +16,6 @@ pub enum WebTokenValue {
   Number(Definition<f32, f32>),
   /// A dimension token.
   Dimension(Definition<Dimension<f32>, f32>),
-  /// A text token.
-  Text(Definition<String, f32>),
 }
 
 impl WebTokenValue {
@@ -28,7 +26,6 @@ impl WebTokenValue {
       Self::Color(_) => ("<color>", "transparent"),
       Self::Number(_) => ("<number>", "0"),
       Self::Dimension(_) => ("<length-percentage> | auto", "0px"),
-      Self::Text(_) => ("*", "\"\""),
     };
 
     format!("@property --{name}{{syntax:\"{syntax}\";inherits:true;initial-value:{initial}}}")
@@ -53,12 +50,5 @@ impl From<Definition<Dimension<f32>, f32>> for WebTokenValue {
   #[inline(always)]
   fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
     Self::Dimension(definition)
-  }
-}
-
-impl From<Definition<String, f32>> for WebTokenValue {
-  #[inline(always)]
-  fn from(definition: Definition<String, f32>) -> Self {
-    Self::Text(definition)
   }
 }

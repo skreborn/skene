@@ -16,6 +16,7 @@
 mod button;
 mod card;
 mod checkbox;
+pub mod glyphs;
 mod palette;
 mod picker;
 mod radio;
@@ -28,10 +29,11 @@ pub use self::{
   button::SimpleButton,
   card::SimpleCard,
   checkbox::SimpleCheckbox,
+  glyphs::SimpleGlyphs,
   palette::{SimpleLook, SimplePalette, SimpleVariant},
   picker::SimplePicker,
   radio::{SimpleRadio, SimpleRadioGroup},
-  shape::{SimpleShape, SimpleUnit},
+  shape::{SimpleMarks, SimpleShape, SimpleUnit},
   slider::SimpleSlider,
   text_editor::SimpleTextEditor,
   text_field::SimpleTextField,

@@ -68,7 +68,7 @@ fn shadow_mixes_into_the_cells_beneath() {
 fn a_theme_redefines_the_glyph_tokens() {
   with_driver(|| {
     let node = tui::mount(|| {
-      Theme::new(Glyphs::default().set_checkbox("X", "O"))
+      Theme::new(SimpleGlyphs::default().set_checkbox("X", "O"))
         .set_child_builder(|| Text::new("under"))
         .into_any()
         .build()

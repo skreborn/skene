@@ -14,9 +14,9 @@
 //! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
 //! holds one field per property in a [`Shape`]: what a builder collects, what a driver
 //! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
-//! in and the [`StyleExtension`] holding the properties only its medium has;
-//! [`PixelExt`] is the extension the pixel media share. A style's [`Fingerprint`] keys
-//! what a driver compiled from it. Motion ([`Transition`], [`Animation`]) is data every
+//! in and the [`StyleExtension`] holding the properties only its medium has, which its
+//! medium's core crate defines. A style's [`Fingerprint`] keys what a driver compiled
+//! from it. Motion ([`Transition`], [`Animation`]) is data every
 //! driver compiles or runs, and the universal values ([`Color`], the geometry, the
 //! layout vocabulary) are what every medium's properties are made of.
 

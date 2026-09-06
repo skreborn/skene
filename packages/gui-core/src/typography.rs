@@ -14,8 +14,8 @@ type Token<T> = skene_core::Token<T, f32>;
 /// Defines the [`typography`] token names, so `Theme::new(Typography::default())`
 /// inks and sizes everything beneath it, and a palette that defines the same names
 /// (as `SimplePalette` does for the inks) takes over where it is nested. Every setter
-/// takes a [`Definition`](skene_core::Definition), which carries its own conditions; the default's ink answers
-/// the dark scheme that way.
+/// takes a [`Definition`](skene_core::Definition), which carries its own conditions; the default's
+/// ink answers the dark scheme that way.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Typography {

@@ -123,7 +123,7 @@ const RESET_CSS: &str = include_str!("reset.css");
 /// browser and over a string tree on the server.
 ///
 /// Lengths are logical pixels ([`Scalar`](skene_core::Driver::Scalar) `f32`), the
-/// style extension is [`PixelExt`](skene_core::PixelExt), and a token is a
+/// style extension is [`PixelExt`](skene_gui_core::PixelExt), and a token is a
 /// [`WebTokenValue`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]

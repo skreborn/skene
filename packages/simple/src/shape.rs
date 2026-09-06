@@ -92,7 +92,7 @@ pub trait SimpleUnit: Scalar {
 pub enum SimpleMarks {
   /// Boxes the medium draws: a ring, a dot, a check.
   Drawn,
-  /// Glyphs from the [`SimpleGlyphs`] token set.
+  /// Glyphs from the [`SimpleGlyphs`](crate::SimpleGlyphs) token set.
   Glyph,
 }
 

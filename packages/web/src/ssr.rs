@@ -35,9 +35,6 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
-  Painter,
-  Painting,
-  PixelExt,
   RunProps,
   RunValue,
   Scene,
@@ -47,6 +44,7 @@ use skene_core::{
   TokenName,
   View,
 };
+use skene_gui_core::{Painter, Painting, PixelExt};
 use skene_reactive::{Owner, Set, Signal, WriteSignal, provide_context};
 
 pub use self::task::{drive, install_executor, register, set_render_deadline, sleep};

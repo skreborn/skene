@@ -1,17 +1,15 @@
 //! The portable low-level path for pixel media: a paint callback on a box, drawing
 //! through vello.
 
+use skene_core::{Color, Driver, Size};
 use vello_cpu::{Pixmap, RenderContext, Resources};
 pub use vello_cpu::{kurbo, peniko};
-
-use super::Driver;
-use crate::{Color, Size};
 
 /// The surface a paint callback draws on: a vello scene the size of the box, in device
 /// pixels, rendered by the driver once the callback returns.
 ///
-/// Geometry is [`kurbo`]'s and paint is [`peniko`]'s; the framework's [`Color`]
-/// converts into a brush. Coordinates are device pixels from the box's top-left corner.
+/// Geometry is [`kurbo`]'s and paint is [`peniko`]'s; the framework's [`Color`] paints
+/// solid through [`IntoBrush`]. Coordinates are device pixels from the box's top-left corner.
 #[must_use]
 pub struct Canvas {
   context: RenderContext,
@@ -45,8 +43,8 @@ impl Canvas {
   }
 
   /// Fills `shape` with `brush`.
-  pub fn fill(&mut self, shape: &impl kurbo::Shape, brush: impl Into<peniko::Brush>) {
-    self.context.set_paint(brush_paint(brush.into()));
+  pub fn fill(&mut self, shape: &impl kurbo::Shape, brush: impl IntoBrush) {
+    self.context.set_paint(brush_paint(brush.into_brush()));
     self.context.fill_path(&shape.to_path(0.1));
   }
 
@@ -55,10 +53,10 @@ impl Canvas {
     &mut self,
     shape: &impl kurbo::Shape,
     stroke: &kurbo::Stroke,
-    brush: impl Into<peniko::Brush>,
+    brush: impl IntoBrush,
   ) {
     self.context.set_stroke(stroke.clone());
-    self.context.set_paint(brush_paint(brush.into()));
+    self.context.set_paint(brush_paint(brush.into_brush()));
     self.context.stroke_path(&shape.to_path(0.1));
   }
 
@@ -98,17 +96,40 @@ fn brush_paint(brush: peniko::Brush) -> vello_cpu::PaintType {
   }
 }
 
-impl From<Color> for peniko::Brush {
+/// What a shape is painted with: a brush, or anything that is one.
+///
+/// The framework's [`Color`] paints solid; peniko's brush, color and gradient pass
+/// through.
+pub trait IntoBrush {
+  /// The brush.
+  fn into_brush(self) -> peniko::Brush;
+}
+
+impl IntoBrush for peniko::Brush {
   #[inline(always)]
-  fn from(color: Color) -> Self {
-    Self::Solid(color.to_alpha_color())
+  fn into_brush(self) -> peniko::Brush {
+    self
   }
 }
 
-impl From<Color> for peniko::Color {
+impl IntoBrush for peniko::Color {
   #[inline(always)]
-  fn from(color: Color) -> Self {
-    color.to_alpha_color()
+  fn into_brush(self) -> peniko::Brush {
+    peniko::Brush::Solid(self)
+  }
+}
+
+impl IntoBrush for peniko::Gradient {
+  #[inline(always)]
+  fn into_brush(self) -> peniko::Brush {
+    peniko::Brush::Gradient(self)
+  }
+}
+
+impl IntoBrush for Color {
+  #[inline(always)]
+  fn into_brush(self) -> peniko::Brush {
+    peniko::Brush::Solid(self.to_alpha_color())
   }
 }
 

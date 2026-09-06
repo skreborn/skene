@@ -34,8 +34,6 @@ use skene_core::{
   Layout,
   Overflow,
   OverlayProps,
-  PixelExt,
-  PixelProperty,
   Placement,
   Plain,
   Property,
@@ -51,6 +49,7 @@ use skene_core::{
   TokenName,
   Wrap,
 };
+use skene_gui_core::{PixelExt, PixelProperty};
 
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},

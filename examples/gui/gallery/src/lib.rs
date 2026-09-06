@@ -312,7 +312,7 @@ fn list() -> impl IntoView {
 /// A box painted through vello: the portable low-level path for pixel media, drawn on
 /// the CPU into a canvas in the browser and left empty by a server render.
 fn painted() -> impl IntoView {
-  use skene_gui::core::kurbo::{Circle, Rect};
+  use skene_gui::kurbo::{Circle, Rect};
 
   section(
     "Painted",

@@ -16,13 +16,13 @@ use skene_core::{
   NoProperty,
   NodeId,
   OverlayProps,
-  Painter,
   PropertyKey,
   RunProps,
   Size,
   Slot,
   interpolate::Tween,
 };
+use skene_gui_core::Painter;
 use skene_reactive::{Owner, Signal, WriteSignal};
 
 use crate::{Handle, Headless, SlotValue, TokenValue};

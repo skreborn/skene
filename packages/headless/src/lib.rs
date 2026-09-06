@@ -39,7 +39,6 @@ use skene_core::{
   Border,
   BoxProps,
   BoxValue,
-  Canvas,
   Color,
   ColorScheme,
   ContainerName,
@@ -57,8 +56,6 @@ use skene_core::{
   NodeId,
   NodeRecord,
   OverlayProps,
-  Painter,
-  Painting,
   Part,
   Placement,
   PointerEvent,
@@ -85,6 +82,7 @@ use skene_core::{
   notify_scroll,
   notify_toggle,
 };
+use skene_gui_core::{Canvas, Painter, Painting};
 use skene_reactive::Set;
 
 pub use crate::store::HeadElement;

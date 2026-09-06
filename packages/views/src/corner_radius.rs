@@ -1,6 +1,6 @@
 //! The corner radius a medium may have, asked of a driver's style extension.
 
-use skene_core::{PixelExt, Shape, StyleExtension};
+use skene_core::{Shape, StyleExtension};
 
 /// A style extension that can round a box's corners.
 ///
@@ -22,10 +22,3 @@ pub trait CornerRadius: StyleExtension {
 }
 
 impl CornerRadius for () {}
-
-impl CornerRadius for PixelExt {
-  #[inline(always)]
-  fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<f32>) {
-    fields.corner_radius = radius;
-  }
-}

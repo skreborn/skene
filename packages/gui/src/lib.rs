@@ -21,7 +21,6 @@ mod link;
 mod resource;
 mod routing;
 mod task;
-mod typography_set;
 
 pub use skene_core as core;
 pub use skene_core::{
@@ -48,7 +47,6 @@ pub use skene_core::{
   NodeId,
   Number,
   Part,
-  PixelExt,
   PointerEvent,
   Prevent,
   Prevented,
@@ -61,6 +59,19 @@ pub use skene_core::{
   TokenRef,
   TokenSet,
   When,
+};
+/// The pixel medium's shared vocabulary: the style extension, the typography set and
+/// the painting path.
+pub use skene_gui_core::{
+  Canvas,
+  IntoBrush,
+  Painter,
+  Painting,
+  PixelExt,
+  PixelProperty,
+  Typography,
+  kurbo,
+  peniko,
 };
 /// The host driver's test seams (`trigger_` events, tree inspection), for headless
 /// view tests on the host.
@@ -113,7 +124,6 @@ pub use crate::{
   resource::{LoadState, Resource},
   routing::{install_router, install_static_router},
   task::spawn,
-  typography_set::Typography,
 };
 
 /// The driver the build selected: the web driver on `wasm32` (the browser leaf on
@@ -265,8 +275,8 @@ pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
 pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
 /// A handle reporting a built view's measured size; see [`skene_views::SizeHandle`].
 pub type SizeHandle = skene_views::SizeHandle<ActiveDriver>;
-/// A box drawn by a paint callback; see [`skene_views::Painted`].
-pub type Painted = skene_views::Painted<ActiveDriver>;
+/// A box drawn by a paint callback; see [`skene_gui_core::Painted`].
+pub type Painted = skene_gui_core::Painted<ActiveDriver>;
 /// A scrolling keyed list building only the slice in view; see
 /// [`skene_views::LazyColumn`].
 pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;

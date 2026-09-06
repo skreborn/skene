@@ -14,6 +14,7 @@ proc-macro2 = "1"
 quote = "1"
 rustc-hash = "2.1"
 skene-gui = { path = "packages/gui", version = "0.1.0" }
+skene-gui-core = { path = "packages/gui-core", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }

@@ -2,9 +2,10 @@
 
 use std::rc::Rc;
 
-use skene_core::{AnyKind, Canvas, Layout, NodeId, Painter, Painting, Size, View};
+use skene_core::{AnyKind, Layout, NodeId, Size, View};
+use skene_views::{LayoutBox, SizeHandle, properties, realize::with_sink};
 
-use crate::{LayoutBox, SizeHandle, properties, realize::with_sink};
+use crate::{Canvas, Painter, Painting};
 
 /// A box drawn by a paint callback through the driver's renderer: sized like any box,
 /// painted at its laid-out size now and whenever that size changes.

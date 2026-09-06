@@ -633,8 +633,9 @@ fn a_size_handle_reports_the_measured_size() {
 fn a_painted_box_draws_through_vello() {
   use skene_gui::{
     Painted,
-    core::{Size, kurbo::Rect},
+    core::Size,
     headless::{is_painted, paint},
+    kurbo::Rect,
   };
 
   reset();

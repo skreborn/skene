@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 serde = "1"
 skene-core.workspace = true
+skene-gui-core.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
 skene-router.workspace = true

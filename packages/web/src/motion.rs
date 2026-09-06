@@ -2,7 +2,8 @@
 
 use std::fmt::Write as _;
 
-use skene_core::{Animation, Easing, PixelProperty, PropertyKey, StyleProperty, Transition};
+use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
+use skene_gui_core::PixelProperty;
 
 use crate::{
   Declarations,

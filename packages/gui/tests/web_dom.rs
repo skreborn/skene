@@ -1117,8 +1117,9 @@ fn a_route_change_commits_under_a_view_transition() {
 #[wasm_bindgen_test]
 fn a_token_keyframe_animation_applies() {
   use skene_gui::{
+    PixelExt,
     SimplePalette,
-    core::{Animation, BoxStyle, Keyframe, PixelExt},
+    core::{Animation, BoxStyle, Keyframe},
   };
 
   let (_guard, root) = fresh_root();
@@ -1236,10 +1237,7 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
 /// and blitted, so the browser shows the fill without WebGPU.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
-  use skene_gui::{
-    Painted,
-    core::{Dimension, kurbo::Rect},
-  };
+  use skene_gui::{Painted, core::Dimension, kurbo::Rect};
   use wasm_bindgen_futures::JsFuture;
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 

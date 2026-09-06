@@ -33,7 +33,6 @@ use skene_core::{
   AccessProp,
   BoxProps,
   BoxValue,
-  Canvas,
   ColorScheme,
   ControlProps,
   ControlState,
@@ -47,9 +46,6 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
-  Painter,
-  Painting,
-  PixelExt,
   Placement,
   RunProps,
   RunValue,
@@ -62,6 +58,7 @@ use skene_core::{
   notify_dismiss,
   notify_toggle,
 };
+use skene_gui_core::{Canvas, Painter, Painting, PixelExt};
 use skene_reactive::Memo;
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{
@@ -856,7 +853,7 @@ fn repaint(sink: u32, size: Size<f32>) {
 
   let mut surface = Canvas::new(width, height);
 
-  surface.set_transform(skene_core::kurbo::Affine::scale(f64::from(ratio)));
+  surface.set_transform(skene_gui_core::kurbo::Affine::scale(f64::from(ratio)));
   painter(&mut surface, size);
 
   let pixels = surface.pixels();

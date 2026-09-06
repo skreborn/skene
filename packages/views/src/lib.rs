@@ -43,7 +43,6 @@ mod lazy_column;
 mod macros;
 pub mod media;
 mod overlay;
-mod painted;
 mod picker;
 mod pinned;
 pub mod realize;
@@ -122,7 +121,6 @@ pub use crate::{
   layout_box::LayoutBox,
   lazy_column::LazyColumn,
   overlay::Overlay,
-  painted::Painted,
   picker::{Face, RawPicker},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},

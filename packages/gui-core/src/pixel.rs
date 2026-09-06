@@ -2,16 +2,11 @@
 
 use std::fmt::Debug;
 
-use super::{
-  BoxField,
+use skene_core::{
   BoxFieldVisitor,
-  BoxStyle,
   IntoRunValue,
-  PropertyKey,
   PropertyName,
-  RunField,
   RunFieldVisitor,
-  RunStyle,
   RunValue,
   Scalar,
   Shape,
@@ -124,17 +119,9 @@ macro_rules! pixel_fields {
   (box: $($box_field:ident => $box_property:ident),+ $(,)?; run: $($run_field:ident => $run_property:ident),+ $(,)?) => {
     /// The pixel medium's own properties, addressed by type.
     pub mod pixel_fields {
-      use super::{
-        BoxField,
-        BoxStyle,
-        PixelExt,
-        PixelProperty,
-        PropertyKey,
-        RunField,
-        RunStyle,
-        Scalar,
-        Shape,
-      };
+      use skene_core::{BoxField, BoxStyle, PropertyKey, RunField, RunStyle, Scalar, Shape};
+
+      use super::{PixelExt, PixelProperty};
 
       $(
         #[doc = concat!("The `", stringify!($box_field), "` property.")]
@@ -215,8 +202,7 @@ pixel_fields!(
 
 #[cfg(test)]
 mod tests {
-  use super::{PixelExt, PixelProperty};
-  use crate::{
+  use skene_core::{
     BoxStyle,
     BoxValue,
     BoxVisitor,
@@ -231,6 +217,8 @@ mod tests {
     State,
     When,
   };
+
+  use super::{PixelExt, PixelProperty};
 
   /// The extension's fields follow the shared ones in a visit, under their own names.
   #[test]

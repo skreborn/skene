@@ -3,7 +3,10 @@
 use skene_core::{Color, Media, TokenName, TokenSet};
 use skene_views::typography;
 
-use crate::{Definition, Token};
+/// A token's definition in logical pixels; see [`skene_core::Definition`].
+type Definition<T> = skene_core::Definition<T, f32>;
+/// A token in logical pixels; see [`skene_core::Token`].
+type Token<T> = skene_core::Token<T, f32>;
 
 /// The text inheritance: the inks, the selection colors and the type metrics every
 /// run reads where it sets nothing of its own.

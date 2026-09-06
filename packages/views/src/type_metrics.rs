@@ -1,6 +1,6 @@
 //! The type metrics a medium may have, asked of a driver's style extension.
 
-use skene_core::{PixelExt, Shape, StyleExtension};
+use skene_core::{Shape, StyleExtension};
 
 /// A style extension that can size, weight and space a run's type.
 ///
@@ -35,25 +35,3 @@ pub trait TypeMetrics: StyleExtension {
 }
 
 impl TypeMetrics for () {}
-
-impl TypeMetrics for PixelExt {
-  #[inline(always)]
-  fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<f32>) {
-    fields.font_size = size;
-  }
-
-  #[inline(always)]
-  fn set_font_weight<S: Shape>(fields: &mut Self::RunFields<S>, weight: S::Of<f32>) {
-    fields.font_weight = weight;
-  }
-
-  #[inline(always)]
-  fn set_line_height<S: Shape>(fields: &mut Self::RunFields<S>, height: S::Of<f32>) {
-    fields.line_height = height;
-  }
-
-  #[inline(always)]
-  fn set_letter_spacing<S: Shape>(fields: &mut Self::RunFields<S>, spacing: S::Of<f32>) {
-    fields.letter_spacing = spacing;
-  }
-}

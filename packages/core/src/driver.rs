@@ -2,6 +2,8 @@
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey};
 
+use skene_reactive::{Get, Memo};
+
 use super::{
   BoxProps,
   BoxValue,
@@ -20,7 +22,17 @@ use super::{
   Slot,
   StyleExtension,
 };
-use crate::{AccessProp, Color, FocusOrder, Placement, Size};
+use crate::{
+  AccessProp,
+  Color,
+  ColorScheme,
+  ContainerName,
+  FocusOrder,
+  Media,
+  MediaEnv,
+  Placement,
+  Size,
+};
 
 /// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes
@@ -148,4 +160,31 @@ pub trait Driver: Copy + Default + 'static {
 
   /// The environment as signals.
   fn media(&self) -> MediaSignals<Self::Scalar>;
+
+  /// Puts `scheme` in force throughout, overriding the platform's preference and
+  /// touching no node; `None` returns to following the platform.
+  fn set_scheme(&self, scheme: Option<ColorScheme>);
+
+  /// The scheme the app put in force, or a previous run stored, when there is one.
+  fn stored_scheme(&self) -> Option<ColorScheme>;
+
+  /// Whether `media` holds, as a memo following the environment; a container condition
+  /// never holds here, since it is answered per node by the box it names.
+  fn watch_media(&self, media: &Media<Self::Scalar>) -> Memo<bool> {
+    let media = media.clone();
+    let signals = self.media();
+
+    Memo::new(move |_| {
+      let container = |_: Option<ContainerName>| None;
+
+      media.holds_in(&MediaEnv {
+        viewport: signals.viewport.get(),
+        scheme: signals.scheme.get(),
+        reduced_motion: signals.reduced_motion.get(),
+        reduced_transparency: false,
+        high_contrast: false,
+        container: &container,
+      })
+    })
+  }
 }

@@ -41,6 +41,7 @@ mod grid_cell;
 mod layout_box;
 mod lazy_column;
 mod macros;
+pub mod media;
 mod overlay;
 mod painted;
 mod picker;

@@ -34,6 +34,7 @@ use skene_core::{
   BoxProps,
   BoxValue,
   Canvas,
+  ColorScheme,
   ControlProps,
   ControlState,
   Definitions,
@@ -41,6 +42,7 @@ use skene_core::{
   EventKind,
   FocusOrder,
   IntoView,
+  Media,
   MediaSignals,
   NodeId,
   NodeKind,
@@ -60,6 +62,7 @@ use skene_core::{
   notify_dismiss,
   notify_toggle,
 };
+use skene_reactive::Memo;
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{
   CanvasRenderingContext2d,
@@ -1453,6 +1456,18 @@ impl Driver for Web {
 
   fn media(&self) -> MediaSignals<f32> {
     media::signals()
+  }
+
+  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+    media::set_scheme(scheme);
+  }
+
+  fn stored_scheme(&self) -> Option<ColorScheme> {
+    media::stored_scheme()
+  }
+
+  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+    media::watch_media(media)
   }
 }
 

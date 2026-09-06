@@ -220,6 +220,12 @@ impl Driver for Reentrant {
         .1
     })
   }
+
+  fn set_scheme(&self, _scheme: Option<skene_core::ColorScheme>) {}
+
+  fn stored_scheme(&self) -> Option<skene_core::ColorScheme> {
+    None
+  }
 }
 
 /// A palette of one token, so a theme has something to define.

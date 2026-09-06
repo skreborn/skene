@@ -1185,6 +1185,14 @@ impl Driver for Web {
   fn media(&self) -> MediaSignals<f32> {
     media_signals()
   }
+
+  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+    set_scheme(scheme);
+  }
+
+  fn stored_scheme(&self) -> Option<ColorScheme> {
+    stored_scheme()
+  }
 }
 
 impl WebMarkup for Web {

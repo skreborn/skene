@@ -199,6 +199,12 @@ impl Driver for TestDriver {
       })
     })
   }
+
+  fn set_scheme(&self, _scheme: Option<ColorScheme>) {}
+
+  fn stored_scheme(&self) -> Option<ColorScheme> {
+    None
+  }
 }
 
 /// A box with children and nothing else.

@@ -7,6 +7,7 @@ use skene_core::{
   AccessProp,
   BoxProps,
   BoxValue,
+  ColorScheme,
   ControlKind,
   ControlProps,
   ControlState,
@@ -25,6 +26,7 @@ use skene_core::{
   Size,
   Slot,
 };
+use skene_reactive::Set;
 
 use crate::{
   TerminalExt,
@@ -405,6 +407,32 @@ impl Driver for Tui {
 
   fn media(&self) -> MediaSignals<u32> {
     with_store(|store| store.media().signals)
+  }
+
+  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+    let write = with_store(|store| {
+      let before = store.scheme();
+
+      store.choice = scheme;
+
+      let after = store.scheme();
+
+      if before == after {
+        return None;
+      }
+
+      store.invalidate_styles();
+
+      Some((store.media().set_scheme, after))
+    });
+
+    if let Some((write, scheme)) = write {
+      write.set(scheme);
+    }
+  }
+
+  fn stored_scheme(&self) -> Option<ColorScheme> {
+    with_store(|store| store.choice)
   }
 }
 

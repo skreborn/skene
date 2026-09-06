@@ -336,6 +336,14 @@ impl Driver for Headless {
   fn media(&self) -> MediaSignals<f32> {
     with_store(|store| store.media().signals)
   }
+
+  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+    choose_scheme(scheme);
+  }
+
+  fn stored_scheme(&self) -> Option<ColorScheme> {
+    chosen_scheme()
+  }
 }
 
 impl Painting for Headless {

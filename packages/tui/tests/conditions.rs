@@ -7,6 +7,7 @@ mod common;
 
 use std::{cell::Cell, rc::Rc};
 
+use skene_simple::tui::prelude::*;
 use skene_tui::{self as tui, prelude::*};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_driver};

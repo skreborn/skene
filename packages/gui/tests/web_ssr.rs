@@ -27,6 +27,7 @@ use skene_gui::{
   render_to_string,
   web,
 };
+use skene_simple::gui::prelude::*;
 
 /// Every class named in `body`, in document order.
 fn classes(body: &str) -> Vec<String> {
@@ -708,7 +709,7 @@ fn a_dark_scheme_hint_serializes_the_dark_value_of_a_derived_leaf() {
 /// would run after the page had already been painted in the platform's scheme.
 #[test]
 fn a_chooseable_scheme_preempts_its_own_flash() {
-  use skene_gui::{SimplePalette, core::ColorScheme};
+  use skene_gui::core::ColorScheme;
 
   let rendered = render_to_string(|| {
     Theme::new(SimplePalette::default()).set_child_builder(|| {

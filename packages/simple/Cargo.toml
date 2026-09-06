@@ -5,8 +5,16 @@ edition.workspace = true
 
 [dependencies]
 skene-core.workspace = true
+skene-gui = { optional = true, workspace = true }
 skene-reactive.workspace = true
 skene-views.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+skene-tui = { optional = true, workspace = true }
+
+[features]
+gui = ["dep:skene-gui"]
+tui = ["dep:skene-tui"]
 
 [dev-dependencies]
 skene-headless.workspace = true

@@ -1,5 +1,6 @@
 //! The counter's views, in cells.
 
+use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
 pub(crate) fn app() -> impl IntoView {

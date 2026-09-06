@@ -35,26 +35,33 @@ skene-views      every built-in view ONCE, generic over D: Driver—Container, R
       │          LazyColumn, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel
       │
-      ├── skene-web       Driver for the web: DOM sink (csr) + HTML/CSS serializer (ssr)
-      │                   over one node record, the compiler, the interner, hydration,
-      │                   streaming, the WASI reactor, client hints; escape traits
-      │                   WebMarkup (both leaves) and WebDom (browser only)
-      ├── skene-headless  Driver for the host: realizes into an inspectable record store
-      │                   so view logic tests run without a platform; the whole trait,
-      │                   property resolution, trigger_ seams, a pumped executor
-      └── skene-tui       the terminal facade AND its driver: taffy in cells, a cell
-                          buffer, motion on its frame clock; escape trait CellPainter
+      ├── skene-gui-core  what every pixel driver shares: PixelExt (corner radius, type
+      │     │             metrics), the pixel Typography set, Painting/Canvas/Painted
+      │     │             through vello
+      │     ├── skene-web       Driver for the web: DOM sink (csr) + HTML/CSS serializer
+      │     │                   (ssr) over one node record, the compiler, the interner,
+      │     │                   hydration, streaming, the WASI reactor, client hints;
+      │     │                   escape traits WebMarkup (both leaves), WebDom (browser)
+      │     └── skene-headless  Driver for the host: realizes into an inspectable record
+      │                         store so view logic tests run without a platform; the
+      │                         whole trait, trigger_ seams, the pumped executor
+      └── skene-tui-core  what every terminal driver shares: TerminalExt (border glyphs,
+            │             shadow, corner radius, bold, weight), BorderGlyphs, the
+            │             terminal Typography set
+            └── skene-tui       the terminal facade AND its driver: taffy in cells, a
+                                cell buffer, motion on its frame clock; escape trait
+                                CellPainter
 
-skene-gui        the GUI facade and a GUI app's single dependency: f32, ActiveDriver (the
-                 web on wasm32, the headless driver elsewhere), aliases for every view
-                 and Simple* component, Typography, media::*, Resource across the server
-                 boundary, Deferred, Lazy, Link, head, view_transitions, launch and the
-                 server entries, #[main]
+skene-gui        the GUI facade: f32, ActiveDriver (the web on wasm32, the headless
+                 driver elsewhere), aliases for every view, Typography, media::*,
+                 Resource across the server boundary, Deferred, Lazy, Link, head,
+                 view_transitions, launch and the server entries, #[main]
 skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the same
-                 aliases, Typography, Glyphs, BorderGlyphs, media::*, launch,
-                 render_to_text
+                 aliases, Typography, BorderGlyphs, media::*, launch, render_to_text
 skene-simple     the Simple design language over skene-views, generic over D: the palette
-                 (a TokenSet), the looks, the shape per unit, and the Simple* views
+                 (a TokenSet), the looks, the shape per unit, the terminal marks
+                 (SimpleGlyphs) and the Simple* views; an app's explicit dependency,
+                 whose gui/tui features add a prelude aliasing them to that facade
 skene-router     routing over signals; a sink seam each facade binds
 skene-runner     host-side library embedding wasmtime around the app's server build:
                  renders a route or a stream, reads client hints, enumerates routes
@@ -195,7 +202,8 @@ them, and `RawPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. 
 `Simple*` components (`skene-simple`) are the ready-made library over the same builder:
 one palette, one shape language, shared across the GUI and the terminal wherever the
 medium allows, and deliberately nothing a third-party library could not build on the
-same footing.
+same footing—including how an app reaches it: an explicit dependency, never a facade
+re-export.
 
 - **A control decides its verdict.** The behavior runs first and its verdict is the
   whole verdict; a user's handler observes. A button's click never reaches the row it

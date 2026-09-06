@@ -2,8 +2,8 @@
 //!
 //! The GUI facade: a GUI app's single dependency. It fixes the scalar (logical pixels,
 //! `f32`), names the driver the build selects ([`ActiveDriver`]: the web on `wasm32`,
-//! the headless host driver elsewhere) and aliases every built-in view and every
-//! `Simple*` view to it, so app code names no platform. The medium's own contribution
+//! the headless host driver elsewhere) and aliases every built-in view to it, so app
+//! code names no platform. The medium's own contribution
 //! is [`Typography`], the [`media`] module and the entry points: `launch` in the
 //! browser, `render_to_string`, `render_to_stream` and `render_main` on the server
 //! leaf, and [`macro@main`] expanding to whichever the target has.
@@ -80,7 +80,6 @@ pub use skene_headless as headless;
 pub use skene_macros::{lazy, main};
 pub use skene_reactive as reactive;
 pub use skene_router as router;
-pub use skene_simple::SimpleVariant;
 pub use skene_views::{
   Activate,
   Anchor,
@@ -283,29 +282,6 @@ pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
 /// The closure building a view's child under the context the view provides; see
 /// [`skene_views::ChildBuilder`].
 pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
-
-/// The Simple design language's palette; see [`skene_simple::SimplePalette`].
-pub type SimplePalette = skene_simple::SimplePalette<f32>;
-/// One emphasis variant's colors; see [`skene_simple::SimpleLook`].
-pub type SimpleLook = skene_simple::SimpleLook<f32>;
-/// See [`skene_simple::SimpleButton`].
-pub type SimpleButton = skene_simple::SimpleButton<ActiveDriver>;
-/// See [`skene_simple::SimpleCard`].
-pub type SimpleCard = skene_simple::SimpleCard<ActiveDriver>;
-/// See [`skene_simple::SimpleCheckbox`].
-pub type SimpleCheckbox = skene_simple::SimpleCheckbox<ActiveDriver>;
-/// See [`skene_simple::SimplePicker`].
-pub type SimplePicker = skene_simple::SimplePicker<ActiveDriver>;
-/// See [`skene_simple::SimpleRadio`].
-pub type SimpleRadio = skene_simple::SimpleRadio<ActiveDriver>;
-/// See [`skene_simple::SimpleRadioGroup`].
-pub type SimpleRadioGroup<C = NoChild> = skene_simple::SimpleRadioGroup<ActiveDriver, C>;
-/// See [`skene_simple::SimpleSlider`].
-pub type SimpleSlider = skene_simple::SimpleSlider<ActiveDriver>;
-/// See [`skene_simple::SimpleTextEditor`].
-pub type SimpleTextEditor = skene_simple::SimpleTextEditor<ActiveDriver>;
-/// See [`skene_simple::SimpleTextField`].
-pub type SimpleTextField = skene_simple::SimpleTextField<ActiveDriver>;
 
 /// A condition on the environment, in logical pixels; see [`skene_core::Media`].
 pub type Media = skene_core::Media<f32>;

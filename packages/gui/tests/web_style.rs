@@ -15,7 +15,6 @@ use skene_gui::{
   Pinned,
   PixelExt,
   Row,
-  SimplePalette,
   Stack,
   State,
   Text,
@@ -41,6 +40,7 @@ use skene_gui::{
   },
   render_to_string,
 };
+use skene_simple::gui::prelude::*;
 
 /// Every class named in `body`, in document order.
 fn classes(body: &str) -> Vec<String> {

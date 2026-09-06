@@ -11,7 +11,6 @@ use skene_gui::{
   HasChildren,
   NodeId,
   RawButton,
-  SimplePalette,
   Text,
   Theme,
   ThemedIn,
@@ -22,6 +21,7 @@ use skene_gui::{
   media,
   prelude::{Get, Owner, Set, Signal, Update},
 };
+use skene_simple::gui::prelude::*;
 
 const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);

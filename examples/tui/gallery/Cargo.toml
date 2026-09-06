@@ -8,6 +8,7 @@ publish = false
 acme-sparkline = { path = "../../third-party/acme-sparkline" }
 acme-ui = { path = "../../third-party/acme-ui" }
 skene-tui.workspace = true
+skene-simple = { features = ["tui"], workspace = true }
 
 [lints]
 workspace = true

@@ -9,9 +9,10 @@ lands in.
 The redesign to one spine and thin facades is complete: every phase landed and the
 workspace is green on all three tiers. The shape it left is the one `DESIGN.md`
 describes—core owns a retained scene and the zero-sized `Driver` trait; `skene-views`
-hosts every built-in view once, generic over the driver; `skene-web`, `skene-headless`
+hosts every built-in view once, generic over the driver; `skene-gui-core` and
+`skene-tui-core` hold what each medium's drivers share; `skene-web`, `skene-headless`
 and the terminal implement the whole trait; the facades are a scalar, a condition set, a
-style extension and aliases; a control is `Control<B: Behavior>`; a token is a named
+style extension and aliases; `skene-simple` is an explicit dependency aliased per facade; a control is `Control<B: Behavior>`; a token is a named
 inherited slot a `Theme` defines; motion is data; the snapshot is positional and on by
 default; the old vocabulary and the transitional namespaces are gone; and `README.md`,
 `DESIGN.md`, `AGENTS.md` and this file describe the same code.

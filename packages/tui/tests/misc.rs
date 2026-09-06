@@ -5,7 +5,8 @@
 
 mod common;
 
-use skene_tui::{self as tui, Scene, TokenValue, glyph, prelude::*};
+use skene_simple::tui::{glyph, *};
+use skene_tui::{self as tui, Scene, TokenValue, prelude::*};
 
 use crate::common::{black, colors_at, locate, red, with_driver};
 

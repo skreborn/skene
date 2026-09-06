@@ -2,9 +2,9 @@
 //!
 //! The terminal facade and its driver: a terminal app's single dependency, equal in
 //! standing to `skene-gui`. It fixes the scalar (cells, `u32`), names the driver
-//! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view and every `Simple*` view
-//! to it, so app code names no platform. The medium's own contribution is
-//! [`Typography`], [`SimpleGlyphs`], the [`media`] module, the terminal's decoration
+//! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view to it, so app code names
+//! no platform. The medium's own contribution is
+//! [`Typography`], the [`media`] module, the terminal's decoration
 //! ([`TerminalDecoration`], [`TerminalText`]), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal, [`render_to_text`] for a headless test.
@@ -80,7 +80,6 @@ pub use skene_core::{
 };
 pub use skene_reactive::{self as reactive, LoadState, Resource};
 pub use skene_router as router;
-pub use skene_simple::SimpleVariant;
 /// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
 /// and the typography set.
 pub use skene_tui_core::{
@@ -154,21 +153,6 @@ pub use crate::{
 
 /// The driver the build selected: the terminal driver, on every host target.
 pub type ActiveDriver = Tui;
-
-/// The named glyph tokens; see [`SimpleGlyphs`].
-pub mod glyph {
-  pub use skene_simple::glyphs::{
-    CHECKBOX_CHECKED,
-    CHECKBOX_UNCHECKED,
-    PICKER_INDICATOR,
-    RADIO_CHECKED,
-    RADIO_UNCHECKED,
-  };
-}
-
-/// The glyphs the Simple checkbox and radio marks and picker indicator are drawn with;
-/// see [`skene_simple::SimpleGlyphs`].
-pub use skene_simple::SimpleGlyphs;
 
 /// A view on the active driver; see [`skene_core::View`].
 pub trait View: skene_core::View<ActiveDriver> {
@@ -311,29 +295,6 @@ pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
 /// The closure building a view's child under the context the view provides; see
 /// [`skene_views::ChildBuilder`].
 pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
-
-/// The Simple design language's palette; see [`skene_simple::SimplePalette`].
-pub type SimplePalette = skene_simple::SimplePalette<u32>;
-/// One emphasis variant's colors; see [`skene_simple::SimpleLook`].
-pub type SimpleLook = skene_simple::SimpleLook<u32>;
-/// See [`skene_simple::SimpleButton`].
-pub type SimpleButton = skene_simple::SimpleButton<ActiveDriver>;
-/// See [`skene_simple::SimpleCard`].
-pub type SimpleCard = skene_simple::SimpleCard<ActiveDriver>;
-/// See [`skene_simple::SimpleCheckbox`].
-pub type SimpleCheckbox = skene_simple::SimpleCheckbox<ActiveDriver>;
-/// See [`skene_simple::SimplePicker`].
-pub type SimplePicker = skene_simple::SimplePicker<ActiveDriver>;
-/// See [`skene_simple::SimpleRadio`].
-pub type SimpleRadio = skene_simple::SimpleRadio<ActiveDriver>;
-/// See [`skene_simple::SimpleRadioGroup`].
-pub type SimpleRadioGroup<C = NoChild> = skene_simple::SimpleRadioGroup<ActiveDriver, C>;
-/// See [`skene_simple::SimpleSlider`].
-pub type SimpleSlider = skene_simple::SimpleSlider<ActiveDriver>;
-/// See [`skene_simple::SimpleTextEditor`].
-pub type SimpleTextEditor = skene_simple::SimpleTextEditor<ActiveDriver>;
-/// See [`skene_simple::SimpleTextField`].
-pub type SimpleTextField = skene_simple::SimpleTextField<ActiveDriver>;
 
 /// A condition on the environment, in cells; see [`skene_core::Media`].
 pub type Media = skene_core::Media<u32>;

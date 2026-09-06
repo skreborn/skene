@@ -47,6 +47,7 @@ use skene_gui::{
   wasm_bindgen::JsCast,
   web::{self, mount},
 };
+use skene_simple::gui::prelude::*;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement};
 
@@ -1118,7 +1119,6 @@ fn a_route_change_commits_under_a_view_transition() {
 fn a_token_keyframe_animation_applies() {
   use skene_gui::{
     PixelExt,
-    SimplePalette,
     core::{Animation, BoxStyle, Keyframe},
   };
 

@@ -5,6 +5,7 @@
 //! requested path to stdout; on the host it builds against the headless driver.
 
 use skene_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

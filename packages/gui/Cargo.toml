@@ -10,7 +10,6 @@ skene-gui-core.workspace = true
 skene-macros.workspace = true
 skene-reactive.workspace = true
 skene-router.workspace = true
-skene-simple.workspace = true
 skene-views.workspace = true
 tracing.workspace = true
 
@@ -21,6 +20,9 @@ skene-headless.workspace = true
 serde_json = "1"
 skene-web.workspace = true
 wasm-bindgen.workspace = true
+
+[dev-dependencies]
+skene-simple = { features = ["gui"], workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-headless.workspace = true

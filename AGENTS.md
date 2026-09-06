@@ -23,8 +23,11 @@
   vocabulary—no per-platform `impl View`, no "backend" concept.
 - A **driver** is a crate implementing `Driver`: `skene-web` (the csr and ssr leaves),
   `skene-headless` (the host driver every facade compiles against off its target, driven
-  by tests), later `skene-native`; `skene-tui` carries its own. Drivers depend on core,
-  never on each other; a facade is the only place that names its drivers, and it
+  by tests), later `skene-native`; `skene-tui` carries its own. What every driver of one
+  medium shares above the spine lives in that medium's core crate—`skene-gui-core`
+  (`PixelExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TerminalExt`,
+  `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no
+  medium. Drivers depend on core and their medium's core, never on each other; a facade is the only place that names its drivers, and it
   publishes the selected one as `ActiveDriver`. The trait is zero-sized and
   monomorphized: no `dyn` driver, no downcast, no runtime swap. It is **not sealed**, and
   the shared machinery bounds only on it and the public extension traits, so a
@@ -245,7 +248,11 @@
   works on every facade from one crate. A low-level view is written against a driver's
   escape trait and selected through the facade's `ActiveDriver`. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
-  regression. `examples/third-party` is the standing proof and part of the gate.
+  regression. `skene-simple` is held to the same rule from the other side: a facade never
+  re-exports it, an app depends on it explicitly, and its `gui`/`tui` features add only
+  a `prelude` of aliases over that facade's `ActiveDriver`, which is exactly what a
+  third-party library may ship. `examples/third-party` is the standing proof and part of
+  the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the
   driver's frame clock from the resolution point that reports a changed value, never

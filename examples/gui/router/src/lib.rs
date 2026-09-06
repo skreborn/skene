@@ -19,6 +19,7 @@ use skene_gui::{
   prelude::*,
   router::{Route, StaticRoutes},
 };
+use skene_simple::gui::prelude::*;
 
 /// Every page in the app, one URL each.
 #[derive(Clone, Copy, PartialEq)]

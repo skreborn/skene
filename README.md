@@ -22,11 +22,13 @@ dev-loop restart resumes where the last run stood.
 
 ## A GUI app
 
-A GUI app depends only on `skene-gui`, marks its entry with `#[main]`, and names no
-driver (`examples/gui/counter`):
+A GUI app depends on `skene-gui` and, for the ready-made components, on `skene-simple`
+with its `gui` feature; it marks its entry with `#[main]` and names no driver
+(`examples/gui/counter`):
 
 ```rust
 use skene_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
@@ -60,9 +62,11 @@ host it builds the tree against the headless driver, which is what view tests ru
 
 ## A terminal app
 
-A terminal app depends only on `skene-tui` and calls `launch` (`examples/tui/counter`):
+A terminal app depends on `skene-tui` (and `skene-simple` with its `tui` feature) and
+calls `launch` (`examples/tui/counter`):
 
 ```rust
+use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
 fn app() -> impl IntoView {
@@ -98,11 +102,14 @@ skene-core            the spine: the scene, the Driver trait, dispatch, the prop
       │
 skene-views           every built-in view once, generic over the driver
       │
-      ├── skene-web        the web driver: browser (csr) and server (ssr) leaves
-      ├── skene-headless   the host driver: an inspectable record store for tests
-      └── skene-tui        the terminal facade and its driver
+      ├── skene-gui-core   what pixel drivers share: PixelExt, Typography, Painting
+      │     ├── skene-web        the web driver: browser (csr) and server (ssr) leaves
+      │     └── skene-headless   the host driver: an inspectable record store for tests
+      └── skene-tui-core   what terminal drivers share: TerminalExt, Typography
+            └── skene-tui        the terminal facade and its driver
 skene-gui             the GUI facade: aliases over the selected driver
-skene-simple          the Simple component library over skene-views
+skene-simple          the Simple component library over skene-views; an explicit
+                      dependency, aliased per facade behind its `gui`/`tui` features
 skene-router          routing as reactive state
 skene-runner          a host library embedding wasmtime around the server build
 skene-macros          #[main], #[lazy], #[derive(Store)]
@@ -114,11 +121,13 @@ skene-cli             the `skene` command
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position, the `spawn` seam a driver installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<D>`, the zero-sized `Driver` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
 | `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry` and the `Raw*` aliases, `Overlay`, `LazyColumn`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`, `Theme`, `typography`. |
+| `skene-gui-core` | `packages/gui-core` | What every pixel driver shares: `PixelExt` (corner radius, type metrics), the pixel `Typography` set, and the painting path (`Painting`, `Canvas`, `Painted`, `IntoBrush`) through vello. |
+| `skene-tui-core` | `packages/tui-core` | What every terminal driver shares: `TerminalExt` (border glyphs, shadow, corner radius, bold, weight), `BorderGlyphs`, and the terminal `Typography` set. |
 | `skene-web` | `packages/web` | The web `Driver`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
 | `skene-headless` | `packages/headless` | The host `Driver`: records what any driver receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
-| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view and `Simple*` component, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
-| `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `Glyphs`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver. |
+| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
+| `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver; the `gui` and `tui` features add a `prelude` aliasing them to that facade's driver. |
 | `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |

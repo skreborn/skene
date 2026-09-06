@@ -5,6 +5,7 @@
 
 mod common;
 
+use skene_simple::tui::prelude::*;
 use skene_tui::{self as tui, prelude::*};
 
 use crate::common::with_driver;

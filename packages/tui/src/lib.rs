@@ -38,7 +38,6 @@ mod routing;
 mod selection;
 mod store;
 mod terminal;
-mod typography_set;
 
 pub use skene_core as core;
 pub use skene_core::{
@@ -82,6 +81,19 @@ pub use skene_core::{
 pub use skene_reactive::{self as reactive, LoadState, Resource};
 pub use skene_router as router;
 pub use skene_simple::SimpleVariant;
+/// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
+/// and the typography set.
+pub use skene_tui_core::{
+  BOLD_WEIGHT,
+  BorderGlyphs,
+  TerminalBoxFields,
+  TerminalExt,
+  TerminalProperty,
+  TerminalRunFields,
+  TerminalValue,
+  Typography,
+  terminal_fields,
+};
 pub use skene_views::{
   Activate,
   Anchor,
@@ -109,18 +121,7 @@ pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
   driver::{Tui, handle, install, mount, uninstall},
-  ext::{
-    BOLD_WEIGHT,
-    BorderGlyphs,
-    TerminalBoxFields,
-    TerminalDecoration,
-    TerminalExt,
-    TerminalProperty,
-    TerminalRunFields,
-    TerminalText,
-    TerminalValue,
-    terminal_fields,
-  },
+  ext::{TerminalDecoration, TerminalText},
   media::{derive_scheme, set_scheme, stored_scheme},
   routing::install_router,
   store::Handle,
@@ -149,7 +150,6 @@ pub use crate::{
     trigger_reduced_motion,
     trigger_resize,
   },
-  typography_set::Typography,
 };
 
 /// The driver the build selected: the terminal driver, on every host target.

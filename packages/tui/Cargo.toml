@@ -12,6 +12,7 @@ skene-core.workspace = true
 skene-reactive.workspace = true
 skene-router.workspace = true
 skene-simple.workspace = true
+skene-tui-core.workspace = true
 skene-views.workspace = true
 taffy = "0.9"
 

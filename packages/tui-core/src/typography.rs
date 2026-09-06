@@ -3,7 +3,10 @@
 use skene_core::{Color, Media, TokenName, TokenSet};
 use skene_views::typography;
 
-use crate::{Definition, Token};
+/// A token's definition in cells; see [`skene_core::Definition`].
+type Definition<T> = skene_core::Definition<T, u32>;
+/// A token in cells; see [`skene_core::Token`].
+type Token<T> = skene_core::Token<T, u32>;
 
 /// The text inheritance: the inks, the selection colors and the weight every run reads
 /// where it sets nothing of its own.

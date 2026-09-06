@@ -20,10 +20,10 @@ use skene_core::{
 };
 
 use crate::{
+  BOLD_WEIGHT,
   BorderGlyphs,
   TerminalExt,
   Tui,
-  ext::BOLD_WEIGHT,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
 };
 

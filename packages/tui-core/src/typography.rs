@@ -14,7 +14,7 @@ type Token<T> = skene_core::Token<T, u32>;
 /// Defines the [`typography`] token names, so `Theme::new(Typography::default())` inks
 /// everything beneath it, and a palette that defines the same names (as
 /// `SimplePalette` does for the inks) takes over where it is nested. Every setter takes
-/// a [`Definition`], which carries its own conditions. The default follows the
+/// a [`Definition`](skene_core::Definition), which carries its own conditions. The default follows the
 /// terminal: a transparent ink shows the terminal's own foreground, transparent
 /// selection colors paint the selection in reverse video, and the link ink answers the
 /// scheme.

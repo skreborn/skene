@@ -141,7 +141,7 @@ where
   let mut last_frame: Option<paint::Buffer> = None;
 
   loop {
-    crate::task::pump();
+    let _ = skene_core::executor::pump();
 
     if let Some(receiver) = &detection {
       match receiver.try_recv() {

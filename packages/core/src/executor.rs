@@ -1,8 +1,10 @@
-//! The terminal executor: scope-bound tasks polled from the event loop.
+//! The single-thread executor a host driver installs: scope-bound tasks queued on the
+//! driver's thread and polled when that thread pumps them.
 //!
-//! [`spawn`] queues a future on the terminal thread; the interactive loop pumps ready
-//! tasks between events. Wakers may fire from any thread—the readiness queue is
-//! shared—while the futures themselves stay on the terminal thread.
+//! [`install`] makes it the reactive engine's spawner; [`drive`] queues a future;
+//! [`pump`] polls the ready ones, from an event loop between events or from a test.
+//! Wakers may fire from any thread—the readiness queue is shared—while the futures
+//! themselves stay on the installing thread.
 
 use std::{
   cell::RefCell,
@@ -15,7 +17,7 @@ use std::{
 use rustc_hash::FxHashMap;
 
 /// The upper bound on pump rounds, so a task that always wakes itself cannot starve
-/// the event loop.
+/// the thread.
 const MAX_ROUNDS: u32 = 1024;
 
 /// The cross-thread readiness queue: ids of tasks whose wakers fired.
@@ -23,7 +25,7 @@ struct Shared {
   ready: Mutex<Vec<u64>>,
 }
 
-/// The terminal thread's tasks and their shared readiness queue.
+/// The thread's tasks and their shared readiness queue.
 struct Executor {
   tasks: FxHashMap<u64, Pin<Box<dyn Future<Output = ()>>>>,
   shared: Arc<Shared>,
@@ -67,8 +69,8 @@ impl Wake for TaskWaker {
   }
 }
 
-/// Queues `future` on this thread's executor; the event loop polls it.
-pub(crate) fn drive(future: impl Future<Output = ()> + 'static) {
+/// Queues `future` on this thread's executor; the next [`pump`] polls it.
+pub fn drive(future: impl Future<Output = ()> + 'static) {
   EXECUTOR.with(|executor| {
     let mut executor = executor.borrow_mut();
     let id = executor.next;
@@ -85,7 +87,8 @@ pub(crate) fn drive(future: impl Future<Output = ()> + 'static) {
 }
 
 /// Polls every ready task until none remain ready; `true` when any ran.
-pub(crate) fn pump() -> bool {
+#[must_use]
+pub fn pump() -> bool {
   let mut ran = false;
 
   for _ in 0..MAX_ROUNDS {
@@ -134,7 +137,7 @@ pub(crate) fn pump() -> bool {
 }
 
 /// Drops every task and queued wake, readying the executor for an independent mount.
-pub(crate) fn clear() {
+pub fn clear() {
   EXECUTOR.with(|executor| {
     let mut executor = executor.borrow_mut();
 
@@ -148,13 +151,8 @@ pub(crate) fn clear() {
   });
 }
 
-/// Runs `future` as a task, until it finishes or the current scope is disposed.
-///
-/// Owner-bound on purpose: a task started while building a view ends with that view—or
-/// with any ancestor of it—rather than waking later to write into a tree that is gone.
-/// The future runs on the terminal thread, pumped by the event loop between events, so
-/// it may touch signals and views directly; cancellation takes effect at its next poll.
-#[inline(always)]
-pub fn spawn(future: impl Future<Output = ()> + 'static) {
-  drive(skene_core::scope_bound(future));
+/// Installs this executor as the reactive engine's spawner: every spawned task is
+/// scope-bound and queued here.
+pub fn install() {
+  skene_reactive::set_spawner(|task| drive(crate::scope_bound(task)));
 }

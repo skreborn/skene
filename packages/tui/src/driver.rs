@@ -426,7 +426,7 @@ impl CellPainter for Tui {
 /// Panics if it is already installed.
 pub fn install() {
   skene_reactive::Runtime::init_on_ui_thread();
-  skene_reactive::set_spawner(|task| crate::task::drive(skene_core::scope_bound(task)));
+  skene_core::executor::install();
 
   STORE.with(|store| {
     let mut store = store.borrow_mut();
@@ -471,7 +471,7 @@ pub fn uninstall() {
 
   skene_reactive::Runtime::reset();
   skene_core::reset_root_owner();
-  crate::task::clear();
+  skene_core::executor::clear();
   Scene::<Tui>::with(|scene| *scene = Scene::new());
   ROOT.with(|root| *root.borrow_mut() = None);
   STORE.with(|store| *store.borrow_mut() = None);

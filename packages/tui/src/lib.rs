@@ -37,7 +37,6 @@ mod resolve;
 mod routing;
 mod selection;
 mod store;
-mod task;
 mod terminal;
 mod token;
 mod typography_set;
@@ -126,7 +125,6 @@ pub use crate::{
   media::{derive_scheme, set_scheme, stored_scheme},
   routing::install_router,
   store::Handle,
-  task::spawn,
   terminal::{
     current_cursor,
     current_title,
@@ -445,5 +443,16 @@ pub fn render_to_colors(
 /// ran. For a headless test driving async work.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  task::pump()
+  skene_core::executor::pump()
+}
+
+/// Runs `future` as a task, until it finishes or the current scope is disposed.
+///
+/// Owner-bound on purpose: a task started while building a view ends with that view—or
+/// with any ancestor of it—rather than waking later to write into a tree that is gone.
+/// The future runs on the terminal thread, pumped by the event loop between events, so
+/// it may touch signals and views directly; cancellation takes effect at its next poll.
+#[inline(always)]
+pub fn spawn(future: impl Future<Output = ()> + 'static) {
+  skene_reactive::spawn(future);
 }

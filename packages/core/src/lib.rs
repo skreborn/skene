@@ -32,6 +32,7 @@ mod dispatch;
 mod driver;
 mod errors;
 mod events;
+pub mod executor;
 mod expr;
 mod extension;
 mod fingerprint;

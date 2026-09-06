@@ -31,7 +31,6 @@
 
 mod resolve;
 mod store;
-mod task;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey};
 
@@ -377,21 +376,21 @@ pub fn reset() {
     owner.dispose();
   }
 
-  task::clear();
+  skene_core::executor::clear();
   install_executor();
 }
 
 /// Installs the headless executor as this thread's spawner: every task `spawn` and
 /// `Resource` start on this thread queues here until [`pump_tasks`] polls it.
 pub fn install_executor() {
-  skene_reactive::set_spawner(|task| task::drive(skene_core::scope_bound(task)));
+  skene_core::executor::install();
 }
 
 /// Polls every queued task until none is ready, so a resource whose loader is ready
 /// lands its value; `true` when any task ran.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  task::pump()
+  skene_core::executor::pump()
 }
 
 /// Sets the document title.

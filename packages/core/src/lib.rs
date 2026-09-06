@@ -44,6 +44,7 @@ mod pixel;
 mod property;
 mod props;
 mod reorder;
+mod resolve;
 mod run_style;
 mod runtime;
 mod scalar;
@@ -143,6 +144,7 @@ pub use props::{
   StaticRunStyle,
 };
 pub use reorder::Reorder;
+pub use resolve::{Interaction, Resolved, Resolver, SlotValue, TokenValue};
 pub use run_style::{
   IntoRunValue,
   RunDynamics,

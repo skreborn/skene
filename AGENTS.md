@@ -11,8 +11,10 @@
   the zero-sized **`Driver`** trait every driver implements, event dispatch over the
   scene, the property model (`BoxStyle<N, S, X>`, `RunStyle<S, X>` and their visitors),
   values and expressions (`Value`, `Leaf`, `Expr`), conditions (`Media`, `State`,
-  `Condition`), tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation,
-  generic geometry over the driver's scalar, and universal values. `skene-views` hosts
+  `Condition`), tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation, the
+  runtime **`Resolver`** every non-CSS driver resolves its styles through (with the
+  erased `TokenValue` and `SlotValue` it reads), the host **executor** a driver
+  installs, generic geometry over the driver's scalar, and universal values. `skene-views` hosts
   every built-in view once, generic over `D: Driver`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the

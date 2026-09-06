@@ -17,7 +17,7 @@ use skene_core::{
   TokenRef,
   TokenSet,
 };
-use skene_headless::{HeadlessTokenValue, children};
+use skene_headless::{TokenValue, children};
 use skene_views::typography;
 
 pub const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
@@ -77,8 +77,8 @@ impl Default for TestPalette {
   }
 }
 
-impl TokenSet<HeadlessTokenValue> for TestPalette {
-  fn definitions(&self) -> Vec<(TokenName, HeadlessTokenValue)> {
+impl TokenSet<TokenValue> for TestPalette {
+  fn definitions(&self) -> Vec<(TokenName, TokenValue)> {
     vec![self.card.define(), self.gutter.define()]
   }
 }
@@ -112,8 +112,8 @@ impl Default for TestTypography {
   }
 }
 
-impl TokenSet<HeadlessTokenValue> for TestTypography {
-  fn definitions(&self) -> Vec<(TokenName, HeadlessTokenValue)> {
+impl TokenSet<TokenValue> for TestTypography {
+  fn definitions(&self) -> Vec<(TokenName, TokenValue)> {
     vec![
       self.ink.define(),
       self.link_ink.define(),

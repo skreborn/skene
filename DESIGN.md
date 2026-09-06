@@ -142,8 +142,9 @@ driver crate, since it is not a shared contract.
 
   **No mock driver—but headless tests.** Because the vocabulary carries typed data, the
   host driver (`skene-headless`) realizes exactly what any real driver receives into an
-  inspectable record store, resolves a property through the scene's tokens, the
-  expression evaluator and the environment, and runs tasks when a test pumps them, giving
+  inspectable record store, resolves a property through core's `Resolver` (the scene's
+  tokens, the expression evaluator and the environment), and runs tasks when a test
+  pumps them, giving
   view logic fast headless tests without pretending to be a platform. Drivers test against
   their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr: wasmtime under a
   byte-exact snapshot; native: its toolkit).
@@ -292,10 +293,14 @@ Condition     = Media | State | And | Or
   `@media`, `@container` and pseudo-class rules, `transition:`, content-addressed
   `@keyframes`, `var()` for tokens and slots. State-, media- and theme-driven styling
   therefore works in a static document with zero script.
-- **Terminal** (and native) resolve every property at one point—token lookup, expression
-  evaluation, variant overlay—cached per node under a generation covering environment,
-  interaction and definitions, and reporting whether the resolved value changed. That
-  report is where a transition starts.
+- **Terminal** (and native) resolve every property at one point through core's
+  `Resolver`—variant overlay against the environment and the node's `Interaction`, token
+  lookup through the scene, expression evaluation, slot reads—handing it the medium's
+  unit, its token and slot lookups and its `em`. The terminal caches the result per
+  node under a generation covering environment, interaction and definitions, and
+  reports whether the resolved value changed; that report is where a transition
+  starts. The headless driver resolves through the same `Resolver`, so a test's answer
+  and the terminal's are one computation.
 
 ### Tokens and themes
 
@@ -448,8 +453,8 @@ SSR/SSG in a runner.
 The host driver: every `Driver` method mirrors into a record store, nothing lays out and
 no platform response fires. Beside the records it keeps what a test asks: the outline,
 the props a node was created with, the slot a render effect last wrote, a property
-resolved through the scene's tokens, the expression evaluator and the environment
-(viewport, scheme, reduced motion, container sizes, hover and focus), control state and
+resolved through core's `Resolver` under the environment a test set (viewport, scheme,
+reduced motion, container sizes, hover and focus), control state and
 parts, overlay openness, focus order, accessible names, bound painters. Events go through
 `trigger_*` into core's dispatch; a frame clock advances on request; an executor holds
 every spawned task until `pump_tasks`. It is what `skene-gui` selects on a host target,

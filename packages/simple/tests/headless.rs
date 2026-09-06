@@ -28,8 +28,8 @@ use skene_core::{
 };
 use skene_headless::{
   Headless,
-  HeadlessTokenValue,
   SlotValue,
+  TokenValue,
   accessible_name,
   advance,
   children,
@@ -508,8 +508,8 @@ impl Default for AcmePalette {
   }
 }
 
-impl TokenSet<HeadlessTokenValue> for AcmePalette {
-  fn definitions(&self) -> Vec<(TokenName, HeadlessTokenValue)> {
+impl TokenSet<TokenValue> for AcmePalette {
+  fn definitions(&self) -> Vec<(TokenName, TokenValue)> {
     vec![self.accent.define()]
   }
 }

@@ -5,7 +5,6 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 use skene_core::{
   BoxProps,
-  BoxValue,
   ColorScheme,
   ContainerName,
   ContainerSizes,
@@ -20,14 +19,13 @@ use skene_core::{
   Painter,
   PropertyKey,
   RunProps,
-  RunValue,
   Size,
   Slot,
-  interpolate::{Interpolate, Tween, snap},
+  interpolate::Tween,
 };
 use skene_reactive::{Owner, Signal, WriteSignal};
 
-use crate::{Handle, Headless, HeadlessTokenValue};
+use crate::{Handle, Headless, SlotValue, TokenValue};
 
 /// The viewport the driver reports until [`set_viewport`](crate::set_viewport) is called.
 pub const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
@@ -46,26 +44,6 @@ pub enum Kind {
   Anchor,
   /// A scope.
   Scope,
-}
-
-/// The latest value a render effect wrote into one slot.
-#[derive(Debug, Clone, PartialEq)]
-#[must_use]
-pub enum SlotValue {
-  /// A box property's value.
-  Box(BoxValue<f32>),
-  /// A run property's value.
-  Run(RunValue),
-}
-
-impl Interpolate for SlotValue {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    match (self, to) {
-      (Self::Box(from), Self::Box(to)) => Self::Box(from.interpolate(to, amount)),
-      (Self::Run(from), Self::Run(to)) => Self::Run(from.interpolate(to, amount)),
-      _ => snap(self, to, amount),
-    }
-  }
 }
 
 /// The motion a node runs: the value each resolved property is heading for, the tween
@@ -94,7 +72,7 @@ pub struct Record {
   pub control_state: ControlState,
   pub hovered: bool,
   pub slots: FxHashMap<Slot, SlotValue>,
-  pub definitions: Option<Definitions<HeadlessTokenValue>>,
+  pub definitions: Option<Definitions<TokenValue>>,
   pub listened: Vec<EventKind>,
   pub children: Vec<Handle>,
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
@@ -165,7 +143,7 @@ pub struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,
   pub focused: Option<Handle>,
-  pub root_definitions: Definitions<HeadlessTokenValue>,
+  pub root_definitions: Definitions<TokenValue>,
   pub root_definition_writes: usize,
   pub container_sizes: FxHashMap<ContainerName, Size<f32>>,
   pub viewport: Option<Size<f32>>,

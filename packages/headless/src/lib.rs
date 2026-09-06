@@ -45,7 +45,6 @@ use skene_core::{
   ContainerName,
   ControlProps,
   ControlState,
-  Definition,
   Definitions,
   Dimension,
   Driver,
@@ -88,7 +87,7 @@ use skene_core::{
 };
 use skene_reactive::Set;
 
-pub use crate::store::{HeadElement, SlotValue};
+pub use crate::store::HeadElement;
 use crate::store::{Kind, Record, Store};
 
 /// The host driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
@@ -127,38 +126,12 @@ impl Handle {
   }
 }
 
-/// The erased token definition the host medium accepts.
-#[derive(Debug, Clone, PartialEq)]
-#[must_use]
-pub enum HeadlessTokenValue {
-  /// A color token.
-  Color(Definition<Color, f32>),
-  /// A unitless number token.
-  Number(Definition<f32, f32>),
-  /// A dimension token.
-  Dimension(Definition<Dimension<f32>, f32>),
-}
+/// The erased token definition the headless driver stores per token; see
+/// [`skene_core::TokenValue`].
+pub type TokenValue = skene_core::TokenValue<f32>;
 
-impl From<Definition<Color, f32>> for HeadlessTokenValue {
-  #[inline(always)]
-  fn from(definition: Definition<Color, f32>) -> Self {
-    Self::Color(definition)
-  }
-}
-
-impl From<Definition<f32, f32>> for HeadlessTokenValue {
-  #[inline(always)]
-  fn from(definition: Definition<f32, f32>) -> Self {
-    Self::Number(definition)
-  }
-}
-
-impl From<Definition<Dimension<f32>, f32>> for HeadlessTokenValue {
-  #[inline(always)]
-  fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
-    Self::Dimension(definition)
-  }
-}
+/// The value a derived leaf last wrote into a node's slot; see [`skene_core::SlotValue`].
+pub type SlotValue = skene_core::SlotValue<f32>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -185,7 +158,7 @@ impl Driver for Headless {
   type Scalar = f32;
   type Sink = Handle;
   type StyleExt = ();
-  type TokenValue = HeadlessTokenValue;
+  type TokenValue = TokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
@@ -288,13 +261,13 @@ impl Driver for Headless {
     with_store(|store| store.destroy(sink));
   }
 
-  fn define_tokens(&self, scope: &Handle, definitions: &Definitions<HeadlessTokenValue>) {
+  fn define_tokens(&self, scope: &Handle, definitions: &Definitions<TokenValue>) {
     with_record(*scope, |record| {
       record.definitions = Some(definitions.clone());
     });
   }
 
-  fn define_root_tokens(&self, definitions: &Definitions<HeadlessTokenValue>) {
+  fn define_root_tokens(&self, definitions: &Definitions<TokenValue>) {
     with_store(|store| {
       store.root_definitions = definitions.clone();
       store.root_definition_writes += 1;
@@ -877,12 +850,12 @@ pub fn listened(node: NodeId) -> Vec<EventKind> {
 
 /// The token definitions placed on the scope `node`.
 #[must_use]
-pub fn definitions(node: NodeId) -> Option<Definitions<HeadlessTokenValue>> {
+pub fn definitions(node: NodeId) -> Option<Definitions<TokenValue>> {
   with_record(handle(node)?, |record| record.definitions.clone())?
 }
 
 /// The token definitions every node falls back to.
-pub fn root_definitions() -> Definitions<HeadlessTokenValue> {
+pub fn root_definitions() -> Definitions<TokenValue> {
   with_store(|store| store.root_definitions.clone())
 }
 

@@ -38,7 +38,6 @@ mod routing;
 mod selection;
 mod store;
 mod terminal;
-mod token;
 mod typography_set;
 
 pub use skene_core as core;
@@ -150,7 +149,6 @@ pub use crate::{
     trigger_reduced_motion,
     trigger_resize,
   },
-  token::TokenValue,
   typography_set::Typography,
 };
 
@@ -456,3 +454,7 @@ pub fn pump_tasks() -> bool {
 pub fn spawn(future: impl Future<Output = ()> + 'static) {
   skene_reactive::spawn(future);
 }
+
+/// The erased token definition the terminal stores per token; see
+/// [`skene_core::TokenValue`].
+pub type TokenValue = skene_core::TokenValue<u32>;

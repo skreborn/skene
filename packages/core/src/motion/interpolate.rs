@@ -11,6 +11,7 @@ use crate::{
   Inset,
   RunValue,
   Scalar,
+  SlotValue,
   Spacing,
   StaticLeaf,
   StyleExtension,
@@ -193,6 +194,16 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
       (Self::Extension(from), Self::Extension(to)) => {
         Self::Extension(X::interpolate_value(from, to, amount))
       }
+      _ => snap(self, to, amount),
+    }
+  }
+}
+
+impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for SlotValue<N, X> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+    match (self, to) {
+      (Self::Box(from), Self::Box(to)) => Self::Box(from.interpolate(to, amount)),
+      (Self::Run(from), Self::Run(to)) => Self::Run(from.interpolate(to, amount)),
       _ => snap(self, to, amount),
     }
   }

@@ -46,8 +46,8 @@ use skene_core::{
 };
 use skene_headless::{
   Headless,
-  HeadlessTokenValue,
   SlotValue,
+  TokenValue,
   box_props,
   children,
   full_outline,
@@ -129,8 +129,8 @@ impl Default for TestPalette {
   }
 }
 
-impl TokenSet<HeadlessTokenValue> for TestPalette {
-  fn definitions(&self) -> Vec<(TokenName, HeadlessTokenValue)> {
+impl TokenSet<TokenValue> for TestPalette {
+  fn definitions(&self) -> Vec<(TokenName, TokenValue)> {
     vec![self.card.define(), self.gutter.define()]
   }
 }
@@ -358,7 +358,7 @@ fn nested_themes_resolve_the_nearest_palette() {
         Column::new().set_children((
           Container::new().set_color(TestPalette::CARD),
           Theme::new(TestPalette::with_card(red())).set_child_builder(move || {
-            seen.set(Some(<TestPalette as Themed<HeadlessTokenValue>>::current()));
+            seen.set(Some(<TestPalette as Themed<TokenValue>>::current()));
 
             Container::new().set_color(TestPalette::CARD)
           }),

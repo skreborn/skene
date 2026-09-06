@@ -354,6 +354,13 @@ impl StyleExtension for TerminalExt {
     visitor.field::<terminal_fields::Bold>();
     visitor.field::<terminal_fields::Weight>();
   }
+
+  #[inline(always)]
+  fn run_value_from_number(number: f32) -> Option<RunValue<Self>> {
+    Some(RunValue::Extension(TerminalValue::Bold(
+      number >= BOLD_WEIGHT,
+    )))
+  }
 }
 
 impl CornerRadius for TerminalExt {

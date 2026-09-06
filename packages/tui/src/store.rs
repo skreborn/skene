@@ -8,7 +8,6 @@ use skene_core::{
   BoxDynamics,
   BoxProps,
   BoxStyle,
-  BoxValue,
   Color,
   ColorScheme,
   ContainerName,
@@ -23,7 +22,6 @@ use skene_core::{
   Plain,
   RunProps,
   RunStyle,
-  RunValue,
   Size,
   Slot,
 };
@@ -72,21 +70,10 @@ impl Handle {
   }
 }
 
-/// The latest value a render effect wrote into one slot.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum SlotValue {
-  Box(BoxValue<u32, TerminalExt>),
-  Run(RunValue<TerminalExt>),
-}
+/// The value a derived leaf last wrote into a node's slot.
+pub(crate) type SlotValue = skene_core::SlotValue<u32, TerminalExt>;
 
-/// A node's interaction state, as one resolution read it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct Interaction {
-  pub(crate) hovered: bool,
-  pub(crate) focused: bool,
-  pub(crate) pressed: bool,
-  pub(crate) control: Option<ControlState>,
-}
+pub(crate) use skene_core::Interaction;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.

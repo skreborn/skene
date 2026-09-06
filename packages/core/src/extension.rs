@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use super::{BoxFieldVisitor, PropertyName, RunFieldVisitor, Scalar, Shape};
+use super::{BoxFieldVisitor, PropertyName, RunFieldVisitor, RunValue, Scalar, Shape};
 
 /// A medium's own properties, added to [`BoxStyle`](super::BoxStyle) and
 /// [`RunStyle`](super::RunStyle) beside the shared ones.
@@ -29,6 +29,16 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
 
   /// Visits every run field, in declaration order.
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V);
+
+  /// The run value a numeric token or expression yields for this medium's run
+  /// properties, if any; a medium with no numeric run property yields none.
+  #[inline(always)]
+  #[must_use]
+  fn run_value_from_number(number: f32) -> Option<RunValue<Self>> {
+    let _ = number;
+
+    None
+  }
 
   /// The value `amount` of the way from `from` to `to`, for a driver running motion on
   /// its own clock; an extension whose values have no in-between cuts over halfway.

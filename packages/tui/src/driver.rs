@@ -30,12 +30,12 @@ use skene_reactive::Set;
 
 use crate::{
   TerminalExt,
+  TokenValue,
   Typography,
   cells::{CellPainter, Painter},
   interaction,
   motion::RunMotion,
   store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
-  token::TokenValue,
 };
 
 /// The terminal driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this

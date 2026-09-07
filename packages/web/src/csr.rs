@@ -58,7 +58,7 @@ use skene_core::{
   notify_dismiss,
   notify_toggle,
 };
-use skene_gui_core::{Canvas, Painter, Painting, PixelExt};
+use skene_gui_core::{Canvas, GuiExt, Painter, Painting};
 use skene_reactive::Memo;
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{
@@ -878,7 +878,7 @@ fn repaint(sink: u32, size: Size<f32>) {
 impl Driver for Web {
   type Scalar = f32;
   type Sink = u32;
-  type StyleExt = PixelExt;
+  type StyleExt = GuiExt;
   type TokenValue = WebTokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -920,7 +920,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, PixelExt>) {
+  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, GuiExt>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(*sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
@@ -1187,7 +1187,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<PixelExt>) {
+  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<GuiExt>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(*sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)

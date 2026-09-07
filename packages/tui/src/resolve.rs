@@ -22,8 +22,8 @@ use skene_core::{
 use crate::{
   BOLD_WEIGHT,
   BorderGlyphs,
-  TerminalExt,
   Tui,
+  TuiExt,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
 };
 
@@ -60,7 +60,7 @@ impl<'a> Env<'a> {
 
   /// Runs `operation` with the resolver of this environment, reading tokens through
   /// the scene and slots through the store.
-  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TerminalExt>) -> R) -> R {
+  fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R) -> R {
     let node = self.node;
     let token = move |name| Scene::<Tui>::with(|scene| scene.resolve_token(node?, name));
     let slot = |slot| self.store.record(self.handle)?.slots.get(&slot).cloned();
@@ -80,16 +80,13 @@ impl<'a> Env<'a> {
   /// A box keyframe with every leaf resolved at the node.
   pub(crate) fn resolve_box_keyframe(
     &self,
-    keyframe: &BoxStyle<u32, Keyframe, TerminalExt>,
+    keyframe: &BoxStyle<u32, Keyframe, TuiExt>,
   ) -> PlainBox {
     self.with_resolver(|resolver| resolver.box_keyframe(keyframe))
   }
 
   /// A run keyframe with every leaf resolved at the node.
-  pub(crate) fn resolve_run_keyframe(
-    &self,
-    keyframe: &RunStyle<Keyframe, TerminalExt>,
-  ) -> PlainRun {
+  pub(crate) fn resolve_run_keyframe(&self, keyframe: &RunStyle<Keyframe, TuiExt>) -> PlainRun {
     self.with_resolver(|resolver| resolver.run_keyframe(keyframe))
   }
 
@@ -139,7 +136,7 @@ impl<'a> Env<'a> {
   /// The box style of the record, every property resolved; with its border's ink.
   pub(crate) fn resolve_box(&self) -> Option<(PlainBox, Option<Color>)> {
     let record = self.store.record(self.handle)?;
-    let source: &BoxStyle<u32, Static<Condition<u32>>, TerminalExt> =
+    let source: &BoxStyle<u32, Static<Condition<u32>>, TuiExt> =
       &record.kind.box_record()?.props.style;
     let (mut style, border_ink) = self.with_resolver(|resolver| {
       let style = resolver.box_style(source);

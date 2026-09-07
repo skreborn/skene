@@ -64,11 +64,11 @@ pub use skene_core::{
 /// the painting path.
 pub use skene_gui_core::{
   Canvas,
+  GuiExt,
+  GuiProperty,
   IntoBrush,
   Painter,
   Painting,
-  PixelExt,
-  PixelProperty,
   Typography,
   kurbo,
   peniko,

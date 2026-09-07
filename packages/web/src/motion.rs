@@ -3,7 +3,7 @@
 use std::fmt::Write as _;
 
 use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
-use skene_gui_core::PixelProperty;
+use skene_gui_core::GuiProperty;
 
 use crate::{
   Declarations,
@@ -19,7 +19,7 @@ pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)"
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.
-fn style_property_name(property: StyleProperty<PixelProperty>) -> &'static str {
+fn style_property_name(property: StyleProperty<GuiProperty>) -> &'static str {
   let key: Key = match property {
     StyleProperty::All => return "all",
     StyleProperty::Shared(property) => PropertyKey::Shared(property),
@@ -43,7 +43,7 @@ fn render_easing(easing: Easing) -> String {
 
 /// The `transition` declaration value for a set of transitions.
 pub(crate) fn render_transitions<'a>(
-  transitions: impl IntoIterator<Item = &'a Transition<PixelProperty>>,
+  transitions: impl IntoIterator<Item = &'a Transition<GuiProperty>>,
 ) -> String {
   let mut out = String::new();
 

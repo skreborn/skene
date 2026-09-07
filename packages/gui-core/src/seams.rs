@@ -3,16 +3,16 @@
 use skene_core::Shape;
 use skene_views::{CornerRadius, TypeMetrics};
 
-use crate::PixelExt;
+use crate::GuiExt;
 
-impl CornerRadius for PixelExt {
+impl CornerRadius for GuiExt {
   #[inline(always)]
   fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<f32>) {
     fields.corner_radius = radius;
   }
 }
 
-impl TypeMetrics for PixelExt {
+impl TypeMetrics for GuiExt {
   #[inline(always)]
   fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<f32>) {
     fields.font_size = size;

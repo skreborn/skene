@@ -23,19 +23,19 @@ use skene_core::{
 };
 
 use crate::{
-  TerminalExt,
-  TerminalProperty,
+  TuiExt,
+  TuiProperty,
   store::{PlainBox, PlainRun},
 };
 
 /// A property's key on the terminal.
-type Key = PropertyKey<TerminalProperty>;
+type Key = PropertyKey<TuiProperty>;
 
 /// What a box-like node runs: a tween per property in flight, the border ink's tween,
 /// and the clock reading its animations began at.
 #[derive(Default)]
 pub(crate) struct BoxMotion {
-  tweens: Vec<(Key, Tween<BoxValue<u32, TerminalExt>>)>,
+  tweens: Vec<(Key, Tween<BoxValue<u32, TuiExt>>)>,
   ink: Option<Tween<Color>>,
   started: Option<f64>,
 }
@@ -44,7 +44,7 @@ pub(crate) struct BoxMotion {
 /// animations began at.
 #[derive(Default)]
 pub(crate) struct RunMotion {
-  tweens: Vec<(Key, Tween<RunValue<TerminalExt>>)>,
+  tweens: Vec<(Key, Tween<RunValue<TuiExt>>)>,
   started: Option<f64>,
 }
 
@@ -108,7 +108,7 @@ impl BoxMotion {
     &mut self,
     previous: Option<&Previous<'_, PlainBox>>,
     target: PlainBox,
-    dynamics: &BoxDynamics<u32, TerminalExt>,
+    dynamics: &BoxDynamics<u32, TuiExt>,
     keyframes: &[Animation<PlainBox>],
     now: f64,
     reduced: bool,
@@ -160,7 +160,7 @@ impl BoxMotion {
     &mut self,
     previous: Option<(Option<Color>, Option<Color>)>,
     target: Option<Color>,
-    dynamics: &BoxDynamics<u32, TerminalExt>,
+    dynamics: &BoxDynamics<u32, TuiExt>,
     now: f64,
     reduced: bool,
   ) -> (Option<Color>, bool) {
@@ -197,7 +197,7 @@ impl RunMotion {
     &mut self,
     previous: Option<&Previous<'_, PlainRun>>,
     target: PlainRun,
-    dynamics: &RunDynamics<TerminalExt>,
+    dynamics: &RunDynamics<TuiExt>,
     keyframes: &[Animation<PlainRun>],
     now: f64,
     reduced: bool,
@@ -250,13 +250,13 @@ struct StartBoxTweens<'a> {
   motion: &'a mut BoxMotion,
   previous: &'a Previous<'a, PlainBox>,
   target: &'a PlainBox,
-  dynamics: &'a BoxDynamics<u32, TerminalExt>,
+  dynamics: &'a BoxDynamics<u32, TuiExt>,
   now: f64,
   reduced: bool,
 }
 
-impl BoxFieldVisitor<u32, TerminalExt> for StartBoxTweens<'_> {
-  fn field<F: BoxField<u32, TerminalExt>>(&mut self) {
+impl BoxFieldVisitor<u32, TuiExt> for StartBoxTweens<'_> {
+  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
     let next = F::get(self.target);
 
     if F::get(self.previous.target) == next {
@@ -293,8 +293,8 @@ struct ApplyBoxTweens<'a> {
   now: f64,
 }
 
-impl BoxFieldVisitor<u32, TerminalExt> for ApplyBoxTweens<'_> {
-  fn field<F: BoxField<u32, TerminalExt>>(&mut self) {
+impl BoxFieldVisitor<u32, TuiExt> for ApplyBoxTweens<'_> {
+  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
     if let Some((_, tween)) = self.motion.tweens.iter().find(|(key, _)| *key == F::KEY) {
       *F::get_mut(self.style) = F::Value::from_box_value(tween.sample(self.now));
     }
@@ -308,10 +308,10 @@ struct AnimateBox<'a> {
   style: &'a mut PlainBox,
 }
 
-impl BoxFieldVisitor<u32, TerminalExt> for AnimateBox<'_> {
-  fn field<F: BoxField<u32, TerminalExt>>(&mut self) {
+impl BoxFieldVisitor<u32, TuiExt> for AnimateBox<'_> {
+  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
     for (animation, offset) in self.keyframes.iter().zip(&self.offsets) {
-      let frames: Vec<(f32, BoxValue<u32, TerminalExt>)> = animation
+      let frames: Vec<(f32, BoxValue<u32, TuiExt>)> = animation
         .keyframes
         .iter()
         .filter_map(|(percent, style)| {
@@ -333,13 +333,13 @@ struct StartRunTweens<'a> {
   motion: &'a mut RunMotion,
   previous: &'a Previous<'a, PlainRun>,
   target: &'a PlainRun,
-  dynamics: &'a RunDynamics<TerminalExt>,
+  dynamics: &'a RunDynamics<TuiExt>,
   now: f64,
   reduced: bool,
 }
 
-impl RunFieldVisitor<TerminalExt> for StartRunTweens<'_> {
-  fn field<F: RunField<TerminalExt>>(&mut self) {
+impl RunFieldVisitor<TuiExt> for StartRunTweens<'_> {
+  fn field<F: RunField<TuiExt>>(&mut self) {
     let next = F::get(self.target);
 
     if F::get(self.previous.target) == next {
@@ -376,8 +376,8 @@ struct ApplyRunTweens<'a> {
   now: f64,
 }
 
-impl RunFieldVisitor<TerminalExt> for ApplyRunTweens<'_> {
-  fn field<F: RunField<TerminalExt>>(&mut self) {
+impl RunFieldVisitor<TuiExt> for ApplyRunTweens<'_> {
+  fn field<F: RunField<TuiExt>>(&mut self) {
     if let Some((_, tween)) = self.motion.tweens.iter().find(|(key, _)| *key == F::KEY) {
       *F::get_mut(self.style) = F::Value::from_run_value(tween.sample(self.now));
     }
@@ -391,10 +391,10 @@ struct AnimateRun<'a> {
   style: &'a mut PlainRun,
 }
 
-impl RunFieldVisitor<TerminalExt> for AnimateRun<'_> {
-  fn field<F: RunField<TerminalExt>>(&mut self) {
+impl RunFieldVisitor<TuiExt> for AnimateRun<'_> {
+  fn field<F: RunField<TuiExt>>(&mut self) {
     for (animation, offset) in self.keyframes.iter().zip(&self.offsets) {
-      let frames: Vec<(f32, RunValue<TerminalExt>)> = animation
+      let frames: Vec<(f32, RunValue<TuiExt>)> = animation
         .keyframes
         .iter()
         .filter_map(|(percent, style)| {

@@ -18,7 +18,7 @@ use std::{
 use skene_core::{Color, HasChildren};
 use skene_reactive::{Get, Set, Signal};
 
-use crate::{Column, IntoView as _, Overlay, TerminalText, Text, store::Handle};
+use crate::{Column, IntoView as _, Overlay, Text, TuiText, store::Handle};
 
 /// The least time between two checkpoints.
 const CHECKPOINT_EVERY: Duration = Duration::from_millis(200);

@@ -49,7 +49,7 @@ use skene_core::{
   TokenName,
   Wrap,
 };
-use skene_gui_core::{PixelExt, PixelProperty};
+use skene_gui_core::{GuiExt, GuiProperty};
 
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},
@@ -60,12 +60,12 @@ use super::{
 use crate::Declarations;
 
 /// A driver over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelDriver: Driver<Scalar = f32, StyleExt = PixelExt> {}
+pub(crate) trait PixelDriver: Driver<Scalar = f32, StyleExt = GuiExt> {}
 
-impl<D: Driver<Scalar = f32, StyleExt = PixelExt>> PixelDriver for D {}
+impl<D: Driver<Scalar = f32, StyleExt = GuiExt>> PixelDriver for D {}
 
 /// A property's key on the web.
-pub(crate) type Key = PropertyKey<PixelProperty>;
+pub(crate) type Key = PropertyKey<GuiProperty>;
 
 /// What a node's props compiled to: the rule template and the slots the class
 /// references.
@@ -197,11 +197,11 @@ pub(crate) const fn target(key: Key) -> Target {
       },
     },
     PropertyKey::Extension(property) => match property {
-      PixelProperty::CornerRadius => pixels("border-radius"),
-      PixelProperty::FontSize => pixels("font-size"),
-      PixelProperty::FontWeight => plain("font-weight"),
-      PixelProperty::LineHeight => plain("line-height"),
-      PixelProperty::LetterSpacing => pixels("letter-spacing"),
+      GuiProperty::CornerRadius => pixels("border-radius"),
+      GuiProperty::FontSize => pixels("font-size"),
+      GuiProperty::FontWeight => plain("font-weight"),
+      GuiProperty::LineHeight => plain("line-height"),
+      GuiProperty::LetterSpacing => pixels("letter-spacing"),
     },
   }
 }
@@ -233,7 +233,7 @@ fn color_leaf(leaf: &StaticLeaf<skene_core::Color>) -> String {
 }
 
 /// The CSS text of a box property's erased value.
-pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, PixelExt>) -> String {
+pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, GuiExt>) -> String {
   let unit = target(key).unit;
 
   match value {
@@ -286,7 +286,7 @@ pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, PixelExt>) -> Str
 }
 
 /// The CSS text of a run property's erased value.
-pub(crate) fn render_run_value(key: Key, value: &RunValue<PixelExt>) -> String {
+pub(crate) fn render_run_value(key: Key, value: &RunValue<GuiExt>) -> String {
   match value {
     RunValue::Color(color) => Declarations::render_color(*color),
     RunValue::Extension(value) => number(target(key).unit, *value),
@@ -451,8 +451,8 @@ impl Rules {
 /// Feeds a static box style's properties to the rules.
 struct BoxRules<'a>(&'a mut Rules);
 
-impl BoxVisitor<f32, Static<Condition<f32>>, PixelExt> for BoxRules<'_> {
-  fn value<T: IntoBoxValue<f32, PixelExt>>(
+impl BoxVisitor<f32, Static<Condition<f32>>, GuiExt> for BoxRules<'_> {
+  fn value<T: IntoBoxValue<f32, GuiExt>>(
     &mut self,
     key: Key,
     value: &Option<Conditional<DriverLeaf<T>, Condition<f32>>>,
@@ -468,8 +468,8 @@ impl BoxVisitor<f32, Static<Condition<f32>>, PixelExt> for BoxRules<'_> {
 /// Feeds a static run style's properties to the rules.
 struct RunRules<'a>(&'a mut Rules);
 
-impl RunVisitor<Static<Condition<f32>>, PixelExt> for RunRules<'_> {
-  fn value<T: IntoRunValue<PixelExt>>(
+impl RunVisitor<Static<Condition<f32>>, GuiExt> for RunRules<'_> {
+  fn value<T: IntoRunValue<GuiExt>>(
     &mut self,
     key: Key,
     value: &Option<Conditional<DriverLeaf<T>, Condition<f32>>>,
@@ -498,8 +498,8 @@ fn keyframe_leaf<T: Clone>(
 /// Renders a box keyframe as declarations.
 struct KeyframeBox(Declarations);
 
-impl BoxVisitor<f32, Keyframe, PixelExt> for KeyframeBox {
-  fn value<T: IntoBoxValue<f32, PixelExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+impl BoxVisitor<f32, Keyframe, GuiExt> for KeyframeBox {
+  fn value<T: IntoBoxValue<f32, GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
       let Target { name, position, .. } = target(key);
       let text = keyframe_leaf(key, leaf, |fixed: T| {
@@ -518,8 +518,8 @@ impl BoxVisitor<f32, Keyframe, PixelExt> for KeyframeBox {
 /// Renders a run keyframe as declarations.
 struct KeyframeRun(Declarations);
 
-impl RunVisitor<Keyframe, PixelExt> for KeyframeRun {
-  fn value<T: IntoRunValue<PixelExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
+impl RunVisitor<Keyframe, GuiExt> for KeyframeRun {
+  fn value<T: IntoRunValue<GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
       let text = keyframe_leaf(key, leaf, |fixed: T| {
         render_run_value(key, &fixed.into_run_value())
@@ -530,7 +530,7 @@ impl RunVisitor<Keyframe, PixelExt> for KeyframeRun {
   }
 }
 
-fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, PixelExt>) -> Declarations {
+fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, GuiExt>) -> Declarations {
   let mut keyframe = KeyframeBox(Declarations::new());
 
   style.visit(&mut keyframe);
@@ -538,7 +538,7 @@ fn box_keyframe_declarations(style: &BoxStyle<f32, Keyframe, PixelExt>) -> Decla
   keyframe.0
 }
 
-fn run_keyframe_declarations(style: &RunStyle<Keyframe, PixelExt>) -> Declarations {
+fn run_keyframe_declarations(style: &RunStyle<Keyframe, GuiExt>) -> Declarations {
   let mut keyframe = KeyframeRun(Declarations::new());
 
   style.visit(&mut keyframe);
@@ -553,14 +553,14 @@ fn run_keyframe_declarations(style: &RunStyle<Keyframe, PixelExt>) -> Declaratio
 fn motion<S>(
   out: &mut String,
   base: Declarations,
-  transitions: &[skene_core::Transition<PixelProperty>],
+  transitions: &[skene_core::Transition<GuiProperty>],
   animations: &[Animation<S>],
   declarations: &impl Fn(&S) -> Declarations,
 ) -> (Declarations, String) {
   let mut base = base;
   let mut respecting = Declarations::new();
   let insistent =
-    |transition: &skene_core::Transition<PixelProperty>| !transition.respects_reduced_motion;
+    |transition: &skene_core::Transition<GuiProperty>| !transition.respects_reduced_motion;
 
   if !transitions.is_empty() {
     if transitions.iter().any(&insistent) {
@@ -923,22 +923,22 @@ pub(crate) fn compile_root_definitions(definitions: &Definitions<WebTokenValue>)
 pub(crate) fn slot_registrations() -> String {
   struct Keys(Vec<Key>);
 
-  impl BoxVisitor<f32, Plain, PixelExt> for Keys {
-    fn value<T: IntoBoxValue<f32, PixelExt>>(&mut self, key: Key, _: &Option<T>) {
+  impl BoxVisitor<f32, Plain, GuiExt> for Keys {
+    fn value<T: IntoBoxValue<f32, GuiExt>>(&mut self, key: Key, _: &Option<T>) {
       self.0.push(key);
     }
   }
 
-  impl RunVisitor<Plain, PixelExt> for Keys {
-    fn value<T: IntoRunValue<PixelExt>>(&mut self, key: Key, _: &Option<T>) {
+  impl RunVisitor<Plain, GuiExt> for Keys {
+    fn value<T: IntoRunValue<GuiExt>>(&mut self, key: Key, _: &Option<T>) {
       self.0.push(key);
     }
   }
 
   let mut keys = Keys(Vec::new());
 
-  BoxStyle::<f32, Plain, PixelExt>::default().visit(&mut keys);
-  RunStyle::<Plain, PixelExt>::default().visit(&mut keys);
+  BoxStyle::<f32, Plain, GuiExt>::default().visit(&mut keys);
+  RunStyle::<Plain, GuiExt>::default().visit(&mut keys);
   keys.0.dedup();
 
   let mut out = String::new();

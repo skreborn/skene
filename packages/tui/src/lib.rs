@@ -5,7 +5,7 @@
 //! ([`ActiveDriver`]: [`Tui`]) and aliases every built-in view to it, so app code names
 //! no platform. The medium's own contribution is
 //! [`Typography`], the [`media`] module, the terminal's decoration
-//! ([`TerminalDecoration`], [`TerminalText`]), the escape trait a low-level view is
+//! ([`TuiDecoration`], [`TuiText`]), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
 //! [`launch`] in a terminal, [`render_to_text`] for a headless test.
 //!
@@ -85,13 +85,13 @@ pub use skene_router as router;
 pub use skene_tui_core::{
   BOLD_WEIGHT,
   BorderGlyphs,
-  TerminalBoxFields,
-  TerminalExt,
-  TerminalProperty,
-  TerminalRunFields,
-  TerminalValue,
+  TuiBoxFields,
+  TuiExt,
+  TuiProperty,
+  TuiRunFields,
+  TuiValue,
   Typography,
-  terminal_fields,
+  tui_fields,
 };
 pub use skene_views::{
   Activate,
@@ -120,7 +120,7 @@ pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
   driver::{Tui, handle, install, mount, uninstall},
-  ext::{TerminalDecoration, TerminalText},
+  ext::{TuiDecoration, TuiText},
   media::{derive_scheme, set_scheme, stored_scheme},
   routing::install_router,
   store::Handle,

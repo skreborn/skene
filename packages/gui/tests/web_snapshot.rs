@@ -10,10 +10,10 @@ use skene_gui::{
   Condition,
   Container,
   Grid,
+  GuiExt,
   HasChildren,
   Inset,
   Media,
-  PixelExt,
   RichText,
   Role,
   Row,
@@ -42,8 +42,8 @@ use skene_gui::{
 };
 
 /// A plain box style rounding its corners by `radius`, for a keyframe.
-fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, PixelExt> {
-  let mut style: BoxStyle<f32, Keyframe, PixelExt> = BoxStyle::default();
+fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiExt> {
+  let mut style: BoxStyle<f32, Keyframe, GuiExt> = BoxStyle::default();
 
   style.ext.corner_radius = Some(radius.into());
 

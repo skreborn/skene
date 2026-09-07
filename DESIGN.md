@@ -35,7 +35,7 @@ skene-views      every built-in view ONCE, generic over D: Driver—Container, R
       │          LazyColumn, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel
       │
-      ├── skene-gui-core  what every pixel driver shares: PixelExt (corner radius, type
+      ├── skene-gui-core  what every pixel driver shares: GuiExt (corner radius, type
       │     │             metrics), the pixel Typography set, Painting/Canvas/Painted
       │     │             through vello
       │     ├── skene-web       Driver for the web: DOM sink (csr) + HTML/CSS serializer
@@ -45,7 +45,7 @@ skene-views      every built-in view ONCE, generic over D: Driver—Container, R
       │     └── skene-headless  Driver for the host: realizes into an inspectable record
       │                         store so view logic tests run without a platform; the
       │                         whole trait, trigger_ seams, the pumped executor
-      └── skene-tui-core  what every terminal driver shares: TerminalExt (border glyphs,
+      └── skene-tui-core  what every terminal driver shares: TuiExt (border glyphs,
             │             shadow, corner radius, bold, weight), BorderGlyphs, the
             │             terminal Typography set
             └── skene-tui       the terminal facade AND its driver: taffy in cells, a
@@ -250,8 +250,8 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 **One property model, spelled once.** `BoxStyle<N: Scalar, S: Shape, X: StyleExtension>`
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a driver, `Plain` for a keyframe or a resolved
-style) and the medium's own properties come through the extension (`PixelExt`: corner
-radius, transitions' pixel properties; `TerminalExt`: border glyphs, shadow, bold). A
+style) and the medium's own properties come through the extension (`GuiExt`: corner
+radius, transitions' pixel properties; `TuiExt`: border glyphs, shadow, bold). A
 visitor written once gives overlay, the static/derived split, CSS rendering and taffy
 application their iteration; what remains per property is the field, its CSS name and
 its taffy mapping. `CornerRadius` is the pattern for an optional capability: a style

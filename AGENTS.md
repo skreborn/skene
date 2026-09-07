@@ -25,7 +25,7 @@
   `skene-headless` (the host driver every facade compiles against off its target, driven
   by tests), later `skene-native`; `skene-tui` carries its own. What every driver of one
   medium shares above the spine lives in that medium's core crate—`skene-gui-core`
-  (`PixelExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TerminalExt`,
+  (`GuiExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TuiExt`,
   `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no
   medium. Drivers depend on core and their medium's core, never on each other; a facade is the only place that names its drivers, and it
   publishes the selected one as `ActiveDriver`. The trait is zero-sized and

@@ -21,12 +21,12 @@ use skene_core::{
 /// latter a multiple of the font size.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
-pub struct PixelExt;
+pub struct GuiExt;
 
 /// A pixel box's own properties, in shape `S`.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
-pub struct PixelBoxFields<S: Shape> {
+pub struct GuiBoxFields<S: Shape> {
   /// The corner radius, in logical pixels.
   pub corner_radius: S::Of<f32>,
 }
@@ -34,7 +34,7 @@ pub struct PixelBoxFields<S: Shape> {
 /// A pixel run's own properties, in shape `S`.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
-pub struct PixelRunFields<S: Shape> {
+pub struct GuiRunFields<S: Shape> {
   /// The font size, in logical pixels.
   pub font_size: S::Of<f32>,
   /// The font weight, `100` to `900`.
@@ -48,7 +48,7 @@ pub struct PixelRunFields<S: Shape> {
 /// The names of a pixel medium's own properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
-pub enum PixelProperty {
+pub enum GuiProperty {
   /// The corner radius.
   CornerRadius,
   /// The font size.
@@ -61,7 +61,7 @@ pub enum PixelProperty {
   LetterSpacing,
 }
 
-impl PixelProperty {
+impl GuiProperty {
   /// Every property, in declaration order.
   pub const ALL: [Self; 5] = [
     Self::CornerRadius,
@@ -85,28 +85,28 @@ impl PixelProperty {
   }
 }
 
-impl PropertyName for PixelProperty {
+impl PropertyName for GuiProperty {
   #[inline(always)]
   fn name(&self) -> &'static str {
     Self::name(*self)
   }
 }
 
-impl From<PixelProperty> for StyleProperty<PixelProperty> {
+impl From<GuiProperty> for StyleProperty<GuiProperty> {
   #[inline(always)]
-  fn from(property: PixelProperty) -> Self {
+  fn from(property: GuiProperty) -> Self {
     Self::Extension(property)
   }
 }
 
-impl IntoRunValue<PixelExt> for f32 {
+impl IntoRunValue<GuiExt> for f32 {
   #[inline(always)]
-  fn into_run_value(self) -> RunValue<PixelExt> {
+  fn into_run_value(self) -> RunValue<GuiExt> {
     RunValue::Extension(self)
   }
 
   #[inline(always)]
-  fn from_run_value(value: RunValue<PixelExt>) -> Option<Self> {
+  fn from_run_value(value: RunValue<GuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(number) => Some(number),
       RunValue::Color(_) => None,
@@ -115,32 +115,32 @@ impl IntoRunValue<PixelExt> for f32 {
 }
 
 /// The pixel medium's properties as types, and the enumerations walking them.
-macro_rules! pixel_fields {
+macro_rules! gui_fields {
   (box: $($box_field:ident => $box_property:ident),+ $(,)?; run: $($run_field:ident => $run_property:ident),+ $(,)?) => {
     /// The pixel medium's own properties, addressed by type.
-    pub mod pixel_fields {
+    pub mod gui_fields {
       use skene_core::{BoxField, BoxStyle, PropertyKey, RunField, RunStyle, Scalar, Shape};
 
-      use super::{PixelExt, PixelProperty};
+      use super::{GuiExt, GuiProperty};
 
       $(
         #[doc = concat!("The `", stringify!($box_field), "` property.")]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
         pub struct $box_property;
 
-        impl<N: Scalar> BoxField<N, PixelExt> for $box_property {
+        impl<N: Scalar> BoxField<N, GuiExt> for $box_property {
           type Value = f32;
 
-          const KEY: PropertyKey<PixelProperty> =
-            PropertyKey::Extension(PixelProperty::$box_property);
+          const KEY: PropertyKey<GuiProperty> =
+            PropertyKey::Extension(GuiProperty::$box_property);
 
           #[inline(always)]
-          fn get<S: Shape>(style: &BoxStyle<N, S, PixelExt>) -> &S::Of<f32> {
+          fn get<S: Shape>(style: &BoxStyle<N, S, GuiExt>) -> &S::Of<f32> {
             &style.ext.$box_field
           }
 
           #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, PixelExt>) -> &mut S::Of<f32> {
+          fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, GuiExt>) -> &mut S::Of<f32> {
             &mut style.ext.$box_field
           }
         }
@@ -151,39 +151,39 @@ macro_rules! pixel_fields {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
         pub struct $run_property;
 
-        impl RunField<PixelExt> for $run_property {
+        impl RunField<GuiExt> for $run_property {
           type Value = f32;
 
-          const KEY: PropertyKey<PixelProperty> =
-            PropertyKey::Extension(PixelProperty::$run_property);
+          const KEY: PropertyKey<GuiProperty> =
+            PropertyKey::Extension(GuiProperty::$run_property);
 
           #[inline(always)]
-          fn get<S: Shape>(style: &RunStyle<S, PixelExt>) -> &S::Of<f32> {
+          fn get<S: Shape>(style: &RunStyle<S, GuiExt>) -> &S::Of<f32> {
             &style.ext.$run_field
           }
 
           #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut RunStyle<S, PixelExt>) -> &mut S::Of<f32> {
+          fn get_mut<S: Shape>(style: &mut RunStyle<S, GuiExt>) -> &mut S::Of<f32> {
             &mut style.ext.$run_field
           }
         }
       )+
     }
 
-    impl StyleExtension for PixelExt {
-      type BoxFields<S: Shape> = PixelBoxFields<S>;
-      type Property = PixelProperty;
-      type RunFields<S: Shape> = PixelRunFields<S>;
+    impl StyleExtension for GuiExt {
+      type BoxFields<S: Shape> = GuiBoxFields<S>;
+      type Property = GuiProperty;
+      type RunFields<S: Shape> = GuiRunFields<S>;
       type Value = f32;
 
       #[inline(always)]
       fn for_each_box_field<N: Scalar, V: BoxFieldVisitor<N, Self>>(visitor: &mut V) {
-        $(visitor.field::<pixel_fields::$box_property>();)+
+        $(visitor.field::<gui_fields::$box_property>();)+
       }
 
       #[inline(always)]
       fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
-        $(visitor.field::<pixel_fields::$run_property>();)+
+        $(visitor.field::<gui_fields::$run_property>();)+
       }
 
       #[inline(always)]
@@ -194,7 +194,7 @@ macro_rules! pixel_fields {
   };
 }
 
-pixel_fields!(
+gui_fields!(
   box: corner_radius => CornerRadius;
   run: font_size => FontSize, font_weight => FontWeight, line_height => LineHeight,
     letter_spacing => LetterSpacing,
@@ -218,17 +218,17 @@ mod tests {
     When,
   };
 
-  use super::{PixelExt, PixelProperty};
+  use super::{GuiExt, GuiProperty};
 
   /// The extension's fields follow the shared ones in a visit, under their own names.
   #[test]
   fn visit_reaches_the_extension_fields() {
     struct Names(Vec<&'static str>);
 
-    impl<S: Shape> BoxVisitor<f32, S, PixelExt> for Names {
-      fn value<T: IntoBoxValue<f32, PixelExt>>(
+    impl<S: Shape> BoxVisitor<f32, S, GuiExt> for Names {
+      fn value<T: IntoBoxValue<f32, GuiExt>>(
         &mut self,
-        key: PropertyKey<PixelProperty>,
+        key: PropertyKey<GuiProperty>,
         _: &S::Of<T>,
       ) {
         self.0.push(key.name());
@@ -237,7 +237,7 @@ mod tests {
 
     let mut names = Names(Vec::new());
 
-    BoxStyle::<f32, Plain, PixelExt>::default().visit(&mut names);
+    BoxStyle::<f32, Plain, GuiExt>::default().visit(&mut names);
 
     assert_eq!(names.0.len(), 32);
     assert_eq!(names.0[31], "corner_radius");
@@ -247,7 +247,7 @@ mod tests {
   /// value erases into the extension variant of the erased value.
   #[test]
   fn extension_leaves_split_into_slots() {
-    let mut style = BoxStyle::<f32, Declared<Condition<f32>>, PixelExt>::default();
+    let mut style = BoxStyle::<f32, Declared<Condition<f32>>, GuiExt>::default();
 
     style.ext.corner_radius = Some(4f32.derive_when(State::Hovered.into(), || 8.));
 
@@ -256,11 +256,11 @@ mod tests {
     assert_eq!(slots.len(), 1);
     assert_eq!(
       slots[0].property,
-      PropertyKey::Extension(PixelProperty::CornerRadius)
+      PropertyKey::Extension(GuiProperty::CornerRadius)
     );
     assert_eq!((slots[0].compute)(), BoxValue::Number(8.));
 
-    let mut run = RunStyle::<Declared<Condition<f32>>, PixelExt>::default();
+    let mut run = RunStyle::<Declared<Condition<f32>>, GuiExt>::default();
 
     run.ext.font_size = Some(16f32.derive_when(State::Hovered.into(), || 18.));
 
@@ -268,7 +268,7 @@ mod tests {
 
     assert_eq!(
       slots[0].property,
-      PropertyKey::Extension(PixelProperty::FontSize)
+      PropertyKey::Extension(GuiProperty::FontSize)
     );
     assert_eq!((slots[0].compute)(), RunValue::Extension(18.));
   }

@@ -29,8 +29,8 @@ use skene_core::{
 use skene_reactive::Set;
 
 use crate::{
-  TerminalExt,
   TokenValue,
+  TuiExt,
   Typography,
   cells::{CellPainter, Painter},
   interaction,
@@ -85,7 +85,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
 impl Driver for Tui {
   type Scalar = u32;
   type Sink = Handle;
-  type StyleExt = TerminalExt;
+  type StyleExt = TuiExt;
   type TokenValue = TokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -104,7 +104,7 @@ impl Driver for Tui {
     with_store(|store| store.create_laid_out(Kind::Box(BoxRecord::new(props.clone()))))
   }
 
-  fn update_box(&self, sink: &Handle, slot: Slot, value: &BoxValue<u32, TerminalExt>) {
+  fn update_box(&self, sink: &Handle, slot: Slot, value: &BoxValue<u32, TuiExt>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
         record.slots.insert(slot, SlotValue::Box(value.clone()));
@@ -238,7 +238,7 @@ impl Driver for Tui {
     })
   }
 
-  fn update_run(&self, sink: &Handle, slot: Slot, value: &RunValue<TerminalExt>) {
+  fn update_run(&self, sink: &Handle, slot: Slot, value: &RunValue<TuiExt>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
         record.slots.insert(slot, SlotValue::Run(value.clone()));

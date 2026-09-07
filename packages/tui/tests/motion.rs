@@ -19,7 +19,7 @@ use skene_tui::{
 use crate::common::{blue, colors_at, red, rgb, with_driver};
 
 /// A one-second linear color transition.
-fn color_transition() -> Transition<tui::TerminalProperty> {
+fn color_transition() -> Transition<tui::TuiProperty> {
   Transition::new(Property::Color, 1.).set_easing(Easing::Linear)
 }
 

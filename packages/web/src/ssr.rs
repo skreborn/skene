@@ -44,7 +44,7 @@ use skene_core::{
   TokenName,
   View,
 };
-use skene_gui_core::{Painter, Painting, PixelExt};
+use skene_gui_core::{GuiExt, Painter, Painting};
 use skene_reactive::{Owner, Set, Signal, WriteSignal, provide_context};
 
 pub use self::task::{drive, install_executor, register, set_render_deadline, sleep};
@@ -831,7 +831,7 @@ impl Painting for Web {
 impl Driver for Web {
   type Scalar = f32;
   type Sink = u32;
-  type StyleExt = PixelExt;
+  type StyleExt = GuiExt;
   type TokenValue = WebTokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -862,7 +862,7 @@ impl Driver for Web {
     index
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, PixelExt>) {
+  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, GuiExt>) {
     with_node(*sink, |node| {
       let binding = node
         .slots
@@ -1057,7 +1057,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<PixelExt>) {
+  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<GuiExt>) {
     with_node(*sink, |node| {
       let binding = node
         .slots

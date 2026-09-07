@@ -2,7 +2,7 @@
 //! shadow, boldness.
 
 use skene_core::{BoxStyle, Color, Condition, Declared, Leaf, RunStyle, Value};
-use skene_tui_core::{BorderGlyphs, TerminalExt};
+use skene_tui_core::{BorderGlyphs, TuiExt};
 
 use crate::Tui;
 
@@ -10,17 +10,17 @@ use crate::Tui;
 type Spelled<T> = Value<T, Condition<u32>>;
 
 /// The declared style of a terminal box.
-type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TerminalExt>;
+type DeclaredBox = BoxStyle<u32, Declared<Condition<u32>>, TuiExt>;
 
 /// The declared style of a terminal run.
-type DeclaredRun = RunStyle<Declared<Condition<u32>>, TerminalExt>;
+type DeclaredRun = RunStyle<Declared<Condition<u32>>, TuiExt>;
 
 /// The terminal's own decoration on a box: the glyphs its border draws with and the
 /// shadow it casts.
 ///
 /// Every view with a decorated box on the active driver has it: [`Container`](crate::Container),
 /// [`Control`](crate::Control) and [`Overlay`](crate::Overlay).
-pub trait TerminalDecoration: Sized {
+pub trait TuiDecoration: Sized {
   /// The declared style the decoration lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox;
 
@@ -64,21 +64,21 @@ pub trait TerminalDecoration: Sized {
   }
 }
 
-impl TerminalDecoration for skene_views::Container<Tui> {
+impl TuiDecoration for skene_views::Container<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<B: skene_views::Behavior<Tui>, C> TerminalDecoration for skene_views::Control<Tui, B, C> {
+impl<B: skene_views::Behavior<Tui>, C> TuiDecoration for skene_views::Control<Tui, B, C> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<C> TerminalDecoration for skene_views::Overlay<Tui, C> {
+impl<C> TuiDecoration for skene_views::Overlay<Tui, C> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
@@ -89,7 +89,7 @@ impl<C> TerminalDecoration for skene_views::Overlay<Tui, C> {
 ///
 /// Every text view on the active driver has it: [`Text`](crate::Text) and
 /// [`Span`](crate::Span).
-pub trait TerminalText: Sized {
+pub trait TuiText: Sized {
   /// The declared style the weight lands on.
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun;
 
@@ -112,14 +112,14 @@ pub trait TerminalText: Sized {
   }
 }
 
-impl TerminalText for skene_views::Text<Tui> {
+impl TuiText for skene_views::Text<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()
   }
 }
 
-impl TerminalText for skene_views::Span<Tui> {
+impl TuiText for skene_views::Span<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()

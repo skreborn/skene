@@ -28,8 +28,8 @@ use skene_core::{
 use skene_reactive::{Owner, Signal, WriteSignal};
 
 use crate::{
-  TerminalExt,
   Tui,
+  TuiExt,
   motion::{BoxMotion, RunMotion},
   paint::Buffer,
   selection::Selection,
@@ -39,10 +39,10 @@ use crate::{
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
 
 /// A box's style resolved against live state.
-pub(crate) type PlainBox = BoxStyle<u32, Plain, TerminalExt>;
+pub(crate) type PlainBox = BoxStyle<u32, Plain, TuiExt>;
 
 /// A run's style resolved against live state.
-pub(crate) type PlainRun = RunStyle<Plain, TerminalExt>;
+pub(crate) type PlainRun = RunStyle<Plain, TuiExt>;
 
 /// A rectangle of cells on the screen: its origin, then its size.
 pub(crate) type CellRect = (i64, i64, i64, i64);
@@ -71,7 +71,7 @@ impl Handle {
 }
 
 /// The value a derived leaf last wrote into a node's slot.
-pub(crate) type SlotValue = skene_core::SlotValue<u32, TerminalExt>;
+pub(crate) type SlotValue = skene_core::SlotValue<u32, TuiExt>;
 
 pub(crate) use skene_core::Interaction;
 

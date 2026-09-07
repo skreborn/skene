@@ -76,7 +76,28 @@ Each is fixed where its mechanism now lives:
 
 ## Open
 
-Follow-ups the redesign noted and left; none blocks a release, each is scoped.
+Follow-ups the redesign noted and left; none blocks a release, each is scoped. The
+`Next` list is the order to take them in; the areas below hold every item with its
+reasoning.
+
+### Next
+
+1. **View keys.** Optional stable keys on every view, so focus, caret, selection and
+   open-popup state restore through the same alignment as signals; the same key anchors a
+   keyed list item's snapshot identity, which is positional today. `set_key` is the name
+   to weigh; it should be the concept `reconcile` keys lists by rather than a second one.
+2. **The WebGPU renderer behind `Canvas`.** Vello over wgpu for large or animated
+   painted content; the CPU path stays as the fallback. The test browser has no WebGPU,
+   so it needs a Chromium runner or a manual check.
+3. **Selection and clipboard inside a terminal text input.** The largest parity gap left
+   against the browser floor; details under Terminal.
+4. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+   `reconcile`.
+5. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+   positioning for overlays.
+
+Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
+picker's type-ahead waits on a clock no behavior has.
 
 - **Spine and views**
   - The picker has no type-ahead. Type-ahead needs a timer to reset its buffer, timers

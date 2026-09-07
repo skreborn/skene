@@ -7,15 +7,15 @@
   runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
 - The spine (`skene-reactive` + `skene-core` + `skene-views`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<D>`:
-  parents, children, per-child annotations, token definitions, generational node ids),
-  the zero-sized **`Driver`** trait every driver implements, event dispatch over the
-  scene, the property model (`BoxStyle<N, S, X>`, `RunStyle<S, X>` and their visitors),
-  values and expressions (`Value`, `Leaf`, `Expr`), conditions (`Media`, `State`,
-  `Condition`), tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation, the
-  runtime **`Resolver`** every non-CSS driver resolves its styles through (with the
-  erased `TokenValue` and `SlotValue` it reads), the host **executor** a driver
-  installs, generic geometry over the driver's scalar, and universal values. `skene-views` hosts
-  every built-in view once, generic over `D: Driver`; a facade aliases them.
+  parents, children, per-child annotations, token definitions, generational node ids), the
+  zero-sized **`Driver`** trait every driver implements, event dispatch over the scene,
+  the property model (`BoxStyle<N, S, X>`, `RunStyle<S, X>` and their visitors), values
+  and expressions (`Value`, `Leaf`, `Expr`), conditions (`Media`, `State`, `Condition`),
+  tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation, the runtime
+  **`Resolver`** every non-CSS driver resolves its styles through (with the erased
+  `TokenValue` and `SlotValue` it reads), the host **executor** a driver installs, generic
+  geometry over the driver's scalar, and universal values. `skene-views` hosts every
+  built-in view once, generic over `D: Driver`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
   terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
@@ -26,20 +26,21 @@
   by tests), later `skene-native`; `skene-tui` carries its own. What every driver of one
   medium shares above the spine lives in that medium's core crate—`skene-gui-core`
   (`GuiExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TuiExt`,
-  `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no
-  medium. Drivers depend on core and their medium's core, never on each other; a facade is the only place that names its drivers, and it
-  publishes the selected one as `ActiveDriver`. The trait is zero-sized and
-  monomorphized: no `dyn` driver, no downcast, no runtime swap. It is **not sealed**, and
-  the shared machinery bounds only on it and the public extension traits, so a
-  third-party driver is a facade in all but ownership. Each driver crate also exposes an
-  **escape trait** beside the portable one (`WebMarkup` on both web leaves, `WebDom` on
-  the browser leaf only, `CellPainter` in the terminal, later `PlatformView`), so a
-  low-level view is written against exactly the bound it needs and is realized through
-  the same scene and node ids as a built-in (`skene_views::LowLevel` registers the sink
-  it made as a node). `Painted` (vello) is the portable low-level path for pixel media,
-  through core's `Painting` extension: the browser leaf renders the scene on the CPU
-  into a canvas, the headless driver renders it to pixels a test reads, the server leaf
-  renders it empty; the native realization comes with the native driver.
+  `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no medium.
+  Drivers depend on core and their medium's core, never on each other; a facade is the
+  only place that names its drivers, and it publishes the selected one as `ActiveDriver`.
+  The trait is zero-sized and monomorphized: no `dyn` driver, no downcast, no runtime
+  swap. It is **not sealed**, and the shared machinery bounds only on it and the public
+  extension traits, so a third-party driver is a facade in all but ownership. Each driver
+  crate also exposes an **escape trait** beside the portable one (`WebMarkup` on both web
+  leaves, `WebDom` on the browser leaf only, `CellPainter` in the terminal, later
+  `PlatformView`), so a low-level view is written against exactly the bound it needs and
+  is realized through the same scene and node ids as a built-in (`skene_views::LowLevel`
+  registers the sink it made as a node). `Painted` (vello) is the portable low-level path
+  for pixel media, through `skene-gui-core`'s `Painting` extension: the browser leaf
+  renders the scene on the CPU into a canvas, the headless driver renders it to pixels a
+  test reads, the server leaf renders it empty; the native realization comes with the
+  native driver.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
   `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
   native driver, later; every other host → the headless driver). No feature flags.
@@ -70,8 +71,8 @@
   node; their properties become ordinary properties of the child's own style, folded in
   before the child is created, so they compile into the class and take conditions,
   tokens and derived values like any property. `Container` is decoration and sizing around
-  **exactly one** child—no multi-child flow; `Column`, `Row`, and `Wrap` cover those
-  cases. **Only `Container` is decorated**: it is the one freely-stylable box—
+  **exactly one** child—no multi-child flow; `Column`, `Row` and a wrapping `Row` cover
+  those cases. **Only `Container` is decorated**: it is the one freely-stylable box—
   decoration, sizing, events, alignment, and a single child—and every layout view
   carries layout properties plus its own padding and nothing else, so decorating a
   layout means wrapping it. Conditional styling rides the value:
@@ -220,25 +221,28 @@
   `change`.
 - **A control is `Control<B: Behavior>`**: one builder in `skene-views` carrying focus,
   events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Roving`,
-  `Popup`, `Activate`, `TextEntry` and `Listbox` are the shipped behaviors
-  (`RadioMember` and `ListItem` the members'), `Behavior` is public, and the keyboard
-  tables live in the behaviors, so a third party's control
-  and the terminal's slider get the same keys as the browser's. `RawButton`,
-  `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`, `RawListbox`/`RawOption`,
-  `RawTextField` and `RawTextEditor` are aliases over them, and `RawPicker` is composed
-  from them. A control is **controlled** on every facade: it reports, and the bound
-  signal is the truth. A `State` a box cannot have on its own (`Checked`,
-  `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves against the enclosing
-  control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`, `Fill`,
-  `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling targets a control
-  exposes; in the terminal the checkbox and radio `Mark` and the picker's indicator are
-  glyphs from the Simple library's `SimpleGlyphs` token set, and the slider's track, fill and thumb are boxes
-  there as everywhere. On the web a control that owns
-  a native input keeps it as its scriptless form—checkbox, radio, slider and the text
-  fields need no swap after hydration—and the picker keeps a swap that carries the
-  reader's value. The terminal's controls are composed trees painted by the same box
-  and run painters as everything else, so they carry roles, accessibility and focus
-  order like the GUI's.
+  `Popup`, `Activate`, `TextEntry` and `Listbox` are the shipped behaviors (`RadioMember`
+  and `ListItem` the members'), `Behavior` is public, and the keyboard tables live in the
+  behaviors, so a third party's control and the terminal's slider get the same keys as the
+  browser's. `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`,
+  `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and
+  `RawPicker` is composed from them. A control is **controlled** on every facade: it
+  reports, and the bound signal is the truth. A `State` a box cannot have on its own
+  (`Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves against the
+  enclosing control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`,
+  `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling targets a
+  control exposes; in the terminal the checkbox and radio `Mark` and the picker's
+  indicator are glyphs from the Simple library's `SimpleGlyphs` token set, and the
+  slider's track, fill and thumb are boxes there as everywhere. **Accessibility is
+  reported, never spelled**: a behavior reports what it is (`Checked`, `Value`,
+  `Expanded`, `HasPopup`, `Orientation`), a control's user adds what any control may carry
+  (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the driver maps each to its
+  layer—on the web a form element takes the native attribute where one exists, so the form
+  enforces it without script, and ARIA otherwise. On the web a control that owns a native
+  input keeps it as its scriptless form—checkbox, radio, slider and the text fields need
+  no swap after hydration—and the picker keeps a swap that carries the reader's value. The
+  terminal's controls are composed trees painted by the same box and run painters as
+  everything else, so they carry roles, accessibility and focus order like the GUI's.
 - **Third parties are first-class by construction.** A component library depends on
   `skene-views`, writes generic over `D: Driver` exactly as the built-ins do
   (`Container<D>`, `Control<D, Toggle>`, `Theme<D, AcmePalette>`), states what it needs
@@ -249,10 +253,10 @@
   escape trait and selected through the facade's `ActiveDriver`. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
-  re-exports it, an app depends on it explicitly, and `skene-simple-gui`/`skene-simple-tui`
-  are only a `prelude` of aliases over that facade's `ActiveDriver`, which is exactly
-  what a third-party library may ship beside its generic crate. `examples/third-party` is the standing proof and part of
-  the gate.
+  re-exports it, an app depends on it explicitly, and
+  `skene-simple-gui`/`skene-simple-tui` are only a `prelude` of aliases over that facade's
+  `ActiveDriver`, which is exactly what a third-party library may ship beside its generic
+  crate. `examples/third-party` is the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the
   driver's frame clock from the resolution point that reports a changed value, never
@@ -331,6 +335,11 @@
   Convenience conversions (`From<f32> for Spacing`) keep the common case terse without
   adding a second path. Conditions ride the value (`value.when(condition, other)`, the
   `When` extension on any value or token), so there is no `set_<prop>_when` family.
+- A type is named for the crate it belongs to, not the medium: `GuiExt` and `TuiExt` with
+  their properties, fields and traits, `SimpleGlyphs` and every other `Simple*` item. A
+  bare name is not an option where the facade's prelude already carries it (`Property`,
+  `Value`, `Text`), and a scheme that is bare for some names and prefixed for others is
+  worse than one rule.
 - A test double's method that simulates an external event is named `trigger_<event>`.
 - Make a function or method `const` whenever its body allows it (no trait-method calls such as
   `.into()`, no allocation, no interior mutability). Apply it broadly, and especially to small,
@@ -342,8 +351,8 @@
 
 - Always format with `cargo +nightly fmt`.
 - Tests run in three tiers, and the host tier alone proves nothing about the web. Run
-  `cargo test --workspace` for the host, `cargo test -p skene-gui --target wasm32-wasip2` for
-  the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
+  `cargo test --workspace` for the host, `cargo test -p skene-gui -p skene-web --target
+  wasm32-wasip2` for the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
   browser leaf, which drives a real Firefox through geckodriver. Every `web_*.rs` is gated to
   a wasm target, so on the host those binaries compile to zero tests and report
   `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
@@ -385,6 +394,10 @@
   control with minimal but pretty styling, and `theme` shows the token model.
   `examples/third-party` holds the crates written from outside the framework, one per
   extension path.
+- **What comes next lives in `ROADMAP.md`**, under `Open`: an ordered `Next` list first,
+  then every scoped follow-up by area, then the backlog and the decisions against. When
+  asked what's next, answer from it. A follow-up a change leaves behind is recorded there
+  in the same change, never in a code comment, a commit message or an agent's memory.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

@@ -1,10 +1,12 @@
 //! State snapshots: every serializable signal serializes to bytes and restores on
 //! creation.
 //!
-//! A signal's identity across two runs is its position: the path of ordinals from the
+//! A signal's identity across two runs is its position: the path of steps from the
 //! runtime's root owner to the owner it was created under, its index among that owner's
-//! snapshot signals, and its type. [`Signal::tagged`] names the position instead, so a
-//! tag anchors the match where a program edit would move it. [`snapshot`] serializes
+//! snapshot signals, and its type. A step is a scope's position among its siblings, or
+//! the [`Key`](crate::Key) a keyed scope anchors that position with.
+//! [`Signal::tagged`] names the position within its owner instead, so a tag anchors the
+//! match where a program edit would move it. [`snapshot`] serializes
 //! every live signal's current value grouped by owner; [`restore`] stages a prior
 //! snapshot so signals created afterwards adopt the staged value at their position.
 //!
@@ -29,6 +31,7 @@ use crate::{
   Signal,
   With,
   id::Id,
+  path::{Position, Step},
   runtime::{RUNTIME, Runtime, with_graph},
 };
 
@@ -38,7 +41,7 @@ type Serializer = Box<dyn Fn() -> Option<Vec<u8>>>;
 /// One live signal's place in the snapshot.
 struct Registration {
   owner: Id,
-  path: Rc<[u32]>,
+  path: Rc<[Step]>,
   index: u32,
   order: u64,
   ty: u64,
@@ -57,7 +60,7 @@ struct Entry {
 /// The whole snapshot: each owner's entries by path, then the provided extras by tag.
 #[derive(Default, Serialize, Deserialize)]
 struct Snapshot {
-  owners: Vec<(Vec<u32>, Vec<Entry>)>,
+  owners: Vec<(Vec<Step>, Vec<Entry>)>,
   extras: Vec<(String, Vec<u8>)>,
 }
 
@@ -73,7 +76,7 @@ struct Registry {
   signals: FxHashMap<Id, Registration>,
   tags: FxHashSet<(Id, &'static str)>,
   extras: FxHashMap<&'static str, Serializer>,
-  staged: FxHashMap<Rc<[u32]>, Staged>,
+  staged: FxHashMap<Rc<[Step]>, Staged>,
   staged_extras: FxHashMap<String, Vec<u8>>,
   next_order: u64,
 }
@@ -113,16 +116,8 @@ impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
   pub(crate) fn snapshotted(tag: Option<&'static str>, value: T) -> Self {
     Runtime::assert_ui_thread();
 
-    let (owner, path, index) = RUNTIME.with(|runtime| {
-      let owner = runtime.current_owner.get();
-      let mut graph = runtime.graph();
-
-      (
-        owner,
-        graph.owner_path(owner),
-        graph.next_signal_index(owner),
-      )
-    });
+    let owner = RUNTIME.with(|runtime| runtime.current_owner.get());
+    let Position { path, index } = Position::next();
     let ty = type_hash::<T>();
     let value = take_staged(&path, ty, tag)
       .and_then(|bytes| postcard::from_bytes(&bytes).ok())
@@ -151,7 +146,7 @@ impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
 /// Takes the staged entry matching a signal at `path`: the one under `tag`, or the next
 /// unconsumed untagged one of type `ty`. Entries skipped on the way are left to tagged
 /// lookups only.
-fn take_staged(path: &[u32], ty: u64, tag: Option<&str>) -> Option<Vec<u8>> {
+fn take_staged(path: &[Step], ty: u64, tag: Option<&str>) -> Option<Vec<u8>> {
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();
     let staged = registry.staged.get_mut(path)?;
@@ -183,7 +178,7 @@ fn take_staged(path: &[u32], ty: u64, tag: Option<&str>) -> Option<Vec<u8>> {
 fn register(
   id: Id,
   owner: Id,
-  path: Rc<[u32]>,
+  path: Rc<[Step]>,
   index: u32,
   ty: u64,
   tag: Option<&'static str>,
@@ -262,7 +257,7 @@ pub fn staged(tag: &str) -> Option<Vec<u8>> {
 pub fn snapshot() -> Vec<u8> {
   let snapshot = REGISTRY.with(|registry| {
     let registry = registry.borrow();
-    let mut owners: FxHashMap<&[u32], Vec<(u32, u64, Entry)>> = FxHashMap::default();
+    let mut owners: FxHashMap<&[Step], Vec<(u32, u64, Entry)>> = FxHashMap::default();
 
     for registration in registry.signals.values() {
       let Some(bytes) = (registration.serialize)()
@@ -281,7 +276,7 @@ pub fn snapshot() -> Vec<u8> {
       ));
     }
 
-    let mut owners: Vec<(Vec<u32>, Vec<Entry>)> = owners
+    let mut owners: Vec<(Vec<Step>, Vec<Entry>)> = owners
       .into_iter()
       .map(|(path, mut entries)| {
         // An owner replaced in place overlaps its predecessor for a moment; the later

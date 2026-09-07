@@ -82,18 +82,14 @@ reasoning.
 
 ### Next
 
-1. **View keys.** Optional stable keys on every view, so focus, caret, selection and
-   open-popup state restore through the same alignment as signals; the same key anchors a
-   keyed list item's snapshot identity, which is positional today. `set_key` is the name
-   to weigh; it should be the concept `reconcile` keys lists by rather than a second one.
-2. **The WebGPU renderer behind `Canvas`.** Vello over wgpu for large or animated
+1. **The WebGPU renderer behind `Canvas`.** Vello over wgpu for large or animated
    painted content; the CPU path stays as the fallback. The test browser has no WebGPU,
    so it needs a Chromium runner or a manual check.
-3. **Selection and clipboard inside a terminal text input.** The largest parity gap left
+2. **Selection and clipboard inside a terminal text input.** The largest parity gap left
    against the browser floor; details under Terminal.
-4. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+3. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-5. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+4. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -107,9 +103,6 @@ picker's type-ahead waits on a clock no behavior has.
     terminal draws any width as one cell, so only the ink is visible there.
   - `ErrorBoundary` stays on probation: it exists only for errors with no render site
     of their own. If per-resource matching keeps covering real apps, delete it.
-  - Optional keys on every view, so focus, caret, selection and open-popup state restore
-    through the same alignment as signals. `set_key` is the name to weigh; it should be
-    the concept `reconcile` keys lists by rather than a second one.
 - **Web**
   - `Painted` renders through vello's CPU renderer in the browser; the WebGPU renderer
     (vello over wgpu, for large or animated scenes) is the upgrade behind the same
@@ -132,9 +125,15 @@ picker's type-ahead waits on a clock no behavior has.
     build loop and logs, and print a runner command that attaches the app in a second
     terminal.
 - **Snapshot and stores**
-  - A positional identity shifts when an owner or effect is inserted before it; a tag
-    anchors the diff, and a keyed list item's identity is still its creation position
-    (the view-key exploration above would anchor it).
+  - A key is matched by a 127-bit hash of its value, so two values hashing alike share
+    one scope and their state crosses on a restore; a collision check at every build
+    was judged not worth its cost. The exact form—a keyed step carrying the value's
+    postcard bytes and a type hash, at a `Serialize + DeserializeOwned` bound on every
+    key and a heap step per keyed scope—is the route if the hash ever proves short. `Position` and node positions (2026-09-07) closed the
+    creation-index carry: the web and the terminal restore focus, a text control's
+    selection or caret and scroll offsets by position, keys included, and open-popup
+    state is the app's bound signal already. The headless driver carries no
+    restoration; a test of it runs on a real driver.
   - A `&'static str` signal is `opaque`, since it cannot be deserialized owned.
   - Stores: derived (memoized) lens reads and a keyed-iteration helper feeding
     `reconcile`.

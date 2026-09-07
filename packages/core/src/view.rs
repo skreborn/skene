@@ -1,8 +1,10 @@
 //! A view, and what is accepted where one is.
 
-use std::marker::PhantomData;
+use std::{hash::Hash, marker::PhantomData};
 
-use super::{Driver, NodeId};
+use skene_reactive::Key;
+
+use super::{Driver, Keyed, NodeId};
 
 /// A view accepted as a child of every kind.
 ///
@@ -22,6 +24,19 @@ pub trait AnyKind {}
 pub trait View<D: Driver>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
+
+  /// Gives this view a stable identity, so the state created under it keeps its
+  /// place in a snapshot wherever the view sits and however its siblings change.
+  ///
+  /// The key is matched across runs by its hash. Goes after the properties and before
+  /// the children: the keyed view still takes them.
+  #[inline(always)]
+  fn set_key(self, key: impl Hash) -> Keyed<D, Self>
+  where
+    Self: Sized,
+  {
+    Keyed::new(Key::of(&key), self)
+  }
 
   /// Erases this view's concrete type.
   #[inline(always)]

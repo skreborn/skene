@@ -379,7 +379,10 @@
   able to stay stable across two runs of the same binary. Store/restore is on by default
   and opt-out—the built-in and simple types just work with no tag—so `Signal::new` carries
   the serde bounds, `Signal::opaque` opts a signal out and asks nothing of its type, and
-  `Signal::tagged` is only an anchor for the positional diff. No cargo feature is involved:
+  `Signal::tagged` is only an anchor for the positional diff within one owner, and a
+  `Key` anchors a whole scope: `reconcile` keys every item's owner by the item's key and
+  `View::set_key` builds a view under a keyed owner, one concept for both, so state
+  under either restores wherever it sits. No cargo feature is involved:
   an additive feature can never gate a trait bound.
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
   when facades need the same machinery over different vocabularies, the spine hosts it once as

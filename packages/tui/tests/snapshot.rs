@@ -180,3 +180,97 @@ fn focus_survives_a_snapshot_roundtrip() {
     assert_eq!(hits.get(), 1, "the second button resumed focused");
   });
 }
+
+/// Focus follows a keyed item's key: the list reordered on the next run, the same item
+/// resumes focused, so the next `Space` activates it and not the one at its old place.
+#[test]
+fn focus_follows_a_keyed_item_across_a_reorder() {
+  use std::{cell::RefCell, rc::Rc};
+
+  fn build(items: Vec<u8>, hits: &Rc<RefCell<Vec<u8>>>) {
+    let hits = Rc::clone(hits);
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .derive_children(
+          move || items.clone(),
+          |item| *item,
+          move |item| {
+            let hits = Rc::clone(&hits);
+
+            SimpleButton::new(format!("b{item}")).handle_click(move || hits.borrow_mut().push(item))
+          },
+        )
+        .into_any()
+        .build()
+    });
+  }
+
+  let hits = Rc::new(RefCell::new(Vec::new()));
+  let bytes = with_driver(|| {
+    build(vec![1, 2, 3], &hits);
+
+    let _ = tui::render_to_text(12, 3);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Tab");
+
+    tui::reactive::snapshot()
+  });
+
+  with_driver(|| {
+    tui::reactive::restore(&bytes);
+    build(vec![3, 1, 2], &hits);
+    tui::adopt_restoration();
+
+    let _ = tui::render_to_text(12, 3);
+
+    tui::trigger_key(" ");
+
+    assert_eq!(
+      hits.borrow().as_slice(),
+      [2],
+      "the same item resumed focused"
+    );
+  });
+}
+
+/// A text entry's caret rides the snapshot with its focus: the same field resumes
+/// with the caret where it was, so typing continues there.
+#[test]
+fn a_caret_survives_a_snapshot_roundtrip() {
+  fn build(value: Signal<String>) {
+    let _ = tui::mount(move || SimpleTextField::new().bind_value(value).into_any().build());
+  }
+
+  let bytes = with_driver(|| {
+    let value = Signal::new(String::from("ac"));
+
+    build(value);
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowLeft");
+
+    tui::reactive::snapshot()
+  });
+
+  with_driver(|| {
+    let value = Signal::new(String::from("ac"));
+
+    tui::reactive::restore(&bytes);
+    build(value);
+    tui::adopt_restoration();
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_key("b");
+
+    assert_eq!(
+      value.get(),
+      "abc",
+      "the caret resumed before the last character"
+    );
+  });
+}

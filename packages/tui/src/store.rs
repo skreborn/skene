@@ -613,16 +613,6 @@ impl Store {
       .and_then(|entry| entry.record.as_mut())
   }
 
-  /// The live record at creation index `index`.
-  #[inline(always)]
-  pub(crate) fn handle_at(&self, index: u32) -> Option<Handle> {
-    self
-      .entries
-      .get(index as usize)
-      .filter(|entry| entry.record.is_some())
-      .map(|entry| Handle::new(index, entry.generation))
-  }
-
   /// Every live handle, in creation order.
   pub(crate) fn handles(&self) -> Vec<Handle> {
     self

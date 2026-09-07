@@ -244,6 +244,8 @@ pub type Span = skene_views::Span<ActiveDriver>;
 pub type RichText = skene_views::RichText<ActiveDriver>;
 /// A branch shown or hidden by a condition; see [`skene_views::Show`].
 pub type Show<C = NoChild> = skene_views::Show<ActiveDriver, C>;
+/// The view a `set_key` named, built under a keyed scope; see [`skene_views::Keyed`].
+pub type Keyed<V> = skene_views::Keyed<ActiveDriver, V>;
 /// One of several branches, by key; see [`skene_views::Switch`].
 pub type Switch<K> = skene_views::Switch<ActiveDriver, K>;
 /// Fallback content while a subtree's async work is pending; see

@@ -3,7 +3,7 @@
 //! Each test thread carries its own runtime, so a spawned thread stands in for the
 //! next run of the application.
 
-use skene_reactive::{Effect, Get, Owner, Set, Signal, restore, snapshot};
+use skene_reactive::{Effect, Get, Key, Owner, Set, Signal, restore, snapshot};
 
 /// Runs `first`, then `second` on a fresh runtime with `first`'s snapshot staged.
 fn across_runs<R: Send + 'static>(
@@ -279,4 +279,69 @@ fn tags_are_unique_per_owner() {
   });
 
   assert!(panicked.is_err(), "a duplicate tag in one owner panics");
+}
+
+/// A keyed scope restores by its key: state under it matches wherever the scope sits
+/// among its siblings, so a reordered list finds each item's own state.
+#[test]
+fn a_keyed_scope_restores_by_key_across_a_reorder() {
+  fn build(parent: Owner, order: &[u8]) -> Vec<Signal<u32>> {
+    order
+      .iter()
+      .map(|item| {
+        parent
+          .keyed_child(Key::of(item))
+          .enter(|| Signal::new(0u32))
+      })
+      .collect()
+  }
+
+  let restored = across_runs(
+    || {
+      let parent = Owner::new();
+
+      for (signal, value) in build(parent, &[1, 2, 3]).into_iter().zip([10, 20, 30]) {
+        signal.set(value);
+      }
+    },
+    || {
+      let parent = Owner::new();
+
+      build(parent, &[3, 1, 4])
+        .into_iter()
+        .map(|signal| signal.get())
+        .collect::<Vec<_>>()
+    },
+  );
+
+  assert_eq!(restored, [30, 10, 0]);
+}
+
+/// A keyed child takes no position, so keying a sibling shifts none of the positional
+/// ones, and a positional child before the keyed ones still restores by position.
+#[test]
+fn a_keyed_child_takes_no_position() {
+  let (positional, keyed) = across_runs(
+    || {
+      let parent = Owner::new();
+
+      parent.child().enter(|| Signal::new(0u32)).set(5);
+      parent
+        .keyed_child(Key::of(&"row"))
+        .enter(|| Signal::new(0u32))
+        .set(6);
+    },
+    || {
+      let parent = Owner::new();
+      let keyed = parent
+        .keyed_child(Key::of(&"row"))
+        .enter(|| Signal::new(0u32));
+      let _added = parent.keyed_child(Key::of(&"added"));
+      let positional = parent.child().enter(|| Signal::new(0u32));
+
+      (positional.get(), keyed.get())
+    },
+  );
+
+  assert_eq!((positional, keyed), (5, 6));
 }

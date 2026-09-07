@@ -18,6 +18,7 @@ use crate::{
   computation::Computation,
   id::{Id, Kind, next_nonce},
   link::{Link, LinkIdx, LinkList, LinkPool, NONE},
+  path::{Key, Step},
 };
 
 /// A computation's state bits.
@@ -51,14 +52,16 @@ pub(crate) struct OwnerData {
   pub(crate) children: Option<Box<FxHashSet<Id>>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
-  /// The position among the parent's owner children, or among the detached roots.
-  ordinal: Option<u32>,
-  /// The next owner child's ordinal.
+  /// The step from the parent, or from the runtime root for a detached owner.
+  step: Option<Step>,
+  /// The next positional owner child's ordinal.
   next_child: u32,
-  /// The next snapshot-participating signal's sequence index.
-  next_signal: u32,
-  /// The path of ordinals from the runtime root, cached once computed.
-  path: Option<Rc<[u32]>>,
+  /// The next index in the snapshot sequence.
+  next_index: u32,
+  /// The path of steps from the runtime root, cached once computed.
+  path: Option<Rc<[Step]>>,
+  /// The key the next child adopted takes instead of a position.
+  pending_key: Option<Key>,
 }
 
 /// A local signal: its value cell and its subscriber list.
@@ -231,24 +234,32 @@ impl Graph {
     id
   }
 
-  /// Gives a detached owner its ordinal among the detached roots, unless it has one.
+  /// Gives a detached owner its step among the detached roots, unless it has one.
   pub(crate) fn assign_root_ordinal(&mut self, id: Id) {
     let next = self.next_root;
 
     if let Some(data) = self.owner_data_mut(id)
-      && data.ordinal.is_none()
+      && data.step.is_none()
     {
-      data.ordinal = Some(next);
+      data.step = Some(Step::position(next));
       self.next_root += 1;
     }
   }
 
-  /// Allocates an owner in `previous`'s place: the same parent and ordinal, so its
+  /// Makes the next child `parent` adopts take `key` as its step instead of a
+  /// position.
+  pub(crate) fn key_next_child(&mut self, parent: Id, key: Key) {
+    if let Some(data) = self.owner_data_mut(parent) {
+      data.pending_key = Some(key);
+    }
+  }
+
+  /// Allocates an owner in `previous`'s place: the same parent and step, so its
   /// path is `previous`'s path.
   pub(crate) fn allocate_replacement(&mut self, previous: Id) -> Id {
-    let Some((parent, ordinal, path)) = self
+    let Some((parent, step, path)) = self
       .owner_data(previous)
-      .map(|data| (data.parent, data.ordinal, data.path.clone()))
+      .map(|data| (data.parent, data.step, data.path.clone()))
     else {
       return self.allocate_owner();
     };
@@ -259,16 +270,16 @@ impl Graph {
     }
 
     if let Some(data) = self.owner_data_mut(id) {
-      data.ordinal = ordinal;
+      data.step = step;
       data.path = path;
     }
 
     id
   }
 
-  /// The path of ordinals from the runtime root to the owner or computation `id`,
+  /// The path of steps from the runtime root to the owner or computation `id`,
   /// computed once and cached; a detached owner is a root of its own.
-  pub(crate) fn owner_path(&mut self, id: Id) -> Rc<[u32]> {
+  pub(crate) fn owner_path(&mut self, id: Id) -> Rc<[Step]> {
     let Some(data) = self.owner_data(id)
     else {
       return Rc::from([]);
@@ -279,25 +290,17 @@ impl Graph {
     }
 
     let parent = data.parent;
-    let path: Rc<[u32]> = match parent {
+    let path: Rc<[Step]> = match parent {
       Some(parent) => {
         let prefix = self.owner_path(parent);
-        let ordinal = self
-          .owner_data(id)
-          .and_then(|data| data.ordinal)
-          .unwrap_or(0);
+        let step = self.step_of(id);
 
-        prefix.iter().copied().chain([ordinal]).collect()
+        prefix.iter().copied().chain([step]).collect()
       }
       None => {
         self.assign_root_ordinal(id);
 
-        let ordinal = self
-          .owner_data(id)
-          .and_then(|data| data.ordinal)
-          .unwrap_or(0);
-
-        Rc::from([ordinal])
+        Rc::from([self.step_of(id)])
       }
     };
 
@@ -308,25 +311,33 @@ impl Graph {
     path
   }
 
-  /// Takes the next signal sequence index of the owner or computation `id`.
-  pub(crate) fn next_signal_index(&mut self, id: Id) -> u32 {
+  /// The step from `id`'s parent, or the first position for an owner without one.
+  fn step_of(&self, id: Id) -> Step {
+    self
+      .owner_data(id)
+      .and_then(|data| data.step)
+      .unwrap_or(Step::position(0))
+  }
+
+  /// Takes the next snapshot sequence index of the owner or computation `id`.
+  pub(crate) fn next_index(&mut self, id: Id) -> u32 {
     let Some(data) = self.owner_data_mut(id)
     else {
       return 0;
     };
-    let index = data.next_signal;
+    let index = data.next_index;
 
-    data.next_signal += 1;
+    data.next_index += 1;
 
     index
   }
 
-  /// Rewinds `id`'s child ordinals and signal indexes, for a computation about to
+  /// Rewinds `id`'s child ordinals and snapshot indexes, for a computation about to
   /// re-run after disposing its children.
   pub(crate) fn reset_creation_counters(&mut self, id: Id) {
     if let Some(data) = self.owner_data_mut(id) {
       data.next_child = 0;
-      data.next_signal = 0;
+      data.next_index = 0;
     }
   }
 
@@ -404,14 +415,21 @@ impl Graph {
         }
       }
       Kind::Computation | Kind::Owner => {
-        let ordinal = parent_data.next_child;
+        let step = match parent_data.pending_key.take() {
+          Some(key) => Step::key(key),
+          None => {
+            let ordinal = parent_data.next_child;
 
-        parent_data.next_child += 1;
+            parent_data.next_child += 1;
+
+            Step::position(ordinal)
+          }
+        };
 
         if let Some(data) = self.owner_data_mut(child) {
           data.parent = Some(parent);
           data.depth = depth;
-          data.ordinal = Some(ordinal);
+          data.step = Some(step);
         }
 
         if moved {

@@ -11,7 +11,8 @@
 //! ([`Runtime::init_on_ui_thread`]).
 //!
 //! Every serializable signal takes part in state snapshots by position
-//! ([`snapshot`]/[`restore`]); [`Signal::opaque`] opts out. A [`struct@Store`] adds
+//! ([`snapshot`]/[`restore`]); a [`Key`] anchors a scope's position against edits and
+//! reordering around it, and [`Signal::opaque`] opts out. A [`struct@Store`] adds
 //! field-level subscriptions over one value, and a [`Resource`] loads a value through
 //! the executor a driver installs ([`set_spawner`]).
 
@@ -29,6 +30,7 @@ mod memo;
 mod ops;
 mod owned;
 mod owner;
+mod path;
 mod resource;
 mod runtime;
 mod selector;
@@ -50,6 +52,7 @@ pub use id::Id as ReactiveId;
 pub use memo::Memo;
 pub use owned::{OwnedSignal, SyncOwnedSignal};
 pub use owner::{Owner, on_cleanup};
+pub use path::{Key, Position};
 pub use resource::{LoadState, Resource};
 pub use runtime::Runtime;
 pub use selector::Selector;

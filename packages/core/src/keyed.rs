@@ -1,0 +1,53 @@
+//! A view's stable identity.
+
+use std::marker::PhantomData;
+
+use skene_reactive::{Key, Owner};
+
+use super::{AnyKind, Children, Driver, HasChildren, NodeId, Seal, View};
+
+/// The view a [`set_key`](View::set_key) named: built under a scope its key
+/// identifies rather than its position.
+///
+/// Creates no node. State created while building the view—its children's included—
+/// keeps its snapshot identity wherever the view sits and however its siblings change,
+/// which is the same identity [`reconcile`](crate::reconcile) gives a keyed list item.
+/// A container's setters carry through, so the children still come last.
+#[must_use]
+pub struct Keyed<D: Driver, V> {
+  key: Key,
+  view: V,
+  driver: PhantomData<fn() -> D>,
+}
+
+impl<D: Driver, V> Keyed<D, V> {
+  /// `view` under `key`.
+  #[inline(always)]
+  pub(crate) const fn new(key: Key, view: V) -> Self {
+    Self {
+      key,
+      view,
+      driver: PhantomData,
+    }
+  }
+}
+
+impl<D: Driver, V> AnyKind for Keyed<D, V> {}
+
+impl<D: Driver, V: View<D>> View<D> for Keyed<D, V> {
+  #[inline(always)]
+  fn build(self) -> NodeId {
+    Owner::current()
+      .keyed_child(self.key)
+      .enter(|| self.view.build())
+  }
+}
+
+impl<D: Driver, V: HasChildren<D>> HasChildren<D> for Keyed<D, V> {
+  type Kind = V::Kind;
+
+  #[inline(always)]
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, Self::Kind> {
+    self.view.children_mut(seal)
+  }
+}

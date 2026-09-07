@@ -15,10 +15,10 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_core::{Color, HasChildren};
-use skene_reactive::{Get, Set, Signal};
+use skene_core::{Color, HasChildren, Scene};
+use skene_reactive::{Get, Position, Set, Signal};
 
-use crate::{Column, IntoView as _, Overlay, Text, TuiText, store::Handle};
+use crate::{Column, IntoView as _, Overlay, Text, Tui, TuiText, store::Handle};
 
 /// The least time between two checkpoints.
 const CHECKPOINT_EVERY: Duration = Duration::from_millis(200);
@@ -26,10 +26,10 @@ const CHECKPOINT_EVERY: Duration = Duration::from_millis(200);
 /// The time between two notice polls.
 const NOTICE_EVERY: Duration = Duration::from_millis(500);
 
-/// The snapshot tag carrying every scrolled node's offsets.
+/// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
 
-/// The snapshot tag of the focused node.
+/// The snapshot tag of the focused node's position and its caret.
 const FOCUS_TAG: &str = "skene-tui:focus";
 
 /// The dev channel, present when the CLI launched the app.
@@ -154,24 +154,54 @@ pub(crate) fn flush() {
   }
 }
 
-/// Every scrolled node's offsets, keyed by the node's creation index and ordered by
-/// it: the dev loop's carry across a restart.
-fn scroll_snapshot() -> Option<Vec<(u32, u32, u32)>> {
-  crate::try_with_store(|store| {
-    let mut entries: Vec<(u32, u32, u32)> = store
+/// The snapshot position of the node `handle` realizes.
+fn position_of(handle: Handle) -> Option<Position> {
+  let node = crate::try_with_store(|store| store.record(handle)?.node)??;
+
+  Scene::<Tui>::with(|scene| scene.record(node).map(|record| record.position().clone()))
+}
+
+/// The handle realizing the node at `position`, if it is live.
+fn handle_at(position: &Position) -> Option<Handle> {
+  Scene::<Tui>::with(|scene| scene.node_at(position).and_then(|node| scene.sink(node)))
+}
+
+/// Every scrolled node's offsets by position, in creation order: the dev loop's carry
+/// across a restart.
+fn scroll_snapshot() -> Option<Vec<(Position, u32, u32)>> {
+  let scrolled: Vec<(Handle, u32, u32)> = crate::try_with_store(|store| {
+    store
       .handles()
       .into_iter()
       .filter_map(|handle| {
         let (x, y) = store.record(handle)?.scroll;
 
-        (x > 0 || y > 0).then_some((handle.index(), x, y))
+        (x > 0 || y > 0).then_some((handle, x, y))
       })
-      .collect();
+      .collect()
+  })?;
 
-    entries.sort_unstable();
+  Some(
+    scrolled
+      .into_iter()
+      .filter_map(|(handle, x, y)| Some((position_of(handle)?, x, y)))
+      .collect(),
+  )
+}
 
-    entries
-  })
+/// The focused node's position and, for a text entry, its caret.
+fn focus_snapshot() -> Option<(Position, Option<usize>)> {
+  let (focused, caret) = crate::try_with_store(|store| {
+    let focused = store.focused?;
+    let caret = store
+      .record(focused)
+      .and_then(|record| record.kind.field())
+      .map(|field| field.caret);
+
+    Some((focused, caret))
+  })??;
+
+  Some((position_of(focused)?, caret))
 }
 
 /// Registers the driver's scroll offsets and focused node as snapshot providers; the
@@ -180,12 +210,10 @@ pub(crate) fn provide_restoration() {
   skene_reactive::provide(SCROLL_TAG, || {
     scroll_snapshot()
       .filter(|entries| !entries.is_empty())
-      .map(|entries| postcard::to_allocvec(&entries).unwrap_or_default())
+      .and_then(|entries| postcard::to_allocvec(&entries).ok())
   });
   skene_reactive::provide(FOCUS_TAG, || {
-    crate::try_with_store(|store| store.focused.map(Handle::index))
-      .flatten()
-      .map(|index| index.to_le_bytes().to_vec())
+    focus_snapshot().and_then(|focus| postcard::to_allocvec(&focus).ok())
   });
 }
 
@@ -196,18 +224,32 @@ pub fn adopt_restoration() {
   adopt_scroll();
 }
 
-/// Adopts the focused node a restore staged.
+/// Adopts the focused node a restore staged, and its caret where the node is a text
+/// entry.
 fn adopt_focus() {
-  let Some(index) = skene_reactive::staged(FOCUS_TAG)
-    .and_then(|bytes| bytes.try_into().ok())
-    .map(u32::from_le_bytes)
+  let Some((position, caret)) = skene_reactive::staged(FOCUS_TAG)
+    .and_then(|bytes| postcard::from_bytes::<(Position, Option<usize>)>(&bytes).ok())
   else {
     return;
   };
-  let handle = crate::with_store(|store| store.handle_at(index));
+  let Some(handle) = handle_at(&position)
+  else {
+    return;
+  };
 
-  if handle.is_some() {
-    crate::interaction::set_focus(handle);
+  crate::interaction::set_focus(Some(handle));
+
+  if let Some(caret) = caret {
+    crate::with_store(|store| {
+      if let Some(field) = store
+        .record_mut(handle)
+        .and_then(|record| record.kind.field_mut())
+      {
+        field.caret = caret.min(field.value.chars().count());
+      }
+
+      store.damage(handle);
+    });
   }
 }
 
@@ -217,16 +259,14 @@ fn adopt_scroll() {
   else {
     return;
   };
-  let Ok(entries) = postcard::from_bytes::<Vec<(u32, u32, u32)>>(&bytes)
+  let Ok(entries) = postcard::from_bytes::<Vec<(Position, u32, u32)>>(&bytes)
   else {
     return;
   };
-  let restored: Vec<(Handle, (u32, u32))> = crate::with_store(|store| {
-    entries
-      .into_iter()
-      .filter_map(|(index, x, y)| Some((store.handle_at(index)?, (x, y))))
-      .collect()
-  });
+  let restored: Vec<(Handle, (u32, u32))> = entries
+    .into_iter()
+    .filter_map(|(position, x, y)| Some((handle_at(&position)?, (x, y))))
+    .collect();
 
   // The scroll handlers hear the restored offsets, so a lazy column rebuilds its
   // window at the resumed position.

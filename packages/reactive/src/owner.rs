@@ -2,6 +2,7 @@ use std::{fmt, marker::PhantomData};
 
 use crate::{
   id::Id,
+  path::Key,
   runtime::{RUNTIME, Runtime, with_graph},
 };
 
@@ -65,6 +66,23 @@ impl Owner {
     Self::from_id(with_graph(|graph| {
       let child = graph.allocate_owner();
 
+      graph.adopt(child, self.0);
+
+      child
+    }))
+  }
+
+  /// Creates a child of this owner identified by `key` rather than by its position
+  /// among the children, disposed with this owner.
+  ///
+  /// State created under the child keeps its snapshot identity wherever the child sits
+  /// and however its siblings change, and a keyed child takes no position, so keying
+  /// one shifts none of the positional siblings.
+  pub fn keyed_child(&self, key: Key) -> Self {
+    Self::from_id(with_graph(|graph| {
+      let child = graph.allocate_owner();
+
+      graph.key_next_child(self.0, key);
       graph.adopt(child, self.0);
 
       child

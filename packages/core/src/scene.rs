@@ -3,6 +3,7 @@
 use std::{any::TypeId, fmt::Debug, rc::Rc};
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use skene_reactive::Position;
 use smallvec::SmallVec;
 
 use super::{
@@ -318,6 +319,7 @@ pub struct NodeRecord<D: Driver> {
   cache: Option<Box<TokenCache<D::TokenValue>>>,
   control: Option<ControlState>,
   part: Option<Part>,
+  position: Position,
 }
 
 impl<D: Driver> NodeRecord<D> {
@@ -326,6 +328,14 @@ impl<D: Driver> NodeRecord<D> {
   #[must_use]
   pub const fn parent(&self) -> Option<NodeId> {
     self.parent
+  }
+
+  /// The node's place in the state snapshot, matched across runs as a signal's is: a
+  /// driver carries what a node holds outside the reactive graph—focus, a scroll
+  /// offset, a caret—by it.
+  #[inline(always)]
+  pub const fn position(&self) -> &Position {
+    &self.position
   }
 
   /// The nodes attached under this one, in order.
@@ -581,6 +591,7 @@ impl<D: Driver> Scene<D> {
     else {
       None
     };
+    let position = Position::next();
     let record = NodeRecord {
       parent: None,
       children: SmallVec::new(),
@@ -594,6 +605,7 @@ impl<D: Driver> Scene<D> {
       cache: None,
       control: is_control.then_some(ControlState::DEFAULT),
       part: is_control.then_some(Part::Root),
+      position,
     };
 
     let id = if let Some(index) = self.free.pop() {
@@ -619,6 +631,22 @@ impl<D: Driver> Scene<D> {
     }
 
     id
+  }
+
+  /// The live node created at `position`, if any.
+  #[must_use]
+  pub fn node_at(&self, position: &Position) -> Option<NodeId> {
+    self.entries.iter().enumerate().find_map(|(index, entry)| {
+      let record = entry.record.as_ref()?;
+
+      (record.position == *position)
+        .then(|| {
+          u32::try_from(index)
+            .ok()
+            .map(|index| NodeId::new(index, entry.generation))
+        })
+        .flatten()
+    })
   }
 
   /// Mints a detached segment: a start and an end anchor, attached and detached as one

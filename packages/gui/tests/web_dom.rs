@@ -1233,6 +1233,69 @@ fn focus_and_scroll_survive_a_snapshot_roundtrip() {
   );
 }
 
+/// Focus and the selection follow a keyed item's key: the list reordered on the next
+/// run, the same item's field resumes focused with its selection.
+#[wasm_bindgen_test]
+fn focus_follows_a_keyed_item_across_a_reorder() {
+  use skene_gui::{NodeId, RawTextField, TextEntry, reactive};
+
+  fn build(items: Vec<u8>) -> NodeId {
+    Column::new()
+      .derive_children(
+        move || items.clone(),
+        |item| *item,
+        |_| RawTextField::new(TextEntry::new().bind_value(Signal::new(String::from("hello")))),
+      )
+      .build()
+  }
+
+  /// The `index`th field under `root`.
+  fn field_at(root: &Element, index: u32) -> HtmlInputElement {
+    only_child(root)
+      .query_selector_all("input")
+      .expect("query")
+      .get(index)
+      .and_then(|node| node.dyn_into::<HtmlInputElement>().ok())
+      .expect("the field")
+  }
+
+  let bytes = {
+    let (_installed, root) = fresh_root();
+    let _ = mount(|| build(vec![1, 2, 3]));
+    let field = field_at(&root, 1);
+
+    field.focus().expect("focus the field");
+    field.set_selection_range(1, 3).expect("select");
+
+    assert_eq!(document().active_element().as_deref(), Some(field.as_ref()));
+
+    reactive::snapshot()
+  };
+  let (_installed, root) = fresh_root();
+
+  reactive::restore(&bytes);
+
+  let _ = mount(|| build(vec![3, 1, 2]));
+
+  web::adopt_restoration();
+
+  let field = field_at(&root, 2);
+
+  assert_eq!(
+    document().active_element().as_deref(),
+    Some(field.as_ref()),
+    "focus resumed on the same item's field at its new place"
+  );
+  assert_eq!(
+    (
+      field.selection_start().ok().flatten(),
+      field.selection_end().ok().flatten()
+    ),
+    (Some(1), Some(3)),
+    "the selection resumed"
+  );
+}
+
 /// A painted box carries a canvas the size of the box, drawn through vello on the CPU
 /// and blitted, so the browser shows the fill without WebGPU.
 #[wasm_bindgen_test]

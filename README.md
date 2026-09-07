@@ -18,7 +18,8 @@ count.update(|n| *n += 1);   // re-runs only the effects that read `count`
 
 A signal write re-runs exactly the effects that depend on it, and each effect patches
 the node it owns—no virtual DOM, no tree diffing. Signals snapshot by default, so a
-dev-loop restart resumes where the last run stood.
+dev-loop restart resumes where the last run stood; a keyed list item or a view given
+`set_key` keeps its state by key rather than by position.
 
 ## A GUI app
 
@@ -119,7 +120,7 @@ skene-cli             the `skene` command
 
 | Crate | Path | Role |
 |-------|------|------|
-| `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position, the `spawn` seam a driver installs an executor into. |
+| `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a driver installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<D>`, the zero-sized `Driver` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
 | `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry` and the `Raw*` aliases, `Overlay`, `LazyColumn`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`, `Theme`, `typography`. |
 | `skene-gui-core` | `packages/gui-core` | What every pixel driver shares: `GuiExt` (corner radius, type metrics), the pixel `Typography` set, and the painting path (`Painting`, `Canvas`, `Painted`, `IntoBrush`) through vello. |

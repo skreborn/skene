@@ -185,10 +185,12 @@ and its cost unjustified.
   annotation into the scene slot the next box built under them consumes into its own
   props, so per-child layout is an ordinary property of the child's style: in the class
   on the web, conditional, token-valued or derived like any other.
-- **Owners** are created per reconciled item, per rebuild, and where context is
-  provided; everything else inherits the ambient owner. `derived` rebuilds into
-  `Owner::replacement()`, the same parent and ordinal, so snapshot identity survives a
-  branch flip.
+- **Owners** are created per reconciled item, per rebuild, per keyed view and where
+  context is provided; everything else inherits the ambient owner. `derived` rebuilds
+  into `Owner::replacement()`, the same parent and step, so snapshot identity survives
+  a branch flip. A reconciled item's owner is `Owner::keyed_child` under the item's key,
+  and `View::set_key` builds any view under one, so state beneath either restores by
+  key wherever it sits.
 
 ## Controls
 
@@ -407,13 +409,20 @@ internals contract:
   ancestor's `here`, a write notifies the reverse, so a row edit over ten thousand
   tracked cells costs the same as over a hundred. Field keys are a hash of the field
   name (or its `#[store(tag)]`), stable under reordering; the value stays a plain struct.
-- **Snapshot identity is positional.** A signal registers by the path of child ordinals
-  from the runtime's root owner, its index among its owner's snapshot signals and the
-  hash of its type name; `Signal::opaque` occupies no position, `Signal::tagged` is an
-  anchor the diff aligns around. Restore aligns per owner as the live side is created,
-  and every mismatch defaults, so a stale snapshot reaching an edited program is the
-  ordinary case and never fails. Drivers carry their extras (the terminal's scroll
-  offsets) through `provide`/`staged`.
+- **Snapshot identity is positional, and a key anchors it.** A signal registers by the
+  path of steps from the runtime's root owner, its index among its owner's snapshot
+  signals and the hash of its type name. A step is an owner's position among its
+  siblings, or the `Key` of a keyed owner: a keyed step takes no position, so keying
+  a sibling shifts none of the positional ones, and a key is the hash of the value it
+  was taken from, so `reconcile`'s item key and a view's `set_key` are one concept.
+  `Signal::opaque` occupies no position, `Signal::tagged` is an anchor the diff aligns
+  around within one owner. Restore aligns per owner as the live side is created, and
+  every mismatch defaults, so a stale snapshot reaching an edited program is the
+  ordinary case and never fails. A node takes a `Position` from the same sequence when
+  the scene creates it, and a driver carries what a node holds outside the graph—focus,
+  a text control's selection or caret, scroll offsets—through `provide`/`staged` by that
+  position, so a rebuilt page resumes on the same node through the same alignment,
+  keys included.
 - **Tasks go through one seam.** `set_spawner` installs the thread's executor;
   `Resource` and `spawn` hand it scope-bound futures, so a load ends with the view that
   asked for it on every driver, the headless one included.

@@ -36,6 +36,7 @@ pub mod executor;
 mod expr;
 mod extension;
 mod fingerprint;
+mod keyed;
 mod leaf;
 mod motion;
 mod node;
@@ -110,6 +111,7 @@ pub use events::{
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};
 pub use fingerprint::Fingerprint;
+pub use keyed::Keyed;
 pub use leaf::{
   Conditional,
   Definition,

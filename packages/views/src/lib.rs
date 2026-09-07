@@ -71,6 +71,7 @@ pub use skene_core::{
   IntoChildOf,
   IntoChildren,
   IntoView,
+  Keyed,
   NoChild,
   NodeKind,
   Part,

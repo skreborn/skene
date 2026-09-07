@@ -7,7 +7,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_reactive::{Effect, Owner, untrack};
+use skene_reactive::{Effect, Key, Owner, untrack};
 
 use super::{AnyView, Driver, NodeId, Scene, View};
 use crate::Reorder;
@@ -85,9 +85,11 @@ impl<K> Default for Scratch<K> {
 /// collection.
 ///
 /// `items` yields the items, `key` gives each a stable identity, `build` renders one to
-/// a node. Only `items` is tracked. Each build runs untracked in its own scope, disposed
-/// when the item leaves; kept items on the longest increasing run of previous positions
-/// stay in place, and only displaced or new ones are re-inserted before their successor.
+/// a node. Only `items` is tracked. Each build runs untracked in its own scope keyed by
+/// the item's key, so the state under it keeps its snapshot identity across a reorder,
+/// and disposed when the item leaves; kept items on the longest increasing run of
+/// previous positions stay in place, and only displaced or new ones are re-inserted
+/// before their successor.
 pub fn reconcile<D: Driver, T, I, K>(
   start: NodeId,
   items: impl Fn() -> I + 'static,
@@ -126,7 +128,7 @@ pub fn reconcile<D: Driver, T, I, K>(
         entry
       }
       else {
-        let scope = parent_scope.child();
+        let scope = parent_scope.keyed_child(Key::of(&key));
         let node = scope.enter(|| untrack(|| build(item)));
 
         Mounted { node, scope }

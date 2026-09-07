@@ -20,7 +20,7 @@ taffy = "0.9"
 libc = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-skene-simple = { features = ["tui"], workspace = true }
+skene-simple-tui.workspace = true
 
 [lints]
 workspace = true

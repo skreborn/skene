@@ -60,8 +60,9 @@ skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the sam
                  aliases, Typography, BorderGlyphs, media::*, launch, render_to_text
 skene-simple     the Simple design language over skene-views, generic over D: the palette
                  (a TokenSet), the looks, the shape per unit, the terminal marks
-                 (SimpleGlyphs) and the Simple* views; an app's explicit dependency,
-                 whose gui/tui features add a prelude aliasing them to that facade
+                 (SimpleGlyphs) and the Simple* views; an app's explicit dependency
+skene-simple-gui the Simple types aliased to skene-gui's ActiveDriver, with a prelude
+skene-simple-tui the same for skene-tui
 skene-router     routing over signals; a sink seam each facade binds
 skene-runner     host-side library embedding wasmtime around the app's server build:
                  renders a route or a stream, reads client hints, enumerates routes

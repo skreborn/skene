@@ -22,13 +22,13 @@ dev-loop restart resumes where the last run stood.
 
 ## A GUI app
 
-A GUI app depends on `skene-gui` and, for the ready-made components, on `skene-simple`
-with its `gui` feature; it marks its entry with `#[main]` and names no driver
+A GUI app depends on `skene-gui` and, for the ready-made components, on
+`skene-simple-gui`; it marks its entry with `#[main]` and names no driver
 (`examples/gui/counter`):
 
 ```rust
 use skene_gui::prelude::*;
-use skene_simple::gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
@@ -62,11 +62,11 @@ host it builds the tree against the headless driver, which is what view tests ru
 
 ## A terminal app
 
-A terminal app depends on `skene-tui` (and `skene-simple` with its `tui` feature) and
+A terminal app depends on `skene-tui` (and `skene-simple-tui` for the components) and
 calls `launch` (`examples/tui/counter`):
 
 ```rust
-use skene_simple::tui::prelude::*;
+use skene_simple_tui::prelude::*;
 use skene_tui::prelude::*;
 
 fn app() -> impl IntoView {
@@ -108,8 +108,9 @@ skene-views           every built-in view once, generic over the driver
       └── skene-tui-core   what terminal drivers share: TerminalExt, Typography
             └── skene-tui        the terminal facade and its driver
 skene-gui             the GUI facade: aliases over the selected driver
-skene-simple          the Simple component library over skene-views; an explicit
-                      dependency, aliased per facade behind its `gui`/`tui` features
+skene-simple          the Simple component library over skene-views, generic
+      ├── skene-simple-gui   its aliases and prelude for skene-gui
+      └── skene-simple-tui   its aliases and prelude for skene-tui
 skene-router          routing as reactive state
 skene-runner          a host library embedding wasmtime around the server build
 skene-macros          #[main], #[lazy], #[derive(Store)]
@@ -127,7 +128,8 @@ skene-cli             the `skene` command
 | `skene-headless` | `packages/headless` | The host `Driver`: records what any driver receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
 | `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
 | `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver; the `gui` and `tui` features add a `prelude` aliasing them to that facade's driver. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver. |
+| `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActiveDriver`, with a `prelude` an app imports beside the facade's own. |
 | `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |

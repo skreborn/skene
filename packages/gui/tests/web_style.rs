@@ -40,7 +40,7 @@ use skene_gui::{
   },
   render_to_string,
 };
-use skene_simple::gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 /// Every class named in `body`, in document order.
 fn classes(body: &str) -> Vec<String> {

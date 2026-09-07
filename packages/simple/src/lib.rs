@@ -14,16 +14,14 @@
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the
-//! driver once: the `gui` and `tui` features add a module aliasing every `Simple*` type
-//! to that facade's `ActiveDriver`, so `use skene_simple::gui::*` sits beside the
-//! facade's prelude.
+//! driver once; `skene-simple-gui` and `skene-simple-tui` are that naming done for a
+//! facade, a `prelude` of aliases over its `ActiveDriver` that sits beside the facade's
+//! own.
 
 mod button;
 mod card;
 mod checkbox;
 pub mod glyphs;
-#[cfg(feature = "gui")]
-pub mod gui;
 mod palette;
 mod picker;
 mod radio;
@@ -31,8 +29,6 @@ mod shape;
 mod slider;
 mod text_editor;
 mod text_field;
-#[cfg(all(feature = "tui", not(target_arch = "wasm32")))]
-pub mod tui;
 
 pub use self::{
   button::SimpleButton,

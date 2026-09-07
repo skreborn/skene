@@ -1,7 +1,7 @@
 //! The gallery: every built-in view and Simple component, live.
 
 use skene_gui::{ActiveDriver, prelude::*};
-use skene_simple::gui::prelude::*;
+use skene_simple_gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

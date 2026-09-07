@@ -249,9 +249,9 @@
   escape trait and selected through the facade's `ActiveDriver`. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
-  re-exports it, an app depends on it explicitly, and its `gui`/`tui` features add only
-  a `prelude` of aliases over that facade's `ActiveDriver`, which is exactly what a
-  third-party library may ship. `examples/third-party` is the standing proof and part of
+  re-exports it, an app depends on it explicitly, and `skene-simple-gui`/`skene-simple-tui`
+  are only a `prelude` of aliases over that facade's `ActiveDriver`, which is exactly
+  what a third-party library may ship beside its generic crate. `examples/third-party` is the standing proof and part of
   the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the

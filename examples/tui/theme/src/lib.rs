@@ -9,7 +9,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple::tui::prelude::*;
+use skene_simple_tui::prelude::*;
 use skene_tui::prelude::*;
 
 /// A definition taking `dark`'s value under the dark scheme and `light`'s otherwise.

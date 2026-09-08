@@ -1296,11 +1296,13 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   );
 }
 
-/// A painted box carries a canvas the size of the box, drawn through vello on the CPU
-/// and blitted, so the browser shows the fill without WebGPU.
+/// A painted box carries a canvas the size of the box, drawn through vello: on the GPU
+/// where the browser has WebGPU, else on the CPU and blitted, so the fill shows either
+/// way.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
   use skene_gui::{Painted, core::Dimension, kurbo::Rect};
+  use wasm_bindgen::JsValue;
   use wasm_bindgen_futures::JsFuture;
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -1314,6 +1316,43 @@ async fn a_painted_box_draws_into_its_canvas() {
     });
 
     let _ = JsFuture::from(promise).await;
+  }
+
+  /// The canvas's center pixel, read through a scratch 2d canvas so a WebGPU canvas
+  /// reads the same as a blitted one.
+  fn center_pixel(canvas: &HtmlCanvasElement) -> Vec<u8> {
+    let scratch: HtmlCanvasElement = web_sys::window()
+      .expect("a window")
+      .document()
+      .expect("a document")
+      .create_element("canvas")
+      .expect("a canvas")
+      .dyn_into()
+      .expect("a canvas element");
+
+    scratch.set_width(canvas.width());
+    scratch.set_height(canvas.height());
+
+    let context: CanvasRenderingContext2d = scratch
+      .get_context("2d")
+      .expect("a context")
+      .expect("the 2d context")
+      .dyn_into()
+      .expect("a 2d context");
+
+    context
+      .draw_image_with_html_canvas_element(canvas, 0., 0.)
+      .expect("the canvas drawn");
+    context
+      .get_image_data(
+        f64::from(canvas.width() / 2),
+        f64::from(canvas.height() / 2),
+        1.,
+        1.,
+      )
+      .expect("image data")
+      .data()
+      .to_vec()
   }
 
   let (_installed, root) = fresh_root();
@@ -1337,31 +1376,33 @@ async fn a_painted_box_draws_into_its_canvas() {
     .expect("the canvas")
     .dyn_into()
     .expect("a canvas element");
+  let mut pixel = center_pixel(&canvas);
+
+  for _ in 0..100 {
+    if pixel[0..4] == [0, 0, 255, 255] {
+      break;
+    }
+
+    next_frame().await;
+    pixel = center_pixel(&canvas);
+  }
 
   assert!(
     canvas.width() >= 40 && canvas.height() >= 20,
     "sized to the box"
   );
-
-  let context: CanvasRenderingContext2d = canvas
-    .get_context("2d")
-    .expect("a context")
-    .expect("the 2d context")
-    .dyn_into()
-    .expect("a 2d context");
-  let pixel = context
-    .get_image_data(
-      f64::from(canvas.width() / 2),
-      f64::from(canvas.height() / 2),
-      1.,
-      1.,
-    )
-    .expect("image data")
-    .data();
-
   assert_eq!(
     &pixel[0..4],
     &[0, 0, 255, 255],
     "the center pixel is the fill"
   );
+
+  let blitted = matches!(canvas.get_context("2d"), Ok(Some(_)));
+
+  web_sys::console::log_1(&JsValue::from_str(if blitted {
+    "painted on the CPU"
+  }
+  else {
+    "painted on the GPU"
+  }));
 }

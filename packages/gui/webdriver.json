@@ -1,0 +1,8 @@
+{
+  "moz:firefoxOptions": {
+    "prefs": {
+      "dom.webgpu.enabled": true,
+      "gfx.webgpu.ignore-blocklist": true
+    }
+  }
+}

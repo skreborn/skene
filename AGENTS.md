@@ -175,11 +175,14 @@
   across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
   in `skene-web` and is shared by both leaves; each layers only its sink.
 - **Painted** content is vello wherever it is realized: a `Canvas` is a vello scene in
-  device pixels, drawn with kurbo shapes and peniko brushes. The browser leaf renders it
-  with vello's CPU renderer into a `<canvas>` sized to the box at the device pixel
-  ratio, repainting on resize (a WebGPU renderer is a later upgrade behind the same
-  `Canvas`); native layers come with the native driver. SSR/SSG render it empty; TUI
-  does not realize it. **Embeds** are
+  device pixels, drawn with kurbo shapes and peniko brushes, recorded once and replayed
+  into whichever `Renderer` the driver owns. The browser leaf renders it into a
+  `<canvas>` sized to the box at the device pixel ratio, repainting on resize: through
+  vello's hybrid renderer over wgpu where the page has WebGPU—one device shared by
+  every painted box, a surface per canvas—and through vello's CPU renderer otherwise.
+  The choice is made once per page when the first box paints, and a box paints nothing
+  until it is made; native layers come with the native driver. SSR/SSG render it empty;
+  TUI does not realize it. **Embeds** are
   driver-specific views with driver-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
@@ -361,8 +364,9 @@
 - Tests run in three tiers, and the host tier alone proves nothing about the web. Run
   `cargo test --workspace` for the host, `cargo test -p skene-gui -p skene-web --target
   wasm32-wasip2` for the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
-  browser leaf, which drives a real Firefox through geckodriver. Every `web_*.rs` is gated to
-  a wasm target, so on the host those binaries compile to zero tests and report
+  browser leaf, which drives a real Firefox through geckodriver with WebGPU switched on by
+  `packages/gui/webdriver.json`, so a painted box renders on the GPU there. Every
+  `web_*.rs` is gated to a wasm target, so on the host those binaries compile to zero tests and report
   `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
   every host test while breaking the browser outright. Read the `test result:` line rather
   than the exit code or a `FAILED` grep, because both wasm tiers mislead: wasmtime aborts on

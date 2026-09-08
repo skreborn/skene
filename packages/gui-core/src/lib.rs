@@ -15,6 +15,6 @@ mod typography;
 pub use crate::{
   ext::{GuiBoxFields, GuiExt, GuiProperty, GuiRunFields, gui_fields},
   painted::Painted,
-  painting::{Canvas, IntoBrush, Painter, Painting, kurbo, peniko},
+  painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
   typography::Typography,
 };

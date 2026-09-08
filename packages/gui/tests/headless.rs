@@ -629,6 +629,66 @@ fn a_size_handle_reports_the_measured_size() {
 
 /// A painted box hands its painter to the driver and draws through vello: the pixels
 /// the headless driver renders carry the fill.
+/// A driver's renderer takes the canvas's steps in the order they were drawn.
+#[test]
+fn a_canvas_replays_its_scene_into_a_renderer() {
+  use skene_gui::{
+    Canvas,
+    kurbo::{Affine, BezPath, Rect, Stroke},
+    peniko::Brush,
+  };
+  use skene_gui_core::Renderer;
+
+  #[derive(Default)]
+  struct Log(Vec<String>);
+
+  impl Renderer for Log {
+    fn set_transform(&mut self, transform: Affine) {
+      self
+        .0
+        .push(format!("transform {}", transform.as_coeffs()[0]));
+    }
+
+    fn fill(&mut self, path: &BezPath, brush: &Brush) {
+      self.0.push(format!(
+        "fill {} {}",
+        path.elements().len(),
+        matches!(brush, Brush::Solid(_))
+      ));
+    }
+
+    fn stroke(&mut self, _: &BezPath, stroke: &Stroke, _: &Brush) {
+      self.0.push(format!("stroke {}", stroke.width));
+    }
+
+    fn push_clip(&mut self, _: &BezPath) {
+      self.0.push("clip".into());
+    }
+
+    fn pop(&mut self) {
+      self.0.push("pop".into());
+    }
+  }
+
+  let mut canvas = Canvas::new(4, 4);
+  let rect = Rect::new(0., 0., 4., 4.);
+
+  canvas.set_transform(Affine::scale(2.));
+  canvas.push_clip(&rect);
+  canvas.fill(&rect, Color::srgb(1., 0., 0.));
+  canvas.stroke(&rect, &Stroke::new(3.), Color::srgb(0., 1., 0.));
+  canvas.pop();
+
+  let mut log = Log::default();
+
+  canvas.replay(&mut log);
+
+  assert_eq!(
+    log.0,
+    ["transform 2", "clip", "fill 5 true", "stroke 3", "pop"]
+  );
+}
+
 #[test]
 fn a_painted_box_draws_through_vello() {
   use skene_gui::{

@@ -27,6 +27,8 @@ mod csr;
 mod declarations;
 mod escape;
 mod expr;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+mod gpu;
 mod hints;
 mod hydration;
 #[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]

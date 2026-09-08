@@ -131,11 +131,14 @@ driver crate, since it is not a shared contract.
 - **Painted**—a vello paint callback plus a layout size, portable across every
   *interactive* pixel target through the `Painting` extension. A `Canvas` is a vello
   scene in device pixels (kurbo shapes, peniko brushes, the framework's `Color`
-  converting to a brush). The browser leaf renders it with vello's CPU renderer into a
-  `<canvas>` child sized to the box at the device pixel ratio and repaints on resize;
-  the headless driver renders it to pixels a test reads (`headless::paint`); the server
-  leaf renders it empty and the terminal does not realize it. A WebGPU renderer and the
-  native layers sit behind the same `Canvas`. Vello is the one renderer, everywhere.
+  converting to a brush), recorded once and replayed into the driver's `Renderer`. The
+  browser leaf renders it into a `<canvas>` child sized to the box at the device pixel
+  ratio and repaints on resize: through vello's hybrid renderer over wgpu where the
+  page has WebGPU, one device shared by every painted box with a surface per canvas,
+  and through vello's CPU renderer otherwise; the headless driver renders it to pixels
+  a test reads (`headless::paint`); the server leaf renders it empty and the terminal
+  does not realize it. The native layers sit behind the same `Canvas`. Vello is the one
+  renderer, everywhere.
 - **Embeds are driver-specific views**, written against a driver's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
   platform view through `PlatformView`. `LowLevel::realize` registers a driver-made sink

@@ -82,12 +82,9 @@ reasoning.
 
 ### Next
 
-1. **The WebGPU renderer behind `Canvas`.** Vello over wgpu for large or animated
-   painted content; the CPU path stays as the fallback. The test browser has no WebGPU,
-   so it needs a Chromium runner or a manual check.
-2. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+1. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-3. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+2. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -102,9 +99,22 @@ picker's type-ahead waits on a clock no behavior has.
   - `ErrorBoundary` stays on probation: it exists only for errors with no render site
     of their own. If per-resource matching keeps covering real apps, delete it.
 - **Web**
-  - `Painted` renders through vello's CPU renderer in the browser; the WebGPU renderer
-    (vello over wgpu, for large or animated scenes) is the upgrade behind the same
-    `Canvas`, and the test browser has no WebGPU to prove it with yet.
+  - **The WebGPU renderer behind `Canvas`** landed (2026-09-08): vello's hybrid
+    renderer over wgpu, chosen over the compute-shader `vello` crate because it shares
+    `vello_common`'s scene vocabulary with the CPU renderer, so a `Canvas` records once
+    and replays into either through one `Renderer` trait, and because it needs no
+    compute shaders. One device is shared by every painted box, each canvas owns a
+    surface, and the renderer resizes per frame. The CPU path stays the fallback where
+    `navigator.gpu` is absent. The browser tier proves the GPU path: Firefox runs with
+    WebGPU switched on through `packages/gui/webdriver.json`, and the painted test reads
+    the fill back through a scratch canvas, which works for either path. Left:
+    - The CPU fallback is no longer exercised by the browser tier; it is the same
+      recording rendered by the same `vello_cpu` the headless tier reads, so only the
+      blit is unproven there.
+    - The hybrid renderer also runs on WebGL2 (its `webgl` feature, no wgpu) for
+      engines without WebGPU; not built, since the CPU path already covers them.
+    - wgpu adds noticeably to the bundle; measure it before an app that paints nothing
+      pays for it, and consider a lazy split if it does.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
 - **Terminal**

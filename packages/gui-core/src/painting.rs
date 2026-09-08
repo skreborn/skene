@@ -2,30 +2,38 @@
 //! through vello.
 
 use skene_core::{Color, Driver, Size};
+pub use vello_cpu::{PaintType, kurbo, peniko};
 use vello_cpu::{Pixmap, RenderContext, Resources};
-pub use vello_cpu::{kurbo, peniko};
 
 /// The surface a paint callback draws on: a vello scene the size of the box, in device
-/// pixels, rendered by the driver once the callback returns.
+/// pixels, recorded once and replayed into the driver's renderer once the callback
+/// returns.
 ///
 /// Geometry is [`kurbo`]'s and paint is [`peniko`]'s; the framework's [`Color`] paints
 /// solid through [`IntoBrush`]. Coordinates are device pixels from the box's top-left corner.
 #[must_use]
 pub struct Canvas {
-  context: RenderContext,
-  resources: Resources,
+  commands: Vec<Command>,
   width: u16,
   height: u16,
 }
 
+/// One recorded drawing step.
+enum Command {
+  Transform(kurbo::Affine),
+  Fill(kurbo::BezPath, peniko::Brush),
+  Stroke(kurbo::BezPath, kurbo::Stroke, peniko::Brush),
+  PushClip(kurbo::BezPath),
+  Pop,
+}
+
 impl Canvas {
   /// A blank canvas of `width` by `height` device pixels.
-  pub fn new(width: u16, height: u16) -> Self {
+  pub const fn new(width: u16, height: u16) -> Self {
     Self {
-      context: RenderContext::new(width.max(1), height.max(1)),
-      resources: Resources::new(),
-      width: width.max(1),
-      height: height.max(1),
+      commands: Vec::new(),
+      width: if width == 0 { 1 } else { width },
+      height: if height == 0 { 1 } else { height },
     }
   }
 
@@ -39,13 +47,14 @@ impl Canvas {
   /// Sets the transform every later shape is drawn under.
   #[inline(always)]
   pub fn set_transform(&mut self, transform: kurbo::Affine) {
-    self.context.set_transform(transform);
+    self.commands.push(Command::Transform(transform));
   }
 
   /// Fills `shape` with `brush`.
   pub fn fill(&mut self, shape: &impl kurbo::Shape, brush: impl IntoBrush) {
-    self.context.set_paint(brush_paint(brush.into_brush()));
-    self.context.fill_path(&shape.to_path(0.1));
+    self
+      .commands
+      .push(Command::Fill(shape.to_path(0.1), brush.into_brush()));
   }
 
   /// Strokes `shape` with `brush` along `stroke`.
@@ -55,29 +64,48 @@ impl Canvas {
     stroke: &kurbo::Stroke,
     brush: impl IntoBrush,
   ) {
-    self.context.set_stroke(stroke.clone());
-    self.context.set_paint(brush_paint(brush.into_brush()));
-    self.context.stroke_path(&shape.to_path(0.1));
+    self.commands.push(Command::Stroke(
+      shape.to_path(0.1),
+      stroke.clone(),
+      brush.into_brush(),
+    ));
   }
 
   /// Clips every later shape to `shape` until the matching [`pop`](Self::pop).
   pub fn push_clip(&mut self, shape: &impl kurbo::Shape) {
-    self.context.push_clip_layer(&shape.to_path(0.1));
+    self.commands.push(Command::PushClip(shape.to_path(0.1)));
   }
 
   /// Ends the innermost [`push_clip`](Self::push_clip).
   #[inline(always)]
   pub fn pop(&mut self) {
-    self.context.pop_layer();
+    self.commands.push(Command::Pop);
   }
 
-  /// Renders the scene: the pixels as unpremultiplied RGBA8, rows top to bottom.
+  /// Replays the recorded scene into `renderer`, in order.
+  pub fn replay(&self, renderer: &mut impl Renderer) {
+    for command in &self.commands {
+      match command {
+        Command::Transform(transform) => renderer.set_transform(*transform),
+        Command::Fill(path, brush) => renderer.fill(path, brush),
+        Command::Stroke(path, stroke, brush) => renderer.stroke(path, stroke, brush),
+        Command::PushClip(path) => renderer.push_clip(path),
+        Command::Pop => renderer.pop(),
+      }
+    }
+  }
+
+  /// Renders the scene on the CPU: the pixels as unpremultiplied RGBA8, rows top to
+  /// bottom.
   #[must_use]
-  pub fn pixels(&mut self) -> Vec<u8> {
+  pub fn pixels(&self) -> Vec<u8> {
+    let mut context = RenderContext::new(self.width, self.height);
+    let mut resources = Resources::new();
     let mut pixmap = Pixmap::new(self.width, self.height);
 
-    self.context.flush();
-    self.context.render(&mut pixmap, &mut self.resources);
+    self.replay(&mut context);
+    context.flush();
+    context.render(&mut pixmap, &mut resources);
 
     pixmap
       .take_unpremultiplied()
@@ -87,12 +115,59 @@ impl Canvas {
   }
 }
 
-/// A peniko brush as the paint `vello_cpu` takes.
-fn brush_paint(brush: peniko::Brush) -> vello_cpu::PaintType {
+/// A vello scene a [`Canvas`] replays into: the drawing vocabulary every renderer
+/// takes, so one recording renders on the CPU, on the GPU, or on a platform layer.
+///
+/// [`vello_cpu`]'s context implements it here; a driver implements it for the renderer
+/// it owns, mapping each brush through [`paint`].
+pub trait Renderer {
+  /// Sets the transform every later shape is drawn under.
+  fn set_transform(&mut self, transform: kurbo::Affine);
+  /// Fills `path` with `brush`.
+  fn fill(&mut self, path: &kurbo::BezPath, brush: &peniko::Brush);
+  /// Strokes `path` with `brush` along `stroke`.
+  fn stroke(&mut self, path: &kurbo::BezPath, stroke: &kurbo::Stroke, brush: &peniko::Brush);
+  /// Clips every later shape to `path` until the matching [`pop`](Self::pop).
+  fn push_clip(&mut self, path: &kurbo::BezPath);
+  /// Ends the innermost [`push_clip`](Self::push_clip).
+  fn pop(&mut self);
+}
+
+impl Renderer for RenderContext {
+  #[inline(always)]
+  fn set_transform(&mut self, transform: kurbo::Affine) {
+    RenderContext::set_transform(self, transform);
+  }
+
+  fn fill(&mut self, path: &kurbo::BezPath, brush: &peniko::Brush) {
+    self.set_paint(paint(brush));
+    self.fill_path(path);
+  }
+
+  fn stroke(&mut self, path: &kurbo::BezPath, stroke: &kurbo::Stroke, brush: &peniko::Brush) {
+    self.set_stroke(stroke.clone());
+    self.set_paint(paint(brush));
+    self.stroke_path(path);
+  }
+
+  #[inline(always)]
+  fn push_clip(&mut self, path: &kurbo::BezPath) {
+    self.push_clip_layer(path);
+  }
+
+  #[inline(always)]
+  fn pop(&mut self) {
+    self.pop_layer();
+  }
+}
+
+/// A peniko brush as the paint a vello renderer takes; an image brush paints nothing.
+#[must_use]
+pub fn paint(brush: &peniko::Brush) -> PaintType {
   match brush {
-    peniko::Brush::Solid(color) => vello_cpu::PaintType::Solid(color),
-    peniko::Brush::Gradient(gradient) => vello_cpu::PaintType::Gradient(gradient),
-    peniko::Brush::Image(_) => vello_cpu::PaintType::Solid(peniko::Color::TRANSPARENT),
+    peniko::Brush::Solid(color) => PaintType::Solid(*color),
+    peniko::Brush::Gradient(gradient) => PaintType::Gradient(gradient.clone()),
+    peniko::Brush::Image(_) => PaintType::Solid(peniko::Color::TRANSPARENT),
   }
 }
 

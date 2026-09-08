@@ -129,7 +129,7 @@ use super::{
   },
   token::WebTokenValue,
 };
-use crate::{Declarations, WebDom, WebMarkup, hydration::STATE_SCRIPT_ID};
+use crate::{Declarations, WebDom, WebMarkup, gpu, hydration::STATE_SCRIPT_ID};
 
 /// The sink of the mount root; its children are the app.
 const ROOT: u32 = 0;
@@ -170,6 +170,8 @@ struct Node {
   adopted: bool,
   painter: Option<Rc<Painter>>,
   canvas: Option<HtmlCanvasElement>,
+  gpu: Option<gpu::Target>,
+  awaiting_gpu: Option<Size<f32>>,
 }
 
 impl Node {
@@ -188,6 +190,8 @@ impl Node {
       adopted,
       painter: None,
       canvas: None,
+      gpu: None,
+      awaiting_gpu: None,
     }
   }
 
@@ -825,7 +829,7 @@ impl Painting for Web {
 }
 
 /// Runs the painter of `sink` at `size` logical pixels into its canvas, at the device
-/// pixel ratio.
+/// pixel ratio: on the GPU where the browser has one, else on the CPU.
 fn repaint(sink: u32, size: Size<f32>) {
   let Some((painter, canvas)) = with_dom(|dom| {
     dom
@@ -847,14 +851,42 @@ fn repaint(sink: u32, size: Size<f32>) {
     (size.width * ratio).round() as u16,
     (size.height * ratio).round() as u16,
   );
-
-  canvas.set_width(u32::from(width));
-  canvas.set_height(u32::from(height));
-
   let mut surface = Canvas::new(width, height);
 
   surface.set_transform(skene_gui_core::kurbo::Affine::scale(f64::from(ratio)));
   painter(&mut surface, size);
+
+  match gpu::renderer(repaint_painted) {
+    gpu::Availability::Pending => {
+      with_dom(|dom| {
+        if let Some(node) = dom.node_mut(sink) {
+          node.awaiting_gpu = Some(size);
+        }
+      });
+
+      return;
+    }
+    gpu::Availability::Ready(context) => {
+      let rendered = with_dom(|dom| {
+        let node = dom.node_mut(sink)?;
+        let canvas = node.canvas.as_ref()?;
+
+        if node.gpu.is_none() {
+          node.gpu = Some(context.target(canvas, width, height)?);
+        }
+
+        Some(context.render(node.gpu.as_mut()?, &surface))
+      });
+
+      if rendered == Some(true) {
+        return;
+      }
+    }
+    gpu::Availability::Unavailable => {}
+  }
+
+  canvas.set_width(u32::from(width));
+  canvas.set_height(u32::from(height));
 
   let pixels = surface.pixels();
   let Ok(Some(context)) = canvas.get_context("2d")
@@ -872,6 +904,25 @@ fn repaint(sink: u32, size: Size<f32>) {
     u32::from(height),
   ) {
     let _ = context.put_image_data(&image, 0., 0.);
+  }
+}
+
+/// Repaints every box that waited on the GPU's answer, at the size it last reported.
+fn repaint_painted() {
+  let painted: Vec<(u32, Size<f32>)> = with_dom(|dom| {
+    dom
+      .nodes
+      .iter_mut()
+      .enumerate()
+      .filter_map(|(sink, node)| {
+        #[expect(clippy::cast_possible_truncation)]
+        Some((sink as u32, node.as_mut()?.awaiting_gpu.take()?))
+      })
+      .collect()
+  });
+
+  for (sink, size) in painted {
+    repaint(sink, size);
   }
 }
 

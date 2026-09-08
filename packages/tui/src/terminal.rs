@@ -4,37 +4,52 @@
 //! paste), builds the app, and runs the event loop: keyboard and mouse events dispatch
 //! inside a reactive batch through core's dispatch, a paste the terminal brackets
 //! lands in the focused entry, and every change repaints. `Ctrl-Q` quits.
+//!
+//! The terminal's replies arrive as events in the stream the keys come through. Launch
+//! writes its queries and paints at once under its assumptions—a dark background, 16
+//! colors, the legacy key encoding—and each reply upgrades one whenever it lands. A
+//! clipboard read fires on demand and inserts when its report arrives.
 
-use std::{io::Write, sync::mpsc, time::Duration};
-
-use crossterm::{
-  cursor,
-  event::{
-    self,
-    DisableBracketedPaste,
-    DisableMouseCapture,
-    EnableBracketedPaste,
-    EnableMouseCapture,
-    Event,
-    KeyCode,
-    KeyEventKind,
-    KeyModifiers,
-    MouseButton,
-    MouseEventKind,
-  },
-  execute,
-  queue,
-  style::{
-    Attribute,
-    Color as TerminalColor,
-    ResetColor,
-    SetAttribute,
-    SetBackgroundColor,
-    SetForegroundColor,
-  },
-  terminal,
+use std::{
+  io::{self, Write},
+  time::Duration,
 };
+
 use skene_core::{ColorScheme, IntoView, KeyEvent, Modifiers, MouseCursor, PointerButton};
+use termina::{
+  Event,
+  OneBased,
+  PlatformTerminal,
+  Terminal as _,
+  escape::{
+    csi::{
+      self,
+      Csi,
+      DecPrivateMode,
+      DecPrivateModeCode,
+      Keyboard,
+      KittyKeyboardFlags,
+      Mode,
+      SetKeyboardFlagsMode,
+      Sgr,
+      ThemeMode,
+    },
+    dcs::{Dcs, DcsRequest, DcsResponse},
+    osc::{ColorOrQuery, DynamicColorNumber, Osc, Selection},
+  },
+  event::{KeyCode, KeyEventKind, Modifiers as TerminalModifiers, MouseButton, MouseEventKind},
+  style::{ColorSpec, CursorStyle, Intensity, Underline},
+};
+
+use crate::{
+  Tui,
+  View as _,
+  detect::{self, ColorDepth},
+  frame,
+  interaction::{self, WHEEL_STEP},
+  paint,
+  with_store,
+};
 
 /// How long the loop waits for input while nothing moves.
 const IDLE_POLL: Duration = Duration::from_millis(100);
@@ -43,51 +58,90 @@ const IDLE_POLL: Duration = Duration::from_millis(100);
 /// runs: the frame rate's cap.
 const FRAME_INTERVAL: Duration = Duration::from_millis(16);
 
-use crate::{
-  Tui,
-  View as _,
-  detect,
-  frame,
-  interaction::{self, WHEEL_STEP},
-  paint,
-  with_store,
-};
+/// A DEC private mode set or reset, as one control.
+fn dec_mode(code: DecPrivateModeCode, on: bool) -> Csi {
+  let mode = DecPrivateMode::Code(code);
 
-/// Restores the terminal when the loop unwinds.
-struct TerminalGuard;
-
-impl Drop for TerminalGuard {
-  fn drop(&mut self) {
-    restore_terminal();
+  Csi::Mode(if on {
+    Mode::SetDecPrivateMode(mode)
   }
+  else {
+    Mode::ResetDecPrivateMode(mode)
+  })
 }
 
-/// Returns the terminal to its ordinary state: cooked mode, the main screen, mouse
-/// capture and bracketed paste off, the keyboard back to legacy encoding, the cursor
-/// shown. Safe to run more than once, on any thread.
-fn restore_terminal() {
-  let mut out = std::io::stdout();
-  let _ = execute!(
+/// Writes the controls that take the terminal over: the alternate screen, mouse
+/// reporting, bracketed paste, scheme notifications, and the cursor hidden.
+fn write_setup(out: &mut impl Write) -> io::Result<()> {
+  write!(
     out,
-    // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`):
-    // idempotent, so the reset holds however many app instances set it before.
-    crossterm::style::Print("\x1b[=0;1u"),
-    DisableBracketedPaste,
-    DisableMouseCapture,
-    cursor::SetCursorStyle::DefaultUserShape,
-    cursor::Show,
-    terminal::LeaveAlternateScreen
-  );
+    "{}{}{}{}{}{}{}{}",
+    dec_mode(DecPrivateModeCode::ClearAndEnableAlternateScreen, true),
+    dec_mode(DecPrivateModeCode::MouseTracking, true),
+    dec_mode(DecPrivateModeCode::ButtonEventMouse, true),
+    dec_mode(DecPrivateModeCode::AnyEventMouse, true),
+    dec_mode(DecPrivateModeCode::SGRMouse, true),
+    dec_mode(DecPrivateModeCode::BracketedPaste, true),
+    dec_mode(DecPrivateModeCode::Theme, true),
+    dec_mode(DecPrivateModeCode::ShowCursor, false),
+  )
+}
 
-  let _ = terminal::disable_raw_mode();
+/// Writes the queries whose replies upgrade the launch assumptions: the scheme (a 2031
+/// report, the OSC 11 background), the kitty keyboard flags, and the color depth (a
+/// DECRQSS report after a true-color and after a palette background).
+fn write_queries(out: &mut impl Write) -> io::Result<()> {
+  write!(
+    out,
+    "{}{}{}{}{}{}{}{}",
+    Csi::Mode(Mode::QueryTheme),
+    Osc::ChangeDynamicColors(
+      DynamicColorNumber::TextBackgroundColor,
+      vec![ColorOrQuery::Query]
+    ),
+    Csi::Keyboard(Keyboard::QueryFlags),
+    Csi::Sgr(Sgr::Background(detect::TRUE_COLOR_PROBE.into())),
+    Dcs::Request(DcsRequest::GraphicRendition),
+    Csi::Sgr(Sgr::Background(ColorSpec::PaletteIndex(
+      detect::PALETTE_PROBE
+    ))),
+    Dcs::Request(DcsRequest::GraphicRendition),
+    Csi::Sgr(Sgr::Reset),
+  )
+}
+
+/// Writes the controls that hand the terminal back: the legacy key encoding, mouse
+/// reporting, bracketed paste and scheme notifications off, the cursor shown in its
+/// default shape, the main screen. Idempotent, so it holds however many app instances
+/// set the terminal up.
+fn write_restore(out: &mut impl Write) -> io::Result<()> {
+  write!(
+    out,
+    "{}{}{}{}{}{}{}{}{}{}",
+    // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`).
+    Csi::Keyboard(Keyboard::SetFlags {
+      flags: KittyKeyboardFlags::empty(),
+      mode: SetKeyboardFlagsMode::AssignAll,
+    }),
+    dec_mode(DecPrivateModeCode::Theme, false),
+    dec_mode(DecPrivateModeCode::BracketedPaste, false),
+    dec_mode(DecPrivateModeCode::SGRMouse, false),
+    dec_mode(DecPrivateModeCode::AnyEventMouse, false),
+    dec_mode(DecPrivateModeCode::ButtonEventMouse, false),
+    dec_mode(DecPrivateModeCode::MouseTracking, false),
+    Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)),
+    dec_mode(DecPrivateModeCode::ShowCursor, true),
+    dec_mode(DecPrivateModeCode::ClearAndEnableAlternateScreen, false),
+  )
 }
 
 /// Mounts and runs a skene application in the terminal.
 ///
 /// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-Q`.
-/// Terminal detection runs beside the loop: the first frame paints for a dark
-/// background and the answers arrive as signal writes. A panic anywhere in the process
-/// restores the terminal before its message prints.
+/// The first frame paints for a dark background at 16 colors; the terminal's replies
+/// arrive as events and upgrade the scheme, the depth and the key encoding as they
+/// land. A panic anywhere in the process restores the terminal before its message
+/// prints.
 ///
 /// # Panics
 ///
@@ -99,13 +153,6 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView<Tui>,
 {
-  let previous_hook = std::panic::take_hook();
-
-  std::panic::set_hook(Box::new(move |info| {
-    restore_terminal();
-    previous_hook(info);
-  }));
-
   crate::install();
   with_store(|store| store.clock = crate::store::Clock::Real(std::time::Instant::now()));
 
@@ -113,11 +160,13 @@ where
 
   let _ = crate::mount(|| app().into_view().build());
 
-  terminal::enable_raw_mode().expect("enable raw mode");
+  let mut terminal = PlatformTerminal::new().expect("open the terminal");
 
-  let _guard = TerminalGuard;
-  let depth = detect::ColorDepth::detect();
-  let mut detection = Some(detect::start());
+  terminal.enter_raw_mode().expect("enable raw mode");
+  terminal.set_panic_hook(|handle| {
+    let _ = write_restore(handle);
+    let _ = handle.flush();
+  });
 
   {
     crate::dev::adopt_restoration();
@@ -127,52 +176,15 @@ where
     }
   }
 
-  execute!(
-    std::io::stdout(),
-    terminal::EnterAlternateScreen,
-    EnableMouseCapture,
-    EnableBracketedPaste,
-    cursor::Hide
-  )
-  .expect("enter the alternate screen");
+  let _ = write_setup(&mut terminal);
+  let _ = write_queries(&mut terminal);
+  let _ = terminal.flush();
 
-  // A terminal speaking the kitty keyboard protocol disambiguates modified keys—
-  // `Ctrl+Backspace` above all; the rest keep the legacy encoding, where `Ctrl+W`
-  // stands in for it.
-  if terminal::supports_keyboard_enhancement().unwrap_or(false) {
-    let _ = execute!(std::io::stdout(), crossterm::style::Print("\x1b[=1;1u"));
-  }
-
+  let mut depth = ColorDepth::Ansi16;
   let mut last_frame: Option<paint::Buffer> = None;
-  let mut clipboard_read: Option<mpsc::Receiver<Option<String>>> = None;
 
   loop {
     let _ = skene_core::executor::pump();
-
-    if let Some(receiver) = &detection {
-      match receiver.try_recv() {
-        Ok(detected) => {
-          apply_detection(detected);
-          detection = None;
-        }
-        Err(mpsc::TryRecvError::Disconnected) => detection = None,
-        Err(mpsc::TryRecvError::Empty) => {}
-      }
-    }
-
-    if let Some(receiver) = &clipboard_read {
-      match receiver.try_recv() {
-        Ok(text) => {
-          if let Some(text) = text {
-            paste(&text);
-          }
-
-          clipboard_read = None;
-        }
-        Err(mpsc::TryRecvError::Disconnected) => clipboard_read = None,
-        Err(mpsc::TryRecvError::Empty) => {}
-      }
-    }
 
     let title = with_store(|store| {
       store
@@ -182,7 +194,7 @@ where
 
     if let Some(title) = title {
       with_store(|store| store.title_dirty = false);
-      emit_title(&title);
+      emit_title(&mut terminal, &title);
     }
 
     let dirty = with_store(|store| store.needs_frame());
@@ -190,13 +202,13 @@ where
     if dirty {
       // A degenerate reported size (a fresh pseudo-terminal) falls back to a classic
       // 80x24 rather than painting nothing.
-      let (width, height) = match terminal::size() {
-        Ok((width, height)) if width > 0 && height > 0 => (width, height),
+      let (width, height) = match terminal.get_dimensions() {
+        Ok(size) if size.cols > 0 && size.rows > 0 => (size.cols, size.rows),
         _ => crate::store::DEFAULT_SIZE,
       };
       let frame = frame::render(width, height);
 
-      draw(&frame, depth, last_frame.as_ref());
+      draw(&mut terminal, &frame, depth, last_frame.as_ref());
       last_frame = Some(frame);
     }
 
@@ -204,20 +216,18 @@ where
       (
         store.quit,
         store.pending_copy.take(),
-        std::mem::take(&mut store.pending_paste).then_some(store.clipboard_read),
+        std::mem::take(&mut store.pending_paste),
         store.pending_open.take(),
       )
     });
 
     if let Some(text) = copy {
-      emit_copy(&text);
+      emit_copy(&mut terminal, &text);
     }
 
-    if let Some(Some(wait)) = read
-      && clipboard_read.is_none()
-      && detection.is_none()
-    {
-      clipboard_read = Some(detect::read_clipboard(wait));
+    if read {
+      let _ = write!(terminal, "{}", Osc::QuerySelection(Selection::CLIPBOARD));
+      let _ = terminal.flush();
     }
 
     if let Some(url) = open {
@@ -230,14 +240,6 @@ where
 
     crate::dev::tick();
 
-    // While detection or a clipboard read reads its reply from stdin the loop leaves
-    // the input alone.
-    if detection.is_some() || clipboard_read.is_some() {
-      std::thread::sleep(Duration::from_millis(10));
-
-      continue;
-    }
-
     let wait = if with_store(|store| store.motion_active) {
       FRAME_INTERVAL
     }
@@ -245,51 +247,101 @@ where
       IDLE_POLL
     };
 
-    if event::poll(wait).unwrap_or(false) {
-      match event::read() {
-        Ok(Event::Key(key)) if key.kind != KeyEventKind::Release => {
-          dispatch_key(&key);
+    match terminal.poll(|_| true, Some(wait)) {
+      Ok(true) => {}
+      Ok(false) => continue,
+      // The terminal is gone.
+      Err(_) => break,
+    }
 
-          crate::dev::mark_changed();
-        }
-        Ok(Event::Mouse(mouse)) => {
-          dispatch_mouse(mouse);
+    let Ok(event) = terminal.read(|_| true)
+    else {
+      break;
+    };
 
-          crate::dev::mark_changed();
-        }
-        Ok(Event::Paste(text)) => {
-          paste(&text);
+    match event {
+      Event::Key(key) if key.kind != KeyEventKind::Release => {
+        dispatch_key(&key);
 
-          crate::dev::mark_changed();
+        crate::dev::mark_changed();
+      }
+      Event::Mouse(mouse) => {
+        dispatch_mouse(&mut terminal, mouse);
+
+        crate::dev::mark_changed();
+      }
+      Event::Paste(text) => {
+        paste(&text);
+
+        crate::dev::mark_changed();
+      }
+      Event::WindowResized(..) => {
+        // A full rewrite: the previous frame no longer matches what the terminal
+        // shows.
+        last_frame = None;
+
+        with_store(|store| store.paint_dirty = true);
+      }
+      Event::Csi(Csi::Mode(Mode::ReportTheme(mode))) => {
+        set_detected_scheme(mode == ThemeMode::Dark);
+      }
+      Event::Osc(Osc::ChangeDynamicColors(DynamicColorNumber::TextBackgroundColor, colors)) => {
+        if let Some(ColorOrQuery::Color(color)) = colors.first() {
+          set_detected_scheme(detect::is_dark(*color));
         }
-        Ok(Event::Resize(..)) => {
-          // A full rewrite: the previous frame no longer matches what the terminal
-          // shows.
+      }
+      Event::Osc(Osc::SetSelection(_, content)) => {
+        paste_reply(&content);
+
+        crate::dev::mark_changed();
+      }
+      // A terminal speaking the kitty keyboard protocol disambiguates modified
+      // keys—`Ctrl+Backspace` above all; the rest keep the legacy encoding, where
+      // `Ctrl+W` stands in for it.
+      Event::Csi(Csi::Keyboard(Keyboard::ReportFlags(_))) => {
+        let _ = write!(
+          terminal,
+          "{}",
+          Csi::Keyboard(Keyboard::SetFlags {
+            flags: KittyKeyboardFlags::DISAMBIGUATE_ESCAPE_CODES,
+            mode: SetKeyboardFlagsMode::AssignAll,
+          })
+        );
+        let _ = terminal.flush();
+      }
+      Event::Dcs(Dcs::Response {
+        value: DcsResponse::GraphicRendition(attributes),
+        ..
+      }) => {
+        if let Some(reported) = ColorDepth::reported(&attributes)
+          && reported > depth
+        {
+          depth = reported;
           last_frame = None;
 
           with_store(|store| store.paint_dirty = true);
         }
-        _ => {}
       }
+      _ => {}
     }
   }
 
   crate::dev::flush();
+
+  let _ = write_restore(&mut terminal);
+  let _ = terminal.flush();
 }
 
-/// Applies what detection found: the background as the platform's scheme, and the
-/// clipboard support in each direction.
-fn apply_detection(detected: detect::Detected) {
-  set_detected_scheme(detected.dark);
-  with_store(|store| {
-    store.clipboard = detected.clipboard;
-    store.clipboard_read = detected.clipboard_read;
-  });
-}
-
-/// Inserts pasted text into the focused entry, inside a reactive batch.
+/// Inserts text the terminal pasted—bracketed, by its own key—into the focused entry,
+/// inside a reactive batch.
 fn paste(text: &str) {
   skene_reactive::batch(|| interaction::paste(text));
+}
+
+/// Inserts the clipboard the terminal reported into the entry that asked for it,
+/// inside a reactive batch; nothing happens when no entry asked or it is gone.
+fn paste_reply(text: &str) {
+  skene_reactive::batch(|| interaction::paste_reply(text));
 }
 
 /// Records the detected background, moving the scheme in force where it changes.
@@ -318,7 +370,7 @@ fn set_detected_scheme(dark: bool) {
 /// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer
 /// handlers through core's dispatch, and left-button clicks—all inside a reactive
 /// batch.
-fn dispatch_mouse(mouse: event::MouseEvent) {
+fn dispatch_mouse(out: &mut impl Write, mouse: termina::event::MouseEvent) {
   let modifiers = portable_modifiers(mouse.modifiers);
 
   skene_reactive::batch(|| match mouse.kind {
@@ -329,7 +381,7 @@ fn dispatch_mouse(mouse: event::MouseEvent) {
       };
 
       interaction::pointer_move(mouse.column, mouse.row, button, modifiers);
-      set_pointer_shape(with_store(|store| store.hover_cursor()));
+      set_pointer_shape(out, with_store(|store| store.hover_cursor()));
     }
     MouseEventKind::Down(button) => {
       with_store(|store| match button {
@@ -338,7 +390,7 @@ fn dispatch_mouse(mouse: event::MouseEvent) {
         MouseButton::Middle => {}
       });
       interaction::pointer_press(mouse.column, mouse.row, portable_button(button), modifiers);
-      set_pointer_shape(with_store(|store| store.hover_cursor()));
+      set_pointer_shape(out, with_store(|store| store.hover_cursor()));
     }
     MouseEventKind::Up(button) => {
       // A release whose press was never delivered stands in for the whole click: VTE
@@ -361,7 +413,7 @@ fn dispatch_mouse(mouse: event::MouseEvent) {
       }
 
       interaction::pointer_release(mouse.column, mouse.row, portable_button(button), modifiers);
-      set_pointer_shape(with_store(|store| store.hover_cursor()));
+      set_pointer_shape(out, with_store(|store| store.hover_cursor()));
     }
     MouseEventKind::ScrollDown => interaction::wheel(mouse.column, mouse.row, 0, WHEEL_STEP),
     MouseEventKind::ScrollUp => interaction::wheel(mouse.column, mouse.row, 0, -WHEEL_STEP),
@@ -370,7 +422,7 @@ fn dispatch_mouse(mouse: event::MouseEvent) {
   });
 }
 
-/// A crossterm mouse button as the portable vocabulary's.
+/// A terminal mouse button as the portable vocabulary's.
 fn portable_button(button: MouseButton) -> PointerButton {
   match button {
     MouseButton::Left => PointerButton::Primary,
@@ -379,20 +431,19 @@ fn portable_button(button: MouseButton) -> PointerButton {
   }
 }
 
-/// Crossterm modifier state as the portable vocabulary's.
-fn portable_modifiers(modifiers: KeyModifiers) -> Modifiers {
+/// Terminal modifier state as the portable vocabulary's.
+fn portable_modifiers(modifiers: TerminalModifiers) -> Modifiers {
   Modifiers {
-    ctrl: modifiers.contains(KeyModifiers::CONTROL),
-    shift: modifiers.contains(KeyModifiers::SHIFT),
-    alt: modifiers.contains(KeyModifiers::ALT),
-    meta: modifiers.contains(KeyModifiers::SUPER),
+    ctrl: modifiers.contains(TerminalModifiers::CONTROL),
+    shift: modifiers.contains(TerminalModifiers::SHIFT),
+    alt: modifiers.contains(TerminalModifiers::ALT),
+    meta: modifiers.contains(TerminalModifiers::SUPER),
   }
 }
 
 /// Emits the terminal title via OSC 2; terminals without support ignore it.
-fn emit_title(title: &str) {
-  let mut out = std::io::stdout();
-  let _ = write!(out, "\x1b]2;{title}\x1b\\");
+fn emit_title(out: &mut impl Write, title: &str) {
+  let _ = write!(out, "{}", Osc::SetWindowTitle(title));
   let _ = out.flush();
 }
 
@@ -415,38 +466,17 @@ fn open_url(url: &str) {
 
 /// Copies text to the system clipboard via OSC 52; terminals without support ignore
 /// it, and terminals gating clipboard writes ask the user.
-fn emit_copy(text: &str) {
-  let mut out = std::io::stdout();
-  let _ = write!(out, "\x1b]52;c;{}\x1b\\", base64(text.as_bytes()));
+fn emit_copy(out: &mut impl Write, text: &str) {
+  let _ = write!(
+    out,
+    "{}",
+    Osc::SetSelection(Selection::CLIPBOARD, text.into())
+  );
   let _ = out.flush();
 }
 
-/// Standard base64 with padding, for the OSC 52 payload.
-fn base64(bytes: &[u8]) -> String {
-  const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-  let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-
-  for chunk in bytes.chunks(3) {
-    let block = (u32::from(chunk[0]) << 16)
-      | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
-      | u32::from(*chunk.get(2).unwrap_or(&0));
-
-    for position in 0..4 {
-      if position <= chunk.len() {
-        out.push(ALPHABET[(block >> (18 - 6 * position)) as usize & 63] as char);
-      }
-      else {
-        out.push('=');
-      }
-    }
-  }
-
-  out
-}
-
 /// Sets the terminal's pointer shape via OSC 22; terminals without support ignore it.
-fn set_pointer_shape(cursor: Option<MouseCursor>) {
+fn set_pointer_shape(out: &mut impl Write, cursor: Option<MouseCursor>) {
   let shape = match cursor {
     Some(MouseCursor::Click) => "pointer",
     Some(MouseCursor::Text) => "text",
@@ -455,27 +485,38 @@ fn set_pointer_shape(cursor: Option<MouseCursor>) {
     Some(MouseCursor::Default) | None => "default",
   };
 
-  let mut out = std::io::stdout();
   let _ = write!(out, "\x1b]22;{shape}\x1b\\");
   let _ = out.flush();
 }
 
+/// The control moving the cursor to the cell (`column`, `row`).
+fn move_to(column: u16, row: u16) -> Csi {
+  Csi::Cursor(csi::Cursor::Position {
+    line: OneBased::from_zero_based(row),
+    col: OneBased::from_zero_based(column),
+  })
+}
+
 /// Writes a painted frame to the terminal, quantizing colors to `depth`; rows
 /// unchanged since the previous frame are skipped.
-fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&paint::Buffer>) {
-  let mut out = std::io::stdout();
-  let _ = queue!(out, cursor::MoveTo(0, 0), ResetColor);
+fn draw(
+  out: &mut impl Write,
+  buffer: &paint::Buffer,
+  depth: ColorDepth,
+  previous: Option<&paint::Buffer>,
+) {
+  let _ = write!(out, "{}{}", move_to(0, 0), Csi::Sgr(Sgr::Reset));
 
   for row in 0..buffer.height {
     if !paint::row_changed(previous, buffer, row) {
       continue;
     }
 
-    let _ = queue!(
+    let _ = write!(
       out,
-      cursor::MoveTo(0, u16::try_from(row).unwrap_or(u16::MAX)),
-      ResetColor,
-      SetAttribute(Attribute::Reset),
+      "{}{}",
+      move_to(0, u16::try_from(row).unwrap_or(u16::MAX)),
+      Csi::Sgr(Sgr::Reset)
     );
 
     let mut current = paint::TerminalCell::EMPTY;
@@ -484,75 +525,65 @@ fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&pai
       if cell.foreground != current.foreground {
         let color = cell
           .foreground
-          .map_or(TerminalColor::Reset, |rgb| depth.terminal_color(rgb));
+          .map_or(ColorSpec::Reset, |rgb| depth.terminal_color(rgb));
 
-        let _ = queue!(out, SetForegroundColor(color));
+        let _ = write!(out, "{}", Csi::Sgr(Sgr::Foreground(color)));
       }
 
       if cell.background != current.background {
         let color = cell
           .background
-          .map_or(TerminalColor::Reset, |rgb| depth.terminal_color(rgb));
+          .map_or(ColorSpec::Reset, |rgb| depth.terminal_color(rgb));
 
-        let _ = queue!(out, SetBackgroundColor(color));
+        let _ = write!(out, "{}", Csi::Sgr(Sgr::Background(color)));
       }
 
       if cell.bold != current.bold {
-        let _ = queue!(
-          out,
-          SetAttribute(if cell.bold {
-            Attribute::Bold
-          }
-          else {
-            Attribute::NormalIntensity
-          })
-        );
+        let intensity = if cell.bold {
+          Intensity::Bold
+        }
+        else {
+          Intensity::Normal
+        };
+
+        let _ = write!(out, "{}", Csi::Sgr(Sgr::Intensity(intensity)));
       }
 
       if cell.underline != current.underline {
-        let _ = queue!(
-          out,
-          SetAttribute(if cell.underline {
-            Attribute::Underlined
-          }
-          else {
-            Attribute::NoUnderline
-          })
-        );
+        let underline = if cell.underline {
+          Underline::Single
+        }
+        else {
+          Underline::None
+        };
+
+        let _ = write!(out, "{}", Csi::Sgr(Sgr::Underline(underline)));
       }
 
       if cell.reverse != current.reverse {
-        let _ = queue!(
-          out,
-          SetAttribute(if cell.reverse {
-            Attribute::Reverse
-          }
-          else {
-            Attribute::NoReverse
-          })
-        );
+        let _ = write!(out, "{}", Csi::Sgr(Sgr::Reverse(cell.reverse)));
       }
 
       // OSC 8 anchors: close the running link on any change, open the next.
       if cell.link != current.link {
         if current.link.is_some() {
-          let _ = queue!(out, crossterm::style::Print("\x1b]8;;\x1b\\"));
+          let _ = write!(out, "\x1b]8;;\x1b\\");
         }
 
         if let Some(url) = cell
           .link
           .and_then(|index| buffer.links.get(usize::from(index)))
         {
-          let _ = queue!(out, crossterm::style::Print(format!("\x1b]8;;{url}\x1b\\")));
+          let _ = write!(out, "\x1b]8;;{url}\x1b\\");
         }
       }
 
-      let _ = queue!(out, crossterm::style::Print(cell.character));
+      let _ = write!(out, "{}", cell.character);
       current = *cell;
     }
 
     if current.link.is_some() {
-      let _ = queue!(out, crossterm::style::Print("\x1b]8;;\x1b\\"));
+      let _ = write!(out, "\x1b]8;;\x1b\\");
     }
   }
 
@@ -560,15 +591,16 @@ fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&pai
   // terminal does.
   match buffer.caret {
     Some((column, row)) => {
-      let _ = queue!(
+      let _ = write!(
         out,
-        cursor::MoveTo(column, row),
-        cursor::SetCursorStyle::BlinkingBar,
-        cursor::Show
+        "{}{}{}",
+        move_to(column, row),
+        Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::BlinkingBar)),
+        dec_mode(DecPrivateModeCode::ShowCursor, true)
       );
     }
     None => {
-      let _ = queue!(out, cursor::Hide);
+      let _ = write!(out, "{}", dec_mode(DecPrivateModeCode::ShowCursor, false));
     }
   }
 
@@ -577,8 +609,8 @@ fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&pai
 
 /// Dispatches one keyboard event through core's dispatch, then the terminal's own
 /// response unless a handler prevented it; `Ctrl-Q` stays unconditional.
-fn dispatch_key(key: &event::KeyEvent) {
-  if key.code == KeyCode::Char('q') && key.modifiers.contains(KeyModifiers::CONTROL) {
+fn dispatch_key(key: &termina::event::KeyEvent) {
+  if key.code == KeyCode::Char('q') && key.modifiers.contains(TerminalModifiers::CONTROL) {
     with_store(|store| store.quit = true);
 
     return;
@@ -590,13 +622,13 @@ fn dispatch_key(key: &event::KeyEvent) {
 }
 
 /// Maps a terminal key to the portable W3C key value.
-fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+fn portable_key(code: KeyCode, modifiers: TerminalModifiers) -> KeyEvent {
   let key = match code {
     KeyCode::Char(character) => character.to_string(),
     KeyCode::Enter => "Enter".to_owned(),
     KeyCode::Backspace => "Backspace".to_owned(),
     KeyCode::Tab | KeyCode::BackTab => "Tab".to_owned(),
-    KeyCode::Esc => "Escape".to_owned(),
+    KeyCode::Escape => "Escape".to_owned(),
     KeyCode::Delete => "Delete".to_owned(),
     KeyCode::Left => "ArrowLeft".to_owned(),
     KeyCode::Right => "ArrowRight".to_owned(),
@@ -606,7 +638,7 @@ fn portable_key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
     KeyCode::End => "End".to_owned(),
     KeyCode::PageUp => "PageUp".to_owned(),
     KeyCode::PageDown => "PageDown".to_owned(),
-    KeyCode::F(number) => format!("F{number}"),
+    KeyCode::Function(number) => format!("F{number}"),
     _ => "Unidentified".to_owned(),
   };
   let mut modifiers = portable_modifiers(modifiers);
@@ -728,10 +760,16 @@ pub fn take_paste_requested() -> bool {
   with_store(|store| std::mem::take(&mut store.pending_paste))
 }
 
-/// Simulates the terminal pasting `text`—a bracketed paste, or a clipboard read's
-/// reply—into the focused entry, for a headless test.
+/// Simulates the terminal pasting `text` by its own key—a bracketed paste—into the
+/// focused entry, for a headless test.
 pub fn trigger_paste(text: &str) {
   paste(text);
+}
+
+/// Simulates the terminal answering the last clipboard read with `text`, for a headless
+/// test: it lands in the entry that asked, wherever focus has moved since.
+pub fn trigger_clipboard_reply(text: &str) {
+  paste_reply(text);
 }
 
 /// Takes the link the last click staged for the system handler, for a headless test.
@@ -787,24 +825,6 @@ pub fn trigger_reduced_motion(reduced: bool) {
 /// the size conditions; the next render lays out at the size it is given.
 pub fn trigger_resize(columns: u16, rows: u16) {
   frame::resize(columns, rows);
-}
-
-/// Simulates the clipboard-write detection, for a headless test driving the menu's
-/// disabled `Copy` and `Cut`.
-pub fn trigger_clipboard_support(supported: bool) {
-  with_store(|store| {
-    store.clipboard = supported;
-    store.paint_dirty = true;
-  });
-}
-
-/// Simulates the clipboard-read detection, for a headless test driving the menu's
-/// disabled `Paste`.
-pub fn trigger_clipboard_read_support(supported: bool) {
-  with_store(|store| {
-    store.clipboard_read = supported.then_some(Duration::ZERO);
-    store.paint_dirty = true;
-  });
 }
 
 /// The pointer shape the current hover resolves to, for a headless test.

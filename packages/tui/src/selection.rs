@@ -8,7 +8,9 @@
 //! in its [`Field`](crate::store::Field) instead, over its value. Right-clicking while a
 //! selection exists opens the copy menu at the pressed cell, and right-clicking a text
 //! entry its edit menu; `Copy` stages the text for the terminal loop's OSC 52 write,
-//! `Cut` removes it as well, and `Paste` stages an OSC 52 read.
+//! `Cut` removes it as well, and `Paste` stages an OSC 52 read whose reply lands in
+//! the entry that asked. Every item is offered on every terminal: OSC 52 has no
+//! capability query, and a terminal lacking it ignores the write and answers no read.
 
 use std::time::{Duration, Instant};
 
@@ -68,12 +70,6 @@ impl MenuItem {
     }
   }
 }
-
-/// The hint line shown when the terminal discards clipboard writes.
-pub(crate) const COPY_HINT: &str = "no terminal support";
-
-/// The hint line shown when the terminal answers no clipboard read.
-pub(crate) const PASTE_HINT: &str = "paste with the terminal's key";
 
 /// The window between two presses of one multi-click sequence.
 const MULTI_CLICK: Duration = Duration::from_millis(500);
@@ -489,59 +485,37 @@ impl Store {
   }
 
   /// The open menu's items in order, each with whether it is enabled: `Cut` and `Copy`
-  /// need a selection and a terminal keeping clipboard writes, `Paste` a terminal
-  /// answering clipboard reads.
+  /// need a selection, `Paste` nothing.
   pub(crate) fn menu_items(&self) -> Vec<(MenuItem, bool)> {
     let Some(menu) = self.menu
     else {
       return Vec::new();
     };
-    let copies = self.clipboard && self.has_selection();
+    let copies = self.has_selection();
 
     match menu.kind {
       MenuKind::Copy => vec![(MenuItem::Copy, copies)],
       MenuKind::Edit => vec![
         (MenuItem::Cut, copies),
         (MenuItem::Copy, copies),
-        (MenuItem::Paste, self.clipboard_read.is_some()),
+        (MenuItem::Paste, true),
       ],
     }
   }
 
-  /// The open menu's hint lines, one per clipboard direction the terminal lacks.
-  pub(crate) fn menu_hints(&self) -> Vec<&'static str> {
-    let Some(menu) = self.menu
-    else {
-      return Vec::new();
-    };
-    let mut hints = Vec::new();
-
-    if !self.clipboard {
-      hints.push(COPY_HINT);
-    }
-
-    if menu.kind == MenuKind::Edit && self.clipboard_read.is_none() {
-      hints.push(PASTE_HINT);
-    }
-
-    hints
-  }
-
   /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal:
-  /// a row per item, a row per hint, and the border around them.
+  /// a row per item and the border around them.
   pub(crate) fn menu_bounds(&self) -> Option<(i64, i64, i64, i64)> {
     let menu = self.menu?;
     let (columns, rows) = self.last_size;
     let items = self.menu_items();
-    let hints = self.menu_hints();
     let label = items
       .iter()
       .map(|(item, _)| item.label().chars().count())
-      .chain(hints.iter().map(|hint| hint.chars().count()))
       .max()
       .unwrap_or(0);
     let width = i64::try_from(label).unwrap_or(0) + 4;
-    let height = i64::try_from(items.len() + hints.len()).unwrap_or(0) + 2;
+    let height = i64::try_from(items.len()).unwrap_or(0) + 2;
     let x = i64::from(menu.x).min(i64::from(columns) - width).max(0);
     let y = i64::from(menu.y).min(i64::from(rows) - height).max(0);
 
@@ -569,9 +543,11 @@ impl Store {
     }
   }
 
-  /// Stages a clipboard read for the terminal loop, when the terminal answers one.
+  /// Stages a clipboard read for the terminal loop, its reply bound for the focused
+  /// entry; nothing is staged without one.
   pub(crate) fn request_paste(&mut self) {
-    if self.clipboard_read.is_some() {
+    if let Some(entry) = self.focused_entry() {
+      self.paste_target = Some(entry);
       self.pending_paste = true;
     }
   }

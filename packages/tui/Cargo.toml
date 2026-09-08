@@ -5,7 +5,6 @@ edition.workspace = true
 
 # Host-only: the terminal driver never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-crossterm = { features = ["bracketed-paste"], version = "0.29" }
 postcard = { default-features = false, features = ["alloc"], version = "1" }
 rustc-hash.workspace = true
 skene-core.workspace = true
@@ -14,10 +13,8 @@ skene-router.workspace = true
 skene-tui-core.workspace = true
 skene-views.workspace = true
 taffy = "0.9"
-
-# The OSC 11 background query polls stdin for the reply.
-[target.'cfg(all(not(target_arch = "wasm32"), unix))'.dependencies]
-libc = "0.2"
+# The fork carries the OSC 52 reply parse until the upstream PR merges.
+termina = { branch = "parse-selection", git = "https://github.com/skreborn/termina" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-simple-tui.workspace = true

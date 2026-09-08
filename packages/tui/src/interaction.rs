@@ -1354,3 +1354,9 @@ fn key_default(event: &KeyEvent) {
 pub(crate) fn paste(text: &str) {
   crate::field::paste_focused(text);
 }
+
+/// Inserts `text`, the terminal's answer to the last clipboard read, into the entry
+/// that asked for it.
+pub(crate) fn paste_reply(text: &str) {
+  crate::field::paste_requested(text);
+}

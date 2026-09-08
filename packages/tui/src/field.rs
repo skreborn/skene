@@ -493,14 +493,25 @@ impl Store {
     edit: impl FnOnce(&mut Field, usize) -> Option<Edit>,
   ) -> Option<(skene_core::NodeId, String)> {
     let focused = self.focused?;
-    let width = self.field_inner_width(focused);
-    let record = self.record_mut(focused)?;
+
+    self.edit_entry(focused, edit)
+  }
+
+  /// Applies `edit` to the entry at `entry`, returning the changed value with its node
+  /// when the edit changed it; nothing happens when the entry is gone.
+  fn edit_entry(
+    &mut self,
+    entry: Handle,
+    edit: impl FnOnce(&mut Field, usize) -> Option<Edit>,
+  ) -> Option<(skene_core::NodeId, String)> {
+    let width = self.field_inner_width(entry);
+    let record = self.record_mut(entry)?;
     let node = record.node;
     let field = record.kind.field_mut()?;
     let edit = edit(field, width)?;
     let value = field.value.clone();
 
-    self.damage(focused);
+    self.damage(entry);
 
     match edit {
       Edit::Value => {
@@ -527,8 +538,28 @@ pub(crate) fn edit_focused(event: &KeyEvent) {
 /// Inserts `text` into the focused entry in place of its selection, reporting the
 /// changed value through the node's change handlers.
 pub(crate) fn paste_focused(text: &str) {
+  let target = with_store(|store| store.focused);
+
+  paste_into(target, text);
+}
+
+/// Inserts `text`, the terminal's answer to the last clipboard read, into the entry
+/// that asked for it, reporting the changed value through the node's change handlers;
+/// nothing happens when no entry asked or it is gone.
+pub(crate) fn paste_requested(text: &str) {
+  let target = with_store(|store| store.paste_target.take());
+
+  paste_into(target, text);
+}
+
+/// Inserts `text` into the entry at `target`, in place of its selection.
+fn paste_into(target: Option<Handle>, text: &str) {
+  let Some(target) = target
+  else {
+    return;
+  };
   let changed = with_store(|store| {
-    store.edit_focused_entry(|field, _| {
+    store.edit_entry(target, |field, _| {
       let text = pasted_text(text, field.lines);
 
       if text.is_empty() && field.selection().is_none() {

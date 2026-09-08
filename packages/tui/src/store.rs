@@ -1,10 +1,7 @@
 //! The record store beside the scene: what the driver keeps per node, the taffy tree,
 //! the interaction state, and the environment it reports.
 
-use std::{
-  rc::Rc,
-  time::{Duration, Instant},
-};
+use std::{rc::Rc, time::Instant};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
@@ -525,9 +522,10 @@ pub(crate) struct Store {
   pub(crate) scroll_latch: Option<ScrollLatch>,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: Option<String>,
-  /// Whether a clipboard read is staged for the terminal loop, pasting into the
-  /// focused entry when the reply arrives.
+  /// Whether a clipboard read is staged for the terminal loop.
   pub(crate) pending_paste: bool,
+  /// The entry the last clipboard read was asked for, where its reply lands.
+  pub(crate) paste_target: Option<Handle>,
   /// The link pressed at its cell, opened when the release lands on the same cell.
   pub(crate) pressed_link: Option<(u16, u16, String)>,
   /// A link destination staged for the terminal loop to open.
@@ -538,11 +536,6 @@ pub(crate) struct Store {
   pub(crate) detected_dark: bool,
   /// The color scheme the app has chosen, overriding the detected background.
   pub(crate) choice: Option<ColorScheme>,
-  /// Whether OSC 52 clipboard writes reach the system clipboard.
-  pub(crate) clipboard: bool,
-  /// How long an OSC 52 clipboard read waits for the terminal's reply, `None` when
-  /// the terminal answers none.
-  pub(crate) clipboard_read: Option<Duration>,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
   /// The measured sizes of the named query containers, from the last layout.
@@ -644,13 +637,12 @@ impl Store {
       scroll_latch: None,
       pending_copy: None,
       pending_paste: false,
+      paste_target: None,
       pressed_link: None,
       pending_open: None,
       last_size: DEFAULT_SIZE,
       detected_dark: true,
       choice: None,
-      clipboard: true,
-      clipboard_read: None,
       reveal: None,
       container_sizes: FxHashMap::default(),
       title: None,

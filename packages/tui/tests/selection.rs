@@ -236,38 +236,6 @@ fn escape_closes_the_menu_then_clears_the_selection() {
   });
 }
 
-/// Without terminal clipboard support the copy menu presents `Copy` disabled with a
-/// hint; pressing it neither copies nor closes the menu.
-#[test]
-fn the_copy_menu_disables_without_terminal_clipboard() {
-  with_driver(|| {
-    mount_themed(|| Text::new("alpha beta").set_selectable(true).into_any());
-    let _ = tui::render_to_text(30, 6);
-
-    tui::trigger_clipboard_support(false);
-    tui::trigger_mouse_click(2, 0);
-    tui::trigger_mouse_click(2, 0);
-    tui::trigger_mouse_right_click(0, 0);
-
-    let menu = tui::render_to_text(30, 6);
-
-    assert!(
-      menu.contains("Copy") && menu.contains("no terminal support"),
-      "the disabled item and its hint present: {menu}"
-    );
-
-    tui::trigger_mouse_click(2, 1);
-
-    let after_press = tui::render_to_text(30, 6);
-
-    assert!(
-      after_press.contains("Copy"),
-      "the disabled item swallows the press without closing: {after_press}"
-    );
-    assert_eq!(tui::take_copied(), None);
-  });
-}
-
 /// Rich text flows its spans as one wrapping paragraph—each span keeping its own ink
 /// and the linked span the scheme's link blue—and an opted-in paragraph selects and
 /// copies across span boundaries as one source flow.

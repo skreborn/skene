@@ -1217,12 +1217,6 @@ fn draw_menu(store: &Store, buffer: &mut Buffer, dark: bool) {
 
     draw_text(buffer, x + 2, row_y, item.label(), None, false, !enabled);
   }
-
-  for (index, hint) in store.menu_hints().iter().enumerate() {
-    let row_y = y + 1 + isize::try_from(items.len() + index).expect("fits");
-
-    draw_text(buffer, x + 2, row_y, hint, None, false, true);
-  }
 }
 
 /// Casts a box's shadow: the one-cell band below and to the right, the shadow color

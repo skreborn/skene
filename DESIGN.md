@@ -525,7 +525,7 @@ then diffs rows again on output. A paragraph lays its inline runs out as one wra
 text, and a view inside it flows as an inline box: laid out on its own, standing in the
 text as a placeholder of its width, painted and hit at the cells it flowed into. A
 border of zero width takes no cells. Frames paint into a cell buffer—to the terminal
-through `launch` (crossterm: raw mode, truecolor, mouse capture), or to plain text
+through `launch` (termina: raw mode, mouse capture, the terminal's replies as events), or to plain text
 through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click`/`trigger_frame` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The

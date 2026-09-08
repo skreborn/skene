@@ -160,8 +160,8 @@ fn the_mouse_selects_by_drag_word_and_value() {
 }
 
 /// The clipboard keys inside an entry: `Ctrl+C` stages the selection, `Ctrl+X` stages
-/// and removes it, `Ctrl+V` asks the loop to read the clipboard where the terminal
-/// answers one, and the terminal's paste lands in place of the selection.
+/// and removes it, `Ctrl+V` asks the loop to read the clipboard, and the terminal's
+/// reply lands in the entry that asked; a reply nobody asked for lands nowhere.
 #[test]
 fn the_clipboard_keys_copy_cut_and_paste() {
   with_driver(|| {
@@ -184,19 +184,19 @@ fn the_clipboard_keys_copy_cut_and_paste() {
     assert_eq!(tui::take_copied().as_deref(), Some("beta"));
     assert_eq!(value.get_untracked(), "alpha ");
 
-    tui::trigger_key("Ctrl+v");
+    tui::trigger_clipboard_reply("stray");
 
-    assert!(
-      !tui::take_paste_requested(),
-      "no read is staged without terminal support"
+    assert_eq!(
+      value.get_untracked(),
+      "alpha ",
+      "a reply nobody asked for lands nowhere"
     );
 
-    tui::trigger_clipboard_read_support(true);
     tui::trigger_key("Ctrl+v");
 
     assert!(tui::take_paste_requested());
 
-    tui::trigger_paste("gamma\ndelta");
+    tui::trigger_clipboard_reply("gamma\ndelta");
 
     assert_eq!(
       value.get_untracked(),
@@ -246,15 +246,13 @@ fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
 }
 
 /// Right-clicking a focused entry opens the edit menu with `Cut`, `Copy` and `Paste`;
-/// `Cut` removes the selection into the clipboard, `Paste` stages a read, and the
-/// items the terminal cannot serve present disabled with a hint.
+/// `Cut` removes the selection into the clipboard and `Paste` stages a read.
 #[test]
 fn the_edit_menu_cuts_copies_and_pastes() {
   with_driver(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 20);
-    tui::trigger_clipboard_read_support(true);
     tui::trigger_mouse_right_click(2, 0);
 
     let menu = tui::render_to_text(40, 6);
@@ -284,36 +282,12 @@ fn the_edit_menu_cuts_copies_and_pastes() {
       "the menu closed"
     );
 
-    tui::trigger_clipboard_read_support(false);
-    tui::trigger_mouse_right_click(0, 0);
-
-    let disabled = tui::render_to_text(40, 6);
-
-    assert!(
-      disabled.contains("paste with the terminal's key"),
-      "the hint presents: {disabled}"
-    );
-
-    tui::trigger_mouse_click(4, 3);
-
-    assert!(
-      !tui::take_paste_requested(),
-      "a disabled Paste stages nothing"
-    );
-    assert!(
-      tui::render_to_text(40, 6).contains("Paste"),
-      "a disabled item holds the menu open"
-    );
-
-    tui::trigger_key("Escape");
-    tui::trigger_mouse_click(30, 3);
-    tui::trigger_mouse_right_click(2, 0);
-    tui::trigger_key("q");
+    tui::trigger_clipboard_reply("y");
 
     assert_eq!(
       value.get_untracked(),
-      "xq",
-      "a right press focusing the entry places its caret"
+      "yx",
+      "the reply landed in the entry that asked, at the caret the right press placed"
     );
   });
 }

@@ -111,16 +111,41 @@ picker's type-ahead waits on a clock no behavior has.
   - Selection and clipboard inside a text entry landed (2026-09-08): the entry's own
     anchor beside its caret, `Cut`/`Copy`/`Paste` in its edit menu, `Ctrl-C`/`X`/`V`
     through the ordinary dispatch, bracketed paste as the paste source everywhere, and an
-    OSC 52 read where XTVERSION names kitty, ghostty, foot, xterm, tmux or contour.
-    Left: the OSC 52 read deafens the loop to input until the reply or its deadline
-    (ten seconds where the terminal asks the user first), a terminal that asks and
-    answers late leaks its reply into the key stream, and the XTVERSION list is a
-    judgment—a terminal answering reads under a name not on it pastes only through its
-    own key. A single-line field does not autoscroll during a drag past its edge beyond
-    the window's own snap to the caret.
+    OSC 52 read where XTVERSION names kitty, ghostty, foot, xterm, tmux or contour. Left:
+    a single-line field does not autoscroll during a drag past its edge beyond the
+    window's own snap to the caret.
+  - **Replies are events, never waits** (landed 2026-09-08). The loop runs on termina,
+    whose parser delivers CSI, OSC and DCS replies in the input stream beside the keys,
+    so no query has a deadline, nothing deafens the loop, and a late reply cannot leak
+    into the key stream. Launch writes its queries and paints at once under its
+    assumptions—dark, 16 colors, legacy keys; a reply upgrades an assumption whenever
+    it lands, and a 2031 notification moves the scheme the same way. **Every
+    capability is queried, never inferred**: a 2031 report and OSC 11 for the
+    background, the kitty keyboard flags query, and a DECRQSS SGR round trip for the
+    depth, after a true-color and after a palette background. XTVERSION, `COLORTERM`
+    and `TERM` go unread—a name is not a capability, and a list of names is a guess
+    that ages. OSC 52 has no capability query and no negative acknowledgement in either
+    direction, so `Cut`, `Copy` and `Paste` are offered unconditionally: a write a
+    terminal discards is silent, and a read fires on demand—a terminal that asks its
+    user asks then, never at launch—and inserts when the report arrives, into the entry
+    that asked, dropped if that entry is gone or none asked; a second `Ctrl-V` while
+    one is pending retargets rather than queues, and a terminal that never answers
+    leaves its own paste key, which arrives bracketed. Termina parses no OSC 52 report
+    upstream; the fork's `parse-selection` branch is the git dependency until the PR
+    merges. Owning the read loop around termina's public `Parser` was the fallback and
+    is not needed. Left:
+    - A terminal answering no DECRQSS paints at 16 colors, Terminal.app among them; the
+      cost of inferring nothing, taken knowingly.
+    - Termina's SGR reply parser reads `:`-separated color parameters only, so a
+      terminal reporting `48;2;r;g;b` has its reply dropped and stays at 16 colors—an
+      upstream fix.
+    - Windows input runs through ConPTY, which helix found buggy with CJK and
+      non-ASCII text and reverted; termina's `windows-legacy` reader is the fallback,
+      and neither is tested here.
+    - Queries written before raw mode takes effect print their replies to the screen
+      (helix's finding over SSH); the loop enters raw mode first, and keeps that order.
   - Explore per-input undo/redo (`Ctrl-Z`, `Ctrl-Shift-Z`/`Ctrl-Y`): a bounded ring of
     (value, caret, selection) per text control, matching what the DOM gives an `<input>`.
-  - Live scheme change notifications (DECSET 2031) instead of the one launch query.
   - Explore splitting `skene run tui` like the web's: keep the invoking terminal for the
     build loop and logs, and print a runner command that attaches the app in a second
     terminal.

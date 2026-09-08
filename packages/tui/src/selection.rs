@@ -1,16 +1,19 @@
-//! In-app text selection: source-anchored ranges over selectable runs, and the copy
+//! In-app text selection: source-anchored ranges over selectable runs, and the context
 //! menu.
 //!
 //! A selection's ends live in source space—a run and a character offset into its
 //! source text—so it survives reflow and copies as the text appears in the source, soft
 //! wraps excluded. A press anchors it, a drag extends it across runs in document order,
-//! a double click takes the word, a triple click the run. Right-clicking while a
-//! selection exists opens the copy menu at the pressed cell; `Copy` stages the text for
-//! the terminal loop's OSC 52 write.
+//! a double click takes the word, a triple click the run. A text entry's selection lives
+//! in its [`Field`](crate::store::Field) instead, over its value. Right-clicking while a
+//! selection exists opens the copy menu at the pressed cell, and right-clicking a text
+//! entry its edit menu; `Copy` stages the text for the terminal loop's OSC 52 write,
+//! `Cut` removes it as well, and `Paste` stages an OSC 52 read.
 
 use std::time::{Duration, Instant};
 
 use crate::{
+  field::word_bounds,
   layout::{is_paragraph, paragraph_runs, paragraph_text},
   paint::wrap_spans,
   store::{Drag, Handle, Kind, Store},
@@ -31,35 +34,49 @@ pub(crate) struct Selection {
   pub(crate) focus: SelectionPoint,
 }
 
-/// The copy menu's sole item label.
-pub(crate) const MENU_ITEM: &str = "Copy";
+/// The context menu: its top-left cell and the items it lists.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Menu {
+  pub(crate) x: u16,
+  pub(crate) y: u16,
+  pub(crate) kind: MenuKind,
+}
 
-/// The disabled menu's hint line, shown when the terminal discards clipboard writes.
-pub(crate) const MENU_HINT: &str = "no terminal support";
+/// Which menu is open: the copy menu over the document's selection, or the edit menu
+/// over a text entry.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MenuKind {
+  Copy,
+  Edit,
+}
+
+/// One item of the context menu.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MenuItem {
+  Cut,
+  Copy,
+  Paste,
+}
+
+impl MenuItem {
+  /// The item's label.
+  pub(crate) const fn label(self) -> &'static str {
+    match self {
+      Self::Cut => "Cut",
+      Self::Copy => "Copy",
+      Self::Paste => "Paste",
+    }
+  }
+}
+
+/// The hint line shown when the terminal discards clipboard writes.
+pub(crate) const COPY_HINT: &str = "no terminal support";
+
+/// The hint line shown when the terminal answers no clipboard read.
+pub(crate) const PASTE_HINT: &str = "paste with the terminal's key";
 
 /// The window between two presses of one multi-click sequence.
 const MULTI_CLICK: Duration = Duration::from_millis(500);
-
-/// The class a character groups with under a double click.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CharacterClass {
-  Word,
-  Space,
-  Other,
-}
-
-/// The class of one character: word characters, whitespace, or punctuation.
-fn character_class(character: char) -> CharacterClass {
-  if character.is_alphanumeric() || character == '_' {
-    CharacterClass::Word
-  }
-  else if character.is_whitespace() {
-    CharacterClass::Space
-  }
-  else {
-    CharacterClass::Other
-  }
-}
 
 impl Store {
   /// Counts a press at (`x`, `y`) into its multi-click sequence: 1 for a fresh press,
@@ -294,9 +311,29 @@ impl Store {
     (from < to).then_some((from, to))
   }
 
-  /// The selected text as it appears in the source—each run's slice, runs joined by
-  /// newlines—or `None` when nothing is selected.
+  /// The focused text entry, when one holds focus.
+  pub(crate) fn focused_entry(&self) -> Option<Handle> {
+    self.focused.filter(|focused| self.is_field(*focused))
+  }
+
+  /// Whether anything is selected: a range over the document's runs, or one inside the
+  /// focused entry.
+  pub(crate) fn has_selection(&self) -> bool {
+    self.selection.is_some()
+      || self
+        .focused_entry()
+        .and_then(|entry| self.record(entry)?.kind.field()?.selection())
+        .is_some()
+  }
+
+  /// The selected text: the focused entry's, or the document's as it appears in the
+  /// source—each run's slice, runs joined by newlines—or `None` when nothing is
+  /// selected.
   pub(crate) fn selected_text(&self) -> Option<String> {
+    if let Some(entry) = self.focused_entry() {
+      return self.record(entry)?.kind.field()?.selected_text();
+    }
+
     let (start, end, runs) = self.selection_span()?;
     let mut parts = Vec::new();
 
@@ -365,19 +402,7 @@ impl Store {
     else {
       return;
     };
-    let characters: Vec<char> = text.chars().collect();
-    let at = point.offset.min(characters.len() - 1);
-    let class = character_class(characters[at]);
-    let mut from = at;
-    let mut to = at + 1;
-
-    while from > 0 && character_class(characters[from - 1]) == class {
-      from -= 1;
-    }
-
-    while to < characters.len() && character_class(characters[to]) == class {
-      to += 1;
-    }
+    let (from, to) = word_bounds(&text, point.offset);
 
     self.selection = Some(Selection {
       anchor: SelectionPoint {
@@ -412,13 +437,31 @@ impl Store {
     self.paint_dirty = true;
   }
 
-  /// Clears the selection and closes the copy menu.
+  /// Clears the document's selection and closes the menu.
   pub(crate) fn clear_selection(&mut self) {
     let selection = self.selection.take().is_some();
     let menu = self.menu.take().is_some();
 
     if selection || menu {
       self.paint_dirty = true;
+    }
+  }
+
+  /// Collapses the selection inside `entry` at its caret.
+  pub(crate) fn collapse_entry_selection(&mut self, entry: Handle) {
+    let collapsed = self
+      .record_mut(entry)
+      .and_then(|record| record.kind.field_mut())
+      .is_some_and(|field| {
+        let selected = field.selection().is_some();
+
+        field.collapse();
+
+        selected
+      });
+
+    if collapsed {
+      self.damage(entry);
     }
   }
 
@@ -432,49 +475,91 @@ impl Store {
     }
   }
 
-  /// Opens the copy menu with its top-left at the pressed cell, when a selection
-  /// exists.
-  fn open_menu(&mut self, x: u16, y: u16) {
-    if self.selected_text().is_some() {
-      self.menu = Some((x, y));
-      self.paint_dirty = true;
-    }
+  /// Opens the menu with its top-left at the pressed cell.
+  fn open_menu(&mut self, x: u16, y: u16, kind: MenuKind) {
+    self.menu = Some(Menu { x, y, kind });
+    self.paint_dirty = true;
   }
 
-  /// Closes the copy menu.
+  /// Closes the menu.
   pub(crate) fn close_menu(&mut self) {
     if self.menu.take().is_some() {
       self.paint_dirty = true;
     }
   }
 
-  /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal;
-  /// a disabled menu grows a row for its hint.
-  pub(crate) fn menu_bounds(&self) -> Option<(i64, i64, i64, i64)> {
-    let (x, y) = self.menu?;
-    let (columns, rows) = self.last_size;
-    let (label, height) = if self.clipboard {
-      (MENU_ITEM.chars().count(), 3)
-    }
+  /// The open menu's items in order, each with whether it is enabled: `Cut` and `Copy`
+  /// need a selection and a terminal keeping clipboard writes, `Paste` a terminal
+  /// answering clipboard reads.
+  pub(crate) fn menu_items(&self) -> Vec<(MenuItem, bool)> {
+    let Some(menu) = self.menu
     else {
-      (MENU_ITEM.chars().count().max(MENU_HINT.chars().count()), 4)
+      return Vec::new();
     };
+    let copies = self.clipboard && self.has_selection();
+
+    match menu.kind {
+      MenuKind::Copy => vec![(MenuItem::Copy, copies)],
+      MenuKind::Edit => vec![
+        (MenuItem::Cut, copies),
+        (MenuItem::Copy, copies),
+        (MenuItem::Paste, self.clipboard_read.is_some()),
+      ],
+    }
+  }
+
+  /// The open menu's hint lines, one per clipboard direction the terminal lacks.
+  pub(crate) fn menu_hints(&self) -> Vec<&'static str> {
+    let Some(menu) = self.menu
+    else {
+      return Vec::new();
+    };
+    let mut hints = Vec::new();
+
+    if !self.clipboard {
+      hints.push(COPY_HINT);
+    }
+
+    if menu.kind == MenuKind::Edit && self.clipboard_read.is_none() {
+      hints.push(PASTE_HINT);
+    }
+
+    hints
+  }
+
+  /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal:
+  /// a row per item, a row per hint, and the border around them.
+  pub(crate) fn menu_bounds(&self) -> Option<(i64, i64, i64, i64)> {
+    let menu = self.menu?;
+    let (columns, rows) = self.last_size;
+    let items = self.menu_items();
+    let hints = self.menu_hints();
+    let label = items
+      .iter()
+      .map(|(item, _)| item.label().chars().count())
+      .chain(hints.iter().map(|hint| hint.chars().count()))
+      .max()
+      .unwrap_or(0);
     let width = i64::try_from(label).unwrap_or(0) + 4;
-    let x = i64::from(x).min(i64::from(columns) - width).max(0);
-    let y = i64::from(y).min(i64::from(rows) - height).max(0);
+    let height = i64::try_from(items.len() + hints.len()).unwrap_or(0) + 2;
+    let x = i64::from(menu.x).min(i64::from(columns) - width).max(0);
+    let y = i64::from(menu.y).min(i64::from(rows) - height).max(0);
 
     Some((x, y, width, height))
   }
 
-  /// Whether the cell (`x`, `y`) lies on the open menu's `Copy` item.
-  pub(crate) fn copy_hit(&self, x: u16, y: u16) -> bool {
-    let Some((menu_x, menu_y, width, _)) = self.menu_bounds()
-    else {
-      return false;
-    };
+  /// The open menu's item at the cell (`x`, `y`), enabled or not.
+  pub(crate) fn menu_item_at(&self, x: u16, y: u16) -> Option<(MenuItem, bool)> {
+    let (menu_x, menu_y, width, _) = self.menu_bounds()?;
     let (x, y) = (i64::from(x), i64::from(y));
 
-    y == menu_y + 1 && x > menu_x && x < menu_x + width - 1
+    if x <= menu_x || x >= menu_x + width - 1 {
+      return None;
+    }
+
+    let row = usize::try_from(y - menu_y - 1).ok()?;
+
+    self.menu_items().get(row).copied()
   }
 
   /// Stages the selected text for the terminal loop's clipboard write.
@@ -484,11 +569,21 @@ impl Store {
     }
   }
 
-  /// A right press: opens the copy menu at the cell while a selection exists, and
-  /// closes it otherwise.
-  pub(crate) fn right_press(&mut self, x: u16, y: u16) {
-    if self.selection.is_some() {
-      self.open_menu(x, y);
+  /// Stages a clipboard read for the terminal loop, when the terminal answers one.
+  pub(crate) fn request_paste(&mut self) {
+    if self.clipboard_read.is_some() {
+      self.pending_paste = true;
+    }
+  }
+
+  /// A right press: opens the edit menu at the cell over the focused text entry, the
+  /// copy menu while the document holds a selection, and closes the menu otherwise.
+  pub(crate) fn right_press(&mut self, x: u16, y: u16, entry: Option<Handle>) {
+    if entry.is_some_and(|entry| self.focused == Some(entry)) {
+      self.open_menu(x, y, MenuKind::Edit);
+    }
+    else if self.selection.is_some() {
+      self.open_menu(x, y, MenuKind::Copy);
     }
     else {
       self.close_menu();

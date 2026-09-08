@@ -93,6 +93,7 @@ fn caret_jumps_and_deletes_by_word() {
     let _ = tui::render_to_text(20, 1);
 
     tui::trigger_key("Tab");
+    tui::trigger_key("End");
     tui::trigger_key("Ctrl+ArrowLeft");
     tui::trigger_key("Ctrl+Backspace");
 
@@ -127,6 +128,7 @@ fn word_deletion_breaks_on_character_class() {
     let _ = tui::render_to_text(20, 1);
 
     tui::trigger_key("Tab");
+    tui::trigger_key("End");
     tui::trigger_key("Ctrl+Backspace");
 
     assert_eq!(name.get_untracked(), "foo.bar_baz");

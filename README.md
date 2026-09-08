@@ -91,8 +91,9 @@ fn main() {
 
 Lengths are cells (`u32`), text is a color and a bold flag, a border is one cell of
 box-drawing glyphs; what the terminal cannot draw does not exist to call. `Tab` moves
-focus, the controls own their keys, the mouse clicks, drags, scrolls and selects, and
-`Ctrl-C` quits.
+focus, the controls own their keys, the mouse clicks, drags, scrolls and selects—inside
+a text entry too, where `Ctrl-C`, `Ctrl-X` and `Ctrl-V` copy, cut and paste—and
+`Ctrl-Q` quits.
 
 ## Crates
 

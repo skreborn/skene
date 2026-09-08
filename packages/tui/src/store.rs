@@ -1,7 +1,10 @@
 //! The record store beside the scene: what the driver keeps per node, the taffy tree,
 //! the interaction state, and the environment it reports.
 
-use std::{rc::Rc, time::Instant};
+use std::{
+  rc::Rc,
+  time::{Duration, Instant},
+};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use skene_core::{
@@ -32,7 +35,7 @@ use crate::{
   TuiExt,
   motion::{BoxMotion, RunMotion},
   paint::Buffer,
-  selection::Selection,
+  selection::{Menu, MenuItem, Selection},
 };
 
 /// The size the driver reports until a frame is rendered.
@@ -138,13 +141,113 @@ impl BoxRecord {
   }
 }
 
-/// A text entry's editing state; the caret is a character position in the value,
-/// `0..=len`.
+/// A text entry's editing state; the caret and the anchor are character positions in
+/// the value, `0..=len`.
 pub(crate) struct Field {
   pub(crate) value: String,
+  /// The selection's moving end, and the insertion point.
   pub(crate) caret: usize,
+  /// The selection's fixed end, `None` while the selection is collapsed.
+  pub(crate) anchor: Option<usize>,
   pub(crate) placeholder: Option<String>,
   pub(crate) lines: u16,
+}
+
+impl Field {
+  /// A fresh, empty entry showing `lines` rows.
+  pub(crate) const fn new(placeholder: Option<String>, lines: u16) -> Self {
+    Self {
+      value: String::new(),
+      caret: 0,
+      anchor: None,
+      placeholder,
+      lines: if lines == 0 { 1 } else { lines },
+    }
+  }
+
+  /// The value's length in characters.
+  pub(crate) fn count(&self) -> usize {
+    self.value.chars().count()
+  }
+
+  /// The selected character range in document order, `None` while collapsed.
+  pub(crate) fn selection(&self) -> Option<(usize, usize)> {
+    let anchor = self.anchor?;
+
+    (anchor != self.caret).then(|| (anchor.min(self.caret), anchor.max(self.caret)))
+  }
+
+  /// The selected text, `None` while collapsed.
+  pub(crate) fn selected_text(&self) -> Option<String> {
+    let (from, to) = self.selection()?;
+
+    Some(self.value.chars().skip(from).take(to - from).collect())
+  }
+
+  /// Collapses the selection at the caret.
+  pub(crate) const fn collapse(&mut self) {
+    self.anchor = None;
+  }
+
+  /// Selects `from..to`, the caret at `to`.
+  pub(crate) fn select(&mut self, from: usize, to: usize) {
+    let count = self.count();
+
+    self.caret = to.min(count);
+    self.anchor = (from != to).then_some(from.min(count));
+  }
+
+  /// Selects the whole value.
+  pub(crate) fn select_all(&mut self) {
+    self.select(0, self.count());
+  }
+
+  /// Moves the caret to `caret`, extending the selection from the anchor—the caret's
+  /// old position when none—or collapsing it.
+  pub(crate) fn move_caret(&mut self, caret: usize, extend: bool) {
+    let count = self.count();
+
+    if extend {
+      let anchor = self.anchor.unwrap_or(self.caret);
+
+      self.anchor = (anchor != caret).then_some(anchor);
+    }
+    else {
+      self.anchor = None;
+    }
+
+    self.caret = caret.min(count);
+  }
+
+  /// Replaces the selection—or inserts at the caret—with `text`, leaving the caret
+  /// after it.
+  pub(crate) fn replace_selection(&mut self, text: &str) {
+    let (from, to) = self.selection().unwrap_or((self.caret, self.caret));
+
+    self
+      .value
+      .replace_range(self.byte_of(from)..self.byte_of(to), text);
+    self.caret = from + text.chars().count();
+    self.anchor = None;
+  }
+
+  /// Removes `from..to`, leaving the caret at `from`.
+  pub(crate) fn remove(&mut self, from: usize, to: usize) {
+    self
+      .value
+      .replace_range(self.byte_of(from)..self.byte_of(to), "");
+    self.caret = from;
+    self.anchor = None;
+  }
+
+  /// The byte index of the character at `position`, or the value's end.
+  pub(crate) fn byte_of(&self, position: usize) -> usize {
+    self
+      .value
+      .char_indices()
+      .nth(position)
+      .map_or(self.value.len(), |(index, _)| index)
+  }
 }
 
 /// What a record is, with everything its creation call carried.
@@ -342,6 +445,9 @@ pub(crate) enum Drag {
   },
   /// A text selection: motion extends it to the position under the pointer.
   Selection,
+  /// A text entry's caret: motion moves it to the position under the pointer, the
+  /// anchor held.
+  Caret(Handle),
 }
 
 /// The pause that ends a wheel gesture: the next wheel event re-targets, as on the
@@ -406,11 +512,12 @@ pub(crate) struct Store {
   /// arriving without one stands in for a click whose press the terminal swallowed.
   pub(crate) left_held: bool,
   pub(crate) right_held: bool,
-  /// Whether the press landed on the copy menu's `Copy` item, awaiting its release.
-  pub(crate) pressed_copy: bool,
+  /// The enabled menu item the press landed on, awaiting its release.
+  pub(crate) pressed_item: Option<MenuItem>,
+  /// The selection over the document's runs; a text entry's lives in its [`Field`].
   pub(crate) selection: Option<Selection>,
-  /// The copy menu's pressed cell, while the menu is open.
-  pub(crate) menu: Option<(u16, u16)>,
+  /// The context menu, while open.
+  pub(crate) menu: Option<Menu>,
   /// The last press, for counting multi-click sequences: its time, cell, and count.
   pub(crate) last_press: Option<(Instant, u16, u16, u8)>,
   /// The pointer's last known cell.
@@ -418,6 +525,9 @@ pub(crate) struct Store {
   pub(crate) scroll_latch: Option<ScrollLatch>,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: Option<String>,
+  /// Whether a clipboard read is staged for the terminal loop, pasting into the
+  /// focused entry when the reply arrives.
+  pub(crate) pending_paste: bool,
   /// The link pressed at its cell, opened when the release lands on the same cell.
   pub(crate) pressed_link: Option<(u16, u16, String)>,
   /// A link destination staged for the terminal loop to open.
@@ -430,6 +540,9 @@ pub(crate) struct Store {
   pub(crate) choice: Option<ColorScheme>,
   /// Whether OSC 52 clipboard writes reach the system clipboard.
   pub(crate) clipboard: bool,
+  /// How long an OSC 52 clipboard read waits for the terminal's reply, `None` when
+  /// the terminal answers none.
+  pub(crate) clipboard_read: Option<Duration>,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
   /// The measured sizes of the named query containers, from the last layout.
@@ -523,19 +636,21 @@ impl Store {
       press: None,
       left_held: false,
       right_held: false,
-      pressed_copy: false,
+      pressed_item: None,
       selection: None,
       menu: None,
       last_press: None,
       last_pointer: (0, 0),
       scroll_latch: None,
       pending_copy: None,
+      pending_paste: false,
       pressed_link: None,
       pending_open: None,
       last_size: DEFAULT_SIZE,
       detected_dark: true,
       choice: None,
       clipboard: true,
+      clipboard_read: None,
       reveal: None,
       container_sizes: FxHashMap::default(),
       title: None,

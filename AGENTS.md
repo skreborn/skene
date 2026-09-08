@@ -189,7 +189,9 @@
   interaction's shape—clicks fire on press+release over one target while focus, caret
   placement, and drags act on press; wheel gestures latch their scroll target and
   consume at its limits until a pause or pointer move; popups light-dismiss; selection
-  gestures match (drag, double-click word, triple-click run). When an interaction's
+  gestures match (drag, double-click word, triple-click run), inside a text entry as
+  well, where keyboard focus selects a field's value and `Ctrl-C`/`X`/`V` copy, cut and
+  paste through the ordinary dispatch, so `Ctrl-Q` is the quit. When an interaction's
   design is in doubt, mimic the web—**because the browser is the most constrained
   platform we target, not because it is the best design**. Parity is a floor. Where a
   browser behavior is merely a browser behavior, we are free to rule otherwise, and we

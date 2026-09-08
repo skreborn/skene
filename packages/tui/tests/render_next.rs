@@ -327,6 +327,7 @@ fn a_keystroke_restyles_only_the_changed_entry() {
     });
     let _ = tui::render_to_text(30, 5);
     tui::trigger_key("Tab");
+    tui::trigger_key("End");
     let _ = tui::render_to_text(30, 5);
 
     let writes = tui::set_style_calls();

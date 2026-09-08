@@ -12,8 +12,9 @@
 //! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
 //! to the layout tree only on change; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
-//! own their keys, a click fires on press and release over one target, and `Ctrl-C`
-//! quits. Every dispatch runs inside a reactive batch.
+//! own their keys, a click fires on press and release over one target, `Ctrl-C`,
+//! `Ctrl-X` and `Ctrl-V` copy, cut and paste, and `Ctrl-Q` quits. Every dispatch runs
+//! inside a reactive batch.
 //!
 //! Host-only: on a wasm target the crate is empty.
 
@@ -135,6 +136,8 @@ pub use crate::{
     style_resolutions,
     take_copied,
     take_opened,
+    take_paste_requested,
+    trigger_clipboard_read_support,
     trigger_clipboard_support,
     trigger_color_scheme,
     trigger_frame,
@@ -146,6 +149,7 @@ pub use crate::{
     trigger_mouse_release,
     trigger_mouse_right_click,
     trigger_mouse_scroll,
+    trigger_paste,
     trigger_reduced_motion,
     trigger_resize,
   },

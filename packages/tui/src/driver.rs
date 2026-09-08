@@ -142,13 +142,8 @@ impl Driver for Tui {
   }
 
   fn create_control(&self, props: &ControlProps<Self>) -> Handle {
-    let field =
-      matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor).then(|| Field {
-        value: String::new(),
-        caret: 0,
-        placeholder: props.placeholder.clone(),
-        lines: props.lines.max(1),
-      });
+    let field = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor)
+      .then(|| Field::new(props.placeholder.clone(), props.lines));
 
     with_store(|store| {
       store.create_laid_out(Kind::Control {
@@ -379,7 +374,8 @@ impl Driver for Tui {
       }
 
       value.clone_into(&mut field.value);
-      field.caret = field.caret.min(field.value.chars().count());
+      field.caret = field.caret.min(field.count());
+      field.collapse();
       store.layout_dirty = true;
       store.damage(*sink);
     });

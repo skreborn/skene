@@ -34,6 +34,7 @@ use crate::{
   Tui,
   layout::{inline_box_cells, is_paragraph},
   paint::control_kind,
+  selection::MenuItem,
   store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
   with_store,
 };
@@ -375,6 +376,10 @@ impl Store {
       return Some(MouseCursor::Grabbing);
     }
 
+    if matches!(self.drag, Some(Drag::Caret(_))) {
+      return Some(MouseCursor::Text);
+    }
+
     let (pointer_x, pointer_y) = self.last_pointer;
 
     if self.link_at(pointer_x, pointer_y).is_some() {
@@ -612,8 +617,9 @@ fn store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
 }
 
 /// Moves focus to `next`, notifying the node focus left and the one it reached; the
-/// newly focused node is scrolled into view at the next render, and a newly focused
-/// entry's caret moves to the value's end.
+/// newly focused node is scrolled into view at the next render, a newly focused
+/// single-line entry selects its whole value with the caret at its end, an editor puts
+/// its caret at the end, and the entry focus left collapses its selection.
 pub(crate) fn set_focus(next: Option<Handle>) {
   let (previous, gained, dismissed) = store(|store| {
     let previous = std::mem::replace(&mut store.focused, next);
@@ -623,6 +629,7 @@ pub(crate) fn set_focus(next: Option<Handle>) {
     }
 
     if let Some(previous) = previous {
+      store.collapse_entry_selection(previous);
       store.damage(previous);
     }
 
@@ -631,7 +638,12 @@ pub(crate) fn set_focus(next: Option<Handle>) {
         .record_mut(next)
         .and_then(|record| record.kind.field_mut())
       {
-        field.caret = field.value.chars().count();
+        if field.lines <= 1 {
+          field.select_all();
+        }
+        else {
+          field.move_caret(field.count(), false);
+        }
       }
 
       store.damage(next);
@@ -796,25 +808,25 @@ pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifi
 
 /// Dispatches a press at (`x`, `y`): the hover path follows it, the press reaches the
 /// deepest node, and—unless a handler prevented the platform—the left press focuses,
-/// records the path for its release, anchors a selection and arms a link, or the right
-/// press opens the copy menu.
+/// records the path for its release, places an entry's caret or anchors a selection
+/// and arms a link, or the right press opens the context menu.
 // One press has these stages; length is the stage count, not complexity.
 #[expect(clippy::too_many_lines)]
 pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   set_hover(x, y);
 
-  // A press on the open copy menu waits for its release on `Copy`; anywhere else it
-  // just closes the menu. Either way the press is consumed.
+  // A press on an enabled item of the open menu waits for its release there; a press
+  // on a disabled item holds the menu open, and anywhere else closes it. Either way
+  // the press is consumed.
   let consumed = store(|store| {
     if store.menu.is_none() {
       return false;
     }
 
-    if button == PointerButton::Primary && store.copy_hit(x, y) {
-      store.pressed_copy = store.clipboard;
-    }
-    else {
-      store.close_menu();
+    match store.menu_item_at(x, y) {
+      Some((item, true)) if button == PointerButton::Primary => store.pressed_item = Some(item),
+      Some(_) => {}
+      None => store.close_menu(),
     }
 
     true
@@ -922,7 +934,11 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
       })
   });
 
-  if button == PointerButton::Primary {
+  // A right press on an entry focuses it too, so its edit menu is the focused entry's.
+  let entry = focus_target.filter(|target| store(|store| store.is_field(*target)));
+  let entry_held_focus = entry.is_some_and(|entry| store(|store| store.focused == Some(entry)));
+
+  if button == PointerButton::Primary || entry.is_some() {
     set_focus(focus_target);
   }
 
@@ -949,24 +965,31 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
     return;
   }
 
+  let entry_local = entry.map(|entry| {
+    let origin = path
+      .iter()
+      .find(|(handle, _)| *handle == entry)
+      .map_or((0, 0), |(_, origin)| *origin);
+
+    (entry, i64::from(x) - origin.0, i64::from(y) - origin.1)
+  });
+
   match button {
     PointerButton::Primary => {
       store(|store| {
-        // A press on an entry places its caret.
-        if let Some(target) = focus_target
-          && store.is_field(target)
-        {
-          let origin = path
-            .iter()
-            .find(|(handle, _)| *handle == target)
-            .map_or((0, 0), |(_, origin)| *origin);
-
-          store.place_caret(target, i64::from(x) - origin.0, i64::from(y) - origin.1);
+        // A press on an entry places its caret—`Shift` extending the selection to
+        // it—and starts the drag that extends it: a double click takes the word, a
+        // triple click the line.
+        if let Some((entry, local_x, local_y)) = entry_local {
+          match store.register_press(x, y) {
+            2 => store.select_entry_word(entry),
+            3 => store.select_entry_line(entry),
+            _ => store.place_caret(entry, local_x, local_y, modifiers.shift),
+          }
         }
-
         // A press on a selectable run starts a selection: a drag extends it, a double
         // click takes the word, a triple click the whole run.
-        if let Some(point) = store.text_position_at(x, y) {
+        else if let Some(point) = store.text_position_at(x, y) {
           match store.register_press(x, y) {
             2 => store.select_word(point),
             3 => store.select_run(point),
@@ -981,7 +1004,18 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
         store.pressed_link = store.link_at(x, y).map(|url| (x, y, url));
       });
     }
-    PointerButton::Secondary => store(|store| store.right_press(x, y)),
+    PointerButton::Secondary => store(|store| {
+      // A right press outside the selection of the entry holding focus places its
+      // caret there first; one focusing the entry places it regardless.
+      if let Some((entry, local_x, local_y)) = entry_local
+        && !(entry_held_focus && store.entry_selection_contains(entry, local_x, local_y))
+      {
+        store.place_caret(entry, local_x, local_y, false);
+        store.drag = None;
+      }
+
+      store.right_press(x, y, entry);
+    }),
     PointerButton::Auxiliary => {}
   }
 }
@@ -990,21 +1024,34 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
 /// click completes on the deepest node under both the press and the release—releasing
 /// over a different target clicks nothing, as on the web.
 pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
-  let copied = store(|store| {
-    if !std::mem::take(&mut store.pressed_copy) {
-      return false;
-    }
+  // A release on the item its press landed on runs the item; the menu closes either
+  // way, and the release is consumed.
+  let (menu_pressed, item) = store(|store| {
+    let Some(pressed) = store.pressed_item.take()
+    else {
+      return (false, None);
+    };
+    let item = store
+      .menu_item_at(x, y)
+      .filter(|(item, _)| *item == pressed)
+      .map(|(item, _)| item);
 
-    if store.copy_hit(x, y) {
-      store.copy_selection();
+    match item {
+      Some(MenuItem::Copy) => store.copy_selection(),
+      Some(MenuItem::Paste) => store.request_paste(),
+      Some(MenuItem::Cut) | None => {}
     }
 
     store.close_menu();
 
-    true
+    (true, item)
   });
 
-  if copied {
+  if item == Some(MenuItem::Cut) {
+    crate::field::cut_focused();
+  }
+
+  if menu_pressed {
     return;
   }
 
@@ -1080,6 +1127,11 @@ pub(crate) fn drag_to(x: u16, y: u16) {
     }
     Some(Drag::Selection) => {
       store.extend_selection(x, y);
+
+      None
+    }
+    Some(Drag::Caret(handle)) => {
+      store.drag_caret(handle, x, y);
 
       None
     }
@@ -1212,7 +1264,7 @@ pub(crate) fn page_scroll(pages: i64) {
 
 /// Dispatches a key at the focused node—or the root when nothing holds focus—then runs
 /// the terminal's own response unless a handler prevented it: focus movement,
-/// dismissal, page scrolling and entry editing.
+/// dismissal, page scrolling, the clipboard keys and entry editing.
 pub(crate) fn key(event: &KeyEvent) {
   let target = store(|store| {
     let handle = store.focused.unwrap_or(store.root);
@@ -1239,8 +1291,8 @@ fn key_default(event: &KeyEvent) {
       return;
     }
     "Escape" => {
-      // The most transient layer goes first: the copy menu, then the selection, then
-      // an open overlay.
+      // The most transient layer goes first: the menu, then the selection, then an
+      // open overlay.
       let dismissed = store(|store| {
         if store.menu.is_some() {
           store.close_menu();
@@ -1248,8 +1300,12 @@ fn key_default(event: &KeyEvent) {
           return None;
         }
 
-        if store.selection.is_some() {
+        if store.has_selection() {
           store.clear_selection();
+
+          if let Some(entry) = store.focused_entry() {
+            store.collapse_entry_selection(entry);
+          }
 
           return None;
         }
@@ -1267,8 +1323,34 @@ fn key_default(event: &KeyEvent) {
     }
     "PageDown" => page_scroll(1),
     "PageUp" => page_scroll(-1),
+    // The clipboard keys: `Ctrl+C` copies whichever selection exists, `Ctrl+X` cuts the
+    // focused entry's, `Ctrl+V` pastes into the focused entry.
+    "c" | "C" if event.modifiers.ctrl && !event.modifiers.alt => {
+      store(Store::copy_selection);
+
+      return;
+    }
+    "x" | "X" if event.modifiers.ctrl && !event.modifiers.alt => {
+      crate::field::cut_focused();
+
+      return;
+    }
+    "v" | "V" if event.modifiers.ctrl && !event.modifiers.alt => {
+      store(|store| {
+        if store.focused_entry().is_some() {
+          store.request_paste();
+        }
+      });
+
+      return;
+    }
     _ => {}
   }
 
   crate::field::edit_focused(event);
+}
+
+/// Inserts `text`, pasted by the terminal, into the focused entry.
+pub(crate) fn paste(text: &str) {
+  crate::field::paste_focused(text);
 }

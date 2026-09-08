@@ -1,6 +1,6 @@
 //! Theming for the terminal: a palette the reader switches, a nested theme, and a
 //! scheme the reader chooses. `Tab` moves focus, arrows adjust, `Enter` clicks,
-//! `Ctrl-C` quits.
+//! `Ctrl-Q` quits.
 
 fn main() {
   #[cfg(not(target_arch = "wasm32"))]

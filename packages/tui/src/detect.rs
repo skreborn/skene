@@ -1,17 +1,14 @@
-//! Terminal capability detection: color depth, background darkness, and clipboard
-//! support.
+//! Terminal capability detection—color depth, background darkness, and clipboard
+//! support—and the clipboard read that shares its reply channel.
 //!
 //! Every detection degrades quietly: an unresponsive or unknown terminal gets 16
-//! colors, a dark background, and a working clipboard. The background and clipboard
-//! queries run on their own thread and report through a channel, so the loop starts
-//! before they answer.
+//! colors, a dark background, a working clipboard write and no clipboard read. The
+//! background and clipboard queries run on their own thread and report through a
+//! channel, so the loop starts before they answer; a clipboard read runs the same way.
 
-use std::{env, sync::mpsc};
+use std::{env, sync::mpsc, time::Duration};
 #[cfg(unix)]
-use std::{
-  io::Write,
-  time::{Duration, Instant},
-};
+use std::{io::Write, time::Instant};
 
 use crossterm::style::Color as TerminalColor;
 
@@ -73,7 +70,22 @@ pub(crate) struct Detected {
   pub(crate) dark: bool,
   /// Whether OSC 52 clipboard writes reach the system clipboard.
   pub(crate) clipboard: bool,
+  /// How long an OSC 52 clipboard read waits for the terminal's reply, `None` when
+  /// the terminal answers none.
+  pub(crate) clipboard_read: Option<Duration>,
 }
+
+/// How long a detection query waits for its reply.
+const QUERY_WAIT: Duration = Duration::from_millis(100);
+
+/// How long a clipboard read waits for a terminal that answers at once.
+const READ_WAIT: Duration = Duration::from_millis(300);
+
+/// How long a clipboard read waits for a terminal that asks the user first.
+const ASKED_READ_WAIT: Duration = Duration::from_secs(10);
+
+/// The longest clipboard reply read, in bytes.
+const READ_LIMIT: usize = 4 * 1024 * 1024;
 
 /// Starts the background and clipboard detection on its own thread; the answer arrives
 /// on the returned channel once, then the channel closes.
@@ -84,10 +96,28 @@ pub(crate) fn start() -> mpsc::Receiver<Detected> {
   let (sender, receiver) = mpsc::channel();
 
   std::thread::spawn(move || {
+    let terminal = terminal_version();
+
     let _ = sender.send(Detected {
       dark: background_is_dark(),
-      clipboard: clipboard_writes_work(),
+      clipboard: clipboard_writes_work(terminal.as_deref()),
+      clipboard_read: clipboard_read_wait(terminal.as_deref()),
     });
+  });
+
+  receiver
+}
+
+/// Starts an OSC 52 clipboard read on its own thread, waiting `wait` for the reply;
+/// the text arrives on the returned channel once—`None` when the terminal answered
+/// nothing—then the channel closes.
+///
+/// Call while the loop leaves stdin alone: the reply arrives there.
+pub(crate) fn read_clipboard(wait: Duration) -> mpsc::Receiver<Option<String>> {
+  let (sender, receiver) = mpsc::channel();
+
+  std::thread::spawn(move || {
+    let _ = sender.send(query_clipboard(wait));
   });
 
   receiver
@@ -201,7 +231,7 @@ fn colorfgbg_is_dark(value: &str) -> Option<bool> {
 /// Queries the terminal background via OSC 11, waiting briefly for the reply on stdin.
 #[cfg(unix)]
 fn query_background() -> Option<(u8, u8, u8)> {
-  parse_osc11(&query("\x1b]11;?\x1b\\", b"\x1b]11;")?)
+  parse_osc11(&query("\x1b]11;?\x1b\\", b"\x1b]11;", QUERY_WAIT, 64)?)
 }
 
 /// No reply channel outside a Unix terminal.
@@ -210,16 +240,48 @@ fn query_background() -> Option<(u8, u8, u8)> {
   None
 }
 
+/// Reads the system clipboard via an OSC 52 query, waiting `wait` for the reply on
+/// stdin.
+#[cfg(unix)]
+fn query_clipboard(wait: Duration) -> Option<String> {
+  parse_osc52(&query("\x1b]52;c;?\x1b\\", b"\x1b]52;", wait, READ_LIMIT)?)
+}
+
+/// No reply channel outside a Unix terminal.
+#[cfg(not(unix))]
+fn query_clipboard(_wait: Duration) -> Option<String> {
+  None
+}
+
 /// Whether OSC 52 clipboard writes reach the system clipboard: every terminal is
 /// assumed capable except one identifying as VTE, which discards them.
-fn clipboard_writes_work() -> bool {
-  terminal_version().is_none_or(|terminal| !terminal.starts_with("VTE("))
+fn clipboard_writes_work(terminal: Option<&str>) -> bool {
+  terminal.is_none_or(|terminal| !terminal.starts_with("VTE("))
+}
+
+/// How long an OSC 52 clipboard read waits for the terminal named by XTVERSION: the
+/// terminals answering reads at once wait briefly, the ones asking the user first wait
+/// for the answer, and every other terminal—answering nothing—reads no clipboard.
+fn clipboard_read_wait(terminal: Option<&str>) -> Option<Duration> {
+  let name = terminal?.to_ascii_lowercase();
+
+  if ["kitty", "ghostty"]
+    .iter()
+    .any(|asks| name.starts_with(asks))
+  {
+    return Some(ASKED_READ_WAIT);
+  }
+
+  ["foot", "xterm", "tmux", "contour"]
+    .iter()
+    .any(|answers| name.starts_with(answers))
+    .then_some(READ_WAIT)
 }
 
 /// The terminal's name and version via XTVERSION (`NAME(VERSION)`), when it answers.
 #[cfg(unix)]
 fn terminal_version() -> Option<String> {
-  parse_xtversion(&query("\x1b[>0q", b"\x1bP>|")?)
+  parse_xtversion(&query("\x1b[>0q", b"\x1bP>|", QUERY_WAIT, 64)?)
 }
 
 /// No reply channel outside a Unix terminal.
@@ -229,15 +291,15 @@ fn terminal_version() -> Option<String> {
 }
 
 /// Writes `request` and reads the reply that starts with `prefix` from stdin, waiting
-/// briefly; the reply ends at BEL or ST.
+/// `wait` for it and reading at most `limit` bytes; the reply ends at BEL or ST.
 #[cfg(unix)]
-fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
+fn query(request: &str, prefix: &[u8], wait: Duration, limit: usize) -> Option<Vec<u8>> {
   let mut out = std::io::stdout();
 
   write!(out, "{request}").ok()?;
   out.flush().ok()?;
 
-  let deadline = Instant::now() + Duration::from_millis(100);
+  let deadline = Instant::now() + wait;
   let mut response = Vec::new();
 
   loop {
@@ -275,10 +337,55 @@ fn query(request: &str, prefix: &[u8]) -> Option<Vec<u8>> {
       return Some(response);
     }
 
-    if response.len() > 64 {
+    if response.len() > limit {
       return None;
     }
   }
+}
+
+/// Parses an OSC 52 reply (`ESC ] 52 ; selections ; base64 BEL|ST`) to its text; an
+/// empty payload is a denied or empty clipboard.
+#[cfg(any(unix, test))]
+fn parse_osc52(response: &[u8]) -> Option<String> {
+  let text = std::str::from_utf8(response).ok()?;
+  let payload = text
+    .strip_prefix("\x1b]52;")?
+    .trim_end_matches('\x07')
+    .trim_end_matches("\x1b\\")
+    .split_once(';')
+    .map_or("", |(_, payload)| payload);
+  let bytes = base64_decode(payload)?;
+
+  (!bytes.is_empty()).then(|| String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Standard base64 decoding, padding optional, `None` on a foreign character.
+#[cfg(any(unix, test))]
+fn base64_decode(text: &str) -> Option<Vec<u8>> {
+  const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  let mut out = Vec::with_capacity(text.len() / 4 * 3);
+  let mut block = 0u32;
+  let mut filled = 0u32;
+
+  for byte in text.bytes() {
+    if byte == b'=' || byte.is_ascii_whitespace() {
+      continue;
+    }
+
+    let value = u32::try_from(ALPHABET.iter().position(|letter| *letter == byte)?).ok()?;
+
+    block = (block << 6) | value;
+    filled += 6;
+
+    if filled >= 8 {
+      filled -= 8;
+      out.push(u8::try_from((block >> filled) & 0xff).ok()?);
+      block &= (1 << filled) - 1;
+    }
+  }
+
+  Some(out)
 }
 
 /// Parses an XTVERSION reply (`DCS > | NAME(VERSION) ST`) to its `NAME(VERSION)` text.
@@ -384,6 +491,46 @@ mod tests {
       Some("kitty(0.32.1)")
     );
     assert_eq!(parse_xtversion(b"garbage"), None);
+  }
+
+  #[test]
+  fn clipboard_reads_wait_on_the_terminals_answering_them() {
+    assert_eq!(
+      clipboard_read_wait(Some("kitty(0.32.1)")),
+      Some(ASKED_READ_WAIT)
+    );
+    assert_eq!(clipboard_read_wait(Some("foot(1.16.2)")), Some(READ_WAIT));
+    assert_eq!(clipboard_read_wait(Some("XTerm(390)")), Some(READ_WAIT));
+    assert_eq!(clipboard_read_wait(Some("tmux 3.4")), Some(READ_WAIT));
+    assert_eq!(clipboard_read_wait(Some("WezTerm 20240203")), None);
+    assert_eq!(clipboard_read_wait(Some("VTE(7802)")), None);
+    assert_eq!(clipboard_read_wait(None), None);
+    assert!(clipboard_writes_work(None));
+    assert!(!clipboard_writes_work(Some("VTE(7802)")));
+  }
+
+  #[test]
+  fn osc52_replies_decode_their_payload() {
+    assert_eq!(
+      parse_osc52(b"\x1b]52;c;aGVsbG8=\x07").as_deref(),
+      Some("hello")
+    );
+    assert_eq!(
+      parse_osc52(b"\x1b]52;c;aGk\x1b\\").as_deref(),
+      Some("hi"),
+      "padding is optional"
+    );
+    assert_eq!(
+      parse_osc52(b"\x1b]52;c;\x07"),
+      None,
+      "an empty payload is no text"
+    );
+    assert_eq!(
+      parse_osc52(b"\x1b]52;c;!!\x07"),
+      None,
+      "foreign characters fail"
+    );
+    assert_eq!(parse_osc52(b"garbage"), None);
   }
 
   #[test]

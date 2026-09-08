@@ -347,6 +347,8 @@ enum NodePaint {
     dim: bool,
     caret: Option<(usize, usize)>,
     inset: (isize, isize),
+    /// The selection over the visible rows, while the entry holds focus.
+    selection: Option<SelectionPaint>,
   },
   None,
 }
@@ -471,15 +473,24 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         (field.value.clone(), false)
       };
       let (rows, caret) = crate::field::visible_rows(&text, field.caret, inner_width, field.lines);
+      let selection = field
+        .selection()
+        .filter(|_| focused)
+        .map(|range| SelectionPaint {
+          range,
+          starts: rows.iter().map(|(start, _)| *start).collect(),
+          colors: selection_colors(&crate::resolve::Env::of(store, handle).resolve_entry_run()),
+        });
 
       NodePaint::Field {
         background,
         border,
         shadow,
-        rows,
+        rows: rows.into_iter().map(|(_, row)| row).collect(),
         dim,
         caret: (focused && inner_width > 0).then_some(caret),
         inset,
+        selection,
       }
     }
     Kind::Run { .. } if is_inline_box(store, handle) => NodePaint::None,
@@ -686,6 +697,7 @@ fn paint_node(
       dim,
       caret,
       inset,
+      selection,
     } => {
       if let Some(shadow) = shadow {
         draw_shadow(buffer, x, y, width, height, shadow, dark);
@@ -709,6 +721,10 @@ fn paint_node(
           false,
           dim,
         );
+      }
+
+      if let Some(selection) = selection {
+        draw_selection(buffer, x + inset.0, y + inset.1, &rows, &selection);
       }
 
       // The caret: the terminal's own bar cursor at the cell, recorded only while the
@@ -1142,8 +1158,8 @@ fn draw_selection(
   }
 }
 
-/// Paints the copy menu over everything at its anchored cell, the `Copy` item
-/// highlighted while the pointer is on it.
+/// Paints the context menu over everything at its anchored cell: its items in order,
+/// the one under the pointer highlighted, disabled ones dim, and the hints beneath.
 fn draw_menu(store: &Store, buffer: &mut Buffer, dark: bool) {
   let Some((menu_x, menu_y, menu_width, menu_height)) = store.menu_bounds()
   else {
@@ -1181,38 +1197,31 @@ fn draw_menu(store: &Store, buffer: &mut Buffer, dark: bool) {
     Some((128, 128, 128)),
   );
 
-  let enabled = store.clipboard;
   let (pointer_x, pointer_y) = store.last_pointer;
-  let hovered = enabled && store.copy_hit(pointer_x, pointer_y);
+  let hovered = store
+    .menu_item_at(pointer_x, pointer_y)
+    .filter(|(_, enabled)| *enabled)
+    .map(|(item, _)| item);
+  let items = store.menu_items();
 
-  if hovered {
-    for column in 1..width.saturating_sub(1) {
-      if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), y + 1) {
-        cell.reverse = true;
+  for (index, (item, enabled)) in items.iter().enumerate() {
+    let row_y = y + 1 + isize::try_from(index).expect("fits");
+
+    if hovered == Some(*item) {
+      for column in 1..width.saturating_sub(1) {
+        if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
+          cell.reverse = true;
+        }
       }
     }
+
+    draw_text(buffer, x + 2, row_y, item.label(), None, false, !enabled);
   }
 
-  draw_text(
-    buffer,
-    x + 2,
-    y + 1,
-    crate::selection::MENU_ITEM,
-    None,
-    false,
-    !enabled,
-  );
+  for (index, hint) in store.menu_hints().iter().enumerate() {
+    let row_y = y + 1 + isize::try_from(items.len() + index).expect("fits");
 
-  if !enabled {
-    draw_text(
-      buffer,
-      x + 2,
-      y + 2,
-      crate::selection::MENU_HINT,
-      None,
-      false,
-      true,
-    );
+    draw_text(buffer, x + 2, row_y, hint, None, false, true);
   }
 }
 

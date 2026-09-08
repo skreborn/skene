@@ -1,6 +1,6 @@
 //! A counter for the terminal: `skene-tui` is its single dependency, and its vocabulary
 //! is the terminal's own—cells, colors, bold. `Tab` moves focus, `Enter` clicks,
-//! `Ctrl-C` quits.
+//! `Ctrl-Q` quits.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod app;

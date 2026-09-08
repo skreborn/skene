@@ -85,11 +85,9 @@ reasoning.
 1. **The WebGPU renderer behind `Canvas`.** Vello over wgpu for large or animated
    painted content; the CPU path stays as the fallback. The test browser has no WebGPU,
    so it needs a Chromium runner or a manual check.
-2. **Selection and clipboard inside a terminal text input.** The largest parity gap left
-   against the browser floor; details under Terminal.
-3. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+2. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-4. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+3. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -110,14 +108,16 @@ picker's type-ahead waits on a clock no behavior has.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
 - **Terminal**
-  - Selection and clipboard inside a text input: the source-anchored selection model
-    extended over an input's value (drag, shift-arrows, double and triple click,
-    insertion replacing the selection), with `Cut` and `Paste` in the menu. Paste is the
-    hard half: reading the clipboard needs an OSC 52 query most terminals refuse, so the
-    reachable design is bracketed paste as the source, with the menu item pulling from an
-    OSC 52 read where XTVERSION says it works.
-  - `Ctrl-Q` as the unconditional quit, freeing `Ctrl-C`/`X`/`V` for copy, cut and paste
-    through the ordinary dispatch contract.
+  - Selection and clipboard inside a text entry landed (2026-09-08): the entry's own
+    anchor beside its caret, `Cut`/`Copy`/`Paste` in its edit menu, `Ctrl-C`/`X`/`V`
+    through the ordinary dispatch, bracketed paste as the paste source everywhere, and an
+    OSC 52 read where XTVERSION names kitty, ghostty, foot, xterm, tmux or contour.
+    Left: the OSC 52 read deafens the loop to input until the reply or its deadline
+    (ten seconds where the terminal asks the user first), a terminal that asks and
+    answers late leaks its reply into the key stream, and the XTVERSION list is a
+    judgment—a terminal answering reads under a name not on it pastes only through its
+    own key. A single-line field does not autoscroll during a drag past its edge beyond
+    the window's own snap to the caret.
   - Explore per-input undo/redo (`Ctrl-Z`, `Ctrl-Shift-Z`/`Ctrl-Y`): a bounded ring of
     (value, caret, selection) per text control, matching what the DOM gives an `<input>`.
   - Live scheme change notifications (DECSET 2031) instead of the one launch query.

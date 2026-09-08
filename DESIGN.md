@@ -507,8 +507,14 @@ The mouse is in-capability: motion drives `Hovered` variants and pointer handler
 left click hits the topmost node and runs its handlers through core's dispatch, a
 hovered node's `cursor` sets the pointer shape via OSC 22—terminals without mouse
 reporting or pointer shapes degrade quietly. Selection is anchored in source space so it
-survives reflow; wheel gestures latch their target. Focus belongs to controls, which are
-composed trees with roles and focus order, exactly as on the GUI.
+survives reflow; wheel gestures latch their target. A text entry's selection is its
+own—an anchor beside the caret over the value—so keyboard focus selects a field's
+value, `Shift` with the caret keys and the mouse extend it, an edit replaces it, and
+`Ctrl-C`/`X`/`V` and the entry's edit menu copy, cut and paste through the loop's OSC 52
+write, the terminal's bracketed paste, and an OSC 52 read where XTVERSION names a
+terminal answering one (with the loop deaf to input until the reply). `Ctrl-Q` is the
+one unconditional key. Focus belongs to controls, which are composed trees with roles
+and focus order, exactly as on the GUI.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a

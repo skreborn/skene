@@ -235,8 +235,8 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   });
 }
 
-/// A text entry's caret rides the snapshot with its focus: the same field resumes
-/// with the caret where it was, so typing continues there.
+/// A text entry's caret and selection ride the snapshot with its focus: the same field
+/// resumes with the caret where it was, so typing continues there.
 #[test]
 fn a_caret_survives_a_snapshot_roundtrip() {
   fn build(value: Signal<String>) {
@@ -251,6 +251,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     let _ = tui::render_to_text(12, 1);
 
     tui::trigger_key("Tab");
+    tui::trigger_key("End");
     tui::trigger_key("ArrowLeft");
 
     tui::reactive::snapshot()
@@ -271,6 +272,38 @@ fn a_caret_survives_a_snapshot_roundtrip() {
       value.get(),
       "abc",
       "the caret resumed before the last character"
+    );
+  });
+
+  let bytes = with_driver(|| {
+    let value = Signal::new(String::from("alpha beta"));
+
+    build(value);
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("End");
+    tui::trigger_key("Ctrl+Shift+ArrowLeft");
+
+    tui::reactive::snapshot()
+  });
+
+  with_driver(|| {
+    let value = Signal::new(String::from("alpha beta"));
+
+    tui::reactive::restore(&bytes);
+    build(value);
+    tui::adopt_restoration();
+
+    let _ = tui::render_to_text(12, 1);
+
+    tui::trigger_key("x");
+
+    assert_eq!(
+      value.get(),
+      "alpha x",
+      "the selection resumed over the word"
     );
   });
 }

@@ -29,8 +29,12 @@ const NOTICE_EVERY: Duration = Duration::from_millis(500);
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
 
-/// The snapshot tag of the focused node's position and its caret.
+/// The snapshot tag of the focused node's position and, for a text entry, its caret
+/// and selection anchor.
 const FOCUS_TAG: &str = "skene-tui:focus";
+
+/// A focused entry's caret and selection anchor.
+type Caret = (usize, Option<usize>);
 
 /// The dev channel, present when the CLI launched the app.
 struct Channel {
@@ -189,14 +193,14 @@ fn scroll_snapshot() -> Option<Vec<(Position, u32, u32)>> {
   )
 }
 
-/// The focused node's position and, for a text entry, its caret.
-fn focus_snapshot() -> Option<(Position, Option<usize>)> {
+/// The focused node's position and, for a text entry, its caret and selection anchor.
+fn focus_snapshot() -> Option<(Position, Option<Caret>)> {
   let (focused, caret) = crate::try_with_store(|store| {
     let focused = store.focused?;
     let caret = store
       .record(focused)
       .and_then(|record| record.kind.field())
-      .map(|field| field.caret);
+      .map(|field| (field.caret, field.anchor));
 
     Some((focused, caret))
   })??;
@@ -224,11 +228,11 @@ pub fn adopt_restoration() {
   adopt_scroll();
 }
 
-/// Adopts the focused node a restore staged, and its caret where the node is a text
-/// entry.
+/// Adopts the focused node a restore staged, and its caret and selection where the
+/// node is a text entry.
 fn adopt_focus() {
   let Some((position, caret)) = skene_reactive::staged(FOCUS_TAG)
-    .and_then(|bytes| postcard::from_bytes::<(Position, Option<usize>)>(&bytes).ok())
+    .and_then(|bytes| postcard::from_bytes::<(Position, Option<Caret>)>(&bytes).ok())
   else {
     return;
   };
@@ -239,13 +243,16 @@ fn adopt_focus() {
 
   crate::interaction::set_focus(Some(handle));
 
-  if let Some(caret) = caret {
+  if let Some((caret, anchor)) = caret {
     crate::with_store(|store| {
       if let Some(field) = store
         .record_mut(handle)
         .and_then(|record| record.kind.field_mut())
       {
-        field.caret = caret.min(field.value.chars().count());
+        let count = field.count();
+
+        field.caret = caret.min(count);
+        field.anchor = anchor.map(|anchor| anchor.min(count));
       }
 
       store.damage(handle);

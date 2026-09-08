@@ -1,16 +1,19 @@
 //! The interactive terminal loop, and the seams that drive it without a terminal.
 //!
-//! [`launch`] takes over the terminal (raw mode, the alternate screen), builds the app,
-//! and runs the event loop: keyboard and mouse events dispatch inside a reactive batch
-//! through core's dispatch, and every change repaints. `Ctrl-C` quits.
+//! [`launch`] takes over the terminal (raw mode, the alternate screen, bracketed
+//! paste), builds the app, and runs the event loop: keyboard and mouse events dispatch
+//! inside a reactive batch through core's dispatch, a paste the terminal brackets
+//! lands in the focused entry, and every change repaints. `Ctrl-Q` quits.
 
-use std::{io::Write, time::Duration};
+use std::{io::Write, sync::mpsc, time::Duration};
 
 use crossterm::{
   cursor,
   event::{
     self,
+    DisableBracketedPaste,
     DisableMouseCapture,
+    EnableBracketedPaste,
     EnableMouseCapture,
     Event,
     KeyCode,
@@ -60,8 +63,8 @@ impl Drop for TerminalGuard {
 }
 
 /// Returns the terminal to its ordinary state: cooked mode, the main screen, mouse
-/// capture off, the keyboard back to legacy encoding, the cursor shown. Safe to run
-/// more than once, on any thread.
+/// capture and bracketed paste off, the keyboard back to legacy encoding, the cursor
+/// shown. Safe to run more than once, on any thread.
 fn restore_terminal() {
   let mut out = std::io::stdout();
   let _ = execute!(
@@ -69,6 +72,7 @@ fn restore_terminal() {
     // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`):
     // idempotent, so the reset holds however many app instances set it before.
     crossterm::style::Print("\x1b[=0;1u"),
+    DisableBracketedPaste,
     DisableMouseCapture,
     cursor::SetCursorStyle::DefaultUserShape,
     cursor::Show,
@@ -80,7 +84,7 @@ fn restore_terminal() {
 
 /// Mounts and runs a skene application in the terminal.
 ///
-/// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-C`.
+/// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-Q`.
 /// Terminal detection runs beside the loop: the first frame paints for a dark
 /// background and the answers arrive as signal writes. A panic anywhere in the process
 /// restores the terminal before its message prints.
@@ -127,6 +131,7 @@ where
     std::io::stdout(),
     terminal::EnterAlternateScreen,
     EnableMouseCapture,
+    EnableBracketedPaste,
     cursor::Hide
   )
   .expect("enter the alternate screen");
@@ -139,6 +144,7 @@ where
   }
 
   let mut last_frame: Option<paint::Buffer> = None;
+  let mut clipboard_read: Option<mpsc::Receiver<Option<String>>> = None;
 
   loop {
     let _ = skene_core::executor::pump();
@@ -149,8 +155,22 @@ where
           apply_detection(detected);
           detection = None;
         }
-        Err(std::sync::mpsc::TryRecvError::Disconnected) => detection = None,
-        Err(std::sync::mpsc::TryRecvError::Empty) => {}
+        Err(mpsc::TryRecvError::Disconnected) => detection = None,
+        Err(mpsc::TryRecvError::Empty) => {}
+      }
+    }
+
+    if let Some(receiver) = &clipboard_read {
+      match receiver.try_recv() {
+        Ok(text) => {
+          if let Some(text) = text {
+            paste(&text);
+          }
+
+          clipboard_read = None;
+        }
+        Err(mpsc::TryRecvError::Disconnected) => clipboard_read = None,
+        Err(mpsc::TryRecvError::Empty) => {}
       }
     }
 
@@ -180,16 +200,24 @@ where
       last_frame = Some(frame);
     }
 
-    let (quit, copy, open) = with_store(|store| {
+    let (quit, copy, read, open) = with_store(|store| {
       (
         store.quit,
         store.pending_copy.take(),
+        std::mem::take(&mut store.pending_paste).then_some(store.clipboard_read),
         store.pending_open.take(),
       )
     });
 
     if let Some(text) = copy {
       emit_copy(&text);
+    }
+
+    if let Some(Some(wait)) = read
+      && clipboard_read.is_none()
+      && detection.is_none()
+    {
+      clipboard_read = Some(detect::read_clipboard(wait));
     }
 
     if let Some(url) = open {
@@ -202,8 +230,9 @@ where
 
     crate::dev::tick();
 
-    // While detection reads its replies from stdin the loop leaves the input alone.
-    if detection.is_some() {
+    // While detection or a clipboard read reads its reply from stdin the loop leaves
+    // the input alone.
+    if detection.is_some() || clipboard_read.is_some() {
       std::thread::sleep(Duration::from_millis(10));
 
       continue;
@@ -228,6 +257,11 @@ where
 
           crate::dev::mark_changed();
         }
+        Ok(Event::Paste(text)) => {
+          paste(&text);
+
+          crate::dev::mark_changed();
+        }
         Ok(Event::Resize(..)) => {
           // A full rewrite: the previous frame no longer matches what the terminal
           // shows.
@@ -244,10 +278,18 @@ where
 }
 
 /// Applies what detection found: the background as the platform's scheme, and the
-/// clipboard support.
+/// clipboard support in each direction.
 fn apply_detection(detected: detect::Detected) {
   set_detected_scheme(detected.dark);
-  with_store(|store| store.clipboard = detected.clipboard);
+  with_store(|store| {
+    store.clipboard = detected.clipboard;
+    store.clipboard_read = detected.clipboard_read;
+  });
+}
+
+/// Inserts pasted text into the focused entry, inside a reactive batch.
+fn paste(text: &str) {
+  skene_reactive::batch(|| interaction::paste(text));
 }
 
 /// Records the detected background, moving the scheme in force where it changes.
@@ -534,9 +576,9 @@ fn draw(buffer: &paint::Buffer, depth: detect::ColorDepth, previous: Option<&pai
 }
 
 /// Dispatches one keyboard event through core's dispatch, then the terminal's own
-/// response unless a handler prevented it; `Ctrl-C` stays unconditional.
+/// response unless a handler prevented it; `Ctrl-Q` stays unconditional.
 fn dispatch_key(key: &event::KeyEvent) {
-  if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+  if key.code == KeyCode::Char('q') && key.modifiers.contains(KeyModifiers::CONTROL) {
     with_store(|store| store.quit = true);
 
     return;
@@ -680,6 +722,18 @@ pub fn take_copied() -> Option<String> {
   with_store(|store| store.pending_copy.take())
 }
 
+/// Takes whether the last `Paste` staged a clipboard read, for a headless test.
+#[must_use]
+pub fn take_paste_requested() -> bool {
+  with_store(|store| std::mem::take(&mut store.pending_paste))
+}
+
+/// Simulates the terminal pasting `text`—a bracketed paste, or a clipboard read's
+/// reply—into the focused entry, for a headless test.
+pub fn trigger_paste(text: &str) {
+  paste(text);
+}
+
 /// Takes the link the last click staged for the system handler, for a headless test.
 #[must_use]
 pub fn take_opened() -> Option<String> {
@@ -735,11 +789,20 @@ pub fn trigger_resize(columns: u16, rows: u16) {
   frame::resize(columns, rows);
 }
 
-/// Simulates the clipboard-support detection, for a headless test driving the copy
-/// menu's disabled state.
+/// Simulates the clipboard-write detection, for a headless test driving the menu's
+/// disabled `Copy` and `Cut`.
 pub fn trigger_clipboard_support(supported: bool) {
   with_store(|store| {
     store.clipboard = supported;
+    store.paint_dirty = true;
+  });
+}
+
+/// Simulates the clipboard-read detection, for a headless test driving the menu's
+/// disabled `Paste`.
+pub fn trigger_clipboard_read_support(supported: bool) {
+  with_store(|store| {
+    store.clipboard_read = supported.then_some(Duration::ZERO);
     store.paint_dirty = true;
   });
 }

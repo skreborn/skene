@@ -8,7 +8,9 @@ use skene_core::{
   Color,
   ColorScheme,
   Condition,
+  Conditional,
   ContainerName,
+  DriverLeaf,
   Interaction,
   Keyframe,
   NodeId,
@@ -17,7 +19,9 @@ use skene_core::{
   Scene,
   Size,
   Static,
+  StaticLeaf,
 };
+use skene_views::typography;
 
 use crate::{
   BOLD_WEIGHT,
@@ -155,6 +159,22 @@ impl<'a> Env<'a> {
     }
 
     Some((style, border_ink))
+  }
+
+  /// The run style a text entry's value paints with: the typography inherited at the
+  /// entry, every property resolved.
+  pub(crate) fn resolve_entry_run(&self) -> PlainRun {
+    let style = RunStyle::<Static<Condition<u32>>, TuiExt> {
+      selection_color: Some(Conditional::new(DriverLeaf::Static(StaticLeaf::from(
+        typography::SELECTION_INK,
+      )))),
+      selection_background: Some(Conditional::new(DriverLeaf::Static(StaticLeaf::from(
+        typography::SELECTION_SURFACE,
+      )))),
+      ..RunStyle::default()
+    };
+
+    self.with_resolver(|resolver| resolver.run_style(&style))
   }
 
   /// The run style of the record, every property resolved.

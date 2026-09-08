@@ -28,6 +28,7 @@ use skene_core::{
 use skene_reactive::{Owner, Signal, WriteSignal};
 
 use crate::{
+  Clipboard,
   Tui,
   TuiExt,
   motion::{BoxMotion, RunMotion},
@@ -532,6 +533,10 @@ pub(crate) struct Store {
   /// The pointer's last known cell.
   pub(crate) last_pointer: (u16, u16),
   pub(crate) scroll_latch: Option<ScrollLatch>,
+  /// The clipboard operations the launch offers.
+  pub(crate) clipboard: Clipboard,
+  /// Whether the launch takes the mouse; off, every mouse event is ignored.
+  pub(crate) mouse: bool,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: Option<String>,
   /// Whether a clipboard read is staged for the terminal loop.
@@ -650,6 +655,8 @@ impl Store {
       last_press: None,
       last_pointer: (0, 0),
       scroll_latch: None,
+      clipboard: Clipboard::ALL,
+      mouse: true,
       pending_copy: None,
       pending_paste: false,
       paste_target: None,

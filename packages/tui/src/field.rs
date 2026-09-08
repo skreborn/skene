@@ -756,9 +756,14 @@ fn paste_into(target: Option<Handle>, text: &str) {
 }
 
 /// Stages the focused entry's selection for the clipboard and removes it, reporting
-/// the changed value through the node's change handlers.
+/// the changed value through the node's change handlers; nothing happens when the
+/// launch offers no `Copy`.
 pub(crate) fn cut_focused() {
   let changed = with_store(|store| {
+    if !store.clipboard.copy {
+      return None;
+    }
+
     store.copy_selection();
     store.edit_focused_entry(|field, _| {
       let (from, to) = field.selection()?;

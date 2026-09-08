@@ -444,12 +444,13 @@ impl CellPainter for Tui {
   }
 }
 
-/// Installs the terminal driver for this thread.
+/// Installs the terminal driver for this thread: the reactive runtime, the host
+/// executor, the scene and the store.
 ///
 /// # Panics
 ///
 /// Panics if it is already installed.
-pub fn install() {
+pub(crate) fn install() {
   skene_reactive::Runtime::init_on_ui_thread();
   skene_core::executor::install();
 

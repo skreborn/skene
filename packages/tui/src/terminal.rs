@@ -1,9 +1,10 @@
 //! The interactive terminal loop, and the seams that drive it without a terminal.
 //!
-//! [`launch`] takes over the terminal (raw mode, the alternate screen, bracketed
-//! paste), builds the app, and runs the event loop: keyboard and mouse events dispatch
-//! inside a reactive batch through core's dispatch, a paste the terminal brackets
-//! lands in the focused entry, and every change repaints. `Ctrl-Q` quits.
+//! [`run`] takes over the terminal (raw mode, the alternate screen, bracketed paste,
+//! the mouse when the launch takes it), builds the app, and runs the event loop:
+//! keyboard and mouse events dispatch inside a reactive batch through core's dispatch,
+//! a paste the terminal brackets lands in the focused entry, and every change
+//! repaints. `Ctrl-Q` quits.
 //!
 //! The terminal's replies arrive as events in the stream the keys come through. Launch
 //! writes its queries and paints at once under its assumptions—a dark background, 16
@@ -42,6 +43,7 @@ use termina::{
 };
 
 use crate::{
+  Launch,
   Tui,
   View as _,
   detect::{self, ColorDepth},
@@ -67,16 +69,29 @@ fn dec_mode(code: DecPrivateModeCode, on: bool) -> Csi {
 }
 
 /// Writes the controls that take the terminal over: the alternate screen, mouse
-/// reporting, bracketed paste, scheme notifications, and the cursor hidden.
-fn write_setup(out: &mut impl Write) -> io::Result<()> {
+/// reporting when `mouse`, bracketed paste, scheme notifications, and the cursor
+/// hidden.
+fn write_setup(out: &mut impl Write, mouse: bool) -> io::Result<()> {
   write!(
     out,
-    "{}{}{}{}{}{}{}{}",
-    dec_mode(DecPrivateModeCode::ClearAndEnableAlternateScreen, true),
-    dec_mode(DecPrivateModeCode::MouseTracking, true),
-    dec_mode(DecPrivateModeCode::ButtonEventMouse, true),
-    dec_mode(DecPrivateModeCode::AnyEventMouse, true),
-    dec_mode(DecPrivateModeCode::SGRMouse, true),
+    "{}",
+    dec_mode(DecPrivateModeCode::ClearAndEnableAlternateScreen, true)
+  )?;
+
+  if mouse {
+    write!(
+      out,
+      "{}{}{}{}",
+      dec_mode(DecPrivateModeCode::MouseTracking, true),
+      dec_mode(DecPrivateModeCode::ButtonEventMouse, true),
+      dec_mode(DecPrivateModeCode::AnyEventMouse, true),
+      dec_mode(DecPrivateModeCode::SGRMouse, true),
+    )?;
+  }
+
+  write!(
+    out,
+    "{}{}{}",
     dec_mode(DecPrivateModeCode::BracketedPaste, true),
     dec_mode(DecPrivateModeCode::Theme, true),
     dec_mode(DecPrivateModeCode::ShowCursor, false),
@@ -131,26 +146,22 @@ fn write_restore(out: &mut impl Write) -> io::Result<()> {
   )
 }
 
-/// Mounts and runs a skene application in the terminal.
-///
-/// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-Q`.
-/// The first frame paints for a dark background at 16 colors; the terminal's replies
-/// arrive as events and upgrade the scheme, the depth and the key encoding as they
-/// land. A panic anywhere in the process restores the terminal before its message
-/// prints.
-///
-/// # Panics
-///
-/// Panics if the driver is already installed, or when the terminal cannot be set up.
+/// Mounts and runs a skene application in the terminal under `launch`; see
+/// [`Launch::run`].
 // The loop body in one place; length is the event count, not complexity.
 #[expect(clippy::too_many_lines)]
-pub fn launch<V, F>(app: F)
+pub(crate) fn run<V, F>(launch: Launch, app: F)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView<Tui>,
 {
-  crate::install();
-  with_store(|store| store.clock = crate::store::Clock::Real(std::time::Instant::now()));
+  launch.install();
+
+  let mouse = with_store(|store| {
+    store.clock = crate::store::Clock::Real(std::time::Instant::now());
+
+    store.mouse
+  });
 
   crate::dev::install();
 
@@ -172,7 +183,7 @@ where
     }
   }
 
-  let _ = write_setup(&mut terminal);
+  let _ = write_setup(&mut terminal, mouse);
   let _ = write_queries(&mut terminal);
   let _ = terminal.flush();
 

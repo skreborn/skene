@@ -88,3 +88,16 @@ pub fn rgb(color: Color) -> (u8, u8, u8) {
 
   (channel(red), channel(green), channel(blue))
 }
+
+/// Installs a fresh driver under `launch`, runs `body`, and uninstalls afterwards.
+pub fn with_launch<R>(launch: tui::Launch, body: impl FnOnce() -> R) -> R {
+  let _serialized = DRIVER
+    .lock()
+    .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+  launch.install();
+
+  let _installed = Installed;
+
+  body()
+}

@@ -134,7 +134,15 @@ picker's type-ahead waits on a clock no behavior has.
     leaves its own paste key, which arrives bracketed. Termina parses no OSC 52 report
     upstream; the fork's `parse-selection` branch is the git dependency until the PR
     merges. Owning the read loop around termina's public `Parser` was the fallback and
-    is not needed. Left:
+    is not needed. **The clipboard and the mouse are launch configuration** (landed
+    2026-09-08): `Launch::set_clipboard` names which of copy, cut and paste exist
+    (`Clipboard::ALL` by default; without copy nothing in the document is selectable,
+    a key not offered is an ordinary key, and the edit menu lists only what is), and
+    `Launch::set_mouse(false)` sets no mouse mode and ignores every mouse event, so a
+    plain drag is the terminal's selection. Left:
+    - A runtime mouse release—a key handing the mouse to the terminal for one native
+      selection and taking it back—would spare relaunching with the mouse off. Not
+      built; every mouse mode is set once at launch.
     - A terminal answering no DECRQSS paints at 16 colors, Terminal.app among them; the
       cost of inferring nothing, taken knowingly.
     - Termina's SGR reply parser reads `:`-separated color parameters only, so a

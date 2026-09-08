@@ -191,7 +191,13 @@
   consume at its limits until a pause or pointer move; popups light-dismiss; selection
   gestures match (drag, double-click word, triple-click run), inside a text entry as
   well, where keyboard focus selects a field's value and `Ctrl-C`/`X`/`V` copy, cut and
-  paste through the ordinary dispatch, so `Ctrl-Q` is the quit. When an interaction's
+  paste through the ordinary dispatch, so `Ctrl-Q` is the quit. **The clipboard is the
+  app's launch choice**: OSC 52 has no capability query, so `Launch::set_clipboard`
+  names which of copy, cut and paste exist (all by default; without copy nothing in
+  the document is selectable), and `Launch::set_mouse(false)` hands the mouse back
+  wholesale. The escape hatch for a terminal without OSC 52 is the terminal's own
+  selection—a drag with `Shift` held, which bypasses the app and needs nothing from
+  it—or a plain drag with the mouse off. When an interaction's
   design is in doubt, mimic the web—**because the browser is the most constrained
   platform we target, not because it is the best design**. Parity is a floor. Where a
   browser behavior is merely a browser behavior, we are free to rule otherwise, and we

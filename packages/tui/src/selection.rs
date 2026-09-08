@@ -9,12 +9,14 @@
 //! selection exists opens the copy menu at the pressed cell, and right-clicking a text
 //! entry its edit menu; `Copy` stages the text for the terminal loop's OSC 52 write,
 //! `Cut` removes it as well, and `Paste` stages an OSC 52 read whose reply lands in
-//! the entry that asked. Every item is offered on every terminal: OSC 52 has no
-//! capability query, and a terminal lacking it ignores the write and answers no read.
+//! the entry that asked. The launch's [`Clipboard`] says which items exist; within it
+//! every item is offered on every terminal, since OSC 52 has no capability query, and a
+//! terminal lacking it ignores the write and answers no read.
 
 use std::time::{Duration, Instant};
 
 use crate::{
+  Clipboard,
   field::word_bounds,
   layout::{is_paragraph, paragraph_runs, paragraph_text},
   paint::wrap_spans,
@@ -60,6 +62,17 @@ pub(crate) enum MenuItem {
   Paste,
 }
 
+impl Clipboard {
+  /// Whether the configuration offers `item`: `Cut` and `Copy` with `copy`, `Paste`
+  /// with `paste`.
+  pub(crate) const fn offers(self, item: MenuItem) -> bool {
+    match item {
+      MenuItem::Cut | MenuItem::Copy => self.copy,
+      MenuItem::Paste => self.paste,
+    }
+  }
+}
+
 impl MenuItem {
   /// The item's label.
   pub(crate) const fn label(self) -> &'static str {
@@ -94,11 +107,12 @@ impl Store {
   }
 
   /// The node's source text, when it is a selectable, non-empty run or paragraph
-  /// outside every control: a control's label is chrome, whatever it opts into.
+  /// outside every control and the launch offers `Copy`: a control's label is chrome,
+  /// whatever it opts into, and without `Copy` nothing in the document is selectable.
   pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
     let record = self.record(handle)?;
 
-    if self.enclosing_control(handle).is_some() {
+    if !self.clipboard.copy || self.enclosing_control(handle).is_some() {
       return None;
     }
 
@@ -484,23 +498,27 @@ impl Store {
     }
   }
 
-  /// The open menu's items in order, each with whether it is enabled: `Cut` and `Copy`
-  /// need a selection, `Paste` nothing.
+  /// The open menu's items in order—those the launch offers—each with whether it is
+  /// enabled: `Cut` and `Copy` need a selection, `Paste` nothing.
   pub(crate) fn menu_items(&self) -> Vec<(MenuItem, bool)> {
     let Some(menu) = self.menu
     else {
       return Vec::new();
     };
     let copies = self.has_selection();
-
-    match menu.kind {
+    let items = match menu.kind {
       MenuKind::Copy => vec![(MenuItem::Copy, copies)],
       MenuKind::Edit => vec![
         (MenuItem::Cut, copies),
         (MenuItem::Copy, copies),
         (MenuItem::Paste, true),
       ],
-    }
+    };
+
+    items
+      .into_iter()
+      .filter(|(item, _)| self.clipboard.offers(*item))
+      .collect()
   }
 
   /// The open menu's rectangle—origin and size, in cells—shifted to fit the terminal:
@@ -536,26 +554,32 @@ impl Store {
     self.menu_items().get(row).copied()
   }
 
-  /// Stages the selected text for the terminal loop's clipboard write.
+  /// Stages the selected text for the terminal loop's clipboard write; nothing is
+  /// staged when the launch offers no `Copy`.
   pub(crate) fn copy_selection(&mut self) {
-    if let Some(text) = self.selected_text() {
+    if self.clipboard.copy
+      && let Some(text) = self.selected_text()
+    {
       self.pending_copy = Some(text);
     }
   }
 
   /// Stages a clipboard read for the terminal loop, its reply bound for the focused
-  /// entry; nothing is staged without one.
+  /// entry; nothing is staged without one, or when the launch offers no `Paste`.
   pub(crate) fn request_paste(&mut self) {
-    if let Some(entry) = self.focused_entry() {
+    if self.clipboard.paste
+      && let Some(entry) = self.focused_entry()
+    {
       self.paste_target = Some(entry);
       self.pending_paste = true;
     }
   }
 
-  /// A right press: opens the edit menu at the cell over the focused text entry, the
-  /// copy menu while the document holds a selection, and closes the menu otherwise.
+  /// A right press: opens the edit menu at the cell over the focused text entry when
+  /// the launch offers any of its items, the copy menu while the document holds a
+  /// selection, and closes the menu otherwise.
   pub(crate) fn right_press(&mut self, x: u16, y: u16, entry: Option<Handle>) {
-    if entry.is_some_and(|entry| self.focused == Some(entry)) {
+    if entry.is_some_and(|entry| self.focused == Some(entry)) && self.clipboard != Clipboard::NONE {
       self.open_menu(x, y, MenuKind::Edit);
     }
     else if self.selection.is_some() {

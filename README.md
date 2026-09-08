@@ -93,7 +93,10 @@ Lengths are cells (`u32`), text is a color and a bold flag, a border is one cell
 box-drawing glyphs; what the terminal cannot draw does not exist to call. `Tab` moves
 focus, the controls own their keys, the mouse clicks, drags, scrolls and selects—inside
 a text entry too, where `Ctrl-C`, `Ctrl-X` and `Ctrl-V` copy, cut and paste—and
-`Ctrl-Q` quits.
+`Ctrl-Q` quits. `Launch::new().set_clipboard(Clipboard::COPY).set_mouse(false).run(app)`
+chooses which clipboard operations the app offers (OSC 52 has no capability query) and
+whether it takes the mouse; the terminal's own selection—a drag with `Shift` held—stays
+available either way, and with the mouse off a plain drag is the terminal's.
 
 ## Crates
 

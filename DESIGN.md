@@ -512,9 +512,14 @@ own—an anchor beside the caret over the value—so keyboard focus selects a fi
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge
 scrolling the window on the frame clock, as a browser's does), an edit replaces it, and
 `Ctrl-C`/`X`/`V` and the entry's edit menu copy, cut and paste through the loop's OSC 52
-write, the terminal's bracketed paste, and an OSC 52 read where XTVERSION names a
-terminal answering one (with the loop deaf to input until the reply). `Ctrl-Q` is the
-one unconditional key. Focus belongs to controls, which are composed trees with roles
+write, the terminal's bracketed paste, and an OSC 52 read fired on demand. OSC 52 has no
+capability query, so which of those exist is the app's launch choice: `Launch`'s
+`Clipboard` names the operations offered (all by default; without `Copy` nothing in the
+document is selectable and no menu opens), and `set_mouse(false)` leaves the mouse to
+the terminal. The terminal's own selection—a drag with `Shift` held, `Option` on
+iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
+still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
+key. Focus belongs to controls, which are composed trees with roles
 and focus order, exactly as on the GUI.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and

@@ -792,6 +792,10 @@ fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))>
 /// reaches the node under the pointer or the one the press captured, and a drag in
 /// progress follows.
 pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifiers: Modifiers) {
+  if !store(|store| store.mouse) {
+    return;
+  }
+
   set_hover(x, y);
 
   let target = store(|store| pointer_target(store, x, y));
@@ -814,6 +818,10 @@ pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifi
 // One press has these stages; length is the stage count, not complexity.
 #[expect(clippy::too_many_lines)]
 pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
+  if !store(|store| store.mouse) {
+    return;
+  }
+
   set_hover(x, y);
 
   // A press on an enabled item of the open menu waits for its release there; a press
@@ -1025,6 +1033,10 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
 /// click completes on the deepest node under both the press and the release—releasing
 /// over a different target clicks nothing, as on the web.
 pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
+  if !store(|store| store.mouse) {
+    return;
+  }
+
   // A release on the item its press landed on runs the item; the menu closes either
   // way, and the release is consumed.
   let (menu_pressed, item) = store(|store| {
@@ -1182,6 +1194,10 @@ pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
 /// consuming the wheel at that box's limits, and a fresh gesture targets the innermost
 /// box under the cell that can still move in the given direction.
 pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64) {
+  if !store(|store| store.mouse) {
+    return;
+  }
+
   let now = std::time::Instant::now();
   let (latched, candidates) = store(|store| {
     store.close_menu();
@@ -1285,6 +1301,9 @@ pub(crate) fn key(event: &KeyEvent) {
 
 /// The terminal's own response to a key.
 fn key_default(event: &KeyEvent) {
+  let clipboard = store(|store| store.clipboard);
+  let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
+
   match event.key.as_str() {
     "Tab" => {
       move_focus(if event.modifiers.shift { -1 } else { 1 });
@@ -1324,19 +1343,20 @@ fn key_default(event: &KeyEvent) {
     }
     "PageDown" => page_scroll(1),
     "PageUp" => page_scroll(-1),
-    // The clipboard keys: `Ctrl+C` copies whichever selection exists, `Ctrl+X` cuts the
-    // focused entry's, `Ctrl+V` pastes into the focused entry.
-    "c" | "C" if event.modifiers.ctrl && !event.modifiers.alt => {
+    // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
+    // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
+    // entry; one not offered is an ordinary key.
+    "c" | "C" if ctrl && clipboard.copy => {
       store(Store::copy_selection);
 
       return;
     }
-    "x" | "X" if event.modifiers.ctrl && !event.modifiers.alt => {
+    "x" | "X" if ctrl && clipboard.copy => {
       crate::field::cut_focused();
 
       return;
     }
-    "v" | "V" if event.modifiers.ctrl && !event.modifiers.alt => {
+    "v" | "V" if ctrl && clipboard.paste => {
       store(|store| {
         if store.focused_entry().is_some() {
           store.request_paste();

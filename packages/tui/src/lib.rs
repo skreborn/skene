@@ -7,14 +7,15 @@
 //! [`Typography`], the [`media`] module, the terminal's decoration
 //! ([`TuiDecoration`], [`TuiText`]), the escape trait a low-level view is
 //! written against ([`CellPainter`], painting through [`Cells`]) and the entry points:
-//! [`launch`] in a terminal, [`render_to_text`] for a headless test.
+//! [`launch`] in a terminal—[`Launch`] configuring what the app takes from it, the
+//! clipboard operations and the mouse—and [`render_to_text`] for a headless test.
 //!
 //! Layout is taffy at `1.0 = 1 cell`, the effective style cached per node and written
 //! to the layout tree only on change; frames paint into a cell buffer. Interaction
 //! follows a browser: `Tab`/`Shift-Tab` move focus across the controls, the behaviors
 //! own their keys, a click fires on press and release over one target, `Ctrl-C`,
-//! `Ctrl-X` and `Ctrl-V` copy, cut and paste, and `Ctrl-Q` quits. Every dispatch runs
-//! inside a reactive batch.
+//! `Ctrl-X` and `Ctrl-V` copy, cut and paste where the launch offers them, and
+//! `Ctrl-Q` quits. Every dispatch runs inside a reactive batch.
 //!
 //! Host-only: on a wasm target the crate is empty.
 
@@ -31,6 +32,7 @@ mod ext;
 mod field;
 mod frame;
 mod interaction;
+mod launch;
 mod layout;
 mod motion;
 mod paint;
@@ -120,8 +122,9 @@ pub(crate) use crate::driver::{try_with_store, with_store};
 pub use crate::{
   cells::{CellPainter, Cells},
   dev::{adopt_restoration, notice_view as dev_notice_view},
-  driver::{Tui, handle, install, mount, uninstall},
+  driver::{Tui, handle, mount, uninstall},
   ext::{TuiDecoration, TuiText},
+  launch::{Clipboard, Launch, install, launch},
   media::{derive_scheme, set_scheme, stored_scheme},
   routing::install_router,
   store::Handle,
@@ -129,7 +132,6 @@ pub use crate::{
     current_cursor,
     current_title,
     focused_node,
-    launch,
     layout_generation,
     repainted_rows,
     set_style_calls,

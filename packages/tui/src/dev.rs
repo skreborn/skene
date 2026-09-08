@@ -255,6 +255,7 @@ fn adopt_focus() {
         field.anchor = anchor.map(|anchor| anchor.min(count));
       }
 
+      store.settle_entry(handle);
       store.damage(handle);
     });
   }

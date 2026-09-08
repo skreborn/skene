@@ -111,9 +111,10 @@ picker's type-ahead waits on a clock no behavior has.
   - Selection and clipboard inside a text entry landed (2026-09-08): the entry's own
     anchor beside its caret, `Cut`/`Copy`/`Paste` in its edit menu, `Ctrl-C`/`X`/`V`
     through the ordinary dispatch, bracketed paste as the paste source everywhere, and an
-    OSC 52 read where XTVERSION names kitty, ghostty, foot, xterm, tmux or contour. Left:
-    a single-line field does not autoscroll during a drag past its edge beyond the
-    window's own snap to the caret.
+    OSC 52 read where XTVERSION names kitty, ghostty, foot, xterm, tmux or contour. A
+    drag held past an entry's edge autoscrolls it on the frame clock (2026-09-08): the
+    window moves only to keep the caret in view, as a browser's does, and the pointer's
+    distance past the edge sets the pace, in the field and the editor alike.
   - **Replies are events, never waits** (landed 2026-09-08). The loop runs on termina,
     whose parser delivers CSI, OSC and DCS replies in the input stream beside the keys,
     so no query has a deadline, nothing deafens the loop, and a late reply cannot leak

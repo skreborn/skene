@@ -5,8 +5,8 @@ use skene_core::{KeyEvent, notify_change};
 
 use crate::{
   Tui,
-  paint::{field_window, wrap_spans},
-  store::{Drag, Field, Handle, Store},
+  paint::wrap_spans,
+  store::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Store},
   with_store,
 };
 
@@ -127,31 +127,99 @@ fn caret_line(value: &str, caret: usize, width: usize) -> (Vec<(usize, String)>,
   (lines, row)
 }
 
-/// The first visible row of a multi-line entry showing `lines` rows with the caret on
-/// `row` in view.
-const fn top_row(row: usize, lines: usize) -> usize {
-  row.saturating_sub(lines.saturating_sub(1))
+/// A window of `span` cells over `extent` of them, starting at `window` and settled
+/// around `at`: held where `at` stays in view, moved the least that brings it in, and
+/// never past the extent's end.
+pub(crate) const fn settled_window(window: usize, at: usize, extent: usize, span: usize) -> usize {
+  let last = extent.saturating_sub(span);
+  let window = if window > last { last } else { window };
+
+  if at < window {
+    at
+  }
+  else if at + 1 > window + span {
+    at + 1 - span
+  }
+  else {
+    window
+  }
 }
 
-/// The rows an entry shows of `text` at an inner width, each with its start offset in
-/// the text, and the caret's row and column within them: one windowed row for a
-/// single-line entry, `lines` wrapped rows for an editor.
+impl Field {
+  /// The window's geometry at an inner width: the caret's position along it, the
+  /// extent it covers and the span it shows—columns of the value plus the caret's for
+  /// a field, wrapped rows for an editor.
+  fn window_geometry(&self, inner: usize) -> (usize, usize, usize) {
+    if self.lines <= 1 {
+      return (self.caret, self.count() + 1, inner.max(1));
+    }
+
+    let (wrapped, row) = caret_line(&self.value, self.caret, inner.max(1));
+
+    (row, wrapped.len(), usize::from(self.lines))
+  }
+
+  /// The window settled around the caret at an inner width.
+  fn settled_window(&self, inner: usize) -> usize {
+    let (at, extent, span) = self.window_geometry(inner);
+
+    settled_window(self.window, at, extent, span)
+  }
+
+  /// How far the window can scroll from its start, at an inner width.
+  fn window_limit(&self, inner: usize) -> usize {
+    let (_, extent, span) = self.window_geometry(inner);
+
+    extent.saturating_sub(span)
+  }
+
+  /// Settles the window around the caret at an inner width: held where the caret stays
+  /// in view, else moved the least that shows it.
+  pub(crate) fn settle(&mut self, inner: usize) {
+    self.window = self.settled_window(inner);
+  }
+
+  /// The caret position at the cell (`column`, `row`) of the value shown from `window`
+  /// at an inner width, clamped into the visible rows and their ends.
+  fn caret_in_window(&self, window: usize, inner: usize, column: usize, row: usize) -> usize {
+    let inner = inner.max(1);
+    let column = column.min(inner - 1);
+
+    if self.lines <= 1 {
+      return (window + column).min(self.count());
+    }
+
+    let lines = usize::from(self.lines);
+    let wrapped = wrap_spans(&self.value, inner);
+    let target = (window + row.min(lines - 1)).min(wrapped.len() - 1);
+    let (start, line) = &wrapped[target];
+
+    start + column.min(line.chars().count())
+  }
+}
+
+/// The rows an entry shows of `text` from `window` at an inner width, each with its
+/// start offset in the text, and the caret's row and column within them: one windowed
+/// row for a single-line entry, `lines` wrapped rows for an editor. The window settles
+/// around the caret first, so a stale one still shows it.
 pub(crate) fn visible_rows(
   text: &str,
   caret: usize,
+  window: usize,
   inner: usize,
   lines: u16,
 ) -> (Vec<(usize, String)>, (usize, usize)) {
   if lines <= 1 {
-    let window = field_window(caret, inner);
+    let count = text.chars().count();
+    let window = settled_window(window, caret, count + 1, inner.max(1));
     let row: String = text.chars().skip(window).take(inner).collect();
 
-    return (vec![(window, row)], (0, caret - window));
+    return (vec![(window, row)], (0, caret.saturating_sub(window)));
   }
 
   let lines = usize::from(lines);
   let (wrapped, row) = caret_line(text, caret, inner.max(1));
-  let top = top_row(row, lines);
+  let top = settled_window(window, row, wrapped.len(), lines);
   let column = caret - wrapped[row].0;
   let rows = wrapped.into_iter().skip(top).take(lines).collect();
 
@@ -366,27 +434,37 @@ impl Store {
     )
   }
 
+  /// An entry's local cell as a column and row of its value: past the inset, clamped
+  /// at its start.
+  fn entry_cell(&self, handle: Handle, local_x: i64, local_y: i64) -> (usize, usize) {
+    let (inset_x, inset_y) = self.field_inset(handle);
+
+    (
+      usize::try_from(local_x - inset_x).unwrap_or(0),
+      usize::try_from(local_y - inset_y).unwrap_or(0),
+    )
+  }
+
   /// The caret position at an entry's local cell, mapped through the inset and the
   /// value's visible window, clamped into the nearest visible row and its ends.
   fn caret_at(&self, handle: Handle, local_x: i64, local_y: i64) -> Option<usize> {
     let inner = self.field_inner_width(handle);
-    let (inset_x, inset_y) = self.field_inset(handle);
-    let column = usize::try_from(local_x - inset_x).unwrap_or(0);
-    let row = usize::try_from(local_y - inset_y).unwrap_or(0);
+    let (column, row) = self.entry_cell(handle, local_x, local_y);
     let field = self.record(handle)?.kind.field()?;
 
-    if field.lines <= 1 {
-      let window = field_window(field.caret, inner);
+    Some(field.caret_in_window(field.settled_window(inner), inner, column, row))
+  }
 
-      return Some((window + column).min(field.count()));
+  /// Settles an entry's window around its caret, at its laid-out inner width.
+  pub(crate) fn settle_entry(&mut self, handle: Handle) {
+    let inner = self.field_inner_width(handle);
+
+    if let Some(field) = self
+      .record_mut(handle)
+      .and_then(|record| record.kind.field_mut())
+    {
+      field.settle(inner);
     }
-
-    let (wrapped, current) = caret_line(&field.value, field.caret, inner.max(1));
-    let top = top_row(current, usize::from(field.lines));
-    let target = (top + row).min(wrapped.len() - 1);
-    let (start, line) = &wrapped[target];
-
-    Some(start + column.min(line.chars().count()))
   }
 
   /// Places an entry's caret at a press's local cell, extending the selection from
@@ -404,12 +482,14 @@ impl Store {
       field.move_caret(caret, extend);
     }
 
+    self.settle_entry(handle);
     self.drag = Some(Drag::Caret(handle));
     self.damage(handle);
   }
 
   /// Follows a caret drag to the screen cell (`x`, `y`): the caret moves to the
-  /// position under the pointer, the anchor held.
+  /// position under the pointer, clamped to the visible value's edge, the anchor held;
+  /// past the edge, the autoscroll carries it on from there.
   pub(crate) fn drag_caret(&mut self, handle: Handle, x: u16, y: u16) {
     let (origin_x, origin_y) = self.screen_origin(handle);
     let Some(caret) = self.caret_at(handle, i64::from(x) - origin_x, i64::from(y) - origin_y)
@@ -428,8 +508,103 @@ impl Store {
       });
 
     if moved {
+      self.settle_entry(handle);
       self.damage(handle);
     }
+  }
+
+  /// The caret drag's overshoot: how far past the entry's visible value the pointer is
+  /// held, in columns for a field and rows for an editor, negative before its start;
+  /// `None` while the pointer is inside it or the window can scroll no further that way.
+  fn caret_drag_overshoot(&self) -> Option<(Handle, i64)> {
+    let Some(Drag::Caret(handle)) = self.drag
+    else {
+      return None;
+    };
+    let field = self.record(handle)?.kind.field()?;
+    let inner = self.field_inner_width(handle);
+    let (origin_x, origin_y) = self.screen_origin(handle);
+    let (inset_x, inset_y) = self.field_inset(handle);
+    let (x, y) = self.last_pointer;
+    let (_, _, span) = field.window_geometry(inner);
+    let along = if field.lines <= 1 {
+      i64::from(x) - origin_x - inset_x
+    }
+    else {
+      i64::from(y) - origin_y - inset_y
+    };
+    let span = i64::try_from(span).unwrap_or(i64::MAX);
+    let overshoot = if along < 0 {
+      along
+    }
+    else if along >= span {
+      along - span + 1
+    }
+    else {
+      return None;
+    };
+    let room = if overshoot < 0 {
+      field.window > 0
+    }
+    else {
+      field.window < field.window_limit(inner)
+    };
+
+    room.then_some((handle, overshoot))
+  }
+
+  /// Whether a caret drag is held past its entry's edge with room to scroll.
+  pub(crate) fn autoscrolls(&self) -> bool {
+    self.caret_drag_overshoot().is_some()
+  }
+
+  /// Steps the caret drag's autoscroll on the frame clock: once per interval while the
+  /// pointer is held past the entry's visible value, the window scrolls toward it by
+  /// the overshoot and the caret follows to the edge, extending the selection.
+  pub(crate) fn autoscroll_caret_drag(&mut self) {
+    let Some((handle, overshoot)) = self.caret_drag_overshoot()
+    else {
+      self.autoscroll_at = None;
+
+      return;
+    };
+    let now = self.now();
+    let interval = AUTOSCROLL_INTERVAL.as_secs_f64();
+    let Some(at) = self.autoscroll_at
+    else {
+      self.autoscroll_at = Some(now);
+
+      return;
+    };
+    let steps = ((now - at) / interval + 1e-9).floor();
+
+    if steps < 1. {
+      return;
+    }
+
+    self.autoscroll_at = Some(at + steps * interval);
+
+    let inner = self.field_inner_width(handle);
+    let (origin_x, origin_y) = self.screen_origin(handle);
+    let (x, y) = self.last_pointer;
+    let (column, row) = self.entry_cell(handle, i64::from(x) - origin_x, i64::from(y) - origin_y);
+    let Some(field) = self
+      .record_mut(handle)
+      .and_then(|record| record.kind.field_mut())
+    else {
+      return;
+    };
+    let limit = i64::try_from(field.window_limit(inner)).unwrap_or(i64::MAX);
+    let window = i64::try_from(field.window).unwrap_or(i64::MAX);
+    #[expect(clippy::cast_possible_truncation, reason = "at least one whole step")]
+    let delta = overshoot.saturating_mul(steps as i64);
+    let window = usize::try_from((window + delta).clamp(0, limit)).unwrap_or(0);
+    let caret = field.caret_in_window(window, inner, column, row);
+
+    field.window = window;
+    field.move_caret(caret, true);
+    field.settle(inner);
+    self.damage(handle);
   }
 
   /// Selects the word around an entry's caret.
@@ -443,6 +618,7 @@ impl Store {
       field.select(from, to);
     }
 
+    self.settle_entry(handle);
     self.damage(handle);
   }
 
@@ -463,6 +639,7 @@ impl Store {
       }
     }
 
+    self.settle_entry(handle);
     self.damage(handle);
   }
 
@@ -511,6 +688,7 @@ impl Store {
     let edit = edit(field, width)?;
     let value = field.value.clone();
 
+    field.settle(width);
     self.damage(entry);
 
     match edit {

@@ -376,6 +376,7 @@ impl Driver for Tui {
       value.clone_into(&mut field.value);
       field.caret = field.caret.min(field.count());
       field.collapse();
+      store.settle_entry(*sink);
       store.layout_dirty = true;
       store.damage(*sink);
     });

@@ -28,6 +28,7 @@ const SETTLE_ROUNDS: usize = 4;
 /// every row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   resize(width, height);
+  with_store(Store::autoscroll_caret_drag);
 
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_store(|store| {

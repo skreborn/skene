@@ -205,12 +205,6 @@ pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
     .collect()
 }
 
-/// The first visible column of an entry's value: zero until the caret passes the inner
-/// width, then sliding to keep the caret on the last cell.
-pub(crate) const fn field_window(caret: usize, inner: usize) -> usize {
-  caret.saturating_sub(inner.saturating_sub(1))
-}
-
 /// The longest unbreakable word's width in cells: the narrowest a wrap can go.
 pub(crate) fn longest_word(text: &str) -> usize {
   text
@@ -472,7 +466,8 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
       else {
         (field.value.clone(), false)
       };
-      let (rows, caret) = crate::field::visible_rows(&text, field.caret, inner_width, field.lines);
+      let (rows, caret) =
+        crate::field::visible_rows(&text, field.caret, field.window, inner_width, field.lines);
       let selection = field
         .selection()
         .filter(|_| focused)

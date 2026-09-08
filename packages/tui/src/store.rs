@@ -146,6 +146,9 @@ pub(crate) struct Field {
   pub(crate) caret: usize,
   /// The selection's fixed end, `None` while the selection is collapsed.
   pub(crate) anchor: Option<usize>,
+  /// The first visible column of a field, or the first visible wrapped row of an
+  /// editor; moves only to keep the caret in view, or under an autoscroll.
+  pub(crate) window: usize,
   pub(crate) placeholder: Option<String>,
   pub(crate) lines: u16,
 }
@@ -157,6 +160,7 @@ impl Field {
       value: String::new(),
       caret: 0,
       anchor: None,
+      window: 0,
       placeholder,
       lines: if lines == 0 { 1 } else { lines },
     }
@@ -451,6 +455,14 @@ pub(crate) enum Drag {
 /// web.
 pub(crate) const SCROLL_GESTURE: std::time::Duration = std::time::Duration::from_millis(500);
 
+/// How long the loop waits for input between frames while the frame clock runs: the
+/// frame rate's cap.
+pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_millis(16);
+
+/// The interval between the steps of a caret drag's autoscroll while the pointer is
+/// held past the entry's edge; each step scrolls by the pointer's distance past it.
+pub(crate) const AUTOSCROLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(50);
+
 /// One wheel gesture's scroll target: the cell it hit, the box it scrolls, and the
 /// last wheel event's time.
 pub(crate) struct ScrollLatch {
@@ -563,6 +575,9 @@ pub(crate) struct Store {
   /// Whether a tween or an animation was still running at the last restyle, so the
   /// next frame is due at the frame rate.
   pub(crate) motion_active: bool,
+  /// The clock reading the caret drag's autoscroll last stepped at, `None` while no
+  /// drag is held past its entry's edge.
+  pub(crate) autoscroll_at: Option<f64>,
   media: Option<MediaState>,
 }
 
@@ -658,6 +673,7 @@ impl Store {
       clock: Clock::Manual(0.),
       reduced_motion: false,
       motion_active: false,
+      autoscroll_at: None,
       media: None,
     };
 
@@ -986,9 +1002,16 @@ impl Store {
     self.paint_dirty
       || self.layout_dirty
       || self.structure_dirty
-      || self.motion_active
+      || self.frame_clock_running()
       || !self.damaged.is_empty()
       || !self.damaged_rects.is_empty()
+  }
+
+  /// Whether the next frame is due at the frame rate: a tween or an animation runs, or
+  /// a caret drag is held past its entry's edge.
+  #[inline(always)]
+  pub(crate) fn frame_clock_running(&self) -> bool {
+    self.motion_active || self.autoscrolls()
   }
 
   /// The clock reading motion samples against, in seconds.

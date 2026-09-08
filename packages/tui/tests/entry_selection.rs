@@ -1,10 +1,12 @@
 //! Selection inside a text entry: the value selected on keyboard focus, `Shift` and
-//! the mouse extending it, edits replacing it, the clipboard keys, the edit menu, and
-//! the terminal's paste.
+//! the mouse extending it, a drag held past the edge autoscrolling, edits replacing
+//! it, the clipboard keys, the edit menu, and the terminal's paste.
 
 #![cfg(not(target_arch = "wasm32"))]
 
 mod common;
+
+use std::time::Duration;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
@@ -333,6 +335,185 @@ fn blur_escape_and_writes_collapse_the_selection() {
       value.get_untracked(),
       "betay",
       "a write from outside collapses at the end"
+    );
+  });
+}
+
+/// Mounts `child` under the selection typography, at 20 x 4 cells, and focuses its
+/// entry by keyboard.
+fn mount_under_typography(child: impl FnOnce() -> AnyView + 'static) {
+  let _ = tui::mount(move || {
+    Theme::new(
+      Typography::default()
+        .set_selection_ink(white())
+        .set_selection_surface(highlight()),
+    )
+    .set_child_builder(child)
+    .into_any()
+    .build()
+  });
+  let _ = tui::render_to_text(20, 4);
+
+  tui::trigger_key("Tab");
+}
+
+/// A drag held past a field's end scrolls its window on the frame clock: the caret
+/// follows to the edge, the selection grows, the pointer's distance past the edge sets
+/// the pace, and the scroll stops at the value's end.
+#[test]
+fn a_drag_held_past_the_end_autoscrolls_the_field() {
+  with_driver(|| {
+    let value = Signal::new(String::from("abcdefghij"));
+
+    mount_field(value, 5);
+    tui::trigger_key("Home");
+
+    assert_eq!(tui::render_to_text(20, 4), "abcde\n\n\n\n");
+
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_drag(5, 0);
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "abcde\n\n\n\n",
+      "the crossing itself moves nothing"
+    );
+    assert_eq!(
+      tui::render_to_caret(20, 4),
+      Some((4, 0)),
+      "the caret sits at the edge"
+    );
+
+    tui::trigger_frame(Duration::from_millis(50));
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "bcdef\n\n\n\n",
+      "one interval scrolls by the overshoot"
+    );
+
+    let colors = tui::render_to_colors(20, 4);
+
+    assert_eq!(colors[0].1, Some(rgb(highlight())));
+    assert_eq!(colors[3].1, Some(rgb(highlight())));
+    assert_eq!(
+      colors[4].1, None,
+      "the caret at the edge is the selection's end"
+    );
+
+    tui::trigger_mouse_drag(7, 0);
+    tui::trigger_frame(Duration::from_millis(100));
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "ghij\n\n\n\n",
+      "farther past the edge scrolls faster, and stops at the end"
+    );
+
+    tui::trigger_mouse_release(7, 0);
+    tui::trigger_key("x");
+
+    assert_eq!(value.get_untracked(), "ax");
+  });
+}
+
+/// A drag held before a field's start scrolls its window back to the value's start.
+#[test]
+fn a_drag_held_before_the_start_autoscrolls_the_field_back() {
+  with_driver(|| {
+    let value = Signal::new(String::from("abcdefghij"));
+
+    mount_under_typography(move || {
+      Row::new()
+        .set_children((
+          Text::new("> "),
+          RawTextField::new(TextEntry::new().bind_value(value)).set_width(5),
+        ))
+        .into_any()
+    });
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "> ghij\n\n\n\n",
+      "focus shows the value's end"
+    );
+
+    tui::trigger_mouse_press(6, 0);
+    tui::trigger_mouse_drag(0, 0);
+
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_frame(Duration::from_millis(50));
+
+    assert_eq!(tui::render_to_text(20, 4), "> efghi\n\n\n\n");
+    assert_eq!(tui::render_to_caret(20, 4), Some((2, 0)));
+
+    tui::trigger_frame(Duration::from_millis(150));
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "> abcde\n\n\n\n",
+      "the scroll stops at the start"
+    );
+
+    tui::trigger_mouse_release(0, 0);
+    tui::trigger_key("x");
+
+    assert_eq!(
+      value.get_untracked(),
+      "x",
+      "the selection reached the start"
+    );
+  });
+}
+
+/// A drag held above an editor scrolls its rows up on the frame clock, the caret
+/// following on the top row.
+#[test]
+fn a_drag_held_above_autoscrolls_the_editor() {
+  with_driver(|| {
+    let value = Signal::new(String::from("a\nb\nc\nd\ne\nf"));
+
+    mount_under_typography(move || {
+      Column::new()
+        .set_children((
+          Text::new("head"),
+          RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(value)),
+        ))
+        .into_any()
+    });
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "head\nd\ne\nf\n",
+      "focus shows the last rows"
+    );
+
+    tui::trigger_mouse_press(1, 3);
+    tui::trigger_mouse_drag(0, 0);
+
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_frame(Duration::from_millis(50));
+
+    assert_eq!(tui::render_to_text(20, 4), "head\nc\nd\ne\n");
+    assert_eq!(tui::render_to_caret(20, 4), Some((0, 1)));
+
+    tui::trigger_frame(Duration::from_millis(100));
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "head\na\nb\nc\n",
+      "the scroll stops at the first row"
+    );
+
+    tui::trigger_mouse_release(0, 0);
+    tui::trigger_key("x");
+
+    assert_eq!(
+      value.get_untracked(),
+      "x",
+      "the selection reached the start"
     );
   });
 }

@@ -54,10 +54,6 @@ use crate::{
 /// How long the loop waits for input while nothing moves.
 const IDLE_POLL: Duration = Duration::from_millis(100);
 
-/// How long the loop waits for input between frames while a tween or an animation
-/// runs: the frame rate's cap.
-const FRAME_INTERVAL: Duration = Duration::from_millis(16);
-
 /// A DEC private mode set or reset, as one control.
 fn dec_mode(code: DecPrivateModeCode, on: bool) -> Csi {
   let mode = DecPrivateMode::Code(code);
@@ -240,8 +236,8 @@ where
 
     crate::dev::tick();
 
-    let wait = if with_store(|store| store.motion_active) {
-      FRAME_INTERVAL
+    let wait = if with_store(|store| store.frame_clock_running()) {
+      crate::store::FRAME_INTERVAL
     }
     else {
       IDLE_POLL
@@ -790,8 +786,9 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
   set_detected_scheme(scheme == ColorScheme::Dark);
 }
 
-/// Steps the motion clock forward by `elapsed`, for a headless test driving transitions
-/// and animations frame by frame; the next render samples them at the new reading.
+/// Steps the motion clock forward by `elapsed`, for a headless test driving transitions,
+/// animations and a caret drag's autoscroll frame by frame; the next render samples
+/// them at the new reading.
 ///
 /// A headless driver's clock stands still otherwise, so a render shows a transition
 /// at the point the last step left it.

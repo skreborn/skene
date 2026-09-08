@@ -646,6 +646,7 @@ pub(crate) fn set_focus(next: Option<Handle>) {
         }
       }
 
+      store.settle_entry(next);
       store.damage(next);
       store.reveal = Some(next);
     }

@@ -31,6 +31,7 @@ use crate::{
   Media,
   MediaEnv,
   Placement,
+  PointerEvent,
   Size,
 };
 
@@ -142,6 +143,13 @@ pub trait Driver: Copy + Default + 'static {
 
   /// Notes that a node has a handler for `kind`; dispatch itself is core's.
   fn listen(&self, sink: &Self::Sink, kind: EventKind);
+
+  /// `event` with its local position measured from `sink`'s top-left corner; unchanged
+  /// on a driver that lays nothing out.
+  #[inline(always)]
+  fn localize_pointer(&self, _sink: &Self::Sink, event: &PointerEvent) -> PointerEvent {
+    *event
+  }
 
   /// Moves focus to a node.
   fn focus(&self, sink: &Self::Sink);

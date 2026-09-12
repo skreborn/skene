@@ -4,8 +4,9 @@
 //! through the scene's parents, running every handler on each node deepest first and
 //! folding their verdicts into a [`Prevented`], which tells the driver what the
 //! platform may still do; the climb stops at the node whose handlers prevented
-//! bubbling. A notification runs the node's own handlers only. Every dispatch runs in
-//! one batch, and no borrow of the scene is held while a handler runs.
+//! bubbling. A pointer event reaches each node local to that node's own box, measured
+//! by the driver. A notification runs the node's own handlers only. Every dispatch
+//! runs in one batch, and no borrow of the scene is held while a handler runs.
 
 use std::rc::Rc;
 
@@ -18,13 +19,14 @@ use crate::{KeyEvent, PointerEvent, Prevent, Prevented, ScrollEvent};
 /// Dispatches a click at `node`.
 #[inline(always)]
 pub fn dispatch_click<D: Driver>(node: NodeId) -> Prevented {
-  bubble::<D, _>(
+  bubble::<D, _, _>(
     node,
     |set, out| {
       out.extend(set.acting_click().iter().cloned());
       out.extend(set.click().iter().cloned());
     },
-    |handler| handler(),
+    |_| (),
+    |handler, ()| handler(),
   )
 }
 
@@ -33,35 +35,63 @@ pub fn dispatch_click<D: Driver>(node: NodeId) -> Prevented {
 /// and its behavior does not act a second time.
 #[inline(always)]
 pub fn dispatch_click_observed<D: Driver>(node: NodeId) -> Prevented {
-  bubble::<D, _>(node, all(HandlerSet::click), |handler| handler())
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::click),
+    |_| (),
+    |handler, ()| handler(),
+  )
 }
 
 /// Dispatches a key press at `node`, the focused node.
 #[inline(always)]
 pub fn dispatch_key_down<D: Driver>(node: NodeId, event: &KeyEvent) -> Prevented {
-  bubble::<D, _>(node, all(HandlerSet::key_down), |handler| handler(event))
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::key_down),
+    |_| (),
+    |handler, ()| handler(event),
+  )
 }
 
 /// Dispatches a pointer press at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_down<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, all(HandlerSet::pointer_down), |handler| {
-    handler(event)
-  })
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::pointer_down),
+    |at| localize::<D>(at, event),
+    |handler, event| handler(event),
+  )
 }
 
 /// Dispatches a pointer release at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_up<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, all(HandlerSet::pointer_up), |handler| handler(event))
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::pointer_up),
+    |at| localize::<D>(at, event),
+    |handler, event| handler(event),
+  )
 }
 
 /// Dispatches a pointer move at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_move<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
-  bubble::<D, _>(node, all(HandlerSet::pointer_move), |handler| {
-    handler(event)
-  })
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::pointer_move),
+    |at| localize::<D>(at, event),
+    |handler, event| handler(event),
+  )
+}
+
+/// `event` local to `node`'s box, as the driver measures it.
+fn localize<D: Driver>(node: NodeId, event: &PointerEvent) -> PointerEvent {
+  let sink = Scene::<D>::with(|scene| scene.sink(node));
+
+  sink.map_or(*event, |sink| D::default().localize_pointer(&sink, event))
 }
 
 /// Notifies `node` that the pointer entered it.
@@ -137,10 +167,13 @@ fn snapshot<D: Driver, H: ?Sized>(
   })
 }
 
-fn bubble<D: Driver, H: ?Sized>(
+/// Climbs from `node`, running the handlers `select` picks on each node with the
+/// payload `prepare` makes for that node, made only where a handler runs.
+fn bubble<D: Driver, H: ?Sized, E>(
   node: NodeId,
   select: impl Fn(&HandlerSet, &mut Selected<H>),
-  run: impl Fn(&H) -> Prevent,
+  prepare: impl Fn(NodeId) -> E,
+  run: impl Fn(&H, &E) -> Prevent,
 ) -> Prevented {
   batch(|| {
     let mut prevented = Prevented::default();
@@ -149,8 +182,12 @@ fn bubble<D: Driver, H: ?Sized>(
     while let Some(node) = current {
       let (handlers, parent) = snapshot::<D, H>(node, &select);
 
-      for handler in &handlers {
-        prevented.absorb(run(handler));
+      if !handlers.is_empty() {
+        let payload = prepare(node);
+
+        for handler in &handlers {
+          prevented.absorb(run(handler, &payload));
+        }
       }
 
       if prevented.bubbling {
@@ -182,11 +219,15 @@ fn notify<D: Driver, H: ?Sized>(
 mod tests {
   use std::{cell::RefCell, rc::Rc};
 
-  use super::{dispatch_click, dispatch_click_observed, notify_focus};
+  use super::{dispatch_click, dispatch_click_observed, dispatch_pointer_down, notify_focus};
   use crate::{
     Bubbling,
     EventKind,
+    Modifiers,
     NodeId,
+    PointerButton,
+    PointerEvent,
+    PointerHandler,
     Prevent,
     Prevented,
     Scene,
@@ -371,5 +412,42 @@ mod tests {
     notify_focus::<TestDriver>(inner);
 
     assert_eq!(*log.borrow(), ["inner"]);
+  }
+
+  /// A pointer event reaches each handling node local to that node's own box.
+  #[test]
+  fn pointer_events_localize_per_node() {
+    TestDriver::reset();
+
+    let (outer, _, inner) = chain();
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let observe = |name: &'static str| -> Rc<PointerHandler> {
+      let seen = Rc::clone(&seen);
+
+      Rc::new(move |event: &PointerEvent| {
+        seen.borrow_mut().push((name, event.local_x, event.local_y));
+
+        Prevent::None
+      })
+    };
+
+    Scene::<TestDriver>::with(|scene| {
+      scene.handle_pointer_down(outer, observe("outer"));
+      scene.handle_pointer_down(inner, observe("inner"));
+    });
+    TestDriver::set_origin(sink(outer), 10., 100.);
+    TestDriver::set_origin(sink(inner), 30., 120.);
+
+    let event = PointerEvent {
+      x: 35.,
+      y: 125.,
+      local_x: 5.,
+      local_y: 5.,
+      button: Some(PointerButton::Primary),
+      modifiers: Modifiers::default(),
+    };
+    let _ = dispatch_pointer_down::<TestDriver>(inner, &event);
+
+    assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);
   }
 }

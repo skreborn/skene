@@ -47,6 +47,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Placement,
+  PointerEvent,
   RunProps,
   RunValue,
   Scene,
@@ -1432,6 +1433,12 @@ impl Driver for Web {
         ));
       }
     });
+  }
+
+  fn localize_pointer(&self, sink: &u32, event: &PointerEvent) -> PointerEvent {
+    let element = with_dom(|dom| dom.node(*sink).and_then(Node::element).cloned());
+
+    element.map_or(*event, |element| events::localized(event, &element))
   }
 
   fn focus(&self, sink: &u32) {

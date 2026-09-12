@@ -91,6 +91,18 @@ fn only_child(root: &Element) -> Element {
   root.first_element_child().expect("root has a built child")
 }
 
+/// Waits for the browser's next rendering step, after which a box is measured and
+/// painted.
+async fn next_frame() {
+  let promise = js_sys::Promise::new(&mut |resolve, _| {
+    let _ = web_sys::window()
+      .expect("a window")
+      .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 20);
+  });
+
+  let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+}
+
 /// A computed style `property` of `element`.
 fn computed(element: &Element, property: &str) -> String {
   web_sys::window()
@@ -342,6 +354,42 @@ fn pointer_down_handler_receives_the_event() {
   let _ = target.dispatch_event(&event);
 
   assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
+}
+
+/// A press on a slider's thumb asks for the value under the pointer measured from the
+/// slider's own box, not from the thumb's.
+#[wasm_bindgen_test]
+async fn a_press_on_the_thumb_slides_by_the_slider_box() {
+  use skene_gui::core::Dimension;
+
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(40.0f32);
+
+  let _ = mount(move || {
+    Container::new()
+      .set_width(Dimension::Length(200.))
+      .set_child(SimpleSlider::new().bind_value(value))
+      .build()
+  });
+
+  next_frame().await;
+
+  let slider = only_child(&only_child(&root));
+  let stack = only_child(&slider.last_element_child().expect("the drawn body"));
+  let thumb = only_child(&stack.last_element_child().expect("the rail"));
+  let init = web_sys::PointerEventInit::new();
+
+  init.set_bubbles(true);
+  #[expect(clippy::cast_possible_truncation)]
+  init.set_client_x((slider.get_bounding_client_rect().left() + 150.).round() as i32);
+  init.set_button(0);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init).expect("a pointer event");
+
+  let _ = thumb.dispatch_event(&event);
+
+  assert!((value.get() - 75.).abs() < f32::EPSILON, "{}", value.get());
 }
 
 /// A change handler receives the value, in real time, when an input event fires on

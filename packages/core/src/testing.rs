@@ -33,7 +33,7 @@ use super::{
   Slot,
   View,
 };
-use crate::{AccessProp, Color, ColorScheme, FocusOrder, Size};
+use crate::{AccessProp, Color, ColorScheme, FocusOrder, PointerEvent, Size};
 
 /// One call the driver received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +73,7 @@ thread_local! {
   static LOG: RefCell<Vec<Call>> = const { RefCell::new(Vec::new()) };
   static NEXT_SINK: Cell<u32> = const { Cell::new(1) };
   static MEDIA: RefCell<Option<MediaSignals<f32>>> = const { RefCell::new(None) };
+  static ORIGINS: RefCell<Vec<(u32, f32, f32)>> = const { RefCell::new(Vec::new()) };
 }
 
 impl TestDriver {
@@ -81,6 +82,12 @@ impl TestDriver {
     SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
     LOG.with(|log| log.borrow_mut().clear());
     NEXT_SINK.with(|next| next.set(1));
+    ORIGINS.with(|origins| origins.borrow_mut().clear());
+  }
+
+  /// Places `sink`'s box at (`x`, `y`), for pointer events to localize against.
+  pub(super) fn set_origin(sink: u32, x: f32, y: f32) {
+    ORIGINS.with(|origins| origins.borrow_mut().push((sink, x, y)));
   }
 
   /// The calls received since the last reset or take.
@@ -173,6 +180,20 @@ impl Driver for TestDriver {
 
   fn listen(&self, sink: &u32, kind: EventKind) {
     Self::log(Call::Listen(*sink, kind));
+  }
+
+  fn localize_pointer(&self, sink: &u32, event: &PointerEvent) -> PointerEvent {
+    ORIGINS.with(|origins| {
+      origins
+        .borrow()
+        .iter()
+        .find(|(placed, _, _)| placed == sink)
+        .map_or(*event, |(_, x, y)| PointerEvent {
+          local_x: event.x - x,
+          local_y: event.y - y,
+          ..*event
+        })
+    })
   }
 
   fn focus(&self, _: &u32) {}

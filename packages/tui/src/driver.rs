@@ -20,6 +20,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Placement,
+  PointerEvent,
   RunProps,
   RunValue,
   Scene,
@@ -344,6 +345,17 @@ impl Driver for Tui {
         record.listened |= 1 << (kind as u16);
       }
     });
+  }
+
+  fn localize_pointer(&self, sink: &Handle, event: &PointerEvent) -> PointerEvent {
+    let (x, y) = with_store(|store| store.screen_origin(*sink));
+
+    #[expect(clippy::cast_precision_loss)]
+    PointerEvent {
+      local_x: event.x - x as f32,
+      local_y: event.y - y as f32,
+      ..*event
+    }
   }
 
   fn focus(&self, sink: &Handle) {

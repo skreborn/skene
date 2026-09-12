@@ -339,17 +339,27 @@ fn open_popups() -> Vec<NodeId> {
   })
 }
 
-/// The portable payload of a DOM pointer event, with local coordinates relative to
-/// `element`.
-fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
+/// `event` with its local position measured from `element`'s top-left corner.
+pub(super) fn localized(event: &PointerEvent, element: &Element) -> PointerEvent {
   let rect = element.get_bounding_client_rect();
 
-  #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+  #[expect(clippy::cast_possible_truncation)]
   PointerEvent {
-    x: pointer.client_x() as f32,
-    y: pointer.client_y() as f32,
-    local_x: pointer.client_x() as f32 - rect.left() as f32,
-    local_y: pointer.client_y() as f32 - rect.top() as f32,
+    local_x: event.x - rect.left() as f32,
+    local_y: event.y - rect.top() as f32,
+    ..*event
+  }
+}
+
+/// The portable payload of a DOM pointer event, local to `element`.
+fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
+  #[expect(clippy::cast_precision_loss)]
+  let (x, y) = (pointer.client_x() as f32, pointer.client_y() as f32);
+  let event = PointerEvent {
+    x,
+    y,
+    local_x: x,
+    local_y: y,
     button: match pointer.button() {
       0 => Some(PointerButton::Primary),
       1 => Some(PointerButton::Auxiliary),
@@ -362,7 +372,9 @@ fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> Pointe
       alt: pointer.alt_key(),
       meta: pointer.meta_key(),
     },
-  }
+  };
+
+  localized(&event, element)
 }
 
 fn dispatch_pointer(event: &web_sys::Event, dispatch: fn(NodeId, &PointerEvent) -> Prevented) {

@@ -98,6 +98,11 @@ picker's type-ahead waits on a clock no behavior has.
     terminal draws any width as one cell, so only the ink is visible there.
   - `ErrorBoundary` stays on probation: it exists only for errors with no render site
     of their own. If per-resource matching keeps covering real apps, delete it.
+  - **The context menu is not a view** (reported 2026-09-12). The terminal paints its
+    copy and edit menus inside the driver (`selection.rs`, `paint.rs`), and the web
+    leaves the browser's own. Wanted on every facade: a reusable default menu a view
+    can open, extend with its own items, or replace, with the built-in copy, cut and
+    paste entries composed from the same public parts.
 - **Web**
   - **The WebGPU renderer behind `Canvas`** landed (2026-09-08): vello's hybrid
     renderer over wgpu, chosen over the compute-shader `vello` crate because it shares
@@ -120,6 +125,12 @@ picker's type-ahead waits on a clock no behavior has.
   - A text entry is its own `<input>`/`<textarea>`, which holds no children, so its
     `Label` part and body land nowhere on the web (the accessible name still does).
     A caption wants a `<label for>` sibling the driver places beside the field.
+  - **Progressive enhancement is only the built-in controls'** (reported 2026-09-12).
+    A control keeps its scriptless form and hydrates in place, but a user's view has no
+    equivalent seam: a date view that renders an absolute date on the server and
+    upgrades to a live "ago" reading once the bundle arrives has to be hand-rolled.
+    Wanted: a documented, public path for a view to declare its no-JS form and its
+    hydrated enhancement, on the same footing as the built-ins.
 - **Terminal**
   - Selection and clipboard inside a text entry landed (2026-09-08): the entry's own
     anchor beside its caret, `Cut`/`Copy`/`Paste` in its edit menu, `Ctrl-C`/`X`/`V`
@@ -171,6 +182,18 @@ picker's type-ahead waits on a clock no behavior has.
   - Explore splitting `skene run tui` like the web's: keep the invoking terminal for the
     build loop and logs, and print a runner command that attaches the app in a second
     terminal.
+  - Reported 2026-09-12, unverified beyond the report:
+    - The text editor does not scroll: content past its box is unreachable.
+    - The slider paints only full-width cells, so its fill and thumb move in whole
+      steps; sub-cell glyphs would smooth it.
+    - Committing a picker value with `Tab` and then pressing `Tab` or `Space` again
+      re-commits the previous value.
+    - A press on an open picker does not close it; the web's toggles closed.
+    - The gallery's modal opens with focus still on the button that opened it; the
+      first `Tab` is visibly a move from that button to the modal's close button.
+      Focus should land inside the modal on open, as a `<dialog>` does.
+    - The third-party badge in the gallery renders very large; confirm whether that is
+      the library's intent or a sizing defect in the terminal driver.
 - **Snapshot and stores**
   - A key is matched by a 127-bit hash of its value, so two values hashing alike share
     one scope and their state crosses on a restore; a collision check at every build

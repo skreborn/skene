@@ -223,11 +223,13 @@ re-export.
   `Hovered` and `Focused` stay its own. On the web a control that owns a native input
   compiles control state to a selector anchored on that input; natively it is the
   control's own state.
-- **The scriptless form is the control.** Checkbox, radio, slider and the text fields
-  keep their native input inside the label, visually hidden but focusable, so keyboard,
-  form participation and accessibility are the browser's before and after hydration and
-  nothing is swapped. The picker keeps a swap (no engine but Chromium restyles an open
-  `<select>` yet) and the swap carries the reader's value.
+- **The scriptless form is the control.** A text field or editor is its native
+  `<input>` or `<textarea>` itself, decorated as the box; a checkbox, radio or slider
+  keeps its native input inside its label, visually hidden but focusable, beside the
+  parts that draw it. So keyboard, form participation and accessibility are the
+  browser's before and after hydration and nothing is swapped. The picker keeps a swap
+  (no engine but Chromium restyles an open `<select>` yet) and the swap carries the
+  reader's value.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
@@ -682,8 +684,9 @@ Recorded because they were load-bearing and the reasons they fell matter:
   a control.** No first-party code wanted it and it taxed every ordinary handler, because
   the orphan rule blocks `From<()>` for a foreign type. A control decides its verdict.
 - **`Enhanced`: a native `Web*` control rendered without script and swapped for a drawn
-  `Raw*` after hydration.** The scriptless form is the control: the native input stays
-  inside the label, and only the picker swaps.
+  `Raw*` after hydration.** The scriptless form is the control: a text entry is its
+  native element, a toggle or slider keeps its input inside the label, and only the
+  picker swaps.
 - **A derived value as an inline override.** Inline outranks every variant on the web
   and not in the terminal. A derived leaf is a per-node custom-property slot the class
   references.

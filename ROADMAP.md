@@ -117,6 +117,9 @@ picker's type-ahead waits on a clock no behavior has.
       pays for it, and consider a lazy split if it does.
   - Client hints are Chromium-only (`Accept-CH`/`Critical-CH`); other engines get the
     documented defaults.
+  - A text entry is its own `<input>`/`<textarea>`, which holds no children, so its
+    `Label` part and body land nowhere on the web (the accessible name still does).
+    A caption wants a `<label for>` sibling the driver places beside the field.
 - **Terminal**
   - Selection and clipboard inside a text entry landed (2026-09-08): the entry's own
     anchor beside its caret, `Cut`/`Copy`/`Paste` in its edit menu, `Ctrl-C`/`X`/`V`

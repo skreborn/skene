@@ -40,11 +40,18 @@ fn modal_serializes_as_a_closed_dialog() {
 
   assert!(
     rendered.styles().contains(&format!(
-      ".{class}{{background:none;border:none;color:inherit;display:grid;\
-       grid-template-columns:1fr;grid-template-rows:1fr;margin:auto;overflow:visible;\
+      ".{class}{{background:none;border:none;color:inherit;margin:auto;overflow:visible;\
        padding:16px 16px 16px 16px;}}"
     )),
     "{}",
+    rendered.styles()
+  );
+  assert!(
+    rendered.styles().contains(&format!(
+      ".{class}:where([open],:popover-open){{display:grid;grid-template-columns:1fr;\
+       grid-template-rows:1fr;}}"
+    )),
+    "the layout applies only while open: {}",
     rendered.styles()
   );
 

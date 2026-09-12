@@ -73,6 +73,8 @@ use super::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
     NATIVE_CLASS,
+    NativeElement,
+    SCOPE_ATTRIBUTE,
     STYLE_ATTRIBUTE,
     STYLE_ID,
     access_attribute,
@@ -85,8 +87,10 @@ use super::{
     is_form_element,
     link_attributes,
     native_attribute,
+    native_attributes,
     native_element,
     referenced_nodes,
+    takes_disabled,
   },
   motion::VIEW_TRANSITION_RULE,
   token::WebTokenValue,
@@ -192,6 +196,13 @@ impl Node {
     }
     else {
       self.remove_attribute(name);
+    }
+  }
+
+  /// Writes the attributes a control's native element carries.
+  fn write_native_attributes(&mut self, native: NativeElement, props: &ControlProps<Web>) {
+    for (name, value) in native_attributes(native, props) {
+      self.set_attribute(name, &value);
     }
   }
 
@@ -904,36 +915,32 @@ impl Driver for Web {
   fn create_control(&self, props: &ControlProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
       let index = if let Some(native) = native_element(props.kind) {
-        let root = tree.element("label");
-        let input = tree.element(native.tag);
+        if native.is_entry() {
+          let root = tree.element(native.tag);
 
-        if let Some(node) = tree.node(input) {
-          if let Some(kind) = native.kind {
-            node.set_attribute("type", kind);
+          if let Some(node) = tree.node(root) {
+            node.write_native_attributes(native, props);
           }
 
-          node.set_attribute("class", NATIVE_CLASS);
-
-          if let Some(placeholder) = &props.placeholder {
-            node.set_attribute("placeholder", placeholder);
-          }
-
-          if native.tag == "textarea" {
-            node.set_attribute("rows", &props.lines.to_string());
-          }
-
-          if let Some(label) = &props.label {
-            node.set_attribute("aria-label", label);
-          }
+          root
         }
+        else {
+          let root = tree.element("label");
+          let input = tree.element(native.tag);
 
-        tree.attach(root, input, None);
+          if let Some(node) = tree.node(input) {
+            node.write_native_attributes(native, props);
+            node.set_attribute("class", NATIVE_CLASS);
+          }
 
-        if let Some(node) = tree.node(root) {
-          node.carrier = Some(input);
+          tree.attach(root, input, None);
+
+          if let Some(node) = tree.node(root) {
+            node.carrier = Some(input);
+          }
+
+          root
         }
-
-        root
       }
       else {
         let (tag, attribute) = drawn_element(props.kind);
@@ -975,15 +982,15 @@ impl Driver for Web {
       let carrier = tree.carrier(root);
 
       if carrier == root {
-        let is_button = tree.node(root).is_some_and(|node| node.tag() == "button");
-
         if let Some(node) = tree.node(root) {
+          let disabled_natively = takes_disabled(node.tag());
+
           node.set_flag("data-skene-checked", state.checked == Toggle::On);
           node.set_flag("data-skene-indeterminate", state.checked == Toggle::Mixed);
           node.set_flag("data-skene-disabled", state.disabled);
           node.set_flag("data-skene-invalid", state.invalid);
 
-          if is_button {
+          if disabled_natively {
             node.set_flag("disabled", state.disabled);
           }
         }
@@ -1093,6 +1100,7 @@ impl Driver for Web {
       let index = tree.element("div");
 
       if let Some(node) = tree.node(index) {
+        node.set_attribute(SCOPE_ATTRIBUTE, "");
         node.set_inline("display".to_owned(), "contents".to_owned());
       }
 

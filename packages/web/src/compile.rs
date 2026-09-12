@@ -21,6 +21,7 @@ use skene_core::{
   BoxVisitor,
   Condition,
   Conditional,
+  ControlKind,
   ControlProps,
   Definitions,
   Driver,
@@ -50,6 +51,7 @@ use skene_core::{
   Wrap,
 };
 use skene_gui_core::{GuiExt, GuiProperty};
+use skene_views::typography;
 
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},
@@ -227,7 +229,7 @@ fn token_reference(unit: Unit, name: TokenName) -> String {
 fn color_leaf(leaf: &StaticLeaf<skene_core::Color>) -> String {
   match leaf {
     StaticLeaf::Fixed(color) => Declarations::render_color(*color),
-    StaticLeaf::Token(reference) => format!("var(--{})", reference.name()),
+    StaticLeaf::Token(reference) => token_reference(Unit::Plain, reference.name()),
     StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
@@ -636,12 +638,16 @@ fn layout_declarations(layout: Layout) -> Declarations {
   }
 }
 
-/// The base declarations a box starts from: its layout and, when it names itself for
-/// container queries, its containment—`size` when its height is set, else
-/// `inline-size`.
+/// The base declarations a box starts from: its layout and its identity.
+#[inline(always)]
 fn box_base<D: PixelDriver>(props: &BoxProps<D>) -> Declarations {
-  let mut base = layout_declarations(props.layout);
+  box_identity(props, layout_declarations(props.layout))
+}
 
+/// `base` with what names a box: when it names itself for container queries, its
+/// containment—`size` when its height is set, else `inline-size`—and its
+/// view-transition name.
+fn box_identity<D: PixelDriver>(props: &BoxProps<D>, mut base: Declarations) -> Declarations {
   if let Some(name) = props.container {
     let containment = if props.style.height.is_some() {
       "size"
@@ -694,16 +700,44 @@ pub(crate) fn compile_box<D: PixelDriver>(props: &BoxProps<D>) -> Compiled {
 }
 
 /// The rule template of a control: its box's, over the control reset that strips the
-/// native element's own chrome.
+/// native element's own chrome; a text entry's value is inked and selected by the
+/// typography inherited at it.
 pub(crate) fn compile_control<D: PixelDriver>(props: &ControlProps<D>) -> Compiled {
-  compile_box_with(
+  let entry = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor);
+  let ink = if entry {
+    token_reference(Unit::Plain, typography::INK.name())
+  }
+  else {
+    "inherit".to_owned()
+  };
+  let mut compiled = compile_box_with(
     &props.box_props,
     box_base(&props.box_props)
       .set("appearance", "none")
       .set("font", "inherit")
-      .set("color", "inherit")
+      .set("color", ink)
       .set("text-align", "inherit"),
-  )
+  );
+
+  if entry {
+    Conjunction::default().emit(
+      &mut compiled.template,
+      None,
+      "::selection",
+      &Declarations::new()
+        .set(
+          "background-color",
+          token_reference(Unit::Plain, typography::SELECTION_SURFACE.name()),
+        )
+        .set(
+          "color",
+          token_reference(Unit::Plain, typography::SELECTION_INK.name()),
+        )
+        .render(),
+    );
+  }
+
+  compiled
 }
 
 /// The margin declaration placing an overlay against the viewport: `auto` centers an
@@ -721,9 +755,11 @@ const fn placement_margin(placement: Placement) -> &'static str {
 }
 
 /// The rule template of an overlay: its box's over the top-layer reset and its
-/// placement margins, and the `::backdrop` rule of a modal with a backdrop.
+/// placement margins, its layout applying only while open so the platform's
+/// `display: none` stands while closed, and the `::backdrop` rule of a modal with a
+/// backdrop.
 pub(crate) fn compile_overlay<D: PixelDriver>(props: &OverlayProps<D>) -> Compiled {
-  let base = box_base(&props.box_props)
+  let base = box_identity(&props.box_props, Declarations::new())
     .set("border", "none")
     .set("padding", "0")
     .set("background", "none")
@@ -731,6 +767,13 @@ pub(crate) fn compile_overlay<D: PixelDriver>(props: &OverlayProps<D>) -> Compil
     .set("overflow", "visible")
     .set("margin", placement_margin(props.placement));
   let mut compiled = compile_box_with(&props.box_props, base);
+
+  Conjunction::default().emit(
+    &mut compiled.template,
+    None,
+    ":where([open],:popover-open)",
+    &layout_declarations(props.box_props.layout).render(),
+  );
 
   if let Some(color) = props.backdrop {
     Conjunction::default().emit(
@@ -791,7 +834,7 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
 
     Some(match leaf {
       StaticLeaf::Fixed(value) => fixed(value.clone()),
-      StaticLeaf::Token(reference) => format!("var(--{})", reference.name()),
+      StaticLeaf::Token(reference) => token_reference(Unit::Plain, reference.name()),
       StaticLeaf::Expr(expr) => render_expr(expr.node()),
     })
   }

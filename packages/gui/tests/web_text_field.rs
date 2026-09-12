@@ -1,5 +1,5 @@
-//! Server rendering of the text field: the label over its native input, the void-tag
-//! form, value and placeholder serialization, styling, and inert handlers.
+//! Server rendering of the text field: the input as the control's own element, the
+//! void-tag form, value and placeholder serialization, styling, and inert handlers.
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
@@ -26,18 +26,19 @@ fn first_class(body: &str) -> &str {
   &body[start..end]
 }
 
-/// A text field is a label over its native input, and the input serializes as a void
-/// element: no closing tag.
+/// A text field is its native input itself, which serializes as a void element: no
+/// closing tag and no wrapper.
 #[test]
-fn input_is_a_void_element_inside_its_label() {
+fn input_is_the_control_and_a_void_element() {
   let rendered = render_to_string(|| RawTextField::new(TextEntry::new()));
   let body = rendered.body();
 
-  assert!(body.starts_with("<label "), "{body}");
-  assert!(body.contains("<input "), "{body}");
+  assert!(body.starts_with("<input "), "{body}");
   assert!(body.contains("type=\"text\""), "{body}");
+  assert!(body.contains("data-skene-control"), "{body}");
   assert!(!body.contains("</input>"), "{body}");
-  assert!(body.ends_with("</label>"), "{body}");
+  assert!(!body.contains("label"), "{body}");
+  assert!(body.ends_with('>'), "{body}");
 }
 
 /// The placeholder and value serialize as attributes, escaped.
@@ -60,8 +61,8 @@ fn placeholder_and_value_serialize_as_attributes() {
   assert!(rendered.body().contains("value=\"a &amp; b\""));
 }
 
-/// A text field's styling interns like a box's, its focus variant anchored on the
-/// native input.
+/// A text field's styling interns like a box's, its focus variant observed on the
+/// input itself.
 #[test]
 fn input_styling_interns_with_variants() {
   let rendered = render_to_string(|| {
@@ -78,9 +79,10 @@ fn input_styling_interns_with_variants() {
 
   assert!(base.contains("padding:8px 8px 8px 8px;"), "{styles}");
   assert!(
-    styles.contains(&format!(":where(:is(input,textarea):focus) ~ .{class}"))
-      && styles.contains("{border-radius:4px;}"),
-    "the focus variant anchors on the input: {styles}",
+    styles.contains(&format!(
+      ".{class}:where(:is(:focus,:has(> :is(input,textarea):focus)))"
+    )) && styles.contains("{border-radius:4px;}"),
+    "the focus variant is the input's own: {styles}",
   );
 }
 

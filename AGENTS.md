@@ -250,8 +250,10 @@
   (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the driver maps each to its
   layer—on the web a form element takes the native attribute where one exists, so the form
   enforces it without script, and ARIA otherwise. On the web a control that owns a native
-  input keeps it as its scriptless form—checkbox, radio, slider and the text fields need
-  no swap after hydration—and the picker keeps a swap that carries the reader's value. The
+  input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
+  `<textarea>`, a checkbox, radio or slider keeps its input inside its label beside the
+  parts that draw it, and none needs a swap after hydration—and the picker keeps a swap
+  that carries the reader's value. The
   terminal's controls are composed trees painted by the same box and run painters as
   everything else, so they carry roles, accessibility and focus order like the GUI's.
 - **Third parties are first-class by construction.** A component library depends on

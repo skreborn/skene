@@ -51,9 +51,10 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   user-select: none;
 }
 
-/* The single mounted app child fills the viewport and is the page's scroll container,
-   so the page scrolls as a browser page does unless the app overrides its overflow. */
-:where(body > *) {
+/* The app's first box fills the viewport and is the page's scroll container, so the
+   page scrolls as a browser page does unless the app overrides its overflow. A scope
+   is layout-invisible, so the rule reaches through any number of them. */
+:where(body :not([data-skene-scope]):not(body :not([data-skene-scope]) *)) {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -259,9 +260,9 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   outline: none;
 }
 
-/* A control's native input under the new driver: the first child of the control's
-   label. A checkbox, radio or range is drawn by the control's parts, so its input is
-   visually hidden yet focusable; a text entry's input is the visible field. */
+/* A checkbox, radio or range is drawn by the control's parts, so the native input it
+   keeps first inside its label is visually hidden yet focusable; a text entry is its
+   own element and needs none of this. */
 label[data-skene-control] {
   position: relative;
 }

@@ -412,7 +412,7 @@ fn change_handler_receives_the_committed_value() {
     }
   });
 
-  let input = only_child(&only_child(&root));
+  let input = only_child(&root);
 
   assert_eq!(input.tag_name(), "INPUT");
   dispatch(&input, "input");
@@ -491,7 +491,7 @@ fn focus_handle_focuses_the_bound_view() {
 
   handle.focus();
 
-  let input = only_child(&only_child(&root));
+  let input = only_child(&root);
 
   assert_eq!(document().active_element(), Some(input.clone()));
 
@@ -1351,20 +1351,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
 async fn a_painted_box_draws_into_its_canvas() {
   use skene_gui::{Painted, core::Dimension, kurbo::Rect};
   use wasm_bindgen::JsValue;
-  use wasm_bindgen_futures::JsFuture;
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
-
-  /// Waits for the browser's next rendering step, after which the box is measured and
-  /// painted.
-  async fn next_frame() {
-    let promise = js_sys::Promise::new(&mut |resolve, _| {
-      let _ = web_sys::window()
-        .expect("a window")
-        .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 20);
-    });
-
-    let _ = JsFuture::from(promise).await;
-  }
 
   /// The canvas's center pixel, read through a scratch 2d canvas so a WebGPU canvas
   /// reads the same as a blitted one.

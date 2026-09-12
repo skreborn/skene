@@ -8,6 +8,7 @@ rustc-hash.workspace = true
 skene-core.workspace = true
 skene-gui-core.workspace = true
 skene-reactive.workspace = true
+skene-views.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 
@@ -67,7 +68,6 @@ wasi = "0.14"
 [dev-dependencies]
 skene-reactive.workspace = true
 skene-simple.workspace = true
-skene-views.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"

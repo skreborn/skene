@@ -114,6 +114,7 @@ use super::{
     NATIVE_ACCESS_ATTRIBUTES,
     NATIVE_CLASS,
     NativeElement,
+    SCOPE_ATTRIBUTE,
     STYLE_ID,
     access_attribute,
     anchor_text,
@@ -125,8 +126,10 @@ use super::{
     is_form_element,
     link_attributes,
     native_attribute,
+    native_attributes,
     native_element,
     referenced_nodes,
+    takes_disabled,
   },
   token::WebTokenValue,
 };
@@ -755,6 +758,13 @@ fn swap_class_attribute(element: &Element, previous: Option<&str>, class: &str) 
   let _ = list.add_1(class);
 }
 
+/// Writes the attributes a control's native `element` carries.
+fn write_native_attributes(element: &Element, native: NativeElement, props: &ControlProps<Web>) {
+  for (name, value) in native_attributes(native, props) {
+    let _ = element.set_attribute(name, &value);
+  }
+}
+
 /// Writes `on` as the presence of the attribute `name` on `element`.
 fn set_flag(element: &Element, name: &str, on: bool) {
   if on {
@@ -997,44 +1007,48 @@ impl Driver for Web {
   fn create_control(&self, props: &ControlProps<Self>) -> u32 {
     with_dom(|dom| {
       let sink = if let Some(native) = native_element(props.kind) {
-        let root = dom.create_element(
-          "label",
-          Realized::Control {
-            native: Some(native),
-          },
-        );
-        let (input, adopted) = dom.take_element(native.tag);
+        let realized = Realized::Control {
+          native: Some(native),
+        };
 
-        if let Some(kind) = native.kind {
-          let _ = input.set_attribute("type", kind);
+        if native.is_entry() {
+          let root = dom.create_element(native.tag, realized);
+
+          if let Some(node) = dom.node(root)
+            && let Some(element) = node.element()
+          {
+            write_native_attributes(element, native, props);
+
+            if node.adopted {
+              let element = element.clone();
+
+              dom.note_live_state(root, &element, native);
+            }
+          }
+
+          root
         }
+        else {
+          let root = dom.create_element("label", realized);
+          let (input, adopted) = dom.take_element(native.tag);
 
-        let _ = input.set_attribute("class", NATIVE_CLASS);
+          write_native_attributes(&input, native, props);
 
-        if let Some(placeholder) = &props.placeholder {
-          let _ = input.set_attribute("placeholder", placeholder);
+          let _ = input.set_attribute("class", NATIVE_CLASS);
+
+          if adopted {
+            dom.note_live_state(root, &input, native);
+          }
+          else if let Some(node) = dom.node(root) {
+            let _ = node.dom.append_child(&input);
+          }
+
+          if let Some(node) = dom.node_mut(root) {
+            node.carrier = Some(input);
+          }
+
+          root
         }
-
-        if native.tag == "textarea" {
-          let _ = input.set_attribute("rows", &props.lines.to_string());
-        }
-
-        if let Some(label) = &props.label {
-          let _ = input.set_attribute("aria-label", label);
-        }
-
-        if adopted {
-          dom.note_live_state(root, &input, native);
-        }
-        else if let Some(node) = dom.node(root) {
-          let _ = node.dom.append_child(&input);
-        }
-
-        if let Some(node) = dom.node_mut(root) {
-          node.carrier = Some(input);
-        }
-
-        root
       }
       else {
         let (tag, attribute) = drawn_element(props.kind);
@@ -1091,7 +1105,7 @@ impl Driver for Web {
           set_flag(root, "data-skene-disabled", state.disabled);
           set_flag(root, "data-skene-invalid", state.invalid);
 
-          if root.tag_name().eq_ignore_ascii_case("button") {
+          if takes_disabled(&root.tag_name()) {
             set_flag(root, "disabled", state.disabled);
           }
         }
@@ -1280,6 +1294,7 @@ impl Driver for Web {
       let sink = dom.create_element("div", Realized::Scope);
 
       if let Some(html) = dom.node(sink).and_then(Node::html) {
+        let _ = html.set_attribute(SCOPE_ATTRIBUTE, "");
         let _ = html.style().set_property("display", "contents");
       }
 

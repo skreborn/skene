@@ -6,6 +6,8 @@ use skene_core::{
   AccessProp,
   Axis,
   ControlKind,
+  ControlProps,
+  Driver,
   FocusOrder,
   LinkAnnotation,
   LinkPolicy,
@@ -15,7 +17,7 @@ use skene_core::{
   Toggle,
 };
 
-/// The class the native input inside a control's label carries.
+/// The class the native input a control keeps inside its label carries.
 pub(crate) const NATIVE_CLASS: &str = "skene-native";
 
 /// The id of the server's `<style>` block, which the browser leaf adopts.
@@ -27,6 +29,9 @@ pub(crate) const STYLE_ATTRIBUTE: &str = "data-skene-style";
 
 /// The attribute carrying an element's creation-order hydration marker.
 pub(crate) const MARKER_ATTRIBUTE: &str = "data-h";
+
+/// The attribute a scope's layout-invisible element carries.
+pub(crate) const SCOPE_ATTRIBUTE: &str = "data-skene-scope";
 
 /// The element a box is realized as: an anchor when it has a destination, else the
 /// element its role names.
@@ -59,7 +64,8 @@ pub(crate) const fn element_tag(role: Option<Role>) -> &'static str {
   }
 }
 
-/// The native element a control keeps inside its label: the tag and its `type`.
+/// The native element a control stands in: a text entry is the element itself, and
+/// every other kind keeps it inside its label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub(crate) struct NativeElement {
@@ -70,6 +76,16 @@ pub(crate) struct NativeElement {
 }
 
 impl NativeElement {
+  /// Whether the element is a text entry: the control's own element rather than one
+  /// kept inside its label.
+  #[inline(always)]
+  pub(crate) fn is_entry(self) -> bool {
+    matches!(
+      (self.tag, self.kind),
+      ("textarea", _) | ("input", Some("text"))
+    )
+  }
+
   /// Whether the element is a checkbox or a radio: one the platform toggles itself.
   #[cfg(target_os = "unknown")]
   #[inline(always)]
@@ -205,6 +221,38 @@ pub(crate) const fn native_attribute(prop: &AccessProp) -> Option<&'static str> 
 
 /// The native attributes [`native_attribute`] may set, cleared before a rewrite.
 pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 2] = ["required", "readonly"];
+
+/// The attributes a control's native element carries: its `type`, the placeholder and
+/// the lines of a text entry, and the accessible name when nothing visible supplies one.
+pub(crate) fn native_attributes<D: Driver>(
+  native: NativeElement,
+  props: &ControlProps<D>,
+) -> Vec<(&'static str, String)> {
+  let mut attributes = Vec::new();
+
+  if let Some(kind) = native.kind {
+    attributes.push(("type", kind.to_owned()));
+  }
+
+  if let Some(placeholder) = &props.placeholder {
+    attributes.push(("placeholder", placeholder.clone()));
+  }
+
+  if native.tag == "textarea" {
+    attributes.push(("rows", props.lines.to_string()));
+  }
+
+  if let Some(label) = &props.label {
+    attributes.push(("aria-label", label.clone()));
+  }
+
+  attributes
+}
+
+/// Whether `tag` is an element the `disabled` attribute disables natively.
+pub(crate) fn takes_disabled(tag: &str) -> bool {
+  tag.eq_ignore_ascii_case("button") || is_form_element(tag)
+}
 
 /// Whether `tag` is a form element that enforces its native attributes.
 pub(crate) fn is_form_element(tag: &str) -> bool {

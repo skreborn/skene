@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gallery",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": ["run", "-p", "skene-cli", "--", "--dir", "examples/gui/gallery", "run", "web", "--port", "8080"],
+      "port": 8080
+    }
+  ]
+}

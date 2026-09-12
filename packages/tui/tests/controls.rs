@@ -1,5 +1,6 @@
-//! Controls in cells: focus and the keys the behaviors define, the toggles, the slider,
-//! the picker, a disabled control, and the Simple controls' shape.
+//! Controls in cells: focus and the keys the behaviors define, the toggles, the slider
+//! and its fill's edge, the picker and its popup's closing, a disabled control, and the
+//! Simple controls' shape.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -310,6 +311,39 @@ fn slider_shows_the_grab_cursors() {
   });
 }
 
+/// A slider's fill ends where its value lands: whole cells in the fill's color, then a
+/// block glyph of the remaining eighths inked in that color over the track.
+#[test]
+fn a_slider_fill_ends_in_an_eighth_block() {
+  with_driver(|| {
+    let volume = Signal::new(43.0f32);
+
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(20)
+        .set_child(
+          SimpleSlider::new()
+            .set_min(0.)
+            .set_max(100.)
+            .set_step(1.)
+            .bind_value(volume),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(20, 1), "        ▋\n");
+
+    let (_, filled) = colors_at(20, 1, 7, 0);
+    let (edge_ink, edge_surface) = colors_at(20, 1, 8, 0);
+    let (_, track) = colors_at(20, 1, 9, 0);
+
+    assert_eq!(edge_ink, filled, "the edge is inked in the fill's color");
+    assert_eq!(edge_surface, track, "the edge sits on the track");
+    assert_ne!(filled, track);
+  });
+}
+
 fn picker(unit: Signal<String>) -> SimplePicker {
   SimplePicker::new()
     .set_options([("px", "pixels"), ("cell", "cells"), ("pt", "points")])
@@ -491,6 +525,94 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
     );
     assert_ne!(tui::focused_node(), face, "focus moved on");
     assert_eq!(unit.get_untracked(), "px", "nothing was chosen");
+  });
+}
+
+/// `Tab` on a focused option commits it, closes the popup and travels on to the next
+/// tab stop, so the keys that follow reach that stop rather than the closed list.
+#[test]
+fn picker_tab_commits_closes_and_travels_on() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+    let next = FocusHandle::new();
+    let bound = next.clone();
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          picker(unit).into_any(),
+          RawButton::new(Activate::new())
+            .set_label("next")
+            .bind_focus(&bound)
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 12);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("Tab");
+
+    assert_eq!(
+      unit.get_untracked(),
+      "cell",
+      "tab committed the focused option"
+    );
+    assert_eq!(tui::focused_node(), next.node(), "tab travelled on");
+
+    let closed = tui::render_to_text(20, 12);
+
+    assert!(!closed.contains("points"), "the popup closed: {closed}");
+
+    tui::trigger_key(" ");
+
+    let after = tui::render_to_text(20, 12);
+
+    assert!(
+      !after.contains("points"),
+      "space reached the next stop: {after}"
+    );
+    assert_eq!(unit.get_untracked(), "cell");
+  });
+}
+
+/// A press on the face of an open picker is the face's click, which closes the popup;
+/// it is never a dismissal the click would reopen.
+#[test]
+fn a_press_on_an_open_pickers_face_closes_it() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+    let _ = tui::render_to_text(20, 12);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(20, 12);
+    let (column, row) = locate(&open, "pixels");
+
+    assert!(open.contains("points"), "the popup opened: {open}");
+
+    tui::trigger_mouse_click(column, row);
+
+    let closed = tui::render_to_text(20, 12);
+
+    assert!(
+      !closed.contains("points"),
+      "the face's click closed it: {closed}"
+    );
+    assert_eq!(unit.get_untracked(), "px");
+
+    tui::trigger_mouse_click(column, row);
+
+    assert!(
+      tui::render_to_text(20, 12).contains("points"),
+      "the next click reopens it"
+    );
   });
 }
 

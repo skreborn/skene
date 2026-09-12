@@ -145,6 +145,10 @@ pub(crate) const fn settled_window(window: usize, at: usize, extent: usize, span
   }
 }
 
+/// An entry's visible rows, each with its start offset in the shown text, and the
+/// caret's row and column among them, `None` while it is out of view.
+pub(crate) type VisibleRows = (Vec<(usize, String)>, Option<(usize, usize)>);
+
 impl Field {
   /// The window's geometry at an inner width: the caret's position along it, the
   /// extent it covers and the span it shows—columns of the value plus the caret's for
@@ -177,6 +181,68 @@ impl Field {
   /// in view, else moved the least that shows it.
   pub(crate) fn settle(&mut self, inner: usize) {
     self.window = self.settled_window(inner);
+    self.window_width = inner;
+  }
+
+  /// Scrolls an editor's window by `delta` rows at an inner width, clamped to its
+  /// extent and leaving the caret where it is; `false` when it cannot move that way.
+  pub(crate) fn scroll_window(&mut self, inner: usize, delta: i64) -> bool {
+    let limit = i64::try_from(self.window_limit(inner)).unwrap_or(i64::MAX);
+    let window = i64::try_from(self.window).unwrap_or(i64::MAX).min(limit);
+    let next = window.saturating_add(delta).clamp(0, limit);
+
+    if next == window {
+      return false;
+    }
+
+    self.window = usize::try_from(next).unwrap_or(0);
+    self.window_width = inner;
+
+    true
+  }
+
+  /// The rows the entry shows at an inner width, each with its start offset in the
+  /// shown text—the placeholder while the value is empty—and the caret's row and
+  /// column among them, `None` while the window has scrolled it out of view: one
+  /// windowed row for a single-line entry, `lines` wrapped rows for an editor. A
+  /// window settled at another width settles around the caret first.
+  pub(crate) fn visible_rows(&self, inner: usize) -> VisibleRows {
+    let inner = inner.max(1);
+    let empty = self.value.is_empty();
+    let text = if empty {
+      self.placeholder.as_deref().unwrap_or("")
+    }
+    else {
+      self.value.as_str()
+    };
+    let window = if empty {
+      0
+    }
+    else if self.window_width == inner {
+      self.window.min(self.window_limit(inner))
+    }
+    else {
+      self.settled_window(inner)
+    };
+
+    if self.lines <= 1 {
+      let row: String = text.chars().skip(window).take(inner).collect();
+      let caret = (window..window + inner)
+        .contains(&self.caret)
+        .then(|| (0, self.caret - window));
+
+      return (vec![(window, row)], caret);
+    }
+
+    let lines = usize::from(self.lines);
+    let (wrapped, row) = caret_line(text, self.caret, inner);
+    let column = (self.caret - wrapped[row].0).min(inner);
+    let rows = wrapped.into_iter().skip(window).take(lines).collect();
+    let caret = (window..window + lines)
+      .contains(&row)
+      .then(|| (row - window, column));
+
+    (rows, caret)
   }
 
   /// The caret position at the cell (`column`, `row`) of the value shown from `window`
@@ -196,34 +262,6 @@ impl Field {
 
     start + column.min(line.chars().count())
   }
-}
-
-/// The rows an entry shows of `text` from `window` at an inner width, each with its
-/// start offset in the text, and the caret's row and column within them: one windowed
-/// row for a single-line entry, `lines` wrapped rows for an editor. The window settles
-/// around the caret first, so a stale one still shows it.
-pub(crate) fn visible_rows(
-  text: &str,
-  caret: usize,
-  window: usize,
-  inner: usize,
-  lines: u16,
-) -> (Vec<(usize, String)>, (usize, usize)) {
-  if lines <= 1 {
-    let count = text.chars().count();
-    let window = settled_window(window, caret, count + 1, inner.max(1));
-    let row: String = text.chars().skip(window).take(inner).collect();
-
-    return (vec![(window, row)], (0, caret.saturating_sub(window)));
-  }
-
-  let lines = usize::from(lines);
-  let (wrapped, row) = caret_line(text, caret, inner.max(1));
-  let top = settled_window(window, row, wrapped.len(), lines);
-  let column = caret - wrapped[row].0;
-  let rows = wrapped.into_iter().skip(top).take(lines).collect();
-
-  (rows, (row - top, column.min(inner)))
 }
 
 /// An edit a key made to an entry.
@@ -404,7 +442,7 @@ fn pasted_text(text: &str, lines: u16) -> String {
 
 impl Store {
   /// The width an entry shows its value in: inside its border and padding.
-  fn field_inner_width(&self, handle: Handle) -> usize {
+  pub(crate) fn field_inner_width(&self, handle: Handle) -> usize {
     let (width, _) = self.node_size(handle);
     let border = self.node_border(handle);
     let padding = self
@@ -453,6 +491,23 @@ impl Store {
     let field = self.record(handle)?.kind.field()?;
 
     Some(field.caret_in_window(field.settled_window(inner), inner, column, row))
+  }
+
+  /// Scrolls the editor at `handle` by `delta` rows at its laid-out inner width,
+  /// damaging it: `None` when the node is no editor, else whether it moved.
+  pub(crate) fn scroll_editor_by(&mut self, handle: Handle, delta: i64) -> Option<bool> {
+    let inner = self.field_inner_width(handle);
+    let field = self
+      .record_mut(handle)
+      .and_then(|record| record.kind.field_mut())
+      .filter(|field| field.lines > 1)?;
+    let moved = field.scroll_window(inner, delta);
+
+    if moved {
+      self.damage(handle);
+    }
+
+    Some(moved)
   }
 
   /// Settles an entry's window around its caret, at its laid-out inner width.

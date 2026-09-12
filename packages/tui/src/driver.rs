@@ -179,6 +179,7 @@ impl Driver for Tui {
         backdrop: props.backdrop,
         open: false,
         anchor: None,
+        return_focus: None,
       });
 
       store.overlays.push(handle);
@@ -188,19 +189,11 @@ impl Driver for Tui {
   }
 
   fn set_overlay_open(&self, sink: &Handle, open: bool, anchor: Option<&Handle>) {
-    with_store(|store| {
-      if let Some(Kind::Overlay {
-        open: held,
-        anchor: bound,
-        ..
-      }) = store.record_mut(*sink).map(|record| &mut record.kind)
-      {
-        *held = open;
-        *bound = anchor.copied();
-        store.layout_dirty = true;
-        store.paint_dirty = true;
-      }
-    });
+    let focus = with_store(|store| store.set_overlay_open(*sink, open, anchor.copied()));
+
+    if let interaction::OverlayFocus::Moved(next) = focus {
+      interaction::set_focus(next);
+    }
   }
 
   fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {

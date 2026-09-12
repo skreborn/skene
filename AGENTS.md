@@ -191,7 +191,11 @@
   follows a modern browser: layout, features, settings, colors, selection, and every
   interaction's shape—clicks fire on press+release over one target while focus, caret
   placement, and drags act on press; wheel gestures latch their scroll target and
-  consume at its limits until a pause or pointer move; popups light-dismiss; selection
+  consume at its limits until a pause or pointer move, and scroll an editor's rows
+  without moving its caret; popups light-dismiss, except on their own anchor, whose
+  click toggles them; a modal takes focus on open and returns it on close; a key's
+  default runs after the handlers' writes have taken effect, as after a browser's
+  microtask checkpoint; selection
   gestures match (drag, double-click word, triple-click run), inside a text entry as
   well, where keyboard focus selects a field's value and `Ctrl-C`/`X`/`V` copy, cut and
   paste through the ordinary dispatch, so `Ctrl-Q` is the quit. **The clipboard is the

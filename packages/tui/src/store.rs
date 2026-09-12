@@ -148,8 +148,12 @@ pub(crate) struct Field {
   /// The selection's fixed end, `None` while the selection is collapsed.
   pub(crate) anchor: Option<usize>,
   /// The first visible column of a field, or the first visible wrapped row of an
-  /// editor; moves only to keep the caret in view, or under an autoscroll.
+  /// editor; moves only to keep the caret in view, under an autoscroll, or under an
+  /// editor's wheel.
   pub(crate) window: usize,
+  /// The inner width the window was last settled or scrolled at; at any other width
+  /// the window settles around the caret before it shows.
+  pub(crate) window_width: usize,
   pub(crate) placeholder: Option<String>,
   pub(crate) lines: u16,
 }
@@ -162,6 +166,7 @@ impl Field {
       caret: 0,
       anchor: None,
       window: 0,
+      window_width: usize::MAX,
       placeholder,
       lines: if lines == 0 { 1 } else { lines },
     }
@@ -269,6 +274,8 @@ pub(crate) enum Kind {
     backdrop: Option<Color>,
     open: bool,
     anchor: Option<Handle>,
+    /// The node focused when the overlay opened, for its close to return to.
+    return_focus: Option<Handle>,
   },
   Run {
     props: RunProps<Tui>,
@@ -421,6 +428,15 @@ impl Record {
   #[inline(always)]
   pub(crate) const fn is_open_overlay(&self) -> bool {
     matches!(self.kind, Kind::Overlay { open: true, .. })
+  }
+
+  /// The anchor an open overlay is placed against.
+  #[inline(always)]
+  pub(crate) const fn overlay_anchor(&self) -> Option<Handle> {
+    match self.kind {
+      Kind::Overlay { anchor, .. } => anchor,
+      _ => None,
+    }
   }
 
   /// Whether the record is a control.
@@ -1113,6 +1129,48 @@ impl Store {
       ),
       Err(_) => (0, 0),
     }
+  }
+
+  /// The cells a box's background fills when its laid-out width ends mid-cell: the
+  /// whole cells from its rounded start, and the eighths of the cell after them.
+  /// `None` for a box painted to whole cells: one with laid-out children or a sibling
+  /// beside it, or one whose edge lands on a cell.
+  pub(crate) fn fractional_width(&self, handle: Handle) -> Option<(usize, u8)> {
+    let record = self.record(handle)?;
+    let laid_out = |handle: Handle| {
+      self
+        .record(handle)
+        .is_some_and(|record| record.kind.is_laid_out())
+    };
+
+    if record.children.iter().any(|child| laid_out(*child)) {
+      return None;
+    }
+
+    let siblings = self
+      .record(record.parent?)?
+      .children
+      .iter()
+      .filter(|sibling| laid_out(**sibling))
+      .count();
+
+    if siblings != 1 {
+      return None;
+    }
+
+    let layout = self.taffy.unrounded_layout(record.taffy?);
+    let end = layout.location.x + layout.size.width;
+    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let eighths = ((end - end.floor()) * 8.).round() as u8;
+
+    if eighths == 0 || eighths == 8 {
+      return None;
+    }
+
+    #[expect(clippy::cast_possible_truncation)]
+    let whole = end.floor() as i64 - layout.location.x.round() as i64;
+
+    Some((usize::try_from(whole).ok()?, eighths))
   }
 
   /// A node's laid-out position within its layout parent, in cells.

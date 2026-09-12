@@ -85,8 +85,26 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for AcmePalette<N> {
   }
 }
 
+/// A length unit the badge knows its shape in.
+#[diagnostic::on_unimplemented(
+  message = "the Acme badge has no shape in `{Self}`",
+  label = "an Acme view is drawn in logical pixels (`f32`) or cells (`u32`)"
+)]
+pub trait AcmeUnit: Scalar {
+  /// The badge's padding around its label.
+  const BADGE_INSET: Inset<Self>;
+}
+
+impl AcmeUnit for f32 {
+  const BADGE_INSET: Inset<Self> = Inset::symmetric(8., 2.);
+}
+
+impl AcmeUnit for u32 {
+  const BADGE_INSET: Inset<Self> = Inset::symmetric(1, 0);
+}
+
 /// A short label on the Acme surface: rounded where the medium rounds corners, square
-/// where it has none.
+/// where it has none, padded by the unit's [`AcmeUnit::BADGE_INSET`].
 #[must_use]
 pub struct AcmeBadge<D: Driver> {
   text: String,
@@ -108,6 +126,7 @@ impl<D: Driver> AnyKind for AcmeBadge<D> {}
 
 impl<D: Driver> View<D> for AcmeBadge<D>
 where
+  D::Scalar: AcmeUnit,
   D::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
@@ -115,10 +134,7 @@ where
     let _ = <AcmePalette<D::Scalar> as ThemedIn<D>>::current();
 
     Container::<D>::new()
-      .set_padding(Inset::symmetric(
-        D::Scalar::from_f32(8.),
-        D::Scalar::from_f32(2.),
-      ))
+      .set_padding(D::Scalar::BADGE_INSET)
       .set_color(AcmePalette::<D::Scalar>::BADGE)
       .set_corner_radius(6.)
       .set_child(Text::new(self.text).set_color(AcmePalette::<D::Scalar>::BADGE_INK))

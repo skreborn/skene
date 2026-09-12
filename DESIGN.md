@@ -525,7 +525,15 @@ the terminal. The terminal's own selection—a drag with `Shift` held, `Option` 
 iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
 still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
 key. Focus belongs to controls, which are composed trees with roles
-and focus order, exactly as on the GUI.
+and focus order, exactly as on the GUI. A key's default runs after the handlers' writes
+have taken effect, as a browser's does after its microtask checkpoint. A modal takes
+focus to its first tab stop as it opens and returns it to the node that held focus as
+it closes, a popup closing with focus inside returns it the same way, and a press on
+the anchor a popup opened from is the anchor's click rather than a dismissal. The wheel
+scrolls an editor's window over its wrapped rows without moving the caret, and a caret
+scrolled out of view hides until focus or an edit reveals it. A borderless box that is
+its parent's only laid-out child and holds none paints the eighths its laid-out width
+ends in as a block glyph in its color, so a slider's fill moves by eighth cells.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a

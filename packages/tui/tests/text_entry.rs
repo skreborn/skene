@@ -1,5 +1,6 @@
 //! Text entry in cells: the value bound both ways, the caret and its keys, the window
-//! over a long value, and the terminal's own cursor.
+//! over a long value or an editor's rows, the wheel over an editor, and the terminal's
+//! own cursor.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -205,6 +206,107 @@ fn an_editor_breaks_lines_and_moves_between_them() {
     tui::trigger_key("X");
 
     assert_eq!(bio.get_untracked(), "abX\ncd");
+  });
+}
+
+/// An editor's window follows the caret through its wrapped rows: typing past the
+/// last row scrolls the window down, and moving the caret above it scrolls it back.
+#[test]
+fn an_editor_windows_its_rows_around_the_caret() {
+  with_driver(|| {
+    let bio = Signal::new(String::new());
+
+    let _ = tui::mount(|| {
+      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 4);
+
+    tui::trigger_key("Tab");
+
+    for key in ["a", "Enter", "b", "Enter", "c", "Enter", "d", "Enter", "e"] {
+      tui::trigger_key(key);
+    }
+
+    assert_eq!(tui::render_to_text(20, 4), "c\nd\ne\n\n");
+    assert_eq!(tui::render_to_caret(20, 4), Some((1, 2)));
+
+    for _ in 0..3 {
+      tui::trigger_key("ArrowUp");
+    }
+
+    assert_eq!(tui::render_to_text(20, 4), "b\nc\nd\n\n");
+    assert_eq!(tui::render_to_caret(20, 4), Some((1, 0)));
+  });
+}
+
+/// The wheel scrolls an editor's window over its rows without moving the caret,
+/// consuming at its ends; a caret scrolled out of view hides until focus or an edit
+/// brings its row back.
+#[test]
+fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
+  with_driver(|| {
+    let bio = Signal::new("a\nb\nc\nd\ne".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_child(RawTextEditor::new(
+          TextEntry::new().set_lines(3).bind_value(bio),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(20, 4), "a\nb\nc\n\n");
+
+    tui::trigger_mouse_scroll(1, 1, 0, 1);
+
+    assert_eq!(tui::render_to_text(20, 4), "b\nc\nd\n\n");
+
+    tui::trigger_mouse_scroll(1, 1, 0, 5);
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "c\nd\ne\n\n",
+      "clamped at the end"
+    );
+
+    tui::trigger_mouse_scroll(1, 1, 0, -5);
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "a\nb\nc\n\n",
+      "clamped at the start"
+    );
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "c\nd\ne\n\n",
+      "focus reveals the caret at the end"
+    );
+    assert_eq!(tui::render_to_caret(20, 4), Some((1, 2)));
+
+    tui::trigger_mouse_scroll(1, 1, 0, -5);
+
+    assert_eq!(tui::render_to_text(20, 4), "a\nb\nc\n\n");
+    assert_eq!(
+      tui::render_to_caret(20, 4),
+      None,
+      "the caret hides while scrolled out"
+    );
+
+    tui::trigger_key("x");
+
+    assert_eq!(bio.get_untracked(), "a\nb\nc\nd\nex");
+    assert_eq!(
+      tui::render_to_text(20, 4),
+      "c\nd\nex\n\n",
+      "an edit reveals the caret"
+    );
+    assert_eq!(tui::render_to_caret(20, 4), Some((2, 2)));
   });
 }
 

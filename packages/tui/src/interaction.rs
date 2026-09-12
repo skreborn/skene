@@ -42,6 +42,14 @@ use crate::{
 /// The rows or columns one wheel report scrolls: a browser's three lines per notch.
 pub(crate) const WHEEL_STEP: i64 = 3;
 
+/// The focus move an overlay's opening or closing asks for.
+pub(crate) enum OverlayFocus {
+  /// Focus stays where it is.
+  Held,
+  /// Focus moves to the node, or leaves every node.
+  Moved(Option<Handle>),
+}
+
 impl Store {
   /// Every open overlay, in build order, reachable from the root; later entries stack
   /// on top.
@@ -603,6 +611,71 @@ impl Store {
       .collect()
   }
 
+  /// Opens or closes an overlay against `anchor`, returning the focus move the change
+  /// asks for. A modal opening takes focus to its first tab stop, or from every node
+  /// when it has none; an overlay closing—a modal, or a popup holding the focus—returns
+  /// it to the node focused when it opened, else to its anchor's focus holder.
+  pub(crate) fn set_overlay_open(
+    &mut self,
+    handle: Handle,
+    open: bool,
+    anchor: Option<Handle>,
+  ) -> OverlayFocus {
+    let focused = self.focused;
+    let Some(Kind::Overlay {
+      open: held,
+      anchor: bound,
+      modal,
+      return_focus,
+      ..
+    }) = self.record_mut(handle).map(|record| &mut record.kind)
+    else {
+      return OverlayFocus::Held;
+    };
+    let was_open = std::mem::replace(held, open);
+    let modal = *modal;
+    let previous = match (was_open, open) {
+      (false, true) => std::mem::replace(return_focus, focused),
+      (true, false) => return_focus.take(),
+      _ => None,
+    };
+
+    *bound = anchor;
+    self.layout_dirty = true;
+    self.paint_dirty = true;
+
+    if open == was_open {
+      return OverlayFocus::Held;
+    }
+
+    if open {
+      if !modal {
+        return OverlayFocus::Held;
+      }
+
+      return OverlayFocus::Moved(
+        self
+          .tab_order()
+          .into_iter()
+          .find(|stop| self.ancestors(*stop).contains(&handle)),
+      );
+    }
+
+    let inside = focused.is_some_and(|focused| self.ancestors(focused).contains(&handle));
+
+    if !modal && !inside {
+      return OverlayFocus::Held;
+    }
+
+    OverlayFocus::Moved(
+      previous
+        .filter(|previous| {
+          self.is_reachable(*previous) && self.record(*previous).is_some_and(Record::is_focusable)
+        })
+        .or_else(|| anchor.and_then(|anchor| self.focus_holder(anchor))),
+    )
+  }
+
   /// Whether the record is a text entry.
   pub(crate) fn is_field(&self, handle: Handle) -> bool {
     self
@@ -893,10 +966,16 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
     let mut dismissed = None;
     let mut blocked = false;
 
+    // A press on the anchor a popup opened from leaves it to the anchor's click.
     if let Some((top, modal)) = store.topmost_open_overlay() {
       let mut overlay_path = Vec::new();
+      let on_anchor = !modal
+        && store
+          .record(top)
+          .and_then(Record::overlay_anchor)
+          .is_some_and(|anchor| path.iter().any(|(handle, _)| *handle == anchor));
 
-      if !store.hit_overlay(top, x, y, &mut overlay_path) {
+      if !store.hit_overlay(top, x, y, &mut overlay_path) && !on_anchor {
         dismissed = store.record(top).and_then(|record| record.node);
         blocked = modal;
       }
@@ -1178,8 +1257,13 @@ pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
   }
 }
 
-/// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved.
+/// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. An editor
+/// scrolls its window over its wrapped rows.
 pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
+  if let Some(moved) = store(|store| store.scroll_editor_by(handle, delta_y)) {
+    return moved;
+  }
+
   let Some(offsets) = store(|store| store.scrolled_by(handle, delta_x, delta_y))
   else {
     return false;
@@ -1291,6 +1375,9 @@ pub(crate) fn key(event: &KeyEvent) {
   let prevented = target.map_or(Prevented::default(), |node| {
     dispatch_key_down::<Tui>(node, event)
   });
+
+  // The handlers' writes have taken effect by the time the default runs.
+  skene_reactive::Runtime::flush_sync();
 
   if prevented.platform {
     return;

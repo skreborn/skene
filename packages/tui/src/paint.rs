@@ -457,17 +457,9 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.left).unwrap_or(0),
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
-      let inner_width = width
-        .saturating_sub(2 * border_cells)
-        .saturating_sub(usize::try_from(padding.left + padding.right).unwrap_or(0));
-      let (text, dim) = if field.value.is_empty() {
-        (field.placeholder.clone().unwrap_or_default(), true)
-      }
-      else {
-        (field.value.clone(), false)
-      };
-      let (rows, caret) =
-        crate::field::visible_rows(&text, field.caret, field.window, inner_width, field.lines);
+      let inner_width = store.field_inner_width(handle);
+      let dim = field.value.is_empty();
+      let (rows, caret) = field.visible_rows(inner_width);
       let selection = field
         .selection()
         .filter(|_| focused)
@@ -483,7 +475,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         shadow,
         rows: rows.into_iter().map(|(_, row)| row).collect(),
         dim,
-        caret: (focused && inner_width > 0).then_some(caret),
+        caret: caret.filter(|_| focused && inner_width > 0),
         inset,
         selection,
       }
@@ -632,7 +624,22 @@ fn paint_node(
         draw_shadow(buffer, x, y, width, height, shadow, dark);
       }
 
-      fill(buffer, x, y, width, height, background);
+      // A borderless box ending mid-cell fills its whole cells and draws the rest as
+      // a block glyph in its color over what lies beneath.
+      match store.fractional_width(handle).filter(|_| border.is_none()) {
+        Some((whole, eighths)) => {
+          fill(buffer, x, y, whole, height, background);
+          draw_edge(
+            buffer,
+            x + isize::try_from(whole).expect("fits"),
+            y,
+            height,
+            eighths,
+            background,
+          );
+        }
+        None => fill(buffer, x, y, width, height, background),
+      }
 
       if let Some(border) = border
         && border.color.is_some()
@@ -1033,6 +1040,32 @@ fn fill(
           ..TerminalCell::EMPTY
         };
       }
+    }
+  }
+}
+
+/// Draws a box's trailing edge down the column at `x`: the leftmost `eighths`/8 of
+/// each cell in `color`, over the background already there.
+fn draw_edge(
+  buffer: &mut Buffer,
+  x: isize,
+  y: isize,
+  height: usize,
+  eighths: u8,
+  color: Option<(u8, u8, u8)>,
+) {
+  if color.is_none() {
+    return;
+  }
+
+  for row in 0..height {
+    if let Some(cell) = buffer.cell_mut(x, y + isize::try_from(row).expect("fits")) {
+      *cell = TerminalCell {
+        character: left_block(eighths),
+        foreground: color,
+        background: cell.background,
+        ..TerminalCell::EMPTY
+      };
     }
   }
 }

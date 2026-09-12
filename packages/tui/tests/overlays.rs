@@ -1,5 +1,6 @@
 //! Overlays in cells: a modal's scrim, blocking and dismissal, a popup's anchoring and
-//! light dismissal, and focus trapped inside a modal.
+//! light dismissal, and focus trapped inside a modal, taken by it on open and returned
+//! on close.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -204,5 +205,55 @@ fn a_modal_traps_focus() {
     tui::trigger_key("Tab");
 
     assert_eq!(tui::focused_node(), outside.node());
+  });
+}
+
+/// A modal takes focus to its first tab stop as it opens and returns it to the node
+/// that held focus as it closes.
+#[test]
+fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
+  with_driver(|| {
+    let open = Signal::new(false);
+    let opener = FocusHandle::new();
+    let inside = FocusHandle::new();
+    let (bound_opener, bound_inside) = (opener.clone(), inside.clone());
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .set_label("open")
+            .bind_focus(&bound_opener)
+            .handle_click(move || open.set(true))
+            .into_any(),
+          Overlay::modal()
+            .bind_open(open)
+            .set_child(
+              RawButton::new(Activate::new())
+                .set_label("close")
+                .bind_focus(&bound_inside)
+                .handle_click(move || open.set(false)),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(12, 4);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    assert!(open.get(), "the opener opened the modal");
+    assert_eq!(tui::focused_node(), inside.node(), "focus landed inside");
+
+    tui::trigger_key("Enter");
+
+    assert!(!open.get(), "the close button closed the modal");
+    assert_eq!(
+      tui::focused_node(),
+      opener.node(),
+      "focus returned to the opener"
+    );
   });
 }

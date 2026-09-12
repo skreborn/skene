@@ -182,18 +182,27 @@ picker's type-ahead waits on a clock no behavior has.
   - Explore splitting `skene run tui` like the web's: keep the invoking terminal for the
     build loop and logs, and print a runner command that attaches the app in a second
     terminal.
-  - Reported 2026-09-12, unverified beyond the report:
-    - The text editor does not scroll: content past its box is unreachable.
-    - The slider paints only full-width cells, so its fill and thumb move in whole
-      steps; sub-cell glyphs would smooth it.
-    - Committing a picker value with `Tab` and then pressing `Tab` or `Space` again
-      re-commits the previous value.
-    - A press on an open picker does not close it; the web's toggles closed.
-    - The gallery's modal opens with focus still on the button that opened it; the
-      first `Tab` is visibly a move from that button to the modal's close button.
-      Focus should land inside the modal on open, as a `<dialog>` does.
-    - The third-party badge in the gallery renders very large; confirm whether that is
-      the library's intent or a sizing defect in the terminal driver.
+  - **The terminal reports of 2026-09-12 landed** (2026-09-12). A key's default runs
+    after the handlers' writes have taken effect, as a browser's does after its
+    microtask checkpoint, so `Tab` on a picker's option commits, closes the popup and
+    travels on to the next stop instead of into the closed list. A press on the anchor
+    a popup opened from is the anchor's click and never a dismissal, as on the web, so
+    the face of an open picker closes it. A modal takes focus to its first tab stop as
+    it opens and returns it to the node that held focus as it closes, and a popup
+    closing with focus inside returns it the same way, as `<dialog>` and a popover do.
+    The wheel scrolls an editor's window over its wrapped rows without moving the
+    caret, consuming at its ends like any scroll target; a caret scrolled out of view
+    hides until focus or an edit reveals it, and the window remembers the width it was
+    settled at so only a resize re-settles it. A borderless box that is its parent's
+    only laid-out child and holds none paints the eighths its laid-out width ends in
+    as a block glyph in its color over what lies beneath, so a slider's fill moves by
+    eighth cells. The badge's size was the library's own: `Inset::symmetric(8, 2)` in
+    cells is eight columns by two rows, so `acme-ui` now states its inset per unit
+    through `AcmeUnit`, exactly as `SimpleUnit` carries the Simple shape. Left:
+    - The thumb is a one-cell box at a rounded position, so it still moves by whole
+      cells; only the fill is smooth.
+    - A fractional edge is horizontal only; a vertical fill ends on a whole cell, since
+      only the lower blocks exist and a top-anchored fill would need upper ones.
 - **Snapshot and stores**
   - A key is matched by a 127-bit hash of its value, so two values hashing alike share
     one scope and their state crosses on a restore; a collision check at every build

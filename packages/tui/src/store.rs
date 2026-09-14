@@ -1131,10 +1131,10 @@ impl Store {
     }
   }
 
-  /// A childless box's laid-out span in eighth cells, from its rounded start: where
-  /// it begins, negative before that cell, and how far it extends. `None` for a box
-  /// painted to whole cells: one with laid-out children, or one whose edges both land
-  /// on a cell.
+  /// A childless box's laid-out span in eighth cells from its parent's origin: where
+  /// it begins and how far it extends, unrounded, so boxes beside each other meet
+  /// where the layout put them. `None` for a box with laid-out children, or one of no
+  /// width.
   pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
     let record = self.record(handle)?;
     let laid_out = |handle: Handle| {
@@ -1149,11 +1149,11 @@ impl Store {
 
     let layout = self.taffy.unrounded_layout(record.taffy?);
     #[expect(clippy::cast_possible_truncation)]
-    let start = ((layout.location.x - layout.location.x.round()) * 8.).round() as isize;
+    let start = (layout.location.x * 8.).round() as isize;
     #[expect(clippy::cast_possible_truncation)]
     let extent = (layout.size.width.max(0.) * 8.).round() as isize;
 
-    (start != 0 || extent % 8 != 0).then_some((start, extent))
+    (extent > 0).then_some((start, extent))
   }
 
   /// A node's laid-out position within its layout parent, in cells.

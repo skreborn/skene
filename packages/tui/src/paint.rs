@@ -624,10 +624,13 @@ fn paint_node(
         draw_shadow(buffer, x, y, width, height, shadow, dark);
       }
 
-      // A borderless box with an edge mid-cell fills its whole cells and draws each
-      // partial one as a block glyph carrying its color beside what lies beneath.
+      // A childless, borderless box paints from its parent's origin by eighths: whole
+      // cells in its color, and a cell an edge crosses as a block glyph carrying its
+      // color beside what lies beneath.
       match store.smooth_span(handle).filter(|_| border.is_none()) {
-        Some((start, extent)) => draw_smooth(buffer, x, y, height, start, extent, background),
+        Some((start, extent)) => {
+          draw_smooth(buffer, offset_x, y, height, start, extent, background);
+        }
         None => fill(buffer, x, y, width, height, background),
       }
 

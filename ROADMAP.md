@@ -199,10 +199,26 @@ picker's type-ahead waits on a clock no behavior has.
     eighth cells. The badge's size was the library's own: `Inset::symmetric(8, 2)` in
     cells is eight columns by two rows, so `acme-ui` now states its inset per unit
     through `AcmeUnit`, exactly as `SimpleUnit` carries the Simple shape. Left:
-    - The thumb is a one-cell box at a rounded position, so it still moves by whole
-      cells; only the fill is smooth.
     - A fractional edge is horizontal only; a vertical fill ends on a whole cell, since
       only the lower blocks exist and a top-anchored fill would need upper ones.
+  - **The terminal reports of 2026-09-14 landed** (2026-09-14). A release ends a drag
+    on the node the press captured wherever the pointer is, so a slider released off
+    itself no longer follows a later hover. The Simple slider's thumb is a box in its
+    own color (in cells the muted foreground, the ring while focus is visible) pinned
+    by the value's fraction of the track less its own width, and the fill runs to it,
+    so both stay inside the track at either end and a terminal slider at zero shows
+    only the thumb on the first cell; a box's smooth paint covers both edges, so the
+    thumb moves by eighths under the keys and the cell it shares with the fill or the
+    track is one glyph carrying both colors. An editor is a scroll target like a box:
+    its scrollbar paints down its last column when its rows overflow, drags, and the
+    page keys reach it; the horizontal wheel moves a field's window along its value.
+    A picker's face keeps its ring while its list is open, through the control-scoped
+    `Open` state, on every facade. A childless box paints from its parent's origin by
+    its unrounded layout rather than taffy's rounded one, since taffy rounds against
+    absolute coordinates and a slider centered on a half cell had its fill's width and
+    its thumb's position round apart, leaving a track cell between them. Left:
+    - A mouse drag on a slider lands on whole cells, since the pointer is reported per
+      cell; the keys and a bound signal move the thumb by eighths.
 - **Snapshot and stores**
   - A key is matched by a 127-bit hash of its value, so two values hashing alike share
     one scope and their state crosses on a restore; a collision check at every build

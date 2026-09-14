@@ -82,13 +82,10 @@ reasoning.
 
 ### Next
 
-1. **Move the termina dependency to the fork's `parse-mode-reports` branch** once it
-   is pushed (name it in `packages/tui/Cargo.toml`, then `cargo update -p termina`):
-   until then the mouse is dead in every terminal honoring SGR-Pixels (below).
-2. **Links become tab stops in the terminal**, as they are on the web (below).
-3. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+1. **Links become tab stops in the terminal**, as they are on the web (below).
+2. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-4. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+3. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -160,8 +157,9 @@ picker's type-ahead waits on a clock no behavior has.
     that asked, dropped if that entry is gone or none asked; a second `Ctrl-V` while
     one is pending retargets rather than queues, and a terminal that never answers
     leaves its own paste key, which arrives bracketed. Termina parses no OSC 52 report
-    upstream; the fork's `parse-selection` branch is the git dependency until the PR
-    merges. Owning the read loop around termina's public `Parser` was the fallback and
+    upstream, nor a DECRPM reply for most modes; the fork's `parse-mode-reports`
+    branch, stacked on `parse-selection`, is the git dependency until both PRs merge.
+    Owning the read loop around termina's public `Parser` was the fallback and
     is not needed. **The clipboard and the mouse are launch configuration** (landed
     2026-09-08): `Launch::set_clipboard` names which of copy, cut and paste exist
     (`Clipboard::ALL` by default; without copy nothing in the document is selectable,
@@ -243,9 +241,8 @@ picker's type-ahead waits on a clock no behavior has.
       arrived, the driver kept reading pixel reports as cells, and every press and
       wheel landed off screen. Fixed in the fork: `parse-mode-reports`, stacked on
       `parse-selection`, parses a reply for any mode (`DecPrivateMode::from(u16)`,
-      `Unspecified` for one termina does not model), proven against the driver
-      through a local path override. The manifest names `parse-selection` until the
-      stacked branch is pushed, so the fault stands until the dependency moves.
+      `Unspecified` for one termina does not model); the git dependency names that
+      branch (2026-09-14).
     - A terminal that honors 1016 but answers no DECRQM would report pixels the driver
       reads as cells; no such terminal is known.
     - Windows reports no pixel size, and tmux passes no pixel reports through; both

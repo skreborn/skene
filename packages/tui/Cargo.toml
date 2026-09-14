@@ -14,7 +14,7 @@ skene-tui-core.workspace = true
 skene-views.workspace = true
 taffy = "0.9"
 # The fork carries the OSC 52 reply parse until the upstream PR merges.
-termina = { branch = "parse-selection", git = "https://github.com/skreborn/termina" }
+termina = { branch = "parse-mode-reports", git = "https://github.com/skreborn/termina" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-simple-tui.workspace = true

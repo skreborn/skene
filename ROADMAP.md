@@ -82,9 +82,13 @@ reasoning.
 
 ### Next
 
-1. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+1. **Move the termina dependency to the fork's `parse-mode-reports` branch** once it
+   is pushed (name it in `packages/tui/Cargo.toml`, then `cargo update -p termina`):
+   until then the mouse is dead in every terminal honoring SGR-Pixels (below).
+2. **Links become tab stops in the terminal**, as they are on the web (below).
+3. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-2. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+4. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -177,6 +181,12 @@ picker's type-ahead waits on a clock no behavior has.
       and neither is tested here.
     - Queries written before raw mode takes effect print their replies to the screen
       (helix's finding over SSH); the loop enters raw mode first, and keeps that order.
+  - **Links are not tab stops in the terminal** (reported 2026-09-14). A link is a run
+    painted as an OSC 8 anchor and opened by a click on one of its cells; the GUI's
+    link is an `<a>`, which the browser makes a tab stop that `Enter` follows. Wanted:
+    a link run in the terminal's focus order, painted with the focus ring while focus
+    is visible, opened by `Enter` under the same `LinkPolicy`, and reported as a link
+    to accessibility, so the keyboard reaches every link the mouse can.
   - Explore per-input undo/redo (`Ctrl-Z`, `Ctrl-Shift-Z`/`Ctrl-Y`): a bounded ring of
     (value, caret, selection) per text control, matching what the DOM gives an `<input>`.
   - Explore splitting `skene run tui` like the web's: keep the invoking terminal for the
@@ -227,6 +237,15 @@ picker's type-ahead waits on a clock no behavior has.
     the boundary between the two readings. Hit-testing, focus, selection and the caret
     stay by cell. The range behavior reads the pointer's exact position, and a
     terminal reporting cells alone places it at the cell's center. Left:
+    - **Every terminal honoring 1016 lost its mouse** (reported 2026-09-14, Ghostty:
+      no click, no wheel). Termina's DECRPM parser accepted a reply for modes 2026
+      and 2027 only and dropped every other, so the reply confirming pixels never
+      arrived, the driver kept reading pixel reports as cells, and every press and
+      wheel landed off screen. Fixed in the fork: `parse-mode-reports`, stacked on
+      `parse-selection`, parses a reply for any mode (`DecPrivateMode::from(u16)`,
+      `Unspecified` for one termina does not model), proven against the driver
+      through a local path override. The manifest names `parse-selection` until the
+      stacked branch is pushed, so the fault stands until the dependency moves.
     - A terminal that honors 1016 but answers no DECRQM would report pixels the driver
       reads as cells; no such terminal is known.
     - Windows reports no pixel size, and tmux passes no pixel reports through; both
@@ -291,6 +310,85 @@ hierarchy, so the platform's own inspectors already work); islands architecture
 (compiled no-JS styling already removes most reasons a static page ships wasm);
 LiveView-style server rendering (adjacent to the server-side non-goal); a webview
 desktop shell.
+
+## Planned: the terminal's progressive enhancements
+
+A plain emulator is the floor and stays whole: every capability below is asked for at
+launch, confirmed by a parsed reply or ignored in silence, and degrades to the cell
+rendering that exists today. None becomes a requirement, a type bound or a launch
+setting a terminal must meet, and none is inferred from a name (XTVERSION, `TERM`),
+since a name is not a capability. Multiplexers are part of the floor: tmux answers most
+queries itself, passes graphics only as unicode placeholders and passes no pixel mouse,
+so every item is proven through tmux and ssh as well as bare. In value order:
+
+1. **Synchronized output (mode 2026)**, the cheapest: every frame written between
+   `CSI ? 2026 h` and `l`, so a redraw never tears; a terminal without it ignores the
+   mode. **Grapheme clustering (2027)** beside it, so the terminal's width of a cluster
+   agrees with the layout's. DECRQM confirms both, through the fork's parser.
+2. **In-band resize (2048)**: kitty, Ghostty and foot report `CSI 48 ; rows ; cols ;
+   height ; width t` in the input stream on every resize, the pixel size with it, so it
+   replaces SIGWINCH and feeds the pixel mouse where `TIOCGWINSZ` reports no pixels
+   (Windows). DECRQM confirms it.
+3. **Styled and colored underlines** (SGR `4:3`, `4:4`, `4:5`, `58`): the run's
+   decoration gains wavy, dotted and dashed in a color of its own, so an invalid field
+   and a link decorate as on the web. Termina writes them already, the DECRQSS SGR
+   round trip that reports the depth tells whether the terminal kept them, and a
+   terminal without them shows a plain underline.
+4. **The rest of the kitty keyboard flags**: `REPORT_EVENT_TYPES` for key releases and
+   repeats (the GUI's key-up, a held key), `REPORT_ALTERNATE_KEYS` so a shortcut holds
+   across layouts, `REPORT_ALL_KEYS_AS_ESCAPE_CODES` for a modifier alone. Only
+   `DISAMBIGUATE_ESCAPE_CODES` is asked today; the reply to the flags query already
+   says what the terminal offers.
+5. **Text sizing (OSC 66)**: a run at a scale of two to seven cells, at a fraction of
+   one, or at a declared width, so a heading is a heading in the terminal and the
+   layout knows a cluster's width before the terminal draws it; the run painter emits
+   the sized run and layout measures it at `scale` rows by `scale` times its columns.
+   kitty and foot ship it and Ghostty tracks it (ghostty-org/ghostty#10333). The probe
+   is a sized space followed by a cursor position report; a terminal without it paints
+   the run at one cell as today, so `Typography`'s size in the terminal is a scale that
+   costs nothing where it cannot be honored.
+6. **A graphics layer, kitty's protocol first** (kitty, Ghostty, WezTerm, Konsole,
+   Rio): the terminal driver realizes `Painted`, the same vello recording the GUI
+   paints, through `vello_cpu` at the box's cells times the cell size in pixels,
+   transmitted once as an RGBA image keyed by the node id and placed over the box's
+   cells, replaced when the recording or the size changes, deleted on unmount; direct
+   base64 by default, shared memory or a file where the probe shows the terminal shares
+   the host, unicode placeholders through tmux. The probe is the protocol's own query
+   (`a=q`, an id, one pixel) answered `OK`: an APC reply termina parses no more than it
+   parsed DECRPM, so it lands in the fork the same way. `Painting`, `Canvas` and
+   `Painted` leave `skene-gui-core` for a crate both medium cores depend on (or
+   `skene-core`, since a recording is portable), and `Painted` gains the degraded form
+   the web's progressive-enhancement item wants for a user's view: a fallback child
+   painted in cells where no graphics exist, so a chart is a chart with graphics and a
+   run of block glyphs without. Sixel follows (DA1 attribute 4: xterm, foot, WezTerm,
+   mlterm, Windows Terminal, VTE; not kitty, not Ghostty), palette-bound and without
+   ids or z-order, so a change repaints the box whole; iTerm2's OSC 1337 last, for
+   iTerm2, WezTerm and mintty.
+7. **Decoration in pixels beneath the text**: the graphics layer at a negative z-index
+   draws below the cells' text, so a box's rounded corners, gradient, shadow and
+   sub-cell border become one image under its text while the text stays cells, with
+   selection, copy, the caret, the terminal's font and accessibility untouched and
+   `CornerRadius` honored where it is asked for. Layout stays in cells; what changes is
+   only what a box's decoration is painted with. This is the largest step and the one
+   the graphics layer exists for; it needs that layer proven first, and an image per
+   box measured against one image per frame before the shape is chosen.
+8. **Pointer shapes** (OSC 22) are set today; extend them to every shape the GUI's
+   pointer takes, the I-beam over selectable text, the grab during a drag, the resize
+   arrows, and probe nothing, since a terminal ignores a shape it lacks.
+9. **A clipboard with an answer** (kitty's OSC 5522): MIME types, images and a negative
+   acknowledgement, so `Copy` and `Paste` can be offered from a reply rather than
+   unconditionally, closing the OSC 52 gap above.
+10. **Notifications and progress**: OSC 99 (kitty, with ids and closing) or OSC 9 for a
+    desktop notification, OSC 9;4 for the taskbar's progress (Windows Terminal, ConEmu,
+    Ghostty); a facade seam beside the title, ignored where unsupported. Low value
+    until an app asks.
+11. **The palette read back** (OSC 4, OSC 21): the terminal's sixteen colors, so a
+    16-color paint picks the nearest of what the terminal shows and knows its contrast.
+
+Decided against, for the record: rendering the whole frame as one image, since the text
+would then be ours to rasterize and the terminal's font, selection, copy and
+accessibility would go with it, a poor GUI in place of a good terminal; and any
+enhancement gated by a terminal's name.
 
 ## Planned: the native driver family
 

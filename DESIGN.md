@@ -513,10 +513,11 @@ left click hits the topmost node and runs its handlers through core's dispatch, 
 hovered node's `cursor` sets the pointer shape via OSC 22—terminals without mouse
 reporting or pointer shapes degrade quietly. A pointer position is its cell's center
 unless the terminal reports pixels: where the platform reports the window's pixel size,
-the loop asks for SGR-Pixels (DECSET 1016) and queries the mode, and from the reply that
-confirms it every report is pixels over the cell size, so a pointer sits within its
-cell and a slider drag lands where the pointer is; the request repeats on resize, and
-hit-testing stays by cell. Selection is anchored in source space so it
+the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply termina
+parses on the fork's `parse-mode-reports` branch), and from the reply that confirms it
+every report is pixels over the cell size, so a pointer sits within its cell and a
+slider drag lands where the pointer is; the request repeats on resize, and hit-testing
+stays by cell. Selection is anchored in source space so it
 survives reflow; wheel gestures latch their target. A text entry's selection is its
 own—an anchor beside the caret over the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge

@@ -184,10 +184,15 @@ where
       .set_padding(shape.control_inset)
       .set_color(SimplePalette::<D::Scalar>::CARD)
       .set_border(
-        border(shape.field_ring, SimplePalette::<D::Scalar>::BORDER).when(
-          State::FocusVisible,
-          border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
-        ),
+        border(shape.field_ring, SimplePalette::<D::Scalar>::BORDER)
+          .when(
+            State::FocusVisible,
+            border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
+          )
+          .when(
+            State::Open,
+            border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
+          ),
       )
       .set_corner_radius(RADIUS)
       .set_cursor(MouseCursor::Click)

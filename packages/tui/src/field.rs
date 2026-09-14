@@ -171,7 +171,7 @@ impl Field {
   }
 
   /// How far the window can scroll from its start, at an inner width.
-  fn window_limit(&self, inner: usize) -> usize {
+  pub(crate) fn window_limit(&self, inner: usize) -> usize {
     let (_, extent, span) = self.window_geometry(inner);
 
     extent.saturating_sub(span)
@@ -184,8 +184,9 @@ impl Field {
     self.window_width = inner;
   }
 
-  /// Scrolls an editor's window by `delta` rows at an inner width, clamped to its
-  /// extent and leaving the caret where it is; `false` when it cannot move that way.
+  /// Scrolls the window by `delta`—rows of an editor, columns of a field—at an inner
+  /// width, clamped to its extent and leaving the caret where it is; `false` when it
+  /// cannot move that way.
   pub(crate) fn scroll_window(&mut self, inner: usize, delta: i64) -> bool {
     let limit = i64::try_from(self.window_limit(inner)).unwrap_or(i64::MAX);
     let window = i64::try_from(self.window).unwrap_or(i64::MAX).min(limit);
@@ -493,14 +494,67 @@ impl Store {
     Some(field.caret_in_window(field.settled_window(inner), inner, column, row))
   }
 
-  /// Scrolls the editor at `handle` by `delta` rows at its laid-out inner width,
-  /// damaging it: `None` when the node is no editor, else whether it moved.
-  pub(crate) fn scroll_editor_by(&mut self, handle: Handle, delta: i64) -> Option<bool> {
+  /// Whether the node is an editor, whose window scrolls down its wrapped rows.
+  pub(crate) fn is_editor(&self, handle: Handle) -> bool {
+    self
+      .record(handle)
+      .and_then(|record| record.kind.field())
+      .is_some_and(|field| field.lines > 1)
+  }
+
+  /// An editor's window, clamped to its extent at its laid-out inner width; `None`
+  /// for any other node.
+  pub(crate) fn editor_window(&self, handle: Handle) -> Option<u32> {
+    let inner = self.field_inner_width(handle);
+    let field = self
+      .record(handle)
+      .and_then(|record| record.kind.field())
+      .filter(|field| field.lines > 1)?;
+
+    u32::try_from(field.window.min(field.window_limit(inner))).ok()
+  }
+
+  /// How far an editor's window can scroll at its laid-out inner width; `None` for
+  /// any other node.
+  pub(crate) fn editor_window_limit(&self, handle: Handle) -> Option<u32> {
+    let inner = self.field_inner_width(handle);
+    let field = self
+      .record(handle)
+      .and_then(|record| record.kind.field())
+      .filter(|field| field.lines > 1)?;
+
+    u32::try_from(field.window_limit(inner)).ok()
+  }
+
+  /// Moves an editor's window to `window`, clamped, at its laid-out inner width.
+  pub(crate) fn set_editor_window(&mut self, handle: Handle, window: u32) {
+    let inner = self.field_inner_width(handle);
+
+    if let Some(field) = self
+      .record_mut(handle)
+      .and_then(|record| record.kind.field_mut())
+      .filter(|field| field.lines > 1)
+    {
+      field.window = usize::try_from(window)
+        .unwrap_or(usize::MAX)
+        .min(field.window_limit(inner));
+      field.window_width = inner;
+    }
+  }
+
+  /// Scrolls the single-line field at `handle` by `delta` columns at its laid-out
+  /// inner width, damaging it: `None` when the node is no field or `delta` is zero,
+  /// else whether it moved.
+  pub(crate) fn scroll_field_by(&mut self, handle: Handle, delta: i64) -> Option<bool> {
+    if delta == 0 {
+      return None;
+    }
+
     let inner = self.field_inner_width(handle);
     let field = self
       .record_mut(handle)
       .and_then(|record| record.kind.field_mut())
-      .filter(|field| field.lines > 1)?;
+      .filter(|field| field.lines <= 1)?;
     let moved = field.scroll_window(inner, delta);
 
     if moved {

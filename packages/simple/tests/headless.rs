@@ -11,6 +11,7 @@ use skene_core::{
   ColorScheme,
   Dimension,
   HasChildren,
+  Inset,
   KeyEvent,
   Media,
   Modifiers,
@@ -299,8 +300,8 @@ fn a_radio_ring_follows_the_groups_choice() {
   owner.dispose();
 }
 
-/// A slider's fill is the fraction of the range the bound value sits at, and its
-/// thumb's border becomes the ring when the control is focused.
+/// A slider's fill and its thumb's pinned edge are the fraction of the range the bound
+/// value sits at, and the thumb's border becomes the ring when the control is focused.
 #[test]
 fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   reset();
@@ -313,17 +314,25 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   });
   let stack = children(children(slider)[0])[1];
   let track = children(stack)[1];
-  let fill = children(track)[1];
-  let thumb = children(children(stack)[2])[1];
+  let fill = children(children(stack)[2])[1];
+  let thumb = children(children(children(stack)[3])[1])[1];
   let fill_width = || match slot_value(fill, Slot(0)) {
     Some(SlotValue::Box(BoxValue::Dimension(Dimension::Fraction(fraction)))) => fraction,
     other => panic!("the fill's width is a derived fraction, not {other:?}"),
+  };
+  let thumb_left = || match slot_value(thumb, Slot(0)) {
+    Some(SlotValue::Box(BoxValue::DimensionInset(Inset {
+      left: Dimension::Fraction(fraction),
+      ..
+    }))) => fraction,
+    other => panic!("the thumb's pinned edge is a derived fraction, not {other:?}"),
   };
 
   assert_eq!(part(track), Some(Part::Track));
   assert_eq!(part(fill), Some(Part::Fill));
   assert_eq!(part(thumb), Some(Part::Thumb));
   assert!((fill_width() - 0.25).abs() < 1e-6);
+  assert!((thumb_left() - 0.25).abs() < 1e-6);
   assert_eq!(
     resolve_color(fill, COLOR),
     Some(light(&palette.primary.surface))
@@ -332,6 +341,7 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   bound.set(150.);
 
   assert!((fill_width() - 0.75).abs() < 1e-6);
+  assert!((thumb_left() - 0.75).abs() < 1e-6);
   assert_eq!(
     resolve_border(thumb),
     Some(Border::new(2., light(&palette.background)))

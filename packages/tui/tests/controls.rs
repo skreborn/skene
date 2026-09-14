@@ -311,12 +311,13 @@ fn slider_shows_the_grab_cursors() {
   });
 }
 
-/// A slider's fill ends where its value lands: whole cells in the fill's color, then a
-/// block glyph of the remaining eighths inked in that color over the track.
+/// A slider in cells: the thumb is one cell's width in its own color, travelling from
+/// the track's first cell to its last by eighths, and the fill runs to it. A cell
+/// two of them share is a block glyph carrying both colors.
 #[test]
-fn a_slider_fill_ends_in_an_eighth_block() {
+fn a_slider_fills_to_a_thumb_of_its_own_color() {
   with_driver(|| {
-    let volume = Signal::new(43.0f32);
+    let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
       Container::new()
@@ -332,15 +333,97 @@ fn a_slider_fill_ends_in_an_eighth_block() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(20, 1), "        ▋\n");
+    let (_, thumb) = colors_at(20, 1, 0, 0);
+    let (_, track) = colors_at(20, 1, 1, 0);
+
+    assert_eq!(tui::render_to_text(20, 1), "\n", "at zero: no fill");
+    assert_ne!(
+      thumb, track,
+      "the thumb sits on the first cell in its own color"
+    );
+    assert_eq!(colors_at(20, 1, 19, 0).1, track);
+
+    // 45% of the 19 cells the thumb travels is 8.55: the fill covers eight cells and
+    // half of the ninth, where the thumb begins, and the thumb ends half way into the
+    // tenth.
+    volume.set(45.);
+
+    assert_eq!(tui::render_to_text(20, 1), "        ▌▌\n");
 
     let (_, filled) = colors_at(20, 1, 7, 0);
-    let (edge_ink, edge_surface) = colors_at(20, 1, 8, 0);
-    let (_, track) = colors_at(20, 1, 9, 0);
 
-    assert_eq!(edge_ink, filled, "the edge is inked in the fill's color");
-    assert_eq!(edge_surface, track, "the edge sits on the track");
     assert_ne!(filled, track);
+    assert_ne!(filled, thumb);
+    assert_eq!(
+      colors_at(20, 1, 8, 0),
+      (filled, thumb),
+      "the fill's end meets the thumb's start in one cell"
+    );
+    assert_eq!(
+      colors_at(20, 1, 9, 0),
+      (thumb, track),
+      "the thumb's end meets the track in the next"
+    );
+    assert_eq!(colors_at(20, 1, 10, 0).1, track);
+
+    // An arrow moves the thumb by a step's share of a cell, not by a cell.
+    tui::trigger_key("Tab");
+    tui::trigger_key("ArrowRight");
+
+    assert!((volume.get_untracked() - 46.).abs() < f32::EPSILON);
+    assert_eq!(tui::render_to_text(20, 1), "        ▊▊\n");
+
+    volume.set(100.);
+
+    assert_eq!(tui::render_to_text(20, 1), "\n", "at the end: no edge");
+    assert_eq!(colors_at(20, 1, 18, 0).1, filled);
+    assert_eq!(
+      colors_at(20, 1, 19, 0).1,
+      thumb,
+      "the thumb ends on the last cell"
+    );
+  });
+}
+
+/// A slider's drag ends with the release wherever the pointer is: motion afterwards
+/// over the slider changes nothing.
+#[test]
+fn a_slider_released_off_itself_stops_sliding() {
+  with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          Container::new().set_width(20).set_child(
+            SimpleSlider::new()
+              .set_min(0.)
+              .set_max(100.)
+              .set_step(1.)
+              .bind_value(volume),
+          ),
+          Text::new("below"),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 2);
+
+    tui::trigger_mouse_press(5, 0);
+    tui::trigger_mouse_drag(10, 0);
+
+    let dragged = volume.get_untracked();
+
+    assert!(dragged > 0., "the drag slid the value");
+
+    tui::trigger_mouse_drag(10, 1);
+    tui::trigger_mouse_release(10, 1);
+    tui::trigger_mouse_move(15, 0);
+
+    assert!(
+      (volume.get_untracked() - dragged).abs() < f32::EPSILON,
+      "a hover after the release slides nothing"
+    );
   });
 }
 
@@ -613,6 +696,41 @@ fn a_press_on_an_open_pickers_face_closes_it() {
       tui::render_to_text(20, 12).contains("points"),
       "the next click reopens it"
     );
+  });
+}
+
+/// A picker's face keeps its ring while its list is open, though focus sits on an
+/// option.
+#[test]
+fn a_pickers_face_keeps_its_ring_while_open() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+
+    let closed = tui::render_to_text(20, 12);
+    let (column, row) = locate(&closed, "pixels");
+    let border = |x: u16| colors_at(20, 12, usize::from(x), usize::from(row) - 1).0;
+    let resting = border(column);
+
+    tui::trigger_key("Tab");
+
+    let focused = border(column);
+
+    assert_ne!(focused, resting, "focus rings the face");
+
+    tui::trigger_key("Enter");
+
+    assert!(
+      tui::render_to_text(20, 12).contains("points"),
+      "the list opened"
+    );
+    assert_ne!(tui::focused_node(), None);
+    assert_eq!(border(column), focused, "the ring holds while open");
+
+    tui::trigger_key("Escape");
+
+    assert_eq!(border(column), focused, "focus returns to the face");
   });
 }
 

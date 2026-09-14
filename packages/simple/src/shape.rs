@@ -73,6 +73,11 @@ pub struct SimpleShape<N> {
   pub thumb_size: N,
   /// The thickness of a slider thumb's border; zero draws none.
   pub thumb_ring: N,
+  /// The surface of a slider's thumb.
+  pub thumb_surface: TokenRef<Color>,
+  /// The surface of a slider's thumb while focus is visible, which stands in for the
+  /// ring where it has no thickness.
+  pub thumb_focus: TokenRef<Color>,
 }
 
 /// A length unit the Simple views know their shape in.
@@ -113,6 +118,8 @@ impl SimpleUnit for f32 {
     track_height: 6.,
     thumb_size: 16.,
     thumb_ring: 2.,
+    thumb_surface: SimplePalette::<Self>::PRIMARY_SURFACE,
+    thumb_focus: SimplePalette::<Self>::PRIMARY_SURFACE,
   };
   const MARKS: SimpleMarks = SimpleMarks::Drawn;
 }
@@ -134,6 +141,8 @@ impl SimpleUnit for u32 {
     track_height: 1,
     thumb_size: 1,
     thumb_ring: 0,
+    thumb_surface: SimplePalette::<Self>::MUTED_FOREGROUND,
+    thumb_focus: SimplePalette::<Self>::RING,
   };
   const MARKS: SimpleMarks = SimpleMarks::Glyph;
 }

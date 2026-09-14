@@ -1131,11 +1131,11 @@ impl Store {
     }
   }
 
-  /// The cells a box's background fills when its laid-out width ends mid-cell: the
-  /// whole cells from its rounded start, and the eighths of the cell after them.
-  /// `None` for a box painted to whole cells: one with laid-out children or a sibling
-  /// beside it, or one whose edge lands on a cell.
-  pub(crate) fn fractional_width(&self, handle: Handle) -> Option<(usize, u8)> {
+  /// A childless box's laid-out span in eighth cells, from its rounded start: where
+  /// it begins, negative before that cell, and how far it extends. `None` for a box
+  /// painted to whole cells: one with laid-out children, or one whose edges both land
+  /// on a cell.
+  pub(crate) fn smooth_span(&self, handle: Handle) -> Option<(isize, isize)> {
     let record = self.record(handle)?;
     let laid_out = |handle: Handle| {
       self
@@ -1147,30 +1147,13 @@ impl Store {
       return None;
     }
 
-    let siblings = self
-      .record(record.parent?)?
-      .children
-      .iter()
-      .filter(|sibling| laid_out(**sibling))
-      .count();
-
-    if siblings != 1 {
-      return None;
-    }
-
     let layout = self.taffy.unrounded_layout(record.taffy?);
-    let end = layout.location.x + layout.size.width;
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let eighths = ((end - end.floor()) * 8.).round() as u8;
-
-    if eighths == 0 || eighths == 8 {
-      return None;
-    }
-
     #[expect(clippy::cast_possible_truncation)]
-    let whole = end.floor() as i64 - layout.location.x.round() as i64;
+    let start = ((layout.location.x - layout.location.x.round()) * 8.).round() as isize;
+    #[expect(clippy::cast_possible_truncation)]
+    let extent = (layout.size.width.max(0.) * 8.).round() as isize;
 
-    Some((usize::try_from(whole).ok()?, eighths))
+    (start != 0 || extent % 8 != 0).then_some((start, extent))
   }
 
   /// A node's laid-out position within its layout parent, in cells.

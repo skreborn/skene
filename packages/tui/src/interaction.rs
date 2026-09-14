@@ -441,9 +441,10 @@ impl Store {
       .unwrap_or(Overflow::Visible)
   }
 
-  /// Whether the node's content scrolls.
+  /// Whether the node's content scrolls: a box overflowing by its style, or an editor
+  /// windowing its wrapped rows.
   pub(crate) fn is_scrollable(&self, handle: Handle) -> bool {
-    matches!(self.overflow(handle), Overflow::Scroll | Overflow::Auto)
+    self.is_editor(handle) || matches!(self.overflow(handle), Overflow::Scroll | Overflow::Auto)
   }
 
   /// Whether the node clips its children when painting.
@@ -451,8 +452,13 @@ impl Store {
     !matches!(self.overflow(handle), Overflow::Visible)
   }
 
-  /// A node's scroll offsets, clamped to what the last layout allows.
+  /// A node's scroll offsets, clamped to what the last layout allows; an editor's is
+  /// its window down its rows.
   pub(crate) fn scroll_offset(&self, handle: Handle) -> (u32, u32) {
+    if let Some(window) = self.editor_window(handle) {
+      return (0, window);
+    }
+
     let Some((x, y)) = self.record(handle).map(|record| record.scroll)
     else {
       return (0, 0);
@@ -467,8 +473,13 @@ impl Store {
     (x.min(limit_x), y.min(limit_y))
   }
 
-  /// A node's maximum scroll offsets, from the last computed layout.
+  /// A node's maximum scroll offsets, from the last computed layout; an editor's is
+  /// how far its window can scroll down its rows.
   pub(crate) fn scroll_limits(&self, handle: Handle) -> (u32, u32) {
+    if let Some(limit) = self.editor_window_limit(handle) {
+      return (0, limit);
+    }
+
     let Some(taffy) = self.record(handle).and_then(|record| record.taffy)
     else {
       return (0, 0);
@@ -501,9 +512,16 @@ impl Store {
     (next != (x, y)).then_some(next)
   }
 
-  /// Stores a node's offsets and repaints; the scroll notification is the caller's.
+  /// Stores a node's offsets and repaints; the scroll notification is the caller's. An
+  /// editor's window moves instead, notifying nothing.
   fn write_scroll(&mut self, handle: Handle, offsets: (u32, u32)) -> Option<NodeId> {
     self.damage(handle);
+
+    if self.is_editor(handle) {
+      self.set_editor_window(handle, offsets.1);
+
+      return None;
+    }
 
     let record = self.record_mut(handle)?;
 
@@ -1147,7 +1165,13 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     return;
   }
 
-  let target = store(|store| pointer_target(store, x, y));
+  let target = store(|store| {
+    store
+      .press
+      .as_ref()
+      .map(|press| (press.captured, store.screen_origin(press.captured)))
+      .or_else(|| pointer_target(store, x, y))
+  });
 
   if let Some((handle, origin)) = target
     && let Some(node) = store(|store| store.record(handle).and_then(|record| record.node))
@@ -1257,10 +1281,10 @@ pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
   }
 }
 
-/// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. An editor
-/// scrolls its window over its wrapped rows.
+/// Scrolls `handle` by a delta, clamped to its limits; `true` when it moved. A
+/// single-line field scrolls its window along its value by the horizontal delta.
 pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
-  if let Some(moved) = store(|store| store.scroll_editor_by(handle, delta_y)) {
+  if let Some(moved) = store(|store| store.scroll_field_by(handle, delta_x)) {
     return moved;
   }
 

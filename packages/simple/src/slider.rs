@@ -8,30 +8,33 @@ use skene_core::{
   Dimension,
   Driver,
   HasChildren,
+  Inset,
   ItemAlignment,
   MouseCursor,
   NodeId,
   Part,
+  Scene,
   SliderRange,
   State,
   View,
   When,
 };
 use skene_reactive::{Get, Set, Signal};
-use skene_views::{Container, CornerRadius, Range, RawSlider, Stack};
+use skene_views::{Anchor, Container, CornerRadius, Pinned, Range, RawSlider, Stack};
 
 use super::{
   SimplePalette,
-  shape::{ROUND, SimpleUnit, TRACK_RADIUS, as_part, border, define_defaults, shape},
+  shape::{ROUND, SimpleShape, SimpleUnit, TRACK_RADIUS, as_part, border, define_defaults, shape},
 };
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
-/// in the primary surface, and a thumb that rings while focused.
+/// in the primary surface, and a thumb that rings while focused, or in cells takes the
+/// ring's color.
 ///
 /// The track, the fill and the thumb are the control's [`Part::Track`], [`Part::Fill`]
-/// and [`Part::Thumb`]; the fill's width and the thumb's place derive from the value.
-/// The value flows both ways. For a slider drawn some other way, compose [`RawSlider`]
-/// directly.
+/// and [`Part::Thumb`]; the fill runs to the thumb's leading edge and the thumb travels
+/// the track less its own size, so both stay inside the track at either end. The value
+/// flows both ways. For a slider drawn some other way, compose [`RawSlider`] directly.
 #[must_use]
 pub struct SimpleSlider<D: Driver> {
   min: f32,
@@ -158,29 +161,43 @@ where
         .set_width(Dimension::Fraction(1.))
         .set_height(Dimension::Length(shape.track_height))
         .set_corner_radius(TRACK_RADIUS)
-        .set_color(SimplePalette::<D::Scalar>::SECONDARY_SURFACE)
-        .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
-        .set_child(fill),
+        .set_color(SimplePalette::<D::Scalar>::SECONDARY_SURFACE),
     );
-    let thumb = as_part::<D>(
-      Part::Thumb,
+    // The thumb is pinned, so the stack builds it; its part is recorded once it is.
+    let thumb_anchor = Anchor::new();
+    let thumb = thumb::<D>(shape, &thumb_anchor);
+    // Each lane spares the thumb's width at its end, so the fill's fraction and the
+    // thumb's travel both span the track less the thumb.
+    let lane = || {
       Container::<D>::new()
-        .set_width(Dimension::Length(shape.thumb_size))
+        .set_width(Dimension::Fraction(1.))
         .set_height(Dimension::Length(shape.thumb_size))
-        .set_corner_radius(ROUND)
-        .set_color(SimplePalette::<D::Scalar>::PRIMARY_SURFACE)
-        .set_border(
-          border(shape.thumb_ring, SimplePalette::<D::Scalar>::BACKGROUND).when(
-            State::FocusVisible,
-            border(shape.thumb_ring, SimplePalette::<D::Scalar>::RING),
-          ),
+        .set_padding(Inset {
+          top: D::Scalar::default(),
+          right: shape.thumb_size,
+          bottom: D::Scalar::default(),
+          left: D::Scalar::default(),
+        })
+        .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
+    };
+    let filled_lane = lane().set_child(fill);
+    let rail_lane = lane()
+      .set_alignment(Alignment::new(
+        ItemAlignment::Stretch,
+        ItemAlignment::Stretch,
+      ))
+      .set_child(
+        Stack::new().set_child(
+          Pinned::new()
+            .derive_edges(move || Inset {
+              top: Dimension::Length(D::Scalar::default()),
+              right: Dimension::Auto,
+              bottom: Dimension::Auto,
+              left: Dimension::Fraction(range.fraction_of(placed())),
+            })
+            .set_child(thumb),
         ),
-    );
-    let rail = Container::<D>::new()
-      .derive_width(move || Dimension::Fraction(range.fraction_of(placed())))
-      .set_height(Dimension::Length(shape.thumb_size))
-      .set_alignment(Alignment::new(ItemAlignment::End, ItemAlignment::Center))
-      .set_child(thumb);
+      );
     let mut behavior = Range::new()
       .set_min(min)
       .set_max(max)
@@ -191,15 +208,50 @@ where
       behavior = behavior.handle_change(move |value| action(value));
     }
 
-    RawSlider::new(behavior)
+    let node = RawSlider::new(behavior)
       .set_width(Dimension::Fraction(1.))
       .set_cursor(MouseCursor::Click)
       .set_child(
         Container::<D>::new()
           .set_width(Dimension::Fraction(1.))
           .set_height(Dimension::Length(shape.thumb_size))
-          .set_child(Stack::new().set_children((track, rail))),
+          .set_child(
+            Stack::new()
+              .set_alignment(Alignment::new(ItemAlignment::Start, ItemAlignment::Center))
+              .set_children((track, filled_lane, rail_lane)),
+          ),
       )
-      .build()
+      .build();
+
+    if let Some(thumb) = thumb_anchor.node() {
+      Scene::<D>::with(|scene| scene.set_part(thumb, Part::Thumb));
+    }
+
+    node
   }
+}
+
+/// The thumb: a box in the unit's thumb surface, ringed while focus is visible where
+/// the ring has thickness and recolored where it has none, bound to `anchor`.
+fn thumb<D: Driver>(shape: SimpleShape<D::Scalar>, anchor: &Anchor) -> Container<D>
+where
+  D::Scalar: SimpleUnit,
+  D::StyleExt: CornerRadius,
+{
+  Container::<D>::new()
+    .bind_anchor(anchor)
+    .set_width(Dimension::Length(shape.thumb_size))
+    .set_height(Dimension::Length(shape.thumb_size))
+    .set_corner_radius(ROUND)
+    .set_color(
+      shape
+        .thumb_surface
+        .when(State::FocusVisible, shape.thumb_focus),
+    )
+    .set_border(
+      border(shape.thumb_ring, SimplePalette::<D::Scalar>::BACKGROUND).when(
+        State::FocusVisible,
+        border(shape.thumb_ring, SimplePalette::<D::Scalar>::RING),
+      ),
+    )
 }

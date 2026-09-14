@@ -624,20 +624,10 @@ fn paint_node(
         draw_shadow(buffer, x, y, width, height, shadow, dark);
       }
 
-      // A borderless box ending mid-cell fills its whole cells and draws the rest as
-      // a block glyph in its color over what lies beneath.
-      match store.fractional_width(handle).filter(|_| border.is_none()) {
-        Some((whole, eighths)) => {
-          fill(buffer, x, y, whole, height, background);
-          draw_edge(
-            buffer,
-            x + isize::try_from(whole).expect("fits"),
-            y,
-            height,
-            eighths,
-            background,
-          );
-        }
+      // A borderless box with an edge mid-cell fills its whole cells and draws each
+      // partial one as a block glyph carrying its color beside what lies beneath.
+      match store.smooth_span(handle).filter(|_| border.is_none()) {
+        Some((start, extent)) => draw_smooth(buffer, x, y, height, start, extent, background),
         None => fill(buffer, x, y, width, height, background),
       }
 
@@ -1044,29 +1034,72 @@ fn fill(
   }
 }
 
-/// Draws a box's trailing edge down the column at `x`: the leftmost `eighths`/8 of
-/// each cell in `color`, over the background already there.
-fn draw_edge(
+/// Fills a box spanning `extent` eighth cells from `start`, an eighth offset from the
+/// cell at `x`, down `height` rows: whole cells take `color` as their background, and
+/// a cell the box covers in part takes a block glyph with the box's color on its side
+/// and the color already there on the other.
+fn draw_smooth(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
   height: usize,
-  eighths: u8,
+  start: isize,
+  extent: isize,
   color: Option<(u8, u8, u8)>,
 ) {
-  if color.is_none() {
+  if color.is_none() || extent <= 0 {
     return;
   }
 
+  let first = start.div_euclid(8);
+  let last = (start + extent - 1).div_euclid(8);
+
   for row in 0..height {
-    if let Some(cell) = buffer.cell_mut(x, y + isize::try_from(row).expect("fits")) {
-      *cell = TerminalCell {
-        character: left_block(eighths),
-        foreground: color,
-        background: cell.background,
-        ..TerminalCell::EMPTY
+    let row_y = y + isize::try_from(row).expect("fits");
+
+    for column in first..=last {
+      let Some(cell) = buffer.cell_mut(x + column, row_y)
+      else {
+        continue;
       };
+
+      match eighth_coverage(column, start, extent) {
+        Coverage::Full => {
+          *cell = TerminalCell {
+            background: color,
+            ..TerminalCell::EMPTY
+          };
+        }
+        Coverage::Leading(eighths) => {
+          *cell = TerminalCell {
+            character: left_block(eighths),
+            foreground: color,
+            background: cell.background,
+            ..TerminalCell::EMPTY
+          };
+        }
+        Coverage::Trailing(eighths) => {
+          *cell = TerminalCell {
+            character: left_block(8 - eighths),
+            foreground: left_color(cell),
+            background: color,
+            ..TerminalCell::EMPTY
+          };
+        }
+        Coverage::None => {}
+      }
     }
+  }
+}
+
+/// The color a cell shows at its left edge: a left-block glyph's ink, else its
+/// background.
+fn left_color(cell: &TerminalCell) -> Option<(u8, u8, u8)> {
+  if matches!(cell.character, '▏' | '▎' | '▍' | '▌' | '▋' | '▊' | '▉') {
+    cell.foreground
+  }
+  else {
+    cell.background
   }
 }
 

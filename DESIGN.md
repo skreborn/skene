@@ -529,11 +529,15 @@ and focus order, exactly as on the GUI. A key's default runs after the handlers'
 have taken effect, as a browser's does after its microtask checkpoint. A modal takes
 focus to its first tab stop as it opens and returns it to the node that held focus as
 it closes, a popup closing with focus inside returns it the same way, and a press on
-the anchor a popup opened from is the anchor's click rather than a dismissal. The wheel
-scrolls an editor's window over its wrapped rows without moving the caret, and a caret
-scrolled out of view hides until focus or an edit reveals it. A borderless box that is
-its parent's only laid-out child and holds none paints the eighths its laid-out width
-ends in as a block glyph in its color, so a slider's fill moves by eighth cells.
+the anchor a popup opened from is the anchor's click rather than a dismissal. An editor is a
+scroll target like a box: the wheel, its scrollbar and the page keys move its window
+over its wrapped rows without moving the caret, a caret scrolled out of view hides until
+focus or an edit reveals it, and the horizontal wheel moves a field's window along its
+value. A release ends a drag on the node the press captured wherever the pointer is. A
+childless, borderless box paints to eighth cells: whole cells take its color, and a cell
+one of its edges crosses takes a block glyph carrying its color on the box's side and the
+color already there on the other, so a slider's fill and thumb move by eighths and a
+seam between siblings is exact.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a

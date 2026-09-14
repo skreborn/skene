@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
-use crate::common::{rgb, white, with_driver};
+use crate::common::{rgb, rows, white, with_driver};
 
 /// The selection highlight the tests read back.
 fn highlight() -> Color {
@@ -484,7 +484,7 @@ fn a_drag_held_above_autoscrolls_the_editor() {
     });
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "head\nd\ne\nf\n",
       "focus shows the last rows"
     );
@@ -492,17 +492,17 @@ fn a_drag_held_above_autoscrolls_the_editor() {
     tui::trigger_mouse_press(1, 3);
     tui::trigger_mouse_drag(0, 0);
 
-    let _ = tui::render_to_text(20, 4);
+    let _ = rows(&tui::render_to_text(20, 4));
 
     tui::trigger_frame(Duration::from_millis(50));
 
-    assert_eq!(tui::render_to_text(20, 4), "head\nc\nd\ne\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "head\nc\nd\ne\n");
     assert_eq!(tui::render_to_caret(20, 4), Some((0, 1)));
 
     tui::trigger_frame(Duration::from_millis(100));
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "head\na\nb\nc\n",
       "the scroll stops at the first row"
     );

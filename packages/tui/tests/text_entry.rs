@@ -8,7 +8,7 @@ mod common;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::{rows, white, with_driver};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
@@ -221,7 +221,7 @@ fn an_editor_windows_its_rows_around_the_caret() {
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 4);
+    let _ = rows(&tui::render_to_text(20, 4));
 
     tui::trigger_key("Tab");
 
@@ -229,14 +229,14 @@ fn an_editor_windows_its_rows_around_the_caret() {
       tui::trigger_key(key);
     }
 
-    assert_eq!(tui::render_to_text(20, 4), "c\nd\ne\n\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "c\nd\ne\n\n");
     assert_eq!(tui::render_to_caret(20, 4), Some((1, 2)));
 
     for _ in 0..3 {
       tui::trigger_key("ArrowUp");
     }
 
-    assert_eq!(tui::render_to_text(20, 4), "b\nc\nd\n\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "b\nc\nd\n\n");
     assert_eq!(tui::render_to_caret(20, 4), Some((1, 0)));
   });
 }
@@ -258,16 +258,16 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
         .build()
     });
 
-    assert_eq!(tui::render_to_text(20, 4), "a\nb\nc\n\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "a\nb\nc\n\n");
 
     tui::trigger_mouse_scroll(1, 1, 0, 1);
 
-    assert_eq!(tui::render_to_text(20, 4), "b\nc\nd\n\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "b\nc\nd\n\n");
 
     tui::trigger_mouse_scroll(1, 1, 0, 5);
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "c\nd\ne\n\n",
       "clamped at the end"
     );
@@ -275,7 +275,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
     tui::trigger_mouse_scroll(1, 1, 0, -5);
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "a\nb\nc\n\n",
       "clamped at the start"
     );
@@ -283,7 +283,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
     tui::trigger_key("Tab");
 
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "c\nd\ne\n\n",
       "focus reveals the caret at the end"
     );
@@ -291,7 +291,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
 
     tui::trigger_mouse_scroll(1, 1, 0, -5);
 
-    assert_eq!(tui::render_to_text(20, 4), "a\nb\nc\n\n");
+    assert_eq!(rows(&tui::render_to_text(20, 4)), "a\nb\nc\n\n");
     assert_eq!(
       tui::render_to_caret(20, 4),
       None,
@@ -302,7 +302,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
 
     assert_eq!(bio.get_untracked(), "a\nb\nc\nd\nex");
     assert_eq!(
-      tui::render_to_text(20, 4),
+      rows(&tui::render_to_text(20, 4)),
       "c\nd\nex\n\n",
       "an edit reveals the caret"
     );
@@ -351,6 +351,101 @@ fn the_caret_reports_the_terminal_cursor_cell() {
       tui::render_to_caret(20, 4),
       None,
       "a covering modal hides the cursor"
+    );
+  });
+}
+
+/// An editor whose rows overflow its box shows a scrollbar down its last column, and
+/// dragging the thumb scrolls the window.
+#[test]
+fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
+  with_driver(|| {
+    let bio = Signal::new("a\nb\nc\nd\ne\nf".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_child(
+          RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+            .set_width(10)
+            .set_border(Border::new(1, white())),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(12, 5);
+    let bar: Vec<char> = frame
+      .lines()
+      .skip(1)
+      .take(3)
+      .map(|line| line.chars().nth(9).unwrap_or(' '))
+      .collect();
+
+    assert_eq!(
+      bar,
+      ['█', '▄', ' '],
+      "the thumb covers the first row and a half: {frame}"
+    );
+    assert!(frame.contains("│a"), "the first row shows: {frame}");
+
+    tui::trigger_mouse_press(9, 1);
+    tui::trigger_mouse_drag(9, 3);
+    tui::trigger_mouse_release(9, 3);
+
+    let scrolled = tui::render_to_text(12, 5);
+
+    assert!(
+      scrolled.contains("│d") && !scrolled.contains("│a"),
+      "the thumb drag scrolled to the end: {scrolled}"
+    );
+
+    bio.set("a\nb".to_owned());
+
+    assert!(
+      !tui::render_to_text(12, 5).contains('█'),
+      "a fitting value shows no scrollbar"
+    );
+  });
+}
+
+/// The horizontal wheel scrolls a field's window along a long value without moving
+/// the caret, consuming at its ends; the vertical wheel passes through it.
+#[test]
+fn the_horizontal_wheel_scrolls_a_field() {
+  with_driver(|| {
+    let name = Signal::new("abcdefghijklmnop".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_child(RawTextField::new(TextEntry::new().bind_value(name)).set_width(8))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(8, 1), "abcdefgh\n");
+
+    tui::trigger_mouse_scroll(2, 0, 3, 0);
+
+    assert_eq!(tui::render_to_text(8, 1), "defghijk\n");
+
+    tui::trigger_mouse_scroll(2, 0, 30, 0);
+
+    assert_eq!(tui::render_to_text(8, 1), "jklmnop\n", "clamped at the end");
+
+    tui::trigger_mouse_scroll(2, 0, 0, 3);
+
+    assert_eq!(
+      tui::render_to_text(8, 1),
+      "jklmnop\n",
+      "the vertical wheel passes"
+    );
+
+    tui::trigger_mouse_scroll(2, 0, -30, 0);
+
+    assert_eq!(
+      tui::render_to_text(8, 1),
+      "abcdefgh\n",
+      "clamped at the start"
     );
   });
 }

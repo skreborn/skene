@@ -101,3 +101,14 @@ pub fn with_launch<R>(launch: tui::Launch, body: impl FnOnce() -> R) -> R {
 
   body()
 }
+
+/// A frame's rows without the scrollbar an overflowing editor paints down its last
+/// column.
+pub fn rows(frame: &str) -> String {
+  frame.lines().fold(String::new(), |mut rows, line| {
+    rows.push_str(line.trim_end_matches(|glyph: char| glyph == ' ' || "▁▂▃▄▅▆▇█".contains(glyph)));
+    rows.push('\n');
+
+    rows
+  })
+}

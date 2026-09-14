@@ -154,8 +154,8 @@ impl Range {
 
     if extent > 0. {
       let fraction = match self.axis {
-        Axis::Horizontal => (event.local_x + 0.5) / extent,
-        Axis::Vertical => (extent - event.local_y - 0.5) / extent,
+        Axis::Horizontal => event.local_x / extent,
+        Axis::Vertical => (extent - event.local_y) / extent,
       };
 
       self.write(self.range().value_at(fraction));

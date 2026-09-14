@@ -145,6 +145,7 @@ pub use crate::{
     trigger_key,
     trigger_mouse_click,
     trigger_mouse_drag,
+    trigger_mouse_drag_within,
     trigger_mouse_move,
     trigger_mouse_press,
     trigger_mouse_release,

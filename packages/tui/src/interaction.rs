@@ -848,7 +848,9 @@ pub(crate) fn set_hover(x: u16, y: u16) {
   }
 }
 
-/// The portable pointer event at (`x`, `y`), local to the node at `origin`.
+/// A pointer event at the cell (`x`, `y`) for a node whose screen origin is `origin`:
+/// the positions carry where the pointer sits within the cell, its center unless the
+/// terminal reported pixels.
 fn pointer_event(
   x: u16,
   y: u16,
@@ -856,12 +858,14 @@ fn pointer_event(
   button: Option<PointerButton>,
   modifiers: Modifiers,
 ) -> PointerEvent {
+  let (within_x, within_y) = store(|store| store.pointer_within);
+
   #[expect(clippy::cast_precision_loss)]
   PointerEvent {
-    x: f32::from(x),
-    y: f32::from(y),
-    local_x: (i64::from(x) - origin.0) as f32,
-    local_y: (i64::from(y) - origin.1) as f32,
+    x: f32::from(x) + within_x,
+    y: f32::from(y) + within_y,
+    local_x: (i64::from(x) - origin.0) as f32 + within_x,
+    local_y: (i64::from(y) - origin.1) as f32 + within_y,
     button,
     modifiers,
   }

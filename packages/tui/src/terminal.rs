@@ -26,6 +26,7 @@ use termina::{
     csi::{
       self,
       Csi,
+      DecModeSetting,
       DecPrivateMode,
       DecPrivateModeCode,
       Keyboard,
@@ -38,7 +39,14 @@ use termina::{
     dcs::{Dcs, DcsRequest, DcsResponse},
     osc::{ColorOrQuery, DynamicColorNumber, Osc, Selection},
   },
-  event::{KeyCode, KeyEventKind, Modifiers as TerminalModifiers, MouseButton, MouseEventKind},
+  event::{
+    KeyCode,
+    KeyEventKind,
+    Modifiers as TerminalModifiers,
+    MouseButton,
+    MouseEvent,
+    MouseEventKind,
+  },
   style::{ColorSpec, CursorStyle, Intensity, Underline},
 };
 
@@ -128,7 +136,7 @@ fn write_queries(out: &mut impl Write) -> io::Result<()> {
 fn write_restore(out: &mut impl Write) -> io::Result<()> {
   write!(
     out,
-    "{}{}{}{}{}{}{}{}{}{}",
+    "{}{}{}{}{}{}{}{}{}{}{}",
     // The stackless form of the kitty keyboard protocol (`CSI = flags ; 1 u`).
     Csi::Keyboard(Keyboard::SetFlags {
       flags: KittyKeyboardFlags::empty(),
@@ -136,6 +144,7 @@ fn write_restore(out: &mut impl Write) -> io::Result<()> {
     }),
     dec_mode(DecPrivateModeCode::Theme, false),
     dec_mode(DecPrivateModeCode::BracketedPaste, false),
+    dec_mode(DecPrivateModeCode::SGRPixelsMouse, false),
     dec_mode(DecPrivateModeCode::SGRMouse, false),
     dec_mode(DecPrivateModeCode::AnyEventMouse, false),
     dec_mode(DecPrivateModeCode::ButtonEventMouse, false),
@@ -144,6 +153,69 @@ fn write_restore(out: &mut impl Write) -> io::Result<()> {
     dec_mode(DecPrivateModeCode::ShowCursor, true),
     dec_mode(DecPrivateModeCode::ClearAndEnableAlternateScreen, false),
   )
+}
+
+/// The terminal's pixel mouse reporting: the cell's size in pixels while the platform
+/// reports the window's, and whether the terminal confirmed SGR-Pixels mode is set.
+struct PixelMouse {
+  cell: Option<(u16, u16)>,
+  on: bool,
+}
+
+impl PixelMouse {
+  /// The cell size `size` implies, when the platform reports the window in pixels.
+  fn cell_of(size: &termina::WindowSize) -> Option<(u16, u16)> {
+    let width = size.pixel_width.filter(|pixels| *pixels > 0)? / size.cols.max(1);
+    let height = size.pixel_height.filter(|pixels| *pixels > 0)? / size.rows.max(1);
+
+    (width > 0 && height > 0).then_some((width, height))
+  }
+
+  /// Takes the cell size from `size`, asking the terminal for pixel reports once it
+  /// is known and for cell reports once it is not; each request is followed by a
+  /// query, whose reply says which the reports are from then on.
+  fn resize(&mut self, out: &mut impl Write, size: &termina::WindowSize) {
+    let cell = Self::cell_of(size);
+    let known = cell.is_some();
+
+    if known != self.cell.is_some() {
+      let _ = write!(
+        out,
+        "{}{}",
+        dec_mode(DecPrivateModeCode::SGRPixelsMouse, known),
+        Csi::Mode(Mode::QueryDecPrivateMode(DecPrivateMode::Code(
+          DecPrivateModeCode::SGRPixelsMouse
+        ))),
+      );
+      let _ = out.flush();
+    }
+
+    self.cell = cell;
+  }
+
+  /// A mouse report as the cell it lands on and the pointer's position within it:
+  /// pixels divided by the cell size while pixel reports are on, else the cell at its
+  /// center.
+  fn locate(&self, mouse: MouseEvent) -> (MouseEvent, (f32, f32)) {
+    let Some((width, height)) = self.cell.filter(|_| self.on)
+    else {
+      return (mouse, crate::store::CELL_CENTER);
+    };
+
+    (
+      MouseEvent {
+        column: mouse.column / width,
+        row: mouse.row / height,
+        ..mouse
+      },
+      (within(mouse.column, width), within(mouse.row, height)),
+    )
+  }
+}
+
+/// Where a pixel sits along its cell of `size` pixels, `0..1`: the pixel's center.
+fn within(pixel: u16, size: u16) -> f32 {
+  (f32::from(pixel % size) + 0.5) / f32::from(size)
 }
 
 /// Mounts and runs a skene application in the terminal under `launch`; see
@@ -186,6 +258,15 @@ where
   let _ = write_setup(&mut terminal, mouse);
   let _ = write_queries(&mut terminal);
   let _ = terminal.flush();
+
+  let mut pixels = PixelMouse {
+    cell: None,
+    on: false,
+  };
+
+  if mouse && let Ok(size) = terminal.get_dimensions() {
+    pixels.resize(&mut terminal, &size);
+  }
 
   let mut depth = ColorDepth::Ansi16;
   let mut last_frame: Option<paint::Buffer> = None;
@@ -273,6 +354,9 @@ where
         crate::dev::mark_changed();
       }
       Event::Mouse(mouse) => {
+        let (mouse, within) = pixels.locate(mouse);
+
+        with_store(|store| store.pointer_within = within);
         dispatch_mouse(&mut terminal, mouse);
 
         crate::dev::mark_changed();
@@ -282,15 +366,25 @@ where
 
         crate::dev::mark_changed();
       }
-      Event::WindowResized(..) => {
+      Event::WindowResized(size) => {
         // A full rewrite: the previous frame no longer matches what the terminal
         // shows.
         last_frame = None;
 
         with_store(|store| store.paint_dirty = true);
+
+        if mouse {
+          pixels.resize(&mut terminal, &size);
+        }
       }
       Event::Csi(Csi::Mode(Mode::ReportTheme(mode))) => {
         set_detected_scheme(mode == ThemeMode::Dark);
+      }
+      Event::Csi(Csi::Mode(Mode::ReportDecPrivateMode {
+        mode: DecPrivateMode::Code(DecPrivateModeCode::SGRPixelsMouse),
+        setting,
+      })) => {
+        pixels.on = setting == DecModeSetting::Set;
       }
       Event::Osc(Osc::ChangeDynamicColors(DynamicColorNumber::TextBackgroundColor, colors)) => {
         if let Some(ColorOrQuery::Color(color)) = colors.first() {
@@ -696,7 +790,10 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
 /// headlessly. Hit-testing resolves against the last render's layout.
 pub fn trigger_mouse_move(x: u16, y: u16) {
-  skene_reactive::batch(|| interaction::pointer_move(x, y, None, Modifiers::default()));
+  skene_reactive::batch(|| {
+    with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
+    interaction::pointer_move(x, y, None, Modifiers::default());
+  });
 }
 
 /// Simulates a left click at the cell (`x`, `y`), for a test driving mouse interaction
@@ -710,15 +807,26 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 /// drag—for a test driving drags headlessly.
 pub fn trigger_mouse_press(x: u16, y: u16) {
   skene_reactive::batch(|| {
-    with_store(|store| store.left_held = true);
+    with_store(|store| {
+      store.pointer_within = crate::store::CELL_CENTER;
+      store.left_held = true;
+    });
     interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
   });
 }
 
-/// Simulates dragging to (`x`, `y`) with the left button held, after
-/// [`trigger_mouse_press`].
+/// Simulates dragging to the center of the cell (`x`, `y`) with the left button held,
+/// after [`trigger_mouse_press`].
 pub fn trigger_mouse_drag(x: u16, y: u16) {
+  trigger_mouse_drag_within(x, y, crate::store::CELL_CENTER);
+}
+
+/// Simulates dragging to the cell (`x`, `y`) with the left button held, the pointer
+/// `within` the cell—`0..1` along each axis, as a terminal reporting pixels places
+/// it—after [`trigger_mouse_press`].
+pub fn trigger_mouse_drag_within(x: u16, y: u16, within: (f32, f32)) {
   skene_reactive::batch(|| {
+    with_store(|store| store.pointer_within = within);
     interaction::pointer_move(x, y, Some(PointerButton::Primary), Modifiers::default());
   });
 }
@@ -727,6 +835,8 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
 /// press delivered stands in for the whole click, as the interactive loop's does.
 pub fn trigger_mouse_release(x: u16, y: u16) {
   skene_reactive::batch(|| {
+    with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
+
     if !with_store(|store| store.left_held) {
       with_store(|store| store.left_held = true);
       interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
@@ -741,7 +851,10 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 /// driving selection headlessly.
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
   skene_reactive::batch(|| {
-    with_store(|store| store.right_held = true);
+    with_store(|store| {
+      store.pointer_within = crate::store::CELL_CENTER;
+      store.right_held = true;
+    });
     interaction::pointer_press(x, y, PointerButton::Secondary, Modifiers::default());
     with_store(|store| store.right_held = false);
     interaction::pointer_release(x, y, PointerButton::Secondary, Modifiers::default());
@@ -867,4 +980,64 @@ pub fn style_resolutions() -> u64 {
 #[must_use]
 pub fn repainted_rows() -> Vec<usize> {
   with_store(|store| store.repainted.clone())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// A pixel report lands on the cell holding the pixel, the pointer at the pixel's
+  /// center within it; without a cell size or the mode confirmed, a report is its
+  /// cell at the center.
+  #[test]
+  fn pixel_reports_locate_within_their_cell() {
+    let report = MouseEvent {
+      kind: MouseEventKind::Moved,
+      column: 45,
+      row: 33,
+      modifiers: TerminalModifiers::NONE,
+    };
+    let pixels = PixelMouse {
+      cell: Some((10, 16)),
+      on: true,
+    };
+    let (mouse, within) = pixels.locate(report);
+
+    assert_eq!((mouse.column, mouse.row), (4, 2));
+    assert!((within.0 - 0.55).abs() < 1e-6 && (within.1 - 0.09375).abs() < 1e-6);
+
+    let cells = PixelMouse {
+      cell: Some((10, 16)),
+      on: false,
+    };
+
+    assert_eq!(cells.locate(report), (report, crate::store::CELL_CENTER));
+  }
+
+  /// The cell size is the window's pixels over its cells, and absent without them.
+  #[test]
+  fn the_cell_size_follows_the_window() {
+    let size = termina::WindowSize {
+      cols: 80,
+      rows: 24,
+      pixel_width: Some(800),
+      pixel_height: Some(432),
+    };
+
+    assert_eq!(PixelMouse::cell_of(&size), Some((10, 18)));
+    assert_eq!(
+      PixelMouse::cell_of(&termina::WindowSize {
+        pixel_width: None,
+        ..size
+      }),
+      None
+    );
+    assert_eq!(
+      PixelMouse::cell_of(&termina::WindowSize {
+        pixel_height: Some(0),
+        ..size
+      }),
+      None
+    );
+  }
 }

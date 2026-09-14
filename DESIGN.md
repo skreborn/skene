@@ -511,7 +511,12 @@ first-class at compile time rather than best-effort at run time.
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
 left click hits the topmost node and runs its handlers through core's dispatch, a
 hovered node's `cursor` sets the pointer shape via OSC 22—terminals without mouse
-reporting or pointer shapes degrade quietly. Selection is anchored in source space so it
+reporting or pointer shapes degrade quietly. A pointer position is its cell's center
+unless the terminal reports pixels: where the platform reports the window's pixel size,
+the loop asks for SGR-Pixels (DECSET 1016) and queries the mode, and from the reply that
+confirms it every report is pixels over the cell size, so a pointer sits within its
+cell and a slider drag lands where the pointer is; the request repeats on resize, and
+hit-testing stays by cell. Selection is anchored in source space so it
 survives reflow; wheel gestures latch their target. A text entry's selection is its
 own—an anchor beside the caret over the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge
@@ -534,10 +539,11 @@ scroll target like a box: the wheel, its scrollbar and the page keys move its wi
 over its wrapped rows without moving the caret, a caret scrolled out of view hides until
 focus or an edit reveals it, and the horizontal wheel moves a field's window along its
 value. A release ends a drag on the node the press captured wherever the pointer is. A
-childless, borderless box paints to eighth cells: whole cells take its color, and a cell
-one of its edges crosses takes a block glyph carrying its color on the box's side and the
-color already there on the other, so a slider's fill and thumb move by eighths and a
-seam between siblings is exact.
+childless, borderless box paints to eighth cells from its parent's origin, unrounded:
+whole cells take its color, and a cell one of its edges crosses takes a block glyph
+carrying its color on the box's side and the color already there on the other, so a
+slider's fill and thumb move by eighths, meet where the layout put them whatever the
+parent's own offset, and a seam between siblings is exact.
 
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a

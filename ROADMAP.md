@@ -216,9 +216,21 @@ picker's type-ahead waits on a clock no behavior has.
     `Open` state, on every facade. A childless box paints from its parent's origin by
     its unrounded layout rather than taffy's rounded one, since taffy rounds against
     absolute coordinates and a slider centered on a half cell had its fill's width and
-    its thumb's position round apart, leaving a track cell between them. Left:
-    - A mouse drag on a slider lands on whole cells, since the pointer is reported per
-      cell; the keys and a bound signal move the thumb by eighths.
+    its thumb's position round apart, leaving a track cell between them.
+  - **Pixel mouse positions landed** (2026-09-14). Where the platform reports the
+    window's pixel size (`TIOCGWINSZ` on Unix, filled by most terminals), the loop
+    asks for SGR-Pixels (DECSET 1016) and queries the mode with DECRQM; from the reply
+    that confirms it, every report is pixels divided by the cell size, so a pointer
+    event carries where the pointer sits within its cell and a slider drag lands there
+    rather than at the cell's center. Termina parses pixel reports as cell reports,
+    since the two share one shape, so the driver converts them itself and the reply is
+    the boundary between the two readings. Hit-testing, focus, selection and the caret
+    stay by cell. The range behavior reads the pointer's exact position, and a
+    terminal reporting cells alone places it at the cell's center. Left:
+    - A terminal that honors 1016 but answers no DECRQM would report pixels the driver
+      reads as cells; no such terminal is known.
+    - Windows reports no pixel size, and tmux passes no pixel reports through; both
+      stay by cell.
 - **Snapshot and stores**
   - A key is matched by a 127-bit hash of its value, so two values hashing alike share
     one scope and their state crosses on a restore; a collision check at every build

@@ -139,6 +139,9 @@ impl BoxRecord {
   }
 }
 
+/// The center of a cell, where a pointer reported by cell alone is taken to be.
+pub(crate) const CELL_CENTER: (f32, f32) = (0.5, 0.5);
+
 /// A text entry's editing state; the caret and the anchor are character positions in
 /// the value, `0..=len`.
 pub(crate) struct Field {
@@ -548,6 +551,9 @@ pub(crate) struct Store {
   pub(crate) last_press: Option<(Instant, u16, u16, u8)>,
   /// The pointer's last known cell.
   pub(crate) last_pointer: (u16, u16),
+  /// Where the pointer sits within its cell, `0..1` along each axis: the center unless
+  /// the terminal reports pixels.
+  pub(crate) pointer_within: (f32, f32),
   pub(crate) scroll_latch: Option<ScrollLatch>,
   /// The clipboard operations the launch offers.
   pub(crate) clipboard: Clipboard,
@@ -670,6 +676,7 @@ impl Store {
       menu: None,
       last_press: None,
       last_pointer: (0, 0),
+      pointer_within: CELL_CENTER,
       scroll_latch: None,
       clipboard: Clipboard::ALL,
       mouse: true,

@@ -385,6 +385,93 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
   });
 }
 
+/// A slider centered on a half cell paints its fill and thumb from the same numbers:
+/// the fill's last cell and the thumb's first are neighbours at every value.
+#[test]
+fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
+  with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_item_alignment(ItemAlignment::Center)
+        .set_child(
+          Container::new().set_width(21).set_child(
+            SimpleSlider::new()
+              .set_min(0.)
+              .set_max(100.)
+              .set_step(1.)
+              .bind_value(volume),
+          ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(22, 1);
+
+    let (_, thumb) = colors_at(22, 1, 0, 0);
+    let (_, track) = colors_at(22, 1, 2, 0);
+
+    for value in [5., 21., 26., 50., 95.] {
+      volume.set(value);
+
+      let colors = tui::render_to_colors(22, 1);
+      let thumb_at = colors
+        .iter()
+        .position(|(_, surface)| *surface == thumb)
+        .expect("the thumb paints");
+      let fill_end = colors[..thumb_at]
+        .iter()
+        .rposition(|(_, surface)| *surface != track && *surface != thumb);
+
+      assert_eq!(
+        fill_end.map_or(0, |end| end + 1),
+        thumb_at,
+        "at {value}%: the fill reaches the thumb: {colors:?}"
+      );
+    }
+  });
+}
+
+/// A pointer placed within its cell, as a terminal reporting pixels places it, slides
+/// a slider to that position rather than to the cell's center.
+#[test]
+fn a_slider_drag_reads_the_pointer_within_its_cell() {
+  with_driver(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(25)
+        .set_child(
+          SimpleSlider::new()
+            .set_min(0.)
+            .set_max(100.)
+            .set_step(1.)
+            .bind_value(volume),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(25, 1);
+
+    // Cell 10 of 25 spans 40% to 44%: its center reads 42, its edges 41 and 43.
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(10, 0);
+
+    assert!((volume.get_untracked() - 42.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_drag_within(10, 0, (0.2, 0.5));
+
+    assert!((volume.get_untracked() - 41.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_drag_within(10, 0, (0.8, 0.5));
+
+    assert!((volume.get_untracked() - 43.).abs() < f32::EPSILON);
+  });
+}
+
 /// A slider's drag ends with the release wherever the pointer is: motion afterwards
 /// over the slider changes nothing.
 #[test]

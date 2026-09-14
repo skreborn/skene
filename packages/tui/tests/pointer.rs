@@ -13,7 +13,7 @@ use skene_tui::{self as tui, Activate, PointerButton, TextEntry, prelude::*};
 use crate::common::{blue, colors_at, red, rgb, with_driver};
 
 /// Pointer events reach handlers along the hit path with terminal and view-relative
-/// cell coordinates.
+/// positions, at the cell's center when the terminal reports cells alone.
 #[test]
 fn pointer_events_carry_cell_coordinates() {
   with_driver(|| {
@@ -51,9 +51,9 @@ fn pointer_events_carry_cell_coordinates() {
 
     assert_eq!(
       down.get(),
-      Some((6., 1., 2., 1., Some(PointerButton::Primary)))
+      Some((6.5, 1.5, 2.5, 1.5, Some(PointerButton::Primary)))
     );
-    assert_eq!(moved.get(), Some((3., 2., None)));
+    assert_eq!(moved.get(), Some((3.5, 2.5, None)));
   });
 }
 

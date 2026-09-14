@@ -203,7 +203,9 @@
   app's launch choice**: OSC 52 has no capability query, so `Launch::set_clipboard`
   names which of copy, cut and paste exist (all by default; without copy nothing in
   the document is selectable), and `Launch::set_mouse(false)` hands the mouse back
-  wholesale. The escape hatch for a terminal without OSC 52 is the terminal's own
+  wholesale. A pointer position is its cell's center, or exact where the terminal
+  reports pixels (SGR-Pixels, asked for when the platform reports the window's pixel
+  size and trusted from the DECRQM reply that confirms it). The escape hatch for a terminal without OSC 52 is the terminal's own
   selection—a drag with `Shift` held, which bypasses the app and needs nothing from
   it—or a plain drag with the mouse off. When an interaction's
   design is in doubt, mimic the web—**because the browser is the most constrained

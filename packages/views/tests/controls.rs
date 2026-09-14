@@ -738,9 +738,9 @@ fn a_vertical_range_reads_the_pointer_bottom_to_top() {
     node,
     &PointerEvent {
       x: 5.,
-      y: 9.5,
+      y: 10.,
       local_x: 5.,
-      local_y: 9.5,
+      local_y: 10.,
       button: Some(PointerButton::Primary),
       modifiers: Modifiers::default(),
     },

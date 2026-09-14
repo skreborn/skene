@@ -160,9 +160,9 @@ impl Store {
     Some(SelectionPoint { node, offset })
   }
 
-  /// The link destination at the cell (`x`, `y`), when the cell carries a linked run's
-  /// character—exact hits only, never clamped into a neighboring line.
-  pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<String> {
+  /// The linked run at the cell (`x`, `y`) and its destination, when the cell carries
+  /// the run's character—exact hits only, never clamped into a neighboring line.
+  pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(Handle, String)> {
     let path = self.hit_test(x, y);
     let (node, (origin_x, origin_y)) = *path.last()?;
     let (width, _) = self.node_size(node);
@@ -175,7 +175,7 @@ impl Store {
       let (_, line) = lines.get(row)?;
 
       return (column < line.chars().count())
-        .then(|| props.link.clone())
+        .then(|| props.link.clone().map(|url| (node, url)))
         .flatten();
     }
 
@@ -202,7 +202,7 @@ impl Store {
       cursor = end;
 
       match &record.kind {
-        Kind::Run { props, .. } if hit => props.link.clone(),
+        Kind::Run { props, .. } if hit => props.link.clone().map(|url| (run, url)),
         _ => None,
       }
     })

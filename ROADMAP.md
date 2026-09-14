@@ -82,10 +82,9 @@ reasoning.
 
 ### Next
 
-1. **Links become tab stops in the terminal**, as they are on the web (below).
-2. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
+1. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
    `reconcile`.
-3. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+2. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -179,12 +178,19 @@ picker's type-ahead waits on a clock no behavior has.
       and neither is tested here.
     - Queries written before raw mode takes effect print their replies to the screen
       (helix's finding over SSH); the loop enters raw mode first, and keeps that order.
-  - **Links are not tab stops in the terminal** (reported 2026-09-14). A link is a run
-    painted as an OSC 8 anchor and opened by a click on one of its cells; the GUI's
-    link is an `<a>`, which the browser makes a tab stop that `Enter` follows. Wanted:
-    a link run in the terminal's focus order, painted with the focus ring while focus
-    is visible, opened by `Enter` under the same `LinkPolicy`, and reported as a link
-    to accessibility, so the keyboard reaches every link the mouse can.
+  - **Links are tab stops in the terminal** (landed 2026-09-14). A link run takes its
+    place in the focus order among the controls, in document order; `Enter` is its
+    click, dispatched up the tree and then staged for the system handler as a pointer
+    click is, and `Space` is not, as on an anchor; a press on one of its cells focuses
+    it; the focused link paints in reverse video, the terminal's own emphasis, since
+    the terminal's focus is always visible; and focus reaching a linked span scrolls
+    its paragraph into view. The headless driver reports the same: `focus_order` of a
+    link run is `Auto`, so `is_tab_stop` answers for a link as the browser does. Left:
+    - The focused link's look is the driver's, not a token: a run has no border to
+      carry a ring and the typography has no focus pair, so a theme cannot restyle it.
+    - `Focused` and `FocusVisible` are one state in the terminal, for links as for
+      every control: a click leaves its target painted focused, where a browser would
+      show no ring after a pointer.
   - Explore per-input undo/redo (`Ctrl-Z`, `Ctrl-Shift-Z`/`Ctrl-Y`): a bounded ring of
     (value, caret, selection) per text control, matching what the DOM gives an `<input>`.
   - Explore splitting `skene run tui` like the web's: keep the invoking terminal for the

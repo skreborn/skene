@@ -193,7 +193,9 @@
   placement, and drags act on press; wheel gestures latch their scroll target and
   consume at its limits until a pause or pointer move, an editor scrolls like a box
   (wheel, scrollbar, page keys) without moving its caret, and a field's window follows
-  the horizontal wheel; a release ends a drag on the captured node wherever it lands; popups light-dismiss, except on their own anchor, whose
+  the horizontal wheel; a release ends a drag on the captured node wherever it lands; a
+  link run is a tab stop that `Enter` follows and `Space` does not, a press on its cell
+  focusing it as a click on an anchor does; popups light-dismiss, except on their own anchor, whose
   click toggles them; a modal takes focus on open and returns it on close; a key's
   default runs after the handlers' writes have taken effect, as after a browser's
   microtask checkpoint; selection

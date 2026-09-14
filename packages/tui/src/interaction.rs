@@ -1027,11 +1027,19 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
 
     return;
   };
+  // A press on a link's cell focuses the linked run, as a click on an anchor does,
+  // whether the run is hit itself or flows in a paragraph.
+  let link = store(|store| store.link_at(x, y));
   let focus_target = store(|store| {
-    path
-      .iter()
-      .rev()
-      .find_map(|(handle, _)| store.focus_holder(*handle))
+    link
+      .as_ref()
+      .map(|(run, _)| *run)
+      .or_else(|| {
+        path
+          .iter()
+          .rev()
+          .find_map(|(handle, _)| store.focus_holder(*handle))
+      })
       .or_else(|| {
         // A press inside an overlay with no focusable of its own keeps focus on the
         // overlay's nearest focusable ancestor, so a popup's rows never blur the
@@ -1116,7 +1124,7 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
         }
 
         // A press on a link arms it; the release on the same cell opens it.
-        store.pressed_link = store.link_at(x, y).map(|url| (x, y, url));
+        store.pressed_link = link.map(|(_, url)| (x, y, url));
       });
     }
     PointerButton::Secondary => store(|store| {
@@ -1438,6 +1446,11 @@ fn key_default(event: &KeyEvent) {
 
       return;
     }
+    "Enter" if store(|store| store.focused_link()).is_some() => {
+      follow_focused_link();
+
+      return;
+    }
     "Escape" => {
       // The most transient layer goes first: the menu, then the selection, then an
       // open overlay.
@@ -1497,6 +1510,23 @@ fn key_default(event: &KeyEvent) {
   }
 
   crate::field::edit_focused(event);
+}
+
+/// Clicks the focused link and, unless a handler prevented the platform, stages its
+/// destination for the terminal loop's system handler: `Enter` on a link is its click,
+/// as on an anchor.
+fn follow_focused_link() {
+  let Some((node, url)) = store(|store| store.focused_link())
+  else {
+    return;
+  };
+  let prevented = dispatch_click::<Tui>(node);
+
+  if prevented.platform {
+    return;
+  }
+
+  store(|store| store.pending_open = Some(url));
 }
 
 /// Inserts `text`, pasted by the terminal, into the focused entry.

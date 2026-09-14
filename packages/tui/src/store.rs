@@ -396,10 +396,14 @@ impl Record {
     self.kind.box_record().map(|inner| &inner.props)
   }
 
-  /// The record's place in focus traversal.
+  /// The record's place in focus traversal: a box's declared order, a link run's
+  /// automatic one.
   #[inline(always)]
   pub(crate) fn focus_order(&self) -> Option<FocusOrder> {
-    self.box_props().and_then(|props| props.focus_order)
+    match &self.kind {
+      Kind::Run { props, .. } => props.link.as_ref().map(|_| FocusOrder::Auto),
+      _ => self.box_props().and_then(|props| props.focus_order),
+    }
   }
 
   /// Whether the record takes focus at all: by traversal, by pointer, or
@@ -948,6 +952,16 @@ impl Store {
     }
 
     None
+  }
+
+  /// The focused link run's node and destination, while a link holds focus.
+  pub(crate) fn focused_link(&self) -> Option<(NodeId, String)> {
+    let record = self.record(self.focused?)?;
+
+    match &record.kind {
+      Kind::Run { props, .. } => Some((record.node?, props.link.clone()?)),
+      _ => None,
+    }
   }
 
   /// The node a press or focus on `handle` lands on: itself when focusable, else its

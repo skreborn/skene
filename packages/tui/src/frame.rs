@@ -291,7 +291,7 @@ fn reveal() -> bool {
   let adjusted = with_store(|store| {
     let node = store.reveal.take()?;
 
-    Some(adjustments(store, node))
+    Some(adjustments(store, paint_owner(store, node)))
   })
   .unwrap_or_default();
   let changed = !adjusted.is_empty();

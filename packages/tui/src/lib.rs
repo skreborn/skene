@@ -406,6 +406,18 @@ pub fn render_to_colors(
     .collect()
 }
 
+/// The painted frame's reverse-video cells at `width` x `height`, row-major, for a
+/// headless test asserting the emphasis a focused link or a colorless selection paints
+/// in.
+#[must_use]
+pub fn render_to_reverse(width: u16, height: u16) -> Vec<bool> {
+  frame::render(width, height)
+    .cells
+    .iter()
+    .map(|cell| cell.reverse)
+    .collect()
+}
+
 /// Polls every ready task, as the interactive loop does between events; `true` when any
 /// ran. For a headless test driving async work.
 #[must_use]

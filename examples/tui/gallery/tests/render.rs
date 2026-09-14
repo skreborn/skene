@@ -37,6 +37,12 @@ fn the_gallery_renders_and_responds() {
 
     let indigo = tui::render_to_colors(60, 160);
 
+    // The next `Tab` is the text section's link, which `Enter` opens.
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    assert_eq!(tui::take_opened().as_deref(), Some("https://example.com"));
+
     // The next `Tab` is the primary button.
     tui::trigger_key("Tab");
     tui::trigger_key("Enter");
@@ -44,6 +50,7 @@ fn the_gallery_renders_and_responds() {
     let clicked = tui::render_to_text(60, 160);
 
     // Back on the radio group, a third palette redefines the tokens beneath the click.
+    tui::trigger_key("Shift+Tab");
     tui::trigger_key("Shift+Tab");
     tui::trigger_key("ArrowRight");
 

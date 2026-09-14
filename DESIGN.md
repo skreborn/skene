@@ -533,7 +533,10 @@ the terminal. The terminal's own selection—a drag with `Shift` held, `Option` 
 iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
 still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
 key. Focus belongs to controls, which are composed trees with roles
-and focus order, exactly as on the GUI. A key's default runs after the handlers' writes
+and focus order, exactly as on the GUI, and to link runs, which sit in the tab order as
+an anchor does: `Enter` is a focused link's click, staged for the system handler unless
+a handler prevented it, a press on its cell focuses it, and it paints in reverse video
+while focused. A key's default runs after the handlers' writes
 have taken effect, as a browser's does after its microtask checkpoint. A modal takes
 focus to its first tab stop as it opens and returns it to the node that held focus as
 it closes, a popup closing with focus inside returns it the same way, and a press on

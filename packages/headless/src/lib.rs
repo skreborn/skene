@@ -736,11 +736,14 @@ pub fn part(node: NodeId) -> Option<Part> {
   Scene::<Headless>::with(|scene| scene.part(node))
 }
 
-/// The place in focus traversal last written to the box or control `node`; `None`
-/// when it takes no focus.
+/// The place in focus traversal last written to the box or control `node`, or a link
+/// run's automatic one; `None` when it takes no focus.
 #[must_use]
 pub fn focus_order(node: NodeId) -> Option<FocusOrder> {
-  box_props(node)?.focus_order
+  match box_props(node) {
+    Some(props) => props.focus_order,
+    None => run_props(node)?.link.map(|_| FocusOrder::Auto),
+  }
 }
 
 /// Whether sequential focus traversal reaches `node`: it takes focus and is not

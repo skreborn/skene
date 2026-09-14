@@ -291,12 +291,15 @@ struct BorderPaint {
   color: Option<(u8, u8, u8)>,
 }
 
-/// One paragraph span's paint: its ink, weight, underline, and link.
+/// One paragraph span's paint: its ink, weight, underline, link, and whether it holds
+/// focus.
 struct SpanPaint {
   foreground: Option<(u8, u8, u8)>,
   bold: bool,
   underline: bool,
   link: Option<u16>,
+  /// Whether the span is the focused link, painted in reverse video.
+  focused: bool,
   selection: Option<SelectionColors>,
 }
 
@@ -330,6 +333,8 @@ enum NodePaint {
     bold: bool,
     underline: bool,
     link: Option<String>,
+    /// Whether the run is the focused link, painted in reverse video.
+    focused: bool,
     selection: Option<SelectionPaint>,
   },
   Field {
@@ -415,6 +420,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
             bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
             underline: link.is_some(),
             link,
+            focused: link.is_some() && store.focused == Some(*run),
             selection: style.and_then(selection_colors),
           }
         })
@@ -501,6 +507,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
         underline: props.link.is_some(),
         link: props.link.clone(),
+        focused: props.link.is_some() && focused,
         selection,
       }
     }
@@ -596,6 +603,10 @@ fn paint_node(
           cell.underline = paint.underline;
           cell.link = paint.link.map(|index| base + index);
 
+          if paint.focused {
+            cell.reverse = true;
+          }
+
           if selection.is_some_and(|(from, to)| offset >= from && offset < to) {
             select_cell(cell, paint.selection);
           }
@@ -657,6 +668,7 @@ fn paint_node(
       bold,
       underline,
       link,
+      focused,
       selection,
     } => {
       let link = link.map(|url| {
@@ -675,6 +687,10 @@ fn paint_node(
             if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
               cell.underline = true;
               cell.link = link;
+
+              if focused {
+                cell.reverse = true;
+              }
             }
           }
         }

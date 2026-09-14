@@ -197,8 +197,8 @@ fn scrollbar_jumps_and_drags() {
     tui::trigger_mouse_release(5, 1);
 
     assert!(
-      dragged.contains("r2") && !dragged.contains("r8"),
-      "the drag scrolled back up: {dragged}"
+      dragged.contains("r3") && !dragged.contains("r8"),
+      "the drag scrolled back up, the thumb's start on the pointer's row: {dragged}"
     );
     assert!(
       dragged
@@ -219,6 +219,58 @@ fn scrollbar_jumps_and_drags() {
       }),
       "the track color shows in every bar cell: {track:?}"
     );
+  });
+}
+
+/// A thumb drag reads the pointer within its cell: on a track short against its
+/// content, a pointer a quarter cell earlier or later lands the offset rows apart.
+#[test]
+fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_height(4)
+        .set_overflow(Overflow::Auto)
+        .set_child(
+          Column::new().set_children(
+            (0..44)
+              .map(|index| Text::new(format!("r{index}")))
+              .collect::<Vec<_>>(),
+          ),
+        )
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(6, 4);
+
+    tui::trigger_mouse_press(5, 0);
+
+    let first_row = |frame: String| {
+      frame
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().next())
+        .map(str::to_owned)
+    };
+
+    tui::trigger_mouse_drag_within(5, 1, (0.5, 0.25));
+
+    let early = first_row(tui::render_to_text(6, 4));
+
+    tui::trigger_mouse_drag(5, 1);
+
+    let center = first_row(tui::render_to_text(6, 4));
+
+    tui::trigger_mouse_drag_within(5, 1, (0.5, 0.75));
+
+    let late = first_row(tui::render_to_text(6, 4));
+
+    tui::trigger_mouse_release(5, 1);
+
+    assert_eq!(early.as_deref(), Some("r10"), "a quarter cell in");
+    assert_eq!(center.as_deref(), Some("r13"), "the cell's center");
+    assert_eq!(late.as_deref(), Some("r17"), "three quarters in");
   });
 }
 

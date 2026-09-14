@@ -545,9 +545,10 @@ impl Store {
   }
 
   /// The scrollbar under (`x`, `y`), if any: the owning scrollable, its axis, and the
-  /// pointer's position within the track.
-  fn scrollbar_hit(&self, x: u16, y: u16) -> Option<(Handle, Axis, i64)> {
+  /// pointer's position within the track, exact where the terminal reports pixels.
+  fn scrollbar_hit(&self, x: u16, y: u16) -> Option<(Handle, Axis, f32)> {
     let (px, py) = (i64::from(x), i64::from(y));
+    let (within_x, within_y) = self.pointer_within;
 
     for handle in self.handles() {
       if !self.is_scrollable(handle) {
@@ -562,7 +563,7 @@ impl Store {
         let (track_start, track, _) = self.scroll_geometry(handle, Axis::Vertical);
 
         if py >= track_start && py < track_start + track {
-          return Some((handle, Axis::Vertical, py - track_start));
+          return Some((handle, Axis::Vertical, cells(py - track_start) + within_y));
         }
       }
 
@@ -570,7 +571,7 @@ impl Store {
         let (track_start, track, _) = self.scroll_geometry(handle, Axis::Horizontal);
 
         if px >= track_start && px < track_start + track {
-          return Some((handle, Axis::Horizontal, px - track_start));
+          return Some((handle, Axis::Horizontal, cells(px - track_start) + within_x));
         }
       }
     }
@@ -578,21 +579,25 @@ impl Store {
     None
   }
 
-  /// The offsets that land the thumb's start on `target_start` within its track,
-  /// clamped.
+  /// The offsets that land the thumb's start nearest `target_start`, in track cells,
+  /// clamped to the track.
+  #[expect(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+  )]
   fn thumb_offsets(
     &self,
     handle: Handle,
     axis: Axis,
     track: i64,
     limit: u32,
-    target_start: i64,
+    target_start: f32,
   ) -> (u32, u32) {
     let (_, thumb) = crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), 0, limit);
-    let thumb = thumb as i64;
-    let room = (track - thumb).max(1);
-    let target_start = target_start.clamp(0, track - thumb);
-    let offset = u32::try_from(target_start * i64::from(limit) / room).unwrap_or(0);
+    let room = cells(track - thumb as i64);
+    let target_start = target_start.clamp(0., room.max(0.));
+    let offset = (target_start * limit as f32 / room.max(1.)).round() as u32;
     let (x, y) = self.scroll_offset(handle);
 
     match axis {
@@ -954,12 +959,12 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
     };
     let (start, thumb) =
       crate::paint::thumb_span(isize::try_from(track).unwrap_or(0), offset, limit);
-    let (start, thumb) = (start as i64, thumb as i64);
+    let (start, thumb) = (cells(start as i64), cells(thumb as i64));
     let grab = if position >= start && position < start + thumb {
       position - start
     }
     else {
-      thumb / 2
+      thumb / 2.
     };
     let offsets = store.thumb_offsets(handle, axis, track, limit, position - grab);
 
@@ -1230,19 +1235,21 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   }
 }
 
-/// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way.
+/// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way: a
+/// scrollbar's thumb follows the pointer's position within the cell.
 pub(crate) fn drag_to(x: u16, y: u16) {
   let scrolled = store(|store| match store.drag {
     Some(Drag::Scrollbar { node, axis, grab }) => {
       let (track_start, track, limit) = store.scroll_geometry(node, axis);
+      let (within_x, within_y) = store.pointer_within;
       let along = match axis {
-        Axis::Horizontal => i64::from(x),
-        Axis::Vertical => i64::from(y),
+        Axis::Horizontal => cells(i64::from(x) - track_start) + within_x,
+        Axis::Vertical => cells(i64::from(y) - track_start) + within_y,
       };
 
       Some((
         node,
-        store.thumb_offsets(node, axis, track, limit, along - track_start - grab),
+        store.thumb_offsets(node, axis, track, limit, along - grab),
       ))
     }
     Some(Drag::Selection) => {
@@ -1261,6 +1268,12 @@ pub(crate) fn drag_to(x: u16, y: u16) {
   if let Some((handle, offsets)) = scrolled {
     scroll_to(handle, offsets);
   }
+}
+
+/// A count of cells as a position along a track.
+#[expect(clippy::cast_precision_loss)]
+const fn cells(count: i64) -> f32 {
+  count as f32
 }
 
 /// Writes `offsets` into `handle` and notifies its scroll handlers.

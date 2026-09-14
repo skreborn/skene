@@ -243,6 +243,14 @@ picker's type-ahead waits on a clock no behavior has.
       `parse-selection`, parses a reply for any mode (`DecPrivateMode::from(u16)`,
       `Unspecified` for one termina does not model); the git dependency names that
       branch (2026-09-14).
+    - **A fast drag lagged the pointer, and a scrollbar drag stayed by cell** (reported
+      2026-09-14). The loop read one event per frame, so a burst of pixel reports
+      queued a frame each; it now drains every queued event before painting and drops
+      a motion report followed by another of the same kind, as a browser coalesces
+      `pointermove`. A scrollbar's thumb follows the pointer's position within the
+      cell too, so on a track short against its content the offset moves by rows
+      rather than by the many rows one cell spans; a track press or drag lands the
+      thumb's start nearest the pointer, rounded rather than floored.
     - A terminal that honors 1016 but answers no DECRQM would report pixels the driver
       reads as cells; no such terminal is known.
     - Windows reports no pixel size, and tmux passes no pixel reports through; both

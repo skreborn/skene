@@ -516,8 +516,10 @@ unless the terminal reports pixels: where the platform reports the window's pixe
 the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply termina
 parses on the fork's `parse-mode-reports` branch), and from the reply that confirms it
 every report is pixels over the cell size, so a pointer sits within its cell and a
-slider drag lands where the pointer is; the request repeats on resize, and hit-testing
-stays by cell. Selection is anchored in source space so it
+slider or scrollbar drag lands where the pointer is; the request repeats on resize, and
+hit-testing stays by cell. The loop handles every event already queued before it paints
+the next frame, and a run of pointer motion collapses to where it ends, as a browser
+coalesces `pointermove`, so a fast drag never falls behind the pointer. Selection is anchored in source space so it
 survives reflow; wheel gestures latch their target. A text entry's selection is its
 own—an anchor beside the caret over the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge

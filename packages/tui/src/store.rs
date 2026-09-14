@@ -461,8 +461,9 @@ pub(crate) enum Drag {
   Scrollbar {
     node: Handle,
     axis: skene_core::Axis,
-    /// The grabbed position within the thumb, in track cells.
-    grab: i64,
+    /// The grabbed position within the thumb, in track cells, exact where the
+    /// terminal reports pixels.
+    grab: f32,
   },
   /// A text selection: motion extends it to the position under the pointer.
   Selection,

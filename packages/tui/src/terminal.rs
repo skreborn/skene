@@ -342,94 +342,122 @@ where
       Err(_) => break,
     }
 
-    let Ok(event) = terminal.read(|_| true)
-    else {
-      break;
-    };
+    // Every event already queued is handled before the next frame, and a run of
+    // pointer motion collapses to where it ends, as a browser coalesces `pointermove`.
+    let mut events = Vec::new();
 
-    match event {
-      Event::Key(key) if key.kind != KeyEventKind::Release => {
-        dispatch_key(&key);
+    loop {
+      let Ok(event) = terminal.read(|_| true)
+      else {
+        return finish(&mut terminal);
+      };
 
-        crate::dev::mark_changed();
+      events.push(event);
+
+      if !matches!(terminal.poll(|_| true, Some(Duration::ZERO)), Ok(true)) {
+        break;
       }
-      Event::Mouse(mouse) => {
-        let (mouse, within) = pixels.locate(mouse);
+    }
 
-        with_store(|store| store.pointer_within = within);
-        dispatch_mouse(&mut terminal, mouse);
+    let mut events = events.into_iter().peekable();
 
-        crate::dev::mark_changed();
+    while let Some(event) = events.next() {
+      if let Event::Mouse(motion) = &event
+        && matches!(motion.kind, MouseEventKind::Moved | MouseEventKind::Drag(_))
+        && matches!(events.peek(), Some(Event::Mouse(next)) if next.kind == motion.kind && next.modifiers == motion.modifiers)
+      {
+        continue;
       }
-      Event::Paste(text) => {
-        paste(&text);
 
-        crate::dev::mark_changed();
-      }
-      Event::WindowResized(size) => {
-        // A full rewrite: the previous frame no longer matches what the terminal
-        // shows.
-        last_frame = None;
+      match event {
+        Event::Key(key) if key.kind != KeyEventKind::Release => {
+          dispatch_key(&key);
 
-        with_store(|store| store.paint_dirty = true);
-
-        if mouse {
-          pixels.resize(&mut terminal, &size);
+          crate::dev::mark_changed();
         }
-      }
-      Event::Csi(Csi::Mode(Mode::ReportTheme(mode))) => {
-        set_detected_scheme(mode == ThemeMode::Dark);
-      }
-      Event::Csi(Csi::Mode(Mode::ReportDecPrivateMode {
-        mode: DecPrivateMode::Code(DecPrivateModeCode::SGRPixelsMouse),
-        setting,
-      })) => {
-        pixels.on = setting == DecModeSetting::Set;
-      }
-      Event::Osc(Osc::ChangeDynamicColors(DynamicColorNumber::TextBackgroundColor, colors)) => {
-        if let Some(ColorOrQuery::Color(color)) = colors.first() {
-          set_detected_scheme(detect::is_dark(*color));
-        }
-      }
-      Event::Osc(Osc::SetSelection(_, content)) => {
-        paste_reply(&content);
+        Event::Mouse(mouse) => {
+          let (mouse, within) = pixels.locate(mouse);
 
-        crate::dev::mark_changed();
-      }
-      // A terminal speaking the kitty keyboard protocol disambiguates modified
-      // keys—`Ctrl+Backspace` above all; the rest keep the legacy encoding, where
-      // `Ctrl+W` stands in for it.
-      Event::Csi(Csi::Keyboard(Keyboard::ReportFlags(_))) => {
-        let _ = write!(
-          terminal,
-          "{}",
-          Csi::Keyboard(Keyboard::SetFlags {
-            flags: KittyKeyboardFlags::DISAMBIGUATE_ESCAPE_CODES,
-            mode: SetKeyboardFlagsMode::AssignAll,
-          })
-        );
-        let _ = terminal.flush();
-      }
-      Event::Dcs(Dcs::Response {
-        value: DcsResponse::GraphicRendition(attributes),
-        ..
-      }) => {
-        if let Some(reported) = ColorDepth::reported(&attributes)
-          && reported > depth
-        {
-          depth = reported;
+          with_store(|store| store.pointer_within = within);
+          dispatch_mouse(&mut terminal, mouse);
+
+          crate::dev::mark_changed();
+        }
+        Event::Paste(text) => {
+          paste(&text);
+
+          crate::dev::mark_changed();
+        }
+        Event::WindowResized(size) => {
+          // A full rewrite: the previous frame no longer matches what the terminal
+          // shows.
           last_frame = None;
 
           with_store(|store| store.paint_dirty = true);
+
+          if mouse {
+            pixels.resize(&mut terminal, &size);
+          }
         }
+        Event::Csi(Csi::Mode(Mode::ReportTheme(mode))) => {
+          set_detected_scheme(mode == ThemeMode::Dark);
+        }
+        Event::Csi(Csi::Mode(Mode::ReportDecPrivateMode {
+          mode: DecPrivateMode::Code(DecPrivateModeCode::SGRPixelsMouse),
+          setting,
+        })) => {
+          pixels.on = setting == DecModeSetting::Set;
+        }
+        Event::Osc(Osc::ChangeDynamicColors(DynamicColorNumber::TextBackgroundColor, colors)) => {
+          if let Some(ColorOrQuery::Color(color)) = colors.first() {
+            set_detected_scheme(detect::is_dark(*color));
+          }
+        }
+        Event::Osc(Osc::SetSelection(_, content)) => {
+          paste_reply(&content);
+
+          crate::dev::mark_changed();
+        }
+        // A terminal speaking the kitty keyboard protocol disambiguates modified
+        // keys—`Ctrl+Backspace` above all; the rest keep the legacy encoding, where
+        // `Ctrl+W` stands in for it.
+        Event::Csi(Csi::Keyboard(Keyboard::ReportFlags(_))) => {
+          let _ = write!(
+            terminal,
+            "{}",
+            Csi::Keyboard(Keyboard::SetFlags {
+              flags: KittyKeyboardFlags::DISAMBIGUATE_ESCAPE_CODES,
+              mode: SetKeyboardFlagsMode::AssignAll,
+            })
+          );
+          let _ = terminal.flush();
+        }
+        Event::Dcs(Dcs::Response {
+          value: DcsResponse::GraphicRendition(attributes),
+          ..
+        }) => {
+          if let Some(reported) = ColorDepth::reported(&attributes)
+            && reported > depth
+          {
+            depth = reported;
+            last_frame = None;
+
+            with_store(|store| store.paint_dirty = true);
+          }
+        }
+        _ => {}
       }
-      _ => {}
     }
   }
 
+  finish(&mut terminal);
+}
+
+/// Restores the terminal at the end of the run.
+fn finish(terminal: &mut PlatformTerminal) {
   crate::dev::flush();
 
-  let _ = write_restore(&mut terminal);
+  let _ = write_restore(terminal);
   let _ = terminal.flush();
 }
 

@@ -205,7 +205,8 @@
   the document is selectable), and `Launch::set_mouse(false)` hands the mouse back
   wholesale. A pointer position is its cell's center, or exact where the terminal
   reports pixels (SGR-Pixels, asked for when the platform reports the window's pixel
-  size and trusted from the DECRQM reply that confirms it). Every terminal capability
+  size and trusted from the DECRQM reply that confirms it); queued pointer motion
+  collapses to where it ends before a frame paints. Every terminal capability
   beyond a plain emulator is a progressive enhancement of that kind: asked for,
   confirmed by a parsed reply or ignored in silence, degrading to the cell rendering,
   never required and never inferred from a name; the plan is in `ROADMAP.md`. The escape hatch for a terminal without OSC 52 is the terminal's own

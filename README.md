@@ -181,7 +181,8 @@ Examples live under `examples/gui` and `examples/tui`, one folder per feature, t
 names on both facades where the feature exists: `counter` (state, snapshot-preserving
 reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
 (a palette built per property, an accent the reader switches, a nested theme, the color
-scheme), and the GUI-only `router` (typed routes behind real links, the about page split
+scheme), `store` (a todo list over one store: rows following their own entries, a list
+following the shape, a memoized count), and the GUI-only `router` (typed routes behind real links, the about page split
 out with `#[lazy]`). `examples/third-party` holds the crates written from outside the
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
 workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).

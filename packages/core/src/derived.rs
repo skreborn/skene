@@ -24,7 +24,7 @@ pub fn derived<D: Driver>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let parent_scope = Owner::current();
   let current = Rc::new(Cell::new(None::<Owner>));
 
-  Effect::new(move |_: Option<()>| {
+  Effect::render(move |_: Option<()>| {
     // The rebuilt content takes the previous content's place in the owner tree, so
     // state under it keeps its snapshot identity across the rebuild.
     let scope = current
@@ -102,7 +102,7 @@ pub fn reconcile<D: Driver, T, I, K>(
   let parent_scope = Owner::current();
   let scratch = RefCell::new(Scratch::<K>::default());
 
-  Effect::new(move |previous: Option<Vec<(K, Mounted)>>| {
+  Effect::render(move |previous: Option<Vec<(K, Mounted)>>| {
     let mut mounted = previous.unwrap_or_default();
     let mut scratch = scratch.borrow_mut();
     let Scratch {

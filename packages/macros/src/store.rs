@@ -1,20 +1,49 @@
 //! The `Store` derive: one lens accessor per field, on a trait every store location
 //! holding the type implements.
 
+use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Ident, LitStr, ext::IdentExt};
+
+/// The path to `skene_reactive` from the deriving crate: the crate itself where it is
+/// a direct dependency, else the facade's `reactive` re-export.
+fn reactive() -> TokenStream {
+  if let Ok(found) = crate_name("skene-reactive") {
+    return match found {
+      FoundCrate::Itself => quote!(::skene_reactive),
+      FoundCrate::Name(name) => {
+        let name = format_ident!("{name}");
+
+        quote!(::#name)
+      }
+    };
+  }
+
+  for facade in ["skene-gui", "skene-tui", "skene-views"] {
+    if let Ok(FoundCrate::Name(name)) = crate_name(facade) {
+      let name = format_ident!("{name}");
+
+      return quote!(::#name::reactive);
+    }
+  }
+
+  quote!(::skene_reactive)
+}
 
 /// The `StoreField` and `Clone` method names an accessor must not take.
 const RESERVED: &[&str] = &[
   "clone",
   "clone_from",
   "core",
+  "derive",
   "get",
   "location",
   "read_untracked",
   "set",
   "track",
+  "track_shallow",
+  "try_derive",
   "try_get",
   "try_update",
   "try_with",
@@ -136,6 +165,7 @@ pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
     ));
   };
   let fields = fields(&data.fields)?;
+  let reactive = reactive();
   let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
   let trait_name = format_ident!("{name}StoreFields");
   let trait_doc = format!(
@@ -156,12 +186,12 @@ pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
 
     declarations.push(quote! {
       #[doc = #doc]
-      fn #accessor(self) -> ::skene_reactive::Subfield<Self, #ty>;
+      fn #accessor(self) -> #reactive::Subfield<Self, #ty>;
     });
 
     implementations.push(quote! {
-      fn #accessor(self) -> ::skene_reactive::Subfield<Self, #ty> {
-        ::skene_reactive::Subfield::new(
+      fn #accessor(self) -> #reactive::Subfield<Self, #ty> {
+        #reactive::Subfield::new(
           self,
           #key,
           |value: &#name #ty_generics| &value.#member,
@@ -174,14 +204,14 @@ pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   let mut impl_params = input.generics.params.clone();
 
   impl_params.push(syn::parse_quote! {
-    __Location: ::skene_reactive::StoreField<Value = #name #ty_generics>
+    __Location: #reactive::StoreField<Value = #name #ty_generics>
   });
 
   Ok(quote! {
     #[doc = #trait_doc]
     #[automatically_derived]
     #visibility trait #trait_name #impl_generics:
-      ::skene_reactive::StoreField<Value = #name #ty_generics> + Sized
+      #reactive::StoreField<Value = #name #ty_generics> + Sized
     #where_clause
     {
       #(#declarations)*

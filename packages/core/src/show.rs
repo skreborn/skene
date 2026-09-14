@@ -75,7 +75,7 @@ impl<D: Driver> View<D> for Show<D, AnyView<D>> {
 
     on_cleanup(move || Scene::<D>::with(|scene| scene.destroy(node)));
 
-    Effect::new(move |_: Option<()>| {
+    Effect::render(move |_: Option<()>| {
       let visible = shown();
 
       Scene::<D>::with(|scene| {

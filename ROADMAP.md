@@ -82,9 +82,7 @@ reasoning.
 
 ### Next
 
-1. **Stores:** derived (memoized) lens reads and a keyed-iteration helper feeding
-   `reconcile`.
-2. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
+1. **`LazyColumn` variable-extent items and horizontal lists**, then CSS anchor
    positioning for overlays.
 
 Watched, not scheduled: `ErrorBoundary` stays on probation until usage decides it; the
@@ -272,8 +270,29 @@ picker's type-ahead waits on a clock no behavior has.
     state is the app's bound signal already. The headless driver carries no
     restoration; a test of it runs on a real driver.
   - A `&'static str` signal is `opaque`, since it cannot be deserialized owned.
-  - Stores: derived (memoized) lens reads and a keyed-iteration helper feeding
-    `reconcile`.
+  - **Stores derive and iterate** (landed 2026-09-14). `StoreField::derive` is a memo
+    over a location—its readers wake only when the result changes—and `try_derive`
+    its fallible form. `KeyedField::entries` hands out a lens per entry in the
+    collection's order, subscribed to the shape alone (`track_shallow`: writes at the
+    location and above, never beneath), and `HasChildren::derive_entries` feeds them
+    to `reconcile` keyed by the entry's key, so a keyed list follows the collection
+    and each row its own entry; a `Vec` is keyed through `keyed_by` by a key its
+    elements carry, read by scan. The structural effects (`derived`, `reconcile`,
+    `Show`, `Switch`) are render effects now, so in a flush a parent's structure
+    settles before its descendants' properties, and a row whose entry left is
+    disposed before it would read the vanished location. The `Store` derive resolves
+    `skene_reactive` through the deriving crate's direct dependency or its facade's
+    `reactive` re-export, so an app depending on a facade alone derives. The `store`
+    example is a todo list on both facades. Left:
+    - An element addressed by key and the same element addressed by position are
+      distinct locations: a write through one does not wake a reader through the
+      other.
+    - A `HashMap`'s entries come in its iteration order; an ordered list wants a
+      `BTreeMap` or a keyed `Vec`.
+    - A derived leaf takes a fixed value, so a row cannot switch between two palette
+      tokens by state (`derive_color` returns a `Color`); the example switches weight
+      instead. A state-conditioned token choice wants either a `State` a box can
+      declare for itself or a derived leaf that may name a token.
   - On a hydrated page with several lazy views racing, order-keyed resource adoption
     inside them can cross; tags cover it, ordering the arrivals would too.
 - **Lists and overlays**

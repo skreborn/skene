@@ -75,6 +75,7 @@ pub use store::{
   AtIndex,
   AtKey,
   IndexedField,
+  KeyedBy,
   KeyedCollection,
   KeyedField,
   Store,

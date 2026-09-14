@@ -1,14 +1,14 @@
 //! Fine-grained store subscriptions: field-, index-, and key-level.
 
 use std::{
-  cell::Cell,
-  collections::HashMap,
+  cell::{Cell, RefCell},
+  collections::{BTreeMap, HashMap},
   rc::Rc,
   time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
-use skene_reactive::{Effect, IndexedField, KeyedField, Owner, Store, StoreField};
+use skene_reactive::{Effect, Get, IndexedField, KeyedField, Owner, Store, StoreField};
 
 #[derive(Store, Default, Serialize, Deserialize)]
 struct Settings {
@@ -220,6 +220,7 @@ fn derive_surface() {
     set: u32,
     with: u32,
     update: u32,
+    derive: u32,
   }
 
   let pair = Store::new(Pair {
@@ -233,6 +234,7 @@ fn derive_surface() {
     set: 2,
     with: 3,
     update: 4,
+    derive: 5,
   });
 
   pair.first().set(10);
@@ -248,9 +250,151 @@ fn derive_surface() {
       awkward.set_field().get(),
       awkward.with_field().get(),
       awkward.update_field().get(),
+      awkward.derive_field().get(),
     ),
-    (10, 20, 3, 4)
+    (10, 20, 3, 4, 5)
   );
+}
+
+/// A derived read is a memo over its location: it recomputes on a write there, and
+/// its readers wake only when the result changed.
+#[test]
+fn derived_reads_wake_readers_only_on_a_changed_result() {
+  let settings = Store::new(Settings {
+    favorites: vec!["a".to_owned(), "b".to_owned()],
+    ..Settings::default()
+  });
+  let count = settings.favorites().derive(Vec::len);
+  let reader_runs = count_runs(move || {
+    let _ = count.get();
+  });
+
+  settings.favorites().at(0).set("A".to_owned());
+
+  assert_eq!((count.get(), reader_runs.get()), (2, 1));
+
+  settings
+    .favorites()
+    .update(|favorites| favorites.push("c".to_owned()));
+
+  assert_eq!((count.get(), reader_runs.get()), (3, 2));
+}
+
+/// A fallible derived read is `None` once its location is gone.
+#[test]
+fn a_fallible_derived_read_is_none_once_the_location_is_gone() {
+  let mut users = HashMap::new();
+
+  users.insert(1, User { score: 10 });
+
+  let settings = Store::new(Settings {
+    users,
+    ..Settings::default()
+  });
+  let score = settings.users().key(1).try_derive(|user| user.score);
+
+  assert_eq!(score.get(), Some(10));
+
+  settings.users().key(1).score().set(11);
+
+  assert_eq!(score.get(), Some(11));
+
+  settings.users().update(|users| {
+    users.remove(&1);
+  });
+
+  assert_eq!(score.get(), None);
+}
+
+/// The entries of a keyed location follow its shape alone: an entry written beneath
+/// wakes the entry's readers and not the iteration, an insertion wakes the iteration.
+#[test]
+fn entries_follow_the_shape_and_each_lens_its_entry() {
+  let mut users = BTreeMap::new();
+
+  users.insert(1, User { score: 10 });
+  users.insert(2, User { score: 20 });
+
+  let store = Store::opaque(users);
+  let seen = Rc::new(RefCell::new(Vec::new()));
+  let entries_runs = {
+    let seen = Rc::clone(&seen);
+
+    count_runs(move || {
+      *seen.borrow_mut() = store
+        .entries()
+        .iter()
+        .map(|entry| entry.entry_key())
+        .collect();
+    })
+  };
+  let first = store.entries().into_iter().next().expect("the first entry");
+  let first_runs = count_runs(move || {
+    let _ = first.score().get();
+  });
+
+  assert_eq!(*seen.borrow(), [1, 2]);
+
+  store.key(2).score().set(25);
+
+  assert_eq!((entries_runs.get(), first_runs.get()), (1, 1));
+
+  store.key(1).score().set(15);
+
+  assert_eq!((entries_runs.get(), first_runs.get()), (1, 2));
+
+  store.update(|users| {
+    users.insert(3, User { score: 30 });
+  });
+
+  assert_eq!((entries_runs.get(), first_runs.get()), (2, 3));
+  assert_eq!(*seen.borrow(), [1, 2, 3]);
+}
+
+/// A `Vec` keyed by its elements reads by key across a reorder, and its entries come
+/// in the `Vec`'s order.
+#[test]
+fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
+  #[derive(Store, Clone)]
+  struct Row {
+    id: u32,
+    label: &'static str,
+  }
+
+  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let keyed = rows.keyed_by(|row| row.id);
+  let order = keyed.derive(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
+  let second_runs = count_runs(move || {
+    let _ = keyed.key(2).label().get();
+  });
+
+  assert_eq!(
+    keyed
+      .entries()
+      .iter()
+      .map(|entry| entry.entry_key())
+      .collect::<Vec<_>>(),
+    [1, 2]
+  );
+
+  rows.update(|rows| rows.swap(0, 1));
+
+  assert_eq!(order.get(), [2, 1]);
+  assert_eq!(
+    keyed
+      .entries()
+      .iter()
+      .map(|entry| entry.entry_key())
+      .collect::<Vec<_>>(),
+    [2, 1]
+  );
+  assert_eq!(keyed.key(2).label().get(), "b");
+  assert_eq!(second_runs.get(), 2);
+
+  keyed.key(2).label().set("B");
+
+  assert_eq!((second_runs.get(), rows.at(0).label().get()), (3, "B"));
+  assert_eq!(keyed.key(9).try_with(|_| ()), None);
 }
 
 /// A store snapshots its whole value as one unit at its position and adopts it in the

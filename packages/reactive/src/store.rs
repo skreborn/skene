@@ -12,6 +12,12 @@
 //! Locations intern into a trie of [`StoreLocation`]s, one node per location ever
 //! addressed, so tracking and notifying cost the location's depth and nothing of the
 //! number of locations tracked.
+//!
+//! A location derives a [`Memo`] over its value ([`StoreField::derive`]), and a keyed
+//! location hands out a lens per entry, subscribed to its shape alone
+//! ([`KeyedField::entries`]), so a keyed list follows the collection and each item
+//! follows its entry. A `Vec` is keyed by a key its elements carry
+//! ([`IndexedField::keyed_by`]).
 
 use std::{
   any::Any,
@@ -25,7 +31,7 @@ use rustc_hash::{FxHashMap, FxHasher};
 use serde::{Serialize, de::DeserializeOwned};
 use smallvec::SmallVec;
 
-use crate::{Owner, Signal, Trigger, access::With, effect::batch, signal::update_silently};
+use crate::{Memo, Owner, Signal, Trigger, access::With, effect::batch, signal::update_silently};
 
 /// An interned location inside a store's value: the root, or one path of fields,
 /// indexes and keys beneath it.
@@ -198,13 +204,25 @@ impl StoreCore {
 
   /// Subscribes the running effect to `location`.
   fn track(&self, location: StoreLocation) {
+    self.track_with(location, |node| &mut node.below);
+  }
+
+  /// Subscribes the running effect to writes at `location` and at the locations
+  /// containing it, not to writes beneath it.
+  fn track_shallow(&self, location: StoreLocation) {
+    self.track_with(location, |node| &mut node.here);
+  }
+
+  /// Subscribes the running effect to the trigger `own` picks on `location` and to
+  /// `here` on every location containing it.
+  fn track_with(&self, location: StoreLocation, own: fn(&mut Node) -> &mut Option<Trigger>) {
     let owner = self.owner;
     let triggers: SmallVec<[Trigger; 8]> = update_silently(self.trie.id(), |trie: &mut Trie| {
       owner.enter(|| {
         let mut triggers = SmallVec::new();
         let mut node = location.0 as usize;
 
-        triggers.push(*trie.nodes[node].below.get_or_insert_with(Trigger::new));
+        triggers.push(*own(&mut trie.nodes[node]).get_or_insert_with(Trigger::new));
 
         while trie.nodes[node].parent != NO_PARENT {
           node = trie.nodes[node].parent as usize;
@@ -318,9 +336,10 @@ impl<T: 'static> Store<T> {
 /// Every location shares one surface: [`get`](Self::get)/[`with`](Self::with)
 /// subscribe the running effect to exactly this location,
 /// [`set`](Self::set)/[`update`](Self::update) notify exactly the readers the write
-/// can affect. The `try_` variants return `None` where the plain calls panic: when
-/// the location no longer exists (a removed key, an out-of-range index).
-pub trait StoreField: Clone {
+/// can affect, and [`derive`](Self::derive) memoizes a read of it. The `try_`
+/// variants return `None` where the plain calls panic: when the location no longer
+/// exists (a removed key, an out-of-range index).
+pub trait StoreField: Clone + 'static {
   /// The addressed value's type.
   type Value: 'static;
 
@@ -341,6 +360,12 @@ pub trait StoreField: Clone {
   /// Subscribes the running effect to this location.
   fn track(&self) {
     self.core().track(self.location());
+  }
+
+  /// Subscribes the running effect to writes at this location and at the locations
+  /// containing it, not to writes beneath it.
+  fn track_shallow(&self) {
+    self.core().track_shallow(self.location());
   }
 
   /// Runs `read` on the value, subscribed; `None` when the location no longer exists.
@@ -411,6 +436,33 @@ pub trait StoreField: Clone {
   /// Panics when the location no longer exists; see [`try_update`](Self::try_update).
   fn set(&self, value: Self::Value) {
     self.update(|current| *current = value);
+  }
+
+  /// A memo of `derive` over the value, subscribed to this location; its dependents
+  /// wake only when the result changes.
+  ///
+  /// # Panics
+  ///
+  /// The memo panics when it computes while the location no longer exists; see
+  /// [`try_derive`](Self::try_derive).
+  fn derive<R: PartialEq + 'static>(
+    &self,
+    derive: impl Fn(&Self::Value) -> R + 'static,
+  ) -> Memo<R> {
+    let location = self.clone();
+
+    Memo::new(move |_| location.with(&derive))
+  }
+
+  /// A memo of `derive` over the value, subscribed to this location, `None` while the
+  /// location no longer exists; its dependents wake only when the result changes.
+  fn try_derive<R: PartialEq + 'static>(
+    &self,
+    derive: impl Fn(&Self::Value) -> R + 'static,
+  ) -> Memo<Option<R>> {
+    let location = self.clone();
+
+    Memo::new(move |_| location.try_with(&derive))
   }
 }
 
@@ -563,6 +615,14 @@ pub trait IndexedField<T>: StoreField<Value = Vec<T>> + Sized {
       element: PhantomData,
     }
   }
+
+  /// The elements by the key `key_of` reads from each; see [`KeyedBy`].
+  fn keyed_by<K: Hash + Eq + Clone + 'static>(self, key_of: fn(&T) -> K) -> KeyedBy<Self, K, T> {
+    KeyedBy {
+      parent: self,
+      key_of,
+    }
+  }
 }
 
 impl<S: StoreField<Value = Vec<T>>, T: 'static> IndexedField<T> for S {}
@@ -579,6 +639,9 @@ pub trait KeyedCollection: 'static {
 
   /// The entry under `key`, mutably.
   fn entry_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Entry>;
+
+  /// The keys, in the collection's iteration order.
+  fn keys(&self) -> impl Iterator<Item = &Self::Key>;
 }
 
 impl<K, V, S> KeyedCollection for HashMap<K, V, S>
@@ -597,6 +660,10 @@ where
   fn entry_mut(&mut self, key: &K) -> Option<&mut V> {
     self.get_mut(key)
   }
+
+  fn keys(&self) -> impl Iterator<Item = &K> {
+    HashMap::keys(self)
+  }
 }
 
 impl<K, V> KeyedCollection for BTreeMap<K, V>
@@ -614,22 +681,105 @@ where
   fn entry_mut(&mut self, key: &K) -> Option<&mut V> {
     self.get_mut(key)
   }
+
+  fn keys(&self) -> impl Iterator<Item = &K> {
+    BTreeMap::keys(self)
+  }
 }
 
-/// A lens onto one entry of the parent location's keyed collection.
+/// A `Vec` location addressed by a key each element carries; built by
+/// [`IndexedField::keyed_by`].
+///
+/// A read by key finds the first element carrying it, so keys are distinct. An element
+/// addressed by key and the same element addressed by position
+/// ([`IndexedField::at`]) are distinct locations: a write through one does not wake a
+/// reader through the other.
 #[must_use]
-pub struct AtKey<Parent: StoreField>
-where
-  Parent::Value: KeyedCollection,
-{
+pub struct KeyedBy<Parent, K, T> {
   parent: Parent,
-  key: <Parent::Value as KeyedCollection>::Key,
+  key_of: fn(&T) -> K,
 }
 
-impl<Parent: StoreField> Clone for AtKey<Parent>
+impl<Parent: Clone, K, T> Clone for KeyedBy<Parent, K, T> {
+  #[inline(always)]
+  fn clone(&self) -> Self {
+    Self {
+      parent: self.parent.clone(),
+      key_of: self.key_of,
+    }
+  }
+}
+
+impl<Parent: Copy, K, T> Copy for KeyedBy<Parent, K, T> {}
+
+impl<Parent, K, T> StoreField for KeyedBy<Parent, K, T>
 where
-  Parent::Value: KeyedCollection,
+  Parent: StoreField<Value = Vec<T>>,
+  K: 'static,
+  T: 'static,
 {
+  type Value = Vec<T>;
+
+  #[inline(always)]
+  fn core(&self) -> StoreCore {
+    self.parent.core()
+  }
+
+  #[inline(always)]
+  fn location(&self) -> StoreLocation {
+    self.parent.location()
+  }
+
+  fn read_untracked<R>(&self, read: impl FnOnce(&Vec<T>) -> R) -> Option<R> {
+    self.parent.read_untracked(read)
+  }
+
+  fn write_untracked<R>(&self, write: impl FnOnce(&mut Vec<T>) -> R) -> Option<R> {
+    self.parent.write_untracked(write)
+  }
+}
+
+impl<Parent, K, T> KeyedField for KeyedBy<Parent, K, T>
+where
+  Parent: StoreField<Value = Vec<T>>,
+  K: Hash + Eq + Clone + 'static,
+  T: 'static,
+{
+  type Entry = T;
+  type Key = K;
+
+  fn entry<'a>(&self, value: &'a Vec<T>, key: &K) -> Option<&'a T> {
+    value.iter().find(|element| (self.key_of)(element) == *key)
+  }
+
+  fn entry_mut<'a>(&self, value: &'a mut Vec<T>, key: &K) -> Option<&'a mut T> {
+    value
+      .iter_mut()
+      .find(|element| (self.key_of)(element) == *key)
+  }
+
+  fn keys(&self, value: &Vec<T>) -> impl Iterator<Item = K> {
+    value.iter().map(self.key_of)
+  }
+}
+
+/// A lens onto one entry of the parent location, by key; built by
+/// [`KeyedField::key`] and [`KeyedField::entries`].
+#[must_use]
+pub struct AtKey<Parent: KeyedField> {
+  parent: Parent,
+  key: Parent::Key,
+}
+
+impl<Parent: KeyedField> AtKey<Parent> {
+  /// The key this lens addresses.
+  #[inline(always)]
+  pub fn entry_key(&self) -> Parent::Key {
+    self.key.clone()
+  }
+}
+
+impl<Parent: KeyedField> Clone for AtKey<Parent> {
   #[inline(always)]
   fn clone(&self) -> Self {
     Self {
@@ -639,11 +789,10 @@ where
   }
 }
 
-impl<Parent: StoreField> StoreField for AtKey<Parent>
-where
-  Parent::Value: KeyedCollection,
-{
-  type Value = <Parent::Value as KeyedCollection>::Entry;
+impl<Parent: KeyedField + Copy> Copy for AtKey<Parent> where Parent::Key: Copy {}
+
+impl<Parent: KeyedField> StoreField for AtKey<Parent> {
+  type Value = Parent::Entry;
 
   #[inline(always)]
   fn core(&self) -> StoreCore {
@@ -657,27 +806,82 @@ where
   fn read_untracked<R>(&self, read: impl FnOnce(&Self::Value) -> R) -> Option<R> {
     self
       .parent
-      .read_untracked(|entries| entries.entry(&self.key).map(read))
+      .read_untracked(|entries| self.parent.entry(entries, &self.key).map(read))
       .flatten()
   }
 
   fn write_untracked<R>(&self, write: impl FnOnce(&mut Self::Value) -> R) -> Option<R> {
     self
       .parent
-      .write_untracked(|entries| entries.entry_mut(&self.key).map(write))
+      .write_untracked(|entries| self.parent.entry_mut(entries, &self.key).map(write))
       .flatten()
   }
 }
 
-/// Key addressing on a store location holding a keyed collection.
-pub trait KeyedField: StoreField + Sized
-where
-  Self::Value: KeyedCollection,
-{
+/// Key addressing on a store location: the entries of a [`KeyedCollection`], or a
+/// `Vec`'s elements by a key each carries ([`KeyedBy`]).
+pub trait KeyedField: StoreField + Sized {
+  /// The key addressing an entry.
+  type Key: Hash + Eq + Clone + 'static;
+  /// The entry type.
+  type Entry: 'static;
+
+  /// The entry under `key` in `value`.
+  fn entry<'a>(&self, value: &'a Self::Value, key: &Self::Key) -> Option<&'a Self::Entry>;
+
+  /// The entry under `key` in `value`, mutably.
+  fn entry_mut<'a>(
+    &self,
+    value: &'a mut Self::Value,
+    key: &Self::Key,
+  ) -> Option<&'a mut Self::Entry>;
+
+  /// The keys of `value`, in its order.
+  fn keys(&self, value: &Self::Value) -> impl Iterator<Item = Self::Key>;
+
   /// The entry under `key`.
-  fn key(self, key: <Self::Value as KeyedCollection>::Key) -> AtKey<Self> {
+  fn key(self, key: Self::Key) -> AtKey<Self> {
     AtKey { parent: self, key }
+  }
+
+  /// A lens per entry, in the collection's order.
+  ///
+  /// Subscribes the running effect to the collection's shape alone: it wakes when an
+  /// entry is added or removed, the collection reordered or replaced, never when an
+  /// entry is written beneath; each lens subscribes its own readers to its entry.
+  fn entries(&self) -> Vec<AtKey<Self>> {
+    self.track_shallow();
+
+    self
+      .read_untracked(|value| {
+        self
+          .keys(value)
+          .map(|key| AtKey {
+            parent: self.clone(),
+            key,
+          })
+          .collect()
+      })
+      .unwrap_or_default()
   }
 }
 
-impl<S: StoreField> KeyedField for S where S::Value: KeyedCollection {}
+impl<S: StoreField> KeyedField for S
+where
+  S::Value: KeyedCollection,
+{
+  type Entry = <S::Value as KeyedCollection>::Entry;
+  type Key = <S::Value as KeyedCollection>::Key;
+
+  fn entry<'a>(&self, value: &'a S::Value, key: &Self::Key) -> Option<&'a Self::Entry> {
+    value.entry(key)
+  }
+
+  fn entry_mut<'a>(&self, value: &'a mut S::Value, key: &Self::Key) -> Option<&'a mut Self::Entry> {
+    value.entry_mut(key)
+  }
+
+  fn keys(&self, value: &S::Value) -> impl Iterator<Item = Self::Key> {
+    value.keys().cloned()
+  }
+}

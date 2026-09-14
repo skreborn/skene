@@ -74,7 +74,18 @@ use skene_headless::{
   trigger_size,
   value,
 };
-use skene_reactive::{Get, Owner, Set, Signal, Track, signal};
+use skene_reactive::{
+  Get,
+  IndexedField,
+  KeyedField,
+  Owner,
+  Set,
+  Signal,
+  Store,
+  StoreField,
+  Track,
+  signal,
+};
 
 type Container = skene_views::Container<Headless>;
 type Column = skene_views::Column<Headless>;
@@ -289,6 +300,62 @@ fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {
       .collect::<Vec<_>>(),
     mirror(root)
   );
+
+  owner.dispose();
+}
+
+/// A list derived from a store's entries updates an item in place when its entry is
+/// written, and follows a reorder of the `Vec` by the elements' keys.
+#[test]
+fn derived_entries_update_in_place_and_follow_a_reorder() {
+  #[derive(Store, Clone)]
+  struct Row {
+    id: u32,
+    label: String,
+  }
+
+  reset();
+
+  let owner = Owner::new();
+  let rows = Store::opaque(vec![
+    Row {
+      id: 1,
+      label: "a".to_owned(),
+    },
+    Row {
+      id: 2,
+      label: "b".to_owned(),
+    },
+  ]);
+  let root = owner.enter(|| {
+    Column::new()
+      .derive_entries(rows.keyed_by(|row| row.id), |row| {
+        Text::derive(move || row.label().get())
+      })
+      .build()
+  });
+  let before = children(root);
+
+  assert_eq!(outline(root), "Box\n  Run \"a\"\n  Run \"b\"\n");
+
+  rows
+    .keyed_by(|row| row.id)
+    .key(1)
+    .label()
+    .set("A".to_owned());
+
+  assert_eq!(outline(root), "Box\n  Run \"A\"\n  Run \"b\"\n");
+  assert_eq!(children(root), before);
+
+  rows.update(|rows| rows.swap(0, 1));
+
+  assert_eq!(outline(root), "Box\n  Run \"b\"\n  Run \"A\"\n");
+  assert_eq!(children(root), [before[0], before[2], before[1], before[3]]);
+
+  rows.update(|rows| rows.retain(|row| row.id != 1));
+
+  assert_eq!(outline(root), "Box\n  Run \"b\"\n");
+  assert_eq!(children(root), [before[0], before[2], before[3]]);
 
   owner.dispose();
 }

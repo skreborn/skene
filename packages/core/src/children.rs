@@ -2,6 +2,8 @@
 
 use std::{hash::Hash, marker::PhantomData};
 
+use skene_reactive::{AtKey, KeyedField};
+
 use super::{AnyView, Driver, IntoChildOf, NodeId, PlainChild, Scene, View, derived, reconcile};
 
 /// A value that can be converted into children of kind `Kind`: a tuple of up to twelve
@@ -225,11 +227,30 @@ pub trait HasChildren<D: Driver>: Sized {
 
     self
   }
+
+  /// Appends one child per entry of a keyed store location, keyed by the entry's key:
+  /// `view` renders one from the lens onto its entry, and the set follows the
+  /// location's shape; see [`KeyedField::entries`].
+  #[inline(always)]
+  #[must_use]
+  fn derive_entries<F, V>(mut self, entries: F, view: impl Fn(AtKey<F>) -> V + 'static) -> Self
+  where
+    F: KeyedField,
+    V: IntoChildOf<D, Self::Kind>,
+  {
+    self
+      .children_mut(Seal(()))
+      .push_keyed(move || entries.entries(), AtKey::entry_key, view);
+
+    self
+  }
 }
 
 #[cfg(test)]
 mod tests {
-  use skene_reactive::{Get, Owner, Set, Track, signal};
+  use std::{cell::Cell, collections::BTreeMap, rc::Rc};
+
+  use skene_reactive::{Get, KeyedField, Owner, Set, Store, StoreField, Track, signal};
 
   use super::HasChildren;
   use crate::{
@@ -278,6 +299,57 @@ mod tests {
     assert!(Scene::<TestDriver>::with(|scene| scene
       .record(first[2])
       .is_none()));
+
+    owner.dispose();
+  }
+
+  /// Children derived from a keyed store location follow its shape: an entry written
+  /// beneath rebuilds nothing, an insertion builds one child, a removal destroys one.
+  #[test]
+  fn derive_entries_follow_the_locations_shape() {
+    TestDriver::reset();
+
+    let owner = Owner::new();
+    let store = Store::opaque(BTreeMap::from([(1, "a"), (2, "b")]));
+    let builds = Rc::new(Cell::new(0));
+    let parent = owner.enter(|| {
+      let builds = Rc::clone(&builds);
+
+      TestBox::new()
+        .derive_entries(store, move |entry| {
+          builds.set(builds.get() + 1);
+
+          let _ = entry.get();
+
+          TestBox::new()
+        })
+        .build()
+    });
+    let first = children(parent);
+
+    assert_eq!((builds.get(), first.len()), (2, 4));
+
+    store.key(1).set("A");
+
+    assert_eq!((builds.get(), children(parent)), (2, first.clone()));
+
+    store.update(|entries| {
+      entries.insert(3, "c");
+    });
+
+    let second = children(parent);
+
+    assert_eq!((builds.get(), second.len()), (3, 5));
+    assert_eq!(second[..3], first[..3]);
+
+    store.update(|entries| {
+      entries.remove(&1);
+    });
+
+    assert_eq!(
+      (builds.get(), children(parent)),
+      (3, vec![first[0], first[2], second[3], first[3]])
+    );
 
     owner.dispose();
   }

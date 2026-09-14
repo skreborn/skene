@@ -105,7 +105,7 @@ impl<D: Driver, K: PartialEq + 'static> View<D> for Switch<D, K> {
       });
     });
 
-    Effect::new(move |previous: Option<Option<NodeId>>| {
+    Effect::render(move |previous: Option<Option<NodeId>>| {
       let key = key();
       let index = cases.borrow().iter().position(|case| case.key == key);
       let node = index.and_then(|index| {

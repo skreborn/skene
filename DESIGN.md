@@ -397,8 +397,10 @@ internals contract:
   computes once, and a memo whose recomputed value is unchanged (per its comparator)
   notifies no one. A memo is never stale to a reader, including inside a batch.
 - **Effects have handles and flavors.** `Effect::render` effects flush before ordinary
-  effects in owner-depth order and are what property binders are; `Effect::watch` is the
-  fine-grained binder; a handle disposes or pauses.
+  effects in owner-depth order and are what property binders and the structural effects
+  (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before
+  its descendants' properties and a disposed descendant never runs; `Effect::watch` is
+  the fine-grained binder; a handle disposes or pauses.
 - **A pluggable scheduler.** Synchronous at write end by default; a driver installs a
   frame-tied flush with `flush_sync` for the cases that need it. The sync waker routes
   through the same scheduler.
@@ -414,6 +416,11 @@ internals contract:
   ancestor's `here`, a write notifies the reverse, so a row edit over ten thousand
   tracked cells costs the same as over a hundred. Field keys are a hash of the field
   name (or its `#[store(tag)]`), stable under reordering; the value stays a plain struct.
+  A location derives a memo (`derive`), and a keyed location's `entries` subscribe to
+  its shape alone—its own `here` and its ancestors'—so a keyed list follows the
+  collection while each item follows its entry; `HasChildren::derive_entries` feeds
+  them to `reconcile` keyed by the entry's key, and a `Vec` is keyed by a key its
+  elements carry (`keyed_by`), read by scan.
 - **Snapshot identity is positional, and a key anchors it.** A signal registers by the
   path of steps from the runtime's root owner, its index among its owner's snapshot
   signals and the hash of its type name. A step is an owner's position among its

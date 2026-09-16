@@ -30,6 +30,7 @@ skene-tui = { path = "packages/tui", version = "0.1.0" }
 skene-tui-core = { path = "packages/tui-core", version = "0.1.0" }
 skene-views = { path = "packages/views", version = "0.1.0" }
 skene-web = { path = "packages/web", version = "0.1.0" }
+skene-ws = { path = "packages/ws", version = "0.1.0" }
 smallvec = "1.15"
 strum = { version = "0.28", features = ["derive"] }
 syn = { version = "2", features = ["full"] }

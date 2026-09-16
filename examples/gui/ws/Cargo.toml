@@ -1,0 +1,20 @@
+[package]
+name = "gui-ws"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ws-server"
+path = "src/main.rs"
+
+[dependencies]
+skene-gui.workspace = true
+skene-simple-gui.workspace = true
+skene-ws.workspace = true
+
+[lints]
+workspace = true

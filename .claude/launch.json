@@ -87,6 +87,24 @@
         "--ssr"
       ],
       "port": 8084
+    },
+    {
+      "name": "ws",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/ws",
+        "run",
+        "web",
+        "--port",
+        "8085",
+        "--ssr"
+      ],
+      "port": 8085
     }
   ]
 }

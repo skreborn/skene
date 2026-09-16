@@ -22,33 +22,29 @@ left half-done in a code comment.
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-2. **A WebSocket client** as a separate crate (`skene-ws`) on the public seams, as
-    `skene-http` is: the browser's `WebSocket` on the web, a plain client on other
-    hosts, no server-render form. Messages arrive through a signal or a channel a
-    task reads.
-3. **The asset system grows.** `skene.toml` declares assets today, served in dev,
+2. **The asset system grows.** `skene.toml` declares assets today, served in dev,
     copied into static output and collected across the dependency graph; it gains
     further settings as they earn their place (Flutter's pubspec is the model). Font
     assets add generated metadata—per-face ascender, descender, line gap, cap height,
     read at build time—so the web can emulate text-box trimming where an engine lacks
     it and native and the terminal lay text out with the same numbers.
-4. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
+3. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
     switching.
-5. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+4. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-6. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+5. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one.
-7. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+6. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-8. **The children-last rule as a lint.** Nothing enforces the ordering convention.
+7. **The children-last rule as a lint.** Nothing enforces the ordering convention.
     Rust has no stable way to ship a lint that runs under plain `cargo clippy`; the
     ecosystem answer is a dylint crate at the cost of pinning an exact nightly.
-9. **The native driver family.** The largest phase and deliberately the last: it
+8. **The native driver family.** The largest phase and deliberately the last: it
     realizes an already-complete vocabulary once, instead of chasing additions.
     - Shared machinery: taffy layout, vello paint, parley text, AccessKit (the
     accessibility tree a native app exposes, from the same reported semantics the web

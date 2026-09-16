@@ -409,7 +409,9 @@
 - HTTP, WebSockets and timers are userland. `skene-http` is an HTTP client built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands
   where a third party's would: `fetch` on the web, `wasi:http` through the server
-  leaf's reactor, a thread around `ureq` on other hosts. The framework ships the seams—`spawn`,
+  leaf's reactor, a thread around `ureq` on other hosts; `skene-ws` is its WebSocket
+  sibling, the browser's socket on the web, a thread around `tungstenite` elsewhere,
+  and none on a server render. The framework ships the seams—`spawn`,
   `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
   pollable, `sleep`, the render deadline), and `Driver::schedule`, a one-shot action on
   the driver's clock that a view's delay waits on (the tooltip's hover delay; the

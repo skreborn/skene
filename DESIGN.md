@@ -904,8 +904,14 @@ reactor as `sleep` is, and on every other host a thread around a plain client
 (`ureq`) whose completion wakes the driver's executor through the future's waker, so
 a terminal app's loop or a headless test's pump polls it on. Dropping the future
 abandons the exchange. An app drives it through the seams it already has:
-`Resource::client` for data a view shows, `spawn` for a task of its own. A WebSocket
-sibling is on the roadmap.
+`Resource::client` for data a view shows, `spawn` for a task of its own. `skene-ws`
+is the WebSocket sibling on the same seams: `connect` is a future resolving to a
+`WebSocket` once the connection stands, `send` writes a message at once, and
+`receive` is a future a task awaits in a loop, each message as it lands and `None`
+once the socket has closed; the browser's `WebSocket` on the web, a thread around
+`tungstenite` on other hosts reading into the same receiver, and no socket on a
+server render, where `connect` fails with `Unsupported`, so a view opens its socket
+from a task the client runs. Dropping the socket closes it.
 
 ## Router (`skene-router`)
 

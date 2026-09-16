@@ -236,7 +236,12 @@ impl Runner {
   ) -> Result<()> {
     let mut builder = WasiCtxBuilder::new();
 
-    builder.stdout(stdout).inherit_stderr().args(arguments);
+    builder
+      .stdout(stdout)
+      .inherit_stderr()
+      .inherit_network()
+      .allow_ip_name_lookup(true)
+      .args(arguments);
 
     if !hints.is_empty() {
       builder.env(HINTS_VARIABLE, hints);

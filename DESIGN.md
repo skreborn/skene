@@ -909,9 +909,13 @@ is the WebSocket sibling on the same seams: `connect` is a future resolving to a
 `WebSocket` once the connection stands, `send` writes a message at once, and
 `receive` is a future a task awaits in a loop, each message as it lands and `None`
 once the socket has closed; the browser's `WebSocket` on the web, a thread around
-`tungstenite` on other hosts reading into the same receiver, and no socket on a
-server render, where `connect` fails with `Unsupported`, so a view opens its socket
-from a task the client runs. Dropping the socket closes it.
+`tungstenite` on other hosts reading into the same receiver, and on a server render
+a connection through `wasi:sockets` (rustls over it for `wss://`, the bundled roots
+verifying the host) with the same client's handshake and frames over it, each wait
+registered with the reactor and the frames read as the receiving future is polled,
+so a page whose data arrives over a socket renders with it; the runner grants the
+network for that. A socket opened during a render lives for that render, as a fetch
+does. Dropping the socket closes it.
 
 ## Router (`skene-router`)
 

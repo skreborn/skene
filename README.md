@@ -145,7 +145,7 @@ skene-cli             the `skene` command
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
 | `skene-http` | `packages/http` | An HTTP client on the public seams alone: `Request`, `Response`, `send`; `fetch` on the web, `wasi:http` through the server leaf's reactor on a server render, a thread around `ureq` on every other host. |
-| `skene-ws` | `packages/ws` | A WebSocket client on the public seams alone: `connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` on other hosts, no socket on a server render. |
+| `skene-ws` | `packages/ws` | A WebSocket client on the public seams alone: `connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` on other hosts, `wasi:sockets` with rustls on a server render. |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state-preserving restarts, the terminal build loop and the terminal it attaches to, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes

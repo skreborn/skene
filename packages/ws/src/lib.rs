@@ -6,11 +6,13 @@
 //! loop, resolving with each message as it lands and with `None` once the socket has
 //! closed. Nothing in the framework knows this crate exists.
 //!
-//! The transport is the platform's: the browser's `WebSocket` on the web, and a
-//! thread around a plain client (`tungstenite`) on every other host, the future woken
-//! through its waker as messages arrive. A server render has no socket: [`connect`]
-//! fails there with [`Error::Unsupported`], so a view opens its socket from a task
-//! the client runs. Dropping the socket closes it.
+//! The transport is the platform's: the browser's `WebSocket` on the web, a thread
+//! around a plain client (`tungstenite`) on every other host, the future woken
+//! through its waker as messages arrive, and on a server render a connection through
+//! `wasi:sockets` (TLS through rustls for `wss://`) with the same client over it,
+//! each wait registered with the server leaf's reactor and the frames read as the
+//! receiving future is polled; a socket opened during a render lives for that render.
+//! Dropping the socket closes it.
 
 use std::{
   collections::VecDeque,
@@ -23,6 +25,7 @@ use std::{
 
 #[cfg(not(target_arch = "wasm32"))]
 mod host;
+mod url;
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 mod wasi;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -75,8 +78,6 @@ pub enum Error {
   Transport(String),
   /// The socket is closed, so nothing can be sent.
   Closed,
-  /// This platform has no socket: a server render.
-  Unsupported,
 }
 
 impl fmt::Display for Error {
@@ -85,7 +86,6 @@ impl fmt::Display for Error {
       Self::Url(message) => write!(out, "the URL cannot be used: {message}"),
       Self::Transport(message) => write!(out, "the connection failed: {message}"),
       Self::Closed => out.write_str("the socket is closed"),
-      Self::Unsupported => out.write_str("this platform opens no socket"),
     }
   }
 }
@@ -114,10 +114,6 @@ impl Receiver {
   }
 
   /// Queues `message` and wakes the task waiting for it.
-  #[cfg_attr(
-    all(target_arch = "wasm32", target_os = "wasi"),
-    expect(dead_code, reason = "a server render delivers nothing")
-  )]
   pub(crate) fn deliver(&self, message: Message) {
     let waker = {
       let mut inbox = self
@@ -163,14 +159,18 @@ impl Receiver {
 
 /// The next message, or `None` once the socket is closed and every message taken.
 #[must_use]
-pub struct Receive<'a>(&'a Receiver);
+pub struct Receive<'a>(&'a WebSocket);
 
 impl Future for Receive<'_> {
   type Output = Option<Message>;
 
   fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+    #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+    self.0.link.pump(context);
+
     let mut inbox = self
       .0
+      .receiver
       .0
       .lock()
       .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -224,7 +224,7 @@ impl WebSocket {
   /// message before the close has been taken.
   #[inline(always)]
   pub fn receive(&self) -> Receive<'_> {
-    Receive(&self.receiver)
+    Receive(self)
   }
 
   /// Whether the socket has closed, from either side.
@@ -246,14 +246,12 @@ impl WebSocket {
 ///
 /// # Errors
 ///
-/// A URL the platform cannot use, a connection that could not be made, or
-/// [`Error::Unsupported`] on a server render.
+/// A URL that is not an absolute `ws://` or `wss://` one, or a connection that could
+/// not be made.
 pub async fn connect(url: impl Into<String>) -> Result<WebSocket, Error> {
   let url = url.into();
 
-  if !(url.starts_with("ws://") || url.starts_with("wss://")) {
-    return Err(Error::Url(url));
-  }
+  url::parts(&url)?;
 
   let receiver = Receiver::new();
   let link = transport::connect(url, receiver.clone()).await?;

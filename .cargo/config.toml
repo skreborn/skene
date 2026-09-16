@@ -5,4 +5,4 @@ skene = "run --package skene-cli --release --"
 runner = "wasm-bindgen-test-runner"
 
 [target.wasm32-wasip2]
-runner = "wasmtime"
+runner = "wasmtime -S http"

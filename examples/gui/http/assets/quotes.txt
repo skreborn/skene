@@ -1,0 +1,3 @@
+Simplicity is prerequisite for reliability.
+Programs must be written for people to read, and only incidentally for machines to execute.
+The best way to predict the future is to invent it.

@@ -18,6 +18,7 @@ skene-gui = { path = "packages/gui", version = "0.1.0" }
 skene-gui-core = { path = "packages/gui-core", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
+skene-http = { path = "packages/http", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
 skene-router = { path = "packages/router", version = "0.1.0" }

@@ -406,7 +406,10 @@
   runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Drivers
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime
   under a byte-exact snapshot; native: its toolkit). There is no mock driver.
-- HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
+- HTTP, WebSockets and timers are userland. `skene-http` is an HTTP client built on
+  the public seams alone, in a crate nothing in the framework knows about, so it stands
+  where a third party's would: `fetch` on the web, `wasi:http` through the server
+  leaf's reactor, a thread around `ureq` on other hosts. The framework ships the seams—`spawn`,
   `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
   pollable, `sleep`, the render deadline), and `Driver::schedule`, a one-shot action on
   the driver's clock that a view's delay waits on (the tooltip's hover delay; the
@@ -491,7 +494,8 @@
 - Always format with `cargo +nightly fmt`.
 - Tests run in three tiers, and the host tier alone proves nothing about the web. Run
   `cargo test --workspace` for the host, `cargo test -p skene-gui -p skene-web --target
-  wasm32-wasip2` for the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
+  wasm32-wasip2` for the server leaf (its runner is `wasmtime -S http`, so a binary
+  importing `wasi:http` links), and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
   browser leaf, which drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
   hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the

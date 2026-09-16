@@ -893,6 +893,20 @@ sit on exactly the footing first-party ones would:
   bounds every render's settling.
 - `Boundary`/`Deferred`—any async inside a boundary defers its streamed chunk.
 
+`skene-http` is the standing proof that the seams suffice: an HTTP client in a crate
+of its own that nothing in the framework knows about. A `Request` is a method, a URL,
+headers and a body; `send` is a future resolving to a `Response` with its status, its
+headers and its whole body, any status a response and only a failure on the way an
+error. The transport is the platform's, chosen by target: the browser's `fetch` on
+the web, `wasi:http`'s outgoing handler on a server render, with each wait on the
+host—the response's arrival, the body's next chunk—registered with the server leaf's
+reactor as `sleep` is, and on every other host a thread around a plain client
+(`ureq`) whose completion wakes the driver's executor through the future's waker, so
+a terminal app's loop or a headless test's pump polls it on. Dropping the future
+abandons the exchange. An app drives it through the seams it already has:
+`Resource::client` for data a view shows, `spawn` for a task of its own. A WebSocket
+sibling is on the roadmap.
+
 ## Router (`skene-router`)
 
 Routing is state: a typed route as a signal, shared by every platform. Each driver binds

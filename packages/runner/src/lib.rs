@@ -33,6 +33,7 @@ use wasmtime_wasi::p2::{
   WasiView,
   pipe::MemoryOutputPipe,
 };
+use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 /// The environment variable the app reads its client hints from: the request's
 /// `Sec-CH-*` headers, one `Name: value` per line.
@@ -78,10 +79,18 @@ pub struct Runner {
   linker: Linker<Host>,
 }
 
-/// The per-instance host state: the WASI context each render runs against.
+/// The per-instance host state: the WASI context each render runs against, and the
+/// outgoing HTTP the render may make through `wasi:http`.
 struct Host {
   ctx: WasiCtx,
+  http: WasiHttpCtx,
   table: wasmtime::component::ResourceTable,
+}
+
+impl WasiHttpView for Host {
+  fn ctx(&mut self) -> &mut WasiHttpCtx {
+    &mut self.http
+  }
 }
 
 impl IoView for Host {
@@ -110,6 +119,7 @@ impl Runner {
     let mut linker = Linker::new(&engine);
 
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker).context("link WASI")?;
+    wasmtime_wasi_http::add_only_http_to_linker_sync(&mut linker).context("link wasi:http")?;
 
     Ok(Self {
       engine,
@@ -236,6 +246,7 @@ impl Runner {
 
     let host = Host {
       ctx,
+      http: WasiHttpCtx::new(),
       table: wasmtime::component::ResourceTable::new(),
     };
 

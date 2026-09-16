@@ -1,0 +1,31 @@
+[package]
+name = "skene-http"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+js-sys = "0.3"
+wasm-bindgen.workspace = true
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+  "Headers",
+  "Request",
+  "RequestInit",
+  "Response",
+  "Window",
+] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
+skene-web.workspace = true
+wasi = "0.14"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ureq = "3"
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints]
+workspace = true

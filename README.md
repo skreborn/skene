@@ -144,6 +144,7 @@ skene-cli             the `skene` command
 | `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
+| `skene-http` | `packages/http` | An HTTP client on the public seams alone: `Request`, `Response`, `send`; `fetch` on the web, `wasi:http` through the server leaf's reactor on a server render, a thread around `ureq` on every other host. |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state-preserving restarts, the terminal build loop and the terminal it attaches to, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes
@@ -191,7 +192,8 @@ reloads), `gallery` (every built-in view and control, a live palette switch), `t
 scheme), `store` (a todo list over one store: rows following their own entries, a list
 following the shape, a memoized count), `context-menu` (a menu each view opts into, the
 clipboard's standard items, the platform's menu everywhere else), `enhance` (a view's
-baseline and its enhancement, swapped as the page hydrates or pixels come), the GUI-only `router` (typed routes behind real links, the about page split
+baseline and its enhancement, swapped as the page hydrates or pixels come), `http` (a
+resource or a task fetching through `skene-http`), the GUI-only `router` (typed routes behind real links, the about page split
 out with `#[lazy]`), and the TUI-only `text-sizing` (font sizes as scales of the
 cell, drawn where the terminal proves the text sizing protocol). `examples/third-party` holds the crates written from outside the
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the

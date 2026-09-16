@@ -10,6 +10,7 @@ async-trait = "0.1"
 bytes = "1"
 wasmtime = "34"
 wasmtime-wasi = "34"
+wasmtime-wasi-http = "34"
 
 [lints]
 workspace = true

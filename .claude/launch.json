@@ -69,6 +69,24 @@
         "--ssr"
       ],
       "port": 8083
+    },
+    {
+      "name": "http",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/http",
+        "run",
+        "web",
+        "--port",
+        "8084",
+        "--ssr"
+      ],
+      "port": 8084
     }
   ]
 }

@@ -22,9 +22,10 @@ left half-done in a code comment.
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-2. **An HTTP client** as a separate crate (`skene-http`), built on the public seams
-    (`spawn`, `Resource`) exactly as a third-party client would be. A WebSocket sibling
-    follows the same rule.
+2. **A WebSocket client** as a separate crate (`skene-ws`) on the public seams, as
+    `skene-http` is: the browser's `WebSocket` on the web, a plain client on other
+    hosts, no server-render form. Messages arrive through a signal or a channel a
+    task reads.
 3. **The asset system grows.** `skene.toml` declares assets today, served in dev,
     copied into static output and collected across the dependency graph; it gains
     further settings as they earn their place (Flutter's pubspec is the model). Font

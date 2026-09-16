@@ -339,8 +339,22 @@ re-export.
   `DescribedBy`, `Disabled`); the driver maps each to its layer. On the web a form
   element takes the native attribute where one exists (`required`, `readonly`), so the
   form enforces it without script, and ARIA otherwise; a property naming another node
-  (`Controls`, `DescribedBy`) gives that node an id derived from its node id, identical
-  on both leaves.
+  (`Controls`, `LabelledBy`, `DescribedBy`) gives that node an id derived from its node
+  id, identical on both leaves. A name comes from wherever it is: a string caption is
+  the control's own (`aria-label`, or the native input's), and a caption drawn by a
+  view names the control by reference (`LabelledBy` the caption part), so a combobox,
+  a listbox or a radio group, which ARIA forbids naming from content, is named all the
+  same. A region, a dialog and a painted picture name themselves through `set_label`
+  and `set_labelled_by` on `Container`, `Overlay` and `Painted::set_description`, the
+  latter making the box a named image; without a description a painted box is
+  decoration. `Role::Status` and `Role::Alert` are the live regions, `Role::Dialog` a
+  popup's role, and a tooltip's bubble carries `role="tooltip"` from the driver. A box
+  that scrolls takes `tabindex="0"` unless a focus order is set, as Chromium makes a
+  scroller focusable, so the keyboard reaches its content. The gallery runs under
+  axe-core in the browser tier (`web_axe`, the library vendored beside the test), so
+  every built-in is checked against the ARIA rules as it is drawn. Disabled controls
+  leave the focus order, a deliberate reading of the practices' allowance, recorded
+  in `AGENTS.md`.
 - **Membership is read from the tree.** A grouping control's members live in a `Roster`
   ordered by walking the subtree under its root, so a reconciling set stays in document
   order however it changes and a destroyed member is absent because the walk cannot

@@ -99,6 +99,22 @@ impl<D: Driver> Container<D> {
 
   /// Sets the semantic role, guiding the driver's concrete choice of element.
   #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.inner = self.inner.set_label(label);
+
+    self
+  }
+
+  /// Sets the node whose text names the box: a region's heading.
+  #[inline(always)]
+  pub fn set_labelled_by(mut self, node: NodeId) -> Self {
+    self.inner = self.inner.set_labelled_by(node);
+
+    self
+  }
+
+  /// Sets the semantic role, guiding the driver's choice of element.
+  #[inline(always)]
   pub fn set_role(mut self, role: Role) -> Self {
     self.inner = self.inner.set_role(role);
 

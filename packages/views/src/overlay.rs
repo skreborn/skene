@@ -21,6 +21,7 @@ use skene_core::{
   PlainChild,
   PlainHandler,
   Point,
+  Role,
   Scene,
   StyleExtension,
   Transition,
@@ -149,6 +150,31 @@ impl<D: Driver, C> Overlay<D, C> {
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.inner = self.inner.set_transition_name(name);
+
+    self
+  }
+
+  /// Sets the overlay's accessible name, where no heading inside names it.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.inner = self.inner.set_label(label);
+
+    self
+  }
+
+  /// Sets the node whose text names the overlay: its heading.
+  #[inline(always)]
+  pub fn set_labelled_by(mut self, node: NodeId) -> Self {
+    self.inner = self.inner.set_labelled_by(node);
+
+    self
+  }
+
+  /// Sets the semantic role a popup takes: [`Role::Dialog`] for one holding a form; a
+  /// modal is a dialog already.
+  #[inline(always)]
+  pub fn set_role(mut self, role: Role) -> Self {
+    self.inner = self.inner.set_role(role);
 
     self
   }

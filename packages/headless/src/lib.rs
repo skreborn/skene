@@ -932,6 +932,7 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
     .access
     .iter()
     .find_map(|prop| match prop {
+      AccessProp::LabelledBy(node) => Some(subtree_text(*node)).filter(|text| !text.is_empty()),
       AccessProp::Label(label) => Some(label.clone()),
       _ => None,
     })

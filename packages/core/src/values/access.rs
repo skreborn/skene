@@ -39,6 +39,9 @@ pub enum AccessProp {
   HasPopup(PopupKind),
   /// The node the control operates: its popup's list, the region it expands.
   Controls(NodeId),
+  /// The node whose text names the control, where the name is not the control's own
+  /// content.
+  LabelledBy(NodeId),
   /// The node whose text describes the control.
   DescribedBy(NodeId),
   /// A plain-text description: the accessible description where nothing else supplies

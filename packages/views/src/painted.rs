@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{AnyKind, AnyView, IntoView, Layout, NodeId, Size, View};
+use skene_core::{AnyKind, AnyView, IntoView, Layout, NodeId, Role, Size, View};
 
 use crate::{
   Canvas,
@@ -68,6 +68,15 @@ impl<D: Painting> Painted<D> {
   #[inline(always)]
   pub fn bind_size(mut self, size: &SizeHandle<D>) -> Self {
     self.inner = self.inner.bind_size(size);
+
+    self
+  }
+
+  /// Sets what the picture shows, for assistive technology: the box is then a picture
+  /// named by `description`; without one it is decoration.
+  #[inline(always)]
+  pub fn set_description(mut self, description: impl Into<String>) -> Self {
+    self.inner = self.inner.set_role(Role::Image).set_label(description);
 
     self
   }

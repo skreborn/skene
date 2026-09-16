@@ -95,6 +95,7 @@ use super::{
     native_attributes,
     native_element,
     referenced_nodes,
+    scrolls,
     takes_disabled,
   },
   motion::VIEW_TRANSITION_RULE,
@@ -145,6 +146,8 @@ struct Node {
   /// has one apart from its root.
   carrier: Option<u32>,
   control: bool,
+  /// Whether the box scrolls its content, so it takes a place in the focus order.
+  scrolls: bool,
   /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
   /// or `<select>`, whose caption is a `<label for>` beside it.
   bare: bool,
@@ -173,6 +176,7 @@ impl Node {
       parent: None,
       carrier: None,
       control: false,
+      scrolls: false,
       bare: false,
       options: Vec::new(),
       chosen: None,
@@ -905,7 +909,7 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
 /// Writes `focus_order` as `tabindex` on `node`; `None` takes a control out of focus
 /// and leaves a box without one.
 fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
-  match focus_order_attribute(focus_order, node.control) {
+  match focus_order_attribute(focus_order, node.control, node.scrolls) {
     Some(tabindex) => node.set_attribute("tabindex", &tabindex),
     None => node.remove_attribute("tabindex"),
   }
@@ -956,8 +960,10 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
     tree.assign_style(index, compiled);
 
     let target = tree.carrier(index);
+    let scrolls = scrolls::<Web>(&props.style);
 
     if let Some(node) = tree.node(target) {
+      node.scrolls = scrolls;
       write_focus_order(node, props.focus_order);
       write_access(node, &props.access);
     }
@@ -989,7 +995,7 @@ impl Driver for Web {
       let index = tree.element(box_tag(props.role, props.destination.is_some()));
 
       if let Some(node) = tree.node(index) {
-        if let Some(role) = props.role.filter(|role| role.is_widget()) {
+        if let Some(role) = props.role.filter(|role| role.is_spelled()) {
           node.set_attribute("role", aria_role(role));
         }
 
@@ -1160,6 +1166,14 @@ impl Driver for Web {
 
         if let Some(node) = tree.node(index) {
           node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
+
+          // A hint is a tooltip; a popup takes the role its box asks for.
+          if props.hint {
+            node.set_attribute("role", "tooltip");
+          }
+          else if let Some(role) = props.box_props.role.filter(|role| role.is_spelled()) {
+            node.set_attribute("role", aria_role(role));
+          }
         }
 
         index

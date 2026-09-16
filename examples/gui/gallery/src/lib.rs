@@ -3,8 +3,11 @@
 use skene_gui::{ActiveDriver, prelude::*};
 use skene_simple_gui::prelude::*;
 
+/// The gallery page: every built-in view and Simple component, under the palette the
+/// reader picks.
 #[main]
-fn app() -> impl IntoView {
+#[must_use]
+pub fn app() -> impl IntoView {
   // The palette in force is a signal the gallery switches from inside itself: the theme
   // redefines its tokens in place and rebuilds nothing, so every counter below keeps its
   // value across a switch. Each palette follows the OS scheme per token, and carries
@@ -14,6 +17,7 @@ fn app() -> impl IntoView {
   Theme::derive(move || palette.with(|name| named_palette(name.as_deref()))).set_child_builder(
     move || {
       Container::new()
+        .set_role(Role::Main)
         .set_color(SimplePalette::BACKGROUND)
         .set_child(
           Column::new()
@@ -245,6 +249,7 @@ fn inputs() -> impl IntoView {
         .set_item_alignment(ItemAlignment::Center)
         .set_children((
           SimpleSlider::new()
+            .set_label("Volume")
             .set_min(0.)
             .set_max(100.)
             .set_step(1.)
@@ -254,6 +259,7 @@ fn inputs() -> impl IntoView {
             .set_color(SimplePalette::MUTED_FOREGROUND),
         )),
       SimplePicker::new()
+        .set_label("Season")
         .set_options([
           ("spring", "Spring"),
           ("summer", "Summer"),

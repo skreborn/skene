@@ -22,39 +22,36 @@ left half-done in a code comment.
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-2. **Accessibility beyond the built-in mapping.** AccessKit on native and in the
-    terminal where it can reach; on the web, `Role` expansion and semantic output
-    audited against ARIA. `aria-activedescendant` waits while roving focus reaches the
-    same place; it needs a node-valued `AccessProp` and stable per-node ids in the web
-    driver.
-3. **An HTTP client** as a separate crate (`skene-http`), built on the public seams
+2. **An HTTP client** as a separate crate (`skene-http`), built on the public seams
     (`spawn`, `Resource`) exactly as a third-party client would be. A WebSocket sibling
     follows the same rule.
-4. **The asset system grows.** `skene.toml` declares assets today, served in dev,
+3. **The asset system grows.** `skene.toml` declares assets today, served in dev,
     copied into static output and collected across the dependency graph; it gains
     further settings as they earn their place (Flutter's pubspec is the model). Font
     assets add generated metadata—per-face ascender, descender, line gap, cap height,
     read at build time—so the web can emulate text-box trimming where an engine lacks
     it and native and the terminal lay text out with the same numbers.
-5. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
+4. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
     switching.
-6. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+5. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-7. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+6. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one.
-8. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+7. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-9. **The children-last rule as a lint.** Nothing enforces the ordering convention.
+8. **The children-last rule as a lint.** Nothing enforces the ordering convention.
     Rust has no stable way to ship a lint that runs under plain `cargo clippy`; the
     ecosystem answer is a dylint crate at the cost of pinning an exact nightly.
-10. **The native driver family.** The largest phase and deliberately the last: it
+9. **The native driver family.** The largest phase and deliberately the last: it
     realizes an already-complete vocabulary once, instead of chasing additions.
-    - Shared machinery: taffy layout, vello paint, parley text, AccessKit, the frame
+    - Shared machinery: taffy layout, vello paint, parley text, AccessKit (the
+    accessibility tree a native app exposes, from the same reported semantics the web
+    maps to ARIA), the frame
     clock running `skene_core::interpolate` as the terminal does, `Condition`
     resolution against window and pointer signals through the one resolution point.
     - Compositing premise: **the platform composites.** On iOS/Android/macOS the driver
@@ -74,6 +71,15 @@ left half-done in a code comment.
     `android` and the desktop leaves, landing under `dist/<target>`.
 
 Watched, not scheduled:
+
+- `aria-activedescendant` for the listbox, the menu and the picker's list: focus moves
+    into the options today, the roving pattern, which assistive technology follows;
+    the composite pattern keeps focus on the container and needs a node-valued report
+    and stable per-node ids in the web driver. Worth it only if a screen reader
+    stumbles on the roving form.
+- A scrolling box as a tab stop in the terminal: the web gives one `tabindex="0"` so
+    the keyboard reaches its content, as Chromium does; the terminal's scroll boxes
+    are reached by the wheel and the page keys from a focused child alone.
 
 - `ErrorBoundary` stays on probation: it exists only for errors with no render site of
     their own. If per-resource matching keeps covering real apps, delete it.

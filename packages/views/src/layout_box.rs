@@ -91,6 +91,8 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   container: Option<ContainerName>,
   focus_order: Option<Source<FocusOrder>>,
   access: Option<Source<Vec<AccessProp>>>,
+  label: Option<String>,
+  labelled_by: Option<NodeId>,
   style: DeclaredBoxStyle<D>,
   dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
   transition_name: Option<String>,
@@ -112,6 +114,8 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       container: None,
       focus_order: None,
       access: None,
+      label: None,
+      labelled_by: None,
       style: DeclaredBoxStyle::<D>::default(),
       dynamics: BoxDynamics::default(),
       transition_name: None,
@@ -225,6 +229,23 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn set_accessibility(mut self, access: impl IntoIterator<Item = AccessProp>) -> Self {
     self.access = Some(Source::Fixed(access.into_iter().collect()));
+
+    self
+  }
+
+  /// Sets the box's accessible name, for a region, a dialog or a picture that no visible
+  /// text names.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
+
+    self
+  }
+
+  /// Sets the node whose text names the box: a dialog's heading, a region's title.
+  #[inline(always)]
+  pub const fn set_labelled_by(mut self, node: NodeId) -> Self {
+    self.labelled_by = Some(node);
 
     self
   }
@@ -483,6 +504,31 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<D>) -> D::Sink) -> NodeId {
     if let Some(annotation) = Scene::<D>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
+    }
+
+    let named: Vec<AccessProp> = self
+      .label
+      .map(AccessProp::Label)
+      .into_iter()
+      .chain(self.labelled_by.map(AccessProp::LabelledBy))
+      .collect();
+
+    if !named.is_empty() {
+      self.access = Some(match self.access {
+        None => Source::Fixed(named),
+        Some(Source::Fixed(mut access)) => {
+          access.extend(named);
+
+          Source::Fixed(access)
+        }
+        Some(Source::Derived(derive)) => Source::derive(move || {
+          let mut access = derive();
+
+          access.extend(named.iter().cloned());
+
+          access
+        }),
+      });
     }
 
     let (style, slots) = self.style.split();

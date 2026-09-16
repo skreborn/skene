@@ -37,6 +37,7 @@ use super::{
 /// flows both ways. For a slider drawn some other way, compose [`RawSlider`] directly.
 #[must_use]
 pub struct SimpleSlider<D: Driver> {
+  label: Option<String>,
   min: f32,
   max: f32,
   step: f32,
@@ -50,6 +51,7 @@ impl<D: Driver> SimpleSlider<D> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
+      label: None,
       min: 0.,
       max: 100.,
       step: 1.,
@@ -57,6 +59,14 @@ impl<D: Driver> SimpleSlider<D> {
       on_change: None,
       driver: PhantomData,
     }
+  }
+
+  /// Sets the accessible name, since nothing visible names a slider.
+  #[inline(always)]
+  pub fn set_label(mut self, label: impl Into<String>) -> Self {
+    self.label = Some(label.into());
+
+    self
   }
 
   /// Sets the lowest value.
@@ -136,6 +146,7 @@ where
 
     let shape = shape::<D>();
     let Self {
+      label,
       min,
       max,
       step,
@@ -208,7 +219,13 @@ where
       behavior = behavior.handle_change(move |value| action(value));
     }
 
-    let node = RawSlider::new(behavior)
+    let mut slider = RawSlider::new(behavior);
+
+    if let Some(label) = label {
+      slider = slider.set_label(label);
+    }
+
+    let node = slider
       .set_width(Dimension::Fraction(1.))
       .set_cursor(MouseCursor::Click)
       .set_child(

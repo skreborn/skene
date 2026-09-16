@@ -34,6 +34,14 @@ pub enum Role {
   ListItem,
   /// A control's caption: activating it activates the control it wraps.
   Label,
+  /// A window of its own within the page, named by its label: a popup holding a form.
+  Dialog,
+  /// A picture, named by its label.
+  Image,
+  /// A region whose changes are announced when convenient.
+  Status,
+  /// A region whose changes are announced at once.
+  Alert,
   /// A control that activates on press.
   Button,
   /// A control toggling between checked and unchecked.
@@ -57,6 +65,18 @@ pub enum Role {
 }
 
 impl Role {
+  /// Whether this role is spelled on a generic element rather than realized as an
+  /// element of its own: every widget, and the dialog, image, status and alert roles.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_spelled(self) -> bool {
+    self.is_widget()
+      || matches!(
+        self,
+        Self::Dialog | Self::Image | Self::Status | Self::Alert
+      )
+  }
+
   /// Whether this role describes a control a view draws itself, rather than a region of
   /// a document.
   ///

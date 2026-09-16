@@ -789,6 +789,17 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
             lines,
           })
         });
+        // A caption whose text is the driver's to read names the control by reference;
+        // it is built after the control, so the markup keeps the control first.
+        let (label, labelled_by) = match label {
+          Some(Label { view, name: None }) => {
+            let part = view.build();
+
+            (Some((part, None)), Some(part))
+          }
+          Some(Label { view, name }) => (Some((view.build(), name)), None),
+          None => (None, None),
+        };
         let handle = Rc::new(ControlHandle {
           node,
           name,
@@ -803,6 +814,7 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
           read_only: read_bool(read_only),
           invalid: read_bool(invalid),
           described_by,
+          labelled_by,
         };
 
         bind_reports(&handle, &behavior, &flags, focus_order);
@@ -812,9 +824,9 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
         let mut label = label;
 
         if behavior.label_leads()
-          && let Some(label) = label.take()
+          && let Some((part, _)) = label.take()
         {
-          mount_part::<D>(node, Part::Label, label.view.build());
+          mount_part::<D>(node, Part::Label, part);
         }
 
         for (part, view) in parts {
@@ -825,8 +837,8 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
           Scene::<D>::with(|scene| scene.attach(node, child, None));
         }
 
-        if let Some(label) = label {
-          mount_part::<D>(node, Part::Label, label.view.build());
+        if let Some((part, _)) = label {
+          mount_part::<D>(node, Part::Label, part);
         }
 
         node
@@ -861,6 +873,8 @@ struct Flags {
   read_only: Rc<dyn Fn() -> bool>,
   invalid: Rc<dyn Fn() -> bool>,
   described_by: Option<NodeId>,
+  /// The caption naming the control by reference, where its text is not known at build.
+  labelled_by: Option<NodeId>,
 }
 
 /// Binds the render effects writing the control's state, accessibility and focus
@@ -913,6 +927,10 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
 
       if (flags.invalid)() {
         access.push(AccessProp::Invalid(true));
+      }
+
+      if let Some(labelled_by) = flags.labelled_by {
+        access.push(AccessProp::LabelledBy(labelled_by));
       }
 
       if let Some(described_by) = flags.described_by {

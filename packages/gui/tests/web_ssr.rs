@@ -13,14 +13,21 @@ use skene_gui::{
   Deferred,
   Enhance,
   HasChildren,
+  Label,
   Lazy,
+  ListItem,
+  Listbox,
+  Overlay,
   Painted,
+  RawListbox,
+  RawOption,
   Resource,
   RichText,
   Row,
   Span,
   Text,
   Theme,
+  Tooltip,
   Typography,
   View,
   client_only,
@@ -85,6 +92,71 @@ fn an_enhancement_renders_its_fallback() {
 
   assert!(page.body().contains(">a picture</span>"), "{}", page.body());
   assert!(!page.body().contains("<canvas"), "{}", page.body());
+}
+
+/// Names and roles reach the markup: a region named by text carries `aria-label`, a
+/// control captioned by a view is named by reference to the caption's id, a modal
+/// takes the name given it, a status box carries its live role, a painted box with a
+/// description is a named image, a tooltip's bubble is a tooltip, and a scrolling box
+/// takes a place in the focus order.
+#[test]
+fn names_and_roles_reach_the_markup() {
+  use skene_gui::core::{Dimension, Overflow, Role};
+
+  let page = render_to_string(|| {
+    Column::new().set_children((
+      Container::new()
+        .set_role(Role::Navigation)
+        .set_label("Chapters")
+        .set_child(Text::new("one")),
+      RawListbox::new(Listbox::new())
+        .set_label(Label::new(Text::new("Fruit")))
+        .set_child(RawOption::new(ListItem::new("apple")).set_label("Apple")),
+      Container::new()
+        .set_role(Role::Status)
+        .set_child(Text::new("saved")),
+      Painted::new(|_, _| {}).set_description("Eight blue stripes"),
+      Container::new()
+        .set_overflow(Overflow::Auto)
+        .set_height(Dimension::Length(40.))
+        .set_child(Text::new("long")),
+      Tooltip::new("Saves your work").set_child(Text::new("hover me")),
+      Overlay::modal()
+        .set_label("Settings")
+        .set_child(Text::new("inside")),
+    ))
+  });
+  let body = page.body();
+
+  assert!(
+    body.contains("<nav ") && body.contains("aria-label=\"Chapters\""),
+    "{body}"
+  );
+
+  let labelled = body
+    .split("aria-labelledby=\"")
+    .nth(1)
+    .map(|rest| rest[..rest.find('"').expect("id end")].to_owned())
+    .expect("a labelled listbox");
+
+  assert!(
+    body.contains(&format!("id=\"{labelled}\"")),
+    "the caption carries the id: {body}"
+  );
+  assert!(body.contains("role=\"status\""), "{body}");
+  assert!(
+    body.contains("role=\"img\"") && body.contains("aria-label=\"Eight blue stripes\""),
+    "{body}"
+  );
+  assert!(body.contains("role=\"tooltip\""), "{body}");
+  assert!(
+    body.contains("<dialog") && body.contains("aria-label=\"Settings\""),
+    "{body}"
+  );
+  assert!(
+    body.matches("tabindex=\"0\"").count() >= 2,
+    "the listbox and the scrolling box are tab stops: {body}"
+  );
 }
 
 /// A picker's scriptless form is a `<select>` listing its options by value and name

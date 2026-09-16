@@ -342,7 +342,17 @@
   `Expanded`, `HasPopup`, `Orientation`), a control's user adds what any control may carry
   (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the driver maps each to its
   layer—on the web a form element takes the native attribute where one exists, so the form
-  enforces it without script, and ARIA otherwise. On the web a control that owns a native
+  enforces it without script, and ARIA otherwise. A caption drawn by a view names its
+  control by reference (`LabelledBy`, `aria-labelledby` on the web), since a combobox,
+  a listbox or a radio group may not be named from content; a region, a dialog or a
+  picture is named through `set_label`/`set_labelled_by` on `Container` and `Overlay`
+  and `Painted::set_description`; `Role::Status` and `Role::Alert` are the live
+  regions, `Role::Dialog` a popup's role, a tooltip's bubble is `role="tooltip"`, and
+  a scrolling box is a tab stop on the web (`tabindex="0"`) as in Chromium. **A
+  disabled control takes no focus**—the ARIA practices allow either, and a control
+  the user cannot operate is kept out of the way rather than announced; the divergence
+  is deliberate. The gallery runs under axe-core in the browser tier (`web_axe`), the
+  gate for every built-in's semantics. On the web a control that owns a native
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
   `<textarea>`, its caption a `<label for>` the driver keeps before it among its
   siblings, a checkbox, radio or slider keeps its input inside its label beside the
@@ -497,8 +507,9 @@
   browser form silently covers only the first of them—run each browser binary by name
   (`--test web_dom`, `web_hydrate`, `web_painted`, `web_resource`, `web_task`; the other `web_*.rs` are
   wasi-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
-  reads as a passing one. `skene-web` and `acme-map` carry browser binaries of their own
-  (`web_dom`, `web_map`); run them the same way. A browser failure also poisons the platform
+  reads as a passing one. `skene-web`, `acme-map` and the `gallery` example carry browser
+  binaries of their own (`web_dom`, `web_map`, `web_axe`—the last runs axe-core over the
+  whole gallery); run them the same way. A browser failure also poisons the platform
   for the tests that follow (`RefCell already borrowed`), so fix the first failure before
   believing the rest.
 - Prefer `#[expect(lint)]` over `#[allow(lint)]`.

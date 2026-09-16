@@ -219,7 +219,8 @@ panic and prints `Error: failed to run main module` instead of a `FAILED` line, 
 browser runner panics on cleanup after reporting, which stops cargo before the
 remaining binaries run—so run each browser binary by name (`--test web_dom`,
 `web_hydrate`, `web_painted`, `web_resource`, `web_task`) and add the totals. `skene-web` carries its
-own `web_dom` and `web_ssr` binaries on the same two targets.
+own `web_dom` and `web_ssr` binaries on the same two targets, and the `gallery` example
+runs axe-core over every built-in in `web_axe`.
 
 ## Extending
 

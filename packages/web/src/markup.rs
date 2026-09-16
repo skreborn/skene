@@ -5,15 +5,19 @@
 use skene_core::{
   AccessProp,
   Axis,
+  Conditional,
   ControlKind,
   ControlProps,
   Driver,
+  DriverLeaf,
   FocusOrder,
   LinkAnnotation,
   LinkPolicy,
   NodeId,
+  Overflow,
   PopupKind,
   Role,
+  StaticLeaf,
   Toggle,
 };
 
@@ -203,6 +207,7 @@ pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
       .to_owned(),
     ),
     AccessProp::Controls(node) => ("aria-controls", element_id(*node)),
+    AccessProp::LabelledBy(node) => ("aria-labelledby", element_id(*node)),
     AccessProp::DescribedBy(node) => ("aria-describedby", element_id(*node)),
     AccessProp::Description(text) => ("title", text.clone()),
     AccessProp::Orientation(axis) => (
@@ -276,22 +281,38 @@ pub(crate) fn element_id(node: NodeId) -> String {
 /// The nodes `access` refers to by id.
 pub(crate) fn referenced_nodes(access: &[AccessProp]) -> impl Iterator<Item = NodeId> + '_ {
   access.iter().filter_map(|prop| match prop {
-    AccessProp::Controls(node) | AccessProp::DescribedBy(node) => Some(*node),
+    AccessProp::Controls(node) | AccessProp::LabelledBy(node) | AccessProp::DescribedBy(node) => {
+      Some(*node)
+    }
     _ => None,
   })
 }
 
 /// The `tabindex` a node carries for `focus_order`; `None` removes it. A control out
-/// of focus keeps `-1`, so it stays focusable by script.
+/// of focus keeps `-1`, so it stays focusable by script, and a box that `scrolls`
+/// takes its place in the order, so the keyboard reaches its content.
 pub(crate) fn focus_order_attribute(
   focus_order: Option<FocusOrder>,
   control: bool,
+  scrolls: bool,
 ) -> Option<String> {
   match focus_order {
     Some(focus_order) => Some(render_focus_order(focus_order)),
     None if control => Some("-1".to_owned()),
+    None if scrolls => Some("0".to_owned()),
     None => None,
   }
+}
+
+/// Whether a box's declared style scrolls its content: an overflow of `Scroll` or
+/// `Auto` fixed on the base value.
+pub(crate) fn scrolls<D: Driver>(style: &skene_core::StaticBoxStyle<D>) -> bool {
+  matches!(
+    style.overflow.as_ref().map(Conditional::base),
+    Some(DriverLeaf::Static(StaticLeaf::Fixed(
+      Overflow::Scroll | Overflow::Auto
+    )))
+  )
 }
 
 /// The text of the `ordinal`-th anchor comment: `s:N` starts the `N`-th segment,
@@ -316,7 +337,8 @@ pub(crate) fn render_focus_order(focus_order: FocusOrder) -> String {
 
 /// A widget [`Role`]'s ARIA spelling.
 ///
-/// Landmark roles never reach here—they realize as their semantic element instead.
+/// Landmark roles never reach here—they realize as their semantic element instead;
+/// see [`Role::is_spelled`].
 #[must_use]
 pub(crate) fn aria_role(role: Role) -> &'static str {
   match role {
@@ -330,6 +352,10 @@ pub(crate) fn aria_role(role: Role) -> &'static str {
     Role::Combobox => "combobox",
     Role::Menu => "menu",
     Role::MenuItem => "menuitem",
+    Role::Dialog => "dialog",
+    Role::Image => "img",
+    Role::Status => "status",
+    Role::Alert => "alert",
     _ => "",
   }
 }

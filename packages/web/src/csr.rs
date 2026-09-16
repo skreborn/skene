@@ -142,6 +142,7 @@ use super::{
     native_attributes,
     native_element,
     referenced_nodes,
+    scrolls,
     takes_disabled,
   },
   token::WebTokenValue,
@@ -194,6 +195,8 @@ struct Node {
   observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   cancel: Option<Listener>,
   adopted: bool,
+  /// Whether the box scrolls its content, so it takes a place in the focus order.
+  scrolls: bool,
   painter: Option<Rc<Painter>>,
   canvas: Option<HtmlCanvasElement>,
   gpu: Option<gpu::Target>,
@@ -215,6 +218,7 @@ impl Node {
       observers: Vec::new(),
       cancel: None,
       adopted,
+      scrolls: false,
       painter: None,
       canvas: None,
       gpu: None,
@@ -683,7 +687,7 @@ impl Dom {
     if let Some(node) = self.node(sink)
       && let Some(carrier) = node.carrier()
     {
-      match focus_order_attribute(focus_order, node.is_control()) {
+      match focus_order_attribute(focus_order, node.is_control(), node.scrolls) {
         Some(tabindex) => {
           let _ = carrier.set_attribute("tabindex", &tabindex);
         }
@@ -748,6 +752,11 @@ impl Dom {
   /// Realizes the props every box-like node shares onto `sink`.
   fn finish_box(&mut self, sink: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
     self.assign_style(sink, compiled);
+
+    if let Some(node) = self.node_mut(sink) {
+      node.scrolls = scrolls::<Web>(&props.style);
+    }
+
     self.write_focus_order(sink, props.focus_order);
     self.write_access(sink, &props.access);
   }
@@ -1269,7 +1278,7 @@ impl Driver for Web {
       );
 
       if let Some(element) = dom.node(sink).and_then(Node::element) {
-        if let Some(role) = props.role.filter(|role| role.is_widget()) {
+        if let Some(role) = props.role.filter(|role| role.is_spelled()) {
           let _ = element.set_attribute("role", aria_role(role));
         }
 
@@ -1453,6 +1462,14 @@ impl Driver for Web {
 
         if let Some(element) = dom.node(sink).and_then(Node::element) {
           let _ = element.set_attribute("popover", if props.hint { "hint" } else { "manual" });
+
+          // A hint is a tooltip; a popup takes the role its box asks for.
+          if props.hint {
+            let _ = element.set_attribute("role", "tooltip");
+          }
+          else if let Some(role) = props.box_props.role.filter(|role| role.is_spelled()) {
+            let _ = element.set_attribute("role", aria_role(role));
+          }
         }
 
         sink

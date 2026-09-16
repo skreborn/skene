@@ -1,6 +1,6 @@
 //! The wrapper pinning a stack child to the stack's edges.
 
-use std::{marker::PhantomData, rc::Rc};
+use std::marker::PhantomData;
 
 use skene_core::{
   Annotation,
@@ -15,6 +15,7 @@ use skene_core::{
   NoChild,
   Scene,
   StackChild,
+  StaticLeaf,
   Value,
   View,
 };
@@ -65,10 +66,14 @@ impl<D: Driver, C> Pinned<D, C> {
     self
   }
 
-  /// Derives the edges the child is pinned to from the signals `edges` reads.
+  /// Derives the edges the child is pinned to from the signals `edges` reads: a value,
+  /// a token or an expression.
   #[inline(always)]
-  pub fn derive_edges(mut self, edges: impl Fn() -> Inset<Dimension<D::Scalar>> + 'static) -> Self {
-    self.edges = Value::new(Leaf::Derived(Rc::new(edges)));
+  pub fn derive_edges<R: Into<StaticLeaf<Inset<Dimension<D::Scalar>>>>>(
+    mut self,
+    edges: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.edges = Value::new(Leaf::derive(edges));
 
     self
   }

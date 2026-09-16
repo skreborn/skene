@@ -2,12 +2,15 @@
 
 mod activate;
 mod listbox;
+mod menu;
+mod native_picker;
 mod popup;
 mod range;
 mod roster;
 mod roving;
 mod text_entry;
 mod toggle;
+mod type_ahead;
 
 use std::{marker::PhantomData, rc::Rc};
 
@@ -47,7 +50,9 @@ use skene_core::{
   Scene,
   ScrollEvent,
   ScrollHandler,
+  StaticLeaf,
   StyleExtension,
+  TextSelection,
   Transition,
   Value,
   View,
@@ -58,12 +63,15 @@ use skene_reactive::{Effect, Owner, Trigger, batch, use_context};
 pub use self::{
   activate::Activate,
   listbox::{ListItem, Listbox, ListboxGroup},
+  menu::{Menu, MenuGroup, MenuOption},
+  native_picker::NativePicker,
   popup::Popup,
   range::Range,
   roster::Roster,
   roving::{RadioMember, Roving, RovingGroup},
   text_entry::TextEntry,
   toggle::Toggle,
+  type_ahead::{TYPE_AHEAD_RESET, TypeAhead},
 };
 use crate::{
   Anchor,
@@ -71,7 +79,7 @@ use crate::{
   LayoutBox,
   Text,
   decoration,
-  realize::{Source, with_sink},
+  realize::{Source, report_access, with_sink},
 };
 
 /// An observer of an event carrying `E`: a handler with no verdict.
@@ -175,6 +183,10 @@ pub trait Behavior<D: Driver>: 'static {
   #[inline(always)]
   fn on_change(&self, _value: &str, _control: &ControlHandle<D>) {}
 
+  /// What the behavior does when the driver reports a new selection.
+  #[inline(always)]
+  fn on_selection_change(&self, _selection: TextSelection, _control: &ControlHandle<D>) {}
+
   /// What the behavior does when the driver reports a new checked state.
   #[inline(always)]
   fn on_toggle(&self, _checked: bool, _control: &ControlHandle<D>) {}
@@ -204,6 +216,7 @@ pub trait Behavior<D: Driver>: 'static {
 #[must_use]
 pub struct ControlHandle<D: Driver> {
   node: NodeId,
+  name: Option<String>,
   roster: Option<Roster>,
   changed: Trigger,
   driver: PhantomData<fn() -> D>,
@@ -214,6 +227,14 @@ impl<D: Driver> ControlHandle<D> {
   #[inline(always)]
   pub const fn node(&self) -> NodeId {
     self.node
+  }
+
+  /// The accessible name the control's label supplied at build, when its text was
+  /// known then.
+  #[inline(always)]
+  #[must_use]
+  pub fn name(&self) -> Option<&str> {
+    self.name.as_deref()
   }
 
   /// The roster in force where the control was built, if any.
@@ -268,6 +289,15 @@ impl<D: Driver> Label<D> {
       name: None,
     }
   }
+
+  /// Sets the accessible name the caption supplies, where its text is not the
+  /// driver's to read: what type-ahead matches, and what the driver reports.
+  #[inline(always)]
+  pub fn set_name(mut self, name: impl Into<String>) -> Self {
+    self.name = Some(name.into());
+
+    self
+  }
 }
 
 impl<D: Driver> From<String> for Label<D> {
@@ -316,6 +346,7 @@ impl<D: Driver> ControlChild<D> for AnyView<D> {
 struct Observers {
   click: Vec<Rc<PlainHandler>>,
   key_down: Vec<Rc<KeyObserver>>,
+  key_up: Vec<Rc<KeyObserver>>,
   pointer_down: Vec<Rc<PointerObserver>>,
   pointer_up: Vec<Rc<PointerObserver>>,
   pointer_move: Vec<Rc<PointerObserver>>,
@@ -467,7 +498,10 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
 
   /// Derives where the body sits from the signals `alignment` reads.
   #[inline(always)]
-  pub fn derive_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
     self.inner = self.inner.derive_alignment(alignment);
 
     self
@@ -639,6 +673,14 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
     self
   }
 
+  /// Runs `action` on a key released while the control holds focus.
+  #[inline(always)]
+  pub fn handle_key_up(mut self, action: impl Fn(&KeyEvent) + 'static) -> Self {
+    self.observers.key_up.push(Rc::new(action));
+
+    self
+  }
+
   /// Runs `action` after the behavior has acted on a pointer button pressed over the
   /// control.
   #[inline(always)]
@@ -742,13 +784,14 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
           D::default().create_control(&ControlProps {
             kind,
             box_props,
-            label: name,
+            label: name.clone(),
             placeholder,
             lines,
           })
         });
         let handle = Rc::new(ControlHandle {
           node,
+          name,
           roster: use_context::<Roster>(),
           changed: Trigger::new(),
           driver: PhantomData,
@@ -876,7 +919,7 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
         access.push(AccessProp::DescribedBy(described_by));
       }
 
-      with_sink::<D, _>(node, |sink| D::default().update_access(sink, &access));
+      report_access::<D>(node, access);
     });
   }
 
@@ -966,6 +1009,8 @@ impl<D: Driver, B: Behavior<D>> Actor<D, B> {
 /// Registers one handler per event the behavior or an observer wants: the behavior
 /// acts first and its verdict stands, the observers see the event after, and a
 /// disabled control swallows every event it would act on.
+// One registration per event kind; length is the kind count, not complexity.
+#[expect(clippy::too_many_lines)]
 fn register<D: Driver, B: Behavior<D>>(
   node: NodeId,
   behavior: &Rc<B>,
@@ -983,6 +1028,7 @@ fn register<D: Driver, B: Behavior<D>>(
   let Observers {
     click,
     key_down,
+    key_up,
     pointer_down,
     pointer_up,
     pointer_move,
@@ -1006,6 +1052,7 @@ fn register<D: Driver, B: Behavior<D>>(
       .collect(),
   );
   let key_down = actor.handler(acts(EventKind::KeyDown), B::on_key, key_down);
+  let key_up = actor.handler(false, |_, _: &KeyEvent, _| Prevent::None, key_up);
   let pointer = |phase: PointerPhase, kind: EventKind, observers: Vec<Rc<PointerObserver>>| {
     actor.handler(
       acts(kind),
@@ -1021,6 +1068,12 @@ fn register<D: Driver, B: Behavior<D>>(
     let handle = Rc::clone(handle);
 
     Rc::new(move |value: &str| behavior.on_change(value, &handle))
+  });
+  let selection_change = acts(EventKind::SelectionChange).then(|| {
+    let behavior = Rc::clone(behavior);
+    let handle = Rc::clone(handle);
+
+    Rc::new(move |selection: TextSelection| behavior.on_selection_change(selection, &handle))
   });
   let toggle = acts(EventKind::Toggle).then(|| {
     let behavior = Rc::clone(behavior);
@@ -1042,6 +1095,10 @@ fn register<D: Driver, B: Behavior<D>>(
       scene.handle_key_down(node, handler);
     }
 
+    if let Some(handler) = key_up {
+      scene.handle_key_up(node, handler);
+    }
+
     if let Some(handler) = pointer_down {
       scene.handle_pointer_down(node, as_pointer_handler(handler));
     }
@@ -1056,6 +1113,10 @@ fn register<D: Driver, B: Behavior<D>>(
 
     if let Some(handler) = change {
       scene.handle_change(node, handler);
+    }
+
+    if let Some(handler) = selection_change {
+      scene.handle_selection_change(node, handler);
     }
 
     if let Some(handler) = toggle {
@@ -1109,3 +1170,7 @@ pub type RawTextEditor<D, C = NoChild> = Control<D, TextEntry, C>;
 pub type RawListbox<D, C = NoChild> = Control<D, Listbox, C>;
 /// One option within a listbox: [`Control`] over [`ListItem`].
 pub type RawOption<D, C = NoChild> = Control<D, ListItem, C>;
+/// A menu: [`Control`] over [`Menu`].
+pub type RawMenu<D, C = NoChild> = Control<D, Menu, C>;
+/// One item within a menu: [`Control`] over [`MenuOption`].
+pub type RawMenuItem<D, C = NoChild> = Control<D, MenuOption, C>;

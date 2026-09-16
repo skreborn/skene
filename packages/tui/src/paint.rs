@@ -4,7 +4,9 @@
 //! it; the buffer serializes to plain text for tests or to the terminal for the
 //! interactive loop.
 
-use skene_core::{Color, ControlKind};
+use std::rc::Rc;
+
+use skene_core::{Color, ControlKind, TextDecoration, TextDecorationStyle};
 
 use crate::{
   BorderGlyphs,
@@ -18,33 +20,184 @@ use crate::{
     paragraph_runs,
     paragraph_text,
   },
-  store::{Handle, Kind, PlainRun, Record, Store},
+  store::{Contrast, Handle, Kind, PlainRun, Record, Store},
+  text::{self, CellScale, Glyph, Scales},
 };
 
 /// One terminal cell's paint state.
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct TerminalCell {
-  pub(crate) character: char,
+  pub(crate) glyph: Glyph,
   pub(crate) foreground: Option<(u8, u8, u8)>,
   pub(crate) background: Option<(u8, u8, u8)>,
   pub(crate) bold: bool,
-  pub(crate) underline: bool,
+  pub(crate) decoration: CellDecoration,
   /// Whether the cell paints in reverse video.
   pub(crate) reverse: bool,
   /// The cell's hyperlink, an index into the frame's [`Buffer::links`].
   pub(crate) link: Option<u16>,
+  /// The scale the cell's glyph draws at; its block's later cells are continuations.
+  pub(crate) scale: CellScale,
 }
 
 impl TerminalCell {
   pub(crate) const EMPTY: Self = Self {
-    character: ' ',
+    glyph: Glyph::SPACE,
     foreground: None,
     background: None,
     bold: false,
-    underline: false,
+    decoration: CellDecoration::NONE,
     reverse: false,
     link: None,
+    scale: CellScale::ONE,
   };
+}
+
+/// The decoration lines one painted cell carries, for a headless test asserting paint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[must_use]
+pub struct CellDecoration {
+  /// The underline's style, `None` without one.
+  pub underline: Option<TextDecorationStyle>,
+  /// The underline's color, the text's where `None`.
+  pub underline_color: Option<(u8, u8, u8)>,
+  /// Whether a line runs above the text.
+  pub overline: bool,
+  /// Whether a line runs through the text.
+  pub line_through: bool,
+}
+
+impl CellDecoration {
+  /// No line.
+  pub const NONE: Self = Self {
+    underline: None,
+    underline_color: None,
+    overline: false,
+    line_through: false,
+  };
+
+  /// The lines a run's resolved style draws: its decoration, or an underline where it
+  /// sets none and is a link.
+  fn of(style: Option<&PlainRun>, linked: bool) -> Self {
+    let line = style
+      .and_then(|style| style.decoration)
+      .unwrap_or(if linked {
+        TextDecoration::Underline
+      }
+      else {
+        TextDecoration::None
+      });
+    let underline = (line == TextDecoration::Underline).then(|| {
+      style
+        .and_then(|style| style.decoration_style)
+        .unwrap_or_default()
+    });
+
+    Self {
+      underline,
+      underline_color: underline
+        .and_then(|_| style.and_then(|style| style.decoration_color))
+        .and_then(terminal_rgb),
+      overline: line == TextDecoration::Overline,
+      line_through: line == TextDecoration::LineThrough,
+    }
+  }
+}
+
+/// A picture rendered from a painted box: its pixels as unpremultiplied RGBA8, rows
+/// top to bottom, under the generation the terminal transmits it as.
+pub(crate) struct Image {
+  pub(crate) generation: u64,
+  pub(crate) width: u16,
+  pub(crate) height: u16,
+  pub(crate) pixels: Vec<u8>,
+}
+
+/// Where a frame places a picture: the cells it covers on the screen, the part of
+/// the image those cells show, in pixels, and the layer it draws on.
+#[derive(Clone)]
+pub(crate) struct Placement {
+  /// The image's id at the terminal.
+  pub(crate) id: u32,
+  pub(crate) column: u16,
+  pub(crate) row: u16,
+  pub(crate) columns: u16,
+  pub(crate) rows: u16,
+  /// The source rectangle: left, top, width, height.
+  pub(crate) crop: (u16, u16, u16, u16),
+  /// The layer: zero over the text for a painted box, beneath every colored cell
+  /// for a backdrop.
+  pub(crate) layer: i32,
+  pub(crate) image: Rc<Image>,
+}
+
+/// A placement's cells, crop and layer: what the terminal is told, apart from the
+/// image.
+pub(crate) type PlacedCells = (u16, u16, u16, u16, (u16, u16, u16, u16), i32);
+
+impl Placement {
+  /// The cells, the crop and the layer: what the terminal is told, apart from the
+  /// image.
+  pub(crate) fn cells(&self) -> PlacedCells {
+    (
+      self.column,
+      self.row,
+      self.columns,
+      self.rows,
+      self.crop,
+      self.layer,
+    )
+  }
+}
+
+/// The lowest layer a backdrop draws on: beneath every colored cell, the box's own
+/// cells left uncolored so it shows through, its depth in the tree added so a nested
+/// box's backdrop draws over its parent's.
+const BACKDROP_Z: i32 = -1_073_741_824 - 1024;
+
+/// The id a box's backdrop image takes at the terminal: apart from its picture's.
+const BACKDROP_ID: u32 = 1 << 30;
+
+/// A painted box's picture as one frame places it, for a headless test asserting what
+/// a terminal with graphics shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
+pub struct Picture {
+  /// The first column the picture covers.
+  pub column: u16,
+  /// The first row the picture covers.
+  pub row: u16,
+  /// How many columns it covers.
+  pub columns: u16,
+  /// How many rows it covers.
+  pub rows: u16,
+  /// The part of the image the cells show: left, top, width, height, in pixels.
+  pub crop: (u16, u16, u16, u16),
+  /// The layer: zero for a painted box's picture over the text, negative for a box's
+  /// backdrop beneath every colored cell.
+  pub layer: i32,
+  /// The image's width in pixels.
+  pub width: u16,
+  /// The image's height in pixels.
+  pub height: u16,
+  /// The image's pixels as unpremultiplied RGBA8, rows top to bottom.
+  pub pixels: Vec<u8>,
+}
+
+impl From<&Placement> for Picture {
+  fn from(placement: &Placement) -> Self {
+    Self {
+      column: placement.column,
+      row: placement.row,
+      columns: placement.columns,
+      rows: placement.rows,
+      crop: placement.crop,
+      layer: placement.layer,
+      width: placement.image.width,
+      height: placement.image.height,
+      pixels: placement.image.pixels.clone(),
+    }
+  }
 }
 
 /// A painted frame: `width` x `height` cells in row-major order.
@@ -58,6 +211,8 @@ pub(crate) struct Buffer {
   /// The frame's hyperlink destinations, indexed by [`TerminalCell::link`], emitted as
   /// OSC 8 anchors.
   pub(crate) links: Vec<String>,
+  /// The pictures the frame places, over the cells they cover.
+  pub(crate) pictures: Vec<Placement>,
   /// The active clip rectangle (start inclusive, end exclusive), while a clipping box
   /// paints its children.
   clip: Option<(isize, isize, isize, isize)>,
@@ -73,6 +228,7 @@ impl Buffer {
       cells: vec![TerminalCell::EMPTY; width * height],
       caret: None,
       links: Vec::new(),
+      pictures: Vec::new(),
       clip: None,
       rows: None,
     }
@@ -89,9 +245,41 @@ impl Buffer {
 
     self.caret = None;
     self.links.clear();
+    self.pictures.clear();
     self.rows = Some(rows.to_vec());
 
     self
+  }
+
+  /// The part of the rectangle at (`x`, `y`) of `width` by `height` cells that lies
+  /// on the frame and inside the active clip, as its cell and size; `None` when none
+  /// of it does.
+  fn visible(
+    &self,
+    x: isize,
+    y: isize,
+    width: isize,
+    height: isize,
+  ) -> Option<(u16, u16, u16, u16)> {
+    let frame = (
+      0,
+      0,
+      isize::try_from(self.width).unwrap_or(isize::MAX),
+      isize::try_from(self.height).unwrap_or(isize::MAX),
+    );
+    let bounds = self.clip.map_or(frame, |clip| intersect(clip, frame));
+    let (left, top, right, bottom) = intersect(bounds, (x, y, x + width, y + height));
+
+    if right <= left || bottom <= top {
+      return None;
+    }
+
+    Some((
+      u16::try_from(left).ok()?,
+      u16::try_from(top).ok()?,
+      u16::try_from(right - left).ok()?,
+      u16::try_from(bottom - top).ok()?,
+    ))
   }
 
   /// Whether the cell (`x`, `y`) lies on the frame and inside the active clip.
@@ -128,15 +316,97 @@ impl Buffer {
     self.cells.get_mut(y * self.width + x)
   }
 
-  /// The frame as plain text, one row per line, trailing spaces trimmed.
+  /// Paints `cluster` at (`x`, `y`) over `width` cells—its glyph in the first, a
+  /// continuation in each later one, `style` applied to every cell—or a blank where
+  /// a later cell would fall outside the frame or the clip; nothing for no width.
+  pub(crate) fn put_cluster(
+    &mut self,
+    x: isize,
+    y: isize,
+    cluster: &str,
+    width: usize,
+    style: impl Fn(&mut TerminalCell),
+  ) {
+    self.put_sized(x, y, cluster, width, CellScale::ONE, style);
+  }
+
+  /// Paints `cluster` at (`x`, `y`) at `scale`: a block of the scale's rows by `width`
+  /// times them, its glyph and scale in the top-left cell and a continuation in every
+  /// other, `style` applied to each—or blanks where the block's last cell would fall
+  /// outside the frame or the clip; nothing for no width.
+  pub(crate) fn put_sized(
+    &mut self,
+    x: isize,
+    y: isize,
+    cluster: &str,
+    width: usize,
+    scale: CellScale,
+    style: impl Fn(&mut TerminalCell),
+  ) {
+    if width == 0 {
+      return;
+    }
+
+    let rows = scale.rows();
+    let columns = width * rows;
+    let last = (
+      x + isize::try_from(columns - 1).expect("fits"),
+      y + isize::try_from(rows - 1).expect("fits"),
+    );
+    let fits = self.in_clip(last.0, last.1);
+
+    for row in 0..rows {
+      for column in 0..columns {
+        let Some(cell) = self.cell_mut(
+          x + isize::try_from(column).expect("fits"),
+          y + isize::try_from(row).expect("fits"),
+        )
+        else {
+          continue;
+        };
+
+        (cell.glyph, cell.scale) = match (fits, row, column) {
+          (false, ..) => (Glyph::SPACE, CellScale::ONE),
+          (true, 0, 0) => (Glyph::of(cluster), scale),
+          (true, ..) => (Glyph::Continuation, CellScale::ONE),
+        };
+        style(cell);
+      }
+    }
+  }
+
+  /// The frame as plain text, one row per line, a wide cluster on its first cell
+  /// alone, a scaled cluster followed by the blanks its block adds to its row and
+  /// its lower rows blank, trailing spaces trimmed.
   pub(crate) fn to_text(&self) -> String {
+    use std::fmt::Write as _;
+
     let mut out = String::new();
 
     for row in 0..self.height {
-      let line: String = self.cells[row * self.width..(row + 1) * self.width]
+      let mut line = String::new();
+      let mut covered = 0;
+
+      for (column, cell) in self.cells[row * self.width..(row + 1) * self.width]
         .iter()
-        .map(|cell| cell.character)
-        .collect();
+        .enumerate()
+      {
+        if cell.glyph == Glyph::Continuation {
+          if column >= covered {
+            line.push(' ');
+          }
+
+          continue;
+        }
+
+        let cells = cell.glyph.cells();
+
+        covered = column + cells * cell.scale.rows();
+
+        let _ = write!(line, "{}", cell.glyph);
+
+        line.extend(std::iter::repeat_n(' ', cells * (cell.scale.rows() - 1)));
+      }
 
       out.push_str(line.trim_end());
       out.push('\n');
@@ -146,58 +416,180 @@ impl Buffer {
   }
 }
 
-/// Wraps text to `width` columns: lines break at spaces, a word longer than a full
-/// line breaks mid-word, and a newline always breaks. Yields at least one line, each
-/// paired with its start offset into the source, in characters, newlines included.
+/// Wraps text to `width` cells: lines break at spaces, a word longer than a full
+/// line breaks mid-word, a cluster too wide for a line takes one alone, and a
+/// newline always breaks. Yields at least one line, each paired with its start
+/// offset into the source, in clusters, newlines included.
 pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
+  wrap_sized(text, width, &Scales::default())
+    .into_iter()
+    .map(|line| (line.start, line.text))
+    .collect()
+}
+
+/// One wrapped line of sized text: where it starts in the source, in clusters, its
+/// text, and the rows it takes, those of its tallest cluster.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SizedLine {
+  pub(crate) start: usize,
+  pub(crate) text: String,
+  pub(crate) rows: usize,
+}
+
+impl SizedLine {
+  /// The cells the line spans, each cluster at its scale.
+  pub(crate) fn cells(&self, scales: &Scales) -> usize {
+    text::clusters(&self.text)
+      .enumerate()
+      .map(|(index, (_, cluster))| scales.cells(self.start + index, cluster))
+      .sum()
+  }
+
+  /// The cluster a hit at the cell `column` lands on: the one whose block holds it,
+  /// the count past the line.
+  pub(crate) fn cluster_at(&self, column: usize, scales: &Scales) -> Option<usize> {
+    let mut cell = 0;
+
+    for (index, (_, cluster)) in text::clusters(&self.text).enumerate() {
+      cell += scales.cells(self.start + index, cluster);
+
+      if column < cell {
+        return Some(index);
+      }
+    }
+
+    None
+  }
+
+  /// The cluster a caret goes to for the cell `column`: the one whose first cell it
+  /// is, the next for a later cell of a block, and the count past the line.
+  pub(crate) fn index_at_column(&self, column: usize, scales: &Scales) -> usize {
+    let mut cell = 0;
+
+    for (index, (_, cluster)) in text::clusters(&self.text).enumerate() {
+      let next = cell + scales.cells(self.start + index, cluster);
+
+      if column < next {
+        return if column == cell { index } else { index + 1 };
+      }
+
+      cell = next;
+    }
+
+    text::count(&self.text)
+  }
+}
+
+/// The wrapped lines of sized text, and the row each starts on.
+pub(crate) fn sized_rows(lines: &[SizedLine]) -> Vec<usize> {
+  let mut row = 0;
+
+  lines
+    .iter()
+    .map(|line| {
+      let start = row;
+
+      row += line.rows;
+
+      start
+    })
+    .collect()
+}
+
+/// The line whose rows hold the row `row` of the wrapped `lines`, if any.
+pub(crate) fn line_holding(lines: &[SizedLine], row: usize) -> Option<usize> {
+  sized_rows(lines)
+    .iter()
+    .zip(lines)
+    .position(|(start, line)| (*start..start + line.rows).contains(&row))
+}
+
+/// The line holding the row `row` of the wrapped `lines`, clamped into them.
+pub(crate) fn line_at_row(lines: &[SizedLine], row: usize) -> usize {
+  line_holding(lines, row).unwrap_or(if row == 0 {
+    0
+  }
+  else {
+    lines.len().saturating_sub(1)
+  })
+}
+
+/// [`wrap_spans`] with each cluster as wide as its scale makes it, and each line as
+/// tall as its tallest cluster.
+pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
   let width = width.max(1);
   let mut lines = Vec::new();
   let mut base = 0;
 
   for paragraph in text.split('\n') {
-    let characters: Vec<char> = paragraph.chars().collect();
+    let clusters: Vec<(&str, usize)> = text::clusters(paragraph)
+      .enumerate()
+      .map(|(index, (_, cluster))| (cluster, scales.cells(base + index, cluster)))
+      .collect();
+    let line = |from: usize, to: usize| SizedLine {
+      start: base + from,
+      text: clusters[from..to]
+        .iter()
+        .map(|(cluster, _)| *cluster)
+        .collect(),
+      rows: (from..to)
+        .map(|index| scales.at(base + index).rows())
+        .max()
+        .unwrap_or_else(|| scales.at(base + from).rows()),
+    };
     let mut start = 0;
 
     loop {
-      if characters.len() - start <= width {
-        lines.push((base + start, characters[start..].iter().collect()));
+      let mut cells = 0;
+      let mut fit = start;
+
+      while fit < clusters.len() && cells + clusters[fit].1 <= width {
+        cells += clusters[fit].1;
+        fit += 1;
+      }
+
+      if fit == clusters.len() {
+        lines.push(line(start, fit));
 
         break;
       }
 
-      let window = &characters[start..start + width];
-      let break_at = if characters[start + width] == ' ' {
-        width
+      let break_at = if clusters[fit].0 == " " {
+        fit - start
       }
       else {
-        match window.iter().rposition(|&character| character == ' ') {
+        match clusters[start..fit]
+          .iter()
+          .rposition(|(cluster, _)| *cluster == " ")
+        {
           Some(position) if position > 0 => position,
-          _ => width,
+          _ => (fit - start).max(1),
         }
       };
 
-      lines.push((
-        base + start,
-        characters[start..start + break_at].iter().collect(),
-      ));
+      lines.push(line(start, start + break_at));
       start += break_at;
 
-      while characters.get(start) == Some(&' ') {
+      while clusters
+        .get(start)
+        .is_some_and(|(cluster, _)| *cluster == " ")
+      {
         start += 1;
       }
 
-      if start == characters.len() {
+      if start == clusters.len() {
         break;
       }
     }
 
-    base += characters.len() + 1;
+    base += clusters.len() + 1;
   }
 
   lines
 }
 
 /// Wraps text to `width` columns; the lines of [`wrap_spans`], offsets dropped.
+#[cfg(test)]
 pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
   wrap_spans(text, width)
     .into_iter()
@@ -205,25 +597,49 @@ pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
     .collect()
 }
 
-/// The longest unbreakable word's width in cells: the narrowest a wrap can go.
-pub(crate) fn longest_word(text: &str) -> usize {
-  text
-    .split([' ', '\n'])
-    .map(|word| word.chars().count())
-    .max()
-    .unwrap_or(0)
+/// The longest unbreakable word's width in cells at its scales: the narrowest a wrap
+/// can go.
+pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
+  let mut longest = 0;
+  let mut word = 0;
+
+  for (index, (_, cluster)) in text::clusters(text).enumerate() {
+    if cluster == " " || cluster == "\n" {
+      word = 0;
+    }
+    else {
+      word += scales.cells(index, cluster);
+      longest = longest.max(word);
+    }
+  }
+
+  longest
 }
 
-/// Paints the frame into `buffer`: the tree, then every open overlay, then the copy
-/// menu.
+/// Paints the frame into `buffer`: the tree, then every open overlay; a picture an
+/// open overlay covers in part is left out, since the terminal draws it over the
+/// overlay's cells.
 pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
   paint_node(store, buffer, store.root, 0, 0);
 
-  for overlay in store.open_overlays() {
+  let overlays = store.open_overlays();
+
+  buffer.pictures.retain(|picture| {
+    picture.layer < 0
+      || !overlays.iter().any(|overlay| {
+        let (origin_x, origin_y) = store.overlay_origin(*overlay);
+        let (width, height) = store.node_size(*overlay);
+
+        i64::from(picture.column) < origin_x + width
+          && i64::from(picture.column + picture.columns) > origin_x
+          && i64::from(picture.row) < origin_y + height
+          && i64::from(picture.row + picture.rows) > origin_y
+      })
+  });
+
+  for overlay in overlays {
     paint_overlay(store, buffer, overlay);
   }
-
-  draw_menu(store, buffer, store.dark());
 }
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
@@ -235,7 +651,7 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
   else {
     return;
   };
-  let dark = store.dark();
+  let contrast = store.contrast();
 
   if let Some(color) = backdrop {
     let [red, green, blue, alpha] = color.to_rgba();
@@ -247,7 +663,7 @@ fn paint_overlay(store: &Store, buffer: &mut Buffer, overlay: Handle) {
         }
 
         for cell in &mut buffer.cells[row * buffer.width..(row + 1) * buffer.width] {
-          tint(cell, red, green, blue, alpha, dark);
+          tint(cell, red, green, blue, alpha, contrast);
         }
       }
     }
@@ -291,16 +707,34 @@ struct BorderPaint {
   color: Option<(u8, u8, u8)>,
 }
 
-/// One paragraph span's paint: its ink, weight, underline, link, and whether it holds
-/// focus.
+/// One paragraph span's paint: its ink, weight, decoration, link, and the emphasis it
+/// paints in while it is the link whose focus shows.
 struct SpanPaint {
   foreground: Option<(u8, u8, u8)>,
   bold: bool,
-  underline: bool,
+  decoration: CellDecoration,
   link: Option<u16>,
-  /// Whether the span is the focused link, painted in reverse video.
-  focused: bool,
+  /// The emphasis of the link whose focus shows; `None` while the span is not it.
+  focused: Option<Emphasis>,
   selection: Option<SelectionColors>,
+}
+
+/// An emphasis over a run's cells: the terminal's reverse video, or an ink on a
+/// surface.
+#[derive(Clone, Copy)]
+enum Emphasis {
+  Reverse,
+  Colors(SelectionColors),
+}
+
+impl Emphasis {
+  /// The ink and surface, `None` for reverse video.
+  const fn colors(self) -> Option<SelectionColors> {
+    match self {
+      Self::Reverse => None,
+      Self::Colors(colors) => Some(colors),
+    }
+  }
 }
 
 /// A run's selection highlight: the selected source range, each painted line's start
@@ -314,11 +748,12 @@ struct SelectionPaint {
 /// What one node contributes to the frame.
 enum NodePaint {
   Paragraph {
-    /// Wrapped lines over the concatenated text, each with its start offset.
-    lines: Vec<(usize, String)>,
-    /// Each concatenated character's span index.
+    /// Wrapped lines over the concatenated text, each cluster at its span's scale.
+    lines: Vec<SizedLine>,
+    /// Each concatenated cluster's span index.
     attribution: Vec<u16>,
     spans: Vec<SpanPaint>,
+    scales: Scales,
     links: Vec<String>,
     selection: Option<(usize, usize)>,
   },
@@ -328,13 +763,14 @@ enum NodePaint {
     shadow: Option<Color>,
   },
   Text {
-    lines: Vec<String>,
+    lines: Vec<SizedLine>,
     foreground: Option<(u8, u8, u8)>,
     bold: bool,
-    underline: bool,
+    scale: CellScale,
+    decoration: CellDecoration,
     link: Option<String>,
-    /// Whether the run is the focused link, painted in reverse video.
-    focused: bool,
+    /// The emphasis of the link whose focus shows; `None` while the run is not it.
+    focused: Option<Emphasis>,
     selection: Option<SelectionPaint>,
   },
   Field {
@@ -365,8 +801,22 @@ fn border_paint(store: &Store, handle: Handle) -> Option<BorderPaint> {
 /// The selection colors of a resolved run: its own, or reverse video when both are
 /// unset or transparent.
 fn selection_colors(style: &PlainRun) -> Option<SelectionColors> {
-  let ink = style.selection_color.and_then(terminal_rgb);
-  let surface = style.selection_background.and_then(terminal_rgb);
+  emphasis_colors(style.selection_color, style.selection_background)
+}
+
+/// The emphasis a link run paints in while its focus shows: the typography's colors,
+/// or reverse video when both are unset or transparent.
+fn link_focus_emphasis(store: &Store, run: Handle) -> Emphasis {
+  let (ink, surface) = crate::resolve::Env::of(store, run).resolve_link_focus();
+
+  emphasis_colors(ink, surface).map_or(Emphasis::Reverse, Emphasis::Colors)
+}
+
+/// An emphasis in `ink` on `surface`, each filled in for the other when one is set;
+/// reverse video when both are unset or transparent.
+fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<SelectionColors> {
+  let ink = ink.and_then(terminal_rgb);
+  let surface = surface.and_then(terminal_rgb);
 
   match (ink, surface) {
     (None, None) => None,
@@ -391,14 +841,14 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
     Kind::Box(inner) if is_paragraph(store, handle) => {
       let _ = inner;
       let text = paragraph_text(store, handle);
-      let lines = wrap_spans(&text, width);
+      let scales = paragraph_scales(store, handle);
+      let lines = wrap_sized(&text, width, &scales);
       let runs = paragraph_runs(store, handle);
       let mut destinations = Vec::new();
-      let mut attribution = Vec::new();
+      let mut ends = Vec::new();
       let spans: Vec<SpanPaint> = runs
         .iter()
-        .enumerate()
-        .map(|(index, run)| {
+        .map(|run| {
           let record = store.record(*run).expect("a live run");
           let Kind::Run { props, cache, .. } = &record.kind
           else {
@@ -410,19 +860,26 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
             u16::try_from(destinations.len() - 1).unwrap_or(0)
           });
 
-          attribution.extend(std::iter::repeat_n(
-            u16::try_from(index).unwrap_or(0),
-            record.text.chars().count(),
-          ));
+          ends.push(ends.last().unwrap_or(&0) + record.text.len());
 
           SpanPaint {
             foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
             bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
-            underline: link.is_some(),
+            decoration: CellDecoration::of(style, link.is_some()),
             link,
-            focused: link.is_some() && store.focused == Some(*run),
+            focused: (link.is_some() && store.focus_shows(*run))
+              .then(|| link_focus_emphasis(store, *run)),
             selection: style.and_then(selection_colors),
           }
+        })
+        .collect();
+
+      // Each cluster of the paragraph belongs to the run its first byte came from.
+      let attribution = text::clusters(&text)
+        .map(|(byte, _)| {
+          let index = ends.iter().position(|end| byte < *end).unwrap_or(0);
+
+          u16::try_from(index).unwrap_or(0)
         })
         .collect();
 
@@ -430,6 +887,7 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         lines,
         attribution,
         spans,
+        scales,
         links: destinations,
         selection: store.selection_range(handle),
       }
@@ -489,25 +947,27 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
     Kind::Run { .. } if is_inline_box(store, handle) => NodePaint::None,
     Kind::Run { props, cache, .. } => {
       let style = cache.as_ref().map(|cache| &cache.style);
-      let spans = wrap_spans(&record.text, width);
+      let scale = run_scale(store, handle);
+      let lines = wrap_sized(&record.text, width, &Scales::uniform(scale));
       let selection = props
         .selectable
         .then(|| {
           store.selection_range(handle).map(|range| SelectionPaint {
             range,
-            starts: spans.iter().map(|(start, _)| *start).collect(),
+            starts: lines.iter().map(|line| line.start).collect(),
             colors: style.and_then(selection_colors),
           })
         })
         .flatten();
 
       NodePaint::Text {
-        lines: spans.into_iter().map(|(_, line)| line).collect(),
+        lines,
         foreground: style.and_then(|style| style.color).and_then(terminal_rgb),
         bold: style.and_then(|style| style.ext.bold).unwrap_or(false),
-        underline: props.link.is_some(),
+        scale,
+        decoration: CellDecoration::of(style, props.link.is_some()),
         link: props.link.clone(),
-        focused: props.link.is_some() && focused,
+        focused: (props.link.is_some() && focused).then(|| link_focus_emphasis(store, handle)),
         selection,
       }
     }
@@ -556,8 +1016,8 @@ fn paint_node(
     isize::try_from(border.3).unwrap_or(0),
   );
   let edges = border;
-  let focused = store.focused == Some(handle);
-  let dark = store.dark();
+  let focused = store.focus_shows(handle);
+  let contrast = store.contrast();
   let paragraph = is_paragraph(store, handle);
 
   match node_paint(store, handle, width, focused) {
@@ -565,6 +1025,7 @@ fn paint_node(
       lines,
       attribution,
       spans,
+      scales,
       links,
       selection,
     } => {
@@ -573,15 +1034,19 @@ fn paint_node(
 
       buffer.links.extend(links);
 
-      for (row, (start, line)) in lines.iter().enumerate() {
-        let row_y = y + isize::try_from(row).expect("fits");
+      for (line, row) in lines.iter().zip(sized_rows(&lines)) {
+        let mut column = 0;
 
-        for (column, character) in line.chars().enumerate() {
-          let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y)
-          else {
-            continue;
-          };
-          let offset = start + column;
+        for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
+          let cell_x = x + isize::try_from(column).expect("fits");
+          let width = text::width(cluster);
+          let offset = line.start + index;
+          let scale = scales.at(offset);
+          // A smaller cluster sits on the line's bottom rows, as on a baseline.
+          let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
+
+          column += width * scale.rows();
+
           let Some(paint) = attribution
             .get(offset)
             .and_then(|index| spans.get(usize::from(*index)))
@@ -589,27 +1054,29 @@ fn paint_node(
             continue;
           };
 
-          if character == INLINE_BOX {
+          if cluster.starts_with(INLINE_BOX) {
             continue;
           }
 
-          cell.character = character;
+          let selected = selection.is_some_and(|(from, to)| offset >= from && offset < to);
 
-          if paint.foreground.is_some() {
-            cell.foreground = paint.foreground;
-          }
+          buffer.put_sized(cell_x, row_y, cluster, width, scale, |cell| {
+            if paint.foreground.is_some() {
+              cell.foreground = paint.foreground;
+            }
 
-          cell.bold = paint.bold;
-          cell.underline = paint.underline;
-          cell.link = paint.link.map(|index| base + index);
+            cell.bold = paint.bold;
+            cell.decoration = paint.decoration;
+            cell.link = paint.link.map(|index| base + index);
 
-          if paint.focused {
-            cell.reverse = true;
-          }
+            if let Some(emphasis) = paint.focused {
+              select_cell(cell, emphasis.colors());
+            }
 
-          if selection.is_some_and(|(from, to)| offset >= from && offset < to) {
-            select_cell(cell, paint.selection);
-          }
+            if selected {
+              select_cell(cell, paint.selection);
+            }
+          });
         }
       }
 
@@ -631,24 +1098,31 @@ fn paint_node(
       border,
       shadow,
     } => {
-      if let Some(shadow) = shadow {
-        draw_shadow(buffer, x, y, width, height, shadow, dark);
+      // A backdrop carries the decoration as pixels beneath the cells, which stay
+      // uncolored and unbordered so it shows through.
+      if place_backdrop(store, buffer, handle, (x, y), (width, height)) {
+        // Nothing in cells.
       }
-
-      // A childless, borderless box paints from its parent's origin by eighths: whole
-      // cells in its color, and a cell an edge crosses as a block glyph carrying its
-      // color beside what lies beneath.
-      match store.smooth_span(handle).filter(|_| border.is_none()) {
-        Some((start, extent)) => {
-          draw_smooth(buffer, offset_x, y, height, start, extent, background);
+      else {
+        if let Some(shadow) = shadow {
+          draw_shadow(buffer, x, y, width, height, shadow, contrast);
         }
-        None => fill(buffer, x, y, width, height, background),
-      }
 
-      if let Some(border) = border
-        && border.color.is_some()
-      {
-        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        // A childless, borderless box paints from its parent's origin by eighths:
+        // whole cells in its color, and a cell an edge crosses as a block glyph
+        // carrying its color beside what lies beneath.
+        match store.smooth_span(handle).filter(|_| border.is_none()) {
+          Some((start, extent)) => {
+            draw_smooth(buffer, offset_x, y, height, start, extent, background);
+          }
+          None => fill(buffer, x, y, width, height, background),
+        }
+
+        if let Some(border) = border
+          && border.color.is_some()
+        {
+          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        }
       }
 
       if let Some(painter) = &record.painter {
@@ -661,12 +1135,33 @@ fn paint_node(
 
         painter(&mut cells, rect);
       }
+
+      if let Some(image) = record
+        .picture
+        .as_ref()
+        .and_then(|picture| picture.image.clone())
+        && store.graphics
+      {
+        place_image(
+          store,
+          buffer,
+          handle.index() + 1,
+          image,
+          0,
+          (x + edges.0, y + edges.1),
+          (
+            isize::try_from(width).unwrap_or(0) - edges.0 - edges.2,
+            isize::try_from(height).unwrap_or(0) - edges.1 - edges.3,
+          ),
+        );
+      }
     }
     NodePaint::Text {
       lines,
       foreground,
       bold,
-      underline,
+      scale,
+      decoration,
       link,
       focused,
       selection,
@@ -676,28 +1171,31 @@ fn paint_node(
 
         u16::try_from(buffer.links.len() - 1).unwrap_or(0)
       });
+      let scales = Scales::uniform(scale);
 
-      for (row, line) in lines.iter().enumerate() {
+      for (line, row) in lines.iter().zip(sized_rows(&lines)) {
         let row_y = y + isize::try_from(row).expect("fits");
 
-        draw_text(buffer, x, row_y, line, foreground, bold, false);
+        draw_sized(buffer, x, row_y, &line.text, scale, |cell| {
+          if foreground.is_some() {
+            cell.foreground = foreground;
+          }
 
-        if underline {
-          for column in 0..line.chars().count() {
-            if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
-              cell.underline = true;
-              cell.link = link;
+          cell.bold = bold;
 
-              if focused {
-                cell.reverse = true;
-              }
+          if link.is_some() || decoration != CellDecoration::NONE {
+            cell.decoration = decoration;
+            cell.link = link;
+
+            if let Some(emphasis) = focused {
+              select_cell(cell, emphasis.colors());
             }
           }
-        }
+        });
       }
 
       if let Some(selection) = selection {
-        draw_selection(buffer, x, y, &lines, &selection);
+        draw_selection(buffer, x, y, &lines, &scales, &selection);
       }
     }
     NodePaint::Field {
@@ -710,16 +1208,18 @@ fn paint_node(
       inset,
       selection,
     } => {
-      if let Some(shadow) = shadow {
-        draw_shadow(buffer, x, y, width, height, shadow, dark);
-      }
+      if !place_backdrop(store, buffer, handle, (x, y), (width, height)) {
+        if let Some(shadow) = shadow {
+          draw_shadow(buffer, x, y, width, height, shadow, contrast);
+        }
 
-      fill(buffer, x, y, width, height, background);
+        fill(buffer, x, y, width, height, background);
 
-      if let Some(border) = border
-        && border.color.is_some()
-      {
-        draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        if let Some(border) = border
+          && border.color.is_some()
+        {
+          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+        }
       }
 
       for (row, text) in rows.iter().enumerate() {
@@ -735,7 +1235,24 @@ fn paint_node(
       }
 
       if let Some(selection) = selection {
-        draw_selection(buffer, x + inset.0, y + inset.1, &rows, &selection);
+        let lines: Vec<SizedLine> = rows
+          .iter()
+          .zip(&selection.starts)
+          .map(|(text, start)| SizedLine {
+            start: *start,
+            text: text.clone(),
+            rows: 1,
+          })
+          .collect();
+
+        draw_selection(
+          buffer,
+          x + inset.0,
+          y + inset.1,
+          &lines,
+          &Scales::default(),
+          &selection,
+        );
       }
 
       // The caret: the terminal's own bar cursor at the cell, recorded only while the
@@ -828,6 +1345,90 @@ const fn intersect(
   )
 }
 
+/// Places `image` as `id` on `layer` over the visible part of the rectangle at
+/// (`x`, `y`) of `width` by `height` cells, cropping the image to the cells in view.
+fn place_image(
+  store: &Store,
+  buffer: &mut Buffer,
+  id: u32,
+  image: Rc<Image>,
+  layer: i32,
+  (x, y): (isize, isize),
+  (width, height): (isize, isize),
+) {
+  let Some((column, row, columns, rows)) = buffer.visible(x, y, width, height)
+  else {
+    return;
+  };
+  let (cell_width, cell_height) = store.cell_pixels;
+  let left = u16::try_from(isize::try_from(column).unwrap_or(0) - x).unwrap_or(0);
+  let top = u16::try_from(isize::try_from(row).unwrap_or(0) - y).unwrap_or(0);
+
+  buffer.pictures.push(Placement {
+    id,
+    column,
+    row,
+    columns,
+    rows,
+    crop: (
+      left.saturating_mul(cell_width),
+      top.saturating_mul(cell_height),
+      columns.saturating_mul(cell_width).min(image.width),
+      rows.saturating_mul(cell_height).min(image.height),
+    ),
+    layer,
+    image,
+  });
+}
+
+/// Places the backdrop of the box `handle`, where it has one and the terminal shows
+/// graphics, over the box at (`x`, `y`) of `width` by `height` cells and the shadow
+/// band beyond it, beneath every colored cell at the box's depth; `true` when placed,
+/// so the cells carry none of the decoration.
+fn place_backdrop(
+  store: &Store,
+  buffer: &mut Buffer,
+  handle: Handle,
+  (x, y): (isize, isize),
+  (width, height): (usize, usize),
+) -> bool {
+  if !store.graphics {
+    return false;
+  }
+
+  let Some(backdrop) = store
+    .record(handle)
+    .and_then(|record| record.backdrop.as_ref())
+  else {
+    return false;
+  };
+  let ancestors = store.ancestors(handle);
+  let depth = ancestors.len()
+    + 512
+      * usize::from(
+        ancestors
+          .iter()
+          .any(|ancestor| store.record(*ancestor).is_some_and(Record::is_overlay)),
+      );
+  let layer = BACKDROP_Z + i32::try_from(depth.min(1023)).unwrap_or(1023);
+  let band = isize::from(backdrop.key.shadow.is_some());
+
+  place_image(
+    store,
+    buffer,
+    BACKDROP_ID + handle.index(),
+    Rc::clone(&backdrop.image),
+    layer,
+    (x, y),
+    (
+      isize::try_from(width).unwrap_or(0) + band,
+      isize::try_from(height).unwrap_or(0) + band,
+    ),
+  );
+
+  true
+}
+
 /// Overlays scrollbar tracks and thumbs on a scrollable box's right and bottom edges,
 /// each drawn only while its axis overflows.
 #[expect(clippy::too_many_arguments)]
@@ -847,7 +1448,7 @@ fn draw_scrollbars(
     isize::try_from(width).unwrap_or(0),
     isize::try_from(height).unwrap_or(0),
   );
-  let dark = store.dark();
+  let contrast = store.contrast();
 
   if limit_y > 0 {
     let track = height - border.1 - border.3;
@@ -855,7 +1456,7 @@ fn draw_scrollbars(
 
     for row in 0..track {
       if let Some(cell) = buffer.cell_mut(x + width - 1, y + border.1 + row) {
-        let (ink, track_tint) = track_colors(cell, dark);
+        let (ink, track_tint) = track_colors(cell, contrast);
         // A leading partial paints the complement glyph with the colors swapped, in
         // place of the upper-block run Unicode lacks.
         let (character, foreground, background) = match eighth_coverage(row, top, thumb) {
@@ -865,7 +1466,7 @@ fn draw_scrollbars(
           Coverage::None => (' ', ink, track_tint),
         };
 
-        cell.character = character;
+        cell.glyph = Glyph::Char(character);
         cell.foreground = Some(foreground);
         cell.background = Some(background);
         cell.bold = false;
@@ -880,7 +1481,7 @@ fn draw_scrollbars(
 
     for column in 0..track {
       if let Some(cell) = buffer.cell_mut(x + border.0 + column, y + height - 1) {
-        let (ink, track_tint) = track_colors(cell, dark);
+        let (ink, track_tint) = track_colors(cell, contrast);
         // A trailing partial paints the complement glyph with the colors swapped, in
         // place of the right-block run Unicode lacks.
         let (character, foreground, background) = match eighth_coverage(column, start, thumb) {
@@ -890,7 +1491,7 @@ fn draw_scrollbars(
           Coverage::None => (' ', ink, track_tint),
         };
 
-        cell.character = character;
+        cell.glyph = Glyph::Char(character);
         cell.foreground = Some(foreground);
         cell.background = Some(background);
         cell.bold = false;
@@ -900,15 +1501,10 @@ fn draw_scrollbars(
   }
 }
 
-/// One scrollbar cell's ink and track: the terminal default foreground for the
-/// detected background, and a quarter of that ink over the cell beneath.
-fn track_colors(cell: &TerminalCell, dark: bool) -> ((u8, u8, u8), (u8, u8, u8)) {
-  let (ink, base) = if dark {
-    ((255, 255, 255), (0, 0, 0))
-  }
-  else {
-    ((0, 0, 0), (255, 255, 255))
-  };
+/// One scrollbar cell's ink and track: the terminal's foreground under `contrast`,
+/// and a quarter of that ink over the cell beneath.
+fn track_colors(cell: &TerminalCell, contrast: Contrast) -> ((u8, u8, u8), (u8, u8, u8)) {
+  let Contrast { ink, base } = contrast;
   let beneath = cell.background.unwrap_or(base);
   let quarter = |over: u8, under: u8| -> u8 {
     u8::try_from((u16::from(over) + 3 * u16::from(under) + 2) / 4).unwrap_or(u8::MAX)
@@ -1091,7 +1687,7 @@ fn draw_smooth(
         }
         Coverage::Leading(eighths) => {
           *cell = TerminalCell {
-            character: left_block(eighths),
+            glyph: Glyph::Char(left_block(eighths)),
             foreground: color,
             background: cell.background,
             ..TerminalCell::EMPTY
@@ -1099,7 +1695,7 @@ fn draw_smooth(
         }
         Coverage::Trailing(eighths) => {
           *cell = TerminalCell {
-            character: left_block(8 - eighths),
+            glyph: Glyph::Char(left_block(8 - eighths)),
             foreground: left_color(cell),
             background: color,
             ..TerminalCell::EMPTY
@@ -1114,7 +1710,10 @@ fn draw_smooth(
 /// The color a cell shows at its left edge: a left-block glyph's ink, else its
 /// background.
 fn left_color(cell: &TerminalCell) -> Option<(u8, u8, u8)> {
-  if matches!(cell.character, '▏' | '▎' | '▍' | '▌' | '▋' | '▊' | '▉') {
+  if matches!(
+    cell.glyph,
+    Glyph::Char('▏' | '▎' | '▍' | '▌' | '▋' | '▊' | '▉')
+  ) {
     cell.foreground
   }
   else {
@@ -1140,7 +1739,7 @@ pub(crate) fn draw_border(
   let bottom = y + isize::try_from(height - 1).expect("fits");
   let mut put = |cx: isize, cy: isize, character: char| {
     if let Some(cell) = buffer.cell_mut(cx, cy) {
-      cell.character = character;
+      cell.glyph = Glyph::Char(character);
 
       if color.is_some() {
         cell.foreground = color;
@@ -1173,19 +1772,12 @@ fn draw_text(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
-  text: &str,
+  line: &str,
   foreground: Option<(u8, u8, u8)>,
   bold: bool,
   dim: bool,
 ) {
-  for (index, character) in text.chars().enumerate() {
-    let Some(cell) = buffer.cell_mut(x + isize::try_from(index).expect("fits"), y)
-    else {
-      continue;
-    };
-
-    cell.character = character;
-
+  draw_sized(buffer, x, y, line, CellScale::ONE, |cell| {
     if foreground.is_some() {
       cell.foreground = foreground;
     }
@@ -1194,6 +1786,32 @@ fn draw_text(
     }
 
     cell.bold = bold;
+  });
+}
+
+/// Draws one line of text at `scale`, `style` applied to every cell of each block.
+fn draw_sized(
+  buffer: &mut Buffer,
+  x: isize,
+  y: isize,
+  line: &str,
+  scale: CellScale,
+  style: impl Fn(&mut TerminalCell),
+) {
+  let mut column = 0;
+
+  for (_, cluster) in text::clusters(line) {
+    let width = text::width(cluster);
+
+    buffer.put_sized(
+      x + isize::try_from(column).expect("fits"),
+      y,
+      cluster,
+      width,
+      scale,
+      &style,
+    );
+    column += width * scale.rows();
   }
 }
 
@@ -1208,101 +1826,74 @@ fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
   }
 }
 
-/// Recolors a run's selected cells.
+/// Recolors a run's selected cells, every cell of a selected cluster's block.
 fn draw_selection(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
-  lines: &[String],
+  lines: &[SizedLine],
+  scales: &Scales,
   selection: &SelectionPaint,
 ) {
   let (from, to) = selection.range;
 
-  for (row, line) in lines.iter().enumerate() {
-    let start = selection.starts[row];
+  for (line, row) in lines.iter().zip(sized_rows(lines)) {
+    let mut column = 0;
 
-    for (column, _) in line.chars().enumerate() {
-      let offset = start + column;
+    for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
+      let offset = line.start + index;
+      let scale = scales.at(offset);
+      let width = text::width(cluster) * scale.rows();
+      let top = row + line.rows - scale.rows();
 
-      if offset < from || offset >= to {
-        continue;
+      if offset >= from && offset < to {
+        for block_row in top..top + scale.rows() {
+          for cell in column..column + width {
+            if let Some(cell) = buffer.cell_mut(
+              x + isize::try_from(cell).expect("fits"),
+              y + isize::try_from(block_row).expect("fits"),
+            ) {
+              select_cell(cell, selection.colors);
+            }
+          }
+        }
       }
 
-      if let Some(cell) = buffer.cell_mut(
-        x + isize::try_from(column).expect("fits"),
-        y + isize::try_from(row).expect("fits"),
-      ) {
-        select_cell(cell, selection.colors);
-      }
+      column += width;
     }
   }
 }
 
-/// Paints the context menu over everything at its anchored cell: its items in order,
-/// the one under the pointer highlighted, disabled ones dim, and the hints beneath.
-fn draw_menu(store: &Store, buffer: &mut Buffer, dark: bool) {
-  let Some((menu_x, menu_y, menu_width, menu_height)) = store.menu_bounds()
-  else {
-    return;
-  };
-
-  let (x, y) = (
-    isize::try_from(menu_x).unwrap_or(0),
-    isize::try_from(menu_y).unwrap_or(0),
-  );
-  let (width, height) = (
-    usize::try_from(menu_width).unwrap_or(0),
-    usize::try_from(menu_height).unwrap_or(0),
-  );
-  let backdrop = if dark { (0, 0, 0) } else { (255, 255, 255) };
-
-  // The menu covering the caret cell hides the terminal cursor with it.
-  if let Some((caret_x, caret_y)) = buffer.caret
-    && isize::try_from(caret_x)
-      .is_ok_and(|caret_x| caret_x >= x && caret_x < x + isize::try_from(width).unwrap_or(0))
-    && isize::try_from(caret_y)
-      .is_ok_and(|caret_y| caret_y >= y && caret_y < y + isize::try_from(height).unwrap_or(0))
-  {
-    buffer.caret = None;
+/// The scale the run `handle` draws at: its resolved size where the terminal sizes
+/// text, one cell elsewhere and for an inline box.
+pub(crate) fn run_scale(store: &Store, handle: Handle) -> CellScale {
+  if is_inline_box(store, handle) {
+    return CellScale::ONE;
   }
 
-  fill(buffer, x, y, width, height, Some(backdrop));
-  draw_border(
-    buffer,
-    x,
-    y,
-    width,
-    height,
-    BorderGlyphs::default(),
-    Some((128, 128, 128)),
-  );
-
-  let (pointer_x, pointer_y) = store.last_pointer;
-  let hovered = store
-    .menu_item_at(pointer_x, pointer_y)
-    .filter(|(_, enabled)| *enabled)
-    .map(|(item, _)| item);
-  let items = store.menu_items();
-
-  for (index, (item, enabled)) in items.iter().enumerate() {
-    let row_y = y + 1 + isize::try_from(index).expect("fits");
-
-    if hovered == Some(*item) {
-      for column in 1..width.saturating_sub(1) {
-        if let Some(cell) = buffer.cell_mut(x + isize::try_from(column).expect("fits"), row_y) {
-          cell.reverse = true;
-        }
-      }
+  match store.record(handle).map(|record| &record.kind) {
+    Some(Kind::Run { cache, .. }) => {
+      text::scale_of(cache.as_ref().and_then(|cache| cache.style.ext.size))
     }
-
-    draw_text(buffer, x + 2, row_y, item.label(), None, false, !enabled);
+    _ => CellScale::ONE,
   }
+}
+
+/// The scale of each run's stretch of the paragraph `handle`'s text.
+pub(crate) fn paragraph_scales(store: &Store, handle: Handle) -> Scales {
+  Scales::of(paragraph_runs(store, handle).into_iter().map(|run| {
+    (
+      store
+        .record(run)
+        .map_or(0, |record| text::count(&record.text)),
+      run_scale(store, run),
+    )
+  }))
 }
 
 /// Casts a box's shadow: the one-cell band below and to the right, the shadow color
 /// mixed into both the foreground and the background of each covered cell by its
-/// alpha. An unset color beneath mixes against the terminal's default for the detected
-/// background.
+/// alpha. An unset color beneath mixes against the terminal's own under `contrast`.
 fn draw_shadow(
   buffer: &mut Buffer,
   x: isize,
@@ -1310,7 +1901,7 @@ fn draw_shadow(
   width: usize,
   height: usize,
   color: Color,
-  dark: bool,
+  contrast: Contrast,
 ) {
   let [red, green, blue, alpha] = color.to_rgba();
   let alpha = alpha.clamp(0., 1.);
@@ -1325,7 +1916,7 @@ fn draw_shadow(
   );
   let mut cast = |cell_x: isize, cell_y: isize| {
     if let Some(cell) = buffer.cell_mut(cell_x, cell_y) {
-      tint(cell, red, green, blue, alpha, dark);
+      tint(cell, red, green, blue, alpha, contrast);
     }
   };
 
@@ -1339,15 +1930,13 @@ fn draw_shadow(
 }
 
 /// Mixes a color into both of a cell's colors by `alpha`, an unset color mixing
-/// against the terminal default for the detected `dark` background.
-fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, dark: bool) {
+/// against the terminal's own under `contrast`.
+fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, contrast: Contrast) {
   let alpha = alpha.clamp(0., 1.);
-  let (foreground_base, background_base) = if dark {
-    ((255, 255, 255), (0, 0, 0))
-  }
-  else {
-    ((0, 0, 0), (255, 255, 255))
-  };
+  let Contrast {
+    ink: foreground_base,
+    base: background_base,
+  } = contrast;
   let mix = |existing: Option<(u8, u8, u8)>, base: (u8, u8, u8)| -> (u8, u8, u8) {
     let (base_red, base_green, base_blue) = existing.unwrap_or(base);
     let channel = |over: f32, beneath: u8| -> u8 {
@@ -1415,9 +2004,9 @@ mod tests {
     let mut previous = Buffer::new(3, 2);
     let mut next = Buffer::new(3, 2);
 
-    previous.cells[1].character = 'a';
-    next.cells[1].character = 'a';
-    next.cells[4].character = 'b';
+    previous.cells[1].glyph = Glyph::Char('a');
+    next.cells[1].glyph = Glyph::Char('a');
+    next.cells[4].glyph = Glyph::Char('b');
 
     assert!(!row_changed(Some(&previous), &next, 0));
     assert!(row_changed(Some(&previous), &next, 1));
@@ -1436,5 +2025,54 @@ mod tests {
     assert_eq!(wrap_text("ab\ncd", 10), ["ab", "cd"]);
     assert_eq!(wrap_text("", 5), [""]);
     assert_eq!(wrap_text("ab  ", 2), ["ab"]);
+  }
+
+  /// Wide clusters wrap by their cells: two of them fill a four-cell line, and one
+  /// too wide for its line takes a line alone.
+  #[test]
+  fn wrapping_counts_cells_not_characters() {
+    text::reset();
+
+    assert_eq!(wrap_text("日本語", 4), ["日本", "語"]);
+    assert_eq!(wrap_text("日本", 1), ["日", "本"]);
+    assert_eq!(wrap_text("ae\u{301}b", 2), ["ae\u{301}", "b"]);
+    assert_eq!(longest_word("日本 ab", &Scales::default()), 4);
+  }
+
+  /// A scaled cluster wraps at its scaled width, a line is as tall as its tallest
+  /// cluster, a hit lands on the cluster whose block holds it, and the longest word
+  /// counts the scale.
+  #[test]
+  fn sized_text_wraps_and_hits_by_block() {
+    text::reset();
+
+    let scales = Scales::of([(3, CellScale::Whole(2)), (10, CellScale::ONE)]);
+    let lines = wrap_sized("abc de", 8, &scales);
+
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert_eq!((lines[0].text.as_str(), lines[0].rows), ("abc", 2));
+    assert_eq!((lines[1].text.as_str(), lines[1].rows), ("de", 1));
+    assert_eq!(lines[0].cells(&scales), 6);
+    assert_eq!(lines[0].cluster_at(3, &scales), Some(1));
+    assert_eq!(lines[0].cluster_at(6, &scales), None);
+    assert_eq!(lines[0].index_at_column(1, &scales), 1);
+    assert_eq!(lines[0].index_at_column(2, &scales), 1);
+    assert_eq!(lines[0].index_at_column(9, &scales), 3);
+    assert_eq!(sized_rows(&lines), [0, 2]);
+    assert_eq!(line_at_row(&lines, 1), 0);
+    assert_eq!(line_at_row(&lines, 2), 1);
+    assert_eq!(line_at_row(&lines, 7), 1);
+    assert_eq!(line_holding(&lines, 1), Some(0));
+    assert_eq!(line_holding(&lines, 3), None);
+    assert_eq!(longest_word("abc de", &scales), 6);
+    assert_eq!(
+      wrap_sized("ab cd", 8, &Scales::uniform(CellScale::Whole(2)))[0].rows,
+      2
+    );
+    assert_eq!(
+      wrap_sized("ab cd", 8, &Scales::uniform(CellScale::Whole(3))).len(),
+      2,
+      "at scale three two letters fill six of eight cells"
+    );
   }
 }

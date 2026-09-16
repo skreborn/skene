@@ -64,7 +64,7 @@ use skene_headless::{
   set_hovered,
   set_scheme,
   set_viewport,
-  slot_value,
+  slot_leaf,
   text,
   trigger_change,
   trigger_click,
@@ -576,17 +576,23 @@ fn derived_slot_updates_and_a_hover_variant_still_wins() {
   let color = Signal::new(red());
   let node = owner.enter(|| {
     Container::new()
-      .set_color(Value::new(Leaf::Derived(Rc::new(move || color.get()))).when(hovered(), blue()))
+      .set_color(Value::new(Leaf::derive(move || color.get())).when(hovered(), blue()))
       .build()
   });
-  let slot = |node| slot_value(node, Slot(0));
+  let slot = |node| slot_leaf(node, Slot(0));
 
-  assert_eq!(slot(node), Some(SlotValue::Box(BoxValue::Color(red()))));
+  assert_eq!(
+    slot(node),
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Color(red()))))
+  );
   assert_eq!(resolve_color(node, COLOR), Some(red()));
 
   color.set(green());
 
-  assert_eq!(slot(node), Some(SlotValue::Box(BoxValue::Color(green()))));
+  assert_eq!(
+    slot(node),
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Color(green()))))
+  );
   assert_eq!(resolve_color(node, COLOR), Some(green()));
 
   set_hovered(node, true);
@@ -606,6 +612,54 @@ fn derived_slot_updates_and_a_hover_variant_still_wins() {
   owner.dispose();
 }
 
+/// A derived leaf may name a token or an expression: the slot holds the leaf, the
+/// property resolves it through the theme in force, and a write switches between them.
+#[test]
+fn a_derived_token_resolves_through_the_theme() {
+  reset();
+
+  let owner = Owner::new();
+  let muted = Signal::new(false);
+  let root = owner.enter(|| {
+    Theme::new(TestPalette::default())
+      .set_child_builder(move || {
+        Container::new().derive_color(move || {
+          if muted.get() {
+            StaticLeaf::from(Expr::from(TestPalette::CARD).with_alpha(0.5))
+          }
+          else {
+            StaticLeaf::from(TestPalette::CARD)
+          }
+        })
+      })
+      .build()
+  });
+  let card = children(root)[0];
+
+  assert_eq!(
+    slot_leaf(card, Slot(0)),
+    Some(StaticLeaf::Token(TokenRef::new("card")))
+  );
+  assert_eq!(resolve_color(card, COLOR), Some(WHITE));
+
+  muted.set(true);
+
+  assert!(matches!(
+    slot_leaf(card, Slot(0)),
+    Some(StaticLeaf::Expr(_))
+  ));
+  assert_eq!(resolve_color(card, COLOR), Some(WHITE.with_alpha(0.5)));
+
+  set_scheme(skene_core::ColorScheme::Dark);
+
+  assert_eq!(
+    resolve_color(card, COLOR),
+    Some(Color::srgb(0., 0., 0.).with_alpha(0.5)),
+    "the token answers the scheme where the slot is read"
+  );
+
+  owner.dispose();
+}
 /// The scheme seam moves the scheme signal and picks a token's dark definition.
 #[test]
 fn scheme_seam_drives_the_dark_definition_and_the_signal() {

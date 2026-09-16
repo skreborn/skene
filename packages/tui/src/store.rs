@@ -15,6 +15,7 @@ use skene_core::{
   ControlKind,
   ControlState,
   FocusOrder,
+  KeyEvent,
   Layout,
   MediaSignals,
   NodeId,
@@ -24,20 +25,34 @@ use skene_core::{
   RunStyle,
   Size,
   Slot,
+  TextSelection,
+  Timer,
 };
-use skene_reactive::{Owner, Signal, WriteSignal};
+use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{
   Clipboard,
   Tui,
   TuiExt,
+  layout::Measured,
   motion::{BoxMotion, RunMotion},
-  paint::Buffer,
-  selection::{Menu, MenuItem, Selection},
+  paint::{Buffer, Image},
+  selection::Selection,
+  text::{self, Clusters},
 };
 
 /// The size the driver reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
+
+/// The colors an unset cell shows: the ink and the base a paint mixes against.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Contrast {
+  pub(crate) ink: (u8, u8, u8),
+  pub(crate) base: (u8, u8, u8),
+}
+
+/// A cell's size in pixels where the terminal reports none.
+pub(crate) const DEFAULT_CELL_PIXELS: (u16, u16) = (10, 20);
 
 /// A box's style resolved against live state.
 pub(crate) type PlainBox = BoxStyle<u32, Plain, TuiExt>;
@@ -71,10 +86,13 @@ impl Handle {
   }
 }
 
-/// The value a derived leaf last wrote into a node's slot.
+/// A property's value erased over the property; see [`skene_core::SlotValue`].
 pub(crate) type SlotValue = skene_core::SlotValue<u32, TuiExt>;
 
-pub(crate) use skene_core::Interaction;
+/// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
+pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiExt>;
+
+pub(crate) use skene_core::{Focus, Interaction};
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
@@ -142,14 +160,44 @@ impl BoxRecord {
 /// The center of a cell, where a pointer reported by cell alone is taken to be.
 pub(crate) const CELL_CENTER: (f32, f32) = (0.5, 0.5);
 
-/// A text entry's editing state; the caret and the anchor are character positions in
-/// the value, `0..=len`.
+/// How many undo steps an entry keeps.
+const HISTORY_LIMIT: usize = 100;
+
+/// One state of an entry an undo or redo returns to.
+struct Snapshot {
+  value: String,
+  caret: usize,
+  anchor: Option<usize>,
+}
+
+/// A kind of edit whose consecutive occurrences make one undo step.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EditRun {
+  /// A cluster typed at the caret.
+  Typed,
+  /// A cluster removed beside the caret.
+  Removed,
+}
+
+/// A text entry's editing state; the caret and the anchor are cluster positions in
+/// the value, `0..=count`.
 pub(crate) struct Field {
   pub(crate) value: String,
+  /// The value's clusters, kept with it.
+  pub(crate) clusters: Clusters,
   /// The selection's moving end, and the insertion point.
   pub(crate) caret: usize,
   /// The selection's fixed end, `None` while the selection is collapsed.
   pub(crate) anchor: Option<usize>,
+  /// The selection last reported or written from outside.
+  reported: TextSelection,
+  /// The states an undo returns to, oldest first, at most [`HISTORY_LIMIT`].
+  undo: Vec<Snapshot>,
+  /// The states a redo returns to, oldest first; emptied by an edit.
+  redo: Vec<Snapshot>,
+  /// The kind of the last edit, which the next edit of the same kind joins as one undo
+  /// step; `None` once the caret has moved or the selection changed since.
+  run: Option<EditRun>,
   /// The first visible column of a field, or the first visible wrapped row of an
   /// editor; moves only to keep the caret in view, under an autoscroll, or under an
   /// editor's wheel.
@@ -166,8 +214,13 @@ impl Field {
   pub(crate) const fn new(placeholder: Option<String>, lines: u16) -> Self {
     Self {
       value: String::new(),
+      clusters: Clusters::EMPTY,
       caret: 0,
       anchor: None,
+      reported: TextSelection::collapsed(0),
+      undo: Vec::new(),
+      redo: Vec::new(),
+      run: None,
       window: 0,
       window_width: usize::MAX,
       placeholder,
@@ -175,12 +228,18 @@ impl Field {
     }
   }
 
-  /// The value's length in characters.
+  /// The value's length in clusters.
   pub(crate) fn count(&self) -> usize {
-    self.value.chars().count()
+    self.clusters.count()
   }
 
-  /// The selected character range in document order, `None` while collapsed.
+  /// Measures the value's clusters again, after the value or the terminal's
+  /// clustering changed.
+  pub(crate) fn reflow(&mut self) {
+    self.clusters = Clusters::of(&self.value);
+  }
+
+  /// The selected cluster range in document order, `None` while collapsed.
   pub(crate) fn selection(&self) -> Option<(usize, usize)> {
     let anchor = self.anchor?;
 
@@ -191,12 +250,54 @@ impl Field {
   pub(crate) fn selected_text(&self) -> Option<String> {
     let (from, to) = self.selection()?;
 
-    Some(self.value.chars().skip(from).take(to - from).collect())
+    Some(self.value[self.byte_of(from)..self.byte_of(to)].to_owned())
+  }
+
+  /// The selection as the app sees it: from the anchor, or the caret while collapsed,
+  /// to the caret.
+  pub(crate) fn selection_offsets(&self) -> TextSelection {
+    TextSelection::new(self.anchor.unwrap_or(self.caret), self.caret)
+  }
+
+  /// The selection, when it differs from the one last reported or written from
+  /// outside, which it becomes.
+  pub(crate) fn selection_report(&mut self) -> Option<TextSelection> {
+    let selection = self.selection_offsets();
+
+    if selection == self.reported {
+      return None;
+    }
+
+    self.reported = selection;
+
+    Some(selection)
+  }
+
+  /// Places the selection from outside the entry's editing, each index clamped to the
+  /// value; `false` when it is the selection already.
+  pub(crate) fn set_selection(&mut self, selection: TextSelection) -> bool {
+    let selection = selection.clamped(self.count());
+    let caret = selection.end;
+    let anchor = (selection.start != caret).then_some(selection.start);
+
+    if (caret, anchor) == (self.caret, self.anchor) {
+      self.reported = self.selection_offsets();
+
+      return false;
+    }
+
+    self.caret = caret;
+    self.anchor = anchor;
+    self.run = None;
+    self.reported = self.selection_offsets();
+
+    true
   }
 
   /// Collapses the selection at the caret.
   pub(crate) const fn collapse(&mut self) {
     self.anchor = None;
+    self.run = None;
   }
 
   /// Selects `from..to`, the caret at `to`.
@@ -205,6 +306,88 @@ impl Field {
 
     self.caret = to.min(count);
     self.anchor = (from != to).then_some(from.min(count));
+    self.run = None;
+  }
+
+  /// Sets the value from outside the entry's editing as one undo step, the caret
+  /// clamped and the selection collapsed; a value over an empty entry with no history
+  /// is the initial one and records nothing, and nothing happens when `value` is the
+  /// value already.
+  pub(crate) fn set_value(&mut self, value: &str) -> bool {
+    if self.value == value {
+      return false;
+    }
+
+    if !(self.value.is_empty() && self.undo.is_empty() && self.redo.is_empty()) {
+      self.record(None);
+    }
+
+    value.clone_into(&mut self.value);
+    self.reflow();
+    self.caret = self.caret.min(self.count());
+    self.anchor = None;
+
+    true
+  }
+
+  /// Records the state before an edit of `kind` as the next undo step, unless the
+  /// edit joins the run of the last one; either way the redo states are dropped.
+  fn record(&mut self, kind: Option<EditRun>) {
+    self.redo.clear();
+
+    if kind.is_none() || kind != self.run {
+      if self.undo.len() == HISTORY_LIMIT {
+        self.undo.remove(0);
+      }
+
+      self.undo.push(self.snapshot());
+    }
+
+    self.run = kind;
+  }
+
+  /// Returns to the state before the last undo step, the state left becoming a redo
+  /// step; `false` with nothing to undo.
+  pub(crate) fn undo(&mut self) -> bool {
+    let Some(snapshot) = self.undo.pop()
+    else {
+      return false;
+    };
+
+    self.redo.push(self.snapshot());
+    self.restore(snapshot);
+
+    true
+  }
+
+  /// Returns to the state the last undo left, that state becoming an undo step again;
+  /// `false` with nothing to redo.
+  pub(crate) fn redo(&mut self) -> bool {
+    let Some(snapshot) = self.redo.pop()
+    else {
+      return false;
+    };
+
+    self.undo.push(self.snapshot());
+    self.restore(snapshot);
+
+    true
+  }
+
+  fn snapshot(&self) -> Snapshot {
+    Snapshot {
+      value: self.value.clone(),
+      caret: self.caret,
+      anchor: self.anchor,
+    }
+  }
+
+  fn restore(&mut self, snapshot: Snapshot) {
+    self.value = snapshot.value;
+    self.reflow();
+    self.caret = snapshot.caret;
+    self.anchor = snapshot.anchor;
+    self.run = None;
   }
 
   /// Selects the whole value.
@@ -227,36 +410,42 @@ impl Field {
     }
 
     self.caret = caret.min(count);
+    self.run = None;
   }
 
   /// Replaces the selection—or inserts at the caret—with `text`, leaving the caret
-  /// after it.
+  /// after it. One cluster inserted at the caret joins the run of clusters typed
+  /// before it as one undo step; anything else is a step of its own.
   pub(crate) fn replace_selection(&mut self, text: &str) {
-    let (from, to) = self.selection().unwrap_or((self.caret, self.caret));
+    let selection = self.selection();
+    let (from, to) = selection.unwrap_or((self.caret, self.caret));
+    let typed = selection.is_none() && text::count(text) == 1;
+    let start = self.byte_of(from);
 
-    self
-      .value
-      .replace_range(self.byte_of(from)..self.byte_of(to), text);
-    self.caret = from + text.chars().count();
+    self.record(typed.then_some(EditRun::Typed));
+    self.value.replace_range(start..self.byte_of(to), text);
+    self.reflow();
+    self.caret = self.clusters.index_of_byte(start + text.len());
     self.anchor = None;
   }
 
-  /// Removes `from..to`, leaving the caret at `from`.
+  /// Removes `from..to`, leaving the caret at `from`. One cluster removed beside a
+  /// collapsed caret joins the run of clusters removed before it as one undo step;
+  /// anything else is a step of its own.
   pub(crate) fn remove(&mut self, from: usize, to: usize) {
-    self
-      .value
-      .replace_range(self.byte_of(from)..self.byte_of(to), "");
-    self.caret = from;
+    let single = self.selection().is_none() && to == from + 1;
+    let start = self.byte_of(from);
+
+    self.record(single.then_some(EditRun::Removed));
+    self.value.replace_range(start..self.byte_of(to), "");
+    self.reflow();
+    self.caret = self.clusters.index_of_byte(start);
     self.anchor = None;
   }
 
-  /// The byte index of the character at `position`, or the value's end.
+  /// The byte offset of the cluster at `position`, or the value's end.
   pub(crate) fn byte_of(&self, position: usize) -> usize {
-    self
-      .value
-      .char_indices()
-      .nth(position)
-      .map_or(self.value.len(), |(index, _)| index)
+    self.clusters.byte_of(position)
   }
 }
 
@@ -277,6 +466,8 @@ pub(crate) enum Kind {
     backdrop: Option<Color>,
     open: bool,
     anchor: Option<Handle>,
+    /// The cell the overlay's top-start corner is pinned to, if it is.
+    position: Option<(i64, i64)>,
     /// The node focused when the overlay opened, for its close to return to.
     return_focus: Option<Handle>,
   },
@@ -348,11 +539,11 @@ pub(crate) struct Record {
   pub(crate) children: Vec<Handle>,
   /// The taffy children last handed to the layout tree.
   pub(crate) taffy_children: Vec<taffy::NodeId>,
-  /// The text the layout tree carries for a run or a paragraph.
-  pub(crate) measured_text: Option<String>,
+  /// The text and scales the layout tree carries for a run or a paragraph.
+  pub(crate) measured_text: Option<Measured>,
   pub(crate) applied: Option<taffy::Style>,
   pub(crate) text: String,
-  pub(crate) slots: FxHashMap<Slot, SlotValue>,
+  pub(crate) slots: FxHashMap<Slot, SlotLeaf>,
   pub(crate) listened: u16,
   pub(crate) observers: Vec<Rc<dyn Fn(Size<u32>)>>,
   pub(crate) reported: Option<Size<u32>>,
@@ -365,6 +556,37 @@ pub(crate) struct Record {
   pub(crate) in_motion: bool,
   /// The painter a low-level view runs inside the box on every repaint.
   pub(crate) painter: Option<Box<crate::cells::Painter>>,
+  /// The picture a painted box draws through the terminal's graphics.
+  pub(crate) picture: Option<PictureRecord>,
+  /// The box's decoration painted in pixels beneath its cells, where the terminal
+  /// shows graphics and the decoration asks for more than cells draw.
+  pub(crate) backdrop: Option<Backdrop>,
+}
+
+/// A box's decoration as pixels: what it was rendered from, and the image.
+pub(crate) struct Backdrop {
+  pub(crate) key: BackdropKey,
+  pub(crate) image: Rc<Image>,
+}
+
+/// What a backdrop is rendered from; a change to any part renders it afresh.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct BackdropKey {
+  /// The box's cells, and one more each way for the shadow's band.
+  pub(crate) columns: u16,
+  pub(crate) rows: u16,
+  pub(crate) cell_pixels: (u16, u16),
+  pub(crate) background: Option<(u8, u8, u8)>,
+  pub(crate) border: Option<(u8, u8, u8)>,
+  pub(crate) radius: f32,
+  pub(crate) shadow: Option<[f32; 4]>,
+}
+
+/// A painted box's picture: its painter, and the image last rendered from it, dropped
+/// when the painter is replaced and stale when the box's pixel size differs.
+pub(crate) struct PictureRecord {
+  pub(crate) painter: Rc<skene_views::Painter>,
+  pub(crate) image: Option<Rc<Image>>,
 }
 
 impl Record {
@@ -387,6 +609,8 @@ impl Record {
       painted: None,
       in_motion: false,
       painter: None,
+      picture: None,
+      backdrop: None,
     }
   }
 
@@ -510,6 +734,9 @@ pub(crate) struct MediaState {
   pub(crate) set_viewport: WriteSignal<Size<u32>>,
   pub(crate) set_scheme: WriteSignal<ColorScheme>,
   pub(crate) set_reduced_motion: WriteSignal<bool>,
+  /// Whether the terminal proved a graphics protocol.
+  pub(crate) graphics: ReadSignal<bool>,
+  pub(crate) set_graphics: WriteSignal<bool>,
   pub(crate) signals: MediaSignals<u32>,
 }
 
@@ -520,13 +747,15 @@ pub(crate) struct MediaState {
 pub(crate) struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,
-  /// The layout tree; a text run's leaf carries its text as context, wrapped by the
-  /// layout's measure function.
-  pub(crate) taffy: taffy::TaffyTree<String>,
+  /// The layout tree; a text run's leaf carries its text and scales as context,
+  /// wrapped by the layout's measure function.
+  pub(crate) taffy: taffy::TaffyTree<Measured>,
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
   pub(crate) overlays: Vec<Handle>,
   pub(crate) focused: Option<Handle>,
+  /// Whether focus shows while held: set by a key, cleared by a pointer press.
+  pub(crate) focus_visible: bool,
   /// The path from the root to the deepest node under the mouse, when known.
   hovered: Vec<Handle>,
   /// The nodes on the hover path, for membership.
@@ -546,12 +775,8 @@ pub(crate) struct Store {
   /// arriving without one stands in for a click whose press the terminal swallowed.
   pub(crate) left_held: bool,
   pub(crate) right_held: bool,
-  /// The enabled menu item the press landed on, awaiting its release.
-  pub(crate) pressed_item: Option<MenuItem>,
   /// The selection over the document's runs; a text entry's lives in its [`Field`].
   pub(crate) selection: Option<Selection>,
-  /// The context menu, while open.
-  pub(crate) menu: Option<Menu>,
   /// The last press, for counting multi-click sequences: its time, cell, and count.
   pub(crate) last_press: Option<(Instant, u16, u16, u8)>,
   /// The pointer's last known cell.
@@ -564,6 +789,11 @@ pub(crate) struct Store {
   pub(crate) clipboard: Clipboard,
   /// Whether the launch takes the mouse; off, every mouse event is ignored.
   pub(crate) mouse: bool,
+  /// The key handing the mouse to the terminal at run time and taking it back.
+  pub(crate) mouse_key: Option<KeyEvent>,
+  /// Whether the mouse key has handed the mouse to the terminal; every mouse event is
+  /// ignored until a key takes it back.
+  pub(crate) mouse_released: bool,
   /// Text staged for the terminal loop's clipboard write.
   pub(crate) pending_copy: Option<String>,
   /// Whether a clipboard read is staged for the terminal loop.
@@ -578,8 +808,15 @@ pub(crate) struct Store {
   pub(crate) last_size: (u16, u16),
   /// Whether the terminal background is dark, as detected.
   pub(crate) detected_dark: bool,
+  /// The terminal's own foreground, where it reported one (OSC 10).
+  pub(crate) detected_foreground: Option<(u8, u8, u8)>,
+  /// The terminal's own background, where it reported one (OSC 11).
+  pub(crate) detected_background: Option<(u8, u8, u8)>,
   /// The color scheme the app has chosen, overriding the detected background.
   pub(crate) choice: Option<ColorScheme>,
+  /// The scheduled actions, each with the clock reading it is due at.
+  pub(crate) timers: Vec<Scheduled>,
+  pub(crate) next_timer: u64,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
   /// The measured sizes of the named query containers, from the last layout.
@@ -611,7 +848,20 @@ pub(crate) struct Store {
   /// drag is held past its entry's edge.
   pub(crate) autoscroll_at: Option<f64>,
   media: Option<MediaState>,
+  /// Whether the terminal proved a graphics protocol, so pictures render and place.
+  pub(crate) graphics: bool,
+  /// Whether the terminal's clipboard answers (mode 5522), so every operation is
+  /// offered from its reply rather than the launch choice.
+  pub(crate) clipboard_answers: bool,
+  /// A cell's size in pixels: the window's where the terminal reports it, else a
+  /// stand-in the terminal scales a picture from.
+  pub(crate) cell_pixels: (u16, u16),
+  /// The generation the last rendered picture took; each render takes the next.
+  pub(crate) picture_generation: u64,
 }
+
+/// A scheduled action: the clock reading it is due at, its timer, and the action.
+pub(crate) type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
 /// The clock motion samples against, in seconds: the wall clock in a launched app, a
 /// hand-stepped one under a headless test.
@@ -666,6 +916,7 @@ impl Store {
       root: Handle::new(0, 0),
       overlays: Vec::new(),
       focused: None,
+      focus_visible: true,
       hovered: Vec::new(),
       hovered_set: FxHashSet::default(),
       damaged: Vec::new(),
@@ -676,15 +927,15 @@ impl Store {
       press: None,
       left_held: false,
       right_held: false,
-      pressed_item: None,
       selection: None,
-      menu: None,
       last_press: None,
       last_pointer: (0, 0),
       pointer_within: CELL_CENTER,
       scroll_latch: None,
       clipboard: Clipboard::ALL,
       mouse: true,
+      mouse_key: None,
+      mouse_released: false,
       pending_copy: None,
       pending_paste: false,
       paste_target: None,
@@ -692,7 +943,11 @@ impl Store {
       pending_open: None,
       last_size: DEFAULT_SIZE,
       detected_dark: true,
+      detected_foreground: None,
+      detected_background: None,
       choice: None,
+      timers: Vec::new(),
+      next_timer: 0,
       reveal: None,
       container_sizes: FxHashMap::default(),
       title: None,
@@ -710,6 +965,10 @@ impl Store {
       motion_active: false,
       autoscroll_at: None,
       media: None,
+      graphics: false,
+      clipboard_answers: false,
+      cell_pixels: DEFAULT_CELL_PIXELS,
+      picture_generation: 0,
     };
 
     store.root = store.create(Kind::Box(BoxRecord::new(root_props)), Some(root_taffy));
@@ -769,6 +1028,48 @@ impl Store {
       .get_mut(handle.index as usize)
       .filter(|entry| entry.generation == handle.generation)
       .and_then(|entry| entry.record.as_mut())
+  }
+
+  /// The selection of every entry whose selection changed since it was last reported
+  /// or written from outside, with the entry's node.
+  pub(crate) fn selection_reports(&mut self) -> Vec<(NodeId, TextSelection)> {
+    let mut reports = Vec::new();
+
+    for handle in self.handles() {
+      let Some(record) = self.record_mut(handle)
+      else {
+        continue;
+      };
+      let node = record.node;
+
+      if let Some(selection) = record.kind.field_mut().and_then(Field::selection_report)
+        && let Some(node) = node
+      {
+        reports.push((node, selection));
+      }
+    }
+
+    reports
+  }
+
+  /// Measures every node's text again, after the terminal's clustering changed: each
+  /// entry's clusters, and each laid-out node's measurement.
+  pub(crate) fn remeasure(&mut self) {
+    for handle in self.handles() {
+      let Some(record) = self.record_mut(handle)
+      else {
+        continue;
+      };
+      let taffy = record.taffy;
+
+      if let Some(field) = record.kind.field_mut() {
+        field.reflow();
+      }
+
+      if let Some(taffy) = taffy {
+        let _ = self.taffy.mark_dirty(taffy);
+      }
+    }
   }
 
   /// Every live handle, in creation order.
@@ -964,6 +1265,25 @@ impl Store {
     }
   }
 
+  /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
+  /// since a pointer press.
+  pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
+    self.focused == Some(handle) && (self.focus_visible || self.is_field(handle))
+  }
+
+  /// Records whether focus shows, repainting the focused node when that changes.
+  pub(crate) fn set_focus_visible(&mut self, visible: bool) {
+    if self.focus_visible == visible {
+      return;
+    }
+
+    self.focus_visible = visible;
+
+    if let Some(focused) = self.focused {
+      self.damage(focused);
+    }
+  }
+
   /// The node a press or focus on `handle` lands on: itself when focusable, else its
   /// enclosing control.
   pub(crate) fn focus_holder(&self, handle: Handle) -> Option<Handle> {
@@ -981,7 +1301,7 @@ impl Store {
 
     Interaction {
       hovered: self.hovered_set.contains(&handle),
-      focused: self.focused == Some(holder),
+      focus: Focus::new(self.focused == Some(holder), self.focus_shows(holder)),
       pressed: self.left_held
         && self
           .press
@@ -1009,6 +1329,13 @@ impl Store {
     }
 
     names
+  }
+
+  /// Whether the app holds the mouse now: taken at launch and not handed to the
+  /// terminal since.
+  #[inline(always)]
+  pub(crate) const fn mouse_taken(&self) -> bool {
+    self.mouse && !self.mouse_released
   }
 
   /// The hover path, from the root to the deepest node under the mouse.
@@ -1059,6 +1386,29 @@ impl Store {
     self.motion_active || self.autoscrolls()
   }
 
+  /// The scheduled actions whose reading has come, taken out in due order.
+  pub(crate) fn take_due_timers(&mut self) -> Vec<Box<dyn FnOnce()>> {
+    let now = self.now();
+    let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.timers)
+      .into_iter()
+      .partition(|(at, ..)| *at <= now);
+
+    self.timers = pending;
+
+    due.into_iter().map(|(_, _, action)| action).collect()
+  }
+
+  /// How long until the earliest scheduled action is due, if any is.
+  pub(crate) fn next_timer_due(&self) -> Option<std::time::Duration> {
+    let now = self.now();
+
+    self
+      .timers
+      .iter()
+      .map(|(at, ..)| std::time::Duration::from_secs_f64((at - now).max(0.)))
+      .min()
+  }
+
   /// The clock reading motion samples against, in seconds.
   #[inline(always)]
   pub(crate) fn now(&self) -> f64 {
@@ -1073,6 +1423,35 @@ impl Store {
       Some(ColorScheme::Light) => false,
       Some(ColorScheme::Dark) => true,
       None => self.detected_dark,
+    }
+  }
+
+  /// The colors an unset cell shows, which a paint mixes against: the terminal's
+  /// own foreground and background where it reported them and the scheme in force is
+  /// the detected one, else white on black for a dark scheme and black on white for a
+  /// light one.
+  pub(crate) fn contrast(&self) -> Contrast {
+    let dark = self.dark();
+    let defaults = if dark {
+      Contrast {
+        ink: (255, 255, 255),
+        base: (0, 0, 0),
+      }
+    }
+    else {
+      Contrast {
+        ink: (0, 0, 0),
+        base: (255, 255, 255),
+      }
+    };
+
+    if dark != self.detected_dark {
+      return defaults;
+    }
+
+    Contrast {
+      ink: self.detected_foreground.unwrap_or(defaults.ink),
+      base: self.detected_background.unwrap_or(defaults.base),
     }
   }
 
@@ -1106,6 +1485,7 @@ impl Store {
     let viewport = self.viewport();
     let scheme = self.scheme();
     let reduced = self.reduced_motion;
+    let graphics = self.graphics;
 
     self.media.get_or_insert_with(|| {
       let owner = Owner::new();
@@ -1114,12 +1494,15 @@ impl Store {
         let (viewport, set_viewport) = Signal::opaque(viewport).split();
         let (scheme, set_scheme) = Signal::opaque(scheme).split();
         let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced).split();
+        let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
           owner,
           set_viewport,
           set_scheme,
           set_reduced_motion,
+          graphics,
+          set_graphics,
           signals: MediaSignals {
             viewport,
             scheme,

@@ -49,10 +49,12 @@ impl<T: 'static> Resource<T> {
   ///
   /// The value crosses the server-to-client boundary: on the server its settled value
   /// is serialized into the render, and on the client that value is adopted instead of
-  /// loading again. Resources are matched across the boundary by creation order, so
-  /// the client must create its resources in the same order the server did—which it
-  /// does when it builds the same view. When no server value is present (a plain
-  /// client render, or one the server did not settle), it loads normally.
+  /// loading again. Resources are matched across the boundary by creation order within
+  /// the lazy segment they are built in, so the client must create its resources in
+  /// the same order the server did—which it does when it builds the same view, and a
+  /// [`Lazy`](crate::Lazy) content's resources are matched among themselves however
+  /// late its module arrives. When no server value is present (a plain client render,
+  /// or one the server did not settle), it loads normally.
   /// [`tagged`](Self::tagged) pairs the two sides explicitly instead.
   pub fn new<F>(load: impl Fn() -> F + 'static) -> Self
   where

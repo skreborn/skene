@@ -749,6 +749,50 @@ fn picker_tab_commits_closes_and_travels_on() {
   });
 }
 
+/// Typing over the closed picker chooses by the option's caption without opening the
+/// list, and typing over the open list moves focus to the matching row for `Enter` to
+/// choose.
+#[test]
+fn picker_type_ahead_chooses_closed_and_focuses_open() {
+  with_driver(|| {
+    let unit = Signal::new("px".to_owned());
+
+    mount_picker(unit);
+    let _ = tui::render_to_text(20, 10);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("c");
+
+    assert_eq!(unit.get_untracked(), "cell", "a character chooses closed");
+
+    let closed = tui::render_to_text(20, 10);
+
+    assert!(
+      !closed.contains("points"),
+      "the list stays closed: {closed}"
+    );
+
+    tui::trigger_frame(std::time::Duration::from_secs(1));
+    tui::trigger_key("Enter");
+    tui::trigger_key("p");
+    tui::trigger_key("o");
+
+    assert_eq!(
+      unit.get_untracked(),
+      "cell",
+      "typing over the list chooses nothing"
+    );
+
+    tui::trigger_key("Enter");
+
+    assert_eq!(
+      unit.get_untracked(),
+      "pt",
+      "enter chooses the focused match"
+    );
+  });
+}
+
 /// A press on the face of an open picker is the face's click, which closes the popup;
 /// it is never a dismissal the click would reopen.
 #[test]
@@ -878,6 +922,54 @@ fn authored_state_variants_paint_on_a_control() {
     tui::trigger_mouse_move(5, 1);
 
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(green())));
+  });
+}
+
+/// Focus reached by a pointer press holds without showing, a key makes it show, and
+/// the next press hides it again, as `:focus-visible` does.
+#[test]
+fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      RawButton::new(Activate::new())
+        .set_width(4)
+        .set_height(1)
+        .set_color(
+          red()
+            .when(State::Focused, blue())
+            .when(State::FocusVisible, green()),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())));
+
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_release(1, 0);
+
+    assert_eq!(
+      colors_at(6, 2, 0, 0).1,
+      Some(rgb(blue())),
+      "focused by the press, not shown"
+    );
+
+    tui::trigger_key("Right");
+
+    assert_eq!(
+      colors_at(6, 2, 0, 0).1,
+      Some(rgb(green())),
+      "a key shows it"
+    );
+
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_release(1, 0);
+
+    assert_eq!(
+      colors_at(6, 2, 0, 0).1,
+      Some(rgb(blue())),
+      "a press hides it again"
+    );
   });
 }
 

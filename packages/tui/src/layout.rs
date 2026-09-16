@@ -23,9 +23,10 @@ use taffy::{
 
 use crate::{
   motion::{Presented, Previous},
-  paint::{longest_word, wrap_spans, wrap_text},
+  paint::{longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
   resolve::Env,
   store::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, RunCache, Store},
+  text::{self, Scales},
 };
 
 /// The character standing in for one cell of an inline box in its paragraph's text.
@@ -34,7 +35,15 @@ pub(crate) const INLINE_BOX: char = '\u{fffc}';
 /// What one restyle of a node decided.
 struct Restyled {
   style: Style,
-  text: Option<String>,
+  text: Option<Measured>,
+}
+
+/// What the layout measures a text leaf by: its text, and the scale of each stretch
+/// of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Measured {
+  pub(crate) text: String,
+  pub(crate) scales: Scales,
 }
 
 /// Whether `handle` lays its inline runs out as one paragraph: a flow box whose every
@@ -74,10 +83,13 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
   }
 
   let (width, _) = store.node_size(handle);
-  let lines = wrap_spans(
+  let scales = paragraph_scales(store, handle);
+  let lines = wrap_sized(
     &paragraph_text(store, handle),
     usize::try_from(width).unwrap_or(1),
+    &scales,
   );
+  let rows = sized_rows(&lines);
   let mut offset = 0;
   let mut cells = Vec::new();
 
@@ -88,26 +100,32 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
     };
     let start = offset;
 
-    offset += record.text.chars().count();
+    offset += text::count(&record.text);
 
     if !is_inline_box(store, run) {
       continue;
     }
 
-    let Some((row, (line_start, _))) = lines
+    let Some((index, line)) = lines
       .iter()
       .enumerate()
       .rev()
-      .find(|(_, (line_start, _))| *line_start <= start)
+      .find(|(_, line)| line.start <= start)
     else {
       continue;
     };
+    // The box sits on the line's bottom row, as a smaller cluster does.
+    let column = text::clusters(&line.text)
+      .take(start - line.start)
+      .enumerate()
+      .map(|(index, (_, cluster))| scales.cells(line.start + index, cluster))
+      .sum::<usize>();
 
     cells.push((
       run,
       (
-        i64::try_from(start - line_start).unwrap_or(0),
-        i64::try_from(row).unwrap_or(0),
+        i64::try_from(column).unwrap_or(0),
+        i64::try_from(rows[index] + line.rows - 1).unwrap_or(0),
       ),
     ));
   }
@@ -139,7 +157,7 @@ pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
           width: AvailableSpace::MaxContent,
           height: AvailableSpace::MaxContent,
         },
-        |known, available, _, text, _| measure_run(known, available, text),
+        |known, available, _, measured, _| measure_run(known, available, measured.as_deref()),
       )
       .expect("compute an inline box's layout");
 
@@ -210,8 +228,16 @@ fn collect_runs(store: &Store, handle: Handle, runs: &mut Vec<Handle>) {
 /// Resolves every stale node's style and writes the taffy styles that changed; `true`
 /// when any changed.
 pub(crate) fn restyle(store: &mut Store) -> bool {
-  let handles = store.handles();
+  let mut handles = store.handles();
   let mut changed = false;
+
+  // A paragraph measures by its runs' scales, so the runs resolve first.
+  handles.sort_by_key(|handle| {
+    !matches!(
+      store.record(*handle).map(|record| &record.kind),
+      Some(Kind::Run { .. })
+    )
+  });
 
   store.motion_active = false;
 
@@ -558,7 +584,10 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
         None
       }
       else {
-        Some(record.text.clone())
+        Some(Measured {
+          text: record.text.clone(),
+          scales: Scales::uniform(run_scale(store, handle)),
+        })
       };
 
       if in_stack {
@@ -584,7 +613,10 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
         style.flex_grow = 1.;
       }
 
-      let text = paragraph.then(|| paragraph_text(store, handle));
+      let text = paragraph.then(|| Measured {
+        text: paragraph_text(store, handle),
+        scales: paragraph_scales(store, handle),
+      });
 
       if paragraph {
         style.display = Display::Block;
@@ -602,13 +634,8 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
 
         if resolved.width.is_none() {
           // One cell past the value keeps the caret inside the box at the end.
-          let content = (field.value.chars().count() + 1)
-            .max(
-              field
-                .placeholder
-                .as_ref()
-                .map_or(0, |text| text.chars().count()),
-            )
+          let content = (field.clusters.cells() + 1)
+            .max(field.placeholder.as_deref().map_or(0, text::cells))
             .max(8);
 
           style.size.width = length(cell(
@@ -746,21 +773,22 @@ pub(crate) fn compute(store: &mut Store, width: u16, height: u16) {
         width: AvailableSpace::Definite(f32::from(width)),
         height: AvailableSpace::Definite(f32::from(height)),
       },
-      |known, available, _, text, _| measure_run(known, available, text),
+      |known, available, _, measured, _| measure_run(known, available, measured.as_deref()),
     )
     .expect("compute the layout");
   store.layout_generation += 1;
 }
 
-/// Measures a text leaf: its text wrapped at the width constraint, in cells.
+/// Measures a text leaf: its text wrapped at the width constraint, in cells, each
+/// cluster at its scale and each line as tall as its tallest.
 ///
 /// A leaf carrying no text measures to its known dimensions or zero.
 fn measure_run(
   known: taffy::geometry::Size<Option<f32>>,
   available: taffy::geometry::Size<AvailableSpace>,
-  text: Option<&mut String>,
+  measured: Option<&Measured>,
 ) -> taffy::geometry::Size<f32> {
-  let Some(text) = text
+  let Some(Measured { text, scales }) = measured
   else {
     return taffy::geometry::Size {
       width: known.width.unwrap_or(0.),
@@ -771,21 +799,23 @@ fn measure_run(
   #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
   let limit = match (known.width, available.width) {
     (Some(width), _) | (None, AvailableSpace::Definite(width)) => width.max(0.) as usize,
-    (None, AvailableSpace::MinContent) => longest_word(text),
+    (None, AvailableSpace::MinContent) => longest_word(text, scales),
     (None, AvailableSpace::MaxContent) => usize::MAX,
   };
-  let lines = wrap_text(text, limit);
+  let lines = wrap_sized(text, limit, scales);
 
   #[expect(clippy::cast_precision_loss)]
   taffy::geometry::Size {
     width: known.width.unwrap_or_else(|| {
       lines
         .iter()
-        .map(|line| line.chars().count())
+        .map(|line| line.cells(scales))
         .max()
         .unwrap_or(0) as f32
     }),
-    height: known.height.unwrap_or(lines.len() as f32),
+    height: known
+      .height
+      .unwrap_or(lines.iter().map(|line| line.rows).sum::<usize>() as f32),
   }
 }
 

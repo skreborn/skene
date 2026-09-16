@@ -1,11 +1,23 @@
 //! A lazily-loaded subtree: content from an async source.
 
-use std::future::Future;
+use std::{
+  future::Future,
+  pin::Pin,
+  task::{Context, Poll},
+};
 
 use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 use skene_reactive::Owner;
 
 use crate::ActiveDriver;
+
+/// A lazy segment's place among the hydrating resources, on the leaves that hydrate.
+#[cfg(target_arch = "wasm32")]
+type Region = skene_web::LazyRegion;
+
+/// The host has no hydration, so a lazy segment has no place among resources.
+#[cfg(not(target_arch = "wasm32"))]
+struct Region;
 
 /// A subtree whose content arrives asynchronously—typically a [`macro@lazy`](crate::lazy)
 /// function whose body loads in a separately-fetched wasm module.
@@ -34,8 +46,9 @@ impl Lazy {
     Self {
       load: Box::new(move |start| {
         let claimed = claim(start);
+        let region = enter_region();
         let owner = Owner::current().child();
-        let work = async move {
+        let work = InRegion::new(region, async move {
           let content = load().await;
           let content = owner.enter(|| content.into_view().build());
 
@@ -44,7 +57,7 @@ impl Lazy {
           }
 
           Scene::<ActiveDriver>::with(|scene| scene.insert_in_segment(start, content, None));
-        };
+        });
 
         if claimed {
           // The claimed markup already satisfies the enclosing boundary; the swap
@@ -61,6 +74,63 @@ impl Lazy {
         }
       }),
     }
+  }
+}
+
+/// The lazy segment's place among the hydrating resources, taken as it is built.
+#[inline(always)]
+fn enter_region() -> Region {
+  #[cfg(target_arch = "wasm32")]
+  {
+    skene_web::enter_lazy()
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  Region
+}
+
+/// Runs `work` as the content of `region`, so the resources it creates register or
+/// adopt under the segment.
+#[inline(always)]
+fn within_region<R>(region: &Region, work: impl FnOnce() -> R) -> R {
+  #[cfg(target_arch = "wasm32")]
+  {
+    skene_web::within_lazy(region, work)
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  {
+    let _ = region;
+
+    work()
+  }
+}
+
+/// The segment's work, polled as the content of its region: the load, the build and the
+/// swap alike, so a resource created anywhere along it belongs to the segment.
+struct InRegion<F> {
+  region: Region,
+  work: Pin<Box<F>>,
+}
+
+impl<F: Future> InRegion<F> {
+  #[inline(always)]
+  fn new(region: Region, work: F) -> Self {
+    Self {
+      region,
+      work: Box::pin(work),
+    }
+  }
+}
+
+impl<F: Future> Future for InRegion<F> {
+  type Output = F::Output;
+
+  #[inline(always)]
+  fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    let this = &mut *self;
+
+    within_region(&this.region, || this.work.as_mut().poll(cx))
   }
 }
 

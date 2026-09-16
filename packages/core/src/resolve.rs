@@ -96,7 +96,8 @@ impl<N: Scalar> From<Definition<String, N>> for TokenValue<N> {
   }
 }
 
-/// The value a derived leaf last wrote into a node's slot.
+/// A property's value erased over the property: what a slot's leaf resolves to, and
+/// what a driver's motion interpolates.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum SlotValue<N: Scalar, X: StyleExtension = ()> {
@@ -105,6 +106,10 @@ pub enum SlotValue<N: Scalar, X: StyleExtension = ()> {
   /// A run property's value.
   Run(RunValue<X>),
 }
+
+/// What a derived leaf last wrote into a node's slot: a value, or a token or
+/// expression resolved where the slot is read.
+pub type SlotLeaf<N, X = ()> = StaticLeaf<SlotValue<N, X>>;
 
 /// A value a leaf resolved to, erased over the property.
 #[derive(Debug, Clone, PartialEq)]
@@ -203,6 +208,33 @@ impl<N: Scalar> From<String> for Resolved<N> {
   }
 }
 
+/// Whether a node, or the control it belongs to, holds focus, and whether that focus
+/// shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[must_use]
+pub enum Focus {
+  /// Focus is elsewhere.
+  #[default]
+  None,
+  /// Focus is held without showing: reached by a pointer press.
+  Held,
+  /// Focus is held and shows: reached by the keyboard, or held by a text entry, and
+  /// not since a pointer press.
+  Shown,
+}
+
+impl Focus {
+  /// The focus `held` reports, shown when `shown`.
+  #[inline(always)]
+  pub const fn new(held: bool, shown: bool) -> Self {
+    match (held, shown) {
+      (false, _) => Self::None,
+      (true, false) => Self::Held,
+      (true, true) => Self::Shown,
+    }
+  }
+}
+
 /// A node's interaction state, as one resolution reads it: its own hover, focus and
 /// press, and the state of the control enclosing it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -210,8 +242,8 @@ impl<N: Scalar> From<String> for Resolved<N> {
 pub struct Interaction {
   /// Whether the pointer is over the node.
   pub hovered: bool,
-  /// Whether the node, or the control it belongs to, holds focus.
-  pub focused: bool,
+  /// The focus the node, or the control it belongs to, holds.
+  pub focus: Focus,
   /// Whether a press is held on the node.
   pub pressed: bool,
   /// The enclosing control's state, when the node is inside one.
@@ -229,7 +261,8 @@ impl Interaction {
 
     match state {
       State::Hovered => self.hovered,
-      State::Focused | State::FocusVisible => self.focused,
+      State::Focused => self.focus != Focus::None,
+      State::FocusVisible => self.focus == Focus::Shown,
       State::Pressed => self.pressed,
       State::Checked | State::Indeterminate | State::Disabled | State::Invalid | State::Open => {
         false
@@ -260,7 +293,7 @@ pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   /// The token definition in force at the node.
   pub token: &'a dyn Fn(TokenName) -> Option<TokenValue<N>>,
   /// The node's latest derived write into a slot.
-  pub slot: &'a dyn Fn(Slot) -> Option<SlotValue<N, X>>,
+  pub slot: &'a dyn Fn(Slot) -> Option<SlotLeaf<N, X>>,
 }
 
 impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
@@ -386,7 +419,9 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     self.leaf(leaf).and_then(Resolved::into_color)
   }
 
-  /// The winning leaf of a driver's box value, resolved to the property's type.
+  /// The winning leaf of a driver's box value, resolved to the property's type: a
+  /// static leaf through tokens and expressions, a slot through the leaf last written
+  /// into it.
   #[must_use]
   pub fn box_value<T: IntoBoxValue<N, X>>(
     &self,
@@ -394,30 +429,46 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   ) -> Option<T> {
     match self.winning(value) {
       DriverLeaf::Static(leaf) => self.keyframe_box_value(leaf),
-      DriverLeaf::Slot(slot) => match (self.slot)(*slot)? {
+      DriverLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Box(value) => T::from_box_value(value),
         SlotValue::Run(_) => None,
-      },
+      }),
     }
   }
 
-  /// The winning leaf of a driver's run value, resolved to the property's type.
+  /// The winning leaf of a driver's run value, resolved to the property's type: a
+  /// static leaf through tokens and expressions, a slot through the leaf last written
+  /// into it.
   #[must_use]
   pub fn run_value<T: IntoRunValue<X>>(&self, value: &StaticValue<T, Condition<N>>) -> Option<T> {
     match self.winning(value) {
       DriverLeaf::Static(leaf) => self.keyframe_run_value(leaf),
-      DriverLeaf::Slot(slot) => match (self.slot)(*slot)? {
+      DriverLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Run(value) => T::from_run_value(value),
         SlotValue::Box(_) => None,
-      },
+      }),
     }
   }
 
   /// A keyframe's box leaf, resolved to the property's type.
   #[must_use]
   pub fn keyframe_box_value<T: IntoBoxValue<N, X>>(&self, leaf: &StaticLeaf<T>) -> Option<T> {
+    self.box_leaf(leaf, |fixed| Some(fixed))
+  }
+
+  /// A keyframe's run leaf, resolved to the property's type.
+  #[must_use]
+  pub fn keyframe_run_value<T: IntoRunValue<X>>(&self, leaf: &StaticLeaf<T>) -> Option<T> {
+    self.run_leaf(leaf, |fixed| Some(fixed))
+  }
+
+  fn box_leaf<V: Clone, T: IntoBoxValue<N, X>>(
+    &self,
+    leaf: &StaticLeaf<V>,
+    fixed: impl FnOnce(V) -> Option<T>,
+  ) -> Option<T> {
     match leaf {
-      StaticLeaf::Fixed(fixed) => Some(fixed.clone()),
+      StaticLeaf::Fixed(value) => fixed(value.clone()),
       StaticLeaf::Token(reference) => self
         .token(reference.name())
         .and_then(Resolved::into_box_value)
@@ -429,11 +480,13 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     }
   }
 
-  /// A keyframe's run leaf, resolved to the property's type.
-  #[must_use]
-  pub fn keyframe_run_value<T: IntoRunValue<X>>(&self, leaf: &StaticLeaf<T>) -> Option<T> {
+  fn run_leaf<V: Clone, T: IntoRunValue<X>>(
+    &self,
+    leaf: &StaticLeaf<V>,
+    fixed: impl FnOnce(V) -> Option<T>,
+  ) -> Option<T> {
     match leaf {
-      StaticLeaf::Fixed(fixed) => Some(fixed.clone()),
+      StaticLeaf::Fixed(value) => fixed(value.clone()),
       StaticLeaf::Token(reference) => self
         .token(reference.name())
         .and_then(Resolved::into_run_value)
@@ -451,7 +504,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   pub fn declared_value<T: IntoBoxValue<N, X>>(&self, value: &Value<T, Condition<N>>) -> Option<T> {
     match self.winning(value) {
       Leaf::Static(leaf) => self.keyframe_box_value(leaf),
-      Leaf::Derived(compute) => Some(untrack(|| compute())),
+      Leaf::Derived(compute) => self.keyframe_box_value(&untrack(|| compute())),
     }
   }
 

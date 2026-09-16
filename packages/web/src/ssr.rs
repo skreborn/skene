@@ -14,6 +14,7 @@ use std::{
   cell::{Cell, RefCell},
   rc::Rc,
   thread::LocalKey,
+  time::Duration,
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -35,17 +36,21 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
+  Part,
   RunProps,
   RunValue,
   Scene,
   Size,
   Slot,
+  StaticLeaf,
+  TextSelection,
+  Timer,
   Toggle,
   TokenName,
   View,
 };
 use skene_gui_core::{GuiExt, Painter, Painting};
-use skene_reactive::{Owner, Set, Signal, WriteSignal, provide_context};
+use skene_reactive::{Owner, ReadSignal, Set, Signal, WriteSignal, provide_context};
 
 pub use self::task::{drive, install_executor, register, set_render_deadline, sleep};
 use super::{
@@ -63,8 +68,8 @@ use super::{
     compile_run,
     inline_definitions,
     overlay_fingerprint,
-    render_box_value,
-    render_run_value,
+    render_box_leaf,
+    render_run_leaf,
     run_fingerprint,
     slot_registrations,
   },
@@ -140,6 +145,17 @@ struct Node {
   /// has one apart from its root.
   carrier: Option<u32>,
   control: bool,
+  /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
+  /// or `<select>`, whose caption is a `<label for>` beside it.
+  bare: bool,
+  /// The `<label for>` a bare control's caption is serialized in, before the control,
+  /// outside its children.
+  caption: Option<u32>,
+  /// A `<select>`'s options, each a value and the name shown, and the value chosen.
+  options: Vec<(String, String)>,
+  chosen: Option<String>,
+  /// The scene node the element realizes.
+  realizes: Option<NodeId>,
   slots: Rc<[SlotBinding]>,
 }
 
@@ -157,6 +173,11 @@ impl Node {
       parent: None,
       carrier: None,
       control: false,
+      bare: false,
+      options: Vec::new(),
+      chosen: None,
+      caption: None,
+      realizes: None,
       slots: Rc::from([]),
     }
   }
@@ -279,6 +300,23 @@ impl Node {
     out.push('>');
   }
 
+  /// Writes a `<select>`'s options, the chosen one marked.
+  fn emit_options(&self, out: &mut String) {
+    for (value, name) in &self.options {
+      out.push_str("<option value=\"");
+      escape_attr(value, out);
+      out.push('"');
+
+      if self.chosen.as_deref() == Some(value.as_str()) {
+        out.push_str(" selected");
+      }
+
+      out.push('>');
+      escape_text(name, out);
+      out.push_str("</option>");
+    }
+  }
+
   fn emit_close(&self, out: &mut String) {
     if self.is_void() {
       return;
@@ -386,6 +424,78 @@ impl Tree {
     }
   }
 
+  /// Attaches `child` into the caption of `parent` when `parent` stands bare and
+  /// `child` its `Label` part, making the `<label for>` on the first; `false` for any
+  /// other pair, which attaches as usual.
+  fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
+    let Some(node) = self
+      .node(parent)
+      .filter(|node| node.bare)
+      .and_then(|node| node.realizes)
+    else {
+      return false;
+    };
+    let is_label = self
+      .node(child)
+      .and_then(|child| child.realizes)
+      .is_some_and(|child| Scene::<Web>::with(|scene| scene.part(child) == Some(Part::Label)));
+
+    if !is_label {
+      return false;
+    }
+
+    let caption = if let Some(caption) = self.node(parent).and_then(|node| node.caption) {
+      caption
+    }
+    else {
+      let caption = self.element("label");
+      let id = element_id(node);
+
+      if let Some(label) = self.node(caption) {
+        label.set_attribute("for", &id);
+      }
+
+      if let Some(entry) = self.node(parent) {
+        entry.set_attribute("id", &id);
+        entry.caption = Some(caption);
+      }
+
+      caption
+    };
+
+    self.attach(caption, child, None);
+
+    true
+  }
+
+  /// Detaches `child` from the caption of `parent` when it sits there, dropping the
+  /// caption once empty; `false` when it does not.
+  fn detach_caption(&mut self, parent: u32, child: u32) -> bool {
+    let Some(caption) = self.node(parent).and_then(|node| node.caption)
+    else {
+      return false;
+    };
+
+    if self.node(child).and_then(|node| node.parent) != Some(caption) {
+      return false;
+    }
+
+    self.detach(caption, child);
+
+    if self
+      .node(caption)
+      .is_some_and(|label| label.children.is_empty())
+    {
+      self.destroy(caption);
+
+      if let Some(entry) = self.node(parent) {
+        entry.caption = None;
+      }
+    }
+
+    true
+  }
+
   fn attach(&mut self, parent: u32, child: u32, before: Option<u32>) {
     if let Some(old) = self.node(child).and_then(|node| node.parent)
       && let Some(old) = self.node(old)
@@ -425,6 +535,7 @@ impl Tree {
       };
 
       stack.extend(node.children);
+      stack.extend(node.caption);
 
       for class in node.style_class.iter().chain(&node.token_class) {
         self.styles.release(class);
@@ -549,7 +660,12 @@ impl Tree {
       return;
     }
 
+    if let Some(caption) = node.caption {
+      self.serialize(caption, out);
+    }
+
     node.emit_open(out);
+    node.emit_options(out);
 
     match &node.text {
       Some(text) => escape_text(text, out),
@@ -612,7 +728,12 @@ impl Tree {
         continue;
       }
 
+      if let Some(caption) = child_node.caption {
+        self.serialize(caption, out);
+      }
+
       child_node.emit_open(out);
+      child_node.emit_options(out);
 
       match &child_node.text {
         Some(text) => {
@@ -637,6 +758,8 @@ struct MediaState {
   set_viewport: WriteSignal<Size<f32>>,
   set_scheme: WriteSignal<ColorScheme>,
   set_reduced_motion: WriteSignal<bool>,
+  /// The server's render is never hydrated and shows no pixels.
+  absent: ReadSignal<bool>,
 }
 
 thread_local! {
@@ -743,31 +866,39 @@ pub fn set_render_hints(hints: RenderHints) {
 
 /// The environment's signals, created under the root owner on first use.
 fn media_signals() -> MediaSignals<f32> {
+  with_media(|media| media.signals)
+}
+
+/// Runs `operation` on the environment state, created under the root owner on first
+/// use.
+fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
   MEDIA.with(|media| {
-    media
-      .borrow_mut()
-      .get_or_insert_with(|| {
-        let hints = HINTS.with(Cell::get);
+    let mut media = media.borrow_mut();
+    let media = media.get_or_insert_with(|| {
+      let hints = HINTS.with(Cell::get);
 
-        skene_core::root_owner().enter(|| {
-          let (viewport, set_viewport) = Signal::opaque(hints.viewport).split();
-          let (scheme, set_scheme) = Signal::opaque(hints.scheme).split();
-          let (reduced_motion, set_reduced_motion) = Signal::opaque(hints.reduced_motion).split();
+      skene_core::root_owner().enter(|| {
+        let (viewport, set_viewport) = Signal::opaque(hints.viewport).split();
+        let (scheme, set_scheme) = Signal::opaque(hints.scheme).split();
+        let (reduced_motion, set_reduced_motion) = Signal::opaque(hints.reduced_motion).split();
+        let (absent, _) = Signal::opaque(false).split();
 
-          MediaState {
-            signals: MediaSignals {
-              viewport,
-              scheme,
-              reduced_motion,
-              container_sizes: ContainerSizes::new(),
-            },
-            set_viewport,
-            set_scheme,
-            set_reduced_motion,
-          }
-        })
+        MediaState {
+          signals: MediaSignals {
+            viewport,
+            scheme,
+            reduced_motion,
+            container_sizes: ContainerSizes::new(),
+          },
+          set_viewport,
+          set_scheme,
+          set_reduced_motion,
+          absent,
+        }
       })
-      .signals
+    });
+
+    operation(media)
   })
 }
 
@@ -788,7 +919,7 @@ fn write_access(node: &mut Node, access: &[AccessProp]) {
   node.attributes.retain(|(name, _)| {
     let native = form && NATIVE_ACCESS_ATTRIBUTES.contains(&name.as_str());
 
-    !native && !name.starts_with("aria-")
+    !native && !name.starts_with("aria-") && name != "title"
   });
 
   for prop in access {
@@ -837,6 +968,10 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
 
 impl Painting for Web {
   fn paint(&self, _sink: &u32, _painter: Box<Painter>) {}
+
+  fn available(&self) -> ReadSignal<bool> {
+    with_media(|media| media.absent)
+  }
 }
 
 impl Driver for Web {
@@ -873,7 +1008,7 @@ impl Driver for Web {
     index
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, GuiExt>) {
+  fn update_box(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_node(*sink, |node| {
       let binding = node
         .slots
@@ -884,7 +1019,7 @@ impl Driver for Web {
       if let Some(binding) = binding {
         node.set_inline(
           binding.custom_property(),
-          render_box_value(binding.property, value),
+          render_box_leaf(binding.property, leaf),
         );
       }
     });
@@ -915,11 +1050,12 @@ impl Driver for Web {
   fn create_control(&self, props: &ControlProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
       let index = if let Some(native) = native_element(props.kind) {
-        if native.is_entry() {
+        if native.is_bare() {
           let root = tree.element(native.tag);
 
           if let Some(node) = tree.node(root) {
             node.write_native_attributes(native, props);
+            node.bare = true;
           }
 
           root
@@ -1023,7 +1159,7 @@ impl Driver for Web {
         let index = tree.element("div");
 
         if let Some(node) = tree.node(index) {
-          node.set_attribute("popover", "manual");
+          node.set_attribute("popover", if props.hint { "hint" } else { "manual" });
         }
 
         index
@@ -1064,7 +1200,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<GuiExt>) {
+  fn update_run(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
     with_node(*sink, |node| {
       let binding = node
         .slots
@@ -1075,7 +1211,7 @@ impl Driver for Web {
       if let Some(binding) = binding {
         node.set_inline(
           binding.custom_property(),
-          render_run_value(binding.property, value),
+          render_run_leaf(binding.property, leaf),
         );
       }
     });
@@ -1108,12 +1244,28 @@ impl Driver for Web {
     })
   }
 
+  fn bind_node(&self, sink: &u32, node: NodeId) {
+    with_tree(|tree| {
+      if let Some(record) = tree.node(*sink) {
+        record.realizes = Some(node);
+      }
+    });
+  }
+
   fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
-    with_tree(|tree| tree.attach(*parent, *child, before.copied()));
+    with_tree(|tree| {
+      if !tree.attach_caption(*parent, *child) {
+        tree.attach(*parent, *child, before.copied());
+      }
+    });
   }
 
   fn detach(&self, parent: &u32, child: &u32) {
-    with_tree(|tree| tree.detach(*parent, *child));
+    with_tree(|tree| {
+      if !tree.detach_caption(*parent, *child) {
+        tree.detach(*parent, *child);
+      }
+    });
   }
 
   fn destroy(&self, sink: u32) {
@@ -1169,12 +1321,27 @@ impl Driver for Web {
         if node.tag() == "textarea" {
           node.text = Some(value.to_owned());
         }
+        else if node.tag() == "select" {
+          node.chosen = Some(value.to_owned());
+        }
         else {
           node.set_attribute("value", value);
         }
       }
     });
   }
+
+  fn set_options(&self, sink: &u32, options: &[(String, String)]) {
+    with_tree(|tree| {
+      let target = tree.carrier(*sink);
+
+      if let Some(node) = tree.node(target) {
+        node.options = options.to_vec();
+      }
+    });
+  }
+
+  fn set_selection(&self, _: &u32, _: TextSelection) {}
 
   fn set_checked(&self, sink: &u32, checked: bool) {
     with_tree(|tree| {
@@ -1192,9 +1359,20 @@ impl Driver for Web {
     media_signals()
   }
 
+  fn hydration(&self) -> Option<ReadSignal<bool>> {
+    Some(with_media(|media| media.absent))
+  }
+
   fn set_scheme(&self, scheme: Option<ColorScheme>) {
     set_scheme(scheme);
   }
+
+  /// The server renders once, so nothing scheduled ever runs.
+  fn schedule(&self, _: Duration, _: Box<dyn FnOnce()>) -> Timer {
+    Timer(0)
+  }
+
+  fn cancel(&self, _: Timer) {}
 
   fn stored_scheme(&self) -> Option<ColorScheme> {
     stored_scheme()

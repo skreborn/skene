@@ -4,7 +4,9 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  Availability,
   BoxProps,
+  ClipboardAction,
   ColorScheme,
   ContainerName,
   ContainerSizes,
@@ -16,16 +18,19 @@ use skene_core::{
   NoProperty,
   NodeId,
   OverlayProps,
+  Point,
   PropertyKey,
   RunProps,
   Size,
   Slot,
+  TextSelection,
+  Timer,
   interpolate::Tween,
 };
 use skene_gui_core::Painter;
-use skene_reactive::{Owner, Signal, WriteSignal};
+use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
-use crate::{Handle, Headless, SlotValue, TokenValue};
+use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};
 
 /// The viewport the driver reports until [`set_viewport`](crate::set_viewport) is called.
 pub const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
@@ -66,12 +71,16 @@ pub struct Record {
   pub kind: Kind,
   pub text: String,
   pub value: String,
+  /// The options a platform-drawn picker offers, each a value and its name.
+  pub options: Vec<(String, String)>,
+  pub selection: TextSelection,
   pub checked: bool,
   pub open: bool,
   pub anchor: Option<Handle>,
+  pub position: Option<Point<f32>>,
   pub control_state: ControlState,
   pub hovered: bool,
-  pub slots: FxHashMap<Slot, SlotValue>,
+  pub slots: FxHashMap<Slot, SlotLeaf>,
   pub definitions: Option<Definitions<TokenValue>>,
   pub listened: Vec<EventKind>,
   pub children: Vec<Handle>,
@@ -108,9 +117,12 @@ impl Record {
       kind,
       text: String::new(),
       value: String::new(),
+      options: Vec::new(),
+      selection: TextSelection::default(),
       checked: false,
       open: false,
       anchor: None,
+      position: None,
       control_state: ControlState::DEFAULT,
       hovered: false,
       slots: FxHashMap::default(),
@@ -135,6 +147,10 @@ pub struct MediaState {
   pub set_viewport: WriteSignal<Size<f32>>,
   pub set_scheme: WriteSignal<ColorScheme>,
   pub set_reduced_motion: WriteSignal<bool>,
+  pub set_hydrated: WriteSignal<bool>,
+  pub set_graphics: WriteSignal<bool>,
+  pub hydrated: ReadSignal<bool>,
+  pub graphics: ReadSignal<bool>,
   pub signals: MediaSignals<f32>,
 }
 
@@ -143,6 +159,8 @@ pub struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,
   pub focused: Option<Handle>,
+  /// Whether focus shows while held: set by a key, cleared by a pointer press.
+  pub focus_visible: bool,
   pub root_definitions: Definitions<TokenValue>,
   pub root_definition_writes: usize,
   pub container_sizes: FxHashMap<ContainerName, Size<f32>>,
@@ -154,8 +172,22 @@ pub struct Store {
   pub clock: f64,
   pub title: Option<String>,
   pub head: Vec<HeadElement>,
+  /// The scheduled actions, each with the clock reading it is due at.
+  pub timers: Vec<Scheduled>,
+  pub next_timer: u64,
+  /// The clipboard actions performed, in order, until taken.
+  pub clipboard: Vec<ClipboardAction>,
+  /// What each clipboard action answers when asked; enabled unless set.
+  pub availability: FxHashMap<ClipboardAction, Availability>,
+  /// Whether the render stands hydrated, as set; hydrated unless set.
+  pub hydrated: Option<bool>,
+  /// Whether a painted box shows as pixels, as set; shown unless set.
+  pub graphics: Option<bool>,
   media: Option<MediaState>,
 }
+
+/// A scheduled action: the clock reading it is due at, its timer, and the action.
+pub type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
 /// An element registered for the document head.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -172,6 +204,7 @@ impl Default for Store {
       entries: Vec::new(),
       free: Vec::new(),
       focused: None,
+      focus_visible: true,
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       container_sizes: FxHashMap::default(),
@@ -182,6 +215,12 @@ impl Default for Store {
       clock: 0.,
       title: None,
       head: Vec::new(),
+      timers: Vec::new(),
+      next_timer: 0,
+      clipboard: Vec::new(),
+      availability: FxHashMap::default(),
+      hydrated: None,
+      graphics: None,
       media: None,
     }
   }
@@ -266,6 +305,8 @@ impl Store {
     let viewport = self.viewport.unwrap_or(DEFAULT_VIEWPORT);
     let scheme = self.scheme_in_force();
     let reduced_motion = self.reduced_motion.unwrap_or(false);
+    let hydrated = self.hydrated.unwrap_or(true);
+    let graphics = self.graphics.unwrap_or(true);
 
     self.media.get_or_insert_with(|| {
       let owner = Owner::new();
@@ -274,12 +315,18 @@ impl Store {
         let (viewport, set_viewport) = Signal::opaque(viewport).split();
         let (scheme, set_scheme) = Signal::opaque(scheme).split();
         let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced_motion).split();
+        let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
+        let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
           owner,
           set_viewport,
           set_scheme,
           set_reduced_motion,
+          set_hydrated,
+          set_graphics,
+          hydrated,
+          graphics,
           signals: MediaSignals {
             viewport,
             scheme,

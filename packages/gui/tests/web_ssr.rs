@@ -11,7 +11,10 @@ use skene_gui::{
   Column,
   Container,
   Deferred,
+  Enhance,
   HasChildren,
+  Lazy,
+  Painted,
   Resource,
   RichText,
   Row,
@@ -63,6 +66,49 @@ fn css(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 
   format!("oklch({lightness} {chroma} {hue} / {alpha})")
+}
+
+/// The server carries an enhancement's fallback as markup and never builds its
+/// child; a painted box with a fallback renders the fallback in place of the canvas.
+#[test]
+fn an_enhancement_renders_its_fallback() {
+  let page = render_to_string(|| {
+    Enhance::new(skene_gui::media::hydrated())
+      .set_fallback(|| Text::new("baseline"))
+      .set_child_builder(|| Text::new("live"))
+  });
+
+  assert!(page.body().contains(">baseline</span>"), "{}", page.body());
+  assert!(!page.body().contains("live"), "{}", page.body());
+
+  let page = render_to_string(|| Painted::new(|_, _| {}).set_fallback(|| Text::new("a picture")));
+
+  assert!(page.body().contains(">a picture</span>"), "{}", page.body());
+  assert!(!page.body().contains("<canvas"), "{}", page.body());
+}
+
+/// A picker's scriptless form is a `<select>` listing its options by value and name
+/// with the chosen one selected, and no drawn face.
+#[test]
+fn a_picker_renders_to_a_select() {
+  let page = render_to_string(|| {
+    SimplePicker::new()
+      .set_options([("s", "Small"), ("m", "Medium")])
+      .set_value("m")
+      .set_label("Size")
+  });
+  let body = page.body();
+
+  assert!(body.contains("<select"), "{body}");
+  assert!(
+    body.contains("<option value=\"s\">Small</option><option value=\"m\" selected>Medium</option>"),
+    "{body}"
+  );
+  assert!(
+    body.contains(" for=\"skene-"),
+    "the caption is a label: {body}"
+  );
+  assert!(!body.contains("combobox"), "no drawn face: {body}");
 }
 
 #[test]
@@ -223,7 +269,7 @@ fn page_assembles_a_full_document() {
 
   assert!(
     document
-      .contains("<script id=\"skene-state\" type=\"application/json\">[[\"\\\"Ada\\\"\"],[]]"),
+      .contains("<script id=\"skene-state\" type=\"application/json\">[[\"\\\"Ada\\\"\"],[],[]]"),
     "the state is embedded in the script: {document}",
   );
 
@@ -261,8 +307,42 @@ fn resources_serialize_their_state() {
 
   assert_eq!(
     page.state(),
-    r#"[["\"Ada\"","\"Bo\""],[]]"#,
+    r#"[["\"Ada\"","\"Bo\""],[],[]]"#,
     "both values are JSON-encoded in creation order",
+  );
+}
+
+/// A lazy segment's resources serialize under the segment's place—its build order among
+/// the lazy segments of the segment holding it, under that segment's own place—apart
+/// from the resources built beside it, so the client matches them however late the
+/// segment's content arrives.
+#[test]
+fn a_lazy_segments_resources_serialize_under_its_place() {
+  let page = render_to_string(|| {
+    let _before = Resource::new(|| async { "before".to_owned() });
+    let first = Lazy::new(|| async {
+      let _inner = Resource::new(|| async { "inner".to_owned() });
+
+      Lazy::new(|| async {
+        let _nested = Resource::new(|| async { "nested".to_owned() });
+
+        Text::new("nested")
+      })
+    });
+    let second = Lazy::new(|| async {
+      let _second = Resource::new(|| async { "second".to_owned() });
+
+      Text::new("second")
+    });
+    let _after = Resource::new(|| async { "after".to_owned() });
+
+    Column::new().set_children((first, second))
+  });
+
+  assert_eq!(
+    page.state(),
+    r#"[["\"before\"","\"after\""],[],[[[0],["\"inner\""]],[[1],["\"second\""]],[[0,0],["\"nested\""]]]]"#,
+    "the resources outside any lazy segment in creation order, then each segment's own",
   );
 }
 
@@ -279,7 +359,7 @@ fn a_client_resource_is_not_serialized() {
 
   assert_eq!(
     page.state(),
-    "[[],[]]",
+    "[[],[],[]]",
     "no serializable resources means empty state"
   );
 }
@@ -735,11 +815,10 @@ fn a_page_with_no_chooseable_scheme_carries_no_script() {
 }
 
 /// A required, read-only text field serializes the native attributes a form enforces
-/// without script; its description gets the id the field names; a picker's face names
-/// the listbox it controls.
+/// without script, and its description gets the id the field names.
 #[test]
 fn control_flags_serialize_natively_and_references_carry_ids() {
-  use skene_gui::{ListItem, RawOption, RawPicker, RawTextField, TextEntry, reactive::Get};
+  use skene_gui::{RawTextField, TextEntry};
 
   let rendered = render_to_string(|| {
     let hint = Text::new("Required").build();
@@ -751,9 +830,6 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
         .set_read_only(true)
         .set_invalid(true)
         .set_described_by(hint),
-      RawPicker::new()
-        .set_options(["a", "b"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
-        .set_face(|shown| Text::derive(move || shown.get())),
     ))
   });
   let body = rendered.body();
@@ -773,13 +849,4 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
     .expect("a description reference");
 
   assert!(body.contains(&format!("id=\"{described}\"")), "{body}");
-  assert!(body.contains("aria-haspopup=\"listbox\""), "{body}");
-
-  let controls = body
-    .split("aria-controls=\"")
-    .nth(1)
-    .and_then(|rest| rest.split('"').next())
-    .expect("a controls reference");
-
-  assert!(body.contains(&format!("id=\"{controls}\"")), "{body}");
 }

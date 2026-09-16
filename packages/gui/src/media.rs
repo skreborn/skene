@@ -34,6 +34,15 @@ pub fn reduced_motion() -> ReadSignal<bool> {
   skene_views::media::reduced_motion::<ActiveDriver>()
 }
 
+/// Whether the page stands hydrated, as a signal: false on the server leaf and while
+/// the browser leaf adopts the server's markup, true once it has finished and on a
+/// native driver from the start, where no render is made without script; what an
+/// [`Enhance`](crate::Enhance) over the bundle waits on.
+#[inline(always)]
+pub fn hydrated() -> ReadSignal<bool> {
+  skene_views::media::hydrated::<ActiveDriver>()
+}
+
 /// Whether `media` holds, as a memo following the environment. A container condition
 /// never holds here: it is answered per node, by the box it names.
 #[inline(always)]

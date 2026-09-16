@@ -14,11 +14,19 @@ use std::{
 };
 
 use skene_gui::{
+  Column,
   Container,
+  Enhance,
   HasChildren,
+  Label,
   Lazy,
+  ListItem,
+  RawOption,
+  RawPicker,
   Resource,
   Text,
+  Tooltip,
+  reactive::Get,
   wasm_bindgen::{JsCast, JsValue},
   web::{self, hydrate},
 };
@@ -239,7 +247,7 @@ fn a_resource_adopts_server_state_without_loading() {
   let captured: Rc<RefCell<Option<Resource<String>>>> = Rc::new(RefCell::new(None));
 
   // The server's state: one order-keyed JSON-encoded value, "Ada", and no tagged ones.
-  hydrate(root.clone(), r#"[["\"Ada\""],[]]"#, {
+  hydrate(root.clone(), r#"[["\"Ada\""],[],[]]"#, {
     let loaded = Rc::clone(&loaded);
     let captured = Rc::clone(&captured);
 
@@ -289,6 +297,122 @@ async fn tick() {
     .expect("a resolved promise");
 }
 
+/// An enhancement builds its fallback while hydrating, adopting the server's markup
+/// for it with no mismatch, and rebuilds into its child once hydration has finished.
+#[wasm_bindgen_test]
+fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
+  let root = server_root("<!--s:0--><span data-h=\"1\">baseline</span><!--e:0-->");
+  let children = Rc::new(Cell::new(0));
+
+  hydrate(root.clone(), "", {
+    let children = Rc::clone(&children);
+
+    move || {
+      assert!(
+        !skene_gui::media::hydrated().get(),
+        "not hydrated while adopting"
+      );
+
+      Enhance::new(skene_gui::media::hydrated())
+        .set_fallback(|| Text::new("baseline"))
+        .set_child_builder(move || {
+          children.set(children.get() + 1);
+
+          Text::new("live")
+        })
+    }
+  });
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(root.text_content().expect("text"), "live");
+  assert_eq!(element_count(&root), 1, "the fallback is gone");
+  assert_eq!(children.get(), 1);
+  assert!(skene_gui::media::hydrated().get());
+
+  web::uninstall();
+}
+
+/// A picker hydrates over the server's `<select>`, carrying the choice the reader
+/// made before the bundle arrived into the signal and onto the drawn face that takes
+/// the select's place.
+#[wasm_bindgen_test]
+fn a_picker_carries_the_readers_choice_from_the_select() {
+  let options = || {
+    ["a", "b"].map(|value| {
+      let name = value.to_uppercase();
+
+      RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(&name)).set_name(name))
+    })
+  };
+  // The option views build before the select and attach nowhere, so the select's
+  // marker follows the elements they make.
+  let marker = {
+    let scratch = server_root("");
+
+    document()
+      .body()
+      .expect("a body")
+      .append_child(&scratch)
+      .expect("connect the scratch root");
+    web::install(scratch.clone());
+
+    let _ = web::mount(|| skene_gui::View::build(Column::new().set_children(options())));
+
+    let count = element_count(&scratch);
+
+    web::uninstall();
+    scratch.remove();
+
+    count + 1
+  };
+  let root = server_root(&format!(
+    "<select data-h=\"{marker}\"><option value=\"a\" selected>A</option><option value=\"b\">B</option></select>",
+  ));
+  let select: web_sys::HtmlSelectElement = root
+    .query_selector("select")
+    .expect("query")
+    .expect("the select")
+    .unchecked_into();
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+  select.set_value("b");
+
+  let value = skene_gui::reactive::Signal::new("a".to_owned());
+
+  hydrate(root.clone(), "", move || {
+    RawPicker::new()
+      .bind_value(value)
+      .set_options(options())
+      .set_face(|shown| Text::derive(move || shown.get()))
+  });
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(value.get(), "b", "the reader's choice reached the signal");
+  assert!(
+    root.query_selector("select").expect("query").is_none(),
+    "the select is gone"
+  );
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .expect("query")
+    .expect("the drawn face");
+
+  let shown = face
+    .query_selector("span")
+    .expect("query")
+    .expect("the face's text");
+
+  assert_eq!(shown.text_content().as_deref(), Some("b"));
+
+  web::uninstall();
+  root.remove();
+}
+
 #[wasm_bindgen_test]
 async fn a_lazy_view_keeps_server_content_until_it_loads() {
   // Client build order: container 1, then the lazy segment inside the container's
@@ -326,6 +450,112 @@ async fn a_lazy_view_keeps_server_content_until_it_loads() {
     server_span != hydrated_span,
     "the arrived content is freshly built, not the claim",
   );
+
+  web::uninstall();
+}
+
+/// A lazy segment's content adopts the values the server keyed under the segment's
+/// place, and a resource built beside the segment adopts its own, so neither takes the
+/// other's however late the segment's content arrives. The DOM shape is not under test.
+#[wasm_bindgen_test]
+async fn a_lazy_segments_resources_adopt_their_own_values() {
+  let root = server_root("");
+  let inside: Rc<RefCell<Option<Resource<String>>>> = Rc::new(RefCell::new(None));
+  let after: Rc<RefCell<Option<Resource<String>>>> = Rc::new(RefCell::new(None));
+
+  hydrate(
+    root.clone(),
+    r#"[["\"after\""],[],[[[0],["\"inside\""]]]]"#,
+    {
+      let inside = Rc::clone(&inside);
+      let after = Rc::clone(&after);
+
+      move || {
+        let lazy = Lazy::new(move || {
+          let inside = Rc::clone(&inside);
+
+          async move {
+            *inside.borrow_mut() = Some(Resource::new(|| async { "loaded".to_owned() }));
+
+            Text::new("inside")
+          }
+        });
+
+        *after.borrow_mut() = Some(Resource::new(|| async { "loaded".to_owned() }));
+
+        Column::new().set_children((lazy, Text::new("after")))
+      }
+    },
+  );
+
+  for _ in 0..4 {
+    tick().await;
+  }
+
+  let inside = (*inside.borrow()).expect("the lazy content's resource was captured");
+  let after = (*after.borrow()).expect("the resource beside the segment was captured");
+
+  after.with(|value| {
+    assert_eq!(
+      value.map(String::as_str),
+      Some("after"),
+      "the resource beside the segment adopted its own value, not the segment's",
+    );
+  });
+  inside.with(|value| {
+    assert_eq!(
+      value.map(String::as_str),
+      Some("inside"),
+      "the segment's content adopted the value keyed under its place",
+    );
+  });
+
+  web::uninstall();
+}
+
+/// A server-rendered caption and its input are adopted in place: the container builds
+/// as element 1, the input as 2, the caption's text as 3 and the label around it as 4,
+/// the label standing before the input in the markup.
+#[wasm_bindgen_test]
+fn hydrate_adopts_a_captioned_text_field() {
+  use skene_gui::{RawTextField, TextEntry};
+
+  let root = server_root(
+    "<div data-h=\"1\"><!--s:0--><label for=\"x\" data-h=\"4\"><span data-h=\"3\">Name</span></label><input type=\"text\" id=\"x\" data-skene-control=\"\" data-h=\"2\"><!--e:0--></div>",
+  );
+  let server_label = root
+    .query_selector("label")
+    .expect("query")
+    .expect("a label");
+  let server_input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input");
+
+  hydrate(root.clone(), "", || {
+    Container::new().set_child(RawTextField::new(TextEntry::new()).set_label("Name"))
+  });
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(
+    element_count(&root),
+    4,
+    "nothing was built beside the server's"
+  );
+
+  let label = root
+    .query_selector("label")
+    .expect("query")
+    .expect("a label");
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("an input");
+
+  assert!(label == server_label, "the caption was adopted");
+  assert!(input == server_input, "the input was adopted");
+  assert_eq!(label.next_element_sibling().as_ref(), Some(&input));
+  assert_eq!(label.get_attribute("for"), Some(input.id()));
 
   web::uninstall();
 }
@@ -428,4 +658,57 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
       .is_none(),
     "and so does the delta",
   );
+}
+
+/// The server's `title` is the scriptless tooltip; hydration removes it as it wires
+/// the bubble, so the browser's own tooltip never shows beside ours.
+#[wasm_bindgen_test]
+fn hydrate_removes_the_servers_title_from_a_tooltips_child() {
+  let app =
+    || Tooltip::new("Saves your work").set_child(Container::new().set_child(Text::new("Save")));
+  // The client never writes `title`; the server does, so the served markup carries it
+  // by hand where the server would have put it.
+  let (markup, _) = served(move || skene_gui::IntoView::into_view(app()));
+  let markup = markup.replacen(
+    "aria-describedby=",
+    "title=\"Saves your work\" aria-describedby=",
+    1,
+  );
+
+  assert!(markup.contains("title=\"Saves your work\""), "{markup}");
+
+  let root = server_root(&markup);
+
+  document()
+    .body()
+    .expect("a body")
+    .append_child(&root)
+    .expect("connect the root");
+
+  hydrate(root.clone(), "", app);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+
+  let described = root
+    .query_selector("[aria-describedby]")
+    .expect("query")
+    .expect("the described box");
+
+  assert_eq!(
+    described.get_attribute("title"),
+    None,
+    "{}",
+    root.inner_html()
+  );
+  assert_eq!(
+    described.get_attribute("aria-describedby"),
+    root
+      .query_selector("[popover]")
+      .expect("query")
+      .expect("the bubble")
+      .get_attribute("id")
+  );
+
+  web::uninstall();
+  root.remove();
 }

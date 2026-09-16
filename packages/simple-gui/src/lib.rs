@@ -16,6 +16,9 @@ pub type SimpleButton = skene_simple::SimpleButton<ActiveDriver>;
 pub type SimpleCard = skene_simple::SimpleCard<ActiveDriver>;
 /// See [`skene_simple::SimpleCheckbox`].
 pub type SimpleCheckbox = skene_simple::SimpleCheckbox<ActiveDriver>;
+/// See [`skene_simple::SimpleContextMenu`].
+pub type SimpleContextMenu<C = skene_core::NoChild> =
+  skene_simple::SimpleContextMenu<ActiveDriver, C>;
 /// See [`skene_simple::SimplePicker`].
 pub type SimplePicker = skene_simple::SimplePicker<ActiveDriver>;
 /// See [`skene_simple::SimpleRadio`].
@@ -26,6 +29,8 @@ pub type SimpleSlider = skene_simple::SimpleSlider<ActiveDriver>;
 pub type SimpleTextEditor = skene_simple::SimpleTextEditor<ActiveDriver>;
 /// See [`skene_simple::SimpleTextField`].
 pub type SimpleTextField = skene_simple::SimpleTextField<ActiveDriver>;
+/// See [`skene_simple::SimpleTooltip`].
+pub type SimpleTooltip<C = skene_core::NoChild> = skene_simple::SimpleTooltip<ActiveDriver, C>;
 /// See [`skene_simple::SimpleRadioGroup`].
 pub type SimpleRadioGroup<C = skene_core::NoChild> =
   skene_simple::SimpleRadioGroup<ActiveDriver, C>;

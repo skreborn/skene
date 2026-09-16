@@ -209,3 +209,101 @@ fn mouse_off_ignores_every_mouse_event() {
     assert_eq!(clicks.get_untracked(), 1, "the keyboard still clicks");
   });
 }
+
+/// Mounts a button counting its clicks at the top of the frame.
+fn mount_button() -> Signal<u32> {
+  let clicks = Signal::new(0);
+
+  let _ = tui::mount(move || {
+    RawButton::new(Activate::new())
+      .set_label(Label::new(Text::new("press")))
+      .handle_click(move || clicks.update(|count| *count += 1))
+      .into_any()
+      .build()
+  });
+  let _ = tui::render_to_text(20, 2);
+
+  clicks
+}
+
+/// The mouse key hands the mouse to the terminal—the hover path empties and every
+/// mouse event is ignored—and pressed again takes it back; so does any other key,
+/// which then acts as usual.
+#[test]
+fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
+  with_launch(tui::Launch::new(), || {
+    let clicks = mount_button();
+
+    tui::trigger_mouse_move(2, 0);
+
+    assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
+
+    tui::trigger_key(tui::MOUSE_KEY);
+
+    assert_eq!(tui::current_cursor(), None, "the hover path empties");
+
+    tui::trigger_mouse_move(2, 0);
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(tui::current_cursor(), None);
+    assert_eq!(clicks.get_untracked(), 0, "the click never reaches the app");
+
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(clicks.get_untracked(), 1, "the key takes the mouse back");
+    assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
+
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Tab");
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(clicks.get_untracked(), 2, "any key takes the mouse back");
+  });
+}
+
+/// The mouse key is the launch's to choose; `None` leaves the mouse where the launch
+/// put it, and a launch without the mouse has nothing to hand over.
+#[test]
+fn the_mouse_key_is_the_launches_choice() {
+  with_launch(tui::Launch::new().set_mouse_key(Some("F9")), || {
+    let clicks = mount_button();
+
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(
+      clicks.get_untracked(),
+      1,
+      "the default key is an ordinary key"
+    );
+
+    tui::trigger_key("F9");
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(
+      clicks.get_untracked(),
+      1,
+      "the chosen key releases the mouse"
+    );
+  });
+
+  with_launch(tui::Launch::new().set_mouse_key(None), || {
+    let clicks = mount_button();
+
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(clicks.get_untracked(), 1, "no key releases the mouse");
+  });
+
+  with_launch(tui::Launch::new().set_mouse(false), || {
+    let clicks = mount_button();
+
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_mouse_click(2, 0);
+
+    assert_eq!(clicks.get_untracked(), 0, "the mouse stays the terminal's");
+  });
+}

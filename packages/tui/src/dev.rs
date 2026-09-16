@@ -249,10 +249,7 @@ fn adopt_focus() {
         .record_mut(handle)
         .and_then(|record| record.kind.field_mut())
       {
-        let count = field.count();
-
-        field.caret = caret.min(count);
-        field.anchor = anchor.map(|anchor| anchor.min(count));
+        field.select(anchor.unwrap_or(caret), caret);
       }
 
       store.settle_entry(handle);

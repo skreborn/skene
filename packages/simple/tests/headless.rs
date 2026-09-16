@@ -14,7 +14,6 @@ use skene_core::{
   Inset,
   KeyEvent,
   Media,
-  Modifiers,
   NoProperty,
   Part,
   Property,
@@ -44,7 +43,7 @@ use skene_headless::{
   root_definitions,
   set_hovered,
   set_scheme,
-  slot_value,
+  slot_leaf,
   text,
   trigger_blur,
   trigger_change,
@@ -316,15 +315,17 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
   let track = children(stack)[1];
   let fill = children(children(stack)[2])[1];
   let thumb = children(children(children(stack)[3])[1])[1];
-  let fill_width = || match slot_value(fill, Slot(0)) {
-    Some(SlotValue::Box(BoxValue::Dimension(Dimension::Fraction(fraction)))) => fraction,
+  let fill_width = || match slot_leaf(fill, Slot(0)) {
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::Dimension(Dimension::Fraction(fraction))))) => {
+      fraction
+    }
     other => panic!("the fill's width is a derived fraction, not {other:?}"),
   };
-  let thumb_left = || match slot_value(thumb, Slot(0)) {
-    Some(SlotValue::Box(BoxValue::DimensionInset(Inset {
+  let thumb_left = || match slot_leaf(thumb, Slot(0)) {
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::DimensionInset(Inset {
       left: Dimension::Fraction(fraction),
       ..
-    }))) => fraction,
+    })))) => fraction,
     other => panic!("the thumb's pinned edge is a derived fraction, not {other:?}"),
   };
 
@@ -582,6 +583,8 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
       .set_options([("sm", "Small"), ("md", "Medium"), ("lg", "Large")])
       .bind_value(value)
   });
+  // The picker builds its form in a segment of its own.
+  let picker = skene_core::Scene::<Headless>::with(|scene| scene.segment_nodes(picker))[0];
   let face = children(picker)[0];
   let shown = children(face)[1];
   let indicator = children(face)[2];
@@ -592,10 +595,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let row = |index: usize| children(column)[index + 1];
   let check = |index: usize| children(row(index))[0];
   let caption = |index: usize| children(row(index))[1];
-  let key = |key: &str| KeyEvent {
-    key: key.to_owned(),
-    modifiers: Modifiers::default(),
-  };
+  let key = |key: &str| KeyEvent::new(key);
 
   assert_eq!(text(shown), Some("Medium".to_owned()));
   assert_eq!(part(indicator), Some(Part::Face));

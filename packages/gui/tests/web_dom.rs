@@ -11,6 +11,7 @@
 use std::{
   cell::{Cell, RefCell},
   rc::Rc,
+  time::Duration,
 };
 
 use skene_gui::{
@@ -19,11 +20,13 @@ use skene_gui::{
   Color,
   Column,
   Container,
+  ContextMenu,
   Deferred,
   FocusHandle,
   Grid,
   HasChildren,
   Inset,
+  MenuItem,
   RadioMember,
   RawCheckbox,
   RawRadio,
@@ -34,9 +37,13 @@ use skene_gui::{
   Row,
   Stack,
   Text,
+  TextDecoration,
+  TextDecorationStyle,
   TextEntry,
+  TextSelection,
   Theme,
   Toggle,
+  Tooltip,
   Typography,
   View,
   core::PointerButton,
@@ -206,6 +213,127 @@ fn text_is_a_span_with_its_content() {
 
   assert_eq!(element.tag_name(), "SPAN");
   assert_eq!(element.text_content().as_deref(), Some("hello"));
+}
+
+/// A run's decoration compiles to the `text-decoration` longhands: the line, its style
+/// and its color, each its own property.
+#[wasm_bindgen_test]
+fn a_decorated_text_computes_its_line_style_and_color() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Text::new("marked")
+      .set_decoration(TextDecoration::Underline)
+      .set_decoration_style(TextDecorationStyle::Wavy)
+      .set_decoration_color(Color::srgb(1., 0., 0.))
+      .build()
+  });
+
+  let element = only_child(&root);
+
+  assert_eq!(computed(&element, "text-decoration-line"), "underline");
+  assert_eq!(computed(&element, "text-decoration-style"), "wavy");
+  assert_eq!(
+    computed(&element, "text-decoration-color"),
+    probe(&root, &css(Color::srgb(1., 0., 0.)))
+  );
+}
+
+/// A text entry's selection is controlled on the web: the bound signal selects inside
+/// the input, cluster indices mapped to UTF-16 units and the direction kept, and the
+/// browser's selection change writes the signal back in clusters.
+#[wasm_bindgen_test]
+async fn a_text_entrys_selection_binds_both_ways() {
+  let (_guard, root) = fresh_root();
+  let selection = Signal::new(TextSelection::new(1, 2));
+
+  let _ = mount(move || {
+    RawTextField::new(
+      TextEntry::new()
+        .set_value("a\u{1f44d}b")
+        .bind_selection(selection),
+    )
+    .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the input")
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+  let range = |input: &HtmlInputElement| {
+    (
+      input.selection_start().expect("a start"),
+      input.selection_end().expect("an end"),
+      input.selection_direction().expect("a direction"),
+    )
+  };
+
+  assert_eq!(
+    range(&input),
+    (Some(1), Some(3), Some("forward".to_owned()))
+  );
+
+  selection.set(TextSelection::new(9, 1));
+
+  assert_eq!(
+    range(&input),
+    (Some(1), Some(4), Some("backward".to_owned())),
+    "an index past the value clamps to its end"
+  );
+
+  let _ = input.focus();
+  let _ = input.set_selection_range(0, 3);
+
+  next_frame().await;
+
+  assert_eq!(selection.get(), TextSelection::new(0, 2));
+}
+
+/// A `keyup` reaches the box's key-up handler through dispatch, and a `keydown`
+/// carries the browser's repeat flag.
+#[wasm_bindgen_test]
+fn a_key_release_and_a_repeat_reach_the_box() {
+  let (_guard, root) = fresh_root();
+  let released = Signal::new((String::new(), String::new()));
+  let repeated = Signal::new(false);
+
+  let _ = mount(move || {
+    Container::new()
+      .handle_key_down(move |event| repeated.set(event.repeat))
+      .handle_key_up(move |event| released.set((event.key.clone(), event.code.clone())))
+      .set_child(RawTextField::new(TextEntry::new()))
+      .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("query")
+    .expect("the input");
+  let key = |kind: &str, key: &str, repeat: bool| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_key(key);
+    init.set_code("KeyQ");
+    init.set_repeat(repeat);
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict(kind, &init).expect("a key");
+
+    let _ = input.dispatch_event(&event);
+  };
+
+  key("keydown", "a", true);
+  key("keyup", "a", false);
+
+  assert!(repeated.get(), "the repeat flag came through");
+  assert_eq!(
+    released.get(),
+    ("a".to_owned(), "KeyQ".to_owned()),
+    "the key and its physical code came through"
+  );
 }
 
 #[wasm_bindgen_test]
@@ -1344,13 +1472,118 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   );
 }
 
-/// A painted box carries a canvas the size of the box, drawn through vello: on the GPU
-/// where the browser has WebGPU, else on the CPU and blitted, so the fill shows either
-/// way.
+/// A text field's caption is a `<label for>` placed before the input among its
+/// siblings, naming the input's id, and it leaves with the field.
+#[wasm_bindgen_test]
+fn a_text_fields_caption_is_a_label_before_the_input() {
+  let (_installed, root) = fresh_root();
+  let shown = Signal::new(true);
+  let _ = mount(move || {
+    Container::new()
+      .set_child(derived(move || {
+        if shown.get() {
+          RawTextField::new(TextEntry::new())
+            .set_label("Name")
+            .build()
+        }
+        else {
+          empty().build()
+        }
+      }))
+      .build()
+  });
+
+  let container = only_child(&root);
+  let label = container
+    .query_selector("label")
+    .expect("query")
+    .expect("the caption");
+  let input = container
+    .query_selector("input")
+    .expect("query")
+    .expect("the input");
+
+  assert_eq!(
+    label.next_element_sibling().as_ref(),
+    Some(&input),
+    "the label sits right before the input"
+  );
+  assert_eq!(label.get_attribute("for"), Some(input.id()));
+  assert!(!input.id().is_empty(), "the input carries an id");
+  assert_eq!(label.text_content().as_deref(), Some("Name"));
+  assert_eq!(
+    input.child_element_count(),
+    0,
+    "nothing lands inside the input"
+  );
+
+  shown.set(false);
+
+  assert!(
+    container.query_selector("label").expect("query").is_none(),
+    "the caption left with the field"
+  );
+  assert!(container.query_selector("input").expect("query").is_none());
+}
+
+/// A lazy column of estimated items measures each one it builds through the browser's
+/// size observation: taller measures shrink the window and grow the trailing spacer.
+#[wasm_bindgen_test]
+async fn a_lazy_column_measures_its_estimated_items() {
+  use skene_gui::{ItemExtent, LazyColumn};
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Container::new()
+      .set_height(50.)
+      .set_child(
+        LazyColumn::new()
+          .set_item_height(ItemExtent::Estimated(10.))
+          .set_overscan(0)
+          .derive_items(
+            || 0..100,
+            |index| *index,
+            |index| {
+              Container::new()
+                .set_height(20.)
+                .set_child(Text::new(index.to_string()))
+            },
+          ),
+      )
+      .build()
+  });
+
+  let list = only_child(&root).first_element_child().expect("the list");
+  let items = |list: &Element| list.child_element_count() - 2;
+
+  // The viewport measures first, five items of the estimate build, and their measures
+  // arrive next, each through the browser's observer.
+  for _ in 0..20 {
+    if items(&list) == 3 {
+      break;
+    }
+
+    next_frame().await;
+  }
+
+  assert_eq!(items(&list), 3, "three measured items fill the 50 pixels");
+
+  let trailing = list.last_element_child().expect("the trailing spacer");
+
+  assert_eq!(
+    computed(&trailing, "height"),
+    "990px",
+    "the observer reported all five before the window shrank, so five measures and \
+     ninety-five estimates make the spacer"
+  );
+}
+
+/// A painted box carries a canvas the size of the box, drawn through vello on the GPU:
+/// the tier runs Firefox with WebGPU on, so the canvas holds a WebGPU context and no 2d
+/// one, and the fill shows through it. `web_painted` covers the CPU path.
 #[wasm_bindgen_test]
 async fn a_painted_box_draws_into_its_canvas() {
   use skene_gui::{Painted, core::Dimension, kurbo::Rect};
-  use wasm_bindgen::JsValue;
   use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
   /// The canvas's center pixel, read through a scratch 2d canvas so a WebGPU canvas
@@ -1432,12 +1665,165 @@ async fn a_painted_box_draws_into_its_canvas() {
     "the center pixel is the fill"
   );
 
-  let blitted = matches!(canvas.get_context("2d"), Ok(Some(_)));
+  assert!(
+    matches!(canvas.get_context("2d"), Ok(None)),
+    "painted on the GPU, so the canvas holds no 2d context"
+  );
+}
 
-  web_sys::console::log_1(&JsValue::from_str(if blitted {
-    "painted on the CPU"
-  }
-  else {
-    "painted on the GPU"
-  }));
+/// Dispatches a bubbling pointer event of `kind` at `element`.
+fn pointer(element: &Element, kind: &str) {
+  let init = web_sys::PointerEventInit::new();
+
+  init.set_bubbles(true);
+
+  let event =
+    web_sys::PointerEvent::new_with_event_init_dict(kind, &init).expect("a pointer event");
+
+  let _ = element.dispatch_event(&event);
+}
+
+/// A hydrated tooltip carries no `title`: the bubble is a hint popover the described
+/// box names, opening once the pointer has rested for the delay, closing as it leaves,
+/// and opening at once on focus.
+#[wasm_bindgen_test]
+async fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Tooltip::new("Saves your work")
+      .set_delay(Duration::from_millis(10))
+      .set_child(
+        Container::new()
+          .set_focus_order(skene_gui::FocusOrder::Auto)
+          .set_child(Text::new("Save")),
+      )
+      .build()
+  });
+
+  let described = root
+    .query_selector("[aria-describedby]")
+    .expect("query")
+    .expect("the described box");
+  let bubble = root
+    .query_selector("[popover]")
+    .expect("query")
+    .expect("the bubble");
+  let open = || bubble.matches(":popover-open").unwrap_or(false);
+
+  assert_eq!(described.get_attribute("title"), None, "no browser tooltip");
+  assert_eq!(
+    described.get_attribute("aria-describedby"),
+    bubble.get_attribute("id")
+  );
+  assert_eq!(bubble.get_attribute("popover").as_deref(), Some("hint"));
+  assert!(!open());
+
+  pointer(&described, "pointerover");
+
+  assert!(!open(), "the pointer has not rested yet");
+
+  next_frame().await;
+
+  assert!(open(), "the delay passed");
+
+  pointer(&described, "pointerout");
+
+  assert!(!open(), "the pointer left");
+
+  html(&described).focus().expect("focus the box");
+
+  assert!(open(), "focus opens at once");
+
+  html(&described).blur().expect("blur the box");
+
+  assert!(!open());
+}
+
+/// Dispatches a bubbling, cancelable `contextmenu` from a secondary button at
+/// `element`, returning whether the browser's own menu was prevented.
+fn context_menu(element: &Element) -> bool {
+  let init = web_sys::MouseEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_cancelable(true);
+  init.set_button(2);
+  init.set_client_x(30);
+  init.set_client_y(20);
+
+  let event = web_sys::MouseEvent::new_with_mouse_event_init_dict("contextmenu", &init)
+    .expect("a mouse event");
+  let _ = element.dispatch_event(&event);
+
+  event.default_prevented()
+}
+
+/// A context menu is opted into per view: a `contextmenu` on the wrapped view opens
+/// the menu's list as a popover pinned at the pointer with the browser's own menu
+/// prevented, an item runs and closes it, and a view outside the wrapper keeps the
+/// browser's menu.
+#[wasm_bindgen_test]
+fn a_context_menu_takes_the_browsers_only_where_a_view_opts_in() {
+  let (_guard, root) = fresh_root();
+  let chosen = Signal::new(String::new());
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        ContextMenu::new()
+          .set_items([
+            MenuItem::new("Rename").handle_select(move || chosen.set("rename".to_owned())),
+            MenuItem::separator(),
+            MenuItem::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
+          ])
+          .set_child(Container::new().set_child(Text::new("note"))),
+        Container::new().set_child(Text::new("plain")),
+      ))
+      .build()
+  });
+  let column = only_child(&root);
+  let served = column.first_element_child().expect("the served box");
+  let plain = column.last_element_child().expect("the plain box");
+  let list = root
+    .query_selector("[popover]")
+    .expect("query")
+    .expect("the list");
+  let open = || list.matches(":popover-open").unwrap_or(false);
+
+  assert!(
+    list.query_selector("[role=menu]").expect("query").is_some(),
+    "the list holds a menu"
+  );
+  assert!(!open());
+  assert!(
+    !context_menu(&plain),
+    "a plain box keeps the browser's menu"
+  );
+  assert!(!open());
+  assert!(context_menu(&served), "the wrapped box prevents it");
+  assert!(open(), "and opens the list");
+
+  let style = html(&list).style();
+
+  assert_eq!(style.get_property_value("position").as_deref(), Ok("fixed"));
+  assert_eq!(style.get_property_value("left").as_deref(), Ok("30px"));
+  assert_eq!(style.get_property_value("top").as_deref(), Ok("20px"));
+
+  let items = list.query_selector_all("[role=menuitem]").expect("query");
+
+  assert_eq!(items.length(), 2, "a separator is no item");
+
+  let first: Element = items.item(0).expect("the first item").unchecked_into();
+  let second: Element = items.item(1).expect("the second item").unchecked_into();
+
+  assert!(
+    document()
+      .active_element()
+      .is_some_and(|active| active == first),
+    "the first item takes focus"
+  );
+
+  html(&second).click();
+
+  assert_eq!(chosen.get(), "delete");
+  assert!(!open(), "running an item closes the list");
 }

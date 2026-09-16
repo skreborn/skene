@@ -1,12 +1,13 @@
 //! The terminal's editing of a text entry: the caret and the selection over the value,
 //! the visible window, and the keys that move, select and edit.
 
-use skene_core::{KeyEvent, notify_change};
+use skene_core::{KeyEvent, notify_change, notify_selection_change};
 
 use crate::{
   Tui,
   paint::wrap_spans,
   store::{AUTOSCROLL_INTERVAL, Drag, Field, Handle, Store},
+  text,
   with_store,
 };
 
@@ -19,8 +20,11 @@ enum CharClass {
   Word,
 }
 
-/// The class of one character: word characters are alphanumerics and `_`.
-fn char_class(character: char) -> CharClass {
+/// The class of one cluster, by its first character: word characters are
+/// alphanumerics and `_`.
+fn char_class(cluster: &str) -> CharClass {
+  let character = cluster.chars().next().unwrap_or(' ');
+
   if character.is_whitespace() {
     CharClass::Whitespace
   }
@@ -32,20 +36,25 @@ fn char_class(character: char) -> CharClass {
   }
 }
 
+/// The clusters of `text`.
+fn clusters(text: &str) -> Vec<&str> {
+  text::clusters(text).map(|(_, cluster)| cluster).collect()
+}
+
 /// The caret position at the start of the word before `caret`: whitespace skipped,
 /// then one same-class run.
 fn word_before(value: &str, caret: usize) -> usize {
-  let characters: Vec<char> = value.chars().collect();
-  let mut position = caret;
+  let clusters = clusters(value);
+  let mut position = caret.min(clusters.len());
 
-  while position > 0 && char_class(characters[position - 1]) == CharClass::Whitespace {
+  while position > 0 && char_class(clusters[position - 1]) == CharClass::Whitespace {
     position -= 1;
   }
 
   if position > 0 {
-    let class = char_class(characters[position - 1]);
+    let class = char_class(clusters[position - 1]);
 
-    while position > 0 && char_class(characters[position - 1]) == class {
+    while position > 0 && char_class(clusters[position - 1]) == class {
       position -= 1;
     }
   }
@@ -56,17 +65,17 @@ fn word_before(value: &str, caret: usize) -> usize {
 /// The caret position at the end of the word after `caret`: whitespace skipped, then
 /// one same-class run.
 fn word_after(value: &str, caret: usize) -> usize {
-  let characters: Vec<char> = value.chars().collect();
+  let clusters = clusters(value);
   let mut position = caret;
 
-  while position < characters.len() && char_class(characters[position]) == CharClass::Whitespace {
+  while position < clusters.len() && char_class(clusters[position]) == CharClass::Whitespace {
     position += 1;
   }
 
-  if position < characters.len() {
-    let class = char_class(characters[position]);
+  if position < clusters.len() {
+    let class = char_class(clusters[position]);
 
-    while position < characters.len() && char_class(characters[position]) == class {
+    while position < clusters.len() && char_class(clusters[position]) == class {
       position += 1;
     }
   }
@@ -74,25 +83,25 @@ fn word_after(value: &str, caret: usize) -> usize {
   position
 }
 
-/// The bounds of the same-class run around the character at `at`—a word, a whitespace
+/// The bounds of the same-class run around the cluster at `at`—a word, a whitespace
 /// gap, or a punctuation run—`at` clamped into a non-empty `text`.
 pub(crate) fn word_bounds(text: &str, at: usize) -> (usize, usize) {
-  let characters: Vec<char> = text.chars().collect();
+  let clusters = clusters(text);
 
-  if characters.is_empty() {
+  if clusters.is_empty() {
     return (0, 0);
   }
 
-  let at = at.min(characters.len() - 1);
-  let class = char_class(characters[at]);
+  let at = at.min(clusters.len() - 1);
+  let class = char_class(clusters[at]);
   let mut from = at;
   let mut to = at + 1;
 
-  while from > 0 && char_class(characters[from - 1]) == class {
+  while from > 0 && char_class(clusters[from - 1]) == class {
     from -= 1;
   }
 
-  while to < characters.len() && char_class(characters[to]) == class {
+  while to < clusters.len() && char_class(clusters[to]) == class {
     to += 1;
   }
 
@@ -102,16 +111,16 @@ pub(crate) fn word_bounds(text: &str, at: usize) -> (usize, usize) {
 /// The bounds of the hard line around `at` in `text`: from after the previous line
 /// break to the next one.
 fn line_bounds(text: &str, at: usize) -> (usize, usize) {
-  let characters: Vec<char> = text.chars().collect();
-  let at = at.min(characters.len());
-  let from = characters[..at]
+  let clusters = clusters(text);
+  let at = at.min(clusters.len());
+  let from = clusters[..at]
     .iter()
-    .rposition(|character| *character == '\n')
+    .rposition(|cluster| *cluster == "\n")
     .map_or(0, |index| index + 1);
-  let to = characters[at..]
+  let to = clusters[at..]
     .iter()
-    .position(|character| *character == '\n')
-    .map_or(characters.len(), |index| at + index);
+    .position(|cluster| *cluster == "\n")
+    .map_or(clusters.len(), |index| at + index);
 
   (from, to)
 }
@@ -127,7 +136,7 @@ fn caret_line(value: &str, caret: usize, width: usize) -> (Vec<(usize, String)>,
   (lines, row)
 }
 
-/// A window of `span` cells over `extent` of them, starting at `window` and settled
+/// A window of `span` rows over `extent` of them, starting at `window` and settled
 /// around `at`: held where `at` stays in view, moved the least that brings it in, and
 /// never past the extent's end.
 pub(crate) const fn settled_window(window: usize, at: usize, extent: usize, span: usize) -> usize {
@@ -151,8 +160,8 @@ pub(crate) type VisibleRows = (Vec<(usize, String)>, Option<(usize, usize)>);
 
 impl Field {
   /// The window's geometry at an inner width: the caret's position along it, the
-  /// extent it covers and the span it shows—columns of the value plus the caret's for
-  /// a field, wrapped rows for an editor.
+  /// extent it covers and the span it shows—the clusters of the value for a field,
+  /// wrapped rows for an editor, the span in cells or rows.
   fn window_geometry(&self, inner: usize) -> (usize, usize, usize) {
     if self.lines <= 1 {
       return (self.caret, self.count() + 1, inner.max(1));
@@ -165,6 +174,12 @@ impl Field {
 
   /// The window settled around the caret at an inner width.
   fn settled_window(&self, inner: usize) -> usize {
+    if self.lines <= 1 {
+      return self
+        .clusters
+        .settled_window(self.window, self.caret, inner.max(1));
+    }
+
     let (at, extent, span) = self.window_geometry(inner);
 
     settled_window(self.window, at, extent, span)
@@ -172,6 +187,10 @@ impl Field {
 
   /// How far the window can scroll from its start, at an inner width.
   pub(crate) fn window_limit(&self, inner: usize) -> usize {
+    if self.lines <= 1 {
+      return self.clusters.last_window(inner.max(1));
+    }
+
     let (_, extent, span) = self.window_geometry(inner);
 
     extent.saturating_sub(span)
@@ -227,17 +246,28 @@ impl Field {
     };
 
     if self.lines <= 1 {
-      let row: String = text.chars().skip(window).take(inner).collect();
-      let caret = (window..window + inner)
-        .contains(&self.caret)
-        .then(|| (0, self.caret - window));
+      let shown = if empty {
+        text
+      }
+      else {
+        &text[self.byte_of(window)..]
+      };
+      let row = text::fit(shown, inner).to_owned();
+      let column = self
+        .clusters
+        .column_of(self.caret)
+        .checked_sub(self.clusters.column_of(window));
+      let caret = column
+        .filter(|column| self.caret >= window && *column < inner)
+        .map(|column| (0, column));
 
       return (vec![(window, row)], caret);
     }
 
     let lines = usize::from(self.lines);
     let (wrapped, row) = caret_line(text, self.caret, inner);
-    let column = (self.caret - wrapped[row].0).min(inner);
+    let (row_start, line) = &wrapped[row];
+    let column = text::cells(text::slice(line, 0, self.caret - row_start)).min(inner);
     let rows = wrapped.into_iter().skip(window).take(lines).collect();
     let caret = (window..window + lines)
       .contains(&row)
@@ -253,7 +283,7 @@ impl Field {
     let column = column.min(inner - 1);
 
     if self.lines <= 1 {
-      return (window + column).min(self.count());
+      return self.clusters.index_at_column(window, column);
     }
 
     let lines = usize::from(self.lines);
@@ -261,7 +291,7 @@ impl Field {
     let target = (window + row.min(lines - 1)).min(wrapped.len() - 1);
     let (start, line) = &wrapped[target];
 
-    start + column.min(line.chars().count())
+    start + text::index_at_column(line, column)
   }
 }
 
@@ -275,7 +305,8 @@ enum Edit {
 /// `Backspace`/`Delete` remove the selection or one character around the caret;
 /// arrows and `Home`/`End` move the caret, extending the selection under `Shift` and
 /// collapsing it otherwise; `Ctrl` makes the arrows jump and the removals delete whole
-/// words, `Ctrl+A` selects the value, and an editor's `Enter` breaks the line while
+/// words, `Ctrl+A` selects the value, `Ctrl+Z` undoes the last edit and `Ctrl+Shift+Z`
+/// or `Ctrl+Y` redoes it, and an editor's `Enter` breaks the line while
 /// `ArrowUp`/`ArrowDown` move between lines.
 // A match over the keys; length is the key count, not complexity.
 #[expect(clippy::too_many_lines)]
@@ -296,6 +327,8 @@ fn apply(event: &KeyEvent, field: &mut Field, width: usize) -> Option<Edit> {
 
       Some(Edit::Caret)
     }
+    "z" | "Z" if ctrl && !alt && !shift => field.undo().then_some(Edit::Value),
+    "z" | "Z" | "y" | "Y" if ctrl && !alt => field.redo().then_some(Edit::Value),
     // A removal over a selection removes the selection alone, by the word or not.
     "Delete" if selection.is_some() => {
       let (from, to) = selection?;
@@ -406,7 +439,7 @@ fn apply(event: &KeyEvent, field: &mut Field, width: usize) -> Option<Edit> {
       };
       let (start, line) = &wrapped[target];
 
-      field.move_caret(start + column.min(line.chars().count()), shift);
+      field.move_caret(start + column.min(text::count(line)), shift);
 
       Some(Edit::Caret)
     }
@@ -820,6 +853,18 @@ pub(crate) fn edit_focused(event: &KeyEvent) {
   if let Some((node, value)) = changed {
     notify_change::<Tui>(node, &value);
   }
+
+  report_selections();
+}
+
+/// Reports every entry's selection that moved since it was last reported, through
+/// the node's selection handlers.
+pub(crate) fn report_selections() {
+  let reports = with_store(Store::selection_reports);
+
+  for (node, selection) in reports {
+    notify_selection_change::<Tui>(node, selection);
+  }
 }
 
 /// Inserts `text` into the focused entry in place of its selection, reporting the
@@ -862,9 +907,11 @@ fn paste_into(target: Option<Handle>, text: &str) {
   if let Some((node, value)) = changed {
     notify_change::<Tui>(node, &value);
   }
+
+  report_selections();
 }
 
-/// Stages the focused entry's selection for the clipboard and removes it, reporting
+/// Stages the clipboard entry's selection for the clipboard and removes it, reporting
 /// the changed value through the node's change handlers; nothing happens when the
 /// launch offers no `Copy`.
 pub(crate) fn cut_focused() {
@@ -873,8 +920,10 @@ pub(crate) fn cut_focused() {
       return None;
     }
 
+    let entry = store.clipboard_entry()?;
+
     store.copy_selection();
-    store.edit_focused_entry(|field, _| {
+    store.edit_entry(entry, |field, _| {
       let (from, to) = field.selection()?;
 
       field.remove(from, to);
@@ -886,4 +935,6 @@ pub(crate) fn cut_focused() {
   if let Some((node, value)) = changed {
     notify_change::<Tui>(node, &value);
   }
+
+  report_selections();
 }

@@ -1,6 +1,6 @@
 //! The wrapper placing a grid child in the grid's tracks.
 
-use std::{marker::PhantomData, rc::Rc};
+use std::marker::PhantomData;
 
 use skene_core::{
   Alignment,
@@ -16,6 +16,7 @@ use skene_core::{
   Line,
   NoChild,
   Scene,
+  StaticLeaf,
   Value,
   View,
 };
@@ -70,10 +71,14 @@ impl<D: Driver, C> GridCell<D, C> {
     self
   }
 
-  /// Derives the row placement from the signals `row` reads.
+  /// Derives the row placement from the signals `row` reads: a value, a token or an
+  /// expression.
   #[inline(always)]
-  pub fn derive_row(mut self, row: impl Fn() -> Line<GridPlacement> + 'static) -> Self {
-    self.row = Some(Value::new(Leaf::Derived(Rc::new(row))));
+  pub fn derive_row<R: Into<StaticLeaf<Line<GridPlacement>>>>(
+    mut self,
+    row: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.row = Some(Value::new(Leaf::derive(row)));
 
     self
   }
@@ -86,10 +91,14 @@ impl<D: Driver, C> GridCell<D, C> {
     self
   }
 
-  /// Derives the column placement from the signals `column` reads.
+  /// Derives the column placement from the signals `column` reads: a value, a token or
+  /// an expression.
   #[inline(always)]
-  pub fn derive_column(mut self, column: impl Fn() -> Line<GridPlacement> + 'static) -> Self {
-    self.column = Some(Value::new(Leaf::Derived(Rc::new(column))));
+  pub fn derive_column<R: Into<StaticLeaf<Line<GridPlacement>>>>(
+    mut self,
+    column: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.column = Some(Value::new(Leaf::derive(column)));
 
     self
   }
@@ -105,10 +114,14 @@ impl<D: Driver, C> GridCell<D, C> {
     self
   }
 
-  /// Derives the child's alignment within its cell from the signals `alignment` reads.
+  /// Derives the child's alignment within its cell from the signals `alignment` reads:
+  /// a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
-    self.alignment = Some(Value::new(Leaf::Derived(Rc::new(alignment))));
+  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.alignment = Some(Value::new(Leaf::derive(alignment)));
 
     self
   }

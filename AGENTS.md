@@ -23,7 +23,10 @@
   vocabulary—no per-platform `impl View`, no "backend" concept.
 - A **driver** is a crate implementing `Driver`: `skene-web` (the csr and ssr leaves),
   `skene-headless` (the host driver every facade compiles against off its target, driven
-  by tests), later `skene-native`; `skene-tui` carries its own. What every driver of one
+  by tests), later `skene-native`; `skene-tui` carries its own, down to the terminal
+  device: its `tty`, `parse` and `escape` modules are the whole terminal layer, no
+  terminal crate beneath, so a reply a new capability needs is parsed in the change
+  that asks for it. What every driver of one
   medium shares above the spine lives in that medium's core crate—`skene-gui-core`
   (`GuiExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TuiExt`,
   `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no medium.
@@ -37,10 +40,10 @@
   `PlatformView`), so a low-level view is written against exactly the bound it needs and
   is realized through the same scene and node ids as a built-in (`skene_views::LowLevel`
   registers the sink it made as a node). `Painted` (vello) is the portable low-level path
-  for pixel media, through `skene-gui-core`'s `Painting` extension: the browser leaf
-  renders the scene on the CPU into a canvas, the headless driver renders it to pixels a
-  test reads, the server leaf renders it empty; the native realization comes with the
-  native driver.
+  for pixels, through `skene-views`' `Painting` extension: the browser leaf renders the
+  scene into a canvas, the headless driver renders it to pixels a test reads, the
+  terminal shows it through its graphics protocol where one is proven, the server leaf
+  renders it empty; the native realization comes with the native driver.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
   `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
   native driver, later; every other host → the headless driver). No feature flags.
@@ -64,6 +67,10 @@
   `GridTrack::Flex`; `spacing`, not `gap`; `columns`/`implicit_columns`/`flow` on a
   grid, not templates and auto-flow. CSS nomenclature lives only inside the web
   driver's mapping layer. This is settled—do not re-litigate it toward CSS naming.
+  A run's decoration is three properties—`decoration` (`TextDecoration`),
+  `decoration_style` (`TextDecorationStyle`) and `decoration_color`—Flutter's names;
+  a link underlines unless its decoration says otherwise, and the terminal keeps the
+  styles and color only where a DECRQSS probe proves it, a plain underline elsewhere.
 - **Layout is statically constrained.** Each layout is its own container view—`Row`,
   `Column`, `Grid`, `Stack`—exposing only the properties it honors; per-child properties
   travel in wrapper views (`Flexible`, `Pinned`, `GridCell`) accepted only by the
@@ -87,11 +94,13 @@
   A property value has five kinds of leaf and the type says which: fixed; a **token**
   reference; an **expression** (`Expr<Length>`/`Expr<Number>` with ring arithmetic,
   `Expr<Color>` with the named color functions and nothing else, typed so an ill-formed
-  expression does not compile); **derived** from signals by a closure; and any of those
-  under a condition. The first three and the conditions compile to CSS, so SSR/SSG
-  output is responsive, hoverable, themed and animated with **no JS/WASM**; a derived
-  leaf is a per-node custom-property slot the class references, so it never outranks a
-  variant. `derive_` closures are for **state**, never for environment or arithmetic.
+  expression does not compile); **derived** from signals by a closure that returns a
+  value, a token or an expression; and any of those under a condition. The first three
+  and the conditions compile to CSS, so SSR/SSG output is responsive, hoverable, themed
+  and animated with **no JS/WASM**; a derived leaf is a per-node custom-property slot
+  the class references, holding the literal or the token's `var()`, so it never
+  outranks a variant and a state may choose between palette tokens. `derive_` closures
+  are for **state**, never for environment or arithmetic.
 - **A design token is a named, inherited slot; a theme defines it; a palette belongs to
   its library.** `TokenRef<T>` names a slot (a `const`; the name is an implementation
   detail on every platform, never a public hook), `Token<T>` pairs the name with the
@@ -152,9 +161,11 @@
     mount between **anchors** rather than inside a box, so a reactive subtree contributes
     its own nodes to its parent's layout. The platform's tree is a sink written from the
     scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
-    top layer *in place* rather than portalled, and only the `<head>` is a real portal. A
-    native driver may still realize an overlay into its own layer, so nothing is built on
-    ancestor-selector reachability beyond a control's own subtree.
+    top layer *in place* rather than portalled, and only the `<head>` is a real portal;
+    an anchored popup is placed by CSS anchor positioning where the engine has it and at
+    the anchor's measured rectangle where it does not. A native driver may still realize
+    an overlay into its own layer, so nothing is built on ancestor-selector reachability
+    beyond a control's own subtree.
   - **Environment is queryable.** `media::viewport()`, `media::scheme()` and
     `media::reduced_motion()` are signals on every facade, `media::watch(&condition)`
     turns any declared condition into a memo, and a box's measured size reaches a view
@@ -167,9 +178,24 @@
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
   real links, and the client bundle layers interactivity on top by hydrating in
-  place—content is never gated on JS. Prefer the latest CSS standards and pay nothing
-  for obscure or ancient engines; when a slightly older engine can be supported
-  without giving anything up in new ones, support it.
+  place—content is never gated on JS. **A view with two forms declares both**:
+  `Enhance` in `skene-views` builds `set_fallback` while the signal it is given is
+  false and `set_child_builder` once it is true, each at most once. There is no
+  capability vocabulary: each signal belongs to what can lack it, and a web-only fact
+  is named for the web. `Driver::hydration()` is the web's, `None` by default (the
+  terminal and the native drivers never answer, so the terminal facade cannot name
+  it): the web leaves return the signal that is false on the server leaf and while a
+  hydration adopts the server's markup and true once it has finished (so the fallback
+  is adopted, then rebuilt into the child in place, under a replacement owner), the
+  headless driver returns one a test flips (`set_hydrated`), and the GUI facade reads
+  it as `media::hydrated()`, true from the start on native. `Painting::available()` is
+  the pixels': false on the server and in the terminal until its graphics probe is
+  answered, true on the browser leaf once live, `set_graphics` on the headless
+  driver; it is what `Painted::set_fallback` waits for, and the picker's prerendered
+  `<select>` waits on `hydration()`, drawn outright where there is none. Prefer the
+  latest CSS standards and pay
+  nothing for obscure or ancient engines; when a slightly older engine can be
+  supported without giving anything up in new ones, support it.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}` from a wide hash), reference-counted, deterministic and identical
   across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
@@ -181,8 +207,15 @@
   vello's hybrid renderer over wgpu where the page has WebGPU—one device shared by
   every painted box, a surface per canvas—and through vello's CPU renderer otherwise.
   The choice is made once per page when the first box paints, and a box paints nothing
-  until it is made; native layers come with the native driver. SSR/SSG render it empty;
-  TUI does not realize it. **Embeds** are
+  until it is made; native layers come with the native driver. SSR/SSG render it empty.
+  The terminal renders it on the CPU at the box's cells times the cell's pixel size
+  and shows it through the kitty graphics protocol where launch's query (`a=q`) was
+  answered `OK`: transmitted once per change, placed over the box's cells cropped to
+  those in view, left out under an open overlay, freed on unmount; elsewhere the
+  fallback stands. Where graphics show, a box with a corner radius, a border or a
+  shadow paints them as a backdrop image beneath every colored cell, one per box,
+  its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-views`, re-exported
+  by `skene-gui-core`. **Embeds** are
   driver-specific views with driver-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the driver realizes the tree into it, so embeds
@@ -195,20 +228,58 @@
   (wheel, scrollbar, page keys) without moving its caret, and a field's window follows
   the horizontal wheel; a release ends a drag on the captured node wherever it lands; a
   link run is a tab stop that `Enter` follows and `Space` does not, a press on its cell
-  focusing it as a click on an anchor does; popups light-dismiss, except on their own anchor, whose
+  focusing it as a click on an anchor does; `FocusVisible` holds as `:focus-visible`
+  does, after a key or in a text entry and not since a pointer press, on the terminal
+  and the headless driver alike; popups light-dismiss, except on their own anchor, whose
   click toggles them; a modal takes focus on open and returns it on close; a key's
   default runs after the handlers' writes have taken effect, as after a browser's
-  microtask checkpoint; selection
+  microtask checkpoint; a release dispatches as `KeyUp` with no default, a held key
+  repeats its `KeyDown` with `repeat` set, and a modifier alone arrives under its W3C
+  name without showing focus, the terminal asking the kitty keyboard protocol for its
+  event types, alternate keys and every key as an escape code, and a letter's case
+  follows `Shift` and Caps Lock as a browser's `key` does while the modifiers stay
+  the keys held, so `Ctrl-Z` undoes under Caps Lock too, and a key's `code` names
+  the physical key as a browser's does (`KeyA`, `Digit1`), from the terminal's
+  base-layout alternate where it reports one; selection
   gestures match (drag, double-click word, triple-click run), inside a text entry as
-  well, where keyboard focus selects a field's value and `Ctrl-C`/`X`/`V` copy, cut and
-  paste through the ordinary dispatch, so `Ctrl-Q` is the quit. **The clipboard is the
+  well, where keyboard focus selects a field's value, `Ctrl-Z` and
+  `Ctrl-Shift-Z`/`Ctrl-Y` undo and redo per entry as an `<input>` does, a value
+  written from the signal being a step of its own, and
+  `Ctrl-C`/`X`/`V` copy, cut and paste through the ordinary dispatch, so `Ctrl-Q` is the
+  quit; a right press, `Shift-F10` or the menu key opens the context menu the nearest
+  wrapper serves, the standard one from the root where none does, and the entry beneath
+  keeps its selection while the menu holds focus. **The clipboard is the
   app's launch choice**: OSC 52 has no capability query, so `Launch::set_clipboard`
   names which of copy, cut and paste exist (all by default; without copy nothing in
-  the document is selectable), and `Launch::set_mouse(false)` hands the mouse back
-  wholesale. A pointer position is its cell's center, or exact where the terminal
+  the document is selectable), except where the terminal's clipboard answers (kitty's
+  OSC 5522, proven by a DECRQM report of mode 5522), in which case every operation is
+  offered, a copy is written through it and a paste is read through it, the text
+  arriving in parts and a refusal pasting nothing; `Launch::set_mouse(false)` hands the mouse back
+  wholesale, and the mouse key (`Alt-M` unless `Launch::set_mouse_key` says otherwise)
+  hands it over at run time for one native selection, any key taking it back. Text
+  is measured by extended grapheme clusters, each as wide as the terminal draws it: a
+  wide cluster takes two cells, the second painting nothing, a combining sequence one,
+  and a field's caret, window and selection index clusters. Grapheme clustering (mode
+  2027) is asked for at launch and confirmed by DECRQM; where the terminal confirms it
+  a cluster's width is the cluster's, and where it does not a cluster is as wide as its
+  code points drawn one by one, so the layout agrees with the terminal either way. A
+  run's font size is a scale of the cell, the shared `set_font_size` and the
+  terminal `Typography`'s `size` token: text sizing (kitty's OSC 66) is probed at
+  launch by a space at scale two and a cursor position report, a terminal that proves
+  it draws every size (a whole scale of one to seven, or a fraction of a cell below
+  one) with layout counting the scaled cells and a paragraph's smaller spans on its
+  tallest span's baseline, and one that does not lays the same tree out at one cell. A pointer position is its cell's center, or exact where the terminal
   reports pixels (SGR-Pixels, asked for when the platform reports the window's pixel
-  size and trusted from the DECRQM reply that confirms it); queued pointer motion
-  collapses to where it ends before a frame paints. Every terminal capability
+  size and trusted from the DECRQM reply that confirms it); the window's size follows
+  the resize notifications, the terminal's in-band one (mode 2048, set and confirmed
+  by DECRQM, its pixel size feeding the pixel mouse where the platform's carries
+  none) or the platform's own; queued pointer motion
+  collapses to where it ends before a frame paints, and a frame is written under
+  synchronized output (mode 2026) where the DECRQM reply says the terminal toggles it.
+  The terminal's own colors are queried at launch (OSC 10, 11 and 4), so a 16-color
+  paint picks the nearest base color the terminal shows and a shadow or a scrollbar
+  mixes against its real foreground and background.
+  Every terminal capability
   beyond a plain emulator is a progressive enhancement of that kind: asked for,
   confirmed by a parsed reply or ignored in silence, degrading to the cell rendering,
   never required and never inferred from a name; the plan is in `ROADMAP.md`. The escape hatch for a terminal without OSC 52 is the terminal's own
@@ -250,11 +321,20 @@
   behaviors, so a third party's control and the terminal's slider get the same keys as the
   browser's. `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`,
   `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and
-  `RawPicker` is composed from them. A control is **controlled** on every facade: it
-  reports, and the bound signal is the truth. A `State` a box cannot have on its own
+  `RawPicker` is composed from them. A listbox and the closed picker face have
+  type-ahead (`TypeAhead`, its buffer reset on `Driver::schedule`) over the names the
+  options' labels supply (`Label::set_name`), and the face's verdict on a typed key is
+  the `Popup` behavior's through `handle_typed`. A control is **controlled** on every facade: it
+  reports, and the bound signal is the truth. A text entry's selection is controlled
+  beside its value: `TextSelection` is a `start` and an `end` in grapheme clusters of
+  the value, the end where the caret is and before the start when made backward,
+  `derive_selection` places it, `handle_selection_change` hears every move of the
+  caret, and `bind_selection` wires both to one signal; a driver clamps each index
+  into the value, so nothing can name the inside of a cluster. A `State` a box cannot have on its own
   (`Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves against the
   enclosing control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`,
-  `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`) are the styling targets a
+  `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`, and a tooltip's `Bubble`)
+  are the styling targets a
   control exposes; in the terminal the checkbox and radio `Mark` and the picker's
   indicator are glyphs from the Simple library's `SimpleGlyphs` token set, and the
   slider's track, fill and thumb are boxes there as everywhere. **Accessibility is
@@ -264,11 +344,31 @@
   layer—on the web a form element takes the native attribute where one exists, so the form
   enforces it without script, and ARIA otherwise. On the web a control that owns a native
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
-  `<textarea>`, a checkbox, radio or slider keeps its input inside its label beside the
-  parts that draw it, and none needs a swap after hydration—and the picker keeps a swap
-  that carries the reader's value. The
+  `<textarea>`, its caption a `<label for>` the driver keeps before it among its
+  siblings, a checkbox, radio or slider keeps its input inside its label beside the
+  parts that draw it, and none needs a swap after hydration—and the picker, drawn on
+  every engine, is an `Enhance` over its `NativePicker` form, a `<select>` the server
+  renders and the reader's choice in it carries across the swap. The
   terminal's controls are composed trees painted by the same box and run painters as
   everything else, so they carry roles, accessibility and focus order like the GUI's.
+  **A tooltip is a view**, `Tooltip` in `skene-views`, wrapping the one view it
+  describes and showing text or any view in a `Bubble` beside it: open after a delay on
+  hover and at once on focus, closed on leave, blur and `Escape`, never focused. A text
+  tooltip is reported as the described view's `Description` beside `DescribedBy`, and a
+  view's reports are merged in the scene, so a describing view never overwrites a
+  control's own. On the web the server renders the description as `title`, the
+  scriptless tooltip, and hydration **removes** it as the bubble (a `popover="hint"`
+  promoted in place) takes over. `SimpleTooltip` is the styled one; any view takes a
+  tooltip by wrapping. **A context menu is a view** the same way, `ContextMenu` in
+  `skene-views`: wrapping is the opt-in, a secondary press, `Shift-F10` or the menu key
+  on the wrapped view dispatches `EventKind::ContextMenu`, the deepest wrapper along the
+  path opens its `List` pinned at the pointer and prevents the platform's menu, and
+  wherever no wrapper is the browser keeps its own. Items are `MenuItem`s, the standard
+  `copy`/`cut`/`paste` among them, each asking the driver's `clipboard_availability`
+  whether it is absent, disabled or enabled and acting through `Driver::clipboard`; the
+  list is a `Menu` of `MenuOption` controls (`Role::Menu`/`Role::MenuItem`), the
+  behaviors a third party's menu reuses. `SimpleContextMenu` is the styled one; the
+  server renders nothing for a menu.
 - **Third parties are first-class by construction.** A component library depends on
   `skene-views`, writes generic over `D: Driver` exactly as the built-ins do
   (`Container<D>`, `Control<D, Toggle>`, `Theme<D, AcmePalette>`), states what it needs
@@ -298,7 +398,10 @@
   under a byte-exact snapshot; native: its toolkit). There is no mock driver.
 - HTTP, WebSockets and timers are userland. The framework ships the seams—`spawn`,
   `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
-  pollable, `sleep`, the render deadline)—so third-party integrations sit on the same
+  pollable, `sleep`, the render deadline), and `Driver::schedule`, a one-shot action on
+  the driver's clock that a view's delay waits on (the tooltip's hover delay; the
+  headless driver and the terminal fire it from the hand-stepped clock a test
+  advances, the server never)—so third-party integrations sit on the same
   footing first-party ones would. (Exception: a native driver
   owning its event loop may ship a loop-integrated timer.)
 
@@ -380,7 +483,9 @@
   `cargo test --workspace` for the host, `cargo test -p skene-gui -p skene-web --target
   wasm32-wasip2` for the server leaf, and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
   browser leaf, which drives a real Firefox through geckodriver with WebGPU switched on by
-  `packages/gui/webdriver.json`, so a painted box renders on the GPU there. Every
+  `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
+  hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the
+  same run. Every
   `web_*.rs` is gated to a wasm target, so on the host those binaries compile to zero tests and report
   `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
   every host test while breaking the browser outright. Read the `test result:` line rather
@@ -390,7 +495,7 @@
   after reporting and exits non-zero even when everything passed. That cleanup panic
   (`PermissionDenied`) also stops cargo before the remaining binaries run, so the one-command
   browser form silently covers only the first of them—run each browser binary by name
-  (`--test web_dom`, `web_hydrate`, `web_resource`, `web_task`; the other `web_*.rs` are
+  (`--test web_dom`, `web_hydrate`, `web_painted`, `web_resource`, `web_task`; the other `web_*.rs` are
   wasi-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
   reads as a passing one. `skene-web` and `acme-map` carry browser binaries of their own
   (`web_dom`, `web_map`); run them the same way. A browser failure also poisons the platform
@@ -424,10 +529,12 @@
   control with minimal but pretty styling, and `theme` shows the token model.
   `examples/third-party` holds the crates written from outside the framework, one per
   extension path.
-- **What comes next lives in `ROADMAP.md`**, under `Open`: an ordered `Next` list first,
-  then every scoped follow-up by area, then the backlog and the decisions against. When
-  asked what's next, answer from it. A follow-up a change leaves behind is recorded there
-  in the same change, never in a code comment, a commit message or an agent's memory.
+- **What comes next lives in `ROADMAP.md`**, under `Open`: one ordered list of every
+  open item, big and small, top first, then the decisions against. Nothing shipped is
+  listed there. When asked what's next, answer from the top of it. A follow-up a change
+  leaves behind is inserted there at its priority in the same change, never in a code
+  comment, a commit message or an agent's memory; an item a change resolves is removed
+  in the same change.
 - Retrofit as you raise the bar: when a change establishes a better pattern (a helper, a naming
   convention, a clearer structure), bring existing code up to it rather than leaving two standards.
 - Keep parallel code visually parallel: when two files do essentially the same thing in different

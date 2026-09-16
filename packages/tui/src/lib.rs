@@ -28,6 +28,7 @@ mod cells;
 mod detect;
 mod dev;
 mod driver;
+mod escape;
 mod ext;
 mod field;
 mod frame;
@@ -36,11 +37,14 @@ mod launch;
 mod layout;
 mod motion;
 mod paint;
+mod parse;
 mod resolve;
 mod routing;
 mod selection;
 mod store;
 mod terminal;
+mod text;
+mod tty;
 
 pub use skene_core as core;
 pub use skene_core::{
@@ -76,6 +80,9 @@ pub use skene_core::{
   ScrollEvent,
   State,
   StaticLeaf,
+  TextDecoration,
+  TextDecorationStyle,
+  TextSelection,
   TokenName,
   TokenRef,
   TokenSet,
@@ -100,11 +107,21 @@ pub use skene_views::{
   Activate,
   Anchor,
   Behavior,
+  Canvas,
   ControlChild,
   CornerRadius,
+  IntoBrush,
+  ItemExtent,
   ListItem,
   Listbox,
   ListboxGroup,
+  Menu,
+  MenuGroup,
+  MenuItem,
+  MenuOption,
+  NativePicker,
+  Painter,
+  Painting,
   PointerPhase,
   Popup,
   RadioMember,
@@ -112,9 +129,12 @@ pub use skene_views::{
   Roster,
   Roving,
   RovingGroup,
+  TOOLTIP_DELAY,
   TextEntry,
   Toggle,
   TypeMetrics,
+  kurbo,
+  peniko,
   typography,
 };
 
@@ -124,8 +144,9 @@ pub use crate::{
   dev::{adopt_restoration, notice_view as dev_notice_view},
   driver::{Tui, handle, mount, uninstall},
   ext::{TuiDecoration, TuiText},
-  launch::{Clipboard, Launch, install, launch},
+  launch::{Clipboard, Launch, MOUSE_KEY, install, launch},
   media::{derive_scheme, set_scheme, stored_scheme},
+  paint::{CellDecoration, Picture},
   routing::install_router,
   store::Handle,
   terminal::{
@@ -139,10 +160,14 @@ pub use crate::{
     take_copied,
     take_opened,
     take_paste_requested,
+    trigger_answering_clipboard,
     trigger_clipboard_reply,
     trigger_color_scheme,
     trigger_frame,
+    trigger_grapheme_clustering,
+    trigger_graphics,
     trigger_key,
+    trigger_key_up,
     trigger_mouse_click,
     trigger_mouse_drag,
     trigger_mouse_drag_within,
@@ -154,7 +179,10 @@ pub use crate::{
     trigger_paste,
     trigger_reduced_motion,
     trigger_resize,
+    trigger_terminal_colors,
+    trigger_text_sizing,
   },
+  text::CellScale,
 };
 
 /// The driver the build selected: the terminal driver, on every host target.
@@ -257,6 +285,9 @@ pub type Switch<K> = skene_views::Switch<ActiveDriver, K>;
 /// Fallback content while a subtree's async work is pending; see
 /// [`skene_views::Suspense`].
 pub type Suspense<C = NoChild> = skene_views::Suspense<ActiveDriver, C>;
+/// The form a signal makes possible over the one that needs none; see
+/// [`skene_views::Enhance`].
+pub type Enhance<C = NoChild> = skene_views::Enhance<ActiveDriver, C>;
 /// Fallback content when a subtree reports an error; see
 /// [`skene_views::ErrorBoundary`].
 pub type ErrorBoundary<C = NoChild> = skene_views::ErrorBoundary<ActiveDriver, C>;
@@ -293,13 +324,28 @@ pub type RawPicker<F = NoChild> = skene_views::RawPicker<ActiveDriver, F>;
 pub type Face = skene_views::Face<ActiveDriver>;
 /// Content above the app; see [`skene_views::Overlay`].
 pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
+/// Content shown beside the view it describes; see [`skene_views::Tooltip`].
+pub type Tooltip<C = NoChild> = skene_views::Tooltip<ActiveDriver, C>;
+/// Commands shown beside the pointer on a secondary press over the view it serves;
+/// see [`skene_views::ContextMenu`].
+pub type ContextMenu<C = NoChild> = skene_views::ContextMenu<ActiveDriver, C>;
+/// A menu; see [`skene_views::RawMenu`].
+pub type RawMenu<C = NoChild> = skene_views::RawMenu<ActiveDriver, C>;
+/// One item within a menu; see [`skene_views::RawMenuItem`].
+pub type RawMenuItem<C = NoChild> = skene_views::RawMenuItem<ActiveDriver, C>;
 /// A handle moving focus to a built view; see [`skene_views::FocusHandle`].
 pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
 /// A handle reporting a built view's measured size; see [`skene_views::SizeHandle`].
 pub type SizeHandle = skene_views::SizeHandle<ActiveDriver>;
+/// A box drawn by a paint callback, through the terminal's graphics protocol where
+/// the terminal proved one; see [`skene_views::Painted`].
+pub type Painted = skene_views::Painted<ActiveDriver>;
 /// A scrolling keyed list building only the slice in view; see
 /// [`skene_views::LazyColumn`].
 pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
+/// A scrolling keyed row building only the slice in view; see
+/// [`skene_views::LazyRow`].
+pub type LazyRow = skene_views::LazyRow<ActiveDriver>;
 /// The closure building a view's child under the context the view provides; see
 /// [`skene_views::ChildBuilder`].
 pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;
@@ -407,14 +453,49 @@ pub fn render_to_colors(
 }
 
 /// The painted frame's reverse-video cells at `width` x `height`, row-major, for a
-/// headless test asserting the emphasis a focused link or a colorless selection paints
-/// in.
+/// headless test asserting the emphasis a colorless selection or a colorless focused
+/// link paints in.
 #[must_use]
 pub fn render_to_reverse(width: u16, height: u16) -> Vec<bool> {
   frame::render(width, height)
     .cells
     .iter()
     .map(|cell| cell.reverse)
+    .collect()
+}
+
+/// The painted frame's decoration lines at `width` x `height`, row-major, for a
+/// headless test asserting an underline's style and color, an overline or a line
+/// through.
+#[must_use]
+pub fn render_to_decorations(width: u16, height: u16) -> Vec<CellDecoration> {
+  frame::render(width, height)
+    .cells
+    .iter()
+    .map(|cell| cell.decoration)
+    .collect()
+}
+
+/// The pictures the painted frame at `width` x `height` places, for a headless test
+/// asserting what a terminal with graphics shows; none until `trigger_graphics`.
+#[must_use]
+pub fn render_to_pictures(width: u16, height: u16) -> Vec<Picture> {
+  frame::render(width, height)
+    .pictures
+    .iter()
+    .map(Picture::from)
+    .collect()
+}
+
+/// The painted frame's text scales at `width` x `height`, row-major, for a headless
+/// test asserting a run's size: a glyph's cell carries its scale, and the other cells
+/// of its block carry one.
+#[must_use]
+pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
+  frame::render(width, height)
+    .cells
+    .iter()
+    .map(|cell| cell.scale)
     .collect()
 }
 

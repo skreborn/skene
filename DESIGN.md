@@ -32,7 +32,7 @@ skene-core       the spine: Scene<D> (parents, children, annotations, token defi
 skene-views      every built-in view ONCE, generic over D: Driver—Container, Row/Column/
       │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
       │          Control<B: Behavior> and the shipped behaviors, RawPicker, Overlay,
-      │          LazyColumn, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
+      │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
       │          LowLevel
       │
       ├── skene-gui-core  what every pixel driver shares: GuiExt (corner radius, type
@@ -136,9 +136,11 @@ driver crate, since it is not a shared contract.
   ratio and repaints on resize: through vello's hybrid renderer over wgpu where the
   page has WebGPU, one device shared by every painted box with a surface per canvas,
   and through vello's CPU renderer otherwise; the headless driver renders it to pixels
-  a test reads (`headless::paint`); the server leaf renders it empty and the terminal
-  does not realize it. The native layers sit behind the same `Canvas`. Vello is the one
-  renderer, everywhere.
+  a test reads (`headless::paint`); the server leaf renders it empty; the terminal
+  renders it on the CPU and shows it through the kitty graphics protocol where the
+  terminal proved one, its fallback standing elsewhere. The native layers sit behind
+  the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-views`, since
+  both medium cores realize them. Vello is the one renderer, everywhere.
 - **Embeds are driver-specific views**, written against a driver's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
   platform view through `PlatformView`. `LowLevel::realize` registers a driver-made sink
@@ -184,6 +186,40 @@ and its cost unjustified.
   and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
   branches once and attach or detach them, preserving state. `Suspense` and
   `ErrorBoundary` are built on them and destroy the losing branch on disposal.
+- **A view declares its baseline and its enhancement.** `Enhance` in `skene-views` mounts one of two builders between its anchors:
+  `set_fallback(|| baseline)` is the form that works before the environment is ready,
+  and `set_child_builder(|| enhancement)` the form built once it is. Which is built
+  follows a signal the enhancement is given (`Enhance::new(live)`), and the signals
+  the built-ins wait on belong to the things that can lack them, never to a shared
+  capability vocabulary. **Hydration** is the web's: `Driver::hydration()` returns
+  the signal that turns true once a render made without script has been hydrated,
+  and `None` by default, which every driver whose tree is live from the start keeps,
+  the terminal and the native drivers among them, so nothing on the terminal facade
+  can name it. The GUI facade reads it as `media::hydrated()`, true from the start on
+  native. The server leaf answers false forever, so a server render and a static page
+  carry the baseline as markup; the browser leaf answers false while a hydration
+  adopts the server's markup and flips to true once it has finished and the adopted
+  live values have reached their signals, so the baseline is built once more on the
+  client, adopted element by element with no mismatch, and then rebuilt into the
+  enhancement in place, as a `derived` rebuild is, under a replacement owner, so a
+  signal bound beneath keeps its value and its snapshot identity; a mount that
+  hydrates nothing answers true from the start and never builds the baseline. The
+  headless driver answers hydrated until a test says otherwise (`set_hydrated`), so a
+  generic view's two forms are tested on the host. **Pixels** are `Painting`'s:
+  `Painting::available()` is the signal a painted box waits on, false on the server
+  leaf, false on the browser leaf until it is live, false in the terminal until the
+  graphics probe is answered, and the headless driver's from `set_graphics`. Only the
+  branch in force is ever built, so an enhancement may touch the browser and a
+  baseline may be the whole view where the signal never turns. The seam is the
+  built-ins' own: `Painted` takes `set_fallback`, the view drawn where no pixels
+  show, so a painted box has a no-JS form on the web and a cell form in the terminal
+  through the one mechanism, and the picker's prerendered `<select>` is the same swap
+  over `hydration()`, drawn outright on a driver that has none. What the
+  seam does not do: read the baseline's platform state into the enhancement by
+  itself. A value the reader typed into a baseline entry before the bundle arrived
+  reaches the enhancement through the signal the entry is bound to, as any live value
+  does, and the focus and scroll inside the baseline are lost by the rebuild, as they
+  are by any.
 - **Wrappers annotate before creation.** `Flexible`, `Pinned` and `GridCell` write their
   annotation into the scene slot the next box built under them consumes into its own
   props, so per-child layout is an ordinary property of the child's style: in the class
@@ -204,7 +240,68 @@ technology, where it sits in the tab order, and which parts it exposes. `Toggle`
 `Range`, `Roving` (with `RadioMember`), `Popup`, `Activate`, `TextEntry` and `Listbox`
 (with `ListItem`) ship; `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`,
 `RawRadio`, `RawListbox`, `RawOption`, `RawTextField` and `RawTextEditor` are aliases over
-them, and `RawPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. The
+them, and `RawPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
+have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset by
+a `Driver::schedule` timer, and `Roster::typed` matches them against the members'
+names (`Label::set_name`, the value standing in), one character cycling through the
+names starting with it and more matching a prefix; the listbox moves focus to the
+match, and the closed face chooses it outright through `Popup::handle_typed`, the
+behavior's hook for the keys it does not act on itself. An
+anchored popup on the web follows its anchor through CSS anchor positioning (the anchor
+named after its sink, the popup placed by `position-area`) where the engine has it, and
+sits at the anchor's measured rectangle as it opens elsewhere. A `Tooltip` wraps the one
+view it describes and mounts that view and a hint overlay, the `Bubble`, in a segment of
+its own: it opens on the driver's clock once the pointer has rested for its delay and
+at once on focus, closes on leave, blur and a dismiss, and reports the bubble as the
+view's description (`DescribedBy`, and `Description` for text), the report merged in
+the scene with the view's own; the web's server leaf renders the text as `title` and
+hydration removes it.
+
+A **context menu is a view of the same shape**. `ContextMenu` in `skene-views` wraps
+the one view it serves and mounts that view and a popup overlay, the `List`, in a
+segment of its own, exactly as `Tooltip` does; `serve(node)` attaches the list under a
+node that already exists instead, for an app that wants a menu over its root. Wrapping
+is the opt-in: a secondary press on the wrapped view, or `Shift-F10` and the
+`ContextMenu` key while focus is inside it, dispatches `EventKind::ContextMenu` at the
+node through the ordinary bubbling dispatch, and the deepest wrapper along the path
+opens its menu pinned at the pointer (at the focused node's bottom-start corner from
+the keyboard, through `Driver::set_overlay_position`) and answers `Prevent::All`, so
+the browser's own menu stays wherever no wrapper is, and an app that wants its own
+everywhere wraps its root. The terminal facade serves the standard menu from the root
+at install, because the terminal has no menu of its own; a deeper wrapper wins over it
+as it wins over the browser's, so replacing the default is the same act on both
+facades. The items are `MenuItem`s: `MenuItem::new(label)` with `handle_select`,
+`set_disabled`/`derive_disabled` and `set_shortcut` (a hint the item shows, never a
+binding), `MenuItem::separator()`, and the standard entries `MenuItem::copy()`, `cut()`
+and `paste()`. A standard item asks the driver for its `Availability` each time the
+menu is requested: `Absent` hides it, `Disabled` lists it disabled, `Enabled` lists it
+live—outside a text entry only `Copy` exists, and only with a selection; inside one all
+three are listed, `Copy` and `Cut` disabled without a selection—and running it calls
+`Driver::clipboard` (OSC 52 in the terminal, the async Clipboard API on the web, where
+the items are absent without it and a paste is permission-gated and stays best effort;
+the headless driver records the action). A menu with nothing usable does not open but
+still prevents the platform's, which is what a right press on an empty spot did before.
+Extending the standard menu is listing the standard items beside one's own; nothing
+merges implicitly. The list is a `Menu` control (`Role::Menu`) over `MenuOption`
+controls (`Role::MenuItem`), the behaviors a third party's menu bar reuses: the arrows
+walk the enabled items with wrapping, `Home`/`End` reach the ends, typing runs the
+roster's type-ahead, `Enter`, `Space` or a click runs the focused item and the menu
+closes, and `Escape` and a press outside close it through the overlay's light dismiss.
+The first usable item takes focus from an ordinary effect rather than a render effect,
+so it runs after the items' disabled states have settled. The menu is decorated per
+property like every control—the list's box properties, `set_item_padding`,
+`set_item_color`, `set_item_corner_radius`, `set_item_cursor`, `set_item_text_color`,
+`set_shortcut_color`, `set_separator_color`, the `Part::List`/`Part::Item` targets; the
+terminal's standard menu is the raw view decorated with the driver's own values, and
+`SimpleContextMenu` (`skene-simple`) is the palette-decorated one on both facades. In
+the terminal focus moves into the open list while the entry beneath keeps its
+selection, so the standard items act on it, and closing returns focus without
+reselecting the value; `Escape` closes an open menu before it clears a selection. The
+web driver listens to `contextmenu` only on a node whose wrapper registered for it,
+positions the popover fixed at the pointer and shifts it back into the viewport, and
+the server leaf renders nothing for the menu: with no script the browser's menu is the
+menu, as progressive enhancement asks.
+The
 `Simple*` components (`skene-simple`) are the ready-made library over the same builder:
 one palette, one shape language, shared across the GUI and the terminal wherever the
 medium allows, and deliberately nothing a third-party library could not build on the
@@ -227,9 +324,15 @@ re-export.
   `<input>` or `<textarea>` itself, decorated as the box; a checkbox, radio or slider
   keeps its native input inside its label, visually hidden but focusable, beside the
   parts that draw it. So keyboard, form participation and accessibility are the
-  browser's before and after hydration and nothing is swapped. The picker keeps a swap
-  (no engine but Chromium restyles an open `<select>` yet) and the swap carries the
-  reader's value.
+  browser's before and after hydration and nothing is swapped. The picker alone is
+  drawn (no engine but Chromium restyles an open `<select>` yet), so it is an
+  `Enhance` of its own: its scriptless form is a `NativePicker` control, a `<select>`
+  on the web, listing the options the option views name, its caption a `<label for>`
+  beside it and the chosen value selected; the option views build once, under the
+  group both forms answer through, and attach nowhere until the drawn form lists
+  them, so a swap rebuilds nothing but the face; a choice the reader made in the
+  `<select>` before the bundle arrived reaches the signal as any adopted live value
+  does, and the drawn face that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
@@ -258,7 +361,15 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a driver, `Plain` for a keyframe or a resolved
 style) and the medium's own properties come through the extension (`GuiExt`: corner
-radius, transitions' pixel properties; `TuiExt`: border glyphs, shadow, bold). A
+radius, transitions' pixel properties; `TuiExt`: border glyphs, shadow, bold). The
+shared run properties are the text color, the selection's ink and surface, and the
+decoration: the line (`TextDecoration`: beneath, above or through the text, a link
+underlined unless set), its style (`TextDecorationStyle`: solid, double, dotted,
+dashed, wavy) and its color, each a property of its own so the color takes a token.
+The web compiles them to the `text-decoration` longhands; the terminal writes the
+underline styles (SGR `4:3`, `4:4`, `4:5`) and color (SGR `58`) where a DECRQSS reply
+to a curly-underline probe proves the terminal keeps them, a plain underline
+elsewhere, and the overline and the line through as SGR `53` and `9`. A
 visitor written once gives overlay, the static/derived split, CSS rendering and taffy
 application their iteration; what remains per property is the field, its CSS name and
 its taffy mapping. `CornerRadius` is the pattern for an optional capability: a style
@@ -270,7 +381,7 @@ elsewhere.
 
 ```
 StaticLeaf<T> = Fixed(T) | Token(TokenRef<T>) | Expr(Expr<T>)
-Leaf<T>       = Static(StaticLeaf<T>) | Derived(Rc<dyn Fn() -> T>)
+Leaf<T>       = Static(StaticLeaf<T>) | Derived(Rc<dyn Fn() -> StaticLeaf<T>>)
 Value<T>      = Conditional<Leaf<T>, Condition>          // what a setter takes
 Definition<T> = Conditional<StaticLeaf<T>, Media>        // what a token is; no closures
 Media         = MinWidth | MaxWidth | MinHeight | MaxHeight | Dark | Light | ReducedMotion
@@ -287,7 +398,9 @@ Condition     = Media | State | And | Or
   functions, and there is no boolean expression, so an ill-formed expression does not
   compile. **Derived** leaves are the script-only kind: on the web a per-node custom
   property slot the class references (registered `inherits: false`), written by a render
-  effect, so a derived base never outranks a variant; on the server, evaluated once. A
+  effect, so a derived base never outranks a variant; on the server, evaluated once. The
+  closure returns any static leaf, so a state chooses between tokens: the slot holds the
+  token's reference, and the theme in force answers it where the slot is read. A
   definition admits no closure, which is what keeps a palette plain data that
   serializes, hashes and renders without script.
 - Conditions ride the value: `value.when(condition, other)`. The composition machinery
@@ -517,34 +630,104 @@ first-class at compile time rather than best-effort at run time.
 
 The mouse is in-capability: motion drives `Hovered` variants and pointer handlers, a
 left click hits the topmost node and runs its handlers through core's dispatch, a
-hovered node's `cursor` sets the pointer shape via OSC 22—terminals without mouse
-reporting or pointer shapes degrade quietly. A pointer position is its cell's center
+hovered node's `cursor` sets the pointer shape via OSC 22, with the shapes the GUI's
+pointer takes implied where none is set (the I-beam over selectable text and a text
+entry, the hand over a control or a link, the open hand over a slider and the closed
+one through a slider, scrollbar or caret drag), written once per change after the
+frame so that what changes under a still pointer changes the shape, and handed back to
+the terminal on exit—terminals without mouse reporting or pointer shapes degrade
+quietly. A pointer position is its cell's center
 unless the terminal reports pixels: where the platform reports the window's pixel size,
-the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply termina
-parses on the fork's `parse-mode-reports` branch), and from the reply that confirms it
+the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply the
+loop's parser reads for any mode), and from the reply that confirms it
 every report is pixels over the cell size, so a pointer sits within its cell and a
 slider or scrollbar drag lands where the pointer is; the request repeats on resize, and
-hit-testing stays by cell. The loop handles every event already queued before it paints
+hit-testing stays by cell. The window's size is event-driven: the platform's at launch,
+then every resize notification's, and the loop sets in-band resize (mode 2048) and
+queries it, so a terminal that confirms it reports every resize in the input stream
+(`CSI 48 ; rows ; cols ; height ; width t`) with the pixel size the pixel mouse needs where the platform's own
+notification carries none, and a notification without pixels keeps the known ones
+while the mode is confirmed. Launch queries synchronized output (DECRQM 2026) the same
+way, and from a reply that says the mode can be toggled every frame is written between
+`CSI ? 2026 h` and `l`, so a redraw never tears; a terminal that does not know the mode
+gets plain frames. Grapheme clustering (mode 2027) is set and queried at launch the
+same way: text is measured in extended grapheme clusters (`unicode-segmentation`),
+each as wide as the terminal draws it (`unicode-width`)—the cluster's width where the
+terminal confirmed the mode, the sum of its code points' widths where it did not, so
+the layout's measure agrees with the terminal's either way—and a cell holds a cluster
+(`Glyph`: one code point, an interned cluster, or the continuation of a wide one, which
+paints nothing) while a field's caret, window and selection index clusters, the window
+of a single-line field settling by cells. A confirmation arriving after the first
+frame measures every entry again and lays the frame out afresh. Text sizing (kitty's
+OSC 66) is the same kind of enhancement: the terminal's `Typography` has a `size`
+token, `1.` by default, and `set_font_size` on a run is the shared type metric in
+the medium's unit, so `2.` is a heading two cells tall. A size rounds to a whole
+scale of one to seven, and a size
+below one is a fraction of a cell (`n/d`, `d` at most fifteen) drawn at the cell's
+foot. A scaled cluster takes a block of `scale` rows by `scale` times its columns:
+wrapping counts the scaled columns, a line is as tall as its tallest cluster and the
+smaller clusters sit on its bottom rows as on a baseline, a run measures to its
+lines' widths and the sum of their heights, and a hit at a cell finds the cluster
+whose block holds it, so selection, links and inline boxes follow. In the cell
+buffer the block's top-left cell holds the glyph and its scale and the rest are
+continuations, and the writer emits the top-left cell as
+`OSC 66 ; s=<scale> ; <cluster> ST` (`n=;d=;v=1` for a fraction), skips the cells
+the terminal's own advance covers, and moves the cursor past a block's lower rows
+before the next glyph. Launch probes it once the queries are written: the cursor at
+home, a space at scale two, and a cursor position report (`CSI 6 n`); a reply at the
+third column proves the protocol and re-lays the frame out with every size honored,
+while a reply at the first, or none, leaves every run at one cell, so a size costs
+nothing where the terminal cannot draw it. The loop handles every event already queued before it paints
 the next frame, and a run of pointer motion collapses to where it ends, as a browser
 coalesces `pointermove`, so a fast drag never falls behind the pointer. Selection is anchored in source space so it
 survives reflow; wheel gestures latch their target. A text entry's selection is its
-own—an anchor beside the caret over the value—so keyboard focus selects a field's
+own—an anchor beside the caret over the value, reported to the app as a
+`TextSelection` in clusters after every move and written from its bound signal, each
+index clamped into the value—so keyboard focus selects a field's
 value, `Shift` with the caret keys and the mouse extend it (a drag held past the edge
-scrolling the window on the frame clock, as a browser's does), an edit replaces it, and
-`Ctrl-C`/`X`/`V` and the entry's edit menu copy, cut and paste through the loop's OSC 52
+scrolling the window on the frame clock, as a browser's does), an edit replaces it,
+`Ctrl-Z` and `Ctrl-Shift-Z`/`Ctrl-Y` undo and redo through a bounded ring of (value,
+caret, selection) states per entry, as an `<input>` keeps (a run of typed or of removed
+characters is one step, a caret move ends a run, and a value written from the signal is
+a step of its own, the initial one aside), and
+`Ctrl-C`/`X`/`V` and the standard context menu copy, cut and paste through the loop's OSC 52
 write, the terminal's bracketed paste, and an OSC 52 read fired on demand. OSC 52 has no
 capability query, so which of those exist is the app's launch choice: `Launch`'s
 `Clipboard` names the operations offered (all by default; without `Copy` nothing in the
-document is selectable and no menu opens), and `set_mouse(false)` leaves the mouse to
-the terminal. The terminal's own selection—a drag with `Shift` held, `Option` on
+document is selectable and the standard menu lists no `Copy`)—unless the terminal's
+clipboard answers: launch queries mode 5522 (kitty's clipboard protocol) with the other
+DECRQMs, and a terminal that knows it has every operation offered from that reply, a
+copy written as an OSC 5522 write in plain-text chunks, and a paste read as an OSC
+5522 read whose answer arrives as `OK`, `DATA` chunks and `DONE`, pasted whole once
+done and not at all when refused (`EPERM`, `EBUSY`), which OSC 52 could never
+say—`set_mouse(false)` leaves the mouse to
+the terminal, and the mouse key (`Alt-M`, or what `set_mouse_key` names) hands it over
+at run time: the hover path empties, the loop resets the mouse modes and the pixel
+reports, and the next key—the mouse key or any other, which then acts as usual—takes
+the mouse back and asks for them afresh. The terminal's own selection—a drag with `Shift` held, `Option` on
 iTerm2—bypasses the app on every terminal that has it, so a terminal without OSC 52
 still copies; with the mouse off a plain drag does. `Ctrl-Q` is the one unconditional
 key. Focus belongs to controls, which are composed trees with roles
 and focus order, exactly as on the GUI, and to link runs, which sit in the tab order as
 an anchor does: `Enter` is a focused link's click, staged for the system handler unless
-a handler prevented it, a press on its cell focuses it, and it paints in reverse video
-while focused. A key's default runs after the handlers' writes
-have taken effect, as a browser's does after its microtask checkpoint. A modal takes
+a handler prevented it, a press on its cell focuses it, and while its focus shows it
+paints in the typography's focused-link ink and surface, reverse video where those are
+transparent, as the default leaves them. Focus shows as `:focus-visible` does: after a
+key, or in a text entry, and not since a pointer press. A key's default runs after the handlers' writes
+have taken effect, as a browser's does after its microtask checkpoint. A key release
+dispatches as `KeyUp` (`handle_key_up` on a box and a control) with no default, a held
+key repeats its `KeyDown` with `repeat` set, and a modifier pressed alone arrives under
+its W3C name (`Shift`, `Control`, `Alt`, `Meta`) without showing focus; the terminal
+asks the kitty keyboard protocol for `REPORT_EVENT_TYPES`, `REPORT_ALTERNATE_KEYS` and
+`REPORT_ALL_KEYS_AS_ESCAPE_CODES` beside the disambiguated codes, and a terminal
+without them reports presses alone, as the legacy encoding does. Beside `key`, a
+`KeyEvent` carries `code`, the physical key under the W3C names (`KeyA`, `Digit1`,
+`ShiftLeft`, `Numpad7`), so a shortcut on it holds across keyboard layouts: the
+browser's `KeyboardEvent.code`, in the terminal the kitty protocol's base-layout
+alternate where it reports one and the key's own position on the US layout otherwise
+(`KeyEvent::code_of`, which the headless driver's key specs use too), and a shifted
+alternate the terminal applied restores `Shift` for any key, so `Shift-1` reaches an
+app as `!` with `Shift` held. A modal takes
 focus to its first tab stop as it opens and returns it to the node that held focus as
 it closes, a popup closing with focus inside returns it the same way, and a press on
 the anchor a popup opened from is the anchor's click rather than a dismissal. An editor is a
@@ -558,6 +741,68 @@ carrying its color on the box's side and the color already there on the other, s
 slider's fill and thumb move by eighths, meet where the layout put them whatever the
 parent's own offset, and a seam between siblings is exact.
 
+The terminal itself is spoken to through three modules of `skene-tui`, with no
+terminal crate beneath them: `tty` opens the device (standard input and output, or
+`/dev/tty` where those are not terminals), puts it in raw mode with `rustix`, polls
+it with a timeout, reads what arrived and restores its mode on drop and in a panic
+hook; the window's size is read by `ioctl` after every wait and a change is a resize
+event, beside the in-band notification; `parse` decodes the bytes incrementally into
+the loop's own vocabulary—keys in the legacy encodings and the kitty protocol with
+its event kinds, alternate keys and lock state, SGR and X10 mouse reports as
+`PointerButton`s, bracketed pastes, and exactly the replies the loop asks for
+(DECRPM for any mode, the theme report, the cursor position, the keyboard flags, the
+in-band resize, OSC 11 and 52, DECRPSS with its SGR list in either separator)—and
+drops any other string or CSI whole rather than reading it as keys; `escape` writes
+the sequences the loop emits through `Display`, so a frame allocates nothing. Every
+enhancement that needs a new reply adds it to `parse` in the same change. Windows
+has no console layer yet; it is the tty module's to grow.
+
+Pictures come through the kitty graphics protocol. Launch sends the protocol's query
+(`a=q`, one pixel, an id of its own) among the other queries; a terminal that answers
+`OK` (an APC reply the parser reads) proves it, `Painting::available` turns true, and
+every `Painted` whose fallback stood rebuilds into its painted box. A painted box's
+painter is kept on its record; before a frame paints, every painted box whose image
+is missing or of another size than its content in pixels—its cells times the cell's
+pixel size, the window's where the terminal reports it and ten by twenty else—runs
+its painter on a `Canvas` of that size and keeps the RGBA pixels under the next
+generation. The paint pass then places each picture over the visible part of its
+box: the cells in view under the clip, with the source rectangle cropped to them, so
+a picture scrolled half away shows its lower half, and a picture an open overlay
+covers in part is left out, since the terminal draws images over the overlay's
+cells. The writer transmits an image when its generation moved on (`a=t`, RGBA,
+direct, in chunks, replies suppressed), places it where its cells changed or the
+frame is written whole (`a=p` at the cursor with `c`, `r` and the crop, the cursor
+kept), frees it when no picture shows it (`a=d,d=I`), and frees every image at
+exit. Shared memory and file transmission, unicode placeholders through tmux, sixel
+and iTerm2's protocol are on the roadmap.
+
+The terminal's own colors are read back too. Launch queries the foreground (OSC 10),
+the background (OSC 11, which also decides the scheme) and the sixteen base colors
+(OSC 4, one query for all), and each reply lands as it comes: at sixteen colors a
+painted RGB is written as the nearest base color the terminal reported rather than
+the nearest xterm default, and a paint that mixes into an unset cell—a shadow, a
+scrollbar's track—mixes against the reported foreground and background where the
+scheme in force is the detected one, against white on black or black on white where
+the app chose the other scheme, so the contrast is the terminal's real one.
+
+Decoration is painted in pixels beneath the text where the terminal shows graphics. A
+box whose decoration asks for more than cells draw—a corner radius, a border, a
+shadow—gets a **backdrop**: an image of its cells and the shadow's band at the cell's
+pixels, the shadow as three softening layers offset half a cell, the background a
+rounded rectangle at the radius in rows, the border a line a quarter cell wide inside
+the edge, rendered through the same `Canvas` a painted box uses and afresh only when
+the size, the cell's pixels or a part of the decoration changes. It is placed on the
+layer beneath every colored cell (`z` below the protocol's threshold, the box's depth
+added so a nested backdrop draws over its parent's), and the box's own cells are left
+uncolored and unbordered, so the image shows through them while a colored cell
+inside—a plain box, a selection, a caret—still paints over it and every glyph stays a
+glyph, so selection, copy, the caret, the font and accessibility are untouched.
+Layout stays in cells: the border still takes its cell, drawn thin inside it. The
+shape was measured on the gallery at 100 by 40 cells: seven backdrops of 452,400
+pixels in all, the largest 201,400, against 800,000 for one image of the frame; a
+change to one box re-sends that box alone, where a frame image would re-send
+everything on any change, so the backdrop is per box.
+
 Layout is taffy at `1.0 = 1 cell`, with the effective style cached per node and
 `set_style` called only on change, so a keystroke relays out the changed subtree and a
 hover change repaints without relayout. A frame paints over the previous one, rewriting
@@ -567,7 +812,7 @@ then diffs rows again on output. A paragraph lays its inline runs out as one wra
 text, and a view inside it flows as an inline box: laid out on its own, standing in the
 text as a placeholder of its width, painted and hit at the cells it flowed into. A
 border of zero width takes no cells. Frames paint into a cell buffer—to the terminal
-through `launch` (termina: raw mode, mouse capture, the terminal's replies as events), or to plain text
+through `launch`, or to plain text
 through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click`/`trigger_frame` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The
@@ -624,6 +869,9 @@ external crate can provide, and ships it as *public seams* so third-party integr
 sit on exactly the footing first-party ones would:
 
 - `spawn`—resume on the UI thread, scope-bound cancellation.
+- `Driver::schedule`—a one-shot action on the driver's clock, cancelled by the `Timer`
+  it returns: the window's timeout on the web, the loop's wait in the terminal, the
+  hand-stepped clock under the headless driver, and never on the server.
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
   state that keeps the last value; the GUI facade's newtype adds hydration across the
   SSR boundary (`new` by order, `tagged` by tag, `client` opting out).
@@ -649,7 +897,10 @@ calls to whatever server the user already has, hands each request's headers to t
 guest as `RenderHints` and names the response headers that request them. SSG is the
 same runner run at build time by `skene build web --static`; the CLI's dev server
 (`skene run web`, `--ssr` to render per request) is where the development conveniences
-live. Static output is fully functional without script (styling, media and container
+live. The terminal splits the same way: `skene run tui` keeps the build loop and its
+logs in the invoking terminal and publishes each built binary on its state port, and
+`skene attach <port>` runs the app in a second terminal, swapping each generation in
+with the CLI-held state carried across and the terminal restored between instances. Static output is fully functional without script (styling, media and container
 queries, hover, themes, transitions, animations—all CSS); hydration upgrades it to
 interactive when the wasm loads, and `#[lazy]` bodies split into modules fetched on
 first use while the server leaf renders them inline.
@@ -716,8 +967,8 @@ Recorded because they were load-bearing and the reasons they fell matter:
   the orphan rule blocks `From<()>` for a foreign type. A control decides its verdict.
 - **`Enhanced`: a native `Web*` control rendered without script and swapped for a drawn
   `Raw*` after hydration.** The scriptless form is the control: a text entry is its
-  native element, a toggle or slider keeps its input inside the label, and only the
-  picker swaps.
+  native element and a toggle or slider keeps its input inside the label. A view that
+  genuinely has two forms declares them through `Enhance`, the picker included.
 - **A derived value as an inline override.** Inline outranks every variant on the web
   and not in the terminal. A derived leaf is a per-node custom-property slot the class
   references.

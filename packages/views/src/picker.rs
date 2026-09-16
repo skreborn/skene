@@ -1,6 +1,6 @@
 //! A choice among fixed options, drawn by the views it holds.
 
-use std::rc::Rc;
+use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
 use skene_core::{
   AnyKind,
@@ -12,6 +12,7 @@ use skene_core::{
   IntoChildOf,
   IntoChildren,
   IntoView,
+  KeyEvent,
   Layout,
   NoChild,
   NodeId,
@@ -20,19 +21,24 @@ use skene_core::{
   Scene,
   View,
 };
-use skene_reactive::{Effect, Get, Memo, Set, Signal, untrack};
+use skene_reactive::{Effect, Get, Memo, Set, Signal, on_cleanup, provide_context, untrack};
 
 use crate::{
   Anchor,
   Control,
+  Enhance,
   FocusHandle,
   Label,
   LayoutBox,
   Listbox,
+  ListboxGroup,
+  NativePicker,
   Overlay,
   Popup,
+  Roster,
+  TypeAhead,
   decoration,
-  realize::Source,
+  realize::{Source, with_sink},
 };
 
 /// The builder of a picker's face, given the chosen value.
@@ -47,7 +53,9 @@ pub struct Face<D: Driver>(Box<dyn FnOnce(Memo<String>) -> AnyView<D>>);
 /// The list is a [`Listbox`] in a popup [`Overlay`] anchored to the face: opening
 /// focuses the chosen option, or the first; the arrows move focus without wrapping;
 /// `Enter`, `Space` or a click chooses, closes and returns focus to the face; a dismiss
-/// closes and leaves the value alone. Type-ahead is absent.
+/// closes and leaves the value alone. Typing over the closed face chooses the option
+/// whose name the characters begin, a character repeated cycling through the options
+/// starting with it; typing over the open list moves focus the same way.
 ///
 /// Controlled: the chosen value is what [`derive_value`](Self::derive_value) reads, and
 /// a choice only calls [`handle_change`](Self::handle_change) with the value asked for;
@@ -203,6 +211,28 @@ impl<D: Driver, F> RawPicker<D, F> {
 
 impl<D: Driver, F> AnyKind for RawPicker<D, F> {}
 
+/// What one of the picker's two forms takes: the decoration, the caption, the
+/// disabled setting and the face.
+struct Parts<D: Driver> {
+  face_style: DeclaredBoxStyle<D>,
+  label: Option<Label<D>>,
+  disabled: Option<Source<bool>>,
+  face: Box<dyn FnOnce(Memo<String>) -> AnyView<D>>,
+}
+
+/// The handler a choice runs, replaced by the form in force.
+type Chooser = Rc<RefCell<Rc<dyn Fn(String)>>>;
+
+/// What both forms share: the chosen value, the handler the form in force answers a
+/// choice with, the roster the options joined, and the option views, built once.
+struct Shared<D: Driver> {
+  chosen: Rc<dyn Fn() -> Option<String>>,
+  choose: Chooser,
+  roster: Roster,
+  options: NodeId,
+  driver: PhantomData<fn() -> D>,
+}
+
 impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
   fn build(self) -> NodeId {
     let Self {
@@ -219,88 +249,274 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
       Some(Source::Fixed(value)) => Rc::new(move || Some(value.clone())),
       Some(Source::Derived(compute)) => Rc::new(move || Some(compute())),
     };
-    let shown = {
-      let chosen = Rc::clone(&chosen);
+    let roster = Roster::new();
+    let choose: Chooser = Rc::new(RefCell::new(Rc::new(|_| {})));
 
-      Memo::new(move |_| chosen().unwrap_or_default())
-    };
-    let open = Signal::new(false);
-    let focus = FocusHandle::<D>::new();
-    let anchor = Anchor::new();
-    let listbox = Listbox::new()
-      .derive_chosen({
+    // The option views build once, under the group both forms answer through, and
+    // attach wherever the form in force lists them.
+    provide_context(ListboxGroup::new(
+      {
         let chosen = Rc::clone(&chosen);
 
         move || chosen()
-      })
-      .handle_choose({
-        let focus = focus.clone();
+      },
+      {
+        let choose = Rc::clone(&choose);
 
         move |value| {
-          if let Some(action) = &on_change {
-            action(value);
-          }
+          let choose = Rc::clone(&choose.borrow());
 
-          open.set(false);
-          focus.focus();
+          choose(value);
         }
-      });
-    let roster = listbox.roster().clone();
-    let list_anchor = Anchor::new();
-    let list_node: Signal<Option<NodeId>> = Signal::opaque(None);
-    let popup = Popup::new()
-      .derive_open(move || open.get())
-      .derive_controls(move || list_node.get())
-      .handle_open({
-        let focus = focus.clone();
+      },
+      roster.clone(),
+    ));
 
-        move |next| {
-          open.set(next);
+    let options = list.build();
 
-          if !next {
-            focus.focus();
-          }
+    on_cleanup(move || Scene::<D>::with(|scene| scene.destroy(options)));
+
+    let shared = Rc::new(Shared::<D> {
+      chosen,
+      choose,
+      roster,
+      options,
+      driver: PhantomData,
+    });
+    let parts = Parts {
+      face_style,
+      label,
+      disabled,
+      face,
+    };
+    // A driver whose tree is live from the start draws the picker outright.
+    let Some(hydrated) = D::default().hydration()
+    else {
+      return build_drawn::<D>(parts, &shared, on_change);
+    };
+    // The parts are taken by whichever form builds; the drawn one builds last.
+    let parts = Rc::new(RefCell::new(Some(parts)));
+
+    Enhance::<D>::new(hydrated)
+      .set_fallback({
+        let parts = Rc::clone(&parts);
+        let shared = Rc::clone(&shared);
+        let on_change = on_change.clone();
+
+        move || {
+          AnyView::<D>::new(move || build_native::<D>(&mut parts.borrow_mut(), &shared, on_change))
         }
-      });
-    let mut control = Control::new(popup)
-      .bind_anchor(&anchor)
-      .bind_focus(&focus)
-      .set_child_builder(move || face(shown));
+      })
+      .set_child_builder(move || {
+        AnyView::<D>::new(move || {
+          let parts = parts
+            .borrow_mut()
+            .take()
+            .expect("the drawn form builds last");
 
-    *control.style_mut() = face_style;
+          build_drawn::<D>(parts, &shared, on_change)
+        })
+      })
+      .build()
+  }
+}
 
-    if let Some(label) = label {
-      control = control.set_label(label);
+/// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
+/// and disabled setting, its options read from the option views, which attach
+/// nowhere; the parts a later form needs are left behind.
+fn build_native<D: Driver>(
+  parts: &mut Option<Parts<D>>,
+  shared: &Rc<Shared<D>>,
+  on_change: Option<Rc<dyn Fn(String)>>,
+) -> NodeId {
+  let parts = parts.as_mut().expect("the native form builds first");
+  let choose = move |value: String| {
+    if let Some(action) = &on_change {
+      action(value);
     }
+  };
 
-    match disabled {
-      None => {}
-      Some(Source::Fixed(disabled)) => control = control.set_disabled(disabled),
-      Some(Source::Derived(disabled)) => {
-        control = control.derive_disabled(move || disabled());
-      }
+  *shared.choose.borrow_mut() = Rc::new(choose.clone());
+
+  let mut control = Control::<D, _>::new(NativePicker::new().handle_change(choose));
+
+  *control.style_mut() = parts.face_style.clone();
+
+  if let Some(label) = parts.label.take() {
+    control = control.set_label(label);
+  }
+
+  match parts.disabled.take() {
+    None => {}
+    Some(Source::Fixed(disabled)) => control = control.set_disabled(disabled),
+    Some(Source::Derived(disabled)) => {
+      control = control.derive_disabled(move || disabled());
     }
+  }
 
-    let node = control.build();
-    let overlay = Overlay::<D>::popup()
-      .set_anchor(&anchor)
-      .set_placement(Placement::Bottom)
-      .bind_open(open)
-      .set_child(
-        Control::new(listbox)
-          .bind_anchor(&list_anchor)
-          .set_child(list),
-      )
-      .build();
+  let node = control.build();
 
-    Scene::<D>::with(|scene| scene.attach(node, overlay, None));
-    list_node.set(list_anchor.node());
-    Effect::render(move |_: Option<()>| {
-      if open.get() {
-        untrack(|| roster.focus_value::<D>(chosen().as_deref()));
+  shared.roster.root_at(shared.options);
+
+  let named = untrack(|| shared.roster.named::<D>());
+
+  with_sink::<D, _>(node, |sink| D::default().set_options(sink, &named));
+  Effect::render({
+    let chosen = Rc::clone(&shared.chosen);
+
+    move |_: Option<()>| {
+      let value = chosen().unwrap_or_default();
+
+      with_sink::<D, _>(node, |sink| D::default().set_value(sink, &value));
+    }
+  });
+
+  node
+}
+
+/// Builds the drawn form: the [`Popup`] face over the [`Listbox`] in its overlay.
+fn build_drawn<D: Driver>(
+  parts: Parts<D>,
+  shared: &Rc<Shared<D>>,
+  on_change: Option<Rc<dyn Fn(String)>>,
+) -> NodeId {
+  let Parts {
+    face_style,
+    label,
+    disabled,
+    face,
+  } = parts;
+  let chosen = Rc::clone(&shared.chosen);
+  let shown = {
+    let chosen = Rc::clone(&chosen);
+
+    Memo::new(move |_| chosen().unwrap_or_default())
+  };
+  let open = Signal::new(false);
+  let focus = FocusHandle::<D>::new();
+  let anchor = Anchor::new();
+  let listbox = Listbox::new()
+    .set_roster(shared.roster.clone())
+    .derive_chosen({
+      let chosen = Rc::clone(&chosen);
+
+      move || chosen()
+    })
+    .handle_choose({
+      let focus = focus.clone();
+      let on_change = on_change.clone();
+
+      move |value| {
+        if let Some(action) = &on_change {
+          action(value);
+        }
+
+        open.set(false);
+        focus.focus();
       }
     });
+  let choose = {
+    let focus = focus.clone();
+    let on_change = on_change.clone();
 
-    node
+    move |value: String| {
+      if let Some(action) = &on_change {
+        action(value);
+      }
+
+      open.set(false);
+      focus.focus();
+    }
+  };
+
+  *shared.choose.borrow_mut() = Rc::new(choose);
+
+  let roster = shared.roster.clone();
+  let list_anchor = Anchor::new();
+  let list_node: Signal<Option<NodeId>> = Signal::opaque(None);
+  let popup = Popup::new()
+    .derive_open(move || open.get())
+    .derive_controls(move || list_node.get())
+    .handle_open({
+      let focus = focus.clone();
+
+      move |next| {
+        open.set(next);
+
+        if !next {
+          focus.focus();
+        }
+      }
+    })
+    .handle_typed(choose_typed::<D>(
+      roster.clone(),
+      Rc::clone(&chosen),
+      on_change,
+    ));
+  let mut control = Control::new(popup)
+    .bind_anchor(&anchor)
+    .bind_focus(&focus)
+    .set_child_builder(move || face(shown));
+
+  *control.style_mut() = face_style;
+
+  if let Some(label) = label {
+    control = control.set_label(label);
+  }
+
+  match disabled {
+    None => {}
+    Some(Source::Fixed(disabled)) => control = control.set_disabled(disabled),
+    Some(Source::Derived(disabled)) => {
+      control = control.derive_disabled(move || disabled());
+    }
+  }
+
+  let node = control.build();
+  let overlay = Overlay::<D>::popup()
+    .set_anchor(&anchor)
+    .set_placement(Placement::Bottom)
+    .bind_open(open)
+    .set_child(
+      Control::new(listbox)
+        .bind_anchor(&list_anchor)
+        .set_child(shared.options),
+    )
+    .build();
+
+  Scene::<D>::with(|scene| scene.attach(node, overlay, None));
+  list_node.set(list_anchor.node());
+  Effect::render(move |_: Option<()>| {
+    if open.get() {
+      untrack(|| roster.focus_value::<D>(chosen().as_deref()));
+    }
+  });
+
+  node
+}
+
+/// The closed face's type-ahead: a character typed picks among `roster`'s options by
+/// name from the one `chosen` reads, and `on_change` is asked for the pick.
+fn choose_typed<D: Driver>(
+  roster: Roster,
+  chosen: Rc<dyn Fn() -> Option<String>>,
+  on_change: Option<Rc<dyn Fn(String)>>,
+) -> impl Fn(&KeyEvent) -> bool {
+  let type_ahead = Rc::new(TypeAhead::new());
+
+  move |event| {
+    let Some(buffer) = type_ahead.typed::<D>(event)
+    else {
+      return false;
+    };
+
+    if let Some(index) = roster.typed::<D>(&buffer, chosen().as_deref())
+      && let Some((_, value)) = roster.ordered::<D>().get(index)
+      && let Some(action) = &on_change
+    {
+      action(value.clone());
+    }
+
+    true
   }
 }

@@ -18,8 +18,12 @@ use skene_reactive::{Get, Set, Signal};
 
 use super::{Behavior, ControlHandle};
 
+/// A handler of a key the closed face does not act on, answering whether it took it.
+type Typed = dyn Fn(&KeyEvent) -> bool;
+
 /// The face of a popup: a click, `Enter` or `Space` toggles it, `ArrowDown` and
-/// `ArrowUp` open it, and `Escape` closes it.
+/// `ArrowUp` open it, `Escape` closes it, and any other key pressed while it is
+/// closed goes to [`handle_typed`](Self::handle_typed).
 ///
 /// Controlled: the open state it reports is what [`derive_open`](Self::derive_open)
 /// reads, and a toggle only calls [`handle_open`](Self::handle_open) with the state it
@@ -32,6 +36,7 @@ pub struct Popup {
   on_open: Option<Rc<dyn Fn(bool)>>,
   kind: PopupKind,
   controls: Option<Rc<dyn Fn() -> Option<NodeId>>>,
+  on_typed: Option<Rc<Typed>>,
 }
 
 impl Popup {
@@ -90,6 +95,15 @@ impl Popup {
       .handle_open(move |open| signal.set(open))
   }
 
+  /// Runs `action` with a key the closed face does not act on itself; `true` from it
+  /// consumes the key.
+  #[inline(always)]
+  pub fn handle_typed(mut self, action: impl Fn(&KeyEvent) -> bool + 'static) -> Self {
+    self.on_typed = Some(Rc::new(action));
+
+    self
+  }
+
   /// The open state currently reported.
   #[inline(always)]
   fn read(&self) -> bool {
@@ -131,6 +145,7 @@ impl<D: Driver> Behavior<D> for Popup {
       "Enter" | " " => self.ask(!self.read()),
       "ArrowDown" | "ArrowUp" => self.ask(true),
       "Escape" if self.read() => self.ask(false),
+      _ if !self.read() && self.on_typed.as_ref().is_some_and(|typed| typed(event)) => {}
       _ => return Prevent::None,
     }
 

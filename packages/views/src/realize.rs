@@ -4,7 +4,18 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
-use skene_core::{AnyView, BoxSlot, Driver, IntoView, NodeId, NodeKind, RunSlot, Scene, View};
+use skene_core::{
+  AccessProp,
+  AnyView,
+  BoxSlot,
+  Driver,
+  IntoView,
+  NodeId,
+  NodeKind,
+  RunSlot,
+  Scene,
+  View,
+};
 use skene_reactive::Effect;
 
 /// Runs `operation` on a copy of the sink of `node`, if the node is live.
@@ -40,6 +51,22 @@ pub fn bind_run_slot<D: Driver>(node: NodeId, slot: RunSlot<D::StyleExt>) {
 
     with_sink::<D, _>(node, |sink| D::default().update_run(sink, slot, &value));
   });
+}
+
+/// Reports `access` as what the view that made `node` says to assistive technology,
+/// beside whatever describes the node.
+pub fn report_access<D: Driver>(node: NodeId, access: Vec<AccessProp>) {
+  let access = Scene::<D>::with(|scene| scene.report_access(node, access));
+
+  with_sink::<D, _>(node, |sink| D::default().update_access(sink, &access));
+}
+
+/// Reports `description` as what a view describing `node` says to assistive
+/// technology, beside the node's own report.
+pub fn describe<D: Driver>(node: NodeId, description: Vec<AccessProp>) {
+  let access = Scene::<D>::with(|scene| scene.describe(node, description));
+
+  with_sink::<D, _>(node, |sink| D::default().update_access(sink, &access));
 }
 
 /// A setting outside the style model: fixed, or recomputed from the signals it reads.

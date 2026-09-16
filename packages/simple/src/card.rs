@@ -11,6 +11,7 @@ use skene_core::{
   NodeId,
   Seal,
   Spacing,
+  StaticLeaf,
   Value,
   View,
 };
@@ -59,7 +60,10 @@ impl<D: Driver> SimpleCard<D> {
 
   /// Derives the spacing between the card's children from the signals `spacing` reads.
   #[inline(always)]
-  pub fn derive_spacing(mut self, spacing: impl Fn() -> Spacing<D::Scalar> + 'static) -> Self {
+  pub fn derive_spacing<R: Into<StaticLeaf<Spacing<D::Scalar>>>>(
+    mut self,
+    spacing: impl Fn() -> R + 'static,
+  ) -> Self {
     self.column = self.column.derive_spacing(spacing);
 
     self
@@ -78,7 +82,10 @@ impl<D: Driver> SimpleCard<D> {
 
   /// Derives the alignment of the card's children from the signals `alignment` reads.
   #[inline(always)]
-  pub fn derive_item_alignment(mut self, alignment: impl Fn() -> ItemAlignment + 'static) -> Self {
+  pub fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
     self.column = self.column.derive_item_alignment(alignment);
 
     self

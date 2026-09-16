@@ -1,0 +1,323 @@
+//! A menu's behavior, and the behavior of each item in it.
+
+use std::{cell::RefCell, rc::Rc};
+
+use skene_core::{
+  ControlKind,
+  Driver,
+  EventKind,
+  FocusOrder,
+  KeyEvent,
+  NodeId,
+  Prevent,
+  Role,
+  Scene,
+};
+use skene_reactive::{on_cleanup, provide_context, use_context};
+
+use super::{Behavior, ControlHandle, Roster, TypeAhead};
+
+/// What a [`Menu`] shares with the items inside it, through context.
+///
+/// Items may sit at any depth under the menu and still belong to it.
+#[derive(Clone)]
+#[must_use]
+pub struct MenuGroup {
+  activate: Rc<dyn Fn(String)>,
+  roster: Roster,
+  type_ahead: Rc<TypeAhead>,
+}
+
+impl MenuGroup {
+  /// Asks for the item holding `value` to run.
+  #[inline(always)]
+  pub fn activate(&self, value: impl Into<String>) {
+    (self.activate)(value.into());
+  }
+
+  /// The items, in tree order.
+  #[inline(always)]
+  pub const fn roster(&self) -> &Roster {
+    &self.roster
+  }
+
+  /// The enabled items in tree order: those whose control is not disabled.
+  #[must_use]
+  pub fn enabled<D: Driver>(&self) -> Vec<(NodeId, String)> {
+    let members = self.roster.ordered::<D>();
+
+    Scene::<D>::with(|scene| {
+      members
+        .into_iter()
+        .filter(|(node, _)| {
+          !scene
+            .control_state(*node)
+            .is_some_and(|state| state.disabled)
+        })
+        .collect()
+    })
+  }
+
+  /// Whether `value` is the menu's one tab stop: the first enabled item.
+  #[must_use]
+  pub fn is_tab_stop<D: Driver>(&self, value: &str) -> bool {
+    self
+      .enabled::<D>()
+      .first()
+      .is_some_and(|(_, first)| first == value)
+  }
+
+  /// Focuses the first enabled item, if there is one.
+  pub fn focus_first<D: Driver>(&self) {
+    let members = self.enabled::<D>();
+
+    if let Some((node, _)) = members.first() {
+      focus::<D>(*node);
+    }
+  }
+
+  /// Focuses the enabled item `step` places from the one holding `value`, wrapping at
+  /// both ends as a browser's menu does, running nothing.
+  pub fn step_from<D: Driver>(&self, value: &str, step: isize) {
+    let members = self.enabled::<D>();
+    let Some(index) = members.iter().position(|(_, held)| held == value)
+    else {
+      return;
+    };
+    let count = members.len();
+    let next = match step {
+      isize::MIN => 0,
+      isize::MAX => count.saturating_sub(1),
+      _ => (index.cast_signed() + step)
+        .rem_euclid(count.cast_signed())
+        .cast_unsigned(),
+    };
+
+    if let Some((node, _)) = members.get(next) {
+      focus::<D>(*node);
+    }
+  }
+
+  /// Feeds a key typed on the item holding `value` into the menu's type-ahead and
+  /// focuses the item its buffer picks; `false` for a key that is no character.
+  #[must_use]
+  pub fn type_ahead_from<D: Driver>(&self, value: &str, event: &KeyEvent) -> bool {
+    let Some(buffer) = self.type_ahead.typed::<D>(event)
+    else {
+      return false;
+    };
+
+    if let Some(index) = self.roster.typed::<D>(&buffer, Some(value)) {
+      self.roster.focus_at::<D>(index);
+    }
+
+    true
+  }
+}
+
+/// Moves focus to `node`.
+fn focus<D: Driver>(node: NodeId) {
+  let sink = Scene::<D>::with(|scene| scene.sink(node));
+
+  if let Some(sink) = sink {
+    D::default().focus(&sink);
+  }
+}
+
+/// A menu: a list of commands whose items are one tab stop, the arrow keys moving
+/// focus between the enabled ones with wrapping, `Home` and `End` reaching the ends,
+/// typing moving focus to the item whose name the characters begin, and `Enter`,
+/// `Space` or a click running the focused one.
+///
+/// Running an item only calls [`handle_activate`](Self::handle_activate) with the
+/// item's value; what happens next, the menu closing included, is its user's. The
+/// menu takes no focus of its own; its items are [`MenuOption`] controls, at any
+/// depth inside it, tracked by its [`roster`](Self::roster).
+#[must_use]
+pub struct Menu {
+  on_activate: Option<Rc<dyn Fn(String)>>,
+  roster: Roster,
+}
+
+impl Menu {
+  /// A menu with no handler, its roster owned by the current owner.
+  #[inline(always)]
+  pub fn new() -> Self {
+    Self {
+      on_activate: None,
+      roster: Roster::new(),
+    }
+  }
+
+  /// Runs `action` with the value of the item run.
+  #[inline(always)]
+  pub fn handle_activate(mut self, action: impl Fn(String) + 'static) -> Self {
+    self.on_activate = Some(Rc::new(action));
+
+    self
+  }
+
+  /// The items the menu tracks, in tree order once the control builds.
+  #[inline(always)]
+  pub const fn roster(&self) -> &Roster {
+    &self.roster
+  }
+}
+
+impl Default for Menu {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<D: Driver> Behavior<D> for Menu {
+  #[inline(always)]
+  fn kind(&self) -> ControlKind {
+    ControlKind::Menu
+  }
+
+  #[inline(always)]
+  fn role(&self) -> Option<Role> {
+    Some(Role::Menu)
+  }
+
+  #[inline(always)]
+  fn listens(&self) -> &'static [EventKind] {
+    &[]
+  }
+
+  #[inline(always)]
+  fn label_leads(&self) -> bool {
+    true
+  }
+
+  fn attach(&self, control: &ControlHandle<D>) {
+    let on_activate = self.on_activate.clone();
+    let roster = self.roster.clone();
+
+    roster.root_at(control.node());
+    provide_context(MenuGroup {
+      activate: Rc::new(move |value| {
+        if let Some(action) = &on_activate {
+          action(value);
+        }
+      }),
+      roster,
+      type_ahead: Rc::new(TypeAhead::new()),
+    });
+  }
+
+  #[inline(always)]
+  fn focus_order(&self) -> Option<FocusOrder> {
+    None
+  }
+}
+
+/// One item within a [`Menu`]: a click, `Enter` or `Space` runs it, the arrow keys
+/// move focus to an enabled neighbour, `Home` and `End` to the ends, a typed
+/// character to the item the menu's type-ahead picks, and it is the menu's tab stop
+/// while it is the first enabled item.
+///
+/// Outside a menu it reports its role and takes focus like any control.
+#[must_use]
+pub struct MenuOption {
+  value: String,
+  group: RefCell<Option<MenuGroup>>,
+}
+
+impl MenuOption {
+  /// An item carrying `value`, the string the menu reports when it runs.
+  #[inline(always)]
+  pub fn new(value: impl Into<String>) -> Self {
+    Self {
+      value: value.into(),
+      group: RefCell::new(None),
+    }
+  }
+
+  /// The value this item carries.
+  #[inline(always)]
+  #[must_use]
+  pub fn value(&self) -> &str {
+    &self.value
+  }
+
+  /// The menu this item found when it attached.
+  #[inline(always)]
+  fn group(&self) -> Option<MenuGroup> {
+    self.group.borrow().clone()
+  }
+}
+
+impl<D: Driver> Behavior<D> for MenuOption {
+  #[inline(always)]
+  fn kind(&self) -> ControlKind {
+    ControlKind::MenuItem
+  }
+
+  #[inline(always)]
+  fn role(&self) -> Option<Role> {
+    Some(Role::MenuItem)
+  }
+
+  #[inline(always)]
+  fn listens(&self) -> &'static [EventKind] {
+    &[EventKind::Click, EventKind::KeyDown]
+  }
+
+  fn attach(&self, control: &ControlHandle<D>) {
+    let Some(group) = use_context::<MenuGroup>()
+    else {
+      return;
+    };
+    let node = control.node();
+
+    group
+      .roster
+      .join(node, self.value.clone(), control.name().map(str::to_owned));
+
+    let roster = group.roster.clone();
+
+    on_cleanup(move || roster.leave(node));
+    *self.group.borrow_mut() = Some(group);
+    control.refresh();
+  }
+
+  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+    if let Some(group) = self.group() {
+      group.activate(self.value.clone());
+    }
+
+    Prevent::Bubbling
+  }
+
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+    let Some(group) = self.group()
+    else {
+      return Prevent::None;
+    };
+
+    match event.key.as_str() {
+      "ArrowDown" => group.step_from::<D>(&self.value, 1),
+      "ArrowUp" => group.step_from::<D>(&self.value, -1),
+      "Home" => group.step_from::<D>(&self.value, isize::MIN),
+      "End" => group.step_from::<D>(&self.value, isize::MAX),
+      "Enter" => group.activate(self.value.clone()),
+      " " if !group.type_ahead_from::<D>(&self.value, event) => {
+        group.activate(self.value.clone());
+      }
+      _ if group.type_ahead_from::<D>(&self.value, event) => {}
+      _ => return Prevent::None,
+    }
+
+    Prevent::All
+  }
+
+  fn focus_order(&self) -> Option<FocusOrder> {
+    match self.group() {
+      Some(group) if !group.is_tab_stop::<D>(&self.value) => Some(FocusOrder::Skip),
+      _ => Some(FocusOrder::Auto),
+    }
+  }
+}

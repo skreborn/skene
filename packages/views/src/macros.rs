@@ -21,11 +21,14 @@ macro_rules! properties {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads: a value, a token or an expression.")]
     #[inline(always)]
-    pub fn $derive(mut self, $param: impl Fn() -> $type + 'static) -> Self {
+    pub fn $derive<R: Into<$crate::__core::StaticLeaf<$type>>>(
+      mut self,
+      $param: impl Fn() -> R + 'static,
+    ) -> Self {
       self.$access().$field = Some($crate::__core::Value::new(
-        $crate::__core::Leaf::Derived(::std::rc::Rc::new($param)),
+        $crate::__core::Leaf::derive($param),
       ));
 
       self
@@ -90,10 +93,14 @@ macro_rules! decoration {
       self
     }
 
-    /// Derives the corner radius from the signals `radius` reads, where the medium
-    /// rounds corners; a medium without radii accepts and ignores it.
+    /// Derives the corner radius from the signals `radius` reads, as a value, a token
+    /// or an expression, where the medium rounds corners; a medium without radii
+    /// accepts and ignores it.
     #[inline(always)]
-    pub fn derive_corner_radius(mut self, radius: impl Fn() -> f32 + 'static) -> Self
+    pub fn derive_corner_radius<R: Into<$crate::__core::StaticLeaf<f32>>>(
+      mut self,
+      radius: impl Fn() -> R + 'static,
+    ) -> Self
     where
       D::StyleExt: $crate::CornerRadius,
     {
@@ -101,9 +108,7 @@ macro_rules! decoration {
         $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some($crate::__core::Value::new($crate::__core::Leaf::Derived(
-          ::std::rc::Rc::new(radius),
-        ))),
+        Some($crate::__core::Value::new($crate::__core::Leaf::derive(radius))),
       );
 
       self
@@ -132,9 +137,12 @@ macro_rules! type_metrics {
       self
     }
 
-    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads, where the medium sizes type; a medium without type metrics accepts and ignores it.")]
+    #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads, as a value, a token or an expression, where the medium sizes type; a medium without type metrics accepts and ignores it.")]
     #[inline(always)]
-    pub fn $derive(mut self, $param: impl Fn() -> f32 + 'static) -> Self
+    pub fn $derive<R: Into<$crate::__core::StaticLeaf<f32>>>(
+      mut self,
+      $param: impl Fn() -> R + 'static,
+    ) -> Self
     where
       D::StyleExt: $crate::TypeMetrics,
     {
@@ -142,9 +150,7 @@ macro_rules! type_metrics {
         $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
       >(
         &mut self.$access().ext,
-        Some($crate::__core::Value::new(
-          $crate::__core::Leaf::Derived(::std::rc::Rc::new($param)),
-        )),
+        Some($crate::__core::Value::new($crate::__core::Leaf::derive($param))),
       );
 
       self

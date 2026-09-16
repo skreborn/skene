@@ -21,6 +21,7 @@
 mod button;
 mod card;
 mod checkbox;
+mod context_menu;
 pub mod glyphs;
 mod palette;
 mod picker;
@@ -29,11 +30,13 @@ mod shape;
 mod slider;
 mod text_editor;
 mod text_field;
+mod tooltip;
 
 pub use self::{
   button::SimpleButton,
   card::SimpleCard,
   checkbox::SimpleCheckbox,
+  context_menu::SimpleContextMenu,
   glyphs::SimpleGlyphs,
   palette::{SimpleLook, SimplePalette, SimpleVariant},
   picker::SimplePicker,
@@ -42,4 +45,5 @@ pub use self::{
   slider::SimpleSlider,
   text_editor::SimpleTextEditor,
   text_field::SimpleTextField,
+  tooltip::SimpleTooltip,
 };

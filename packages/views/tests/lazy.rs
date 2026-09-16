@@ -1,5 +1,6 @@
-//! The lazy column: only the window plus its overscan builds, scrolling rebuilds the
-//! window reusing the items whose keys stay, and a resize widens it.
+//! The lazy lists: only the window plus its overscan builds, scrolling rebuilds the
+//! window reusing the items whose keys stay, a resize widens it, measured items reshape
+//! it, and a row does the same along the other axis.
 
 mod common;
 
@@ -17,13 +18,16 @@ use skene_headless::{
   trigger_size,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
+use skene_views::ItemExtent;
 
 const HEIGHT: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Height);
+const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
 const ITEM_HEIGHT: f32 = 10.;
 const OVERSCAN: usize = 3;
 const COUNT: usize = 10_000;
 
 type LazyColumn = skene_views::LazyColumn<Headless>;
+type LazyRow = skene_views::LazyRow<Headless>;
 type Text = skene_views::Text<Headless>;
 
 /// The column's children: the leading spacer, the built items in order, and the
@@ -197,6 +201,119 @@ fn a_resize_widens_the_window() {
   assert_eq!(few[..], wide[..5]);
   assert_eq!(resolve_length(leading, HEIGHT), Some(0.));
   assert_eq!(resolve_length(trailing, HEIGHT), Some(0.));
+
+  owner.dispose();
+}
+
+/// Estimated items build by the estimate, then each measure reshapes the window and the
+/// spacers: the edges follow the measured items, and an item scrolled out keeps its
+/// measure.
+#[test]
+fn measured_items_reshape_the_window() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    LazyColumn::new()
+      .set_item_height(ItemExtent::Estimated(10.))
+      .set_overscan(0)
+      .derive_items(
+        || 0..100,
+        |index| *index,
+        |index| Text::new(index.to_string()),
+      )
+      .build()
+  });
+
+  trigger_size(node, Size::new(300., 50.));
+
+  let (_, estimated, trailing) = slices(node);
+
+  assert_eq!(
+    estimated.len(),
+    5,
+    "five items of the estimate fill the viewport"
+  );
+  assert_eq!(resolve_length(trailing, HEIGHT), Some(950.));
+  assert_eq!(
+    resolve_length(estimated[0], HEIGHT),
+    None,
+    "an item takes its own height"
+  );
+
+  for item in &estimated {
+    trigger_size(*item, Size::new(300., 20.));
+  }
+
+  let (leading, measured, trailing) = slices(node);
+
+  assert_eq!(measured.len(), 3, "three measured items fill the viewport");
+  assert_eq!(measured[..], estimated[..3]);
+  assert_eq!(resolve_length(leading, HEIGHT), Some(0.));
+  assert_eq!(
+    resolve_length(trailing, HEIGHT),
+    Some(3. * 20. + 97. * 10. - 60.),
+    "the trailing spacer counts the three measures; the two items the first measures \
+     pushed out of the window were disposed before they could measure"
+  );
+
+  trigger_scroll(node, &ScrollEvent { x: 0., y: 40. });
+
+  let (leading, scrolled, trailing) = slices(node);
+
+  assert_eq!(label(scrolled[0]), "2");
+  assert_eq!(
+    scrolled.len(),
+    4,
+    "two measured and two estimated items fill it"
+  );
+  assert_eq!(
+    resolve_length(leading, HEIGHT),
+    Some(40.),
+    "the two items scrolled out keep their measures"
+  );
+  assert_eq!(
+    resolve_length(trailing, HEIGHT),
+    Some(3. * 20. + 97. * 10. - 90.)
+  );
+
+  owner.dispose();
+}
+
+/// A lazy row windows along the horizontal axis: its width is the viewport, its scroll
+/// offset the horizontal one, and its spacers take widths.
+#[test]
+fn a_lazy_row_windows_along_x() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    LazyRow::new()
+      .set_item_width(ITEM_HEIGHT)
+      .set_overscan(OVERSCAN)
+      .derive_items(
+        || 0..COUNT,
+        |index| *index,
+        |index| Text::new(index.to_string()),
+      )
+      .build()
+  });
+
+  trigger_size(node, Size::new(100., 300.));
+
+  let (_, window, trailing) = slices(node);
+
+  assert_eq!(window.len(), 13);
+  assert_eq!(resolve_length(window[0], WIDTH), Some(ITEM_HEIGHT));
+  assert_eq!(resolve_length(window[0], HEIGHT), None);
+  assert_eq!(resolve_length(trailing, WIDTH), Some(extent(COUNT - 13)));
+
+  trigger_scroll(node, &ScrollEvent { x: 500., y: 0. });
+
+  let (leading, scrolled, _) = slices(node);
+
+  assert_eq!(label(scrolled[0]), "47");
+  assert_eq!(resolve_length(leading, WIDTH), Some(extent(47)));
 
   owner.dispose();
 }

@@ -8,6 +8,7 @@ use std::{
 use skene_core::{Driver, NodeId, Scene};
 use skene_reactive::Trigger;
 
+use super::TypeAhead;
 use crate::realize::with_sink;
 
 /// The members a grouping control tracks: a radio group's choices, a listbox's options.
@@ -20,9 +21,18 @@ use crate::realize::with_sink;
 #[derive(Clone)]
 #[must_use]
 pub struct Roster {
-  members: Rc<RefCell<Vec<(NodeId, String)>>>,
+  members: Rc<RefCell<Vec<Member>>>,
   root: Rc<Cell<Option<NodeId>>>,
   changed: Trigger,
+}
+
+/// One member: its node, the value it carries, and the name it goes by when its
+/// control's label supplied one.
+#[derive(Clone)]
+struct Member {
+  node: NodeId,
+  value: String,
+  name: Option<String>,
 }
 
 impl Roster {
@@ -43,13 +53,18 @@ impl Roster {
     self.changed.notify();
   }
 
-  /// Adds the member `node` holding `value`, replacing any member already at that node.
-  pub fn join(&self, node: NodeId, value: impl Into<String>) {
+  /// Adds the member `node` holding `value` and going by `name`, replacing any member
+  /// already at that node.
+  pub fn join(&self, node: NodeId, value: impl Into<String>, name: Option<String>) {
     {
       let mut members = self.members.borrow_mut();
 
-      members.retain(|(held, _)| *held != node);
-      members.push((node, value.into()));
+      members.retain(|member| member.node != node);
+      members.push(Member {
+        node,
+        value: value.into(),
+        name,
+      });
     }
 
     self.changed.notify();
@@ -57,7 +72,10 @@ impl Roster {
 
   /// Removes the member at `node`.
   pub fn leave(&self, node: NodeId) {
-    self.members.borrow_mut().retain(|(held, _)| *held != node);
+    self
+      .members
+      .borrow_mut()
+      .retain(|member| member.node != node);
     self.changed.notify();
   }
 
@@ -83,6 +101,45 @@ impl Roster {
   /// The members in tree order under `D`'s scene, tracked.
   #[must_use]
   pub fn ordered<D: Driver>(&self) -> Vec<(NodeId, String)> {
+    self
+      .walk::<D>()
+      .into_iter()
+      .map(|member| (member.node, member.value))
+      .collect()
+  }
+
+  /// The members' values and names in tree order under `D`'s scene, tracked; a
+  /// member's value is its name where its label supplied none.
+  #[must_use]
+  pub fn named<D: Driver>(&self) -> Vec<(String, String)> {
+    self
+      .walk::<D>()
+      .into_iter()
+      .map(|member| {
+        let name = member.name.unwrap_or_else(|| member.value.clone());
+
+        (member.value, name)
+      })
+      .collect()
+  }
+
+  /// The index of the member a type-ahead `buffer` picks by name (see
+  /// [`TypeAhead::matching`]), given the member holding `current` has focus or is
+  /// chosen; a member's value is its name where its label supplied none.
+  #[must_use]
+  pub fn typed<D: Driver>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
+    let members = self.walk::<D>();
+    let names: Vec<String> = members
+      .iter()
+      .map(|member| member.name.clone().unwrap_or_else(|| member.value.clone()))
+      .collect();
+    let current =
+      current.and_then(|current| members.iter().position(|member| member.value == current));
+
+    TypeAhead::matching(buffer, &names, current)
+  }
+
+  fn walk<D: Driver>(&self) -> Vec<Member> {
     self.changed.track();
 
     let members = self.members.borrow();
@@ -96,8 +153,8 @@ impl Roster {
       let mut pending = vec![root];
 
       while let Some(node) = pending.pop() {
-        if let Some((_, value)) = members.iter().find(|(held, _)| *held == node) {
-          ordered.push((node, value.clone()));
+        if let Some(member) = members.iter().find(|member| member.node == node) {
+          ordered.push(member.clone());
         }
 
         let children: Vec<NodeId> = scene.children(node).collect();

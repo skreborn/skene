@@ -4,14 +4,71 @@
     {
       "name": "gallery",
       "runtimeExecutable": "cargo",
-      "runtimeArgs": ["run", "-p", "skene-cli", "--", "--dir", "examples/gui/gallery", "run", "web", "--port", "8080"],
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/gallery",
+        "run",
+        "web",
+        "--port",
+        "8080"
+      ],
       "port": 8080
     },
     {
       "name": "store",
       "runtimeExecutable": "cargo",
-      "runtimeArgs": ["run", "-p", "skene-cli", "--", "--dir", "examples/gui/store", "run", "web", "--port", "8081"],
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/store",
+        "run",
+        "web",
+        "--port",
+        "8081"
+      ],
       "port": 8081
+    },
+    {
+      "name": "context-menu",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/context-menu",
+        "run",
+        "web",
+        "--port",
+        "8082"
+      ],
+      "port": 8082
+    },
+    {
+      "name": "enhance",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/enhance",
+        "run",
+        "web",
+        "--port",
+        "8083",
+        "--ssr"
+      ],
+      "port": 8083
     }
   ]
 }

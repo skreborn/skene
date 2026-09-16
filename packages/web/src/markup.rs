@@ -64,8 +64,8 @@ pub(crate) const fn element_tag(role: Option<Role>) -> &'static str {
   }
 }
 
-/// The native element a control stands in: a text entry is the element itself, and
-/// every other kind keeps it inside its label.
+/// The native element a control stands in: a text entry or a picker is the element
+/// itself, and every other kind keeps it inside its label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub(crate) struct NativeElement {
@@ -76,13 +76,13 @@ pub(crate) struct NativeElement {
 }
 
 impl NativeElement {
-  /// Whether the element is a text entry: the control's own element rather than one
-  /// kept inside its label.
+  /// Whether the element stands bare: the control's own element, its caption a
+  /// `<label for>` beside it, rather than an input kept inside its label.
   #[inline(always)]
-  pub(crate) fn is_entry(self) -> bool {
+  pub(crate) fn is_bare(self) -> bool {
     matches!(
       (self.tag, self.kind),
-      ("textarea", _) | ("input", Some("text"))
+      ("textarea" | "select", _) | ("input", Some("text"))
     )
   }
 
@@ -102,11 +102,14 @@ pub(crate) const fn native_element(kind: ControlKind) -> Option<NativeElement> {
     ControlKind::Range => ("input", Some("range")),
     ControlKind::TextField => ("input", Some("text")),
     ControlKind::TextEditor => ("textarea", None),
+    ControlKind::NativePicker => ("select", None),
     ControlKind::Button
     | ControlKind::RadioGroup
     | ControlKind::Listbox
     | ControlKind::ListboxOption
-    | ControlKind::Combobox => return None,
+    | ControlKind::Combobox
+    | ControlKind::Menu
+    | ControlKind::MenuItem => return None,
   };
 
   Some(NativeElement { tag, kind })
@@ -123,11 +126,14 @@ pub(crate) const fn drawn_element(
     ControlKind::Listbox => ("div", Some(("role", "listbox"))),
     ControlKind::ListboxOption => ("div", Some(("role", "option"))),
     ControlKind::Combobox => ("div", Some(("role", "combobox"))),
+    ControlKind::Menu => ("div", Some(("role", "menu"))),
+    ControlKind::MenuItem => ("div", Some(("role", "menuitem"))),
     ControlKind::Checkbox
     | ControlKind::Radio
     | ControlKind::Range
     | ControlKind::TextField
-    | ControlKind::TextEditor => ("div", None),
+    | ControlKind::TextEditor
+    | ControlKind::NativePicker => ("div", None),
   }
 }
 
@@ -198,6 +204,7 @@ pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
     ),
     AccessProp::Controls(node) => ("aria-controls", element_id(*node)),
     AccessProp::DescribedBy(node) => ("aria-describedby", element_id(*node)),
+    AccessProp::Description(text) => ("title", text.clone()),
     AccessProp::Orientation(axis) => (
       "aria-orientation",
       match axis {
@@ -321,6 +328,8 @@ pub(crate) fn aria_role(role: Role) -> &'static str {
     Role::Listbox => "listbox",
     Role::ListboxOption => "option",
     Role::Combobox => "combobox",
+    Role::Menu => "menu",
+    Role::MenuItem => "menuitem",
     _ => "",
   }
 }

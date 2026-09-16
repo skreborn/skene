@@ -203,7 +203,8 @@ pub enum State {
   Hovered,
   /// The node has focus.
   Focused,
-  /// The node has visibly-indicated (keyboard) focus.
+  /// The node has focus that shows: reached by the keyboard, or held by a text entry,
+  /// and not since a pointer press.
   FocusVisible,
   /// The node is being pressed.
   Pressed,

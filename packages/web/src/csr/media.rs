@@ -2,11 +2,11 @@
 //! one `MediaQueryList` per query text, and the scheme in force composed from the app's
 //! choice and the platform's preference.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use rustc_hash::FxHashMap;
 use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, Size};
-use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal};
+use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, WriteSignal};
 use web_sys::MediaQueryList;
 
 use super::events::Listener;
@@ -27,6 +27,9 @@ struct Query {
 /// The environment's signals with their sources.
 struct MediaState {
   signals: MediaSignals<f32>,
+  /// Whether the bundle runs the tree: false while a hydration adopts the server's
+  /// markup, true once it has finished and on a mount that hydrates nothing.
+  live: (ReadSignal<bool>, WriteSignal<bool>),
   choice: Signal<Option<ColorScheme>>,
   queries: FxHashMap<String, Query>,
   _resize: Listener,
@@ -34,6 +37,8 @@ struct MediaState {
 
 thread_local! {
   static MEDIA: RefCell<Option<MediaState>> = const { RefCell::new(None) };
+  /// Whether the bundle runs the tree, for the state to start from when created.
+  static LIVE: Cell<bool> = const { Cell::new(true) };
 }
 
 /// The window's inner size, in logical pixels.
@@ -120,6 +125,7 @@ fn create() -> MediaState {
       reduced_motion,
       container_sizes: ContainerSizes::new(),
     },
+    live: Signal::opaque(LIVE.with(Cell::get)).split(),
     choice,
     queries: FxHashMap::default(),
     _resize: resize,
@@ -147,9 +153,26 @@ pub(super) fn signals() -> MediaSignals<f32> {
   with_media(|state| state.signals)
 }
 
+/// Whether the bundle runs the tree, as a signal: what hydration and the pixels wait on.
+pub(super) fn live() -> ReadSignal<bool> {
+  with_media(|state| state.live.0)
+}
+
+/// Records whether the bundle runs the tree: false while a hydration adopts, true
+/// once it has finished or when nothing is adopted.
+pub(super) fn set_live(live: bool) {
+  LIVE.with(|current| current.set(live));
+  MEDIA.with(|media| {
+    if let Some(state) = &*media.borrow() {
+      state.live.1.set(live);
+    }
+  });
+}
+
 /// Forgets the environment state, so the next use creates it afresh.
 pub(super) fn reset() {
   MEDIA.with(|media| *media.borrow_mut() = None);
+  LIVE.with(|live| live.set(true));
 }
 
 /// Whether the media query `text` matches, as a signal following the platform.

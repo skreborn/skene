@@ -16,6 +16,7 @@ use skene_core::{
   Leaf,
   NoChild,
   Scene,
+  StaticLeaf,
   Value,
   View,
 };
@@ -115,10 +116,14 @@ impl<D: Driver, C> Flexible<D, C> {
     self
   }
 
-  /// Derives the child's own cross-axis alignment from the signals `alignment` reads.
+  /// Derives the child's own cross-axis alignment from the signals `alignment` reads:
+  /// a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_item_alignment(mut self, alignment: impl Fn() -> ItemAlignment + 'static) -> Self {
-    self.alignment = Some(Value::new(Leaf::Derived(Rc::new(alignment))));
+  pub fn derive_item_alignment<R: Into<StaticLeaf<ItemAlignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.alignment = Some(Value::new(Leaf::derive(alignment)));
 
     self
   }
@@ -144,9 +149,9 @@ impl<D: Driver> IntoChildOf<D, FlexChild> for Flexible<D, AnyView<D>> {
       let shrink = self.shrink;
       let flex = match self.grow {
         Factor::Fixed(grow) => Value::from(Flexibility::new(initial, grow, shrink)),
-        Factor::Derived(grow) => Value::new(Leaf::Derived(Rc::new(move || {
+        Factor::Derived(grow) => Value::new(Leaf::derive(move || {
           Flexibility::new(initial, grow(), shrink)
-        }))),
+        })),
       };
 
       Scene::<D>::with(|scene| {

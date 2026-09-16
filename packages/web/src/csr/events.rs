@@ -22,9 +22,12 @@ use skene_core::{
   Prevented,
   Scene,
   ScrollEvent,
+  TextSelection,
   dispatch_click,
   dispatch_click_observed,
+  dispatch_context_menu,
   dispatch_key_down,
+  dispatch_key_up,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -35,8 +38,10 @@ use skene_core::{
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
+  notify_selection_change,
   notify_toggle,
 };
+use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
 
@@ -116,12 +121,15 @@ impl Drop for Listener {
   }
 }
 
-/// The root's delegated listeners and the popups currently open, each with the anchor
-/// it was opened against.
+/// The root's delegated listeners, the popups currently open, each with the anchor
+/// it was opened against, and the text entry focus last left.
 pub(super) struct Events {
   root: Element,
   listeners: FxHashMap<&'static str, Listener>,
   pub(super) open_popups: FxHashMap<u32, Option<u32>>,
+  /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
+  /// open popup acts on in place of the popup's own focus.
+  pub(super) last_entry: Option<Element>,
 }
 
 impl Events {
@@ -130,6 +138,7 @@ impl Events {
       root,
       listeners: FxHashMap::default(),
       open_popups: FxHashMap::default(),
+      last_entry: None,
     }
   }
 
@@ -138,6 +147,7 @@ impl Events {
     let names: &[&'static str] = match kind {
       EventKind::Click => &["click"],
       EventKind::KeyDown => &["keydown"],
+      EventKind::KeyUp => &["keyup"],
       EventKind::PointerDown => &["pointerdown"],
       EventKind::PointerUp => &["pointerup"],
       EventKind::PointerMove => &["pointermove"],
@@ -146,8 +156,10 @@ impl Events {
       EventKind::Blur => &["focusout"],
       EventKind::Scroll => &["scroll"],
       EventKind::Change => &["input"],
+      EventKind::SelectionChange => &["selectionchange"],
       EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
+      EventKind::ContextMenu => &["contextmenu"],
     };
 
     for name in names {
@@ -158,6 +170,7 @@ impl Events {
       let handler: fn(&web_sys::Event) = match *name {
         "click" => on_click,
         "keydown" => on_key_down,
+        "keyup" => on_key_up,
         "pointerdown" => on_pointer_down,
         "pointerup" => on_pointer_up,
         "pointermove" => on_pointer_move,
@@ -167,14 +180,25 @@ impl Events {
         "focusout" => on_focus_out,
         "scroll" => on_scroll,
         "input" => on_input,
+        "selectionchange" => on_selection_change,
+        "contextmenu" => on_context_menu,
         _ => on_change,
       };
       let capture = *name == "scroll";
+      // The selection change is the document's event: it names no target of its own.
+      let target: EventTarget = if *name == "selectionchange" {
+        match web_sys::window().and_then(|window| window.document()) {
+          Some(document) => document.into(),
+          None => continue,
+        }
+      }
+      else {
+        self.root.clone().into()
+      };
 
-      self.listeners.insert(
-        name,
-        Listener::new(self.root.clone().into(), name, capture, handler),
-      );
+      self
+        .listeners
+        .insert(name, Listener::new(target, name, capture, handler));
     }
   }
 }
@@ -314,17 +338,36 @@ fn on_key_down(event: &web_sys::Event) {
   else {
     return;
   };
-  let key_event = KeyEvent {
+
+  apply(dispatch_key_down::<Web>(node, &key_event(keyboard)), event);
+}
+
+fn on_key_up(event: &web_sys::Event) {
+  let Some(keyboard) = event.dyn_ref::<web_sys::KeyboardEvent>()
+  else {
+    return;
+  };
+  let Some(node) = node_at(event.target())
+  else {
+    return;
+  };
+
+  apply(dispatch_key_up::<Web>(node, &key_event(keyboard)), event);
+}
+
+/// The portable key event of a DOM keyboard event.
+fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
+  KeyEvent {
     key: keyboard.key(),
+    code: keyboard.code(),
     modifiers: Modifiers {
       ctrl: keyboard.ctrl_key(),
       shift: keyboard.shift_key(),
       alt: keyboard.alt_key(),
       meta: keyboard.meta_key(),
     },
-  };
-
-  apply(dispatch_key_down::<Web>(node, &key_event), event);
+    repeat: keyboard.repeat(),
+  }
 }
 
 /// The nodes of the popups currently open.
@@ -480,9 +523,54 @@ fn on_focus_in(event: &web_sys::Event) {
 }
 
 fn on_focus_out(event: &web_sys::Event) {
+  if let Some(entry) = event
+    .target()
+    .and_then(|target| target.dyn_into::<Element>().ok())
+    .filter(|element| {
+      element.is_instance_of::<web_sys::HtmlInputElement>()
+        || element.is_instance_of::<web_sys::HtmlTextAreaElement>()
+    })
+  {
+    with_dom(|dom| dom.events.last_entry = Some(entry));
+  }
+
   if let Some(node) = node_at(event.target()) {
     notify_blur::<Web>(node);
   }
+}
+
+/// A context menu request: dispatched where the browser would open its own menu,
+/// which stays unless a handler prevents it.
+fn on_context_menu(event: &web_sys::Event) {
+  let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>()
+  else {
+    return;
+  };
+  let Some((element, node)) = resolve(event.target())
+  else {
+    return;
+  };
+  #[expect(clippy::cast_precision_loss)]
+  let (x, y) = (mouse.client_x() as f32, mouse.client_y() as f32);
+  let payload = localized(
+    &PointerEvent {
+      x,
+      y,
+      local_x: x,
+      local_y: y,
+      // A request from the keyboard carries no button.
+      button: (mouse.button() == 2).then_some(PointerButton::Secondary),
+      modifiers: Modifiers {
+        ctrl: mouse.ctrl_key(),
+        shift: mouse.shift_key(),
+        alt: mouse.alt_key(),
+        meta: mouse.meta_key(),
+      },
+    },
+    &element,
+  );
+
+  apply(dispatch_context_menu::<Web>(node, &payload), event);
 }
 
 fn on_scroll(event: &web_sys::Event) {
@@ -534,6 +622,117 @@ fn on_input(event: &web_sys::Event) {
   if let Some(node) = node_at(Some(target)) {
     notify_change::<Web>(node, &value);
   }
+}
+
+/// The selection of the text control holding focus, reported at the node it is; a
+/// change of the document's selection anywhere else is nothing to the scene.
+fn on_selection_change(_: &web_sys::Event) {
+  let Some(element) = web_sys::window()
+    .and_then(|window| window.document())
+    .and_then(|document| document.active_element())
+  else {
+    return;
+  };
+  let Some(selection) = selection_of(&element)
+  else {
+    return;
+  };
+
+  if let Some(node) = node_at(Some(element.into())) {
+    notify_selection_change::<Web>(node, selection);
+  }
+}
+
+/// The selection inside a text control in grapheme clusters of its value; `None` for
+/// any other element.
+fn selection_of(element: &Element) -> Option<TextSelection> {
+  let (value, start, end, backward) = if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+    (
+      input.value(),
+      input.selection_start().ok()??,
+      input.selection_end().ok()??,
+      input.selection_direction().ok()?,
+    )
+  }
+  else {
+    let area = element.dyn_ref::<HtmlTextAreaElement>()?;
+
+    (
+      area.value(),
+      area.selection_start().ok()??,
+      area.selection_end().ok()??,
+      area.selection_direction().ok()?,
+    )
+  };
+  let (start, end) = (cluster_of_unit(&value, start), cluster_of_unit(&value, end));
+
+  Some(if backward.as_deref() == Some("backward") {
+    TextSelection::new(end, start)
+  }
+  else {
+    TextSelection::new(start, end)
+  })
+}
+
+/// Selects `selection`, in grapheme clusters of the control's value, inside a text
+/// control; any other element is left alone.
+pub(super) fn select(element: &Element, selection: TextSelection) {
+  let direction = if selection.is_reversed() {
+    "backward"
+  }
+  else {
+    "forward"
+  };
+
+  if let Some(input) = element.dyn_ref::<HtmlInputElement>() {
+    let value = input.value();
+
+    let _ = input.set_selection_range_with_direction(
+      unit_of_cluster(&value, selection.min()),
+      unit_of_cluster(&value, selection.max()),
+      direction,
+    );
+  }
+  else if let Some(area) = element.dyn_ref::<HtmlTextAreaElement>() {
+    let value = area.value();
+
+    let _ = area.set_selection_range_with_direction(
+      unit_of_cluster(&value, selection.min()),
+      unit_of_cluster(&value, selection.max()),
+      direction,
+    );
+  }
+}
+
+/// The cluster of `value` holding the UTF-16 code unit `unit`, or the cluster count
+/// at or past the value's end.
+fn cluster_of_unit(value: &str, unit: u32) -> usize {
+  let mut units = 0;
+  let mut index = 0;
+
+  for cluster in value.graphemes(true) {
+    units += u32::try_from(cluster.encode_utf16().count()).unwrap_or(u32::MAX);
+
+    if units > unit {
+      return index;
+    }
+
+    index += 1;
+  }
+
+  index
+}
+
+/// The UTF-16 code unit in `value` the cluster at `index` starts at, or the value's
+/// end in units.
+fn unit_of_cluster(value: &str, index: usize) -> u32 {
+  let units = value
+    .graphemes(true)
+    .take(index)
+    .map(|cluster| cluster.encode_utf16().count())
+    .sum::<usize>();
+
+  u32::try_from(units).unwrap_or(u32::MAX)
 }
 
 fn on_change(event: &web_sys::Event) {

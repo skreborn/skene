@@ -11,6 +11,8 @@ use skene_core::{
   RunDisplay,
   RunKeyframe,
   StyleExtension,
+  TextDecoration,
+  TextDecorationStyle,
   Transition,
   View,
 };
@@ -59,6 +61,12 @@ impl<D: Driver> Text<D> {
       "the text color while selected";
     set_selection_background / derive_selection_background (color) => selection_background: Color,
       "the background behind selected text";
+    set_decoration / derive_decoration (decoration) => decoration: TextDecoration,
+      "the line the text is decorated with: beneath, above or through it; a link is underlined unless set";
+    set_decoration_style / derive_decoration_style (style) => decoration_style: TextDecorationStyle,
+      "how the decoration line is drawn";
+    set_decoration_color / derive_decoration_color (color) => decoration_color: Color,
+      "the decoration line's color; the text color unless set";
   }
 
   run_type_metrics! { style_mut }

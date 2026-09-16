@@ -135,17 +135,107 @@ pub struct Modifiers {
   pub meta: bool,
 }
 
-/// A keyboard event: the logical key plus modifier state.
+/// A keyboard event: the logical key, the physical key, and the modifier state.
 ///
-/// `key` follows the W3C key-value names (`"a"`, `"Enter"`, `"ArrowLeft"`, …); every
-/// driver maps its platform's keys onto them.
+/// `key` follows the W3C key-value names (`"a"`, `"Enter"`, `"ArrowLeft"`, and
+/// `"Shift"`, `"Control"`, `"Alt"`, `"Meta"` for a modifier pressed alone) and `code`
+/// the W3C code names of the key's position on the standard layout (`"KeyA"`,
+/// `"Digit1"`, `"ShiftLeft"`), so a shortcut on `code` holds across keyboard layouts;
+/// every driver maps its platform's keys onto them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub struct KeyEvent {
   /// The logical key value.
   pub key: String,
+  /// The physical key, `"Unidentified"` where the platform does not know it.
+  pub code: String,
   /// The modifier state.
   pub modifiers: Modifiers,
+  /// Whether the press is the platform's repeat of a key held down.
+  pub repeat: bool,
+}
+
+impl KeyEvent {
+  /// A press of `key` with no modifier held, not repeating, at the position `key` has
+  /// on the standard US layout.
+  #[inline(always)]
+  pub fn new(key: impl Into<String>) -> Self {
+    let key = key.into();
+    let code = Self::code_of(&key);
+
+    Self {
+      key,
+      code,
+      modifiers: Modifiers::default(),
+      repeat: false,
+    }
+  }
+
+  /// The W3C code of the key `key` names on the standard US layout: `"KeyA"` for
+  /// `"a"` or `"A"`, `"Digit1"` for `"1"` or `"!"`, `"Space"` for `" "`, the left
+  /// modifier for a modifier's name, the name itself for a named key, and
+  /// `"Unidentified"` for a key the layout does not have.
+  #[must_use]
+  pub fn code_of(key: &str) -> String {
+    let mut characters = key.chars();
+
+    if let (Some(character), None) = (characters.next(), characters.next()) {
+      return match character {
+        'a'..='z' | 'A'..='Z' => format!("Key{}", character.to_ascii_uppercase()),
+        '0'..='9' => format!("Digit{character}"),
+        ' ' => "Space".to_owned(),
+        '!' => "Digit1".to_owned(),
+        '@' => "Digit2".to_owned(),
+        '#' => "Digit3".to_owned(),
+        '$' => "Digit4".to_owned(),
+        '%' => "Digit5".to_owned(),
+        '^' => "Digit6".to_owned(),
+        '&' => "Digit7".to_owned(),
+        '*' => "Digit8".to_owned(),
+        '(' => "Digit9".to_owned(),
+        ')' => "Digit0".to_owned(),
+        '-' | '_' => "Minus".to_owned(),
+        '=' | '+' => "Equal".to_owned(),
+        '[' | '{' => "BracketLeft".to_owned(),
+        ']' | '}' => "BracketRight".to_owned(),
+        '\\' | '|' => "Backslash".to_owned(),
+        ';' | ':' => "Semicolon".to_owned(),
+        '\'' | '"' => "Quote".to_owned(),
+        '`' | '~' => "Backquote".to_owned(),
+        ',' | '<' => "Comma".to_owned(),
+        '.' | '>' => "Period".to_owned(),
+        '/' | '?' => "Slash".to_owned(),
+        _ => "Unidentified".to_owned(),
+      };
+    }
+
+    match key {
+      "Shift" | "Control" | "Alt" | "Meta" => format!("{key}Left"),
+      "AltGraph" => "AltRight".to_owned(),
+      "Enter" | "Backspace" | "Tab" | "Escape" | "Delete" | "Insert" | "Home" | "End"
+      | "PageUp" | "PageDown" | "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" => {
+        key.to_owned()
+      }
+      function
+        if function.len() > 1
+          && function.starts_with('F')
+          && function[1..].bytes().all(|byte| byte.is_ascii_digit()) =>
+      {
+        key.to_owned()
+      }
+      _ => "Unidentified".to_owned(),
+    }
+  }
+
+  /// Whether the key is a modifier pressed alone.
+  #[inline(always)]
+  #[must_use]
+  pub fn is_modifier(&self) -> bool {
+    matches!(
+      self.key.as_str(),
+      "Shift" | "Control" | "Alt" | "Meta" | "AltGraph" | "Hyper" | "Super"
+    )
+  }
 }
 
 /// A pointer button.
@@ -187,4 +277,25 @@ pub struct ScrollEvent {
   pub x: f32,
   /// The vertical scroll offset, in logical pixels.
   pub y: f32,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::KeyEvent;
+
+  /// A key's code is its position on the US layout, whatever the shifted form.
+  #[test]
+  fn the_code_is_the_keys_position_on_the_us_layout() {
+    assert_eq!(KeyEvent::code_of("a"), "KeyA");
+    assert_eq!(KeyEvent::code_of("A"), "KeyA");
+    assert_eq!(KeyEvent::code_of("1"), "Digit1");
+    assert_eq!(KeyEvent::code_of("!"), "Digit1");
+    assert_eq!(KeyEvent::code_of(" "), "Space");
+    assert_eq!(KeyEvent::code_of("?"), "Slash");
+    assert_eq!(KeyEvent::code_of("Shift"), "ShiftLeft");
+    assert_eq!(KeyEvent::code_of("ArrowLeft"), "ArrowLeft");
+    assert_eq!(KeyEvent::code_of("F12"), "F12");
+    assert_eq!(KeyEvent::code_of("ф"), "Unidentified");
+    assert_eq!(KeyEvent::new("z").code, "KeyZ");
+  }
 }

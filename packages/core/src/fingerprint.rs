@@ -40,6 +40,8 @@ use crate::{
   Overflow,
   Spacing,
   StyleProperty,
+  TextDecoration,
+  TextDecorationStyle,
   TrackLimit,
   Transition,
   Wrap,
@@ -73,6 +75,8 @@ macro_rules! hashed {
 hashed!(
   Color,
   MouseCursor,
+  TextDecoration,
+  TextDecorationStyle,
   Wrap,
   Arrangement,
   ItemAlignment,

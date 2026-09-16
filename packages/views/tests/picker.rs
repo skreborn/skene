@@ -1,6 +1,7 @@
 //! The picker: the face opens the list and focus lands on the chosen option, the
-//! arrows clamp, `Enter` chooses, the value signal is the truth, and `Escape` or a
-//! dismiss close with the value untouched.
+//! arrows clamp, `Enter` chooses, the value signal is the truth, `Escape` or a
+//! dismiss close with the value untouched, and typing picks by name on the closed face
+//! and in the open list.
 
 mod common;
 
@@ -10,7 +11,6 @@ use skene_core::{
   AccessProp,
   ControlKind,
   KeyEvent,
-  Modifiers,
   NodeId,
   Prevented,
   Role,
@@ -20,6 +20,7 @@ use skene_core::{
 use skene_headless::{
   Headless,
   accessible_name,
+  advance,
   box_props,
   children,
   control_props,
@@ -27,16 +28,20 @@ use skene_headless::{
   is_focused,
   is_open,
   is_tab_stop,
+  options,
   overlay_anchor,
   overlay_props,
   reset,
+  set_hydrated,
   text,
+  trigger_change,
   trigger_click,
   trigger_dismiss,
   trigger_key_down,
+  value as written_value,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
-use skene_views::ListItem;
+use skene_views::{Label, ListItem, TYPE_AHEAD_RESET};
 
 type Text = skene_views::Text<Headless>;
 type RawPicker<F = skene_views::NoChild> = skene_views::RawPicker<Headless, F>;
@@ -52,10 +57,7 @@ const KEPT: Prevented = Prevented {
 };
 
 fn key(key: &str) -> KeyEvent {
-  KeyEvent {
-    key: key.to_owned(),
-    modifiers: Modifiers::default(),
-  }
+  KeyEvent::new(key)
 }
 
 /// The nodes of a built picker: the face, its shown text, the overlay, the listbox and
@@ -107,7 +109,7 @@ impl Parts {
 }
 
 fn picker(owner: Owner, value: Signal<String>) -> Parts {
-  let face = owner.enter(move || {
+  let start = owner.enter(move || {
     RawPicker::new()
       .bind_value(value)
       .set_label("Size")
@@ -118,7 +120,16 @@ fn picker(owner: Owner, value: Signal<String>) -> Parts {
       .build()
   });
 
-  Parts::of(face)
+  Parts::of(form(start))
+}
+
+/// The one form the picker's segment `start` holds.
+fn form(start: NodeId) -> NodeId {
+  let nodes = skene_core::Scene::<Headless>::with(|scene| scene.segment_nodes(start));
+
+  assert_eq!(nodes.len(), 1, "one form at a time: {nodes:?}");
+
+  nodes[0]
 }
 
 /// The face is a combobox reporting whether it is expanded; `ArrowDown` opens the
@@ -212,7 +223,7 @@ fn arrows_clamp_over_the_options_and_enter_chooses() {
   assert!(is_focused(third));
   assert_eq!(value.get(), "b");
   assert!(is_open(parts.overlay));
-  assert_eq!(trigger_key_down(third, &key("x")), Prevented::default());
+  assert_eq!(trigger_key_down(third, &key("F5")), Prevented::default());
 
   assert_eq!(trigger_key_down(third, &key("Enter")), CONSUMED);
 
@@ -253,7 +264,7 @@ fn the_value_signal_is_the_truth() {
         .build()
     }
   });
-  let parts = Parts::of(face);
+  let parts = Parts::of(form(face));
 
   assert_eq!(trigger_key_down(parts.face, &key("Enter")), CONSUMED);
   assert!(is_focused(parts.options[0]));
@@ -363,4 +374,169 @@ fn tab_on_an_option_commits_it_and_closes_the_list() {
   assert!(!is_open(parts.overlay));
 
   owner.dispose();
+}
+
+/// Options named apart from their values for type-ahead: `Label::set_name` supplies
+/// the name the characters match.
+fn named_picker(owner: Owner, value: Signal<String>) -> Parts {
+  use skene_views::Label;
+
+  let face = owner.enter(move || {
+    RawPicker::new()
+      .bind_value(value)
+      .set_label("Fruit")
+      .set_options(
+        [("ap", "Apple"), ("av", "Avocado"), ("ba", "Banana")].map(|(value, name)| {
+          RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(name)).set_name(name))
+        }),
+      )
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+
+  Parts::of(form(face))
+}
+
+/// Typing over the closed face chooses by name without opening: two characters in
+/// quick succession match a prefix, a character repeated cycles through the options
+/// starting with it, and once the buffer's reset has elapsed the next character
+/// starts afresh. `Space` still toggles the list.
+#[test]
+fn typing_over_the_closed_face_chooses_by_name() {
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("ba".to_owned());
+  let parts = named_picker(owner, value);
+
+  assert_eq!(trigger_key_down(parts.face, &key("a")), CONSUMED);
+  assert_eq!(value.get(), "ap");
+  assert!(!is_open(parts.overlay), "type-ahead keeps the list closed");
+
+  assert_eq!(trigger_key_down(parts.face, &key("v")), CONSUMED);
+  assert_eq!(value.get(), "av", "the buffer matches a prefix");
+
+  advance(TYPE_AHEAD_RESET);
+
+  let _ = trigger_key_down(parts.face, &key("a"));
+
+  assert_eq!(
+    value.get(),
+    "ap",
+    "a fresh character cycles past the chosen"
+  );
+
+  let _ = trigger_key_down(parts.face, &key("a"));
+
+  assert_eq!(value.get(), "av", "a repeated character cycles on");
+
+  let _ = trigger_key_down(parts.face, &key("z"));
+
+  assert_eq!(value.get(), "av", "no match leaves the value alone");
+  assert_eq!(trigger_key_down(parts.face, &key(" ")), CONSUMED);
+  assert!(is_open(parts.overlay), "space still opens the list");
+
+  owner.dispose();
+}
+
+/// Typing over the open list moves focus to the option whose name the characters
+/// begin, without choosing; `Space` extends a buffer already begun.
+#[test]
+fn typing_over_the_open_list_moves_focus_by_name() {
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("ap".to_owned());
+  let parts = named_picker(owner, value);
+
+  let _ = trigger_key_down(parts.face, &key("ArrowDown"));
+
+  assert!(is_focused(parts.options[0]));
+  assert_eq!(trigger_key_down(parts.options[0], &key("b")), CONSUMED);
+  assert!(is_focused(parts.options[2]), "focus reaches the match");
+  assert_eq!(value.get(), "ap", "typing chooses nothing");
+  assert!(is_open(parts.overlay));
+
+  advance(TYPE_AHEAD_RESET);
+
+  let _ = trigger_key_down(parts.options[2], &key("a"));
+
+  assert!(is_focused(parts.options[0]), "a character wraps around");
+
+  let _ = trigger_key_down(parts.options[0], &key("v"));
+
+  assert!(is_focused(parts.options[1]), "the buffer matches a prefix");
+  assert_eq!(trigger_key_down(parts.options[1], &key(" ")), CONSUMED);
+  assert!(
+    is_open(parts.overlay),
+    "space extends the buffer rather than choosing"
+  );
+  assert_eq!(value.get(), "ap");
+
+  advance(TYPE_AHEAD_RESET);
+
+  let _ = trigger_key_down(parts.options[1], &key(" "));
+
+  assert_eq!(value.get(), "av", "a fresh space chooses");
+  assert!(!is_open(parts.overlay));
+
+  owner.dispose();
+}
+
+/// Until the render is hydrated the picker is the platform's own choice control,
+/// offering the options by value and name with the bound value written; a platform
+/// choice reaches the signal, and once hydrated the drawn face takes its place
+/// showing the value chosen.
+#[test]
+fn until_hydrated_the_picker_is_the_platforms_own() {
+  reset();
+  set_hydrated(false);
+
+  let owner = Owner::new();
+  let value = Signal::new("b".to_owned());
+  let start = owner.enter(move || {
+    RawPicker::new()
+      .bind_value(value)
+      .set_label("Size")
+      .set_options(["a", "b", "c"].map(|value| {
+        let name = value.to_uppercase();
+
+        RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(&name)).set_name(name))
+      }))
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+  let native = form(start);
+
+  assert_eq!(
+    control_props(native).map(|props| props.kind),
+    Some(ControlKind::NativePicker)
+  );
+  assert_eq!(
+    options(native),
+    Some(
+      [("a", "A"), ("b", "B"), ("c", "C")]
+        .map(|(value, name)| (value.to_owned(), name.to_owned()))
+        .to_vec()
+    ),
+    "the options are read from the option views"
+  );
+  assert_eq!(written_value(native).as_deref(), Some("b"));
+  assert_eq!(accessible_name(native).as_deref(), Some("Size"));
+
+  trigger_change(native, "c");
+
+  assert_eq!(value.get(), "c", "the platform's choice reaches the signal");
+  assert_eq!(written_value(native).as_deref(), Some("c"));
+
+  set_hydrated(true);
+
+  let face = form(start);
+
+  assert_eq!(
+    control_props(face).map(|props| props.kind),
+    Some(ControlKind::Combobox),
+    "the drawn face took the platform's place"
+  );
+  assert_eq!(text(Parts::of(face).shown).as_deref(), Some("c"));
 }

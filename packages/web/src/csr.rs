@@ -26,13 +26,20 @@ mod sheet;
 mod task;
 mod view_transition;
 
-use std::{cell::RefCell, rc::Rc, thread::LocalKey};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+  thread::LocalKey,
+  time::Duration,
+};
 
 use rustc_hash::FxHashMap;
 use skene_core::{
   AccessProp,
+  Availability,
   BoxProps,
   BoxValue,
+  ClipboardAction,
   ColorScheme,
   ControlProps,
   ControlState,
@@ -46,13 +53,18 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
+  Part,
   Placement,
+  Point,
   PointerEvent,
   RunProps,
   RunValue,
   Scene,
   Size,
   Slot,
+  StaticLeaf,
+  TextSelection,
+  Timer,
   Toggle,
   View,
   notify_change,
@@ -60,8 +72,8 @@ use skene_core::{
   notify_toggle,
 };
 use skene_gui_core::{Canvas, GuiExt, Painter, Painting};
-use skene_reactive::Memo;
-use wasm_bindgen::{JsCast, closure::Closure};
+use skene_reactive::{Memo, ReadSignal};
+use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
   CanvasRenderingContext2d,
   Document,
@@ -70,6 +82,7 @@ use web_sys::{
   HtmlDialogElement,
   HtmlElement,
   HtmlInputElement,
+  HtmlSelectElement,
   HtmlTextAreaElement,
   ImageData,
   ResizeObserver,
@@ -104,8 +117,8 @@ use super::{
     compile_run,
     inline_definitions,
     overlay_fingerprint,
-    render_box_value,
-    render_run_value,
+    render_box_leaf,
+    render_run_leaf,
     run_fingerprint,
   },
   condition::CONTROL_ATTRIBUTE,
@@ -150,8 +163,14 @@ type SizeReport = (Rc<dyn Fn(Size<f32>)>, Size<f32>);
 /// What a node's DOM handle is realized as.
 enum Realized {
   Box,
-  Control { native: Option<NativeElement> },
-  Overlay { modal: bool, placement: Placement },
+  Control {
+    native: Option<NativeElement>,
+  },
+  Overlay {
+    modal: bool,
+    placement: Placement,
+    position: Option<Point<f32>>,
+  },
   Run,
   Anchor,
   Scope,
@@ -163,6 +182,9 @@ enum Realized {
 struct Node {
   dom: web_sys::Node,
   carrier: Option<Element>,
+  /// The `<label for>` a text entry's caption lives in, kept before the entry among
+  /// its siblings.
+  caption: Option<Element>,
   realized: Realized,
   id: Option<NodeId>,
   style_class: Option<Rc<str>>,
@@ -183,6 +205,7 @@ impl Node {
     Self {
       dom: dom.into(),
       carrier: None,
+      caption: None,
       realized,
       id: None,
       style_class: None,
@@ -386,6 +409,16 @@ struct Dom {
   resize: Option<SizeObserver>,
   root_node: Option<NodeId>,
   saved: FxHashMap<u32, Saved>,
+  timers: FxHashMap<Timer, Timeout>,
+  next_timer: u64,
+}
+
+/// A scheduled action: the window's timeout, its callback kept alive until the entry
+/// is dropped, and whether it has run.
+struct Timeout {
+  handle: i32,
+  _callback: Closure<dyn FnMut()>,
+  fired: Rc<Cell<bool>>,
 }
 
 thread_local! {
@@ -443,6 +476,8 @@ impl Dom {
       resize: None,
       root_node: None,
       saved: FxHashMap::default(),
+      timers: FxHashMap::default(),
+      next_timer: 0,
     }
   }
 
@@ -531,6 +566,103 @@ impl Dom {
     self.insert(Node::new(element, realized, adopted))
   }
 
+  /// Whether `sink` stands bare: a control that is its own `<input>`, `<textarea>` or
+  /// `<select>`, whose caption is a `<label for>` beside it.
+  fn is_bare(&self, sink: u32) -> bool {
+    self.node(sink).is_some_and(|node| {
+      matches!(node.realized, Realized::Control { native: Some(native) } if native.is_bare())
+    })
+  }
+
+  /// The part `sink` is mounted as, when it is one.
+  fn part_of(&self, sink: u32) -> Option<Part> {
+    let node = self.node(sink)?.id?;
+
+    Scene::<Web>::with(|scene| scene.part(node))
+  }
+
+  /// Attaches `child` into the caption of `parent` when `parent` stands bare and
+  /// `child` its `Label` part, making the `<label for>` on the first and placing it
+  /// before the control; `false` for any other pair, which attaches as usual.
+  fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
+    let Some(node) = self
+      .node(parent)
+      .filter(|_| self.is_bare(parent))
+      .and_then(|node| node.id)
+    else {
+      return false;
+    };
+
+    if self.part_of(child) != Some(Part::Label) {
+      return false;
+    }
+
+    let caption = if let Some(caption) = self.node(parent).and_then(|node| node.caption.clone()) {
+      caption
+    }
+    else {
+      let (caption, _) = self.take_element("label");
+      let id = element_id(node);
+
+      let _ = caption.set_attribute("for", &id);
+
+      if let Some(entry) = self.node_mut(parent) {
+        if let Some(element) = entry.element() {
+          let _ = element.set_attribute("id", &id);
+        }
+
+        if let Some(container) = entry.dom.parent_node()
+          && caption.parent_node().as_ref() != Some(&container)
+        {
+          let _ = container.insert_before(&caption, Some(&entry.dom));
+        }
+
+        entry.caption = Some(caption.clone());
+      }
+
+      caption
+    };
+    let Some(child) = self.node(child).map(|node| node.dom.clone())
+    else {
+      return true;
+    };
+
+    if child.parent_node().as_ref() != Some(caption.as_ref()) {
+      let _ = caption.append_child(&child);
+    }
+
+    true
+  }
+
+  /// Detaches `child` from the caption of `parent` when it sits there, dropping the
+  /// caption once empty; `false` when it does not.
+  fn detach_caption(&mut self, parent: u32, child: u32) -> bool {
+    let Some(caption) = self.node(parent).and_then(|node| node.caption.clone())
+    else {
+      return false;
+    };
+    let Some(child) = self.node(child).map(|node| node.dom.clone())
+    else {
+      return false;
+    };
+
+    if child.parent_node().as_ref() != Some(caption.as_ref()) {
+      return false;
+    }
+
+    let _ = caption.remove_child(&child);
+
+    if !caption.has_child_nodes() {
+      caption.remove();
+
+      if let Some(entry) = self.node_mut(parent) {
+        entry.caption = None;
+      }
+    }
+
+    true
+  }
+
   fn assign_style(&mut self, sink: u32, compiled: &Rc<Compiled>) {
     let previous = self.node(sink).and_then(|node| node.style_class.clone());
     let class = self
@@ -572,8 +704,7 @@ impl Dom {
 
     for index in 0..names.length() {
       if let Some(name) = names.get(index).as_string()
-        && name.starts_with("aria-")
-        && name != "aria-label"
+        && ((name.starts_with("aria-") && name != "aria-label") || name == "title")
       {
         let _ = carrier.remove_attribute(&name);
       }
@@ -586,6 +717,11 @@ impl Dom {
     }
 
     for prop in access {
+      // A plain description is the server's `title`; with script the tooltip is ours.
+      if matches!(prop, AccessProp::Description(_)) {
+        continue;
+      }
+
       if form && let Some(name) = native_attribute(prop) {
         let _ = carrier.set_attribute(name, "");
 
@@ -635,6 +771,16 @@ impl Dom {
       let serialized = area.text_content().unwrap_or_default();
 
       (area.value() != serialized).then(|| Pending::Change(area.value()))
+    }
+    else if let Some(select) = input.dyn_ref::<HtmlSelectElement>() {
+      let serialized = select
+        .query_selector("option[selected]")
+        .ok()
+        .flatten()
+        .and_then(|option| option.get_attribute("value"))
+        .unwrap_or_default();
+
+      (select.value() != serialized).then(|| Pending::Change(select.value()))
     }
     else {
       None
@@ -775,25 +921,185 @@ fn set_flag(element: &Element, name: &str, on: bool) {
   }
 }
 
+/// Whether the engine places a box against a CSS anchor (`position-area`), decided
+/// once per page.
+fn anchors_in_css() -> bool {
+  thread_local! {
+    static SUPPORTED: Cell<Option<bool>> = const { Cell::new(None) };
+  }
+
+  SUPPORTED.with(|cell| {
+    if let Some(known) = cell.get() {
+      return known;
+    }
+
+    let supported =
+      web_sys::css::supports_with_value("position-area", "block-end").unwrap_or(false);
+
+    cell.set(Some(supported));
+
+    supported
+  })
+}
+
 /// Positions an open popup against its anchor: below it for `Bottom`, above it for
 /// `Top`, start-aligned either way; other placements keep their viewport position.
-fn position_at_anchor(popup: &HtmlElement, anchor: &Element, placement: Placement) {
-  let rect = anchor.get_bounding_client_rect();
-  let style = popup.style();
-  let top = match placement {
-    Placement::Top => rect.top() - f64::from(popup.offset_height()),
-    Placement::Bottom => rect.bottom(),
-    _ => return,
+///
+/// Where the engine has CSS anchor positioning the anchor is named after its sink and
+/// the popup follows it through `position-area`; elsewhere the popup is placed at the
+/// anchor's measured rectangle as it opens.
+/// The async clipboard, where the page has one: a secure context.
+fn clipboard(dom: &Dom) -> Option<web_sys::Clipboard> {
+  let navigator = dom.document.default_view()?.navigator();
+
+  js_sys::Reflect::has(&navigator, &JsValue::from_str("clipboard"))
+    .ok()
+    .filter(|has| *has)
+    .map(|_| navigator.clipboard())
+}
+
+/// The text entry a clipboard action acts on: the active one, or the one focus left
+/// for the open popup it now sits in.
+fn clipboard_entry(dom: &Dom) -> Option<Element> {
+  let active = dom.document.active_element()?;
+
+  if entry_selection(&active).is_some() {
+    return Some(active);
+  }
+
+  let active: &web_sys::Node = &active;
+  let in_popup = dom.events.open_popups.keys().any(|sink| {
+    dom
+      .node(*sink)
+      .is_some_and(|node| node.dom.contains(Some(active)))
+  });
+
+  in_popup.then(|| dom.events.last_entry.clone()).flatten()
+}
+
+/// The selection of an `<input>` or `<textarea>`: its start and end in UTF-16 units,
+/// and the text between them.
+fn entry_selection(entry: &Element) -> Option<(u32, u32, String)> {
+  let (value, start, end) = if let Some(input) = entry.dyn_ref::<HtmlInputElement>() {
+    (
+      input.value(),
+      input.selection_start().ok()??,
+      input.selection_end().ok()??,
+    )
+  }
+  else if let Some(editor) = entry.dyn_ref::<HtmlTextAreaElement>() {
+    (
+      editor.value(),
+      editor.selection_start().ok()??,
+      editor.selection_end().ok()??,
+    )
+  }
+  else {
+    return None;
   };
+  let units: Vec<u16> = value.encode_utf16().collect();
+  let length = u32::try_from(units.len()).unwrap_or(u32::MAX);
+  let start = start.min(length);
+  let end = end.min(length).max(start);
+  let selected = &units[start as usize..end as usize];
+
+  Some((start, end, String::from_utf16_lossy(selected)))
+}
+
+/// The document's selection as text, if any.
+fn document_selection(dom: &Dom) -> Option<String> {
+  let selection = dom.document.default_view()?.get_selection().ok()??;
+
+  Some(String::from(selection.to_string()))
+}
+
+/// Replaces the selection of an `<input>` or `<textarea>` with `text`, reporting the
+/// edit as the platform would.
+fn replace_entry_selection(entry: &Element, text: &str) {
+  let replaced = if let Some(input) = entry.dyn_ref::<HtmlInputElement>() {
+    input.set_range_text(text).is_ok()
+  }
+  else if let Some(editor) = entry.dyn_ref::<HtmlTextAreaElement>() {
+    editor.set_range_text(text).is_ok()
+  }
+  else {
+    false
+  };
+
+  if replaced && let Ok(event) = web_sys::Event::new("input") {
+    let _ = entry.dispatch_event(&event);
+  }
+}
+
+/// Pins an open popup's top-left corner to `point` in viewport pixels, shifted back into
+/// the viewport where it would overflow.
+fn position_at_point(popup: &HtmlElement, point: Point<f32>) {
+  let style = popup.style();
 
   let _ = style.set_property("inset", "auto");
   let _ = style.set_property("margin", "0");
   let _ = style.set_property("position", "fixed");
+  let _ = style.set_property("left", &format!("{}px", point.x));
+  let _ = style.set_property("top", &format!("{}px", point.y));
+
+  let Some(window) = web_sys::window()
+  else {
+    return;
+  };
+  let extent = |value: Result<JsValue, JsValue>| value.ok().and_then(|value| value.as_f64());
+  let (Some(viewport_width), Some(viewport_height)) =
+    (extent(window.inner_width()), extent(window.inner_height()))
+  else {
+    return;
+  };
+  let width = f64::from(popup.offset_width());
+  let height = f64::from(popup.offset_height());
+  let x = f64::from(point.x).min(viewport_width - width).max(0.);
+  let y = f64::from(point.y).min(viewport_height - height).max(0.);
+
+  let _ = style.set_property("left", &format!("{x}px"));
+  let _ = style.set_property("top", &format!("{y}px"));
+}
+
+fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: u32, placement: Placement) {
+  let area = match placement {
+    Placement::Top => "block-start span-inline-end",
+    Placement::Bottom => "block-end span-inline-end",
+    _ => return,
+  };
+  let style = popup.style();
+
+  let _ = style.set_property("inset", "auto");
+  let _ = style.set_property("margin", "0");
+  let _ = style.set_property("position", "fixed");
+
+  if anchors_in_css()
+    && let Some(anchor) = anchor.dyn_ref::<HtmlElement>()
+  {
+    let name = format!("--skene-anchor-{sink}");
+
+    let _ = anchor.style().set_property("anchor-name", &name);
+    let _ = style.set_property("position-anchor", &name);
+    let _ = style.set_property("position-area", area);
+
+    return;
+  }
+
+  let rect = anchor.get_bounding_client_rect();
+  let top = match placement {
+    Placement::Top => rect.top() - f64::from(popup.offset_height()),
+    _ => rect.bottom(),
+  };
+
   let _ = style.set_property("left", &format!("{}px", rect.left()));
   let _ = style.set_property("top", &format!("{top}px"));
 }
 
 impl Painting for Web {
+  fn available(&self) -> ReadSignal<bool> {
+    media::live()
+  }
+
   fn paint(&self, sink: &u32, painter: Box<Painter>) {
     let sink = *sink;
     let first = with_dom(|dom| {
@@ -982,7 +1288,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, value: &BoxValue<f32, GuiExt>) {
+  fn update_box(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(*sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
@@ -990,7 +1296,7 @@ impl Driver for Web {
       {
         let _ = html.style().set_property(
           &binding.custom_property(),
-          &render_box_value(binding.property, value),
+          &render_box_leaf(binding.property, leaf),
         );
       }
     });
@@ -1011,7 +1317,7 @@ impl Driver for Web {
           native: Some(native),
         };
 
-        if native.is_entry() {
+        if native.is_bare() {
           let root = dom.create_element(native.tag, realized);
 
           if let Some(node) = dom.node(root)
@@ -1137,6 +1443,7 @@ impl Driver for Web {
       let realized = Realized::Overlay {
         modal: props.modal,
         placement: props.placement,
+        position: None,
       };
       let sink = if props.modal {
         dom.create_element("dialog", realized)
@@ -1145,7 +1452,7 @@ impl Driver for Web {
         let sink = dom.create_element("div", realized);
 
         if let Some(element) = dom.node(sink).and_then(Node::element) {
-          let _ = element.set_attribute("popover", "manual");
+          let _ = element.set_attribute("popover", if props.hint { "hint" } else { "manual" });
         }
 
         sink
@@ -1161,14 +1468,22 @@ impl Driver for Web {
   }
 
   fn set_overlay_open(&self, sink: &u32, open: bool, anchor: Option<&u32>) {
-    let Some((element, modal, placement, anchor)) = with_dom(|dom| {
+    let Some((element, modal, placement, position, anchor)) = with_dom(|dom| {
       let node = dom.node(*sink)?;
-      let Realized::Overlay { modal, placement } = node.realized
+      let Realized::Overlay {
+        modal,
+        placement,
+        position,
+      } = node.realized
       else {
         return None;
       };
       let element = node.element()?.clone();
-      let anchor_element = anchor.and_then(|anchor| dom.node(*anchor)?.element().cloned());
+      let anchor_element = anchor.and_then(|anchor| {
+        let element = dom.node(*anchor)?.element().cloned()?;
+
+        Some((*anchor, element))
+      });
 
       if !modal {
         if open {
@@ -1179,7 +1494,7 @@ impl Driver for Web {
         }
       }
 
-      Some((element, modal, placement, anchor_element))
+      Some((element, modal, placement, position, anchor_element))
     })
     else {
       return;
@@ -1206,13 +1521,26 @@ impl Driver for Web {
     if open {
       let _ = html.show_popover();
 
-      if let Some(anchor) = anchor {
-        position_at_anchor(html, &anchor, placement);
+      if let Some(position) = position {
+        position_at_point(html, position);
+      }
+      else if let Some((sink, anchor)) = anchor {
+        position_at_anchor(html, &anchor, sink, placement);
       }
     }
     else {
       let _ = html.hide_popover();
     }
+  }
+
+  fn set_overlay_position(&self, sink: &u32, position: Option<Point<f32>>) {
+    with_dom(|dom| {
+      if let Some(node) = dom.node_mut(*sink)
+        && let Realized::Overlay { position: held, .. } = &mut node.realized
+      {
+        *held = position;
+      }
+    });
   }
 
   fn set_overlay_placement(&self, sink: &u32, placement: Placement) {
@@ -1253,7 +1581,7 @@ impl Driver for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, value: &RunValue<GuiExt>) {
+  fn update_run(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
     with_dom(|dom| {
       if let Some(node) = dom.node(*sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
@@ -1261,7 +1589,7 @@ impl Driver for Web {
       {
         let _ = html.style().set_property(
           &binding.custom_property(),
-          &render_run_value(binding.property, value),
+          &render_run_leaf(binding.property, leaf),
         );
       }
     });
@@ -1303,7 +1631,11 @@ impl Driver for Web {
   }
 
   fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
-    let Some((parent, child, before, saved)) = with_dom(|dom| {
+    let Some((parent, child, caption, before, saved)) = with_dom(|dom| {
+      if dom.attach_caption(*parent, *child) {
+        return None;
+      }
+
       let parent = dom.node(*parent)?.dom.clone();
       let child_node = dom.node(*child)?;
 
@@ -1312,12 +1644,13 @@ impl Driver for Web {
       }
 
       let child = child_node.dom.clone();
+      let caption = child_node.caption.clone();
       let saved = before.and_then(|before| dom.saved.remove(before));
       let before = before
         .and_then(|before| dom.node(*before))
         .map(|node| node.dom.clone());
 
-      Some((parent, child, before, saved))
+      Some((parent, child, caption, before, saved))
     })
     else {
       return;
@@ -1325,16 +1658,27 @@ impl Driver for Web {
 
     let _ = parent.insert_before(&child, before.as_ref());
 
+    if let Some(caption) = caption
+      && caption.parent_node().as_ref() != Some(&parent)
+    {
+      let _ = parent.insert_before(&caption, Some(&child));
+    }
+
     if let Some(saved) = saved {
       saved.restore(&child);
     }
   }
 
   fn detach(&self, parent: &u32, child: &u32) {
-    let Some((parent, child)) = with_dom(|dom| {
+    let Some((parent, child, caption)) = with_dom(|dom| {
+      if dom.detach_caption(*parent, *child) {
+        return None;
+      }
+
       Some((
         dom.node(*parent)?.dom.clone(),
         dom.node(*child)?.dom.clone(),
+        dom.node(*child)?.caption.clone(),
       ))
     })
     else {
@@ -1345,6 +1689,12 @@ impl Driver for Web {
       with_dom(|dom| dom.save(std::slice::from_ref(&child), child.next_sibling()));
 
       let _ = parent.remove_child(&child);
+    }
+
+    if let Some(caption) = caption
+      && caption.parent_node().as_ref() == Some(&parent)
+    {
+      let _ = parent.remove_child(&caption);
     }
   }
 
@@ -1491,6 +1841,43 @@ impl Driver for Web {
       else if let Some(area) = carrier.dyn_ref::<HtmlTextAreaElement>() {
         area.set_value(value);
       }
+      else if let Some(select) = carrier.dyn_ref::<HtmlSelectElement>() {
+        select.set_value(value);
+      }
+    });
+  }
+
+  fn set_options(&self, sink: &u32, options: &[(String, String)]) {
+    with_dom(|dom| {
+      let Some(select) = dom
+        .node(*sink)
+        .and_then(Node::carrier)
+        .and_then(|carrier| carrier.dyn_ref::<HtmlSelectElement>())
+      else {
+        return;
+      };
+
+      select.set_inner_html("");
+
+      for (value, name) in options {
+        let option = dom.document.create_element("option").expect("an option");
+
+        let _ = option.set_attribute("value", value);
+        option.set_text_content(Some(name));
+
+        let _ = select.append_child(&option);
+      }
+    });
+  }
+
+  fn set_selection(&self, sink: &u32, selection: TextSelection) {
+    with_dom(|dom| {
+      let Some(carrier) = dom.node(*sink).and_then(Node::carrier)
+      else {
+        return;
+      };
+
+      events::select(carrier, selection);
     });
   }
 
@@ -1528,8 +1915,140 @@ impl Driver for Web {
     media::signals()
   }
 
+  fn hydration(&self) -> Option<ReadSignal<bool>> {
+    Some(media::live())
+  }
+
   fn set_scheme(&self, scheme: Option<ColorScheme>) {
     media::set_scheme(scheme);
+  }
+
+  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
+    with_dom(|dom| {
+      dom.timers.retain(|_, timeout| !timeout.fired.get());
+
+      let timer = Timer(dom.next_timer);
+      let fired = Rc::new(Cell::new(false));
+      let action = Cell::new(Some(action));
+      let callback = Closure::<dyn FnMut()>::new({
+        let fired = Rc::clone(&fired);
+
+        move || {
+          fired.set(true);
+
+          if let Some(action) = action.take() {
+            action();
+          }
+        }
+      });
+      let handle = dom
+        .document
+        .default_view()
+        .and_then(|window| {
+          window
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+              callback.as_ref().unchecked_ref(),
+              i32::try_from(delay.as_millis()).unwrap_or(i32::MAX),
+            )
+            .ok()
+        })
+        .unwrap_or(0);
+
+      dom.next_timer += 1;
+      dom.timers.insert(
+        timer,
+        Timeout {
+          handle,
+          _callback: callback,
+          fired,
+        },
+      );
+
+      timer
+    })
+  }
+
+  fn cancel(&self, timer: Timer) {
+    with_dom(|dom| {
+      if let Some(timeout) = dom.timers.remove(&timer)
+        && !timeout.fired.get()
+        && let Some(window) = dom.document.default_view()
+      {
+        window.clear_timeout_with_handle(timeout.handle);
+      }
+    });
+  }
+
+  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+    with_dom(|dom| {
+      if clipboard(dom).is_none() {
+        return Availability::Absent;
+      }
+
+      // Outside an entry, only the document's selection is copyable, and nothing is
+      // cut or pasted; inside one, every action is listed and applies to its selection.
+      match (clipboard_entry(dom), action) {
+        (Some(entry), ClipboardAction::Copy | ClipboardAction::Cut) => {
+          if entry_selection(&entry).is_some_and(|(start, end, _)| start != end) {
+            Availability::Enabled
+          }
+          else {
+            Availability::Disabled
+          }
+        }
+        (Some(_), ClipboardAction::Paste) => Availability::Enabled,
+        (None, ClipboardAction::Copy) => {
+          if document_selection(dom).is_some_and(|text| !text.is_empty()) {
+            Availability::Enabled
+          }
+          else {
+            Availability::Absent
+          }
+        }
+        (None, ClipboardAction::Cut | ClipboardAction::Paste) => Availability::Absent,
+      }
+    })
+  }
+
+  fn clipboard(&self, action: ClipboardAction) {
+    let Some((clipboard, entry, text)) = with_dom(|dom| {
+      let clipboard = clipboard(dom)?;
+      let entry = clipboard_entry(dom);
+      let text = match &entry {
+        Some(entry) => entry_selection(entry).map(|(_, _, text)| text),
+        None => document_selection(dom),
+      };
+
+      Some((clipboard, entry, text))
+    })
+    else {
+      return;
+    };
+
+    match action {
+      ClipboardAction::Copy => {
+        if let Some(text) = text {
+          let _ = clipboard.write_text(&text);
+        }
+      }
+      ClipboardAction::Cut => {
+        if let (Some(text), Some(entry)) = (text, entry) {
+          let _ = clipboard.write_text(&text);
+          replace_entry_selection(&entry, "");
+        }
+      }
+      ClipboardAction::Paste => {
+        if let Some(entry) = entry {
+          let read = wasm_bindgen_futures::JsFuture::from(clipboard.read_text());
+
+          wasm_bindgen_futures::spawn_local(async move {
+            if let Some(text) = read.await.ok().and_then(|text| text.as_string()) {
+              replace_entry_selection(&entry, &text);
+            }
+          });
+        }
+      }
+    }
   }
 
   fn stored_scheme(&self) -> Option<ColorScheme> {
@@ -1593,6 +2112,7 @@ fn install_at(root: Element, hydrating: bool) {
     .expect("a document");
   let hydration = hydrating.then(|| Hydration::seed(&root));
 
+  media::set_live(!hydrating);
   DOM.with(|dom| {
     let mut dom = dom.borrow_mut();
 
@@ -1670,6 +2190,9 @@ where
       Pending::Change(value) => notify_change::<Web>(node, &value),
     }
   }
+
+  // The adopted values have reached their signals; the enhancements may build.
+  skene_reactive::batch(|| media::set_live(true));
 }
 
 /// How many nodes the last hydration failed to adopt: server nodes the client built

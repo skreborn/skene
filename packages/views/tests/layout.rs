@@ -34,7 +34,7 @@ use skene_headless::{
   reset,
   resolve_length,
   set_viewport,
-  slot_value,
+  slot_leaf,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -211,23 +211,25 @@ fn stack_derived_alignment_drives_both_axes() {
     Some(StaticValue::from(DriverLeaf::Slot(Slot(1))))
   );
   assert_eq!(
-    slot_value(stack, Slot(1)),
-    Some(SlotValue::Box(BoxValue::ItemAlignment(
+    slot_leaf(stack, Slot(1)),
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::ItemAlignment(
       ItemAlignment::Center
-    )))
+    ))))
   );
 
   alignment.set(Alignment::new(ItemAlignment::Start, ItemAlignment::End));
 
   assert_eq!(
-    slot_value(stack, Slot(0)),
-    Some(SlotValue::Box(BoxValue::ItemAlignment(ItemAlignment::End)))
+    slot_leaf(stack, Slot(0)),
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::ItemAlignment(
+      ItemAlignment::End
+    ))))
   );
   assert_eq!(
-    slot_value(stack, Slot(1)),
-    Some(SlotValue::Box(BoxValue::ItemAlignment(
+    slot_leaf(stack, Slot(1)),
+    Some(StaticLeaf::Fixed(SlotValue::Box(BoxValue::ItemAlignment(
       ItemAlignment::Start
-    )))
+    ))))
   );
 
   owner.dispose();

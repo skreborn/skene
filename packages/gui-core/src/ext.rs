@@ -109,7 +109,7 @@ impl IntoRunValue<GuiExt> for f32 {
   fn from_run_value(value: RunValue<GuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(number) => Some(number),
-      RunValue::Color(_) => None,
+      RunValue::Color(_) | RunValue::Decoration(_) | RunValue::DecorationStyle(_) => None,
     }
   }
 }
@@ -215,6 +215,7 @@ mod tests {
     RunValue,
     Shape,
     State,
+    StaticLeaf,
     When,
   };
 
@@ -258,7 +259,10 @@ mod tests {
       slots[0].property,
       PropertyKey::Extension(GuiProperty::CornerRadius)
     );
-    assert_eq!((slots[0].compute)(), BoxValue::Number(8.));
+    assert_eq!(
+      (slots[0].compute)(),
+      StaticLeaf::Fixed(BoxValue::Number(8.))
+    );
 
     let mut run = RunStyle::<Declared<Condition<f32>>, GuiExt>::default();
 
@@ -270,6 +274,9 @@ mod tests {
       slots[0].property,
       PropertyKey::Extension(GuiProperty::FontSize)
     );
-    assert_eq!((slots[0].compute)(), RunValue::Extension(18.));
+    assert_eq!(
+      (slots[0].compute)(),
+      StaticLeaf::Fixed(RunValue::Extension(18.))
+    );
   }
 }

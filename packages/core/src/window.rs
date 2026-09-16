@@ -57,9 +57,58 @@ pub fn item_window(
   }
 }
 
+/// The item window covering a viewport of `viewport` at scroll `offset`, over items
+/// whose leading edges are `edges`, padded by `overscan` extra items on each side.
+///
+/// `edges` holds one entry per item, its distance from the start, and one more for the
+/// whole extent, so an item's length is the difference of its neighbors; the entries
+/// never decrease. Extents are in the caller's unit (pixels, cells).
+pub fn item_window_over(offset: f32, viewport: f32, edges: &[f32], overscan: usize) -> ItemWindow {
+  let count = edges.len().saturating_sub(1);
+  let offset = offset.max(0.0);
+  let first = edges
+    .partition_point(|edge| *edge <= offset)
+    .saturating_sub(1)
+    .min(count);
+  let visible = edges
+    .partition_point(|edge| *edge < offset + viewport.max(0.0))
+    .min(count);
+
+  ItemWindow {
+    start: first.saturating_sub(overscan),
+    end: visible.saturating_add(overscan).min(count).max(first),
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn windows_over_edges_follow_the_measured_items() {
+    let edges = [0.0, 20.0, 40.0, 60.0, 80.0, 100.0, 110.0, 120.0];
+
+    assert_eq!(
+      item_window_over(0.0, 50.0, &edges, 0),
+      ItemWindow { start: 0, end: 3 }
+    );
+    assert_eq!(
+      item_window_over(40.0, 50.0, &edges, 0),
+      ItemWindow { start: 2, end: 5 }
+    );
+    assert_eq!(
+      item_window_over(40.0, 50.0, &edges, 1),
+      ItemWindow { start: 1, end: 6 }
+    );
+    assert_eq!(
+      item_window_over(500.0, 50.0, &edges, 2),
+      ItemWindow { start: 5, end: 7 }
+    );
+    assert_eq!(
+      item_window_over(0.0, 50.0, &[0.0], 3),
+      ItemWindow { start: 0, end: 0 }
+    );
+  }
 
   #[test]
   fn windows_cover_the_viewport_with_overscan() {

@@ -22,6 +22,7 @@ use skene_core::{
   Role,
   ScrollEvent,
   Seal,
+  StaticLeaf,
   StyleExtension,
   Transition,
   Value,
@@ -79,7 +80,10 @@ impl<D: Driver> Container<D> {
 
   /// Derives where the child sits from the signals `alignment` reads.
   #[inline(always)]
-  pub fn derive_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
     self.inner = self.inner.derive_alignment(alignment);
 
     self
@@ -207,6 +211,18 @@ impl<D: Driver> Container<D> {
     action: impl Fn(&KeyEvent) -> R + 'static,
   ) -> Self {
     self.inner = self.inner.handle_key_down(action);
+
+    self
+  }
+
+  /// Runs `action` on a key released while the box or a descendant holds focus;
+  /// return [`Bubbling::Stop`] to keep the release from the ancestors.
+  #[inline(always)]
+  pub fn handle_key_up<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&KeyEvent) -> R + 'static,
+  ) -> Self {
+    self.inner = self.inner.handle_key_up(action);
 
     self
   }

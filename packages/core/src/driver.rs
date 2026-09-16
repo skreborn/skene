@@ -1,8 +1,8 @@
 //! The seam between the shared machinery and a medium.
 
-use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey};
+use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_reactive::{Get, Memo};
+use skene_reactive::{Get, Memo, ReadSignal};
 
 use super::{
   BoxProps,
@@ -20,10 +20,13 @@ use super::{
   Scalar,
   Scene,
   Slot,
+  StaticLeaf,
   StyleExtension,
 };
 use crate::{
   AccessProp,
+  Availability,
+  ClipboardAction,
   Color,
   ColorScheme,
   ContainerName,
@@ -31,13 +34,20 @@ use crate::{
   Media,
   MediaEnv,
   Placement,
+  Point,
   PointerEvent,
   Size,
+  TextSelection,
 };
 
+/// A one-shot action a driver scheduled on its clock, to cancel it by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct Timer(pub u64);
+
 /// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
-/// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes
-/// and media.
+/// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
+/// media and a clock.
 ///
 /// Zero-sized and monomorphized: a facade names exactly one driver, and every view is
 /// written once against the trait. Conditions follow from [`Scalar`](Self::Scalar) as
@@ -79,12 +89,13 @@ pub trait Driver: Copy + Default + 'static {
   /// Realizes a box.
   fn create_box(&self, props: &BoxProps<Self>) -> Self::Sink;
 
-  /// Writes the value a derived leaf computed into its slot on a box.
+  /// Writes the leaf a derived leaf computed into its slot on a box: a value, or a
+  /// token or expression the driver resolves where it reads the slot.
   fn update_box(
     &self,
     sink: &Self::Sink,
     slot: Slot,
-    value: &BoxValue<Self::Scalar, Self::StyleExt>,
+    leaf: &StaticLeaf<BoxValue<Self::Scalar, Self::StyleExt>>,
   );
 
   /// Replaces a box's place in focus traversal; `None` takes it out of focus.
@@ -111,11 +122,19 @@ pub trait Driver: Copy + Default + 'static {
   #[inline(always)]
   fn set_overlay_placement(&self, _sink: &Self::Sink, _placement: Placement) {}
 
+  /// Pins an overlay's top-start corner to `position`, in the units a pointer event
+  /// reports, or unpins it for `None`; a pinned overlay ignores its placement and
+  /// anchor, and is shifted to stay within the viewport. An open overlay moves at the
+  /// [`set_overlay_open`](Self::set_overlay_open) that follows.
+  #[inline(always)]
+  fn set_overlay_position(&self, _sink: &Self::Sink, _position: Option<Point<f32>>) {}
+
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;
 
-  /// Writes the value a derived leaf computed into its slot on a run.
-  fn update_run(&self, sink: &Self::Sink, slot: Slot, value: &RunValue<Self::StyleExt>);
+  /// Writes the leaf a derived leaf computed into its slot on a run: a value, or a
+  /// token or expression the driver resolves where it reads the slot.
+  fn update_run(&self, sink: &Self::Sink, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
 
   /// Replaces a run's text.
   fn set_text(&self, sink: &Self::Sink, text: &str);
@@ -157,8 +176,16 @@ pub trait Driver: Copy + Default + 'static {
   /// Takes focus off a node.
   fn blur(&self, sink: &Self::Sink);
 
+  /// Writes the options a platform-drawn picker offers, each a value and the name
+  /// shown for it, in order; a driver without one ignores them.
+  #[inline(always)]
+  fn set_options(&self, _sink: &Self::Sink, _options: &[(String, String)]) {}
+
   /// Writes a control's textual value.
   fn set_value(&self, sink: &Self::Sink, value: &str);
+
+  /// Writes a text entry's selection.
+  fn set_selection(&self, sink: &Self::Sink, selection: TextSelection);
 
   /// Writes a control's checked state.
   fn set_checked(&self, sink: &Self::Sink, checked: bool);
@@ -169,12 +196,42 @@ pub trait Driver: Copy + Default + 'static {
   /// The environment as signals.
   fn media(&self) -> MediaSignals<Self::Scalar>;
 
+  /// The signal that turns true once a render made without script has been hydrated,
+  /// and stays false on a render that never is; `None` where the tree is live from
+  /// the start.
+  ///
+  /// Only a driver with a scriptless render answers: the web leaves, and the headless
+  /// driver standing in for them under a test. Every other driver keeps the default.
+  #[inline(always)]
+  fn hydration(&self) -> Option<ReadSignal<bool>> {
+    None
+  }
+
   /// Puts `scheme` in force throughout, overriding the platform's preference and
   /// touching no node; `None` returns to following the platform.
   fn set_scheme(&self, scheme: Option<ColorScheme>);
 
   /// The scheme the app put in force, or a previous run stored, when there is one.
   fn stored_scheme(&self) -> Option<ColorScheme>;
+
+  /// Runs `action` once `delay` has passed on the driver's clock, unless cancelled
+  /// first; a driver without a clock never runs it.
+  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer;
+
+  /// Drops the action `timer` names, if it has not run.
+  fn cancel(&self, timer: Timer);
+
+  /// Whether `action` can be offered on what the platform holds selected or focused
+  /// right now; a driver without a clipboard offers nothing.
+  #[inline(always)]
+  fn clipboard_availability(&self, _action: ClipboardAction) -> Availability {
+    Availability::Absent
+  }
+
+  /// Performs `action` on what the platform holds selected or focused, when it is
+  /// [`Enabled`](Availability::Enabled); a driver without a clipboard does nothing.
+  #[inline(always)]
+  fn clipboard(&self, _action: ClipboardAction) {}
 
   /// Whether `media` holds, as a memo following the environment; a container condition
   /// never holds here, since it is answered per node by the box it names.

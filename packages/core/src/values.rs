@@ -1,5 +1,6 @@
 mod access;
 mod axis;
+mod clipboard;
 mod color;
 mod dimension;
 mod flex;
@@ -16,10 +17,13 @@ mod rect;
 mod role;
 mod run_display;
 mod size;
+mod text_decoration;
+mod text_selection;
 mod toggle;
 
 pub use access::*;
 pub use axis::*;
+pub use clipboard::*;
 pub use color::*;
 pub use dimension::*;
 pub use flex::*;
@@ -36,6 +40,8 @@ pub use rect::*;
 pub use role::*;
 pub use run_display::*;
 pub use size::*;
+pub use text_decoration::*;
+pub use text_selection::*;
 pub use toggle::*;
 
 macro_rules! impl_ops {

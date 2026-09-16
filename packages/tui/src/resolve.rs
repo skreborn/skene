@@ -177,6 +177,17 @@ impl<'a> Env<'a> {
     self.with_resolver(|resolver| resolver.run_style(&style))
   }
 
+  /// The colors a link paints in while its focus shows: the typography's focused-link
+  /// ink and surface in force at the run, each `None` where unset or transparent.
+  pub(crate) fn resolve_link_focus(&self) -> (Option<Color>, Option<Color>) {
+    self.with_resolver(|resolver| {
+      (
+        resolver.color_leaf(&StaticLeaf::from(typography::LINK_FOCUS_INK)),
+        resolver.color_leaf(&StaticLeaf::from(typography::LINK_FOCUS_SURFACE)),
+      )
+    })
+  }
+
   /// The run style of the record, every property resolved.
   pub(crate) fn resolve_run(&self) -> Option<PlainRun> {
     let record = self.store.record(self.handle)?;
@@ -184,7 +195,20 @@ impl<'a> Env<'a> {
     else {
       return None;
     };
-    let mut style = self.with_resolver(|resolver| resolver.run_style(&props.style));
+    let mut style = self.with_resolver(|resolver| {
+      let mut style = resolver.run_style(&props.style);
+
+      // A size or weight the run leaves unset is the typography's.
+      if style.ext.size.is_none() {
+        style.ext.size = resolver.keyframe_run_value(&StaticLeaf::from(typography::SIZE));
+      }
+
+      if style.ext.weight.is_none() {
+        style.ext.weight = resolver.keyframe_run_value(&StaticLeaf::from(typography::WEIGHT));
+      }
+
+      style
+    });
 
     if style.ext.bold.is_none() {
       style.ext.bold = style.ext.weight.map(|weight| weight >= BOLD_WEIGHT);

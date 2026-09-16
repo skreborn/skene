@@ -2,7 +2,15 @@
 
 use std::rc::Rc;
 
-use skene_core::{ChangeHandler, ControlKind, Driver, EventKind, Role};
+use skene_core::{
+  ChangeHandler,
+  ControlKind,
+  Driver,
+  EventKind,
+  Role,
+  SelectionHandler,
+  TextSelection,
+};
 use skene_reactive::{Effect, Get, Set, Signal};
 
 use super::{Behavior, ControlHandle};
@@ -13,13 +21,19 @@ use crate::realize::with_sink;
 /// Editing keys are the platform's; the behavior only reports each change. Controlled:
 /// the text shown is what [`derive_value`](Self::derive_value) reads, and an edit
 /// only calls [`handle_change`](Self::handle_change) with the text asked for;
-/// [`bind_value`](Self::bind_value) wires both to one signal.
+/// [`bind_value`](Self::bind_value) wires both to one signal. The selection is
+/// controlled the same way: [`derive_selection`](Self::derive_selection) places it,
+/// [`handle_selection_change`](Self::handle_selection_change) hears every move of the
+/// caret, and [`bind_selection`](Self::bind_selection) wires both to one signal, so
+/// an app reads and writes the selection beside the value.
 #[must_use]
 pub struct TextEntry {
   value: Option<Rc<dyn Fn() -> String>>,
+  selection: Option<Rc<dyn Fn() -> TextSelection>>,
   placeholder: Option<String>,
   lines: u16,
   on_change: Option<Rc<ChangeHandler>>,
+  on_selection_change: Option<Rc<SelectionHandler>>,
 }
 
 impl TextEntry {
@@ -28,9 +42,11 @@ impl TextEntry {
   pub fn new() -> Self {
     Self {
       value: None,
+      selection: None,
       placeholder: None,
       lines: 1,
       on_change: None,
+      on_selection_change: None,
     }
   }
 
@@ -83,6 +99,38 @@ impl TextEntry {
       .derive_value(move || signal.get())
       .handle_change(move |value| signal.set(value.to_owned()))
   }
+
+  /// Sets the selection, in grapheme clusters of the text.
+  #[inline(always)]
+  pub fn set_selection(mut self, selection: TextSelection) -> Self {
+    self.selection = Some(Rc::new(move || selection));
+
+    self
+  }
+
+  /// Derives the selection from the signals `selection` reads.
+  #[inline(always)]
+  pub fn derive_selection(mut self, selection: impl Fn() -> TextSelection + 'static) -> Self {
+    self.selection = Some(Rc::new(selection));
+
+    self
+  }
+
+  /// Runs `action` with the selection after every move of the caret or its anchor.
+  #[inline(always)]
+  pub fn handle_selection_change(mut self, action: impl Fn(TextSelection) + 'static) -> Self {
+    self.on_selection_change = Some(Rc::new(action));
+
+    self
+  }
+
+  /// Binds the selection to `signal` in both directions.
+  #[inline(always)]
+  pub fn bind_selection(self, signal: Signal<TextSelection>) -> Self {
+    self
+      .derive_selection(move || signal.get())
+      .handle_selection_change(move |selection| signal.set(selection))
+  }
 }
 
 impl Default for TextEntry {
@@ -110,7 +158,12 @@ impl<D: Driver> Behavior<D> for TextEntry {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::Change]
+    if self.on_selection_change.is_some() {
+      &[EventKind::Change, EventKind::SelectionChange]
+    }
+    else {
+      &[EventKind::Change]
+    }
   }
 
   #[inline(always)]
@@ -124,22 +177,34 @@ impl<D: Driver> Behavior<D> for TextEntry {
   }
 
   fn attach(&self, control: &ControlHandle<D>) {
-    let Some(value) = self.value.clone()
-    else {
-      return;
-    };
     let node = control.node();
 
-    Effect::render(move |_: Option<()>| {
-      let value = value();
+    if let Some(value) = self.value.clone() {
+      Effect::render(move |_: Option<()>| {
+        let value = value();
 
-      with_sink::<D, _>(node, |sink| D::default().set_value(sink, &value));
-    });
+        with_sink::<D, _>(node, |sink| D::default().set_value(sink, &value));
+      });
+    }
+
+    if let Some(selection) = self.selection.clone() {
+      Effect::render(move |_: Option<()>| {
+        let selection = selection();
+
+        with_sink::<D, _>(node, |sink| D::default().set_selection(sink, selection));
+      });
+    }
   }
 
   fn on_change(&self, value: &str, _control: &ControlHandle<D>) {
     if let Some(action) = &self.on_change {
       action(value);
+    }
+  }
+
+  fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<D>) {
+    if let Some(action) = &self.on_selection_change {
+      action(selection);
     }
   }
 }

@@ -731,3 +731,42 @@ fn a_painted_box_draws_through_vello() {
 
   owner.dispose();
 }
+
+/// A painted box with a fallback builds the fallback where nothing is drawn as pixels
+/// and the painted box once something is.
+#[test]
+fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
+  use skene_gui::{
+    Painted,
+    core::Scene,
+    headless::{is_painted, set_graphics},
+  };
+
+  reset();
+  set_graphics(false);
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Painted::new(|_, _| {})
+      .set_fallback(|| Text::new("a red box"))
+      .build()
+  });
+  let nodes = || Scene::<skene_gui::ActiveDriver>::with(|scene| scene.segment_nodes(start));
+  let shown = nodes();
+
+  assert_eq!(shown.len(), 1);
+  assert_eq!(text(shown[0]).as_deref(), Some("a red box"));
+  assert!(!is_painted(shown[0]));
+
+  set_graphics(true);
+
+  let shown = nodes();
+
+  assert_eq!(shown.len(), 1);
+  assert!(
+    is_painted(shown[0]),
+    "the painted box took the fallback's place"
+  );
+
+  owner.dispose();
+}

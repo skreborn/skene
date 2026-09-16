@@ -1,7 +1,8 @@
-//! The portable low-level path for pixel media: a paint callback on a box, drawing
-//! through vello.
+//! The portable low-level path for pixels: a paint callback on a box, drawing through
+//! vello, realized by every driver that can show pixels.
 
 use skene_core::{Color, Driver, Size};
+use skene_reactive::ReadSignal;
 pub use vello_cpu::{PaintType, kurbo, peniko};
 use vello_cpu::{Pixmap, RenderContext, Resources};
 
@@ -214,17 +215,23 @@ pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
 
 /// A driver that paints a callback into a box.
 ///
-/// The bound a portable low-level view states for pixel media: the view builds an
-/// ordinary box for its sizing and hands the driver a painter for it, which the driver
-/// runs whenever the box repaints. The terminal does not implement it, so the view does
-/// not exist there; the server leaf implements it as nothing, so a page renders the box
-/// empty.
+/// The bound a portable low-level view states: the view builds an ordinary box for
+/// its sizing and hands the driver a painter for it, which the driver runs whenever the
+/// box repaints. The browser leaf renders into a canvas, the headless driver to pixels
+/// a test reads, the terminal through its graphics protocol where the terminal proved
+/// one, and the server leaf as nothing, so a page renders the box empty.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint",
-  label = "a painted view is written against a pixel driver implementing `Painting`; the terminal does not"
+  label = "a painted view is written against a driver implementing `Painting`"
 )]
 pub trait Painting: Driver {
   /// Paints `painter` into the box `sink` at its laid-out size, now and whenever the
   /// box repaints; a later call replaces the painter.
   fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);
+
+  /// Whether a painted box shows as pixels, as a signal: false on the server leaf,
+  /// on the browser leaf until it is live and in the terminal until its graphics are
+  /// proven, true once they are; what [`Painted::set_fallback`](crate::Painted::set_fallback)
+  /// waits on.
+  fn available(&self) -> ReadSignal<bool>;
 }

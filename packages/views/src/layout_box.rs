@@ -49,12 +49,13 @@ use skene_core::{
   View,
   Wrap,
 };
+use skene_reactive::Effect;
 
 use crate::{
   Anchor,
   FocusHandle,
   properties,
-  realize::{Source, bind_box_slot},
+  realize::{Source, bind_box_slot, report_access},
   size::SizeHandle,
 };
 
@@ -63,6 +64,7 @@ use crate::{
 struct Handlers {
   click: Vec<Rc<ClickHandler>>,
   key_down: Vec<Rc<KeyHandler>>,
+  key_up: Vec<Rc<KeyHandler>>,
   pointer_down: Vec<Rc<PointerHandler>>,
   pointer_up: Vec<Rc<PointerHandler>>,
   pointer_move: Vec<Rc<PointerHandler>>,
@@ -174,12 +176,15 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   }
 
   /// Derives the alignment of each child on both axes from the signals `alignment`
-  /// reads.
+  /// reads: a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_alignment(self, alignment: impl Fn() -> Alignment + 'static) -> Self {
-    self.set_alignment(Value::<Alignment, Condition<D::Scalar>>::new(
-      Leaf::Derived(Rc::new(alignment)),
-    ))
+  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.set_alignment(Value::<Alignment, Condition<D::Scalar>>::new(Leaf::derive(
+      alignment,
+    )))
   }
 
   /// Sets the semantic role, guiding the driver's concrete choice of element.
@@ -319,6 +324,21 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
     self
   }
 
+  /// Runs `action` on a key released while the box or a descendant holds focus; its
+  /// verdict says whether the release carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_key_up<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&KeyEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .key_up
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
   /// Runs `action` on a pointer button pressed over the box; its verdict says whether
   /// the press carries on to the ancestors.
   #[inline(always)]
@@ -424,7 +444,7 @@ fn alignment_axis<C: Clone>(
       Leaf::from(TokenRef::<ItemAlignment>::new(reference.name().as_str()))
     }
     Leaf::Static(StaticLeaf::Expr(_)) => unreachable!("no expression has an alignment type"),
-    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || pick(compute()))),
+    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || compute().map(pick))),
   })
 }
 
@@ -457,6 +477,9 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Driver::create_box`]; a
   /// view realized as another kind supplies its own creation.
+  // One box's realization in one place; length is the count of what a box carries,
+  // not complexity.
+  #[expect(clippy::too_many_lines)]
   pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<D>) -> D::Sink) -> NodeId {
     if let Some(annotation) = Scene::<D>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
@@ -484,11 +507,19 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
     };
     let sink = create(props);
     let container = self.container;
+    let noted = match &self.access {
+      Some(Source::Fixed(access)) => Some(access.clone()),
+      Some(Source::Derived(_)) | None => None,
+    };
     let node = Scene::<D>::with(|scene| {
       let node = scene.create(kind, sink);
 
       if let Some(name) = container {
         scene.set_container(node, name);
+      }
+
+      if let Some(access) = noted {
+        scene.note_access(node, access);
       }
 
       node
@@ -516,15 +547,14 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       });
     }
 
-    if let Some(access @ Source::Derived(_)) = self.access {
-      access.bind::<D>(node, |sink, access| {
-        D::default().update_access(sink, access);
-      });
+    if let Some(Source::Derived(access)) = self.access {
+      Effect::render(move |_: Option<()>| report_access::<D>(node, access()));
     }
 
     let Handlers {
       click,
       key_down,
+      key_up,
       pointer_down,
       pointer_up,
       pointer_move,
@@ -542,6 +572,10 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
       for handler in key_down {
         scene.handle_key_down(node, handler);
+      }
+
+      for handler in key_up {
+        scene.handle_key_up(node, handler);
       }
 
       for handler in pointer_down {

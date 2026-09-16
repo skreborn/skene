@@ -77,6 +77,12 @@ pub enum ControlKind {
   ListboxOption,
   /// A control pairing a text entry with a list of choices.
   Combobox,
+  /// A choice among options the platform draws and lists itself.
+  NativePicker,
+  /// A list of commands.
+  Menu,
+  /// One command within a menu.
+  MenuItem,
 }
 
 /// Everything a driver needs to realize a control: a box with a kind and, where
@@ -145,6 +151,8 @@ pub enum Part {
   Item,
   /// The caption naming the control.
   Label,
+  /// The bubble a tooltip shows beside the node it describes.
+  Bubble,
 }
 
 /// A slider's value model: a closed range with an optional snap step.

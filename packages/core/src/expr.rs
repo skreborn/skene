@@ -76,7 +76,7 @@ pub struct Expr<T> {
 
 impl<T> Expr<T> {
   #[inline(always)]
-  const fn from_node(node: ExprNode) -> Self {
+  pub(crate) const fn from_node(node: ExprNode) -> Self {
     Self {
       node,
       ty: PhantomData,

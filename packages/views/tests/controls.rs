@@ -27,6 +27,7 @@ use skene_core::{
   Role,
   Size,
   State,
+  TextSelection,
   Toggle as Checked,
   View,
   When,
@@ -45,6 +46,7 @@ use skene_headless::{
   part,
   reset,
   resolve_color,
+  selection,
   text,
   trigger_change,
   trigger_click,
@@ -53,6 +55,7 @@ use skene_headless::{
   trigger_pointer_down,
   trigger_pointer_move,
   trigger_pointer_up,
+  trigger_selection_change,
   trigger_size,
   value,
 };
@@ -93,10 +96,7 @@ const KEPT: Prevented = Prevented {
 };
 
 fn key(key: &str) -> KeyEvent {
-  KeyEvent {
-    key: key.to_owned(),
-    modifiers: Modifiers::default(),
-  }
+  KeyEvent::new(key)
 }
 
 fn press_at(local_x: f32) -> PointerEvent {
@@ -427,6 +427,46 @@ fn a_parts_focus_and_checked_variants_follow_the_control() {
   owner.dispose();
 }
 
+/// Focus reached after a pointer press does not show, a key makes it show, and the
+/// next press hides it again, as `:focus-visible` does.
+#[test]
+fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    RawButton::new(Activate::new())
+      .set_color(red().when(focus_visible(), blue()))
+      .set_label("go")
+      .build()
+  });
+
+  let _ = trigger_pointer_down(node, &press_at(0.));
+
+  trigger_focus(node);
+
+  assert!(is_focused(node));
+  assert_eq!(
+    resolve_color(node, COLOR),
+    Some(red()),
+    "focused after a press, not shown"
+  );
+
+  let _ = trigger_key_down(node, &key("x"));
+
+  assert_eq!(resolve_color(node, COLOR), Some(blue()), "a key shows it");
+
+  let _ = trigger_pointer_down(node, &press_at(0.));
+
+  assert_eq!(
+    resolve_color(node, COLOR),
+    Some(red()),
+    "a press hides it again"
+  );
+
+  owner.dispose();
+}
+
 /// A disabled control reports it, takes no focus and ignores activation; enabling it
 /// again restores all three.
 #[test]
@@ -499,6 +539,41 @@ fn a_label_part_supplies_the_accessible_name() {
   assert_eq!(accessible_name(unnamed), None);
 
   owner.dispose();
+}
+
+/// A text entry's selection is controlled beside its value: the bound signal places
+/// it on the driver, and a move the driver reports writes the signal.
+#[test]
+fn a_text_entrys_selection_binds_both_ways() {
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new(TextSelection::new(1, 3));
+  let field = owner
+    .enter(|| RawTextField::new(TextEntry::new().set_value("hello").bind_selection(bound)).build());
+
+  assert_eq!(selection(field), Some(TextSelection::new(1, 3)));
+  assert!(listened(field).contains(&EventKind::SelectionChange));
+
+  bound.set(TextSelection::collapsed(5));
+
+  assert_eq!(selection(field), Some(TextSelection::collapsed(5)));
+
+  trigger_selection_change(field, TextSelection::new(4, 2));
+
+  assert_eq!(bound.get(), TextSelection::new(4, 2));
+  assert!(bound.get().is_reversed());
+  assert_eq!(bound.get().range(), 2..4);
+  assert_eq!((bound.get().min(), bound.get().max()), (2, 4));
+  assert_eq!(bound.get().range().len(), 2);
+
+  bound.set(TextSelection::new(2, 9));
+
+  assert_eq!(
+    selection(field),
+    Some(TextSelection::new(2, 5)),
+    "an index past the value clamps to its end"
+  );
 }
 
 /// A text field's change writes the bound signal and stays on its node, the signal

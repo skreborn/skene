@@ -3,14 +3,18 @@
 
 use std::rc::Rc;
 
-use skene_core::{ContainerName, Size};
+use skene_core::{Color, ContainerName, Size};
 use skene_reactive::Set;
+use skene_views::{
+  Canvas,
+  kurbo::{RoundedRect, Stroke},
+};
 
 use crate::{
   interaction::scroll_to,
-  layout::{self, is_inline_box, is_paragraph},
-  paint::{self, Buffer},
-  store::{CellRect, Handle, Record, Store},
+  layout::{self, has_border, is_inline_box, is_paragraph},
+  paint::{self, Buffer, Image, terminal_rgb},
+  store::{Backdrop, BackdropKey, CellRect, Handle, Record, Store},
   with_store,
 };
 
@@ -29,6 +33,7 @@ const SETTLE_ROUNDS: usize = 4;
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
   resize(width, height);
   with_store(Store::autoscroll_caret_drag);
+  crate::field::report_selections();
 
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_store(|store| {
@@ -58,6 +63,9 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
   }
 
   with_store(|store| {
+    render_pictures(store);
+    render_backdrops(store);
+
     let (width, height) = (usize::from(width), usize::from(height));
     let previous = store
       .last_frame
@@ -165,6 +173,220 @@ fn current_rect(store: &Store, handle: Handle) -> Option<CellRect> {
   );
 
   Some((x, y, width + shadow, height + shadow))
+}
+
+/// Renders every painted box's picture whose image is missing or of another size than
+/// the box's content in pixels, while the terminal shows graphics: the painter runs
+/// on a canvas of that size, and the pixels take the next generation.
+fn render_pictures(store: &mut Store) {
+  if !store.graphics {
+    return;
+  }
+
+  let (cell_width, cell_height) = store.cell_pixels;
+
+  for handle in store.handles() {
+    let Some(record) = store.record(handle)
+    else {
+      continue;
+    };
+    let Some(picture) = &record.picture
+    else {
+      continue;
+    };
+    let size = store.client_size(handle);
+    let width = u16::try_from(size.width.saturating_mul(u32::from(cell_width))).unwrap_or(u16::MAX);
+    let height =
+      u16::try_from(size.height.saturating_mul(u32::from(cell_height))).unwrap_or(u16::MAX);
+
+    if width == 0 || height == 0 {
+      continue;
+    }
+
+    if picture
+      .image
+      .as_ref()
+      .is_some_and(|image| (image.width, image.height) == (width, height))
+    {
+      continue;
+    }
+
+    let painter = Rc::clone(&picture.painter);
+    let mut canvas = Canvas::new(width, height);
+
+    painter(&mut canvas, Size::new(f32::from(width), f32::from(height)));
+
+    let pixels = canvas.pixels();
+
+    store.picture_generation += 1;
+
+    let generation = store.picture_generation;
+
+    if let Some(picture) = store
+      .record_mut(handle)
+      .and_then(|record| record.picture.as_mut())
+    {
+      picture.image = Some(Rc::new(Image {
+        generation,
+        width,
+        height,
+        pixels,
+      }));
+    }
+  }
+}
+
+/// Renders the backdrop of every box whose decoration asks for more than cells draw—a
+/// corner radius, a border, a shadow—while the terminal shows graphics, and drops the
+/// backdrop of a box that no longer does: the image is the box's cells and the
+/// shadow's band in pixels, rendered afresh when the size, the cell's pixels or any
+/// part of the decoration changed.
+fn render_backdrops(store: &mut Store) {
+  if !store.graphics {
+    return;
+  }
+
+  let cell_pixels = store.cell_pixels;
+
+  for handle in store.handles() {
+    let Some(record) = store.record(handle)
+    else {
+      continue;
+    };
+    let Some(cache) = record
+      .kind
+      .box_record()
+      .and_then(|inner| inner.cache.as_ref())
+    else {
+      continue;
+    };
+    let style = &cache.style;
+    let radius = style.ext.corner_radius.unwrap_or(0.).max(0.);
+    let shadow = style
+      .ext
+      .shadow
+      .map(Color::to_rgba)
+      .filter(|rgba| rgba[3] > 0.);
+    let border = has_border(style)
+      .then(|| cache.border_ink.and_then(terminal_rgb))
+      .flatten();
+    let (width, height) = store.node_size(handle);
+    let band = u16::from(shadow.is_some());
+    let key = BackdropKey {
+      columns: u16::try_from(width)
+        .unwrap_or(u16::MAX)
+        .saturating_add(band),
+      rows: u16::try_from(height)
+        .unwrap_or(u16::MAX)
+        .saturating_add(band),
+      cell_pixels,
+      background: style.color.and_then(terminal_rgb),
+      border,
+      radius,
+      shadow,
+    };
+    let wanted = width > 0 && height > 0 && (radius > 0. || border.is_some() || shadow.is_some());
+
+    if !wanted {
+      if let Some(record) = store.record_mut(handle) {
+        record.backdrop = None;
+      }
+
+      continue;
+    }
+
+    if record
+      .backdrop
+      .as_ref()
+      .is_some_and(|backdrop| backdrop.key == key)
+    {
+      continue;
+    }
+
+    let pixels = render_backdrop(&key);
+
+    store.picture_generation += 1;
+
+    let generation = store.picture_generation;
+
+    if let Some(record) = store.record_mut(handle) {
+      record.backdrop = Some(Backdrop {
+        image: Rc::new(Image {
+          generation,
+          width: key.columns.saturating_mul(cell_pixels.0),
+          height: key.rows.saturating_mul(cell_pixels.1),
+          pixels,
+        }),
+        key,
+      });
+    }
+  }
+}
+
+/// The pixels of a backdrop: the shadow as three softening layers offset half a cell
+/// down and right, the background as a rounded rectangle at the radius in rows, and
+/// the border as a line a quarter cell wide inside the edge.
+fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
+  let (cell_width, cell_height) = (f64::from(key.cell_pixels.0), f64::from(key.cell_pixels.1));
+  let band = f64::from(u16::from(key.shadow.is_some()));
+  let width = (f64::from(key.columns) - band) * cell_width;
+  let height = (f64::from(key.rows) - band) * cell_height;
+  let radius = f64::from(key.radius) * cell_height;
+  let mut canvas = Canvas::new(
+    key.columns.saturating_mul(key.cell_pixels.0),
+    key.rows.saturating_mul(key.cell_pixels.1),
+  );
+
+  if let Some([red, green, blue, alpha]) = key.shadow {
+    for (layer, spread) in [0.5_f32, 0.3, 0.2].into_iter().enumerate() {
+      #[expect(clippy::cast_precision_loss)]
+      let grow = layer as f64 * cell_width * 0.25;
+
+      canvas.fill(
+        &RoundedRect::new(
+          cell_width / 2. - grow,
+          cell_height / 2. - grow,
+          width + cell_width / 2. + grow,
+          height + cell_height / 2. + grow,
+          radius + grow,
+        ),
+        Color::srgb(red, green, blue).with_alpha(alpha * spread),
+      );
+    }
+  }
+
+  if let Some((red, green, blue)) = key.background {
+    canvas.fill(
+      &RoundedRect::new(0., 0., width, height, radius),
+      Color::srgb(
+        f32::from(red) / 255.,
+        f32::from(green) / 255.,
+        f32::from(blue) / 255.,
+      ),
+    );
+  }
+
+  if let Some((red, green, blue)) = key.border {
+    let line = (cell_width / 4.).max(2.);
+
+    canvas.stroke(
+      &RoundedRect::new(
+        line / 2.,
+        line / 2.,
+        width - line / 2.,
+        height - line / 2.,
+        (radius - line / 2.).max(0.),
+      ),
+      &Stroke::new(line),
+      Color::srgb(
+        f32::from(red) / 255.,
+        f32::from(green) / 255.,
+        f32::from(blue) / 255.,
+      ),
+    );
+  }
+
+  canvas.pixels()
 }
 
 /// Records the rectangle every laid-out node covers at this paint.

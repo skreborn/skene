@@ -278,6 +278,6 @@ where
     .set_corner_radius(MARK_RADIUS)
     .set_cursor(MouseCursor::Click)
     .set_part(Part::Item, check)
-    .set_label(Label::new(caption))
+    .set_label(Label::new(caption).set_name(label))
     .into_view()
 }

@@ -3,9 +3,12 @@
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
 use skene_gui::{
+  Container,
+  HasChildren,
   Inset,
   Overlay,
   Text,
+  Tooltip,
   core::{Color, Placement},
   render_to_string,
 };
@@ -87,4 +90,34 @@ fn modal_carries_a_default_backdrop() {
   let rendered = render_to_string(|| Overlay::modal().set_child(Text::new("dialog content")));
 
   assert!(rendered.styles().contains("::backdrop{background-color:"));
+}
+
+/// A text tooltip serializes as the described element's `title`, the scriptless
+/// tooltip, with the bubble a closed hint popover the element names as its
+/// description.
+#[test]
+fn a_tooltip_serializes_its_title_and_a_closed_hint() {
+  let rendered = render_to_string(|| {
+    Tooltip::new("Saves your work").set_child(Container::new().set_child(Text::new("Save")))
+  });
+  let body = rendered.body();
+  let described = body.find("title=\"Saves your work\"").expect("the title");
+  let reference = body.find("aria-describedby=\"").expect("the description") + 18;
+  let id = &body[reference..reference + body[reference..].find('"').expect("a closing quote")];
+
+  assert!(id.starts_with("skene-"), "{body}");
+  assert!(
+    body.contains(&format!("id=\"{id}\"")),
+    "the bubble carries the id: {body}"
+  );
+  assert!(body.contains("popover=\"hint\""), "{body}");
+  assert!(!body.contains(" open"), "{body}");
+  assert!(
+    body.find("popover=\"hint\"").expect("the bubble") > described,
+    "the bubble follows the element it describes: {body}"
+  );
+  assert!(
+    body.contains("Saves your work</"),
+    "the bubble holds the text: {body}"
+  );
 }

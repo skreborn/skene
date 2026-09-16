@@ -692,8 +692,8 @@ where
 ///
 /// A read by key finds the first element carrying it, so keys are distinct. An element
 /// addressed by key and the same element addressed by position
-/// ([`IndexedField::at`]) are distinct locations: a write through one does not wake a
-/// reader through the other.
+/// ([`IndexedField::at`]) are one location: a write through either wakes the readers
+/// through both, and a key's location follows its element across a reorder.
 #[must_use]
 pub struct KeyedBy<Parent, K, T> {
   parent: Parent,
@@ -761,6 +761,22 @@ where
   fn keys(&self, value: &Vec<T>) -> impl Iterator<Item = K> {
     value.iter().map(self.key_of)
   }
+
+  fn entry_location(&self, key: &K) -> StoreLocation {
+    let parent = self.location();
+    let position = self
+      .read_untracked(|value| {
+        value
+          .iter()
+          .position(|element| (self.key_of)(element) == *key)
+      })
+      .flatten();
+
+    match position {
+      Some(index) => self.core().index(parent, index),
+      None => self.core().key(parent, key),
+    }
+  }
 }
 
 /// A lens onto one entry of the parent location, by key; built by
@@ -800,7 +816,7 @@ impl<Parent: KeyedField> StoreField for AtKey<Parent> {
   }
 
   fn location(&self) -> StoreLocation {
-    self.core().key(self.parent.location(), &self.key)
+    self.parent.entry_location(&self.key)
   }
 
   fn read_untracked<R>(&self, read: impl FnOnce(&Self::Value) -> R) -> Option<R> {
@@ -838,6 +854,13 @@ pub trait KeyedField: StoreField + Sized {
 
   /// The keys of `value`, in its order.
   fn keys(&self, value: &Self::Value) -> impl Iterator<Item = Self::Key>;
+
+  /// The location of the entry under `key`: the key's own beneath this location,
+  /// unless the collection addresses the entry another way as well, in which case the
+  /// one location both ways share.
+  fn entry_location(&self, key: &Self::Key) -> StoreLocation {
+    self.core().key(self.location(), key)
+  }
 
   /// The entry under `key`.
   fn key(self, key: Self::Key) -> AtKey<Self> {

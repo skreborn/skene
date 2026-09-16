@@ -108,6 +108,9 @@ pub struct RunProps<D: Driver> {
 pub struct OverlayProps<D: Driver> {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
   pub modal: bool,
+  /// Whether the overlay is a hint: a popup describing its anchor, which never takes
+  /// focus and sits beneath every other popup.
+  pub hint: bool,
   /// Where the overlay sits.
   pub placement: Placement,
   /// The backdrop color painted over the app while open, if any.
@@ -184,6 +187,8 @@ pub enum EventKind {
   Click,
   /// A key pressed while the node or a descendant holds focus.
   KeyDown,
+  /// A key released while the node or a descendant holds focus.
+  KeyUp,
   /// A pointer button pressed over the node.
   PointerDown,
   /// A pointer button released over the node.
@@ -202,8 +207,13 @@ pub enum EventKind {
   Scroll,
   /// A control's textual value changed.
   Change,
+  /// A text entry's selection changed.
+  SelectionChange,
   /// A control's checked state changed.
   Toggle,
   /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.
   Dismiss,
+  /// A context menu was asked for at the node: a secondary press, or the menu key
+  /// while it holds focus; the platform's own menu opens unless prevented.
+  ContextMenu,
 }

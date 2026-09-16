@@ -47,7 +47,7 @@ fn derived_writes_transition_across_the_stepped_clock() {
   let node = owner.enter(|| {
     Container::<Headless>::new()
       .derive_color(move || color.get())
-      .derive_width(move || width.get().into())
+      .derive_width(move || width.get())
       .set_transition(linear(Property::Color))
       .set_transition(linear(Property::Width))
       .build()

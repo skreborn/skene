@@ -9,6 +9,7 @@ use skene_core::{
   BoxValue,
   ColorScheme,
   ContainerName,
+  Focus,
   Interaction,
   NoProperty,
   NodeId,
@@ -79,7 +80,7 @@ impl Env {
         reduced_motion: store.reduced_motion.unwrap_or(false),
         interaction: Interaction {
           hovered: record.hovered,
-          focused: store.focused == Some(focus_holder),
+          focus: Focus::new(store.focused == Some(focus_holder), store.focus_visible),
           pressed: false,
           control: control.map(|(_, state)| state),
         },

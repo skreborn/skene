@@ -1,0 +1,4 @@
+/* A manifest-declared asset, served at /context-menu/assets/site.css. */
+:root {
+  color-scheme: light dark;
+}

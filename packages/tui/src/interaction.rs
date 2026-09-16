@@ -18,7 +18,9 @@ use skene_core::{
   Prevented,
   ScrollEvent,
   dispatch_click,
+  dispatch_context_menu,
   dispatch_key_down,
+  dispatch_key_up,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -34,7 +36,6 @@ use crate::{
   Tui,
   layout::{inline_box_cells, is_paragraph},
   paint::control_kind,
-  selection::MenuItem,
   store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
   with_store,
 };
@@ -62,6 +63,18 @@ impl Store {
         self.record(*overlay).is_some_and(Record::is_open_overlay) && self.is_reachable(*overlay)
       })
       .collect()
+  }
+
+  /// Whether `handle` sits inside an open overlay.
+  pub(crate) fn inside_open_overlay(&self, handle: Option<Handle>) -> bool {
+    handle.is_some_and(|handle| {
+      let ancestors = self.ancestors(handle);
+
+      self
+        .open_overlays()
+        .iter()
+        .any(|overlay| ancestors.contains(overlay))
+    })
   }
 
   /// The topmost open overlay and whether it is modal.
@@ -329,13 +342,21 @@ impl Store {
     let (columns, rows) = self.last_size;
     let (columns, rows) = (i64::from(columns), i64::from(rows));
     let Some(Kind::Overlay {
-      placement, anchor, ..
+      placement,
+      anchor,
+      position,
+      ..
     }) = self.record(handle).map(|record| &record.kind)
     else {
       return (0, 0);
     };
-    let (placement, anchor) = (*placement, *anchor);
+    let (placement, anchor, position) = (*placement, *anchor, *position);
     let (width, height) = self.node_size(handle);
+
+    // A pinned overlay sits at its cell, shifted back into the screen.
+    if let Some((x, y)) = position {
+      return (x.min(columns - width).max(0), y.min(rows - height).max(0));
+    }
 
     if let Some(anchor) = anchor.filter(|_| matches!(placement, Placement::Top | Placement::Bottom))
     {
@@ -380,6 +401,10 @@ impl Store {
   /// The pointer shape for the current hover path: the deepest hovered node with a
   /// cursor set, else the default its kind implies.
   pub(crate) fn hover_cursor(&self) -> Option<MouseCursor> {
+    if !self.mouse_taken() {
+      return None;
+    }
+
     if matches!(self.drag, Some(Drag::Scrollbar { .. })) || self.drags_range() {
       return Some(MouseCursor::Grabbing);
     }
@@ -715,8 +740,19 @@ fn store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
 /// Moves focus to `next`, notifying the node focus left and the one it reached; the
 /// newly focused node is scrolled into view at the next render, a newly focused
 /// single-line entry selects its whole value with the caret at its end, an editor puts
-/// its caret at the end, and the entry focus left collapses its selection.
+/// its caret at the end, and the entry focus left collapses its selection—unless focus
+/// left it for an open popup, which keeps it for the popup to act on.
 pub(crate) fn set_focus(next: Option<Handle>) {
+  focus_on(next, false);
+}
+
+/// Returns focus to `next` as a popup closes: like [`set_focus`], but the entry it
+/// returns to keeps its selection and caret as they were.
+pub(crate) fn set_focus_restored(next: Option<Handle>) {
+  focus_on(next, true);
+}
+
+fn focus_on(next: Option<Handle>, restored: bool) {
   let (previous, gained, dismissed) = store(|store| {
     let previous = std::mem::replace(&mut store.focused, next);
 
@@ -725,14 +761,18 @@ pub(crate) fn set_focus(next: Option<Handle>) {
     }
 
     if let Some(previous) = previous {
-      store.collapse_entry_selection(previous);
+      if !store.inside_open_overlay(next) {
+        store.collapse_entry_selection(previous);
+      }
+
       store.damage(previous);
     }
 
     if let Some(next) = next {
-      if let Some(field) = store
-        .record_mut(next)
-        .and_then(|record| record.kind.field_mut())
+      if !restored
+        && let Some(field) = store
+          .record_mut(next)
+          .and_then(|record| record.kind.field_mut())
       {
         if field.lines <= 1 {
           field.select_all();
@@ -765,6 +805,8 @@ pub(crate) fn set_focus(next: Option<Handle>) {
   for popup in dismissed {
     notify_dismiss::<Tui>(popup);
   }
+
+  crate::field::report_selections();
 }
 
 /// Moves focus by `step` through the tab stops, wrapping at both ends.
@@ -813,10 +855,6 @@ pub(crate) fn set_hover(x: u16, y: u16) {
     if std::mem::replace(&mut store.last_pointer, (x, y)) != (x, y) {
       // A real pointer move releases the wheel's latched target.
       store.scroll_latch = None;
-
-      if store.menu.is_some() {
-        store.paint_dirty = true;
-      }
     }
 
     if store.hovered() == next {
@@ -892,7 +930,7 @@ fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))>
 /// reaches the node under the pointer or the one the press captured, and a drag in
 /// progress follows.
 pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifiers: Modifiers) {
-  if !store(|store| store.mouse) {
+  if !store(|store| store.mouse_taken()) {
     return;
   }
 
@@ -914,36 +952,25 @@ pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifi
 /// Dispatches a press at (`x`, `y`): the hover path follows it, the press reaches the
 /// deepest node, and—unless a handler prevented the platform—the left press focuses,
 /// records the path for its release, places an entry's caret or anchors a selection
-/// and arms a link, or the right press opens the context menu.
+/// and arms a link, and the right press places an entry's caret; a right press then
+/// asks the deepest node for its context menu. An entry's selection the press moved is
+/// reported.
+pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
+  press(x, y, button, modifiers);
+  crate::field::report_selections();
+}
+
+/// The press of [`pointer_press`], before its report.
 // One press has these stages; length is the stage count, not complexity.
 #[expect(clippy::too_many_lines)]
-pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
-  if !store(|store| store.mouse) {
+fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
+  store(|store| store.set_focus_visible(false));
+
+  if !store(|store| store.mouse_taken()) {
     return;
   }
 
   set_hover(x, y);
-
-  // A press on an enabled item of the open menu waits for its release there; a press
-  // on a disabled item holds the menu open, and anywhere else closes it. Either way
-  // the press is consumed.
-  let consumed = store(|store| {
-    if store.menu.is_none() {
-      return false;
-    }
-
-    match store.menu_item_at(x, y) {
-      Some((item, true)) if button == PointerButton::Primary => store.pressed_item = Some(item),
-      Some(_) => {}
-      None => store.close_menu(),
-    }
-
-    true
-  });
-
-  if consumed {
-    return;
-  }
 
   // A press on a scrollbar grabs it and consumes the press.
   let grabbed = store(|store| {
@@ -984,14 +1011,10 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
   }
 
   let (path, dismissed, modal_blocked) = store(|store| {
-    // A left press starts over; a right press keeps the selection for the menu.
-    if button == PointerButton::Primary {
-      store.clear_selection();
-    }
-
     let path = store.hit_test(x, y);
     let mut dismissed = None;
     let mut blocked = false;
+    let mut inside_overlay = false;
 
     // A press on the anchor a popup opened from leaves it to the anchor's click.
     if let Some((top, modal)) = store.topmost_open_overlay() {
@@ -1002,10 +1025,18 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
           .and_then(Record::overlay_anchor)
           .is_some_and(|anchor| path.iter().any(|(handle, _)| *handle == anchor));
 
-      if !store.hit_overlay(top, x, y, &mut overlay_path) && !on_anchor {
+      inside_overlay = store.hit_overlay(top, x, y, &mut overlay_path);
+
+      if !inside_overlay && !on_anchor {
         dismissed = store.record(top).and_then(|record| record.node);
         blocked = modal;
       }
+    }
+
+    // A left press starts over, unless it lands in an open overlay, whose items act on
+    // the selection beneath; a right press keeps the selection for the context menu.
+    if button == PointerButton::Primary && !inside_overlay {
+      store.clear_selection();
     }
 
     (path, dismissed, blocked)
@@ -1084,10 +1115,41 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
     }
   });
 
-  if prevented.platform {
-    return;
+  if !prevented.platform {
+    press_default(
+      x,
+      y,
+      button,
+      modifiers,
+      &path,
+      entry,
+      entry_held_focus,
+      link,
+    );
   }
 
+  // The right press asks for the context menu once its default has placed the caret.
+  if button == PointerButton::Secondary
+    && let Some(node) = node
+  {
+    let _ =
+      dispatch_context_menu::<Tui>(node, &pointer_event(x, y, origin, Some(button), modifiers));
+  }
+}
+
+/// The terminal's own response to a press the handlers let stand: the caret placed,
+/// a selection anchored or extended, a link armed.
+#[expect(clippy::too_many_arguments)]
+fn press_default(
+  x: u16,
+  y: u16,
+  button: PointerButton,
+  modifiers: Modifiers,
+  path: &[(Handle, (i64, i64))],
+  entry: Option<Handle>,
+  entry_held_focus: bool,
+  link: Option<(Handle, String)>,
+) {
   let entry_local = entry.map(|entry| {
     let origin = path
       .iter()
@@ -1136,8 +1198,6 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
         store.place_caret(entry, local_x, local_y, false);
         store.drag = None;
       }
-
-      store.right_press(x, y, entry);
     }),
     PointerButton::Auxiliary => {}
   }
@@ -1147,38 +1207,7 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
 /// click completes on the deepest node under both the press and the release—releasing
 /// over a different target clicks nothing, as on the web.
 pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
-  if !store(|store| store.mouse) {
-    return;
-  }
-
-  // A release on the item its press landed on runs the item; the menu closes either
-  // way, and the release is consumed.
-  let (menu_pressed, item) = store(|store| {
-    let Some(pressed) = store.pressed_item.take()
-    else {
-      return (false, None);
-    };
-    let item = store
-      .menu_item_at(x, y)
-      .filter(|(item, _)| *item == pressed)
-      .map(|(item, _)| item);
-
-    match item {
-      Some(MenuItem::Copy) => store.copy_selection(),
-      Some(MenuItem::Paste) => store.request_paste(),
-      Some(MenuItem::Cut) | None => {}
-    }
-
-    store.close_menu();
-
-    (true, item)
-  });
-
-  if item == Some(MenuItem::Cut) {
-    crate::field::cut_focused();
-  }
-
-  if menu_pressed {
+  if !store(|store| store.mouse_taken()) {
     return;
   }
 
@@ -1276,6 +1305,8 @@ pub(crate) fn drag_to(x: u16, y: u16) {
   if let Some((handle, offsets)) = scrolled {
     scroll_to(handle, offsets);
   }
+
+  crate::field::report_selections();
 }
 
 /// A count of cells as a position along a track.
@@ -1327,14 +1358,12 @@ pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
 /// consuming the wheel at that box's limits, and a fresh gesture targets the innermost
 /// box under the cell that can still move in the given direction.
 pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64) {
-  if !store(|store| store.mouse) {
+  if !store(|store| store.mouse_taken()) {
     return;
   }
 
   let now = std::time::Instant::now();
   let (latched, candidates) = store(|store| {
-    store.close_menu();
-
     let latched = match store.scroll_latch.as_mut() {
       Some(entry)
         if entry.cell == (x, y)
@@ -1417,6 +1446,11 @@ pub(crate) fn page_scroll(pages: i64) {
 /// dismissal, page scrolling, the clipboard keys and entry editing.
 pub(crate) fn key(event: &KeyEvent) {
   let target = store(|store| {
+    // A modifier pressed alone shows focus no more than it does in a browser.
+    if !event.is_modifier() {
+      store.set_focus_visible(true);
+    }
+
     let handle = store.focused.unwrap_or(store.root);
 
     store.record(handle).and_then(|record| record.node)
@@ -1428,15 +1462,53 @@ pub(crate) fn key(event: &KeyEvent) {
   // The handlers' writes have taken effect by the time the default runs.
   skene_reactive::Runtime::flush_sync();
 
-  if prevented.platform {
-    return;
+  if !prevented.platform {
+    key_default(event);
   }
 
-  key_default(event);
+  crate::field::report_selections();
+}
+
+/// Dispatches a key release to the focused node, or the root; the terminal has no
+/// response of its own to one.
+pub(crate) fn key_up(event: &KeyEvent) {
+  let target = store(|store| {
+    let handle = store.focused.unwrap_or(store.root);
+
+    store.record(handle).and_then(|record| record.node)
+  });
+
+  if let Some(node) = target {
+    let _ = dispatch_key_up::<Tui>(node, event);
+  }
 }
 
 /// The terminal's own response to a key.
 fn key_default(event: &KeyEvent) {
+  // The mouse key hands the mouse over and takes it back; any other key, a modifier
+  // alone aside, takes it back and goes on to act.
+  let (mouse_key, released) = store(|store| {
+    (
+      store.mouse && store.mouse_key.as_ref() == Some(event),
+      store.mouse_released,
+    )
+  });
+
+  if mouse_key {
+    if released {
+      store(|store| store.mouse_released = false);
+    }
+    else {
+      release_mouse();
+    }
+
+    return;
+  }
+
+  if released && !event.is_modifier() {
+    store(|store| store.mouse_released = false);
+  }
+
   let clipboard = store(|store| store.clipboard);
   let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
 
@@ -1452,13 +1524,10 @@ fn key_default(event: &KeyEvent) {
       return;
     }
     "Escape" => {
-      // The most transient layer goes first: the menu, then the selection, then an
-      // open overlay.
+      // The most transient layer goes first: an open overlay, then the selection.
       let dismissed = store(|store| {
-        if store.menu.is_some() {
-          store.close_menu();
-
-          return None;
+        if let Some((top, _)) = store.topmost_open_overlay() {
+          return store.record(top).and_then(|record| record.node);
         }
 
         if store.has_selection() {
@@ -1467,13 +1536,9 @@ fn key_default(event: &KeyEvent) {
           if let Some(entry) = store.focused_entry() {
             store.collapse_entry_selection(entry);
           }
-
-          return None;
         }
 
-        let (top, _) = store.topmost_open_overlay()?;
-
-        store.record(top).and_then(|record| record.node)
+        None
       });
 
       if let Some(dismissed) = dismissed {
@@ -1484,6 +1549,18 @@ fn key_default(event: &KeyEvent) {
     }
     "PageDown" => page_scroll(1),
     "PageUp" => page_scroll(-1),
+    // The menu key, and `Shift-F10`, ask the focused node for its context menu at its
+    // bottom-start corner, as a browser does.
+    "ContextMenu" => {
+      context_menu_from_keyboard(event.modifiers);
+
+      return;
+    }
+    "F10" if event.modifiers.shift => {
+      context_menu_from_keyboard(event.modifiers);
+
+      return;
+    }
     // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
     // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
     // entry; one not offered is an ordinary key.
@@ -1510,6 +1587,50 @@ fn key_default(event: &KeyEvent) {
   }
 
   crate::field::edit_focused(event);
+}
+
+/// Asks the focused node, or the root, for its context menu at the node's bottom-start
+/// corner.
+fn context_menu_from_keyboard(modifiers: Modifiers) {
+  let Some((node, origin, x, y)) = store(|store| {
+    let handle = store.focused.unwrap_or(store.root);
+    let node = store.record(handle).and_then(|record| record.node)?;
+    let (origin_x, origin_y) = store.screen_origin(handle);
+    let (_, height) = store.node_size(handle);
+
+    Some((
+      node,
+      (origin_x, origin_y),
+      u16::try_from(origin_x.max(0)).unwrap_or(u16::MAX),
+      u16::try_from((origin_y + height).max(0)).unwrap_or(u16::MAX),
+    ))
+  })
+  else {
+    return;
+  };
+
+  let _ = dispatch_context_menu::<Tui>(node, &pointer_event(x, y, origin, None, modifiers));
+}
+
+/// Hands the mouse to the terminal until a key takes it back: the hover path empties,
+/// its nodes told the pointer left, and every mouse event is ignored meanwhile.
+fn release_mouse() {
+  let left: Vec<NodeId> = store(|store| {
+    store.mouse_released = true;
+    store.scroll_latch = None;
+
+    let previous = store.set_hovered(Vec::new());
+
+    previous
+      .iter()
+      .rev()
+      .filter_map(|handle| store.record(*handle).and_then(|record| record.node))
+      .collect()
+  });
+
+  for node in left {
+    notify_pointer_leave::<Tui>(node);
+  }
 }
 
 /// Clicks the focused link and, unless a handler prevented the platform, stages its

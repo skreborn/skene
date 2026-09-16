@@ -1,5 +1,6 @@
 //! The terminal medium's own style properties: the glyphs and radius of a border, a
-//! box's shadow, and a run's weight; and the extension every terminal driver shares.
+//! box's shadow, and a run's size and weight; and the extension every terminal driver
+//! shares.
 
 use std::hash::{Hash, Hasher};
 
@@ -90,10 +91,12 @@ impl Fingerprint for BorderGlyphs {
 
 /// The style extension of the terminal: a box draws its border in a glyph set, rounds
 /// it through the corner radius, and casts a shadow; a run is bold, by its own flag or
-/// by a weight of `600` and above.
+/// by a weight of `600` and above, and sized in cells.
 ///
 /// Lengths are cells; the radius is a plain number whose non-zero values all select
-/// [`BorderGlyphs::ROUNDED`] where no glyph set is spelled.
+/// [`BorderGlyphs::ROUNDED`] where no glyph set is spelled. A run's size is a scale of
+/// the cell: a whole number of cells tall and as many times as wide, one to seven, or
+/// a fraction of one cell; a terminal without text sizing draws every size at one.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct TuiExt;
@@ -117,6 +120,8 @@ pub struct TuiBoxFields<S: Shape> {
 pub struct TuiRunFields<S: Shape> {
   /// Whether the run is bold.
   pub bold: S::Of<bool>,
+  /// The font size, in cells: a scale of one to seven, or a fraction of one.
+  pub size: S::Of<f32>,
   /// The font weight, `100` to `900`; `600` and above reads as bold where `bold` is
   /// unset.
   pub weight: S::Of<f32>,
@@ -134,6 +139,8 @@ pub enum TuiProperty {
   Shadow,
   /// The bold flag.
   Bold,
+  /// The font size.
+  Size,
   /// The font weight.
   Weight,
 }
@@ -148,6 +155,7 @@ impl TuiProperty {
       Self::CornerRadius => "corner_radius",
       Self::Shadow => "shadow",
       Self::Bold => "bold",
+      Self::Size => "font_size",
       Self::Weight => "font_weight",
     }
   }
@@ -169,6 +177,8 @@ pub enum TuiValue {
   BorderGlyphs(BorderGlyphs),
   /// A bold flag.
   Bold(bool),
+  /// A size or a weight.
+  Number(f32),
 }
 
 impl<N: Scalar> IntoBoxValue<N, TuiExt> for BorderGlyphs {
@@ -196,7 +206,10 @@ impl IntoRunValue<TuiExt> for bool {
   fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(TuiValue::Bold(bold)) => Some(bold),
-      RunValue::Extension(TuiValue::BorderGlyphs(_)) | RunValue::Color(_) => None,
+      RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Number(_))
+      | RunValue::Color(_)
+      | RunValue::Decoration(_)
+      | RunValue::DecorationStyle(_) => None,
     }
   }
 }
@@ -204,14 +217,17 @@ impl IntoRunValue<TuiExt> for bool {
 impl IntoRunValue<TuiExt> for f32 {
   #[inline(always)]
   fn into_run_value(self) -> RunValue<TuiExt> {
-    RunValue::Extension(TuiValue::Bold(self >= BOLD_WEIGHT))
+    RunValue::Extension(TuiValue::Number(self))
   }
 
   #[inline(always)]
   fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
     match value {
-      RunValue::Extension(TuiValue::Bold(bold)) => Some(if bold { BOLD_WEIGHT } else { 400. }),
-      RunValue::Extension(TuiValue::BorderGlyphs(_)) | RunValue::Color(_) => None,
+      RunValue::Extension(TuiValue::Number(number)) => Some(number),
+      RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Bold(_))
+      | RunValue::Color(_)
+      | RunValue::Decoration(_)
+      | RunValue::DecorationStyle(_) => None,
     }
   }
 }
@@ -305,6 +321,26 @@ pub mod tui_fields {
     }
   }
 
+  /// The `font_size` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct Size;
+
+  impl RunField<TuiExt> for Size {
+    type Value = f32;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Size);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<f32> {
+      &style.ext.size
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<f32> {
+      &mut style.ext.size
+    }
+  }
+
   /// The `font_weight` property.
   #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
   pub struct Weight;
@@ -342,12 +378,23 @@ impl StyleExtension for TuiExt {
   #[inline(always)]
   fn for_each_run_field<V: RunFieldVisitor<Self>>(visitor: &mut V) {
     visitor.field::<tui_fields::Bold>();
+    visitor.field::<tui_fields::Size>();
     visitor.field::<tui_fields::Weight>();
   }
 
   #[inline(always)]
   fn run_value_from_number(number: f32) -> Option<RunValue<Self>> {
-    Some(RunValue::Extension(TuiValue::Bold(number >= BOLD_WEIGHT)))
+    Some(RunValue::Extension(TuiValue::Number(number)))
+  }
+
+  #[inline(always)]
+  fn interpolate_value(from: &TuiValue, to: &TuiValue, amount: f32) -> TuiValue {
+    match (from, to) {
+      (TuiValue::Number(from), TuiValue::Number(to)) => {
+        TuiValue::Number((to - from).mul_add(amount, *from))
+      }
+      _ => skene_core::interpolate::snap(from, to, amount),
+    }
   }
 }
 
@@ -359,6 +406,11 @@ impl CornerRadius for TuiExt {
 }
 
 impl TypeMetrics for TuiExt {
+  #[inline(always)]
+  fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<f32>) {
+    fields.size = size;
+  }
+
   #[inline(always)]
   fn set_font_weight<S: Shape>(fields: &mut Self::RunFields<S>, weight: S::Of<f32>) {
     fields.weight = weight;

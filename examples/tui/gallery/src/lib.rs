@@ -70,11 +70,13 @@ fn gallery(palette: Signal<Option<String>>) -> impl IntoView {
                 palettes(palette),
                 text(),
                 buttons(),
+                tooltips(),
                 toggles(),
                 inputs(),
                 borders(),
                 layouts(),
                 list(),
+                lazy_row(),
                 third_party(),
               )),
           ),
@@ -156,6 +158,19 @@ fn buttons() -> impl IntoView {
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
         .set_color(SimplePalette::MUTED_FOREGROUND),
+    )),
+  )
+}
+
+fn tooltips() -> impl IntoView {
+  section(
+    "Tooltip",
+    Row::new().set_spacing(2).set_children((
+      SimpleTooltip::new("Saves your work")
+        .set_child(SimpleButton::new("Save").set_variant(SimpleVariant::Secondary)),
+      SimpleTooltip::view(Text::new("a view, too").set_color(SimplePalette::BACKGROUND))
+        .set_placement(Placement::Bottom)
+        .set_child(SimpleButton::new("Hover me").set_variant(SimpleVariant::Outline)),
     )),
   )
 }
@@ -337,6 +352,19 @@ fn list() -> impl IntoView {
           ))
         },
       )),
+  )
+}
+
+fn lazy_row() -> impl IntoView {
+  section(
+    "LazyRow",
+    Container::new().set_width(40).set_height(1).set_child(
+      LazyRow::new().set_item_width(9.).derive_items(
+        || 0..1000,
+        |index| *index,
+        |index| Text::new(format!("Cell {index}")).set_color(SimplePalette::FOREGROUND),
+      ),
+    ),
   )
 }
 

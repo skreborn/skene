@@ -33,6 +33,7 @@ use skene_headless::{
   trigger_blur,
   trigger_focus,
   trigger_key_down,
+  trigger_key_up,
   trigger_pointer_down,
   trigger_pointer_enter,
   trigger_pointer_leave,
@@ -59,15 +60,14 @@ fn press() -> PointerEvent {
 }
 
 fn key(key: &str) -> KeyEvent {
-  KeyEvent {
-    key: key.to_owned(),
-    modifiers: Modifiers::default(),
-  }
+  KeyEvent::new(key)
 }
 
 /// Every handler registers its event on the node, in the fixed order of kinds, and
 /// fires through dispatch: a preventable event climbs to the outer container until a
 /// `Bubbling::Stop`, and a notification stays on its node.
+// One handler per event kind; length is the kind count, not complexity.
+#[expect(clippy::too_many_lines)]
 #[test]
 fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   reset();
@@ -86,6 +86,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     let outer_enter = note("outer enter");
     let inner_down = note("inner down");
     let inner_key = note("inner key");
+    let inner_key_up = note("inner key up");
     let inner_up = note("inner up");
     let inner_move = note("inner move");
     let inner_enter = note("inner enter");
@@ -112,6 +113,12 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
             assert_eq!(event.key, "Enter");
             inner_key();
           })
+          .handle_key_up(move |event| {
+            assert_eq!(event.key, "Enter");
+            inner_key_up();
+
+            Bubbling::Stop
+          })
           .handle_pointer_up(move |_| inner_up())
           .handle_pointer_move(move |_| inner_move())
           .handle_pointer_enter(inner_enter)
@@ -131,6 +138,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     listened(inner),
     [
       EventKind::KeyDown,
+      EventKind::KeyUp,
       EventKind::PointerDown,
       EventKind::PointerUp,
       EventKind::PointerMove,
@@ -149,6 +157,13 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     }
   );
   assert_eq!(trigger_key_down(inner, &key("Enter")), Prevented::default());
+  assert_eq!(
+    trigger_key_up(inner, &key("Enter")),
+    Prevented {
+      platform: false,
+      bubbling: true,
+    }
+  );
   assert_eq!(trigger_pointer_up(inner, &press()), Prevented::default());
   assert_eq!(trigger_pointer_move(inner, &press()), Prevented::default());
 
@@ -164,6 +179,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       "inner down",
       "inner key",
       "outer key",
+      "inner key up",
       "inner up",
       "outer up",
       "inner move",

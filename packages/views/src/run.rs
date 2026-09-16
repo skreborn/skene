@@ -203,6 +203,6 @@ fn definition_of<N: Scalar>(value: &Value<Color, Condition<N>>) -> Definition<Co
 fn static_leaf(leaf: &Leaf<Color>) -> StaticLeaf<Color> {
   match leaf {
     Leaf::Static(leaf) => leaf.clone(),
-    Leaf::Derived(compute) => StaticLeaf::Fixed(compute()),
+    Leaf::Derived(compute) => compute(),
   }
 }

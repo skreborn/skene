@@ -1,6 +1,7 @@
 //! The launch configuration: what the app takes from the terminal.
 
-use skene_core::IntoView;
+use skene_core::{Border, Color, Inset, IntoView, Media, State, When};
+use skene_views::{ContextMenu, MenuItem, typography};
 
 use crate::{Tui, terminal, with_store};
 
@@ -46,8 +47,8 @@ impl Default for Clipboard {
   }
 }
 
-/// The terminal driver's launch configuration: the clipboard operations offered and
-/// whether the mouse is taken.
+/// The terminal driver's launch configuration: the clipboard operations offered,
+/// whether the mouse is taken, and the key handing it to the terminal at run time.
 ///
 /// `Launch::new().set_clipboard(Clipboard::COPY).run(app)` runs the app in the terminal;
 /// [`launch`] is the default configuration's. The terminal's own selection—a drag with
@@ -59,7 +60,11 @@ impl Default for Clipboard {
 pub struct Launch {
   clipboard: Clipboard,
   mouse: bool,
+  mouse_key: Option<&'static str>,
 }
+
+/// The key handing the mouse to the terminal by default.
+pub const MOUSE_KEY: &str = "Alt+m";
 
 impl Default for Launch {
   #[inline(always)]
@@ -69,12 +74,14 @@ impl Default for Launch {
 }
 
 impl Launch {
-  /// The default configuration: every clipboard operation, the mouse taken.
+  /// The default configuration: every clipboard operation, the mouse taken, and
+  /// [`MOUSE_KEY`] handing it over.
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
       clipboard: Clipboard::ALL,
       mouse: true,
+      mouse_key: Some(MOUSE_KEY),
     }
   }
 
@@ -96,6 +103,17 @@ impl Launch {
     self
   }
 
+  /// Sets the key handing the mouse to the terminal for its own selection and taking
+  /// it back, in the form [`trigger_key`](crate::trigger_key) reads (`"Alt+m"`,
+  /// `"F9"`); any other key takes the mouse back as well, and then acts as usual.
+  /// `None` leaves the mouse where the launch put it.
+  #[inline(always)]
+  pub const fn set_mouse_key(mut self, key: Option<&'static str>) -> Self {
+    self.mouse_key = key;
+
+    self
+  }
+
   /// Installs the terminal driver under this configuration, for a headless test; see
   /// [`install`].
   ///
@@ -108,7 +126,9 @@ impl Launch {
     with_store(|store| {
       store.clipboard = self.clipboard;
       store.mouse = self.mouse;
+      store.mouse_key = self.mouse_key.map(terminal::key_event);
     });
+    serve_standard_menu();
   }
 
   /// Mounts and runs a skene application in the terminal under this configuration;
@@ -124,6 +144,32 @@ impl Launch {
   {
     terminal::run(self, app);
   }
+}
+
+/// Serves the terminal's own context menu from the root: the standard clipboard
+/// items, drawn in the terminal's default colors, which any menu closer to the pressed
+/// node takes precedence over.
+fn serve_standard_menu() {
+  let Some(root) = crate::driver::root_node()
+  else {
+    return;
+  };
+  let gray = Color::srgb(0.5, 0.5, 0.5);
+
+  skene_core::root_owner().enter(|| {
+    let _ = ContextMenu::<Tui>::new()
+      .set_items([MenuItem::cut(), MenuItem::copy(), MenuItem::paste()])
+      .set_color(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))
+      .set_border(Border::new(1, gray))
+      .set_item_padding(Inset::symmetric(1, 0))
+      .set_item_color(
+        Color::TRANSPARENT
+          .when(State::Hovered, gray)
+          .when(State::Focused, gray),
+      )
+      .set_item_text_color(typography::INK.when(State::Disabled, gray))
+      .serve(root);
+  });
 }
 
 /// Mounts and runs a skene application in the terminal under the default

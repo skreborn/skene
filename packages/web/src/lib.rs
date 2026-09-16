@@ -77,11 +77,14 @@ pub use self::csr::{
 pub use self::escape::WebDom;
 #[cfg(target_arch = "wasm32")]
 pub use self::hydration::{
+  LazyRegion,
   adopt_next,
   adopt_tagged,
+  enter_lazy,
   is_server,
   register_source,
   register_tagged_source,
+  within_lazy,
 };
 #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 pub use self::ssr::{

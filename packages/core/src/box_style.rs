@@ -471,7 +471,7 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension> BoxFi
         slot,
         property: F::KEY,
         position,
-        compute: Rc::new(move || compute().into_box_value()),
+        compute: Rc::new(move || compute().map(IntoBoxValue::into_box_value)),
       });
 
       slot
@@ -504,8 +504,6 @@ impl<N: Scalar, X: StyleExtension> Default for BoxDynamics<N, X> {
 
 #[cfg(test)]
 mod tests {
-  use std::rc::Rc;
-
   use super::{BoxStyle, BoxValue, BoxVisitor, box_fields};
   use crate::{
     BoxField,
@@ -540,7 +538,7 @@ mod tests {
       width: Some(Value::from(Dimension::from(10.))),
       padding: Some(Value::from(TokenRef::<Inset<f32>>::new("gutter"))),
       color: Some(
-        Value::new(Leaf::Derived(Rc::new(|| Color::TRANSPARENT)))
+        Value::new(Leaf::derive(|| Color::TRANSPARENT))
           .when(Media::Dark.into(), Color::srgb(0., 0., 0.)),
       ),
       aspect_ratio: Some(1f32.derive_when(State::Hovered.into(), || 2.)),
@@ -589,11 +587,17 @@ mod tests {
       PropertyKey::Shared(Property::AspectRatio)
     );
     assert_eq!(slots[0].position, 1);
-    assert_eq!((slots[0].compute)(), BoxValue::Number(2.));
+    assert_eq!(
+      (slots[0].compute)(),
+      StaticLeaf::Fixed(BoxValue::Number(2.))
+    );
     assert_eq!(slots[1].slot, Slot(1));
     assert_eq!(slots[1].property, PropertyKey::Shared(Property::Color));
     assert_eq!(slots[1].position, 0);
-    assert_eq!((slots[1].compute)(), BoxValue::Color(Color::TRANSPARENT));
+    assert_eq!(
+      (slots[1].compute)(),
+      StaticLeaf::Fixed(BoxValue::Color(Color::TRANSPARENT))
+    );
   }
 
   /// Overlaying replaces exactly the properties the overlay sets.

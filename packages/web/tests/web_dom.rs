@@ -18,6 +18,7 @@ use skene_core::{
   Leaf,
   Media,
   State,
+  StaticLeaf,
   Token,
   TokenName,
   TokenRef,
@@ -313,7 +314,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   let _ = skene_web::mount(move || {
     Box_::new()
       .set_color(
-        Value::<Color, Condition<f32>>::new(Leaf::Derived(Rc::new(move || color.get())))
+        Value::<Color, Condition<f32>>::new(Leaf::derive(move || color.get()))
           .when(State::Hovered.into(), red()),
       )
       .build()
@@ -355,6 +356,51 @@ fn a_derived_color_stays_below_its_hover_variant() {
       .get_property_value("--skene-color")
       .unwrap(),
     css(blue())
+  );
+}
+
+/// A derived leaf naming a token writes the token's reference into its slot, so the
+/// theme in force answers it, and a fixed value written later replaces the reference.
+#[wasm_bindgen_test]
+fn a_derived_token_writes_its_reference_into_the_slot() {
+  let (_guard, root) = fresh_root();
+  let plain = Signal::new(false);
+
+  let _ = skene_web::mount(move || {
+    Theme::<Web, _>::new(Palette::default())
+      .set_child_builder(move || {
+        Box_::new().derive_color(move || {
+          if plain.get() {
+            StaticLeaf::from(red())
+          }
+          else {
+            StaticLeaf::from(Palette::CARD)
+          }
+        })
+      })
+      .build()
+  });
+
+  let element = only_child(&only_child(&root));
+  let slot = || {
+    html(&element)
+      .style()
+      .get_property_value("--skene-color")
+      .unwrap()
+  };
+
+  assert_eq!(slot(), "var(--test-card)");
+  assert_eq!(
+    computed(&element, "background-color"),
+    probe(&root, &css(white()))
+  );
+
+  plain.set(true);
+
+  assert_eq!(slot(), css(red()));
+  assert_eq!(
+    computed(&element, "background-color"),
+    probe(&root, &css(red()))
   );
 }
 
@@ -769,6 +815,56 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
     Some(option(1).unchecked_ref())
   );
 
+  let face_rect = face.get_bounding_client_rect();
+  let popup_rect = popup.get_bounding_client_rect();
+
+  assert!(
+    (popup_rect.top() - face_rect.bottom()).abs() < 1.
+      && (popup_rect.left() - face_rect.left()).abs() < 1.,
+    "the popup opens below the face, start-aligned: popup {:?} face {:?}",
+    (popup_rect.left(), popup_rect.top()),
+    (face_rect.left(), face_rect.bottom())
+  );
+
+  if web_sys::css::supports_with_value("position-area", "block-end").unwrap_or(false) {
+    let name = html(&face)
+      .style()
+      .get_property_value("anchor-name")
+      .unwrap();
+
+    assert!(name.starts_with("--skene-anchor-"), "{name}");
+    assert_eq!(
+      html(&popup)
+        .style()
+        .get_property_value("position-anchor")
+        .unwrap(),
+      name,
+      "the popup follows the face through CSS anchor positioning"
+    );
+    assert_eq!(
+      html(&popup)
+        .style()
+        .get_property_value("position-area")
+        .unwrap(),
+      "block-end span-inline-end"
+    );
+    assert_eq!(
+      html(&popup).style().get_property_value("top").unwrap(),
+      "auto",
+      "no measured position is written where the engine anchors"
+    );
+  }
+  else {
+    assert!(
+      html(&popup)
+        .style()
+        .get_property_value("top")
+        .unwrap()
+        .ends_with("px"),
+      "the measured placement stands in for the engine's"
+    );
+  }
+
   press(&option(1), "ArrowUp");
 
   assert_eq!(
@@ -788,4 +884,9 @@ fn a_picker_opens_and_chooses_with_the_keyboard() {
     document().active_element().as_ref(),
     Some(face.unchecked_ref())
   );
+
+  press(&face, "l");
+
+  assert_eq!(value.get(), "lg", "type-ahead chooses over the closed face");
+  assert!(!popup.matches(":popover-open").unwrap_or(true));
 }

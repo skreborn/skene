@@ -29,10 +29,12 @@ fn app() -> impl IntoView {
                   palettes(palette),
                   typography(),
                   buttons(),
+                  tooltips(),
                   toggles(),
                   inputs(),
                   layouts(),
                   list(),
+                  lazy_row(),
                   painted(),
                   third_party(),
                 )),
@@ -148,6 +150,36 @@ fn buttons() -> impl IntoView {
         .set_font_size(13.)
         .set_color(SimplePalette::MUTED_FOREGROUND),
     )),
+  )
+}
+
+fn tooltips() -> impl IntoView {
+  section(
+    "Tooltip",
+    Row::new()
+      .set_spacing(8.)
+      .set_wrap(Wrap::Forward)
+      .set_item_alignment(ItemAlignment::Center)
+      .set_children((
+        SimpleTooltip::new("Saves your work")
+          .set_child(SimpleButton::new("Save").set_variant(SimpleVariant::Secondary)),
+        SimpleTooltip::view(
+          Row::new()
+            .set_spacing(6.)
+            .set_item_alignment(ItemAlignment::Center)
+            .set_children((
+              Text::new("⌘S").set_color(SimplePalette::BACKGROUND),
+              Text::new("saves, too").set_color(SimplePalette::BACKGROUND),
+            )),
+        )
+        .set_placement(Placement::Bottom)
+        .set_child(SimpleButton::new("Hover me").set_variant(SimpleVariant::Outline)),
+        SimpleTooltip::new("Plain text takes one as well").set_child(
+          Text::new("or a run of text")
+            .set_font_size(14.)
+            .set_color(SimplePalette::MUTED_FOREGROUND),
+        ),
+      )),
   )
 }
 
@@ -306,6 +338,25 @@ fn list() -> impl IntoView {
             ))
         },
       ),
+    ),
+  )
+}
+
+fn lazy_row() -> impl IntoView {
+  section(
+    "LazyRow",
+    Container::new().set_height(48.).set_child(
+      LazyRow::new()
+        .set_item_width(ItemExtent::Estimated(96.))
+        .derive_items(
+          || 0..1000,
+          |index| *index,
+          move |index| {
+            Container::new()
+              .set_padding(Inset::symmetric(12., 6.))
+              .set_child(Text::new(format!("Cell {index}")).set_font_size(13.))
+          },
+        ),
     ),
   )
 }

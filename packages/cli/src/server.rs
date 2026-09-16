@@ -7,7 +7,7 @@ use std::{
   fs,
   io::{BufRead, BufReader, Read, Write},
   net::{TcpListener, TcpStream},
-  path::Path,
+  path::{Path, PathBuf},
   sync::{Arc, Mutex},
   thread,
 };
@@ -22,22 +22,60 @@ use crate::manifest::App;
 type Headers = Vec<(String, String)>;
 
 /// The dev channel: the open live-reload streams, the authoritative state snapshot
-/// held across reloads, and the rebuild-failure notice the running app polls.
+/// held across reloads, the rebuild-failure notice the running app polls, and the
+/// terminal binary an attached terminal runs.
 #[derive(Clone, Default)]
 pub struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
   state: Arc<Mutex<Option<Vec<u8>>>>,
   notice: Arc<Mutex<Notice>>,
   renderer: Arc<Mutex<Option<Runner>>>,
+  binary: Arc<Mutex<Option<Binary>>>,
 }
 
-/// The rebuild-failure notice: its text, a version bumped on every change so the app
-/// re-presents a repeated failure, and how often an app has fetched it.
+/// The rebuild-failure notice: its text, and a version bumped on every change so the
+/// app re-presents a repeated failure.
 #[derive(Default)]
 struct Notice {
   version: u64,
   text: Option<String>,
-  polls: u64,
+}
+
+/// The terminal binary a `run tui` loop built: a generation bumped on every swap, the
+/// binary's path, and the directory it runs in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Binary {
+  pub generation: u64,
+  pub path: PathBuf,
+  pub dir: PathBuf,
+}
+
+impl Binary {
+  /// The body `/skene:binary` serves: the generation, the path and the directory, a
+  /// line each.
+  fn body(&self) -> Vec<u8> {
+    format!(
+      "{}\n{}\n{}",
+      self.generation,
+      self.path.display(),
+      self.dir.display()
+    )
+    .into_bytes()
+  }
+
+  /// The binary a `/skene:binary` body names.
+  pub fn parse(body: &str) -> Option<Self> {
+    let mut lines = body.lines();
+    let generation = lines.next()?.parse().ok()?;
+    let path = PathBuf::from(lines.next()?);
+    let dir = PathBuf::from(lines.next()?);
+
+    Some(Self {
+      generation,
+      path,
+      dir,
+    })
+  }
 }
 
 impl Dev {
@@ -131,23 +169,12 @@ impl Dev {
     }
   }
 
-  /// How many times an app has fetched the notice—to tell whether one is listening.
-  pub fn notice_polls(&self) -> u64 {
-    self
-      .notice
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner)
-      .polls
-  }
-
   /// The notice body an app polls: the version line, then the failure text.
   fn notice_body(&self) -> Vec<u8> {
-    let mut notice = self
+    let notice = self
       .notice
       .lock()
       .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    notice.polls += 1;
 
     format!(
       "{}\n{}",
@@ -156,6 +183,64 @@ impl Dev {
     )
     .into_bytes()
   }
+
+  /// Publishes the terminal binary at `path`, run in `dir`, as the next generation an
+  /// attached terminal swaps in.
+  pub fn set_binary(&self, path: PathBuf, dir: PathBuf) {
+    let mut binary = self
+      .binary
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let generation = binary.as_ref().map_or(1, |binary| binary.generation + 1);
+
+    *binary = Some(Binary {
+      generation,
+      path,
+      dir,
+    });
+  }
+
+  /// The binary body an attached terminal polls, `None` before a build.
+  fn binary_body(&self) -> Option<Vec<u8>> {
+    self
+      .binary
+      .lock()
+      .unwrap_or_else(std::sync::PoisonError::into_inner)
+      .as_ref()
+      .map(Binary::body)
+  }
+}
+
+/// Fetches `path` from the state server on `port`: the body of a `200` reply, `None`
+/// for any other or for no server.
+pub fn fetch(port: u16, path: &str) -> Option<Vec<u8>> {
+  let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
+
+  stream
+    .write_all(
+      format!(
+        "GET {path} HTTP/1.1\r\n\
+         Host: localhost\r\n\
+         Connection: close\r\n\r\n"
+      )
+      .as_bytes(),
+    )
+    .ok()?;
+
+  let mut response = Vec::new();
+
+  stream.read_to_end(&mut response).ok()?;
+
+  let split = response
+    .windows(4)
+    .position(|window| window == b"\r\n\r\n")?;
+  let head = std::str::from_utf8(&response[..split]).ok()?;
+
+  if !head.starts_with("HTTP/1.1 200") {
+    return None;
+  }
+
+  Some(response[split + 4..].to_vec())
 }
 
 /// Serves only the state slot on an ephemeral port, for a dev loop around a target
@@ -228,15 +313,24 @@ fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
         &dev.notice_body(),
       );
     }
+    (Some("GET"), Some("/skene:binary")) => match dev.binary_body() {
+      Some(body) => {
+        let _ = write_response(&mut stream, "200 OK", "text/plain; charset=utf-8", &body);
+      }
+      None => {
+        let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"no binary");
+      }
+    },
     _ => {
       let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
     }
   }
 }
 
-/// Serves the app on `port` until interrupted: `index.html` and `dist/web/` from the
-/// app directory, declared assets at their URIs, and—with `dev`—the reload SSE
-/// endpoint, the state slot, and the reload script injected into HTML.
+/// Serves the app on `port` until interrupted: `index.html` and the build output from
+/// the app's `dist/web`, at its own path and as the site root, declared assets at
+/// their URIs, and—with `dev`—the reload SSE endpoint, the state slot, and the reload
+/// script injected into HTML.
 pub fn serve(app: &Arc<App>, port: u16, dev: Option<&Dev>) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
@@ -431,13 +525,15 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
     relative
   };
 
-  let path = if relative.starts_with("dist/web/") {
-    Some(app.dir.join(relative)).filter(|path| path.is_file())
-  }
-  else {
-    None
-  };
-  let path = path.or_else(|| app.resolve_asset(relative));
+  // The build output is reachable at its own path and as the site root, which is how a
+  // rendered page boots the bundle once `dist/web` is served as a static site.
+  let built = relative.strip_prefix("dist/web/").map_or_else(
+    || app.dir.join("dist/web").join(relative),
+    |inside| app.dir.join("dist/web").join(inside),
+  );
+  let path = Some(built)
+    .filter(|path| path.is_file())
+    .or_else(|| app.resolve_asset(relative));
 
   let Some(path) = path
   else {
@@ -509,4 +605,31 @@ fn write_response_with(
   stream.write_all(header.as_bytes())?;
   stream.write_all(body)?;
   stream.flush()
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// The binary body round-trips, and each publication is the next generation.
+  #[test]
+  fn the_binary_body_round_trips_and_generations_advance() {
+    let dev = Dev::default();
+
+    assert!(dev.binary_body().is_none());
+    dev.set_binary("/target/debug/app".into(), "/app".into());
+    dev.set_binary("/target/debug/app".into(), "/app".into());
+
+    let body = String::from_utf8(dev.binary_body().unwrap()).unwrap();
+
+    assert_eq!(
+      Binary::parse(&body),
+      Some(Binary {
+        generation: 2,
+        path: "/target/debug/app".into(),
+        dir: "/app".into(),
+      })
+    );
+    assert!(Binary::parse("x").is_none());
+  }
 }

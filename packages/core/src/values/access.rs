@@ -41,6 +41,9 @@ pub enum AccessProp {
   Controls(NodeId),
   /// The node whose text describes the control.
   DescribedBy(NodeId),
+  /// A plain-text description: the accessible description where nothing else supplies
+  /// one, and the platform's own tooltip where the platform shows one without script.
+  Description(String),
   /// The axis a range control runs along.
   Orientation(Axis),
 }

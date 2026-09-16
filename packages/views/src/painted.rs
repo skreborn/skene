@@ -2,20 +2,32 @@
 
 use std::rc::Rc;
 
-use skene_core::{AnyKind, Layout, NodeId, Size, View};
-use skene_views::{LayoutBox, SizeHandle, properties, realize::with_sink};
+use skene_core::{AnyKind, AnyView, IntoView, Layout, NodeId, Size, View};
 
-use crate::{Canvas, Painter, Painting};
+use crate::{
+  Canvas,
+  Enhance,
+  LayoutBox,
+  Painter,
+  Painting,
+  SizeHandle,
+  properties,
+  realize::{ChildBuilder, with_sink},
+};
 
 /// A box drawn by a paint callback through the driver's renderer: sized like any box,
 /// painted at its laid-out size now and whenever that size changes.
 ///
-/// The portable low-level path for pixel media; it exists only where the driver
-/// implements [`Painting`].
+/// The portable low-level path for pixels; it exists only where the driver
+/// implements [`Painting`]. With a [`fallback`](Self::set_fallback) it is an
+/// [`Enhance`] on [`Painting::available`]: the fallback stands where nothing is drawn
+/// as pixels, a server render and a terminal without a graphics protocol included,
+/// and the painted box takes its place once something is.
 #[must_use]
 pub struct Painted<D: Painting> {
   inner: LayoutBox<D>,
   painter: Rc<Painter>,
+  fallback: Option<ChildBuilder<D>>,
 }
 
 impl<D: Painting> Painted<D> {
@@ -25,6 +37,7 @@ impl<D: Painting> Painted<D> {
     Self {
       inner: LayoutBox::new(Layout::Flow),
       painter: Rc::new(painter),
+      fallback: None,
     }
   }
 
@@ -58,21 +71,44 @@ impl<D: Painting> Painted<D> {
 
     self
   }
+
+  /// Sets the view built where nothing is drawn as pixels; nothing by default.
+  #[inline(always)]
+  pub fn set_fallback<V: IntoView<D>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+    self.fallback = Some(ChildBuilder::new(fallback));
+
+    self
+  }
 }
 
 impl<D: Painting> AnyKind for Painted<D> {}
 
 impl<D: Painting> View<D> for Painted<D> {
   fn build(self) -> NodeId {
-    let Self { inner, painter } = self;
-    let node = inner.build();
+    let Self {
+      inner,
+      painter,
+      fallback,
+    } = self;
+    let paint = move || {
+      let node = inner.build();
 
-    with_sink::<D, _>(node, |sink| {
-      let painter = Rc::clone(&painter);
+      with_sink::<D, _>(node, |sink| {
+        let painter = Rc::clone(&painter);
 
-      D::default().paint(sink, Box::new(move |canvas, size| painter(canvas, size)));
-    });
+        D::default().paint(sink, Box::new(move |canvas, size| painter(canvas, size)));
+      });
 
-    node
+      node
+    };
+    let Some(fallback) = fallback
+    else {
+      return paint();
+    };
+
+    Enhance::<D>::new(D::default().available())
+      .set_fallback(move || AnyView::<D>::new(move || fallback.build()))
+      .set_child_builder(move || AnyView::<D>::new(paint))
+      .build()
   }
 }

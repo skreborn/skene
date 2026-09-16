@@ -17,6 +17,7 @@ use skene_core::{
   NodeId,
   Seal,
   Spacing,
+  StaticLeaf,
   Value,
   View,
 };
@@ -97,7 +98,10 @@ impl<D: Driver> Grid<D> {
   /// Derives the alignment of each child within its cell from the signals `alignment`
   /// reads.
   #[inline(always)]
-  pub fn derive_item_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+  pub fn derive_item_alignment<R: Into<StaticLeaf<Alignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
     self.inner = self.inner.derive_alignment(alignment);
 
     self

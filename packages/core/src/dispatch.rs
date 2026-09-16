@@ -14,7 +14,7 @@ use skene_reactive::batch;
 use smallvec::SmallVec;
 
 use super::{Driver, HandlerSet, NodeId, Scene};
-use crate::{KeyEvent, PointerEvent, Prevent, Prevented, ScrollEvent};
+use crate::{KeyEvent, PointerEvent, Prevent, Prevented, ScrollEvent, TextSelection};
 
 /// Dispatches a click at `node`.
 #[inline(always)]
@@ -49,6 +49,17 @@ pub fn dispatch_key_down<D: Driver>(node: NodeId, event: &KeyEvent) -> Prevented
   bubble::<D, _, _>(
     node,
     all(HandlerSet::key_down),
+    |_| (),
+    |handler, ()| handler(event),
+  )
+}
+
+/// Dispatches a key release at `node`, the focused node.
+#[inline(always)]
+pub fn dispatch_key_up<D: Driver>(node: NodeId, event: &KeyEvent) -> Prevented {
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::key_up),
     |_| (),
     |handler, ()| handler(event),
   )
@@ -130,6 +141,14 @@ pub fn notify_change<D: Driver>(node: NodeId, value: &str) {
   notify::<D, _>(node, all(HandlerSet::change), |handler| handler(value));
 }
 
+/// Notifies `node` of its new selection.
+#[inline(always)]
+pub fn notify_selection_change<D: Driver>(node: NodeId, selection: TextSelection) {
+  notify::<D, _>(node, all(HandlerSet::selection_change), |handler| {
+    handler(selection);
+  });
+}
+
 /// Notifies `node` of its new checked state.
 #[inline(always)]
 pub fn notify_toggle<D: Driver>(node: NodeId, checked: bool) {
@@ -140,6 +159,18 @@ pub fn notify_toggle<D: Driver>(node: NodeId, checked: bool) {
 #[inline(always)]
 pub fn notify_dismiss<D: Driver>(node: NodeId) {
   notify::<D, _>(node, all(HandlerSet::dismiss), |handler| handler());
+}
+
+/// Dispatches a context menu request at `node`: `event` is where the menu is asked
+/// for, the secondary button on a press and no button from the keyboard.
+#[inline(always)]
+pub fn dispatch_context_menu<D: Driver>(node: NodeId, event: &PointerEvent) -> Prevented {
+  bubble::<D, _, _>(
+    node,
+    all(HandlerSet::context_menu),
+    |at| localize::<D>(at, event),
+    |handler, event| handler(event),
+  )
 }
 
 /// The handlers a dispatch runs on one node, in order.

@@ -1,7 +1,7 @@
 //! The terminal's decoration and text setters on the facade's views: border glyphs, a
 //! shadow, boldness.
 
-use skene_core::{BoxStyle, Color, Condition, Declared, Leaf, RunStyle, Value};
+use skene_core::{BoxStyle, Color, Condition, Declared, Leaf, RunStyle, StaticLeaf, Value};
 use skene_tui_core::{BorderGlyphs, TuiExt};
 
 use crate::Tui;
@@ -33,12 +33,15 @@ pub trait TuiDecoration: Sized {
     self
   }
 
-  /// Derives the characters the border draws with from the signals `glyphs` reads.
+  /// Derives the characters the border draws with from the signals `glyphs` reads: a
+  /// value, a token or an expression.
   #[inline(always)]
   #[must_use]
-  fn derive_border_glyphs(mut self, glyphs: impl Fn() -> BorderGlyphs + 'static) -> Self {
-    self.terminal_style_mut().ext.border_glyphs =
-      Some(Value::new(Leaf::Derived(std::rc::Rc::new(glyphs))));
+  fn derive_border_glyphs<R: Into<StaticLeaf<BorderGlyphs>>>(
+    mut self,
+    glyphs: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.terminal_style_mut().ext.border_glyphs = Some(Value::new(Leaf::derive(glyphs)));
 
     self
   }
@@ -53,12 +56,12 @@ pub trait TuiDecoration: Sized {
     self
   }
 
-  /// Derives the shadow color from the signals `shadow` reads.
+  /// Derives the shadow color from the signals `shadow` reads: a value, a token or an
+  /// expression.
   #[inline(always)]
   #[must_use]
-  fn derive_shadow(mut self, shadow: impl Fn() -> Color + 'static) -> Self {
-    self.terminal_style_mut().ext.shadow =
-      Some(Value::new(Leaf::Derived(std::rc::Rc::new(shadow))));
+  fn derive_shadow<R: Into<StaticLeaf<Color>>>(mut self, shadow: impl Fn() -> R + 'static) -> Self {
+    self.terminal_style_mut().ext.shadow = Some(Value::new(Leaf::derive(shadow)));
 
     self
   }
@@ -102,11 +105,12 @@ pub trait TuiText: Sized {
     self
   }
 
-  /// Derives whether the text is bold from the signals `bold` reads.
+  /// Derives whether the text is bold from the signals `bold` reads: a value, a token
+  /// or an expression.
   #[inline(always)]
   #[must_use]
-  fn derive_bold(mut self, bold: impl Fn() -> bool + 'static) -> Self {
-    self.terminal_style_mut().ext.bold = Some(Value::new(Leaf::Derived(std::rc::Rc::new(bold))));
+  fn derive_bold<R: Into<StaticLeaf<bool>>>(mut self, bold: impl Fn() -> R + 'static) -> Self {
+    self.terminal_style_mut().ext.bold = Some(Value::new(Leaf::derive(bold)));
 
     self
   }

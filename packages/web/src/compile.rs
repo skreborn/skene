@@ -47,6 +47,8 @@ use skene_core::{
   Slot,
   Static,
   StaticLeaf,
+  TextDecoration,
+  TextDecorationStyle,
   TokenName,
   Wrap,
 };
@@ -197,6 +199,9 @@ pub(crate) const fn target(key: Key) -> Target {
         pseudo: "::selection",
         ..plain("background-color")
       },
+      Property::Decoration => plain("text-decoration-line"),
+      Property::DecorationStyle => plain("text-decoration-style"),
+      Property::DecorationColor => plain("text-decoration-color"),
     },
     PropertyKey::Extension(property) => match property {
       GuiProperty::CornerRadius => pixels("border-radius"),
@@ -291,7 +296,48 @@ pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, GuiExt>) -> Strin
 pub(crate) fn render_run_value(key: Key, value: &RunValue<GuiExt>) -> String {
   match value {
     RunValue::Color(color) => Declarations::render_color(*color),
+    RunValue::Decoration(decoration) => match decoration {
+      TextDecoration::None => "none",
+      TextDecoration::Underline => "underline",
+      TextDecoration::Overline => "overline",
+      TextDecoration::LineThrough => "line-through",
+    }
+    .to_owned(),
+    RunValue::DecorationStyle(style) => match style {
+      TextDecorationStyle::Solid => "solid",
+      TextDecorationStyle::Double => "double",
+      TextDecorationStyle::Dotted => "dotted",
+      TextDecorationStyle::Dashed => "dashed",
+      TextDecorationStyle::Wavy => "wavy",
+    }
+    .to_owned(),
     RunValue::Extension(value) => number(target(key).unit, *value),
+  }
+}
+
+/// The CSS text a derived box leaf writes into its slot: a value rendered, a token or
+/// an expression referenced.
+pub(crate) fn render_box_leaf(key: Key, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) -> String {
+  static_leaf_text(key, leaf, |value| render_box_value(key, &value))
+}
+
+/// The CSS text a derived run leaf writes into its slot: a value rendered, a token or
+/// an expression referenced.
+pub(crate) fn render_run_leaf(key: Key, leaf: &StaticLeaf<RunValue<GuiExt>>) -> String {
+  static_leaf_text(key, leaf, |value| render_run_value(key, &value))
+}
+
+/// The text of a static leaf of `key`: a fixed value through `fixed`, a token or an
+/// expression referenced.
+fn static_leaf_text<T: Clone>(
+  key: Key,
+  leaf: &StaticLeaf<T>,
+  fixed: impl FnOnce(T) -> String,
+) -> String {
+  match leaf {
+    StaticLeaf::Fixed(value) => fixed(value.clone()),
+    StaticLeaf::Token(reference) => token_reference(target(key).unit, reference.name()),
+    StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
 
@@ -304,11 +350,7 @@ fn leaf_text<T: Clone>(
   fixed: impl FnOnce(T) -> String,
 ) -> String {
   match leaf {
-    DriverLeaf::Static(StaticLeaf::Fixed(value)) => fixed(value.clone()),
-    DriverLeaf::Static(StaticLeaf::Token(reference)) => {
-      token_reference(target(key).unit, reference.name())
-    }
-    DriverLeaf::Static(StaticLeaf::Expr(expr)) => render_expr(expr.node()),
+    DriverLeaf::Static(leaf) => static_leaf_text(key, leaf, fixed),
     DriverLeaf::Slot(slot) => {
       slots.push(SlotBinding {
         slot: *slot,

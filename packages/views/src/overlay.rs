@@ -20,6 +20,7 @@ use skene_core::{
   Placement,
   PlainChild,
   PlainHandler,
+  Point,
   Scene,
   StyleExtension,
   Transition,
@@ -49,9 +50,11 @@ fn modal_backdrop() -> Color {
 #[must_use]
 pub struct Overlay<D: Driver, C = NoChild> {
   modal: bool,
+  hint: bool,
   placement: Source<Placement>,
   backdrop: Option<Color>,
   anchor: Option<Anchor>,
+  position: Option<Rc<dyn Fn() -> Option<Point<f32>>>>,
   open: Source<bool>,
   dismiss: Vec<Rc<PlainHandler>>,
   inner: LayoutBox<D, PlainChild>,
@@ -59,12 +62,14 @@ pub struct Overlay<D: Driver, C = NoChild> {
 }
 
 impl<D: Driver> Overlay<D> {
-  fn new(modal: bool) -> Self {
+  fn new(modal: bool, hint: bool) -> Self {
     Self {
       modal,
+      hint,
       placement: Source::Fixed(Placement::Center),
       backdrop: modal.then(modal_backdrop),
       anchor: None,
+      position: None,
       open: Source::Fixed(false),
       dismiss: Vec::new(),
       inner: LayoutBox::new(Layout::Single),
@@ -75,13 +80,20 @@ impl<D: Driver> Overlay<D> {
   /// A modal: focus trapped, interaction beneath blocked, a backdrop painted.
   #[inline(always)]
   pub fn modal() -> Self {
-    Self::new(true)
+    Self::new(true, false)
   }
 
   /// A popup: floating, blocking nothing beneath it, without a backdrop.
   #[inline(always)]
   pub fn popup() -> Self {
-    Self::new(false)
+    Self::new(false, false)
+  }
+
+  /// A hint: a popup describing its anchor, which never takes focus and sits beneath
+  /// every other popup.
+  #[inline(always)]
+  pub fn hint() -> Self {
+    Self::new(false, true)
   }
 
   /// Sets the content.
@@ -89,9 +101,11 @@ impl<D: Driver> Overlay<D> {
   pub fn set_child(self, child: impl IntoView<D>) -> Overlay<D, AnyView<D>> {
     Overlay {
       modal: self.modal,
+      hint: self.hint,
       placement: self.placement,
       backdrop: self.backdrop,
       anchor: self.anchor,
+      position: self.position,
       open: self.open,
       dismiss: self.dismiss,
       inner: self.inner,
@@ -172,6 +186,25 @@ impl<D: Driver, C> Overlay<D, C> {
     self
   }
 
+  /// Pins the open overlay's top-start corner to `position`, in the units a pointer
+  /// event reports, shifted to stay within the viewport; pinned, the overlay ignores
+  /// its placement and anchor.
+  #[inline(always)]
+  pub fn set_position(mut self, position: Point<f32>) -> Self {
+    self.position = Some(Rc::new(move || Some(position)));
+
+    self
+  }
+
+  /// Derives where the open overlay is pinned from the signals `position` reads;
+  /// `None` leaves it to its placement and anchor.
+  #[inline(always)]
+  pub fn derive_position(mut self, position: impl Fn() -> Option<Point<f32>> + 'static) -> Self {
+    self.position = Some(Rc::new(position));
+
+    self
+  }
+
   /// Sets whether the overlay is open.
   #[inline(always)]
   pub fn set_open(mut self, open: bool) -> Self {
@@ -213,9 +246,11 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
   fn build(self) -> NodeId {
     let Self {
       modal,
+      hint,
       placement,
       backdrop,
       anchor,
+      position,
       open,
       dismiss,
       inner,
@@ -234,6 +269,7 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
       .realize(NodeKind::Overlay, |box_props| {
         D::default().create_overlay(&OverlayProps {
           modal,
+          hint,
           placement: initial,
           backdrop,
           box_props,
@@ -248,6 +284,7 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
 
     Effect::render(move |_: Option<()>| {
       let placement = placement.as_ref().map(|placement| placement());
+      let position = position.as_ref().map(|position| position());
       let open = open();
       let anchor = anchor.as_ref().and_then(Anchor::node);
 
@@ -263,6 +300,10 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
 
       if let Some(placement) = placement {
         driver.set_overlay_placement(&sink, placement);
+      }
+
+      if let Some(position) = position {
+        driver.set_overlay_position(&sink, position);
       }
 
       driver.set_overlay_open(&sink, open, anchor.as_ref());

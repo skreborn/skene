@@ -21,17 +21,19 @@
 //! is content above the app, opened and closed by the app and placed against an
 //! [`Anchor`]; [`RawPicker`] composes a popup face, an overlay and a listbox; a
 //! [`FocusHandle`] moves focus to the view it is bound to, [`SizeHandle`] reports its
-//! measured size. [`LazyColumn`] scrolls a
-//! keyed list building only the slice in view. [`CornerRadius`] is what a decorated
-//! box asks of a medium's style extension to round its corners, and [`TypeMetrics`]
-//! what a run asks of it to size its type; both are silently declined by a medium
-//! without them. [`LowLevel`] registers a sink a low-level view made against a
+//! measured size. [`LazyColumn`] and [`LazyRow`] scroll a keyed list building only the
+//! slice in view, its items of a fixed or an estimated and measured [`ItemExtent`].
+//! [`CornerRadius`] is what a decorated box asks of a medium's style extension to round its
+//! corners, and [`TypeMetrics`] what a run asks of it to size its type; both are silently declined
+//! by a medium without them. [`LowLevel`] registers a sink a low-level view made against a
 //! driver's escape trait as a node, so it composes like a built-in.
 
 mod anchor;
 mod container;
+mod context_menu;
 mod control;
 mod corner_radius;
+mod enhance;
 mod error_boundary;
 mod flex;
 mod flexible;
@@ -39,10 +41,12 @@ mod focus;
 mod grid;
 mod grid_cell;
 mod layout_box;
-mod lazy_column;
+mod lazy_list;
 mod macros;
 pub mod media;
 mod overlay;
+mod painted;
+mod painting;
 mod picker;
 mod pinned;
 pub mod realize;
@@ -54,6 +58,7 @@ mod suspense;
 mod switch;
 mod text;
 mod theme;
+mod tooltip;
 mod type_metrics;
 pub mod typography;
 
@@ -83,6 +88,7 @@ pub use skene_core::{
 pub use crate::{
   anchor::Anchor,
   container::Container,
+  context_menu::{ContextMenu, MenuItem},
   control::{
     Activate,
     Behavior,
@@ -93,6 +99,10 @@ pub use crate::{
     ListItem,
     Listbox,
     ListboxGroup,
+    Menu,
+    MenuGroup,
+    MenuOption,
+    NativePicker,
     PointerPhase,
     Popup,
     RadioMember,
@@ -100,6 +110,8 @@ pub use crate::{
     RawButton,
     RawCheckbox,
     RawListbox,
+    RawMenu,
+    RawMenuItem,
     RawOption,
     RawRadio,
     RawRadioGroup,
@@ -109,10 +121,13 @@ pub use crate::{
     Roster,
     Roving,
     RovingGroup,
+    TYPE_AHEAD_RESET,
     TextEntry,
     Toggle,
+    TypeAhead,
   },
   corner_radius::CornerRadius,
+  enhance::Enhance,
   error_boundary::ErrorBoundary,
   flex::{Column, Row},
   flexible::Flexible,
@@ -120,8 +135,10 @@ pub use crate::{
   grid::Grid,
   grid_cell::GridCell,
   layout_box::LayoutBox,
-  lazy_column::LazyColumn,
+  lazy_list::{ItemExtent, LazyColumn, LazyRow},
   overlay::Overlay,
+  painted::Painted,
+  painting::{Canvas, IntoBrush, PaintType, Painter, Painting, Renderer, kurbo, paint, peniko},
   picker::{Face, RawPicker},
   pinned::Pinned,
   realize::{ChildBuilder, LowLevel},
@@ -132,5 +149,6 @@ pub use crate::{
   switch::Switch,
   text::Text,
   theme::{Theme, ThemedIn},
+  tooltip::{TOOLTIP_DELAY, Tooltip},
   type_metrics::TypeMetrics,
 };

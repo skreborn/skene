@@ -252,7 +252,9 @@ impl<D: Driver> Behavior<D> for RadioMember {
     };
     let node = control.node();
 
-    group.roster.join(node, self.value.clone());
+    group
+      .roster
+      .join(node, self.value.clone(), control.name().map(str::to_owned));
 
     let roster = group.roster.clone();
 

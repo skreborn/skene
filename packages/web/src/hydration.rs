@@ -1,13 +1,17 @@
 //! The hydration state channel shared by the web leaves.
 //!
 //! The server drains each registered source into per-resource blobs—an array in
-//! creation order plus tag-keyed entries—and the client adopts each value by the same
-//! order or tag.
+//! creation order for the resources built outside any lazy segment, one such array per
+//! lazy segment, and tag-keyed entries—and the client adopts each value by the same
+//! segment and order, or by tag. A lazy segment's content builds when its module
+//! arrives, in no fixed order and after the resources built beside it, so it keys its
+//! own resources: by the segments enclosing it, each by its build order within the
+//! segment holding it, which both leaves count alike.
 
-#[cfg(target_os = "unknown")]
-use std::cell::Cell;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
+#[cfg(target_os = "unknown")]
+use std::collections::VecDeque;
 
 /// A critical resource's serializer, registered with the driver so a server render can
 /// drain it into the hydration state once it settles.
@@ -17,55 +21,150 @@ pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
 /// page assembly and the client's `hydrate_page`.
 pub const STATE_SCRIPT_ID: &str = "skene-state";
 
-/// The state as it crosses the channel: the order-keyed entries, then the tag-keyed
-/// ones.
-#[cfg(target_os = "unknown")]
-type State = (Vec<Option<String>>, Vec<(String, String)>);
+/// A lazy segment's place among the hydrating resources.
+///
+/// The segments enclosing it, outermost first, each by its build order within the
+/// segment holding it; the resources its content builds are matched across the boundary
+/// under this key, in their creation order. Taken with [`enter_lazy`] when the segment
+/// is built and applied with [`within_lazy`] when its content is.
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[must_use]
+pub struct LazyRegion(Vec<u32>);
+
+/// A lazy segment's path with its order-keyed entries, in creation order.
+#[cfg(target_arch = "wasm32")]
+type LazyEntries<V> = (Vec<u32>, V);
+
+/// The state as it crosses the channel: the order-keyed entries outside any lazy
+/// segment, the tag-keyed ones, then each lazy segment's order-keyed entries.
+#[cfg(target_arch = "wasm32")]
+type State = (
+  Vec<Option<String>>,
+  Vec<(String, String)>,
+  Vec<LazyEntries<Vec<Option<String>>>>,
+);
 
 /// Encodes the settled resource state: one entry per order-keyed resource in creation
 /// order (`null` for one that did not settle), then the tag-keyed entries sorted by
-/// tag.
+/// tag, then each lazy segment's entries in the segment's own creation order, the
+/// segments in the order their content built.
 #[cfg(target_os = "wasi")]
-fn encode_state(ordered: &[Option<String>], tagged: &[(String, String)]) -> String {
-  serde_json::to_string(&(ordered, tagged)).unwrap_or_else(|_| "[[],[]]".to_owned())
+fn encode_state(state: &State) -> String {
+  serde_json::to_string(state).unwrap_or_else(|_| "[[],[],[]]".to_owned())
 }
 
-/// Decodes the state produced by [`encode_state`] back into the order-keyed entries and
-/// the tag-keyed ones. Malformed state adopts nothing rather than panicking.
+/// Decodes the state produced by [`encode_state`]. Malformed state adopts nothing rather
+/// than panicking.
 #[cfg(target_os = "unknown")]
 fn decode_state(state: &str) -> State {
   serde_json::from_str(state).unwrap_or_default()
 }
 
+#[cfg(target_arch = "wasm32")]
+thread_local! {
+  /// The lazy segment whose content is building, as its path; empty outside any.
+  static REGION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+  /// How many lazy segments each building segment on the path has built so far, the
+  /// outermost first: the next one's index within it. Empty until the first is built.
+  static LAZY_COUNTS: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+}
+
 #[cfg(target_os = "unknown")]
 thread_local! {
-  /// The server-rendered resource values to adopt during hydration, in creation order.
-  static ADOPTED: RefCell<Vec<Option<String>>> = const { RefCell::new(Vec::new()) };
-  /// The next resource's creation-order slot, matched against [`ADOPTED`].
-  static NEXT_SLOT: Cell<usize> = const { Cell::new(0) };
+  /// The server-rendered values outside any lazy segment, to adopt in creation order.
+  static ADOPTED: RefCell<VecDeque<Option<String>>> = const { RefCell::new(VecDeque::new()) };
+  /// Each lazy segment's server-rendered values, to adopt in the segment's own
+  /// creation order.
+  static ADOPTED_LAZY: RefCell<Vec<LazyEntries<VecDeque<Option<String>>>>> =
+    const { RefCell::new(Vec::new()) };
   /// The server-rendered tag-keyed values to adopt during hydration.
   static TAGGED: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
 }
 
 #[cfg(target_os = "wasi")]
 thread_local! {
-  /// Each critical resource's serializer, in creation order; drained once the render
-  /// settles.
-  static SOURCES: RefCell<Vec<HydrationSource>> = const { RefCell::new(Vec::new()) };
+  /// Each critical resource's serializer with the lazy segment it was created in, in
+  /// creation order; drained once the render settles.
+  static SOURCES: RefCell<Vec<(Vec<u32>, HydrationSource)>> = const { RefCell::new(Vec::new()) };
   /// Each tag-keyed resource's serializer; drained with [`SOURCES`], sorted by tag.
   static TAGGED_SOURCES: RefCell<Vec<(String, HydrationSource)>> =
     const { RefCell::new(Vec::new()) };
 }
 
-/// Advances to the next resource slot, returning its adopted server value if hydrating.
+/// Takes the place of the lazy segment being built: the next index within the segment
+/// whose content is building, under that segment's own place.
+///
+/// Called once per lazy segment, when it is built, on both leaves; the content applies
+/// the result through [`within_lazy`].
+#[cfg(target_arch = "wasm32")]
+pub fn enter_lazy() -> LazyRegion {
+  let index = LAZY_COUNTS.with(|counts| {
+    let mut counts = counts.borrow_mut();
+
+    let Some(count) = counts.last_mut()
+    else {
+      counts.push(1);
+
+      return 0;
+    };
+    let index = *count;
+
+    *count += 1;
+
+    index
+  });
+  let mut path = REGION.with(|region| region.borrow().clone());
+
+  path.push(index);
+
+  LazyRegion(path)
+}
+
+/// Runs `work` as the content of the lazy segment at `region`, so the resources it
+/// creates register or adopt under that segment. A poll of the content's future is
+/// run this way, so a resource created while it loads belongs to the segment too.
+#[cfg(target_arch = "wasm32")]
+pub fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
+  let previous = REGION.with(|current| current.replace(region.0.clone()));
+
+  LAZY_COUNTS.with(|counts| counts.borrow_mut().push(0));
+
+  let result = work();
+
+  LAZY_COUNTS.with(|counts| counts.borrow_mut().pop());
+  REGION.with(|current| *current.borrow_mut() = previous);
+
+  result
+}
+
+/// Forgets the segment being built and every count, so a render or a hydration starts
+/// outside any lazy segment.
+#[cfg(target_arch = "wasm32")]
+fn reset_regions() {
+  REGION.with(|region| region.borrow_mut().clear());
+  LAZY_COUNTS.with(|counts| counts.borrow_mut().clear());
+}
+
+/// Takes the next resource's adopted server value in the segment being built, if
+/// hydrating left one.
 #[cfg(target_os = "unknown")]
 #[must_use]
 pub fn adopt_next() -> Option<String> {
-  let slot = NEXT_SLOT.get();
+  REGION.with(|region| {
+    let region = region.borrow();
 
-  NEXT_SLOT.set(slot + 1);
+    if region.is_empty() {
+      return ADOPTED.with(|adopted| adopted.borrow_mut().pop_front().flatten());
+    }
 
-  ADOPTED.with(|adopted| adopted.borrow().get(slot).cloned().flatten())
+    ADOPTED_LAZY.with(|adopted| {
+      let mut adopted = adopted.borrow_mut();
+      let (_, values) = adopted.iter_mut().find(|(path, _)| *path == *region)?;
+
+      values.pop_front().flatten()
+    })
+  })
 }
 
 /// The server never adopts: it produces the state the client adopts.
@@ -101,10 +200,13 @@ pub fn adopt_tagged(_tag: &str) -> Option<String> {
 #[inline(always)]
 pub fn register_source(_source: HydrationSource) {}
 
-/// Registers a critical resource's serializer, to be drained once the render settles.
+/// Registers a critical resource's serializer under the segment being built, to be
+/// drained once the render settles.
 #[cfg(target_os = "wasi")]
 pub fn register_source(source: HydrationSource) {
-  SOURCES.with(|sources| sources.borrow_mut().push(source));
+  let region = REGION.with(|region| region.borrow().clone());
+
+  SOURCES.with(|sources| sources.borrow_mut().push((region, source)));
 }
 
 /// A no-op on the client: it adopts server state rather than producing it.
@@ -149,19 +251,26 @@ pub fn is_server() -> bool {
 }
 
 /// Stages the server's serialized resource `state` for the resources built next to
-/// adopt, by creation order and by tag.
+/// adopt, by segment and creation order and by tag.
 #[cfg(target_os = "unknown")]
 pub(crate) fn stage(state: &str) {
-  let (ordered, tagged) = decode_state(state);
+  let (ordered, tagged, lazy) = decode_state(state);
 
-  NEXT_SLOT.set(0);
-  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered);
+  reset_regions();
+  ADOPTED.with(|adopted| *adopted.borrow_mut() = ordered.into());
+  ADOPTED_LAZY.with(|adopted| {
+    *adopted.borrow_mut() = lazy
+      .into_iter()
+      .map(|(path, values)| (path, values.into()))
+      .collect();
+  });
   TAGGED.with(|adopted| *adopted.borrow_mut() = tagged);
 }
 
 /// Forgets every registered resource serializer, so a render starts clean.
 #[cfg(target_os = "wasi")]
 pub(crate) fn reset_sources() {
+  reset_regions();
   SOURCES.with(|sources| sources.borrow_mut().clear());
   TAGGED_SOURCES.with(|sources| sources.borrow_mut().clear());
 }
@@ -169,8 +278,26 @@ pub(crate) fn reset_sources() {
 /// Drains the registered sources into the encoded hydration state.
 #[cfg(target_os = "wasi")]
 pub(crate) fn collect_state() -> String {
-  let values: Vec<Option<String>> =
-    SOURCES.with(|sources| sources.borrow().iter().map(|source| source()).collect());
+  let mut ordered = Vec::new();
+  let mut lazy: Vec<LazyEntries<Vec<Option<String>>>> = Vec::new();
+
+  SOURCES.with(|sources| {
+    for (region, source) in sources.borrow().iter() {
+      let value = source();
+
+      if region.is_empty() {
+        ordered.push(value);
+
+        continue;
+      }
+
+      match lazy.iter_mut().find(|(path, _)| path == region) {
+        Some((_, values)) => values.push(value),
+        None => lazy.push((region.clone(), vec![value])),
+      }
+    }
+  });
+
   let mut tagged: Vec<(String, String)> = TAGGED_SOURCES.with(|sources| {
     sources
       .borrow()
@@ -181,5 +308,5 @@ pub(crate) fn collect_state() -> String {
 
   tagged.sort();
 
-  encode_state(&values, &tagged)
+  encode_state(&(ordered, tagged, lazy))
 }

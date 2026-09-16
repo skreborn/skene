@@ -13,6 +13,7 @@ use skene_core::{
   NodeId,
   Seal,
   StackChild,
+  StaticLeaf,
   Value,
   View,
 };
@@ -69,7 +70,10 @@ impl<D: Driver> Stack<D> {
 
   /// Derives the alignment of the unpinned children from the signals `alignment` reads.
   #[inline(always)]
-  pub fn derive_alignment(mut self, alignment: impl Fn() -> Alignment + 'static) -> Self {
+  pub fn derive_alignment<R: Into<StaticLeaf<Alignment>>>(
+    mut self,
+    alignment: impl Fn() -> R + 'static,
+  ) -> Self {
     self.inner = self.inner.derive_alignment(alignment);
 
     self

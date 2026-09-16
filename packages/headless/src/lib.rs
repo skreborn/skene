@@ -3,7 +3,7 @@
 //! The host driver: realizes the portable vocabulary into an inspectable record store,
 //! so view logic tests run without a platform. Every mirrored call is bookkeeping, not
 //! emulation: no layout runs, and no platform response fires. Tests build views exactly
-//! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_value`],
+//! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_leaf`],
 //! [`resolve_color`]) and drive events through the `trigger_` seams, each routed through
 //! core's dispatch so bubbling is the one implementation every driver shares.
 //!
@@ -32,13 +32,15 @@
 mod resolve;
 mod store;
 
-use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey};
+use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
 use skene_core::{
   AccessProp,
+  Availability,
   Border,
   BoxProps,
   BoxValue,
+  ClipboardAction,
   Color,
   ColorScheme,
   ContainerName,
@@ -58,6 +60,7 @@ use skene_core::{
   OverlayProps,
   Part,
   Placement,
+  Point,
   PointerEvent,
   Prevented,
   PropertyKey,
@@ -68,8 +71,13 @@ use skene_core::{
   Size,
   Slot,
   Spacing,
+  StaticLeaf,
+  TextSelection,
+  Timer,
   dispatch_click,
+  dispatch_context_menu,
   dispatch_key_down,
+  dispatch_key_up,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -80,10 +88,12 @@ use skene_core::{
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
+  notify_selection_change,
   notify_toggle,
 };
 use skene_gui_core::{Canvas, Painter, Painting};
-use skene_reactive::Set;
+use skene_reactive::{ReadSignal, Set};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub use crate::store::HeadElement;
 use crate::store::{Kind, Record, Store};
@@ -128,8 +138,11 @@ impl Handle {
 /// [`skene_core::TokenValue`].
 pub type TokenValue = skene_core::TokenValue<f32>;
 
-/// The value a derived leaf last wrote into a node's slot; see [`skene_core::SlotValue`].
+/// A property's value erased over the property; see [`skene_core::SlotValue`].
 pub type SlotValue = skene_core::SlotValue<f32>;
+
+/// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
+pub type SlotLeaf = skene_core::SlotLeaf<f32>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -166,9 +179,9 @@ impl Driver for Headless {
     with_store(|store| store.create(Record::new(Kind::Box(Box::new(props.clone())))))
   }
 
-  fn update_box(&self, sink: &Handle, slot: Slot, value: &BoxValue<f32>) {
+  fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
     with_record(*sink, |record| {
-      record.slots.insert(slot, SlotValue::Box(value.clone()));
+      record.slots.insert(slot, leaf.clone().map(SlotValue::Box));
     });
   }
 
@@ -215,13 +228,17 @@ impl Driver for Headless {
     });
   }
 
+  fn set_overlay_position(&self, sink: &Handle, position: Option<Point<f32>>) {
+    with_record(*sink, |record| record.position = position);
+  }
+
   fn create_run(&self, props: &RunProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Run(Box::new(props.clone())))))
   }
 
-  fn update_run(&self, sink: &Handle, slot: Slot, value: &RunValue) {
+  fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue>) {
     with_record(*sink, |record| {
-      record.slots.insert(slot, SlotValue::Run(value.clone()));
+      record.slots.insert(slot, leaf.clone().map(SlotValue::Run));
     });
   }
 
@@ -296,6 +313,16 @@ impl Driver for Headless {
     with_record(*sink, |record| value.clone_into(&mut record.value));
   }
 
+  fn set_options(&self, sink: &Handle, options: &[(String, String)]) {
+    with_record(*sink, |record| options.clone_into(&mut record.options));
+  }
+
+  fn set_selection(&self, sink: &Handle, selection: TextSelection) {
+    with_record(*sink, |record| {
+      record.selection = selection.clamped(record.value.graphemes(true).count());
+    });
+  }
+
   fn set_checked(&self, sink: &Handle, checked: bool) {
     with_record(*sink, |record| record.checked = checked);
   }
@@ -308,8 +335,43 @@ impl Driver for Headless {
     with_store(|store| store.media().signals)
   }
 
+  fn hydration(&self) -> Option<ReadSignal<bool>> {
+    Some(with_store(|store| store.media().hydrated))
+  }
+
   fn set_scheme(&self, scheme: Option<ColorScheme>) {
     choose_scheme(scheme);
+  }
+
+  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
+    with_store(|store| {
+      let timer = Timer(store.next_timer);
+
+      store.next_timer += 1;
+      store
+        .timers
+        .push((store.clock + delay.as_secs_f64(), timer, action));
+
+      timer
+    })
+  }
+
+  fn cancel(&self, timer: Timer) {
+    with_store(|store| store.timers.retain(|(_, held, _)| *held != timer));
+  }
+
+  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+    with_store(|store| {
+      store
+        .availability
+        .get(&action)
+        .copied()
+        .unwrap_or(Availability::Enabled)
+    })
+  }
+
+  fn clipboard(&self, action: ClipboardAction) {
+    with_store(|store| store.clipboard.push(action));
   }
 
   fn stored_scheme(&self) -> Option<ColorScheme> {
@@ -320,6 +382,10 @@ impl Driver for Headless {
 impl Painting for Headless {
   fn paint(&self, sink: &Handle, painter: Box<Painter>) {
     with_record(*sink, |record| record.painter = Some(Rc::from(painter)));
+  }
+
+  fn available(&self) -> ReadSignal<bool> {
+    with_store(|store| store.media().graphics)
   }
 }
 
@@ -407,13 +473,24 @@ pub fn trigger_click(node: NodeId) -> Prevented {
   dispatch_click::<Headless>(node)
 }
 
-/// Dispatches a key press at `node`, bubbling through the scene.
+/// Dispatches a key press at `node`, bubbling through the scene; focus shows from
+/// here on.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
+  with_store(|store| store.focus_visible = true);
+
   dispatch_key_down::<Headless>(node, event)
 }
 
-/// Dispatches a pointer press at `node`, bubbling through the scene.
+/// Dispatches a key release at `node`, bubbling through the scene.
+pub fn trigger_key_up(node: NodeId, event: &KeyEvent) -> Prevented {
+  dispatch_key_up::<Headless>(node, event)
+}
+
+/// Dispatches a pointer press at `node`, bubbling through the scene; focus stops
+/// showing from here on.
 pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
+  with_store(|store| store.focus_visible = false);
+
   dispatch_pointer_down::<Headless>(node, event)
 }
 
@@ -464,6 +541,15 @@ pub fn trigger_change(node: NodeId, value: &str) {
   notify_change::<Headless>(node, value);
 }
 
+/// Records `selection` as the node's selection and notifies its selection handlers.
+pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
+  if let Some(handle) = handle(node) {
+    Headless.set_selection(&handle, selection);
+  }
+
+  notify_selection_change::<Headless>(node, selection);
+}
+
 /// Records `checked` as the node's checked state and notifies its toggle handlers.
 pub fn trigger_toggle(node: NodeId, checked: bool) {
   if let Some(handle) = handle(node) {
@@ -482,6 +568,26 @@ pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
 /// the app closes it.
 pub fn trigger_dismiss(node: NodeId) {
   notify_dismiss::<Headless>(node);
+}
+
+/// Dispatches a context menu request at `node`, as a secondary press there or the
+/// menu key would; the verdict says whether the platform's own menu was prevented.
+pub fn trigger_context_menu(node: NodeId, event: &PointerEvent) -> Prevented {
+  dispatch_context_menu::<Headless>(node, event)
+}
+
+/// The clipboard actions performed since the last call, in order.
+#[must_use]
+pub fn take_clipboard_actions() -> Vec<ClipboardAction> {
+  with_store(|store| std::mem::take(&mut store.clipboard))
+}
+
+/// Sets what `action` answers when a view asks whether it can be offered; enabled
+/// unless set.
+pub fn set_clipboard_availability(action: ClipboardAction, availability: Availability) {
+  with_store(|store| {
+    store.availability.insert(action, availability);
+  });
 }
 
 /// Reports `size` as the measured size of `node` to every observer bound to it; a box
@@ -550,6 +656,30 @@ pub fn chosen_scheme() -> Option<ColorScheme> {
   with_store(|store| store.chosen_scheme)
 }
 
+/// Sets whether the render stands hydrated, as the web leaves answer it: false
+/// stands in for a server render or a hydration still adopting, true for a live page;
+/// hydrated until set.
+pub fn set_hydrated(hydrated: bool) {
+  let write = with_store(|store| {
+    store.hydrated = Some(hydrated);
+
+    store.media().set_hydrated
+  });
+
+  write.set(hydrated);
+}
+
+/// Sets whether a painted box shows as pixels; shown until set.
+pub fn set_graphics(shown: bool) {
+  let write = with_store(|store| {
+    store.graphics = Some(shown);
+
+    store.media().set_graphics
+  });
+
+  write.set(shown);
+}
+
 /// Sets whether the reader prefers reduced motion.
 pub fn set_reduced_motion(reduced: bool) {
   let write = with_store(|store| {
@@ -574,7 +704,22 @@ pub fn advance(elapsed: std::time::Duration) {
     }
   }
 
-  with_store(|store| store.clock += elapsed.as_secs_f64());
+  let due = with_store(|store| {
+    store.clock += elapsed.as_secs_f64();
+
+    let now = store.clock;
+    let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut store.timers)
+      .into_iter()
+      .partition(|(at, ..)| *at <= now);
+
+    store.timers = pending;
+
+    due
+  });
+
+  for (_, _, action) in due {
+    action();
+  }
 }
 
 /// Sets the measured size of the query container `name`.
@@ -720,6 +865,12 @@ pub fn overlay_anchor(node: NodeId) -> Option<Handle> {
   with_record(handle(node)?, |record| record.anchor)?
 }
 
+/// Where the overlay `node` is pinned, if it is.
+#[must_use]
+pub fn overlay_position(node: NodeId) -> Option<Point<f32>> {
+  with_record(handle(node)?, |record| record.position)?
+}
+
 /// The state last mirrored into the control `node`.
 #[must_use]
 pub fn control_state(node: NodeId) -> Option<ControlState> {
@@ -829,15 +980,28 @@ pub fn value(node: NodeId) -> Option<String> {
   with_record(handle(node)?, |record| record.value.clone())
 }
 
+/// The options last written to `node`, each a value and its name.
+#[must_use]
+pub fn options(node: NodeId) -> Option<Vec<(String, String)>> {
+  with_record(handle(node)?, |record| record.options.clone())
+}
+
+/// The selection last written to `node`.
+#[must_use]
+pub fn selection(node: NodeId) -> Option<TextSelection> {
+  with_record(handle(node)?, |record| record.selection)
+}
+
 /// The checked state last written to `node`.
 #[must_use]
 pub fn checked(node: NodeId) -> Option<bool> {
   with_record(handle(node)?, |record| record.checked)
 }
 
-/// The latest value a render effect wrote into `slot` on `node`.
+/// The latest leaf a render effect wrote into `slot` on `node`: a value, or a token or
+/// expression resolved where the slot is read.
 #[must_use]
-pub fn slot_value(node: NodeId, slot: Slot) -> Option<SlotValue> {
+pub fn slot_leaf(node: NodeId, slot: Slot) -> Option<SlotLeaf> {
   with_record(handle(node)?, |record| record.slots.get(&slot).cloned())?
 }
 

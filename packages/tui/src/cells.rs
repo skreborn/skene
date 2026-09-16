@@ -3,7 +3,10 @@
 
 use skene_core::{Color, Driver, Point, Rect, Size};
 
-use crate::paint::{Buffer, terminal_rgb};
+use crate::{
+  paint::{Buffer, terminal_rgb},
+  text,
+};
 
 /// A cell painter: draws into the node's rectangle every time the node repaints.
 ///
@@ -76,11 +79,25 @@ impl<'a> Cells<'a> {
     )
   }
 
-  /// Writes `character` at (`x`, `y`), keeping the cell's colors.
+  /// Writes `character` at (`x`, `y`), keeping the cell's colors; a wide character
+  /// takes the cell after it too, and one at the rectangle's edge is dropped.
   pub fn put(&mut self, x: u32, y: u32, character: char) {
-    if let Some(cell) = self.cell(x, y) {
-      cell.character = character;
+    let mut bytes = [0; 4];
+    let cluster = character.encode_utf8(&mut bytes);
+    let width = text::width(cluster).max(1);
+
+    if x + u32::try_from(width).unwrap_or(u32::MAX) > self.size.width || y >= self.size.height {
+      return;
     }
+
+    let (Ok(x), Ok(y)) = (isize::try_from(x), isize::try_from(y))
+    else {
+      return;
+    };
+
+    self
+      .buffer
+      .put_cluster(self.origin.0 + x, self.origin.1 + y, cluster, width, |_| {});
   }
 
   /// Sets the foreground at (`x`, `y`); a transparent color clears it.

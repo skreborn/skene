@@ -89,14 +89,20 @@ fn main() {
 }
 ```
 
-Lengths are cells (`u32`), text is a color and a bold flag, a border is one cell of
-box-drawing glyphs; what the terminal cannot draw does not exist to call. `Tab` moves
+Lengths are cells (`u32`), text is a color, a bold flag and a size in cells (a scale
+the terminal draws where it sizes text, and one cell elsewhere) measured in grapheme
+clusters (a wide character takes two cells), a border is one cell of box-drawing
+glyphs, or a thin line in pixels beneath the text where the terminal shows graphics;
+what the terminal cannot draw does not exist to call. `Tab` moves
 focus, the controls own their keys, the mouse clicks, drags, scrolls and selects—inside
 a text entry too, where `Ctrl-C`, `Ctrl-X` and `Ctrl-V` copy, cut and paste—and
 `Ctrl-Q` quits. `Launch::new().set_clipboard(Clipboard::COPY).set_mouse(false).run(app)`
-chooses which clipboard operations the app offers (OSC 52 has no capability query) and
+chooses which clipboard operations the app offers (OSC 52 has no capability query;
+where the terminal's clipboard answers, kitty's OSC 5522, every operation is offered
+from its reply) and
 whether it takes the mouse; the terminal's own selection—a drag with `Shift` held—stays
-available either way, and with the mouse off a plain drag is the terminal's.
+available either way, `Alt-M` hands the mouse to the terminal for one plain drag, and
+with the mouse off a plain drag is the terminal's.
 
 ## Crates
 
@@ -126,19 +132,19 @@ skene-cli             the `skene` command
 |-------|------|------|
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a driver installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<D>`, the zero-sized `Driver` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
-| `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry` and the `Raw*` aliases, `Overlay`, `LazyColumn`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`, `Theme`, `typography`. |
-| `skene-gui-core` | `packages/gui-core` | What every pixel driver shares: `GuiExt` (corner radius, type metrics), the pixel `Typography` set, and the painting path (`Painting`, `Canvas`, `Painted`, `IntoBrush`, the `Renderer` a canvas replays into) through vello. |
+| `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Raw*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuItem` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello. |
+| `skene-gui-core` | `packages/gui-core` | What every pixel driver shares: `GuiExt` (corner radius, type metrics) and the pixel `Typography` set; it re-exports the painting path. |
 | `skene-tui-core` | `packages/tui-core` | What every terminal driver shares: `TuiExt` (border glyphs, shadow, corner radius, bold, weight), `BorderGlyphs`, and the terminal `Typography` set. |
 | `skene-web` | `packages/web` | The web `Driver`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
 | `skene-headless` | `packages/headless` | The host `Driver`: records what any driver receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
 | `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
 | `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, generic over the driver. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the driver. |
 | `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActiveDriver`, with a `prelude` an app imports beside the facade's own. |
 | `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
-| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui`: bundling, the dev server with live reload and state-preserving restarts, static generation, `skene.toml` assets. |
+| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state-preserving restarts, the terminal build loop and the terminal it attaches to, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes
 
@@ -174,7 +180,8 @@ cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (se
 
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
-cargo skene --dir examples/tui/counter run tui             # build and run in the terminal
+cargo skene --dir examples/tui/counter run tui             # build, rebuild on change, print the attach command
+cargo skene attach <port>                                  # run the app here, swapped on each rebuild
 ```
 
 Examples live under `examples/gui` and `examples/tui`, one folder per feature, the same
@@ -182,8 +189,11 @@ names on both facades where the feature exists: `counter` (state, snapshot-prese
 reloads), `gallery` (every built-in view and control, a live palette switch), `theme`
 (a palette built per property, an accent the reader switches, a nested theme, the color
 scheme), `store` (a todo list over one store: rows following their own entries, a list
-following the shape, a memoized count), and the GUI-only `router` (typed routes behind real links, the about page split
-out with `#[lazy]`). `examples/third-party` holds the crates written from outside the
+following the shape, a memoized count), `context-menu` (a menu each view opts into, the
+clipboard's standard items, the platform's menu everywhere else), `enhance` (a view's
+baseline and its enhancement, swapped as the page hydrates or pixels come), the GUI-only `router` (typed routes behind real links, the about page split
+out with `#[lazy]`), and the TUI-only `text-sizing` (font sizes as scales of the
+cell, drawn where the terminal proves the text sizing protocol). `examples/third-party` holds the crates written from outside the
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
 workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
 
@@ -208,7 +218,7 @@ Read the `test result:` lines rather than the exit codes: wasmtime aborts on the
 panic and prints `Error: failed to run main module` instead of a `FAILED` line, and the
 browser runner panics on cleanup after reporting, which stops cargo before the
 remaining binaries run—so run each browser binary by name (`--test web_dom`,
-`web_hydrate`, `web_resource`, `web_task`) and add the totals. `skene-web` carries its
+`web_hydrate`, `web_painted`, `web_resource`, `web_task`) and add the totals. `skene-web` carries its
 own `web_dom` and `web_ssr` binaries on the same two targets.
 
 ## Extending
@@ -217,8 +227,9 @@ A component library depends on `skene-views`, writes generic over `D: Driver` ex
 the built-ins do, states what it needs from a medium as a bound on the driver's
 associated types, and works on every facade from one crate. A low-level view is written
 against a driver's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
-through the same scene as a built-in; `Painted` is the portable one for pixel media, a
-vello scene the driver renders. `examples/third-party` shows all three: `acme-ui`
+through the same scene as a built-in; `Painted` is the portable one for pixels, a
+vello scene the driver renders, the terminal through the kitty graphics protocol
+where it proves one. `examples/third-party` shows all three: `acme-ui`
 (a palette and a badge over any driver), `acme-map` (a canvas on the browser leaf with a
 server placeholder) and `acme-sparkline` (bars painted into the terminal's cells), each
 used by a gallery and tested on its driver.

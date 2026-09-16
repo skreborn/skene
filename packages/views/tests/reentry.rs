@@ -32,6 +32,9 @@ use skene_core::{
   Scene,
   Size,
   Slot,
+  StaticLeaf,
+  TextSelection,
+  Timer,
   Token,
   TokenName,
   TokenSet,
@@ -108,7 +111,7 @@ impl Driver for Reentrant {
     mint()
   }
 
-  fn update_box(&self, sink: &u32, _: Slot, _: &BoxValue<f32>) {
+  fn update_box(&self, sink: &u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {
     reenter("update_box", *sink);
   }
 
@@ -144,13 +147,19 @@ impl Driver for Reentrant {
     mint()
   }
 
-  fn update_run(&self, sink: &u32, _: Slot, _: &RunValue) {
+  fn update_run(&self, sink: &u32, _: Slot, _: &StaticLeaf<RunValue>) {
     reenter("update_run", *sink);
   }
 
   fn set_text(&self, sink: &u32, _: &str) {
     reenter("set_text", *sink);
   }
+
+  fn schedule(&self, _: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
+    Timer(0)
+  }
+
+  fn cancel(&self, _: Timer) {}
 
   fn create_anchor(&self) -> u32 {
     mint()
@@ -192,6 +201,10 @@ impl Driver for Reentrant {
 
   fn set_value(&self, sink: &u32, _: &str) {
     reenter("set_value", *sink);
+  }
+
+  fn set_selection(&self, sink: &u32, _: TextSelection) {
+    reenter("set_selection", *sink);
   }
 
   fn set_checked(&self, sink: &u32, _: bool) {

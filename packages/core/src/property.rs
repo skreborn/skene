@@ -76,6 +76,12 @@ pub enum Property {
   SelectionColor,
   /// The background behind selected text.
   SelectionBackground,
+  /// The line the text is decorated with.
+  Decoration,
+  /// How the decoration line is drawn.
+  DecorationStyle,
+  /// The decoration line's color.
+  DecorationColor,
 }
 
 impl Property {
@@ -118,6 +124,9 @@ impl Property {
       Self::TextColor => "text_color",
       Self::SelectionColor => "selection_color",
       Self::SelectionBackground => "selection_background",
+      Self::Decoration => "decoration",
+      Self::DecorationStyle => "decoration_style",
+      Self::DecorationColor => "decoration_color",
     }
   }
 }

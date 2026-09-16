@@ -397,6 +397,91 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
   assert_eq!(keyed.key(9).try_with(|_| ()), None);
 }
 
+/// An element addressed by key and the same element addressed by position are one
+/// location: a write through either wakes the readers through both, before and after a
+/// reorder moves the element.
+#[test]
+fn a_keyed_element_and_its_position_are_one_location() {
+  #[derive(Store, Clone)]
+  struct Row {
+    id: u32,
+    label: &'static str,
+  }
+
+  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let keyed = rows.keyed_by(|row| row.id);
+  let by_key_runs = count_runs(move || {
+    let _ = keyed.key(2).label().get();
+  });
+  let by_position_runs = count_runs(move || {
+    let _ = rows.at(1).label().get();
+  });
+  let other_key_runs = count_runs(move || {
+    let _ = keyed.key(1).label().get();
+  });
+
+  rows.at(1).label().set("B");
+
+  assert_eq!(
+    (
+      by_key_runs.get(),
+      by_position_runs.get(),
+      other_key_runs.get()
+    ),
+    (2, 2, 1),
+    "a write by position woke the reader by key of the same element, and no other"
+  );
+
+  keyed.key(2).label().set("bee");
+
+  assert_eq!(
+    (
+      by_key_runs.get(),
+      by_position_runs.get(),
+      other_key_runs.get()
+    ),
+    (3, 3, 1),
+    "a write by key woke the reader by position of the same element, and no other"
+  );
+
+  rows.update(|rows| rows.swap(0, 1));
+
+  assert_eq!(
+    (
+      by_key_runs.get(),
+      by_position_runs.get(),
+      other_key_runs.get()
+    ),
+    (4, 4, 2),
+    "a structural write woke every reader"
+  );
+
+  keyed.key(2).label().set("BEE");
+
+  assert_eq!(
+    (
+      by_key_runs.get(),
+      by_position_runs.get(),
+      other_key_runs.get()
+    ),
+    (5, 4, 2),
+    "after the reorder the key's location moved with its element, away from position 1"
+  );
+
+  rows.at(0).label().set("z");
+
+  assert_eq!(
+    (
+      by_key_runs.get(),
+      by_position_runs.get(),
+      other_key_runs.get()
+    ),
+    (6, 4, 2),
+    "and position 0, where the element now sits, wakes the reader by key"
+  );
+  assert_eq!(keyed.key(9).try_with(|_| ()), None);
+}
+
 /// A store snapshots its whole value as one unit at its position and adopts it in the
 /// next run.
 #[test]

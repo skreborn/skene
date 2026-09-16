@@ -15,7 +15,7 @@ use super::{
   Static,
   StyleExtension,
 };
-use crate::{Animation, Color, Transition};
+use crate::{Animation, Color, TextDecoration, TextDecorationStyle, Transition};
 
 /// A text run's style: one field per shared property in shape `S`, and the medium's own
 /// properties in `ext`.
@@ -31,6 +31,12 @@ pub struct RunStyle<S: Shape, X: StyleExtension = ()> {
   pub selection_color: S::Of<Color>,
   /// The background behind selected text.
   pub selection_background: S::Of<Color>,
+  /// The line the text is decorated with; a link is underlined unless set.
+  pub decoration: S::Of<TextDecoration>,
+  /// How the decoration line is drawn.
+  pub decoration_style: S::Of<TextDecorationStyle>,
+  /// The decoration line's color; the text color unless set.
+  pub decoration_color: S::Of<Color>,
   /// The medium's own properties.
   pub ext: X::RunFields<S>,
 }
@@ -42,6 +48,10 @@ pub struct RunStyle<S: Shape, X: StyleExtension = ()> {
 pub enum RunValue<X: StyleExtension = ()> {
   /// A color.
   Color(Color),
+  /// A decoration line.
+  Decoration(TextDecoration),
+  /// A decoration line's style.
+  DecorationStyle(TextDecorationStyle),
   /// A value of one of the medium's own properties.
   Extension(X::Value),
 }
@@ -61,20 +71,31 @@ pub trait IntoRunValue<X: StyleExtension>:
   fn from_run_value(value: RunValue<X>) -> Option<Self>;
 }
 
-impl<X: StyleExtension> IntoRunValue<X> for Color {
-  #[inline(always)]
-  fn into_run_value(self) -> RunValue<X> {
-    RunValue::Color(self)
-  }
+/// The shared run value types, each erasing into its variant.
+macro_rules! run_values {
+  ($($type:ty => $variant:ident),+ $(,)?) => {$(
+    impl<X: StyleExtension> IntoRunValue<X> for $type {
+      #[inline(always)]
+      fn into_run_value(self) -> RunValue<X> {
+        RunValue::$variant(self)
+      }
 
-  #[inline(always)]
-  fn from_run_value(value: RunValue<X>) -> Option<Self> {
-    match value {
-      RunValue::Color(color) => Some(color),
-      RunValue::Extension(_) => None,
+      #[inline(always)]
+      fn from_run_value(value: RunValue<X>) -> Option<Self> {
+        match value {
+          RunValue::$variant(value) => Some(value),
+          _ => None,
+        }
+      }
     }
-  }
+  )+};
 }
+
+run_values!(
+  Color => Color,
+  TextDecoration => Decoration,
+  TextDecorationStyle => DecorationStyle,
+);
 
 /// One property of a [`RunStyle`], addressed by type, in whatever shape the style is.
 #[diagnostic::on_unimplemented(
@@ -161,6 +182,9 @@ run_fields!(
   color: crate::Color => TextColor,
   selection_color: crate::Color => SelectionColor,
   selection_background: crate::Color => SelectionBackground,
+  decoration: crate::TextDecoration => Decoration,
+  decoration_style: crate::TextDecorationStyle => DecorationStyle,
+  decoration_color: crate::Color => DecorationColor,
 );
 
 impl<S: Shape, X: StyleExtension> RunStyle<S, X> {
@@ -275,7 +299,7 @@ impl<C: Clone + PartialEq + Debug + 'static, X: StyleExtension> RunFieldVisitor<
         slot,
         property: F::KEY,
         position,
-        compute: Rc::new(move || compute().into_run_value()),
+        compute: Rc::new(move || compute().map(IntoRunValue::into_run_value)),
       });
 
       slot
@@ -342,7 +366,10 @@ mod tests {
     assert_eq!(slots.len(), 1);
     assert_eq!(slots[0].property, PropertyKey::Shared(Property::TextColor));
     assert_eq!(slots[0].position, 1);
-    assert_eq!((slots[0].compute)(), RunValue::Color(Color::TRANSPARENT));
+    assert_eq!(
+      (slots[0].compute)(),
+      StaticLeaf::Fixed(RunValue::Color(Color::TRANSPARENT))
+    );
   }
 
   /// Overlaying replaces exactly the properties the overlay sets.

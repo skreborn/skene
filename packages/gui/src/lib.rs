@@ -55,6 +55,9 @@ pub use skene_core::{
   ScrollEvent,
   State,
   StaticLeaf,
+  TextDecoration,
+  TextDecorationStyle,
+  TextSelection,
   TokenName,
   TokenRef,
   TokenSet,
@@ -86,9 +89,15 @@ pub use skene_views::{
   Behavior,
   ControlChild,
   CornerRadius,
+  ItemExtent,
   ListItem,
   Listbox,
   ListboxGroup,
+  Menu,
+  MenuGroup,
+  MenuItem,
+  MenuOption,
+  NativePicker,
   PointerPhase,
   Popup,
   RadioMember,
@@ -96,6 +105,7 @@ pub use skene_views::{
   Roster,
   Roving,
   RovingGroup,
+  TOOLTIP_DELAY,
   TextEntry,
   Toggle,
   TypeMetrics,
@@ -236,6 +246,9 @@ pub type Switch<K> = skene_views::Switch<ActiveDriver, K>;
 /// Fallback content while a subtree's async work is pending; see
 /// [`skene_views::Suspense`].
 pub type Suspense<C = NoChild> = skene_views::Suspense<ActiveDriver, C>;
+/// The form a signal makes possible over the one that needs none; see
+/// [`skene_views::Enhance`].
+pub type Enhance<C = NoChild> = skene_views::Enhance<ActiveDriver, C>;
 /// Fallback content when a subtree reports an error; see
 /// [`skene_views::ErrorBoundary`].
 pub type ErrorBoundary<C = NoChild> = skene_views::ErrorBoundary<ActiveDriver, C>;
@@ -272,15 +285,27 @@ pub type RawPicker<F = NoChild> = skene_views::RawPicker<ActiveDriver, F>;
 pub type Face = skene_views::Face<ActiveDriver>;
 /// Content above the app; see [`skene_views::Overlay`].
 pub type Overlay<C = NoChild> = skene_views::Overlay<ActiveDriver, C>;
+/// Content shown beside the view it describes; see [`skene_views::Tooltip`].
+pub type Tooltip<C = NoChild> = skene_views::Tooltip<ActiveDriver, C>;
+/// Commands shown beside the pointer on a secondary press over the view it serves;
+/// see [`skene_views::ContextMenu`].
+pub type ContextMenu<C = NoChild> = skene_views::ContextMenu<ActiveDriver, C>;
+/// A menu; see [`skene_views::RawMenu`].
+pub type RawMenu<C = NoChild> = skene_views::RawMenu<ActiveDriver, C>;
+/// One item within a menu; see [`skene_views::RawMenuItem`].
+pub type RawMenuItem<C = NoChild> = skene_views::RawMenuItem<ActiveDriver, C>;
 /// A handle moving focus to a built view; see [`skene_views::FocusHandle`].
 pub type FocusHandle = skene_views::FocusHandle<ActiveDriver>;
 /// A handle reporting a built view's measured size; see [`skene_views::SizeHandle`].
 pub type SizeHandle = skene_views::SizeHandle<ActiveDriver>;
-/// A box drawn by a paint callback; see [`skene_gui_core::Painted`].
+/// A box drawn by a paint callback; see [`skene_views::Painted`].
 pub type Painted = skene_gui_core::Painted<ActiveDriver>;
 /// A scrolling keyed list building only the slice in view; see
 /// [`skene_views::LazyColumn`].
 pub type LazyColumn = skene_views::LazyColumn<ActiveDriver>;
+/// A scrolling keyed row building only the slice in view; see
+/// [`skene_views::LazyRow`].
+pub type LazyRow = skene_views::LazyRow<ActiveDriver>;
 /// The closure building a view's child under the context the view provides; see
 /// [`skene_views::ChildBuilder`].
 pub type ChildBuilder = skene_views::ChildBuilder<ActiveDriver>;

@@ -20,6 +20,7 @@ use super::{
   Value,
 };
 use crate::{
+  AccessProp,
   ClickHandler,
   Dimension,
   Flexibility,
@@ -30,6 +31,7 @@ use crate::{
   Line,
   PointerHandler,
   ScrollEvent,
+  TextSelection,
 };
 
 /// A handler taking nothing: pointer enter and leave, focus and blur, dismiss.
@@ -40,6 +42,8 @@ pub type ScrollHandler = dyn Fn(&ScrollEvent);
 pub type ChangeHandler = dyn Fn(&str);
 /// A toggle handler: a control's new checked state.
 pub type ToggleHandler = dyn Fn(bool);
+/// A selection handler: a text entry's new selection.
+pub type SelectionHandler = dyn Fn(TextSelection);
 
 /// What a node is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -177,6 +181,7 @@ pub struct HandlerSet {
   acting_click: Vec<Rc<ClickHandler>>,
   click: Vec<Rc<ClickHandler>>,
   key_down: Vec<Rc<KeyHandler>>,
+  key_up: Vec<Rc<KeyHandler>>,
   pointer_down: Vec<Rc<PointerHandler>>,
   pointer_up: Vec<Rc<PointerHandler>>,
   pointer_move: Vec<Rc<PointerHandler>>,
@@ -186,8 +191,10 @@ pub struct HandlerSet {
   blur: Vec<Rc<PlainHandler>>,
   scroll: Vec<Rc<ScrollHandler>>,
   change: Vec<Rc<ChangeHandler>>,
+  selection_change: Vec<Rc<SelectionHandler>>,
   toggle: Vec<Rc<ToggleHandler>>,
   dismiss: Vec<Rc<PlainHandler>>,
+  context_menu: Vec<Rc<PointerHandler>>,
 }
 
 impl HandlerSet {
@@ -211,6 +218,13 @@ impl HandlerSet {
   #[must_use]
   pub fn key_down(&self) -> &[Rc<KeyHandler>] {
     &self.key_down
+  }
+
+  /// The key-up handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn key_up(&self) -> &[Rc<KeyHandler>] {
+    &self.key_up
   }
 
   /// The pointer-down handlers, in registration order.
@@ -276,6 +290,13 @@ impl HandlerSet {
     &self.change
   }
 
+  /// The selection handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn selection_change(&self) -> &[Rc<SelectionHandler>] {
+    &self.selection_change
+  }
+
   /// The toggle handlers, in registration order.
   #[inline(always)]
   #[must_use]
@@ -288,6 +309,13 @@ impl HandlerSet {
   #[must_use]
   pub fn dismiss(&self) -> &[Rc<PlainHandler>] {
     &self.dismiss
+  }
+
+  /// The context menu handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn context_menu(&self) -> &[Rc<PointerHandler>] {
+    &self.context_menu
   }
 }
 
@@ -320,6 +348,22 @@ pub struct NodeRecord<D: Driver> {
   control: Option<ControlState>,
   part: Option<Part>,
   position: Position,
+  access: Option<Box<AccessReports>>,
+}
+
+/// What a node reports to assistive technology: the view's own report, and the report
+/// of a view describing it.
+#[derive(Default)]
+struct AccessReports {
+  own: Vec<AccessProp>,
+  description: Vec<AccessProp>,
+}
+
+impl AccessReports {
+  /// Both reports, the node's own first.
+  fn merged(&self) -> Vec<AccessProp> {
+    self.own.iter().chain(&self.description).cloned().collect()
+  }
 }
 
 impl<D: Driver> NodeRecord<D> {
@@ -606,6 +650,7 @@ impl<D: Driver> Scene<D> {
       control: is_control.then_some(ControlState::DEFAULT),
       part: is_control.then_some(Part::Root),
       position,
+      access: None,
     };
 
     let id = if let Some(index) = self.free.pop() {
@@ -1085,6 +1130,11 @@ impl<D: Driver> Scene<D> {
     self.register(node, EventKind::KeyDown, |set| set.key_down.push(handler));
   }
 
+  /// Adds a key-up handler to `node`.
+  pub fn handle_key_up(&mut self, node: NodeId, handler: Rc<KeyHandler>) {
+    self.register(node, EventKind::KeyUp, |set| set.key_up.push(handler));
+  }
+
   /// Adds a pointer-down handler to `node`.
   pub fn handle_pointer_down(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::PointerDown, |set| {
@@ -1140,6 +1190,13 @@ impl<D: Driver> Scene<D> {
     self.register(node, EventKind::Change, |set| set.change.push(handler));
   }
 
+  /// Adds a selection handler to `node`.
+  pub fn handle_selection_change(&mut self, node: NodeId, handler: Rc<SelectionHandler>) {
+    self.register(node, EventKind::SelectionChange, |set| {
+      set.selection_change.push(handler);
+    });
+  }
+
   /// Adds a toggle handler to `node`.
   pub fn handle_toggle(&mut self, node: NodeId, handler: Rc<ToggleHandler>) {
     self.register(node, EventKind::Toggle, |set| set.toggle.push(handler));
@@ -1148,6 +1205,51 @@ impl<D: Driver> Scene<D> {
   /// Adds a dismiss handler to `node`.
   pub fn handle_dismiss(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
     self.register(node, EventKind::Dismiss, |set| set.dismiss.push(handler));
+  }
+
+  /// Adds a context menu handler to `node`.
+  pub fn handle_context_menu(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
+    self.register(node, EventKind::ContextMenu, |set| {
+      set.context_menu.push(handler);
+    });
+  }
+
+  /// Notes `access` as what the view that made `node` reports, without a write: for
+  /// a report the driver received as the node was created.
+  pub fn note_access(&mut self, node: NodeId, access: Vec<AccessProp>) {
+    if let Some(record) = self.record_mut(node) {
+      record.access.get_or_insert_default().own = access;
+    }
+  }
+
+  /// Replaces what the view that made `node` reports with `access`, returning the
+  /// whole report the driver is to receive: the node's own, then its description.
+  #[must_use]
+  pub fn report_access(&mut self, node: NodeId, access: Vec<AccessProp>) -> Vec<AccessProp> {
+    let Some(record) = self.record_mut(node)
+    else {
+      return access;
+    };
+    let reports = record.access.get_or_insert_default();
+
+    reports.own = access;
+
+    reports.merged()
+  }
+
+  /// Replaces what a view describing `node` reports with `description`, returning the
+  /// whole report the driver is to receive: the node's own, then its description.
+  #[must_use]
+  pub fn describe(&mut self, node: NodeId, description: Vec<AccessProp>) -> Vec<AccessProp> {
+    let Some(record) = self.record_mut(node)
+    else {
+      return description;
+    };
+    let reports = record.access.get_or_insert_default();
+
+    reports.description = description;
+
+    reports.merged()
   }
 
   /// The handlers `node` carries.

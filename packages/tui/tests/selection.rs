@@ -85,6 +85,9 @@ fn double_and_triple_click_select_word_and_run() {
       }
 
       tui::trigger_mouse_right_click(0, 0);
+
+      let _ = tui::render_to_text(20, 4);
+
       tui::trigger_mouse_click(2, 1);
 
       tui::take_copied()
@@ -114,6 +117,9 @@ fn selection_spans_runs_in_document_order() {
     tui::trigger_mouse_drag(30, 3);
     tui::trigger_mouse_release(30, 3);
     tui::trigger_mouse_right_click(3, 3);
+
+    let _ = tui::render_to_text(40, 8);
+
     tui::trigger_mouse_click(5, 4);
 
     assert_eq!(tui::take_copied().as_deref(), Some("rst\nsecond"));
@@ -285,6 +291,9 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
     tui::trigger_mouse_drag(8, 1);
     tui::trigger_mouse_release(8, 1);
     tui::trigger_mouse_right_click(0, 1);
+
+    let _ = tui::render_to_text(14, 4);
+
     tui::trigger_mouse_click(2, 2);
 
     assert_eq!(tui::take_copied().as_deref(), Some("plain red and docs"));

@@ -5,8 +5,10 @@ use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
 use skene_core::{
   AccessProp,
+  Availability,
   BoxProps,
   BoxValue,
+  ClipboardAction,
   ColorScheme,
   ControlKind,
   ControlProps,
@@ -20,14 +22,19 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Placement,
+  Point,
   PointerEvent,
   RunProps,
   RunValue,
   Scene,
   Size,
   Slot,
+  StaticLeaf,
+  TextSelection,
+  Timer,
 };
-use skene_reactive::Set;
+use skene_reactive::{ReadSignal, Set};
+use skene_views::Painting;
 
 use crate::{
   TokenValue,
@@ -36,7 +43,7 @@ use crate::{
   cells::{CellPainter, Painter},
   interaction,
   motion::RunMotion,
-  store::{BoxRecord, Field, Handle, Kind, SlotValue, Store},
+  store::{BoxRecord, Field, Handle, Kind, PictureRecord, SlotValue, Store},
 };
 
 /// The terminal driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
@@ -105,10 +112,10 @@ impl Driver for Tui {
     with_store(|store| store.create_laid_out(Kind::Box(BoxRecord::new(props.clone()))))
   }
 
-  fn update_box(&self, sink: &Handle, slot: Slot, value: &BoxValue<u32, TuiExt>) {
+  fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiExt>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
-        record.slots.insert(slot, SlotValue::Box(value.clone()));
+        record.slots.insert(slot, leaf.clone().map(SlotValue::Box));
 
         if let Some(inner) = record.kind.box_record_mut() {
           inner.mark_stale();
@@ -179,6 +186,7 @@ impl Driver for Tui {
         backdrop: props.backdrop,
         open: false,
         anchor: None,
+        position: None,
         return_focus: None,
       });
 
@@ -192,8 +200,27 @@ impl Driver for Tui {
     let focus = with_store(|store| store.set_overlay_open(*sink, open, anchor.copied()));
 
     if let interaction::OverlayFocus::Moved(next) = focus {
-      interaction::set_focus(next);
+      if open {
+        interaction::set_focus(next);
+      }
+      else {
+        interaction::set_focus_restored(next);
+      }
     }
+  }
+
+  fn set_overlay_position(&self, sink: &Handle, position: Option<Point<f32>>) {
+    with_store(|store| {
+      if let Some(Kind::Overlay { position: held, .. }) =
+        store.record_mut(*sink).map(|record| &mut record.kind)
+      {
+        #[expect(clippy::cast_possible_truncation)]
+        let cell = position.map(|point| (point.x.floor() as i64, point.y.floor() as i64));
+
+        *held = cell;
+        store.paint_dirty = true;
+      }
+    });
   }
 
   fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {
@@ -227,10 +254,10 @@ impl Driver for Tui {
     })
   }
 
-  fn update_run(&self, sink: &Handle, slot: Slot, value: &RunValue<TuiExt>) {
+  fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue<TuiExt>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
-        record.slots.insert(slot, SlotValue::Run(value.clone()));
+        record.slots.insert(slot, leaf.clone().map(SlotValue::Run));
 
         if let Kind::Run {
           cache: Some(cache), ..
@@ -374,15 +401,32 @@ impl Driver for Tui {
         return;
       };
 
-      if field.value == value {
+      if !field.set_value(value) {
         return;
       }
 
-      value.clone_into(&mut field.value);
-      field.caret = field.caret.min(field.count());
-      field.collapse();
       store.settle_entry(*sink);
       store.layout_dirty = true;
+      store.damage(*sink);
+    });
+
+    crate::field::report_selections();
+  }
+
+  fn set_selection(&self, sink: &Handle, selection: TextSelection) {
+    with_store(|store| {
+      let Some(field) = store
+        .record_mut(*sink)
+        .and_then(|record| record.kind.field_mut())
+      else {
+        return;
+      };
+
+      if !field.set_selection(selection) {
+        return;
+      }
+
+      store.settle_entry(*sink);
       store.damage(*sink);
     });
   }
@@ -433,8 +477,82 @@ impl Driver for Tui {
     }
   }
 
+  fn schedule(&self, delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
+    with_store(|store| {
+      let timer = Timer(store.next_timer);
+      let due = store.now() + delay.as_secs_f64();
+
+      store.next_timer += 1;
+      store.timers.push((due, timer, action));
+
+      timer
+    })
+  }
+
+  fn cancel(&self, timer: Timer) {
+    with_store(|store| store.timers.retain(|(_, held, _)| *held != timer));
+  }
+
+  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+    with_store(|store| {
+      // A clipboard that answers offers every operation; the launch choice stands
+      // for one that does not.
+      let offered = store.clipboard_answers
+        || match action {
+          ClipboardAction::Copy | ClipboardAction::Cut => store.clipboard.copy,
+          ClipboardAction::Paste => store.clipboard.paste,
+        };
+
+      if !offered {
+        return Availability::Absent;
+      }
+
+      // Outside an entry, only the document's selection is copyable, and nothing is
+      // cut or pasted; inside one, every action is listed and applies to its selection.
+      let entry = store.clipboard_entry();
+      let applies = match action {
+        ClipboardAction::Copy => store.has_selection(),
+        ClipboardAction::Cut => entry.is_some_and(|entry| store.entry_has_selection(entry)),
+        ClipboardAction::Paste => entry.is_some(),
+      };
+
+      match (entry, action) {
+        (None, ClipboardAction::Copy) if !applies => Availability::Absent,
+        (None, ClipboardAction::Cut | ClipboardAction::Paste) => Availability::Absent,
+        _ if applies => Availability::Enabled,
+        _ => Availability::Disabled,
+      }
+    })
+  }
+
+  fn clipboard(&self, action: ClipboardAction) {
+    match action {
+      ClipboardAction::Copy => with_store(Store::copy_selection),
+      ClipboardAction::Cut => crate::field::cut_focused(),
+      ClipboardAction::Paste => with_store(Store::request_paste),
+    }
+  }
+
   fn stored_scheme(&self) -> Option<ColorScheme> {
     with_store(|store| store.choice)
+  }
+}
+
+impl Painting for Tui {
+  fn available(&self) -> ReadSignal<bool> {
+    with_store(|store| store.media().graphics)
+  }
+
+  fn paint(&self, sink: &Handle, painter: Box<skene_views::Painter>) {
+    with_store(|store| {
+      if let Some(record) = store.record_mut(*sink) {
+        record.picture = Some(PictureRecord {
+          painter: Rc::from(painter),
+          image: None,
+        });
+        store.damage(*sink);
+      }
+    });
   }
 }
 
@@ -458,6 +576,7 @@ impl CellPainter for Tui {
 pub(crate) fn install() {
   skene_reactive::Runtime::init_on_ui_thread();
   skene_core::executor::install();
+  crate::text::reset();
 
   STORE.with(|store| {
     let mut store = store.borrow_mut();

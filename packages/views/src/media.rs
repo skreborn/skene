@@ -2,7 +2,7 @@
 //! driver; a facade forwards to these with its medium's units.
 
 use skene_core::{ColorScheme, Driver, Media, Size};
-use skene_reactive::{Effect, Memo, ReadSignal};
+use skene_reactive::{Effect, Memo, ReadSignal, Signal};
 
 /// The viewport's size, in the medium's unit.
 #[inline(always)]
@@ -20,6 +20,16 @@ pub fn scheme<D: Driver>() -> ReadSignal<ColorScheme> {
 #[inline(always)]
 pub fn reduced_motion<D: Driver>() -> ReadSignal<bool> {
   D::default().media().reduced_motion
+}
+
+/// Whether a render made without script has been hydrated: false on the server leaf
+/// and while the browser leaf adopts the server's markup, true once it has finished,
+/// and true from the start on every driver whose tree is live from the start.
+#[inline(always)]
+pub fn hydrated<D: Driver>() -> ReadSignal<bool> {
+  D::default()
+    .hydration()
+    .unwrap_or_else(|| Signal::opaque(true).read_only())
 }
 
 /// Whether `media` holds, as a memo following the environment.

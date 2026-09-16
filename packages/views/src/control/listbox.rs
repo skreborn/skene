@@ -15,7 +15,7 @@ use skene_core::{
 };
 use skene_reactive::{Get, Set, Signal, on_cleanup, provide_context, use_context};
 
-use super::{Behavior, ControlHandle, Roster};
+use super::{Behavior, ControlHandle, Roster, TypeAhead};
 
 /// What a [`Listbox`] shares with the options inside it, through context.
 ///
@@ -26,9 +26,26 @@ pub struct ListboxGroup {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
   roster: Roster,
+  type_ahead: Rc<TypeAhead>,
 }
 
 impl ListboxGroup {
+  /// A group whose options join `roster`, answering `chosen` for the chosen value and
+  /// asking `choose` for a choice; provided as context by a control listing options.
+  #[inline(always)]
+  pub fn new(
+    chosen: impl Fn() -> Option<String> + 'static,
+    choose: impl Fn(String) + 'static,
+    roster: Roster,
+  ) -> Self {
+    Self {
+      chosen: Rc::new(chosen),
+      choose: Rc::new(choose),
+      roster,
+      type_ahead: Rc::new(TypeAhead::new()),
+    }
+  }
+
   /// The chosen option's value, tracked.
   #[inline(always)]
   #[must_use]
@@ -79,11 +96,29 @@ impl ListboxGroup {
       .roster
       .focus_at::<D>(index.saturating_add_signed(step).min(last));
   }
+
+  /// Feeds a key typed on the option holding `value` into the list's type-ahead and
+  /// focuses the option its buffer picks; `false` for a key that is no character.
+  #[must_use]
+  pub fn type_ahead_from<D: Driver>(&self, value: &str, event: &KeyEvent) -> bool {
+    let Some(buffer) = self.type_ahead.typed::<D>(event)
+    else {
+      return false;
+    };
+
+    if let Some(index) = self.roster.typed::<D>(&buffer, Some(value)) {
+      self.roster.focus_at::<D>(index);
+    }
+
+    true
+  }
 }
 
 /// A listbox: the options inside it are one tab stop, the arrow keys move focus
-/// between them without wrapping, `Home` and `End` reach the ends, and `Enter`,
-/// `Space` or a click chooses the focused one.
+/// between them without wrapping, `Home` and `End` reach the ends, typing moves focus
+/// to the option whose name the characters begin (a character repeated cycling through
+/// the options starting with it), and `Enter`, `Space` or a click chooses the focused
+/// one.
 ///
 /// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads,
 /// and choosing only calls [`handle_choose`](Self::handle_choose) with the value asked
@@ -107,6 +142,15 @@ impl Listbox {
       on_choose: None,
       roster: Roster::new(),
     }
+  }
+
+  /// Shares `roster` with the listbox, so options built under a group holding it
+  /// belong to the listbox as well.
+  #[inline(always)]
+  pub fn set_roster(mut self, roster: Roster) -> Self {
+    self.roster = roster;
+
+    self
   }
 
   /// Sets the chosen option's value.
@@ -192,6 +236,7 @@ impl<D: Driver> Behavior<D> for Listbox {
         }
       }),
       roster,
+      type_ahead: Rc::new(TypeAhead::new()),
     });
   }
 
@@ -202,8 +247,9 @@ impl<D: Driver> Behavior<D> for Listbox {
 }
 
 /// One option within a [`Listbox`]: a click, `Enter` or `Space` chooses it, the arrow
-/// keys move focus to a neighbour, `Home` and `End` to the ends, and it is the list's
-/// tab stop while chosen or, with nothing chosen, while first.
+/// keys move focus to a neighbour, `Home` and `End` to the ends, a typed character
+/// to the option the list's type-ahead picks, and it is the list's tab stop while
+/// chosen or, with nothing chosen, while first.
 ///
 /// Outside a listbox it reports its role, is never selected and takes focus like any
 /// control.
@@ -267,7 +313,9 @@ impl<D: Driver> Behavior<D> for ListItem {
     };
     let node = control.node();
 
-    group.roster.join(node, self.value.clone());
+    group
+      .roster
+      .join(node, self.value.clone(), control.name().map(str::to_owned));
 
     let roster = group.roster.clone();
 
@@ -295,12 +343,16 @@ impl<D: Driver> Behavior<D> for ListItem {
       "ArrowUp" => group.step_from::<D>(&self.value, -1),
       "Home" => group.step_from::<D>(&self.value, isize::MIN),
       "End" => group.step_from::<D>(&self.value, isize::MAX),
-      "Enter" | " " => group.choose(self.value.clone()),
+      "Enter" => group.choose(self.value.clone()),
+      " " if !group.type_ahead_from::<D>(&self.value, event) => {
+        group.choose(self.value.clone());
+      }
       "Tab" => {
         group.choose(self.value.clone());
 
         return Prevent::None;
       }
+      _ if group.type_ahead_from::<D>(&self.value, event) => {}
       _ => return Prevent::None,
     }
 

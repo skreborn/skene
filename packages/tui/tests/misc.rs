@@ -6,7 +6,7 @@
 mod common;
 
 use skene_simple_tui::{glyph, *};
-use skene_tui::{self as tui, Scene, TokenValue, prelude::*};
+use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*};
 
 use crate::common::{black, colors_at, locate, red, with_driver};
 
@@ -60,6 +60,36 @@ fn shadow_mixes_into_the_cells_beneath() {
     assert!(background(2, 1).0 < clean.0);
     assert_eq!(background(3, 1), clean);
     assert_eq!(background(1, 2), clean);
+  });
+}
+
+/// A shadow over unpainted cells mixes against the terminal's own background once
+/// the terminal reported it, and against black before; a scrollbar's track takes the
+/// terminal's own foreground the same way.
+#[test]
+fn a_paint_mixes_against_the_terminals_own_colors() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(2)
+        .set_height(1)
+        .set_shadow(black().with_alpha(0.5))
+        .into_any()
+        .build()
+    });
+
+    let shadow = |x: usize, y: usize| colors_at(4, 3, x, y).1.expect("a shadowed cell");
+
+    assert_eq!(shadow(2, 1), (0, 0, 0), "black over the assumed black");
+
+    tui::trigger_terminal_colors((220, 220, 220), (40, 42, 54));
+
+    assert_eq!(
+      shadow(2, 1),
+      (20, 21, 27),
+      "black over the reported background"
+    );
+    assert_eq!(colors_at(4, 3, 2, 1).0, Some((110, 110, 110)));
   });
 }
 
@@ -142,6 +172,80 @@ fn simple_controls_take_the_cell_shape() {
         .nth(4)
         .is_some_and(|line| line.starts_with("[ ] agree")),
       "the mark is the unchecked glyph: {frame}"
+    );
+  });
+}
+
+/// A run's decoration reaches its cells: an underline keeps its style and color, an
+/// overline and a line through are their own lines, a link is underlined unless its
+/// decoration says otherwise, and plain text carries none.
+#[test]
+fn a_runs_decoration_paints_its_lines_into_the_cells() {
+  with_driver(|| {
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          Text::new("wavy")
+            .set_decoration(TextDecoration::Underline)
+            .set_decoration_style(TextDecorationStyle::Wavy)
+            .set_decoration_color(red()),
+          Text::new("over").set_decoration(TextDecoration::Overline),
+          Text::new("gone").set_decoration(TextDecoration::LineThrough),
+          RichText::new().set_spans([
+            Span::new("a "),
+            Span::new("link").set_link("https://example.com"),
+            Span::new(" bare")
+              .set_link("https://example.com")
+              .set_decoration(TextDecoration::None),
+          ]),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let decorations = tui::render_to_decorations(12, 4);
+    let at = |column: usize, row: usize| decorations[row * 12 + column];
+
+    assert_eq!(
+      at(0, 0),
+      CellDecoration {
+        underline: Some(TextDecorationStyle::Wavy),
+        underline_color: Some((255, 0, 0)),
+        ..CellDecoration::NONE
+      }
+    );
+    assert_eq!(
+      at(4, 0),
+      CellDecoration::NONE,
+      "the line ends with the text"
+    );
+    assert_eq!(
+      at(0, 1),
+      CellDecoration {
+        overline: true,
+        ..CellDecoration::NONE
+      }
+    );
+    assert_eq!(
+      at(0, 2),
+      CellDecoration {
+        line_through: true,
+        ..CellDecoration::NONE
+      }
+    );
+    assert_eq!(at(0, 3), CellDecoration::NONE, "plain text carries no line");
+    assert_eq!(
+      at(2, 3),
+      CellDecoration {
+        underline: Some(TextDecorationStyle::Solid),
+        ..CellDecoration::NONE
+      },
+      "a link underlines by default"
+    );
+    assert_eq!(
+      at(7, 3),
+      CellDecoration::NONE,
+      "a link's own decoration wins"
     );
   });
 }

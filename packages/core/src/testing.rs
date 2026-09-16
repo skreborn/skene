@@ -31,9 +31,11 @@ use super::{
   Scene,
   Seal,
   Slot,
+  StaticLeaf,
+  Timer,
   View,
 };
-use crate::{AccessProp, Color, ColorScheme, FocusOrder, PointerEvent, Size};
+use crate::{AccessProp, Color, ColorScheme, FocusOrder, PointerEvent, Size, TextSelection};
 
 /// One call the driver received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,7 +126,7 @@ impl Driver for TestDriver {
     Self::next_sink()
   }
 
-  fn update_box(&self, _: &u32, _: Slot, _: &BoxValue<f32>) {}
+  fn update_box(&self, _: &u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {}
 
   fn update_focus_order(&self, _: &u32, _: Option<FocusOrder>) {}
 
@@ -146,7 +148,13 @@ impl Driver for TestDriver {
     Self::next_sink()
   }
 
-  fn update_run(&self, _: &u32, _: Slot, _: &RunValue) {}
+  fn update_run(&self, _: &u32, _: Slot, _: &StaticLeaf<RunValue>) {}
+
+  fn schedule(&self, _: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
+    Timer(0)
+  }
+
+  fn cancel(&self, _: Timer) {}
 
   fn set_text(&self, _: &u32, _: &str) {}
 
@@ -201,6 +209,8 @@ impl Driver for TestDriver {
   fn blur(&self, _: &u32) {}
 
   fn set_value(&self, _: &u32, _: &str) {}
+
+  fn set_selection(&self, _: &u32, _: TextSelection) {}
 
   fn set_checked(&self, _: &u32, _: bool) {}
 

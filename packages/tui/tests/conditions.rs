@@ -8,7 +8,7 @@ mod common;
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple_tui::prelude::*;
-use skene_tui::{self as tui, prelude::*};
+use skene_tui::{self as tui, StaticLeaf, prelude::*};
 
 use crate::common::{blue, colors_at, red, rgb, white, with_driver};
 
@@ -140,6 +140,40 @@ fn an_unconditional_token_ignores_the_terminals_background() {
     tui::trigger_color_scheme(ColorScheme::Light);
 
     assert_eq!(dark, tui::render_to_colors(4, 1));
+  });
+}
+
+/// A derived leaf may name a token: the box paints the palette's card until a write
+/// switches the same slot to a fixed color.
+#[test]
+fn a_derived_token_paints_through_the_theme() {
+  with_driver(|| {
+    let plain = Signal::new(false);
+
+    let _ = tui::mount(move || {
+      Theme::new(SimplePalette::default().set_card(blue()))
+        .set_child_builder(move || {
+          Container::new()
+            .set_width(4)
+            .set_height(1)
+            .derive_color(move || {
+              if plain.get() {
+                StaticLeaf::from(red())
+              }
+              else {
+                StaticLeaf::from(SimplePalette::CARD)
+              }
+            })
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(4, 1, 0, 0).1, Some(rgb(blue())));
+
+    plain.set(true);
+
+    assert_eq!(colors_at(4, 1, 0, 0).1, Some(rgb(red())));
   });
 }
 

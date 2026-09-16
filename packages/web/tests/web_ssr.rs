@@ -15,6 +15,7 @@ use skene_core::{
   HasChildren,
   Media,
   State,
+  StaticLeaf,
   Token,
   TokenName,
   TokenRef,
@@ -274,6 +275,34 @@ fn a_derived_color_is_a_slot_reference_with_its_value_inline() {
       .contains("@property --skene-color{syntax:\"*\";inherits:false}"),
     "the slot is registered uninherited: {}",
     rendered.styles()
+  );
+}
+
+/// A derived leaf naming a token writes the token's reference inline, so the page's
+/// theme answers it with no script.
+#[test]
+fn a_derived_token_is_a_slot_reference_written_inline() {
+  let rendered = render_to_string(|| {
+    Theme::<Web, _>::new(Palette::default()).set_child_builder(|| {
+      let (plain, _) = signal(false);
+
+      Box_::new().derive_color(move || {
+        if plain.get() {
+          StaticLeaf::from(red())
+        }
+        else {
+          StaticLeaf::from(Palette::CARD)
+        }
+      })
+    })
+  });
+
+  assert!(
+    rendered
+      .body()
+      .contains("style=\"--skene-color:var(--simple-card);\""),
+    "{}",
+    rendered.body()
   );
 }
 

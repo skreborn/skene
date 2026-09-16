@@ -101,10 +101,14 @@ impl<T> TokenRef<T> {
     Value::from(self).when(condition, value)
   }
 
-  /// This token, overridden while `condition` holds by a value derived from the
-  /// signals `compute` reads.
+  /// This token, overridden while `condition` holds by a leaf derived from the
+  /// signals `compute` reads: a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_when<C>(self, condition: C, compute: impl Fn() -> T + 'static) -> Value<T, C> {
+  pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
+    self,
+    condition: C,
+    compute: impl Fn() -> R + 'static,
+  ) -> Value<T, C> {
     Value::from(self).derive_when(condition, compute)
   }
 }
@@ -215,10 +219,14 @@ impl<T, N: Scalar> Token<T, N> {
     self.reference.when(condition, value)
   }
 
-  /// This token, overridden while `condition` holds by a value derived from the
-  /// signals `compute` reads.
+  /// This token, overridden while `condition` holds by a leaf derived from the
+  /// signals `compute` reads: a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_when<C>(&self, condition: C, compute: impl Fn() -> T + 'static) -> Value<T, C> {
+  pub fn derive_when<C, R: Into<StaticLeaf<T>>>(
+    &self,
+    condition: C,
+    compute: impl Fn() -> R + 'static,
+  ) -> Value<T, C> {
     self.reference.derive_when(condition, compute)
   }
 }

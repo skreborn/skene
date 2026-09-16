@@ -89,9 +89,14 @@ fn row(todos: Store<Todos>, todo: impl StoreField<Value = Todo> + Copy) -> impl 
       .derive_checked(move || todo.done().get())
       .handle_toggle(move |done| todo.done().set(done)),
     Container::new().set_width(30).set_child(
-      Text::derive(move || todo.title().get())
-        .set_color(SimplePalette::FOREGROUND)
-        .derive_bold(move || !todo.done().get()),
+      Text::derive(move || todo.title().get()).derive_color(move || {
+        if todo.done().get() {
+          SimplePalette::MUTED_FOREGROUND
+        }
+        else {
+          SimplePalette::FOREGROUND
+        }
+      }),
     ),
     SimpleButton::new("x")
       .set_variant(SimpleVariant::Outline)

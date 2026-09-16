@@ -22,15 +22,36 @@ pub enum StaticLeaf<T> {
   Expr(Expr<T>),
 }
 
-/// What a builder stores for a property: a [`StaticLeaf`], or a value derived from
+impl<T> StaticLeaf<T> {
+  /// This leaf with `map` applied to a fixed value; a token or an expression keeps its
+  /// name or tree under the mapped type.
+  pub fn map<U>(self, map: impl FnOnce(T) -> U) -> StaticLeaf<U> {
+    match self {
+      Self::Fixed(value) => StaticLeaf::Fixed(map(value)),
+      Self::Token(reference) => StaticLeaf::Token(TokenRef::new(reference.name().as_str())),
+      Self::Expr(expr) => StaticLeaf::Expr(Expr::from_node(expr.into_node())),
+    }
+  }
+}
+
+/// What a builder stores for a property: a [`StaticLeaf`], or a leaf derived from
 /// signals.
 #[derive(Clone)]
 #[must_use]
 pub enum Leaf<T> {
   /// A value known when the view is built.
   Static(StaticLeaf<T>),
-  /// A value recomputed whenever the signals it reads change.
-  Derived(Rc<dyn Fn() -> T>),
+  /// A static leaf recomputed whenever the signals it reads change: a value, a token
+  /// or an expression, resolved where the property is realized.
+  Derived(Rc<dyn Fn() -> StaticLeaf<T>>),
+}
+
+impl<T> Leaf<T> {
+  /// A leaf recomputed by `compute`, which returns a value, a token or an expression.
+  #[inline(always)]
+  pub fn derive<R: Into<StaticLeaf<T>>>(compute: impl Fn() -> R + 'static) -> Self {
+    Self::Derived(Rc::new(move || compute().into()))
+  }
 }
 
 impl<T: PartialEq> PartialEq for Leaf<T> {
@@ -81,8 +102,9 @@ pub struct DerivedSlot<K, V> {
   /// The leaf's place in its property's [`Conditional`]: `0` for the base, `i` for the
   /// `i`-th variant, counted from one.
   pub position: usize,
-  /// The computation, tracking the signals it reads.
-  pub compute: Rc<dyn Fn() -> V>,
+  /// The computation, tracking the signals it reads: a value, or a token or expression
+  /// the driver resolves where it reads the slot.
+  pub compute: Rc<dyn Fn() -> StaticLeaf<V>>,
 }
 
 impl<K: Debug, V> Debug for DerivedSlot<K, V> {
@@ -200,11 +222,15 @@ impl<L, C> Conditional<L, C> {
 }
 
 impl<T, C> Value<T, C> {
-  /// This value, overridden while `condition` holds by a value derived from the signals
-  /// `compute` reads.
+  /// This value, overridden while `condition` holds by a leaf derived from the signals
+  /// `compute` reads: a value, a token or an expression.
   #[inline(always)]
-  pub fn derive_when(self, condition: C, compute: impl Fn() -> T + 'static) -> Self {
-    self.when(condition, Leaf::Derived(Rc::new(compute)))
+  pub fn derive_when<R: Into<StaticLeaf<T>>>(
+    self,
+    condition: C,
+    compute: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.when(condition, Leaf::derive(compute))
   }
 
   /// Whether no leaf is derived.
@@ -220,7 +246,7 @@ impl<T, C> Value<T, C> {
   /// computation.
   pub fn split_derived(
     self,
-    mut allocate: impl FnMut(usize, Rc<dyn Fn() -> T>) -> Slot,
+    mut allocate: impl FnMut(usize, Rc<dyn Fn() -> StaticLeaf<T>>) -> Slot,
   ) -> StaticValue<T, C> {
     let mut position = 0;
 
@@ -252,10 +278,14 @@ pub trait When<T>: Into<Leaf<T>> {
     Conditional::new(self.into()).when(condition, value)
   }
 
-  /// This value, overridden while `condition` holds by a value derived from the
-  /// signals `compute` reads.
+  /// This value, overridden while `condition` holds by a leaf derived from the
+  /// signals `compute` reads: a value, a token or an expression.
   #[inline(always)]
-  fn derive_when<C>(self, condition: C, compute: impl Fn() -> T + 'static) -> Value<T, C> {
+  fn derive_when<C, R: Into<StaticLeaf<T>>>(
+    self,
+    condition: C,
+    compute: impl Fn() -> R + 'static,
+  ) -> Value<T, C> {
     Conditional::new(self.into()).derive_when(condition, compute)
   }
 }
@@ -548,9 +578,10 @@ mod tests {
   /// A derived leaf compares by closure identity, never by value.
   #[test]
   fn derived_leaves_compare_by_identity() {
-    let compute: Rc<dyn Fn() -> Color> = Rc::new(|| Color::TRANSPARENT);
+    let compute: Rc<dyn Fn() -> StaticLeaf<Color>> =
+      Rc::new(|| StaticLeaf::Fixed(Color::TRANSPARENT));
     let same = Leaf::Derived(Rc::clone(&compute));
-    let other = Leaf::Derived(Rc::new(|| Color::TRANSPARENT));
+    let other = Leaf::derive(|| Color::TRANSPARENT);
 
     assert_eq!(Leaf::Derived(compute), same);
     assert_ne!(same, other);

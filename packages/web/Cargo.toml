@@ -19,13 +19,16 @@ serde_json = "1"
 console_error_panic_hook = "0.1"
 js-sys = "0.3"
 postcard = { default-features = false, features = ["alloc"], version = "1" }
+unicode-segmentation = "1"
 vello_hybrid = { default-features = false, features = ["std"], version = "0.2" }
 wasm-bindgen.workspace = true
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
   "CanvasRenderingContext2d",
+  "Clipboard",
   "Comment",
   "console",
+  "css",
   "CssStyleDeclaration",
   "CssStyleSheet",
   "Document",
@@ -49,6 +52,7 @@ web-sys = { version = "0.3", features = [
   "Location",
   "MediaQueryList",
   "MouseEvent",
+  "Navigator",
   "Node",
   "NodeList",
   "PointerEvent",
@@ -73,8 +77,10 @@ skene-simple.workspace = true
 js-sys = "0.3"
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3", features = [
+  "css",
   "CssStyleDeclaration",
   "Document",
+  "DomRect",
   "DomTokenList",
   "Element",
   "Event",

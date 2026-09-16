@@ -449,3 +449,118 @@ fn the_horizontal_wheel_scrolls_a_field() {
     );
   });
 }
+
+/// `Ctrl+Z` undoes an edit and `Ctrl+Shift+Z` or `Ctrl+Y` redoes it, Caps Lock
+/// changing nothing: a run of typed characters is one step, as is a run of removed
+/// ones, a caret move ends a run, a value written from outside is a step of its own,
+/// and the initial value is not.
+#[test]
+fn undo_and_redo_step_through_edits() {
+  with_driver(|| {
+    let name = Signal::new("x".to_owned());
+
+    let _ = tui::mount(|| {
+      RawTextField::new(TextEntry::new().bind_value(name))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 1);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(name.get_untracked(), "x", "the initial value is no step");
+
+    tui::trigger_key("Backspace");
+
+    for key in ["a", "b", "c"] {
+      tui::trigger_key(key);
+    }
+
+    tui::trigger_key("ArrowLeft");
+    tui::trigger_key("d");
+
+    assert_eq!(name.get_untracked(), "abdc");
+
+    tui::trigger_key("Ctrl+Z");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abc",
+      "the character after the move undoes alone, Caps Lock or not"
+    );
+
+    tui::trigger_key("Ctrl+y");
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abc",
+      "the character after the move undoes alone"
+    );
+
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(name.get_untracked(), "", "the typed run undoes as one");
+
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(name.get_untracked(), "x", "the removal undoes");
+
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(name.get_untracked(), "x", "nothing further to undo");
+
+    tui::trigger_key("Ctrl+Shift+z");
+    tui::trigger_key("Ctrl+Shift+Z");
+
+    assert_eq!(name.get_untracked(), "abc");
+
+    tui::trigger_key("Ctrl+y");
+
+    assert_eq!(name.get_untracked(), "abdc");
+    assert!(tui::render_to_text(20, 1).starts_with("abdc"));
+
+    tui::trigger_key("End");
+    tui::trigger_key("Backspace");
+    tui::trigger_key("Backspace");
+
+    assert_eq!(name.get_untracked(), "ab");
+
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abdc",
+      "the removed run undoes as one"
+    );
+
+    tui::trigger_key("x");
+
+    assert_eq!(name.get_untracked(), "abdcx");
+
+    tui::trigger_key("Ctrl+y");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abdcx",
+      "an edit drops the redo steps"
+    );
+
+    name.set("set".to_owned());
+
+    assert!(tui::render_to_text(20, 1).starts_with("set"));
+
+    tui::trigger_key("Ctrl+z");
+
+    assert_eq!(
+      name.get_untracked(),
+      "abdcx",
+      "a value from outside is a step of its own"
+    );
+
+    tui::trigger_key("Ctrl+y");
+
+    assert_eq!(name.get_untracked(), "set");
+  });
+}

@@ -48,7 +48,7 @@ mod host {
   use crate::{
     manifest::App,
     pipeline,
-    server::{Dev, serve, spawn_state_server},
+    server::{Binary, Dev, fetch, serve, spawn_state_server},
   };
 
   /// Build, statically generate, and develop skene applications.
@@ -67,9 +67,15 @@ mod host {
     /// Build the app for a target, into `<app>/dist/<target>`.
     #[command(subcommand)]
     Build(BuildTarget),
-    /// Run the app on a target: the web dev loop, or the terminal binary.
+    /// Run the app on a target: the web dev loop, or the terminal build loop.
     #[command(subcommand)]
     Run(RunTarget),
+    /// Attach the terminal app a `run tui` loop builds, in this terminal: runs the
+    /// binary, and swaps each rebuilt one in with the state carried across.
+    Attach {
+      /// The loop's port, as `run tui` prints it.
+      port: u16,
+    },
   }
 
   #[derive(Subcommand)]
@@ -110,8 +116,8 @@ mod host {
       #[arg(long)]
       ssr: bool,
     },
-    /// The terminal dev loop: build and run the binary, rebuild and restart on
-    /// change—state carried across the restart.
+    /// The terminal build loop: build, rebuild on change, and hand each binary to
+    /// the terminal `attach` runs it in—state carried across the swap.
     Tui {
       /// Build with optimizations (dev builds are unoptimized by default).
       #[arg(long)]
@@ -120,6 +126,10 @@ mod host {
   }
 
   pub fn run(cli: Cli) -> Result<(), String> {
+    if let Command::Attach { port } = cli.command {
+      return attach(port);
+    }
+
     let app = App::load(&cli.dir)?;
 
     match cli.command {
@@ -140,6 +150,8 @@ mod host {
       Command::Run(RunTarget::Web { port, release, ssr }) => dev(app, port, release, ssr),
 
       Command::Run(RunTarget::Tui { release }) => run_tui(&app, release),
+
+      Command::Attach { .. } => Ok(()),
     }
   }
 
@@ -199,9 +211,9 @@ mod host {
     skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))
   }
 
-  /// The terminal dev loop: run the binary with the state handshake, and on each
-  /// change rebuild first, then swap in the new binary—the CLI-held state carries
-  /// across the swap. Ends when the app itself exits.
+  /// The terminal build loop: build, publish the binary for an attached terminal, and
+  /// on each change rebuild and publish the next—the CLI-held state carries across
+  /// the swap. Runs until interrupted.
   fn run_tui(app: &App, release: bool) -> Result<(), String> {
     pipeline::build_tui_binary(app, release).map_err(|error| format!("build failed:\n{error}"))?;
 
@@ -210,6 +222,57 @@ mod host {
     let (changes, _watcher) = watch_sources(app)?;
     let binary = pipeline::tui_binary(app, release);
     let mut running = binary_digest(&binary);
+
+    dev.set_binary(binary.clone(), app.dir.clone());
+    println!(
+      "built; attach the app in another terminal:\n  {} attach {port}",
+      cli_command()
+    );
+
+    while changes.recv().is_ok() {
+      drain_burst(&changes);
+      println!("change detected; rebuilding…");
+
+      // A rebuild the change did not reach—an unrelated file, a comment elsewhere—
+      // leaves the binary identical, and the attached app (and its state) stays up
+      // instead of restarting for nothing.
+      match pipeline::build_tui_binary(app, release) {
+        Ok(()) => {
+          dev.clear_notice();
+
+          let rebuilt = binary_digest(&binary);
+
+          if rebuilt.is_some() && rebuilt == running {
+            println!("rebuilt; nothing changed");
+
+            continue;
+          }
+
+          running = rebuilt;
+          dev.set_binary(binary.clone(), app.dir.clone());
+          println!("rebuilt; swapping");
+        }
+        Err(error) => {
+          // The attached app presents the notice in a modal as well.
+          dev.set_notice(error.clone());
+          eprintln!("rebuild failed:\n{error}");
+        }
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Runs the binary a `run tui` loop on `port` publishes, in this terminal, with the
+  /// state handshake; swaps in each generation the loop publishes, restoring the
+  /// terminal between instances. Ends when the app itself exits.
+  fn attach(port: u16) -> Result<(), String> {
+    let published = || {
+      fetch(port, "/skene:binary").and_then(|body| Binary::parse(&String::from_utf8_lossy(&body)))
+    };
+    let mut current = published().ok_or_else(|| {
+      format!("no `run tui` loop answers on port {port}; start one and attach to its port")
+    })?;
     // The terminal state before any app instance touches it. A swap kills the running
     // instance mid-raw-mode; restoring this before the next spawn keeps each
     // instance's own saved "original" sane, so the final quit restores a working
@@ -217,64 +280,36 @@ mod host {
     let sane_tty = crate::tty::Tty::capture();
 
     loop {
-      let mut child = std::process::Command::new(&binary)
-        .current_dir(&app.dir)
+      let mut child = std::process::Command::new(&current.path)
+        .current_dir(&current.dir)
         .env("SKENE_DEV", port.to_string())
         .spawn()
-        .map_err(|error| format!("{}: {error}", binary.display()))?;
+        .map_err(|error| format!("{}: {error}", current.path.display()))?;
 
       loop {
         if let Ok(Some(_)) = child.try_wait() {
-          // The user quit the app; the loop ends with it.
+          // The user quit the app; the attachment ends with it.
           return Ok(());
         }
 
-        match changes.recv_timeout(Duration::from_millis(100)) {
-          Ok(()) => {
-            drain_burst(&changes);
+        thread::sleep(Duration::from_millis(250));
 
-            // Rebuild before swapping, so the running app stays up through the compile
-            // (and through a failed one). A rebuild the change did not reach—an
-            // unrelated file, a comment elsewhere—leaves the binary identical, and the
-            // running app (and its state) stays up instead of restarting for nothing.
-            match pipeline::build_tui_binary(app, release) {
-              Ok(()) => {
-                dev.clear_notice();
+        match published() {
+          Some(next) if next.generation != current.generation => {
+            current = next;
 
-                let rebuilt = binary_digest(&binary);
-
-                if rebuilt.is_some() && rebuilt == running {
-                  continue;
-                }
-
-                running = rebuilt;
-
-                let _ = child.kill();
-                let _ = child.wait();
-
-                if let Some(tty) = &sane_tty {
-                  tty.restore();
-                }
-
-                break;
-              }
-              Err(error) => {
-                // The running app presents the notice in a modal; the raw print is the
-                // fallback for an app that does not poll it.
-                let polls = dev.notice_polls();
-
-                dev.set_notice(error.clone());
-                thread::sleep(Duration::from_millis(1200));
-
-                if dev.notice_polls() == polls {
-                  announce(&format!("rebuild failed:\n{error}"));
-                }
-              }
-            }
-          }
-          Err(mpsc::RecvTimeoutError::Timeout) => {}
-          Err(mpsc::RecvTimeoutError::Disconnected) => {
             let _ = child.kill();
+            let _ = child.wait();
+
+            if let Some(tty) = &sane_tty {
+              tty.restore();
+            }
+
+            break;
+          }
+          Some(_) => {}
+          None => {
+            // The loop is gone; the app runs on until it quits.
             let _ = child.wait();
 
             return Ok(());
@@ -284,18 +319,16 @@ mod host {
     }
   }
 
-  /// Prints into the terminal the running app holds in raw mode: every line break
-  /// carries a carriage return, so the text reads straight instead of stair-stepping.
-  fn announce(text: &str) {
-    use std::io::Write;
+  /// How this CLI is invoked, for a command printed to run: through the workspace's
+  /// `cargo skene` alias when the binary sits in a cargo target directory.
+  fn cli_command() -> &'static str {
+    let under_target = std::env::current_exe().is_ok_and(|exe| {
+      exe
+        .components()
+        .any(|component| component.as_os_str() == "target")
+    });
 
-    let mut out = std::io::stderr();
-
-    for line in text.lines() {
-      let _ = write!(out, "{line}\r\n");
-    }
-
-    let _ = out.flush();
+    if under_target { "cargo skene" } else { "skene" }
   }
 
   /// The binary's content digest, to tell a rebuild that changed nothing from one

@@ -41,6 +41,40 @@ fn input_is_the_control_and_a_void_element() {
   assert!(body.ends_with('>'), "{body}");
 }
 
+/// A caption is a `<label for>` serialized before the input among its siblings, the
+/// input carrying the id it names, and the streamed render agrees byte for byte.
+#[test]
+fn a_caption_is_a_label_before_the_input() {
+  fn app() -> impl skene_gui::IntoView {
+    Container::new().set_child(RawTextField::new(TextEntry::new()).set_label("Name"))
+  }
+
+  let rendered = render_to_string(app);
+  let body = rendered.body();
+  let label = body.find("<label ").expect("a label");
+  let input = body.find("<input ").expect("an input");
+  let id = body[input..]
+    .split("id=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("the input's id");
+
+  assert!(label < input, "the label precedes the input: {body}");
+  assert!(
+    body[label..input].contains(&format!(" for=\"{id}\"")),
+    "the label names the input's id: {body}"
+  );
+  assert!(body.contains(">Name</span></label><input"), "{body}");
+  assert!(!body.contains("</input>"), "{body}");
+
+  let streamed = skene_gui::render_to_stream(app).chunks().concat();
+
+  assert!(
+    streamed.contains(body),
+    "the streamed render places the label the same: {streamed}"
+  );
+}
+
 /// The placeholder and value serialize as attributes, escaped.
 #[test]
 fn placeholder_and_value_serialize_as_attributes() {

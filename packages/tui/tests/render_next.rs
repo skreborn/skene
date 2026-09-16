@@ -421,3 +421,32 @@ fn an_overlay_opens_above_content_and_dismisses_on_escape() {
     assert!(!tui::render_to_text(20, 5).contains("modal"));
   });
 }
+
+/// A key release reaches the focused box's key-up handler, and a modifier pressed
+/// alone reaches the key-down handler as its W3C name without showing focus.
+#[test]
+fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
+  with_driver(|| {
+    let released = Signal::new(String::new());
+    let pressed = Signal::new(String::new());
+
+    let _ = tui::mount(move || {
+      Container::new()
+        .handle_key_down(move |event| pressed.set(event.key.clone()))
+        .handle_key_up(move |event| released.set(event.key.clone()))
+        .set_child(RawButton::new(Activate::new()).set_label("press"))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(20, 2);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key_up("Tab");
+
+    assert_eq!(released.get_untracked(), "Tab");
+
+    tui::trigger_key("Shift");
+
+    assert_eq!(pressed.get_untracked(), "Shift");
+  });
+}

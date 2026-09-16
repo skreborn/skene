@@ -80,7 +80,9 @@ pub use derived::{derived, empty, reconcile};
 pub use dispatch::{
   dispatch_click,
   dispatch_click_observed,
+  dispatch_context_menu,
   dispatch_key_down,
+  dispatch_key_up,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -91,9 +93,10 @@ pub use dispatch::{
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
+  notify_selection_change,
   notify_toggle,
 };
-pub use driver::Driver;
+pub use driver::{Driver, Timer};
 pub use errors::Errors;
 pub use events::{
   Bubbling,
@@ -142,7 +145,7 @@ pub use props::{
   StaticRunStyle,
 };
 pub use reorder::Reorder;
-pub use resolve::{Interaction, Resolved, Resolver, SlotValue, TokenValue};
+pub use resolve::{Focus, Interaction, Resolved, Resolver, SlotLeaf, SlotValue, TokenValue};
 pub use run_style::{
   IntoRunValue,
   RunDynamics,
@@ -167,6 +170,7 @@ pub use scene::{
   PlainHandler,
   Scene,
   ScrollHandler,
+  SelectionHandler,
   ToggleHandler,
 };
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
@@ -177,7 +181,9 @@ pub use values::{
   AccessProp,
   Alignment,
   Arrangement,
+  Availability,
   Axis,
+  ClipboardAction,
   Color,
   ColorScheme,
   Dimension,
@@ -203,6 +209,9 @@ pub use values::{
   RunDisplay,
   Size,
   Spacing,
+  TextDecoration,
+  TextDecorationStyle,
+  TextSelection,
   Toggle,
   TrackLimit,
   Wrap,
@@ -219,4 +228,4 @@ pub use view::{
   StackChild,
   View,
 };
-pub use window::{ItemWindow, item_window};
+pub use window::{ItemWindow, item_window, item_window_over};

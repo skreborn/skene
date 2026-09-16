@@ -50,6 +50,10 @@ pub enum Role {
   ListboxOption,
   /// A control pairing an input with a list of choices.
   Combobox,
+  /// A list of commands.
+  Menu,
+  /// One command within a [`Menu`](Role::Menu).
+  MenuItem,
 }
 
 impl Role {
@@ -70,6 +74,8 @@ impl Role {
         | Self::Listbox
         | Self::ListboxOption
         | Self::Combobox
+        | Self::Menu
+        | Self::MenuItem
     )
   }
 }

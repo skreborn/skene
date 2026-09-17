@@ -15,7 +15,6 @@ tracing.workspace = true
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 console_error_panic_hook = "0.1"
 js-sys = "0.3"
-postcard = { default-features = false, features = ["alloc"], version = "1" }
 unicode-segmentation = "1"
 vello_hybrid = { default-features = false, features = ["std"], version = "0.2" }
 wasm-bindgen.workspace = true

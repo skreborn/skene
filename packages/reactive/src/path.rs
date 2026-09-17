@@ -5,9 +5,10 @@ use std::{
   rc::Rc,
 };
 
-use serde::{Deserialize, Serialize};
-
-use crate::runtime::RUNTIME;
+use crate::{
+  encode::{Recorder, Snapshot, Value},
+  runtime::RUNTIME,
+};
 
 /// A scope's stable identity, naming its place in a state snapshot.
 ///
@@ -67,8 +68,20 @@ impl Hasher for Fnv128 {
 ///
 /// A keyed step takes no position, so keying a sibling shifts none of the positional
 /// ones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Step(u128);
+
+impl Snapshot for Step {
+  #[inline(always)]
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.wide(self.0);
+  }
+
+  #[inline(always)]
+  fn restore(value: Value<'_>) -> Option<Self> {
+    u128::restore(value).map(Self)
+  }
+}
 
 impl Step {
   /// The bit separating the keyed steps from the positional ones.
@@ -93,32 +106,33 @@ impl Step {
 /// across runs by [`provide`](crate::provide)/[`staged`](crate::staged)—a focused or
 /// scrolled node, say—so it is matched across runs exactly as a signal is, keys
 /// included.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(from = "Wire", into = "Wire")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Position {
   pub(crate) path: Rc<[Step]>,
   pub(crate) index: u32,
 }
 
-/// A [`Position`] as it crosses runs.
-#[derive(Serialize, Deserialize)]
-struct Wire(Vec<Step>, u32);
+impl Snapshot for Position {
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.seq(2, |recorder| {
+      Step::record_slice(&self.path, recorder);
+      self.index.record(recorder);
+    });
+  }
 
-impl From<Wire> for Position {
-  #[inline(always)]
-  fn from(Wire(path, index): Wire) -> Self {
-    Self {
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Seq(mut items) = value
+    else {
+      return None;
+    };
+    let path = Step::restore_slice(items.next()?)?;
+    let index = u32::restore(items.next()?)?;
+
+    Some(Self {
       path: Rc::from(path),
       index,
-    }
-  }
-}
-
-impl From<Position> for Wire {
-  #[inline(always)]
-  fn from(position: Position) -> Self {
-    Self(position.path.to_vec(), position.index)
+    })
   }
 }
 

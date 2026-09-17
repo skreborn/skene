@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use color::{AlphaColor, ColorSpace, Hsl, Hwb, Lab, Srgb};
-use serde::{Deserialize, Serialize};
+use skene_reactive::{Recorder, Snapshot, Value, key};
 
 use crate::Scalar;
 
@@ -9,7 +9,7 @@ use crate::Scalar;
 ///
 /// Names a scheme outright, where [`Media::Dark`](crate::Media::Dark)
 /// and its light twin ask the platform which one is in force.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum ColorScheme {
   /// Dark ink on a light surface.
@@ -22,7 +22,7 @@ pub enum ColorScheme {
 ///
 /// Every conversion runs through the same arithmetic on every target, so a color built
 /// on a server and the same color built in a browser are the same bits.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct Color {
   lightness: f32,
@@ -293,6 +293,60 @@ impl Color {
   #[must_use]
   pub const fn to_oklch(self) -> [f32; 4] {
     [self.lightness, self.chroma, self.hue, self.alpha]
+  }
+}
+
+impl Snapshot for ColorScheme {
+  fn record(&self, recorder: &mut Recorder) {
+    let name = match self {
+      Self::Light => "Light",
+      Self::Dark => "Dark",
+    };
+
+    recorder.variant(key(name), Recorder::unit);
+  }
+
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Variant(variant, _) = value
+    else {
+      return None;
+    };
+
+    if variant == key("Light") {
+      Some(Self::Light)
+    }
+    else if variant == key("Dark") {
+      Some(Self::Dark)
+    }
+    else {
+      None
+    }
+  }
+}
+
+impl Snapshot for Color {
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.record(|fields| {
+      fields.field(key("lightness"), &self.lightness);
+      fields.field(key("chroma"), &self.chroma);
+      fields.field(key("hue"), &self.hue);
+      fields.field(key("alpha"), &self.alpha);
+    });
+  }
+
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Record(record) = value
+    else {
+      return None;
+    };
+    let component = |name: &str| record.field(key(name)).and_then(f32::restore);
+
+    Some(Self {
+      lightness: component("lightness")?,
+      chroma: component("chroma")?,
+      hue: component("hue")?,
+      alpha: component("alpha").unwrap_or(1.),
+    })
   }
 }
 

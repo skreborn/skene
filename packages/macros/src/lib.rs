@@ -1,5 +1,6 @@
 //! Proc-macros for the skene entry, lazy loading, and the reactive store derive.
 
+mod snapshot;
 mod store;
 
 use proc_macro::TokenStream;
@@ -227,6 +228,27 @@ pub fn derive_store(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
 
   store::derive(&input)
+    .unwrap_or_else(syn::Error::into_compile_error)
+    .into()
+}
+
+/// Derives [`Snapshot`](../skene_reactive/trait.Snapshot.html): a struct records its
+/// fields by key and an enum its variant by key with the value it carries, so a signal
+/// holding the type takes part in state snapshots.
+///
+/// A key is a hash of the field's or the variant's name, stable under reordering;
+/// `#[snapshot(tag = "name")]` keys it by `name` instead, so it survives a rename.
+/// `#[snapshot(skip)]` leaves a field out of the record and restores it to its absent
+/// value, and `#[snapshot(default)]` on a unit variant names the variant an enum
+/// restores to where the recorded one is gone. A missing field takes its type's absent
+/// value, an unknown one is skipped, and a value of another kind coerces where it
+/// plainly survives. The generated code names `skene_reactive` as the `Store` derive
+/// does.
+#[proc_macro_derive(Snapshot, attributes(snapshot))]
+pub fn derive_snapshot(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+
+  snapshot::derive(&input)
     .unwrap_or_else(syn::Error::into_compile_error)
     .into()
 }

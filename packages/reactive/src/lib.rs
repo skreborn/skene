@@ -22,6 +22,7 @@ mod computation;
 mod context;
 mod dispose;
 mod effect;
+mod encode;
 mod graph;
 mod guards;
 mod id;
@@ -47,6 +48,7 @@ mod value;
 pub use access::{Get, Read, Set, Track, Update, With, Write};
 pub use context::{provide_context, use_context};
 pub use effect::{Effect, EffectHandle, Reaction, batch, untrack};
+pub use encode::{Fields, Reader, Record, Recorder, Seq, Snapshot, Value, decode, encode, key};
 pub use guards::{ReadGuard, WriteGuard};
 pub use id::Id as ReactiveId;
 pub use memo::Memo;
@@ -66,7 +68,7 @@ pub use signal::{
   signal,
   sync_signal,
 };
-pub use skene_macros::Store;
+pub use skene_macros::{Snapshot, Store};
 pub use slice::{Slice, SyncSlice};
 pub use snapshot::{provide, restore, snapshot, staged};
 pub use spawn::{Task, set_spawner, spawn};

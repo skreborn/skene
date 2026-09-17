@@ -3,10 +3,10 @@ use std::panic::Location;
 use std::{any::Any, fmt, marker::PhantomData, rc::Rc, sync::Arc};
 
 use parking_lot::Mutex;
-use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
   computation,
+  encode::Snapshot,
   guards::{ReadGuard, WriteGuard},
   id::{Id, Kind},
   runtime::{RUNTIME, Runtime, with_graph},
@@ -119,13 +119,13 @@ impl<T, S> Signal<T, S> {
   }
 }
 
-impl<T: Default + Serialize + DeserializeOwned + 'static> Default for Signal<T> {
+impl<T: Default + Snapshot> Default for Signal<T> {
   fn default() -> Self {
     Self::new(T::default())
   }
 }
 
-impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
+impl<T: Snapshot> Signal<T> {
   /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner).
   ///
   /// The signal takes part in state snapshots: its identity is its position—the
@@ -133,7 +133,7 @@ impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
   /// type—so a [`restore`](crate::restore)d run adopts the value a prior run held at
   /// that position, when one was staged and decodes as `T`, and `value` otherwise.
   /// [`tagged`](Self::tagged) names the position instead; [`opaque`](Self::opaque)
-  /// stays out of snapshots and needs no serde.
+  /// stays out of snapshots and needs no [`Snapshot`].
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(value: T) -> Self {
     Self::snapshotted(None, value)
@@ -175,9 +175,7 @@ impl<T: Send + Sync + 'static> Signal<T, SyncStorage> {
 
 /// Creates a signal holding `value` and returns its two halves; see [`Signal::new`].
 #[cfg_attr(debug_assertions, track_caller)]
-pub fn signal<T: Serialize + DeserializeOwned + 'static>(
-  value: T,
-) -> (ReadSignal<T>, WriteSignal<T>) {
+pub fn signal<T: Snapshot>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
   let signal = Signal::new(value);
 
   signal.split()

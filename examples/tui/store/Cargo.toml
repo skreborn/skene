@@ -5,7 +5,6 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-serde = { features = ["derive"], version = "1" }
 skene-simple.workspace = true
 skene-tui.workspace = true
 

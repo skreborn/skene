@@ -5,17 +5,16 @@
 //! the count beneath the list, and nothing else runs. The list follows the shape of
 //! the `Vec` alone, keyed by the id each todo carries.
 
-use serde::{Deserialize, Serialize};
 use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
-#[derive(Store, Clone, Default, Serialize, Deserialize)]
+#[derive(Store, Clone, Default, Snapshot)]
 struct Todos {
   next_id: u32,
   items: Vec<Todo>,
 }
 
-#[derive(Store, Clone, Serialize, Deserialize)]
+#[derive(Store, Clone, Snapshot)]
 struct Todo {
   id: u32,
   title: String,

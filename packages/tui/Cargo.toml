@@ -6,7 +6,6 @@ edition.workspace = true
 # Host-only: the terminal platform never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64 = "0.22"
-postcard = { default-features = false, features = ["alloc"], version = "1" }
 rustc-hash.workspace = true
 rustix = { default-features = false, features = ["event", "std", "stdio", "termios"], version = "1" }
 skene-core.workspace = true

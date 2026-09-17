@@ -55,6 +55,7 @@ pub use skene_reactive::{
   ReadSignal,
   Set,
   Signal,
+  Snapshot,
   Store,
   StoreField,
   Update,

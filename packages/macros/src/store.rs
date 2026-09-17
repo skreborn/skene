@@ -8,7 +8,7 @@ use syn::{Data, DeriveInput, Fields, Ident, LitStr, ext::IdentExt};
 
 /// The path to `skene_reactive` from the deriving crate: the crate itself where it is
 /// a direct dependency, else the facade's `reactive` re-export.
-fn reactive() -> TokenStream {
+pub(crate) fn reactive() -> TokenStream {
   if let Ok(found) = crate_name("skene-reactive") {
     return match found {
       FoundCrate::Itself => quote!(::skene_reactive),
@@ -62,7 +62,7 @@ struct Field {
 }
 
 /// FNV-1a over `name`: the field key, stable under reordering.
-fn field_key(name: &str) -> u32 {
+pub(crate) fn field_key(name: &str) -> u32 {
   name.bytes().fold(0x811c_9dc5_u32, |hash, byte| {
     (hash ^ u32::from(byte)).wrapping_mul(0x0100_0193)
   })

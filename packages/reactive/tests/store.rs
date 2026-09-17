@@ -7,10 +7,9 @@ use std::{
   time::{Duration, Instant},
 };
 
-use serde::{Deserialize, Serialize};
-use skene_reactive::{Effect, Get, IndexedField, KeyedField, Owner, Store, StoreField};
+use skene_reactive::{Effect, Get, IndexedField, KeyedField, Owner, Snapshot, Store, StoreField};
 
-#[derive(Store, Default, Serialize, Deserialize)]
+#[derive(Store, Default, Snapshot)]
 struct Settings {
   name: String,
   volume: u32,
@@ -19,12 +18,12 @@ struct Settings {
   users: HashMap<u32, User>,
 }
 
-#[derive(Store, Default, Serialize, Deserialize)]
+#[derive(Store, Default, Snapshot)]
 struct Audio {
   gain: u32,
 }
 
-#[derive(Store, Default, Serialize, Deserialize, Clone)]
+#[derive(Store, Default, Snapshot, Clone)]
 struct User {
   score: u32,
 }
@@ -202,7 +201,7 @@ fn colliding_key_hashes_never_alias() {
 /// named after the location surface.
 #[test]
 fn derive_surface() {
-  #[derive(Store, Serialize, Deserialize)]
+  #[derive(Store, Snapshot)]
   struct Pair<T> {
     first: T,
     #[store(tag = "other")]
@@ -211,10 +210,10 @@ fn derive_surface() {
     scratch: u8,
   }
 
-  #[derive(Store, Serialize, Deserialize)]
+  #[derive(Store, Snapshot)]
   struct Point(i32, i32);
 
-  #[derive(Store, Serialize, Deserialize)]
+  #[derive(Store, Snapshot)]
   struct Awkward {
     get: u32,
     set: u32,

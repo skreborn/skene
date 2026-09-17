@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use serde::{Deserialize, Serialize};
+use skene_reactive::{Recorder, Snapshot, Value, key};
 
 /// The selection inside a text entry, in grapheme clusters of its value: `start` is
 /// the cluster the selection began from and `end` the one it extends to, where the
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// A platform clamps each index into the value; nothing can name the inside of a
 /// cluster.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[must_use]
 pub struct TextSelection {
   /// The cluster the selection began from.
@@ -88,5 +88,31 @@ impl TextSelection {
       },
       end: if self.end < count { self.end } else { count },
     }
+  }
+}
+
+impl Snapshot for TextSelection {
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.record(|fields| {
+      fields.field(key("start"), &self.start);
+      fields.field(key("end"), &self.end);
+    });
+  }
+
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Record(record) = value
+    else {
+      return None;
+    };
+
+    Some(Self {
+      start: record.field(key("start")).and_then(usize::restore)?,
+      end: record.field(key("end")).and_then(usize::restore)?,
+    })
+  }
+
+  #[inline(always)]
+  fn absent() -> Option<Self> {
+    Some(Self::default())
   }
 }

@@ -8,17 +8,16 @@
 //! reorder moves them—keyed by the id each todo carries, so state under a row keeps
 //! its identity wherever the row sits.
 
-use serde::{Deserialize, Serialize};
 use skene_gui::prelude::*;
 use skene_simple::gui::prelude::*;
 
-#[derive(Store, Clone, Default, Serialize, Deserialize)]
+#[derive(Store, Clone, Default, Snapshot)]
 struct Todos {
   next_id: u32,
   items: Vec<Todo>,
 }
 
-#[derive(Store, Clone, Serialize, Deserialize)]
+#[derive(Store, Clone, Snapshot)]
 struct Todo {
   id: u32,
   title: String,

@@ -28,10 +28,18 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHasher};
-use serde::{Serialize, de::DeserializeOwned};
 use smallvec::SmallVec;
 
-use crate::{Memo, Owner, Signal, Trigger, access::With, effect::batch, signal::update_silently};
+use crate::{
+  Memo,
+  Owner,
+  Signal,
+  Trigger,
+  access::With,
+  effect::batch,
+  encode::Snapshot,
+  signal::update_silently,
+};
 
 /// An interned location inside a store's value: the root, or one path of fields,
 /// indexes and keys beneath it.
@@ -298,7 +306,7 @@ impl<T: 'static> Clone for Store<T> {
 
 impl<T: 'static> Copy for Store<T> {}
 
-impl<T: Serialize + DeserializeOwned + 'static> Store<T> {
+impl<T: Snapshot> Store<T> {
   /// Creates a store owned by the current [`Owner`]; the whole value is one snapshot
   /// signal at the owner's next position, see [`Signal::new`].
   pub fn new(value: T) -> Self {

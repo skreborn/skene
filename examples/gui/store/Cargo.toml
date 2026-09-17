@@ -12,7 +12,6 @@ name = "store-server"
 path = "src/main.rs"
 
 [dependencies]
-serde = { features = ["derive"], version = "1" }
 skene-gui.workspace = true
 skene-simple.workspace = true
 

@@ -9,7 +9,6 @@ libm = "0.2"
 longest-increasing-subsequence = "0.1"
 num-traits.workspace = true
 rustc-hash.workspace = true
-serde = { features = ["derive"], version = "1" }
 skene-reactive.workspace = true
 smallvec.workspace = true
 

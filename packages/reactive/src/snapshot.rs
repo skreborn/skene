@@ -1,5 +1,4 @@
-//! State snapshots: every serializable signal serializes to bytes and restores on
-//! creation.
+//! State snapshots: every snapshot signal records its value and restores on creation.
 //!
 //! A signal's identity across two runs is its position: the path of steps from the
 //! runtime's root owner to the owner it was created under, its index among that owner's
@@ -11,11 +10,11 @@
 //! snapshot so signals created afterwards adopt the staged value at their position.
 //!
 //! Per owner, restoration aligns the live sequence with the staged one as the live
-//! side is created: a tagged signal takes the staged entry of its tag, and an untagged
-//! one takes the next unconsumed untagged entry of its type, skipping entries the new
-//! program no longer creates. An entry with no match, a match of another type and a
-//! value that no longer decodes all fall back to the default: a restore never fails,
-//! it degrades to fresh state.
+//! side is created: a tagged signal takes the staged entry of its tag, whatever its
+//! type, and an untagged one takes the next unconsumed untagged entry of its type,
+//! skipping entries the new program no longer creates. An entry with no match and a
+//! value that no longer restores as the type, even through the encoding's coercions,
+//! fall back to the default: a restore never fails, it degrades to fresh state.
 
 use std::{
   any::type_name,
@@ -25,11 +24,11 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::{
   Signal,
   With,
+  encode::{Fields, Recorder, Snapshot, Value, decode, encode, key},
   id::Id,
   path::{Position, Step},
   runtime::{RUNTIME, Runtime, with_graph},
@@ -49,19 +48,70 @@ struct Registration {
   serialize: Serializer,
 }
 
-/// One serialized signal, as it crosses runs.
-#[derive(Serialize, Deserialize)]
+/// One recorded signal, as it crosses runs.
 struct Entry {
   ty: u64,
   tag: Option<String>,
   bytes: Vec<u8>,
 }
 
+impl Snapshot for Entry {
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.record(|fields: &mut Fields| {
+      fields.field(key("ty"), &self.ty);
+      fields.field(key("tag"), &self.tag);
+      fields.field(key("bytes"), &self.bytes);
+    });
+  }
+
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Record(record) = value
+    else {
+      return None;
+    };
+
+    Some(Self {
+      ty: record.field(key("ty")).and_then(u64::restore)?,
+      tag: record
+        .field(key("tag"))
+        .and_then(Option::restore)
+        .unwrap_or(None),
+      bytes: record.field(key("bytes")).and_then(Vec::restore)?,
+    })
+  }
+}
+
 /// The whole snapshot: each owner's entries by path, then the provided extras by tag.
-#[derive(Default, Serialize, Deserialize)]
-struct Snapshot {
+#[derive(Default)]
+struct Capture {
   owners: Vec<(Vec<Step>, Vec<Entry>)>,
   extras: Vec<(String, Vec<u8>)>,
+}
+
+impl Snapshot for Capture {
+  fn record(&self, recorder: &mut Recorder) {
+    recorder.record(|fields: &mut Fields| {
+      fields.field(key("owners"), &self.owners);
+      fields.field(key("extras"), &self.extras);
+    });
+  }
+
+  fn restore(value: Value<'_>) -> Option<Self> {
+    let Value::Record(record) = value
+    else {
+      return None;
+    };
+    Some(Self {
+      owners: record
+        .field(key("owners"))
+        .and_then(Vec::restore)
+        .unwrap_or_default(),
+      extras: record
+        .field(key("extras"))
+        .and_then(Vec::restore)
+        .unwrap_or_default(),
+    })
+  }
 }
 
 /// One owner's staged entries and the alignment cursor over them.
@@ -94,7 +144,7 @@ fn type_hash<T: 'static>() -> u64 {
   hasher.finish()
 }
 
-impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
+impl<T: Snapshot> Signal<T> {
   /// Creates a signal whose `tag` names its position in state snapshots.
   ///
   /// A tag anchors the match where the positional identity of [`new`](Self::new)
@@ -120,7 +170,7 @@ impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
     let Position { path, index } = Position::next();
     let ty = type_hash::<T>();
     let value = take_staged(&path, ty, tag)
-      .and_then(|bytes| postcard::from_bytes(&bytes).ok())
+      .and_then(|bytes| decode::<T>(&bytes))
       .unwrap_or(value);
     let signal = Self::opaque(value);
 
@@ -132,20 +182,16 @@ impl<T: Serialize + DeserializeOwned + 'static> Signal<T> {
       index,
       ty,
       tag,
-      Box::new(move || {
-        signal
-          .try_with_untracked(|value| postcard::to_allocvec(value).ok())
-          .flatten()
-      }),
+      Box::new(move || signal.try_with_untracked(|value| encode(value))),
     );
 
     signal
   }
 }
 
-/// Takes the staged entry matching a signal at `path`: the one under `tag`, or the next
-/// unconsumed untagged one of type `ty`. Entries skipped on the way are left to tagged
-/// lookups only.
+/// Takes the staged entry matching a signal at `path`: the one under `tag`, whatever
+/// its type, or the next unconsumed untagged one of type `ty`. Entries skipped on the
+/// way are left to tagged lookups only.
 fn take_staged(path: &[Step], ty: u64, tag: Option<&str>) -> Option<Vec<u8>> {
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();
@@ -166,7 +212,7 @@ fn take_staged(path: &[Step], ty: u64, tag: Option<&str>) -> Option<Vec<u8>> {
 
     staged.cursor = staged.cursor.max(position + 1);
 
-    (entry.ty == ty).then_some(entry.bytes)
+    Some(entry.bytes)
   })
 }
 
@@ -251,7 +297,7 @@ pub fn staged(tag: &str) -> Option<Vec<u8>> {
   REGISTRY.with(|registry| registry.borrow_mut().staged_extras.remove(tag))
 }
 
-/// Serializes every live snapshot signal's current value, grouped by owner path and
+/// Records every live snapshot signal's current value, grouped by owner path and
 /// ordered by position, followed by the provided extras ordered by tag.
 #[must_use]
 pub fn snapshot() -> Vec<u8> {
@@ -301,10 +347,10 @@ pub fn snapshot() -> Vec<u8> {
 
     extras.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
 
-    Snapshot { owners, extras }
+    Capture { owners, extras }
   });
 
-  postcard::to_allocvec(&snapshot).unwrap_or_default()
+  encode(&snapshot)
 }
 
 /// Stages a prior [`snapshot`], so signals created afterwards adopt their staged
@@ -313,7 +359,7 @@ pub fn snapshot() -> Vec<u8> {
 /// Entries whose position never comes up again simply stay unconsumed; bytes that are
 /// not a snapshot stage nothing.
 pub fn restore(bytes: &[u8]) {
-  let snapshot: Snapshot = postcard::from_bytes(bytes).unwrap_or_default();
+  let snapshot: Capture = decode(bytes).unwrap_or_default();
 
   REGISTRY.with(|registry| {
     let mut registry = registry.borrow_mut();

@@ -214,10 +214,10 @@ pub(crate) fn provide_restoration() {
   skene_reactive::provide(SCROLL_TAG, || {
     scroll_snapshot()
       .filter(|entries| !entries.is_empty())
-      .and_then(|entries| postcard::to_allocvec(&entries).ok())
+      .map(|entries| skene_reactive::encode(&entries))
   });
   skene_reactive::provide(FOCUS_TAG, || {
-    focus_snapshot().and_then(|focus| postcard::to_allocvec(&focus).ok())
+    focus_snapshot().map(|focus| skene_reactive::encode(&focus))
   });
 }
 
@@ -232,7 +232,7 @@ pub fn adopt_restoration() {
 /// node is a text entry.
 fn adopt_focus() {
   let Some((position, caret)) = skene_reactive::staged(FOCUS_TAG)
-    .and_then(|bytes| postcard::from_bytes::<(Position, Option<Caret>)>(&bytes).ok())
+    .and_then(|bytes| skene_reactive::decode::<(Position, Option<Caret>)>(&bytes))
   else {
     return;
   };
@@ -264,7 +264,7 @@ fn adopt_scroll() {
   else {
     return;
   };
-  let Ok(entries) = postcard::from_bytes::<Vec<(Position, u32, u32)>>(&bytes)
+  let Some(entries) = skene_reactive::decode::<Vec<(Position, u32, u32)>>(&bytes)
   else {
     return;
   };

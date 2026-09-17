@@ -84,7 +84,7 @@ fn select(element: &Element, start: u32, end: u32) {
 /// entry rides every snapshot alongside the tagged signals.
 pub(crate) fn provide_restoration() {
   skene_reactive::provide(TAG, || {
-    current().and_then(|carry| postcard::to_allocvec(&carry).ok())
+    current().map(|carry| skene_reactive::encode(&carry))
   });
 }
 
@@ -92,7 +92,7 @@ pub(crate) fn provide_restoration() {
 /// mounted: entries no live node carries are dropped.
 pub fn adopt_restoration() {
   let Some((focused, scrolls)) =
-    skene_reactive::staged(TAG).and_then(|bytes| postcard::from_bytes::<Carry>(&bytes).ok())
+    skene_reactive::staged(TAG).and_then(|bytes| skene_reactive::decode::<Carry>(&bytes))
   else {
     return;
   };

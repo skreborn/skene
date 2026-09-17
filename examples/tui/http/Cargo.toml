@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 skene-transport.workspace = true
-skene-simple-tui.workspace = true
+skene-simple.workspace = true
 skene-tui.workspace = true
 
 [lints]

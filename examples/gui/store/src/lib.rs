@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 use skene_gui::prelude::*;
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[derive(Store, Clone, Default, Serialize, Deserialize)]
 struct Todos {

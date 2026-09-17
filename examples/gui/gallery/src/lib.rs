@@ -1,7 +1,7 @@
 //! The gallery: every built-in view and Simple component, live.
 
 use skene_gui::{ActivePlatform, prelude::*};
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 /// The gallery page: every built-in view and Simple component, under the palette the
 /// reader picks.

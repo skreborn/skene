@@ -8,7 +8,7 @@
 //! needs no network beyond the dev server.
 
 use skene_gui::{Resource, prelude::*};
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 /// Where the quotes live: the app's declared asset, served at its URI.
 const QUOTES: &str = "/gui-http/assets/quotes.txt";

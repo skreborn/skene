@@ -24,12 +24,12 @@ dev-loop restart resumes where the last run stood; a keyed list item or a view g
 ## A GUI app
 
 A GUI app depends on `skene-gui` and, for the ready-made components, on
-`skene-simple-gui`; it marks its entry with `#[main]` and names no platform
+`skene-simple`; it marks its entry with `#[main]` and names no platform
 (`examples/gui/counter`):
 
 ```rust
 use skene_gui::prelude::*;
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {
@@ -63,11 +63,11 @@ host it builds the tree against the headless platform, which is what view tests 
 
 ## A terminal app
 
-A terminal app depends on `skene-tui` (and `skene-simple-tui` for the components) and
+A terminal app depends on `skene-tui` (and `skene-simple` for the components) and
 calls `launch` (`examples/tui/counter`):
 
 ```rust
-use skene_simple_tui::prelude::*;
+use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
 fn app() -> impl IntoView {
@@ -117,9 +117,8 @@ skene-common          every built-in view once, generic over the platform; the p
       ├── skene-headless   the host platform: an inspectable record store for tests
       └── skene-tui        the terminal facade and its platform
 skene-gui             the GUI facade: aliases over the selected platform
-skene-simple          the Simple component library over skene-common, generic
-      ├── skene-simple-gui   its aliases and prelude for skene-gui
-      └── skene-simple-tui   its aliases and prelude for skene-tui
+skene-simple          the Simple component library over skene-common, generic; its gui and
+                      tui modules alias it to each facade with a prelude
 skene-runner          a host library embedding wasmtime around the server build
 skene-macros          #[main], #[lazy], #[derive(Store)]
 skene-cli             the `skene` command
@@ -134,8 +133,7 @@ skene-cli             the `skene` command
 | `skene-headless` | `packages/headless` | The host `Platform`: records what any platform receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
 | `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
 | `skene-tui` | `packages/tui` | The terminal facade and platform: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform. |
-| `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActivePlatform`, with a `prelude` an app imports beside the facade's own. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `tui` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, `wasi:http` through the server leaf's reactor on a server render, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` on other hosts, `wasi:sockets` with rustls on a server render). |

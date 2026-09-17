@@ -20,7 +20,7 @@ skene-web.workspace = true
 wasm-bindgen.workspace = true
 
 [dev-dependencies]
-skene-simple-gui.workspace = true
+skene-simple.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 skene-headless.workspace = true

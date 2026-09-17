@@ -7,6 +7,10 @@ edition.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
 skene-common.workspace = true
+skene-gui.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+skene-tui.workspace = true
 
 [dev-dependencies]
 skene-headless.workspace = true

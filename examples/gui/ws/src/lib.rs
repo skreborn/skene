@@ -10,7 +10,7 @@
 use std::rc::Rc;
 
 use skene_gui::{Resource, prelude::*, spawn};
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 /// The echo service the example talks to.
 const ECHO: &str = "wss://echo.websocket.org/";

@@ -6,7 +6,7 @@
 //! the `Vec` alone, keyed by the id each todo carries.
 
 use serde::{Deserialize, Serialize};
-use skene_simple_tui::prelude::*;
+use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
 #[derive(Store, Clone, Default, Serialize, Deserialize)]

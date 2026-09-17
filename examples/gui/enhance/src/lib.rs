@@ -10,7 +10,7 @@
 use std::time::Duration;
 
 use skene_gui::{ActivePlatform, core::Platform, kurbo::Rect, prelude::*};
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

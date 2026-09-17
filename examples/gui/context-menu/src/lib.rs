@@ -8,7 +8,7 @@
 //! something is selected, and `Cut` and `Paste` only inside a text entry.
 
 use skene_gui::prelude::*;
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 #[main]
 fn app() -> impl IntoView {

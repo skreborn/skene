@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use skene_simple_tui::prelude::*;
+use skene_simple::tui::prelude::*;
 use skene_tui::{ActivePlatform, core::Platform, kurbo::Rect, prelude::*};
 
 /// The page: a clock over its caption, and a picture over its description.

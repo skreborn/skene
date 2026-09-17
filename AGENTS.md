@@ -390,7 +390,7 @@
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
   re-exports it, an app depends on it explicitly, and
-  `skene-simple-gui`/`skene-simple-tui` are only a `prelude` of aliases over that facade's
+  its `gui` and `tui` modules are only a `prelude` of aliases over that facade's
   `ActivePlatform`, which is exactly what a third-party library may ship beside its generic
   crate. `examples/third-party` is the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`

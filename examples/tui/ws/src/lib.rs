@@ -3,7 +3,7 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use skene_simple_tui::prelude::*;
+use skene_simple::tui::prelude::*;
 use skene_tui::prelude::*;
 
 /// The echo service the example talks to when no URL is given.

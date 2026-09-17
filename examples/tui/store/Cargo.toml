@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 serde = { features = ["derive"], version = "1" }
-skene-simple-tui.workspace = true
+skene-simple.workspace = true
 skene-tui.workspace = true
 
 [lints]

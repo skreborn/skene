@@ -8,7 +8,7 @@
 //! theme redefines its tokens in place, and the tree beneath it stands.
 
 use skene_gui::prelude::*;
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 
 /// A definition taking `dark`'s value under the dark scheme and `light`'s otherwise.
 fn pair(light: Color, dark: Color) -> Definition<Color> {

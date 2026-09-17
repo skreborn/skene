@@ -54,7 +54,7 @@ use skene_gui::{
   wasm_bindgen::JsCast,
   web::{self, mount},
 };
-use skene_simple_gui::prelude::*;
+use skene_simple::gui::prelude::*;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement};
 

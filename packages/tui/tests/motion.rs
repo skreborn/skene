@@ -7,7 +7,7 @@ mod common;
 
 use std::time::Duration;
 
-use skene_simple_tui::prelude::*;
+use skene_simple::tui::prelude::*;
 use skene_tui::{
   self as tui,
   Color,

@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-skene-simple-tui.workspace = true
+skene-simple.workspace = true
 skene-tui.workspace = true
 skene-transport.workspace = true
 

@@ -9,7 +9,7 @@ mod common;
 
 use skene_tui::{self as tui, CellDecoration, TextEntry, TextSelection, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A family emoji: three emoji joined by zero width joiners, one cluster.
 const FAMILY: &str = "\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}";
@@ -32,7 +32,7 @@ fn underlined(decorations: &[CellDecoration], width: usize, row: usize) -> Optio
 /// laid out and painted accordingly, and a wide cluster wraps as one.
 #[test]
 fn text_is_measured_by_cells_not_characters() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
@@ -84,7 +84,7 @@ fn text_is_measured_by_cells_not_characters() {
 /// into the value.
 #[test]
 fn a_field_edits_and_places_its_caret_by_cluster() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new("日本x".to_owned());
     let selection = Signal::new(TextSelection::default());
     let _ = tui::mount(move || {
@@ -171,7 +171,7 @@ fn a_field_edits_and_places_its_caret_by_cluster() {
 /// caret at the end shows the last cluster alone, and `Home` brings the first back.
 #[test]
 fn a_fields_window_scrolls_by_cells() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new("日本語".to_owned());
     let _ = tui::mount(move || {
       RawTextField::new(TextEntry::new().bind_value(value))
@@ -198,7 +198,7 @@ fn a_fields_window_scrolls_by_cells() {
 /// ones, from the cluster under the press to the one under the release.
 #[test]
 fn the_document_selection_takes_whole_clusters() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| Text::new("日本語").set_selectable(true).into_any().build());
     let _ = tui::render_to_text(12, 4);
 

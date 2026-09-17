@@ -3,9 +3,9 @@
 //! Each facade owns its condition enum—its leaves are typed to its medium—and adds
 //! `And`/`Or` variants for composition. Implementing [`Composable`] (exposing the shape
 //! of one level) gives it the shared machinery: [`holds`](Composable::holds) for a
-//! driver that interprets conditions against live state, and
-//! [`disjunctive_leaves`](Composable::disjunctive_leaves) for a driver that compiles
-//! them into another language (the web driver's CSS rules).
+//! platform that interprets conditions against live state, and
+//! [`disjunctive_leaves`](Composable::disjunctive_leaves) for a platform that compiles
+//! them into another language (the web platform's CSS rules).
 
 /// One level of a composed condition: a leaf, or a combination of subconditions.
 pub enum ConditionShape<'condition, C> {
@@ -61,7 +61,7 @@ pub trait Composable: Clone + Sized {
   /// one holding entirely makes the condition hold.
   ///
   /// An empty result never holds (`or` of nothing); an empty conjunction within the
-  /// result always holds (`and` of nothing). A compiling driver emits one rule per
+  /// result always holds (`and` of nothing). A compiling platform emits one rule per
   /// conjunction.
   fn disjunctive_leaves(&self) -> Vec<Vec<&Self>> {
     match self.shape() {

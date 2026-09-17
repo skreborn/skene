@@ -1,6 +1,6 @@
 //! Context menus: the list opens pinned at the press and prevents the platform's menu,
 //! its first usable item takes focus, the keys walk the enabled items, an item runs
-//! and closes it, a standard item follows the driver's clipboard, and the deepest menu
+//! and closes it, a standard item follows the platform's clipboard, and the deepest menu
 //! along the path wins.
 
 use std::{cell::RefCell, rc::Rc};
@@ -199,11 +199,11 @@ fn the_keys_walk_the_enabled_items() {
   assert!(!is_open(list));
 }
 
-/// A standard item is listed where the driver offers its action, disabled where the
-/// action does not apply, and runs the action through the driver; a menu with nothing
+/// A standard item is listed where the platform offers its action, disabled where the
+/// action does not apply, and runs the action through the platform; a menu with nothing
 /// usable does not open but still prevents the platform's.
 #[test]
-fn a_standard_item_follows_the_drivers_clipboard() {
+fn a_standard_item_follows_the_platforms_clipboard() {
   reset();
 
   let owner = Owner::new();

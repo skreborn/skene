@@ -40,7 +40,7 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
     None
   }
 
-  /// The value `amount` of the way from `from` to `to`, for a driver running motion on
+  /// The value `amount` of the way from `from` to `to`, for a platform running motion on
   /// its own clock; an extension whose values have no in-between cuts over halfway.
   #[inline(always)]
   #[must_use]

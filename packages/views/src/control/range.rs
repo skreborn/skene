@@ -6,9 +6,9 @@ use skene_core::{
   AccessProp,
   Axis,
   ControlKind,
-  Driver,
   EventKind,
   KeyEvent,
+  Platform,
   PointerEvent,
   Prevent,
   Role,
@@ -186,7 +186,7 @@ impl Default for Range {
   }
 }
 
-impl<D: Driver> Behavior<D> for Range {
+impl<P: Platform> Behavior<P> for Range {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Range
@@ -207,12 +207,12 @@ impl<D: Driver> Behavior<D> for Range {
     ]
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let extent = Rc::clone(&self.extent);
     let axis = self.axis;
 
     control.with_sink(|sink| {
-      D::default().observe_size(
+      P::default().observe_size(
         sink,
         Rc::new(move |size| {
           extent.set(match axis {
@@ -224,7 +224,7 @@ impl<D: Driver> Behavior<D> for Range {
     });
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     let Some(next) = self.key_value(&event.key)
     else {
       return Prevent::None;
@@ -239,7 +239,7 @@ impl<D: Driver> Behavior<D> for Range {
     &self,
     phase: PointerPhase,
     event: &PointerEvent,
-    _control: &ControlHandle<D>,
+    _control: &ControlHandle<P>,
   ) -> Prevent {
     match phase {
       PointerPhase::Down => {

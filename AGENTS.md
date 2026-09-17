@@ -6,51 +6,51 @@
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
   runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
 - The spine (`skene-reactive` + `skene-core` + `skene-views`) stays platform-agnostic: no
-  platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<D>`:
+  platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the
-  zero-sized **`Driver`** trait every driver implements, event dispatch over the scene,
+  zero-sized **`Platform`** trait every platform implements, event dispatch over the scene,
   the property model (`BoxStyle<N, S, X>`, `RunStyle<S, X>` and their visitors), values
   and expressions (`Value`, `Leaf`, `Expr`), conditions (`Media`, `State`, `Condition`),
   tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation, the runtime
-  **`Resolver`** every non-CSS driver resolves its styles through (with the erased
-  `TokenValue` and `SlotValue` it reads), the host **executor** a driver installs, generic
-  geometry over the driver's scalar, and universal values. `skene-views` hosts every
-  built-in view once, generic over `D: Driver`; a facade aliases them.
+  **`Resolver`** every non-CSS platform resolves its styles through (with the erased
+  `TokenValue` and `SlotValue` it reads), the host **executor** a platform installs, generic
+  geometry over the platform's scalar, and universal values. `skene-views` hosts every
+  built-in view once, generic over `P: Platform`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
   terminal)—each owning its builder vocabulary, typed to exactly its medium; neither is
-  the blessed one. Within a facade, views are realized **once** against its typed driver
+  the blessed one. Within a facade, views are realized **once** against its typed platform
   vocabulary—no per-platform `impl View`, no "backend" concept.
-- A **driver** is a crate implementing `Driver`: `skene-web` (the csr and ssr leaves),
-  `skene-headless` (the host driver every facade compiles against off its target, driven
+- A **platform** is a crate implementing `Platform`: `skene-web` (the csr and ssr leaves),
+  `skene-headless` (the host platform every facade compiles against off its target, driven
   by tests), later `skene-native`; `skene-tui` carries its own, down to the terminal
   device: its `tty`, `parse` and `escape` modules are the whole terminal layer, no
   terminal crate beneath, so a reply a new capability needs is parsed in the change
-  that asks for it. What every driver of one
+  that asks for it. What every platform of one
   medium shares above the spine lives in that medium's core crate—`skene-gui-core`
   (`GuiExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TuiExt`,
   `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no medium.
-  Drivers depend on core and their medium's core, never on each other; a facade is the
-  only place that names its drivers, and it publishes the selected one as `ActiveDriver`.
-  The trait is zero-sized and monomorphized: no `dyn` driver, no downcast, no runtime
+  Platforms depend on core and their medium's core, never on each other; a facade is the
+  only place that names its platforms, and it publishes the selected one as `ActivePlatform`.
+  The trait is zero-sized and monomorphized: no `dyn` platform, no downcast, no runtime
   swap. It is **not sealed**, and the shared machinery bounds only on it and the public
-  extension traits, so a third-party driver is a facade in all but ownership. Each driver
+  extension traits, so a third-party platform is a facade in all but ownership. Each platform
   crate also exposes an **escape trait** beside the portable one (`WebMarkup` on both web
   leaves, `WebDom` on the browser leaf only, `CellPainter` in the terminal, later
   `PlatformView`), so a low-level view is written against exactly the bound it needs and
   is realized through the same scene and node ids as a built-in (`skene_views::LowLevel`
   registers the sink it made as a node). `Painted` (vello) is the portable low-level path
   for pixels, through `skene-views`' `Painting` extension: the browser leaf renders the
-  scene into a canvas, the headless driver renders it to pixels a test reads, the
+  scene into a canvas, the headless platform renders it to pixels a test reads, the
   terminal shows it through its graphics protocol where one is proven, the server leaf
-  renders it empty; the native realization comes with the native driver.
+  renders it empty; the native realization comes with the native platform.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
   `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
-  native driver, later; every other host → the headless driver). No feature flags.
+  native platform, later; every other host → the headless platform). No feature flags.
   Target-gating is the enforcement layer: the web csr/ssr leaves stay split on
   `target_os` (`unknown`/`wasi`), so the server leaf physically cannot touch the DOM. A
   cargo feature may only **add items**: never a trait bound, a type, a variant or a
-  driver. No cargo feature exists in the workspace, and `cargo hack --feature-powerset`
+  platform. No cargo feature exists in the workspace, and `cargo hack --feature-powerset`
   is part of the gate so none creeps back in.
 - The **style model is data**: `BoxStyle<N, S, X>` and `RunStyle<S, X>` name every
   shared property once (typed properties, conditions riding the value, transitions,
@@ -66,7 +66,7 @@
   not clamped, not a weight); weights are the wrappers' grow/shrink factors and
   `GridTrack::Flex`; `spacing`, not `gap`; `columns`/`implicit_columns`/`flow` on a
   grid, not templates and auto-flow. CSS nomenclature lives only inside the web
-  driver's mapping layer. This is settled—do not re-litigate it toward CSS naming.
+  platform's mapping layer. This is settled—do not re-litigate it toward CSS naming.
   A run's decoration is three properties—`decoration` (`TextDecoration`),
   `decoration_style` (`TextDecorationStyle`) and `decoration_color`—Flutter's names;
   a link underlines unless its decoration says otherwise, and the terminal keeps the
@@ -137,10 +137,10 @@
     the facade's `media` module rather than on a theme, and `None` returns to following
     the platform. Nesting themes nests palettes; the scheme decides which value each of
     their conditional tokens takes.
-  - **A scheme an app controls is resolved by the driver, never by a rebuild.** A
+  - **A scheme an app controls is resolved by the platform, never by a rebuild.** A
     `derived` rebuild destroys the old nodes and disposes their scope—measured: a signal
     inside the subtree goes back to its initial value, and focus, scroll offsets and
-    native input state go with it. So `derive_scheme` tells the driver which scheme is in
+    native input state go with it. So `derive_scheme` tells the platform which scheme is in
     force and touches nothing: the web writes `data-skene-scheme` on the document root,
     which every scheme-conditional rule is already gated on, and the terminal reads the
     choice where it reads its detected background. One write re-inks the page.
@@ -163,13 +163,13 @@
     scene, never read back for structure. Overlays are `<dialog>`/popover promoted to the
     top layer *in place* rather than portalled, and only the `<head>` is a real portal;
     an anchored popup is placed by CSS anchor positioning where the engine has it and at
-    the anchor's measured rectangle where it does not. A native driver may still realize
+    the anchor's measured rectangle where it does not. A native platform may still realize
     an overlay into its own layer, so nothing is built on ancestor-selector reachability
     beyond a control's own subtree.
   - **Environment is queryable.** `media::viewport()`, `media::scheme()` and
     `media::reduced_motion()` are signals on every facade, `media::watch(&condition)`
     turns any declared condition into a memo, and a box's measured size reaches a view
-    through `Driver::observe_size` and an app through a `SizeHandle` bound to the box. On
+    through `Platform::observe_size` and an app through a `SizeHandle` bound to the box. On
     the web they are live after hydration and hold the server's answer before it; the
     server's answer comes from client hints when the runner is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive
@@ -182,16 +182,16 @@
   `Enhance` in `skene-views` builds `set_fallback` while the signal it is given is
   false and `set_child_builder` once it is true, each at most once. There is no
   capability vocabulary: each signal belongs to what can lack it, and a web-only fact
-  is named for the web. `Driver::hydration()` is the web's, `None` by default (the
-  terminal and the native drivers never answer, so the terminal facade cannot name
+  is named for the web. `Platform::hydration()` is the web's, `None` by default (the
+  terminal and the native platforms never answer, so the terminal facade cannot name
   it): the web leaves return the signal that is false on the server leaf and while a
   hydration adopts the server's markup and true once it has finished (so the fallback
   is adopted, then rebuilt into the child in place, under a replacement owner), the
-  headless driver returns one a test flips (`set_hydrated`), and the GUI facade reads
+  headless platform returns one a test flips (`set_hydrated`), and the GUI facade reads
   it as `media::hydrated()`, true from the start on native. `Painting::available()` is
   the pixels': false on the server and in the terminal until its graphics probe is
   answered, true on the browser leaf once live, `set_graphics` on the headless
-  driver; it is what `Painted::set_fallback` waits for, and the picker's prerendered
+  platform; it is what `Painted::set_fallback` waits for, and the picker's prerendered
   `<select>` waits on `hydration()`, drawn outright where there is none. Prefer the
   latest CSS standards and pay
   nothing for obscure or ancient engines; when a slightly older engine can be
@@ -202,12 +202,12 @@
   in `skene-web` and is shared by both leaves; each layers only its sink.
 - **Painted** content is vello wherever it is realized: a `Canvas` is a vello scene in
   device pixels, drawn with kurbo shapes and peniko brushes, recorded once and replayed
-  into whichever `Renderer` the driver owns. The browser leaf renders it into a
+  into whichever `Renderer` the platform owns. The browser leaf renders it into a
   `<canvas>` sized to the box at the device pixel ratio, repainting on resize: through
   vello's hybrid renderer over wgpu where the page has WebGPU—one device shared by
   every painted box, a surface per canvas—and through vello's CPU renderer otherwise.
   The choice is made once per page when the first box paints, and a box paints nothing
-  until it is made; native layers come with the native driver. SSR/SSG render it empty.
+  until it is made; native layers come with the native platform. SSR/SSG render it empty.
   The terminal renders it on the CPU at the box's cells times the cell's pixel size
   and shows it through the kitty graphics protocol where launch's query (`a=q`) was
   answered `OK`: transmitted once per change, placed over the box's cells cropped to
@@ -216,9 +216,9 @@
   shadow paints them as a backdrop image beneath every colored cell, one per box,
   its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-views`, re-exported
   by `skene-gui-core`. **Embeds** are
-  driver-specific views with driver-exposed constructors (raw DOM element on web csr,
+  platform-specific views with platform-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
-  platforms with a real view hierarchy the driver realizes the tree into it, so embeds
+  platforms with a real view hierarchy the platform realizes the tree into it, so embeds
   and painted layers interleave in z-order by the platform compositor.
 - **The TUI targets browser parity.** Wherever the terminal can express it, behavior
   follows a modern browser: layout, features, settings, colors, selection, and every
@@ -230,7 +230,7 @@
   link run is a tab stop that `Enter` follows and `Space` does not, a press on its cell
   focusing it as a click on an anchor does; `FocusVisible` holds as `:focus-visible`
   does, after a key or in a text entry and not since a pointer press, on the terminal
-  and the headless driver alike; popups light-dismiss, except on their own anchor, whose
+  and the headless platform alike; popups light-dismiss, except on their own anchor, whose
   click toggles them; a modal takes focus on open and returns it on close; a key's
   default runs after the handlers' writes have taken effect, as after a browser's
   microtask checkpoint; a release dispatches as `KeyUp` with no default, a held key
@@ -300,16 +300,16 @@
   on every control, `Raw*` and `Simple*` alike. A control decides what the platform and
   the ancestors are told, once, where its behavior lives, so no app or library author
   asks "am I cancelling a platform default here". `Prevent` belongs to the layer that
-  owns behavior (a `Behavior`, a driver); above a driver, nothing states one. A control
-  the driver realizes never asks to suppress the platform's response, because there
+  owns behavior (a `Behavior`, a platform); above a platform, nothing states one. A control
+  the platform realizes natively never asks to suppress the native response, because there
   that response **is** the control. A box keeps the one decision that is genuinely its
   own: `Container`'s handlers return `Into<Bubbling>`—`()` for the ordinary case,
   `Bubbling::Stop` to keep the event from the ancestors—so a box chooses whether it
   consumes, and a control has that chosen for it. The name is deliberate: it is about
   onward travel only, since a view may handle an event and still let it climb. Nothing
-  above a driver states more. Dispatch itself lives in core over the scene: a driver
+  above a platform states more. Dispatch itself lives in core over the scene: a platform
   reports an event at a node, core walks the parents, runs handlers deepest first,
-  folds the verdicts and tells the driver what the platform may do—so every driver, the
+  folds the verdicts and tells the platform what its native layer may do—so every platform, the
   headless one included, bubbles by one implementation. A click on a native web toggle
   is dispatched *observed* (`dispatch_click_observed`): every handler up the path runs
   except the acting one the behavior registered, since the platform's flip arrives as
@@ -322,14 +322,14 @@
   browser's. `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`,
   `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and
   `RawPicker` is composed from them. A listbox and the closed picker face have
-  type-ahead (`TypeAhead`, its buffer reset on `Driver::schedule`) over the names the
+  type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
   options' labels supply (`Label::set_name`), and the face's verdict on a typed key is
   the `Popup` behavior's through `handle_typed`. A control is **controlled** on every facade: it
   reports, and the bound signal is the truth. A text entry's selection is controlled
   beside its value: `TextSelection` is a `start` and an `end` in grapheme clusters of
   the value, the end where the caret is and before the start when made backward,
   `derive_selection` places it, `handle_selection_change` hears every move of the
-  caret, and `bind_selection` wires both to one signal; a driver clamps each index
+  caret, and `bind_selection` wires both to one signal; a platform clamps each index
   into the value, so nothing can name the inside of a cluster. A `State` a box cannot have on its own
   (`Checked`, `Indeterminate`, `Disabled`, `Invalid`, `Open`) resolves against the
   enclosing control; a node's own `Hovered`/`Focused` stay its own. Parts (`Track`,
@@ -340,7 +340,7 @@
   slider's track, fill and thumb are boxes there as everywhere. **Accessibility is
   reported, never spelled**: a behavior reports what it is (`Checked`, `Value`,
   `Expanded`, `HasPopup`, `Orientation`), a control's user adds what any control may carry
-  (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the driver maps each to its
+  (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the platform maps each to its
   layer—on the web a form element takes the native attribute where one exists, so the form
   enforces it without script, and ARIA otherwise. A caption drawn by a view names its
   control by reference (`LabelledBy`, `aria-labelledby` on the web), since a combobox,
@@ -354,7 +354,7 @@
   is deliberate. The gallery runs under axe-core in the browser tier (`web_axe`), the
   gate for every built-in's semantics. On the web a control that owns a native
   input keeps it as its scriptless form—a text field or editor *is* its `<input>` or
-  `<textarea>`, its caption a `<label for>` the driver keeps before it among its
+  `<textarea>`, its caption a `<label for>` the platform keeps before it among its
   siblings, a checkbox, radio or slider keeps its input inside its label beside the
   parts that draw it, and none needs a swap after hydration—and the picker, drawn on
   every engine, is an `Enhance` over its `NativePicker` form, a `<select>` the server
@@ -374,38 +374,38 @@
   on the wrapped view dispatches `EventKind::ContextMenu`, the deepest wrapper along the
   path opens its `List` pinned at the pointer and prevents the platform's menu, and
   wherever no wrapper is the browser keeps its own. Items are `MenuItem`s, the standard
-  `copy`/`cut`/`paste` among them, each asking the driver's `clipboard_availability`
-  whether it is absent, disabled or enabled and acting through `Driver::clipboard`; the
+  `copy`/`cut`/`paste` among them, each asking the platform's `clipboard_availability`
+  whether it is absent, disabled or enabled and acting through `Platform::clipboard`; the
   list is a `Menu` of `MenuOption` controls (`Role::Menu`/`Role::MenuItem`), the
   behaviors a third party's menu reuses. `SimpleContextMenu` is the styled one; the
   server renders nothing for a menu.
 - **Third parties are first-class by construction.** A component library depends on
-  `skene-views`, writes generic over `D: Driver` exactly as the built-ins do
-  (`Container<D>`, `Control<D, Toggle>`, `Theme<D, AcmePalette>`), states what it needs
-  from a medium as a bound on the driver's associated types (`D::StyleExt: CornerRadius`
+  `skene-views`, writes generic over `P: Platform` exactly as the built-ins do
+  (`Container<P>`, `Control<P, Toggle>`, `Theme<P, AcmePalette>`), states what it needs
+  from a medium as a bound on the platform's associated types (`P::StyleExt: CornerRadius`
   rounds where the medium can and writes nothing where it cannot; a capability a library
   *requires* is a hard bound, so the library does not exist on a medium lacking it), and
-  works on every facade from one crate. A low-level view is written against a driver's
-  escape trait and selected through the facade's `ActiveDriver`. Nothing on the path a
+  works on every facade from one crate. A low-level view is written against a platform's
+  escape trait and selected through the facade's `ActivePlatform`. Nothing on the path a
   built-in takes is crate-private; making something `pub(crate)` on that path is a
   regression. `skene-simple` is held to the same rule from the other side: a facade never
   re-exports it, an app depends on it explicitly, and
   `skene-simple-gui`/`skene-simple-tui` are only a `prelude` of aliases over that facade's
-  `ActiveDriver`, which is exactly what a third-party library may ship beside its generic
+  `ActivePlatform`, which is exactly what a third-party library may ship beside its generic
   crate. `examples/third-party` is the standing proof and part of the gate.
 - **Motion is declared once and runs everywhere.** `Transition` and keyframe `Animation`
   are data. The web compiles them to CSS; native and the terminal run them on the
-  driver's frame clock from the resolution point that reports a changed value, never
+  platform's frame clock from the resolution point that reports a changed value, never
   through the reactive graph per frame. Every change source animates: a condition
   flipping, a token redefined, an expression input moving, a derived write. Reduced
   motion is respected by default. `set_transition_name` and the router's view-transition
   wrap cover same-document transitions, `@view-transition` the cross-document ones, and
   both degrade to a cut.
-- View logic tests run headless via `skene-headless`, the host driver, which implements
-  the whole `Driver` trait so nothing is wasm-gated for want of a driver; its executor
-  runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Drivers
+- View logic tests run headless via `skene-headless`, the host platform, which implements
+  the whole `Platform` trait so nothing is wasm-gated for want of a platform; its executor
+  runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Platforms
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime
-  under a byte-exact snapshot; native: its toolkit). There is no mock driver.
+  under a byte-exact snapshot; native: its toolkit). There is no mock platform.
 - HTTP, WebSockets and timers are userland. `skene-http` is an HTTP client built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands
   where a third party's would: `fetch` on the web, `wasi:http` through the server
@@ -413,11 +413,11 @@
   sibling, the browser's socket on the web, `wasi:sockets` with rustls under the
   same client on a server render, and a thread around `tungstenite` elsewhere. The framework ships the seams—`spawn`,
   `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
-  pollable, `sleep`, the render deadline), and `Driver::schedule`, a one-shot action on
-  the driver's clock that a view's delay waits on (the tooltip's hover delay; the
-  headless driver and the terminal fire it from the hand-stepped clock a test
+  pollable, `sleep`, the render deadline), and `Platform::schedule`, a one-shot action on
+  the platform's clock that a view's delay waits on (the tooltip's hover delay; the
+  headless platform and the terminal fire it from the hand-stepped clock a test
   advances, the server never)—so third-party integrations sit on the same
-  footing first-party ones would. (Exception: a native driver
+  footing first-party ones would. (Exception: a native platform
   owning its event loop may ship a loop-integrated timer.)
 
 ## Style and documentation conventions
@@ -448,12 +448,12 @@
 ## Naming & API conventions
 
 - The spine stays minimal and structural. The built-in views live in `skene-views`,
-  written once against `Driver`; a facade aliases them
-  (`type Container = skene_views::Container<ActiveDriver>`). Users extend by composing
-  built-ins, painting a `Painted` node, or authoring a view against a driver's escape
+  written once against `Platform`; a facade aliases them
+  (`type Container = skene_views::Container<ActivePlatform>`). Users extend by composing
+  built-ins, painting a `Painted` node, or authoring a view against a platform's escape
   trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,
-  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A driver
+  `handle_<event>` for an event handler (e.g. `Container::handle_click`). A platform
   function that realizes the handler is named the same.
 - The layout vocabulary rule extends to the whole surface: views, controls, and
   composition helpers take the platform-native frameworks' names (`TextField`,
@@ -536,7 +536,7 @@
   an additive feature can never gate a trait bound.
 - Aim for the absolute least duplication that sacrifices neither ergonomics nor performance:
   when facades need the same machinery over different vocabularies, the spine hosts it once as
-  a small monomorphized generic (`Scene<D>`, `Control<D, B>`, `Composable`), each facade
+  a small monomorphized generic (`Scene<P>`, `Control<P, B>`, `Composable`), each facade
   keeping its own flat, medium-typed surface. Never share via feature-gated variants or
   fields: cargo features are additive and unify across the build graph, so mutually-exclusive
   cfgs break any build containing both facades.

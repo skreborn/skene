@@ -9,12 +9,12 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{self as tui, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A derived subtree swaps its content when its dependency changes.
 #[test]
 fn derived_swaps_content() {
-  with_driver(|| {
+  with_platform(|| {
     let on = Signal::new(false);
 
     let _ = tui::mount(|| {
@@ -40,7 +40,7 @@ fn derived_swaps_content() {
 /// content.
 #[test]
 fn suspense_swaps_fallback_for_loaded_content() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Suspense::new()
         .set_fallback(Text::new("LOADING"))
@@ -83,7 +83,7 @@ fn tasks_end_with_their_scope() {
   let landed = Rc::new(Cell::new(false));
   let seen = Rc::clone(&landed);
 
-  with_driver(move || {
+  with_platform(move || {
     let show = Signal::new(true);
 
     let _ = tui::mount(|| {
@@ -113,7 +113,7 @@ fn tasks_end_with_their_scope() {
 /// restores the content as it was.
 #[test]
 fn error_boundary_presents_and_clears_reports() {
-  with_driver(|| {
+  with_platform(|| {
     let handle = Rc::new(Cell::new(None::<Errors>));
     let grabbed = Rc::clone(&handle);
 

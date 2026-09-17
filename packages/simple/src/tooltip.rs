@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use skene_core::{AnyKind, AnyView, Driver, IntoView, NoChild, NodeId, Placement, View};
+use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Placement, Platform, View};
 use skene_views::{CornerRadius, Tooltip};
 
 use super::{
@@ -19,11 +19,11 @@ use super::{
 /// [`set_child`](Self::set_child), so any view takes a tooltip by wrapping. For
 /// anything beyond that, compose [`Tooltip`] directly.
 #[must_use]
-pub struct SimpleTooltip<D: Driver, C = NoChild> {
-  raw: Tooltip<D, C>,
+pub struct SimpleTooltip<P: Platform, C = NoChild> {
+  raw: Tooltip<P, C>,
 }
 
-impl<D: Driver> SimpleTooltip<D> {
+impl<P: Platform> SimpleTooltip<P> {
   /// A tooltip showing `text`.
   #[inline(always)]
   pub fn new(text: impl Into<String>) -> Self {
@@ -42,7 +42,7 @@ impl<D: Driver> SimpleTooltip<D> {
 
   /// A tooltip showing `content`, a view of any kind.
   #[inline(always)]
-  pub fn view(content: impl IntoView<D>) -> Self {
+  pub fn view(content: impl IntoView<P>) -> Self {
     Self {
       raw: Tooltip::view(content),
     }
@@ -50,14 +50,14 @@ impl<D: Driver> SimpleTooltip<D> {
 
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> SimpleTooltip<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> SimpleTooltip<P, AnyView<P>> {
     SimpleTooltip {
       raw: self.raw.set_child(child),
     }
   }
 }
 
-impl<D: Driver, C> SimpleTooltip<D, C> {
+impl<P: Platform, C> SimpleTooltip<P, C> {
   /// Sets where the bubble sits against the described view: above it for `Top`, below
   /// it for `Bottom`.
   #[inline(always)]
@@ -76,21 +76,21 @@ impl<D: Driver, C> SimpleTooltip<D, C> {
   }
 }
 
-impl<D: Driver, C> AnyKind for SimpleTooltip<D, C> {}
+impl<P: Platform, C> AnyKind for SimpleTooltip<P, C> {}
 
-impl<D: Driver> View<D> for SimpleTooltip<D, AnyView<D>>
+impl<P: Platform> View<P> for SimpleTooltip<P, AnyView<P>>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
     self
       .raw
-      .set_color(SimplePalette::<D::Scalar>::FOREGROUND)
-      .set_text_color(SimplePalette::<D::Scalar>::BACKGROUND)
-      .set_padding(shape::<D>().tooltip_inset)
+      .set_color(SimplePalette::<P::Scalar>::FOREGROUND)
+      .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
+      .set_padding(shape::<P>().tooltip_inset)
       .set_corner_radius(MARK_RADIUS)
       .build()
   }

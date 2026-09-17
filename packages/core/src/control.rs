@@ -1,9 +1,9 @@
-//! What a control is to the scene and to a driver: its kind, the state a box cannot
+//! What a control is to the scene and to a platform: its kind, the state a box cannot
 //! hold, and the parts it exposes.
 
 use std::fmt::Debug;
 
-use super::{BoxProps, Driver, State};
+use super::{BoxProps, Platform, State};
 use crate::Toggle;
 
 /// The state a control holds that a box cannot: what the control-scoped [`State`]
@@ -53,7 +53,7 @@ impl Default for ControlState {
   }
 }
 
-/// What a control is, guiding a driver that realizes some kinds natively.
+/// What a control is, guiding a platform that realizes some kinds natively.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum ControlKind {
@@ -85,14 +85,14 @@ pub enum ControlKind {
   MenuItem,
 }
 
-/// Everything a driver needs to realize a control: a box with a kind and, where
+/// Everything a platform needs to realize a control: a box with a kind and, where
 /// nothing visible supplies one, an accessible name.
 #[must_use]
-pub struct ControlProps<D: Driver> {
+pub struct ControlProps<P: Platform> {
   /// What the control is.
   pub kind: ControlKind,
   /// The box the control is realized as.
-  pub box_props: BoxProps<D>,
+  pub box_props: BoxProps<P>,
   /// The accessible name, when nothing visible supplies one.
   pub label: Option<String>,
   /// The hint a text entry shows while its value is empty.
@@ -101,7 +101,7 @@ pub struct ControlProps<D: Driver> {
   pub lines: u16,
 }
 
-impl<D: Driver> Clone for ControlProps<D> {
+impl<P: Platform> Clone for ControlProps<P> {
   fn clone(&self) -> Self {
     Self {
       kind: self.kind,
@@ -113,7 +113,7 @@ impl<D: Driver> Clone for ControlProps<D> {
   }
 }
 
-impl<D: Driver> Debug for ControlProps<D> {
+impl<P: Platform> Debug for ControlProps<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("ControlProps")

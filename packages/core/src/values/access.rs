@@ -3,7 +3,7 @@ use crate::NodeId;
 
 /// One accessibility property a widget reports, for a reactive update.
 ///
-/// Semantics, not style: a driver maps these to whatever its accessibility layer
+/// Semantics, not style: a platform maps these to whatever its accessibility layer
 /// speaks—ARIA attributes on the web, a platform accessibility node elsewhere—so the
 /// vocabulary names the concept and never the platform's spelling of it. Pairs with a
 /// widget [`Role`](super::Role), which says what the control *is* while these say what it currently
@@ -45,7 +45,7 @@ pub enum AccessProp {
   /// The node whose text describes the control.
   DescribedBy(NodeId),
   /// A plain-text description: the accessible description where nothing else supplies
-  /// one, and the platform's own tooltip where the platform shows one without script.
+  /// one, and the native tooltip where the platform shows one without script.
   Description(String),
   /// The axis a range control runs along.
   Orientation(Axis),

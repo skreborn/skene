@@ -7,7 +7,6 @@ use skene_core::{
   Annotation,
   AnyView,
   Condition,
-  Driver,
   GridChild,
   GridPlacement,
   IntoChildOf,
@@ -15,6 +14,7 @@ use skene_core::{
   Leaf,
   Line,
   NoChild,
+  Platform,
   Scene,
   StaticLeaf,
   Value,
@@ -23,8 +23,8 @@ use skene_core::{
 
 use crate::layout_box::split_alignment;
 
-/// A placement value under the driver's conditions.
-type Placement<D> = Value<Line<GridPlacement>, Condition<<D as Driver>::Scalar>>;
+/// A placement value under the platform's conditions.
+type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar>>;
 
 /// Places the child it wraps in the tracks of a [`Grid`](crate::Grid).
 ///
@@ -33,22 +33,22 @@ type Placement<D> = Value<Line<GridPlacement>, Condition<<D as Driver>::Scalar>>
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
 /// are; holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct GridCell<D: Driver, C = NoChild> {
-  row: Option<Placement<D>>,
-  column: Option<Placement<D>>,
-  alignment: Option<Value<Alignment, Condition<D::Scalar>>>,
+pub struct GridCell<P: Platform, C = NoChild> {
+  row: Option<Placement<P>>,
+  column: Option<Placement<P>>,
+  alignment: Option<Value<Alignment, Condition<P::Scalar>>>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Default for GridCell<D> {
+impl<P: Platform> Default for GridCell<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> GridCell<D> {
+impl<P: Platform> GridCell<P> {
   /// A wrapper placing its child automatically, with no child yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -57,15 +57,15 @@ impl<D: Driver> GridCell<D> {
       column: None,
       alignment: None,
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> GridCell<D, C> {
+impl<P: Platform, C> GridCell<P, C> {
   /// Sets the row placement.
   #[inline(always)]
-  pub fn set_row(mut self, row: impl Into<Placement<D>>) -> Self {
+  pub fn set_row(mut self, row: impl Into<Placement<P>>) -> Self {
     self.row = Some(row.into());
 
     self
@@ -85,7 +85,7 @@ impl<D: Driver, C> GridCell<D, C> {
 
   /// Sets the column placement.
   #[inline(always)]
-  pub fn set_column(mut self, column: impl Into<Placement<D>>) -> Self {
+  pub fn set_column(mut self, column: impl Into<Placement<P>>) -> Self {
     self.column = Some(column.into());
 
     self
@@ -107,7 +107,7 @@ impl<D: Driver, C> GridCell<D, C> {
   #[inline(always)]
   pub fn set_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.alignment = Some(alignment.into());
 
@@ -128,26 +128,26 @@ impl<D: Driver, C> GridCell<D, C> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> GridCell<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> GridCell<P, AnyView<P>> {
     GridCell {
       row: self.row,
       column: self.column,
       alignment: self.alignment,
       child: child.into_view(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> IntoChildOf<D, GridChild> for GridCell<D, AnyView<D>> {
-  fn into_child(self) -> AnyView<D> {
+impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
+  fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
       let (horizontal, vertical) = match self.alignment.as_ref().map(split_alignment) {
         Some((horizontal, vertical)) => (Some(horizontal), Some(vertical)),
         None => (None, None),
       };
 
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         scene.set_pending_annotation(Annotation {
           grid_row_placement: self.row,
           grid_column_placement: self.column,

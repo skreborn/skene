@@ -13,7 +13,6 @@ use skene_core::{
   Condition,
   DeclaredBoxStyle,
   Dimension,
-  Driver,
   HasChildren,
   IntoView,
   ItemAlignment,
@@ -21,6 +20,7 @@ use skene_core::{
   NodeId,
   Part,
   Placement,
+  Platform,
   Point,
   PointerEvent,
   Prevent,
@@ -54,7 +54,7 @@ use crate::{
 enum ItemKind {
   /// A command of the menu's own, running its handler.
   Command,
-  /// A standard clipboard action the driver performs.
+  /// A standard clipboard action the platform performs.
   Standard(ClipboardAction),
   /// A rule between groups of items.
   Separator,
@@ -65,7 +65,7 @@ enum ItemKind {
 ///
 /// A command runs [`handle_select`](Self::handle_select) when chosen. A standard
 /// action ([`copy`](Self::copy), [`cut`](Self::cut), [`paste`](Self::paste)) acts on
-/// what the platform holds selected or focused, is listed only where the driver
+/// what the platform holds selected or focused, is listed only where the platform
 /// offers it, and is disabled while it does not apply.
 #[must_use]
 pub struct MenuItem {
@@ -192,25 +192,25 @@ impl MenuItem {
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
 #[must_use]
-pub struct ContextMenu<D: Driver, C = NoChild> {
+pub struct ContextMenu<P: Platform, C = NoChild> {
   items: Vec<MenuItem>,
-  list: Overlay<D>,
-  item_style: DeclaredBoxStyle<D>,
-  item_text_color: Option<Declared<D, Color>>,
-  shortcut_color: Option<Declared<D, Color>>,
-  separator_color: Option<Declared<D, Color>>,
-  shortcut_spacing: Option<Declared<D, Spacing<D::Scalar>>>,
+  list: Overlay<P>,
+  item_style: DeclaredBoxStyle<P>,
+  item_text_color: Option<Declared<P, Color>>,
+  shortcut_color: Option<Declared<P, Color>>,
+  separator_color: Option<Declared<P, Color>>,
+  shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
   child: C,
 }
 
-impl<D: Driver> ContextMenu<D> {
+impl<P: Platform> ContextMenu<P> {
   /// A menu with no items yet.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       items: Vec::new(),
       list: Overlay::popup().set_placement(Placement::TopStart),
-      item_style: DeclaredBoxStyle::<D>::default(),
+      item_style: DeclaredBoxStyle::<P>::default(),
       item_text_color: None,
       shortcut_color: None,
       separator_color: None,
@@ -229,7 +229,7 @@ impl<D: Driver> ContextMenu<D> {
 
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> ContextMenu<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> ContextMenu<P, AnyView<P>> {
     ContextMenu {
       items: self.items,
       list: self.list,
@@ -248,24 +248,24 @@ impl<D: Driver> ContextMenu<D> {
   pub fn serve(self, node: NodeId) -> NodeId {
     let list = self.mount(node);
 
-    Scene::<D>::with(|scene| scene.attach(node, list, None));
+    Scene::<P>::with(|scene| scene.attach(node, list, None));
 
     list
   }
 }
 
-impl<D: Driver> Default for ContextMenu<D> {
+impl<P: Platform> Default for ContextMenu<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, C> ContextMenu<D, C> {
+impl<P: Platform, C> ContextMenu<P, C> {
   /// The declared style of the list, for a facade's medium-specific setters to write
   /// into.
   #[inline(always)]
-  pub const fn list_style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn list_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.list.style_mut()
   }
 
@@ -274,12 +274,12 @@ impl<D: Driver, C> ContextMenu<D, C> {
   /// The declared style of every item, for a facade's medium-specific setters to
   /// write into.
   #[inline(always)]
-  pub const fn item_style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn item_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.item_style
   }
 
   properties! { item_style_mut;
-    set_item_padding / derive_item_padding (padding) => padding: skene_core::Inset<D::Scalar>,
+    set_item_padding / derive_item_padding (padding) => padding: skene_core::Inset<P::Scalar>,
       "the padding on each edge of every item";
     set_item_color / derive_item_color (color) => color: Color,
       "the background color of every item";
@@ -292,13 +292,13 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_item_corner_radius(
     mut self,
-    radius: impl Into<Value<f32, Condition<D::Scalar>>>,
+    radius: impl Into<Value<f32, Condition<P::Scalar>>>,
   ) -> Self
   where
-    D::StyleExt: crate::CornerRadius,
+    P::StyleExt: crate::CornerRadius,
   {
-    <D::StyleExt as crate::CornerRadius>::set_corner_radius::<
-      skene_core::Declared<Condition<D::Scalar>>,
+    <P::StyleExt as crate::CornerRadius>::set_corner_radius::<
+      skene_core::Declared<Condition<P::Scalar>>,
     >(&mut self.item_style.ext, Some(radius.into()));
 
     self
@@ -308,7 +308,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_item_text_color(
     mut self,
-    color: impl Into<Value<Color, Condition<D::Scalar>>>,
+    color: impl Into<Value<Color, Condition<P::Scalar>>>,
   ) -> Self {
     self.item_text_color = Some(color.into());
 
@@ -319,7 +319,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_shortcut_color(
     mut self,
-    color: impl Into<Value<Color, Condition<D::Scalar>>>,
+    color: impl Into<Value<Color, Condition<P::Scalar>>>,
   ) -> Self {
     self.shortcut_color = Some(color.into());
 
@@ -330,7 +330,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_separator_color(
     mut self,
-    color: impl Into<Value<Color, Condition<D::Scalar>>>,
+    color: impl Into<Value<Color, Condition<P::Scalar>>>,
   ) -> Self {
     self.separator_color = Some(color.into());
 
@@ -341,7 +341,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_shortcut_spacing(
     mut self,
-    spacing: impl Into<Value<Spacing<D::Scalar>, Condition<D::Scalar>>>,
+    spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
   ) -> Self {
     self.shortcut_spacing = Some(spacing.into());
 
@@ -353,7 +353,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.list = self.list.set_transition(transition);
 
@@ -375,7 +375,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
     } = self;
     let open = Signal::opaque(false);
     let position: Signal<Option<Point<f32>>> = Signal::opaque(None);
-    // Bumped at every request, so a standard item re-asks the driver as the menu opens.
+    // Bumped at every request, so a standard item re-asks the platform as the menu opens.
     let generation = Signal::opaque(0u32);
     let dress = RowDress {
       item_style,
@@ -384,7 +384,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
       separator_color,
       shortcut_spacing,
     };
-    let mut rows: Vec<AnyView<D>> = Vec::new();
+    let mut rows: Vec<AnyView<P>> = Vec::new();
     let mut runs: Vec<Rc<dyn Fn()>> = Vec::new();
     let mut usable: Vec<Predicate> = Vec::new();
 
@@ -396,7 +396,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
       }
 
       let value = runs.len().to_string();
-      let verdicts = item.verdicts::<D>(generation);
+      let verdicts = item.verdicts::<P>(generation);
       let Verdicts {
         run,
         shown,
@@ -432,10 +432,10 @@ impl<D: Driver, C> ContextMenu<D, C> {
       .derive_open(move || open.get())
       .derive_position(move || position.get())
       .handle_dismiss(move || open.set(false))
-      .set_child(Control::<D, _>::new(menu).set_child(Column::<D>::new().set_children(rows)))
+      .set_child(Control::<P, _>::new(menu).set_child(Column::<P>::new().set_children(rows)))
       .build();
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       scene.set_part(list, Part::List);
       scene.handle_context_menu(
         served,
@@ -455,7 +455,7 @@ impl<D: Driver, C> ContextMenu<D, C> {
     // rows and their states have settled by the time it looks.
     Effect::new(move |_: Option<()>| {
       if open.get() {
-        untrack(|| group.focus_at::<D>(first_enabled::<D>(&group)));
+        untrack(|| group.focus_at::<P>(first_enabled::<P>(&group)));
       }
     });
 
@@ -464,10 +464,10 @@ impl<D: Driver, C> ContextMenu<D, C> {
 }
 
 /// The roster index of the first item whose control is enabled.
-fn first_enabled<D: Driver>(roster: &crate::Roster) -> usize {
-  let members = roster.ordered::<D>();
+fn first_enabled<P: Platform>(roster: &crate::Roster) -> usize {
+  let members = roster.ordered::<P>();
 
-  Scene::<D>::with(|scene| {
+  Scene::<P>::with(|scene| {
     members
       .iter()
       .position(|(node, _)| {
@@ -479,8 +479,8 @@ fn first_enabled<D: Driver>(roster: &crate::Roster) -> usize {
   })
 }
 
-/// A declared value of `T`, its conditions in the driver's scalar.
-type Declared<D, T> = Value<T, Condition<<D as Driver>::Scalar>>;
+/// A declared value of `T`, its conditions in the platform's scalar.
+type Declared<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
 
 /// A closure answering a yes or no each time it is asked.
 type Predicate = Rc<dyn Fn() -> bool>;
@@ -494,9 +494,9 @@ struct Verdicts {
 }
 
 impl MenuItem {
-  /// The item's verdicts; a standard item re-asks the driver's clipboard whenever
+  /// The item's verdicts; a standard item re-asks the platform's clipboard whenever
   /// `generation` moves.
-  fn verdicts<D: Driver>(&self, generation: Signal<u32>) -> Verdicts {
+  fn verdicts<P: Platform>(&self, generation: Signal<u32>) -> Verdicts {
     let disabled: Predicate = match &self.disabled {
       None => Rc::new(|| false),
       Some(Source::Fixed(disabled)) => {
@@ -509,16 +509,16 @@ impl MenuItem {
 
     if let ItemKind::Standard(action) = self.kind {
       return Verdicts {
-        run: Rc::new(move || D::default().clipboard(action)),
+        run: Rc::new(move || P::default().clipboard(action)),
         shown: Rc::new(move || {
           generation.get();
 
-          D::default().clipboard_availability(action) != Availability::Absent
+          P::default().clipboard_availability(action) != Availability::Absent
         }),
         disabled: Rc::new(move || {
           generation.get();
 
-          disabled() || D::default().clipboard_availability(action) != Availability::Enabled
+          disabled() || P::default().clipboard_availability(action) != Availability::Enabled
         }),
       };
     }
@@ -538,18 +538,18 @@ impl MenuItem {
 }
 
 /// The decoration every row of one menu shares.
-struct RowDress<D: Driver> {
-  item_style: DeclaredBoxStyle<D>,
-  item_text_color: Option<Declared<D, Color>>,
-  shortcut_color: Option<Declared<D, Color>>,
-  separator_color: Option<Declared<D, Color>>,
-  shortcut_spacing: Option<Declared<D, Spacing<D::Scalar>>>,
+struct RowDress<P: Platform> {
+  item_style: DeclaredBoxStyle<P>,
+  item_text_color: Option<Declared<P, Color>>,
+  shortcut_color: Option<Declared<P, Color>>,
+  separator_color: Option<Declared<P, Color>>,
+  shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
 }
 
-impl<D: Driver> RowDress<D> {
+impl<P: Platform> RowDress<P> {
   /// A rule between groups of items.
-  fn separator(&self) -> AnyView<D> {
-    let mut rule = Container::<D>::new().set_height(Dimension::Length(D::Scalar::from_f32(1.)));
+  fn separator(&self) -> AnyView<P> {
+    let mut rule = Container::<P>::new().set_height(Dimension::Length(P::Scalar::from_f32(1.)));
 
     if let Some(color) = self.separator_color.clone() {
       rule = rule.set_color(color);
@@ -566,14 +566,14 @@ impl<D: Driver> RowDress<D> {
     shortcut: Option<String>,
     value: String,
     verdicts: &Verdicts,
-  ) -> AnyView<D> {
+  ) -> AnyView<P> {
     let name = match &label {
       Source::Fixed(label) => label.clone(),
       Source::Derived(compute) => untrack(|| compute()),
     };
     let mut caption = match label {
-      Source::Fixed(label) => Text::<D>::new(label),
-      Source::Derived(compute) => Text::<D>::derive(move || compute()),
+      Source::Fixed(label) => Text::<P>::new(label),
+      Source::Derived(compute) => Text::<P>::derive(move || compute()),
     };
 
     if let Some(color) = self.item_text_color.clone() {
@@ -583,7 +583,7 @@ impl<D: Driver> RowDress<D> {
     let mut cells = vec![caption.into_view()];
 
     if let Some(shortcut) = shortcut {
-      let mut hint = Text::<D>::new(shortcut);
+      let mut hint = Text::<P>::new(shortcut);
 
       if let Some(color) = self
         .shortcut_color
@@ -596,17 +596,17 @@ impl<D: Driver> RowDress<D> {
       cells.push(hint.into_view());
     }
 
-    let row = Row::<D>::new()
+    let row = Row::<P>::new()
       .set_arrangement(Arrangement::SpaceBetween)
       .set_item_alignment(ItemAlignment::Center)
       .set_spacing(
         self
           .shortcut_spacing
           .clone()
-          .unwrap_or_else(|| Spacing::from(D::Scalar::from_f32(2.)).into()),
+          .unwrap_or_else(|| Spacing::from(P::Scalar::from_f32(2.)).into()),
       )
       .set_children(cells);
-    let mut control = Control::<D, _>::new(MenuOption::new(value))
+    let mut control = Control::<P, _>::new(MenuOption::new(value))
       .derive_disabled({
         let disabled = Rc::clone(&verdicts.disabled);
 
@@ -616,7 +616,7 @@ impl<D: Driver> RowDress<D> {
 
     *control.style_mut() = self.item_style.clone();
 
-    Show::<D>::new()
+    Show::<P>::new()
       .derive_shown({
         let shown = Rc::clone(&verdicts.shown);
 
@@ -627,11 +627,11 @@ impl<D: Driver> RowDress<D> {
   }
 }
 
-impl<D: Driver, C> AnyKind for ContextMenu<D, C> {}
+impl<P: Platform, C> AnyKind for ContextMenu<P, C> {}
 
-impl<D: Driver> View<D> for ContextMenu<D, AnyView<D>> {
+impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<D>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::with(Scene::create_segment);
     let ContextMenu {
       items,
       list,
@@ -643,7 +643,7 @@ impl<D: Driver> View<D> for ContextMenu<D, AnyView<D>> {
       child,
     } = self;
     let node = child.build();
-    let list = ContextMenu::<D> {
+    let list = ContextMenu::<P> {
       items,
       list,
       item_style,
@@ -655,7 +655,7 @@ impl<D: Driver> View<D> for ContextMenu<D, AnyView<D>> {
     }
     .mount(node);
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       scene.insert_in_segment(start, node, None);
       scene.insert_in_segment(start, list, None);
     });

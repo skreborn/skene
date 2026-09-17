@@ -1,10 +1,10 @@
-//! The spine: the scene, the driver seam, event dispatch, composition, and the
+//! The spine: the scene, the platform seam, event dispatch, composition, and the
 //! property, condition, expression and token model.
 //!
 //! Core owns the retained tree: a [`Scene`] of [`NodeRecord`]s addressed by generational
-//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Driver`] a facade
+//! [`NodeId`]s, every mutation mirrored into the sink of the one [`Platform`] a facade
 //! names. Dispatch ([`dispatch_click`] and its kin) climbs that tree once for every
-//! driver. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
+//! platform. A [`View`] builds into a node; reactive content ([`derived`], [`reconcile`],
 //! [`Show`]) mounts between a segment's anchors, and a container's [`Children`] is a
 //! list of such segments.
 //!
@@ -12,12 +12,12 @@
 //! or derived from signals—under conditions ([`Condition`]) that pick a variant. A
 //! [`Token`]'s [`Definition`] is the same shape without the derived leaf and with only
 //! [`Media`] conditions, so a palette is plain data. A style ([`BoxStyle`], [`RunStyle`])
-//! holds one field per property in a [`Shape`]: what a builder collects, what a driver
+//! holds one field per property in a [`Shape`]: what a builder collects, what a platform
 //! receives, or plain values. Every facade fixes the [`Scalar`] its lengths are measured
 //! in and the [`StyleExtension`] holding the properties only its medium has, which its
-//! medium's core crate defines. A style's [`Fingerprint`] keys what a driver compiled
+//! medium's core crate defines. A style's [`Fingerprint`] keys what a platform compiled
 //! from it. Motion ([`Transition`], [`Animation`]) is data every
-//! driver compiles or runs, and the universal values ([`Color`], the geometry, the
+//! platform compiles or runs, and the universal values ([`Color`], the geometry, the
 //! layout vocabulary) are what every medium's properties are made of.
 
 mod border;
@@ -29,7 +29,6 @@ mod condition;
 mod control;
 mod derived;
 mod dispatch;
-mod driver;
 mod errors;
 mod events;
 pub mod executor;
@@ -40,6 +39,7 @@ mod keyed;
 mod leaf;
 mod motion;
 mod node;
+mod platform;
 mod property;
 mod props;
 mod reorder;
@@ -96,7 +96,6 @@ pub use dispatch::{
   notify_selection_change,
   notify_toggle,
 };
-pub use driver::{Driver, Timer};
 pub use errors::Errors;
 pub use events::{
   Bubbling,
@@ -119,8 +118,8 @@ pub use leaf::{
   Conditional,
   Definition,
   DerivedSlot,
-  DriverLeaf,
   Leaf,
+  PlatformLeaf,
   Slot,
   StaticLeaf,
   StaticValue,
@@ -129,6 +128,7 @@ pub use leaf::{
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
 pub use node::NodeId;
+pub use platform::{Platform, Timer};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
   BoxKeyframe,

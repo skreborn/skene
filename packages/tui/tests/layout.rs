@@ -13,12 +13,12 @@ use skene_tui::{
   prelude::*,
 };
 
-use crate::common::{colors_at, locate, red, rgb, white, with_driver};
+use crate::common::{colors_at, locate, red, rgb, white, with_platform};
 
 /// A column stacks its runs on successive rows.
 #[test]
 fn column_stacks_runs() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((Text::new("alpha"), Text::new("beta")))
@@ -34,7 +34,7 @@ fn column_stacks_runs() {
 /// showing through as recolored characters.
 #[test]
 fn background_fills_cover_content_beneath() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -59,7 +59,7 @@ fn background_fills_cover_content_beneath() {
 /// A pinned bare text run honors its edges inside a stack.
 #[test]
 fn pinned_text_honors_its_edges() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(12)
@@ -87,7 +87,7 @@ fn pinned_text_honors_its_edges() {
 /// A flexible bare text run takes the row's free space, pushing later children over.
 #[test]
 fn flexible_text_takes_free_space() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
@@ -108,7 +108,7 @@ fn flexible_text_takes_free_space() {
 /// Text wraps at its container's width, breaking at spaces.
 #[test]
 fn text_wraps_at_the_container_width() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -124,7 +124,7 @@ fn text_wraps_at_the_container_width() {
 /// A border draws box-drawing characters, and the root child fills the viewport.
 #[test]
 fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(7)
@@ -144,7 +144,7 @@ fn border_draws_a_frame_and_the_root_child_fills_the_viewport() {
 /// A zero-width border takes no cells and draws nothing.
 #[test]
 fn a_zero_width_border_takes_no_cells() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(4)
@@ -162,7 +162,7 @@ fn a_zero_width_border_takes_no_cells() {
 /// Bold is a plain `bool` on a run, and derived text re-renders on a signal change.
 #[test]
 fn bold_and_derived_text() {
-  with_driver(|| {
+  with_platform(|| {
     let count = Signal::new(1u32);
 
     let _ = tui::mount(|| {
@@ -186,7 +186,7 @@ fn bold_and_derived_text() {
 /// Grid tracks size the columns: a fixed track, then the rest split evenly.
 #[test]
 fn grid_tracks_size_columns() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Grid::new()
         .set_columns(vec![
@@ -206,7 +206,7 @@ fn grid_tracks_size_columns() {
 /// A grid child placement spans tracks.
 #[test]
 fn grid_placement_spans_tracks() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Grid::uniform(2)
         .set_children((
@@ -227,7 +227,7 @@ fn grid_placement_spans_tracks() {
 /// Flex grow distributes the free space between children.
 #[test]
 fn flex_grow_distributes_space() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
@@ -249,7 +249,7 @@ fn flex_grow_distributes_space() {
 /// A fraction width resolves against the parent's extent.
 #[test]
 fn fraction_width_resolves_against_parent() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
@@ -269,7 +269,7 @@ fn fraction_width_resolves_against_parent() {
 /// A sized container fills its child to the content box; an unsized one hugs it.
 #[test]
 fn a_container_fills_when_sized_and_hugs_when_not() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(9)
@@ -284,7 +284,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
     assert_eq!(colors_at(9, 3, 7, 1).1, Some(rgb(red())));
   });
 
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_item_alignment(ItemAlignment::Start)
@@ -304,7 +304,7 @@ fn a_container_fills_when_sized_and_hugs_when_not() {
 /// A container places a child that fills neither axis by its alignment.
 #[test]
 fn a_container_aligns_its_child() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -329,13 +329,13 @@ fn layout_properties_vary_by_condition() {
       .set_children((Text::new("ab"), Text::new("cd")))
   }
 
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| row().into_view().build());
 
     assert_eq!(tui::render_to_text(12, 2), "ab   cd\n\n");
   });
 
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| row().into_view().build());
 
     assert_eq!(tui::render_to_text(8, 2), "ab cd\n\n");
@@ -387,7 +387,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
     }
   }
 
-  let third_party = with_driver(|| {
+  let third_party = with_platform(|| {
     let _ = tui::mount(|| {
       Toolbar::new()
         .set_spacing(1)
@@ -404,7 +404,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
     tui::render_to_text(14, 3)
   });
-  let built_in = with_driver(|| {
+  let built_in = with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_spacing(1)
@@ -430,7 +430,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 /// wrapping with the text around it, painted where its cells landed, and hit there.
 #[test]
 fn an_inline_box_flows_with_the_paragraph() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 

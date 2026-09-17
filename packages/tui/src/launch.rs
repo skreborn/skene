@@ -47,7 +47,7 @@ impl Default for Clipboard {
   }
 }
 
-/// The terminal driver's launch configuration: the clipboard operations offered,
+/// The terminal platform's launch configuration: the clipboard operations offered,
 /// whether the mouse is taken, and the key handing it to the terminal at run time.
 ///
 /// `Launch::new().set_clipboard(Clipboard::COPY).run(app)` runs the app in the terminal;
@@ -114,14 +114,14 @@ impl Launch {
     self
   }
 
-  /// Installs the terminal driver under this configuration, for a headless test; see
+  /// Installs the terminal platform under this configuration, for a headless test; see
   /// [`install`].
   ///
   /// # Panics
   ///
-  /// Panics if the driver is already installed for this thread.
+  /// Panics if the platform is already installed for this thread.
   pub fn install(self) {
-    crate::driver::install();
+    crate::platform::install();
 
     with_store(|store| {
       store.clipboard = self.clipboard;
@@ -136,7 +136,7 @@ impl Launch {
   ///
   /// # Panics
   ///
-  /// Panics if the driver is already installed, or when the terminal cannot be set up.
+  /// Panics if the platform is already installed, or when the terminal cannot be set up.
   pub fn run<V, F>(self, app: F)
   where
     F: FnOnce() -> V + 'static,
@@ -150,7 +150,7 @@ impl Launch {
 /// items, drawn in the terminal's default colors, which any menu closer to the pressed
 /// node takes precedence over.
 fn serve_standard_menu() {
-  let Some(root) = crate::driver::root_node()
+  let Some(root) = crate::platform::root_node()
   else {
     return;
   };
@@ -175,7 +175,7 @@ fn serve_standard_menu() {
 /// Mounts and runs a skene application in the terminal under the default
 /// configuration.
 ///
-/// Installs the terminal driver, builds `app`, and runs the event loop until `Ctrl-Q`.
+/// Installs the terminal platform, builds `app`, and runs the event loop until `Ctrl-Q`.
 /// The first frame paints for a dark background at 16 colors; the terminal's replies
 /// arrive as events and upgrade the scheme, the depth and the key encoding as they
 /// land. A panic anywhere in the process restores the terminal before its message
@@ -183,7 +183,7 @@ fn serve_standard_menu() {
 ///
 /// # Panics
 ///
-/// Panics if the driver is already installed, or when the terminal cannot be set up.
+/// Panics if the platform is already installed, or when the terminal cannot be set up.
 #[inline(always)]
 pub fn launch<V, F>(app: F)
 where
@@ -193,12 +193,12 @@ where
   Launch::new().run(app);
 }
 
-/// Installs the terminal driver for this thread under the default configuration, for
+/// Installs the terminal platform for this thread under the default configuration, for
 /// a headless test: the reactive runtime, the host executor, the scene and the store.
 ///
 /// # Panics
 ///
-/// Panics if the driver is already installed for this thread.
+/// Panics if the platform is already installed for this thread.
 #[inline(always)]
 pub fn install() {
   Launch::new().install();

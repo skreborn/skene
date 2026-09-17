@@ -9,7 +9,6 @@ use skene_core::{
   BoxKeyframe,
   Color,
   DeclaredBoxStyle,
-  Driver,
   HasChildren,
   IntoView,
   Layout,
@@ -20,6 +19,7 @@ use skene_core::{
   Placement,
   PlainChild,
   PlainHandler,
+  Platform,
   Point,
   Role,
   Scene,
@@ -49,7 +49,7 @@ fn modal_backdrop() -> Color {
 /// inside the content survives. Its content box is decorated like a container. Holds
 /// [`NoChild`] until [`set_child`](Self::set_child) supplies the content.
 #[must_use]
-pub struct Overlay<D: Driver, C = NoChild> {
+pub struct Overlay<P: Platform, C = NoChild> {
   modal: bool,
   hint: bool,
   placement: Source<Placement>,
@@ -58,11 +58,11 @@ pub struct Overlay<D: Driver, C = NoChild> {
   position: Option<Rc<dyn Fn() -> Option<Point<f32>>>>,
   open: Source<bool>,
   dismiss: Vec<Rc<PlainHandler>>,
-  inner: LayoutBox<D, PlainChild>,
+  inner: LayoutBox<P, PlainChild>,
   child: C,
 }
 
-impl<D: Driver> Overlay<D> {
+impl<P: Platform> Overlay<P> {
   fn new(modal: bool, hint: bool) -> Self {
     Self {
       modal,
@@ -99,7 +99,7 @@ impl<D: Driver> Overlay<D> {
 
   /// Sets the content.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Overlay<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Overlay<P, AnyView<P>> {
     Overlay {
       modal: self.modal,
       hint: self.hint,
@@ -115,11 +115,11 @@ impl<D: Driver> Overlay<D> {
   }
 }
 
-impl<D: Driver, C> Overlay<D, C> {
+impl<P: Platform, C> Overlay<P, C> {
   /// The declared style of the content box, for a facade's medium-specific setters to
   /// write into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 
@@ -130,7 +130,7 @@ impl<D: Driver, C> Overlay<D, C> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.inner = self.inner.set_transition(transition);
 
@@ -139,14 +139,14 @@ impl<D: Driver, C> Overlay<D, C> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
     self.inner = self.inner.set_animation(animation);
 
     self
   }
 
   /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the driver animates between them.
+  /// across a navigation, where the platform animates between them.
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.inner = self.inner.set_transition_name(name);
@@ -266,9 +266,9 @@ impl<D: Driver, C> Overlay<D, C> {
   }
 }
 
-impl<D: Driver, C> AnyKind for Overlay<D, C> {}
+impl<P: Platform, C> AnyKind for Overlay<P, C> {}
 
-impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
+impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let Self {
       modal,
@@ -293,7 +293,7 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
     let node = inner
       .set_child(child)
       .realize(NodeKind::Overlay, |box_props| {
-        D::default().create_overlay(&OverlayProps {
+        P::default().create_overlay(&OverlayProps {
           modal,
           hint,
           placement: initial,
@@ -302,7 +302,7 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
         })
       });
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       for handler in dismiss {
         scene.handle_dismiss(node, handler);
       }
@@ -314,7 +314,7 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
       let open = open();
       let anchor = anchor.as_ref().and_then(Anchor::node);
 
-      let Some((sink, anchor)) = Scene::<D>::with(|scene| {
+      let Some((sink, anchor)) = Scene::<P>::with(|scene| {
         let sink = scene.sink(node)?;
 
         Some((sink, anchor.and_then(|anchor| scene.sink(anchor))))
@@ -322,17 +322,17 @@ impl<D: Driver> View<D> for Overlay<D, AnyView<D>> {
       else {
         return;
       };
-      let driver = D::default();
+      let platform = P::default();
 
       if let Some(placement) = placement {
-        driver.set_overlay_placement(&sink, placement);
+        platform.set_overlay_placement(&sink, placement);
       }
 
       if let Some(position) = position {
-        driver.set_overlay_position(&sink, position);
+        platform.set_overlay_position(&sink, position);
       }
 
-      driver.set_overlay_open(&sink, open, anchor.as_ref());
+      platform.set_overlay_open(&sink, open, anchor.as_ref());
     });
 
     node

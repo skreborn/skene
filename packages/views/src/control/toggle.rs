@@ -6,9 +6,9 @@ use skene_core::{
   AccessProp,
   ControlKind,
   ControlState,
-  Driver,
   EventKind,
   KeyEvent,
+  Platform,
   Prevent,
   Role,
 };
@@ -95,7 +95,7 @@ impl Toggle {
   }
 }
 
-impl<D: Driver> Behavior<D> for Toggle {
+impl<P: Platform> Behavior<P> for Toggle {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Checkbox
@@ -111,13 +111,13 @@ impl<D: Driver> Behavior<D> for Toggle {
     &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
   }
 
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     self.flip();
 
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     if event.key == " " {
       self.flip();
 
@@ -127,7 +127,7 @@ impl<D: Driver> Behavior<D> for Toggle {
     Prevent::None
   }
 
-  fn on_toggle(&self, checked: bool, _control: &ControlHandle<D>) {
+  fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {
     self.ask(checked);
   }
 

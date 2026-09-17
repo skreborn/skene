@@ -1,16 +1,16 @@
-//! # Headless driver
+//! # Headless platform
 //!
-//! The host driver: realizes the portable vocabulary into an inspectable record store,
+//! The host platform: realizes the portable vocabulary into an inspectable record store,
 //! so view logic tests run without a platform. Every mirrored call is bookkeeping, not
 //! emulation: no layout runs, and no platform response fires. Tests build views exactly
 //! as an app does, then inspect the records ([`outline`], [`box_props`], [`slot_leaf`],
 //! [`resolve_color`]) and drive events through the `trigger_` seams, each routed through
-//! core's dispatch so bubbling is the one implementation every driver shares.
+//! core's dispatch so bubbling is the one implementation every platform shares.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
 //! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it,
 //! [`choose_scheme`] lets the app override the platform's scheme, and the signals
-//! [`Driver::media`] reports follow.
+//! [`Platform::media`] reports follow.
 //!
 //! Motion runs on a clock that stands still until [`advance`] steps it: a property
 //! whose resolved value moved under a transition, or that an animation sets, resolves
@@ -48,7 +48,6 @@ use skene_core::{
   ControlState,
   Definitions,
   Dimension,
-  Driver,
   EventKind,
   FocusOrder,
   Inset,
@@ -60,6 +59,7 @@ use skene_core::{
   OverlayProps,
   Part,
   Placement,
+  Platform,
   Point,
   PointerEvent,
   Prevented,
@@ -98,13 +98,13 @@ use unicode_segmentation::UnicodeSegmentation;
 pub use crate::store::HeadElement;
 use crate::store::{Kind, Record, Store};
 
-/// The host driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
+/// The host platform: a zero-sized [`Platform`] whose sink is a [`Handle`] into this
 /// crate's record store.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Headless;
 
-/// The driver's sink: the index of a node's record and the generation it was minted
+/// The platform's sink: the index of a node's record and the generation it was minted
 /// in, so a handle whose record was destroyed reaches nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
@@ -134,7 +134,7 @@ impl Handle {
   }
 }
 
-/// The erased token definition the headless driver stores per token; see
+/// The erased token definition the headless platform stores per token; see
 /// [`skene_core::TokenValue`].
 pub type TokenValue = skene_core::TokenValue<f32>;
 
@@ -165,7 +165,7 @@ pub fn handle(node: NodeId) -> Option<Handle> {
   Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))
 }
 
-impl Driver for Headless {
+impl Platform for Headless {
   type Scalar = f32;
   type Sink = Handle;
   type StyleExt = ();
@@ -1037,7 +1037,7 @@ pub fn children(node: NodeId) -> Vec<NodeId> {
   Scene::<Headless>::with(|scene| scene.children(node).collect())
 }
 
-/// The children of `node` as the driver mirrored them, in order.
+/// The children of `node` as the platform mirrored them, in order.
 #[must_use]
 pub fn mirrored_children(node: NodeId) -> Vec<Handle> {
   handle(node)

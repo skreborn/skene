@@ -1,4 +1,4 @@
-//! The driver's resolution of a property: the environment and the node's interaction
+//! The platform's resolution of a property: the environment and the node's interaction
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 

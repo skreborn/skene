@@ -5,8 +5,8 @@ use std::rc::Rc;
 use skene_core::{
   ChangeHandler,
   ControlKind,
-  Driver,
   EventKind,
+  Platform,
   Role,
   SelectionHandler,
   TextSelection,
@@ -140,7 +140,7 @@ impl Default for TextEntry {
   }
 }
 
-impl<D: Driver> Behavior<D> for TextEntry {
+impl<P: Platform> Behavior<P> for TextEntry {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     if self.lines > 1 {
@@ -176,14 +176,14 @@ impl<D: Driver> Behavior<D> for TextEntry {
     self.lines
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let node = control.node();
 
     if let Some(value) = self.value.clone() {
       Effect::render(move |_: Option<()>| {
         let value = value();
 
-        with_sink::<D, _>(node, |sink| D::default().set_value(sink, &value));
+        with_sink::<P, _>(node, |sink| P::default().set_value(sink, &value));
       });
     }
 
@@ -191,18 +191,18 @@ impl<D: Driver> Behavior<D> for TextEntry {
       Effect::render(move |_: Option<()>| {
         let selection = selection();
 
-        with_sink::<D, _>(node, |sink| D::default().set_selection(sink, selection));
+        with_sink::<P, _>(node, |sink| P::default().set_selection(sink, selection));
       });
     }
   }
 
-  fn on_change(&self, value: &str, _control: &ControlHandle<D>) {
+  fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
     if let Some(action) = &self.on_change {
       action(value);
     }
   }
 
-  fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<D>) {
+  fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<P>) {
     if let Some(action) = &self.on_selection_change {
       action(selection);
     }

@@ -8,13 +8,13 @@ use skene_core::{
   Arrangement,
   Color,
   Dimension,
-  Driver,
   HasChildren,
   IntoView,
   ItemAlignment,
   MouseCursor,
   NodeId,
   Part,
+  Platform,
   State,
   View,
   When,
@@ -62,12 +62,12 @@ const CHECK: &str = "✓";
 /// every facade. The chosen value flows both ways, exactly as on [`RawPicker`]; for
 /// custom chrome, compose the raw control directly.
 #[must_use]
-pub struct SimplePicker<D: Driver> {
+pub struct SimplePicker<P: Platform> {
   options: Vec<(String, String)>,
-  picker: RawPicker<D>,
+  picker: RawPicker<P>,
 }
 
-impl<D: Driver> SimplePicker<D> {
+impl<P: Platform> SimplePicker<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -148,64 +148,64 @@ impl<D: Driver> SimplePicker<D> {
   }
 }
 
-impl<D: Driver> Default for SimplePicker<D> {
+impl<P: Platform> Default for SimplePicker<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> AnyKind for SimplePicker<D> {}
+impl<P: Platform> AnyKind for SimplePicker<P> {}
 
-impl<D: Driver> View<D> for SimplePicker<D>
+impl<P: Platform> View<P> for SimplePicker<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
-    let shape = shape::<D>();
+    let shape = shape::<P>();
     let Self { options, picker } = self;
     let labels = Rc::new(options);
-    let rows: Vec<AnyView<D>> = labels
+    let rows: Vec<AnyView<P>> = labels
       .iter()
-      .map(|(value, label)| row::<D>(value, label))
+      .map(|(value, label)| row::<P>(value, label))
       .collect();
-    let surface = Container::<D>::new()
+    let surface = Container::<P>::new()
       .set_padding(shape.list_inset)
-      .set_color(SimplePalette::<D::Scalar>::CARD)
-      .set_border(hairline(SimplePalette::<D::Scalar>::BORDER))
+      .set_color(SimplePalette::<P::Scalar>::CARD)
+      .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
       .set_corner_radius(RADIUS)
-      .set_child(Column::<D>::new().set_children(rows));
+      .set_child(Column::<P>::new().set_children(rows));
 
     picker
       .set_width(Dimension::Fraction(1.))
       .set_padding(shape.control_inset)
-      .set_color(SimplePalette::<D::Scalar>::CARD)
+      .set_color(SimplePalette::<P::Scalar>::CARD)
       .set_border(
-        border(shape.field_ring, SimplePalette::<D::Scalar>::BORDER)
+        border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER)
           .when(
             State::FocusVisible,
-            border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
+            border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
           )
           .when(
             State::Open,
-            border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
+            border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
           ),
       )
       .set_corner_radius(RADIUS)
       .set_cursor(MouseCursor::Click)
-      .set_options([AnyView::<D>::new(move || as_part::<D>(Part::List, surface))])
-      .set_face(move |value: Memo<String>| face::<D>(&labels, value))
+      .set_options([AnyView::<P>::new(move || as_part::<P>(Part::List, surface))])
+      .set_face(move |value: Memo<String>| face::<P>(&labels, value))
       .build()
   }
 }
 
 /// The face: the chosen option's label, and the indicator as the [`Part::Face`].
-fn face<D: Driver>(labels: &Rc<Vec<(String, String)>>, value: Memo<String>) -> Row<D>
+fn face<P: Platform>(labels: &Rc<Vec<(String, String)>>, value: Memo<String>) -> Row<P>
 where
-  D::Scalar: SimpleUnit,
+  P::Scalar: SimpleUnit,
 {
   let labels = Rc::clone(labels);
   let shown = move || {
@@ -216,12 +216,12 @@ where
       .find(|(value, _)| *value == chosen)
       .map_or(chosen, |(_, label)| label.clone())
   };
-  let indicator = match D::Scalar::MARKS {
-    SimpleMarks::Drawn => Text::<D>::new(INDICATOR),
+  let indicator = match P::Scalar::MARKS {
+    SimpleMarks::Drawn => Text::<P>::new(INDICATOR),
     SimpleMarks::Glyph => {
       let glyphs = use_context::<Memo<SimpleGlyphs>>();
 
-      Text::<D>::derive(move || {
+      Text::<P>::derive(move || {
         glyphs
           .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
           .indicator()
@@ -229,51 +229,51 @@ where
     }
   }
   .set_color(
-    SimplePalette::<D::Scalar>::MUTED_FOREGROUND
-      .when(State::Open, SimplePalette::<D::Scalar>::FOREGROUND),
+    SimplePalette::<P::Scalar>::MUTED_FOREGROUND
+      .when(State::Open, SimplePalette::<P::Scalar>::FOREGROUND),
   );
 
-  Row::<D>::new()
-    .set_spacing(shape::<D>().indicator_gap)
+  Row::<P>::new()
+    .set_spacing(shape::<P>().indicator_gap)
     .set_arrangement(Arrangement::SpaceBetween)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
-      Text::<D>::derive(shown),
-      as_part::<D>(Part::Face, indicator),
+      Text::<P>::derive(shown),
+      as_part::<P>(Part::Face, indicator),
     ))
 }
 
 /// One row of the list: highlighted while focused, filled in the primary look while
 /// chosen, its check the [`Part::Item`] and its caption the label.
-fn row<D: Driver>(value: &str, label: &str) -> AnyView<D>
+fn row<P: Platform>(value: &str, label: &str) -> AnyView<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   // An unchosen row's check is inked in the row's own surface, so it hides on every
   // medium.
-  let check = Text::<D>::new(CHECK).set_color(
-    SimplePalette::<D::Scalar>::CARD
+  let check = Text::<P>::new(CHECK).set_color(
+    SimplePalette::<P::Scalar>::CARD
       .when(
         State::Focused,
-        SimplePalette::<D::Scalar>::SECONDARY_SURFACE,
+        SimplePalette::<P::Scalar>::SECONDARY_SURFACE,
       )
-      .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
+      .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
   );
-  let caption = Text::<D>::new(label).set_color(
-    SimplePalette::<D::Scalar>::FOREGROUND
-      .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
+  let caption = Text::<P>::new(label).set_color(
+    SimplePalette::<P::Scalar>::FOREGROUND
+      .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
   );
 
-  RawOption::<D>::new(ListItem::new(value))
-    .set_padding(shape::<D>().row_inset)
+  RawOption::<P>::new(ListItem::new(value))
+    .set_padding(shape::<P>().row_inset)
     .set_color(
       Color::TRANSPARENT
         .when(
           State::Focused,
-          SimplePalette::<D::Scalar>::SECONDARY_SURFACE,
+          SimplePalette::<P::Scalar>::SECONDARY_SURFACE,
         )
-        .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+        .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     )
     .set_corner_radius(MARK_RADIUS)
     .set_cursor(MouseCursor::Click)

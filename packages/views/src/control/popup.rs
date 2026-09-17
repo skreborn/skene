@@ -6,10 +6,10 @@ use skene_core::{
   AccessProp,
   ControlKind,
   ControlState,
-  Driver,
   EventKind,
   KeyEvent,
   NodeId,
+  Platform,
   PopupKind,
   Prevent,
   Role,
@@ -118,7 +118,7 @@ impl Popup {
   }
 }
 
-impl<D: Driver> Behavior<D> for Popup {
+impl<P: Platform> Behavior<P> for Popup {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Combobox
@@ -134,13 +134,13 @@ impl<D: Driver> Behavior<D> for Popup {
     &[EventKind::Click, EventKind::KeyDown]
   }
 
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     self.ask(!self.read());
 
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     match event.key.as_str() {
       "Enter" | " " => self.ask(!self.read()),
       "ArrowDown" | "ArrowUp" => self.ask(true),

@@ -1,4 +1,4 @@
-//! The task seam: a facade's driver installs its executor, the engine spawns through
+//! The task seam: a facade's platform installs its executor, the engine spawns through
 //! it.
 
 use std::{cell::RefCell, future::Future, pin::Pin, rc::Rc};
@@ -17,7 +17,7 @@ thread_local! {
 /// previous one; it outlives a [`Runtime::reset`](crate::Runtime::reset), as the
 /// thread's executor does.
 ///
-/// A driver installs its own—resuming on the UI thread and bound to the spawning
+/// A platform installs its own—resuming on the UI thread and bound to the spawning
 /// owner—so a [`Resource`](crate::Resource) loads the same way on every platform.
 pub fn set_spawner(spawner: impl Fn(Task) + 'static) {
   let previous = SPAWNER.with(|current| current.borrow_mut().replace(Rc::new(spawner)));
@@ -33,7 +33,7 @@ pub fn set_spawner(spawner: impl Fn(Task) + 'static) {
 pub fn spawn(future: impl Future<Output = ()> + 'static) {
   let spawner = SPAWNER
     .with(|current| current.borrow().clone())
-    .expect("no task executor installed on this thread; a driver installs one");
+    .expect("no task executor installed on this thread; a platform installs one");
 
   spawner(Box::pin(future));
 }

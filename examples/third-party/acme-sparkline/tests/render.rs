@@ -7,11 +7,11 @@ use acme_sparkline::Sparkline;
 use skene_tui::{self as tui, Color, View as _};
 
 /// Serializes the tests: the UI-thread designation is process-wide.
-static DRIVER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
 fn a_sparkline_paints_scaled_bars() {
-  let _serialized = DRIVER
+  let _serialized = PLATFORM
     .lock()
     .unwrap_or_else(std::sync::PoisonError::into_inner);
 

@@ -10,7 +10,7 @@
 use std::time::Duration;
 
 use skene_simple_tui::prelude::*;
-use skene_tui::{ActiveDriver, core::Driver, kurbo::Rect, prelude::*};
+use skene_tui::{ActivePlatform, core::Platform, kurbo::Rect, prelude::*};
 
 /// The page: a clock over its caption, and a picture over its description.
 #[must_use]
@@ -70,7 +70,7 @@ fn clock_card() -> impl IntoView {
 
 /// Marks the first tick, then advances `seconds` once a second on the loop's clock.
 fn tick(ticked: Signal<bool>, seconds: Signal<u32>) {
-  let _ = ActiveDriver::default().schedule(
+  let _ = ActivePlatform::default().schedule(
     Duration::from_secs(1),
     Box::new(move || {
       if ticked.get_untracked() {

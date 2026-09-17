@@ -6,12 +6,12 @@ use skene_core::{
   AnyView,
   Color,
   DeclaredRunStyle,
-  Driver,
   IntoView,
   Layout,
   LinkPolicy,
   NodeId,
   PlainChild,
+  Platform,
   RunDisplay,
   RunKeyframe,
   Scene,
@@ -25,10 +25,10 @@ use skene_core::{
 use crate::{LayoutBox, properties, realize::Source, run::Run, run_type_metrics};
 
 /// What a span renders.
-enum Content<D: Driver> {
+enum Content<P: Platform> {
   Text(Source<String>),
-  Group(Vec<Span<D>>),
-  View(AnyView<D>),
+  Group(Vec<Span<P>>),
+  View(AnyView<P>),
 }
 
 /// An inline run within a [`RichText`]: text, a group of spans styled as a unit, or a
@@ -42,12 +42,12 @@ enum Content<D: Driver> {
 /// run alone. A [view](Self::view) is laid out as an inline-level box among the
 /// surrounding runs.
 #[must_use]
-pub struct Span<D: Driver> {
-  content: Content<D>,
-  run: Run<D>,
+pub struct Span<P: Platform> {
+  content: Content<P>,
+  run: Run<P>,
 }
 
-impl<D: Driver> Span<D> {
+impl<P: Platform> Span<P> {
   /// A run reading `content`.
   #[inline(always)]
   pub fn new(content: impl Into<String>) -> Self {
@@ -68,12 +68,12 @@ impl<D: Driver> Span<D> {
 
   /// A view embedded inline among the surrounding text.
   #[inline(always)]
-  pub fn view(view: impl IntoView<D>) -> Self {
+  pub fn view(view: impl IntoView<P>) -> Self {
     Self::with_content(Content::View(view.into_view()))
   }
 
   #[inline(always)]
-  fn with_content(content: Content<D>) -> Self {
+  fn with_content(content: Content<P>) -> Self {
     Self {
       content,
       run: Run::new(),
@@ -82,7 +82,7 @@ impl<D: Driver> Span<D> {
 
   /// The declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     self.run.style_mut()
   }
 
@@ -133,7 +133,7 @@ impl<D: Driver> Span<D> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.run = self.run.set_transition(transition);
 
@@ -142,16 +142,16 @@ impl<D: Driver> Span<D> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.run = self.run.set_animation(animation);
 
     self
   }
 }
 
-impl<D: Driver> AnyKind for Span<D> {}
+impl<P: Platform> AnyKind for Span<P> {}
 
-impl<D: Driver> View<D> for Span<D> {
+impl<P: Platform> View<P> for Span<P> {
   fn build(self) -> NodeId {
     let display = match self.content {
       Content::View(_) => RunDisplay::InlineBox,
@@ -162,19 +162,19 @@ impl<D: Driver> View<D> for Span<D> {
 
     match self.content {
       Content::Text(content) => {
-        content.bind::<D>(node, |sink, text| D::default().set_text(sink, text));
+        content.bind::<P>(node, |sink, text| P::default().set_text(sink, text));
       }
       Content::Group(spans) => {
         for span in spans {
           let child = span.build();
 
-          Scene::<D>::with(|scene| scene.attach(node, child, None));
+          Scene::<P>::with(|scene| scene.attach(node, child, None));
         }
       }
       Content::View(view) => {
         let child = view.build();
 
-        Scene::<D>::with(|scene| scene.attach(node, child, None));
+        Scene::<P>::with(|scene| scene.attach(node, child, None));
       }
     }
 
@@ -187,18 +187,18 @@ impl<D: Driver> View<D> for Span<D> {
 /// Carries no properties of its own; decorating it means wrapping it in a
 /// [`Container`](crate::Container).
 #[must_use]
-pub struct RichText<D: Driver> {
-  spans: Vec<Span<D>>,
+pub struct RichText<P: Platform> {
+  spans: Vec<Span<P>>,
 }
 
-impl<D: Driver> Default for RichText<D> {
+impl<P: Platform> Default for RichText<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> RichText<D> {
+impl<P: Platform> RichText<P> {
   /// An empty paragraph.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -207,23 +207,23 @@ impl<D: Driver> RichText<D> {
 
   /// Appends spans to the paragraph.
   #[inline(always)]
-  pub fn set_spans(mut self, spans: impl IntoIterator<Item = Span<D>>) -> Self {
+  pub fn set_spans(mut self, spans: impl IntoIterator<Item = Span<P>>) -> Self {
     self.spans.extend(spans);
 
     self
   }
 }
 
-impl<D: Driver> AnyKind for RichText<D> {}
+impl<P: Platform> AnyKind for RichText<P> {}
 
-impl<D: Driver> View<D> for RichText<D> {
+impl<P: Platform> View<P> for RichText<P> {
   fn build(self) -> NodeId {
-    let node = LayoutBox::<D, PlainChild>::new(Layout::Flow).build();
+    let node = LayoutBox::<P, PlainChild>::new(Layout::Flow).build();
 
     for span in self.spans {
       let child = span.build();
 
-      Scene::<D>::with(|scene| scene.attach(node, child, None));
+      Scene::<P>::with(|scene| scene.attach(node, child, None));
     }
 
     node

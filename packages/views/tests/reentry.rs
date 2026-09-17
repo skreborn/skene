@@ -1,4 +1,4 @@
-//! A driver that reaches the scene from inside its own mutations: every driver call a
+//! A platform that reaches the scene from inside its own mutations: every platform call a
 //! view makes runs with the scene released, so a platform whose response is
 //! synchronous (a `focus` that fires a focus event, a removal that fires a blur)
 //! cannot find the scene borrowed.
@@ -20,13 +20,13 @@ use skene_core::{
   ControlState,
   Definition,
   Definitions,
-  Driver,
   EventKind,
   FocusOrder,
   HasChildren,
   MediaSignals,
   OverlayProps,
   Placement,
+  Platform,
   RunProps,
   RunValue,
   Scene,
@@ -43,7 +43,7 @@ use skene_core::{
 use skene_reactive::{Get, Owner, Set, Signal};
 use skene_views::{Column, Container, FocusHandle, RawCheckbox, Text, Theme, Toggle};
 
-/// The driver under test: every mirrored call re-enters the scene before recording
+/// The platform under test: every mirrored call re-enters the scene before recording
 /// what it was asked.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct Reentrant;
@@ -97,7 +97,7 @@ fn calls() -> Vec<&'static str> {
   CALLS.with(|calls| calls.borrow().clone())
 }
 
-impl Driver for Reentrant {
+impl Platform for Reentrant {
   type Scalar = f32;
   type Sink = u32;
   type StyleExt = ();
@@ -262,7 +262,7 @@ impl TokenSet<Erased> for Palette {
 }
 
 /// Focus, blur, a rewritten text, a redefined palette, a mirrored control state and
-/// the tree mutations all reach the driver with the scene released.
+/// the tree mutations all reach the platform with the scene released.
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
   let owner = Owner::new();

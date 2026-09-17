@@ -11,7 +11,7 @@
 use skene_core::Boundary;
 use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 
-use crate::ActiveDriver;
+use crate::ActivePlatform;
 
 /// A subtree whose async work the server settles apart from the shell's and streams
 /// in place once it does.
@@ -24,7 +24,7 @@ impl Deferred {
   /// Defers `content`: its async work reports to a boundary of its own, and a
   /// streaming render flushes the surrounding page before it settles.
   #[inline(always)]
-  pub fn new<V: IntoView<ActiveDriver>>(content: impl FnOnce() -> V + 'static) -> Self {
+  pub fn new<V: IntoView<ActivePlatform>>(content: impl FnOnce() -> V + 'static) -> Self {
     Self {
       content: Box::new(move || content().into_view().build()),
     }
@@ -58,12 +58,12 @@ impl Deferred {
 
 impl AnyKind for Deferred {}
 
-impl View<ActiveDriver> for Deferred {
+impl View<ActivePlatform> for Deferred {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<ActiveDriver>::with(Scene::create_segment);
+    let (start, _) = Scene::<ActivePlatform>::with(Scene::create_segment);
     let content = self.build_content(start);
 
-    Scene::<ActiveDriver>::with(|scene| scene.insert_in_segment(start, content, None));
+    Scene::<ActivePlatform>::with(|scene| scene.insert_in_segment(start, content, None));
 
     start
   }

@@ -20,7 +20,7 @@ use skene_core::{
 use skene_router::{Route, Router};
 use skene_views::LayoutBox;
 
-use crate::ActiveDriver;
+use crate::ActivePlatform;
 
 /// A link to a route: a box whose destination is the route's path, so a page without
 /// JavaScript navigates by full page load, and a running app intercepts the click
@@ -32,7 +32,7 @@ use crate::ActiveDriver;
 #[must_use]
 pub struct Link<R: Route> {
   route: R,
-  inner: LayoutBox<ActiveDriver>,
+  inner: LayoutBox<ActivePlatform>,
 }
 
 impl<R: Route> Link<R> {
@@ -45,18 +45,18 @@ impl<R: Route> Link<R> {
   }
 }
 
-impl<R: Route> HasChildren<ActiveDriver> for Link<R> {
+impl<R: Route> HasChildren<ActivePlatform> for Link<R> {
   type Kind = PlainChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<ActiveDriver, PlainChild> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<ActivePlatform, PlainChild> {
     self.inner.children_mut(seal)
   }
 }
 
 impl<R: Route> AnyKind for Link<R> {}
 
-impl<R: Route> View<ActiveDriver> for Link<R> {
+impl<R: Route> View<ActivePlatform> for Link<R> {
   fn build(self) -> NodeId {
     let node = self.inner.build();
     let held = Rc::new(Cell::new(Modifiers::default()));
@@ -65,7 +65,7 @@ impl<R: Route> View<ActiveDriver> for Link<R> {
     // arrives outside any scope. No router leaves the anchor plain.
     let router = Router::<R>::get();
 
-    Scene::<ActiveDriver>::with(|scene| {
+    Scene::<ActivePlatform>::with(|scene| {
       scene.handle_pointer_down(node, {
         let held = Rc::clone(&held);
 

@@ -4,11 +4,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   ControlKind,
-  Driver,
   EventKind,
   FocusOrder,
   KeyEvent,
   NodeId,
+  Platform,
   Prevent,
   Role,
   Scene,
@@ -43,10 +43,10 @@ impl MenuGroup {
 
   /// The enabled items in tree order: those whose control is not disabled.
   #[must_use]
-  pub fn enabled<D: Driver>(&self) -> Vec<(NodeId, String)> {
-    let members = self.roster.ordered::<D>();
+  pub fn enabled<P: Platform>(&self) -> Vec<(NodeId, String)> {
+    let members = self.roster.ordered::<P>();
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       members
         .into_iter()
         .filter(|(node, _)| {
@@ -60,26 +60,26 @@ impl MenuGroup {
 
   /// Whether `value` is the menu's one tab stop: the first enabled item.
   #[must_use]
-  pub fn is_tab_stop<D: Driver>(&self, value: &str) -> bool {
+  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
     self
-      .enabled::<D>()
+      .enabled::<P>()
       .first()
       .is_some_and(|(_, first)| first == value)
   }
 
   /// Focuses the first enabled item, if there is one.
-  pub fn focus_first<D: Driver>(&self) {
-    let members = self.enabled::<D>();
+  pub fn focus_first<P: Platform>(&self) {
+    let members = self.enabled::<P>();
 
     if let Some((node, _)) = members.first() {
-      focus::<D>(*node);
+      focus::<P>(*node);
     }
   }
 
   /// Focuses the enabled item `step` places from the one holding `value`, wrapping at
   /// both ends as a browser's menu does, running nothing.
-  pub fn step_from<D: Driver>(&self, value: &str, step: isize) {
-    let members = self.enabled::<D>();
+  pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
+    let members = self.enabled::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -94,21 +94,21 @@ impl MenuGroup {
     };
 
     if let Some((node, _)) = members.get(next) {
-      focus::<D>(*node);
+      focus::<P>(*node);
     }
   }
 
   /// Feeds a key typed on the item holding `value` into the menu's type-ahead and
   /// focuses the item its buffer picks; `false` for a key that is no character.
   #[must_use]
-  pub fn type_ahead_from<D: Driver>(&self, value: &str, event: &KeyEvent) -> bool {
-    let Some(buffer) = self.type_ahead.typed::<D>(event)
+  pub fn type_ahead_from<P: Platform>(&self, value: &str, event: &KeyEvent) -> bool {
+    let Some(buffer) = self.type_ahead.typed::<P>(event)
     else {
       return false;
     };
 
-    if let Some(index) = self.roster.typed::<D>(&buffer, Some(value)) {
-      self.roster.focus_at::<D>(index);
+    if let Some(index) = self.roster.typed::<P>(&buffer, Some(value)) {
+      self.roster.focus_at::<P>(index);
     }
 
     true
@@ -116,11 +116,11 @@ impl MenuGroup {
 }
 
 /// Moves focus to `node`.
-fn focus<D: Driver>(node: NodeId) {
-  let sink = Scene::<D>::with(|scene| scene.sink(node));
+fn focus<P: Platform>(node: NodeId) {
+  let sink = Scene::<P>::with(|scene| scene.sink(node));
 
   if let Some(sink) = sink {
-    D::default().focus(&sink);
+    P::default().focus(&sink);
   }
 }
 
@@ -171,7 +171,7 @@ impl Default for Menu {
   }
 }
 
-impl<D: Driver> Behavior<D> for Menu {
+impl<P: Platform> Behavior<P> for Menu {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Menu
@@ -192,7 +192,7 @@ impl<D: Driver> Behavior<D> for Menu {
     true
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let on_activate = self.on_activate.clone();
     let roster = self.roster.clone();
 
@@ -250,7 +250,7 @@ impl MenuOption {
   }
 }
 
-impl<D: Driver> Behavior<D> for MenuOption {
+impl<P: Platform> Behavior<P> for MenuOption {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::MenuItem
@@ -266,7 +266,7 @@ impl<D: Driver> Behavior<D> for MenuOption {
     &[EventKind::Click, EventKind::KeyDown]
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let Some(group) = use_context::<MenuGroup>()
     else {
       return;
@@ -284,7 +284,7 @@ impl<D: Driver> Behavior<D> for MenuOption {
     control.refresh();
   }
 
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     if let Some(group) = self.group() {
       group.activate(self.value.clone());
     }
@@ -292,22 +292,22 @@ impl<D: Driver> Behavior<D> for MenuOption {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     let Some(group) = self.group()
     else {
       return Prevent::None;
     };
 
     match event.key.as_str() {
-      "ArrowDown" => group.step_from::<D>(&self.value, 1),
-      "ArrowUp" => group.step_from::<D>(&self.value, -1),
-      "Home" => group.step_from::<D>(&self.value, isize::MIN),
-      "End" => group.step_from::<D>(&self.value, isize::MAX),
+      "ArrowDown" => group.step_from::<P>(&self.value, 1),
+      "ArrowUp" => group.step_from::<P>(&self.value, -1),
+      "Home" => group.step_from::<P>(&self.value, isize::MIN),
+      "End" => group.step_from::<P>(&self.value, isize::MAX),
       "Enter" => group.activate(self.value.clone()),
-      " " if !group.type_ahead_from::<D>(&self.value, event) => {
+      " " if !group.type_ahead_from::<P>(&self.value, event) => {
         group.activate(self.value.clone());
       }
-      _ if group.type_ahead_from::<D>(&self.value, event) => {}
+      _ if group.type_ahead_from::<P>(&self.value, event) => {}
       _ => return Prevent::None,
     }
 
@@ -316,7 +316,7 @@ impl<D: Driver> Behavior<D> for MenuOption {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<D>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

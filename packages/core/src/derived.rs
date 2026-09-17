@@ -9,7 +9,7 @@ use std::{
 use rustc_hash::FxHashMap;
 use skene_reactive::{Effect, Key, Owner, untrack};
 
-use super::{AnyView, Driver, NodeId, Scene, View};
+use super::{AnyView, NodeId, Platform, Scene, View};
 use crate::Reorder;
 
 /// Mounts the node `build` returns between a fresh pair of anchors and returns the
@@ -18,9 +18,9 @@ use crate::Reorder;
 /// Each rebuild destroys the previous content and disposes its scope, so state inside
 /// the content does not survive it. The annotation pending when the subtree is created
 /// lands on the content of every rebuild.
-pub fn derived<D: Driver>(build: impl Fn() -> NodeId + 'static) -> NodeId {
+pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
   let (start, annotation) =
-    Scene::<D>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+    Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
   let parent_scope = Owner::current();
   let current = Rc::new(Cell::new(None::<Owner>));
 
@@ -32,12 +32,12 @@ pub fn derived<D: Driver>(build: impl Fn() -> NodeId + 'static) -> NodeId {
       .map_or_else(|| parent_scope.child(), |previous| previous.replacement());
 
     if let Some(annotation) = &annotation {
-      Scene::<D>::with(|scene| scene.set_pending_annotation(annotation.clone()));
+      Scene::<P>::with(|scene| scene.set_pending_annotation(annotation.clone()));
     }
 
     let node = scope.enter(&build);
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       scene.take_pending_annotation();
       scene.clear_segment(start);
       scene.insert_in_segment(start, node, None);
@@ -54,8 +54,8 @@ pub fn derived<D: Driver>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 /// A view that renders nothing: an empty segment.
 #[inline(always)]
 #[must_use]
-pub fn empty<D: Driver>() -> impl View<D> {
-  AnyView::new(|| Scene::<D>::with(|scene| scene.create_segment().0))
+pub fn empty<P: Platform>() -> impl View<P> {
+  AnyView::new(|| Scene::<P>::with(|scene| scene.create_segment().0))
 }
 
 struct Mounted {
@@ -90,7 +90,7 @@ impl<K> Default for Scratch<K> {
 /// and disposed when the item leaves; kept items on the longest increasing run of
 /// previous positions stay in place, and only displaced or new ones are re-inserted
 /// before their successor.
-pub fn reconcile<D: Driver, T, I, K>(
+pub fn reconcile<P: Platform, T, I, K>(
   start: NodeId,
   items: impl Fn() -> I + 'static,
   key: impl Fn(&T) -> K + 'static,
@@ -138,7 +138,7 @@ pub fn reconcile<D: Driver, T, I, K>(
     }
 
     for (_, (_, entry)) in old.drain() {
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         scene.remove_from_segment(start, entry.node);
         scene.destroy(entry.node);
       });
@@ -148,7 +148,7 @@ pub fn reconcile<D: Driver, T, I, K>(
     let settled = reorder.settled_positions(old_positions.as_slice(), new_positions.as_slice());
     let mut stable = settled.iter().copied().peekable();
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       for index in (0..mounted.len()).rev() {
         let before = mounted.get(index + 1).map(|(_, entry)| entry.node);
 
@@ -178,18 +178,18 @@ mod tests {
     NodeId,
     NodeKind,
     Scene,
-    testing::{Call, TestBox, TestDriver, child_kinds, children, sink},
+    testing::{Call, TestBox, TestPlatform, child_kinds, children, sink},
   };
 
-  fn with<R>(operation: impl FnOnce(&mut Scene<TestDriver>) -> R) -> R {
-    Scene::<TestDriver>::with(operation)
+  fn with<R>(operation: impl FnOnce(&mut Scene<TestPlatform>) -> R) -> R {
+    Scene::<TestPlatform>::with(operation)
   }
 
   /// A derived subtree contributes its content directly to its parent's children,
   /// with nothing between the anchors but the content, and rebuilds in place.
   #[test]
   fn derived_mounts_only_its_content_between_the_anchors() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let owner = Owner::new();
     let (version, set_version) = signal(0);
@@ -198,7 +198,7 @@ mod tests {
     let start = owner.enter(|| {
       let built = Rc::clone(&built);
 
-      derived::<TestDriver>(move || {
+      derived::<TestPlatform>(move || {
         version.track();
         built.set(built.get() + 1);
 
@@ -218,7 +218,7 @@ mod tests {
     );
     assert_eq!(built.get(), 1);
 
-    TestDriver::take_log();
+    TestPlatform::take_log();
     set_version.set(1);
 
     let second = children(parent)[1];
@@ -227,7 +227,7 @@ mod tests {
     assert_ne!(second, first);
     assert_eq!(children(parent), [start, second, end]);
     assert!(with(|scene| scene.record(first).is_none()));
-    assert!(TestDriver::take_log().contains(&Call::Destroy(sink(second) - 1)));
+    assert!(TestPlatform::take_log().contains(&Call::Destroy(sink(second) - 1)));
 
     owner.dispose();
   }
@@ -236,12 +236,12 @@ mod tests {
   /// every rebuild.
   #[test]
   fn derived_forwards_the_pending_annotation_to_each_rebuild() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let owner = Owner::new();
     let (version, set_version) = signal(0);
     let parent = TestBox::node();
-    let annotation = Annotation::<TestDriver> {
+    let annotation = Annotation::<TestPlatform> {
       flex: Some(Flexibility::grow(1.).into()),
       ..Annotation::default()
     };
@@ -249,7 +249,7 @@ mod tests {
     with(|scene| scene.set_pending_annotation(annotation.clone()));
 
     let start = owner.enter(|| {
-      derived::<TestDriver>(move || {
+      derived::<TestPlatform>(move || {
         version.track();
 
         TestBox::node()
@@ -276,7 +276,7 @@ mod tests {
   /// created while building it is dead; kept items keep their nodes.
   #[test]
   fn reconcile_disposes_the_owner_of_a_removed_item() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let owner = Owner::new();
     let (items, set_items) = signal(vec![1, 2, 3]);
@@ -288,7 +288,7 @@ mod tests {
     owner.enter(|| {
       let inner = Rc::clone(&inner);
 
-      reconcile::<TestDriver, _, _, _>(
+      reconcile::<TestPlatform, _, _, _>(
         start,
         move || items.get(),
         |item| *item,

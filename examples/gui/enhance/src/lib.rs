@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use skene_gui::{ActiveDriver, core::Driver, kurbo::Rect, prelude::*};
+use skene_gui::{ActivePlatform, core::Platform, kurbo::Rect, prelude::*};
 use skene_simple_gui::prelude::*;
 
 #[main]
@@ -64,9 +64,9 @@ fn clock_card() -> impl IntoView {
   ))
 }
 
-/// Advances `seconds` once a second on the driver's clock.
+/// Advances `seconds` once a second on the platform's clock.
 fn tick(seconds: Signal<u32>) {
-  let _ = ActiveDriver::default().schedule(
+  let _ = ActivePlatform::default().schedule(
     Duration::from_secs(1),
     Box::new(move || {
       seconds.update(|count| *count += 1);

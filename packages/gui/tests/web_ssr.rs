@@ -68,7 +68,7 @@ fn base_rule<'a>(styles: &'a str, class: &str) -> &'a str {
   &rest[..rest.find('}').expect("rule end")]
 }
 
-/// A color as the CSS the driver renders it to.
+/// A color as the CSS the platform renders it to.
 fn css(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 

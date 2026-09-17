@@ -14,7 +14,7 @@
 //! ([`snapshot`]/[`restore`]); a [`Key`] anchors a scope's position against edits and
 //! reordering around it, and [`Signal::opaque`] opts out. A [`struct@Store`] adds
 //! field-level subscriptions over one value, and a [`Resource`] loads a value through
-//! the executor a driver installs ([`set_spawner`]).
+//! the executor a platform installs ([`set_spawner`]).
 
 mod access;
 mod arena;

@@ -4,11 +4,11 @@ use skene_core::{
   AnyKind,
   AnyView,
   Color,
-  Driver,
   IntoView,
   MouseCursor,
   NoChild,
   NodeId,
+  Platform,
   State,
   View,
   When,
@@ -30,11 +30,11 @@ use super::{
 /// [`serve`](Self::serve) attaches it to a node that already exists. For anything
 /// beyond that, compose [`ContextMenu`] directly.
 #[must_use]
-pub struct SimpleContextMenu<D: Driver, C = NoChild> {
-  raw: ContextMenu<D, C>,
+pub struct SimpleContextMenu<P: Platform, C = NoChild> {
+  raw: ContextMenu<P, C>,
 }
 
-impl<D: Driver> SimpleContextMenu<D> {
+impl<P: Platform> SimpleContextMenu<P> {
   /// A menu with no items yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -53,7 +53,7 @@ impl<D: Driver> SimpleContextMenu<D> {
 
   /// Sets the view the menu serves.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> SimpleContextMenu<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> SimpleContextMenu<P, AnyView<P>> {
     SimpleContextMenu {
       raw: self.raw.set_child(child),
     }
@@ -63,64 +63,64 @@ impl<D: Driver> SimpleContextMenu<D> {
   #[inline(always)]
   pub fn serve(self, node: NodeId) -> NodeId
   where
-    D::Scalar: SimpleUnit,
-    D::StyleExt: CornerRadius,
+    P::Scalar: SimpleUnit,
+    P::StyleExt: CornerRadius,
   {
     dress(self.raw).serve(node)
   }
 }
 
-impl<D: Driver> Default for SimpleContextMenu<D> {
+impl<P: Platform> Default for SimpleContextMenu<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, C> AnyKind for SimpleContextMenu<D, C> {}
+impl<P: Platform, C> AnyKind for SimpleContextMenu<P, C> {}
 
 /// Decorates `menu` in the Simple language.
-fn dress<D: Driver, C>(menu: ContextMenu<D, C>) -> ContextMenu<D, C>
+fn dress<P: Platform, C>(menu: ContextMenu<P, C>) -> ContextMenu<P, C>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
-  define_defaults::<D>();
+  define_defaults::<P>();
 
-  let shape = shape::<D>();
+  let shape = shape::<P>();
 
   menu
     .set_padding(shape.list_inset)
-    .set_color(SimplePalette::<D::Scalar>::CARD)
-    .set_border(hairline(SimplePalette::<D::Scalar>::BORDER))
+    .set_color(SimplePalette::<P::Scalar>::CARD)
+    .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
     .set_corner_radius(RADIUS)
     .set_item_padding(shape.row_inset)
     .set_item_color(
       Color::TRANSPARENT
         .when(
           State::Hovered,
-          SimplePalette::<D::Scalar>::SECONDARY_SURFACE,
+          SimplePalette::<P::Scalar>::SECONDARY_SURFACE,
         )
         .when(
           State::Focused,
-          SimplePalette::<D::Scalar>::SECONDARY_SURFACE,
+          SimplePalette::<P::Scalar>::SECONDARY_SURFACE,
         ),
     )
-    .set_item_text_color(SimplePalette::<D::Scalar>::FOREGROUND.when(
+    .set_item_text_color(SimplePalette::<P::Scalar>::FOREGROUND.when(
       State::Disabled,
-      SimplePalette::<D::Scalar>::MUTED_FOREGROUND,
+      SimplePalette::<P::Scalar>::MUTED_FOREGROUND,
     ))
-    .set_shortcut_color(SimplePalette::<D::Scalar>::MUTED_FOREGROUND)
-    .set_separator_color(SimplePalette::<D::Scalar>::BORDER)
+    .set_shortcut_color(SimplePalette::<P::Scalar>::MUTED_FOREGROUND)
+    .set_separator_color(SimplePalette::<P::Scalar>::BORDER)
     .set_shortcut_spacing(shape.shortcut_gap)
     .set_item_cursor(MouseCursor::Click)
     .set_item_corner_radius(MARK_RADIUS)
 }
 
-impl<D: Driver> View<D> for SimpleContextMenu<D, AnyView<D>>
+impl<P: Platform> View<P> for SimpleContextMenu<P, AnyView<P>>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     dress(self.raw).build()

@@ -1,4 +1,4 @@
-//! The browser leaf's realization of the driver: a DOM sink under one mount root, the
+//! The browser leaf's realization of the platform: a DOM sink under one mount root, the
 //! stylesheet mirrored from the shared interner, root-delegated events routed through
 //! core's dispatch, hydration of the server leaf's markup, and the environment as
 //! signals.
@@ -44,7 +44,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
-  Driver,
   EventKind,
   FocusOrder,
   IntoView,
@@ -55,6 +54,7 @@ use skene_core::{
   OverlayProps,
   Part,
   Placement,
+  Platform,
   Point,
   PointerEvent,
   RunProps,
@@ -179,7 +179,7 @@ enum Realized {
 
 /// One node's record beside the scene: its DOM node, the native element carrying a
 /// control's state, focus and value when the control has one apart from its root, and
-/// what the driver keeps per node.
+/// what the platform keeps per node.
 struct Node {
   dom: web_sys::Node,
   carrier: Option<Element>,
@@ -447,7 +447,7 @@ fn with_dom<R>(operation: impl FnOnce(&mut Dom) -> R) -> R {
       dom
         .borrow_mut()
         .as_mut()
-        .expect("the web driver to be installed for this thread"),
+        .expect("the web platform to be installed for this thread"),
     )
   })
 }
@@ -1252,7 +1252,7 @@ fn repaint_painted() {
   }
 }
 
-impl Driver for Web {
+impl Platform for Web {
   type Scalar = f32;
   type Sink = u32;
   type StyleExt = GuiExt;
@@ -2103,7 +2103,7 @@ impl WebMarkup for Web {
   }
 
   fn set_text(&self, sink: &u32, text: &str) {
-    Driver::set_text(self, sink, text);
+    Platform::set_text(self, sink, text);
   }
 }
 
@@ -2135,7 +2135,7 @@ fn install_at(root: Element, hydrating: bool) {
 
     assert!(
       dom.is_none(),
-      "the web driver is already installed for this thread",
+      "the web platform is already installed for this thread",
     );
 
     *dom = Some(Dom::new(document, root, hydration));
@@ -2161,7 +2161,7 @@ pub fn install(root: Element) {
 ///
 /// # Panics
 ///
-/// Panics if the driver is not installed for this thread.
+/// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   skene_core::root_owner().enter(|| {
     let node = view();
@@ -2184,7 +2184,7 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
 ///
 /// # Panics
 ///
-/// Panics if the driver is already installed for this thread.
+/// Panics if the platform is already installed for this thread.
 pub fn hydrate<V, F>(root: Element, state: &str, app: F)
 where
   F: FnOnce() -> V + 'static,

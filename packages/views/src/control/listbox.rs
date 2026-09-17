@@ -6,10 +6,10 @@ use skene_core::{
   AccessProp,
   ControlKind,
   ControlState,
-  Driver,
   EventKind,
   FocusOrder,
   KeyEvent,
+  Platform,
   Prevent,
   Role,
 };
@@ -68,12 +68,12 @@ impl ListboxGroup {
   /// Whether `value` is the list's one tab stop: the chosen option, or the first when
   /// nothing is chosen.
   #[must_use]
-  pub fn is_tab_stop<D: Driver>(&self, value: &str) -> bool {
+  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
     match self.chosen() {
       Some(chosen) => chosen == value,
       None => self
         .roster
-        .ordered::<D>()
+        .ordered::<P>()
         .first()
         .is_some_and(|(_, first)| first == value),
     }
@@ -81,8 +81,8 @@ impl ListboxGroup {
 
   /// Focuses the option `step` places from the one holding `value`, clamped at both
   /// ends, choosing nothing.
-  pub fn step_from<D: Driver>(&self, value: &str, step: isize) {
-    let members = self.roster.ordered::<D>();
+  pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
+    let members = self.roster.ordered::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -94,20 +94,20 @@ impl ListboxGroup {
 
     self
       .roster
-      .focus_at::<D>(index.saturating_add_signed(step).min(last));
+      .focus_at::<P>(index.saturating_add_signed(step).min(last));
   }
 
   /// Feeds a key typed on the option holding `value` into the list's type-ahead and
   /// focuses the option its buffer picks; `false` for a key that is no character.
   #[must_use]
-  pub fn type_ahead_from<D: Driver>(&self, value: &str, event: &KeyEvent) -> bool {
-    let Some(buffer) = self.type_ahead.typed::<D>(event)
+  pub fn type_ahead_from<P: Platform>(&self, value: &str, event: &KeyEvent) -> bool {
+    let Some(buffer) = self.type_ahead.typed::<P>(event)
     else {
       return false;
     };
 
-    if let Some(index) = self.roster.typed::<D>(&buffer, Some(value)) {
-      self.roster.focus_at::<D>(index);
+    if let Some(index) = self.roster.typed::<P>(&buffer, Some(value)) {
+      self.roster.focus_at::<P>(index);
     }
 
     true
@@ -201,7 +201,7 @@ impl Default for Listbox {
   }
 }
 
-impl<D: Driver> Behavior<D> for Listbox {
+impl<P: Platform> Behavior<P> for Listbox {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Listbox
@@ -222,7 +222,7 @@ impl<D: Driver> Behavior<D> for Listbox {
     true
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let chosen = self.chosen.clone();
     let on_choose = self.on_choose.clone();
     let roster = self.roster.clone();
@@ -290,7 +290,7 @@ impl ListItem {
   }
 }
 
-impl<D: Driver> Behavior<D> for ListItem {
+impl<P: Platform> Behavior<P> for ListItem {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::ListboxOption
@@ -306,7 +306,7 @@ impl<D: Driver> Behavior<D> for ListItem {
     &[EventKind::Click, EventKind::KeyDown]
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let Some(group) = use_context::<ListboxGroup>()
     else {
       return;
@@ -324,7 +324,7 @@ impl<D: Driver> Behavior<D> for ListItem {
     control.refresh();
   }
 
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     if let Some(group) = self.group() {
       group.choose(self.value.clone());
     }
@@ -332,19 +332,19 @@ impl<D: Driver> Behavior<D> for ListItem {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     let Some(group) = self.group()
     else {
       return Prevent::None;
     };
 
     match event.key.as_str() {
-      "ArrowDown" => group.step_from::<D>(&self.value, 1),
-      "ArrowUp" => group.step_from::<D>(&self.value, -1),
-      "Home" => group.step_from::<D>(&self.value, isize::MIN),
-      "End" => group.step_from::<D>(&self.value, isize::MAX),
+      "ArrowDown" => group.step_from::<P>(&self.value, 1),
+      "ArrowUp" => group.step_from::<P>(&self.value, -1),
+      "Home" => group.step_from::<P>(&self.value, isize::MIN),
+      "End" => group.step_from::<P>(&self.value, isize::MAX),
       "Enter" => group.choose(self.value.clone()),
-      " " if !group.type_ahead_from::<D>(&self.value, event) => {
+      " " if !group.type_ahead_from::<P>(&self.value, event) => {
         group.choose(self.value.clone());
       }
       "Tab" => {
@@ -352,7 +352,7 @@ impl<D: Driver> Behavior<D> for ListItem {
 
         return Prevent::None;
       }
-      _ if group.type_ahead_from::<D>(&self.value, event) => {}
+      _ if group.type_ahead_from::<P>(&self.value, event) => {}
       _ => return Prevent::None,
     }
 
@@ -365,7 +365,7 @@ impl<D: Driver> Behavior<D> for ListItem {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<D>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

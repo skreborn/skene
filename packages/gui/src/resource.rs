@@ -5,7 +5,7 @@ use std::{future::Future, ops::Deref};
 use serde::{Serialize, de::DeserializeOwned};
 pub use skene_reactive::LoadState;
 #[cfg(target_arch = "wasm32")]
-use skene_web as driver;
+use skene_web as platform;
 
 /// A [`skene_reactive::Resource`] that hydrates: a value loaded on the server crosses
 /// the boundary to the client and is adopted there rather than re-loaded.
@@ -63,9 +63,9 @@ impl<T: 'static> Resource<T> {
   {
     #[cfg(target_arch = "wasm32")]
     {
-      driver::install_executor();
+      platform::install_executor();
 
-      if let Some(state) = driver::adopt_next()
+      if let Some(state) = platform::adopt_next()
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
       {
         return Self(skene_reactive::Resource::ready(adopted, load));
@@ -73,7 +73,7 @@ impl<T: 'static> Resource<T> {
 
       let resource = Self(skene_reactive::Resource::new(load));
 
-      driver::register_source(resource.source());
+      platform::register_source(resource.source());
 
       resource
     }
@@ -99,9 +99,9 @@ impl<T: 'static> Resource<T> {
   {
     #[cfg(target_arch = "wasm32")]
     {
-      driver::install_executor();
+      platform::install_executor();
 
-      if let Some(state) = driver::adopt_tagged(tag)
+      if let Some(state) = platform::adopt_tagged(tag)
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
       {
         return Self(skene_reactive::Resource::ready(adopted, load));
@@ -109,7 +109,7 @@ impl<T: 'static> Resource<T> {
 
       let resource = Self(skene_reactive::Resource::new(load));
 
-      driver::register_tagged_source(tag, resource.source());
+      platform::register_tagged_source(tag, resource.source());
 
       resource
     }
@@ -135,9 +135,9 @@ impl<T: 'static> Resource<T> {
   {
     #[cfg(target_arch = "wasm32")]
     {
-      driver::install_executor();
+      platform::install_executor();
 
-      if driver::is_server() {
+      if platform::is_server() {
         return Self(skene_reactive::Resource::unloaded(load));
       }
     }
@@ -147,7 +147,7 @@ impl<T: 'static> Resource<T> {
 
   /// The serializer a server render drains once this resource settles.
   #[cfg(target_arch = "wasm32")]
-  fn source(&self) -> driver::HydrationSource
+  fn source(&self) -> platform::HydrationSource
   where
     T: Serialize,
   {

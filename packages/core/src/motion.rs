@@ -1,5 +1,5 @@
 //! Motion declared as data: transitions and keyframe animations, compiled or run by
-//! every driver.
+//! every platform.
 
 pub mod interpolate;
 

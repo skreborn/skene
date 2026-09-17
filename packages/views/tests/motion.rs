@@ -1,4 +1,4 @@
-//! Motion on the host driver: a transition samples across the stepped clock from a
+//! Motion on the host platform: a transition samples across the stepped clock from a
 //! derived write and a palette flip, reduced motion cuts, a keyframe animation resolves
 //! its token leaves, and a transition name reaches the props.
 

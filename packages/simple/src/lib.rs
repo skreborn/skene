@@ -1,7 +1,7 @@
 //! # skene-simple
 //!
 //! The Simple component library built once over [`skene_views`], generic over the
-//! [`Driver`](skene_views::Driver) a facade names: one palette, one shape language, and
+//! [`Platform`](skene_views::Platform) a facade names: one palette, one shape language, and
 //! every `Simple*` view composed from the public views alone, so a third-party library
 //! sits on the same footing.
 //!
@@ -14,8 +14,8 @@
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the
-//! driver once; `skene-simple-gui` and `skene-simple-tui` are that naming done for a
-//! facade, a `prelude` of aliases over its `ActiveDriver` that sits beside the facade's
+//! platform once; `skene-simple-gui` and `skene-simple-tui` are that naming done for a
+//! facade, a `prelude` of aliases over its `ActivePlatform` that sits beside the facade's
 //! own.
 
 mod button;

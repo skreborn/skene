@@ -10,12 +10,12 @@ use std::{cell::Cell, rc::Rc};
 use skene_simple_tui::prelude::*;
 use skene_tui::{self as tui, StaticLeaf, prelude::*};
 
-use crate::common::{blue, colors_at, red, rgb, white, with_driver};
+use crate::common::{blue, colors_at, red, rgb, white, with_platform};
 
 /// A `MaxWidth` variant applies at narrow terminal sizes and not at wide ones.
 #[test]
 fn media_variant_resolves_against_terminal_size() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -34,7 +34,7 @@ fn media_variant_resolves_against_terminal_size() {
 /// alternative holds, including a nested `and`.
 #[test]
 fn composed_condition_resolves() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -60,7 +60,7 @@ fn composed_condition_resolves() {
 /// base value returns when the terminal reports a light one.
 #[test]
 fn color_scheme_conditions_follow_the_background() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -82,7 +82,7 @@ fn color_scheme_conditions_follow_the_background() {
 /// declared condition into a memo that moves with it.
 #[test]
 fn the_scheme_signal_and_a_watched_condition_follow_the_background() {
-  with_driver(|| {
+  with_platform(|| {
     let dark = tui::media::watch(&Media::Dark);
 
     assert_eq!(tui::media::scheme().get(), ColorScheme::Dark);
@@ -99,7 +99,7 @@ fn the_scheme_signal_and_a_watched_condition_follow_the_background() {
 /// hover variant.
 #[test]
 fn border_glyphs_select_the_character_set() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(4)
@@ -122,7 +122,7 @@ fn border_glyphs_select_the_character_set() {
 /// names no condition paints the same however the terminal reports itself.
 #[test]
 fn an_unconditional_token_ignores_the_terminals_background() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Theme::new(SimplePalette::default().set_card(Color::srgb(0.2, 0.4, 0.8)))
         .set_child_builder(|| {
@@ -147,7 +147,7 @@ fn an_unconditional_token_ignores_the_terminals_background() {
 /// switches the same slot to a fixed color.
 #[test]
 fn a_derived_token_paints_through_the_theme() {
-  with_driver(|| {
+  with_platform(|| {
     let plain = Signal::new(false);
 
     let _ = tui::mount(move || {
@@ -181,7 +181,7 @@ fn a_derived_token_paints_through_the_theme() {
 /// where it read the detected background, so the nodes—and everything they hold—stay.
 #[test]
 fn a_derived_scheme_repaints_without_rebuilding() {
-  with_driver(|| {
+  with_platform(|| {
     let scheme = Signal::new(ColorScheme::Light);
     let builds = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&builds);

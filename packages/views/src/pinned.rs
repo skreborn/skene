@@ -7,12 +7,12 @@ use skene_core::{
   AnyView,
   Condition,
   Dimension,
-  Driver,
   Inset,
   IntoChildOf,
   IntoView,
   Leaf,
   NoChild,
+  Platform,
   Scene,
   StackChild,
   StaticLeaf,
@@ -29,37 +29,37 @@ use skene_core::{
 /// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; holds
 /// [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct Pinned<D: Driver, C = NoChild> {
-  edges: Value<Inset<Dimension<D::Scalar>>, Condition<D::Scalar>>,
+pub struct Pinned<P: Platform, C = NoChild> {
+  edges: Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Default for Pinned<D> {
+impl<P: Platform> Default for Pinned<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Pinned<D> {
+impl<P: Platform> Pinned<P> {
   /// A wrapper with every edge `Auto` and no child yet.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       edges: Value::from(Inset::all(Dimension::Auto)),
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> Pinned<D, C> {
+impl<P: Platform, C> Pinned<P, C> {
   /// Sets the edges the child is pinned to.
   #[inline(always)]
   pub fn set_edges(
     mut self,
-    edges: impl Into<Value<Inset<Dimension<D::Scalar>>, Condition<D::Scalar>>>,
+    edges: impl Into<Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>>,
   ) -> Self {
     self.edges = edges.into();
 
@@ -69,7 +69,7 @@ impl<D: Driver, C> Pinned<D, C> {
   /// Derives the edges the child is pinned to from the signals `edges` reads: a value,
   /// a token or an expression.
   #[inline(always)]
-  pub fn derive_edges<R: Into<StaticLeaf<Inset<Dimension<D::Scalar>>>>>(
+  pub fn derive_edges<R: Into<StaticLeaf<Inset<Dimension<P::Scalar>>>>>(
     mut self,
     edges: impl Fn() -> R + 'static,
   ) -> Self {
@@ -80,19 +80,19 @@ impl<D: Driver, C> Pinned<D, C> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Pinned<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Pinned<P, AnyView<P>> {
     Pinned {
       edges: self.edges,
       child: child.into_view(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> IntoChildOf<D, StackChild> for Pinned<D, AnyView<D>> {
-  fn into_child(self) -> AnyView<D> {
+impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
+  fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         scene.set_pending_annotation(Annotation {
           pinned: Some(self.edges),
           ..Annotation::default()

@@ -23,7 +23,7 @@ type Container = skene_views::Container<Headless>;
 type Text = skene_views::Text<Headless>;
 type Span = skene_views::Span<Headless>;
 type RichText = skene_views::RichText<Headless>;
-type Theme<P, C = skene_views::NoChild> = skene_views::Theme<Headless, P, C>;
+type Theme<S, C = skene_views::NoChild> = skene_views::Theme<Headless, S, C>;
 
 /// A text with no color references the ink token: under a theme it resolves the
 /// theme's ink, and under none the root default the typography set registered; a link

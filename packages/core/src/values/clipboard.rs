@@ -1,4 +1,4 @@
-//! The clipboard actions a driver performs on the platform's own selection.
+//! The clipboard actions a platform performs on its own selection.
 
 /// A clipboard action on whatever the platform holds selected: the document's
 /// selection or the focused text entry's.

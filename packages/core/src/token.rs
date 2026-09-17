@@ -15,7 +15,7 @@ use super::{Definition, Leaf, Media, Scalar, StaticLeaf, Value};
 ///
 /// An implementation detail on every platform, never a public hook; it is limited to
 /// ASCII letters, digits, `_` and `-`, and does not start with a digit, so it is an
-/// identifier wherever a driver spells it.
+/// identifier wherever a platform spells it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
 pub struct TokenName(&'static str);
@@ -148,7 +148,7 @@ impl<T> Debug for TokenRef<T> {
 /// gives it over the facade's scalar `N`.
 ///
 /// Setting a property to a token emits the name alone; the definition reaches the
-/// driver through the theme that provides the palette.
+/// platform through the theme that provides the palette.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Token<T, N: Scalar> {
@@ -203,7 +203,7 @@ impl<T, N: Scalar> Token<T, N> {
     &self.definition
   }
 
-  /// The token's name with its definition erased into the driver's value `V`.
+  /// The token's name with its definition erased into the platform's value `V`.
   #[inline(always)]
   pub fn define<V>(&self) -> (TokenName, V)
   where
@@ -231,7 +231,7 @@ impl<T, N: Scalar> Token<T, N> {
   }
 }
 
-/// Erases a typed definition into the value a facade's driver stores per token.
+/// Erases a typed definition into the value a facade's platform stores per token.
 ///
 /// Every `From` conversion provides it, so a facade implements
 /// `From<Definition<Color, N>>` and its kin on one erased enum and every token defines
@@ -245,7 +245,7 @@ pub trait IntoTokenValue<V> {
   fn into_token_value(self) -> V;
 }
 
-impl<D, V: From<D>> IntoTokenValue<V> for D {
+impl<P, V: From<P>> IntoTokenValue<V> for P {
   #[inline(always)]
   fn into_token_value(self) -> V {
     V::from(self)

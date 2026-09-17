@@ -7,12 +7,12 @@ use skene_core::{
   AnyKind,
   AnyView,
   Dimension,
-  Driver,
   HasChildren,
   IntoView,
   MouseCursor,
   NodeId,
   Part,
+  Platform,
   State,
   View,
   When,
@@ -33,20 +33,20 @@ use super::{
 /// every facade. The checked state flows both ways; for a checkbox drawn some other
 /// way, compose [`RawCheckbox`] directly.
 #[must_use]
-pub struct SimpleCheckbox<D: Driver> {
+pub struct SimpleCheckbox<P: Platform> {
   toggle: Toggle,
   label: Option<String>,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> SimpleCheckbox<D> {
+impl<P: Platform> SimpleCheckbox<P> {
   /// An unchecked checkbox.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       toggle: Toggle::new(),
       label: None,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -91,37 +91,37 @@ impl<D: Driver> SimpleCheckbox<D> {
   }
 }
 
-impl<D: Driver> Default for SimpleCheckbox<D> {
+impl<P: Platform> Default for SimpleCheckbox<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> AnyKind for SimpleCheckbox<D> {}
+impl<P: Platform> AnyKind for SimpleCheckbox<P> {}
 
-impl<D: Driver> View<D> for SimpleCheckbox<D>
+impl<P: Platform> View<P> for SimpleCheckbox<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
-    let mark: AnyView<D> = match D::Scalar::MARKS {
-      SimpleMarks::Drawn => drawn_mark::<D>().into_view(),
+    let mark: AnyView<P> = match P::Scalar::MARKS {
+      SimpleMarks::Drawn => drawn_mark::<P>().into_view(),
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let checked = self.toggle.reads_checked();
 
-        Text::<D>::derive(move || {
+        Text::<P>::derive(move || {
           glyphs
             .map_or_else(SimpleGlyphs::default, |glyphs| glyphs.get())
             .checkbox(checked())
         })
         .set_color(
-          SimplePalette::<D::Scalar>::FOREGROUND
-            .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
+          SimplePalette::<P::Scalar>::FOREGROUND
+            .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
         )
         .into_view()
       }
@@ -141,30 +141,30 @@ where
 /// The drawn mark: a rounded box on the card surface that fills with the primary
 /// surface while checked and rings while focused; its check is inked in the mark's own
 /// surface until checked, so it hides on every medium.
-fn drawn_mark<D: Driver>() -> Container<D>
+fn drawn_mark<P: Platform>() -> Container<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
-  let shape = shape::<D>();
+  let shape = shape::<P>();
 
-  Container::<D>::new()
+  Container::<P>::new()
     .set_width(Dimension::Length(shape.mark_size))
     .set_height(Dimension::Length(shape.mark_size))
     .set_color(
       shape
         .mark_surface
-        .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+        .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     )
     .set_border(
-      border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
+      border(shape.mark_ring, SimplePalette::<P::Scalar>::BORDER)
         .when(
           State::Checked,
-          border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+          border(shape.mark_ring, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
         )
         .when(
           State::FocusVisible,
-          border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
+          border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
         ),
     )
     .set_corner_radius(MARK_RADIUS)
@@ -173,7 +173,7 @@ where
       Text::new("✓").set_color(
         shape
           .mark_surface
-          .when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_INK),
+          .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
       ),
     )
 }

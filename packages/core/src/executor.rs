@@ -1,5 +1,5 @@
-//! The single-thread executor a host driver installs: scope-bound tasks queued on the
-//! driver's thread and polled when that thread pumps them.
+//! The single-thread executor a host platform installs: scope-bound tasks queued on the
+//! platform's thread and polled when that thread pumps them.
 //!
 //! [`install`] makes it the reactive engine's spawner; [`drive`] queues a future;
 //! [`pump`] polls the ready ones, from an event loop between events or from a test.

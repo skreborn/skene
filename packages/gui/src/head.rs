@@ -3,7 +3,7 @@
 //! Callable from anywhere in a build. On a server render the registrations serialize
 //! into the page's `<head>`; in the browser they apply to the live document, each
 //! element added once (an identical element left by a server render is adopted, not
-//! duplicated). Off the web the headless driver records the registrations for a test
+//! duplicated). Off the web the headless platform records the registrations for a test
 //! to read back.
 
 #[cfg(not(target_arch = "wasm32"))]

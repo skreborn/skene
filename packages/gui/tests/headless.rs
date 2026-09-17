@@ -1,4 +1,4 @@
-//! Headless view tests: the GUI facade's views realized against the headless driver,
+//! Headless view tests: the GUI facade's views realized against the headless platform,
 //! built and driven without a browser.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -343,7 +343,7 @@ fn a_third_party_layout_view_matches_the_built_in() {
 
   impl skene_gui::AnyKind for Toolbar {}
 
-  impl skene_gui::core::View<skene_gui::ActiveDriver> for Toolbar {
+  impl skene_gui::core::View<skene_gui::ActivePlatform> for Toolbar {
     fn build(self) -> NodeId {
       skene_gui::View::build(self.base)
     }
@@ -545,7 +545,7 @@ fn a_spawned_task_runs_when_pumped_and_ends_with_its_owner() {
   owner.dispose();
 }
 
-/// The head registrations reach the headless driver for a test to read back.
+/// The head registrations reach the headless platform for a test to read back.
 #[test]
 fn head_registrations_are_recorded_on_the_host() {
   use skene_gui::{
@@ -627,9 +627,9 @@ fn a_size_handle_reports_the_measured_size() {
   owner.dispose();
 }
 
-/// A painted box hands its painter to the driver and draws through vello: the pixels
-/// the headless driver renders carry the fill.
-/// A driver's renderer takes the canvas's steps in the order they were drawn.
+/// A painted box hands its painter to the platform and draws through vello: the pixels
+/// the headless platform renders carry the fill.
+/// A platform's renderer takes the canvas's steps in the order they were drawn.
 #[test]
 fn a_canvas_replays_its_scene_into_a_renderer() {
   use skene_gui::{
@@ -751,7 +751,7 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
       .set_fallback(|| Text::new("a red box"))
       .build()
   });
-  let nodes = || Scene::<skene_gui::ActiveDriver>::with(|scene| scene.segment_nodes(start));
+  let nodes = || Scene::<skene_gui::ActivePlatform>::with(|scene| scene.segment_nodes(start));
   let shown = nodes();
 
   assert_eq!(shown.len(), 1);

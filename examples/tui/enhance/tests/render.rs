@@ -8,9 +8,9 @@ use skene_tui::{self as tui, prelude::*};
 
 /// Serializes the tests: the UI-thread designation is process-wide, so each test must
 /// install, run, and uninstall without another test's thread interleaving.
-static DRIVER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// The installed driver, uninstalled when dropped, so a failing test leaves the thread
+/// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
 struct Installed;
 
@@ -20,9 +20,9 @@ impl Drop for Installed {
   }
 }
 
-/// Installs a fresh driver, runs `body`, and uninstalls afterwards.
-fn with_driver<R>(body: impl FnOnce() -> R) -> R {
-  let _serialized = DRIVER
+/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
+fn with_platform<R>(body: impl FnOnce() -> R) -> R {
+  let _serialized = PLATFORM
     .lock()
     .unwrap_or_else(std::sync::PoisonError::into_inner);
 
@@ -35,7 +35,7 @@ fn with_driver<R>(body: impl FnOnce() -> R) -> R {
 
 #[test]
 fn the_forms_the_terminal_carries_render() {
-  let frame = with_driver(|| {
+  let frame = with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
 
     tui::render_to_text(60, 30)
@@ -54,7 +54,7 @@ fn the_forms_the_terminal_carries_render() {
     );
   }
 
-  let frame = with_driver(|| {
+  let frame = with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
     let _ = tui::render_to_text(60, 30);
 
@@ -69,7 +69,7 @@ fn the_forms_the_terminal_carries_render() {
 
 #[test]
 fn the_picture_paints_where_the_terminal_proves_graphics() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| tui_enhance::app().into_view().build());
 
     assert!(tui::render_to_pictures(60, 30).is_empty());

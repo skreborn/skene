@@ -2,13 +2,13 @@
 
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
-use skene_core::{AnyKind, AnyView, Driver, IntoView, NodeId, Scene, View};
+use skene_core::{AnyKind, AnyView, IntoView, NodeId, Platform, Scene, View};
 use skene_reactive::{Effect, Owner, on_cleanup, untrack};
 
 /// One branch: its key, its builder until it is built, and its node afterwards.
-struct Case<D: Driver, K> {
+struct Case<P: Platform, K> {
   key: K,
-  build: Option<Box<dyn FnOnce() -> AnyView<D>>>,
+  build: Option<Box<dyn FnOnce() -> AnyView<P>>>,
   node: Option<NodeId>,
 }
 
@@ -19,27 +19,27 @@ struct Case<D: Driver, K> {
 /// Every branch built is destroyed when the owner the switch was built under is
 /// disposed. Nothing is shown while no key is set or no case has the current key.
 #[must_use]
-pub struct Switch<D: Driver, K> {
+pub struct Switch<P: Platform, K> {
   key: Option<Box<dyn Fn() -> K>>,
-  cases: Vec<Case<D, K>>,
-  driver: PhantomData<fn() -> D>,
+  cases: Vec<Case<P, K>>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver, K: PartialEq + 'static> Default for Switch<D, K> {
+impl<P: Platform, K: PartialEq + 'static> Default for Switch<P, K> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, K: PartialEq + 'static> Switch<D, K> {
+impl<P: Platform, K: PartialEq + 'static> Switch<P, K> {
   /// A switch with no key and no cases.
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
       key: None,
       cases: Vec::new(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -66,7 +66,7 @@ impl<D: Driver, K: PartialEq + 'static> Switch<D, K> {
   /// Adds the branch shown under `key`, built by `case` the first time the key is
   /// current.
   #[inline(always)]
-  pub fn set_case<V: IntoView<D>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_case<V: IntoView<P>>(mut self, key: K, case: impl FnOnce() -> V + 'static) -> Self {
     self.cases.push(Case {
       key,
       build: Some(Box::new(move || case().into_view())),
@@ -77,12 +77,12 @@ impl<D: Driver, K: PartialEq + 'static> Switch<D, K> {
   }
 }
 
-impl<D: Driver, K> AnyKind for Switch<D, K> {}
+impl<P: Platform, K> AnyKind for Switch<P, K> {}
 
-impl<D: Driver, K: PartialEq + 'static> View<D> for Switch<D, K> {
+impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
   fn build(self) -> NodeId {
     let (start, annotation) =
-      Scene::<D>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
     let Some(key) = self.key
     else {
       return start;
@@ -98,7 +98,7 @@ impl<D: Driver, K: PartialEq + 'static> View<D> for Switch<D, K> {
         .filter_map(|case| case.node.take())
         .collect();
 
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         for node in nodes {
           scene.destroy(node);
         }
@@ -115,12 +115,12 @@ impl<D: Driver, K: PartialEq + 'static> View<D> for Switch<D, K> {
           let scope = owner.child();
 
           if let Some(annotation) = &annotation {
-            Scene::<D>::with(|scene| scene.set_pending_annotation(annotation.clone()));
+            Scene::<P>::with(|scene| scene.set_pending_annotation(annotation.clone()));
           }
 
           let node = scope.enter(|| untrack(|| builder().build()));
 
-          Scene::<D>::with(|scene| {
+          Scene::<P>::with(|scene| {
             scene.take_pending_annotation();
           });
           cases.borrow_mut()[index].node = Some(node);
@@ -131,7 +131,7 @@ impl<D: Driver, K: PartialEq + 'static> View<D> for Switch<D, K> {
       let previous = previous.flatten();
 
       if previous != node {
-        Scene::<D>::with(|scene| {
+        Scene::<P>::with(|scene| {
           if let Some(previous) = previous {
             scene.remove_from_segment(start, previous);
           }

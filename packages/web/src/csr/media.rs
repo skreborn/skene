@@ -210,7 +210,7 @@ pub fn watch_media(media: &Media<f32>) -> Memo<bool> {
 /// next visit and makes it the scheme in force; `None` returns to following the
 /// platform.
 ///
-/// Every scheme-conditional rule the driver compiles is gated on the root attribute, so
+/// Every scheme-conditional rule the platform compiles is gated on the root attribute, so
 /// one write re-inks the whole document without touching a node. `color-scheme` rides
 /// along so the user agent's own widgets, scrollbars and form controls follow the
 /// choice too.

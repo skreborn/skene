@@ -7,7 +7,7 @@ mod common;
 
 use skene_tui::{self as tui, Activate, Label, prelude::*};
 
-use crate::common::{green, red, rgb, white, with_driver};
+use crate::common::{green, red, rgb, white, with_platform};
 
 /// The selection highlight the tests read back.
 fn highlight() -> Color {
@@ -36,7 +36,7 @@ fn mount_themed(content: impl FnOnce() -> AnyView + 'static) {
 /// break inserted.
 #[test]
 fn drag_selects_and_copies_the_source_flow() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Container::new()
         .set_width(8)
@@ -76,7 +76,7 @@ fn drag_selects_and_copies_the_source_flow() {
 #[test]
 fn double_and_triple_click_select_word_and_run() {
   let select = |clicks: usize| {
-    with_driver(|| {
+    with_platform(|| {
       mount_themed(|| Text::new("alpha beta").set_selectable(true).into_any());
       let _ = tui::render_to_text(20, 4);
 
@@ -102,7 +102,7 @@ fn double_and_triple_click_select_word_and_run() {
 /// every run clamps to the nearest position.
 #[test]
 fn selection_spans_runs_in_document_order() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Column::new()
         .set_children((
@@ -130,7 +130,7 @@ fn selection_spans_runs_in_document_order() {
 /// stays unselectable by default; neither press opens the copy menu.
 #[test]
 fn control_chrome_and_opted_out_runs_do_not_select() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Column::new()
         .set_children((
@@ -174,7 +174,7 @@ fn control_chrome_and_opted_out_runs_do_not_select() {
 /// overrides the theme.
 #[test]
 fn typography_sets_selection_colors() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Column::new()
         .set_children((
@@ -211,7 +211,7 @@ fn typography_sets_selection_colors() {
 /// selection.
 #[test]
 fn escape_closes_the_menu_then_clears_the_selection() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| Text::new("alpha beta").set_selectable(true).into_any());
     let _ = tui::render_to_text(20, 4);
 
@@ -247,7 +247,7 @@ fn escape_closes_the_menu_then_clears_the_selection() {
 /// copies across span boundaries as one source flow.
 #[test]
 fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Container::new()
         .set_width(12)
@@ -273,7 +273,7 @@ fn rich_text_flows_wraps_and_selects_as_one_paragraph() {
     );
   });
 
-  with_driver(|| {
+  with_platform(|| {
     mount_themed(|| {
       Container::new()
         .set_width(12)

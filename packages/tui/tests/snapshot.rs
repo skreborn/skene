@@ -1,4 +1,4 @@
-//! The state snapshot in cells: scroll offsets and focus riding it into a fresh driver,
+//! The state snapshot in cells: scroll offsets and focus riding it into a fresh platform,
 //! and the dev loop's rebuild notice.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -8,9 +8,9 @@ mod common;
 use skene_simple_tui::prelude::*;
 use skene_tui::{self as tui, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
-/// Scroll offsets ride the state snapshot: restored into a fresh driver, the same nodes
+/// Scroll offsets ride the state snapshot: restored into a fresh platform, the same nodes
 /// resume at their prior offsets.
 #[test]
 fn scroll_offsets_survive_a_snapshot_roundtrip() {
@@ -32,7 +32,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
     });
   }
 
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     build();
 
     let _ = tui::render_to_text(6, 4);
@@ -43,7 +43,7 @@ fn scroll_offsets_survive_a_snapshot_roundtrip() {
 
     tui::reactive::snapshot()
   });
-  let restored = with_driver(|| {
+  let restored = with_platform(|| {
     tui::reactive::restore(&bytes);
     build();
     tui::adopt_restoration();
@@ -80,7 +80,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
     });
   }
 
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     build();
 
     let _ = tui::render_to_text(12, 6);
@@ -91,7 +91,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
 
     tui::reactive::snapshot()
   });
-  let restored = with_driver(|| {
+  let restored = with_platform(|| {
     tui::reactive::restore(&bytes);
     build();
     tui::adopt_restoration();
@@ -110,7 +110,7 @@ fn restored_scroll_rebuilds_a_lazy_column_window() {
 /// The dev rebuild notice presents as a modal over the app and dismisses with `Escape`.
 #[test]
 fn dev_notice_modal_presents_and_dismisses() {
-  with_driver(|| {
+  with_platform(|| {
     let notice = Signal::new(None::<String>);
 
     let _ = tui::mount(|| Text::new("app content").into_any().build());
@@ -136,7 +136,7 @@ fn dev_notice_modal_presents_and_dismisses() {
   });
 }
 
-/// Focus rides the state snapshot: restored into a fresh driver, the same control holds
+/// Focus rides the state snapshot: restored into a fresh platform, the same control holds
 /// focus without a keystroke, so the next `Space` activates it.
 #[test]
 fn focus_survives_a_snapshot_roundtrip() {
@@ -157,7 +157,7 @@ fn focus_survives_a_snapshot_roundtrip() {
   }
 
   let hits = Rc::new(Cell::new(0));
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     build(&hits);
 
     let _ = tui::render_to_text(12, 2);
@@ -168,7 +168,7 @@ fn focus_survives_a_snapshot_roundtrip() {
     tui::reactive::snapshot()
   });
 
-  with_driver(|| {
+  with_platform(|| {
     tui::reactive::restore(&bytes);
     build(&hits);
     tui::adopt_restoration();
@@ -207,7 +207,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
   }
 
   let hits = Rc::new(RefCell::new(Vec::new()));
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     build(vec![1, 2, 3], &hits);
 
     let _ = tui::render_to_text(12, 3);
@@ -218,7 +218,7 @@ fn focus_follows_a_keyed_item_across_a_reorder() {
     tui::reactive::snapshot()
   });
 
-  with_driver(|| {
+  with_platform(|| {
     tui::reactive::restore(&bytes);
     build(vec![3, 1, 2], &hits);
     tui::adopt_restoration();
@@ -243,7 +243,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     let _ = tui::mount(move || SimpleTextField::new().bind_value(value).into_any().build());
   }
 
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     let value = Signal::new(String::from("ac"));
 
     build(value);
@@ -257,7 +257,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     tui::reactive::snapshot()
   });
 
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("ac"));
 
     tui::reactive::restore(&bytes);
@@ -275,7 +275,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     );
   });
 
-  let bytes = with_driver(|| {
+  let bytes = with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     build(value);
@@ -289,7 +289,7 @@ fn a_caret_survives_a_snapshot_roundtrip() {
     tui::reactive::snapshot()
   });
 
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     tui::reactive::restore(&bytes);

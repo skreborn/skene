@@ -3,7 +3,7 @@ name = "skene-tui"
 version.workspace = true
 edition.workspace = true
 
-# Host-only: the terminal driver never itself compiles to wasm.
+# Host-only: the terminal platform never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64 = "0.22"
 postcard = { default-features = false, features = ["alloc"], version = "1" }

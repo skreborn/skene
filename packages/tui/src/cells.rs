@@ -1,7 +1,7 @@
 //! The escape trait a low-level terminal view states as its bound, and the handle it
 //! paints through.
 
-use skene_core::{Color, Driver, Point, Rect, Size};
+use skene_core::{Color, Platform, Point, Rect, Size};
 
 use crate::{
   paint::{Buffer, terminal_rgb},
@@ -14,17 +14,17 @@ use crate::{
 /// handle addresses it from its own origin.
 pub type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
 
-/// A terminal driver that runs a painter inside a box.
+/// A terminal platform that runs a painter inside a box.
 ///
 /// The bound a low-level terminal view states: the view builds an ordinary
-/// [`Container`](crate::Container) for its sizing and hands the driver a painter for
-/// it, which the driver runs with the box's laid-out rectangle whenever the box
+/// [`Container`](crate::Container) for its sizing and hands the platform a painter for
+/// it, which the platform runs with the box's laid-out rectangle whenever the box
 /// repaints, after the box's own background and border and before its children.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint cells",
-  label = "a view bound on `CellPainter` exists on the terminal driver alone"
+  label = "a view bound on `CellPainter` exists on the terminal platform alone"
 )]
-pub trait CellPainter: Driver {
+pub trait CellPainter: Platform {
   /// Runs `painter` inside the box `sink` on every repaint; a later call replaces the
   /// painter.
   fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);

@@ -1,4 +1,4 @@
-//! A hash over a style's values, for a driver caching what it compiled from them.
+//! A hash over a style's values, for a platform caching what it compiled from them.
 
 use std::hash::{Hash, Hasher};
 
@@ -8,11 +8,11 @@ use super::{
   BoxStyle,
   BoxVisitor,
   Conditional,
-  DriverLeaf,
   IntoBoxValue,
   IntoRunValue,
   Keyframe,
   Plain,
+  PlatformLeaf,
   PropertyKey,
   PropertyName,
   RunDynamics,
@@ -49,11 +49,11 @@ use crate::{
 
 /// A value that feeds a hasher so equal values hash alike, lengths included.
 ///
-/// Every type a style property holds has it; a driver keys its compiled output on the
+/// Every type a style property holds has it; a platform keys its compiled output on the
 /// resulting hash.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no fingerprint",
-  label = "a style property's type implements `Fingerprint` so a driver can key what it compiled on the style"
+  label = "a style property's type implements `Fingerprint` so a platform can key what it compiled on the style"
 )]
 pub trait Fingerprint {
   /// Feeds this value to `state`.
@@ -223,7 +223,7 @@ impl<T: Fingerprint> Fingerprint for StaticLeaf<T> {
   }
 }
 
-impl<T: Fingerprint> Fingerprint for DriverLeaf<T> {
+impl<T: Fingerprint> Fingerprint for PlatformLeaf<T> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     std::mem::discriminant(self).hash(state);
 
@@ -309,7 +309,7 @@ impl<
   fn value<T: IntoBoxValue<N, X>>(
     &mut self,
     key: PropertyKey<X::Property>,
-    value: &Option<Conditional<DriverLeaf<T>, C>>,
+    value: &Option<Conditional<PlatformLeaf<T>, C>>,
   ) {
     key.hash(self.state);
     value.fingerprint(self.state);
@@ -351,7 +351,7 @@ impl<C: Clone + PartialEq + Hash + std::fmt::Debug + 'static, X: StyleExtension,
   fn value<T: IntoRunValue<X>>(
     &mut self,
     key: PropertyKey<X::Property>,
-    value: &Option<Conditional<DriverLeaf<T>, C>>,
+    value: &Option<Conditional<PlatformLeaf<T>, C>>,
   ) {
     key.hash(self.state);
     value.fingerprint(self.state);

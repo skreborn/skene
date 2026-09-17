@@ -1,4 +1,4 @@
-//! The record store beside the scene: what the driver keeps per node, the taffy tree,
+//! The record store beside the scene: what the platform keeps per node, the taffy tree,
 //! the interaction state, and the environment it reports.
 
 use std::{rc::Rc, time::Instant};
@@ -41,7 +41,7 @@ use crate::{
   text::{self, Clusters},
 };
 
-/// The size the driver reports until a frame is rendered.
+/// The size the platform reports until a frame is rendered.
 pub(crate) const DEFAULT_SIZE: (u16, u16) = (80, 24);
 
 /// The colors an unset cell shows: the ink and the base a paint mixes against.
@@ -63,7 +63,7 @@ pub(crate) type PlainRun = RunStyle<Plain, TuiExt>;
 /// A rectangle of cells on the screen: its origin, then its size.
 pub(crate) type CellRect = (i64, i64, i64, i64);
 
-/// The driver's sink: the index of a node's record and the generation it was minted
+/// The platform's sink: the index of a node's record and the generation it was minted
 /// in, so a handle whose record was destroyed reaches nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
@@ -728,7 +728,7 @@ pub(crate) struct Press {
   pub(crate) target: Option<Handle>,
 }
 
-/// The environment as signals, with the write halves the driver drives.
+/// The environment as signals, with the write halves the platform drives.
 pub(crate) struct MediaState {
   pub(crate) owner: Owner,
   pub(crate) set_viewport: WriteSignal<Size<u32>>,
@@ -740,7 +740,7 @@ pub(crate) struct MediaState {
   pub(crate) signals: MediaSignals<u32>,
 }
 
-/// Every record the driver holds, the layout tree, the interaction state and the
+/// Every record the platform holds, the layout tree, the interaction state and the
 /// environment.
 // Each flag is an independent fact about the frame or the pointer.
 #[expect(clippy::struct_excessive_bools)]

@@ -6,7 +6,7 @@
 //! running client upgrades the links to instant in-app navigation and fetches the
 //! split module in the background.
 //!
-//! Gated to `wasm32`: links and lazy modules are the web's, so the host has no driver
+//! Gated to `wasm32`: links and lazy modules are the web's, so the host has no platform
 //! for them.
 
 #![cfg(target_arch = "wasm32")]

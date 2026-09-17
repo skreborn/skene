@@ -4,7 +4,7 @@ use std::{hash::Hash, marker::PhantomData};
 
 use skene_reactive::Key;
 
-use super::{Driver, Keyed, NodeId};
+use super::{Keyed, NodeId, Platform};
 
 /// A view accepted as a child of every kind.
 ///
@@ -21,7 +21,7 @@ pub trait AnyKind {}
 /// and returns its root.
 ///
 /// There is no update path; updates are the effects a build left behind.
-pub trait View<D: Driver>: AnyKind + 'static {
+pub trait View<P: Platform>: AnyKind + 'static {
   /// Realizes this view and returns its root node.
   fn build(self) -> NodeId;
 
@@ -31,7 +31,7 @@ pub trait View<D: Driver>: AnyKind + 'static {
   /// The key is matched across runs by its hash. Goes after the properties and before
   /// the children: the keyed view still takes them.
   #[inline(always)]
-  fn set_key(self, key: impl Hash) -> Keyed<D, Self>
+  fn set_key(self, key: impl Hash) -> Keyed<P, Self>
   where
     Self: Sized,
   {
@@ -40,7 +40,7 @@ pub trait View<D: Driver>: AnyKind + 'static {
 
   /// Erases this view's concrete type.
   #[inline(always)]
-  fn into_any(self) -> AnyView<D>
+  fn into_any(self) -> AnyView<P>
   where
     Self: Sized,
   {
@@ -50,9 +50,9 @@ pub trait View<D: Driver>: AnyKind + 'static {
 
 /// A type-erased view: a boxed build, or a node already built.
 #[must_use]
-pub struct AnyView<D: Driver> {
+pub struct AnyView<P: Platform> {
   inner: Inner,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
 enum Inner {
@@ -60,13 +60,13 @@ enum Inner {
   Node(NodeId),
 }
 
-impl<D: Driver> AnyView<D> {
+impl<P: Platform> AnyView<P> {
   /// A view built by `build`.
   #[inline(always)]
   pub fn new(build: impl FnOnce() -> NodeId + 'static) -> Self {
     Self {
       inner: Inner::Build(Box::new(build)),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -75,14 +75,14 @@ impl<D: Driver> AnyView<D> {
   pub const fn node(node: NodeId) -> Self {
     Self {
       inner: Inner::Node(node),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> AnyKind for AnyView<D> {}
+impl<P: Platform> AnyKind for AnyView<P> {}
 
-impl<D: Driver> View<D> for AnyView<D> {
+impl<P: Platform> View<P> for AnyView<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     match self.inner {
@@ -99,14 +99,14 @@ impl<D: Driver> View<D> for AnyView<D> {
 
 impl AnyKind for NodeId {}
 
-impl<D: Driver> View<D> for NodeId {
+impl<P: Platform> View<P> for NodeId {
   #[inline(always)]
   fn build(self) -> NodeId {
     self
   }
 
   #[inline(always)]
-  fn into_any(self) -> AnyView<D> {
+  fn into_any(self) -> AnyView<P> {
     AnyView::node(self)
   }
 }
@@ -118,15 +118,15 @@ impl<D: Driver> View<D> for NodeId {
   note = "check that it is indeed a view type",
   note = "see its documentation to determine what completes it"
 )]
-pub trait IntoView<D: Driver> {
+pub trait IntoView<P: Platform> {
   /// Converts this value into a view.
-  fn into_view(self) -> AnyView<D>;
+  fn into_view(self) -> AnyView<P>;
 }
 
 #[diagnostic::do_not_recommend]
-impl<D: Driver, V: View<D>> IntoView<D> for V {
+impl<P: Platform, V: View<P>> IntoView<P> for V {
   #[inline(always)]
-  fn into_view(self) -> AnyView<D> {
+  fn into_view(self) -> AnyView<P> {
     self.into_any()
   }
 }
@@ -165,15 +165,15 @@ pub struct GridChild;
   note = "a wrapper (`Flexible`, `Pinned`, `GridCell`) is accepted only by the container that understands it",
   note = "see its documentation to determine what completes it"
 )]
-pub trait IntoChildOf<D: Driver, Kind> {
+pub trait IntoChildOf<P: Platform, Kind> {
   /// Converts this value into the child's view.
-  fn into_child(self) -> AnyView<D>;
+  fn into_child(self) -> AnyView<P>;
 }
 
 #[diagnostic::do_not_recommend]
-impl<D: Driver, Kind, V: IntoView<D> + AnyKind> IntoChildOf<D, Kind> for V {
+impl<P: Platform, Kind, V: IntoView<P> + AnyKind> IntoChildOf<P, Kind> for V {
   #[inline(always)]
-  fn into_child(self) -> AnyView<D> {
+  fn into_child(self) -> AnyView<P> {
     self.into_view()
   }
 }

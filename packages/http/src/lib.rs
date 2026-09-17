@@ -8,7 +8,7 @@
 //!
 //! The transport is the platform's: the browser's `fetch` on the web, `wasi:http`
 //! through the server leaf's reactor on a server render, and a thread around a plain
-//! HTTP client on every other host, where the future wakes the driver's executor
+//! HTTP client on every other host, where the future wakes the platform's executor
 //! when the thread is done. A request outlives nothing: dropping the future before it
 //! resolves abandons the exchange.
 

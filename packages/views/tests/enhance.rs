@@ -1,5 +1,5 @@
 //! Enhancement: the fallback builds while the signal is false and the child once it
-//! is true, each at most once, and the built-ins wait on their driver's own signals.
+//! is true, each at most once, and the built-ins wait on their platform's own signals.
 
 use std::{cell::Cell, rc::Rc};
 
@@ -110,10 +110,10 @@ fn a_signal_true_from_the_start_never_builds_the_fallback() {
   );
 }
 
-/// The hydration signal is the headless driver's stand-in for the web's: hydrated
+/// The hydration signal is the headless platform's stand-in for the web's: hydrated
 /// until a test says otherwise, and an enhancement over it swaps when it turns.
 #[test]
-fn hydration_is_answered_by_the_driver() {
+fn hydration_is_answered_by_the_platform() {
   reset();
   set_hydrated(false);
 

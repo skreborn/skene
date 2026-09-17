@@ -5,7 +5,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_core::{Driver, NodeId, Scene};
+use skene_core::{NodeId, Platform, Scene};
 use skene_reactive::Trigger;
 
 use super::TypeAhead;
@@ -80,40 +80,40 @@ impl Roster {
   }
 
   /// Focuses the member at `index` in tree order, if there is one.
-  pub fn focus_at<D: Driver>(&self, index: usize) {
-    if let Some((node, _)) = self.ordered::<D>().get(index) {
-      with_sink::<D, _>(*node, |sink| D::default().focus(sink));
+  pub fn focus_at<P: Platform>(&self, index: usize) {
+    if let Some((node, _)) = self.ordered::<P>().get(index) {
+      with_sink::<P, _>(*node, |sink| P::default().focus(sink));
     }
   }
 
   /// Focuses the member holding `value`, or the first member when none holds it.
-  pub fn focus_value<D: Driver>(&self, value: Option<&str>) {
-    let members = self.ordered::<D>();
+  pub fn focus_value<P: Platform>(&self, value: Option<&str>) {
+    let members = self.ordered::<P>();
     let index = value
       .and_then(|value| members.iter().position(|(_, held)| held == value))
       .unwrap_or(0);
 
     if let Some((node, _)) = members.get(index) {
-      with_sink::<D, _>(*node, |sink| D::default().focus(sink));
+      with_sink::<P, _>(*node, |sink| P::default().focus(sink));
     }
   }
 
-  /// The members in tree order under `D`'s scene, tracked.
+  /// The members in tree order under `P`'s scene, tracked.
   #[must_use]
-  pub fn ordered<D: Driver>(&self) -> Vec<(NodeId, String)> {
+  pub fn ordered<P: Platform>(&self) -> Vec<(NodeId, String)> {
     self
-      .walk::<D>()
+      .walk::<P>()
       .into_iter()
       .map(|member| (member.node, member.value))
       .collect()
   }
 
-  /// The members' values and names in tree order under `D`'s scene, tracked; a
+  /// The members' values and names in tree order under `P`'s scene, tracked; a
   /// member's value is its name where its label supplied none.
   #[must_use]
-  pub fn named<D: Driver>(&self) -> Vec<(String, String)> {
+  pub fn named<P: Platform>(&self) -> Vec<(String, String)> {
     self
-      .walk::<D>()
+      .walk::<P>()
       .into_iter()
       .map(|member| {
         let name = member.name.unwrap_or_else(|| member.value.clone());
@@ -127,8 +127,8 @@ impl Roster {
   /// [`TypeAhead::matching`]), given the member holding `current` has focus or is
   /// chosen; a member's value is its name where its label supplied none.
   #[must_use]
-  pub fn typed<D: Driver>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
-    let members = self.walk::<D>();
+  pub fn typed<P: Platform>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
+    let members = self.walk::<P>();
     let names: Vec<String> = members
       .iter()
       .map(|member| member.name.clone().unwrap_or_else(|| member.value.clone()))
@@ -139,7 +139,7 @@ impl Roster {
     TypeAhead::matching(buffer, &names, current)
   }
 
-  fn walk<D: Driver>(&self) -> Vec<Member> {
+  fn walk<P: Platform>(&self) -> Vec<Member> {
     self.changed.track();
 
     let members = self.members.borrow();
@@ -148,7 +148,7 @@ impl Roster {
       return members.clone();
     };
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       let mut ordered = Vec::with_capacity(members.len());
       let mut pending = vec![root];
 

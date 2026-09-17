@@ -10,13 +10,13 @@ use std::{cell::Cell, rc::Rc};
 use skene_simple_tui::prelude::*;
 use skene_tui::{self as tui, Activate, PointerButton, TextEntry, prelude::*};
 
-use crate::common::{blue, colors_at, red, rgb, with_driver};
+use crate::common::{blue, colors_at, red, rgb, with_platform};
 
 /// Pointer events reach handlers along the hit path with terminal and view-relative
 /// positions, at the cell's center when the terminal reports cells alone.
 #[test]
 fn pointer_events_carry_cell_coordinates() {
-  with_driver(|| {
+  with_platform(|| {
     let down = Rc::new(Cell::new(None));
     let moved = Rc::new(Cell::new(None));
     let (pressed, hovered) = (Rc::clone(&down), Rc::clone(&moved));
@@ -61,7 +61,7 @@ fn pointer_events_carry_cell_coordinates() {
 /// moving off reverts and fires the leave handler, once each.
 #[test]
 fn hover_variant_and_pointer_handlers() {
-  with_driver(|| {
+  with_platform(|| {
     let enters = Rc::new(Cell::new(0u32));
     let leaves = Rc::new(Cell::new(0u32));
     let (entered, left) = (Rc::clone(&enters), Rc::clone(&leaves));
@@ -101,7 +101,7 @@ fn hover_variant_and_pointer_handlers() {
 /// else—an explicit style still winning.
 #[test]
 fn hover_cursor_defaults_follow_the_content() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
@@ -148,7 +148,7 @@ fn hover_cursor_defaults_follow_the_content() {
 /// beside it stages nothing, and the link shows the pointing hand.
 #[test]
 fn link_click_opens_the_destination() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       RichText::new()
         .set_spans([
@@ -181,7 +181,7 @@ fn link_click_opens_the_destination() {
 /// ancestor never sees it.
 #[test]
 fn a_click_stops_at_the_view_that_took_it() {
-  with_driver(|| {
+  with_platform(|| {
     let inner_runs = Rc::new(Cell::new(0u32));
     let outer_runs = Rc::new(Cell::new(0u32));
     let (inner, outer) = (Rc::clone(&inner_runs), Rc::clone(&outer_runs));
@@ -214,7 +214,7 @@ fn a_click_stops_at_the_view_that_took_it() {
 /// releasing over another—or over nothing—clicks neither.
 #[test]
 fn clicks_complete_on_release_over_the_same_target() {
-  with_driver(|| {
+  with_platform(|| {
     let first = Rc::new(Cell::new(0u32));
     let second = Rc::new(Cell::new(0u32));
     let (one, two) = (Rc::clone(&first), Rc::clone(&second));
@@ -251,7 +251,7 @@ fn clicks_complete_on_release_over_the_same_target() {
 /// press past the third yet forward the release, so the orphan release stands in.
 #[test]
 fn an_orphan_release_stands_in_for_a_swallowed_click() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -280,7 +280,7 @@ fn an_orphan_release_stands_in_for_a_swallowed_click() {
 /// repaints every row.
 #[test]
 fn a_hover_change_repaints_only_its_rows() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children(

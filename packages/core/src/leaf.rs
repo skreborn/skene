@@ -9,7 +9,7 @@ use crate::{Dimension, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
 ///
-/// What a token's [`Definition`] holds, and the part of a [`Leaf`] a driver can compile
+/// What a token's [`Definition`] holds, and the part of a [`Leaf`] a platform can compile
 /// ahead of time.
 #[derive(Debug, Clone, PartialEq, Hash)]
 #[must_use]
@@ -80,12 +80,12 @@ impl<T: Debug> Debug for Leaf<T> {
 #[must_use]
 pub struct Slot(pub u16);
 
-/// What a driver receives for a property: a [`StaticLeaf`] to compile, or the slot a
+/// What a platform receives for a property: a [`StaticLeaf`] to compile, or the slot a
 /// derived leaf's render effect writes.
 #[derive(Debug, Clone, PartialEq, Hash)]
 #[must_use]
-pub enum DriverLeaf<T> {
-  /// A value the driver compiles ahead of time.
+pub enum PlatformLeaf<T> {
+  /// A value the platform compiles ahead of time.
   Static(StaticLeaf<T>),
   /// A value a render effect writes into the slot.
   Slot(Slot),
@@ -103,7 +103,7 @@ pub struct DerivedSlot<K, V> {
   /// `i`-th variant, counted from one.
   pub position: usize,
   /// The computation, tracking the signals it reads: a value, or a token or expression
-  /// the driver resolves where it reads the slot.
+  /// the platform resolves where it reads the slot.
   pub compute: Rc<dyn Fn() -> StaticLeaf<V>>,
 }
 
@@ -132,7 +132,7 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// What a token is defined as: a [`StaticLeaf`] under [`Media`] conditions over the
 /// facade's scalar.
 ///
-/// No closure can enter one, so a palette is data a server can serialize and a driver
+/// No closure can enter one, so a palette is data a server can serialize and a platform
 /// can compile once. Only media conditions apply: a token answers the environment, and a
 /// node's own state is the consuming property's to condition on.
 ///
@@ -145,9 +145,9 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// ```
 pub type Definition<T, N> = Conditional<StaticLeaf<T>, Media<N>>;
 
-/// What a driver receives for one property: a [`DriverLeaf`] under the facade's
+/// What a platform receives for one property: a [`PlatformLeaf`] under the facade's
 /// conditions.
-pub type StaticValue<T, C> = Conditional<DriverLeaf<T>, C>;
+pub type StaticValue<T, C> = Conditional<PlatformLeaf<T>, C>;
 
 impl<L, C> Conditional<L, C> {
   /// A value with no variants.
@@ -252,8 +252,8 @@ impl<T, C> Value<T, C> {
 
     self.map(|leaf| {
       let leaf = match leaf {
-        Leaf::Static(leaf) => DriverLeaf::Static(leaf),
-        Leaf::Derived(compute) => DriverLeaf::Slot(allocate(position, compute)),
+        Leaf::Static(leaf) => PlatformLeaf::Static(leaf),
+        Leaf::Derived(compute) => PlatformLeaf::Slot(allocate(position, compute)),
       };
 
       position += 1;
@@ -520,20 +520,20 @@ impl<T, N: Scalar> From<StaticLeaf<T>> for Definition<T, N> {
 impl<T, C> From<T> for StaticValue<T, C> {
   #[inline(always)]
   fn from(value: T) -> Self {
-    Self::new(DriverLeaf::Static(StaticLeaf::Fixed(value)))
+    Self::new(PlatformLeaf::Static(StaticLeaf::Fixed(value)))
   }
 }
 
 impl<T, C> From<StaticLeaf<T>> for StaticValue<T, C> {
   #[inline(always)]
   fn from(leaf: StaticLeaf<T>) -> Self {
-    Self::new(DriverLeaf::Static(leaf))
+    Self::new(PlatformLeaf::Static(leaf))
   }
 }
 
-impl<T, C> From<DriverLeaf<T>> for StaticValue<T, C> {
+impl<T, C> From<PlatformLeaf<T>> for StaticValue<T, C> {
   #[inline(always)]
-  fn from(leaf: DriverLeaf<T>) -> Self {
+  fn from(leaf: PlatformLeaf<T>) -> Self {
     Self::new(leaf)
   }
 }
@@ -545,7 +545,7 @@ mod tests {
     rc::Rc,
   };
 
-  use super::{Conditional, Definition, DriverLeaf, Leaf, Slot, StaticLeaf, Value, When};
+  use super::{Conditional, Definition, Leaf, PlatformLeaf, Slot, StaticLeaf, Value, When};
   use crate::{Color, Expr, Media, State, TokenRef};
 
   /// A plain value conditioned once is a base and one fixed variant.
@@ -605,14 +605,14 @@ mod tests {
     assert_eq!(positions, [1, 3]);
     assert_eq!(
       split.base(),
-      &DriverLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
+      &PlatformLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
     );
-    assert_eq!(split.variants()[0].1, DriverLeaf::Slot(Slot(7)));
+    assert_eq!(split.variants()[0].1, PlatformLeaf::Slot(Slot(7)));
     assert_eq!(
       split.variants()[1].1,
-      DriverLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
+      PlatformLeaf::Static(StaticLeaf::Fixed(Color::TRANSPARENT))
     );
-    assert_eq!(split.variants()[2].1, DriverLeaf::Slot(Slot(8)));
+    assert_eq!(split.variants()[2].1, PlatformLeaf::Slot(Slot(8)));
   }
 
   /// Two definitions with the same content hash alike, expressions included.

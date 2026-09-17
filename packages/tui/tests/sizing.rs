@@ -8,7 +8,7 @@ mod common;
 
 use skene_tui::{self as tui, CellScale, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// The scale at the cell (`x`, `y`) of a `width` x `height` frame.
 fn scale_at(width: u16, height: u16, x: usize, y: usize) -> CellScale {
@@ -20,7 +20,7 @@ fn scale_at(width: u16, height: u16, x: usize, y: usize) -> CellScale {
 /// moves down, a wrap counts the scaled columns, and a size below one keeps its cells.
 #[test]
 fn a_size_is_honored_once_the_terminal_proves_it() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
@@ -76,7 +76,7 @@ fn a_size_is_honored_once_the_terminal_proves_it() {
 /// its bottom row as on a baseline; the typography's size sizes every run beneath it.
 #[test]
 fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
-  with_driver(|| {
+  with_platform(|| {
     tui::trigger_text_sizing(true);
 
     let _ = tui::mount(|| {
@@ -112,7 +112,7 @@ fn a_paragraph_sets_its_smaller_spans_on_the_baseline() {
 /// the whole block paints selected.
 #[test]
 fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
-  with_driver(|| {
+  with_platform(|| {
     tui::trigger_text_sizing(true);
 
     let _ = tui::mount(|| {

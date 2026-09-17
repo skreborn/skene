@@ -39,9 +39,9 @@ use crate::{
 /// A box's style: one field per shared property in shape `S`, lengths in `N`, and the
 /// medium's own properties in `ext`.
 ///
-/// Overlay, the static/derived split and every driver's rendering are written against
+/// Overlay, the static/derived split and every platform's rendering are written against
 /// [`for_each_field`](Self::for_each_field); adding a property touches this struct, the
-/// field list and each driver's mapping only.
+/// field list and each platform's mapping only.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[must_use]
 pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
@@ -429,9 +429,9 @@ impl<N: Scalar, X: StyleExtension> BoxFieldVisitor<N, X> for Overlay<'_, N, X> {
 impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
   BoxStyle<N, Declared<C>, X>
 {
-  /// The static style a driver receives, and the derived leaves lifted out of it: each
+  /// The static style a platform receives, and the derived leaves lifted out of it: each
   /// slot's index is its position in the list, and its property's field holds
-  /// [`DriverLeaf::Slot`](super::DriverLeaf::Slot) where the leaf was.
+  /// [`PlatformLeaf::Slot`](super::PlatformLeaf::Slot) where the leaf was.
   #[expect(clippy::type_complexity)]
   pub fn split(mut self) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
     let mut target = BoxStyle::default();
@@ -511,11 +511,11 @@ mod tests {
     Condition,
     Declared,
     Dimension,
-    DriverLeaf,
     Inset,
     Leaf,
     Media,
     Plain,
+    PlatformLeaf,
     Property,
     PropertyKey,
     Shape,
@@ -549,13 +549,13 @@ mod tests {
 
     assert_eq!(
       fixed.width.as_ref().map(|width| width.base().clone()),
-      Some(DriverLeaf::Static(StaticLeaf::Fixed(Dimension::Length(
+      Some(PlatformLeaf::Static(StaticLeaf::Fixed(Dimension::Length(
         10.
       ))))
     );
     assert_eq!(
       fixed.padding.as_ref().map(|padding| padding.base().clone()),
-      Some(DriverLeaf::Static(StaticLeaf::Token(TokenRef::new(
+      Some(PlatformLeaf::Static(StaticLeaf::Token(TokenRef::new(
         "gutter"
       ))))
     );
@@ -563,12 +563,12 @@ mod tests {
 
     let color = fixed.color.unwrap();
 
-    assert_eq!(color.base(), &DriverLeaf::Slot(Slot(1)));
+    assert_eq!(color.base(), &PlatformLeaf::Slot(Slot(1)));
     assert_eq!(
       color.variants(),
       &[(
         GuiCondition::Media(Media::Dark),
-        DriverLeaf::Static(StaticLeaf::Fixed(Color::srgb(0., 0., 0.))),
+        PlatformLeaf::Static(StaticLeaf::Fixed(Color::srgb(0., 0., 0.))),
       )]
     );
 
@@ -576,9 +576,9 @@ mod tests {
 
     assert_eq!(
       aspect_ratio.base(),
-      &DriverLeaf::Static(StaticLeaf::Fixed(1.))
+      &PlatformLeaf::Static(StaticLeaf::Fixed(1.))
     );
-    assert_eq!(aspect_ratio.variants()[0].1, DriverLeaf::Slot(Slot(0)));
+    assert_eq!(aspect_ratio.variants()[0].1, PlatformLeaf::Slot(Slot(0)));
 
     assert_eq!(slots.len(), 2, "slots follow declaration order");
     assert_eq!(slots[0].slot, Slot(0));

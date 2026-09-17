@@ -4,11 +4,11 @@ use skene_core::{
   AnyKind,
   Children,
   Condition,
-  Driver,
   FlexChild,
   HasChildren,
   ItemAlignment,
   NodeId,
+  Platform,
   Seal,
   Spacing,
   StaticLeaf,
@@ -29,29 +29,29 @@ use super::{
 /// surface itself. Accepts any view or a [`Flexible`](skene_views::Flexible) wrapper as
 /// a child.
 #[must_use]
-pub struct SimpleCard<D: Driver> {
-  column: Column<D>,
+pub struct SimpleCard<P: Platform> {
+  column: Column<P>,
 }
 
-impl<D: Driver> SimpleCard<D>
+impl<P: Platform> SimpleCard<P>
 where
-  D::Scalar: SimpleUnit,
+  P::Scalar: SimpleUnit,
 {
   /// An empty card.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      column: Column::new().set_spacing(shape::<D>().card_spacing),
+      column: Column::new().set_spacing(shape::<P>().card_spacing),
     }
   }
 }
 
-impl<D: Driver> SimpleCard<D> {
+impl<P: Platform> SimpleCard<P> {
   /// Sets the spacing between the card's children.
   #[inline(always)]
   pub fn set_spacing(
     mut self,
-    spacing: impl Into<Value<Spacing<D::Scalar>, Condition<D::Scalar>>>,
+    spacing: impl Into<Value<Spacing<P::Scalar>, Condition<P::Scalar>>>,
   ) -> Self {
     self.column = self.column.set_spacing(spacing);
 
@@ -60,7 +60,7 @@ impl<D: Driver> SimpleCard<D> {
 
   /// Derives the spacing between the card's children from the signals `spacing` reads.
   #[inline(always)]
-  pub fn derive_spacing<R: Into<StaticLeaf<Spacing<D::Scalar>>>>(
+  pub fn derive_spacing<R: Into<StaticLeaf<Spacing<P::Scalar>>>>(
     mut self,
     spacing: impl Fn() -> R + 'static,
   ) -> Self {
@@ -73,7 +73,7 @@ impl<D: Driver> SimpleCard<D> {
   #[inline(always)]
   pub fn set_item_alignment(
     mut self,
-    alignment: impl Into<Value<ItemAlignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.column = self.column.set_item_alignment(alignment);
 
@@ -92,9 +92,9 @@ impl<D: Driver> SimpleCard<D> {
   }
 }
 
-impl<D: Driver> Default for SimpleCard<D>
+impl<P: Platform> Default for SimpleCard<P>
 where
-  D::Scalar: SimpleUnit,
+  P::Scalar: SimpleUnit,
 {
   #[inline(always)]
   fn default() -> Self {
@@ -102,29 +102,29 @@ where
   }
 }
 
-impl<D: Driver> HasChildren<D> for SimpleCard<D> {
+impl<P: Platform> HasChildren<P> for SimpleCard<P> {
   type Kind = FlexChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, FlexChild> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, FlexChild> {
     self.column.children_mut(seal)
   }
 }
 
-impl<D: Driver> AnyKind for SimpleCard<D> {}
+impl<P: Platform> AnyKind for SimpleCard<P> {}
 
-impl<D: Driver> View<D> for SimpleCard<D>
+impl<P: Platform> View<P> for SimpleCard<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
     Container::new()
-      .set_padding(shape::<D>().card_inset)
-      .set_color(SimplePalette::<D::Scalar>::CARD)
-      .set_border(hairline(SimplePalette::<D::Scalar>::BORDER))
+      .set_padding(shape::<P>().card_inset)
+      .set_color(SimplePalette::<P::Scalar>::CARD)
+      .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
       .set_corner_radius(CARD_RADIUS)
       .set_child(self.column)
       .build()

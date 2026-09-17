@@ -8,13 +8,13 @@ use skene_core::{
   AnyView,
   Color,
   Dimension,
-  Driver,
   HasChildren,
   IntoView,
   MouseCursor,
   NoChild,
   NodeId,
   Part,
+  Platform,
   State,
   View,
   When,
@@ -44,14 +44,14 @@ use super::{
 /// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
 /// until [`set_child`](Self::set_child) supplies the view holding the members.
 #[must_use]
-pub struct SimpleRadioGroup<D: Driver, C = NoChild> {
+pub struct SimpleRadioGroup<P: Platform, C = NoChild> {
   roving: Roving,
   label: Option<String>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> SimpleRadioGroup<D> {
+impl<P: Platform> SimpleRadioGroup<P> {
   /// A group with nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
@@ -59,19 +59,19 @@ impl<D: Driver> SimpleRadioGroup<D> {
       roving: Roving::new(),
       label: None,
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> Default for SimpleRadioGroup<D> {
+impl<P: Platform> Default for SimpleRadioGroup<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, C> SimpleRadioGroup<D, C> {
+impl<P: Platform, C> SimpleRadioGroup<P, C> {
   /// Sets the chosen member's value.
   #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
@@ -114,19 +114,19 @@ impl<D: Driver, C> SimpleRadioGroup<D, C> {
 
   /// Sets the view holding the members.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> SimpleRadioGroup<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> SimpleRadioGroup<P, AnyView<P>> {
     SimpleRadioGroup {
       roving: self.roving,
       label: self.label,
       child: child.into_view(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> AnyKind for SimpleRadioGroup<D, C> {}
+impl<P: Platform, C> AnyKind for SimpleRadioGroup<P, C> {}
 
-impl<D: Driver> View<D> for SimpleRadioGroup<D, AnyView<D>> {
+impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let mut group = RawRadioGroup::new(self.roving);
 
@@ -146,20 +146,20 @@ impl<D: Driver> View<D> for SimpleRadioGroup<D, AnyView<D>> {
 /// focus like any control. For a radio drawn some other way, compose [`RawRadio`]
 /// directly.
 #[must_use]
-pub struct SimpleRadio<D: Driver> {
+pub struct SimpleRadio<P: Platform> {
   member: RadioMember,
   label: Option<String>,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> SimpleRadio<D> {
+impl<P: Platform> SimpleRadio<P> {
   /// The member standing for `value`, the string the group reports when it is chosen.
   #[inline(always)]
   pub fn new(value: impl Into<String>) -> Self {
     Self {
       member: RadioMember::new(value),
       label: None,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -172,24 +172,24 @@ impl<D: Driver> SimpleRadio<D> {
   }
 }
 
-impl<D: Driver> AnyKind for SimpleRadio<D> {}
+impl<P: Platform> AnyKind for SimpleRadio<P> {}
 
-impl<D: Driver> View<D> for SimpleRadio<D>
+impl<P: Platform> View<P> for SimpleRadio<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
-    let mark: AnyView<D> = match D::Scalar::MARKS {
-      SimpleMarks::Drawn => drawn_mark::<D>().into_view(),
+    let mark: AnyView<P> = match P::Scalar::MARKS {
+      SimpleMarks::Drawn => drawn_mark::<P>().into_view(),
       SimpleMarks::Glyph => {
         let glyphs = use_context::<Memo<SimpleGlyphs>>();
         let group = use_context::<RovingGroup>();
         let value = self.member.value().to_owned();
 
-        Text::<D>::derive(move || {
+        Text::<P>::derive(move || {
           let checked = group
             .as_ref()
             .is_some_and(|group| group.chosen().as_deref() == Some(value.as_str()));
@@ -199,8 +199,8 @@ where
             .radio(checked)
         })
         .set_color(
-          SimplePalette::<D::Scalar>::FOREGROUND
-            .when(State::FocusVisible, SimplePalette::<D::Scalar>::RING),
+          SimplePalette::<P::Scalar>::FOREGROUND
+            .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
         )
         .into_view()
       }
@@ -219,33 +219,33 @@ where
 
 /// The drawn mark: a ring on the card surface holding a dot that fills with the primary
 /// surface while checked, ringing while focused.
-fn drawn_mark<D: Driver>() -> Container<D>
+fn drawn_mark<P: Platform>() -> Container<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
-  let shape = shape::<D>();
-  let dot = Container::<D>::new()
+  let shape = shape::<P>();
+  let dot = Container::<P>::new()
     .set_width(Dimension::Length(shape.dot_size))
     .set_height(Dimension::Length(shape.dot_size))
     .set_corner_radius(ROUND / 2.)
     .set_color(
-      Color::TRANSPARENT.when(State::Checked, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+      Color::TRANSPARENT.when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     );
 
-  Container::<D>::new()
+  Container::<P>::new()
     .set_width(Dimension::Length(shape.mark_size))
     .set_height(Dimension::Length(shape.mark_size))
     .set_color(shape.mark_surface)
     .set_border(
-      border(shape.mark_ring, SimplePalette::<D::Scalar>::BORDER)
+      border(shape.mark_ring, SimplePalette::<P::Scalar>::BORDER)
         .when(
           State::Checked,
-          border(shape.mark_ring, SimplePalette::<D::Scalar>::PRIMARY_SURFACE),
+          border(shape.mark_ring, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
         )
         .when(
           State::FocusVisible,
-          border(shape.mark_ring, SimplePalette::<D::Scalar>::RING),
+          border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
         ),
     )
     .set_corner_radius(ROUND)

@@ -1514,7 +1514,7 @@ pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8
 /// animations and a caret drag's autoscroll frame by frame; the next render samples
 /// them at the new reading.
 ///
-/// A headless driver's clock stands still otherwise, so a render shows a transition
+/// A headless platform's clock stands still otherwise, so a render shows a transition
 /// at the point the last step left it.
 pub fn trigger_frame(elapsed: Duration) {
   with_store(|store| {
@@ -1555,21 +1555,21 @@ pub fn current_cursor() -> Option<MouseCursor> {
   with_store(|store| store.hover_cursor())
 }
 
-/// How many layouts have been computed since the driver was installed, for a test
+/// How many layouts have been computed since the platform was installed, for a test
 /// asserting that a change repainted without a relayout.
 #[must_use]
 pub fn layout_generation() -> u64 {
   with_store(|store| store.layout_generation)
 }
 
-/// How many taffy styles have been written since the driver was installed, for a test
+/// How many taffy styles have been written since the platform was installed, for a test
 /// counting the restyles a change caused.
 #[must_use]
 pub fn set_style_calls() -> u64 {
   with_store(|store| store.set_style_calls)
 }
 
-/// How many node styles have been resolved from their declarations since the driver
+/// How many node styles have been resolved from their declarations since the platform
 /// was installed, for a test counting what a frame or a change resolved.
 #[must_use]
 pub fn style_resolutions() -> u64 {

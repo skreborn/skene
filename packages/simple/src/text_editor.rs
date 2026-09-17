@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use skene_core::{AnyKind, Driver, NodeId, View};
+use skene_core::{AnyKind, NodeId, Platform, View};
 use skene_reactive::Signal;
 use skene_views::{CornerRadius, RawTextEditor, TextEntry};
 
@@ -17,18 +17,18 @@ const LINES: u16 = 3;
 /// The value flows both ways, exactly as on [`RawTextEditor`]; for custom chrome,
 /// compose the raw control directly.
 #[must_use]
-pub struct SimpleTextEditor<D: Driver> {
+pub struct SimpleTextEditor<P: Platform> {
   entry: TextEntry,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> SimpleTextEditor<D> {
+impl<P: Platform> SimpleTextEditor<P> {
   /// An empty editor showing three lines.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       entry: TextEntry::new().set_lines(LINES),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -81,23 +81,23 @@ impl<D: Driver> SimpleTextEditor<D> {
   }
 }
 
-impl<D: Driver> Default for SimpleTextEditor<D> {
+impl<P: Platform> Default for SimpleTextEditor<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> AnyKind for SimpleTextEditor<D> {}
+impl<P: Platform> AnyKind for SimpleTextEditor<P> {}
 
-impl<D: Driver> View<D> for SimpleTextEditor<D>
+impl<P: Platform> View<P> for SimpleTextEditor<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    define_defaults::<D>();
+    define_defaults::<P>();
 
-    field_chrome::<D, TextEntry>(RawTextEditor::new(self.entry)).build()
+    field_chrome::<P, TextEntry>(RawTextEditor::new(self.entry)).build()
   }
 }

@@ -1,13 +1,13 @@
 //! The portable low-level path for pixels: a paint callback on a box, drawing through
-//! vello, realized by every driver that can show pixels.
+//! vello, realized by every platform that can show pixels.
 
-use skene_core::{Color, Driver, Size};
+use skene_core::{Color, Platform, Size};
 use skene_reactive::ReadSignal;
 pub use vello_cpu::{PaintType, kurbo, peniko};
 use vello_cpu::{Pixmap, RenderContext, Resources};
 
 /// The surface a paint callback draws on: a vello scene the size of the box, in device
-/// pixels, recorded once and replayed into the driver's renderer once the callback
+/// pixels, recorded once and replayed into the platform's renderer once the callback
 /// returns.
 ///
 /// Geometry is [`kurbo`]'s and paint is [`peniko`]'s; the framework's [`Color`] paints
@@ -119,7 +119,7 @@ impl Canvas {
 /// A vello scene a [`Canvas`] replays into: the drawing vocabulary every renderer
 /// takes, so one recording renders on the CPU, on the GPU, or on a platform layer.
 ///
-/// [`vello_cpu`]'s context implements it here; a driver implements it for the renderer
+/// [`vello_cpu`]'s context implements it here; a platform implements it for the renderer
 /// it owns, mapping each brush through [`paint`].
 pub trait Renderer {
   /// Sets the transform every later shape is drawn under.
@@ -213,18 +213,18 @@ impl IntoBrush for Color {
 /// medium's logical units; the canvas is scaled so one unit is one logical pixel.
 pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
 
-/// A driver that paints a callback into a box.
+/// A platform that paints a callback into a box.
 ///
 /// The bound a portable low-level view states: the view builds an ordinary box for
-/// its sizing and hands the driver a painter for it, which the driver runs whenever the
-/// box repaints. The browser leaf renders into a canvas, the headless driver to pixels
+/// its sizing and hands the platform a painter for it, which it runs whenever the
+/// box repaints. The browser leaf renders into a canvas, the headless platform to pixels
 /// a test reads, the terminal through its graphics protocol where the terminal proved
 /// one, and the server leaf as nothing, so a page renders the box empty.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not paint",
-  label = "a painted view is written against a driver implementing `Painting`"
+  label = "a painted view is written against a platform implementing `Painting`"
 )]
-pub trait Painting: Driver {
+pub trait Painting: Platform {
   /// Paints `painter` into the box `sink` at its laid-out size, now and whenever the
   /// box repaints; a later call replaces the painter.
   fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);

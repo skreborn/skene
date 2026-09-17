@@ -40,7 +40,7 @@ use crate::{
   TextSelection,
 };
 
-/// A one-shot action a driver scheduled on its clock, to cancel it by.
+/// A one-shot action a platform scheduled on its clock, to cancel it by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct Timer(pub u64);
@@ -49,21 +49,21 @@ pub struct Timer(pub u64);
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
 /// media and a clock.
 ///
-/// Zero-sized and monomorphized: a facade names exactly one driver, and every view is
+/// Zero-sized and monomorphized: a facade names exactly one platform, and every view is
 /// written once against the trait. Conditions follow from [`Scalar`](Self::Scalar) as
 /// `Condition<Self::Scalar>`. Core owns the [`Scene`] and every operation on it; a
-/// driver declares the thread-local holding it and is called only to mirror each
+/// platform declares the thread-local holding it and is called only to mirror each
 /// mutation into its sink. `Painted` and embeds are outside this trait: their payloads
-/// arrive through a driver's extension traits.
+/// arrive through a platform's extension traits.
 #[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a driver",
-  label = "a driver is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
-  note = "`Painted` and embeds are outside `Driver`; a driver offers them through its own extension traits"
+  message = "`{Self}` is not a platform",
+  label = "a platform is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",
+  note = "`Painted` and embeds are outside `Platform`; a platform offers them through its own extension traits"
 )]
-pub trait Driver: Copy + Default + 'static {
+pub trait Platform: Copy + Default + 'static {
   /// The platform handle a node owns: an element, a layout id, a record.
   ///
-  /// Cloned out of the scene before the driver is called with it, so a driver call
+  /// Cloned out of the scene before the platform is called with it, so a platform call
   /// never runs under the scene's borrow and may reach the scene itself.
   type Sink: Clone + 'static;
   /// The unit lengths are measured in.
@@ -78,10 +78,10 @@ pub trait Driver: Copy + Default + 'static {
     + From<Definition<f32, Self::Scalar>>
     + 'static;
 
-  /// The thread-local holding this driver's scene.
+  /// The thread-local holding this platform's scene.
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>>;
 
-  /// Tells the driver the id the scene minted for `sink`, once, right after the sink
+  /// Tells the platform the id the scene minted for `sink`, once, right after the sink
   /// was created.
   #[inline(always)]
   fn bind_node(&self, _sink: &Self::Sink, _node: NodeId) {}
@@ -90,7 +90,7 @@ pub trait Driver: Copy + Default + 'static {
   fn create_box(&self, props: &BoxProps<Self>) -> Self::Sink;
 
   /// Writes the leaf a derived leaf computed into its slot on a box: a value, or a
-  /// token or expression the driver resolves where it reads the slot.
+  /// token or expression the platform resolves where it reads the slot.
   fn update_box(
     &self,
     sink: &Self::Sink,
@@ -104,10 +104,10 @@ pub trait Driver: Copy + Default + 'static {
   /// Replaces the accessibility properties a box reports.
   fn update_access(&self, sink: &Self::Sink, access: &[AccessProp]);
 
-  /// Realizes a control: a box a driver may stand a native element in for.
+  /// Realizes a control: a box a platform may stand a native element in for.
   fn create_control(&self, props: &ControlProps<Self>) -> Self::Sink;
 
-  /// Mirrors a control's state, for a driver whose platform holds it too.
+  /// Mirrors a control's state, for a platform whose native element holds it too.
   fn set_control_state(&self, sink: &Self::Sink, state: &ControlState);
 
   /// Realizes an overlay: a box shown above the app while open, closed at first.
@@ -133,7 +133,7 @@ pub trait Driver: Copy + Default + 'static {
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;
 
   /// Writes the leaf a derived leaf computed into its slot on a run: a value, or a
-  /// token or expression the driver resolves where it reads the slot.
+  /// token or expression the platform resolves where it reads the slot.
   fn update_run(&self, sink: &Self::Sink, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
 
   /// Replaces a run's text.
@@ -164,7 +164,7 @@ pub trait Driver: Copy + Default + 'static {
   fn listen(&self, sink: &Self::Sink, kind: EventKind);
 
   /// `event` with its local position measured from `sink`'s top-left corner; unchanged
-  /// on a driver that lays nothing out.
+  /// on a platform that lays nothing out.
   #[inline(always)]
   fn localize_pointer(&self, _sink: &Self::Sink, event: &PointerEvent) -> PointerEvent {
     *event
@@ -177,7 +177,7 @@ pub trait Driver: Copy + Default + 'static {
   fn blur(&self, sink: &Self::Sink);
 
   /// Writes the options a platform-drawn picker offers, each a value and the name
-  /// shown for it, in order; a driver without one ignores them.
+  /// shown for it, in order; a platform without one ignores them.
   #[inline(always)]
   fn set_options(&self, _sink: &Self::Sink, _options: &[(String, String)]) {}
 
@@ -200,8 +200,8 @@ pub trait Driver: Copy + Default + 'static {
   /// and stays false on a render that never is; `None` where the tree is live from
   /// the start.
   ///
-  /// Only a driver with a scriptless render answers: the web leaves, and the headless
-  /// driver standing in for them under a test. Every other driver keeps the default.
+  /// Only a platform with a scriptless render answers: the web leaves, and the headless
+  /// platform standing in for them under a test. Every other platform keeps the default.
   #[inline(always)]
   fn hydration(&self) -> Option<ReadSignal<bool>> {
     None
@@ -214,22 +214,22 @@ pub trait Driver: Copy + Default + 'static {
   /// The scheme the app put in force, or a previous run stored, when there is one.
   fn stored_scheme(&self) -> Option<ColorScheme>;
 
-  /// Runs `action` once `delay` has passed on the driver's clock, unless cancelled
-  /// first; a driver without a clock never runs it.
+  /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled
+  /// first; a platform without a clock never runs it.
   fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer;
 
   /// Drops the action `timer` names, if it has not run.
   fn cancel(&self, timer: Timer);
 
   /// Whether `action` can be offered on what the platform holds selected or focused
-  /// right now; a driver without a clipboard offers nothing.
+  /// right now; a platform without a clipboard offers nothing.
   #[inline(always)]
   fn clipboard_availability(&self, _action: ClipboardAction) -> Availability {
     Availability::Absent
   }
 
   /// Performs `action` on what the platform holds selected or focused, when it is
-  /// [`Enabled`](Availability::Enabled); a driver without a clipboard does nothing.
+  /// [`Enabled`](Availability::Enabled); a platform without a clipboard does nothing.
   #[inline(always)]
   fn clipboard(&self, _action: ClipboardAction) {}
 

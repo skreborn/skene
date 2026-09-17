@@ -27,7 +27,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   DeclaredBoxStyle,
-  Driver,
   EventKind,
   Expr,
   FlexDirection,
@@ -42,6 +41,7 @@ use skene_core::{
   Part,
   PlainChild,
   PlainHandler,
+  Platform,
   PointerEvent,
   PointerHandler,
   Prevent,
@@ -120,7 +120,7 @@ pub enum PointerPhase {
   message = "`{Self}` is not a control behavior",
   label = "a behavior states a control's kind, role, the events it acts on, and what it reports"
 )]
-pub trait Behavior<D: Driver>: 'static {
+pub trait Behavior<P: Platform>: 'static {
   /// What the control is.
   fn kind(&self) -> ControlKind;
 
@@ -154,17 +154,17 @@ pub trait Behavior<D: Driver>: 'static {
   /// node, provides to its subtree or joins goes here. A behavior whose reports change
   /// here calls [`ControlHandle::refresh`].
   #[inline(always)]
-  fn attach(&self, _control: &ControlHandle<D>) {}
+  fn attach(&self, _control: &ControlHandle<P>) {}
 
   /// What the behavior does on a click.
   #[inline(always)]
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     Prevent::None
   }
 
   /// What the behavior does on a key pressed while the control holds focus.
   #[inline(always)]
-  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, _event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     Prevent::None
   }
 
@@ -174,22 +174,22 @@ pub trait Behavior<D: Driver>: 'static {
     &self,
     _phase: PointerPhase,
     _event: &PointerEvent,
-    _control: &ControlHandle<D>,
+    _control: &ControlHandle<P>,
   ) -> Prevent {
     Prevent::None
   }
 
-  /// What the behavior does when the driver reports a new textual value.
+  /// What the behavior does when the platform reports a new textual value.
   #[inline(always)]
-  fn on_change(&self, _value: &str, _control: &ControlHandle<D>) {}
+  fn on_change(&self, _value: &str, _control: &ControlHandle<P>) {}
 
-  /// What the behavior does when the driver reports a new selection.
+  /// What the behavior does when the platform reports a new selection.
   #[inline(always)]
-  fn on_selection_change(&self, _selection: TextSelection, _control: &ControlHandle<D>) {}
+  fn on_selection_change(&self, _selection: TextSelection, _control: &ControlHandle<P>) {}
 
-  /// What the behavior does when the driver reports a new checked state.
+  /// What the behavior does when the platform reports a new checked state.
   #[inline(always)]
-  fn on_toggle(&self, _checked: bool, _control: &ControlHandle<D>) {}
+  fn on_toggle(&self, _checked: bool, _control: &ControlHandle<P>) {}
 
   /// What the control reports to assistive technology, beside its role.
   #[inline(always)]
@@ -214,15 +214,15 @@ pub trait Behavior<D: Driver>: 'static {
 /// dispatched at it, a re-read of its reports, and the roster the control was built
 /// inside if any.
 #[must_use]
-pub struct ControlHandle<D: Driver> {
+pub struct ControlHandle<P: Platform> {
   node: NodeId,
   name: Option<String>,
   roster: Option<Roster>,
   changed: Trigger,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> ControlHandle<D> {
+impl<P: Platform> ControlHandle<P> {
   /// The control's node.
   #[inline(always)]
   pub const fn node(&self) -> NodeId {
@@ -247,20 +247,20 @@ impl<D: Driver> ControlHandle<D> {
   /// Runs `operation` on a copy of the control's sink, if the node is live; the scene
   /// is released before it runs.
   #[inline(always)]
-  pub fn with_sink<R>(&self, operation: impl FnOnce(&D::Sink) -> R) -> Option<R> {
-    with_sink::<D, _>(self.node, operation)
+  pub fn with_sink<R>(&self, operation: impl FnOnce(&P::Sink) -> R) -> Option<R> {
+    with_sink::<P, _>(self.node, operation)
   }
 
   /// Moves focus to the control.
   #[inline(always)]
   pub fn focus(&self) {
-    self.with_sink(|sink| D::default().focus(sink));
+    self.with_sink(|sink| P::default().focus(sink));
   }
 
   /// Dispatches a click at the control, so its behavior and handlers see it.
   #[inline(always)]
   pub fn click(&self) -> Prevented {
-    dispatch_click::<D>(self.node)
+    dispatch_click::<P>(self.node)
   }
 
   /// Re-reads what the behavior reports: its state, accessibility and focus order.
@@ -275,15 +275,15 @@ impl<D: Driver> ControlHandle<D> {
 /// A control's caption: a view mounted as its [`Part::Label`], with the accessible
 /// name it supplies when its text is known at build.
 #[must_use]
-pub struct Label<D: Driver> {
-  view: AnyView<D>,
+pub struct Label<P: Platform> {
+  view: AnyView<P>,
   name: Option<String>,
 }
 
-impl<D: Driver> Label<D> {
-  /// A caption drawn by `view`; the name is the driver's to read from the part.
+impl<P: Platform> Label<P> {
+  /// A caption drawn by `view`; the name is the platform's to read from the part.
   #[inline(always)]
-  pub fn new(view: impl IntoView<D>) -> Self {
+  pub fn new(view: impl IntoView<P>) -> Self {
     Self {
       view: view.into_view(),
       name: None,
@@ -291,7 +291,7 @@ impl<D: Driver> Label<D> {
   }
 
   /// Sets the accessible name the caption supplies, where its text is not the
-  /// driver's to read: what type-ahead matches, and what the driver reports.
+  /// platform's to read: what type-ahead matches, and what is reported to assistive technology.
   #[inline(always)]
   pub fn set_name(mut self, name: impl Into<String>) -> Self {
     self.name = Some(name.into());
@@ -300,7 +300,7 @@ impl<D: Driver> Label<D> {
   }
 }
 
-impl<D: Driver> From<String> for Label<D> {
+impl<P: Platform> From<String> for Label<P> {
   #[inline(always)]
   fn from(text: String) -> Self {
     Self {
@@ -310,7 +310,7 @@ impl<D: Driver> From<String> for Label<D> {
   }
 }
 
-impl<D: Driver> From<&str> for Label<D> {
+impl<P: Platform> From<&str> for Label<P> {
   #[inline(always)]
   fn from(text: &str) -> Self {
     Self::from(text.to_owned())
@@ -322,19 +322,19 @@ impl<D: Driver> From<&str> for Label<D> {
   message = "`{Self}` is not a control's body",
   label = "a control holds `NoChild` or the one view `set_child` gave it"
 )]
-pub trait ControlChild<D: Driver>: 'static {
+pub trait ControlChild<P: Platform>: 'static {
   /// Builds the body, if there is one.
   fn build_body(self) -> Option<NodeId>;
 }
 
-impl<D: Driver> ControlChild<D> for NoChild {
+impl<P: Platform> ControlChild<P> for NoChild {
   #[inline(always)]
   fn build_body(self) -> Option<NodeId> {
     None
   }
 }
 
-impl<D: Driver> ControlChild<D> for AnyView<D> {
+impl<P: Platform> ControlChild<P> for AnyView<P> {
   #[inline(always)]
   fn build_body(self) -> Option<NodeId> {
     Some(self.build())
@@ -371,22 +371,22 @@ struct Observers {
 /// the behavior says so. The build runs in one batch, so what its subtree notifies
 /// while building is delivered once the subtree is mounted.
 #[must_use]
-pub struct Control<D: Driver, B: Behavior<D>, C = NoChild> {
+pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   behavior: B,
-  inner: LayoutBox<D, PlainChild>,
-  label: Option<Label<D>>,
+  inner: LayoutBox<P, PlainChild>,
+  label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
   required: Option<Source<bool>>,
   read_only: Option<Source<bool>>,
   invalid: Option<Source<bool>>,
   described_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
-  parts: Vec<(Part, AnyView<D>)>,
+  parts: Vec<(Part, AnyView<P>)>,
   observers: Observers,
   child: C,
 }
 
-impl<D: Driver, B: Behavior<D>> Control<D, B> {
+impl<P: Platform, B: Behavior<P>> Control<P, B> {
   /// A control driven by `behavior`, undecorated and without a body.
   #[inline(always)]
   pub fn new(behavior: B) -> Self {
@@ -415,20 +415,20 @@ impl<D: Driver, B: Behavior<D>> Control<D, B> {
 
   /// Sets the drawn body.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Control<D, B, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Control<P, B, AnyView<P>> {
     self.with_child(child.into_view())
   }
 
   /// Sets the drawn body, built by `child` under the control.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<D>>(
+  pub fn set_child_builder<V: IntoView<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Control<D, B, AnyView<D>> {
+  ) -> Control<P, B, AnyView<P>> {
     self.with_child(AnyView::new(move || child().into_view().build()))
   }
 
-  fn with_child(self, child: AnyView<D>) -> Control<D, B, AnyView<D>> {
+  fn with_child(self, child: AnyView<P>) -> Control<P, B, AnyView<P>> {
     Control {
       behavior: self.behavior,
       inner: self.inner,
@@ -446,18 +446,18 @@ impl<D: Driver, B: Behavior<D>> Control<D, B> {
   }
 }
 
-impl<D: Driver, B: Behavior<D> + Default> Default for Control<D, B> {
+impl<P: Platform, B: Behavior<P> + Default> Default for Control<P, B> {
   #[inline(always)]
   fn default() -> Self {
     Self::new(B::default())
   }
 }
 
-impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
+impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   /// The declared style, for a composite control to write the decoration it forwards
   /// into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 
@@ -473,7 +473,7 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
 
   /// Binds `focus` to the control once built, so focus moves to it programmatically.
   #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
     self.inner = self.inner.bind_focus(focus);
 
     self
@@ -489,7 +489,7 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   #[inline(always)]
   pub fn set_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.inner = self.inner.set_alignment(alignment);
 
@@ -520,7 +520,7 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.inner = self.inner.set_transition(transition);
 
@@ -529,14 +529,14 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
     self.inner = self.inner.set_animation(animation);
 
     self
   }
 
   /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the driver animates between them.
+  /// across a navigation, where the platform animates between them.
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.inner = self.inner.set_transition_name(name);
@@ -547,9 +547,9 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   /// Sets the caption: a [`Part::Label`] child whose text is the accessible name.
   ///
   /// A string builds a [`Text`] and names the control; [`Label::new`] mounts any view
-  /// and leaves the name to the driver.
+  /// and leaves the name to the platform.
   #[inline(always)]
-  pub fn set_label(mut self, label: impl Into<Label<D>>) -> Self {
+  pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
     self.label = Some(label.into());
 
     self
@@ -650,7 +650,7 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   /// Adds `view` as the part `part` of the control, a styling target its conditions
   /// resolve against the control.
   #[inline(always)]
-  pub fn set_part(mut self, part: Part, view: impl IntoView<D>) -> Self {
+  pub fn set_part(mut self, part: Part, view: impl IntoView<P>) -> Self {
     self.parts.push((part, view.into_view()));
 
     self
@@ -748,9 +748,9 @@ impl<D: Driver, B: Behavior<D>, C> Control<D, B, C> {
   }
 }
 
-impl<D: Driver, B: Behavior<D>, C> AnyKind for Control<D, B, C> {}
+impl<P: Platform, B: Behavior<P>, C> AnyKind for Control<P, B, C> {}
 
-impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C> {
+impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, C> {
   fn build(self) -> NodeId {
     let Self {
       behavior,
@@ -781,7 +781,7 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
         }
 
         let node = inner.realize(NodeKind::Control, |box_props| {
-          D::default().create_control(&ControlProps {
+          P::default().create_control(&ControlProps {
             kind,
             box_props,
             label: name.clone(),
@@ -789,7 +789,7 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
             lines,
           })
         });
-        // A caption whose text is the driver's to read names the control by reference;
+        // A caption whose text is the platform's to read names the control by reference;
         // it is built after the control, so the markup keeps the control first.
         let (label, labelled_by) = match label {
           Some(Label { view, name: None }) => {
@@ -805,7 +805,7 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
           name,
           roster: use_context::<Roster>(),
           changed: Trigger::new(),
-          driver: PhantomData,
+          platform: PhantomData,
         });
         let disabled = read_bool(disabled);
         let flags = Flags {
@@ -826,19 +826,19 @@ impl<D: Driver, B: Behavior<D>, C: ControlChild<D>> View<D> for Control<D, B, C>
         if behavior.label_leads()
           && let Some((part, _)) = label.take()
         {
-          mount_part::<D>(node, Part::Label, part);
+          mount_part::<P>(node, Part::Label, part);
         }
 
         for (part, view) in parts {
-          mount_part::<D>(node, part, view.build());
+          mount_part::<P>(node, part, view.build());
         }
 
         if let Some(child) = child.build_body() {
-          Scene::<D>::with(|scene| scene.attach(node, child, None));
+          Scene::<P>::with(|scene| scene.attach(node, child, None));
         }
 
         if let Some((part, _)) = label {
-          mount_part::<D>(node, Part::Label, part);
+          mount_part::<P>(node, Part::Label, part);
         }
 
         node
@@ -857,8 +857,8 @@ fn read_bool(source: Option<Source<bool>>) -> Rc<dyn Fn() -> bool> {
 }
 
 /// Attaches `child` under `node` as its `part`.
-fn mount_part<D: Driver>(node: NodeId, part: Part, child: NodeId) {
-  Scene::<D>::with(|scene| {
+fn mount_part<P: Platform>(node: NodeId, part: Part, child: NodeId) {
+  Scene::<P>::with(|scene| {
     scene.set_part(child, part);
     scene.attach(node, child, None);
   });
@@ -879,8 +879,8 @@ struct Flags {
 
 /// Binds the render effects writing the control's state, accessibility and focus
 /// order, each re-applied when what it reads changes or the handle is refreshed.
-fn bind_reports<D: Driver, B: Behavior<D>>(
-  handle: &Rc<ControlHandle<D>>,
+fn bind_reports<P: Platform, B: Behavior<P>>(
+  handle: &Rc<ControlHandle<P>>,
   behavior: &Rc<B>,
   flags: &Flags,
   focus_order: Option<Source<FocusOrder>>,
@@ -900,7 +900,7 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
 
       state.disabled |= disabled();
       state.invalid |= invalid();
-      Scene::<D>::with(|scene| scene.set_control_state(node, state));
+      Scene::<P>::with(|scene| scene.set_control_state(node, state));
     });
   }
 
@@ -937,7 +937,7 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
         access.push(AccessProp::DescribedBy(described_by));
       }
 
-      report_access::<D>(node, access);
+      report_access::<P>(node, access);
     });
   }
 
@@ -963,19 +963,19 @@ fn bind_reports<D: Driver, B: Behavior<D>>(
         behavior.focus_order()
       };
 
-      with_sink::<D, _>(node, |sink| D::default().update_focus_order(sink, order));
+      with_sink::<P, _>(node, |sink| P::default().update_focus_order(sink, order));
     });
   }
 }
 
 /// What every acting handler shares: the behavior, its handle and the disabled read.
-struct Actor<D: Driver, B: Behavior<D>> {
+struct Actor<P: Platform, B: Behavior<P>> {
   behavior: Rc<B>,
-  handle: Rc<ControlHandle<D>>,
+  handle: Rc<ControlHandle<P>>,
   disabled: Rc<dyn Fn() -> bool>,
 }
 
-impl<D: Driver, B: Behavior<D>> Clone for Actor<D, B> {
+impl<P: Platform, B: Behavior<P>> Clone for Actor<P, B> {
   fn clone(&self) -> Self {
     Self {
       behavior: Rc::clone(&self.behavior),
@@ -985,7 +985,7 @@ impl<D: Driver, B: Behavior<D>> Clone for Actor<D, B> {
   }
 }
 
-impl<D: Driver, B: Behavior<D>> Actor<D, B> {
+impl<P: Platform, B: Behavior<P>> Actor<P, B> {
   /// One handler for an event carrying `E`: a disabled control swallows it, else the
   /// behavior acts through `act` when `acts`, the observers see the event after, and
   /// the behavior's verdict stands.
@@ -994,7 +994,7 @@ impl<D: Driver, B: Behavior<D>> Actor<D, B> {
   fn handler<E: ?Sized + 'static>(
     &self,
     acts: bool,
-    act: impl Fn(&B, &E, &ControlHandle<D>) -> Prevent + 'static,
+    act: impl Fn(&B, &E, &ControlHandle<P>) -> Prevent + 'static,
     observers: Vec<Rc<Observer<E>>>,
   ) -> Option<Rc<Acting<E>>> {
     if !acts && observers.is_empty() {
@@ -1029,10 +1029,10 @@ impl<D: Driver, B: Behavior<D>> Actor<D, B> {
 /// disabled control swallows every event it would act on.
 // One registration per event kind; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
-fn register<D: Driver, B: Behavior<D>>(
+fn register<P: Platform, B: Behavior<P>>(
   node: NodeId,
   behavior: &Rc<B>,
-  handle: &Rc<ControlHandle<D>>,
+  handle: &Rc<ControlHandle<P>>,
   disabled: &Rc<dyn Fn() -> bool>,
   observers: Observers,
 ) {
@@ -1100,7 +1100,7 @@ fn register<D: Driver, B: Behavior<D>>(
     Rc::new(move |checked: bool| behavior.on_toggle(checked, &handle))
   });
 
-  Scene::<D>::with(|scene| {
+  Scene::<P>::with(|scene| {
     if let Some(handler) = acting_click {
       scene.handle_click_acting(node, Rc::new(move || handler(&())));
     }
@@ -1170,25 +1170,25 @@ fn as_pointer_handler(handler: Rc<Acting<PointerEvent>>) -> Rc<PointerHandler> {
 }
 
 /// A button: [`Control`] over [`Activate`].
-pub type RawButton<D, C = NoChild> = Control<D, Activate, C>;
+pub type RawButton<P, C = NoChild> = Control<P, Activate, C>;
 /// A checkbox: [`Control`] over [`Toggle`].
-pub type RawCheckbox<D, C = NoChild> = Control<D, Toggle, C>;
+pub type RawCheckbox<P, C = NoChild> = Control<P, Toggle, C>;
 /// A slider: [`Control`] over [`Range`].
-pub type RawSlider<D, C = NoChild> = Control<D, Range, C>;
+pub type RawSlider<P, C = NoChild> = Control<P, Range, C>;
 /// A radio group: [`Control`] over [`Roving`].
-pub type RawRadioGroup<D, C = NoChild> = Control<D, Roving, C>;
+pub type RawRadioGroup<P, C = NoChild> = Control<P, Roving, C>;
 /// One radio choice: [`Control`] over [`RadioMember`].
-pub type RawRadio<D, C = NoChild> = Control<D, RadioMember, C>;
+pub type RawRadio<P, C = NoChild> = Control<P, RadioMember, C>;
 /// A single-line text field: [`Control`] over [`TextEntry`].
-pub type RawTextField<D, C = NoChild> = Control<D, TextEntry, C>;
+pub type RawTextField<P, C = NoChild> = Control<P, TextEntry, C>;
 /// A multi-line text editor: [`Control`] over [`TextEntry`] with
 /// [`set_lines`](TextEntry::set_lines) above one.
-pub type RawTextEditor<D, C = NoChild> = Control<D, TextEntry, C>;
+pub type RawTextEditor<P, C = NoChild> = Control<P, TextEntry, C>;
 /// A listbox: [`Control`] over [`Listbox`].
-pub type RawListbox<D, C = NoChild> = Control<D, Listbox, C>;
+pub type RawListbox<P, C = NoChild> = Control<P, Listbox, C>;
 /// One option within a listbox: [`Control`] over [`ListItem`].
-pub type RawOption<D, C = NoChild> = Control<D, ListItem, C>;
+pub type RawOption<P, C = NoChild> = Control<P, ListItem, C>;
 /// A menu: [`Control`] over [`Menu`].
-pub type RawMenu<D, C = NoChild> = Control<D, Menu, C>;
+pub type RawMenu<P, C = NoChild> = Control<P, Menu, C>;
 /// One item within a menu: [`Control`] over [`MenuOption`].
-pub type RawMenuItem<D, C = NoChild> = Control<D, MenuOption, C>;
+pub type RawMenuItem<P, C = NoChild> = Control<P, MenuOption, C>;

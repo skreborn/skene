@@ -7,7 +7,6 @@ use skene_core::{
   Children,
   Condition,
   DeclaredBoxStyle,
-  Driver,
   GridChild,
   GridFlow,
   GridTrack,
@@ -15,6 +14,7 @@ use skene_core::{
   Inset,
   Layout,
   NodeId,
+  Platform,
   Seal,
   Spacing,
   StaticLeaf,
@@ -30,18 +30,18 @@ use crate::{LayoutBox, properties};
 /// [`Container`](crate::Container). Accepts any view or a
 /// [`GridCell`](crate::GridCell) wrapper as a child.
 #[must_use]
-pub struct Grid<D: Driver> {
-  inner: LayoutBox<D, GridChild>,
+pub struct Grid<P: Platform> {
+  inner: LayoutBox<P, GridChild>,
 }
 
-impl<D: Driver> Default for Grid<D> {
+impl<P: Platform> Default for Grid<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Grid<D> {
+impl<P: Platform> Grid<P> {
   /// A grid with no explicit tracks.
   #[inline(always)]
   pub fn new() -> Self {
@@ -57,24 +57,24 @@ impl<D: Driver> Grid<D> {
   }
 
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 
   properties! { style_mut;
-    set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
+    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
-    set_spacing / derive_spacing (spacing) => spacing: Spacing<D::Scalar>,
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between tracks per axis; a plain length spaces both";
-    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<D::Scalar>>,
+    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<P::Scalar>>,
       "the explicit column tracks";
-    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<D::Scalar>>,
+    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<P::Scalar>>,
       "the explicit row tracks";
     set_implicit_columns / derive_implicit_columns (tracks)
-      => grid_implicit_columns: Vec<GridTrack<D::Scalar>>,
+      => grid_implicit_columns: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created columns, cycled";
     set_implicit_rows / derive_implicit_rows (tracks)
-      => grid_implicit_rows: Vec<GridTrack<D::Scalar>>,
+      => grid_implicit_rows: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created rows, cycled";
     set_flow / derive_flow (flow) => grid_flow: GridFlow,
       "the direction auto-placed children fill";
@@ -88,7 +88,7 @@ impl<D: Driver> Grid<D> {
   #[inline(always)]
   pub fn set_item_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.inner = self.inner.set_alignment(alignment);
 
@@ -108,18 +108,18 @@ impl<D: Driver> Grid<D> {
   }
 }
 
-impl<D: Driver> HasChildren<D> for Grid<D> {
+impl<P: Platform> HasChildren<P> for Grid<P> {
   type Kind = GridChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, GridChild> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, GridChild> {
     self.inner.children_mut(seal)
   }
 }
 
-impl<D: Driver> AnyKind for Grid<D> {}
+impl<P: Platform> AnyKind for Grid<P> {}
 
-impl<D: Driver> View<D> for Grid<D> {
+impl<P: Platform> View<P> for Grid<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()

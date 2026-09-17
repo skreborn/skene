@@ -4,7 +4,7 @@
 //! sets nothing of its own: a [`Text`](crate::Text) or [`Span`](crate::Span) with no
 //! color is inked in [`INK`], or [`LINK_INK`] when it is a link, and selected in
 //! [`SELECTION_INK`] on [`SELECTION_SURFACE`]. [`LINK_FOCUS_INK`] and
-//! [`LINK_FOCUS_SURFACE`] are for a driver that paints a focused link's emphasis itself.
+//! [`LINK_FOCUS_SURFACE`] are for a platform that paints a focused link's emphasis itself.
 //! [`SIZE`], [`WEIGHT`], [`LINE_HEIGHT`] and [`LETTER_SPACING`] are for the text
 //! properties a medium's style extension carries.
 

@@ -9,13 +9,13 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_tui::{self as tui, Activate, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A scroll box clips its content, the wheel moves it, a click resolves against the
 /// scrolled position, and a thumb marks the offset on the right edge.
 #[test]
 fn scroll_box_clips_wheels_and_hit_tests() {
-  with_driver(|| {
+  with_platform(|| {
     let clicked = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&clicked);
 
@@ -64,7 +64,7 @@ fn scroll_box_clips_wheels_and_hit_tests() {
 /// Focusing a control below the fold scrolls it into view.
 #[test]
 fn focus_scrolls_into_view() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_child(
@@ -103,7 +103,7 @@ fn focus_scrolls_into_view() {
 /// that window while the content stays in place.
 #[test]
 fn lazy_column_windows_its_items() {
-  with_driver(|| {
+  with_platform(|| {
     let built = Rc::new(RefCell::new(Vec::new()));
     let log = Rc::clone(&built);
 
@@ -162,7 +162,7 @@ fn lazy_column_windows_its_items() {
 /// dragging follows the pointer, and a mid-scroll thumb paints in eighth-cell blocks.
 #[test]
 fn scrollbar_jumps_and_drags() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -226,7 +226,7 @@ fn scrollbar_jumps_and_drags() {
 /// content, a pointer a quarter cell earlier or later lands the offset rows apart.
 #[test]
 fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -279,7 +279,7 @@ fn a_scrollbar_drag_reads_the_pointer_within_its_cell() {
 /// re-targets.
 #[test]
 fn wheel_target_latches_until_the_pointer_moves() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_child(
@@ -344,7 +344,7 @@ fn wheel_target_latches_until_the_pointer_moves() {
 /// box to the page, as on the web.
 #[test]
 fn wheel_gesture_holds_at_the_target_limit_then_chains() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_child(
@@ -405,7 +405,7 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
 /// viewport height.
 #[test]
 fn page_keys_scroll_by_a_viewport() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_height(3)

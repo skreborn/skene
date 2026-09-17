@@ -57,7 +57,7 @@ impl<N: Scalar> Hash for ContainerQuery<N> {
 /// A condition on the environment: the viewport, the scheme, the reader's preferences,
 /// or a named container's size—composable to any depth.
 ///
-/// The one kind of condition a token's definition takes, and what a driver compiles
+/// The one kind of condition a token's definition takes, and what a platform compiles
 /// ahead of time; lengths are in the facade's scalar unit.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]

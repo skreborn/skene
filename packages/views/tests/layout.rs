@@ -1,4 +1,4 @@
-//! The layout views: their properties reach the driver's props, tokens and conditions
+//! The layout views: their properties reach the platform's props, tokens and conditions
 //! included, and each exposes exactly its own vocabulary.
 
 mod common;
@@ -8,7 +8,6 @@ use skene_core::{
   Arrangement,
   BoxValue,
   Condition,
-  DriverLeaf,
   Expr,
   FlexDirection,
   GridTrack,
@@ -18,6 +17,7 @@ use skene_core::{
   Layout,
   Length,
   Media,
+  PlatformLeaf,
   Size,
   Slot,
   Spacing,
@@ -47,7 +47,7 @@ type Grid = skene_views::Grid<Headless>;
 type Stack = skene_views::Stack<Headless>;
 type Theme<P, C = skene_views::NoChild> = skene_views::Theme<Headless, P, C>;
 
-/// A layout's spacing reaches the driver as declared, and a token-valued spacing
+/// A layout's spacing reaches the platform as declared, and a token-valued spacing
 /// resolves through the theme to the palette's length.
 #[test]
 fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
@@ -144,7 +144,7 @@ fn media_condition_on_padding_switches_with_the_viewport() {
     box_props(root).unwrap().style.padding.unwrap().variants(),
     &[(
       Condition::Media(Media::MinWidth(900.)),
-      DriverLeaf::Static(StaticLeaf::Fixed(Inset::all(12.))),
+      PlatformLeaf::Static(StaticLeaf::Fixed(Inset::all(12.))),
     )]
   );
 
@@ -204,11 +204,11 @@ fn stack_derived_alignment_drives_both_axes() {
   assert_eq!(props.layout, Layout::Stack);
   assert_eq!(
     props.style.item_alignment,
-    Some(StaticValue::from(DriverLeaf::Slot(Slot(0))))
+    Some(StaticValue::from(PlatformLeaf::Slot(Slot(0))))
   );
   assert_eq!(
     props.style.item_horizontal_alignment,
-    Some(StaticValue::from(DriverLeaf::Slot(Slot(1))))
+    Some(StaticValue::from(PlatformLeaf::Slot(Slot(1))))
   );
   assert_eq!(
     slot_leaf(stack, Slot(1)),

@@ -10,10 +10,10 @@ use skene_core::{
   Condition,
   Conditional,
   ContainerName,
-  DriverLeaf,
   Interaction,
   Keyframe,
   NodeId,
+  PlatformLeaf,
   Resolver,
   RunStyle,
   Scene,
@@ -165,10 +165,10 @@ impl<'a> Env<'a> {
   /// entry, every property resolved.
   pub(crate) fn resolve_entry_run(&self) -> PlainRun {
     let style = RunStyle::<Static<Condition<u32>>, TuiExt> {
-      selection_color: Some(Conditional::new(DriverLeaf::Static(StaticLeaf::from(
+      selection_color: Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
         typography::SELECTION_INK,
       )))),
-      selection_background: Some(Conditional::new(DriverLeaf::Static(StaticLeaf::from(
+      selection_background: Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
         typography::SELECTION_SURFACE,
       )))),
       ..RunStyle::default()

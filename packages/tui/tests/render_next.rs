@@ -1,4 +1,4 @@
-//! The terminal driver rendered headlessly: the built-in views laid out and painted to a
+//! The terminal platform rendered headlessly: the built-in views laid out and painted to a
 //! text grid, resolved through tokens and conditions, and driven through the seams.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -20,12 +20,12 @@ use skene_tui::{
   prelude::*,
 };
 
-use crate::common::{blue, colors_at, locate, red, with_driver};
+use crate::common::{blue, colors_at, locate, red, with_platform};
 
 /// A padded, bordered container paints its box-drawing border, in the border color.
 #[test]
 fn a_bordered_container_paints_its_border_in_the_border_color() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(6)
@@ -46,7 +46,7 @@ fn a_bordered_container_paints_its_border_in_the_border_color() {
 /// A row lays its runs side by side, separated by its spacing, in cells.
 #[test]
 fn a_row_lays_its_children_out_in_cells() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_spacing(2)
@@ -63,7 +63,7 @@ fn a_row_lays_its_children_out_in_cells() {
 /// without rebuilding: the build runs once and a signal inside keeps its value.
 #[test]
 fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
-  with_driver(|| {
+  with_platform(|| {
     let palette = Signal::opaque(SimplePalette::default().set_card(red()));
     let builds = Rc::new(Cell::new(0));
     let inner = Rc::new(Cell::new(None::<Signal<u32>>));
@@ -106,7 +106,7 @@ fn a_theme_resolves_the_card_color_and_reinks_on_a_palette_flip() {
 /// The detected background flips a token that answers the dark scheme.
 #[test]
 fn trigger_color_scheme_flips_a_dark_token() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Theme::new(SimplePalette::default())
         .set_child_builder(|| {
@@ -133,7 +133,7 @@ fn trigger_color_scheme_flips_a_dark_token() {
 /// the container's own cells does.
 #[test]
 fn a_button_click_does_not_reach_the_container_around_it() {
-  with_driver(|| {
+  with_platform(|| {
     let outer = Rc::new(Cell::new(0));
     let button = Rc::new(Cell::new(0));
     let outer_clicks = Rc::clone(&outer);
@@ -167,7 +167,7 @@ fn a_button_click_does_not_reach_the_container_around_it() {
 /// checked glyph.
 #[test]
 fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
-  with_driver(|| {
+  with_platform(|| {
     let agreed = Signal::new(false);
 
     let _ = tui::mount(|| {
@@ -195,7 +195,7 @@ fn space_on_a_focused_checkbox_flips_the_signal_and_repaints_the_mark() {
 /// is reachable through its first member.
 #[test]
 fn tab_reaches_the_controls_in_document_order() {
-  with_driver(|| {
+  with_platform(|| {
     let first = Anchor::new();
     let mint = Anchor::new();
     let last = Anchor::new();
@@ -254,7 +254,7 @@ fn tab_reaches_the_controls_in_document_order() {
 fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
   const CARD: ContainerName = ContainerName("card");
 
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_container_name(CARD)
@@ -285,7 +285,7 @@ fn a_container_query_switches_a_padding_when_the_terminal_narrows() {
 /// the layout generation stays where it was.
 #[test]
 fn a_hover_change_repaints_without_a_relayout() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(10)
@@ -312,7 +312,7 @@ fn a_hover_change_repaints_without_a_relayout() {
 /// A keystroke in a text entry restyles the entry alone.
 #[test]
 fn a_keystroke_restyles_only_the_changed_entry() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new("abcdefgh".to_owned());
 
     let _ = tui::mount(|| {
@@ -343,7 +343,7 @@ fn a_keystroke_restyles_only_the_changed_entry() {
 /// A corner radius rounds the border: the terminal's radius is the arc glyph set.
 #[test]
 fn a_corner_radius_renders_arc_corners() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(4)
@@ -362,7 +362,7 @@ fn a_corner_radius_renders_arc_corners() {
 /// following.
 #[test]
 fn a_text_field_types_through_trigger_key_and_writes_the_bound_signal() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -389,7 +389,7 @@ fn a_text_field_types_through_trigger_key_and_writes_the_bound_signal() {
 /// An overlay opens above the content and `Escape` asks it to close.
 #[test]
 fn an_overlay_opens_above_content_and_dismisses_on_escape() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(false);
 
     let _ = tui::mount(|| {
@@ -426,7 +426,7 @@ fn an_overlay_opens_above_content_and_dismisses_on_escape() {
 /// alone reaches the key-down handler as its W3C name without showing focus.
 #[test]
 fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
-  with_driver(|| {
+  with_platform(|| {
     let released = Signal::new(String::new());
     let pressed = Signal::new(String::new());
 

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// caret is, the two equal while collapsed and `end` before `start` when the
 /// selection was made backward.
 ///
-/// A driver clamps each index into the value; nothing can name the inside of a
+/// A platform clamps each index into the value; nothing can name the inside of a
 /// cluster.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[must_use]

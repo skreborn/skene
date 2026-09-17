@@ -6,11 +6,11 @@ use skene_core::{
   Children,
   Condition,
   DeclaredBoxStyle,
-  Driver,
   HasChildren,
   Inset,
   Layout,
   NodeId,
+  Platform,
   Seal,
   StackChild,
   StaticLeaf,
@@ -27,18 +27,18 @@ use crate::{LayoutBox, properties};
 /// wrapper as a child; a pinned child sits against the stack's edges instead of where
 /// the alignment puts it.
 #[must_use]
-pub struct Stack<D: Driver> {
-  inner: LayoutBox<D, StackChild>,
+pub struct Stack<P: Platform> {
+  inner: LayoutBox<P, StackChild>,
 }
 
-impl<D: Driver> Default for Stack<D> {
+impl<P: Platform> Default for Stack<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Stack<D> {
+impl<P: Platform> Stack<P> {
   /// An empty stack.
   #[inline(always)]
   pub fn new() -> Self {
@@ -48,12 +48,12 @@ impl<D: Driver> Stack<D> {
   }
 
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 
   properties! { style_mut;
-    set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
+    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
   }
 
@@ -61,7 +61,7 @@ impl<D: Driver> Stack<D> {
   #[inline(always)]
   pub fn set_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.inner = self.inner.set_alignment(alignment);
 
@@ -80,18 +80,18 @@ impl<D: Driver> Stack<D> {
   }
 }
 
-impl<D: Driver> HasChildren<D> for Stack<D> {
+impl<P: Platform> HasChildren<P> for Stack<P> {
   type Kind = StackChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, StackChild> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, StackChild> {
     self.inner.children_mut(seal)
   }
 }
 
-impl<D: Driver> AnyKind for Stack<D> {}
+impl<P: Platform> AnyKind for Stack<P> {}
 
-impl<D: Driver> View<D> for Stack<D> {
+impl<P: Platform> View<P> for Stack<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()

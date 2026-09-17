@@ -208,7 +208,7 @@ fn focus_snapshot() -> Option<(Position, Option<Caret>)> {
   Some((position_of(focused)?, caret))
 }
 
-/// Registers the driver's scroll offsets and focused node as snapshot providers; the
+/// Registers the platform's scroll offsets and focused node as snapshot providers; the
 /// entries ride every snapshot alongside the tagged signals.
 pub(crate) fn provide_restoration() {
   skene_reactive::provide(SCROLL_TAG, || {

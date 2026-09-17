@@ -10,13 +10,13 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{self as tui, Activate, prelude::*};
 
-use crate::common::{black, red, with_driver};
+use crate::common::{black, red, with_platform};
 
 /// A modal overlay paints over the app with its backdrop scrim, blocks clicks beneath
 /// it, and `Escape` asks it to close.
 #[test]
 fn modal_overlay_covers_blocks_and_dismisses() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(false);
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
@@ -70,7 +70,7 @@ fn modal_overlay_covers_blocks_and_dismisses() {
 /// while the press still reaches the app.
 #[test]
 fn popup_anchors_below_and_light_dismisses() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(false);
     let anchor = Anchor::new();
     let bound = anchor.clone();
@@ -122,7 +122,7 @@ fn popup_anchors_below_and_light_dismisses() {
 #[test]
 fn modal_scrim_defaults_on_and_disables() {
   let scrim = |backdrop: Option<Color>| {
-    with_driver(move || {
+    with_platform(move || {
       let open = Signal::new(false);
 
       let _ = tui::mount(move || {
@@ -163,7 +163,7 @@ fn modal_scrim_defaults_on_and_disables() {
 /// reaches the ones beneath.
 #[test]
 fn a_modal_traps_focus() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(true);
     let outside = FocusHandle::new();
     let inside = FocusHandle::new();
@@ -212,7 +212,7 @@ fn a_modal_traps_focus() {
 /// that held focus as it closes.
 #[test]
 fn a_modal_takes_focus_on_open_and_returns_it_on_close() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(false);
     let opener = FocusHandle::new();
     let inside = FocusHandle::new();

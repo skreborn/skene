@@ -30,7 +30,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the driver when it drops, isolating each test.
+/// Uninstalls the platform when it drops, isolating each test.
 struct Installed;
 
 impl Drop for Installed {

@@ -72,7 +72,7 @@ const DEFERRING: &str = ":where(:root:not([data-skene-scheme=\"light\"]))";
 /// The root selector under which the app has chosen the dark scheme outright.
 const CHOSEN: &str = ":where(:root[data-skene-scheme=\"dark\"])";
 
-/// A color as the CSS the driver renders it to.
+/// A color as the CSS the platform renders it to.
 fn css_color(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 

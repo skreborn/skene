@@ -1,8 +1,8 @@
-//! The resolution of a node's style, for a driver that resolves at runtime: each
+//! The resolution of a node's style, for a platform that resolves at runtime: each
 //! property's conditions against the environment and the node's interaction pick a
 //! leaf, and the leaf resolves through tokens, expressions and slots to a plain value.
 //!
-//! A driver builds a [`Resolver`] from what it knows about a node—the environment,
+//! A platform builds a [`Resolver`] from what it knows about a node—the environment,
 //! the interaction, the containers above it, and how to look up a token or a slot—and
 //! asks it for whole styles or single leaves. The web compiles the same model to CSS
 //! and never resolves.
@@ -21,7 +21,6 @@ use crate::{
   ControlState,
   Definition,
   Dimension,
-  DriverLeaf,
   ExprEnv,
   ExprNode,
   ExprValue,
@@ -32,6 +31,7 @@ use crate::{
   Media,
   MediaEnv,
   Plain,
+  PlatformLeaf,
   PropertyKey,
   RunStyle,
   RunValue,
@@ -53,7 +53,7 @@ use crate::{
 /// How deep a chain of tokens and expressions naming tokens is followed.
 const MAX_DEPTH: usize = 32;
 
-/// The erased token definition a runtime-resolving driver stores per token: a color,
+/// The erased token definition a runtime-resolving platform stores per token: a color,
 /// a number, a dimension in the medium's unit, or a text.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
@@ -97,7 +97,7 @@ impl<N: Scalar> From<Definition<String, N>> for TokenValue<N> {
 }
 
 /// A property's value erased over the property: what a slot's leaf resolves to, and
-/// what a driver's motion interpolates.
+/// what a platform's motion interpolates.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum SlotValue<N: Scalar, X: StyleExtension = ()> {
@@ -347,7 +347,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   }
 
   /// The value of the token `name` in force at the node, through its definition;
-  /// `None` for an undefined token or a chain deeper than a driver follows.
+  /// `None` for an undefined token or a chain deeper than a platform follows.
   #[must_use]
   pub fn token(&self, name: TokenName) -> Option<Resolved<N>> {
     self.token_at(name, 0)
@@ -419,7 +419,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     self.leaf(leaf).and_then(Resolved::into_color)
   }
 
-  /// The winning leaf of a driver's box value, resolved to the property's type: a
+  /// The winning leaf of a platform's box value, resolved to the property's type: a
   /// static leaf through tokens and expressions, a slot through the leaf last written
   /// into it.
   #[must_use]
@@ -428,22 +428,22 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     value: &StaticValue<T, Condition<N>>,
   ) -> Option<T> {
     match self.winning(value) {
-      DriverLeaf::Static(leaf) => self.keyframe_box_value(leaf),
-      DriverLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
+      PlatformLeaf::Static(leaf) => self.keyframe_box_value(leaf),
+      PlatformLeaf::Slot(slot) => self.box_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Box(value) => T::from_box_value(value),
         SlotValue::Run(_) => None,
       }),
     }
   }
 
-  /// The winning leaf of a driver's run value, resolved to the property's type: a
+  /// The winning leaf of a platform's run value, resolved to the property's type: a
   /// static leaf through tokens and expressions, a slot through the leaf last written
   /// into it.
   #[must_use]
   pub fn run_value<T: IntoRunValue<X>>(&self, value: &StaticValue<T, Condition<N>>) -> Option<T> {
     match self.winning(value) {
-      DriverLeaf::Static(leaf) => self.keyframe_run_value(leaf),
-      DriverLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
+      PlatformLeaf::Static(leaf) => self.keyframe_run_value(leaf),
+      PlatformLeaf::Slot(slot) => self.run_leaf(&(self.slot)(*slot)?, |value| match value {
         SlotValue::Run(value) => T::from_run_value(value),
         SlotValue::Box(_) => None,
       }),
@@ -508,7 +508,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     }
   }
 
-  /// A driver's box style with every property resolved.
+  /// A platform's box style with every property resolved.
   pub fn box_style(&self, style: &BoxStyle<N, Static<Condition<N>>, X>) -> BoxStyle<N, Plain, X> {
     let mut visitor = ResolveBox {
       resolver: self,
@@ -521,7 +521,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     visitor.target
   }
 
-  /// A driver's run style with every property resolved.
+  /// A platform's run style with every property resolved.
   pub fn run_style(&self, style: &RunStyle<Static<Condition<N>>, X>) -> RunStyle<Plain, X> {
     let mut visitor = ResolveRun {
       resolver: self,

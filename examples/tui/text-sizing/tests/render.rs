@@ -7,11 +7,11 @@ use skene_tui::{self as tui, CellScale, prelude::*};
 
 /// Serializes the tests: the UI-thread designation is process-wide, so each test must
 /// install, run, and uninstall without another test's thread interleaving.
-static DRIVER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// Installs a fresh driver, runs `body`, and uninstalls afterwards.
-fn with_driver<R>(body: impl FnOnce() -> R) -> R {
-  let _serialized = DRIVER
+/// Installs a fresh platform, runs `body`, and uninstalls afterwards.
+fn with_platform<R>(body: impl FnOnce() -> R) -> R {
+  let _serialized = PLATFORM
     .lock()
     .unwrap_or_else(std::sync::PoisonError::into_inner);
 
@@ -26,7 +26,7 @@ fn with_driver<R>(body: impl FnOnce() -> R) -> R {
 
 #[test]
 fn the_sections_render_at_one_cell_and_size_up_when_proven() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| tui_text_sizing::app().into_view().build());
 
     let frame = tui::render_to_text(70, 40);

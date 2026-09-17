@@ -7,11 +7,11 @@ mod common;
 
 use skene_tui::{self as tui, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 #[test]
 fn an_enhancement_swaps_on_its_signal() {
-  with_driver(|| {
+  with_platform(|| {
     let ready = Signal::new(false);
     let _ = tui::mount(move || {
       Enhance::new(ready.read_only())

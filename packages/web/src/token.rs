@@ -2,7 +2,7 @@
 
 use skene_core::{Color, Definition, Dimension, TokenName};
 
-/// The erased token definition the web driver stores per token: a color, a number, or
+/// The erased token definition the web platform stores per token: a color, a number, or
 /// a dimension.
 ///
 /// Each kind registers its custom property with the matching `@property` syntax, so a

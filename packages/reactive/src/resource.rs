@@ -51,7 +51,7 @@ impl<T> Load<T> {
 
 /// Data loaded by a task, readable as a signal.
 ///
-/// The load runs on the executor the driver installed ([`spawn`](crate::spawn)), so it
+/// The load runs on the executor the platform installed ([`spawn`](crate::spawn)), so it
 /// is bound to the current owner and ends with the view that asked for it. Reading
 /// tracks, so a view that reads a resource re-runs when the value arrives; a reload
 /// keeps the last value readable while the next one is in flight. The loader is

@@ -2,15 +2,15 @@
 
 use std::{fmt::Debug, marker::PhantomData};
 
-use super::{Conditional, DriverLeaf, StaticLeaf, Value};
+use super::{Conditional, PlatformLeaf, StaticLeaf, Value};
 
 /// The stage a style is at, fixing what each of its fields holds.
 ///
-/// A style is generic over its shape, so the one struct serves the builder, the driver
+/// A style is generic over its shape, so the one struct serves the builder, the platform
 /// and a keyframe alike.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a style shape",
-  label = "a style is `Declared` by a builder, `Static` for a driver, a `Keyframe` of an animation, or `Plain`"
+  label = "a style is `Declared` by a builder, `Static` for a platform, a `Keyframe` of an animation, or `Plain`"
 )]
 pub trait Shape: Copy + Default + PartialEq + Debug + 'static {
   /// A field holding a `T`.
@@ -25,12 +25,12 @@ impl<C: Clone + PartialEq + Debug + 'static> Shape for Declared<C> {
   type Of<T: Clone + PartialEq + Debug + 'static> = Option<Value<T, C>>;
 }
 
-/// What a driver receives: a conditional [`DriverLeaf`] per set property, every derived
+/// What a platform receives: a conditional [`PlatformLeaf`] per set property, every derived
 /// leaf replaced by the slot a render effect writes.
 pub struct Static<C>(PhantomData<fn() -> C>);
 
 impl<C: Clone + PartialEq + Debug + 'static> Shape for Static<C> {
-  type Of<T: Clone + PartialEq + Debug + 'static> = Option<Conditional<DriverLeaf<T>, C>>;
+  type Of<T: Clone + PartialEq + Debug + 'static> = Option<Conditional<PlatformLeaf<T>, C>>;
 }
 
 /// A plain value per set property: a style resolved against live state.

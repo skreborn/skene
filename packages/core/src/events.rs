@@ -17,7 +17,7 @@
 //!
 //! A view that composes its own behavior out of these events—every control that draws
 //! itself—decides its own verdict where that behavior lives, and consumes the events it
-//! acts on. A handler installed on such a view only observes; above a driver, nothing
+//! acts on. A handler installed on such a view only observes; above a platform, nothing
 //! states a verdict.
 
 /// What a handler prevents of the dispatch that invoked it.
@@ -141,7 +141,7 @@ pub struct Modifiers {
 /// `"Shift"`, `"Control"`, `"Alt"`, `"Meta"` for a modifier pressed alone) and `code`
 /// the W3C code names of the key's position on the standard layout (`"KeyA"`,
 /// `"Digit1"`, `"ShiftLeft"`), so a shortcut on `code` holds across keyboard layouts;
-/// every driver maps its platform's keys onto them.
+/// every platform maps its own keys onto them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub struct KeyEvent {

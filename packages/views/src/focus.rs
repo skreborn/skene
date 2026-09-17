@@ -2,21 +2,21 @@
 
 use std::{cell::Cell, marker::PhantomData, rc::Rc};
 
-use skene_core::{Driver, NodeId};
+use skene_core::{NodeId, Platform};
 
 use crate::realize::with_sink;
 
 /// A handle moving keyboard focus to a view programmatically.
 ///
 /// Bound to a focusable view through its `bind_focus`; [`focus`](Self::focus) and
-/// [`blur`](Self::blur) go through the driver and do nothing until that view builds.
+/// [`blur`](Self::blur) go through the platform and do nothing until that view builds.
 #[must_use]
-pub struct FocusHandle<D: Driver> {
+pub struct FocusHandle<P: Platform> {
   node: Rc<Cell<Option<NodeId>>>,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> FocusHandle<D> {
+impl<P: Platform> FocusHandle<P> {
   /// An unbound handle.
   #[inline(always)]
   pub fn new() -> Self {
@@ -40,7 +40,7 @@ impl<D: Driver> FocusHandle<D> {
   #[inline(always)]
   pub fn focus(&self) {
     if let Some(node) = self.node.get() {
-      with_sink::<D, _>(node, |sink| D::default().focus(sink));
+      with_sink::<P, _>(node, |sink| P::default().focus(sink));
     }
   }
 
@@ -48,27 +48,27 @@ impl<D: Driver> FocusHandle<D> {
   #[inline(always)]
   pub fn blur(&self) {
     if let Some(node) = self.node.get() {
-      with_sink::<D, _>(node, |sink| D::default().blur(sink));
+      with_sink::<P, _>(node, |sink| P::default().blur(sink));
     }
   }
 }
 
-impl<D: Driver> Clone for FocusHandle<D> {
+impl<P: Platform> Clone for FocusHandle<P> {
   #[inline(always)]
   fn clone(&self) -> Self {
     Self {
       node: Rc::clone(&self.node),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> Default for FocusHandle<D> {
+impl<P: Platform> Default for FocusHandle<P> {
   #[inline(always)]
   fn default() -> Self {
     Self {
       node: Rc::new(Cell::new(None)),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }

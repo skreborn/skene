@@ -5,7 +5,6 @@ use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 use skene_core::{
   AnyKind,
   Dimension,
-  Driver,
   FlexDirection,
   Flexibility,
   HasChildren,
@@ -15,6 +14,7 @@ use skene_core::{
   NodeId,
   Overflow,
   PlainChild,
+  Platform,
   Scalar,
   ScrollEvent,
   Size,
@@ -81,7 +81,11 @@ impl Axis {
   }
 
   /// `container` sized to `extent` along the axis.
-  fn sized<D: Driver>(self, container: Container<D>, extent: Dimension<D::Scalar>) -> Container<D> {
+  fn sized<P: Platform>(
+    self,
+    container: Container<P>,
+    extent: Dimension<P::Scalar>,
+  ) -> Container<P> {
     match self {
       Self::Horizontal => container.set_width(extent),
       Self::Vertical => container.set_height(extent),
@@ -89,12 +93,12 @@ impl Axis {
   }
 
   /// `container` sized along the axis by `extent`, followed.
-  fn derive_sized<D: Driver>(
+  fn derive_sized<P: Platform>(
     self,
-    container: Container<D>,
+    container: Container<P>,
     extent: impl Fn() -> f32 + 'static,
-  ) -> Container<D> {
-    let length = move || Dimension::Length(D::Scalar::from_f32(extent()));
+  ) -> Container<P> {
+    let length = move || Dimension::Length(P::Scalar::from_f32(extent()));
 
     match self {
       Self::Horizontal => container.derive_width(length),
@@ -120,8 +124,8 @@ struct Measures {
 }
 
 /// Installs the keyed segment over the slice onto the list.
-type Install<D> =
-  Box<dyn FnOnce(Memo<Slice>, Rc<Measures>, LayoutBox<D, PlainChild>) -> LayoutBox<D, PlainChild>>;
+type Install<P> =
+  Box<dyn FnOnce(Memo<Slice>, Rc<Measures>, LayoutBox<P, PlainChild>) -> LayoutBox<P, PlainChild>>;
 
 /// The leading edges of the items, one per item and the whole extent last, from the
 /// measures and the estimate.
@@ -129,21 +133,21 @@ type Edges = Rc<dyn Fn(&Measures, f32) -> Vec<f32>>;
 
 /// What `derive_items` leaves for the build: the item count, tracked, the edges, and
 /// the keyed segment installed over the slice.
-struct Items<D: Driver> {
+struct Items<P: Platform> {
   count: Rc<dyn Fn() -> usize>,
   edges: Edges,
-  install: Install<D>,
+  install: Install<P>,
 }
 
 /// The list both public forms share: the axis, the item extent and the overscan.
-struct LazyList<D: Driver> {
+struct LazyList<P: Platform> {
   axis: Axis,
   extent: ItemExtent,
   overscan: usize,
-  items: Option<Items<D>>,
+  items: Option<Items<P>>,
 }
 
-impl<D: Driver> LazyList<D> {
+impl<P: Platform> LazyList<P> {
   const fn new(axis: Axis) -> Self {
     Self {
       axis,
@@ -164,7 +168,7 @@ impl<D: Driver> LazyList<D> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<D>,
+    V: IntoView<P>,
   {
     let items = Rc::new(items);
     let key = Rc::new(key);
@@ -197,7 +201,7 @@ impl<D: Driver> LazyList<D> {
     let axis = self.axis;
     let extent = self.extent;
     let install = Box::new(
-      move |slice: Memo<Slice>, measures: Rc<Measures>, list: LayoutBox<D, PlainChild>| {
+      move |slice: Memo<Slice>, measures: Rc<Measures>, list: LayoutBox<P, PlainChild>| {
         list.derive_children(
           move || {
             let Slice { window, .. } = slice.get();
@@ -215,10 +219,10 @@ impl<D: Driver> LazyList<D> {
           },
           move |item| {
             let item_key = key(&item);
-            let container = rigid(Container::<D>::new().set_child(view(item).into_view()));
+            let container = rigid(Container::<P>::new().set_child(view(item).into_view()));
             let node = match extent {
               ItemExtent::Fixed(length) => axis
-                .sized(container, Dimension::Length(D::Scalar::from_f32(length)))
+                .sized(container, Dimension::Length(P::Scalar::from_f32(length)))
                 .build(),
               ItemExtent::Estimated(_) => container.build(),
             };
@@ -227,8 +231,8 @@ impl<D: Driver> LazyList<D> {
               let lengths = Rc::clone(&lengths);
               let measures = Rc::clone(&measures);
 
-              with_sink::<D, _>(node, |sink| {
-                D::default().observe_size(
+              with_sink::<P, _>(node, |sink| {
+                P::default().observe_size(
                   sink,
                   Rc::new(move |size| {
                     let length = measures.axis.extent(size);
@@ -317,12 +321,12 @@ impl<D: Driver> LazyList<D> {
         }
       }
     });
-    let mut list = LayoutBox::<D, PlainChild>::new(Layout::Flex {
+    let mut list = LayoutBox::<P, PlainChild>::new(Layout::Flex {
       direction: axis.direction(),
     })
     .handle_scroll(move |event: &ScrollEvent| offset.set(axis.offset(*event)))
     .set_child(rigid(
-      axis.derive_sized(Container::<D>::new(), move || slice.get().leading),
+      axis.derive_sized(Container::<P>::new(), move || slice.get().leading),
     ));
 
     list.style_mut().overflow = Some(Overflow::Auto.into());
@@ -333,13 +337,13 @@ impl<D: Driver> LazyList<D> {
 
     let node = list
       .set_child(rigid(
-        axis.derive_sized(Container::<D>::new(), move || slice.get().trailing),
+        axis.derive_sized(Container::<P>::new(), move || slice.get().trailing),
       ))
       .build();
 
     batch(|| {
-      with_sink::<D, _>(node, |sink| {
-        D::default().observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
+      with_sink::<P, _>(node, |sink| {
+        P::default().observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
       });
     });
 
@@ -349,7 +353,7 @@ impl<D: Driver> LazyList<D> {
 
 /// `container` kept at its own extent in the list: a flex item that neither grows nor
 /// shrinks, so the spacers and the items measure the whole content.
-fn rigid<D: Driver>(mut container: Container<D>) -> Container<D> {
+fn rigid<P: Platform>(mut container: Container<P>) -> Container<P> {
   container.style_mut().flex = Some(
     Flexibility {
       initial: Dimension::Auto,
@@ -370,9 +374,9 @@ fn rigid<D: Driver>(mut container: Container<D>) -> Container<D> {
 /// expresses its own reactivity as usual. The item height is fixed or estimated
 /// ([`ItemExtent`]); until one is set every item builds.
 #[must_use]
-pub struct LazyColumn<D: Driver>(LazyList<D>);
+pub struct LazyColumn<P: Platform>(LazyList<P>);
 
-impl<D: Driver> LazyColumn<D> {
+impl<P: Platform> LazyColumn<P> {
   /// An empty column with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -409,22 +413,22 @@ impl<D: Driver> LazyColumn<D> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<D>,
+    V: IntoView<P>,
   {
     Self(self.0.derive_items(items, key, view))
   }
 }
 
-impl<D: Driver> Default for LazyColumn<D> {
+impl<P: Platform> Default for LazyColumn<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> AnyKind for LazyColumn<D> {}
+impl<P: Platform> AnyKind for LazyColumn<P> {}
 
-impl<D: Driver> View<D> for LazyColumn<D> {
+impl<P: Platform> View<P> for LazyColumn<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.0.build()
@@ -439,9 +443,9 @@ impl<D: Driver> View<D> for LazyColumn<D> {
 /// expresses its own reactivity as usual. The item width is fixed or estimated
 /// ([`ItemExtent`]); until one is set every item builds.
 #[must_use]
-pub struct LazyRow<D: Driver>(LazyList<D>);
+pub struct LazyRow<P: Platform>(LazyList<P>);
 
-impl<D: Driver> LazyRow<D> {
+impl<P: Platform> LazyRow<P> {
   /// An empty row with an overscan of three items.
   #[inline(always)]
   pub const fn new() -> Self {
@@ -478,22 +482,22 @@ impl<D: Driver> LazyRow<D> {
     I: IntoIterator<Item = T>,
     I::IntoIter: ExactSizeIterator,
     K: Eq + Hash + Clone + 'static,
-    V: IntoView<D>,
+    V: IntoView<P>,
   {
     Self(self.0.derive_items(items, key, view))
   }
 }
 
-impl<D: Driver> Default for LazyRow<D> {
+impl<P: Platform> Default for LazyRow<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> AnyKind for LazyRow<D> {}
+impl<P: Platform> AnyKind for LazyRow<P> {}
 
-impl<D: Driver> View<D> for LazyRow<D> {
+impl<P: Platform> View<P> for LazyRow<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.0.build()

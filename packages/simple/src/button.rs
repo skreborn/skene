@@ -8,10 +8,10 @@ use skene_core::{
   Color,
   Definition,
   Definitions,
-  Driver,
   IntoView,
   MouseCursor,
   NodeId,
+  Platform,
   Property,
   Scene,
   State,
@@ -42,9 +42,9 @@ const SURFACE_SETTLE: f32 = 0.15;
 const FOCUS: TokenRef<Color> = TokenRef::new("simple-look-focus");
 
 /// What a button draws: its label's text, or a view in its place.
-enum Content<D: Driver> {
+enum Content<P: Platform> {
   Text(Source<String>),
-  View(AnyView<D>),
+  View(AnyView<P>),
 }
 
 /// A ready-made button: a text label on the variant's surface, with hover and focus
@@ -56,13 +56,13 @@ enum Content<D: Driver> {
 /// draws a view in the label's place, inked in the look's ink. For anything beyond
 /// that, compose [`RawButton`] directly.
 #[must_use]
-pub struct SimpleButton<D: Driver> {
-  raw: RawButton<D>,
-  content: Content<D>,
+pub struct SimpleButton<P: Platform> {
+  raw: RawButton<P>,
+  content: Content<P>,
   variant: Source<SimpleVariant>,
 }
 
-impl<D: Driver> SimpleButton<D> {
+impl<P: Platform> SimpleButton<P> {
   /// A button carrying `label`.
   #[inline(always)]
   pub fn new(label: impl Into<String>) -> Self {
@@ -125,27 +125,27 @@ impl<D: Driver> SimpleButton<D> {
 
   /// Sets a view drawn in the label's place; the button then has no text of its own.
   #[inline(always)]
-  pub fn set_child(mut self, child: impl IntoView<D>) -> Self {
+  pub fn set_child(mut self, child: impl IntoView<P>) -> Self {
     self.content = Content::View(child.into_view());
 
     self
   }
 }
 
-impl<D: Driver> AnyKind for SimpleButton<D> {}
+impl<P: Platform> AnyKind for SimpleButton<P> {}
 
-impl<D: Driver> View<D> for SimpleButton<D>
+impl<P: Platform> View<P> for SimpleButton<P>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
-    let palette = palette::<D>();
+    let palette = palette::<P>();
     let variant: Rc<dyn Fn() -> SimpleVariant> = match self.variant {
       Source::Fixed(variant) => Rc::new(move || variant),
       Source::Derived(variant) => variant,
     };
-    let shape = shape::<D>();
+    let shape = shape::<P>();
     let raw = self
       .raw
       .set_padding(shape.control_inset)
@@ -161,15 +161,15 @@ where
     let node = match self.content {
       Content::Text(Source::Fixed(label)) => raw.set_label(label).build(),
       Content::Text(Source::Derived(label)) => raw
-        .set_label(Label::new(Text::<D>::derive(move || label())))
+        .set_label(Label::new(Text::<P>::derive(move || label())))
         .build(),
       Content::View(view) => raw.set_child(view).build(),
     };
 
     Effect::render(move |_: Option<()>| {
-      let definitions = palette.with(|palette| look_definitions::<D>(palette.look(variant())));
+      let definitions = palette.with(|palette| look_definitions::<P>(palette.look(variant())));
 
-      Scene::<D>::with(|scene| scene.define_tokens(node, definitions));
+      Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
     });
 
     node
@@ -178,22 +178,22 @@ where
 
 /// The button's own tokens defined as `look`'s, and the typography ink as the look's
 /// ink.
-fn look_definitions<D: Driver>(look: &SimpleLook<D::Scalar>) -> Definitions<D::TokenValue> {
+fn look_definitions<P: Platform>(look: &SimpleLook<P::Scalar>) -> Definitions<P::TokenValue> {
   let alias = |token: TokenRef<Color>, target: TokenRef<Color>| {
     (
       token.name(),
-      D::TokenValue::from(Definition::<Color, D::Scalar>::from(target)),
+      P::TokenValue::from(Definition::<Color, P::Scalar>::from(target)),
     )
   };
   let border = look.border.as_ref().map_or_else(
-    || Definition::<Color, D::Scalar>::from(Color::TRANSPARENT),
+    || Definition::<Color, P::Scalar>::from(Color::TRANSPARENT),
     |border| Definition::from(border.reference()),
   );
 
   Definitions::from(vec![
     alias(SURFACE, look.surface.reference()),
     alias(INK, look.ink.reference()),
-    (BORDER.name(), D::TokenValue::from(border)),
+    (BORDER.name(), P::TokenValue::from(border)),
     alias(HOVER, look.hover.reference()),
     alias(FOCUS, look.focus.reference()),
     alias(typography::INK, INK),

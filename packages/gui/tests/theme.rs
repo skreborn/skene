@@ -1,4 +1,4 @@
-//! The Simple palette under `Theme`, realized against the headless driver: nested
+//! The Simple palette under `Theme`, realized against the headless platform: nested
 //! palettes, a palette flip that rebuilds nothing, and the scheme the app puts in
 //! force.
 

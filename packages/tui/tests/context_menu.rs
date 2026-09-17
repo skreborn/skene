@@ -9,14 +9,14 @@ mod common;
 
 use skene_tui::{self as tui, Activate, TextEntry, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A right press on the served view opens its menu at the press instead of the
 /// terminal's own, an item lights under the pointer, a click on it runs it and closes
 /// the menu, and a right press elsewhere still opens the terminal's copy menu.
 #[test]
 fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
-  with_driver(|| {
+  with_platform(|| {
     let chosen = Signal::new(String::new());
     let _ = tui::mount(|| {
       Column::new()
@@ -78,7 +78,7 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
 /// items, `Enter` runs the focused one, and `Escape` closes the menu.
 #[test]
 fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
-  with_driver(|| {
+  with_platform(|| {
     let chosen = Signal::new(String::new());
     let _ = tui::mount(|| {
       Column::new()
@@ -143,7 +143,7 @@ fn the_menu_key_opens_at_the_focused_view_and_the_keys_walk_it() {
 /// where the right press put it afterwards.
 #[test]
 fn the_standard_menu_acts_on_the_entrys_selection() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
     let _ = tui::mount(|| {
       RawTextField::new(TextEntry::new().bind_value(value))

@@ -5,7 +5,7 @@ A client-side Rust UI framework: one spine, two facades. A GUI app depends on
 server, rendering or statically generating pages from the same wasm module; native as
 it lands. A terminal app depends on `skene-tui`, a facade of equal standing with its own
 vocabulary typed to the medium. Every built-in view is written once, generic over the
-driver a facade selects; the reactive engine is signal-based, fine-grained and vdom-free;
+platform a facade selects; the reactive engine is signal-based, fine-grained and vdom-free;
 styling is data, compiled to CSS on the web and resolved natively elsewhere, so a
 server-rendered page is responsive, themed, hoverable and animated with no script at all.
 
@@ -24,7 +24,7 @@ dev-loop restart resumes where the last run stood; a keyed list item or a view g
 ## A GUI app
 
 A GUI app depends on `skene-gui` and, for the ready-made components, on
-`skene-simple-gui`; it marks its entry with `#[main]` and names no driver
+`skene-simple-gui`; it marks its entry with `#[main]` and names no platform
 (`examples/gui/counter`):
 
 ```rust
@@ -59,7 +59,7 @@ fn app() -> impl IntoView {
 `#[main]` expands to whichever entry the target has: in the browser it launches the
 app, hydrating a server-rendered page in place; on the server leaf it renders the
 requested path to stdout (`wasmtime counter-server.wasm /` prints the page); on the
-host it builds the tree against the headless driver, which is what view tests run on.
+host it builds the tree against the headless platform, which is what view tests run on.
 
 ## A terminal app
 
@@ -109,16 +109,16 @@ with the mouse off a plain drag is the terminal's.
 ```
 skene-reactive        the engine
       │
-skene-core            the spine: the scene, the Driver trait, dispatch, the property model
+skene-core            the spine: the scene, the Platform trait, dispatch, the property model
       │
-skene-views           every built-in view once, generic over the driver
+skene-views           every built-in view once, generic over the platform
       │
-      ├── skene-gui-core   what pixel drivers share: GuiExt, Typography, Painting
-      │     ├── skene-web        the web driver: browser (csr) and server (ssr) leaves
-      │     └── skene-headless   the host driver: an inspectable record store for tests
-      └── skene-tui-core   what terminal drivers share: TuiExt, Typography
-            └── skene-tui        the terminal facade and its driver
-skene-gui             the GUI facade: aliases over the selected driver
+      ├── skene-gui-core   what pixel platforms share: GuiExt, Typography, Painting
+      │     ├── skene-web        the web platform: browser (csr) and server (ssr) leaves
+      │     └── skene-headless   the host platform: an inspectable record store for tests
+      └── skene-tui-core   what terminal platforms share: TuiExt, Typography
+            └── skene-tui        the terminal facade and its platform
+skene-gui             the GUI facade: aliases over the selected platform
 skene-simple          the Simple component library over skene-views, generic
       ├── skene-simple-gui   its aliases and prelude for skene-gui
       └── skene-simple-tui   its aliases and prelude for skene-tui
@@ -130,17 +130,17 @@ skene-cli             the `skene` command
 
 | Crate | Path | Role |
 |-------|------|------|
-| `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a driver installs an executor into. |
-| `skene-core` | `packages/core` | `Scene<D>`, the zero-sized `Driver` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
+| `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
+| `skene-core` | `packages/core` | `Scene<P>`, the zero-sized `Platform` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
 | `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Raw*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuItem` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello. |
-| `skene-gui-core` | `packages/gui-core` | What every pixel driver shares: `GuiExt` (corner radius, type metrics) and the pixel `Typography` set; it re-exports the painting path. |
-| `skene-tui-core` | `packages/tui-core` | What every terminal driver shares: `TuiExt` (border glyphs, shadow, corner radius, bold, weight), `BorderGlyphs`, and the terminal `Typography` set. |
-| `skene-web` | `packages/web` | The web `Driver`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
-| `skene-headless` | `packages/headless` | The host `Driver`: records what any driver receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
-| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActiveDriver`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
-| `skene-tui` | `packages/tui` | The terminal facade and driver: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
-| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the driver. |
-| `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActiveDriver`, with a `prelude` an app imports beside the facade's own. |
+| `skene-gui-core` | `packages/gui-core` | What every pixel platform shares: `GuiExt` (corner radius, type metrics) and the pixel `Typography` set; it re-exports the painting path. |
+| `skene-tui-core` | `packages/tui-core` | What every terminal platform shares: `TuiExt` (border glyphs, shadow, corner radius, bold, weight), `BorderGlyphs`, and the terminal `Typography` set. |
+| `skene-web` | `packages/web` | The web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
+| `skene-headless` | `packages/headless` | The host `Platform`: records what any platform receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
+| `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
+| `skene-tui` | `packages/tui` | The terminal facade and platform: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
+| `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform. |
+| `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActivePlatform`, with a `prelude` an app imports beside the facade's own. |
 | `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
@@ -213,7 +213,7 @@ wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 Three tiers, and the host tier alone proves nothing about the web:
 
 ```sh
-cargo test --workspace                                    # host: the engine, the spine, every view on the headless driver
+cargo test --workspace                                    # host: the engine, the spine, every view on the headless platform
 cargo test -p skene-gui --target wasm32-wasip2            # server leaf: wasmtime, a byte-exact render snapshot
 cargo test -p skene-gui --target wasm32-unknown-unknown   # browser leaf: a real DOM through geckodriver
 ```
@@ -228,13 +228,13 @@ runs axe-core over every built-in in `web_axe`.
 
 ## Extending
 
-A component library depends on `skene-views`, writes generic over `D: Driver` exactly as
-the built-ins do, states what it needs from a medium as a bound on the driver's
+A component library depends on `skene-views`, writes generic over `P: Platform` exactly as
+the built-ins do, states what it needs from a medium as a bound on the platform's
 associated types, and works on every facade from one crate. A low-level view is written
-against a driver's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
+against a platform's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized
 through the same scene as a built-in; `Painted` is the portable one for pixels, a
-vello scene the driver renders, the terminal through the kitty graphics protocol
+vello scene the platform renders, the terminal through the kitty graphics protocol
 where it proves one. `examples/third-party` shows all three: `acme-ui`
-(a palette and a badge over any driver), `acme-map` (a canvas on the browser leaf with a
+(a palette and a badge over any platform), `acme-map` (a canvas on the browser leaf with a
 server placeholder) and `acme-sparkline` (bars painted into the terminal's cells), each
-used by a gallery and tested on its driver.
+used by a gallery and tested on its platform.

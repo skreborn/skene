@@ -649,7 +649,7 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
 
   assert!(
     !block.is_connected(),
-    "the adopted block goes with the driver"
+    "the adopted block goes with the platform"
   );
   assert!(
     document()

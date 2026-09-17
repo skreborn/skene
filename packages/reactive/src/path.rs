@@ -89,7 +89,7 @@ impl Step {
 
 /// A place in the state snapshot: an owner's path and an index in its sequence.
 ///
-/// A snapshot signal takes one at creation, and so may anything else a driver carries
+/// A snapshot signal takes one at creation, and so may anything else a platform carries
 /// across runs by [`provide`](crate::provide)/[`staged`](crate::staged)—a focused or
 /// scrolled node, say—so it is matched across runs exactly as a signal is, keys
 /// included.

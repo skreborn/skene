@@ -30,7 +30,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the driver and removes the root when it drops, isolating each test.
+/// Uninstalls the platform and removes the root when it drops, isolating each test.
 struct Installed(Element);
 
 impl Drop for Installed {
@@ -40,7 +40,7 @@ impl Drop for Installed {
   }
 }
 
-/// Installs the driver rooted at a fresh connected `<div>`, returning the guard (drop
+/// Installs the platform rooted at a fresh connected `<div>`, returning the guard (drop
 /// it to reset) and that root.
 fn fresh_root() -> (Installed, Element) {
   let root = document().create_element("div").expect("create root div");

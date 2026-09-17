@@ -1,4 +1,4 @@
-//! The server leaf's realization of the driver: a string tree serialized to HTML with
+//! The server leaf's realization of the platform: a string tree serialized to HTML with
 //! the interned stylesheet, the head and the hydration state, whole or as an in-order
 //! stream around deferred boundaries.
 //!
@@ -28,7 +28,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
-  Driver,
   EventKind,
   FocusOrder,
   IntoView,
@@ -37,6 +36,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Part,
+  Platform,
   RunProps,
   RunValue,
   Scene,
@@ -786,7 +786,7 @@ thread_local! {
 
 /// The script that applies a stored scheme choice before the first paint.
 ///
-/// Inline and blocking in the head: it writes exactly what the driver's own rules are
+/// Inline and blocking in the head: it writes exactly what the platform's own rules are
 /// gated on and reads only its own key, so a page that never chose a scheme is
 /// untouched.
 const PREEMPT_SCHEME_SCRIPT: &str = "try{var r=document.documentElement,\
@@ -980,7 +980,7 @@ impl Painting for Web {
   }
 }
 
-impl Driver for Web {
+impl Platform for Web {
   type Scalar = f32;
   type Sink = u32;
   type StyleExt = GuiExt;

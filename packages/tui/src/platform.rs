@@ -1,4 +1,4 @@
-//! The terminal's realization of the driver: one record per node beside the scene,
+//! The terminal's realization of the platform: one record per node beside the scene,
 //! the taffy tree those records lay out in, and the environment as signals.
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
@@ -14,7 +14,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
-  Driver,
   EventKind,
   FocusOrder,
   MediaSignals,
@@ -22,6 +21,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Placement,
+  Platform,
   Point,
   PointerEvent,
   RunProps,
@@ -46,7 +46,7 @@ use crate::{
   store::{BoxRecord, Field, Handle, Kind, PictureRecord, SlotValue, Store},
 };
 
-/// The terminal driver: a zero-sized [`Driver`] whose sink is a [`Handle`] into this
+/// The terminal platform: a zero-sized [`Platform`] whose sink is a [`Handle`] into this
 /// crate's record store.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
@@ -62,14 +62,14 @@ thread_local! {
 ///
 /// # Panics
 ///
-/// Panics if the terminal driver is not installed for this thread.
+/// Panics if the terminal platform is not installed for this thread.
 pub(crate) fn with_store<R>(operation: impl FnOnce(&mut Store) -> R) -> R {
   STORE.with(|store| {
     operation(
       store
         .borrow_mut()
         .as_mut()
-        .expect("the terminal driver to be installed for this thread"),
+        .expect("the terminal platform to be installed for this thread"),
     )
   })
 }
@@ -90,7 +90,7 @@ pub(crate) fn root_node() -> Option<NodeId> {
   ROOT.with(|root| *root.borrow())
 }
 
-impl Driver for Tui {
+impl Platform for Tui {
   type Scalar = u32;
   type Sink = Handle;
   type StyleExt = TuiExt;
@@ -567,7 +567,7 @@ impl CellPainter for Tui {
   }
 }
 
-/// Installs the terminal driver for this thread: the reactive runtime, the host
+/// Installs the terminal platform for this thread: the reactive runtime, the host
 /// executor, the scene and the store.
 ///
 /// # Panics
@@ -583,7 +583,7 @@ pub(crate) fn install() {
 
     assert!(
       store.is_none(),
-      "the terminal driver is already installed for this thread",
+      "the terminal platform is already installed for this thread",
     );
 
     *store = Some(Store::new());
@@ -605,7 +605,7 @@ pub(crate) fn install() {
   crate::dev::provide_restoration();
 }
 
-/// Uninstalls the terminal driver: empties the scene and the store, and resets the
+/// Uninstalls the terminal platform: empties the scene and the store, and resets the
 /// reactive runtime and root scope, so one thread can run many independent mounts.
 pub fn uninstall() {
   let owner = STORE.with(|store| {
@@ -631,7 +631,7 @@ pub fn uninstall() {
 ///
 /// # Panics
 ///
-/// Panics if the driver is not installed for this thread.
+/// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   skene_core::root_owner().enter(|| {
     let node = view();

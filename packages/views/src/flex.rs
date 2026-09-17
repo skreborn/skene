@@ -5,7 +5,6 @@ use skene_core::{
   Arrangement,
   Children,
   DeclaredBoxStyle,
-  Driver,
   FlexChild,
   FlexDirection,
   HasChildren,
@@ -13,6 +12,7 @@ use skene_core::{
   ItemAlignment,
   Layout,
   NodeId,
+  Platform,
   Seal,
   Spacing,
   View,
@@ -31,18 +31,18 @@ macro_rules! flex_layout {
     /// a [`Container`](crate::Container). Accepts any view or a
     /// [`Flexible`](crate::Flexible) wrapper as a child.
     #[must_use]
-    pub struct $name<D: Driver> {
-      inner: LayoutBox<D, FlexChild>,
+    pub struct $name<P: Platform> {
+      inner: LayoutBox<P, FlexChild>,
     }
 
-    impl<D: Driver> Default for $name<D> {
+    impl<P: Platform> Default for $name<P> {
       #[inline(always)]
       fn default() -> Self {
         Self::new()
       }
     }
 
-    impl<D: Driver> $name<D> {
+    impl<P: Platform> $name<P> {
       #[doc = concat!("An empty layout running ", $doc, ".")]
       #[inline(always)]
       pub fn new() -> Self {
@@ -64,14 +64,14 @@ macro_rules! flex_layout {
       }
 
       #[inline(always)]
-      const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+      const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
         self.inner.style_mut()
       }
 
       properties! { style_mut;
-        set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
+        set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
           "the inset between the box and the children it arranges";
-        set_spacing / derive_spacing (spacing) => spacing: Spacing<D::Scalar>,
+        set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
           "the spacing between children per axis; a plain length spaces both";
         set_arrangement / derive_arrangement (arrangement) => arrangement: Arrangement,
           "the distribution of children along the main axis";
@@ -84,18 +84,18 @@ macro_rules! flex_layout {
       }
     }
 
-    impl<D: Driver> HasChildren<D> for $name<D> {
+    impl<P: Platform> HasChildren<P> for $name<P> {
       type Kind = FlexChild;
 
       #[inline(always)]
-      fn children_mut(&mut self, seal: Seal) -> &mut Children<D, FlexChild> {
+      fn children_mut(&mut self, seal: Seal) -> &mut Children<P, FlexChild> {
         self.inner.children_mut(seal)
       }
     }
 
-    impl<D: Driver> AnyKind for $name<D> {}
+    impl<P: Platform> AnyKind for $name<P> {}
 
-    impl<D: Driver> View<D> for $name<D> {
+    impl<P: Platform> View<P> for $name<P> {
       #[inline(always)]
       fn build(self) -> NodeId {
         self.inner.build()

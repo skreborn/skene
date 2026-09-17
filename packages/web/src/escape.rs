@@ -9,19 +9,19 @@
 //! A sink either trait creates is registered in the scene through
 //! `skene_views::LowLevel`, and the node composes as a built-in does.
 
-use skene_core::Driver;
+use skene_core::Platform;
 
 use crate::Declarations;
 
-/// A web driver: an element for a low-level view, on either leaf.
+/// A web platform: an element for a low-level view, on either leaf.
 ///
 /// Every element counts in creation order on both leaves, so a view creating the same
 /// elements on the server and in the browser hydrates in place.
 #[diagnostic::on_unimplemented(
-  message = "`{Self}` is not a web driver",
-  label = "a view bound on `WebMarkup` exists on the web driver's leaves alone"
+  message = "`{Self}` is not a web platform",
+  label = "a view bound on `WebMarkup` exists on the web platform's leaves alone"
 )]
-pub trait WebMarkup: Driver {
+pub trait WebMarkup: Platform {
   /// Creates a detached element of `tag` and returns its sink.
   fn create_element(&self, tag: &'static str) -> Self::Sink;
 

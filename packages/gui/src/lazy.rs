@@ -9,7 +9,7 @@ use std::{
 use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 use skene_reactive::Owner;
 
-use crate::ActiveDriver;
+use crate::ActivePlatform;
 
 /// A lazy segment's place among the hydrating resources, on the leaves that hydrate.
 #[cfg(target_arch = "wasm32")]
@@ -40,7 +40,7 @@ impl Lazy {
   #[inline(always)]
   pub fn new<V, F>(load: impl FnOnce() -> F + 'static) -> Self
   where
-    V: IntoView<ActiveDriver>,
+    V: IntoView<ActivePlatform>,
     F: Future<Output = V> + 'static,
   {
     Self {
@@ -56,7 +56,7 @@ impl Lazy {
             discard(start);
           }
 
-          Scene::<ActiveDriver>::with(|scene| scene.insert_in_segment(start, content, None));
+          Scene::<ActivePlatform>::with(|scene| scene.insert_in_segment(start, content, None));
         });
 
         if claimed {
@@ -162,9 +162,9 @@ fn discard(start: NodeId) {
 
 impl AnyKind for Lazy {}
 
-impl View<ActiveDriver> for Lazy {
+impl View<ActivePlatform> for Lazy {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<ActiveDriver>::with(Scene::create_segment);
+    let (start, _) = Scene::<ActivePlatform>::with(Scene::create_segment);
 
     (self.load)(start);
 

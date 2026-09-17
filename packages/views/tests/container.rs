@@ -46,7 +46,7 @@ use skene_reactive::{Get, Owner, Set, Signal};
 use crate::common::{TestPalette, only_child, red};
 
 type Container = skene_views::Container<Headless>;
-type Theme<P, C = skene_views::NoChild> = skene_views::Theme<Headless, P, C>;
+type Theme<S, C = skene_views::NoChild> = skene_views::Theme<Headless, S, C>;
 
 fn press() -> PointerEvent {
   PointerEvent {

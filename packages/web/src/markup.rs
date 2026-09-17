@@ -8,13 +8,13 @@ use skene_core::{
   Conditional,
   ControlKind,
   ControlProps,
-  Driver,
-  DriverLeaf,
   FocusOrder,
   LinkAnnotation,
   LinkPolicy,
   NodeId,
   Overflow,
+  Platform,
+  PlatformLeaf,
   PopupKind,
   Role,
   StaticLeaf,
@@ -27,7 +27,7 @@ pub(crate) const NATIVE_CLASS: &str = "skene-native";
 /// The id of the server's `<style>` block, which the browser leaf adopts.
 pub(crate) const STYLE_ID: &str = "skene-styles";
 
-/// The attribute every further `<style>` block the driver owns carries: the browser
+/// The attribute every further `<style>` block the platform owns carries: the browser
 /// leaf's per-class rules, and the delta a streamed chunk brings.
 pub(crate) const STYLE_ATTRIBUTE: &str = "data-skene-style";
 
@@ -236,9 +236,9 @@ pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 2] = ["required", "readonly"];
 
 /// The attributes a control's native element carries: its `type`, the placeholder and
 /// the lines of a text entry, and the accessible name when nothing visible supplies one.
-pub(crate) fn native_attributes<D: Driver>(
+pub(crate) fn native_attributes<P: Platform>(
   native: NativeElement,
-  props: &ControlProps<D>,
+  props: &ControlProps<P>,
 ) -> Vec<(&'static str, String)> {
   let mut attributes = Vec::new();
 
@@ -306,10 +306,10 @@ pub(crate) fn focus_order_attribute(
 
 /// Whether a box's declared style scrolls its content: an overflow of `Scroll` or
 /// `Auto` fixed on the base value.
-pub(crate) fn scrolls<D: Driver>(style: &skene_core::StaticBoxStyle<D>) -> bool {
+pub(crate) fn scrolls<P: Platform>(style: &skene_core::StaticBoxStyle<P>) -> bool {
   matches!(
     style.overflow.as_ref().map(Conditional::base),
-    Some(DriverLeaf::Static(StaticLeaf::Fixed(
+    Some(PlatformLeaf::Static(StaticLeaf::Fixed(
       Overflow::Scroll | Overflow::Auto
     )))
   )

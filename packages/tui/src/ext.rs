@@ -18,7 +18,7 @@ type DeclaredRun = RunStyle<Declared<Condition<u32>>, TuiExt>;
 /// The terminal's own decoration on a box: the glyphs its border draws with and the
 /// shadow it casts.
 ///
-/// Every view with a decorated box on the active driver has it: [`Container`](crate::Container),
+/// Every view with a decorated box on the active platform has it: [`Container`](crate::Container),
 /// [`Control`](crate::Control) and [`Overlay`](crate::Overlay).
 pub trait TuiDecoration: Sized {
   /// The declared style the decoration lands on.
@@ -90,7 +90,7 @@ impl<C> TuiDecoration for skene_views::Overlay<Tui, C> {
 
 /// The terminal's own text property: whether a run is bold.
 ///
-/// Every text view on the active driver has it: [`Text`](crate::Text) and
+/// Every text view on the active platform has it: [`Text`](crate::Text) and
 /// [`Span`](crate::Span).
 pub trait TuiText: Sized {
   /// The declared style the weight lands on.

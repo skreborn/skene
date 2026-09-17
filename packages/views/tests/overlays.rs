@@ -1,5 +1,5 @@
 //! Overlays: the bound signal opens and closes without rebuilding, a dismiss is a
-//! request the app answers, an anchored popup names its anchor to the driver, and a
+//! request the app answers, an anchored popup names its anchor to the platform, and a
 //! focus handle moves focus to the view it is bound to.
 
 mod common;
@@ -36,7 +36,7 @@ type Overlay<C = skene_views::NoChild> = skene_views::Overlay<Headless, C>;
 type RawButton = skene_views::RawButton<Headless>;
 type FocusHandle = skene_views::FocusHandle<Headless>;
 
-/// A modal follows its bound signal through the driver and paints a backdrop; opening
+/// A modal follows its bound signal through the platform and paints a backdrop; opening
 /// and closing keep the same content node, so a signal created while building the
 /// content keeps its value across a close.
 #[test]
@@ -145,7 +145,7 @@ fn a_dismiss_requests_and_never_closes_by_itself() {
   owner.dispose();
 }
 
-/// A popup anchored to a bound box passes the anchor's sink to the driver each time it
+/// A popup anchored to a bound box passes the anchor's sink to the platform each time it
 /// opens, carries no backdrop, and a derived placement re-places it.
 #[test]
 fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {

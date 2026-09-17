@@ -9,14 +9,14 @@ use std::time::Duration;
 
 use skene_tui::{self as tui, Activate, TOOLTIP_DELAY, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A tooltip on a button opens below it after the delay while the pointer rests on
 /// the button, closes as the pointer leaves, opens at once as the button takes focus,
 /// and closes on `Escape`.
 #[test]
 fn a_tooltip_paints_beside_its_anchor_on_hover_and_focus() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((

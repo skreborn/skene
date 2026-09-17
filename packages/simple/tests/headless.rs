@@ -1,4 +1,4 @@
-//! The Simple library on the host driver: every view resolves the palette's tokens
+//! The Simple library on the host platform: every view resolves the palette's tokens
 //! through the one theme mechanism, the controls' parts follow the control, and a
 //! third-party palette works under the same theme.
 

@@ -6,7 +6,6 @@ use skene_core::{
   AnyKind,
   AnyView,
   DeclaredBoxStyle,
-  Driver,
   FlexDirection,
   HasChildren,
   IntoChildOf,
@@ -18,6 +17,7 @@ use skene_core::{
   NodeId,
   Placement,
   PlainChild,
+  Platform,
   Scene,
   View,
 };
@@ -43,7 +43,7 @@ use crate::{
 
 /// The builder of a picker's face, given the chosen value.
 #[must_use]
-pub struct Face<D: Driver>(Box<dyn FnOnce(Memo<String>) -> AnyView<D>>);
+pub struct Face<P: Platform>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
 
 /// A choice among fixed options, drawn by the views it holds: the face draws the
 /// control closed, the options draw the list it opens.
@@ -64,22 +64,22 @@ pub struct Face<D: Driver>(Box<dyn FnOnce(Memo<String>) -> AnyView<D>>);
 /// [`set_options`](Self::set_options) and [`derive_options`](Self::derive_options),
 /// each a [`RawOption`](crate::RawOption) at any depth.
 #[must_use]
-pub struct RawPicker<D: Driver, F = NoChild> {
-  face_style: DeclaredBoxStyle<D>,
-  label: Option<Label<D>>,
+pub struct RawPicker<P: Platform, F = NoChild> {
+  face_style: DeclaredBoxStyle<P>,
+  label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
-  list: LayoutBox<D, PlainChild>,
+  list: LayoutBox<P, PlainChild>,
   value: Option<Source<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,
   face: F,
 }
 
-impl<D: Driver> RawPicker<D> {
+impl<P: Platform> RawPicker<P> {
   /// A picker with no options and nothing chosen.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      face_style: DeclaredBoxStyle::<D>::default(),
+      face_style: DeclaredBoxStyle::<P>::default(),
       label: None,
       disabled: None,
       list: LayoutBox::new(Layout::Flex {
@@ -93,10 +93,10 @@ impl<D: Driver> RawPicker<D> {
 
   /// Sets the view drawing the control closed, built from the chosen value.
   #[inline(always)]
-  pub fn set_face<V: IntoView<D>>(
+  pub fn set_face<V: IntoView<P>>(
     self,
     face: impl FnOnce(Memo<String>) -> V + 'static,
-  ) -> RawPicker<D, Face<D>> {
+  ) -> RawPicker<P, Face<P>> {
     RawPicker {
       face_style: self.face_style,
       label: self.label,
@@ -109,16 +109,16 @@ impl<D: Driver> RawPicker<D> {
   }
 }
 
-impl<D: Driver> Default for RawPicker<D> {
+impl<P: Platform> Default for RawPicker<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, F> RawPicker<D, F> {
+impl<P: Platform, F> RawPicker<P, F> {
   #[inline(always)]
-  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.face_style
   }
 
@@ -127,7 +127,7 @@ impl<D: Driver, F> RawPicker<D, F> {
   /// Sets the views drawing the list, each [`RawOption`](crate::RawOption) among them
   /// an option; anything else draws and nothing more.
   #[inline(always)]
-  pub fn set_options(mut self, options: impl IntoChildren<D>) -> Self {
+  pub fn set_options(mut self, options: impl IntoChildren<P>) -> Self {
     self.list = self.list.set_children(options);
 
     self
@@ -145,7 +145,7 @@ impl<D: Driver, F> RawPicker<D, F> {
   where
     I: IntoIterator<Item = T>,
     K: Eq + std::hash::Hash + 'static,
-    V: IntoChildOf<D, PlainChild>,
+    V: IntoChildOf<P, PlainChild>,
   {
     self.list = self.list.derive_children(items, key, view);
 
@@ -186,7 +186,7 @@ impl<D: Driver, F> RawPicker<D, F> {
 
   /// Sets the face's caption, which is also the accessible name.
   #[inline(always)]
-  pub fn set_label(mut self, label: impl Into<Label<D>>) -> Self {
+  pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
     self.label = Some(label.into());
 
     self
@@ -209,15 +209,15 @@ impl<D: Driver, F> RawPicker<D, F> {
   }
 }
 
-impl<D: Driver, F> AnyKind for RawPicker<D, F> {}
+impl<P: Platform, F> AnyKind for RawPicker<P, F> {}
 
 /// What one of the picker's two forms takes: the decoration, the caption, the
 /// disabled setting and the face.
-struct Parts<D: Driver> {
-  face_style: DeclaredBoxStyle<D>,
-  label: Option<Label<D>>,
+struct Parts<P: Platform> {
+  face_style: DeclaredBoxStyle<P>,
+  label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
-  face: Box<dyn FnOnce(Memo<String>) -> AnyView<D>>,
+  face: Box<dyn FnOnce(Memo<String>) -> AnyView<P>>,
 }
 
 /// The handler a choice runs, replaced by the form in force.
@@ -225,15 +225,15 @@ type Chooser = Rc<RefCell<Rc<dyn Fn(String)>>>;
 
 /// What both forms share: the chosen value, the handler the form in force answers a
 /// choice with, the roster the options joined, and the option views, built once.
-struct Shared<D: Driver> {
+struct Shared<P: Platform> {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Chooser,
   roster: Roster,
   options: NodeId,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
+impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
   fn build(self) -> NodeId {
     let Self {
       face_style,
@@ -274,14 +274,14 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
 
     let options = list.build();
 
-    on_cleanup(move || Scene::<D>::with(|scene| scene.destroy(options)));
+    on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(options)));
 
-    let shared = Rc::new(Shared::<D> {
+    let shared = Rc::new(Shared::<P> {
       chosen,
       choose,
       roster,
       options,
-      driver: PhantomData,
+      platform: PhantomData,
     });
     let parts = Parts {
       face_style,
@@ -289,32 +289,32 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
       disabled,
       face,
     };
-    // A driver whose tree is live from the start draws the picker outright.
-    let Some(hydrated) = D::default().hydration()
+    // A platform whose tree is live from the start draws the picker outright.
+    let Some(hydrated) = P::default().hydration()
     else {
-      return build_drawn::<D>(parts, &shared, on_change);
+      return build_drawn::<P>(parts, &shared, on_change);
     };
     // The parts are taken by whichever form builds; the drawn one builds last.
     let parts = Rc::new(RefCell::new(Some(parts)));
 
-    Enhance::<D>::new(hydrated)
+    Enhance::<P>::new(hydrated)
       .set_fallback({
         let parts = Rc::clone(&parts);
         let shared = Rc::clone(&shared);
         let on_change = on_change.clone();
 
         move || {
-          AnyView::<D>::new(move || build_native::<D>(&mut parts.borrow_mut(), &shared, on_change))
+          AnyView::<P>::new(move || build_native::<P>(&mut parts.borrow_mut(), &shared, on_change))
         }
       })
       .set_child_builder(move || {
-        AnyView::<D>::new(move || {
+        AnyView::<P>::new(move || {
           let parts = parts
             .borrow_mut()
             .take()
             .expect("the drawn form builds last");
 
-          build_drawn::<D>(parts, &shared, on_change)
+          build_drawn::<P>(parts, &shared, on_change)
         })
       })
       .build()
@@ -324,9 +324,9 @@ impl<D: Driver> View<D> for RawPicker<D, Face<D>> {
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
 /// and disabled setting, its options read from the option views, which attach
 /// nowhere; the parts a later form needs are left behind.
-fn build_native<D: Driver>(
-  parts: &mut Option<Parts<D>>,
-  shared: &Rc<Shared<D>>,
+fn build_native<P: Platform>(
+  parts: &mut Option<Parts<P>>,
+  shared: &Rc<Shared<P>>,
   on_change: Option<Rc<dyn Fn(String)>>,
 ) -> NodeId {
   let parts = parts.as_mut().expect("the native form builds first");
@@ -338,7 +338,7 @@ fn build_native<D: Driver>(
 
   *shared.choose.borrow_mut() = Rc::new(choose.clone());
 
-  let mut control = Control::<D, _>::new(NativePicker::new().handle_change(choose));
+  let mut control = Control::<P, _>::new(NativePicker::new().handle_change(choose));
 
   *control.style_mut() = parts.face_style.clone();
 
@@ -358,16 +358,16 @@ fn build_native<D: Driver>(
 
   shared.roster.root_at(shared.options);
 
-  let named = untrack(|| shared.roster.named::<D>());
+  let named = untrack(|| shared.roster.named::<P>());
 
-  with_sink::<D, _>(node, |sink| D::default().set_options(sink, &named));
+  with_sink::<P, _>(node, |sink| P::default().set_options(sink, &named));
   Effect::render({
     let chosen = Rc::clone(&shared.chosen);
 
     move |_: Option<()>| {
       let value = chosen().unwrap_or_default();
 
-      with_sink::<D, _>(node, |sink| D::default().set_value(sink, &value));
+      with_sink::<P, _>(node, |sink| P::default().set_value(sink, &value));
     }
   });
 
@@ -375,9 +375,9 @@ fn build_native<D: Driver>(
 }
 
 /// Builds the drawn form: the [`Popup`] face over the [`Listbox`] in its overlay.
-fn build_drawn<D: Driver>(
-  parts: Parts<D>,
-  shared: &Rc<Shared<D>>,
+fn build_drawn<P: Platform>(
+  parts: Parts<P>,
+  shared: &Rc<Shared<P>>,
   on_change: Option<Rc<dyn Fn(String)>>,
 ) -> NodeId {
   let Parts {
@@ -393,7 +393,7 @@ fn build_drawn<D: Driver>(
     Memo::new(move |_| chosen().unwrap_or_default())
   };
   let open = Signal::new(false);
-  let focus = FocusHandle::<D>::new();
+  let focus = FocusHandle::<P>::new();
   let anchor = Anchor::new();
   let listbox = Listbox::new()
     .set_roster(shared.roster.clone())
@@ -448,7 +448,7 @@ fn build_drawn<D: Driver>(
         }
       }
     })
-    .handle_typed(choose_typed::<D>(
+    .handle_typed(choose_typed::<P>(
       roster.clone(),
       Rc::clone(&chosen),
       on_change,
@@ -473,7 +473,7 @@ fn build_drawn<D: Driver>(
   }
 
   let node = control.build();
-  let overlay = Overlay::<D>::popup()
+  let overlay = Overlay::<P>::popup()
     .set_anchor(&anchor)
     .set_placement(Placement::Bottom)
     .bind_open(open)
@@ -484,11 +484,11 @@ fn build_drawn<D: Driver>(
     )
     .build();
 
-  Scene::<D>::with(|scene| scene.attach(node, overlay, None));
+  Scene::<P>::with(|scene| scene.attach(node, overlay, None));
   list_node.set(list_anchor.node());
   Effect::render(move |_: Option<()>| {
     if open.get() {
-      untrack(|| roster.focus_value::<D>(chosen().as_deref()));
+      untrack(|| roster.focus_value::<P>(chosen().as_deref()));
     }
   });
 
@@ -497,7 +497,7 @@ fn build_drawn<D: Driver>(
 
 /// The closed face's type-ahead: a character typed picks among `roster`'s options by
 /// name from the one `chosen` reads, and `on_change` is asked for the pick.
-fn choose_typed<D: Driver>(
+fn choose_typed<P: Platform>(
   roster: Roster,
   chosen: Rc<dyn Fn() -> Option<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,
@@ -505,13 +505,13 @@ fn choose_typed<D: Driver>(
   let type_ahead = Rc::new(TypeAhead::new());
 
   move |event| {
-    let Some(buffer) = type_ahead.typed::<D>(event)
+    let Some(buffer) = type_ahead.typed::<P>(event)
     else {
       return false;
     };
 
-    if let Some(index) = roster.typed::<D>(&buffer, chosen().as_deref())
-      && let Some((_, value)) = roster.ordered::<D>().get(index)
+    if let Some(index) = roster.typed::<P>(&buffer, chosen().as_deref())
+      && let Some((_, value)) = roster.ordered::<P>().get(index)
       && let Some(action) = &on_change
     {
       action(value.clone());

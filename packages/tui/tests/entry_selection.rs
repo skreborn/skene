@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
-use crate::common::{rgb, rows, white, with_driver};
+use crate::common::{rgb, rows, white, with_platform};
 
 /// The selection highlight the tests read back.
 fn highlight() -> Color {
@@ -43,7 +43,7 @@ fn mount_field(value: Signal<String>, width: u32) {
 /// collapses the selection to its end and `ArrowLeft` to its start.
 #[test]
 fn keyboard_focus_selects_the_value_and_typing_replaces_it() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha"));
 
     mount_field(value, 10);
@@ -76,7 +76,7 @@ fn keyboard_focus_selects_the_value_and_typing_replaces_it() {
 /// ends—and `Backspace` removes what is selected.
 #[test]
 fn shift_extends_the_selection_and_backspace_removes_it() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta gamma"));
 
     mount_field(value, 20);
@@ -122,7 +122,7 @@ fn shift_extends_the_selection_and_backspace_removes_it() {
 /// under the pointer, a triple click the whole value.
 #[test]
 fn the_mouse_selects_by_drag_word_and_value() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 12);
@@ -166,7 +166,7 @@ fn the_mouse_selects_by_drag_word_and_value() {
 /// reply lands in the entry that asked; a reply nobody asked for lands nowhere.
 #[test]
 fn the_clipboard_keys_copy_cut_and_paste() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 20);
@@ -221,7 +221,7 @@ fn the_clipboard_keys_copy_cut_and_paste() {
 /// with the break.
 #[test]
 fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("ab"));
 
     let _ = tui::mount(move || {
@@ -251,7 +251,7 @@ fn an_editor_pastes_line_breaks_and_breaks_over_a_selection() {
 /// `Cut` removes the selection into the clipboard and `Paste` stages a read.
 #[test]
 fn the_edit_menu_cuts_copies_and_pastes() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha beta"));
 
     mount_field(value, 20);
@@ -298,7 +298,7 @@ fn the_edit_menu_cuts_copies_and_pastes() {
 /// a value written from outside collapses it too.
 #[test]
 fn blur_escape_and_writes_collapse_the_selection() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("alpha"));
 
     mount_field(value, 10);
@@ -362,7 +362,7 @@ fn mount_under_typography(child: impl FnOnce() -> AnyView + 'static) {
 /// the pace, and the scroll stops at the value's end.
 #[test]
 fn a_drag_held_past_the_end_autoscrolls_the_field() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("abcdefghij"));
 
     mount_field(value, 5);
@@ -420,7 +420,7 @@ fn a_drag_held_past_the_end_autoscrolls_the_field() {
 /// A drag held before a field's start scrolls its window back to the value's start.
 #[test]
 fn a_drag_held_before_the_start_autoscrolls_the_field_back() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("abcdefghij"));
 
     mount_under_typography(move || {
@@ -471,7 +471,7 @@ fn a_drag_held_before_the_start_autoscrolls_the_field_back() {
 /// following on the top row.
 #[test]
 fn a_drag_held_above_autoscrolls_the_editor() {
-  with_driver(|| {
+  with_platform(|| {
     let value = Signal::new(String::from("a\nb\nc\nd\ne\nf"));
 
     mount_under_typography(move || {

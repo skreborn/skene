@@ -1,6 +1,6 @@
 //! # acme-sparkline
 //!
-//! A third-party low-level view written against the terminal driver's escape trait: a
+//! A third-party low-level view written against the terminal platform's escape trait: a
 //! [`Sparkline`] paints bar glyphs through [`CellPainter`] into an ordinary
 //! [`Container`] that sizes it, so it composes with wrappers, themes and events as a
 //! built-in does.
@@ -11,7 +11,7 @@
 
 use std::marker::PhantomData;
 
-use skene_core::{AnyKind, Color, Driver, NodeId, View};
+use skene_core::{AnyKind, Color, NodeId, Platform, View};
 use skene_tui::CellPainter;
 use skene_views::{Container, realize::with_sink};
 
@@ -20,20 +20,20 @@ const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
 
 /// A row of bars, one cell per value, scaled to the values' range.
 #[must_use]
-pub struct Sparkline<D: Driver> {
+pub struct Sparkline<P: Platform> {
   values: Vec<f32>,
   color: Option<Color>,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Sparkline<D> {
+impl<P: Platform> Sparkline<P> {
   /// A sparkline of `values`, one cell wide per value.
   #[inline(always)]
   pub fn new(values: impl IntoIterator<Item = f32>) -> Self {
     Self {
       values: values.into_iter().collect(),
       color: None,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 
@@ -46,17 +46,17 @@ impl<D: Driver> Sparkline<D> {
   }
 }
 
-impl<D: Driver> AnyKind for Sparkline<D> {}
+impl<P: Platform> AnyKind for Sparkline<P> {}
 
-impl<D: Driver<Scalar = u32> + CellPainter> View<D> for Sparkline<D> {
+impl<P: Platform<Scalar = u32> + CellPainter> View<P> for Sparkline<P> {
   fn build(self) -> NodeId {
     let width = u32::try_from(self.values.len()).unwrap_or(u32::MAX);
-    let node = Container::<D>::new().set_width(width).set_height(1).build();
+    let node = Container::<P>::new().set_width(width).set_height(1).build();
     let levels = levels(&self.values);
     let color = self.color;
 
-    with_sink::<D, _>(node, |sink| {
-      D::default().paint(
+    with_sink::<P, _>(node, |sink| {
+      P::default().paint(
         sink,
         Box::new(move |cells, _| {
           for (x, level) in levels.iter().enumerate() {

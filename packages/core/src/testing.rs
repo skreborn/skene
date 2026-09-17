@@ -1,4 +1,4 @@
-//! A driver for core's own tests: sinks are numbers, and every mirrored call is logged.
+//! A platform for core's own tests: sinks are numbers, and every mirrored call is logged.
 
 use std::{
   cell::{Cell, RefCell},
@@ -18,7 +18,6 @@ use super::{
   ControlState,
   Definition,
   Definitions,
-  Driver,
   EventKind,
   HasChildren,
   MediaSignals,
@@ -26,6 +25,7 @@ use super::{
   NodeKind,
   OverlayProps,
   PlainChild,
+  Platform,
   RunProps,
   RunValue,
   Scene,
@@ -37,7 +37,7 @@ use super::{
 };
 use crate::{AccessProp, Color, ColorScheme, FocusOrder, PointerEvent, Size, TextSelection};
 
-/// One call the driver received.
+/// One call the platform received.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
   Attach(u32, u32, Option<u32>),
@@ -68,17 +68,17 @@ impl From<Definition<f32, f32>> for Erased {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct TestDriver;
+pub(super) struct TestPlatform;
 
 thread_local! {
-  static SCENE: RefCell<Scene<TestDriver>> = RefCell::new(Scene::new());
+  static SCENE: RefCell<Scene<TestPlatform>> = RefCell::new(Scene::new());
   static LOG: RefCell<Vec<Call>> = const { RefCell::new(Vec::new()) };
   static NEXT_SINK: Cell<u32> = const { Cell::new(1) };
   static MEDIA: RefCell<Option<MediaSignals<f32>>> = const { RefCell::new(None) };
   static ORIGINS: RefCell<Vec<(u32, f32, f32)>> = const { RefCell::new(Vec::new()) };
 }
 
-impl TestDriver {
+impl TestPlatform {
   /// Empties the scene and the log.
   pub(super) fn reset() {
     SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
@@ -112,7 +112,7 @@ impl TestDriver {
   }
 }
 
-impl Driver for TestDriver {
+impl Platform for TestPlatform {
   type Scalar = f32;
   type Sink = u32;
   type StyleExt = ();
@@ -240,7 +240,7 @@ impl Driver for TestDriver {
 
 /// A box with children and nothing else.
 pub(super) struct TestBox {
-  children: Children<TestDriver, PlainChild>,
+  children: Children<TestPlatform, PlainChild>,
 }
 
 impl TestBox {
@@ -252,21 +252,21 @@ impl TestBox {
 
   /// Mints a box node directly, outside any view.
   pub(super) fn node() -> NodeId {
-    Scene::<TestDriver>::with(|scene| scene.create(NodeKind::Box, TestDriver::next_sink()))
+    Scene::<TestPlatform>::with(|scene| scene.create(NodeKind::Box, TestPlatform::next_sink()))
   }
 }
 
-impl HasChildren<TestDriver> for TestBox {
+impl HasChildren<TestPlatform> for TestBox {
   type Kind = PlainChild;
 
-  fn children_mut(&mut self, _: Seal) -> &mut Children<TestDriver, PlainChild> {
+  fn children_mut(&mut self, _: Seal) -> &mut Children<TestPlatform, PlainChild> {
     &mut self.children
   }
 }
 
 impl AnyKind for TestBox {}
 
-impl View<TestDriver> for TestBox {
+impl View<TestPlatform> for TestBox {
   fn build(self) -> NodeId {
     let node = Self::node();
 
@@ -278,17 +278,17 @@ impl View<TestDriver> for TestBox {
 
 /// The sink of `node`.
 pub(super) fn sink(node: NodeId) -> u32 {
-  Scene::<TestDriver>::with(|scene| *scene.record(node).expect("live node").sink())
+  Scene::<TestPlatform>::with(|scene| *scene.record(node).expect("live node").sink())
 }
 
 /// The children of `node`, in order.
 pub(super) fn children(node: NodeId) -> Vec<NodeId> {
-  Scene::<TestDriver>::with(|scene| scene.children(node).collect())
+  Scene::<TestPlatform>::with(|scene| scene.children(node).collect())
 }
 
 /// The kinds of the children of `node`, in order.
 pub(super) fn child_kinds(node: NodeId) -> Vec<NodeKind> {
-  Scene::<TestDriver>::with(|scene| {
+  Scene::<TestPlatform>::with(|scene| {
     scene
       .children(node)
       .map(|child| scene.record(child).expect("live child").kind())

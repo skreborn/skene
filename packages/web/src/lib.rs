@@ -1,4 +1,4 @@
-//! The skene web driver: the [`Web`] driver type, the shared compiler of the property
+//! The skene web platform: the [`Web`] platform type, the shared compiler of the property
 //! model to CSS, and two leaves selected by target.
 //!
 //! The browser leaf (`csr`, `target_os = "unknown"`) realizes against a live DOM and
@@ -6,8 +6,8 @@
 //! the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
-//! [`Driver`](skene_core::Driver) for [`Web`] and exposes its own entry points beside
-//! the seams a facade's satellites need beyond the driver: the executor (`drive`),
+//! [`Platform`](skene_core::Platform) for [`Web`] and exposes its own entry points beside
+//! the seams a facade's satellites need beyond the platform: the executor (`drive`),
 //! the hydration state channel (`adopt_next`, `register_source` and their tagged
 //! twins, `is_server`), the document head, the path (the browser's history, the
 //! server's request) and, in the browser, `claim_lazy` and `discard_lazy`.
@@ -124,10 +124,10 @@ pub use self::{
 #[cfg(target_arch = "wasm32")]
 const RESET_CSS: &str = include_str!("reset.css");
 
-/// The web driver: zero-sized, implementing the portable vocabulary over the DOM in the
+/// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
 /// browser and over a string tree on the server.
 ///
-/// Lengths are logical pixels ([`Scalar`](skene_core::Driver::Scalar) `f32`), the
+/// Lengths are logical pixels ([`Scalar`](skene_core::Platform::Scalar) `f32`), the
 /// style extension is [`GuiExt`](skene_gui_core::GuiExt), and a token is a
 /// [`WebTokenValue`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]

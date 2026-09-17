@@ -1,8 +1,8 @@
 //! Real-DOM integration tests for the web realization of the built-in views.
 //!
-//! Each test installs the web driver rooted at a connected `<div>`, builds a view under
+//! Each test installs the web platform rooted at a connected `<div>`, builds a view under
 //! it, and asserts against the actual DOM the browser produced. The guard uninstalls
-//! the driver and removes the root when it drops, isolating each test.
+//! the platform and removes the root when it drops, isolating each test.
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_dom`.
@@ -67,7 +67,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the driver and removes the root when it drops, isolating each test.
+/// Uninstalls the platform and removes the root when it drops, isolating each test.
 struct Installed(Element);
 
 impl Drop for Installed {
@@ -77,7 +77,7 @@ impl Drop for Installed {
   }
 }
 
-/// Installs the driver rooted at a fresh connected `<div>`, returning the guard (drop
+/// Installs the platform rooted at a fresh connected `<div>`, returning the guard (drop
 /// it to reset) and that root. Build a view under it with [`mount`], then read the
 /// root's subtree; computed styles resolve because the root is connected.
 fn fresh_root() -> (Installed, Element) {
@@ -136,7 +136,7 @@ fn probe(parent: &Element, value: &str) -> String {
   color
 }
 
-/// A color as the driver renders it.
+/// A color as the platform renders it.
 fn css(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 
@@ -628,7 +628,7 @@ fn focus_handle_focuses_the_bound_view() {
   assert_ne!(document().active_element(), Some(input));
 }
 
-/// A handler may re-enter the driver—building nodes from inside one does not deadlock
+/// A handler may re-enter the platform—building nodes from inside one does not deadlock
 /// the scene or the DOM state.
 #[wasm_bindgen_test]
 fn a_click_handler_may_build_nodes() {
@@ -783,7 +783,7 @@ fn empty_renders_no_element() {
 }
 
 /// The escape hatch: a view that builds a node and then reaches its real element
-/// through the driver, no trait involved.
+/// through the platform, no trait involved.
 #[wasm_bindgen_test]
 fn a_low_level_view_reaches_the_platform_directly() {
   let (_guard, root) = fresh_root();
@@ -1129,9 +1129,9 @@ fn a_checkbox_is_a_label_over_a_native_input() {
 /// A radio group's arrow traversal follows document order, including a member
 /// reconciled into the middle of the set after the group was built.
 ///
-/// The host tier pins the same thing against the headless driver. This pins it against
+/// The host tier pins the same thing against the headless platform. This pins it against
 /// the browser's: real reconcile, real elements, and a real `keydown`, so the order the
-/// driver reports is checked against the order the document actually renders.
+/// platform reports is checked against the order the document actually renders.
 #[wasm_bindgen_test]
 fn a_radio_group_traverses_in_document_order() {
   let (_guard, root) = fresh_root();

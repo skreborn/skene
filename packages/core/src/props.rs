@@ -1,4 +1,4 @@
-//! What a driver receives to realize a node, and what it reports of the environment.
+//! What a platform receives to realize a node, and what it reports of the environment.
 
 use rustc_hash::FxHashMap;
 use skene_reactive::{ReadSignal, Signal, Update, With};
@@ -9,8 +9,8 @@ use super::{
   Condition,
   ContainerName,
   Declared,
-  Driver,
   Keyframe,
+  Platform,
   RunDynamics,
   RunStyle,
   Scalar,
@@ -29,47 +29,47 @@ use crate::{
   Size,
 };
 
-/// A box's style as a builder declares it: values under the driver's conditions,
+/// A box's style as a builder declares it: values under the platform's conditions,
 /// possibly derived.
-pub type DeclaredBoxStyle<D> = BoxStyle<
-  <D as Driver>::Scalar,
-  Declared<Condition<<D as Driver>::Scalar>>,
-  <D as Driver>::StyleExt,
+pub type DeclaredBoxStyle<P> = BoxStyle<
+  <P as Platform>::Scalar,
+  Declared<Condition<<P as Platform>::Scalar>>,
+  <P as Platform>::StyleExt,
 >;
 
-/// A box's style as a driver receives it: every derived leaf replaced by its slot.
-pub type StaticBoxStyle<D> = BoxStyle<
-  <D as Driver>::Scalar,
-  Static<Condition<<D as Driver>::Scalar>>,
-  <D as Driver>::StyleExt,
+/// A box's style as a platform receives it: every derived leaf replaced by its slot.
+pub type StaticBoxStyle<P> = BoxStyle<
+  <P as Platform>::Scalar,
+  Static<Condition<<P as Platform>::Scalar>>,
+  <P as Platform>::StyleExt,
 >;
 
 /// A run's style as a builder declares it.
-pub type DeclaredRunStyle<D> =
-  RunStyle<Declared<Condition<<D as Driver>::Scalar>>, <D as Driver>::StyleExt>;
+pub type DeclaredRunStyle<P> =
+  RunStyle<Declared<Condition<<P as Platform>::Scalar>>, <P as Platform>::StyleExt>;
 
-/// A run's style as a driver receives it: every derived leaf replaced by its slot.
-pub type StaticRunStyle<D> =
-  RunStyle<Static<Condition<<D as Driver>::Scalar>>, <D as Driver>::StyleExt>;
+/// A run's style as a platform receives it: every derived leaf replaced by its slot.
+pub type StaticRunStyle<P> =
+  RunStyle<Static<Condition<<P as Platform>::Scalar>>, <P as Platform>::StyleExt>;
 
 /// A box's style as one keyframe of an animation: a static leaf per set property.
-pub type BoxKeyframe<D> = BoxStyle<<D as Driver>::Scalar, Keyframe, <D as Driver>::StyleExt>;
+pub type BoxKeyframe<P> = BoxStyle<<P as Platform>::Scalar, Keyframe, <P as Platform>::StyleExt>;
 
 /// A run's style as one keyframe of an animation: a static leaf per set property.
-pub type RunKeyframe<D> = RunStyle<Keyframe, <D as Driver>::StyleExt>;
+pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Platform>::StyleExt>;
 
-/// Everything a driver needs to realize a box.
+/// Everything a platform needs to realize a box.
 #[derive(Clone)]
 #[must_use]
-pub struct BoxProps<D: Driver> {
+pub struct BoxProps<P: Platform> {
   /// The layout mode.
   pub layout: Layout,
-  /// The semantic role, guiding the driver's concrete choice of element.
+  /// The semantic role, guiding the platform's concrete choice of element.
   pub role: Option<Role>,
   /// The static style: every derived leaf already replaced by its slot.
-  pub style: StaticBoxStyle<D>,
+  pub style: StaticBoxStyle<P>,
   /// The transitions and animations.
-  pub dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
+  pub dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   /// The name pairing the box with its counterpart across a view transition.
   pub transition_name: Option<String>,
   /// The name the box publishes for container queries against its size.
@@ -83,10 +83,10 @@ pub struct BoxProps<D: Driver> {
   pub destination: Option<String>,
 }
 
-/// Everything a driver needs to realize a text run.
+/// Everything a platform needs to realize a text run.
 #[derive(Clone)]
 #[must_use]
-pub struct RunProps<D: Driver> {
+pub struct RunProps<P: Platform> {
   /// How the run participates in the surrounding layout.
   pub display: RunDisplay,
   /// Whether the user can select and copy the run's text.
@@ -96,16 +96,16 @@ pub struct RunProps<D: Driver> {
   /// How the link opens and what it discloses; meaningful only when `link` is set.
   pub link_policy: LinkPolicy,
   /// The static style: every derived leaf already replaced by its slot.
-  pub style: StaticRunStyle<D>,
+  pub style: StaticRunStyle<P>,
   /// The transitions and animations.
-  pub dynamics: RunDynamics<D::StyleExt>,
+  pub dynamics: RunDynamics<P::StyleExt>,
 }
 
-/// Everything a driver needs to realize an overlay: a box shown above the app while
-/// open, opened and closed through [`Driver::set_overlay_open`].
+/// Everything a platform needs to realize an overlay: a box shown above the app while
+/// open, opened and closed through [`Platform::set_overlay_open`].
 #[derive(Clone)]
 #[must_use]
-pub struct OverlayProps<D: Driver> {
+pub struct OverlayProps<P: Platform> {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
   pub modal: bool,
   /// Whether the overlay is a hint: a popup describing its anchor, which never takes
@@ -116,12 +116,12 @@ pub struct OverlayProps<D: Driver> {
   /// The backdrop color painted over the app while open, if any.
   pub backdrop: Option<Color>,
   /// The box the overlay's content is realized as.
-  pub box_props: BoxProps<D>,
+  pub box_props: BoxProps<P>,
 }
 
-/// The measured sizes of the named query containers, filled by the driver.
+/// The measured sizes of the named query containers, filled by the platform.
 ///
-/// A read tracks, so a condition against a container re-evaluates when the driver
+/// A read tracks, so a condition against a container re-evaluates when the platform
 /// reports a new size or names a container it had not measured before.
 #[derive(Clone, Copy)]
 #[must_use]

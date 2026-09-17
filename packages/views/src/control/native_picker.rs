@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use skene_core::{ControlKind, Driver, EventKind, Role};
+use skene_core::{ControlKind, EventKind, Platform, Role};
 
 use super::{Behavior, ControlHandle};
 
@@ -10,7 +10,7 @@ use super::{Behavior, ControlHandle};
 /// [`RawPicker`](crate::RawPicker), realized as the platform's own choice control
 /// where it has one.
 ///
-/// The options are written to the driver by whoever builds the control, from the
+/// The options are written to the platform by whoever builds the control, from the
 /// [`Roster`](super::Roster) the option controls join; the platform's choice arrives
 /// as a change and only calls [`handle_change`](Self::handle_change), so the bound
 /// value stays the truth.
@@ -42,7 +42,7 @@ impl Default for NativePicker {
   }
 }
 
-impl<D: Driver> Behavior<D> for NativePicker {
+impl<P: Platform> Behavior<P> for NativePicker {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::NativePicker
@@ -58,7 +58,7 @@ impl<D: Driver> Behavior<D> for NativePicker {
     &[EventKind::Change]
   }
 
-  fn on_change(&self, value: &str, _control: &ControlHandle<D>) {
+  fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
     if let Some(action) = &self.on_change {
       action(value.to_owned());
     }

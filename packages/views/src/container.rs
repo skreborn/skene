@@ -11,13 +11,13 @@ use skene_core::{
   Condition,
   ContainerName,
   DeclaredBoxStyle,
-  Driver,
   FocusOrder,
   HasChildren,
   KeyEvent,
   Layout,
   NodeId,
   PlainChild,
+  Platform,
   PointerEvent,
   Role,
   ScrollEvent,
@@ -39,18 +39,18 @@ use crate::{Anchor, FocusHandle, LayoutBox, SizeHandle, decoration};
 /// when it is not; [`set_alignment`](Self::set_alignment) places a child that does
 /// neither. Several children take a layout view, wrapped in a container to decorate it.
 #[must_use]
-pub struct Container<D: Driver> {
-  inner: LayoutBox<D, PlainChild>,
+pub struct Container<P: Platform> {
+  inner: LayoutBox<P, PlainChild>,
 }
 
-impl<D: Driver> Default for Container<D> {
+impl<P: Platform> Default for Container<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Container<D> {
+impl<P: Platform> Container<P> {
   /// An undecorated container.
   #[inline(always)]
   pub fn new() -> Self {
@@ -61,7 +61,7 @@ impl<D: Driver> Container<D> {
 
   /// The declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 
@@ -71,7 +71,7 @@ impl<D: Driver> Container<D> {
   #[inline(always)]
   pub fn set_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.inner = self.inner.set_alignment(alignment);
 
@@ -97,7 +97,7 @@ impl<D: Driver> Container<D> {
     self
   }
 
-  /// Sets the semantic role, guiding the driver's concrete choice of element.
+  /// Sets the semantic role, guiding the platform's concrete choice of element.
   #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.inner = self.inner.set_label(label);
@@ -113,7 +113,7 @@ impl<D: Driver> Container<D> {
     self
   }
 
-  /// Sets the semantic role, guiding the driver's choice of element.
+  /// Sets the semantic role, guiding the platform's choice of element.
   #[inline(always)]
   pub fn set_role(mut self, role: Role) -> Self {
     self.inner = self.inner.set_role(role);
@@ -167,7 +167,7 @@ impl<D: Driver> Container<D> {
   /// Binds `focus` to the box once built, so focus moves to it programmatically; the
   /// box takes focus only with a focus order.
   #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
     self.inner = self.inner.bind_focus(focus);
 
     self
@@ -175,7 +175,7 @@ impl<D: Driver> Container<D> {
 
   /// Binds `size` to the box once built, so its measured size is reported through it.
   #[inline(always)]
-  pub fn bind_size(mut self, size: &SizeHandle<D>) -> Self {
+  pub fn bind_size(mut self, size: &SizeHandle<P>) -> Self {
     self.inner = self.inner.bind_size(size);
 
     self
@@ -186,7 +186,7 @@ impl<D: Driver> Container<D> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.inner = self.inner.set_transition(transition);
 
@@ -195,14 +195,14 @@ impl<D: Driver> Container<D> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
     self.inner = self.inner.set_animation(animation);
 
     self
   }
 
   /// Names the box for view transitions: it is paired with the box of the same name
-  /// across a navigation, where the driver animates between them.
+  /// across a navigation, where the platform animates between them.
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.inner = self.inner.set_transition_name(name);
@@ -321,18 +321,18 @@ impl<D: Driver> Container<D> {
   }
 }
 
-impl<D: Driver> HasChildren<D> for Container<D> {
+impl<P: Platform> HasChildren<P> for Container<P> {
   type Kind = PlainChild;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, PlainChild> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, PlainChild> {
     self.inner.children_mut(seal)
   }
 }
 
-impl<D: Driver> AnyKind for Container<D> {}
+impl<P: Platform> AnyKind for Container<P> {}
 
-impl<D: Driver> View<D> for Container<D> {
+impl<P: Platform> View<P> for Container<P> {
   #[inline(always)]
   fn build(self) -> NodeId {
     self.inner.build()

@@ -1,5 +1,5 @@
 //! The terminal medium's own style properties: the glyphs and radius of a border, a
-//! box's shadow, and a run's size and weight; and the extension every terminal driver
+//! box's shadow, and a run's size and weight; and the extension every terminal platform
 //! shares.
 
 use std::hash::{Hash, Hasher};

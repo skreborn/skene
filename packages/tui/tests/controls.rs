@@ -11,12 +11,12 @@ use std::{cell::Cell, rc::Rc};
 use skene_simple_tui::prelude::*;
 use skene_tui::{self as tui, Activate, Range, prelude::*};
 
-use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_driver};
+use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_platform};
 
 /// Tab focuses a button, a `Focused` variant applies, and `Enter` clicks it.
 #[test]
 fn focus_variant_and_enter_click() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -48,7 +48,7 @@ fn focus_variant_and_enter_click() {
 /// focuses it, so `Enter` and `Space` click it again.
 #[test]
 fn mouse_click_hits_and_focuses() {
-  with_driver(|| {
+  with_platform(|| {
     let first = Rc::new(Cell::new(0u32));
     let second = Rc::new(Cell::new(0u32));
     let (count_first, count_second) = (Rc::clone(&first), Rc::clone(&second));
@@ -83,7 +83,7 @@ fn mouse_click_hits_and_focuses() {
 /// and its mark repaints as the checked glyph.
 #[test]
 fn checkbox_toggles_by_key_and_click() {
-  with_driver(|| {
+  with_platform(|| {
     let on = Signal::new(false);
 
     let _ = tui::mount(|| SimpleCheckbox::new().bind_checked(on).into_any().build());
@@ -107,7 +107,7 @@ fn checkbox_toggles_by_key_and_click() {
 /// clicking the label toggles it.
 #[test]
 fn checkbox_labels_render_and_toggle() {
-  with_driver(|| {
+  with_platform(|| {
     let on = Signal::new(false);
 
     let _ = tui::mount(|| {
@@ -137,7 +137,7 @@ fn checkbox_labels_render_and_toggle() {
 /// follows the chosen value.
 #[test]
 fn radio_group_moves_the_check() {
-  with_driver(|| {
+  with_platform(|| {
     let choice = Signal::new(Some("a".to_owned()));
 
     let _ = tui::mount(|| {
@@ -184,7 +184,7 @@ fn radio_group_moves_the_check() {
 /// by `Home`, `End` and the page keys.
 #[test]
 fn slider_nudges_and_jumps() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -238,7 +238,7 @@ fn slider_nudges_and_jumps() {
 /// release, and motion after release changes nothing.
 #[test]
 fn slider_drags_to_the_pointer() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -278,7 +278,7 @@ fn slider_drags_to_the_pointer() {
 /// A slider shows the open hand at rest and the closed hand while dragging.
 #[test]
 fn slider_shows_the_grab_cursors() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(5.0f32);
 
     let _ = tui::mount(|| {
@@ -316,7 +316,7 @@ fn slider_shows_the_grab_cursors() {
 /// two of them share is a block glyph carrying both colors.
 #[test]
 fn a_slider_fills_to_a_thumb_of_its_own_color() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -389,7 +389,7 @@ fn a_slider_fills_to_a_thumb_of_its_own_color() {
 /// the fill's last cell and the thumb's first are neighbours at every value.
 #[test]
 fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -438,7 +438,7 @@ fn a_slider_on_a_half_cell_leaves_no_gap_before_its_thumb() {
 /// a slider to that position rather than to the cell's center.
 #[test]
 fn a_slider_drag_reads_the_pointer_within_its_cell() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -476,7 +476,7 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
 /// over the slider changes nothing.
 #[test]
 fn a_slider_released_off_itself_stops_sliding() {
-  with_driver(|| {
+  with_platform(|| {
     let volume = Signal::new(0.0f32);
 
     let _ = tui::mount(|| {
@@ -541,7 +541,7 @@ fn last_row(frame: &str, needle: &str) -> Option<u16> {
 /// selecting.
 #[test]
 fn picker_opens_a_popup_and_selects_by_click() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -596,7 +596,7 @@ fn picker_opens_a_popup_and_selects_by_click() {
 /// value, `Enter` chooses the focused option.
 #[test]
 fn picker_popup_navigates_without_committing() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -625,7 +625,7 @@ fn picker_popup_navigates_without_committing() {
 /// the list's `End` and `Home` reach its ends.
 #[test]
 fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -656,7 +656,7 @@ fn picker_arrows_open_the_list_and_home_and_end_reach_its_ends() {
 /// The options popup anchors beneath the picker and closes when focus leaves it.
 #[test]
 fn picker_popup_anchors_beneath_and_closes_on_blur() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     let _ = tui::mount(|| {
@@ -702,7 +702,7 @@ fn picker_popup_anchors_beneath_and_closes_on_blur() {
 /// tab stop, so the keys that follow reach that stop rather than the closed list.
 #[test]
 fn picker_tab_commits_closes_and_travels_on() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
     let next = FocusHandle::new();
     let bound = next.clone();
@@ -754,7 +754,7 @@ fn picker_tab_commits_closes_and_travels_on() {
 /// choose.
 #[test]
 fn picker_type_ahead_chooses_closed_and_focuses_open() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -797,7 +797,7 @@ fn picker_type_ahead_chooses_closed_and_focuses_open() {
 /// it is never a dismissal the click would reopen.
 #[test]
 fn a_press_on_an_open_pickers_face_closes_it() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -834,7 +834,7 @@ fn a_press_on_an_open_pickers_face_closes_it() {
 /// option.
 #[test]
 fn a_pickers_face_keeps_its_ring_while_open() {
-  with_driver(|| {
+  with_platform(|| {
     let unit = Signal::new("px".to_owned());
 
     mount_picker(unit);
@@ -869,7 +869,7 @@ fn a_pickers_face_keeps_its_ring_while_open() {
 /// the control still does what it does.
 #[test]
 fn a_control_keeps_its_press_from_an_ancestor() {
-  with_driver(|| {
+  with_platform(|| {
     let outer_runs = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&outer_runs);
     let on = Signal::new(false);
@@ -895,7 +895,7 @@ fn a_control_keeps_its_press_from_an_ancestor() {
 /// that wins over it while both hold.
 #[test]
 fn authored_state_variants_paint_on_a_control() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       RawButton::new(Activate::new())
         .set_width(4)
@@ -929,7 +929,7 @@ fn authored_state_variants_paint_on_a_control() {
 /// the next press hides it again, as `:focus-visible` does.
 #[test]
 fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       RawButton::new(Activate::new())
         .set_width(4)
@@ -976,7 +976,7 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
 /// A focus handle moves keyboard focus programmatically, and takes it away.
 #[test]
 fn a_focus_handle_moves_focus() {
-  with_driver(|| {
+  with_platform(|| {
     let handle = FocusHandle::new();
     let bound = handle.clone();
 
@@ -1008,7 +1008,7 @@ fn a_focus_handle_moves_focus() {
 /// A disabled control takes no focus and swallows the clicks it would act on.
 #[test]
 fn a_disabled_control_takes_no_focus_and_no_click() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -1044,7 +1044,7 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
 /// A wrapping container's border frames a checkbox's mark, which paints inside it.
 #[test]
 fn a_container_frames_a_checkbox_mark() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_border(Border::new(1, white()))
@@ -1069,7 +1069,7 @@ fn a_container_frames_a_checkbox_mark() {
 /// marks and the picker's indicator are its glyphs.
 #[test]
 fn a_themed_glyph_set_draws_the_marks() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Theme::new(
         SimpleGlyphs::default()

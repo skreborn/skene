@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use skene_reactive::{Key, Owner};
 
-use super::{AnyKind, Children, Driver, HasChildren, NodeId, Seal, View};
+use super::{AnyKind, Children, HasChildren, NodeId, Platform, Seal, View};
 
 /// The view a [`set_key`](View::set_key) named: built under a scope its key
 /// identifies rather than its position.
@@ -14,27 +14,27 @@ use super::{AnyKind, Children, Driver, HasChildren, NodeId, Seal, View};
 /// which is the same identity [`reconcile`](crate::reconcile) gives a keyed list item.
 /// A container's setters carry through, so the children still come last.
 #[must_use]
-pub struct Keyed<D: Driver, V> {
+pub struct Keyed<P: Platform, V> {
   key: Key,
   view: V,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver, V> Keyed<D, V> {
+impl<P: Platform, V> Keyed<P, V> {
   /// `view` under `key`.
   #[inline(always)]
   pub(crate) const fn new(key: Key, view: V) -> Self {
     Self {
       key,
       view,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, V> AnyKind for Keyed<D, V> {}
+impl<P: Platform, V> AnyKind for Keyed<P, V> {}
 
-impl<D: Driver, V: View<D>> View<D> for Keyed<D, V> {
+impl<P: Platform, V: View<P>> View<P> for Keyed<P, V> {
   #[inline(always)]
   fn build(self) -> NodeId {
     Owner::current()
@@ -43,11 +43,11 @@ impl<D: Driver, V: View<D>> View<D> for Keyed<D, V> {
   }
 }
 
-impl<D: Driver, V: HasChildren<D>> HasChildren<D> for Keyed<D, V> {
+impl<P: Platform, V: HasChildren<P>> HasChildren<P> for Keyed<P, V> {
   type Kind = V::Kind;
 
   #[inline(always)]
-  fn children_mut(&mut self, seal: Seal) -> &mut Children<D, Self::Kind> {
+  fn children_mut(&mut self, seal: Seal) -> &mut Children<P, Self::Kind> {
     self.view.children_mut(seal)
   }
 }

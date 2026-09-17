@@ -8,13 +8,13 @@ mod common;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
-use crate::common::{rows, white, with_driver};
+use crate::common::{rows, white, with_platform};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
 #[test]
 fn input_binds_a_signal_both_ways() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -41,7 +41,7 @@ fn input_binds_a_signal_both_ways() {
 /// The caret moves with arrows, `Home`, and `End`; edits insert and delete around it.
 #[test]
 fn caret_edits_insert_and_delete() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -83,7 +83,7 @@ fn caret_edits_insert_and_delete() {
 /// remove them.
 #[test]
 fn caret_jumps_and_deletes_by_word() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::from("alpha beta gamma"));
 
     let _ = tui::mount(|| {
@@ -118,7 +118,7 @@ fn caret_jumps_and_deletes_by_word() {
 /// break like words of their own.
 #[test]
 fn word_deletion_breaks_on_character_class() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::from("foo.bar_baz("));
 
     let _ = tui::mount(|| {
@@ -148,7 +148,7 @@ fn word_deletion_breaks_on_character_class() {
 /// caret at the clicked column.
 #[test]
 fn caret_windows_long_values_and_follows_clicks() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -182,7 +182,7 @@ fn caret_windows_long_values_and_follows_clicks() {
 /// shows its lines at once.
 #[test]
 fn an_editor_breaks_lines_and_moves_between_them() {
-  with_driver(|| {
+  with_platform(|| {
     let bio = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -213,7 +213,7 @@ fn an_editor_breaks_lines_and_moves_between_them() {
 /// last row scrolls the window down, and moving the caret above it scrolls it back.
 #[test]
 fn an_editor_windows_its_rows_around_the_caret() {
-  with_driver(|| {
+  with_platform(|| {
     let bio = Signal::new(String::new());
 
     let _ = tui::mount(|| {
@@ -246,7 +246,7 @@ fn an_editor_windows_its_rows_around_the_caret() {
 /// brings its row back.
 #[test]
 fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
-  with_driver(|| {
+  with_platform(|| {
     let bio = Signal::new("a\nb\nc\nd\ne".to_owned());
 
     let _ = tui::mount(|| {
@@ -314,7 +314,7 @@ fn the_wheel_scrolls_an_editor_and_leaves_the_caret() {
 /// cell, absent without focus, and hidden while a modal covers the entry.
 #[test]
 fn the_caret_reports_the_terminal_cursor_cell() {
-  with_driver(|| {
+  with_platform(|| {
     let open = Signal::new(false);
 
     let _ = tui::mount(|| {
@@ -359,7 +359,7 @@ fn the_caret_reports_the_terminal_cursor_cell() {
 /// dragging the thumb scrolls the window.
 #[test]
 fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
-  with_driver(|| {
+  with_platform(|| {
     let bio = Signal::new("a\nb\nc\nd\ne\nf".to_owned());
 
     let _ = tui::mount(|| {
@@ -412,7 +412,7 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
 /// the caret, consuming at its ends; the vertical wheel passes through it.
 #[test]
 fn the_horizontal_wheel_scrolls_a_field() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new("abcdefghijklmnop".to_owned());
 
     let _ = tui::mount(|| {
@@ -456,7 +456,7 @@ fn the_horizontal_wheel_scrolls_a_field() {
 /// and the initial value is not.
 #[test]
 fn undo_and_redo_step_through_edits() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new("x".to_owned());
 
     let _ = tui::mount(|| {

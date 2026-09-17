@@ -13,10 +13,10 @@ use skene_core::{
   Color,
   ColorScheme,
   Condition,
-  Driver,
   HasChildren,
   Leaf,
   Media,
+  Platform,
   State,
   StaticLeaf,
   Token,
@@ -86,7 +86,7 @@ fn blue() -> Color {
   Color::srgb(0., 0., 1.)
 }
 
-/// A color as the driver renders it.
+/// A color as the platform renders it.
 fn css(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 
@@ -100,7 +100,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the driver and removes the root when it drops, isolating each test.
+/// Uninstalls the platform and removes the root when it drops, isolating each test.
 struct Installed(Element);
 
 impl Drop for Installed {
@@ -123,7 +123,7 @@ fn connected_root() -> Element {
   root
 }
 
-/// Installs the driver rooted at a fresh connected `<div>`.
+/// Installs the platform rooted at a fresh connected `<div>`.
 fn fresh_root() -> (Installed, Element) {
   let root = connected_root();
 
@@ -162,7 +162,7 @@ fn probe(root: &Element, value: &str) -> String {
   color
 }
 
-/// The text of every `<style>` the driver owns, in document order.
+/// The text of every `<style>` the platform owns, in document order.
 fn sheet_text() -> String {
   let styles = document()
     .query_selector_all("style[data-skene-style]")
@@ -174,7 +174,7 @@ fn sheet_text() -> String {
     .collect()
 }
 
-/// How many `<style>` elements the driver owns.
+/// How many `<style>` elements the platform owns.
 fn sheet_count() -> u32 {
   document()
     .query_selector_all("style[data-skene-style]")

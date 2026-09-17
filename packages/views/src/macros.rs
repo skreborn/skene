@@ -3,7 +3,7 @@
 
 /// Generates a `set_`/`derive_` pair per property: the setter takes anything
 /// convertible into the property's [`Value`](skene_core::Value) under the
-/// driver's conditions, the deriver a closure over signals, and both write the field
+/// platform's conditions, the deriver a closure over signals, and both write the field
 /// named on the style `$access` returns.
 #[macro_export]
 macro_rules! properties {
@@ -13,7 +13,7 @@ macro_rules! properties {
     pub fn $set(
       mut self,
       $param: impl Into<
-        $crate::__core::Value<$type, $crate::__core::Condition<D::Scalar>>,
+        $crate::__core::Value<$type, $crate::__core::Condition<P::Scalar>>,
       >,
     ) -> Self {
       self.$access().$field = Some($param.into());
@@ -42,33 +42,33 @@ macro_rules! properties {
 macro_rules! decoration {
   ($access:ident) => {
     $crate::properties! { $access;
-      set_width / derive_width (width) => width: $crate::__core::Dimension<D::Scalar>,
+      set_width / derive_width (width) => width: $crate::__core::Dimension<P::Scalar>,
         "the width";
-      set_height / derive_height (height) => height: $crate::__core::Dimension<D::Scalar>,
+      set_height / derive_height (height) => height: $crate::__core::Dimension<P::Scalar>,
         "the height";
-      set_min_width / derive_min_width (min_width) => min_width: $crate::__core::Dimension<D::Scalar>,
+      set_min_width / derive_min_width (min_width) => min_width: $crate::__core::Dimension<P::Scalar>,
         "the minimum width";
       set_min_height / derive_min_height (min_height)
-        => min_height: $crate::__core::Dimension<D::Scalar>,
+        => min_height: $crate::__core::Dimension<P::Scalar>,
         "the minimum height";
-      set_max_width / derive_max_width (max_width) => max_width: $crate::__core::Dimension<D::Scalar>,
+      set_max_width / derive_max_width (max_width) => max_width: $crate::__core::Dimension<P::Scalar>,
         "the maximum width";
       set_max_height / derive_max_height (max_height)
-        => max_height: $crate::__core::Dimension<D::Scalar>,
+        => max_height: $crate::__core::Dimension<P::Scalar>,
         "the maximum height";
       set_aspect_ratio / derive_aspect_ratio (aspect_ratio) => aspect_ratio: f32,
         "the width-to-height ratio the unsized axis follows";
-      set_padding / derive_padding (padding) => padding: $crate::__core::Inset<D::Scalar>,
+      set_padding / derive_padding (padding) => padding: $crate::__core::Inset<P::Scalar>,
         "the padding on each edge";
       set_margin / derive_margin (margin)
-        => margin: $crate::__core::Inset<$crate::__core::Dimension<D::Scalar>>,
+        => margin: $crate::__core::Inset<$crate::__core::Dimension<P::Scalar>>,
         "the margin on each edge";
       set_offset / derive_offset (offset)
-        => offset: $crate::__core::Inset<$crate::__core::Dimension<D::Scalar>>,
+        => offset: $crate::__core::Inset<$crate::__core::Dimension<P::Scalar>>,
         "the shift from each edge, keeping the box in flow";
       set_color / derive_color (color) => color: $crate::__core::Color,
         "the background color";
-      set_border / derive_border (border) => border: $crate::__core::Border<D::Scalar>,
+      set_border / derive_border (border) => border: $crate::__core::Border<P::Scalar>,
         "the border";
       set_cursor / derive_cursor (cursor) => cursor: $crate::__core::MouseCursor,
         "the mouse cursor shown over the box";
@@ -81,13 +81,13 @@ macro_rules! decoration {
     #[inline(always)]
     pub fn set_corner_radius(
       mut self,
-      radius: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<D::Scalar>>>,
+      radius: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<P::Scalar>>>,
     ) -> Self
     where
-      D::StyleExt: $crate::CornerRadius,
+      P::StyleExt: $crate::CornerRadius,
     {
-      <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
+      <P::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        $crate::__core::Declared<$crate::__core::Condition<P::Scalar>>,
       >(&mut self.$access().ext, Some(radius.into()));
 
       self
@@ -102,10 +102,10 @@ macro_rules! decoration {
       radius: impl Fn() -> R + 'static,
     ) -> Self
     where
-      D::StyleExt: $crate::CornerRadius,
+      P::StyleExt: $crate::CornerRadius,
     {
-      <D::StyleExt as $crate::CornerRadius>::set_corner_radius::<
-        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
+      <P::StyleExt as $crate::CornerRadius>::set_corner_radius::<
+        $crate::__core::Declared<$crate::__core::Condition<P::Scalar>>,
       >(
         &mut self.$access().ext,
         Some($crate::__core::Value::new($crate::__core::Leaf::derive(radius))),
@@ -125,13 +125,13 @@ macro_rules! type_metrics {
     #[inline(always)]
     pub fn $set(
       mut self,
-      $param: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<D::Scalar>>>,
+      $param: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<P::Scalar>>>,
     ) -> Self
     where
-      D::StyleExt: $crate::TypeMetrics,
+      P::StyleExt: $crate::TypeMetrics,
     {
-      <D::StyleExt as $crate::TypeMetrics>::$write::<
-        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
+      <P::StyleExt as $crate::TypeMetrics>::$write::<
+        $crate::__core::Declared<$crate::__core::Condition<P::Scalar>>,
       >(&mut self.$access().ext, Some($param.into()));
 
       self
@@ -144,10 +144,10 @@ macro_rules! type_metrics {
       $param: impl Fn() -> R + 'static,
     ) -> Self
     where
-      D::StyleExt: $crate::TypeMetrics,
+      P::StyleExt: $crate::TypeMetrics,
     {
-      <D::StyleExt as $crate::TypeMetrics>::$write::<
-        $crate::__core::Declared<$crate::__core::Condition<D::Scalar>>,
+      <P::StyleExt as $crate::TypeMetrics>::$write::<
+        $crate::__core::Declared<$crate::__core::Condition<P::Scalar>>,
       >(
         &mut self.$access().ext,
         Some($crate::__core::Value::new($crate::__core::Leaf::derive($param))),

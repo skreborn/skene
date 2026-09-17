@@ -1,8 +1,8 @@
-//! The router wired to the active driver's URL.
+//! The router wired to the active platform's URL.
 
 use skene_router::{Route, Router, StaticRoutes};
 
-/// Creates the app's router from the driver's current URL, wires navigation both ways,
+/// Creates the app's router from the platform's current URL, wires navigation both ways,
 /// and provides it to the current scope.
 ///
 /// In the browser the initial route parses from `location.pathname` (or `fallback` when

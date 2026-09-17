@@ -59,7 +59,7 @@ impl Quantity for Number {
 
 /// A typed expression: a well-typed [`ExprNode`] tree behind a phantom.
 ///
-/// Every operation is defined per type, so a driver walking [`node`](Self::node) meets
+/// Every operation is defined per type, so a platform walking [`node`](Self::node) meets
 /// only trees the constructors could build.
 ///
 /// ```compile_fail
@@ -83,7 +83,7 @@ impl<T> Expr<T> {
     }
   }
 
-  /// The expression tree, for a driver rendering or evaluating it.
+  /// The expression tree, for a platform rendering or evaluating it.
   #[inline(always)]
   pub const fn node(&self) -> &ExprNode {
     &self.node

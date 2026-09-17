@@ -8,12 +8,12 @@ mod common;
 use skene_simple_tui::{glyph, *};
 use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*};
 
-use crate::common::{black, colors_at, locate, red, with_driver};
+use crate::common::{black, colors_at, locate, red, with_platform};
 
 /// The terminal title follows `set_title`, and a derived title follows its signal.
 #[test]
 fn title_follows_state() {
-  with_driver(|| {
+  with_platform(|| {
     let name = Signal::new("one".to_owned());
 
     let _ = tui::mount(|| {
@@ -37,7 +37,7 @@ fn title_follows_state() {
 /// A shadow mixes its color into both colors of the band below and to the right.
 #[test]
 fn shadow_mixes_into_the_cells_beneath() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_color(red())
@@ -68,7 +68,7 @@ fn shadow_mixes_into_the_cells_beneath() {
 /// terminal's own foreground the same way.
 #[test]
 fn a_paint_mixes_against_the_terminals_own_colors() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(2)
@@ -97,7 +97,7 @@ fn a_paint_mixes_against_the_terminals_own_colors() {
 /// and a node under the theme resolves the redefinition.
 #[test]
 fn a_theme_redefines_the_glyph_tokens() {
-  with_driver(|| {
+  with_platform(|| {
     let node = tui::mount(|| {
       Theme::new(SimpleGlyphs::default().set_checkbox("X", "O"))
         .set_child_builder(|| Text::new("under"))
@@ -130,7 +130,7 @@ fn a_theme_redefines_the_glyph_tokens() {
 /// a field is framed, and a checkbox's mark is one glyph-sized cell beside its label.
 #[test]
 fn simple_controls_take_the_cell_shape() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Theme::new(SimplePalette::default())
         .set_child_builder(|| {
@@ -181,7 +181,7 @@ fn simple_controls_take_the_cell_shape() {
 /// decoration says otherwise, and plain text carries none.
 #[test]
 fn a_runs_decoration_paints_its_lines_into_the_cells() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((

@@ -17,7 +17,6 @@ use skene_core::{
   Condition,
   ContainerName,
   DeclaredBoxStyle,
-  Driver,
   FocusOrder,
   GridFlow,
   GridTrack,
@@ -32,6 +31,7 @@ use skene_core::{
   NodeKind,
   PlainChild,
   PlainHandler,
+  Platform,
   PointerEvent,
   PointerHandler,
   Prevent,
@@ -85,7 +85,7 @@ struct Handlers {
 /// [`Container`](crate::Container). An [`Anchor`] or a [`FocusHandle`] bound to the box
 /// names its node once built.
 #[must_use]
-pub struct LayoutBox<D: Driver, Kind = PlainChild> {
+pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   layout: Layout,
   role: Option<Role>,
   container: Option<ContainerName>,
@@ -93,18 +93,18 @@ pub struct LayoutBox<D: Driver, Kind = PlainChild> {
   access: Option<Source<Vec<AccessProp>>>,
   label: Option<String>,
   labelled_by: Option<NodeId>,
-  style: DeclaredBoxStyle<D>,
-  dynamics: BoxDynamics<D::Scalar, D::StyleExt>,
+  style: DeclaredBoxStyle<P>,
+  dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   transition_name: Option<String>,
   destination: Option<String>,
   handlers: Handlers,
   anchor: Option<Anchor>,
-  focus: Option<FocusHandle<D>>,
-  size: Option<SizeHandle<D>>,
-  children: Children<D, Kind>,
+  focus: Option<FocusHandle<P>>,
+  size: Option<SizeHandle<P>>,
+  children: Children<P, Kind>,
 }
 
-impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
+impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// A box laid out in `layout`, with no properties set.
   #[inline(always)]
   pub fn new(layout: Layout) -> Self {
@@ -116,7 +116,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       access: None,
       label: None,
       labelled_by: None,
-      style: DeclaredBoxStyle::<D>::default(),
+      style: DeclaredBoxStyle::<P>::default(),
       dynamics: BoxDynamics::default(),
       transition_name: None,
       destination: None,
@@ -130,14 +130,14 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
   /// The declared style, for a view to write its properties into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     &mut self.style
   }
 
   properties! { style_mut;
-    set_padding / derive_padding (padding) => padding: Inset<D::Scalar>,
+    set_padding / derive_padding (padding) => padding: Inset<P::Scalar>,
       "the inset between the box and the children it arranges";
-    set_spacing / derive_spacing (spacing) => spacing: Spacing<D::Scalar>,
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between children, per axis";
     set_arrangement / derive_arrangement (arrangement) => arrangement: Arrangement,
       "the distribution of children along the main or inline axis";
@@ -150,15 +150,15 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       "the alignment of each grid child on the inline axis";
     set_wrap / derive_wrap (wrap) => wrap: Wrap,
       "whether and how children wrap onto further lines";
-    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<D::Scalar>>,
+    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<P::Scalar>>,
       "the explicit column tracks";
-    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<D::Scalar>>,
+    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<P::Scalar>>,
       "the explicit row tracks";
     set_implicit_columns / derive_implicit_columns (tracks)
-      => grid_implicit_columns: Vec<GridTrack<D::Scalar>>,
+      => grid_implicit_columns: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created columns, cycled";
     set_implicit_rows / derive_implicit_rows (tracks)
-      => grid_implicit_rows: Vec<GridTrack<D::Scalar>>,
+      => grid_implicit_rows: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created rows, cycled";
     set_flow / derive_flow (flow) => grid_flow: GridFlow,
       "the direction auto-placed children fill";
@@ -169,7 +169,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn set_alignment(
     mut self,
-    alignment: impl Into<Value<Alignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<Alignment, Condition<P::Scalar>>>,
   ) -> Self {
     let (horizontal, vertical) = split_alignment(&alignment.into());
 
@@ -186,12 +186,12 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
     self,
     alignment: impl Fn() -> R + 'static,
   ) -> Self {
-    self.set_alignment(Value::<Alignment, Condition<D::Scalar>>::new(Leaf::derive(
+    self.set_alignment(Value::<Alignment, Condition<P::Scalar>>::new(Leaf::derive(
       alignment,
     )))
   }
 
-  /// Sets the semantic role, guiding the driver's concrete choice of element.
+  /// Sets the semantic role, guiding the platform's concrete choice of element.
   #[inline(always)]
   pub const fn set_role(mut self, role: Role) -> Self {
     self.role = Some(role);
@@ -269,7 +269,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
   /// Binds `focus` to the box once built, so focus moves to it programmatically.
   #[inline(always)]
-  pub fn bind_focus(mut self, focus: &FocusHandle<D>) -> Self {
+  pub fn bind_focus(mut self, focus: &FocusHandle<P>) -> Self {
     self.focus = Some(focus.clone());
 
     self
@@ -277,7 +277,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
   /// Binds `size` to the box once built, so its measured size is reported through it.
   #[inline(always)]
-  pub fn bind_size(mut self, size: &SizeHandle<D>) -> Self {
+  pub fn bind_size(mut self, size: &SizeHandle<P>) -> Self {
     self.size = Some(size.clone());
 
     self
@@ -288,7 +288,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.dynamics.transitions.push(transition);
 
@@ -297,14 +297,14 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<BoxKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self
   }
 
   /// Names the box for view transitions: the box is paired with the box of the same
-  /// name across a navigation, where the driver animates between them.
+  /// name across a navigation, where the platform animates between them.
   #[inline(always)]
   pub fn set_transition_name(mut self, name: impl Into<String>) -> Self {
     self.transition_name = Some(name.into());
@@ -479,30 +479,30 @@ pub(crate) fn split_alignment<C: Clone>(
   )
 }
 
-impl<D: Driver, Kind: 'static> HasChildren<D> for LayoutBox<D, Kind> {
+impl<P: Platform, Kind: 'static> HasChildren<P> for LayoutBox<P, Kind> {
   type Kind = Kind;
 
   #[inline(always)]
-  fn children_mut(&mut self, _: Seal) -> &mut Children<D, Kind> {
+  fn children_mut(&mut self, _: Seal) -> &mut Children<P, Kind> {
     &mut self.children
   }
 }
 
-impl<D: Driver, Kind: 'static> AnyKind for LayoutBox<D, Kind> {}
+impl<P: Platform, Kind: 'static> AnyKind for LayoutBox<P, Kind> {}
 
-impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
+impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// Realizes the box as a node of `kind` whose sink `create` mints from the props:
   /// folds the pending annotation into the style, splits it, binds every derived slot,
   /// the focus order, the accessibility and the handlers, mounts the children and
   /// returns the node.
   ///
-  /// A box builds through this with [`NodeKind::Box`] and [`Driver::create_box`]; a
+  /// A box builds through this with [`NodeKind::Box`] and [`Platform::create_box`]; a
   /// view realized as another kind supplies its own creation.
   // One box's realization in one place; length is the count of what a box carries,
   // not complexity.
   #[expect(clippy::too_many_lines)]
-  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<D>) -> D::Sink) -> NodeId {
-    if let Some(annotation) = Scene::<D>::with(Scene::take_pending_annotation) {
+  pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<P>) -> P::Sink) -> NodeId {
+    if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);
     }
 
@@ -557,7 +557,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       Some(Source::Fixed(access)) => Some(access.clone()),
       Some(Source::Derived(_)) | None => None,
     };
-    let node = Scene::<D>::with(|scene| {
+    let node = Scene::<P>::with(|scene| {
       let node = scene.create(kind, sink);
 
       if let Some(name) = container {
@@ -584,17 +584,17 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
     }
 
     for slot in slots {
-      bind_box_slot::<D>(node, slot);
+      bind_box_slot::<P>(node, slot);
     }
 
     if let Some(focus_order @ Source::Derived(_)) = self.focus_order {
-      focus_order.bind::<D>(node, |sink, focus_order| {
-        D::default().update_focus_order(sink, Some(*focus_order));
+      focus_order.bind::<P>(node, |sink, focus_order| {
+        P::default().update_focus_order(sink, Some(*focus_order));
       });
     }
 
     if let Some(Source::Derived(access)) = self.access {
-      Effect::render(move |_: Option<()>| report_access::<D>(node, access()));
+      Effect::render(move |_: Option<()>| report_access::<P>(node, access()));
     }
 
     let Handlers {
@@ -611,7 +611,7 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
       scroll,
     } = self.handlers;
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       for handler in click {
         scene.handle_click(node, handler);
       }
@@ -663,9 +663,9 @@ impl<D: Driver, Kind: 'static> LayoutBox<D, Kind> {
   }
 }
 
-impl<D: Driver, Kind: 'static> View<D> for LayoutBox<D, Kind> {
+impl<P: Platform, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.realize(NodeKind::Box, |props| D::default().create_box(&props))
+    self.realize(NodeKind::Box, |props| P::default().create_box(&props))
   }
 }

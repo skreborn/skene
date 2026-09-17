@@ -74,7 +74,7 @@ fn red() -> Color {
   Color::srgb(1., 0., 0.)
 }
 
-/// A color as the driver renders it.
+/// A color as the platform renders it.
 fn css(color: Color) -> String {
   let [lightness, chroma, hue, alpha] = color.to_oklch();
 

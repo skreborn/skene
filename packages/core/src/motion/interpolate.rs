@@ -1,4 +1,4 @@
-//! The interpolation every driver running motion on its own clock shares: the easing
+//! The interpolation every platform running motion on its own clock shares: the easing
 //! curves, the in-between value per value type, and the tween that samples them.
 
 use super::{Easing, Transition};

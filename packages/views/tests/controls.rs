@@ -542,7 +542,7 @@ fn a_label_part_supplies_the_accessible_name() {
 }
 
 /// A text entry's selection is controlled beside its value: the bound signal places
-/// it on the driver, and a move the driver reports writes the signal.
+/// it on the platform, and a move the platform reports writes the signal.
 #[test]
 fn a_text_entrys_selection_binds_both_ways() {
   reset();

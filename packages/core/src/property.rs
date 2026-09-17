@@ -4,7 +4,7 @@ use std::{fmt::Debug, hash::Hash};
 
 /// A property both facades share, named in the framework's own vocabulary.
 ///
-/// Names slots, transitions and updates; a driver maps each to its medium's spelling.
+/// Names slots, transitions and updates; a platform maps each to its medium's spelling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[must_use]
 pub enum Property {

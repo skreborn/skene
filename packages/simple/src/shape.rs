@@ -5,12 +5,12 @@ use skene_core::{
   Border,
   Color,
   Dimension,
-  Driver,
   Inset,
   IntoView,
   MouseCursor,
   NodeId,
   Part,
+  Platform,
   Scalar,
   Scene,
   State,
@@ -155,13 +155,13 @@ impl SimpleUnit for u32 {
   const MARKS: SimpleMarks = SimpleMarks::Glyph;
 }
 
-/// The shape of the driver's unit.
+/// The shape of the platform's unit.
 #[inline(always)]
-pub const fn shape<D: Driver>() -> SimpleShape<D::Scalar>
+pub const fn shape<P: Platform>() -> SimpleShape<P::Scalar>
 where
-  D::Scalar: SimpleUnit,
+  P::Scalar: SimpleUnit,
 {
-  <D::Scalar as SimpleUnit>::SHAPE
+  <P::Scalar as SimpleUnit>::SHAPE
 }
 
 /// A border `width` thick in the token `color`.
@@ -179,43 +179,43 @@ pub fn hairline<N: Scalar>(color: TokenRef<Color>) -> Border<N> {
 /// The palette in force as a memo, its default defined at the root where no theme
 /// provides one.
 #[inline(always)]
-pub fn palette<D: Driver>() -> Memo<SimplePalette<D::Scalar>> {
-  <SimplePalette<D::Scalar> as ThemedIn<D>>::watch()
+pub fn palette<P: Platform>() -> Memo<SimplePalette<P::Scalar>> {
+  <SimplePalette<P::Scalar> as ThemedIn<P>>::watch()
 }
 
 /// Defines the default palette at the root where no theme provides one, so a view
 /// referencing the tokens resolves them.
 #[inline(always)]
-pub fn define_defaults<D: Driver>() {
-  let _ = palette::<D>();
+pub fn define_defaults<P: Platform>() {
+  let _ = palette::<P>();
 }
 
 /// Builds `view` and records it as `part` of the control it is mounted under.
-pub fn as_part<D: Driver>(part: Part, view: impl IntoView<D>) -> NodeId {
+pub fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId {
   let node = view.into_view().build();
 
-  Scene::<D>::with(|scene| scene.set_part(node, part));
+  Scene::<P>::with(|scene| scene.set_part(node, part));
 
   node
 }
 
 /// The chrome of a text entry: full width, padded, on the card surface, a hairline in
 /// the border color that becomes the ring while focused, rounded.
-pub fn field_chrome<D: Driver, B: Behavior<D>>(control: Control<D, B>) -> Control<D, B>
+pub fn field_chrome<P: Platform, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
 where
-  D::Scalar: SimpleUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: SimpleUnit,
+  P::StyleExt: CornerRadius,
 {
-  let shape = shape::<D>();
+  let shape = shape::<P>();
 
   control
     .set_width(Dimension::Fraction(1.))
     .set_padding(shape.control_inset)
-    .set_color(SimplePalette::<D::Scalar>::CARD)
+    .set_color(SimplePalette::<P::Scalar>::CARD)
     .set_border(
-      border(shape.field_ring, SimplePalette::<D::Scalar>::BORDER).when(
+      border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER).when(
         State::FocusVisible,
-        border(shape.field_ring, SimplePalette::<D::Scalar>::RING),
+        border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
       ),
     )
     .set_corner_radius(RADIUS)

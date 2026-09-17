@@ -4,39 +4,39 @@ use std::marker::PhantomData;
 
 use skene_reactive::{Effect, on_cleanup};
 
-use super::{AnyKind, AnyView, Driver, IntoView, NoChild, NodeId, Scene, View};
+use super::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View};
 
 /// Shows or hides one child, preserving its state: the child is built once and
 /// attached or detached between a pair of anchors as the condition changes.
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
 #[must_use]
-pub struct Show<D: Driver, C = NoChild> {
+pub struct Show<P: Platform, C = NoChild> {
   shown: Box<dyn Fn() -> bool>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Show<D> {
+impl<P: Platform> Show<P> {
   /// A `Show` with no child yet, shown until told otherwise.
   #[inline(always)]
   pub fn new() -> Self {
     Self {
       shown: Box::new(|| true),
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> Default for Show<D> {
+impl<P: Platform> Default for Show<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver, C> Show<D, C> {
+impl<P: Platform, C> Show<P, C> {
   /// Sets whether the child is shown.
   #[inline(always)]
   pub fn set_shown(mut self, shown: bool) -> Self {
@@ -56,29 +56,29 @@ impl<D: Driver, C> Show<D, C> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Show<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Show<P, AnyView<P>> {
     Show {
       shown: self.shown,
       child: child.into_view(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> AnyKind for Show<D, C> {}
+impl<P: Platform, C> AnyKind for Show<P, C> {}
 
-impl<D: Driver> View<D> for Show<D, AnyView<D>> {
+impl<P: Platform> View<P> for Show<P, AnyView<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<D>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::with(Scene::create_segment);
     let node = self.child.build();
     let shown = self.shown;
 
-    on_cleanup(move || Scene::<D>::with(|scene| scene.destroy(node)));
+    on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(node)));
 
     Effect::render(move |_: Option<()>| {
       let visible = shown();
 
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         if visible {
           scene.insert_in_segment(start, node, None);
         }
@@ -100,27 +100,27 @@ mod tests {
   use crate::{
     Scene,
     View,
-    testing::{TestBox, TestDriver, children},
+    testing::{TestBox, TestPlatform, children},
   };
 
   /// Hiding detaches the child and showing reattaches the same node, never rebuilding.
   #[test]
   fn show_detaches_and_reattaches_the_same_node() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let owner = Owner::new();
     let (shown, set_shown) = signal(true);
     let parent = TestBox::node();
     let start = owner.enter(|| {
-      Show::<TestDriver>::new()
+      Show::<TestPlatform>::new()
         .derive_shown(move || shown.get())
         .set_child(TestBox::new())
         .build()
     });
 
-    Scene::<TestDriver>::with(|scene| scene.attach(parent, start, None));
+    Scene::<TestPlatform>::with(|scene| scene.attach(parent, start, None));
 
-    let end = Scene::<TestDriver>::with(|scene| scene.segment_end(start)).unwrap();
+    let end = Scene::<TestPlatform>::with(|scene| scene.segment_end(start)).unwrap();
     let child = children(parent)[1];
 
     assert_eq!(children(parent), [start, child, end]);
@@ -128,7 +128,7 @@ mod tests {
     set_shown.set(false);
 
     assert_eq!(children(parent), [start, end]);
-    assert!(Scene::<TestDriver>::with(|scene| scene
+    assert!(Scene::<TestPlatform>::with(|scene| scene
       .record(child)
       .is_some()));
 
@@ -139,7 +139,7 @@ mod tests {
     set_shown.set(false);
     owner.dispose();
 
-    assert!(Scene::<TestDriver>::with(|scene| scene
+    assert!(Scene::<TestPlatform>::with(|scene| scene
       .record(child)
       .is_none()));
   }

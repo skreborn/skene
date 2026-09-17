@@ -6,10 +6,10 @@ use skene_core::{
   AccessProp,
   ControlKind,
   ControlState,
-  Driver,
   EventKind,
   FocusOrder,
   KeyEvent,
+  Platform,
   Prevent,
   Ring,
   Role,
@@ -53,12 +53,12 @@ impl RovingGroup {
   /// Whether `value` is the group's one tab stop: the chosen member, or the first when
   /// nothing is chosen.
   #[must_use]
-  pub fn is_tab_stop<D: Driver>(&self, value: &str) -> bool {
+  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
     match self.chosen() {
       Some(chosen) => chosen == value,
       None => self
         .roster
-        .ordered::<D>()
+        .ordered::<P>()
         .first()
         .is_some_and(|(_, first)| first == value),
     }
@@ -66,8 +66,8 @@ impl RovingGroup {
 
   /// Chooses the member `step` places from the one holding `value`, wrapping at both
   /// ends, and focuses it.
-  pub fn step_from<D: Driver>(&self, value: &str, step: isize) {
-    let members = self.roster.ordered::<D>();
+  pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
+    let members = self.roster.ordered::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -82,7 +82,7 @@ impl RovingGroup {
     };
 
     self.choose(value);
-    with_sink::<D, _>(node, |sink| D::default().focus(sink));
+    with_sink::<P, _>(node, |sink| P::default().focus(sink));
   }
 }
 
@@ -142,7 +142,7 @@ impl Roving {
   }
 }
 
-impl<D: Driver> Behavior<D> for Roving {
+impl<P: Platform> Behavior<P> for Roving {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::RadioGroup
@@ -163,7 +163,7 @@ impl<D: Driver> Behavior<D> for Roving {
     true
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let chosen = self.chosen.clone();
     let on_choose = self.on_choose.clone();
     let roster = Roster::new();
@@ -229,7 +229,7 @@ impl RadioMember {
   }
 }
 
-impl<D: Driver> Behavior<D> for RadioMember {
+impl<P: Platform> Behavior<P> for RadioMember {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Radio
@@ -245,7 +245,7 @@ impl<D: Driver> Behavior<D> for RadioMember {
     &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
   }
 
-  fn attach(&self, control: &ControlHandle<D>) {
+  fn attach(&self, control: &ControlHandle<P>) {
     let Some(group) = use_context::<RovingGroup>()
     else {
       return;
@@ -263,7 +263,7 @@ impl<D: Driver> Behavior<D> for RadioMember {
     control.refresh();
   }
 
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     if let Some(group) = self.group() {
       group.choose(self.value.clone());
     }
@@ -271,15 +271,15 @@ impl<D: Driver> Behavior<D> for RadioMember {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     let Some(group) = self.group()
     else {
       return Prevent::None;
     };
 
     match event.key.as_str() {
-      "ArrowRight" | "ArrowDown" => group.step_from::<D>(&self.value, 1),
-      "ArrowLeft" | "ArrowUp" => group.step_from::<D>(&self.value, -1),
+      "ArrowRight" | "ArrowDown" => group.step_from::<P>(&self.value, 1),
+      "ArrowLeft" | "ArrowUp" => group.step_from::<P>(&self.value, -1),
       " " => group.choose(self.value.clone()),
       _ => return Prevent::None,
     }
@@ -287,7 +287,7 @@ impl<D: Driver> Behavior<D> for RadioMember {
     Prevent::All
   }
 
-  fn on_toggle(&self, checked: bool, _control: &ControlHandle<D>) {
+  fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {
     if !checked {
       return;
     }
@@ -303,7 +303,7 @@ impl<D: Driver> Behavior<D> for RadioMember {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<D>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

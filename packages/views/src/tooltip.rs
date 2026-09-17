@@ -10,12 +10,12 @@ use skene_core::{
   Color,
   Condition,
   DeclaredBoxStyle,
-  Driver,
   IntoView,
   NoChild,
   NodeId,
   Part,
   Placement,
+  Platform,
   Scene,
   StyleExtension,
   Timer,
@@ -37,9 +37,9 @@ use crate::{
 pub const TOOLTIP_DELAY: Duration = Duration::from_millis(500);
 
 /// What a tooltip shows: text, or a view.
-enum Content<D: Driver> {
+enum Content<P: Platform> {
   Text(Source<String>),
-  View(AnyView<D>),
+  View(AnyView<P>),
 }
 
 /// A tooltip: content shown in a bubble beside the one view it describes, open while
@@ -53,17 +53,17 @@ enum Content<D: Driver> {
 /// [placement](Self::set_placement) puts it. Holds [`NoChild`] until
 /// [`set_child`](Self::set_child) supplies the view it describes.
 #[must_use]
-pub struct Tooltip<D: Driver, C = NoChild> {
-  content: Content<D>,
-  text_color: Option<Value<Color, Condition<D::Scalar>>>,
+pub struct Tooltip<P: Platform, C = NoChild> {
+  content: Content<P>,
+  text_color: Option<Value<Color, Condition<P::Scalar>>>,
   placement: Placement,
   delay: Duration,
-  bubble: Overlay<D>,
+  bubble: Overlay<P>,
   child: C,
 }
 
-impl<D: Driver> Tooltip<D> {
-  fn with(content: Content<D>) -> Self {
+impl<P: Platform> Tooltip<P> {
+  fn with(content: Content<P>) -> Self {
     Self {
       content,
       text_color: None,
@@ -88,13 +88,13 @@ impl<D: Driver> Tooltip<D> {
 
   /// A tooltip showing `content`, a view of any kind.
   #[inline(always)]
-  pub fn view(content: impl IntoView<D>) -> Self {
+  pub fn view(content: impl IntoView<P>) -> Self {
     Self::with(Content::View(content.into_view()))
   }
 
   /// Sets the view the tooltip describes.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Tooltip<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Tooltip<P, AnyView<P>> {
     Tooltip {
       content: self.content,
       text_color: self.text_color,
@@ -106,11 +106,11 @@ impl<D: Driver> Tooltip<D> {
   }
 }
 
-impl<D: Driver, C> Tooltip<D, C> {
+impl<P: Platform, C> Tooltip<P, C> {
   /// The declared style of the bubble, for a facade's medium-specific setters to write
   /// into.
   #[inline(always)]
-  pub const fn bubble_style_mut(&mut self) -> &mut DeclaredBoxStyle<D> {
+  pub const fn bubble_style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {
     self.bubble.style_mut()
   }
 
@@ -118,7 +118,7 @@ impl<D: Driver, C> Tooltip<D, C> {
 
   /// Sets the color of a text tooltip's text; a view tooltip inks its own.
   #[inline(always)]
-  pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<D::Scalar>>>) -> Self {
+  pub fn set_text_color(mut self, color: impl Into<Value<Color, Condition<P::Scalar>>>) -> Self {
     self.text_color = Some(color.into());
 
     self
@@ -129,7 +129,7 @@ impl<D: Driver, C> Tooltip<D, C> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.bubble = self.bubble.set_transition(transition);
 
@@ -155,19 +155,19 @@ impl<D: Driver, C> Tooltip<D, C> {
   }
 }
 
-impl<D: Driver, C> AnyKind for Tooltip<D, C> {}
+impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
 
 /// Registers what opens and closes the bubble on the described `node`: a pointer
 /// resting on it for `delay` or focus reaching it writes `open`, and the pointer or
 /// the focus leaving clears it, cancelling a rest still pending.
-fn bind_triggers<D: Driver>(node: NodeId, open: Signal<bool>, delay: Duration) {
+fn bind_triggers<P: Platform>(node: NodeId, open: Signal<bool>, delay: Duration) {
   let pending: Rc<Cell<Option<Timer>>> = Rc::new(Cell::new(None));
   let cancel: Rc<dyn Fn()> = Rc::new({
     let pending = Rc::clone(&pending);
 
     move || {
       if let Some(timer) = pending.take() {
-        D::default().cancel(timer);
+        P::default().cancel(timer);
       }
     }
   });
@@ -180,7 +180,7 @@ fn bind_triggers<D: Driver>(node: NodeId, open: Signal<bool>, delay: Duration) {
     })
   };
 
-  Scene::<D>::with(|scene| {
+  Scene::<P>::with(|scene| {
     scene.handle_pointer_enter(node, {
       let cancel = Rc::clone(&cancel);
 
@@ -188,7 +188,7 @@ fn bind_triggers<D: Driver>(node: NodeId, open: Signal<bool>, delay: Duration) {
         cancel();
 
         let pending_done = Rc::clone(&pending);
-        let timer = D::default().schedule(
+        let timer = P::default().schedule(
           delay,
           Box::new(move || {
             pending_done.set(None);
@@ -212,7 +212,7 @@ fn bind_triggers<D: Driver>(node: NodeId, open: Signal<bool>, delay: Duration) {
   });
 }
 
-impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
+impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let Self {
       content,
@@ -222,7 +222,7 @@ impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
       bubble,
       child,
     } = self;
-    let (start, _) = Scene::<D>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::with(Scene::create_segment);
     let node = child.build();
     let open = Signal::opaque(false);
     let anchor = Anchor::new();
@@ -231,7 +231,7 @@ impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
 
     let (content, text) = match content {
       Content::Text(Source::Fixed(text)) => {
-        let mut run = Text::<D>::new(text.clone());
+        let mut run = Text::<P>::new(text.clone());
 
         if let Some(color) = text_color {
           run = run.set_color(color);
@@ -240,7 +240,7 @@ impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
         (run.into_view(), Some(Source::Fixed(text)))
       }
       Content::Text(Source::Derived(compute)) => {
-        let mut run = Text::<D>::derive({
+        let mut run = Text::<P>::derive({
           let compute = Rc::clone(&compute);
 
           move || compute()
@@ -262,16 +262,16 @@ impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
       .set_child(content)
       .build();
 
-    Scene::<D>::with(|scene| {
+    Scene::<P>::with(|scene| {
       scene.set_part(bubble, Part::Bubble);
       scene.insert_in_segment(start, node, None);
       scene.insert_in_segment(start, bubble, None);
     });
-    bind_triggers::<D>(node, open, delay);
+    bind_triggers::<P>(node, open, delay);
 
     match text {
-      None => describe::<D>(node, vec![AccessProp::DescribedBy(bubble)]),
-      Some(Source::Fixed(text)) => describe::<D>(
+      None => describe::<P>(node, vec![AccessProp::DescribedBy(bubble)]),
+      Some(Source::Fixed(text)) => describe::<P>(
         node,
         vec![
           AccessProp::DescribedBy(bubble),
@@ -280,7 +280,7 @@ impl<D: Driver> View<D> for Tooltip<D, AnyView<D>> {
       ),
       Some(Source::Derived(compute)) => {
         Effect::render(move |_: Option<()>| {
-          describe::<D>(
+          describe::<P>(
             node,
             vec![
               AccessProp::DescribedBy(bubble),

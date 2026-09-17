@@ -144,7 +144,7 @@ impl<T: 'static> Signal<T> {
   /// Creates a signal holding `value`, owned by the current [`Owner`](crate::Owner),
   /// that takes no part in state snapshots.
   ///
-  /// For a value that cannot or should not round-trip: a closure, a handle, driver
+  /// For a value that cannot or should not round-trip: a closure, a handle, platform
   /// state the platform owns. It occupies no snapshot position, so adding or removing
   /// one shifts nothing around it.
   #[cfg_attr(debug_assertions, track_caller)]

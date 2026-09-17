@@ -7,11 +7,11 @@ use skene_core::{
   DeclaredRunStyle,
   Definition,
   Definitions,
-  Driver,
   Leaf,
   LinkPolicy,
   NodeId,
   NodeKind,
+  Platform,
   RunDisplay,
   RunDynamics,
   RunKeyframe,
@@ -30,15 +30,15 @@ use crate::{realize::bind_run_slot, typography};
 
 /// What every text view declares of its run: selection, link and style.
 #[must_use]
-pub struct Run<D: Driver> {
+pub struct Run<P: Platform> {
   selectable: bool,
   link: Option<String>,
   link_policy: LinkPolicy,
-  style: DeclaredRunStyle<D>,
-  dynamics: RunDynamics<D::StyleExt>,
+  style: DeclaredRunStyle<P>,
+  dynamics: RunDynamics<P::StyleExt>,
 }
 
-impl<D: Driver> Run<D> {
+impl<P: Platform> Run<P> {
   /// An unselectable run with no link and nothing set.
   #[inline(always)]
   pub fn new() -> Self {
@@ -46,14 +46,14 @@ impl<D: Driver> Run<D> {
       selectable: false,
       link: None,
       link_policy: LinkPolicy::new(),
-      style: DeclaredRunStyle::<D>::default(),
+      style: DeclaredRunStyle::<P>::default(),
       dynamics: RunDynamics::default(),
     }
   }
 
   /// The declared style, for a view to write its properties into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     &mut self.style
   }
 
@@ -86,7 +86,7 @@ impl<D: Driver> Run<D> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.dynamics.transitions.push(transition);
 
@@ -95,7 +95,7 @@ impl<D: Driver> Run<D> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self
@@ -132,15 +132,15 @@ impl<D: Driver> Run<D> {
       style,
       dynamics: self.dynamics,
     };
-    let sink = D::default().create_run(&props);
-    let node = Scene::<D>::with(|scene| scene.create(NodeKind::Run, sink));
+    let sink = P::default().create_run(&props);
+    let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run, sink));
 
     for slot in slots {
-      bind_run_slot::<D>(node, slot);
+      bind_run_slot::<P>(node, slot);
     }
 
     if let Some(style) = redefined {
-      redefine_typography::<D>(node, style);
+      redefine_typography::<P>(node, style);
     }
 
     node
@@ -152,8 +152,8 @@ type Redefinition<N> = (TokenName, Value<Color, Condition<N>>);
 
 /// Defines the typography tokens of the properties `style` sets on `node`: once when
 /// every leaf is static, else under a render effect following the derived leaves.
-fn redefine_typography<D: Driver>(node: NodeId, style: DeclaredRunStyle<D>) {
-  let entries: Vec<Redefinition<D::Scalar>> = [
+fn redefine_typography<P: Platform>(node: NodeId, style: DeclaredRunStyle<P>) {
+  let entries: Vec<Redefinition<P::Scalar>> = [
     (typography::INK, style.color),
     (typography::SELECTION_INK, style.selection_color),
     (typography::SELECTION_SURFACE, style.selection_background),
@@ -170,19 +170,19 @@ fn redefine_typography<D: Driver>(node: NodeId, style: DeclaredRunStyle<D>) {
   let define = move || {
     entries
       .iter()
-      .map(|(name, value)| (*name, D::TokenValue::from(definition_of(value))))
-      .collect::<Definitions<D::TokenValue>>()
+      .map(|(name, value)| (*name, P::TokenValue::from(definition_of(value))))
+      .collect::<Definitions<P::TokenValue>>()
   };
 
   if derived {
     Effect::render(move |_: Option<()>| {
       let definitions = define();
 
-      Scene::<D>::with(|scene| scene.define_tokens(node, definitions));
+      Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
     });
   }
   else {
-    Scene::<D>::with(|scene| scene.define_tokens(node, define()));
+    Scene::<P>::with(|scene| scene.define_tokens(node, define()));
   }
 }
 

@@ -44,14 +44,14 @@ left half-done in a code comment.
 7. **The children-last rule as a lint.** Nothing enforces the ordering convention.
     Rust has no stable way to ship a lint that runs under plain `cargo clippy`; the
     ecosystem answer is a dylint crate at the cost of pinning an exact nightly.
-8. **The native driver family.** The largest phase and deliberately the last: it
+8. **The native platform family.** The largest phase and deliberately the last: it
     realizes an already-complete vocabulary once, instead of chasing additions.
     - Shared machinery: taffy layout, vello paint, parley text, AccessKit (the
     accessibility tree a native app exposes, from the same reported semantics the web
     maps to ARIA), the frame
     clock running `skene_core::interpolate` as the terminal does, `Condition`
     resolution against window and pointer signals through the one resolution point.
-    - Compositing premise: **the platform composites.** On iOS/Android/macOS the driver
+    - Compositing premise: **the OS composites.** On iOS/Android/macOS the platform
     realizes the tree into the native view hierarchy—painted content in vello-backed
     layers that are views, embeds as ordinary native views—so custom paint and real
     platform controls interleave in z-order for free. The Linux leaf is winit + a
@@ -72,7 +72,7 @@ Watched, not scheduled:
 - `aria-activedescendant` for the listbox, the menu and the picker's list: focus moves
     into the options today, the roving pattern, which assistive technology follows;
     the composite pattern keeps focus on the container and needs a node-valued report
-    and stable per-node ids in the web driver. Worth it only if a screen reader
+    and stable per-node ids in the web platform. Worth it only if a screen reader
     stumbles on the roving form.
 - A scrolling box as a tab stop in the terminal: the web gives one `tabindex="0"` so
     the keyboard reaches its content, as Chromium does; the terminal's scroll boxes

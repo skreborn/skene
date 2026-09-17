@@ -1,4 +1,4 @@
-//! The type metrics a medium may have, asked of a driver's style extension.
+//! The type metrics a medium may have, asked of a platform's style extension.
 
 use skene_core::{Shape, StyleExtension};
 

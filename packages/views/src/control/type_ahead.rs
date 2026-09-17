@@ -7,13 +7,13 @@ use std::{
   time::Duration,
 };
 
-use skene_core::{Driver, KeyEvent, Timer};
+use skene_core::{KeyEvent, Platform, Timer};
 
 /// How long after the last character a type-ahead buffer is kept.
 pub const TYPE_AHEAD_RESET: Duration = Duration::from_millis(500);
 
 /// The characters typed in quick succession over a grouping control, cleared once the
-/// driver's clock has run [`TYPE_AHEAD_RESET`] past the last.
+/// platform's clock has run [`TYPE_AHEAD_RESET`] past the last.
 #[derive(Default)]
 #[must_use]
 pub struct TypeAhead {
@@ -31,7 +31,7 @@ impl TypeAhead {
   /// Feeds `event` into the buffer: the buffer so far for a printable key typed
   /// without `Ctrl`, `Alt` or `Meta`, a space only extending a buffer already begun;
   /// `None` for any other key. Each character schedules the reset afresh.
-  pub fn typed<D: Driver>(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
+  pub fn typed<P: Platform>(self: &Rc<Self>, event: &KeyEvent) -> Option<String> {
     let modifiers = event.modifiers;
 
     if modifiers.ctrl || modifiers.alt || modifiers.meta {
@@ -45,17 +45,17 @@ impl TypeAhead {
       return None;
     }
 
-    let driver = D::default();
+    let platform = P::default();
 
     if let Some(timer) = self.reset.take() {
-      driver.cancel(timer);
+      platform.cancel(timer);
     }
 
     self.buffer.borrow_mut().push(character);
 
     let cleared = Rc::clone(self);
 
-    self.reset.set(Some(driver.schedule(
+    self.reset.set(Some(platform.schedule(
       TYPE_AHEAD_RESET,
       Box::new(move || {
         cleared.buffer.borrow_mut().clear();

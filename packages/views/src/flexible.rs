@@ -7,7 +7,6 @@ use skene_core::{
   AnyView,
   Condition,
   Dimension,
-  Driver,
   FlexChild,
   Flexibility,
   IntoChildOf,
@@ -15,6 +14,7 @@ use skene_core::{
   ItemAlignment,
   Leaf,
   NoChild,
+  Platform,
   Scene,
   StaticLeaf,
   Value,
@@ -35,23 +35,23 @@ enum Factor {
 /// derive like any property. Accepted only where a flex container's children are;
 /// holds [`NoChild`] until `set_child` supplies the child.
 #[must_use]
-pub struct Flexible<D: Driver, C = NoChild> {
-  initial: Dimension<D::Scalar>,
+pub struct Flexible<P: Platform, C = NoChild> {
+  initial: Dimension<P::Scalar>,
   grow: Factor,
   shrink: f32,
-  alignment: Option<Value<ItemAlignment, Condition<D::Scalar>>>,
+  alignment: Option<Value<ItemAlignment, Condition<P::Scalar>>>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Default for Flexible<D> {
+impl<P: Platform> Default for Flexible<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Flexible<D> {
+impl<P: Platform> Flexible<P> {
   /// A wrapper with the default flexibility and no child yet.
   #[inline(always)]
   pub fn new() -> Self {
@@ -67,12 +67,12 @@ impl<D: Driver> Flexible<D> {
       shrink: shrink_factor,
       alignment: None,
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> Flexible<D, C> {
+impl<P: Platform, C> Flexible<P, C> {
   /// Sets the weight the child grows by when the container has room to spare.
   #[inline(always)]
   pub fn set_grow_factor(mut self, factor: f32) -> Self {
@@ -99,7 +99,7 @@ impl<D: Driver, C> Flexible<D, C> {
 
   /// Sets the child's size before growing and shrinking.
   #[inline(always)]
-  pub fn set_initial(mut self, initial: impl Into<Dimension<D::Scalar>>) -> Self {
+  pub fn set_initial(mut self, initial: impl Into<Dimension<P::Scalar>>) -> Self {
     self.initial = initial.into();
 
     self
@@ -109,7 +109,7 @@ impl<D: Driver, C> Flexible<D, C> {
   #[inline(always)]
   pub fn set_item_alignment(
     mut self,
-    alignment: impl Into<Value<ItemAlignment, Condition<D::Scalar>>>,
+    alignment: impl Into<Value<ItemAlignment, Condition<P::Scalar>>>,
   ) -> Self {
     self.alignment = Some(alignment.into());
 
@@ -130,20 +130,20 @@ impl<D: Driver, C> Flexible<D, C> {
 
   /// Sets the child.
   #[inline(always)]
-  pub fn set_child(self, child: impl IntoView<D>) -> Flexible<D, AnyView<D>> {
+  pub fn set_child(self, child: impl IntoView<P>) -> Flexible<P, AnyView<P>> {
     Flexible {
       initial: self.initial,
       grow: self.grow,
       shrink: self.shrink,
       alignment: self.alignment,
       child: child.into_view(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> IntoChildOf<D, FlexChild> for Flexible<D, AnyView<D>> {
-  fn into_child(self) -> AnyView<D> {
+impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
+  fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
       let initial = self.initial;
       let shrink = self.shrink;
@@ -154,7 +154,7 @@ impl<D: Driver> IntoChildOf<D, FlexChild> for Flexible<D, AnyView<D>> {
         })),
       };
 
-      Scene::<D>::with(|scene| {
+      Scene::<P>::with(|scene| {
         scene.set_pending_annotation(Annotation {
           flex: Some(flex),
           self_alignment: self.alignment,

@@ -1,4 +1,4 @@
-//! The R2 gate: the built-in views realized against the headless driver, built and
+//! The R2 gate: the built-in views realized against the headless platform, built and
 //! driven without a platform.
 
 use std::{
@@ -15,7 +15,6 @@ use skene_core::{
   ContainerQuery,
   Definition,
   Dimension,
-  Driver,
   EventKind,
   Expr,
   Flexibility,
@@ -26,6 +25,7 @@ use skene_core::{
   Media,
   NoChild,
   NodeId,
+  Platform,
   Prevented,
   Property,
   PropertyKey,
@@ -91,7 +91,7 @@ type Container = skene_views::Container<Headless>;
 type Column = skene_views::Column<Headless>;
 type Text = skene_views::Text<Headless>;
 type Flexible<C = NoChild> = skene_views::Flexible<Headless, C>;
-type Theme<P, C = NoChild> = skene_views::Theme<Headless, P, C>;
+type Theme<S, C = NoChild> = skene_views::Theme<Headless, S, C>;
 
 const COLOR: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Color);
 const WIDTH: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Width);
@@ -246,7 +246,7 @@ fn flexible_annotates_the_content_of_a_derived_subtree() {
 }
 
 /// A keyed item that leaves has its owner disposed, so a signal created while building
-/// it is dead; kept items keep their node ids, and the driver's mirror follows the
+/// it is dead; kept items keep their node ids, and the platform's mirror follows the
 /// reorder.
 #[test]
 fn derived_children_dispose_a_removed_items_owner_and_keep_the_rest() {

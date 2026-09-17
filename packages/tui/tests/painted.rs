@@ -8,7 +8,7 @@ mod common;
 
 use skene_tui::{self as tui, Activate, kurbo::Rect, prelude::*};
 
-use crate::common::with_driver;
+use crate::common::with_platform;
 
 /// A box filled red, `width` by `height` cells.
 fn red_box(width: u32, height: u32) -> Painted {
@@ -27,7 +27,7 @@ fn red_box(width: u32, height: u32) -> Painted {
 /// each, placed over the box; without them again nothing is placed.
 #[test]
 fn a_painted_box_falls_back_until_graphics_are_proven() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Column::new()
         .set_children((
@@ -72,7 +72,7 @@ fn a_painted_box_falls_back_until_graphics_are_proven() {
 /// showing the matching part of its image; one under an open popup is left out.
 #[test]
 fn a_picture_is_cropped_to_the_cells_in_view_and_hidden_under_an_overlay() {
-  with_driver(|| {
+  with_platform(|| {
     tui::trigger_graphics(true);
 
     let open = Signal::new(false);

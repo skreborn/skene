@@ -1,4 +1,4 @@
-//! The record store: what the driver keeps per node, and the environment it reports.
+//! The record store: what the platform keeps per node, and the environment it reports.
 
 use std::rc::Rc;
 
@@ -32,7 +32,7 @@ use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};
 
-/// The viewport the driver reports until [`set_viewport`](crate::set_viewport) is called.
+/// The viewport the platform reports until [`set_viewport`](crate::set_viewport) is called.
 pub const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
 
 /// What a record is, with everything its creation call carried.
@@ -66,7 +66,7 @@ pub struct Motion {
 }
 
 /// One realized node.
-// Each flag is an independent fact a driver call recorded.
+// Each flag is an independent fact a platform call recorded.
 pub struct Record {
   pub kind: Kind,
   pub text: String,
@@ -154,7 +154,7 @@ pub struct MediaState {
   pub signals: MediaSignals<f32>,
 }
 
-/// Every record the driver holds, the focus, the root definitions and the environment.
+/// Every record the platform holds, the focus, the root definitions and the environment.
 pub struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,

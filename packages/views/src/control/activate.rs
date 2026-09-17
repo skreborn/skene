@@ -1,6 +1,6 @@
 //! A button's behavior.
 
-use skene_core::{ControlKind, Driver, EventKind, KeyEvent, Prevent, Role};
+use skene_core::{ControlKind, EventKind, KeyEvent, Platform, Prevent, Role};
 
 use super::{Behavior, ControlHandle};
 
@@ -20,7 +20,7 @@ impl Activate {
   }
 }
 
-impl<D: Driver> Behavior<D> for Activate {
+impl<P: Platform> Behavior<P> for Activate {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
     ControlKind::Button
@@ -37,11 +37,11 @@ impl<D: Driver> Behavior<D> for Activate {
   }
 
   #[inline(always)]
-  fn on_click(&self, _control: &ControlHandle<D>) -> Prevent {
+  fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
     Prevent::Bubbling
   }
 
-  fn on_key(&self, event: &KeyEvent, control: &ControlHandle<D>) -> Prevent {
+  fn on_key(&self, event: &KeyEvent, control: &ControlHandle<P>) -> Prevent {
     match event.key.as_str() {
       "Enter" | " " => {
         let _clicked = control.click();

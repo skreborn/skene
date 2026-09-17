@@ -29,7 +29,7 @@ fn document() -> Document {
     .expect("a document")
 }
 
-/// Uninstalls the driver and removes the root when it drops.
+/// Uninstalls the platform and removes the root when it drops.
 struct Installed(Element);
 
 impl Drop for Installed {

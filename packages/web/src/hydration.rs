@@ -13,7 +13,7 @@ use std::cell::RefCell;
 #[cfg(target_os = "unknown")]
 use std::collections::VecDeque;
 
-/// A critical resource's serializer, registered with the driver so a server render can
+/// A critical resource's serializer, registered with the platform so a server render can
 /// drain it into the hydration state once it settles.
 pub type HydrationSource = Box<dyn Fn() -> Option<String>>;
 

@@ -3,7 +3,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use skene_simple_tui::prelude::*;
-use skene_tui::{ActiveDriver, prelude::*};
+use skene_tui::{ActivePlatform, prelude::*};
 
 /// The whole gallery: a scrollable column of titled sections, dressed by one theme
 /// whose palette the gallery switches from inside itself and whose tokens follow the
@@ -369,18 +369,18 @@ fn lazy_row() -> impl IntoView {
 }
 
 /// A component library and a low-level view from outside the framework: the badge is
-/// written once over any driver, the sparkline against the terminal's cells alone.
+/// written once over any platform, the sparkline against the terminal's cells alone.
 fn third_party() -> impl IntoView {
   section(
     "Third party",
     Column::new().set_spacing(1).set_children((
       Row::new().set_spacing(2).set_children((
-        acme_ui::AcmeBadge::<ActiveDriver>::new("acme-ui"),
+        acme_ui::AcmeBadge::<ActivePlatform>::new("acme-ui"),
         Text::new("a badge from a library that names no platform")
           .set_color(SimplePalette::MUTED_FOREGROUND),
       )),
       Row::new().set_spacing(2).set_children((
-        acme_sparkline::Sparkline::<ActiveDriver>::new([
+        acme_sparkline::Sparkline::<ActivePlatform>::new([
           3., 5., 4., 8., 6., 9., 7., 10., 6., 4., 5., 3.,
         ])
         .set_color(Color::srgb(1., 0.62, 0.25)),

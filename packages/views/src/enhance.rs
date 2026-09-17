@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 
-use skene_core::{AnyKind, AnyView, Driver, IntoView, NoChild, NodeId, Scene, View, derived};
+use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View, derived};
 use skene_reactive::{Get, ReadSignal};
 
 use crate::realize::ChildBuilder;
@@ -19,17 +19,17 @@ use crate::realize::ChildBuilder;
 /// supplies the child; both forms are builder closures because only one of them is
 /// built.
 ///
-/// The signals the built-ins wait on are a driver's own: the GUI facade's
+/// The signals the built-ins wait on are a platform's own: the GUI facade's
 /// `media::hydrated` for a render made without script, and
 /// [`Painting::available`](crate::Painting::available) for a painted box's pixels.
 #[must_use]
-pub struct Enhance<D: Driver, C = NoChild> {
+pub struct Enhance<P: Platform, C = NoChild> {
   live: ReadSignal<bool>,
-  fallback: Option<ChildBuilder<D>>,
+  fallback: Option<ChildBuilder<P>>,
   child: C,
 }
 
-impl<D: Driver> Enhance<D> {
+impl<P: Platform> Enhance<P> {
   /// An enhancement waiting on `live`, with no forms yet.
   #[inline(always)]
   pub const fn new(live: ReadSignal<bool>) -> Self {
@@ -41,10 +41,10 @@ impl<D: Driver> Enhance<D> {
   }
 }
 
-impl<D: Driver, C> Enhance<D, C> {
+impl<P: Platform, C> Enhance<P, C> {
   /// Sets the form built while `live` is false; nothing by default.
   #[inline(always)]
-  pub fn set_fallback<V: IntoView<D>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
+  pub fn set_fallback<V: IntoView<P>>(mut self, fallback: impl FnOnce() -> V + 'static) -> Self {
     self.fallback = Some(ChildBuilder::new(fallback));
 
     self
@@ -52,10 +52,10 @@ impl<D: Driver, C> Enhance<D, C> {
 
   /// Sets the form built once `live` is true.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<D>>(
+  pub fn set_child_builder<V: IntoView<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Enhance<D, ChildBuilder<D>> {
+  ) -> Enhance<P, ChildBuilder<P>> {
     Enhance {
       live: self.live,
       fallback: self.fallback,
@@ -64,15 +64,15 @@ impl<D: Driver, C> Enhance<D, C> {
   }
 }
 
-impl<D: Driver, C> AnyKind for Enhance<D, C> {}
+impl<P: Platform, C> AnyKind for Enhance<P, C> {}
 
-impl<D: Driver> View<D> for Enhance<D, ChildBuilder<D>> {
+impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
     let live = self.live;
     let fallback = RefCell::new(self.fallback);
     let child = RefCell::new(Some(self.child));
 
-    derived::<D>(move || {
+    derived::<P>(move || {
       let form = if live.get() {
         child.borrow_mut().take()
       }
@@ -81,7 +81,7 @@ impl<D: Driver> View<D> for Enhance<D, ChildBuilder<D>> {
       };
 
       form.map_or_else(
-        || AnyView::<D>::new(|| Scene::<D>::with(|scene| scene.create_segment().0)).build(),
+        || AnyView::<P>::new(|| Scene::<P>::with(|scene| scene.create_segment().0)).build(),
         ChildBuilder::build,
       )
     })

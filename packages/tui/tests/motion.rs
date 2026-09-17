@@ -16,7 +16,7 @@ use skene_tui::{
   prelude::*,
 };
 
-use crate::common::{blue, colors_at, red, rgb, with_driver};
+use crate::common::{blue, colors_at, red, rgb, with_platform};
 
 /// A one-second linear color transition.
 fn color_transition() -> Transition<tui::TuiProperty> {
@@ -35,7 +35,7 @@ fn frame(color: impl Into<skene_tui::StaticLeaf<Color>>) -> BoxKeyframe<tui::Tui
 /// the flip, the Oklab midpoint half a second in, and the end color once settled.
 #[test]
 fn a_hover_transition_steps_a_color_across_frames() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(4)
@@ -70,7 +70,7 @@ fn a_hover_transition_steps_a_color_across_frames() {
 /// rounded, and lands on its target.
 #[test]
 fn a_derived_length_transition_rounds_to_cells() {
-  with_driver(|| {
+  with_platform(|| {
     let width = Signal::new(2u32);
     let _ = tui::mount(move || {
       Container::new()
@@ -107,7 +107,7 @@ fn a_derived_length_transition_rounds_to_cells() {
 /// running.
 #[test]
 fn reduced_motion_cuts_a_respecting_transition() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Row::new()
         .set_children((
@@ -148,7 +148,7 @@ fn reduced_motion_cuts_a_respecting_transition() {
 /// the node.
 #[test]
 fn a_palette_flip_transitions_a_token_driven_color() {
-  with_driver(|| {
+  with_platform(|| {
     let palette = Signal::opaque(SimplePalette::default().set_card(red()));
     let _ = tui::mount(move || {
       Theme::derive(move || palette.get())
@@ -183,7 +183,7 @@ fn a_palette_flip_transitions_a_token_driven_color() {
 /// frame; its token leaves resolve through the theme.
 #[test]
 fn a_keyframe_animation_samples_its_frames() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Theme::new(SimplePalette::default().set_card(blue()))
         .set_child_builder(|| {

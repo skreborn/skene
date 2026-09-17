@@ -1,11 +1,11 @@
 //! # Built-in views
 //!
-//! Every built-in view once, generic over the [`Driver`] a facade names. A facade
-//! aliases them (`type Container = skene_views::Container<ActiveDriver>`); a component
+//! Every built-in view once, generic over the [`Platform`] a facade names. A facade
+//! aliases them (`type Container = skene_views::Container<ActivePlatform>`); a component
 //! library writes against them exactly as a facade does.
 //!
 //! A view's build folds the annotation a wrapper left pending into its declared style,
-//! splits the style into the static part a driver compiles and the derived slots render
+//! splits the style into the static part a platform compiles and the derived slots render
 //! effects write, creates its node, registers it in the [`Scene`], binds each slot,
 //! registers its handlers, mounts its children and returns its id. [`LayoutBox`] is that
 //! build for a box; [`Container`], [`Row`], [`Column`], [`Grid`] and [`Stack`] are thin
@@ -26,7 +26,7 @@
 //! [`CornerRadius`] is what a decorated box asks of a medium's style extension to round its
 //! corners, and [`TypeMetrics`] what a run asks of it to size its type; both are silently declined
 //! by a medium without them. [`LowLevel`] registers a sink a low-level view made against a
-//! driver's escape trait as a node, so it composes like a built-in.
+//! platform's escape trait as a node, so it composes like a built-in.
 
 mod anchor;
 mod container;
@@ -70,7 +70,6 @@ pub use skene_core::{
   Boundary,
   ControlKind,
   ControlState,
-  Driver,
   Errors,
   HasChildren,
   IntoChildOf,
@@ -80,6 +79,7 @@ pub use skene_core::{
   NoChild,
   NodeKind,
   Part,
+  Platform,
   Scene,
   Show,
   View,

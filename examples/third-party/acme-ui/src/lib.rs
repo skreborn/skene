@@ -1,8 +1,8 @@
 //! # acme-ui
 //!
 //! A third-party component library: one palette and one component, written once over
-//! [`skene_views`] against any [`Driver`], exactly as the built-ins are. A facade's app
-//! names the driver (`AcmeBadge<ActiveDriver>`); the crate names none.
+//! [`skene_views`] against any [`Platform`], exactly as the built-ins are. A facade's app
+//! names the platform (`AcmeBadge<ActivePlatform>`); the crate names none.
 
 use std::marker::PhantomData;
 
@@ -10,11 +10,11 @@ use skene_core::{
   AnyKind,
   Color,
   Definition,
-  Driver,
   HasChildren,
   Inset,
   Media,
   NodeId,
+  Platform,
   Scalar,
   Token,
   TokenName,
@@ -106,38 +106,38 @@ impl AcmeUnit for u32 {
 /// A short label on the Acme surface: rounded where the medium rounds corners, square
 /// where it has none, padded by the unit's [`AcmeUnit::BADGE_INSET`].
 #[must_use]
-pub struct AcmeBadge<D: Driver> {
+pub struct AcmeBadge<P: Platform> {
   text: String,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> AcmeBadge<D> {
+impl<P: Platform> AcmeBadge<P> {
   /// A badge reading `text`.
   #[inline(always)]
   pub fn new(text: impl Into<String>) -> Self {
     Self {
       text: text.into(),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver> AnyKind for AcmeBadge<D> {}
+impl<P: Platform> AnyKind for AcmeBadge<P> {}
 
-impl<D: Driver> View<D> for AcmeBadge<D>
+impl<P: Platform> View<P> for AcmeBadge<P>
 where
-  D::Scalar: AcmeUnit,
-  D::StyleExt: CornerRadius,
+  P::Scalar: AcmeUnit,
+  P::StyleExt: CornerRadius,
 {
   fn build(self) -> NodeId {
     // Registers the palette's defaults at the root when no theme is above.
-    let _ = <AcmePalette<D::Scalar> as ThemedIn<D>>::current();
+    let _ = <AcmePalette<P::Scalar> as ThemedIn<P>>::current();
 
-    Container::<D>::new()
-      .set_padding(D::Scalar::BADGE_INSET)
-      .set_color(AcmePalette::<D::Scalar>::BADGE)
+    Container::<P>::new()
+      .set_padding(P::Scalar::BADGE_INSET)
+      .set_color(AcmePalette::<P::Scalar>::BADGE)
       .set_corner_radius(6.)
-      .set_child(Text::new(self.text).set_color(AcmePalette::<D::Scalar>::BADGE_INK))
+      .set_child(Text::new(self.text).set_color(AcmePalette::<P::Scalar>::BADGE_INK))
       .build()
   }
 }

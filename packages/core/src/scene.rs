@@ -1,4 +1,4 @@
-//! The retained tree every view attaches to, owned by core and mirrored into a driver.
+//! The retained tree every view attaches to, owned by core and mirrored into a platform.
 
 use std::{any::TypeId, fmt::Debug, rc::Rc};
 
@@ -12,10 +12,10 @@ use super::{
   ControlState,
   DeclaredBoxStyle,
   Definitions,
-  Driver,
   EventKind,
   NodeId,
   Part,
+  Platform,
   TokenName,
   Value,
 };
@@ -69,28 +69,28 @@ pub enum NodeKind {
 /// Folded into the child's own declared style before the child is created, so each
 /// takes conditions, tokens and derived values like any property.
 #[must_use]
-pub struct Annotation<D: Driver> {
+pub struct Annotation<P: Platform> {
   /// The child's flexibility in a flex container.
-  pub flex: Option<Annotated<D, Flexibility<D::Scalar>>>,
+  pub flex: Option<Annotated<P, Flexibility<P::Scalar>>>,
   /// The child's own cross- or block-axis alignment.
-  pub self_alignment: Option<Annotated<D, ItemAlignment>>,
+  pub self_alignment: Option<Annotated<P, ItemAlignment>>,
   /// The child's own inline-axis alignment in a grid.
-  pub self_horizontal_alignment: Option<Annotated<D, ItemAlignment>>,
+  pub self_horizontal_alignment: Option<Annotated<P, ItemAlignment>>,
   /// The edges the child is pinned to in a stack.
-  pub pinned: Option<Annotated<D, Inset<Dimension<D::Scalar>>>>,
+  pub pinned: Option<Annotated<P, Inset<Dimension<P::Scalar>>>>,
   /// The child's row placement in a grid.
-  pub grid_row_placement: Option<Annotated<D, Line<GridPlacement>>>,
+  pub grid_row_placement: Option<Annotated<P, Line<GridPlacement>>>,
   /// The child's column placement in a grid.
-  pub grid_column_placement: Option<Annotated<D, Line<GridPlacement>>>,
+  pub grid_column_placement: Option<Annotated<P, Line<GridPlacement>>>,
 }
 
-/// A property value as an annotation carries it: declared under the driver's
+/// A property value as an annotation carries it: declared under the platform's
 /// conditions.
-pub type Annotated<D, T> = Value<T, Condition<<D as Driver>::Scalar>>;
+pub type Annotated<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
 
-impl<D: Driver> Annotation<D> {
+impl<P: Platform> Annotation<P> {
   /// Writes every property set here into `style`, replacing what it held.
-  pub fn apply_to(self, style: &mut DeclaredBoxStyle<D>) {
+  pub fn apply_to(self, style: &mut DeclaredBoxStyle<P>) {
     if let Some(flex) = self.flex {
       style.flex = Some(flex);
     }
@@ -117,7 +117,7 @@ impl<D: Driver> Annotation<D> {
   }
 }
 
-impl<D: Driver> Default for Annotation<D> {
+impl<P: Platform> Default for Annotation<P> {
   #[inline(always)]
   fn default() -> Self {
     Self {
@@ -131,7 +131,7 @@ impl<D: Driver> Default for Annotation<D> {
   }
 }
 
-impl<D: Driver> Clone for Annotation<D> {
+impl<P: Platform> Clone for Annotation<P> {
   fn clone(&self) -> Self {
     Self {
       flex: self.flex.clone(),
@@ -144,7 +144,7 @@ impl<D: Driver> Clone for Annotation<D> {
   }
 }
 
-impl<D: Driver> PartialEq for Annotation<D> {
+impl<P: Platform> PartialEq for Annotation<P> {
   fn eq(&self, other: &Self) -> bool {
     self.flex == other.flex
       && self.self_alignment == other.self_alignment
@@ -155,7 +155,7 @@ impl<D: Driver> PartialEq for Annotation<D> {
   }
 }
 
-impl<D: Driver> Debug for Annotation<D> {
+impl<P: Platform> Debug for Annotation<P> {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     formatter
       .debug_struct("Annotation")
@@ -173,7 +173,7 @@ impl<D: Driver> Debug for Annotation<D> {
 ///
 /// Every handler on a node runs when its event reaches the node; bubbling is between
 /// nodes. A control's behavior registers its click as *acting*, apart from the
-/// observers, so a driver whose platform performed the action can dispatch the
+/// observers, so a platform whose native element performed the action can dispatch the
 /// observers alone.
 #[derive(Default)]
 #[must_use]
@@ -334,17 +334,17 @@ struct TokenCache<V> {
 
 /// One node of the scene.
 #[must_use]
-pub struct NodeRecord<D: Driver> {
+pub struct NodeRecord<P: Platform> {
   parent: Option<NodeId>,
   children: SmallVec<[NodeId; 4]>,
   kind: NodeKind,
-  annotation: Option<Annotation<D>>,
-  definitions: Option<Box<Definitions<D::TokenValue>>>,
+  annotation: Option<Annotation<P>>,
+  definitions: Option<Box<Definitions<P::TokenValue>>>,
   container: Option<ContainerName>,
   handlers: Option<Box<HandlerSet>>,
-  sink: D::Sink,
+  sink: P::Sink,
   segment: Option<Box<Segment>>,
-  cache: Option<Box<TokenCache<D::TokenValue>>>,
+  cache: Option<Box<TokenCache<P::TokenValue>>>,
   control: Option<ControlState>,
   part: Option<Part>,
   position: Position,
@@ -366,7 +366,7 @@ impl AccessReports {
   }
 }
 
-impl<D: Driver> NodeRecord<D> {
+impl<P: Platform> NodeRecord<P> {
   /// The node this one is attached under.
   #[inline(always)]
   #[must_use]
@@ -375,7 +375,7 @@ impl<D: Driver> NodeRecord<D> {
   }
 
   /// The node's place in the state snapshot, matched across runs as a signal's is: a
-  /// driver carries what a node holds outside the reactive graph—focus, a scroll
+  /// platform carries what a node holds outside the reactive graph—focus, a scroll
   /// offset, a caret—by it.
   #[inline(always)]
   pub const fn position(&self) -> &Position {
@@ -397,14 +397,14 @@ impl<D: Driver> NodeRecord<D> {
   /// The per-child properties a wrapper asked for this box.
   #[inline(always)]
   #[must_use]
-  pub const fn annotation(&self) -> Option<&Annotation<D>> {
+  pub const fn annotation(&self) -> Option<&Annotation<P>> {
     self.annotation.as_ref()
   }
 
   /// The token definitions placed on this node.
   #[inline(always)]
   #[must_use]
-  pub fn definitions(&self) -> Option<&Definitions<D::TokenValue>> {
+  pub fn definitions(&self) -> Option<&Definitions<P::TokenValue>> {
     self.definitions.as_deref()
   }
 
@@ -437,17 +437,17 @@ impl<D: Driver> NodeRecord<D> {
     self.part
   }
 
-  /// The driver's handle for this node.
+  /// The platform's handle for this node.
   #[inline(always)]
   #[must_use]
-  pub const fn sink(&self) -> &D::Sink {
+  pub const fn sink(&self) -> &P::Sink {
     &self.sink
   }
 
-  /// The driver's handle for this node, mutably.
+  /// The platform's handle for this node, mutably.
   #[inline(always)]
   #[must_use]
-  pub const fn sink_mut(&mut self) -> &mut D::Sink {
+  pub const fn sink_mut(&mut self) -> &mut P::Sink {
     &mut self.sink
   }
 
@@ -458,85 +458,85 @@ impl<D: Driver> NodeRecord<D> {
   }
 }
 
-struct Entry<D: Driver> {
+struct Entry<P: Platform> {
   generation: u32,
-  record: Option<NodeRecord<D>>,
+  record: Option<NodeRecord<P>>,
 }
 
-/// A mutation the scene owes its driver, mirrored once the scene is released.
-enum Mirror<D: Driver> {
+/// A mutation the scene owes its platform, mirrored once the scene is released.
+enum Mirror<P: Platform> {
   Attach {
-    parent: D::Sink,
-    child: D::Sink,
-    before: Option<D::Sink>,
+    parent: P::Sink,
+    child: P::Sink,
+    before: Option<P::Sink>,
   },
   Detach {
-    parent: D::Sink,
-    child: D::Sink,
+    parent: P::Sink,
+    child: P::Sink,
   },
-  Destroy(D::Sink),
+  Destroy(P::Sink),
   DefineTokens {
-    scope: D::Sink,
-    definitions: Definitions<D::TokenValue>,
+    scope: P::Sink,
+    definitions: Definitions<P::TokenValue>,
   },
-  DefineRootTokens(Definitions<D::TokenValue>),
+  DefineRootTokens(Definitions<P::TokenValue>),
   ControlState {
-    sink: D::Sink,
+    sink: P::Sink,
     state: ControlState,
   },
 }
 
-impl<D: Driver> Mirror<D> {
-  /// Hands the mutation to the driver.
+impl<P: Platform> Mirror<P> {
+  /// Hands the mutation to the platform.
   fn run(self) {
-    let driver = D::default();
+    let platform = P::default();
 
     match self {
       Self::Attach {
         parent,
         child,
         before,
-      } => driver.attach(&parent, &child, before.as_ref()),
-      Self::Detach { parent, child } => driver.detach(&parent, &child),
-      Self::Destroy(sink) => driver.destroy(sink),
-      Self::DefineTokens { scope, definitions } => driver.define_tokens(&scope, &definitions),
-      Self::DefineRootTokens(definitions) => driver.define_root_tokens(&definitions),
-      Self::ControlState { sink, state } => driver.set_control_state(&sink, &state),
+      } => platform.attach(&parent, &child, before.as_ref()),
+      Self::Detach { parent, child } => platform.detach(&parent, &child),
+      Self::Destroy(sink) => platform.destroy(sink),
+      Self::DefineTokens { scope, definitions } => platform.define_tokens(&scope, &definitions),
+      Self::DefineRootTokens(definitions) => platform.define_root_tokens(&definitions),
+      Self::ControlState { sink, state } => platform.set_control_state(&sink, &state),
     }
   }
 }
 
 /// The retained tree: a generational arena of [`NodeRecord`]s, every mutation mirrored
-/// into the driver's sink.
+/// into the platform's sink.
 ///
 /// Reached through [`with`](Self::with). No borrow of the scene is held while a user
-/// callback or a driver's mutation runs: dispatch and every handler invocation snapshot
+/// callback or a platform's mutation runs: dispatch and every handler invocation snapshot
 /// what they need and release the scene first, and the mutations the scene mirrors into
-/// the driver ([`attach`](Self::attach), [`detach`](Self::detach),
+/// the platform ([`attach`](Self::attach), [`detach`](Self::detach),
 /// [`destroy`](Self::destroy), [`define_tokens`](Self::define_tokens),
 /// [`define_root_tokens`](Self::define_root_tokens),
 /// [`set_control_state`](Self::set_control_state)) reach it in order once the borrow
 /// that recorded them is released.
 #[must_use]
-pub struct Scene<D: Driver> {
-  entries: Vec<Entry<D>>,
+pub struct Scene<P: Platform> {
+  entries: Vec<Entry<P>>,
   free: Vec<u32>,
-  pending_annotation: Option<Annotation<D>>,
-  root_definitions: Definitions<D::TokenValue>,
+  pending_annotation: Option<Annotation<P>>,
+  root_definitions: Definitions<P::TokenValue>,
   root_sets: FxHashSet<TypeId>,
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
-  mirrors: Vec<Mirror<D>>,
+  mirrors: Vec<Mirror<P>>,
 }
 
-impl<D: Driver> Default for Scene<D> {
+impl<P: Platform> Default for Scene<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Scene<D> {
+impl<P: Platform> Scene<P> {
   /// An empty scene.
   #[inline(always)]
   pub fn new() -> Self {
@@ -552,17 +552,17 @@ impl<D: Driver> Scene<D> {
     }
   }
 
-  /// Runs `f` on the driver's scene.
+  /// Runs `f` on the platform's scene.
   ///
-  /// The mutations `f` recorded are mirrored into the driver after the scene is
+  /// The mutations `f` recorded are mirrored into the platform after the scene is
   /// released, in order, and handlers released inside `f` are dropped after that, so
-  /// a driver's mutation or a captured value's drop may reach the scene again.
+  /// a platform's mutation or a captured value's drop may reach the scene again.
   ///
   /// # Panics
   ///
   /// Panics if the scene is already borrowed: `f` must not re-enter it.
   pub fn with<R>(operation: impl FnOnce(&mut Self) -> R) -> R {
-    D::scene().with(|cell| {
+    P::scene().with(|cell| {
       let mut scene = cell.borrow_mut();
       let result = operation(&mut scene);
       let mirrors = std::mem::take(&mut scene.mirrors);
@@ -584,13 +584,13 @@ impl<D: Driver> Scene<D> {
   #[inline(always)]
   #[must_use]
   pub fn is_borrowed() -> bool {
-    D::scene().with(|cell| cell.try_borrow_mut().is_err())
+    P::scene().with(|cell| cell.try_borrow_mut().is_err())
   }
 
   /// The record of `node`, if it is live.
   #[inline(always)]
   #[must_use]
-  pub fn record(&self, node: NodeId) -> Option<&NodeRecord<D>> {
+  pub fn record(&self, node: NodeId) -> Option<&NodeRecord<P>> {
     self
       .entries
       .get(node.index() as usize)
@@ -601,7 +601,7 @@ impl<D: Driver> Scene<D> {
   /// The record of `node`, mutably, if it is live.
   #[inline(always)]
   #[must_use]
-  pub fn record_mut(&mut self, node: NodeId) -> Option<&mut NodeRecord<D>> {
+  pub fn record_mut(&mut self, node: NodeId) -> Option<&mut NodeRecord<P>> {
     self
       .entries
       .get_mut(node.index() as usize)
@@ -609,12 +609,12 @@ impl<D: Driver> Scene<D> {
       .and_then(|entry| entry.record.as_mut())
   }
 
-  /// The driver's handle for `node`, cloned out, if the node is live.
+  /// The platform's handle for `node`, cloned out, if the node is live.
   ///
-  /// Copy it out and release the scene before calling the driver with it.
+  /// Copy it out and release the scene before calling the platform with it.
   #[inline(always)]
   #[must_use]
-  pub fn sink(&self, node: NodeId) -> Option<D::Sink> {
+  pub fn sink(&self, node: NodeId) -> Option<P::Sink> {
     self.record(node).map(|record| record.sink.clone())
   }
 
@@ -622,12 +622,12 @@ impl<D: Driver> Scene<D> {
   /// the pending annotation, and a control starts in the default [`ControlState`].
   ///
   /// A box folds the annotation into its style before creation; a run keeps it on its
-  /// record, where the driver reads it when it lays the run out.
+  /// record, where the platform reads it when it lays the run out.
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
-  pub fn create(&mut self, kind: NodeKind, sink: D::Sink) -> NodeId {
+  pub fn create(&mut self, kind: NodeKind, sink: P::Sink) -> NodeId {
     let is_control = kind == NodeKind::Control;
     let annotation = if matches!(kind, NodeKind::Box | NodeKind::Control | NodeKind::Run) {
       self.pending_annotation.take()
@@ -672,7 +672,7 @@ impl<D: Driver> Scene<D> {
     };
 
     if let Some(record) = self.record(id) {
-      D::default().bind_node(&record.sink, id);
+      P::default().bind_node(&record.sink, id);
     }
 
     id
@@ -699,9 +699,9 @@ impl<D: Driver> Scene<D> {
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment(&mut self) -> (NodeId, NodeId) {
-    let driver = D::default();
-    let start = self.create(NodeKind::Anchor, driver.create_anchor());
-    let end = self.create(NodeKind::Anchor, driver.create_anchor());
+    let platform = P::default();
+    let start = self.create(NodeKind::Anchor, platform.create_anchor());
+    let end = self.create(NodeKind::Anchor, platform.create_anchor());
 
     if let Some(record) = self.record_mut(start) {
       record.segment = Some(Box::new(Segment {
@@ -786,7 +786,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Destroys `node` and its whole subtree, detaching it first if attached; every
-  /// sink is handed to the driver.
+  /// sink is handed to the platform.
   pub fn destroy(&mut self, node: NodeId) {
     self.unlink(node);
 
@@ -923,27 +923,27 @@ impl<D: Driver> Scene<D> {
 
   /// Stores the annotation the next box created consumes.
   #[inline(always)]
-  pub fn set_pending_annotation(&mut self, annotation: Annotation<D>) {
+  pub fn set_pending_annotation(&mut self, annotation: Annotation<P>) {
     self.pending_annotation = Some(annotation);
   }
 
   /// Takes the annotation waiting for the next box, so a builder can fold it into the
   /// box's style before creation.
   #[inline(always)]
-  pub fn take_pending_annotation(&mut self) -> Option<Annotation<D>> {
+  pub fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
     self.pending_annotation.take()
   }
 
   /// Records the annotation a box was built with.
   #[inline(always)]
-  pub fn set_annotation(&mut self, node: NodeId, annotation: Annotation<D>) {
+  pub fn set_annotation(&mut self, node: NodeId, annotation: Annotation<P>) {
     if let Some(record) = self.record_mut(node) {
       record.annotation = Some(annotation);
     }
   }
 
   /// Defines tokens on `node`, replacing what it defined before.
-  pub fn define_tokens(&mut self, node: NodeId, definitions: Definitions<D::TokenValue>) {
+  pub fn define_tokens(&mut self, node: NodeId, definitions: Definitions<P::TokenValue>) {
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -959,7 +959,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Defines the tokens every node falls back to, replacing the previous set.
-  pub fn define_root_tokens(&mut self, definitions: Definitions<D::TokenValue>) {
+  pub fn define_root_tokens(&mut self, definitions: Definitions<P::TokenValue>) {
     self
       .mirrors
       .push(Mirror::DefineRootTokens(definitions.clone()));
@@ -972,7 +972,7 @@ impl<D: Driver> Scene<D> {
   pub fn define_root_tokens_once(
     &mut self,
     set: TypeId,
-    define: impl FnOnce() -> Definitions<D::TokenValue>,
+    define: impl FnOnce() -> Definitions<P::TokenValue>,
   ) -> bool {
     if !self.root_sets.insert(set) {
       return false;
@@ -989,7 +989,7 @@ impl<D: Driver> Scene<D> {
 
   /// The tokens every node falls back to.
   #[inline(always)]
-  pub const fn root_definitions(&self) -> &Definitions<D::TokenValue> {
+  pub const fn root_definitions(&self) -> &Definitions<P::TokenValue> {
     &self.root_definitions
   }
 
@@ -997,7 +997,7 @@ impl<D: Driver> Scene<D> {
   /// the root's.
   ///
   /// Cached per node until a definition or the tree changes.
-  pub fn resolve_token(&mut self, node: NodeId, name: TokenName) -> Option<D::TokenValue> {
+  pub fn resolve_token(&mut self, node: NodeId, name: TokenName) -> Option<P::TokenValue> {
     let generation = self.definitions_generation;
     let cached = self
       .record(node)
@@ -1215,7 +1215,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Notes `access` as what the view that made `node` reports, without a write: for
-  /// a report the driver received as the node was created.
+  /// a report the platform received as the node was created.
   pub fn note_access(&mut self, node: NodeId, access: Vec<AccessProp>) {
     if let Some(record) = self.record_mut(node) {
       record.access.get_or_insert_default().own = access;
@@ -1223,7 +1223,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Replaces what the view that made `node` reports with `access`, returning the
-  /// whole report the driver is to receive: the node's own, then its description.
+  /// whole report the platform is to receive: the node's own, then its description.
   #[must_use]
   pub fn report_access(&mut self, node: NodeId, access: Vec<AccessProp>) -> Vec<AccessProp> {
     let Some(record) = self.record_mut(node)
@@ -1238,7 +1238,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Replaces what a view describing `node` reports with `description`, returning the
-  /// whole report the driver is to receive: the node's own, then its description.
+  /// whole report the platform is to receive: the node's own, then its description.
   #[must_use]
   pub fn describe(&mut self, node: NodeId, description: Vec<AccessProp>) -> Vec<AccessProp> {
     let Some(record) = self.record_mut(node)
@@ -1266,7 +1266,7 @@ impl<D: Driver> Scene<D> {
     };
 
     add(record.handlers.get_or_insert_default());
-    D::default().listen(&record.sink, kind);
+    P::default().listen(&record.sink, kind);
   }
 
   /// The parent the segment's content sits under (`None` while detached) and its end.
@@ -1278,7 +1278,7 @@ impl<D: Driver> Scene<D> {
   }
 
   /// Takes the record of `node` out of the arena, retiring the slot's generation.
-  fn remove(&mut self, node: NodeId) -> Option<NodeRecord<D>> {
+  fn remove(&mut self, node: NodeId) -> Option<NodeRecord<P>> {
     let entry = self
       .entries
       .get_mut(node.index() as usize)
@@ -1399,11 +1399,11 @@ mod tests {
     Definition,
     Definitions,
     TokenName,
-    testing::{Call, Erased, TestBox, TestDriver, children, sink},
+    testing::{Call, Erased, TestBox, TestPlatform, children, sink},
   };
 
-  fn with<R>(operation: impl FnOnce(&mut Scene<TestDriver>) -> R) -> R {
-    Scene::<TestDriver>::with(operation)
+  fn with<R>(operation: impl FnOnce(&mut Scene<TestPlatform>) -> R) -> R {
+    Scene::<TestPlatform>::with(operation)
   }
 
   fn color(value: f32) -> Erased {
@@ -1415,24 +1415,24 @@ mod tests {
   }
 
   /// Attaching an attached node unlinks it from its previous parent first, in the
-  /// scene and in the driver.
+  /// scene and in the platform.
   #[test]
   fn attach_unlinks_the_previous_parent() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let first = TestBox::node();
     let second = TestBox::node();
     let child = TestBox::node();
 
     with(|scene| scene.attach(first, child, None));
-    TestDriver::take_log();
+    TestPlatform::take_log();
     with(|scene| scene.attach(second, child, None));
 
     assert_eq!(with(|scene| scene.parent(child)), Some(second));
     assert_eq!(children(first), []);
     assert_eq!(children(second), [child]);
     assert_eq!(
-      TestDriver::take_log(),
+      TestPlatform::take_log(),
       [
         Call::Detach(sink(first), sink(child)),
         Call::Attach(sink(second), sink(child), None),
@@ -1440,10 +1440,10 @@ mod tests {
     );
   }
 
-  /// `before` places a child ahead of a sibling, in the scene and in the driver.
+  /// `before` places a child ahead of a sibling, in the scene and in the platform.
   #[test]
   fn attach_before_orders_the_children() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let parent = TestBox::node();
     let first = TestBox::node();
@@ -1456,7 +1456,7 @@ mod tests {
 
     assert_eq!(children(parent), [first, second]);
     assert_eq!(
-      TestDriver::take_log(),
+      TestPlatform::take_log(),
       [
         Call::Attach(sink(parent), sink(second), None),
         Call::Attach(sink(parent), sink(first), Some(sink(second))),
@@ -1468,7 +1468,7 @@ mod tests {
   /// every id.
   #[test]
   fn destroy_takes_the_subtree_and_hands_every_sink_back() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let root = TestBox::node();
     let parent = TestBox::node();
@@ -1481,10 +1481,10 @@ mod tests {
       scene.attach(parent, child, None);
       scene.attach(child, grandchild, None);
     });
-    TestDriver::take_log();
+    TestPlatform::take_log();
     with(|scene| scene.destroy(parent));
 
-    let log = TestDriver::take_log();
+    let log = TestPlatform::take_log();
     let mut destroyed: Vec<u32> = log
       .iter()
       .filter_map(|call| match call {
@@ -1511,7 +1511,7 @@ mod tests {
   /// is cached and a redefinition invalidates it.
   #[test]
   fn tokens_resolve_to_the_nearest_definer_and_cache() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let card = TokenName::new("card");
     let outer = TestBox::node();
@@ -1523,14 +1523,14 @@ mod tests {
       scene.attach(outer, inner, None);
       scene.attach(inner, leaf, None);
     });
-    TestDriver::take_log();
+    TestPlatform::take_log();
     with(|scene| {
       scene.define_root_tokens(definitions("card", color(0.)));
       scene.define_tokens(outer, definitions("card", color(0.5)));
     });
 
     assert_eq!(
-      TestDriver::take_log(),
+      TestPlatform::take_log(),
       [
         Call::DefineRootTokens(1),
         Call::DefineTokens(sink(outer), 1)
@@ -1586,7 +1586,7 @@ mod tests {
   /// A segment attaches and detaches with its content and its end anchor.
   #[test]
   fn segments_travel_with_their_content() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let parent = TestBox::node();
     let other = TestBox::node();
@@ -1616,10 +1616,10 @@ mod tests {
     assert_eq!(children(other), []);
     assert_eq!(with(|scene| scene.segment_nodes(start)), [content]);
 
-    TestDriver::take_log();
+    TestPlatform::take_log();
     with(|scene| scene.destroy(start));
 
-    let mut destroyed: Vec<u32> = TestDriver::take_log()
+    let mut destroyed: Vec<u32> = TestPlatform::take_log()
       .iter()
       .filter_map(|call| match call {
         Call::Destroy(sink) => Some(*sink),
@@ -1638,7 +1638,7 @@ mod tests {
   /// removal from it while detached holds when the outer segment is reattached.
   #[test]
   fn nested_segments_keep_their_own_content_while_detached() {
-    TestDriver::reset();
+    TestPlatform::reset();
 
     let parent = TestBox::node();
     let before = TestBox::node();

@@ -5,9 +5,9 @@ use skene_core::{
   AnyKind,
   Color,
   DeclaredRunStyle,
-  Driver,
   LinkPolicy,
   NodeId,
+  Platform,
   RunDisplay,
   RunKeyframe,
   StyleExtension,
@@ -22,14 +22,14 @@ use crate::{properties, realize::Source, run::Run, run_type_metrics};
 /// A run of text on its own line.
 ///
 /// A property left unset is inherited through its [`typography`](crate::typography)
-/// token; the medium's own text properties come through the driver's style extension.
+/// token; the medium's own text properties come through the platform's style extension.
 #[must_use]
-pub struct Text<D: Driver> {
+pub struct Text<P: Platform> {
   content: Source<String>,
-  run: Run<D>,
+  run: Run<P>,
 }
 
-impl<D: Driver> Text<D> {
+impl<P: Platform> Text<P> {
   /// A run reading `content`.
   #[inline(always)]
   pub fn new(content: impl Into<String>) -> Self {
@@ -50,7 +50,7 @@ impl<D: Driver> Text<D> {
 
   /// The declared style, for a facade's medium-specific setters to write into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<D> {
+  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     self.run.style_mut()
   }
 
@@ -101,7 +101,7 @@ impl<D: Driver> Text<D> {
   #[inline(always)]
   pub fn set_transition(
     mut self,
-    transition: Transition<<D::StyleExt as StyleExtension>::Property>,
+    transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
     self.run = self.run.set_transition(transition);
 
@@ -110,22 +110,22 @@ impl<D: Driver> Text<D> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<D>>) -> Self {
+  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.run = self.run.set_animation(animation);
 
     self
   }
 }
 
-impl<D: Driver> AnyKind for Text<D> {}
+impl<P: Platform> AnyKind for Text<P> {}
 
-impl<D: Driver> View<D> for Text<D> {
+impl<P: Platform> View<P> for Text<P> {
   fn build(self) -> NodeId {
     let node = self.run.build(RunDisplay::Block, false);
 
     self
       .content
-      .bind::<D>(node, |sink, text| D::default().set_text(sink, text));
+      .bind::<P>(node, |sink, text| P::default().set_text(sink, text));
 
     node
   }

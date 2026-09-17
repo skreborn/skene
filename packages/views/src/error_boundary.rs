@@ -5,11 +5,11 @@ use std::{marker::PhantomData, rc::Rc};
 use skene_core::{
   AnyKind,
   AnyView,
-  Driver,
   Errors,
   IntoView,
   NoChild,
   NodeId,
+  Platform,
   Scene,
   Show,
   View,
@@ -31,36 +31,36 @@ use crate::realize::ChildBuilder;
 /// supplies the content; it is a builder closure because it is built under the owner
 /// the handle is provided on.
 #[must_use]
-pub struct ErrorBoundary<D: Driver, C = NoChild> {
-  fallback: Option<Rc<dyn Fn(Errors) -> AnyView<D>>>,
+pub struct ErrorBoundary<P: Platform, C = NoChild> {
+  fallback: Option<Rc<dyn Fn(Errors) -> AnyView<P>>>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Default for ErrorBoundary<D> {
+impl<P: Platform> Default for ErrorBoundary<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> ErrorBoundary<D> {
+impl<P: Platform> ErrorBoundary<P> {
   /// A boundary with no fallback and no content yet.
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
       fallback: None,
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> ErrorBoundary<D, C> {
+impl<P: Platform, C> ErrorBoundary<P, C> {
   /// Sets the fallback shown while errors are held, built by `fallback` from the
   /// boundary's handle whenever the held errors change; nothing by default.
   #[inline(always)]
-  pub fn set_fallback_builder<V: IntoView<D>>(
+  pub fn set_fallback_builder<V: IntoView<P>>(
     mut self,
     fallback: impl Fn(Errors) -> V + 'static,
   ) -> Self {
@@ -71,51 +71,51 @@ impl<D: Driver, C> ErrorBoundary<D, C> {
 
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<D>>(
+  pub fn set_child_builder<V: IntoView<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> ErrorBoundary<D, ChildBuilder<D>> {
+  ) -> ErrorBoundary<P, ChildBuilder<P>> {
     ErrorBoundary {
       fallback: self.fallback,
       child: ChildBuilder::new(child),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> AnyKind for ErrorBoundary<D, C> {}
+impl<P: Platform, C> AnyKind for ErrorBoundary<P, C> {}
 
-impl<D: Driver> View<D> for ErrorBoundary<D, ChildBuilder<D>> {
+impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<D>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::with(Scene::create_segment);
     let errors = Errors::new();
     let scope = Owner::current().child();
     let child = self.child;
-    let content = AnyView::<D>::new(move || {
+    let content = AnyView::<P>::new(move || {
       scope.enter(|| {
         provide_context(errors);
 
         child.build()
       })
     });
-    let content = Show::<D>::new()
+    let content = Show::<P>::new()
       .derive_shown(move || errors.is_empty())
       .set_child(content)
       .build();
 
-    Scene::<D>::with(|scene| scene.insert_in_segment(start, content, None));
+    Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
 
     if let Some(fallback) = self.fallback {
-      let fallback = derived::<D>(move || {
+      let fallback = derived::<P>(move || {
         if errors.is_empty() {
-          empty::<D>().build()
+          empty::<P>().build()
         }
         else {
           fallback(errors).build()
         }
       });
 
-      Scene::<D>::with(|scene| scene.insert_in_segment(start, fallback, None));
+      Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));
     }
 
     start

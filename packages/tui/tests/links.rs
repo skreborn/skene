@@ -9,7 +9,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_tui::{self as tui, Activate, prelude::*};
 
-use crate::common::{locate, rgb, white, with_driver};
+use crate::common::{locate, rgb, white, with_platform};
 
 /// Whether every cell of `needle`'s first appearance in the frame paints in reverse
 /// video.
@@ -29,7 +29,7 @@ fn reversed(width: u16, height: u16, needle: &str) -> bool {
 /// `Space` does not, and `Shift+Tab` walks back.
 #[test]
 fn tab_reaches_links_and_enter_opens_them() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -98,7 +98,7 @@ fn tab_reaches_links_and_enter_opens_them() {
 fn a_typography_colors_the_focused_link() {
   let highlight = Color::srgb(0.2, 0.35, 0.53);
 
-  with_driver(move || {
+  with_platform(move || {
     let _ = tui::mount(move || {
       Theme::new(
         Typography::default()
@@ -152,7 +152,7 @@ fn a_typography_colors_the_focused_link() {
 /// as a pointer's does.
 #[test]
 fn click_focuses_a_link_and_enter_is_its_click() {
-  with_driver(|| {
+  with_platform(|| {
     let clicks = Rc::new(Cell::new(0u32));
     let counted = Rc::clone(&clicks);
 
@@ -196,7 +196,7 @@ fn click_focuses_a_link_and_enter_is_its_click() {
 /// into view.
 #[test]
 fn focus_reveals_a_linked_paragraph() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
         .set_width(10)

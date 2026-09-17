@@ -1,7 +1,7 @@
 //! The property model as CSS: one rule template per node, and the custom-property
 //! vocabulary the templates reference.
 //!
-//! The only place the web driver spells CSS for the new model. A property compiles to
+//! The only place the web platform spells CSS for the new model. A property compiles to
 //! one declaration (a shorthand where the property has components, so a single custom
 //! property can carry a derived value); a fixed leaf renders as its literal, a token as
 //! `var(--<name>)`—a number token read by a pixel-measured property as
@@ -24,8 +24,6 @@ use skene_core::{
   ControlKind,
   ControlProps,
   Definitions,
-  Driver,
-  DriverLeaf,
   Fingerprint,
   FlexDirection,
   GridFlow,
@@ -37,6 +35,8 @@ use skene_core::{
   OverlayProps,
   Placement,
   Plain,
+  Platform,
+  PlatformLeaf,
   Property,
   PropertyKey,
   RunDisplay,
@@ -63,10 +63,10 @@ use super::{
 };
 use crate::Declarations;
 
-/// A driver over pixels with the pixel extension: the one the compiler serves.
-pub(crate) trait PixelDriver: Driver<Scalar = f32, StyleExt = GuiExt> {}
+/// A platform over pixels with the pixel extension: the one the compiler serves.
+pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = GuiExt> {}
 
-impl<D: Driver<Scalar = f32, StyleExt = GuiExt>> PixelDriver for D {}
+impl<P: Platform<Scalar = f32, StyleExt = GuiExt>> PixelPlatform for P {}
 
 /// A property's key on the web.
 pub(crate) type Key = PropertyKey<GuiProperty>;
@@ -341,17 +341,17 @@ fn static_leaf_text<T: Clone>(
   }
 }
 
-/// The text of a driver leaf of `key` at `position`, recording a slot it references.
+/// The text of a platform leaf of `key` at `position`, recording a slot it references.
 fn leaf_text<T: Clone>(
   key: Key,
   position: usize,
-  leaf: &DriverLeaf<T>,
+  leaf: &PlatformLeaf<T>,
   slots: &mut Vec<SlotBinding>,
   fixed: impl FnOnce(T) -> String,
 ) -> String {
   match leaf {
-    DriverLeaf::Static(leaf) => static_leaf_text(key, leaf, fixed),
-    DriverLeaf::Slot(slot) => {
+    PlatformLeaf::Static(leaf) => static_leaf_text(key, leaf, fixed),
+    PlatformLeaf::Slot(slot) => {
       slots.push(SlotBinding {
         slot: *slot,
         property: key,
@@ -417,7 +417,7 @@ impl Rules {
   fn property<T: Clone>(
     &mut self,
     key: Key,
-    value: &Conditional<DriverLeaf<T>, Condition<f32>>,
+    value: &Conditional<PlatformLeaf<T>, Condition<f32>>,
     fixed: &impl Fn(T) -> String,
   ) {
     let Target {
@@ -499,7 +499,7 @@ impl BoxVisitor<f32, Static<Condition<f32>>, GuiExt> for BoxRules<'_> {
   fn value<T: IntoBoxValue<f32, GuiExt>>(
     &mut self,
     key: Key,
-    value: &Option<Conditional<DriverLeaf<T>, Condition<f32>>>,
+    value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
@@ -516,7 +516,7 @@ impl RunVisitor<Static<Condition<f32>>, GuiExt> for RunRules<'_> {
   fn value<T: IntoRunValue<GuiExt>>(
     &mut self,
     key: Key,
-    value: &Option<Conditional<DriverLeaf<T>, Condition<f32>>>,
+    value: &Option<Conditional<PlatformLeaf<T>, Condition<f32>>>,
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
@@ -682,14 +682,14 @@ fn layout_declarations(layout: Layout) -> Declarations {
 
 /// The base declarations a box starts from: its layout and its identity.
 #[inline(always)]
-fn box_base<D: PixelDriver>(props: &BoxProps<D>) -> Declarations {
+fn box_base<P: PixelPlatform>(props: &BoxProps<P>) -> Declarations {
   box_identity(props, layout_declarations(props.layout))
 }
 
 /// `base` with what names a box: when it names itself for container queries, its
 /// containment—`size` when its height is set, else `inline-size`—and its
 /// view-transition name.
-fn box_identity<D: PixelDriver>(props: &BoxProps<D>, mut base: Declarations) -> Declarations {
+fn box_identity<P: PixelPlatform>(props: &BoxProps<P>, mut base: Declarations) -> Declarations {
   if let Some(name) = props.container {
     let containment = if props.style.height.is_some() {
       "size"
@@ -709,7 +709,7 @@ fn box_identity<D: PixelDriver>(props: &BoxProps<D>, mut base: Declarations) -> 
 }
 
 /// Compiles a box's props with `reset` and `base` ahead of its own declarations.
-fn compile_box_with<D: PixelDriver>(props: &BoxProps<D>, base: Declarations) -> Compiled {
+fn compile_box_with<P: PixelPlatform>(props: &BoxProps<P>, base: Declarations) -> Compiled {
   let mut out = String::new();
   let (base, trailer) = motion(
     &mut out,
@@ -726,7 +726,7 @@ fn compile_box_with<D: PixelDriver>(props: &BoxProps<D>, base: Declarations) -> 
 }
 
 /// The rule template of a box; a stack's places every child in its one cell.
-pub(crate) fn compile_box<D: PixelDriver>(props: &BoxProps<D>) -> Compiled {
+pub(crate) fn compile_box<P: PixelPlatform>(props: &BoxProps<P>) -> Compiled {
   let mut compiled = compile_box_with(props, box_base(props));
 
   if props.layout == Layout::Stack {
@@ -744,7 +744,7 @@ pub(crate) fn compile_box<D: PixelDriver>(props: &BoxProps<D>) -> Compiled {
 /// The rule template of a control: its box's, over the control reset that strips the
 /// native element's own chrome; a text entry's value is inked and selected by the
 /// typography inherited at it.
-pub(crate) fn compile_control<D: PixelDriver>(props: &ControlProps<D>) -> Compiled {
+pub(crate) fn compile_control<P: PixelPlatform>(props: &ControlProps<P>) -> Compiled {
   let entry = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor);
   let ink = if entry {
     token_reference(Unit::Plain, typography::INK.name())
@@ -800,7 +800,7 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// placement margins, its layout applying only while open so the platform's
 /// `display: none` stands while closed, and the `::backdrop` rule of a modal with a
 /// backdrop.
-pub(crate) fn compile_overlay<D: PixelDriver>(props: &OverlayProps<D>) -> Compiled {
+pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Compiled {
   let base = box_identity(&props.box_props, Declarations::new())
     .set("border", "none")
     .set("padding", "0")
@@ -832,7 +832,7 @@ pub(crate) fn compile_overlay<D: PixelDriver>(props: &OverlayProps<D>) -> Compil
 }
 
 /// The rule template of a text run.
-pub(crate) fn compile_run<D: PixelDriver>(props: &RunProps<D>) -> Compiled {
+pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
   let mut base = match props.display {
     RunDisplay::Block => Declarations::new().set("display", "block"),
     RunDisplay::Inline => Declarations::new(),
@@ -1038,7 +1038,7 @@ pub(crate) fn slot_registrations() -> String {
 }
 
 /// The hash the class cache keys a box's compiled template on.
-pub(crate) fn box_fingerprint<D: PixelDriver>(props: &BoxProps<D>, reset: u8) -> u64 {
+pub(crate) fn box_fingerprint<P: PixelPlatform>(props: &BoxProps<P>, reset: u8) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u8(reset);
@@ -1052,7 +1052,7 @@ pub(crate) fn box_fingerprint<D: PixelDriver>(props: &BoxProps<D>, reset: u8) ->
 }
 
 /// The hash the class cache keys an overlay's compiled template on.
-pub(crate) fn overlay_fingerprint<D: PixelDriver>(props: &OverlayProps<D>) -> u64 {
+pub(crate) fn overlay_fingerprint<P: PixelPlatform>(props: &OverlayProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   hasher.write_u64(box_fingerprint(&props.box_props, 2));
@@ -1064,7 +1064,7 @@ pub(crate) fn overlay_fingerprint<D: PixelDriver>(props: &OverlayProps<D>) -> u6
 }
 
 /// The hash the class cache keys a run's compiled template on.
-pub(crate) fn run_fingerprint<D: PixelDriver>(props: &RunProps<D>) -> u64 {
+pub(crate) fn run_fingerprint<P: PixelPlatform>(props: &RunProps<P>) -> u64 {
   let mut hasher = FxHasher::default();
 
   (props.display as u8).hash(&mut hasher);

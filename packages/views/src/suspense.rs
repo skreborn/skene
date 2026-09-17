@@ -6,10 +6,10 @@ use skene_core::{
   AnyKind,
   AnyView,
   Boundary,
-  Driver,
   IntoView,
   NoChild,
   NodeId,
+  Platform,
   Scene,
   Show,
   View,
@@ -30,35 +30,35 @@ use crate::realize::ChildBuilder;
 /// content; it is a builder closure because it is built under the owner the boundary
 /// is provided on.
 #[must_use]
-pub struct Suspense<D: Driver, C = NoChild> {
-  fallback: Option<AnyView<D>>,
+pub struct Suspense<P: Platform, C = NoChild> {
+  fallback: Option<AnyView<P>>,
   child: C,
-  driver: PhantomData<fn() -> D>,
+  platform: PhantomData<fn() -> P>,
 }
 
-impl<D: Driver> Default for Suspense<D> {
+impl<P: Platform> Default for Suspense<P> {
   #[inline(always)]
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl<D: Driver> Suspense<D> {
+impl<P: Platform> Suspense<P> {
   /// A suspense with no fallback and no content yet.
   #[inline(always)]
   pub const fn new() -> Self {
     Self {
       fallback: None,
       child: NoChild,
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> Suspense<D, C> {
+impl<P: Platform, C> Suspense<P, C> {
   /// Sets the fallback shown while the content's work is pending; nothing by default.
   #[inline(always)]
-  pub fn set_fallback(mut self, fallback: impl IntoView<D>) -> Self {
+  pub fn set_fallback(mut self, fallback: impl IntoView<P>) -> Self {
     self.fallback = Some(fallback.into_view());
 
     self
@@ -66,48 +66,48 @@ impl<D: Driver, C> Suspense<D, C> {
 
   /// Sets the content, built by `child` under the boundary.
   #[inline(always)]
-  pub fn set_child_builder<V: IntoView<D>>(
+  pub fn set_child_builder<V: IntoView<P>>(
     self,
     child: impl FnOnce() -> V + 'static,
-  ) -> Suspense<D, ChildBuilder<D>> {
+  ) -> Suspense<P, ChildBuilder<P>> {
     Suspense {
       fallback: self.fallback,
       child: ChildBuilder::new(child),
-      driver: PhantomData,
+      platform: PhantomData,
     }
   }
 }
 
-impl<D: Driver, C> AnyKind for Suspense<D, C> {}
+impl<P: Platform, C> AnyKind for Suspense<P, C> {}
 
-impl<D: Driver> View<D> for Suspense<D, ChildBuilder<D>> {
+impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<D>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::with(Scene::create_segment);
     let boundary = Boundary::new();
     let parent = Boundary::current();
     let scope = Owner::current().child();
     let child = self.child;
-    let content = AnyView::<D>::new(move || {
+    let content = AnyView::<P>::new(move || {
       scope.enter(|| {
         provide_context(boundary);
 
         child.build()
       })
     });
-    let content = Show::<D>::new()
+    let content = Show::<P>::new()
       .derive_shown(move || boundary.is_settled())
       .set_child(content)
       .build();
 
-    Scene::<D>::with(|scene| scene.insert_in_segment(start, content, None));
+    Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
 
     if let Some(fallback) = self.fallback {
-      let fallback = Show::<D>::new()
+      let fallback = Show::<P>::new()
         .derive_shown(move || !boundary.is_settled())
         .set_child(fallback)
         .build();
 
-      Scene::<D>::with(|scene| scene.insert_in_segment(start, fallback, None));
+      Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));
     }
 
     if let Some(parent) = parent {

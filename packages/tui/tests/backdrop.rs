@@ -9,7 +9,7 @@ mod common;
 
 use skene_tui::{self as tui, prelude::*};
 
-use crate::common::{colors_at, red, with_driver};
+use crate::common::{colors_at, red, with_platform};
 
 /// A red card with a rounded border and a shadow, holding a plain blue box and text.
 fn card() -> AnyView {
@@ -38,7 +38,7 @@ fn card() -> AnyView {
 /// middle is the box's color, while the plain box inside and the text stay cells.
 #[test]
 fn a_decorated_box_becomes_a_backdrop_where_graphics_show() {
-  with_driver(|| {
+  with_platform(|| {
     let _ = tui::mount(|| card().build());
 
     let frame = tui::render_to_text(12, 6);

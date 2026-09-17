@@ -1,4 +1,4 @@
-//! The badge against the host driver: its palette resolves through a theme, and its
+//! The badge against the host platform: its palette resolves through a theme, and its
 //! default lands at the root without one.
 
 use acme_ui::{AcmeBadge, AcmePalette};

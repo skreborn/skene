@@ -24,6 +24,8 @@ pub(crate) enum Event {
   Mouse(Mouse),
   /// A bracketed paste's text.
   Paste(String),
+  /// A line the dev launcher wrote on its control pipe.
+  Control(String),
   /// An in-band resize notification (mode 2048).
   Resized(WindowSize),
   /// A DECRPM report of a DEC private mode.

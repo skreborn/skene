@@ -829,7 +829,7 @@ through `launch`, or to plain text
 through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click`/`trigger_frame` drive it without a terminal). Terminal detection is
 asynchronous; the loop starts immediately and the answers arrive as signal writes. The
-dev loop carries the snapshot across a restart over the CLI's state protocol. Terminal
+dev loop carries the snapshot across a swap through the launcher's control pipe. Terminal
 apps never cross-compile into the GUI family; the write-once promise belongs to
 web+native.
 
@@ -939,9 +939,21 @@ that thread's, and starts from a clean one every time. SSG is the same binary ru
 time by `skene build web --static`; the CLI's dev server (`skene run web`, `--ssr` to
 render per request through a `--serve` worker) is where the development conveniences
 live. The terminal splits the same way: `skene run tui` keeps the build loop and its
-logs in the invoking terminal and publishes each built binary on its state port, and
-`skene attach <port>` runs the app in a second terminal, swapping each generation in
-with the CLI-held state carried across and the terminal restored between instances. Static output is fully functional without script (styling, media and container
+logs in the invoking terminal and publishes each built binary and each failure on its
+port, and `skene attach <port>` launches the app in a second terminal and forwards both
+over a pipe the app inherits.
+
+**A dev reload snapshots once, at the swap, under a cooperative stop.** Nothing
+checkpoints per change and no server holds state: the terminal app hears `swap <path>`
+on its launcher's pipe, records its snapshot to the file the launcher named in
+`SKENE_DEV_STATE`, restores the terminal and becomes the new binary in place through
+`execve`, so the process, the terminal and the pipe carry over and the successor
+restores the file at boot; where the process cannot be replaced it exits with status
+75 and the launcher spawns the binary. The page keeps its snapshot in the origin
+private file system when the dev server says reload, awaiting the write before it
+reloads, with session storage as the best effort on a reload the reader made, and
+takes it back at boot through the dev script's `skene_state()`. A rebuild failure
+reaches the app as `notice <text>` on the same pipe. Static output is fully functional without script (styling, media and container
 queries, hover, themes, transitions, animations—all CSS); hydration upgrades it to
 interactive when the wasm loads, and `#[lazy]` bodies split into modules fetched on
 first use while the server leaf renders them inline.

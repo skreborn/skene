@@ -500,6 +500,15 @@
 ## Tooling & workflow rules
 
 - Always format with `cargo +nightly fmt`.
+- **A dev reload snapshots once, at the swap, under a cooperative stop**, and the
+  bytes go from the running app to its successor directly: the terminal app hears
+  `swap` on its launcher's pipe, records to the file the launcher named and becomes
+  the new binary in place; the page records into the origin private file system on the
+  reload message before it reloads. Nothing checkpoints per change and no server holds
+  state. State crosses runs through `Snapshot`, the framework's own trait: a
+  self-describing encoding a restore coerces across (a `bool` and an integer are one
+  another, a missing field is its type's absent value, an unknown one is skipped, a
+  gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
 - Tests run in three tiers, and the host tier alone proves nothing about the web. Run
   `cargo test --workspace` for the host, `RUSTFLAGS='--cfg skene_platform="server"'
   cargo test -p skene-gui -p skene-web` for the server leaf (native, the byte-exact

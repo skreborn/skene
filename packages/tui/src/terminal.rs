@@ -246,11 +246,15 @@ where
     store.mouse
   });
 
-  crate::dev::install();
+  let control = crate::dev::install();
 
   let _ = crate::mount(|| app().into_view().build());
 
   let mut terminal = Tty::open().expect("open the terminal");
+
+  if let Some(fd) = control {
+    terminal.set_control(fd);
+  }
 
   terminal.enter_raw_mode().expect("enable raw mode");
   terminal.set_panic_hook(|out| {
@@ -418,8 +422,6 @@ where
       break;
     }
 
-    crate::dev::tick();
-
     let wait = with_store(|store| {
       let frame = if store.frame_clock_running() {
         crate::store::FRAME_INTERVAL
@@ -456,21 +458,24 @@ where
         }
         Event::Key(key) => {
           dispatch_key(&key);
-
-          crate::dev::mark_changed();
         }
         Event::Mouse(mouse) => {
           let (mouse, within) = pixels.locate(mouse);
 
           with_store(|store| store.pointer_within = within);
           dispatch_mouse(mouse);
-
-          crate::dev::mark_changed();
         }
         Event::Paste(text) => {
           paste(&text);
+        }
+        Event::Control(line) => {
+          if let Some(path) = crate::dev::handle(&line) {
+            finish(&mut terminal);
 
-          crate::dev::mark_changed();
+            let _ = terminal.restore_mode();
+
+            crate::dev::swap(&path);
+          }
         }
         Event::Resized(size) => {
           // A full rewrite: the previous frame no longer matches what the terminal
@@ -583,8 +588,6 @@ where
         }
         Event::Clipboard(content) => {
           paste_reply(&content);
-
-          crate::dev::mark_changed();
         }
         // A read's answer arrives in parts: the text once it is done, nothing when it
         // was refused; a write's answers fall through.
@@ -595,8 +598,6 @@ where
             let text = String::from_utf8_lossy(&std::mem::take(&mut clipboard_read)).into_owned();
 
             paste_reply(&text);
-
-            crate::dev::mark_changed();
           }
           ClipboardStatus::Refused => {
             clipboard_read.clear();
@@ -656,14 +657,10 @@ fn run_due_timers() {
   for action in due {
     action();
   }
-
-  crate::dev::mark_changed();
 }
 
 /// Restores the terminal at the end of the run.
 fn finish(terminal: &mut Tty) {
-  crate::dev::flush();
-
   let _ = write!(terminal, "{}", escape::FREE_ALL);
   let _ = write_restore(terminal);
   let _ = terminal.flush();

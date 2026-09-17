@@ -1,18 +1,21 @@
-//! Dev-loop state: restore from the CLI on launch, checkpoint back as state changes.
+//! Dev-loop state: restored from the file the launcher names at boot, recorded to it
+//! at a swap, and the launcher's notices over its control pipe.
 //!
-//! The handshake pairs with the `skene` CLI's `run tui` loop: the CLI sets `SKENE_DEV`
-//! to its state port, the app fetches `/skene:state` and stages it before mounting,
-//! and checkpoints its snapshot back—debounced, off the UI thread—so the CLI can kill
-//! and restart the process at any moment without losing state. The app also polls
-//! `/skene:notice` for the CLI's rebuild failures, presenting each in a dismissable
-//! modal. Without `SKENE_DEV` every call is a no-op.
+//! The handshake pairs with the `skene` CLI's `attach`, which spawns the app: it names
+//! the state file in `SKENE_DEV_STATE` and the read end of its pipe in
+//! `SKENE_DEV_CONTROL`. The app restores the file's snapshot before mounting and
+//! removes the file; on the pipe it hears `notice <text>` (a rebuild failure, shown in a
+//! dismissable modal, `\n` standing for a line break; bare `notice` clears it) and
+//! `swap <path>` (a rebuilt binary), on which it records its snapshot to the file,
+//! restores the terminal and becomes the new binary in place, so the launcher, the
+//! terminal and the pipe carry over and no server holds any state. Where the process
+//! cannot be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the binary.
+//! Without the variables every call is a no-op.
 
 use std::{
-  cell::{Cell, RefCell},
-  io::{Read, Write},
-  net::TcpStream,
-  sync::mpsc,
-  time::{Duration, Instant},
+  cell::RefCell,
+  os::fd::RawFd,
+  path::{Path, PathBuf},
 };
 
 use skene_core::{Color, HasChildren, Scene};
@@ -20,11 +23,9 @@ use skene_reactive::{Get, Position, Set, Signal};
 
 use crate::{Column, IntoView as _, Overlay, Text, Tui, TuiText, store::Handle};
 
-/// The least time between two checkpoints.
-const CHECKPOINT_EVERY: Duration = Duration::from_millis(200);
-
-/// The time between two notice polls.
-const NOTICE_EVERY: Duration = Duration::from_millis(500);
+/// The exit status telling the launcher the app stopped for a swap it could not
+/// perform in place.
+pub const SWAP_EXIT: i32 = 75;
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";
@@ -36,126 +37,85 @@ const FOCUS_TAG: &str = "skene-tui:focus";
 /// A focused entry's caret and selection anchor.
 type Caret = (usize, Option<usize>);
 
-/// The dev channel, present when the CLI launched the app.
+/// The dev channel, present when the launcher started the app.
 struct Channel {
-  sender: mpsc::Sender<Vec<u8>>,
-  notices: mpsc::Receiver<Option<String>>,
   notice: Signal<Option<String>>,
-  changed: Cell<bool>,
-  last: Cell<Instant>,
+  state: PathBuf,
 }
 
 thread_local! {
   static CHANNEL: RefCell<Option<Channel>> = const { RefCell::new(None) };
 }
 
-/// Connects to the CLI when `SKENE_DEV` names its state port: restores the held
-/// snapshot into the reactive runtime, and starts the checkpoint sender and the
-/// notice poller.
-pub(crate) fn install() {
-  let Some(port) = std::env::var("SKENE_DEV")
-    .ok()
-    .and_then(|value| value.parse::<u16>().ok())
-  else {
-    return;
-  };
+/// Restores the snapshot the state file holds, when the launcher named one, and
+/// returns the control pipe to listen on.
+pub(crate) fn install() -> Option<RawFd> {
+  let state = PathBuf::from(std::env::var_os("SKENE_DEV_STATE")?);
 
-  if let Some(bytes) = http_get(port, "/skene:state") {
+  if let Ok(bytes) = std::fs::read(&state) {
     skene_reactive::restore(&bytes);
+
+    let _ = std::fs::remove_file(&state);
   }
-
-  let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-
-  // Checkpoints post off the UI thread, so a slow write never stalls the terminal.
-  std::thread::spawn(move || {
-    while let Ok(bytes) = receiver.recv() {
-      http_post(port, &bytes);
-    }
-  });
-
-  let (notice_sender, notices) = mpsc::channel::<Option<String>>();
-
-  // The notice poller: posts each change of the CLI's rebuild notice to the UI loop.
-  std::thread::spawn(move || {
-    let mut last: Option<Vec<u8>> = None;
-
-    loop {
-      std::thread::sleep(NOTICE_EVERY);
-
-      let Some(body) = http_get(port, "/skene:notice")
-      else {
-        continue;
-      };
-
-      if last.as_ref() == Some(&body) {
-        continue;
-      }
-
-      let text = std::str::from_utf8(&body)
-        .ok()
-        .and_then(|body| body.split_once('\n'))
-        .map(|(_, text)| text.trim_end().to_owned())
-        .filter(|text| !text.is_empty());
-
-      if notice_sender.send(text).is_err() {
-        return;
-      }
-
-      last = Some(body);
-    }
-  });
 
   CHANNEL.with(|channel| {
     *channel.borrow_mut() = Some(Channel {
-      sender,
-      notices,
       notice: Signal::opaque(None),
-      changed: Cell::new(false),
-      last: Cell::new(Instant::now()),
+      state,
     });
   });
+
+  std::env::var("SKENE_DEV_CONTROL")
+    .ok()
+    .and_then(|value| value.parse().ok())
 }
 
-/// Marks the state changed, so the next [`tick`] checkpoints it.
-pub(crate) fn mark_changed() {
-  CHANNEL.with(|channel| {
-    if let Some(channel) = channel.borrow().as_ref() {
-      channel.changed.set(true);
-    }
-  });
-}
-
-/// Applies polled notices and checkpoints the current snapshot when the state changed
-/// and the debounce elapsed.
-pub(crate) fn tick() {
-  CHANNEL.with(|channel| {
-    if let Some(channel) = channel.borrow().as_ref() {
-      while let Ok(update) = channel.notices.try_recv() {
-        channel.notice.set(update);
-      }
-
-      if channel.changed.get() && channel.last.get().elapsed() >= CHECKPOINT_EVERY {
-        channel.changed.set(false);
-        channel.last.set(Instant::now());
-
-        let _ = channel.sender.send(skene_reactive::snapshot());
-      }
-    }
-  });
-}
-
-/// Checkpoints unconditionally and synchronously, for a clean exit.
-pub(crate) fn flush() {
-  let posted = CHANNEL.with(|channel| {
-    channel.borrow().as_ref().map(|channel| {
-      let _ = channel.sender.send(skene_reactive::snapshot());
-    })
-  });
-
-  if posted.is_some() {
-    // Give the sender thread a moment to drain; the process is about to exit.
-    std::thread::sleep(Duration::from_millis(50));
+/// Acts on one line the launcher wrote: a notice updates the modal, and a swap names
+/// the binary to become.
+pub(crate) fn handle(line: &str) -> Option<PathBuf> {
+  if let Some(path) = line.strip_prefix("swap ") {
+    return Some(PathBuf::from(path.trim()));
   }
+
+  if let Some(text) = line.strip_prefix("notice") {
+    let text = text.trim().replace("\\n", "\n");
+    let notice = (!text.is_empty()).then_some(text);
+
+    CHANNEL.with(|channel| {
+      if let Some(channel) = channel.borrow().as_ref() {
+        channel.notice.set(notice);
+      }
+    });
+  }
+
+  None
+}
+
+/// Records the snapshot to the state file and becomes the binary at `path`: in place
+/// where the process can be replaced, else by exiting with [`SWAP_EXIT`] for the
+/// launcher to spawn it. The terminal must already be restored.
+pub(crate) fn swap(path: &Path) -> ! {
+  let state = CHANNEL.with(|channel| {
+    channel
+      .borrow()
+      .as_ref()
+      .map(|channel| channel.state.clone())
+  });
+
+  if let Some(state) = state {
+    let _ = std::fs::write(state, skene_reactive::snapshot());
+  }
+
+  #[cfg(unix)]
+  {
+    use std::os::unix::process::CommandExt as _;
+
+    let error = std::process::Command::new(path).exec();
+
+    eprintln!("could not become {}: {error}", path.display());
+  }
+
+  std::process::exit(SWAP_EXIT)
 }
 
 /// The snapshot position of the node `handle` realizes.
@@ -280,13 +240,13 @@ fn adopt_scroll() {
   }
 }
 
-/// The rebuild-notice signal, present when the CLI launched the app.
+/// The rebuild-notice signal, present when the launcher started the app.
 pub(crate) fn notice_signal() -> Option<Signal<Option<String>>> {
   CHANNEL.with(|channel| channel.borrow().as_ref().map(|channel| channel.notice))
 }
 
-/// The dev overlay presenting the CLI's rebuild failures: a modal over the app while
-/// `notice` holds one, dismissed back to `None` by Escape or a press outside.
+/// The dev overlay presenting the launcher's rebuild failures: a modal over the app
+/// while `notice` holds one, dismissed back to `None` by Escape or a press outside.
 #[must_use]
 pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
   let dark = crate::with_store(|store| store.dark());
@@ -323,59 +283,4 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
           .into_view(),
       )),
     )
-}
-
-/// The CLI's response body at `path`, or `None` when it is unreachable or not `200`.
-fn http_get(port: u16, path: &str) -> Option<Vec<u8>> {
-  let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
-
-  stream
-    .write_all(
-      format!(
-        "GET {path} HTTP/1.1\r\n\
-         Host: localhost\r\n\
-         Connection: close\r\n\r\n"
-      )
-      .as_bytes(),
-    )
-    .ok()?;
-
-  let mut response = Vec::new();
-
-  stream.read_to_end(&mut response).ok()?;
-
-  let split = response
-    .windows(4)
-    .position(|window| window == b"\r\n\r\n")?;
-  let head = std::str::from_utf8(&response[..split]).ok()?;
-
-  if !head.starts_with("HTTP/1.1 200") {
-    return None;
-  }
-
-  Some(response[split + 4..].to_vec())
-}
-
-/// Posts `bytes` as the CLI-held snapshot.
-fn http_post(port: u16, bytes: &[u8]) {
-  let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port))
-  else {
-    return;
-  };
-
-  let header = format!(
-    "POST /skene:state HTTP/1.1\r\n\
-     Host: localhost\r\n\
-     Content-Length: {}\r\n\
-     Connection: close\r\n\r\n",
-    bytes.len()
-  );
-
-  let _ = stream.write_all(header.as_bytes());
-  let _ = stream.write_all(bytes);
-  let _ = stream.flush();
-
-  // Wait for the response so the CLI surely stored the bytes before a final exit.
-  let mut response = Vec::new();
-  let _ = stream.read_to_end(&mut response);
 }

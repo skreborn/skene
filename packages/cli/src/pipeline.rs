@@ -5,16 +5,47 @@ use std::{fs, path::Path, process::Command};
 use crate::manifest::App;
 
 /// The dev additions to the generated page: the marker the framework's boot handshake
-/// looks for, and the script that beacons the state snapshot and reloads on the
-/// server's say-so.
+/// looks for, and the script that keeps the state snapshot in the page's own storage
+/// across a reload—the origin private file system on the server's say-so, and session
+/// storage as the best effort on a reload the reader made—and hands it back at boot.
 const DEV_PAGE_ADDITIONS: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
-  const save = () => {\n\
-    if (window.skene_snapshot) navigator.sendBeacon(\"/skene:state\", window.skene_snapshot());\n\
+  const FILE = \"skene-state\";\n\
+  const root = () => navigator.storage.getDirectory();\n\
+  const encode = (bytes) => {\n\
+    let text = \"\";\n\
+    for (let at = 0; at < bytes.length; at += 8192) text += String.fromCharCode(...bytes.subarray(at, at + 8192));\n\
+    return btoa(text);\n\
   };\n\
-  addEventListener(\"pagehide\", save);\n\
+  window.skene_state = async () => {\n\
+    try {\n\
+      const directory = await root();\n\
+      const file = await (await directory.getFileHandle(FILE)).getFile();\n\
+      const bytes = new Uint8Array(await file.arrayBuffer());\n\
+      await directory.removeEntry(FILE);\n\
+      return bytes;\n\
+    } catch {}\n\
+    try {\n\
+      const text = sessionStorage.getItem(FILE);\n\
+      if (text) {\n\
+        sessionStorage.removeItem(FILE);\n\
+        return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));\n\
+      }\n\
+    } catch {}\n\
+    return null;\n\
+  };\n\
+  const save = async () => {\n\
+    if (!window.skene_snapshot) return;\n\
+    const handle = await (await root()).getFileHandle(FILE, { create: true });\n\
+    const writable = await handle.createWritable();\n\
+    await writable.write(window.skene_snapshot());\n\
+    await writable.close();\n\
+  };\n\
+  addEventListener(\"pagehide\", () => {\n\
+    if (!window.skene_snapshot) return;\n\
+    try { sessionStorage.setItem(FILE, encode(window.skene_snapshot())); } catch {}\n\
+  });\n\
   new EventSource(\"/skene:reload\").onmessage = () => {\n\
-    save();\n\
-    location.reload();\n\
+    save().catch(() => {}).finally(() => location.reload());\n\
   };\n\
 })();</script>";
 /// Builds the app's browser wasm, generates its bindings, and writes the boot page—

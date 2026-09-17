@@ -5,7 +5,7 @@ use std::{
   collections::VecDeque,
   fs,
   io::{self, BufWriter, IsTerminal as _, Write},
-  os::fd::{AsFd, BorrowedFd, OwnedFd},
+  os::fd::{AsFd, BorrowedFd, OwnedFd, RawFd},
   time::Duration,
 };
 
@@ -87,6 +87,8 @@ pub(crate) struct Tty {
   events: VecDeque<Event>,
   /// The window size last reported, so a change reads as a resize.
   size: Option<WindowSize>,
+  /// The dev launcher's control pipe, and the partial line read from it so far.
+  control: Option<(BorrowedFd<'static>, Vec<u8>)>,
 }
 
 impl Tty {
@@ -102,11 +104,22 @@ impl Tty {
       parser: Parser::default(),
       events: VecDeque::new(),
       size: None,
+      control: None,
     };
 
     tty.size = tty.size();
 
     Ok(tty)
+  }
+
+  /// Listens on the dev launcher's control pipe at `fd`, which stays open for the
+  /// process's whole life and across a swap into the next binary.
+  pub(crate) fn set_control(&mut self, fd: RawFd) {
+    // SAFETY: the launcher opened the descriptor for this process and never closes
+    // it on its side while the app runs; it is inherited by the next binary too.
+    let fd = unsafe { BorrowedFd::borrow_raw(fd) };
+
+    self.control = Some((fd, Vec::new()));
   }
 
   /// Puts the terminal in raw mode: no echo, no line buffering, no signal keys.
@@ -156,6 +169,8 @@ impl Tty {
       events.push(event);
     }
 
+    self.read_control(&mut events)?;
+
     if let Some(size) = self.size()
       && self.size != Some(size)
     {
@@ -164,6 +179,42 @@ impl Tty {
     }
 
     Ok(events)
+  }
+
+  /// Reads every line the launcher wrote on the control pipe into `events`; the
+  /// pipe closing means the launcher is gone, and the app runs on.
+  fn read_control(&mut self, events: &mut Vec<Event>) -> io::Result<()> {
+    let Some((fd, pending)) = &mut self.control
+    else {
+      return Ok(());
+    };
+
+    while readable(fd, Duration::ZERO)? {
+      let mut buffer = [0; READ_SIZE];
+      let read = match rustix::io::read(&*fd, &mut buffer) {
+        Ok(read) => read,
+        Err(rustix::io::Errno::INTR) => continue,
+        Err(error) => return Err(error.into()),
+      };
+
+      if read == 0 {
+        self.control = None;
+
+        return Ok(());
+      }
+
+      pending.extend_from_slice(&buffer[..read]);
+
+      while let Some(end) = pending.iter().position(|byte| *byte == b'\n') {
+        let line: Vec<u8> = pending.drain(..=end).collect();
+
+        events.push(Event::Control(
+          String::from_utf8_lossy(&line[..line.len() - 1]).into_owned(),
+        ));
+      }
+    }
+
+    Ok(())
   }
 
   /// Reads what the terminal sent into the parser; the end of input is an error.

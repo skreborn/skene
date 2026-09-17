@@ -135,7 +135,7 @@ skene-cli             the `skene` command
 | `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `tui` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
-| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state-preserving restarts, the terminal build loop and the terminal it attaches to, static generation, `skene.toml` assets. |
+| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes
 

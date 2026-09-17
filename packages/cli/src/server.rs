@@ -1,6 +1,7 @@
-//! The dev server: static files, manifest assets, live-reload over SSE, the
-//! authoritative state snapshot held across reloads, and—given a renderer—a route
-//! rendered per request through the runner against the request's client hints.
+//! The dev server: static files, manifest assets, live-reload over SSE, and—given a
+//! renderer—a route rendered per request through the app's server binary against the
+//! request's client hints; and the state port a terminal build loop publishes its
+//! binary and its notices on.
 
 use std::{
   ffi::OsStr,
@@ -23,13 +24,11 @@ use crate::{
 /// A request's headers, as `(name, value)` in arrival order.
 type Headers = Vec<(String, String)>;
 
-/// The dev channel: the open live-reload streams, the authoritative state snapshot
-/// held across reloads, the rebuild-failure notice the running app polls, and the
-/// terminal binary an attached terminal runs.
+/// The dev channel: the open live-reload streams, the rebuild-failure notice an
+/// attached terminal forwards to the running app, and the terminal binary it runs.
 #[derive(Clone, Default)]
 pub struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
-  state: Arc<Mutex<Option<Vec<u8>>>>,
   notice: Arc<Mutex<Notice>>,
   renderer: Arc<Mutex<Option<Renderer>>>,
   binary: Arc<Mutex<Option<Binary>>>,
@@ -126,21 +125,6 @@ impl Dev {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push(stream);
     }
-  }
-
-  fn store(&self, bytes: Vec<u8>) {
-    *self
-      .state
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(bytes);
-  }
-
-  fn stored(&self) -> Option<Vec<u8>> {
-    self
-      .state
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner)
-      .clone()
   }
 
   /// Posts a rebuild failure for the running app's dev modal, superseding the last.
@@ -241,9 +225,9 @@ pub fn fetch(port: u16, path: &str) -> Option<Vec<u8>> {
   Some(response[split + 4..].to_vec())
 }
 
-/// Serves only the state slot on an ephemeral port, for a dev loop around a target
-/// with no page to serve (the terminal, native later); returns the port for
-/// `SKENE_DEV`.
+/// Serves the binary and the notice on an ephemeral port, for a build loop around a
+/// target with no page to serve (the terminal, native later); returns the port an
+/// `attach` reads from.
 pub fn spawn_state_server(dev: Dev) -> Result<u16, String> {
   let listener =
     TcpListener::bind(("127.0.0.1", 0)).map_err(|error| format!("bind the state port: {error}"))?;
@@ -268,7 +252,7 @@ pub fn spawn_state_server(dev: Dev) -> Result<u16, String> {
   Ok(port)
 }
 
-/// Handles one request against the state slot alone.
+/// Handles one request against the binary and the notice alone.
 fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
   let Ok(clone) = stream.try_clone()
   else {
@@ -285,24 +269,6 @@ fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
   let mut parts = line.split_whitespace();
 
   match (parts.next(), parts.next()) {
-    (Some("POST"), Some("/skene:state")) => match read_body(&mut reader) {
-      Some(body) => {
-        dev.store(body);
-
-        let _ = write_response(&mut stream, "204 No Content", "text/plain", b"");
-      }
-      None => {
-        let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
-      }
-    },
-    (Some("GET"), Some("/skene:state")) => match dev.stored() {
-      Some(bytes) => {
-        let _ = write_response(&mut stream, "200 OK", "application/octet-stream", &bytes);
-      }
-      None => {
-        let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"no state");
-      }
-    },
     (Some("GET"), Some("/skene:notice")) => {
       let _ = write_response(
         &mut stream,
@@ -327,8 +293,8 @@ fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
 
 /// Serves the app on `port` until interrupted: `index.html` and the build output from
 /// the app's `dist/web`, at its own path and as the site root, declared assets at
-/// their URIs, and—with `dev`—the reload SSE endpoint, the state slot, and the reload
-/// script injected into HTML.
+/// their URIs, and—with `dev`—the reload SSE endpoint and the reload script injected
+/// into HTML.
 pub fn serve(app: &Arc<App>, port: u16, dev: Option<&Dev>) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
@@ -391,26 +357,6 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       dev.adopt(stream);
     }
 
-    ("POST", "skene:state", Some(dev)) => match read_body(&mut reader) {
-      Some(body) => {
-        dev.store(body);
-
-        let _ = write_response(&mut stream, "204 No Content", "text/plain", b"");
-      }
-      None => {
-        let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
-      }
-    },
-
-    ("GET", "skene:state", Some(dev)) => match dev.stored() {
-      Some(bytes) => {
-        let _ = write_response(&mut stream, "200 OK", "application/octet-stream", &bytes);
-      }
-      None => {
-        let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"no state");
-      }
-    },
-
     ("GET", relative, Some(dev)) if is_route(relative) => {
       match dev.render(&format!("/{relative}"), &headers) {
         Some(Ok(page)) => {
@@ -471,21 +417,6 @@ fn read_headers(reader: &mut BufReader<TcpStream>) -> Option<Headers> {
       headers.push((name.trim().to_owned(), value.trim().to_owned()));
     }
   }
-}
-
-/// Reads the request body: the remaining headers for `Content-Length`, then exactly
-/// that many bytes.
-fn read_body(reader: &mut BufReader<TcpStream>) -> Option<Vec<u8>> {
-  let length = read_headers(reader)?
-    .into_iter()
-    .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-    .and_then(|(_, value)| value.parse::<usize>().ok());
-
-  let mut body = vec![0; length?];
-
-  reader.read_exact(&mut body).ok()?;
-
-  Some(body)
 }
 
 /// The request target as a decoded, root-relative path: parsed and normalized as a

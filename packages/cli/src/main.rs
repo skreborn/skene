@@ -265,60 +265,105 @@ mod host {
     Ok(())
   }
 
-  /// Runs the binary a `run tui` loop on `port` publishes, in this terminal, with the
-  /// state handshake; swaps in each generation the loop publishes, restoring the
-  /// terminal between instances. Ends when the app itself exits.
+  /// The exit status an app ends a swap with where it cannot become the next binary
+  /// in place, asking the launcher to spawn it.
+  const SWAP_EXIT: i32 = 75;
+
+  /// Runs the binary a `run tui` loop on `port` publishes, in this terminal, as its
+  /// launcher: the app hears each rebuilt binary and each notice on a control pipe,
+  /// records its state to the file named for it and becomes the next binary in place,
+  /// so the terminal, the pipe and the state carry across every swap. Ends when the
+  /// app itself exits.
+  #[cfg(unix)]
   fn attach(port: u16) -> Result<(), String> {
+    use std::{io::Write as _, os::fd::AsRawFd as _};
+
     let published = || {
       fetch(port, "/skene:binary").and_then(|body| Binary::parse(&String::from_utf8_lossy(&body)))
     };
     let mut current = published().ok_or_else(|| {
       format!("no `run tui` loop answers on port {port}; start one and attach to its port")
     })?;
-    // The terminal state before any app instance touches it. A swap kills the running
-    // instance mid-raw-mode; restoring this before the next spawn keeps each
-    // instance's own saved "original" sane, so the final quit restores a working
-    // terminal.
+    let (reader, mut writer) =
+      std::io::pipe().map_err(|error| format!("open the control pipe: {error}"))?;
+
+    // The app inherits the read end across every spawn and every swap in place, so it
+    // must not close on exec.
+    rustix::io::fcntl_setfd(&reader, rustix::io::FdFlags::empty())
+      .map_err(|error| format!("share the control pipe: {error}"))?;
+
+    let state = std::env::temp_dir().join(format!("skene-state-{}", std::process::id()));
+    let control = reader.as_raw_fd().to_string();
+    let spawn = |binary: &Binary| {
+      std::process::Command::new(&binary.path)
+        .current_dir(&binary.dir)
+        .env("SKENE_DEV_CONTROL", &control)
+        .env("SKENE_DEV_STATE", &state)
+        .spawn()
+        .map_err(|error| format!("{}: {error}", binary.path.display()))
+    };
+    // The terminal state before any app instance touches it, reapplied before a
+    // spawn that follows an instance which could not restore its own.
     let sane_tty = crate::tty::Tty::capture();
+    let mut child = spawn(&current)?;
+    let mut notice: Option<Vec<u8>> = None;
 
     loop {
-      let mut child = std::process::Command::new(&current.path)
-        .current_dir(&current.dir)
-        .env("SKENE_DEV", port.to_string())
-        .spawn()
-        .map_err(|error| format!("{}: {error}", current.path.display()))?;
+      if let Ok(Some(status)) = child.try_wait() {
+        if status.code() == Some(SWAP_EXIT) {
+          if let Some(tty) = &sane_tty {
+            tty.restore();
+          }
 
-      loop {
-        if let Ok(Some(_)) = child.try_wait() {
-          // The user quit the app; the attachment ends with it.
+          child = spawn(&current)?;
+
+          continue;
+        }
+
+        // The user quit the app; the attachment ends with it.
+        let _ = std::fs::remove_file(&state);
+
+        return Ok(());
+      }
+
+      thread::sleep(Duration::from_millis(250));
+
+      match published() {
+        Some(next) if next.generation != current.generation => {
+          current = next;
+
+          let _ = writeln!(writer, "swap {}", current.path.display());
+        }
+        Some(_) => {}
+        None => {
+          // The loop is gone; the app runs on until it quits.
+          let _ = child.wait();
+          let _ = std::fs::remove_file(&state);
+
           return Ok(());
         }
+      }
 
-        thread::sleep(Duration::from_millis(250));
+      if let Some(body) = fetch(port, "/skene:notice")
+        && notice.as_ref() != Some(&body)
+      {
+        let text = std::str::from_utf8(&body)
+          .ok()
+          .and_then(|body| body.split_once('\n'))
+          .map(|(_, text)| text.trim_end().replace('\n', "\\n"))
+          .unwrap_or_default();
 
-        match published() {
-          Some(next) if next.generation != current.generation => {
-            current = next;
+        let _ = writeln!(writer, "notice {text}");
 
-            let _ = child.kill();
-            let _ = child.wait();
-
-            if let Some(tty) = &sane_tty {
-              tty.restore();
-            }
-
-            break;
-          }
-          Some(_) => {}
-          None => {
-            // The loop is gone; the app runs on until it quits.
-            let _ = child.wait();
-
-            return Ok(());
-          }
-        }
+        notice = Some(body);
       }
     }
+  }
+
+  /// `attach` needs the terminal layer, which exists on Unix alone.
+  #[cfg(not(unix))]
+  fn attach(_port: u16) -> Result<(), String> {
+    Err("`attach` runs on Unix; the terminal has no console layer yet".to_owned())
   }
 
   /// How this CLI is invoked, for a command printed to run: through the workspace's

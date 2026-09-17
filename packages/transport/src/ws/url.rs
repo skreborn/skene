@@ -1,6 +1,6 @@
 //! An absolute URL taken apart for a transport that reaches its host itself.
 
-use crate::Error;
+use super::Error;
 
 /// The parts of an absolute WebSocket URL: whether it is secure, its host, and its
 /// port, the scheme's own when the URL names none.

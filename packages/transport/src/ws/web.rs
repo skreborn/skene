@@ -13,7 +13,7 @@ use js_sys::{ArrayBuffer, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{BinaryType, CloseEvent, Event, MessageEvent};
 
-use crate::{Error, Message, Receiver};
+use super::{Error, Message, Receiver};
 
 /// A JavaScript error as a transport error.
 fn transport(value: &JsValue) -> Error {

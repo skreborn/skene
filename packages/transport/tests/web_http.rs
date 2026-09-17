@@ -3,14 +3,14 @@
 
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
-use skene_http::Request;
+use skene_transport::http::Request;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 async fn the_page_comes_back_whole() {
-  let response = skene_http::get("/").await.expect("a response");
+  let response = skene_transport::http::get("/").await.expect("a response");
 
   assert_eq!(response.status(), 200);
   assert!(response.is_success());

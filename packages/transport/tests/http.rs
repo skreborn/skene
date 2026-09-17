@@ -13,7 +13,7 @@ use std::{
   thread,
 };
 
-use skene_http::{Error, Request, Response};
+use skene_transport::http::{Error, Request, Response};
 
 /// Serves canned answers on a port of its own: `/hello` answers `201` with a header
 /// and a body, `/echo` answers with the body it was sent, anything else `404`.
@@ -113,7 +113,7 @@ fn block_on<F: Future>(future: F) -> F::Output {
 fn a_response_comes_back_whole() {
   let server = serve();
   let response: Response =
-    block_on(skene_http::get(format!("{server}/hello"))).expect("a response");
+    block_on(skene_transport::http::get(format!("{server}/hello"))).expect("a response");
 
   assert_eq!(response.status(), 201);
   assert!(response.is_success());
@@ -124,13 +124,14 @@ fn a_response_comes_back_whole() {
 #[test]
 fn a_failing_status_is_a_response_and_a_dead_host_an_error() {
   let server = serve();
-  let missing = block_on(skene_http::get(format!("{server}/missing"))).expect("a response");
+  let missing =
+    block_on(skene_transport::http::get(format!("{server}/missing"))).expect("a response");
 
   assert_eq!(missing.status(), 404);
   assert!(!missing.is_success());
   assert_eq!(missing.body(), b"nothing here");
 
-  let dead = block_on(skene_http::get("http://127.0.0.1:1/"));
+  let dead = block_on(skene_transport::http::get("http://127.0.0.1:1/"));
 
   assert!(matches!(dead, Err(Error::Transport(_))), "{dead:?}");
 }

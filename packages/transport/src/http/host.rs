@@ -9,7 +9,7 @@ use std::{
   thread,
 };
 
-use crate::{Error, Request, Response};
+use super::{Error, Request, Response};
 
 /// What the thread and the future share: the outcome once there is one, and the waker
 /// to fire then.

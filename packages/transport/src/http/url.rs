@@ -1,6 +1,6 @@
 //! An absolute URL taken apart for a transport that sends its parts separately.
 
-use crate::Error;
+use super::Error;
 
 /// The parts of an absolute HTTP URL: whether it is secure, its authority, and its
 /// path with the query, `/` at least.

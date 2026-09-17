@@ -888,7 +888,7 @@ sit on exactly the footing first-party ones would:
   bounds every render's settling.
 - `Boundary`/`Deferred`—any async inside a boundary defers its streamed chunk.
 
-`skene-http` is the standing proof that the seams suffice: an HTTP client in a crate
+`skene-transport` is the standing proof that the seams suffice: an HTTP client (`http`) in a crate
 of its own that nothing in the framework knows about. A `Request` is a method, a URL,
 headers and a body; `send` is a future resolving to a `Response` with its status, its
 headers and its whole body, any status a response and only a failure on the way an
@@ -899,7 +899,7 @@ reactor as `sleep` is, and on every other host a thread around a plain client
 (`ureq`) whose completion wakes the platform's executor through the future's waker, so
 a terminal app's loop or a headless test's pump polls it on. Dropping the future
 abandons the exchange. An app drives it through the seams it already has:
-`Resource::client` for data a view shows, `spawn` for a task of its own. `skene-ws`
+`Resource::client` for data a view shows, `spawn` for a task of its own. `skene_transport::ws`
 is the WebSocket sibling on the same seams: `connect` is a future resolving to a
 `WebSocket` once the connection stands, `send` writes a message at once, and
 `receive` is a future a task awaits in a loop, each message as it lands and `None`

@@ -5,7 +5,7 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, RequestInit};
 
-use crate::{Error, Request, Response};
+use super::{Error, Request, Response};
 
 /// A JavaScript error as a transport error.
 fn transport(value: &JsValue) -> Error {

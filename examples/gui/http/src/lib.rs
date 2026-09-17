@@ -1,5 +1,5 @@
 //! HTTP from a view: a resource that fetches the app's own asset through
-//! `skene-http`, shown while it loads, once it lands, and again on demand.
+//! `skene_transport::http`, shown while it loads, once it lands, and again on demand.
 //!
 //! The client is a crate on the framework's public seams, so the resource that
 //! drives it is the ordinary one: `Resource::client` loads on the client alone, since
@@ -48,7 +48,7 @@ fn heading() -> impl IntoView {
 /// The quotes fetched into a resource, a line each, with a button fetching them again.
 fn quotes_card() -> impl IntoView {
   let quotes: Resource<Result<Vec<String>, String>> = Resource::client(|| async {
-    let response = skene_http::get(QUOTES)
+    let response = skene_transport::http::get(QUOTES)
       .await
       .map_err(|error| error.to_string())?;
 
@@ -63,7 +63,7 @@ fn quotes_card() -> impl IntoView {
 
   SimpleCard::new().set_spacing(12.).set_children((
     Text::new("Quotes").set_font_weight(600.),
-    Text::new("Fetched from the app's own asset through skene-http.")
+    Text::new("Fetched from the app's own asset through skene_transport::http.")
       .set_font_size(13.)
       .set_color(SimplePalette::MUTED_FOREGROUND),
     derived(move || match quotes.get() {

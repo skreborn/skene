@@ -1,4 +1,4 @@
-//! A WebSocket from a terminal view: a task opens the socket through `skene-ws` on a
+//! A WebSocket from a terminal view: a task opens the socket through `skene_transport::ws` on a
 //! thread of its own, sends a greeting, and lists each message as it lands.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -20,7 +20,7 @@ pub fn app(url: Option<String>) -> impl IntoView {
     let url = url.clone();
 
     async move {
-      let socket = match skene_ws::connect(url).await {
+      let socket = match skene_transport::ws::connect(url).await {
         Ok(socket) => socket,
         Err(error) => {
           state.set(format!("Failed: {error}"));
@@ -37,8 +37,8 @@ pub fn app(url: Option<String>) -> impl IntoView {
 
       while let Some(message) = socket.receive().await {
         let line = match message {
-          skene_ws::Message::Text(text) => text,
-          skene_ws::Message::Binary(bytes) => format!("{} bytes", bytes.len()),
+          skene_transport::ws::Message::Text(text) => text,
+          skene_transport::ws::Message::Binary(bytes) => format!("{} bytes", bytes.len()),
         };
 
         received.update(|lines| lines.push(line));

@@ -23,7 +23,7 @@ use wasi::{
   io::streams::{InputStream, StreamError},
 };
 
-use crate::{Error, Request, Response, url};
+use super::{Error, Request, Response, url};
 
 /// How many bytes one read of the body asks for.
 const READ: u64 = 64 * 1024;
@@ -39,12 +39,12 @@ pub(crate) async fn send(request: Request) -> Result<Response, Error> {
   let fields = Fields::from_list(&entries).map_err(|error| Error::Url(error.to_string()))?;
   let outgoing = OutgoingRequest::new(fields);
   let method = match request.method() {
-    crate::Method::Get => Method::Get,
-    crate::Method::Head => Method::Head,
-    crate::Method::Post => Method::Post,
-    crate::Method::Put => Method::Put,
-    crate::Method::Patch => Method::Patch,
-    crate::Method::Delete => Method::Delete,
+    super::Method::Get => Method::Get,
+    super::Method::Head => Method::Head,
+    super::Method::Post => Method::Post,
+    super::Method::Put => Method::Put,
+    super::Method::Patch => Method::Patch,
+    super::Method::Delete => Method::Delete,
   };
   let scheme = if parts.secure {
     Scheme::Https

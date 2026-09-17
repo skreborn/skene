@@ -406,10 +406,10 @@
   runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Platforms
   test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime
   under a byte-exact snapshot; native: its toolkit). There is no mock platform.
-- HTTP, WebSockets and timers are userland. `skene-http` is an HTTP client built on
+- HTTP, WebSockets and timers are userland. `skene-transport` holds the network clients built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands
   where a third party's would: `fetch` on the web, `wasi:http` through the server
-  leaf's reactor, a thread around `ureq` on other hosts; `skene-ws` is its WebSocket
+  leaf's reactor, a thread around `ureq` on other hosts; `ws` is its WebSocket
   sibling, the browser's socket on the web, `wasi:sockets` with rustls under the
   same client on a server render, and a thread around `tungstenite` elsewhere. The framework ships the seams—`spawn`,
   `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`

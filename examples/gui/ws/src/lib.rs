@@ -1,5 +1,5 @@
 //! A WebSocket from a view: a task opens a socket to a public echo service through
-//! `skene-ws`, a button sends what the field holds, and every message received is
+//! `skene_transport::ws`, a button sends what the field holds, and every message received is
 //! listed.
 //!
 //! The socket is opened by a client-only resource, so the server render carries the
@@ -49,7 +49,7 @@ fn heading() -> impl IntoView {
 
 /// The socket to the echo service, a field sending into it, and what came back.
 fn echo_card() -> impl IntoView {
-  let socket = Signal::opaque(None::<Rc<skene_ws::WebSocket>>);
+  let socket = Signal::opaque(None::<Rc<skene_transport::ws::WebSocket>>);
   let received = Signal::opaque(Vec::<String>::new());
   let draft = Signal::new(String::from("hello from skene"));
   let failure = Signal::opaque(None::<String>);
@@ -64,7 +64,7 @@ fn echo_card() -> impl IntoView {
     }
   };
   let opening: Resource<Result<(), String>> = Resource::client(move || async move {
-    let opened = skene_ws::connect(ECHO)
+    let opened = skene_transport::ws::connect(ECHO)
       .await
       .map(Rc::new)
       .map_err(|error| error.to_string())?;
@@ -75,8 +75,8 @@ fn echo_card() -> impl IntoView {
     spawn(async move {
       while let Some(message) = opened.receive().await {
         let line = match message {
-          skene_ws::Message::Text(text) => text,
-          skene_ws::Message::Binary(bytes) => format!("{} bytes", bytes.len()),
+          skene_transport::ws::Message::Text(text) => text,
+          skene_transport::ws::Message::Binary(bytes) => format!("{} bytes", bytes.len()),
         };
 
         received.update(|lines| lines.push(line));

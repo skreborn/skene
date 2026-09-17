@@ -1,6 +1,4 @@
-//! # skene-http
-//!
-//! An HTTP client for skene apps, on the framework's public seams alone: a request is
+//! An HTTP client, on the framework's public seams alone: a request is
 //! built, sent, and awaited inside any task the facade runs—a `Resource`'s load, a
 //! `spawn`ed future—and the answer comes back as a [`Response`] with its status, its
 //! headers and its body. Nothing in the framework knows this crate exists, so a

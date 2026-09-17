@@ -1,4 +1,4 @@
-//! HTTP from a terminal view: a task fetches a URL through `skene-http` on a thread
+//! HTTP from a terminal view: a task fetches a URL through `skene_transport::http` on a thread
 //! of its own, and the loop's executor wakes the view when the answer lands.
 //!
 //! `spawn` runs the request as a task bound to the view's scope; the signal it writes
@@ -35,7 +35,7 @@ pub fn app(url: Option<String>) -> impl IntoView {
     let url = url.clone();
 
     async move {
-      let outcome = match skene_http::get(url).await {
+      let outcome = match skene_transport::http::get(url).await {
         Err(error) => Fetch::Failed(error.to_string()),
         Ok(response) => Fetch::Landed {
           status: response.status(),

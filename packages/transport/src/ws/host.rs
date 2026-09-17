@@ -13,7 +13,7 @@ use std::{
 
 use tungstenite::{Message as Frame, WebSocket as Socket, stream::MaybeTlsStream};
 
-use crate::{Error, Message, Receiver};
+use super::{Error, Message, Receiver};
 
 /// How long one read waits before yielding the socket to a send.
 const READ_SLICE: Duration = Duration::from_millis(50);

@@ -13,7 +13,7 @@ use std::{
   thread,
 };
 
-use skene_ws::{Error, Message};
+use skene_transport::ws::{Error, Message};
 
 /// An echo server on a port of its own: every message comes back, and `"bye"` closes
 /// the socket from the server's side.
@@ -76,7 +76,7 @@ fn block_on<F: Future>(future: F) -> F::Output {
 #[test]
 fn messages_are_echoed_and_a_close_ends_the_receiving() {
   let server = serve();
-  let socket = block_on(skene_ws::connect(server)).expect("a socket");
+  let socket = block_on(skene_transport::ws::connect(server)).expect("a socket");
 
   socket.send("hello").expect("sent");
   socket.send(vec![1, 2, 3]).expect("sent");
@@ -100,12 +100,12 @@ fn messages_are_echoed_and_a_close_ends_the_receiving() {
 
 #[test]
 fn a_refused_host_is_an_error_and_closing_ends_the_receiving() {
-  let refused = block_on(skene_ws::connect("ws://127.0.0.1:1/"));
+  let refused = block_on(skene_transport::ws::connect("ws://127.0.0.1:1/"));
 
   assert!(matches!(refused, Err(Error::Transport(_))), "{refused:?}");
 
   let server = serve();
-  let socket = block_on(skene_ws::connect(server)).expect("a socket");
+  let socket = block_on(skene_transport::ws::connect(server)).expect("a socket");
 
   socket.close();
 
@@ -114,7 +114,7 @@ fn a_refused_host_is_an_error_and_closing_ends_the_receiving() {
 
 #[test]
 fn a_url_of_another_scheme_is_refused() {
-  let outcome = block_on(skene_ws::connect("http://not-a-socket/"));
+  let outcome = block_on(skene_transport::ws::connect("http://not-a-socket/"));
 
   assert!(matches!(outcome, Err(Error::Url(_))), "{outcome:?}");
 }

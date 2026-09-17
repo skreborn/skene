@@ -1,5 +1,5 @@
 [package]
-name = "skene-ws"
+name = "skene-transport"
 version.workspace = true
 edition.workspace = true
 
@@ -13,8 +13,13 @@ web-sys = { version = "0.3", features = [
   "BinaryType",
   "CloseEvent",
   "Event",
+  "Headers",
   "MessageEvent",
+  "Request",
+  "RequestInit",
+  "Response",
   "WebSocket",
+  "Window",
 ] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
@@ -26,9 +31,7 @@ webpki-roots = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tungstenite = { features = ["rustls-tls-native-roots"], version = "0.30" }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tungstenite = "0.30"
+ureq = "3"
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = "0.3"

@@ -3,7 +3,7 @@
 //! and a URL of another scheme is refused.
 //!
 //! Run under a WASI runtime with the network granted (the workspace's runner):
-//! `cargo test -p skene-ws --target wasm32-wasip2`.
+//! `cargo test -p skene-transport --target wasm32-wasip2`.
 
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
@@ -15,7 +15,7 @@ use std::{
 };
 
 use skene_gui::{Resource, Text, View, derived, spawn, web::render_to_string};
-use skene_ws::{Error, Message};
+use skene_transport::ws::{Error, Message};
 use wasi::{
   io::{
     poll::Pollable,
@@ -189,7 +189,7 @@ fn a_message_sent_during_a_render_is_echoed_before_the_page_serializes() {
     spawn(echo(listener));
 
     let outcome: Resource<Result<Vec<String>, String>> = Resource::new(move || async move {
-      let socket = skene_ws::connect(format!("ws://127.0.0.1:{port}/"))
+      let socket = skene_transport::ws::connect(format!("ws://127.0.0.1:{port}/"))
         .await
         .map_err(|error| error.to_string())?;
       let mut lines = Vec::new();
@@ -235,7 +235,7 @@ fn a_message_sent_during_a_render_is_echoed_before_the_page_serializes() {
 fn a_refused_host_is_an_error() {
   let page = render_to_string(|| {
     let outcome: Resource<Result<(), String>> = Resource::new(|| async {
-      skene_ws::connect("ws://127.0.0.1:1/")
+      skene_transport::ws::connect("ws://127.0.0.1:1/")
         .await
         .map(drop)
         .map_err(|error| error.to_string())
@@ -261,7 +261,7 @@ fn a_refused_host_is_an_error() {
 fn a_url_of_another_scheme_is_refused() {
   let page = render_to_string(|| {
     let outcome: Resource<Result<(), String>> = Resource::new(|| async {
-      skene_ws::connect("http://not-a-socket/")
+      skene_transport::ws::connect("http://not-a-socket/")
         .await
         .map(drop)
         .map_err(|error| match error {
@@ -283,13 +283,13 @@ fn a_url_of_another_scheme_is_refused() {
 }
 
 /// A public echo service over TLS; needs the network, so it runs on request alone:
-/// `cargo test -p skene-ws --target wasm32-wasip2 --test wasi -- --ignored`.
+/// `cargo test -p skene-transport --target wasm32-wasip2 --test wasi_ws -- --ignored`.
 #[test]
 #[ignore = "reaches a public echo service over the network"]
 fn a_public_echo_service_answers_over_tls() {
   let page = render_to_string(|| {
     let outcome: Resource<Result<String, String>> = Resource::new(|| async {
-      let socket = skene_ws::connect("wss://echo.websocket.org/")
+      let socket = skene_transport::ws::connect("wss://echo.websocket.org/")
         .await
         .map_err(|error| error.to_string())?;
 

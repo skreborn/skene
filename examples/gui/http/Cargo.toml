@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 skene-gui.workspace = true
-skene-http.workspace = true
+skene-transport.workspace = true
 skene-simple-gui.workspace = true
 
 [lints]

@@ -42,7 +42,7 @@ use wasi::{
   },
 };
 
-use crate::{Error, Message, Receiver, url};
+use super::{Error, Message, Receiver, url};
 
 /// How many bytes one read asks the host for.
 const READ: u64 = 64 * 1024;

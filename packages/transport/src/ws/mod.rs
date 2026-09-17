@@ -1,7 +1,5 @@
-//! # skene-ws
-//!
-//! A WebSocket client for skene apps, on the framework's public seams alone, as
-//! `skene-http` is: [`connect`] is a future resolving to a [`WebSocket`], a message is
+//! A WebSocket client on the framework's public seams alone, as [`http`](super::http)
+//! is: [`connect`] is a future resolving to a [`WebSocket`], a message is
 //! sent at once, and [`receive`](WebSocket::receive) is a future a task awaits in a
 //! loop, resolving with each message as it lands and with `None` once the socket has
 //! closed. Nothing in the framework knows this crate exists.

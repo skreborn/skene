@@ -105,6 +105,9 @@ every item is proven through tmux and ssh as well as bare.
 ## Decided against, for the record
 
 - Hot-patching: state-preserving reloads come from the snapshot instead.
+- A WASI server leaf under a wasmtime runner: the server leaf compiles natively, selected
+  by `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
+  host is a runner someone may write.
 - A custom devtools/inspector: native realizes into the platform view hierarchy, so the
   platform's own inspectors already work.
 - Islands architecture: compiled no-JS styling already removes most reasons a static

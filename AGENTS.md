@@ -4,7 +4,7 @@
 
 - Skene is a **client-side** framework. No server-side features, ever: no server
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
-  runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
+  app's server binary is a plain command a user's server runs or embeds, not a server.
 - The spine (`skene-reactive` + `skene-core` + `skene-common`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the
@@ -45,10 +45,17 @@
   terminal shows it through its graphics protocol where one is proven, the server leaf
   renders it empty; the native realization comes with the native platform.
 - Selection: by **facade dependency** (GUI apps depend on `skene-gui`, terminal apps on
-  `skene-tui`), then by target within a facade (wasm32 → web; native triples → the
-  native platform, later; every other host → the headless platform). No feature flags.
-  Target-gating is the enforcement layer: the web csr/ssr leaves stay split on
-  `target_os` (`unknown`/`wasi`), so the server leaf physically cannot touch the DOM. A
+  `skene-tui`), then by target within a facade (`wasm32-unknown-unknown` → the web's
+  browser leaf; native triples → the native platform, later; every other host → the
+  headless platform), and where one triple hosts several platforms the build names the
+  platform by a cfg: `--cfg skene_platform="server"` selects the web's server leaf
+  natively, set by the CLI for a server build and through `RUSTFLAGS` or
+  `.cargo/config.toml` by hand. A cfg is a build fact like the triple, chosen once,
+  unifying nothing, and never a cargo feature. No feature flags. Target-gating is the
+  enforcement layer: the browser leaf compiles on `wasm32-unknown-unknown` alone and
+  the server leaf where the build names it (`skene_leaf`, one axis the web and GUI
+  crates derive from the triple and the cfg; `browser`, `server` or `host`), so the
+  server leaf physically cannot touch the DOM. A
   cargo feature may only **add items**: never a trait bound, a type, a variant or a
   platform. No cargo feature exists in the workspace, and `cargo hack --feature-powerset`
   is part of the gate so none creeps back in.
@@ -171,7 +178,7 @@
     turns any declared condition into a memo, and a box's measured size reaches a view
     through `Platform::observe_size` and an app through a `SizeHandle` bound to the box. On
     the web they are live after hydration and hold the server's answer before it; the
-    server's answer comes from client hints when the runner is given them, else from
+    server's answer comes from client hints when the render is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive
     what may wait for it.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
@@ -404,16 +411,15 @@
 - View logic tests run headless via `skene-headless`, the host platform, which implements
   the whole `Platform` trait so nothing is wasm-gated for want of a platform; its executor
   runs when a test calls `pump_tasks`, so a `Resource` loads in a test too. Platforms
-  test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: wasmtime
-  under a byte-exact snapshot; native: its toolkit). There is no mock platform.
+  test against their real sinks (web: real DOM via `wasm-bindgen-test`; ssr: the server
+  leaf natively under a byte-exact snapshot; native: its toolkit). There is no mock platform.
 - HTTP, WebSockets and timers are userland. `skene-transport` holds the network clients built on
   the public seams alone, in a crate nothing in the framework knows about, so it stands
-  where a third party's would: `fetch` on the web, `wasi:http` through the server
-  leaf's reactor, a thread around `ureq` on other hosts; `ws` is its WebSocket
-  sibling, the browser's socket on the web, `wasi:sockets` with rustls under the
-  same client on a server render, and a thread around `tungstenite` elsewhere. The framework ships the seams—`spawn`,
-  `Resource`, `Boundary`, the server leaf's reactor (`register` for a `wasi:*`
-  pollable, `sleep`, the render deadline), and `Platform::schedule`, a one-shot action on
+  where a third party's would: `fetch` on the web and a thread around `ureq` on every
+  other host, a server render included; `ws` is its WebSocket sibling, the browser's
+  socket on the web and a thread around `tungstenite` elsewhere. The framework ships
+  the seams—`spawn`, `Resource`, `Boundary`, the server leaf's executor (`sleep`, the
+  render deadline), and `Platform::schedule`, a one-shot action on
   the platform's clock that a view's delay waits on (the tooltip's hover delay; the
   headless platform and the terminal fire it from the hand-stepped clock a test
   advances, the server never)—so third-party integrations sit on the same
@@ -495,25 +501,22 @@
 
 - Always format with `cargo +nightly fmt`.
 - Tests run in three tiers, and the host tier alone proves nothing about the web. Run
-  `cargo test --workspace` for the host, `cargo test -p skene-gui -p skene-web --target
-  wasm32-wasip2` for the server leaf (its runner is `wasmtime -S http -S
-  inherit-network -S allow-ip-name-lookup`, so a binary importing `wasi:http` or
-  `wasi:sockets` links and reaches the network), and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
+  `cargo test --workspace` for the host, `RUSTFLAGS='--cfg skene_platform="server"'
+  cargo test -p skene-gui -p skene-web` for the server leaf (native, the byte-exact
+  render snapshot among them), and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
   browser leaf, which drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
   hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the
   same run. Every
-  `web_*.rs` is gated to a wasm target, so on the host those binaries compile to zero tests and report
+  `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests and report
   `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
   every host test while breaking the browser outright. Read the `test result:` line rather
-  than the exit code or a `FAILED` grep, because both wasm tiers mislead: wasmtime aborts on
-  the first panic, hiding every test after it in that binary and printing `Error: failed to
-  run main module` instead of a `FAILED` line, while the browser runner panics on cleanup
-  after reporting and exits non-zero even when everything passed. That cleanup panic
+  than the exit code or a `FAILED` grep, because the browser tier misleads: its runner
+  panics on cleanup after reporting and exits non-zero even when everything passed. That cleanup panic
   (`PermissionDenied`) also stops cargo before the remaining binaries run, so the one-command
   browser form silently covers only the first of them—run each browser binary by name
   (`--test web_dom`, `web_hydrate`, `web_painted`, `web_resource`, `web_task`; the other `web_*.rs` are
-  wasi-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
+  server-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
   reads as a passing one. `skene-web`, `acme-map` and the `gallery` example carry browser
   binaries of their own (`web_dom`, `web_map`, `web_axe`—the last runs axe-core over the
   whole gallery); run them the same way. A browser failure also poisons the platform

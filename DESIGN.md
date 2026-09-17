@@ -9,9 +9,9 @@ whatever platform the build selects: the web (client-rendered, server-rendered, 
 statically generated), the terminal, and painted-native desktop and mobile when that
 platform lands. The reactive engine is signal-based and fine-grained; there is no virtual
 DOM and no tree diffing. The framework ships no server-side features—no server functions,
-no backend integrations. What it ships instead is a renderable artifact and an embeddable
-runner, so any server can serve a skene frontend without the framework becoming a server
-framework.
+no backend integrations. What it ships instead is a render the app's own server binary
+performs as a plain command, so any server can serve a skene frontend without the
+framework becoming a server framework.
 
 The building block is a **view** (the `View` trait). "View" is the canonical term
 throughout—there is no separate "widget" concept.
@@ -39,7 +39,7 @@ skene-common      every built-in view ONCE, generic over P: Platform—Container
       │
       ├── skene-web       Platform for the web: DOM sink (csr) + HTML/CSS serializer
       │                   (ssr) over one node record, the compiler, the interner,
-      │                   hydration, streaming, the WASI reactor, client hints;
+      │                   hydration, streaming, the server executor, client hints;
       │                   escape traits WebMarkup (both leaves), WebDom (browser)
       ├── skene-headless  Platform for the host: realizes into an inspectable record
       │                   store so view logic tests run without a platform; the
@@ -58,8 +58,6 @@ skene-simple     the Simple design language over skene-common, generic over P: t
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency;
                  gui and tui alias the types to each facade's ActivePlatform, with a prelude
-skene-runner     host-side library embedding wasmtime around the app's server build:
-                 renders a route or a stream, reads client hints, enumerates routes
 skene-macros     #[main], #[lazy], #[derive(Store)]
 skene-cli        the skene command: build and run per target, the dev server, static
                  generation, skene.toml assets
@@ -153,8 +151,8 @@ platform crate, since it is not a shared contract.
   tokens, the expression evaluator and the environment), and runs tasks when a test
   pumps them, giving
   view logic fast headless tests without pretending to be a platform. Platforms test against
-  their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr: wasmtime under a
-  byte-exact snapshot; native: its toolkit).
+  their real sinks (web: a browser DOM via `wasm-bindgen-test`; ssr: the server leaf
+  natively under a byte-exact snapshot; native: its toolkit).
 
 ## Composition
 
@@ -481,7 +479,7 @@ terminal's size and background, the headless store's settings. `media::watch(&me
 turns any declared condition into a memo rendered from the same query text the class
 compiler renders, so the signal and the stylesheet cannot disagree. A box's measured size
 reaches a view through `Platform::observe_size` (the lazy column's viewport, the slider's
-track). On the server these hold the client hints the runner was given
+track). On the server these hold the client hints the render was given
 (`Sec-CH-Prefers-Color-Scheme`, `Sec-CH-Viewport-Width`, `Sec-CH-Prefers-Reduced-Motion`;
 Chromium only, opt-in through `Accept-CH`/`Critical-CH`), else documented defaults.
 
@@ -579,25 +577,32 @@ into a layer and interpolate named pairs.
 
 ### Web (`skene-web`)
 
-Two leaves over one node record, selected by target and enforced by it—`web-sys` does not
-exist on `wasm32-wasip2`, so the server leaf *cannot* touch the DOM:
+Two leaves over one node record, selected by the build and enforced by it: the browser
+leaf compiles on `wasm32-unknown-unknown` alone and the server leaf where the build names
+the server platform (`--cfg skene_platform="server"`, on any host), and the `WebDom`
+escape trait exists on the browser leaf alone, so the server leaf *cannot* touch the DOM:
 
-- **csr** (`target_os = "unknown"`)—the browser. DOM sink, the stylesheet sink,
+- **csr** (`skene_leaf = "browser"`)—the browser. DOM sink, the stylesheet sink,
   root-level event delegation with a stamped node id (one listener per event type,
   `scroll` and enter/leave included), one shared `ResizeObserver`, hydration
   (creation-order `data-h` markers, loud mismatch, the server's stylesheet adopted rather
   than duplicated, a live input value that differs from the serialized one written into
   its signal), scroll and focus restoration keyed by a segment's end anchor, the
   `WebDom` escape trait, the History binding and the head.
-- **ssr** (`target_os = "wasi"`)—the serializer. Renders its string tree to HTML plus the
-  interned stylesheet; drives async to a fixpoint on a WASI-`poll` reactor before
-  serializing, under a render deadline; streams in document order around `Deferred`
+- **ssr** (`skene_leaf = "server"`)—the serializer. Renders its string tree to HTML plus
+  the interned stylesheet; drives async to a fixpoint on the host executor, parked until
+  a waker fires, before serializing, under a render deadline; streams in document order around `Deferred`
   boundaries with a style delta per chunk; serializes resource state for the client to
   adopt; takes client hints as render input. The raw handles do not exist here, painted
   content renders empty, and handlers are inert.
 
-The app compiles to wasm for both leaves; the same module serves CSR in the browser and
-SSR/SSG in a runner.
+The app compiles to wasm for the browser and natively for the server: the server binary
+renders as a plain command and, as a render worker over its stdin, serves the CLI's dev
+server and generator. The two builds must agree on every byte they both produce, since
+hydration adopts the server's class names: a `Color` converts through the pure-Rust
+`libm` on every target rather than the host's math library, which differs by an ulp in
+`powf`, `cbrt` and `atan2`, and a probe over thousands of colors rendered on the host
+and on wasm proved the bits equal.
 
 ### Headless (`skene-headless`)
 
@@ -858,10 +863,13 @@ headless platform is exactly such a crate in all but ownership.
 ## Selection and entry
 
 Selection is by **facade dependency** first—a GUI app depends on `skene-gui`, a
-terminal app on `skene-tui`—and by target within a facade: `skene-gui` resolves wasm32
-to the web platform, every other host to the headless platform, and will resolve native
-triples to the native platform, with no feature flag anywhere. Target-gating stays the
-enforcement layer where it applies. A cargo feature may only add items; never a bound, a
+terminal app on `skene-tui`—and by target within a facade: `skene-gui` resolves
+`wasm32-unknown-unknown` to the web's browser leaf, a build naming the server platform
+(`--cfg skene_platform="server"`) to its server leaf on any host, every other host to the
+headless platform, and will resolve native triples to the native platform, with no
+feature flag anywhere. Where one triple hosts several platforms the build names the
+platform by a cfg, chosen once and unifying nothing, as `getrandom` names its backend.
+Target-gating stays the enforcement layer where it applies. A cargo feature may only add items; never a bound, a
 type, a variant or a platform; the workspace has none.
 
 A facade is the one place allowed to name its platforms, which is why the shared
@@ -883,7 +891,7 @@ sit on exactly the footing first-party ones would:
 - `Resource`—in the engine: load into a signal with a `Loading`/`Ready`/`Refetching`
   state that keeps the last value; the GUI facade's newtype adds hydration across the
   SSR boundary (`new` by order, `tagged` by tag, `client` opting out).
-- The server leaf's reactor—`sleep`, and a render deadline (`set_render_deadline`) that
+- The server leaf's executor—`sleep`, and a render deadline (`set_render_deadline`) that
   bounds every render's settling.
 - `Boundary`/`Deferred`—any async inside a boundary defers its streamed chunk.
 
@@ -892,24 +900,19 @@ of its own that nothing in the framework knows about. A `Request` is a method, a
 headers and a body; `send` is a future resolving to a `Response` with its status, its
 headers and its whole body, any status a response and only a failure on the way an
 error. The transport is the platform's, chosen by target: the browser's `fetch` on
-the web, `wasi:http`'s outgoing handler on a server render, with each wait on the
-host—the response's arrival, the body's next chunk—registered with the server leaf's
-reactor as `sleep` is, and on every other host a thread around a plain client
-(`ureq`) whose completion wakes the platform's executor through the future's waker, so
-a terminal app's loop or a headless test's pump polls it on. Dropping the future
+the web, and on every other host, a server render included, a thread around a plain
+client (`ureq`) whose completion wakes the platform's executor through the future's
+waker, so a terminal app's loop, a headless test's pump or a parked server render polls
+it on. Dropping the future
 abandons the exchange. An app drives it through the seams it already has:
 `Resource::client` for data a view shows, `spawn` for a task of its own. `skene_transport::ws`
 is the WebSocket sibling on the same seams: `connect` is a future resolving to a
 `WebSocket` once the connection stands, `send` writes a message at once, and
 `receive` is a future a task awaits in a loop, each message as it lands and `None`
-once the socket has closed; the browser's `WebSocket` on the web, a thread around
-`tungstenite` on other hosts reading into the same receiver, and on a server render
-a connection through `wasi:sockets` (rustls over it for `wss://`, the bundled roots
-verifying the host) with the same client's handshake and frames over it, each wait
-registered with the reactor and the frames read as the receiving future is polled,
-so a page whose data arrives over a socket renders with it; the runner grants the
-network for that. A socket opened during a render lives for that render, as a fetch
-does. Dropping the socket closes it.
+once the socket has closed; the browser's `WebSocket` on the web and a thread around
+`tungstenite` on every other host reading into the same receiver, a server render
+included, so a page whose data arrives over a socket renders with it. A socket opened
+during a render lives for that render, as a fetch does. Dropping the socket closes it.
 
 ## Router (`skene_common::routing`)
 
@@ -919,16 +922,22 @@ the app opts in, through `Router::set_commit`), ssr takes the route as render in
 the terminal keeps it in memory. SSG enumerates the route table (`StaticRoutes`) to know
 what to render. The router depends on the engine alone.
 
-## SSR, SSG, and the runner (`skene-runner`)
+## SSR, SSG, and the server binary
 
 Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
-`Rendered::page` assembles a document. The app compiles once to `wasm32-wasip2`; the
-runner—a plain Rust library embedding wasmtime—loads that module and exposes the render
-calls to whatever server the user already has, hands each request's headers to the
-guest as `RenderHints` and names the response headers that request them. SSG is the
-same runner run at build time by `skene build web --static`; the CLI's dev server
-(`skene run web`, `--ssr` to render per request) is where the development conveniences
+`Rendered::page` assembles a document. The app's server binary is built natively with the
+server platform named (`skene build web --static` and `skene run web --ssr` do it; by
+hand, `RUSTFLAGS='--cfg skene_platform="server"' cargo build --bin app-server`), and
+`#[main]` makes it a plain command: `app-server /path` prints the page, `--routes` the
+enumerable routes, `--stream /path` the page as it flushes, and `--serve` renders one
+request after another read from stdin—the path, the hint headers, an empty line—so a
+user's server runs it as a command or embeds `render_to_string` directly, hands each
+request's headers to the render as `RenderHints` and names the response headers that
+request them. A render occupies the thread it runs on, since the runtime and the scene are
+that thread's, and starts from a clean one every time. SSG is the same binary run at build
+time by `skene build web --static`; the CLI's dev server (`skene run web`, `--ssr` to
+render per request through a `--serve` worker) is where the development conveniences
 live. The terminal splits the same way: `skene run tui` keeps the build loop and its
 logs in the invoking terminal and publishes each built binary on its state port, and
 `skene attach <port>` runs the app in a second terminal, swapping each generation in
@@ -1010,3 +1019,8 @@ Recorded because they were load-bearing and the reasons they fell matter:
 - **Transitional `next` namespaces** (`skene_core::next`, `skene_web::next`,
   `skene_simple::next`) carried the new model beside the old during the redesign and
   are flattened into their crate roots.
+- **A WASI server leaf (`wasm32-wasip2`) under a wasmtime runner.** A render sandboxed per
+  instance could reach nothing but `wasi:*`, so every client a page needed was a second
+  transport, the runner a second host, and a crate a server reaches for was out of
+  reach. The server leaf compiles natively, selected by a build-set cfg, every crate on
+  the host reaches a render, and wasm hosting is a runner someone may write.

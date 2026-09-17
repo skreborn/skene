@@ -13,10 +13,12 @@ use std::{
 };
 
 use percent_encoding::percent_decode_str;
-use skene_runner::{Runner, hint_response_headers};
 use url::Url;
 
-use crate::manifest::App;
+use crate::{
+  manifest::App,
+  render::{Renderer, hint_response_headers},
+};
 
 /// A request's headers, as `(name, value)` in arrival order.
 type Headers = Vec<(String, String)>;
@@ -29,7 +31,7 @@ pub struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
   state: Arc<Mutex<Option<Vec<u8>>>>,
   notice: Arc<Mutex<Notice>>,
-  renderer: Arc<Mutex<Option<Runner>>>,
+  renderer: Arc<Mutex<Option<Renderer>>>,
   binary: Arc<Mutex<Option<Binary>>>,
 }
 
@@ -79,31 +81,27 @@ impl Binary {
 }
 
 impl Dev {
-  /// Renders routes through `runner` from now on, each request's client hints
+  /// Renders routes through `renderer` from now on, each request's client hints
   /// forwarded; `None` returns to serving the generated page.
-  pub fn set_renderer(&self, runner: Option<Runner>) {
+  pub fn set_renderer(&self, renderer: Option<Renderer>) {
     *self
       .renderer
       .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner) = runner;
+      .unwrap_or_else(std::sync::PoisonError::into_inner) = renderer;
   }
 
   /// Renders `route` against the client hints among `headers`, when a renderer is set.
   fn render(&self, route: &str, headers: &[(String, String)]) -> Option<Result<String, String>> {
-    let renderer = self
+    let mut renderer = self
       .renderer
       .lock()
       .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let runner = renderer.as_ref()?;
+    let renderer = renderer.as_mut()?;
     let headers = headers
       .iter()
       .map(|(name, value)| (name.as_str(), value.as_str()));
 
-    Some(
-      runner
-        .render_with_headers(route, headers)
-        .map_err(|error| format!("{error:#}")),
-    )
+    Some(renderer.render(route, headers))
   }
 
   /// Tells every connected page to reload, dropping streams that went away.

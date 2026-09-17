@@ -1,4 +1,4 @@
-//! The build steps: cargo to wasm, wasm-bindgen to bindings, the runner to pages.
+//! The build steps: cargo to wasm, wasm-bindgen to bindings, the server binary to pages.
 
 use std::{fs, path::Path, process::Command};
 
@@ -190,21 +190,35 @@ fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
   })
 }
 
-/// Builds the app's server binary for `wasm32-wasip2` and returns the artifact path.
+/// The flag naming the server platform, which every crate of a server build sees.
+const SERVER_CFG: &str = "--cfg skene_platform=\"server\"";
+
+/// Builds the app's server binary natively, with the server platform named, and
+/// returns its path.
+///
+/// The flag joins `RUSTFLAGS` from the environment; a `rustflags` set in a cargo
+/// configuration file is superseded, as any `RUSTFLAGS` supersedes it.
 pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, String> {
   let server_bin = app.server_bin.as_deref().ok_or(
-    "skene.toml declares no [app] server-bin; `build web --static` renders through the \
-     server binary",
+    "skene.toml declares no [app] server-bin; a server render runs through the server \
+     binary",
   )?;
+  let mut rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
+
+  if !rustflags.contains(SERVER_CFG) {
+    if !rustflags.is_empty() {
+      rustflags.push(' ');
+    }
+
+    rustflags.push_str(SERVER_CFG);
+  }
+
   let mut command = Command::new("cargo");
 
-  command.current_dir(&app.workspace_root).args([
-    "build",
-    "--target",
-    "wasm32-wasip2",
-    "-p",
-    &app.package,
-  ]);
+  command
+    .current_dir(&app.workspace_root)
+    .env("RUSTFLAGS", rustflags)
+    .args(["build", "-p", &app.package, "--bin", server_bin]);
 
   if release {
     command.arg("--release");
@@ -217,15 +231,15 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
   Ok(
     app
       .workspace_root
-      .join("target/wasm32-wasip2")
+      .join("target")
       .join(profile)
-      .join(format!("{server_bin}.wasm")),
+      .join(server_bin),
   )
 }
 
-/// Statically generates through the embedded runner into `<app>/dist/web`, replacing
-/// the folder wholesale, assets alongside: the given routes, or—given none—every
-/// route the app enumerates.
+/// Statically generates through the app's server binary into `<app>/dist/web`,
+/// replacing the folder wholesale, assets alongside: the given routes, or—given
+/// none—every route the app enumerates.
 ///
 /// Each page carries its full content as markup and works without JavaScript; the
 /// client bundle lands beside the pages and every page boots it, so a capable client
@@ -240,11 +254,11 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
   generate_bindings(app, release)?;
   crate::split::split_web(app, release)?;
 
-  let runner = skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))?;
+  let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone())?;
   // No explicit routes: render every route the app enumerates (see
   // `install_static_router`), or the root alone.
   let routes = if routes.is_empty() {
-    let enumerated = runner.routes().map_err(|error| format!("{error:#}"))?;
+    let enumerated = renderer.routes()?;
 
     if enumerated.is_empty() {
       vec!["/".to_owned()]
@@ -258,9 +272,9 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
   };
 
   for route in &routes {
-    let page = runner
-      .render(route)
-      .map_err(|error| format!("render {route}: {error:#}"))?;
+    let page = renderer
+      .render(route, [])
+      .map_err(|error| format!("render {route}: {error}"))?;
     let directory = out.join(route.trim_start_matches('/'));
 
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;

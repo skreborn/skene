@@ -9,6 +9,8 @@ mod manifest;
 #[cfg(not(target_arch = "wasm32"))]
 mod pipeline;
 #[cfg(not(target_arch = "wasm32"))]
+mod render;
+#[cfg(not(target_arch = "wasm32"))]
 mod server;
 #[cfg(not(target_arch = "wasm32"))]
 mod split;
@@ -204,11 +206,11 @@ mod host {
     serve(&app, port, Some(&dev))
   }
 
-  /// Builds the app's server binary and loads it into a runner.
-  fn load_renderer(app: &App, release: bool) -> Result<skene_runner::Runner, String> {
+  /// Builds the app's server binary and starts it as a render worker.
+  fn load_renderer(app: &App, release: bool) -> Result<crate::render::Renderer, String> {
     let artifact = pipeline::build_server(app, release)?;
 
-    skene_runner::Runner::load(&artifact).map_err(|error| format!("{error:#}"))
+    crate::render::Renderer::load(artifact, app.dir.clone())
   }
 
   /// The terminal build loop: build, publish the binary for an attached terminal, and

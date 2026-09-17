@@ -58,7 +58,7 @@ fn app() -> impl IntoView {
 
 `#[main]` expands to whichever entry the target has: in the browser it launches the
 app, hydrating a server-rendered page in place; on the server leaf it renders the
-requested path to stdout (`wasmtime counter-server.wasm /` prints the page); on the
+requested path to stdout (`counter-server /` prints the page); on the
 host it builds the tree against the headless platform, which is what view tests run on.
 
 ## A terminal app
@@ -119,7 +119,6 @@ skene-common          every built-in view once, generic over the platform; the p
 skene-gui             the GUI facade: aliases over the selected platform
 skene-simple          the Simple component library over skene-common, generic; its gui and
                       tui modules alias it to each facade with a prelude
-skene-runner          a host library embedding wasmtime around the server build
 skene-macros          #[main], #[lazy], #[derive(Store)]
 skene-cli             the `skene` command
 ```
@@ -129,14 +128,13 @@ skene-cli             the `skene` command
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<P>`, the zero-sized `Platform` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
 | `skene-common` | `packages/common` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Raw*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuItem` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello; `gui` (`GuiExt`, the pixel `Typography`), `tui` (`TuiExt`, `BorderGlyphs`, the terminal `Typography`) and `routing` (`Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds). |
-| `skene-web` | `packages/web` | The web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
+| `skene-web` | `packages/web` | The web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the server executor, client hints; the `WebMarkup` and `WebDom` escape traits. |
 | `skene-headless` | `packages/headless` | The host `Platform`: records what any platform receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
 | `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
 | `skene-tui` | `packages/tui` | The terminal facade and platform: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
 | `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `tui` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
-| `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
-| `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, `wasi:http` through the server leaf's reactor on a server render, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` on other hosts, `wasi:sockets` with rustls on a server render). |
+| `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
 | `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state-preserving restarts, the terminal build loop and the terminal it attaches to, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes
@@ -168,7 +166,7 @@ in force for the whole document.
 ## Build & run
 
 ```sh
-rustup target add wasm32-unknown-unknown wasm32-wasip2
+rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
@@ -192,11 +190,11 @@ cell, drawn where the terminal proves the text sizing protocol). `examples/third
 framework. Every output lands under `<app>/dist/<target>`; `cargo skene` runs the
 workspace-local CLI (`cargo install --path packages/cli` makes it `skene`).
 
-The server build of a GUI app is a plain command, with no integration at all:
+The server build of a GUI app is a plain, native command, with no integration at all:
 
 ```sh
-cargo build -p counter --target wasm32-wasip2
-wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
+RUSTFLAGS='--cfg skene_platform="server"' cargo build -p counter --bin counter-server
+target/debug/counter-server /   # prints the page
 ```
 
 ## Testing
@@ -204,18 +202,17 @@ wasmtime target/wasm32-wasip2/debug/counter-server.wasm /   # prints the page
 Three tiers, and the host tier alone proves nothing about the web:
 
 ```sh
-cargo test --workspace                                    # host: the engine, the spine, every view on the headless platform
-cargo test -p skene-gui --target wasm32-wasip2            # server leaf: wasmtime, a byte-exact render snapshot
-cargo test -p skene-gui --target wasm32-unknown-unknown   # browser leaf: a real DOM through geckodriver
+cargo test --workspace                                                          # host: the engine, the spine, every view on the headless platform
+RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-gui -p skene-web   # server leaf: native, a byte-exact render snapshot
+cargo test -p skene-gui --target wasm32-unknown-unknown                         # browser leaf: a real DOM through geckodriver
 ```
 
-Read the `test result:` lines rather than the exit codes: wasmtime aborts on the first
-panic and prints `Error: failed to run main module` instead of a `FAILED` line, and the
-browser runner panics on cleanup after reporting, which stops cargo before the
-remaining binaries run—so run each browser binary by name (`--test web_dom`,
-`web_hydrate`, `web_painted`, `web_resource`, `web_task`) and add the totals. `skene-web` carries its
-own `web_dom` and `web_ssr` binaries on the same two targets, and the `gallery` example
-runs axe-core over every built-in in `web_axe`.
+Read the `test result:` lines rather than the exit codes: the browser runner panics on
+cleanup after reporting, which stops cargo before the remaining binaries run—so run
+each browser binary by name (`--test web_dom`, `web_hydrate`, `web_painted`,
+`web_resource`, `web_task`) and add the totals. `skene-web` carries its own `web_dom` and
+`web_ssr` binaries on the browser and server leaves, and the `gallery` example runs
+axe-core over every built-in in `web_axe`.
 
 ## Extending
 

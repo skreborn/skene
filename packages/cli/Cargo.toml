@@ -19,7 +19,6 @@ toml = "0.8"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify = "8"
 percent-encoding = "2"
-skene-runner.workspace = true
 url = "2"
 wasm-split-cli = "0.8.0-alpha.1"
 

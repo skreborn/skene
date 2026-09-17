@@ -166,6 +166,8 @@ fn construct(path: &TokenStream, fields: &Fields, body: &TokenStream) -> TokenSt
 }
 
 /// Expands `#[derive(Snapshot)]`.
+// One expansion start to end; length is the generated surface, not complexity.
+#[expect(clippy::too_many_lines)]
 pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
   let reactive = reactive();
@@ -274,14 +276,10 @@ pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         }
       }
 
-      let absent = match &default_variant {
-        Some(ident) => quote!(Some(Self::#ident)),
-        None => quote!(None),
-      };
-      let fallback = match &default_variant {
-        Some(ident) => quote!(Some(Self::#ident)),
-        None => quote!(None),
-      };
+      let fallback = default_variant
+        .as_ref()
+        .map_or_else(|| quote!(None), |ident| quote!(Some(Self::#ident)));
+      let absent = fallback.clone();
 
       quote! {
         fn record(&self, __recorder: &mut #reactive::Recorder) {

@@ -404,7 +404,7 @@ mod convert {
 
   /// One linear-light component to sRGB.
   pub fn linear_to_srgb(component: f32) -> f32 {
-    if component.abs() <= 0.0031308 {
+    if component.abs() <= 0.003_130_8 {
       component * 12.92
     }
     else {

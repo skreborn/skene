@@ -3,7 +3,11 @@
 //! A third-party low-level view written against the terminal platform's escape trait: a
 //! [`Sparkline`] paints bar glyphs through [`CellPainter`] into an ordinary
 //! [`Container`] that sizes it, so it composes with wrappers, themes and events as a
-//! built-in does.
+//! built-in does, and hands the same box a pixel painter through [`Painting`], so a
+//! terminal that proves a graphics protocol draws the bars at pixel height over the
+//! glyphs while every other terminal keeps the glyphs: the floor always stands and the
+//! upgrade arrives when the platform proves it, with nothing for the view's user to
+//! choose.
 //!
 //! Host-only: on a wasm target the crate is empty.
 
@@ -11,7 +15,7 @@
 
 use std::marker::PhantomData;
 
-use skene_common::{Container, realize::with_sink};
+use skene_common::{Container, Painting, kurbo::Rect, realize::with_sink};
 use skene_core::{AnyKind, Color, NodeId, Platform, View};
 use skene_tui::CellPainter;
 
@@ -37,7 +41,8 @@ impl<P: Platform> Sparkline<P> {
     }
   }
 
-  /// Sets the bars' color; without one they take the ambient foreground.
+  /// Sets the bars' color; without one the glyphs take the ambient foreground and the
+  /// pixels a mid gray.
   #[inline(always)]
   pub const fn set_color(mut self, color: Color) -> Self {
     self.color = Some(color);
@@ -48,15 +53,17 @@ impl<P: Platform> Sparkline<P> {
 
 impl<P: Platform> AnyKind for Sparkline<P> {}
 
-impl<P: Platform<Scalar = u32> + CellPainter> View<P> for Sparkline<P> {
+impl<P: Platform<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P> {
   fn build(self) -> NodeId {
     let width = u32::try_from(self.values.len()).unwrap_or(u32::MAX);
     let node = Container::<P>::new().set_width(width).set_height(1).build();
     let levels = levels(&self.values);
+    let pixel_levels = levels.clone();
     let color = self.color;
 
     with_sink::<P, _>(node, |sink| {
-      P::default().paint(
+      CellPainter::paint(
+        &P::default(),
         sink,
         Box::new(move |cells, _| {
           for (x, level) in levels.iter().enumerate() {
@@ -67,6 +74,31 @@ impl<P: Platform<Scalar = u32> + CellPainter> View<P> for Sparkline<P> {
             if let Some(color) = color {
               cells.set_foreground(x, 0, color);
             }
+          }
+        }),
+      );
+      Painting::paint(
+        &P::default(),
+        sink,
+        Box::new(move |canvas, size| {
+          let count = u32::try_from(pixel_levels.len().max(1)).unwrap_or(u32::MAX);
+          let bar = f64::from(size.width) / f64::from(count);
+          let brush = color.unwrap_or(Color::srgb(0.5, 0.5, 0.5));
+
+          for (x, level) in pixel_levels.iter().enumerate() {
+            let level = f64::from(u8::try_from(*level).unwrap_or(7));
+            let height = f64::from(size.height) * (level + 1.) / 8.;
+            let left = f64::from(u32::try_from(x).unwrap_or(u32::MAX)) * bar;
+
+            canvas.fill(
+              &Rect::new(
+                left,
+                f64::from(size.height) - height,
+                left + bar,
+                f64::from(size.height),
+              ),
+              brush,
+            );
           }
         }),
       );

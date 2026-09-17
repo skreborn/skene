@@ -181,6 +181,18 @@
     server's answer comes from client hints when the render is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive
     what may wait for it.
+- **Every realization has a floor the platform always has and an upgrade a signal
+  proves, and nothing an app writes changes when the upgrade arrives.** The choice
+  belongs to the platform when the floor is its own drawing (the terminal's backdrop in
+  cells then in pixels, text at one cell then sized, truecolor over sixteen colors, a
+  WebGPU canvas over a CPU one, anchor positioning over a measured rectangle) and to
+  the view when the floor is another view (`Painted::set_fallback`, the picker's
+  `<select>`, `Enhance`). A low-level view hands a platform both forms where it has
+  both, as `acme-sparkline` hands the terminal a cell painter and a pixel painter for
+  one box, and the platform shows the upgrade where it proved it. Only a low-level
+  view, written against an escape trait, ever concerns itself with what a platform
+  can do; a default-bodied `Platform` method expresses an absence, never a behavior,
+  and a view that needs the answer reads a signal, never a `cfg`.
 - **Progressive enhancement is doctrine.** Everything that can work without JavaScript
   must: server-rendered and statically-generated pages deliver their full content as
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as

@@ -37,7 +37,10 @@ left half-done in a code comment.
 5. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
-    unwritten, and no Windows machine is at hand; the item waits for one.
+    unwritten, and no Windows machine is at hand; the item waits for one. `skene
+    attach` waits with it: the control pipe an app inherits across its swap exists on
+    Unix alone, and where a process cannot be replaced the app exits with status 75
+    for the launcher to spawn it.
 6. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
@@ -46,17 +49,31 @@ left half-done in a code comment.
     ecosystem answer is a dylint crate at the cost of pinning an exact nightly.
 8. **The native platform family.** The largest phase and deliberately the last: it
     realizes an already-complete vocabulary once, instead of chasing additions.
-    - Shared machinery: taffy layout, vello paint, parley text, AccessKit (the
-    accessibility tree a native app exposes, from the same reported semantics the web
-    maps to ARIA), the frame
-    clock running `skene_core::interpolate` as the terminal does, `Condition`
+    - Premise: **native views, native compositing, native text.** Every platform
+    realizes the tree into its own view hierarchy and composites it: a box is a view
+    with its layers, a text entry is the platform's (`UITextField`, `EditText`,
+    `GtkText`, a XAML `TextBox`) styled to Simple's look as an `<input>` is on the
+    web, since selection, IME, autofill and the edit menu are the platform's and
+    mobile users notice a replica, a `Native*` control is the platform's own where it
+    has one beside the composed `Raw*` and `Simple*` forms, and only `Painted` draws,
+    in a layer-backed view. Where Rust cannot reach the toolkit the shim is the
+    platform's language: Kotlin on Android, the tree written in batches over JNI;
+    C++/WinRT for WinUI 3 on Windows, with Win32 controls as the floor where the
+    runtime is absent; objc2 reaches AppKit and UIKit directly; Linux is GTK4 through
+    gtk4-rs. Mobile is where this is non-negotiable and the first proof.
+    - Layout: taffy behind a small FFI library the platform's own layout primitives
+    call (a `SkeneLayout` view on Android and iOS, a `LayoutManager` on GTK, a panel
+    on XAML), one tree per root rather than per container, leaves measured by the
+    platform's own text and controls through a call on the UI thread, frames set in
+    one batch; the vocabulary's semantics stay taffy's on every platform.
+    - Shared machinery beside it: vello paint for `Painted`, AccessKit only where a
+    painted layer needs it since native views carry their own accessibility, the
+    frame clock running `skene_core::interpolate` as the terminal does, `Condition`
     resolution against window and pointer signals through the one resolution point.
-    - Compositing premise: **the OS composites.** On iOS/Android/macOS the platform
-    realizes the tree into the native view hierarchy—painted content in vello-backed
-    layers that are views, embeds as ordinary native views—so custom paint and real
-    platform controls interleave in z-order for free. The Linux leaf is winit + a
-    single vello surface (no native control set exists to embed); Windows chooses
-    per its composition APIs.
+    - Selection: `skene-gui` names a native platform through the build-set cfg the
+    server leaf already uses (`skene_platform`), since every native triple is a host
+    triple too; the headless platform stays the default so `cargo test` keeps
+    meaning what it means.
     - The `PlatformView` escape trait and per-leaf embed constructors
     (`ios::native_view`, …): real text fields, maps, web views.
     - View transitions: snapshot the outgoing tree into a layer and interpolate named
@@ -77,6 +94,9 @@ Watched, not scheduled:
 - A scrolling box as a tab stop in the terminal: the web gives one `tabindex="0"` so
     the keyboard reaches its content, as Chromium does; the terminal's scroll boxes
     are reached by the wheel and the page keys from a focused child alone.
+- A reload the reader makes (F5) keeps the page's state through session storage as a
+    best effort, under its cap; the origin private file system carries it whole only
+    on the dev server's reload message, where the write is awaited.
 
 - `ErrorBoundary` stays on probation: it exists only for errors with no render site of
     their own. If per-resource matching keeps covering real apps, delete it.
@@ -105,6 +125,15 @@ every item is proven through tmux and ssh as well as bare.
 ## Decided against, for the record
 
 - Hot-patching: state-preserving reloads come from the snapshot instead.
+- Per-platform view vocabularies (`skene_ios::View`, a Simple per platform): the
+  generic `View<P>` is that with the platform as a parameter, coherence forbids two
+  impls of one shared view distinguished by a platform's kind, and the `Native*`
+  family beside `Raw*` is the split that was wanted.
+- A capabilities model of typed slots on `Platform` in place of progressive
+  enhancement: shelved, since it puts bounds on every shared signature; only a
+  low-level view names what a platform can do.
+- Draw-everything as the native family's default: mobile text selection, IME and edit
+  menus are years of platform work no framework should redo.
 - A WASI server leaf under a wasmtime runner: the server leaf compiles natively, selected
   by `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
   host is a runner someone may write.

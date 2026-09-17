@@ -191,7 +191,7 @@ impl Tty {
 
     while readable(fd, Duration::ZERO)? {
       let mut buffer = [0; READ_SIZE];
-      let read = match rustix::io::read(&*fd, &mut buffer) {
+      let read = match rustix::io::read(*fd, &mut buffer) {
         Ok(read) => read,
         Err(rustix::io::Errno::INTR) => continue,
         Err(error) => return Err(error.into()),

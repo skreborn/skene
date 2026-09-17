@@ -1,6 +1,6 @@
 //! The router wired to the active platform's URL.
 
-use skene_router::{Route, Router, StaticRoutes};
+use skene_common::routing::{Route, Router, StaticRoutes};
 
 /// Creates the app's router from the platform's current URL, wires navigation both ways,
 /// and provides it to the current scope.

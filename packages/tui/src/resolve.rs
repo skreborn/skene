@@ -2,6 +2,7 @@
 //! interaction feed the shared [`Resolver`], and the terminal reads the result back
 //! into its own vocabulary.
 
+use skene_common::typography;
 use skene_core::{
   Annotation,
   BoxStyle,
@@ -21,7 +22,6 @@ use skene_core::{
   Static,
   StaticLeaf,
 };
-use skene_views::typography;
 
 use crate::{
   BOLD_WEIGHT,

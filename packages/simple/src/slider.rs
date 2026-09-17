@@ -2,6 +2,7 @@
 
 use std::{marker::PhantomData, rc::Rc};
 
+use skene_common::{Anchor, Container, CornerRadius, Pinned, Range, RawSlider, Stack};
 use skene_core::{
   Alignment,
   AnyKind,
@@ -20,7 +21,6 @@ use skene_core::{
   When,
 };
 use skene_reactive::{Get, Set, Signal};
-use skene_views::{Anchor, Container, CornerRadius, Pinned, Range, RawSlider, Stack};
 
 use super::{
   SimplePalette,

@@ -9,7 +9,7 @@ use skene_reactive::Owner;
 const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
 
-type Theme<P, C = skene_views::NoChild> = skene_views::Theme<Headless, P, C>;
+type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
 
 fn red() -> Color {
   Color::srgb(1., 0., 0.)

@@ -1,8 +1,8 @@
 //! The Simple design language's tokens: the palette as a token set, the emphasis
 //! looks, and the default every facade starts from.
 
+use skene_common::typography;
 use skene_core::{Color, Definition, Media, Scalar, Token, TokenName, TokenRef, TokenSet};
-use skene_views::typography;
 
 /// A Simple action's emphasis, selecting its surface and ink.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

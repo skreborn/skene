@@ -1,7 +1,7 @@
 //! # skene-simple
 //!
-//! The Simple component library built once over [`skene_views`], generic over the
-//! [`Platform`](skene_views::Platform) a facade names: one palette, one shape language, and
+//! The Simple component library built once over [`skene_common`], generic over the
+//! [`Platform`](skene_common::Platform) a facade names: one palette, one shape language, and
 //! every `Simple*` view composed from the public views alone, so a third-party library
 //! sits on the same footing.
 //!
@@ -10,7 +10,7 @@
 //! view with no theme above defines the default at the root. The palette also defines
 //! the views' typography tokens, so a plain text under a Simple theme is inked in the
 //! palette's foreground. Corners round where the medium has a
-//! [`CornerRadius`](skene_views::CornerRadius) and stay square where it has none, and
+//! [`CornerRadius`](skene_common::CornerRadius) and stay square where it has none, and
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the

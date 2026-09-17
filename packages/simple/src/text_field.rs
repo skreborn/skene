@@ -2,9 +2,9 @@
 
 use std::marker::PhantomData;
 
+use skene_common::{CornerRadius, RawTextField, TextEntry};
 use skene_core::{AnyKind, NodeId, Platform, View};
 use skene_reactive::Signal;
-use skene_views::{CornerRadius, RawTextField, TextEntry};
 
 use super::shape::{SimpleUnit, define_defaults, field_chrome};
 

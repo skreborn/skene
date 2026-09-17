@@ -585,7 +585,7 @@ pub(crate) struct BackdropKey {
 /// A painted box's picture: its painter, and the image last rendered from it, dropped
 /// when the painter is replaced and stale when the box's pixel size differs.
 pub(crate) struct PictureRecord {
-  pub(crate) painter: Rc<skene_views::Painter>,
+  pub(crate) painter: Rc<skene_common::Painter>,
   pub(crate) image: Option<Rc<Image>>,
 }
 

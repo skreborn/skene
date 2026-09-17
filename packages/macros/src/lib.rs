@@ -220,7 +220,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
 /// rename, and `#[store(skip)]` generates no accessor for the field. The generated code
 /// names `skene_reactive` through the deriving crate's direct dependency on it, or
 /// through the `reactive` re-export of the facade (`skene-gui`, `skene-tui`) or
-/// `skene-views` it depends on.
+/// `skene-common` it depends on.
 #[proc_macro_derive(Store, attributes(store))]
 pub fn derive_store(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);

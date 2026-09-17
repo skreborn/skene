@@ -15,20 +15,17 @@ proc-macro2 = "1"
 quote = "1"
 rustc-hash = "2.1"
 skene-gui = { path = "packages/gui", version = "0.1.0" }
-skene-gui-core = { path = "packages/gui-core", version = "0.1.0" }
 skene-core = { path = "packages/core", version = "0.1.0" }
 skene-headless = { path = "packages/headless", version = "0.1.0" }
 skene-http = { path = "packages/http", version = "0.1.0" }
 skene-macros = { path = "packages/macros", version = "0.1.0" }
 skene-reactive = { path = "packages/reactive", version = "0.1.0" }
-skene-router = { path = "packages/router", version = "0.1.0" }
 skene-runner = { path = "packages/runner", version = "0.1.0" }
 skene-simple = { path = "packages/simple", version = "0.1.0" }
 skene-simple-gui = { path = "packages/simple-gui", version = "0.1.0" }
 skene-simple-tui = { path = "packages/simple-tui", version = "0.1.0" }
 skene-tui = { path = "packages/tui", version = "0.1.0" }
-skene-tui-core = { path = "packages/tui-core", version = "0.1.0" }
-skene-views = { path = "packages/views", version = "0.1.0" }
+skene-common = { path = "packages/common", version = "0.1.0" }
 skene-web = { path = "packages/web", version = "0.1.0" }
 skene-ws = { path = "packages/ws", version = "0.1.0" }
 smallvec = "1.15"

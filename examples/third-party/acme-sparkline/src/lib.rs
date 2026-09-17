@@ -11,9 +11,9 @@
 
 use std::marker::PhantomData;
 
+use skene_common::{Container, realize::with_sink};
 use skene_core::{AnyKind, Color, NodeId, Platform, View};
 use skene_tui::CellPainter;
-use skene_views::{Container, realize::with_sink};
 
 /// The bar glyphs, lowest to highest.
 const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];

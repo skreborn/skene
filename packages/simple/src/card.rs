@@ -1,5 +1,6 @@
 //! A ready-made card surface in the Simple design language.
 
+use skene_common::{Column, Container, CornerRadius};
 use skene_core::{
   AnyKind,
   Children,
@@ -15,7 +16,6 @@ use skene_core::{
   Value,
   View,
 };
-use skene_views::{Column, Container, CornerRadius};
 
 use super::{
   SimplePalette,
@@ -26,7 +26,7 @@ use super::{
 /// content, laid out as a column.
 ///
 /// Its own properties shape the column; wrap it in a [`Container`] to change the
-/// surface itself. Accepts any view or a [`Flexible`](skene_views::Flexible) wrapper as
+/// surface itself. Accepts any view or a [`Flexible`](skene_common::Flexible) wrapper as
 /// a child.
 #[must_use]
 pub struct SimpleCard<P: Platform> {

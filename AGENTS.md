@@ -5,7 +5,7 @@
 - Skene is a **client-side** framework. No server-side features, ever: no server
   functions, no backend framework integrations. SSR/SSG are rendering capabilities; the
   runner (`skene-runner`) is an embeddable library a user's server calls, not a server.
-- The spine (`skene-reactive` + `skene-core` + `skene-views`) stays platform-agnostic: no
+- The spine (`skene-reactive` + `skene-core` + `skene-common`) stays platform-agnostic: no
   platform assumptions or nomenclature. Core hosts the retained **scene** (`Scene<P>`:
   parents, children, per-child annotations, token definitions, generational node ids), the
   zero-sized **`Platform`** trait every platform implements, event dispatch over the scene,
@@ -14,7 +14,7 @@
   tokens (`Token`, `TokenSet`), `Boundary`, motion and interpolation, the runtime
   **`Resolver`** every non-CSS platform resolves its styles through (with the erased
   `TokenValue` and `SlotValue` it reads), the host **executor** a platform installs, generic
-  geometry over the platform's scalar, and universal values. `skene-views` hosts every
+  geometry over the platform's scalar, and universal values. `skene-common` hosts every
   built-in view once, generic over `P: Platform`; a facade aliases them.
 - The canonical building block is a **view** (the `View` trait); never "widget". Two
   equal facades exist—`skene-gui` (pixel media: web, native later) and `skene-tui` (the
@@ -27,10 +27,10 @@
   device: its `tty`, `parse` and `escape` modules are the whole terminal layer, no
   terminal crate beneath, so a reply a new capability needs is parsed in the change
   that asks for it. What every platform of one
-  medium shares above the spine lives in that medium's core crate—`skene-gui-core`
-  (`GuiExt`, the pixel `Typography`, `Painting`) and `skene-tui-core` (`TuiExt`,
-  `BorderGlyphs`, the terminal `Typography`)—never in `skene-core`, which knows no medium.
-  Platforms depend on core and their medium's core, never on each other; a facade is the
+  medium shares above the spine lives in that medium's module of `skene-common`—`gui`
+  (`GuiExt`, the pixel `Typography`, `Painting`) and `tui` (`TuiExt`, `BorderGlyphs`,
+  the terminal `Typography`)—never in `skene-core`, which knows no medium.
+  Platforms depend on core and common, never on each other; a facade is the
   only place that names its platforms, and it publishes the selected one as `ActivePlatform`.
   The trait is zero-sized and monomorphized: no `dyn` platform, no downcast, no runtime
   swap. It is **not sealed**, and the shared machinery bounds only on it and the public
@@ -38,9 +38,9 @@
   crate also exposes an **escape trait** beside the portable one (`WebMarkup` on both web
   leaves, `WebDom` on the browser leaf only, `CellPainter` in the terminal, later
   `PlatformView`), so a low-level view is written against exactly the bound it needs and
-  is realized through the same scene and node ids as a built-in (`skene_views::LowLevel`
+  is realized through the same scene and node ids as a built-in (`skene_common::LowLevel`
   registers the sink it made as a node). `Painted` (vello) is the portable low-level path
-  for pixels, through `skene-views`' `Painting` extension: the browser leaf renders the
+  for pixels, through `skene-common`' `Painting` extension: the browser leaf renders the
   scene into a canvas, the headless platform renders it to pixels a test reads, the
   terminal shows it through its graphics protocol where one is proven, the server leaf
   renders it empty; the native realization comes with the native platform.
@@ -114,7 +114,7 @@
   the nearest defining ancestor, cached per node. Nothing below a component library
   knows what a palette is: `skene-simple` owns `SimplePalette` as a struct of `Token`s
   implementing `TokenSet`, and a third party's `AcmePalette` is on identical footing.
-  - **`Theme<P: TokenSet>` is the one theme view**, in `skene-views`:
+  - **`Theme<P: TokenSet>` is the one theme view**, in `skene-common`:
     `Theme::new(palette)` or `Theme::derive(|| palette.get())`, then
     `set_child_builder(|| child)`. It realizes one layout-invisible scope node, provides
     `Memo<P>` through context (`P::current()`, `P::watch()`, from `ThemedIn`), and one
@@ -179,7 +179,7 @@
   markup (`#[lazy]` bodies included—the server leaf never splits), navigation works as
   real links, and the client bundle layers interactivity on top by hydrating in
   place—content is never gated on JS. **A view with two forms declares both**:
-  `Enhance` in `skene-views` builds `set_fallback` while the signal it is given is
+  `Enhance` in `skene-common` builds `set_fallback` while the signal it is given is
   false and `set_child_builder` once it is true, each at most once. There is no
   capability vocabulary: each signal belongs to what can lack it, and a web-only fact
   is named for the web. `Platform::hydration()` is the web's, `None` by default (the
@@ -214,8 +214,8 @@
   those in view, left out under an open overlay, freed on unmount; elsewhere the
   fallback stands. Where graphics show, a box with a corner radius, a border or a
   shadow paints them as a backdrop image beneath every colored cell, one per box,
-  its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-views`, re-exported
-  by `skene-gui-core`. **Embeds** are
+  its own cells left uncolored so it shows through, and every glyph stays a cell. `Painted`, `Canvas` and `Painting` live in `skene-common`, re-exported
+  by its `gui` module. **Embeds** are
   platform-specific views with platform-exposed constructors (raw DOM element on web csr,
   real platform controls on native); the payload never crosses a crate boundary. On
   platforms with a real view hierarchy the platform realizes the tree into it, so embeds
@@ -314,7 +314,7 @@
   is dispatched *observed* (`dispatch_click_observed`): every handler up the path runs
   except the acting one the behavior registered, since the platform's flip arrives as
   `change`.
-- **A control is `Control<B: Behavior>`**: one builder in `skene-views` carrying focus,
+- **A control is `Control<B: Behavior>`**: one builder in `skene-common` carrying focus,
   events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Roving`,
   `Popup`, `Activate`, `TextEntry` and `Listbox` are the shipped behaviors (`RadioMember`
   and `ListItem` the members'), `Behavior` is public, and the keyboard tables live in the
@@ -361,7 +361,7 @@
   renders and the reader's choice in it carries across the swap. The
   terminal's controls are composed trees painted by the same box and run painters as
   everything else, so they carry roles, accessibility and focus order like the GUI's.
-  **A tooltip is a view**, `Tooltip` in `skene-views`, wrapping the one view it
+  **A tooltip is a view**, `Tooltip` in `skene-common`, wrapping the one view it
   describes and showing text or any view in a `Bubble` beside it: open after a delay on
   hover and at once on focus, closed on leave, blur and `Escape`, never focused. A text
   tooltip is reported as the described view's `Description` beside `DescribedBy`, and a
@@ -370,7 +370,7 @@
   scriptless tooltip, and hydration **removes** it as the bubble (a `popover="hint"`
   promoted in place) takes over. `SimpleTooltip` is the styled one; any view takes a
   tooltip by wrapping. **A context menu is a view** the same way, `ContextMenu` in
-  `skene-views`: wrapping is the opt-in, a secondary press, `Shift-F10` or the menu key
+  `skene-common`: wrapping is the opt-in, a secondary press, `Shift-F10` or the menu key
   on the wrapped view dispatches `EventKind::ContextMenu`, the deepest wrapper along the
   path opens its `List` pinned at the pointer and prevents the platform's menu, and
   wherever no wrapper is the browser keeps its own. Items are `MenuItem`s, the standard
@@ -380,7 +380,7 @@
   behaviors a third party's menu reuses. `SimpleContextMenu` is the styled one; the
   server renders nothing for a menu.
 - **Third parties are first-class by construction.** A component library depends on
-  `skene-views`, writes generic over `P: Platform` exactly as the built-ins do
+  `skene-common`, writes generic over `P: Platform` exactly as the built-ins do
   (`Container<P>`, `Control<P, Toggle>`, `Theme<P, AcmePalette>`), states what it needs
   from a medium as a bound on the platform's associated types (`P::StyleExt: CornerRadius`
   rounds where the medium can and writes nothing where it cannot; a capability a library
@@ -447,9 +447,9 @@
 
 ## Naming & API conventions
 
-- The spine stays minimal and structural. The built-in views live in `skene-views`,
+- The spine stays minimal and structural. The built-in views live in `skene-common`,
   written once against `Platform`; a facade aliases them
-  (`type Container = skene_views::Container<ActivePlatform>`). Users extend by composing
+  (`type Container = skene_common::Container<ActivePlatform>`). Users extend by composing
   built-ins, painting a `Painted` node, or authoring a view against a platform's escape
   trait.
 - Builder methods: `set_<prop>` for a fixed value, `derive_<prop>` for a reactive one,

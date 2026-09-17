@@ -111,18 +111,15 @@ skene-reactive        the engine
       │
 skene-core            the spine: the scene, the Platform trait, dispatch, the property model
       │
-skene-views           every built-in view once, generic over the platform
-      │
-      ├── skene-gui-core   what pixel platforms share: GuiExt, Typography, Painting
-      │     ├── skene-web        the web platform: browser (csr) and server (ssr) leaves
-      │     └── skene-headless   the host platform: an inspectable record store for tests
-      └── skene-tui-core   what terminal platforms share: TuiExt, Typography
-            └── skene-tui        the terminal facade and its platform
+skene-common          every built-in view once, generic over the platform; the pixel and
+      │               terminal media (gui, tui), the router (routing)
+      ├── skene-web        the web platform: browser (csr) and server (ssr) leaves
+      ├── skene-headless   the host platform: an inspectable record store for tests
+      └── skene-tui        the terminal facade and its platform
 skene-gui             the GUI facade: aliases over the selected platform
-skene-simple          the Simple component library over skene-views, generic
+skene-simple          the Simple component library over skene-common, generic
       ├── skene-simple-gui   its aliases and prelude for skene-gui
       └── skene-simple-tui   its aliases and prelude for skene-tui
-skene-router          routing as reactive state
 skene-runner          a host library embedding wasmtime around the server build
 skene-macros          #[main], #[lazy], #[derive(Store)]
 skene-cli             the `skene` command
@@ -132,16 +129,13 @@ skene-cli             the `skene` command
 |-------|------|------|
 | `skene-reactive` | `packages/reactive` | `Signal`, `Memo`, `Effect`, `Owner`, `Store`, `Resource`, context, batching, snapshot by position with `Key` anchors, the `spawn` seam a platform installs an executor into. |
 | `skene-core` | `packages/core` | `Scene<P>`, the zero-sized `Platform` trait, event dispatch over the scene, `BoxStyle`/`RunStyle` with their visitors, `Value`/`Leaf`/`Expr`, `Media`/`State`/`Condition`, `Token`/`TokenSet`, `Boundary`, motion and interpolation, generic geometry and values. Knows nothing of platforms. |
-| `skene-views` | `packages/views` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Raw*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuItem` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello. |
-| `skene-gui-core` | `packages/gui-core` | What every pixel platform shares: `GuiExt` (corner radius, type metrics) and the pixel `Typography` set; it re-exports the painting path. |
-| `skene-tui-core` | `packages/tui-core` | What every terminal platform shares: `TuiExt` (border glyphs, shadow, corner radius, bold, weight), `BorderGlyphs`, and the terminal `Typography` set. |
+| `skene-common` | `packages/common` | `Container`, `Row`/`Column`/`Grid`/`Stack`/`LayoutBox`, `Flexible`/`Pinned`/`GridCell`, `Text`/`Span`/`RichText`, `Control<B: Behavior>` with `Toggle`/`Range`/`Roving`/`Popup`/`Activate`/`TextEntry`/`NativePicker` and the `Raw*` aliases, `Overlay`, `Tooltip`, `ContextMenu` with `MenuItem` and the `Menu`/`MenuOption` behaviors, `LazyColumn`/`LazyRow`, `Show`/`Switch`/`Suspense`/`ErrorBoundary`/`Enhance`, `Theme`, `typography`, and the painting path (`Painting`, `Canvas`, `Painted` with its fallback, `IntoBrush`, the `Renderer` a canvas replays into) through vello; `gui` (`GuiExt`, the pixel `Typography`), `tui` (`TuiExt`, `BorderGlyphs`, the terminal `Typography`) and `routing` (`Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds). |
 | `skene-web` | `packages/web` | The web `Platform`: a DOM sink in the browser, a string tree on the server, one compiler, the content-addressed interner, hydration, streaming, the WASI reactor, client hints; the `WebMarkup` and `WebDom` escape traits. |
 | `skene-headless` | `packages/headless` | The host `Platform`: records what any platform receives, resolves properties through tokens and conditions, drives events through `trigger_*` seams, runs tasks on `pump_tasks`. |
 | `skene-gui` | `packages/gui` | The GUI facade: `f32`, `ActivePlatform`, aliases for every view, `Typography`, `media`, `Resource` across the server boundary, `Deferred`, `Lazy`, `Link`, `head`, `view_transitions`, `launch`/`render_to_string`/`render_main` and `#[main]`. |
 | `skene-tui` | `packages/tui` | The terminal facade and platform: `u32` cells, `Tui`, the same aliases, `Typography`, `BorderGlyphs`, `media`, `CellPainter`, `launch`, `render_to_text` and the `trigger_*` seams. |
 | `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform. |
 | `skene-simple-gui`, `skene-simple-tui` | `packages/simple-gui`, `packages/simple-tui` | The Simple types aliased to that facade's `ActivePlatform`, with a `prelude` an app imports beside the facade's own. |
-| `skene-router` | `packages/router` | `Route`, `StaticRoutes`, `Router`: a typed route in a signal with a sink seam each facade binds. |
 | `skene-runner` | `packages/runner` | `Runner`: loads the app's `wasm32-wasip2` build, renders a route or a stream, reads client hints, enumerates static routes. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
 | `skene-http` | `packages/http` | An HTTP client on the public seams alone: `Request`, `Response`, `send`; `fetch` on the web, `wasi:http` through the server leaf's reactor on a server render, a thread around `ureq` on every other host. |
@@ -228,7 +222,7 @@ runs axe-core over every built-in in `web_axe`.
 
 ## Extending
 
-A component library depends on `skene-views`, writes generic over `P: Platform` exactly as
+A component library depends on `skene-common`, writes generic over `P: Platform` exactly as
 the built-ins do, states what it needs from a medium as a bound on the platform's
 associated types, and works on every facade from one crate. A low-level view is written
 against a platform's escape trait (`WebDom`, `WebMarkup`, `CellPainter`) and realized

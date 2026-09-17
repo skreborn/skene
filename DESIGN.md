@@ -29,28 +29,24 @@ skene-core       the spine: Scene<P> (parents, children, annotations, token defi
       │          and interpolation, Painting, generic geometry, universal values. Knows
       │          nothing of platforms.
       │
-skene-views      every built-in view ONCE, generic over P: Platform—Container, Row/Column/
+skene-common      every built-in view ONCE, generic over P: Platform—Container, Row/Column/
       │          Grid/Stack/LayoutBox, Flexible/Pinned/GridCell, Text/Span/RichText,
       │          Control<B: Behavior> and the shipped behaviors, RawPicker, Overlay,
       │          LazyColumn/LazyRow, Show/Switch/Suspense/ErrorBoundary, Theme, typography,
-      │          LowLevel
+      │          LowLevel; gui (GuiExt, the pixel Typography set, Painting/Canvas/
+      │          Painted through vello), tui (TuiExt, BorderGlyphs, the terminal
+      │          Typography set), routing (a typed route in a signal)
       │
-      ├── skene-gui-core  what every pixel platform shares: GuiExt (corner radius, type
-      │     │             metrics), the pixel Typography set, Painting/Canvas/Painted
-      │     │             through vello
-      │     ├── skene-web       Platform for the web: DOM sink (csr) + HTML/CSS serializer
-      │     │                   (ssr) over one node record, the compiler, the interner,
-      │     │                   hydration, streaming, the WASI reactor, client hints;
-      │     │                   escape traits WebMarkup (both leaves), WebDom (browser)
-      │     └── skene-headless  Platform for the host: realizes into an inspectable record
-      │                         store so view logic tests run without a platform; the
-      │                         whole trait, trigger_ seams, the pumped executor
-      └── skene-tui-core  what every terminal platform shares: TuiExt (border glyphs,
-            │             shadow, corner radius, bold, weight), BorderGlyphs, the
-            │             terminal Typography set
-            └── skene-tui       the terminal facade AND its platform: taffy in cells, a
-                                cell buffer, motion on its frame clock; escape trait
-                                CellPainter
+      ├── skene-web       Platform for the web: DOM sink (csr) + HTML/CSS serializer
+      │                   (ssr) over one node record, the compiler, the interner,
+      │                   hydration, streaming, the WASI reactor, client hints;
+      │                   escape traits WebMarkup (both leaves), WebDom (browser)
+      ├── skene-headless  Platform for the host: realizes into an inspectable record
+      │                   store so view logic tests run without a platform; the
+      │                   whole trait, trigger_ seams, the pumped executor
+      └── skene-tui       the terminal facade AND its platform: taffy in cells, a
+                          cell buffer, motion on its frame clock; escape trait
+                          CellPainter
 
 skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the headless
                  platform elsewhere), aliases for every view, Typography, media::*,
@@ -58,12 +54,11 @@ skene-gui        the GUI facade: f32, ActivePlatform (the web on wasm32, the hea
                  view_transitions, launch and the server entries, #[main]
 skene-tui        the terminal facade, EQUAL in standing: u32 cells, Tui, the same
                  aliases, Typography, BorderGlyphs, media::*, launch, render_to_text
-skene-simple     the Simple design language over skene-views, generic over P: the palette
+skene-simple     the Simple design language over skene-common, generic over P: the palette
                  (a TokenSet), the looks, the shape per unit, the terminal marks
                  (SimpleGlyphs) and the Simple* views; an app's explicit dependency
 skene-simple-gui the Simple types aliased to skene-gui's ActivePlatform, with a prelude
 skene-simple-tui the same for skene-tui
-skene-router     routing over signals; a sink seam each facade binds
 skene-runner     host-side library embedding wasmtime around the app's server build:
                  renders a route or a stream, reads client hints, enumerates routes
 skene-macros     #[main], #[lazy], #[derive(Store)]
@@ -139,7 +134,7 @@ platform crate, since it is not a shared contract.
   a test reads (`headless::paint`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind
-  the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-views`, since
+  the same `Canvas`. `Painted`, `Canvas` and `Painting` live in `skene-common`, since
   both medium cores realize them. Vello is the one renderer, everywhere.
 - **Embeds are platform-specific views**, written against a platform's escape trait: raw DOM
   through `WebDom`, markup through `WebMarkup`, cells through `CellPainter`, later a
@@ -186,7 +181,7 @@ and its cost unjustified.
   and rebuilds, disposing the subtree's scope with its state; `Show` and `Switch` build
   branches once and attach or detach them, preserving state. `Suspense` and
   `ErrorBoundary` are built on them and destroy the losing branch on disposal.
-- **A view declares its baseline and its enhancement.** `Enhance` in `skene-views` mounts one of two builders between its anchors:
+- **A view declares its baseline and its enhancement.** `Enhance` in `skene-common` mounts one of two builders between its anchors:
   `set_fallback(|| baseline)` is the form that works before the environment is ready,
   and `set_child_builder(|| enhancement)` the form built once it is. Which is built
   follows a signal the enhancement is given (`Enhance::new(live)`), and the signals
@@ -257,7 +252,7 @@ view's description (`DescribedBy`, and `Description` for text), the report merge
 the scene with the view's own; the web's server leaf renders the text as `title` and
 hydration removes it.
 
-A **context menu is a view of the same shape**. `ContextMenu` in `skene-views` wraps
+A **context menu is a view of the same shape**. `ContextMenu` in `skene-common` wraps
 the one view it serves and mounts that view and a popup overlay, the `List`, in a
 segment of its own, exactly as `Tooltip` does; `serve(node)` attaches the list under a
 node that already exists instead, for an app that wants a menu over its root. Wrapping
@@ -839,7 +834,7 @@ web+native.
 Two guarantees, both properties of what is public rather than of any one API.
 
 - **A component library, for every platform, from one crate.** It depends on
-  `skene-views`, writes generic over `P: Platform` exactly as the built-ins are written, and
+  `skene-common`, writes generic over `P: Platform` exactly as the built-ins are written, and
   states what it needs from a medium as a bound on the platform's associated types
   (`P::StyleExt: CornerRadius`). Each facade's aliases make it concrete for the app
   that uses it. Nothing on the path a built-in takes is crate-private: the setter
@@ -857,7 +852,7 @@ Two guarantees, both properties of what is public rather than of any one API.
   portable low-level path for pixel media is `Painted`.
 
 A platform need not be first-party: a crate that implements `Platform`, provides its scalar,
-leaves, extension, a `launch` and aliases over `skene-views` is a facade. `Platform` is not
+leaves, extension, a `launch` and aliases over `skene-common` is a facade. `Platform` is not
 sealed, and the shared machinery bounds only on it and the public extension traits; the
 headless platform is exactly such a crate in all but ownership.
 
@@ -917,13 +912,13 @@ so a page whose data arrives over a socket renders with it; the runner grants th
 network for that. A socket opened during a render lives for that render, as a fetch
 does. Dropping the socket closes it.
 
-## Router (`skene-router`)
+## Router (`skene_common::routing`)
 
 Routing is state: a typed route as a signal, shared by every platform. Each platform binds
 it thinly—web csr to the History API (wrapping a navigation in a view transition when
 the app opts in, through `Router::set_commit`), ssr takes the route as render input,
 the terminal keeps it in memory. SSG enumerates the route table (`StaticRoutes`) to know
-what to render. The router depends on `skene-reactive` only.
+what to render. The router depends on the engine alone.
 
 ## SSR, SSG, and the runner (`skene-runner`)
 
@@ -965,7 +960,7 @@ Recorded because they were load-bearing and the reasons they fell matter:
 - **"The built-in views live in the umbrella."** True with one facade; with two it
   produced two umbrellas and two copies, sixty-five percent of them character-identical.
   The generic parameter already used for `Children` is applied to every view in
-  `skene-views`.
+  `skene-common`.
 - **"No persistent scene tree in core."** The objection stood for a tree that calls
   platforms. The scene calls none; every platform kept the structure anyway, four ways.
 - **"The vocabulary is free functions resolved by name."** A missing function was only an

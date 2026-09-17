@@ -1,11 +1,12 @@
 //! # acme-ui
 //!
 //! A third-party component library: one palette and one component, written once over
-//! [`skene_views`] against any [`Platform`], exactly as the built-ins are. A facade's app
+//! [`skene_common`] against any [`Platform`], exactly as the built-ins are. A facade's app
 //! names the platform (`AcmeBadge<ActivePlatform>`); the crate names none.
 
 use std::marker::PhantomData;
 
+use skene_common::{Container, CornerRadius, Text, ThemedIn};
 use skene_core::{
   AnyKind,
   Color,
@@ -22,7 +23,6 @@ use skene_core::{
   TokenSet,
   View,
 };
-use skene_views::{Container, CornerRadius, Text, ThemedIn};
 
 /// The Acme tokens: a badge's surface and its ink, over the facade's scalar `N`.
 ///

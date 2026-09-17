@@ -2,6 +2,7 @@
 
 use std::marker::PhantomData;
 
+use skene_common::{Container, CornerRadius, RawCheckbox, Text, Toggle};
 use skene_core::{
   Alignment,
   AnyKind,
@@ -18,7 +19,6 @@ use skene_core::{
   When,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
-use skene_views::{Container, CornerRadius, RawCheckbox, Text, Toggle};
 
 use super::{
   SimpleGlyphs,

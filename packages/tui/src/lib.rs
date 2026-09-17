@@ -46,6 +46,54 @@ mod terminal;
 mod text;
 mod tty;
 
+/// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
+/// and the typography set.
+pub use skene_common::tui::{
+  BOLD_WEIGHT,
+  BorderGlyphs,
+  TuiBoxFields,
+  TuiExt,
+  TuiProperty,
+  TuiRunFields,
+  TuiValue,
+  Typography,
+  tui_fields,
+};
+pub use skene_common::{
+  Activate,
+  Anchor,
+  Behavior,
+  Canvas,
+  ControlChild,
+  CornerRadius,
+  IntoBrush,
+  ItemExtent,
+  ListItem,
+  Listbox,
+  ListboxGroup,
+  Menu,
+  MenuGroup,
+  MenuItem,
+  MenuOption,
+  NativePicker,
+  Painter,
+  Painting,
+  PointerPhase,
+  Popup,
+  RadioMember,
+  Range,
+  Roster,
+  Roving,
+  RovingGroup,
+  TOOLTIP_DELAY,
+  TextEntry,
+  Toggle,
+  TypeMetrics,
+  kurbo,
+  peniko,
+  routing as router,
+  typography,
+};
 pub use skene_core as core;
 pub use skene_core::{
   AnyKind,
@@ -89,54 +137,6 @@ pub use skene_core::{
   When,
 };
 pub use skene_reactive::{self as reactive, LoadState, Resource};
-pub use skene_router as router;
-/// The terminal medium's shared vocabulary: the style extension, its glyphs and values,
-/// and the typography set.
-pub use skene_tui_core::{
-  BOLD_WEIGHT,
-  BorderGlyphs,
-  TuiBoxFields,
-  TuiExt,
-  TuiProperty,
-  TuiRunFields,
-  TuiValue,
-  Typography,
-  tui_fields,
-};
-pub use skene_views::{
-  Activate,
-  Anchor,
-  Behavior,
-  Canvas,
-  ControlChild,
-  CornerRadius,
-  IntoBrush,
-  ItemExtent,
-  ListItem,
-  Listbox,
-  ListboxGroup,
-  Menu,
-  MenuGroup,
-  MenuItem,
-  MenuOption,
-  NativePicker,
-  Painter,
-  Painting,
-  PointerPhase,
-  Popup,
-  RadioMember,
-  Range,
-  Roster,
-  Roving,
-  RovingGroup,
-  TOOLTIP_DELAY,
-  TextEntry,
-  Toggle,
-  TypeMetrics,
-  kurbo,
-  peniko,
-  typography,
-};
 
 pub(crate) use crate::platform::{try_with_store, with_store};
 pub use crate::{
@@ -227,128 +227,128 @@ pub trait IntoView: skene_core::IntoView<ActivePlatform> + AnyKind {
 impl<V: skene_core::IntoView<ActivePlatform> + AnyKind> IntoView for V {}
 
 /// A token set read from the theme in force on the active platform; see
-/// [`skene_views::ThemedIn`].
+/// [`skene_common::ThemedIn`].
 ///
 /// Every [`TokenSet`] with a default has it: `SimplePalette::current()` reads the
 /// nearest theme's palette, or the default when no theme is above.
-pub trait ThemedIn: skene_views::ThemedIn<ActivePlatform> {
+pub trait ThemedIn: skene_common::ThemedIn<ActivePlatform> {
   /// The set the nearest theme provides, or the default without one.
   #[inline(always)]
   #[must_use]
   fn current() -> Self {
-    <Self as skene_views::ThemedIn<ActivePlatform>>::current()
+    <Self as skene_common::ThemedIn<ActivePlatform>>::current()
   }
 
   /// The nearest theme's set as a memo, or a memo of the default without one.
   #[inline(always)]
   fn watch() -> skene_reactive::Memo<Self> {
-    <Self as skene_views::ThemedIn<ActivePlatform>>::watch()
+    <Self as skene_common::ThemedIn<ActivePlatform>>::watch()
   }
 }
 
-impl<S: skene_views::ThemedIn<ActivePlatform>> ThemedIn for S {}
+impl<S: skene_common::ThemedIn<ActivePlatform>> ThemedIn for S {}
 
 /// A type-erased view.
 pub type AnyView = skene_core::AnyView<ActivePlatform>;
 /// The one freely-decorated box around exactly one child; see
-/// [`skene_views::Container`].
-pub type Container = skene_views::Container<ActivePlatform>;
-/// A horizontal flex layout; see [`skene_views::Row`].
-pub type Row = skene_views::Row<ActivePlatform>;
-/// A vertical flex layout; see [`skene_views::Column`].
-pub type Column = skene_views::Column<ActivePlatform>;
-/// A grid layout; see [`skene_views::Grid`].
-pub type Grid = skene_views::Grid<ActivePlatform>;
-/// A stack layout; see [`skene_views::Stack`].
-pub type Stack = skene_views::Stack<ActivePlatform>;
+/// [`skene_common::Container`].
+pub type Container = skene_common::Container<ActivePlatform>;
+/// A horizontal flex layout; see [`skene_common::Row`].
+pub type Row = skene_common::Row<ActivePlatform>;
+/// A vertical flex layout; see [`skene_common::Column`].
+pub type Column = skene_common::Column<ActivePlatform>;
+/// A grid layout; see [`skene_common::Grid`].
+pub type Grid = skene_common::Grid<ActivePlatform>;
+/// A stack layout; see [`skene_common::Stack`].
+pub type Stack = skene_common::Stack<ActivePlatform>;
 /// The box every layout view is built from, accepting children of `Kind`; see
-/// [`skene_views::LayoutBox`].
-pub type LayoutBox<Kind> = skene_views::LayoutBox<ActivePlatform, Kind>;
-/// A flex child's grow, shrink and initial size; see [`skene_views::Flexible`].
-pub type Flexible<C = NoChild> = skene_views::Flexible<ActivePlatform, C>;
-/// A stack child pinned to its edges; see [`skene_views::Pinned`].
-pub type Pinned<C = NoChild> = skene_views::Pinned<ActivePlatform, C>;
-/// A grid child's placement; see [`skene_views::GridCell`].
-pub type GridCell<C = NoChild> = skene_views::GridCell<ActivePlatform, C>;
-/// A run of text on its own line; see [`skene_views::Text`].
-pub type Text = skene_views::Text<ActivePlatform>;
-/// A run inside a paragraph; see [`skene_views::Span`].
-pub type Span = skene_views::Span<ActivePlatform>;
-/// A paragraph of spans; see [`skene_views::RichText`].
-pub type RichText = skene_views::RichText<ActivePlatform>;
-/// A branch shown or hidden by a condition; see [`skene_views::Show`].
-pub type Show<C = NoChild> = skene_views::Show<ActivePlatform, C>;
-/// The view a `set_key` named, built under a keyed scope; see [`skene_views::Keyed`].
-pub type Keyed<V> = skene_views::Keyed<ActivePlatform, V>;
-/// One of several branches, by key; see [`skene_views::Switch`].
-pub type Switch<K> = skene_views::Switch<ActivePlatform, K>;
+/// [`skene_common::LayoutBox`].
+pub type LayoutBox<Kind> = skene_common::LayoutBox<ActivePlatform, Kind>;
+/// A flex child's grow, shrink and initial size; see [`skene_common::Flexible`].
+pub type Flexible<C = NoChild> = skene_common::Flexible<ActivePlatform, C>;
+/// A stack child pinned to its edges; see [`skene_common::Pinned`].
+pub type Pinned<C = NoChild> = skene_common::Pinned<ActivePlatform, C>;
+/// A grid child's placement; see [`skene_common::GridCell`].
+pub type GridCell<C = NoChild> = skene_common::GridCell<ActivePlatform, C>;
+/// A run of text on its own line; see [`skene_common::Text`].
+pub type Text = skene_common::Text<ActivePlatform>;
+/// A run inside a paragraph; see [`skene_common::Span`].
+pub type Span = skene_common::Span<ActivePlatform>;
+/// A paragraph of spans; see [`skene_common::RichText`].
+pub type RichText = skene_common::RichText<ActivePlatform>;
+/// A branch shown or hidden by a condition; see [`skene_common::Show`].
+pub type Show<C = NoChild> = skene_common::Show<ActivePlatform, C>;
+/// The view a `set_key` named, built under a keyed scope; see [`skene_common::Keyed`].
+pub type Keyed<V> = skene_common::Keyed<ActivePlatform, V>;
+/// One of several branches, by key; see [`skene_common::Switch`].
+pub type Switch<K> = skene_common::Switch<ActivePlatform, K>;
 /// Fallback content while a subtree's async work is pending; see
-/// [`skene_views::Suspense`].
-pub type Suspense<C = NoChild> = skene_views::Suspense<ActivePlatform, C>;
+/// [`skene_common::Suspense`].
+pub type Suspense<C = NoChild> = skene_common::Suspense<ActivePlatform, C>;
 /// The form a signal makes possible over the one that needs none; see
-/// [`skene_views::Enhance`].
-pub type Enhance<C = NoChild> = skene_views::Enhance<ActivePlatform, C>;
+/// [`skene_common::Enhance`].
+pub type Enhance<C = NoChild> = skene_common::Enhance<ActivePlatform, C>;
 /// Fallback content when a subtree reports an error; see
-/// [`skene_views::ErrorBoundary`].
-pub type ErrorBoundary<C = NoChild> = skene_views::ErrorBoundary<ActivePlatform, C>;
+/// [`skene_common::ErrorBoundary`].
+pub type ErrorBoundary<C = NoChild> = skene_common::ErrorBoundary<ActivePlatform, C>;
 /// The one theme view, defining the token set `P` beneath it; see
-/// [`skene_views::Theme`].
-pub type Theme<S, C = NoChild> = skene_views::Theme<ActivePlatform, S, C>;
-/// The one control builder over a behavior; see [`skene_views::Control`].
-pub type Control<B, C = NoChild> = skene_views::Control<ActivePlatform, B, C>;
-/// A built control, for a behavior to act on; see [`skene_views::ControlHandle`].
-pub type ControlHandle = skene_views::ControlHandle<ActivePlatform>;
-/// A control's label; see [`skene_views::Label`].
-pub type Label = skene_views::Label<ActivePlatform>;
-/// A button; see [`skene_views::RawButton`].
-pub type RawButton<C = NoChild> = skene_views::RawButton<ActivePlatform, C>;
-/// A checkbox; see [`skene_views::RawCheckbox`].
-pub type RawCheckbox<C = NoChild> = skene_views::RawCheckbox<ActivePlatform, C>;
-/// A slider; see [`skene_views::RawSlider`].
-pub type RawSlider<C = NoChild> = skene_views::RawSlider<ActivePlatform, C>;
-/// A radio group; see [`skene_views::RawRadioGroup`].
-pub type RawRadioGroup<C = NoChild> = skene_views::RawRadioGroup<ActivePlatform, C>;
-/// A radio inside a group; see [`skene_views::RawRadio`].
-pub type RawRadio<C = NoChild> = skene_views::RawRadio<ActivePlatform, C>;
-/// A single-line text entry; see [`skene_views::RawTextField`].
-pub type RawTextField<C = NoChild> = skene_views::RawTextField<ActivePlatform, C>;
-/// A multi-line text entry; see [`skene_views::RawTextEditor`].
-pub type RawTextEditor<C = NoChild> = skene_views::RawTextEditor<ActivePlatform, C>;
-/// A listbox; see [`skene_views::RawListbox`].
-pub type RawListbox<C = NoChild> = skene_views::RawListbox<ActivePlatform, C>;
-/// An option inside a listbox or a picker; see [`skene_views::RawOption`].
-pub type RawOption<C = NoChild> = skene_views::RawOption<ActivePlatform, C>;
-/// A picker: a popup face, an overlay and a listbox; see [`skene_views::RawPicker`].
-pub type RawPicker<F = NoChild> = skene_views::RawPicker<ActivePlatform, F>;
-/// A picker's face; see [`skene_views::Face`].
-pub type Face = skene_views::Face<ActivePlatform>;
-/// Content above the app; see [`skene_views::Overlay`].
-pub type Overlay<C = NoChild> = skene_views::Overlay<ActivePlatform, C>;
-/// Content shown beside the view it describes; see [`skene_views::Tooltip`].
-pub type Tooltip<C = NoChild> = skene_views::Tooltip<ActivePlatform, C>;
+/// [`skene_common::Theme`].
+pub type Theme<S, C = NoChild> = skene_common::Theme<ActivePlatform, S, C>;
+/// The one control builder over a behavior; see [`skene_common::Control`].
+pub type Control<B, C = NoChild> = skene_common::Control<ActivePlatform, B, C>;
+/// A built control, for a behavior to act on; see [`skene_common::ControlHandle`].
+pub type ControlHandle = skene_common::ControlHandle<ActivePlatform>;
+/// A control's label; see [`skene_common::Label`].
+pub type Label = skene_common::Label<ActivePlatform>;
+/// A button; see [`skene_common::RawButton`].
+pub type RawButton<C = NoChild> = skene_common::RawButton<ActivePlatform, C>;
+/// A checkbox; see [`skene_common::RawCheckbox`].
+pub type RawCheckbox<C = NoChild> = skene_common::RawCheckbox<ActivePlatform, C>;
+/// A slider; see [`skene_common::RawSlider`].
+pub type RawSlider<C = NoChild> = skene_common::RawSlider<ActivePlatform, C>;
+/// A radio group; see [`skene_common::RawRadioGroup`].
+pub type RawRadioGroup<C = NoChild> = skene_common::RawRadioGroup<ActivePlatform, C>;
+/// A radio inside a group; see [`skene_common::RawRadio`].
+pub type RawRadio<C = NoChild> = skene_common::RawRadio<ActivePlatform, C>;
+/// A single-line text entry; see [`skene_common::RawTextField`].
+pub type RawTextField<C = NoChild> = skene_common::RawTextField<ActivePlatform, C>;
+/// A multi-line text entry; see [`skene_common::RawTextEditor`].
+pub type RawTextEditor<C = NoChild> = skene_common::RawTextEditor<ActivePlatform, C>;
+/// A listbox; see [`skene_common::RawListbox`].
+pub type RawListbox<C = NoChild> = skene_common::RawListbox<ActivePlatform, C>;
+/// An option inside a listbox or a picker; see [`skene_common::RawOption`].
+pub type RawOption<C = NoChild> = skene_common::RawOption<ActivePlatform, C>;
+/// A picker: a popup face, an overlay and a listbox; see [`skene_common::RawPicker`].
+pub type RawPicker<F = NoChild> = skene_common::RawPicker<ActivePlatform, F>;
+/// A picker's face; see [`skene_common::Face`].
+pub type Face = skene_common::Face<ActivePlatform>;
+/// Content above the app; see [`skene_common::Overlay`].
+pub type Overlay<C = NoChild> = skene_common::Overlay<ActivePlatform, C>;
+/// Content shown beside the view it describes; see [`skene_common::Tooltip`].
+pub type Tooltip<C = NoChild> = skene_common::Tooltip<ActivePlatform, C>;
 /// Commands shown beside the pointer on a secondary press over the view it serves;
-/// see [`skene_views::ContextMenu`].
-pub type ContextMenu<C = NoChild> = skene_views::ContextMenu<ActivePlatform, C>;
-/// A menu; see [`skene_views::RawMenu`].
-pub type RawMenu<C = NoChild> = skene_views::RawMenu<ActivePlatform, C>;
-/// One item within a menu; see [`skene_views::RawMenuItem`].
-pub type RawMenuItem<C = NoChild> = skene_views::RawMenuItem<ActivePlatform, C>;
-/// A handle moving focus to a built view; see [`skene_views::FocusHandle`].
-pub type FocusHandle = skene_views::FocusHandle<ActivePlatform>;
-/// A handle reporting a built view's measured size; see [`skene_views::SizeHandle`].
-pub type SizeHandle = skene_views::SizeHandle<ActivePlatform>;
+/// see [`skene_common::ContextMenu`].
+pub type ContextMenu<C = NoChild> = skene_common::ContextMenu<ActivePlatform, C>;
+/// A menu; see [`skene_common::RawMenu`].
+pub type RawMenu<C = NoChild> = skene_common::RawMenu<ActivePlatform, C>;
+/// One item within a menu; see [`skene_common::RawMenuItem`].
+pub type RawMenuItem<C = NoChild> = skene_common::RawMenuItem<ActivePlatform, C>;
+/// A handle moving focus to a built view; see [`skene_common::FocusHandle`].
+pub type FocusHandle = skene_common::FocusHandle<ActivePlatform>;
+/// A handle reporting a built view's measured size; see [`skene_common::SizeHandle`].
+pub type SizeHandle = skene_common::SizeHandle<ActivePlatform>;
 /// A box drawn by a paint callback, through the terminal's graphics protocol where
-/// the terminal proved one; see [`skene_views::Painted`].
-pub type Painted = skene_views::Painted<ActivePlatform>;
+/// the terminal proved one; see [`skene_common::Painted`].
+pub type Painted = skene_common::Painted<ActivePlatform>;
 /// A scrolling keyed list building only the slice in view; see
-/// [`skene_views::LazyColumn`].
-pub type LazyColumn = skene_views::LazyColumn<ActivePlatform>;
+/// [`skene_common::LazyColumn`].
+pub type LazyColumn = skene_common::LazyColumn<ActivePlatform>;
 /// A scrolling keyed row building only the slice in view; see
-/// [`skene_views::LazyRow`].
-pub type LazyRow = skene_views::LazyRow<ActivePlatform>;
+/// [`skene_common::LazyRow`].
+pub type LazyRow = skene_common::LazyRow<ActivePlatform>;
 /// The closure building a view's child under the context the view provides; see
-/// [`skene_views::ChildBuilder`].
-pub type ChildBuilder = skene_views::ChildBuilder<ActivePlatform>;
+/// [`skene_common::ChildBuilder`].
+pub type ChildBuilder = skene_common::ChildBuilder<ActivePlatform>;
 
 /// A condition on the environment, in cells; see [`skene_core::Media`].
 pub type Media = skene_core::Media<u32>;

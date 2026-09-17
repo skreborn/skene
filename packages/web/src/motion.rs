@@ -2,8 +2,8 @@
 
 use std::fmt::Write as _;
 
+use skene_common::gui::GuiProperty;
 use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
-use skene_gui_core::GuiProperty;
 
 use crate::{
   Declarations,

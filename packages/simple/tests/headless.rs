@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use skene_common::ThemedIn;
 use skene_core::{
   Border,
   BoxValue,
@@ -53,7 +54,6 @@ use skene_headless::{
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 use skene_simple::SimpleVariant;
-use skene_views::ThemedIn;
 
 type SimplePalette = skene_simple::SimplePalette<f32>;
 type SimpleButton = skene_simple::SimpleButton<Headless>;
@@ -65,10 +65,10 @@ type SimpleSlider = skene_simple::SimpleSlider<Headless>;
 type SimpleTextField = skene_simple::SimpleTextField<Headless>;
 type SimpleTextEditor = skene_simple::SimpleTextEditor<Headless>;
 type SimplePicker = skene_simple::SimplePicker<Headless>;
-type Container = skene_views::Container<Headless>;
-type Column = skene_views::Column<Headless>;
-type Text = skene_views::Text<Headless>;
-type Theme<P, C = skene_views::NoChild> = skene_views::Theme<Headless, P, C>;
+type Container = skene_common::Container<Headless>;
+type Column = skene_common::Column<Headless>;
+type Text = skene_common::Text<Headless>;
+type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
 
 const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);

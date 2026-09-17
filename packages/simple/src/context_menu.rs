@@ -1,5 +1,6 @@
 //! A ready-made context menu in the Simple design language.
 
+use skene_common::{ContextMenu, CornerRadius, MenuItem};
 use skene_core::{
   AnyKind,
   AnyView,
@@ -13,7 +14,6 @@ use skene_core::{
   View,
   When,
 };
-use skene_views::{ContextMenu, CornerRadius, MenuItem};
 
 use super::{
   SimplePalette,

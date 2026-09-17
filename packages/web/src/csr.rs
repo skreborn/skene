@@ -34,6 +34,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
+use skene_common::gui::{Canvas, GuiExt, Painter, Painting};
 use skene_core::{
   AccessProp,
   Availability,
@@ -71,7 +72,6 @@ use skene_core::{
   notify_dismiss,
   notify_toggle,
 };
-use skene_gui_core::{Canvas, GuiExt, Painter, Painting};
 use skene_reactive::{Memo, ReadSignal};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
@@ -1179,7 +1179,7 @@ fn repaint(sink: u32, size: Size<f32>) {
   );
   let mut surface = Canvas::new(width, height);
 
-  surface.set_transform(skene_gui_core::kurbo::Affine::scale(f64::from(ratio)));
+  surface.set_transform(skene_common::gui::kurbo::Affine::scale(f64::from(ratio)));
   painter(&mut surface, size);
 
   match gpu::renderer(repaint_painted) {

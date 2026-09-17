@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 skene-core.workspace = true
-skene-views.workspace = true
+skene-common.workspace = true
 skene-web.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]

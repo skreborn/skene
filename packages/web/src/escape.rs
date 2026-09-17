@@ -7,7 +7,7 @@
 //! so a view bound on it does not compile for the server leaf and is wrapped in a
 //! facade's `client_only` (or given a [`WebMarkup`] fallback) by the app that uses it.
 //! A sink either trait creates is registered in the scene through
-//! `skene_views::LowLevel`, and the node composes as a built-in does.
+//! `skene_common::LowLevel`, and the node composes as a built-in does.
 
 use skene_core::Platform;
 

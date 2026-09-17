@@ -18,6 +18,7 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use skene_common::gui::{GuiExt, Painter, Painting};
 use skene_core::{
   AccessProp,
   Boundary,
@@ -49,7 +50,6 @@ use skene_core::{
   TokenName,
   View,
 };
-use skene_gui_core::{GuiExt, Painter, Painting};
 use skene_reactive::{Owner, ReadSignal, Set, Signal, WriteSignal, provide_context};
 
 pub use self::task::{drive, install_executor, register, set_render_deadline, sleep};

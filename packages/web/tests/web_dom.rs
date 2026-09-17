@@ -9,6 +9,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
+use skene_common::{Container, RawCheckbox, Text, Theme, Toggle, View};
 use skene_core::{
   Color,
   ColorScheme,
@@ -27,7 +28,6 @@ use skene_core::{
 };
 use skene_reactive::{Get, Set, Signal};
 use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};
-use skene_views::{Container, RawCheckbox, Text, Theme, Toggle, View};
 use skene_web::{Web, WebTokenValue};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};

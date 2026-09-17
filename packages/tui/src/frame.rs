@@ -3,12 +3,12 @@
 
 use std::rc::Rc;
 
-use skene_core::{Color, ContainerName, Size};
-use skene_reactive::Set;
-use skene_views::{
+use skene_common::{
   Canvas,
   kurbo::{RoundedRect, Stroke},
 };
+use skene_core::{Color, ContainerName, Size};
+use skene_reactive::Set;
 
 use crate::{
   interaction::scroll_to,

@@ -20,7 +20,7 @@ fn reactive() -> TokenStream {
     };
   }
 
-  for facade in ["skene-gui", "skene-tui", "skene-views"] {
+  for facade in ["skene-gui", "skene-tui", "skene-common"] {
     if let Ok(FoundCrate::Name(name)) = crate_name(facade) {
       let name = format_ident!("{name}");
 

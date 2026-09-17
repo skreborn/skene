@@ -19,19 +19,19 @@ use crate::{ActivePlatform, Media, Size};
 /// The viewport's size, in logical pixels.
 #[inline(always)]
 pub fn viewport() -> ReadSignal<Size> {
-  skene_views::media::viewport::<ActivePlatform>()
+  skene_common::media::viewport::<ActivePlatform>()
 }
 
 /// The color scheme in force: the app's choice, else the platform's preference.
 #[inline(always)]
 pub fn scheme() -> ReadSignal<ColorScheme> {
-  skene_views::media::scheme::<ActivePlatform>()
+  skene_common::media::scheme::<ActivePlatform>()
 }
 
 /// Whether the reader prefers reduced motion.
 #[inline(always)]
 pub fn reduced_motion() -> ReadSignal<bool> {
-  skene_views::media::reduced_motion::<ActivePlatform>()
+  skene_common::media::reduced_motion::<ActivePlatform>()
 }
 
 /// Whether the page stands hydrated, as a signal: false on the server leaf and while
@@ -40,14 +40,14 @@ pub fn reduced_motion() -> ReadSignal<bool> {
 /// [`Enhance`](crate::Enhance) over the bundle waits on.
 #[inline(always)]
 pub fn hydrated() -> ReadSignal<bool> {
-  skene_views::media::hydrated::<ActivePlatform>()
+  skene_common::media::hydrated::<ActivePlatform>()
 }
 
 /// Whether `media` holds, as a memo following the environment. A container condition
 /// never holds here: it is answered per node, by the box it names.
 #[inline(always)]
 pub fn watch(media: &Media) -> Memo<bool> {
-  skene_views::media::watch::<ActivePlatform>(media)
+  skene_common::media::watch::<ActivePlatform>(media)
 }
 
 /// Paints `scheme` throughout, overriding the reader's preference; `None` returns to
@@ -60,7 +60,7 @@ pub fn watch(media: &Media) -> Memo<bool> {
 /// the blocking script applying the stored choice before the first paint.
 #[inline(always)]
 pub fn set_scheme(scheme: Option<ColorScheme>) {
-  skene_views::media::set_scheme::<ActivePlatform>(scheme);
+  skene_common::media::set_scheme::<ActivePlatform>(scheme);
 }
 
 /// Paints the scheme `scheme` reports, following it as it changes; see [`set_scheme`].
@@ -68,7 +68,7 @@ pub fn set_scheme(scheme: Option<ColorScheme>) {
 /// Bind it to the signal holding the reader's setting.
 #[inline(always)]
 pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
-  skene_views::media::derive_scheme::<ActivePlatform>(scheme);
+  skene_common::media::derive_scheme::<ActivePlatform>(scheme);
 }
 
 /// The color scheme the reader chose on a previous visit, when there is one.
@@ -80,5 +80,5 @@ pub fn derive_scheme(scheme: impl Fn() -> Option<ColorScheme> + 'static) {
 #[inline(always)]
 #[must_use]
 pub fn stored_scheme() -> Option<ColorScheme> {
-  skene_views::media::stored_scheme::<ActivePlatform>()
+  skene_common::media::stored_scheme::<ActivePlatform>()
 }

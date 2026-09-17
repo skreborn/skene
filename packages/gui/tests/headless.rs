@@ -632,12 +632,12 @@ fn a_size_handle_reports_the_measured_size() {
 /// A platform's renderer takes the canvas's steps in the order they were drawn.
 #[test]
 fn a_canvas_replays_its_scene_into_a_renderer() {
+  use skene_common::gui::Renderer;
   use skene_gui::{
     Canvas,
     kurbo::{Affine, BezPath, Rect, Stroke},
     peniko::Brush,
   };
-  use skene_gui_core::Renderer;
 
   #[derive(Default)]
   struct Log(Vec<String>);

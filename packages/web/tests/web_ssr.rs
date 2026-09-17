@@ -5,6 +5,7 @@
 //! `cargo test -p skene-web --target wasm32-wasip2 --test web_ssr`.
 #![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
 
+use skene_common::{Container, RawCheckbox, Text, Theme, Toggle};
 use skene_core::{
   Color,
   Condition,
@@ -23,7 +24,6 @@ use skene_core::{
   When,
 };
 use skene_reactive::{Get, Set, signal};
-use skene_views::{Container, RawCheckbox, Text, Theme, Toggle};
 use skene_web::{Web, WebTokenValue, render_to_string};
 
 type Box_ = Container<Web>;
@@ -319,7 +319,7 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
         .handle_toggle(move |next| set_checked.set(next)),
     )
     .set_part(
-      skene_views::Part::Mark,
+      skene_common::Part::Mark,
       Box_::new().set_color(white().when(Condition::from(State::Checked), black())),
     )
     .set_label("Agree")

@@ -11,9 +11,7 @@ rustc-hash.workspace = true
 rustix = { default-features = false, features = ["event", "std", "stdio", "termios"], version = "1" }
 skene-core.workspace = true
 skene-reactive.workspace = true
-skene-router.workspace = true
-skene-tui-core.workspace = true
-skene-views.workspace = true
+skene-common.workspace = true
 taffy = "0.9"
 unicode-segmentation = "1"
 unicode-width = "0.2"

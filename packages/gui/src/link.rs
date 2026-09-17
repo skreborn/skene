@@ -3,6 +3,10 @@
 
 use std::{cell::Cell, rc::Rc};
 
+use skene_common::{
+  LayoutBox,
+  routing::{Route, Router},
+};
 use skene_core::{
   AnyKind,
   Children,
@@ -17,8 +21,6 @@ use skene_core::{
   Seal,
   View,
 };
-use skene_router::{Route, Router};
-use skene_views::LayoutBox;
 
 use crate::ActivePlatform;
 

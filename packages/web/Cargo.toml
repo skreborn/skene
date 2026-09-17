@@ -6,9 +6,8 @@ edition.workspace = true
 [dependencies]
 rustc-hash.workspace = true
 skene-core.workspace = true
-skene-gui-core.workspace = true
 skene-reactive.workspace = true
-skene-views.workspace = true
+skene-common.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 

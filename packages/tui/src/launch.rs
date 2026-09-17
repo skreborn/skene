@@ -1,7 +1,7 @@
 //! The launch configuration: what the app takes from the terminal.
 
+use skene_common::{ContextMenu, MenuItem, typography};
 use skene_core::{Border, Color, Inset, IntoView, Media, State, When};
-use skene_views::{ContextMenu, MenuItem, typography};
 
 use crate::{Tui, terminal, with_store};
 

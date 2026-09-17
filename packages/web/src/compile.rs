@@ -13,6 +13,10 @@
 use std::hash::{Hash, Hasher};
 
 use rustc_hash::{FxHashMap, FxHasher};
+use skene_common::{
+  gui::{GuiExt, GuiProperty},
+  typography,
+};
 use skene_core::{
   Animation,
   BoxProps,
@@ -52,8 +56,6 @@ use skene_core::{
   TokenName,
   Wrap,
 };
-use skene_gui_core::{GuiExt, GuiProperty};
-use skene_views::typography;
 
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},

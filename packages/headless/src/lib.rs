@@ -34,6 +34,7 @@ mod store;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
+use skene_common::gui::{Canvas, Painter, Painting};
 use skene_core::{
   AccessProp,
   Availability,
@@ -91,7 +92,6 @@ use skene_core::{
   notify_selection_change,
   notify_toggle,
 };
-use skene_gui_core::{Canvas, Painter, Painting};
 use skene_reactive::{ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 

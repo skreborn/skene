@@ -2,6 +2,17 @@
 
 use std::rc::Rc;
 
+use skene_common::{
+  Column,
+  Container,
+  CornerRadius,
+  Label,
+  ListItem,
+  RawOption,
+  RawPicker,
+  Row,
+  Text,
+};
 use skene_core::{
   AnyKind,
   AnyView,
@@ -20,17 +31,6 @@ use skene_core::{
   When,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
-use skene_views::{
-  Column,
-  Container,
-  CornerRadius,
-  Label,
-  ListItem,
-  RawOption,
-  RawPicker,
-  Row,
-  Text,
-};
 
 use super::{
   SimpleGlyphs,

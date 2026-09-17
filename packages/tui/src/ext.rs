@@ -1,8 +1,8 @@
 //! The terminal's decoration and text setters on the facade's views: border glyphs, a
 //! shadow, boldness.
 
+use skene_common::tui::{BorderGlyphs, TuiExt};
 use skene_core::{BoxStyle, Color, Condition, Declared, Leaf, RunStyle, StaticLeaf, Value};
-use skene_tui_core::{BorderGlyphs, TuiExt};
 
 use crate::Tui;
 
@@ -67,21 +67,21 @@ pub trait TuiDecoration: Sized {
   }
 }
 
-impl TuiDecoration for skene_views::Container<Tui> {
+impl TuiDecoration for skene_common::Container<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<B: skene_views::Behavior<Tui>, C> TuiDecoration for skene_views::Control<Tui, B, C> {
+impl<B: skene_common::Behavior<Tui>, C> TuiDecoration for skene_common::Control<Tui, B, C> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
   }
 }
 
-impl<C> TuiDecoration for skene_views::Overlay<Tui, C> {
+impl<C> TuiDecoration for skene_common::Overlay<Tui, C> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredBox {
     self.style_mut()
@@ -116,14 +116,14 @@ pub trait TuiText: Sized {
   }
 }
 
-impl TuiText for skene_views::Text<Tui> {
+impl TuiText for skene_common::Text<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()
   }
 }
 
-impl TuiText for skene_views::Span<Tui> {
+impl TuiText for skene_common::Span<Tui> {
   #[inline(always)]
   fn terminal_style_mut(&mut self) -> &mut DeclaredRun {
     self.style_mut()

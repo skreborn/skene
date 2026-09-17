@@ -2,6 +2,7 @@
 
 use std::rc::Rc;
 
+use skene_common::{Activate, CornerRadius, Label, RawButton, Text, realize::Source, typography};
 use skene_core::{
   AnyKind,
   AnyView,
@@ -20,7 +21,6 @@ use skene_core::{
   View,
 };
 use skene_reactive::{Effect, With};
-use skene_views::{Activate, CornerRadius, Label, RawButton, Text, realize::Source, typography};
 
 use super::{
   SimpleLook,

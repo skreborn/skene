@@ -3,6 +3,7 @@
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
+use skene_common::gui::Painter;
 use skene_core::{
   Availability,
   BoxProps,
@@ -27,7 +28,6 @@ use skene_core::{
   Timer,
   interpolate::Tween,
 };
-use skene_gui_core::Painter;
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};

@@ -3,6 +3,7 @@
 
 use std::{cell::RefCell, rc::Rc, thread::LocalKey};
 
+use skene_common::Painting;
 use skene_core::{
   AccessProp,
   Availability,
@@ -34,7 +35,6 @@ use skene_core::{
   Timer,
 };
 use skene_reactive::{ReadSignal, Set};
-use skene_views::Painting;
 
 use crate::{
   TokenValue,
@@ -543,7 +543,7 @@ impl Painting for Tui {
     with_store(|store| store.media().graphics)
   }
 
-  fn paint(&self, sink: &Handle, painter: Box<skene_views::Painter>) {
+  fn paint(&self, sink: &Handle, painter: Box<skene_common::Painter>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
         record.picture = Some(PictureRecord {

@@ -1,7 +1,7 @@
 //! Server rendering of the virtual list: an unmeasured viewport serializes only the
 //! overscan margin, the rest as spacer extent.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{LazyColumn, LazyRow, Text, render_to_string};
 

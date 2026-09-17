@@ -8,9 +8,9 @@
 //! own resources: by the segments enclosing it, each by its build order within the
 //! segment holding it, which both leaves count alike.
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 use std::cell::RefCell;
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 use std::collections::VecDeque;
 
 /// A critical resource's serializer, registered with the platform so a server render can
@@ -27,18 +27,18 @@ pub const STATE_SCRIPT_ID: &str = "skene-state";
 /// segment holding it; the resources its content builds are matched across the boundary
 /// under this key, in their creation order. Taken with [`enter_lazy`] when the segment
 /// is built and applied with [`within_lazy`] when its content is.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
 pub struct LazyRegion(Vec<u32>);
 
 /// A lazy segment's path with its order-keyed entries, in creation order.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 type LazyEntries<V> = (Vec<u32>, V);
 
 /// The state as it crosses the channel: the order-keyed entries outside any lazy
 /// segment, the tag-keyed ones, then each lazy segment's order-keyed entries.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 type State = (
   Vec<Option<String>>,
   Vec<(String, String)>,
@@ -49,19 +49,19 @@ type State = (
 /// order (`null` for one that did not settle), then the tag-keyed entries sorted by
 /// tag, then each lazy segment's entries in the segment's own creation order, the
 /// segments in the order their content built.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 fn encode_state(state: &State) -> String {
   serde_json::to_string(state).unwrap_or_else(|_| "[[],[],[]]".to_owned())
 }
 
 /// Decodes the state produced by [`encode_state`]. Malformed state adopts nothing rather
 /// than panicking.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 fn decode_state(state: &str) -> State {
   serde_json::from_str(state).unwrap_or_default()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 thread_local! {
   /// The lazy segment whose content is building, as its path; empty outside any.
   static REGION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
@@ -70,7 +70,7 @@ thread_local! {
   static LAZY_COUNTS: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 thread_local! {
   /// The server-rendered values outside any lazy segment, to adopt in creation order.
   static ADOPTED: RefCell<VecDeque<Option<String>>> = const { RefCell::new(VecDeque::new()) };
@@ -82,7 +82,7 @@ thread_local! {
   static TAGGED: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 thread_local! {
   /// Each critical resource's serializer with the lazy segment it was created in, in
   /// creation order; drained once the render settles.
@@ -97,7 +97,7 @@ thread_local! {
 ///
 /// Called once per lazy segment, when it is built, on both leaves; the content applies
 /// the result through [`within_lazy`].
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 pub fn enter_lazy() -> LazyRegion {
   let index = LAZY_COUNTS.with(|counts| {
     let mut counts = counts.borrow_mut();
@@ -124,7 +124,7 @@ pub fn enter_lazy() -> LazyRegion {
 /// Runs `work` as the content of the lazy segment at `region`, so the resources it
 /// creates register or adopt under that segment. A poll of the content's future is
 /// run this way, so a resource created while it loads belongs to the segment too.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 pub fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
   let previous = REGION.with(|current| current.replace(region.0.clone()));
 
@@ -140,7 +140,7 @@ pub fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
 
 /// Forgets the segment being built and every count, so a render or a hydration starts
 /// outside any lazy segment.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 fn reset_regions() {
   REGION.with(|region| region.borrow_mut().clear());
   LAZY_COUNTS.with(|counts| counts.borrow_mut().clear());
@@ -148,7 +148,7 @@ fn reset_regions() {
 
 /// Takes the next resource's adopted server value in the segment being built, if
 /// hydrating left one.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 #[must_use]
 pub fn adopt_next() -> Option<String> {
   REGION.with(|region| {
@@ -168,7 +168,7 @@ pub fn adopt_next() -> Option<String> {
 }
 
 /// The server never adopts: it produces the state the client adopts.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
 pub fn adopt_next() -> Option<String> {
@@ -176,7 +176,7 @@ pub fn adopt_next() -> Option<String> {
 }
 
 /// Takes the adopted server value registered under `tag`, if hydrating left one.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 #[must_use]
 pub fn adopt_tagged(tag: &str) -> Option<String> {
   TAGGED.with(|tagged| {
@@ -188,7 +188,7 @@ pub fn adopt_tagged(tag: &str) -> Option<String> {
 }
 
 /// The server never adopts: it produces the state the client adopts.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
 pub fn adopt_tagged(_tag: &str) -> Option<String> {
@@ -196,13 +196,13 @@ pub fn adopt_tagged(_tag: &str) -> Option<String> {
 }
 
 /// A no-op on the client: it adopts server state rather than producing it.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 #[inline(always)]
 pub fn register_source(_source: HydrationSource) {}
 
 /// Registers a critical resource's serializer under the segment being built, to be
 /// drained once the render settles.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 pub fn register_source(source: HydrationSource) {
   let region = REGION.with(|region| region.borrow().clone());
 
@@ -210,7 +210,7 @@ pub fn register_source(source: HydrationSource) {
 }
 
 /// A no-op on the client: it adopts server state rather than producing it.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 #[inline(always)]
 pub fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 
@@ -220,7 +220,7 @@ pub fn register_tagged_source(_tag: &str, _source: HydrationSource) {}
 ///
 /// Panics when `tag` is already registered in this render: tags pair one server value
 /// with one client resource, so a duplicate has no well-defined owner.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 pub fn register_tagged_source(tag: &str, source: HydrationSource) {
   TAGGED_SOURCES.with(|sources| {
     let mut sources = sources.borrow_mut();
@@ -235,7 +235,7 @@ pub fn register_tagged_source(tag: &str, source: HydrationSource) {
 }
 
 /// The browser is a client, not the server.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 #[inline(always)]
 #[must_use]
 pub fn is_server() -> bool {
@@ -243,7 +243,7 @@ pub fn is_server() -> bool {
 }
 
 /// This leaf renders on the server, so a client-only load skips its round here.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
 pub fn is_server() -> bool {
@@ -252,7 +252,7 @@ pub fn is_server() -> bool {
 
 /// Stages the server's serialized resource `state` for the resources built next to
 /// adopt, by segment and creation order and by tag.
-#[cfg(target_os = "unknown")]
+#[cfg(skene_leaf = "browser")]
 pub(crate) fn stage(state: &str) {
   let (ordered, tagged, lazy) = decode_state(state);
 
@@ -268,7 +268,7 @@ pub(crate) fn stage(state: &str) {
 }
 
 /// Forgets every registered resource serializer, so a render starts clean.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 pub(crate) fn reset_sources() {
   reset_regions();
   SOURCES.with(|sources| sources.borrow_mut().clear());
@@ -276,7 +276,7 @@ pub(crate) fn reset_sources() {
 }
 
 /// Drains the registered sources into the encoded hydration state.
-#[cfg(target_os = "wasi")]
+#[cfg(skene_leaf = "server")]
 pub(crate) fn collect_state() -> String {
   let mut ordered = Vec::new();
   let mut lazy: Vec<LazyEntries<Vec<Option<String>>>> = Vec::new();

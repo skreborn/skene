@@ -1,6 +1,6 @@
 //! Server rendering of overlays: top-layer elements serialized closed.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{
   Container,

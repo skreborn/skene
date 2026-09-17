@@ -15,9 +15,9 @@ use std::future::Future;
 /// resuming into a disposed tree.
 #[inline(always)]
 pub fn spawn(future: impl Future<Output = ()> + 'static) {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_leaf = "host"))]
   skene_web::install_executor();
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(skene_leaf = "host")]
   skene_headless::install_executor();
 
   skene_reactive::spawn(future);

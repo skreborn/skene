@@ -89,7 +89,7 @@ impl Conjunction {
   /// What a live query of this conjunction asks the environment: the media features
   /// as one query text (`None` without any), the scheme it names, and whether it has
   /// container queries, which no media query answers.
-  #[cfg(target_os = "unknown")]
+  #[cfg(skene_leaf = "browser")]
   pub(crate) fn query(&self) -> (Option<String>, Option<ColorScheme>, bool) {
     let text = (!self.media.is_empty()).then(|| self.media.join(" and "));
 

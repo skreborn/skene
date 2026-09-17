@@ -1,7 +1,8 @@
 //! Headless view tests: the GUI facade's views realized against the headless platform,
 //! built and driven without a browser.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(skene_leaf = "host")]
+#![cfg(skene_leaf = "host")]
 
 use std::{
   cell::{Cell, RefCell},

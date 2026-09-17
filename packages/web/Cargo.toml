@@ -5,14 +5,12 @@ edition.workspace = true
 
 [dependencies]
 rustc-hash.workspace = true
+serde_json = "1"
 skene-core.workspace = true
 skene-reactive.workspace = true
 skene-common.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-serde_json = "1"
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 console_error_panic_hook = "0.1"
@@ -64,9 +62,6 @@ web-sys = { version = "0.3", features = [
   "Window",
 ] }
 wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], version = "29" }
-
-[target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
-wasi = "0.14"
 
 [dev-dependencies]
 skene-reactive.workspace = true

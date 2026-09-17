@@ -1,8 +1,8 @@
 //! The skene web platform: the [`Web`] platform type, the shared compiler of the property
 //! model to CSS, and two leaves selected by target.
 //!
-//! The browser leaf (`csr`, `target_os = "unknown"`) realizes against a live DOM and
-//! the server leaf (`ssr`, `target_os = "wasi"`) against a string tree, both emitting
+//! The browser leaf (`csr`, `skene_leaf = "browser"`) realizes against a live DOM and
+//! the server leaf (`ssr`, `skene_leaf = "server"`) against a string tree, both emitting
 //! the same web semantics, so a node styled the same way gets the same
 //! content-addressed class on either leaf and a served page hydrates in place. The
 //! compiler and the element choices are shared; each leaf implements
@@ -19,33 +19,33 @@
 //! environment a server render answers with, parsed from a request's client hints.
 
 // The compiler is consumed by the leaves, which only compile on wasm targets.
-#[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
+#[cfg_attr(skene_leaf = "host", expect(dead_code))]
 mod compile;
 mod condition;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 mod csr;
 mod declarations;
 mod escape;
 mod expr;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 mod gpu;
 mod hints;
 mod hydration;
-#[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
+#[cfg_attr(skene_leaf = "host", expect(dead_code))]
 mod interner;
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 mod markup;
 mod motion;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 mod ssr;
-#[cfg_attr(not(target_arch = "wasm32"), expect(dead_code))]
+#[cfg_attr(skene_leaf = "host", expect(dead_code))]
 mod token;
 
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub use self::csr::boot_with_dev_state;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub use self::csr::uninstall;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub use self::csr::{
   add_head_element,
   adopt_restoration,
@@ -73,9 +73,9 @@ pub use self::csr::{
   view_transitions_enabled,
   watch_media,
 };
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub use self::escape::WebDom;
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 pub use self::hydration::{
   LazyRegion,
   adopt_next,
@@ -86,7 +86,7 @@ pub use self::hydration::{
   register_tagged_source,
   within_lazy,
 };
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub use self::ssr::{
   Rendered,
   StreamPiece,
@@ -97,7 +97,6 @@ pub use self::ssr::{
   install_executor,
   record_static_routes,
   recorded_static_routes,
-  register,
   register_boundary,
   render_to_stream,
   render_to_stream_with,
@@ -121,7 +120,7 @@ pub use self::{
 
 /// The reset stylesheet every web leaf applies: injected into a `<style>` by the
 /// browser, serialized into the document by a server.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 const RESET_CSS: &str = include_str!("reset.css");
 
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the

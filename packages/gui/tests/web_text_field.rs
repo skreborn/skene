@@ -1,7 +1,7 @@
 //! Server rendering of the text field: the input as the control's own element, the
 //! void-tag form, value and placeholder serialization, styling, and inert handlers.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{
   Condition,

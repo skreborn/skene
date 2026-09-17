@@ -10,8 +10,9 @@ use std::{
   cell::RefCell,
   future::Future,
   pin::Pin,
-  sync::{Arc, Mutex},
+  sync::{Arc, Condvar, Mutex, PoisonError},
   task::{Context, Wake, Waker},
+  time::Duration,
 };
 
 use rustc_hash::FxHashMap;
@@ -23,6 +24,7 @@ const MAX_ROUNDS: u32 = 1024;
 /// The cross-thread readiness queue: ids of tasks whose wakers fired.
 struct Shared {
   ready: Mutex<Vec<u64>>,
+  woken: Condvar,
 }
 
 /// The thread's tasks and their shared readiness queue.
@@ -32,12 +34,25 @@ struct Executor {
   next: u64,
 }
 
+impl Shared {
+  /// Marks a task ready and wakes a thread waiting for one.
+  fn push(&self, id: u64) {
+    self
+      .ready
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .push(id);
+    self.woken.notify_all();
+  }
+}
+
 impl Executor {
   fn new() -> Self {
     Self {
       tasks: FxHashMap::default(),
       shared: Arc::new(Shared {
         ready: Mutex::new(Vec::new()),
+        woken: Condvar::new(),
       }),
       next: 0,
     }
@@ -60,12 +75,7 @@ impl Wake for TaskWaker {
   }
 
   fn wake_by_ref(self: &Arc<Self>) {
-    self
-      .shared
-      .ready
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner)
-      .push(self.id);
+    self.shared.push(self.id);
   }
 }
 
@@ -77,13 +87,30 @@ pub fn drive(future: impl Future<Output = ()> + 'static) {
 
     executor.next += 1;
     executor.tasks.insert(id, Box::pin(future));
-    executor
-      .shared
-      .ready
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner)
-      .push(id);
+    executor.shared.push(id);
   });
+}
+
+/// Blocks until a task is woken or `timeout` passes; `true` when one is ready.
+///
+/// A platform whose thread has nothing else to do between pumps waits here, so a
+/// waker fired from another thread resumes it at once.
+#[must_use]
+pub fn wait(timeout: Duration) -> bool {
+  let shared = EXECUTOR.with(|executor| Arc::clone(&executor.borrow().shared));
+  let ready = shared.ready.lock().unwrap_or_else(PoisonError::into_inner);
+  let (ready, _) = shared
+    .woken
+    .wait_timeout_while(ready, timeout, |ready| ready.is_empty())
+    .unwrap_or_else(PoisonError::into_inner);
+
+  !ready.is_empty()
+}
+
+/// The number of tasks alive on this thread's executor, pending or ready.
+#[must_use]
+pub fn task_count() -> usize {
+  EXECUTOR.with(|executor| executor.borrow().tasks.len())
 }
 
 /// Polls every ready task until none remain ready; `true` when any ran.

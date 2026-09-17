@@ -4,13 +4,10 @@
 //! loop, resolving with each message as it lands and with `None` once the socket has
 //! closed. Nothing in the framework knows this crate exists.
 //!
-//! The transport is the platform's: the browser's `WebSocket` on the web, a thread
-//! around a plain client (`tungstenite`) on every other host, the future woken
-//! through its waker as messages arrive, and on a server render a connection through
-//! `wasi:sockets` (TLS through rustls for `wss://`) with the same client over it,
-//! each wait registered with the server leaf's reactor and the frames read as the
-//! receiving future is polled; a socket opened during a render lives for that render.
-//! Dropping the socket closes it.
+//! The transport is the platform's: the browser's `WebSocket` on the web, and a thread
+//! around a plain client (`tungstenite`) on every other host, a server render included,
+//! the future woken through its waker as messages arrive; a socket opened during a
+//! render lives for that render. Dropping the socket closes it.
 
 use std::{
   collections::VecDeque,
@@ -24,15 +21,11 @@ use std::{
 #[cfg(not(target_arch = "wasm32"))]
 mod host;
 mod url;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-mod wasi;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
 use host as transport;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-use wasi as transport;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use web as transport;
 
@@ -163,9 +156,6 @@ impl Future for Receive<'_> {
   type Output = Option<Message>;
 
   fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
-    #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-    self.0.link.pump(context);
-
     let mut inbox = self
       .0
       .receiver

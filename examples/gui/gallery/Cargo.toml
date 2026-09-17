@@ -8,12 +8,10 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+acme-map = { path = "../../third-party/acme-map" }
 acme-ui = { path = "../../third-party/acme-ui" }
 skene-gui.workspace = true
 skene-simple.workspace = true
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-acme-map = { path = "../../third-party/acme-map" }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 js-sys = "0.3"

@@ -1,6 +1,6 @@
 //! Server rendering of the document head: the title and registered head elements.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{
   Text,

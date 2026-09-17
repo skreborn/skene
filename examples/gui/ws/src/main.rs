@@ -1,6 +1,6 @@
-//! The server-render command: `wasmtime ws-server.wasm /path` prints the page.
+//! The server-render command: `ws-server /path` prints the page.
 
 fn main() {
-  #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+  #[cfg(skene_platform = "server")]
   gui_ws::__skene_main();
 }

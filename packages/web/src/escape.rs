@@ -40,7 +40,7 @@ pub trait WebMarkup: Platform {
 ///
 /// Not implemented on the server leaf, where no DOM exists, so a view bound on it fails
 /// to compile there rather than at run time.
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no DOM",
   label = "a view bound on `WebDom` exists on the browser leaf alone; bound on `WebMarkup` it exists on the server leaf too"

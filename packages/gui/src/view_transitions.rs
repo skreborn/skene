@@ -11,6 +11,6 @@
 /// cross-document navigations between pages animate the same way. A browser without
 /// view transitions, and the host platform, cut.
 pub fn enable() {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_leaf = "host"))]
   skene_web::enable_view_transitions();
 }

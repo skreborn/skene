@@ -7,7 +7,7 @@
 //! whole render settles through it and serializes it in place. On the client the
 //! content builds directly; hydration adopts the server's already-settled markup.
 
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 use skene_core::Boundary;
 use skene_core::{AnyKind, IntoView, NodeId, Scene, View};
 
@@ -32,7 +32,7 @@ impl Deferred {
 
   /// Builds the content under a boundary of its own and registers the segment
   /// `start` begins as a streaming boundary.
-  #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+  #[cfg(skene_leaf = "server")]
   fn build_content(self, start: NodeId) -> NodeId {
     let boundary = Boundary::new();
     // A child scope so the boundary is in `Context` for the content's tasks only, not
@@ -50,7 +50,7 @@ impl Deferred {
   }
 
   /// Builds the content directly; only the server leaf streams.
-  #[cfg(not(all(target_arch = "wasm32", target_os = "wasi")))]
+  #[cfg(not(skene_leaf = "server"))]
   fn build_content(self, _start: NodeId) -> NodeId {
     (self.content)()
   }

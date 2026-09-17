@@ -1,7 +1,7 @@
 //! Declarative style dynamics rendered to CSS: conditional variants, transitions, and
 //! keyframe animations—the no-script styling contract of server-rendered output.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{
   Condition,

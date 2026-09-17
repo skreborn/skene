@@ -6,7 +6,7 @@
 //!
 //! Run in a headless browser:
 //! `cargo test -p skene-gui --target wasm32-unknown-unknown --test web_dom`.
-#![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#![cfg(skene_leaf = "browser")]
 
 use std::{
   cell::{Cell, RefCell},

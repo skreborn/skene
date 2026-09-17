@@ -16,7 +16,7 @@ use skene_common::routing::{Route, Router, StaticRoutes};
 /// Pair the returned router with a [`derived`](crate::derived) subtree or a
 /// [`Switch`](crate::Switch) keyed on [`route`](Router::route); read it anywhere
 /// beneath with [`Router::get`].
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
   let _ = router.apply_path(&skene_web::current_path());
@@ -39,7 +39,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 
 /// Creates the app's router from the requested path, and provides it to the current
 /// scope. Navigation stays in memory—a server render is one route.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
   let _ = router.apply_path(&skene_web::current_path());
@@ -51,7 +51,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 
 /// Creates the app's router at `fallback`, and provides it to the current scope.
 /// Navigation stays in memory—the host owns no URL.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_leaf = "host")]
 pub fn install_router<R: Route>(fallback: R) -> Router<R> {
   let router = Router::new(fallback);
 
@@ -63,7 +63,7 @@ pub fn install_router<R: Route>(fallback: R) -> Router<R> {
 /// [`install_router`], for a route type whose statically-renderable routes are
 /// enumerable: the enumeration also reaches the build tool, so `skene build web
 /// --static` renders every route without being told them.
-#[cfg(not(all(target_arch = "wasm32", target_os = "wasi")))]
+#[cfg(not(skene_leaf = "server"))]
 #[inline(always)]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
   install_router(fallback)
@@ -71,7 +71,7 @@ pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
 
 /// [`install_router`], recording the enumerable routes for the build tool: `skene
 /// build web --static` renders every route without being told them.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub fn install_static_router<R: StaticRoutes>(fallback: R) -> Router<R> {
   skene_web::record_static_routes(R::all().iter().map(Route::to_path).collect());
 

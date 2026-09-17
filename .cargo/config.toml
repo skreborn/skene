@@ -3,6 +3,3 @@ skene = "run --package skene-cli --release --"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"
-
-[target.wasm32-wasip2]
-runner = "wasmtime -S http -S inherit-network -S allow-ip-name-lookup"

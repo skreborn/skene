@@ -12,11 +12,11 @@ use skene_reactive::Owner;
 use crate::ActivePlatform;
 
 /// A lazy segment's place among the hydrating resources, on the leaves that hydrate.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 type Region = skene_web::LazyRegion;
 
 /// The host has no hydration, so a lazy segment has no place among resources.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_leaf = "host")]
 struct Region;
 
 /// A subtree whose content arrives asynchronously—typically a [`macro@lazy`](crate::lazy)
@@ -80,12 +80,12 @@ impl Lazy {
 /// The lazy segment's place among the hydrating resources, taken as it is built.
 #[inline(always)]
 fn enter_region() -> Region {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_leaf = "host"))]
   {
     skene_web::enter_lazy()
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(skene_leaf = "host")]
   Region
 }
 
@@ -93,12 +93,12 @@ fn enter_region() -> Region {
 /// adopt under the segment.
 #[inline(always)]
 fn within_region<R>(region: &Region, work: impl FnOnce() -> R) -> R {
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_leaf = "host"))]
   {
     skene_web::within_lazy(region, work)
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(skene_leaf = "host")]
   {
     let _ = region;
 
@@ -137,12 +137,12 @@ impl<F: Future> Future for InRegion<F> {
 /// Claims the server's markup in the segment, when hydrating over some.
 #[inline(always)]
 fn claim(start: NodeId) -> bool {
-  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+  #[cfg(skene_leaf = "browser")]
   {
     skene_web::claim_lazy(start)
   }
 
-  #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+  #[cfg(not(skene_leaf = "browser"))]
   {
     let _ = start;
 
@@ -153,10 +153,10 @@ fn claim(start: NodeId) -> bool {
 /// Removes the claimed markup, as the real content arrives.
 #[inline(always)]
 fn discard(start: NodeId) {
-  #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+  #[cfg(skene_leaf = "browser")]
   skene_web::discard_lazy(start);
 
-  #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+  #[cfg(not(skene_leaf = "browser"))]
   let _ = start;
 }
 

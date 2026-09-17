@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 color.workspace = true
+libm = "0.2"
 longest-increasing-subsequence = "0.1"
 num-traits.workspace = true
 rustc-hash.workspace = true

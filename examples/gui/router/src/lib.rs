@@ -9,7 +9,7 @@
 //! Gated to `wasm32`: links and lazy modules are the web's, so the host has no platform
 //! for them.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(any(target_arch = "wasm32", skene_platform = "server"))]
 
 use skene_gui::{
   AnyView,

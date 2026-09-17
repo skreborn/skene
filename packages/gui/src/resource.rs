@@ -4,7 +4,7 @@ use std::{future::Future, ops::Deref};
 
 use serde::{Serialize, de::DeserializeOwned};
 pub use skene_reactive::LoadState;
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 use skene_web as platform;
 
 /// A [`skene_reactive::Resource`] that hydrates: a value loaded on the server crosses
@@ -61,7 +61,7 @@ impl<T: 'static> Resource<T> {
     F: Future<Output = T> + 'static,
     T: Serialize + DeserializeOwned,
   {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(not(skene_leaf = "host"))]
     {
       platform::install_executor();
 
@@ -78,7 +78,7 @@ impl<T: 'static> Resource<T> {
       resource
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(skene_leaf = "host")]
     Self(skene_reactive::Resource::new(load))
   }
 
@@ -97,7 +97,7 @@ impl<T: 'static> Resource<T> {
     F: Future<Output = T> + 'static,
     T: Serialize + DeserializeOwned,
   {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(not(skene_leaf = "host"))]
     {
       platform::install_executor();
 
@@ -114,7 +114,7 @@ impl<T: 'static> Resource<T> {
       resource
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(skene_leaf = "host")]
     {
       let _ = tag;
 
@@ -133,7 +133,7 @@ impl<T: 'static> Resource<T> {
   where
     F: Future<Output = T> + 'static,
   {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(not(skene_leaf = "host"))]
     {
       platform::install_executor();
 
@@ -146,7 +146,7 @@ impl<T: 'static> Resource<T> {
   }
 
   /// The serializer a server render drains once this resource settles.
-  #[cfg(target_arch = "wasm32")]
+  #[cfg(not(skene_leaf = "host"))]
   fn source(&self) -> platform::HydrationSource
   where
     T: Serialize,

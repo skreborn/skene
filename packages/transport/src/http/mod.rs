@@ -4,27 +4,20 @@
 //! headers and its body. Nothing in the framework knows this crate exists, so a
 //! third-party client sits on exactly the same footing.
 //!
-//! The transport is the platform's: the browser's `fetch` on the web, `wasi:http`
-//! through the server leaf's reactor on a server render, and a thread around a plain
-//! HTTP client on every other host, where the future wakes the platform's executor
-//! when the thread is done. A request outlives nothing: dropping the future before it
-//! resolves abandons the exchange.
+//! The transport is the platform's: the browser's `fetch` on the web, and a thread around
+//! a plain HTTP client on every other host, a server render included, where the future
+//! wakes the platform's executor when the thread is done. A request outlives nothing: dropping the
+//! future before it resolves abandons the exchange.
 
 use std::{fmt, string::FromUtf8Error};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod host;
-#[cfg(any(all(target_arch = "wasm32", target_os = "wasi"), test))]
-mod url;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-mod wasi;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
 use host as transport;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
-use wasi as transport;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use web as transport;
 

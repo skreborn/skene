@@ -1,6 +1,6 @@
-//! The server-render command: `wasmtime counter-server.wasm /path` prints the page.
+//! The server-render command: `counter-server /path` prints the page.
 
 fn main() {
-  #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+  #[cfg(skene_platform = "server")]
   counter::__skene_main();
 }

@@ -15,7 +15,7 @@ use crate::{
 pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)";
 
 /// The rule opting a document into cross-document view transitions.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.

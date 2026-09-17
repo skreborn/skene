@@ -10,7 +10,7 @@
 
 pub mod media;
 pub mod prelude;
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub mod split;
 pub mod view_transitions;
 
@@ -107,7 +107,7 @@ pub use skene_core::{
 };
 /// The host platform's test seams (`trigger_` events, tree inspection), for headless
 /// view tests on the host.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_leaf = "host")]
 pub use skene_headless as headless;
 pub use skene_macros::{lazy, main};
 pub use skene_reactive as reactive;
@@ -116,9 +116,9 @@ pub use skene_reactive as reactive;
 ///
 /// The only web-specific names the facade exposes, kept out of [`prelude`] so portable
 /// app code never names a platform.
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 pub use skene_web as web;
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub use skene_web::Rendered;
 pub use tracing;
 #[cfg(target_arch = "wasm32")]
@@ -135,15 +135,15 @@ pub use crate::{
   task::spawn,
 };
 
-/// The platform the build selected: the web platform on `wasm32` (the browser leaf on
-/// `wasm32-unknown-unknown`, the server leaf on `wasm32-wasip2`), the headless host
-/// platform elsewhere.
-#[cfg(target_arch = "wasm32")]
+/// The platform the build selected: the web platform in the browser
+/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
+/// the headless host platform elsewhere.
+#[cfg(not(skene_leaf = "host"))]
 pub type ActivePlatform = skene_web::Web;
-/// The platform the build selected: the web platform on `wasm32` (the browser leaf on
-/// `wasm32-unknown-unknown`, the server leaf on `wasm32-wasip2`), the headless host
-/// platform elsewhere.
-#[cfg(not(target_arch = "wasm32"))]
+/// The platform the build selected: the web platform in the browser
+/// (`wasm32-unknown-unknown`) and on a server render (`--cfg skene_platform="server"`),
+/// the headless host platform elsewhere.
+#[cfg(skene_leaf = "host")]
 pub type ActivePlatform = skene_headless::Headless;
 
 /// The erased token definition the active platform stores per token.
@@ -373,7 +373,7 @@ pub fn empty() -> impl View {
 /// meaning off the client. On a server-rendering platform this yields nothing; the
 /// real content arrives when the client hydrates. `build` returns the node it
 /// realizes, exactly as a view's `build` does.
-#[cfg(not(all(target_arch = "wasm32", target_os = "wasi")))]
+#[cfg(not(skene_leaf = "server"))]
 #[inline(always)]
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
   AnyView::new(build)
@@ -381,7 +381,7 @@ pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
 
 /// On a server-rendering platform this yields nothing; the real content arrives when
 /// the client hydrates.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 #[inline(always)]
 pub fn client_only(_build: impl FnOnce() -> NodeId + 'static) -> impl View {
   empty()
@@ -389,7 +389,7 @@ pub fn client_only(_build: impl FnOnce() -> NodeId + 'static) -> impl View {
 
 /// Mounts and runs the application in the browser; a server-rendered page is hydrated
 /// in place.
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 #[inline(always)]
 pub fn launch<V, F>(app: F)
 where
@@ -406,7 +406,7 @@ where
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded
 /// state, so the client takes over the markup [`render_to_string`] produced without a
 /// rebuild.
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 #[inline(always)]
 pub fn hydrate_page<V, F>(app: F)
 where
@@ -424,7 +424,7 @@ where
 ///
 /// The host has no platform to show it on; this is the entry a host build of an app
 /// runs, so the same `#[main]` compiles everywhere.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_leaf = "host")]
 pub fn launch<V, F>(app: F)
 where
   F: FnOnce() -> V + 'static,
@@ -442,7 +442,7 @@ where
 /// Renders the application, for a server-rendering platform: builds the tree, drives
 /// its resources until they settle, and serializes the result plus the resource state
 /// for hydration; see [`skene_web::render_to_string`].
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 #[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
@@ -455,7 +455,7 @@ where
 /// Renders the application for the given request path: the router (when installed via
 /// [`install_router`]) resolves against `path`, and the render proceeds as
 /// [`render_to_string`].
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub fn render_to_string_at<V, F>(path: &str, app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,
@@ -469,25 +469,32 @@ where
 /// The environment variable carrying a render's client hints: the request's hint
 /// headers, one `Name: value` per line, read into
 /// [`RenderHints`](skene_web::RenderHints) before the render.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
 
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
 /// the statically-renderable routes one per line (see [`install_static_router`]), or,
-/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it. The
-/// client hints in [`HINTS_VARIABLE`], when set, are the environment the render
-/// answers with.
+/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it, or,
+/// given `--serve`, renders one request after another read from stdin (see
+/// [`serve_renders`]). The client hints in [`HINTS_VARIABLE`], when set, are the
+/// environment the render answers with.
 ///
-/// This makes the app's server build a plain command—`wasmtime app.wasm /some/path`
-/// prints the document—which is exactly the interface the runner embeds.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+/// This makes the app's server build a plain command—`app-server /some/path` prints
+/// the document—which is exactly the interface a server or a generator embeds.
+#[cfg(skene_leaf = "server")]
 pub fn render_main<V, F>(app: F)
 where
-  F: FnOnce() -> V + 'static,
+  F: Fn() -> V + Clone + 'static,
   V: IntoView,
 {
   use std::io::Write as _;
+
+  if std::env::args().nth(1).as_deref() == Some("--serve") {
+    serve_renders(app);
+
+    return;
+  }
 
   if let Ok(hints) = std::env::var(HINTS_VARIABLE) {
     let headers = hints
@@ -539,13 +546,13 @@ where
 /// client with no JavaScript receives a correct, styled document progressively, since
 /// the chunks concatenate, in order, into the markup [`render_to_string`] would
 /// produce with the deltas beside the content they style.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 #[must_use]
 pub struct Stream {
   chunks: Vec<String>,
 }
 
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 impl Stream {
   /// The chunks, in flush order.
   #[inline(always)]
@@ -571,13 +578,13 @@ impl Stream {
 }
 
 /// The opening of a streamed document: the head with its styles, up to the body.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 fn page_opening(head: &str, styles: &str) -> String {
   format!("<!DOCTYPE html><html><head>{head}{styles}</head><body>")
 }
 
 /// The closing of a streamed document: the state script and the end of the body.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 fn page_closing(state: &str) -> String {
   format!(
     "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
@@ -596,7 +603,7 @@ fn page_closing(state: &str) -> String {
 /// response as they are produced, so the client sees the page progressively without
 /// waiting on the slowest data, and, because the chunks are emitted in document order
 /// with their styles, with no JavaScript required.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub fn render_to_stream<V, F>(app: F) -> Stream
 where
   F: FnOnce() -> V + 'static,
@@ -619,7 +626,7 @@ where
 /// is produced: the opening shell, a body chunk per settled [`Deferred`] boundary, and
 /// the closing tail. The flushes concatenate to [`render_to_stream`]'s
 /// [`document`](Stream::document), so writing each one to a response streams the page.
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))
 where
   F: FnOnce() -> V + 'static,
@@ -630,4 +637,54 @@ where
     skene_web::StreamPiece::Chunk(chunk) => sink(&chunk),
     skene_web::StreamPiece::Tail(state) => sink(&page_closing(&state)),
   });
+}
+
+/// Renders requests read from stdin until it closes, one page per request to stdout,
+/// so a dev server or a generator keeps one process rendering.
+///
+/// A request is the path on a line, then the client hints one `Name: value` per line,
+/// then an empty line; a response is `Content-Length: <bytes>` on a line, an empty
+/// line, and the complete page. The hints are the render's environment for that
+/// request alone, and a request without hints renders against the defaults.
+#[cfg(skene_leaf = "server")]
+pub fn serve_renders<V, F>(app: F)
+where
+  F: Fn() -> V + Clone + 'static,
+  V: IntoView,
+{
+  use std::io::{BufRead as _, Write as _};
+
+  let stdin = std::io::stdin();
+  let mut lines = stdin.lock().lines();
+
+  while let Some(Ok(path)) = lines.next() {
+    let mut hints = Vec::new();
+
+    for line in lines.by_ref() {
+      let Ok(line) = line
+      else {
+        return;
+      };
+
+      if line.is_empty() {
+        break;
+      }
+
+      if let Some((name, value)) = line.split_once(':') {
+        hints.push((name.trim().to_owned(), value.trim().to_owned()));
+      }
+    }
+
+    skene_web::set_render_hints(skene_web::RenderHints::from_headers(
+      hints
+        .iter()
+        .map(|(name, value)| (name.as_str(), value.as_str())),
+    ));
+
+    let page = render_to_string_at(&path, app.clone()).page();
+    let mut stdout = std::io::stdout().lock();
+
+    let _ = write!(stdout, "Content-Length: {}\n\n{page}", page.len());
+    let _ = stdout.flush();
+  }
 }

@@ -33,6 +33,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     extern "C" fn main() {}
 
     #[doc(hidden)]
+    #[allow(unexpected_cfgs)]
     #[cfg_attr(
       all(target_arch = "wasm32", target_os = "unknown"),
       ::skene_gui::wasm_bindgen::prelude::wasm_bindgen(start, wasm_bindgen = ::skene_gui::wasm_bindgen)
@@ -41,10 +42,10 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
       #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
       ::skene_gui::launch(#name);
 
-      #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+      #[cfg(skene_platform = "server")]
       ::skene_gui::render_main(#name);
 
-      #[cfg(not(target_arch = "wasm32"))]
+      #[cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))]
       ::skene_gui::launch(#name);
     }
   }

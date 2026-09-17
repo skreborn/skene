@@ -91,7 +91,7 @@ impl NativeElement {
   }
 
   /// Whether the element is a checkbox or a radio: one the platform toggles itself.
-  #[cfg(target_os = "unknown")]
+  #[cfg(skene_leaf = "browser")]
   #[inline(always)]
   pub(crate) fn is_toggle(self) -> bool {
     matches!(self.kind, Some("checkbox" | "radio"))

@@ -427,12 +427,12 @@ fn map() -> impl IntoView {
     skene_gui::client_only(|| acme_map::Map::<ActivePlatform>::new().build())
   }
 
-  #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+  #[cfg(skene_platform = "server")]
   {
     acme_map::Map::<ActivePlatform>::new().placeholder()
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
+  #[cfg(not(any(target_arch = "wasm32", skene_platform = "server")))]
   {
     Text::new("the map needs a browser")
       .set_font_size(13.)

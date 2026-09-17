@@ -25,7 +25,7 @@ struct Rule {
   template: Rc<str>,
   count: u32,
   #[cfg_attr(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(not(skene_leaf = "host"), not(skene_leaf = "server")),
     expect(dead_code)
   )]
   order: u64,
@@ -137,7 +137,7 @@ impl ClassInterner {
   /// Each live rule as `(class, template)` in interning order, for a leaf that renders
   /// them in a batch—the server sink only; the browser mirrors rules into the document
   /// incrementally instead.
-  #[cfg(target_os = "wasi")]
+  #[cfg(skene_leaf = "server")]
   pub(crate) fn live_rules(&self) -> impl Iterator<Item = (&str, &str)> {
     let mut live: Vec<(&Rule, &str)> = self
       .rules

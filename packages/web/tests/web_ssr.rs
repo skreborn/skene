@@ -1,9 +1,9 @@
 //! The server leaf over the new model: the string tree serialized against the real
 //! sink, its classes content-addressed and its stylesheet real CSS.
 //!
-//! Run under a WASI runtime:
-//! `cargo test -p skene-web --target wasm32-wasip2 --test web_ssr`.
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+//! Run with the server platform selected:
+//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test web_ssr`.
+#![cfg(skene_leaf = "server")]
 
 use skene_common::{Container, RawCheckbox, Text, Theme, Toggle};
 use skene_core::{

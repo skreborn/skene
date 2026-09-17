@@ -9,7 +9,7 @@
 //!
 //! Web-only: on a host target the crate is empty.
 
-#![cfg(target_arch = "wasm32")]
+#![cfg(any(target_arch = "wasm32", skene_platform = "server"))]
 
 use std::marker::PhantomData;
 

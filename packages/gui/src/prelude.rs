@@ -63,7 +63,7 @@ pub use skene_reactive::{
 };
 pub use tracing::{debug, error, info, trace, warn};
 
-#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[cfg(skene_leaf = "server")]
 pub use crate::render_to_string;
 pub use crate::{
   Anchor,
@@ -133,5 +133,5 @@ pub use crate::{
   set_scheme,
   stored_scheme,
 };
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(skene_leaf = "browser")]
 pub use crate::{hydrate_page, launch};

@@ -6,9 +6,9 @@
 //! duplicated). Off the web the headless platform records the registrations for a test
 //! to read back.
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(skene_leaf = "host")]
 use skene_headless::{add_head_element, set_document_title};
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(skene_leaf = "host"))]
 use skene_web::{add_head_element, set_document_title};
 
 /// Sets the document title.

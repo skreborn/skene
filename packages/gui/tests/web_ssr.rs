@@ -1,8 +1,8 @@
 //! Server-side rendering: a view tree to HTML, against the real string sink.
 //!
-//! Run under a WASI runtime:
-//! `cargo test -p skene-gui --target wasm32-wasip2` (with `wasmtime` on `PATH`).
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+//! Run with the server platform selected:
+//! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-gui --test web_ssr`.
+#![cfg(skene_leaf = "server")]
 
 use std::time::Duration;
 
@@ -285,7 +285,7 @@ fn a_resolved_resource_serializes_its_loaded_tree() {
 }
 
 /// An *async* load—one that parks on a host operation—settles before serialization: the
-/// runner blocks on the WASI reactor until the sleep resolves, so the loaded tree
+/// render parks until the sleep resolves, so the loaded tree
 /// serializes.
 #[test]
 fn an_async_load_settles_before_serialization() {

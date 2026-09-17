@@ -1,6 +1,6 @@
 //! Routing on the server leaf: the requested path resolves the route the render shows.
 
-#![cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#![cfg(skene_leaf = "server")]
 
 use skene_gui::{
   Text,

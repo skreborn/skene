@@ -142,6 +142,7 @@ use super::{
     native_attributes,
     native_element,
     referenced_nodes,
+    runs_script,
     scrolls,
     takes_disabled,
   },
@@ -1282,7 +1283,11 @@ impl Platform for Web {
           let _ = element.set_attribute("role", aria_role(role));
         }
 
-        if let Some(href) = &props.destination {
+        if let Some(href) = props
+          .destination
+          .as_deref()
+          .filter(|href| !runs_script(href))
+        {
           let _ = element.set_attribute("href", href);
         }
       }

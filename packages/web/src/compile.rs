@@ -63,7 +63,7 @@ use super::{
   motion::{NO_PREFERENCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
-use crate::Declarations;
+use crate::{Declarations, declarations::Ident};
 
 /// A platform over pixels with the pixel extension: the one the compiler serves.
 pub(crate) trait PixelPlatform: Platform<Scalar = f32, StyleExt = GuiExt> {}
@@ -704,7 +704,7 @@ fn box_identity<P: PixelPlatform>(props: &BoxProps<P>, mut base: Declarations) -
   }
 
   if let Some(name) = &props.transition_name {
-    base = base.set("view-transition-name", name.clone());
+    base = base.set("view-transition-name", Ident(name).to_string());
   }
 
   base

@@ -256,6 +256,31 @@ fn text_and_attributes_are_escaped() {
   );
 }
 
+/// A link whose destination would run script is written with no `href`.
+#[test]
+fn a_script_destination_is_never_followed() {
+  let page = render_to_string(|| Text::new("site").set_link(" JavaScript:alert(1)"));
+
+  assert!(!page.body().contains("href"), "{}", page.body());
+  assert!(page.body().contains(">site<"), "{}", page.body());
+}
+
+/// A transition name is written as a CSS identifier, so no name ends the rule or the
+/// `<style>` it sits in.
+#[test]
+fn a_transition_name_stays_one_identifier() {
+  let page = render_to_string(|| {
+    Container::new().set_transition_name("x}</style><img src=x onerror=alert(1)>")
+  });
+  let styles = page.styles();
+
+  assert!(!styles.contains("</style><img"), "{styles}");
+  assert!(
+    styles.contains(r"view-transition-name:x\}\<\/style\>\<img\ src\=x\ onerror\=alert\(1\)\>"),
+    "{styles}"
+  );
+}
+
 /// The payoff: an immediately-ready resource settles during the render, so the *loaded*
 /// tree serializes, not the placeholder—the SSR fixpoint at work.
 #[test]

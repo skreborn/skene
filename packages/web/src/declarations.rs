@@ -8,7 +8,10 @@
 //! Declarations are keyed by property and sorted, so a set is deterministic and
 //! content-addressed for class dedup and server-side rendering.
 
-use std::borrow::Cow;
+use std::{
+  borrow::Cow,
+  fmt::{self, Display, Formatter, Write as _},
+};
 
 use skene_core::{
   Arrangement,
@@ -231,9 +234,58 @@ impl Declarations {
   }
 }
 
+/// A string written as a CSS identifier: every character that would end the identifier
+/// or change what it means is escaped, so it names exactly the string.
+pub(crate) struct Ident<'a>(pub(crate) &'a str);
+
+impl Display for Ident<'_> {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+    let leading_hyphen = self.0.starts_with('-');
+
+    if self.0 == "-" {
+      return formatter.write_str("\\-");
+    }
+
+    for (index, character) in self.0.chars().enumerate() {
+      let code = u32::from(character);
+
+      match character {
+        '\0' => formatter.write_char('\u{fffd}')?,
+        '\u{1}'..='\u{1f}' | '\u{7f}' => write!(formatter, "\\{code:x} ")?,
+        '0'..='9' if index == 0 || (index == 1 && leading_hyphen) => {
+          write!(formatter, "\\{code:x} ")?;
+        }
+        '-' | '_' | 'a'..='z' | 'A'..='Z' | '0'..='9' => formatter.write_char(character)?,
+        _ if code >= 0x80 => formatter.write_char(character)?,
+        _ => {
+          formatter.write_char('\\')?;
+          formatter.write_char(character)?;
+        }
+      }
+    }
+
+    Ok(())
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use super::Declarations;
+  use super::{Declarations, Ident};
+
+  /// An identifier is written as is, and anything else escaped so it stays one.
+  #[test]
+  fn an_identifier_escapes_what_would_end_it() {
+    assert_eq!(Ident("post-7").to_string(), "post-7");
+    assert_eq!(Ident("héllo_world").to_string(), "héllo_world");
+    assert_eq!(Ident("7up").to_string(), "\\37 up");
+    assert_eq!(Ident("-7").to_string(), "-\\37 ");
+    assert_eq!(Ident("-").to_string(), "\\-");
+    assert_eq!(Ident("a\u{1}b").to_string(), "a\\1 b");
+    assert_eq!(
+      Ident("x}</style><img src=x>").to_string(),
+      "x\\}\\<\\/style\\>\\<img\\ src\\=x\\>"
+    );
+  }
 
   /// Identical sets render identically regardless of insertion order, so they dedup.
   #[test]

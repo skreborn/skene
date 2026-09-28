@@ -95,6 +95,7 @@ use super::{
     native_attributes,
     native_element,
     referenced_nodes,
+    runs_script,
     scrolls,
     takes_disabled,
   },
@@ -588,9 +589,9 @@ impl Tree {
   }
 
   /// Appends the token registrations and live rules not emitted yet, marking them
-  /// emitted.
+  /// emitted; no `</` is written, so the text cannot end the `<style>` it sits in.
   fn render_new_styles(&mut self, out: &mut String) {
-    out.push_str(&self.registrations[self.registrations_emitted..]);
+    push_style_text(out, &self.registrations[self.registrations_emitted..]);
     self.registrations_emitted = self.registrations.len();
 
     for (class, template) in self.styles.live_rules() {
@@ -598,7 +599,7 @@ impl Tree {
         continue;
       }
 
-      out.push_str(&template.replace(CLASS_PLACEHOLDER, class));
+      push_style_text(out, &template.replace(CLASS_PLACEHOLDER, class));
       self.emitted.insert(Rc::from(class));
     }
   }
@@ -821,6 +822,20 @@ fn forget_static_routes() {
   STATIC_ROUTES.with(|recorded| *recorded.borrow_mut() = None);
 }
 
+/// Appends CSS text to a `<style>` element's content, escaping every `</` so the text
+/// cannot end the element.
+fn push_style_text(out: &mut String, text: &str) {
+  let mut rest = text;
+
+  while let Some(at) = rest.find("</") {
+    out.push_str(&rest[..at]);
+    out.push_str("<\\/");
+    rest = &rest[at + 2..];
+  }
+
+  out.push_str(rest);
+}
+
 /// Appends `text` with the characters HTML text content reserves escaped.
 fn escape_text(text: &str, out: &mut String) {
   for character in text.chars() {
@@ -999,7 +1014,11 @@ impl Platform for Web {
           node.set_attribute("role", aria_role(role));
         }
 
-        if let Some(href) = &props.destination {
+        if let Some(href) = props
+          .destination
+          .as_deref()
+          .filter(|href| !runs_script(href))
+        {
           node.set_attribute("href", href);
         }
       }

@@ -141,12 +141,32 @@ pub(crate) const fn drawn_element(
   }
 }
 
-/// The attributes of a link to `href` under `policy`: `href`, `target` and `rel`.
+/// Whether following `href` would run script: a `javascript:` URL, its scheme read as
+/// a browser reads it, whatever its case, the spaces and controls around it and the
+/// tabs and newlines within it.
+pub(crate) fn runs_script(href: &str) -> bool {
+  let href: String = href
+    .trim_matches(|character: char| character <= ' ')
+    .chars()
+    .filter(|character| !matches!(character, '\t' | '\n' | '\r'))
+    .collect();
+
+  href
+    .split_once(':')
+    .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case("javascript"))
+}
+
+/// The attributes of a link to `href` under `policy`: `href`, `target` and `rel`, with
+/// no `href` where following it would run script.
 pub(crate) fn link_attributes(href: &str, policy: LinkPolicy) -> Vec<(&'static str, String)> {
   let external = href.starts_with("//") || href.contains("://");
   let new_page = policy.new_page.unwrap_or(external);
   let mut rel = Vec::new();
-  let mut attributes = vec![("href", href.to_owned())];
+  let mut attributes = Vec::new();
+
+  if !runs_script(href) {
+    attributes.push(("href", href.to_owned()));
+  }
 
   if new_page && !policy.expose_opener {
     rel.push("noopener");
@@ -357,5 +377,34 @@ pub(crate) fn aria_role(role: Role) -> &'static str {
     Role::Status => "status",
     Role::Alert => "alert",
     _ => "",
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::runs_script;
+
+  /// A `javascript:` URL is recognized as a browser reads its scheme.
+  #[test]
+  fn a_script_url_is_recognized_however_it_is_spelled() {
+    for href in [
+      "javascript:alert(1)",
+      "JavaScript:alert(1)",
+      " \u{1}javascript:alert(1)",
+      "java\tscript:alert(1)",
+      "jav\nascript:alert(1)",
+    ] {
+      assert!(runs_script(href), "{href:?}");
+    }
+
+    for href in [
+      "/javascript:",
+      "https://example.com",
+      "javascript",
+      "#top",
+      "mailto:a@b",
+    ] {
+      assert!(!runs_script(href), "{href:?}");
+    }
   }
 }

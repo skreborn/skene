@@ -313,7 +313,8 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   }
 
   /// Sets the path the box navigates to when activated; the medium realizes it as a
-  /// real link where it has one.
+  /// real link where it has one. A destination that would run script when followed, a
+  /// `javascript:` URL, is never followed.
   #[inline(always)]
   pub fn set_destination(mut self, path: impl Into<String>) -> Self {
     self.destination = Some(path.into());

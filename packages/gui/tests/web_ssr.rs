@@ -256,6 +256,27 @@ fn text_and_attributes_are_escaped() {
   );
 }
 
+/// The language an app sets is its page's root `lang`, in a render and in a stream.
+#[test]
+fn a_page_carries_its_language() {
+  let app = || {
+    skene_gui::head::set_language("pt-BR");
+
+    Text::new("olá")
+  };
+
+  assert!(
+    render_to_string(app)
+      .page()
+      .starts_with("<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">")
+  );
+  assert!(
+    render_to_stream(app)
+      .document()
+      .starts_with("<!DOCTYPE html><html lang=\"pt-BR\"><head>")
+  );
+}
+
 /// A link whose destination would run script is written with no `href`.
 #[test]
 fn a_script_destination_is_never_followed() {
@@ -355,8 +376,11 @@ fn page_assembles_a_full_document() {
   let document = page.page();
 
   assert!(
-    document.starts_with("<!DOCTYPE html><html><head><style id=\"skene-styles\">"),
-    "the styles open the head: {document}",
+    document.starts_with(
+      "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" \
+       content=\"width=device-width, initial-scale=1\"><style id=\"skene-styles\">"
+    ),
+    "the character set and the viewport open the head, then the styles: {document}",
   );
 
   assert!(
@@ -524,7 +548,9 @@ fn a_page_without_deferred_streams_as_one_chunk() {
 
   assert_eq!(stream.chunks().len(), 1, "no boundary means no split");
   assert!(
-    stream.document().starts_with("<!DOCTYPE html><html><head>"),
+    stream
+      .document()
+      .starts_with("<!DOCTYPE html><html><head><meta charset=\"utf-8\">"),
     "the one chunk opens the document: {}",
     stream.document(),
   );
@@ -582,7 +608,7 @@ fn page_stream_pieces_concatenate_to_the_document() {
     pieces.len(),
   );
 
-  assert!(pieces[0].starts_with("<!DOCTYPE html><html><head>"));
+  assert!(pieces[0].starts_with("<!DOCTYPE html><html><head><meta charset=\"utf-8\">"));
   assert!(pieces[pieces.len() - 1].ends_with("</body></html>"));
   assert_eq!(
     pieces.concat(),

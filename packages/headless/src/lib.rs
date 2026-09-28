@@ -443,6 +443,11 @@ pub fn set_document_title(title: &str) {
   with_store(|store| store.title = Some(title.to_owned()));
 }
 
+/// Sets the document's language, a BCP 47 tag.
+pub fn set_document_language(language: &str) {
+  with_store(|store| store.language = Some(language.to_owned()));
+}
+
 /// Registers an element for the document head.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
   let element = HeadElement {
@@ -460,6 +465,12 @@ pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
 #[must_use]
 pub fn document_title() -> Option<String> {
   with_store(|store| store.title.clone())
+}
+
+/// The document language last set.
+#[must_use]
+pub fn document_language() -> Option<String> {
+  with_store(|store| store.language.clone())
 }
 
 /// The elements registered for the document head, in order.

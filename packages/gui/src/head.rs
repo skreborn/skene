@@ -7,9 +7,9 @@
 //! to read back.
 
 #[cfg(skene_leaf = "host")]
-use skene_headless::{add_head_element, set_document_title};
+use skene_headless::{add_head_element, set_document_language, set_document_title};
 #[cfg(not(skene_leaf = "host"))]
-use skene_web::{add_head_element, set_document_title};
+use skene_web::{add_head_element, set_document_language, set_document_title};
 
 /// Sets the document title.
 #[inline(always)]
@@ -21,6 +21,13 @@ pub fn set_title(title: impl Into<String>) {
 #[inline(always)]
 pub fn derive_title(title: impl Fn() -> String + 'static) {
   skene_reactive::Effect::new(move |_: Option<()>| set_document_title(&title()));
+}
+
+/// Sets the document's language, a BCP 47 tag such as `en` or `pt-BR`, which a served
+/// page carries on its root.
+#[inline(always)]
+pub fn set_language(language: impl Into<String>) {
+  set_document_language(&language.into());
 }
 
 /// Adds a `<meta name="…" content="…">` to the document head.

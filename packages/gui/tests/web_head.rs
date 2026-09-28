@@ -34,7 +34,9 @@ fn head_registrations_serialize() {
   let link = head.find("rel=\"stylesheet\"").expect("the link");
 
   assert!(meta < link);
-  assert!(rendered.page().contains(&format!("<head>{head}")));
+  assert!(rendered.page().contains(&format!(
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">{head}"
+  )));
 }
 
 /// A derived title reads reactive state at render time.

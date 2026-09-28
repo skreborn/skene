@@ -345,6 +345,7 @@ struct Tree {
   markers: u32,
   anchors: u32,
   title: Option<String>,
+  language: Option<String>,
   head: Vec<(String, Vec<(String, String)>)>,
 }
 
@@ -362,6 +363,7 @@ impl Tree {
       markers: 0,
       anchors: 0,
       title: None,
+      language: None,
       head: Vec::new(),
     }
   }
@@ -1459,6 +1461,45 @@ pub fn set_document_title(title: &str) {
   with_tree(|tree| tree.title = Some(title.to_owned()));
 }
 
+/// Sets the page's language, a BCP 47 tag written as its root's `lang`.
+pub fn set_document_language(language: &str) {
+  with_tree(|tree| tree.language = Some(language.to_owned()));
+}
+
+/// The opening of a served document up to its body's content: the doctype, the root in
+/// `language` when one is set, and the head, which starts with the character set and
+/// the viewport and holds `head` and `styles` after them.
+#[must_use]
+pub fn document_opening(language: Option<&str>, head: &str, styles: &str) -> String {
+  let mut out = String::from("<!DOCTYPE html><html");
+
+  if let Some(language) = language {
+    out.push_str(" lang=\"");
+    escape_attr(language, &mut out);
+    out.push('"');
+  }
+
+  out.push_str(
+    "><head><meta charset=\"utf-8\"><meta name=\"viewport\" \
+     content=\"width=device-width, initial-scale=1\">",
+  );
+  out.push_str(head);
+  out.push_str(styles);
+  out.push_str("</head><body>");
+
+  out
+}
+
+/// The closing of a served document: the hydration `state` in the script the client
+/// reads it from, and the end of the body and the document.
+#[must_use]
+pub fn document_closing(state: &str) -> String {
+  format!(
+    "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script></body></html>",
+    state.replace('<', "\\u003c"),
+  )
+}
+
 /// Adds an element to the page head, serialized in registration order.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
   with_tree(|tree| {
@@ -1472,14 +1513,15 @@ pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
   });
 }
 
-/// A server render, in parts: the stylesheet, the head, the body markup and the
-/// hydration state.
+/// A server render, in parts: the stylesheet, the head, the body markup, the hydration
+/// state and the page's language.
 #[must_use]
 pub struct Rendered {
   styles: String,
   head: String,
   body: String,
   state: String,
+  language: Option<String>,
 }
 
 impl Rendered {
@@ -1513,19 +1555,23 @@ impl Rendered {
     &self.state
   }
 
-  /// A complete HTML document: the styles in `<head>`, the tree in `<body>`, and the
-  /// state in a `<script>` the client reads back.
+  /// The page's language, when the app set one.
+  #[inline(always)]
+  #[must_use]
+  pub fn language(&self) -> Option<&str> {
+    self.language.as_deref()
+  }
+
+  /// A complete HTML document: [`document_opening`], the tree, and
+  /// [`document_closing`].
   #[must_use]
   pub fn page(&self) -> String {
-    format!(
-      "<!DOCTYPE html><html><head>{head}{styles}</head><body>{body}<script id=\"{id}\" \
-       type=\"application/json\">{state}</script></body></html>",
-      head = self.head,
-      styles = self.styles,
-      body = self.body,
-      id = STATE_SCRIPT_ID,
-      state = self.state.replace('<', "\\u003c"),
-    )
+    let mut page = document_opening(self.language(), &self.head, &self.styles);
+
+    page.push_str(&self.body);
+    page.push_str(&document_closing(&self.state));
+
+    page
   }
 }
 
@@ -1608,8 +1654,14 @@ where
   task::stabilize();
 
   let state = crate::hydration::collect_state();
-  let (styles, head, body) =
-    with_tree(|tree| (tree.render_styles(), tree.render_head(), tree.render_body()));
+  let (styles, head, body, language) = with_tree(|tree| {
+    (
+      tree.render_styles(),
+      tree.render_head(),
+      tree.render_body(),
+      tree.language.clone(),
+    )
+  });
 
   end_render(scope);
 
@@ -1618,17 +1670,20 @@ where
     head,
     body,
     state,
+    language,
   }
 }
 
 /// One piece of a streamed render, in emission order.
 pub enum StreamPiece<'a> {
-  /// The settled shell's styles and head, before any body chunk.
+  /// The settled shell's styles, head and language, before any body chunk.
   Shell {
     /// The `<style>` block.
     styles: &'a str,
     /// The registered head content.
     head: &'a str,
+    /// The page's language, when the app set one.
+    language: Option<&'a str>,
   },
   /// One body chunk: a `<style>` delta for what was interned since the previous
   /// flush, when anything was, then the markup up to the next deferred boundary, or
@@ -1659,11 +1714,18 @@ where
   build_app(root, scope, Some(shell), app);
   task::stabilize_until(move || shell.is_settled());
 
-  let (styles, head) = with_tree(|tree| (tree.render_styles(), tree.render_head()));
+  let (styles, head, language) = with_tree(|tree| {
+    (
+      tree.render_styles(),
+      tree.render_head(),
+      tree.language.clone(),
+    )
+  });
 
   flush(StreamPiece::Shell {
     styles: &styles,
     head: &head,
+    language: language.as_deref(),
   });
 
   let mut cursor = vec![Frame {
@@ -1697,30 +1759,4 @@ where
 
   flush(StreamPiece::Tail(crate::hydration::collect_state()));
   end_render(scope);
-}
-
-/// [`render_to_stream_with`], collected: `(styles, head, body_chunks, state)`.
-pub fn render_to_stream<V, F>(app: F) -> (String, String, Vec<String>, String)
-where
-  F: FnOnce() -> V + 'static,
-  V: IntoView<Web>,
-{
-  let mut styles = String::new();
-  let mut head = String::new();
-  let mut chunks = Vec::new();
-  let mut state = String::new();
-
-  render_to_stream_with(app, |piece| match piece {
-    StreamPiece::Shell {
-      styles: shell_styles,
-      head: shell_head,
-    } => {
-      shell_styles.clone_into(&mut styles);
-      shell_head.clone_into(&mut head);
-    }
-    StreamPiece::Chunk(chunk) => chunks.push(chunk),
-    StreamPiece::Tail(tail) => state = tail,
-  });
-
-  (styles, head, chunks, state)
 }

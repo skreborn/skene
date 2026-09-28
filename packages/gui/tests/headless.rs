@@ -551,7 +551,7 @@ fn a_spawned_task_runs_when_pumped_and_ends_with_its_owner() {
 fn head_registrations_are_recorded_on_the_host() {
   use skene_gui::{
     head,
-    headless::{HeadElement, document_title, head_elements},
+    headless::{HeadElement, document_language, document_title, head_elements},
   };
 
   reset();
@@ -563,9 +563,11 @@ fn head_registrations_are_recorded_on_the_host() {
     head::derive_title(move || format!("{} — skene", title.get()));
     head::add_meta("description", "A tiny page");
     head::add_stylesheet("/site.css");
+    head::set_language("en");
   });
 
   assert_eq!(document_title().as_deref(), Some("Home — skene"));
+  assert_eq!(document_language().as_deref(), Some("en"));
 
   title.set("About".to_owned());
 

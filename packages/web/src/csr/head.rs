@@ -7,6 +7,16 @@ pub fn set_document_title(title: &str) {
   }
 }
 
+/// Sets the document's language, a BCP 47 tag, as its root's `lang`.
+pub fn set_document_language(language: &str) {
+  if let Some(root) = web_sys::window()
+    .and_then(|window| window.document())
+    .and_then(|document| document.document_element())
+  {
+    let _ = root.set_attribute("lang", language);
+  }
+}
+
 /// Adds an element to the document head, unless an identical one is already present
 /// (as after hydrating a server render that registered the same element).
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {

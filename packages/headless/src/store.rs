@@ -171,6 +171,7 @@ pub struct Store {
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   pub title: Option<String>,
+  pub language: Option<String>,
   pub head: Vec<HeadElement>,
   /// The scheduled actions, each with the clock reading it is due at.
   pub timers: Vec<Scheduled>,
@@ -214,6 +215,7 @@ impl Default for Store {
       reduced_motion: None,
       clock: 0.,
       title: None,
+      language: None,
       head: Vec::new(),
       timers: Vec::new(),
       next_timer: 0,

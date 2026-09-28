@@ -91,7 +91,7 @@ use web_sys::{
 
 pub use self::{
   dev::boot_with_dev_state,
-  head::{add_head_element, set_document_title},
+  head::{add_head_element, set_document_language, set_document_title},
   history::{current_path, on_pop, push_path},
   media::{media_query, set_scheme, stored_scheme, watch_media},
   restore::adopt_restoration,

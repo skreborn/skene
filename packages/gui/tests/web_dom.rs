@@ -574,16 +574,25 @@ fn checkbox_binding_round_trips() {
   assert!(!checked.get());
 }
 
-/// Head registrations set the live document title and add each element once.
+/// Head registrations set the live document title and language and add each element
+/// once.
 #[wasm_bindgen_test]
 fn head_registrations_apply_once() {
   let (_guard, _root) = fresh_root();
 
   head::set_title("Live title");
+  head::set_language("fr");
   head::add_meta("live-test", "value");
   head::add_meta("live-test", "value");
 
   assert_eq!(document().title(), "Live title");
+  assert_eq!(
+    document()
+      .document_element()
+      .and_then(|root| root.get_attribute("lang"))
+      .as_deref(),
+    Some("fr")
+  );
 
   let head = document().head().expect("a head");
   let mut matches = 0;

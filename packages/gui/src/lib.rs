@@ -576,24 +576,6 @@ impl Stream {
   }
 }
 
-/// The opening of a streamed document: the head with its styles, up to the body.
-#[cfg(skene_leaf = "server")]
-fn page_opening(head: &str, styles: &str) -> String {
-  format!("<!DOCTYPE html><html><head>{head}{styles}</head><body>")
-}
-
-/// The closing of a streamed document: the state script and the end of the body.
-#[cfg(skene_leaf = "server")]
-fn page_closing(state: &str) -> String {
-  format!(
-    "<script id=\"{id}\" type=\"application/json\">{state}</script></body></html>",
-    id = skene_web::STATE_SCRIPT_ID,
-    // `<` keeps a value's `<` from closing the script early, and is valid JSON that
-    // decodes back to `<`.
-    state = state.replace('<', "\\u003c"),
-  )
-}
-
 /// Renders the application as an in-order HTML stream, for a server-rendering
 /// platform.
 ///
@@ -608,14 +590,26 @@ where
   F: FnOnce() -> V + 'static,
   V: IntoView,
 {
-  let (styles, head, mut chunks, state) = skene_web::render_to_stream(app);
+  let mut chunks = Vec::new();
+  let mut opening = String::new();
+  let mut closing = String::new();
+
+  skene_web::render_to_stream_with(app, |piece| match piece {
+    skene_web::StreamPiece::Shell {
+      styles,
+      head,
+      language,
+    } => opening = skene_web::document_opening(language, head, styles),
+    skene_web::StreamPiece::Chunk(chunk) => chunks.push(chunk),
+    skene_web::StreamPiece::Tail(state) => closing = skene_web::document_closing(&state),
+  });
 
   if let Some(first) = chunks.first_mut() {
-    first.insert_str(0, &page_opening(&head, &styles));
+    first.insert_str(0, &opening);
   }
 
   if let Some(last) = chunks.last_mut() {
-    last.push_str(&page_closing(&state));
+    last.push_str(&closing);
   }
 
   Stream { chunks }
@@ -632,9 +626,13 @@ where
   V: IntoView,
 {
   skene_web::render_to_stream_with(app, |piece| match piece {
-    skene_web::StreamPiece::Shell { styles, head } => sink(&page_opening(head, styles)),
+    skene_web::StreamPiece::Shell {
+      styles,
+      head,
+      language,
+    } => sink(&skene_web::document_opening(language, head, styles)),
     skene_web::StreamPiece::Chunk(chunk) => sink(&chunk),
-    skene_web::StreamPiece::Tail(state) => sink(&page_closing(&state)),
+    skene_web::StreamPiece::Tail(state) => sink(&skene_web::document_closing(&state)),
   });
 }
 

@@ -234,8 +234,9 @@ impl Buffer {
     }
   }
 
-  /// This frame readied for a paint that rewrites `rows` alone: those rows cleared, the
-  /// caret and the links dropped for the paint to record afresh.
+  /// This frame readied for a paint that rewrites `rows` alone: those rows cleared, and
+  /// the caret and the pictures dropped for the paint to record afresh; the links stay,
+  /// so the rows kept still name theirs.
   pub(crate) fn repainting(mut self, rows: &[bool]) -> Self {
     for (row, repaint) in rows.iter().enumerate() {
       if *repaint {
@@ -244,7 +245,6 @@ impl Buffer {
     }
 
     self.caret = None;
-    self.links.clear();
     self.pictures.clear();
     self.rows = Some(rows.to_vec());
 
@@ -280,6 +280,78 @@ impl Buffer {
       u16::try_from(right - left).ok()?,
       u16::try_from(bottom - top).ok()?,
     ))
+  }
+
+  /// The index of `destination` among the frame's hyperlinks, added where it is new.
+  pub(crate) fn link(&mut self, destination: &str) -> u16 {
+    let index = self
+      .links
+      .iter()
+      .position(|link| link == destination)
+      .unwrap_or_else(|| {
+        self.links.push(destination.to_owned());
+
+        self.links.len() - 1
+      });
+
+    u16::try_from(index).unwrap_or(u16::MAX)
+  }
+
+  /// The destination of `cell`'s hyperlink in this frame.
+  fn destination(&self, cell: &TerminalCell) -> Option<&str> {
+    cell
+      .link
+      .and_then(|index| self.links.get(usize::from(index)))
+      .map(String::as_str)
+  }
+
+  /// Blanks what no whole block backs: a continuation no glyph's block covers, and a
+  /// glyph whose block another paint broke into, so the terminal is never left a half
+  /// of a wide glyph to draw or keep.
+  pub(crate) fn mend_blocks(&mut self) {
+    let mut covered = vec![false; self.cells.len()];
+    let mut broken = Vec::new();
+
+    for index in 0..self.cells.len() {
+      let cell = self.cells[index];
+
+      if cell.glyph == Glyph::Continuation {
+        continue;
+      }
+
+      let (x, y) = (index % self.width, index / self.width);
+      let rows = cell.scale.rows();
+      let columns = cell.glyph.cells() * rows;
+      let mut whole = x + columns <= self.width && y + rows <= self.height;
+
+      for row in y..(y + rows).min(self.height) {
+        for column in x..(x + columns).min(self.width) {
+          let at = row * self.width + column;
+
+          if at != index {
+            covered[at] = true;
+            whole &= self.cells[at].glyph == Glyph::Continuation;
+          }
+        }
+      }
+
+      if !whole {
+        broken.push(index);
+      }
+    }
+
+    for index in broken {
+      let cell = &mut self.cells[index];
+
+      cell.glyph = Glyph::SPACE;
+      cell.scale = CellScale::ONE;
+    }
+
+    for (index, cell) in self.cells.iter_mut().enumerate() {
+      if cell.glyph == Glyph::Continuation && !covered[index] {
+        cell.glyph = Glyph::SPACE;
+      }
+    }
   }
 
   /// Whether the cell (`x`, `y`) lies on the frame and inside the active clip.
@@ -332,8 +404,8 @@ impl Buffer {
 
   /// Paints `cluster` at (`x`, `y`) at `scale`: a block of the scale's rows by `width`
   /// times them, its glyph and scale in the top-left cell and a continuation in every
-  /// other, `style` applied to each—or blanks where the block's last cell would fall
-  /// outside the frame or the clip; nothing for no width.
+  /// other, `style` applied to each—or blanks where the block's first or last cell
+  /// would fall outside the frame or the clip; nothing for no width.
   pub(crate) fn put_sized(
     &mut self,
     x: isize,
@@ -353,7 +425,7 @@ impl Buffer {
       x + isize::try_from(columns - 1).expect("fits"),
       y + isize::try_from(rows - 1).expect("fits"),
     );
-    let fits = self.in_clip(last.0, last.1);
+    let fits = self.in_clip(x, y) && self.in_clip(last.0, last.1);
 
     for row in 0..rows {
       for column in 0..columns {
@@ -667,9 +739,9 @@ fn line_breaks(paragraph: &str) -> Vec<bool> {
   breaks
 }
 
-/// Paints the frame into `buffer`: the tree, then every open overlay; a picture an
-/// open overlay covers in part is left out, since the terminal draws it over the
-/// overlay's cells.
+/// Paints the frame into `buffer`: the tree, then every open overlay, and mends the
+/// wide glyphs a later paint broke into; a picture an open overlay covers in part is
+/// left out, since the terminal draws it over the overlay's cells.
 pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
   paint_node(store, buffer, store.root, 0, 0);
 
@@ -691,6 +763,8 @@ pub(crate) fn paint(store: &Store, buffer: &mut Buffer) {
   for overlay in overlays {
     paint_overlay(store, buffer, overlay);
   }
+
+  buffer.mend_blocks();
 }
 
 /// Paints one open overlay over the frame: its backdrop scrim, then its subtree at its
@@ -1087,10 +1161,8 @@ fn paint_node(
       links,
       selection,
     } => {
-      // The paragraph's links join the frame registry; span indices shift by the base.
-      let base = u16::try_from(buffer.links.len()).unwrap_or(0);
-
-      buffer.links.extend(links);
+      // The paragraph's links join the frame's.
+      let links: Vec<u16> = links.iter().map(|link| buffer.link(link)).collect();
 
       for (line, row) in lines.iter().zip(sized_rows(&lines)) {
         let mut column = 0;
@@ -1125,7 +1197,9 @@ fn paint_node(
 
             cell.bold = paint.bold;
             cell.decoration = paint.decoration;
-            cell.link = paint.link.map(|index| base + index);
+            cell.link = paint
+              .link
+              .and_then(|index| links.get(usize::from(index)).copied());
 
             if let Some(emphasis) = paint.focused {
               select_cell(cell, emphasis.colors());
@@ -1224,11 +1298,7 @@ fn paint_node(
       focused,
       selection,
     } => {
-      let link = link.map(|url| {
-        buffer.links.push(url);
-
-        u16::try_from(buffer.links.len() - 1).unwrap_or(0)
-      });
+      let link = link.map(|url| buffer.link(&url));
       let scales = Scales::uniform(scale);
 
       for (line, row) in lines.iter().zip(sized_rows(&lines)) {
@@ -2037,12 +2107,24 @@ pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
 }
 
 /// Whether `row` must be rewritten: the previous frame is absent, differently sized, or
-/// differs in that row.
+/// differs in that row, a hyperlink compared by its destination.
 pub(crate) fn row_changed(previous: Option<&Buffer>, next: &Buffer, row: usize) -> bool {
   match previous {
     Some(previous) if previous.width == next.width && previous.height == next.height => {
-      previous.cells[row * previous.width..(row + 1) * previous.width]
-        != next.cells[row * next.width..(row + 1) * next.width]
+      let span = row * next.width..(row + 1) * next.width;
+
+      previous.cells[span.clone()]
+        .iter()
+        .zip(&next.cells[span])
+        .any(|(before, after)| {
+          TerminalCell {
+            link: None,
+            ..*before
+          } != TerminalCell {
+            link: None,
+            ..*after
+          } || previous.destination(before) != next.destination(after)
+        })
     }
     _ => true,
   }
@@ -2086,6 +2168,68 @@ mod tests {
     assert_eq!(wrap_text("ab\ncd", 10), ["ab", "cd"]);
     assert_eq!(wrap_text("", 5), [""]);
     assert_eq!(wrap_text("ab  ", 2), ["ab"]);
+  }
+
+  /// A wide glyph whose first cell falls left of the clip leaves blanks, never a lone
+  /// continuation; a narrow glyph painted over either half of a wide one blanks the
+  /// other half.
+  #[test]
+  fn no_half_of_a_wide_glyph_survives() {
+    text::reset();
+
+    let glyphs =
+      |buffer: &Buffer| -> Vec<Glyph> { buffer.cells.iter().map(|cell| cell.glyph).collect() };
+    let mut clipped = Buffer::new(4, 1);
+
+    clipped.clip = Some((1, 0, 4, 1));
+    clipped.put_sized(0, 0, "日", 2, CellScale::ONE, |_| {});
+    clipped.mend_blocks();
+
+    assert_eq!(glyphs(&clipped)[1], Glyph::SPACE);
+
+    let mut over_lead = Buffer::new(4, 1);
+
+    over_lead.put_sized(0, 0, "日", 2, CellScale::ONE, |_| {});
+    over_lead.put_sized(0, 0, "a", 1, CellScale::ONE, |_| {});
+    over_lead.mend_blocks();
+
+    assert_eq!(glyphs(&over_lead)[..2], [Glyph::Char('a'), Glyph::SPACE]);
+
+    let mut over_tail = Buffer::new(4, 1);
+
+    over_tail.put_sized(0, 0, "日", 2, CellScale::ONE, |_| {});
+    over_tail.put_sized(1, 0, "b", 1, CellScale::ONE, |_| {});
+    over_tail.mend_blocks();
+
+    assert_eq!(glyphs(&over_tail)[..2], [Glyph::SPACE, Glyph::Char('b')]);
+  }
+
+  /// Two frames compare their hyperlinks by destination, whatever index each frame's
+  /// table gave it, and a repaint keeps the links of the rows it leaves.
+  #[test]
+  fn links_compare_by_destination() {
+    let frame = |links: &[&str], link: u16| {
+      let mut buffer = Buffer::new(2, 1);
+
+      for destination in links {
+        let _ = buffer.link(destination);
+      }
+
+      buffer.cells[0].link = Some(link);
+
+      buffer
+    };
+
+    assert!(!row_changed(
+      Some(&frame(&["a", "b"], 1)),
+      &frame(&["b"], 0),
+      0
+    ));
+    assert!(row_changed(Some(&frame(&["a"], 0)), &frame(&["b"], 0), 0));
+
+    let kept = frame(&["a"], 0).repainting(&[false]);
+
+    assert_eq!(kept.destination(&kept.cells[0]), Some("a"));
   }
 
   /// Wide clusters wrap by their cells: two of them fill a four-cell line, and one

@@ -345,3 +345,36 @@ fn a_keyed_child_takes_no_position() {
 
   assert_eq!((positional, keyed), (5, 6));
 }
+
+/// Rebuilding a scope in place takes no position of its own, so a later sibling keeps
+/// its identity however often an earlier one is rebuilt.
+#[test]
+fn a_replacement_shifts_no_later_sibling() {
+  let restored = across_runs(
+    || {
+      let page = Owner::new();
+      let first = page.child();
+      let second = first.replacement();
+
+      first.dispose();
+
+      let third = second.replacement();
+
+      second.dispose();
+
+      let _ = third;
+      let later = page.child();
+
+      later.enter(|| Signal::new(0u32)).set(42);
+    },
+    || {
+      let page = Owner::new();
+      let _first = page.child();
+      let later = page.child();
+
+      later.enter(|| Signal::new(0u32)).get()
+    },
+  );
+
+  assert_eq!(restored, 42);
+}

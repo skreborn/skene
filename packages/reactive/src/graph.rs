@@ -254,22 +254,29 @@ impl Graph {
     }
   }
 
-  /// Allocates an owner in `previous`'s place: the same parent and step, so its
-  /// path is `previous`'s path.
+  /// Allocates an owner in `previous`'s place: the same parent, depth and step, so its
+  /// path is `previous`'s path and no sibling's position moves.
   pub(crate) fn allocate_replacement(&mut self, previous: Id) -> Id {
-    let Some((parent, step, path)) = self
+    let Some((parent, depth, step, path)) = self
       .owner_data(previous)
-      .map(|data| (data.parent, data.step, data.path.clone()))
+      .map(|data| (data.parent, data.depth, data.step, data.path.clone()))
     else {
       return self.allocate_owner();
     };
     let id = self.allocate_owner();
 
-    if let Some(parent) = parent {
-      self.adopt(id, parent);
+    if let Some(parent) = parent
+      && let Some(parent_data) = self.owner_data_mut(parent)
+    {
+      parent_data.children.get_or_insert_default().insert(id);
+
+      if let Some(data) = self.owner_data_mut(id) {
+        data.parent = Some(parent);
+      }
     }
 
     if let Some(data) = self.owner_data_mut(id) {
+      data.depth = depth;
       data.step = step;
       data.path = path;
     }

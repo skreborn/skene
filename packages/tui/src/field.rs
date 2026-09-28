@@ -215,13 +215,12 @@ impl Field {
     };
 
     if self.lines <= 1 {
-      let shown = if empty {
-        text
+      let row = if empty {
+        text::fit(text, inner).to_owned()
       }
       else {
-        &text[self.byte_of(window)..]
+        self.shown_row(window, inner)
       };
-      let row = text::fit(shown, inner).to_owned();
       let column = self
         .clusters
         .column_of(self.caret)
@@ -243,6 +242,36 @@ impl Field {
       .then(|| (row - window, column));
 
     (rows, caret)
+  }
+
+  /// A single-line entry's value from the cluster `window` as it shows in `inner`
+  /// cells: every cluster that fits, a tab as the blanks it advances to its stop from
+  /// the value's start.
+  fn shown_row(&self, window: usize, inner: usize) -> String {
+    let base = self.clusters.column_of(window);
+    let mut row = String::new();
+
+    for index in window..self.clusters.count() {
+      let (from, to) = (
+        self.clusters.column_of(index) - base,
+        self.clusters.column_of(index + 1) - base,
+      );
+
+      if to > inner {
+        break;
+      }
+
+      let cluster = &self.value[self.byte_of(index)..self.byte_of(index + 1)];
+
+      if cluster == "\t" {
+        row.extend(std::iter::repeat_n(' ', to - from));
+      }
+      else {
+        row.push_str(cluster);
+      }
+    }
+
+    row
   }
 
   /// The caret position at the cell (`column`, `row`) of the value shown from `window`

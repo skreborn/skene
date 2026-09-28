@@ -402,6 +402,32 @@ impl Buffer {
     self.put_sized(x, y, cluster, width, CellScale::ONE, style);
   }
 
+  /// Paints `cluster` at (`x`, `y`) at `scale` across the `cells` it advances: a tab as
+  /// blanks to its stop, anything else as [`put_sized`](Self::put_sized) does.
+  pub(crate) fn put_advancing(
+    &mut self,
+    x: isize,
+    y: isize,
+    cluster: &str,
+    cells: usize,
+    scale: CellScale,
+    style: impl Fn(&mut TerminalCell),
+  ) {
+    let rows = scale.rows();
+
+    if cluster == "\t" {
+      for blank in 0..cells / rows {
+        let at = x + isize::try_from(blank * rows).expect("fits");
+
+        self.put_sized(at, y, " ", 1, scale, &style);
+      }
+
+      return;
+    }
+
+    self.put_sized(x, y, cluster, cells / rows, scale, style);
+  }
+
   /// Paints `cluster` at (`x`, `y`) at `scale`: a block of the scale's rows by `width`
   /// times them, its glyph and scale in the top-left cell and a continuation in every
   /// other, `style` applied to each—or blanks where the block's first or last cell
@@ -510,12 +536,22 @@ pub(crate) struct SizedLine {
 }
 
 impl SizedLine {
-  /// The cells the line spans, each cluster at its scale.
-  pub(crate) fn cells(&self, scales: &Scales) -> usize {
+  /// The cells each cluster of the line advances, at its scale, a tab to its stop.
+  pub(crate) fn advances<'a>(&'a self, scales: &'a Scales) -> impl Iterator<Item = usize> + 'a {
     text::clusters(&self.text)
       .enumerate()
-      .map(|(index, (_, cluster))| scales.cells(self.start + index, cluster))
-      .sum()
+      .scan(0, move |column, (index, (_, cluster))| {
+        let advance = scales.advance(self.start + index, cluster, *column);
+
+        *column += advance;
+
+        Some(advance)
+      })
+  }
+
+  /// The cells the line spans, each cluster at its scale.
+  pub(crate) fn cells(&self, scales: &Scales) -> usize {
+    self.advances(scales).sum()
   }
 
   /// The cluster a hit at the cell `column` lands on: the one whose block holds it,
@@ -523,8 +559,8 @@ impl SizedLine {
   pub(crate) fn cluster_at(&self, column: usize, scales: &Scales) -> Option<usize> {
     let mut cell = 0;
 
-    for (index, (_, cluster)) in text::clusters(&self.text).enumerate() {
-      cell += scales.cells(self.start + index, cluster);
+    for (index, advance) in self.advances(scales).enumerate() {
+      cell += advance;
 
       if column < cell {
         return Some(index);
@@ -539,8 +575,8 @@ impl SizedLine {
   pub(crate) fn index_at_column(&self, column: usize, scales: &Scales) -> usize {
     let mut cell = 0;
 
-    for (index, (_, cluster)) in text::clusters(&self.text).enumerate() {
-      let next = cell + scales.cells(self.start + index, cluster);
+    for (index, advance) in self.advances(scales).enumerate() {
+      let next = cell + advance;
 
       if column < next {
         return if column == cell { index } else { index + 1 };
@@ -587,24 +623,27 @@ pub(crate) fn line_at_row(lines: &[SizedLine], row: usize) -> usize {
   })
 }
 
-/// [`wrap_spans`] with each cluster as wide as its scale makes it, and each line as
-/// tall as its tallest cluster.
+/// Whether `cluster` is white space a line's end lets hang past it: a space or a tab.
+fn is_blank(cluster: &str) -> bool {
+  matches!(cluster, " " | "\t")
+}
+
+/// [`wrap_spans`] with each cluster as wide as its scale makes it, a tab reaching its
+/// stop counted from its line's start, and each line as tall as its tallest cluster.
 pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<SizedLine> {
   let width = width.max(1);
   let mut lines = Vec::new();
   let mut base = 0;
 
   for paragraph in text.split('\n') {
-    let clusters: Vec<(&str, usize)> = text::clusters(paragraph)
-      .enumerate()
-      .map(|(index, (_, cluster))| (cluster, scales.cells(base + index, cluster)))
+    let clusters: Vec<&str> = text::clusters(paragraph)
+      .map(|(_, cluster)| cluster)
       .collect();
+    let advance =
+      |index: usize, column: usize| scales.advance(base + index, clusters[index], column);
     let line = |from: usize, to: usize| SizedLine {
       start: base + from,
-      text: clusters[from..to]
-        .iter()
-        .map(|(cluster, _)| *cluster)
-        .collect(),
+      text: clusters[from..to].concat(),
       rows: (from..to)
         .map(|index| scales.rows(base + index))
         .max()
@@ -636,10 +675,10 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
           break;
         }
 
-        let (cluster, cluster_cells) = clusters[index];
+        let cluster_cells = advance(index, cells);
 
         cells += cluster_cells;
-        trailing = if cluster == " " {
+        trailing = if is_blank(clusters[index]) {
           trailing + cluster_cells
         }
         else {
@@ -654,21 +693,32 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
         let mut cells = 0;
         let mut fit = start;
 
-        while fit < clusters.len() && cells + clusters[fit].1 <= width {
-          cells += clusters[fit].1;
+        while fit < clusters.len() && cells + advance(fit, cells) <= width {
+          cells += advance(fit, cells);
           fit += 1;
         }
 
         fit.max(start + 1)
       });
-      // The spaces a line ends in hang past it: gone at a wrap, and kept only while
+      // The blanks a line ends in hang past it: gone at a wrap, and kept only while
       // they fit at the paragraph's end.
-      let mut shown = end;
-      let mut cells: usize = clusters[start..end].iter().map(|(_, cells)| cells).sum();
+      let advances: Vec<usize> = (start..end)
+        .scan(0, |column, index| {
+          let cells = advance(index, *column);
 
-      while shown > start && clusters[shown - 1].0 == " " && (end < clusters.len() || cells > width)
+          *column += cells;
+
+          Some(cells)
+        })
+        .collect();
+      let mut shown = end;
+      let mut cells: usize = advances.iter().sum();
+
+      while shown > start
+        && is_blank(clusters[shown - 1])
+        && (end < clusters.len() || cells > width)
       {
-        cells -= clusters[shown - 1].1;
+        cells -= advances[shown - 1 - start];
         shown -= 1;
       }
 
@@ -708,10 +758,15 @@ pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
         trailing = 0;
       }
 
-      let cells = scales.cells(base + index, cluster);
+      let cells = scales.advance(base + index, cluster, word);
 
       word += cells;
-      trailing = if cluster == " " { trailing + cells } else { 0 };
+      trailing = if is_blank(cluster) {
+        trailing + cells
+      }
+      else {
+        0
+      };
       longest = longest.max(word - trailing);
     }
 
@@ -1169,13 +1224,13 @@ fn paint_node(
 
         for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
           let cell_x = x + isize::try_from(column).expect("fits");
-          let width = text::width(cluster);
           let offset = line.start + index;
+          let advance = scales.advance(offset, cluster, column);
           let scale = scales.at(offset);
           // A smaller cluster sits on the line's bottom rows, as on a baseline.
           let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
 
-          column += scales.cells(offset, cluster);
+          column += advance;
 
           let Some(paint) = attribution
             .get(offset)
@@ -1190,7 +1245,7 @@ fn paint_node(
 
           let selected = selection.is_some_and(|(from, to)| offset >= from && offset < to);
 
-          buffer.put_sized(cell_x, row_y, cluster, width, scale, |cell| {
+          buffer.put_advancing(cell_x, row_y, cluster, advance, scale, |cell| {
             if paint.foreground.is_some() {
               cell.foreground = paint.foreground;
             }
@@ -1919,17 +1974,22 @@ fn draw_sized(
   let mut column = 0;
 
   for (_, cluster) in text::clusters(line) {
-    let width = text::width(cluster);
+    let advance = if cluster == "\t" {
+      text::tab_advance(column, scale)
+    }
+    else {
+      text::width(cluster) * scale.rows()
+    };
 
-    buffer.put_sized(
+    buffer.put_advancing(
       x + isize::try_from(column).expect("fits"),
       y,
       cluster,
-      width,
+      advance,
       scale,
       &style,
     );
-    column += width * scale.rows();
+    column += advance;
   }
 }
 
@@ -1961,7 +2021,7 @@ fn draw_selection(
     for (index, (_, cluster)) in text::clusters(&line.text).enumerate() {
       let offset = line.start + index;
       let scale = scales.at(offset);
-      let width = text::width(cluster) * scale.rows();
+      let width = scales.advance(offset, cluster, column);
       let top = row + line.rows - scale.rows();
 
       if offset >= from && offset < to {

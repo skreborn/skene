@@ -756,3 +756,32 @@ fn a_read_only_entry_takes_no_edits() {
     assert_eq!(tui::render_to_caret(10, 1), Some((3, 0)));
   });
 }
+
+/// A tab in an entry's value advances to its stop, in a field and an editor alike, and
+/// the caret after it lands where the value shows.
+#[test]
+fn a_tab_in_an_entry_reaches_its_stop() {
+  with_platform(|| {
+    let name = Signal::new("a\tb".to_owned());
+    let bio = Signal::new("a\tb\nc".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          RawTextField::new(TextEntry::new().bind_value(name))
+            .set_width(20)
+            .into_any(),
+          RawTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(20, 3), "a       b\na       b\nc\n");
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("End");
+
+    assert_eq!(tui::render_to_caret(20, 3), Some((9, 0)));
+  });
+}

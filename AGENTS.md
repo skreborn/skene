@@ -280,7 +280,8 @@
   hands it over at run time for one native selection, any key taking it back. Text
   is measured by extended grapheme clusters, each as wide as the terminal draws it: a
   wide cluster takes two cells, the second painting nothing, a combining sequence one,
-  and a field's caret, window and selection index clusters. Grapheme clustering (mode
+  a tab the blanks to its next stop, eight cells apart from its line's start as a
+  browser's `tab-size`, and a field's caret, window and selection index clusters. Grapheme clustering (mode
   2027) is asked for at launch and confirmed by DECRQM; where the terminal confirms it
   a cluster's width is the cluster's, and where it does not a cluster is as wide as its
   code points drawn one by one, so the layout agrees with the terminal either way. A

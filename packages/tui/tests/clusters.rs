@@ -231,7 +231,7 @@ fn the_document_selection_takes_whole_clusters() {
 #[test]
 fn a_control_character_paints_as_one_visible_cell() {
   with_platform(|| {
-    let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\tc").into_any().build());
+    let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\rc").into_any().build());
 
     for clustering in [false, true] {
       tui::trigger_grapheme_clustering(clustering);
@@ -247,5 +247,22 @@ fn a_control_character_paints_as_one_visible_cell() {
         Some(10)
       );
     }
+  });
+}
+
+/// A tab in text advances to its next stop, eight cells apart from its line's start,
+/// painted as blanks, and a later tab on the same line reaches the stop after.
+#[test]
+fn a_tab_advances_to_its_stop() {
+  with_platform(|| {
+    let _ = tui::mount(|| marked("ab\tc\td").into_any().build());
+
+    let text = tui::render_to_text(24, 1);
+
+    assert_eq!(text, "ab      c       d|\n");
+    assert_eq!(
+      underlined(&tui::render_to_decorations(24, 1), 24, 0),
+      Some(17)
+    );
   });
 }

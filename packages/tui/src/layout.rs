@@ -140,10 +140,9 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
     };
     // The box sits on the line's bottom rows, as a smaller cluster does; its line is at
     // least as tall as it.
-    let column = text::clusters(&line.text)
+    let column = line
+      .advances(&scales)
       .take(start - line.start)
-      .enumerate()
-      .map(|(index, (_, cluster))| scales.cells(line.start + index, cluster))
       .sum::<usize>();
     let row = rows[index] + line.rows.saturating_sub(scales.rows(start));
 

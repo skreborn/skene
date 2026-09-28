@@ -171,6 +171,15 @@ impl Scales {
     }
   }
 
+  /// The cells the cluster at `index` advances from the cell `column` of its line: a
+  /// tab to its next stop at its scale, anything else its [`cells`](Self::cells).
+  pub(crate) fn advance(&self, index: usize, cluster: &str, column: usize) -> usize {
+    match self.extent(index) {
+      Extent::Scaled(scale) if cluster == "\t" => tab_advance(column, scale),
+      _ => self.cells(index, cluster),
+    }
+  }
+
   /// The rows the cluster at `index` spans.
   pub(crate) fn rows(&self, index: usize) -> usize {
     match self.extent(index) {
@@ -197,6 +206,17 @@ pub(crate) fn reset() {
   CLUSTERING.with(|clustering| clustering.set(false));
   SIZING.with(|sizing| sizing.set(false));
   INTERNED.with(|interned| *interned.borrow_mut() = Interned::default());
+}
+
+/// How many cells apart a line's tab stops are at one cell, as a browser's `tab-size`.
+pub(crate) const TAB_SIZE: usize = 8;
+
+/// The cells a tab at `scale` advances from the cell `column` of its line: to the next
+/// multiple of [`TAB_SIZE`] of its scaled cells.
+pub(crate) const fn tab_advance(column: usize, scale: CellScale) -> usize {
+  let rows = scale.rows();
+
+  rows * (TAB_SIZE - (column / rows) % TAB_SIZE)
 }
 
 /// The character the terminal shows for `character`: a space for a tab or a carriage
@@ -228,14 +248,27 @@ pub(crate) fn width(cluster: &str) -> usize {
   }
 }
 
+/// The cells `cluster` advances from the cell `column` of its line at one cell: a tab
+/// to its next stop, anything else its [`width`].
+pub(crate) fn advance(cluster: &str, column: usize) -> usize {
+  if cluster == "\t" {
+    tab_advance(column, CellScale::ONE)
+  }
+  else {
+    width(cluster)
+  }
+}
+
 /// The clusters of `text`, each at its byte offset.
 pub(crate) fn clusters(text: &str) -> impl Iterator<Item = (usize, &str)> {
   text.grapheme_indices(true)
 }
 
-/// The cells `text` spans on one row.
+/// The cells `text` spans on one row, from its line's start.
 pub(crate) fn cells(text: &str) -> usize {
-  text.graphemes(true).map(width).sum()
+  text
+    .graphemes(true)
+    .fold(0, |column, cluster| column + advance(cluster, column))
 }
 
 /// How many clusters `text` holds.
@@ -256,12 +289,12 @@ pub(crate) fn slice(text: &str, from: usize, to: usize) -> &str {
   &text[byte_of(text, from)..byte_of(text, to.max(from))]
 }
 
-/// The longest prefix of `text` spanning at most `cells` cells.
+/// The longest prefix of `text` spanning at most `cells` cells, from its line's start.
 pub(crate) fn fit(text: &str, cells: usize) -> &str {
   let mut spanned = 0;
 
   for (byte, cluster) in clusters(text) {
-    spanned += width(cluster);
+    spanned += advance(cluster, spanned);
 
     if spanned > cells {
       return &text[..byte];
@@ -271,14 +304,14 @@ pub(crate) fn fit(text: &str, cells: usize) -> &str {
   text
 }
 
-/// The cluster a caret goes to for the cell `column` of `text` on one row: the one
-/// whose first cell it is, the next for a wide cluster's later cells, and the count
-/// past the text.
+/// The cluster a caret goes to for the cell `column` of `text` on one row, from its
+/// line's start: the one whose first cell it is, the next for a wide cluster's later
+/// cells, and the count past the text.
 pub(crate) fn index_at_column(text: &str, column: usize) -> usize {
   let mut cell = 0;
 
   for (index, cluster) in text.graphemes(true).enumerate() {
-    let next = cell + width(cluster);
+    let next = cell + advance(cluster, cell);
 
     if column < next {
       return if column == cell { index } else { index + 1 };
@@ -314,7 +347,7 @@ impl Clusters {
     for (byte, cluster) in clusters(text) {
       bytes.push(byte);
       columns.push(column);
-      column += width(cluster);
+      column += advance(cluster, column);
     }
 
     bytes.push(text.len());
@@ -517,16 +550,22 @@ mod tests {
     reset();
   }
 
-  /// A control shows as one cell whether or not the terminal clusters: a tab and a
-  /// carriage return as a space, any other as the replacement character.
+  /// A control shows as one cell whether or not the terminal clusters: a carriage
+  /// return as a space, any other as the replacement character; a tab shows as the
+  /// blanks it advances to its next stop.
   #[test]
-  fn a_control_shows_as_one_cell() {
+  fn a_control_shows_as_one_cell_and_a_tab_reaches_its_stop() {
     reset();
 
     for clustering in [false, true] {
       set_clustering(clustering);
 
-      assert_eq!(cells("a\u{1b}b\tc\r\u{7f}"), 7);
+      assert_eq!(cells("a\u{1b}bc\r\u{7f}"), 6);
+      assert_eq!(cells("\t"), TAB_SIZE);
+      assert_eq!(cells("ab\tc"), TAB_SIZE + 1);
+      assert_eq!(cells("abcdefgh\t"), 2 * TAB_SIZE);
+      assert_eq!(index_at_column("ab\tc", 5), 3);
+      assert_eq!(fit("ab\tc", 7), "ab");
       assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
       assert_eq!(Glyph::of("\t").to_string(), " ");
       assert_eq!(Glyph::of("\r\n").to_string(), " ");

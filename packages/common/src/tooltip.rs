@@ -23,7 +23,7 @@ use skene_core::{
   Value,
   View,
 };
-use skene_reactive::{Effect, Get, Set, Signal};
+use skene_reactive::{Effect, Get, Set, Signal, on_cleanup};
 
 use crate::{
   Anchor,
@@ -159,7 +159,8 @@ impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
 
 /// Registers what opens and closes the bubble on the described `node`: a pointer
 /// resting on it for `delay` or focus reaching it writes `open`, and the pointer or
-/// the focus leaving clears it, cancelling a rest still pending.
+/// the focus leaving clears it, cancelling a rest still pending, as the view's disposal
+/// does.
 fn bind_triggers<P: Platform>(node: NodeId, open: Signal<bool>, delay: Duration) {
   let pending: Rc<Cell<Option<Timer>>> = Rc::new(Cell::new(None));
   let cancel: Rc<dyn Fn()> = Rc::new({
@@ -170,6 +171,12 @@ fn bind_triggers<P: Platform>(node: NodeId, open: Signal<bool>, delay: Duration)
         P::default().cancel(timer);
       }
     }
+  });
+
+  on_cleanup({
+    let cancel = Rc::clone(&cancel);
+
+    move || cancel()
   });
   let closing = |cancel: &Rc<dyn Fn()>| -> Rc<dyn Fn()> {
     let cancel = Rc::clone(cancel);

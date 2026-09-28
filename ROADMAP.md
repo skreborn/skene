@@ -36,11 +36,6 @@ left half-done in a code comment.
     dropping per-key triggers, the store trie's too; `Owner::set_parent` updating the
     subtree's depths; an iterative pull with a cycle bit, so a long memo chain can't
     overflow wasm's stack; `Runtime::reset()` safe inside a `batch`.
-    - Views over the engine: `Enhance` builds untracked and latches once built, so a
-    signal read while building, or its own signal reverting, no longer blanks it for
-    good; `reconcile` matches repeated keys in order instead of leaving ghost nodes,
-    warning in debug that keys must be unique; a tooltip's hover timer dies with its
-    view.
 2. **The rest of the security holes.**
     - A link is external by its scheme prefix rather than by containing `://`.
     - The `--serve` worker frames requests by length; until then its contract is one

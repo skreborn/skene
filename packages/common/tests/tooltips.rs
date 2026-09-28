@@ -14,6 +14,7 @@ use skene_headless::{
   overlay_anchor,
   overlay_props,
   part,
+  pending_timers,
   reset,
   trigger_blur,
   trigger_dismiss,
@@ -114,7 +115,14 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
 
   assert!(!is_open(bubble));
 
+  trigger_pointer_enter(described);
   owner.dispose();
+
+  assert_eq!(
+    pending_timers(),
+    0,
+    "a rest still pending dies with the view"
+  );
 }
 
 /// A view tooltip reports only the bubble; a derived text tooltip re-describes as its

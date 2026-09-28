@@ -702,6 +702,13 @@ pub fn set_reduced_motion(reduced: bool) {
   write.set(reduced);
 }
 
+/// How many scheduled actions are still waiting for the clock, for a test asserting that
+/// a view cancels its own.
+#[must_use]
+pub fn pending_timers() -> usize {
+  with_store(|store| store.timers.len())
+}
+
 /// Passes a frame: every property a resolution has observed is judged again at the
 /// clock's reading, so a value that moved since starts its transition there, and the
 /// clock then steps forward by `elapsed`; the next resolution samples every transition

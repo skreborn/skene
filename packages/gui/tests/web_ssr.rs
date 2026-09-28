@@ -400,8 +400,8 @@ fn page_assembles_a_full_document() {
   );
 }
 
-/// A `client_only` view yields nothing on the server; its build closure never runs
-/// here.
+/// A `client_only` view yields nothing on the server, its build closure never running
+/// here: its place is the empty enhancement a hydrating client adopts.
 #[test]
 fn client_only_is_empty_on_the_server() {
   let page =
@@ -409,8 +409,8 @@ fn client_only_is_empty_on_the_server() {
 
   assert_eq!(
     page.body(),
-    "<!--s:0--><!--e:0-->",
-    "an empty segment, nothing between its anchors: {}",
+    "<!--s:0--><!--s:1--><!--e:1--><!--e:0-->",
+    "empty segments, nothing between their anchors: {}",
     page.body(),
   );
 }

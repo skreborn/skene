@@ -67,9 +67,6 @@ left half-done in a code comment.
     entries are owner-scoped and keyed, with a title stack, deduped once in shared
     code, so a route's description and stylesheet leave with it and both leaves
     serialize them alike.
-    - `client_only` becomes `Enhance::new(media::hydrated())`, or goes: content it
-    builds while hydrating, where the server built nothing, shifts every later
-    hydration marker.
     - `Scene::annotate(annotation, build)` applies a wrapper's per-child properties to
     whatever its child produced, runs, low-level sinks and segments included (carried
     in `RunProps` for runs), so `Flexible`, `GridCell` and `Pinned` act around text on

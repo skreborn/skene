@@ -22,7 +22,7 @@ const RUNS: &[Run] = &[
     arguments: &[],
     binaries: &[
       ("web_dom", 48),
-      ("web_hydrate", 12),
+      ("web_hydrate", 13),
       ("web_painted", 2),
       ("web_resource", 5),
       ("web_task", 4),

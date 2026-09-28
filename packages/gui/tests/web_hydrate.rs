@@ -332,6 +332,35 @@ fn an_enhancement_adopts_its_fallback_then_builds_its_child() {
   web::uninstall();
 }
 
+/// A client-only view adopts the empty place a server left for it, so the nodes after
+/// it keep their markers, and builds once hydration has finished.
+#[wasm_bindgen_test]
+fn a_client_only_view_builds_after_hydrating_without_shifting_markers() {
+  let root = server_root(
+    "<div data-h=\"1\"><!--s:0--><!--s:1--><!--s:2--><!--e:2--><!--e:1-->\
+     <span data-h=\"2\">after</span><!--e:0--></div>",
+  );
+  let server_after = only_child(&only_child(&root));
+
+  hydrate(root.clone(), "", || {
+    Column::new().set_children((
+      skene_gui::client_only(|| skene_gui::View::build(Text::new("map"))),
+      Text::new("after"),
+    ))
+  });
+
+  let column = only_child(&root);
+
+  assert_eq!(web::hydration_mismatches(), 0);
+  assert_eq!(column.text_content().expect("text"), "mapafter");
+  assert!(
+    column.last_element_child() == Some(server_after),
+    "the later text was adopted"
+  );
+
+  web::uninstall();
+}
+
 /// A picker hydrates over the server's `<select>`, carrying the choice the reader
 /// made before the bundle arrived into the signal and onto the drawn face that takes
 /// the select's place.

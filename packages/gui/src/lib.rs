@@ -366,25 +366,16 @@ pub fn empty() -> impl View {
   skene_core::empty::<ActivePlatform>()
 }
 
-/// Wraps a view that only a client can realize, so it renders on an interactive
-/// platform and falls back to [`empty`] where it cannot run.
+/// Wraps a view that only a client can realize: it builds once the page stands
+/// [`hydrated`](media::hydrated), so a server renders nothing in its place and a
+/// hydrating client adopts that empty place before building it.
 ///
 /// The place for a low-level view that reaches a platform's raw handles, which have no
-/// meaning off the client. On a server-rendering platform this yields nothing; the
-/// real content arrives when the client hydrates. `build` returns the node it
-/// realizes, exactly as a view's `build` does.
-#[cfg(not(skene_leaf = "server"))]
+/// meaning off the client. `build` returns the node it realizes, exactly as a view's
+/// `build` does.
 #[inline(always)]
 pub fn client_only(build: impl FnOnce() -> NodeId + 'static) -> impl View {
-  AnyView::new(build)
-}
-
-/// On a server-rendering platform this yields nothing; the real content arrives when
-/// the client hydrates.
-#[cfg(skene_leaf = "server")]
-#[inline(always)]
-pub fn client_only(_build: impl FnOnce() -> NodeId + 'static) -> impl View {
-  empty()
+  Enhance::new(media::hydrated()).set_child_builder(build)
 }
 
 /// Mounts and runs the application in the browser; a server-rendered page is hydrated

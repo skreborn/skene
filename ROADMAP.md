@@ -112,9 +112,8 @@ left half-done in a code comment.
     copying one stops yielding U+FFFC; nested anchored overlays placed from
     `screen_origin`; the page keys scrolling by the client height less a row; wrapping
     by `unicode-linebreak`, and word selection and motion by unicode-segmentation's
-    word boundaries; one `offers(action)` for the clipboard everywhere, so Paste works
-    under the answering clipboard; a link opener that reaps its child and, over ssh,
-    copies the URL instead.
+    word boundaries; a link opener that reaps its child and, over ssh, copies the URL
+    instead.
 5. **`skene-transport` keeps its contracts.** One I/O thread owns a WebSocket, fed by a
     channel, where `send` waits today on a mutex the reader holds across a 50 ms read,
     stalling the UI thread; a panicking transport thread resolves its future with an

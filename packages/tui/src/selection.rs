@@ -15,6 +15,8 @@
 
 use std::time::{Duration, Instant};
 
+use skene_core::ClipboardAction;
+
 use crate::{
   field::word_bounds,
   layout::{is_paragraph, paragraph_runs, paragraph_text},
@@ -61,12 +63,12 @@ impl Store {
   }
 
   /// The node's source text, when it is a selectable, non-empty run or paragraph
-  /// outside every control and the launch offers `Copy`: a control's label is chrome,
-  /// whatever it opts into, and without `Copy` nothing in the document is selectable.
+  /// outside every control and `Copy` is offered: a control's label is chrome, whatever
+  /// it opts into, and without `Copy` nothing in the document is selectable.
   pub(crate) fn selectable_text(&self, handle: Handle) -> Option<String> {
     let record = self.record(handle)?;
 
-    if !self.clipboard.copy || self.enclosing_control(handle).is_some() {
+    if !self.offers(ClipboardAction::Copy) || self.enclosing_control(handle).is_some() {
       return None;
     }
 
@@ -463,10 +465,20 @@ impl Store {
     }
   }
 
+  /// Whether the clipboard `action` is offered: every one where the terminal's
+  /// clipboard answers, else those the launch chose.
+  pub(crate) const fn offers(&self, action: ClipboardAction) -> bool {
+    self.clipboard_answers
+      || match action {
+        ClipboardAction::Copy | ClipboardAction::Cut => self.clipboard.copy,
+        ClipboardAction::Paste => self.clipboard.paste,
+      }
+  }
+
   /// Stages the selected text for the terminal loop's clipboard write; nothing is
-  /// staged when the launch offers no `Copy`.
+  /// staged when `Copy` is not offered.
   pub(crate) fn copy_selection(&mut self) {
-    if self.clipboard.copy
+    if self.offers(ClipboardAction::Copy)
       && let Some(text) = self.selected_text()
     {
       self.pending_copy = Some(text);
@@ -474,10 +486,10 @@ impl Store {
   }
 
   /// Stages a clipboard read for the terminal loop, its reply bound for the clipboard's
-  /// entry; nothing is staged without one that takes edits, or when the launch offers
-  /// no `Paste`.
+  /// entry; nothing is staged without one that takes edits, or when `Paste` is not
+  /// offered.
   pub(crate) fn request_paste(&mut self) {
-    if self.clipboard.paste
+    if self.offers(ClipboardAction::Paste)
       && let Some(entry) = self
         .clipboard_entry()
         .filter(|entry| self.is_editable(*entry))

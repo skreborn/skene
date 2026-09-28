@@ -39,6 +39,42 @@ fn mount_document(value: Signal<String>) {
   tui::trigger_key("Tab");
 }
 
+/// A terminal whose clipboard answers offers every operation whatever the launch
+/// chose: the keys copy, cut and paste, and the document is selectable.
+#[test]
+fn an_answering_clipboard_offers_every_operation() {
+  with_launch(tui::Launch::new().set_clipboard(Clipboard::NONE), || {
+    let value = Signal::new(String::from("value"));
+
+    tui::trigger_answering_clipboard(true);
+    mount_document(value);
+    tui::trigger_key("Ctrl+c");
+
+    assert_eq!(tui::take_copied().as_deref(), Some("value"));
+
+    tui::trigger_key("Ctrl+v");
+
+    assert!(tui::take_paste_requested(), "Ctrl+V reads the clipboard");
+
+    tui::trigger_key("Ctrl+x");
+
+    assert_eq!(value.get_untracked(), "", "Ctrl+X cuts");
+
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(4, 0);
+    tui::trigger_mouse_release(4, 0);
+
+    let colors = tui::render_to_colors(20, 4);
+
+    assert!(
+      colors[..4]
+        .iter()
+        .all(|(_, background)| *background == Some(rgb(highlight()))),
+      "a drag over the run selects it"
+    );
+  });
+}
+
 /// Without a clipboard, nothing in the document is selectable, no menu opens, the
 /// clipboard keys are ordinary keys, and the terminal's own paste still inserts.
 #[test]

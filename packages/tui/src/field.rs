@@ -1,7 +1,7 @@
 //! The terminal's editing of a text entry: the caret and the selection over the value,
 //! the visible window, and the keys that move, select and edit.
 
-use skene_core::{AccessProp, KeyEvent, notify_change, notify_selection_change};
+use skene_core::{AccessProp, ClipboardAction, KeyEvent, notify_change, notify_selection_change};
 
 use crate::{
   Tui,
@@ -987,11 +987,11 @@ fn paste_into(target: Option<Handle>, text: &str) {
 }
 
 /// Stages the clipboard entry's selection for the clipboard and removes it, reporting
-/// the changed value through the node's change handlers; nothing happens when the
-/// launch offers no `Copy` or the entry is not editable.
+/// the changed value through the node's change handlers; nothing happens when `Cut` is
+/// not offered or the entry is not editable.
 pub(crate) fn cut_focused() {
   let changed = with_store(|store| {
-    if !store.clipboard.copy {
+    if !store.offers(ClipboardAction::Cut) {
       return None;
     }
 

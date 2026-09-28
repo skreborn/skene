@@ -495,15 +495,7 @@ impl Platform for Tui {
 
   fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
     with_store(|store| {
-      // A clipboard that answers offers every operation; the launch choice stands
-      // for one that does not.
-      let offered = store.clipboard_answers
-        || match action {
-          ClipboardAction::Copy | ClipboardAction::Cut => store.clipboard.copy,
-          ClipboardAction::Paste => store.clipboard.paste,
-        };
-
-      if !offered {
+      if !store.offers(action) {
         return Availability::Absent;
       }
 

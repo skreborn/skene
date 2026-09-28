@@ -7,6 +7,7 @@
 use rustc_hash::FxHashMap;
 use skene_core::{
   Axis,
+  ClipboardAction,
   ControlKind,
   KeyEvent,
   Modifiers,
@@ -1580,7 +1581,7 @@ fn key_default(event: &KeyEvent) {
     store(|store| store.mouse_released = false);
   }
 
-  let clipboard = store(|store| store.clipboard);
+  let offers = |action| store(|store| store.offers(action));
   let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
 
   match event.shortcut_key().as_ref() {
@@ -1635,17 +1636,17 @@ fn key_default(event: &KeyEvent) {
     // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
     // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
     // entry; one not offered is an ordinary key.
-    "c" if ctrl && clipboard.copy => {
+    "c" if ctrl && offers(ClipboardAction::Copy) => {
       store(Store::copy_selection);
 
       return;
     }
-    "x" if ctrl && clipboard.copy => {
+    "x" if ctrl && offers(ClipboardAction::Cut) => {
       crate::field::cut_focused();
 
       return;
     }
-    "v" if ctrl && clipboard.paste => {
+    "v" if ctrl && offers(ClipboardAction::Paste) => {
       store(|store| {
         if store.focused_entry().is_some() {
           store.request_paste();

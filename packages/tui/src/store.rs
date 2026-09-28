@@ -661,6 +661,12 @@ impl Record {
     matches!(self.kind, Kind::Overlay { open: true, .. })
   }
 
+  /// Whether the record is a modal overlay.
+  #[inline(always)]
+  pub(crate) const fn is_modal_overlay(&self) -> bool {
+    matches!(self.kind, Kind::Overlay { modal: true, .. })
+  }
+
   /// The anchor an open overlay is placed against.
   #[inline(always)]
   pub(crate) const fn overlay_anchor(&self) -> Option<Handle> {

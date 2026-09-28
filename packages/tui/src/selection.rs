@@ -167,21 +167,15 @@ impl Store {
   }
 
   /// The source position nearest the cell (`x`, `y`) over every selectable run—by
-  /// vertical distance first, then horizontal, earlier runs winning ties. Runs outside
-  /// an open modal are ignored while one is open.
+  /// vertical distance first, then horizontal, earlier runs winning ties. Runs a modal
+  /// makes unreachable are ignored.
   fn nearest_text_position(&self, x: u16, y: u16) -> Option<SelectionPoint> {
-    let modal = match self.topmost_open_overlay() {
-      Some((top, true)) => Some(top),
-      _ => None,
-    };
     let (pointer_x, pointer_y) = (i64::from(x), i64::from(y));
     let mut best: Option<(i64, i64)> = None;
     let mut nearest: Option<(Handle, (i64, i64))> = None;
 
     for node in self.document_runs() {
-      if let Some(modal) = modal
-        && !self.ancestors(node).contains(&modal)
-      {
+      if !self.reachable_under_modal(node) {
         continue;
       }
 

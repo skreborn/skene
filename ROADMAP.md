@@ -114,10 +114,8 @@ left half-done in a code comment.
 4. **The terminal's traps.** Replies are read only inside query windows fenced by
     DA1, so `Alt+Shift+P` no longer swallows every later key; a key's typed text rides
     it under the kitty protocol, so `AltGr` and `Option` characters arrive; a
-    "permanently set" DECRPM reply reads as set; what remains:
-    - Inertness comes from the topmost modal, not the topmost overlay, and scrollbar
-    presses hit-test through the modal-filtered path, so the page beneath a modal stays
-    inert while a tooltip or a picker list is open and under a press on its scrollbar.
+    "permanently set" DECRPM reply reads as set; the topmost modal keeps the page inert
+    under a popup above it and under a press on a scrollbar; what remains:
     - Navigation, type-ahead and tab stops skip disabled members, and a disabled
     control lets keys through and suppresses only activation, where a disabled Cut in
     the standard menu, or a picker's disabled placeholder, traps the keyboard today;

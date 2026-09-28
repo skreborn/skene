@@ -87,9 +87,35 @@ impl Store {
     })
   }
 
+  /// The topmost open modal overlay.
+  pub(crate) fn topmost_modal(&self) -> Option<Handle> {
+    self
+      .open_overlays()
+      .into_iter()
+      .rev()
+      .find(|overlay| self.record(*overlay).is_some_and(Record::is_modal_overlay))
+  }
+
+  /// Whether `handle` is reachable while the topmost modal is open: inside it, or inside
+  /// an overlay opened above it; everything is while no modal is open.
+  pub(crate) fn reachable_under_modal(&self, handle: Handle) -> bool {
+    let overlays = self.open_overlays();
+    let Some(modal) = overlays
+      .iter()
+      .rposition(|overlay| self.record(*overlay).is_some_and(Record::is_modal_overlay))
+    else {
+      return true;
+    };
+    let ancestors = self.ancestors(handle);
+
+    overlays[modal..]
+      .iter()
+      .any(|overlay| *overlay == handle || ancestors.contains(overlay))
+  }
+
   /// The tab stops in traversal order: positioned ones first by position, then the
   /// rest in document order; closed overlays excluded, and an open modal containing
-  /// the whole order.
+  /// the whole order with the overlays opened above it.
   pub(crate) fn tab_order(&self) -> Vec<Handle> {
     let mut positioned = Vec::new();
     let mut ordered = Vec::new();
@@ -120,9 +146,7 @@ impl Store {
 
     order.extend(ordered);
 
-    if let Some((top, true)) = self.topmost_open_overlay() {
-      order.retain(|node| self.ancestors(*node).contains(&top));
-    }
+    order.retain(|node| self.reachable_under_modal(*node));
 
     order
   }
@@ -130,7 +154,10 @@ impl Store {
   /// The path from the root to the deepest node containing the cell (`x`, `y`), each
   /// with its absolute origin, against the last computed layout.
   pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(Handle, (i64, i64))> {
-    // Overlays hit first, topmost first; below an open modal nothing is hittable.
+    let modal = self.topmost_modal();
+
+    // Overlays hit first, topmost first; below the topmost open modal nothing is
+    // hittable.
     for overlay in self.open_overlays().iter().rev() {
       let mut path = Vec::new();
 
@@ -138,7 +165,7 @@ impl Store {
         return path;
       }
 
-      if matches!(self.topmost_open_overlay(), Some((top, true)) if top == *overlay) {
+      if modal == Some(*overlay) {
         return Vec::new();
       }
     }
@@ -575,7 +602,7 @@ impl Store {
     let (px, py) = (i64::from(x), i64::from(y));
     let (within_x, within_y) = self.pointer_within;
 
-    for handle in self.handles() {
+    for (handle, _) in self.hit_test(x, y).into_iter().rev() {
       if !self.is_scrollable(handle) {
         continue;
       }
@@ -1013,7 +1040,6 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   let (path, dismissed, modal_blocked) = store(|store| {
     let path = store.hit_test(x, y);
     let mut dismissed = None;
-    let mut blocked = false;
     let mut inside_overlay = false;
 
     // A press on the anchor a popup opened from leaves it to the anchor's click.
@@ -1029,9 +1055,11 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
       if !inside_overlay && !on_anchor {
         dismissed = store.record(top).and_then(|record| record.node);
-        blocked = modal;
       }
     }
+
+    // A press outside the topmost modal, and the overlays above it, reaches nothing.
+    let blocked = store.topmost_modal().is_some() && path.is_empty();
 
     // A left press starts over, unless it lands in an open overlay, whose items act on
     // the selection beneath; a right press keeps the selection for the context menu.

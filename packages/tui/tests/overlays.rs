@@ -208,6 +208,64 @@ fn a_modal_traps_focus() {
   });
 }
 
+/// A modal stays in charge while a popup above it is open: with a tooltip showing over
+/// the dialog, `Tab` stays inside and a press on the page reaches nothing.
+#[test]
+fn a_modal_holds_under_a_popup_above_it() {
+  with_platform(|| {
+    let open = Signal::new(false);
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+    let inside = FocusHandle::new();
+    let bound_inside = inside.clone();
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .set_label("page")
+            .handle_click(move || counted.set(counted.get() + 1))
+            .into_any(),
+          Overlay::modal()
+            .bind_open(open)
+            .set_backdrop(None)
+            .set_child(
+              Tooltip::new("Confirms")
+                .set_child(
+                  RawButton::new(Activate::new())
+                    .set_label("inside")
+                    .bind_focus(&bound_inside),
+                )
+                .into_any(),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+
+    open.set(true);
+
+    let _ = tui::render_to_text(24, 6);
+
+    tui::trigger_key("Tab");
+
+    let frame = tui::render_to_text(24, 6);
+
+    assert_eq!(tui::focused_node(), inside.node());
+    assert!(frame.contains("Confirms"), "the tooltip shows: {frame}");
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(tui::focused_node(), inside.node());
+
+    tui::trigger_mouse_click(1, 0);
+
+    assert_eq!(clicks.get(), 0);
+    assert_ne!(tui::focused_node(), None);
+  });
+}
+
 /// A modal takes focus to its first tab stop as it opens and returns it to the node
 /// that held focus as it closes.
 #[test]

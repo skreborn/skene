@@ -41,21 +41,10 @@ impl MenuGroup {
     &self.roster
   }
 
-  /// The enabled items in tree order: those whose control is not disabled.
+  /// The enabled items in tree order: those whose control is not disabled; tracked.
   #[must_use]
   pub fn enabled<P: Platform>(&self) -> Vec<(NodeId, String)> {
-    let members = self.roster.ordered::<P>();
-
-    Scene::<P>::with(|scene| {
-      members
-        .into_iter()
-        .filter(|(node, _)| {
-          !scene
-            .control_state(*node)
-            .is_some_and(|state| state.disabled)
-        })
-        .collect()
-    })
+    self.roster.enabled::<P>()
   }
 
   /// Whether `value` is the menu's one tab stop: the first enabled item.
@@ -273,9 +262,12 @@ impl<P: Platform> Behavior<P> for MenuOption {
     };
     let node = control.node();
 
-    group
-      .roster
-      .join(node, self.value.clone(), control.name().map(str::to_owned));
+    group.roster.join(
+      node,
+      self.value.clone(),
+      control.name().map(str::to_owned),
+      control.disabled_read(),
+    );
 
     let roster = group.roster.clone();
 

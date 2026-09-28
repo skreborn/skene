@@ -26,13 +26,14 @@ pub struct Roster {
   changed: Trigger,
 }
 
-/// One member: its node, the value it carries, and the name it goes by when its
-/// control's label supplied one.
+/// One member: its node, the value it carries, the name it goes by when its control's
+/// label supplied one, and whether its control is disabled.
 #[derive(Clone)]
 struct Member {
   node: NodeId,
   value: String,
   name: Option<String>,
+  disabled: Rc<dyn Fn() -> bool>,
 }
 
 impl Roster {
@@ -53,9 +54,15 @@ impl Roster {
     self.changed.notify();
   }
 
-  /// Adds the member `node` holding `value` and going by `name`, replacing any member
-  /// already at that node.
-  pub fn join(&self, node: NodeId, value: impl Into<String>, name: Option<String>) {
+  /// Adds the member `node` holding `value`, going by `name` and disabled while
+  /// `disabled` answers so, replacing any member already at that node.
+  pub fn join(
+    &self,
+    node: NodeId,
+    value: impl Into<String>,
+    name: Option<String>,
+    disabled: Rc<dyn Fn() -> bool>,
+  ) {
     {
       let mut members = self.members.borrow_mut();
 
@@ -64,6 +71,7 @@ impl Roster {
         node,
         value: value.into(),
         name,
+        disabled,
       });
     }
 
@@ -79,16 +87,18 @@ impl Roster {
     self.changed.notify();
   }
 
-  /// Focuses the member at `index` in tree order, if there is one.
+  /// Focuses the enabled member at `index` among the [`enabled`](Self::enabled), if
+  /// there is one.
   pub fn focus_at<P: Platform>(&self, index: usize) {
-    if let Some((node, _)) = self.ordered::<P>().get(index) {
+    if let Some((node, _)) = self.enabled::<P>().get(index) {
       with_sink::<P, _>(*node, |sink| P::default().focus(sink));
     }
   }
 
-  /// Focuses the member holding `value`, or the first member when none holds it.
+  /// Focuses the enabled member holding `value`, or the first enabled member when none
+  /// does.
   pub fn focus_value<P: Platform>(&self, value: Option<&str>) {
-    let members = self.ordered::<P>();
+    let members = self.enabled::<P>();
     let index = value
       .and_then(|value| members.iter().position(|(_, held)| held == value))
       .unwrap_or(0);
@@ -96,6 +106,17 @@ impl Roster {
     if let Some((node, _)) = members.get(index) {
       with_sink::<P, _>(*node, |sink| P::default().focus(sink));
     }
+  }
+
+  /// The members whose control is enabled, in tree order under `P`'s scene, tracked.
+  #[must_use]
+  pub fn enabled<P: Platform>(&self) -> Vec<(NodeId, String)> {
+    self
+      .walk::<P>()
+      .into_iter()
+      .filter(|member| !(member.disabled)())
+      .map(|member| (member.node, member.value))
+      .collect()
   }
 
   /// The members in tree order under `P`'s scene, tracked.
@@ -123,12 +144,17 @@ impl Roster {
       .collect()
   }
 
-  /// The index of the member a type-ahead `buffer` picks by name (see
-  /// [`TypeAhead::matching`]), given the member holding `current` has focus or is
-  /// chosen; a member's value is its name where its label supplied none.
+  /// The index among the [`enabled`](Self::enabled) of the member a type-ahead
+  /// `buffer` picks by name (see [`TypeAhead::matching`]), given the member holding
+  /// `current` has focus or is chosen; a member's value is its name where its label
+  /// supplied none.
   #[must_use]
   pub fn typed<P: Platform>(&self, buffer: &str, current: Option<&str>) -> Option<usize> {
-    let members = self.walk::<P>();
+    let members: Vec<Member> = self
+      .walk::<P>()
+      .into_iter()
+      .filter(|member| !(member.disabled)())
+      .collect();
     let names: Vec<String> = members
       .iter()
       .map(|member| member.name.clone().unwrap_or_else(|| member.value.clone()))

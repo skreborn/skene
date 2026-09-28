@@ -50,24 +50,25 @@ impl RovingGroup {
     &self.roster
   }
 
-  /// Whether `value` is the group's one tab stop: the chosen member, or the first when
-  /// nothing is chosen.
+  /// Whether `value` is the group's one tab stop: the chosen member when it is enabled,
+  /// else the first enabled one.
   #[must_use]
   pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
-    match self.chosen() {
+    let enabled = self.roster.enabled::<P>();
+
+    match self
+      .chosen()
+      .filter(|chosen| enabled.iter().any(|(_, held)| held == chosen))
+    {
       Some(chosen) => chosen == value,
-      None => self
-        .roster
-        .ordered::<P>()
-        .first()
-        .is_some_and(|(_, first)| first == value),
+      None => enabled.first().is_some_and(|(_, first)| first == value),
     }
   }
 
-  /// Chooses the member `step` places from the one holding `value`, wrapping at both
-  /// ends, and focuses it.
+  /// Chooses the enabled member `step` places from the one holding `value`, wrapping at
+  /// both ends, and focuses it.
   pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
-    let members = self.roster.ordered::<P>();
+    let members = self.roster.enabled::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -252,9 +253,12 @@ impl<P: Platform> Behavior<P> for RadioMember {
     };
     let node = control.node();
 
-    group
-      .roster
-      .join(node, self.value.clone(), control.name().map(str::to_owned));
+    group.roster.join(
+      node,
+      self.value.clone(),
+      control.name().map(str::to_owned),
+      control.disabled_read(),
+    );
 
     let roster = group.roster.clone();
 

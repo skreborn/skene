@@ -4,6 +4,7 @@
 //! No borrow of the store is held while a handler runs: every entry point reads what
 //! it needs, releases the store, dispatches, then writes the outcome back.
 
+use rustc_hash::FxHashMap;
 use skene_core::{
   Axis,
   ControlKind,
@@ -85,6 +86,52 @@ impl Store {
         _ => None,
       }
     })
+  }
+
+  /// The stop of `order`, which the focused node is not, nearest after the focused
+  /// node in document order, or before it for a negative `step`; the first or last
+  /// stop when none lies that way or nothing is focused.
+  fn stop_beside_focus(&self, order: &[Handle], step: isize) -> Handle {
+    let positions = self.document_positions();
+    let position = |node: &Handle| positions.get(node).copied();
+    let focused = self.focused.and_then(|focused| position(&focused));
+    let beside = focused.and_then(|focused| {
+      if step >= 0 {
+        order
+          .iter()
+          .find(|node| position(node).is_some_and(|at| at > focused))
+      }
+      else {
+        order
+          .iter()
+          .rev()
+          .find(|node| position(node).is_some_and(|at| at < focused))
+      }
+    });
+
+    match beside {
+      Some(node) => *node,
+      None if step >= 0 => order[0],
+      None => order[order.len() - 1],
+    }
+  }
+
+  /// Every node's position in document order.
+  pub(crate) fn document_positions(&self) -> FxHashMap<Handle, usize> {
+    let mut positions = FxHashMap::default();
+    let mut stack = vec![self.root];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      positions.insert(current, positions.len());
+      stack.extend(record.children.iter().rev());
+    }
+
+    positions
   }
 
   /// The topmost open modal overlay.
@@ -836,7 +883,9 @@ fn focus_on(next: Option<Handle>, restored: bool) {
   crate::field::report_selections();
 }
 
-/// Moves focus by `step` through the tab stops, wrapping at both ends.
+/// Moves focus by `step` through the tab stops, wrapping at both ends; from a focused
+/// node that is no tab stop (one disabled while it held focus), to the nearest stop
+/// after it, or before it for a negative `step`, in document order.
 pub(crate) fn move_focus(step: isize) {
   let next = store(|store| {
     let order = store.tab_order();
@@ -845,27 +894,18 @@ pub(crate) fn move_focus(step: isize) {
       return None;
     }
 
-    Some(
-      match store
-        .focused
-        .and_then(|focused| order.iter().position(|node| *node == focused))
-      {
-        Some(index) => {
-          let count = isize::try_from(order.len()).expect("a small focus order");
-          let index = isize::try_from(index).expect("a small focus order");
+    let index = store
+      .focused
+      .and_then(|focused| order.iter().position(|node| *node == focused));
 
-          order[usize::try_from((index + step).rem_euclid(count)).expect("in range")]
-        }
-        None => {
-          if step >= 0 {
-            order[0]
-          }
-          else {
-            order[order.len() - 1]
-          }
-        }
-      },
-    )
+    let Some(index) = index
+    else {
+      return Some(store.stop_beside_focus(&order, step));
+    };
+    let count = isize::try_from(order.len()).expect("a small focus order");
+    let index = isize::try_from(index).expect("a small focus order");
+
+    Some(order[usize::try_from((index + step).rem_euclid(count)).expect("in range")])
   });
 
   if next.is_some() {

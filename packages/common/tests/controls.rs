@@ -14,6 +14,8 @@ use skene_common::{
   Behavior,
   ControlHandle,
   Label,
+  ListItem,
+  Listbox,
   RadioMember,
   Range,
   Roving,
@@ -83,6 +85,8 @@ type RawCheckbox = skene_common::RawCheckbox<Headless>;
 type RawSlider = skene_common::RawSlider<Headless>;
 type RawRadioGroup = skene_common::RawRadioGroup<Headless>;
 type RawRadio = skene_common::RawRadio<Headless>;
+type RawListbox = skene_common::RawListbox<Headless>;
+type RawOption = skene_common::RawOption<Headless>;
 type RawTextField = skene_common::RawTextField<Headless>;
 type RawTextEditor = skene_common::RawTextEditor<Headless>;
 
@@ -386,6 +390,84 @@ fn a_radio_groups_tab_stop_follows_the_choice_and_the_membership() {
   owner.dispose();
 }
 
+/// A radio group's disabled members are passed over: the tab stop is the first enabled
+/// member while nothing is chosen, the arrows skip the disabled ones, and a member
+/// disabled later gives up the stop.
+#[test]
+fn a_radio_group_passes_over_its_disabled_members() {
+  reset();
+
+  let owner = Owner::new();
+  let chosen: Signal<Option<String>> = Signal::new(None);
+  let second_disabled = Signal::new(false);
+  let group = owner.enter(|| {
+    RawRadioGroup::new(Roving::new().bind_chosen(chosen))
+      .set_child(
+        Column::new().set_children((
+          RawRadio::new(RadioMember::new("a"))
+            .set_label("a")
+            .set_disabled(true),
+          RawRadio::new(RadioMember::new("b"))
+            .set_label("b")
+            .derive_disabled(move || second_disabled.get()),
+          RawRadio::new(RadioMember::new("c")).set_label("c"),
+        )),
+      )
+      .build()
+  });
+  let column = children(group)[0];
+  let member = |index: usize| children(column)[index + 1];
+
+  assert!(!is_tab_stop(member(0)));
+  assert!(is_tab_stop(member(1)));
+  assert_eq!(trigger_key_down(member(1), &key("ArrowDown")), CONSUMED);
+  assert_eq!(chosen.get().as_deref(), Some("c"));
+  assert_eq!(trigger_key_down(member(2), &key("ArrowDown")), CONSUMED);
+  assert_eq!(chosen.get().as_deref(), Some("b"));
+
+  second_disabled.set(true);
+
+  assert!(!is_tab_stop(member(1)));
+  assert!(is_tab_stop(member(2)));
+
+  owner.dispose();
+}
+
+/// A listbox's arrows skip its disabled options, and `Tab` from an option leaves the
+/// list without choosing it.
+#[test]
+fn a_listbox_skips_disabled_options_and_tab_chooses_nothing() {
+  reset();
+
+  let owner = Owner::new();
+  let chosen: Signal<Option<String>> = Signal::new(None);
+  let list = owner.enter(|| {
+    RawListbox::new(Listbox::new().bind_chosen(chosen))
+      .set_child(
+        Column::new().set_children((
+          RawOption::new(ListItem::new("a")).set_label("a"),
+          RawOption::new(ListItem::new("b"))
+            .set_label("b")
+            .set_disabled(true),
+          RawOption::new(ListItem::new("c")).set_label("c"),
+        )),
+      )
+      .build()
+  });
+  let column = children(list)[0];
+  let option = |index: usize| children(column)[index + 1];
+
+  assert_eq!(trigger_key_down(option(0), &key("ArrowDown")), CONSUMED);
+  assert!(is_focused(option(2)));
+  assert_eq!(
+    trigger_key_down(option(2), &key("Tab")),
+    Prevented::default()
+  );
+  assert_eq!(chosen.get(), None);
+
+  owner.dispose();
+}
+
 /// A part's focus variant resolves when the control is focused, and its checked
 /// variant follows the control's state.
 #[test]
@@ -467,8 +549,8 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
   owner.dispose();
 }
 
-/// A disabled control reports it, takes no focus and ignores activation; enabling it
-/// again restores all three.
+/// A disabled control reports it, takes no focus and ignores activation, letting keys
+/// by; enabling it again restores all three.
 #[test]
 fn a_disabled_control_reports_it_and_ignores_activation() {
   reset();
@@ -493,7 +575,7 @@ fn a_disabled_control_reports_it_and_ignores_activation() {
   assert_eq!(focus_order(node), None);
   assert!(!is_tab_stop(node));
   assert_eq!(trigger_click(node), CONSUMED);
-  assert_eq!(trigger_key_down(node, &key("Enter")), CONSUMED);
+  assert_eq!(trigger_key_down(node, &key("Enter")), Prevented::default());
   assert_eq!(clicks.get(), 0);
 
   disabled.set(false);

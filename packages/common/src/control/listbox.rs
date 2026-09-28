@@ -27,6 +27,7 @@ pub struct ListboxGroup {
   choose: Rc<dyn Fn(String)>,
   roster: Roster,
   type_ahead: Rc<TypeAhead>,
+  commit_on_tab: bool,
 }
 
 impl ListboxGroup {
@@ -43,7 +44,17 @@ impl ListboxGroup {
       choose: Rc::new(choose),
       roster,
       type_ahead: Rc::new(TypeAhead::new()),
+      commit_on_tab: false,
     }
+  }
+
+  /// Sets whether `Tab` from a focused option chooses it before focus moves on, as a
+  /// picker's list does; off by default.
+  #[inline(always)]
+  pub const fn set_commit_on_tab(mut self, commit_on_tab: bool) -> Self {
+    self.commit_on_tab = commit_on_tab;
+
+    self
   }
 
   /// The chosen option's value, tracked.
@@ -65,24 +76,25 @@ impl ListboxGroup {
     &self.roster
   }
 
-  /// Whether `value` is the list's one tab stop: the chosen option, or the first when
-  /// nothing is chosen.
+  /// Whether `value` is the list's one tab stop: the chosen option when it is enabled,
+  /// else the first enabled one.
   #[must_use]
   pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
-    match self.chosen() {
+    let enabled = self.roster.enabled::<P>();
+
+    match self
+      .chosen()
+      .filter(|chosen| enabled.iter().any(|(_, held)| held == chosen))
+    {
       Some(chosen) => chosen == value,
-      None => self
-        .roster
-        .ordered::<P>()
-        .first()
-        .is_some_and(|(_, first)| first == value),
+      None => enabled.first().is_some_and(|(_, first)| first == value),
     }
   }
 
-  /// Focuses the option `step` places from the one holding `value`, clamped at both
-  /// ends, choosing nothing.
+  /// Focuses the enabled option `step` places from the one holding `value`, clamped at
+  /// both ends, choosing nothing.
   pub fn step_from<P: Platform>(&self, value: &str, step: isize) {
-    let members = self.roster.ordered::<P>();
+    let members = self.roster.enabled::<P>();
     let Some(index) = members.iter().position(|(_, held)| held == value)
     else {
       return;
@@ -130,6 +142,7 @@ pub struct Listbox {
   chosen: Option<Rc<dyn Fn() -> Option<String>>>,
   on_choose: Option<Rc<dyn Fn(String)>>,
   roster: Roster,
+  commit_on_tab: bool,
 }
 
 impl Listbox {
@@ -141,7 +154,17 @@ impl Listbox {
       chosen: None,
       on_choose: None,
       roster: Roster::new(),
+      commit_on_tab: false,
     }
+  }
+
+  /// Sets whether `Tab` from a focused option chooses it before focus moves on, as a
+  /// picker's list does; off by default, where `Tab` only leaves the list.
+  #[inline(always)]
+  pub const fn set_commit_on_tab(mut self, commit_on_tab: bool) -> Self {
+    self.commit_on_tab = commit_on_tab;
+
+    self
   }
 
   /// Shares `roster` with the listbox, so options built under a group holding it
@@ -237,6 +260,7 @@ impl<P: Platform> Behavior<P> for Listbox {
       }),
       roster,
       type_ahead: Rc::new(TypeAhead::new()),
+      commit_on_tab: self.commit_on_tab,
     });
   }
 
@@ -313,9 +337,12 @@ impl<P: Platform> Behavior<P> for ListItem {
     };
     let node = control.node();
 
-    group
-      .roster
-      .join(node, self.value.clone(), control.name().map(str::to_owned));
+    group.roster.join(
+      node,
+      self.value.clone(),
+      control.name().map(str::to_owned),
+      control.disabled_read(),
+    );
 
     let roster = group.roster.clone();
 
@@ -347,7 +374,7 @@ impl<P: Platform> Behavior<P> for ListItem {
       " " if !group.type_ahead_from::<P>(&self.value, event) => {
         group.choose(self.value.clone());
       }
-      "Tab" => {
+      "Tab" if group.commit_on_tab => {
         group.choose(self.value.clone());
 
         return Prevent::None;

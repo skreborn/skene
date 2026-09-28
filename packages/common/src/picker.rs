@@ -254,23 +254,26 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
 
     // The option views build once, under the group both forms answer through, and
     // attach wherever the form in force lists them.
-    provide_context(ListboxGroup::new(
-      {
-        let chosen = Rc::clone(&chosen);
+    provide_context(
+      ListboxGroup::new(
+        {
+          let chosen = Rc::clone(&chosen);
 
-        move || chosen()
-      },
-      {
-        let choose = Rc::clone(&choose);
+          move || chosen()
+        },
+        {
+          let choose = Rc::clone(&choose);
 
-        move |value| {
-          let choose = Rc::clone(&choose.borrow());
+          move |value| {
+            let choose = Rc::clone(&choose.borrow());
 
-          choose(value);
-        }
-      },
-      roster.clone(),
-    ));
+            choose(value);
+          }
+        },
+        roster.clone(),
+      )
+      .set_commit_on_tab(true),
+    );
 
     let options = list.build();
 
@@ -511,7 +514,7 @@ fn choose_typed<P: Platform>(
     };
 
     if let Some(index) = roster.typed::<P>(&buffer, chosen().as_deref())
-      && let Some((_, value)) = roster.ordered::<P>().get(index)
+      && let Some((_, value)) = roster.enabled::<P>().get(index)
       && let Some(action) = &on_change
     {
       action(value.clone());

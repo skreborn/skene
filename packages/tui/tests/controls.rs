@@ -1041,6 +1041,50 @@ fn a_disabled_control_takes_no_focus_and_no_click() {
   });
 }
 
+/// A button that disables itself while focused lets `Tab` by, which reaches the next
+/// button rather than the first.
+#[test]
+fn tab_leaves_a_control_disabled_while_focused_for_the_next() {
+  with_platform(|| {
+    let submitting = Signal::new(false);
+    let first = FocusHandle::new();
+    let next = FocusHandle::new();
+    let (bound_first, bound_next) = (first.clone(), next.clone());
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          RawButton::new(Activate::new())
+            .set_label("first")
+            .bind_focus(&bound_first),
+          RawButton::new(Activate::new())
+            .set_label("submit")
+            .derive_disabled(move || submitting.get())
+            .handle_click(move || submitting.set(true)),
+          RawButton::new(Activate::new())
+            .set_label("next")
+            .bind_focus(&bound_next),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    assert!(submitting.get());
+
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(tui::focused_node(), next.node());
+    assert_ne!(tui::focused_node(), first.node());
+  });
+}
+
 /// A wrapping container's border frames a checkbox's mark, which paints inside it.
 #[test]
 fn a_container_frames_a_checkbox_mark() {

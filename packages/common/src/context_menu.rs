@@ -455,28 +455,12 @@ impl<P: Platform, C> ContextMenu<P, C> {
     // rows and their states have settled by the time it looks.
     Effect::new(move |_: Option<()>| {
       if open.get() {
-        untrack(|| group.focus_at::<P>(first_enabled::<P>(&group)));
+        untrack(|| group.focus_at::<P>(0));
       }
     });
 
     list
   }
-}
-
-/// The roster index of the first item whose control is enabled.
-fn first_enabled<P: Platform>(roster: &crate::Roster) -> usize {
-  let members = roster.ordered::<P>();
-
-  Scene::<P>::with(|scene| {
-    members
-      .iter()
-      .position(|(node, _)| {
-        !scene
-          .control_state(*node)
-          .is_some_and(|state| state.disabled)
-      })
-      .unwrap_or(0)
-  })
 }
 
 /// A declared value of `T`, its conditions in the platform's scalar.

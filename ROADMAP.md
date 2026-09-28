@@ -111,17 +111,7 @@ left half-done in a code comment.
     history fallback in the client-rendered dev server; `wasm-bindgen-cli-support`
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
-4. **The terminal's traps.** Replies are read only inside query windows fenced by
-    DA1, so `Alt+Shift+P` no longer swallows every later key; a key's typed text rides
-    it under the kitty protocol, so `AltGr` and `Option` characters arrive; a
-    "permanently set" DECRPM reply reads as set; the topmost modal keeps the page inert
-    under a popup above it and under a press on a scrollbar; what remains:
-    - Navigation, type-ahead and tab stops skip disabled members, and a disabled
-    control lets keys through and suppresses only activation, where a disabled Cut in
-    the standard menu, or a picker's disabled placeholder, traps the keyboard today;
-    disabling the focused control moves focus to the next stop, as browsers do; a radio
-    group's tab stop is its chosen member when enabled, else its first enabled one; Tab
-    commits in the picker alone, not in a standalone listbox.
+4. **The terminal's traps.**
     - A signal self-pipe beside the tty (`signal-hook`) restores the terminal and
     re-raises on SIGTERM, SIGHUP, SIGINT and SIGQUIT, and sets up again and repaints on
     continue; the panic hook restores only for the loop's thread and discards the

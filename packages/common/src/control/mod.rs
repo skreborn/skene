@@ -218,6 +218,7 @@ pub struct ControlHandle<P: Platform> {
   node: NodeId,
   name: Option<String>,
   roster: Option<Roster>,
+  disabled: Rc<dyn Fn() -> bool>,
   changed: Trigger,
   platform: PhantomData<fn() -> P>,
 }
@@ -242,6 +243,21 @@ impl<P: Platform> ControlHandle<P> {
   #[must_use]
   pub const fn roster(&self) -> Option<&Roster> {
     self.roster.as_ref()
+  }
+
+  /// Whether the control is disabled; tracks where the control derives it.
+  #[inline(always)]
+  #[must_use]
+  pub fn is_disabled(&self) -> bool {
+    (self.disabled)()
+  }
+
+  /// [`is_disabled`](Self::is_disabled) as a read that outlives the handle, for a
+  /// roster the control joins.
+  #[inline(always)]
+  #[must_use]
+  pub fn disabled_read(&self) -> Rc<dyn Fn() -> bool> {
+    Rc::clone(&self.disabled)
   }
 
   /// Runs `operation` on a copy of the control's sink, if the node is live; the scene
@@ -800,14 +816,15 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
           Some(Label { view, name }) => (Some((view.build(), name)), None),
           None => (None, None),
         };
+        let disabled = read_bool(disabled);
         let handle = Rc::new(ControlHandle {
           node,
           name,
           roster: use_context::<Roster>(),
+          disabled: Rc::clone(&disabled),
           changed: Trigger::new(),
           platform: PhantomData,
         });
-        let disabled = read_bool(disabled);
         let flags = Flags {
           disabled: Rc::clone(&disabled),
           required: read_bool(required),
@@ -986,13 +1003,15 @@ impl<P: Platform, B: Behavior<P>> Clone for Actor<P, B> {
 }
 
 impl<P: Platform, B: Behavior<P>> Actor<P, B> {
-  /// One handler for an event carrying `E`: a disabled control swallows it, else the
+  /// One handler for an event carrying `E`: a disabled control neither acts nor lets the
+  /// observers see it and gives `when_disabled` as its verdict, else the
   /// behavior acts through `act` when `acts`, the observers see the event after, and
   /// the behavior's verdict stands.
   ///
   /// `None` when neither the behavior nor an observer wants the event.
   fn handler<E: ?Sized + 'static>(
     &self,
+    when_disabled: Prevent,
     acts: bool,
     act: impl Fn(&B, &E, &ControlHandle<P>) -> Prevent + 'static,
     observers: Vec<Rc<Observer<E>>>,
@@ -1005,7 +1024,7 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 
     Some(Rc::new(move |event: &E| {
       if (actor.disabled)() {
-        return Prevent::All;
+        return when_disabled;
       }
 
       let verdict = if acts {
@@ -1026,7 +1045,7 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 
 /// Registers one handler per event the behavior or an observer wants: the behavior
 /// acts first and its verdict stands, the observers see the event after, and a
-/// disabled control swallows every event it would act on.
+/// disabled control swallows every pointer event and click and lets every key by.
 // One registration per event kind; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
 fn register<P: Platform, B: Behavior<P>>(
@@ -1057,11 +1076,13 @@ fn register<P: Platform, B: Behavior<P>>(
     scroll,
   } = observers;
   let acting_click = actor.handler(
+    Prevent::All,
     acts(EventKind::Click),
     |behavior, (): &(), handle| behavior.on_click(handle),
     Vec::new(),
   );
   let click = actor.handler(
+    Prevent::All,
     false,
     |_, (): &(), _| Prevent::None,
     click
@@ -1069,10 +1090,16 @@ fn register<P: Platform, B: Behavior<P>>(
       .map(|observer| -> Rc<Observer<()>> { Rc::new(move |()| observer()) })
       .collect(),
   );
-  let key_down = actor.handler(acts(EventKind::KeyDown), B::on_key, key_down);
-  let key_up = actor.handler(false, |_, _: &KeyEvent, _| Prevent::None, key_up);
+  let key_down = actor.handler(Prevent::None, acts(EventKind::KeyDown), B::on_key, key_down);
+  let key_up = actor.handler(
+    Prevent::None,
+    false,
+    |_, _: &KeyEvent, _| Prevent::None,
+    key_up,
+  );
   let pointer = |phase: PointerPhase, kind: EventKind, observers: Vec<Rc<PointerObserver>>| {
     actor.handler(
+      Prevent::All,
       acts(kind),
       move |behavior: &B, event: &PointerEvent, handle| behavior.on_pointer(phase, event, handle),
       observers,

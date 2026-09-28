@@ -1,9 +1,9 @@
 //! The retained tree every view attaches to, owned by core and mirrored into a platform.
 
-use std::{any::TypeId, fmt::Debug, rc::Rc};
+use std::{any::TypeId, fmt::Debug, ops::Deref, rc::Rc};
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_reactive::Position;
+use skene_reactive::{Owner, Position};
 use smallvec::SmallVec;
 
 use super::{
@@ -169,6 +169,48 @@ impl<P: Platform> Debug for Annotation<P> {
   }
 }
 
+/// A handler with the owner it was registered under, which it runs as: what it
+/// creates, spawns or looks up in context belongs to the view that registered it.
+pub struct Handler<H: ?Sized> {
+  owner: Owner,
+  run: Rc<H>,
+}
+
+impl<H: ?Sized> Handler<H> {
+  /// `run`, registered under the current owner.
+  fn new(run: Rc<H>) -> Self {
+    Self {
+      owner: Owner::current(),
+      run,
+    }
+  }
+
+  /// The owner the handler runs as.
+  #[inline(always)]
+  pub const fn owner(&self) -> Owner {
+    self.owner
+  }
+}
+
+impl<H: ?Sized> Clone for Handler<H> {
+  #[inline(always)]
+  fn clone(&self) -> Self {
+    Self {
+      owner: self.owner,
+      run: Rc::clone(&self.run),
+    }
+  }
+}
+
+impl<H: ?Sized> Deref for Handler<H> {
+  type Target = H;
+
+  #[inline(always)]
+  fn deref(&self) -> &H {
+    &self.run
+  }
+}
+
 /// The handlers a node carries, by event.
 ///
 /// Every handler on a node runs when its event reaches the node; bubbling is between
@@ -178,23 +220,23 @@ impl<P: Platform> Debug for Annotation<P> {
 #[derive(Default)]
 #[must_use]
 pub struct HandlerSet {
-  acting_click: Vec<Rc<ClickHandler>>,
-  click: Vec<Rc<ClickHandler>>,
-  key_down: Vec<Rc<KeyHandler>>,
-  key_up: Vec<Rc<KeyHandler>>,
-  pointer_down: Vec<Rc<PointerHandler>>,
-  pointer_up: Vec<Rc<PointerHandler>>,
-  pointer_move: Vec<Rc<PointerHandler>>,
-  pointer_enter: Vec<Rc<PlainHandler>>,
-  pointer_leave: Vec<Rc<PlainHandler>>,
-  focus: Vec<Rc<PlainHandler>>,
-  blur: Vec<Rc<PlainHandler>>,
-  scroll: Vec<Rc<ScrollHandler>>,
-  change: Vec<Rc<ChangeHandler>>,
-  selection_change: Vec<Rc<SelectionHandler>>,
-  toggle: Vec<Rc<ToggleHandler>>,
-  dismiss: Vec<Rc<PlainHandler>>,
-  context_menu: Vec<Rc<PointerHandler>>,
+  acting_click: Vec<Handler<ClickHandler>>,
+  click: Vec<Handler<ClickHandler>>,
+  key_down: Vec<Handler<KeyHandler>>,
+  key_up: Vec<Handler<KeyHandler>>,
+  pointer_down: Vec<Handler<PointerHandler>>,
+  pointer_up: Vec<Handler<PointerHandler>>,
+  pointer_move: Vec<Handler<PointerHandler>>,
+  pointer_enter: Vec<Handler<PlainHandler>>,
+  pointer_leave: Vec<Handler<PlainHandler>>,
+  focus: Vec<Handler<PlainHandler>>,
+  blur: Vec<Handler<PlainHandler>>,
+  scroll: Vec<Handler<ScrollHandler>>,
+  change: Vec<Handler<ChangeHandler>>,
+  selection_change: Vec<Handler<SelectionHandler>>,
+  toggle: Vec<Handler<ToggleHandler>>,
+  dismiss: Vec<Handler<PlainHandler>>,
+  context_menu: Vec<Handler<PointerHandler>>,
 }
 
 impl HandlerSet {
@@ -202,119 +244,119 @@ impl HandlerSet {
   /// click, run before the observers.
   #[inline(always)]
   #[must_use]
-  pub fn acting_click(&self) -> &[Rc<ClickHandler>] {
+  pub fn acting_click(&self) -> &[Handler<ClickHandler>] {
     &self.acting_click
   }
 
   /// The click handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn click(&self) -> &[Rc<ClickHandler>] {
+  pub fn click(&self) -> &[Handler<ClickHandler>] {
     &self.click
   }
 
   /// The key-down handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn key_down(&self) -> &[Rc<KeyHandler>] {
+  pub fn key_down(&self) -> &[Handler<KeyHandler>] {
     &self.key_down
   }
 
   /// The key-up handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn key_up(&self) -> &[Rc<KeyHandler>] {
+  pub fn key_up(&self) -> &[Handler<KeyHandler>] {
     &self.key_up
   }
 
   /// The pointer-down handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn pointer_down(&self) -> &[Rc<PointerHandler>] {
+  pub fn pointer_down(&self) -> &[Handler<PointerHandler>] {
     &self.pointer_down
   }
 
   /// The pointer-up handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn pointer_up(&self) -> &[Rc<PointerHandler>] {
+  pub fn pointer_up(&self) -> &[Handler<PointerHandler>] {
     &self.pointer_up
   }
 
   /// The pointer-move handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn pointer_move(&self) -> &[Rc<PointerHandler>] {
+  pub fn pointer_move(&self) -> &[Handler<PointerHandler>] {
     &self.pointer_move
   }
 
   /// The pointer-enter handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn pointer_enter(&self) -> &[Rc<PlainHandler>] {
+  pub fn pointer_enter(&self) -> &[Handler<PlainHandler>] {
     &self.pointer_enter
   }
 
   /// The pointer-leave handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn pointer_leave(&self) -> &[Rc<PlainHandler>] {
+  pub fn pointer_leave(&self) -> &[Handler<PlainHandler>] {
     &self.pointer_leave
   }
 
   /// The focus handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn focus(&self) -> &[Rc<PlainHandler>] {
+  pub fn focus(&self) -> &[Handler<PlainHandler>] {
     &self.focus
   }
 
   /// The blur handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn blur(&self) -> &[Rc<PlainHandler>] {
+  pub fn blur(&self) -> &[Handler<PlainHandler>] {
     &self.blur
   }
 
   /// The scroll handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn scroll(&self) -> &[Rc<ScrollHandler>] {
+  pub fn scroll(&self) -> &[Handler<ScrollHandler>] {
     &self.scroll
   }
 
   /// The change handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn change(&self) -> &[Rc<ChangeHandler>] {
+  pub fn change(&self) -> &[Handler<ChangeHandler>] {
     &self.change
   }
 
   /// The selection handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn selection_change(&self) -> &[Rc<SelectionHandler>] {
+  pub fn selection_change(&self) -> &[Handler<SelectionHandler>] {
     &self.selection_change
   }
 
   /// The toggle handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn toggle(&self) -> &[Rc<ToggleHandler>] {
+  pub fn toggle(&self) -> &[Handler<ToggleHandler>] {
     &self.toggle
   }
 
   /// The dismiss handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn dismiss(&self) -> &[Rc<PlainHandler>] {
+  pub fn dismiss(&self) -> &[Handler<PlainHandler>] {
     &self.dismiss
   }
 
   /// The context menu handlers, in registration order.
   #[inline(always)]
   #[must_use]
-  pub fn context_menu(&self) -> &[Rc<PointerHandler>] {
+  pub fn context_menu(&self) -> &[Handler<PointerHandler>] {
     &self.context_menu
   }
 }
@@ -1116,101 +1158,121 @@ impl<P: Platform> Scene<P> {
 
   /// Adds a click handler to `node`.
   pub fn handle_click(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
-    self.register(node, EventKind::Click, |set| set.click.push(handler));
+    self.register(node, EventKind::Click, |set| {
+      set.click.push(Handler::new(handler));
+    });
   }
 
   /// Adds an acting click handler to `node`: a control's own response, run before the
   /// node's other click handlers and skipped by an observed dispatch.
   pub fn handle_click_acting(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
-    self.register(node, EventKind::Click, |set| set.acting_click.push(handler));
+    self.register(node, EventKind::Click, |set| {
+      set.acting_click.push(Handler::new(handler));
+    });
   }
 
   /// Adds a key-down handler to `node`.
   pub fn handle_key_down(&mut self, node: NodeId, handler: Rc<KeyHandler>) {
-    self.register(node, EventKind::KeyDown, |set| set.key_down.push(handler));
+    self.register(node, EventKind::KeyDown, |set| {
+      set.key_down.push(Handler::new(handler));
+    });
   }
 
   /// Adds a key-up handler to `node`.
   pub fn handle_key_up(&mut self, node: NodeId, handler: Rc<KeyHandler>) {
-    self.register(node, EventKind::KeyUp, |set| set.key_up.push(handler));
+    self.register(node, EventKind::KeyUp, |set| {
+      set.key_up.push(Handler::new(handler));
+    });
   }
 
   /// Adds a pointer-down handler to `node`.
   pub fn handle_pointer_down(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::PointerDown, |set| {
-      set.pointer_down.push(handler);
+      set.pointer_down.push(Handler::new(handler));
     });
   }
 
   /// Adds a pointer-up handler to `node`.
   pub fn handle_pointer_up(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::PointerUp, |set| {
-      set.pointer_up.push(handler);
+      set.pointer_up.push(Handler::new(handler));
     });
   }
 
   /// Adds a pointer-move handler to `node`.
   pub fn handle_pointer_move(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::PointerMove, |set| {
-      set.pointer_move.push(handler);
+      set.pointer_move.push(Handler::new(handler));
     });
   }
 
   /// Adds a pointer-enter handler to `node`.
   pub fn handle_pointer_enter(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
     self.register(node, EventKind::PointerEnter, |set| {
-      set.pointer_enter.push(handler);
+      set.pointer_enter.push(Handler::new(handler));
     });
   }
 
   /// Adds a pointer-leave handler to `node`.
   pub fn handle_pointer_leave(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
     self.register(node, EventKind::PointerLeave, |set| {
-      set.pointer_leave.push(handler);
+      set.pointer_leave.push(Handler::new(handler));
     });
   }
 
   /// Adds a focus handler to `node`.
   pub fn handle_focus(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
-    self.register(node, EventKind::Focus, |set| set.focus.push(handler));
+    self.register(node, EventKind::Focus, |set| {
+      set.focus.push(Handler::new(handler));
+    });
   }
 
   /// Adds a blur handler to `node`.
   pub fn handle_blur(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
-    self.register(node, EventKind::Blur, |set| set.blur.push(handler));
+    self.register(node, EventKind::Blur, |set| {
+      set.blur.push(Handler::new(handler));
+    });
   }
 
   /// Adds a scroll handler to `node`.
   pub fn handle_scroll(&mut self, node: NodeId, handler: Rc<ScrollHandler>) {
-    self.register(node, EventKind::Scroll, |set| set.scroll.push(handler));
+    self.register(node, EventKind::Scroll, |set| {
+      set.scroll.push(Handler::new(handler));
+    });
   }
 
   /// Adds a change handler to `node`.
   pub fn handle_change(&mut self, node: NodeId, handler: Rc<ChangeHandler>) {
-    self.register(node, EventKind::Change, |set| set.change.push(handler));
+    self.register(node, EventKind::Change, |set| {
+      set.change.push(Handler::new(handler));
+    });
   }
 
   /// Adds a selection handler to `node`.
   pub fn handle_selection_change(&mut self, node: NodeId, handler: Rc<SelectionHandler>) {
     self.register(node, EventKind::SelectionChange, |set| {
-      set.selection_change.push(handler);
+      set.selection_change.push(Handler::new(handler));
     });
   }
 
   /// Adds a toggle handler to `node`.
   pub fn handle_toggle(&mut self, node: NodeId, handler: Rc<ToggleHandler>) {
-    self.register(node, EventKind::Toggle, |set| set.toggle.push(handler));
+    self.register(node, EventKind::Toggle, |set| {
+      set.toggle.push(Handler::new(handler));
+    });
   }
 
   /// Adds a dismiss handler to `node`.
   pub fn handle_dismiss(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
-    self.register(node, EventKind::Dismiss, |set| set.dismiss.push(handler));
+    self.register(node, EventKind::Dismiss, |set| {
+      set.dismiss.push(Handler::new(handler));
+    });
   }
 
   /// Adds a context menu handler to `node`.
   pub fn handle_context_menu(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::ContextMenu, |set| {
-      set.context_menu.push(handler);
+      set.context_menu.push(Handler::new(handler));
     });
   }
 

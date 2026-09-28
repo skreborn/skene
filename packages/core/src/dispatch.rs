@@ -8,13 +8,19 @@
 //! by the platform. A notification runs the node's own handlers only. Every dispatch
 //! runs in one batch, and no borrow of the scene is held while a handler runs.
 
-use std::rc::Rc;
-
 use skene_reactive::batch;
 use smallvec::SmallVec;
 
-use super::{HandlerSet, NodeId, Platform, Scene};
-use crate::{KeyEvent, PointerEvent, Prevent, Prevented, ScrollEvent, TextSelection};
+use super::{Handler, HandlerSet, NodeId, Platform, Scene};
+use crate::{
+  KeyEvent,
+  PointerEvent,
+  Prevent,
+  Prevented,
+  ScrollEvent,
+  TextSelection,
+  task::run_handler,
+};
 
 /// Dispatches a click at `node`.
 #[inline(always)]
@@ -174,10 +180,12 @@ pub fn dispatch_context_menu<P: Platform>(node: NodeId, event: &PointerEvent) ->
 }
 
 /// The handlers a dispatch runs on one node, in order.
-type Selected<H> = SmallVec<[Rc<H>; 2]>;
+type Selected<H> = SmallVec<[Handler<H>; 2]>;
 
 /// A selection taking every handler of one list.
-fn all<H: ?Sized>(list: fn(&HandlerSet) -> &[Rc<H>]) -> impl Fn(&HandlerSet, &mut Selected<H>) {
+fn all<H: ?Sized>(
+  list: fn(&HandlerSet) -> &[Handler<H>],
+) -> impl Fn(&HandlerSet, &mut Selected<H>) {
   move |set, out| out.extend(list(set).iter().cloned())
 }
 
@@ -217,7 +225,7 @@ fn bubble<P: Platform, H: ?Sized, E>(
         let payload = prepare(node);
 
         for handler in &handlers {
-          prevented.absorb(run(handler, &payload));
+          prevented.absorb(run_handler(handler.owner(), || run(handler, &payload)));
         }
       }
 
@@ -241,17 +249,25 @@ fn notify<P: Platform, H: ?Sized>(
     let (handlers, _) = snapshot::<P, H>(node, select);
 
     for handler in &handlers {
-      run(handler);
+      run_handler(handler.owner(), || run(handler));
     }
   });
 }
 
 #[cfg(test)]
 mod tests {
-  use std::{cell::RefCell, rc::Rc};
+  use std::{
+    cell::RefCell,
+    future::{Future, pending},
+    pin::Pin,
+    rc::Rc,
+  };
+
+  use skene_reactive::{Owner, provide_context, use_context};
 
   use super::{dispatch_click, dispatch_click_observed, dispatch_pointer_down, notify_focus};
   use crate::{
+    Boundary,
     Bubbling,
     EventKind,
     Modifiers,
@@ -262,6 +278,7 @@ mod tests {
     Prevent,
     Prevented,
     Scene,
+    scope_bound,
     testing::{Call, TestBox, TestPlatform, sink},
   };
 
@@ -480,5 +497,72 @@ mod tests {
     let _ = dispatch_pointer_down::<TestPlatform>(inner, &event);
 
     assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);
+  }
+
+  /// A handler runs as the owner that registered it, so it sees that owner's context
+  /// and what it creates ends with that owner.
+  #[test]
+  fn a_handler_runs_as_the_owner_that_registered_it() {
+    TestPlatform::reset();
+
+    let (_, _, inner) = chain();
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let owner = Owner::new();
+
+    owner.enter(|| {
+      provide_context(7u32);
+
+      let seen = Rc::clone(&seen);
+
+      Scene::<TestPlatform>::with(|scene| {
+        scene.handle_click(
+          inner,
+          Rc::new(move || {
+            seen
+              .borrow_mut()
+              .push((use_context::<u32>(), Owner::current() == owner));
+
+            Prevent::None
+          }),
+        );
+      });
+    });
+
+    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
+    assert_eq!(*seen.borrow(), [(Some(7), true)]);
+  }
+
+  /// Work a handler starts is an action, counted toward no boundary.
+  #[test]
+  fn a_task_a_handler_starts_counts_toward_no_boundary() {
+    TestPlatform::reset();
+
+    let (_, _, inner) = chain();
+    let boundary = Boundary::new();
+    let owner = Owner::new();
+    let tasks = Rc::new(RefCell::new(Vec::new()));
+
+    owner.enter(|| {
+      provide_context(boundary);
+
+      let tasks = Rc::clone(&tasks);
+
+      Scene::<TestPlatform>::with(|scene| {
+        scene.handle_click(
+          inner,
+          Rc::new(move || {
+            tasks
+              .borrow_mut()
+              .push(Box::pin(scope_bound(pending())) as Pin<Box<dyn Future<Output = ()>>>);
+
+            Prevent::None
+          }),
+        );
+      });
+    });
+
+    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
+    assert_eq!(tasks.borrow().len(), 1);
+    assert!(boundary.is_settled());
   }
 }

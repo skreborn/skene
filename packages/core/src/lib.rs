@@ -164,6 +164,7 @@ pub use scene::{
   Annotated,
   Annotation,
   ChangeHandler,
+  Handler,
   HandlerSet,
   NodeKind,
   NodeRecord,

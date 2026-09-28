@@ -147,3 +147,27 @@ fn ready_and_unloaded_skip_the_first_load() {
   assert_eq!(unloaded.state(), LoadState::Loading);
   assert_eq!(unloaded.get(), None::<u8>);
 }
+
+/// Every load runs under the owner the resource was created under, a reload asked for
+/// from elsewhere included.
+#[test]
+fn a_reload_runs_under_the_resources_owner() {
+  let spawned_under = Rc::new(RefCell::new(Vec::new()));
+
+  set_spawner({
+    let spawned_under = Rc::clone(&spawned_under);
+
+    move |task| {
+      spawned_under.borrow_mut().push(Owner::current());
+      TASKS.with(|tasks| tasks.borrow_mut().push(task));
+    }
+  });
+
+  let scope = Owner::new();
+  let resource = scope.enter(|| Resource::new(|| async { 7u32 }));
+  let elsewhere = Owner::new();
+
+  elsewhere.enter(|| resource.reload());
+
+  assert_eq!(*spawned_under.borrow(), [scope, scope]);
+}

@@ -5,6 +5,7 @@ use std::{future::Future, pin::Pin, rc::Rc};
 use crate::{
   access::{Get, Set, Update, With},
   effect::untrack,
+  owner::Owner,
   signal::{Signal, update_silently},
   spawn::spawn,
 };
@@ -51,8 +52,9 @@ impl<T> Load<T> {
 
 /// Data loaded by a task, readable as a signal.
 ///
-/// The load runs on the executor the platform installed ([`spawn`](crate::spawn)), so it
-/// is bound to the current owner and ends with the view that asked for it. Reading
+/// Every load, reloads included, runs on the executor the platform installed
+/// ([`spawn`](crate::spawn)) under the owner current where the resource was created, so
+/// it ends with the view that created the resource and with nothing else. Reading
 /// tracks, so a view that reads a resource re-runs when the value arrives; a reload
 /// keeps the last value readable while the next one is in flight. The loader is
 /// retained and read untracked, so a reload never subscribes the reloading effect to
@@ -65,6 +67,7 @@ pub struct Resource<T: 'static> {
   value: Signal<Load<T>>,
   loader: Signal<Loader<T>>,
   generation: Signal<u64>,
+  owner: Owner,
 }
 
 impl<T: 'static> Clone for Resource<T> {
@@ -85,6 +88,7 @@ impl<T: 'static> Resource<T> {
       value: Signal::opaque(value),
       loader: Signal::opaque(Rc::new(move || Box::pin(load()))),
       generation: Signal::opaque(0),
+      owner: Owner::current(),
     }
   }
 
@@ -137,14 +141,18 @@ impl<T: 'static> Resource<T> {
     else {
       return;
     };
-    let future = untrack(|| (self.loader.get_untracked())());
+    let loader = self.loader;
 
-    spawn(async move {
-      let loaded = future.await;
+    self.owner.enter(|| {
+      let future = untrack(|| (loader.get_untracked())());
 
-      if generation.try_get_untracked() == Some(current) {
-        value.set(Load::Ready(loaded));
-      }
+      spawn(async move {
+        let loaded = future.await;
+
+        if generation.try_get_untracked() == Some(current) {
+          value.set(Load::Ready(loaded));
+        }
+      });
     });
   }
 

@@ -125,7 +125,7 @@ pub fn pump() -> bool {
         .shared
         .ready
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+        .unwrap_or_else(PoisonError::into_inner);
 
       std::mem::take(&mut *ready)
     });
@@ -164,22 +164,61 @@ pub fn pump() -> bool {
 }
 
 /// Drops every task and queued wake, readying the executor for an independent mount.
+///
+/// A task may spawn as it drops; what it spawns is queued afresh.
 pub fn clear() {
-  EXECUTOR.with(|executor| {
+  let tasks = EXECUTOR.with(|executor| {
     let mut executor = executor.borrow_mut();
 
-    executor.tasks.clear();
     executor
       .shared
       .ready
       .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner)
+      .unwrap_or_else(PoisonError::into_inner)
       .clear();
+
+    std::mem::take(&mut executor.tasks)
   });
+
+  drop(tasks);
 }
 
 /// Installs this executor as the reactive engine's spawner: every spawned task is
 /// scope-bound and queued here.
 pub fn install() {
   skene_reactive::set_spawner(|task| drive(crate::scope_bound(task)));
+}
+
+#[cfg(test)]
+mod tests {
+  use std::future::pending;
+
+  use super::{clear, drive, task_count};
+
+  /// Spawns a task as it drops.
+  struct SpawnOnDrop;
+
+  impl Drop for SpawnOnDrop {
+    fn drop(&mut self) {
+      drive(async {});
+    }
+  }
+
+  #[test]
+  fn a_task_spawning_as_it_drops_survives_a_clear() {
+    let spawner = SpawnOnDrop;
+
+    drive(async move {
+      let _spawner = spawner;
+
+      pending::<()>().await;
+    });
+    clear();
+
+    assert_eq!(task_count(), 1);
+
+    clear();
+
+    assert_eq!(task_count(), 0);
+  }
 }

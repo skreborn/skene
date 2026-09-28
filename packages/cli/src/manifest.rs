@@ -5,15 +5,17 @@
 //! `Cargo.toml`. Assets are declared as manifest-relative files or directories and
 //! become reachable at `/<package>/<declared path>`—the providing package's name scopes
 //! every URI, so the app's and its libraries' assets can never collide. Predictable,
-//! never statically checked. A library crate's own `skene.toml` (found beside its
-//! `Cargo.toml` through cargo metadata) contributes assets the same way.
+//! never statically checked. A library the app depends on, directly or through
+//! another, over normal dependencies, contributes the assets its own `skene.toml`
+//! declares the same way.
 
 use std::{
+  collections::{HashMap, HashSet, VecDeque},
   fs,
   path::{Path, PathBuf},
-  process::Command,
 };
 
+use cargo_metadata::{DependencyKind, MetadataCommand, PackageId};
 use serde::Deserialize;
 
 /// The parsed `skene.toml` of one package.
@@ -91,17 +93,17 @@ pub struct AssetRoot {
 
 impl App {
   /// Resolves the app at `dir`: its `skene.toml` (optional), its package name, and the
-  /// asset roots of the whole dependency graph.
+  /// asset roots of the packages it depends on, over normal dependencies.
   pub fn load(dir: &Path) -> Result<Self, String> {
     let dir = dir
       .canonicalize()
       .map_err(|error| format!("app directory {}: {error}", dir.display()))?;
     let manifest = read_manifest(&dir)?.unwrap_or_default();
-    let metadata = cargo_metadata(&dir)?;
-    let workspace_root = metadata["workspace_root"]
-      .as_str()
-      .ok_or("cargo metadata: no workspace_root")?
-      .into();
+    let metadata = MetadataCommand::new()
+      .current_dir(&dir)
+      .exec()
+      .map_err(|error| format!("cargo metadata: {error}"))?;
+    let workspace_root = metadata.workspace_root.clone().into_std_path_buf();
     let package = match manifest.app.package {
       Some(package) => package,
       None => package_name(&dir)?,
@@ -117,31 +119,60 @@ impl App {
       });
     }
 
-    if let Some(packages) = metadata["packages"].as_array() {
-      for entry in packages {
-        let (Some(name), Some(manifest_path)) =
-          (entry["name"].as_str(), entry["manifest_path"].as_str())
-        else {
-          continue;
-        };
+    let app = metadata
+      .packages
+      .iter()
+      .find(|entry| {
+        entry
+          .manifest_path
+          .parent()
+          .is_some_and(|parent| parent == dir)
+      })
+      .ok_or_else(|| format!("cargo metadata: no package at {}", dir.display()))?;
+    let resolve = metadata
+      .resolve
+      .as_ref()
+      .ok_or("cargo metadata: no resolve graph")?;
+    let nodes: HashMap<&PackageId, _> = resolve.nodes.iter().map(|node| (&node.id, node)).collect();
+    let mut seen: HashSet<&PackageId> = HashSet::from([&app.id]);
+    let mut pending: VecDeque<&PackageId> = VecDeque::from([&app.id]);
 
-        let Some(package_dir) = Path::new(manifest_path).parent()
-        else {
-          continue;
-        };
+    while let Some(id) = pending.pop_front() {
+      let Some(node) = nodes.get(id)
+      else {
+        continue;
+      };
 
-        if package_dir == dir {
-          continue;
-        }
+      for dependency in &node.deps {
+        let normal = dependency
+          .dep_kinds
+          .iter()
+          .any(|kind| kind.kind == DependencyKind::Normal);
 
-        if let Some(found) = read_manifest(package_dir)?
-          && !found.assets.paths.is_empty()
-        {
-          assets.push(AssetRoot {
-            package: name.to_owned(),
-            dir: package_dir.to_path_buf(),
-            paths: found.assets.paths,
-          });
+        if normal && seen.insert(&dependency.pkg) {
+          pending.push_back(&dependency.pkg);
+
+          let Some(entry) = metadata
+            .packages
+            .iter()
+            .find(|entry| entry.id == dependency.pkg)
+          else {
+            continue;
+          };
+          let Some(package_dir) = entry.manifest_path.parent()
+          else {
+            continue;
+          };
+
+          if let Some(found) = read_manifest(package_dir.as_std_path())?
+            && !found.assets.paths.is_empty()
+          {
+            assets.push(AssetRoot {
+              package: entry.name.to_string(),
+              dir: package_dir.to_path_buf().into_std_path_buf(),
+              paths: found.assets.paths,
+            });
+          }
         }
       }
     }
@@ -222,29 +253,15 @@ impl App {
   }
 }
 
-/// Copies `source` (file or directory) to `out/<relative>`, recursing into
-/// directories.
+/// Copies `source` (file or directory) to `out/<relative>`, every file beneath a
+/// directory, symbolic links followed until one loops back, which is skipped.
 fn copy_tree(
   source: &Path,
   relative: &str,
   out: &Path,
   copied: &mut Vec<PathBuf>,
 ) -> Result<(), String> {
-  if source.is_dir() {
-    let entries = fs::read_dir(source).map_err(|error| error.to_string())?;
-
-    for entry in entries {
-      let entry = entry.map_err(|error| error.to_string())?;
-      let name = entry.file_name();
-      let name = name.to_string_lossy();
-
-      copy_tree(&entry.path(), &format!("{relative}/{name}"), out, copied)?;
-    }
-
-    return Ok(());
-  }
-
-  if !source.is_file() {
+  if !source.exists() {
     eprintln!(
       "warning: declared asset {} does not exist",
       source.display()
@@ -253,20 +270,51 @@ fn copy_tree(
     return Ok(());
   }
 
-  let target = out.join(relative);
+  for entry in walkdir::WalkDir::new(source)
+    .follow_links(true)
+    .sort_by_file_name()
+  {
+    let entry = match entry {
+      Ok(entry) => entry,
+      Err(error) if error.loop_ancestor().is_some() => {
+        eprintln!("warning: {error}; the loop is skipped");
 
-  if copied.contains(&target) {
-    eprintln!("warning: asset {relative} shadowed by an earlier declaration");
+        continue;
+      }
+      Err(error) => return Err(error.to_string()),
+    };
 
-    return Ok(());
+    if !entry.path().is_file() {
+      continue;
+    }
+
+    let below = entry
+      .path()
+      .strip_prefix(source)
+      .map_err(|error| error.to_string())?;
+    let target = if below.as_os_str().is_empty() {
+      out.join(relative)
+    }
+    else {
+      out.join(relative).join(below)
+    };
+
+    if copied.contains(&target) {
+      eprintln!(
+        "warning: asset {} shadowed by an earlier declaration",
+        target.display()
+      );
+
+      continue;
+    }
+
+    if let Some(parent) = target.parent() {
+      fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    fs::copy(entry.path(), &target).map_err(|error| error.to_string())?;
+    copied.push(target);
   }
-
-  if let Some(parent) = target.parent() {
-    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-  }
-
-  fs::copy(source, &target).map_err(|error| error.to_string())?;
-  copied.push(target);
 
   Ok(())
 }
@@ -300,20 +348,30 @@ fn package_name(dir: &Path) -> Result<String, String> {
     .ok_or_else(|| format!("{}: no [package] name", path.display()))
 }
 
-/// The full cargo metadata for the workspace `dir` belongs to.
-fn cargo_metadata(dir: &Path) -> Result<serde_json::Value, String> {
-  let output = Command::new("cargo")
-    .current_dir(dir)
-    .args(["metadata", "--format-version", "1"])
-    .output()
-    .map_err(|error| format!("cargo metadata: {error}"))?;
+#[cfg(all(test, unix))]
+mod tests {
+  use std::{fs, os::unix::fs::symlink};
 
-  if !output.status.success() {
-    return Err(format!(
-      "cargo metadata failed: {}",
-      String::from_utf8_lossy(&output.stderr)
-    ));
+  use super::copy_tree;
+
+  /// A symbolic link that loops back is skipped, and every file beneath is copied once.
+  #[test]
+  fn copying_a_looping_tree_ends() {
+    let root = std::env::temp_dir().join(format!("skene-copy-tree-{}", std::process::id()));
+    let source = root.join("assets");
+    let out = root.join("out");
+
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(source.join("deep")).expect("make the tree");
+    fs::write(source.join("deep/file.txt"), "x").expect("write a file");
+    symlink("..", source.join("deep/loop")).expect("link back up");
+
+    let mut copied = Vec::new();
+
+    copy_tree(&source, "app/assets", &out, &mut copied).expect("the copy ends");
+
+    assert_eq!(copied, [out.join("app/assets/deep/file.txt")]);
+
+    let _ = fs::remove_dir_all(&root);
   }
-
-  serde_json::from_slice(&output.stdout).map_err(|error| format!("cargo metadata: {error}"))
 }

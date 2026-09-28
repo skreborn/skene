@@ -235,7 +235,12 @@ impl Renderer {
 fn hint_lines<'a>(headers: impl IntoIterator<Item = (&'a str, &'a str)>) -> String {
   headers
     .into_iter()
-    .filter(|(name, _)| name.len() >= 7 && name[..7].eq_ignore_ascii_case("sec-ch-"))
+    .filter(|(name, _)| {
+      name
+        .as_bytes()
+        .get(..7)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"sec-ch-"))
+    })
     .fold(String::new(), |mut lines, (name, value)| {
       use std::fmt::Write as _;
 

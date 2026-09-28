@@ -1,8 +1,20 @@
 //! The build steps: cargo to wasm, wasm-bindgen to bindings, the server binary to pages.
 
-use std::{fs, path::Path, process::Command};
+use std::{
+  fs,
+  io::{BufReader, Read as _},
+  path::{Path, PathBuf},
+  process::{Command, Stdio},
+  sync::OnceLock,
+  thread,
+};
+
+use cargo_metadata::{Artifact, Message};
 
 use crate::manifest::App;
+
+/// The message format a build reports its artifacts in, its diagnostics rendered.
+const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 
 /// The dev additions to the generated page: the marker the framework's boot handshake
 /// looks for, and the script that keeps the state snapshot in the page's own storage
@@ -48,15 +60,18 @@ const DEV_PAGE_ADDITIONS: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
     save().catch(() => {}).finally(() => location.reload());\n\
   };\n\
 })();</script>";
-/// Builds the app's browser wasm, generates its bindings, and writes the boot page—
-/// all into `<app>/dist/web`, replacing the folder wholesale. A dev build's page
-/// carries the dev marker and the reload script.
+/// Builds the app's browser wasm, generates its bindings, writes the boot page and
+/// copies the assets—all into `<app>/dist/web`, replacing the folder wholesale, which
+/// deploys as a site's root. A dev build's page carries the dev marker and the reload
+/// script.
 pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
-  build_wasm(app, release)?;
+  let wasm = build_wasm(app, release)?;
+
   clear_web_out(app);
-  generate_bindings(app, release)?;
-  crate::split::split_web(app, release)?;
-  write_page(app, dev)
+  generate_bindings(app, &wasm)?;
+  crate::split::split_web(app, &wasm)?;
+  write_page(app, dev)?;
+  app.copy_assets(&app.dir.join("dist/web"))
 }
 
 /// Deletes `<app>/dist/web`. Every web build—CSR or static—replaces the folder
@@ -80,7 +95,7 @@ fn write_page(app: &App, dev: bool) -> Result<(), String> {
        </head>\n\
        <body>\n\
          <script type=\"module\">\n\
-           import init from \"/dist/web/{stem}.js\";\n\n\
+           import init from \"/{stem}.js\";\n\n\
            init();\n\
          </script>\n\
        </body>\n\
@@ -92,51 +107,114 @@ fn write_page(app: &App, dev: bool) -> Result<(), String> {
   fs::write(app.dir.join("dist/web/index.html"), page).map_err(|error| error.to_string())
 }
 
-/// Builds the app's terminal binary, quietly; on failure returns cargo's output.
-pub fn build_tui_binary(app: &App, release: bool) -> Result<(), String> {
+/// The host's target triple, as rustc reports it.
+fn host_triple() -> Result<&'static str, String> {
+  static HOST: OnceLock<Result<String, String>> = OnceLock::new();
+
+  HOST
+    .get_or_init(|| {
+      let output = Command::new("rustc")
+        .arg("-vV")
+        .output()
+        .map_err(|error| format!("failed to run rustc -vV: {error}"))?;
+
+      String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .find_map(|line| line.strip_prefix("host: "))
+        .map(str::to_owned)
+        .ok_or_else(|| "rustc -vV names no host".to_owned())
+    })
+    .as_deref()
+    .map_err(Clone::clone)
+}
+
+/// Runs the cargo build `command`, which asks for [`MESSAGE_FORMAT`], and returns the
+/// artifacts it reports; its diagnostics go to the terminal, or, `quiet`, into the
+/// error it fails with.
+fn cargo_artifacts(command: &mut Command, quiet: bool) -> Result<Vec<Artifact>, String> {
+  command.stdout(Stdio::piped());
+
+  if quiet {
+    command.stderr(Stdio::piped());
+  }
+
+  let mut child = command
+    .spawn()
+    .map_err(|error| format!("failed to run cargo: {error}"))?;
+  let diagnostics = child.stderr.take().map(|mut stderr| {
+    thread::spawn(move || {
+      let mut text = String::new();
+      let _ = stderr.read_to_string(&mut text);
+
+      text
+    })
+  });
+  let stdout = child.stdout.take().ok_or("cargo has no stdout")?;
+  let artifacts = Message::parse_stream(BufReader::new(stdout))
+    .filter_map(|message| match message {
+      Ok(Message::CompilerArtifact(artifact)) => Some(artifact),
+      _ => None,
+    })
+    .collect();
+  let status = child
+    .wait()
+    .map_err(|error| format!("failed to wait for cargo: {error}"))?;
+  let diagnostics = diagnostics
+    .and_then(|reader| reader.join().ok())
+    .unwrap_or_default();
+
+  if status.success() {
+    Ok(artifacts)
+  }
+  else if quiet {
+    Err(diagnostics)
+  }
+  else {
+    Err(format!("cargo exited with {status}"))
+  }
+}
+
+/// The executable the target `name` built among `artifacts`.
+fn executable(artifacts: &[Artifact], name: &str) -> Result<PathBuf, String> {
+  artifacts
+    .iter()
+    .filter(|artifact| artifact.target.name == name)
+    .find_map(|artifact| artifact.executable.clone())
+    .map(cargo_metadata::camino::Utf8PathBuf::into_std_path_buf)
+    .ok_or_else(|| format!("cargo built no executable named {name}"))
+}
+
+/// Builds the app's terminal binary for the host, quietly, and returns its path; on
+/// failure returns cargo's diagnostics.
+pub fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, String> {
   let mut command = Command::new("cargo");
 
-  command
-    .current_dir(&app.workspace_root)
-    .args(["build", "-p", &app.package]);
+  command.current_dir(&app.workspace_root).args([
+    "build",
+    "-p",
+    &app.package,
+    "--target",
+    host_triple()?,
+    MESSAGE_FORMAT,
+  ]);
 
   if release {
     command.arg("--release");
   }
 
-  let output = command
-    .output()
-    .map_err(|error| format!("failed to run cargo build: {error}"))?;
+  let artifacts = cargo_artifacts(&mut command, true)?;
 
-  if output.status.success() {
-    Ok(())
-  }
-  else {
-    Err(String::from_utf8_lossy(&output.stderr).into_owned())
-  }
-}
-
-/// The built terminal binary's path.
-pub fn tui_binary(app: &App, release: bool) -> std::path::PathBuf {
-  let profile = if release { "release" } else { "debug" };
-
-  app
-    .workspace_root
-    .join("target")
-    .join(profile)
-    .join(&app.package)
+  executable(&artifacts, &app.package)
 }
 
 /// Builds the app's terminal binary and places it in `<app>/dist/tui`.
 pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
-  build_tui_binary(app, release)?;
-
-  let binary = tui_binary(app, release);
+  let binary = build_tui_binary(app, release)?;
   let out_dir = app.dir.join("dist/tui");
 
   fs::create_dir_all(&out_dir).map_err(|error| error.to_string())?;
 
-  let out = out_dir.join(&app.package);
+  let out = out_dir.join(binary.file_name().ok_or("the binary has no name")?);
 
   fs::copy(&binary, &out).map_err(|error| format!("{}: {error}", binary.display()))?;
   println!("built {}", out.display());
@@ -144,7 +222,8 @@ pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
   Ok(())
 }
 
-fn build_wasm(app: &App, release: bool) -> Result<(), String> {
+/// Builds the app's browser wasm and returns its path.
+fn build_wasm(app: &App, release: bool) -> Result<PathBuf, String> {
   let mut command = Command::new("cargo");
 
   command.current_dir(&app.workspace_root);
@@ -159,6 +238,7 @@ fn build_wasm(app: &App, release: bool) -> Result<(), String> {
       "wasm32-unknown-unknown",
       "-p",
       &app.package,
+      MESSAGE_FORMAT,
     ]);
 
     if release {
@@ -182,6 +262,7 @@ fn build_wasm(app: &App, release: bool) -> Result<(), String> {
       "wasm32-unknown-unknown",
       "-p",
       &app.package,
+      MESSAGE_FORMAT,
     ]);
 
     if release {
@@ -189,83 +270,94 @@ fn build_wasm(app: &App, release: bool) -> Result<(), String> {
     }
   }
 
-  run(&mut command, "cargo build")
+  let artifacts = cargo_artifacts(&mut command, false)?;
+
+  artifacts
+    .iter()
+    .filter(|artifact| artifact.target.name == app.stem)
+    .flat_map(|artifact| &artifact.filenames)
+    .find(|file| file.extension() == Some("wasm"))
+    .map(|file| file.clone().into_std_path_buf())
+    .ok_or_else(|| format!("cargo built no wasm for {}", app.package))
 }
 
-/// The built browser wasm artifact's path.
-pub fn wasm_artifact(app: &App, release: bool) -> std::path::PathBuf {
-  let profile = if release { "release" } else { "debug" };
-
-  app
-    .workspace_root
-    .join("target/wasm32-unknown-unknown")
-    .join(profile)
-    .join(format!("{}.wasm", app.stem))
+/// Generates the bindings of the built `wasm` into `<app>/dist/web`.
+fn generate_bindings(app: &App, wasm: &Path) -> Result<(), String> {
+  wasm_bindgen_cli_support::Bindgen::new()
+    .input_path(wasm)
+    .omit_default_module_path(false)
+    .web(true)
+    .map_err(|error| format!("wasm-bindgen: {error:#}"))?
+    .generate(app.dir.join("dist/web"))
+    .map_err(|error| format!("wasm-bindgen: {error:#}"))
 }
 
-fn generate_bindings(app: &App, release: bool) -> Result<(), String> {
-  warn_on_version_mismatch(&app.workspace_root);
-
-  let wasm = wasm_artifact(app, release);
-  let out_dir = app.dir.join("dist/web");
-  let mut command = Command::new("wasm-bindgen");
-
-  command
-    .arg(&wasm)
-    .arg("--out-dir")
-    .arg(&out_dir)
-    .args(["--target", "web"]);
-
-  run(&mut command, "wasm-bindgen").map_err(|error| {
-    format!("{error}\nis `wasm-bindgen-cli` installed? `cargo install wasm-bindgen-cli`")
-  })
-}
-
-/// The flag naming the server platform, which every crate of a server build sees.
+/// The flag naming the server platform.
 const SERVER_CFG: &str = "--cfg skene_platform=\"server\"";
 
-/// Builds the app's server binary natively, with the server platform named, and
+/// Names the server platform for what the build `command` compiles for `host` alone,
+/// never its build scripts or proc macros: through the target's rustflags, or, where
+/// `RUSTFLAGS` or `CARGO_ENCODED_RUSTFLAGS` supersedes those, joined to it.
+fn name_server_platform(command: &mut Command, host: &str) {
+  if let Ok(mut flags) = std::env::var("CARGO_ENCODED_RUSTFLAGS") {
+    if !flags.is_empty() {
+      flags.push('\x1f');
+    }
+
+    flags.push_str("--cfg\x1fskene_platform=\"server\"");
+    command.env("CARGO_ENCODED_RUSTFLAGS", flags);
+
+    return;
+  }
+
+  if let Ok(mut flags) = std::env::var("RUSTFLAGS") {
+    if !flags.contains(SERVER_CFG) {
+      if !flags.is_empty() {
+        flags.push(' ');
+      }
+
+      flags.push_str(SERVER_CFG);
+    }
+
+    command.env("RUSTFLAGS", flags);
+
+    return;
+  }
+
+  command.arg("--config").arg(format!(
+    r#"target.{host}.rustflags=["--cfg", "skene_platform=\"server\""]"#
+  ));
+}
+
+/// Builds the app's server binary for the host, with the server platform named, and
 /// returns its path.
-///
-/// The flag joins `RUSTFLAGS` from the environment; a `rustflags` set in a cargo
-/// configuration file is superseded, as any `RUSTFLAGS` supersedes it.
-pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, String> {
+pub fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
   let server_bin = app.server_bin.as_deref().ok_or(
     "skene.toml declares no [app] server-bin; a server render runs through the server \
      binary",
   )?;
-  let mut rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
-
-  if !rustflags.contains(SERVER_CFG) {
-    if !rustflags.is_empty() {
-      rustflags.push(' ');
-    }
-
-    rustflags.push_str(SERVER_CFG);
-  }
-
+  let host = host_triple()?;
   let mut command = Command::new("cargo");
 
-  command
-    .current_dir(&app.workspace_root)
-    .env("RUSTFLAGS", rustflags)
-    .args(["build", "-p", &app.package, "--bin", server_bin]);
+  command.current_dir(&app.workspace_root).args([
+    "build",
+    "-p",
+    &app.package,
+    "--bin",
+    server_bin,
+    "--target",
+    host,
+    MESSAGE_FORMAT,
+  ]);
+  name_server_platform(&mut command, host);
 
   if release {
     command.arg("--release");
   }
 
-  run(&mut command, "cargo build")?;
+  let artifacts = cargo_artifacts(&mut command, false)?;
 
-  let profile = if release { "release" } else { "debug" };
-
-  Ok(
-    app
-      .workspace_root
-      .join("target")
-      .join(profile)
-      .join(server_bin),
-  )
+  executable(&artifacts, server_bin)
 }
 
 /// Statically generates through the app's server binary into `<app>/dist/web`,
@@ -279,11 +371,11 @@ pub fn build_server(app: &App, release: bool) -> Result<std::path::PathBuf, Stri
 pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
   let out = &app.dir.join("dist/web");
   let artifact = build_server(app, release)?;
+  let wasm = build_wasm(app, release)?;
 
-  build_wasm(app, release)?;
   clear_web_out(app);
-  generate_bindings(app, release)?;
-  crate::split::split_web(app, release)?;
+  generate_bindings(app, &wasm)?;
+  crate::split::split_web(app, &wasm)?;
 
   let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone())?;
   // No explicit routes: render every route the app enumerates (see
@@ -334,62 +426,4 @@ pub fn inject_client(page: &str, stem: &str) -> String {
     }
     None => format!("{page}{script}"),
   }
-}
-
-fn run(command: &mut Command, label: &str) -> Result<(), String> {
-  let status = command
-    .status()
-    .map_err(|error| format!("failed to run {label}: {error}"))?;
-
-  if status.success() {
-    Ok(())
-  }
-  else {
-    Err(format!("{label} exited with {status}"))
-  }
-}
-
-/// Warns when the installed `wasm-bindgen` CLI disagrees with the locked crate, the
-/// usual cause of a failed bindings step.
-fn warn_on_version_mismatch(root: &Path) {
-  let Some(crate_version) = locked_wasm_bindgen_version(root)
-  else {
-    return;
-  };
-
-  let Some(cli_version) = Command::new("wasm-bindgen")
-    .arg("--version")
-    .output()
-    .ok()
-    .filter(|output| output.status.success())
-    .and_then(|output| String::from_utf8(output.stdout).ok())
-    .and_then(|text| text.split_whitespace().nth(1).map(str::to_string))
-  else {
-    return;
-  };
-
-  if cli_version != crate_version {
-    eprintln!(
-      "warning: wasm-bindgen CLI {cli_version} != crate {crate_version}; \
-       run `cargo install -f wasm-bindgen-cli --version {crate_version}` if bindings fail"
-    );
-  }
-}
-
-fn locked_wasm_bindgen_version(root: &Path) -> Option<String> {
-  let lock = fs::read_to_string(root.join("Cargo.lock")).ok()?;
-  let mut lines = lock.lines();
-
-  while let Some(line) = lines.next() {
-    if line == "name = \"wasm-bindgen\"" {
-      let version = lines.next()?;
-
-      return version
-        .strip_prefix("version = \"")
-        .and_then(|rest| rest.strip_suffix('"'))
-        .map(str::to_string);
-    }
-  }
-
-  None
 }

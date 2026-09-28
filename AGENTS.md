@@ -49,7 +49,8 @@
   browser leaf; native triples → the native platform, later; every other host → the
   headless platform), and where one triple hosts several platforms the build names the
   platform by a cfg: `--cfg skene_platform="server"` selects the web's server leaf
-  natively, set by the CLI for a server build and through `RUSTFLAGS` or
+  natively, set by the CLI for a server build through the host target's rustflags, so
+  it never reaches a build script or a proc macro, and through `RUSTFLAGS` or
   `.cargo/config.toml` by hand. A cfg is a build fact like the triple, chosen once,
   unifying nothing, and never a cargo feature. No feature flags. Target-gating is the
   enforcement layer: the browser leaf compiles on `wasm32-unknown-unknown` alone and

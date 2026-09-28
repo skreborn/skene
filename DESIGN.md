@@ -952,8 +952,9 @@ what to render. The router depends on the engine alone.
 Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
 `Rendered::page` assembles a document. The app's server binary is built natively with the
-server platform named (`skene build web --static` and `skene run web --ssr` do it; by
-hand, `RUSTFLAGS='--cfg skene_platform="server"' cargo build --bin app-server`), and
+server platform named (`skene build web --static` and `skene run web --ssr` do it, for
+the host target alone so build scripts and proc macros never see the cfg; by hand,
+`RUSTFLAGS='--cfg skene_platform="server"' cargo build --bin app-server`), and
 `#[main]` makes it a plain command: `app-server /path` prints the page, `--routes` the
 enumerable routes, `--stream /path` the page as it flushes, and `--serve` renders one
 request after another read from stdin—the path, the hint headers, an empty line—so a

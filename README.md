@@ -167,7 +167,6 @@ in force for the whole document.
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (see Cargo.lock)
 
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site

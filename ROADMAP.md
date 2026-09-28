@@ -52,16 +52,7 @@ left half-done in a code comment.
     a `Deferred` holds the shell until the head settles, or is warned about and
     documented; the code-split loader's glue, about 50 lines of JavaScript, is owned,
     memoizing in-flight loads, reporting failure, retrying, and stating the safety of
-    its `Rc::into_raw`/`from_raw` pair; `wasm-split-cli` is pinned with `=`.
-    - With them, the CLI's builds: artifact paths from cargo's JSON messages
-    (`cargo_metadata`), so a custom target directory and `.exe` work; `--target`
-    always, the platform cfg passed through `--config target.<triple>.rustflags` so it
-    never reaches build scripts or proc macros; client-rendered `skene build web`
-    output that deploys, importing `/{stem}.js` and copying its assets; assets from the
-    app's resolve graph over normal dependencies, not from every workspace package; a
-    history fallback in the client-rendered dev server; `wasm-bindgen-cli-support`
-    pinned in place of an external CLI; `--path` without `--static` an error; a hint
-    filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
+    its `Rc::into_raw`/`from_raw` pair.
 2. **The rest of the house rules in the gate.** All-or-none field and variant docs
     (28 types document some of their fields, about 210 short), the clippy lints worth
     turning on (`use_self`, `missing_const_for_fn`, `allow_attributes_without_reason`,

@@ -564,7 +564,8 @@ fn request_path(target: &str) -> Option<String> {
 }
 
 /// Serves one static file: the generated page and bundle, or a declared asset—never
-/// the app's sources or manifests.
+/// the app's sources or manifests; a route no file answers gets the page, so a
+/// client-rendered app's own routes load as it navigates.
 fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
   let relative = if relative.is_empty() || relative == "index.html" {
     "dist/web/index.html"
@@ -581,7 +582,10 @@ fn serve_file(stream: &mut TcpStream, app: &App, relative: &str) {
   );
   let path = Some(built)
     .filter(|path| path.is_file())
-    .or_else(|| app.resolve_asset(relative));
+    .or_else(|| app.resolve_asset(relative))
+    .or_else(|| {
+      Some(app.dir.join("dist/web/index.html")).filter(|page| is_route(relative) && page.is_file())
+    });
 
   let Some(path) = path
   else {

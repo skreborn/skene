@@ -137,9 +137,15 @@ mod host {
     match cli.command {
       Command::Build(BuildTarget::Web {
         r#static: false,
+        path,
         debug,
-        ..
-      }) => pipeline::build_web(&app, !debug, false),
+      }) => {
+        if !path.is_empty() {
+          return Err("--path names routes to render, which only --static does".to_owned());
+        }
+
+        pipeline::build_web(&app, !debug, false)
+      }
 
       Command::Build(BuildTarget::Web {
         r#static: true,
@@ -217,12 +223,11 @@ mod host {
   /// on each change rebuild and publish the next—the CLI-held state carries across
   /// the swap. Runs until interrupted.
   fn run_tui(app: &App, release: bool) -> Result<(), String> {
-    pipeline::build_tui_binary(app, release).map_err(|error| format!("build failed:\n{error}"))?;
-
+    let binary = pipeline::build_tui_binary(app, release)
+      .map_err(|error| format!("build failed:\n{error}"))?;
     let dev = Dev::default();
     let id = spawn_state_server(dev.clone())?;
     let (changes, _watcher) = watch_sources(app)?;
-    let binary = pipeline::tui_binary(app, release);
     let mut running = binary_digest(&binary);
 
     dev.set_binary(binary.clone(), app.dir.clone());
@@ -239,7 +244,7 @@ mod host {
       // leaves the binary identical, and the attached app (and its state) stays up
       // instead of restarting for nothing.
       match pipeline::build_tui_binary(app, release) {
-        Ok(()) => {
+        Ok(binary) => {
           dev.clear_notice();
 
           let rebuilt = binary_digest(&binary);

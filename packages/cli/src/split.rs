@@ -7,20 +7,21 @@
 //! call. A build carrying `#[lazy]` markers without the opt-in is an error: the
 //! bindings would import loaders that nothing provides.
 
-use std::{fmt::Write as _, fs};
+use std::{fmt::Write as _, fs, path::Path};
 
 use wasm_split_cli::{OutputModules, SplitModule, Splitter};
 
-use crate::{manifest::App, pipeline};
+use crate::manifest::App;
 
 /// The prefix `#[lazy]` stamps into its split import and export names.
 const MARKER: &[u8] = b"__wasm_split_00";
 
-/// Splits the bindgened wasm in `dist/web` when the app opts in.
+/// Splits the bindgened wasm in `dist/web` when the app opts in, `original` the wasm
+/// cargo built it from.
 ///
 /// Without `#[lazy]` markers in the build this is a no-op; with markers but no
 /// `[web] split = true` it fails, naming the missing setting.
-pub fn split_web(app: &App, release: bool) -> Result<(), String> {
+pub fn split_web(app: &App, original: &Path) -> Result<(), String> {
   let out = app.dir.join("dist/web");
   let main_path = out.join(format!("{}_bg.wasm", app.stem));
   let bindgened =
@@ -38,9 +39,7 @@ pub fn split_web(app: &App, release: bool) -> Result<(), String> {
     );
   }
 
-  let original_path = pipeline::wasm_artifact(app, release);
-  let original =
-    fs::read(&original_path).map_err(|error| format!("{}: {error}", original_path.display()))?;
+  let original = fs::read(original).map_err(|error| format!("{}: {error}", original.display()))?;
   let output = Splitter::new(&original, &bindgened)
     .and_then(Splitter::emit)
     .map_err(|error| format!("wasm-split: {error:#}"))?;

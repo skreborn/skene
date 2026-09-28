@@ -325,38 +325,6 @@ impl Store {
     )
   }
 
-  /// A node's absolute origin: its layout locations summed up the parent chain, each
-  /// ancestor's scroll offsets subtracted.
-  pub(crate) fn absolute_origin(&self, handle: Handle) -> (i64, i64) {
-    let mut current = Some(handle);
-    let (mut x, mut y) = (0, 0);
-
-    while let Some(visited) = current {
-      let Some(record) = self.record(visited)
-      else {
-        break;
-      };
-
-      if record.kind.is_laid_out() {
-        let (location_x, location_y) = self.inline_location(visited);
-
-        x += location_x;
-        y += location_y;
-
-        if let Some(parent) = self.layout_parent(visited) {
-          let (scroll_x, scroll_y) = self.scroll_offset(parent);
-
-          x -= i64::from(scroll_x);
-          y -= i64::from(scroll_y);
-        }
-      }
-
-      current = record.parent;
-    }
-
-    (x, y)
-  }
-
   /// A node's position within its layout parent: its laid-out location, or the cell
   /// its placeholder flowed into for an inline box inside a paragraph.
   fn inline_location(&self, handle: Handle) -> (i64, i64) {
@@ -373,8 +341,9 @@ impl Store {
     }
   }
 
-  /// A node's on-screen origin: like [`absolute_origin`](Self::absolute_origin), but
-  /// content inside an overlay positions against the overlay's computed origin.
+  /// A node's on-screen origin: its layout locations summed up the parent chain, each
+  /// ancestor's scroll offsets subtracted, content inside an overlay positioned against
+  /// the overlay's origin.
   pub(crate) fn screen_origin(&self, handle: Handle) -> (i64, i64) {
     let (mut x, mut y) = (0, 0);
     let mut current = Some(handle);
@@ -435,7 +404,7 @@ impl Store {
 
     if let Some(anchor) = anchor.filter(|_| matches!(placement, Placement::Top | Placement::Bottom))
     {
-      let (anchor_x, anchor_y) = self.absolute_origin(anchor);
+      let (anchor_x, anchor_y) = self.screen_origin(anchor);
       let (_, anchor_height) = self.node_size(anchor);
       let x = anchor_x.min(columns - width).max(0);
       let below = anchor_y + anchor_height;
@@ -634,7 +603,7 @@ impl Store {
   /// the scroll limit.
   fn scroll_geometry(&self, handle: Handle, axis: Axis) -> (i64, i64, u32) {
     let (limit_x, limit_y) = self.scroll_limits(handle);
-    let (origin_x, origin_y) = self.absolute_origin(handle);
+    let (origin_x, origin_y) = self.screen_origin(handle);
     let (width, height) = self.node_size(handle);
     let border = self.node_border(handle);
 
@@ -656,7 +625,7 @@ impl Store {
       }
 
       let (limit_x, limit_y) = self.scroll_limits(handle);
-      let (origin_x, origin_y) = self.absolute_origin(handle);
+      let (origin_x, origin_y) = self.screen_origin(handle);
       let (width, height) = self.node_size(handle);
 
       if limit_y > 0 && px == origin_x + width - 1 {

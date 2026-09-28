@@ -117,6 +117,64 @@ fn popup_anchors_below_and_light_dismisses() {
   });
 }
 
+/// A popup anchored inside another opens against where its anchor shows, the outer
+/// popup's placement included.
+#[test]
+fn a_nested_popup_anchors_where_its_anchor_shows() {
+  with_platform(|| {
+    let outer = Signal::new(true);
+    let inner = Signal::new(false);
+    let trigger = Anchor::new();
+    let bound_trigger = trigger.clone();
+    let item = Anchor::new();
+    let bound_item = item.clone();
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("top").into_any(),
+          Text::new("trigger").into_any(),
+          Container::new()
+            .bind_anchor(&bound_trigger)
+            .set_child(Text::new("anchor"))
+            .into_any(),
+          Overlay::popup()
+            .bind_open(outer)
+            .set_anchor(&trigger)
+            .set_placement(Placement::Bottom)
+            .set_child(
+              Column::new().set_children((
+                Text::new("first").into_any(),
+                Container::new()
+                  .bind_anchor(&bound_item)
+                  .set_child(Text::new("second"))
+                  .into_any(),
+                Overlay::popup()
+                  .bind_open(inner)
+                  .set_anchor(&item)
+                  .set_placement(Placement::Bottom)
+                  .set_child(Text::new("nested"))
+                  .into_any(),
+              )),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(12, 8);
+
+    inner.set(true);
+
+    let frame = tui::render_to_text(12, 8);
+    let lines: Vec<&str> = frame.lines().collect();
+
+    assert!(lines[3].starts_with("first"), "{frame}");
+    assert!(lines[4].starts_with("second"), "{frame}");
+    assert!(lines[5].starts_with("nested"), "{frame}");
+  });
+}
+
 /// A modal's default scrim dims the app beneath it, and a fully transparent backdrop
 /// disables the scrim entirely.
 #[test]

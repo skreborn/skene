@@ -1,9 +1,13 @@
 //! Inline runs, and the paragraph they flow in.
 
+use std::rc::Rc;
+
 use skene_core::{
   Animation,
   AnyKind,
   AnyView,
+  Bubbling,
+  ClickHandler,
   Color,
   DeclaredRunStyle,
   IntoView,
@@ -22,7 +26,14 @@ use skene_core::{
   View,
 };
 
-use crate::{LayoutBox, properties, realize::Source, run::Run, run_type_metrics};
+use crate::{
+  LayoutBox,
+  layout_box::verdict,
+  properties,
+  realize::Source,
+  run::Run,
+  run_type_metrics,
+};
 
 /// What a span renders.
 enum Content<P: Platform> {
@@ -45,6 +56,7 @@ enum Content<P: Platform> {
 pub struct Span<P: Platform> {
   content: Content<P>,
   run: Run<P>,
+  click: Vec<Rc<ClickHandler>>,
 }
 
 impl<P: Platform> Span<P> {
@@ -77,6 +89,7 @@ impl<P: Platform> Span<P> {
     Self {
       content,
       run: Run::new(),
+      click: Vec::new(),
     }
   }
 
@@ -102,6 +115,15 @@ impl<P: Platform> Span<P> {
   }
 
   run_type_metrics! { style_mut }
+
+  /// Runs `action` on a click on the span; its verdict says whether the click carries
+  /// on to the ancestors.
+  #[inline(always)]
+  pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
+    self.click.push(Rc::new(move || verdict(action())));
+
+    self
+  }
 
   /// Sets whether the reader can select and copy the text; off by default.
   #[inline(always)]
@@ -160,6 +182,12 @@ impl<P: Platform> View<P> for Span<P> {
     };
     let group = matches!(self.content, Content::Group(_));
     let node = self.run.build(display, group);
+
+    Scene::<P>::with(|scene| {
+      for handler in self.click {
+        scene.handle_click(node, handler);
+      }
+    });
 
     match self.content {
       Content::Text(content) => {

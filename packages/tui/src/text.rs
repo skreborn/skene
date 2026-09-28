@@ -108,42 +108,75 @@ pub(crate) fn scale_of(size: Option<f32>) -> CellScale {
   }
 }
 
-/// The scale of each stretch of a text: `(end, scale)` pairs in order, `end` the
+/// What one stretch of a text spans: its clusters at a scale, or an inline box's one
+/// placeholder cluster, as many cells wide and rows tall as the box.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Extent {
+  Scaled(CellScale),
+  Box { cells: usize, rows: usize },
+}
+
+impl From<CellScale> for Extent {
+  fn from(scale: CellScale) -> Self {
+    Self::Scaled(scale)
+  }
+}
+
+/// The extent of each stretch of a text: `(end, extent)` pairs in order, `end` the
 /// cluster index the stretch ends before; the last stretch reaches past the end.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub(crate) struct Scales(Vec<(usize, CellScale)>);
+pub(crate) struct Scales(Vec<(usize, Extent)>);
 
 impl Scales {
   /// One scale over the whole text.
   pub(crate) fn uniform(scale: CellScale) -> Self {
-    Self(vec![(usize::MAX, scale)])
+    Self(vec![(usize::MAX, Extent::Scaled(scale))])
   }
 
-  /// Scales from the stretches `(count, scale)`, each `count` clusters long, in order.
-  pub(crate) fn of(stretches: impl IntoIterator<Item = (usize, CellScale)>) -> Self {
+  /// Scales from the stretches `(count, extent)`, each `count` clusters long, in order.
+  pub(crate) fn of<E: Into<Extent>>(stretches: impl IntoIterator<Item = (usize, E)>) -> Self {
     let mut end = 0;
     let mut scales = Vec::new();
 
-    for (count, scale) in stretches {
+    for (count, extent) in stretches {
       end += count;
-      scales.push((end, scale));
+      scales.push((end, extent.into()));
     }
 
     Self(scales)
   }
 
-  /// The scale of the cluster at `index`; one cell past every stretch.
-  pub(crate) fn at(&self, index: usize) -> CellScale {
+  /// The extent of the cluster at `index`; one cell past every stretch.
+  fn extent(&self, index: usize) -> Extent {
     self
       .0
       .iter()
       .find(|(end, _)| index < *end)
-      .map_or(CellScale::ONE, |(_, scale)| *scale)
+      .map_or(Extent::Scaled(CellScale::ONE), |(_, extent)| *extent)
   }
 
-  /// The cells the cluster at `index` spans on one row at its scale.
+  /// The scale the cluster at `index` draws at: one cell for an inline box's.
+  pub(crate) fn at(&self, index: usize) -> CellScale {
+    match self.extent(index) {
+      Extent::Scaled(scale) => scale,
+      Extent::Box { .. } => CellScale::ONE,
+    }
+  }
+
+  /// The cells the cluster at `index` spans on one row.
   pub(crate) fn cells(&self, index: usize, cluster: &str) -> usize {
-    width(cluster) * self.at(index).rows()
+    match self.extent(index) {
+      Extent::Scaled(scale) => width(cluster) * scale.rows(),
+      Extent::Box { cells, .. } => cells,
+    }
+  }
+
+  /// The rows the cluster at `index` spans.
+  pub(crate) fn rows(&self, index: usize) -> usize {
+    match self.extent(index) {
+      Extent::Scaled(scale) => scale.rows(),
+      Extent::Box { rows, .. } => rows,
+    }
   }
 }
 

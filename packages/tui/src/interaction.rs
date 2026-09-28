@@ -36,7 +36,15 @@ use skene_core::{
 
 use crate::{
   Tui,
-  layout::{inline_box_cells, is_paragraph},
+  layout::{
+    enclosing_paragraph,
+    inline_box_cells,
+    is_inline_box,
+    is_inline_run,
+    is_paragraph,
+    paragraph_cluster_at,
+    paragraph_run_at,
+  },
   paint::control_kind,
   store::{Drag, Handle, Kind, Press, Record, ScrollLatch, Store},
   with_store,
@@ -264,21 +272,7 @@ impl Store {
     path.push((handle, (origin_x, origin_y)));
 
     if is_paragraph(self, handle) {
-      // An inline box hits through the cells its placeholder flowed into.
-      for (run, (cell_x, cell_y)) in inline_box_cells(self, handle) {
-        let (location_x, location_y) = self.node_location(run);
-
-        if self.hit_walk(
-          run,
-          origin_x + cell_x - location_x,
-          origin_y + cell_y - location_y,
-          x,
-          y,
-          path,
-        ) {
-          break;
-        }
-      }
+      self.hit_paragraph(handle, (origin_x, origin_y), x, y, path);
 
       return true;
     }
@@ -304,6 +298,65 @@ impl Store {
     true
   }
 
+  /// Hits the runs of the paragraph `handle`, at `origin`, under the point: the runs
+  /// holding the cluster drawn there join the path from the outermost group to the leaf,
+  /// each at the paragraph's origin, and an inline box hits through its own layout.
+  fn hit_paragraph(
+    &self,
+    handle: Handle,
+    origin: (i64, i64),
+    x: i64,
+    y: i64,
+    path: &mut Vec<(Handle, (i64, i64))>,
+  ) {
+    let (Ok(column), Ok(row)) = (usize::try_from(x - origin.0), usize::try_from(y - origin.1))
+    else {
+      return;
+    };
+    let Some(leaf) = paragraph_cluster_at(self, handle, column, row)
+      .and_then(|offset| paragraph_run_at(self, handle, offset))
+    else {
+      return;
+    };
+    let mut chain: Vec<Handle> = self
+      .ancestors(leaf)
+      .into_iter()
+      .skip(1)
+      .take_while(|ancestor| *ancestor != handle)
+      .filter(|ancestor| {
+        matches!(
+          self.record(*ancestor).map(|record| &record.kind),
+          Some(Kind::Run { .. })
+        )
+      })
+      .collect();
+
+    chain.reverse();
+    path.extend(chain.into_iter().map(|run| (run, origin)));
+
+    if !is_inline_box(self, leaf) {
+      path.push((leaf, origin));
+
+      return;
+    }
+
+    if let Some((_, (cell_x, cell_y))) = inline_box_cells(self, handle)
+      .into_iter()
+      .find(|(run, _)| *run == leaf)
+    {
+      let (location_x, location_y) = self.node_location(leaf);
+
+      self.hit_walk(
+        leaf,
+        origin.0 + cell_x - location_x,
+        origin.1 + cell_y - location_y,
+        x,
+        y,
+        path,
+      );
+    }
+  }
+
   /// Hits `overlay`'s subtree at its computed origin, accumulating the path.
   pub(crate) fn hit_overlay(
     &self,
@@ -325,14 +378,15 @@ impl Store {
     )
   }
 
-  /// A node's position within its layout parent: its laid-out location, or the cell
-  /// its placeholder flowed into for an inline box inside a paragraph.
+  /// A node's position within its layout parent: its laid-out location, or for a run
+  /// flowing in a paragraph, through any groups, the cell an inline box's placeholder
+  /// flowed into and the paragraph's origin for any other.
   fn inline_location(&self, handle: Handle) -> (i64, i64) {
-    let inline = self
-      .layout_parent(handle)
-      .filter(|parent| is_paragraph(self, *parent));
+    let paragraph = is_inline_run(self, handle)
+      .then(|| enclosing_paragraph(self, handle))
+      .flatten();
 
-    match inline {
+    match paragraph {
       Some(paragraph) => inline_box_cells(self, paragraph)
         .into_iter()
         .find(|(run, _)| *run == handle)

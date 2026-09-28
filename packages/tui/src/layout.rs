@@ -23,7 +23,7 @@ use taffy::{
 
 use crate::{
   motion::{Presented, Previous},
-  paint::{longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
+  paint::{line_holding, longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
   resolve::Env,
   store::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, RunCache, Store},
   text::{self, Scales},
@@ -65,12 +65,36 @@ pub(crate) fn is_paragraph(store: &Store, handle: Handle) -> bool {
 }
 
 /// Whether `handle` is an inline box: a run laid out as a box among its paragraph's
-/// text, its text the placeholder its measured width fills.
+/// text, its text one placeholder cluster as large as the box.
 pub(crate) fn is_inline_box(store: &Store, handle: Handle) -> bool {
   matches!(
     store.record(handle).map(|record| &record.kind),
     Some(Kind::Run { props, .. }) if props.display == RunDisplay::InlineBox
   )
+}
+
+/// Whether `handle` is an inline run: text, a group or an inline box flowing in a
+/// paragraph.
+pub(crate) fn is_inline_run(store: &Store, handle: Handle) -> bool {
+  matches!(
+    store.record(handle).map(|record| &record.kind),
+    Some(Kind::Run { props, .. }) if props.display != RunDisplay::Block
+  )
+}
+
+/// The paragraph the inline run `handle` flows in, through any groups around it.
+pub(crate) fn enclosing_paragraph(store: &Store, handle: Handle) -> Option<Handle> {
+  let mut current = store.layout_parent(handle)?;
+
+  while !is_paragraph(store, current) {
+    if !is_inline_run(store, current) {
+      return None;
+    }
+
+    current = store.layout_parent(current)?;
+  }
+
+  Some(current)
 }
 
 /// The inline boxes of the paragraph `handle`, each with the cell its placeholder
@@ -114,18 +138,20 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
     else {
       continue;
     };
-    // The box sits on the line's bottom row, as a smaller cluster does.
+    // The box sits on the line's bottom rows, as a smaller cluster does; its line is at
+    // least as tall as it.
     let column = text::clusters(&line.text)
       .take(start - line.start)
       .enumerate()
       .map(|(index, (_, cluster))| scales.cells(line.start + index, cluster))
       .sum::<usize>();
+    let row = rows[index] + line.rows.saturating_sub(scales.rows(start));
 
     cells.push((
       run,
       (
         i64::try_from(column).unwrap_or(0),
-        i64::try_from(rows[index] + line.rows - 1).unwrap_or(0),
+        i64::try_from(row).unwrap_or(0),
       ),
     ));
   }
@@ -133,9 +159,50 @@ pub(crate) fn inline_box_cells(store: &Store, handle: Handle) -> Vec<(Handle, (i
   cells
 }
 
-/// Lays every inline box out on its own and writes the placeholder its width fills
-/// into its text; `true` when a placeholder changed, in which case its paragraph
-/// measures again.
+/// The offset of the cluster of the paragraph `handle`'s text drawn at its local cell
+/// (`column`, `row`), against the last layout: exact hits only, a smaller cluster or an
+/// inline box held by the rows it draws on alone.
+pub(crate) fn paragraph_cluster_at(
+  store: &Store,
+  handle: Handle,
+  column: usize,
+  row: usize,
+) -> Option<usize> {
+  let (width, _) = store.node_size(handle);
+  let scales = paragraph_scales(store, handle);
+  let lines = wrap_sized(
+    &paragraph_text(store, handle),
+    usize::try_from(width).unwrap_or(1),
+    &scales,
+  );
+  let rows = sized_rows(&lines);
+  let index = line_holding(&lines, row)?;
+  let line = &lines[index];
+  let offset = line.start + line.cluster_at(column, &scales)?;
+  let top = rows[index] + line.rows.saturating_sub(scales.rows(offset));
+
+  (row >= top).then_some(offset)
+}
+
+/// The leaf run of the paragraph `handle` that holds the cluster at `offset` of its
+/// text.
+pub(crate) fn paragraph_run_at(store: &Store, handle: Handle, offset: usize) -> Option<Handle> {
+  let mut cursor = 0;
+
+  paragraph_runs(store, handle).into_iter().find(|run| {
+    let count = store
+      .record(*run)
+      .map_or(0, |record| text::count(&record.text));
+    let hit = (cursor..cursor + count).contains(&offset);
+
+    cursor += count;
+
+    hit
+  })
+}
+
+/// Lays every inline box out on its own and records its size, which its placeholder
+/// spans; `true` when a size changed, in which case its paragraph measures again.
 pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
   let mut changed = false;
 
@@ -161,16 +228,16 @@ pub(crate) fn measure_inline_boxes(store: &mut Store) -> bool {
       )
       .expect("compute an inline box's layout");
 
-    let (width, _) = store.node_size(handle);
-    let placeholder: String =
-      std::iter::repeat_n(INLINE_BOX, usize::try_from(width).unwrap_or(1).max(1)).collect();
-    let Some(record) = store.record_mut(handle)
-    else {
-      continue;
-    };
+    let (width, height) = store.node_size(handle);
+    let size = (
+      usize::try_from(width).unwrap_or(1).max(1),
+      usize::try_from(height).unwrap_or(1).max(1),
+    );
 
-    if record.text != placeholder {
-      record.text = placeholder;
+    if let Some(Kind::Run { extent, .. }) = store.record_mut(handle).map(|record| &mut record.kind)
+      && *extent != Some(size)
+    {
+      *extent = Some(size);
       changed = true;
     }
   }
@@ -343,6 +410,7 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
         props,
         cache,
         motion,
+        ..
       } => {
         let target = resolved_run.map(|target| (target, resolved_layout));
 

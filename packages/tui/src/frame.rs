@@ -12,7 +12,7 @@ use skene_reactive::Set;
 
 use crate::{
   interaction::scroll_to,
-  layout::{self, has_border, is_inline_box, is_paragraph},
+  layout::{self, has_border, is_inline_run, is_paragraph},
   paint::{self, Buffer, Image, terminal_rgb},
   store::{Backdrop, BackdropKey, CellRect, Handle, Record, Store},
   with_store,
@@ -139,13 +139,13 @@ fn damaged_rows(store: &mut Store, height: usize) -> Vec<bool> {
   rows
 }
 
-/// The node whose paint covers `handle`: the paragraph an inline run or an inline box
-/// flows in, else the node itself.
+/// The node whose paint covers `handle`: the paragraph an inline run flows in, or an
+/// inline box's content, through any groups; else the node itself.
 fn paint_owner(store: &Store, handle: Handle) -> Handle {
   let mut owner = handle;
 
   while let Some(parent) = store.layout_parent(owner) {
-    if !(is_paragraph(store, parent) || is_inline_box(store, parent)) {
+    if !(is_paragraph(store, parent) || is_inline_run(store, parent)) {
       break;
     }
 

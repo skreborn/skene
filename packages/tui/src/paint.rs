@@ -21,7 +21,7 @@ use crate::{
     paragraph_text,
   },
   store::{Contrast, Handle, Kind, PlainRun, Record, Store},
-  text::{self, CellScale, Glyph, Scales},
+  text::{self, CellScale, Extent, Glyph, Scales},
 };
 
 /// One terminal cell's paint state.
@@ -606,9 +606,9 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
         .map(|(cluster, _)| *cluster)
         .collect(),
       rows: (from..to)
-        .map(|index| scales.at(base + index).rows())
+        .map(|index| scales.rows(base + index))
         .max()
-        .unwrap_or_else(|| scales.at(base + from).rows()),
+        .unwrap_or_else(|| scales.rows(base + from)),
     };
     if clusters.is_empty() {
       lines.push(line(0, 0));
@@ -1175,7 +1175,7 @@ fn paint_node(
           // A smaller cluster sits on the line's bottom rows, as on a baseline.
           let row_y = y + isize::try_from(row + line.rows - scale.rows()).expect("fits");
 
-          column += width * scale.rows();
+          column += scales.cells(offset, cluster);
 
           let Some(paint) = attribution
             .get(offset)
@@ -1997,15 +1997,28 @@ pub(crate) fn run_scale(store: &Store, handle: Handle) -> CellScale {
   }
 }
 
-/// The scale of each run's stretch of the paragraph `handle`'s text.
+/// The extent of each run's stretch of the paragraph `handle`'s text: its scale, or an
+/// inline box's size.
 pub(crate) fn paragraph_scales(store: &Store, handle: Handle) -> Scales {
   Scales::of(paragraph_runs(store, handle).into_iter().map(|run| {
-    (
-      store
-        .record(run)
-        .map_or(0, |record| text::count(&record.text)),
-      run_scale(store, run),
-    )
+    let record = store.record(run);
+
+    match record.map(|record| &record.kind) {
+      Some(Kind::Run {
+        extent: Some((cells, rows)),
+        ..
+      }) => (
+        1,
+        Extent::Box {
+          cells: *cells,
+          rows: *rows,
+        },
+      ),
+      _ => (
+        record.map_or(0, |record| text::count(&record.text)),
+        Extent::Scaled(run_scale(store, run)),
+      ),
+    }
   }))
 }
 

@@ -476,3 +476,143 @@ fn an_inline_box_flows_with_the_paragraph() {
     assert_eq!(clicks.get(), 1);
   });
 }
+
+/// An inline box as tall as two rows raises its line to two rows, the text beside it on
+/// the line's bottom row as on a baseline, and the next line flows below it.
+#[test]
+fn a_tall_inline_box_raises_its_line() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(12)
+        .set_child(
+          RichText::new().set_spans([
+            Span::new("see "),
+            Span::view(
+              Container::new()
+                .set_height(2)
+                .set_color(red())
+                .set_child(Text::new("new")),
+            ),
+            Span::new(" here and more"),
+          ]),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      tui::render_to_text(12, 4),
+      "    new\nsee     here\nand more\n\n"
+    );
+    assert_eq!(colors_at(12, 4, 4, 1).1, Some(rgb(red())));
+  });
+}
+
+/// An inline box wider than what is left of a line moves to the next one whole.
+#[test]
+fn an_inline_box_never_splits_across_lines() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(6)
+        .set_child(RichText::new().set_spans([
+          Span::new("ab "),
+          Span::view(Container::new().set_child(Text::new("wide"))),
+        ]))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(8, 3), "ab\nwide\n\n");
+  });
+}
+
+/// A span under the pointer is hovered, taking its hovered style, and a click on it
+/// runs its handler, and none on the span beside it.
+#[test]
+fn a_span_is_hovered_and_clicked() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = tui::mount(move || {
+      RichText::new()
+        .set_spans([
+          Span::new("plain "),
+          Span::new("click")
+            .set_color(red().when(State::Hovered, white()))
+            .handle_click(move || counted.set(counted.get() + 1)),
+        ])
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(12, 1, 6, 0).0, Some(rgb(red())));
+
+    tui::trigger_mouse_move(7, 0);
+
+    assert_eq!(colors_at(12, 1, 6, 0).0, Some(rgb(white())));
+
+    tui::trigger_mouse_click(7, 0);
+    tui::trigger_mouse_click(1, 0);
+
+    assert_eq!(clicks.get(), 1);
+  });
+}
+
+/// Copying a selection across an inline box takes the text the box holds, never its
+/// placeholder.
+#[test]
+fn copying_across_an_inline_box_takes_its_text() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      RichText::new()
+        .set_spans([
+          Span::new("see ").set_selectable(true),
+          Span::view(Text::new("new")),
+          Span::new(" here"),
+        ])
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(14, 1);
+
+    tui::trigger_mouse_press(0, 0);
+    tui::trigger_mouse_drag(12, 0);
+    tui::trigger_mouse_release(12, 0);
+    tui::trigger_key("Ctrl+c");
+
+    assert_eq!(tui::take_copied().as_deref(), Some("see new here"));
+  });
+}
+
+/// An inline box inside a group span sits where its placeholder flowed, so a press on
+/// it reports a position within the box.
+#[test]
+fn a_grouped_inline_box_places_its_content() {
+  with_platform(|| {
+    let pressed = Rc::new(Cell::new((f32::NAN, f32::NAN)));
+    let recorded = Rc::clone(&pressed);
+
+    let _ = tui::mount(move || {
+      RichText::new()
+        .set_spans([
+          Span::new("ab "),
+          Span::group([Span::view(
+            Container::new()
+              .handle_pointer_down(move |event| recorded.set((event.local_x, event.local_y)))
+              .set_child(Text::new("box")),
+          )]),
+        ])
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(8, 1), "ab box\n");
+
+    tui::trigger_mouse_press(4, 0);
+
+    assert_eq!(pressed.get(), (1.5, 0.5));
+  });
+}

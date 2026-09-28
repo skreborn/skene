@@ -15,11 +15,11 @@
 
 use std::time::{Duration, Instant};
 
-use skene_core::ClipboardAction;
+use skene_core::{ClipboardAction, RunDisplay};
 
 use crate::{
   field::word_bounds,
-  layout::{is_paragraph, paragraph_runs, paragraph_text},
+  layout::{is_inline_box, is_paragraph, paragraph_runs, paragraph_text},
   paint::{line_at_row, line_holding, paragraph_scales, run_scale, wrap_sized},
   store::{Drag, Handle, Kind, Store},
   text::{self, Scales},
@@ -115,57 +115,56 @@ impl Store {
     Some(line.start + line.index_at_column(column, &scales))
   }
 
+  /// The deepest text on `path`, with its origin: a paragraph, or a run that flows in
+  /// none.
+  fn text_root(&self, path: &[(Handle, (i64, i64))]) -> Option<(Handle, (i64, i64))> {
+    path.iter().rev().copied().find(|(handle, _)| {
+      is_paragraph(self, *handle)
+        || matches!(
+          self.record(*handle).map(|record| &record.kind),
+          Some(Kind::Run { props, .. }) if props.display == RunDisplay::Block
+        )
+    })
+  }
+
   /// The source position at the cell (`x`, `y`), when it lies on a selectable run.
   pub(crate) fn text_position_at(&self, x: u16, y: u16) -> Option<SelectionPoint> {
     let path = self.hit_test(x, y);
-    let (node, (origin_x, origin_y)) = *path.last()?;
+    let (node, (origin_x, origin_y)) = self.text_root(&path)?;
     let offset = self.run_offset(node, i64::from(x) - origin_x, i64::from(y) - origin_y)?;
 
     Some(SelectionPoint { node, offset })
   }
 
   /// The linked run at the cell (`x`, `y`) and its destination, when the cell carries
-  /// the run's character—exact hits only, never clamped into a neighboring line.
+  /// the run's character—exact hits only, never clamped into a neighboring line; in a
+  /// paragraph, the deepest run on the path that links, a group's link its spans'.
   pub(crate) fn link_at(&self, x: u16, y: u16) -> Option<(Handle, String)> {
     let path = self.hit_test(x, y);
-    let (node, (origin_x, origin_y)) = *path.last()?;
+    let (node, (origin_x, origin_y)) = self.text_root(&path)?;
+    let link_of = |run: Handle| match &self.record(run)?.kind {
+      Kind::Run { props, .. } => props.link.clone().map(|url| (run, url)),
+      _ => None,
+    };
+
+    if is_paragraph(self, node) {
+      let from = path.iter().position(|(handle, _)| *handle == node)?;
+
+      return path[from + 1..]
+        .iter()
+        .rev()
+        .find_map(|(run, _)| link_of(*run));
+    }
+
     let (width, _) = self.node_size(node);
     let record = self.record(node)?;
     let row = usize::try_from(i64::from(y) - origin_y).ok()?;
     let column = usize::try_from(i64::from(x) - origin_x).ok()?;
     let scales = self.text_scales(node);
-
-    if let Kind::Run { props, .. } = &record.kind {
-      let lines = wrap_sized(&record.text, usize::try_from(width).unwrap_or(1), &scales);
-      let line = &lines[line_holding(&lines, row)?];
-
-      return line
-        .cluster_at(column, &scales)
-        .and_then(|_| props.link.clone().map(|url| (node, url)));
-    }
-
-    if !is_paragraph(self, node) {
-      return None;
-    }
-
-    let text = paragraph_text(self, node);
-    let lines = wrap_sized(&text, usize::try_from(width).unwrap_or(1), &scales);
+    let lines = wrap_sized(&record.text, usize::try_from(width).unwrap_or(1), &scales);
     let line = &lines[line_holding(&lines, row)?];
-    let offset = line.start + line.cluster_at(column, &scales)?;
-    let mut cursor = 0;
 
-    paragraph_runs(self, node).into_iter().find_map(|run| {
-      let record = self.record(run)?;
-      let end = cursor + text::count(&record.text);
-      let hit = (cursor..end).contains(&offset);
-
-      cursor = end;
-
-      match &record.kind {
-        Kind::Run { props, .. } if hit => props.link.clone().map(|url| (run, url)),
-        _ => None,
-      }
-    })
+    line.cluster_at(column, &scales).and_then(|_| link_of(node))
   }
 
   /// The source position nearest the cell (`x`, `y`) over every selectable run—by
@@ -350,11 +349,72 @@ impl Store {
       };
 
       if from < to {
-        parts.push(text::slice(&text, from, to).to_owned());
+        parts.push(self.source_text(node, &text, from, to));
       }
     }
 
     (!parts.is_empty()).then(|| parts.join("\n"))
+  }
+
+  /// The clusters `from..to` of the node's selectable `text` as they appear in the
+  /// source: in a paragraph, an inline box's placeholder is the text the box holds.
+  fn source_text(&self, node: Handle, text: &str, from: usize, to: usize) -> String {
+    if !is_paragraph(self, node) {
+      return text::slice(text, from, to).to_owned();
+    }
+
+    let mut source = String::new();
+    let mut cursor = 0;
+
+    for run in paragraph_runs(self, node) {
+      let Some(record) = self.record(run)
+      else {
+        continue;
+      };
+      let (start, end) = (cursor, cursor + text::count(&record.text));
+
+      cursor = end;
+
+      if end <= from || start >= to {
+        continue;
+      }
+
+      if is_inline_box(self, run) {
+        source.push_str(&self.inner_text(run));
+      }
+      else {
+        source.push_str(text::slice(
+          &record.text,
+          from.saturating_sub(start),
+          to.min(end) - start,
+        ));
+      }
+    }
+
+    source
+  }
+
+  /// The text of every run beneath `handle`, in order.
+  fn inner_text(&self, handle: Handle) -> String {
+    let mut text = String::new();
+    let mut stack = vec![handle];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      if current != handle
+        && matches!(&record.kind, Kind::Run { props, .. } if props.display != RunDisplay::InlineBox)
+      {
+        text.push_str(&record.text);
+      }
+
+      stack.extend(record.children.iter().rev());
+    }
+
+    text
   }
 
   /// Anchors a fresh selection at `point` and starts its drag.

@@ -654,6 +654,32 @@ fn a_click_handler_may_build_nodes() {
   html(&only_child(&root)).click();
 }
 
+/// A span's click handler runs for a click on the span, and not for one on the
+/// paragraph beside it.
+#[wasm_bindgen_test]
+fn a_span_runs_its_click_handler() {
+  let (_guard, root) = fresh_root();
+  let clicks = Rc::new(Cell::new(0u32));
+  let counted = Rc::clone(&clicks);
+
+  let _ = mount(move || {
+    skene_gui::RichText::new()
+      .set_spans([
+        skene_gui::Span::new("plain "),
+        skene_gui::Span::new("click").handle_click(move || counted.set(counted.get() + 1)),
+      ])
+      .build()
+  });
+
+  let paragraph = only_child(&root);
+  let span = paragraph.last_element_child().expect("the clickable span");
+
+  html(&span).click();
+  html(&paragraph).click();
+
+  assert_eq!(clicks.get(), 1);
+}
+
 #[wasm_bindgen_test]
 fn derived_text_updates_the_dom_on_change() {
   let (_guard, root) = fresh_root();

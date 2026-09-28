@@ -491,6 +491,8 @@ pub(crate) enum Kind {
     props: RunProps<Tui>,
     cache: Option<RunCache>,
     motion: RunMotion,
+    /// An inline box's size in cells and rows, as last measured.
+    extent: Option<(usize, usize)>,
   },
   Anchor,
   Scope,

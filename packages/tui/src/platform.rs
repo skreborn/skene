@@ -243,9 +243,10 @@ impl Platform for Tui {
         props: props.clone(),
         cache: None,
         motion: RunMotion::default(),
+        extent: None,
       });
 
-      // An inline box starts one cell wide; its own layout resizes the placeholder.
+      // An inline box flows as one placeholder cluster, as large as its own layout.
       if inline_box && let Some(record) = store.record_mut(handle) {
         record.text = crate::layout::INLINE_BOX.to_string();
       }

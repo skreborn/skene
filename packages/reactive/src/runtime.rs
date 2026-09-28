@@ -45,6 +45,10 @@ fn set_ui_thread() -> Result<(), u64> {
 /// The scheduler seam: receives one flush to run later.
 type Scheduler = dyn Fn(Box<dyn FnOnce()>);
 
+/// How many times one effect may run in one flush before a debug build panics.
+#[cfg(debug_assertions)]
+const MAX_RUNS_PER_FLUSH: u32 = 10_000;
+
 /// Clears the flushing flag when the flush unwinds.
 struct FlushGuard<'a>(&'a Cell<bool>);
 
@@ -307,10 +311,10 @@ impl Runtime {
     BatchGuard
   }
 
-  /// Flushes now, or through the scheduler when one is installed; a no-op inside a
-  /// batch or a running flush, both of which flush on their own.
+  /// Flushes now, or through the scheduler when one is installed; a no-op when nothing
+  /// is queued, or inside a batch or a running flush, both of which flush on their own.
   pub(crate) fn request_flush(&self) {
-    if self.batch_depth.get() > 0 || self.flushing.get() {
+    if self.batch_depth.get() > 0 || self.flushing.get() || !self.graph().has_queued() {
       return;
     }
 
@@ -336,6 +340,11 @@ impl Runtime {
 
   /// Drains the queues until none remain. Re-entrant calls return immediately: the
   /// running flush picks up whatever a mid-flush write enqueued.
+  ///
+  /// # Panics
+  ///
+  /// In debug builds, panics when one effect runs [`MAX_RUNS_PER_FLUSH`] times in one
+  /// flush: it keeps invalidating itself.
   pub(crate) fn flush(&self) {
     if self.flushing.get() {
       return;
@@ -344,6 +353,8 @@ impl Runtime {
     self.flushing.set(true);
 
     let _guard = FlushGuard(&self.flushing);
+    #[cfg(debug_assertions)]
+    let mut runs = rustc_hash::FxHashMap::<Id, u32>::default();
 
     loop {
       let next = self.graph().pop_queued();
@@ -352,6 +363,19 @@ impl Runtime {
       else {
         break;
       };
+
+      #[cfg(debug_assertions)]
+      {
+        let count = runs.entry(id).or_default();
+
+        *count += 1;
+
+        assert!(
+          *count < MAX_RUNS_PER_FLUSH,
+          "effect {id:?} ran {MAX_RUNS_PER_FLUSH} times in one flush: it keeps invalidating \
+           itself"
+        );
+      }
 
       crate::computation::run_queued(id);
     }

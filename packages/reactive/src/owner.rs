@@ -114,12 +114,13 @@ impl Owner {
     Runtime::with_owner(self.0, f)
   }
 
-  /// Runs `f` when this owner is disposed.
+  /// Runs `f` when this owner is disposed, after its children, in reverse registration
+  /// order; on an effect or a memo, also before its next run; on an owner already
+  /// disposed, at once.
   ///
   /// The hook for anything the runtime cannot clean up itself—cancelling a spawned
   /// task, clearing a timer, closing a subscription—so it ends with the owner that
-  /// started it rather than outliving the view. Callbacks run after the owner's
-  /// children are disposed, in reverse registration order.
+  /// started it rather than outliving the view.
   ///
   /// # Panics
   ///
@@ -136,7 +137,9 @@ impl Owner {
       None => Some(f),
     });
 
-    drop(unregistered);
+    if let Some(f) = unregistered {
+      f();
+    }
   }
 
   /// Disposes this owner: its signals, effects, contexts, and child owners.

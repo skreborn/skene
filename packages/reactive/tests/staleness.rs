@@ -95,6 +95,12 @@ fn write_during_flush_defers() {
     });
   }
 
+  assert_eq!(
+    *log.borrow(),
+    ["second", "first-start", "first-end", "second"],
+    "a write during a creation run waits for the run to end",
+  );
+
   log.borrow_mut().clear();
   first.set(1);
 

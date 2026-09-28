@@ -7,7 +7,8 @@ use crate::{
 };
 
 impl Id {
-  /// Disposes the entity this id names and every descendant.
+  /// Disposes the entity this id names and every descendant; its subscribers only
+  /// lose it as a dependency, and effects its cleanups invalidate run once it ends.
   pub(crate) fn dispose(self) {
     if self.is_sync() {
       dispose_sync(self);
@@ -22,16 +23,33 @@ impl Id {
       return;
     }
 
-    dispose_local(self);
+    let _batch = Runtime::enter_batch();
+
+    Runtime::with_tracking(None, || dispose_local(self));
   }
 
-  /// Disposes only the children of this id, keeping the entity itself.
-  pub(crate) fn dispose_children(self) {
-    if let Some(Some(children)) = try_with_graph(|graph| graph.take_children(self)) {
-      for child in *children {
-        child.dispose();
+  /// Tears down what this computation's last run made, before it runs again: disposes
+  /// its children, runs its cleanups in reverse registration order and drops the
+  /// contexts it provided.
+  pub(crate) fn dispose_run(self) {
+    let Some(Some(remains)) = try_with_graph(|graph| graph.take_run_remains(self))
+    else {
+      return;
+    };
+
+    Runtime::with_tracking(None, || {
+      if let Some(children) = remains.children {
+        for child in *children {
+          child.dispose();
+        }
       }
-    }
+
+      for cleanup in remains.cleanups.into_iter().rev() {
+        cleanup();
+      }
+
+      drop(remains.contexts);
+    });
   }
 }
 
@@ -45,10 +63,6 @@ fn dispose_local(id: Id) {
 
       if removed.snapshotted {
         crate::snapshot::unregister(id);
-      }
-
-      for sub in removed.subs {
-        sub.dispose();
       }
 
       drop(removed.value);
@@ -74,16 +88,12 @@ fn dispose_local(id: Id) {
 
       drop(removed.body);
       drop(removed.contexts);
-
-      for sub in removed.subs {
-        sub.dispose();
-      }
     }
     Kind::Sync => {}
   }
 }
 
-/// Removes a sync signal from the registry and disposes its UI-thread subscribers,
+/// Removes a sync signal from the registry and unlinks its UI-thread subscribers,
 /// directly or through the pending-disposal queue.
 fn dispose_sync(id: Id) {
   let Some(signal) = SYNC.remove(id)
@@ -101,21 +111,14 @@ fn dispose_sync(id: Id) {
   drop(signal.value);
 }
 
-/// The UI-thread half of a sync signal's disposal: unlinks it from `parent` and
-/// disposes its subscribers here.
+/// The UI-thread half of a sync signal's disposal: unlinks it from `parent` and from
+/// its subscribers here.
 pub(crate) fn dispose_sync_local(id: Id, parent: Option<Id>) {
-  let Some(subs) = try_with_graph(|graph| {
+  let _ = try_with_graph(|graph| {
     if let Some(parent) = parent {
       graph.detach_child(parent, id);
     }
 
-    graph.remove_sync_subs(id)
-  })
-  else {
-    return;
-  };
-
-  for sub in subs {
-    sub.dispose();
-  }
+    graph.remove_sync_subs(id);
+  });
 }

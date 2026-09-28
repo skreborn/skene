@@ -5,69 +5,76 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_reactive::{Effect, Get, Owner, Runtime, Set, Signal, Track, signal};
 
+/// Disposing a dependency ends the subscription, not the subscriber: the effect keeps
+/// running on its other dependencies.
 #[test]
-fn effect_disposed_when_dependency_signal_disposed() {
+fn an_effect_outlives_a_disposed_dependency() {
   let parent = Owner::new();
   let signal_owner = parent.child();
   let (source, setter) = signal_owner.enter(|| signal(0));
+  let other = parent.enter(|| Signal::new(0));
   let count = Rc::new(Cell::new(0));
 
   parent.enter(|| {
     let count = count.clone();
 
     Effect::new(move |_| {
-      source.track();
+      source.try_track();
+      other.track();
       count.set(count.get() + 1);
     });
   });
 
   assert_eq!(count.get(), 1);
 
-  // Disposing the signal's owner cleans up the subscribing effect.
   signal_owner.dispose();
-
-  // Mutations after disposal must not rerun the effect.
   setter.set(1);
-  Runtime::drain_pending_work();
+
   assert_eq!(count.get(), 1);
+
+  other.set(1);
+
+  assert_eq!(count.get(), 2);
 }
 
 #[test]
 fn signals_created_by_effect_are_disposed_with_effect() {
   let parent = Owner::new();
-  let dep_owner = parent.child();
-  let (dep, dep_setter) = dep_owner.enter(|| signal(0));
+  let effect_owner = parent.child();
+  let (dep, dep_setter) = parent.enter(|| signal(0));
   let created = Rc::new(Cell::new(None::<Signal<i32>>));
   let runs = Rc::new(Cell::new(0));
 
-  parent.enter(|| {
+  effect_owner.enter(|| {
     let created = created.clone();
     let runs = runs.clone();
 
     Effect::new(move |_| {
       dep.track();
       runs.set(runs.get() + 1);
-
-      if created.get().is_none() {
-        created.set(Some(Signal::new(0)));
-      }
+      created.set(Some(Signal::new(0)));
     });
   });
 
   assert_eq!(runs.get(), 1);
 
-  let inner = created.get().expect("signal created");
-
-  assert_eq!(inner.try_get(), Some(0));
-
-  // Dispose the dependency owner; the effect goes with it, and its created signal too.
-  dep_owner.dispose();
-  Runtime::drain_pending_work();
+  let first = created.get().expect("signal created");
 
   dep_setter.set(1);
-  Runtime::drain_pending_work();
-  assert_eq!(runs.get(), 1);
-  assert_eq!(inner.try_get(), None);
+
+  // A re-run disposes what the last run created.
+  assert_eq!(runs.get(), 2);
+  assert_eq!(first.try_get(), None);
+
+  let second = created.get().expect("signal created");
+
+  assert_eq!(second.try_get(), Some(0));
+
+  effect_owner.dispose();
+  dep_setter.set(2);
+
+  assert_eq!(runs.get(), 2);
+  assert_eq!(second.try_get(), None);
 }
 
 #[test]
@@ -173,4 +180,39 @@ fn dispose_unlinks_from_parent_children() {
   parent.dispose();
 
   assert_eq!(bystander.try_get(), Some(9));
+}
+
+/// A rebuild in place, as `derived` does: each run builds under a scope taking the last
+/// one's place and disposes the last one, while reading state the new build created.
+#[test]
+fn a_rebuild_reading_its_own_content_keeps_running() {
+  let parent = Owner::new();
+  let trigger = Signal::new(0);
+  let current = Rc::new(Cell::new(None::<Owner>));
+  let runs = Rc::new(Cell::new(0));
+
+  parent.enter(|| {
+    let runs = runs.clone();
+
+    Effect::render(move |_: Option<()>| {
+      runs.set(runs.get() + 1);
+      trigger.get();
+
+      let scope = current
+        .get()
+        .map_or_else(|| parent.child(), |previous| previous.replacement());
+
+      scope.enter(|| Signal::new(0).get());
+
+      if let Some(previous) = current.replace(Some(scope)) {
+        previous.dispose();
+      }
+    });
+  });
+
+  for value in 1..=3 {
+    trigger.set(value);
+  }
+
+  assert_eq!(runs.get(), 4);
 }

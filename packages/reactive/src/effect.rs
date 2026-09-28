@@ -147,7 +147,7 @@ where
       return false;
     }
 
-    (self.on_change)(value);
+    Runtime::with_tracking(None, || (self.on_change)(value));
 
     false
   }

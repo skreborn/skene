@@ -55,14 +55,18 @@ pub(crate) fn track<T>(id: Id, f: impl FnOnce() -> T) -> T {
   Runtime::with_tracking(Some(id), || Runtime::with_owner(id, f))
 }
 
-/// Re-runs computation `id` from scratch: its children are disposed first.
+/// Re-runs computation `id` from scratch: what its last run made is torn down first.
+///
+/// The run is a batch: an effect it invalidates, itself included, runs once it ends.
 pub(crate) fn run(id: Id) {
   let Some(body) = with_graph(|graph| graph.body(id))
   else {
     return;
   };
 
-  id.dispose_children();
+  let _batch = Runtime::enter_batch();
+
+  id.dispose_run();
   with_graph(|graph| graph.reset_creation_counters(id));
 
   let changed = track(id, || body.run());

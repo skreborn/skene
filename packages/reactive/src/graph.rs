@@ -98,7 +98,6 @@ struct SyncSubs {
 /// What removing a signal leaves to finish once the graph is released.
 pub(crate) struct RemovedSignal {
   pub(crate) value: Rc<dyn Any>,
-  pub(crate) subs: SmallVec<[Id; 4]>,
   pub(crate) snapshotted: bool,
 }
 
@@ -108,7 +107,13 @@ pub(crate) struct RemovedNode {
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) body: Option<Rc<dyn Computation>>,
-  pub(crate) subs: SmallVec<[Id; 4]>,
+}
+
+/// What a computation's last run made, taken before it runs again.
+pub(crate) struct RunRemains {
+  pub(crate) children: Option<Box<FxHashSet<Id>>>,
+  pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
+  pub(crate) contexts: Option<Box<Contexts>>,
 }
 
 /// One thread's reactive graph.
@@ -483,22 +488,29 @@ impl Graph {
     self.owner_data(id).and_then(|data| data.parent)
   }
 
-  /// Takes `id`'s children, leaving it childless.
-  pub(crate) fn take_children(&mut self, id: Id) -> Option<Box<FxHashSet<Id>>> {
-    self.owner_data_mut(id)?.children.take()
+  /// Takes what `id`'s last run made—its children, cleanups and contexts—leaving it
+  /// as it was before that run.
+  pub(crate) fn take_run_remains(&mut self, id: Id) -> Option<RunRemains> {
+    let data = self.owner_data_mut(id)?;
+
+    Some(RunRemains {
+      children: data.children.take(),
+      cleanups: std::mem::take(&mut data.cleanups),
+      contexts: data.contexts.take(),
+    })
   }
 
-  /// Removes a local signal, unlinking every subscriber.
+  /// Removes a local signal, unlinking it from every subscriber.
   pub(crate) fn remove_signal(&mut self, id: Id) -> Option<RemovedSignal> {
     self.orphan(id);
 
     let (generation, index) = self.slot(id, Kind::Signal)?;
     let record = self.signals.remove(generation, index)?;
-    let subs = self.unlink_subs(record.subs);
+
+    self.unlink_subs(record.subs);
 
     Some(RemovedSignal {
       value: record.value,
-      subs,
       snapshotted: record.snapshotted,
     })
   }
@@ -517,7 +529,6 @@ impl Graph {
           cleanups: record.owner.cleanups,
           contexts: record.owner.contexts,
           body: None,
-          subs: SmallVec::new(),
         })
       }
       Kind::Computation => {
@@ -525,26 +536,23 @@ impl Graph {
         let record = self.computations.remove(generation, index)?;
 
         self.unlink_deps(record.deps);
-
-        let subs = self.unlink_subs(record.subs);
+        self.unlink_subs(record.subs);
 
         Some(RemovedNode {
           children: record.owner.children,
           cleanups: record.owner.cleanups,
           contexts: record.owner.contexts,
           body: record.body,
-          subs,
         })
       }
       Kind::Signal | Kind::Sync => None,
     }
   }
 
-  /// Drops this thread's subscriber list of a sync signal, returning the subscribers.
-  pub(crate) fn remove_sync_subs(&mut self, id: Id) -> SmallVec<[Id; 4]> {
-    match self.sync_subs.remove(&id) {
-      Some(entry) => self.unlink_subs(entry.list),
-      None => SmallVec::new(),
+  /// Drops this thread's subscriber list of a sync signal, unlinking every subscriber.
+  pub(crate) fn remove_sync_subs(&mut self, id: Id) {
+    if let Some(entry) = self.sync_subs.remove(&id) {
+      self.unlink_subs(entry.list);
     }
   }
 
@@ -742,30 +750,26 @@ impl Graph {
     if next_dep != NONE {
       self.links.get_mut(next_dep).prev_dep = prev_dep;
     }
-    else if let Some(computation) = self.computation_mut(sub) {
+
+    if let Some(computation) = self.computation_mut(sub)
+      && computation.deps.tail == index
+    {
       computation.deps.tail = prev_dep;
     }
 
     self.links.free(index);
   }
 
-  /// Unlinks every edge on a subscriber list, returning the subscribers.
-  fn unlink_subs(&mut self, list: LinkList) -> SmallVec<[Id; 4]> {
-    let mut subs = SmallVec::new();
+  /// Unlinks every edge on a subscriber list.
+  fn unlink_subs(&mut self, list: LinkList) {
     let mut index = list.head;
 
     while index != NONE {
-      let link = self.links.get(index);
-
-      if !subs.contains(&link.sub) {
-        subs.push(link.sub);
-      }
+      let next = self.links.get(index).next_sub;
 
       self.unlink(index);
-      index = link.next_sub;
+      index = next;
     }
-
-    subs
   }
 
   /// Unlinks every edge on a dependency list.

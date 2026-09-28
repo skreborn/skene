@@ -74,6 +74,7 @@ fn batch_batch() {
   assert_eq!(count.get(), 2);
 }
 
+/// A run that invalidates its own effect finishes before the effect runs again.
 #[test]
 fn no_reentrant_runs() {
   let state = Signal::new(0);
@@ -94,7 +95,7 @@ fn no_reentrant_runs() {
   Runtime::drain_pending_work();
 
   let log = log.borrow();
-  assert_eq!(log.as_slice(), ["run 0", "run 1", "post set"]);
+  assert_eq!(log.as_slice(), ["run 0", "post set", "run 1"]);
 }
 
 #[test]

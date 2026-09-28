@@ -27,7 +27,10 @@ pub(crate) struct Link {
 /// The ends of one node's list of links.
 #[derive(Clone, Copy)]
 pub(crate) struct LinkList {
+  /// The first link.
   pub(crate) head: LinkIdx,
+  /// The last link; on the dependency list of a running computation, the last link
+  /// the run has read, the links past it being last run's still to be dropped.
   pub(crate) tail: LinkIdx,
 }
 

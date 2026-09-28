@@ -1,7 +1,10 @@
 //! Context: values provided by an owner, visible to its subtree, shadowed by
 //! descendants.
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_reactive::{Effect, Get, Owner, Set, Signal, provide_context, use_context};
 
@@ -168,4 +171,26 @@ fn context_with_signal_handle() {
     retrieved.set(100);
     assert_eq!(source.get_untracked(), 100);
   });
+}
+
+#[test]
+fn a_rerun_drops_the_contexts_its_last_run_provided() {
+  let provide = Signal::new(true);
+  let seen = Rc::new(RefCell::new(Vec::new()));
+
+  Owner::new().enter(|| {
+    let seen = seen.clone();
+
+    Effect::new(move |_: Option<()>| {
+      if provide.get() {
+        provide_context(7u32);
+      }
+
+      seen.borrow_mut().push(use_context::<u32>());
+    });
+  });
+
+  provide.set(false);
+
+  assert_eq!(&*seen.borrow(), &[Some(7), None]);
 }

@@ -232,3 +232,55 @@ fn memo_high_priority_runs_before_normal_dependents() {
 
   assert_eq!(*log.borrow(), vec!["memo", "effect"]);
 }
+
+/// A summary over rows keeps updating when a row's scope is disposed in the same flush
+/// that removes the row, as a keyed list does.
+#[test]
+fn a_summary_outlives_the_rows_it_read() {
+  use skene_reactive::Owner;
+
+  let app = Owner::new();
+  let rows = app.child();
+  let row = rows.child();
+  let item = row.enter(|| Signal::new(3));
+  let items = app.enter(|| Signal::opaque(vec![(1u32, item)]));
+  let owners = Rc::new(RefCell::new(vec![(1u32, row)]));
+  let total =
+    app.enter(|| Memo::new(move |_| items.get().iter().map(|(_, item)| item.get()).sum::<i32>()));
+  let shown = Rc::new(Cell::new(0));
+
+  rows.enter(|| {
+    let owners = owners.clone();
+
+    Effect::render(move |_: Option<()>| {
+      let keys: Vec<u32> = items.get().iter().map(|(key, _)| *key).collect();
+
+      owners.borrow_mut().retain(|(key, owner)| {
+        let keep = keys.contains(key);
+
+        if !keep {
+          owner.dispose();
+        }
+
+        keep
+      });
+    });
+  });
+
+  app.enter(|| {
+    let shown = shown.clone();
+
+    Effect::new(move |_: Option<()>| shown.set(total.get()));
+  });
+
+  assert_eq!(shown.get(), 3);
+
+  items.set(vec![]);
+
+  let fresh = app.enter(|| Signal::new(10));
+
+  items.set(vec![(2, fresh)]);
+
+  assert_eq!(total.try_get_untracked(), Some(10));
+  assert_eq!(shown.get(), 10);
+}

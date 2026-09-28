@@ -22,18 +22,21 @@ use crate::{
 /// before painting what it has.
 const SETTLE_ROUNDS: usize = 4;
 
-/// Lays the tree out at `width` x `height` cells and paints it.
+/// Lays the tree out at `width` x `height` cells and paints it, once the pending turn
+/// has ended.
 ///
 /// The size reports, container measurements, inline box measurements and
 /// scroll-into-view resolve between layout and paint; the handlers they run may rebuild
-/// content, so the layout is computed again until it settles (bounded, so a
-/// pathological feedback loop still paints). The paint rewrites the rows the changed
-/// nodes covered and cover, over the previous frame; a whole-frame change rewrites
+/// content, so the layout is computed again, once their turn has ended, until it
+/// settles (bounded, so a pathological feedback loop still paints). The paint rewrites the rows the
+/// changed nodes covered and cover, over the previous frame; a whole-frame change rewrites
 /// every row.
 pub(crate) fn render(width: u16, height: u16) -> Buffer {
+  crate::platform::end_turn();
   resize(width, height);
   with_store(Store::autoscroll_caret_drag);
   crate::field::report_selections();
+  crate::platform::end_turn();
 
   for _ in 0..SETTLE_ROUNDS {
     let laid_out = with_store(|store| {
@@ -54,6 +57,8 @@ pub(crate) fn render(width: u16, height: u16) -> Buffer {
     let containers = laid_out && measure_containers();
     let reported = laid_out && report_sizes();
     let revealed = reveal();
+
+    crate::platform::end_turn();
 
     let settled = !(containers || reported || revealed || with_store(|store| store.layout_dirty));
 

@@ -56,6 +56,18 @@ thread_local! {
   static SCENE: RefCell<Scene<Tui>> = RefCell::new(Scene::new());
   static STORE: RefCell<Option<Store>> = const { RefCell::new(None) };
   static ROOT: RefCell<Option<NodeId>> = const { RefCell::new(None) };
+  /// The flush the turn's writes scheduled, run when the turn ends.
+  static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
+}
+
+/// Ends the turn: runs the flush its writes scheduled, so their effects have taken hold
+/// before the next event, frame or query.
+pub(crate) fn end_turn() {
+  let flush = TURN.with(|turn| turn.borrow_mut().take());
+
+  if let Some(flush) = flush {
+    flush();
+  }
 }
 
 /// Runs `operation` on the installed store; nothing of the user's runs inside it.
@@ -564,14 +576,17 @@ impl CellPainter for Tui {
   }
 }
 
-/// Installs the terminal platform for this thread: the reactive runtime, the host
-/// executor, the scene and the store.
+/// Installs the terminal platform for this thread: the reactive runtime, flushing at
+/// the end of each turn, the host executor, the scene and the store.
 ///
 /// # Panics
 ///
 /// Panics if it is already installed.
 pub(crate) fn install() {
   skene_reactive::Runtime::init_on_ui_thread();
+  skene_reactive::Runtime::set_scheduler(|flush| {
+    TURN.with(|turn| *turn.borrow_mut() = Some(flush));
+  });
   skene_core::executor::install();
   crate::text::reset();
 
@@ -622,20 +637,27 @@ pub fn uninstall() {
   Scene::<Tui>::with(|scene| *scene = Scene::new());
   ROOT.with(|root| *root.borrow_mut() = None);
   STORE.with(|store| *store.borrow_mut() = None);
+  TURN.with(|turn| *turn.borrow_mut() = None);
 }
 
-/// Builds `view` under the installed root, returning its node.
+/// Builds `view` under the installed root as one turn, returning its node.
 ///
 /// # Panics
 ///
 /// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  skene_core::root_owner().enter(|| {
+  end_turn();
+
+  let node = skene_core::root_owner().enter(|| {
     let node = view();
     let root = root_node().expect("the root node exists once installed");
 
     Scene::<Tui>::with(|scene| scene.attach(root, node, None));
 
     node
-  })
+  });
+
+  end_turn();
+
+  node
 }

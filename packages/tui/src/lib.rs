@@ -514,11 +514,17 @@ pub fn render_to_scales(width: u16, height: u16) -> Vec<CellScale> {
     .collect()
 }
 
-/// Polls every ready task, as the interactive loop does between events; `true` when any
-/// ran. For a headless test driving async work.
+/// Polls every ready task as one turn, as the interactive loop does between events;
+/// `true` when any ran. For a headless test driving async work.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  skene_core::executor::pump()
+  platform::end_turn();
+
+  let ran = skene_core::executor::pump();
+
+  platform::end_turn();
+
+  ran
 }
 
 /// Runs `future` as a task, until it finishes or the current scope is disposed.

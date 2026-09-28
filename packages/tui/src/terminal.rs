@@ -49,6 +49,7 @@ use crate::{
     MouseKind,
     WindowSize,
   },
+  platform::end_turn,
   store::Store,
   text::{self, CellScale, Glyph},
   tty::Tty,
@@ -381,6 +382,8 @@ where
 
     let _ = skene_core::executor::pump();
 
+    end_turn();
+
     let title = with_store(|store| {
       store
         .title_dirty
@@ -496,9 +499,7 @@ where
 
       match event {
         Event::Key(key) if key.kind == KeyKind::Release => {
-          let event = portable_key(&key);
-
-          skene_reactive::batch(|| interaction::key_up(&event));
+          interaction::key_up(&portable_key(&key));
         }
         Event::Key(key) => {
           dispatch_key(&key);
@@ -510,7 +511,7 @@ where
           dispatch_mouse(mouse);
         }
         Event::Paste(text) => {
-          paste(&text);
+          interaction::paste(&text);
         }
         Event::Control(line) => {
           if let Some(path) = crate::dev::handle(&line) {
@@ -673,7 +674,7 @@ where
           }
         }
         Event::Clipboard(content) => {
-          paste_reply(&content);
+          interaction::paste_reply(&content);
         }
         // A read's answer arrives in parts: the text once it is done, nothing when it
         // was refused; a write's answers fall through.
@@ -683,7 +684,7 @@ where
           ClipboardStatus::Done => {
             let text = String::from_utf8_lossy(&std::mem::take(&mut clipboard_read)).into_owned();
 
-            paste_reply(&text);
+            interaction::paste_reply(&text);
           }
           ClipboardStatus::Refused => {
             clipboard_read.clear();
@@ -728,6 +729,8 @@ where
         }
         _ => {}
       }
+
+      end_turn();
     }
   }
 
@@ -735,7 +738,7 @@ where
   terminal.close();
 }
 
-/// Runs every scheduled action whose reading has come.
+/// Runs every scheduled action whose reading has come, as one turn.
 fn run_due_timers() {
   let due = with_store(Store::take_due_timers);
 
@@ -746,24 +749,14 @@ fn run_due_timers() {
   for action in due {
     action();
   }
+
+  end_turn();
 }
 
 /// Frees every picture and hands the terminal back.
 fn finish(terminal: &mut Tty) {
   let _ = write_hand_back(terminal);
   let _ = terminal.flush();
-}
-
-/// Inserts text the terminal pasted—bracketed, by its own key—into the focused entry,
-/// inside a reactive batch.
-fn paste(text: &str) {
-  skene_reactive::batch(|| interaction::paste(text));
-}
-
-/// Inserts the clipboard the terminal reported into the entry that asked for it,
-/// inside a reactive batch; nothing happens when no entry asked or it is gone.
-fn paste_reply(text: &str) {
-  skene_reactive::batch(|| interaction::paste_reply(text));
 }
 
 /// Records the terminal's own background, which a paint mixes against, and the scheme
@@ -800,12 +793,11 @@ fn set_detected_scheme(dark: bool) {
 }
 
 /// Dispatches one mouse event: hover tracking (with the pointer shape), the pointer
-/// handlers through core's dispatch, and left-button clicks—all inside a reactive
-/// batch.
+/// handlers through core's dispatch, and left-button clicks.
 fn dispatch_mouse(mouse: Mouse) {
   let modifiers = mouse.modifiers;
 
-  skene_reactive::batch(|| match mouse.kind {
+  match mouse.kind {
     MouseKind::Move | MouseKind::Drag(_) => {
       let button = match mouse.kind {
         MouseKind::Drag(button) => Some(button),
@@ -848,7 +840,7 @@ fn dispatch_mouse(mouse: Mouse) {
     MouseKind::ScrollUp => interaction::wheel(mouse.column, mouse.row, 0, -WHEEL_STEP),
     MouseKind::ScrollRight => interaction::wheel(mouse.column, mouse.row, WHEEL_STEP, 0),
     MouseKind::ScrollLeft => interaction::wheel(mouse.column, mouse.row, -WHEEL_STEP, 0),
-  });
+  }
 }
 
 /// Emits the terminal title via OSC 2; terminals without support ignore it.
@@ -908,7 +900,7 @@ fn write_copy(terminal: &mut Tty, text: &str, answers: bool) {
 /// it does not, for a test driving the loop headlessly: every clipboard operation is
 /// then offered whatever the launch chose.
 pub fn trigger_answering_clipboard(confirmed: bool) {
-  with_store(|store| store.clipboard_answers = confirmed);
+  trigger(|| with_store(|store| store.clipboard_answers = confirmed));
 }
 
 /// The OSC 22 name of a pointer shape; the terminal's own shape where none is set.
@@ -1248,7 +1240,7 @@ fn press(event: &KeyEvent) {
     return;
   }
 
-  skene_reactive::batch(|| interaction::key(event));
+  interaction::key(event);
 }
 
 /// Maps a terminal key to the portable W3C key value and code: a key carries `Shift`
@@ -1420,7 +1412,9 @@ fn apply_clustering(confirmed: bool) -> bool {
 /// Simulates the terminal's report that grapheme clustering (mode 2027) is set, or
 /// that it is not, for a test driving the loop headlessly.
 pub fn trigger_grapheme_clustering(confirmed: bool) {
-  apply_clustering(confirmed);
+  trigger(|| {
+    apply_clustering(confirmed);
+  });
 }
 
 /// Puts the text measurement on the terminal's text sizing (OSC 66) or off it, every
@@ -1443,7 +1437,9 @@ fn apply_sizing(confirmed: bool) -> bool {
 /// Simulates the terminal's reply that proves text sizing (OSC 66), or one that does
 /// not, for a test driving the loop headlessly.
 pub fn trigger_text_sizing(confirmed: bool) {
-  apply_sizing(confirmed);
+  trigger(|| {
+    apply_sizing(confirmed);
+  });
 }
 
 /// Puts the graphics on or off: the capability signal moves, so an enhancement on it
@@ -1473,7 +1469,9 @@ fn apply_graphics(confirmed: bool) -> bool {
 /// Simulates the terminal's reply that proves the graphics protocol, or its absence,
 /// for a test driving the loop headlessly.
 pub fn trigger_graphics(confirmed: bool) {
-  apply_graphics(confirmed);
+  trigger(|| {
+    apply_graphics(confirmed);
+  });
 }
 
 /// Takes the cell's pixel size from the window's, where the terminal reports it, so a
@@ -1489,36 +1487,45 @@ fn set_cell_pixels(size: &WindowSize) {
   });
 }
 
+/// Runs `event` as one turn of the loop, for a test driving it headlessly: what earlier
+/// writes scheduled takes effect first, and what the event's own writes schedule once
+/// it is handled.
+fn trigger(event: impl FnOnce()) {
+  end_turn();
+  event();
+  end_turn();
+}
+
 /// Simulates one key press by its portable W3C key value (`"a"`, `"Enter"`, `"Tab"`,
 /// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
 /// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`, `"Shift+Tab"`).
 pub fn trigger_key(key: &str) {
-  press(&key_event(key));
+  trigger(|| press(&key_event(key)));
 }
 
 /// Simulates one key press as `event` describes it—its key value, its physical code
 /// and its modifiers—for a test driving a layout the key value alone does not place.
 pub fn trigger_key_event(event: &KeyEvent) {
-  press(event);
+  trigger(|| press(event));
 }
 
 /// Whether a key asked the app to quit, for a headless test.
 #[must_use]
 pub fn quit_requested() -> bool {
+  end_turn();
   with_store(|store| store.quit)
 }
 
 /// Simulates one key release by its portable W3C key value, with the prefixes
 /// [`trigger_key`] reads, for a test driving the loop headlessly.
 pub fn trigger_key_up(key: &str) {
-  let event = key_event(key);
-
-  skene_reactive::batch(|| interaction::key_up(&event));
+  trigger(|| interaction::key_up(&key_event(key)));
 }
 
 /// The node holding focus, for a test asserting focus movement.
 #[must_use]
 pub fn focused_node() -> Option<skene_core::NodeId> {
+  end_turn();
   with_store(|store| {
     store
       .focused
@@ -1529,7 +1536,7 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
 /// Simulates the mouse moving to the cell (`x`, `y`), for a test driving hover
 /// headlessly. Hit-testing resolves against the last render's layout.
 pub fn trigger_mouse_move(x: u16, y: u16) {
-  skene_reactive::batch(|| {
+  trigger(|| {
     with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
     interaction::pointer_move(x, y, None, Modifiers::default());
   });
@@ -1545,7 +1552,7 @@ pub fn trigger_mouse_click(x: u16, y: u16) {
 /// Simulates pressing the left button at (`x`, `y`) without releasing—the start of a
 /// drag—for a test driving drags headlessly.
 pub fn trigger_mouse_press(x: u16, y: u16) {
-  skene_reactive::batch(|| {
+  trigger(|| {
     with_store(|store| {
       store.pointer_within = crate::store::CELL_CENTER;
       store.left_held = true;
@@ -1564,7 +1571,7 @@ pub fn trigger_mouse_drag(x: u16, y: u16) {
 /// `within` the cell—`0..1` along each axis, as a terminal reporting pixels places
 /// it—after [`trigger_mouse_press`].
 pub fn trigger_mouse_drag_within(x: u16, y: u16, within: (f32, f32)) {
-  skene_reactive::batch(|| {
+  trigger(|| {
     with_store(|store| store.pointer_within = within);
     interaction::pointer_move(x, y, Some(PointerButton::Primary), Modifiers::default());
   });
@@ -1573,7 +1580,7 @@ pub fn trigger_mouse_drag_within(x: u16, y: u16, within: (f32, f32)) {
 /// Simulates releasing the left button at (`x`, `y`), ending a drag. A release with no
 /// press delivered stands in for the whole click, as the interactive loop's does.
 pub fn trigger_mouse_release(x: u16, y: u16) {
-  skene_reactive::batch(|| {
+  trigger(|| {
     with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
 
     if !with_store(|store| store.left_held) {
@@ -1589,7 +1596,7 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
 /// Simulates a right click at the cell (`x`, `y`)—the copy-menu gesture—for a test
 /// driving selection headlessly.
 pub fn trigger_mouse_right_click(x: u16, y: u16) {
-  skene_reactive::batch(|| {
+  trigger(|| {
     with_store(|store| {
       store.pointer_within = crate::store::CELL_CENTER;
       store.right_held = true;
@@ -1604,57 +1611,63 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
 /// scrolling. Positive deltas scroll right and down, one cell per unit; hit-testing
 /// resolves against the last render's layout.
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
-  skene_reactive::batch(|| interaction::wheel(x, y, delta_columns, delta_rows));
+  trigger(|| interaction::wheel(x, y, delta_columns, delta_rows));
 }
 
 /// Takes the text the last `Copy` staged for the clipboard, for a headless test.
 #[must_use]
 pub fn take_copied() -> Option<String> {
+  end_turn();
   with_store(|store| store.pending_copy.take())
 }
 
 /// Takes whether the last `Paste` staged a clipboard read, for a headless test.
 #[must_use]
 pub fn take_paste_requested() -> bool {
+  end_turn();
   with_store(|store| std::mem::take(&mut store.pending_paste))
 }
 
 /// Simulates the terminal pasting `text` by its own key—a bracketed paste—into the
 /// focused entry, for a headless test.
 pub fn trigger_paste(text: &str) {
-  paste(text);
+  trigger(|| interaction::paste(text));
 }
 
 /// Simulates the terminal answering the last clipboard read with `text`, for a headless
 /// test: it lands in the entry that asked, wherever focus has moved since.
 pub fn trigger_clipboard_reply(text: &str) {
-  paste_reply(text);
+  trigger(|| interaction::paste_reply(text));
 }
 
 /// Takes the link the last click staged for the system handler, for a headless test.
 #[must_use]
 pub fn take_opened() -> Option<String> {
+  end_turn();
   with_store(|store| store.pending_open.take())
 }
 
 /// The current terminal title, for a headless test.
 #[must_use]
 pub fn current_title() -> Option<String> {
+  end_turn();
   with_store(|store| store.title.clone())
 }
 
 /// Simulates the terminal reporting `scheme` as its background, for a headless test
 /// driving the scheme conditions; the app's own choice still wins.
 pub fn trigger_color_scheme(scheme: ColorScheme) {
-  set_detected_scheme(scheme == ColorScheme::Dark);
+  trigger(|| set_detected_scheme(scheme == ColorScheme::Dark));
 }
 
 /// Simulates the terminal reporting its own `foreground` and `background` (OSC 10 and
 /// 11), for a headless test asserting what a paint mixes against; the scheme follows
 /// the background's luminance.
 pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) {
-  with_store(|store| store.detected_foreground = Some(foreground));
-  set_detected_background(background);
+  trigger(|| {
+    with_store(|store| store.detected_foreground = Some(foreground));
+    set_detected_background(background);
+  });
 }
 
 /// Steps the motion clock forward by `elapsed`, for a headless test driving transitions,
@@ -1664,41 +1677,46 @@ pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8
 /// A headless platform's clock stands still otherwise, so a render shows a transition
 /// at the point the last step left it.
 pub fn trigger_frame(elapsed: Duration) {
-  with_store(|store| {
-    store.clock.advance(elapsed.as_secs_f64());
-    store.motion_active = true;
+  trigger(|| {
+    with_store(|store| {
+      store.clock.advance(elapsed.as_secs_f64());
+      store.motion_active = true;
+    });
+    run_due_timers();
   });
-  run_due_timers();
 }
 
 /// Simulates the reader's reduced-motion preference, for a headless test driving the
 /// reduced-motion condition and the motion that respects it.
 pub fn trigger_reduced_motion(reduced: bool) {
-  let write = with_store(|store| {
-    if store.reduced_motion == reduced {
-      return None;
+  trigger(|| {
+    let write = with_store(|store| {
+      if store.reduced_motion == reduced {
+        return None;
+      }
+
+      store.reduced_motion = reduced;
+      store.invalidate_styles();
+
+      Some(store.media().set_reduced_motion)
+    });
+
+    if let Some(write) = write {
+      skene_reactive::Set::set(&write, reduced);
     }
-
-    store.reduced_motion = reduced;
-    store.invalidate_styles();
-
-    Some(store.media().set_reduced_motion)
   });
-
-  if let Some(write) = write {
-    skene_reactive::Set::set(&write, reduced);
-  }
 }
 
 /// Simulates the terminal resizing to `columns` x `rows`, for a headless test driving
 /// the size conditions; the next render lays out at the size it is given.
 pub fn trigger_resize(columns: u16, rows: u16) {
-  frame::resize(columns, rows);
+  trigger(|| frame::resize(columns, rows));
 }
 
 /// The pointer shape the current hover resolves to, for a headless test.
 #[must_use]
 pub fn current_cursor() -> Option<MouseCursor> {
+  end_turn();
   with_store(|store| store.hover_cursor())
 }
 
@@ -1706,6 +1724,7 @@ pub fn current_cursor() -> Option<MouseCursor> {
 /// render, for a test asserting that a change schedules one.
 #[must_use]
 pub fn frame_pending() -> bool {
+  end_turn();
   with_store(|store| store.needs_frame())
 }
 
@@ -1713,6 +1732,7 @@ pub fn frame_pending() -> bool {
 /// asserting that a change repainted without a relayout.
 #[must_use]
 pub fn layout_generation() -> u64 {
+  end_turn();
   with_store(|store| store.layout_generation)
 }
 
@@ -1720,6 +1740,7 @@ pub fn layout_generation() -> u64 {
 /// counting the restyles a change caused.
 #[must_use]
 pub fn set_style_calls() -> u64 {
+  end_turn();
   with_store(|store| store.set_style_calls)
 }
 
@@ -1727,6 +1748,7 @@ pub fn set_style_calls() -> u64 {
 /// was installed, for a test counting what a frame or a change resolved.
 #[must_use]
 pub fn style_resolutions() -> u64 {
+  end_turn();
   with_store(|store| store.style_resolutions)
 }
 
@@ -1734,6 +1756,7 @@ pub fn style_resolutions() -> u64 {
 /// the rows it touched.
 #[must_use]
 pub fn repainted_rows() -> Vec<usize> {
+  end_turn();
   with_store(|store| store.repainted.clone())
 }
 

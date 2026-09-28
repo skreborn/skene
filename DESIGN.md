@@ -527,9 +527,12 @@ internals contract:
   (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before
   its descendants' properties and a disposed descendant never runs; `Effect::watch` is
   the fine-grained binder; a handle disposes or pauses.
-- **A pluggable scheduler.** Synchronous at write end by default; a platform installs a
-  frame-tied flush with `flush_sync` for the cases that need it. The sync waker routes
-  through the same scheduler.
+- **A pluggable scheduler.** Synchronous at write end by default; a platform installs
+  one that holds the flush until its turn ends. The terminal's turn is an event, a run
+  of due timers, a task pump or a render's settling round, and a test's trigger or
+  query is one too, so a test sees what the loop does; `flush_sync` settles mid-turn
+  where a turn needs it, as a key's default does after its handlers. The sync waker
+  routes through the same scheduler.
 - **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
   runs under a runtime borrow; an entity is moved out of its arena before its cleanups
   run.

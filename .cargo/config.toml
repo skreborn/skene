@@ -1,5 +1,6 @@
 [alias]
 skene = "run --package skene-cli --release --"
+xtask = "run --package xtask --"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"

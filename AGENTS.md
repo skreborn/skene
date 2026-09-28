@@ -521,28 +521,32 @@
   self-describing encoding a restore coerces across (a `bool` and an integer are one
   another, a missing field is its type's absent value, an unknown one is skipped, a
   gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
-- Tests run in three tiers, and the host tier alone proves nothing about the web. Run
-  `cargo test --workspace` for the host, `RUSTFLAGS='--cfg skene_platform="server"'
-  cargo test -p skene-gui -p skene-web` for the server leaf (native, the byte-exact
-  render snapshot among them), and `cargo test -p skene-gui --target wasm32-unknown-unknown` for the
-  browser leaf, which drives a real Firefox through geckodriver with WebGPU switched on by
+- **`cargo xtask gate` is the gate**: every check a change passes, in one command, and
+  a change lands only when it reports `gate passed`. It checks formatting, every
+  manifest's dependency order, the house rules no compiler checks (em-dashes unspaced,
+  children last, no public name in another framework's vocabulary), unused
+  dependencies, clippy and rustdoc with warnings denied on all three leaves, the three
+  test tiers, the feature powerset (so no cargo feature creeps back in) and the
+  workspace on its declared `rust-version`. `cargo xtask gate test:browser` runs one
+  step and `cargo xtask gate clippy` a group; each step logs to
+  `target/gate/<step>.log`, and a failed one prints why beside the end of its log. CI
+  runs the same command on every pull request.
+- Tests run in three tiers, and the host tier alone proves nothing about the web: every
+  `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
+  a change can pass every host test while breaking the browser outright. The server tier
+  is the server leaf built natively, the byte-exact render snapshot among it. The browser
+  tier drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
   hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the
-  same run. Every
-  `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests and report
-  `ok. 0 passed`—compiling them (`cargo check`) is not running them, and a change can pass
-  every host test while breaking the browser outright. Read the `test result:` line rather
-  than the exit code or a `FAILED` grep, because the browser tier misleads: its runner
-  panics on cleanup after reporting and exits non-zero even when everything passed. That cleanup panic
-  (`PermissionDenied`) also stops cargo before the remaining binaries run, so the one-command
-  browser form silently covers only the first of them—run each browser binary by name
-  (`--test web_dom`, `web_hydrate`, `web_painted`, `web_resource`, `web_task`; the other `web_*.rs` are
-  server-gated and report `no tests to run!` here) and add the totals, or a shrinking suite
-  reads as a passing one. `skene-web`, `acme-map` and the `gallery` example carry browser
-  binaries of their own (`web_dom`, `web_map`, `web_axe`—the last runs axe-core over the
-  whole gallery); run them the same way. A browser failure also poisons the platform
-  for the tests that follow (`RefCell already borrowed`), so fix the first failure before
-  believing the rest.
+  same run. The gate holds each browser binary to the least number of tests it lists for
+  it, so a shrinking suite fails rather than passing quietly, and a new browser test
+  raises its binary's number there. By hand, read each binary's `test result:` line
+  rather than cargo's exit code, and run Firefox's snap-bundled geckodriver
+  (`GECKODRIVER=/snap/firefox/current/usr/lib/firefox/geckodriver`) with `TMPDIR` on a
+  path the snap can read, as the gate does: the snap's own `geckodriver` cannot be
+  stopped by the runner, which panics with `PermissionDenied` after reporting. A browser
+  failure poisons the platform for the tests that follow (`RefCell already borrowed`),
+  so fix the first failure before believing the rest.
 - Prefer `#[expect(lint)]` over `#[allow(lint)]`.
 - Order dependencies alphabetically by crate name within every Cargo manifest table.
 - Macros must pull their weight: use one only when it eliminates real boilerplate or repetition

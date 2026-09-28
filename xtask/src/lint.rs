@@ -1,0 +1,361 @@
+//! The house rules no compiler checks: unspaced em-dashes, children last and the
+//! framework's own vocabulary.
+
+use std::{
+  fs,
+  path::{Component, Path, PathBuf},
+};
+
+use proc_macro2::Span;
+use syn::{
+  Attribute,
+  Expr,
+  ExprMethodCall,
+  Fields,
+  Ident,
+  ImplItemFn,
+  ItemEnum,
+  ItemFn,
+  ItemMod,
+  ItemStruct,
+  ItemTrait,
+  ItemType,
+  Visibility,
+  visit::{self, Visit},
+};
+
+/// The methods that give a view its content, which a builder chain ends with.
+const CHILD_SETTERS: &[&str] = &[
+  "derive_children",
+  "set_child",
+  "set_child_builder",
+  "set_children",
+];
+
+/// The prefixes of a builder's property and handler methods.
+const PROPERTY_PREFIXES: &[&str] = &["derive_", "handle_", "set_"];
+
+/// Words the public surface never uses, the framework's own vocabulary standing in.
+const BANNED_WORDS: &[&str] = &["backend", "gap", "justify", "widget"];
+
+/// Directories never searched for sources.
+const SKIPPED: &[&str] = &[".git", "dist", "node_modules", "target", "vendor"];
+
+/// Checks every Rust source and Markdown document in the workspace against the house rules.
+pub(crate) fn check(root: &Path) -> Result<(), String> {
+  let mut findings = Vec::new();
+  let mut files = Vec::new();
+
+  collect(root, &mut files);
+  files.sort();
+
+  for path in files {
+    let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+    let text = fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+
+    match path.extension().and_then(|extension| extension.to_str()) {
+      Some("md") => findings.extend(spaced_em_dashes(&relative, &text, false)),
+      Some("rs") => {
+        findings.extend(spaced_em_dashes(&relative, &text, true));
+
+        let file =
+          syn::parse_file(&text).map_err(|error| format!("{}: {error}", relative.display()))?;
+        let mut rules = Rules {
+          public_surface: is_framework_source(&relative),
+          path: &relative,
+          findings: &mut findings,
+        };
+
+        rules.visit_file(&file);
+      }
+      _ => {}
+    }
+  }
+
+  if findings.is_empty() {
+    Ok(())
+  }
+  else {
+    Err(findings.join("\n"))
+  }
+}
+
+/// Every Rust source and Markdown document under `directory`.
+fn collect(directory: &Path, files: &mut Vec<PathBuf>) {
+  let Ok(entries) = fs::read_dir(directory)
+  else {
+    return;
+  };
+
+  for entry in entries.flatten() {
+    let path = entry.path();
+    let name = entry.file_name();
+
+    if path.is_dir() {
+      if !SKIPPED.iter().any(|skipped| name == *skipped) {
+        collect(&path, files);
+      }
+    }
+    else if path
+      .extension()
+      .is_some_and(|extension| extension == "rs" || extension == "md")
+    {
+      files.push(path);
+    }
+  }
+}
+
+/// Each em-dash with a space beside it in `text`; in a source, only those in comments.
+fn spaced_em_dashes(path: &Path, text: &str, comments_only: bool) -> Vec<String> {
+  text
+    .lines()
+    .enumerate()
+    .filter(|(_, line)| {
+      let prose = if comments_only {
+        line.find("//").map_or("", |start| &line[start..])
+      }
+      else {
+        line
+      };
+
+      prose.contains(" —") || prose.contains("— ")
+    })
+    .map(|(index, _)| {
+      format!(
+        "{}:{}: an em-dash has a space beside it",
+        path.display(),
+        index + 1
+      )
+    })
+    .collect()
+}
+
+/// The syntactic house rules, checked over one file.
+struct Rules<'a> {
+  /// Whether the file is a framework crate's source, whose public names the vocabulary
+  /// binds.
+  public_surface: bool,
+  /// The file's path from the workspace root.
+  path: &'a Path,
+  /// Where the rules report what they find.
+  findings: &'a mut Vec<String>,
+}
+
+impl Rules<'_> {
+  fn report(&mut self, span: Span, message: &str) {
+    let line = span.start().line;
+
+    self
+      .findings
+      .push(format!("{}:{line}: {message}", self.path.display()));
+  }
+
+  /// Reports a public name made of a banned word.
+  fn check_name(&mut self, visibility: &Visibility, ident: &Ident) {
+    if !self.public_surface || !matches!(visibility, Visibility::Public(_)) {
+      return;
+    }
+
+    let name = ident.to_string();
+
+    if let Some(word) = words(&name).find(|word| BANNED_WORDS.contains(&word.as_str())) {
+      self.report(
+        ident.span(),
+        &format!("`{name}` uses `{word}`, which the framework's vocabulary replaces"),
+      );
+    }
+  }
+}
+
+impl<'ast> Visit<'ast> for Rules<'_> {
+  fn visit_item_mod(&mut self, item: &'ast ItemMod) {
+    let public_surface = self.public_surface;
+
+    if item.attrs.iter().any(is_test_configuration) {
+      self.public_surface = false;
+    }
+
+    self.check_name(&item.vis, &item.ident);
+    visit::visit_item_mod(self, item);
+    self.public_surface = public_surface;
+  }
+
+  fn visit_item_struct(&mut self, item: &'ast ItemStruct) {
+    self.check_name(&item.vis, &item.ident);
+
+    if let Fields::Named(fields) = &item.fields {
+      for field in &fields.named {
+        if let Some(ident) = &field.ident {
+          self.check_name(&field.vis, ident);
+        }
+      }
+    }
+
+    visit::visit_item_struct(self, item);
+  }
+
+  fn visit_item_enum(&mut self, item: &'ast ItemEnum) {
+    self.check_name(&item.vis, &item.ident);
+
+    for variant in &item.variants {
+      self.check_name(&item.vis, &variant.ident);
+    }
+
+    visit::visit_item_enum(self, item);
+  }
+
+  fn visit_item_fn(&mut self, item: &'ast ItemFn) {
+    self.check_name(&item.vis, &item.sig.ident);
+    visit::visit_item_fn(self, item);
+  }
+
+  fn visit_impl_item_fn(&mut self, item: &'ast ImplItemFn) {
+    self.check_name(&item.vis, &item.sig.ident);
+    visit::visit_impl_item_fn(self, item);
+  }
+
+  fn visit_item_trait(&mut self, item: &'ast ItemTrait) {
+    self.check_name(&item.vis, &item.ident);
+    visit::visit_item_trait(self, item);
+  }
+
+  fn visit_item_type(&mut self, item: &'ast ItemType) {
+    self.check_name(&item.vis, &item.ident);
+    visit::visit_item_type(self, item);
+  }
+
+  fn visit_expr_method_call(&mut self, call: &'ast ExprMethodCall) {
+    let method = call.method.to_string();
+
+    if !CHILD_SETTERS.contains(&method.as_str())
+      && PROPERTY_PREFIXES
+        .iter()
+        .any(|prefix| method.starts_with(prefix))
+      && let Expr::MethodCall(receiver) = &*call.receiver
+      && CHILD_SETTERS.contains(&receiver.method.to_string().as_str())
+    {
+      self.report(
+        call.method.span(),
+        &format!(
+          "`{method}` follows `{}`: a chain ends with the children",
+          receiver.method
+        ),
+      );
+    }
+
+    visit::visit_expr_method_call(self, call);
+  }
+}
+
+/// Whether `path`, relative to the workspace, is a framework crate's source.
+fn is_framework_source(path: &Path) -> bool {
+  let mut components = path.components().map(Component::as_os_str);
+
+  components.next() == Some("packages".as_ref())
+    && components.next().is_some()
+    && components.next() == Some("src".as_ref())
+}
+
+fn is_test_configuration(attribute: &Attribute) -> bool {
+  attribute.path().is_ident("cfg")
+    && attribute
+      .parse_args::<Ident>()
+      .is_ok_and(|argument| argument == "test")
+}
+
+/// The lowercase words of a snake-case or camel-case name.
+fn words(name: &str) -> impl Iterator<Item = String> {
+  let mut words = Vec::new();
+  let mut word = String::new();
+
+  for character in name.chars() {
+    if character == '_' {
+      words.push(std::mem::take(&mut word));
+    }
+    else if character.is_uppercase() && !word.is_empty() {
+      words.push(std::mem::take(&mut word));
+      word.extend(character.to_lowercase());
+    }
+    else {
+      word.extend(character.to_lowercase());
+    }
+  }
+
+  words.push(word);
+  words.into_iter().filter(|word| !word.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+  use std::path::Path;
+
+  use syn::visit::Visit as _;
+
+  use super::{Rules, spaced_em_dashes};
+
+  fn findings(source: &str, public_surface: bool) -> Vec<String> {
+    let file = syn::parse_file(source).expect("the source parses");
+    let mut findings = Vec::new();
+
+    Rules {
+      public_surface,
+      path: Path::new("test.rs"),
+      findings: &mut findings,
+    }
+    .visit_file(&file);
+
+    findings
+  }
+
+  #[test]
+  fn a_property_after_the_children_is_reported() {
+    assert_eq!(
+      findings(
+        "fn app() { Row::new().set_children(()).set_spacing(8.); }",
+        false
+      ),
+      ["test.rs:1: `set_spacing` follows `set_children`: a chain ends with the children"]
+    );
+  }
+
+  #[test]
+  fn a_chain_ending_with_its_children_passes() {
+    assert!(
+      findings(
+        "fn app() { Row::new().set_spacing(8.).set_children(()); }",
+        false
+      )
+      .is_empty()
+    );
+  }
+
+  #[test]
+  fn a_public_name_made_of_a_banned_word_is_reported() {
+    assert_eq!(
+      findings("pub struct Shape { pub row_gap: f32 }", true),
+      ["test.rs:1: `row_gap` uses `gap`, which the framework's vocabulary replaces"]
+    );
+  }
+
+  #[test]
+  fn a_private_or_test_name_may_use_any_word() {
+    assert!(
+      findings(
+        "struct Widget; #[cfg(test)] mod tests { pub fn widget() {} }",
+        true
+      )
+      .is_empty()
+    );
+  }
+
+  #[test]
+  fn a_spaced_em_dash_is_reported_in_a_comment_alone() {
+    let comment = ["/", "/ a comment — spaced"].concat();
+    let source = format!("let title = \"Home — skene\";\n{comment}\n");
+
+    assert_eq!(
+      spaced_em_dashes(Path::new("test.rs"), &source, true),
+      ["test.rs:2: an em-dash has a space beside it"]
+    );
+  }
+}

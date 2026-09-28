@@ -16,37 +16,46 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
+1. **The rest of the house rules in the gate.** Its `lint` step holds em-dashes
+    unspaced, children last and the public names to the vocabulary; still resting on
+    review are all-or-none field and variant docs (28 types document some of their
+    fields, about 210 short), the clippy lints worth turning on (`use_self`,
+    `missing_const_for_fn`, `allow_attributes_without_reason`,
+    `too_long_first_doc_paragraph`, one of `unreachable_pub` and `redundant_pub_crate`,
+    `missing_debug_implementations`, `rustdoc::missing_crate_level_docs`), the
+    reactive engine inheriting the workspace lints (70+ findings), `trigger_` naming on
+    the test doubles, and a `cargo public-api` snapshot so a change to the surface
+    shows in review. The workspace declares no license, so `cargo deny check licenses`
+    has nothing to hold the dependencies to. CI runs the gate on every pull request
+    and the RustSec advisories weekly; neither workflow has run yet.
+2. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-2. **The asset system grows.** `skene.toml` declares assets today, served in dev,
+3. **The asset system grows.** `skene.toml` declares assets today, served in dev,
     copied into static output and collected across the dependency graph; it gains
     further settings as they earn their place (Flutter's pubspec is the model). Font
     assets add generated metadata—per-face ascender, descender, line gap, cap height,
     read at build time—so the web can emulate text-box trimming where an engine lacks
     it and native and the terminal lay text out with the same numbers.
-3. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
+4. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
     switching.
-4. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+5. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-5. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+6. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
     attach` waits with it: the control pipe an app inherits across its swap exists on
     Unix alone, and where a process cannot be replaced the app exits with status 75
     for the launcher to spawn it.
-6. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+7. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-7. **The children-last rule as a lint.** Nothing enforces the ordering convention.
-    Rust has no stable way to ship a lint that runs under plain `cargo clippy`; the
-    ecosystem answer is a dylint crate at the cost of pinning an exact nightly.
 8. **The native platform family.** The largest phase and deliberately the last: it
     realizes an already-complete vocabulary once, instead of chasing additions.
     - Premise: **native views, native compositing, native text.** Every platform

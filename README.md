@@ -199,20 +199,22 @@ target/debug/counter-server /   # prints the page
 
 ## Testing
 
-Three tiers, and the host tier alone proves nothing about the web:
-
 ```sh
-cargo test --workspace                                                          # host: the engine, the spine, every view on the headless platform
-RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-gui -p skene-web   # server leaf: native, a byte-exact render snapshot
-cargo test -p skene-gui --target wasm32-unknown-unknown                         # browser leaf: a real DOM through geckodriver
+cargo xtask gate                 # every check a change passes
+cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` runs each of its steps
 ```
 
-Read the `test result:` lines rather than the exit codes: the browser runner panics on
-cleanup after reporting, which stops cargo before the remaining binaries run—so run
-each browser binary by name (`--test web_dom`, `web_hydrate`, `web_painted`,
-`web_resource`, `web_task`) and add the totals. `skene-web` carries its own `web_dom` and
-`web_ssr` binaries on the browser and server leaves, and the `gallery` example runs
-axe-core over every built-in in `web_axe`.
+The gate checks formatting, manifest order, the house rules, unused dependencies, clippy
+and rustdoc on every leaf, the feature powerset, the minimum Rust version, and three test
+tiers, of which the host alone proves nothing about the web: the host tier runs the
+engine, the spine and every view on the headless platform; the server tier builds the
+server leaf natively, a byte-exact render snapshot among its tests; the browser tier
+drives a real Firefox through geckodriver, the `gallery` example running axe-core over
+every built-in. Each step logs to `target/gate/<step>.log`. The gate needs the nightly
+toolchain for `rustfmt`, the toolchain the workspace's `rust-version` names, the
+`wasm32-unknown-unknown` target, `cargo-hack`, `cargo-shear`, Firefox, and a
+`wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one fails
+naming it.
 
 ## Extending
 

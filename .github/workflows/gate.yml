@@ -1,0 +1,59 @@
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read the pinned versions
+        id: versions
+        run: |
+          echo "msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)" >> "$GITHUB_OUTPUT"
+          echo "wasm_bindgen=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p}' Cargo.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Install the toolchains
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy --target wasm32-unknown-unknown
+          rustup toolchain install nightly --profile minimal --component rustfmt
+          rustup toolchain install "${{ steps.versions.outputs.msrv }}" --profile minimal
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack,cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run the gate
+        run: |
+          if [ -n "${GECKOWEBDRIVER:-}" ]; then
+            export GECKODRIVER="$GECKOWEBDRIVER/geckodriver"
+          fi
+
+          cargo xtask gate
+
+      - name: Keep the logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-logs
+          path: target/gate/*.log

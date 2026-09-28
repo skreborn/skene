@@ -341,7 +341,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
     .expect("the base rule references the slot");
   let hover = sheet
     .find(&format!(
-      ".{class}:hover{{background-color:{};}}",
+      ".{class}:where(:hover){{background-color:{};}}",
       css(red())
     ))
     .expect("the hover rule holds the variant");
@@ -566,7 +566,7 @@ fn a_focus_visible_variant_anchors_on_the_input() {
 
   assert!(
     sheet.contains(&format!(
-      ":where(:is(input,textarea):focus-visible) ~ .{class}"
+      ":where(input.skene-native:focus-visible) ~ .{class}"
     )),
     "{sheet}"
   );

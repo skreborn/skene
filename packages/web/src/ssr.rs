@@ -73,11 +73,10 @@ use super::{
     run_fingerprint,
     slot_registrations,
   },
-  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE},
+  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, NATIVE_CLASS},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
-    NATIVE_CLASS,
     NativeElement,
     SCOPE_ATTRIBUTE,
     STYLE_ATTRIBUTE,

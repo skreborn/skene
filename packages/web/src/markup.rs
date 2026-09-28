@@ -21,9 +21,6 @@ use skene_core::{
   Toggle,
 };
 
-/// The class the native input a control keeps inside its label carries.
-pub(crate) const NATIVE_CLASS: &str = "skene-native";
-
 /// The id of the server's `<style>` block, which the browser leaf adopts.
 pub(crate) const STYLE_ID: &str = "skene-styles";
 

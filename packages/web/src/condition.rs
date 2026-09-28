@@ -15,6 +15,9 @@ pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
 /// The attribute every control's root element carries.
 pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
+/// The class the native input a control keeps inside its label carries.
+pub(crate) const NATIVE_CLASS: &str = "skene-native";
+
 /// One conjunction of condition leaves in canonical order: what one rule is gated on.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub(crate) struct Conjunction {
@@ -169,14 +172,29 @@ impl Conjunction {
 
         with_preference.push(scheme_feature(scheme).to_owned());
         with_preference.sort_unstable();
-        self.emit_wrapped(
-          out,
-          &with_preference,
-          deferring_root(scheme),
-          &selectors,
-          body,
-        );
-        self.emit_wrapped(out, &self.media, chosen_root(scheme), &selectors, body);
+
+        if subject == Some(":root") {
+          let root = |guard: &str| vec![format!(":root{guard}{pseudo}")];
+
+          self.emit_wrapped(
+            out,
+            &with_preference,
+            "",
+            &root(deferring_guard(scheme)),
+            body,
+          );
+          self.emit_wrapped(out, &self.media, "", &root(chosen_guard(scheme)), body);
+        }
+        else {
+          self.emit_wrapped(
+            out,
+            &with_preference,
+            deferring_root(scheme),
+            &selectors,
+            body,
+          );
+          self.emit_wrapped(out, &self.media, chosen_root(scheme), &selectors, body);
+        }
       }
     }
   }
@@ -251,7 +269,6 @@ struct Facet {
   own: Option<&'static str>,
   native: Option<&'static str>,
   attribute: Option<&'static str>,
-  input_only: bool,
 }
 
 const fn facet(state: State) -> Facet {
@@ -260,55 +277,46 @@ const fn facet(state: State) -> Facet {
       own: Some(":hover"),
       native: None,
       attribute: None,
-      input_only: false,
     },
     State::Focused => Facet {
       own: Some(":focus"),
       native: Some(":focus"),
       attribute: None,
-      input_only: false,
     },
     State::FocusVisible => Facet {
       own: Some(":focus-visible"),
       native: Some(":focus-visible"),
       attribute: None,
-      input_only: false,
     },
     State::Pressed => Facet {
       own: Some(":active"),
       native: Some(":active"),
       attribute: None,
-      input_only: false,
     },
     State::Checked => Facet {
       own: None,
       native: Some(":checked"),
       attribute: Some("[data-skene-checked]"),
-      input_only: true,
     },
     State::Indeterminate => Facet {
       own: None,
       native: Some(":indeterminate"),
       attribute: Some("[data-skene-indeterminate]"),
-      input_only: true,
     },
     State::Disabled => Facet {
       own: Some(":disabled"),
       native: Some(":disabled"),
       attribute: Some("[data-skene-disabled]"),
-      input_only: false,
     },
     State::Invalid => Facet {
       own: None,
       native: Some("[aria-invalid=\"true\"]"),
       attribute: Some("[data-skene-invalid]"),
-      input_only: false,
     },
     State::Open => Facet {
       own: None,
       native: None,
       attribute: Some("[data-skene-open]"),
-      input_only: false,
     },
   }
 }
@@ -317,24 +325,29 @@ const fn facet(state: State) -> Facet {
 ///
 /// A state only the node can have (`:hover`) sits on the class. A state a control
 /// carries is observed wherever the control keeps it: on the node when it is the
-/// control's root (natively, by attribute, or through its own native input), on the
-/// native input the node follows as a sibling part or inside one, and on the root of a
-/// drawn control above it. Every anchor sits in `:where()`, so the forms share the
-/// class's specificity and rule order alone decides between variants.
+/// control's root (natively, by attribute, or through the native input it keeps), on
+/// the native input a control keeps when the node follows it as a sibling part or sits
+/// inside one, and on the root of a drawn control above it. Every state and anchor sits
+/// in `:where()`, so every form has the class's specificity and rule order alone
+/// decides between variants.
 fn selectors(states: &[State], pseudo: &str) -> Vec<String> {
   let facets: Vec<Facet> = states.iter().copied().map(facet).collect();
-  let carrier = if facets.iter().any(|facet| facet.input_only) {
-    "input"
-  }
-  else {
-    ":is(input,textarea)"
-  };
+  let carrier = format!("input.{NATIVE_CLASS}");
   let class = |chain: &str| format!(".{CLASS_PLACEHOLDER}{chain}{pseudo}");
+  let own = |facets: &mut dyn Iterator<Item = &Facet>| -> String {
+    facets
+      .filter_map(|facet| facet.own)
+      .fold(String::new(), |mut out, own| {
+        let _ = write!(out, ":where({own})");
+
+        out
+      })
+  };
   let mut on_self = String::new();
 
   for facet in &facets {
     match (facet.native, facet.attribute) {
-      (None, None) => on_self.push_str(facet.own.unwrap_or_default()),
+      (None, None) => on_self.push_str(&own(&mut std::iter::once(facet))),
       (native, attribute) => {
         let mut alternatives: Vec<String> = Vec::new();
 
@@ -374,11 +387,7 @@ fn selectors(states: &[State], pseudo: &str) -> Vec<String> {
       .all(|facet| facet.native.is_some() || facet.own.is_some())
   {
     let on_carrier: String = facets.iter().filter_map(|facet| facet.native).collect();
-    let rest: String = facets
-      .iter()
-      .filter(|facet| facet.native.is_none())
-      .filter_map(|facet| facet.own)
-      .collect();
+    let rest = own(&mut facets.iter().filter(|facet| facet.native.is_none()));
 
     forms.push(format!(":where({carrier}{on_carrier}) ~ {}", class(&rest)));
     forms.push(format!(
@@ -396,7 +405,7 @@ fn selectors(states: &[State], pseudo: &str) -> Vec<String> {
 
     for facet in &facets {
       match (facet.native, facet.attribute) {
-        (None, None) => rest.push_str(facet.own.unwrap_or_default()),
+        (None, None) => rest.push_str(&own(&mut std::iter::once(facet))),
         (native, attribute) => {
           let alternatives: Vec<&str> = native.into_iter().chain(attribute).collect();
 
@@ -439,6 +448,22 @@ const fn chosen_root(scheme: ColorScheme) -> &'static str {
   }
 }
 
+/// [`deferring_root`] as a compound on the root itself.
+const fn deferring_guard(scheme: ColorScheme) -> &'static str {
+  match scheme {
+    ColorScheme::Light => ":where(:not([data-skene-scheme=\"dark\"]))",
+    ColorScheme::Dark => ":where(:not([data-skene-scheme=\"light\"]))",
+  }
+}
+
+/// [`chosen_root`] as a compound on the root itself.
+const fn chosen_guard(scheme: ColorScheme) -> &'static str {
+  match scheme {
+    ColorScheme::Light => ":where([data-skene-scheme=\"light\"])",
+    ColorScheme::Dark => ":where([data-skene-scheme=\"dark\"])",
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use skene_core::{Condition, ContainerName, ContainerQuery, Media, State};
@@ -455,13 +480,14 @@ mod tests {
     out.replace(CLASS_PLACEHOLDER, "C")
   }
 
-  /// A node's own state is a pseudo-class on the class; media wraps it, a scheme emits
-  /// it twice, and a container query nests inside the media block.
+  /// A node's own state is a pseudo-class on the class, adding no specificity; media
+  /// wraps it, a scheme emits it twice, and a container query nests inside the media
+  /// block.
   #[test]
   fn conditions_render_to_their_blocks() {
     assert_eq!(
       render(&Condition::from(State::Hovered)),
-      ".C:hover{color:red;}"
+      ".C:where(:hover){color:red;}"
     );
     assert_eq!(
       render(&Condition::and([
@@ -470,8 +496,9 @@ mod tests {
         Media::Dark.into(),
       ])),
       "@media (min-width: 900px) and (prefers-color-scheme: dark)\
-       {:where(:root:not([data-skene-scheme=\"light\"])) .C:hover{color:red;}}\
-       @media (min-width: 900px){:where(:root[data-skene-scheme=\"dark\"]) .C:hover{color:red;}}"
+       {:where(:root:not([data-skene-scheme=\"light\"])) .C:where(:hover){color:red;}}\
+       @media (min-width: 900px){:where(:root[data-skene-scheme=\"dark\"]) \
+       .C:where(:hover){color:red;}}"
     );
     assert_eq!(
       render(&Condition::from(Media::Container {
@@ -479,6 +506,23 @@ mod tests {
         query: ContainerQuery::MinWidth(300.),
       })),
       "@container sidebar (min-width: 300px){.C{color:red;}}"
+    );
+  }
+
+  /// A scheme on the root itself guards the root's own compound.
+  #[test]
+  fn a_root_subject_takes_the_scheme_guard_itself() {
+    let mut out = String::new();
+
+    for conjunction in Conjunction::of_media(&Media::Dark) {
+      conjunction.emit(&mut out, Some(":root"), "", "color:red;");
+    }
+
+    assert_eq!(
+      out,
+      "@media (prefers-color-scheme: dark)\
+       {:root:where(:not([data-skene-scheme=\"light\"])){color:red;}}\
+       :root:where([data-skene-scheme=\"dark\"]){color:red;}"
     );
   }
 
@@ -494,7 +538,7 @@ mod tests {
   }
 
   /// A control's state anchors on the control: the node itself as the root, the native
-  /// input it follows, or the drawn root above it.
+  /// input the control keeps and the node follows, or the drawn root above it.
   #[test]
   fn control_states_anchor_on_the_control() {
     let forms = selectors(&[State::Checked], "");
@@ -502,15 +546,15 @@ mod tests {
     assert_eq!(forms.len(), 4);
     assert_eq!(
       forms[0].replace(CLASS_PLACEHOLDER, "C"),
-      ".C:where(:is(:checked,:has(> input:checked),[data-skene-checked]))"
+      ".C:where(:is(:checked,:has(> input.skene-native:checked),[data-skene-checked]))"
     );
     assert_eq!(
       forms[1].replace(CLASS_PLACEHOLDER, "C"),
-      ":where(input:checked) ~ .C"
+      ":where(input.skene-native:checked) ~ .C"
     );
     assert_eq!(
       forms[2].replace(CLASS_PLACEHOLDER, "C"),
-      ":where(input:checked ~ *) .C"
+      ":where(input.skene-native:checked ~ *) .C"
     );
     assert_eq!(
       forms[3].replace(CLASS_PLACEHOLDER, "C"),
@@ -521,11 +565,11 @@ mod tests {
 
     assert_eq!(
       focus[2].replace(CLASS_PLACEHOLDER, "C"),
-      ":where(:is(input,textarea):focus-visible ~ *) .C:hover"
+      ":where(input.skene-native:focus-visible ~ *) .C:where(:hover)"
     );
     assert_eq!(
       focus[3].replace(CLASS_PLACEHOLDER, "C"),
-      ":where([data-skene-control]:is(:focus-visible)) .C:hover"
+      ":where([data-skene-control]:is(:focus-visible)) .C:where(:hover)"
     );
   }
 }

@@ -349,11 +349,15 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
   let mark_class = classes(&body[mark..])[0].clone();
 
   assert!(
-    styles.contains(&format!(":where(input:checked ~ *) .{mark_class}")),
+    styles.contains(&format!(
+      ":where(input.skene-native:checked ~ *) .{mark_class}"
+    )),
     "{styles}"
   );
   assert!(
-    styles.contains(&format!(":where(input:checked) ~ .{mark_class}")),
+    styles.contains(&format!(
+      ":where(input.skene-native:checked) ~ .{mark_class}"
+    )),
     "{styles}"
   );
   assert!(

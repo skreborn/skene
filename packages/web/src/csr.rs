@@ -121,11 +121,10 @@ use super::{
     render_run_leaf,
     run_fingerprint,
   },
-  condition::CONTROL_ATTRIBUTE,
+  condition::{CONTROL_ATTRIBUTE, NATIVE_CLASS},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
-    NATIVE_CLASS,
     NativeElement,
     SCOPE_ATTRIBUTE,
     STYLE_ID,

@@ -114,7 +114,7 @@ fn input_styling_interns_with_variants() {
   assert!(base.contains("padding:8px 8px 8px 8px;"), "{styles}");
   assert!(
     styles.contains(&format!(
-      ".{class}:where(:is(:focus,:has(> :is(input,textarea):focus)))"
+      ".{class}:where(:is(:focus,:has(> input.skene-native:focus)))"
     )) && styles.contains("{border-radius:4px;}"),
     "the focus variant is the input's own: {styles}",
   );

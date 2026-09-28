@@ -96,7 +96,7 @@ fn rounded(radius: f32) -> BoxStyle<f32, Keyframe, GuiExt> {
   style
 }
 
-/// A hover variant renders as a `:hover` rule on the same class.
+/// A hover variant renders as a `:hover` rule on the same class, adding no specificity.
 #[test]
 fn state_variant_renders_a_pseudo_class_rule() {
   let rendered = render_to_string(|| {
@@ -114,7 +114,7 @@ fn state_variant_renders_a_pseudo_class_rule() {
   assert!(
     rendered
       .styles()
-      .contains(&format!(".{class}:hover{{width:20px;}}"))
+      .contains(&format!(".{class}:where(:hover){{width:20px;}}"))
   );
 }
 
@@ -146,7 +146,7 @@ fn combined_conditions_nest_media_around_states() {
 
   assert!(
     rendered.styles().contains(&format!(
-      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:8px;}}}}"
+      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:where(:hover){{border-radius:8px;}}}}"
     )),
     "{}",
     rendered.styles()
@@ -179,7 +179,7 @@ fn or_composition_emits_a_rule_per_alternative() {
 
   assert!(
     rendered.styles().contains(&format!(
-      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:2px;}}}}"
+      "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:where(:hover){{border-radius:2px;}}}}"
     )),
     "{}",
     rendered.styles()
@@ -267,7 +267,7 @@ fn run_variants_intern_and_render() {
   });
 
   let styles = rendered.styles();
-  let hover_rules = styles.matches(":hover{font-weight:700;}").count();
+  let hover_rules = styles.matches(":where(:hover){font-weight:700;}").count();
 
   assert_eq!(hover_rules, 1, "{styles}");
 }
@@ -475,14 +475,12 @@ fn a_scheme_variant_keeps_its_states_on_both_rules() {
   let class = root_class(rendered.body());
 
   assert!(rendered.styles().contains(&format!(
-    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:hover{{border-radius:4px;}}}}"
+    "@media (prefers-color-scheme: dark){{{DEFERRING} .{class}:where(:hover){{border-radius:4px;}}}}"
   )));
 
-  assert!(
-    rendered
-      .styles()
-      .contains(&format!("{CHOSEN} .{class}:hover{{border-radius:4px;}}"))
-  );
+  assert!(rendered.styles().contains(&format!(
+    "{CHOSEN} .{class}:where(:hover){{border-radius:4px;}}"
+  )));
 }
 
 /// A token naming no condition renders one value and no query: nothing is left for the

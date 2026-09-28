@@ -401,14 +401,14 @@ fn wheel_gesture_holds_at_the_target_limit_then_chains() {
   });
 }
 
-/// The page keys scroll the nearest scrollable box around the focus, or the first, by a
-/// viewport height.
+/// The page keys scroll the nearest scrollable box around the focus, or the first, by
+/// the rows it shows less one.
 #[test]
-fn page_keys_scroll_by_a_viewport() {
+fn page_keys_scroll_by_a_viewport_less_a_row() {
   with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
-        .set_height(3)
+        .set_height(4)
         .set_overflow(Overflow::Auto)
         .set_child(
           Column::new().set_children(
@@ -421,14 +421,14 @@ fn page_keys_scroll_by_a_viewport() {
         .build()
     });
 
-    assert!(tui::render_to_text(6, 3).starts_with("r0"));
+    assert!(tui::render_to_text(6, 4).starts_with("r0"));
 
     tui::trigger_key("PageDown");
 
-    assert!(tui::render_to_text(6, 3).starts_with("r3"));
+    assert!(tui::render_to_text(6, 4).starts_with("r3"));
 
     tui::trigger_key("PageUp");
 
-    assert!(tui::render_to_text(6, 3).starts_with("r0"));
+    assert!(tui::render_to_text(6, 4).starts_with("r0"));
   });
 }

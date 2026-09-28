@@ -1476,7 +1476,8 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64) {
 }
 
 /// Scrolls the nearest scrollable box around the focus (or the first in tree order)
-/// by `pages` viewport heights.
+/// by `pages` pages, a page the rows it shows less one, as a browser keeps a line of
+/// context.
 pub(crate) fn page_scroll(pages: i64) {
   let target = store(|store| {
     let target = store
@@ -1500,9 +1501,17 @@ pub(crate) fn page_scroll(pages: i64) {
 
         None
       })?;
-    let (_, height) = store.node_size(target);
+    let rows = if store.is_editor(target) {
+      i64::try_from(store.field_area(target).rows).unwrap_or(i64::MAX)
+    }
+    else {
+      let (_, height) = store.node_size(target);
+      let (_, top, _, bottom) = store.node_border(target);
 
-    Some((target, height.max(1)))
+      height - top - bottom
+    };
+
+    Some((target, (rows - 1).max(1)))
   });
 
   if let Some((handle, height)) = target {

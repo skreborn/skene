@@ -819,6 +819,12 @@ fn open_script(out: &mut String) {
   out.push('>');
 }
 
+/// Routes `tracing` events to standard error, a render's deadline report among them,
+/// unless the process already set a subscriber.
+pub fn install_logging() {
+  let _ = tracing::subscriber::set_global_default(crate::logging::LogSubscriber);
+}
+
 /// Sets the path the coming render is for, read back by [`current_path`].
 pub fn set_request_path(path: &str) {
   REQUEST_PATH.with(|current| path.clone_into(&mut current.borrow_mut()));
@@ -1473,9 +1479,10 @@ pub const fn stored_scheme() -> Option<ColorScheme> {
   None
 }
 
-/// Opts the page into view transitions: the stylesheet carries
-/// `@view-transition { navigation: auto }`, so a browser that has them animates the
-/// cross-document navigations between the served pages; one that does not cuts.
+/// Opts the pages into view transitions, this render and every one after on the
+/// thread: the stylesheet carries `@view-transition { navigation: auto }`, so a browser
+/// that has them animates the cross-document navigations between the served pages; one
+/// that does not cuts.
 pub fn enable_view_transitions() {
   VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
 }
@@ -1637,7 +1644,6 @@ fn begin_render() -> (NodeId, Owner) {
   TREE.with(|tree| *tree.borrow_mut() = Tree::new());
   Scene::<Web>::with(|scene| *scene = Scene::new());
   PREEMPT_SCHEME.with(|preempt| preempt.set(false));
-  VIEW_TRANSITIONS.with(|enabled| enabled.set(false));
   BOUNDARIES.with(|boundaries| boundaries.borrow_mut().clear());
   crate::hydration::reset_sources();
   forget_static_routes();

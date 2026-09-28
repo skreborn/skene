@@ -34,6 +34,8 @@ mod hydration;
 #[cfg_attr(skene_leaf = "host", expect(dead_code))]
 mod interner;
 #[cfg(not(skene_leaf = "host"))]
+mod logging;
+#[cfg(not(skene_leaf = "host"))]
 mod markup;
 mod motion;
 #[cfg(skene_leaf = "server")]
@@ -99,6 +101,7 @@ pub use self::ssr::{
   drive,
   enable_view_transitions,
   install_executor,
+  install_logging,
   record_static_routes,
   recorded_static_routes,
   register_boundary,

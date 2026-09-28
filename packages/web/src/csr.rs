@@ -19,7 +19,6 @@ mod dev;
 mod events;
 mod head;
 mod history;
-mod logging;
 mod media;
 mod restore;
 mod sheet;
@@ -2261,7 +2260,7 @@ where
 {
   console_error_panic_hook::set_once();
 
-  let _ = tracing::subscriber::set_global_default(logging::ConsoleSubscriber);
+  let _ = tracing::subscriber::set_global_default(crate::logging::LogSubscriber);
 
   let document = web_sys::window()
     .expect("a window")
@@ -2302,7 +2301,7 @@ where
 
   console_error_panic_hook::set_once();
 
-  let _ = tracing::subscriber::set_global_default(logging::ConsoleSubscriber);
+  let _ = tracing::subscriber::set_global_default(crate::logging::LogSubscriber);
 
   let body = document.body().expect("a body");
 

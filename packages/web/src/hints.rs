@@ -40,24 +40,26 @@ impl RenderHints {
     "Sec-CH-DPR",
   ];
 
-  /// The hints `headers` carry over the defaults; header names compare
-  /// case-insensitively, and a header that is absent or malformed leaves its default.
+  /// The hints `headers` carry over the defaults, each value read as the structured
+  /// field it is (a quoted string or a token, an integer or a decimal); header names
+  /// compare case-insensitively, and a header that is absent or malformed leaves its
+  /// default.
   pub fn from_headers<'a>(headers: impl IntoIterator<Item = (&'a str, &'a str)>) -> Self {
     let mut hints = Self::DEFAULT;
 
     for (name, value) in headers {
-      let value = value.trim();
-
       if name.eq_ignore_ascii_case("Sec-CH-Prefers-Color-Scheme") {
-        if value.eq_ignore_ascii_case("dark") {
-          hints.scheme = ColorScheme::Dark;
-        }
-        else if value.eq_ignore_ascii_case("light") {
-          hints.scheme = ColorScheme::Light;
+        match word(value).as_deref() {
+          Some(scheme) if scheme.eq_ignore_ascii_case("dark") => hints.scheme = ColorScheme::Dark,
+          Some(scheme) if scheme.eq_ignore_ascii_case("light") => {
+            hints.scheme = ColorScheme::Light;
+          }
+          _ => {}
         }
       }
       else if name.eq_ignore_ascii_case("Sec-CH-Prefers-Reduced-Motion") {
-        hints.reduced_motion = value.eq_ignore_ascii_case("reduce");
+        hints.reduced_motion =
+          word(value).is_some_and(|motion| motion.eq_ignore_ascii_case("reduce"));
       }
       else if name.eq_ignore_ascii_case("Sec-CH-Viewport-Width") {
         if let Some(width) = positive(value) {
@@ -101,12 +103,38 @@ impl Default for RenderHints {
   }
 }
 
-/// `value` as a positive finite number.
-fn positive(value: &str) -> Option<f32> {
-  value
-    .parse::<f32>()
+/// The item the structured field `value` holds, its parameters aside.
+fn item(value: &str) -> Option<sfv::BareItem> {
+  sfv::Parser::new(value.trim())
+    .parse::<sfv::Item>()
     .ok()
-    .filter(|number| number.is_finite() && *number > 0.)
+    .map(|item| item.bare_item)
+}
+
+/// The text of the string or token the structured field `value` holds.
+fn word(value: &str) -> Option<String> {
+  let item = item(value)?;
+
+  item
+    .as_string()
+    .map(|string| string.as_str().to_owned())
+    .or_else(|| item.as_token().map(|token| token.as_str().to_owned()))
+}
+
+/// The positive number, an integer or a decimal, the structured field `value` holds.
+#[expect(
+  clippy::cast_precision_loss,
+  clippy::cast_possible_truncation,
+  reason = "a hint's size and ratio lie far within an f32's range"
+)]
+fn positive(value: &str) -> Option<f32> {
+  let item = item(value)?;
+  let number = item
+    .as_integer()
+    .map(|integer| i64::from(integer) as f64)
+    .or_else(|| item.as_decimal().map(f64::from))?;
+
+  (number > 0.).then_some(number as f32)
 }
 
 #[cfg(test)]
@@ -131,6 +159,24 @@ mod tests {
     assert!(hints.reduced_motion);
     assert_eq!(hints.viewport, Size::new(390., 844.));
     assert!((hints.device_pixel_ratio - 3.).abs() < f32::EPSILON);
+  }
+
+  /// Each hint reads as the structured field a browser sends: the scheme and the
+  /// motion preference quoted, the sizes as integers or decimals, parameters aside.
+  #[test]
+  fn hints_read_as_structured_fields() {
+    let hints = RenderHints::from_headers([
+      ("Sec-CH-Prefers-Color-Scheme", "\"dark\""),
+      ("Sec-CH-Prefers-Reduced-Motion", "\"reduce\";q=1"),
+      ("Sec-CH-Viewport-Width", "1280"),
+      ("Sec-CH-Viewport-Height", "720.5"),
+      ("Sec-CH-DPR", "1.25"),
+    ]);
+
+    assert_eq!(hints.scheme, ColorScheme::Dark);
+    assert!(hints.reduced_motion);
+    assert_eq!(hints.viewport, Size::new(1280., 720.5));
+    assert!((hints.device_pixel_ratio - 1.25).abs() < f32::EPSILON);
   }
 
   /// A malformed or absent header leaves its default.

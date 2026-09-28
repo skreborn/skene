@@ -1,4 +1,5 @@
-//! A `tracing` subscriber that routes events to the browser console.
+//! A `tracing` subscriber that routes events to the leaf's log: the browser console,
+//! or a server's standard error.
 
 use std::fmt::{self, Write};
 
@@ -10,14 +11,13 @@ use tracing::{
   field::{Field, Visit},
   span,
 };
-use wasm_bindgen::JsValue;
 
-/// Routes each `tracing` event to the browser console, by level: `error!` to
-/// `console.error`, `warn!` to `console.warn`, everything else to `console.log`. Spans are
-/// ignored.
-pub(crate) struct ConsoleSubscriber;
+/// Routes each `tracing` event to the leaf's log: in the browser by level, `error!` to
+/// `console.error`, `warn!` to `console.warn` and everything else to `console.log`; on a
+/// server to standard error, each line led by its level. Spans are ignored.
+pub(crate) struct LogSubscriber;
 
-impl Subscriber for ConsoleSubscriber {
+impl Subscriber for LogSubscriber {
   fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
     true
   }
@@ -35,19 +35,30 @@ impl Subscriber for ConsoleSubscriber {
     let mut line = format!("{}: ", metadata.target());
 
     event.record(&mut FieldVisitor(&mut line));
-
-    let value = JsValue::from_str(&line);
-
-    match *metadata.level() {
-      Level::ERROR => web_sys::console::error_1(&value),
-      Level::WARN => web_sys::console::warn_1(&value),
-      _ => web_sys::console::log_1(&value),
-    }
+    emit(*metadata.level(), &line);
   }
 
   fn enter(&self, _span: &span::Id) {}
 
   fn exit(&self, _span: &span::Id) {}
+}
+
+/// Writes `line` to the browser console at `level`.
+#[cfg(skene_leaf = "browser")]
+fn emit(level: Level, line: &str) {
+  let value = wasm_bindgen::JsValue::from_str(line);
+
+  match level {
+    Level::ERROR => web_sys::console::error_1(&value),
+    Level::WARN => web_sys::console::warn_1(&value),
+    _ => web_sys::console::log_1(&value),
+  }
+}
+
+/// Writes `line` to standard error, led by its `level`.
+#[cfg(skene_leaf = "server")]
+fn emit(level: Level, line: &str) {
+  eprintln!("{level} {line}");
 }
 
 /// Appends an event's fields to a line: the `message` field unlabelled, others as

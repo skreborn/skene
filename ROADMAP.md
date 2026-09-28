@@ -53,12 +53,6 @@ left half-done in a code comment.
     documented; the code-split loader's glue, about 50 lines of JavaScript, is owned,
     memoizing in-flight loads, reporting failure, retrying, and stating the safety of
     its `Rc::into_raw`/`from_raw` pair; `wasm-split-cli` is pinned with `=`.
-    - With them, server rendering: the `--serve` protocol keeps its own duplicate of
-    fd 1 and points the app's stdout at stderr; `--routes` output is marker-framed and
-    worker reads time out; `render_main` installs a stderr `tracing` subscriber for the
-    deadline report; client hints parse as structured fields (`sfv`), since Chromium
-    quotes them; `app-server --help` prints help; `view_transitions::enable()` holds
-    across renders.
     - With them, the CLI's builds: artifact paths from cargo's JSON messages
     (`cargo_metadata`), so a custom target directory and `.exe` work; `--target`
     always, the platform cfg passed through `--config target.<triple>.rustflags` so it

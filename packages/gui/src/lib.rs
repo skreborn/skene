@@ -469,14 +469,32 @@ pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
 #[cfg(skene_leaf = "server")]
 pub const NONCE_VARIABLE: &str = "SKENE_SCRIPT_NONCE";
 
+/// The first line and the last of `--routes` output, the routes one per line between.
+#[cfg(skene_leaf = "server")]
+pub const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
+
+/// What `app-server --help` prints.
+#[cfg(skene_leaf = "server")]
+const USAGE: &str = "usage: app-server [path | --stream path | --routes | --serve | --help]
+
+  path            render the page at path (default /) to stdout
+  --stream path   render the page at path to stdout as it streams
+  --routes        list the statically renderable routes between markers
+  --serve         render one length-framed request after another from stdin
+  --help          print this
+
+SKENE_HINTS names the client hints a render answers with, one `Name: value` per
+line; SKENE_SCRIPT_NONCE the nonce its inline scripts carry.";
+
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
-/// the statically-renderable routes one per line (see [`install_static_router`]), or,
-/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it, or,
-/// given `--serve`, renders one request after another read from stdin (see
-/// [`serve_renders`]). The client hints in [`HINTS_VARIABLE`], when set, are the
-/// environment the render answers with, and the nonce in [`NONCE_VARIABLE`] its inline
-/// scripts carry.
+/// the statically-renderable routes one per line between [`ROUTES_MARKERS`] (see
+/// [`install_static_router`]), or, given `--stream <path>`, writes the page as
+/// [`render_page_stream`] flushes it, or, given `--serve`, renders one request after
+/// another read from stdin (see [`serve_renders`]), or, given `--help`, prints its
+/// usage. The client hints in [`HINTS_VARIABLE`], when set, are the environment the
+/// render answers with, and the nonce in [`NONCE_VARIABLE`] its inline scripts carry;
+/// `tracing` events, a render's deadline report among them, go to stderr.
 ///
 /// This makes the app's server build a plain command—`app-server /some/path` prints
 /// the document—which is exactly the interface a server or a generator embeds.
@@ -487,6 +505,14 @@ where
   V: IntoView,
 {
   use std::io::Write as _;
+
+  skene_web::install_logging();
+
+  if matches!(std::env::args().nth(1).as_deref(), Some("--help" | "-h")) {
+    println!("{USAGE}");
+
+    return;
+  }
 
   if std::env::args().nth(1).as_deref() == Some("--serve") {
     serve_renders(app);
@@ -508,11 +534,19 @@ where
   let argument = std::env::args().nth(1).unwrap_or_else(|| "/".to_owned());
 
   if argument == "--routes" {
+    let mut output = protocol_output();
     let _ = render_to_string_at("/", app);
+    let [first, last] = ROUTES_MARKERS;
+    let routes = skene_web::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]);
 
-    for route in skene_web::recorded_static_routes().unwrap_or_else(|| vec!["/".to_owned()]) {
-      println!("{route}");
+    let _ = writeln!(output, "{first}");
+
+    for route in routes {
+      let _ = writeln!(output, "{route}");
     }
+
+    let _ = writeln!(output, "{last}");
+    let _ = output.flush();
 
     return;
   }
@@ -654,6 +688,7 @@ where
 {
   use std::io::Write as _;
 
+  let mut output = protocol_output();
   let stdin = std::io::stdin();
   let mut stdin = stdin.lock();
 
@@ -673,11 +708,29 @@ where
     skene_web::set_render_hints(skene_web::RenderHints::from_headers(fields()));
 
     let page = render_to_string_at(path, app.clone()).page();
-    let mut stdout = std::io::stdout().lock();
 
-    let _ = write!(stdout, "Content-Length: {}\n\n{page}", page.len());
-    let _ = stdout.flush();
+    let _ = write!(output, "Content-Length: {}\n\n{page}", page.len());
+    let _ = output.flush();
   }
+}
+
+/// The stream a protocol writes to: the process's standard output, taken aside, and
+/// standard output itself pointed at standard error, so what the app prints stays out of
+/// the protocol's way. Standard output as it is where it cannot be taken aside.
+#[cfg(skene_leaf = "server")]
+fn protocol_output() -> Box<dyn std::io::Write> {
+  #[cfg(unix)]
+  {
+    use std::os::fd::AsFd as _;
+
+    if let Ok(kept) = rustix::io::dup(std::io::stdout().as_fd())
+      && rustix::stdio::dup2_stdout(std::io::stderr().as_fd()).is_ok()
+    {
+      return Box::new(std::fs::File::from(kept));
+    }
+  }
+
+  Box::new(std::io::stdout())
 }
 
 /// Reads one length-framed message: `Content-Length: <bytes>` on a line, an empty

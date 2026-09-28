@@ -591,8 +591,9 @@ fn a_token_keyframe_renders_its_variable() {
   );
 }
 
-/// The view-transition opt-in emits the cross-document rule, and a named box carries
-/// its `view-transition-name`; without the opt-in the rule is absent.
+/// The view-transition opt-in emits the cross-document rule for its render and every
+/// later one on the thread, and a named box carries its `view-transition-name`; without
+/// the opt-in the rule is absent.
 #[test]
 fn view_transitions_opt_in_reaches_the_stylesheet() {
   let rendered = render_to_string(|| {
@@ -615,7 +616,16 @@ fn view_transitions_opt_in_reaches_the_stylesheet() {
     rendered.styles()
   );
 
-  let plain = render_to_string(Container::new);
+  let later = render_to_string(Container::new);
 
-  assert!(!plain.styles().contains("@view-transition"));
+  assert!(
+    later.styles().contains("@view-transition"),
+    "the opt-in holds for every later render on the thread"
+  );
+
+  let elsewhere = std::thread::spawn(|| render_to_string(Container::new).styles().to_owned())
+    .join()
+    .expect("a render on its own thread");
+
+  assert!(!elsewhere.contains("@view-transition"));
 }

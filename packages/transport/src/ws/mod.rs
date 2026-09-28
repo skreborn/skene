@@ -1,13 +1,14 @@
 //! A WebSocket client on the framework's public seams alone, as [`http`](super::http)
-//! is: [`connect`] is a future resolving to a [`WebSocket`], a message is
-//! sent at once, and [`receive`](WebSocket::receive) is a future a task awaits in a
+//! is: [`connect`] is a future resolving to a [`WebSocket`], a message is queued for
+//! sending at once, and [`receive`](WebSocket::receive) is a future a task awaits in a
 //! loop, resolving with each message as it lands and with `None` once the socket has
 //! closed. Nothing in the framework knows this crate exists.
 //!
-//! The transport is the platform's: the browser's `WebSocket` on the web, and a thread
-//! around a plain client (`tungstenite`) on every other host, a server render included,
-//! the future woken through its waker as messages arrive; a socket opened during a
-//! render lives for that render. Dropping the socket closes it.
+//! The transport is the platform's: the browser's `WebSocket` on the web, and on every
+//! other host, a server render included, a plain client (`tungstenite`) on a thread of
+//! its own that owns the socket, the future woken through its waker as messages arrive;
+//! a socket opened during a render lives for that render. Dropping the socket closes
+//! it.
 
 use std::{
   collections::VecDeque,
@@ -20,7 +21,6 @@ use std::{
 
 #[cfg(not(target_arch = "wasm32"))]
 mod host;
-mod url;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 mod web;
 
@@ -195,11 +195,13 @@ impl fmt::Debug for WebSocket {
 }
 
 impl WebSocket {
-  /// Sends `message`.
+  /// Queues `message` to be sent, as a browser's socket does; a failure on the way
+  /// closes the socket.
   ///
   /// # Errors
   ///
-  /// [`Error::Closed`] once the socket has closed, or a transport failure.
+  /// [`Error::Closed`] once the socket has closed, or a transport failure the platform
+  /// reports at once.
   pub fn send(&self, message: impl Into<Message>) -> Result<(), Error> {
     if self.receiver.is_closed() {
       return Err(Error::Closed);
@@ -229,18 +231,15 @@ impl WebSocket {
   }
 }
 
-/// Opens a socket to `url` (`ws://` or `wss://`), resolving once the connection is
-/// established.
+/// Opens a socket to `url`, resolving once the connection is established: a `ws://` or
+/// `wss://` URL, or an `http://` or `https://` one taken as the socket URL a browser
+/// makes of it, and on the web a URL relative to the page.
 ///
 /// # Errors
 ///
-/// A URL that is not an absolute `ws://` or `wss://` one, or a connection that could
-/// not be made.
+/// A URL the platform cannot open a socket to, or a connection that could not be made.
 pub async fn connect(url: impl Into<String>) -> Result<WebSocket, Error> {
   let url = url.into();
-
-  url::parts(&url)?;
-
   let receiver = Receiver::new();
   let link = transport::connect(url, receiver.clone()).await?;
 

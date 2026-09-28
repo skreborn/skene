@@ -10,5 +10,7 @@
 //! Nothing in the framework knows this crate exists, so a third-party client sits on
 //! exactly the same footing.
 
+#[cfg(not(target_arch = "wasm32"))]
+mod host;
 pub mod http;
 pub mod ws;

@@ -114,7 +114,25 @@ fn a_refused_host_is_an_error_and_closing_ends_the_receiving() {
 
 #[test]
 fn a_url_of_another_scheme_is_refused() {
-  let outcome = block_on(skene_transport::ws::connect("http://not-a-socket/"));
+  let outcome = block_on(skene_transport::ws::connect("ftp://not-a-socket/"));
 
   assert!(matches!(outcome, Err(Error::Url(_))), "{outcome:?}");
+
+  let relative = block_on(skene_transport::ws::connect("/socket"));
+
+  assert!(matches!(relative, Err(Error::Url(_))), "{relative:?}");
+}
+
+/// An `http` URL is taken as the socket URL a browser makes of it.
+#[test]
+fn an_http_url_opens_the_socket_a_browser_would() {
+  let server = serve().replace("ws://", "http://");
+  let socket = block_on(skene_transport::ws::connect(server)).expect("a socket");
+
+  socket.send("hello").expect("sent");
+
+  assert_eq!(
+    block_on(socket.receive()),
+    Some(Message::Text("hello".to_owned()))
+  );
 }

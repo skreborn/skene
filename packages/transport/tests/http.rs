@@ -15,8 +15,12 @@ use std::{
 
 use skene_transport::http::{Error, Request, Response};
 
+/// The size of the large body, past the 10 MB a client might cap a body at.
+const LARGE: usize = 11 << 20;
+
 /// Serves canned answers on a port of its own: `/hello` answers `201` with a header
-/// and a body, `/echo` answers with the body it was sent, anything else `404`.
+/// and a body, `/echo` answers with the body it was sent, `/large` with more than a
+/// client might cap a body at, anything else `404`.
 fn serve() -> String {
   let listener = TcpListener::bind("127.0.0.1:0").expect("a port");
   let address = format!("http://{}", listener.local_addr().expect("an address"));
@@ -76,6 +80,7 @@ fn answer(mut stream: TcpStream) {
   let (status, extra, answer): (&str, &str, Vec<u8>) = match path.as_str() {
     "/hello" => ("201 Created", "X-Test: yes\r\n", b"hello".to_vec()),
     "/echo" => ("200 OK", "", body),
+    "/large" => ("200 OK", "", vec![b'x'; LARGE]),
     _ => ("404 Not Found", "", b"nothing here".to_vec()),
   };
 
@@ -134,6 +139,20 @@ fn a_failing_status_is_a_response_and_a_dead_host_an_error() {
   let dead = block_on(skene_transport::http::get("http://127.0.0.1:1/"));
 
   assert!(matches!(dead, Err(Error::Transport(_))), "{dead:?}");
+}
+
+/// A relative URL has no page to resolve against on a host, and a large body is read
+/// whole.
+#[test]
+fn a_relative_url_is_refused_and_a_large_body_read_whole() {
+  let relative = block_on(skene_transport::http::get("/relative"));
+
+  assert!(matches!(relative, Err(Error::Url(_))), "{relative:?}");
+
+  let large =
+    block_on(skene_transport::http::get(format!("{}/large", serve()))).expect("a response");
+
+  assert_eq!(large.body().len(), LARGE);
 }
 
 #[test]

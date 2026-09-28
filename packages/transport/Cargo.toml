@@ -24,8 +24,10 @@ web-sys = { version = "0.3", features = [
 ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rustls = { default-features = false, features = ["logging", "ring", "std", "tls12"], version = "0.23" }
+rustls-platform-verifier = "0.7"
 tungstenite = { features = ["rustls-tls-native-roots"], version = "0.30" }
-ureq = "3"
+ureq = { default-features = false, features = ["gzip", "platform-verifier", "rustls-no-provider"], version = "3" }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = "0.3"

@@ -17,7 +17,7 @@ async fn a_host_without_websockets_fails_to_open() {
 
 #[wasm_bindgen_test]
 async fn a_url_of_another_scheme_is_refused() {
-  let outcome = skene_transport::ws::connect("http://not-a-socket/").await;
+  let outcome = skene_transport::ws::connect("ftp://not-a-socket/").await;
 
   assert!(matches!(outcome, Err(Error::Url(_))), "{outcome:?}");
 }

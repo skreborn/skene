@@ -105,17 +105,7 @@ left half-done in a code comment.
     - Layout and the rest: a real inline formatting context, so spans are hovered and
     fire their handlers, tall inline boxes stop overlapping the lines after them, and
     copying one stops yielding U+FFFC.
-5. **`skene-transport` keeps its contracts.** One I/O thread owns a WebSocket, fed by a
-    channel, where `send` waits today on a mutex the reader holds across a 50 ms read,
-    stalling the UI thread; a panicking transport thread resolves its future with an
-    error through a drop guard; an explicit crypto provider stops a dependency that
-    enables rustls' `aws-lc-rs` from making tungstenite's TLS builder panic; the host
-    lifts ureq's 10 MB body limit or exposes it on `Request`; a relative URL on the
-    host is `Error::Url`; the hand URL parser in `ws/url.rs`, whose result is
-    discarded, goes. One shared HTTP agent keeps connections and TLS sessions alive, a
-    bounded pool replaces a thread per request or socket, and one TLS configuration
-    over one trust store (`rustls-platform-verifier`) serves both clients.
-6. **The rest of the house rules in the gate.** All-or-none field and variant docs
+5. **The rest of the house rules in the gate.** All-or-none field and variant docs
     (28 types document some of their fields, about 210 short), the clippy lints worth
     turning on (`use_self`, `missing_const_for_fn`, `allow_attributes_without_reason`,
     `too_long_first_doc_paragraph`, one of `unreachable_pub` and `redundant_pub_crate`,
@@ -138,7 +128,7 @@ left half-done in a code comment.
     - `#[main]` emits its wasm `main` under `not(test)`, so apps' lib tests link on
     wasm32 and the gate runs them; the host tier runs through nextest, doctests beside
     it.
-7. **One owner for style and interaction semantics.** The web compiler and core's
+6. **One owner for style and interaction semantics.** The web compiler and core's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
@@ -244,7 +234,7 @@ left half-done in a code comment.
     nested lazy content keep their markers and their server markup; where
     `appearance: base-select` is supported, the picker is a styled native `<select>`
     and the hydration swap goes, the drawn face remaining elsewhere.
-8. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
+7. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
     and every tier asserts through roles, text and pixels.
     - The terminal's retained runtime (the taffy store, hit testing, focus, capture,
     wheel latching, field editing, selection, motion) is extracted into a
@@ -273,7 +263,7 @@ left half-done in a code comment.
     both.
     - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
     `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
-9. **The quadratic hot paths.**
+8. **The quadratic hot paths.**
     - Roster members sit in a map with one shared ordered memo per group, and no leave
     notifications run while the group's owner disposes: a 1,000-option listbox takes
     1.09 s to build and about five minutes to unmount today.
@@ -314,7 +304,7 @@ left half-done in a code comment.
     `memchr` instead of rescanned; one wake source for the terminal loop (the tty, the
     control pipe, the signal pipe, the executor notifier), so it stops waking ten times
     a second; the server's `sleep` on `futures-timer` rather than a thread per call.
-10. **The dev reload costs production nothing.** Snapshot registration happens only
+9. **The dev reload costs production nothing.** Snapshot registration happens only
     where something reads it, a dev channel present at startup or the Android leaf's
     saved state, so a production `Signal::new` stops costing 74% more than
     `Signal::opaque`; meanwhile a function pointer replaces the boxed serializer. The
@@ -357,7 +347,7 @@ left half-done in a code comment.
     renamed on success; `cargo skene` builds with a thin-LTO profile;
     `notify-debouncer-full` catches saves that rename into place; `mime_guess`
     completes the MIME table.
-11. **The app layer before 1.0.** Every surveyed framework treats these as table
+10. **The app layer before 1.0.** Every surveyed framework treats these as table
     stakes, and each is cheaper to design before the native family than after it.
     - Forms: text-entry purposes (password, email, number, search, tel, url) and
     autocomplete as reported properties on `ControlProps`, mapped on the web to `type`,
@@ -403,7 +393,7 @@ left half-done in a code comment.
     `#[derive(Store)]` on defaulted generics; a bounded, keyed state holder that
     records a disposed keyed owner's snapshot entries and stages them when the key
     returns, so scrolled-out items and navigated-away pages keep their state.
-12. **Names and structure while the API is unstable.** One rename wave brings the names
+11. **Names and structure while the API is unstable.** One rename wave brings the names
     in line with the vocabulary rule, the structure loses its bad edges and copies, and
     the documents shrink to what tooling cannot enforce.
     - `skene-core` and `skene-common` merge into `skene-foundation`, since every
@@ -535,19 +525,19 @@ left half-done in a code comment.
     the headless host. Two rule tensions are settled explicitly: documented
     `pub(crate)` items against "comment non-public code only when critical", and
     examples that explain why, as teaching code should.
-13. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
+12. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-14. **Internationalization**: message catalogs, locale-aware formatting, reactive
+13. **Internationalization**: message catalogs, locale-aware formatting, reactive
     locale switching. Catalogs are provided as a context memo, the `Theme` pattern, so
     switching locale is one write; formatting follows ICU4X and MessageFormat 2; a
     direction signal lays right-to-left out through taffy over the logical edges; rich
     text becomes an annotated string, one run per paragraph with attribute ranges as
     Compose's `AnnotatedString`, fewer nodes and a natural target for translations.
-15. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
+14. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
     table stakes, and what the native family needs before it realizes the vocabulary
     once.
     - Views and controls: switch, progress and tabs first, then a spinner, a combobox,
@@ -562,12 +552,12 @@ left half-done in a code comment.
     gradients, GUI shadows, italic, text alignment, ellipsis and a maximum line count,
     and system colors, shared with stated terminal degradations and the pixel-only ones
     in `GuiExt`.
-16. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
+15. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
     alternate screen the app always takes today; printing above the app; `exec` and
     `suspend`; log capture, to a file or over the attach pipe, since the terminal
     installs no `tracing` subscriber; and a screen-reader launch mode mapping the roles
     controls already report to a linear output, as Ink does.
-17. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
+16. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
     update and token definition, with owners, handlers, snapshot positions and the
     cause of each effect re-run, over one protocol from any platform; the inspector is
     written in Skene and runs in a second terminal or a browser tab, since the
@@ -575,14 +565,14 @@ left half-done in a code comment.
     replays golden tests. Beneath it a data-only diagnostics tier names signals and
     emits re-run causes as `tracing` spans, and debug builds warn on a signal read
     while building a view, which freezes it, and on a write inside a memo.
-18. **Design tokens in the DTCG format.** `TokenSet` definitions import from and export
+17. **Design tokens in the DTCG format.** `TokenSet` definitions import from and export
     to the W3C Design Tokens Community Group format, stable since October 2025, so a
     palette travels to and from design tools.
-19. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+18. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-20. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+19. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
@@ -590,9 +580,12 @@ left half-done in a code comment.
     Unix alone, and where a process cannot be replaced the app exits with status 75
     for the launcher to spawn it. Behind the terminal `Device` trait the console is a
     second implementation rather than a rewrite.
-21. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+20. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
+21. **A socket's send wakes its thread.** The host WebSocket's thread writes what was
+    queued between reads of 10 ms; a wake pipe polled beside the socket would send at
+    once and let an idle socket sleep.
 22. **The native platform family.** The largest phase, roughly 21–30 person-months
     across five OSes, and deliberately late: it realizes a complete vocabulary once,
     instead of chasing additions, so its gaps (images, font families, text-entry

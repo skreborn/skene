@@ -4,10 +4,12 @@
 //! headers and its body. Nothing in the framework knows this crate exists, so a
 //! third-party client sits on exactly the same footing.
 //!
-//! The transport is the platform's: the browser's `fetch` on the web, and a thread around
-//! a plain HTTP client on every other host, a server render included, where the future
-//! wakes the platform's executor when the thread is done. A request outlives nothing: dropping the
-//! future before it resolves abandons the exchange.
+//! The transport is the platform's: the browser's `fetch` on the web, and a plain HTTP
+//! client on every other host, a server render included, one agent keeping connections
+//! alive for every request and a bounded pool of threads running the exchanges, the
+//! future waking the platform's executor when its exchange is done. A request outlives
+//! nothing: dropping the future before it resolves abandons the exchange. A body is
+//! read whole, however large, as `fetch` reads one.
 
 use std::{fmt, string::FromUtf8Error};
 

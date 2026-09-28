@@ -1,82 +1,67 @@
-//! The transport on a host: a plain HTTP client on a thread of its own, the future
-//! woken when the thread is done.
+//! The transport on a host: a plain HTTP client, one agent shared by every request so
+//! connections and TLS sessions stay alive, each exchange run on the shared pool and
+//! the future woken when it is done.
 
-use std::{
-  future::Future,
-  pin::Pin,
-  sync::{Arc, Mutex},
-  task::{Context, Poll, Waker},
-  thread,
+use std::{future::Future, sync::OnceLock};
+
+use ureq::{
+  Agent,
+  http::Uri,
+  tls::{RootCerts, TlsConfig, TlsProvider},
 };
 
 use super::{Error, Request, Response};
+use crate::host;
 
-/// What the thread and the future share: the outcome once there is one, and the waker
-/// to fire then.
-struct Shared {
-  outcome: Option<Result<Response, Error>>,
-  waker: Option<Waker>,
+/// The agent every request goes through: any status a response, over the shared TLS
+/// provider and the platform's trust store.
+fn agent() -> &'static Agent {
+  static AGENT: OnceLock<Agent> = OnceLock::new();
+
+  AGENT.get_or_init(|| {
+    Agent::config_builder()
+      .http_status_as_error(false)
+      .tls_config(
+        TlsConfig::builder()
+          .provider(TlsProvider::Rustls)
+          .root_certs(RootCerts::PlatformVerifier)
+          .unversioned_rustls_crypto_provider(host::provider())
+          .build(),
+      )
+      .build()
+      .into()
+  })
 }
 
-/// A request in flight on its thread.
-struct Exchange(Arc<Mutex<Shared>>);
-
-impl Future for Exchange {
-  type Output = Result<Response, Error>;
-
-  fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
-    let mut shared = self
-      .0
-      .lock()
-      .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    if let Some(outcome) = shared.outcome.take() {
-      return Poll::Ready(outcome);
-    }
-
-    shared.waker = Some(context.waker().clone());
-
-    Poll::Pending
-  }
-}
-
-/// Sends `request` on a thread and resolves with the whole response.
+/// Sends `request` on the pool and resolves with the whole response.
 pub(crate) fn send(request: Request) -> impl Future<Output = Result<Response, Error>> {
-  let shared = Arc::new(Mutex::new(Shared {
-    outcome: None,
-    waker: None,
-  }));
-  let worker = Arc::clone(&shared);
+  let (settler, promise) = host::one_shot(Err(Error::Transport(
+    "the exchange stopped before it finished".to_owned(),
+  )));
 
-  thread::spawn(move || {
-    let outcome = exchange(&request);
-    let waker = {
-      let mut shared = worker
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+  host::run(move || settler.settle(exchange(&request)));
 
-      shared.outcome = Some(outcome);
-      shared.waker.take()
-    };
-
-    if let Some(waker) = waker {
-      waker.wake();
-    }
-  });
-
-  Exchange(shared)
+  promise
 }
 
 /// The whole exchange, blocking: any status is a response, and only a failure on the
 /// way is an error.
 fn exchange(request: &Request) -> Result<Response, Error> {
-  let agent: ureq::Agent = ureq::Agent::config_builder()
-    .http_status_as_error(false)
-    .build()
-    .into();
+  let uri: Uri = request
+    .url()
+    .parse()
+    .map_err(|error: ureq::http::uri::InvalidUri| Error::Url(error.to_string()))?;
+
+  if uri.scheme().is_none() || uri.authority().is_none() {
+    return Err(Error::Url(format!(
+      "{:?} is relative, and a host has no page to resolve it against",
+      request.url()
+    )));
+  }
+
   let mut builder = ureq::http::Request::builder()
     .method(request.method().as_str())
-    .uri(request.url());
+    .uri(uri);
 
   for (name, value) in request.headers() {
     builder = builder.header(name, value);
@@ -85,7 +70,7 @@ fn exchange(request: &Request) -> Result<Response, Error> {
   let outgoing = builder
     .body(request.body().to_vec())
     .map_err(|error| Error::Url(error.to_string()))?;
-  let mut incoming = agent
+  let mut incoming = agent()
     .run(outgoing)
     .map_err(|error| Error::Transport(error.to_string()))?;
   let status = incoming.status().as_u16();
@@ -101,6 +86,8 @@ fn exchange(request: &Request) -> Result<Response, Error> {
     .collect();
   let body = incoming
     .body_mut()
+    .with_config()
+    .limit(u64::MAX)
     .read_to_vec()
     .map_err(|error| Error::Transport(error.to_string()))?;
 

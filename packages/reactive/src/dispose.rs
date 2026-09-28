@@ -4,26 +4,12 @@ use crate::{
   graph::RunRemains,
   id::{Id, Kind},
   runtime::{RUNTIME, Runtime, try_with_graph},
-  sync::SYNC,
 };
 
 impl Id {
   /// Disposes the entity this id names and every descendant; its subscribers only
   /// lose it as a dependency, and effects its cleanups invalidate run once it ends.
   pub(crate) fn dispose(self) {
-    if self.is_sync() {
-      dispose_sync(self);
-
-      return;
-    }
-
-    if !Runtime::is_ui_thread() {
-      // Local disposal must run on the entity's own thread; route it there.
-      SYNC.enqueue_disposals([(self, None)]);
-
-      return;
-    }
-
     RUNTIME.with(|runtime| {
       let _batch = runtime.enter_batch();
 
@@ -93,36 +79,5 @@ fn dispose_local(id: Id) {
       drop(removed.body);
       drop(removed.contexts);
     }
-    Kind::Sync => {}
   }
-}
-
-/// Removes a sync signal from the registry and unlinks its UI-thread subscribers,
-/// directly or through the pending-disposal queue.
-fn dispose_sync(id: Id) {
-  let Some(signal) = SYNC.remove(id)
-  else {
-    return;
-  };
-
-  if Runtime::is_ui_thread() {
-    dispose_sync_local(id, signal.parent);
-  }
-  else {
-    SYNC.enqueue_disposals([(id, signal.parent)]);
-  }
-
-  drop(signal.value);
-}
-
-/// The UI-thread half of a sync signal's disposal: unlinks it from `parent` and from
-/// its subscribers here.
-pub(crate) fn dispose_sync_local(id: Id, parent: Option<Id>) {
-  let _ = try_with_graph(|graph| {
-    if let Some(parent) = parent {
-      graph.detach_child(parent, id);
-    }
-
-    graph.remove_sync_subs(id);
-  });
 }

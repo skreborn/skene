@@ -165,12 +165,6 @@ struct OwnerRecord {
   owner: OwnerData,
 }
 
-/// A sync signal's subscribers on this thread, and the version they last saw.
-struct SyncSubs {
-  list: LinkList,
-  version: u32,
-}
-
 /// What removing a signal leaves to finish once the graph is released.
 pub(crate) struct RemovedSignal {
   pub(crate) value: Rc<dyn Any>,
@@ -196,12 +190,11 @@ pub(crate) struct RunRemains {
 
 /// One thread's reactive graph.
 pub(crate) struct Graph {
-  nonce: u16,
+  nonce: u32,
   signals: Arena<SignalRecord>,
   computations: Arena<ComputationRecord>,
   owners: Arena<OwnerRecord>,
   links: LinkPool,
-  sync_subs: FxHashMap<Id, SyncSubs>,
   next_order: u64,
   /// The next detached root's ordinal.
   next_root: u32,
@@ -226,7 +219,6 @@ impl Graph {
       computations: Arena::new(),
       owners: Arena::new(),
       links: LinkPool::new(),
-      sync_subs: FxHashMap::default(),
       next_order: 0,
       next_root: 0,
       render_queue: BinaryHeap::new(),
@@ -317,7 +309,7 @@ impl Graph {
           .get(generation, index)
           .map(|record| &record.owner)
       }
-      Kind::Signal | Kind::Sync => None,
+      Kind::Signal => None,
     }
   }
 
@@ -333,7 +325,7 @@ impl Graph {
           .get_mut(generation, index)
           .map(|record| &mut record.owner)
       }
-      Kind::Signal | Kind::Sync => None,
+      Kind::Signal => None,
     }
   }
 
@@ -601,7 +593,6 @@ impl Graph {
           self.clear_paths(child);
         }
       }
-      Kind::Sync => {}
     }
   }
 
@@ -615,7 +606,6 @@ impl Graph {
       Kind::Computation | Kind::Owner => self
         .owner_data_mut(child)
         .and_then(|data| data.parent.take()),
-      Kind::Sync => None,
     };
 
     if let Some(parent) = parent {
@@ -760,14 +750,7 @@ impl Graph {
           body: record.body,
         })
       }
-      Kind::Signal | Kind::Sync => None,
-    }
-  }
-
-  /// Drops this thread's subscriber list of a sync signal, unlinking every subscriber.
-  pub(crate) fn remove_sync_subs(&mut self, id: Id) {
-    if let Some(entry) = self.sync_subs.remove(&id) {
-      self.unlink_subs(entry.list);
+      Kind::Signal => None,
     }
   }
 
@@ -776,27 +759,8 @@ impl Graph {
     match dep.kind() {
       Kind::Signal => self.signal_mut(dep).map(|signal| &mut signal.subs),
       Kind::Computation => self.computation_mut(dep).map(|memo| &mut memo.subs),
-      Kind::Sync => self.sync_subs.get_mut(&dep).map(|entry| &mut entry.list),
       Kind::Owner => None,
     }
-  }
-
-  /// The subscriber list of a dep, created for a sync signal on first use.
-  fn subs_for_link(&mut self, dep: Id) -> Option<&mut LinkList> {
-    if dep.is_sync() {
-      return Some(
-        &mut self
-          .sync_subs
-          .entry(dep)
-          .or_insert(SyncSubs {
-            list: LinkList::EMPTY,
-            version: 0,
-          })
-          .list,
-      );
-    }
-
-    self.subs_mut(dep)
   }
 
   /// The version a dep is at: bumped on every value change.
@@ -804,7 +768,6 @@ impl Graph {
     match dep.kind() {
       Kind::Signal => self.signal(dep).map(|signal| signal.version),
       Kind::Computation => self.computation(dep).map(|memo| memo.version),
-      Kind::Sync => Some(self.sync_subs.get(&dep).map_or(0, |entry| entry.version)),
       Kind::Owner => None,
     }
   }
@@ -846,7 +809,7 @@ impl Graph {
       return;
     }
 
-    let Some(subs) = self.subs_for_link(dep)
+    let Some(subs) = self.subs_mut(dep)
     else {
       return;
     };
@@ -884,7 +847,7 @@ impl Graph {
       self.links.get_mut(prev_sub).next_sub = link;
     }
 
-    let subs = self.subs_for_link(dep).expect("checked above");
+    let subs = self.subs_mut(dep).expect("checked above");
 
     if prev_sub == NONE {
       subs.head = link;
@@ -1069,15 +1032,6 @@ impl Graph {
 
         signal.version = signal.version.wrapping_add(1);
         signal.subs.head
-      }
-      Kind::Sync => {
-        let Some(entry) = self.sync_subs.get_mut(&source)
-        else {
-          return;
-        };
-
-        entry.version = entry.version.wrapping_add(1);
-        entry.list.head
       }
       Kind::Computation | Kind::Owner => return,
     };

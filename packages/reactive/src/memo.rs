@@ -5,7 +5,7 @@ use crate::{
   computation::{self, Computation},
   graph::flags::MEMO,
   id::Id,
-  runtime::{Runtime, with_graph},
+  runtime::with_graph,
 };
 
 /// A memoized derived value.
@@ -17,6 +17,7 @@ use crate::{
 pub struct Memo<T: 'static> {
   id: Id,
   ty: PhantomData<T>,
+  local: PhantomData<*const ()>,
 }
 
 impl<T: 'static> Copy for Memo<T> {}
@@ -78,8 +79,6 @@ impl<T: 'static> Memo<T> {
     compare: impl Fn(&T, &T) -> bool + 'static,
     compute: impl Fn(Option<&T>) -> T + 'static,
   ) -> Self {
-    Runtime::assert_ui_thread();
-
     let body: Rc<dyn Computation> = Rc::new(MemoBody {
       compute: Box::new(compute),
       compare: Box::new(compare),
@@ -92,6 +91,7 @@ impl<T: 'static> Memo<T> {
     Self {
       id,
       ty: PhantomData,
+      local: PhantomData,
     }
   }
 

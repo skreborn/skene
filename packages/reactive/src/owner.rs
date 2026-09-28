@@ -114,8 +114,6 @@ impl Owner {
   /// In a debug build, panics when this owner was disposed.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn enter<T>(&self, operation: impl FnOnce() -> T) -> T {
-    Runtime::assert_ui_thread();
-
     #[cfg(debug_assertions)]
     assert!(
       with_graph(|graph| graph.owner_data(self.0).is_some()),
@@ -133,13 +131,7 @@ impl Owner {
   /// The hook for anything the runtime cannot clean up itself—cancelling a spawned
   /// task, clearing a timer, closing a subscription—so it ends with the owner that
   /// started it rather than outliving the view.
-  ///
-  /// # Panics
-  ///
-  /// Panics if called off the UI thread.
   pub fn on_cleanup(&self, cleanup: impl FnOnce() + 'static) {
-    Runtime::assert_ui_thread();
-
     let unregistered = with_graph(|graph| match graph.owner_data_mut(self.0) {
       Some(data) => {
         data.cleanups.push(Box::new(cleanup));

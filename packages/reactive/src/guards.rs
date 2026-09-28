@@ -1,12 +1,8 @@
 use std::{
-  any::Any,
   mem::transmute,
   ops::{Deref, DerefMut},
   rc::Rc,
-  sync::Arc,
 };
-
-use parking_lot::{Mutex, MutexGuard};
 
 use crate::{
   id::Id,
@@ -15,50 +11,23 @@ use crate::{
 
 /// A shared borrow guard over a signal's value.
 #[must_use]
-pub struct ReadGuard<'a, T>(ReadGuardInner<'a, T>);
-
-enum ReadGuardInner<'a, T> {
-  Local {
-    guard: TrackedRef<'a, T>,
-    _handle: Rc<TrackedRefCell<T>>,
-  },
-  Sync {
-    guard: MutexGuard<'a, T>,
-    _handle: Arc<dyn Any + Send + Sync>,
-  },
+pub struct ReadGuard<'a, T> {
+  guard: TrackedRef<'a, T>,
+  _handle: Rc<TrackedRefCell<T>>,
 }
 
 impl<'a, T> ReadGuard<'a, T> {
-  pub(crate) fn local(handle: Rc<TrackedRefCell<T>>) -> Self {
+  pub(crate) fn new(handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow();
 
     // SAFETY: `guard` is declared before `_handle`, so it drops while the retained
     // `Rc` still keeps the cell alive.
     let guard = unsafe { transmute::<TrackedRef<'_, T>, TrackedRef<'a, T>>(guard) };
 
-    Self(ReadGuardInner::Local {
+    Self {
       guard,
       _handle: handle,
-    })
-  }
-
-  pub(crate) fn sync(handle: Arc<dyn Any + Send + Sync>) -> Self
-  where
-    T: 'static,
-  {
-    let guard = handle
-      .downcast_ref::<Mutex<T>>()
-      .expect("to downcast signal type")
-      .lock();
-
-    // SAFETY: `guard` is declared before `_handle`, so it unlocks while the retained
-    // `Arc` still keeps the mutex alive.
-    let guard = unsafe { transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
-
-    Self(ReadGuardInner::Sync {
-      guard,
-      _handle: handle,
-    })
+    }
   }
 }
 
@@ -66,10 +35,7 @@ impl<T> Deref for ReadGuard<'_, T> {
   type Target = T;
 
   fn deref(&self) -> &Self::Target {
-    match &self.0 {
-      ReadGuardInner::Local { guard, .. } => guard,
-      ReadGuardInner::Sync { guard, .. } => guard,
-    }
+    &self.guard
   }
 }
 
@@ -77,22 +43,12 @@ impl<T> Deref for ReadGuard<'_, T> {
 #[must_use]
 pub struct WriteGuard<'a, T> {
   id: Id,
-  inner: WriteGuardInner<'a, T>,
-}
-
-enum WriteGuardInner<'a, T> {
-  Local {
-    _handle: Rc<TrackedRefCell<T>>,
-    guard: Option<TrackedRefMut<'a, T>>,
-  },
-  Sync {
-    _handle: Arc<dyn Any + Send + Sync>,
-    guard: Option<MutexGuard<'a, T>>,
-  },
+  guard: Option<TrackedRefMut<'a, T>>,
+  _handle: Rc<TrackedRefCell<T>>,
 }
 
 impl<'a, T> WriteGuard<'a, T> {
-  pub(crate) fn local(id: Id, handle: Rc<TrackedRefCell<T>>) -> Self {
+  pub(crate) fn new(id: Id, handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow_mut();
 
     // SAFETY: `Drop` releases `guard` first, while the retained `Rc` still keeps the
@@ -101,42 +57,15 @@ impl<'a, T> WriteGuard<'a, T> {
 
     Self {
       id,
-      inner: WriteGuardInner::Local {
-        _handle: handle,
-        guard: Some(guard),
-      },
-    }
-  }
-
-  pub(crate) fn sync(id: Id, handle: Arc<dyn Any + Send + Sync>) -> Self
-  where
-    T: 'static,
-  {
-    let guard = handle
-      .downcast_ref::<Mutex<T>>()
-      .expect("to downcast signal type")
-      .lock();
-
-    // SAFETY: `Drop` releases `guard` first, while the retained `Arc` still keeps the
-    // mutex alive.
-    let guard = unsafe { transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
-
-    Self {
-      id,
-      inner: WriteGuardInner::Sync {
-        _handle: handle,
-        guard: Some(guard),
-      },
+      guard: Some(guard),
+      _handle: handle,
     }
   }
 }
 
 impl<T> Drop for WriteGuard<'_, T> {
   fn drop(&mut self) {
-    match &mut self.inner {
-      WriteGuardInner::Local { guard, .. } => drop(guard.take()),
-      WriteGuardInner::Sync { guard, .. } => drop(guard.take()),
-    }
+    drop(self.guard.take());
 
     if let Some(state) = self.id.state() {
       state.notify();
@@ -148,18 +77,12 @@ impl<T> Deref for WriteGuard<'_, T> {
   type Target = T;
 
   fn deref(&self) -> &Self::Target {
-    match &self.inner {
-      WriteGuardInner::Local { guard, .. } => guard.as_ref().expect("guard present"),
-      WriteGuardInner::Sync { guard, .. } => guard.as_ref().expect("guard present"),
-    }
+    self.guard.as_ref().expect("guard present")
   }
 }
 
 impl<T> DerefMut for WriteGuard<'_, T> {
   fn deref_mut(&mut self) -> &mut Self::Target {
-    match &mut self.inner {
-      WriteGuardInner::Local { guard, .. } => guard.as_mut().expect("guard present"),
-      WriteGuardInner::Sync { guard, .. } => guard.as_mut().expect("guard present"),
-    }
+    self.guard.as_mut().expect("guard present")
   }
 }

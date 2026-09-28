@@ -95,10 +95,8 @@ fn disposing_owner_drops_signals_and_effects() {
   assert_eq!(runs.get(), 1);
 
   owner.dispose();
-  Runtime::drain_pending_work();
 
   setter.set(1);
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 1);
   assert_eq!(source.try_get(), None);
 }

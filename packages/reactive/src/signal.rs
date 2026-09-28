@@ -1,8 +1,6 @@
 #[cfg(debug_assertions)]
 use std::panic::Location;
-use std::{any::Any, fmt, marker::PhantomData, rc::Rc, sync::Arc};
-
-use parking_lot::Mutex;
+use std::{any::Any, fmt, marker::PhantomData, rc::Rc};
 
 use crate::{
   computation,
@@ -10,48 +8,39 @@ use crate::{
   guards::{ReadGuard, WriteGuard},
   id::{Id, Kind},
   runtime::{RUNTIME, Runtime, with_graph},
-  storage::{LocalStorage, SyncStorage},
-  sync::SYNC,
   value::TrackedRefCell,
 };
 
-/// A thread-safe [`Signal`].
-pub type SyncSignal<T> = Signal<T, SyncStorage>;
-/// A thread-safe [`ReadSignal`].
-pub type SyncReadSignal<T> = ReadSignal<T, SyncStorage>;
-/// A thread-safe [`WriteSignal`].
-pub type SyncWriteSignal<T> = WriteSignal<T, SyncStorage>;
-
 /// A reactive value: reads subscribe the running effect, writes re-run subscribers.
 ///
-/// The handle is `Copy`; the value lives in the runtime until the owning
-/// [`Owner`](crate::Owner) is disposed.
+/// The handle is `Copy` and stays on the thread that made it; the value lives in that
+/// thread's runtime until the owning [`Owner`](crate::Owner) is disposed.
 #[must_use]
-pub struct Signal<T, S = LocalStorage> {
+pub struct Signal<T> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
-  pub(crate) storage: PhantomData<S>,
+  local: PhantomData<*const ()>,
 }
 
 /// The read half of a signal.
 #[must_use]
-pub struct ReadSignal<T, S = LocalStorage> {
+pub struct ReadSignal<T> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
-  pub(crate) storage: PhantomData<S>,
+  local: PhantomData<*const ()>,
 }
 
 /// The write half of a signal.
 #[must_use]
-pub struct WriteSignal<T, S = LocalStorage> {
+pub struct WriteSignal<T> {
   pub(crate) id: Id,
   pub(crate) ty: PhantomData<T>,
-  pub(crate) storage: PhantomData<S>,
+  local: PhantomData<*const ()>,
 }
 
 macro_rules! handle_common {
   ($handle:ident) => {
-    impl<T, S> $handle<T, S> {
+    impl<T> $handle<T> {
       /// The signal's id.
       #[inline(always)]
       pub fn id(&self) -> Id {
@@ -62,28 +51,28 @@ macro_rules! handle_common {
         Self {
           id,
           ty: PhantomData,
-          storage: PhantomData,
+          local: PhantomData,
         }
       }
     }
 
-    impl<T, S> Copy for $handle<T, S> {}
+    impl<T> Copy for $handle<T> {}
 
-    impl<T, S> Clone for $handle<T, S> {
+    impl<T> Clone for $handle<T> {
       fn clone(&self) -> Self {
         *self
       }
     }
 
-    impl<T, S> Eq for $handle<T, S> {}
+    impl<T> Eq for $handle<T> {}
 
-    impl<T, S> PartialEq for $handle<T, S> {
+    impl<T> PartialEq for $handle<T> {
       fn eq(&self, other: &Self) -> bool {
         self.id == other.id
       }
     }
 
-    impl<T, S> fmt::Debug for $handle<T, S> {
+    impl<T> fmt::Debug for $handle<T> {
       fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut r#struct = formatter.debug_struct(stringify!($handle));
 
@@ -99,22 +88,22 @@ handle_common!(Signal);
 handle_common!(ReadSignal);
 handle_common!(WriteSignal);
 
-impl<T, S> Signal<T, S> {
+impl<T> Signal<T> {
   /// The read half of this signal.
   #[inline(always)]
-  pub const fn read_only(&self) -> ReadSignal<T, S> {
+  pub const fn read_only(&self) -> ReadSignal<T> {
     ReadSignal::from_id(self.id)
   }
 
   /// The write half of this signal.
   #[inline(always)]
-  pub const fn write_only(&self) -> WriteSignal<T, S> {
+  pub const fn write_only(&self) -> WriteSignal<T> {
     WriteSignal::from_id(self.id)
   }
 
   /// Both halves of this signal.
   #[inline(always)]
-  pub const fn split(&self) -> (ReadSignal<T, S>, WriteSignal<T, S>) {
+  pub const fn split(&self) -> (ReadSignal<T>, WriteSignal<T>) {
     (self.read_only(), self.write_only())
   }
 }
@@ -157,22 +146,6 @@ impl<T: 'static> Signal<T> {
   }
 }
 
-impl<T: Send + Sync + 'static> Signal<T, SyncStorage> {
-  /// Creates a thread-safe signal holding `value`.
-  ///
-  /// On the UI thread the signal is owned by the current [`Owner`](crate::Owner); off
-  /// it, the signal is unowned and the caller must dispose it.
-  pub fn new_sync(value: T) -> Self {
-    let id = SignalState::create_sync(value);
-
-    if Runtime::is_ui_thread() {
-      Runtime::adopt_current(id);
-    }
-
-    Self::from_id(id)
-  }
-}
-
 /// Creates a signal holding `value` and returns its two halves; see [`Signal::new`].
 #[cfg_attr(debug_assertions, track_caller)]
 pub fn signal<T: Snapshot>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
@@ -181,47 +154,27 @@ pub fn signal<T: Snapshot>(value: T) -> (ReadSignal<T>, WriteSignal<T>) {
   signal.split()
 }
 
-/// Creates a thread-safe signal holding `value` and returns its two halves; see
-/// [`Signal::new_sync`] for the ownership contract.
-pub fn sync_signal<T: Send + Sync + 'static>(value: T) -> (SyncReadSignal<T>, SyncWriteSignal<T>) {
-  let signal = Signal::new_sync(value);
-
-  signal.split()
-}
-
-/// One signal's value cell, cloned out of its realm so a caller can act on it after
+/// One signal's value cell, cloned out of the graph so a caller can act on it after
 /// releasing every runtime borrow.
 #[derive(Clone)]
 pub(crate) struct SignalState {
   pub(crate) id: Id,
-  pub(crate) value: SignalValue,
-}
-
-/// A signal's value cell: local (single-thread) or sync (cross-thread).
-#[derive(Clone)]
-pub(crate) enum SignalValue {
-  Sync(Arc<dyn Any + Send + Sync>),
-  Local(Rc<dyn Any>),
+  pub(crate) value: Rc<dyn Any>,
 }
 
 impl Id {
-  /// The signal state this id names, resolved in the id's own realm.
-  #[cfg_attr(debug_assertions, track_caller)]
+  /// The signal state this id names.
   pub(crate) fn state(self) -> Option<SignalState> {
-    match self.kind() {
-      Kind::Sync => SYNC.get(self),
-      Kind::Signal => {
-        Runtime::assert_ui_thread();
-
-        with_graph(|graph| {
-          graph.signal(self).map(|signal| SignalState {
-            id: self,
-            value: SignalValue::Local(signal.value.clone()),
-          })
-        })
-      }
-      Kind::Computation | Kind::Owner => None,
+    if self.kind() != Kind::Signal {
+      return None;
     }
+
+    with_graph(|graph| {
+      graph.signal(self).map(|signal| SignalState {
+        id: self,
+        value: signal.value.clone(),
+      })
+    })
   }
 }
 
@@ -229,8 +182,6 @@ impl SignalState {
   /// Creates a local signal holding `value` and returns its id, unowned.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn create<T: Any + 'static>(value: T) -> Id {
-    Runtime::assert_ui_thread();
-
     #[cfg(debug_assertions)]
     let site = Location::caller();
     let value = Rc::new(TrackedRefCell::new(value));
@@ -243,21 +194,6 @@ impl SignalState {
 
       id
     })
-  }
-
-  /// Creates a sync signal holding `value` and returns its id, unowned; the current
-  /// owner is recorded for unlinking when the creating thread is the UI thread.
-  pub(crate) fn create_sync<T: Any + Send + Sync + 'static>(value: T) -> Id {
-    let parent = if Runtime::is_ui_thread() {
-      RUNTIME.try_with(|runtime| runtime.current_owner.get()).ok()
-    }
-    else {
-      None
-    };
-
-    SYNC
-      .insert(Arc::new(Mutex::new(value)), parent)
-      .expect("sync registry poisoned")
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
@@ -274,30 +210,18 @@ impl SignalState {
 
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn with_untracked<O, T: 'static>(&self, apply: impl FnOnce(&T) -> O) -> O {
-    match &self.value {
-      SignalValue::Sync(value) => {
-        let value = value
-          .as_ref()
-          .downcast_ref::<Mutex<T>>()
-          .expect("to downcast signal type");
+    let value = self
+      .value
+      .downcast_ref::<TrackedRefCell<T>>()
+      .expect("to downcast signal type");
 
-        apply(&value.lock())
-      }
-      SignalValue::Local(value) => {
-        let value = value
-          .as_ref()
-          .downcast_ref::<TrackedRefCell<T>>()
-          .expect("to downcast signal type");
-
-        #[cfg(debug_assertions)]
-        {
-          apply(&value.borrow_at(Location::caller()))
-        }
-        #[cfg(not(debug_assertions))]
-        {
-          apply(&value.borrow())
-        }
-      }
+    #[cfg(debug_assertions)]
+    {
+      apply(&value.borrow_at(Location::caller()))
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      apply(&value.borrow())
     }
   }
 
@@ -322,112 +246,51 @@ impl SignalState {
   /// notification (a store's trigger fan-out).
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn update_untracked<U, T: 'static>(&self, mutate: impl FnOnce(&mut T) -> U) -> U {
-    match &self.value {
-      SignalValue::Sync(value) => {
-        let value = value
-          .as_ref()
-          .downcast_ref::<Mutex<T>>()
-          .expect("to downcast signal type");
+    let value = self
+      .value
+      .downcast_ref::<TrackedRefCell<T>>()
+      .expect("to downcast signal type");
 
-        mutate(&mut value.lock())
-      }
-      SignalValue::Local(value) => {
-        let value = value
-          .as_ref()
-          .downcast_ref::<TrackedRefCell<T>>()
-          .expect("to downcast signal type");
-
-        #[cfg(debug_assertions)]
-        {
-          mutate(&mut value.borrow_mut_at(Location::caller()))
-        }
-        #[cfg(not(debug_assertions))]
-        {
-          mutate(&mut value.borrow_mut())
-        }
-      }
+    #[cfg(debug_assertions)]
+    {
+      mutate(&mut value.borrow_mut_at(Location::caller()))
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      mutate(&mut value.borrow_mut())
     }
   }
 
-  /// A read guard over the value, in whichever realm it lives.
+  /// A read guard over the value.
   pub(crate) fn read_guard<'a, T: 'static>(&self) -> ReadGuard<'a, T> {
-    match &self.value {
-      SignalValue::Local(_) => ReadGuard::local(self.as_local::<T>()),
-      SignalValue::Sync(value) => ReadGuard::sync(value.clone()),
-    }
+    ReadGuard::new(self.cell::<T>())
   }
 
   /// A write guard over the value; dropping it notifies subscribers.
   pub(crate) fn write_guard<'a, T: 'static>(&self) -> WriteGuard<'a, T> {
-    match &self.value {
-      SignalValue::Local(_) => WriteGuard::local(self.id, self.as_local::<T>()),
-      SignalValue::Sync(value) => WriteGuard::sync(self.id, value.clone()),
-    }
+    WriteGuard::new(self.id, self.cell::<T>())
   }
 
-  /// Propagates a change of this signal and flushes unless a batch is open; an off-UI
-  /// write enqueues to the sync registry instead.
+  /// Propagates a change of this signal and flushes unless a batch is open.
   pub(crate) fn notify(&self) {
-    if self.id.is_sync() {
-      if SYNC.is_subscribed(self.id) {
-        Self::warn_if_undesignated();
-      }
-
-      if !Runtime::is_ui_thread() {
-        SYNC.enqueue_write(self.id);
-
-        return;
-      }
-    }
-
     RUNTIME.with(|runtime| {
       runtime.graph().propagate(self.id);
       runtime.request_flush();
     });
   }
 
-  /// Warns once when a sync signal with subscribers is written but no UI thread was
-  /// ever designated. Without one, an off-thread write propagates in the writer's own
-  /// runtime and never reaches the UI thread—a silent loss this at least makes loud.
-  fn warn_if_undesignated() {
-    static WARNED: std::sync::Once = std::sync::Once::new();
-
-    if Runtime::ui_thread_designated() {
-      return;
-    }
-
-    WARNED.call_once(|| {
-      eprintln!(
-        "skene-reactive: a sync signal has subscribed effects but \
-         Runtime::init_on_ui_thread() was never called—an off-thread write's effects \
-         are silently dropped. Call init_on_ui_thread() during setup."
-      );
-    });
-  }
-
   /// Subscribes the running computation to this signal.
-  ///
-  /// Sync subscribers must be UI-thread effects; an off-thread read stays untracked.
   pub(crate) fn subscribe(&self) {
-    if self.id.is_sync() {
-      if !Runtime::is_ui_thread() {
-        return;
-      }
-
-      SYNC.mark_subscribed(self.id);
-    }
-
     computation::subscribe(self.id);
   }
 
-  pub(crate) fn as_local<T: 'static>(&self) -> Rc<TrackedRefCell<T>> {
-    match &self.value {
-      SignalValue::Local(value) => value
-        .clone()
-        .downcast::<TrackedRefCell<T>>()
-        .expect("to downcast signal type"),
-      SignalValue::Sync(_) => unreachable!("expected local signal storage"),
-    }
+  /// The value's cell.
+  pub(crate) fn cell<T: 'static>(&self) -> Rc<TrackedRefCell<T>> {
+    self
+      .value
+      .clone()
+      .downcast::<TrackedRefCell<T>>()
+      .expect("to downcast signal type")
   }
 }
 

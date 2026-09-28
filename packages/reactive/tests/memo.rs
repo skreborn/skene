@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_reactive::{Effect, Get, Memo, Owner, Runtime, Set, Signal, Track};
+use skene_reactive::{Effect, Get, Memo, Owner, Set, Signal, Track};
 
 #[test]
 fn unobserved_memo_recomputes_only_when_read() {
@@ -25,7 +25,6 @@ fn unobserved_memo_recomputes_only_when_read() {
 
   // Changing the source leaves an unobserved memo alone.
   source.set(1);
-  Runtime::drain_pending_work();
   assert_eq!(calls.get(), 1, "no reader, no recompute");
   assert_eq!(memo.get(), 2, "a read pulls the fresh value");
   assert_eq!(calls.get(), 2, "the read recomputed once");
@@ -33,7 +32,6 @@ fn unobserved_memo_recomputes_only_when_read() {
   assert_eq!(calls.get(), 2, "get does not recompute when fresh");
 
   source.set(2);
-  Runtime::drain_pending_work();
   assert_eq!(calls.get(), 2, "still no recompute without a read");
   assert_eq!(memo.get(), 4);
   assert_eq!(calls.get(), 3, "recomputed once more for the read");
@@ -57,11 +55,9 @@ fn memo_notifies_dependents_on_change_when_recomputed() {
   assert_eq!(runs.get(), 1, "effect runs once initially");
 
   source.set(1);
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 2, "effect reruns after memo recompute");
 
   source.set(2);
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 3, "effect reruns on each source change");
 }
 
@@ -83,7 +79,6 @@ fn memo_skips_notifications_when_value_unchanged() {
   assert_eq!(runs.get(), 1);
 
   source.set(0);
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 1, "unchanged value does not notify dependents");
 }
 
@@ -105,7 +100,6 @@ fn memo_skips_when_derived_value_equal_after_signal_update() {
   assert_eq!(runs.get(), 1);
 
   source.set(2); // signal changed, derived parity is still even
-  Runtime::drain_pending_work();
   assert_eq!(
     runs.get(),
     1,
@@ -131,7 +125,6 @@ fn memo_notifies_when_derived_value_changes_after_signal_update() {
   assert_eq!(runs.get(), 1);
 
   source.set(1); // parity flips to odd
-  Runtime::drain_pending_work();
   assert_eq!(
     runs.get(),
     2,
@@ -157,11 +150,9 @@ fn memo_recomputes_before_dependents_use_value() {
   assert_eq!(*seen.borrow(), vec![(0, 0)]);
 
   source.set(1);
-  Runtime::drain_pending_work();
   assert_eq!(seen.borrow().last(), Some(&(1, 1)));
 
   source.set(2);
-  Runtime::drain_pending_work();
   assert_eq!(seen.borrow().last(), Some(&(2, 2)));
   assert_eq!(seen.borrow().len(), 3);
 }
@@ -194,11 +185,8 @@ fn memo_stays_in_lockstep_with_signal_for_add_assign_updates() {
   assert_eq!(*view_runs.borrow(), vec![(0, 0)]);
 
   counter += 1;
-  Runtime::drain_pending_work();
   counter += 1;
-  Runtime::drain_pending_work();
   counter += 1;
-  Runtime::drain_pending_work();
 
   assert_eq!(*memo_runs.borrow(), vec![0, 1, 2, 3]);
   assert_eq!(*view_runs.borrow(), vec![(0, 0), (1, 1), (2, 2), (3, 3)]);
@@ -231,7 +219,6 @@ fn memo_high_priority_runs_before_normal_dependents() {
   log.borrow_mut().clear();
 
   source.set(1);
-  Runtime::drain_pending_work();
 
   assert_eq!(*log.borrow(), vec!["memo", "effect"]);
 }

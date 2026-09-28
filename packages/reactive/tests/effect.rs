@@ -3,7 +3,7 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_reactive::{Effect, Get, Read, Runtime, Set, Signal, Track, Write, batch};
+use skene_reactive::{Effect, Get, Read, Set, Signal, Track, Write, batch};
 
 #[test]
 fn batch_simple() {
@@ -27,11 +27,9 @@ fn batch_simple() {
 
   // Setting each signal once will trigger the effect
   name.set("Mary");
-  Runtime::drain_pending_work();
   assert_eq!(count.get(), 2);
 
   age.set(21);
-  Runtime::drain_pending_work();
   assert_eq!(count.get(), 3);
 
   // Batching will only update once
@@ -40,7 +38,6 @@ fn batch_simple() {
     age.set(20);
   });
 
-  Runtime::drain_pending_work();
   assert_eq!(count.get(), 4);
 }
 
@@ -73,7 +70,6 @@ fn batch_batch() {
     });
   });
 
-  Runtime::drain_pending_work();
   assert_eq!(count.get(), 2);
 }
 
@@ -94,8 +90,6 @@ fn no_reentrant_runs() {
       }
     }
   });
-
-  Runtime::drain_pending_work();
 
   let log = log.borrow();
   assert_eq!(log.as_slice(), ["run 0", "post set", "run 1"]);
@@ -125,13 +119,7 @@ fn pending_effects_are_deduped() {
     signal.set(3);
   });
 
-  Runtime::drain_pending_work();
   assert_eq!(counter.get(), 2);
-}
-
-#[test]
-fn signals_are_send_sync_when_value_is() {
-  // no-op for local-only signals
 }
 
 #[test]
@@ -149,7 +137,6 @@ fn track_default_subscribes() {
 
   assert_eq!(runs.get(), 1);
   signal.set(1);
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 2);
 }
 
@@ -180,7 +167,6 @@ fn read_untracked_does_not_subscribe() {
   assert_eq!(untracked_runs.get(), 1);
 
   signal.set(1);
-  Runtime::drain_pending_work();
 
   assert_eq!(tracked_runs.get(), 2, "tracked effect reruns");
   assert_eq!(
@@ -209,7 +195,6 @@ fn write_ref_drop_notifies_subscribers_once() {
     let mut guard = signal.write();
     *guard = 5;
   }
-  Runtime::drain_pending_work();
   assert_eq!(runs.get(), 2, "effect reruns after write ref drop");
   assert_eq!(signal.get(), 5);
 }

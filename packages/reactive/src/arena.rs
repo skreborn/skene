@@ -1,3 +1,5 @@
+use crate::id::INDEX_BITS;
+
 /// One generational slot: the value it currently holds, if any, and the generation
 /// ids must carry to resolve.
 struct Slot<T> {
@@ -33,7 +35,10 @@ impl<T> Arena<T> {
       return (slot.generation, index);
     }
 
-    let index = u32::try_from(self.slots.len()).expect("an arena holds under 2^32 slots");
+    let index = u32::try_from(self.slots.len())
+      .ok()
+      .filter(|index| *index < 1 << INDEX_BITS)
+      .expect("an arena holds under 2^28 slots");
 
     self.slots.push(Slot {
       generation: 0,

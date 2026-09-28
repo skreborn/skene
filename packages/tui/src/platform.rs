@@ -583,7 +583,6 @@ impl CellPainter for Tui {
 ///
 /// Panics if it is already installed.
 pub(crate) fn install() {
-  skene_reactive::Runtime::init_on_ui_thread();
   skene_reactive::Runtime::set_scheduler(|flush| {
     TURN.with(|turn| *turn.borrow_mut() = Some(flush));
   });

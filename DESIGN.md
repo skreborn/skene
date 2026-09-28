@@ -501,9 +501,8 @@ interned since the previous flush).
 The public API speaks the ecosystem's standard reactive vocabulary:
 `Signal`/`ReadSignal`/`WriteSignal` (Copy handles), `Memo`, `Effect` with an
 `EffectHandle`, `Trigger`, `Selector`, `Owner`, `provide_context`/`use_context`,
-`batch`/`untrack`, the access traits, the `Sync`/local storage split, `Store` with its
-derive, `Resource`, and the `set_`/`derive_`/`handle_` builder convention above it. The
-internals contract:
+`batch`/`untrack`, the access traits, `Store` with its derive, `Resource`, and the
+`set_`/`derive_`/`handle_` builder convention above it. The internals contract:
 
 - **Split arenas, intrusive edges.** Signals, computations and owners live in separate
   generational arenas selected by id bits; a signal costs one allocation. Dependency
@@ -537,15 +536,16 @@ internals contract:
   pending one first, so a test sees what the loop does; `end_turn` on the headless
   platform and the browser settles a direct write where a test observes it otherwise,
   and `flush_sync` settles mid-turn where a turn needs it, as a key's default does
-  after its handlers. The sync waker routes through the same scheduler.
+  after its handlers.
 - **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
   runs under a runtime borrow; an entity is moved out of its arena before its cleanups
   run. A read of a disposed signal panics and a write to one is dropped; a debug build
   names the late access, where the signal was created and the call that disposed it,
   and warns of the write.
-- **Threading.** The UI thread owns the local runtime. `Sync` signals live in a global
-  registry; an off-thread write enqueues and pokes the scheduler. The browser build is
-  single-threaded and never queues; the machinery earns its keep on native.
+- **Threading.** Each thread's runtime owns what that thread made, and every handle
+  stays on its thread; work on another thread reaches it through a task that thread's
+  executor wakes, as the transport's clients do. An id carries its runtime's nonce, so
+  a handle that outlives its runtime resolves to nothing.
 - **The store is a trie.** One node per location ever addressed, interned to a
   `StoreLocation`; each node carries a `below` trigger (a write here or beneath) and a
   `here` trigger (a write exactly here), a reader tracks its own `below` and every

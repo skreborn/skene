@@ -31,7 +31,7 @@ use crate::{
   encode::{Fields, Recorder, Snapshot, Value, decode, encode, key},
   id::Id,
   path::{Position, Step},
-  runtime::{RUNTIME, Runtime, with_graph},
+  runtime::{RUNTIME, with_graph},
 };
 
 /// A snapshot provider's serializer; `None` omits the entry.
@@ -164,8 +164,6 @@ impl<T: Snapshot> Signal<T> {
   /// staged value there when one matches.
   #[cfg_attr(debug_assertions, track_caller)]
   pub(crate) fn snapshotted(tag: Option<&'static str>, value: T) -> Self {
-    Runtime::assert_ui_thread();
-
     let owner = RUNTIME.with(|runtime| runtime.current_owner.get());
     let Position { path, index } = Position::next();
     let ty = type_hash::<T>();

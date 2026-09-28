@@ -290,7 +290,7 @@ mod impls {
 
   macro_rules! impl_id {
     ($trait:ident $(<$param:ident>)?, $handle:ident $(, $bound:path)?) => {
-      impl<T $(: $bound)?, S> $trait$(<$param>)? for $handle<T, S> {
+      impl<T $(: $bound)?> $trait$(<$param>)? for $handle<T> {
         #[inline(always)]
         fn id(&self) -> Id {
           self.id

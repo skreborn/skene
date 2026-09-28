@@ -1,7 +1,7 @@
 //! The task seam: a facade's platform installs its executor, the engine spawns through
 //! it, and each task belongs to the owner it was spawned under.
 
-use std::{any::Any, cell::RefCell, future::Future, pin::Pin, rc::Rc};
+use std::{any::Any, cell::RefCell, future::Future, marker::PhantomData, pin::Pin, rc::Rc};
 
 use crate::{
   graph::Graph,
@@ -41,6 +41,7 @@ pub fn set_spawner(spawner: impl Fn(Task) -> TaskGuard + 'static) {
 pub struct TaskHandle {
   owner: Id,
   id: u64,
+  local: PhantomData<*const ()>,
 }
 
 impl TaskHandle {
@@ -79,5 +80,9 @@ pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
 
   drop(refused);
 
-  TaskHandle { owner, id }
+  TaskHandle {
+    owner,
+    id,
+    local: PhantomData,
+  }
 }

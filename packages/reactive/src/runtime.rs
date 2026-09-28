@@ -1,45 +1,16 @@
 #[cfg(debug_assertions)]
 use std::panic::Location;
-#[cfg(debug_assertions)]
-use std::sync::OnceLock;
 use std::{
   cell::{Cell, RefCell, RefMut},
   ops::{Deref, DerefMut},
   rc::Rc,
-  sync::atomic::{AtomicBool, AtomicU64, Ordering},
   thread,
 };
 
-use crate::{dispose::dispose_sync_local, graph::Graph, id::Id, sync::SYNC};
+use crate::{graph::Graph, id::Id};
 
 thread_local! {
   pub(crate) static RUNTIME: Runtime = Runtime::new();
-  /// This thread's token: the process-unique surrogate for its id.
-  static THREAD_TOKEN: u64 = NEXT_THREAD_TOKEN.fetch_add(1, Ordering::Relaxed);
-}
-
-static NEXT_THREAD_TOKEN: AtomicU64 = AtomicU64::new(1);
-/// The UI thread's token; `0` while none is designated.
-static UI_THREAD: AtomicU64 = AtomicU64::new(0);
-#[cfg(debug_assertions)]
-static UI_THREAD_SET_LOCATION: OnceLock<&'static Location<'static>> = OnceLock::new();
-static ENFORCE_UI_THREAD: AtomicBool = AtomicBool::new(false);
-
-/// The calling thread's token.
-fn thread_token() -> u64 {
-  THREAD_TOKEN.with(|token| *token)
-}
-
-/// Designates the calling thread as the UI thread; returns the existing designation
-/// when one is already set to a different thread.
-fn set_ui_thread() -> Result<(), u64> {
-  let current = thread_token();
-
-  match UI_THREAD.compare_exchange(0, current, Ordering::AcqRel, Ordering::Acquire) {
-    Ok(_) => Ok(()),
-    Err(existing) if existing == current => Ok(()),
-    Err(existing) => Err(existing),
-  }
 }
 
 /// The scheduler seam: receives one flush to run later.
@@ -158,95 +129,11 @@ impl Runtime {
     }
   }
 
-  /// Records the calling thread as the UI thread; call once during initialization.
-  ///
-  /// # Panics
-  ///
-  /// Panics when another thread is already designated.
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn init_on_ui_thread() {
-    assert!(
-      set_ui_thread().is_ok(),
-      "UI thread id already set to a different thread"
-    );
-
-    #[cfg(debug_assertions)]
-    {
-      let caller = Location::caller();
-      let _ = UI_THREAD_SET_LOCATION.set(caller);
-    }
-
-    ENFORCE_UI_THREAD.store(true, Ordering::Relaxed);
-  }
-
-  /// Checks that the caller is the UI thread; with enforcement on and no thread
-  /// designated, designates the calling thread.
-  ///
-  /// # Panics
-  ///
-  /// Panics when enforcement is on and another thread is designated.
-  #[cfg_attr(debug_assertions, track_caller)]
-  pub fn assert_ui_thread() {
-    if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
-      return;
-    }
-
-    let current = thread_token();
-    let ui = UI_THREAD.load(Ordering::Acquire);
-
-    if ui == 0 {
-      let _ = set_ui_thread();
-
-      return;
-    }
-
-    if ui == current {
-      return;
-    }
-
-    #[cfg(debug_assertions)]
-    {
-      let caller = Location::caller();
-      let set_info = UI_THREAD_SET_LOCATION
-        .get()
-        .map(|loc| format!(" (set at {}:{})", loc.file(), loc.line()))
-        .unwrap_or_default();
-
-      panic!(
-        "local runtime access from non-UI thread\n  expected UI thread: #{ui}{set_info}\n  current thread: #{current} {:?}\n  caller: {}:{}",
-        thread::current().id(),
-        caller.file(),
-        caller.line(),
-      );
-    }
-
-    #[cfg(not(debug_assertions))]
-    panic!(
-      "local runtime access from non-UI thread: expected #{ui}, got #{current} {:?}",
-      thread::current().id()
-    );
-  }
-
-  /// Whether a UI thread has been designated via
-  /// [`init_on_ui_thread`](Self::init_on_ui_thread).
-  pub(crate) fn ui_thread_designated() -> bool {
-    ENFORCE_UI_THREAD.load(Ordering::Relaxed)
-  }
-
-  /// Whether the caller is the UI thread, or `true` when enforcement is off.
-  pub fn is_ui_thread() -> bool {
-    if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
-      return true;
-    }
-
-    UI_THREAD.load(Ordering::Acquire) == thread_token()
-  }
-
   /// Resets the calling thread's reactive runtime to a fresh, empty state.
   ///
   /// Clears all signals, effects, owners, pending work, snapshot registrations and the
-  /// scheduler, and releases the UI-thread designation. Cleanups are discarded, not
-  /// run. Inside a batch, the batch still ends where it would have, and flushes then.
+  /// scheduler. Cleanups are discarded, not run. Inside a batch, the batch still ends
+  /// where it would have, and flushes then.
   pub fn reset() {
     let (graph, scheduler) = RUNTIME.with(|runtime| {
       runtime.tracking.set(None);
@@ -264,9 +151,6 @@ impl Runtime {
     drop(graph);
     drop(scheduler);
     crate::snapshot::clear();
-
-    UI_THREAD.store(0, Ordering::Release);
-    ENFORCE_UI_THREAD.store(false, Ordering::Relaxed);
   }
 
   /// Whether a computation is tracking what it reads.
@@ -426,7 +310,6 @@ impl Runtime {
   ///
   /// Without one, such a write flushes synchronously. With one, the first write after
   /// a flush schedules exactly one call; further writes coalesce into it until it runs.
-  /// [`drain_pending_work`](Self::drain_pending_work) routes the same way.
   pub fn set_scheduler(schedule: impl Fn(Box<dyn FnOnce()>) + 'static) {
     let previous =
       RUNTIME.with(|runtime| runtime.scheduler.borrow_mut().replace(Rc::new(schedule)));
@@ -440,46 +323,6 @@ impl Runtime {
       runtime.scheduled.set(false);
       runtime.flush();
     });
-  }
-
-  /// Takes the work other threads queued—sync-signal writes and disposals—into this
-  /// runtime, then flushes as a write would: now, or through the scheduler.
-  pub fn drain_pending_work() {
-    Self::assert_ui_thread();
-
-    let writes = SYNC.take_pending_writes();
-    let disposals = SYNC.take_pending_disposals();
-
-    RUNTIME.with(|runtime| {
-      let mut graph = runtime.graph();
-
-      for id in writes {
-        graph.propagate(id);
-      }
-    });
-
-    for (id, parent) in disposals {
-      if id.is_sync() {
-        dispose_sync_local(id, parent);
-      }
-      else {
-        id.dispose();
-      }
-    }
-
-    RUNTIME.with(Self::request_flush);
-  }
-
-  /// Whether there is queued work for this runtime or the sync registry.
-  pub fn has_pending_work() -> bool {
-    RUNTIME.with(|runtime| runtime.graph().has_queued()) || SYNC.has_pending_work()
-  }
-
-  /// Sets a waker called when a sync signal is written or disposed off the UI thread.
-  /// The waker should nudge the UI event loop into calling
-  /// [`drain_pending_work`](Self::drain_pending_work).
-  pub fn set_sync_effect_waker(waker: impl Fn() + Send + Sync + 'static) {
-    SYNC.set_waker(waker);
   }
 }
 

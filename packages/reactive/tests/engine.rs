@@ -275,7 +275,6 @@ fn scheduler_coalesces_writes_into_one_flush() {
     1,
     "five writes, one scheduled flush"
   );
-  assert!(Runtime::has_pending_work());
 
   let flush = scheduled.borrow_mut().pop().expect("the flush");
 

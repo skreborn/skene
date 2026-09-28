@@ -2139,7 +2139,6 @@ impl WebDom for Web {
 /// Installs the browser leaf for this thread, rooted at `root`, adopting the server's
 /// nodes under it when `hydrating`.
 fn install_at(root: Element, hydrating: bool) {
-  skene_reactive::Runtime::init_on_ui_thread();
   skene_reactive::Runtime::set_scheduler(|flush| {
     TURN.with(|turn| *turn.borrow_mut() = Some(flush));
     wasm_bindgen_futures::spawn_local(async { end_turn() });

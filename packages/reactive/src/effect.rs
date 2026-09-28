@@ -30,6 +30,7 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EffectHandle {
   id: Id,
+  local: PhantomData<*const ()>,
 }
 
 impl EffectHandle {
@@ -117,8 +118,6 @@ where
   }
 
   fn create(body: F, flags: u8) -> EffectHandle {
-    Runtime::assert_ui_thread();
-
     let body: Rc<dyn Computation> = Rc::new(EffectBody {
       body,
       value: RefCell::new(None),
@@ -127,7 +126,10 @@ where
 
     computation::run(id);
 
-    EffectHandle { id }
+    EffectHandle {
+      id,
+      local: PhantomData,
+    }
   }
 }
 
@@ -175,8 +177,6 @@ impl Effect<(), fn(Option<()>) -> ()> {
   where
     R: 'static,
   {
-    Runtime::assert_ui_thread();
-
     let body: Rc<dyn Computation> = Rc::new(WatchBody {
       compute,
       on_change,
@@ -186,14 +186,16 @@ impl Effect<(), fn(Option<()>) -> ()> {
 
     computation::run(id);
 
-    EffectHandle { id }
+    EffectHandle {
+      id,
+      local: PhantomData,
+    }
   }
 }
 
 /// Runs `operation` without subscribing the current effect to any signal it reads.
 #[cfg_attr(debug_assertions, track_caller)]
 pub fn untrack<T>(operation: impl FnOnce() -> T) -> T {
-  Runtime::assert_ui_thread();
   Runtime::with_tracking(None, operation)
 }
 
@@ -253,8 +255,6 @@ impl Reaction {
   /// Runs `operation` and returns its value, subscribing to every signal it reads so a later
   /// change re-runs the reaction's callback. Replaces any previous subscription.
   pub fn track<T: 'static>(&self, operation: impl FnOnce() -> T) -> T {
-    Runtime::assert_ui_thread();
-
     if let Some(previous) = self.id.take() {
       previous.dispose();
     }

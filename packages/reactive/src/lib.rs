@@ -5,10 +5,9 @@
 //! that created it. Reads inside an effect subscribe it; writes re-run exactly the
 //! subscribed effects, batched by [`batch`] and silenced by [`untrack`].
 //!
-//! Local entities live in generational arenas, one set per thread, joined by pooled
-//! dependency edges; thread-safe signals ([`SyncSignal`]) live in a process-wide
-//! registry, and an off-thread write routes its effects to the designated UI thread
-//! ([`Runtime::init_on_ui_thread`]).
+//! Entities live in generational arenas, one set per thread, joined by pooled
+//! dependency edges; every handle stays on the thread that made it, and work on other
+//! threads reaches it through a task that wakes there.
 //!
 //! Every serializable signal takes part in state snapshots by position
 //! ([`snapshot`]/[`restore`]); a [`Key`] anchors a scope's position against edits and
@@ -40,9 +39,7 @@ mod signal;
 mod slice;
 mod snapshot;
 mod spawn;
-mod storage;
 mod store;
-mod sync;
 mod trigger;
 mod value;
 
@@ -53,27 +50,17 @@ pub use encode::{Fields, Reader, Record, Recorder, Seq, Snapshot, Value, decode,
 pub use guards::{ReadGuard, WriteGuard};
 pub use id::Id as ReactiveId;
 pub use memo::Memo;
-pub use owned::{OwnedSignal, SyncOwnedSignal};
+pub use owned::OwnedSignal;
 pub use owner::{Owner, on_cleanup};
 pub use path::{Key, Position};
 pub use resource::{LoadState, Resource};
 pub use runtime::Runtime;
 pub use selector::Selector;
-pub use signal::{
-  ReadSignal,
-  Signal,
-  SyncReadSignal,
-  SyncSignal,
-  SyncWriteSignal,
-  WriteSignal,
-  signal,
-  sync_signal,
-};
+pub use signal::{ReadSignal, Signal, WriteSignal, signal};
 pub use skene_macros::{Snapshot, Store};
-pub use slice::{Slice, SyncSlice};
+pub use slice::Slice;
 pub use snapshot::{provide, restore, snapshot, staged};
 pub use spawn::{Task, TaskGuard, TaskHandle, set_spawner, spawn};
-pub use storage::{LocalStorage, SyncStorage};
 pub use store::{
   AtIndex,
   AtKey,

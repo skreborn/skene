@@ -6,11 +6,7 @@ use crate::{
   access::{Get, Set, Track, Update, With},
   id::Id,
   signal::Signal,
-  storage::{LocalStorage, SyncStorage},
 };
-
-/// A thread-safe [`Slice`].
-pub type SyncSlice<T, O, GF, UF> = Slice<T, O, GF, UF, SyncStorage>;
 
 /// A read-write projection over part of a signal's value.
 ///
@@ -18,18 +14,18 @@ pub type SyncSlice<T, O, GF, UF> = Slice<T, O, GF, UF, SyncStorage>;
 /// store it into the underlying signal—notifying its subscribers as any write would.
 /// The projection closures are held in signals of their own, keeping the handle `Copy`.
 #[must_use]
-pub struct Slice<T: 'static, O, GF, UF, S = LocalStorage>
+pub struct Slice<T: 'static, O, GF, UF>
 where
   GF: Fn(&T) -> O + Clone + 'static,
   UF: Fn(&mut T, &O) + Clone + 'static,
 {
-  signal: Signal<T, S>,
-  read: Signal<GF, S>,
-  write: Signal<UF, S>,
+  signal: Signal<T>,
+  read: Signal<GF>,
+  write: Signal<UF>,
   ty: PhantomData<O>,
 }
 
-impl<T, O, GF, UF, S> Clone for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Clone for Slice<T, O, GF, UF>
 where
   GF: Fn(&T) -> O + Clone + 'static,
   UF: Fn(&mut T, &O) + Clone + 'static,
@@ -39,7 +35,7 @@ where
   }
 }
 
-impl<T, O, GF, UF, S> Copy for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Copy for Slice<T, O, GF, UF>
 where
   GF: Fn(&T) -> O + Clone + 'static,
   UF: Fn(&mut T, &O) + Clone + 'static,
@@ -65,25 +61,7 @@ where
   }
 }
 
-impl<T, O, GF, UF> SyncSlice<T, O, GF, UF>
-where
-  T: Send + Sync + 'static,
-  O: 'static,
-  GF: Fn(&T) -> O + Clone + Send + Sync + 'static,
-  UF: Fn(&mut T, &O) + Clone + Send + Sync + 'static,
-{
-  /// Creates a thread-safe slice over `signal`; see [`Slice::new`].
-  pub fn new_sync(signal: Signal<T, SyncStorage>, read: GF, write: UF) -> Self {
-    Self {
-      signal,
-      read: Signal::new_sync(read),
-      write: Signal::new_sync(write),
-      ty: PhantomData,
-    }
-  }
-}
-
-impl<T, O, GF, UF, S> Track for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Track for Slice<T, O, GF, UF>
 where
   T: 'static,
   GF: Fn(&T) -> O + Clone + 'static,
@@ -94,7 +72,7 @@ where
   }
 }
 
-impl<T, O, GF, UF, S> Get<O> for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Get<O> for Slice<T, O, GF, UF>
 where
   T: 'static,
   O: Clone + 'static,
@@ -118,7 +96,7 @@ where
   }
 }
 
-impl<T, O, GF, UF, S> With<O> for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> With<O> for Slice<T, O, GF, UF>
 where
   T: 'static,
   O: 'static,
@@ -142,7 +120,7 @@ where
   }
 }
 
-impl<T, O, GF, UF, S> Set<O> for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Set<O> for Slice<T, O, GF, UF>
 where
   T: 'static,
   O: 'static,
@@ -160,7 +138,7 @@ where
   }
 }
 
-impl<T, O, GF, UF, S> Update<O> for Slice<T, O, GF, UF, S>
+impl<T, O, GF, UF> Update<O> for Slice<T, O, GF, UF>
 where
   T: 'static,
   O: 'static,

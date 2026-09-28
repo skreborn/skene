@@ -114,7 +114,7 @@ impl Id {
   /// What this id names, for a message.
   const fn noun(self) -> &'static str {
     match self.kind() {
-      Kind::Signal | Kind::Sync => "a signal",
+      Kind::Signal => "a signal",
       Kind::Computation => "a memo",
       Kind::Owner => "an owner",
     }

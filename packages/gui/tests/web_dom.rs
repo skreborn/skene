@@ -717,6 +717,38 @@ fn typography_link_ink_reaches_a_link_and_updates() {
   );
 }
 
+/// A typography theme sizes, weights, spaces and leads the text beneath it, and a text
+/// setting its own size keeps it.
+#[wasm_bindgen_test]
+fn a_typography_theme_reaches_the_text_beneath_it() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(
+      Typography::default()
+        .set_size(20.)
+        .set_weight(700.)
+        .set_line_height(2.)
+        .set_letter_spacing(1.),
+    )
+    .set_child_builder(|| {
+      Column::new().set_children((Text::new("themed"), Text::new("own").set_font_size(12.)))
+    })
+    .build()
+  });
+
+  let scope = only_child(&root);
+  let column = only_child(&scope);
+  let themed = column.first_element_child().expect("the themed text");
+  let own = column.last_element_child().expect("the sized text");
+
+  assert_eq!(computed(&themed, "font-size"), "20px");
+  assert_eq!(computed(&themed, "font-weight"), "700");
+  assert_eq!(computed(&themed, "line-height"), "40px");
+  assert_eq!(computed(&themed, "letter-spacing"), "1px");
+  assert_eq!(computed(&own, "font-size"), "12px");
+}
+
 /// The link ink never reaches a run that is not a link.
 #[wasm_bindgen_test]
 fn typography_link_ink_skips_non_link_text() {

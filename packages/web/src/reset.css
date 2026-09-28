@@ -45,10 +45,19 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   display: flex;
   overflow: hidden;
   font-family: system-ui, sans-serif;
-  line-height: 1.5;
   /* Selection is opt-in: a run's set_selectable(true) restores user-select. */
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* The typography in force: the root and every scope turn the typography tokens into
+   the text properties everything beneath them inherits, the defaults standing in where
+   nothing defines them. */
+:where(:root, [data-skene-scope]) {
+  font-size: calc(var(--typography-size, 16) * 1px);
+  font-weight: var(--typography-weight, 400);
+  line-height: var(--typography-line-height, 1.5);
+  letter-spacing: calc(var(--typography-letter-spacing, 0) * 1px);
 }
 
 /* The app's first box fills the viewport and is the page's scroll container, so the

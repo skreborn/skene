@@ -60,8 +60,10 @@ left half-done in a code comment.
     - A tab in preserved terminal text expands to the next tab stop rather than one
     space.
 3. **The web's highest-traffic defects.** Variants take the class's specificity,
-    control states anchor on kept inputs, root tokens turn dark, and every served
-    document opens with its character set, viewport and language; what remains:
+    control states anchor on kept inputs, root tokens turn dark, every served document
+    opens with its character set, viewport and language, `client_only` waits for
+    hydration, a wrapper's annotation stays with its child and reaches text, and the
+    typography in force reaches the text beneath it; what remains:
     - The CLI's client-rendered shell and its script injector fold into the document
     template in `skene-web`, which gains preloads and the dev script under a flag; head
     entries are owner-scoped and keyed, with a title stack, deduped once in shared
@@ -71,9 +73,6 @@ left half-done in a code comment.
     one reaches a run on the web as a slot, as it reaches a box; a low-level node's
     annotation reaches its platform, which applies it to the element on the web; and
     `Suspense` and `ErrorBoundary` fallbacks take their wrapper's annotation.
-    - A run references a typography token for every inheritable property it doesn't
-    set, so the GUI `Typography`'s size, weight, line-height and letter-spacing reach
-    the browser.
     - With them, views: the picker keeps its caption, accessible name and disabled
     state across the hydration swap (a disabled picker becomes operable today); an
     overlay open at build opens once connected; `Show` acts only on a visibility

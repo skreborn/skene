@@ -197,9 +197,11 @@ pub fn untrack<T>(operation: impl FnOnce() -> T) -> T {
 /// triggers each effect at most once.
 #[cfg_attr(debug_assertions, track_caller)]
 pub fn batch<T>(operation: impl FnOnce() -> T) -> T {
-  let _guard = Runtime::enter_batch();
+  RUNTIME.with(|runtime| {
+    let _batch = runtime.enter_batch();
 
-  operation()
+    operation()
+  })
 }
 
 /// The body behind [`Reaction`]: fires the callback, subscribing to nothing.

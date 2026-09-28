@@ -515,6 +515,13 @@ internals contract:
   order. Memos are lazy: an unobserved memo never runs, a memo read once in a batch
   computes once, and a memo whose recomputed value is unchanged (per its comparator)
   notifies no one. A memo is never stale to a reader, including inside a batch.
+- **Ownership is ordered.** An owner disposes its children newest first, then runs its
+  cleanups in reverse registration order; a re-run first tears down what its last run
+  made, and is a batch, so what it invalidates runs once it ends. A moved subtree takes
+  the depths of its new place. A pull walks its own stack, so a memo chain of any
+  length settles without deepening the call stack. A `Selector` answers from its pulled
+  current key, inside a batch too, and a per-key trigger, like a store location's, goes
+  once nothing tracks it.
 - **Effects have handles and flavors.** `Effect::render` effects flush before ordinary
   effects in owner-depth order and are what property binders and the structural effects
   (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before

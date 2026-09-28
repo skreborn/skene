@@ -5,9 +5,11 @@ use std::hash::Hash;
 use rustc_hash::FxHashMap;
 
 use crate::{
-  access::With,
+  access::{Get, With},
   effect::{Effect, batch},
+  memo::Memo,
   owner::Owner,
+  runtime::Runtime,
   signal::{Signal, update_silently},
   trigger::Trigger,
 };
@@ -16,10 +18,13 @@ use crate::{
 /// re-runs only when that key's membership flips.
 ///
 /// One tracked run of the source per change fans out to at most two readers' worth
-/// of triggers: the key left and the key entered.
+/// of triggers: the key left and the key entered. An answer is the source's own,
+/// brought up to date as it is asked, so a batch or a render effect never hears an
+/// old key; a key nothing asks about any more is forgotten.
 #[must_use]
 pub struct Selector<K: Eq + Hash + Clone + 'static> {
-  state: Signal<SelectorState<K>>,
+  current: Memo<K>,
+  keys: Signal<FxHashMap<K, Trigger>>,
   owner: Owner,
 }
 
@@ -35,79 +40,80 @@ impl<K: Eq + Hash + Clone + 'static> Clone for Selector<K> {
   }
 }
 
-struct SelectorState<K> {
-  current: Option<K>,
-  keys: FxHashMap<K, Trigger>,
-}
-
 impl<K: Eq + Hash + Clone + 'static> Selector<K> {
   /// Creates a selector over `source`, owned by the current [`Owner`].
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(source: impl Fn() -> K + 'static) -> Self {
     let owner = Owner::current();
-    let state = Signal::opaque(SelectorState {
-      current: None,
-      keys: FxHashMap::default(),
-    });
+    let current = Memo::new(move |_| source());
+    let keys = Signal::opaque(FxHashMap::<K, Trigger>::default());
 
-    Effect::new(move |_| {
-      let next = source();
-      let flipped = update_silently(state.id(), |state: &mut SelectorState<K>| {
-        if state.current.as_ref() == Some(&next) {
-          return None;
-        }
+    Effect::render(move |previous: Option<K>| {
+      let next = current.get();
 
-        let previous = state.current.replace(next.clone());
-        let left = previous.and_then(|previous| state.keys.get(&previous).copied());
-        let entered = state.keys.get(&next).copied();
-
-        Some((left, entered))
-      })
-      .flatten();
-
-      if let Some((left, entered)) = flipped {
-        batch(|| {
-          if let Some(left) = left {
-            left.notify();
-          }
-
-          if let Some(entered) = entered {
-            entered.notify();
-          }
+      if previous.as_ref() != Some(&next) {
+        let flipped: Option<(Option<Trigger>, Option<Trigger>)> = keys.try_with_untracked(|keys| {
+          (
+            previous
+              .as_ref()
+              .and_then(|previous| keys.get(previous).copied()),
+            keys.get(&next).copied(),
+          )
         });
+
+        if let Some((left, entered)) = flipped {
+          batch(|| {
+            left.iter().chain(&entered).for_each(Trigger::notify);
+          });
+        }
       }
+
+      next
     });
 
-    Self { state, owner }
+    Self {
+      current,
+      keys,
+      owner,
+    }
   }
 
   /// Whether the source currently yields `key`, subscribing the running computation
   /// to changes of exactly that answer.
   #[must_use]
   pub fn is(&self, key: &K) -> bool {
-    let owner = self.owner;
-    let trigger = update_silently(self.state.id(), |state: &mut SelectorState<K>| {
-      if let Some(trigger) = state.keys.get(key) {
-        return *trigger;
+    if Runtime::is_tracking() {
+      let (owner, keys) = (self.owner, self.keys);
+      let trigger = update_silently(keys.id(), |triggers: &mut FxHashMap<K, Trigger>| {
+        if let Some(trigger) = triggers.get(key) {
+          return (*trigger, false);
+        }
+
+        let trigger = owner.enter(Trigger::new);
+
+        triggers.insert(key.clone(), trigger);
+
+        (trigger, true)
+      });
+
+      if let Some((trigger, created)) = trigger {
+        if created {
+          let forgotten = key.clone();
+
+          trigger.dispose_when_unobserved(move || {
+            let _ = update_silently(keys.id(), |triggers: &mut FxHashMap<K, Trigger>| {
+              triggers.remove(&forgotten);
+            });
+          });
+        }
+
+        trigger.track();
       }
-
-      let trigger = owner.enter(Trigger::new);
-
-      state.keys.insert(key.clone(), trigger);
-
-      trigger
-    });
-
-    let Some(trigger) = trigger
-    else {
-      return false;
-    };
-
-    trigger.track();
+    }
 
     self
-      .state
-      .try_with_untracked(|state| state.current.as_ref() == Some(key))
+      .current
+      .try_with_untracked(|current| current == key)
       .unwrap_or(false)
   }
 }

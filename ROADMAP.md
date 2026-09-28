@@ -6,9 +6,12 @@ lands in. What has shipped is not listed: the code, `DESIGN.md` and the tests de
 it.
 
 The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
-development machine (2026-09-05), against which a change to the engine is measured:
-creating a thousand signals 78 µs; a signal read outside an effect 11 ns; a write
-reaching ten effects 260 ns; a write through a chain of ten memos 393 ns.
+development machine (2026-09-28), against which a change to the engine is measured:
+creating a thousand signals 72 µs; a signal read outside an effect 11 ns; a write
+reaching ten effects 281 ns; a write through a chain of ten memos 416 ns. Versions
+compare only when each is built in its own target directory (a shared one reuses
+another tree's build) and the bench binaries run alternately, pinned to one of the
+fast cores with address randomization off: `setarch -R taskset -c 2 <binary> --bench`.
 
 ## Open
 
@@ -30,12 +33,6 @@ left half-done in a code comment.
     UI-thread designation, `parking_lot`; about 600 lines) is deleted, since no
     platform drains it, or each runtime gets an inbox that does; `Memo`, `OwnedSignal`
     and `EffectHandle` become `!Send`; the 13-bit id nonce widens.
-    - The rest of the engine: owner children in an intrusive list disposed in reverse
-    creation order, not hash order; `Selector` a render-flavored computation that
-    `is()` pulls, so a batch never answers from the old key, with an "unobserved" hook
-    dropping per-key triggers, the store trie's too; `Owner::set_parent` updating the
-    subtree's depths; an iterative pull with a cycle bit, so a long memo chain can't
-    overflow wasm's stack; `Runtime::reset()` safe inside a `batch`.
 2. **The rest of the security holes.**
     - A link is external by its scheme prefix rather than by containing `://`.
     - The `--serve` worker frames requests by length; until then its contract is one

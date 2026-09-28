@@ -1,8 +1,9 @@
 //! Disposal: moving an entity out of its arena, then tearing it down outside the borrow.
 
 use crate::{
+  graph::RunRemains,
   id::{Id, Kind},
-  runtime::{Runtime, try_with_graph},
+  runtime::{RUNTIME, Runtime, try_with_graph},
   sync::SYNC,
 };
 
@@ -23,32 +24,31 @@ impl Id {
       return;
     }
 
-    let _batch = Runtime::enter_batch();
+    RUNTIME.with(|runtime| {
+      let _batch = runtime.enter_batch();
 
-    Runtime::with_tracking(None, || dispose_local(self));
+      Runtime::with_tracking(None, || dispose_local(self));
+    });
   }
+}
 
-  /// Tears down what this computation's last run made, before it runs again: disposes
-  /// its children, runs its cleanups in reverse registration order and drops the
-  /// contexts it provided.
-  pub(crate) fn dispose_run(self) {
-    let Some(Some(remains)) = try_with_graph(|graph| graph.take_run_remains(self))
-    else {
-      return;
-    };
-
+impl RunRemains {
+  /// Tears down what a computation's last run made, before it runs again, untracked:
+  /// disposes its children newest first, runs its cleanups in reverse registration
+  /// order and drops the contexts it provided.
+  pub(crate) fn dispose(self) {
     Runtime::with_tracking(None, || {
-      if let Some(children) = remains.children {
-        for child in *children {
+      if let Some(children) = self.children {
+        for child in children.iter().rev() {
           child.dispose();
         }
       }
 
-      for cleanup in remains.cleanups.into_iter().rev() {
+      for cleanup in self.cleanups.into_iter().rev() {
         cleanup();
       }
 
-      drop(remains.contexts);
+      drop(self.contexts);
     });
   }
 }
@@ -74,7 +74,7 @@ fn dispose_local(id: Id) {
       };
 
       if let Some(children) = removed.children {
-        for child in *children {
+        for child in children.iter().rev() {
           child.dispose();
         }
       }

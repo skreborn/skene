@@ -33,6 +33,7 @@ use smallvec::SmallVec;
 use crate::{
   Memo,
   Owner,
+  Runtime,
   Signal,
   Trigger,
   access::With,
@@ -73,6 +74,13 @@ enum Edge {
 /// The absent parent, on the root.
 const NO_PARENT: u32 = u32::MAX;
 
+/// Which of a location's triggers a read picks.
+type Slot = fn(&mut Node) -> &mut Option<Trigger>;
+
+/// The triggers one read tracks, each with the location and the slot it was created in
+/// where the read created it.
+type Tracked = SmallVec<[(Trigger, Option<(usize, Slot)>); 8]>;
+
 /// One location: its parent and its two triggers, created on first use.
 ///
 /// `below` wakes on a write at this location or beneath it; `here` wakes on a write
@@ -104,6 +112,18 @@ impl Trie {
       }],
       edges: FxHashMap::default(),
     }
+  }
+
+  /// The trigger `slot` holds on `node`, created when absent, with the node and the
+  /// slot where it was created.
+  fn trigger(&mut self, node: usize, slot: Slot) -> (Trigger, Option<(usize, Slot)>) {
+    let held = slot(&mut self.nodes[node]);
+    let created = held.is_none();
+
+    (
+      *held.get_or_insert_with(Trigger::new),
+      created.then_some((node, slot)),
+    )
   }
 
   /// The child of `parent` along the edge `matches` recognizes, created by `make`
@@ -221,21 +241,28 @@ impl StoreCore {
     self.track_with(location, |node| &mut node.here);
   }
 
-  /// Subscribes the running effect to the trigger `own` picks on `location` and to
-  /// `here` on every location containing it.
-  fn track_with(&self, location: StoreLocation, own: fn(&mut Node) -> &mut Option<Trigger>) {
+  /// Subscribes the running effect, if any, to the trigger `own` picks on `location`
+  /// and to `here` on every location containing it; a trigger nothing tracks any more
+  /// is dropped.
+  fn track_with(&self, location: StoreLocation, own: Slot) {
+    if !Runtime::is_tracking() {
+      return;
+    }
+
     let owner = self.owner;
-    let triggers: SmallVec<[Trigger; 8]> = update_silently(self.trie.id(), |trie: &mut Trie| {
+    let trie_id = self.trie.id();
+    let here: Slot = |node| &mut node.here;
+    let triggers: Tracked = update_silently(trie_id, |trie: &mut Trie| {
       owner.enter(|| {
         let mut triggers = SmallVec::new();
         let mut node = location.0 as usize;
 
-        triggers.push(*own(&mut trie.nodes[node]).get_or_insert_with(Trigger::new));
+        triggers.push(trie.trigger(node, own));
 
         while trie.nodes[node].parent != NO_PARENT {
           node = trie.nodes[node].parent as usize;
 
-          triggers.push(*trie.nodes[node].here.get_or_insert_with(Trigger::new));
+          triggers.push(trie.trigger(node, here));
         }
 
         triggers
@@ -243,7 +270,15 @@ impl StoreCore {
     })
     .unwrap_or_default();
 
-    for trigger in triggers {
+    for (trigger, created) in triggers {
+      if let Some((node, slot)) = created {
+        trigger.dispose_when_unobserved(move || {
+          let _ = update_silently(trie_id, |trie: &mut Trie| {
+            *slot(&mut trie.nodes[node]) = None;
+          });
+        });
+      }
+
       trigger.track();
     }
   }

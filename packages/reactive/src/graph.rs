@@ -10,7 +10,7 @@ use std::{
   rc::Rc,
 };
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 use crate::{
@@ -37,19 +37,83 @@ pub(crate) mod flags {
   pub(crate) const RENDER: u8 = 32;
   /// A memo: a lazy dep with a version, never queued.
   pub(crate) const MEMO: u8 = 64;
+  /// On the stack of a dependency check, so a cycle back to it ends the descent.
+  pub(crate) const CHECKING: u8 = 128;
 }
 
-use flags::{DIRTY, MEMO, PAUSED, PENDING, QUEUED, RENDER, RUNNING};
+use flags::{CHECKING, DIRTY, MEMO, PAUSED, PENDING, QUEUED, RENDER, RUNNING};
 
 /// Context values stored on one owner.
 pub(crate) type Contexts = FxHashMap<TypeId, Rc<dyn Any>>;
+
+/// The step a dependency check takes at one edge.
+pub(crate) enum CheckStep {
+  /// The dependency changed since the edge read it, or the edge is gone.
+  Changed,
+  /// The dependency is unchanged; the check goes on at this edge.
+  Unchanged(LinkIdx),
+  /// The dependency is a dirty memo, to run before it is compared.
+  Run(Id),
+  /// The dependency is a pending memo, now on the check, whose own edges are checked
+  /// first, from this one.
+  Descend(Id, LinkIdx),
+}
+
+/// An owner's children in the order they were adopted: added at the end and removed
+/// anywhere in amortized constant time.
+#[derive(Default)]
+pub(crate) struct Children {
+  /// Each child as adopted, with the sequence number it was adopted under; an entry
+  /// whose number is no longer its child's current one is stale.
+  order: Vec<(Id, u32)>,
+  /// Each child's current sequence number.
+  live: FxHashMap<Id, u32>,
+  next: u32,
+}
+
+impl Children {
+  /// Adds `child` at the end, unless it is a child already.
+  fn insert(&mut self, child: Id) {
+    if self.live.contains_key(&child) {
+      return;
+    }
+
+    self.live.insert(child, self.next);
+    self.order.push((child, self.next));
+    self.next = self.next.wrapping_add(1);
+  }
+
+  /// Removes `child`, compacting once stale entries outnumber the live ones.
+  fn remove(&mut self, child: Id) {
+    if self.live.remove(&child).is_none() {
+      return;
+    }
+
+    if self.order.len() > 2 * self.live.len() + 16 {
+      let live = &self.live;
+
+      self
+        .order
+        .retain(|(child, sequence)| live.get(child) == Some(sequence));
+    }
+  }
+
+  /// The children in the order they were adopted.
+  pub(crate) fn iter(&self) -> impl DoubleEndedIterator<Item = Id> + '_ {
+    self
+      .order
+      .iter()
+      .filter(|(child, sequence)| self.live.get(child) == Some(sequence))
+      .map(|(child, _)| *child)
+  }
+}
 
 /// The ownership facet owners and computations share.
 #[derive(Default)]
 pub(crate) struct OwnerData {
   pub(crate) parent: Option<Id>,
   pub(crate) depth: u32,
-  pub(crate) children: Option<Box<FxHashSet<Id>>>,
+  pub(crate) children: Option<Box<Children>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   /// The step from the parent, or from the runtime root for a detached owner.
@@ -103,7 +167,7 @@ pub(crate) struct RemovedSignal {
 
 /// What removing an owner or computation leaves to finish once the graph is released.
 pub(crate) struct RemovedNode {
-  pub(crate) children: Option<Box<FxHashSet<Id>>>,
+  pub(crate) children: Option<Box<Children>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) body: Option<Rc<dyn Computation>>,
@@ -111,7 +175,7 @@ pub(crate) struct RemovedNode {
 
 /// What a computation's last run made, taken before it runs again.
 pub(crate) struct RunRemains {
-  pub(crate) children: Option<Box<FxHashSet<Id>>>,
+  pub(crate) children: Option<Box<Children>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   pub(crate) contexts: Option<Box<Contexts>>,
 }
@@ -129,6 +193,10 @@ pub(crate) struct Graph {
   next_root: u32,
   render_queue: BinaryHeap<Reverse<(u32, u64, Id)>>,
   queue: VecDeque<Id>,
+  /// The hooks run once their signal has lost its last subscriber.
+  unobserved_hooks: FxHashMap<Id, Rc<dyn Fn()>>,
+  /// The hooked signals that lost their last subscriber, their hooks not yet run.
+  unobserved: Vec<Id>,
 }
 
 impl Graph {
@@ -144,7 +212,38 @@ impl Graph {
       next_root: 0,
       render_queue: BinaryHeap::new(),
       queue: VecDeque::new(),
+      unobserved_hooks: FxHashMap::default(),
+      unobserved: Vec::new(),
     }
+  }
+
+  /// Runs `hook`, once, when the signal `id` loses its last subscriber; see
+  /// [`take_unobserved`](Self::take_unobserved).
+  pub(crate) fn on_unobserved(&mut self, id: Id, hook: Rc<dyn Fn()>) {
+    self.unobserved_hooks.insert(id, hook);
+  }
+
+  /// Whether a signal with a hook lost its last subscriber since the hooks were last
+  /// taken.
+  pub(crate) fn has_unobserved(&self) -> bool {
+    !self.unobserved.is_empty()
+  }
+
+  /// Takes the hooks of the signals that lost their last subscriber since the last call
+  /// and have not regained one, for the caller to run once the graph is released.
+  pub(crate) fn take_unobserved(&mut self) -> Vec<Rc<dyn Fn()>> {
+    let pending = std::mem::take(&mut self.unobserved);
+    let mut hooks = Vec::new();
+
+    for id in pending {
+      if self.subs_mut(id).is_some_and(|subs| subs.head == NONE)
+        && let Some(hook) = self.unobserved_hooks.remove(&id)
+      {
+        hooks.push(hook);
+      }
+    }
+
+    hooks
   }
 
   #[inline(always)]
@@ -342,15 +441,6 @@ impl Graph {
     index
   }
 
-  /// Rewinds `id`'s child ordinals and snapshot indexes, for a computation about to
-  /// re-run after disposing its children.
-  pub(crate) fn reset_creation_counters(&mut self, id: Id) {
-    if let Some(data) = self.owner_data_mut(id) {
-      data.next_child = 0;
-      data.next_index = 0;
-    }
-  }
-
   /// Marks a signal as registered in the state snapshot.
   pub(crate) fn mark_snapshotted(&mut self, id: Id) {
     if let Some(signal) = self.signal_mut(id) {
@@ -370,7 +460,7 @@ impl Graph {
     let children: SmallVec<[Id; 8]> = data
       .children
       .as_ref()
-      .map(|children| children.iter().copied().collect())
+      .map(|children| children.iter().collect())
       .unwrap_or_default();
 
     for child in children {
@@ -404,8 +494,34 @@ impl Graph {
     Id::local(Kind::Computation, self.nonce, generation, index)
   }
 
-  /// Makes `child` a child of `parent`, unlinking it from a previous parent first.
-  /// Does nothing when `parent` is gone.
+  /// Sets the depth of the owner or computation `id` to `depth`, and its subtree's to
+  /// follow.
+  fn set_depths(&mut self, id: Id, depth: u32) {
+    let Some(data) = self.owner_data_mut(id)
+    else {
+      return;
+    };
+
+    if data.depth == depth {
+      return;
+    }
+
+    data.depth = depth;
+
+    let children: SmallVec<[Id; 8]> = data
+      .children
+      .as_ref()
+      .map(|children| children.iter().collect())
+      .unwrap_or_default();
+
+    for child in children {
+      self.set_depths(child, depth + 1);
+    }
+  }
+
+  /// Makes `child` a child of `parent`, unlinking it from a previous parent first; a
+  /// moved subtree takes the depths of its new place. Does nothing when `parent` is
+  /// gone.
   pub(crate) fn adopt(&mut self, child: Id, parent: Id) {
     let moved = self.orphan(child);
 
@@ -438,9 +554,10 @@ impl Graph {
 
         if let Some(data) = self.owner_data_mut(child) {
           data.parent = Some(parent);
-          data.depth = depth;
           data.step = Some(step);
         }
+
+        self.set_depths(child, depth);
 
         if moved {
           self.clear_paths(child);
@@ -477,7 +594,7 @@ impl Graph {
     if let Some(data) = self.owner_data_mut(parent)
       && let Some(children) = data.children.as_mut()
     {
-      children.remove(&child);
+      children.remove(child);
     }
   }
 
@@ -486,21 +603,30 @@ impl Graph {
     self.owner_data(id).and_then(|data| data.parent)
   }
 
-  /// Takes what `id`'s last run made—its children, cleanups and contexts—leaving it
-  /// as it was before that run.
-  pub(crate) fn take_run_remains(&mut self, id: Id) -> Option<RunRemains> {
-    let data = self.owner_data_mut(id)?;
+  /// Starts a run of the computation `id`: resets its creation counters and returns its
+  /// body, with what its last run made when that was anything.
+  pub(crate) fn begin_run(&mut self, id: Id) -> Option<(Rc<dyn Computation>, Option<RunRemains>)> {
+    let computation = self.computation_mut(id)?;
+    let body = computation.body.clone()?;
+    let data = &mut computation.owner;
 
-    Some(RunRemains {
+    data.next_child = 0;
+    data.next_index = 0;
+
+    let made = data.children.is_some() || !data.cleanups.is_empty() || data.contexts.is_some();
+    let remains = made.then(|| RunRemains {
       children: data.children.take(),
       cleanups: std::mem::take(&mut data.cleanups),
       contexts: data.contexts.take(),
-    })
+    });
+
+    Some((body, remains))
   }
 
   /// Removes a local signal, unlinking it from every subscriber.
   pub(crate) fn remove_signal(&mut self, id: Id) -> Option<RemovedSignal> {
     self.orphan(id);
+    self.unobserved_hooks.remove(&id);
 
     let (generation, index) = self.slot(id, Kind::Signal)?;
     let record = self.signals.remove(generation, index)?;
@@ -676,12 +802,13 @@ impl Graph {
     subs.tail = link;
   }
 
-  /// Opens a run of `sub`: clears its invalidation, marks it running and rewinds its
-  /// dependency cursor so [`link`](Self::link) can reuse last run's edges in order.
+  /// Opens a run of `sub`: clears its invalidation and any dependency check it is on,
+  /// marks it running and rewinds its dependency cursor so [`link`](Self::link) can
+  /// reuse last run's edges in order.
   pub(crate) fn start_tracking(&mut self, sub: Id) {
     if let Some(computation) = self.computation_mut(sub) {
       computation.deps.tail = NONE;
-      computation.flags = (computation.flags & !(DIRTY | PENDING)) | RUNNING;
+      computation.flags = (computation.flags & !(DIRTY | PENDING | CHECKING)) | RUNNING;
     }
   }
 
@@ -756,6 +883,13 @@ impl Graph {
     }
 
     self.links.free(index);
+
+    if !self.unobserved_hooks.is_empty()
+      && self.unobserved_hooks.contains_key(&dep)
+      && self.subs_mut(dep).is_some_and(|subs| subs.head == NONE)
+    {
+      self.unobserved.push(dep);
+    }
   }
 
   /// Unlinks every edge on a subscriber list.
@@ -782,17 +916,54 @@ impl Graph {
     }
   }
 
-  /// The first edge of `sub`'s dependency list.
-  pub(crate) fn first_dep(&self, sub: Id) -> LinkIdx {
-    self
-      .computation(sub)
-      .map_or(NONE, |computation| computation.deps.head)
+  /// Puts the computation `id` on a dependency check, returning its first edge.
+  pub(crate) fn begin_check(&mut self, id: Id) -> LinkIdx {
+    self.computation_mut(id).map_or(NONE, |computation| {
+      computation.flags |= CHECKING;
+
+      computation.deps.head
+    })
   }
 
-  /// The edge at `index`; the caller checks it still names the pair it expects.
-  #[inline(always)]
-  pub(crate) fn link_at(&self, index: LinkIdx) -> Link {
-    self.links.get(index)
+  /// The step a dependency check of `sub` takes at its edge `index`: a memo on the
+  /// check already, or running, is only compared.
+  pub(crate) fn check_edge(&mut self, sub: Id, index: LinkIdx) -> CheckStep {
+    let link = self.links.get(index);
+
+    if link.sub != sub {
+      return CheckStep::Changed;
+    }
+
+    if let Some(dep) = self.computation_mut(link.dep)
+      && dep.flags & (RUNNING | CHECKING) == 0
+    {
+      if dep.flags & DIRTY != 0 {
+        return CheckStep::Run(link.dep);
+      }
+
+      if dep.flags & PENDING != 0 {
+        dep.flags |= CHECKING;
+
+        return CheckStep::Descend(link.dep, dep.deps.head);
+      }
+    }
+
+    self
+      .unchanged_edge(sub, index, link.dep)
+      .map_or(CheckStep::Changed, CheckStep::Unchanged)
+  }
+
+  /// The edge after `sub`'s edge `index` when its dependency `dep` is unchanged since
+  /// the edge read it; `None` when it changed or the edge no longer joins the two.
+  pub(crate) fn unchanged_edge(&self, sub: Id, index: LinkIdx, dep: Id) -> Option<LinkIdx> {
+    let link = self.links.get(index);
+
+    (link.sub == sub
+      && link.dep == dep
+      && self
+        .dep_version(dep)
+        .is_some_and(|version| version == link.version))
+    .then_some(link.next_dep)
   }
 
   /// A source changed: direct subscribers become dirty, memos downstream of them
@@ -913,8 +1084,9 @@ impl Graph {
     self.queue.pop_front()
   }
 
+  /// Whether a flush has work: an effect queued, or a signal's unobserved hook due.
   pub(crate) fn has_queued(&self) -> bool {
-    !self.render_queue.is_empty() || !self.queue.is_empty()
+    !self.render_queue.is_empty() || !self.queue.is_empty() || !self.unobserved.is_empty()
   }
 
   pub(crate) fn flags(&self, id: Id) -> Option<u8> {

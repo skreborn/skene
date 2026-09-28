@@ -2,11 +2,16 @@
 
 use std::{any::Any, rc::Rc};
 
+use smallvec::SmallVec;
+
 use crate::{
-  graph::flags::{DIRTY, PAUSED, PENDING, QUEUED, RUNNING},
+  graph::{
+    CheckStep,
+    flags::{CHECKING, DIRTY, PAUSED, PENDING, QUEUED, RUNNING},
+  },
   id::{Id, Kind},
-  link::NONE,
-  runtime::{RUNTIME, Runtime, try_with_graph, with_graph},
+  link::{LinkIdx, NONE},
+  runtime::{RUNTIME, Runtime, with_graph},
 };
 
 /// A computation's body, run under tracking as the computation itself.
@@ -36,44 +41,65 @@ pub(crate) fn create_detached(body: Rc<dyn Computation>, flags: u8) -> Id {
   with_graph(|graph| graph.allocate_computation(body, flags))
 }
 
-/// Ends the tracked run of a computation, on return or unwind.
-struct EndTracking(Id);
+/// A computation's tracked run: on return or unwind, restores the tracking computation
+/// and the owner it replaced, then drops the edges the run did not read.
+struct Tracked<'a> {
+  runtime: &'a Runtime,
+  id: Id,
+  tracking: Option<Id>,
+  owner: Id,
+}
 
-impl Drop for EndTracking {
+impl Drop for Tracked<'_> {
   fn drop(&mut self) {
-    let _ = try_with_graph(|graph| graph.end_tracking(self.0));
+    self.runtime.tracking.set(self.tracking);
+    self.runtime.current_owner.set(self.owner);
+    self.runtime.graph().end_tracking(self.id);
   }
 }
 
 /// Runs `operation` as computation `id`: its reads become `id`'s dependencies, replacing last
 /// run's, and anything reactive it creates belongs to `id`.
 pub(crate) fn track<T>(id: Id, operation: impl FnOnce() -> T) -> T {
-  with_graph(|graph| graph.start_tracking(id));
+  RUNTIME.with(|runtime| track_in(runtime, id, operation))
+}
 
-  let _end = EndTracking(id);
+/// [`track`] on `runtime`, this thread's.
+fn track_in<T>(runtime: &Runtime, id: Id, operation: impl FnOnce() -> T) -> T {
+  runtime.graph().start_tracking(id);
 
-  Runtime::with_tracking(Some(id), || Runtime::with_owner(id, operation))
+  let _tracked = Tracked {
+    runtime,
+    id,
+    tracking: runtime.tracking.replace(Some(id)),
+    owner: runtime.current_owner.replace(id),
+  };
+
+  operation()
 }
 
 /// Re-runs computation `id` from scratch: what its last run made is torn down first.
 ///
 /// The run is a batch: an effect it invalidates, itself included, runs once it ends.
 pub(crate) fn run(id: Id) {
-  let Some(body) = with_graph(|graph| graph.body(id))
-  else {
-    return;
-  };
+  RUNTIME.with(|runtime| {
+    let Some((body, remains)) = runtime.graph().begin_run(id)
+    else {
+      return;
+    };
 
-  let _batch = Runtime::enter_batch();
+    let _batch = runtime.enter_run_batch();
 
-  id.dispose_run();
-  with_graph(|graph| graph.reset_creation_counters(id));
+    if let Some(remains) = remains {
+      remains.dispose();
+    }
 
-  let changed = track(id, || body.run());
+    let changed = track_in(runtime, id, || body.run());
 
-  if changed {
-    with_graph(|graph| graph.bump_version(id));
-  }
+    if changed {
+      runtime.graph().bump_version(id);
+    }
+  });
 }
 
 /// One queue step: runs a dirty effect, checks a pending one first, skips a paused one.
@@ -114,49 +140,67 @@ fn settle(id: Id, flags: u8) {
       run(id);
     }
     else {
-      with_graph(|graph| graph.update_flags(id, 0, PENDING));
+      with_graph(|graph| graph.update_flags(id, 0, PENDING | CHECKING));
     }
   }
 }
 
-/// Whether any dependency of `sub` changed since `sub` last read it, refreshing the
-/// memos among them first.
-pub(crate) fn check_dirty(sub: Id) -> bool {
-  let mut index = with_graph(|graph| graph.first_dep(sub));
+/// Whether any dependency of `root` changed since `root` last read it, refreshing the
+/// memos among them first; `root` is left on the check, for its run or the caller to
+/// take it off.
+///
+/// The walk keeps its own stack rather than the call stack: a pending memo is checked
+/// in turn, and one whose dependency changed runs before the check it sits in goes on,
+/// deepest first, so a run finds its dependencies fresh and nests nothing. A memo
+/// already on the stack is not descended into again, so a cycle ends.
+#[inline(never)]
+pub(crate) fn check_dirty(root: Id) -> bool {
+  let mut stack: SmallVec<[(Id, LinkIdx); 16]> = SmallVec::new();
 
-  while index != NONE {
-    let link = with_graph(|graph| graph.link_at(index));
+  stack.push((root, with_graph(|graph| graph.begin_check(root))));
 
-    if link.sub != sub {
-      return true;
-    }
+  loop {
+    let (sub, index) = *stack.last().expect("the root's frame");
 
-    if link.dep.kind() == Kind::Computation {
-      ensure_fresh(link.dep);
-    }
-
-    let (changed, next) = with_graph(|graph| {
-      let current = graph.link_at(index);
-
-      if current.sub != sub || current.dep != link.dep {
-        return (true, NONE);
+    if index == NONE {
+      if stack.len() == 1 {
+        break false;
       }
 
-      let changed = graph
-        .dep_version(link.dep)
-        .is_none_or(|version| version != current.version);
+      stack.pop();
+      with_graph(|graph| graph.update_flags(sub, 0, PENDING | CHECKING));
 
-      (changed, current.next_dep)
-    });
-
-    if changed {
-      return true;
+      continue;
     }
 
-    index = next;
-  }
+    let unchanged = match with_graph(|graph| graph.check_edge(sub, index)) {
+      CheckStep::Changed => None,
+      CheckStep::Unchanged(next) => Some(next),
+      CheckStep::Run(dep) => {
+        run(dep);
 
-  false
+        with_graph(|graph| graph.unchanged_edge(sub, index, dep))
+      }
+      CheckStep::Descend(dep, first) => {
+        stack.push((dep, first));
+
+        continue;
+      }
+    };
+
+    if let Some(next) = unchanged {
+      stack.last_mut().expect("the frame").1 = next;
+
+      continue;
+    }
+
+    if stack.len() == 1 {
+      break true;
+    }
+
+    stack.pop();
+    run(sub);
+  }
 }
 
 /// Subscribes the tracking computation, if any, to `dep`.

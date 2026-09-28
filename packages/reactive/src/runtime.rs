@@ -246,11 +246,10 @@ impl Runtime {
   ///
   /// Clears all signals, effects, owners, pending work, snapshot registrations and the
   /// scheduler, and releases the UI-thread designation. Cleanups are discarded, not
-  /// run.
+  /// run. Inside a batch, the batch still ends where it would have, and flushes then.
   pub fn reset() {
     let (graph, scheduler) = RUNTIME.with(|runtime| {
       runtime.tracking.set(None);
-      runtime.batch_depth.set(0);
       runtime.flushing.set(false);
       runtime.scheduled.set(false);
 
@@ -268,6 +267,11 @@ impl Runtime {
 
     UI_THREAD.store(0, Ordering::Release);
     ENFORCE_UI_THREAD.store(false, Ordering::Relaxed);
+  }
+
+  /// Whether a computation is tracking what it reads.
+  pub(crate) fn is_tracking() -> bool {
+    RUNTIME.with(|runtime| runtime.tracking.get().is_some())
   }
 
   /// Attaches `id` to the current owner, so disposing the owner disposes it.
@@ -311,10 +315,16 @@ impl Runtime {
   }
 
   /// Opens a batch; the returned guard closes it and flushes when it was the outermost.
-  pub(crate) fn enter_batch() -> BatchGuard {
-    RUNTIME.with(|runtime| runtime.batch_depth.set(runtime.batch_depth.get() + 1));
+  pub(crate) fn enter_batch(&self) -> BatchGuard<'_> {
+    self.batch_depth.set(self.batch_depth.get() + 1);
 
-    BatchGuard
+    BatchGuard(self)
+  }
+
+  /// Opens the batch a computation's run is, unless a flush is running, which holds
+  /// what the run invalidates until the run ends all the same.
+  pub(crate) fn enter_run_batch(&self) -> Option<BatchGuard<'_>> {
+    (!self.flushing.get()).then(|| self.enter_batch())
   }
 
   /// Flushes now, or through the scheduler when one is installed; a no-op when nothing
@@ -344,8 +354,9 @@ impl Runtime {
     }
   }
 
-  /// Drains the queues until none remain. Re-entrant calls return immediately: the
-  /// running flush picks up whatever a mid-flush write enqueued.
+  /// Drains the queues until none remain: every queued effect, then, untracked, the
+  /// hooks of the signals left without a subscriber. Re-entrant calls return
+  /// immediately: the running flush picks up whatever a mid-flush write enqueued.
   ///
   /// # Panics
   ///
@@ -363,10 +374,21 @@ impl Runtime {
     let mut runs = rustc_hash::FxHashMap::<Id, u32>::default();
 
     loop {
-      let next = self.graph().pop_queued();
+      let (next, unobserved) = {
+        let mut graph = self.graph();
+        let next = graph.pop_queued();
+
+        (next, next.is_none() && graph.has_unobserved())
+      };
 
       let Some(id) = next
       else {
+        if unobserved {
+          Self::run_unobserved();
+
+          continue;
+        }
+
         break;
       };
 
@@ -385,6 +407,19 @@ impl Runtime {
 
       crate::computation::run_queued(id);
     }
+  }
+
+  /// Runs, untracked, the hooks of the signals left without a subscriber.
+  #[cold]
+  #[inline(never)]
+  fn run_unobserved() {
+    let hooks = with_graph(Graph::take_unobserved);
+
+    Self::with_tracking(None, || {
+      for hook in hooks {
+        hook();
+      }
+    });
   }
 
   /// Installs the scheduler a write outside a batch hands its flush to.
@@ -449,19 +484,17 @@ impl Runtime {
 }
 
 /// Closes a batch on drop, flushing when it was the outermost and nothing is unwinding.
-pub(crate) struct BatchGuard;
+pub(crate) struct BatchGuard<'a>(&'a Runtime);
 
-impl Drop for BatchGuard {
+impl Drop for BatchGuard<'_> {
   fn drop(&mut self) {
-    let _ = RUNTIME.try_with(|runtime| {
-      let depth = runtime.batch_depth.get() - 1;
+    let depth = self.0.batch_depth.get().saturating_sub(1);
 
-      runtime.batch_depth.set(depth);
+    self.0.batch_depth.set(depth);
 
-      if depth == 0 && !thread::panicking() {
-        runtime.request_flush();
-      }
-    });
+    if depth == 0 && !thread::panicking() {
+      self.0.request_flush();
+    }
   }
 }
 

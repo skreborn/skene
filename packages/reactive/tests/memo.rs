@@ -6,7 +6,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_reactive::{Effect, Get, Memo, Runtime, Set, Signal, Track};
+use skene_reactive::{Effect, Get, Memo, Owner, Runtime, Set, Signal, Track};
 
 #[test]
 fn unobserved_memo_recomputes_only_when_read() {
@@ -286,4 +286,30 @@ fn a_summary_outlives_the_rows_it_read() {
 
   assert_eq!(total.try_get_untracked(), Some(10));
   assert_eq!(shown.get(), 10);
+}
+
+/// A change at the source of a long chain of memos reaches its end without a call per
+/// memo on the stack.
+#[test]
+fn a_long_memo_chain_settles() {
+  let owner = Owner::new();
+
+  owner.enter(|| {
+    let source = Signal::new(0u64);
+    let mut last = Memo::new(move |_| source.get());
+
+    for _ in 0..100_000 {
+      let previous = last;
+
+      last = Memo::new(move |_| previous.get() + 1);
+    }
+
+    assert_eq!(last.get(), 100_000);
+
+    source.set(1);
+
+    assert_eq!(last.get(), 100_001);
+  });
+
+  owner.dispose();
 }

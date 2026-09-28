@@ -230,6 +230,21 @@ fn selector_reruns_only_the_affected_readers() {
   assert_eq!(counts(), [1, 2, 1, 2, 1], "an unchanged key re-runs nobody");
 }
 
+/// A selector answers with the source's current key even inside a batch, before any
+/// effect of the batch has run.
+#[test]
+fn a_selector_answers_the_current_key_inside_a_batch() {
+  let selected = Signal::new(1usize);
+  let selector = Selector::new(move || selected.get());
+
+  batch(|| {
+    selected.set(2);
+
+    assert!(selector.is(&2));
+    assert!(!selector.is(&1));
+  });
+}
+
 /// A scheduler receives one flush for any number of writes; `flush_sync` drains now.
 #[test]
 fn scheduler_coalesces_writes_into_one_flush() {

@@ -216,3 +216,93 @@ fn a_rebuild_reading_its_own_content_keeps_running() {
 
   assert_eq!(runs.get(), 4);
 }
+
+/// An owner disposes its children newest first, so a child's cleanup runs before
+/// those of the children created before it.
+#[test]
+fn children_are_disposed_newest_first() {
+  let parent = Owner::new();
+  let order = Rc::new(std::cell::RefCell::new(Vec::new()));
+
+  for index in 0..3 {
+    let order = Rc::clone(&order);
+
+    parent
+      .child()
+      .on_cleanup(move || order.borrow_mut().push(index));
+  }
+
+  parent.dispose();
+
+  assert_eq!(*order.borrow(), [2, 1, 0]);
+}
+
+/// A subtree moved under another owner takes the depths of its new place, so its render
+/// effects run in the order of where they now sit.
+#[test]
+fn a_moved_subtree_takes_its_new_depths() {
+  let root = Owner::new();
+  let deep = root.child().child().child();
+  let subtree = deep.child();
+  let (source, setter) = root.enter(|| signal(0));
+  let order = Rc::new(std::cell::RefCell::new(Vec::new()));
+
+  subtree.enter(|| {
+    let order = Rc::clone(&order);
+
+    Effect::render(move |_: Option<()>| {
+      source.track();
+      order.borrow_mut().push("moved");
+    });
+  });
+  root.child().enter(|| {
+    let order = Rc::clone(&order);
+
+    Effect::render(move |_: Option<()>| {
+      source.track();
+      order.borrow_mut().push("shallow");
+    });
+  });
+  order.borrow_mut().clear();
+  setter.set(1);
+
+  assert_eq!(
+    *order.borrow(),
+    ["shallow", "moved"],
+    "the deeper runs later"
+  );
+
+  subtree.set_parent(root);
+  order.borrow_mut().clear();
+  setter.set(2);
+
+  assert_eq!(
+    *order.borrow(),
+    ["moved", "shallow"],
+    "at one depth, the earlier created runs first"
+  );
+
+  root.dispose();
+}
+
+/// A reset inside a batch leaves the batch to end where it would have, and the fresh
+/// runtime flushes as ever.
+#[test]
+fn a_reset_inside_a_batch_leaves_the_runtime_working() {
+  skene_reactive::batch(Runtime::reset);
+
+  let (source, setter) = signal(0);
+  let runs = Rc::new(Cell::new(0));
+
+  Effect::new({
+    let runs = Rc::clone(&runs);
+
+    move |_| {
+      source.track();
+      runs.set(runs.get() + 1);
+    }
+  });
+  setter.set(1);
+
+  assert_eq!(runs.get(), 2);
+}

@@ -1420,14 +1420,18 @@ impl Store {
     due.into_iter().map(|(_, _, action)| action).collect()
   }
 
-  /// How long until the earliest scheduled action is due, if any is.
+  /// How long until the earliest scheduled action is due, if any is; a delay past
+  /// what a duration holds is the longest one.
   pub(crate) fn next_timer_due(&self) -> Option<std::time::Duration> {
     let now = self.now();
 
     self
       .timers
       .iter()
-      .map(|(at, ..)| std::time::Duration::from_secs_f64((at - now).max(0.)))
+      .map(|(at, ..)| {
+        std::time::Duration::try_from_secs_f64((at - now).max(0.))
+          .unwrap_or(std::time::Duration::MAX)
+      })
       .min()
   }
 
@@ -1628,5 +1632,29 @@ impl Store {
       u32::try_from(width - left - right).unwrap_or(0),
       u32::try_from(height - top - bottom).unwrap_or(0),
     )
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::time::Duration;
+
+  use skene_core::Platform as _;
+
+  use crate::{Tui, with_store};
+
+  /// A delay past what a duration holds waits the longest a duration can.
+  #[test]
+  fn a_huge_delay_waits_the_longest() {
+    crate::install();
+
+    let _ = Tui.schedule(Duration::MAX, Box::new(|| {}));
+
+    assert_eq!(
+      with_store(|store| store.next_timer_due()),
+      Some(Duration::MAX)
+    );
+
+    crate::uninstall();
   }
 }

@@ -5,7 +5,9 @@
 //! completes with the next, and a sequence the loop never asked about is consumed
 //! whole and dropped rather than read as keys. A string sequence (OSC, DCS, APC, PM,
 //! SOS) reads as a reply only inside a reply window the loop opened; outside one its
-//! introducer is the `Alt` chord that sends the same bytes.
+//! introducer is the `Alt` chord that sends the same bytes. Each byte is scanned a
+//! bounded number of times, and a sequence longer than it may be is dropped to its end
+//! as it arrives, so the parser's time is linear in its input and its memory bounded.
 
 use std::collections::VecDeque;
 
@@ -23,8 +25,14 @@ const BEL: u8 = 0x07;
 const CAN: u8 = 0x18;
 const SUB: u8 = 0x1a;
 
-/// The longest string sequence read; a longer one is dropped.
+/// The longest string sequence or bracketed paste read; a longer one is dropped.
 const MAX_STRING: usize = 16 << 20;
+
+/// The longest control sequence read; a longer one is dropped.
+const MAX_CSI: usize = 4096;
+
+/// The closing bracket of a bracketed paste.
+const PASTE_END: &[u8] = b"\x1b[201~";
 
 /// What reached the loop: the terminal's input or a reply to a query, a line from the
 /// dev launcher, or a process signal.
@@ -246,6 +254,11 @@ pub(crate) struct Parser {
   events: VecDeque<Event>,
   /// The reply windows open.
   windows: u32,
+  /// How much of the buffer's head the last scan read without finding its sequence's
+  /// end, where the next one resumes.
+  scanned: usize,
+  /// The sequence being dropped to its end, too long to read.
+  discarding: Option<Discard>,
 }
 
 impl Parser {
@@ -256,14 +269,37 @@ impl Parser {
     self.windows += 1;
   }
 
-  /// Takes `bytes` in; `more` says the chunk may have been cut short of a sequence's
-  /// end, so a lone escape at its end waits rather than reading as the `Escape` key.
-  pub(crate) fn feed(&mut self, bytes: &[u8], more: bool) {
+  /// Takes `bytes` in. An escape the input ends in waits for the rest of its sequence;
+  /// see [`resolve_escape`](Self::resolve_escape).
+  pub(crate) fn feed(&mut self, bytes: &[u8]) {
     self.buffer.extend_from_slice(bytes);
 
-    loop {
-      let (consumed, event) = match scan(&self.buffer, more, self.windows > 0) {
-        Scan::Incomplete => break,
+    while !self.buffer.is_empty() {
+      if let Some(discard) = self.discarding {
+        let Some(end) = discard.end(&self.buffer)
+        else {
+          self.buffer.drain(..discard.droppable(&self.buffer));
+
+          break;
+        };
+
+        self.buffer.drain(..end);
+        self.discarding = None;
+
+        continue;
+      }
+
+      let (consumed, event) = match scan(&self.buffer, self.windows > 0, self.scanned) {
+        Scan::Incomplete => {
+          self.scanned = self.buffer.len();
+
+          break;
+        }
+        Scan::Overlong(discard) => {
+          self.discarding = Some(discard);
+
+          (discard.droppable(&self.buffer), None)
+        }
         Scan::Done(consumed, event) => (consumed, event),
         Scan::Fence(consumed) => {
           self.windows = self.windows.saturating_sub(1);
@@ -274,11 +310,38 @@ impl Parser {
 
       self.buffer.drain(..consumed);
       self.events.extend(event);
-
-      if self.buffer.is_empty() {
-        break;
-      }
+      self.scanned = 0;
     }
+  }
+
+  /// Whether the input ends in an escape a pause resolves: a lone `ESC`, or `ESC` with
+  /// only `[` or `O` after it.
+  pub(crate) fn holds_escape(&self) -> bool {
+    self.discarding.is_none() && matches!(self.buffer.as_slice(), [ESC] | [ESC, b'[' | b'O'])
+  }
+
+  /// Reads the escape the input ends in as a pause after it means: a lone `ESC` as the
+  /// `Escape` key, and `ESC [` or `ESC O` as `Alt` with the key after it.
+  pub(crate) fn resolve_escape(&mut self) {
+    if !self.holds_escape() {
+      return;
+    }
+
+    let event = match self.buffer.as_slice() {
+      [_, second] => match scan_char(&[*second]) {
+        Scan::Done(_, Some(Event::Key(mut key))) => {
+          key.modifiers.alt = true;
+
+          Some(Event::Key(key))
+        }
+        _ => None,
+      },
+      _ => Some(Event::Key(Key::new(KeyCode::Escape))),
+    };
+
+    self.buffer.clear();
+    self.events.extend(event);
+    self.scanned = 0;
   }
 
   /// The oldest event decoded and not yet taken.
@@ -287,10 +350,62 @@ impl Parser {
   }
 }
 
+/// A sequence too long to read, dropped as it arrives up to its end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Discard {
+  /// A string sequence, ended as [`scan_string`] ends one; `bel` where `BEL` ends it
+  /// too.
+  String { bel: bool },
+  /// A bracketed paste, ended by its closing bracket.
+  Paste,
+  /// A control sequence, ended by its final byte.
+  Csi,
+}
+
+impl Discard {
+  /// Where the sequence ends in `buffer`, the bytes up to it its own, when it does.
+  fn end(self, buffer: &[u8]) -> Option<usize> {
+    match self {
+      Self::String { bel } => buffer
+        .iter()
+        .enumerate()
+        .find_map(|(index, byte)| match *byte {
+          BEL if bel => Some(index + 1),
+          CAN | SUB => Some(index + 1),
+          ESC => match buffer.get(index + 1) {
+            Some(b'\\') => Some(index + 2),
+            Some(_) => Some(index),
+            None => None,
+          },
+          _ => None,
+        }),
+      Self::Paste => find(buffer, PASTE_END).map(|at| at + PASTE_END.len()),
+      Self::Csi => buffer
+        .iter()
+        .position(|byte| !(0x20..=0x3f).contains(byte))
+        .map(|at| at + 1),
+    }
+  }
+
+  /// How much of `buffer`, holding no end of the sequence, can go: all but what may
+  /// begin its end.
+  fn droppable(self, buffer: &[u8]) -> usize {
+    let kept = match self {
+      Self::String { .. } => usize::from(buffer.last() == Some(&ESC)),
+      Self::Paste => PASTE_END.len() - 1,
+      Self::Csi => 0,
+    };
+
+    buffer.len().saturating_sub(kept)
+  }
+}
+
 /// What one scan of the buffer's head found.
 enum Scan {
   /// The head is a sequence still arriving.
   Incomplete,
+  /// The head is a sequence longer than it may be, to be dropped to its end.
+  Overlong(Discard),
   /// `consumed` bytes make one input, or nothing the loop reads.
   Done(usize, Option<Event>),
   /// `consumed` bytes are the reply to the primary device attributes request, which
@@ -298,16 +413,17 @@ enum Scan {
   Fence(usize),
 }
 
-/// Scans the buffer's head for one input; a string sequence is a reply where
+/// Scans the buffer's head for one input, resuming a sequence's search for its end past
+/// the `scanned` bytes a scan already read; a string sequence is a reply where
 /// `replying`.
-fn scan(buffer: &[u8], more: bool, replying: bool) -> Scan {
+fn scan(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
   let Some(first) = buffer.first()
   else {
     return Scan::Incomplete;
   };
 
   match *first {
-    ESC => scan_escape(buffer, more, replying),
+    ESC => scan_escape(buffer, replying, scanned),
     b'\r' => key(1, KeyCode::Enter),
     b'\t' => key(1, KeyCode::Tab),
     0x7f => key(1, KeyCode::Backspace),
@@ -336,7 +452,9 @@ fn control(consumed: usize, character: char) -> Scan {
   )
 }
 
-/// A UTF-8 character's key; an uppercase letter carries `Shift`.
+/// A UTF-8 character's key; an uppercase letter carries `Shift`. A lead byte without
+/// the continuation bytes it announces is dropped as soon as another byte takes their
+/// place.
 fn scan_char(buffer: &[u8]) -> Scan {
   let needed = match buffer[0] {
     0x00..=0x7f => 1,
@@ -345,6 +463,15 @@ fn scan_char(buffer: &[u8]) -> Scan {
     0xf0..=0xf7 => 4,
     _ => return Scan::Done(1, None),
   };
+
+  if let Some(stray) = buffer
+    .iter()
+    .take(needed)
+    .skip(1)
+    .position(|byte| !(0x80..=0xbf).contains(byte))
+  {
+    return Scan::Done(stray + 1, None);
+  }
 
   if buffer.len() < needed {
     return Scan::Incomplete;
@@ -368,28 +495,23 @@ fn scan_char(buffer: &[u8]) -> Scan {
 }
 
 /// An escape sequence, or `Alt` with the key after a lone escape; a string sequence
-/// only where `replying`, its introducer an `Alt` chord elsewhere.
-fn scan_escape(buffer: &[u8], more: bool, replying: bool) -> Scan {
+/// only where `replying`, its introducer an `Alt` chord elsewhere. A lone escape waits
+/// for what follows it.
+fn scan_escape(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
   let Some(second) = buffer.get(1)
   else {
-    return if more {
-      Scan::Incomplete
-    }
-    else {
-      key(1, KeyCode::Escape)
-    };
+    return Scan::Incomplete;
   };
 
   match *second {
-    b'[' => scan_csi(buffer),
-    b']' if replying => scan_string(buffer, true, parse_osc),
-    b'P' if replying => scan_string(buffer, false, parse_dcs),
-    b'_' if replying => scan_string(buffer, false, parse_apc),
-    b'^' | b'X' if replying => scan_string(buffer, false, |_| None),
+    b'[' => scan_csi(buffer, replying, scanned),
+    b']' if replying => scan_string(buffer, true, scanned, parse_osc),
+    b'P' if replying => scan_string(buffer, false, scanned, parse_dcs),
+    b'_' if replying => scan_string(buffer, false, scanned, parse_apc),
+    b'^' | b'X' if replying => scan_string(buffer, false, scanned, |_| None),
     b'O' => scan_ss3(buffer),
     ESC => key(1, KeyCode::Escape),
-    _ => match scan(&buffer[1..], more, replying) {
-      Scan::Incomplete => Scan::Incomplete,
+    _ => match scan(&buffer[1..], replying, scanned.saturating_sub(1)) {
       Scan::Done(consumed, Some(Event::Key(mut key))) => {
         key.modifiers.alt = true;
 
@@ -397,17 +519,25 @@ fn scan_escape(buffer: &[u8], more: bool, replying: bool) -> Scan {
       }
       Scan::Done(consumed, event) => Scan::Done(consumed + 1, event),
       Scan::Fence(consumed) => Scan::Fence(consumed + 1),
+      scan => scan,
     },
   }
 }
 
-/// An `SS3` key: the cursor keys and `F1` to `F4` in application mode.
+/// An `SS3` key: the cursor keys and `F1` to `F4` in application mode, a modifier
+/// number between the introducer and the final where one is held. `ESC O` before
+/// anything else is `Alt` with `O`.
 fn scan_ss3(buffer: &[u8]) -> Scan {
-  let Some(third) = buffer.get(2)
+  let digits = buffer[2..]
+    .iter()
+    .take(4)
+    .take_while(|byte| byte.is_ascii_digit())
+    .count();
+  let Some(last) = buffer.get(2 + digits)
   else {
     return Scan::Incomplete;
   };
-  let code = match *third {
+  let code = match *last {
     b'A' => KeyCode::Up,
     b'B' => KeyCode::Down,
     b'C' => KeyCode::Right,
@@ -415,20 +545,43 @@ fn scan_ss3(buffer: &[u8]) -> Scan {
     b'H' => KeyCode::Home,
     b'F' => KeyCode::End,
     byte @ b'P'..=b'S' => KeyCode::Function(1 + byte - b'P'),
-    _ => return Scan::Done(3, None),
+    _ if digits == 0 => {
+      return Scan::Done(
+        2,
+        Some(Event::Key(Key::new(KeyCode::Char('O')).with(Modifiers {
+          alt: true,
+          shift: true,
+          ..Modifiers::default()
+        }))),
+      );
+    }
+    _ => return Scan::Done(3 + digits, None),
   };
+  let mask = std::str::from_utf8(&buffer[2..2 + digits])
+    .ok()
+    .and_then(|mask| mask.parse().ok());
 
-  key(3, code)
+  Scan::Done(
+    3 + digits,
+    Some(Event::Key(
+      Key::new(code).with(mask.map_or_else(Modifiers::default, modifiers_of)),
+    )),
+  )
 }
 
 /// A string sequence (OSC, DCS, APC, PM, SOS) up to its terminator—`ST`, or `BEL` too
 /// where `bel` says the kind takes it—handed to `parse` without its introducer and
-/// terminator.
+/// terminator; the search resumes past the `scanned` bytes a scan already read.
 ///
 /// An escape starting anything but `ST` ends the string unread, and begins the next
 /// sequence; `CAN` or `SUB` abort it; a string longer than [`MAX_STRING`] is dropped.
-fn scan_string(buffer: &[u8], bel: bool, parse: impl Fn(&[u8]) -> Option<Event>) -> Scan {
-  let mut index = 2;
+fn scan_string(
+  buffer: &[u8],
+  bel: bool,
+  scanned: usize,
+  parse: impl Fn(&[u8]) -> Option<Event>,
+) -> Scan {
+  let mut index = scanned.saturating_sub(1).max(2);
 
   while index < buffer.len() {
     match buffer[index] {
@@ -446,15 +599,17 @@ fn scan_string(buffer: &[u8], bel: bool, parse: impl Fn(&[u8]) -> Option<Event>)
   }
 
   if buffer.len() > MAX_STRING {
-    return Scan::Done(buffer.len(), None);
+    return Scan::Overlong(Discard::String { bel });
   }
 
   Scan::Incomplete
 }
 
 /// A CSI sequence: its parameters, intermediates and final byte, dispatched by the
-/// final.
-fn scan_csi(buffer: &[u8]) -> Scan {
+/// final. A cursor position report reads as one only where `replying`, and as the
+/// modified `F3` it shares its bytes with elsewhere; a bracketed paste's search for its
+/// end resumes past the `scanned` bytes a scan already read.
+fn scan_csi(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
   // The Linux console's `F1` to `F5`, `CSI [ A` to `CSI [ E`.
   if buffer.get(2) == Some(&b'[') {
     return match buffer.get(3) {
@@ -484,7 +639,12 @@ fn scan_csi(buffer: &[u8]) -> Scan {
 
   let Some(last) = buffer.get(index)
   else {
-    return Scan::Incomplete;
+    return if index > MAX_CSI {
+      Scan::Overlong(Discard::Csi)
+    }
+    else {
+      Scan::Incomplete
+    };
   };
 
   if !(0x40..=0x7e).contains(last) {
@@ -500,13 +660,16 @@ fn scan_csi(buffer: &[u8]) -> Scan {
 
   // A bracketed paste runs to its closing bracket.
   if parameters == "200" && *last == b'~' {
-    return match find(&buffer[consumed..], b"\x1b[201~") {
+    let from = scanned.saturating_sub(PASTE_END.len() - 1).max(consumed);
+
+    return match find(&buffer[from..], PASTE_END) {
       Some(end) => Scan::Done(
-        consumed + end + 6,
+        from + end + PASTE_END.len(),
         Some(Event::Paste(
-          String::from_utf8_lossy(&buffer[consumed..consumed + end]).into_owned(),
+          String::from_utf8_lossy(&buffer[consumed..from + end]).into_owned(),
         )),
       ),
+      None if buffer.len() - consumed > MAX_STRING => Scan::Overlong(Discard::Paste),
       None => Scan::Incomplete,
     };
   }
@@ -528,7 +691,7 @@ fn scan_csi(buffer: &[u8]) -> Scan {
     (Some(b'?'), b'c') => return Scan::Fence(consumed),
     (Some(b'<'), b'M' | b'm') => parse_sgr_mouse(&parameters[1..], *last == b'm'),
     (Some(b'?' | b'<' | b'=' | b'>'), _) => None,
-    (_, b'R') => parse_cursor_position(parameters),
+    (_, b'R') if replying => parse_cursor_position(parameters),
     (_, b't') => parse_window_report(parameters),
     (_, b'u') => parse_kitty_key(parameters),
     (_, b'~') => parse_special_key(parameters),
@@ -536,7 +699,7 @@ fn scan_csi(buffer: &[u8]) -> Scan {
       shift: true,
       ..Modifiers::default()
     }))),
-    (_, b'A' | b'B' | b'C' | b'D' | b'F' | b'H' | b'P' | b'Q' | b'S') => {
+    (_, b'A' | b'B' | b'C' | b'D' | b'F' | b'H' | b'P' | b'Q' | b'R' | b'S') => {
       parse_modified_key(parameters, *last)
     }
     _ => None,
@@ -553,7 +716,7 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// The modifiers a mask names: the held keys less one, bit by bit.
-fn modifiers_of(mask: u8) -> Modifiers {
+fn modifiers_of(mask: u16) -> Modifiers {
   let bits = mask.saturating_sub(1);
 
   Modifiers {
@@ -567,7 +730,7 @@ fn modifiers_of(mask: u8) -> Modifiers {
 /// A `modifiers[:kind]` parameter: the modifiers, the event kind, and Caps Lock.
 fn parse_modifier_parameter(parameter: Option<&str>) -> (Modifiers, KeyKind, bool) {
   let mut parts = parameter.unwrap_or_default().split(':');
-  let mask: u8 = parts.next().and_then(|mask| mask.parse().ok()).unwrap_or(1);
+  let mask: u16 = parts.next().and_then(|mask| mask.parse().ok()).unwrap_or(1);
   let kind = match parts.next().and_then(|kind| kind.parse().ok()) {
     Some(2) => KeyKind::Repeat,
     Some(3) => KeyKind::Release,
@@ -598,15 +761,19 @@ fn parse_kitty_key(parameters: &str) -> Option<Event> {
     )
   });
 
+  // A modifier's own key holds it while pressed and has let it go once released, as
+  // a browser's modifier state is after the key's event.
   if let KeyCode::Modifier(modifier) = code {
+    let held = kind != KeyKind::Release;
+
     match modifier {
-      ModifierKey::LeftAlt | ModifierKey::RightAlt => modifiers.alt = true,
-      ModifierKey::LeftControl | ModifierKey::RightControl => modifiers.ctrl = true,
-      ModifierKey::LeftShift | ModifierKey::RightShift => modifiers.shift = true,
+      ModifierKey::LeftAlt | ModifierKey::RightAlt => modifiers.alt = held,
+      ModifierKey::LeftControl | ModifierKey::RightControl => modifiers.ctrl = held,
+      ModifierKey::LeftShift | ModifierKey::RightShift => modifiers.shift = held,
       ModifierKey::LeftSuper
       | ModifierKey::RightSuper
       | ModifierKey::LeftMeta
-      | ModifierKey::RightMeta => modifiers.meta = true,
+      | ModifierKey::RightMeta => modifiers.meta = held,
       _ => {}
     }
   }
@@ -741,6 +908,7 @@ fn parse_modified_key(parameters: &str, last: u8) -> Option<Event> {
     b'H' => KeyCode::Home,
     b'P' => KeyCode::Function(1),
     b'Q' => KeyCode::Function(2),
+    b'R' => KeyCode::Function(3),
     b'S' => KeyCode::Function(4),
     _ => return None,
   };
@@ -949,14 +1117,13 @@ fn parse_osc(body: &[u8]) -> Option<Event> {
   }
 }
 
-/// An X color, `rgb:RR/GG/BB` with one to four hex digits per component, each scaled
-/// to eight bits.
+/// An X color, `rgb:RR/GG/BB` or `rgba:RR/GG/BB/AA` with one to four hex digits per
+/// component, or `#RGB` with one to four digits per component, each scaled to eight
+/// bits; an alpha is read past.
 fn parse_rgb(text: &str) -> Option<(u8, u8, u8)> {
-  let mut parts = text.strip_prefix("rgb:")?.split('/');
-  let mut component = || {
-    let digits = parts.next()?;
-
-    if digits.is_empty() || digits.len() > 4 {
+  let scaled = |digits: &str| {
+    if digits.is_empty() || digits.len() > 4 || !digits.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
       return None;
     }
 
@@ -965,11 +1132,32 @@ fn parse_rgb(text: &str) -> Option<(u8, u8, u8)> {
 
     u8::try_from((value * 255 + full / 2) / full).ok()
   };
-  let red = component()?;
-  let green = component()?;
-  let blue = component()?;
 
-  Some((red, green, blue))
+  if let Some(hex) = text.strip_prefix('#') {
+    if hex.is_empty() || hex.len() % 3 != 0 || !hex.is_ascii() {
+      return None;
+    }
+
+    let width = hex.len() / 3;
+
+    return Some((
+      scaled(&hex[..width])?,
+      scaled(&hex[width..2 * width])?,
+      scaled(&hex[2 * width..])?,
+    ));
+  }
+
+  let (components, count) = match text.strip_prefix("rgba:") {
+    Some(components) => (components, 4),
+    None => (text.strip_prefix("rgb:")?, 3),
+  };
+  let parts: Vec<&str> = components.split('/').collect();
+
+  if parts.len() != count {
+    return None;
+  }
+
+  Some((scaled(parts[0])?, scaled(parts[1])?, scaled(parts[2])?))
 }
 
 /// An APC string's body: the graphics protocol's reply, `G` then `key=value` pairs
@@ -1102,22 +1290,24 @@ fn parse_color(parts: &[&str]) -> Option<Color> {
 mod tests {
   use super::*;
 
-  /// Every event `bytes` decode to, fed as one chunk with nothing after it, inside a
+  /// Every event `bytes` decode to, fed as one chunk with a pause after it, inside a
   /// reply window.
   fn events(bytes: &[u8]) -> Vec<Event> {
     let mut parser = Parser::default();
 
     parser.open_reply_window();
-    parser.feed(bytes, false);
+    parser.feed(bytes);
+    parser.resolve_escape();
 
     std::iter::from_fn(|| parser.pop()).collect()
   }
 
-  /// Every event `bytes` decode to with no reply window open.
+  /// Every event `bytes` decode to, with a pause after them and no reply window open.
   fn input(bytes: &[u8]) -> Vec<Event> {
     let mut parser = Parser::default();
 
-    parser.feed(bytes, false);
+    parser.feed(bytes);
+    parser.resolve_escape();
 
     std::iter::from_fn(|| parser.pop()).collect()
   }
@@ -1161,21 +1351,23 @@ mod tests {
     assert!(key_of(b"\x1b[Z").modifiers.shift && key_of(b"\x1b[Z").code == KeyCode::BackTab);
   }
 
-  /// A lone escape waits while more may come and is the key when nothing does; a
-  /// sequence cut across chunks completes with the next.
+  /// A lone escape waits for what follows it and is the key after a pause; a sequence
+  /// cut across chunks completes with the next.
   #[test]
   fn sequences_complete_across_chunks() {
     let mut parser = Parser::default();
 
-    parser.feed(b"\x1b", true);
+    parser.feed(b"\x1b");
 
     assert_eq!(parser.pop(), None);
+    assert!(parser.holds_escape());
 
-    parser.feed(b"[1;2", true);
+    parser.feed(b"[1;2");
 
     assert_eq!(parser.pop(), None);
+    assert!(!parser.holds_escape());
 
-    parser.feed(b"Hx", false);
+    parser.feed(b"Hx");
 
     assert_eq!(
       parser.pop(),
@@ -1290,11 +1482,11 @@ mod tests {
   fn pastes_decode_whole() {
     let mut parser = Parser::default();
 
-    parser.feed(b"\x1b[200~hello\x1b[A", true);
+    parser.feed(b"\x1b[200~hello\x1b[A");
 
     assert_eq!(parser.pop(), None);
 
-    parser.feed(b"\x1b[201~", false);
+    parser.feed(b"\x1b[201~");
 
     assert_eq!(parser.pop(), Some(Event::Paste("hello\x1b[A".to_owned())));
     assert_eq!(events(b"\x1b[200~\x1b[201~"), [Event::Paste(String::new())]);
@@ -1439,7 +1631,8 @@ mod tests {
     let mut parser = Parser::default();
 
     parser.open_reply_window();
-    parser.feed(b"\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?62;22c\x1bP", false);
+    parser.feed(b"\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?62;22c\x1bP");
+    parser.resolve_escape();
 
     assert_eq!(parser.pop(), Some(Event::Background(0, 0, 0)));
     assert_eq!(parser.pop(), Some(alt(KeyCode::Char('P'), true)));
@@ -1458,5 +1651,213 @@ mod tests {
       events(b"\x1b]11;x\x18a"),
       [Event::Key(Key::new(KeyCode::Char('a')))]
     );
+  }
+
+  /// A held escape reads after a pause as the key it alone makes: `Escape`, or `Alt`
+  /// with the `[` or `O` after it; `ESC O` before a byte no key ends with is the chord,
+  /// that byte its own key.
+  #[test]
+  fn a_held_escape_resolves_after_a_pause() {
+    assert_eq!(input(b"\x1b"), [Event::Key(Key::new(KeyCode::Escape))]);
+    assert_eq!(input(b"\x1b["), [alt(KeyCode::Char('['), false)]);
+    assert_eq!(input(b"\x1bO"), [alt(KeyCode::Char('O'), true)]);
+    assert_eq!(
+      input(b"\x1bOx"),
+      [
+        alt(KeyCode::Char('O'), true),
+        Event::Key(Key::new(KeyCode::Char('x')))
+      ]
+    );
+
+    let mut parser = Parser::default();
+
+    parser.feed(b"\x1b[1");
+    parser.resolve_escape();
+
+    assert_eq!(parser.pop(), None, "a longer sequence waits on");
+  }
+
+  /// A modified `F3` shares its bytes with a cursor position report and reads as the
+  /// key outside a reply window; an `SS3` key carries the modifier number before its
+  /// final.
+  #[test]
+  fn modified_function_keys_decode() {
+    let ctrl = Modifiers {
+      ctrl: true,
+      ..Modifiers::default()
+    };
+
+    assert_eq!(
+      input(b"\x1b[1;5R"),
+      [Event::Key(Key::new(KeyCode::Function(3)).with(ctrl))]
+    );
+    assert_eq!(
+      events(b"\x1b[1;5R"),
+      [Event::CursorPosition { column: 4, row: 0 }]
+    );
+    assert_eq!(
+      input(b"\x1bO5P"),
+      [Event::Key(Key::new(KeyCode::Function(1)).with(ctrl))]
+    );
+    assert_eq!(
+      input(b"\x1bO2S"),
+      [Event::Key(Key::new(KeyCode::Function(4)).with(Modifiers {
+        shift: true,
+        ..Modifiers::default()
+      }))]
+    );
+  }
+
+  /// A lead byte whose continuation bytes never come is dropped as soon as another
+  /// byte takes their place, which then reads as it would alone.
+  #[test]
+  fn a_stray_lead_byte_drops_at_once() {
+    assert_eq!(input(b"\xe0\x1b[A"), [Event::Key(Key::new(KeyCode::Up))]);
+    assert_eq!(
+      input(b"\xf0\x9fa"),
+      [Event::Key(Key::new(KeyCode::Char('a')))]
+    );
+    assert_eq!(
+      input("\u{e9}".as_bytes()),
+      [Event::Key(Key::new(KeyCode::Char('\u{e9}')))]
+    );
+  }
+
+  /// A modifier's own key holds it while pressed and has let it go once released, and
+  /// the mask with every modifier set decodes whole.
+  #[test]
+  fn modifier_keys_and_masks_decode() {
+    let shift = |bytes: &[u8]| match input(bytes).as_slice() {
+      [Event::Key(key)] => key.modifiers.shift,
+      other => panic!("{other:?}"),
+    };
+
+    assert!(shift(b"\x1b[57441;2u"));
+    assert!(!shift(b"\x1b[57441;1:3u"));
+
+    let every = key_of(b"\x1b[97;256u");
+
+    assert_eq!(
+      every.modifiers,
+      Modifiers {
+        ctrl: true,
+        shift: true,
+        alt: true,
+        meta: true,
+      }
+    );
+    assert!(every.caps_lock);
+  }
+
+  /// A color reply decodes in the `rgb:`, `rgba:` and `#` forms, each component at its
+  /// own precision.
+  #[test]
+  fn colors_decode_in_every_form() {
+    assert_eq!(parse_rgb("rgb:ffff/0/80"), Some((255, 0, 128)));
+    assert_eq!(parse_rgb("rgba:ffff/0000/0000/ffff"), Some((255, 0, 0)));
+    assert_eq!(parse_rgb("#ff0080"), Some((255, 0, 128)));
+    assert_eq!(parse_rgb("#f08"), Some((255, 0, 136)));
+    assert_eq!(parse_rgb("rgb:ff/00"), None);
+    assert_eq!(parse_rgb("rgba:ff/00/00"), None);
+    assert_eq!(parse_rgb("#ff00"), None);
+  }
+
+  /// A string, a paste or a control sequence longer than it may be is dropped to its end
+  /// as it arrives, the buffer never holding more than the longest one read and a
+  /// chunk, and what follows it reads as usual.
+  #[test]
+  fn overlong_sequences_drop_to_their_end() {
+    const CHUNK: usize = 1 << 16;
+
+    let overlong = |introducer: &[u8], body: u8, length: usize, end: &[u8]| {
+      let mut parser = Parser::default();
+      let mut bytes = introducer.to_vec();
+
+      parser.open_reply_window();
+      bytes.resize(introducer.len() + length, body);
+      bytes.extend_from_slice(end);
+      bytes.push(b'x');
+
+      for chunk in bytes.chunks(CHUNK) {
+        parser.feed(chunk);
+
+        assert!(parser.buffer.len() <= MAX_STRING + CHUNK);
+      }
+
+      std::iter::from_fn(|| parser.pop()).collect::<Vec<_>>()
+    };
+    let x = [Event::Key(Key::new(KeyCode::Char('x')))];
+
+    assert_eq!(
+      overlong(b"\x1b]11;", b'a', MAX_STRING + CHUNK, b"\x1b\\"),
+      x
+    );
+    assert_eq!(
+      overlong(b"\x1b[200~", b'a', MAX_STRING + CHUNK, PASTE_END),
+      x
+    );
+    assert_eq!(overlong(b"\x1b[", b'1', MAX_CSI * 4, b"m"), x);
+  }
+
+  /// Arbitrary input decodes without panicking, and to the same events fed whole or in
+  /// chunks of any size, a scan resuming where the last left off.
+  #[test]
+  fn any_input_decodes_alike_in_any_chunks() {
+    const ALPHABET: &[u8] =
+      b"\x1b\x1b\x1b[[]]OP_^X\\\x07\x18\x1a0123456789;:<=>?$~uRMmcyAPZh\xe0\x80\xbfa ";
+
+    let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+    let mut next = move |bound: usize| {
+      state ^= state << 13;
+      state ^= state >> 7;
+      state ^= state << 17;
+
+      usize::try_from(state % u64::try_from(bound).expect("a small bound")).expect("in range")
+    };
+
+    for _ in 0..4000 {
+      let length = next(96);
+      let bytes: Vec<u8> = (0..length)
+        .map(|_| {
+          if next(8) == 0 {
+            u8::try_from(next(256)).expect("a byte")
+          }
+          else {
+            ALPHABET[next(ALPHABET.len())]
+          }
+        })
+        .collect();
+      let replying = next(2) == 0;
+      let decode = |chunks: &[&[u8]]| {
+        let mut parser = Parser::default();
+
+        if replying {
+          parser.open_reply_window();
+        }
+
+        for chunk in chunks {
+          parser.feed(chunk);
+        }
+
+        parser.resolve_escape();
+
+        std::iter::from_fn(|| parser.pop()).collect::<Vec<_>>()
+      };
+      let mut chunks = Vec::new();
+      let mut rest = bytes.as_slice();
+
+      while !rest.is_empty() {
+        let (chunk, tail) = rest.split_at(1 + next(rest.len()));
+
+        chunks.push(chunk);
+        rest = tail;
+      }
+
+      assert_eq!(
+        decode(&[&bytes]),
+        decode(&chunks),
+        "{bytes:?} in {chunks:?}"
+      );
+    }
   }
 }

@@ -536,6 +536,7 @@ where
 
             let _ = terminal.restore_mode();
 
+            terminal.set_unambiguous_escapes(false);
             terminal.stop();
           }
 
@@ -676,6 +677,8 @@ where
         Event::KeyboardFlags(_) => {
           let _ = write!(terminal, "{}", escape::KeyboardFlags(KEYBOARD_FLAGS));
           let _ = terminal.flush();
+
+          terminal.set_unambiguous_escapes(true);
         }
         Event::GraphicRendition(attributes) => {
           if let Some(reported) = ColorDepth::reported(&attributes)

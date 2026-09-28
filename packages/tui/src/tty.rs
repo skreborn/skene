@@ -16,7 +16,7 @@ use std::{
     atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
   },
   thread,
-  time::Duration,
+  time::{Duration, Instant},
 };
 
 use libc::c_int;
@@ -26,6 +26,10 @@ use crate::parse::{Event, Parser, WindowSize};
 
 /// How many bytes one read takes at most.
 const READ_SIZE: usize = 4096;
+
+/// How long an escape the input ends in waits for the rest of its sequence before it
+/// reads as a key, while a lone escape can be one.
+const ESCAPE_GRACE: Duration = Duration::from_millis(50);
 
 /// A descriptor of the terminal: the process's own, or `/dev/tty` opened where the
 /// process's is not a terminal.
@@ -104,6 +108,11 @@ pub(crate) struct Tty {
   /// The dev launcher's control pipe, and the partial line read from it so far.
   control: Option<(BorrowedFd<'static>, Vec<u8>)>,
   signals: Signals,
+  /// When the terminal last sent anything.
+  last_read: Instant,
+  /// Whether every key arrives as an escape sequence of its own, so a lone escape is
+  /// never a key.
+  unambiguous_escapes: bool,
 }
 
 impl Tty {
@@ -123,6 +132,8 @@ impl Tty {
       size: None,
       control: None,
       signals: Signals::catch()?,
+      last_read: Instant::now(),
+      unambiguous_escapes: false,
     };
 
     tty.size = tty.size();
@@ -156,6 +167,14 @@ impl Tty {
     self.parser.open_reply_window();
   }
 
+  /// Sets whether every key arrives as an escape sequence of its own, as under the
+  /// kitty keyboard protocol's flags the loop pushes: then an escape the input ends in
+  /// always waits for the rest of its sequence, and otherwise reads as a key after
+  /// [`ESCAPE_GRACE`] without more input.
+  pub(crate) const fn set_unambiguous_escapes(&mut self, unambiguous: bool) {
+    self.unambiguous_escapes = unambiguous;
+  }
+
   /// Restores the mode the terminal was opened in.
   pub(crate) fn restore_mode(&mut self) -> io::Result<()> {
     termios::tcsetattr(&self.output, OptionalActions::Now, &self.original)?;
@@ -177,8 +196,16 @@ impl Tty {
 
   /// Waits up to `timeout` for input or a signal, then takes the signals caught and
   /// every event the input so far decodes to, with a resize where the window's size
-  /// changed since the last call; an error when the terminal is gone.
+  /// changed since the last call; an error when the terminal is gone. An escape the
+  /// input ends in shortens the wait to what remains of its grace.
   pub(crate) fn wait(&mut self, timeout: Duration) -> io::Result<Vec<Event>> {
+    let held = self.parser.holds_escape() && !self.unambiguous_escapes;
+    let timeout = if held {
+      timeout.min(ESCAPE_GRACE.saturating_sub(self.last_read.elapsed()))
+    }
+    else {
+      timeout
+    };
     let [input, _] = ready([self.input.as_fd(), self.signals.wake.as_fd()], timeout)?;
 
     if input {
@@ -187,6 +214,9 @@ impl Tty {
       while ready([self.input.as_fd()], Duration::ZERO)?[0] {
         self.read_available()?;
       }
+    }
+    else if held && self.last_read.elapsed() >= ESCAPE_GRACE {
+      self.parser.resolve_escape();
     }
 
     let mut events = self.signals.take();
@@ -263,7 +293,8 @@ impl Tty {
       ));
     }
 
-    self.parser.feed(&buffer[..read], read == buffer.len());
+    self.last_read = Instant::now();
+    self.parser.feed(&buffer[..read]);
 
     Ok(())
   }

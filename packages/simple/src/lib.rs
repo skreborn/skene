@@ -14,7 +14,7 @@
 //! the lengths come from the [`SimpleShape`] of the medium's unit.
 //!
 //! An app depends on this crate as it would on any component library and names the
-//! platform once; the [`gui`] and [`tui`] modules are that naming done for a
+//! platform once; the `gui` and `tui` modules are that naming done for a
 //! facade, a `prelude` of aliases over its `ActivePlatform` that sits beside the facade's
 //! own.
 

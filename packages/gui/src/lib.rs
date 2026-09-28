@@ -404,8 +404,7 @@ where
 }
 
 /// Hydrates a server-rendered page: adopts the document body and reads the embedded
-/// state, so the client takes over the markup [`render_to_string`] produced without a
-/// rebuild.
+/// state, so the client takes over the server's markup without a rebuild.
 #[cfg(skene_leaf = "browser")]
 #[inline(always)]
 pub fn hydrate_page<V, F>(app: F)

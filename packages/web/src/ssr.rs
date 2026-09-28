@@ -1550,7 +1550,7 @@ fn begin_render() -> (NodeId, Owner) {
 
 /// Builds `app` under `scope` as the child of `root`, with `boundary` in context for
 /// the tasks it starts when one is given.
-fn build_app<V, F>(root: NodeId, scope: &Owner, boundary: Option<Boundary>, app: F)
+fn build_app<V, F>(root: NodeId, scope: Owner, boundary: Option<Boundary>, app: F)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView<Web>,
@@ -1586,7 +1586,7 @@ where
 {
   let (root, scope) = begin_render();
 
-  build_app(root, &scope, None, app);
+  build_app(root, scope, None, app);
   task::stabilize();
 
   let state = crate::hydration::collect_state();
@@ -1638,7 +1638,7 @@ where
   let (root, scope) = begin_render();
   let shell = Boundary::new();
 
-  build_app(root, &scope, Some(shell), app);
+  build_app(root, scope, Some(shell), app);
   task::stabilize_until(move || shell.is_settled());
 
   let (styles, head) = with_tree(|tree| (tree.render_styles(), tree.render_head()));

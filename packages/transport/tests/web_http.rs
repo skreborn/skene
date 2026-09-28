@@ -21,7 +21,7 @@ async fn the_page_comes_back_whole() {
     "{:?}",
     response.headers()
   );
-  assert!(response.text().expect("text").contains("<"));
+  assert!(response.text().expect("text").contains('<'));
 }
 
 #[wasm_bindgen_test]

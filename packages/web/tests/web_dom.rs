@@ -763,6 +763,10 @@ fn press(element: &Element, key: &str) {
 /// focus on the chosen option, the arrows move focus, and `Enter` chooses, closes and
 /// returns focus to the face with the signal written.
 #[wasm_bindgen_test]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one keyboard walk: open, move, choose and return focus"
+)]
 fn a_picker_opens_and_chooses_with_the_keyboard() {
   let (_guard, root) = fresh_root();
   let value = Signal::new("md".to_owned());

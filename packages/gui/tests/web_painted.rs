@@ -67,6 +67,37 @@ async fn next_frame() {
   let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
 }
 
+/// Waits for the browser's rendering steps until `condition` holds, for at most two
+/// seconds of them; whether it held.
+async fn frames_until(condition: impl Fn() -> bool) -> bool {
+  for _ in 0..100 {
+    if condition() {
+      return true;
+    }
+
+    next_frame().await;
+  }
+
+  condition()
+}
+
+/// The canvas a painted box at the start of `root` draws into, once it holds one.
+fn canvas_of(root: &web_sys::Element) -> Option<HtmlCanvasElement> {
+  root
+    .first_element_child()?
+    .first_element_child()?
+    .dyn_into()
+    .ok()
+}
+
+/// Whether the canvas at the start of `root` is `width` CSS pixels wide in device
+/// pixels, to within one, as a painted box sizes the canvas it paints.
+fn sized(root: &web_sys::Element, width: f64) -> bool {
+  let ratio = web_sys::window().expect("a window").device_pixel_ratio();
+
+  canvas_of(root).is_some_and(|canvas| (f64::from(canvas.width()) - width * ratio).abs() < 1.)
+}
+
 /// Shadows `navigator.gpu` with `undefined` on this page, so the web leaf finds no
 /// WebGPU and paints on the CPU.
 fn hide_webgpu() {
@@ -127,16 +158,10 @@ async fn a_painted_box_is_blitted_without_webgpu() {
     .set_height(Dimension::Length(20.))
     .build()
   });
-  next_frame().await;
-  next_frame().await;
 
-  let canvas: HtmlCanvasElement = root
-    .first_element_child()
-    .expect("the painted box")
-    .first_element_child()
-    .expect("the canvas")
-    .dyn_into()
-    .expect("a canvas element");
+  assert!(frames_until(|| sized(&root, 40.)).await, "the box painted");
+
+  let canvas = canvas_of(&root).expect("the canvas");
   let context: CanvasRenderingContext2d = canvas
     .get_context("2d")
     .expect("a context")
@@ -175,21 +200,17 @@ async fn a_resized_box_is_blitted_again() {
     .set_height(Dimension::Length(20.))
     .build()
   });
-  next_frame().await;
-  next_frame().await;
 
-  let canvas: HtmlCanvasElement = root
-    .first_element_child()
-    .expect("the painted box")
-    .first_element_child()
-    .expect("the canvas")
-    .dyn_into()
-    .expect("a canvas element");
-  let before = canvas.width();
+  assert!(frames_until(|| sized(&root, 40.)).await, "the box painted");
 
   width.set(80.);
-  next_frame().await;
-  next_frame().await;
+
+  assert!(
+    frames_until(|| sized(&root, 80.)).await,
+    "the canvas grew with the box"
+  );
+
+  let canvas = canvas_of(&root).expect("the canvas");
 
   let context: CanvasRenderingContext2d = canvas
     .get_context("2d")
@@ -198,7 +219,6 @@ async fn a_resized_box_is_blitted_again() {
     .dyn_into()
     .expect("a 2d context");
 
-  assert!(canvas.width() > before, "the canvas grew with the box");
   assert_eq!(
     &center_pixel(&canvas, &context)[0..4],
     &[255, 0, 0, 255],

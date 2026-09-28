@@ -777,9 +777,14 @@ enum NodePaint {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
     shadow: Option<Color>,
-    /// The visible rows, and the caret's row and column within them.
+    /// The visible rows.
     rows: Vec<String>,
-    dim: bool,
+    /// The value's ink, the terminal's own where `None`.
+    foreground: Option<(u8, u8, u8)>,
+    bold: bool,
+    /// Whether the rows are the placeholder, drawn at half the ink's strength.
+    placeholder: bool,
+    /// The caret's row and column within the rows.
     caret: Option<(usize, usize)>,
     inset: (isize, isize),
     /// The selection over the visible rows, while the entry holds focus.
@@ -921,16 +926,16 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.left).unwrap_or(0),
         isize::try_from(border_cells).unwrap_or(0) + isize::try_from(padding.top).unwrap_or(0),
       );
-      let inner_width = store.field_inner_width(handle);
-      let dim = field.value.is_empty();
-      let (rows, caret) = field.visible_rows(inner_width);
+      let area = store.field_area(handle);
+      let (rows, caret) = field.visible_rows(area);
+      let run = crate::resolve::Env::of(store, handle).resolve_entry_run();
       let selection = field
         .selection()
         .filter(|_| focused)
         .map(|range| SelectionPaint {
           range,
           starts: rows.iter().map(|(start, _)| *start).collect(),
-          colors: selection_colors(&crate::resolve::Env::of(store, handle).resolve_entry_run()),
+          colors: selection_colors(&run),
         });
 
       NodePaint::Field {
@@ -938,8 +943,10 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
         border,
         shadow,
         rows: rows.into_iter().map(|(_, row)| row).collect(),
-        dim,
-        caret: caret.filter(|_| focused && inner_width > 0),
+        foreground: run.color.and_then(terminal_rgb),
+        bold: run.ext.bold.unwrap_or(false),
+        placeholder: field.value.is_empty(),
+        caret: caret.filter(|_| focused && area.columns > 0),
         inset,
         selection,
       }
@@ -1203,7 +1210,9 @@ fn paint_node(
       border,
       shadow,
       rows,
-      dim,
+      foreground,
+      bold,
+      placeholder,
       caret,
       inset,
       selection,
@@ -1223,14 +1232,24 @@ fn paint_node(
       }
 
       for (row, text) in rows.iter().enumerate() {
-        draw_text(
+        draw_sized(
           buffer,
           x + inset.0,
           y + inset.1 + isize::try_from(row).expect("fits"),
           text,
-          None,
-          false,
-          dim,
+          CellScale::ONE,
+          |cell| {
+            cell.foreground = if placeholder {
+              Some(halfway(
+                foreground.unwrap_or(contrast.ink),
+                cell.background.unwrap_or(contrast.base),
+              ))
+            }
+            else {
+              foreground
+            };
+            cell.bold = bold;
+          },
         );
       }
 
@@ -1767,28 +1786,6 @@ pub(crate) fn draw_border(
   put(right, bottom, glyphs.bottom_right);
 }
 
-/// Draws one line of text.
-fn draw_text(
-  buffer: &mut Buffer,
-  x: isize,
-  y: isize,
-  line: &str,
-  foreground: Option<(u8, u8, u8)>,
-  bold: bool,
-  dim: bool,
-) {
-  draw_sized(buffer, x, y, line, CellScale::ONE, |cell| {
-    if foreground.is_some() {
-      cell.foreground = foreground;
-    }
-    else if dim {
-      cell.foreground = Some((128, 128, 128));
-    }
-
-    cell.bold = bold;
-  });
-}
-
 /// Draws one line of text at `scale`, `style` applied to every cell of each block.
 fn draw_sized(
   buffer: &mut Buffer,
@@ -1927,6 +1924,19 @@ fn draw_shadow(
   for column in 1..width {
     cast(x + column, y + height);
   }
+}
+
+/// The color halfway between `over` and `beneath`.
+fn halfway(over: (u8, u8, u8), beneath: (u8, u8, u8)) -> (u8, u8, u8) {
+  let channel = |over: u8, beneath: u8| -> u8 {
+    u8::try_from((u16::from(over) + u16::from(beneath)).div_ceil(2)).unwrap_or(u8::MAX)
+  };
+
+  (
+    channel(over.0, beneath.0),
+    channel(over.1, beneath.1),
+    channel(over.2, beneath.2),
+  )
 }
 
 /// Mixes a color into both of a cell's colors by `alpha`, an unset color mixing

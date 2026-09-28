@@ -8,7 +8,7 @@ mod common;
 
 use skene_tui::{self as tui, TextEntry, prelude::*};
 
-use crate::common::{rows, white, with_platform};
+use crate::common::{colors_at, red, rgb, rows, white, with_platform};
 
 /// Typing into a focused field flows through `bind_value` into the signal and back onto
 /// the frame; the placeholder shows while the value is empty.
@@ -217,7 +217,10 @@ fn an_editor_windows_its_rows_around_the_caret() {
     let bio = Signal::new(String::new());
 
     let _ = tui::mount(|| {
-      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+      Column::new()
+        .set_child(RawTextEditor::new(
+          TextEntry::new().set_lines(3).bind_value(bio),
+        ))
         .into_any()
         .build()
     });
@@ -562,5 +565,198 @@ fn undo_and_redo_step_through_edits() {
     tui::trigger_key("Ctrl+y");
 
     assert_eq!(name.get_untracked(), "set");
+  });
+}
+
+/// An editor shows as many rows as its laid-out height holds, whatever lines it asks
+/// for, and is as wide as its longest line and the caret's cell past it.
+#[test]
+fn an_editor_shows_its_laid_out_rows_and_sizes_by_its_longest_line() {
+  with_platform(|| {
+    let bio = Signal::new("alpha\nbe\ngamma delta".to_owned());
+
+    let _ = tui::mount(|| {
+      Row::new()
+        .set_children((
+          RawTextEditor::new(TextEntry::new().set_lines(2).bind_value(bio)).set_height(3),
+          Text::new("|"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(
+      rows(&tui::render_to_text(20, 3)),
+      "alpha       |\nbe\ngamma delta\n"
+    );
+  });
+}
+
+/// An editor holds its line breaks as line feeds, however they arrive, and a field
+/// drops them.
+#[test]
+fn line_breaks_arrive_as_line_feeds_in_an_editor_and_drop_in_a_field() {
+  with_platform(|| {
+    let bio = Signal::new("a\r\nb\rc".to_owned());
+    let name = Signal::new("x\ny".to_owned());
+
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          RawTextEditor::new(TextEntry::new().set_lines(4).bind_value(bio)),
+          RawTextField::new(TextEntry::new().bind_value(name)),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(rows(&tui::render_to_text(20, 5)), "a\nb\nc\n\nxy\n");
+
+    tui::trigger_key("Tab");
+    tui::trigger_paste("1\r\n2\r3");
+
+    assert_eq!(bio.get_untracked(), "a\nb\nc1\n2\n3");
+
+    tui::trigger_key("Tab");
+    tui::trigger_paste("4\r\n5");
+
+    assert_eq!(name.get_untracked(), "45");
+  });
+}
+
+/// In an editor, `Home` and `End` go to the ends of the wrapped row and, under `Ctrl`,
+/// of the value; the vertical arrows aim for the column the first of them left, across
+/// shorter rows and wide clusters, and go to the value's ends past its first and last
+/// rows.
+#[test]
+fn an_editors_keys_follow_its_rows_and_keep_their_column() {
+  with_platform(|| {
+    let bio = Signal::new("abcdef ghij".to_owned());
+
+    let _ = tui::mount(|| {
+      RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
+        .set_width(8)
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(8, 3);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Home");
+    tui::trigger_key("X");
+
+    assert_eq!(bio.get_untracked(), "abcdef Xghij", "the row's start");
+
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("End");
+    tui::trigger_key("Y");
+
+    assert_eq!(bio.get_untracked(), "abcdefY Xghij", "the row's end");
+
+    tui::trigger_key("Ctrl+End");
+    tui::trigger_key("Z");
+    tui::trigger_key("Ctrl+Home");
+    tui::trigger_key("W");
+
+    assert_eq!(bio.get_untracked(), "WabcdefY XghijZ", "the value's ends");
+
+    bio.set("abcdef\nab\nabcdef".to_owned());
+    tui::trigger_key("Ctrl+End");
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("V");
+
+    assert_eq!(
+      bio.get_untracked(),
+      "abcdefV\nab\nabcdef",
+      "the column held across a shorter row"
+    );
+
+    bio.set("\u{65e5}\u{672c}\u{8a9e}\nabcdef".to_owned());
+    tui::trigger_key("Ctrl+End");
+
+    for _ in 0..3 {
+      tui::trigger_key("ArrowLeft");
+    }
+
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("U");
+
+    assert_eq!(
+      bio.get_untracked(),
+      "\u{65e5}\u{672c}U\u{8a9e}\nabcdef",
+      "a column inside a wide cluster goes past it"
+    );
+
+    tui::trigger_key("ArrowUp");
+    tui::trigger_key("T");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("ArrowDown");
+    tui::trigger_key("S");
+
+    assert_eq!(
+      bio.get_untracked(),
+      "T\u{65e5}\u{672c}U\u{8a9e}\nabcdefS",
+      "the value's ends past the first and last rows"
+    );
+  });
+}
+
+/// An entry's value is inked and weighted by the typography in force, and its
+/// placeholder shows at half the ink's strength.
+#[test]
+fn an_entry_takes_the_typography_ink_and_weight() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Theme::new(Typography::default().set_ink(red()).set_weight(700.))
+        .set_child_builder(|| {
+          Column::new()
+            .set_children((
+              RawTextField::new(TextEntry::new().set_value("hi")),
+              RawTextField::new(TextEntry::new().set_placeholder("name")),
+            ))
+            .into_any()
+        })
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(10, 2, 0, 0).0, Some(rgb(red())));
+    assert!(tui::render_to_bold(10, 2)[0]);
+    assert_eq!(colors_at(10, 2, 0, 1).0, Some((128, 0, 0)));
+  });
+}
+
+/// A read-only entry moves its caret and selects, and takes no edit: no typing, removal,
+/// undo, cut or paste.
+#[test]
+fn a_read_only_entry_takes_no_edits() {
+  with_platform(|| {
+    let value = Signal::new("abc".to_owned());
+
+    let _ = tui::mount(|| {
+      RawTextField::new(TextEntry::new().bind_value(value))
+        .set_read_only(true)
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 1);
+
+    tui::trigger_key("Tab");
+
+    for key in ["x", "Backspace", "Delete", "Ctrl+x", "Ctrl+z"] {
+      tui::trigger_key(key);
+    }
+
+    tui::trigger_paste("zz");
+
+    assert_eq!(value.get_untracked(), "abc");
+
+    tui::trigger_key("ArrowLeft");
+    tui::trigger_key("Shift+End");
+    tui::trigger_key("x");
+
+    assert_eq!(value.get_untracked(), "abc");
+    assert_eq!(tui::render_to_caret(10, 1), Some((3, 0)));
   });
 }

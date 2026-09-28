@@ -34,6 +34,7 @@ use crate::{
   Clipboard,
   Tui,
   TuiExt,
+  field::Area,
   layout::Measured,
   motion::{BoxMotion, RunMotion},
   paint::{Buffer, Image},
@@ -202,10 +203,14 @@ pub(crate) struct Field {
   /// editor; moves only to keep the caret in view, under an autoscroll, or under an
   /// editor's wheel.
   pub(crate) window: usize,
-  /// The inner width the window was last settled or scrolled at; at any other width
-  /// the window settles around the caret before it shows.
-  pub(crate) window_width: usize,
+  /// The area the window was last settled or scrolled in, `None` before the first; in
+  /// any other the window settles around the caret before it shows.
+  pub(crate) window_area: Option<Area>,
+  /// The cell column vertical motion aims for, held across consecutive vertical moves.
+  pub(crate) goal: Option<usize>,
+  /// The text shown while the value is empty.
   pub(crate) placeholder: Option<String>,
+  /// The rows the entry asks the layout for; more than one makes it an editor.
   pub(crate) lines: u16,
 }
 
@@ -222,7 +227,8 @@ impl Field {
       redo: Vec::new(),
       run: None,
       window: 0,
-      window_width: usize::MAX,
+      window_area: None,
+      goal: None,
       placeholder,
       lines: if lines == 0 { 1 } else { lines },
     }
@@ -289,6 +295,7 @@ impl Field {
     self.caret = caret;
     self.anchor = anchor;
     self.run = None;
+    self.goal = None;
     self.reported = self.selection_offsets();
 
     true
@@ -298,6 +305,7 @@ impl Field {
   pub(crate) const fn collapse(&mut self) {
     self.anchor = None;
     self.run = None;
+    self.goal = None;
   }
 
   /// Selects `from..to`, the caret at `to`.
@@ -307,13 +315,16 @@ impl Field {
     self.caret = to.min(count);
     self.anchor = (from != to).then_some(from.min(count));
     self.run = None;
+    self.goal = None;
   }
 
-  /// Sets the value from outside the entry's editing as one undo step, the caret
-  /// clamped and the selection collapsed; a value over an empty entry with no history
-  /// is the initial one and records nothing, and nothing happens when `value` is the
-  /// value already.
+  /// Sets the value from outside the entry's editing, sanitized as
+  /// [`sanitized`](Self::sanitized) says, as one undo step, the caret clamped and the
+  /// selection collapsed; a value over an empty entry with no history is the initial
+  /// one and records nothing, and nothing happens when `value` is the value already.
   pub(crate) fn set_value(&mut self, value: &str) -> bool {
+    let value = self.sanitized(value);
+
     if self.value == value {
       return false;
     }
@@ -322,10 +333,11 @@ impl Field {
       self.record(None);
     }
 
-    value.clone_into(&mut self.value);
+    self.value = value;
     self.reflow();
     self.caret = self.caret.min(self.count());
     self.anchor = None;
+    self.goal = None;
 
     true
   }
@@ -388,6 +400,7 @@ impl Field {
     self.caret = snapshot.caret;
     self.anchor = snapshot.anchor;
     self.run = None;
+    self.goal = None;
   }
 
   /// Selects the whole value.
@@ -411,6 +424,7 @@ impl Field {
 
     self.caret = caret.min(count);
     self.run = None;
+    self.goal = None;
   }
 
   /// Replaces the selection—or inserts at the caret—with `text`, leaving the caret
@@ -427,6 +441,7 @@ impl Field {
     self.reflow();
     self.caret = self.clusters.index_of_byte(start + text.len());
     self.anchor = None;
+    self.goal = None;
   }
 
   /// Removes `from..to`, leaving the caret at `from`. One cluster removed beside a
@@ -441,6 +456,7 @@ impl Field {
     self.reflow();
     self.caret = self.clusters.index_of_byte(start);
     self.anchor = None;
+    self.goal = None;
   }
 
   /// The byte offset of the cluster at `position`, or the value's end.

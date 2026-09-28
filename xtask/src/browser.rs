@@ -21,7 +21,7 @@ const RUNS: &[Run] = &[
     package: "skene-gui",
     arguments: &[],
     binaries: &[
-      ("web_dom", 49),
+      ("web_dom", 50),
       ("web_hydrate", 13),
       ("web_painted", 2),
       ("web_resource", 5),

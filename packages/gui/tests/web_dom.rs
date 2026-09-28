@@ -749,6 +749,33 @@ fn a_typography_theme_reaches_the_text_beneath_it() {
   assert_eq!(computed(&own, "font-size"), "12px");
 }
 
+/// A text entry's value is inked and weighted by the typography in force, as a run is.
+#[wasm_bindgen_test]
+fn a_text_entry_takes_the_typography_ink_and_weight() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Theme::new(
+      Typography::default()
+        .set_ink(Color::srgb(1., 0., 0.))
+        .set_weight(700.),
+    )
+    .set_child_builder(|| RawTextField::new(TextEntry::new().set_value("hi")))
+    .build()
+  });
+
+  let input = root
+    .query_selector("input")
+    .expect("a valid selector")
+    .expect("the entry's input");
+
+  assert_eq!(
+    computed(&input, "color"),
+    probe(&root, &css(Color::srgb(1., 0., 0.)))
+  );
+  assert_eq!(computed(&input, "font-weight"), "700");
+}
+
 /// The link ink never reaches a run that is not a link.
 #[wasm_bindgen_test]
 fn typography_link_ink_skips_non_link_text() {

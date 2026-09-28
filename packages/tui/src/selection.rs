@@ -474,10 +474,13 @@ impl Store {
   }
 
   /// Stages a clipboard read for the terminal loop, its reply bound for the clipboard's
-  /// entry; nothing is staged without one, or when the launch offers no `Paste`.
+  /// entry; nothing is staged without one that takes edits, or when the launch offers
+  /// no `Paste`.
   pub(crate) fn request_paste(&mut self) {
     if self.clipboard.paste
-      && let Some(entry) = self.clipboard_entry()
+      && let Some(entry) = self
+        .clipboard_entry()
+        .filter(|entry| self.is_editable(*entry))
     {
       self.paste_target = Some(entry);
       self.pending_paste = true;

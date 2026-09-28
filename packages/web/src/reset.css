@@ -87,6 +87,12 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   text-box-trim: none;
 }
 
+/* An entry's value is inked by the typography in force, as a run is; where nothing
+   defines the ink, it inherits as the rest of a control does. */
+:where(input[type="text"], textarea) {
+  color: var(--typography-ink);
+}
+
 :where(button) {
   text-align: inherit;
 }

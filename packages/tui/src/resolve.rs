@@ -164,17 +164,28 @@ impl<'a> Env<'a> {
   /// The run style a text entry's value paints with: the typography inherited at the
   /// entry, every property resolved.
   pub(crate) fn resolve_entry_run(&self) -> PlainRun {
+    let token = |token| {
+      Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
+        token,
+      ))))
+    };
     let style = RunStyle::<Static<Condition<u32>>, TuiExt> {
-      selection_color: Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
-        typography::SELECTION_INK,
-      )))),
-      selection_background: Some(Conditional::new(PlatformLeaf::Static(StaticLeaf::from(
-        typography::SELECTION_SURFACE,
-      )))),
+      color: token(typography::INK),
+      selection_color: token(typography::SELECTION_INK),
+      selection_background: token(typography::SELECTION_SURFACE),
       ..RunStyle::default()
     };
+    let mut style = self.with_resolver(|resolver| {
+      let mut style = resolver.run_style(&style);
 
-    self.with_resolver(|resolver| resolver.run_style(&style))
+      style.ext.weight = resolver.keyframe_run_value(&StaticLeaf::from(typography::WEIGHT));
+
+      style
+    });
+
+    style.ext.bold = style.ext.weight.map(|weight| weight >= BOLD_WEIGHT);
+
+    style
   }
 
   /// The colors a link paints in while its focus shows: the typography's focused-link

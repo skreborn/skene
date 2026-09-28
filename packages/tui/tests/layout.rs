@@ -176,6 +176,11 @@ fn bold_and_derived_text() {
     });
 
     assert_eq!(tui::render_to_text(8, 2), "title\nn=1\n");
+    assert_eq!(
+      tui::render_to_bold(8, 2),
+      [[true; 5].as_slice(), &[false; 11]].concat(),
+      "the title alone is bold"
+    );
 
     count.set(2);
 

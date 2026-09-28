@@ -633,9 +633,11 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
         let padding = resolved.padding.unwrap_or_default();
 
         if resolved.width.is_none() {
-          // One cell past the value keeps the caret inside the box at the end.
-          let content = (field.clusters.cells() + 1)
-            .max(field.placeholder.as_deref().map_or(0, text::cells))
+          // One cell past the value's longest line keeps the caret inside the box at
+          // its end.
+          let widest = |text: &str| text.split('\n').map(text::cells).max().unwrap_or(0);
+          let content = (widest(&field.value) + 1)
+            .max(field.placeholder.as_deref().map_or(0, widest))
             .max(8);
 
           style.size.width = length(cell(

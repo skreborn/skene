@@ -116,11 +116,6 @@ left half-done in a code comment.
     frame drawn without synchronized output; autowrap is off for the session; restoring
     resets SGR and pops the title; no stale cell where a wide glyph straddles a clip;
     OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
-    - Text entries: an editor paints its laid-out height and sizes by its longest line;
-    CR and CRLF normalize to LF; `Home`, `End` and vertical motion follow `<textarea>`,
-    wide clusters and a goal column included; the value takes the typography ink and
-    weight and the placeholder a token; read-only and disabled entries refuse typing
-    and paste; a caret at a soft wrap stays off the border.
     - Layout and the rest: a real inline formatting context, so spans are hovered and
     fire their handlers, tall inline boxes stop overlapping the lines after them, and
     copying one stops yielding U+FFFC; nested anchored overlays placed from
@@ -864,6 +859,10 @@ every item is proven through tmux and ssh as well as bare.
   documented defaults.
 - A vertical fractional edge in the terminal: only the lower block glyphs exist, so a
   top-anchored fill would need upper ones; a vertical fill ends on a whole cell.
+- Moving an editor's caret off the cell past a full row, where a wrapping space was
+  consumed: a browser's caret hangs past such a row into the textarea's padding, and
+  the terminal's bar cursor in the cell past it, the padding or the border, shows the
+  same position.
 - Replacing `IntoChildren`, `IntoChildOf` and `IntoView` with std traits, checked
   against the compiler: a blanket `impl<I: IntoIterator<Item = V>> IntoChildren for I`
   conflicts with the tuple impls, and the same conflict appears with `From`; tuples are

@@ -452,6 +452,17 @@ pub fn render_to_colors(
     .collect()
 }
 
+/// The painted frame's bold cells at `width` x `height`, row-major, for a headless test
+/// asserting a run's or an entry's weight.
+#[must_use]
+pub fn render_to_bold(width: u16, height: u16) -> Vec<bool> {
+  frame::render(width, height)
+    .cells
+    .iter()
+    .map(|cell| cell.bold)
+    .collect()
+}
+
 /// The painted frame's reverse-video cells at `width` x `height`, row-major, for a
 /// headless test asserting the emphasis a colorless selection or a colorless focused
 /// link paints in.

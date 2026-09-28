@@ -508,12 +508,16 @@ impl Platform for Tui {
       }
 
       // Outside an entry, only the document's selection is copyable, and nothing is
-      // cut or pasted; inside one, every action is listed and applies to its selection.
+      // cut or pasted; inside one, every action is listed, copying its selection, and
+      // cutting and pasting where it takes edits.
       let entry = store.clipboard_entry();
+      let editable = entry.is_some_and(|entry| store.is_editable(entry));
       let applies = match action {
         ClipboardAction::Copy => store.has_selection(),
-        ClipboardAction::Cut => entry.is_some_and(|entry| store.entry_has_selection(entry)),
-        ClipboardAction::Paste => entry.is_some(),
+        ClipboardAction::Cut => {
+          editable && entry.is_some_and(|entry| store.entry_has_selection(entry))
+        }
+        ClipboardAction::Paste => editable,
       };
 
       match (entry, action) {

@@ -33,6 +33,7 @@ where
 ///
 /// Lookup walks up the owner tree, so a child's [`provide_context`] shadows its
 /// ancestors' for the child's subtree.
+#[must_use]
 pub fn use_context<T>() -> Option<T>
 where
   T: Clone + 'static,

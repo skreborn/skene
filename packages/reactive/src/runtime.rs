@@ -131,26 +131,24 @@ impl Runtime {
     {
       let caller = Location::caller();
 
-      match self.graph.try_borrow_mut() {
-        Ok(graph) => {
-          self.graph_holder.set(Some(caller));
+      let Ok(graph) = self.graph.try_borrow_mut()
+      else {
+        let held = self.graph_holder.get().map_or_else(String::new, |held| {
+          format!(" (held at {}:{})", held.file(), held.line())
+        });
 
-          GraphGuard {
-            graph,
-            holder: &self.graph_holder,
-          }
-        }
-        Err(_) => {
-          let held = self.graph_holder.get().map_or_else(String::new, |held| {
-            format!(" (held at {}:{})", held.file(), held.line())
-          });
+        panic!(
+          "reactive graph re-entered from user code{held}; attempted at {}:{}",
+          caller.file(),
+          caller.line()
+        );
+      };
 
-          panic!(
-            "reactive graph re-entered from user code{held}; attempted at {}:{}",
-            caller.file(),
-            caller.line()
-          );
-        }
+      self.graph_holder.set(Some(caller));
+
+      GraphGuard {
+        graph,
+        holder: &self.graph_holder,
       }
     }
 
@@ -161,6 +159,10 @@ impl Runtime {
   }
 
   /// Records the calling thread as the UI thread; call once during initialization.
+  ///
+  /// # Panics
+  ///
+  /// Panics when another thread is already designated.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn init_on_ui_thread() {
     assert!(
@@ -177,7 +179,12 @@ impl Runtime {
     ENFORCE_UI_THREAD.store(true, Ordering::Relaxed);
   }
 
-  /// Panics if enforcement is on and the caller is not the UI thread.
+  /// Checks that the caller is the UI thread; with enforcement on and no thread
+  /// designated, designates the calling thread.
+  ///
+  /// # Panics
+  ///
+  /// Panics when enforcement is on and another thread is designated.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn assert_ui_thread() {
     if !ENFORCE_UI_THREAD.load(Ordering::Relaxed) {
@@ -188,7 +195,6 @@ impl Runtime {
     let ui = UI_THREAD.load(Ordering::Acquire);
 
     if ui == 0 {
-      // Once enforcement is on, first access defines the UI thread.
       let _ = set_ui_thread();
 
       return;
@@ -273,9 +279,9 @@ impl Runtime {
     });
   }
 
-  /// Runs `f` with `tracking` as the subscribing computation, restoring the previous
+  /// Runs `operation` with `tracking` as the subscribing computation, restoring the previous
   /// one afterwards.
-  pub(crate) fn with_tracking<T>(tracking: Option<Id>, f: impl FnOnce() -> T) -> T {
+  pub(crate) fn with_tracking<T>(tracking: Option<Id>, operation: impl FnOnce() -> T) -> T {
     struct Restore(Option<Id>);
 
     impl Drop for Restore {
@@ -286,11 +292,11 @@ impl Runtime {
 
     let _restore = RUNTIME.with(|runtime| Restore(runtime.tracking.replace(tracking)));
 
-    f()
+    operation()
   }
 
-  /// Runs `f` with `owner` as the current owner, restoring the previous one afterwards.
-  pub(crate) fn with_owner<T>(owner: Id, f: impl FnOnce() -> T) -> T {
+  /// Runs `operation` with `owner` as the current owner, restoring the previous one afterwards.
+  pub(crate) fn with_owner<T>(owner: Id, operation: impl FnOnce() -> T) -> T {
     struct Restore(Id);
 
     impl Drop for Restore {
@@ -301,7 +307,7 @@ impl Runtime {
 
     let _restore = RUNTIME.with(|runtime| Restore(runtime.current_owner.replace(owner)));
 
-    f()
+    operation()
   }
 
   /// Opens a batch; the returned guard closes it and flushes when it was the outermost.
@@ -459,16 +465,18 @@ impl Drop for BatchGuard {
   }
 }
 
-/// Runs `f` with the graph borrowed exclusively.
+/// Runs `operation` with the graph borrowed exclusively.
 #[cfg_attr(debug_assertions, track_caller)]
 #[inline(always)]
-pub(crate) fn with_graph<T>(f: impl FnOnce(&mut Graph) -> T) -> T {
-  RUNTIME.with(|runtime| f(&mut runtime.graph()))
+pub(crate) fn with_graph<T>(operation: impl FnOnce(&mut Graph) -> T) -> T {
+  RUNTIME.with(|runtime| operation(&mut runtime.graph()))
 }
 
-/// Runs `f` with the graph borrowed exclusively, or nothing when the runtime is gone.
+/// Runs `operation` with the graph borrowed exclusively, or nothing when the runtime is gone.
 #[cfg_attr(debug_assertions, track_caller)]
 #[inline(always)]
-pub(crate) fn try_with_graph<T>(f: impl FnOnce(&mut Graph) -> T) -> Option<T> {
-  RUNTIME.try_with(|runtime| f(&mut runtime.graph())).ok()
+pub(crate) fn try_with_graph<T>(operation: impl FnOnce(&mut Graph) -> T) -> Option<T> {
+  RUNTIME
+    .try_with(|runtime| operation(&mut runtime.graph()))
+    .ok()
 }

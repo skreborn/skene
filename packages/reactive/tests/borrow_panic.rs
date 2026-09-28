@@ -1,3 +1,6 @@
+//! Borrow conflicts: a debug build names where a conflicting borrow of a signal's value
+//! was taken.
+
 #![cfg(debug_assertions)]
 
 use skene_reactive::{Read, Signal, Write};
@@ -14,14 +17,14 @@ fn borrow_conflict_reports_locations() {
 
   assert!(result.is_err(), "expected borrow conflict panic");
   let panic = result.unwrap_err();
-  let msg = if let Some(s) = panic.downcast_ref::<String>() {
-    s.clone()
+  let msg = if let Some(message) = panic.downcast_ref::<String>() {
+    message.clone()
   }
-  else if let Some(s) = panic.downcast_ref::<&str>() {
-    s.to_string()
+  else if let Some(message) = panic.downcast_ref::<&str>() {
+    (*message).to_string()
   }
   else {
-    panic!("unexpected panic payload type: {:?}", panic);
+    panic!("unexpected panic payload type: {panic:?}");
   };
 
   assert!(

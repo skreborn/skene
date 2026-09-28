@@ -523,7 +523,8 @@
   gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
 - **`cargo xtask gate` is the gate**: every check a change passes, in one command, and
   a change lands only when it reports `gate passed`. It checks formatting, every
-  manifest's dependency order, the house rules no compiler checks (em-dashes unspaced,
+  manifest's dependency order and its inheriting the workspace's lints and
+  `rust-version`, the house rules no compiler checks (em-dashes unspaced,
   children last, no public name in another framework's vocabulary), unused
   dependencies, clippy and rustdoc with warnings denied on all three leaves, the three
   test tiers, the feature powerset (so no cargo feature creeps back in) and the

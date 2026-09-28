@@ -1,3 +1,6 @@
+//! Effects: runs on creation and on every change of what they read, batching and
+//! ordering.
+
 use std::{cell::Cell, rc::Rc};
 
 use skene_reactive::{Effect, Get, Read, Runtime, Set, Signal, Track, Write, batch};
@@ -83,9 +86,9 @@ fn no_reentrant_runs() {
   Effect::new({
     let log = log.clone();
     move |_| {
-      let v = state.get();
-      log.borrow_mut().push(format!("run {v}"));
-      if v == 0 {
+      let value = state.get();
+      log.borrow_mut().push(format!("run {value}"));
+      if value == 0 {
         state.set(1);
         log.borrow_mut().push("post set".into());
       }
@@ -203,8 +206,8 @@ fn write_ref_drop_notifies_subscribers_once() {
   assert_eq!(runs.get(), 1);
 
   {
-    let mut w = signal.write();
-    *w = 5;
+    let mut guard = signal.write();
+    *guard = 5;
   }
   Runtime::drain_pending_work();
   assert_eq!(runs.get(), 2, "effect reruns after write ref drop");

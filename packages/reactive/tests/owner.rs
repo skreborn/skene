@@ -152,13 +152,13 @@ fn stale_handle_stays_dead_after_slot_reuse() {
   assert_eq!(source.try_get(), None);
 
   // New signals may land in the freed slot; the stale handle must not see them.
-  let fresh: Vec<Signal<u32>> = (0..16).map(|n| Signal::new(n + 100)).collect();
+  let fresh: Vec<Signal<u32>> = (100..116).map(Signal::new).collect();
 
   assert_eq!(source.try_get(), None);
   assert_eq!(source.try_get_untracked(), None);
 
-  for (n, signal) in fresh.iter().enumerate() {
-    assert_eq!(signal.try_get(), Some(n as u32 + 100));
+  for (signal, value) in fresh.iter().zip(100..) {
+    assert_eq!(signal.try_get(), Some(value));
   }
 }
 

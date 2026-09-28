@@ -68,7 +68,7 @@ impl EffectHandle {
 
 /// The body behind [`Effect::new`] and [`Effect::render`].
 struct EffectBody<T, F> {
-  f: F,
+  body: F,
   value: RefCell<Option<T>>,
 }
 
@@ -79,7 +79,7 @@ where
 {
   fn run(&self) -> bool {
     let previous = self.value.borrow_mut().take();
-    let next = (self.f)(previous);
+    let next = (self.body)(previous);
 
     *self.value.borrow_mut() = Some(next);
 
@@ -96,27 +96,27 @@ where
   T: Any + 'static,
   F: Fn(Option<T>) -> T + 'static,
 {
-  /// Runs `f` immediately and re-runs it whenever a signal it read changes. `f`
+  /// Runs `body` immediately and re-runs it whenever a signal it read changes. `body`
   /// receives its previous return value, or `None` on the first run. The effect lives
   /// until the current [`Owner`](crate::Owner) is disposed.
   #[expect(clippy::new_ret_no_self)]
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn new(f: F) -> EffectHandle {
-    Self::create(f, 0)
+  pub fn new(body: F) -> EffectHandle {
+    Self::create(body, 0)
   }
 
   /// Like [`new`](Self::new), but a render effect: in a flush, every render effect
   /// runs before any ordinary effect, ordered by owner depth then creation.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn render(f: F) -> EffectHandle {
-    Self::create(f, RENDER)
+  pub fn render(body: F) -> EffectHandle {
+    Self::create(body, RENDER)
   }
 
-  fn create(f: F, flags: u8) -> EffectHandle {
+  fn create(body: F, flags: u8) -> EffectHandle {
     Runtime::assert_ui_thread();
 
     let body: Rc<dyn Computation> = Rc::new(EffectBody {
-      f,
+      body,
       value: RefCell::new(None),
     });
     let id = computation::create(body, flags);
@@ -186,20 +186,20 @@ impl Effect<(), fn(Option<()>) -> ()> {
   }
 }
 
-/// Runs `f` without subscribing the current effect to any signal it reads.
+/// Runs `operation` without subscribing the current effect to any signal it reads.
 #[cfg_attr(debug_assertions, track_caller)]
-pub fn untrack<T>(f: impl FnOnce() -> T) -> T {
+pub fn untrack<T>(operation: impl FnOnce() -> T) -> T {
   Runtime::assert_ui_thread();
-  Runtime::with_tracking(None, f)
+  Runtime::with_tracking(None, operation)
 }
 
-/// Runs `f`, deferring dependent effects until it returns so a batch of signal writes
+/// Runs `operation`, deferring dependent effects until it returns so a batch of signal writes
 /// triggers each effect at most once.
 #[cfg_attr(debug_assertions, track_caller)]
-pub fn batch<T>(f: impl FnOnce() -> T) -> T {
+pub fn batch<T>(operation: impl FnOnce() -> T) -> T {
   let _guard = Runtime::enter_batch();
 
-  f()
+  operation()
 }
 
 /// The body behind [`Reaction`]: fires the callback, subscribing to nothing.
@@ -244,9 +244,9 @@ impl Reaction {
     }
   }
 
-  /// Runs `f` and returns its value, subscribing to every signal it reads so a later
+  /// Runs `operation` and returns its value, subscribing to every signal it reads so a later
   /// change re-runs the reaction's callback. Replaces any previous subscription.
-  pub fn track<T: 'static>(&self, f: impl FnOnce() -> T) -> T {
+  pub fn track<T: 'static>(&self, operation: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
 
     if let Some(previous) = self.id.take() {
@@ -260,6 +260,6 @@ impl Reaction {
 
     self.id.set(Some(id));
 
-    computation::track(id, f)
+    computation::track(id, operation)
   }
 }

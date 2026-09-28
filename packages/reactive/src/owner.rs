@@ -107,14 +107,14 @@ impl Owner {
     with_graph(|graph| graph.parent(self.0)).map(Self::from_id)
   }
 
-  /// Runs `f` with this owner as the current one, restoring the previous afterwards.
+  /// Runs `operation` with this owner as the current one, restoring the previous afterwards.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn enter<T>(&self, f: impl FnOnce() -> T) -> T {
+  pub fn enter<T>(&self, operation: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
-    Runtime::with_owner(self.0, f)
+    Runtime::with_owner(self.0, operation)
   }
 
-  /// Runs `f` when this owner is disposed, after its children, in reverse registration
+  /// Runs `cleanup` when this owner is disposed, after its children, in reverse registration
   /// order; on an effect or a memo, also before its next run; on an owner already
   /// disposed, at once.
   ///
@@ -125,20 +125,20 @@ impl Owner {
   /// # Panics
   ///
   /// Panics if called off the UI thread.
-  pub fn on_cleanup(&self, f: impl FnOnce() + 'static) {
+  pub fn on_cleanup(&self, cleanup: impl FnOnce() + 'static) {
     Runtime::assert_ui_thread();
 
     let unregistered = with_graph(|graph| match graph.owner_data_mut(self.0) {
       Some(data) => {
-        data.cleanups.push(Box::new(f));
+        data.cleanups.push(Box::new(cleanup));
 
         None
       }
-      None => Some(f),
+      None => Some(cleanup),
     });
 
-    if let Some(f) = unregistered {
-      f();
+    if let Some(cleanup) = unregistered {
+      cleanup();
     }
   }
 
@@ -148,7 +148,7 @@ impl Owner {
   }
 }
 
-/// Runs `f` when the current owner is disposed; see [`Owner::on_cleanup`].
-pub fn on_cleanup(f: impl FnOnce() + 'static) {
-  Owner::current().on_cleanup(f);
+/// Runs `cleanup` when the current owner is disposed; see [`Owner::on_cleanup`].
+pub fn on_cleanup(cleanup: impl FnOnce() + 'static) {
+  Owner::current().on_cleanup(cleanup);
 }

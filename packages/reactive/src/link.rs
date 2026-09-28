@@ -62,7 +62,7 @@ impl LinkPool {
       return index;
     }
 
-    let index = self.links.len() as LinkIdx;
+    let index = LinkIdx::try_from(self.links.len()).expect("the pool holds under 2^32 links");
 
     self.links.push(link);
 

@@ -44,7 +44,7 @@ const STEPS: &[Step] = &[
   },
   Step {
     name: "manifests",
-    run: manifest_order,
+    run: manifest_rules,
   },
   Step {
     name: "lint",
@@ -409,8 +409,8 @@ fn fmt(gate: &Gate, log: &mut Log) -> Outcome {
   log.check(gate.cargo(["+nightly", "fmt", "--all", "--check"]))
 }
 
-fn manifest_order(gate: &Gate, _: &mut Log) -> Outcome {
-  manifests::check_order(&gate.root)
+fn manifest_rules(gate: &Gate, _: &mut Log) -> Outcome {
+  manifests::check(&gate.root)
 }
 
 fn house_rules(gate: &Gate, _: &mut Log) -> Outcome {

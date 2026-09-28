@@ -10,14 +10,29 @@ use toml_edit::{DocumentMut, Item, TableLike};
 /// The dependency tables a manifest lists crates in, each alphabetically.
 const DEPENDENCY_TABLES: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
 
-/// Checks that every manifest in the workspace lists each dependency table's crates in
-/// alphabetical order.
-pub(crate) fn check_order(root: &Path) -> Result<(), String> {
+/// Checks every manifest in the workspace: each dependency table lists its crates in
+/// alphabetical order, and each member inherits the workspace's lints and rust-version.
+pub(crate) fn check(root: &Path) -> Result<(), String> {
   let mut problems = Vec::new();
+  let workspace = root.join("Cargo.toml");
 
   for path in manifest_paths(root)? {
     let manifest = read(&path)?;
     let name = path.strip_prefix(root).unwrap_or(&path).display();
+
+    if path != workspace {
+      if !inherits(&manifest, &["lints", "workspace"]) {
+        problems.push(format!(
+          "{name}: inherits no workspace lints (`[lints] workspace = true`)"
+        ));
+      }
+
+      if !inherits(&manifest, &["package", "rust-version", "workspace"]) {
+        problems.push(format!(
+          "{name}: inherits no rust-version (`rust-version.workspace = true`)"
+        ));
+      }
+    }
 
     for (table, entries) in dependency_tables(&manifest) {
       let keys: Vec<&str> = entries.iter().map(|(key, _)| key).collect();
@@ -40,6 +55,20 @@ pub(crate) fn check_order(root: &Path) -> Result<(), String> {
   else {
     Err(problems.join("\n"))
   }
+}
+
+/// Whether the key at `path` in `manifest` is `true`.
+fn inherits(manifest: &DocumentMut, path: &[&str]) -> bool {
+  let mut item = manifest.as_item();
+
+  for key in path {
+    match item.get(key) {
+      Some(next) => item = next,
+      None => return false,
+    }
+  }
+
+  item.as_bool() == Some(true)
 }
 
 /// The Rust version the workspace declares as its minimum.

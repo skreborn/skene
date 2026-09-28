@@ -803,6 +803,10 @@ impl<Parent: KeyedField> AtKey<Parent> {
   }
 }
 
+#[expect(
+  clippy::expl_impl_clone_on_copy,
+  reason = "a lens clones where its parent or key cannot copy"
+)]
 impl<Parent: KeyedField> Clone for AtKey<Parent> {
   #[inline(always)]
   fn clone(&self) -> Self {

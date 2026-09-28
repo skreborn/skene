@@ -47,7 +47,7 @@ impl SyncSlab {
       return Id::sync(self.slots[index as usize].generation, index);
     }
 
-    let index = self.slots.len() as u32;
+    let index = u32::try_from(self.slots.len()).expect("the registry holds under 2^32 slots");
 
     self.slots.push(SyncSlot {
       generation: 0,

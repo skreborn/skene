@@ -22,10 +22,9 @@ left half-done in a code comment.
     fields, about 210 short), the clippy lints worth turning on (`use_self`,
     `missing_const_for_fn`, `allow_attributes_without_reason`,
     `too_long_first_doc_paragraph`, one of `unreachable_pub` and `redundant_pub_crate`,
-    `missing_debug_implementations`, `rustdoc::missing_crate_level_docs`), the
-    reactive engine inheriting the workspace lints (70+ findings), `trigger_` naming on
-    the test doubles, and a `cargo public-api` snapshot so a change to the surface
-    shows in review. The workspace declares no license, so `cargo deny check licenses`
+    `missing_debug_implementations`, `rustdoc::missing_crate_level_docs`), `trigger_`
+    naming on the test doubles, and a `cargo public-api` snapshot so a change to the
+    surface shows in review. The workspace declares no license, so `cargo deny check licenses`
     has nothing to hold the dependencies to. CI runs the gate on every pull request
     and the RustSec advisories weekly; neither workflow has run yet.
 2. **Pictures beyond direct kitty transmission.** Shared memory or a file where the

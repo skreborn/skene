@@ -59,6 +59,7 @@ impl Hasher for Fnv128 {
   }
 
   #[inline(always)]
+  #[expect(clippy::cast_possible_truncation, reason = "the hash's low half")]
   fn finish(&self) -> u64 {
     self.hash as u64
   }

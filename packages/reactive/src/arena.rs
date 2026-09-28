@@ -33,7 +33,7 @@ impl<T> Arena<T> {
       return (slot.generation, index);
     }
 
-    let index = self.slots.len() as u32;
+    let index = u32::try_from(self.slots.len()).expect("an arena holds under 2^32 slots");
 
     self.slots.push(Slot {
       generation: 0,

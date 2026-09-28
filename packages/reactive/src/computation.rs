@@ -45,14 +45,14 @@ impl Drop for EndTracking {
   }
 }
 
-/// Runs `f` as computation `id`: its reads become `id`'s dependencies, replacing last
+/// Runs `operation` as computation `id`: its reads become `id`'s dependencies, replacing last
 /// run's, and anything reactive it creates belongs to `id`.
-pub(crate) fn track<T>(id: Id, f: impl FnOnce() -> T) -> T {
+pub(crate) fn track<T>(id: Id, operation: impl FnOnce() -> T) -> T {
   with_graph(|graph| graph.start_tracking(id));
 
   let _end = EndTracking(id);
 
-  Runtime::with_tracking(Some(id), || Runtime::with_owner(id, f))
+  Runtime::with_tracking(Some(id), || Runtime::with_owner(id, operation))
 }
 
 /// Re-runs computation `id` from scratch: what its last run made is torn down first.

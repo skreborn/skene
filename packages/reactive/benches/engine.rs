@@ -1,5 +1,10 @@
 //! Engine microbenchmarks: creation, reads, writes through effects, memo chains.
 
+#![expect(
+  missing_docs,
+  reason = "criterion's macros generate the harness's functions"
+)]
+
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use skene_reactive::{Effect, Get, Memo, Owner, Signal, Update};
 

@@ -302,18 +302,16 @@ impl Graph {
     }
 
     let parent = data.parent;
-    let path: Rc<[Step]> = match parent {
-      Some(parent) => {
-        let prefix = self.owner_path(parent);
-        let step = self.step_of(id);
+    let path: Rc<[Step]> = if let Some(parent) = parent {
+      let prefix = self.owner_path(parent);
+      let step = self.step_of(id);
 
-        prefix.iter().copied().chain([step]).collect()
-      }
-      None => {
-        self.assign_root_ordinal(id);
+      prefix.iter().copied().chain([step]).collect()
+    }
+    else {
+      self.assign_root_ordinal(id);
 
-        Rc::from([self.step_of(id)])
-      }
+      Rc::from([self.step_of(id)])
     };
 
     if let Some(data) = self.owner_data_mut(id) {
@@ -427,15 +425,15 @@ impl Graph {
         }
       }
       Kind::Computation | Kind::Owner => {
-        let step = match parent_data.pending_key.take() {
-          Some(key) => Step::key(key),
-          None => {
-            let ordinal = parent_data.next_child;
+        let step = if let Some(key) = parent_data.pending_key.take() {
+          Step::key(key)
+        }
+        else {
+          let ordinal = parent_data.next_child;
 
-            parent_data.next_child += 1;
+          parent_data.next_child += 1;
 
-            Step::position(ordinal)
-          }
+          Step::position(ordinal)
         };
 
         if let Some(data) = self.owner_data_mut(child) {

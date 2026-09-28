@@ -83,49 +83,49 @@ pub trait With<T> {
   /// The signal's id.
   fn id(&self) -> Id;
 
-  /// Passes the current value to `f`, subscribing the running effect.
+  /// Passes the current value to `apply`, subscribing the running effect.
   ///
   /// # Panics
   ///
   /// Panics when the signal is disposed.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn with<O>(&self, f: impl FnOnce(&T) -> O) -> O
+  fn with<O>(&self, apply: impl FnOnce(&T) -> O) -> O
   where
     T: 'static,
   {
-    self.try_with(f).expect("signal disposed")
+    self.try_with(apply).expect("signal disposed")
   }
 
-  /// Passes the current value to `f` without subscribing.
+  /// Passes the current value to `apply` without subscribing.
   ///
   /// # Panics
   ///
   /// Panics when the signal is disposed.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn with_untracked<O>(&self, f: impl FnOnce(&T) -> O) -> O
+  fn with_untracked<O>(&self, apply: impl FnOnce(&T) -> O) -> O
   where
     T: 'static,
   {
-    self.try_with_untracked(f).expect("signal disposed")
+    self.try_with_untracked(apply).expect("signal disposed")
   }
 
-  /// Passes the current value to `f` if the signal is live, subscribing the running
+  /// Passes the current value to `apply` if the signal is live, subscribing the running
   /// effect.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_with<O>(&self, f: impl FnOnce(&T) -> O) -> Option<O>
+  fn try_with<O>(&self, apply: impl FnOnce(&T) -> O) -> Option<O>
   where
     T: 'static,
   {
-    self.id().state().map(|state| state.with(f))
+    self.id().state().map(|state| state.with(apply))
   }
 
-  /// Passes the current value to `f` if the signal is live, without subscribing.
+  /// Passes the current value to `apply` if the signal is live, without subscribing.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_with_untracked<O>(&self, f: impl FnOnce(&T) -> O) -> Option<O>
+  fn try_with_untracked<O>(&self, apply: impl FnOnce(&T) -> O) -> Option<O>
   where
     T: 'static,
   {
-    self.id().state().map(|state| state.with_untracked(f))
+    self.id().state().map(|state| state.with_untracked(apply))
   }
 }
 
@@ -206,24 +206,24 @@ pub trait Update<T> {
   /// The signal's id.
   fn id(&self) -> Id;
 
-  /// Mutates the value through `f` and re-runs subscribers; does nothing when the
+  /// Mutates the value through `mutate` and re-runs subscribers; does nothing when the
   /// signal is disposed.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn update(&self, f: impl FnOnce(&mut T))
+  fn update(&self, mutate: impl FnOnce(&mut T))
   where
     T: 'static,
   {
-    let _ = self.try_update(f);
+    let _ = self.try_update(mutate);
   }
 
-  /// Mutates the value through `f` if the signal is live, re-runs subscribers, and
-  /// returns `f`'s result.
+  /// Mutates the value through `mutate` if the signal is live, re-runs subscribers, and
+  /// returns `mutate`'s result.
   #[cfg_attr(debug_assertions, track_caller)]
-  fn try_update<O>(&self, f: impl FnOnce(&mut T) -> O) -> Option<O>
+  fn try_update<O>(&self, mutate: impl FnOnce(&mut T) -> O) -> Option<O>
   where
     T: 'static,
   {
-    self.id().state().map(|state| state.update(f))
+    self.id().state().map(|state| state.update(mutate))
   }
 }
 

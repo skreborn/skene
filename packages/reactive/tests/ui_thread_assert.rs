@@ -1,3 +1,6 @@
+//! UI-thread enforcement: local runtime access from another thread panics once a UI
+//! thread is designated.
+
 use skene_reactive::Runtime;
 
 fn panic_message(err: Box<dyn std::any::Any + Send + 'static>) -> String {

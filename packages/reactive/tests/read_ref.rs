@@ -1,3 +1,5 @@
+//! Read guards: a borrow of a signal's value that outlives nothing it borrows from.
+
 use skene_reactive::{Owner, Read, Signal};
 
 #[test]

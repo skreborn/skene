@@ -129,16 +129,16 @@ where
     self.signal.id()
   }
 
-  fn try_with<O2>(&self, f: impl FnOnce(&O) -> O2) -> Option<O2> {
+  fn try_with<O2>(&self, apply: impl FnOnce(&O) -> O2) -> Option<O2> {
     let read = self.read.try_get_untracked()?;
 
-    self.signal.try_with(|value| f(&read(value)))
+    self.signal.try_with(|value| apply(&read(value)))
   }
 
-  fn try_with_untracked<O2>(&self, f: impl FnOnce(&O) -> O2) -> Option<O2> {
+  fn try_with_untracked<O2>(&self, apply: impl FnOnce(&O) -> O2) -> Option<O2> {
     let read = self.read.try_get_untracked()?;
 
-    self.signal.try_with_untracked(|value| f(&read(value)))
+    self.signal.try_with_untracked(|value| apply(&read(value)))
   }
 }
 
@@ -171,13 +171,13 @@ where
     self.signal.id()
   }
 
-  fn try_update<O2>(&self, f: impl FnOnce(&mut O) -> O2) -> Option<O2> {
+  fn try_update<O2>(&self, mutate: impl FnOnce(&mut O) -> O2) -> Option<O2> {
     let read = self.read.try_get_untracked()?;
     let write = self.write.try_get_untracked()?;
 
     self.signal.try_update(|current| {
       let mut projected = read(current);
-      let result = f(&mut projected);
+      let result = mutate(&mut projected);
 
       write(current, &projected);
 

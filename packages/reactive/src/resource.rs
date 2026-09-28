@@ -147,10 +147,10 @@ impl<T: 'static> Resource<T> {
       let future = untrack(|| (loader.get_untracked())());
 
       spawn(async move {
-        let loaded = future.await;
+        let landed = future.await;
 
         if generation.try_get_untracked() == Some(current) {
-          value.set(Load::Ready(loaded));
+          value.set(Load::Ready(landed));
         }
       });
     });

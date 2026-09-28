@@ -264,7 +264,7 @@ impl SignalState {
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn with_untracked<O, T: 'static>(&self, f: impl FnOnce(&T) -> O) -> O {
+  pub(crate) fn with_untracked<O, T: 'static>(&self, apply: impl FnOnce(&T) -> O) -> O {
     match &self.value {
       SignalValue::Sync(value) => {
         let value = value
@@ -272,7 +272,7 @@ impl SignalState {
           .downcast_ref::<Mutex<T>>()
           .expect("to downcast signal type");
 
-        f(&value.lock())
+        apply(&value.lock())
       }
       SignalValue::Local(value) => {
         let value = value
@@ -282,27 +282,27 @@ impl SignalState {
 
         #[cfg(debug_assertions)]
         {
-          f(&value.borrow_at(Location::caller()))
+          apply(&value.borrow_at(Location::caller()))
         }
         #[cfg(not(debug_assertions))]
         {
-          f(&value.borrow())
+          apply(&value.borrow())
         }
       }
     }
   }
 
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn with<O, T: 'static>(&self, f: impl FnOnce(&T) -> O) -> O {
+  pub(crate) fn with<O, T: 'static>(&self, apply: impl FnOnce(&T) -> O) -> O {
     self.subscribe();
 
-    self.with_untracked(f)
+    self.with_untracked(apply)
   }
 
-  /// Mutates the value through `f` and notifies subscribers.
+  /// Mutates the value through `mutate` and notifies subscribers.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn update<U, T: 'static>(&self, f: impl FnOnce(&mut T) -> U) -> U {
-    let result = self.update_untracked(f);
+  pub(crate) fn update<U, T: 'static>(&self, mutate: impl FnOnce(&mut T) -> U) -> U {
+    let result = self.update_untracked(mutate);
 
     self.notify();
 
@@ -312,7 +312,7 @@ impl SignalState {
   /// Mutates the value without notifying subscribers, for a caller owning its own
   /// notification (a store's trigger fan-out).
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn update_untracked<U, T: 'static>(&self, f: impl FnOnce(&mut T) -> U) -> U {
+  pub(crate) fn update_untracked<U, T: 'static>(&self, mutate: impl FnOnce(&mut T) -> U) -> U {
     match &self.value {
       SignalValue::Sync(value) => {
         let value = value
@@ -320,7 +320,7 @@ impl SignalState {
           .downcast_ref::<Mutex<T>>()
           .expect("to downcast signal type");
 
-        f(&mut value.lock())
+        mutate(&mut value.lock())
       }
       SignalValue::Local(value) => {
         let value = value
@@ -330,11 +330,11 @@ impl SignalState {
 
         #[cfg(debug_assertions)]
         {
-          f(&mut value.borrow_mut_at(Location::caller()))
+          mutate(&mut value.borrow_mut_at(Location::caller()))
         }
         #[cfg(not(debug_assertions))]
         {
-          f(&mut value.borrow_mut())
+          mutate(&mut value.borrow_mut())
         }
       }
     }
@@ -381,11 +381,11 @@ impl SignalState {
   /// ever designated. Without one, an off-thread write propagates in the writer's own
   /// runtime and never reaches the UI thread—a silent loss this at least makes loud.
   fn warn_if_undesignated() {
+    static WARNED: std::sync::Once = std::sync::Once::new();
+
     if Runtime::ui_thread_designated() {
       return;
     }
-
-    static WARNED: std::sync::Once = std::sync::Once::new();
 
     WARNED.call_once(|| {
       eprintln!(

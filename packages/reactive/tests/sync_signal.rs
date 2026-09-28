@@ -1,3 +1,5 @@
+//! Sync signals: writable from any thread, their effects running on the UI thread.
+
 use std::thread;
 
 use skene_reactive::{Get, Set, SyncSignal};

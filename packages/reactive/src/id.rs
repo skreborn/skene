@@ -81,12 +81,20 @@ impl Id {
 
   /// The slot generation this id was minted for.
   #[inline(always)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "the generation is these bits of the id"
+  )]
   pub(crate) const fn generation(self) -> u16 {
     (self.0 >> 32) as u16
   }
 
   /// The slot index in the allocating runtime.
   #[inline(always)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "the index is the id's low bits"
+  )]
   pub(crate) const fn index(self) -> u32 {
     self.0 as u32
   }

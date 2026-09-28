@@ -52,36 +52,36 @@ impl<T: 'static> With<T> for Memo<T> {
     self.id
   }
 
-  fn try_with<O>(&self, f: impl FnOnce(&T) -> O) -> Option<O> {
-    self.with_value(true, f)
+  fn try_with<O>(&self, apply: impl FnOnce(&T) -> O) -> Option<O> {
+    self.with_value(true, apply)
   }
 
-  fn try_with_untracked<O>(&self, f: impl FnOnce(&T) -> O) -> Option<O> {
-    self.with_value(false, f)
+  fn try_with_untracked<O>(&self, apply: impl FnOnce(&T) -> O) -> Option<O> {
+    self.with_value(false, apply)
   }
 }
 
 impl<T: PartialEq + 'static> Memo<T> {
-  /// Creates a memo computed by `f`, which receives the previous value or `None` on
+  /// Creates a memo computed by `compute`, which receives the previous value or `None` on
   /// its first run; dependents are notified when the value is not equal to before.
   #[cfg_attr(debug_assertions, track_caller)]
-  pub fn new(f: impl Fn(Option<&T>) -> T + 'static) -> Self {
-    Self::new_with(PartialEq::eq, f)
+  pub fn new(compute: impl Fn(Option<&T>) -> T + 'static) -> Self {
+    Self::new_with(PartialEq::eq, compute)
   }
 }
 
 impl<T: 'static> Memo<T> {
-  /// Creates a memo computed by `f`, notifying dependents when `compare` says the
+  /// Creates a memo computed by `compute`, notifying dependents when `compare` says the
   /// recomputed value differs from the previous one.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new_with(
     compare: impl Fn(&T, &T) -> bool + 'static,
-    f: impl Fn(Option<&T>) -> T + 'static,
+    compute: impl Fn(Option<&T>) -> T + 'static,
   ) -> Self {
     Runtime::assert_ui_thread();
 
     let body: Rc<dyn Computation> = Rc::new(MemoBody {
-      compute: Box::new(f),
+      compute: Box::new(compute),
       compare: Box::new(compare),
       value: RefCell::new(None),
     });
@@ -101,9 +101,9 @@ impl<T: 'static> Memo<T> {
     self.id
   }
 
-  /// Brings the memo up to date and passes its value to `f`, subscribing the running
+  /// Brings the memo up to date and passes its value to `apply`, subscribing the running
   /// computation when `track` is set; `None` when the memo is disposed.
-  fn with_value<O>(&self, track: bool, f: impl FnOnce(&T) -> O) -> Option<O> {
+  fn with_value<O>(self, track: bool, apply: impl FnOnce(&T) -> O) -> Option<O> {
     computation::ensure_fresh(self.id);
 
     let body = with_graph(|graph| graph.body(self.id))?;
@@ -118,7 +118,7 @@ impl<T: 'static> Memo<T> {
       .expect("to downcast memo type");
     let value = body.value.borrow();
 
-    Some(f(value.as_ref().expect(
+    Some(apply(value.as_ref().expect(
       "memo has no value: it is computing, or its computation panicked",
     )))
   }

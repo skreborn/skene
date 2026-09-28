@@ -1,3 +1,6 @@
+//! Memos: computed once, recomputed only when read after what they read changes, and
+//! notifying only on a changed value.
+
 use std::{
   cell::{Cell, RefCell},
   rc::Rc,

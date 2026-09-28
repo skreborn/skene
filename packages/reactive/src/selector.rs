@@ -25,6 +25,10 @@ pub struct Selector<K: Eq + Hash + Clone + 'static> {
 
 impl<K: Eq + Hash + Clone + 'static> Copy for Selector<K> {}
 
+#[expect(
+  clippy::expl_impl_clone_on_copy,
+  reason = "a derive would bound the key on Copy"
+)]
 impl<K: Eq + Hash + Clone + 'static> Clone for Selector<K> {
   fn clone(&self) -> Self {
     *self
@@ -82,18 +86,16 @@ impl<K: Eq + Hash + Clone + 'static> Selector<K> {
   #[must_use]
   pub fn is(&self, key: &K) -> bool {
     let owner = self.owner;
-    let trigger = update_silently(self.state.id(), |state: &mut SelectorState<K>| match state
-      .keys
-      .get(key)
-    {
-      Some(trigger) => *trigger,
-      None => {
-        let trigger = owner.enter(Trigger::new);
-
-        state.keys.insert(key.clone(), trigger);
-
-        trigger
+    let trigger = update_silently(self.state.id(), |state: &mut SelectorState<K>| {
+      if let Some(trigger) = state.keys.get(key) {
+        return *trigger;
       }
+
+      let trigger = owner.enter(Trigger::new);
+
+      state.keys.insert(key.clone(), trigger);
+
+      trigger
     });
 
     let Some(trigger) = trigger

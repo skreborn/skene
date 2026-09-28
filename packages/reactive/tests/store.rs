@@ -7,7 +7,17 @@ use std::{
   time::{Duration, Instant},
 };
 
-use skene_reactive::{Effect, Get, IndexedField, KeyedField, Owner, Snapshot, Store, StoreField};
+use skene_reactive::{
+  AtKey,
+  Effect,
+  Get,
+  IndexedField,
+  KeyedField,
+  Owner,
+  Snapshot,
+  Store,
+  StoreField,
+};
 
 #[derive(Store, Default, Snapshot)]
 struct Settings {
@@ -320,11 +330,7 @@ fn entries_follow_the_shape_and_each_lens_its_entry() {
     let seen = Rc::clone(&seen);
 
     count_runs(move || {
-      *seen.borrow_mut() = store
-        .entries()
-        .iter()
-        .map(|entry| entry.entry_key())
-        .collect();
+      *seen.borrow_mut() = store.entries().iter().map(AtKey::entry_key).collect();
     })
   };
   let first = store.entries().into_iter().next().expect("the first entry");
@@ -371,7 +377,7 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
     keyed
       .entries()
       .iter()
-      .map(|entry| entry.entry_key())
+      .map(AtKey::entry_key)
       .collect::<Vec<_>>(),
     [1, 2]
   );
@@ -383,7 +389,7 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
     keyed
       .entries()
       .iter()
-      .map(|entry| entry.entry_key())
+      .map(AtKey::entry_key)
       .collect::<Vec<_>>(),
     [2, 1]
   );

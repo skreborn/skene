@@ -42,6 +42,7 @@ pub trait Snapshot: Sized + 'static {
   /// The value a place holds when the snapshot carries none for it: zero, empty,
   /// none; `None` where the type has no such value.
   #[inline(always)]
+  #[must_use]
   fn absent() -> Option<Self> {
     None
   }
@@ -57,6 +58,7 @@ pub trait Snapshot: Sized + 'static {
 
   /// Restores the run [`record_slice`](Self::record_slice) wrote, an item that no
   /// longer restores taking its absent value or being left out.
+  #[must_use]
   fn restore_slice(value: Value<'_>) -> Option<Vec<Self>> {
     let restore = |item| Self::restore(item).or_else(Self::absent);
 
@@ -128,6 +130,10 @@ impl Recorder {
     self.out
   }
 
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "each byte carries the value's next seven low bits"
+  )]
   fn varint(&mut self, mut value: u64) {
     while value >= 0x80 {
       self.out.push((value as u8) | 0x80);
@@ -153,7 +159,7 @@ impl Recorder {
   #[inline(always)]
   pub fn int(&mut self, value: i64) {
     self.out.push(tag::INT);
-    self.varint(((value << 1) ^ (value >> 63)) as u64);
+    self.varint(((value << 1) ^ (value >> 63)).cast_unsigned());
   }
 
   /// Records an unsigned integer.
@@ -325,7 +331,7 @@ impl<'a> Reader<'a> {
       tag::INT => {
         let raw = self.varint()?;
 
-        Value::Int(((raw >> 1) as i64) ^ -((raw & 1) as i64))
+        Value::Int((raw >> 1).cast_signed() ^ -(raw & 1).cast_signed())
       }
       tag::UINT => Value::Uint(self.varint()?),
       tag::WIDE => Value::Wide(u128::from_le_bytes(self.take(16)?.try_into().ok()?)),
@@ -398,27 +404,37 @@ pub enum Value<'a> {
 }
 
 impl Value<'_> {
-  /// This value as an integer, where its kind admits one.
+  /// This value as an integer, where its kind admits one; a float by truncation,
+  /// saturating at the bounds.
   #[must_use]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a float restores as an integer by truncation"
+  )]
   pub fn as_i128(&self) -> Option<i128> {
     match *self {
       Self::Bool(value) => Some(i128::from(value)),
       Self::Int(value) => Some(i128::from(value)),
       Self::Uint(value) => Some(i128::from(value)),
-      Self::Wide(bits) => Some(bits as i128),
+      Self::Wide(bits) => Some(bits.cast_signed()),
       Self::Float(value) if value.is_finite() => Some(value.trunc() as i128),
       _ => None,
     }
   }
 
-  /// This value as a float, where its kind admits one.
+  /// This value as a float, where its kind admits one; an integer as the nearest
+  /// float.
   #[must_use]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "an integer restores as the nearest float"
+  )]
   pub fn as_f64(&self) -> Option<f64> {
     match *self {
       Self::Bool(value) => Some(f64::from(u8::from(value))),
       Self::Int(value) => Some(value as f64),
       Self::Uint(value) => Some(value as f64),
-      Self::Wide(bits) => Some(bits as i128 as f64),
+      Self::Wide(bits) => Some(bits.cast_signed() as f64),
       Self::Float(value) => Some(value),
       _ => None,
     }
@@ -449,6 +465,10 @@ impl Seq<'_> {
   }
 }
 
+#[expect(
+  clippy::copy_iterator,
+  reason = "a sequence is a cursor over borrowed bytes; a copy reads the same values"
+)]
 impl<'a> Iterator for Seq<'a> {
   type Item = Value<'a>;
 
@@ -473,6 +493,7 @@ pub struct Record<'a> {
 
 impl<'a> Record<'a> {
   /// The value recorded under `key`, if any.
+  #[must_use]
   pub fn field(&self, key: u32) -> Option<Value<'a>> {
     self
       .fields()
@@ -665,7 +686,7 @@ impl Snapshot for usize {
 impl Snapshot for i128 {
   #[inline(always)]
   fn record(&self, recorder: &mut Recorder) {
-    recorder.wide(*self as u128);
+    recorder.wide(self.cast_unsigned());
   }
 
   fn restore(value: Value<'_>) -> Option<Self> {
@@ -703,6 +724,10 @@ impl Snapshot for f32 {
     recorder.float(f64::from(*self));
   }
 
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a float restores at its nearest single precision"
+  )]
   fn restore(value: Value<'_>) -> Option<Self> {
     value.as_f64().map(|value| value as Self)
   }

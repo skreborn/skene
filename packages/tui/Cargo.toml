@@ -2,15 +2,16 @@
 name = "skene-tui"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 # Host-only: the terminal platform never itself compiles to wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64 = "0.22"
 rustc-hash.workspace = true
 rustix = { default-features = false, features = ["event", "std", "stdio", "termios"], version = "1" }
+skene-common.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
-skene-common.workspace = true
 taffy = "0.9"
 unicode-segmentation = "1"
 unicode-width = "0.2"

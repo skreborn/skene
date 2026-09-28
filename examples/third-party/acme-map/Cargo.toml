@@ -2,11 +2,12 @@
 name = "acme-map"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-core.workspace = true
 skene-common.workspace = true
+skene-core.workspace = true
 skene-web.workspace = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]

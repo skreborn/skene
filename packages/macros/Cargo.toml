@@ -2,6 +2,7 @@
 name = "skene-macros"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 proc-macro = true

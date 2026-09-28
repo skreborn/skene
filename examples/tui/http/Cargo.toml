@@ -2,11 +2,12 @@
 name = "tui-http"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-transport.workspace = true
 skene-simple.workspace = true
+skene-transport.workspace = true
 skene-tui.workspace = true
 
 [lints]

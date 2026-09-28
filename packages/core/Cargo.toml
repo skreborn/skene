@@ -2,6 +2,7 @@
 name = "skene-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 color.workspace = true

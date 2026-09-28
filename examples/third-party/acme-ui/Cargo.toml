@@ -2,11 +2,12 @@
 name = "acme-ui"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 publish = false
 
 [dependencies]
-skene-core.workspace = true
 skene-common.workspace = true
+skene-core.workspace = true
 
 [dev-dependencies]
 skene-headless.workspace = true

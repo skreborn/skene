@@ -12,6 +12,7 @@ use skene_gui::{
   Container,
   Deferred,
   Enhance,
+  Flexible,
   HasChildren,
   Label,
   Lazy,
@@ -275,6 +276,33 @@ fn a_page_carries_its_language() {
       .document()
       .starts_with("<!DOCTYPE html><html lang=\"pt-BR\"><head>")
   );
+}
+
+/// A wrapper's per-child properties reach a text it wraps, compiled into the run's
+/// class as into a box's.
+#[test]
+fn a_wrapper_lays_out_the_text_it_wraps() {
+  let page = render_to_string(|| {
+    Row::new().set_children((
+      Flexible::new()
+        .set_grow_factor(1.)
+        .set_child(Text::new("title")),
+      Text::new("x"),
+    ))
+  });
+  let body = page.body();
+  let title = body.find(">title<").expect("the title");
+  let class = &body[..title];
+  let class = &class[class.rfind("class=\"").expect("the title's class") + 7..];
+  let class = &class[..class.find('"').expect("the class's end")];
+
+  let styles = page.styles();
+  let rule = &styles[styles
+    .find(&format!(".{class}{{"))
+    .expect("the title's rule")..];
+  let rule = &rule[..rule.find('}').expect("the rule's end")];
+
+  assert!(rule.contains("flex:1 1 auto;"), "{rule}");
 }
 
 /// A link whose destination would run script is written with no `href`.

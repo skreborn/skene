@@ -113,16 +113,12 @@ impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
 
         if let Some(builder) = builder {
           let scope = owner.child();
+          let branch = || scope.enter(|| untrack(|| builder().build()));
+          let node = match &annotation {
+            Some(annotation) => Scene::<P>::annotate(annotation.clone(), branch),
+            None => branch(),
+          };
 
-          if let Some(annotation) = &annotation {
-            Scene::<P>::with(|scene| scene.set_pending_annotation(annotation.clone()));
-          }
-
-          let node = scope.enter(|| untrack(|| builder().build()));
-
-          Scene::<P>::with(|scene| {
-            scene.take_pending_annotation();
-          });
           cases.borrow_mut()[index].node = Some(node);
         }
 

@@ -31,14 +31,12 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
       .get()
       .map_or_else(|| parent_scope.child(), |previous| previous.replacement());
 
-    if let Some(annotation) = &annotation {
-      Scene::<P>::with(|scene| scene.set_pending_annotation(annotation.clone()));
-    }
-
-    let node = scope.enter(&build);
+    let node = match &annotation {
+      Some(annotation) => Scene::<P>::annotate(annotation.clone(), || scope.enter(&build)),
+      None => scope.enter(&build),
+    };
 
     Scene::<P>::with(|scene| {
-      scene.take_pending_annotation();
       scene.clear_segment(start);
       scene.insert_in_segment(start, node, None);
     });

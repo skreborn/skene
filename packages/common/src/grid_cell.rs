@@ -147,17 +147,15 @@ impl<P: Platform> IntoChildOf<P, GridChild> for GridCell<P, AnyView<P>> {
         None => (None, None),
       };
 
-      Scene::<P>::with(|scene| {
-        scene.set_pending_annotation(Annotation {
-          grid_row_placement: self.row,
-          grid_column_placement: self.column,
-          self_horizontal_alignment: horizontal,
-          self_alignment: vertical,
-          ..Annotation::default()
-        });
-      });
+      let annotation = Annotation {
+        grid_row_placement: self.row,
+        grid_column_placement: self.column,
+        self_horizontal_alignment: horizontal,
+        self_alignment: vertical,
+        ..Annotation::default()
+      };
 
-      self.child.build()
+      Scene::<P>::annotate(annotation, || self.child.build())
     })
   }
 }

@@ -92,14 +92,12 @@ impl<P: Platform, C> Pinned<P, C> {
 impl<P: Platform> IntoChildOf<P, StackChild> for Pinned<P, AnyView<P>> {
   fn into_child(self) -> AnyView<P> {
     AnyView::new(move || {
-      Scene::<P>::with(|scene| {
-        scene.set_pending_annotation(Annotation {
-          pinned: Some(self.edges),
-          ..Annotation::default()
-        });
-      });
+      let annotation = Annotation {
+        pinned: Some(self.edges),
+        ..Annotation::default()
+      };
 
-      self.child.build()
+      Scene::<P>::annotate(annotation, || self.child.build())
     })
   }
 }

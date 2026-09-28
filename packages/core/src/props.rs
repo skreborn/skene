@@ -97,6 +97,9 @@ pub struct RunProps<P: Platform> {
   pub link_policy: LinkPolicy,
   /// The static style: every derived leaf already replaced by its slot.
   pub style: StaticRunStyle<P>,
+  /// The static per-child layout a wrapper gave the run (its flexibility, alignment,
+  /// pinning and grid placement), as a box style holding nothing else.
+  pub layout: Option<Box<StaticBoxStyle<P>>>,
   /// The transitions and animations.
   pub dynamics: RunDynamics<P::StyleExt>,
 }

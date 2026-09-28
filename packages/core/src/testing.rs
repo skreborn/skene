@@ -250,9 +250,19 @@ impl TestBox {
     }
   }
 
-  /// Mints a box node directly, outside any view.
+  /// Mints a box node directly, outside any view, recording the pending annotation as a
+  /// box builder does.
   pub(super) fn node() -> NodeId {
-    Scene::<TestPlatform>::with(|scene| scene.create(NodeKind::Box, TestPlatform::next_sink()))
+    Scene::<TestPlatform>::with(|scene| {
+      let annotation = scene.take_pending_annotation();
+      let node = scene.create(NodeKind::Box, TestPlatform::next_sink());
+
+      if let Some(annotation) = annotation {
+        scene.set_annotation(node, annotation);
+      }
+
+      node
+    })
   }
 }
 

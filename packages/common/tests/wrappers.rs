@@ -133,3 +133,27 @@ fn grid_cell_annotates_the_content_of_a_derived_subtree() {
 
   owner.dispose();
 }
+
+/// A wrapper whose child creates no node leaves its properties on nothing: the next box
+/// built takes none of them.
+#[test]
+fn a_wrapper_around_nothing_annotates_no_later_box() {
+  reset();
+
+  let owner = Owner::new();
+  let root = owner.enter(|| {
+    Stack::new()
+      .set_children((
+        Pinned::new()
+          .set_edges(Inset::all(Dimension::Length(4.)))
+          .set_child(skene_core::empty::<Headless>()),
+        Container::new(),
+      ))
+      .build()
+  });
+  let later = *children(root).last().expect("the later box");
+
+  assert_eq!(box_props(later).and_then(|props| props.style.pinned), None);
+
+  owner.dispose();
+}

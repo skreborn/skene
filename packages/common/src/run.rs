@@ -4,6 +4,7 @@ use skene_core::{
   Animation,
   Color,
   Condition,
+  DeclaredBoxStyle,
   DeclaredRunStyle,
   Definition,
   Definitions,
@@ -125,16 +126,32 @@ impl<P: Platform> Run<P> {
       .get_or_insert_with(|| Value::from(typography::SELECTION_SURFACE));
 
     let (style, slots) = style.split();
+    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
+    let layout = annotation.clone().map(|annotation| {
+      let mut layout = DeclaredBoxStyle::<P>::default();
+
+      annotation.statics().apply_to(&mut layout);
+      Box::new(layout.split().0)
+    });
     let props = RunProps {
       display,
       selectable: self.selectable,
       link: self.link,
       link_policy: self.link_policy,
       style,
+      layout,
       dynamics: self.dynamics,
     };
     let sink = P::default().create_run(&props);
-    let node = Scene::<P>::with(|scene| scene.create(NodeKind::Run, sink));
+    let node = Scene::<P>::with(|scene| {
+      let node = scene.create(NodeKind::Run, sink);
+
+      if let Some(annotation) = annotation {
+        scene.set_annotation(node, annotation);
+      }
+
+      node
+    });
 
     for slot in slots {
       bind_run_slot::<P>(node, slot);

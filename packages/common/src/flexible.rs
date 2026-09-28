@@ -154,15 +154,13 @@ impl<P: Platform> IntoChildOf<P, FlexChild> for Flexible<P, AnyView<P>> {
         })),
       };
 
-      Scene::<P>::with(|scene| {
-        scene.set_pending_annotation(Annotation {
-          flex: Some(flex),
-          self_alignment: self.alignment,
-          ..Annotation::default()
-        });
-      });
+      let annotation = Annotation {
+        flex: Some(flex),
+        self_alignment: self.alignment,
+        ..Annotation::default()
+      };
 
-      self.child.build()
+      Scene::<P>::annotate(annotation, || self.child.build())
     })
   }
 }

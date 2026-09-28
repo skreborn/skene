@@ -133,9 +133,19 @@ impl<P: Platform> ChildBuilder<P> {
 pub struct LowLevel<P: Platform>(PhantomData<fn() -> P>);
 
 impl<P: Platform> LowLevel<P> {
-  /// Registers `sink` as a detached node of `kind` and returns its id.
+  /// Registers `sink` as a detached node of `kind` and returns its id, recording the
+  /// annotation a wrapper around the view gave it.
   #[inline(always)]
   pub fn realize(sink: P::Sink, kind: NodeKind) -> NodeId {
-    Scene::<P>::with(|scene| scene.create(kind, sink))
+    Scene::<P>::with(|scene| {
+      let annotation = scene.take_pending_annotation();
+      let node = scene.create(kind, sink);
+
+      if let Some(annotation) = annotation {
+        scene.set_annotation(node, annotation);
+      }
+
+      node
+    })
   }
 }

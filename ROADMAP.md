@@ -67,12 +67,10 @@ left half-done in a code comment.
     entries are owner-scoped and keyed, with a title stack, deduped once in shared
     code, so a route's description and stylesheet leave with it and both leaves
     serialize them alike.
-    - `Scene::annotate(annotation, build)` applies a wrapper's per-child properties to
-    whatever its child produced, runs, low-level sinks and segments included (carried
-    in `RunProps` for runs), so `Flexible`, `GridCell` and `Pinned` act around text on
-    the web and in headless as in the terminal; it replaces the global pending slot and
-    its five copies of the pattern, whose leftovers land on the next box built when a
-    child creates no node and vanish from `Suspense` and `ErrorBoundary` fallbacks.
+    - A wrapper's per-child properties reach everything its child produces: a derived
+    one reaches a run on the web as a slot, as it reaches a box; a low-level node's
+    annotation reaches its platform, which applies it to the element on the web; and
+    `Suspense` and `ErrorBoundary` fallbacks take their wrapper's annotation.
     - A run references a typography token for every inheritable property it doesn't
     set, so the GUI `Typography`'s size, weight, line-height and letter-spacing reach
     the browser.

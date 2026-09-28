@@ -89,6 +89,18 @@ pub struct Annotation<P: Platform> {
 pub type Annotated<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
 
 impl<P: Platform> Annotation<P> {
+  /// This annotation with only its static properties: those no derived leaf holds.
+  pub fn statics(self) -> Self {
+    Self {
+      flex: self.flex.filter(Value::is_static),
+      self_alignment: self.self_alignment.filter(Value::is_static),
+      self_horizontal_alignment: self.self_horizontal_alignment.filter(Value::is_static),
+      pinned: self.pinned.filter(Value::is_static),
+      grid_row_placement: self.grid_row_placement.filter(Value::is_static),
+      grid_column_placement: self.grid_column_placement.filter(Value::is_static),
+    }
+  }
+
   /// Writes every property set here into `style`, replacing what it held.
   pub fn apply_to(self, style: &mut DeclaredBoxStyle<P>) {
     if let Some(flex) = self.flex {
@@ -660,29 +672,20 @@ impl<P: Platform> Scene<P> {
     self.record(node).map(|record| record.sink.clone())
   }
 
-  /// Mints a detached node of `kind` owning `sink`; a box, a control or a run consumes
-  /// the pending annotation, and a control starts in the default [`ControlState`].
-  ///
-  /// A box folds the annotation into its style before creation; a run keeps it on its
-  /// record, where the platform reads it when it lays the run out.
+  /// Mints a detached node of `kind` owning `sink`; a control starts in the default
+  /// [`ControlState`].
   ///
   /// # Panics
   ///
   /// Panics past 2^32 live nodes.
   pub fn create(&mut self, kind: NodeKind, sink: P::Sink) -> NodeId {
     let is_control = kind == NodeKind::Control;
-    let annotation = if matches!(kind, NodeKind::Box | NodeKind::Control | NodeKind::Run) {
-      self.pending_annotation.take()
-    }
-    else {
-      None
-    };
     let position = Position::next();
     let record = NodeRecord {
       parent: None,
       children: SmallVec::new(),
       kind,
-      annotation,
+      annotation: None,
       definitions: None,
       container: None,
       handlers: None,
@@ -963,14 +966,28 @@ impl<P: Platform> Scene<P> {
     }
   }
 
-  /// Stores the annotation the next box created consumes.
+  /// Builds the node `build` returns under `annotation`: the first box, control, run or
+  /// low-level node `build` creates takes it, and no node built after `build` returns
+  /// does.
+  pub fn annotate(annotation: Annotation<P>, build: impl FnOnce() -> NodeId) -> NodeId {
+    Self::with(|scene| scene.pending_annotation = Some(annotation));
+
+    let node = build();
+
+    Self::with(|scene| scene.pending_annotation = None);
+
+    node
+  }
+
+  /// Stores the annotation the next box, control, run or low-level node created takes;
+  /// [`annotate`](Self::annotate) scopes it to one build.
   #[inline(always)]
   pub fn set_pending_annotation(&mut self, annotation: Annotation<P>) {
     self.pending_annotation = Some(annotation);
   }
 
-  /// Takes the annotation waiting for the next box, so a builder can fold it into the
-  /// box's style before creation.
+  /// Takes the pending annotation, for the node about to be created: a box folds it
+  /// into its style and records it, any other node records it.
   #[inline(always)]
   pub fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
     self.pending_annotation.take()

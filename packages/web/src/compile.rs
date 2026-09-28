@@ -859,6 +859,10 @@ pub(crate) fn compile_run<P: PixelPlatform>(props: &RunProps<P>) -> Compiled {
 
   props.style.visit(&mut RunRules(&mut rules));
 
+  if let Some(layout) = &props.layout {
+    layout.visit(&mut BoxRules(&mut rules));
+  }
+
   rules.finish(out, &trailer)
 }
 
@@ -1072,6 +1076,12 @@ pub(crate) fn run_fingerprint<P: PixelPlatform>(props: &RunProps<P>) -> u64 {
   (props.display as u8).hash(&mut hasher);
   props.selectable.hash(&mut hasher);
   props.style.fingerprint(&mut hasher);
+  props.layout.is_some().hash(&mut hasher);
+
+  if let Some(layout) = &props.layout {
+    layout.fingerprint(&mut hasher);
+  }
+
   props.dynamics.fingerprint(&mut hasher);
 
   hasher.finish()

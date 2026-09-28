@@ -40,6 +40,15 @@ use skene_gui::{
 };
 use skene_simple::gui::prelude::*;
 
+/// The state a page's state script carries, its escaping undone.
+fn state_of(page: &skene_gui::Rendered) -> String {
+  let script = page.state_script();
+  let start = script.find('>').expect("the opening tag's end") + 1;
+  let end = script.rfind("</script>").expect("the closing tag");
+
+  script[start..end].replace("\\u003c", "<")
+}
+
 /// Every class named in `body`, in document order.
 fn classes(body: &str) -> Vec<String> {
   body
@@ -455,7 +464,7 @@ fn resources_serialize_their_state() {
   });
 
   assert_eq!(
-    page.state(),
+    state_of(&page),
     r#"[["\"Ada\"","\"Bo\""],[],[]]"#,
     "both values are JSON-encoded in creation order",
   );
@@ -489,7 +498,7 @@ fn a_lazy_segments_resources_serialize_under_its_place() {
   });
 
   assert_eq!(
-    page.state(),
+    state_of(&page),
     r#"[["\"before\"","\"after\""],[],[[[0],["\"inner\""]],[[1],["\"second\""]],[[0,0],["\"nested\""]]]]"#,
     "the resources outside any lazy segment in creation order, then each segment's own",
   );
@@ -507,7 +516,7 @@ fn a_client_resource_is_not_serialized() {
   });
 
   assert_eq!(
-    page.state(),
+    state_of(&page),
     "[[],[],[]]",
     "no serializable resources means empty state"
   );
@@ -799,8 +808,8 @@ fn tagged_resource_serializes_under_its_tag() {
   });
 
   assert!(rendered.body().contains("tagged 41"));
-  assert!(rendered.state().contains("answer"));
-  assert!(rendered.state().contains("41"));
+  assert!(state_of(&rendered).contains("answer"));
+  assert!(state_of(&rendered).contains("41"));
 }
 
 /// A run's selection colors compile to a `::selection` rule inside its interned class,
@@ -1000,4 +1009,59 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
     .expect("a description reference");
 
   assert!(body.contains(&format!("id=\"{described}\"")), "{body}");
+}
+
+/// The state script escapes the markup its state holds, so it closes nothing early.
+#[test]
+fn the_state_script_closes_nothing_early() {
+  let page = render_to_string(|| {
+    let _tag = Resource::new(|| async { "</script><script>alert(1)</script>".to_owned() });
+
+    Text::new("x")
+  });
+  let script = page.state_script();
+
+  assert_eq!(script.matches("</script>").count(), 1, "{script}");
+  assert!(state_of(&page).contains("</script><script>alert(1)"));
+}
+
+/// A render's inline script carries the nonce it was given, and none without one.
+#[test]
+fn an_inline_script_carries_the_renders_nonce() {
+  let app = || {
+    skene_gui::media::derive_scheme(|| None);
+
+    Text::new("x")
+  };
+
+  web::set_script_nonce(Some("r4nd\"om"));
+
+  let page = render_to_string(app).page();
+
+  web::set_script_nonce(None);
+
+  assert!(page.contains("<script nonce=\"r4nd&quot;om\">"), "{page}");
+  assert!(!render_to_string(app).page().contains("nonce="));
+}
+
+/// A head registration is an element a head holds, with real attribute names.
+#[test]
+#[should_panic(expected = "a head element is one of")]
+fn a_head_registration_names_a_head_element() {
+  let _ = render_to_string(|| {
+    web::add_head_element("img", &[("src", "x")]);
+
+    Text::new("x")
+  });
+}
+
+/// An attribute name that is not one is refused rather than written into the markup.
+#[test]
+#[should_panic(expected = "is not an attribute name")]
+fn a_head_registration_refuses_an_attribute_that_is_not_one() {
+  let _ = render_to_string(|| {
+    web::add_head_element("meta", &[("onload=alert(1) x", "y")]);
+
+    Text::new("x")
+  });
 }

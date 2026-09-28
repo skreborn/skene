@@ -20,14 +20,12 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The rest of the security holes.**
-    - `add_head_element` validates its tag; a safe `state_script()` replaces
-    `Rendered::state()`'s raw JSON; the two inline scripts carry a nonce, so pages work
-    under a strict Content Security Policy.
     - A tab in preserved terminal text expands to the next tab stop rather than one
     space.
 2. **The web's highest-traffic defects.**
     - The CLI's client-rendered shell and its script injector fold into the document
-    template in `skene-web`, which gains preloads and the dev script under a flag; head
+    template in `skene-web`, which gains preloads and the dev script under a flag, the
+    boot script carrying the render's script nonce as the scheme script does; head
     entries are owner-scoped and keyed, with a title stack, deduped once in shared
     code, so a route's description and stylesheet leave with it and both leaves
     serialize them alike.

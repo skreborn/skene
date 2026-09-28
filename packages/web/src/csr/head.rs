@@ -19,7 +19,14 @@ pub fn set_document_language(language: &str) {
 
 /// Adds an element to the document head, unless an identical one is already present
 /// (as after hydrating a server render that registered the same element).
+///
+/// # Panics
+///
+/// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
+/// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
+  crate::markup::check_head_element(tag, attributes);
+
   let Some(head) = web_sys::window()
     .and_then(|window| window.document())
     .and_then(|document| document.head())

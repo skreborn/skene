@@ -469,7 +469,9 @@ preference query guarded by `:where(:root:not([data-skene-scheme="light"]))` and
 choice as `:where(:root[data-skene-scheme="dark"])`, both in `:where()` so they add no
 specificity—and the terminal keeps the choice beside its detected background. A
 server-rendered page that offers a choice emits one inline blocking script that applies
-the stored choice before first paint. Scoping a scheme to a subtree is not wanted.
+the stored choice before first paint, carrying the render's script nonce
+(`set_script_nonce`) so a strict Content Security Policy admits it. Scoping a scheme to
+a subtree is not wanted.
 
 ### Environment
 

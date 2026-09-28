@@ -110,6 +110,7 @@ pub use self::ssr::{
   set_render_hints,
   set_request_path,
   set_scheme,
+  set_script_nonce,
   sleep,
   stored_scheme,
 };

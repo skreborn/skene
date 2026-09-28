@@ -85,6 +85,7 @@ use super::{
     anchor_text,
     aria_role,
     box_tag,
+    check_head_element,
     drawn_element,
     element_id,
     focus_order_attribute,
@@ -609,7 +610,7 @@ impl Tree {
     let mut out = String::new();
 
     if PREEMPT_SCHEME.with(Cell::get) {
-      out.push_str("<script>");
+      open_script(&mut out);
       out.push_str(PREEMPT_SCHEME_SCRIPT);
       out.push_str("</script>");
     }
@@ -779,6 +780,8 @@ thread_local! {
   static VIEW_TRANSITIONS: Cell<bool> = const { Cell::new(false) };
   /// The path being rendered, as supplied by the runner; `/` when none was.
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
+  /// The nonce the renders' inline scripts carry, if any.
+  static SCRIPT_NONCE: RefCell<Option<String>> = const { RefCell::new(None) };
   /// The statically-renderable routes the app recorded during the last render.
   static STATIC_ROUTES: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
   /// Each deferred boundary's start anchor, mapped to a probe for whether its content
@@ -794,6 +797,27 @@ thread_local! {
 const PREEMPT_SCHEME_SCRIPT: &str = "try{var r=document.documentElement,\
 s=localStorage.getItem('skene-scheme');\
 if(s==='dark'||s==='light'){r.setAttribute('data-skene-scheme',s);r.style.colorScheme=s}}catch(e){}";
+
+/// Sets the nonce the following renders' inline scripts carry, as the response's
+/// Content Security Policy names it; `None` for none.
+pub fn set_script_nonce(nonce: Option<&str>) {
+  SCRIPT_NONCE.with(|current| *current.borrow_mut() = nonce.map(str::to_owned));
+}
+
+/// The opening of an inline script, carrying the renders' nonce where one is set.
+fn open_script(out: &mut String) {
+  out.push_str("<script");
+
+  SCRIPT_NONCE.with(|nonce| {
+    if let Some(nonce) = &*nonce.borrow() {
+      out.push_str(" nonce=\"");
+      escape_attr(nonce, out);
+      out.push('"');
+    }
+  });
+
+  out.push('>');
+}
 
 /// Sets the path the coming render is for, read back by [`current_path`].
 pub fn set_request_path(path: &str) {
@@ -1494,14 +1518,26 @@ pub fn document_opening(language: Option<&str>, head: &str, styles: &str) -> Str
 /// reads it from, and the end of the body and the document.
 #[must_use]
 pub fn document_closing(state: &str) -> String {
+  format!("{}</body></html>", state_script(state))
+}
+
+/// The script element carrying the hydration `state`, its markup escaped so it closes
+/// nothing: what a page of an app's own embeds for the client to read.
+fn state_script(state: &str) -> String {
   format!(
-    "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script></body></html>",
+    "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script>",
     state.replace('<', "\\u003c"),
   )
 }
 
 /// Adds an element to the page head, serialized in registration order.
+///
+/// # Panics
+///
+/// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
+/// `script`) or an attribute name is not one.
 pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
+  check_head_element(tag, attributes);
   with_tree(|tree| {
     tree.head.push((
       tag.to_owned(),
@@ -1548,11 +1584,11 @@ impl Rendered {
     &self.body
   }
 
-  /// The encoded resource state the client adopts on hydration.
-  #[inline(always)]
+  /// The script element carrying the resource state the client adopts on hydration,
+  /// escaped so it closes nothing, for a page of the app's own to embed.
   #[must_use]
-  pub fn state(&self) -> &str {
-    &self.state
+  pub fn state_script(&self) -> String {
+    state_script(&self.state)
   }
 
   /// The page's language, when the app set one.

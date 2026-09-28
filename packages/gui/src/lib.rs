@@ -463,13 +463,20 @@ where
 #[cfg(skene_leaf = "server")]
 pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
 
+/// The environment variable carrying the nonce a render's inline scripts carry, as the
+/// response's Content Security Policy names it; see
+/// [`set_script_nonce`](skene_web::set_script_nonce).
+#[cfg(skene_leaf = "server")]
+pub const NONCE_VARIABLE: &str = "SKENE_SCRIPT_NONCE";
+
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
 /// the statically-renderable routes one per line (see [`install_static_router`]), or,
 /// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it, or,
 /// given `--serve`, renders one request after another read from stdin (see
 /// [`serve_renders`]). The client hints in [`HINTS_VARIABLE`], when set, are the
-/// environment the render answers with.
+/// environment the render answers with, and the nonce in [`NONCE_VARIABLE`] its inline
+/// scripts carry.
 ///
 /// This makes the app's server build a plain command—`app-server /some/path` prints
 /// the document—which is exactly the interface a server or a generator embeds.
@@ -486,6 +493,8 @@ where
 
     return;
   }
+
+  skene_web::set_script_nonce(std::env::var(NONCE_VARIABLE).ok().as_deref());
 
   if let Ok(hints) = std::env::var(HINTS_VARIABLE) {
     let headers = hints
@@ -633,9 +642,10 @@ where
 ///
 /// A request and a response are each `Content-Length: <bytes>` on a line, an empty
 /// line, and that many bytes. A request's bytes are the path on a line, percent-encoded
-/// as a URL carries it, then the client hints one `Name: value` per line; a
-/// response's are the complete page. The hints are the render's environment for that
-/// request alone, and a request without hints renders against the defaults.
+/// as a URL carries it, then one `Name: value` per line: the client hints, and the
+/// nonce the page's inline scripts carry as `Script-Nonce`; a response's are the
+/// complete page. Each is for that request alone, and a request without them renders
+/// against the defaults.
 #[cfg(skene_leaf = "server")]
 pub fn serve_renders<V, F>(app: F)
 where
@@ -648,13 +658,19 @@ where
   let mut stdin = stdin.lock();
 
   while let Some(request) = read_framed(&mut stdin) {
-    let (path, hints) = request.split_once('\n').unwrap_or((&request, ""));
-    let hints = hints
-      .lines()
-      .filter_map(|line| line.split_once(':'))
-      .map(|(name, value)| (name.trim(), value.trim()));
+    let (path, fields) = request.split_once('\n').unwrap_or((&request, ""));
+    let fields = || {
+      fields
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(name, value)| (name.trim(), value.trim()))
+    };
+    let nonce = fields()
+      .find(|(name, _)| name.eq_ignore_ascii_case("script-nonce"))
+      .map(|(_, nonce)| nonce);
 
-    skene_web::set_render_hints(skene_web::RenderHints::from_headers(hints));
+    skene_web::set_script_nonce(nonce);
+    skene_web::set_render_hints(skene_web::RenderHints::from_headers(fields()));
 
     let page = render_to_string_at(path, app.clone()).page();
     let mut stdout = std::io::stdout().lock();

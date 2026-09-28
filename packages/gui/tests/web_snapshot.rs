@@ -129,7 +129,10 @@ fn representative_tree() -> impl skene_gui::IntoView {
 fn representative_render_is_stable() {
   let rendered = render_to_string(representative_tree);
 
-  assert_eq!(rendered.state(), "[[],[],[]]");
+  assert_eq!(
+    rendered.state_script(),
+    "<script id=\"skene-state\" type=\"application/json\">[[],[],[]]</script>"
+  );
   assert!(rendered.styles().starts_with("<style id=\"skene-styles\">"));
   assert!(
     rendered.styles().ends_with(SNAPSHOT_RULES),

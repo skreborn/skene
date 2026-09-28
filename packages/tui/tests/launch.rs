@@ -238,7 +238,7 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
 
     assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
 
-    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Alt+m");
 
     assert_eq!(tui::current_cursor(), None, "the hover path empties");
 
@@ -248,13 +248,17 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
     assert_eq!(tui::current_cursor(), None);
     assert_eq!(clicks.get_untracked(), 0, "the click never reaches the app");
 
-    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Alt+M");
     tui::trigger_mouse_click(2, 0);
 
-    assert_eq!(clicks.get_untracked(), 1, "the key takes the mouse back");
+    assert_eq!(
+      clicks.get_untracked(),
+      1,
+      "the key, in either case, takes the mouse back"
+    );
     assert_eq!(tui::current_cursor(), Some(MouseCursor::Click));
 
-    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Alt+m");
     tui::trigger_key("Tab");
     tui::trigger_mouse_click(2, 0);
 
@@ -266,32 +270,35 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
 /// put it, and a launch without the mouse has nothing to hand over.
 #[test]
 fn the_mouse_key_is_the_launches_choice() {
-  with_launch(tui::Launch::new().set_mouse_key(Some("F9")), || {
-    let clicks = mount_button();
+  with_launch(
+    tui::Launch::new().set_mouse_key(Some(tui::Shortcut::new(tui::Modifiers::NONE, "F9"))),
+    || {
+      let clicks = mount_button();
 
-    tui::trigger_key(tui::MOUSE_KEY);
-    tui::trigger_mouse_click(2, 0);
+      tui::trigger_key("Alt+m");
+      tui::trigger_mouse_click(2, 0);
 
-    assert_eq!(
-      clicks.get_untracked(),
-      1,
-      "the default key is an ordinary key"
-    );
+      assert_eq!(
+        clicks.get_untracked(),
+        1,
+        "the default key is an ordinary key"
+      );
 
-    tui::trigger_key("F9");
-    tui::trigger_mouse_click(2, 0);
+      tui::trigger_key("F9");
+      tui::trigger_mouse_click(2, 0);
 
-    assert_eq!(
-      clicks.get_untracked(),
-      1,
-      "the chosen key releases the mouse"
-    );
-  });
+      assert_eq!(
+        clicks.get_untracked(),
+        1,
+        "the chosen key releases the mouse"
+      );
+    },
+  );
 
   with_launch(tui::Launch::new().set_mouse_key(None), || {
     let clicks = mount_button();
 
-    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Alt+m");
     tui::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 1, "no key releases the mouse");
@@ -300,10 +307,36 @@ fn the_mouse_key_is_the_launches_choice() {
   with_launch(tui::Launch::new().set_mouse(false), || {
     let clicks = mount_button();
 
-    tui::trigger_key(tui::MOUSE_KEY);
-    tui::trigger_key(tui::MOUSE_KEY);
+    tui::trigger_key("Alt+m");
+    tui::trigger_key("Alt+m");
     tui::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 0, "the mouse stays the terminal's");
+  });
+}
+
+/// A `Ctrl` shortcut acts by the letter on its physical key under a layout whose key
+/// types another script, and `Ctrl-Q` quits whatever the case.
+#[test]
+fn shortcuts_act_by_the_physical_key_under_any_layout() {
+  with_launch(tui::Launch::new(), || {
+    let value = Signal::new(String::from("value"));
+
+    mount_document(value);
+
+    let cyrillic = |key: &str, code: &str| tui::KeyEvent {
+      code: code.to_owned(),
+      modifiers: tui::Modifiers::CTRL,
+      ..tui::KeyEvent::new(key)
+    };
+
+    tui::trigger_key_event(&cyrillic("\u{441}", "KeyC"));
+
+    assert_eq!(tui::take_copied().as_deref(), Some("value"));
+    assert!(!tui::quit_requested());
+
+    tui::trigger_key("Ctrl+Q");
+
+    assert!(tui::quit_requested());
   });
 }

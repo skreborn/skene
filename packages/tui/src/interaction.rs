@@ -1557,7 +1557,10 @@ fn key_default(event: &KeyEvent) {
   // alone aside, takes it back and goes on to act.
   let (mouse_key, released) = store(|store| {
     (
-      store.mouse && store.mouse_key.as_ref() == Some(event),
+      store.mouse
+        && store
+          .mouse_key
+          .is_some_and(|shortcut| event.matches(&shortcut)),
       store.mouse_released,
     )
   });
@@ -1580,7 +1583,7 @@ fn key_default(event: &KeyEvent) {
   let clipboard = store(|store| store.clipboard);
   let ctrl = event.modifiers.ctrl && !event.modifiers.alt;
 
-  match event.key.as_str() {
+  match event.shortcut_key().as_ref() {
     "Tab" => {
       move_focus(if event.modifiers.shift { -1 } else { 1 });
 
@@ -1632,17 +1635,17 @@ fn key_default(event: &KeyEvent) {
     // The clipboard keys the launch offers: `Ctrl+C` copies whichever selection
     // exists, `Ctrl+X` cuts the focused entry's, `Ctrl+V` pastes into the focused
     // entry; one not offered is an ordinary key.
-    "c" | "C" if ctrl && clipboard.copy => {
+    "c" if ctrl && clipboard.copy => {
       store(Store::copy_selection);
 
       return;
     }
-    "x" | "X" if ctrl && clipboard.copy => {
+    "x" if ctrl && clipboard.copy => {
       crate::field::cut_focused();
 
       return;
     }
-    "v" | "V" if ctrl && clipboard.paste => {
+    "v" if ctrl && clipboard.paste => {
       store(|store| {
         if store.focused_entry().is_some() {
           store.request_paste();

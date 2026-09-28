@@ -102,15 +102,11 @@ left half-done in a code comment.
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
 4. **The terminal's traps.**
-    - Input: one `KeyEvent::shortcut()`, the key when ASCII and else the letter of its
-    physical `code`, for every built-in shortcut, which does nothing under a non-Latin
-    layout today; the mouse key as a typed shortcut matched by one `KeyEvent::matches`
-    that folds case and ignores repeat, since `Alt-M` doesn't parse; a lone ESC
-    resolved after a grace period, never early once kitty flags are confirmed; the
-    parser handling modified F3 and SS3 keys, a stray UTF-8 lead byte, a modifier's
-    release, the modifier mask 256 and `rgba:` replies, under a fuzz test for no
-    panics, bounded memory and linear time; colors re-queried on a theme change and
-    repainted on every reply.
+    - Input: a lone ESC resolved after a grace period, never early once kitty flags are
+    confirmed; the parser handling modified F3 and SS3 keys, a stray UTF-8 lead byte, a
+    modifier's release, the modifier mask 256 and `rgba:` replies, under a fuzz test
+    for no panics, bounded memory and linear time; colors re-queried on a theme change
+    and repainted on every reply.
     - Frames: a hover-only change schedules a frame; undisplayed subtrees run no
     motion, and an overlay's animations restart on open; the cursor hides during a
     frame drawn without synchronized output; autowrap is off for the session; restoring

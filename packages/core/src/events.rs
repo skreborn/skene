@@ -13,12 +13,14 @@
 //! observe, or a [`Prevent`] to suppress the platform's response, stop bubbling, or
 //! both; prevention only accumulates. Notification events—change, toggle, scroll
 //! offsets, focus and blur—report what already happened and take no verdict, and a
-//! terminal's `Ctrl-C` stays unconditional.
+//! terminal's `Ctrl-Q` stays unconditional.
 //!
 //! A view that composes its own behavior out of these events—every control that draws
 //! itself—decides its own verdict where that behavior lives, and consumes the events it
 //! acts on. A handler installed on such a view only observes; above a platform, nothing
 //! states a verdict.
+
+use std::borrow::Cow;
 
 /// What a handler prevents of the dispatch that invoked it.
 ///
@@ -120,7 +122,7 @@ pub type KeyHandler = dyn Fn(&KeyEvent) -> Prevent;
 pub type PointerHandler = dyn Fn(&PointerEvent) -> Prevent;
 
 /// The modifier-key state accompanying an input event.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 // One bool per modifier key is the domain shape.
 #[expect(clippy::struct_excessive_bools)]
@@ -133,6 +135,83 @@ pub struct Modifiers {
   pub alt: bool,
   /// Whether the platform command/meta key was held.
   pub meta: bool,
+}
+
+impl Modifiers {
+  /// No modifier held.
+  pub const NONE: Self = Self {
+    ctrl: false,
+    shift: false,
+    alt: false,
+    meta: false,
+  };
+
+  /// Control alone.
+  pub const CTRL: Self = Self {
+    ctrl: true,
+    ..Self::NONE
+  };
+
+  /// Shift alone.
+  pub const SHIFT: Self = Self {
+    shift: true,
+    ..Self::NONE
+  };
+
+  /// Alt alone.
+  pub const ALT: Self = Self {
+    alt: true,
+    ..Self::NONE
+  };
+
+  /// The platform command/meta key alone.
+  pub const META: Self = Self {
+    meta: true,
+    ..Self::NONE
+  };
+
+  /// These modifiers with `other`'s held as well.
+  #[inline(always)]
+  pub const fn with(self, other: Self) -> Self {
+    Self {
+      ctrl: self.ctrl || other.ctrl,
+      shift: self.shift || other.shift,
+      alt: self.alt || other.alt,
+      meta: self.meta || other.meta,
+    }
+  }
+}
+
+/// A key pressed with exactly a set of modifiers held: what a shortcut answers to,
+/// matched by [`KeyEvent::matches`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct Shortcut {
+  modifiers: Modifiers,
+  key: &'static str,
+}
+
+impl Shortcut {
+  /// `key` pressed with `modifiers` held; `key` names it as
+  /// [`KeyEvent::shortcut_key`] does: a lowercase letter or digit, or a key's W3C name
+  /// (`"F9"`, `"Enter"`).
+  #[inline(always)]
+  pub const fn new(modifiers: Modifiers, key: &'static str) -> Self {
+    Self { modifiers, key }
+  }
+
+  /// The modifiers held.
+  #[inline(always)]
+  pub const fn modifiers(&self) -> Modifiers {
+    self.modifiers
+  }
+
+  /// The key.
+  #[inline(always)]
+  #[must_use]
+  pub const fn key(&self) -> &'static str {
+    self.key
+  }
 }
 
 /// A keyboard event: the logical key, the physical key, and the modifier state.
@@ -227,6 +306,39 @@ impl KeyEvent {
     }
   }
 
+  /// The key a shortcut names this one by: a letter lowercase whatever case it was
+  /// typed in, the letter or digit on the physical key where the key typed is no ASCII
+  /// character (one of a non-Latin layout), and the key value otherwise.
+  #[must_use]
+  pub fn shortcut_key(&self) -> Cow<'_, str> {
+    let mut characters = self.key.chars();
+
+    match (characters.next(), characters.next()) {
+      (Some(character), None) if character.is_ascii_uppercase() => {
+        Cow::Owned(character.to_ascii_lowercase().to_string())
+      }
+      (Some(character), None) if !character.is_ascii() => {
+        match self
+          .code
+          .strip_prefix("Key")
+          .or_else(|| self.code.strip_prefix("Digit"))
+        {
+          Some(physical) if physical.len() == 1 => Cow::Owned(physical.to_ascii_lowercase()),
+          _ => Cow::Borrowed(&self.key),
+        }
+      }
+      _ => Cow::Borrowed(&self.key),
+    }
+  }
+
+  /// Whether the event presses `shortcut`: its key, as
+  /// [`shortcut_key`](Self::shortcut_key) names it, with exactly its modifiers held,
+  /// whether or not the press repeats.
+  #[must_use]
+  pub fn matches(&self, shortcut: &Shortcut) -> bool {
+    self.modifiers == shortcut.modifiers && self.shortcut_key() == shortcut.key
+  }
+
   /// Whether the key is a modifier pressed alone.
   #[inline(always)]
   #[must_use]
@@ -281,7 +393,7 @@ pub struct ScrollEvent {
 
 #[cfg(test)]
 mod tests {
-  use super::KeyEvent;
+  use super::{KeyEvent, Modifiers, Shortcut};
 
   /// A key's code is its position on the US layout, whatever the shifted form.
   #[test]
@@ -297,5 +409,41 @@ mod tests {
     assert_eq!(KeyEvent::code_of("F12"), "F12");
     assert_eq!(KeyEvent::code_of("ф"), "Unidentified");
     assert_eq!(KeyEvent::new("z").code, "KeyZ");
+  }
+
+  /// A shortcut names a letter in lowercase, a non-Latin layout's key by the letter on
+  /// its physical key, and a named key by its name.
+  #[test]
+  fn a_shortcut_names_a_key_across_case_and_layout() {
+    let cyrillic = KeyEvent {
+      code: "KeyC".to_owned(),
+      ..KeyEvent::new("\u{441}")
+    };
+    let unplaced = KeyEvent::new("\u{441}");
+
+    assert_eq!(KeyEvent::new("C").shortcut_key(), "c");
+    assert_eq!(KeyEvent::new("c").shortcut_key(), "c");
+    assert_eq!(cyrillic.shortcut_key(), "c");
+    assert_eq!(unplaced.shortcut_key(), "\u{441}");
+    assert_eq!(KeyEvent::new("Enter").shortcut_key(), "Enter");
+    assert_eq!(KeyEvent::new("?").shortcut_key(), "?");
+  }
+
+  /// A shortcut matches its key whatever the case or the repeat, with exactly its
+  /// modifiers held.
+  #[test]
+  fn a_shortcut_matches_exactly_its_modifiers() {
+    let alt_m = Shortcut::new(Modifiers::ALT, "m");
+    let press = |key: &str, modifiers: Modifiers, repeat: bool| KeyEvent {
+      modifiers,
+      repeat,
+      ..KeyEvent::new(key)
+    };
+
+    assert!(press("m", Modifiers::ALT, false).matches(&alt_m));
+    assert!(press("M", Modifiers::ALT, true).matches(&alt_m));
+    assert!(!press("m", Modifiers::ALT.with(Modifiers::SHIFT), false).matches(&alt_m));
+    assert!(!press("m", Modifiers::NONE, false).matches(&alt_m));
+    assert!(!press("n", Modifiers::ALT, false).matches(&alt_m));
   }
 }

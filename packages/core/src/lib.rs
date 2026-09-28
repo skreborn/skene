@@ -109,6 +109,7 @@ pub use events::{
   Prevent,
   Prevented,
   ScrollEvent,
+  Shortcut,
 };
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};

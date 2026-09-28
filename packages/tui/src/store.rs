@@ -15,7 +15,6 @@ use skene_core::{
   ControlKind,
   ControlState,
   FocusOrder,
-  KeyEvent,
   Layout,
   MediaSignals,
   NodeId,
@@ -23,6 +22,7 @@ use skene_core::{
   Plain,
   RunProps,
   RunStyle,
+  Shortcut,
   Size,
   Slot,
   TextSelection,
@@ -811,8 +811,8 @@ pub(crate) struct Store {
   pub(crate) clipboard: Clipboard,
   /// Whether the launch takes the mouse; off, every mouse event is ignored.
   pub(crate) mouse: bool,
-  /// The key handing the mouse to the terminal at run time and taking it back.
-  pub(crate) mouse_key: Option<KeyEvent>,
+  /// The shortcut handing the mouse to the terminal at run time and taking it back.
+  pub(crate) mouse_key: Option<Shortcut>,
   /// Whether the mouse key has handed the mouse to the terminal; every mouse event is
   /// ignored until a key takes it back.
   pub(crate) mouse_released: bool,

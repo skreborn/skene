@@ -1166,19 +1166,21 @@ const KEYBOARD_FLAGS: u8 = escape::DISAMBIGUATE_ESCAPE_CODES
   | escape::REPORT_ALL_KEYS_AS_ESCAPE_CODES
   | escape::REPORT_ASSOCIATED_TEXT;
 
-/// Dispatches one keyboard press or repeat through core's dispatch, then the
-/// terminal's own response unless a handler prevented it; `Ctrl-Q` stays
-/// unconditional.
+/// Dispatches one keyboard press or repeat; see [`press`].
 fn dispatch_key(key: &Key) {
-  if key.code == KeyCode::Char('q') && key.modifiers.ctrl {
+  press(&portable_key(key));
+}
+
+/// Dispatches one key press or repeat through core's dispatch, then the terminal's own
+/// response unless a handler prevented it; `Ctrl-Q` quits unconditionally.
+fn press(event: &KeyEvent) {
+  if event.modifiers.ctrl && event.shortcut_key() == "q" {
     with_store(|store| store.quit = true);
 
     return;
   }
 
-  let event = portable_key(key);
-
-  skene_reactive::batch(|| interaction::key(&event));
+  skene_reactive::batch(|| interaction::key(event));
 }
 
 /// Maps a terminal key to the portable W3C key value and code: a key carries `Shift`
@@ -1423,9 +1425,19 @@ fn set_cell_pixels(size: &WindowSize) {
 /// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
 /// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`, `"Shift+Tab"`).
 pub fn trigger_key(key: &str) {
-  let event = key_event(key);
+  press(&key_event(key));
+}
 
-  skene_reactive::batch(|| interaction::key(&event));
+/// Simulates one key press as `event` describes it—its key value, its physical code
+/// and its modifiers—for a test driving a layout the key value alone does not place.
+pub fn trigger_key_event(event: &KeyEvent) {
+  press(event);
+}
+
+/// Whether a key asked the app to quit, for a headless test.
+#[must_use]
+pub fn quit_requested() -> bool {
+  with_store(|store| store.quit)
 }
 
 /// Simulates one key release by its portable W3C key value, with the prefixes

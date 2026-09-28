@@ -349,20 +349,21 @@ fn apply(event: &KeyEvent, field: &mut Field, area: Area, editable: bool) -> Opt
   let ctrl = event.modifiers.ctrl;
   let alt = event.modifiers.alt;
   let shift = event.modifiers.shift;
-  let key = event.key.as_str();
-  let mut characters = key.chars();
+  let shortcut = event.shortcut_key();
+  let key = shortcut.as_ref();
+  let mut characters = event.key.chars();
   let single = characters.next().filter(|_| characters.next().is_none());
   let selection = field.selection();
   let caret = field.caret;
 
   match key {
-    "a" | "A" if ctrl && !alt => {
+    "a" if ctrl && !alt => {
       field.select_all();
 
       Some(Edit::Caret)
     }
-    "z" | "Z" if ctrl && !alt && !shift && editable => field.undo().then_some(Edit::Value),
-    "z" | "Z" | "y" | "Y" if ctrl && !alt && editable => field.redo().then_some(Edit::Value),
+    "z" if ctrl && !alt && !shift && editable => field.undo().then_some(Edit::Value),
+    "z" | "y" if ctrl && !alt && editable => field.redo().then_some(Edit::Value),
     _ if !editable && is_removal(key, ctrl) => None,
     // A removal over a selection removes the selection alone, by the word or not.
     "Delete" if selection.is_some() => {

@@ -1,7 +1,7 @@
 //! The launch configuration: what the app takes from the terminal.
 
 use skene_common::{ContextMenu, MenuItem, typography};
-use skene_core::{Border, Color, Inset, IntoView, Media, State, When};
+use skene_core::{Border, Color, Inset, IntoView, Media, Modifiers, Shortcut, State, When};
 
 use crate::{Tui, terminal, with_store};
 
@@ -60,11 +60,11 @@ impl Default for Clipboard {
 pub struct Launch {
   clipboard: Clipboard,
   mouse: bool,
-  mouse_key: Option<&'static str>,
+  mouse_key: Option<Shortcut>,
 }
 
-/// The key handing the mouse to the terminal by default.
-pub const MOUSE_KEY: &str = "Alt+m";
+/// The shortcut handing the mouse to the terminal by default: `Alt+M`.
+pub const MOUSE_KEY: Shortcut = Shortcut::new(Modifiers::ALT, "m");
 
 impl Default for Launch {
   #[inline(always)]
@@ -103,13 +103,12 @@ impl Launch {
     self
   }
 
-  /// Sets the key handing the mouse to the terminal for its own selection and taking
-  /// it back, in the form [`trigger_key`](crate::trigger_key) reads (`"Alt+m"`,
-  /// `"F9"`); any other key takes the mouse back as well, and then acts as usual.
-  /// `None` leaves the mouse where the launch put it.
+  /// Sets the shortcut handing the mouse to the terminal for its own selection and
+  /// taking it back; any other key takes the mouse back as well, and then acts as
+  /// usual. `None` leaves the mouse where the launch put it.
   #[inline(always)]
-  pub const fn set_mouse_key(mut self, key: Option<&'static str>) -> Self {
-    self.mouse_key = key;
+  pub const fn set_mouse_key(mut self, shortcut: Option<Shortcut>) -> Self {
+    self.mouse_key = shortcut;
 
     self
   }
@@ -126,7 +125,7 @@ impl Launch {
     with_store(|store| {
       store.clipboard = self.clipboard;
       store.mouse = self.mouse;
-      store.mouse_key = self.mouse_key.map(terminal::key_event);
+      store.mouse_key = self.mouse_key;
     });
     serve_standard_menu();
   }

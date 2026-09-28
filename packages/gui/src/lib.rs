@@ -95,6 +95,7 @@ pub use skene_core::{
   Role,
   Scene,
   ScrollEvent,
+  Shortcut,
   State,
   StaticLeaf,
   TextDecoration,

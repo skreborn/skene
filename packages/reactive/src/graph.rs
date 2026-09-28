@@ -3,6 +3,8 @@
 //! Every method here is borrow-only: none runs user code, so a caller holds the graph
 //! for one call and releases it before invoking anything of the user's.
 
+#[cfg(debug_assertions)]
+use std::panic::Location;
 use std::{
   any::{Any, TypeId},
   cmp::Reverse,
@@ -13,6 +15,8 @@ use std::{
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
+#[cfg(debug_assertions)]
+use crate::obituary::{Disposing, Obituaries, Obituary};
 use crate::{
   arena::Arena,
   computation::Computation,
@@ -136,6 +140,9 @@ pub(crate) struct SignalRecord {
   version: u32,
   /// Registered in the state snapshot, to be unregistered on removal.
   snapshotted: bool,
+  /// Where the signal was created, in a debug build.
+  #[cfg(debug_assertions)]
+  created_at: Option<&'static Location<'static>>,
 }
 
 /// An effect or memo: its body, state bits, both link lists and its ownership facet.
@@ -197,6 +204,9 @@ pub(crate) struct Graph {
   unobserved_hooks: FxHashMap<Id, Rc<dyn Fn()>>,
   /// The hooked signals that lost their last subscriber, their hooks not yet run.
   unobserved: Vec<Id>,
+  /// What a debug build remembers of the recently disposed signals.
+  #[cfg(debug_assertions)]
+  obituaries: Obituaries,
 }
 
 impl Graph {
@@ -214,6 +224,8 @@ impl Graph {
       queue: VecDeque::new(),
       unobserved_hooks: FxHashMap::default(),
       unobserved: Vec::new(),
+      #[cfg(debug_assertions)]
+      obituaries: Obituaries::default(),
     }
   }
 
@@ -322,9 +334,25 @@ impl Graph {
       subs: LinkList::EMPTY,
       version: 0,
       snapshotted: false,
+      #[cfg(debug_assertions)]
+      created_at: None,
     });
 
     Id::local(Kind::Signal, self.nonce, generation, index)
+  }
+
+  /// Records where the signal `id` was created, for the obituary a debug build keeps.
+  #[cfg(debug_assertions)]
+  pub(crate) fn note_creation(&mut self, id: Id, site: &'static Location<'static>) {
+    if let Some(signal) = self.signal_mut(id) {
+      signal.created_at = Some(site);
+    }
+  }
+
+  /// What a debug build remembers of the disposed signal `id`.
+  #[cfg(debug_assertions)]
+  pub(crate) fn obituary(&self, id: Id) -> Option<Obituary> {
+    self.obituaries.get(id)
   }
 
   /// Allocates the runtime's root owner, whose path is empty.
@@ -632,6 +660,15 @@ impl Graph {
     let record = self.signals.remove(generation, index)?;
 
     self.unlink_subs(record.subs);
+
+    #[cfg(debug_assertions)]
+    self.obituaries.record(
+      id,
+      Obituary {
+        created_at: record.created_at,
+        disposed_at: Disposing::site(),
+      },
+    );
 
     Some(RemovedSignal {
       value: record.value,

@@ -18,7 +18,9 @@ pub trait Track {
   /// Panics when the signal is disposed.
   #[cfg_attr(debug_assertions, track_caller)]
   fn track(&self) {
-    assert!(track_id(self.id()), "signal disposed");
+    if !track_id(self.id()) {
+      self.id().panic_disposed();
+    }
   }
 
   /// Subscribes the running effect to the signal, if it is live.
@@ -43,7 +45,10 @@ pub trait Get<T: Clone> {
   where
     T: 'static,
   {
-    self.try_get().expect("signal disposed")
+    match self.try_get() {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Clones the current value without subscribing.
@@ -56,7 +61,10 @@ pub trait Get<T: Clone> {
   where
     T: 'static,
   {
-    self.try_get_untracked().expect("signal disposed")
+    match self.try_get_untracked() {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Clones the current value if the signal is live, subscribing the running effect.
@@ -93,7 +101,10 @@ pub trait With<T> {
   where
     T: 'static,
   {
-    self.try_with(apply).expect("signal disposed")
+    match self.try_with(apply) {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Passes the current value to `apply` without subscribing.
@@ -106,7 +117,10 @@ pub trait With<T> {
   where
     T: 'static,
   {
-    self.try_with_untracked(apply).expect("signal disposed")
+    match self.try_with_untracked(apply) {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Passes the current value to `apply` if the signal is live, subscribing the running
@@ -144,7 +158,10 @@ pub trait Read<T> {
   where
     T: 'static,
   {
-    self.try_read().expect("signal disposed")
+    match self.try_read() {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Borrows the value without subscribing.
@@ -157,7 +174,10 @@ pub trait Read<T> {
   where
     T: 'static,
   {
-    self.try_read_untracked().expect("signal disposed")
+    match self.try_read_untracked() {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Borrows the value if the signal is live, subscribing the running effect.
@@ -189,14 +209,15 @@ pub trait Set<T> {
   fn id(&self) -> Id;
 
   /// Replaces the value and re-runs subscribers; does nothing when the signal is
-  /// disposed.
+  /// disposed, of which a debug build warns.
   #[cfg_attr(debug_assertions, track_caller)]
   fn set(&self, value: T)
   where
     T: 'static,
   {
-    if let Some(state) = self.id().state() {
-      state.update(|current| *current = value);
+    match self.id().state() {
+      Some(state) => state.update(|current| *current = value),
+      None => self.id().disposed_write(),
     }
   }
 }
@@ -207,13 +228,15 @@ pub trait Update<T> {
   fn id(&self) -> Id;
 
   /// Mutates the value through `mutate` and re-runs subscribers; does nothing when the
-  /// signal is disposed.
+  /// signal is disposed, of which a debug build warns.
   #[cfg_attr(debug_assertions, track_caller)]
   fn update(&self, mutate: impl FnOnce(&mut T))
   where
     T: 'static,
   {
-    let _ = self.try_update(mutate);
+    if self.try_update(mutate).is_none() {
+      self.id().disposed_write();
+    }
   }
 
   /// Mutates the value through `mutate` if the signal is live, re-runs subscribers, and
@@ -242,7 +265,10 @@ pub trait Write<T> {
   where
     T: 'static,
   {
-    self.try_write().expect("signal disposed")
+    match self.try_write() {
+      Some(outcome) => outcome,
+      None => self.id().panic_disposed(),
+    }
   }
 
   /// Mutably borrows the value if the signal is live.

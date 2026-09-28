@@ -540,7 +540,9 @@ internals contract:
   after its handlers. The sync waker routes through the same scheduler.
 - **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
   runs under a runtime borrow; an entity is moved out of its arena before its cleanups
-  run.
+  run. A read of a disposed signal panics and a write to one is dropped; a debug build
+  names the late access, where the signal was created and the call that disposed it,
+  and warns of the write.
 - **Threading.** The UI thread owns the local runtime. `Sync` signals live in a global
   registry; an off-thread write enqueues and pokes the scheduler. The browser build is
   single-threaded and never queues; the machinery earns its keep on native.

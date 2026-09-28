@@ -28,6 +28,7 @@ mod guards;
 mod id;
 mod link;
 mod memo;
+mod obituary;
 mod ops;
 mod owned;
 mod owner;

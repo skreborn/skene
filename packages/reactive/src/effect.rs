@@ -40,7 +40,11 @@ impl EffectHandle {
   }
 
   /// Disposes the effect: it never runs again and its children are disposed.
+  #[cfg_attr(debug_assertions, track_caller)]
   pub fn dispose(&self) {
+    #[cfg(debug_assertions)]
+    let _disposing = crate::obituary::Disposing::enter(std::panic::Location::caller());
+
     self.id.dispose();
   }
 

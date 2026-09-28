@@ -231,9 +231,18 @@ impl SignalState {
   pub(crate) fn create<T: Any + 'static>(value: T) -> Id {
     Runtime::assert_ui_thread();
 
+    #[cfg(debug_assertions)]
+    let site = Location::caller();
     let value = Rc::new(TrackedRefCell::new(value));
 
-    with_graph(|graph| graph.allocate_signal(value))
+    with_graph(|graph| {
+      let id = graph.allocate_signal(value);
+
+      #[cfg(debug_assertions)]
+      graph.note_creation(id, site);
+
+      id
+    })
   }
 
   /// Creates a sync signal holding `value` and returns its id, unowned; the current

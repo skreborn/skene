@@ -143,7 +143,11 @@ impl Owner {
   }
 
   /// Disposes this owner: its signals, effects, contexts, and child owners.
+  #[cfg_attr(debug_assertions, track_caller)]
   pub fn dispose(&self) {
+    #[cfg(debug_assertions)]
+    let _disposing = crate::obituary::Disposing::enter(std::panic::Location::caller());
+
     self.0.dispose();
   }
 }

@@ -30,6 +30,7 @@ impl<T: 'static> Drop for OwnedSignal<T> {
 
 impl<T: 'static> OwnedSignal<T> {
   /// Creates a signal holding `value`, disposed when this handle drops.
+  #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(value: T) -> Self {
     Self {
       id: SignalState::create(value),

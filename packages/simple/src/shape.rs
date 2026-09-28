@@ -57,9 +57,9 @@ pub struct SimpleShape<N> {
   /// The inset between a tooltip bubble's edge and its text.
   pub tooltip_inset: Inset<N>,
   /// The spacing between a picker's label and its indicator.
-  pub indicator_gap: N,
+  pub indicator_spacing: N,
   /// The spacing between a menu item's caption and its shortcut hint.
-  pub shortcut_gap: N,
+  pub shortcut_spacing: N,
   /// The spacing between a card's children.
   pub card_spacing: N,
   /// The edge of a checkbox mark or a radio ring.
@@ -114,8 +114,8 @@ impl SimpleUnit for f32 {
     list_inset: Inset::all(4.),
     row_inset: Inset::all(6.),
     tooltip_inset: Inset::symmetric(8., 4.),
-    indicator_gap: 8.,
-    shortcut_gap: 24.,
+    indicator_spacing: 8.,
+    shortcut_spacing: 24.,
     card_spacing: 16.,
     mark_size: 18.,
     mark_ring: 1.,
@@ -139,8 +139,8 @@ impl SimpleUnit for u32 {
     list_inset: Inset::all(0),
     row_inset: Inset::symmetric(1, 0),
     tooltip_inset: Inset::symmetric(1, 0),
-    indicator_gap: 1,
-    shortcut_gap: 2,
+    indicator_spacing: 1,
+    shortcut_spacing: 2,
     card_spacing: 1,
     mark_size: 1,
     mark_ring: 0,

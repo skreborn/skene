@@ -70,7 +70,7 @@ impl Role {
   #[inline(always)]
   #[must_use]
   pub const fn is_spelled(self) -> bool {
-    self.is_widget()
+    self.is_control()
       || matches!(
         self,
         Self::Dialog | Self::Image | Self::Status | Self::Alert
@@ -80,10 +80,10 @@ impl Role {
   /// Whether this role describes a control a view draws itself, rather than a region of
   /// a document.
   ///
-  /// A widget reports state through [`AccessProp`](crate::AccessProp); a landmark does not.
+  /// A control reports state through [`AccessProp`](crate::AccessProp); a landmark does not.
   #[inline(always)]
   #[must_use]
-  pub const fn is_widget(self) -> bool {
+  pub const fn is_control(self) -> bool {
     matches!(
       self,
       Self::Button

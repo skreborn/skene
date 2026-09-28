@@ -112,7 +112,7 @@ where
     ))
     .set_shortcut_color(SimplePalette::<P::Scalar>::MUTED_FOREGROUND)
     .set_separator_color(SimplePalette::<P::Scalar>::BORDER)
-    .set_shortcut_spacing(shape.shortcut_gap)
+    .set_shortcut_spacing(shape.shortcut_spacing)
     .set_item_cursor(MouseCursor::Click)
     .set_item_corner_radius(MARK_RADIUS)
 }

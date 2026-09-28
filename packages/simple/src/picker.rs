@@ -234,7 +234,7 @@ where
   );
 
   Row::<P>::new()
-    .set_spacing(shape::<P>().indicator_gap)
+    .set_spacing(shape::<P>().indicator_spacing)
     .set_arrangement(Arrangement::SpaceBetween)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((

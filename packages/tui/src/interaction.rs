@@ -898,8 +898,6 @@ pub(crate) fn set_hover(x: u16, y: u16) {
       return (Vec::new(), Vec::new());
     }
 
-    // The nodes whose hover state changed repaint through the restyle that follows,
-    // where their resolved style differs.
     let previous = store.set_hovered(next);
     let node_of =
       |store: &Store, handle: Handle| store.record(handle).and_then(|record| record.node);

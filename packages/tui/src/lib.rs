@@ -154,6 +154,7 @@ pub use crate::{
     current_cursor,
     current_title,
     focused_node,
+    frame_pending,
     layout_generation,
     quit_requested,
     repainted_rows,

@@ -240,9 +240,12 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
   });
 
   store.motion_active = false;
+  store.restyle_pending = false;
+
+  let displayed = store.displayed();
 
   for handle in handles {
-    let Some(restyled) = restyle_one(store, handle)
+    let Some(restyled) = restyle_one(store, handle, displayed.contains(&handle))
     else {
       continue;
     };
@@ -281,16 +284,31 @@ pub(crate) fn restyle(store: &mut Store) -> bool {
 }
 
 /// Resolves `handle`'s style if stale or in motion, and returns the taffy style it maps
-/// to; `None` for a node outside the layout.
-fn restyle_one(store: &mut Store, handle: Handle) -> Option<Restyled> {
+/// to; `None` for a node outside the layout. A node out of the display runs no motion
+/// and forgets its presentation, so it shows afresh once `displayed` again.
+fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Restyled> {
   let generation = store.generation;
   let now = store.now();
   let reduced = store.reduced_motion;
-  let record = store.record(handle)?;
+  let record = store.record_mut(handle)?;
 
   if !record.kind.is_laid_out() {
     return None;
   }
+
+  if !displayed {
+    if !record.hidden {
+      record.hidden = true;
+      record.in_motion = false;
+      record.kind.forget_presentation();
+    }
+
+    return Some(taffy_style_of(store, handle));
+  }
+
+  record.hidden = false;
+
+  let record = store.record(handle)?;
 
   let interaction = store.interaction(handle);
   let fresh = match &record.kind {

@@ -102,11 +102,6 @@ left half-done in a code comment.
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
 4. **The terminal's traps.**
-    - Frames: a hover-only change schedules a frame; undisplayed subtrees run no
-    motion, and an overlay's animations restart on open; the cursor hides during a
-    frame drawn without synchronized output; autowrap is off for the session; restoring
-    resets SGR and pops the title; no stale cell where a wide glyph straddles a clip;
-    OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
     - Layout and the rest: a real inline formatting context, so spans are hovered and
     fire their handlers, tall inline boxes stop overlapping the lines after them, and
     copying one stops yielding U+FFFC.

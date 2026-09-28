@@ -497,6 +497,23 @@ pub(crate) enum Kind {
 }
 
 impl Kind {
+  /// Forgets what the node presented and the motion it ran, so it presents afresh: its
+  /// animations from their start, and no transition into its style.
+  pub(crate) fn forget_presentation(&mut self) {
+    match self {
+      Self::Run { cache, motion, .. } => {
+        *cache = None;
+        *motion = RunMotion::default();
+      }
+      kind => {
+        if let Some(inner) = kind.box_record_mut() {
+          inner.cache = None;
+          inner.motion = BoxMotion::default();
+        }
+      }
+    }
+  }
+
   /// The box record of a box, a control or an overlay.
   #[inline(always)]
   pub(crate) const fn box_record(&self) -> Option<&BoxRecord> {
@@ -570,6 +587,9 @@ pub(crate) struct Record {
   /// Whether a tween or an animation of the node was still running at the last
   /// restyle, so the next frame resolves it again.
   pub(crate) in_motion: bool,
+  /// Whether the node was out of the display at the last restyle: inside a closed
+  /// overlay, or detached from the root.
+  pub(crate) hidden: bool,
   /// The painter a low-level view runs inside the box on every repaint.
   pub(crate) painter: Option<Box<crate::cells::Painter>>,
   /// The picture a painted box draws through the terminal's graphics.
@@ -624,6 +644,7 @@ impl Record {
       scroll: (0, 0),
       painted: None,
       in_motion: false,
+      hidden: false,
       painter: None,
       picture: None,
       backdrop: None,
@@ -858,6 +879,9 @@ pub(crate) struct Store {
   pub(crate) layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub(crate) paint_dirty: bool,
+  /// Whether a node's interaction state moved since the last restyle, which may change
+  /// its style though nothing else changed.
+  pub(crate) restyle_pending: bool,
   pub(crate) quit: bool,
   /// The clock motion samples against.
   pub(crate) clock: Clock,
@@ -981,6 +1005,7 @@ impl Store {
       structure_dirty: true,
       layout_dirty: true,
       paint_dirty: true,
+      restyle_pending: false,
       quit: false,
       clock: Clock::Manual(0.),
       reduced_motion: false,
@@ -1360,14 +1385,38 @@ impl Store {
     self.mouse && !self.mouse_released
   }
 
+  /// Every node in the display: reachable from the root through open overlays alone.
+  pub(crate) fn displayed(&self) -> FxHashSet<Handle> {
+    let mut displayed = FxHashSet::default();
+    let mut stack = vec![self.root];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      if record.is_overlay() && !record.is_open_overlay() {
+        continue;
+      }
+
+      displayed.insert(current);
+      stack.extend(record.children.iter().copied());
+    }
+
+    displayed
+  }
+
   /// The hover path, from the root to the deepest node under the mouse.
   #[inline(always)]
   pub(crate) fn hovered(&self) -> &[Handle] {
     &self.hovered
   }
 
-  /// Replaces the hover path, returning the previous one.
+  /// Replaces the hover path, returning the previous one; a changed path asks for a
+  /// restyle, which repaints the nodes whose style it changed.
   pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) -> Vec<Handle> {
+    self.restyle_pending |= self.hovered != next;
     self.hovered_set.clear();
     self.hovered_set.extend(next.iter().copied());
 
@@ -1389,11 +1438,12 @@ impl Store {
     )
   }
 
-  /// Whether anything is left to paint: a whole-frame repaint, a layout or structure
-  /// change, or a damaged node.
+  /// Whether anything is left to paint: a whole-frame repaint, a pending restyle, a
+  /// layout or structure change, or a damaged node.
   #[inline(always)]
   pub(crate) fn needs_frame(&self) -> bool {
     self.paint_dirty
+      || self.restyle_pending
       || self.layout_dirty
       || self.structure_dirty
       || self.frame_clock_running()

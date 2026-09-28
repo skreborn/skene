@@ -303,6 +303,7 @@ fn a_hover_change_repaints_without_a_relayout() {
 
     tui::trigger_mouse_move(1, 1);
 
+    assert!(tui::frame_pending(), "the hover change schedules a frame");
     assert_eq!(colors_at(12, 4, 1, 1).1, Some((0, 0, 255)));
     assert_eq!(tui::layout_generation(), generation);
     assert_eq!(tui::set_style_calls(), writes);

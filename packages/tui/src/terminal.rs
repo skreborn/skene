@@ -1702,6 +1702,13 @@ pub fn current_cursor() -> Option<MouseCursor> {
   with_store(|store| store.hover_cursor())
 }
 
+/// Whether the loop would draw a frame now, something having changed since the last
+/// render, for a test asserting that a change schedules one.
+#[must_use]
+pub fn frame_pending() -> bool {
+  with_store(|store| store.needs_frame())
+}
+
 /// How many layouts have been computed since the platform was installed, for a test
 /// asserting that a change repainted without a relayout.
 #[must_use]

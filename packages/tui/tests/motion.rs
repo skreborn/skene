@@ -222,3 +222,58 @@ fn a_keyframe_animation_samples_its_frames() {
     assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(blue())));
   });
 }
+
+/// A closed overlay runs no motion, and its animations start over each time it opens,
+/// as a browser's do once an element leaves `display: none`.
+#[test]
+fn an_overlays_animation_starts_over_when_it_opens() {
+  with_platform(|| {
+    let open = Signal::new(false);
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          Text::new("page").into_any(),
+          Overlay::popup()
+            .bind_open(open)
+            .set_placement(Placement::TopStart)
+            .set_child(
+              Container::new()
+                .set_width(4)
+                .set_height(1)
+                .set_color(red())
+                .set_animation(
+                  Animation::new(1., [(0., frame(red())), (100., frame(blue()))])
+                    .set_easing(Easing::Linear),
+                ),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(6, 2);
+
+    tui::trigger_frame(Duration::from_secs(5));
+
+    let _ = tui::render_to_text(6, 2);
+
+    assert!(!tui::frame_pending(), "a closed overlay runs no motion");
+
+    for _ in 0..2 {
+      open.set(true);
+
+      assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red())), "the first frame");
+
+      tui::trigger_frame(Duration::from_millis(500));
+
+      assert_eq!(colors_at(6, 2, 0, 0).1, Some(rgb(red().mix(blue(), 0.5))));
+
+      open.set(false);
+
+      let _ = tui::render_to_text(6, 2);
+
+      tui::trigger_frame(Duration::from_secs(5));
+    }
+  });
+}

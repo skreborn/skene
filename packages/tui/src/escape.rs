@@ -51,6 +51,10 @@ pub(crate) const ANSWERING_CLIPBOARD: u16 = 5522;
 /// The request for a cursor position report, `CSI 6 n`.
 pub(crate) const REQUEST_CURSOR_POSITION: &str = "\x1b[6n";
 
+/// The primary device attributes request, DA1: every terminal answers it, after the
+/// replies to the queries written before it.
+pub(crate) const REQUEST_PRIMARY_ATTRIBUTES: &str = "\x1b[c";
+
 /// The query for the color scheme, answered by a theme report.
 pub(crate) const QUERY_THEME: &str = "\x1b[?996n";
 
@@ -110,6 +114,9 @@ pub(crate) const REPORT_ALTERNATE_KEYS: u8 = 4;
 
 /// The kitty keyboard flag for every key as an escape code.
 pub(crate) const REPORT_ALL_KEYS_AS_ESCAPE_CODES: u8 = 8;
+
+/// The kitty keyboard flag for the text a key typed, beside its code.
+pub(crate) const REPORT_ASSOCIATED_TEXT: u8 = 16;
 
 /// A DEC private mode set or reset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

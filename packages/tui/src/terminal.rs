@@ -43,7 +43,6 @@ use crate::{
     Key,
     KeyCode,
     KeyKind,
-    ModeSetting,
     ModifierKey,
     Mouse,
     MouseKind,
@@ -105,11 +104,12 @@ fn write_mouse(out: &mut (impl Write + ?Sized), on: bool) -> io::Result<()> {
 /// underline), the color depth (a DECRQSS report after a true-color and after a palette
 /// background), and text sizing (a cursor position report after a space at scale two from the home
 /// cell, which lands on the third column where the terminal sized it), and graphics
-/// (the kitty protocol's query, answered `OK` where it is spoken).
+/// (the kitty protocol's query, answered `OK` where it is spoken); then the primary
+/// device attributes request, whose reply closes the queries' reply window.
 fn write_queries(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
   write!(
     out,
-    "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+    "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
     escape::QUERY_THEME,
     QueryMode(escape::SYNCHRONIZED_OUTPUT),
     QueryMode(escape::GRAPHEME_CLUSTERING),
@@ -130,6 +130,7 @@ fn write_queries(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
     SIZING_PROBE,
     escape::REQUEST_CURSOR_POSITION,
     escape::GraphicsQuery(GRAPHICS_PROBE),
+    escape::REQUEST_PRIMARY_ATTRIBUTES,
   )
 }
 
@@ -273,6 +274,8 @@ where
   let _ = write_queries(&mut terminal);
   let _ = terminal.flush();
 
+  terminal.open_reply_window();
+
   let mut pixels = PixelMouse {
     cell: None,
     on: false,
@@ -394,6 +397,9 @@ where
     if let Some(text) = copy {
       if clipboard_answers {
         let _ = escape::write_clipboard(&mut terminal, &text);
+        let _ = write!(terminal, "{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
+
+        terminal.open_reply_window();
       }
       else {
         emit_copy(&mut terminal, &text);
@@ -410,8 +416,10 @@ where
         escape::QUERY_CLIPBOARD
       };
 
-      let _ = write!(terminal, "{request}");
+      let _ = write!(terminal, "{request}{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
       let _ = terminal.flush();
+
+      terminal.open_reply_window();
     }
 
     if let Some(url) = open {
@@ -520,30 +528,31 @@ where
           mode: escape::SGR_PIXELS_MOUSE,
           setting,
         } => {
-          pixels.on = setting == ModeSetting::Set;
+          pixels.on = setting.enabled();
         }
         Event::Mode {
           mode: escape::IN_BAND_RESIZE,
           setting,
         } => {
-          in_band = setting == ModeSetting::Set;
+          in_band = setting.enabled();
         }
-        // A terminal that can toggle synchronized output has every frame written under
-        // it; one that cannot toggle it, or does not know it, gets plain frames.
+        // A terminal that can have synchronized output on has every frame written under
+        // it; one that cannot, or does not know it, gets plain frames.
         Event::Mode {
           mode: escape::SYNCHRONIZED_OUTPUT,
           setting,
         } => {
-          synchronized = matches!(setting, ModeSetting::Set | ModeSetting::Reset);
+          synchronized = setting.available();
         }
-        // A terminal that set grapheme clustering measures text by clusters, as the
-        // layout then does; one that did not, or does not know it, gets text measured
-        // by code points, and a change of measurement lays the frame out afresh.
+        // A terminal with grapheme clustering on, set or permanently, measures text by
+        // clusters, as the layout then does; one without it, or not knowing it, gets
+        // text measured by code points, and a change of measurement lays the frame out
+        // afresh.
         Event::Mode {
           mode: escape::GRAPHEME_CLUSTERING,
           setting,
         } => {
-          let changed = apply_clustering(setting == ModeSetting::Set);
+          let changed = apply_clustering(setting.enabled());
 
           if changed {
             last_frame = None;
@@ -610,7 +619,7 @@ where
           mode: escape::ANSWERING_CLIPBOARD,
           setting,
         } => {
-          clipboard_answers = matches!(setting, ModeSetting::Set | ModeSetting::Reset);
+          clipboard_answers = setting.available();
 
           with_store(|store| store.clipboard_answers = clipboard_answers);
         }
@@ -1097,18 +1106,20 @@ fn draw_row(out: &mut impl Write, buffer: &paint::Buffer, row: usize, rendition:
   }
 
   if current.link.is_some() {
-    let _ = write!(out, "\x1b]8;;\x1b\\");
+    let _ = write!(out, "{}", escape::Hyperlink(""));
   }
 }
 
 /// The kitty keyboard flags asked of a terminal that answers the flags query: the
 /// disambiguated escape codes, the event types (a release, a repeat), the alternate
-/// keys (the shifted key under `Shift`), and every key as an escape code (a modifier
-/// alone). A terminal keeps the flags it has.
+/// keys (the shifted key under `Shift`), every key as an escape code (a modifier
+/// alone), and the text a key typed (through `AltGr` or `Option` too). A terminal keeps
+/// the flags it has.
 const KEYBOARD_FLAGS: u8 = escape::DISAMBIGUATE_ESCAPE_CODES
   | escape::REPORT_EVENT_TYPES
   | escape::REPORT_ALTERNATE_KEYS
-  | escape::REPORT_ALL_KEYS_AS_ESCAPE_CODES;
+  | escape::REPORT_ALL_KEYS_AS_ESCAPE_CODES
+  | escape::REPORT_ASSOCIATED_TEXT;
 
 /// Dispatches one keyboard press or repeat through core's dispatch, then the
 /// terminal's own response unless a handler prevented it; `Ctrl-Q` stays
@@ -1130,10 +1141,49 @@ fn dispatch_key(key: &Key) {
 /// flips a letter's case, so a shortcut reads the modifiers and a text entry the case
 /// as a browser's `key` gives them; the code is the key's position on the standard
 /// layout, from the base-layout alternate where the terminal reports one.
+///
+/// Where the terminal reports the text a key typed, the text is the key, as a
+/// browser's `key` is, and `Ctrl` and `Alt` are spent in typing it (`AltGr`, `Option`), so
+/// a text entry inserts it.
 fn portable_key(key: &Key) -> KeyEvent {
   let mut modifiers = key.modifiers;
   let keypad = key.keypad;
-  let key_value = match key.code {
+  let key_value = match (key.text, key.code) {
+    (Some(text), _) => {
+      modifiers.ctrl = false;
+      modifiers.alt = false;
+
+      text.to_string()
+    }
+    (None, code) => portable_key_value(key, code, &mut modifiers),
+  };
+  let code = match key.code {
+    KeyCode::Char(character) if keypad => keypad_code(character),
+    KeyCode::Char(character) => {
+      KeyEvent::code_of(&key.base_layout.unwrap_or(character).to_string())
+    }
+    KeyCode::Enter if keypad => "NumpadEnter".to_owned(),
+    KeyCode::KeypadBegin => "Numpad5".to_owned(),
+    KeyCode::Modifier(modifier) => modifier_code(modifier).to_owned(),
+    _ => KeyEvent::code_of(&key_value),
+  };
+
+  if key.code == KeyCode::BackTab {
+    modifiers.shift = true;
+  }
+
+  KeyEvent {
+    key: key_value,
+    code,
+    modifiers,
+    repeat: key.kind == KeyKind::Repeat,
+  }
+}
+
+/// The W3C key value of `code`, a key reporting no text, marking `Shift` in `modifiers`
+/// where the key arrived shifted.
+fn portable_key_value(key: &Key, code: KeyCode, modifiers: &mut Modifiers) -> String {
+  match code {
     KeyCode::Char(character) => {
       modifiers.shift |= key.shifted.is_some() || character.is_uppercase();
 
@@ -1177,27 +1227,6 @@ fn portable_key(key: &Key) -> KeyEvent {
     KeyCode::Insert => "Insert".to_owned(),
     KeyCode::Function(number) => format!("F{number}"),
     _ => "Unidentified".to_owned(),
-  };
-  let code = match key.code {
-    KeyCode::Char(character) if keypad => keypad_code(character),
-    KeyCode::Char(character) => {
-      KeyEvent::code_of(&key.base_layout.unwrap_or(character).to_string())
-    }
-    KeyCode::Enter if keypad => "NumpadEnter".to_owned(),
-    KeyCode::KeypadBegin => "Numpad5".to_owned(),
-    KeyCode::Modifier(modifier) => modifier_code(modifier).to_owned(),
-    _ => KeyEvent::code_of(&key_value),
-  };
-
-  if key.code == KeyCode::BackTab {
-    modifiers.shift = true;
-  }
-
-  KeyEvent {
-    key: key_value,
-    code,
-    modifiers,
-    repeat: key.kind == KeyKind::Repeat,
   }
 }
 
@@ -1752,6 +1781,24 @@ mod tests {
     assert_eq!(key_event("Ctrl+z").code, "KeyZ");
   }
 
+  /// A key reporting the text it typed is that text, the `Ctrl` and `Alt` spent in
+  /// typing it cleared, so an entry inserts what `AltGr` or `Option` typed.
+  #[test]
+  fn a_typed_text_is_the_key() {
+    let mut option = Key::new(KeyCode::Char('2')).with(Modifiers {
+      alt: true,
+      ..Modifiers::default()
+    });
+
+    option.text = Some('\u{2122}');
+
+    let option = portable_key(&option);
+
+    assert_eq!(option.key, "\u{2122}");
+    assert_eq!(option.code, "Digit2");
+    assert!(!option.modifiers.alt && !option.modifiers.ctrl);
+  }
+
   /// In-band resize notifications are asked for, queried and handed back with the
   /// other modes.
   #[test]
@@ -1973,7 +2020,8 @@ mod tests {
   }
 
   /// Launch probes text sizing from the home cell with a space at scale two and asks
-  /// where the cursor landed.
+  /// where the cursor landed, and fences its queries with the primary device
+  /// attributes request.
   #[test]
   fn text_sizing_is_probed_from_the_home_cell() {
     let mut out = Vec::new();
@@ -1984,7 +2032,8 @@ mod tests {
 
     assert!(
       out.ends_with(
-        "\x1b[1;1H\x1b]66;s=2; \x1b\\\x1b[6n\x1b_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\"
+        "\x1b[1;1H\x1b]66;s=2; \x1b\\\x1b[6n\x1b_Gi=2147483647,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\
+         \x1b[c"
       ),
       "{out:?}"
     );

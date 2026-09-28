@@ -132,6 +132,12 @@ impl Tty {
     Ok(())
   }
 
+  /// Opens a reply window for queries just written, which must end with the primary
+  /// device attributes request: until its reply, a string sequence reads as a reply.
+  pub(crate) const fn open_reply_window(&mut self) {
+    self.parser.open_reply_window();
+  }
+
   /// Restores the mode the terminal was opened in.
   pub(crate) fn restore_mode(&mut self) -> io::Result<()> {
     termios::tcsetattr(self.output.get_ref(), OptionalActions::Now, &self.original)?;

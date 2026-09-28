@@ -111,16 +111,10 @@ left half-done in a code comment.
     history fallback in the client-rendered dev server; `wasm-bindgen-cli-support`
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
-4. **The terminal's traps.**
-    - Replies are read only inside query windows fenced by DA1, and a string ends at
-    any ESC not followed by `\`, its length capped: in the legacy encoding Alt+Shift+P
-    (and Alt+], Alt+_, Alt+^, Alt+Shift+X) opens a DCS that swallows every later key,
-    `Ctrl-Q` included.
-    - Under the kitty protocol flag 16 is requested and the text field inserted
-    whatever the modifiers, so AltGr and macOS Option characters arrive.
-    - One `ModeSetting::enabled()` reads every DECRPM reply as set or permanently set;
-    WezTerm's "permanently set" grapheme clustering reads as off today, misplacing
-    everything after a ZWJ sequence.
+4. **The terminal's traps.** Replies are read only inside query windows fenced by
+    DA1, so `Alt+Shift+P` no longer swallows every later key; a key's typed text rides
+    it under the kitty protocol, so `AltGr` and `Option` characters arrive; a
+    "permanently set" DECRPM reply reads as set; what remains:
     - Inertness comes from the topmost modal, not the topmost overlay, and scrollbar
     presses hit-test through the modal-filtered path, so the page beneath a modal stays
     inert while a tooltip or a picker list is open and under a press on its scrollbar.

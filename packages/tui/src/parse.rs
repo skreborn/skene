@@ -3,7 +3,9 @@
 //!
 //! The parser is incremental: bytes arrive in chunks, a sequence cut at a chunk's end
 //! completes with the next, and a sequence the loop never asked about is consumed
-//! whole and dropped rather than read as keys.
+//! whole and dropped rather than read as keys. A string sequence (OSC, DCS, APC, PM,
+//! SOS) reads as a reply only inside a reply window the loop opened; outside one its
+//! introducer is the `Alt` chord that sends the same bytes.
 
 use std::collections::VecDeque;
 
@@ -16,6 +18,13 @@ const ESC: u8 = 0x1b;
 
 /// The bell, an OSC string's other terminator.
 const BEL: u8 = 0x07;
+
+/// Cancel and substitute, which abort a string sequence.
+const CAN: u8 = 0x18;
+const SUB: u8 = 0x1a;
+
+/// The longest string sequence read; a longer one is dropped.
+const MAX_STRING: usize = 16 << 20;
 
 /// What the terminal sent: an input, or a reply to a query.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,6 +109,18 @@ pub(crate) enum ModeSetting {
   PermanentlyReset,
 }
 
+impl ModeSetting {
+  /// Whether the mode is on: set, or permanently set.
+  pub(crate) const fn enabled(self) -> bool {
+    matches!(self, Self::Set | Self::PermanentlySet)
+  }
+
+  /// Whether the terminal can have the mode on: set, reset, or permanently set.
+  pub(crate) const fn available(self) -> bool {
+    matches!(self, Self::Set | Self::Reset | Self::PermanentlySet)
+  }
+}
+
 /// A key event: the key, the modifiers held, and what the kitty protocol adds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Key {
@@ -115,6 +136,9 @@ pub(crate) struct Key {
   /// The key at the same position on the standard layout, where the active layout
   /// differs there.
   pub(crate) base_layout: Option<char>,
+  /// The text the key typed, as the layout and the modifiers made it, where the
+  /// terminal reports it and it is one character.
+  pub(crate) text: Option<char>,
 }
 
 impl Key {
@@ -133,6 +157,7 @@ impl Key {
       caps_lock: false,
       shifted: None,
       base_layout: None,
+      text: None,
     }
   }
 
@@ -224,25 +249,39 @@ pub(crate) enum MouseKind {
 pub(crate) struct Parser {
   buffer: Vec<u8>,
   events: VecDeque<Event>,
+  /// The reply windows open.
+  windows: u32,
 }
 
 impl Parser {
+  /// Opens a reply window, in which a string sequence reads as a reply; the reply to
+  /// the primary device attributes request written after the window's queries closes
+  /// it.
+  pub(crate) const fn open_reply_window(&mut self) {
+    self.windows += 1;
+  }
+
   /// Takes `bytes` in; `more` says the chunk may have been cut short of a sequence's
   /// end, so a lone escape at its end waits rather than reading as the `Escape` key.
   pub(crate) fn feed(&mut self, bytes: &[u8], more: bool) {
     self.buffer.extend_from_slice(bytes);
 
     loop {
-      match scan(&self.buffer, more) {
+      let (consumed, event) = match scan(&self.buffer, more, self.windows > 0) {
         Scan::Incomplete => break,
-        Scan::Done(consumed, event) => {
-          self.buffer.drain(..consumed);
-          self.events.extend(event);
+        Scan::Done(consumed, event) => (consumed, event),
+        Scan::Fence(consumed) => {
+          self.windows = self.windows.saturating_sub(1);
 
-          if self.buffer.is_empty() {
-            break;
-          }
+          (consumed, None)
         }
+      };
+
+      self.buffer.drain(..consumed);
+      self.events.extend(event);
+
+      if self.buffer.is_empty() {
+        break;
       }
     }
   }
@@ -259,17 +298,21 @@ enum Scan {
   Incomplete,
   /// `consumed` bytes make one input, or nothing the loop reads.
   Done(usize, Option<Event>),
+  /// `consumed` bytes are the reply to the primary device attributes request, which
+  /// closes a reply window.
+  Fence(usize),
 }
 
-/// Scans the buffer's head for one input.
-fn scan(buffer: &[u8], more: bool) -> Scan {
+/// Scans the buffer's head for one input; a string sequence is a reply where
+/// `replying`.
+fn scan(buffer: &[u8], more: bool, replying: bool) -> Scan {
   let Some(first) = buffer.first()
   else {
     return Scan::Incomplete;
   };
 
   match *first {
-    ESC => scan_escape(buffer, more),
+    ESC => scan_escape(buffer, more, replying),
     b'\r' => key(1, KeyCode::Enter),
     b'\t' => key(1, KeyCode::Tab),
     0x7f => key(1, KeyCode::Backspace),
@@ -329,8 +372,9 @@ fn scan_char(buffer: &[u8]) -> Scan {
   )
 }
 
-/// An escape sequence, or `Alt` with the key after a lone escape.
-fn scan_escape(buffer: &[u8], more: bool) -> Scan {
+/// An escape sequence, or `Alt` with the key after a lone escape; a string sequence
+/// only where `replying`, its introducer an `Alt` chord elsewhere.
+fn scan_escape(buffer: &[u8], more: bool, replying: bool) -> Scan {
   let Some(second) = buffer.get(1)
   else {
     return if more {
@@ -343,13 +387,13 @@ fn scan_escape(buffer: &[u8], more: bool) -> Scan {
 
   match *second {
     b'[' => scan_csi(buffer),
-    b']' => scan_string(buffer, true, parse_osc),
-    b'P' => scan_string(buffer, false, parse_dcs),
-    b'_' => scan_string(buffer, false, parse_apc),
-    b'^' | b'X' => scan_string(buffer, false, |_| None),
+    b']' if replying => scan_string(buffer, true, parse_osc),
+    b'P' if replying => scan_string(buffer, false, parse_dcs),
+    b'_' if replying => scan_string(buffer, false, parse_apc),
+    b'^' | b'X' if replying => scan_string(buffer, false, |_| None),
     b'O' => scan_ss3(buffer),
     ESC => key(1, KeyCode::Escape),
-    _ => match scan(&buffer[1..], more) {
+    _ => match scan(&buffer[1..], more, replying) {
       Scan::Incomplete => Scan::Incomplete,
       Scan::Done(consumed, Some(Event::Key(mut key))) => {
         key.modifiers.alt = true;
@@ -357,6 +401,7 @@ fn scan_escape(buffer: &[u8], more: bool) -> Scan {
         Scan::Done(consumed + 1, Some(Event::Key(key)))
       }
       Scan::Done(consumed, event) => Scan::Done(consumed + 1, event),
+      Scan::Fence(consumed) => Scan::Fence(consumed + 1),
     },
   }
 }
@@ -384,17 +429,29 @@ fn scan_ss3(buffer: &[u8]) -> Scan {
 /// A string sequence (OSC, DCS, APC, PM, SOS) up to its terminator—`ST`, or `BEL` too
 /// where `bel` says the kind takes it—handed to `parse` without its introducer and
 /// terminator.
+///
+/// An escape starting anything but `ST` ends the string unread, and begins the next
+/// sequence; `CAN` or `SUB` abort it; a string longer than [`MAX_STRING`] is dropped.
 fn scan_string(buffer: &[u8], bel: bool, parse: impl Fn(&[u8]) -> Option<Event>) -> Scan {
   let mut index = 2;
 
   while index < buffer.len() {
     match buffer[index] {
       BEL if bel => return Scan::Done(index + 1, parse(&buffer[2..index])),
-      ESC if buffer.get(index + 1) == Some(&b'\\') => {
-        return Scan::Done(index + 2, parse(&buffer[2..index]));
+      ESC => {
+        return match buffer.get(index + 1) {
+          Some(b'\\') => Scan::Done(index + 2, parse(&buffer[2..index])),
+          Some(_) => Scan::Done(index, None),
+          None => Scan::Incomplete,
+        };
       }
+      CAN | SUB => return Scan::Done(index + 1, None),
       _ => index += 1,
     }
+  }
+
+  if buffer.len() > MAX_STRING {
+    return Scan::Done(buffer.len(), None);
   }
 
   Scan::Incomplete
@@ -473,6 +530,7 @@ fn scan_csi(buffer: &[u8]) -> Scan {
     (Some(b'?'), b'y') if intermediates == b"$" => parse_mode_report(&parameters[1..]),
     (Some(b'?'), b'n') => parse_theme(&parameters[1..]),
     (Some(b'?'), b'u') => parameters[1..].parse().ok().map(Event::KeyboardFlags),
+    (Some(b'?'), b'c') => return Scan::Fence(consumed),
     (Some(b'<'), b'M' | b'm') => parse_sgr_mouse(&parameters[1..], *last == b'm'),
     (Some(b'?' | b'<' | b'=' | b'>'), _) => None,
     (_, b'R') => parse_cursor_position(parameters),
@@ -566,6 +624,15 @@ fn parse_kitty_key(parameters: &str) -> Option<Event> {
   };
   let shifted = alternate();
   let base_layout = alternate();
+  let mut typed = fields
+    .next()
+    .into_iter()
+    .flat_map(|text| text.split(':'))
+    .filter_map(|code| code.parse::<u32>().ok().and_then(char::from_u32));
+  let text = typed
+    .next()
+    .filter(|character| !character.is_control())
+    .filter(|_| typed.next().is_none());
 
   if modifiers.shift
     && let Some(shifted) = shifted
@@ -582,6 +649,7 @@ fn parse_kitty_key(parameters: &str) -> Option<Event> {
     caps_lock,
     shifted,
     base_layout,
+    text,
   }))
 }
 
@@ -1039,13 +1107,33 @@ fn parse_color(parts: &[&str]) -> Option<Color> {
 mod tests {
   use super::*;
 
-  /// Every event `bytes` decode to, fed as one chunk with nothing after it.
+  /// Every event `bytes` decode to, fed as one chunk with nothing after it, inside a
+  /// reply window.
   fn events(bytes: &[u8]) -> Vec<Event> {
+    let mut parser = Parser::default();
+
+    parser.open_reply_window();
+    parser.feed(bytes, false);
+
+    std::iter::from_fn(|| parser.pop()).collect()
+  }
+
+  /// Every event `bytes` decode to with no reply window open.
+  fn input(bytes: &[u8]) -> Vec<Event> {
     let mut parser = Parser::default();
 
     parser.feed(bytes, false);
 
     std::iter::from_fn(|| parser.pop()).collect()
+  }
+
+  /// `key` with `Alt` held, and `Shift` where `shift`.
+  fn alt(code: KeyCode, shift: bool) -> Event {
+    Event::Key(Key::new(code).with(Modifiers {
+      alt: true,
+      shift,
+      ..Modifiers::default()
+    }))
   }
 
   /// The one key `bytes` decode to.
@@ -1319,6 +1407,61 @@ mod tests {
         Sgr::Bold(true),
         Sgr::Background(Color::Palette(9)),
       ])]
+    );
+  }
+
+  /// The text a kitty key reports it typed rides the key: `AltGr`'s `@` on `q`.
+  #[test]
+  fn a_kitty_key_carries_its_text() {
+    let key = key_of(b"\x1b[113;;64u");
+
+    assert_eq!(key.code, KeyCode::Char('q'));
+    assert_eq!(key.text, Some('@'));
+    assert_eq!(key_of(b"\x1b[113u").text, None);
+  }
+
+  /// Outside a reply window a string introducer is the `Alt` chord that sends it, so
+  /// `Alt+Shift+P` never swallows the keys after it.
+  #[test]
+  fn an_introducer_outside_a_window_is_a_chord() {
+    assert_eq!(
+      input(b"\x1bPq\x11"),
+      [
+        alt(KeyCode::Char('P'), true),
+        Event::Key(Key::new(KeyCode::Char('q'))),
+        Event::Key(Key::new(KeyCode::Char('q')).with(Modifiers {
+          ctrl: true,
+          ..Modifiers::default()
+        })),
+      ]
+    );
+    assert_eq!(input(b"\x1b]"), [alt(KeyCode::Char(']'), false)]);
+  }
+
+  /// The primary device attributes reply closes the window its queries opened.
+  #[test]
+  fn the_attributes_reply_closes_a_window() {
+    let mut parser = Parser::default();
+
+    parser.open_reply_window();
+    parser.feed(b"\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?62;22c\x1bP", false);
+
+    assert_eq!(parser.pop(), Some(Event::Background(0, 0, 0)));
+    assert_eq!(parser.pop(), Some(alt(KeyCode::Char('P'), true)));
+    assert_eq!(parser.pop(), None);
+  }
+
+  /// Inside a window an escape that starts no terminator ends a string unread, and
+  /// `CAN` aborts one, so a lost terminator costs only the string.
+  #[test]
+  fn a_string_ends_at_the_next_sequence() {
+    assert_eq!(
+      events(b"\x1bPhello\x1b[A"),
+      [Event::Key(Key::new(KeyCode::Up))]
+    );
+    assert_eq!(
+      events(b"\x1b]11;x\x18a"),
+      [Event::Key(Key::new(KeyCode::Char('a')))]
     );
   }
 }

@@ -291,6 +291,9 @@ fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
   }
 }
 
+/// The live-reload stream's path, which the dev script listens on.
+const RELOAD_PATH: &str = "/skene:reload";
+
 /// Serves the app on `port` until interrupted: `index.html` and the build output from
 /// the app's `dist/web`, at its own path and as the site root, declared assets at
 /// their URIs, and—with `dev`—the reload SSE endpoint and the reload script injected
@@ -337,13 +340,6 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
     return;
   };
 
-  let Some(relative) = request_path(target)
-  else {
-    let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
-
-    return;
-  };
-
   let headers = if method == "GET" {
     read_headers(&mut reader).unwrap_or_default()
   }
@@ -351,14 +347,31 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
     Vec::new()
   };
 
-  match (method, relative.as_str(), dev) {
-    ("GET", "skene:reload", Some(dev)) => {
-      drop(reader);
-      dev.adopt(stream);
-    }
+  if !names_loopback(&headers) {
+    let _ = write_response(&mut stream, "403 Forbidden", "text/plain", b"forbidden");
 
+    return;
+  }
+
+  if let ("GET", RELOAD_PATH, Some(dev)) = (method, target, dev) {
+    drop(reader);
+    dev.adopt(stream);
+
+    return;
+  }
+
+  let Some(relative) = request_path(target)
+  else {
+    let _ = write_response(&mut stream, "400 Bad Request", "text/plain", b"bad request");
+
+    return;
+  };
+
+  match (method, relative.as_str(), dev) {
     ("GET", relative, Some(dev)) if is_route(relative) => {
-      match dev.render(&format!("/{relative}"), &headers) {
+      let path = encoded_path(target).unwrap_or_else(|| format!("/{relative}"));
+
+      match dev.render(&path, &headers) {
         Some(Ok(page)) => {
           let _ = write_response_with(
             &mut stream,
@@ -386,6 +399,37 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
       let _ = write_response(&mut stream, "404 Not Found", "text/plain", b"not found");
     }
   }
+}
+
+/// The request target's path as a URL carries it: dot segments resolved, still
+/// percent-encoded, so it holds no line break and reads as the browser's location
+/// does.
+fn encoded_path(target: &str) -> Option<String> {
+  let base = Url::parse("http://localhost/").ok()?;
+
+  Some(base.join(target).ok()?.path().to_owned())
+}
+
+/// Whether a request names this machine as its host, or names none: a page another
+/// site served cannot reach the server by a name it resolved to it.
+fn names_loopback(headers: &Headers) -> bool {
+  let Some((_, host)) = headers
+    .iter()
+    .find(|(name, _)| name.eq_ignore_ascii_case("host"))
+  else {
+    return true;
+  };
+  let name = if host.starts_with('[') {
+    host.split_once(']').map_or(host.as_str(), |(name, _)| name)
+  }
+  else {
+    host.split(':').next().unwrap_or_default()
+  };
+
+  matches!(
+    name.to_ascii_lowercase().as_str(),
+    "localhost" | "127.0.0.1" | "[::1"
+  )
 }
 
 /// Whether a request path names a route rather than a file: no extension in its last
@@ -434,7 +478,11 @@ fn request_path(target: &str) -> Option<String> {
 
     let segment = percent_decode_str(segment).decode_utf8().ok()?;
 
-    if segment == "." || segment == ".." || segment.contains(['/', '\\']) {
+    if segment == "."
+      || segment == ".."
+      || segment.contains(['/', '\\', ':'])
+      || segment.contains(char::is_control)
+    {
       return None;
     }
 
@@ -560,5 +608,49 @@ mod tests {
       })
     );
     assert!(Binary::parse("x").is_none());
+  }
+
+  /// A request path is decoded segment by segment, and one that would climb, name a
+  /// drive, nest a separator or carry a control character is refused.
+  #[test]
+  fn a_request_path_stays_inside_the_app() {
+    assert_eq!(request_path("/a/b%20c?q=1").as_deref(), Some("a/b c"));
+    assert_eq!(request_path("/a/./b/../c").as_deref(), Some("a/c"));
+    assert_eq!(request_path("/%2e%2e/x").as_deref(), Some("x"));
+
+    for target in [
+      "/C:/Windows/win.ini",
+      "/c%3A/x",
+      "/a%2Fb",
+      "/a%5Cb",
+      "/a%0A%0A/b",
+      "/a%00",
+    ] {
+      assert_eq!(request_path(target), None, "{target}");
+    }
+  }
+
+  /// A route renders from the path as the URL carries it, a line break still encoded.
+  #[test]
+  fn a_route_renders_from_its_encoded_path() {
+    assert_eq!(
+      encoded_path("/user/J%C3%BCrgen/../ada?x=1").as_deref(),
+      Some("/user/ada")
+    );
+    assert_eq!(encoded_path("/a b%0A").as_deref(), Some("/a%20b%0A"));
+  }
+
+  /// Only a request naming this machine, or naming no host, is served.
+  #[test]
+  fn only_a_loopback_host_is_served() {
+    let host = |value: &str| vec![("Host".to_owned(), value.to_owned())];
+
+    assert!(names_loopback(&Vec::new()));
+    assert!(names_loopback(&host("localhost:8080")));
+    assert!(names_loopback(&host("127.0.0.1:8080")));
+    assert!(names_loopback(&host("[::1]:8080")));
+    assert!(names_loopback(&host("LOCALHOST")));
+    assert!(!names_loopback(&host("evil.example:8080")));
+    assert!(!names_loopback(&host("localhost.evil.example")));
   }
 }

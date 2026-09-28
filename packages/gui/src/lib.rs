@@ -641,10 +641,11 @@ where
 /// Renders requests read from stdin until it closes, one page per request to stdout,
 /// so a dev server or a generator keeps one process rendering.
 ///
-/// A request is the path on a line, then the client hints one `Name: value` per line,
-/// then an empty line; a response is `Content-Length: <bytes>` on a line, an empty
-/// line, and the complete page. The hints are the render's environment for that
-/// request alone, and a request without hints renders against the defaults.
+/// A request is the path on a line, percent-encoded as a URL carries it so it holds no
+/// line break, then the client hints one `Name: value` per line, then an empty line; a
+/// response is `Content-Length: <bytes>` on a line, an empty line, and the complete
+/// page. The hints are the render's environment for that request alone, and a request
+/// without hints renders against the defaults.
 #[cfg(skene_leaf = "server")]
 pub fn serve_renders<V, F>(app: F)
 where

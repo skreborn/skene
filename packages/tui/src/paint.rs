@@ -416,9 +416,10 @@ impl Buffer {
   }
 }
 
-/// Wraps text to `width` cells: lines break at spaces, a word longer than a full
-/// line breaks mid-word, a cluster too wide for a line takes one alone, and a
-/// newline always breaks. Yields at least one line, each paired with its start
+/// Wraps text to `width` cells: a line ends where the Unicode line breaking algorithm
+/// allows, the furthest that fits, its trailing spaces hanging past it; a word longer
+/// than a full line breaks mid-word, a cluster too wide for a line takes one alone,
+/// and a newline always breaks. Yields at least one line, each paired with its start
 /// offset into the source, in clusters, newlines included.
 pub(crate) fn wrap_spans(text: &str, width: usize) -> Vec<(usize, String)> {
   wrap_sized(text, width, &Scales::default())
@@ -537,49 +538,70 @@ pub(crate) fn wrap_sized(text: &str, width: usize, scales: &Scales) -> Vec<Sized
         .max()
         .unwrap_or_else(|| scales.at(base + from).rows()),
     };
+    if clusters.is_empty() {
+      lines.push(line(0, 0));
+      base += 1;
+
+      continue;
+    }
+
+    let breaks = line_breaks(paragraph);
     let mut start = 0;
 
-    loop {
+    while start < clusters.len() {
+      // The furthest break whose line, its trailing spaces aside, fits.
       let mut cells = 0;
-      let mut fit = start;
+      let mut trailing = 0;
+      let mut furthest = None;
+      let mut index = start;
 
-      while fit < clusters.len() && cells + clusters[fit].1 <= width {
-        cells += clusters[fit].1;
-        fit += 1;
-      }
-
-      if fit == clusters.len() {
-        lines.push(line(start, fit));
-
-        break;
-      }
-
-      let break_at = if clusters[fit].0 == " " {
-        fit - start
-      }
-      else {
-        match clusters[start..fit]
-          .iter()
-          .rposition(|(cluster, _)| *cluster == " ")
-        {
-          Some(position) if position > 0 => position,
-          _ => (fit - start).max(1),
+      loop {
+        if index > start && breaks[index] && cells - trailing <= width {
+          furthest = Some(index);
         }
-      };
 
-      lines.push(line(start, start + break_at));
-      start += break_at;
+        if index == clusters.len() || cells - trailing > width {
+          break;
+        }
 
-      while clusters
-        .get(start)
-        .is_some_and(|(cluster, _)| *cluster == " ")
+        let (cluster, cluster_cells) = clusters[index];
+
+        cells += cluster_cells;
+        trailing = if cluster == " " {
+          trailing + cluster_cells
+        }
+        else {
+          0
+        };
+        index += 1;
+      }
+
+      // Without one, a word wider than the line breaks where the line fills, and a
+      // cluster too wide for a line takes one alone.
+      let end = furthest.unwrap_or_else(|| {
+        let mut cells = 0;
+        let mut fit = start;
+
+        while fit < clusters.len() && cells + clusters[fit].1 <= width {
+          cells += clusters[fit].1;
+          fit += 1;
+        }
+
+        fit.max(start + 1)
+      });
+      // The spaces a line ends in hang past it: gone at a wrap, and kept only while
+      // they fit at the paragraph's end.
+      let mut shown = end;
+      let mut cells: usize = clusters[start..end].iter().map(|(_, cells)| cells).sum();
+
+      while shown > start && clusters[shown - 1].0 == " " && (end < clusters.len() || cells > width)
       {
-        start += 1;
+        cells -= clusters[shown - 1].1;
+        shown -= 1;
       }
 
-      if start == clusters.len() {
-        break;
-      }
+      lines.push(line(start, shown));
+      start = end;
     }
 
     base += clusters.len() + 1;
@@ -597,23 +619,52 @@ pub(crate) fn wrap_text(text: &str, width: usize) -> Vec<String> {
     .collect()
 }
 
-/// The longest unbreakable word's width in cells at its scales: the narrowest a wrap
-/// can go.
+/// The widest stretch between two places a line may end, its trailing spaces aside, in
+/// cells at its scales: the narrowest a wrap can go.
 pub(crate) fn longest_word(text: &str, scales: &Scales) -> usize {
   let mut longest = 0;
-  let mut word = 0;
+  let mut base = 0;
 
-  for (index, (_, cluster)) in text::clusters(text).enumerate() {
-    if cluster == " " || cluster == "\n" {
-      word = 0;
+  for paragraph in text.split('\n') {
+    let breaks = line_breaks(paragraph);
+    let mut word = 0;
+    let mut trailing = 0;
+
+    for (index, (_, cluster)) in text::clusters(paragraph).enumerate() {
+      if breaks[index] {
+        word = 0;
+        trailing = 0;
+      }
+
+      let cells = scales.cells(base + index, cluster);
+
+      word += cells;
+      trailing = if cluster == " " { trailing + cells } else { 0 };
+      longest = longest.max(word - trailing);
     }
-    else {
-      word += scales.cells(index, cluster);
-      longest = longest.max(word);
-    }
+
+    base += text::count(paragraph) + 1;
   }
 
   longest
+}
+
+/// Where a line may end in `paragraph`, by cluster, as the Unicode line breaking
+/// algorithm finds it: before the cluster at an index holding `true`, and at the end.
+fn line_breaks(paragraph: &str) -> Vec<bool> {
+  let starts: Vec<usize> = text::clusters(paragraph).map(|(byte, _)| byte).collect();
+  let mut breaks = vec![false; starts.len() + 1];
+
+  for (byte, _) in unicode_linebreak::linebreaks(paragraph) {
+    if byte == paragraph.len() {
+      breaks[starts.len()] = true;
+    }
+    else if let Ok(index) = starts.binary_search(&byte) {
+      breaks[index] = true;
+    }
+  }
+
+  breaks
 }
 
 /// Paints the frame into `buffer`: the tree, then every open overlay; a picture an
@@ -2046,7 +2097,19 @@ mod tests {
     assert_eq!(wrap_text("日本語", 4), ["日本", "語"]);
     assert_eq!(wrap_text("日本", 1), ["日", "本"]);
     assert_eq!(wrap_text("ae\u{301}b", 2), ["ae\u{301}", "b"]);
-    assert_eq!(longest_word("日本 ab", &Scales::default()), 4);
+    assert_eq!(longest_word("日本 ab", &Scales::default()), 2);
+  }
+
+  /// A line ends where the Unicode line breaking algorithm allows: after a hyphen and
+  /// between ideographs as well as at spaces, never before closing punctuation.
+  #[test]
+  fn lines_break_where_unicode_allows() {
+    text::reset();
+
+    assert_eq!(wrap_text("foo-bar", 5), ["foo-", "bar"]);
+    assert_eq!(wrap_text("日本語テキスト", 6), ["日本語", "テキス", "ト"]);
+    assert_eq!(wrap_text("one (two)", 6), ["one", "(two)"]);
+    assert_eq!(longest_word("foo-bar baz", &Scales::default()), 4);
   }
 
   /// A scaled cluster wraps at its scaled width, a line is as tall as its tallest

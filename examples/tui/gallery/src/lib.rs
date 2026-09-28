@@ -375,7 +375,9 @@ fn third_party() -> impl IntoView {
     "Third party",
     Column::new().set_spacing(1).set_children((
       Row::new().set_spacing(2).set_children((
-        acme_ui::AcmeBadge::<ActivePlatform>::new("acme-ui"),
+        Flexible::new()
+          .set_shrink_factor(0.)
+          .set_child(acme_ui::AcmeBadge::<ActivePlatform>::new("acme-ui")),
         Text::new("a badge from a library that names no platform")
           .set_color(SimplePalette::MUTED_FOREGROUND),
       )),

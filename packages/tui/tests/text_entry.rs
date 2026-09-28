@@ -114,33 +114,29 @@ fn caret_jumps_and_deletes_by_word() {
   });
 }
 
-/// A word removal eats trailing whitespace, then one same-class run: punctuation runs
-/// break like words of their own.
+/// A word removal eats trailing whitespace, then one segment as Unicode word
+/// boundaries divide the text: a punctuation mark alone, or a whole word, an apostrophe
+/// or a dot between its letters and an underscore included.
 #[test]
-fn word_deletion_breaks_on_character_class() {
+fn word_deletion_follows_unicode_word_boundaries() {
   with_platform(|| {
-    let name = Signal::new(String::from("foo.bar_baz("));
+    let name = Signal::new(String::from("say don't foo.bar_baz("));
 
     let _ = tui::mount(|| {
       RawTextField::new(TextEntry::new().bind_value(name))
         .into_any()
         .build()
     });
-    let _ = tui::render_to_text(20, 1);
+    let _ = tui::render_to_text(30, 1);
 
     tui::trigger_key("Tab");
     tui::trigger_key("End");
-    tui::trigger_key("Ctrl+Backspace");
 
-    assert_eq!(name.get_untracked(), "foo.bar_baz");
+    for expected in ["say don't foo.bar_baz", "say don't ", "say ", ""] {
+      tui::trigger_key("Ctrl+Backspace");
 
-    tui::trigger_key("Ctrl+Backspace");
-
-    assert_eq!(name.get_untracked(), "foo.");
-
-    tui::trigger_key("Ctrl+Backspace");
-
-    assert_eq!(name.get_untracked(), "foo");
+      assert_eq!(name.get_untracked(), expected);
+    }
   });
 }
 

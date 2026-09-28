@@ -388,8 +388,8 @@ impl Store {
     }
   }
 
-  /// Selects the characters around `point` sharing its class: a word, a whitespace gap,
-  /// or a punctuation run.
+  /// Selects the word segment around `point`, as Unicode word boundaries divide the
+  /// text: a word, a whitespace run, or a punctuation mark.
   pub(crate) fn select_word(&mut self, point: SelectionPoint) {
     let Some(text) = self.selectable_text(point.node)
     else {

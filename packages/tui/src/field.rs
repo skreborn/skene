@@ -2,6 +2,7 @@
 //! the visible window, and the keys that move, select and edit.
 
 use skene_core::{AccessProp, ClipboardAction, KeyEvent, notify_change, notify_selection_change};
+use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
   Tui,
@@ -11,101 +12,62 @@ use crate::{
   with_store,
 };
 
-/// A caret-motion character class; each maximal same-class run is one word, so a run
-/// of punctuation breaks like a word of its own.
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum CharClass {
-  Whitespace,
-  Punctuation,
-  Word,
+/// The word segments of `text` as Unicode word boundaries divide it, by cluster: each
+/// one's start and end, and whether it is whitespace alone.
+fn word_segments(text: &str) -> Vec<(usize, usize, bool)> {
+  let mut start = 0;
+
+  text
+    .split_word_bounds()
+    .map(|segment| {
+      let end = start + text::count(segment);
+      let bounds = (start, end, segment.chars().all(char::is_whitespace));
+
+      start = end;
+
+      bounds
+    })
+    .collect()
 }
 
-/// The class of one cluster, by its first character: word characters are
-/// alphanumerics and `_`.
-fn char_class(cluster: &str) -> CharClass {
-  let character = cluster.chars().next().unwrap_or(' ');
+/// The caret position at the start of the word before `caret`: whitespace skipped,
+/// then one segment—a word, or a punctuation mark.
+fn word_before(value: &str, caret: usize) -> usize {
+  word_segments(value)
+    .into_iter()
+    .rev()
+    .find(|(start, _, space)| *start < caret && !space)
+    .map_or(0, |(start, ..)| start)
+}
 
-  if character.is_whitespace() {
-    CharClass::Whitespace
-  }
-  else if character.is_alphanumeric() || character == '_' {
-    CharClass::Word
-  }
+/// The caret position at the end of the word after `caret`: whitespace skipped, then
+/// one segment—a word, or a punctuation mark.
+fn word_after(value: &str, caret: usize) -> usize {
+  word_segments(value)
+    .into_iter()
+    .find(|(_, end, space)| *end > caret && !space)
+    .map_or_else(|| text::count(value), |(_, end, _)| end)
+}
+
+/// The bounds of the word segment around the cluster at `at`—a word, a whitespace run,
+/// or a punctuation mark—`at` clamped into a non-empty `text`.
+pub(crate) fn word_bounds(text: &str, at: usize) -> (usize, usize) {
+  let segments = word_segments(text);
+  let Some(last) = segments.last()
   else {
-    CharClass::Punctuation
-  }
+    return (0, 0);
+  };
+  let at = at.min(last.1 - 1);
+
+  segments
+    .into_iter()
+    .find(|(start, end, _)| (*start..*end).contains(&at))
+    .map_or((0, 0), |(start, end, _)| (start, end))
 }
 
 /// The clusters of `text`.
 fn clusters(text: &str) -> Vec<&str> {
   text::clusters(text).map(|(_, cluster)| cluster).collect()
-}
-
-/// The caret position at the start of the word before `caret`: whitespace skipped,
-/// then one same-class run.
-fn word_before(value: &str, caret: usize) -> usize {
-  let clusters = clusters(value);
-  let mut position = caret.min(clusters.len());
-
-  while position > 0 && char_class(clusters[position - 1]) == CharClass::Whitespace {
-    position -= 1;
-  }
-
-  if position > 0 {
-    let class = char_class(clusters[position - 1]);
-
-    while position > 0 && char_class(clusters[position - 1]) == class {
-      position -= 1;
-    }
-  }
-
-  position
-}
-
-/// The caret position at the end of the word after `caret`: whitespace skipped, then
-/// one same-class run.
-fn word_after(value: &str, caret: usize) -> usize {
-  let clusters = clusters(value);
-  let mut position = caret;
-
-  while position < clusters.len() && char_class(clusters[position]) == CharClass::Whitespace {
-    position += 1;
-  }
-
-  if position < clusters.len() {
-    let class = char_class(clusters[position]);
-
-    while position < clusters.len() && char_class(clusters[position]) == class {
-      position += 1;
-    }
-  }
-
-  position
-}
-
-/// The bounds of the same-class run around the cluster at `at`—a word, a whitespace
-/// gap, or a punctuation run—`at` clamped into a non-empty `text`.
-pub(crate) fn word_bounds(text: &str, at: usize) -> (usize, usize) {
-  let clusters = clusters(text);
-
-  if clusters.is_empty() {
-    return (0, 0);
-  }
-
-  let at = at.min(clusters.len() - 1);
-  let class = char_class(clusters[at]);
-  let mut from = at;
-  let mut to = at + 1;
-
-  while from > 0 && char_class(clusters[from - 1]) == class {
-    from -= 1;
-  }
-
-  while to < clusters.len() && char_class(clusters[to]) == class {
-    to += 1;
-  }
-
-  (from, to)
 }
 
 /// The bounds of the hard line around `at` in `text`: from after the previous line

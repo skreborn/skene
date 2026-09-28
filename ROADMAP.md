@@ -109,8 +109,7 @@ left half-done in a code comment.
     OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
     - Layout and the rest: a real inline formatting context, so spans are hovered and
     fire their handlers, tall inline boxes stop overlapping the lines after them, and
-    copying one stops yielding U+FFFC; wrapping by `unicode-linebreak`, and word
-    selection and motion by unicode-segmentation's word boundaries.
+    copying one stops yielding U+FFFC.
 5. **`skene-transport` keeps its contracts.** One I/O thread owns a WebSocket, fed by a
     channel, where `send` waits today on a mutex the reader holds across a 50 ms read,
     stalling the UI thread; a panicking transport thread resolves its future with an

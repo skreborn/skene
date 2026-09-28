@@ -67,6 +67,10 @@ const STEPS: &[Step] = &[
     run: clippy_wasm,
   },
   Step {
+    name: "clippy:apple",
+    run: clippy_apple,
+  },
+  Step {
     name: "doc:host",
     run: doc_host,
   },
@@ -102,6 +106,13 @@ const STEPS: &[Step] = &[
 
 /// The browser leaf's target.
 const WASM: &str = "wasm32-unknown-unknown";
+
+/// The target the code written for Apple's platforms is linted for.
+const APPLE: &str = "aarch64-apple-darwin";
+
+/// The crates with code of their own for Apple's platforms, none of which compiles C,
+/// which would need Apple's SDK.
+const APPLE_PACKAGES: &[&str] = &["skene-tui"];
 
 /// The flag that names the web's server leaf in a build.
 const SERVER_CFG: &str = r#"--cfg skene_platform="server""#;
@@ -282,6 +293,27 @@ impl Gate {
     }
   }
 
+  /// Fails unless the standard library for `target` is installed.
+  fn require_target(target: &str) -> Outcome {
+    let installed = Command::new("rustup")
+      .args(["target", "list", "--installed"])
+      .output()
+      .is_ok_and(|output| {
+        String::from_utf8_lossy(&output.stdout)
+          .lines()
+          .any(|line| line == target)
+      });
+
+    if installed {
+      Ok(())
+    }
+    else {
+      Err(format!(
+        "the {target} target is missing: `rustup target add {target}`"
+      ))
+    }
+  }
+
   /// A cargo command building for the server leaf, in a target directory of its own.
   fn server_cargo<I, S>(&self, arguments: I) -> Command
   where
@@ -458,6 +490,18 @@ fn clippy_wasm(gate: &Gate, log: &mut Log) -> Outcome {
     "-D",
     "warnings",
   ]))
+}
+
+fn clippy_apple(gate: &Gate, log: &mut Log) -> Outcome {
+  Gate::require_target(APPLE)?;
+
+  let mut command = gate.cargo(["clippy", "--all-targets", "--locked", "--target", APPLE]);
+
+  command
+    .args(packages(APPLE_PACKAGES))
+    .args(["--", "-D", "warnings"])
+    .env("CARGO_TARGET_DIR", gate.target.join("apple"));
+  log.check(command)
 }
 
 fn doc_host(gate: &Gate, log: &mut Log) -> Outcome {

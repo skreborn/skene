@@ -526,8 +526,9 @@
   manifest's dependency order and its inheriting the workspace's lints and
   `rust-version`, the house rules no compiler checks (em-dashes unspaced,
   children last, no public name in another framework's vocabulary), unused
-  dependencies, clippy and rustdoc with warnings denied on all three leaves, the three
-  test tiers, the feature powerset (so no cargo feature creeps back in) and the
+  dependencies, clippy and rustdoc with warnings denied on all three leaves, clippy on
+  the code written for Apple's platforms (the terminal's, on `aarch64-apple-darwin`),
+  the three test tiers, the feature powerset (so no cargo feature creeps back in) and the
   workspace on its declared `rust-version`. `cargo xtask gate test:browser` runs one
   step and `cargo xtask gate clippy` a group; each step logs to
   `target/gate/<step>.log`, and a failed one prints why beside the end of its log. CI

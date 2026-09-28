@@ -205,16 +205,16 @@ cargo xtask gate test:browser    # one step; a group such as `test` or `clippy` 
 ```
 
 The gate checks formatting, manifest order, the house rules, unused dependencies, clippy
-and rustdoc on every leaf, the feature powerset, the minimum Rust version, and three test
-tiers, of which the host alone proves nothing about the web: the host tier runs the
-engine, the spine and every view on the headless platform; the server tier builds the
-server leaf natively, a byte-exact render snapshot among its tests; the browser tier
-drives a real Firefox through geckodriver, the `gallery` example running axe-core over
-every built-in. Each step logs to `target/gate/<step>.log`. The gate needs the nightly
-toolchain for `rustfmt`, the toolchain the workspace's `rust-version` names, the
-`wasm32-unknown-unknown` target, `cargo-hack`, `cargo-shear`, Firefox, and a
-`wasm-bindgen-test-runner` matching the locked `wasm-bindgen`; a step lacking one fails
-naming it.
+and rustdoc on every leaf, clippy on the terminal's macOS paths, the feature powerset, the
+minimum Rust version, and three test tiers, of which the host alone proves nothing about
+the web: the host tier runs the engine, the spine and every view on the headless platform;
+the server tier builds the server leaf natively, a byte-exact render snapshot among its
+tests; the browser tier drives a real Firefox through geckodriver, the `gallery` example
+running axe-core over every built-in. Each step logs to `target/gate/<step>.log`. The gate
+needs the nightly toolchain for `rustfmt`, the toolchain the workspace's `rust-version`
+names, the `wasm32-unknown-unknown` and `aarch64-apple-darwin` targets, `cargo-hack`,
+`cargo-shear`, Firefox, and a `wasm-bindgen-test-runner` matching the locked
+`wasm-bindgen`; a step lacking one fails naming it.
 
 ## Extending
 

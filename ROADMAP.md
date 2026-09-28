@@ -102,32 +102,28 @@ left half-done in a code comment.
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
 4. **The terminal's traps.**
-    - A signal self-pipe beside the tty (`signal-hook`) restores the terminal and
-    re-raises on SIGTERM, SIGHUP, SIGINT and SIGQUIT, and sets up again and repaints on
-    continue; the panic hook restores only for the loop's thread and discards the
-    pending frame.
-    - With them, input: one `KeyEvent::shortcut()`, the key when ASCII and else the
-    letter of its physical `code`, for every built-in shortcut, which does nothing
-    under a non-Latin layout today; the mouse key as a typed shortcut matched by one
-    `KeyEvent::matches` that folds case and ignores repeat, since `Alt-M` doesn't
-    parse; a lone ESC resolved after a grace period, never early once kitty flags are
-    confirmed; the parser handling modified F3 and SS3 keys, a stray UTF-8 lead byte, a
-    modifier's release, the modifier mask 256 and `rgba:` replies, under a fuzz test
-    for no panics, bounded memory and linear time; colors re-queried on a theme change
-    and repainted on every reply.
-    - With them, frames: a hover-only change schedules a frame; undisplayed subtrees
-    run no motion, and an overlay's animations restart on open; the cursor hides during
-    a frame drawn without synchronized output; autowrap is off for the session;
-    restoring resets SGR and pops the title; no stale cell where a wide glyph straddles
-    a clip; OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
-    - With them, text entries: an editor paints its laid-out height and sizes by its
-    longest line; CR and CRLF normalize to LF; `Home`, `End` and vertical motion follow
-    `<textarea>`, wide clusters and a goal column included; the value takes the
-    typography ink and weight and the placeholder a token; read-only and disabled
-    entries refuse typing and paste; a caret at a soft wrap stays off the border.
-    - With them, layout and the rest: a real inline formatting context, so spans are
-    hovered and fire their handlers, tall inline boxes stop overlapping the lines after
-    them, and copying one stops yielding U+FFFC; nested anchored overlays placed from
+    - Input: one `KeyEvent::shortcut()`, the key when ASCII and else the letter of its
+    physical `code`, for every built-in shortcut, which does nothing under a non-Latin
+    layout today; the mouse key as a typed shortcut matched by one `KeyEvent::matches`
+    that folds case and ignores repeat, since `Alt-M` doesn't parse; a lone ESC
+    resolved after a grace period, never early once kitty flags are confirmed; the
+    parser handling modified F3 and SS3 keys, a stray UTF-8 lead byte, a modifier's
+    release, the modifier mask 256 and `rgba:` replies, under a fuzz test for no
+    panics, bounded memory and linear time; colors re-queried on a theme change and
+    repainted on every reply.
+    - Frames: a hover-only change schedules a frame; undisplayed subtrees run no
+    motion, and an overlay's animations restart on open; the cursor hides during a
+    frame drawn without synchronized output; autowrap is off for the session; restoring
+    resets SGR and pops the title; no stale cell where a wide glyph straddles a clip;
+    OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
+    - Text entries: an editor paints its laid-out height and sizes by its longest line;
+    CR and CRLF normalize to LF; `Home`, `End` and vertical motion follow `<textarea>`,
+    wide clusters and a goal column included; the value takes the typography ink and
+    weight and the placeholder a token; read-only and disabled entries refuse typing
+    and paste; a caret at a soft wrap stays off the border.
+    - Layout and the rest: a real inline formatting context, so spans are hovered and
+    fire their handlers, tall inline boxes stop overlapping the lines after them, and
+    copying one stops yielding U+FFFC; nested anchored overlays placed from
     `screen_origin`; the page keys scrolling by the client height less a row; wrapping
     by `unicode-linebreak`, and word selection and motion by unicode-segmentation's
     word boundaries; one `offers(action)` for the clipboard everywhere, so Paste works

@@ -178,8 +178,15 @@ fn serve_standard_menu() {
 /// Installs the terminal platform, builds `app`, and runs the event loop until `Ctrl-Q`.
 /// The first frame paints for a dark background at 16 colors; the terminal's replies
 /// arrive as events and upgrade the scheme, the depth and the key encoding as they
-/// land. A panic anywhere in the process restores the terminal before its message
-/// prints.
+/// land.
+///
+/// A panic on the loop's thread restores the terminal before its message prints.
+/// While the loop runs, each signal left at its default action is caught: a request
+/// to end (`SIGTERM`, `SIGHUP`, `SIGINT` or `SIGQUIT`) hands the terminal back and then
+/// ends the process as the signal would, and a second one ends it at once; a stop
+/// (`SIGTSTP`) hands the terminal back until the process continues; and every continue
+/// takes the terminal over afresh. When the loop ends, each signal is handed back as it
+/// was.
 ///
 /// # Panics
 ///

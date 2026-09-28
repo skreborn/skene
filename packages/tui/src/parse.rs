@@ -26,31 +26,32 @@ const SUB: u8 = 0x1a;
 /// The longest string sequence read; a longer one is dropped.
 const MAX_STRING: usize = 16 << 20;
 
-/// What the terminal sent: an input, or a reply to a query.
+/// What reached the loop: the terminal's input or a reply to a query, a line from the
+/// dev launcher, or a process signal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Event {
+  /// A key pressed, repeated or released.
   Key(Key),
+  /// A mouse report.
   Mouse(Mouse),
   /// A bracketed paste's text.
   Paste(String),
   /// A line the dev launcher wrote on its control pipe.
   Control(String),
-  /// An in-band resize notification (mode 2048).
+  /// The window's new size: an in-band notification (mode 2048), or the platform's.
   Resized(WindowSize),
+  /// A signal asked the process to end, by its number.
+  EndRequested(i32),
+  /// A signal asked the process to stop.
+  StopRequested,
+  /// The process continued after a stop.
+  Continued,
   /// A DECRPM report of a DEC private mode.
-  Mode {
-    mode: u16,
-    setting: ModeSetting,
-  },
+  Mode { mode: u16, setting: ModeSetting },
   /// A color scheme report (mode 2031).
-  Theme {
-    dark: bool,
-  },
+  Theme { dark: bool },
   /// A cursor position report, zero-based.
-  CursorPosition {
-    column: u16,
-    row: u16,
-  },
+  CursorPosition { column: u16, row: u16 },
   /// The kitty keyboard flags in force.
   KeyboardFlags(u8),
   /// The foreground color, an OSC 10 reply.
@@ -63,18 +64,12 @@ pub(crate) enum Event {
   Clipboard(String),
   /// The answering clipboard's reply (OSC 5522) to a read, or to a write when not
   /// `read`.
-  ClipboardAnswer {
-    read: bool,
-    status: ClipboardStatus,
-  },
+  ClipboardAnswer { read: bool, status: ClipboardStatus },
   /// The graphic rendition in force, a DECRPSS reply.
   GraphicRendition(Vec<Sgr>),
   /// The kitty graphics protocol's reply to a command on the image `id`: `OK`, or
   /// an error.
-  Graphics {
-    id: u32,
-    ok: bool,
-  },
+  Graphics { id: u32, ok: bool },
 }
 
 /// What the answering clipboard said.

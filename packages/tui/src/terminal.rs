@@ -169,6 +169,24 @@ fn write_restore(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
   )
 }
 
+/// Writes the controls that free every picture and hand the terminal back.
+fn write_hand_back(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
+  write!(out, "{}", escape::FREE_ALL)?;
+  write_restore(out)
+}
+
+/// Takes the terminal over: raw mode, the setup controls with the mouse when `mouse`,
+/// and the queries, whose reply window opens.
+fn take_over(terminal: &mut Tty, mouse: bool) -> io::Result<()> {
+  terminal.enter_raw_mode()?;
+  write_setup(terminal, mouse)?;
+  write_queries(terminal)?;
+  terminal.flush()?;
+  terminal.open_reply_window();
+
+  Ok(())
+}
+
 /// The terminal's pixel mouse reporting: the cell's size in pixels while the platform
 /// reports the window's, and whether the terminal confirmed SGR-Pixels mode is set.
 struct PixelMouse {
@@ -257,9 +275,8 @@ where
     terminal.set_control(fd);
   }
 
-  terminal.enter_raw_mode().expect("enable raw mode");
   terminal.set_panic_hook(|out| {
-    let _ = write_restore(out);
+    let _ = write_hand_back(out);
   });
 
   {
@@ -270,11 +287,7 @@ where
     }
   }
 
-  let _ = write_setup(&mut terminal, mouse);
-  let _ = write_queries(&mut terminal);
-  let _ = terminal.flush();
-
-  terminal.open_reply_window();
+  take_over(&mut terminal, mouse).expect("take the terminal over");
 
   let mut pixels = PixelMouse {
     cell: None,
@@ -309,7 +322,7 @@ where
   let mut shape = pointer_shape(None);
   let mut mouse_taken = mouse;
 
-  loop {
+  'run: loop {
     run_due_timers();
 
     // The mouse key moves the mouse between the app and the terminal; the modes and
@@ -512,6 +525,40 @@ where
             pixels.resize(&mut terminal, &size);
           }
         }
+        Event::EndRequested(_) => {
+          break 'run;
+        }
+        // A stop hands the terminal back until the process continues; any continue
+        // takes it over afresh, since whatever ran meanwhile may have changed it.
+        job @ (Event::StopRequested | Event::Continued) => {
+          if job == Event::StopRequested {
+            finish(&mut terminal);
+
+            let _ = terminal.restore_mode();
+
+            terminal.stop();
+          }
+
+          let _ = take_over(&mut terminal, mouse_taken);
+
+          pixels = PixelMouse {
+            cell: None,
+            on: false,
+          };
+
+          if mouse_taken && let Some(size) = &window {
+            pixels.resize(&mut terminal, size);
+          }
+
+          shape = pointer_shape(None);
+          placed = Placed::default();
+          last_frame = None;
+
+          with_store(|store| {
+            store.paint_dirty = true;
+            store.title_dirty = store.title.is_some();
+          });
+        }
         Event::Theme { dark } => {
           set_detected_scheme(dark);
         }
@@ -653,6 +700,7 @@ where
   }
 
   finish(&mut terminal);
+  terminal.close();
 }
 
 /// Runs every scheduled action whose reading has come.
@@ -668,10 +716,9 @@ fn run_due_timers() {
   }
 }
 
-/// Restores the terminal at the end of the run.
+/// Frees every picture and hands the terminal back.
 fn finish(terminal: &mut Tty) {
-  let _ = write!(terminal, "{}", escape::FREE_ALL);
-  let _ = write_restore(terminal);
+  let _ = write_hand_back(terminal);
   let _ = terminal.flush();
 }
 
@@ -809,8 +856,6 @@ const fn pointer_shape(cursor: Option<MouseCursor>) -> &'static str {
   }
 }
 
-/// The control setting the terminal's pointer shape to `shape` via OSC 22; a terminal
-/// without the control, or without the shape, ignores it.
 /// Writes the pointer shape the current hover resolves to when it differs from
 /// `shape`, the one last written, which follows.
 fn sync_pointer_shape(out: &mut impl Write, shape: &mut &'static str) {

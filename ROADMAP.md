@@ -109,14 +109,12 @@ left half-done in a code comment.
     channel, where `send` waits today on a mutex the reader holds across a 50 ms read,
     stalling the UI thread; a panicking transport thread resolves its future with an
     error through a drop guard; an explicit crypto provider stops a dependency that
-    enables rustls' `aws-lc-rs` from making tungstenite's TLS builder panic; the web
-    sends a header given twice to `set_header` twice, as the host does; the host lifts
-    ureq's 10 MB body limit or exposes it on `Request`; a relative URL on the host is
-    `Error::Url`; the browser socket clears its handlers and closes in `Drop`; the hand
-    URL parser in `ws/url.rs`, whose result is discarded, goes. One shared HTTP agent
-    keeps connections and TLS sessions alive, a bounded pool replaces a thread per
-    request or socket, and one TLS configuration over one trust store
-    (`rustls-platform-verifier`) serves both clients.
+    enables rustls' `aws-lc-rs` from making tungstenite's TLS builder panic; the host
+    lifts ureq's 10 MB body limit or exposes it on `Request`; a relative URL on the
+    host is `Error::Url`; the hand URL parser in `ws/url.rs`, whose result is
+    discarded, goes. One shared HTTP agent keeps connections and TLS sessions alive, a
+    bounded pool replaces a thread per request or socket, and one TLS configuration
+    over one trust store (`rustls-platform-verifier`) serves both clients.
 6. **The rest of the house rules in the gate.** All-or-none field and variant docs
     (28 types document some of their fields, about 210 short), the clippy lints worth
     turning on (`use_self`, `missing_const_for_fn`, `allow_attributes_without_reason`,

@@ -25,29 +25,41 @@ fn transport(value: &JsValue) -> Error {
   Error::Transport(message)
 }
 
-/// The browser's socket, with the listeners kept alive as long as it is.
-pub(crate) struct Link {
+/// The browser's socket with its listeners, alive as long as it is: dropped, it takes
+/// its listeners off the socket and closes it, so no event reaches a listener gone.
+struct Guarded {
   socket: web_sys::WebSocket,
-  _listeners: Vec<Closure<dyn FnMut(Event)>>,
+  listeners: Vec<Closure<dyn FnMut(Event)>>,
+}
+
+impl Drop for Guarded {
+  fn drop(&mut self) {
+    self.socket.set_onopen(None);
+    self.socket.set_onerror(None);
+    self.socket.set_onmessage(None);
+    self.socket.set_onclose(None);
+    self.listeners.clear();
+
+    let _ = self.socket.close();
+  }
+}
+
+/// The browser's socket, open.
+pub(crate) struct Link {
+  guarded: Guarded,
 }
 
 impl Link {
   pub(crate) fn send(&self, message: Message) -> Result<(), Error> {
     match message {
-      Message::Text(text) => self.socket.send_with_str(&text),
-      Message::Binary(bytes) => self.socket.send_with_u8_array(&bytes),
+      Message::Text(text) => self.guarded.socket.send_with_str(&text),
+      Message::Binary(bytes) => self.guarded.socket.send_with_u8_array(&bytes),
     }
     .map_err(|error| transport(&error))
   }
 
   pub(crate) fn close(&self) {
-    let _ = self.socket.close();
-  }
-}
-
-impl Drop for Link {
-  fn drop(&mut self) {
-    self.close();
+    let _ = self.guarded.socket.close();
   }
 }
 
@@ -105,7 +117,12 @@ pub(crate) async fn connect(url: String, receiver: Receiver) -> Result<Link, Err
     outcome: None,
     waker: None,
   }));
-  let mut listeners: Vec<Closure<dyn FnMut(Event)>> = Vec::new();
+  let mut guarded = Guarded {
+    socket,
+    listeners: Vec::new(),
+  };
+  let socket = guarded.socket.clone();
+  let listeners = &mut guarded.listeners;
 
   {
     let opening = Rc::clone(&opening);
@@ -168,8 +185,5 @@ pub(crate) async fn connect(url: String, receiver: Receiver) -> Result<Link, Err
 
   Connect(opening).await?;
 
-  Ok(Link {
-    socket,
-    _listeners: listeners,
-  })
+  Ok(Link { guarded })
 }

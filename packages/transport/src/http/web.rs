@@ -25,7 +25,7 @@ pub(crate) async fn send(request: Request) -> Result<Response, Error> {
 
   for (name, value) in request.headers() {
     headers
-      .set(name, value)
+      .append(name, value)
       .map_err(|error| transport(&error))?;
   }
 

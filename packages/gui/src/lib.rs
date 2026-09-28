@@ -628,53 +628,70 @@ where
   });
 }
 
-/// Renders requests read from stdin until it closes, one page per request to stdout,
-/// so a dev server or a generator keeps one process rendering.
+/// Renders requests read from stdin until it closes or sends one malformed, one page per
+/// request to stdout, so a dev server or a generator keeps one process rendering.
 ///
-/// A request is the path on a line, percent-encoded as a URL carries it so it holds no
-/// line break, then the client hints one `Name: value` per line, then an empty line; a
-/// response is `Content-Length: <bytes>` on a line, an empty line, and the complete
-/// page. The hints are the render's environment for that request alone, and a request
-/// without hints renders against the defaults.
+/// A request and a response are each `Content-Length: <bytes>` on a line, an empty
+/// line, and that many bytes. A request's bytes are the path on a line, percent-encoded
+/// as a URL carries it, then the client hints one `Name: value` per line; a
+/// response's are the complete page. The hints are the render's environment for that
+/// request alone, and a request without hints renders against the defaults.
 #[cfg(skene_leaf = "server")]
 pub fn serve_renders<V, F>(app: F)
 where
   F: Fn() -> V + Clone + 'static,
   V: IntoView,
 {
-  use std::io::{BufRead as _, Write as _};
+  use std::io::Write as _;
 
   let stdin = std::io::stdin();
-  let mut lines = stdin.lock().lines();
+  let mut stdin = stdin.lock();
 
-  while let Some(Ok(path)) = lines.next() {
-    let mut hints = Vec::new();
+  while let Some(request) = read_framed(&mut stdin) {
+    let (path, hints) = request.split_once('\n').unwrap_or((&request, ""));
+    let hints = hints
+      .lines()
+      .filter_map(|line| line.split_once(':'))
+      .map(|(name, value)| (name.trim(), value.trim()));
 
-    for line in lines.by_ref() {
-      let Ok(line) = line
-      else {
-        return;
-      };
+    skene_web::set_render_hints(skene_web::RenderHints::from_headers(hints));
 
-      if line.is_empty() {
-        break;
-      }
-
-      if let Some((name, value)) = line.split_once(':') {
-        hints.push((name.trim().to_owned(), value.trim().to_owned()));
-      }
-    }
-
-    skene_web::set_render_hints(skene_web::RenderHints::from_headers(
-      hints
-        .iter()
-        .map(|(name, value)| (name.as_str(), value.as_str())),
-    ));
-
-    let page = render_to_string_at(&path, app.clone()).page();
+    let page = render_to_string_at(path, app.clone()).page();
     let mut stdout = std::io::stdout().lock();
 
     let _ = write!(stdout, "Content-Length: {}\n\n{page}", page.len());
     let _ = stdout.flush();
   }
+}
+
+/// Reads one length-framed message: `Content-Length: <bytes>` on a line, an empty
+/// line, and that many bytes of UTF-8; `None` at the end of the input or for a
+/// malformed message.
+#[cfg(skene_leaf = "server")]
+fn read_framed(input: &mut impl std::io::BufRead) -> Option<String> {
+  let mut header = String::new();
+
+  if input.read_line(&mut header).ok()? == 0 {
+    return None;
+  }
+
+  let length: usize = header
+    .trim()
+    .strip_prefix("Content-Length:")?
+    .trim()
+    .parse()
+    .ok()?;
+  let mut blank = String::new();
+
+  input.read_line(&mut blank).ok()?;
+
+  if !blank.trim().is_empty() {
+    return None;
+  }
+
+  let mut message = vec![0; length];
+
+  input.read_exact(&mut message).ok()?;
+
+  String::from_utf8(message).ok()
 }

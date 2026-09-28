@@ -75,8 +75,8 @@ mod host {
     /// Attach the terminal app a `run tui` loop builds, in this terminal: runs the
     /// binary, and swaps each rebuilt one in with the state carried across.
     Attach {
-      /// The loop's port, as `run tui` prints it.
-      port: u16,
+      /// The loop's id, as `run tui` prints it.
+      id: u32,
     },
   }
 
@@ -128,8 +128,8 @@ mod host {
   }
 
   pub fn run(cli: Cli) -> Result<(), String> {
-    if let Command::Attach { port } = cli.command {
-      return attach(port);
+    if let Command::Attach { id } = cli.command {
+      return attach(id);
     }
 
     let app = App::load(&cli.dir)?;
@@ -220,14 +220,14 @@ mod host {
     pipeline::build_tui_binary(app, release).map_err(|error| format!("build failed:\n{error}"))?;
 
     let dev = Dev::default();
-    let port = spawn_state_server(dev.clone())?;
+    let id = spawn_state_server(dev.clone())?;
     let (changes, _watcher) = watch_sources(app)?;
     let binary = pipeline::tui_binary(app, release);
     let mut running = binary_digest(&binary);
 
     dev.set_binary(binary.clone(), app.dir.clone());
     println!(
-      "built; attach the app in another terminal:\n  {} attach {port}",
+      "built; attach the app in another terminal:\n  {} attach {id}",
       cli_command()
     );
 
@@ -269,20 +269,19 @@ mod host {
   /// in place, asking the launcher to spawn it.
   const SWAP_EXIT: i32 = 75;
 
-  /// Runs the binary a `run tui` loop on `port` publishes, in this terminal, as its
+  /// Runs the binary the `run tui` loop with id `id` publishes, in this terminal, as its
   /// launcher: the app hears each rebuilt binary and each notice on a control pipe,
-  /// records its state to the file named for it and becomes the next binary in place,
-  /// so the terminal, the pipe and the state carry across every swap. Ends when the
-  /// app itself exits.
+  /// records its state to an unnamed file it inherits and becomes the next binary in
+  /// place, so the terminal, the pipe and the state carry across every swap. Ends when
+  /// the app itself exits.
   #[cfg(unix)]
-  fn attach(port: u16) -> Result<(), String> {
+  fn attach(id: u32) -> Result<(), String> {
     use std::{io::Write as _, os::fd::AsRawFd as _};
 
-    let published = || {
-      fetch(port, "/skene:binary").and_then(|body| Binary::parse(&String::from_utf8_lossy(&body)))
-    };
+    let published =
+      || fetch(id, "/skene:binary").and_then(|body| Binary::parse(&String::from_utf8_lossy(&body)));
     let mut current = published().ok_or_else(|| {
-      format!("no `run tui` loop answers on port {port}; start one and attach to its port")
+      format!("no `run tui` loop answers as {id}; start one and attach to the id it prints")
     })?;
     let (reader, mut writer) =
       std::io::pipe().map_err(|error| format!("open the control pipe: {error}"))?;
@@ -292,13 +291,18 @@ mod host {
     rustix::io::fcntl_setfd(&reader, rustix::io::FdFlags::empty())
       .map_err(|error| format!("share the control pipe: {error}"))?;
 
-    let state = std::env::temp_dir().join(format!("skene-state-{}", std::process::id()));
+    let state = unnamed_file()?;
+
+    rustix::io::fcntl_setfd(&state, rustix::io::FdFlags::empty())
+      .map_err(|error| format!("share the state file: {error}"))?;
+
     let control = reader.as_raw_fd().to_string();
+    let state_fd = state.as_raw_fd().to_string();
     let spawn = |binary: &Binary| {
       std::process::Command::new(&binary.path)
         .current_dir(&binary.dir)
         .env("SKENE_DEV_CONTROL", &control)
-        .env("SKENE_DEV_STATE", &state)
+        .env("SKENE_DEV_STATE", &state_fd)
         .spawn()
         .map_err(|error| format!("{}: {error}", binary.path.display()))
     };
@@ -321,8 +325,6 @@ mod host {
         }
 
         // The user quit the app; the attachment ends with it.
-        let _ = std::fs::remove_file(&state);
-
         return Ok(());
       }
 
@@ -338,13 +340,12 @@ mod host {
         None => {
           // The loop is gone; the app runs on until it quits.
           let _ = child.wait();
-          let _ = std::fs::remove_file(&state);
 
           return Ok(());
         }
       }
 
-      if let Some(body) = fetch(port, "/skene:notice")
+      if let Some(body) = fetch(id, "/skene:notice")
         && notice.as_ref() != Some(&body)
       {
         let text = std::str::from_utf8(&body)
@@ -360,9 +361,47 @@ mod host {
     }
   }
 
+  /// A file only this process and its children reach: made where no other file is,
+  /// readable by its owner alone, and unlinked at once.
+  #[cfg(unix)]
+  fn unnamed_file() -> Result<std::fs::File, String> {
+    use std::os::unix::fs::OpenOptionsExt as _;
+
+    let dir = std::env::temp_dir();
+
+    for attempt in 0..16_u32 {
+      let path = dir.join(format!(
+        "skene-state-{}-{attempt}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+          .duration_since(std::time::UNIX_EPOCH)
+          .map_or(0, |elapsed| elapsed.subsec_nanos())
+      ));
+      let opened = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&path);
+
+      match opened {
+        Ok(file) => {
+          std::fs::remove_file(&path)
+            .map_err(|error| format!("unlink {}: {error}", path.display()))?;
+
+          return Ok(file);
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(format!("make the state file: {error}")),
+      }
+    }
+
+    Err("no free name for the state file".to_owned())
+  }
+
   /// `attach` needs the terminal layer, which exists on Unix alone.
   #[cfg(not(unix))]
-  fn attach(_port: u16) -> Result<(), String> {
+  fn attach(_id: u32) -> Result<(), String> {
     Err("`attach` runs on Unix; the terminal has no console layer yet".to_owned())
   }
 

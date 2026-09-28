@@ -138,25 +138,66 @@ pub(crate) const fn drawn_element(
   }
 }
 
+/// The schemes whose URLs always name a host.
+const SPECIAL_SCHEMES: [&str; 5] = ["ftp", "http", "https", "ws", "wss"];
+
+/// `href` as a browser reads it before parsing: the spaces and controls around it
+/// trimmed, and the tabs and newlines within it removed.
+fn as_parsed(href: &str) -> String {
+  href
+    .trim_matches(|character: char| character <= ' ')
+    .chars()
+    .filter(|character| !matches!(character, '\t' | '\n' | '\r'))
+    .collect()
+}
+
+/// The scheme `href` begins with, if any: a letter, then letters, digits, `+`, `-`
+/// and `.`, up to the first `:`.
+fn scheme(href: &str) -> Option<&str> {
+  let (scheme, _) = href.split_once(':')?;
+  let mut characters = scheme.chars();
+  let valid = characters.next()?.is_ascii_alphabetic()
+    && characters
+      .all(|character| character.is_ascii_alphanumeric() || matches!(character, '+' | '-' | '.'));
+
+  valid.then_some(scheme)
+}
+
 /// Whether following `href` would run script: a `javascript:` URL, its scheme read as
 /// a browser reads it, whatever its case, the spaces and controls around it and the
 /// tabs and newlines within it.
 pub(crate) fn runs_script(href: &str) -> bool {
-  let href: String = href
-    .trim_matches(|character: char| character <= ' ')
-    .chars()
-    .filter(|character| !matches!(character, '\t' | '\n' | '\r'))
-    .collect();
+  scheme(&as_parsed(href)).is_some_and(|scheme| scheme.eq_ignore_ascii_case("javascript"))
+}
 
-  href
-    .split_once(':')
-    .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case("javascript"))
+/// Whether following `href` leaves for another host, read as a browser reads it: a
+/// network-path reference (`//host`, either slash reversed), a URL of a scheme that
+/// always names a host (`https:`), or one whose scheme is followed by `//`.
+pub(crate) fn leaves_origin(href: &str) -> bool {
+  let href = as_parsed(href);
+  let network_path = |rest: &str| {
+    rest.get(..2).is_some_and(|start| {
+      start
+        .chars()
+        .all(|character| matches!(character, '/' | '\\'))
+    })
+  };
+
+  match scheme(&href) {
+    Some(scheme) => {
+      SPECIAL_SCHEMES
+        .iter()
+        .any(|special| scheme.eq_ignore_ascii_case(special))
+        || href[scheme.len() + 1..].starts_with("//")
+    }
+    None => network_path(&href),
+  }
 }
 
 /// The attributes of a link to `href` under `policy`: `href`, `target` and `rel`, with
 /// no `href` where following it would run script.
 pub(crate) fn link_attributes(href: &str, policy: LinkPolicy) -> Vec<(&'static str, String)> {
-  let external = href.starts_with("//") || href.contains("://");
+  let external = leaves_origin(href);
   let new_page = policy.new_page.unwrap_or(external);
   let mut rel = Vec::new();
   let mut attributes = Vec::new();
@@ -379,7 +420,39 @@ pub(crate) fn aria_role(role: Role) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-  use super::runs_script;
+  use super::{leaves_origin, runs_script};
+
+  /// A link leaves the origin by where it points, read as a browser reads it, and not
+  /// by containing `://` anywhere.
+  #[test]
+  fn a_link_leaves_the_origin_by_its_scheme() {
+    for href in [
+      "https://example.com",
+      "HTTP://example.com",
+      "https:example.com",
+      "//cdn.example.com/a.js",
+      "\\\\example.com",
+      "/\\example.com",
+      " https://example.com",
+      "ht\ttps://example.com",
+      "git+ssh://example.com/repo",
+    ] {
+      assert!(leaves_origin(href), "{href:?}");
+    }
+
+    for href in [
+      "/search?next=https://example.com",
+      "page.html",
+      "#top",
+      "?from=a://b",
+      "mailto:a@b",
+      "tel:+123",
+      "javascript:alert(1)",
+      "/",
+    ] {
+      assert!(!leaves_origin(href), "{href:?}");
+    }
+  }
 
   /// A `javascript:` URL is recognized as a browser reads its scheme.
   #[test]

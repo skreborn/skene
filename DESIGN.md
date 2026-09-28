@@ -962,16 +962,16 @@ that thread's, and starts from a clean one every time. SSG is the same binary ru
 time by `skene build web --static`; the CLI's dev server (`skene run web`, `--ssr` to
 render per request through a `--serve` worker) is where the development conveniences
 live. The terminal splits the same way: `skene run tui` keeps the build loop and its
-logs in the invoking terminal and publishes each built binary and each failure on its
-port, and `skene attach <port>` launches the app in a second terminal and forwards both
-over a pipe the app inherits.
+logs in the invoking terminal and publishes each built binary and each failure on a
+socket in a directory only its user may enter, and `skene attach <id>` launches the app
+in a second terminal and forwards both over a pipe the app inherits.
 
 **A dev reload snapshots once, at the swap, under a cooperative stop.** Nothing
 checkpoints per change and no server holds state: the terminal app hears `swap <path>`
-on its launcher's pipe, records its snapshot to the file the launcher named in
-`SKENE_DEV_STATE`, restores the terminal and becomes the new binary in place through
-`execve`, so the process, the terminal and the pipe carry over and the successor
-restores the file at boot; where the process cannot be replaced it exits with status
+on its launcher's pipe, records its snapshot to the unnamed file whose descriptor the
+launcher passed in `SKENE_DEV_STATE`, restores the terminal and becomes the new binary
+in place through `execve`, so the process, the terminal, the file and the pipe carry
+over and the successor restores the file at boot; where the process cannot be replaced it exits with status
 75 and the launcher spawns the binary. The page keeps its snapshot in the origin
 private file system when the dev server says reload, awaiting the write before it
 reloads, with session storage as the best effort on a reload the reader made, and

@@ -1,6 +1,6 @@
 //! The dev server: static files, manifest assets, live-reload over SSE, and—given a
 //! renderer—a route rendered per request through the app's server binary against the
-//! request's client hints; and the state port a terminal build loop publishes its
+//! request's client hints; and the state socket a terminal build loop publishes its
 //! binary and its notices on.
 
 use std::{
@@ -193,10 +193,66 @@ impl Dev {
   }
 }
 
-/// Fetches `path` from the state server on `port`: the body of a `200` reply, `None`
-/// for any other or for no server.
-pub fn fetch(port: u16, path: &str) -> Option<Vec<u8>> {
-  let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
+/// The directory the state sockets live in, which only this user may enter: the
+/// user's runtime directory, or one made for them in the temporary directory.
+///
+/// # Errors
+///
+/// Fails when the directory cannot be made, or one there already is not this user's
+/// alone.
+#[cfg(unix)]
+fn socket_dir() -> Result<PathBuf, String> {
+  use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _};
+
+  if let Some(runtime) = std::env::var_os("XDG_RUNTIME_DIR").filter(|dir| !dir.is_empty()) {
+    let dir = PathBuf::from(runtime).join("skene");
+
+    fs::DirBuilder::new()
+      .mode(0o700)
+      .recursive(true)
+      .create(&dir)
+      .map_err(|error| format!("make {}: {error}", dir.display()))?;
+
+    return Ok(dir);
+  }
+
+  let user = rustix::process::getuid().as_raw();
+  let dir = std::env::temp_dir().join(format!("skene-{user}"));
+
+  match fs::DirBuilder::new().mode(0o700).create(&dir) {
+    Ok(()) => {}
+    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+    Err(error) => return Err(format!("make {}: {error}", dir.display())),
+  }
+
+  let metadata =
+    fs::symlink_metadata(&dir).map_err(|error| format!("inspect {}: {error}", dir.display()))?;
+
+  if !metadata.is_dir() || metadata.uid() != user || metadata.mode() & 0o077 != 0 {
+    return Err(format!(
+      "{} is not a directory this user alone may enter",
+      dir.display()
+    ));
+  }
+
+  Ok(dir)
+}
+
+/// The socket the `run tui` loop with id `id` serves its state on.
+///
+/// # Errors
+///
+/// Fails as [`socket_dir`] does.
+#[cfg(unix)]
+fn state_socket(id: u32) -> Result<PathBuf, String> {
+  Ok(socket_dir()?.join(format!("{id}.sock")))
+}
+
+/// Fetches `path` from the state server of the `run tui` loop with id `id`: the body of
+/// a `200` reply, `None` for any other or for no server.
+#[cfg(unix)]
+pub fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
+  let mut stream = std::os::unix::net::UnixStream::connect(state_socket(id).ok()?).ok()?;
 
   stream
     .write_all(
@@ -225,16 +281,20 @@ pub fn fetch(port: u16, path: &str) -> Option<Vec<u8>> {
   Some(response[split + 4..].to_vec())
 }
 
-/// Serves the binary and the notice on an ephemeral port, for a build loop around a
-/// target with no page to serve (the terminal, native later); returns the port an
-/// `attach` reads from.
-pub fn spawn_state_server(dev: Dev) -> Result<u16, String> {
-  let listener =
-    TcpListener::bind(("127.0.0.1", 0)).map_err(|error| format!("bind the state port: {error}"))?;
-  let port = listener
-    .local_addr()
-    .map_err(|error| error.to_string())?
-    .port();
+/// Serves the binary and the notice on a socket in a directory only this user may
+/// enter, for a build loop around a target with no page to serve (the terminal, native
+/// later); returns the loop's id an `attach` names.
+///
+/// # Errors
+///
+/// Fails when the socket cannot be made.
+#[cfg(unix)]
+pub fn spawn_state_server(dev: Dev) -> Result<u32, String> {
+  let id = std::process::id();
+  let path = state_socket(id)?;
+  let _ = fs::remove_file(&path);
+  let listener = std::os::unix::net::UnixListener::bind(&path)
+    .map_err(|error| format!("bind {}: {error}", path.display()))?;
 
   thread::spawn(move || {
     for stream in listener.incoming() {
@@ -249,11 +309,22 @@ pub fn spawn_state_server(dev: Dev) -> Result<u16, String> {
     }
   });
 
-  Ok(port)
+  Ok(id)
+}
+
+/// The state server needs a Unix socket, which exists on Unix alone.
+///
+/// # Errors
+///
+/// Always.
+#[cfg(not(unix))]
+pub fn spawn_state_server(_dev: Dev) -> Result<u32, String> {
+  Err("`run tui` serves its state on a Unix socket, which this system lacks".to_owned())
 }
 
 /// Handles one request against the binary and the notice alone.
-fn handle_state_request(mut stream: TcpStream, dev: &Dev) {
+#[cfg(unix)]
+fn handle_state_request(mut stream: std::os::unix::net::UnixStream, dev: &Dev) {
   let Ok(clone) = stream.try_clone()
   else {
     return;
@@ -549,7 +620,7 @@ fn content_type(path: &Path) -> &'static str {
 }
 
 fn write_response(
-  stream: &mut TcpStream,
+  stream: &mut impl Write,
   status: &str,
   content_type: &str,
   body: &[u8],
@@ -559,7 +630,7 @@ fn write_response(
 
 /// Writes a response carrying `extra` headers beside the content ones.
 fn write_response_with(
-  stream: &mut TcpStream,
+  stream: &mut impl Write,
   status: &str,
   content_type: &str,
   extra: &[(&str, &str)],

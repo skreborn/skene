@@ -135,7 +135,7 @@ skene-cli             the `skene` command
 | `skene-simple` | `packages/simple` | `SimplePalette` (a `TokenSet`), `SimpleLook`, `SimpleVariant`, `SimpleShape`, `SimpleGlyphs` (the terminal marks), and `SimpleButton`, `SimpleCard`, `SimpleCheckbox`, `SimpleRadio`, `SimplePicker`, `SimpleSlider`, `SimpleTextField`, `SimpleTextEditor`, `SimpleTooltip`, `SimpleContextMenu`, generic over the platform; `gui` and `tui` alias them to that facade's `ActivePlatform`, each with a `prelude` an app imports beside the facade's own. |
 | `skene-macros` | `packages/macros` | `#[main]`, `#[lazy]`, `#[derive(Store)]`. |
 | `skene-transport` | `packages/transport` | The clients on the public seams alone: `http` (`Request`, `Response`, `send`; `fetch` on the web, a thread around `ureq` on every other host) and `ws` (`connect`, `send`, `receive`; the browser's `WebSocket` on the web, a thread around `tungstenite` elsewhere). |
-| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <port>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
+| `skene-cli` | `packages/cli` | `skene build web [--static]`, `skene build tui`, `skene run web [--ssr]`, `skene run tui` and `skene attach <id>`: bundling, the dev server with live reload and state kept across it in the page's own storage, the terminal build loop and the launcher that swaps each binary in place with the state carried across, static generation, `skene.toml` assets. |
 
 ## Views, controls, themes
 
@@ -172,7 +172,7 @@ cargo install wasm-bindgen-cli   # version must match the wasm-bindgen crate (se
 cargo skene --dir examples/gui/counter run web             # build, serve on :8080, live-reload
 cargo skene --dir examples/gui/router build web --static   # statically generate the routed site
 cargo skene --dir examples/tui/counter run tui             # build, rebuild on change, print the attach command
-cargo skene attach <port>                                  # run the app here, swapped on each rebuild
+cargo skene attach <id>                                    # run the app here, swapped on each rebuild
 ```
 
 Examples live under `examples/gui` and `examples/tui`, one folder per feature, the same

@@ -514,8 +514,8 @@
 - Always format with `cargo +nightly fmt`.
 - **A dev reload snapshots once, at the swap, under a cooperative stop**, and the
   bytes go from the running app to its successor directly: the terminal app hears
-  `swap` on its launcher's pipe, records to the file the launcher named and becomes
-  the new binary in place; the page records into the origin private file system on the
+  `swap` on its launcher's pipe, records to the unnamed file the launcher handed it by
+  descriptor and becomes the new binary in place; the page records into the origin private file system on the
   reload message before it reloads. Nothing checkpoints per change and no server holds
   state. State crosses runs through `Snapshot`, the framework's own trait: a
   self-describing encoding a restore coerces across (a `bool` and an integer are one

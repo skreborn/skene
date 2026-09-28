@@ -1,20 +1,24 @@
-//! Dev-loop state: restored from the file the launcher names at boot, recorded to it
-//! at a swap, and the launcher's notices over its control pipe.
+//! Dev-loop state: restored from the file the launcher hands over at boot, recorded to
+//! it at a swap, and the launcher's notices over its control pipe.
 //!
 //! The handshake pairs with the `skene` CLI's `attach`, which spawns the app: it names
-//! the state file in `SKENE_DEV_STATE` and the read end of its pipe in
-//! `SKENE_DEV_CONTROL`. The app restores the file's snapshot before mounting and
-//! removes the file; on the pipe it hears `notice <text>` (a rebuild failure, shown in a
+//! the descriptor of an unnamed state file in `SKENE_DEV_STATE` and the read end of its
+//! pipe in `SKENE_DEV_CONTROL`. The app restores the file's snapshot before mounting and
+//! empties the file; on the pipe it hears `notice <text>` (a rebuild failure, shown in a
 //! dismissable modal, `\n` standing for a line break; bare `notice` clears it) and
 //! `swap <path>` (a rebuilt binary), on which it records its snapshot to the file,
 //! restores the terminal and becomes the new binary in place, so the launcher, the
-//! terminal and the pipe carry over and no server holds any state. Where the process
-//! cannot be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the binary.
-//! Without the variables every call is a no-op.
+//! terminal, the file and the pipe carry over and no server holds any state. Where the
+//! process cannot be replaced it exits with [`SWAP_EXIT`] and the launcher spawns the
+//! binary. Without the variables, or with a state descriptor naming no regular file,
+//! every call is a no-op.
 
 use std::{
   cell::RefCell,
-  os::fd::RawFd,
+  fs::File,
+  io::{Read as _, Seek as _, SeekFrom, Write as _},
+  mem::ManuallyDrop,
+  os::fd::{FromRawFd as _, RawFd},
   path::{Path, PathBuf},
 };
 
@@ -40,22 +44,45 @@ type Caret = (usize, Option<usize>);
 /// The dev channel, present when the launcher started the app.
 struct Channel {
   notice: Signal<Option<String>>,
-  state: PathBuf,
+  state: RawFd,
 }
 
 thread_local! {
   static CHANNEL: RefCell<Option<Channel>> = const { RefCell::new(None) };
 }
 
-/// Restores the snapshot the state file holds, when the launcher named one, and
-/// returns the control pipe to listen on.
-pub(crate) fn install() -> Option<RawFd> {
-  let state = PathBuf::from(std::env::var_os("SKENE_DEV_STATE")?);
+/// The state file the launcher handed over at `fd`, borrowed so the descriptor stays
+/// open for every binary the process becomes; `None` where `fd` names no regular
+/// file.
+fn state_file(fd: RawFd) -> Option<ManuallyDrop<File>> {
+  if fd <= 2 {
+    return None;
+  }
 
-  if let Ok(bytes) = std::fs::read(&state) {
+  // SAFETY: the launcher opened `fd` for this process, and nothing closes it: the file
+  // is never dropped.
+  let file = ManuallyDrop::new(unsafe { File::from_raw_fd(fd) });
+
+  file
+    .metadata()
+    .is_ok_and(|metadata| metadata.is_file())
+    .then_some(file)
+}
+
+/// Restores the snapshot the state file holds, when the launcher handed one over,
+/// empties it, and returns the control pipe to listen on.
+pub(crate) fn install() -> Option<RawFd> {
+  let state: RawFd = std::env::var("SKENE_DEV_STATE").ok()?.parse().ok()?;
+  let mut file = state_file(state)?;
+  let mut bytes = Vec::new();
+
+  if file.seek(SeekFrom::Start(0)).is_ok()
+    && file.read_to_end(&mut bytes).is_ok()
+    && !bytes.is_empty()
+  {
     skene_reactive::restore(&bytes);
 
-    let _ = std::fs::remove_file(&state);
+    let _ = file.set_len(0);
   }
 
   CHANNEL.with(|channel| {
@@ -95,15 +122,14 @@ pub(crate) fn handle(line: &str) -> Option<PathBuf> {
 /// where the process can be replaced, else by exiting with [`SWAP_EXIT`] for the
 /// launcher to spawn it. The terminal must already be restored.
 pub(crate) fn swap(path: &Path) -> ! {
-  let state = CHANNEL.with(|channel| {
-    channel
-      .borrow()
-      .as_ref()
-      .map(|channel| channel.state.clone())
-  });
+  let state = CHANNEL.with(|channel| channel.borrow().as_ref().map(|channel| channel.state));
 
-  if let Some(state) = state {
-    let _ = std::fs::write(state, skene_reactive::snapshot());
+  if let Some(mut file) = state.and_then(state_file) {
+    let snapshot = skene_reactive::snapshot();
+    let _ = file
+      .set_len(0)
+      .and_then(|()| file.seek(SeekFrom::Start(0)))
+      .and_then(|_| file.write_all(&snapshot));
   }
 
   #[cfg(unix)]

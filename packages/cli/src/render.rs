@@ -25,8 +25,8 @@ pub const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
 /// The app's server binary, kept running as a render worker.
 ///
 /// Loading spawns the binary with `--serve`; each [`render`](Self::render) writes one
-/// request to its stdin and reads the page back, and a worker that died is spawned
-/// afresh for the next request.
+/// length-framed request to its stdin and reads the page back, and a worker that died is
+/// spawned afresh for the next request.
 pub struct Renderer {
   binary: PathBuf,
   dir: PathBuf,
@@ -61,7 +61,9 @@ impl Worker {
 
   /// Writes one request and reads its page.
   fn render(&mut self, route: &str, hints: &str) -> Result<String, String> {
-    write!(self.stdin, "{route}\n{hints}\n")
+    let request = format!("{route}\n{hints}");
+
+    write!(self.stdin, "Content-Length: {}\n\n{request}", request.len())
       .and_then(|()| self.stdin.flush())
       .map_err(|error| format!("write to the render worker: {error}"))?;
 

@@ -20,12 +20,6 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The rest of the security holes.**
-    - A link is external by its scheme prefix rather than by containing `://`.
-    - The `--serve` worker frames requests by length; until then its contract is one
-    path per line, percent-encoded as a URL carries it.
-    - The dev loop's state file, a predictable world-readable temp path written through
-    symlinks, becomes an unnamed file passed by descriptor, and its unauthenticated TCP
-    state port a Unix socket in a private directory.
     - `add_head_element` validates its tag; a safe `state_script()` replaces
     `Rendered::state()`'s raw JSON; the two inline scripts carry a nonce, so pages work
     under a strict Content Security Policy.

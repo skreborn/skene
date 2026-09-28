@@ -1653,6 +1653,9 @@ where
     next_child: 0,
   }];
 
+  // TODO: once HTML's declarative out-of-order patching (`<template for>`) is Baseline
+  // widely available, stream each deferred boundary as soon as it settles rather than in
+  // document order, behind a switch that is on by default and that an app may turn off.
   loop {
     let mut chunk = String::new();
     let pending = with_tree(|tree| {

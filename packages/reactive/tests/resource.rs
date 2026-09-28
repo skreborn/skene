@@ -9,25 +9,47 @@ use std::{
   task::{Context, Poll, Waker},
 };
 
-use skene_reactive::{Effect, LoadState, Owner, Resource, Task, set_spawner};
+use skene_reactive::{Effect, LoadState, Owner, Resource, Task, TaskGuard, set_spawner};
+
+/// A queued task, and whether its guard cancelled it.
+type Queued = (Rc<Cell<bool>>, Task);
 
 thread_local! {
-  static TASKS: RefCell<Vec<Task>> = const { RefCell::new(Vec::new()) };
+  static TASKS: RefCell<Vec<Queued>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Cancels its task: the queue drops it unpolled.
+struct Cancel(Rc<Cell<bool>>);
+
+impl Drop for Cancel {
+  fn drop(&mut self) {
+    self.0.set(true);
+  }
+}
+
+/// Queues `task` until [`pump`] polls it, guarded by a [`Cancel`].
+fn queue(task: Task) -> TaskGuard {
+  let cancelled = Rc::new(Cell::new(false));
+
+  TASKS.with(|tasks| tasks.borrow_mut().push((Rc::clone(&cancelled), task)));
+
+  Box::new(Cancel(cancelled))
 }
 
 /// Installs a queue executor: tasks wait until [`pump`] polls them.
 fn install_executor() {
-  set_spawner(|task| TASKS.with(|tasks| tasks.borrow_mut().push(task)));
+  set_spawner(queue);
 }
 
-/// Polls every queued task once, requeueing the pending ones.
+/// Polls every queued task once, requeueing the pending ones and dropping the
+/// cancelled ones unpolled.
 fn pump() {
   let tasks = TASKS.with(|tasks| std::mem::take(&mut *tasks.borrow_mut()));
   let mut context = Context::from_waker(Waker::noop());
 
-  for mut task in tasks {
-    if task.as_mut().poll(&mut context).is_pending() {
-      TASKS.with(|tasks| tasks.borrow_mut().push(task));
+  for (cancelled, mut task) in tasks {
+    if !cancelled.get() && task.as_mut().poll(&mut context).is_pending() {
+      TASKS.with(|tasks| tasks.borrow_mut().push((cancelled, task)));
     }
   }
 }
@@ -159,7 +181,8 @@ fn a_reload_runs_under_the_resources_owner() {
 
     move |task| {
       spawned_under.borrow_mut().push(Owner::current());
-      TASKS.with(|tasks| tasks.borrow_mut().push(task));
+
+      queue(task)
     }
   });
 
@@ -170,4 +193,38 @@ fn a_reload_runs_under_the_resources_owner() {
   elsewhere.enter(|| resource.reload());
 
   assert_eq!(*spawned_under.borrow(), [scope, scope]);
+}
+
+/// A reload cancels the load it overtakes: that load is dropped, never polled to its
+/// end.
+#[test]
+fn a_reload_cancels_the_load_it_overtakes() {
+  install_executor();
+
+  let scope = Owner::new();
+  let finished = Rc::new(Cell::new(0u32));
+  let resource = scope.enter(|| {
+    Resource::new({
+      let finished = Rc::clone(&finished);
+
+      move || {
+        let finished = Rc::clone(&finished);
+
+        async move {
+          After(1).await;
+          finished.set(finished.get() + 1);
+
+          1u32
+        }
+      }
+    })
+  });
+
+  resource.reload();
+  pump();
+  pump();
+
+  assert_eq!(finished.get(), 1, "only the last load ran to its end");
+  assert_eq!(resource.get(), Some(1));
+  assert_eq!(TASKS.with(|tasks| tasks.borrow().len()), 0);
 }

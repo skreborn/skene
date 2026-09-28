@@ -527,15 +527,16 @@ pub fn pump_tasks() -> bool {
   ran
 }
 
-/// Runs `future` as a task, until it finishes or the current scope is disposed.
+/// Runs `future` as a task of the current scope until it finishes, the scope goes or
+/// the returned handle cancels it; once it ends it is never polled again.
 ///
-/// Owner-bound on purpose: a task started while building a view ends with that view—or
-/// with any ancestor of it—rather than waking later to write into a tree that is gone.
-/// The future runs on the terminal thread, pumped by the event loop between events, so
-/// it may touch signals and views directly; cancellation takes effect at its next poll.
+/// A task started while building a view ends with that view, or with any ancestor of
+/// it. The future runs on the terminal thread, pumped by the event loop between events
+/// and at once when woken from another thread, so it may touch signals and views
+/// directly.
 #[inline(always)]
-pub fn spawn(future: impl Future<Output = ()> + 'static) {
-  skene_reactive::spawn(future);
+pub fn spawn(future: impl Future<Output = ()> + 'static) -> skene_reactive::TaskHandle {
+  skene_reactive::spawn(future)
 }
 
 /// The erased token definition the terminal stores per token; see

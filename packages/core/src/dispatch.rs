@@ -256,12 +256,7 @@ fn notify<P: Platform, H: ?Sized>(
 
 #[cfg(test)]
 mod tests {
-  use std::{
-    cell::RefCell,
-    future::{Future, pending},
-    pin::Pin,
-    rc::Rc,
-  };
+  use std::{cell::RefCell, rc::Rc};
 
   use skene_reactive::{Owner, provide_context, use_context};
 
@@ -278,7 +273,7 @@ mod tests {
     Prevent,
     Prevented,
     Scene,
-    scope_bound,
+    count_pending,
     testing::{Call, TestBox, TestPlatform, sink},
   };
 
@@ -551,9 +546,7 @@ mod tests {
         scene.handle_click(
           inner,
           Rc::new(move || {
-            tasks
-              .borrow_mut()
-              .push(Box::pin(scope_bound(pending())) as Pin<Box<dyn Future<Output = ()>>>);
+            tasks.borrow_mut().push(count_pending(Box::new(())));
 
             Prevent::None
           }),

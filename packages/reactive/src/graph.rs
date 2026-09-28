@@ -23,6 +23,7 @@ use crate::{
   id::{Id, Kind, next_nonce},
   link::{Link, LinkIdx, LinkList, LinkPool, NONE},
   path::{Key, Step},
+  spawn::TaskGuard,
 };
 
 /// A computation's state bits.
@@ -49,6 +50,9 @@ use flags::{CHECKING, DIRTY, MEMO, PAUSED, PENDING, QUEUED, RENDER, RUNNING};
 
 /// Context values stored on one owner.
 pub(crate) type Contexts = FxHashMap<TypeId, Rc<dyn Any>>;
+
+/// The tasks running under one owner, by id.
+pub(crate) type Tasks = FxHashMap<u64, TaskGuard>;
 
 /// The step a dependency check takes at one edge.
 pub(crate) enum CheckStep {
@@ -120,6 +124,7 @@ pub(crate) struct OwnerData {
   pub(crate) children: Option<Box<Children>>,
   pub(crate) contexts: Option<Box<Contexts>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
+  pub(crate) tasks: Option<Box<Tasks>>,
   /// The step from the parent, or from the runtime root for a detached owner.
   step: Option<Step>,
   /// The next positional owner child's ordinal.
@@ -177,6 +182,7 @@ pub(crate) struct RemovedNode {
   pub(crate) children: Option<Box<Children>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   pub(crate) contexts: Option<Box<Contexts>>,
+  pub(crate) tasks: Option<Box<Tasks>>,
   pub(crate) body: Option<Rc<dyn Computation>>,
 }
 
@@ -185,6 +191,7 @@ pub(crate) struct RunRemains {
   pub(crate) children: Option<Box<Children>>,
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
   pub(crate) contexts: Option<Box<Contexts>>,
+  pub(crate) tasks: Option<Box<Tasks>>,
 }
 
 /// One thread's reactive graph.
@@ -204,6 +211,8 @@ pub(crate) struct Graph {
   unobserved_hooks: FxHashMap<Id, Rc<dyn Fn()>>,
   /// The hooked signals that lost their last subscriber, their hooks not yet run.
   unobserved: Vec<Id>,
+  /// The next task's id.
+  next_task: u64,
   /// What a debug build remembers of the recently disposed signals.
   #[cfg(debug_assertions)]
   obituaries: Obituaries,
@@ -224,6 +233,7 @@ impl Graph {
       queue: VecDeque::new(),
       unobserved_hooks: FxHashMap::default(),
       unobserved: Vec::new(),
+      next_task: 0,
       #[cfg(debug_assertions)]
       obituaries: Obituaries::default(),
     }
@@ -641,14 +651,56 @@ impl Graph {
     data.next_child = 0;
     data.next_index = 0;
 
-    let made = data.children.is_some() || !data.cleanups.is_empty() || data.contexts.is_some();
+    let made = data.children.is_some()
+      || !data.cleanups.is_empty()
+      || data.contexts.is_some()
+      || data.tasks.is_some();
     let remains = made.then(|| RunRemains {
       children: data.children.take(),
       cleanups: std::mem::take(&mut data.cleanups),
       contexts: data.contexts.take(),
+      tasks: data.tasks.take(),
     });
 
     Some((body, remains))
+  }
+
+  /// The next task's id.
+  pub(crate) const fn next_task(&mut self) -> u64 {
+    let id = self.next_task;
+
+    self.next_task += 1;
+
+    id
+  }
+
+  /// Adds `guard`, the running task `id`, to the tasks of the owner `owner`; hands the
+  /// guard back when the owner is gone, for the caller to cancel the task by dropping
+  /// it.
+  pub(crate) fn adopt_task(&mut self, owner: Id, id: u64, guard: TaskGuard) -> Option<TaskGuard> {
+    let Some(data) = self.owner_data_mut(owner)
+    else {
+      return Some(guard);
+    };
+
+    data.tasks.get_or_insert_default().insert(id, guard);
+
+    None
+  }
+
+  /// Takes the task `id` out of the tasks of the owner `owner`, for the caller to drop
+  /// once the graph is released; the last one leaves the owner with none.
+  pub(crate) fn take_task(&mut self, owner: Id, id: u64) -> Option<TaskGuard> {
+    let tasks = self.owner_data_mut(owner)?.tasks.as_mut()?;
+    let guard = tasks.remove(&id);
+
+    if tasks.is_empty()
+      && let Some(data) = self.owner_data_mut(owner)
+    {
+      data.tasks = None;
+    }
+
+    guard
   }
 
   /// Removes a local signal, unlinking it from every subscriber.
@@ -689,6 +741,7 @@ impl Graph {
           children: record.owner.children,
           cleanups: record.owner.cleanups,
           contexts: record.owner.contexts,
+          tasks: record.owner.tasks,
           body: None,
         })
       }
@@ -703,6 +756,7 @@ impl Graph {
           children: record.owner.children,
           cleanups: record.owner.cleanups,
           contexts: record.owner.contexts,
+          tasks: record.owner.tasks,
           body: record.body,
         })
       }

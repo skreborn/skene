@@ -298,6 +298,8 @@ where
 
   let mut terminal = Tty::open().expect("open the terminal");
 
+  skene_core::executor::set_notifier(crate::tty::wake);
+
   if let Some(fd) = control {
     terminal.set_control(fd);
   }

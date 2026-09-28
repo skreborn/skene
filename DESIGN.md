@@ -571,9 +571,15 @@ internals contract:
   a text control's selection or caret, scroll offsets—through `provide`/`staged` by that
   position, so a rebuilt page resumes on the same node through the same alignment,
   keys included.
-- **Tasks go through one seam.** `set_spawner` installs the thread's executor;
-  `Resource` and `spawn` hand it scope-bound futures, so a load ends with the view that
-  asked for it on every platform, the headless one included.
+- **Tasks belong to their owners.** `set_spawner` installs the thread's executor,
+  which hands back a guard that cancels a task when dropped; `spawn` files it with the
+  current owner, so a task ends when it finishes, when its owner is disposed or runs
+  again, or through the `TaskHandle` it returns, and is never polled again once it
+  ends. A load ends with the view that asked for it on every platform, and a reload
+  cancels the load it overtakes. The executors run on `async-task`, a task queued once
+  however often it is woken; the host one tells a notifier of each wake, which the
+  terminal wires to its wake pipe, so a task woken from another thread runs at once. A
+  debug build panics on entering an owner already disposed.
 
 ## Motion
 

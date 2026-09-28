@@ -587,6 +587,12 @@ extern "C" fn catch(signal: c_int) {
     }
   }
 
+  wake();
+}
+
+/// Wakes the loop from its wait, from any thread or a signal handler; a wake already
+/// pending covers it.
+pub(crate) fn wake() {
   if !WOKEN.swap(true, Ordering::AcqRel) {
     let fd = WAKE.load(Ordering::Acquire);
 

@@ -20,11 +20,6 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The rest of the reactive engine's ownership.**
-    - Tasks: a per-owner task registry replaces the cleanup every spawn leaves on its
-    owner; an executor notifier each loop wires to its wake source (a self-pipe in the
-    terminal, a looper fd on Android, a run-loop source on Apple platforms); `async-task`
-    gives cancel handles and deduplicated wakes; entering a dead owner panics in debug;
-    `reload()` drops superseded loads.
     - Threading: the sync family (`sync.rs`, the storage parameter on every signal, the
     UI-thread designation, `parking_lot`; about 600 lines) is deleted, since no
     platform drains it, or each runtime gets an inbox that does; `Memo`, `OwnedSignal`
@@ -285,9 +280,10 @@ left half-done in a code comment.
     `.d.ts` files or name sections, precompressed, fingerprinted and preloaded, with
     one cached stylesheet shared by static pages instead of inlined into each; kitty
     images compressed (`o=z`), rows diffed by run with `CSI K`, and input resumed with
-    `memchr` instead of rescanned; one wake source for the terminal loop (the tty, the
-    control pipe, the signal pipe, the executor notifier), so it stops waking ten times
-    a second; the server's `sleep` on `futures-timer` rather than a thread per call.
+    `memchr` instead of rescanned; the dev control pipe polled beside the tty and the
+    wake pipe the signals and the executor notifier share, so the terminal loop stops
+    waking ten times a second; the server's `sleep` on `futures-timer` rather than a
+    thread per call.
 8. **The dev reload costs production nothing.** Snapshot registration happens only
     where something reads it, a dev channel present at startup or the Android leaf's
     saved state, so a production `Signal::new` stops costing 74% more than

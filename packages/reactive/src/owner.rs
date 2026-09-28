@@ -108,9 +108,21 @@ impl Owner {
   }
 
   /// Runs `operation` with this owner as the current one, restoring the previous afterwards.
+  ///
+  /// # Panics
+  ///
+  /// In a debug build, panics when this owner was disposed.
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn enter<T>(&self, operation: impl FnOnce() -> T) -> T {
     Runtime::assert_ui_thread();
+
+    #[cfg(debug_assertions)]
+    assert!(
+      with_graph(|graph| graph.owner_data(self.0).is_some()),
+      "an owner entered at {} after its disposal",
+      std::panic::Location::caller()
+    );
+
     Runtime::with_owner(self.0, operation)
   }
 

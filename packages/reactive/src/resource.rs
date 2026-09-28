@@ -7,7 +7,7 @@ use crate::{
   effect::untrack,
   owner::Owner,
   signal::{Signal, update_silently},
-  spawn::spawn,
+  spawn::{TaskHandle, spawn},
 };
 
 /// A resource's loader, boxed so it can be stored and re-run on
@@ -54,11 +54,11 @@ impl<T> Load<T> {
 ///
 /// Every load, reloads included, runs on the executor the platform installed
 /// ([`spawn`](crate::spawn)) under the owner current where the resource was created, so
-/// it ends with the view that created the resource and with nothing else. Reading
-/// tracks, so a view that reads a resource re-runs when the value arrives; a reload
-/// keeps the last value readable while the next one is in flight. The loader is
-/// retained and read untracked, so a reload never subscribes the reloading effect to
-/// what the loader reads.
+/// it ends with the view that created the resource and with nothing else, and a reload
+/// cancels the load it overtakes. Reading tracks, so a view that reads a resource
+/// re-runs when the value arrives; a reload keeps the last value readable while the
+/// next one is in flight. The loader is retained and read untracked, so a reload never
+/// subscribes the reloading effect to what the loader reads.
 ///
 /// Failure is the loaded type's business, not the resource's: load a `Result` and
 /// match on it.
@@ -66,7 +66,7 @@ impl<T> Load<T> {
 pub struct Resource<T: 'static> {
   value: Signal<Load<T>>,
   loader: Signal<Loader<T>>,
-  generation: Signal<u64>,
+  in_flight: Signal<Option<TaskHandle>>,
   owner: Owner,
 }
 
@@ -87,7 +87,7 @@ impl<T: 'static> Resource<T> {
     Self {
       value: Signal::opaque(value),
       loader: Signal::opaque(Rc::new(move || Box::pin(load()))),
-      generation: Signal::opaque(0),
+      in_flight: Signal::opaque(None),
       owner: Owner::current(),
     }
   }
@@ -128,45 +128,47 @@ impl<T: 'static> Resource<T> {
     Self::with_loader(load, Load::Loading)
   }
 
-  /// Spawns the loader into the value; a load overtaken by a later one lands nowhere.
+  /// Spawns the loader into the value, cancelling the load in flight; does nothing
+  /// once the resource's owner is gone.
   fn load(&self) {
-    let value = self.value;
-    let generation = self.generation;
-    let current = update_silently(generation.id(), |generation: &mut u64| {
-      *generation += 1;
-
-      *generation
-    });
-    let Some(current) = current
+    let Some(loader) = self.loader.try_get_untracked()
     else {
       return;
     };
-    let loader = self.loader;
+    let overtaken = update_silently(self.in_flight.id(), Option::<TaskHandle>::take).flatten();
 
-    self.owner.enter(|| {
-      let future = untrack(|| (loader.get_untracked())());
+    if let Some(overtaken) = overtaken {
+      overtaken.cancel();
+    }
+
+    let value = self.value;
+    let task = self.owner.enter(|| {
+      let future = untrack(|| loader());
 
       spawn(async move {
-        let landed = future.await;
+        value.set(Load::Ready(future.await));
+      })
+    });
 
-        if generation.try_get_untracked() == Some(current) {
-          value.set(Load::Ready(landed));
-        }
-      });
+    update_silently(self.in_flight.id(), |in_flight: &mut Option<TaskHandle>| {
+      *in_flight = Some(task);
     });
   }
 
-  /// Re-runs the loader; a value already landed stays readable, as
-  /// [`Refetching`](LoadState::Refetching), until the new one lands.
+  /// Re-runs the loader, cancelling the load in flight; a value already landed stays
+  /// readable, as [`Refetching`](LoadState::Refetching), until the new one lands. Does
+  /// nothing once the resource's owner is gone.
   pub fn reload(&self) {
-    self.value.update(|load| {
+    let live = self.value.try_update(|load| {
       *load = match std::mem::replace(load, Load::Loading) {
         Load::Loading => Load::Loading,
         Load::Ready(value) | Load::Refetching(value) => Load::Refetching(value),
       };
     });
 
-    self.load();
+    if live.is_some() {
+      self.load();
+    }
   }
 
   /// The loaded value, or `None` while nothing has landed. Tracks.

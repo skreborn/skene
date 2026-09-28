@@ -1,94 +1,128 @@
-//! The single-thread executor a host platform installs: scope-bound tasks queued on the
-//! platform's thread and polled when that thread pumps them.
+//! The single-thread executor a host platform installs: tasks queued on the platform's
+//! thread and run when that thread pumps them.
 //!
-//! [`install`] makes it the reactive engine's spawner; [`drive`] queues a future;
-//! [`pump`] polls the ready ones, from an event loop between events or from a test.
-//! Wakers may fire from any thread—the readiness queue is shared—while the futures
+//! [`install`] makes it the reactive engine's spawner; [`start`] runs a future under a
+//! cancelling handle and [`drive`] runs one detached; [`pump`] runs the woken tasks,
+//! from an event loop between events or from a test. A task may be woken from any
+//! thread—the run queue is shared, a task is queued once however often it is woken,
+//! and the notifier [`set_notifier`] installs hears of each—while the futures
 //! themselves stay on the installing thread.
 
 use std::{
-  cell::RefCell,
+  cell::{Cell, RefCell},
+  collections::VecDeque,
   future::Future,
-  pin::Pin,
   sync::{Arc, Condvar, Mutex, PoisonError},
-  task::{Context, Wake, Waker},
   time::Duration,
 };
 
+use async_task::{Runnable, Task};
 use rustc_hash::FxHashMap;
 
 /// The upper bound on pump rounds, so a task that always wakes itself cannot starve
 /// the thread.
 const MAX_ROUNDS: u32 = 1024;
 
-/// The cross-thread readiness queue: ids of tasks whose wakers fired.
+/// What a waker, on any thread, shares with the executor: the tasks woken and not yet
+/// run, and who hears of a wake.
 struct Shared {
-  ready: Mutex<Vec<u64>>,
+  queue: Mutex<VecDeque<Runnable>>,
   woken: Condvar,
-}
-
-/// The thread's tasks and their shared readiness queue.
-struct Executor {
-  tasks: FxHashMap<u64, Pin<Box<dyn Future<Output = ()>>>>,
-  shared: Arc<Shared>,
-  next: u64,
+  notifier: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
 }
 
 impl Shared {
-  /// Marks a task ready and wakes a thread waiting for one.
-  fn push(&self, id: u64) {
+  /// Queues a woken task, wakes a thread waiting for one and tells the notifier.
+  fn schedule(&self, runnable: Runnable) {
     self
-      .ready
+      .queue
       .lock()
       .unwrap_or_else(PoisonError::into_inner)
-      .push(id);
+      .push_back(runnable);
     self.woken.notify_all();
-  }
-}
 
-impl Executor {
-  fn new() -> Self {
-    Self {
-      tasks: FxHashMap::default(),
-      shared: Arc::new(Shared {
-        ready: Mutex::new(Vec::new()),
-        woken: Condvar::new(),
-      }),
-      next: 0,
+    let notifier = self
+      .notifier
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .clone();
+
+    if let Some(notify) = notifier {
+      notify();
     }
+  }
+
+  /// Takes every task woken so far.
+  fn take(&self) -> VecDeque<Runnable> {
+    std::mem::take(&mut *self.queue.lock().unwrap_or_else(PoisonError::into_inner))
   }
 }
 
 thread_local! {
-  static EXECUTOR: RefCell<Executor> = RefCell::new(Executor::new());
-}
-
-/// A task's waker: pushing its id onto the shared queue re-polls it at the next pump.
-struct TaskWaker {
-  id: u64,
-  shared: Arc<Shared>,
-}
-
-impl Wake for TaskWaker {
-  fn wake(self: Arc<Self>) {
-    self.wake_by_ref();
-  }
-
-  fn wake_by_ref(self: &Arc<Self>) {
-    self.shared.push(self.id);
-  }
-}
-
-/// Queues `future` on this thread's executor; the next [`pump`] polls it.
-pub fn drive(future: impl Future<Output = ()> + 'static) {
-  EXECUTOR.with(|executor| {
-    let mut executor = executor.borrow_mut();
-    let id = executor.next;
-
-    executor.next += 1;
-    executor.tasks.insert(id, Box::pin(future));
-    executor.shared.push(id);
+  static SHARED: Arc<Shared> = Arc::new(Shared {
+    queue: Mutex::new(VecDeque::new()),
+    woken: Condvar::new(),
+    notifier: Mutex::new(None),
   });
+  /// How many tasks are alive on this thread.
+  static ALIVE: Cell<usize> = const { Cell::new(0) };
+  /// The detached tasks, by id, so a clear can cancel them.
+  static DETACHED: RefCell<FxHashMap<u64, Task<()>>> = RefCell::new(FxHashMap::default());
+  /// The next detached task's id.
+  static NEXT_DETACHED: Cell<u64> = const { Cell::new(0) };
+}
+
+/// Counts a task alive for as long as its future lives.
+struct Alive;
+
+impl Alive {
+  fn new() -> Self {
+    ALIVE.with(|alive| alive.set(alive.get() + 1));
+
+    Self
+  }
+}
+
+impl Drop for Alive {
+  fn drop(&mut self) {
+    let _ = ALIVE.try_with(|alive| alive.set(alive.get() - 1));
+  }
+}
+
+/// Queues `future` on this thread's executor, to be run by the next [`pump`]; dropping
+/// the returned task cancels it, and its future is dropped unpolled at the pump after.
+pub fn start(future: impl Future<Output = ()> + 'static) -> Task<()> {
+  let shared = SHARED.with(Arc::clone);
+  let alive = Alive::new();
+  let (runnable, task) = async_task::spawn_local(
+    async move {
+      let _alive = alive;
+
+      future.await;
+    },
+    move |runnable| shared.schedule(runnable),
+  );
+
+  runnable.schedule();
+
+  task
+}
+
+/// Queues `future` on this thread's executor, detached: it runs until it finishes or a
+/// [`clear`] drops it.
+pub fn drive(future: impl Future<Output = ()> + 'static) {
+  let id = NEXT_DETACHED.with(|next| next.replace(next.get() + 1));
+  let task = start(async move {
+    future.await;
+
+    let finished = DETACHED.with(|detached| detached.borrow_mut().remove(&id));
+
+    if let Some(finished) = finished {
+      finished.detach();
+    }
+  });
+
+  DETACHED.with(|detached| detached.borrow_mut().insert(id, task));
 }
 
 /// Blocks until a task is woken or `timeout` passes; `true` when one is ready.
@@ -97,96 +131,76 @@ pub fn drive(future: impl Future<Output = ()> + 'static) {
 /// waker fired from another thread resumes it at once.
 #[must_use]
 pub fn wait(timeout: Duration) -> bool {
-  let shared = EXECUTOR.with(|executor| Arc::clone(&executor.borrow().shared));
-  let ready = shared.ready.lock().unwrap_or_else(PoisonError::into_inner);
-  let (ready, _) = shared
+  let shared = SHARED.with(Arc::clone);
+  let queue = shared.queue.lock().unwrap_or_else(PoisonError::into_inner);
+  let (queue, _) = shared
     .woken
-    .wait_timeout_while(ready, timeout, |ready| ready.is_empty())
+    .wait_timeout_while(queue, timeout, |queue| queue.is_empty())
     .unwrap_or_else(PoisonError::into_inner);
 
-  !ready.is_empty()
+  !queue.is_empty()
 }
 
-/// The number of tasks alive on this thread's executor, pending or ready.
+/// Installs `notify` to hear of every wake, on whatever thread it fires: an event loop
+/// wires it to its own wake source, so a task woken elsewhere runs at once.
+pub fn set_notifier(notify: impl Fn() + Send + Sync + 'static) {
+  let notify: Arc<dyn Fn() + Send + Sync> = Arc::new(notify);
+
+  SHARED.with(|shared| {
+    *shared
+      .notifier
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner) = Some(notify);
+  });
+}
+
+/// The number of tasks alive on this thread, pending or woken.
 #[must_use]
 pub fn task_count() -> usize {
-  EXECUTOR.with(|executor| executor.borrow().tasks.len())
+  ALIVE.with(Cell::get)
 }
 
-/// Polls every ready task until none remain ready; `true` when any ran.
+/// Runs every woken task until none is woken; `true` when any ran.
 #[must_use]
 pub fn pump() -> bool {
+  let shared = SHARED.with(Arc::clone);
   let mut ran = false;
 
   for _ in 0..MAX_ROUNDS {
-    let ready = EXECUTOR.with(|executor| {
-      let executor = executor.borrow();
-      let mut ready = executor
-        .shared
-        .ready
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
+    let woken = shared.take();
 
-      std::mem::take(&mut *ready)
-    });
-
-    if ready.is_empty() {
+    if woken.is_empty() {
       break;
     }
 
     ran = true;
 
-    for id in ready {
-      // Take the future out before polling: its body may re-enter `drive`/`wake`,
-      // which borrow the executor.
-      let (future, shared) = EXECUTOR.with(|executor| {
-        let mut executor = executor.borrow_mut();
-        let shared = Arc::clone(&executor.shared);
-
-        (executor.tasks.remove(&id), shared)
-      });
-
-      let Some(mut future) = future
-      else {
-        continue;
-      };
-
-      let waker = Waker::from(Arc::new(TaskWaker { id, shared }));
-      let mut context = Context::from_waker(&waker);
-
-      if future.as_mut().poll(&mut context).is_pending() {
-        EXECUTOR.with(|executor| executor.borrow_mut().tasks.insert(id, future));
-      }
+    for runnable in woken {
+      runnable.run();
     }
   }
 
   ran
 }
 
-/// Drops every task and queued wake, readying the executor for an independent mount.
+/// Drops every detached task and every woken one, readying the executor for an
+/// independent mount.
 ///
 /// A task may spawn as it drops; what it spawns is queued afresh.
 pub fn clear() {
-  let tasks = EXECUTOR.with(|executor| {
-    let mut executor = executor.borrow_mut();
+  let detached = DETACHED.with(|detached| std::mem::take(&mut *detached.borrow_mut()));
 
-    executor
-      .shared
-      .ready
-      .lock()
-      .unwrap_or_else(PoisonError::into_inner)
-      .clear();
+  drop(detached);
 
-    std::mem::take(&mut executor.tasks)
-  });
+  let woken = SHARED.with(|shared| shared.take());
 
-  drop(tasks);
+  drop(woken);
 }
 
-/// Installs this executor as the reactive engine's spawner: every spawned task is
-/// scope-bound and queued here.
+/// Installs this executor as the reactive engine's spawner: every spawned task counts
+/// toward its boundary and is queued here.
 pub fn install() {
-  skene_reactive::set_spawner(|task| drive(crate::scope_bound(task)));
+  skene_reactive::set_spawner(|task| crate::count_pending(Box::new(start(task))));
 }
 
 #[cfg(test)]

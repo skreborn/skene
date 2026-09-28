@@ -2,18 +2,26 @@
 
 use std::{cell::Cell, future::Future};
 
-use wasm_bindgen_futures::spawn_local;
+use async_task::{Runnable, Task};
 
-/// Runs `future` to completion on the browser's event loop.
-///
-/// The one executor primitive a web leaf provides: hand a `!Send` future to the event loop.
-/// Owner-bound cancellation is layered on top in the platform-independent
-/// `spawn`, so a leaf implements only this. A custom in-WASM executor, or a
-/// worker-backed multi-threaded one, would replace this single function without touching
-/// `spawn` or its callers.
+/// Queues `future` on the browser's event loop, each wake run from a microtask; dropping
+/// the returned task cancels it, and its future is dropped unpolled.
+fn start(future: impl Future<Output = ()> + 'static) -> Task<()> {
+  let (runnable, task) = async_task::spawn_local(future, |runnable: Runnable| {
+    wasm_bindgen_futures::spawn_local(async move {
+      runnable.run();
+    });
+  });
+
+  runnable.schedule();
+
+  task
+}
+
+/// Runs `future` to completion on the browser's event loop, detached.
 #[inline(always)]
 pub fn drive(future: impl Future<Output = ()> + 'static) {
-  spawn_local(future);
+  start(future).detach();
 }
 
 thread_local! {
@@ -21,12 +29,12 @@ thread_local! {
 }
 
 /// Installs this leaf's executor as the engine's task seam, once per thread: every
-/// [`skene_reactive::spawn`] then runs its future through [`drive`], bound to the
-/// spawning owner.
+/// [`skene_reactive::spawn`] then runs its future on the event loop, counted toward its
+/// boundary.
 pub fn install_executor() {
   if EXECUTOR_INSTALLED.replace(true) {
     return;
   }
 
-  skene_reactive::set_spawner(|task| drive(skene_core::scope_bound(task)));
+  skene_reactive::set_spawner(|task| skene_core::count_pending(Box::new(start(task))));
 }

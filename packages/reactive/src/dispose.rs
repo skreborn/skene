@@ -34,8 +34,8 @@ impl Id {
 
 impl RunRemains {
   /// Tears down what a computation's last run made, before it runs again, untracked:
-  /// disposes its children newest first, runs its cleanups in reverse registration
-  /// order and drops the contexts it provided.
+  /// disposes its children newest first, cancels its tasks, runs its cleanups in
+  /// reverse registration order and drops the contexts it provided.
   pub(crate) fn dispose(self) {
     Runtime::with_tracking(None, || {
       if let Some(children) = self.children {
@@ -43,6 +43,8 @@ impl RunRemains {
           child.dispose();
         }
       }
+
+      drop(self.tasks);
 
       for cleanup in self.cleanups.into_iter().rev() {
         cleanup();
@@ -78,6 +80,8 @@ fn dispose_local(id: Id) {
           child.dispose();
         }
       }
+
+      drop(removed.tasks);
 
       // After the children, so a parent's cleanup sees a fully torn-down subtree.
       // Reverse registration order, so a later callback unwinds before what it was

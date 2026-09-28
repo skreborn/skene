@@ -72,7 +72,7 @@ pub use signal::{
 pub use skene_macros::{Snapshot, Store};
 pub use slice::{Slice, SyncSlice};
 pub use snapshot::{provide, restore, snapshot, staged};
-pub use spawn::{Task, set_spawner, spawn};
+pub use spawn::{Task, TaskGuard, TaskHandle, set_spawner, spawn};
 pub use storage::{LocalStorage, SyncStorage};
 pub use store::{
   AtIndex,

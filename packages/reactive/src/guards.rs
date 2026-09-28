@@ -19,12 +19,12 @@ pub struct ReadGuard<'a, T>(ReadGuardInner<'a, T>);
 
 enum ReadGuardInner<'a, T> {
   Local {
-    _handle: Rc<TrackedRefCell<T>>,
     guard: TrackedRef<'a, T>,
+    _handle: Rc<TrackedRefCell<T>>,
   },
   Sync {
-    _handle: Arc<dyn Any + Send + Sync>,
     guard: MutexGuard<'a, T>,
+    _handle: Arc<dyn Any + Send + Sync>,
   },
 }
 
@@ -32,12 +32,13 @@ impl<'a, T> ReadGuard<'a, T> {
   pub(crate) fn local(handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow();
 
-    // SAFETY: the retained `Rc` keeps the data alive for the guard's lifetime.
+    // SAFETY: `guard` is declared before `_handle`, so it drops while the retained
+    // `Rc` still keeps the cell alive.
     let guard = unsafe { transmute::<TrackedRef<'_, T>, TrackedRef<'a, T>>(guard) };
 
     Self(ReadGuardInner::Local {
-      _handle: handle,
       guard,
+      _handle: handle,
     })
   }
 
@@ -50,12 +51,13 @@ impl<'a, T> ReadGuard<'a, T> {
       .expect("to downcast signal type")
       .lock();
 
-    // SAFETY: the retained `Arc` keeps the data alive for the guard's lifetime.
+    // SAFETY: `guard` is declared before `_handle`, so it unlocks while the retained
+    // `Arc` still keeps the mutex alive.
     let guard = unsafe { transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
 
     Self(ReadGuardInner::Sync {
-      _handle: handle,
       guard,
+      _handle: handle,
     })
   }
 }
@@ -93,7 +95,8 @@ impl<'a, T> WriteGuard<'a, T> {
   pub(crate) fn local(id: Id, handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow_mut();
 
-    // SAFETY: the retained `Rc` keeps the data alive for the guard's lifetime.
+    // SAFETY: `Drop` releases `guard` first, while the retained `Rc` still keeps the
+    // cell alive.
     let guard = unsafe { transmute::<TrackedRefMut<'_, T>, TrackedRefMut<'a, T>>(guard) };
 
     Self {
@@ -114,7 +117,8 @@ impl<'a, T> WriteGuard<'a, T> {
       .expect("to downcast signal type")
       .lock();
 
-    // SAFETY: the retained `Arc` keeps the data alive for the guard's lifetime.
+    // SAFETY: `Drop` releases `guard` first, while the retained `Arc` still keeps the
+    // mutex alive.
     let guard = unsafe { transmute::<MutexGuard<'_, T>, MutexGuard<'a, T>>(guard) };
 
     Self {

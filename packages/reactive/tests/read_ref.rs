@@ -1,4 +1,4 @@
-use skene_reactive::{Read, Signal};
+use skene_reactive::{Owner, Read, Signal};
 
 #[test]
 fn read_ref_derefs_to_inner_value() {
@@ -16,4 +16,15 @@ fn read_untracked_also_derefs() {
 
   let read = signal.read_untracked();
   assert_eq!(read.as_str(), "hello");
+}
+
+#[test]
+fn a_guard_outlives_its_disposed_signal() {
+  let owner = Owner::new();
+  let signal = owner.enter(|| Signal::new(String::from("held across disposal")));
+  let read = signal.read();
+
+  owner.dispose();
+  assert_eq!(read.as_str(), "held across disposal");
+  drop(read);
 }

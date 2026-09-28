@@ -16,10 +16,7 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **The rest of the reactive engine's ownership.** Disposal ends subscriptions and
-    never subscribers, a re-run tears down what its last run made, a run is a batch,
-    handlers run as the owner that registered them, and a cancelled task leaves its
-    boundary; what remains:
+1. **The rest of the reactive engine's ownership.**
     - Turn-based flushing: every platform flushes at the end of an event or microtask
     turn through the scheduler seam, retiring the terminal loop's fourteen `batch`
     wrappers and the build workarounds in controls and the lazy list; debug builds name
@@ -44,10 +41,7 @@ left half-done in a code comment.
     good; `reconcile` matches repeated keys in order instead of leaving ghost nodes,
     warning in debug that keys must be unique; a tooltip's hover timer dies with its
     view.
-2. **The rest of the security holes.** Transition names are CSS identifiers, the
-    server's style text holds no `</`, the terminal shows no control character raw, a
-    script link is never followed, and the dev server serves this machine alone from
-    paths inside the app; what remains:
+2. **The rest of the security holes.**
     - A link is external by its scheme prefix rather than by containing `://`.
     - The `--serve` worker frames requests by length; until then its contract is one
     path per line, percent-encoded as a URL carries it.
@@ -59,11 +53,7 @@ left half-done in a code comment.
     under a strict Content Security Policy.
     - A tab in preserved terminal text expands to the next tab stop rather than one
     space.
-3. **The web's highest-traffic defects.** Variants take the class's specificity,
-    control states anchor on kept inputs, root tokens turn dark, every served document
-    opens with its character set, viewport and language, `client_only` waits for
-    hydration, a wrapper's annotation stays with its child and reaches text, and the
-    typography in force reaches the text beneath it; what remains:
+3. **The web's highest-traffic defects.**
     - The CLI's client-rendered shell and its script injector fold into the document
     template in `skene-web`, which gains preloads and the dev script under a flag; head
     entries are owner-scoped and keyed, with a title stack, deduped once in shared
@@ -155,17 +145,15 @@ left half-done in a code comment.
     keeps connections and TLS sessions alive, a bounded pool replaces a thread per
     request or socket, and one TLS configuration over one trust store
     (`rustls-platform-verifier`) serves both clients.
-6. **The rest of the house rules in the gate.** Its `lint` step holds em-dashes
-    unspaced, children last and the public names to the vocabulary; still resting on
-    review are all-or-none field and variant docs (28 types document some of their
-    fields, about 210 short), the clippy lints worth turning on (`use_self`,
-    `missing_const_for_fn`, `allow_attributes_without_reason`,
+6. **The rest of the house rules in the gate.** All-or-none field and variant docs
+    (28 types document some of their fields, about 210 short), the clippy lints worth
+    turning on (`use_self`, `missing_const_for_fn`, `allow_attributes_without_reason`,
     `too_long_first_doc_paragraph`, one of `unreachable_pub` and `redundant_pub_crate`,
     `missing_debug_implementations`, `rustdoc::missing_crate_level_docs`), `trigger_`
     naming on the test doubles, and a `cargo public-api` snapshot so a change to the
-    surface shows in review. The workspace declares no license, so `cargo deny check licenses`
-    has nothing to hold the dependencies to. CI runs the gate on every pull request
-    and the RustSec advisories weekly; neither workflow has run yet.
+    surface shows in review. The workspace declares no license, so `cargo deny check
+    licenses` has nothing to hold the dependencies to. Neither CI workflow, the gate on
+    every pull request nor the weekly RustSec advisories, has run yet.
     - With them: the justifications written as comments above 80 of the 81 `#[expect]`s
     move into `reason = "…"`; one visibility style wins out of the pair; `Memo`,
     `Resource`, `Store` and `Selector` get the `Debug` that `Signal` has; `display`

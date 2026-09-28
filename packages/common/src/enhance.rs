@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 
 use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View, derived};
-use skene_reactive::{Get, ReadSignal};
+use skene_reactive::{Get, Memo, ReadSignal, untrack};
 
 use crate::realize::ChildBuilder;
 
@@ -14,10 +14,11 @@ use crate::realize::ChildBuilder;
 /// Only the form in force is built, and each at most once: the fallback stands where
 /// the signal never turns, and where it turns later the fallback is destroyed and the
 /// child built in its place, under a replacement owner, so state bound beneath keeps
-/// its snapshot identity. With no fallback the segment stays empty until the signal
-/// turns. Holds [`NoChild`] until [`set_child_builder`](Self::set_child_builder)
-/// supplies the child; both forms are builder closures because only one of them is
-/// built.
+/// its snapshot identity. Once built, the child stands whatever the signal does after.
+/// A form builds untracked, so a signal it reads while building never rebuilds it.
+/// With no fallback the segment stays empty until the signal turns. Holds [`NoChild`]
+/// until [`set_child_builder`](Self::set_child_builder) supplies the child; both forms
+/// are builder closures because only one of them is built.
 ///
 /// The signals the built-ins wait on are a platform's own: the GUI facade's
 /// `media::hydrated` for a render made without script, and
@@ -68,22 +69,28 @@ impl<P: Platform, C> AnyKind for Enhance<P, C> {}
 
 impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let live = self.live;
+    let signal = self.live;
+    let live = Memo::new(move |_| signal.get());
     let fallback = RefCell::new(self.fallback);
     let child = RefCell::new(Some(self.child));
 
     derived::<P>(move || {
-      let form = if live.get() {
+      // Once live, the signal is read untracked, so nothing rebuilds the child.
+      let form = if untrack(|| live.get()) {
         child.borrow_mut().take()
       }
       else {
+        let _ = live.get();
+
         fallback.borrow_mut().take()
       };
 
-      form.map_or_else(
-        || AnyView::<P>::new(|| Scene::<P>::with(|scene| scene.create_segment().0)).build(),
-        ChildBuilder::build,
-      )
+      untrack(|| {
+        form.map_or_else(
+          || AnyView::<P>::new(|| Scene::<P>::with(|scene| scene.create_segment().0)).build(),
+          ChildBuilder::build,
+        )
+      })
     })
   }
 }

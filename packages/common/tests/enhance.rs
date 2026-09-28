@@ -6,7 +6,7 @@ use std::{cell::Cell, rc::Rc};
 use skene_common::{Enhance, media};
 use skene_core::{NodeId, Scene, View};
 use skene_headless::{Headless, reset, set_hydrated, text};
-use skene_reactive::{Owner, Set, Signal};
+use skene_reactive::{Get, Owner, Set, Signal};
 
 type Text = skene_common::Text<Headless>;
 
@@ -25,7 +25,7 @@ fn shown(start: NodeId) -> String {
 }
 
 /// While the signal is false the fallback stands; once it is true the child replaces
-/// it, and neither is built twice.
+/// it and stands whatever the signal does after, and neither is built twice.
 #[test]
 fn the_fallback_stands_until_the_signal_turns() {
   reset();
@@ -67,11 +67,52 @@ fn the_fallback_stands_until_the_signal_turns() {
 
   ready.set(false);
 
-  assert!(
-    content(start).iter().all(|node| text(*node).is_none()),
-    "a form is built at most once, so the fallback does not return"
-  );
+  assert_eq!(shown(start), "live", "the child stands once built");
   assert_eq!((fallbacks.get(), children.get()), (1, 1));
+}
+
+/// A signal a form reads while it builds never rebuilds it: the fallback and the child
+/// each stand, built once, as the signal changes.
+#[test]
+fn a_signal_read_while_building_rebuilds_nothing() {
+  reset();
+
+  let ready = Signal::new(false);
+  let read = Signal::new(0);
+  let builds = Rc::new(Cell::new(0));
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Enhance::<Headless>::new(ready.read_only())
+      .set_fallback({
+        let builds = Rc::clone(&builds);
+
+        move || {
+          builds.set(builds.get() + 1);
+
+          Text::new(format!("baseline {}", read.get()))
+        }
+      })
+      .set_child_builder({
+        let builds = Rc::clone(&builds);
+
+        move || {
+          builds.set(builds.get() + 1);
+
+          Text::new(format!("live {}", read.get()))
+        }
+      })
+      .build()
+  });
+
+  read.set(1);
+
+  assert_eq!(shown(start), "baseline 0");
+
+  ready.set(true);
+  read.set(2);
+
+  assert_eq!(shown(start), "live 1");
+  assert_eq!(builds.get(), 2);
 }
 
 /// A signal true from the start never builds the fallback, and a segment with no

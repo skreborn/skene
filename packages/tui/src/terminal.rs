@@ -19,6 +19,7 @@ use std::{
 };
 
 use skene_core::{
+  ClipboardAction,
   ColorScheme,
   IntoView,
   KeyEvent,
@@ -422,17 +423,7 @@ where
     });
 
     if let Some(text) = copy {
-      if clipboard_answers {
-        let _ = escape::write_clipboard(&mut terminal, &text);
-        let _ = write!(terminal, "{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
-
-        terminal.open_reply_window();
-      }
-      else {
-        emit_copy(&mut terminal, &text);
-      }
-
-      let _ = terminal.flush();
+      write_copy(&mut terminal, &text, clipboard_answers);
     }
 
     if paste_asked {
@@ -449,8 +440,15 @@ where
       terminal.open_reply_window();
     }
 
+    // Over a remote session the system's link handler is the remote machine's, so a
+    // followed link goes to the clipboard, where copying is offered.
     if let Some(url) = open {
-      open_url(&url);
+      if !is_remote(|name| std::env::var_os(name).is_some()) {
+        open_url(&url);
+      }
+      else if with_store(|store| store.offers(ClipboardAction::Copy)) {
+        write_copy(&mut terminal, &url, clipboard_answers);
+      }
     }
 
     if quit {
@@ -848,7 +846,8 @@ fn emit_title(out: &mut impl Write, title: &str) {
   let _ = out.flush();
 }
 
-/// Opens `url` with the system handler, detached and best-effort.
+/// Opens `url` with the system handler, detached and best-effort, the handler reaped
+/// once it exits.
 fn open_url(url: &str) {
   #[cfg(target_os = "macos")]
   let command = "open";
@@ -857,18 +856,41 @@ fn open_url(url: &str) {
   #[cfg(windows)]
   let command = "explorer";
 
-  let _ = std::process::Command::new(command)
+  let child = std::process::Command::new(command)
     .arg(url)
     .stdin(std::process::Stdio::null())
     .stdout(std::process::Stdio::null())
     .stderr(std::process::Stdio::null())
     .spawn();
+
+  if let Ok(mut child) = child {
+    std::thread::spawn(move || child.wait());
+  }
 }
 
-/// Copies text to the system clipboard via OSC 52; terminals without support ignore
-/// it, and terminals gating clipboard writes ask the user.
-fn emit_copy(out: &mut impl Write, text: &str) {
-  let _ = write!(out, "{}", escape::Copy(text));
+/// Whether the process runs in a remote session, the environment `variable` names being
+/// set: over ssh.
+fn is_remote(variable: impl Fn(&str) -> bool) -> bool {
+  ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"]
+    .into_iter()
+    .any(variable)
+}
+
+/// Writes `text` to the clipboard: through the terminal's answering clipboard where it
+/// `answers`, in a reply window of its own, and else through OSC 52, which a terminal
+/// without it ignores and one gating clipboard writes asks the user about.
+fn write_copy(terminal: &mut Tty, text: &str, answers: bool) {
+  if answers {
+    let _ = escape::write_clipboard(terminal, text);
+    let _ = write!(terminal, "{}", escape::REQUEST_PRIMARY_ATTRIBUTES);
+
+    terminal.open_reply_window();
+  }
+  else {
+    let _ = write!(terminal, "{}", escape::Copy(text));
+  }
+
+  let _ = terminal.flush();
 }
 
 /// Simulates the terminal's report that its clipboard answers (mode 5522), or that
@@ -2123,6 +2145,14 @@ mod tests {
       ),
       "{out:?}"
     );
+  }
+
+  /// A session is remote where any of ssh's variables is set.
+  #[test]
+  fn ssh_makes_a_session_remote() {
+    assert!(!is_remote(|_| false));
+    assert!(is_remote(|name| name == "SSH_TTY"));
+    assert!(is_remote(|name| name == "SSH_CONNECTION"));
   }
 
   /// A theme change asks for the terminal's own colors afresh, fenced by the primary

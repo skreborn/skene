@@ -4,7 +4,7 @@
 //!
 //! Every value writes through [`Display`], so a frame is written with no allocation.
 
-use std::fmt::{self, Display};
+use std::fmt::{self, Display, Write as _};
 
 /// The string terminator, `ESC \`.
 pub(crate) const ST: &str = "\x1b\\";
@@ -187,13 +187,41 @@ impl Display for KeyboardFlags {
   }
 }
 
-/// The window title, OSC 2.
+/// The window title, OSC 2, its control characters left out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Title<'a>(pub(crate) &'a str);
 
 impl Display for Title<'_> {
   fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(out, "\x1b]2;{}{ST}", self.0)
+    out.write_str("\x1b]2;")?;
+
+    for character in self.0.chars().filter(|character| !character.is_control()) {
+      out.write_char(character)?;
+    }
+
+    write!(out, "{ST}")
+  }
+}
+
+/// A hyperlink's start, OSC 8, to `url` with every byte outside the printable ASCII the
+/// sequence allows percent-encoded; the empty URL ends a hyperlink.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Hyperlink<'a>(pub(crate) &'a str);
+
+impl Display for Hyperlink<'_> {
+  fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+    out.write_str("\x1b]8;;")?;
+
+    for byte in self.0.bytes() {
+      if (0x21..=0x7e).contains(&byte) {
+        out.write_char(char::from(byte))?;
+      }
+      else {
+        write!(out, "%{byte:02X}")?;
+      }
+    }
+
+    write!(out, "{ST}")
   }
 }
 
@@ -444,6 +472,20 @@ mod tests {
       "\x1b]52;c;Y29waWVkIHRleHQ=\x1b\\"
     );
     assert_eq!(PointerShape("text").to_string(), "\x1b]22;text\x1b\\");
+  }
+
+  /// A title and a hyperlink carry no byte that could end their sequence.
+  #[test]
+  fn strings_cannot_end_their_sequences() {
+    assert_eq!(
+      Title("a\x07b\x1b\\c\u{9c}d").to_string(),
+      "\x1b]2;ab\\cd\x1b\\"
+    );
+    assert_eq!(
+      Hyperlink("https://x.y/a b?c=é\x07").to_string(),
+      "\x1b]8;;https://x.y/a%20b?c=%C3%A9%07\x1b\\"
+    );
+    assert_eq!(Hyperlink("").to_string(), "\x1b]8;;\x1b\\");
   }
 
   /// Renditions write their codes: the base colors by their own, the palette and RGB

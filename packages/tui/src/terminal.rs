@@ -1072,14 +1072,14 @@ fn draw_row(out: &mut impl Write, buffer: &paint::Buffer, row: usize, rendition:
     // OSC 8 anchors: close the running link on any change, open the next.
     if cell.link != current.link {
       if current.link.is_some() {
-        let _ = write!(out, "\x1b]8;;\x1b\\");
+        let _ = write!(out, "{}", escape::Hyperlink(""));
       }
 
       if let Some(url) = cell
         .link
         .and_then(|index| buffer.links.get(usize::from(index)))
       {
-        let _ = write!(out, "\x1b]8;;{url}\x1b\\");
+        let _ = write!(out, "{}", escape::Hyperlink(url));
       }
     }
 

@@ -166,9 +166,24 @@ pub(crate) fn reset() {
   INTERNED.with(|interned| *interned.borrow_mut() = Interned::default());
 }
 
-/// The cells one cluster occupies: its width where the terminal clusters, else the
-/// sum of its code points' widths, as a terminal drawing each on its own advances.
+/// The character the terminal shows for `character`: a space for a tab or a carriage
+/// return, the replacement character for any other control, else `character` itself.
+pub(crate) const fn shown(character: char) -> char {
+  match character {
+    '\t' | '\r' => ' ',
+    '\0'..='\u{1f}' | '\u{7f}'..='\u{9f}' => '\u{fffd}',
+    _ => character,
+  }
+}
+
+/// The cells one cluster occupies: one for a control, which shows as one character;
+/// else its width where the terminal clusters, else the sum of its code points' widths,
+/// as a terminal drawing each on its own advances.
 pub(crate) fn width(cluster: &str) -> usize {
+  if cluster.starts_with(char::is_control) {
+    return 1;
+  }
+
   if clustering() {
     cluster.width()
   }
@@ -391,23 +406,33 @@ impl Glyph {
     }
   }
 
-  /// The glyph showing `cluster`.
+  /// The glyph showing `cluster`; a control shows as the character [`shown`] makes of
+  /// it.
   pub(crate) fn of(cluster: &str) -> Self {
     let mut characters = cluster.chars();
 
     match (characters.next(), characters.next()) {
       (None, _) => Self::SPACE,
+      (Some(character), _) if character.is_control() => Self::Char(shown(character)),
       (Some(character), None) => Self::Char(character),
       _ => Self::Cluster(INTERNED.with(|interned| interned.borrow_mut().intern(cluster))),
     }
   }
 }
 
+/// Writes the glyph as the terminal shows it, so no control character reaches the
+/// terminal.
 impl fmt::Display for Glyph {
   fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
-      Self::Char(character) => out.write_char(*character),
-      Self::Cluster(id) => INTERNED.with(|interned| out.write_str(interned.borrow().text(*id))),
+      Self::Char(character) => out.write_char(shown(*character)),
+      Self::Cluster(id) => INTERNED.with(|interned| {
+        interned
+          .borrow()
+          .text(*id)
+          .chars()
+          .try_for_each(|character| out.write_char(shown(character)))
+      }),
       Self::Continuation => Ok(()),
     }
   }
@@ -456,6 +481,25 @@ mod tests {
     assert!(set_clustering(true));
     assert_eq!(cells("\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}"), 2);
     assert!(!set_clustering(true));
+    reset();
+  }
+
+  /// A control shows as one cell whether or not the terminal clusters: a tab and a
+  /// carriage return as a space, any other as the replacement character.
+  #[test]
+  fn a_control_shows_as_one_cell() {
+    reset();
+
+    for clustering in [false, true] {
+      set_clustering(clustering);
+
+      assert_eq!(cells("a\u{1b}b\tc\r\u{7f}"), 7);
+      assert_eq!(Glyph::of("\u{1b}").to_string(), "\u{fffd}");
+      assert_eq!(Glyph::of("\t").to_string(), " ");
+      assert_eq!(Glyph::of("\r\n").to_string(), " ");
+      assert_eq!(Glyph::Char('\u{7}').to_string(), "\u{fffd}");
+    }
+
     reset();
   }
 

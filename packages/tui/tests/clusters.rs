@@ -225,3 +225,27 @@ fn the_document_selection_takes_whole_clusters() {
     assert_eq!(tui::take_copied().as_deref(), Some("本"));
   });
 }
+
+/// Text carrying control characters paints each as one visible cell, so none reaches
+/// the terminal and the layout agrees with the paint, with clustering or without.
+#[test]
+fn a_control_character_paints_as_one_visible_cell() {
+  with_platform(|| {
+    let _ = tui::mount(|| marked("a\u{1b}]2;x\u{7}b\tc").into_any().build());
+
+    for clustering in [false, true] {
+      tui::trigger_grapheme_clustering(clustering);
+
+      let text = tui::render_to_text(16, 1);
+
+      assert_eq!(
+        text, "a\u{fffd}]2;x\u{fffd}b c|\n",
+        "clustering {clustering}"
+      );
+      assert_eq!(
+        underlined(&tui::render_to_decorations(16, 1), 16, 0),
+        Some(10)
+      );
+    }
+  });
+}

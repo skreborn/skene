@@ -16,7 +16,170 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **The rest of the house rules in the gate.** Its `lint` step holds em-dashes
+1. **The rest of the reactive engine's ownership.** Disposal ends subscriptions and
+    never subscribers, a re-run tears down what its last run made, a run is a batch,
+    handlers run as the owner that registered them, and a cancelled task leaves its
+    boundary; what remains:
+    - Turn-based flushing: every platform flushes at the end of an event or microtask
+    turn through the scheduler seam, retiring the terminal loop's fourteen `batch`
+    wrappers and the build workarounds in controls and the lazy list; debug builds name
+    both sites of a disposed signal's read and warn on a write to one.
+    - Tasks: a per-owner task registry replaces the cleanup every spawn leaves on its
+    owner; an executor notifier each loop wires to its wake source (a self-pipe in the
+    terminal, a looper fd on Android, a run-loop source on Apple platforms); `async-task`
+    gives cancel handles and deduplicated wakes; entering a dead owner panics in debug;
+    `reload()` drops superseded loads.
+    - Threading: the sync family (`sync.rs`, the storage parameter on every signal, the
+    UI-thread designation, `parking_lot`; about 600 lines) is deleted, since no
+    platform drains it, or each runtime gets an inbox that does; `Memo`, `OwnedSignal`
+    and `EffectHandle` become `!Send`; the 13-bit id nonce widens.
+    - The rest of the engine: owner children in an intrusive list disposed in reverse
+    creation order, not hash order; `Selector` a render-flavored computation that
+    `is()` pulls, so a batch never answers from the old key, with an "unobserved" hook
+    dropping per-key triggers, the store trie's too; `Owner::set_parent` updating the
+    subtree's depths; an iterative pull with a cycle bit, so a long memo chain can't
+    overflow wasm's stack; `Runtime::reset()` safe inside a `batch`.
+    - Views over the engine: `Enhance` builds untracked and latches once built, so a
+    signal read while building, or its own signal reverting, no longer blanks it for
+    good; `reconcile` matches repeated keys in order instead of leaving ghost nodes,
+    warning in debug that keys must be unique; a tooltip's hover timer dies with its
+    view.
+2. **The rest of the security holes.** Transition names are CSS identifiers, the
+    server's style text holds no `</`, the terminal shows no control character raw, a
+    script link is never followed, and the dev server serves this machine alone from
+    paths inside the app; what remains:
+    - A link is external by its scheme prefix rather than by containing `://`.
+    - The `--serve` worker frames requests by length; until then its contract is one
+    path per line, percent-encoded as a URL carries it.
+    - The dev loop's state file, a predictable world-readable temp path written through
+    symlinks, becomes an unnamed file passed by descriptor, and its unauthenticated TCP
+    state port a Unix socket in a private directory.
+    - `add_head_element` validates its tag; a safe `state_script()` replaces
+    `Rendered::state()`'s raw JSON; the two inline scripts carry a nonce, so pages work
+    under a strict Content Security Policy.
+    - A tab in preserved terminal text expands to the next tab stop rather than one
+    space.
+3. **The web's highest-traffic defects.** Variants take the class's specificity,
+    control states anchor on kept inputs, root tokens turn dark, and every served
+    document opens with its character set, viewport and language; what remains:
+    - The CLI's client-rendered shell and its script injector fold into the document
+    template in `skene-web`, which gains preloads and the dev script under a flag; head
+    entries are owner-scoped and keyed, with a title stack, deduped once in shared
+    code, so a route's description and stylesheet leave with it and both leaves
+    serialize them alike.
+    - `client_only` becomes `Enhance::new(media::hydrated())`, or goes: content it
+    builds while hydrating, where the server built nothing, shifts every later
+    hydration marker.
+    - `Scene::annotate(annotation, build)` applies a wrapper's per-child properties to
+    whatever its child produced, runs, low-level sinks and segments included (carried
+    in `RunProps` for runs), so `Flexible`, `GridCell` and `Pinned` act around text on
+    the web and in headless as in the terminal; it replaces the global pending slot and
+    its five copies of the pattern, whose leftovers land on the next box built when a
+    child creates no node and vanish from `Suspense` and `ErrorBoundary` fallbacks.
+    - A run references a typography token for every inheritable property it doesn't
+    set, so the GUI `Typography`'s size, weight, line-height and letter-spacing reach
+    the browser.
+    - With them, views: the picker keeps its caption, accessible name and disabled
+    state across the hydration swap (a disabled picker becomes operable today); an
+    overlay open at build opens once connected; `Show` acts only on a visibility
+    change, and re-attaching in place is a no-op, where each re-run recaptures focus
+    and scroll, reopens tooltips, restarts animations and drops an IME composition
+    today; a modal always prevents `cancel`; behaviors skip keys while an IME composes.
+    - With them, styles and markup: assigning a class clears inline custom properties;
+    stack placement folds into each child's style, reaching through a `Theme`'s
+    `display: contents`; the control template cache keys on the control's kind and
+    compares templates on a hit, and the interner checks class names for collisions;
+    `set_scheme` stops overwriting `<html>`'s inline style; until the leaves share one
+    realization, the server keeps icon controls' `aria-label`, the hidden range input
+    carries native `min`, `max`, `step` and `value`, `indeterminate` is set as a
+    property, and a textarea keeps a leading newline.
+    - With them, painting: device loss recovers, with a CPU fallback per canvas; the
+    canvas is positioned absolutely and observes `device-pixel-content-box`, so it
+    stops sizing its own box and repaints when the pixel ratio changes.
+    - With them, streaming and loading: the streaming cursor resumes by node identity,
+    not position; streamed style deltas move into `<head>` on adoption; a title set in
+    a `Deferred` holds the shell until the head settles, or is warned about and
+    documented; the code-split loader's glue, about 50 lines of JavaScript, is owned,
+    memoizing in-flight loads, reporting failure, retrying, and stating the safety of
+    its `Rc::into_raw`/`from_raw` pair; `wasm-split-cli` is pinned with `=`.
+    - With them, server rendering: the `--serve` protocol keeps its own duplicate of
+    fd 1 and points the app's stdout at stderr; `--routes` output is marker-framed and
+    worker reads time out; `render_main` installs a stderr `tracing` subscriber for the
+    deadline report; client hints parse as structured fields (`sfv`), since Chromium
+    quotes them; `app-server --help` prints help; `view_transitions::enable()` holds
+    across renders.
+    - With them, the CLI's builds: artifact paths from cargo's JSON messages
+    (`cargo_metadata`), so a custom target directory and `.exe` work; `--target`
+    always, the platform cfg passed through `--config target.<triple>.rustflags` so it
+    never reaches build scripts or proc macros; client-rendered `skene build web`
+    output that deploys, importing `/{stem}.js` and copying its assets; assets from the
+    app's resolve graph over normal dependencies, not from every workspace package; a
+    history fallback in the client-rendered dev server; `wasm-bindgen-cli-support`
+    pinned in place of an external CLI; `--path` without `--static` an error; a hint
+    filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
+4. **The terminal's traps.**
+    - Replies are read only inside query windows fenced by DA1, and a string ends at
+    any ESC not followed by `\`, its length capped: in the legacy encoding Alt+Shift+P
+    (and Alt+], Alt+_, Alt+^, Alt+Shift+X) opens a DCS that swallows every later key,
+    `Ctrl-Q` included.
+    - Under the kitty protocol flag 16 is requested and the text field inserted
+    whatever the modifiers, so AltGr and macOS Option characters arrive.
+    - One `ModeSetting::enabled()` reads every DECRPM reply as set or permanently set;
+    WezTerm's "permanently set" grapheme clustering reads as off today, misplacing
+    everything after a ZWJ sequence.
+    - Inertness comes from the topmost modal, not the topmost overlay, and scrollbar
+    presses hit-test through the modal-filtered path, so the page beneath a modal stays
+    inert while a tooltip or a picker list is open and under a press on its scrollbar.
+    - Navigation, type-ahead and tab stops skip disabled members, and a disabled
+    control lets keys through and suppresses only activation, where a disabled Cut in
+    the standard menu, or a picker's disabled placeholder, traps the keyboard today;
+    disabling the focused control moves focus to the next stop, as browsers do; a radio
+    group's tab stop is its chosen member when enabled, else its first enabled one; Tab
+    commits in the picker alone, not in a standalone listbox.
+    - A signal self-pipe beside the tty (`signal-hook`) restores the terminal and
+    re-raises on SIGTERM, SIGHUP, SIGINT and SIGQUIT, and sets up again and repaints on
+    continue; the panic hook restores only for the loop's thread and discards the
+    pending frame.
+    - With them, input: one `KeyEvent::shortcut()`, the key when ASCII and else the
+    letter of its physical `code`, for every built-in shortcut, which does nothing
+    under a non-Latin layout today; the mouse key as a typed shortcut matched by one
+    `KeyEvent::matches` that folds case and ignores repeat, since `Alt-M` doesn't
+    parse; a lone ESC resolved after a grace period, never early once kitty flags are
+    confirmed; the parser handling modified F3 and SS3 keys, a stray UTF-8 lead byte, a
+    modifier's release, the modifier mask 256 and `rgba:` replies, under a fuzz test
+    for no panics, bounded memory and linear time; colors re-queried on a theme change
+    and repainted on every reply.
+    - With them, frames: a hover-only change schedules a frame; undisplayed subtrees
+    run no motion, and an overlay's animations restart on open; the cursor hides during
+    a frame drawn without synchronized output; autowrap is off for the session;
+    restoring resets SGR and pops the title; no stale cell where a wide glyph straddles
+    a clip; OSC 8 links diffed by identity; `next_timer_due` safe on a huge delay.
+    - With them, text entries: an editor paints its laid-out height and sizes by its
+    longest line; CR and CRLF normalize to LF; `Home`, `End` and vertical motion follow
+    `<textarea>`, wide clusters and a goal column included; the value takes the
+    typography ink and weight and the placeholder a token; read-only and disabled
+    entries refuse typing and paste; a caret at a soft wrap stays off the border.
+    - With them, layout and the rest: a real inline formatting context, so spans are
+    hovered and fire their handlers, tall inline boxes stop overlapping the lines after
+    them, and copying one stops yielding U+FFFC; nested anchored overlays placed from
+    `screen_origin`; the page keys scrolling by the client height less a row; wrapping
+    by `unicode-linebreak`, and word selection and motion by unicode-segmentation's
+    word boundaries; one `offers(action)` for the clipboard everywhere, so Paste works
+    under the answering clipboard; a link opener that reaps its child and, over ssh,
+    copies the URL instead.
+5. **`skene-transport` keeps its contracts.** One I/O thread owns a WebSocket, fed by a
+    channel, where `send` waits today on a mutex the reader holds across a 50 ms read,
+    stalling the UI thread; a panicking transport thread resolves its future with an
+    error through a drop guard; an explicit crypto provider stops a dependency that
+    enables rustls' `aws-lc-rs` from making tungstenite's TLS builder panic; the web
+    sends a header given twice to `set_header` twice, as the host does; the host lifts
+    ureq's 10 MB body limit or exposes it on `Request`; a relative URL on the host is
+    `Error::Url`; the browser socket clears its handlers and closes in `Drop`; the hand
+    URL parser in `ws/url.rs`, whose result is discarded, goes. One shared HTTP agent
+    keeps connections and TLS sessions alive, a bounded pool replaces a thread per
+    request or socket, and one TLS configuration over one trust store
+    (`rustls-platform-verifier`) serves both clients.
+6. **The rest of the house rules in the gate.** Its `lint` step holds em-dashes
     unspaced, children last and the public names to the vocabulary; still resting on
     review are all-or-none field and variant docs (28 types document some of their
     fields, about 210 short), the clippy lints worth turning on (`use_self`,
@@ -27,70 +190,622 @@ left half-done in a code comment.
     surface shows in review. The workspace declares no license, so `cargo deny check licenses`
     has nothing to hold the dependencies to. CI runs the gate on every pull request
     and the RustSec advisories weekly; neither workflow has run yet.
-2. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
+    - With them: the justifications written as comments above 80 of the 81 `#[expect]`s
+    move into `reason = "…"`; one visibility style wins out of the pair; `Memo`,
+    `Resource`, `Store` and `Selector` get the `Debug` that `Signal` has; `display`
+    joins the banned words once `RunDisplay` is renamed, checked over the
+    `cargo public-api` output.
+    - Tests that cannot flake or pass vacuously: no wall-clock assertion in
+    `reactive/tests/store.rs`; no WebSocket test riding the reader's mutex; a
+    server-tier deadline test (`render_deadline_cuts_off_unsettled_work`) whose load
+    runs on the server, which `Resource::client` never does; the `compile_fail`
+    doctests in `expr.rs` and `leaf.rs` failing for the type rule they document, marked
+    `compile_fail,E0277`.
+    - `#[main]` emits its wasm `main` under `not(test)`, so apps' lib tests link on
+    wasm32 and the gate runs them; the host tier runs through nextest, doctests beside
+    it.
+7. **One owner for style and interaction semantics.** The web compiler and core's
+    `Resolver` implement one meaning twice, and the terminal, headless and the web each
+    implement focus, press, hover and overlays; each mechanism gets one owner, and the
+    browser is the oracle.
+    - Parity harness: the browser tier resolves a matrix of property, leaf kind,
+    condition and token kind with the `Resolver` and compares it with
+    `getComputedStyle`, the seam where every divergence between the web and the
+    terminal sits.
+    - Specificity flat by construction: every state inside `:where()`, the reset in
+    `@layer skene.reset` and compiled rules in `@layer skene.style` so app CSS always
+    wins (the reset's `label[data-skene-control]` rule outranks `Pinned` today), and a
+    compiler test that no variant rule exceeds class specificity.
+    - Tokens: a length kind registered as `<length>`, one token kind serving padding,
+    spacing and width, where the web needs a number for some and a dimension for others
+    today; `TokenRef<T: Tokenable>`; a debug panic when one name is defined with two
+    kinds; lexical resolution cached per scope, a definition's nested tokens, `em` and
+    container conditions resolving where it is declared, as CSS does, with per-scope
+    invalidation in place of the global generation.
+    - One motion runner in core with a property table (continuous or discrete, and a
+    unit class) for the terminal, headless and native: easing per keyframe interval,
+    discrete properties that never tween, premultiplied color mixing, and one
+    reduced-motion rest frame, the final one, where the web shows the base style today.
+    - CSS semantics in core: `clamp` as CSS computes it; no division of a number by a
+    length; a `StaticLeaf::map` that can't change an expression's type; the last of
+    repeated keyframe offsets; a powerless hue for achromatic colors; `Color` taking
+    the `color` crate's CSS semantics in a few lines of its own.
+    - One `Environment` (viewport, scheme, reduced motion, reduced transparency, high
+    contrast, pointer capability, insets) in place of three spellings, so
+    `HighContrast` and `ReducedTransparency` answer on every platform and in tests; one
+    `Timers` type in core, popping the earliest due entry, for headless and the
+    terminal.
+    - Runs and boxes: a group redefines every token it sets, and a link group its
+    `INK`, so the web and the terminal inherit alike; a group run's color keeps its
+    state and compound media variants, and every variant slot registers; `Border`
+    becomes a width `Inset` and a plain color, making per-edge borders expressible and
+    the terminal's border-ink path unnecessary; taffy's per-axis overflow, per-edge
+    borders, `repeat(auto-fill)` as a Compose-named adaptive grid, and named lines and
+    areas surface.
+    - Interaction: one model in core over the scene for every platform that draws its
+    own controls (hover crossing, focus with the focus-visible rule, pressed state and
+    pointer capture, tab order with modal containment, an overlay stack in open order
+    with top-layer rules, light dismiss, focus fixup when the focused node leaves the
+    order), replacing the terminal's own, headless's divergent copy and the browser's
+    implicit one. With it `Pressed` matches a non-focusable box, as `:active` does;
+    focus notifications reach ancestors with focus-within semantics, and a tooltip
+    describes the focus holder; a tooltip opens at once on visible focus alone; an
+    observed click stops at the first node carrying acting handlers, as the terminal
+    and headless stop; the dispatch path is fixed before any handler runs; the web
+    gains pointer capture and `touch-action: none` on dragging controls.
+    - Typed events: keys from `keyboard-types` in place of strings and the partial US
+    `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
+    shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before
+    default scrolling; double-click; drag and drop; click events carrying their
+    modifiers, which `Link` takes from the last press today; `composing` on key events;
+    actions and keymaps, so menu shortcuts act; an `EventKinds` bitset, since a
+    seventeenth `EventKind` overflows both platforms' `u16`; a gesture arena before
+    touch lands, its exception to "a view that handles an interaction owns it" written
+    down.
+    - Controls: one `Controlled<T>` reconciles the platform with the signal after every
+    report, so "the bound signal is the truth" holds on every platform; one
+    `Collection<Policy>` behavior replaces the roving, listbox and menu conventions and
+    skips disabled members in one place; an open role vocabulary on AccessKit's schema,
+    with a native-element hint, replaces the closed `Role`, `AccessProp` and
+    `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
+    become styling targets or go, with `ControlHandle::roster` and the drawn picker's
+    unused listbox closures. The slider maps the pointer through its track and thumb
+    extents, slides on the primary button alone and normalizes its range, where crossed
+    or NaN bounds panic in `f32::clamp`; Space acts once, on key-up; `DescribedBy`,
+    `LabelledBy` and `Controls` fold into lists instead of overwriting one another;
+    captions lay out beside the control's box; a tooltip stays open over its bubble
+    (WCAG 1.4.13); `Popup` derives its role from its kind; the scriptless `<select>`
+    marks disabled options; Simple gains a disabled look, `set_accessible_name` for
+    icon-only buttons, unchecked marks hidden by state rather than painted in the
+    surface color, and per-unit radii.
+    - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
+    terminal and headless stop mirroring parents, children, tab order and
+    `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the
+    scene alone, platforms receiving the next real sibling and server output keeping
+    comment pairs only where streaming needs a marker; segments are dispatch targets,
+    so a `Tooltip` or `ContextMenu` around `derived`, `Show` or `Enhance` works;
+    `Anchor`, `FocusHandle` and `SizeHandle` merge into one Copy node handle backed by
+    the arena, and `Router` turns Copy too; one segment type replaces the five copies
+    of its skeleton, and one `Handler` enum indexed by `EventKind` the three handler
+    tables and 17 `Scene::handle_*` methods; `HasChild` (one slot, which `set_child`
+    replaces) and `HasChildren` (segments, which `add_child` appends) split by type,
+    `Container` implementing the first alone, and property setters live only on the
+    `NoChild` state, making children-last a type error for every wrapper view; `Show`
+    builds lazily and detached subtrees pause through `EffectHandle::pause`, catching
+    up on reattach.
+    - `Platform` hygiene: associated functions in place of `&self` on a zero-sized
+    type; `Sink: Copy + Eq + Hash`; `watch_media`'s behavior out of the default body;
+    `observe_size` returning a handle that stops observing; `bind_node`,
+    `create_anchor`, `listen` and a token set's `define` mirrored after the scene's
+    borrow is released; liveness checked before `link` and `attach` mutate; a slot
+    retired once its generation is exhausted, so a stale id never resolves to a live
+    node.
+    - The web's realization: `Platform for Web` is written once over a small sink trait
+    that the DOM and the string tree implement, the browser layering adoption and
+    events on top, so the two leaves cannot drift; hydration converges, removing
+    unadopted nodes, setting classes wholesale and clearing the adoption queues, and
+    the server tier writes real pages that the browser tier hydrates with zero
+    mismatches, where the browser tests fake the served markup today; structural
+    hydration keys per scope replace the one global counter, so async rebuilds and
+    nested lazy content keep their markers and their server markup; where
+    `appearance: base-select` is supported, the picker is a styled native `<select>`
+    and the hydration swap goes, the drawn face remaining elsewhere.
+8. **Tests that exercise what users see.** Headless becomes the GUI's real stand-in,
+    and every tier asserts through roles, text and pixels.
+    - The terminal's retained runtime (the taffy store, hit testing, focus, capture,
+    wheel latching, field editing, selection, motion) is extracted into a
+    medium-generic kit; headless lays out through it and renders pixel snapshots, and
+    it is the native family's first prerequisite.
+    - Headless as the medium: `StyleExt = GuiExt`, since corner radius and type metrics
+    compile to nothing on the host and `em` is fixed at 16; focus and blur handlers,
+    light dismiss, the text-entry focus-visible rule and `Pressed` through core's
+    interaction model; accessible names in the ARIA order for every named node;
+    `Resource::new` installing the executor on the host, as `spawn` does.
+    - `find_by_role(role, name)`, `find_by_text` and a user-event layer on headless and
+    the terminal; a host-tier check that every control is named; terminal snapshot
+    files with colors, and browser screenshot goldens through the browser tier's
+    geckodriver session; `insta`, `trybuild` compile-fail tests for the derives and the
+    static layout constraints, and `proptest` over the snapshot decoder and the
+    terminal parser.
+    - A `Driver` trait (press, type, focus, resize, advance) implemented by headless,
+    the terminal and the browser tier runs one behavior suite everywhere, so parity
+    holds by construction; an AccessKit tree built from the scene's merged reports
+    serves headless assertions.
+    - A terminal `Device` trait (bytes in and out, size, wake), implemented by the tty
+    and a pty harness, runs the real loop end to end under test; the Windows console,
+    an SSH session and xterm.js are further implementations.
+    - The terminal's 40-odd `trigger_*`, `take_*` and `render_to_*` seams move to
+    `skene_tui::testing`, parallel to `skene_gui::headless`, under one naming rule for
+    both.
+    - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
+    `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
+9. **The quadratic hot paths.**
+    - Roster members sit in a map with one shared ordered memo per group, and no leave
+    notifications run while the group's owner disposes: a 1,000-option listbox takes
+    1.09 s to build and about five minutes to unmount today.
+    - `keyed_by` reads through a key-to-index map rebuilt on the vector's version
+    instead of two linear scans, and the store gains `push`, `insert`, `remove` and a
+    keyed `reconcile(value)`, since one push re-runs every row reader.
+    - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
+    (per-record dirty bits, restyling only the dirty and moving set, per-scope token
+    and per-container query invalidation, `em` from the node's own font size),
+    rectangles recompute after layout or scroll alone and paint culls outside the
+    damaged rows, where an unchanged frame costs 55 ms at 16k rows; selection spans
+    compute once per frame; wrapped lines cache per text generation and width, clusters
+    re-segment around an edit, and undo stores range diffs.
+    - Tree edits find `before` by a reverse search, remove by position and batch
+    clears, on every platform; reversing a 32k-item `reconcile` takes 524 ms today.
+    - The scene says what happens to a child: move (one `insertBefore` on the web,
+    `moveBefore` where available, keeping focus and animations), hide (reversible, and
+    the only case that saves state), remove (capturing nothing), a no-op for
+    re-attaching in place, and each changed parent's real children in one call at the
+    end of a flush, the batch shape Android needs; the web captures focus and scroll
+    over every detached subtree today, a forced layout per cleared row.
+    - Token caches take per-scope epochs, a cached nearest defining node, interned
+    names and skipped equal redefinitions, so a palette change costs the number of
+    tokens beyond the web too.
+    - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
+    iterative pull and alien-signals' propagation techniques, estimated to halve a read
+    and a write; a lazy first memo run; `reconcile` as a thin generic shim over a
+    non-generic core; forced inlining off generic and allocating functions; xxh3-128 in
+    one hash module for the four FNV-1a copies; variants in a thin vector
+    (`Value<Color>` from 112 to about 48 bytes, a box style from 3.5 to about 1.4 KB),
+    then presence bitsets, and the scene record's annotation boxed; the lazy list
+    reading a data source (a count and the item at an index) through a Fenwick tree,
+    and evicting measured extents; one constructable stylesheet with deferred
+    collection and a set of adopted names; release web output through wasm-opt, without
+    `.d.ts` files or name sections, precompressed, fingerprinted and preloaded, with
+    one cached stylesheet shared by static pages instead of inlined into each; kitty
+    images compressed (`o=z`), rows diffed by run with `CSI K`, and input resumed with
+    `memchr` instead of rescanned; one wake source for the terminal loop (the tty, the
+    control pipe, the signal pipe, the executor notifier), so it stops waking ten times
+    a second; the server's `sleep` on `futures-timer` rather than a thread per call.
+10. **The dev reload costs production nothing.** Snapshot registration happens only
+    where something reads it, a dev channel present at startup or the Android leaf's
+    saved state, so a production `Signal::new` stops costing 74% more than
+    `Signal::opaque`; meanwhile a function pointer replaces the boxed serializer. The
+    saved tier is no second API: the Android leaf writes this snapshot (the native
+    family), and the web and the desktop keep none beyond the dev reload.
+    - Identity: typed owner steps aligned per parent, so a `Show` inserted before a
+    component stops resetting everything after it; keyed roots for detached owners and `root_owner`; a
+    positional scope per keyed list; grouping by live owner in place of the lossy
+    dedup; a tagged match leaving the untagged cursor alone; node positions counted
+    apart from signal positions; in debug, call-site hints aligned first and every
+    restore decision logged; the bookkeeping in a side table off the owner records.
+    - Encoding: a header (magic, format, app and build id); `Some` tagged, the bare
+    form still read; a `Duration::restore` that never panics; `#[snapshot(skip)]`
+    restoring `Default` without requiring `Snapshot`; the derive checking key
+    collisions and naming `Option`, `Some` and `None` fully qualified; a bridge crate
+    that snapshots a foreign type through serde instead of forcing it `opaque`; the
+    picker's `open` `opaque`, like every overlay's.
+    - One serialization for state crossing a boundary: hydration carries through
+    `Snapshot` and serde_json leaves the web leaf, or `DESIGN.md` states that network
+    data is serde's.
+    - Restoration in core: focus, selection with its direction, and scroll restore by
+    snapshot position through platform methods, testable in headless and shared by the
+    web and the terminal.
+    - The terminal's swap: the launcher owns the state file, keeps it on an abnormal
+    exit and respawns on the next build, so a startup panic after an edit keeps the
+    state; descriptors are close-on-exec except across the swap, and the dev variables
+    are unset for children; the app snapshots before restoring the terminal and stages
+    before install; a second `swap` in one read coalesces; each generation's binary is
+    kept for a rollback with its state.
+    - The web: `skene run web --ssr` pages get the dev script, and a staged snapshot
+    boots a client render instead of a hydration; storage is keyed per app and tab; the
+    `pagehide` session-storage copy restores on reloads alone and is cleared at boot.
+    - The protocol (exit status 75, the variable names, the `swap` and `notice` lines
+    and their escaping, the dev meta name, the JavaScript globals, the hint names)
+    lives in one shared module with round-trip tests, and notice escaping is lossless.
+    - The dev loop: `skene.toml` reloads per rebuild; the watch follows the app's path
+    packages or its dep-info file, not this repository's `packages/`; cargo's `fresh`
+    flag gates wasm-bindgen, the splitter and the reload, instead of the whole debug
+    binary being hashed after every build; steps build into a temporary directory
+    renamed on success; `cargo skene` builds with a thin-LTO profile;
+    `notify-debouncer-full` catches saves that rename into place; `mime_guess`
+    completes the MIME table.
+11. **The app layer before 1.0.** Every surveyed framework treats these as table
+    stakes, and each is cheaper to design before the native family than after it.
+    - Forms: text-entry purposes (password, email, number, search, tel, url) and
+    autocomplete as reported properties on `ControlProps`, mapped on the web to `type`,
+    `autocomplete`, `inputmode` and `enterkeyhint`, a password entry secure in the
+    terminal; `set_value` written as a contract, a no-op when equal and never while an
+    IME composes; a `Form` view emitting a real `<form>` with field names and typed
+    buttons, its GET submission a route with a query, so constraints such as `required`
+    hold without script; `Action<I, O>` with pending, error and an optimistic overlay;
+    a `Validate` trait feeding `Invalid` and `:user-invalid`.
+    - Images and assets: `asset!()` handles checked at compile time, fingerprinted and
+    scoped by the crate's own name, in place of hand-written URIs;
+    `Image::new(asset).set_description(..)`, its description the floor where pixels
+    don't show, as `Painted`'s is; a font-family property and token. `skene.toml`
+    declares assets today, served in dev, copied into static output and collected
+    across the dependency graph; it gains further settings as they earn their place
+    (Flutter's pubspec is the model). Font assets add generated metadata—per-face
+    ascender, descender, line gap, cap height, read at build time—so the web can
+    emulate text-box trimming where an engine lacks it and native and the terminal lay
+    text out with the same numbers.
+    - Manifests: a `schema` key and forward-compatible parsing, strict for the app and
+    lenient for dependencies, so a library published against a newer skene no longer
+    breaks an older CLI; `[app] id, name, icon, links, locales` and the per-OS tables
+    reserved and validated now, so libraries can start declaring; a root `public`
+    directory for `/favicon.ico`, `/robots.txt` and `/.well-known/`, and files tried
+    before routes under `--ssr`. Whether `[package.metadata.skene]` replaces
+    `skene.toml` is settled before libraries declare.
+    - Routing: `#[derive(Route)]` with params and a query, guaranteeing
+    `parse(to_path(r)) == r`; paths decoded alike on every leaf; a stack with push, pop
+    and `replace`, and a `Back` event dispatched like `ContextMenu`; an unparseable
+    `popstate` handled; per-entry scroll and state on the snapshot's positions; a
+    pending signal, the commit waiting until code and data settle; preloading and
+    `aria-current`; `not_found()` and `redirect()` setting a status on `Rendered`, and
+    a `404.html` from static generation; a keep-alive policy for `Switch` that pauses
+    detached pages and bounds them LRU.
+    - Async that holds: `Suspense` shows its fallback until the first settle alone,
+    later work raising `Boundary::is_pending()` while the content stays, with a
+    fallback delay and a minimum duration; a client-only load started while hydrating
+    stays out of the boundary; `Resource::derive(source, load)` splits the value from
+    its load state, with `mutate` and an error state, and `reload()` re-runs readers
+    once; `Result` renders as a view that reports its error, feeding `ErrorBoundary`;
+    an opt-in keyed `Query<K, T>` cache lives in userland beside `skene-transport`.
+    - State: a Copy, erased `Field<T>`, so store lenses leave signatures;
+    `#[derive(Store)]` on defaulted generics; a bounded, keyed state holder that
+    records a disposed keyed owner's snapshot entries and stages them when the key
+    returns, so scrolled-out items and navigated-away pages keep their state.
+12. **Names and structure while the API is unstable.** One rename wave brings the names
+    in line with the vocabulary rule, the structure loses its bad edges and copies, and
+    the documents shrink to what tooling cannot enforce.
+    - `skene-core` and `skene-common` merge into `skene-foundation`, since every
+    consumer depends on both: scene internals stay behind module visibility
+    (`pub(in crate::spine)`), so built-in views still use only the public API, and a
+    check keeps the spine modules from importing the medium modules; `skene-reactive`
+    stays separate, knowing nothing of UI. The facades stop re-exporting the spine as
+    `core`; `AGENTS.md` and `DESIGN.md` follow; `run::Run`, `split_alignment` and
+    `ThemedIn::define_root` stop being crate-private.
+    - Moves: `Lazy`, `Deferred`, the hydrating `Resource`, `Link` and the router
+    binding into the foundation over platform seams, so a generic library can use them
+    and the terminal gains `Link`; the title into a shared `window` module, which grows
+    into the `Window` handle, while web-only page metadata stays in a web-only module;
+    `Show` beside `Switch`; the lazy list's `ItemWindow` math and the slider math out
+    of the spine; `root_owner` as the reactive crate's `Owner::root()`; `task`,
+    `executor` and `boundary` as one module.
+    - Edges: `skene-simple` stops depending on both facades, as two tiny alias crates
+    or an alias macro the app invokes; `skene-gui` depends on `skene-web` only where a
+    web leaf builds, through a Cargo target table; painting's GPU stack stops weighing
+    on the build of an app that paints nothing, `vello_hybrid` being over half of a
+    clean gallery wasm build.
+    - A tiny `skene-build` build-dependency derives `skene_leaf` and declares the
+    check-cfg for it and for `skene_platform = "server" | "native"`, replacing the two
+    identical `build.rs` files and third-party crates' `unexpected_cfgs` warnings;
+    dependencies are gated by the same expression in Cargo target tables, and an
+    unknown `skene_platform`, or a wasip1, wasip2, emscripten or wasm32v1-none build,
+    is rejected rather than routed to the host leaf.
+    - `acme-map` becomes one `Map<P>` over a library-local `MapHost` trait with web and
+    headless implementations, deleting the gallery's three `cfg` blocks, and
+    `AGENTS.md` states that a view library covers every platform of its medium,
+    headless included; a blanket impl over one escape trait allows one per view type
+    and pushes cfgs into the app.
+    - `#[main]` is the only entry point, emitting `fn main` per target with its native
+    arms reserved, and the CLI picks the crate type per target through
+    `cargo rustc --crate-type`, so apps stop declaring crate types and the `cdylib`
+    plus `rlib` pair, `__skene_main` and app-level cfgs go.
+    - Oversized files split: `reactive/src/graph.rs` into records, ownership, edges and
+    propagation; `core/src/scene.rs`; `web/src/csr.rs` and `ssr.rs` into parallel
+    `browser/` and `server/` trees; `tui/src/terminal.rs` into the loop, the writer,
+    key mapping and testing; `tui/src/store.rs`, six concerns in one;
+    `cli/src/main.rs`.
+    - Deleted, about 1,000 lines: `slice.rs`, `Reaction`, `create_detached`,
+    `OwnedSignal`, `Effect::watch` unless it becomes the binder primitive, and the
+    operator impls in `ops.rs`, which hide tracked reads; `Themed`, `BoxVisitorMut`,
+    `RunVisitorMut`, `Composable::dark_mode` and `both`, `Condition::involves_state`,
+    `Conditional::into_parts`, `Scene::set_annotation`, `Scene::for_each_child`,
+    `NodeRecord::sink_mut`, `Prevented::merge`, and `IntoView`, whose only impl is the
+    blanket over `View` (`AnyKind` stays); `hydrate_page` and the four-tuple
+    `render_to_stream`; the terminal's `Tty::events`, `Kind::Control.checked`,
+    `Record::listened`, the `interaction::store` alias and `KeyCode::BackTab`; the
+    CLI's unreachable Windows `Tty` and its `windows-sys`; `num-traits`.
+    - Copies folded: `Container`'s 25 forwarded `LayoutBox` methods and what `Text` and
+    `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200
+    lines each facade repeats, into one exported `facade!` macro that also makes a
+    third party's facade a few lines; the three "fixed or derived" enums, into one
+    `Source<T>`.
+    - Renames: `Raw*` to `Basic*`; `Show` and `Switch` to `Visibility` and `OneOf`;
+    `Lazy` to `AsyncView`; `Composable` to `ConditionTree`; the `Range` behavior and
+    `ControlKind::Range` to `Slider`; `Roving` and `RadioMember` to `RadioGroup` and
+    `Radio`; the `ListItem` behavior and `RawOption` to `ListboxOption` and
+    `RawListboxOption`, and the menu's `MenuItem` data to `MenuEntry`; core's `Toggle`
+    value to `CheckState`; `Anchor` to `AnchorHandle`, unless the node handle absorbs
+    it; `GuiExt` and `TuiExt` to `GuiStyle` and `TuiStyle`; `AccessProp::Label` to
+    `AccessProp::Name`; `Signal::opaque` to `Signal::transient`; `StoreField::derive`
+    and `try_derive` to `memo` and `try_memo`; `stored_scheme` to `chosen_scheme`,
+    beside a web-only `persisted_scheme`; `Router::get` to `Router::current`;
+    `Popup::handle_typed` to `set_key_fallback`; the terminal's and headless's `Store`
+    to `Records`; `web/src/escape.rs` to `low_level.rs`; `web::csr` and `web::ssr` to
+    `web::browser` and `web::server`, and `skene_leaf` (`browser`, `server`, `host`) to
+    `skene_gui_platform` (`browser`, `server`, `headless`); `web::hydration` to
+    `resource_state`; the reactive crate's `value.rs`, `key()`, `Position` and
+    `provide`/`staged` to `tracked_cell.rs`, `field_key()`, `SnapshotPlace` and
+    `provide_extra`/`take_extra`; the choice and activation handlers and binders to
+    `choose`/`chosen` for value groups and `activate` for commands, with `bind_`
+    documented as a builder prefix; test files named by tier (`browser_*`, `server_*`),
+    `render_next.rs` renamed and `misc.rs` split by topic.
+    - Vocabulary: `FlexDirection`'s reversed variants become an axis plus `reversed`;
+    `Overflow` becomes `Clip`, `Scroll` and `ScrollIfNeeded`; `RunDisplay`,
+    `GridTrack::Minmax` and `Layout::Flow` lose their CSS names; `Expr::vw`, `vh`,
+    `cqw`, `cqh` and `em` become `viewport_width(0.5)` and its kin, fractions from 0 to
+    1; `Role`'s HTML sections become ARIA's `Banner`, `ContentInfo`, `Complementary`
+    and `Region`; `LinkAnnotation`'s `NoFollow`, `Sponsored` and `Ugc` and the opener
+    and referrer policy move to the web escape; `Role::is_spelled` leaves the spine;
+    `Inset` and `Spacing` take logical `start`/`end` and `horizontal`/`vertical` before
+    internationalization makes that breaking; `set_background` ends `set_color` meaning
+    the background on `Container`.
+    - Shapes: one setter per property for `Flexible`
+    (`set_flexibility(impl Into<Value<Flexibility>>)`), the slider (`set_range`,
+    `derive_range`) and `Animation` (iterations, alternation, reduced motion);
+    appending setters named `add_*` (`set_transition`, `set_animation`, `set_case`,
+    `RichText::set_spans`, `Container::set_child`); children last in `Deferred`, `Lazy`
+    and `Link`; fallbacks spelled one way across `Enhance`, `Painted`, `Suspense` and
+    `ErrorBoundary`; one alignment name across `Stack`, `Grid`, `GridCell` and
+    `Flexible`; the same prelude on both facades and every leaf.
+    - Manifests: every crate publishable, with a description and a repository, the
+    versioned dev-dependency cycles broken, and the CLI publishable, as the README's
+    `cargo install` assumes; web-sys, js-sys, wasm-bindgen-test and serde_json
+    inherited from the workspace; docs.rs building wasm32 and the server cfg; taffy
+    0.14 (with right-to-left), wgpu 30, base64 0.23, toml 1.x, criterion 0.8 and
+    wasm-bindgen 0.2.129, the duplicate syn and hashbrown versions gone.
+    - The documents: `AGENTS.md` at 150 lines or fewer of numbered
+    one-to-three-sentence invariants, each linking its `DESIGN.md` section; `DESIGN.md`
+    one chapter per mechanism, each with its contract, mechanism and decisions, the
+    terminal's split by concern; fine facts (DECRQM modes, OSC numbers, keyboard
+    tables, hydration markers) in the owning module's rustdoc; `README.md` for users,
+    its quickstart compiled headless through `include_str!` and the crate table drawn
+    once; this file for open items alone, its benchmark baseline moved beside the
+    benchmark and re-measured with the WebGPU split's sizes, since neither reproduces;
+    a glossary for the overloaded words (leaf, anchor, store, record, realize, build;
+    floor, fallback and baseline against upgrade, enhancement and child); dated
+    decision records with a revisit trigger; an architecture page on state (a `Store`,
+    a local `Signal` or context, and no view models in context); a guide in an mdbook
+    that compiles its snippets, and a `skene new` scaffold.
+    - Wrong claims corrected: the README's server rendering "from the same wasm
+    module"; the native contradictions in `DESIGN.md` (painted-native desktop and
+    mobile, a Linux leaf on winit, selection by triple), settled by the native family's
+    decisions; both documents' `Theme` signature; "`Signal::new` carries the serde
+    bounds"; "there is no mock platform"; "each platform installs its subscriber"; "a
+    palette change costs the number of tokens", until the token caches change; "nothing
+    on the path a built-in takes is crate-private"; `web_axe` as the gate for every
+    built-in's semantics; the mouse key's `Alt-M`; `#[derive(Snapshot)]` missing from
+    the crate lists; the README's uncompiled counter snippet; the undocumented server
+    `main.rs`; the CLI's help, which names "the embedded runner" and `skene dev`.
+    - Doc comments: contracts alone, without rationale or narrated implementation;
+    stale references (the runner, `skene dev`, "the medium's core crate", `Ctrl-C` for
+    `Ctrl-Q`, vanished parameters) and false contracts (`Container::set_label`,
+    `Flexible`, the tooltip, `Effect::watch`, `split.rs`, the setter macro's `derive_`
+    boilerplate) fixed; short first paragraphs; every builder's example a doctest on
+    the headless host. Two rule tensions are settled explicitly: documented
+    `pub(crate)` items against "comment non-public code only when critical", and
+    examples that explain why, as teaching code should.
+13. **Pictures beyond direct kitty transmission.** Shared memory or a file where the
     protocol's query over that medium shows the terminal shares the host, sparing the
     base64 for every change; unicode placeholders (`U=1`) through tmux, which passes no
     APC; sixel (DA1 attribute 4: xterm, foot, WezTerm, mlterm, Windows Terminal, VTE;
     not kitty, not Ghostty), palette-bound and without ids or z-order, so a change
     repaints the box whole; iTerm2's OSC 1337 last, for iTerm2, WezTerm and mintty.
-3. **The asset system grows.** `skene.toml` declares assets today, served in dev,
-    copied into static output and collected across the dependency graph; it gains
-    further settings as they earn their place (Flutter's pubspec is the model). Font
-    assets add generated metadata—per-face ascender, descender, line gap, cap height,
-    read at build time—so the web can emulate text-box trimming where an engine lacks
-    it and native and the terminal lay text out with the same numbers.
-4. **Internationalization**: message catalogs, locale-aware formatting, reactive locale
-    switching.
-5. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
+14. **Internationalization**: message catalogs, locale-aware formatting, reactive
+    locale switching. Catalogs are provided as a context memo, the `Theme` pattern, so
+    switching locale is one write; formatting follows ICU4X and MessageFormat 2; a
+    direction signal lays right-to-left out through taffy over the logical edges; rich
+    text becomes an annotated string, one run per paragraph with attribute ranges as
+    Compose's `AnnotatedString`, fewer nodes and a natural target for translations.
+15. **The rest of the missing vocabulary.** What an ordinary app reaches for after the
+    table stakes, and what the native family needs before it realizes the vocabulary
+    once.
+    - Views and controls: switch, progress and tabs first, then a spinner, a combobox,
+    date and time, a number field, a tree, a table, a sheet, an alert dialog, a toast,
+    a toggle button, a disclosure, a toolbar and a menu bar, on the open role
+    vocabulary and `Collection<Policy>`.
+    - Motion: `set_enter` and `set_exit`, compiled to `@starting-style` with a deferred
+    detach on the web, and springs, compiled to CSS `linear()`.
+    - Scrolling: a `ScrollHandle` with `scroll_to` and scroll-into-view;
+    `LazyColumn::scroll_to_item` and an index API; lazy grids and sticky headers.
+    - Style: opacity and transforms as compositor-friendly properties of their own,
+    gradients, GUI shadows, italic, text alignment, ellipsis and a maximum line count,
+    and system colors, shared with stated terminal degradations and the pixel-only ones
+    in `GuiExt`.
+16. **The terminal's app shell.** Inline mode and declarative terminal modes beside the
+    alternate screen the app always takes today; printing above the app; `exec` and
+    `suspend`; log capture, to a file or over the attach pipe, since the terminal
+    installs no `tracing` subscriber; and a screen-reader launch mode mapping the roles
+    controls already report to a linear output, as Ink does.
+17. **Devtools on a tee platform.** A `Tee<P>` platform streams every create, attach,
+    update and token definition, with owners, handlers, snapshot positions and the
+    cause of each effect re-run, over one protocol from any platform; the inspector is
+    written in Skene and runs in a second terminal or a browser tab, since the
+    platforms' own inspectors show the sink tree alone. The same stream records and
+    replays golden tests. Beneath it a data-only diagnostics tier names signals and
+    emits re-run causes as `tracing` spans, and debug builds warn on a signal read
+    while building a view, which freezes it, and on a write inside a memo.
+18. **Design tokens in the DTCG format.** `TokenSet` definitions import from and export
+    to the W3C Design Tokens Community Group format, stable since October 2025, so a
+    palette travels to and from design tools.
+19. **Notifications and progress from the terminal**: OSC 99 (kitty, with ids and
     closing) or OSC 9 for a desktop notification, OSC 9;4 for the taskbar's progress
     (Windows Terminal, ConEmu, Ghostty); a facade seam beside the title, ignored where
     unsupported. Low value until an app asks.
-6. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
+20. **The terminal runs on Windows.** The `tty` module has a unix layer alone; the
     console layer (ConPTY's virtual terminal input, which helix found buggy with CJK
     and non-ASCII text, or the legacy console input records as the fallback) is
     unwritten, and no Windows machine is at hand; the item waits for one. `skene
     attach` waits with it: the control pipe an app inherits across its swap exists on
     Unix alone, and where a process cannot be replaced the app exits with status 75
-    for the launcher to spawn it.
-7. **The slider's standard parts on the web.** The web slider is drawn, so nothing
+    for the launcher to spawn it. Behind the terminal `Device` trait the console is a
+    second implementation rather than a rewrite.
+21. **The slider's standard parts on the web.** The web slider is drawn, so nothing
     waits on them, but when engines ship `::slider-fill-*` (csswg-drafts#12419) the
     native input's track can be restyled through them instead. Blocked on engines.
-8. **The native platform family.** The largest phase and deliberately the last: it
-    realizes an already-complete vocabulary once, instead of chasing additions.
+22. **The native platform family.** The largest phase, roughly 21–30 person-months
+    across five OSes, and deliberately late: it realizes a complete vocabulary once,
+    instead of chasing additions, so its gaps (images, font families, text-entry
+    purposes, opacity, transforms, insets, windows, drag and drop) close first, in the
+    items above and the prerequisites below.
     - Premise: **native views, native compositing, native text.** Every platform
     realizes the tree into its own view hierarchy and composites it: a box is a view
     with its layers, a text entry is the platform's (`UITextField`, `EditText`,
-    `GtkText`, a XAML `TextBox`) styled to Simple's look as an `<input>` is on the
-    web, since selection, IME, autofill and the edit menu are the platform's and
-    mobile users notice a replica, a `Native*` control is the platform's own where it
-    has one beside the composed `Raw*` and `Simple*` forms, and only `Painted` draws,
-    in a layer-backed view. Where Rust cannot reach the toolkit the shim is the
-    platform's language: Kotlin on Android, the tree written in batches over JNI;
-    C++/WinRT for WinUI 3 on Windows, with Win32 controls as the floor where the
-    runtime is absent; objc2 reaches AppKit and UIKit directly; Linux is GTK4 through
-    gtk4-rs. Mobile is where this is non-negotiable and the first proof.
+    `GtkText`, a XAML `TextBox`) styled to Simple's look as an `<input>` is on the web,
+    since selection, IME, autofill and the edit menu are the platform's and mobile
+    users notice a replica, a `Native*` control is the platform's own where it has one
+    beside the composed `Raw*` and `Simple*` forms, and only `Painted` draws, in a
+    layer-backed view. A `Native*` control takes a small common option set applied
+    best-effort (a plain `<input>` on the web) and a per-instance hook handing over the
+    platform's own control for everything outside it, so nobody forks a control to set
+    one property. Native text entries, menus and clipboard, scroll views with their
+    physics, and accessibility are non-negotiable on every OS, and no realization is a
+    hybrid of painted content around embedded native controls. Where Rust cannot reach
+    the toolkit the shim is the platform's language: Kotlin on Android, the tree
+    written in batches over JNI; objc2 reaches AppKit and UIKit directly; windows-rs
+    reaches WinUI 3 directly, with no C++/WinRT shim and, through self-contained
+    deployment, no Win32 floor; Linux is GTK4 through gtk4-rs. On Windows every run is
+    a WinUI text element, so text keeps the platform's subpixel rendering.
+    - Prerequisites, taken first, each also improving the web or the terminal:
+    incremental resolution in the runtime kit (the tests and hot-paths items); the
+    `Environment` per window, a scene per root in place of one per platform, and a
+    `Window` concept beside them, the web and the terminal having one window each, so
+    the leaves are built for several and embedding into an existing native screen falls
+    out; the typed events, with a platform Back request routed to overlays and the
+    router; menus and text tooltips as data, through a default-bodied method taking
+    `MenuItem`s that NSMenu, UIMenu, PopupMenu, MenuFlyout and PopoverMenu realize,
+    since a drawn Paste triggers iOS's paste prompt and macOS 26's pasteboard alert;
+    text-entry purposes and the `set_value` contract; the missing vocabulary; the
+    executor wake hook; selection by `target_os`; and a native counterpart to "mimic
+    the web", following the platform wherever it has a convention (macOS Tab behavior,
+    iPad focus groups, Android Back, long-press menus).
+    - The first proof: GTK4 native views, spiked locally for two to three weeks against
+    a web-versus-native conformance gallery before Apple and Android are committed to.
+    No painted realization is spiked beside it, since a painted leaf meets the
+    non-negotiables only as the hybrid ruled out.
+    - Apple: native views, layer-backed; one `NSAttributedString` per paragraph
+    measured with TextKit, inline views through `NSTextAttachmentViewProvider`; an
+    overlay host view, a child `NSPanel` for popups that leave the window, context
+    menus once menus are data, a generated default Edit menu. Insets are missing from
+    the vocabulary, text tooltips are impossible on touch, Tab on macOS reaches text
+    boxes alone unless keyboard navigation is on, and a Mac is needed.
+    - Android: Views through the Kotlin shim, one JNI call per frame carrying a byte
+    buffer of operations and frames applied in `onLayout`, snapped to device pixels; an
+    `EditText` that never rewrites a composing span; `OnBackInvokedCallback` for
+    predictive Back; touch mode as focus-visible; `configChanges` including `uiMode`;
+    edge-to-edge from API 35. Views are in maintenance mode since May 2026, and remain
+    the one path where text entry, IME, autofill, selection handles, scroll physics and
+    accessibility all come from the platform.
+    - Windows: WinUI 3, with composable subclassing (a custom panel, an automation
+    peer) proven first; `TextBlock` and `RichTextBlock` inlines, `TextBox` with TSF,
+    `MenuFlyout`, `FocusState` as focus-visible, composition animations off the UI
+    thread. Contrast themes swap app colors for system colors, which literal palettes
+    break, and Windows hardware is needed.
+    - Linux: GTK4 through gtk4-rs 0.11, a subclassed container with a taffy
+    `LayoutManager`, `gtk::Text` and `TextView`, Pango-attributed labels, popovers,
+    gesture controllers and AT-SPI; developable on the machine at hand. The drawn Linux
+    leaf leaves the documents.
     - Layout: taffy behind a small FFI library the platform's own layout primitives
-    call (a `SkeneLayout` view on Android and iOS, a `LayoutManager` on GTK, a panel
-    on XAML), one tree per root rather than per container, leaves measured by the
-    platform's own text and controls through a call on the UI thread, frames set in
-    one batch; the vocabulary's semantics stay taffy's on every platform.
+    call (a `SkeneLayout` view on Android and iOS, a `LayoutManager` on GTK, a panel on
+    XAML), one tree per root rather than per container, leaves measured by the
+    platform's own text and controls through a call on the UI thread, frames set in one
+    batch; the vocabulary's semantics stay taffy's on every platform. Layout-only nodes
+    flatten by type, since only `Container` is decorated; layout settles before a frame
+    commits, the terminal's settle loop becoming the frame contract; text measurement
+    is memoized in Rust by text, style and constraint, since each question would cross
+    JNI or Objective-C; taffy nodes persist; `Painted` resizes land with the layout
+    commit.
     - Shared machinery beside it: vello paint for `Painted`, AccessKit only where a
-    painted layer needs it since native views carry their own accessibility, the
-    frame clock running `skene_core::interpolate` as the terminal does, `Condition`
+    painted layer needs it since native views carry their own accessibility, the frame
+    clock running `skene_core::interpolate` as the terminal does, `Condition`
     resolution against window and pointer signals through the one resolution point.
-    - Selection: `skene-gui` names a native platform through the build-set cfg the
-    server leaf already uses (`skene_platform`), since every native triple is a host
-    triple too; the headless platform stays the default so `cargo test` keeps
-    meaning what it means.
+    Opacity, transform and color transitions run on the compositor, the frame clock
+    their floor.
+    - Selection: iOS and Android select their leaf by `target_os`, their triples
+    hosting no other platform; on a desktop triple `skene-gui` names a native platform
+    through the build-set cfg the server leaf already uses (`skene_platform`), since
+    every desktop triple is a host triple too, and the headless platform stays the
+    default so `cargo test` keeps meaning what it means.
     - The `PlatformView` escape trait and per-leaf embed constructors
     (`ios::native_view`, …): real text fields, maps, web views.
+    - Libraries: a low-level view library implements its host trait for each native
+    platform type, as for the web and headless; one with Kotlin or Swift sources and
+    Gradle or SwiftPM dependencies keeps them in per-OS crates that declare them in
+    `skene.toml`, and Skene hands it the Activity, the JavaVM and class loader, the UI
+    thread, a batched update path and a generated plugin registrant for lifecycle
+    callbacks; platform APIs without UI are plain `target_os` crates, the leaves
+    committing to `ndk-context` and `raw-window-handle` as their context seams, with
+    results through `spawn` and `Resource`, lifecycle hooks through the registrant and
+    fakes through context in tests.
+    - Manifests: `skene.toml` collects per target; declarations are keyed by OS, never
+    by Skene platform; the app overrides or removes anything, a library's strings being
+    defaults; secrets are placeholders validated before any native build; every build
+    writes a provenance report; build scripts never run Gradle, Xcode or SwiftPM, so
+    `cargo check --target aarch64-apple-ios` works on Linux CI.
+    - `skene-gui` resolving native triples to it; `skene build`/`run` for `ios`,
+    `android` and the desktop leaves, landing under `dist/<target>`.
+    - Build and run beside it: `skene test`, `skene devices`, `skene doctor` and
+    `skene eject`, for every target from `web` and `tui` to `macos`, `windows` and
+    `linux`; native projects generated and disposable in `target/skene/<target>`, so
+    each year's platform requirements land once in Skene's templates, and ejected when
+    a team must own one; signing and packaging (Play App Signing and app bundles,
+    automatic signing or `fastlane match`, cargo-packager, MSIX); density variants,
+    per-platform fonts, localization catalogs, icons and splash screens from the assets
+    and `[app]`; `[app] links` generating App Links, associated domains and both
+    `.well-known` files in the static web output; `cargo check --target` for every OS
+    triple on Linux, and `skene test` on emulators, simulators and devices.
+    - The dev reload on devices: desktop reuses the terminal's `execve` launcher;
+    Android connects over `adb reverse`, writes its snapshot to app storage on `swap`,
+    reinstalls with `adb install -r` and restores at boot; iOS does the same through
+    `simctl` and `devicectl`; a reload takes seconds.
+    - Android's process death: the leaf writes the existing snapshot on backgrounding
+    through a lifecycle hook and restores it at launch, under the header's build id,
+    secure entries excluded; no new API.
+    - Per-platform code has one home each: a capability difference is a signal and
+    `Enhance`, never a cfg; a realization difference lives in a library's per-platform
+    implementation; an OS service is a `target_os` crate; a product choice prefers a
+    library, else a per-OS module at the app's edge; app-owned native code is declared
+    in the app's `skene.toml`, as a library's is.
     - View transitions: snapshot the outgoing tree into a layer and interpolate named
     pairs.
     - Off-thread delivery: the engine's scheduler wired to the event-loop proxy.
     - A loop-integrated timer (the one sanctioned exception to timers-are-userland).
     - Per-OS glue in leaves: IME, clipboard, menus, window management.
-    - `skene-gui` resolving native triples to it; `skene build`/`run` for `ios`,
-    `android` and the desktop leaves, landing under `dist/<target>`.
+23. **Server rendering beyond the native binary.** The native server binary stays the
+    deployment, documented in a container (a Dockerfile and docs for Lambda, Cloud Run,
+    Fly.io, Cloudflare Containers and Vercel's Rust runtime), and the WASI leaf is not
+    restored. Nearly all the demand for wasm rendering is on JavaScript isolates
+    (Cloudflare Workers, Deno Deploy, Netlify and Supabase edge, Node, Bun), where the
+    server leaf already renders on `wasm32-unknown-unknown` after two small patches;
+    four cheap steps keep that build cheap to add, and the isolate leaf itself (an
+    async settle loop, a JavaScript timer and clock, exports returning a `Promise` and
+    a `ReadableStream`, a per-isolate render queue, a fourth test tier under Node;
+    600–900 lines) waits until someone asks.
+    - The render deadline through a clock that works on every target, `Instant`
+    natively and the JavaScript clock on `wasm32-unknown-unknown`.
+    - Leaf selection testing the server cfg before the browser triple, and `#[main]`
+    never emitting the browser entry in a server build.
+    - All blocking behind one seam: the settle loop async, with a native `block_on`
+    over today's condition variable, and `AGENTS.md` stating that the server leaf
+    blocks only there.
+    - `skene-transport`'s web path calling the global `fetch` rather than
+    `window().fetch`, which also serves Web Workers.
 
 Watched, not scheduled:
 
@@ -115,6 +830,23 @@ Watched, not scheduled:
     `Serialize + DeserializeOwned` bound on every key and a heap step per keyed scope.
 - The hybrid renderer also runs on WebGL2 (its `webgl` feature, no wgpu) for engines
     without WebGPU; not built, since the CPU path already covers them.
+- Atomic CSS, interning single declarations as StyleX does, and marker-less hydration,
+    build order equal to document order so hydration walks siblings: each measured on
+    the gallery before it is taken.
+- Building in place (`View::build(self, parent, before)`), so static children need no
+    segment: measured first, since it saves about one comment pair per layout view.
+- Merging the owner tree into the scene, every owner a scene node, disposal `destroy`
+    and context lookup an ancestry walk: once the ownership fixes land.
+- One cascade IR, ordered rules of zero specificity that the web prints as CSS and the
+    runtime platforms evaluate: once the parity harness exists.
+- Reactive painting: the painter in an effect with size and pixel ratio as signals, and
+    fixed-size painted boxes rasterized to `<img>` on the server, so charts work
+    without script; it pairs with the image view.
+- A terminal writer thread with latest-frame-wins backpressure, and hardware scrolling
+    (DECSTBM with SU and SD), so a scroll over ssh costs one row: for ssh-heavy use.
+- A userland render pool beside `skene-transport`, N `--serve` workers with timeouts,
+    respawn and backpressure behind one function a Rust server calls: once someone
+    deploys server rendering.
 
 ## The terminal's enhancements, as a whole
 
@@ -142,11 +874,17 @@ every item is proven through tmux and ssh as well as bare.
   low-level view names what a platform can do.
 - Draw-everything as the native family's default: mobile text selection, IME and edit
   menus are years of platform work no framework should redo.
-- A WASI server leaf under a wasmtime runner: the server leaf compiles natively, selected
-  by `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
-  host is a runner someone may write.
-- A custom devtools/inspector: native realizes into the platform view hierarchy, so the
-  platform's own inspectors already work.
+- A hybrid native realization, painted content with native controls embedded in it:
+  every embedded view is paid for, as Flutter's platform views show.
+- A painted native platform, on the desktop or on Android through Linebender's
+  android-view: it meets the native family's non-negotiables only as that hybrid, and
+  like Compose it owns text editing, the part left to the platform.
+- A WASI server leaf, under a wasmtime runner or as a `wasi:http` handler: it needs a
+  second transport for every client, and the demand for wasm rendering is on JavaScript
+  isolates. The server leaf compiles natively, selected by
+  `--cfg skene_platform="server"`, so every crate on the host reaches a render; a wasm
+  host is a runner someone may write, for pages that await nothing until the settle
+  loop is async.
 - Islands architecture: compiled no-JS styling already removes most reasons a static
   page ships wasm.
 - LiveView-style server rendering: adjacent to the server-side non-goal.
@@ -176,3 +914,20 @@ every item is proven through tmux and ssh as well as bare.
   owned.
 - A `HashMap` store field iterating in a stable order: its entries come in its
   iteration order; an ordered list wants a `BTreeMap` or a keyed `Vec`.
+- Another reactive engine: Leptos's `reactive_graph` schedules effects asynchronously
+  behind `Arc` and `RwLock`, breaking the synchronous render-first flush the terminal's
+  key defaults rely on; `sycamore-reactive` has eager memos and no render flavor; the
+  Rust alien-signals port has no owners, contexts or cleanups. Its techniques are
+  ported instead.
+- Another terminal parser, or one beneath it: crossterm parses no replies, termina
+  lacks APC and re-parses byte by byte, vte has no APC dispatch, and termwiz is heavy.
+- The `color` crate for `Color`: byte-identical class names across the server and the
+  browser need `libm` math, which its `libm` feature cannot promise once peniko and
+  vello unify it with `std`; its CSS semantics are taken instead.
+- A view macro beside the builders (`rsx!`): a macro costs rustfmt and rust-analyzer,
+  and Freya left rsx for builders in 2026; the effort goes into diagnostics.
+- Collapsing the crates beyond `skene-core` and `skene-common`: separate crates compile
+  in parallel.
+- One app serving both media: the two galleries still differ on 431 of 893 lines once
+  numbers are stripped.
+- A stable plugin ABI: nobody asks for one.

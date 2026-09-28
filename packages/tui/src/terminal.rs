@@ -63,11 +63,17 @@ const fn dec_mode(code: u16, on: bool) -> DecMode {
   DecMode { code, on }
 }
 
-/// Writes the controls that take the terminal over: the alternate screen, mouse
-/// reporting when `mouse`, bracketed paste, scheme notifications, grapheme
-/// clustering, in-band resize notifications, and the cursor hidden.
+/// Writes the controls that take the terminal over: the title saved, the alternate
+/// screen, mouse reporting when `mouse`, bracketed paste, scheme notifications,
+/// grapheme clustering, in-band resize notifications, autowrap off, and the cursor
+/// hidden.
 fn write_setup(out: &mut (impl Write + ?Sized), mouse: bool) -> io::Result<()> {
-  write!(out, "{}", dec_mode(escape::ALTERNATE_SCREEN, true))?;
+  write!(
+    out,
+    "{}{}",
+    escape::PUSH_TITLE,
+    dec_mode(escape::ALTERNATE_SCREEN, true)
+  )?;
 
   if mouse {
     write_mouse(out, true)?;
@@ -75,11 +81,12 @@ fn write_setup(out: &mut (impl Write + ?Sized), mouse: bool) -> io::Result<()> {
 
   write!(
     out,
-    "{}{}{}{}{}",
+    "{}{}{}{}{}{}",
     dec_mode(escape::BRACKETED_PASTE, true),
     dec_mode(escape::THEME, true),
     dec_mode(escape::GRAPHEME_CLUSTERING, true),
     dec_mode(escape::IN_BAND_RESIZE, true),
+    dec_mode(escape::AUTOWRAP, false),
     dec_mode(escape::SHOW_CURSOR, false),
   )
 }
@@ -159,14 +166,16 @@ const SIZING_PROBE: &str = "\x1b]66;s=2; \x1b\\";
 /// The column the probe's cursor position report names where the terminal sized it.
 const SIZED_COLUMN: u16 = 2;
 
-/// Writes the controls that hand the terminal back: the legacy key encoding, mouse
-/// reporting, bracketed paste, scheme and resize notifications and grapheme
-/// clustering off, the cursor shown in its default shape, the main screen. Idempotent,
-/// so it holds however many app instances set the terminal up.
+/// Writes the controls that hand the terminal back: the graphic rendition reset, the
+/// legacy key encoding, mouse reporting, bracketed paste, scheme and resize
+/// notifications and grapheme clustering off, autowrap on, the cursor shown in its
+/// default shape, the main screen, and the title restored. Idempotent but for the
+/// title, which pops what setup saved.
 fn write_restore(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
   write!(
     out,
-    "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+    "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+    Sgr::Reset,
     escape::PointerShape("default"),
     escape::KeyboardFlags(0),
     dec_mode(escape::THEME, false),
@@ -178,9 +187,11 @@ fn write_restore(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
     dec_mode(escape::ANY_EVENT_MOUSE, false),
     dec_mode(escape::BUTTON_EVENT_MOUSE, false),
     dec_mode(escape::MOUSE_TRACKING, false),
+    dec_mode(escape::AUTOWRAP, true),
     CursorStyle::Default,
     dec_mode(escape::SHOW_CURSOR, true),
     dec_mode(escape::ALTERNATE_SCREEN, false),
+    escape::POP_TITLE,
   )
 }
 
@@ -1010,7 +1021,14 @@ fn draw(
     let _ = write!(out, "{}", dec_mode(escape::SYNCHRONIZED_OUTPUT, true));
   }
 
-  let _ = write!(out, "{}{}", move_to(0, 0), Sgr::Reset);
+  // The cursor hides while the cells are written, so it never shows mid-frame.
+  let _ = write!(
+    out,
+    "{}{}{}",
+    dec_mode(escape::SHOW_CURSOR, false),
+    move_to(0, 0),
+    Sgr::Reset
+  );
 
   for row in 0..buffer.height {
     if !paint::row_changed(previous, buffer, row) {
@@ -1024,19 +1042,14 @@ fn draw(
 
   // The focused entry's caret is the terminal's own bar cursor, blinking as the
   // terminal does.
-  match buffer.caret {
-    Some((column, row)) => {
-      let _ = write!(
-        out,
-        "{}{}{}",
-        move_to(column, row),
-        CursorStyle::BlinkingBar,
-        dec_mode(escape::SHOW_CURSOR, true)
-      );
-    }
-    None => {
-      let _ = write!(out, "{}", dec_mode(escape::SHOW_CURSOR, false));
-    }
+  if let Some((column, row)) = buffer.caret {
+    let _ = write!(
+      out,
+      "{}{}{}",
+      move_to(column, row),
+      CursorStyle::BlinkingBar,
+      dec_mode(escape::SHOW_CURSOR, true)
+    );
   }
 
   if synchronized {
@@ -1964,7 +1977,7 @@ mod tests {
     assert!(
       String::from_utf8(restore)
         .unwrap()
-        .starts_with("\x1b]22;default\x1b\\")
+        .contains("\x1b]22;default\x1b\\")
     );
   }
 
@@ -2171,7 +2184,8 @@ mod tests {
   }
 
   /// A frame is bracketed by mode 2026 when the terminal confirmed it can toggle the
-  /// mode, and written plain otherwise.
+  /// mode, and written plain otherwise; either way the cursor hides while it is
+  /// written.
   #[test]
   fn a_frame_is_bracketed_by_synchronized_output_when_confirmed() {
     let buffer = paint::Buffer::new(2, 1);
@@ -2205,6 +2219,7 @@ mod tests {
       plain
     );
     assert!(!plain.contains("2026"), "{plain:?}");
+    assert!(plain.starts_with("\x1b[?25l"), "{plain:?}");
   }
 
   /// A pixel report lands on the cell holding the pixel, the pointer at the pixel's

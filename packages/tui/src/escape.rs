@@ -9,6 +9,9 @@ use std::fmt::{self, Display, Write as _};
 /// The string terminator, `ESC \`.
 pub(crate) const ST: &str = "\x1b\\";
 
+/// DECSET 7: whether text written at the right margin wraps to the next line.
+pub(crate) const AUTOWRAP: u16 = 7;
+
 /// DECSET 25: whether the cursor shows.
 pub(crate) const SHOW_CURSOR: u16 = 25;
 
@@ -47,6 +50,12 @@ pub(crate) const IN_BAND_RESIZE: u16 = 2048;
 
 /// Mode 5522: the clipboard that answers (kitty's protocol), queried but never set.
 pub(crate) const ANSWERING_CLIPBOARD: u16 = 5522;
+
+/// XTWINOPS 22: the window and icon titles saved on the terminal's title stack.
+pub(crate) const PUSH_TITLE: &str = "\x1b[22;0t";
+
+/// XTWINOPS 23: the window and icon titles restored from the terminal's title stack.
+pub(crate) const POP_TITLE: &str = "\x1b[23;0t";
 
 /// The request for a cursor position report, `CSI 6 n`.
 pub(crate) const REQUEST_CURSOR_POSITION: &str = "\x1b[6n";

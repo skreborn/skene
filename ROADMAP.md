@@ -102,7 +102,6 @@ left half-done in a code comment.
     pinned in place of an external CLI; `--path` without `--static` an error; a hint
     filter safe on multibyte header names; a loop-safe `copy_tree` (`walkdir`).
 4. **The terminal's traps.**
-    - Input: colors re-queried on a theme change and repainted on every reply.
     - Frames: a hover-only change schedules a frame; undisplayed subtrees run no
     motion, and an overlay's animations restart on open; the cursor hides during a
     frame drawn without synchronized output; autowrap is off for the session; restoring

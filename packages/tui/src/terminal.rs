@@ -134,6 +134,20 @@ fn write_queries(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
   )
 }
 
+/// Writes the queries for the terminal's own colors—the OSC 11 background, the OSC 10
+/// foreground and the OSC 4 base colors—then the primary device attributes request,
+/// whose reply closes their reply window.
+fn write_color_queries(out: &mut (impl Write + ?Sized)) -> io::Result<()> {
+  write!(
+    out,
+    "{}{}{}{}",
+    escape::QUERY_BACKGROUND,
+    escape::QUERY_FOREGROUND,
+    escape::QUERY_PALETTE,
+    escape::REQUEST_PRIMARY_ATTRIBUTES,
+  )
+}
+
 /// The image id the graphics probe asks under; a painted box's ids are its record's.
 const GRAPHICS_PROBE: u32 = 0x7fff_ffff;
 
@@ -560,8 +574,15 @@ where
             store.title_dirty = store.title.is_some();
           });
         }
+        // A theme change moves the terminal's own colors too, which are asked for
+        // afresh.
         Event::Theme { dark } => {
           set_detected_scheme(dark);
+
+          let _ = write_color_queries(&mut terminal);
+          let _ = terminal.flush();
+
+          terminal.open_reply_window();
         }
         // The probe's space advanced the cursor two cells where the terminal sizes
         // text; every size is then honored, and the frame laid out afresh.
@@ -619,8 +640,7 @@ where
           }
         }
         Event::Background(red, green, blue) => {
-          with_store(|store| store.detected_background = Some((red, green, blue)));
-          set_detected_scheme(detect::is_dark((red, green, blue)));
+          set_detected_background((red, green, blue));
         }
         Event::Foreground(red, green, blue) => {
           with_store(|store| {
@@ -735,6 +755,16 @@ fn paste(text: &str) {
 /// inside a reactive batch; nothing happens when no entry asked or it is gone.
 fn paste_reply(text: &str) {
   skene_reactive::batch(|| interaction::paste_reply(text));
+}
+
+/// Records the terminal's own background, which a paint mixes against, and the scheme
+/// its luminance implies; the frame paints afresh.
+fn set_detected_background(background: (u8, u8, u8)) {
+  with_store(|store| {
+    store.detected_background = Some(background);
+    store.paint_dirty = true;
+  });
+  set_detected_scheme(detect::is_dark(background));
 }
 
 /// Records the detected background, moving the scheme in force where it changes.
@@ -1588,12 +1618,8 @@ pub fn trigger_color_scheme(scheme: ColorScheme) {
 /// 11), for a headless test asserting what a paint mixes against; the scheme follows
 /// the background's luminance.
 pub fn trigger_terminal_colors(foreground: (u8, u8, u8), background: (u8, u8, u8)) {
-  with_store(|store| {
-    store.detected_foreground = Some(foreground);
-    store.detected_background = Some(background);
-    store.paint_dirty = true;
-  });
-  set_detected_scheme(detect::is_dark(background));
+  with_store(|store| store.detected_foreground = Some(foreground));
+  set_detected_background(background);
 }
 
 /// Steps the motion clock forward by `elapsed`, for a headless test driving transitions,
@@ -2097,6 +2123,21 @@ mod tests {
       ),
       "{out:?}"
     );
+  }
+
+  /// A theme change asks for the terminal's own colors afresh, fenced by the primary
+  /// device attributes request.
+  #[test]
+  fn the_colors_are_asked_for_in_a_window_of_their_own() {
+    let mut out = Vec::new();
+
+    write_color_queries(&mut out).unwrap();
+
+    let out = String::from_utf8(out).unwrap();
+
+    assert!(out.starts_with("\x1b]11;?"), "{out:?}");
+    assert!(out.contains("\x1b]10;?"), "{out:?}");
+    assert!(out.ends_with("\x1b[c"), "{out:?}");
   }
 
   /// A frame is bracketed by mode 2026 when the terminal confirmed it can toggle the

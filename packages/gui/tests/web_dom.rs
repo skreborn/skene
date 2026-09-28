@@ -276,6 +276,7 @@ async fn a_text_entrys_selection_binds_both_ways() {
   );
 
   selection.set(TextSelection::new(9, 1));
+  web::end_turn();
 
   assert_eq!(
     range(&input),
@@ -565,6 +566,7 @@ fn checkbox_binding_round_trips() {
   assert!(!target.checked());
 
   checked.set(true);
+  web::end_turn();
 
   assert!(target.checked());
 
@@ -692,6 +694,7 @@ fn derived_text_updates_the_dom_on_change() {
   assert_eq!(element.text_content().as_deref(), Some("0"));
 
   count.set(5);
+  web::end_turn();
 
   assert_eq!(element.text_content().as_deref(), Some("5"));
 }
@@ -710,6 +713,7 @@ fn derived_style_updates_its_slot_on_change() {
   assert_eq!(computed(&element, "font-size"), "12px");
 
   size.set(20.0);
+  web::end_turn();
 
   assert_eq!(computed(&element, "font-size"), "20px");
 }
@@ -736,6 +740,7 @@ fn typography_link_ink_reaches_a_link_and_updates() {
   );
 
   link_ink.set(Color::srgb(0., 0., 1.));
+  web::end_turn();
 
   assert_eq!(
     computed(&link, "color"),
@@ -928,6 +933,7 @@ fn reconcile_reorders_the_real_dom_preserving_nodes() {
     .unwrap();
 
   items.set(vec![3, 1, 2]);
+  web::end_turn();
 
   assert_eq!(child_texts(&parent), ["3", "1", "2"]);
 
@@ -958,6 +964,7 @@ fn derived_view_swaps_between_trees_on_state_change() {
   assert_eq!(only_child(&root).tag_name(), "NAV");
 
   logged_in.set(true);
+  web::end_turn();
 
   let swapped = only_child(&root);
 
@@ -1007,6 +1014,7 @@ fn a_derived_rebuild_restores_scroll_and_focus() {
   assert_eq!(document().active_element(), Some(focusable));
 
   generation.set(1);
+  web::end_turn();
 
   let rebuilt = only_child(&root);
   let refocused = rebuilt
@@ -1058,6 +1066,7 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
   assert_eq!(runs.get(), 1, "one diff on mount");
 
   extra.set(9);
+  web::end_turn();
 
   assert_eq!(
     runs.get(),
@@ -1067,6 +1076,7 @@ fn an_items_own_signal_does_not_re_run_the_list_diff() {
 
   // The list itself still drives the diff.
   items.set(vec![1, 2, 3]);
+  web::end_turn();
 
   assert_eq!(runs.get(), 2, "changing the list re-runs the diff");
   assert_eq!(child_texts(&only_child(&root)).len(), 3);
@@ -1095,6 +1105,7 @@ fn a_derived_property_inside_an_item_still_updates() {
   assert_eq!(computed(&item, "font-size"), "12px");
 
   size.set(24.0);
+  web::end_turn();
 
   assert_eq!(computed(&item, "font-size"), "24px");
 }
@@ -1176,6 +1187,7 @@ fn a_widget_role_and_state_reach_the_real_dom() {
   );
 
   checked.set(true);
+  web::end_turn();
 
   assert_eq!(
     element.get_attribute("aria-checked").as_deref(),
@@ -1274,6 +1286,8 @@ fn a_radio_group_traverses_in_document_order() {
     String::from("plum"),
     String::from("fig"),
   ]);
+
+  web::end_turn();
 
   assert_eq!(rows().len(), 3, "the newcomer is in the document");
   assert_eq!(
@@ -1612,6 +1626,7 @@ fn a_text_fields_caption_is_a_label_before_the_input() {
   );
 
   shown.set(false);
+  web::end_turn();
 
   assert!(
     container.query_selector("label").expect("query").is_none(),

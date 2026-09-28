@@ -45,7 +45,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
 
-use super::{Realized, with_dom};
+use super::{Realized, end_turn, with_dom};
 use crate::Web;
 
 /// The property stamped on every element the scene knows, holding its sink.
@@ -60,7 +60,7 @@ pub(super) struct Listener {
 }
 
 impl Listener {
-  /// Listens for `name` on `target`, running `handler` with each event.
+  /// Listens for `name` on `target`, running `handler` with each event as one turn.
   ///
   /// An event arriving while the scene is borrowed is delivered from a microtask
   /// instead, once the borrow is released; its verdict then no longer reaches the
@@ -76,12 +76,16 @@ impl Listener {
       if Scene::<Web>::is_borrowed() {
         let handler = Rc::clone(&handler);
 
-        wasm_bindgen_futures::spawn_local(async move { handler(&event) });
+        wasm_bindgen_futures::spawn_local(async move {
+          handler(&event);
+          end_turn();
+        });
 
         return;
       }
 
       handler(&event);
+      end_turn();
     }) as Box<dyn FnMut(web_sys::Event)>);
 
     let _ = target.add_event_listener_with_callback_and_bool(

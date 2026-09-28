@@ -6,7 +6,7 @@ mod common;
 use std::{cell::Cell, fmt, rc::Rc};
 
 use skene_core::{Boundary, Errors, HasChildren, View};
-use skene_headless::{Headless, children, is_live, outline, reset};
+use skene_headless::{Headless, children, end_turn, is_live, outline, reset};
 use skene_reactive::{Get, Owner, Set, Signal};
 
 type Container = skene_common::Container<Headless>;
@@ -125,15 +125,18 @@ fn nested_suspense_pends_the_enclosing_boundary_once() {
 
   inner.enter();
   inner.enter();
+  end_turn();
 
   assert!(!outer.is_settled());
   assert_eq!(outline(root), "Box\n  Run \"outer loading\"\n");
 
   inner.leave();
+  end_turn();
 
   assert!(!outer.is_settled());
 
   inner.leave();
+  end_turn();
 
   assert!(outer.is_settled());
   assert_eq!(outline(root), "Box\n  Run \"content\"\n");

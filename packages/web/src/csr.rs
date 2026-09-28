@@ -428,6 +428,21 @@ struct Timeout {
 thread_local! {
   static SCENE: RefCell<Scene<Web>> = RefCell::new(Scene::new());
   static DOM: RefCell<Option<Dom>> = const { RefCell::new(None) };
+  /// The flush the turn's writes scheduled, run when the turn ends.
+  static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
+}
+
+/// Ends the turn now: runs the flush its writes scheduled, which otherwise runs at the
+/// next microtask checkpoint.
+///
+/// An event, a mount and a hydration each end their own turn; a test calls this where
+/// it reads the page after a direct write.
+pub fn end_turn() {
+  let flush = TURN.with(|turn| turn.borrow_mut().take());
+
+  if let Some(flush) = flush {
+    flush();
+  }
 }
 
 /// Runs `operation` on the installed state, if the browser leaf is installed; nothing
@@ -2125,6 +2140,10 @@ impl WebDom for Web {
 /// nodes under it when `hydrating`.
 fn install_at(root: Element, hydrating: bool) {
   skene_reactive::Runtime::init_on_ui_thread();
+  skene_reactive::Runtime::set_scheduler(|flush| {
+    TURN.with(|turn| *turn.borrow_mut() = Some(flush));
+    wasm_bindgen_futures::spawn_local(async { end_turn() });
+  });
   task::install_executor();
 
   let document = web_sys::window()
@@ -2161,20 +2180,26 @@ pub fn install(root: Element) {
   install_at(root, false);
 }
 
-/// Builds `view` under the installed root, returning its node.
+/// Builds `view` under the installed root as one turn, returning its node.
 ///
 /// # Panics
 ///
 /// Panics if the platform is not installed for this thread.
 pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
-  skene_core::root_owner().enter(|| {
+  end_turn();
+
+  let node = skene_core::root_owner().enter(|| {
     let node = view();
     let root = with_dom(|dom| dom.root_node).expect("the root node exists once installed");
 
     Scene::<Web>::with(|scene| scene.attach(root, node, None));
 
     node
-  })
+  });
+
+  end_turn();
+
+  node
 }
 
 /// Hydrates a server-rendered tree under `root`, adopting its elements by their
@@ -2213,7 +2238,8 @@ where
   }
 
   // The adopted values have reached their signals; the enhancements may build.
-  skene_reactive::batch(|| media::set_live(true));
+  media::set_live(true);
+  end_turn();
 }
 
 /// How many nodes the last hydration failed to adopt: server nodes the client built
@@ -2425,4 +2451,5 @@ pub fn uninstall() {
   Scene::<Web>::with(|scene| *scene = Scene::new());
   skene_reactive::Runtime::reset();
   skene_core::reset_root_owner();
+  TURN.with(|turn| *turn.borrow_mut() = None);
 }

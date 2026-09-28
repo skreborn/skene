@@ -288,10 +288,12 @@ fn a_palette_write_reinks_without_replacing_the_element() {
   let count = inner.get().expect("the inner signal");
 
   count.set(5);
+  skene_web::end_turn();
 
   assert_eq!(before.text_content().as_deref(), Some("5"));
 
   card.set(red());
+  skene_web::end_turn();
 
   let after = only_child(&only_child(&root));
 
@@ -329,6 +331,7 @@ fn a_derived_color_stays_below_its_hover_variant() {
   );
 
   color.set(blue());
+  skene_web::end_turn();
 
   assert_eq!(
     computed(&element, "background-color"),
@@ -396,6 +399,7 @@ fn a_derived_token_writes_its_reference_into_the_slot() {
   );
 
   plain.set(true);
+  skene_web::end_turn();
 
   assert_eq!(slot(), css(red()));
   assert_eq!(
@@ -637,6 +641,7 @@ fn media_reports_the_window() {
   assert_eq!(dark.get(), platform_dark);
 
   skene_web::set_scheme(Some(ColorScheme::Dark));
+  skene_web::end_turn();
 
   assert_eq!(media.scheme.get(), ColorScheme::Dark);
   assert!(dark.get());
@@ -651,6 +656,7 @@ fn media_reports_the_window() {
   assert_eq!(skene_web::stored_scheme(), Some(ColorScheme::Dark));
 
   skene_web::set_scheme(None);
+  skene_web::end_turn();
 
   assert_eq!(media.scheme.get(), platform);
   assert_eq!(skene_web::stored_scheme(), None);
@@ -741,6 +747,7 @@ fn a_ticked_input_reports_on_hydration() {
   assert!(input.checked());
 
   checked.set(false);
+  skene_web::end_turn();
 
   assert!(!input.checked());
 }

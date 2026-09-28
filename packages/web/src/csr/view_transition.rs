@@ -5,7 +5,7 @@ use std::cell::Cell;
 
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
-use super::try_with_dom;
+use super::{end_turn, try_with_dom};
 use crate::motion::VIEW_TRANSITION_RULE;
 
 thread_local! {
@@ -30,10 +30,16 @@ pub fn view_transitions_enabled() -> bool {
   ENABLED.with(Cell::get)
 }
 
-/// Runs `update`, the state change of a navigation, under a view transition when the
-/// page opted in and the browser has `document.startViewTransition`; plainly
-/// otherwise.
+/// Runs `update`, the state change of a navigation, as one turn, under a view
+/// transition when the page opted in and the browser has
+/// `document.startViewTransition`; plainly otherwise. The page shows the new state
+/// once `update` returns, so a transition captures it.
 pub fn commit_navigation(update: Box<dyn FnOnce()>) {
+  let update = move || {
+    update();
+    end_turn();
+  };
+
   if !view_transitions_enabled() {
     update();
 

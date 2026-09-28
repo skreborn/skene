@@ -126,8 +126,8 @@ pub fn install_executor() {
   executor::install();
 }
 
-/// Polls every ready task, parking until a waker fires when none is ready but tasks
-/// are alive, until the render settles.
+/// Polls every ready task, each round of polls one turn, parking until a waker fires
+/// when none is ready but tasks are alive, until the render settles.
 ///
 /// Returns once nothing is ready and nothing is alive, or after [`MAX_ROUNDS`] so a
 /// self-waking task cannot hang the render.
@@ -159,7 +159,7 @@ pub(crate) fn stabilize_until(done: impl Fn() -> bool) {
       return;
     }
 
-    if executor::pump() {
+    if skene_reactive::batch(executor::pump) {
       continue;
     }
 

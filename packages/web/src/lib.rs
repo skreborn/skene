@@ -57,6 +57,7 @@ pub use self::csr::{
   drive,
   element,
   enable_view_transitions,
+  end_turn,
   hydrate,
   hydrate_page,
   hydration_mismatches,

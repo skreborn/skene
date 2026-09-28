@@ -3,7 +3,6 @@
 //! force.
 
 #![cfg(skene_leaf = "host")]
-#![cfg(skene_leaf = "host")]
 
 use skene_gui::{
   Activate,
@@ -18,7 +17,7 @@ use skene_gui::{
   Typography,
   View,
   core::{Color, ColorScheme, Media, NoProperty, Property, PropertyKey, StaticLeaf},
-  headless::{children, reset, resolve_color, text, trigger_click},
+  headless::{children, end_turn, reset, resolve_color, text, trigger_click},
   media,
   prelude::{Get, Owner, Set, Signal, Update},
 };
@@ -178,6 +177,7 @@ fn a_derived_scheme_re_inks_without_a_rebuild() {
   assert!(!dark.get());
 
   scheme.set(Some(ColorScheme::Dark));
+  end_turn();
 
   assert!(dark.get());
   assert_eq!(resolve_color(card, COLOR), Some(card_dark()));

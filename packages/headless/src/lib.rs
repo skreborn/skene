@@ -147,6 +147,34 @@ pub type SlotLeaf = skene_core::SlotLeaf<f32>;
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
   static STORE: RefCell<Store> = RefCell::new(Store::default());
+  /// The flush the turn's writes scheduled, run when the turn ends.
+  static TURN: RefCell<Option<Box<dyn FnOnce()>>> = const { RefCell::new(None) };
+}
+
+/// Ends the turn: runs the flush the writes since the last turn's end scheduled, so
+/// their effects have taken hold.
+///
+/// Every `trigger_` and setter here is a turn of its own and every query ends the
+/// pending one first; a test calls this where it observes a direct write's effects
+/// some other way.
+pub fn end_turn() {
+  let flush = TURN.with(|turn| turn.borrow_mut().take());
+
+  if let Some(flush) = flush {
+    flush();
+  }
+}
+
+/// Runs `event` as one turn: what earlier writes scheduled takes effect first, and
+/// what the event's own writes schedule once it is handled.
+fn trigger<R>(event: impl FnOnce() -> R) -> R {
+  end_turn();
+
+  let outcome = event();
+
+  end_turn();
+
+  outcome
 }
 
 /// Runs `operation` on the store; nothing of the user's runs inside it.
@@ -162,6 +190,8 @@ fn with_record<R>(handle: Handle, operation: impl FnOnce(&mut Record) -> R) -> O
 /// The handle of `node`, if it is live.
 #[must_use]
 pub fn handle(node: NodeId) -> Option<Handle> {
+  end_turn();
+
   Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))
 }
 
@@ -340,7 +370,7 @@ impl Platform for Headless {
   }
 
   fn set_scheme(&self, scheme: Option<ColorScheme>) {
-    choose_scheme(scheme);
+    record_chosen_scheme(scheme);
   }
 
   fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
@@ -392,6 +422,8 @@ impl Painting for Headless {
 /// Whether a paint callback was handed to the box `node` through [`Painting`].
 #[must_use]
 pub fn is_painted(node: NodeId) -> bool {
+  end_turn();
+
   handle(node)
     .is_some_and(|handle| with_record(handle, |record| record.painter.is_some()) == Some(true))
 }
@@ -400,6 +432,8 @@ pub fn is_painted(node: NodeId) -> bool {
 /// the unpremultiplied RGBA8 pixels row by row; `None` for a box nothing paints.
 #[must_use]
 pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
+  end_turn();
+
   let painter =
     handle(node).and_then(|handle| with_record(handle, |record| record.painter.clone()))??;
   #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -411,8 +445,12 @@ pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
 }
 
 /// Empties the scene, the store and the task queue, returns the environment to its
-/// defaults and installs the executor.
+/// defaults, installs the executor and holds every flush until its turn ends.
 pub fn reset() {
+  TURN.with(|turn| *turn.borrow_mut() = None);
+  skene_reactive::Runtime::set_scheduler(|flush| {
+    TURN.with(|turn| *turn.borrow_mut() = Some(flush));
+  });
   SCENE.with(|scene| *scene.borrow_mut() = Scene::new());
 
   let owner = with_store(Store::reset);
@@ -435,7 +473,7 @@ pub fn install_executor() {
 /// lands its value; `true` when any task ran.
 #[must_use]
 pub fn pump_tasks() -> bool {
-  skene_core::executor::pump()
+  trigger(skene_core::executor::pump)
 }
 
 /// Sets the document title.
@@ -464,132 +502,158 @@ pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
 /// The document title last set.
 #[must_use]
 pub fn document_title() -> Option<String> {
+  end_turn();
+
   with_store(|store| store.title.clone())
 }
 
 /// The document language last set.
 #[must_use]
 pub fn document_language() -> Option<String> {
+  end_turn();
+
   with_store(|store| store.language.clone())
 }
 
 /// The elements registered for the document head, in order.
 #[must_use]
 pub fn head_elements() -> Vec<HeadElement> {
+  end_turn();
+
   with_store(|store| store.head.clone())
 }
 
 /// Dispatches a click at `node`, bubbling through the scene.
 pub fn trigger_click(node: NodeId) -> Prevented {
-  dispatch_click::<Headless>(node)
+  trigger(|| dispatch_click::<Headless>(node))
 }
 
 /// Dispatches a key press at `node`, bubbling through the scene; focus shows from
 /// here on.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
-  with_store(|store| store.focus_visible = true);
+  trigger(|| {
+    with_store(|store| store.focus_visible = true);
 
-  dispatch_key_down::<Headless>(node, event)
+    dispatch_key_down::<Headless>(node, event)
+  })
 }
 
 /// Dispatches a key release at `node`, bubbling through the scene.
 pub fn trigger_key_up(node: NodeId, event: &KeyEvent) -> Prevented {
-  dispatch_key_up::<Headless>(node, event)
+  trigger(|| dispatch_key_up::<Headless>(node, event))
 }
 
 /// Dispatches a pointer press at `node`, bubbling through the scene; focus stops
 /// showing from here on.
 pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
-  with_store(|store| store.focus_visible = false);
+  trigger(|| {
+    with_store(|store| store.focus_visible = false);
 
-  dispatch_pointer_down::<Headless>(node, event)
+    dispatch_pointer_down::<Headless>(node, event)
+  })
 }
 
 /// Dispatches a pointer release at `node`, bubbling through the scene.
 pub fn trigger_pointer_up(node: NodeId, event: &PointerEvent) -> Prevented {
-  dispatch_pointer_up::<Headless>(node, event)
+  trigger(|| dispatch_pointer_up::<Headless>(node, event))
 }
 
 /// Dispatches a pointer move at `node`, bubbling through the scene.
 pub fn trigger_pointer_move(node: NodeId, event: &PointerEvent) -> Prevented {
-  dispatch_pointer_move::<Headless>(node, event)
+  trigger(|| dispatch_pointer_move::<Headless>(node, event))
 }
 
 /// Marks `node` hovered and notifies its pointer-enter handlers.
 pub fn trigger_pointer_enter(node: NodeId) {
-  set_hovered(node, true);
-  notify_pointer_enter::<Headless>(node);
+  trigger(|| {
+    mark_hovered(node, true);
+    notify_pointer_enter::<Headless>(node);
+  });
 }
 
 /// Marks `node` no longer hovered and notifies its pointer-leave handlers.
 pub fn trigger_pointer_leave(node: NodeId) {
-  set_hovered(node, false);
-  notify_pointer_leave::<Headless>(node);
+  trigger(|| {
+    mark_hovered(node, false);
+    notify_pointer_leave::<Headless>(node);
+  });
 }
 
 /// Moves focus to `node` and notifies its focus handlers; no blur is implied on the
 /// node focus left.
 pub fn trigger_focus(node: NodeId) {
-  set_focused(Some(node));
-  notify_focus::<Headless>(node);
+  trigger(|| {
+    move_focus(Some(node));
+    notify_focus::<Headless>(node);
+  });
 }
 
 /// Takes focus off `node`, if it holds it, and notifies its blur handlers.
 pub fn trigger_blur(node: NodeId) {
-  if let Some(handle) = handle(node) {
-    Headless.blur(&handle);
-  }
+  trigger(|| {
+    if let Some(handle) = handle(node) {
+      Headless.blur(&handle);
+    }
 
-  notify_blur::<Headless>(node);
+    notify_blur::<Headless>(node);
+  });
 }
 
 /// Records `value` as the node's textual value and notifies its change handlers.
 pub fn trigger_change(node: NodeId, value: &str) {
-  if let Some(handle) = handle(node) {
-    Headless.set_value(&handle, value);
-  }
+  trigger(|| {
+    if let Some(handle) = handle(node) {
+      Headless.set_value(&handle, value);
+    }
 
-  notify_change::<Headless>(node, value);
+    notify_change::<Headless>(node, value);
+  });
 }
 
 /// Records `selection` as the node's selection and notifies its selection handlers.
 pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
-  if let Some(handle) = handle(node) {
-    Headless.set_selection(&handle, selection);
-  }
+  trigger(|| {
+    if let Some(handle) = handle(node) {
+      Headless.set_selection(&handle, selection);
+    }
 
-  notify_selection_change::<Headless>(node, selection);
+    notify_selection_change::<Headless>(node, selection);
+  });
 }
 
 /// Records `checked` as the node's checked state and notifies its toggle handlers.
 pub fn trigger_toggle(node: NodeId, checked: bool) {
-  if let Some(handle) = handle(node) {
-    Headless.set_checked(&handle, checked);
-  }
+  trigger(|| {
+    if let Some(handle) = handle(node) {
+      Headless.set_checked(&handle, checked);
+    }
 
-  notify_toggle::<Headless>(node, checked);
+    notify_toggle::<Headless>(node, checked);
+  });
 }
 
 /// Notifies `node` of its new scroll offsets.
 pub fn trigger_scroll(node: NodeId, event: &ScrollEvent) {
-  notify_scroll::<Headless>(node, event);
+  trigger(|| notify_scroll::<Headless>(node, event));
 }
 
 /// Notifies the overlay `node` that the platform asked it to close; it stays open until
 /// the app closes it.
 pub fn trigger_dismiss(node: NodeId) {
-  notify_dismiss::<Headless>(node);
+  trigger(|| notify_dismiss::<Headless>(node));
 }
 
 /// Dispatches a context menu request at `node`, as a secondary press there or the
 /// menu key would; the verdict says whether the platform's own menu was prevented.
 pub fn trigger_context_menu(node: NodeId, event: &PointerEvent) -> Prevented {
-  dispatch_context_menu::<Headless>(node, event)
+  trigger(|| dispatch_context_menu::<Headless>(node, event))
 }
 
 /// The clipboard actions performed since the last call, in order.
 #[must_use]
 pub fn take_clipboard_actions() -> Vec<ClipboardAction> {
+  end_turn();
+
   with_store(|store| std::mem::take(&mut store.clipboard))
 }
 
@@ -604,54 +668,65 @@ pub fn set_clipboard_availability(action: ClipboardAction, availability: Availab
 /// Reports `size` as the measured size of `node` to every observer bound to it; a box
 /// named for container queries also publishes it as that container's size.
 pub fn trigger_size(node: NodeId, size: Size<f32>) {
-  let (handle, name) = Scene::<Headless>::with(|scene| {
-    let record = scene.record(node);
+  trigger(|| {
+    let (handle, name) = Scene::<Headless>::with(|scene| {
+      let record = scene.record(node);
 
-    (
-      record.map(|record| *record.sink()),
-      record.and_then(NodeRecord::container),
-    )
+      (
+        record.map(|record| *record.sink()),
+        record.and_then(NodeRecord::container),
+      )
+    });
+
+    if let Some(name) = name {
+      record_container_size(name, size);
+    }
+
+    let observers = handle
+      .and_then(|handle| with_record(handle, |record| record.size_observers.clone()))
+      .unwrap_or_default();
+
+    for observer in observers {
+      observer(size);
+    }
   });
-
-  if let Some(name) = name {
-    set_container_size(name, size);
-  }
-
-  let observers = handle
-    .and_then(|handle| with_record(handle, |record| record.size_observers.clone()))
-    .unwrap_or_default();
-
-  for observer in observers {
-    observer(size);
-  }
 }
 
 /// Sets the viewport's size.
 pub fn set_viewport(size: Size<f32>) {
-  let write = with_store(|store| {
-    store.viewport = Some(size);
+  trigger(|| {
+    let write = with_store(|store| {
+      store.viewport = Some(size);
 
-    store.media().set_viewport
+      store.media().set_viewport
+    });
+
+    write.set(size);
   });
-
-  write.set(size);
 }
 
 /// Sets the platform's color scheme; the scheme in force follows it unless the app
 /// chose one through [`choose_scheme`].
 pub fn set_scheme(scheme: ColorScheme) {
-  let (write, in_force) = with_store(|store| {
-    store.scheme = Some(scheme);
+  trigger(|| {
+    let (write, in_force) = with_store(|store| {
+      store.scheme = Some(scheme);
 
-    (store.media().set_scheme, store.scheme_in_force())
+      (store.media().set_scheme, store.scheme_in_force())
+    });
+
+    write.set(in_force);
   });
-
-  write.set(in_force);
 }
 
 /// Sets the scheme the app chose, overriding the platform's; `None` returns to
 /// following the platform.
 pub fn choose_scheme(scheme: Option<ColorScheme>) {
+  trigger(|| record_chosen_scheme(scheme));
+}
+
+/// Records the scheme the app chose, the scheme in force following.
+fn record_chosen_scheme(scheme: Option<ColorScheme>) {
   let (write, in_force) = with_store(|store| {
     store.chosen_scheme = scheme;
 
@@ -664,6 +739,8 @@ pub fn choose_scheme(scheme: Option<ColorScheme>) {
 /// The scheme the app chose through [`choose_scheme`], if any.
 #[must_use]
 pub fn chosen_scheme() -> Option<ColorScheme> {
+  end_turn();
+
   with_store(|store| store.chosen_scheme)
 }
 
@@ -671,41 +748,49 @@ pub fn chosen_scheme() -> Option<ColorScheme> {
 /// stands in for a server render or a hydration still adopting, true for a live page;
 /// hydrated until set.
 pub fn set_hydrated(hydrated: bool) {
-  let write = with_store(|store| {
-    store.hydrated = Some(hydrated);
+  trigger(|| {
+    let write = with_store(|store| {
+      store.hydrated = Some(hydrated);
 
-    store.media().set_hydrated
+      store.media().set_hydrated
+    });
+
+    write.set(hydrated);
   });
-
-  write.set(hydrated);
 }
 
 /// Sets whether a painted box shows as pixels; shown until set.
 pub fn set_graphics(shown: bool) {
-  let write = with_store(|store| {
-    store.graphics = Some(shown);
+  trigger(|| {
+    let write = with_store(|store| {
+      store.graphics = Some(shown);
 
-    store.media().set_graphics
+      store.media().set_graphics
+    });
+
+    write.set(shown);
   });
-
-  write.set(shown);
 }
 
 /// Sets whether the reader prefers reduced motion.
 pub fn set_reduced_motion(reduced: bool) {
-  let write = with_store(|store| {
-    store.reduced_motion = Some(reduced);
+  trigger(|| {
+    let write = with_store(|store| {
+      store.reduced_motion = Some(reduced);
 
-    store.media().set_reduced_motion
+      store.media().set_reduced_motion
+    });
+
+    write.set(reduced);
   });
-
-  write.set(reduced);
 }
 
 /// How many scheduled actions are still waiting for the clock, for a test asserting that
 /// a view cancels its own.
 #[must_use]
 pub fn pending_timers() -> usize {
+  end_turn();
+
   with_store(|store| store.timers.len())
 }
 
@@ -714,34 +799,41 @@ pub fn pending_timers() -> usize {
 /// clock then steps forward by `elapsed`; the next resolution samples every transition
 /// and animation at the new reading.
 pub fn advance(elapsed: std::time::Duration) {
-  let tracked = with_store(|store| store.tracked());
+  trigger(|| {
+    let tracked = with_store(|store| store.tracked());
 
-  for (node, keys) in tracked {
-    for key in keys {
-      let _ = resolve::resolve(node, key);
+    for (node, keys) in tracked {
+      for key in keys {
+        let _ = resolve::resolve(node, key);
+      }
     }
-  }
 
-  let due = with_store(|store| {
-    store.clock += elapsed.as_secs_f64();
+    let due = with_store(|store| {
+      store.clock += elapsed.as_secs_f64();
 
-    let now = store.clock;
-    let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut store.timers)
-      .into_iter()
-      .partition(|(at, ..)| *at <= now);
+      let now = store.clock;
+      let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut store.timers)
+        .into_iter()
+        .partition(|(at, ..)| *at <= now);
 
-    store.timers = pending;
+      store.timers = pending;
 
-    due
+      due
+    });
+
+    for (_, _, action) in due {
+      action();
+    }
   });
-
-  for (_, _, action) in due {
-    action();
-  }
 }
 
 /// Sets the measured size of the query container `name`.
 pub fn set_container_size(name: ContainerName, size: Size<f32>) {
+  trigger(|| record_container_size(name, size));
+}
+
+/// Records the measured size of the query container `name`.
+fn record_container_size(name: ContainerName, size: Size<f32>) {
   let sizes = with_store(|store| {
     store.container_sizes.insert(name, size);
 
@@ -753,6 +845,11 @@ pub fn set_container_size(name: ContainerName, size: Size<f32>) {
 
 /// Sets whether the pointer is over `node`.
 pub fn set_hovered(node: NodeId, hovered: bool) {
+  trigger(|| mark_hovered(node, hovered));
+}
+
+/// Records whether the pointer is over `node`.
+fn mark_hovered(node: NodeId, hovered: bool) {
   if let Some(handle) = handle(node) {
     with_record(handle, |record| record.hovered = hovered);
   }
@@ -760,6 +857,11 @@ pub fn set_hovered(node: NodeId, hovered: bool) {
 
 /// Moves focus to `node`, or clears it for `None`.
 pub fn set_focused(node: Option<NodeId>) {
+  trigger(|| move_focus(node));
+}
+
+/// Records focus on `node`, or on nothing for `None`.
+fn move_focus(node: Option<NodeId>) {
   let handle = node.and_then(handle);
 
   with_store(|store| store.focused = handle);
@@ -768,12 +870,16 @@ pub fn set_focused(node: Option<NodeId>) {
 /// Whether the pointer is over `node`.
 #[must_use]
 pub fn is_hovered(node: NodeId) -> bool {
+  end_turn();
+
   handle(node).is_some_and(|handle| with_record(handle, |record| record.hovered) == Some(true))
 }
 
 /// Whether `node` holds focus.
 #[must_use]
 pub fn is_focused(node: NodeId) -> bool {
+  end_turn();
+
   let handle = handle(node);
 
   handle.is_some() && with_store(|store| store.focused == handle)
@@ -783,12 +889,16 @@ pub fn is_focused(node: NodeId) -> bool {
 /// depth, a run followed by its text; anchors and scopes are elided.
 #[must_use]
 pub fn outline(node: NodeId) -> String {
+  end_turn();
+
   render_outline(node, false)
 }
 
 /// The tree under `node` with every node shown, anchors and scopes included.
 #[must_use]
 pub fn full_outline(node: NodeId) -> String {
+  end_turn();
+
   render_outline(node, true)
 }
 
@@ -843,6 +953,8 @@ fn outline_into(handle: Handle, depth: usize, full: bool, out: &mut String) {
 /// Whether `node` is live in the scene, attached or not.
 #[must_use]
 pub fn is_live(node: NodeId) -> bool {
+  end_turn();
+
   handle(node).is_some()
 }
 
@@ -850,12 +962,16 @@ pub fn is_live(node: NodeId) -> bool {
 /// accessibility properties last written to it.
 #[must_use]
 pub fn box_props(node: NodeId) -> Option<BoxProps<Headless>> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.kind.box_props().cloned())?
 }
 
 /// The props the control `node` was created with.
 #[must_use]
 pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
+  end_turn();
+
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Control(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
@@ -865,6 +981,8 @@ pub fn control_props(node: NodeId) -> Option<ControlProps<Headless>> {
 /// The props the overlay `node` was created with.
 #[must_use]
 pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
+  end_turn();
+
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Overlay(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
@@ -874,24 +992,32 @@ pub fn overlay_props(node: NodeId) -> Option<OverlayProps<Headless>> {
 /// Whether the overlay `node` is open.
 #[must_use]
 pub fn is_open(node: NodeId) -> bool {
+  end_turn();
+
   handle(node).is_some_and(|handle| with_record(handle, |record| record.open) == Some(true))
 }
 
 /// The anchor the overlay `node` was last opened or closed against.
 #[must_use]
 pub fn overlay_anchor(node: NodeId) -> Option<Handle> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.anchor)?
 }
 
 /// Where the overlay `node` is pinned, if it is.
 #[must_use]
 pub fn overlay_position(node: NodeId) -> Option<Point<f32>> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.position)?
 }
 
 /// The state last mirrored into the control `node`.
 #[must_use]
 pub fn control_state(node: NodeId) -> Option<ControlState> {
+  end_turn();
+
   with_record(handle(node)?, |record| match record.kind {
     Kind::Control(_) => Some(record.control_state),
     Kind::Box(_) | Kind::Overlay(_) | Kind::Run(_) | Kind::Anchor | Kind::Scope => None,
@@ -902,6 +1028,8 @@ pub fn control_state(node: NodeId) -> Option<ControlState> {
 /// [`Part::Root`].
 #[must_use]
 pub fn part(node: NodeId) -> Option<Part> {
+  end_turn();
+
   Scene::<Headless>::with(|scene| scene.part(node))
 }
 
@@ -909,6 +1037,8 @@ pub fn part(node: NodeId) -> Option<Part> {
 /// run's automatic one; `None` when it takes no focus.
 #[must_use]
 pub fn focus_order(node: NodeId) -> Option<FocusOrder> {
+  end_turn();
+
   match box_props(node) {
     Some(props) => props.focus_order,
     None => run_props(node)?.link.map(|_| FocusOrder::Auto),
@@ -919,6 +1049,8 @@ pub fn focus_order(node: NodeId) -> Option<FocusOrder> {
 /// skipped.
 #[must_use]
 pub fn is_tab_stop(node: NodeId) -> bool {
+  end_turn();
+
   matches!(
     focus_order(node),
     Some(FocusOrder::Auto | FocusOrder::Position(_))
@@ -930,6 +1062,8 @@ pub fn is_tab_stop(node: NodeId) -> bool {
 /// props were created with.
 #[must_use]
 pub fn accessible_name(node: NodeId) -> Option<String> {
+  end_turn();
+
   let props = control_props(node)?;
   let label = Scene::<Headless>::with(|scene| {
     scene
@@ -978,6 +1112,8 @@ fn subtree_text(node: NodeId) -> String {
 /// The props the run `node` was created with.
 #[must_use]
 pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
+  end_turn();
+
   with_record(handle(node)?, |record| match &record.kind {
     Kind::Run(props) => Some((**props).clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
@@ -987,6 +1123,8 @@ pub fn run_props(node: NodeId) -> Option<RunProps<Headless>> {
 /// The text of the run `node`.
 #[must_use]
 pub fn text(node: NodeId) -> Option<String> {
+  end_turn();
+
   with_record(handle(node)?, |record| match record.kind {
     Kind::Run(_) => Some(record.text.clone()),
     Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
@@ -996,24 +1134,32 @@ pub fn text(node: NodeId) -> Option<String> {
 /// The textual value last written to `node`.
 #[must_use]
 pub fn value(node: NodeId) -> Option<String> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.value.clone())
 }
 
 /// The options last written to `node`, each a value and its name.
 #[must_use]
 pub fn options(node: NodeId) -> Option<Vec<(String, String)>> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.options.clone())
 }
 
 /// The selection last written to `node`.
 #[must_use]
 pub fn selection(node: NodeId) -> Option<TextSelection> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.selection)
 }
 
 /// The checked state last written to `node`.
 #[must_use]
 pub fn checked(node: NodeId) -> Option<bool> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.checked)
 }
 
@@ -1021,12 +1167,16 @@ pub fn checked(node: NodeId) -> Option<bool> {
 /// expression resolved where the slot is read.
 #[must_use]
 pub fn slot_leaf(node: NodeId, slot: Slot) -> Option<SlotLeaf> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.slots.get(&slot).cloned())?
 }
 
 /// The event kinds `node` has handlers for, in registration order.
 #[must_use]
 pub fn listened(node: NodeId) -> Vec<EventKind> {
+  end_turn();
+
   handle(node)
     .and_then(|handle| with_record(handle, |record| record.listened.clone()))
     .unwrap_or_default()
@@ -1035,29 +1185,39 @@ pub fn listened(node: NodeId) -> Vec<EventKind> {
 /// The token definitions placed on the scope `node`.
 #[must_use]
 pub fn definitions(node: NodeId) -> Option<Definitions<TokenValue>> {
+  end_turn();
+
   with_record(handle(node)?, |record| record.definitions.clone())?
 }
 
 /// The token definitions every node falls back to.
 pub fn root_definitions() -> Definitions<TokenValue> {
+  end_turn();
+
   with_store(|store| store.root_definitions.clone())
 }
 
 /// How many times the root definitions have been written since the last reset.
 #[must_use]
 pub fn root_definition_writes() -> usize {
+  end_turn();
+
   with_store(|store| store.root_definition_writes)
 }
 
 /// The children of `node` as the scene holds them, in order.
 #[must_use]
 pub fn children(node: NodeId) -> Vec<NodeId> {
+  end_turn();
+
   Scene::<Headless>::with(|scene| scene.children(node).collect())
 }
 
 /// The children of `node` as the platform mirrored them, in order.
 #[must_use]
 pub fn mirrored_children(node: NodeId) -> Vec<Handle> {
+  end_turn();
+
   handle(node)
     .and_then(|handle| with_record(handle, |record| record.children.clone()))
     .unwrap_or_default()
@@ -1068,6 +1228,8 @@ pub fn mirrored_children(node: NodeId) -> Vec<Handle> {
 /// scene's tokens, the expression evaluator or the recorded slot value.
 #[must_use]
 pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color> {
+  end_turn();
+
   match resolve::resolve(node, key)? {
     SlotValue::Box(BoxValue::Color(color)) | SlotValue::Run(RunValue::Color(color)) => Some(color),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
@@ -1078,6 +1240,8 @@ pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color
 /// color leaf resolved to a fixed color.
 #[must_use]
 pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
+  end_turn();
+
   resolve::resolve_border(node)
 }
 
@@ -1085,6 +1249,8 @@ pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
 /// [`resolve_color`]: a fixed-length dimension, a number, or a uniform inset or spacing.
 #[must_use]
 pub fn resolve_length(node: NodeId, key: PropertyKey<NoProperty>) -> Option<f32> {
+  end_turn();
+
   match resolve::resolve(node, key)? {
     SlotValue::Box(BoxValue::Dimension(Dimension::Length(length))) => Some(length),
     SlotValue::Box(BoxValue::Number(number)) => Some(number),

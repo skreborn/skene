@@ -58,7 +58,7 @@ use skene_core::{
   View,
   dispatch_click,
 };
-use skene_reactive::{Effect, Owner, Trigger, batch, use_context};
+use skene_reactive::{Effect, Owner, Trigger, use_context};
 
 pub use self::{
   activate::Activate,
@@ -384,8 +384,7 @@ struct Observers {
 /// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
 /// with a label or parts alone builds without one. Its parts, its body and its label
 /// sit in one row half an em apart, centered on the cross axis, the label leading when
-/// the behavior says so. The build runs in one batch, so what its subtree notifies
-/// while building is delivered once the subtree is mounted.
+/// the behavior says so.
 #[must_use]
 pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   behavior: B,
@@ -785,81 +784,79 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
     let behavior = Rc::new(behavior);
     let owner = Owner::current().child();
 
-    batch(|| {
-      owner.enter(move || {
-        let kind = behavior.kind();
-        let placeholder = behavior.placeholder();
-        let lines = behavior.lines();
-        let name = label.as_ref().and_then(|label| label.name.clone());
+    owner.enter(move || {
+      let kind = behavior.kind();
+      let placeholder = behavior.placeholder();
+      let lines = behavior.lines();
+      let name = label.as_ref().and_then(|label| label.name.clone());
 
-        if let Some(role) = behavior.role() {
-          inner = inner.set_role(role);
+      if let Some(role) = behavior.role() {
+        inner = inner.set_role(role);
+      }
+
+      let node = inner.realize(NodeKind::Control, |box_props| {
+        P::default().create_control(&ControlProps {
+          kind,
+          box_props,
+          label: name.clone(),
+          placeholder,
+          lines,
+        })
+      });
+      // A caption whose text is the platform's to read names the control by reference;
+      // it is built after the control, so the markup keeps the control first.
+      let (label, labelled_by) = match label {
+        Some(Label { view, name: None }) => {
+          let part = view.build();
+
+          (Some((part, None)), Some(part))
         }
+        Some(Label { view, name }) => (Some((view.build(), name)), None),
+        None => (None, None),
+      };
+      let disabled = read_bool(disabled);
+      let handle = Rc::new(ControlHandle {
+        node,
+        name,
+        roster: use_context::<Roster>(),
+        disabled: Rc::clone(&disabled),
+        changed: Trigger::new(),
+        platform: PhantomData,
+      });
+      let flags = Flags {
+        disabled: Rc::clone(&disabled),
+        required: read_bool(required),
+        read_only: read_bool(read_only),
+        invalid: read_bool(invalid),
+        described_by,
+        labelled_by,
+      };
 
-        let node = inner.realize(NodeKind::Control, |box_props| {
-          P::default().create_control(&ControlProps {
-            kind,
-            box_props,
-            label: name.clone(),
-            placeholder,
-            lines,
-          })
-        });
-        // A caption whose text is the platform's to read names the control by reference;
-        // it is built after the control, so the markup keeps the control first.
-        let (label, labelled_by) = match label {
-          Some(Label { view, name: None }) => {
-            let part = view.build();
+      bind_reports(&handle, &behavior, &flags, focus_order);
+      behavior.attach(&handle);
+      register(node, &behavior, &handle, &disabled, observers);
 
-            (Some((part, None)), Some(part))
-          }
-          Some(Label { view, name }) => (Some((view.build(), name)), None),
-          None => (None, None),
-        };
-        let disabled = read_bool(disabled);
-        let handle = Rc::new(ControlHandle {
-          node,
-          name,
-          roster: use_context::<Roster>(),
-          disabled: Rc::clone(&disabled),
-          changed: Trigger::new(),
-          platform: PhantomData,
-        });
-        let flags = Flags {
-          disabled: Rc::clone(&disabled),
-          required: read_bool(required),
-          read_only: read_bool(read_only),
-          invalid: read_bool(invalid),
-          described_by,
-          labelled_by,
-        };
+      let mut label = label;
 
-        bind_reports(&handle, &behavior, &flags, focus_order);
-        behavior.attach(&handle);
-        register(node, &behavior, &handle, &disabled, observers);
+      if behavior.label_leads()
+        && let Some((part, _)) = label.take()
+      {
+        mount_part::<P>(node, Part::Label, part);
+      }
 
-        let mut label = label;
+      for (part, view) in parts {
+        mount_part::<P>(node, part, view.build());
+      }
 
-        if behavior.label_leads()
-          && let Some((part, _)) = label.take()
-        {
-          mount_part::<P>(node, Part::Label, part);
-        }
+      if let Some(child) = child.build_body() {
+        Scene::<P>::with(|scene| scene.attach(node, child, None));
+      }
 
-        for (part, view) in parts {
-          mount_part::<P>(node, part, view.build());
-        }
+      if let Some((part, _)) = label {
+        mount_part::<P>(node, Part::Label, part);
+      }
 
-        if let Some(child) = child.build_body() {
-          Scene::<P>::with(|scene| scene.attach(node, child, None));
-        }
-
-        if let Some((part, _)) = label {
-          mount_part::<P>(node, Part::Label, part);
-        }
-
-        node
-      })
+      node
     })
   }
 }

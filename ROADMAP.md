@@ -20,10 +20,8 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The rest of the reactive engine's ownership.**
-    - Turn-based flushing: the headless platform, the browser and the server flush at
-    the end of an event, microtask or render turn through the scheduler seam, as the
-    terminal does, retiring the build workarounds in controls and the lazy list; debug
-    builds name both sites of a disposed signal's read and warn on a write to one.
+    - Debug builds name both sites of a disposed signal's read and warn on a write to
+    one.
     - Tasks: a per-owner task registry replaces the cleanup every spawn leaves on its
     owner; an executor notifier each loop wires to its wake source (a self-pipe in the
     terminal, a looper fd on Android, a run-loop source on Apple platforms); `async-task`

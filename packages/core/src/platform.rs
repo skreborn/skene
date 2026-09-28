@@ -55,6 +55,10 @@ pub struct Timer(pub u64);
 /// platform declares the thread-local holding it and is called only to mirror each
 /// mutation into its sink. `Painted` and embeds are outside this trait: their payloads
 /// arrive through a platform's extension traits.
+///
+/// A platform holds every flush until its turn ends—an event, a mount, a round of task
+/// polls—through [`Runtime::set_scheduler`](skene_reactive::Runtime::set_scheduler), so
+/// what a view's build notifies is delivered once the build is whole.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` is not a platform",
   label = "a platform is a zero-sized type realizing the portable vocabulary: boxes, runs, anchors, scopes, tokens and events",

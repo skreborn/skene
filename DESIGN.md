@@ -527,12 +527,17 @@ internals contract:
   (`derived`, `reconcile`, `Show`, `Switch`) are, so a parent's structure settles before
   its descendants' properties and a disposed descendant never runs; `Effect::watch` is
   the fine-grained binder; a handle disposes or pauses.
-- **A pluggable scheduler.** Synchronous at write end by default; a platform installs
-  one that holds the flush until its turn ends. The terminal's turn is an event, a run
-  of due timers, a task pump or a render's settling round, and a test's trigger or
-  query is one too, so a test sees what the loop does; `flush_sync` settles mid-turn
-  where a turn needs it, as a key's default does after its handlers. The sync waker
-  routes through the same scheduler.
+- **A pluggable scheduler, flushed by turns.** Synchronous at write end by default;
+  every platform holds the flush until its turn ends, so what a build notifies is
+  delivered once the build is whole. The terminal's turn is an event, a run of due
+  timers, a task pump or a render's settling round; the browser's is an event, a
+  mount, a hydration or a navigation, and the next microtask checkpoint for anything
+  else; the server's is its build and each round of task polls, as a batch. On the
+  headless platform and the terminal a test's trigger is a turn and a query ends the
+  pending one first, so a test sees what the loop does; `end_turn` on the headless
+  platform and the browser settles a direct write where a test observes it otherwise,
+  and `flush_sync` settles mid-turn where a turn needs it, as a key's default does
+  after its handlers. The sync waker routes through the same scheduler.
 - **Panic and borrow discipline.** `batch` and `Owner::enter` are guarded; no user code
   runs under a runtime borrow; an entity is moved out of its arena before its cleanups
   run.

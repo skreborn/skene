@@ -22,7 +22,7 @@ use skene_core::{
   item_window,
   item_window_over,
 };
-use skene_reactive::{Get, Memo, Set, Signal, Update, batch};
+use skene_reactive::{Get, Memo, Set, Signal, Update};
 
 use crate::{Container, LayoutBox, realize::with_sink};
 
@@ -341,10 +341,8 @@ impl<P: Platform> LazyList<P> {
       ))
       .build();
 
-    batch(|| {
-      with_sink::<P, _>(node, |sink| {
-        P::default().observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
-      });
+    with_sink::<P, _>(node, |sink| {
+      P::default().observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
     });
 
     node

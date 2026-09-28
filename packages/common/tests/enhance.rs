@@ -5,13 +5,15 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_common::{Enhance, media};
 use skene_core::{NodeId, Scene, View};
-use skene_headless::{Headless, reset, set_hydrated, text};
+use skene_headless::{Headless, end_turn, reset, set_hydrated, text};
 use skene_reactive::{Get, Owner, Set, Signal};
 
 type Text = skene_common::Text<Headless>;
 
-/// The nodes the segment `start` begins holds.
+/// The nodes the segment `start` begins holds, once the pending turn has ended.
 fn content(start: NodeId) -> Vec<NodeId> {
+  end_turn();
+
   Scene::<Headless>::with(|scene| scene.segment_nodes(start))
 }
 
@@ -109,6 +111,7 @@ fn a_signal_read_while_building_rebuilds_nothing() {
   assert_eq!(shown(start), "baseline 0");
 
   ready.set(true);
+  end_turn();
   read.set(2);
 
   assert_eq!(shown(start), "live 1");

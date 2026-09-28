@@ -50,7 +50,7 @@ use skene_core::{
   TokenName,
   View,
 };
-use skene_reactive::{Owner, ReadSignal, Set, Signal, WriteSignal, provide_context};
+use skene_reactive::{Owner, ReadSignal, Set, Signal, WriteSignal, batch, provide_context};
 
 pub use self::task::{drive, install_executor, set_render_deadline, sleep};
 use super::{
@@ -1612,21 +1612,23 @@ fn begin_render() -> (NodeId, Owner) {
   (root, skene_core::root_owner().child())
 }
 
-/// Builds `app` under `scope` as the child of `root`, with `boundary` in context for
-/// the tasks it starts when one is given.
+/// Builds `app` under `scope` as the child of `root`, as one turn, with `boundary` in
+/// context for the tasks it starts when one is given.
 fn build_app<V, F>(root: NodeId, scope: Owner, boundary: Option<Boundary>, app: F)
 where
   F: FnOnce() -> V + 'static,
   V: IntoView<Web>,
 {
-  scope.enter(|| {
-    if let Some(boundary) = boundary {
-      provide_context(boundary);
-    }
+  batch(|| {
+    scope.enter(|| {
+      if let Some(boundary) = boundary {
+        provide_context(boundary);
+      }
 
-    let node = app().into_view().build();
+      let node = app().into_view().build();
 
-    Scene::<Web>::with(|scene| scene.attach(root, node, None));
+      Scene::<Web>::with(|scene| scene.attach(root, node, None));
+    });
   });
 }
 

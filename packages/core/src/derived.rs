@@ -2,6 +2,7 @@
 
 use std::{
   cell::{Cell, RefCell},
+  collections::VecDeque,
   hash::Hash,
   rc::Rc,
 };
@@ -62,7 +63,8 @@ struct Mounted {
 }
 
 struct Scratch<K> {
-  old: FxHashMap<K, (usize, Mounted)>,
+  old: FxHashMap<K, VecDeque<(usize, Mounted)>>,
+  occurrences: FxHashMap<Key, usize>,
   old_positions: Vec<usize>,
   new_positions: Vec<usize>,
   reorder: Reorder,
@@ -72,6 +74,7 @@ impl<K> Default for Scratch<K> {
   fn default() -> Self {
     Self {
       old: FxHashMap::default(),
+      occurrences: FxHashMap::default(),
       old_positions: Vec::new(),
       new_positions: Vec::new(),
       reorder: Reorder::default(),
@@ -88,6 +91,9 @@ impl<K> Default for Scratch<K> {
 /// and disposed when the item leaves; kept items on the longest increasing run of
 /// previous positions stay in place, and only displaced or new ones are re-inserted
 /// before their successor.
+///
+/// Keys should be unique, which a debug build warns about once; items sharing one
+/// match the ones before them in order, each under a scope of its own.
 pub fn reconcile<P: Platform, T, I, K>(
   start: NodeId,
   items: impl Fn() -> I + 'static,
@@ -105,28 +111,47 @@ pub fn reconcile<P: Platform, T, I, K>(
     let mut scratch = scratch.borrow_mut();
     let Scratch {
       old,
+      occurrences,
       old_positions,
       new_positions,
       reorder,
     } = &mut *scratch;
 
     for (index, (key, entry)) in mounted.drain(..).enumerate() {
-      old.insert(key, (index, entry));
+      old.entry(key).or_default().push_back((index, entry));
     }
 
+    occurrences.clear();
     old_positions.clear();
     new_positions.clear();
 
     for item in items() {
       let key = key(&item);
-      let entry = if let Some((index, entry)) = old.remove(&key) {
+      let identity = Key::of(&key);
+      let occurrence = occurrences.entry(identity).or_insert(0);
+      let repeat = *occurrence;
+
+      *occurrence += 1;
+
+      #[cfg(debug_assertions)]
+      if repeat == 1 {
+        warn_repeated_key();
+      }
+
+      let kept = old.get_mut(&key).and_then(VecDeque::pop_front);
+      let entry = if let Some((index, entry)) = kept {
         old_positions.push(index);
         new_positions.push(mounted.len());
 
         entry
       }
       else {
-        let scope = parent_scope.keyed_child(Key::of(&key));
+        let scope = parent_scope.keyed_child(if repeat == 0 {
+          identity
+        }
+        else {
+          Key::of(&(identity, repeat))
+        });
         let node = scope.enter(|| untrack(|| build(item)));
 
         Mounted { node, scope }
@@ -135,12 +160,14 @@ pub fn reconcile<P: Platform, T, I, K>(
       mounted.push((key, entry));
     }
 
-    for (_, (_, entry)) in old.drain() {
-      Scene::<P>::with(|scene| {
-        scene.remove_from_segment(start, entry.node);
-        scene.destroy(entry.node);
-      });
-      entry.scope.dispose();
+    for (_, entries) in old.drain() {
+      for (_, entry) in entries {
+        Scene::<P>::with(|scene| {
+          scene.remove_from_segment(start, entry.node);
+          scene.destroy(entry.node);
+        });
+        entry.scope.dispose();
+      }
     }
 
     let settled = reorder.settled_positions(old_positions.as_slice(), new_positions.as_slice());
@@ -160,6 +187,19 @@ pub fn reconcile<P: Platform, T, I, K>(
     drop(scratch);
 
     mounted
+  });
+}
+
+/// Warns, once, that a reconciled collection repeated a key.
+#[cfg(debug_assertions)]
+fn warn_repeated_key() {
+  static WARNED: std::sync::Once = std::sync::Once::new();
+
+  WARNED.call_once(|| {
+    eprintln!(
+      "skene-core: a reconciled collection repeated a key; keys should be unique, and \
+       items sharing one match in order"
+    );
   });
 }
 
@@ -314,6 +354,49 @@ mod tests {
     assert_eq!(after, [start, before[3], before[1], end]);
     assert!(with(|scene| scene.record(second).is_none()));
     assert_eq!(inner.try_get(), None);
+
+    owner.dispose();
+  }
+
+  /// Items sharing a key match the ones before them in order, each its own node, and
+  /// every one that leaves is destroyed, so no node outlives its item.
+  #[test]
+  fn reconcile_matches_repeated_keys_in_order() {
+    TestPlatform::reset();
+
+    let owner = Owner::new();
+    let (items, set_items) = signal(vec![1, 1, 2]);
+    let parent = TestBox::node();
+    let (start, end) = with(Scene::create_segment);
+
+    with(|scene| scene.attach(parent, start, None));
+    owner.enter(|| {
+      reconcile::<TestPlatform, _, _, _>(
+        start,
+        move || items.get(),
+        |item| *item,
+        |_| TestBox::node(),
+      );
+    });
+
+    let before = children(parent);
+
+    assert_eq!(before.len(), 5);
+
+    set_items.set(vec![2, 1]);
+
+    let after = children(parent);
+
+    assert_eq!(after, [start, before[3], before[1], end]);
+    assert!(
+      with(|scene| scene.record(before[2]).is_none()),
+      "the second of the repeated items is gone"
+    );
+
+    set_items.set(vec![1, 1, 1]);
+
+    assert_eq!(children(parent).len(), 5);
+    assert_eq!(children(parent)[1], before[1], "the first keeps its node");
 
     owner.dispose();
   }

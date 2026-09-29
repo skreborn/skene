@@ -124,10 +124,13 @@ platform crate, since it is not a shared contract.
   *interactive* pixel target through the `Painting` extension. A `Canvas` is a vello
   scene in device pixels (kurbo shapes, peniko brushes, the framework's `Color`
   converting to a brush), recorded once and replayed into the platform's `Renderer`. The
-  browser leaf renders it into a `<canvas>` child sized to the box at the device pixel
-  ratio and repaints on resize: through vello's hybrid renderer over wgpu where the
-  page has WebGPU, one device shared by every painted box with a surface per canvas,
-  and through vello's CPU renderer otherwise; the headless platform renders it to pixels
+  browser leaf renders it into a `<canvas>` placed over the box and out of its flow, so
+  it never sizes the box, observed in the device pixels the engine reports (the
+  content box times the pixel ratio, followed through a resolution query, where it
+  reports none) and repainted when either changes: through vello's hybrid renderer
+  over wgpu where the page has WebGPU, one device shared by every painted box with a
+  surface per canvas, asked for afresh when lost, and through vello's CPU renderer
+  otherwise, in a fresh canvas where a canvas's GPU path failed; the headless platform renders it to pixels
   a test reads (`headless::paint`); the server leaf renders it empty; the terminal
   renders it on the CPU and shows it through the kitty graphics protocol where the
   terminal proved one, its fallback standing elsewhere. The native layers sit behind

@@ -20,9 +20,6 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The web's highest-traffic defects.**
-    - Painting: device loss recovers, with a CPU fallback per canvas; the
-    canvas is positioned absolutely and observes `device-pixel-content-box`, so it
-    stops sizing its own box and repaints when the pixel ratio changes.
     - Streaming and loading: the streaming cursor resumes by node identity,
     not position; streamed style deltas move into `<head>` on adoption; a title set in
     a `Deferred` holds the shell until the head settles, or is warned about and

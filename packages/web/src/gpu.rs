@@ -29,11 +29,13 @@ thread_local! {
   static GPU: RefCell<State> = const { RefCell::new(State::Unasked) };
 }
 
-/// The GPU renderer, asking the browser for one on the first call.
+/// The GPU renderer, asking the browser for one on the first call and again after the
+/// device is lost.
 ///
 /// While the answer is pending the result is [`Availability::Pending`]; `settle` runs
-/// once it arrives, ready or not, so every box that waited on it repaints.
-pub(crate) fn renderer(settle: impl FnOnce() + 'static) -> Availability {
+/// once it arrives, ready or not, so every box that waited on it repaints, and `lost`
+/// runs once the device it brought is lost, the next call asking afresh.
+pub(crate) fn renderer(settle: impl FnOnce() + 'static, lost: fn()) -> Availability {
   let state = GPU.with(|gpu| match &*gpu.borrow() {
     State::Unasked => None,
     State::Pending => Some(Availability::Pending),
@@ -53,7 +55,7 @@ pub(crate) fn renderer(settle: impl FnOnce() + 'static) -> Availability {
 
   GPU.with(|gpu| *gpu.borrow_mut() = State::Pending);
   wasm_bindgen_futures::spawn_local(async move {
-    let state = match Context::acquire().await {
+    let state = match Context::acquire(lost).await {
       Some(context) => State::Ready(Rc::new(context)),
       None => State::Unavailable,
     };
@@ -91,7 +93,7 @@ struct Rendering {
 }
 
 impl Context {
-  async fn acquire() -> Option<Self> {
+  async fn acquire(lost: fn()) -> Option<Self> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
       backends: wgpu::Backends::BROWSER_WEBGPU,
       flags: wgpu::InstanceFlags::default(),
@@ -107,6 +109,11 @@ impl Context {
       .request_device(&wgpu::DeviceDescriptor::default())
       .await
       .ok()?;
+
+    device.set_device_lost_callback(move |_, _| {
+      GPU.with(|gpu| *gpu.borrow_mut() = State::Unasked);
+      lost();
+    });
 
     Some(Self {
       instance,

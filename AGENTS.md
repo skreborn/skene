@@ -225,11 +225,14 @@
 - **Painted** content is vello wherever it is realized: a `Canvas` is a vello scene in
   device pixels, drawn with kurbo shapes and peniko brushes, recorded once and replayed
   into whichever `Renderer` the platform owns. The browser leaf renders it into a
-  `<canvas>` sized to the box at the device pixel ratio, repainting on resize: through
-  vello's hybrid renderer over wgpu where the page has WebGPU—one device shared by
-  every painted box, a surface per canvas—and through vello's CPU renderer otherwise.
-  The choice is made once per page when the first box paints, and a box paints nothing
-  until it is made; native layers come with the native platform. SSR/SSG render it empty.
+  `<canvas>` placed over the box and out of its flow, sized in the device pixels the
+  engine reports (the content box times the pixel ratio where it reports none),
+  repainting when either changes: through vello's hybrid renderer over wgpu where the
+  page has WebGPU—one device shared by every painted box, a surface per canvas—and
+  through vello's CPU renderer otherwise. The choice is made once per page when the
+  first box paints, and a box paints nothing until it is made; a lost device is asked
+  for afresh, and a canvas whose GPU path fails paints on the CPU in a fresh canvas
+  from then on. Native layers come with the native platform. SSR/SSG render it empty.
   The terminal renders it on the CPU at the box's cells times the cell's pixel size
   and shows it through the kitty graphics protocol where launch's query (`a=q`) was
   answered `OK`: transmitted once per change, placed over the box's cells cropped to

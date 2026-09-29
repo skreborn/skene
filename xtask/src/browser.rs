@@ -21,9 +21,10 @@ const RUNS: &[Run] = &[
     package: "skene-gui",
     arguments: &[],
     binaries: &[
-      ("web_dom", 51),
+      ("web_dom", 58),
+      ("web_gpu_loss", 1),
       ("web_hydrate", 13),
-      ("web_painted", 2),
+      ("web_painted", 3),
       ("web_resource", 5),
       ("web_task", 4),
     ],
@@ -31,7 +32,7 @@ const RUNS: &[Run] = &[
   Run {
     package: "skene-web",
     arguments: &[],
-    binaries: &[("web_dom", 12)],
+    binaries: &[("web_dom", 15)],
   },
   Run {
     package: "skene-transport",

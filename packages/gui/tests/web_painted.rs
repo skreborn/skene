@@ -11,6 +11,7 @@
 
 use skene_gui::{
   Color,
+  HasChildren,
   Painted,
   View,
   core::Dimension,
@@ -224,4 +225,28 @@ async fn a_resized_box_is_blitted_again() {
     &[255, 0, 0, 255],
     "the center of the grown canvas is the fill"
   );
+}
+
+/// A painted box with no height of its own takes none from its canvas, which stands out
+/// of the box's flow.
+#[wasm_bindgen_test]
+async fn a_canvas_never_sizes_its_box() {
+  hide_webgpu();
+
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    skene_gui::Column::new()
+      .set_child(Painted::new(|_, _| {}).set_width(Dimension::Length(40.)))
+      .build()
+  });
+
+  next_frame().await;
+  next_frame().await;
+
+  let painted = root
+    .first_element_child()
+    .and_then(|column| column.first_element_child())
+    .expect("the painted box");
+
+  assert!(painted.get_bounding_client_rect().height().abs() < 0.5);
 }

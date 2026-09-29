@@ -15,6 +15,7 @@
 //! id is stable across the rebuild; the content that next enters the segment with the
 //! same shape takes them back.
 
+mod canvas;
 mod dev;
 mod events;
 mod head;
@@ -33,7 +34,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use skene_common::gui::{Canvas, GuiExt, Painter, Painting};
+use skene_common::gui::GuiExt;
 use skene_core::{
   AccessProp,
   Availability,
@@ -75,16 +76,13 @@ use skene_core::{
 use skene_reactive::{Memo, ReadSignal};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{
-  CanvasRenderingContext2d,
   Document,
   Element,
-  HtmlCanvasElement,
   HtmlDialogElement,
   HtmlElement,
   HtmlInputElement,
   HtmlSelectElement,
   HtmlTextAreaElement,
-  ImageData,
   ResizeObserver,
   ResizeObserverEntry,
 };
@@ -156,7 +154,7 @@ use super::{
   },
   token::WebTokenValue,
 };
-use crate::{Declarations, WebDom, WebMarkup, gpu, hydration::STATE_SCRIPT_ID};
+use crate::{Declarations, WebDom, WebMarkup, hydration::STATE_SCRIPT_ID};
 
 /// The sink of the mount root; its children are the app.
 const ROOT: u32 = 0;
@@ -209,10 +207,8 @@ struct Node {
   adopted: bool,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
-  painter: Option<Rc<Painter>>,
-  canvas: Option<HtmlCanvasElement>,
-  gpu: Option<gpu::Target>,
-  awaiting_gpu: Option<Size<f32>>,
+  /// The canvas a painted box paints into.
+  canvas: Option<Box<canvas::PaintedCanvas>>,
 }
 
 impl Node {
@@ -231,10 +227,7 @@ impl Node {
       cancel: None,
       adopted,
       scrolls: false,
-      painter: None,
       canvas: None,
-      gpu: None,
-      awaiting_gpu: None,
     }
   }
 
@@ -463,6 +456,8 @@ struct Dom {
   resize: Option<SizeObserver>,
   root_node: Option<NodeId>,
   saved: FxHashMap<u32, Saved>,
+  /// The observer reporting each canvas's size, made when the first box paints.
+  pixels: Option<canvas::Pixels>,
   /// The overlays asked open before their element was connected, each with its anchor.
   pending_open: FxHashMap<u32, Option<u32>>,
   timers: FxHashMap<Timer, Timeout>,
@@ -547,6 +542,7 @@ impl Dom {
       resize: None,
       root_node: None,
       saved: FxHashMap::default(),
+      pixels: None,
       pending_open: FxHashMap::default(),
       timers: FxHashMap::default(),
       next_timer: 0,
@@ -1196,154 +1192,6 @@ fn position_at_anchor(popup: &HtmlElement, anchor: &Element, sink: u32, placemen
   let _ = style.set_property("top", &format!("{top}px"));
 }
 
-impl Painting for Web {
-  fn available(&self) -> ReadSignal<bool> {
-    media::live()
-  }
-
-  fn paint(&self, sink: &u32, painter: Box<Painter>) {
-    let sink = *sink;
-    let first = with_dom(|dom| {
-      let document = dom.document.clone();
-      let Some(node) = dom.node_mut(sink)
-      else {
-        return false;
-      };
-      let first = node.painter.is_none();
-
-      node.painter = Some(Rc::from(painter));
-
-      if node.canvas.is_none()
-        && let Some(element) = node.element()
-        && let Ok(canvas) = document.create_element("canvas")
-        && let Ok(canvas) = canvas.dyn_into::<HtmlCanvasElement>()
-      {
-        let _ = canvas.set_attribute("style", "display:block;width:100%;height:100%");
-        let _ = element.append_child(&canvas);
-
-        node.canvas = Some(canvas);
-      }
-
-      first
-    });
-
-    if first {
-      self.observe_size(&sink, Rc::new(move |size| repaint(sink, size)));
-    }
-
-    let size = with_dom(|dom| {
-      dom.node(sink).and_then(Node::element).map(|element| {
-        let rect = element.get_bounding_client_rect();
-
-        #[expect(clippy::cast_possible_truncation)]
-        Size::new(rect.width() as f32, rect.height() as f32)
-      })
-    });
-
-    if let Some(size) = size {
-      repaint(sink, size);
-    }
-  }
-}
-
-/// Runs the painter of `sink` at `size` logical pixels into its canvas, at the device
-/// pixel ratio: on the GPU where the browser has one, else on the CPU.
-fn repaint(sink: u32, size: Size<f32>) {
-  let Some((painter, canvas)) = with_dom(|dom| {
-    dom
-      .node(sink)
-      .and_then(|node| Some((node.painter.clone()?, node.canvas.clone()?)))
-  })
-  else {
-    return;
-  };
-
-  if size.width <= 0. || size.height <= 0. {
-    return;
-  }
-
-  #[expect(clippy::cast_possible_truncation)]
-  let ratio = web_sys::window().map_or(1., |window| window.device_pixel_ratio()) as f32;
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-  let (width, height) = (
-    (size.width * ratio).round() as u16,
-    (size.height * ratio).round() as u16,
-  );
-  let mut surface = Canvas::new(width, height);
-
-  surface.set_transform(skene_common::gui::kurbo::Affine::scale(f64::from(ratio)));
-  painter(&mut surface, size);
-
-  match gpu::renderer(repaint_painted) {
-    gpu::Availability::Pending => {
-      with_dom(|dom| {
-        if let Some(node) = dom.node_mut(sink) {
-          node.awaiting_gpu = Some(size);
-        }
-      });
-
-      return;
-    }
-    gpu::Availability::Ready(context) => {
-      let rendered = with_dom(|dom| {
-        let node = dom.node_mut(sink)?;
-        let canvas = node.canvas.as_ref()?;
-
-        if node.gpu.is_none() {
-          node.gpu = Some(context.target(canvas, width, height)?);
-        }
-
-        Some(context.render(node.gpu.as_mut()?, &surface))
-      });
-
-      if rendered == Some(true) {
-        return;
-      }
-    }
-    gpu::Availability::Unavailable => {}
-  }
-
-  canvas.set_width(u32::from(width));
-  canvas.set_height(u32::from(height));
-
-  let pixels = surface.pixels();
-  let Ok(Some(context)) = canvas.get_context("2d")
-  else {
-    return;
-  };
-  let Ok(context) = context.dyn_into::<CanvasRenderingContext2d>()
-  else {
-    return;
-  };
-
-  if let Ok(image) = ImageData::new_with_u8_clamped_array_and_sh(
-    wasm_bindgen::Clamped(&pixels),
-    u32::from(width),
-    u32::from(height),
-  ) {
-    let _ = context.put_image_data(&image, 0., 0.);
-  }
-}
-
-/// Repaints every box that waited on the GPU's answer, at the size it last reported.
-fn repaint_painted() {
-  let painted: Vec<(u32, Size<f32>)> = with_dom(|dom| {
-    dom
-      .nodes
-      .iter_mut()
-      .enumerate()
-      .filter_map(|(sink, node)| {
-        #[expect(clippy::cast_possible_truncation)]
-        Some((sink as u32, node.as_mut()?.awaiting_gpu.take()?))
-      })
-      .collect()
-  });
-
-  for (sink, size) in painted {
-    repaint(sink, size);
-  }
-}
-
 impl Platform for Web {
   type Scalar = f32;
   type Sink = u32;
@@ -1876,6 +1724,10 @@ impl Platform for Web {
         && let (Some((observer, _)), Some(element)) = (&dom.resize, node.element())
       {
         observer.unobserve(element);
+      }
+
+      if let (Some(pixels), Some(canvas)) = (&dom.pixels, &node.canvas) {
+        pixels.unobserve(&canvas.element);
       }
 
       dom.events.open_popups.remove(&sink);

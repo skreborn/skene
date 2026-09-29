@@ -362,10 +362,13 @@
   `RawPicker` is composed from them. A listbox and the closed picker face have
   type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
   options' labels supply as they read now (`Label::set_name`, `Label::derive_name`), and
-  the face's verdict on a typed key is
-  the `Popup` behavior's through `handle_typed`. A control is **controlled** on every facade: it
-  reports, and the bound signal is the truth, the platform brought back to it after
-  every report, so a change its handler rejects is undone. A text entry's selection is controlled
+  the face's verdict on a typed key is the `Popup` behavior's through `handle_typed`. A
+  control whose box holds a value—a text entry, a picker, a popup face
+  (`ControlKind::keeps_caption_beside`)—keeps its caption before its box among its
+  siblings on every platform, answering to the control, as the web's `<label>` does. A
+  control is **controlled** on every facade: it reports, and the bound signal is the
+  truth, the platform brought back to it after every report, so a change its handler
+  rejects is undone. A text entry's selection is controlled
   beside its value: `TextSelection` is a `start` and an `end` in grapheme clusters of
   the value, the end where the caret is and before the start when made backward,
   `derive_selection` places it, `handle_selection_change` hears every move of the

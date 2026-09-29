@@ -174,6 +174,7 @@ enum Realized {
   Box,
   Control {
     native: Option<NativeElement>,
+    caption_beside: bool,
   },
   Overlay {
     modal: bool,
@@ -691,14 +692,6 @@ impl Dom {
     connected
   }
 
-  /// Whether `sink` stands bare: a control that is its own `<input>`, `<textarea>` or
-  /// `<select>`, whose caption is a `<label for>` beside it.
-  fn is_bare(&self, sink: u32) -> bool {
-    self.node(sink).is_some_and(|node| {
-      matches!(node.realized, Realized::Control { native: Some(native) } if native.is_bare())
-    })
-  }
-
   /// The part `sink` is mounted as, when it is one.
   fn part_of(&self, sink: u32) -> Option<Part> {
     let node = self.node(sink)?.id?;
@@ -706,14 +699,19 @@ impl Dom {
     Scene::<Web>::with(|scene| scene.part(node))
   }
 
-  /// Attaches `child` into the caption of `parent` when `parent` stands bare and
-  /// `child` its `Label` part, making the `<label for>` on the first and placing it
-  /// before the control; `false` for any other pair, which attaches as usual.
+  /// Attaches `child` into the caption of `parent` when `parent` keeps its caption
+  /// beside it and `child` is its `Label` part, making the `<label>` on the first,
+  /// `for` the control where it is its own `<input>`, `<textarea>` or `<select>`, and
+  /// placing it before the control; `false` for any other pair, which attaches as
+  /// usual.
   fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
-    let Some(node) = self
-      .node(parent)
-      .filter(|_| self.is_bare(parent))
-      .and_then(|node| node.id)
+    let Some((node, labels)) = self.node(parent).and_then(|entry| match entry.realized {
+      Realized::Control {
+        native,
+        caption_beside: true,
+      } => Some((entry.id?, native.is_some_and(NativeElement::is_bare))),
+      _ => None,
+    })
     else {
       return false;
     };
@@ -729,10 +727,12 @@ impl Dom {
       let (caption, _) = self.take_element("label");
       let id = element_id(node);
 
-      let _ = caption.set_attribute("for", &id);
+      if labels {
+        let _ = caption.set_attribute("for", &id);
+      }
 
       if let Some(entry) = self.node_mut(parent) {
-        if let Some(element) = entry.element() {
+        if labels && let Some(element) = entry.element() {
           let _ = element.set_attribute("id", &id);
         }
 
@@ -1304,6 +1304,7 @@ impl Platform for Web {
       let sink = if let Some(native) = native_element(props.kind) {
         let realized = Realized::Control {
           native: Some(native),
+          caption_beside: props.kind.keeps_caption_beside(),
         };
 
         if native.is_bare() {
@@ -1347,7 +1348,13 @@ impl Platform for Web {
       }
       else {
         let (tag, attribute) = drawn_element(props.kind);
-        let root = dom.create_element(tag, Realized::Control { native: None });
+        let root = dom.create_element(
+          tag,
+          Realized::Control {
+            native: None,
+            caption_beside: props.kind.keeps_caption_beside(),
+          },
+        );
 
         if let Some(element) = dom.node(root).and_then(Node::element) {
           if let Some((name, value)) = attribute {

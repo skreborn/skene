@@ -278,7 +278,7 @@ fn inside_native_toggle(node: NodeId) -> bool {
   control.is_some_and(|sink| {
     with_dom(|dom| {
       dom.node(sink).is_some_and(|node| {
-        matches!(node.realized, Realized::Control { native: Some(native) } if native.is_toggle())
+        matches!(node.realized, Realized::Control { native: Some(native), .. } if native.is_toggle())
       })
     })
   })

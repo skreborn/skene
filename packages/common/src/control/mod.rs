@@ -431,7 +431,8 @@ struct Observers {
 /// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
 /// with a label or parts alone builds without one. Its parts, its body and its label
 /// sit in one row half an em apart, centered on the cross axis, the label leading when
-/// the behavior says so.
+/// the behavior says so; the platform keeps the label of a control whose kind says so
+/// ([`ControlKind::keeps_caption_beside`]) before its box among its siblings instead.
 #[must_use]
 pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   behavior: B,

@@ -85,6 +85,19 @@ pub enum ControlKind {
   MenuItem,
 }
 
+impl ControlKind {
+  /// Whether the control's caption sits before its box among its siblings rather than
+  /// inside it: a text entry's, a picker's and a popup face's, whose box holds a value.
+  #[inline(always)]
+  #[must_use]
+  pub const fn keeps_caption_beside(self) -> bool {
+    matches!(
+      self,
+      Self::TextField | Self::TextEditor | Self::NativePicker | Self::Combobox
+    )
+  }
+}
+
 /// Everything a platform needs to realize a control: a box with a kind and, where
 /// nothing visible supplies one, an accessible name.
 #[must_use]

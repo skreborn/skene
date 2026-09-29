@@ -22,6 +22,7 @@ use skene_core::{
   NodeId,
   NodeKind,
   OverlayProps,
+  Part,
   Placement,
   Platform,
   Point,
@@ -316,47 +317,43 @@ impl Platform for Tui {
   }
 
   fn attach(&self, parent: &Handle, child: &Handle, before: Option<&Handle>) {
+    let caption = with_store(|store| {
+      store
+        .keeps_caption_beside(*parent)
+        .then(|| store.record(*child).and_then(|record| record.node))
+        .flatten()
+    })
+    .is_some_and(|node| Scene::<Self>::with(|scene| scene.part(node)) == Some(Part::Label));
+
     with_store(|store| {
-      let previous = store.parent(*child);
+      if caption {
+        store.keep_caption(*parent, *child);
 
-      if let Some(previous) = previous
-        && let Some(record) = store.record_mut(previous)
-      {
-        record.children.retain(|existing| existing != child);
-      }
-
-      let Some(record) = store.record_mut(*parent)
-      else {
         return;
-      };
-
-      record.children.retain(|existing| existing != child);
-
-      let index = before
-        .and_then(|before| record.children.iter().position(|node| node == before))
-        .unwrap_or(record.children.len());
-
-      record.children.insert(index, *child);
-
-      if let Some(record) = store.record_mut(*child) {
-        record.parent = Some(*parent);
       }
 
-      store.structure_dirty = true;
-      store.paint_dirty = true;
+      store.list(*parent, *child, before.copied());
+
+      if let Some(caption) = store.record(*child).and_then(|record| record.caption) {
+        store.list(*parent, caption, Some(*child));
+      }
     });
   }
 
   fn detach(&self, parent: &Handle, child: &Handle) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*parent) {
-        record.children.retain(|existing| existing != child);
+      if store.record(*child).and_then(|record| record.captioned) == Some(*parent) {
+        store.drop_caption(*parent, *child);
+
+        return;
       }
 
-      if let Some(record) = store.record_mut(*child)
-        && record.parent == Some(*parent)
-      {
-        record.parent = None;
+      if store.parent(*child) == Some(*parent) {
+        store.unlist(*child);
+      }
+
+      if let Some(caption) = store.record(*child).and_then(|record| record.caption) {
+        store.unlist(caption);
       }
 
       store.structure_dirty = true;

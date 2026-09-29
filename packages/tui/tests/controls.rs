@@ -9,7 +9,7 @@ mod common;
 use std::{cell::Cell, rc::Rc};
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, Activate, Range, prelude::*};
+use skene_tui::{self as tui, Activate, Range, TextEntry, prelude::*};
 
 use crate::common::{blue, colors_at, green, locate, red, rgb, white, with_platform};
 
@@ -1249,5 +1249,45 @@ fn picker_marks_the_chosen_row_alone() {
 
     assert_eq!(marked.len(), 1, "{open}");
     assert!(marked[0].contains("cells"), "{open}");
+  });
+}
+
+/// A text field keeps its caption before its box among its siblings, as the web's
+/// `<label>` sits before its `<input>`, so the caption paints clear of the value; a
+/// press on the caption focuses the field.
+#[test]
+fn a_text_fields_caption_sits_before_its_box() {
+  with_platform(|| {
+    let value = Signal::new("hello".to_owned());
+    let node = Rc::new(Cell::new(None));
+    let built = Rc::clone(&node);
+
+    let _ = tui::mount(move || {
+      let field = RawTextField::new(TextEntry::new().bind_value(value))
+        .set_label("Name")
+        .set_width(10)
+        .build();
+
+      built.set(Some(field));
+
+      Column::new()
+        .set_child(AnyView::node(field))
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(12, 3);
+    let lines: Vec<&str> = frame.lines().collect();
+
+    assert!(lines[0].starts_with("Name"), "{frame}");
+    assert!(lines[1].starts_with("hello"), "{frame}");
+
+    tui::trigger_mouse_click(1, 0);
+
+    assert_eq!(
+      tui::focused_node(),
+      node.get(),
+      "the caption focuses its field"
+    );
   });
 }

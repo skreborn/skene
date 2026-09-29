@@ -783,6 +783,41 @@ fn change_handler_receives_the_committed_value() {
   assert_eq!(&*seen.borrow(), "committed");
 }
 
+/// A picker's drawn face keeps its caption before its box, as its scriptless
+/// `<select>` does, in a `<label>` `for` nothing, since the face is no form element.
+#[wasm_bindgen_test]
+fn a_drawn_face_keeps_its_caption_before_its_box() {
+  use skene_gui::{ListItem, RawOption, RawPicker};
+
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("a".to_owned());
+
+  let _ = mount(move || {
+    RawPicker::new()
+      .bind_value(value)
+      .set_label("Size")
+      .set_options(["a", "b"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+
+  let face = root
+    .query_selector("[role=combobox]")
+    .expect("query")
+    .expect("the drawn face");
+  let caption = face
+    .previous_element_sibling()
+    .expect("the caption before the face");
+
+  assert_eq!(caption.tag_name(), "LABEL");
+  assert_eq!(caption.text_content().as_deref(), Some("Size"));
+  assert!(!caption.has_attribute("for"));
+  assert!(
+    face.query_selector("label").expect("query").is_none(),
+    "nothing captions the face from inside"
+  );
+}
+
 /// A value written into a focused entry keeps the caret where the browser would move
 /// it to the end: an uppercasing handler leaves it after the character typed.
 #[wasm_bindgen_test]

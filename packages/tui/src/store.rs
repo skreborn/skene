@@ -614,6 +614,10 @@ pub(crate) struct Record {
   /// The box's decoration painted in pixels beneath its cells, where the terminal
   /// shows graphics and the decoration asks for more than cells draw.
   pub(crate) backdrop: Option<Backdrop>,
+  /// The caption a control keeps beside it, attached before it under its parent.
+  pub(crate) caption: Option<Handle>,
+  /// The control a caption kept beside it names, whose state and focus it answers to.
+  pub(crate) captioned: Option<Handle>,
 }
 
 /// A box's decoration as pixels: what it was rendered from, and the image.
@@ -671,6 +675,8 @@ impl Record {
       painter: None,
       picture: None,
       backdrop: None,
+      caption: None,
+      captioned: None,
     }
   }
 
@@ -1331,7 +1337,8 @@ impl Store {
     }
   }
 
-  /// The nearest control at or above `handle`.
+  /// The nearest control at or above `handle`, a caption kept beside a control
+  /// answering to that control.
   pub(crate) fn enclosing_control(&self, handle: Handle) -> Option<Handle> {
     let mut current = Some(handle);
 
@@ -1342,10 +1349,88 @@ impl Store {
         return Some(visited);
       }
 
-      current = record.parent;
+      current = record.captioned.or(record.parent);
     }
 
     None
+  }
+
+  /// Whether `handle` is a control keeping its caption beside it.
+  pub(crate) fn keeps_caption_beside(&self, handle: Handle) -> bool {
+    matches!(
+      self.record(handle).map(|record| &record.kind),
+      Some(Kind::Control { kind, .. }) if kind.keeps_caption_beside()
+    )
+  }
+
+  /// Removes `child` from the children of the node it is attached under, if any.
+  pub(crate) fn unlist(&mut self, child: Handle) {
+    if let Some(previous) = self.parent(child)
+      && let Some(record) = self.record_mut(previous)
+    {
+      record.children.retain(|existing| *existing != child);
+    }
+
+    if let Some(record) = self.record_mut(child) {
+      record.parent = None;
+    }
+  }
+
+  /// Lists `child` under `parent` before `before`, else last, moving it from wherever
+  /// it was listed.
+  pub(crate) fn list(&mut self, parent: Handle, child: Handle, before: Option<Handle>) {
+    self.unlist(child);
+
+    let Some(record) = self.record_mut(parent)
+    else {
+      return;
+    };
+    let index = before
+      .and_then(|before| record.children.iter().position(|node| *node == before))
+      .unwrap_or(record.children.len());
+
+    record.children.insert(index, child);
+
+    if let Some(record) = self.record_mut(child) {
+      record.parent = Some(parent);
+    }
+
+    self.structure_dirty = true;
+    self.paint_dirty = true;
+  }
+
+  /// Keeps `caption` beside `control`: listed before it under its parent while it is
+  /// attached, and answering to it.
+  pub(crate) fn keep_caption(&mut self, control: Handle, caption: Handle) {
+    if let Some(record) = self.record_mut(control) {
+      record.caption = Some(caption);
+    }
+
+    if let Some(record) = self.record_mut(caption) {
+      record.captioned = Some(control);
+    }
+
+    match self.parent(control) {
+      Some(parent) => self.list(parent, caption, Some(control)),
+      None => self.unlist(caption),
+    }
+  }
+
+  /// Stops keeping `caption` beside `control`, unlisting it.
+  pub(crate) fn drop_caption(&mut self, control: Handle, caption: Handle) {
+    if let Some(record) = self.record_mut(control)
+      && record.caption == Some(caption)
+    {
+      record.caption = None;
+    }
+
+    if let Some(record) = self.record_mut(caption) {
+      record.captioned = None;
+    }
+
+    self.unlist(caption);
+    self.structure_dirty = true;
+    self.paint_dirty = true;
   }
 
   /// The focused link run's node and destination, while a link holds focus.

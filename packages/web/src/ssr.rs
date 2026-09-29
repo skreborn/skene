@@ -26,6 +26,7 @@ use skene_core::{
   BoxValue,
   ColorScheme,
   ContainerSizes,
+  ControlKind,
   ControlProps,
   ControlState,
   Definitions,
@@ -166,15 +167,15 @@ struct Node {
   /// The native element carrying a control's state, focus and value, when the control
   /// has one apart from its root.
   carrier: Option<u32>,
-  /// Whether it is a control's root.
-  control: bool,
+  /// What it is, where it is a control's root.
+  control: Option<ControlKind>,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
   /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
-  /// or `<select>`, whose caption is a `<label for>` beside it.
+  /// or `<select>`, which its caption's `<label>` is `for`.
   bare: bool,
-  /// The `<label for>` a bare control's caption is serialized in, before the control,
-  /// outside its children.
+  /// The `<label>` a control's caption is serialized in, before the control, outside
+  /// its children, where the control keeps its caption beside it.
   caption: Option<u32>,
   /// A `<select>`'s options.
   options: Vec<PickerOption>,
@@ -199,7 +200,7 @@ impl Node {
       children: Vec::new(),
       parent: None,
       carrier: None,
-      control: false,
+      control: None,
       scrolls: false,
       bare: false,
       options: Vec::new(),
@@ -498,14 +499,15 @@ impl Tree {
     }
   }
 
-  /// Attaches `child` into the caption of `parent` when `parent` stands bare and
-  /// `child` its `Label` part, making the `<label for>` on the first; `false` for any
-  /// other pair, which attaches as usual.
+  /// Attaches `child` into the caption of `parent` when `parent` keeps its caption
+  /// beside it and `child` is its `Label` part, making the `<label>` on the first, `for`
+  /// the control where it stands bare; `false` for any other pair, which attaches as
+  /// usual.
   fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
-    let Some(node) = self
+    let Some((node, labels)) = self
       .node(parent)
-      .filter(|node| node.bare)
-      .and_then(|node| node.realizes)
+      .filter(|node| node.control.is_some_and(ControlKind::keeps_caption_beside))
+      .and_then(|node| Some((node.realizes?, node.bare)))
     else {
       return false;
     };
@@ -525,12 +527,15 @@ impl Tree {
       let caption = self.element("label");
       let id = element_id(node);
 
-      if let Some(label) = self.node(caption) {
+      if labels && let Some(label) = self.node(caption) {
         label.set_attribute("for", &id);
       }
 
       if let Some(entry) = self.node(parent) {
-        entry.set_attribute("id", &id);
+        if labels {
+          entry.set_attribute("id", &id);
+        }
+
         entry.caption = Some(caption);
       }
 
@@ -1051,7 +1056,7 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
 /// Writes `focus_order` as `tabindex` on `node`; `None` takes a control out of focus
 /// and leaves a box without one.
 fn write_focus_order(node: &mut Node, focus_order: Option<FocusOrder>) {
-  match focus_order_attribute(focus_order, node.control, node.scrolls) {
+  match focus_order_attribute(focus_order, node.control.is_some(), node.scrolls) {
     Some(tabindex) => node.set_attribute("tabindex", &tabindex),
     None => node.remove_attribute("tabindex"),
   }
@@ -1240,7 +1245,7 @@ impl Platform for Web {
       };
 
       if let Some(node) = tree.node(index) {
-        node.control = true;
+        node.control = Some(props.kind);
         node.set_attribute(CONTROL_ATTRIBUTE, "");
       }
 

@@ -3640,6 +3640,7 @@ pub fn skene_core::Scene<P>::set_part(&mut self, skene_core::NodeId, skene_core:
 pub fn skene_core::Scene<P>::set_pending_annotation(&mut self, skene_core::Annotation<P>)
 pub const fn skene_core::Scene<P>::set_pressed(&mut self, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::sink(&self, skene_core::NodeId) -> core::option::Option<<P as skene_core::Platform>::Sink>
+pub fn skene_core::Scene<P>::tab_from(&self, skene_core::NodeId, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>, isize) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::tab_order(&self, skene_core::NodeId, &[skene_core::NodeId], impl core::ops::function::Fn(skene_core::NodeId) -> bool) -> alloc::vec::Vec<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_core::Annotation<P>>
 pub fn skene_core::Scene<P>::topmost_modal(&self, &[skene_core::NodeId]) -> core::option::Option<skene_core::NodeId>

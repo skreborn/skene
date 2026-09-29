@@ -4,7 +4,6 @@
 //! No borrow of the store is held while a handler runs: every entry point reads what
 //! it needs, releases the store, dispatches, then writes the outcome back.
 
-use rustc_hash::FxHashMap;
 use skene_core::{
   Axes,
   Axis,
@@ -100,52 +99,6 @@ impl Store {
     })
   }
 
-  /// The stop of `order`, which the focused node is not, nearest after the focused
-  /// node in document order, or before it for a negative `step`; the first or last
-  /// stop when none lies that way or nothing is focused.
-  fn stop_beside_focus(&self, order: &[Handle], step: isize) -> Handle {
-    let positions = self.document_positions();
-    let position = |node: &Handle| positions.get(node).copied();
-    let focused = self.focused().and_then(|focused| position(&focused));
-    let beside = focused.and_then(|focused| {
-      if step >= 0 {
-        order
-          .iter()
-          .find(|node| position(node).is_some_and(|at| at > focused))
-      }
-      else {
-        order
-          .iter()
-          .rev()
-          .find(|node| position(node).is_some_and(|at| at < focused))
-      }
-    });
-
-    match beside {
-      Some(node) => *node,
-      None if step >= 0 => order[0],
-      None => order[order.len() - 1],
-    }
-  }
-
-  /// Every node's position in document order.
-  pub(crate) fn document_positions(&self) -> FxHashMap<Handle, usize> {
-    let mut positions = FxHashMap::default();
-    let mut stack = vec![self.root];
-
-    while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
-        continue;
-      };
-
-      positions.insert(current, positions.len());
-      stack.extend(record.children.iter().rev());
-    }
-
-    positions
-  }
-
   /// The topmost open modal overlay.
   pub(crate) fn topmost_modal(&self) -> Option<Handle> {
     self
@@ -177,6 +130,19 @@ impl Store {
   /// boxes excluded, and an open modal containing the whole order with the overlays
   /// opened after it.
   pub(crate) fn tab_order(&self) -> Vec<Handle> {
+    let stops = self.tab_stops();
+
+    Scene::<Tui>::with(|scene| {
+      stops
+        .into_iter()
+        .filter_map(|node| scene.sink(node))
+        .collect()
+    })
+  }
+
+  /// The tab stops' nodes in traversal order, as [`tab_order`](Self::tab_order) orders
+  /// them.
+  fn tab_stops(&self) -> Vec<NodeId> {
     let Some(root) = crate::platform::root_node()
     else {
       return Vec::new();
@@ -188,15 +154,11 @@ impl Store {
       .collect();
 
     Scene::<Tui>::with(|scene| {
-      scene
-        .tab_order(root, &overlays, |node| {
-          scene
-            .sink(node)
-            .is_some_and(|handle| self.is_hidden(handle))
-        })
-        .into_iter()
-        .filter_map(|node| scene.sink(node))
-        .collect()
+      scene.tab_order(root, &overlays, |node| {
+        scene
+          .sink(node)
+          .is_some_and(|handle| self.is_hidden(handle))
+      })
     })
   }
 
@@ -944,24 +906,17 @@ fn focus_on(next: Option<Handle>, restored: bool) {
 /// after it, or before it for a negative `step`, in document order.
 pub(crate) fn move_focus(step: isize) {
   let next = store(|store| {
-    let order = store.tab_order();
-
-    if order.is_empty() {
-      return None;
-    }
-
-    let index = store
+    let root = crate::platform::root_node()?;
+    let order = store.tab_stops();
+    let from = store
       .focused()
-      .and_then(|focused| order.iter().position(|node| *node == focused));
+      .and_then(|focused| store.record(focused)?.node);
 
-    let Some(index) = index
-    else {
-      return Some(store.stop_beside_focus(&order, step));
-    };
-    let count = isize::try_from(order.len()).expect("a small focus order");
-    let index = isize::try_from(index).expect("a small focus order");
-
-    Some(order[usize::try_from((index + step).rem_euclid(count)).expect("in range")])
+    Scene::<Tui>::with(|scene| {
+      scene
+        .tab_from(root, &order, from, step)
+        .and_then(|node| scene.sink(node))
+    })
   });
 
   if next.is_some() {

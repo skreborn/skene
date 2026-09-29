@@ -26,10 +26,13 @@ use skene_core::{
   Transition,
   Value,
   View,
+  Visibility,
 };
 use skene_headless::{
   Headless,
   box_props,
+  children,
+  is_focused,
   listened,
   reset,
   resolve_color,
@@ -347,6 +350,51 @@ fn hover_holds_on_the_ancestors_of_the_hovered_node() {
   trigger_pointer_leave(outer);
 
   assert_eq!(colors(), (Some(red()), Some(blue())));
+
+  owner.dispose();
+}
+
+/// `Tab` moves focus through the tab stops in order and wraps, `Shift-Tab` goes back,
+/// and a hidden box's stops are skipped, as the terminal traverses.
+#[test]
+fn tab_traverses_the_scenes_tab_order() {
+  reset();
+
+  let owner = Owner::new();
+  let column = owner.enter(|| {
+    skene_common::Column::<Headless>::new()
+      .set_children((
+        Container::new().set_focus_order(FocusOrder::Auto),
+        Container::new()
+          .set_visibility(Visibility::Hidden)
+          .set_child(Container::new().set_focus_order(FocusOrder::Auto)),
+        Container::new().set_focus_order(FocusOrder::Auto),
+      ))
+      .build()
+  });
+  let boxes = children(column);
+  let (first, last) = (boxes[1], boxes[3]);
+  let back = KeyEvent {
+    modifiers: Modifiers {
+      shift: true,
+      ..Modifiers::default()
+    },
+    ..key("Tab")
+  };
+
+  trigger_focus(first);
+
+  let _ = trigger_key_down(first, &key("Tab"));
+
+  assert!(is_focused(last), "the hidden box's stop is skipped");
+
+  let _ = trigger_key_down(last, &key("Tab"));
+
+  assert!(is_focused(first), "the order wraps");
+
+  let _ = trigger_key_down(first, &back);
+
+  assert!(is_focused(last), "Shift-Tab goes back");
 
   owner.dispose();
 }

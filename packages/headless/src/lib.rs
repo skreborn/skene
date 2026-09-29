@@ -579,12 +579,57 @@ pub fn trigger_click(node: NodeId) -> Prevented {
 
 /// Dispatches a key press at `node`, bubbling through the scene; focus shows from
 /// here on.
+///
+/// A `Tab` the handlers leave to the platform moves focus to the next tab stop of the
+/// tree `node` stands in, or to the previous one with `Shift`, as the terminal does.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
   trigger(|| {
     Scene::<Headless>::with(|scene| scene.set_focus_visible(true));
 
-    dispatch_key_down::<Headless>(node, event)
+    let prevented = dispatch_key_down::<Headless>(node, event);
+
+    if !prevented.platform && event.key == "Tab" {
+      traverse(node, if event.modifiers.shift { -1 } else { 1 });
+    }
+
+    prevented
   })
+}
+
+/// Moves focus `step` tab stops from where it is along the tab order of the tree `node`
+/// stands in; a hidden box and its content take no stop.
+fn traverse(node: NodeId, step: isize) {
+  let (root, nodes) = Scene::<Headless>::with(|scene| {
+    let root = scene.ancestry(node).last().copied().unwrap_or(node);
+    let mut nodes = Vec::new();
+    let mut stack = vec![root];
+
+    while let Some(current) = stack.pop() {
+      nodes.push(current);
+      stack.extend(scene.children(current));
+    }
+
+    (root, nodes)
+  });
+  let hidden: Vec<NodeId> = nodes
+    .into_iter()
+    .filter(|node| {
+      matches!(
+        resolve::resolve(*node, PropertyKey::Shared(Property::Visibility)),
+        Some(SlotValue::Box(BoxValue::Visibility(Visibility::Hidden)))
+      )
+    })
+    .collect();
+  let next = Scene::<Headless>::with(|scene| {
+    let overlays = scene.open_overlays().to_vec();
+    let order = scene.tab_order(root, &overlays, |node| hidden.contains(&node));
+
+    scene.tab_from(root, &order, scene.focused(), step)
+  });
+
+  if let Some(next) = next {
+    notify_focus_moved::<Headless>(Some(next));
+  }
 }
 
 /// Dispatches a key release at `node`, bubbling through the scene.

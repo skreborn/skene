@@ -1612,6 +1612,71 @@ impl<P: Platform> Scene<P> {
     order
   }
 
+  /// The stop `step` places from `from` along `order`, the tab stops under `root` in
+  /// traversal order, wrapping at both ends.
+  ///
+  /// From a node that is no stop, such as one disabled while it held focus, the nearest
+  /// stop after it in document order is taken, or before it for a negative `step`; from
+  /// no node, the first stop, or the last for a negative `step`.
+  #[must_use]
+  pub fn tab_from(
+    &self,
+    root: NodeId,
+    order: &[NodeId],
+    from: Option<NodeId>,
+    step: isize,
+  ) -> Option<NodeId> {
+    let (first, last) = (*order.first()?, *order.last()?);
+
+    if let Some(index) = from.and_then(|from| order.iter().position(|stop| *stop == from)) {
+      let count = isize::try_from(order.len()).ok()?;
+      let index = isize::try_from(index).ok()?;
+
+      return usize::try_from((index + step).rem_euclid(count))
+        .ok()
+        .and_then(|index| order.get(index).copied());
+    }
+
+    let positions = self.document_positions(root);
+    let position = |node: NodeId| positions.get(&node).copied();
+    let at = from.and_then(position);
+    let beside = at.and_then(|at| {
+      if step >= 0 {
+        order
+          .iter()
+          .copied()
+          .find(|stop| position(*stop).is_some_and(|stop| stop > at))
+      }
+      else {
+        order
+          .iter()
+          .rev()
+          .copied()
+          .find(|stop| position(*stop).is_some_and(|stop| stop < at))
+      }
+    });
+
+    Some(beside.unwrap_or(if step >= 0 { first } else { last }))
+  }
+
+  /// Every node under `root` with its position in document order.
+  fn document_positions(&self, root: NodeId) -> FxHashMap<NodeId, usize> {
+    let mut positions = FxHashMap::default();
+    let mut stack = vec![root];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      positions.insert(current, positions.len());
+      stack.extend(record.children.iter().rev());
+    }
+
+    positions
+  }
+
   /// Writes the state of the control `node` and mirrors it; a node of any other kind
   /// is left alone.
   pub fn set_control_state(&mut self, node: NodeId, state: ControlState) {

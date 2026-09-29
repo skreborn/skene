@@ -91,7 +91,9 @@ traversal and each overlay's state, the open ones in the order they opened, as a
 browser's top layer stacks them, and computes the tab order from them
 (`Scene::tab_order`): positioned stops first, then document order, the modal opened
 last containing it with the overlays opened after it. A platform drawing its own
-controls traverses by it. The scene answers which overlays a press dismisses
+controls traverses by it, stepping from the focused node by `Scene::tab_from` (from a
+node that is no stop, the nearest stop beside it in document order), the terminal and
+headless alike: headless applies a `Tab` its handlers leave to the platform. The scene answers which overlays a press dismisses
 (`Scene::dismissed_by_press`) for every platform: from the top down, each overlay the
 press lands outside of, on neither it nor the anchor it opened from, until one it lands
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's

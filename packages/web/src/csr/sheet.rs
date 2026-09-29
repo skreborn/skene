@@ -12,7 +12,7 @@ use web_sys::{Document, Element, HtmlHeadElement};
 use crate::{
   RESET_CSS,
   STYLE_LAYER,
-  compile::{Compiled, slot_registrations},
+  compile::{Compiled, Key, SlotBinding, slot_registration, slot_registrations},
   condition::CLASS_PLACEHOLDER,
   interner::ClassInterner,
   markup::STYLE_ATTRIBUTE,
@@ -26,6 +26,7 @@ pub(super) struct Sheet {
   cache: FxHashMap<u64, Rc<Compiled>>,
   elements: FxHashMap<Rc<str>, Element>,
   registered: FxHashSet<TokenName>,
+  registered_slots: FxHashSet<(Key, usize)>,
   base: Element,
   base_text: String,
   adopted: Option<String>,
@@ -48,6 +49,7 @@ impl Sheet {
       cache: FxHashMap::default(),
       elements: FxHashMap::default(),
       registered: FxHashSet::default(),
+      registered_slots: FxHashSet::default(),
       base,
       base_text,
       adopted: None,
@@ -86,6 +88,7 @@ impl Sheet {
       cache: FxHashMap::default(),
       elements: FxHashMap::default(),
       registered: FxHashSet::default(),
+      registered_slots: FxHashSet::default(),
       base: block,
       base_text,
       adopted: Some(adopted),
@@ -161,6 +164,36 @@ impl Sheet {
       }
 
       let registration = value.registration(name);
+      let present = self
+        .adopted
+        .as_ref()
+        .is_some_and(|adopted| adopted.contains(&registration));
+
+      if !present {
+        self.base_text.push_str(&registration);
+        added = true;
+      }
+    }
+
+    if added {
+      self.base.set_text_content(Some(&self.base_text));
+    }
+  }
+
+  /// Registers the custom property of every variant slot among `slots` not registered
+  /// yet; the base slots are registered with the reset.
+  pub(super) fn register_slots(&mut self, slots: &[SlotBinding]) {
+    let mut added = false;
+
+    for binding in slots.iter().filter(|binding| binding.position > 0) {
+      if !self
+        .registered_slots
+        .insert((binding.property, binding.position))
+      {
+        continue;
+      }
+
+      let registration = slot_registration(binding.property, binding.position);
       let present = self
         .adopted
         .as_ref()

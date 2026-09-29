@@ -1044,8 +1044,17 @@ pub(crate) fn compile_root_definitions(definitions: &Definitions<WebTokenValue>)
   compile_definitions_on(":root", definitions)
 }
 
-/// The `@property` registrations of every slot, appended to the reset: a slot is a
-/// per-node value the node's own class reads, so it does not inherit.
+/// The `@property` rule registering the slot of `key` at `position`: a slot is a per-node
+/// value the node's own class reads, so it does not inherit.
+pub(crate) fn slot_registration(key: Key, position: usize) -> String {
+  format!(
+    "@property {}{{syntax:\"*\";inherits:false}}",
+    slot_property(key, position)
+  )
+}
+
+/// The `@property` registrations of every property's base slot, appended to the reset;
+/// a variant's slot registers once a template uses it.
 pub(crate) fn slot_registrations() -> String {
   struct Keys(Vec<Key>);
 
@@ -1070,9 +1079,7 @@ pub(crate) fn slot_registrations() -> String {
   let mut out = String::new();
 
   for key in keys.0 {
-    out.push_str("@property ");
-    out.push_str(&slot_property(key, 0));
-    out.push_str("{syntax:\"*\";inherits:false}");
+    out.push_str(&slot_registration(key, 0));
   }
 
   out

@@ -157,6 +157,36 @@ fn a_link_groups_spans_take_the_link_ink() {
   owner.dispose();
 }
 
+/// A group's compound media variant reaches the spans beneath it, as a single media
+/// variant does.
+#[test]
+fn a_groups_compound_media_variant_reaches_its_spans() {
+  reset();
+
+  let owner = Owner::new();
+  let root = owner.enter(|| {
+    Theme::new(TestTypography::default())
+      .set_child_builder(|| {
+        RichText::new().set_spans([Span::group([Span::new("x")]).set_color(
+          skene_core::Value::from(red()).when(
+            skene_core::Condition::and([
+              skene_core::Condition::from(skene_core::Media::MinWidth(1.)),
+              skene_core::Condition::from(skene_core::Media::Light),
+            ]),
+            green(),
+          ),
+        )])
+      })
+      .build()
+  });
+  let group = children(children(root)[0])[0];
+
+  assert_eq!(resolve_color(group, TEXT_COLOR), Some(green()));
+  assert_eq!(resolve_color(children(group)[0], TEXT_COLOR), Some(green()));
+
+  owner.dispose();
+}
+
 /// A view span is an inline-level run holding the view's node, and a derived span
 /// rewrites its own run's text.
 #[test]

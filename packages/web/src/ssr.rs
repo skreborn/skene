@@ -59,6 +59,7 @@ use super::{
   Web,
   compile::{
     Compiled,
+    Key,
     SlotBinding,
     all_unconditional,
     box_fingerprint,
@@ -76,6 +77,7 @@ use super::{
     render_box_leaf,
     render_run_leaf,
     run_fingerprint,
+    slot_registration,
     slot_registrations,
   },
   condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, NATIVE_CLASS},
@@ -369,6 +371,7 @@ struct Tree {
   styles: ClassInterner,
   cache: FxHashMap<u64, Rc<Compiled>>,
   registered: FxHashSet<TokenName>,
+  registered_slots: FxHashSet<(Key, usize)>,
   registrations: String,
   registrations_emitted: usize,
   emitted: FxHashSet<Rc<str>>,
@@ -386,6 +389,7 @@ impl Tree {
       styles: ClassInterner::new(),
       cache: FxHashMap::default(),
       registered: FxHashSet::default(),
+      registered_slots: FxHashSet::default(),
       registrations: String::new(),
       registrations_emitted: 0,
       emitted: FxHashSet::default(),
@@ -462,7 +466,24 @@ impl Tree {
     class
   }
 
+  /// Registers the custom property of every variant slot among `slots` not registered
+  /// yet; the base slots are registered with the reset.
+  fn register_slots(&mut self, slots: &[SlotBinding]) {
+    for binding in slots.iter().filter(|binding| binding.position > 0) {
+      if self
+        .registered_slots
+        .insert((binding.property, binding.position))
+      {
+        self
+          .registrations
+          .push_str(&slot_registration(binding.property, binding.position));
+      }
+    }
+  }
+
   fn assign_style(&mut self, index: u32, compiled: &Rc<Compiled>) {
+    self.register_slots(&compiled.slots);
+
     let previous = self.node(index).and_then(|node| node.style_class.clone());
     let class = self.swap_class(&compiled.template, previous.as_deref());
 

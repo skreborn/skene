@@ -938,6 +938,7 @@ pub fn skene_core::Condition<N>::and(impl core::iter::traits::collect::IntoItera
 pub fn skene_core::Condition<N>::holds_in(&self, &skene_core::MediaEnv<'_, N>, &impl core::ops::function::Fn(skene_core::State) -> bool) -> bool
 pub fn skene_core::Condition<N>::involves_state(&self) -> bool
 pub fn skene_core::Condition<N>::or(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> Self
+pub fn skene_core::Condition<N>::to_media(&self) -> core::option::Option<skene_core::Media<N>>
 impl<N: core::clone::Clone> core::clone::Clone for skene_core::Condition<N>
 pub fn skene_core::Condition<N>::clone(&self) -> skene_core::Condition<N>
 impl<N: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Condition<N>

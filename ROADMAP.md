@@ -47,11 +47,11 @@ left half-done in a code comment.
     `Media` conditions test.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which
     the terminal's spans read from the typography where the web inherits them; a group
-    run's color keeps its state and compound media variants, and every variant slot
-    registers; `Border` becomes a width `Inset` and a plain color, making per-edge
-    borders expressible and the terminal's border-ink path unnecessary; taffy's per-axis
-    overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named adaptive grid,
-    and named lines and areas surface.
+    run's state variants reach its spans, as a rule on the group's class redefining the
+    ink where the state holds; `Border` becomes a width `Inset` and a plain color,
+    making per-edge borders expressible and the terminal's border-ink path unnecessary;
+    taffy's per-axis overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named
+    adaptive grid, and named lines and areas surface.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
     pointer capture, tab order with modal containment, an overlay stack in open order

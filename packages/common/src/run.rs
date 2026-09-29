@@ -224,13 +224,14 @@ fn redefine_typography<P: Platform>(node: NodeId, style: DeclaredRunStyle<P>) {
 }
 
 /// The definition a value redefines a token as: its static leaves as they are, its
-/// derived leaves as the value they compute now, and its media variants alone.
+/// derived leaves as the value they compute now, and the variants testing the
+/// environment alone, compound ones included.
 fn definition_of<N: Scalar>(value: &Value<Color, Condition<N>>) -> Definition<Color, N> {
   let mut definition = Definition::new(static_leaf(value.base()));
 
   for (condition, leaf) in value.variants() {
-    if let Condition::Media(media) = condition {
-      definition = definition.when(media.clone(), static_leaf(leaf));
+    if let Some(media) = condition.to_media() {
+      definition = definition.when(media, static_leaf(leaf));
     }
   }
 

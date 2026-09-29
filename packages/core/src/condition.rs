@@ -289,6 +289,27 @@ impl<N: Scalar> Condition<N> {
   pub fn involves_state(&self) -> bool {
     self.involves(&|leaf| matches!(leaf, Self::State(_)))
   }
+
+  /// This condition as a [`Media`] condition, where it tests the environment alone: a
+  /// media leaf, or any conjunction and disjunction of them; `None` where a state is
+  /// among its leaves.
+  #[must_use]
+  pub fn to_media(&self) -> Option<Media<N>> {
+    match self {
+      Self::Media(media) => Some(media.clone()),
+      Self::State(_) => None,
+      Self::And(subconditions) => subconditions
+        .iter()
+        .map(Self::to_media)
+        .collect::<Option<Vec<_>>>()
+        .map(Media::And),
+      Self::Or(subconditions) => subconditions
+        .iter()
+        .map(Self::to_media)
+        .collect::<Option<Vec<_>>>()
+        .map(Media::Or),
+    }
+  }
 }
 
 impl<N: Scalar> Composable for Condition<N> {
@@ -362,6 +383,35 @@ mod tests {
       Some(ContainerName("sidebar")) => Some(Size::new(240., 800.)),
       Some(_) => None,
     }
+  }
+
+  /// A condition over the environment alone is a media condition, compound ones
+  /// included; one naming a state is not.
+  #[test]
+  fn only_an_environment_condition_is_media() {
+    let compound = Condition::<f32>::and([
+      Condition::from(Media::Dark),
+      Condition::or([
+        Condition::from(Media::MinWidth(600.)),
+        Condition::from(Media::HighContrast),
+      ]),
+    ]);
+
+    assert_eq!(
+      compound.to_media(),
+      Some(Media::And(vec![
+        Media::Dark,
+        Media::Or(vec![Media::MinWidth(600.), Media::HighContrast]),
+      ]))
+    );
+    assert_eq!(
+      Condition::<f32>::and([
+        Condition::from(Media::Dark),
+        Condition::from(State::Hovered)
+      ])
+      .to_media(),
+      None
+    );
   }
 
   /// A conjunction over a disjunction expands to one conjunction per alternative.

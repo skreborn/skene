@@ -865,3 +865,22 @@ fn every_rule_has_a_class_specificity() {
     assert_eq!(specificity(&selector), (0, 1, 0), "{selector}");
   }
 }
+
+/// A derived variant's slot is registered not to inherit, as every base slot is.
+#[test]
+fn a_derived_variants_slot_is_registered() {
+  let rendered = render_to_string(|| {
+    Container::new().set_color(
+      skene_gui::core::Value::from(Color::srgb(1., 0., 0.))
+        .derive_when(Condition::from(State::Hovered), || Color::srgb(0., 0., 1.)),
+    )
+  });
+
+  assert!(
+    rendered
+      .styles()
+      .contains("@property --skene-color-1{syntax:\"*\";inherits:false}"),
+    "{}",
+    rendered.styles()
+  );
+}

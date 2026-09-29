@@ -788,6 +788,8 @@ impl Dom {
   }
 
   fn assign_style(&mut self, sink: u32, compiled: &Rc<Compiled>) {
+    self.sheet.register_slots(&compiled.slots);
+
     let previous = self.node(sink).and_then(|node| node.style_class.clone());
     let class = self
       .sheet

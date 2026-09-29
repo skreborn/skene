@@ -92,7 +92,7 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   access: Option<Source<Vec<AccessProp>>>,
   label: Option<String>,
   labelled_by: Option<NodeId>,
-  style: DeclaredBoxStyle<P>,
+  style: Box<DeclaredBoxStyle<P>>,
   dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   transition_name: Option<String>,
   destination: Option<String>,
@@ -121,7 +121,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       access: None,
       label: None,
       labelled_by: None,
-      style: DeclaredBoxStyle::<P>::default(),
+      style: Box::default(),
       dynamics: BoxDynamics::default(),
       transition_name: None,
       destination: None,
@@ -559,7 +559,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       });
     }
 
-    let (style, slots) = self.style.split();
+    let (style, slots) = (*self.style).split();
     let focus_order = match &self.focus_order {
       Some(Source::Fixed(focus_order)) => Some(*focus_order),
       Some(Source::Derived(_)) | None => None,

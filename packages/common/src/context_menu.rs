@@ -237,7 +237,7 @@ impl MenuItem {
 pub struct ContextMenu<P: Platform, C = NoChild> {
   items: Vec<MenuItem>,
   list: Overlay<P>,
-  item_style: DeclaredBoxStyle<P>,
+  item_style: Box<DeclaredBoxStyle<P>>,
   item_text_color: Option<Declared<P, Color>>,
   shortcut_color: Option<Declared<P, Color>>,
   separator_color: Option<Declared<P, Color>>,
@@ -262,7 +262,7 @@ impl<P: Platform> ContextMenu<P> {
     Self {
       items: Vec::new(),
       list: Overlay::popup().set_placement(Placement::TopStart),
-      item_style: DeclaredBoxStyle::<P>::default(),
+      item_style: Box::default(),
       item_text_color: None,
       shortcut_color: None,
       separator_color: None,
@@ -618,7 +618,7 @@ impl MenuItem {
 
 /// The decoration every row of one menu shares.
 struct RowDress<P: Platform> {
-  item_style: DeclaredBoxStyle<P>,
+  item_style: Box<DeclaredBoxStyle<P>>,
   item_text_color: Option<Declared<P, Color>>,
   shortcut_color: Option<Declared<P, Color>>,
   separator_color: Option<Declared<P, Color>>,
@@ -672,7 +672,7 @@ impl<P: Platform> RowDress<P> {
         Source::Derived(name) => Label::new(row).derive_name(move || name()),
       });
 
-    *control.style_mut() = self.item_style.clone();
+    *control.style_mut() = (*self.item_style).clone();
 
     Show::<P>::new()
       .derive_shown({

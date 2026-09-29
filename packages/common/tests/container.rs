@@ -286,3 +286,11 @@ fn focus_order_and_accessibility_follow_their_signals() {
 
   owner.dispose();
 }
+
+/// A box view is small on the stack however many properties a style holds, so building
+/// a deep tree of views in one expression fits a wasm stack.
+#[test]
+fn a_box_view_is_small_on_the_stack() {
+  assert!(std::mem::size_of::<Container>() <= 1024);
+  assert!(std::mem::size_of::<skene_common::Column<Headless>>() <= 1024);
+}

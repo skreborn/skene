@@ -72,7 +72,7 @@ impl<P: Platform> std::fmt::Debug for Face<P> {
 /// each a [`RawOption`](crate::RawOption) at any depth.
 #[must_use]
 pub struct RawPicker<P: Platform, F = NoChild> {
-  face_style: DeclaredBoxStyle<P>,
+  face_style: Box<DeclaredBoxStyle<P>>,
   label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
   placement: Placement,
@@ -93,7 +93,7 @@ impl<P: Platform> RawPicker<P> {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      face_style: DeclaredBoxStyle::<P>::default(),
+      face_style: Box::default(),
       label: None,
       disabled: None,
       placement: Placement::Bottom,
@@ -238,7 +238,7 @@ impl<P: Platform, F> AnyKind for RawPicker<P, F> {}
 /// What the picker's two forms take: the decoration, what each form's control carries,
 /// and the face.
 struct Parts<P: Platform> {
-  face_style: DeclaredBoxStyle<P>,
+  face_style: Box<DeclaredBoxStyle<P>>,
   settings: ControlSettings,
   placement: Placement,
   face: Box<dyn FnOnce(Memo<String>) -> AnyView<P>>,
@@ -408,7 +408,7 @@ fn build_native<P: Platform>(
 
   let mut control = Control::<P, _>::new(NativePicker::new().handle_change(choose));
 
-  *control.style_mut() = parts.face_style.clone();
+  *control.style_mut() = (*parts.face_style).clone();
 
   let node = parts.settings.apply(control).build();
 
@@ -495,7 +495,7 @@ fn build_drawn<P: Platform>(
     .bind_focus(&focus)
     .set_child_builder(move || face(shown));
 
-  *control.style_mut() = face_style;
+  *control.style_mut() = *face_style;
 
   let node = settings.apply(control).build();
   let overlay = Overlay::<P>::popup()

@@ -207,6 +207,7 @@ pub struct ContextMenu<P: Platform, C = NoChild> {
   item_text_color: Option<Declared<P, Color>>,
   shortcut_color: Option<Declared<P, Color>>,
   separator_color: Option<Declared<P, Color>>,
+  separator_thickness: Option<Declared<P, Dimension<P::Scalar>>>,
   shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
   child: C,
 }
@@ -222,6 +223,7 @@ impl<P: Platform> ContextMenu<P> {
       item_text_color: None,
       shortcut_color: None,
       separator_color: None,
+      separator_thickness: None,
       shortcut_spacing: None,
       child: NoChild,
     }
@@ -245,6 +247,7 @@ impl<P: Platform> ContextMenu<P> {
       item_text_color: self.item_text_color,
       shortcut_color: self.shortcut_color,
       separator_color: self.separator_color,
+      separator_thickness: self.separator_thickness,
       shortcut_spacing: self.shortcut_spacing,
       child: child.into_view(),
     }
@@ -345,6 +348,27 @@ impl<P: Platform, C> ContextMenu<P, C> {
     self
   }
 
+  /// Sets the thickness of every separator; one unit of the medium unless told
+  /// otherwise.
+  #[inline(always)]
+  pub fn set_separator_thickness(
+    mut self,
+    thickness: impl Into<Value<Dimension<P::Scalar>, Condition<P::Scalar>>>,
+  ) -> Self {
+    self.separator_thickness = Some(thickness.into());
+
+    self
+  }
+
+  /// Sets where the list opens against the pointer; its top-start corner at the
+  /// pointer unless told otherwise.
+  #[inline(always)]
+  pub fn set_placement(mut self, placement: Placement) -> Self {
+    self.list = self.list.set_placement(placement);
+
+    self
+  }
+
   /// Sets the spacing between an item's caption and its shortcut hint.
   #[inline(always)]
   pub fn set_shortcut_spacing(
@@ -378,6 +402,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
       item_text_color,
       shortcut_color,
       separator_color,
+      separator_thickness,
       shortcut_spacing,
       ..
     } = self;
@@ -390,6 +415,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
       item_text_color,
       shortcut_color,
       separator_color,
+      separator_thickness,
       shortcut_spacing,
     };
     let mut rows: Vec<AnyView<P>> = Vec::new();
@@ -535,13 +561,19 @@ struct RowDress<P: Platform> {
   item_text_color: Option<Declared<P, Color>>,
   shortcut_color: Option<Declared<P, Color>>,
   separator_color: Option<Declared<P, Color>>,
+  separator_thickness: Option<Declared<P, Dimension<P::Scalar>>>,
   shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
 }
 
 impl<P: Platform> RowDress<P> {
   /// A rule between groups of items.
   fn separator(&self) -> AnyView<P> {
-    let mut rule = Container::<P>::new().set_height(Dimension::Length(P::Scalar::from_f32(1.)));
+    let mut rule = Container::<P>::new().set_height(
+      self
+        .separator_thickness
+        .clone()
+        .unwrap_or_else(|| Dimension::Length(P::Scalar::from_f32(1.)).into()),
+    );
 
     if let Some(color) = self.separator_color.clone() {
       rule = rule.set_color(color);
@@ -631,6 +663,7 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
       item_text_color,
       shortcut_color,
       separator_color,
+      separator_thickness,
       shortcut_spacing,
       child,
     } = self;
@@ -642,6 +675,7 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
       item_text_color,
       shortcut_color,
       separator_color,
+      separator_thickness,
       shortcut_spacing,
       child: NoChild,
     }

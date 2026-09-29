@@ -75,6 +75,7 @@ pub struct RawPicker<P: Platform, F = NoChild> {
   face_style: DeclaredBoxStyle<P>,
   label: Option<Label<P>>,
   disabled: Option<Source<bool>>,
+  placement: Placement,
   list: LayoutBox<P, PlainChild>,
   value: Option<Source<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,
@@ -95,6 +96,7 @@ impl<P: Platform> RawPicker<P> {
       face_style: DeclaredBoxStyle::<P>::default(),
       label: None,
       disabled: None,
+      placement: Placement::Bottom,
       list: LayoutBox::new(Layout::Flex {
         direction: FlexDirection::Column,
       }),
@@ -114,6 +116,7 @@ impl<P: Platform> RawPicker<P> {
       face_style: self.face_style,
       label: self.label,
       disabled: self.disabled,
+      placement: self.placement,
       list: self.list,
       value: self.value,
       on_change: self.on_change,
@@ -136,6 +139,14 @@ impl<P: Platform, F> RawPicker<P, F> {
   }
 
   decoration! { style_mut }
+
+  /// Sets where the list opens against the face; below it unless told otherwise.
+  #[inline(always)]
+  pub const fn set_placement(mut self, placement: Placement) -> Self {
+    self.placement = placement;
+
+    self
+  }
 
   /// Sets the views drawing the list, each [`RawOption`](crate::RawOption) among them
   /// an option; anything else draws and nothing more.
@@ -229,6 +240,7 @@ impl<P: Platform, F> AnyKind for RawPicker<P, F> {}
 struct Parts<P: Platform> {
   face_style: DeclaredBoxStyle<P>,
   settings: ControlSettings,
+  placement: Placement,
   face: Box<dyn FnOnce(Memo<String>) -> AnyView<P>>,
 }
 
@@ -282,6 +294,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
       face_style,
       label,
       disabled,
+      placement,
       list,
       value,
       on_change,
@@ -341,6 +354,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
     let parts = Parts {
       face_style,
       settings: ControlSettings { caption, disabled },
+      placement,
       face,
     };
     // A platform whose tree is live from the start draws the picker outright.
@@ -425,6 +439,7 @@ fn build_drawn<P: Platform>(
   let Parts {
     face_style,
     settings,
+    placement,
     face,
   } = parts;
   let chosen = Rc::clone(&shared.chosen);
@@ -485,7 +500,7 @@ fn build_drawn<P: Platform>(
   let node = settings.apply(control).build();
   let overlay = Overlay::<P>::popup()
     .set_anchor(&anchor)
-    .set_placement(Placement::Bottom)
+    .set_placement(placement)
     .bind_open(open)
     .set_child(
       Control::new(listbox)

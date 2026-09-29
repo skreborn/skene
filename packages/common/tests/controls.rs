@@ -33,6 +33,7 @@ use skene_core::{
   EventKind,
   FocusOrder,
   HasChildren,
+  ItemAlignment,
   KeyEvent,
   Modifiers,
   Part,
@@ -41,8 +42,11 @@ use skene_core::{
   PopupKind,
   Prevent,
   Prevented,
+  Property,
+  PropertyKey,
   Role,
   Size,
+  Spacing,
   State,
   TextSelection,
   Toggle as Checked,
@@ -63,6 +67,7 @@ use skene_headless::{
   part,
   reset,
   resolve_color,
+  resolve_length,
   selection,
   text,
   trigger_blur,
@@ -1005,6 +1010,31 @@ fn an_accessible_name_names_a_control_over_its_caption() {
 
   assert_eq!(accessible_name(derived).as_deref(), Some("Dismiss"));
   assert_eq!(accessible_name(captioned).as_deref(), Some("Close"));
+
+  owner.dispose();
+}
+
+/// A control's row spaces its parts, body and label half an em apart unless the
+/// control spaces them otherwise.
+#[test]
+fn a_control_spaces_its_row() {
+  reset();
+
+  let owner = Owner::new();
+  let (plain, spaced) = owner.enter(|| {
+    (
+      RawButton::new(Activate::new()).set_label("a").build(),
+      RawButton::new(Activate::new())
+        .set_spacing(Spacing::all(3.))
+        .set_item_alignment(ItemAlignment::Start)
+        .set_label("b")
+        .build(),
+    )
+  });
+  let spacing = PropertyKey::Shared(Property::Spacing);
+
+  assert_eq!(resolve_length(plain, spacing), Some(8.));
+  assert_eq!(resolve_length(spaced, spacing), Some(3.));
 
   owner.dispose();
 }

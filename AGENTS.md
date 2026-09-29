@@ -429,6 +429,14 @@
   list is a `Menu` of `MenuOption` controls (`Role::Menu`/`Role::MenuItem`), the
   behaviors a third party's menu reuses. `SimpleContextMenu` is the styled one; the
   server renders nothing for a menu.
+- **Presentation is never hardcoded.** The framework abstracts mechanisms—behavior,
+  accessibility, a platform's realization—and never fixes presentation: wherever a
+  built-in makes a presentation choice (where a label sits, how a control's row is
+  spaced, where a popup opens, how thick a rule is), the choice is a default its user
+  overrides, so first- and third-party libraries keep full creative control. A choice a
+  behavior makes is a `Behavior` method with a default (`label_placement`); one a view
+  makes is a setter; and where a built-in composes presentation of its own, the pieces
+  it composes are public, so a library can compose them differently.
 - **Third parties are first-class by construction.** A component library depends on
   `skene-common`, writes generic over `P: Platform` exactly as the built-ins do
   (`Container<P>`, `Control<P, Toggle>`, `Theme<P, AcmePalette>`), states what it needs

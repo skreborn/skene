@@ -992,7 +992,9 @@ pub fn skene_common::ContextMenu<P, C>::set_min_width(self, impl core::convert::
 pub fn skene_common::ContextMenu<P, C>::set_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_overflow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::overflow::Overflow, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::ContextMenu<P, C>::set_placement(self, skene_core::values::placement::Placement) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_separator_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::ContextMenu<P, C>::set_separator_thickness(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_shortcut_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_shortcut_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
@@ -1026,6 +1028,7 @@ pub fn skene_common::Control<P, B, C>::derive_disabled(self, impl core::ops::fun
 pub fn skene_common::Control<P, B, C>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_core::values::focus_order::FocusOrder + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_invalid(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_common::Control<P, B, C>::derive_item_alignment<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::ItemAlignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_margin<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_max_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_max_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1036,6 +1039,7 @@ pub fn skene_common::Control<P, B, C>::derive_overflow<R: core::convert::Into<sk
 pub fn skene_common::Control<P, B, C>::derive_padding<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_read_only(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_required(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
+pub fn skene_common::Control<P, B, C>::derive_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_visibility<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
@@ -1063,6 +1067,7 @@ pub fn skene_common::Control<P, B, C>::set_disabled(self, bool) -> Self
 pub fn skene_common::Control<P, B, C>::set_focus_order(self, skene_core::values::focus_order::FocusOrder) -> Self
 pub fn skene_common::Control<P, B, C>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_invalid(self, bool) -> Self
+pub fn skene_common::Control<P, B, C>::set_item_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::ItemAlignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_label(self, impl core::convert::Into<skene_common::Label<P>>) -> Self
 pub const fn skene_common::Control<P, B, C>::set_labelled_by(self, skene_core::node::NodeId) -> Self
 pub fn skene_common::Control<P, B, C>::set_margin(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1076,6 +1081,7 @@ pub fn skene_common::Control<P, B, C>::set_padding(self, impl core::convert::Int
 pub fn skene_common::Control<P, B, C>::set_part(self, skene_core::control::Part, impl skene_core::view::IntoView<P>) -> Self
 pub fn skene_common::Control<P, B, C>::set_read_only(self, bool) -> Self
 pub fn skene_common::Control<P, B, C>::set_required(self, bool) -> Self
+pub fn skene_common::Control<P, B, C>::set_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
 pub fn skene_common::Control<P, B, C>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Control<P, B, C>::set_visibility(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::visibility::Visibility, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1742,6 +1748,7 @@ pub fn skene_common::RawPicker<P, F>::set_offset(self, impl core::convert::Into<
 pub fn skene_common::RawPicker<P, F>::set_options(self, impl skene_core::children::IntoChildren<P>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_overflow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::overflow::Overflow, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub const fn skene_common::RawPicker<P, F>::set_placement(self, skene_core::values::placement::Placement) -> Self
 pub fn skene_common::RawPicker<P, F>::set_value(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_visibility(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::visibility::Visibility, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self

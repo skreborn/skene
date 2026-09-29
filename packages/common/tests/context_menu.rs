@@ -10,19 +10,24 @@ use skene_core::{
   Availability,
   ClipboardAction,
   ControlKind,
+  Dimension,
   FocusOrder,
   HasChildren,
   KeyEvent,
   Modifiers,
   Part,
+  Placement,
   Point,
   PointerButton,
   PointerEvent,
+  Property,
+  PropertyKey,
   Scene,
   View,
 };
 use skene_headless::{
   Headless,
+  children,
   control_props,
   control_state,
   is_focused,
@@ -31,6 +36,7 @@ use skene_headless::{
   overlay_props,
   part,
   reset,
+  resolve_length,
   set_clipboard_availability,
   take_clipboard_actions,
   trigger_click,
@@ -292,4 +298,43 @@ fn the_deepest_menu_along_the_path_wins() {
 
   assert!(is_open(inner_list), "the closer menu takes the request");
   assert!(!is_open(outer_list), "and the root's never hears it");
+}
+
+/// Whether a node at or under `node` is `height` tall.
+fn holds_height(node: skene_core::NodeId, height: f32) -> bool {
+  resolve_length(node, PropertyKey::Shared(Property::Height)) == Some(height)
+    || children(node)
+      .into_iter()
+      .any(|child| holds_height(child, height))
+}
+
+/// The list opens with its top-start corner at the press unless the menu places it
+/// elsewhere, and a separator is as thick as the menu says.
+#[test]
+fn a_context_menu_places_its_list_and_sizes_its_separators() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Menu::new()
+      .set_placement(Placement::BottomEnd)
+      .set_separator_thickness(Dimension::Length(3.))
+      .set_items([
+        MenuItem::new("A"),
+        MenuItem::separator(),
+        MenuItem::new("B"),
+      ])
+      .set_child(Container::new())
+      .build()
+  });
+  let (_, list) = parts(start);
+
+  assert_eq!(
+    overlay_props(list).map(|props| props.placement),
+    Some(Placement::BottomEnd)
+  );
+
+  assert!(holds_height(list, 3.), "the separator is three units thick");
+
+  owner.dispose();
 }

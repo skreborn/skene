@@ -50,6 +50,7 @@ use skene_core::{
   Scene,
   ScrollEvent,
   ScrollHandler,
+  Spacing,
   StaticLeaf,
   StyleExtension,
   TextSelection,
@@ -79,6 +80,7 @@ use crate::{
   LayoutBox,
   Text,
   decoration,
+  properties,
   realize::{Source, report_access, with_sink},
 };
 
@@ -548,6 +550,13 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   }
 
   decoration! { style_mut }
+
+  properties! { style_mut;
+    set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
+      "the spacing between the control's parts, body and label; half an em unless told otherwise";
+    set_item_alignment / derive_item_alignment (alignment) => item_alignment: ItemAlignment,
+      "where the control's parts, body and label sit on the cross axis; centered unless told otherwise";
+  }
 
   /// Binds `anchor` to the control once built, so an overlay is placed against it.
   #[inline(always)]

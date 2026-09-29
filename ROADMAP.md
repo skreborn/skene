@@ -68,6 +68,12 @@ left half-done in a code comment.
     seventeenth `EventKind` overflows both platforms' `u16`; a gesture arena before
     touch lands, its exception to "a view that handles an interaction owns it" written
     down.
+    - Presentation the built-ins still fix becomes a default: the context menu renders
+    each item through a view its user supplies, the mechanism—dispatch, the standard
+    items and their clipboard verdicts—staying the menu's; a control's row takes its
+    axis beside its spacing and alignment; the terminal's own chrome (a scrollbar's
+    marks and inks, a shadow's offset and softening) becomes properties of the box it
+    decorates.
     - Controls: one `Controlled<T>` holds a behavior's value and the handler it asks, in
     place of each behavior's own copy of that plumbing; one
     `Collection<Policy>` behavior replaces the roving, listbox and menu conventions and

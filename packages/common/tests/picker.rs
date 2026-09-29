@@ -14,6 +14,7 @@ use skene_core::{
   KeyEvent,
   NodeId,
   PickerOption,
+  Placement,
   Prevented,
   Role,
   Toggle as Checked,
@@ -632,6 +633,35 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
     caption(face),
     native_caption,
     "the caption moved, not rebuilt"
+  );
+
+  owner.dispose();
+}
+
+/// The list opens below the face unless the picker places it elsewhere.
+#[test]
+fn a_picker_places_its_list() {
+  reset();
+
+  let owner = Owner::new();
+  let below = picker(owner, Signal::new("a".to_owned()));
+
+  assert_eq!(
+    overlay_props(below.overlay).map(|props| props.placement),
+    Some(Placement::Bottom)
+  );
+
+  let above = Parts::of(form(owner.enter(move || {
+    RawPicker::new()
+      .set_placement(Placement::Top)
+      .set_options([RawOption::new(ListItem::new("a")).set_label("a")])
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  })));
+
+  assert_eq!(
+    overlay_props(above.overlay).map(|props| props.placement),
+    Some(Placement::Top)
   );
 
   owner.dispose();

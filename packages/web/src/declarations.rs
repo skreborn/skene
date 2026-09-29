@@ -19,11 +19,13 @@ use skene_core::{
   Dimension,
   GridAreas,
   GridPlacement,
+  GridTemplate,
   GridTrack,
   Inset,
   ItemAlignment,
   Line,
   MouseCursor,
+  TemplateEntry,
   TrackLimit,
 };
 use smallvec::SmallVec;
@@ -208,6 +210,34 @@ impl Declarations {
       .map(|track| Self::render_track(*track))
       .collect::<Vec<_>>()
       .join(" ")
+  }
+
+  /// Renders a grid template to its CSS track text, each line's names in one bracketed
+  /// group before the track it starts.
+  #[must_use]
+  pub fn render_template(template: &GridTemplate<f32>) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+
+    for entry in template.entries() {
+      match entry {
+        TemplateEntry::Line(name) => names.push(Ident(name.as_str()).to_string()),
+        TemplateEntry::Track(track) => {
+          if !names.is_empty() {
+            parts.push(format!("[{}]", names.join(" ")));
+            names.clear();
+          }
+
+          parts.push(Self::render_track(*track));
+        }
+      }
+    }
+
+    if !names.is_empty() {
+      parts.push(format!("[{}]", names.join(" ")));
+    }
+
+    parts.join(" ")
   }
 
   /// Renders named grid areas to their CSS text: a quoted row of cell names per row.

@@ -19,6 +19,7 @@ use skene_core::{
   DeclaredBoxStyle,
   FocusOrder,
   GridFlow,
+  GridTemplate,
   GridTrack,
   HasChildren,
   Inset,
@@ -163,10 +164,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       "the alignment of each grid child on the inline axis";
     set_wrap / derive_wrap (wrap) => wrap: Wrap,
       "whether and how children wrap onto further lines";
-    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<P::Scalar>>,
-      "the explicit column tracks";
-    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<P::Scalar>>,
-      "the explicit row tracks";
+    set_columns / derive_columns (tracks) => grid_columns: GridTemplate<P::Scalar>,
+      "the explicit column tracks, with the names of their lines; a list of tracks names none";
+    set_rows / derive_rows (tracks) => grid_rows: GridTemplate<P::Scalar>,
+      "the explicit row tracks, with the names of their lines; a list of tracks names none";
     set_implicit_columns / derive_implicit_columns (tracks)
       => grid_implicit_columns: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created columns, cycled";

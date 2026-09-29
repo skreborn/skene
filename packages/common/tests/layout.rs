@@ -11,6 +11,7 @@ use skene_core::{
   Condition,
   Expr,
   FlexDirection,
+  GridTemplate,
   GridTrack,
   HasChildren,
   Inset,
@@ -171,7 +172,12 @@ fn grid_uniform_declares_equal_tracks_and_splits_its_alignment() {
   assert_eq!(props.layout, Layout::Grid);
   assert_eq!(
     props.style.grid_columns,
-    Some(StaticValue::from(vec![GridTrack::Flex(1.); 3]))
+    Some(StaticValue::from(GridTemplate::from(vec![
+      GridTrack::Flex(
+        1.
+      );
+      3
+    ])))
   );
   assert_eq!(
     props.style.item_horizontal_alignment,

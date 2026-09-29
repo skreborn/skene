@@ -455,9 +455,11 @@ Condition     = Media | State | And | Or
   only along an axis that scrolls. An adaptive track (`GridTrack::Adaptive`,
   `Grid::adaptive`) fits as many tracks as the container holds, as SwiftUI's adaptive
   grid item does, compiled to CSS's auto-filled repetition. A grid names areas over its
-  cells (`GridAreas`, a row of cell names per grid row) and a child is placed by an
-  area's or a line's name (`GridName`, `Line::area`), a template breaking CSS's rules
-  dropped whole on every platform as CSS drops it. The framework invents no layout
+  cells (`GridAreas`, a row of cell names per grid row) and the lines between its
+  tracks (`GridTemplate`, a track list with names added where lines stand, a plain
+  list naming none), and a child is placed by an area's or a line's name (`GridName`,
+  `Line::area`), a template breaking CSS's rules dropped whole on every platform as CSS
+  drops it. The framework invents no layout
   system.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself

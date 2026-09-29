@@ -27,6 +27,7 @@ use crate::{
   GridAreas,
   GridFlow,
   GridPlacement,
+  GridTemplate,
   GridTrack,
   Inset,
   ItemAlignment,
@@ -101,10 +102,10 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   /// The box's own inline-axis alignment in a grid, overriding its parent's
   /// `item_horizontal_alignment`.
   pub self_horizontal_alignment: S::Of<ItemAlignment>,
-  /// The grid's explicit column tracks.
-  pub grid_columns: S::Of<Vec<GridTrack<N>>>,
-  /// The grid's explicit row tracks.
-  pub grid_rows: S::Of<Vec<GridTrack<N>>>,
+  /// The grid's explicit column tracks, with the names of their lines.
+  pub grid_columns: S::Of<GridTemplate<N>>,
+  /// The grid's explicit row tracks, with the names of their lines.
+  pub grid_rows: S::Of<GridTemplate<N>>,
   /// The named areas over the grid's cells.
   pub grid_areas: S::Of<GridAreas>,
   /// The sizes given to implicitly created columns, cycled.
@@ -158,6 +159,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   ItemAlignment(ItemAlignment),
   /// A list of grid tracks.
   Tracks(Vec<GridTrack<N>>),
+  /// A grid's explicit tracks, with the names of their lines.
+  Template(GridTemplate<N>),
   /// Named areas over a grid's cells.
   Areas(GridAreas),
   /// A grid flow.
@@ -278,6 +281,7 @@ box_values!(
   Arrangement => Arrangement;
   ItemAlignment => ItemAlignment;
   Vec<GridTrack<N>> => Tracks;
+  GridTemplate<N> => Template;
   GridAreas => Areas;
   GridFlow => GridFlow;
   Line<GridPlacement> => Placement;
@@ -397,8 +401,8 @@ box_fields!(
   item_horizontal_alignment: crate::ItemAlignment => ItemHorizontalAlignment,
   self_alignment: crate::ItemAlignment => SelfAlignment,
   self_horizontal_alignment: crate::ItemAlignment => SelfHorizontalAlignment,
-  grid_columns: Vec<crate::GridTrack<N>> => GridColumns,
-  grid_rows: Vec<crate::GridTrack<N>> => GridRows,
+  grid_columns: crate::GridTemplate<N> => GridColumns,
+  grid_rows: crate::GridTemplate<N> => GridRows,
   grid_areas: crate::GridAreas => GridAreas,
   grid_implicit_columns: Vec<crate::GridTrack<N>> => GridImplicitColumns,
   grid_implicit_rows: Vec<crate::GridTrack<N>> => GridImplicitRows,

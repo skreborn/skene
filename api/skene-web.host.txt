@@ -32,6 +32,7 @@ pub fn skene_web::Declarations::render_dimension(skene_core::values::dimension::
 pub fn skene_web::Declarations::render_dimension_inset(skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<f32>>) -> alloc::string::String
 pub fn skene_web::Declarations::render_grid_line(skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>) -> alloc::string::String
 pub const fn skene_web::Declarations::render_item_alignment(skene_core::values::flex::ItemAlignment) -> &'static str
+pub fn skene_web::Declarations::render_template(&skene_core::values::grid::GridTemplate<f32>) -> alloc::string::String
 pub fn skene_web::Declarations::render_track(skene_core::values::grid::GridTrack<f32>) -> alloc::string::String
 pub fn skene_web::Declarations::render_tracks(&[skene_core::values::grid::GridTrack<f32>]) -> alloc::string::String
 pub fn skene_web::Declarations::set(self, &'static str, impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self

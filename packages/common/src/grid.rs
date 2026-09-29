@@ -10,6 +10,7 @@ use skene_core::{
   GridAreas,
   GridChild,
   GridFlow,
+  GridTemplate,
   GridTrack,
   HasChildren,
   Inset,
@@ -79,10 +80,10 @@ impl<P: Platform> Grid<P> {
       "the inset between the box and the children it arranges";
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,
       "the spacing between tracks per axis; a plain length spaces both";
-    set_columns / derive_columns (tracks) => grid_columns: Vec<GridTrack<P::Scalar>>,
-      "the explicit column tracks";
-    set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<P::Scalar>>,
-      "the explicit row tracks";
+    set_columns / derive_columns (tracks) => grid_columns: GridTemplate<P::Scalar>,
+      "the explicit column tracks, with the names of their lines; a list of tracks names none";
+    set_rows / derive_rows (tracks) => grid_rows: GridTemplate<P::Scalar>,
+      "the explicit row tracks, with the names of their lines; a list of tracks names none";
     set_areas / derive_areas (areas) => grid_areas: GridAreas,
       "the named areas over the grid's cells, which a child's placement names";
     set_implicit_columns / derive_implicit_columns (tracks)

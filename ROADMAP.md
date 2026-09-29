@@ -30,9 +30,6 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Boxes: explicit names for a track list's lines (CSS's `[name]` between tracks), for
-    placements no area's edge reaches; since the web spells tracks and names in one
-    declaration, a track list becomes entries of either.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
     pointer capture, top-layer rules over the scene's overlay stack, light dismiss,

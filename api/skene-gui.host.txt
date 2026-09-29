@@ -129,6 +129,7 @@ pub use skene_gui::prelude::GridAreas
 pub use skene_gui::prelude::GridFlow
 pub use skene_gui::prelude::GridName
 pub use skene_gui::prelude::GridPlacement
+pub use skene_gui::prelude::GridTemplate
 pub use skene_gui::prelude::GridTrack
 pub use skene_gui::prelude::HasChildren
 pub use skene_gui::prelude::IndexedField

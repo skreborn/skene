@@ -58,7 +58,16 @@ use skene_gui::{
   Tooltip,
   Typography,
   View,
-  core::{Dimension, GridAreas, GridName, GridTrack, PointerButton},
+  core::{
+    Dimension,
+    GridAreas,
+    GridName,
+    GridPlacement,
+    GridTemplate,
+    GridTrack,
+    Line,
+    PointerButton,
+  },
   derived,
   empty,
   head,
@@ -1358,6 +1367,44 @@ fn named_areas_and_adaptive_tracks_lay_out() {
 
   assert!((first.width() - 250. / 3.).abs() < 0.5);
   assert!(fourth.top() > first.top());
+}
+
+/// A child placed between named lines lands on the tracks between them.
+#[wasm_bindgen_test]
+fn named_lines_place_a_child() {
+  const CONTENT: GridName = GridName::new("content");
+  const END: GridName = GridName::new("end");
+
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Grid::new()
+      .set_columns(
+        GridTemplate::new()
+          .add_track(GridTrack::Length(100.))
+          .add_line(CONTENT)
+          .add_track(GridTrack::Length(100.))
+          .add_line(END)
+          .add_track(GridTrack::Length(100.)),
+      )
+      .set_children((GridCell::new()
+        .set_column(Line {
+          start: GridPlacement::Named(CONTENT, 1),
+          end: GridPlacement::Named(END, 1),
+        })
+        .set_child(Container::new().set_height(Dimension::Length(10.))),))
+      .build()
+  });
+
+  let grid = only_child(&root);
+  let child = only_child(&grid);
+  let (origin, placed) = (
+    grid.get_bounding_client_rect(),
+    child.get_bounding_client_rect(),
+  );
+
+  assert!((placed.left() - origin.left() - 100.).abs() < 0.5);
+  assert!((placed.width() - 100.).abs() < 0.5);
 }
 
 /// A box hears focus when focus enters its subtree and blur when focus leaves it, not

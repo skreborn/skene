@@ -32,6 +32,7 @@ use skene_gui::{
     GridAreas,
     GridName,
     GridPlacement,
+    GridTemplate,
     GridTrack,
     ItemAlignment,
     Keyframe,
@@ -473,6 +474,35 @@ fn named_areas_and_placements_render() {
   assert!(styles.contains("grid-row:head / head;"), "{styles}");
   assert!(
     styles.contains("grid-column:2 main / span main;"),
+    "{styles}"
+  );
+}
+
+/// A template renders each line's names in one bracketed group before the track the
+/// line starts, and the end line's after the last track.
+#[test]
+fn a_templates_line_names_render() {
+  const FULL: GridName = GridName::new("full");
+  const CONTENT: GridName = GridName::new("content");
+  const WIDE: GridName = GridName::new("wide");
+
+  let rendered = render_to_string(|| {
+    Grid::new().set_columns(
+      GridTemplate::new()
+        .add_line(FULL)
+        .add_track(GridTrack::Flex(1.))
+        .add_line(CONTENT)
+        .add_line(WIDE)
+        .add_track(GridTrack::Length(600.))
+        .add_track(GridTrack::Flex(1.))
+        .add_line(FULL),
+    )
+  });
+
+  let styles = rendered.styles();
+
+  assert!(
+    styles.contains("grid-template-columns:[full] 1fr [content wide] 600px 1fr [full];"),
     "{styles}"
   );
 }

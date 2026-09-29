@@ -36,6 +36,132 @@ impl<T: Copy> GridTrack<T> {
   }
 }
 
+/// A grid's explicit tracks on one axis, with names for the lines between them.
+///
+/// A line takes every name added where it stands: a name added before the first track
+/// names the grid's start line, one added after the last track its end line. A plain
+/// list of tracks is a template naming no line.
+#[derive(Debug, Clone, PartialEq)]
+#[must_use]
+pub struct GridTemplate<T> {
+  entries: Vec<TemplateEntry<T>>,
+}
+
+/// One entry of a [`GridTemplate`], in order: a track, or a name for the line where it
+/// stands.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[must_use]
+pub enum TemplateEntry<T> {
+  /// A track.
+  Track(GridTrack<T>),
+  /// A name for the line between the tracks around it.
+  Line(GridName),
+}
+
+impl<T> Default for GridTemplate<T> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<T> GridTemplate<T> {
+  /// A template with no track.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      entries: Vec::new(),
+    }
+  }
+
+  /// This template with `track` after its entries.
+  #[inline(always)]
+  pub fn add_track(mut self, track: GridTrack<T>) -> Self {
+    self.entries.push(TemplateEntry::Track(track));
+
+    self
+  }
+
+  /// This template naming the line after its entries `name` too.
+  #[inline(always)]
+  pub fn add_line(mut self, name: GridName) -> Self {
+    self.entries.push(TemplateEntry::Line(name));
+
+    self
+  }
+
+  /// The entries, in order.
+  #[inline(always)]
+  pub fn entries(&self) -> &[TemplateEntry<T>] {
+    &self.entries
+  }
+
+  /// The names of each line, the grid's start line first: one list per track, and one
+  /// for the end line.
+  #[must_use]
+  pub fn line_names(&self) -> Vec<Vec<GridName>> {
+    let mut lines = vec![Vec::new()];
+
+    for entry in &self.entries {
+      match entry {
+        TemplateEntry::Track(_) => lines.push(Vec::new()),
+        TemplateEntry::Line(name) => {
+          if let Some(line) = lines.last_mut() {
+            line.push(*name);
+          }
+        }
+      }
+    }
+
+    lines
+  }
+}
+
+impl<T: Copy> GridTemplate<T> {
+  /// The tracks, in order.
+  #[inline(always)]
+  pub fn tracks(&self) -> impl Iterator<Item = GridTrack<T>> + '_ {
+    self.entries.iter().filter_map(|entry| match entry {
+      TemplateEntry::Track(track) => Some(*track),
+      TemplateEntry::Line(_) => None,
+    })
+  }
+}
+
+impl<T> From<Vec<GridTrack<T>>> for GridTemplate<T> {
+  /// The tracks, naming no line.
+  #[inline(always)]
+  fn from(tracks: Vec<GridTrack<T>>) -> Self {
+    Self {
+      entries: tracks.into_iter().map(TemplateEntry::Track).collect(),
+    }
+  }
+}
+
+impl<T> From<Vec<GridTrack<T>>> for StaticLeaf<GridTemplate<T>> {
+  /// The tracks, naming no line.
+  #[inline(always)]
+  fn from(tracks: Vec<GridTrack<T>>) -> Self {
+    Self::Fixed(GridTemplate::from(tracks))
+  }
+}
+
+impl<T> From<Vec<GridTrack<T>>> for Leaf<GridTemplate<T>> {
+  /// The tracks, naming no line.
+  #[inline(always)]
+  fn from(tracks: Vec<GridTrack<T>>) -> Self {
+    Self::Static(StaticLeaf::from(tracks))
+  }
+}
+
+impl<T, C> From<Vec<GridTrack<T>>> for Value<GridTemplate<T>, C> {
+  /// The tracks, naming no line.
+  #[inline(always)]
+  fn from(tracks: Vec<GridTrack<T>>) -> Self {
+    Self::new(Leaf::from(tracks))
+  }
+}
+
 /// One limit of a [`GridTrack::Minmax`] track.
 ///
 /// A flexible share is meaningful only as the maximum; as a minimum it behaves as
@@ -337,7 +463,7 @@ pub struct GridArea {
 
 #[cfg(test)]
 mod tests {
-  use super::{GridArea, GridAreas, GridName, Line};
+  use super::{GridArea, GridAreas, GridName, GridTemplate, GridTrack, Line};
 
   /// Each area is bounded by the lines around the cells its name covers, in the order
   /// the names first appear.
@@ -388,6 +514,35 @@ mod tests {
     assert_eq!(ragged.areas(), None);
     assert_eq!(bent.areas(), None);
     assert_eq!(split.areas(), None);
+  }
+
+  /// A template names each line with the names added where it stands, the start line
+  /// before the first track and the end line after the last.
+  #[test]
+  fn a_template_names_the_lines_its_names_stand_at() {
+    let (full, content, wide) = (
+      GridName::new("full"),
+      GridName::new("content"),
+      GridName::new("wide"),
+    );
+    let template = GridTemplate::new()
+      .add_line(full)
+      .add_track(GridTrack::<f32>::Flex(1.))
+      .add_line(content)
+      .add_line(wide)
+      .add_track(GridTrack::Length(600.))
+      .add_track(GridTrack::Flex(1.))
+      .add_line(full);
+
+    assert_eq!(
+      template.line_names(),
+      [vec![full], vec![content, wide], vec![], vec![full]]
+    );
+    assert_eq!(template.tracks().count(), 3);
+    assert_eq!(
+      GridTemplate::from(vec![GridTrack::<f32>::Flex(1.); 2]).line_names(),
+      [vec![], vec![], vec![]]
+    );
   }
 
   /// A name is an identifier and no reserved word, in any case.

@@ -9,6 +9,7 @@ use crate::{
   Color,
   Dimension,
   Flexibility,
+  GridTemplate,
   GridTrack,
   Inset,
   Length,
@@ -19,6 +20,7 @@ use crate::{
   SlotValue,
   Spacing,
   StyleExtension,
+  TemplateEntry,
   TrackLimit,
   Visibility,
 };
@@ -76,7 +78,8 @@ fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
 /// medium's unit, an aspect ratio moves through its logarithm, and a value per edge or
 /// axis moves per component. A visibility is
 /// visible throughout a change to or from visible, and a list of grid tracks moves per
-/// track where the lists are as long and each pair of tracks moves or matches. A pair
+/// track where the lists are as long and each pair of tracks moves or matches, a
+/// template's line names matching too. A pair
 /// with no in-between (a keyword, a mode, a length and `Auto`) is discrete. All of it
 /// is as in CSS: a transition changes a discrete pair at once, and a keyframe animation
 /// halfway through the interval.
@@ -234,6 +237,28 @@ impl<T: Interpolate + PartialEq> Interpolate for GridTrack<T> {
   }
 }
 
+impl<T: Interpolate + PartialEq> Interpolate for GridTemplate<T> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    if self.entries().len() != to.entries().len() {
+      return None;
+    }
+
+    self
+      .entries()
+      .iter()
+      .zip(to.entries())
+      .try_fold(Self::new(), |template, pair| match pair {
+        (TemplateEntry::Track(from), TemplateEntry::Track(to)) => {
+          Some(template.add_track(from.interpolate(to, amount)?))
+        }
+        (TemplateEntry::Line(from), TemplateEntry::Line(to)) if from == to => {
+          Some(template.add_line(*from))
+        }
+        _ => None,
+      })
+  }
+}
+
 impl<N: Interpolate> Interpolate for Flexibility<N> {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self {
@@ -273,6 +298,9 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
           .map(|(from, to)| from.interpolate(to, amount))
           .collect::<Option<_>>()?,
       )),
+      (Self::Template(from), Self::Template(to)) => {
+        Some(Self::Template(from.interpolate(to, amount)?))
+      }
       (Self::Visibility(from), Self::Visibility(to)) => {
         Some(Self::Visibility(from.interpolate(to, amount)?))
       }
@@ -640,6 +668,8 @@ mod tests {
     Color,
     Dimension,
     Easing,
+    GridName,
+    GridTemplate,
     GridTrack,
     Inset,
     NoProperty,
@@ -946,6 +976,26 @@ mod tests {
         TrackLimit::Length(150.),
         TrackLimit::Flex(1.)
       ))
+    );
+  }
+
+  /// A template moves track by track while it names the same lines alike, and is
+  /// discrete where the names differ.
+  #[test]
+  fn a_template_moves_while_its_names_match() {
+    let template = |length: f32, name: &'static str| {
+      GridTemplate::new()
+        .add_track(GridTrack::Length(length))
+        .add_line(GridName::new(name))
+    };
+
+    assert_eq!(
+      template(0., "a").interpolate(&template(10., "a"), 0.5),
+      Some(template(5., "a"))
+    );
+    assert_eq!(
+      template(0., "a").interpolate(&template(10., "b"), 0.5),
+      None
     );
   }
 

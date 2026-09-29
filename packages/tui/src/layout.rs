@@ -990,29 +990,33 @@ fn track(value: skene_core::GridTrack<u32>) -> Option<taffy::style::TrackSizingF
   })
 }
 
-/// A track list as a taffy template; empty where CSS drops the list: more than one
-/// adaptive track, or one with neither limit a length or a fraction.
-fn template(
-  tracks: &[skene_core::GridTrack<u32>],
-) -> Vec<taffy::style::GridTemplateComponent<String>> {
+/// A template as taffy's tracks and line names, the names empty where no line has one;
+/// both empty where CSS drops the list: more than one adaptive track, or one with
+/// neither limit a length or a fraction.
+fn explicit(
+  template: &skene_core::GridTemplate<u32>,
+) -> (
+  Vec<taffy::style::GridTemplateComponent<String>>,
+  Vec<Vec<String>>,
+) {
   let fixed = |limit| {
     matches!(
       limit,
       skene_core::TrackLimit::Length(_) | skene_core::TrackLimit::Fraction(_)
     )
   };
-  let adaptive = tracks
-    .iter()
+  let adaptive = template
+    .tracks()
     .filter(|entry| matches!(entry, skene_core::GridTrack::Adaptive(..)))
     .count();
 
   if adaptive > 1 {
-    return Vec::new();
+    return (Vec::new(), Vec::new());
   }
 
-  tracks
-    .iter()
-    .map(|entry| match *entry {
+  let tracks: Option<Vec<_>> = template
+    .tracks()
+    .map(|entry| match entry {
       skene_core::GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
         taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
           count: taffy::style::RepetitionCount::AutoFill,
@@ -1022,8 +1026,28 @@ fn template(
       }),
       entry => track(entry).map(taffy::style::GridTemplateComponent::Single),
     })
-    .collect::<Option<_>>()
-    .unwrap_or_default()
+    .collect();
+  let Some(tracks) = tracks
+  else {
+    return (Vec::new(), Vec::new());
+  };
+  let lines = template.line_names();
+  let names = if lines.iter().any(|names| !names.is_empty()) {
+    lines
+      .into_iter()
+      .map(|names| {
+        names
+          .into_iter()
+          .map(|name| name.as_str().to_owned())
+          .collect()
+      })
+      .collect()
+  }
+  else {
+    Vec::new()
+  };
+
+  (tracks, names)
 }
 
 /// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
@@ -1185,12 +1209,12 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   out.align_self = style.self_alignment.map(item);
   out.justify_self = style.self_horizontal_alignment.map(item);
 
-  if let Some(tracks) = &style.grid_columns {
-    out.grid_template_columns = template(tracks);
+  if let Some(template) = &style.grid_columns {
+    (out.grid_template_columns, out.grid_template_column_names) = explicit(template);
   }
 
-  if let Some(tracks) = &style.grid_rows {
-    out.grid_template_rows = template(tracks);
+  if let Some(template) = &style.grid_rows {
+    (out.grid_template_rows, out.grid_template_row_names) = explicit(template);
   }
 
   if let Some(areas) = &style.grid_areas {

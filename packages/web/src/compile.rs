@@ -239,6 +239,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
       Declarations::render_item_alignment(*alignment).to_owned()
     }
     BoxValue::Tracks(tracks) => Declarations::render_tracks(tracks),
+    BoxValue::Template(template) => Declarations::render_template(template),
     BoxValue::Areas(areas) => Declarations::render_areas(areas),
     BoxValue::GridFlow(flow) => match flow {
       GridFlow::Rows => "row",

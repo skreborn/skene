@@ -56,9 +56,9 @@ pub enum Property {
   SelfAlignment,
   /// The box's own inline-axis alignment in a grid.
   SelfHorizontalAlignment,
-  /// The grid's explicit column tracks.
+  /// The grid's explicit column tracks, with the names of their lines.
   GridColumns,
-  /// The grid's explicit row tracks.
+  /// The grid's explicit row tracks, with the names of their lines.
   GridRows,
   /// The named areas over the grid's cells.
   GridAreas,

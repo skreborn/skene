@@ -34,6 +34,7 @@ use crate::{
   GridAreas,
   GridFlow,
   GridPlacement,
+  GridTemplate,
   GridTrack,
   Inset,
   ItemAlignment,
@@ -43,6 +44,7 @@ use crate::{
   Overflow,
   Spacing,
   StyleProperty,
+  TemplateEntry,
   TextDecoration,
   TextDecorationStyle,
   TrackLimit,
@@ -220,6 +222,21 @@ impl<N: Scalar> Fingerprint for GridTrack<N> {
       Self::Minmax(min, max) | Self::Adaptive(min, max) => {
         min.fingerprint(state);
         max.fingerprint(state);
+      }
+    }
+  }
+}
+
+impl<N: Scalar> Fingerprint for GridTemplate<N> {
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    state.write_usize(self.entries().len());
+
+    for entry in self.entries() {
+      std::mem::discriminant(entry).hash(state);
+
+      match entry {
+        TemplateEntry::Track(track) => track.fingerprint(state),
+        TemplateEntry::Line(name) => name.hash(state),
       }
     }
   }

@@ -21,6 +21,7 @@ use crate::{
   Prevented,
   ScrollEvent,
   TextSelection,
+  WheelEvent,
   task::run_handler,
 };
 
@@ -100,6 +101,26 @@ pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) 
     node,
     all(HandlerSet::pointer_cancel),
     |at| localize::<P>(at, event),
+    |handler, event| handler(event),
+  )
+}
+
+/// Dispatches a wheel's turn at `node`, the deepest node under the pointer, before the
+/// platform scrolls by it.
+#[inline(always)]
+pub fn dispatch_wheel<P: Platform>(node: NodeId, event: &WheelEvent) -> Prevented {
+  bubble::<P, _, _>(
+    node,
+    all(HandlerSet::wheel),
+    |at| {
+      let local = localize::<P>(at, &event.position());
+
+      WheelEvent {
+        local_x: local.local_x,
+        local_y: local.local_y,
+        ..*event
+      }
+    },
     |handler, event| handler(event),
   )
 }

@@ -61,6 +61,77 @@ fn scroll_box_clips_wheels_and_hit_tests() {
   });
 }
 
+/// A wheel's turn reaches the node under the pointer, in rows, before the box around it
+/// scrolls by it, and a behavior taking the turn keeps the scroll from happening.
+#[test]
+fn a_wheel_reaches_the_node_under_it_before_it_scrolls() {
+  /// Takes every turn for itself.
+  struct Dial;
+
+  impl tui::Behavior<tui::Tui> for Dial {
+    fn kind(&self) -> tui::ControlKind {
+      tui::ControlKind::Button
+    }
+
+    fn role(&self) -> Option<tui::Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [tui::core::EventKind] {
+      &[tui::core::EventKind::Wheel]
+    }
+
+    fn on_wheel(&self, _: &tui::core::WheelEvent, _: &tui::ControlHandle) -> tui::Prevent {
+      tui::Prevent::All
+    }
+  }
+
+  with_platform(|| {
+    let turns = Rc::new(RefCell::new(Vec::new()));
+    let log = Rc::clone(&turns);
+
+    let _ = tui::mount(move || {
+      Container::new()
+        .set_height(3)
+        .set_overflow(Overflow::Auto)
+        .set_child(
+          Column::new().set_children((
+            tui::Control::new(Dial).set_height(1).set_label("dial"),
+            Container::new()
+              .handle_wheel(move |event| log.borrow_mut().push((event.delta, event.unit)))
+              .set_child(
+                Column::new().set_children(
+                  (0..6)
+                    .map(|index| Text::new(format!("item {index}")).into_any())
+                    .collect::<Vec<_>>(),
+                ),
+              ),
+          )),
+        )
+        .into_any()
+        .build()
+    });
+    let first = tui::render_to_text(12, 3);
+
+    assert!(first.contains("dial"));
+
+    tui::trigger_mouse_scroll(1, 0, 0, 2);
+
+    assert_eq!(tui::render_to_text(12, 3), first, "the dial takes the turn");
+
+    tui::trigger_mouse_scroll(1, 1, 0, 2);
+
+    assert_eq!(
+      *turns.borrow(),
+      [(Axes::new(0., 2.), tui::core::WheelUnit::Lines)]
+    );
+    assert!(
+      !tui::render_to_text(12, 3).contains("dial"),
+      "the box scrolled"
+    );
+  });
+}
+
 /// A box scrolling on one axis alone keeps the other clipped and still under the wheel.
 #[test]
 fn overflow_scrolls_on_its_own_axis_alone() {

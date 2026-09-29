@@ -23,6 +23,7 @@ vello_hybrid = { default-features = false, features = ["std"], version = "0.2" }
 wasm-bindgen.workspace = true
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
+  "AddEventListenerOptions",
   "CanvasRenderingContext2d",
   "Clipboard",
   "Comment",
@@ -65,6 +66,7 @@ web-sys = { version = "0.3", features = [
   "Selection",
   "Storage",
   "StyleSheet",
+  "WheelEvent",
   "Window",
 ] }
 wgpu = { default-features = false, features = ["std", "webgpu", "wgsl"], version = "29" }

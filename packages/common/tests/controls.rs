@@ -27,6 +27,7 @@ use skene_common::{
 use skene_core::{
   AccessProp,
   AnyView,
+  Axes,
   Condition,
   ControlKind,
   Dimension,
@@ -53,6 +54,8 @@ use skene_core::{
   TextSelection,
   Toggle as Checked,
   View,
+  WheelEvent,
+  WheelUnit,
   When,
 };
 use skene_headless::{
@@ -85,6 +88,7 @@ use skene_headless::{
   trigger_selection_change,
   trigger_size,
   trigger_toggle,
+  trigger_wheel,
   value,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
@@ -1159,7 +1163,7 @@ impl Behavior<Headless> for Stepper {
   }
 
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::KeyDown]
+    &[EventKind::KeyDown, EventKind::Wheel]
   }
 
   fn on_key(&self, event: &KeyEvent, _: &ControlHandle<Headless>) -> Prevent {
@@ -1168,6 +1172,14 @@ impl Behavior<Headless> for Stepper {
       Key::Named(NamedKey::ArrowDown) => self.count.set(self.count.get() - 1),
       _ => return Prevent::None,
     }
+
+    Prevent::All
+  }
+
+  fn on_wheel(&self, event: &WheelEvent, _: &ControlHandle<Headless>) -> Prevent {
+    let step = if event.delta.vertical < 0. { 1 } else { -1 };
+
+    self.count.set(self.count.get() + step);
 
     Prevent::All
   }
@@ -1217,6 +1229,15 @@ fn a_third_party_behavior_builds_through_public_types_alone() {
     box_props(node).map(|props| props.access),
     Some(vec![AccessProp::Value(2.)])
   );
+
+  let turn = PointerEvent::mouse(0., 0.).wheel(Axes::new(0., -3.), WheelUnit::Lines);
+
+  assert_eq!(
+    trigger_wheel(node, &turn),
+    CONSUMED,
+    "the stepper takes the turn"
+  );
+  assert_eq!(count.get(), 3);
 
   trigger_focus(node);
 

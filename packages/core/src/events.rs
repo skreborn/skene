@@ -25,6 +25,8 @@ use std::{borrow::Cow, str::FromStr};
 use keyboard_types::{Code, Key, NamedKey, webdriver::KeyInputState};
 use ui_events::pointer::{PointerButton, PointerButtons, PointerId, PointerInfo, PointerType};
 
+use crate::Axes;
+
 /// What a handler prevents of the dispatch that invoked it.
 ///
 /// A handler returns anything `Into<Prevent>`; `()` converts to
@@ -123,6 +125,8 @@ pub type ClickHandler = dyn Fn() -> Prevent;
 pub type KeyHandler = dyn Fn(&KeyEvent) -> Prevent;
 /// A pointer handler as dispatch stores it: the closure plus its verdict.
 pub type PointerHandler = dyn Fn(&PointerEvent) -> Prevent;
+/// A wheel handler as dispatch stores it: the closure plus its verdict.
+pub type WheelHandler = dyn Fn(&WheelEvent) -> Prevent;
 
 /// The modifier-key state accompanying an input event.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -422,6 +426,21 @@ impl PointerEvent {
     self
   }
 
+  /// A wheel turned by `delta` in `unit`s where the pointer is.
+  #[inline(always)]
+  pub const fn wheel(&self, delta: Axes<f32>, unit: WheelUnit) -> WheelEvent {
+    WheelEvent {
+      x: self.x,
+      y: self.y,
+      local_x: self.local_x,
+      local_y: self.local_y,
+      delta,
+      unit,
+      modifiers: self.modifiers,
+      pointer: self.pointer,
+    }
+  }
+
   /// The event as the release of `button` on a device reporting no pressure: `button`
   /// changed and the others stay held.
   pub fn with_release(mut self, button: PointerButton) -> Self {
@@ -430,6 +449,58 @@ impl PointerEvent {
     self.pressure = if self.buttons.is_empty() { 0. } else { 0.5 };
 
     self
+  }
+}
+
+/// The unit a wheel's turn counts in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum WheelUnit {
+  /// The platform's own lengths: pixels on the web, cells in the terminal.
+  Lengths,
+  /// Lines of text: rows in the terminal.
+  Lines,
+  /// Pages of the scrolled box.
+  Pages,
+}
+
+/// A wheel turned over a node, before the platform scrolls by it.
+///
+/// A behavior's verdict that suppresses the platform's response keeps the scroll from
+/// happening.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[must_use]
+pub struct WheelEvent {
+  /// The pointer's horizontal position, in viewport logical pixels.
+  pub x: f32,
+  /// The pointer's vertical position, in viewport logical pixels.
+  pub y: f32,
+  /// The pointer's horizontal position, relative to the handling view's top-left
+  /// corner.
+  pub local_x: f32,
+  /// The pointer's vertical position, relative to the handling view's top-left corner.
+  pub local_y: f32,
+  /// How far the wheel turned along each axis, in `unit`s: positive toward the
+  /// content's end, where the scroll it asks for moves the view.
+  pub delta: Axes<f32>,
+  /// The unit `delta` counts in.
+  pub unit: WheelUnit,
+  /// The modifier state.
+  pub modifiers: Modifiers,
+  /// The pointer the wheel turned under.
+  pub pointer: PointerInfo,
+}
+
+impl WheelEvent {
+  /// The pointer event at the wheel's position, for localizing it.
+  pub fn position(&self) -> PointerEvent {
+    PointerEvent {
+      local_x: self.local_x,
+      local_y: self.local_y,
+      modifiers: self.modifiers,
+      pointer: self.pointer,
+      ..PointerEvent::mouse(self.x, self.y)
+    }
   }
 }
 

@@ -59,6 +59,7 @@ use skene_core::{
   Transition,
   Value,
   View,
+  WheelEvent,
   dispatch_click,
 };
 use skene_reactive::{Effect, Owner, Trigger, untrack};
@@ -212,6 +213,14 @@ pub trait Behavior<P: Platform>: 'static {
   /// What the behavior does when the control loses focus.
   #[inline(always)]
   fn on_blur(&self, _control: &ControlHandle<P>) {}
+
+  /// What the behavior does on a wheel turned over the control, before the platform
+  /// scrolls by it; suppressing the platform's response keeps the scroll from
+  /// happening.
+  #[inline(always)]
+  fn on_wheel(&self, _event: &WheelEvent, _control: &ControlHandle<P>) -> Prevent {
+    Prevent::None
+  }
 
   /// What the behavior does on a pointer transition over the control.
   #[inline(always)]
@@ -444,6 +453,7 @@ struct Observers {
   pointer_leave: Vec<Rc<PlainHandler>>,
   focus: Vec<Rc<PlainHandler>>,
   blur: Vec<Rc<PlainHandler>>,
+  wheel: Vec<Rc<Observer<WheelEvent>>>,
   scroll: Vec<Rc<ScrollHandler>>,
 }
 
@@ -857,6 +867,15 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
     self
   }
 
+  /// Runs `action` after the behavior has acted on a wheel turned over the control,
+  /// before the platform scrolls by it.
+  #[inline(always)]
+  pub fn handle_wheel(mut self, action: impl Fn(&WheelEvent) + 'static) -> Self {
+    self.observers.wheel.push(Rc::new(action));
+
+    self
+  }
+
   /// Runs `action` after the behavior has acted on the platform taking the pointer
   /// pressed over the control for itself, ending the press without a release.
   #[inline(always)]
@@ -1260,6 +1279,7 @@ fn register<P: Platform, B: Behavior<P>>(
     pointer_leave,
     focus,
     blur,
+    wheel,
     scroll,
   } = observers;
   let acting_click = actor.handler(
@@ -1318,6 +1338,12 @@ fn register<P: Platform, B: Behavior<P>>(
     PointerPhase::Cancel,
     EventKind::PointerCancel,
     pointer_cancel,
+  );
+  let wheel = actor.handler(
+    Prevent::None,
+    acts(EventKind::Wheel),
+    |behavior: &B, event: &WheelEvent, handle| behavior.on_wheel(event, handle),
+    wheel,
   );
   let change = acts(EventKind::Change).then(|| {
     let actor = actor.clone();
@@ -1410,6 +1436,10 @@ fn register<P: Platform, B: Behavior<P>>(
 
     for observer in blur {
       scene.handle_blur(node, observer);
+    }
+
+    if let Some(handler) = wheel {
+      scene.handle_wheel(node, handler);
     }
 
     for observer in scroll {

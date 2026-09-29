@@ -143,7 +143,11 @@ platform crate, since it is not a shared contract.
   effect, and the pressure, `0.5` while a button is held on a device reporting none. A
   platform that takes a pointer for itself—the browser starting a pan, the terminal's
   mouse key handing the mouse over mid-press—dispatches `PointerCancel` at the node the
-  press reached, ending the press without a release.
+  press reached, ending the press without a release. A wheel's turn dispatches `Wheel`
+  at the node under the pointer before the platform scrolls by it, its delta per axis
+  in the unit the device counts (`WheelUnit`: lengths, lines or pages; rows in the
+  terminal), and a behavior that takes the turn keeps the scroll from happening; the web
+  listens for it, as for every event, without `passive` and only once a node does.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its

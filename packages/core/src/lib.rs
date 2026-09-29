@@ -94,6 +94,7 @@ pub use dispatch::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
+  dispatch_wheel,
   notify_change,
   notify_dismiss,
   notify_focus_moved,
@@ -115,6 +116,9 @@ pub use events::{
   Prevented,
   ScrollEvent,
   Shortcut,
+  WheelEvent,
+  WheelHandler,
+  WheelUnit,
 };
 pub use expr::{Expr, ExprEnv, ExprNode, ExprOutput, ExprValue, Length, Number, Quantity};
 pub use extension::{NoProperty, NoValue, StyleExtension};

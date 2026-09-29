@@ -13,6 +13,7 @@ use std::{rc::Rc, str::FromStr};
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  Axes,
   Code,
   EventKind,
   Key,
@@ -30,6 +31,7 @@ use skene_core::{
   Scene,
   ScrollEvent,
   TextSelection,
+  WheelUnit,
   dispatch_click,
   dispatch_click_observed,
   dispatch_context_menu,
@@ -39,6 +41,7 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
+  dispatch_wheel,
   notify_change,
   notify_dismiss,
   notify_focus_moved,
@@ -49,7 +52,14 @@ use skene_core::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
-use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
+use web_sys::{
+  AddEventListenerOptions,
+  Element,
+  EventTarget,
+  HtmlInputElement,
+  HtmlSelectElement,
+  HtmlTextAreaElement,
+};
 
 use super::{Realized, end_turn, with_dom};
 use crate::{Web, condition::DRAGS_ATTRIBUTE};
@@ -94,10 +104,16 @@ impl Listener {
       end_turn();
     }) as Box<dyn FnMut(web_sys::Event)>);
 
-    let _ = target.add_event_listener_with_callback_and_bool(
+    // Not passive, so a wheel's verdict can keep the scroll from happening.
+    let options = AddEventListenerOptions::new();
+
+    options.set_capture(capture);
+    options.set_passive(false);
+
+    let _ = target.add_event_listener_with_callback_and_add_event_listener_options(
       name,
       closure.as_ref().unchecked_ref(),
-      capture,
+      &options,
     );
 
     Self {
@@ -165,6 +181,7 @@ impl Events {
       EventKind::PointerEnter | EventKind::PointerLeave => &["pointerover", "pointerout"],
       EventKind::Focus => &["focusin"],
       EventKind::Blur => &["focusout"],
+      EventKind::Wheel => &["wheel"],
       EventKind::Scroll => &["scroll"],
       EventKind::Change => &["input"],
       EventKind::SelectionChange => &["selectionchange"],
@@ -190,6 +207,7 @@ impl Events {
         "pointerout" => on_pointer_out,
         "focusin" => on_focus_in,
         "focusout" => on_focus_out,
+        "wheel" => on_wheel,
         "scroll" => on_scroll,
         "input" => on_input,
         "selectionchange" => on_selection_change,
@@ -635,6 +653,32 @@ fn on_context_menu(event: &web_sys::Event) {
   };
 
   apply(dispatch_context_menu::<Web>(node, &payload), event);
+}
+
+/// A wheel's turn: dispatched at the node under the pointer before the browser scrolls
+/// by it, which a handler's verdict prevents.
+fn on_wheel(event: &web_sys::Event) {
+  let Some(wheel) = event.dyn_ref::<web_sys::WheelEvent>()
+  else {
+    return;
+  };
+  let Some((element, node)) = resolve(event.target())
+  else {
+    return;
+  };
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a wheel's delta is precise enough in f32"
+  )]
+  let delta = Axes::new(wheel.delta_x() as f32, wheel.delta_y() as f32);
+  let unit = match wheel.delta_mode() {
+    web_sys::WheelEvent::DOM_DELTA_LINE => WheelUnit::Lines,
+    web_sys::WheelEvent::DOM_DELTA_PAGE => WheelUnit::Pages,
+    _ => WheelUnit::Lengths,
+  };
+  let payload = pointer_payload(wheel, &element).wheel(delta, unit);
+
+  apply(dispatch_wheel::<Web>(node, &payload), event);
 }
 
 fn on_scroll(event: &web_sys::Event) {

@@ -48,6 +48,8 @@ use skene_core::{
   Transition,
   Value,
   View,
+  WheelEvent,
+  WheelHandler,
   Wrap,
 };
 use skene_reactive::Effect;
@@ -74,6 +76,7 @@ struct Handlers {
   pointer_leave: Vec<Rc<PlainHandler>>,
   focus: Vec<Rc<PlainHandler>>,
   blur: Vec<Rc<PlainHandler>>,
+  wheel: Vec<Rc<WheelHandler>>,
   scroll: Vec<Rc<ScrollHandler>>,
 }
 
@@ -434,6 +437,21 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
+  /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
+  /// its verdict says whether the turn carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_wheel<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&WheelEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .wheel
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
   /// Runs `action` when the platform takes a pointer pressed over the box for itself,
   /// ending the press without a release; its verdict says whether the cancel carries on
   /// to the ancestors.
@@ -670,6 +688,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       pointer_leave,
       focus,
       blur,
+      wheel,
       scroll,
     } = self.handlers;
 
@@ -716,6 +735,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
       for handler in blur {
         scene.handle_blur(node, handler);
+      }
+
+      for handler in wheel {
+        scene.handle_wheel(node, handler);
       }
 
       for handler in scroll {

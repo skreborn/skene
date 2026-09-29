@@ -1185,6 +1185,7 @@ pub skene_core::EventKind::PointerUp
 pub skene_core::EventKind::Scroll
 pub skene_core::EventKind::SelectionChange
 pub skene_core::EventKind::Toggle
+pub skene_core::EventKind::Wheel
 impl core::clone::Clone for skene_core::EventKind
 pub fn skene_core::EventKind::clone(&self) -> skene_core::EventKind
 impl core::cmp::Eq for skene_core::EventKind
@@ -2161,6 +2162,21 @@ pub fn skene_core::Visibility::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Visibility
 pub fn skene_core::Visibility::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Visibility::into_box_value(self) -> skene_core::BoxValue<N, X>
+pub enum skene_core::WheelUnit
+pub skene_core::WheelUnit::Lengths
+pub skene_core::WheelUnit::Lines
+pub skene_core::WheelUnit::Pages
+impl core::clone::Clone for skene_core::WheelUnit
+pub fn skene_core::WheelUnit::clone(&self) -> skene_core::WheelUnit
+impl core::cmp::Eq for skene_core::WheelUnit
+impl core::cmp::PartialEq for skene_core::WheelUnit
+pub fn skene_core::WheelUnit::eq(&self, &skene_core::WheelUnit) -> bool
+impl core::fmt::Debug for skene_core::WheelUnit
+pub fn skene_core::WheelUnit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::WheelUnit
+pub fn skene_core::WheelUnit::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::WheelUnit
+impl core::marker::StructuralPartialEq for skene_core::WheelUnit
 pub enum skene_core::Wrap
 pub skene_core::Wrap::Forward
 pub skene_core::Wrap::None
@@ -2979,6 +2995,7 @@ pub fn skene_core::HandlerSet::pointer_up(&self) -> &[skene_core::Handler<skene_
 pub fn skene_core::HandlerSet::scroll(&self) -> &[skene_core::Handler<skene_core::ScrollHandler>]
 pub fn skene_core::HandlerSet::selection_change(&self) -> &[skene_core::Handler<skene_core::SelectionHandler>]
 pub fn skene_core::HandlerSet::toggle(&self) -> &[skene_core::Handler<skene_core::ToggleHandler>]
+pub fn skene_core::HandlerSet::wheel(&self) -> &[skene_core::Handler<skene_core::WheelHandler>]
 impl core::default::Default for skene_core::HandlerSet
 pub fn skene_core::HandlerSet::default() -> skene_core::HandlerSet
 impl core::fmt::Debug for skene_core::HandlerSet
@@ -3424,6 +3441,7 @@ pub skene_core::PointerEvent::x: f32
 pub skene_core::PointerEvent::y: f32
 impl skene_core::PointerEvent
 pub fn skene_core::PointerEvent::mouse(f32, f32) -> Self
+pub const fn skene_core::PointerEvent::wheel(&self, skene_core::Axes<f32>, skene_core::WheelUnit) -> skene_core::WheelEvent
 pub fn skene_core::PointerEvent::with_press(self, ui_events::pointer::buttons::PointerButton) -> Self
 pub fn skene_core::PointerEvent::with_release(self, ui_events::pointer::buttons::PointerButton) -> Self
 impl core::clone::Clone for skene_core::PointerEvent
@@ -3623,6 +3641,7 @@ pub fn skene_core::Scene<P>::handle_pointer_up(&mut self, skene_core::NodeId, al
 pub fn skene_core::Scene<P>::handle_scroll(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ScrollHandler>)
 pub fn skene_core::Scene<P>::handle_selection_change(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::SelectionHandler>)
 pub fn skene_core::Scene<P>::handle_toggle(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ToggleHandler>)
+pub fn skene_core::Scene<P>::handle_wheel(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::WheelHandler>)
 pub fn skene_core::Scene<P>::handlers(&self, skene_core::NodeId) -> core::option::Option<&skene_core::HandlerSet>
 pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::insert_in_segment(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
@@ -4047,6 +4066,25 @@ pub fn skene_core::Transition<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> c
 impl<P: core::marker::Copy> core::marker::Copy for skene_core::Transition<P>
 impl<P: skene_core::PropertyName> skene_core::Fingerprint for skene_core::Transition<P>
 pub fn skene_core::Transition<P>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub struct skene_core::WheelEvent
+pub skene_core::WheelEvent::delta: skene_core::Axes<f32>
+pub skene_core::WheelEvent::local_x: f32
+pub skene_core::WheelEvent::local_y: f32
+pub skene_core::WheelEvent::modifiers: skene_core::Modifiers
+pub skene_core::WheelEvent::pointer: ui_events::pointer::PointerInfo
+pub skene_core::WheelEvent::unit: skene_core::WheelUnit
+pub skene_core::WheelEvent::x: f32
+pub skene_core::WheelEvent::y: f32
+impl skene_core::WheelEvent
+pub fn skene_core::WheelEvent::position(&self) -> skene_core::PointerEvent
+impl core::clone::Clone for skene_core::WheelEvent
+pub fn skene_core::WheelEvent::clone(&self) -> skene_core::WheelEvent
+impl core::cmp::PartialEq for skene_core::WheelEvent
+pub fn skene_core::WheelEvent::eq(&self, &skene_core::WheelEvent) -> bool
+impl core::fmt::Debug for skene_core::WheelEvent
+pub fn skene_core::WheelEvent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_core::WheelEvent
+impl core::marker::StructuralPartialEq for skene_core::WheelEvent
 pub trait skene_core::AnyKind
 impl skene_core::AnyKind for skene_core::NodeId
 impl<P: skene_core::Platform, C> skene_core::AnyKind for skene_core::Show<P, C>
@@ -4691,6 +4729,7 @@ pub fn skene_core::dispatch_pointer_cancel<P: skene_core::Platform>(skene_core::
 pub fn skene_core::dispatch_pointer_down<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_move<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_up<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
+pub fn skene_core::dispatch_wheel<P: skene_core::Platform>(skene_core::NodeId, &skene_core::WheelEvent) -> skene_core::Prevented
 pub fn skene_core::empty<P: skene_core::Platform>() -> impl skene_core::View<P>
 pub fn skene_core::item_window(f32, f32, f32, usize, usize) -> skene_core::ItemWindow
 pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::ItemWindow
@@ -4725,3 +4764,4 @@ pub type skene_core::StaticRunStyle<P> = skene_core::RunStyle<skene_core::Static
 pub type skene_core::StaticValue<T, C> = skene_core::Conditional<skene_core::PlatformLeaf<T>, C>
 pub type skene_core::ToggleHandler = dyn core::ops::function::Fn(bool)
 pub type skene_core::Value<T, C> = skene_core::Conditional<skene_core::Leaf<T>, C>
+pub type skene_core::WheelHandler = dyn core::ops::function::Fn(&skene_core::WheelEvent) -> skene_core::Prevent

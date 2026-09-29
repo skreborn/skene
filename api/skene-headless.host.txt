@@ -165,6 +165,7 @@ pub fn skene_headless::trigger_scroll(skene_core::node::NodeId, &skene_core::eve
 pub fn skene_headless::trigger_selection_change(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_headless::trigger_size(skene_core::node::NodeId, skene_core::values::size::Size<f32>)
 pub fn skene_headless::trigger_toggle(skene_core::node::NodeId, bool)
+pub fn skene_headless::trigger_wheel(skene_core::node::NodeId, &skene_core::events::WheelEvent) -> skene_core::events::Prevented
 pub fn skene_headless::value(skene_core::node::NodeId) -> core::option::Option<alloc::string::String>
 pub type skene_headless::SlotLeaf = skene_core::resolve::SlotLeaf<f32>
 pub type skene_headless::SlotValue = skene_core::resolve::SlotValue<f32>

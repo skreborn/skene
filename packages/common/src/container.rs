@@ -28,6 +28,7 @@ use skene_core::{
   Transition,
   Value,
   View,
+  WheelEvent,
 };
 
 use crate::{Anchor, FocusHandle, LayoutBox, SizeHandle, decoration};
@@ -287,6 +288,18 @@ impl<P: Platform> Container<P> {
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
     self.inner = self.inner.handle_pointer_move(action);
+
+    self
+  }
+
+  /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
+  /// return [`Bubbling::Stop`] to keep the turn from the ancestors.
+  #[inline(always)]
+  pub fn handle_wheel<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&WheelEvent) -> R + 'static,
+  ) -> Self {
+    self.inner = self.inner.handle_wheel(action);
 
     self
   }

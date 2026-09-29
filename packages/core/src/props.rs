@@ -261,6 +261,8 @@ pub enum EventKind {
   Focus,
   /// The node lost focus.
   Blur,
+  /// A wheel turned over the node, before the platform scrolls by it.
+  Wheel,
   /// The node's scroll offsets changed.
   Scroll,
   /// A control's textual value changed.

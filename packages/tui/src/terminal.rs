@@ -850,10 +850,18 @@ fn dispatch_mouse(mouse: Mouse) {
       with_store(|store| store.buttons.remove(button));
       interaction::pointer_release(mouse.column, mouse.row, button, modifiers);
     }
-    MouseKind::ScrollDown => interaction::wheel(mouse.column, mouse.row, 0, WHEEL_STEP),
-    MouseKind::ScrollUp => interaction::wheel(mouse.column, mouse.row, 0, -WHEEL_STEP),
-    MouseKind::ScrollRight => interaction::wheel(mouse.column, mouse.row, WHEEL_STEP, 0),
-    MouseKind::ScrollLeft => interaction::wheel(mouse.column, mouse.row, -WHEEL_STEP, 0),
+    MouseKind::ScrollDown => {
+      interaction::wheel(mouse.column, mouse.row, 0, WHEEL_STEP, modifiers);
+    }
+    MouseKind::ScrollUp => {
+      interaction::wheel(mouse.column, mouse.row, 0, -WHEEL_STEP, modifiers);
+    }
+    MouseKind::ScrollRight => {
+      interaction::wheel(mouse.column, mouse.row, WHEEL_STEP, 0, modifiers);
+    }
+    MouseKind::ScrollLeft => {
+      interaction::wheel(mouse.column, mouse.row, -WHEEL_STEP, 0, modifiers);
+    }
   }
 }
 
@@ -1658,7 +1666,7 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
 /// Positive deltas scroll right and down, one cell per unit; hit-testing resolves
 /// against the last render's layout.
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
-  trigger(|| interaction::wheel(x, y, delta_columns, delta_rows));
+  trigger(|| interaction::wheel(x, y, delta_columns, delta_rows, Modifiers::NONE));
 }
 
 /// Takes the text the last `Copy` staged for the clipboard, for a headless test.

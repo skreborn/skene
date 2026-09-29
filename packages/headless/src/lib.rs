@@ -87,6 +87,7 @@ use skene_core::{
   Timer,
   Toggle,
   Visibility,
+  WheelEvent,
   dispatch_click,
   dispatch_context_menu,
   dispatch_key_down,
@@ -95,6 +96,7 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
+  dispatch_wheel,
   notify_change,
   notify_dismiss,
   notify_focus_moved,
@@ -688,6 +690,12 @@ pub fn trigger_pointer_cancel(node: NodeId, event: &PointerEvent) -> Prevented {
 
     dispatch_pointer_cancel::<Headless>(node, event)
   })
+}
+
+/// Dispatches a wheel's turn at `node`, bubbling through the scene; a verdict that
+/// suppresses the platform's response keeps the scroll from happening.
+pub fn trigger_wheel(node: NodeId, event: &WheelEvent) -> Prevented {
+  trigger(|| dispatch_wheel::<Headless>(node, event))
 }
 
 /// Dispatches a pointer move at `node`, bubbling through the scene.

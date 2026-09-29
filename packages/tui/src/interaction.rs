@@ -23,6 +23,7 @@ use skene_core::{
   Scene,
   ScrollEvent,
   Visibility,
+  WheelUnit,
   dispatch_click,
   dispatch_context_menu,
   dispatch_key_down,
@@ -31,6 +32,7 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
+  dispatch_wheel,
   notify_dismiss,
   notify_focus_moved,
   notify_pointer_moved,
@@ -1427,12 +1429,33 @@ pub(crate) fn scroll_by(handle: Handle, delta_x: i64, delta_y: i64) -> bool {
   true
 }
 
-/// Scrolls under the cell (`x`, `y`): a gesture in progress keeps its latched box,
-/// consuming the wheel at that box's limits, and a fresh gesture targets the innermost
-/// box under the cell that can still move in the given direction.
-pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64) {
+/// Turns the wheel over the cell (`x`, `y`) by rows and columns: the turn reaches the
+/// node under the pointer first, then, unless a handler prevented the platform, scrolls
+/// there—a gesture in progress keeping its latched box, consuming the wheel at that
+/// box's limits, and a fresh gesture targeting the innermost box under the cell that
+/// can still move in the given direction.
+pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64, modifiers: Modifiers) {
   if !store(|store| store.mouse_taken()) {
     return;
+  }
+
+  let under = store(|store| {
+    let (handle, origin) = store.hit_test(x, y).last().copied()?;
+
+    Some((store.record(handle)?.node?, origin))
+  });
+
+  if let Some((node, origin)) = under {
+    #[expect(
+      clippy::cast_precision_loss,
+      reason = "a wheel's turn in rows stays far below the integers f32 holds exactly"
+    )]
+    let delta = Axes::new(delta_x as f32, delta_y as f32);
+    let event = pointer_event(x, y, origin, None, modifiers).wheel(delta, WheelUnit::Lines);
+
+    if dispatch_wheel::<Tui>(node, &event).platform {
+      return;
+    }
   }
 
   let now = std::time::Instant::now();

@@ -60,6 +60,7 @@ use skene_gui::{
   Typography,
   View,
   core::{
+    Axes,
     Axis,
     Dimension,
     DragAxes,
@@ -72,6 +73,8 @@ use skene_gui::{
     PointerButton,
     PointerId,
     PointerType,
+    WheelEvent,
+    WheelUnit,
   },
   derived,
   empty,
@@ -752,6 +755,79 @@ fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
   );
   assert!((pressure - 0.75).abs() < f32::EPSILON, "{pressure}");
   assert_eq!(press(true).0.pointer_id, Some(PointerId::PRIMARY));
+}
+
+/// A `wheel` reaches the node under the pointer in the unit the browser counts before
+/// the browser scrolls by it: a box's handler leaves the scroll to the browser, and a
+/// behavior taking the turn keeps it from happening.
+#[wasm_bindgen_test]
+fn a_wheel_reaches_the_node_before_it_scrolls() {
+  use skene_gui::{
+    ActivePlatform,
+    Behavior,
+    Control,
+    ControlHandle,
+    core::{ControlKind, EventKind, Prevent},
+  };
+
+  /// Takes every turn for itself.
+  struct Dial;
+
+  impl Behavior<ActivePlatform> for Dial {
+    fn kind(&self) -> ControlKind {
+      ControlKind::Button
+    }
+
+    fn role(&self) -> Option<Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [EventKind] {
+      &[EventKind::Wheel]
+    }
+
+    fn on_wheel(&self, _: &WheelEvent, _: &ControlHandle) -> Prevent {
+      Prevent::All
+    }
+  }
+
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new().handle_wheel(move |event| seen.set(Some((event.delta, event.unit)))),
+          Control::new(Dial).set_child(Text::new("dial")),
+        ))
+        .build()
+    }
+  });
+
+  let turn = |target: &Element| {
+    let init = web_sys::WheelEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_delta_y(3.);
+    init.set_delta_mode(web_sys::WheelEvent::DOM_DELTA_LINE);
+
+    let event =
+      web_sys::WheelEvent::new_with_event_init_dict("wheel", &init).expect("a wheel event");
+
+    let _ = target.dispatch_event(&event);
+
+    event.default_prevented()
+  };
+  let column = only_child(&root);
+  let child = |index| column.children().item(index).expect("a child");
+
+  assert!(!turn(&child(0)), "the browser scrolls");
+  assert_eq!(seen.get(), Some((Axes::new(0., 3.), WheelUnit::Lines)));
+  assert!(turn(&child(1)), "the dial takes the turn");
 }
 
 /// A `pointercancel` reaches the box's cancel handler through dispatch.

@@ -7,6 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   AccessProp,
+  Axes,
   Bubbling,
   EventKind,
   FocusOrder,
@@ -28,6 +29,7 @@ use skene_core::{
   Value,
   View,
   Visibility,
+  WheelUnit,
 };
 use skene_headless::{
   Headless,
@@ -49,6 +51,7 @@ use skene_headless::{
   trigger_pointer_move,
   trigger_pointer_up,
   trigger_scroll,
+  trigger_wheel,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -99,6 +102,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     let inner_leave = note("inner leave");
     let inner_focus = note("inner focus");
     let inner_blur = note("inner blur");
+    let inner_wheel = note("inner wheel");
     let inner_scroll = note("inner scroll");
 
     Container::new()
@@ -132,6 +136,10 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
           .handle_pointer_leave(inner_leave)
           .handle_focus(inner_focus)
           .handle_blur(inner_blur)
+          .handle_wheel(move |event| {
+            assert_eq!(event.delta, Axes::new(0., 3.));
+            inner_wheel();
+          })
           .handle_scroll(move |event| {
             assert_eq!(*event, ScrollEvent { x: 0., y: 10. });
             inner_scroll();
@@ -154,6 +162,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       EventKind::PointerLeave,
       EventKind::Focus,
       EventKind::Blur,
+      EventKind::Wheel,
       EventKind::Scroll,
     ]
   );
@@ -183,6 +192,10 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   trigger_pointer_leave(inner);
   trigger_focus(inner);
   trigger_blur(inner);
+  assert_eq!(
+    trigger_wheel(inner, &press().wheel(Axes::new(0., 3.), WheelUnit::Lines)),
+    Prevented::default()
+  );
   trigger_scroll(inner, &ScrollEvent { x: 0., y: 10. });
 
   assert_eq!(
@@ -201,6 +214,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       "inner leave",
       "inner focus",
       "inner blur",
+      "inner wheel",
       "inner scroll",
     ]
   );

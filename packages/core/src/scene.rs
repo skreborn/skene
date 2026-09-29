@@ -35,6 +35,7 @@ use crate::{
   PointerHandler,
   ScrollEvent,
   TextSelection,
+  WheelHandler,
 };
 
 /// A handler taking nothing: pointer enter and leave, focus and blur, dismiss.
@@ -245,6 +246,7 @@ pub struct HandlerSet {
   pointer_leave: Vec<Handler<PlainHandler>>,
   focus: Vec<Handler<PlainHandler>>,
   blur: Vec<Handler<PlainHandler>>,
+  wheel: Vec<Handler<WheelHandler>>,
   scroll: Vec<Handler<ScrollHandler>>,
   change: Vec<Handler<ChangeHandler>>,
   selection_change: Vec<Handler<SelectionHandler>>,
@@ -343,6 +345,13 @@ impl HandlerSet {
   #[must_use]
   pub fn blur(&self) -> &[Handler<PlainHandler>] {
     &self.blur
+  }
+
+  /// The wheel handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn wheel(&self) -> &[Handler<WheelHandler>] {
+    &self.wheel
   }
 
   /// The scroll handlers, in registration order.
@@ -1848,6 +1857,13 @@ impl<P: Platform> Scene<P> {
   pub fn handle_blur(&mut self, node: NodeId, handler: Rc<PlainHandler>) {
     self.register(node, EventKind::Blur, |set| {
       set.blur.push(Handler::new(handler));
+    });
+  }
+
+  /// Adds a wheel handler to `node`.
+  pub fn handle_wheel(&mut self, node: NodeId, handler: Rc<WheelHandler>) {
+    self.register(node, EventKind::Wheel, |set| {
+      set.wheel.push(Handler::new(handler));
     });
   }
 

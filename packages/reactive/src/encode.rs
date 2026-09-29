@@ -77,19 +77,19 @@ pub trait Snapshot: Sized + 'static {
 
 /// The kind a recorded value carries.
 mod tag {
-  pub const UNIT: u8 = 0;
-  pub const FALSE: u8 = 1;
-  pub const TRUE: u8 = 2;
-  pub const INT: u8 = 3;
-  pub const UINT: u8 = 4;
-  pub const WIDE: u8 = 5;
-  pub const FLOAT: u8 = 6;
-  pub const STR: u8 = 7;
-  pub const BYTES: u8 = 8;
-  pub const SEQ: u8 = 9;
-  pub const MAP: u8 = 10;
-  pub const RECORD: u8 = 11;
-  pub const VARIANT: u8 = 12;
+  pub(super) const UNIT: u8 = 0;
+  pub(super) const FALSE: u8 = 1;
+  pub(super) const TRUE: u8 = 2;
+  pub(super) const INT: u8 = 3;
+  pub(super) const UINT: u8 = 4;
+  pub(super) const WIDE: u8 = 5;
+  pub(super) const FLOAT: u8 = 6;
+  pub(super) const STR: u8 = 7;
+  pub(super) const BYTES: u8 = 8;
+  pub(super) const SEQ: u8 = 9;
+  pub(super) const MAP: u8 = 10;
+  pub(super) const RECORD: u8 = 11;
+  pub(super) const VARIANT: u8 = 12;
 }
 
 /// The key a field or a variant is recorded under: FNV-1a over its name, stable under

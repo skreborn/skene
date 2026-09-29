@@ -36,7 +36,7 @@ const EM: f32 = 16.;
 
 /// What one node's properties resolve against: the environment, the node's interaction
 /// and the named containers above it.
-pub struct Env {
+pub(crate) struct Env {
   node: NodeId,
   viewport: Size<f32>,
   scheme: ColorScheme,
@@ -47,7 +47,7 @@ pub struct Env {
 
 impl Env {
   /// The environment of `node`; `None` for a stale id.
-  pub fn of(node: NodeId) -> Option<Self> {
+  pub(crate) fn of(node: NodeId) -> Option<Self> {
     let (handle, control, names) = Scene::<Headless>::with(|scene| {
       let handle = *scene.record(node)?.sink();
       let control = scene.enclosing_control(node).and_then(|control| {
@@ -94,7 +94,7 @@ impl Env {
 
   /// Runs `operation` with the resolver of this environment, reading tokens through
   /// the scene and slots through the store.
-  pub fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
+  pub(crate) fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
     let node = self.node;
     let token = move |name| Scene::<Headless>::with(|scene| scene.resolve_token(node, name));
     let slot = move |slot| {
@@ -295,7 +295,7 @@ fn present(
 
 /// The property `key` of `node` resolved and presented: a box's as a [`BoxValue`], a
 /// run's as a [`RunValue`], in flight where a transition or an animation moves it.
-pub fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
+pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key)?;
   let env = Env::of(node)?;
   let handle = Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
@@ -343,7 +343,7 @@ fn resolve_target(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValu
 }
 
 /// The border of the box `node`, its color leaf resolved to a fixed color.
-pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
+pub(crate) fn resolve_border(node: NodeId) -> Option<Border<f32>> {
   let SlotValue::Box(BoxValue::Border(border)) =
     resolve(node, PropertyKey::Shared(Property::Border))?
   else {

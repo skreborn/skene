@@ -23,47 +23,47 @@ use skene_core::{
 };
 use skene_headless::{TokenValue, children};
 
-pub const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-pub const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
-pub const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
-pub const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
-pub const SPACING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Spacing);
-pub const ASPECT_RATIO: PropertyKey<NoProperty> = PropertyKey::Shared(Property::AspectRatio);
+pub(crate) const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
+pub(crate) const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
+pub(crate) const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
+pub(crate) const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
+pub(crate) const SPACING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Spacing);
+pub(crate) const ASPECT_RATIO: PropertyKey<NoProperty> = PropertyKey::Shared(Property::AspectRatio);
 
-pub const WHITE: Color = Color::TRANSPARENT;
+pub(crate) const WHITE: Color = Color::TRANSPARENT;
 
-pub fn red() -> Color {
+pub(crate) fn red() -> Color {
   Color::srgb(1., 0., 0.)
 }
 
-pub fn green() -> Color {
+pub(crate) fn green() -> Color {
   Color::srgb(0., 1., 0.)
 }
 
-pub fn blue() -> Color {
+pub(crate) fn blue() -> Color {
   Color::srgb(0., 0., 1.)
 }
 
-pub fn black() -> Color {
+pub(crate) fn black() -> Color {
   Color::srgb(0., 0., 0.)
 }
 
 /// A component library's palette: a card color and a gutter length.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TestPalette {
+pub(crate) struct TestPalette {
   pub card: Token<Color, f32>,
   pub gutter: Token<f32, f32>,
 }
 
 impl TestPalette {
-  pub const CARD: TokenRef<Color> = TokenRef::new("card");
-  pub const GUTTER: TokenRef<f32> = TokenRef::new("gutter");
+  pub(crate) const CARD: TokenRef<Color> = TokenRef::new("card");
+  pub(crate) const GUTTER: TokenRef<f32> = TokenRef::new("gutter");
   /// The gutter as an expression reads it.
-  pub const GUTTER_LENGTH: TokenRef<Length> = TokenRef::new("gutter");
+  pub(crate) const GUTTER_LENGTH: TokenRef<Length> = TokenRef::new("gutter");
   /// The gutter as the spacing property reads it.
-  pub const GUTTER_SPACING: TokenRef<Spacing<f32>> = TokenRef::new("gutter");
+  pub(crate) const GUTTER_SPACING: TokenRef<Spacing<f32>> = TokenRef::new("gutter");
 
-  pub fn with_card(card: Color) -> Self {
+  pub(crate) fn with_card(card: Color) -> Self {
     Self {
       card: Token::new("card", card),
       ..Self::default()
@@ -88,7 +88,7 @@ impl TokenSet<TokenValue> for TestPalette {
 
 /// A facade's typography: the tokens every run inherits through.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TestTypography {
+pub(crate) struct TestTypography {
   pub ink: Token<Color, f32>,
   pub link_ink: Token<Color, f32>,
   pub selection_ink: Token<Color, f32>,
@@ -96,7 +96,7 @@ pub struct TestTypography {
 }
 
 impl TestTypography {
-  pub fn with_ink(ink: Color) -> Self {
+  pub(crate) fn with_ink(ink: Color) -> Self {
     Self {
       ink: Token::new(typography::INK.name().as_str(), ink),
       ..Self::default()
@@ -127,6 +127,6 @@ impl TokenSet<TokenValue> for TestTypography {
 }
 
 /// The content between a container's anchors: its one child.
-pub fn only_child(node: NodeId) -> NodeId {
+pub(crate) fn only_child(node: NodeId) -> NodeId {
   children(node)[1]
 }

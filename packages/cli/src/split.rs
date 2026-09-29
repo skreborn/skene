@@ -28,7 +28,7 @@ const LOADER_GLUE: &str = include_str!("split.js");
 ///
 /// Without `#[lazy]` markers in the build this is a no-op; with markers but no
 /// `[web] split = true` it fails, naming the missing setting.
-pub fn split_web(app: &App, original: &Path) -> Result<(), String> {
+pub(crate) fn split_web(app: &App, original: &Path) -> Result<(), String> {
   let out = app.dir.join("dist/web");
   let main_path = out.join(format!("{}_bg.wasm", app.stem));
   let bindgened =

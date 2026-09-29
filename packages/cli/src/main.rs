@@ -56,7 +56,7 @@ mod host {
   /// Build, statically generate, and develop skene applications.
   #[derive(Parser)]
   #[command(name = "skene", about, long_about = None)]
-  pub struct Cli {
+  pub(crate) struct Cli {
     /// The app directory (holding `Cargo.toml` and, optionally, `skene.toml`).
     #[arg(long, default_value = ".", global = true)]
     dir: PathBuf,
@@ -127,7 +127,7 @@ mod host {
     },
   }
 
-  pub fn run(cli: Cli) -> Result<(), String> {
+  pub(crate) fn run(cli: Cli) -> Result<(), String> {
     if let Command::Attach { id } = cli.command {
       return attach(id);
     }

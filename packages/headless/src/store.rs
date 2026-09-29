@@ -33,10 +33,10 @@ use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};
 
 /// The viewport the platform reports until [`set_viewport`](crate::set_viewport) is called.
-pub const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
+pub(crate) const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
 
 /// What a record is, with everything its creation call carried.
-pub enum Kind {
+pub(crate) enum Kind {
   /// A box, with the props it was created from.
   Box(Box<BoxProps<Headless>>),
   /// A control, with the props it was created from.
@@ -54,7 +54,7 @@ pub enum Kind {
 /// The motion a node runs: the value each resolved property is heading for, the tween
 /// of each property in flight, and the clock reading the node was created at.
 #[derive(Default)]
-pub struct Motion {
+pub(crate) struct Motion {
   /// The node the record realizes, once a resolution named it.
   pub node: Option<NodeId>,
   /// The value last resolved per property, which a change is judged against.
@@ -67,7 +67,7 @@ pub struct Motion {
 
 /// One realized node.
 // Each flag is an independent fact a platform call recorded.
-pub struct Record {
+pub(crate) struct Record {
   pub kind: Kind,
   pub text: String,
   pub value: String,
@@ -91,7 +91,7 @@ pub struct Record {
 
 impl Kind {
   /// The box props of a box or a control.
-  pub fn box_props(&self) -> Option<&BoxProps<Headless>> {
+  pub(crate) fn box_props(&self) -> Option<&BoxProps<Headless>> {
     match self {
       Self::Box(props) => Some(props),
       Self::Control(props) => Some(&props.box_props),
@@ -101,7 +101,7 @@ impl Kind {
   }
 
   /// The box props of a box or a control, mutably.
-  pub fn box_props_mut(&mut self) -> Option<&mut BoxProps<Headless>> {
+  pub(crate) fn box_props_mut(&mut self) -> Option<&mut BoxProps<Headless>> {
     match self {
       Self::Box(props) => Some(props),
       Self::Control(props) => Some(&mut props.box_props),
@@ -112,7 +112,7 @@ impl Kind {
 }
 
 impl Record {
-  pub fn new(kind: Kind) -> Self {
+  pub(crate) fn new(kind: Kind) -> Self {
     Self {
       kind,
       text: String::new(),
@@ -142,7 +142,7 @@ struct Entry {
 }
 
 /// The environment as signals, with the write halves the seams drive.
-pub struct MediaState {
+pub(crate) struct MediaState {
   pub owner: Owner,
   pub set_viewport: WriteSignal<Size<f32>>,
   pub set_scheme: WriteSignal<ColorScheme>,
@@ -155,7 +155,7 @@ pub struct MediaState {
 }
 
 /// Every record the platform holds, the focus, the root definitions and the environment.
-pub struct Store {
+pub(crate) struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,
   pub focused: Option<Handle>,
@@ -187,7 +187,7 @@ pub struct Store {
 }
 
 /// A scheduled action: the clock reading it is due at, its timer, and the action.
-pub type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
+pub(crate) type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
 impl Default for Store {
   fn default() -> Self {
@@ -219,7 +219,7 @@ impl Default for Store {
 
 impl Store {
   /// Mints a record and returns its handle.
-  pub fn create(&mut self, mut record: Record) -> Handle {
+  pub(crate) fn create(&mut self, mut record: Record) -> Handle {
     record.motion.started = self.clock;
 
     if let Some(index) = self.free.pop() {
@@ -242,7 +242,7 @@ impl Store {
 
   /// The record of `handle`, if it is live.
   #[inline(always)]
-  pub fn record(&self, handle: Handle) -> Option<&Record> {
+  pub(crate) fn record(&self, handle: Handle) -> Option<&Record> {
     self
       .entries
       .get(handle.index as usize)
@@ -252,7 +252,7 @@ impl Store {
 
   /// The record of `handle`, mutably, if it is live.
   #[inline(always)]
-  pub fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
+  pub(crate) fn record_mut(&mut self, handle: Handle) -> Option<&mut Record> {
     self
       .entries
       .get_mut(handle.index as usize)
@@ -261,7 +261,7 @@ impl Store {
   }
 
   /// Releases the record of `handle`, retiring the handle.
-  pub fn destroy(&mut self, handle: Handle) {
+  pub(crate) fn destroy(&mut self, handle: Handle) {
     let Some(entry) = self
       .entries
       .get_mut(handle.index as usize)
@@ -284,7 +284,7 @@ impl Store {
 
   /// The color scheme in force: the app's choice, else the platform's.
   #[inline(always)]
-  pub fn scheme_in_force(&self) -> ColorScheme {
+  pub(crate) fn scheme_in_force(&self) -> ColorScheme {
     self
       .chosen_scheme
       .or(self.scheme)
@@ -292,7 +292,7 @@ impl Store {
   }
 
   /// The environment's signals, created on first use under a root owner of their own.
-  pub fn media(&mut self) -> &MediaState {
+  pub(crate) fn media(&mut self) -> &MediaState {
     let viewport = self.viewport.unwrap_or(DEFAULT_VIEWPORT);
     let scheme = self.scheme_in_force();
     let reduced_motion = self.reduced_motion.unwrap_or(false);
@@ -331,7 +331,7 @@ impl Store {
 
   /// Every property a resolution has observed, by node, for a frame to judge again.
   #[must_use]
-  pub fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<NoProperty>>)> {
+  pub(crate) fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<NoProperty>>)> {
     self
       .entries
       .iter()
@@ -346,7 +346,7 @@ impl Store {
 
   /// Forgets everything and hands back the owner of the environment's signals, for
   /// the caller to dispose once the store is released.
-  pub fn reset(&mut self) -> Option<Owner> {
+  pub(crate) fn reset(&mut self) -> Option<Owner> {
     let media = self.media.take();
 
     *self = Self::default();

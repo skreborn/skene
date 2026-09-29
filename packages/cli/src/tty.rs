@@ -7,17 +7,17 @@
 
 /// The terminal's captured state: termios on Unix, console modes on Windows.
 #[cfg(unix)]
-pub struct Tty(rustix::termios::Termios);
+pub(crate) struct Tty(rustix::termios::Termios);
 
 #[cfg(unix)]
 impl Tty {
   /// Captures the terminal's current state, when stdin is a terminal.
-  pub fn capture() -> Option<Self> {
+  pub(crate) fn capture() -> Option<Self> {
     rustix::termios::tcgetattr(std::io::stdin()).ok().map(Self)
   }
 
   /// Reapplies the captured state.
-  pub fn restore(&self) {
+  pub(crate) fn restore(&self) {
     let _ = rustix::termios::tcsetattr(
       std::io::stdin(),
       rustix::termios::OptionalActions::Now,

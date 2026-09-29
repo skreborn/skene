@@ -27,7 +27,7 @@ type Headers = Vec<(String, String)>;
 /// The dev channel: the open live-reload streams, the rebuild-failure notice an
 /// attached terminal forwards to the running app, and the terminal binary it runs.
 #[derive(Clone, Default)]
-pub struct Dev {
+pub(crate) struct Dev {
   clients: Arc<Mutex<Vec<TcpStream>>>,
   notice: Arc<Mutex<Notice>>,
   renderer: Arc<Mutex<Option<Renderer>>>,
@@ -45,7 +45,7 @@ struct Notice {
 /// The terminal binary a `run tui` loop built: a generation bumped on every swap, the
 /// binary's path, and the directory it runs in.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Binary {
+pub(crate) struct Binary {
   pub generation: u64,
   pub path: PathBuf,
   pub dir: PathBuf,
@@ -65,7 +65,7 @@ impl Binary {
   }
 
   /// The binary a `/skene:binary` body names.
-  pub fn parse(body: &str) -> Option<Self> {
+  pub(crate) fn parse(body: &str) -> Option<Self> {
     let mut lines = body.lines();
     let generation = lines.next()?.parse().ok()?;
     let path = PathBuf::from(lines.next()?);
@@ -82,7 +82,7 @@ impl Binary {
 impl Dev {
   /// Renders routes through `renderer` from now on, each request's client hints
   /// forwarded; `None` returns to serving the generated page.
-  pub fn set_renderer(&self, renderer: Option<Renderer>) {
+  pub(crate) fn set_renderer(&self, renderer: Option<Renderer>) {
     *self
       .renderer
       .lock()
@@ -104,7 +104,7 @@ impl Dev {
   }
 
   /// Tells every connected page to reload, dropping streams that went away.
-  pub fn trigger(&self) {
+  pub(crate) fn trigger(&self) {
     let mut clients = self
       .clients
       .lock()
@@ -128,7 +128,7 @@ impl Dev {
   }
 
   /// Posts a rebuild failure for the running app's dev modal, superseding the last.
-  pub fn set_notice(&self, text: String) {
+  pub(crate) fn set_notice(&self, text: String) {
     let mut notice = self
       .notice
       .lock()
@@ -139,7 +139,7 @@ impl Dev {
   }
 
   /// Clears the failure notice, after a successful rebuild.
-  pub fn clear_notice(&self) {
+  pub(crate) fn clear_notice(&self) {
     let mut notice = self
       .notice
       .lock()
@@ -168,7 +168,7 @@ impl Dev {
 
   /// Publishes the terminal binary at `path`, run in `dir`, as the next generation an
   /// attached terminal swaps in.
-  pub fn set_binary(&self, path: PathBuf, dir: PathBuf) {
+  pub(crate) fn set_binary(&self, path: PathBuf, dir: PathBuf) {
     let mut binary = self
       .binary
       .lock()
@@ -251,7 +251,7 @@ fn state_socket(id: u32) -> Result<PathBuf, String> {
 /// Fetches `path` from the state server of the `run tui` loop with id `id`: the body of
 /// a `200` reply, `None` for any other or for no server.
 #[cfg(unix)]
-pub fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
+pub(crate) fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
   let mut stream = std::os::unix::net::UnixStream::connect(state_socket(id).ok()?).ok()?;
 
   stream
@@ -289,7 +289,7 @@ pub fn fetch(id: u32, path: &str) -> Option<Vec<u8>> {
 ///
 /// Fails when the socket cannot be made.
 #[cfg(unix)]
-pub fn spawn_state_server(dev: Dev) -> Result<u32, String> {
+pub(crate) fn spawn_state_server(dev: Dev) -> Result<u32, String> {
   let id = std::process::id();
   let path = state_socket(id)?;
   let _ = fs::remove_file(&path);
@@ -369,7 +369,7 @@ const RELOAD_PATH: &str = "/skene:reload";
 /// the app's `dist/web`, at its own path and as the site root, declared assets at
 /// their URIs, and—with `dev`—the reload SSE endpoint and the reload script injected
 /// into HTML.
-pub fn serve(app: &Arc<App>, port: u16, dev: Option<&Dev>) -> Result<(), String> {
+pub(crate) fn serve(app: &Arc<App>, port: u16, dev: Option<&Dev>) -> Result<(), String> {
   let listener = TcpListener::bind(("127.0.0.1", port))
     .map_err(|error| format!("failed to bind 127.0.0.1:{port}: {error}"))?;
 

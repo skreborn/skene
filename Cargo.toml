@@ -36,6 +36,7 @@ strip = true
 
 [workspace.lints.rust]
 missing_docs = "warn"
+unreachable_pub = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(skene_platform, values("server"))'] }
 
 [workspace.lints.clippy]

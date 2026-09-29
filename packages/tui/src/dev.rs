@@ -29,7 +29,7 @@ use crate::{Column, IntoView as _, Overlay, Text, Tui, TuiText, store::Handle};
 
 /// The exit status telling the launcher the app stopped for a swap it could not
 /// perform in place.
-pub const SWAP_EXIT: i32 = 75;
+pub(crate) const SWAP_EXIT: i32 = 75;
 
 /// The snapshot tag carrying every scrolled node's offsets, by position.
 const SCROLL_TAG: &str = "skene-tui:scroll";

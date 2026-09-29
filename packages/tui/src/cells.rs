@@ -12,7 +12,7 @@ use crate::{
 ///
 /// The rectangle is the box's content area on the screen, in cells; the [`Cells`]
 /// handle addresses it from its own origin.
-pub type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
+pub(crate) type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
 
 /// A terminal platform that runs a painter inside a box.
 ///

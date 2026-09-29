@@ -21,7 +21,7 @@ use serde::Deserialize;
 /// The parsed `skene.toml` of one package.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct ManifestFile {
+pub(crate) struct ManifestFile {
   /// App-level settings.
   #[serde(default)]
   pub app: AppSection,
@@ -36,7 +36,7 @@ pub struct ManifestFile {
 /// The `[web]` section.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct WebSection {
+pub(crate) struct WebSection {
   /// Whether web builds split `#[lazy]` functions into lazily-fetched wasm modules.
   #[serde(default)]
   pub split: bool,
@@ -45,7 +45,7 @@ pub struct WebSection {
 /// The `[app]` section.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct AppSection {
+pub(crate) struct AppSection {
   /// The cargo package to build; the directory's own package when absent.
   pub package: Option<String>,
   /// The server binary rendered through the runner for `skene ssg`.
@@ -55,7 +55,7 @@ pub struct AppSection {
 /// The `[assets]` section.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct AssetsSection {
+pub(crate) struct AssetsSection {
   /// Manifest-relative files or directories, each reachable at its own relative path
   /// as a URI.
   #[serde(default)]
@@ -63,7 +63,7 @@ pub struct AssetsSection {
 }
 
 /// The resolved app context every command runs against.
-pub struct App {
+pub(crate) struct App {
   /// The app package's directory.
   pub dir: PathBuf,
   /// The workspace root.
@@ -82,7 +82,7 @@ pub struct App {
 
 /// One package's declared assets: its name (the URI scope), its directory, and its
 /// manifest-relative paths.
-pub struct AssetRoot {
+pub(crate) struct AssetRoot {
   /// The package name, scoping every URI as `/<package>/<path>`.
   pub package: String,
   /// The directory `skene.toml` lives in.
@@ -94,7 +94,7 @@ pub struct AssetRoot {
 impl App {
   /// Resolves the app at `dir`: its `skene.toml` (optional), its package name, and the
   /// asset roots of the packages it depends on, over normal dependencies.
-  pub fn load(dir: &Path) -> Result<Self, String> {
+  pub(crate) fn load(dir: &Path) -> Result<Self, String> {
     let dir = dir
       .canonicalize()
       .map_err(|error| format!("app directory {}: {error}", dir.display()))?;
@@ -191,7 +191,7 @@ impl App {
   /// The file an asset URI resolves to, if declared: the URI's first segment names the
   /// providing package, the rest a path that package declared (itself or within a
   /// declared directory).
-  pub fn resolve_asset(&self, uri: &str) -> Option<PathBuf> {
+  pub(crate) fn resolve_asset(&self, uri: &str) -> Option<PathBuf> {
     let relative = uri.trim_start_matches('/');
 
     if relative.contains("..") {
@@ -217,7 +217,7 @@ impl App {
   }
 
   /// Copies every declared asset into `out`, preserving its package-scoped URI path.
-  pub fn copy_assets(&self, out: &Path) -> Result<(), String> {
+  pub(crate) fn copy_assets(&self, out: &Path) -> Result<(), String> {
     let mut copied: Vec<PathBuf> = Vec::new();
 
     for root in &self.assets {
@@ -238,7 +238,7 @@ impl App {
   }
 
   /// Every directory to watch for asset changes.
-  pub fn asset_dirs(&self) -> Vec<PathBuf> {
+  pub(crate) fn asset_dirs(&self) -> Vec<PathBuf> {
     self
       .assets
       .iter()

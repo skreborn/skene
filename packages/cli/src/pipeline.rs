@@ -19,7 +19,7 @@ const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 /// Builds the app's browser wasm, generates its bindings, writes the boot page and
 /// copies the assets—all into `<app>/dist/web`, replacing the folder wholesale, which
 /// deploys as a site's root. A dev build's page joins the dev loop.
-pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
+pub(crate) fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   let wasm = build_wasm(app, release)?;
 
   clear_web_out(app);
@@ -134,7 +134,7 @@ fn executable(artifacts: &[Artifact], name: &str) -> Result<PathBuf, String> {
 
 /// Builds the app's terminal binary for the host, quietly, and returns its path; on
 /// failure returns cargo's diagnostics.
-pub fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, String> {
+pub(crate) fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, String> {
   let mut command = Command::new("cargo");
 
   command.current_dir(&app.workspace_root).args([
@@ -156,7 +156,7 @@ pub fn build_tui_binary(app: &App, release: bool) -> Result<PathBuf, String> {
 }
 
 /// Builds the app's terminal binary and places it in `<app>/dist/tui`.
-pub fn build_tui(app: &App, release: bool) -> Result<(), String> {
+pub(crate) fn build_tui(app: &App, release: bool) -> Result<(), String> {
   let binary = build_tui_binary(app, release)?;
   let out_dir = app.dir.join("dist/tui");
 
@@ -279,7 +279,7 @@ fn name_server_platform(command: &mut Command, host: &str) {
 
 /// Builds the app's server binary for the host, with the server platform named, and
 /// returns its path.
-pub fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
+pub(crate) fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
   let server_bin = app.server_bin.as_deref().ok_or(
     "skene.toml declares no [app] server-bin; a server render runs through the server \
      binary",
@@ -316,7 +316,7 @@ pub fn build_server(app: &App, release: bool) -> Result<PathBuf, String> {
 /// client bundle lands beside the pages and every page boots it, so a capable client
 /// hydrates the markup into the running app. Paths are root-absolute: the output
 /// expects `dist/web` served as the site root.
-pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
+pub(crate) fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), String> {
   let out = &app.dir.join("dist/web");
   let artifact = build_server(app, release)?;
   let wasm = build_wasm(app, release)?;

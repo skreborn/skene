@@ -170,7 +170,7 @@ fn construct(path: &TokenStream, fields: &Fields, body: &TokenStream) -> TokenSt
   clippy::too_many_lines,
   reason = "one expansion start to end; length is the generated surface, not complexity"
 )]
-pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
+pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
   let reactive = reactive();
   let mut generics = input.generics.clone();

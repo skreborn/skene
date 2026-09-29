@@ -393,7 +393,7 @@ mod convert {
   }
 
   /// One sRGB component to linear light.
-  pub fn srgb_to_linear(component: f32) -> f32 {
+  pub(super) fn srgb_to_linear(component: f32) -> f32 {
     if component.abs() <= 0.04045 {
       component * (1.0 / 12.92)
     }
@@ -403,7 +403,7 @@ mod convert {
   }
 
   /// One linear-light component to sRGB.
-  pub fn linear_to_srgb(component: f32) -> f32 {
+  pub(super) fn linear_to_srgb(component: f32) -> f32 {
     if component.abs() <= 0.003_130_8 {
       component * 12.92
     }
@@ -413,21 +413,21 @@ mod convert {
   }
 
   /// Linear-light sRGB to Oklab.
-  pub fn linear_to_oklab(linear: [f32; 3]) -> [f32; 3] {
+  pub(super) fn linear_to_oklab(linear: [f32; 3]) -> [f32; 3] {
     let lms = matvecmul(&SRGB_TO_LMS, linear).map(libm::cbrtf);
 
     matvecmul(&LMS_TO_LAB, lms)
   }
 
   /// Oklab to linear-light sRGB.
-  pub fn oklab_to_linear(oklab: [f32; 3]) -> [f32; 3] {
+  pub(super) fn oklab_to_linear(oklab: [f32; 3]) -> [f32; 3] {
     let lms = matvecmul(&LAB_TO_LMS, oklab).map(|component| component * component * component);
 
     matvecmul(&LMS_TO_SRGB, lms)
   }
 
   /// Oklab to Oklch, the hue in degrees from `0` up to `360`.
-  pub fn oklab_to_oklch([lightness, a_axis, b_axis]: [f32; 3]) -> [f32; 3] {
+  pub(super) fn oklab_to_oklch([lightness, a_axis, b_axis]: [f32; 3]) -> [f32; 3] {
     let mut hue = libm::atan2f(b_axis, a_axis).to_degrees();
 
     if hue < 0.0 {
@@ -438,7 +438,7 @@ mod convert {
   }
 
   /// Oklch to Oklab.
-  pub fn oklch_to_oklab([lightness, chroma, hue]: [f32; 3]) -> [f32; 3] {
+  pub(super) fn oklch_to_oklab([lightness, chroma, hue]: [f32; 3]) -> [f32; 3] {
     let radians = hue.to_radians();
 
     [

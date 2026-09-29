@@ -24,15 +24,15 @@ use skene_reactive::Memo;
 use super::SimplePalette;
 
 /// The corner radius of a control, in the medium's unit.
-pub const RADIUS: f32 = 8.;
+pub(crate) const RADIUS: f32 = 8.;
 /// The corner radius of a card.
-pub const CARD_RADIUS: f32 = 12.;
+pub(crate) const CARD_RADIUS: f32 = 12.;
 /// The corner radius of a checkbox mark.
-pub const MARK_RADIUS: f32 = 4.;
+pub(crate) const MARK_RADIUS: f32 = 4.;
 /// The corner radius rounding a one-em box into a circle.
-pub const ROUND: f32 = 8.;
+pub(crate) const ROUND: f32 = 8.;
 /// The corner radius rounding a slider track's ends.
-pub const TRACK_RADIUS: f32 = 3.;
+pub(crate) const TRACK_RADIUS: f32 = 3.;
 
 /// The lengths the Simple views are drawn with, in one medium's unit.
 ///
@@ -157,7 +157,7 @@ impl SimpleUnit for u32 {
 
 /// The shape of the platform's unit.
 #[inline(always)]
-pub const fn shape<P: Platform>() -> SimpleShape<P::Scalar>
+pub(crate) const fn shape<P: Platform>() -> SimpleShape<P::Scalar>
 where
   P::Scalar: SimpleUnit,
 {
@@ -166,32 +166,32 @@ where
 
 /// A border `width` thick in the token `color`.
 #[inline(always)]
-pub fn border<N: Scalar>(width: N, color: TokenRef<Color>) -> Border<N> {
+pub(crate) fn border<N: Scalar>(width: N, color: TokenRef<Color>) -> Border<N> {
   Border::new(width, color)
 }
 
 /// A one-unit border in the token `color`.
 #[inline(always)]
-pub fn hairline<N: Scalar>(color: TokenRef<Color>) -> Border<N> {
+pub(crate) fn hairline<N: Scalar>(color: TokenRef<Color>) -> Border<N> {
   border(N::from_f32(1.), color)
 }
 
 /// The palette in force as a memo, its default defined at the root where no theme
 /// provides one.
 #[inline(always)]
-pub fn palette<P: Platform>() -> Memo<SimplePalette<P::Scalar>> {
+pub(crate) fn palette<P: Platform>() -> Memo<SimplePalette<P::Scalar>> {
   <SimplePalette<P::Scalar> as ThemedIn<P>>::watch()
 }
 
 /// Defines the default palette at the root where no theme provides one, so a view
 /// referencing the tokens resolves them.
 #[inline(always)]
-pub fn define_defaults<P: Platform>() {
+pub(crate) fn define_defaults<P: Platform>() {
   let _ = palette::<P>();
 }
 
 /// Builds `view` and records it as `part` of the control it is mounted under.
-pub fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId {
+pub(crate) fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId {
   let node = view.into_view().build();
 
   Scene::<P>::with(|scene| scene.set_part(node, part));
@@ -201,7 +201,7 @@ pub fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId {
 
 /// The chrome of a text entry: full width, padded, on the card surface, a hairline in
 /// the border color that becomes the ring while focused, rounded.
-pub fn field_chrome<P: Platform, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
+pub(crate) fn field_chrome<P: Platform, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
 where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,

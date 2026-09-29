@@ -29,7 +29,7 @@ const HINT_NAMES: &str = "Sec-CH-Prefers-Color-Scheme, Sec-CH-Prefers-Reduced-Mo
 /// The response headers a server adds beside a rendered page, so a client sends the
 /// hints the next render answers with: `Accept-CH`, `Critical-CH` and `Vary`.
 #[must_use]
-pub const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
+pub(crate) const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
   [
     ("Accept-CH", HINT_NAMES),
     ("Critical-CH", HINT_NAMES),
@@ -42,7 +42,7 @@ pub const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
 /// Loading spawns the binary with `--serve`; each [`render`](Self::render) writes one
 /// length-framed request to its stdin and reads the page back, and a worker that died is
 /// spawned afresh for the next request.
-pub struct Renderer {
+pub(crate) struct Renderer {
   binary: PathBuf,
   dir: PathBuf,
   dev: bool,
@@ -159,7 +159,7 @@ impl Renderer {
   /// # Errors
   ///
   /// Fails when the binary cannot be spawned.
-  pub fn load(binary: PathBuf, dir: PathBuf, dev: bool) -> Result<Self, String> {
+  pub(crate) fn load(binary: PathBuf, dir: PathBuf, dev: bool) -> Result<Self, String> {
     let worker = Worker::spawn(&binary, &dir, dev)?;
 
     Ok(Self {
@@ -177,7 +177,7 @@ impl Renderer {
   /// # Errors
   ///
   /// Fails when the worker cannot be spawned or answers malformed output.
-  pub fn render<'a>(
+  pub(crate) fn render<'a>(
     &mut self,
     route: &str,
     headers: impl IntoIterator<Item = (&'a str, &'a str)>,
@@ -208,7 +208,7 @@ impl Renderer {
   /// # Errors
   ///
   /// Fails when the binary cannot be run or writes non-UTF-8 output.
-  pub fn routes(&self) -> Result<Vec<String>, String> {
+  pub(crate) fn routes(&self) -> Result<Vec<String>, String> {
     let output = Command::new(&self.binary)
       .arg("--routes")
       .current_dir(&self.dir)

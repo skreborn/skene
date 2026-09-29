@@ -33,7 +33,7 @@ use crate::{
 
 /// What every text view declares of its run: selection, link and style.
 #[must_use]
-pub struct Run<P: Platform> {
+pub(crate) struct Run<P: Platform> {
   selectable: bool,
   link: Option<String>,
   link_policy: LinkPolicy,
@@ -44,7 +44,7 @@ pub struct Run<P: Platform> {
 impl<P: Platform> Run<P> {
   /// An unselectable run with no link and nothing set.
   #[inline(always)]
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       selectable: false,
       link: None,
@@ -56,13 +56,13 @@ impl<P: Platform> Run<P> {
 
   /// The declared style, for a view to write its properties into.
   #[inline(always)]
-  pub const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
+  pub(crate) const fn style_mut(&mut self) -> &mut DeclaredRunStyle<P> {
     &mut self.style
   }
 
   /// Sets whether the reader can select and copy the text.
   #[inline(always)]
-  pub const fn set_selectable(mut self, selectable: bool) -> Self {
+  pub(crate) const fn set_selectable(mut self, selectable: bool) -> Self {
     self.selectable = selectable;
 
     self
@@ -71,7 +71,7 @@ impl<P: Platform> Run<P> {
   /// Makes the run a link to `destination`; a destination that would run script when
   /// followed, a `javascript:` URL, is never followed.
   #[inline(always)]
-  pub fn set_link(mut self, destination: impl Into<String>) -> Self {
+  pub(crate) fn set_link(mut self, destination: impl Into<String>) -> Self {
     self.link = Some(destination.into());
 
     self
@@ -79,7 +79,7 @@ impl<P: Platform> Run<P> {
 
   /// Sets how the link opens and what it discloses.
   #[inline(always)]
-  pub const fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
+  pub(crate) const fn set_link_policy(mut self, link_policy: LinkPolicy) -> Self {
     self.link_policy = link_policy;
 
     self
@@ -88,7 +88,7 @@ impl<P: Platform> Run<P> {
   /// Adds a property transition, interpolating that property whenever its value
   /// changes.
   #[inline(always)]
-  pub fn set_transition(
+  pub(crate) fn set_transition(
     mut self,
     transition: Transition<<P::StyleExt as StyleExtension>::Property>,
   ) -> Self {
@@ -99,7 +99,7 @@ impl<P: Platform> Run<P> {
 
   /// Adds a keyframe animation.
   #[inline(always)]
-  pub fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
+  pub(crate) fn set_animation(mut self, animation: Animation<RunKeyframe<P>>) -> Self {
     self.dynamics.animations.push(animation);
 
     self
@@ -109,7 +109,7 @@ impl<P: Platform> Run<P> {
   ///
   /// A property the run leaves unset references its typography token; a `group` also
   /// redefines the typography tokens of the properties it sets for the runs beneath it.
-  pub fn build(self, display: RunDisplay, group: bool) -> NodeId {
+  pub(crate) fn build(self, display: RunDisplay, group: bool) -> NodeId {
     let mut style = self.style;
     let redefined = group.then(|| style.clone());
     let ink = if self.link.is_some() {

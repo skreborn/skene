@@ -154,7 +154,7 @@ fn fields(data: &Fields) -> syn::Result<Vec<Field>> {
 }
 
 /// Expands `#[derive(Store)]`.
-pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
+pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
   let visibility = &input.vis;
   let Data::Struct(data) = &input.data

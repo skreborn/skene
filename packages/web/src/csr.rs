@@ -130,7 +130,7 @@ use super::{
     render_run_leaf,
     run_fingerprint,
   },
-  condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS},
+  condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -876,6 +876,12 @@ impl Dom {
       node.scrolls = scrolls::<Web>(&props.style);
     }
 
+    if let Some(axes) = props.drag_axes
+      && let Some(element) = self.node(sink).and_then(Node::element)
+    {
+      let _ = element.set_attribute(DRAGS_ATTRIBUTE, drags_value(axes));
+    }
+
     self.write_focus_order(sink, props.focus_order);
     self.write_access(sink, &props.access);
   }
@@ -1376,10 +1382,6 @@ impl Platform for Web {
 
       if let Some(element) = dom.node(sink).and_then(Node::element) {
         let _ = element.set_attribute(CONTROL_ATTRIBUTE, "");
-
-        if props.drags {
-          let _ = element.set_attribute(DRAGS_ATTRIBUTE, "");
-        }
       }
 
       let compiled = dom

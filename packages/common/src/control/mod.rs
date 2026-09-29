@@ -28,6 +28,7 @@ use skene_core::{
   ControlProps,
   ControlState,
   DeclaredBoxStyle,
+  DragAxes,
   EventKind,
   Expr,
   FlexDirection,
@@ -161,11 +162,12 @@ pub trait Behavior<P: Platform>: 'static {
     1
   }
 
-  /// Whether the control follows a press's pointer until its release, as a slider does;
-  /// a platform keeps the pointer with the control and touch from panning over it.
+  /// The axes a press's pointer drags the control along, as a slider's; a platform
+  /// keeps the pointer with the control until the release and a touch from panning
+  /// along them. `None` for a control no press drags.
   #[inline(always)]
-  fn drags(&self) -> bool {
-    false
+  fn drag_axes(&self) -> Option<DragAxes> {
+    None
   }
 
   /// Where the control's label sits: beside the box of a control whose box holds a
@@ -946,6 +948,10 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         inner = inner.set_role(role);
       }
 
+      if let Some(axes) = behavior.drag_axes() {
+        inner = inner.set_drag_axes(axes);
+      }
+
       let node = inner.realize(NodeKind::Control, |box_props| {
         P::create_control(&ControlProps {
           kind,
@@ -954,7 +960,6 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
           placeholder,
           lines,
           label_beside: placement == LabelPlacement::Beside,
-          drags: behavior.drags(),
         })
       });
 

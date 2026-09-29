@@ -148,6 +148,56 @@ fn the_terminals_pointer_is_the_primary_mouse() {
   });
 }
 
+/// A press on a box declaring drag axes keeps its moves and its release with the box
+/// wherever the pointer goes; a press on a box without them leaves each to the node
+/// under the pointer, as on the web.
+#[test]
+fn only_a_dragging_box_keeps_a_press() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let note = |name: &'static str| {
+      let log = Rc::clone(&log);
+
+      move |_: &PointerEvent| log.borrow_mut().push(name)
+    };
+    let (dragging_move, dragging_up) = (note("dragging move"), note("dragging up"));
+    let (plain_move, plain_up) = (note("plain move"), note("plain up"));
+
+    let _ = tui::mount(move || {
+      Row::new()
+        .set_children((
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .set_drag_axes(DragAxes::Horizontal)
+            .handle_pointer_move(dragging_move)
+            .handle_pointer_up(dragging_up),
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .handle_pointer_move(plain_move)
+            .handle_pointer_up(plain_up),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_drag(6, 0);
+    tui::trigger_mouse_release(6, 0);
+
+    assert_eq!(*log.borrow(), ["dragging move", "dragging up"]);
+
+    log.borrow_mut().clear();
+    tui::trigger_mouse_press(5, 0);
+    tui::trigger_mouse_drag(1, 0);
+    tui::trigger_mouse_release(1, 0);
+
+    assert_eq!(*log.borrow(), ["dragging move", "dragging up"]);
+  });
+}
+
 /// The mouse hovering a node applies its `Hovered` variant and fires the enter handler;
 /// moving off reverts and fires the leave handler, once each.
 #[test]

@@ -60,7 +60,9 @@ use skene_gui::{
   Typography,
   View,
   core::{
+    Axis,
     Dimension,
+    DragAxes,
     GridAreas,
     GridName,
     GridPlacement,
@@ -1530,36 +1532,36 @@ fn a_box_hears_focus_entering_and_leaving_its_subtree() {
   assert_eq!((focuses.get(), blurs.get()), (1, 1));
 }
 
-/// A slider follows a press's pointer, so its element takes a touch as a drag, never a
-/// pan; a checkbox, which does not, is left to the page.
+/// A node a press's pointer drags takes a touch along the axes it drags and leaves the
+/// others to the page's pan: a slider along its axis, a box along those it declares; a
+/// checkbox, which drags nothing, is left to the page.
 #[wasm_bindgen_test]
-fn a_slider_takes_a_touch_as_a_drag() {
+fn a_dragging_node_takes_a_touch_along_its_axes() {
   let (_guard, root) = fresh_root();
 
   let _ = mount(|| {
     Column::new()
       .set_children((
         RawSlider::new(Range::new()),
+        RawSlider::new(Range::new().set_axis(Axis::Vertical)),
         RawCheckbox::new(Toggle::new()),
+        Container::new().set_drag_axes(DragAxes::Both),
       ))
       .build()
   });
 
-  let controls = root
-    .query_selector_all("[data-skene-control]")
-    .expect("a valid selector");
-  let control = |index| -> Element {
-    controls
-      .item(index)
-      .expect("a control")
-      .dyn_into()
-      .expect("an element")
-  };
+  let column = only_child(&root);
+  let child = |index| -> Element { column.children().item(index).expect("a child") };
+  let drags = |index| child(index).get_attribute("data-skene-drags");
 
-  assert!(control(0).has_attribute("data-skene-drags"));
-  assert_eq!(computed(&control(0), "touch-action"), "none");
-  assert!(!control(1).has_attribute("data-skene-drags"));
-  assert_eq!(computed(&control(1), "touch-action"), "auto");
+  assert_eq!(drags(0).as_deref(), Some("horizontal"));
+  assert_eq!(computed(&child(0), "touch-action"), "pan-y pinch-zoom");
+  assert_eq!(drags(1).as_deref(), Some("vertical"));
+  assert_eq!(computed(&child(1), "touch-action"), "pan-x pinch-zoom");
+  assert_eq!(drags(2), None);
+  assert_eq!(computed(&child(2), "touch-action"), "auto");
+  assert_eq!(drags(3).as_deref(), Some("both"));
+  assert_eq!(computed(&child(3), "touch-action"), "pinch-zoom");
 }
 
 /// `empty` renders no element at all: an empty segment, its two anchors alone.

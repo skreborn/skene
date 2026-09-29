@@ -1117,6 +1117,21 @@ pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> core::option:
 pub fn skene_core::Dimension<T>::interpolates_with(&self, &Self) -> bool
 impl<T> core::convert::From<T> for skene_core::Dimension<T>
 pub fn skene_core::Dimension<T>::from(T) -> Self
+pub enum skene_core::DragAxes
+pub skene_core::DragAxes::Both
+pub skene_core::DragAxes::Horizontal
+pub skene_core::DragAxes::Vertical
+impl core::clone::Clone for skene_core::DragAxes
+pub fn skene_core::DragAxes::clone(&self) -> skene_core::DragAxes
+impl core::cmp::Eq for skene_core::DragAxes
+impl core::cmp::PartialEq for skene_core::DragAxes
+pub fn skene_core::DragAxes::eq(&self, &skene_core::DragAxes) -> bool
+impl core::fmt::Debug for skene_core::DragAxes
+pub fn skene_core::DragAxes::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::DragAxes
+pub fn skene_core::DragAxes::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::DragAxes
+impl core::marker::StructuralPartialEq for skene_core::DragAxes
 pub enum skene_core::Easing
 pub skene_core::Easing::CubicBezier(f32, f32, f32, f32)
 pub skene_core::Easing::Ease
@@ -2324,6 +2339,7 @@ pub struct skene_core::BoxProps<P: skene_core::Platform>
 pub skene_core::BoxProps::access: alloc::vec::Vec<skene_core::AccessProp>
 pub skene_core::BoxProps::container: core::option::Option<skene_core::ContainerName>
 pub skene_core::BoxProps::destination: core::option::Option<alloc::string::String>
+pub skene_core::BoxProps::drag_axes: core::option::Option<skene_core::DragAxes>
 pub skene_core::BoxProps::dynamics: skene_core::BoxDynamics<<P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>
 pub skene_core::BoxProps::focus_order: core::option::Option<skene_core::FocusOrder>
 pub skene_core::BoxProps::layout: skene_core::Layout
@@ -2541,7 +2557,6 @@ impl<N: skene_core::Scalar> core::default::Default for skene_core::ContainerSize
 pub fn skene_core::ContainerSizes<N>::default() -> Self
 pub struct skene_core::ControlProps<P: skene_core::Platform>
 pub skene_core::ControlProps::box_props: skene_core::BoxProps<P>
-pub skene_core::ControlProps::drags: bool
 pub skene_core::ControlProps::kind: skene_core::ControlKind
 pub skene_core::ControlProps::label: core::option::Option<alloc::string::String>
 pub skene_core::ControlProps::label_beside: bool

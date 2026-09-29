@@ -11,6 +11,7 @@ use skene_core::{
   Condition,
   ContainerName,
   DeclaredBoxStyle,
+  DragAxes,
   FocusOrder,
   HasChildren,
   KeyEvent,
@@ -94,6 +95,16 @@ impl<P: Platform> Container<P> {
   #[inline(always)]
   pub fn set_container_name(mut self, name: ContainerName) -> Self {
     self.inner = self.inner.set_container_name(name);
+
+    self
+  }
+
+  /// Declares the axes a press's pointer drags the box along: the press's moves and
+  /// its release reach the box wherever the pointer goes, and a touch pans only along
+  /// the others.
+  #[inline(always)]
+  pub fn set_drag_axes(mut self, axes: DragAxes) -> Self {
+    self.inner = self.inner.set_drag_axes(axes);
 
     self
   }

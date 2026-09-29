@@ -83,7 +83,7 @@ use super::{
     slot_registration,
     slot_registrations,
   },
-  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS},
+  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS, drags_value},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -1117,6 +1117,12 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
   with_tree(|tree| {
     tree.assign_style(index, compiled);
 
+    if let Some(axes) = props.drag_axes
+      && let Some(node) = tree.node(index)
+    {
+      node.set_attribute(DRAGS_ATTRIBUTE, drags_value(axes));
+    }
+
     let target = tree.carrier(index);
     let scrolls = scrolls::<Web>(&props.style);
 
@@ -1268,10 +1274,6 @@ impl Platform for Web {
           Captioned::Inside
         });
         node.set_attribute(CONTROL_ATTRIBUTE, "");
-
-        if props.drags {
-          node.set_attribute(DRAGS_ATTRIBUTE, "");
-        }
       }
 
       let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));

@@ -12,6 +12,7 @@ pub use skene_core::{
   Bubbling,
   Color,
   ColorScheme,
+  DragAxes,
   Easing,
   Errors,
   Expr,

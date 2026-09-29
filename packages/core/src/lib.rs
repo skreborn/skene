@@ -214,6 +214,7 @@ pub use values::{
   Color,
   ColorScheme,
   Dimension,
+  DragAxes,
   Edge,
   FlexDirection,
   Flexibility,

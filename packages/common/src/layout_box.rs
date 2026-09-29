@@ -17,6 +17,7 @@ use skene_core::{
   Condition,
   ContainerName,
   DeclaredBoxStyle,
+  DragAxes,
   FocusOrder,
   GridFlow,
   GridTemplate,
@@ -98,6 +99,7 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   dynamics: BoxDynamics<P::Scalar, P::StyleExt>,
   transition_name: Option<String>,
   destination: Option<String>,
+  drag_axes: Option<DragAxes>,
   handlers: Handlers,
   anchor: Option<Anchor>,
   focus: Option<FocusHandle<P>>,
@@ -127,6 +129,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       dynamics: BoxDynamics::default(),
       transition_name: None,
       destination: None,
+      drag_axes: None,
       handlers: Handlers::default(),
       anchor: None,
       focus: None,
@@ -218,6 +221,16 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   #[inline(always)]
   pub const fn set_container_name(mut self, name: ContainerName) -> Self {
     self.container = Some(name);
+
+    self
+  }
+
+  /// Declares the axes a press's pointer drags the box along: the press's moves and
+  /// its release reach the box wherever the pointer goes, and a touch pans only along
+  /// the others.
+  #[inline(always)]
+  pub const fn set_drag_axes(mut self, axes: DragAxes) -> Self {
+    self.drag_axes = Some(axes);
 
     self
   }
@@ -595,6 +608,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       transition_name: self.transition_name,
       container: self.container,
       focus_order,
+      drag_axes: self.drag_axes,
       access,
       destination: self.destination,
     };

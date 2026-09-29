@@ -9,6 +9,7 @@ use super::{
   Condition,
   ContainerName,
   Declared,
+  DragAxes,
   Environment,
   Inset,
   Keyframe,
@@ -81,6 +82,8 @@ pub struct BoxProps<P: Platform> {
   pub container: Option<ContainerName>,
   /// The box's place in focus traversal; `None` for a box that takes no focus.
   pub focus_order: Option<FocusOrder>,
+  /// The axes a press's pointer drags the box along; `None` for a box no press drags.
+  pub drag_axes: Option<DragAxes>,
   /// The accessibility properties the box reports.
   pub access: Vec<AccessProp>,
   /// The path the box navigates to when activated; a real link where the medium has

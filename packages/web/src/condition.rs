@@ -24,9 +24,20 @@ pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
 /// The attribute every control's root element carries.
 pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
-/// The attribute the root element of a control that follows a press's pointer carries.
+/// The attribute the element of a node a press's pointer drags carries, naming the axes
+/// it drags along.
 #[cfg(any(skene_leaf = "browser", skene_leaf = "server"))]
 pub(crate) const DRAGS_ATTRIBUTE: &str = "data-skene-drags";
+
+/// The value of [`DRAGS_ATTRIBUTE`] naming `axes`.
+#[cfg(any(skene_leaf = "browser", skene_leaf = "server"))]
+pub(crate) const fn drags_value(axes: skene_core::DragAxes) -> &'static str {
+  match axes {
+    skene_core::DragAxes::Horizontal => "horizontal",
+    skene_core::DragAxes::Vertical => "vertical",
+    skene_core::DragAxes::Both => "both",
+  }
+}
 
 /// The class the native input a control keeps inside its label carries.
 pub(crate) const NATIVE_CLASS: &str = "skene-native";

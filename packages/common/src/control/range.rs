@@ -6,6 +6,7 @@ use skene_core::{
   AccessProp,
   Axis,
   ControlKind,
+  DragAxes,
   EventKind,
   Key,
   KeyEvent,
@@ -226,8 +227,11 @@ impl<P: Platform> Behavior<P> for Range {
   }
 
   #[inline(always)]
-  fn drags(&self) -> bool {
-    true
+  fn drag_axes(&self) -> Option<DragAxes> {
+    Some(match self.axis {
+      Axis::Horizontal => DragAxes::Horizontal,
+      Axis::Vertical => DragAxes::Vertical,
+    })
   }
 
   #[inline(always)]

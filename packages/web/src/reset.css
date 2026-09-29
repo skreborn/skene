@@ -291,8 +291,17 @@
     pointer-events: none;
   }
 
-  /* A control that follows a press's pointer takes a touch as a drag, never a pan. */
-  [data-skene-drags] {
-    touch-action: none;
+  /* A node a press's pointer drags takes a touch along the axes it drags, never as a
+     pan, and still zooms. */
+  [data-skene-drags="horizontal"] {
+    touch-action: pan-y pinch-zoom;
+  }
+
+  [data-skene-drags="vertical"] {
+    touch-action: pan-x pinch-zoom;
+  }
+
+  [data-skene-drags="both"] {
+    touch-action: pinch-zoom;
   }
 }

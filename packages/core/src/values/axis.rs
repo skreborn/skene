@@ -8,6 +8,19 @@ pub enum Axis {
   Vertical,
 }
 
+/// The axes a press's pointer drags a box or a control along: the platform keeps the
+/// pointer with the node until the release, and a touch pans only along the others.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum DragAxes {
+  /// The horizontal axis; a touch still pans vertically.
+  Horizontal,
+  /// The vertical axis; a touch still pans horizontally.
+  Vertical,
+  /// Both axes; a touch pans neither.
+  Both,
+}
+
 /// One value per axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]

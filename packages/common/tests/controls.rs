@@ -30,6 +30,7 @@ use skene_core::{
   Condition,
   ControlKind,
   Dimension,
+  DragAxes,
   EventKind,
   FocusOrder,
   HasChildren,
@@ -437,6 +438,12 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
   let owner = Owner::new();
   let bound = Signal::new(50.);
   let node = owner.enter(|| RawSlider::new(Range::new().set_step(5.).bind_value(bound)).build());
+
+  assert_eq!(
+    box_props(node).and_then(|props| props.drag_axes),
+    Some(DragAxes::Horizontal),
+    "a press drags the slider along its axis"
+  );
 
   assert_eq!(
     box_props(node).map(|props| props.access),

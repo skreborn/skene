@@ -498,7 +498,7 @@ impl Store {
         return Some(cursor);
       }
 
-      if self.drags(*handle) {
+      if self.drags_as_control(*handle) {
         return Some(MouseCursor::Grab);
       }
 
@@ -527,7 +527,7 @@ impl Store {
         .press
         .as_ref()
         .and_then(|press| press.target)
-        .is_some_and(|target| self.drags(target))
+        .is_some_and(|target| self.drags_as_control(target))
   }
 
   /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has
@@ -976,21 +976,22 @@ fn pointer_event(
   }
 }
 
-/// The deepest node under (`x`, `y`) with its origin, or the node the pressed button
-/// captured.
+/// The deepest node under (`x`, `y`) with its origin, or the node declaring drag axes
+/// the held press captured.
 fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))> {
   if let Some(press) = &store.press
     && store.buttons.contains(PointerButton::Primary)
+    && let Some(captured) = press.captured
   {
-    return Some((press.captured, store.screen_origin(press.captured)));
+    return Some((captured, store.screen_origin(captured)));
   }
 
   store.hit_test(x, y).last().copied()
 }
 
 /// Dispatches a pointer move at (`x`, `y`), the terminal reporting `dragging` held: the
-/// hover path follows it, the move reaches the node under the pointer or the one the
-/// press captured, and a drag in progress follows.
+/// hover path follows it, the move reaches the node declaring drag axes the press
+/// captured, or else the node under the pointer, and a drag in progress follows.
 pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modifiers: Modifiers) {
   if !store(|store| store.mouse_taken()) {
     return;
@@ -1162,9 +1163,13 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
   store(|store| {
     if button == PointerButton::Primary {
+      let path = store.ancestors(deepest);
+      let captured = path.iter().copied().find(|handle| store.drags(*handle));
+
       store.press = Some(Press {
-        path: store.ancestors(deepest).into_iter().rev().collect(),
-        captured: deepest,
+        path: path.into_iter().rev().collect(),
+        pressed: deepest,
+        captured,
         target: focus_target,
       });
       store.restyle_pending = true;
@@ -1264,9 +1269,10 @@ fn press_default(
   }
 }
 
-/// Dispatches a release at (`x`, `y`): the release reaches the captured node, then the
-/// click completes on the deepest node under both the press and the release—releasing
-/// over a different target clicks nothing, as on the web.
+/// Dispatches a release at (`x`, `y`): the release reaches the node declaring drag axes
+/// the press captured, or else the node under the pointer, then the click completes on
+/// the deepest node under both the press and the release—releasing over a different
+/// target clicks nothing, as on the web.
 pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   if !store(|store| store.mouse_taken()) {
     return;
@@ -1276,7 +1282,8 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     store
       .press
       .as_ref()
-      .map(|press| (press.captured, store.screen_origin(press.captured)))
+      .and_then(|press| press.captured)
+      .map(|captured| (captured, store.screen_origin(captured)))
       .or_else(|| pointer_target(store, x, y))
   });
 
@@ -1715,17 +1722,15 @@ fn release_mouse() {
 
     store.restyle_pending = true;
 
-    Some((
-      press.captured,
-      store.screen_origin(press.captured),
-      store.last_pointer,
-    ))
+    let reached = press.captured.unwrap_or(press.pressed);
+
+    Some((reached, store.screen_origin(reached), store.last_pointer))
   });
 
-  if let Some((captured, origin, (x, y))) = cancelled {
+  if let Some((reached, origin, (x, y))) = cancelled {
     Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
-    if let Some(node) = store(|store| store.record(captured).and_then(|record| record.node)) {
+    if let Some(node) = store(|store| store.record(reached).and_then(|record| record.node)) {
       let event = pointer_event(x, y, origin, None, Modifiers::NONE);
       let _ = dispatch_pointer_cancel::<Tui>(node, &event);
     }

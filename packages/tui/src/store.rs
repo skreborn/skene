@@ -479,7 +479,6 @@ pub(crate) enum Kind {
     field: Option<Field>,
     checked: bool,
     label_beside: bool,
-    drags: bool,
   },
   Overlay {
     inner: BoxRecord,
@@ -785,11 +784,12 @@ pub(crate) struct ScrollLatch {
 }
 
 /// The delivered left press awaiting its release: the node it landed on with its
-/// ancestors, the root first, the node the press captured, and the focusable it landed
-/// on.
+/// ancestors, the root first, the node it landed on, the node declaring drag axes that
+/// captured it, if any, and the focusable it landed on.
 pub(crate) struct Press {
   pub(crate) path: Vec<Handle>,
-  pub(crate) captured: Handle,
+  pub(crate) pressed: Handle,
+  pub(crate) captured: Option<Handle>,
   pub(crate) target: Option<Handle>,
 }
 
@@ -989,6 +989,7 @@ impl Store {
       transition_name: None,
       container: None,
       focus_order: None,
+      drag_axes: None,
       access: Vec::new(),
       destination: None,
     };
@@ -1214,7 +1215,7 @@ impl Store {
     if self
       .press
       .as_ref()
-      .is_some_and(|press| press.captured == handle)
+      .is_some_and(|press| press.pressed == handle || press.captured == Some(handle))
     {
       self.press = None;
     }
@@ -1331,12 +1332,21 @@ impl Store {
     None
   }
 
-  /// Whether `handle` is a control following a press's pointer until its release.
+  /// Whether a press's pointer drags `handle`: a box or a control declaring the axes it
+  /// drags along, which keeps a press's pointer until the release.
   pub(crate) fn drags(&self, handle: Handle) -> bool {
+    self
+      .record(handle)
+      .and_then(Record::box_props)
+      .is_some_and(|props| props.drag_axes.is_some())
+  }
+
+  /// Whether `handle` is a control a press's pointer drags.
+  pub(crate) fn drags_as_control(&self, handle: Handle) -> bool {
     matches!(
       self.record(handle).map(|record| &record.kind),
-      Some(Kind::Control { drags: true, .. })
-    )
+      Some(Kind::Control { .. })
+    ) && self.drags(handle)
   }
 
   /// Whether `handle` is a control keeping its caption beside it.

@@ -126,6 +126,7 @@ pub use skene_gui::prelude::Axis
 pub use skene_gui::prelude::Bubbling
 pub use skene_gui::prelude::Color
 pub use skene_gui::prelude::ColorScheme
+pub use skene_gui::prelude::DragAxes
 pub use skene_gui::prelude::Easing
 pub use skene_gui::prelude::Effect
 pub use skene_gui::prelude::Errors

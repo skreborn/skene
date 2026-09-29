@@ -3360,6 +3360,7 @@ pub const fn skene_core::SliderRange::max(&self) -> f32
 pub const fn skene_core::SliderRange::min(&self) -> f32
 pub const fn skene_core::SliderRange::new(f32, f32, f32) -> Self
 pub fn skene_core::SliderRange::nudge(&self, f32, f32) -> f32
+pub fn skene_core::SliderRange::page(&self, f32, f32) -> f32
 pub const fn skene_core::SliderRange::step(&self) -> f32
 pub fn skene_core::SliderRange::value_at(&self, f32) -> f32
 impl core::clone::Clone for skene_core::SliderRange

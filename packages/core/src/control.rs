@@ -258,6 +258,15 @@ impl SliderRange {
     self.snap(value + step * steps)
   }
 
+  /// `value` moved by `pages` pages, snapped and clamped: a page is a tenth of the
+  /// span, or a step where the step is larger.
+  #[must_use]
+  pub fn page(&self, value: f32, pages: f32) -> f32 {
+    let page = ((self.max - self.min) / 10.).max(self.step);
+
+    self.snap(value + page * pages)
+  }
+
   /// `value` snapped to the nearest step and clamped into the range.
   #[must_use]
   fn snap(&self, value: f32) -> f32 {
@@ -321,6 +330,17 @@ mod tests {
     );
     assert!((SliderRange::new(10., 5., 1.).value_at(0.5) - 10.).abs() < f32::EPSILON);
     assert!((SliderRange::new(10., 5., 0.).nudge(7., 1.) - 10.).abs() < f32::EPSILON);
+  }
+
+  /// A page is a tenth of the span, or a step where the step is larger, and lands on
+  /// a step.
+  #[test]
+  fn a_page_is_a_tenth_of_the_span_or_a_step() {
+    assert_eq!(SliderRange::new(0., 100., 5.).page(50., 1.), 60.);
+    assert_eq!(SliderRange::new(0., 100., 3.).page(0., 1.), 9.);
+    assert_eq!(SliderRange::new(0., 10., 3.).page(3., -1.), 0.);
+    assert_eq!(SliderRange::new(0., 100., 40.).page(0., 1.), 40.);
+    assert_eq!(SliderRange::new(0., 10., 0.).page(5., -1.), 4.);
   }
 
   /// A stepped range snaps a fraction to the nearest step and clamps at both ends.

@@ -214,8 +214,8 @@ fn radio_group_moves_the_check() {
   });
 }
 
-/// A slider nudges by its step on arrows, jumps to a clicked cell, and reaches its ends
-/// by `Home`, `End` and the page keys.
+/// A slider nudges by its step on arrows and by a tenth of its range on the page keys,
+/// jumps to a clicked cell, and reaches its ends by `Home` and `End`.
 #[test]
 fn slider_nudges_and_jumps() {
   with_platform(|| {
@@ -256,7 +256,7 @@ fn slider_nudges_and_jumps() {
 
     tui::trigger_key("PageUp");
 
-    assert!((volume.get_untracked() - 10.).abs() < f32::EPSILON);
+    assert!((volume.get_untracked() - 1.).abs() < f32::EPSILON);
 
     tui::trigger_key("PageDown");
 

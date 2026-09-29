@@ -357,11 +357,11 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
   assert_eq!(trigger_key_down(node, &key("ArrowLeft")), CONSUMED);
   assert_value(bound, 50.);
   assert_eq!(trigger_key_down(node, &key("PageUp")), CONSUMED);
-  assert_value(bound, 100.);
+  assert_value(bound, 60.);
   assert_eq!(trigger_key_down(node, &key("ArrowUp")), CONSUMED);
-  assert_value(bound, 100.);
+  assert_value(bound, 65.);
   assert_eq!(trigger_key_down(node, &key("PageDown")), CONSUMED);
-  assert_value(bound, 50.);
+  assert_value(bound, 55.);
   assert_eq!(trigger_key_down(node, &key("Home")), CONSUMED);
   assert_value(bound, 0.);
   assert_eq!(trigger_key_down(node, &key("ArrowDown")), CONSUMED);

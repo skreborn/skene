@@ -38,10 +38,9 @@ left half-done in a code comment.
     pointer capture, tab order with modal containment, an overlay stack in open order
     with top-layer rules, light dismiss, focus fixup when the focused node leaves the
     order), replacing the terminal's own, headless's divergent copy and the browser's
-    implicit one. With it a tooltip describes the focus holder. A node's `Hovered` then holds while the pointer is over a node
-    beneath it, as `:hover` holds on an ancestor, and a group run's state variants
-    reach its spans, as a rule on the group's class redefining the ink where the state
-    holds.
+    implicit one. With it a tooltip describes the focus holder, and a group run's state
+    variants reach its spans, as a rule on the group's class redefining the ink where
+    the state holds.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US
     `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before

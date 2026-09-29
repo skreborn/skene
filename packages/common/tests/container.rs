@@ -69,7 +69,8 @@ fn key(key: &str) -> KeyEvent {
 
 /// Every handler registers its event on the node, in the fixed order of kinds, and
 /// fires through dispatch: a preventable event climbs to the outer container until a
-/// `Bubbling::Stop`, and a notification stays on its node.
+/// `Bubbling::Stop`, the pointer entering the inner container enters the outer one
+/// first, and every other notification stays on its node.
 #[expect(
   clippy::too_many_lines,
   reason = "one handler per event kind; length is the kind count, not complexity"
@@ -189,6 +190,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       "inner up",
       "outer up",
       "inner move",
+      "outer enter",
       "inner enter",
       "inner leave",
       "inner focus",
@@ -312,6 +314,37 @@ fn a_press_holds_pressed_along_its_path() {
   assert_eq!(colors(), (Some(blue()), Some(red())));
 
   let _ = trigger_pointer_up(inner, &press());
+
+  assert_eq!(colors(), (Some(red()), Some(blue())));
+
+  owner.dispose();
+}
+
+/// The pointer over a node holds `Hovered` on its ancestors too, as `:hover` does, and
+/// leaving the node for the box around it keeps that box hovered.
+#[test]
+fn hover_holds_on_the_ancestors_of_the_hovered_node() {
+  reset();
+
+  let owner = Owner::new();
+  let outer = owner.enter(|| {
+    Container::new()
+      .set_color(Value::from(red()).when(State::Hovered, blue()))
+      .set_child(Container::new().set_color(Value::from(blue()).when(State::Hovered, red())))
+      .build()
+  });
+  let inner = only_child(outer);
+  let colors = || (resolve_color(outer, COLOR), resolve_color(inner, COLOR));
+
+  trigger_pointer_enter(inner);
+
+  assert_eq!(colors(), (Some(blue()), Some(red())));
+
+  trigger_pointer_leave(inner);
+
+  assert_eq!(colors(), (Some(blue()), Some(blue())));
+
+  trigger_pointer_leave(outer);
 
   assert_eq!(colors(), (Some(red()), Some(blue())));
 

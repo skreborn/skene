@@ -44,8 +44,8 @@ pub(crate) struct Env {
 impl Env {
   /// The environment of `node`; `None` for a stale id.
   pub(crate) fn of(node: NodeId) -> Option<Self> {
-    let pressed = with_store(|store| store.pressed);
-    let (handle, control, pressed, names) = Scene::<Headless>::with(|scene| {
+    let (pressed, hovered) = with_store(|store| (store.pressed, store.hovered));
+    let (handle, control, pressed, hovered, names) = Scene::<Headless>::with(|scene| {
       let handle = *scene.record(node)?.sink();
       let holder = scene.enclosing_control(node).unwrap_or(node);
       let control = scene.enclosing_control(node).and_then(|control| {
@@ -55,6 +55,8 @@ impl Env {
       });
       let pressed = std::iter::successors(pressed, |pressed| scene.parent(*pressed))
         .any(|pressed| pressed == holder);
+      let hovered = std::iter::successors(hovered, |hovered| scene.parent(*hovered))
+        .any(|hovered| hovered == node);
       let mut names = Vec::new();
       let mut current = scene.parent(node);
 
@@ -66,18 +68,19 @@ impl Env {
         current = scene.parent(ancestor);
       }
 
-      Some((handle, control, pressed, names))
+      Some((handle, control, pressed, hovered, names))
     })?;
 
     with_store(|store| {
-      let record = store.record(handle)?;
+      store.record(handle)?;
+
       let focus_holder = control.map_or(handle, |(control, _)| control);
 
       Some(Self {
         node: Some(node),
         environment: store.environment(),
         interaction: Interaction {
-          hovered: record.hovered,
+          hovered,
           focus: Focus::new(store.focused == Some(focus_holder), store.focus_visible),
           pressed,
           control: control.map(|(_, state)| state),

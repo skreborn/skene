@@ -438,8 +438,9 @@ Condition     = Media | State | And | Or
   `Media::Container` leaves against a box that named itself; the web stamps
   `container-type` and emits `@container`, the terminal resolves them in a second pass
   with the container's measured axis fixed, which is sound for the reason CSS makes it
-  sound. `Pressed` holds on the node a primary press landed on and on its ancestors
-  until the release, as `:active` does, and a control's parts are pressed with it.
+  sound. `Hovered` holds on the node under the pointer and on its ancestors, as
+  `:hover` does, and `Pressed` on the node a primary press landed on and on its
+  ancestors until the release, as `:active` does, a control's parts pressed with it.
 - **Layout** runs on taffy at full capability, statically constrained per layout: each
   mode is its own container view carrying layout properties alone, `Container` is the one
   decorated box, and per-child properties ride in wrappers. `Dimension` is a fixed length,

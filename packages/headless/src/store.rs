@@ -93,8 +93,6 @@ pub(crate) struct Record {
   pub position: Option<Point<f32>>,
   /// A control's state, as last set.
   pub control_state: ControlState,
-  /// Whether the pointer is over the node.
-  pub hovered: bool,
   /// The node's slot values, as last written.
   pub slots: FxHashMap<Slot, SlotLeaf>,
   /// A scope's token definitions, as last written.
@@ -147,7 +145,6 @@ impl Record {
       anchor: None,
       position: None,
       control_state: ControlState::DEFAULT,
-      hovered: false,
       slots: FxHashMap::default(),
       definitions: None,
       listened: Vec::new(),
@@ -194,6 +191,8 @@ pub(crate) struct Store {
   pub focus_visible: bool,
   /// The node a primary press landed on, until its release.
   pub pressed: Option<NodeId>,
+  /// The deepest node the pointer is over.
+  pub hovered: Option<NodeId>,
   /// The token definitions on the root, as last written.
   pub root_definitions: Definitions<TokenValue>,
   /// How many times the root definitions have been written.
@@ -247,6 +246,7 @@ impl Default for Store {
       focused: None,
       focus_visible: true,
       pressed: None,
+      hovered: None,
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       container_sizes: FxHashMap::default(),

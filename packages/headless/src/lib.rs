@@ -617,20 +617,16 @@ pub fn trigger_pointer_move(node: NodeId, event: &PointerEvent) -> Prevented {
   trigger(|| dispatch_pointer_move::<Headless>(node, event))
 }
 
-/// Marks `node` hovered and notifies its pointer-enter handlers.
+/// Moves the pointer over `node`, which holds `Hovered` with its ancestors, notifying
+/// each node the pointer left, innermost first, and each it entered, outermost first.
 pub fn trigger_pointer_enter(node: NodeId) {
-  trigger(|| {
-    mark_hovered(node, true);
-    notify_pointer_enter::<Headless>(node);
-  });
+  trigger(|| move_pointer(Some(node)));
 }
 
-/// Marks `node` no longer hovered and notifies its pointer-leave handlers.
+/// Moves the pointer off `node` onto the node around it, notifying `node` and each node
+/// beneath it the pointer was over.
 pub fn trigger_pointer_leave(node: NodeId) {
-  trigger(|| {
-    mark_hovered(node, false);
-    notify_pointer_leave::<Headless>(node);
-  });
+  trigger(|| move_pointer(Scene::<Headless>::with(|scene| scene.parent(node))));
 }
 
 /// Moves focus to `node`, notifying each node whose subtree focus left and each whose
@@ -958,10 +954,18 @@ fn record_container_size(name: ContainerName, size: Size<f32>) {
   sizes.set(name, size);
 }
 
-/// Records whether the pointer is over `node`.
-fn mark_hovered(node: NodeId, hovered: bool) {
-  if let Some(handle) = handle(node) {
-    with_record(handle, |record| record.hovered = hovered);
+/// Moves the pointer over `next`, notifying the nodes it left and entered.
+fn move_pointer(next: Option<NodeId>) {
+  let previous = with_store(|store| std::mem::replace(&mut store.hovered, next));
+  let (left, entered) =
+    Scene::<Headless>::with(|scene| (scene.crossed(previous, next), scene.crossed(next, previous)));
+
+  for node in left {
+    notify_pointer_leave::<Headless>(node);
+  }
+
+  for node in entered.into_iter().rev() {
+    notify_pointer_enter::<Headless>(node);
   }
 }
 
@@ -972,12 +976,16 @@ fn move_focus(node: NodeId) {
   with_store(|store| store.focused = handle);
 }
 
-/// Whether the pointer is over `node`.
+/// Whether the pointer is over `node` or a node beneath it.
 #[must_use]
 pub fn is_hovered(node: NodeId) -> bool {
   end_turn();
 
-  handle(node).is_some_and(|handle| with_record(handle, |record| record.hovered) == Some(true))
+  let hovered = with_store(|store| store.hovered);
+
+  Scene::<Headless>::with(|scene| {
+    std::iter::successors(hovered, |hovered| scene.parent(*hovered)).any(|hovered| hovered == node)
+  })
 }
 
 /// Whether `node` holds focus.

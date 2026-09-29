@@ -26,6 +26,7 @@ use skene_core::{
   FocusOrder,
   HasChildren,
   Length,
+  Media,
   MediaSignals,
   OverlayProps,
   Placement,
@@ -43,7 +44,7 @@ use skene_core::{
   TokenSet,
   View,
 };
-use skene_reactive::{Get, Owner, Set, Signal};
+use skene_reactive::{Get, Memo, Owner, Set, Signal};
 
 /// The platform under test: every mirrored call re-enters the scene before recording
 /// what it was asked.
@@ -250,6 +251,10 @@ impl Platform for Reentrant {
         })
         .1
     })
+  }
+
+  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+    self.media().watch(media)
   }
 
   fn set_scheme(&self, _scheme: Option<skene_core::ColorScheme>) {}

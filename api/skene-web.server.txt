@@ -170,6 +170,7 @@ pub fn skene_web::Web::update_access(&self, &u32, &[skene_core::values::access::
 pub fn skene_web::Web::update_box(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiExt>>)
 pub fn skene_web::Web::update_focus_order(&self, &u32, core::option::Option<skene_core::values::focus_order::FocusOrder>)
 pub fn skene_web::Web::update_run(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::watch_media(&self, &skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 impl skene_web::WebMarkup for skene_web::Web
 pub fn skene_web::Web::create_element(&self, &'static str) -> u32
 pub fn skene_web::Web::set_attribute(&self, &u32, &str, &str)

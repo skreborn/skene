@@ -54,6 +54,7 @@ use skene_core::{
   FocusOrder,
   Inset,
   KeyEvent,
+  Media,
   MediaSignals,
   NoProperty,
   NodeId,
@@ -93,7 +94,7 @@ use skene_core::{
   notify_selection_change,
   notify_toggle,
 };
-use skene_reactive::{ReadSignal, Set};
+use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::store::{Kind, Record, Store};
@@ -363,6 +364,10 @@ impl Platform for Headless {
 
   fn media(&self) -> MediaSignals<f32> {
     with_store(|store| store.media().signals)
+  }
+
+  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+    self.media().watch(media)
   }
 
   fn hydration(&self) -> Option<ReadSignal<bool>> {

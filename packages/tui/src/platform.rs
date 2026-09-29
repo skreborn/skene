@@ -17,6 +17,7 @@ use skene_core::{
   Definitions,
   EventKind,
   FocusOrder,
+  Media,
   MediaSignals,
   NodeId,
   NodeKind,
@@ -34,7 +35,7 @@ use skene_core::{
   TextSelection,
   Timer,
 };
-use skene_reactive::{ReadSignal, Set};
+use skene_reactive::{Memo, ReadSignal, Set};
 
 use crate::{
   TokenValue,
@@ -472,6 +473,10 @@ impl Platform for Tui {
 
   fn media(&self) -> MediaSignals<u32> {
     with_store(|store| store.media().signals)
+  }
+
+  fn watch_media(&self, media: &Media<u32>) -> Memo<bool> {
+    self.media().watch(media)
   }
 
   fn set_scheme(&self, scheme: Option<ColorScheme>) {

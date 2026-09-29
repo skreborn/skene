@@ -690,7 +690,7 @@ impl<P: Platform> Scene<P> {
   #[inline(always)]
   #[must_use]
   pub fn sink(&self, node: NodeId) -> Option<P::Sink> {
-    self.record(node).map(|record| record.sink.clone())
+    self.record(node).map(|record| record.sink)
   }
 
   /// Mints a detached node of `kind` owning `sink`; a control starts in the default
@@ -816,11 +816,15 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Places `child` under `parent`, immediately before `before` when given, else last,
-  /// unlinking it from any previous parent first; nothing where it already stands there.
+  /// unlinking it from any previous parent first; nothing where it already stands there,
+  /// or where either is gone.
   ///
   /// A segment start brings its content and its end anchor along.
   pub fn attach(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
-    if self.stands_before(parent, child, before) {
+    if self.record(parent).is_none()
+      || self.record(child).is_none()
+      || self.stands_before(parent, child, before)
+    {
       return;
     }
 
@@ -1057,7 +1061,7 @@ impl<P: Platform> Scene<P> {
       return;
     };
 
-    let scope = record.sink.clone();
+    let scope = record.sink;
 
     record.definitions = Some(Box::new(definitions.clone()));
     self
@@ -1203,7 +1207,7 @@ impl<P: Platform> Scene<P> {
 
     record.control = Some(state);
 
-    let sink = record.sink.clone();
+    let sink = record.sink;
 
     self.mirrors.push(Mirror::ControlState { sink, state });
   }
@@ -1431,7 +1435,9 @@ impl<P: Platform> Scene<P> {
     Some((record.parent, segment.end))
   }
 
-  /// Takes the record of `node` out of the arena, retiring the slot's generation.
+  /// Takes the record of `node` out of the arena, retiring the slot's generation; a
+  /// slot whose generations are exhausted is retired whole, so a stale id never names a
+  /// live node.
   fn remove(&mut self, node: NodeId) -> Option<NodeRecord<P>> {
     let entry = self
       .entries
@@ -1439,8 +1445,10 @@ impl<P: Platform> Scene<P> {
       .filter(|entry| entry.generation == node.generation())?;
     let record = entry.record.take()?;
 
-    entry.generation = entry.generation.wrapping_add(1);
-    self.free.push(node.index());
+    if let Some(generation) = entry.generation.checked_add(1) {
+      entry.generation = generation;
+      self.free.push(node.index());
+    }
 
     Some(record)
   }
@@ -1477,6 +1485,10 @@ impl<P: Platform> Scene<P> {
   /// Inserts `child` into `parent`'s children before `before` (else last) and mirrors
   /// it; `child` must be detached.
   fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if self.record(child).is_none() {
+      return;
+    }
+
     let Some(parent_record) = self.record_mut(parent)
     else {
       return;
@@ -1595,6 +1607,53 @@ mod tests {
 
   fn definitions(name: &'static str, value: Erased) -> Definitions<Erased> {
     Definitions::from(vec![(TokenName::new(name), value)])
+  }
+
+  /// Attaching to a destroyed parent, or attaching a destroyed child, changes nothing:
+  /// the child stays where it stood.
+  #[test]
+  fn attach_needs_both_nodes_live() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let gone = TestBox::node();
+    let child = TestBox::node();
+
+    with(|scene| {
+      scene.attach(parent, child, None);
+      scene.destroy(gone);
+    });
+    TestPlatform::take_log();
+    with(|scene| {
+      scene.attach(gone, child, None);
+      scene.attach(parent, gone, None);
+    });
+
+    assert_eq!(with(|scene| scene.parent(child)), Some(parent));
+    assert_eq!(children(parent), [child]);
+    assert_eq!(TestPlatform::take_log(), []);
+  }
+
+  /// A slot whose generations are exhausted is never reused, so its last id stays
+  /// stale.
+  #[test]
+  fn an_exhausted_slot_is_retired() {
+    TestPlatform::reset();
+
+    let node = TestBox::node();
+
+    with(|scene| {
+      scene.entries[node.index() as usize].generation = u32::MAX;
+    });
+
+    let last = super::NodeId::new(node.index(), u32::MAX);
+
+    with(|scene| scene.destroy(last));
+
+    let next = TestBox::node();
+
+    assert_ne!(next.index(), node.index());
+    assert!(with(|scene| scene.record(last).is_none()));
   }
 
   /// One name is one kind: redefining a token as another kind panics in a debug build,

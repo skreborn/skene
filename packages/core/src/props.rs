@@ -1,7 +1,7 @@
 //! What a platform receives to realize a node, and what it reports of the environment.
 
 use rustc_hash::FxHashMap;
-use skene_reactive::{Get, ReadSignal, Signal, Update, With};
+use skene_reactive::{Get, Memo, ReadSignal, Signal, Update, With};
 
 use super::{
   BoxDynamics,
@@ -11,6 +11,8 @@ use super::{
   Declared,
   Environment,
   Keyframe,
+  Media,
+  MediaEnv,
   Platform,
   RunDynamics,
   RunStyle,
@@ -197,6 +199,24 @@ impl<N: Clone + 'static> MediaSignals<N> {
       reduced_transparency: self.reduced_transparency.get(),
       high_contrast: self.high_contrast.get(),
     }
+  }
+}
+
+impl<N: Scalar> MediaSignals<N> {
+  /// Whether `media` holds, as a memo following these signals; a container condition
+  /// never holds here, since it is answered per node by the box it names.
+  pub fn watch(&self, media: &Media<N>) -> Memo<bool> {
+    let media = media.clone();
+    let signals = *self;
+
+    Memo::new(move |_| {
+      let container = |_: Option<ContainerName>| None;
+
+      media.holds_in(&MediaEnv {
+        environment: signals.environment(),
+        container: &container,
+      })
+    })
   }
 }
 

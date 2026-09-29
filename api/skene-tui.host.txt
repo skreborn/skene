@@ -556,6 +556,7 @@ pub fn skene_tui::Tui::update_access(&self, &skene_tui::Handle, &[skene_core::va
 pub fn skene_tui::Tui::update_box(&self, &skene_tui::Handle, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<u32, skene_common::tui::ext::TuiExt>>)
 pub fn skene_tui::Tui::update_focus_order(&self, &skene_tui::Handle, core::option::Option<skene_core::values::focus_order::FocusOrder>)
 pub fn skene_tui::Tui::update_run(&self, &skene_tui::Handle, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::tui::ext::TuiExt>>)
+pub fn skene_tui::Tui::watch_media(&self, &skene_core::condition::Media<u32>) -> skene_reactive::memo::Memo<bool>
 impl skene_tui::CellPainter for skene_tui::Tui
 pub fn skene_tui::Tui::paint(&self, &skene_tui::Handle, alloc::boxed::Box<dyn core::ops::function::Fn(&mut skene_tui::Cells<'_>, skene_core::values::rect::Rect<u32>)>)
 pub const skene_tui::MOUSE_KEY: skene_core::events::Shortcut

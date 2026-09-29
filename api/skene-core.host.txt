@@ -2845,6 +2845,8 @@ pub skene_core::MediaSignals::scheme: skene_reactive::signal::ReadSignal<skene_c
 pub skene_core::MediaSignals::viewport: skene_reactive::signal::ReadSignal<skene_core::Size<N>>
 impl<N: core::clone::Clone + 'static> skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::environment(&self) -> skene_core::Environment<N>
+impl<N: skene_core::Scalar> skene_core::MediaSignals<N>
+pub fn skene_core::MediaSignals<N>::watch(&self, &skene_core::Media<N>) -> skene_reactive::memo::Memo<bool>
 impl<N: core::clone::Clone + 'static> core::clone::Clone for skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::clone(&self) -> skene_core::MediaSignals<N>
 impl<N: core::fmt::Debug + 'static> core::fmt::Debug for skene_core::MediaSignals<N>
@@ -4022,7 +4024,7 @@ impl<P: skene_core::Platform, V: skene_core::View<P>> skene_core::IntoView<P> fo
 pub fn V::into_view(self) -> skene_core::AnyView<P>
 pub trait skene_core::Platform: core::marker::Copy + core::default::Default + 'static
 pub type skene_core::Platform::Scalar: skene_core::Scalar
-pub type skene_core::Platform::Sink: core::clone::Clone + 'static
+pub type skene_core::Platform::Sink: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub type skene_core::Platform::StyleExt: skene_core::StyleExtension
 pub type skene_core::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_core::Definition<skene_core::Color, Self::Scalar>> + core::convert::From<skene_core::Definition<f32, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Length, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Dimension<Self::Scalar>, Self::Scalar>> + 'static
 pub fn skene_core::Platform::apply_layout(&self, &Self::Sink, &skene_core::StaticBoxStyle<Self>)

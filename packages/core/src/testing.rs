@@ -6,7 +6,7 @@ use std::{
   thread::LocalKey,
 };
 
-use skene_reactive::Signal;
+use skene_reactive::{Memo, Signal};
 
 use super::{
   AnyKind,
@@ -20,6 +20,7 @@ use super::{
   Definitions,
   EventKind,
   HasChildren,
+  Media,
   MediaSignals,
   NodeId,
   NodeKind,
@@ -255,6 +256,10 @@ impl Platform for TestPlatform {
         container_sizes: ContainerSizes::new(),
       })
     })
+  }
+
+  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+    self.media().watch(media)
   }
 
   fn set_scheme(&self, _scheme: Option<ColorScheme>) {}

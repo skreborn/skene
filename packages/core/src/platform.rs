@@ -1,6 +1,6 @@
 //! The seam between the shared machinery and a medium.
 
-use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey, time::Duration};
+use std::{cell::RefCell, fmt::Debug, hash::Hash, rc::Rc, thread::LocalKey, time::Duration};
 
 use skene_reactive::{Memo, ReadSignal};
 
@@ -30,12 +30,10 @@ use crate::{
   ClipboardAction,
   Color,
   ColorScheme,
-  ContainerName,
   Dimension,
   FocusOrder,
   Length,
   Media,
-  MediaEnv,
   Placement,
   Point,
   PointerEvent,
@@ -173,11 +171,11 @@ impl<A> Timers<A> {
   note = "`Painted` and embeds are outside `Platform`; a platform offers them through its own extension traits"
 )]
 pub trait Platform: Copy + Default + 'static {
-  /// The platform handle a node owns: an element, a layout id, a record.
+  /// The platform handle a node owns: an element's index, a layout id, a record's.
   ///
-  /// Cloned out of the scene before the platform is called with it, so a platform call
+  /// Copied out of the scene before the platform is called with it, so a platform call
   /// never runs under the scene's borrow and may reach the scene itself.
-  type Sink: Clone + 'static;
+  type Sink: Copy + Eq + Hash + Debug + 'static;
   /// The unit lengths are measured in.
   type Scalar: Scalar;
   /// The properties only this medium has.
@@ -358,19 +356,9 @@ pub trait Platform: Copy + Default + 'static {
 
   /// Whether `media` holds, as a memo following the environment; a container condition
   /// never holds here, since it is answered per node by the box it names.
-  fn watch_media(&self, media: &Media<Self::Scalar>) -> Memo<bool> {
-    let media = media.clone();
-    let signals = self.media();
-
-    Memo::new(move |_| {
-      let container = |_: Option<ContainerName>| None;
-
-      media.holds_in(&MediaEnv {
-        environment: signals.environment(),
-        container: &container,
-      })
-    })
-  }
+  ///
+  /// [`MediaSignals::watch`] answers it from the platform's signals.
+  fn watch_media(&self, media: &Media<Self::Scalar>) -> Memo<bool>;
 }
 
 #[cfg(test)]

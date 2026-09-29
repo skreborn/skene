@@ -32,6 +32,7 @@ use skene_core::{
   EventKind,
   FocusOrder,
   IntoView,
+  Media,
   MediaSignals,
   NodeId,
   NodeKind,
@@ -51,7 +52,7 @@ use skene_core::{
   TokenName,
   View,
 };
-use skene_reactive::{Owner, ReadSignal, Set, Signal, WriteSignal, batch, provide_context};
+use skene_reactive::{Memo, Owner, ReadSignal, Set, Signal, WriteSignal, batch, provide_context};
 
 pub use self::task::{drive, install_executor, set_render_deadline, sleep};
 use super::{
@@ -1490,6 +1491,10 @@ impl Platform for Web {
 
   fn media(&self) -> MediaSignals<f32> {
     media_signals()
+  }
+
+  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+    self.media().watch(media)
   }
 
   fn hydration(&self) -> Option<ReadSignal<bool>> {

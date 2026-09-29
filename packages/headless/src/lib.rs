@@ -68,6 +68,7 @@ use skene_core::{
   Placement,
   Platform,
   Point,
+  PointerButton,
   PointerEvent,
   PointerPrecision,
   Prevented,
@@ -576,18 +577,32 @@ pub fn trigger_key_up(node: NodeId, event: &KeyEvent) -> Prevented {
 }
 
 /// Dispatches a pointer press at `node`, bubbling through the scene; focus stops
-/// showing from here on.
+/// showing from here on, and a primary press holds `node` and its ancestors pressed
+/// until its release.
 pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
   trigger(|| {
-    with_store(|store| store.focus_visible = false);
+    with_store(|store| {
+      store.focus_visible = false;
+
+      if event.button == Some(PointerButton::Primary) {
+        store.pressed = Some(node);
+      }
+    });
 
     dispatch_pointer_down::<Headless>(node, event)
   })
 }
 
-/// Dispatches a pointer release at `node`, bubbling through the scene.
+/// Dispatches a pointer release at `node`, bubbling through the scene; a primary
+/// release ends the press.
 pub fn trigger_pointer_up(node: NodeId, event: &PointerEvent) -> Prevented {
-  trigger(|| dispatch_pointer_up::<Headless>(node, event))
+  trigger(|| {
+    if event.button == Some(PointerButton::Primary) {
+      with_store(|store| store.pressed = None);
+    }
+
+    dispatch_pointer_up::<Headless>(node, event)
+  })
 }
 
 /// Dispatches a pointer move at `node`, bubbling through the scene.

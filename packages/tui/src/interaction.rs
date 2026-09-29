@@ -1236,10 +1236,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         captured: deepest,
         target: focus_target,
       });
-
-      if let Some(target) = focus_target {
-        store.damage(target);
-      }
+      store.restyle_pending = true;
     }
   });
 
@@ -1368,9 +1365,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
       return (None, None);
     };
 
-    if let Some(target) = press.target {
-      store.damage(target);
-    }
+    store.restyle_pending = true;
 
     let released: Vec<Handle> = store.hit_test(x, y).iter().map(|(node, _)| *node).collect();
     let common = press

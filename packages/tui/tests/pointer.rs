@@ -96,6 +96,39 @@ fn hover_variant_and_pointer_handlers() {
   });
 }
 
+/// A press holds `Pressed` on the box it lands on and on the boxes around it, focusable
+/// or not, until its release, as `:active` does.
+#[test]
+fn a_press_holds_pressed_along_its_path() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_padding(Inset::all(1))
+        .set_color(red().when(State::Pressed, blue()))
+        .set_child(
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .set_color(blue().when(State::Pressed, red())),
+        )
+        .into_any()
+        .build()
+    });
+
+    let colors = || (colors_at(10, 5, 0, 0).1, colors_at(10, 5, 2, 2).1);
+
+    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
+
+    tui::trigger_mouse_press(2, 2);
+
+    assert_eq!(colors(), (Some(rgb(blue())), Some(rgb(red()))));
+
+    tui::trigger_mouse_release(2, 2);
+
+    assert_eq!(colors(), (Some(rgb(red())), Some(rgb(blue()))));
+  });
+}
+
 /// The hover cursor defaults follow the content: the pointer over buttons and toggling
 /// controls, the I-beam over entries and selectable text, and none over anything
 /// else—an explicit style still winning.

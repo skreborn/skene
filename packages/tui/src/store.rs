@@ -1490,7 +1490,7 @@ impl Store {
         && self
           .press
           .as_ref()
-          .is_some_and(|press| press.target == Some(holder)),
+          .is_some_and(|press| press.path.contains(&holder)),
       control: control.and_then(|control| match &self.record(control)?.kind {
         Kind::Control { state, .. } => Some(*state),
         _ => None,

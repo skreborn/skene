@@ -189,6 +189,8 @@ pub(crate) struct Store {
   pub focused: Option<Handle>,
   /// Whether focus shows while held: set by a key, cleared by a pointer press.
   pub focus_visible: bool,
+  /// The node a primary press landed on, until its release.
+  pub pressed: Option<NodeId>,
   /// The token definitions on the root, as last written.
   pub root_definitions: Definitions<TokenValue>,
   /// How many times the root definitions have been written.
@@ -241,6 +243,7 @@ impl Default for Store {
       free: Vec::new(),
       focused: None,
       focus_visible: true,
+      pressed: None,
       root_definitions: Definitions::from(Vec::new()),
       root_definition_writes: 0,
       container_sizes: FxHashMap::default(),

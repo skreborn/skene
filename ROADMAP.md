@@ -38,13 +38,13 @@ left half-done in a code comment.
     pointer capture, tab order with modal containment, an overlay stack in open order
     with top-layer rules, light dismiss, focus fixup when the focused node leaves the
     order), replacing the terminal's own, headless's divergent copy and the browser's
-    implicit one. With it `Pressed` matches a non-focusable box, as `:active` does;
-    focus notifications reach ancestors with focus-within semantics, and a tooltip
-    describes the focus holder; a tooltip opens at once on visible focus alone; the web
-    gains pointer capture and `touch-action: none` on dragging controls. A node's
-    `Hovered` then holds while the pointer is over a node beneath it, as `:hover` holds
-    on an ancestor, and a group run's state variants reach its spans, as a rule on the
-    group's class redefining the ink where the state holds.
+    implicit one. With it focus notifications reach ancestors with focus-within
+    semantics, and a tooltip describes the focus holder; a tooltip opens at once on
+    visible focus alone; the web gains pointer capture and `touch-action: none` on
+    dragging controls. A node's `Hovered` then holds while the pointer is over a node
+    beneath it, as `:hover` holds on an ancestor, and a group run's state variants
+    reach its spans, as a rule on the group's class redefining the ink where the state
+    holds.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US
     `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before
@@ -98,8 +98,8 @@ left half-done in a code comment.
     it is the native family's first prerequisite.
     - Headless as the medium: `StyleExt = GuiExt`, since corner radius and type metrics
     compile to nothing on the host and `em` is fixed at 16; focus and blur handlers,
-    light dismiss, the text-entry focus-visible rule and `Pressed` through core's
-    interaction model; accessible names in the ARIA order for every named node;
+    light dismiss and the text-entry focus-visible rule through core's interaction
+    model; accessible names in the ARIA order for every named node;
     `Resource::new` installing the executor on the host, as `spawn` does.
     - `find_by_role(role, name)`, `find_by_text` and a user-event layer on headless and
     the terminal; a host-tier check that every control is named; terminal snapshot

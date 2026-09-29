@@ -21,8 +21,10 @@ use skene_core::{
   Property,
   PropertyKey,
   ScrollEvent,
+  State,
   StyleProperty,
   Transition,
+  Value,
   View,
 };
 use skene_headless::{
@@ -45,7 +47,7 @@ use skene_headless::{
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
-use crate::common::{TestPalette, only_child, red};
+use crate::common::{COLOR, TestPalette, blue, only_child, red};
 
 type Container = skene_common::Container<Headless>;
 type Theme<S, C = skene_common::NoChild> = skene_common::Theme<Headless, S, C>;
@@ -283,6 +285,35 @@ fn focus_order_and_accessibility_follow_their_signals() {
 
   assert_eq!(props.focus_order, Some(FocusOrder::Skip));
   assert_eq!(props.access, [AccessProp::Expanded(true)]);
+
+  owner.dispose();
+}
+
+/// A primary press holds `Pressed` on the node it lands on and on its ancestors,
+/// focusable or not, until its release.
+#[test]
+fn a_press_holds_pressed_along_its_path() {
+  reset();
+
+  let owner = Owner::new();
+  let outer = owner.enter(|| {
+    Container::new()
+      .set_color(Value::from(red()).when(State::Pressed, blue()))
+      .set_child(Container::new().set_color(Value::from(blue()).when(State::Pressed, red())))
+      .build()
+  });
+  let inner = only_child(outer);
+  let colors = || (resolve_color(outer, COLOR), resolve_color(inner, COLOR));
+
+  assert_eq!(colors(), (Some(red()), Some(blue())));
+
+  let _ = trigger_pointer_down(inner, &press());
+
+  assert_eq!(colors(), (Some(blue()), Some(red())));
+
+  let _ = trigger_pointer_up(inner, &press());
+
+  assert_eq!(colors(), (Some(red()), Some(blue())));
 
   owner.dispose();
 }

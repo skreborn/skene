@@ -91,7 +91,11 @@ traversal and each overlay's state, the open ones in the order they opened, as a
 browser's top layer stacks them, and computes the tab order from them
 (`Scene::tab_order`): positioned stops first, then document order, the modal opened
 last containing it with the overlays opened after it. A platform drawing its own
-controls traverses by it.
+controls traverses by it. The scene answers which overlays a press dismisses
+(`Scene::dismissed_by_press`) for every platform: from the top down, each overlay the
+press lands outside of, on neither it nor the anchor it opened from, until one it lands
+inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
+backdrop to its click.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's aliases: `Sink`, `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own

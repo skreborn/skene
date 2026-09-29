@@ -1102,7 +1102,15 @@ fn clipboard_entry(dom: &Dom) -> Option<Element> {
   }
 
   let active: &web_sys::Node = &active;
-  let in_popup = dom.events.open_popups.iter().any(|(sink, _)| {
+  let popups: Vec<u32> = Scene::<Web>::with(|scene| {
+    scene
+      .open_overlays()
+      .iter()
+      .filter(|overlay| !scene.is_modal(**overlay))
+      .filter_map(|overlay| scene.sink(*overlay))
+      .collect()
+  });
+  let in_popup = popups.iter().any(|sink| {
     dom
       .node(*sink)
       .is_some_and(|node| node.dom.contains(Some(active)))
@@ -1523,15 +1531,6 @@ impl Platform for Web {
 
       dom.pending_open.remove(&sink);
 
-      if !modal {
-        if open {
-          dom.events.open_popup(sink, anchor);
-        }
-        else {
-          dom.events.close_popup(sink);
-        }
-      }
-
       Some((element, modal, placement, position, anchor_element))
     })
     else {
@@ -1776,7 +1775,6 @@ impl Platform for Web {
         pixels.unobserve(&canvas.element);
       }
 
-      dom.events.close_popup(sink);
       dom.saved.remove(&sink);
       dom.pending_open.remove(&sink);
     });

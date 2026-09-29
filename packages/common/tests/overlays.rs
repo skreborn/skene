@@ -10,7 +10,17 @@ use std::{
 };
 
 use skene_common::{Activate, Anchor};
-use skene_core::{Color, EventKind, FocusOrder, HasChildren, Placement, View};
+use skene_core::{
+  Color,
+  EventKind,
+  FocusOrder,
+  HasChildren,
+  Modifiers,
+  Placement,
+  PointerButton,
+  PointerEvent,
+  View,
+};
 use skene_headless::{
   Headless,
   children,
@@ -24,6 +34,7 @@ use skene_headless::{
   reset,
   resolve_color,
   trigger_dismiss,
+  trigger_pointer_down,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -205,6 +216,56 @@ fn a_popup_anchored_to_a_bound_box_passes_the_anchors_sink() {
     overlay_props(modal).and_then(|props| props.backdrop),
     Some(Color::TRANSPARENT)
   );
+
+  owner.dispose();
+}
+
+/// A press outside an open popup dismisses it, a press inside it or on the anchor it
+/// opened from does not, as a browser's light dismiss does.
+#[test]
+fn a_press_outside_a_popup_dismisses_it() {
+  reset();
+
+  let owner = Owner::new();
+  let open = Signal::new(false);
+  let anchor = Anchor::new();
+  let column = owner.enter({
+    let anchor = anchor.clone();
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new().bind_anchor(&anchor),
+          Container::new(),
+          Overlay::popup()
+            .set_anchor(&anchor)
+            .bind_open(open)
+            .set_child(Container::new()),
+        ))
+        .build()
+    }
+  });
+  let [face, page, popup] = [1, 2, 3].map(|index| children(column)[index]);
+  let inside = only_child(popup);
+  let press = PointerEvent {
+    x: 0.,
+    y: 0.,
+    local_x: 0.,
+    local_y: 0.,
+    button: Some(PointerButton::Primary),
+    modifiers: Modifiers::default(),
+  };
+
+  open.set(true);
+
+  let _ = trigger_pointer_down(inside, &press);
+  let _ = trigger_pointer_down(face, &press);
+
+  assert!(open.get(), "a press inside or on the anchor leaves it open");
+
+  let _ = trigger_pointer_down(page, &press);
+
+  assert!(!open.get(), "a press outside dismisses it");
 
   owner.dispose();
 }

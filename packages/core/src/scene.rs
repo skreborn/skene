@@ -413,12 +413,13 @@ pub struct NodeRecord<P: Platform> {
   overlay: Option<OverlayRecord>,
 }
 
-/// An overlay's standing: whether it blocks what lies beneath it while open, and
-/// whether it is open.
+/// An overlay's standing: whether it blocks what lies beneath it while open, whether it
+/// is open, and the node it opened against.
 #[derive(Debug, Clone, Copy)]
 struct OverlayRecord {
   modal: bool,
   open: bool,
+  anchor: Option<NodeId>,
 }
 
 impl<P: Platform> std::fmt::Debug for NodeRecord<P> {
@@ -1306,7 +1307,11 @@ impl<P: Platform> Scene<P> {
   /// it while open.
   pub fn note_overlay(&mut self, node: NodeId, modal: bool) {
     if let Some(record) = self.record_mut(node) {
-      record.overlay = Some(OverlayRecord { modal, open: false });
+      record.overlay = Some(OverlayRecord {
+        modal,
+        open: false,
+        anchor: None,
+      });
     }
   }
 
@@ -1314,7 +1319,7 @@ impl<P: Platform> Scene<P> {
   /// it; an opening puts it on top of every open overlay, as a browser's top layer
   /// stacks, and a node of any other kind is left alone.
   pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
-    let anchor = anchor.and_then(|anchor| self.sink(anchor));
+    let anchor_sink = anchor.and_then(|anchor| self.sink(anchor));
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -1324,6 +1329,9 @@ impl<P: Platform> Scene<P> {
       return;
     };
     let was_open = std::mem::replace(&mut overlay.open, open);
+
+    overlay.anchor = anchor;
+
     let sink = record.sink;
 
     match (was_open, open) {
@@ -1332,9 +1340,55 @@ impl<P: Platform> Scene<P> {
       _ => {}
     }
 
+    self.mirrors.push(Mirror::OverlayOpen {
+      sink,
+      open,
+      anchor: anchor_sink,
+    });
+  }
+
+  /// The node the overlay `node` opened against, while one is.
+  #[inline(always)]
+  #[must_use]
+  pub fn overlay_anchor(&self, node: NodeId) -> Option<NodeId> {
     self
-      .mirrors
-      .push(Mirror::OverlayOpen { sink, open, anchor });
+      .record(node)
+      .and_then(|record| record.overlay)
+      .and_then(|overlay| overlay.anchor)
+  }
+
+  /// The overlays among `overlays`, open overlays in the order they opened, that a
+  /// primary press at `at` dismisses, topmost first; `at` is `None` for a press on no
+  /// node.
+  ///
+  /// From the top down, each overlay the press lands outside of—on neither the overlay
+  /// nor, for a popup, the anchor it opened from—is dismissed, until the first it lands
+  /// inside of or on the anchor of; a modal stops the descent, dismissed itself by a
+  /// press outside it.
+  #[must_use]
+  pub fn dismissed_by_press(&self, overlays: &[NodeId], at: Option<NodeId>) -> Vec<NodeId> {
+    let ancestry = at.map(|at| self.ancestry(at)).unwrap_or_default();
+    let mut dismissed = Vec::new();
+
+    for overlay in overlays.iter().rev().copied() {
+      let modal = self.is_modal(overlay);
+      let on_anchor = !modal
+        && self
+          .overlay_anchor(overlay)
+          .is_some_and(|anchor| ancestry.contains(&anchor));
+
+      if ancestry.contains(&overlay) || on_anchor {
+        break;
+      }
+
+      dismissed.push(overlay);
+
+      if modal {
+        break;
+      }
+    }
+
+    dismissed
   }
 
   /// The open overlays in the order they opened: the last stands on top.
@@ -2297,5 +2351,42 @@ mod tests {
     with(|scene| scene.set_overlay_open(earlier, false, None));
 
     assert_eq!(order(), [inside_later]);
+  }
+
+  /// A press dismisses, from the top down, each overlay it lands outside of, until one
+  /// it lands inside of or on the anchor of; a modal ends the descent, dismissed itself.
+  #[test]
+  fn a_press_dismisses_the_overlays_it_lands_outside_of() {
+    TestPlatform::reset();
+
+    let root = TestBox::node();
+    let [page, modal, menu, item, submenu] = std::array::from_fn(|_| TestBox::node());
+
+    with(|scene| {
+      scene.attach(root, page, None);
+      scene.attach(root, modal, None);
+      scene.attach(modal, menu, None);
+      scene.attach(menu, item, None);
+      scene.attach(menu, submenu, None);
+      scene.note_overlay(modal, true);
+      scene.note_overlay(menu, false);
+      scene.note_overlay(submenu, false);
+      scene.set_overlay_open(modal, true, None);
+      scene.set_overlay_open(menu, true, None);
+      scene.set_overlay_open(submenu, true, Some(item));
+    });
+
+    let dismissed = |at| {
+      with(|scene| {
+        let overlays = scene.open_overlays().to_vec();
+
+        scene.dismissed_by_press(&overlays, at)
+      })
+    };
+
+    assert_eq!(dismissed(Some(item)), [], "on the submenu's anchor");
+    assert_eq!(dismissed(Some(menu)), [submenu]);
+    assert_eq!(dismissed(Some(page)), [submenu, menu, modal]);
+    assert_eq!(dismissed(None), [submenu, menu, modal]);
   }
 }

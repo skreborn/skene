@@ -1128,24 +1128,18 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
   let (path, dismissed, modal_blocked) = store(|store| {
     let path = store.hit_test(x, y);
-    let mut dismissed = None;
-    let mut inside_overlay = false;
-
-    // A press on the anchor a popup opened from leaves it to the anchor's click.
-    if let Some((top, modal)) = store.topmost_open_overlay() {
-      let mut overlay_path = Vec::new();
-      let on_anchor = !modal
-        && store
-          .record(top)
-          .and_then(Record::overlay_anchor)
-          .is_some_and(|anchor| path.iter().any(|(handle, _)| *handle == anchor));
-
-      inside_overlay = store.hit_overlay(top, x, y, &mut overlay_path);
-
-      if !inside_overlay && !on_anchor {
-        dismissed = store.record(top).and_then(|record| record.node);
-      }
-    }
+    let deepest = path
+      .last()
+      .and_then(|(handle, _)| store.record(*handle)?.node);
+    let overlays: Vec<NodeId> = store
+      .open_overlays()
+      .into_iter()
+      .filter_map(|overlay| store.record(overlay)?.node)
+      .collect();
+    let dismissed = Scene::<Tui>::with(|scene| scene.dismissed_by_press(&overlays, deepest));
+    let inside_overlay = store
+      .topmost_open_overlay()
+      .is_some_and(|(top, _)| store.hit_overlay(top, x, y, &mut Vec::new()));
 
     // A press outside the topmost modal, and the overlays above it, reaches nothing.
     let blocked = store.topmost_modal().is_some() && path.is_empty();
@@ -1159,8 +1153,8 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     (path, dismissed, blocked)
   });
 
-  if let Some(dismissed) = dismissed {
-    notify_dismiss::<Tui>(dismissed);
+  for overlay in dismissed {
+    notify_dismiss::<Tui>(overlay);
   }
 
   if modal_blocked {

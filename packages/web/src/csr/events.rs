@@ -132,9 +132,6 @@ pub(super) struct Events {
   root: Element,
   /// The delegated listeners, by event name.
   listeners: FxHashMap<&'static str, Listener>,
-  /// The popups open, each with the anchor it was opened against, in the order they
-  /// opened.
-  pub(super) open_popups: Vec<(u32, Option<u32>)>,
   /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
   /// open popup acts on in place of the popup's own focus.
   pub(super) last_entry: Option<Element>,
@@ -145,20 +142,8 @@ impl Events {
     Self {
       root,
       listeners: FxHashMap::default(),
-      open_popups: Vec::new(),
       last_entry: None,
     }
-  }
-
-  /// Records `popup` as open against `anchor`, above every popup already open.
-  pub(super) fn open_popup(&mut self, popup: u32, anchor: Option<u32>) {
-    self.close_popup(popup);
-    self.open_popups.push((popup, anchor));
-  }
-
-  /// Forgets `popup` as open.
-  pub(super) fn close_popup(&mut self, popup: u32) {
-    self.open_popups.retain(|(open, _)| *open != popup);
   }
 
   /// Installs the root listeners serving `kind`, once each.
@@ -397,13 +382,13 @@ fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
 
 /// The node of the popup opened last among those open.
 fn topmost_popup() -> Option<NodeId> {
-  with_dom(|dom| {
-    dom
-      .events
-      .open_popups
+  Scene::<Web>::with(|scene| {
+    scene
+      .open_overlays()
       .iter()
       .rev()
-      .find_map(|(sink, _)| dom.node(*sink).and_then(|node| node.id))
+      .copied()
+      .find(|overlay| !scene.is_modal(*overlay))
   })
 }
 
@@ -465,27 +450,21 @@ fn dispatch_pointer(event: &web_sys::Event, dispatch: fn(NodeId, &PointerEvent) 
   apply(dispatch(node, &payload), event);
 }
 
+/// A press: the popups it lands outside of are dismissed by the scene's rule, a modal's
+/// backdrop left to its click, then the press is dispatched.
 fn on_pointer_down(event: &web_sys::Event) {
-  let target = event
-    .target()
-    .and_then(|target| target.dyn_into::<web_sys::Node>().ok());
-  let outside: Vec<NodeId> = with_dom(|dom| {
-    let contains = |sink: u32| {
-      dom
-        .node(sink)
-        .is_some_and(|node| node.dom.contains(target.as_ref()))
-    };
+  let at = node_at(event.target());
+  let dismissed: Vec<NodeId> = Scene::<Web>::with(|scene| {
+    let overlays = scene.open_overlays().to_vec();
 
-    dom
-      .events
-      .open_popups
-      .iter()
-      .filter(|(popup, anchor)| !contains(*popup) && !anchor.is_some_and(contains))
-      .filter_map(|(popup, _)| dom.node(*popup).and_then(|node| node.id))
+    scene
+      .dismissed_by_press(&overlays, at)
+      .into_iter()
+      .filter(|overlay| !scene.is_modal(*overlay))
       .collect()
   });
 
-  for popup in outside {
+  for popup in dismissed {
     notify_dismiss::<Web>(popup);
   }
 

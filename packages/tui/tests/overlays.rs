@@ -317,7 +317,8 @@ fn the_modal_opened_last_holds_the_tab_order() {
 }
 
 /// A modal stays in charge while a popup above it is open: with a tooltip showing over
-/// the dialog, `Tab` stays inside and a press on the page reaches nothing.
+/// the dialog, `Tab` stays inside, and a press on the page reaches nothing, dismissing
+/// the tooltip and then the modal, as a press outside both does.
 #[test]
 fn a_modal_holds_under_a_popup_above_it() {
   with_platform(|| {
@@ -370,7 +371,7 @@ fn a_modal_holds_under_a_popup_above_it() {
     tui::trigger_mouse_click(1, 0);
 
     assert_eq!(clicks.get(), 0);
-    assert_ne!(tui::focused_node(), None);
+    assert!(!open.get(), "the press outside dismisses the modal too");
   });
 }
 

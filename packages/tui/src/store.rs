@@ -735,15 +735,6 @@ impl Record {
     matches!(self.kind, Kind::Overlay { modal: true, .. })
   }
 
-  /// The anchor an open overlay is placed against.
-  #[inline(always)]
-  pub(crate) const fn overlay_anchor(&self) -> Option<Handle> {
-    match self.kind {
-      Kind::Overlay { anchor, .. } => anchor,
-      _ => None,
-    }
-  }
-
   /// Whether the record is a control.
   #[inline(always)]
   pub(crate) const fn is_control(&self) -> bool {

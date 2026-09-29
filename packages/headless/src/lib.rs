@@ -583,9 +583,11 @@ pub fn trigger_key_up(node: NodeId, event: &KeyEvent) -> Prevented {
   trigger(|| dispatch_key_up::<Headless>(node, event))
 }
 
-/// Dispatches a pointer press at `node`, bubbling through the scene; focus stops
-/// showing from here on, and a primary press holds `node` and its ancestors pressed
-/// until its release.
+/// Dispatches a pointer press at `node`, bubbling through the scene.
+///
+/// The open overlays the press lands outside of are dismissed first. Focus stops showing
+/// from here on, and a primary press holds `node` and its ancestors pressed until its
+/// release.
 pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
   trigger(|| {
     with_store(|store| {
@@ -595,6 +597,16 @@ pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
         store.pressed = Some(node);
       }
     });
+
+    let dismissed = Scene::<Headless>::with(|scene| {
+      let overlays = scene.open_overlays().to_vec();
+
+      scene.dismissed_by_press(&overlays, Some(node))
+    });
+
+    for overlay in dismissed {
+      notify_dismiss::<Headless>(overlay);
+    }
 
     dispatch_pointer_down::<Headless>(node, event)
   })

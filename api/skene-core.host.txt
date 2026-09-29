@@ -3575,6 +3575,7 @@ pub fn skene_core::Scene<P>::defines_root_set(&self, core::any::TypeId) -> bool
 pub fn skene_core::Scene<P>::describe(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>) -> alloc::vec::Vec<skene_core::AccessProp>
 pub fn skene_core::Scene<P>::destroy(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::detach(&mut self, skene_core::NodeId, skene_core::NodeId)
+pub fn skene_core::Scene<P>::dismissed_by_press(&self, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>) -> alloc::vec::Vec<skene_core::NodeId>
 pub fn skene_core::Scene<P>::enclosing_control(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::option::Option<skene_core::FocusOrder>
 pub fn skene_core::Scene<P>::for_each_child(&self, skene_core::NodeId, impl core::ops::function::FnMut(skene_core::NodeId))
@@ -3605,6 +3606,7 @@ pub fn skene_core::Scene<P>::note_access(&mut self, skene_core::NodeId, alloc::v
 pub fn skene_core::Scene<P>::note_focus_order(&mut self, skene_core::NodeId, core::option::Option<skene_core::FocusOrder>)
 pub fn skene_core::Scene<P>::note_overlay(&mut self, skene_core::NodeId, bool)
 pub fn skene_core::Scene<P>::open_overlays(&self) -> &[skene_core::NodeId]
+pub fn skene_core::Scene<P>::overlay_anchor(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Option<skene_core::Part>
 pub fn skene_core::Scene<P>::reachable_under_modal(&self, &[skene_core::NodeId], skene_core::NodeId) -> bool

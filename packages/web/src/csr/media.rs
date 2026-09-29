@@ -187,8 +187,10 @@ pub fn media_query(text: &str) -> ReadSignal<bool> {
 }
 
 /// Whether `media` holds, as a memo built from the same query text the stylesheet
-/// renders, so the signal and the sheet cannot disagree. A scheme leaf follows the
-/// scheme in force, the app's choice included; a container leaf never holds here.
+/// renders.
+///
+/// The signal and the sheet cannot disagree. A scheme leaf follows the scheme in force,
+/// the app's choice included; a container leaf never holds here.
 pub fn watch_media(media: &Media<f32>) -> Memo<bool> {
   let scheme = signals().scheme;
   let terms: Vec<(Option<ReadSignal<bool>>, Option<ColorScheme>, bool)> =

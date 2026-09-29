@@ -113,10 +113,11 @@ fn focus<P: Platform>(node: NodeId) {
   }
 }
 
-/// A menu: a list of commands whose items are one tab stop, the arrow keys moving
-/// focus between the enabled ones with wrapping, `Home` and `End` reaching the ends,
-/// typing moving focus to the item whose name the characters begin, and `Enter`,
-/// `Space` or a click running the focused one.
+/// A menu: a list of commands whose items are one tab stop.
+///
+/// The arrow keys move focus between the enabled items with wrapping, `Home` and `End`
+/// reach the ends, typing moves focus to the item whose name the characters begin, and
+/// `Enter`, `Space` or a click runs the focused one.
 ///
 /// Running an item only calls [`handle_activate`](Self::handle_activate) with the
 /// item's value; what happens next, the menu closing included, is its user's. The
@@ -203,10 +204,11 @@ impl<P: Platform> Behavior<P> for Menu {
   }
 }
 
-/// One item within a [`Menu`]: a click, `Enter` or `Space` runs it, the arrow keys
-/// move focus to an enabled neighbour, `Home` and `End` to the ends, a typed
-/// character to the item the menu's type-ahead picks, and it is the menu's tab stop
-/// while it is the first enabled item.
+/// One item within a [`Menu`].
+///
+/// A click, `Enter` or `Space` runs it, the arrow keys move focus to an enabled
+/// neighbour, `Home` and `End` to the ends, a typed character to the item the menu's
+/// type-ahead picks, and it is the menu's tab stop while it is the first enabled item.
 ///
 /// Outside a menu it reports its role and takes focus like any control.
 #[must_use]

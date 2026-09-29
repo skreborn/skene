@@ -5,9 +5,11 @@ use skene_core::{Border, Color, Inset, IntoView, Media, Modifiers, Shortcut, Sta
 
 use crate::{Tui, terminal, with_store};
 
-/// The clipboard operations offered: `Copy` and `Cut` write the clipboard through
-/// OSC 52, `Paste` reads it through OSC 52. A terminal without OSC 52 discards the
-/// write and answers no read; the terminal's own paste key inserts regardless.
+/// The clipboard operations offered.
+///
+/// `Copy` and `Cut` write the clipboard through OSC 52, `Paste` reads it through OSC
+/// 52. A terminal without OSC 52 discards the write and answers no read; the terminal's
+/// own paste key inserts regardless.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Clipboard {
   /// Whether `Copy` and `Cut` (`Ctrl-C`, `Ctrl-X`, the menus) write the selection. Off,

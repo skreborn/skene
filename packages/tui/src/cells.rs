@@ -30,9 +30,10 @@ pub trait CellPainter: Platform {
   fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);
 }
 
-/// A window onto the frame being painted: the cells of one box's content rectangle,
-/// addressed from its top-left corner. A write outside the rectangle, or outside the
-/// clip a scrolling ancestor imposes, is dropped.
+/// A window onto the frame being painted: the cells of one box's content rectangle.
+///
+/// A cell is addressed from the rectangle's top-left corner. A write outside the
+/// rectangle, or outside the clip a scrolling ancestor imposes, is dropped.
 #[must_use]
 pub struct Cells<'a> {
   buffer: &'a mut Buffer,

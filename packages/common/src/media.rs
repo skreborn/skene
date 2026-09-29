@@ -22,9 +22,11 @@ pub fn reduced_motion<P: Platform>() -> ReadSignal<bool> {
   P::default().media().reduced_motion
 }
 
-/// Whether a render made without script has been hydrated: false on the server leaf
-/// and while the browser leaf adopts the server's markup, true once it has finished,
-/// and true from the start on every platform whose tree is live from the start.
+/// Whether a render made without script has been hydrated.
+///
+/// False on the server leaf and while the browser leaf adopts the server's markup, true
+/// once it has finished, and true from the start on every platform whose tree is live
+/// from the start.
 #[inline(always)]
 pub fn hydrated<P: Platform>() -> ReadSignal<bool> {
   P::default()
@@ -38,9 +40,10 @@ pub fn watch<P: Platform>(media: &Media<P::Scalar>) -> Memo<bool> {
   P::default().watch_media(media)
 }
 
-/// Puts `scheme` in force throughout, overriding the platform's preference; `None`
-/// returns to following it. Every token keeps both values and the platform is told which
-/// is in force, so a change re-inks without rebuilding anything.
+/// Puts `scheme` in force throughout, overriding the platform's preference.
+///
+/// `None` returns to following it. Every token keeps both values and the platform is
+/// told which is in force, so a change re-inks without rebuilding anything.
 #[inline(always)]
 pub fn set_scheme<P: Platform>(scheme: Option<ColorScheme>) {
   P::default().set_scheme(scheme);

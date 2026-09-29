@@ -12,8 +12,9 @@ struct Case<P: Platform, K> {
   node: Option<NodeId>,
 }
 
-/// Shows the branch whose key is current, preserving every branch's state: a branch
-/// is built the first time its key is current, under an owner of its own, then
+/// Shows the branch whose key is current, preserving every branch's state.
+///
+/// A branch is built the first time its key is current, under an owner of its own, then
 /// attached and detached between a pair of anchors as the key changes.
 ///
 /// Every branch built is destroyed when the owner the switch was built under is

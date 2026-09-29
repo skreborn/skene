@@ -900,9 +900,10 @@ fn write_copy(terminal: &mut Tty, text: &str, answers: bool) {
   let _ = terminal.flush();
 }
 
-/// Simulates the terminal's report that its clipboard answers (mode 5522), or that
-/// it does not, for a test driving the loop headlessly: every clipboard operation is
-/// then offered whatever the launch chose.
+/// Simulates the terminal's report that its clipboard answers (mode 5522), or that it
+/// does not, for a test driving the loop headlessly.
+///
+/// An answering clipboard offers every operation, whatever the launch chose.
 pub fn trigger_answering_clipboard(confirmed: bool) {
   trigger(|| with_store(|store| store.clipboard_answers = confirmed));
 }
@@ -1501,9 +1502,12 @@ fn trigger(event: impl FnOnce()) {
   end_turn();
 }
 
-/// Simulates one key press by its portable W3C key value (`"a"`, `"Enter"`, `"Tab"`,
-/// `"Backspace"`, …), for a test driving the loop headlessly. `"Ctrl+"`, `"Alt+"`, and
-/// `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`, `"Shift+Tab"`).
+/// Simulates one key press by its portable W3C key value, for a test driving the loop
+/// headlessly.
+///
+/// The value is a key's name (`"a"`, `"Enter"`, `"Tab"`, `"Backspace"`, …), and
+/// `"Ctrl+"`, `"Alt+"`, and `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`,
+/// `"Shift+Tab"`).
 pub fn trigger_key(key: &str) {
   trigger(|| press(&key_event(key)));
 }
@@ -1613,8 +1617,10 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
 }
 
 /// Simulates the mouse wheel at the cell (`x`, `y`), for a headless test driving
-/// scrolling. Positive deltas scroll right and down, one cell per unit; hit-testing
-/// resolves against the last render's layout.
+/// scrolling.
+///
+/// Positive deltas scroll right and down, one cell per unit; hit-testing resolves
+/// against the last render's layout.
 pub fn trigger_mouse_scroll(x: u16, y: u16, delta_columns: i64, delta_rows: i64) {
   trigger(|| interaction::wheel(x, y, delta_columns, delta_rows));
 }

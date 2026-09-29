@@ -1,6 +1,8 @@
-//! What every view's build shares: reaching a node's sink, binding the render effect
-//! behind each derived slot, writing a value that is fixed or derived, building a
-//! child under a provided context, and registering a platform-made sink as a node.
+//! What every view's build shares.
+//!
+//! Reaching a node's sink, binding the render effect behind each derived slot, writing
+//! a value that is fixed or derived, building a child under a provided context, and
+//! registering a platform-made sink as a node.
 
 use std::{marker::PhantomData, rc::Rc};
 

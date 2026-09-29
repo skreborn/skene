@@ -90,9 +90,11 @@ impl Fingerprint for BorderGlyphs {
   }
 }
 
-/// The style extension of the terminal: a box draws its border in a glyph set, rounds
-/// it through the corner radius, and casts a shadow; a run is bold, by its own flag or
-/// by a weight of `600` and above, and sized in cells.
+/// The style extension of the terminal.
+///
+/// A box draws its border in a glyph set, rounds it through the corner radius, and
+/// casts a shadow; a run is bold, by its own flag or by a weight of `600` and above,
+/// and sized in cells.
 ///
 /// Lengths are cells; the radius is a plain number whose non-zero values all select
 /// [`BorderGlyphs::ROUNDED`] where no glyph set is spelled. A run's size is a scale of

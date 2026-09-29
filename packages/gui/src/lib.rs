@@ -367,9 +367,11 @@ pub fn empty() -> impl View {
   skene_core::empty::<ActivePlatform>()
 }
 
-/// Wraps a view that only a client can realize: it builds once the page stands
-/// [`hydrated`](media::hydrated), so a server renders nothing in its place and a
-/// hydrating client adopts that empty place before building it.
+/// Wraps a view that only a client can realize.
+///
+/// It builds once the page stands [`hydrated`](media::hydrated), so a server renders
+/// nothing in its place and a hydrating client adopts that empty place before building
+/// it.
 ///
 /// The place for a low-level view that reaches a platform's raw handles, which have no
 /// meaning off the client. `build` returns the node it realizes, exactly as a view's
@@ -430,9 +432,10 @@ where
   tracing::info!("application built against the headless platform");
 }
 
-/// Renders the application, for a server-rendering platform: builds the tree, drives
-/// its resources until they settle, and serializes the result plus the resource state
-/// for hydration; see [`skene_web::render_to_string`].
+/// Renders the application, for a server-rendering platform.
+///
+/// It builds the tree, drives its resources until they settle, and serializes the
+/// result plus the resource state for hydration; see [`skene_web::render_to_string`].
 #[cfg(skene_leaf = "server")]
 #[inline(always)]
 pub fn render_to_string<V, F>(app: F) -> Rendered
@@ -492,17 +495,19 @@ SKENE_HINTS names the client hints a render answers with, one `Name: value` per
 line; SKENE_SCRIPT_NONCE the nonce its inline scripts carry; SKENE_DEV, set, makes
 the pages join the dev loop.";
 
-/// The server entry `#[main]` expands to: renders the path given as the first argument
-/// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
-/// the statically-renderable routes one per line between [`ROUTES_MARKERS`] (see
-/// [`install_static_router`]), or, given `--stream <path>`, writes the page as
-/// [`render_page_stream`] flushes it, or, given `--serve`, renders one request after
-/// another read from stdin (see [`serve_renders`]), or, given `--help`, prints its
-/// usage. Every page boots and preloads the client `bundle`, the name wasm-bindgen gave
-/// the app's files. The client hints in [`HINTS_VARIABLE`], when set, are the
-/// environment the render answers with, the nonce in [`NONCE_VARIABLE`] its inline
-/// scripts carry, and [`DEV_VARIABLE`], set, makes the pages join the dev loop;
-/// `tracing` events, a render's deadline report among them, go to stderr.
+/// The server entry `#[main]` expands to.
+///
+/// It renders the path given as the first argument (default `/`) and writes the
+/// complete page to stdout—or, given `--routes`, writes the statically-renderable
+/// routes one per line between [`ROUTES_MARKERS`] (see [`install_static_router`]), or,
+/// given `--stream <path>`, writes the page as [`render_page_stream`] flushes it, or,
+/// given `--serve`, renders one request after another read from stdin (see
+/// [`serve_renders`]), or, given `--help`, prints its usage. Every page boots and
+/// preloads the client `bundle`, the name wasm-bindgen gave the app's files. The client
+/// hints in [`HINTS_VARIABLE`], when set, are the environment the render answers with,
+/// the nonce in [`NONCE_VARIABLE`] its inline scripts carry, and [`DEV_VARIABLE`], set,
+/// makes the pages join the dev loop; `tracing` events, a render's deadline report
+/// among them, go to stderr.
 ///
 /// This makes the app's server build a plain command—`app-server /some/path` prints
 /// the document—which is exactly the interface a server or a generator embeds.
@@ -660,9 +665,11 @@ where
   Stream { chunks }
 }
 
-/// Renders the application as a progressive page, each flush handed to `sink` as it
-/// is produced: the opening shell, a body chunk per settled [`Deferred`] boundary, and
-/// the closing tail. The flushes concatenate to [`render_to_stream`]'s
+/// Renders the application as a progressive page, each flush handed to `sink` as it is
+/// produced.
+///
+/// The flushes are the opening shell, a body chunk per settled [`Deferred`] boundary,
+/// and the closing tail, and they concatenate to [`render_to_stream`]'s
 /// [`document`](Stream::document), so writing each one to a response streams the page.
 #[cfg(skene_leaf = "server")]
 pub fn render_page_stream<V, F>(app: F, mut sink: impl FnMut(&str))

@@ -53,9 +53,11 @@ const INDICATOR: &str = "▾";
 /// The glyph before the chosen row.
 const CHECK: &str = "✓";
 
-/// A ready-made dropdown choice: field chrome whose hairline becomes the ring while
-/// focused, an indicator after the chosen label, and a list on the card surface whose
-/// rows highlight while focused and fill in the primary look while chosen.
+/// A ready-made dropdown choice.
+///
+/// Field chrome whose hairline becomes the ring while focused, an indicator after the
+/// chosen label, and a list on the card surface whose rows highlight while focused and
+/// fill in the primary look while chosen.
 ///
 /// The indicator is the face's [`Part::Face`], the list surface the [`Part::List`] and
 /// each row's check the [`Part::Item`], so all three follow their control's state on

@@ -130,8 +130,10 @@ pub fn set_head_title(id: HeadId, title: &str) {
 }
 
 /// Registers an element for the document head, in force while it is the latest live one
-/// of what it stands for (see [`Head`]); an identical element already in the head, as
-/// a server render leaves, is adopted rather than duplicated.
+/// of what it stands for.
+///
+/// See [`Head`]. An identical element already in the head, as a server render leaves,
+/// is adopted rather than duplicated.
 ///
 /// # Panics
 ///

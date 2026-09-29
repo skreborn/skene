@@ -2,9 +2,10 @@ use std::ops::Range;
 
 use skene_reactive::{Recorder, Snapshot, Value, key};
 
-/// The selection inside a text entry, in grapheme clusters of its value: `start` is
-/// the cluster the selection began from and `end` the one it extends to, where the
-/// caret is, the two equal while collapsed and `end` before `start` when the
+/// The selection inside a text entry, in grapheme clusters of its value.
+///
+/// `start` is the cluster the selection began from and `end` the one it extends to,
+/// where the caret is, the two equal while collapsed and `end` before `start` when the
 /// selection was made backward.
 ///
 /// A platform clamps each index into the value; nothing can name the inside of a

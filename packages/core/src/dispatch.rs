@@ -36,9 +36,10 @@ pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
   )
 }
 
-/// Dispatches a click the platform already acted on at `node`: every click handler
-/// up the path runs except the acting ones, so a control's observers see the click
-/// and its behavior does not act a second time.
+/// Dispatches a click the platform already acted on at `node`.
+///
+/// Every click handler up the path runs except the acting ones, so a control's
+/// observers see the click and its behavior does not act a second time.
 #[inline(always)]
 pub fn dispatch_click_observed<P: Platform>(node: NodeId) -> Prevented {
   bubble::<P, _, _>(

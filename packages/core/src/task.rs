@@ -38,9 +38,11 @@ impl Drop for Counted {
 }
 
 /// Counts the task `guard` stands for as pending work toward the nearest enclosing
-/// [`Boundary`] until the guard drops, as it does once the task finishes or is
-/// cancelled; one an event handler starts counts toward no boundary. A facade's spawner
-/// wraps the guard its executor hands back in it.
+/// [`Boundary`].
+///
+/// It counts until the guard drops, as it does once the task finishes or is cancelled;
+/// one an event handler starts counts toward no boundary. A facade's spawner wraps the
+/// guard its executor hands back in it.
 #[must_use = "dropping the guard cancels the task"]
 pub fn count_pending(guard: TaskGuard) -> TaskGuard {
   let boundary = if HANDLING.get() {

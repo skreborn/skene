@@ -1,10 +1,11 @@
 //! The setter pair every property has, and the setter surfaces built from it; a view
 //! outside this crate generates its setters with the same macros.
 
-/// Generates a `set_`/`derive_` pair per property: the setter takes anything
-/// convertible into the property's [`Value`](skene_core::Value) under the
-/// platform's conditions, the deriver a closure over signals, and both write the field
-/// named on the style `$access` returns.
+/// Generates a `set_`/`derive_` pair per property.
+///
+/// The setter takes anything convertible into the property's
+/// [`Value`](skene_core::Value) under the platform's conditions, the deriver a closure
+/// over signals, and both write the field named on the style `$access` returns.
 #[macro_export]
 macro_rules! properties {
   ($access:ident; $($set:ident / $derive:ident ($param:ident) => $field:ident: $type:ty, $doc:literal;)+) => {$(

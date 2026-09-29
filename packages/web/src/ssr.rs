@@ -1505,9 +1505,10 @@ impl WebMarkup for Web {
   }
 }
 
-/// Marks the page as one whose reader may choose a scheme, so its head carries the
-/// blocking script applying the stored choice before the first paint; the choice
-/// itself is the reader's and never known to a server.
+/// Marks the page as one whose reader may choose a scheme.
+///
+/// Its head then carries the blocking script applying the stored choice before the
+/// first paint; the choice itself is the reader's and never known to a server.
 pub fn set_scheme(_scheme: Option<ColorScheme>) {
   PREEMPT_SCHEME.with(|preempt| preempt.set(true));
 }
@@ -1519,10 +1520,11 @@ pub const fn stored_scheme() -> Option<ColorScheme> {
   None
 }
 
-/// Opts the pages into view transitions, this render and every one after on the
-/// thread: the stylesheet carries `@view-transition { navigation: auto }`, so a browser
-/// that has them animates the cross-document navigations between the served pages; one
-/// that does not cuts.
+/// Opts the pages into view transitions, this render and every one after on the thread.
+///
+/// The stylesheet carries `@view-transition { navigation: auto }`, so a browser that
+/// has them animates the cross-document navigations between the served pages; one that
+/// does not cuts.
 pub fn enable_view_transitions() {
   VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
 }
@@ -1636,9 +1638,10 @@ impl Rendered {
   }
 }
 
-/// Registers the segment `start` begins as a deferred boundary: a streaming render
-/// flushes what precedes it, waits until `settled` reports true, then emits its
-/// content in place. A whole render never consults it.
+/// Registers the segment `start` begins as a deferred boundary.
+///
+/// A streaming render flushes what precedes it, waits until `settled` reports true,
+/// then emits its content in place. A whole render never consults it.
 pub fn register_boundary(start: NodeId, settled: BoundarySettled) {
   if let Some(sink) = Scene::<Web>::with(|scene| scene.sink(start)) {
     BOUNDARIES.with(|boundaries| boundaries.borrow_mut().insert(sink, settled));
@@ -1702,9 +1705,11 @@ fn end_render(scope: Owner) {
   TREE.with(|tree| *tree.borrow_mut() = Tree::new());
 }
 
-/// Renders `app` over the new tree: builds it under a fresh scope, drives its async
-/// work to a fixpoint, serializes the settled tree with its stylesheet, head and
-/// resource state, and tears the render down so the next call starts clean.
+/// Renders `app` over a fresh tree.
+///
+/// It builds the app under a fresh scope, drives its async work to a fixpoint,
+/// serializes the settled tree with its stylesheet, head and resource state, and tears
+/// the render down so the next call starts clean.
 pub fn render_to_string<V, F>(app: F) -> Rendered
 where
   F: FnOnce() -> V + 'static,

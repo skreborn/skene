@@ -24,10 +24,11 @@ use skene_core::{
 
 use crate::ActivePlatform;
 
-/// A link to a route: a box whose destination is the route's path, so a page without
-/// JavaScript navigates by full page load, and a running app intercepts the click
-/// into [`Router::navigate`] instead. Takes its content through
-/// [`set_child`](HasChildren::set_child).
+/// A link to a route.
+///
+/// A box whose destination is the route's path, so a page without JavaScript navigates
+/// by full page load, and a running app intercepts the click into [`Router::navigate`]
+/// instead. Takes its content through [`set_child`](HasChildren::set_child).
 ///
 /// A modified click—control, shift, alt, or command held—is left to the platform, so
 /// open-in-new-tab and friends keep working.

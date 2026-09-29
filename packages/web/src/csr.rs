@@ -2163,9 +2163,11 @@ pub fn mount(view: impl FnOnce() -> NodeId) -> NodeId {
   node
 }
 
-/// Hydrates a server-rendered tree under `root`, adopting its elements by their
-/// creation-order markers and its anchors by their comments, the server's `<style>`
-/// block in place of a fresh one, and the resource `state` serialized alongside them.
+/// Hydrates a server-rendered tree under `root`.
+///
+/// It adopts the tree's elements by their creation-order markers and its anchors by
+/// their comments, the server's `<style>` block in place of a fresh one, and the
+/// resource `state` serialized alongside them.
 ///
 /// A native element whose live value or checked state differs from the serialized one
 /// reports the difference through the control's change or toggle path once the tree
@@ -2309,9 +2311,10 @@ fn segment_dom(start: NodeId) -> Vec<web_sys::Node> {
   })
 }
 
-/// Claims the server's markup between the anchors of the segment `start` begins, so it
-/// stays in place and counts as adopted while the segment's real content is on its
-/// way; `false` when not hydrating or when the server rendered nothing there.
+/// Claims the server's markup between the anchors of the segment `start` begins.
+///
+/// The markup stays in place and counts as adopted while the segment's real content is
+/// on its way; `false` when not hydrating or when the server rendered nothing there.
 #[must_use]
 pub fn claim_lazy(start: NodeId) -> bool {
   let between = segment_dom(start);
@@ -2364,9 +2367,10 @@ pub fn claim_lazy(start: NodeId) -> bool {
   })
 }
 
-/// Removes the claimed markup between the anchors of the segment `start` begins, as
-/// the segment's real content arrives to take its place; a scroll offset or the focus
-/// inside it passes to that content when it has the same shape.
+/// Removes the claimed markup between the anchors of the segment `start` begins.
+///
+/// The segment's real content arrives to take its place, and a scroll offset or the
+/// focus inside the markup passes to that content when it has the same shape.
 pub fn discard_lazy(start: NodeId) {
   let between = segment_dom(start);
   let following = between.last().and_then(web_sys::Node::next_sibling);

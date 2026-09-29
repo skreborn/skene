@@ -231,9 +231,11 @@ pub fn derive_store(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives [`Snapshot`](../skene_reactive/trait.Snapshot.html): a struct records its
-/// fields by key and an enum its variant by key with the value it carries, so a signal
-/// holding the type takes part in state snapshots.
+/// Derives [`Snapshot`](../skene_reactive/trait.Snapshot.html), so a signal holding the
+/// type takes part in state snapshots.
+///
+/// A struct records its fields by key and an enum its variant by key with the value it
+/// carries.
 ///
 /// A key is a hash of the field's or the variant's name, stable under reordering;
 /// `#[snapshot(tag = "name")]` keys it by `name` instead, so it survives a rename.

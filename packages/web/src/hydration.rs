@@ -121,9 +121,11 @@ pub fn enter_lazy() -> LazyRegion {
   LazyRegion(path)
 }
 
-/// Runs `work` as the content of the lazy segment at `region`, so the resources it
-/// creates register or adopt under that segment. A poll of the content's future is
-/// run this way, so a resource created while it loads belongs to the segment too.
+/// Runs `work` as the content of the lazy segment at `region`.
+///
+/// The resources it creates register or adopt under that segment. A poll of the
+/// content's future is run this way, so a resource created while it loads belongs to
+/// the segment too.
 #[cfg(not(skene_leaf = "host"))]
 pub fn within_lazy<R>(region: &LazyRegion, work: impl FnOnce() -> R) -> R {
   let previous = REGION.with(|current| current.replace(region.0.clone()));

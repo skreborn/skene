@@ -21,9 +21,11 @@ use super::{Behavior, ControlHandle};
 /// A handler of a key the closed face does not act on, answering whether it took it.
 type Typed = dyn Fn(&KeyEvent) -> bool;
 
-/// The face of a popup: a click, `Enter` or `Space` toggles it, `ArrowDown` and
-/// `ArrowUp` open it, `Escape` closes it, and any other key pressed while it is
-/// closed goes to [`handle_typed`](Self::handle_typed).
+/// The face of a popup, which opens and closes it.
+///
+/// A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it, `Escape`
+/// closes it, and any other key pressed while it is closed goes to
+/// [`handle_typed`](Self::handle_typed).
 ///
 /// Controlled: the open state it reports is what [`derive_open`](Self::derive_open)
 /// reads, and a toggle only calls [`handle_open`](Self::handle_open) with the state it

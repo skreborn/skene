@@ -37,10 +37,11 @@ fn modal_backdrop() -> Color {
   Color::srgb(0., 0., 0.).with_alpha(0.5)
 }
 
-/// Content above the app, opened and closed by the app: a [`modal`](Self::modal) traps
-/// focus, blocks interaction beneath it and paints a [backdrop](Self::set_backdrop); a
-/// [`popup`](Self::popup) floats without blocking and is placed against an
-/// [anchor](Self::set_anchor).
+/// Content above the app, opened and closed by the app.
+///
+/// A [`modal`](Self::modal) traps focus, blocks interaction beneath it and paints a
+/// [backdrop](Self::set_backdrop); a [`popup`](Self::popup) floats without blocking and
+/// is placed against an [anchor](Self::set_anchor).
 ///
 /// The overlay never closes itself: `Escape`, a backdrop click or a press outside a
 /// popup only run [`handle_dismiss`](Self::handle_dismiss), and the open state stays

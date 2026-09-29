@@ -1,5 +1,7 @@
 //! A WebSocket client on the framework's public seams alone, as [`http`](super::http)
-//! is: [`connect`] is a future resolving to a [`WebSocket`], a message is queued for
+//! is.
+//!
+//! [`connect`] is a future resolving to a [`WebSocket`], a message is queued for
 //! sending at once, and [`receive`](WebSocket::receive) is a future a task awaits in a
 //! loop, resolving with each message as it lands and with `None` once the socket has
 //! closed. Nothing in the framework knows this crate exists.
@@ -231,9 +233,10 @@ impl WebSocket {
   }
 }
 
-/// Opens a socket to `url`, resolving once the connection is established: a `ws://` or
-/// `wss://` URL, or an `http://` or `https://` one taken as the socket URL a browser
-/// makes of it, and on the web a URL relative to the page.
+/// Opens a socket to `url`, resolving once the connection is established.
+///
+/// `url` is a `ws://` or `wss://` URL, or an `http://` or `https://` one taken as the
+/// socket URL a browser makes of it, and on the web a URL relative to the page.
 ///
 /// # Errors
 ///

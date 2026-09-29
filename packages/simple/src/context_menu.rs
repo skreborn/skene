@@ -20,10 +20,11 @@ use super::{
   shape::{MARK_RADIUS, RADIUS, SimpleUnit, define_defaults, hairline, shape},
 };
 
-/// A ready-made context menu: a card-colored list with a hairline border, its items
-/// padded like a picker's rows and lit in the secondary surface under the pointer or
-/// focus, a disabled item in the muted foreground, and a separator in the border
-/// color.
+/// A ready-made context menu.
+///
+/// A card-colored list with a hairline border, its items padded like a picker's rows
+/// and lit in the secondary surface under the pointer or focus, a disabled item in the
+/// muted foreground, and a separator in the border color.
 ///
 /// [`set_items`](Self::set_items) lists the items; the view served comes last through
 /// [`set_child`](Self::set_child), so any view takes a menu by wrapping, or

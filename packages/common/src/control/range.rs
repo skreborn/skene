@@ -22,9 +22,11 @@ use super::{Behavior, ControlHandle, PointerPhase};
 /// How many steps a page key moves.
 const PAGE_STEPS: f32 = 10.;
 
-/// A slider over a closed range: arrows move by a step, `Home` and `End` reach the
-/// ends, the page keys move by ten steps, and a press or drag along the control's
-/// axis jumps to that fraction of the range; a vertical range runs bottom to top.
+/// A slider over a closed range.
+///
+/// The arrows move by a step, `Home` and `End` reach the ends, the page keys move by
+/// ten steps, and a press or drag along the control's axis jumps to that fraction of
+/// the range; a vertical range runs bottom to top.
 ///
 /// Controlled: the value it reports is what [`derive_value`](Self::derive_value)
 /// reads, and a move only calls [`handle_change`](Self::handle_change) with the value

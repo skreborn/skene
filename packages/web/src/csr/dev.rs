@@ -11,9 +11,11 @@ use js_sys::{Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use wasm_bindgen_futures::JsFuture;
 
-/// Boots through the dev-state handshake when the page carries the dev marker: take
-/// the snapshot the page kept, stage it into the reactive runtime, expose the
-/// `skene_snapshot` global, then run `boot`. Without the marker, runs `boot` directly.
+/// Boots through the dev-state handshake when the page carries the dev marker, else
+/// runs `boot` directly.
+///
+/// The handshake takes the snapshot the page kept, stages it into the reactive runtime,
+/// exposes the `skene_snapshot` global, then runs `boot`.
 pub fn boot_with_dev_state(boot: impl FnOnce() + 'static) {
   if !dev_marker_present() {
     boot();

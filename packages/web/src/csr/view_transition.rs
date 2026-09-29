@@ -13,10 +13,12 @@ thread_local! {
   static ENABLED: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Opts the page into view transitions: a same-document navigation committed through
-/// [`commit_navigation`] runs under `document.startViewTransition` where the browser
-/// has it, and the stylesheet carries `@view-transition { navigation: auto }` for
-/// cross-document navigations. Both degrade to a cut.
+/// Opts the page into view transitions.
+///
+/// A same-document navigation committed through [`commit_navigation`] runs under
+/// `document.startViewTransition` where the browser has it, and the stylesheet carries
+/// `@view-transition { navigation: auto }` for cross-document navigations. Both degrade
+/// to a cut.
 pub fn enable_view_transitions() {
   ENABLED.with(|enabled| enabled.set(true));
 
@@ -30,9 +32,10 @@ pub fn view_transitions_enabled() -> bool {
   ENABLED.with(Cell::get)
 }
 
-/// Runs `update`, the state change of a navigation, as one turn, under a view
-/// transition when the page opted in and the browser has
-/// `document.startViewTransition`; plainly otherwise. The page shows the new state
+/// Runs `update`, the state change of a navigation, as one turn.
+///
+/// It runs under a view transition when the page opted in and the browser has
+/// `document.startViewTransition`, and plainly otherwise. The page shows the new state
 /// once `update` returns, so a transition captures it.
 pub fn commit_navigation(update: Box<dyn FnOnce()>) {
   let update = move || {

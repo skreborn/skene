@@ -174,10 +174,11 @@ impl MenuItem {
   }
 }
 
-/// A context menu: a list of [`MenuItem`]s opened beside the pointer by a secondary
-/// press over the view it serves, or beside that view by `Shift-F10` and the
-/// `ContextMenu` key while focus is inside it; the platform's own menu stays
-/// everywhere the view does not reach.
+/// A context menu of [`MenuItem`]s over the view it serves.
+///
+/// A secondary press over the view opens it beside the pointer, and `Shift-F10` or the
+/// `ContextMenu` key beside the view while focus is inside it; the platform's own menu
+/// stays everywhere the view does not reach.
 ///
 /// The menu is a popup [`Overlay`], the [`Part::List`], holding a [`Menu`] of
 /// [`MenuOption`] controls, the [`Part::Item`]s: the arrows, `Home`, `End`, typing,

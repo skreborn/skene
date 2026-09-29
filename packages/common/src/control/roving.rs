@@ -187,9 +187,11 @@ impl<P: Platform> Behavior<P> for Roving {
   }
 }
 
-/// One choice within a [`Roving`] group: a click, `Space` or the platform's own check
-/// chooses it, the arrow keys move the choice to a neighbour, and it is the group's tab
-/// stop while chosen or, with nothing chosen, while first.
+/// One choice within a [`Roving`] group.
+///
+/// A click, `Space` or the platform's own check chooses it, the arrow keys move the
+/// choice to a neighbour, and it is the group's tab stop while chosen or, with nothing
+/// chosen, while first.
 ///
 /// Outside a group it reports its role, is never checked and takes focus like any
 /// control.

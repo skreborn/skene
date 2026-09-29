@@ -126,11 +126,12 @@ impl ListboxGroup {
   }
 }
 
-/// A listbox: the options inside it are one tab stop, the arrow keys move focus
-/// between them without wrapping, `Home` and `End` reach the ends, typing moves focus
-/// to the option whose name the characters begin (a character repeated cycling through
-/// the options starting with it), and `Enter`, `Space` or a click chooses the focused
-/// one.
+/// A listbox: options chosen from a list that is one tab stop.
+///
+/// The arrow keys move focus between the options without wrapping, `Home` and `End`
+/// reach the ends, typing moves focus to the option whose name the characters begin (a
+/// character repeated cycling through the options starting with it), and `Enter`,
+/// `Space` or a click chooses the focused one.
 ///
 /// Controlled: the chosen value is what [`derive_chosen`](Self::derive_chosen) reads,
 /// and choosing only calls [`handle_choose`](Self::handle_choose) with the value asked
@@ -270,10 +271,12 @@ impl<P: Platform> Behavior<P> for Listbox {
   }
 }
 
-/// One option within a [`Listbox`]: a click, `Enter` or `Space` chooses it, the arrow
-/// keys move focus to a neighbour, `Home` and `End` to the ends, a typed character
-/// to the option the list's type-ahead picks, and it is the list's tab stop while
-/// chosen or, with nothing chosen, while first.
+/// One option within a [`Listbox`].
+///
+/// A click, `Enter` or `Space` chooses it, the arrow keys move focus to a neighbour,
+/// `Home` and `End` to the ends, a typed character to the option the list's type-ahead
+/// picks, and it is the list's tab stop while chosen or, with nothing chosen, while
+/// first.
 ///
 /// Outside a listbox it reports its role, is never selected and takes focus like any
 /// control.

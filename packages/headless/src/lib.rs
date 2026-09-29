@@ -801,10 +801,11 @@ pub fn pending_timers() -> usize {
   with_store(|store| store.timers.len())
 }
 
-/// Passes a frame: every property a resolution has observed is judged again at the
-/// clock's reading, so a value that moved since starts its transition there, and the
-/// clock then steps forward by `elapsed`; the next resolution samples every transition
-/// and animation at the new reading.
+/// Passes a frame, stepping the clock forward by `elapsed`.
+///
+/// Every property a resolution has observed is judged again at the clock's reading, so
+/// a value that moved since starts its transition there, before the clock steps; the
+/// next resolution samples every transition and animation at the new reading.
 pub fn advance(elapsed: std::time::Duration) {
   trigger(|| {
     let tracked = with_store(|store| store.tracked());
@@ -1230,9 +1231,11 @@ pub fn mirrored_children(node: NodeId) -> Vec<Handle> {
     .unwrap_or_default()
 }
 
-/// The color the property `key` of `node` resolves to: the variant in force under the
-/// environment and the node's hover and focus state, then its leaf through the
-/// scene's tokens, the expression evaluator or the recorded slot value.
+/// The color the property `key` of `node` resolves to.
+///
+/// The variant in force under the environment and the node's hover and focus state,
+/// then its leaf through the scene's tokens, the expression evaluator or the recorded
+/// slot value.
 #[must_use]
 pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color> {
   end_turn();

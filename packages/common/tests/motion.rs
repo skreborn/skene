@@ -1,6 +1,8 @@
 //! Motion on the host platform: a transition samples across the stepped clock from a
-//! derived write and a palette flip, reduced motion cuts, a keyframe animation resolves
-//! its token leaves, and a transition name reaches the props.
+//! derived write and a palette flip, reduced motion cuts, an interrupted transition
+//! reverses over what it played, a keyframe animation resolves its token leaves and
+//! moves from the resolved value where a frame is missing, and a transition name reaches
+//! the props.
 
 mod common;
 
@@ -146,6 +148,71 @@ fn a_token_keyframe_animation_samples_through_the_theme() {
   trigger_frame(Duration::from_secs(1));
 
   assert_eq!(resolve_color(card, COLOR), Some(blue()));
+
+  owner.dispose();
+}
+
+/// A write back to where a running transition began reverses it over the share it had
+/// played, as CSS's reversing shortening does.
+#[test]
+fn an_interrupted_transition_reverses_over_what_it_played() {
+  reset();
+
+  let owner = Owner::new();
+  let width = Signal::new(0f32);
+  let node = owner.enter(|| {
+    Container::<Headless>::new()
+      .derive_width(move || width.get())
+      .set_transition(linear(Property::Width))
+      .build()
+  });
+
+  assert_eq!(resolve_length(node, WIDTH), Some(0.));
+
+  width.set(100.);
+  trigger_frame(Duration::from_millis(250));
+
+  assert_eq!(resolve_length(node, WIDTH), Some(25.));
+
+  width.set(0.);
+  trigger_frame(Duration::from_millis(125));
+
+  assert_eq!(resolve_length(node, WIDTH), Some(12.5));
+
+  trigger_frame(Duration::from_millis(125));
+
+  assert_eq!(resolve_length(node, WIDTH), Some(0.));
+
+  owner.dispose();
+}
+
+/// A keyframe animation setting a color at its midpoint alone moves from the resolved
+/// color and back, as CSS's neutral keyframes do.
+#[test]
+fn a_keyframe_missing_its_ends_moves_from_the_resolved_value() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    Container::<Headless>::new()
+      .set_color(red())
+      .set_animation(Animation::new(1., [(50., frame(blue()))]).set_easing(Easing::Linear))
+      .build()
+  });
+
+  assert_eq!(resolve_color(node, COLOR), Some(red()));
+
+  trigger_frame(Duration::from_millis(250));
+
+  assert_eq!(resolve_color(node, COLOR), Some(red().mix(blue(), 0.5)));
+
+  trigger_frame(Duration::from_millis(250));
+
+  assert_eq!(resolve_color(node, COLOR), Some(blue()));
+
+  trigger_frame(Duration::from_secs(1));
+
+  assert_eq!(resolve_color(node, COLOR), Some(red()));
 
   owner.dispose();
 }

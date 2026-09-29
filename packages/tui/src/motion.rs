@@ -1,7 +1,5 @@
-//! Motion on the terminal's frame clock: a changed resolution starts a tween where a
-//! transition names the property, keyframe animations sample against the clock, and
-//! the presented style is the resolved one with every running tween and animation laid
-//! over it.
+//! Motion on the terminal's frame clock: core's runner, given each property as the
+//! node's resolution changes it and laid over the resolved style.
 
 use skene_core::{
   Animation,
@@ -19,7 +17,7 @@ use skene_core::{
   RunFieldVisitor,
   RunValue,
   Transition,
-  interpolate::{Interpolate as _, Tween, sample_keyframes},
+  interpolate::Motion,
 };
 
 use crate::{
@@ -28,32 +26,17 @@ use crate::{
   store::{PlainBox, PlainRun},
 };
 
-/// A property's key on the terminal.
-type Key = PropertyKey<TuiProperty>;
-
-/// What a box-like node runs: a tween per property in flight, the border ink's tween,
-/// and the clock reading its animations began at.
+/// What a box-like node runs: its properties' motion and its border ink's.
 #[derive(Default)]
 pub(crate) struct BoxMotion {
-  tweens: Vec<(Key, Tween<BoxValue<u32, TuiExt>>)>,
-  ink: Option<Tween<Color>>,
-  started: Option<f64>,
+  properties: Motion<TuiProperty, BoxValue<u32, TuiExt>>,
+  ink: Motion<TuiProperty, Color>,
 }
 
-/// What a run runs: a tween per property in flight, and the clock reading its
-/// animations began at.
+/// What a run runs: its properties' motion.
 #[derive(Default)]
 pub(crate) struct RunMotion {
-  tweens: Vec<(Key, Tween<RunValue<TuiExt>>)>,
-  started: Option<f64>,
-}
-
-/// What a node showed before a change: its presented style and its resolved target,
-/// so a tween starts where the eye left off and a change is judged against the value
-/// the node was heading for.
-pub(crate) struct Previous<'a, S> {
-  pub(crate) presented: &'a S,
-  pub(crate) target: &'a S,
+  properties: Motion<TuiProperty, RunValue<TuiExt>>,
 }
 
 /// What presenting a node at one clock reading produced.
@@ -64,360 +47,256 @@ pub(crate) struct Presented<S> {
   pub(crate) active: bool,
 }
 
-/// The last transition of `dynamics` covering `key`, unless reduced motion skips it.
-fn covering<'a, P: PartialEq>(
-  transitions: &'a [Transition<P>],
-  key: &PropertyKey<P>,
-  reduced: bool,
-) -> Option<&'a Transition<P>> {
-  transitions
-    .iter()
-    .rev()
-    .find(|transition| transition.property.covers(key))
-    .filter(|transition| !(reduced && transition.respects_reduced_motion))
-}
-
-/// The offset each animation samples at: its own at `elapsed`, or its resting end
-/// when reduced motion skips it.
-fn offsets<S>(animations: &[Animation<S>], elapsed: f64, reduced: bool) -> Vec<f32> {
-  animations
-    .iter()
-    .map(|animation| {
-      if reduced && animation.respects_reduced_motion {
-        animation.rest_offset()
-      }
-      else {
-        animation.offset(elapsed)
-      }
-    })
-    .collect()
-}
-
-/// Whether any of `animations` still plays `elapsed` seconds in.
-fn any_playing<S>(animations: &[Animation<S>], elapsed: f64, reduced: bool) -> bool {
-  animations
-    .iter()
-    .any(|animation| !(animation.is_done(elapsed) || reduced && animation.respects_reduced_motion))
+/// The clock reading a node presents at, and whether the reader prefers reduced motion.
+#[derive(Clone, Copy)]
+pub(crate) struct Clock {
+  pub(crate) now: f64,
+  pub(crate) reduced: bool,
 }
 
 impl BoxMotion {
-  /// Presents a box: starts a tween for every property whose target moved under a
-  /// transition, samples the running tweens and animations at `now`, and reports
-  /// whether any still runs.
+  /// Presents a box: retargets every property whose target moved since `previous`,
+  /// lays the running tweens and animations over the target, and reports whether any
+  /// still runs.
   pub(crate) fn present(
     &mut self,
-    previous: Option<&Previous<'_, PlainBox>>,
+    previous: Option<&PlainBox>,
     target: PlainBox,
     dynamics: &BoxDynamics<u32, TuiExt>,
     keyframes: &[Animation<PlainBox>],
-    now: f64,
-    reduced: bool,
+    clock: Clock,
   ) -> Presented<PlainBox> {
     if let Some(previous) = previous {
-      let mut start = StartBoxTweens {
-        motion: self,
+      PlainBox::for_each_field(&mut RetargetBox {
+        motion: &mut self.properties,
         previous,
         target: &target,
-        dynamics,
-        now,
-        reduced,
-      };
-
-      PlainBox::for_each_field(&mut start);
+        transitions: &dynamics.transitions,
+        clock,
+      });
     }
-
-    self.tweens.retain(|(_, tween)| !tween.is_done(now));
 
     let mut style = target;
-    let mut apply = ApplyBoxTweens {
-      motion: self,
+
+    PlainBox::for_each_field(&mut PresentBox {
+      motion: &mut self.properties,
       style: &mut style,
-      now,
-    };
-
-    PlainBox::for_each_field(&mut apply);
-
-    let elapsed = now - *self.started.get_or_insert(now);
-
-    if !keyframes.is_empty() {
-      let mut animate = AnimateBox {
-        keyframes,
-        offsets: offsets(keyframes, elapsed, reduced),
-        style: &mut style,
-      };
-
-      PlainBox::for_each_field(&mut animate);
-    }
+      keyframes,
+      clock,
+    });
 
     Presented {
       style,
-      active: !self.tweens.is_empty() || any_playing(keyframes, elapsed, reduced),
+      active: self
+        .properties
+        .is_running(keyframes, clock.now, clock.reduced),
     }
   }
 
   /// Presents the border's ink: a tween where the border transitions, else the target.
   pub(crate) fn present_ink(
     &mut self,
-    previous: Option<(Option<Color>, Option<Color>)>,
+    previous: Option<&Option<Color>>,
     target: Option<Color>,
     dynamics: &BoxDynamics<u32, TuiExt>,
-    now: f64,
-    reduced: bool,
+    clock: Clock,
   ) -> (Option<Color>, bool) {
-    if let Some((presented, previous_target)) = previous
-      && previous_target != target
-    {
-      self.ink = match (presented, target) {
-        (Some(from), Some(to)) => covering(
-          &dynamics.transitions,
-          &PropertyKey::Shared(Property::Border),
-          reduced,
-        )
-        .map(|transition| Tween::new(from, to, now, transition)),
-        _ => None,
-      };
+    const BORDER: PropertyKey<TuiProperty> = PropertyKey::Shared(Property::Border);
+
+    if let Some(previous) = previous {
+      self.ink.retarget(
+        BORDER,
+        previous.as_ref(),
+        target.as_ref(),
+        &dynamics.transitions,
+        clock.now,
+        clock.reduced,
+      );
     }
 
-    if self.ink.as_ref().is_some_and(|tween| tween.is_done(now)) {
-      self.ink = None;
-    }
+    let ink = self.ink.sample(BORDER, clock.now).or(target);
 
-    match &self.ink {
-      Some(tween) => (Some(tween.sample(now)), true),
-      None => (target, false),
-    }
+    (
+      ink,
+      self.ink.is_running::<()>(&[], clock.now, clock.reduced),
+    )
   }
 }
 
 impl RunMotion {
-  /// Presents a run: starts a tween for every property whose target moved under a
-  /// transition, samples the running tweens and animations at `now`, and reports
-  /// whether any still runs.
+  /// Presents a run: retargets every property whose target moved since `previous`,
+  /// lays the running tweens and animations over the target, and reports whether any
+  /// still runs.
   pub(crate) fn present(
     &mut self,
-    previous: Option<&Previous<'_, PlainRun>>,
+    previous: Option<&PlainRun>,
     target: PlainRun,
     dynamics: &RunDynamics<TuiExt>,
     keyframes: &[Animation<PlainRun>],
-    now: f64,
-    reduced: bool,
+    clock: Clock,
   ) -> Presented<PlainRun> {
     if let Some(previous) = previous {
-      let mut start = StartRunTweens {
-        motion: self,
+      PlainRun::for_each_field(&mut RetargetRun {
+        motion: &mut self.properties,
         previous,
         target: &target,
-        dynamics,
-        now,
-        reduced,
-      };
-
-      PlainRun::for_each_field(&mut start);
+        transitions: &dynamics.transitions,
+        clock,
+      });
     }
-
-    self.tweens.retain(|(_, tween)| !tween.is_done(now));
 
     let mut style = target;
-    let mut apply = ApplyRunTweens {
-      motion: self,
+
+    PlainRun::for_each_field(&mut PresentRun {
+      motion: &mut self.properties,
       style: &mut style,
-      now,
-    };
-
-    PlainRun::for_each_field(&mut apply);
-
-    let elapsed = now - *self.started.get_or_insert(now);
-
-    if !keyframes.is_empty() {
-      let mut animate = AnimateRun {
-        keyframes,
-        offsets: offsets(keyframes, elapsed, reduced),
-        style: &mut style,
-      };
-
-      PlainRun::for_each_field(&mut animate);
-    }
+      keyframes,
+      clock,
+    });
 
     Presented {
       style,
-      active: !self.tweens.is_empty() || any_playing(keyframes, elapsed, reduced),
+      active: self
+        .properties
+        .is_running(keyframes, clock.now, clock.reduced),
     }
   }
 }
 
-/// Starts or replaces the tween of every box property whose target moved.
-struct StartBoxTweens<'a> {
-  motion: &'a mut BoxMotion,
-  previous: &'a Previous<'a, PlainBox>,
+/// Retargets every box property whose target moved.
+struct RetargetBox<'a> {
+  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiExt>>,
+  previous: &'a PlainBox,
   target: &'a PlainBox,
-  dynamics: &'a BoxDynamics<u32, TuiExt>,
-  now: f64,
-  reduced: bool,
+  transitions: &'a [Transition<TuiProperty>],
+  clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TuiExt> for StartBoxTweens<'_> {
+impl BoxFieldVisitor<u32, TuiExt> for RetargetBox<'_> {
   fn field<F: BoxField<u32, TuiExt>>(&mut self) {
-    let next = F::get(self.target);
+    let (previous, target) = (F::get(self.previous), F::get(self.target));
 
-    if F::get(self.previous.target) == next {
+    if previous == target {
       return;
     }
 
-    self.motion.tweens.retain(|(key, _)| *key != F::KEY);
-
-    let (Some(from), Some(to)) = (F::get(self.previous.presented), next)
-    else {
-      return;
-    };
-    let Some(transition) = covering(&self.dynamics.transitions, &F::KEY, self.reduced)
-    else {
-      return;
-    };
-    let (from, to) = (from.clone().into_box_value(), to.clone().into_box_value());
-
-    if from.interpolates_with(&to) {
-      self
-        .motion
-        .tweens
-        .push((F::KEY, Tween::new(from, to, self.now, transition)));
-    }
+    self.motion.retarget(
+      F::KEY,
+      previous.clone().map(IntoBoxValue::into_box_value).as_ref(),
+      target.clone().map(IntoBoxValue::into_box_value).as_ref(),
+      self.transitions,
+      self.clock.now,
+      self.clock.reduced,
+    );
   }
 }
 
-/// Writes every running box tween's sample over the target.
-struct ApplyBoxTweens<'a> {
-  motion: &'a BoxMotion,
+/// Writes every box property's running tween and animations over the target.
+struct PresentBox<'a> {
+  motion: &'a mut Motion<TuiProperty, BoxValue<u32, TuiExt>>,
   style: &'a mut PlainBox,
-  now: f64,
-}
-
-impl BoxFieldVisitor<u32, TuiExt> for ApplyBoxTweens<'_> {
-  fn field<F: BoxField<u32, TuiExt>>(&mut self) {
-    if let Some((_, tween)) = self.motion.tweens.iter().find(|(key, _)| *key == F::KEY) {
-      *F::get_mut(self.style) = F::Value::from_box_value(tween.sample(self.now));
-    }
-  }
-}
-
-/// Lays every animation's sample over the style, in declaration order.
-struct AnimateBox<'a> {
   keyframes: &'a [Animation<PlainBox>],
-  offsets: Vec<f32>,
-  style: &'a mut PlainBox,
+  clock: Clock,
 }
 
-impl BoxFieldVisitor<u32, TuiExt> for AnimateBox<'_> {
+impl BoxFieldVisitor<u32, TuiExt> for PresentBox<'_> {
   fn field<F: BoxField<u32, TuiExt>>(&mut self) {
-    for (animation, offset) in self.keyframes.iter().zip(&self.offsets) {
-      let frames: Vec<(f32, BoxValue<u32, TuiExt>)> = animation
-        .keyframes
-        .iter()
-        .filter_map(|(percent, style)| {
-          F::get(style)
-            .clone()
-            .map(|value| (*percent, value.into_box_value()))
-        })
-        .collect();
+    let tweened = self.motion.sample(F::KEY, self.clock.now);
 
-      if let Some(value) = sample_keyframes(&frames, *offset, animation.easing) {
-        *F::get_mut(self.style) = F::Value::from_box_value(value);
-      }
+    if tweened.is_none() && self.keyframes.is_empty() {
+      return;
     }
+
+    let underlying =
+      tweened.or_else(|| F::get(self.style).clone().map(IntoBoxValue::into_box_value));
+    let value = self.motion.animate(
+      self.keyframes,
+      underlying,
+      |frame| F::get(frame).clone().map(IntoBoxValue::into_box_value),
+      self.clock.now,
+      self.clock.reduced,
+    );
+
+    *F::get_mut(self.style) = value.and_then(F::Value::from_box_value);
   }
 }
 
-/// Starts or replaces the tween of every run property whose target moved.
-struct StartRunTweens<'a> {
-  motion: &'a mut RunMotion,
-  previous: &'a Previous<'a, PlainRun>,
+/// Retargets every run property whose target moved.
+struct RetargetRun<'a> {
+  motion: &'a mut Motion<TuiProperty, RunValue<TuiExt>>,
+  previous: &'a PlainRun,
   target: &'a PlainRun,
-  dynamics: &'a RunDynamics<TuiExt>,
-  now: f64,
-  reduced: bool,
+  transitions: &'a [Transition<TuiProperty>],
+  clock: Clock,
 }
 
-impl RunFieldVisitor<TuiExt> for StartRunTweens<'_> {
+impl RunFieldVisitor<TuiExt> for RetargetRun<'_> {
   fn field<F: RunField<TuiExt>>(&mut self) {
-    let next = F::get(self.target);
+    let (previous, target) = (F::get(self.previous), F::get(self.target));
 
-    if F::get(self.previous.target) == next {
+    if previous == target {
       return;
     }
 
-    self.motion.tweens.retain(|(key, _)| *key != F::KEY);
-
-    let (Some(from), Some(to)) = (F::get(self.previous.presented), next)
-    else {
-      return;
-    };
-    let Some(transition) = covering(&self.dynamics.transitions, &F::KEY, self.reduced)
-    else {
-      return;
-    };
-    let (from, to) = (from.clone().into_run_value(), to.clone().into_run_value());
-
-    if from.interpolates_with(&to) {
-      self
-        .motion
-        .tweens
-        .push((F::KEY, Tween::new(from, to, self.now, transition)));
-    }
+    self.motion.retarget(
+      F::KEY,
+      previous.clone().map(IntoRunValue::into_run_value).as_ref(),
+      target.clone().map(IntoRunValue::into_run_value).as_ref(),
+      self.transitions,
+      self.clock.now,
+      self.clock.reduced,
+    );
   }
 }
 
-/// Writes every running run tween's sample over the target.
-struct ApplyRunTweens<'a> {
-  motion: &'a RunMotion,
+/// Writes every run property's running tween and animations over the target.
+struct PresentRun<'a> {
+  motion: &'a mut Motion<TuiProperty, RunValue<TuiExt>>,
   style: &'a mut PlainRun,
-  now: f64,
-}
-
-impl RunFieldVisitor<TuiExt> for ApplyRunTweens<'_> {
-  fn field<F: RunField<TuiExt>>(&mut self) {
-    if let Some((_, tween)) = self.motion.tweens.iter().find(|(key, _)| *key == F::KEY) {
-      *F::get_mut(self.style) = F::Value::from_run_value(tween.sample(self.now));
-    }
-  }
-}
-
-/// Lays every animation's sample over the style, in declaration order.
-struct AnimateRun<'a> {
   keyframes: &'a [Animation<PlainRun>],
-  offsets: Vec<f32>,
-  style: &'a mut PlainRun,
+  clock: Clock,
 }
 
-impl RunFieldVisitor<TuiExt> for AnimateRun<'_> {
+impl RunFieldVisitor<TuiExt> for PresentRun<'_> {
   fn field<F: RunField<TuiExt>>(&mut self) {
-    for (animation, offset) in self.keyframes.iter().zip(&self.offsets) {
-      let frames: Vec<(f32, RunValue<TuiExt>)> = animation
-        .keyframes
-        .iter()
-        .filter_map(|(percent, style)| {
-          F::get(style)
-            .clone()
-            .map(|value| (*percent, value.into_run_value()))
-        })
-        .collect();
+    let tweened = self.motion.sample(F::KEY, self.clock.now);
 
-      if let Some(value) = sample_keyframes(&frames, *offset, animation.easing) {
-        *F::get_mut(self.style) = F::Value::from_run_value(value);
-      }
+    if tweened.is_none() && self.keyframes.is_empty() {
+      return;
     }
+
+    let underlying =
+      tweened.or_else(|| F::get(self.style).clone().map(IntoRunValue::into_run_value));
+    let value = self.motion.animate(
+      self.keyframes,
+      underlying,
+      |frame| F::get(frame).clone().map(IntoRunValue::into_run_value),
+      self.clock.now,
+      self.clock.reduced,
+    );
+
+    *F::get_mut(self.style) = value.and_then(F::Value::from_run_value);
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{BoxDynamics, Color, Easing, Property, Transition};
+  use skene_core::{Animation, BoxDynamics, Color, Easing, Property, Transition};
 
-  use super::{BoxMotion, Previous};
+  use super::{BoxMotion, Clock};
   use crate::store::PlainBox;
 
   fn colored(color: Color) -> PlainBox {
     PlainBox {
       color: Some(color),
       ..PlainBox::default()
+    }
+  }
+
+  const fn at(now: f64) -> Clock {
+    Clock {
+      now,
+      reduced: false,
     }
   }
 
@@ -432,46 +311,70 @@ mod tests {
       animations: Vec::new(),
     };
     let mut motion = BoxMotion::default();
-    let first = motion.present(None, colored(black), &dynamics, &[], 0., false);
+    let first = motion.present(None, colored(black), &dynamics, &[], at(0.));
 
     assert_eq!(first.style.color, Some(black));
     assert!(!first.active);
 
-    let previous = Previous {
-      presented: &first.style,
-      target: &colored(black),
-    };
-    let moved = motion.present(Some(&previous), colored(white), &dynamics, &[], 0., false);
+    let moved = motion.present(
+      Some(&colored(black)),
+      colored(white),
+      &dynamics,
+      &[],
+      at(0.),
+    );
 
     assert_eq!(moved.style.color, Some(black));
     assert!(moved.active);
 
     let held = colored(white);
-    let previous = Previous {
-      presented: &moved.style,
-      target: &held,
-    };
-    let midway = motion.present(Some(&previous), colored(white), &dynamics, &[], 0.5, false);
+    let midway = motion.present(Some(&held), colored(white), &dynamics, &[], at(0.5));
 
     assert_eq!(midway.style.color, Some(black.mix(white, 0.5)));
     assert!(midway.active);
 
-    let previous = Previous {
-      presented: &midway.style,
-      target: &held,
-    };
-    let done = motion.present(Some(&previous), colored(white), &dynamics, &[], 1., false);
+    let done = motion.present(Some(&held), colored(white), &dynamics, &[], at(1.));
 
     assert_eq!(done.style.color, Some(white));
     assert!(!done.active);
 
-    let previous = Previous {
-      presented: &done.style,
-      target: &held,
-    };
-    let reduced = motion.present(Some(&previous), colored(black), &dynamics, &[], 1., true);
+    let reduced = motion.present(
+      Some(&held),
+      colored(black),
+      &dynamics,
+      &[],
+      Clock {
+        now: 1.,
+        reduced: true,
+      },
+    );
 
     assert_eq!(reduced.style.color, Some(black));
     assert!(!reduced.active);
+  }
+
+  /// A keyframe animation setting a color at its end alone moves from the resolved
+  /// color toward it.
+  #[test]
+  fn an_animation_without_a_first_frame_starts_from_the_target() {
+    let black = Color::srgb(0., 0., 0.);
+    let white = Color::srgb(1., 1., 1.);
+    let dynamics = BoxDynamics::default();
+    let fade = [Animation::new(1., [(100., colored(white))]).set_easing(Easing::Linear)];
+    let mut motion = BoxMotion::default();
+    let first = motion.present(None, colored(black), &dynamics, &fade, at(0.));
+
+    assert_eq!(first.style.color, Some(black));
+    assert!(first.active);
+
+    let midway = motion.present(
+      Some(&colored(black)),
+      colored(black),
+      &dynamics,
+      &fade,
+      at(0.5),
+    );
+
+    assert_eq!(midway.style.color, Some(black.mix(white, 0.5)));
   }
 }

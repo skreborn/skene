@@ -594,14 +594,20 @@ The public API speaks the ecosystem's standard reactive vocabulary:
 
 ## Motion
 
-`Transition` and keyframe `Animation` are data. The web compiles them to CSS; the
-terminal runs them on its frame clock, per value type (colors in Oklab, lengths
-linearly, quantized to cells and truecolor), from the resolution point that reports a
-changed value—never through the reactive graph per frame; the headless platform runs the
-same interpolation (`skene_core::interpolate`) under a clock a test advances. Every
-change source animates: a condition flipping, a token redefined, an expression input
-moving, a derived write. Reduced motion is respected by default. Keyframes may hold
-tokens. `set_transition_name` maps to `view-transition-name`; the router wraps a
+`Transition` and keyframe `Animation` are data. The web compiles them to CSS; every
+platform running motion on its own clock runs it through one runner,
+`skene_core::interpolate::Motion`: the terminal on its frame clock (quantized to cells and
+truecolor), the headless platform under a clock a test advances, native later. A
+platform hands the runner each property from the resolution point that reports a
+changed value—never through the reactive graph per frame—and it interpolates per value
+type, starting, reversing and cancelling transitions as CSS does: a change back to where
+a running transition began reverses it over the share it had played. A property a
+keyframe animation leaves out at `0%` or `100%` moves from and to the value beneath it,
+as CSS's neutral keyframes do. Colors mix in Oklab, as CSS Color 4 specifies for the
+`oklch()` values the web writes and Chromium does; Firefox still mixes them in sRGB.
+Every change source animates: a condition flipping, a token redefined, an expression
+input moving, a derived write. Reduced motion is respected by default. Keyframes may
+hold tokens. `set_transition_name` maps to `view-transition-name`; the router wraps a
 same-document navigation in `startViewTransition` when the app opts in
 (`view_transitions::enable`), the stylesheet emits `@view-transition` for cross-document
 navigations, and both degrade to a cut. A native platform will snapshot the outgoing tree

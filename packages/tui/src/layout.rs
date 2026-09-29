@@ -22,7 +22,7 @@ use taffy::{
 };
 
 use crate::{
-  motion::{Presented, Previous},
+  motion::{Clock, Presented},
   paint::{line_holding, longest_word, paragraph_scales, run_scale, sized_rows, wrap_sized},
   resolve::Env,
   store::{BoxCache, Handle, Kind, PlainBox, PlainRun, Record, RunCache, Store},
@@ -400,8 +400,7 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
     let frame = Frame {
       generation,
       interaction,
-      now,
-      reduced,
+      clock: Clock { now, reduced },
     };
     // A node whose presentation came out different from the last one repaints.
     let (repaint, active) = match &mut record.kind {
@@ -521,12 +520,11 @@ fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
 }
 
 /// What one restyle resolves under: the generation and interaction it is cached as,
-/// and the clock and preference its motion samples with.
+/// and the clock its motion samples at.
 struct Frame {
   generation: u64,
   interaction: crate::store::Interaction,
-  now: f64,
-  reduced: bool,
+  clock: Clock,
 }
 
 /// Presents a run's resolution over its motion and caches it; `(repaint, active)`.
@@ -539,21 +537,17 @@ fn present_run(
   frame: &Frame,
 ) -> (bool, bool) {
   let mut active = false;
-  let previous = cache.as_ref().map(|cache| Previous {
-    presented: &cache.style,
-    target: &cache.target,
-  });
+  let previous = cache.as_ref().map(|cache| &cache.target);
   let presented = resolved.map(|(target, layout)| {
     let Presented {
       style,
       active: running,
     } = motion.present(
-      previous.as_ref(),
+      previous,
       target.clone(),
       &props.dynamics,
       keyframes,
-      frame.now,
-      frame.reduced,
+      frame.clock,
     );
 
     active |= running;
@@ -586,30 +580,21 @@ fn present_box(
   else {
     return (false, false);
   };
-  let previous = inner.cache.as_ref().map(|cache| Previous {
-    presented: &cache.style,
-    target: &cache.target,
-  });
   let Presented {
     style,
     active: running,
   } = inner.motion.present(
-    previous.as_ref(),
+    inner.cache.as_ref().map(|cache| &cache.target),
     target.clone(),
     &inner.props.dynamics,
     keyframes,
-    frame.now,
-    frame.reduced,
+    frame.clock,
   );
   let (border_ink, inking) = inner.motion.present_ink(
-    inner
-      .cache
-      .as_ref()
-      .map(|cache| (cache.border_ink, cache.target_ink)),
+    inner.cache.as_ref().map(|cache| &cache.target_ink),
     target_ink,
     &inner.props.dynamics,
-    frame.now,
-    frame.reduced,
+    frame.clock,
   );
   let repaint = inner
     .cache

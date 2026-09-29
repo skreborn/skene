@@ -36,11 +36,6 @@ left half-done in a code comment.
     `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; a
     token's value cached at its defining scope, with per-scope invalidation in place of
     the global generation, where each consumer resolves it there afresh today.
-    - One motion runner in core, with a property table giving each property its unit
-    class, in place of the terminal's and headless's own, for native too: neutral
-    keyframes for a property missing at 0% or 100%, interpolating from the underlying
-    value as CSS does where the first frame holds today, and CSS's reversing shortening
-    for an interrupted transition.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which
     the terminal's spans read from the typography where the web inherits them; a group
     run's state variants reach its spans, as a rule on the group's class redefining the
@@ -738,3 +733,6 @@ every item is proven through tmux and ssh as well as bare.
 - One app serving both media: the two galleries still differ on 431 of 893 lines once
   numbers are stripped.
 - A stable plugin ABI: nobody asks for one.
+- A property table giving each property an interpolation class and a unit class: a
+  value's `Interpolate` answers per pair, as CSS computes it per pair (a length and
+  `Auto` are discrete, two lengths are not), and the value's variant is its unit.

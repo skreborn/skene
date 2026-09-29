@@ -618,25 +618,21 @@ pub fn skene_core::executor::start(impl core::future::future::Future<Output = ()
 pub fn skene_core::executor::task_count() -> usize
 pub fn skene_core::executor::wait(core::time::Duration) -> bool
 pub mod skene_core::interpolate
-pub struct skene_core::interpolate::Tween<V>
-pub skene_core::interpolate::Tween::delay: f32
-pub skene_core::interpolate::Tween::duration: f32
-pub skene_core::interpolate::Tween::easing: skene_core::Easing
-pub skene_core::interpolate::Tween::from: V
-pub skene_core::interpolate::Tween::start: f64
-pub skene_core::interpolate::Tween::to: V
-impl<V: skene_core::interpolate::Interpolate> skene_core::interpolate::Tween<V>
-pub fn skene_core::interpolate::Tween<V>::is_done(&self, f64) -> bool
-pub const fn skene_core::interpolate::Tween<V>::new<P>(V, V, f64, &skene_core::Transition<P>) -> Self
-pub fn skene_core::interpolate::Tween<V>::progress(&self, f64) -> f32
-pub fn skene_core::interpolate::Tween<V>::sample(&self, f64) -> V
-impl<V: core::clone::Clone> core::clone::Clone for skene_core::interpolate::Tween<V>
-pub fn skene_core::interpolate::Tween<V>::clone(&self) -> skene_core::interpolate::Tween<V>
-impl<V: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::interpolate::Tween<V>
-pub fn skene_core::interpolate::Tween<V>::eq(&self, &skene_core::interpolate::Tween<V>) -> bool
-impl<V: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::interpolate::Tween<V>
-impl<V: core::fmt::Debug> core::fmt::Debug for skene_core::interpolate::Tween<V>
-pub fn skene_core::interpolate::Tween<V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::interpolate::Motion<P, V>
+impl<P, V> skene_core::interpolate::Motion<P, V>
+pub const fn skene_core::interpolate::Motion<P, V>::new() -> Self
+pub const fn skene_core::interpolate::Motion<P, V>::started_at(f64) -> Self
+impl<P: skene_core::PropertyName, V: skene_core::interpolate::Interpolate + core::cmp::PartialEq> skene_core::interpolate::Motion<P, V>
+pub fn skene_core::interpolate::Motion<P, V>::animate<S>(&mut self, &[skene_core::Animation<S>], core::option::Option<V>, impl core::ops::function::Fn(&S) -> core::option::Option<V>, f64, bool) -> core::option::Option<V>
+pub fn skene_core::interpolate::Motion<P, V>::is_running<S>(&mut self, &[skene_core::Animation<S>], f64, bool) -> bool
+pub fn skene_core::interpolate::Motion<P, V>::retarget(&mut self, skene_core::PropertyKey<P>, core::option::Option<&V>, core::option::Option<&V>, &[skene_core::Transition<P>], f64, bool)
+pub fn skene_core::interpolate::Motion<P, V>::sample(&self, skene_core::PropertyKey<P>, f64) -> core::option::Option<V>
+impl<P, V> core::default::Default for skene_core::interpolate::Motion<P, V>
+pub fn skene_core::interpolate::Motion<P, V>::default() -> Self
+impl<P: core::clone::Clone, V: core::clone::Clone> core::clone::Clone for skene_core::interpolate::Motion<P, V>
+pub fn skene_core::interpolate::Motion<P, V>::clone(&self) -> skene_core::interpolate::Motion<P, V>
+impl<P: core::fmt::Debug, V: core::fmt::Debug> core::fmt::Debug for skene_core::interpolate::Motion<P, V>
+pub fn skene_core::interpolate::Motion<P, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait skene_core::interpolate::Interpolate: core::clone::Clone
 pub fn skene_core::interpolate::Interpolate::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::interpolate::Interpolate::interpolates_with(&self, &Self) -> bool
@@ -673,7 +669,6 @@ pub fn skene_core::Spacing<T>::interpolates_with(&self, &Self) -> bool
 impl<X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::RunValue<X>
 pub fn skene_core::RunValue<X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::RunValue<X>::interpolates_with(&self, &Self) -> bool
-pub fn skene_core::interpolate::sample_keyframes<V: skene_core::interpolate::Interpolate>(&[(f32, V)], f32, skene_core::Easing) -> core::option::Option<V>
 pub mod skene_core::run_fields
 pub struct skene_core::run_fields::Decoration
 impl core::clone::Clone for skene_core::run_fields::Decoration

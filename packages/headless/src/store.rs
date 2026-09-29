@@ -30,7 +30,7 @@ use skene_core::{
   Slot,
   TextSelection,
   Timers,
-  interpolate::Tween,
+  interpolate::Motion,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
@@ -56,18 +56,17 @@ pub(crate) enum Kind {
   Scope,
 }
 
-/// The motion a node runs: the value each resolved property is heading for, the tween
-/// of each property in flight, and the clock reading the node was created at.
+/// The motion a node runs: the value each resolved property is heading for, and the
+/// runner its transitions and animations play through.
 #[derive(Default)]
-pub(crate) struct Motion {
+pub(crate) struct NodeMotion {
   /// The node the record realizes, once a resolution named it.
   pub node: Option<NodeId>,
   /// The value last resolved per property, which a change is judged against.
-  pub targets: FxHashMap<PropertyKey<NoProperty>, SlotValue>,
-  /// The tween of each property in flight.
-  pub tweens: FxHashMap<PropertyKey<NoProperty>, Tween<SlotValue>>,
-  /// The clock reading the node was created at, which its animations count from.
-  pub started: f64,
+  pub targets: FxHashMap<PropertyKey<NoProperty>, Option<SlotValue>>,
+  /// The tweens in flight, and the clock the animations count from: the node's
+  /// creation.
+  pub runner: Motion<NoProperty, SlotValue>,
 }
 
 /// One realized node.
@@ -107,7 +106,7 @@ pub(crate) struct Record {
   /// The painter a painted box draws with.
   pub painter: Option<Rc<Painter>>,
   /// The motion the node runs.
-  pub motion: Motion,
+  pub motion: NodeMotion,
 }
 
 impl Kind {
@@ -152,7 +151,7 @@ impl Record {
       children: Vec::new(),
       size_observers: Vec::new(),
       painter: None,
-      motion: Motion::default(),
+      motion: NodeMotion::default(),
     }
   }
 }
@@ -270,7 +269,7 @@ impl Default for Store {
 impl Store {
   /// Mints a record and returns its handle.
   pub(crate) fn create(&mut self, mut record: Record) -> Handle {
-    record.motion.started = self.clock;
+    record.motion.runner = Motion::started_at(self.clock);
 
     if let Some(index) = self.free.pop() {
       let entry = &mut self.entries[index as usize];

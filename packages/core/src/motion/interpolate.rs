@@ -1,7 +1,8 @@
-//! The interpolation every platform running motion on its own clock shares: the easing
-//! curves, the in-between value per value type, and the tween that samples them.
+//! The motion every platform running it on its own clock shares: the easing curves, the
+//! in-between value per value type, and the runner that samples a node's transitions
+//! and keyframe animations.
 
-use super::{Easing, Transition};
+use super::{Animation, Easing, Transition};
 use crate::{
   Border,
   BoxValue,
@@ -9,6 +10,8 @@ use crate::{
   Dimension,
   Flexibility,
   Inset,
+  PropertyKey,
+  PropertyName,
   RunValue,
   Scalar,
   SlotValue,
@@ -237,39 +240,20 @@ impl<X: StyleExtension> Interpolate for RunValue<X> {
 /// One property in flight: from the value it showed to the value it is due, over a
 /// transition's timing, against a clock in seconds.
 #[derive(Debug, Clone, PartialEq)]
-#[must_use]
-pub struct Tween<V> {
-  /// The value the property showed when the change arrived.
-  pub from: V,
-  /// The value the property is due.
-  pub to: V,
-  /// The clock reading the change arrived at.
-  pub start: f64,
-  /// The interpolation length, in seconds.
-  pub duration: f32,
-  /// The delay before it starts, in seconds.
-  pub delay: f32,
-  /// The timing curve.
-  pub easing: Easing,
+struct Tween<V> {
+  from: V,
+  to: V,
+  reversing_from: V,
+  shortening: f32,
+  start: f64,
+  duration: f32,
+  delay: f32,
+  easing: Easing,
 }
 
 impl<V: Interpolate> Tween<V> {
-  /// A tween from `from` to `to` starting at `start`, timed by `transition`.
-  #[inline(always)]
-  pub const fn new<P>(from: V, to: V, start: f64, transition: &Transition<P>) -> Self {
-    Self {
-      from,
-      to,
-      start,
-      duration: transition.duration,
-      delay: transition.delay,
-      easing: transition.easing,
-    }
-  }
-
   /// The linear progress at clock reading `now`, `0.` to `1.`.
-  #[must_use]
-  pub fn progress(&self, now: f64) -> f32 {
+  fn progress(&self, now: f64) -> f32 {
     let played = now - self.start - f64::from(self.delay);
 
     if played <= 0. {
@@ -291,14 +275,12 @@ impl<V: Interpolate> Tween<V> {
 
   /// Whether the tween has reached its end at clock reading `now`.
   #[inline(always)]
-  #[must_use]
-  pub fn is_done(&self, now: f64) -> bool {
+  fn is_done(&self, now: f64) -> bool {
     self.progress(now) >= 1.
   }
 
-  /// The value shown at clock reading `now`; a discrete pair shows `to` from halfway.
-  #[inline(always)]
-  pub fn sample(&self, now: f64) -> V {
+  /// The value shown at clock reading `now`.
+  fn sample(&self, now: f64) -> V {
     let amount = self.easing.apply(self.progress(now));
 
     self
@@ -306,25 +288,253 @@ impl<V: Interpolate> Tween<V> {
       .interpolate(&self.to, amount)
       .unwrap_or_else(|| snap(&self.from, &self.to, amount))
   }
+
+  /// The share of its full duration a tween reversing this one at `now` runs: the
+  /// eased share of the way this one has come, as CSS's reversing shortening factor.
+  fn reversing_shortening(&self, now: f64) -> f32 {
+    (self.easing.apply(self.progress(now)) * self.shortening + (1. - self.shortening))
+      .abs()
+      .clamp(0., 1.)
+  }
+}
+
+/// One node's motion on a platform's own clock: the tween of each property in flight,
+/// and the clock reading its keyframe animations count from.
+///
+/// A platform [retargets](Self::retarget) a property whenever the value it resolves to
+/// changes, shows what [`sample`](Self::sample) answers while a tween runs, lays the
+/// node's keyframe animations over with [`animate`](Self::animate), and asks
+/// [`is_running`](Self::is_running) whether another frame is due.
+#[derive(Debug, Clone)]
+#[must_use]
+pub struct Motion<P, V> {
+  tweens: Vec<(PropertyKey<P>, Tween<V>)>,
+  started: Option<f64>,
+}
+
+impl<P, V> Motion<P, V> {
+  /// Motion whose animations count from the first clock reading it is given.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      tweens: Vec::new(),
+      started: None,
+    }
+  }
+
+  /// Motion whose animations count from clock reading `clock`.
+  #[inline(always)]
+  pub const fn started_at(clock: f64) -> Self {
+    Self {
+      tweens: Vec::new(),
+      started: Some(clock),
+    }
+  }
+
+  /// The seconds the animations have played at clock reading `now`, their clock
+  /// starting there unless it has.
+  #[inline(always)]
+  fn elapsed(&mut self, now: f64) -> f64 {
+    now - *self.started.get_or_insert(now)
+  }
+}
+
+impl<P, V> Default for Motion<P, V> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<P: PropertyName, V: Interpolate + PartialEq> Motion<P, V> {
+  /// Judges the value `key` resolves to moving from `previous` to `target` at clock
+  /// reading `now`, as CSS starts a transition.
+  ///
+  /// Under the last of `transitions` covering the property, a tween starts from the
+  /// value showing toward `target`, unless `reduced` motion skips that transition, the
+  /// pair is discrete, or the property shows `target` already. A change back to where
+  /// a running tween began reverses it over the share of its duration it had played.
+  /// Otherwise the property's tween stops, and `target` shows at once.
+  pub fn retarget(
+    &mut self,
+    key: PropertyKey<P>,
+    previous: Option<&V>,
+    target: Option<&V>,
+    transitions: &[Transition<P>],
+    now: f64,
+    reduced: bool,
+  ) {
+    if previous == target {
+      return;
+    }
+
+    let running = self
+      .tweens
+      .iter()
+      .position(|(held, _)| *held == key)
+      .map(|index| self.tweens.swap_remove(index).1)
+      .filter(|tween| !tween.is_done(now));
+    let Some(to) = target
+    else {
+      return;
+    };
+    let Some(from) = running
+      .as_ref()
+      .map_or_else(|| previous.cloned(), |tween| Some(tween.sample(now)))
+    else {
+      return;
+    };
+    let Some(transition) = transitions
+      .iter()
+      .rev()
+      .find(|transition| transition.property.covers(&key))
+      .filter(|transition| !(reduced && transition.respects_reduced_motion))
+    else {
+      return;
+    };
+
+    if transition.duration.max(0.) + transition.delay <= 0.
+      || from == *to
+      || !from.interpolates_with(to)
+    {
+      return;
+    }
+
+    let (reversing_from, shortening) = match running {
+      Some(running) if running.reversing_from == *to => {
+        let shortening = running.reversing_shortening(now);
+
+        (running.to, shortening)
+      }
+      _ => (from.clone(), 1.),
+    };
+    let delay = if transition.delay < 0. {
+      transition.delay * shortening
+    }
+    else {
+      transition.delay
+    };
+
+    self.tweens.push((
+      key,
+      Tween {
+        from,
+        to: to.clone(),
+        reversing_from,
+        shortening,
+        start: now,
+        duration: transition.duration.max(0.) * shortening,
+        delay,
+        easing: transition.easing,
+      },
+    ));
+  }
+
+  /// The value `key`'s tween shows at clock reading `now`; `None` where none runs.
+  #[must_use]
+  pub fn sample(&self, key: PropertyKey<P>, now: f64) -> Option<V> {
+    self
+      .tweens
+      .iter()
+      .find(|(held, _)| *held == key)
+      .map(|(_, tween)| tween)
+      .filter(|tween| !tween.is_done(now))
+      .map(|tween| tween.sample(now))
+  }
+
+  /// `underlying` with `animations` laid over in declaration order at clock reading
+  /// `now`, `read` taking the property from a keyframe; `None` where nothing sets it.
+  ///
+  /// An animation setting the property samples its keyframes where it stands, one
+  /// respecting reduced motion resting on its final frame where `reduced`; where the
+  /// property is missing at `0%` or `100%`, it moves from or to the value beneath, as
+  /// CSS's neutral keyframes do.
+  pub fn animate<S>(
+    &mut self,
+    animations: &[Animation<S>],
+    underlying: Option<V>,
+    read: impl Fn(&S) -> Option<V>,
+    now: f64,
+    reduced: bool,
+  ) -> Option<V> {
+    if animations.is_empty() {
+      return underlying;
+    }
+
+    let elapsed = self.elapsed(now);
+
+    animations.iter().fold(underlying, |value, animation| {
+      let frames: Vec<(f32, V)> = animation
+        .keyframes
+        .iter()
+        .filter_map(|(percent, frame)| Some((*percent, read(frame)?)))
+        .collect();
+
+      sample_keyframes(
+        &frames,
+        animation.offset_under(elapsed, reduced),
+        animation.easing,
+        value.as_ref(),
+      )
+      .or(value)
+    })
+  }
+
+  /// Whether a tween runs or one of `animations` plays at clock reading `now`, so
+  /// another frame is due; the tweens that have finished are forgotten.
+  pub fn is_running<S>(&mut self, animations: &[Animation<S>], now: f64, reduced: bool) -> bool {
+    self.tweens.retain(|(_, tween)| !tween.is_done(now));
+
+    if !self.tweens.is_empty() {
+      return true;
+    }
+
+    if animations.is_empty() {
+      return false;
+    }
+
+    let elapsed = self.elapsed(now);
+
+    animations
+      .iter()
+      .any(|animation| animation.plays(elapsed, reduced))
+  }
 }
 
 /// The value of `frames` at `offset` percent: the two frames around it interpolated
-/// through `easing` over their interval, the nearest one alone past either end; `None`
-/// for no frames.
+/// through `easing` over their interval; `None` for no frames.
 ///
-/// Of frames sharing an offset, the last declared stands, and a discrete pair turns
-/// halfway through its eased interval, as in CSS.
-pub fn sample_keyframes<V: Interpolate>(
+/// Where no frame stands at `0%` or `100%`, `underlying` stands there, as CSS's neutral
+/// keyframes do, and without it the nearest frame holds past either end. Of frames
+/// sharing an offset, the last declared stands, and a discrete pair turns halfway
+/// through its eased interval, as in CSS.
+fn sample_keyframes<V: Interpolate>(
   frames: &[(f32, V)],
   offset: f32,
   easing: Easing,
+  underlying: Option<&V>,
 ) -> Option<V> {
-  let before = frames
-    .iter()
+  if frames.is_empty() {
+    return None;
+  }
+
+  let neutral = |edge: f32, at_edge: fn(f32) -> bool| {
+    underlying
+      .filter(|_| !frames.iter().any(|(percent, _)| at_edge(*percent)))
+      .map(|value| (edge, value))
+  };
+  let first = neutral(0., |percent| percent <= 0.);
+  let last = neutral(100., |percent| percent >= 100.);
+  let all = || {
+    first
+      .into_iter()
+      .chain(frames.iter().map(|(percent, value)| (*percent, value)))
+      .chain(last)
+  };
+  let before = all()
     .filter(|(percent, _)| *percent <= offset)
     .max_by(|(left, _), (right, _)| left.total_cmp(right));
-  let after = frames
-    .iter()
+  let after = all()
     .rev()
     .filter(|(percent, _)| *percent >= offset)
     .min_by(|(left, _), (right, _)| left.total_cmp(right));
@@ -352,8 +562,21 @@ pub fn sample_keyframes<V: Interpolate>(
 
 #[cfg(test)]
 mod tests {
-  use super::{Interpolate, Tween, sample_keyframes};
-  use crate::{Color, Dimension, Easing, Inset, NoProperty, Property, Transition};
+  use super::{Interpolate, Motion, sample_keyframes};
+  use crate::{
+    Animation,
+    Color,
+    Dimension,
+    Easing,
+    Inset,
+    NoProperty,
+    Property,
+    PropertyKey,
+    Transition,
+  };
+
+  const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
+  const HEIGHT: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Height);
 
   /// The named curves start at rest and end at rest, and the linear one is the
   /// identity.
@@ -396,23 +619,109 @@ mod tests {
     );
   }
 
-  /// A tween waits out its delay, samples its curve, and reports when it is done.
+  /// A retargeted property waits out its transition's delay, samples its curve, and
+  /// runs until the transition ends.
   #[test]
-  #[expect(
-    clippy::float_cmp,
-    reason = "a linear tween's samples at these instants are exact"
-  )]
-  fn tweens_sample_their_transition() {
-    let transition = Transition::<NoProperty>::new(Property::Width, 1.)
+  fn a_retarget_tweens_under_its_transition() {
+    let transitions = [Transition::<NoProperty>::new(Property::Width, 1.)
       .set_delay(0.5)
-      .set_easing(Easing::Linear);
-    let tween = Tween::new(0f32, 100., 2., &transition);
+      .set_easing(Easing::Linear)];
+    let mut motion = Motion::<NoProperty, f32>::new();
 
-    assert_eq!(tween.sample(2.25), 0.);
-    assert!((tween.sample(3.) - 50.).abs() < 1e-4);
-    assert_eq!(tween.sample(4.), 100.);
-    assert!(!tween.is_done(3.4));
-    assert!(tween.is_done(3.5));
+    motion.retarget(WIDTH, Some(&0.), Some(&100.), &transitions, 2., false);
+
+    assert_eq!(motion.sample(WIDTH, 2.25), Some(0.));
+    assert!((motion.sample(WIDTH, 3.).unwrap() - 50.).abs() < 1e-4);
+    assert_eq!(motion.sample(WIDTH, 3.5), None);
+    assert!(motion.is_running::<()>(&[], 3.4, false));
+    assert!(!motion.is_running::<()>(&[], 3.5, false));
+  }
+
+  /// A change no transition covers, one reduced motion skips, and a discrete pair each
+  /// show the target at once.
+  #[test]
+  fn uncovered_skipped_and_discrete_changes_cut() {
+    let transitions = [Transition::<NoProperty>::new(Property::Width, 1.)];
+    let mut motion = Motion::<NoProperty, Dimension<f32>>::new();
+    let (short, long) = (Dimension::Length(0.), Dimension::Length(10.));
+
+    motion.retarget(HEIGHT, Some(&short), Some(&long), &transitions, 0., false);
+    motion.retarget(WIDTH, Some(&short), Some(&long), &transitions, 0., true);
+
+    assert_eq!(motion.sample(HEIGHT, 0.5), None);
+    assert_eq!(motion.sample(WIDTH, 0.5), None);
+
+    motion.retarget(
+      WIDTH,
+      Some(&long),
+      Some(&Dimension::Auto),
+      &transitions,
+      0.,
+      false,
+    );
+
+    assert_eq!(motion.sample(WIDTH, 0.5), None);
+
+    motion.retarget(
+      WIDTH,
+      Some(&Dimension::Auto),
+      Some(&short),
+      &transitions,
+      0.,
+      false,
+    );
+    motion.retarget(WIDTH, Some(&short), Some(&long), &transitions, 0., false);
+
+    assert!(motion.sample(WIDTH, 0.5).is_some());
+  }
+
+  /// A change back to where a running tween began reverses it over the eased share it
+  /// had played, and reversing that reversal runs the rest, as CSS's reversing
+  /// shortening does.
+  #[test]
+  fn a_reversal_shortens_by_the_share_played() {
+    let transitions =
+      [Transition::<NoProperty>::new(Property::Width, 1.).set_easing(Easing::Linear)];
+    let mut motion = Motion::<NoProperty, f32>::new();
+
+    motion.retarget(WIDTH, Some(&0.), Some(&100.), &transitions, 0., false);
+    motion.retarget(WIDTH, Some(&100.), Some(&0.), &transitions, 0.25, false);
+
+    assert_eq!(motion.sample(WIDTH, 0.375), Some(12.5));
+    assert_eq!(motion.sample(WIDTH, 0.5), None);
+
+    motion.retarget(WIDTH, Some(&0.), Some(&100.), &transitions, 0.375, false);
+
+    assert_eq!(motion.sample(WIDTH, 0.8125), Some(56.25));
+    assert!(motion.is_running::<()>(&[], 1.24, false));
+    assert!(!motion.is_running::<()>(&[], 1.25, false));
+  }
+
+  /// Animations lay over in declaration order, each over the value beneath it; one
+  /// setting nothing leaves the value alone, and a reader preferring reduced motion
+  /// sees each on its final frame.
+  #[test]
+  fn animations_lay_over_in_order() {
+    let fade = Animation::new(1., [(100., Some(0f32))]).set_easing(Easing::Linear);
+    let pulse = Animation::new(1., [(50., Some(20f32))]).set_easing(Easing::Linear);
+    let idle = Animation::new(1., [(50., None)]);
+    let animations = [fade, pulse, idle];
+    let mut motion = Motion::<NoProperty, f32>::started_at(0.);
+
+    assert_eq!(
+      motion.animate(&animations, Some(40.), |frame| *frame, 0.25, false),
+      Some(25.)
+    );
+    assert_eq!(
+      motion.animate(&animations, Some(40.), |frame| *frame, 0.25, true),
+      Some(0.)
+    );
+    assert_eq!(
+      motion.animate(&animations[2..], Some(7.), |frame| *frame, 0.5, false),
+      Some(7.)
+    );
+    assert!(motion.is_running(&animations, 0.5, false));
+    assert!(!motion.is_running(&animations, 0.5, true));
   }
 
   /// Keyframes interpolate between their neighbours and hold past either end; colors
@@ -421,19 +730,28 @@ mod tests {
   fn keyframes_sample_between_neighbours() {
     let frames = [(0., 0f32), (50., 10.), (100., 30.)];
 
-    assert_eq!(sample_keyframes(&frames, 25., Easing::Linear), Some(5.));
-    assert_eq!(sample_keyframes(&frames, 75., Easing::Linear), Some(20.));
     assert_eq!(
-      sample_keyframes(&frames[1..], 10., Easing::Linear),
+      sample_keyframes(&frames, 25., Easing::Linear, None),
+      Some(5.)
+    );
+    assert_eq!(
+      sample_keyframes(&frames, 75., Easing::Linear, None),
+      Some(20.)
+    );
+    assert_eq!(
+      sample_keyframes(&frames[1..], 10., Easing::Linear, None),
       Some(10.)
     );
 
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
-    let mid = sample_keyframes(&[(0., black), (100., white)], 50., Easing::Linear).unwrap();
+    let mid = sample_keyframes(&[(0., black), (100., white)], 50., Easing::Linear, None).unwrap();
 
     assert_eq!(Some(mid), black.interpolate(&white, 0.5));
-    assert_eq!(sample_keyframes::<f32>(&[], 50., Easing::Linear), None);
+    assert_eq!(
+      sample_keyframes::<f32>(&[], 50., Easing::Linear, None),
+      None
+    );
   }
 
   /// The easing curves each keyframe interval on its own, as CSS's timing function
@@ -443,19 +761,22 @@ mod tests {
     let frames = [(0., 0f32), (50., 10.), (100., 30.)];
     let eased = Easing::EaseIn.apply(0.5);
 
-    assert!((sample_keyframes(&frames, 25., Easing::EaseIn).unwrap() - 10. * eased).abs() < 1e-4);
     assert!(
-      (sample_keyframes(&frames, 75., Easing::EaseIn).unwrap() - (10. + 20. * eased)).abs() < 1e-4
+      (sample_keyframes(&frames, 25., Easing::EaseIn, None).unwrap() - 10. * eased).abs() < 1e-4
+    );
+    assert!(
+      (sample_keyframes(&frames, 75., Easing::EaseIn, None).unwrap() - (10. + 20. * eased)).abs()
+        < 1e-4
     );
 
     let sizes = [(0., Dimension::<f32>::Auto), (100., Dimension::Length(10.))];
 
     assert_eq!(
-      sample_keyframes(&sizes, 40., Easing::Linear),
+      sample_keyframes(&sizes, 40., Easing::Linear, None),
       Some(Dimension::Auto)
     );
     assert_eq!(
-      sample_keyframes(&sizes, 60., Easing::Linear),
+      sample_keyframes(&sizes, 60., Easing::Linear, None),
       Some(Dimension::Length(10.))
     );
   }
@@ -465,8 +786,45 @@ mod tests {
   fn a_repeated_offset_takes_its_last_frame() {
     let frames = [(0., 0f32), (50., 10.), (50., 20.), (100., 40.)];
 
-    assert_eq!(sample_keyframes(&frames, 25., Easing::Linear), Some(10.));
-    assert_eq!(sample_keyframes(&frames, 50., Easing::Linear), Some(20.));
-    assert_eq!(sample_keyframes(&frames, 75., Easing::Linear), Some(30.));
+    assert_eq!(
+      sample_keyframes(&frames, 25., Easing::Linear, None),
+      Some(10.)
+    );
+    assert_eq!(
+      sample_keyframes(&frames, 50., Easing::Linear, None),
+      Some(20.)
+    );
+    assert_eq!(
+      sample_keyframes(&frames, 75., Easing::Linear, None),
+      Some(30.)
+    );
+  }
+
+  /// A property missing at `0%` or `100%` moves from or to the underlying value, and
+  /// holds its nearest frame where there is none.
+  #[test]
+  fn missing_ends_take_the_underlying_value() {
+    let middle = [(50., 10f32)];
+
+    assert_eq!(
+      sample_keyframes(&middle, 25., Easing::Linear, Some(&0.)),
+      Some(5.)
+    );
+    assert_eq!(
+      sample_keyframes(&middle, 75., Easing::Linear, Some(&30.)),
+      Some(20.)
+    );
+    assert_eq!(
+      sample_keyframes(&middle, 25., Easing::Linear, None),
+      Some(10.)
+    );
+    assert_eq!(
+      sample_keyframes(&[(100., 40f32)], 25., Easing::Linear, Some(&0.)),
+      Some(10.)
+    );
+    assert_eq!(
+      sample_keyframes(&[(0., 40f32)], 25., Easing::Linear, Some(&0.)),
+      Some(30.)
+    );
   }
 }

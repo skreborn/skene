@@ -24,7 +24,6 @@ use skene_core::{
   Size,
   TokenName,
   Transition,
-  interpolate::{Interpolate as _, Tween, sample_keyframes},
 };
 
 use crate::{Headless, SlotValue, TokenValue, store::Kind, with_store};
@@ -171,62 +170,37 @@ impl Env {
   }
 }
 
-/// The keyframes of one animation that set one property, each leaf resolved: the
-/// percentage and the value at it.
-type Frames = Vec<(f32, SlotValue)>;
-
-/// The keyframes of a box animation that set `key`, each leaf resolved.
+/// A box animation reading `key` from each keyframe, each leaf resolved.
 fn box_frames(
   env: &Env,
   animation: &Animation<BoxKeyframe<Headless>>,
   key: PropertyKey<NoProperty>,
-) -> Frames {
-  animation
-    .keyframes
-    .iter()
-    .filter_map(|(percent, style)| {
-      env
-        .with_resolver(|resolver| resolver.box_keyframe(style).value(key))
-        .map(|value| (*percent, SlotValue::Box(value)))
-    })
-    .collect()
+) -> Animation<Option<SlotValue>> {
+  animation.map_keyframes(|style| {
+    env
+      .with_resolver(|resolver| resolver.box_keyframe(style).value(key))
+      .map(SlotValue::Box)
+  })
 }
 
-/// The keyframes of a run animation that set `key`, each leaf resolved.
+/// A run animation reading `key` from each keyframe, each leaf resolved.
 fn run_frames(
   env: &Env,
   animation: &Animation<RunKeyframe<Headless>>,
   key: PropertyKey<NoProperty>,
-) -> Frames {
-  animation
-    .keyframes
-    .iter()
-    .filter_map(|(percent, style)| {
-      env
-        .with_resolver(|resolver| resolver.run_keyframe(style).value(key))
-        .map(|value| (*percent, SlotValue::Run(value)))
-    })
-    .collect()
+) -> Animation<Option<SlotValue>> {
+  animation.map_keyframes(|style| {
+    env
+      .with_resolver(|resolver| resolver.run_keyframe(style).value(key))
+      .map(SlotValue::Run)
+  })
 }
 
-/// The last transition of `transitions` covering `key`, unless reduced motion skips it.
-fn covering(
-  transitions: &[Transition<NoProperty>],
-  key: PropertyKey<NoProperty>,
-  reduced: bool,
-) -> Option<&Transition<NoProperty>> {
-  transitions
-    .iter()
-    .rev()
-    .find(|transition| transition.property.covers(&key))
-    .filter(|transition| !(reduced && transition.respects_reduced_motion))
-}
-
-/// The motion declared on a node that bears on one property: its transitions, and each
-/// animation's timing with the frames setting the property, resolved.
+/// The motion declared on a node that bears on one property: its transitions, and its
+/// animations reading the property from each keyframe, resolved.
 struct DeclaredMotion {
   transitions: Vec<Transition<NoProperty>>,
-  animations: Vec<(Animation<()>, Frames)>,
+  animations: Vec<Animation<Option<SlotValue>>>,
 }
 
 impl DeclaredMotion {
@@ -243,12 +217,7 @@ impl DeclaredMotion {
             .dynamics
             .animations
             .iter()
-            .map(|animation| {
-              (
-                animation.map_keyframes(|_| ()),
-                run_frames(env, animation, key),
-              )
-            })
+            .map(|animation| run_frames(env, animation, key))
             .collect(),
         });
       }
@@ -261,12 +230,7 @@ impl DeclaredMotion {
         .dynamics
         .animations
         .iter()
-        .map(|animation| {
-          (
-            animation.map_keyframes(|_| ()),
-            box_frames(env, animation, key),
-          )
-        })
+        .map(|animation| box_frames(env, animation, key))
         .collect(),
     })
   }
@@ -281,8 +245,8 @@ fn present(
   handle: crate::Handle,
   kind: &Kind,
   key: PropertyKey<NoProperty>,
-  target: SlotValue,
-) -> SlotValue {
+  target: Option<SlotValue>,
+) -> Option<SlotValue> {
   let Some(declared) = DeclaredMotion::of(env, kind, key)
   else {
     return target;
@@ -299,60 +263,29 @@ fn present(
 
     motion.node = Some(node);
 
-    let previous = motion.targets.insert(key, target.clone());
-
-    if let Some(previous) = previous
-      && previous != target
-    {
-      let from = motion
-        .tweens
-        .remove(&key)
-        .map_or(previous, |tween| tween.sample(now));
-
-      if let Some(transition) = covering(&declared.transitions, key, reduced)
-        && from.interpolates_with(&target)
-      {
-        motion
-          .tweens
-          .insert(key, Tween::new(from, target.clone(), now, transition));
-      }
+    if let Some(previous) = motion.targets.insert(key, target.clone()) {
+      motion.runner.retarget(
+        key,
+        previous.as_ref(),
+        target.as_ref(),
+        &declared.transitions,
+        now,
+        reduced,
+      );
     }
 
-    if motion
-      .tweens
-      .get(&key)
-      .is_some_and(|tween| tween.is_done(now))
-    {
-      motion.tweens.remove(&key);
-    }
+    let underlying = motion.runner.sample(key, now).or(target);
 
-    let mut presented = motion
-      .tweens
-      .get(&key)
-      .map_or(target, |tween| tween.sample(now));
-    let elapsed = now - motion.started;
-
-    for (animation, frames) in &declared.animations {
-      let offset = if reduced && animation.respects_reduced_motion {
-        animation.rest_offset()
-      }
-      else {
-        animation.offset(elapsed)
-      };
-
-      if let Some(value) = sample_keyframes(frames, offset, animation.easing) {
-        presented = value;
-      }
-    }
-
-    presented
+    motion
+      .runner
+      .animate(&declared.animations, underlying, Clone::clone, now, reduced)
   })
 }
 
 /// The property `key` of `node` resolved and presented: a box's as a [`BoxValue`], a
 /// run's as a [`RunValue`], in flight where a transition or an animation moves it.
 pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
-  let target = resolve_target(node, key)?;
+  let target = resolve_target(node, key);
   let env = Env::of(node)?;
   let handle = Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
   let kind = with_store(|store| match &store.record(handle)?.kind {
@@ -363,7 +296,7 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Slot
     Kind::Anchor | Kind::Scope => None,
   })?;
 
-  Some(present(&env, node, handle, &kind, key, target))
+  present(&env, node, handle, &kind, key, target)
 }
 
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.

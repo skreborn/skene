@@ -3,8 +3,12 @@
 //! computes, for every kind of leaf a property takes.
 //!
 //! The browser is the oracle. A case the resolution gets wrong is a divergence every
-//! platform resolving through core shares, the terminal among them.
+//! platform resolving through core shares, the terminal among them. A case in motion
+//! steps both platforms' clocks alike: the headless one by its frame, the engine's by
+//! seeking its animations.
 #![cfg(skene_leaf = "browser")]
+
+use std::{cell::Cell, time::Duration};
 
 use skene_common::{
   Activate,
@@ -18,14 +22,17 @@ use skene_common::{
 };
 use skene_core::{
   AccessProp,
+  Animation,
   AnyView,
   Border,
+  BoxKeyframe,
   Color,
   Condition,
   ContainerName,
   ContainerQuery,
   Definition,
   Dimension,
+  Easing,
   Edge,
   Expr,
   HasChildren,
@@ -44,6 +51,7 @@ use skene_core::{
   TokenName,
   TokenRef,
   TokenSet,
+  Transition,
   Value,
   View,
 };
@@ -58,8 +66,9 @@ use skene_headless::{
   resolve_length,
   trigger_container_size,
   trigger_focus,
+  trigger_frame,
 };
-use skene_reactive::Owner;
+use skene_reactive::{Get, Owner, Set, Signal};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element};
@@ -81,6 +90,11 @@ const BOX: ContainerName = ContainerName("parity-box");
 
 /// The width the query container holds.
 const BOX_WIDTH: f32 = 400.;
+
+thread_local! {
+  /// The width the moving case derives, written as the case steps.
+  static MOVING: Cell<Option<Signal<f32>>> = const { Cell::new(None) };
+}
 
 /// The box a case reads, where it is not the case's own: named [`TARGET`].
 fn target() -> [AccessProp; 1] {
@@ -238,6 +252,8 @@ enum Case {
   CheckedColor,
   DisabledColor,
   FocusedColor,
+  NeutralKeyframe,
+  ReversedTransition,
 }
 
 /// Every case the harness holds the resolution to.
@@ -281,6 +297,8 @@ const CASES: &[Case] = &[
   Case::CheckedColor,
   Case::DisabledColor,
   Case::FocusedColor,
+  Case::NeutralKeyframe,
+  Case::ReversedTransition,
 ];
 
 impl Case {
@@ -317,7 +335,9 @@ impl Case {
       | Self::DerivedWidth
       | Self::ConditionalWidth
       | Self::LexicalEm
-      | Self::ContainerUnitWidth => Read::Width,
+      | Self::ContainerUnitWidth
+      | Self::NeutralKeyframe
+      | Self::ReversedTransition => Read::Width,
       Self::FixedPadding
       | Self::LengthTokenPadding
       | Self::ConditionalPadding
@@ -431,6 +451,28 @@ impl Case {
       Self::SafeAreaPadding => container.set_padding(Expr::<Length>::safe_area(Edge::Top) + 6.),
       Self::FixedBorder => container.set_border(Border::new(3., orange())),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
+      Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).set_animation(
+        Animation::new(
+          1.,
+          [(
+            50.,
+            BoxKeyframe::<P> {
+              width: Some(StaticLeaf::Fixed(Dimension::Length(80.))),
+              ..BoxKeyframe::<P>::default()
+            },
+          )],
+        )
+        .set_easing(Easing::Linear),
+      ),
+      Self::ReversedTransition => {
+        let width = Signal::new(0f32);
+
+        MOVING.set(Some(width));
+
+        container
+          .derive_width(move || Dimension::Length(width.get()))
+          .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+      }
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
       Self::LexicalToken
       | Self::LexicalEm
@@ -454,6 +496,16 @@ impl Case {
   /// Whether the case focuses its control before it is read.
   const fn focuses(self) -> bool {
     matches!(self, Self::FocusedColor)
+  }
+
+  /// The steps the case takes before it is read, each a width written to the moving
+  /// case's signal, where it writes one, and the milliseconds the clock then advances.
+  const fn steps(self) -> &'static [(Option<f32>, u64)] {
+    match self {
+      Self::NeutralKeyframe => &[(None, 250)],
+      Self::ReversedTransition => &[(Some(100.), 250), (Some(0.), 125)],
+      _ => &[],
+    }
   }
 
   /// The case's box under a theme of the palette, inside a typography of a size other
@@ -497,6 +549,35 @@ fn computed(element: &Element, property: &str) -> String {
     .expect("a computed style")
     .get_property_value(property)
     .expect("a property value")
+}
+
+/// Pauses every animation and transition running on `element`, `milliseconds` into
+/// each.
+fn seek(element: &Element, milliseconds: u64) {
+  let method = |target: &wasm_bindgen::JsValue, name: &str| {
+    js_sys::Reflect::get(target, &name.into())
+      .expect("the method")
+      .dyn_into::<js_sys::Function>()
+      .expect("a function")
+  };
+  let animations = method(element, "getAnimations")
+    .call0(element)
+    .expect("the animations")
+    .dyn_into::<js_sys::Array>()
+    .expect("an array");
+
+  for animation in animations.iter() {
+    method(&animation, "pause")
+      .call0(&animation)
+      .expect("a pause");
+    #[expect(
+      clippy::cast_precision_loss,
+      reason = "a step lasts far fewer milliseconds than f64 holds exactly"
+    )]
+    let time = milliseconds as f64;
+
+    js_sys::Reflect::set(&animation, &"currentTime".into(), &time.into()).expect("a seek");
+  }
 }
 
 /// The color the engine serialized as `text`: `rgb()`, `rgba()`, `oklab()`, `oklch()` or
@@ -569,8 +650,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   }
 
   let node = headless_target(built).unwrap_or(node);
-
-  let reading = match case.read() {
+  let read = || match case.read() {
     Read::Background => resolve_color(node, COLOR).map(Reading::Color),
     Read::Width => resolve_length(node, WIDTH).map(Reading::Length),
     Read::Padding => resolve_length(node, PADDING).map(Reading::Length),
@@ -580,6 +660,17 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
     }),
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
   };
+  let _ = read();
+
+  for (width, milliseconds) in case.steps() {
+    if let Some(width) = width {
+      MOVING.get().expect("the moving case's width").set(*width);
+    }
+
+    trigger_frame(Duration::from_millis(*milliseconds));
+  }
+
+  let reading = read();
 
   owner.dispose();
 
@@ -642,6 +733,18 @@ fn rendered(case: Case) -> Reading {
         .flatten()
     })
     .expect("the case's box");
+  let _ = computed(&element, "width");
+
+  for (width, milliseconds) in case.steps() {
+    if let Some(width) = width {
+      MOVING.get().expect("the moving case's width").set(*width);
+      web::end_turn();
+      let _ = computed(&element, "width");
+    }
+
+    seek(&element, *milliseconds);
+  }
+
   let reading = match case.read() {
     Read::Background => computed_color(&element, "background-color"),
     Read::Width => Reading::Length(pixels(&computed(&element, "width"))),

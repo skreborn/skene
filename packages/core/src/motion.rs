@@ -285,6 +285,25 @@ impl<S> Animation<S> {
     }
   }
 
+  /// Where the animation stands `elapsed` seconds in: its offset, or its rest offset
+  /// where `reduced` motion skips it.
+  #[inline(always)]
+  pub(crate) fn offset_under(&self, elapsed: f64, reduced: bool) -> f32 {
+    if reduced && self.respects_reduced_motion {
+      self.rest_offset()
+    }
+    else {
+      self.offset(elapsed)
+    }
+  }
+
+  /// Whether the animation still plays `elapsed` seconds in, never where `reduced`
+  /// motion skips it.
+  #[inline(always)]
+  pub(crate) fn plays(&self, elapsed: f64, reduced: bool) -> bool {
+    !(self.is_done(elapsed) || reduced && self.respects_reduced_motion)
+  }
+
   /// The animation with each keyframe mapped through `map`.
   pub fn map_keyframes<T>(&self, mut map: impl FnMut(&S) -> T) -> Animation<T> {
     Animation {

@@ -38,10 +38,8 @@ left half-done in a code comment.
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before
     default scrolling; double-click; drag and drop; click events carrying their
     modifiers, which `Link` takes from the last press today; `composing` on key events;
-    actions and keymaps, so menu shortcuts act; an `EventKinds` bitset, since a
-    seventeenth `EventKind` overflows both platforms' `u16`; a gesture arena before
-    touch lands, its exception to "a view that handles an interaction owns it" written
-    down.
+    actions and keymaps, so menu shortcuts act; a gesture arena before touch lands, its
+    exception to "a view that handles an interaction owns it" written down.
     - The terminal's own chrome becomes presentation its user sets: a scrollbar's marks
     and inks, and a shadow's offset and softening, become properties of the box they
     decorate, as the web's `scrollbar-color` and `box-shadow` are.

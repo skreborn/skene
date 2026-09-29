@@ -550,7 +550,6 @@ pub fn skene_tui::Tui::destroy(skene_tui::Handle)
 pub fn skene_tui::Tui::detach(skene_tui::Handle, skene_tui::Handle)
 pub fn skene_tui::Tui::focus(skene_tui::Handle)
 pub fn skene_tui::Tui::focus_visible() -> bool
-pub fn skene_tui::Tui::listen(skene_tui::Handle, skene_core::props::EventKind)
 pub fn skene_tui::Tui::localize_pointer(skene_tui::Handle, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent
 pub fn skene_tui::Tui::media() -> skene_core::props::MediaSignals<u32>
 pub fn skene_tui::Tui::observe_size(skene_tui::Handle, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<u32>)>) -> skene_core::platform::Observation

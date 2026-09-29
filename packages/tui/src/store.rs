@@ -592,8 +592,6 @@ pub(crate) struct Record {
   pub(crate) text: String,
   /// The node's slot values, as last written.
   pub(crate) slots: FxHashMap<Slot, SlotLeaf>,
-  /// The events the node listens to, one bit per event kind.
-  pub(crate) listened: u16,
   /// The reports of the box's size.
   pub(crate) observers: Vec<Rc<dyn Fn(Size<u32>)>>,
   /// The size last reported to the observers.
@@ -668,7 +666,6 @@ impl Record {
       applied: None,
       text: String::new(),
       slots: FxHashMap::default(),
-      listened: 0,
       observers: Vec::new(),
       reported: None,
       scroll: (0, 0),

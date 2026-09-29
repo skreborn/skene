@@ -321,8 +321,10 @@ pub trait Platform: Copy + Default + 'static {
   /// Defines the tokens every node falls back to, replacing the previous set.
   fn define_root_tokens(definitions: &Definitions<Self::TokenValue>);
 
-  /// Notes that a node has a handler for `kind`; dispatch itself is core's.
-  fn listen(sink: Self::Sink, kind: EventKind);
+  /// Notes that a node has a handler for `kind`; dispatch itself is core's, and a
+  /// platform whose events need no listener ignores it.
+  #[inline(always)]
+  fn listen(_sink: Self::Sink, _kind: EventKind) {}
 
   /// `event` with its local position measured from `sink`'s top-left corner; unchanged
   /// on a platform that lays nothing out.

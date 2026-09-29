@@ -15,7 +15,6 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
-  EventKind,
   FocusOrder,
   Media,
   MediaSignals,
@@ -374,14 +373,6 @@ impl Platform for Tui {
 
   fn define_root_tokens(_definitions: &Definitions<TokenValue>) {
     with_store(Store::invalidate_styles);
-  }
-
-  fn listen(sink: Handle, kind: EventKind) {
-    with_store(|store| {
-      if let Some(record) = store.record_mut(sink) {
-        record.listened |= 1 << (kind as u16);
-      }
-    });
   }
 
   fn localize_pointer(sink: Handle, event: &PointerEvent) -> PointerEvent {

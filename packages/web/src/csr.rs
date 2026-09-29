@@ -212,8 +212,6 @@ struct Node {
   token_class: Option<Rc<str>>,
   /// The slots its class references.
   slots: Rc<[SlotBinding]>,
-  /// The events it listens to, one bit per event kind.
-  listened: u16,
   /// The reports of the box's size.
   observers: Vec<Rc<dyn Fn(Size<f32>)>>,
   /// A modal's `cancel` listener, reporting a dismissal.
@@ -237,7 +235,6 @@ impl Node {
       style_class: None,
       token_class: None,
       slots: Rc::from([]),
-      listened: 0,
       observers: Vec::new(),
       cancel: None,
       adopted,
@@ -1822,17 +1819,8 @@ impl Platform for Web {
     });
   }
 
-  fn listen(sink: u32, kind: EventKind) {
-    with_dom(|dom| {
-      dom.events.ensure(kind);
-
-      let Some(node) = dom.node_mut(sink)
-      else {
-        return;
-      };
-
-      node.listened |= 1 << (kind as u16);
-    });
+  fn listen(_sink: u32, kind: EventKind) {
+    with_dom(|dom| dom.events.ensure(kind));
   }
 
   fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {

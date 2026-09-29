@@ -3677,6 +3677,7 @@ pub fn skene_core::Scene<P>::dragged(&self) -> core::option::Option<skene_core::
 pub fn skene_core::Scene<P>::drop_candidates(&self, skene_core::NodeId) -> alloc::vec::Vec<(skene_core::NodeId, alloc::vec::Vec<skene_core::Handler<skene_core::DropHandler>>)>
 pub fn skene_core::Scene<P>::drop_handlers(&self, skene_core::NodeId) -> alloc::vec::Vec<skene_core::Handler<skene_core::DropHandler>>
 pub fn skene_core::Scene<P>::enclosing_control(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::find_part(&self, skene_core::NodeId, skene_core::Part) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::focus_holder_within(&self, skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::option::Option<skene_core::FocusOrder>
 pub fn skene_core::Scene<P>::focus_shows(&self, skene_core::NodeId) -> bool

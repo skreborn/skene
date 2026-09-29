@@ -16,9 +16,9 @@ use skene_core::{
   Prevent,
   Role,
 };
-use skene_reactive::{Get, Set, Signal};
+use skene_reactive::Signal;
 
-use super::{Behavior, ControlHandle};
+use super::{Behavior, ControlHandle, Controlled};
 
 /// A handler of a key the closed face does not act on, answering whether it took it.
 type Typed = dyn Fn(&KeyEvent) -> bool;
@@ -38,8 +38,7 @@ type Typed = dyn Fn(&KeyEvent) -> bool;
 #[derive(Default)]
 #[must_use]
 pub struct Popup {
-  open: Option<Rc<dyn Fn() -> bool>>,
-  on_open: Option<Rc<dyn Fn(bool)>>,
+  open: Controlled<bool>,
   kind: PopupKind,
   controls: Option<Rc<dyn Fn() -> Option<NodeId>>>,
   on_typed: Option<Rc<Typed>>,
@@ -78,7 +77,7 @@ impl Popup {
   /// Sets whether the popup is open.
   #[inline(always)]
   pub fn set_open(mut self, open: bool) -> Self {
-    self.open = Some(Rc::new(move || open));
+    self.open.set(open);
 
     self
   }
@@ -86,7 +85,7 @@ impl Popup {
   /// Derives whether the popup is open from the signals `open` reads.
   #[inline(always)]
   pub fn derive_open(mut self, open: impl Fn() -> bool + 'static) -> Self {
-    self.open = Some(Rc::new(open));
+    self.open.derive(open);
 
     self
   }
@@ -94,17 +93,17 @@ impl Popup {
   /// Runs `action` with the open state the face asks for.
   #[inline(always)]
   pub fn handle_open(mut self, action: impl Fn(bool) + 'static) -> Self {
-    self.on_open = Some(Rc::new(action));
+    self.open.handle(action);
 
     self
   }
 
   /// Binds the open state to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_open(self, signal: Signal<bool>) -> Self {
+  pub fn bind_open(mut self, signal: Signal<bool>) -> Self {
+    self.open.bind(signal);
+
     self
-      .derive_open(move || signal.get())
-      .handle_open(move |open| signal.set(open))
   }
 
   /// Runs `action` with a key the closed face does not act on itself; `true` from it
@@ -119,14 +118,13 @@ impl Popup {
   /// The open state currently reported.
   #[inline(always)]
   fn read(&self) -> bool {
-    self.open.as_ref().is_some_and(|open| open())
+    self.open.read().unwrap_or(false)
   }
 
   /// Asks for `open`.
+  #[inline(always)]
   fn ask(&self, open: bool) {
-    if let Some(action) = &self.on_open {
-      action(open);
-    }
+    self.open.ask(open);
   }
 }
 

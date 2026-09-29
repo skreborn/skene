@@ -16,9 +16,9 @@ use skene_core::{
   Ring,
   Role,
 };
-use skene_reactive::{Get, Memo, Set, Signal, With, on_cleanup, provide_context, use_context};
+use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
 
-use super::{Behavior, ControlHandle, LabelPlacement, Roster};
+use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster};
 use crate::realize::with_sink;
 
 /// What a [`Roving`] group shares with the members inside it, through context.
@@ -100,8 +100,7 @@ impl RovingGroup {
 #[derive(Default)]
 #[must_use]
 pub struct Roving {
-  chosen: Option<Rc<dyn Fn() -> Option<String>>>,
-  on_choose: Option<Rc<dyn Fn(String)>>,
+  chosen: Controlled<Option<String>>,
 }
 
 impl std::fmt::Debug for Roving {
@@ -120,9 +119,7 @@ impl Roving {
   /// Sets the chosen member's value.
   #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
-    let chosen = chosen.into();
-
-    self.chosen = Some(Rc::new(move || Some(chosen.clone())));
+    self.chosen.set(Some(chosen.into()));
 
     self
   }
@@ -130,7 +127,7 @@ impl Roving {
   /// Derives the chosen member's value from the signals `chosen` reads.
   #[inline(always)]
   pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
-    self.chosen = Some(Rc::new(chosen));
+    self.chosen.derive(chosen);
 
     self
   }
@@ -138,17 +135,21 @@ impl Roving {
   /// Runs `action` with the value a choice asks for.
   #[inline(always)]
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.on_choose = Some(Rc::new(action));
+    self.chosen.handle(move |value: Option<String>| {
+      if let Some(value) = value {
+        action(value);
+      }
+    });
 
     self
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_chosen(self, signal: Signal<Option<String>>) -> Self {
+  pub fn bind_chosen(mut self, signal: Signal<Option<String>>) -> Self {
+    self.chosen.bind(signal);
+
     self
-      .derive_chosen(move || signal.get())
-      .handle_choose(move |value| signal.set(Some(value)))
   }
 }
 
@@ -174,11 +175,13 @@ impl<P: Platform> Behavior<P> for Roving {
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
-    let chosen = self.chosen.clone();
-    let on_choose = self.on_choose.clone();
+    let controlled = self.chosen.clone();
     let roster = Roster::new();
-    let chosen: Rc<dyn Fn() -> Option<String>> =
-      Rc::new(move || chosen.as_ref().and_then(|chosen| chosen()));
+    let chosen: Rc<dyn Fn() -> Option<String>> = {
+      let controlled = controlled.clone();
+
+      Rc::new(move || controlled.read().flatten())
+    };
     let tab_stop = roster.tab_stop::<P>({
       let chosen = Rc::clone(&chosen);
 
@@ -188,11 +191,7 @@ impl<P: Platform> Behavior<P> for Roving {
     roster.root_at(control.node());
     provide_context(RovingGroup {
       chosen,
-      choose: Rc::new(move |value| {
-        if let Some(action) = &on_choose {
-          action(value);
-        }
-      }),
+      choose: Rc::new(move |value| controlled.ask(Some(value))),
       roster,
       tab_stop,
     });

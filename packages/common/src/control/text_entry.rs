@@ -1,19 +1,9 @@
 //! A text field's and a text editor's behavior.
 
-use std::rc::Rc;
+use skene_core::{ControlKind, EventKind, Platform, Role, TextSelection};
+use skene_reactive::{Effect, Signal, untrack};
 
-use skene_core::{
-  ChangeHandler,
-  ControlKind,
-  EventKind,
-  Platform,
-  Role,
-  SelectionHandler,
-  TextSelection,
-};
-use skene_reactive::{Effect, Get, Set, Signal, untrack};
-
-use super::{Behavior, ControlHandle};
+use super::{Behavior, ControlHandle, Controlled};
 use crate::realize::with_sink;
 
 /// A text entry: a single-line field, or an editor showing several lines at once.
@@ -28,12 +18,10 @@ use crate::realize::with_sink;
 /// an app reads and writes the selection beside the value.
 #[must_use]
 pub struct TextEntry {
-  value: Option<Rc<dyn Fn() -> String>>,
-  selection: Option<Rc<dyn Fn() -> TextSelection>>,
+  value: Controlled<String>,
+  selection: Controlled<TextSelection>,
   placeholder: Option<String>,
   lines: u16,
-  on_change: Option<Rc<ChangeHandler>>,
-  on_selection_change: Option<Rc<SelectionHandler>>,
 }
 
 impl std::fmt::Debug for TextEntry {
@@ -45,14 +33,12 @@ impl std::fmt::Debug for TextEntry {
 impl TextEntry {
   /// An empty single-line field.
   #[inline(always)]
-  pub fn new() -> Self {
+  pub const fn new() -> Self {
     Self {
-      value: None,
-      selection: None,
+      value: Controlled::new(),
+      selection: Controlled::new(),
       placeholder: None,
       lines: 1,
-      on_change: None,
-      on_selection_change: None,
     }
   }
 
@@ -75,9 +61,7 @@ impl TextEntry {
   /// Sets the text.
   #[inline(always)]
   pub fn set_value(mut self, value: impl Into<String>) -> Self {
-    let value = value.into();
-
-    self.value = Some(Rc::new(move || value.clone()));
+    self.value.set(value.into());
 
     self
   }
@@ -85,7 +69,7 @@ impl TextEntry {
   /// Derives the text from the signals `value` reads.
   #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> String + 'static) -> Self {
-    self.value = Some(Rc::new(value));
+    self.value.derive(value);
 
     self
   }
@@ -93,23 +77,23 @@ impl TextEntry {
   /// Runs `action` with the text an edit asks for.
   #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(&str) + 'static) -> Self {
-    self.on_change = Some(Rc::new(action));
+    self.value.handle(move |value: String| action(&value));
 
     self
   }
 
   /// Binds the text to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_value(self, signal: Signal<String>) -> Self {
+  pub fn bind_value(mut self, signal: Signal<String>) -> Self {
+    self.value.bind(signal);
+
     self
-      .derive_value(move || signal.get())
-      .handle_change(move |value| signal.set(value.to_owned()))
   }
 
   /// Sets the selection, in grapheme clusters of the text.
   #[inline(always)]
   pub fn set_selection(mut self, selection: TextSelection) -> Self {
-    self.selection = Some(Rc::new(move || selection));
+    self.selection.set(selection);
 
     self
   }
@@ -117,7 +101,7 @@ impl TextEntry {
   /// Derives the selection from the signals `selection` reads.
   #[inline(always)]
   pub fn derive_selection(mut self, selection: impl Fn() -> TextSelection + 'static) -> Self {
-    self.selection = Some(Rc::new(selection));
+    self.selection.derive(selection);
 
     self
   }
@@ -125,17 +109,17 @@ impl TextEntry {
   /// Runs `action` with the selection after every move of the caret or its anchor.
   #[inline(always)]
   pub fn handle_selection_change(mut self, action: impl Fn(TextSelection) + 'static) -> Self {
-    self.on_selection_change = Some(Rc::new(action));
+    self.selection.handle(action);
 
     self
   }
 
   /// Binds the selection to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_selection(self, signal: Signal<TextSelection>) -> Self {
+  pub fn bind_selection(mut self, signal: Signal<TextSelection>) -> Self {
+    self.selection.bind(signal);
+
     self
-      .derive_selection(move || signal.get())
-      .handle_selection_change(move |selection| signal.set(selection))
   }
 }
 
@@ -164,7 +148,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    if self.on_selection_change.is_some() {
+    if self.selection.is_handled() {
       &[EventKind::Change, EventKind::SelectionChange]
     }
     else {
@@ -185,7 +169,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
   fn attach(&self, control: &ControlHandle<P>) {
     let node = control.node();
 
-    if let Some(value) = self.value.clone() {
+    if let Some(value) = self.value.reader() {
       Effect::render(move |_: Option<()>| {
         let value = value();
 
@@ -193,7 +177,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
       });
     }
 
-    if let Some(selection) = self.selection.clone() {
+    if let Some(selection) = self.selection.reader() {
       Effect::render(move |_: Option<()>| {
         let selection = selection();
 
@@ -203,27 +187,19 @@ impl<P: Platform> Behavior<P> for TextEntry {
   }
 
   fn on_change(&self, value: &str, _control: &ControlHandle<P>) {
-    if let Some(action) = &self.on_change {
-      action(value);
-    }
+    self.value.ask(value.to_owned());
   }
 
   fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<P>) {
-    if let Some(action) = &self.on_selection_change {
-      action(selection);
-    }
+    self.selection.ask(selection);
   }
 
   fn reconcile(&self, control: &ControlHandle<P>) {
-    if let Some(value) = &self.value {
-      let value = untrack(|| value());
-
+    if let Some(value) = untrack(|| self.value.read()) {
       control.with_sink(|sink| P::set_value(sink, &value));
     }
 
-    if let Some(selection) = &self.selection {
-      let selection = untrack(|| selection());
-
+    if let Some(selection) = untrack(|| self.selection.read()) {
       control.with_sink(|sink| P::set_selection(sink, selection));
     }
   }

@@ -35,14 +35,12 @@ left half-done in a code comment.
     redefines condition on media alone, so this waits on the styling direction.
     - Typed events: a gesture arena before touch lands, its exception to "a view that
     handles an interaction owns it" written down.
-    - Controls: one `Controlled<T>` holds a behavior's value and the handler it asks, in
-    place of each behavior's own copy of that plumbing; one
-    `Collection<Policy>` behavior replaces the roving, listbox and menu conventions and
+    - Controls: one `Collection<Policy>` behavior replaces the roving, listbox and menu
+    conventions and
     skips disabled members in one place; an open role vocabulary on AccessKit's schema,
     with a native-element hint, replaces the closed `Role`, `AccessProp` and
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
-    become styling targets or go. A slider maps the pointer through its track rather than
-    its box, so a caption inside the box no longer skews it.
+    become styling targets or go.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the

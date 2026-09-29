@@ -12,9 +12,9 @@ use skene_core::{
   Prevent,
   Role,
 };
-use skene_reactive::{Get, Set, Signal};
+use skene_reactive::Signal;
 
-use super::{Behavior, ControlHandle};
+use super::{Behavior, ControlHandle, Controlled};
 
 /// A checkbox: a click, `Space` or the platform's own toggle flips it.
 ///
@@ -27,13 +27,8 @@ use super::{Behavior, ControlHandle};
 /// nothing changes; [`bind_checked`](Self::bind_checked) wires both to one signal.
 #[derive(Default)]
 #[must_use]
-#[expect(
-  clippy::struct_field_names,
-  reason = "a behavior's handler is named for the event it hears"
-)]
 pub struct Toggle {
-  checked: Option<Rc<dyn Fn() -> bool>>,
-  on_toggle: Option<Rc<dyn Fn(bool)>>,
+  checked: Controlled<bool>,
   armed: Cell<bool>,
 }
 
@@ -54,13 +49,13 @@ impl Toggle {
   #[inline(always)]
   #[must_use]
   pub fn reads_checked(&self) -> Rc<dyn Fn() -> bool> {
-    self.checked.clone().unwrap_or_else(|| Rc::new(|| false))
+    self.checked.reader().unwrap_or_else(|| Rc::new(|| false))
   }
 
   /// Sets the checked state.
   #[inline(always)]
   pub fn set_checked(mut self, checked: bool) -> Self {
-    self.checked = Some(Rc::new(move || checked));
+    self.checked.set(checked);
 
     self
   }
@@ -68,7 +63,7 @@ impl Toggle {
   /// Derives the checked state from the signals `checked` reads.
   #[inline(always)]
   pub fn derive_checked(mut self, checked: impl Fn() -> bool + 'static) -> Self {
-    self.checked = Some(Rc::new(checked));
+    self.checked.derive(checked);
 
     self
   }
@@ -76,30 +71,29 @@ impl Toggle {
   /// Runs `action` with the state a flip asks for.
   #[inline(always)]
   pub fn handle_toggle(mut self, action: impl Fn(bool) + 'static) -> Self {
-    self.on_toggle = Some(Rc::new(action));
+    self.checked.handle(action);
 
     self
   }
 
   /// Binds the checked state to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_checked(self, signal: Signal<bool>) -> Self {
+  pub fn bind_checked(mut self, signal: Signal<bool>) -> Self {
+    self.checked.bind(signal);
+
     self
-      .derive_checked(move || signal.get())
-      .handle_toggle(move |checked| signal.set(checked))
   }
 
   /// The checked state currently reported.
   #[inline(always)]
   fn read(&self) -> bool {
-    self.checked.as_ref().is_some_and(|checked| checked())
+    self.checked.read().unwrap_or(false)
   }
 
   /// Asks for `checked`.
+  #[inline(always)]
   fn ask(&self, checked: bool) {
-    if let Some(action) = &self.on_toggle {
-      action(checked);
-    }
+    self.checked.ask(checked);
   }
 
   /// Asks for the opposite state.

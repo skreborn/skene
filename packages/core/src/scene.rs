@@ -1818,6 +1818,37 @@ impl<P: Platform> Scene<P> {
     }
   }
 
+  /// The first node under the control `control`, in tree order, recorded as `part`;
+  /// the controls inside it are passed over with their parts.
+  #[must_use]
+  pub fn find_part(&self, control: NodeId, part: Part) -> Option<NodeId> {
+    let mut stack: Vec<NodeId> = self.children(control).collect();
+
+    stack.reverse();
+
+    while let Some(node) = stack.pop() {
+      let Some(record) = self.record(node)
+      else {
+        continue;
+      };
+
+      if record.part == Some(part) {
+        return Some(node);
+      }
+
+      if record.kind == NodeKind::Control {
+        continue;
+      }
+
+      let before = stack.len();
+
+      stack.extend(self.children(node));
+      stack[before..].reverse();
+    }
+
+    None
+  }
+
   /// The part of its enclosing control `node` is recorded as.
   #[inline(always)]
   #[must_use]

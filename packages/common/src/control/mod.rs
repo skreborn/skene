@@ -1,6 +1,7 @@
 //! The one control builder, the behavior it is given, and the behaviors that ship.
 
 mod activate;
+mod controlled;
 mod listbox;
 mod menu;
 mod native_picker;
@@ -67,6 +68,7 @@ use skene_reactive::{Effect, Owner, Trigger, untrack};
 
 pub use self::{
   activate::Activate,
+  controlled::Controlled,
   listbox::{ListItem, Listbox, ListboxGroup},
   menu::{Menu, MenuGroup, MenuOption},
   native_picker::NativePicker,
@@ -192,6 +194,11 @@ pub trait Behavior<P: Platform>: 'static {
   /// here calls [`ControlHandle::refresh`].
   #[inline(always)]
   fn attach(&self, _control: &ControlHandle<P>) {}
+
+  /// Runs once the control's parts and child are in place, under the control's owner:
+  /// what a behavior finds among its parts, and measures, goes here.
+  #[inline(always)]
+  fn mounted(&self, _control: &ControlHandle<P>) {}
 
   /// What the behavior does on a click.
   #[inline(always)]
@@ -1041,6 +1048,8 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       if let Some((part, _)) = label {
         mount_part::<P>(node, Part::Label, part);
       }
+
+      behavior.mounted(&handle);
 
       node
     })

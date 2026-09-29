@@ -368,7 +368,10 @@ re-export.
   whole verdict; a user's handler observes. A button's click never reaches the row it
   sits in, on any facade.
 - **A control is controlled.** It reports; the bound signal is the truth. Two-way
-  binding is a derived read plus a handler write, on every facade.
+  binding is a derived read plus a handler write, on every facade, held once in a
+  `Controlled<T>` that every shipped behavior, and a third party's, keeps its value in:
+  `set`, `derive`, `handle` and `bind` for the behavior's own setters, `read` and `ask`
+  for its logic.
 - **Parts and control state.** A part is a named child the styling targets (`Track`,
   `Fill`, `Thumb`, `Mark`, `Face`, `List`, `Item`, `Label`); in the terminal a part maps
   to a glyph token. A `State` a box cannot have on its own (`Checked`, `Indeterminate`,

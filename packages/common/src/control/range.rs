@@ -11,24 +11,29 @@ use skene_core::{
   Key,
   KeyEvent,
   NamedKey,
+  NodeId,
+  Part,
   Platform,
   PointerButton,
   PointerEvent,
   Prevent,
   Role,
   Scalar,
+  Scene,
   SliderRange,
 };
-use skene_reactive::{Get, Set, Signal};
+use skene_reactive::Signal;
 
-use super::{Behavior, ControlHandle, PointerPhase};
+use super::{Behavior, ControlHandle, Controlled, PointerPhase};
+use crate::realize::with_sink;
 
 /// A slider over a closed range.
 ///
 /// The arrows move by a step, the page keys by a tenth of the range or a step where
 /// the step is larger, `Home` and `End` reach the ends, and a press or drag along the
-/// control's axis jumps to the value whose thumb centers under the pointer, the thumb
-/// travelling the control's extent less [its own](Self::set_thumb_extent); a vertical
+/// control's axis jumps to the value whose thumb centers under the pointer, measured
+/// along the control's [`Part::Track`] where it has one and its box where it has none,
+/// the thumb travelling that extent less [its own](Self::set_thumb_extent); a vertical
 /// range runs bottom to top.
 ///
 /// Controlled: the value it reports is what [`derive_value`](Self::derive_value)
@@ -41,9 +46,9 @@ pub struct Range {
   min: f32,
   max: f32,
   step: f32,
-  value: Option<Rc<dyn Fn() -> f32>>,
-  on_change: Option<Rc<dyn Fn(f32)>>,
+  value: Controlled<f32>,
   extent: Rc<Cell<f32>>,
+  track: Rc<Cell<Option<NodeId>>>,
   thumb: f32,
   pressed: Cell<bool>,
   axis: Axis,
@@ -63,9 +68,9 @@ impl Range {
       min: 0.,
       max: 100.,
       step: 1.,
-      value: None,
-      on_change: None,
+      value: Controlled::new(),
       extent: Rc::new(Cell::new(0.)),
+      track: Rc::new(Cell::new(None)),
       thumb: 0.,
       pressed: Cell::new(false),
       axis: Axis::Horizontal,
@@ -118,7 +123,7 @@ impl Range {
   /// Sets the value.
   #[inline(always)]
   pub fn set_value(mut self, value: f32) -> Self {
-    self.value = Some(Rc::new(move || value));
+    self.value.set(value);
 
     self
   }
@@ -126,7 +131,7 @@ impl Range {
   /// Derives the value from the signals `value` reads.
   #[inline(always)]
   pub fn derive_value(mut self, value: impl Fn() -> f32 + 'static) -> Self {
-    self.value = Some(Rc::new(value));
+    self.value.derive(value);
 
     self
   }
@@ -134,17 +139,17 @@ impl Range {
   /// Runs `action` with the value a move asks for.
   #[inline(always)]
   pub fn handle_change(mut self, action: impl Fn(f32) + 'static) -> Self {
-    self.on_change = Some(Rc::new(action));
+    self.value.handle(action);
 
     self
   }
 
   /// Binds the value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_value(self, signal: Signal<f32>) -> Self {
+  pub fn bind_value(mut self, signal: Signal<f32>) -> Self {
+    self.value.bind(signal);
+
     self
-      .derive_value(move || signal.get())
-      .handle_change(move |value| signal.set(value))
   }
 
   /// The range as the value model reads it.
@@ -156,7 +161,7 @@ impl Range {
   /// The value currently reported.
   #[inline(always)]
   fn read(&self) -> f32 {
-    self.value.as_ref().map_or(self.min, |value| value())
+    self.value.read().unwrap_or(self.min)
   }
 
   /// Asks for `next` when it differs from the held value.
@@ -165,14 +170,17 @@ impl Range {
       return;
     }
 
-    if let Some(action) = &self.on_change {
-      action(next);
-    }
+    self.value.ask(next);
   }
 
   /// Asks for the value whose thumb centers under the pointer along the measured
-  /// extent.
-  fn slide(&self, event: &PointerEvent) {
+  /// extent, the pointer measured from the track's start where the control has one.
+  fn slide<P: Platform>(&self, event: &PointerEvent) {
+    let event = self
+      .track
+      .get()
+      .and_then(|track| with_sink::<P, _>(track, |sink| P::localize_pointer(sink, event)))
+      .unwrap_or(*event);
     let extent = self.extent.get();
     let thumb = self.thumb.clamp(0., extent);
     let travel = extent - thumb;
@@ -245,11 +253,15 @@ impl<P: Platform> Behavior<P> for Range {
     ]
   }
 
-  fn attach(&self, control: &ControlHandle<P>) {
+  fn mounted(&self, control: &ControlHandle<P>) {
+    let node = control.node();
+    let track = Scene::<P>::with(|scene| scene.find_part(node, Part::Track));
     let extent = Rc::clone(&self.extent);
     let axis = self.axis;
 
-    control.with_sink(|sink| {
+    self.track.set(track);
+    // The track where the control has one, the box where it has none.
+    with_sink::<P, _>(track.unwrap_or(node), |sink| {
       let _observed = P::observe_size(
         sink,
         Rc::new(move |size| {
@@ -290,7 +302,7 @@ impl<P: Platform> Behavior<P> for Range {
         }
 
         self.pressed.set(true);
-        self.slide(event);
+        self.slide::<P>(event);
 
         Prevent::All
       }
@@ -299,7 +311,7 @@ impl<P: Platform> Behavior<P> for Range {
           return Prevent::None;
         }
 
-        self.slide(event);
+        self.slide::<P>(event);
 
         Prevent::Bubbling
       }

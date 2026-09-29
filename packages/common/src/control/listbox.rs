@@ -15,9 +15,9 @@ use skene_core::{
   Prevent,
   Role,
 };
-use skene_reactive::{Get, Memo, Set, Signal, With, on_cleanup, provide_context, use_context};
+use skene_reactive::{Memo, Signal, With, on_cleanup, provide_context, use_context};
 
-use super::{Behavior, ControlHandle, LabelPlacement, Roster, TypeAhead};
+use super::{Behavior, ControlHandle, Controlled, LabelPlacement, Roster, TypeAhead};
 
 /// What a [`Listbox`] shares with the options inside it, through context.
 ///
@@ -152,8 +152,7 @@ impl ListboxGroup {
 /// tracked by its [`roster`](Self::roster).
 #[must_use]
 pub struct Listbox {
-  chosen: Option<Rc<dyn Fn() -> Option<String>>>,
-  on_choose: Option<Rc<dyn Fn(String)>>,
+  chosen: Controlled<Option<String>>,
   roster: Roster,
   commit_on_tab: bool,
 }
@@ -170,8 +169,7 @@ impl Listbox {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      chosen: None,
-      on_choose: None,
+      chosen: Controlled::new(),
       roster: Roster::new(),
       commit_on_tab: false,
     }
@@ -198,9 +196,7 @@ impl Listbox {
   /// Sets the chosen option's value.
   #[inline(always)]
   pub fn set_chosen(mut self, chosen: impl Into<String>) -> Self {
-    let chosen = chosen.into();
-
-    self.chosen = Some(Rc::new(move || Some(chosen.clone())));
+    self.chosen.set(Some(chosen.into()));
 
     self
   }
@@ -208,7 +204,7 @@ impl Listbox {
   /// Derives the chosen option's value from the signals `chosen` reads.
   #[inline(always)]
   pub fn derive_chosen(mut self, chosen: impl Fn() -> Option<String> + 'static) -> Self {
-    self.chosen = Some(Rc::new(chosen));
+    self.chosen.derive(chosen);
 
     self
   }
@@ -216,17 +212,21 @@ impl Listbox {
   /// Runs `action` with the value a choice asks for.
   #[inline(always)]
   pub fn handle_choose(mut self, action: impl Fn(String) + 'static) -> Self {
-    self.on_choose = Some(Rc::new(action));
+    self.chosen.handle(move |value: Option<String>| {
+      if let Some(value) = value {
+        action(value);
+      }
+    });
 
     self
   }
 
   /// Binds the chosen value to `signal` in both directions.
   #[inline(always)]
-  pub fn bind_chosen(self, signal: Signal<Option<String>>) -> Self {
+  pub fn bind_chosen(mut self, signal: Signal<Option<String>>) -> Self {
+    self.chosen.bind(signal);
+
     self
-      .derive_chosen(move || signal.get())
-      .handle_choose(move |value| signal.set(Some(value)))
   }
 
   /// The options the listbox tracks, in tree order once the control builds.
@@ -265,19 +265,14 @@ impl<P: Platform> Behavior<P> for Listbox {
   }
 
   fn attach(&self, control: &ControlHandle<P>) {
-    let chosen = self.chosen.clone();
-    let on_choose = self.on_choose.clone();
+    let (chosen, choose) = (self.chosen.clone(), self.chosen.clone());
     let roster = self.roster.clone();
 
     roster.root_at(control.node());
     provide_context(
       ListboxGroup::new::<P>(
-        move || chosen.as_ref().and_then(|chosen| chosen()),
-        move |value| {
-          if let Some(action) = &on_choose {
-            action(value);
-          }
-        },
+        move || chosen.read().flatten(),
+        move |value| choose.ask(Some(value)),
         roster,
       )
       .set_commit_on_tab(self.commit_on_tab),

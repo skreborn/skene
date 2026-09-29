@@ -253,6 +253,43 @@ fn radio_group_moves_the_check() {
   });
 }
 
+/// A press maps through the slider's track, not its whole box: a caption and the
+/// spacing before the track inside the box leave the value the press's place on the
+/// track asks for.
+#[test]
+fn a_slider_maps_the_pointer_through_its_track() {
+  with_platform(|| {
+    let volume = Signal::new(0.0f32);
+
+    let _ = tui::mount(|| {
+      RawSlider::new(
+        Range::new()
+          .set_min(0.)
+          .set_max(10.)
+          .set_step(1.)
+          .bind_value(volume),
+      )
+      .set_width(12)
+      .set_part(tui::Part::Label, Text::new("vol"))
+      .set_part(
+        tui::Part::Track,
+        Container::new().set_width(8).set_height(1),
+      )
+      .into_any()
+      .build()
+    });
+    let _ = tui::render_to_text(16, 1);
+
+    tui::trigger_mouse_click(8, 0);
+
+    assert!(
+      (volume.get_untracked() - 6.).abs() < f32::EPSILON,
+      "{}",
+      volume.get_untracked()
+    );
+  });
+}
+
 /// A slider nudges by its step on arrows and by a tenth of its range on the page keys,
 /// jumps to a clicked cell, and reaches its ends by `Home` and `End`.
 #[test]

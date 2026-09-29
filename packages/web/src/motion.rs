@@ -14,6 +14,10 @@ use crate::{
 /// The media query under which motion respecting the reduced-motion preference runs.
 pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)";
 
+/// The media query under which an animation respecting the preference rests on its
+/// final frame.
+pub(crate) const REDUCE: &str = "(prefers-reduced-motion: reduce)";
+
 /// The rule opting a document into cross-document view transitions.
 #[cfg(not(skene_leaf = "host"))]
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
@@ -94,9 +98,12 @@ pub(crate) fn render_keyframes<S>(
   name
 }
 
-/// The `animation` declaration value for a set of animations and their keyframes names.
+/// The `animation` declaration value for a set of animations and their keyframes names,
+/// each one `at_rest` over no time and no delay, so it fills with the frame it rests
+/// on.
 pub(crate) fn render_animation_values<'a, S: 'a>(
   animations: impl IntoIterator<Item = (&'a Animation<S>, &'a str)>,
+  at_rest: impl Fn(&Animation<S>) -> bool,
 ) -> String {
   let mut out = String::new();
 
@@ -105,13 +112,20 @@ pub(crate) fn render_animation_values<'a, S: 'a>(
       out.push_str(", ");
     }
 
+    let (duration, delay) = if at_rest(animation) {
+      (0., 0.)
+    }
+    else {
+      (animation.duration, animation.delay)
+    };
+
     let _ = write!(
       out,
       "{} {}s {} {}s {} {} both",
       name,
-      animation.duration,
+      duration,
       render_easing(animation.easing),
-      animation.delay,
+      delay,
       match animation.iterations {
         Some(count) => count.to_string(),
         None => "infinite".to_owned(),

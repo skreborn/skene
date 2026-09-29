@@ -41,11 +41,16 @@ pub trait StyleExtension: Copy + Default + PartialEq + Debug + 'static {
   }
 
   /// The value `amount` of the way from `from` to `to`, for a platform running motion on
-  /// its own clock; an extension whose values have no in-between cuts over halfway.
+  /// its own clock; `None` for a discrete pair, as every pair of an extension whose
+  /// values have no in-between is.
   #[inline(always)]
   #[must_use]
-  fn interpolate_value(from: &Self::Value, to: &Self::Value, amount: f32) -> Self::Value {
-    crate::motion::interpolate::snap(from, to, amount)
+  fn interpolate_value(
+    _from: &Self::Value,
+    _to: &Self::Value,
+    _amount: f32,
+  ) -> Option<Self::Value> {
+    None
   }
 }
 

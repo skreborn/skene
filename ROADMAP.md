@@ -37,10 +37,11 @@ left half-done in a code comment.
     `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; a
     token's value cached at its defining scope, with per-scope invalidation in place of
     the global generation, where each consumer resolves it there afresh today.
-    - One motion runner in core with a property table (continuous or discrete, and a
-    unit class) for the terminal, headless and native: easing per keyframe interval,
-    discrete properties that never tween, and one reduced-motion rest frame, the final
-    one, where the web shows the base style today.
+    - One motion runner in core, with a property table giving each property its unit
+    class, in place of the terminal's and headless's own, for native too: neutral
+    keyframes for a property missing at 0% or 100%, interpolating from the underlying
+    value as CSS does where the first frame holds today, and CSS's reversing shortening
+    for an interrupted transition.
     - The `Environment` gains the pointer's capability (fine, coarse or none, and
     whether it hovers) and the safe-area insets, as facts every platform reports and
     `Media` conditions test.

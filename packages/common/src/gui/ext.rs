@@ -187,8 +187,8 @@ macro_rules! gui_fields {
       }
 
       #[inline(always)]
-      fn interpolate_value(from: &f32, to: &f32, amount: f32) -> f32 {
-        from + (to - from) * amount
+      fn interpolate_value(from: &f32, to: &f32, amount: f32) -> Option<f32> {
+        Some(from + (to - from) * amount)
       }
     }
   };

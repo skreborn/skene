@@ -67,23 +67,32 @@ fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
 /// A value with an in-between: what a transition or a keyframe animation samples.
 ///
 /// Colors mix in Oklab, lengths and numbers move linearly and land back in the
-/// medium's unit, a value per edge or axis moves per component, and a value with no
-/// in-between (a keyword, a mode) cuts over halfway.
+/// medium's unit, and a value per edge or axis moves per component. A pair with no
+/// in-between (a keyword, a mode, a length and `Auto`) is discrete, as in CSS: a
+/// transition changes it at once, and a keyframe animation halfway through the
+/// interval.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no in-between value",
-  label = "a value a transition samples implements `Interpolate`; one without an in-between snaps through `snap`"
+  label = "a value a transition samples implements `Interpolate`, answering `None` for a discrete pair"
 )]
 pub trait Interpolate: Clone {
   /// The value `amount` of the way from this one to `to`: `0.` is this value, `1.` is
-  /// `to`.
+  /// `to`; `None` for a discrete pair.
   #[must_use]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self;
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self>;
+
+  /// Whether this value and `to` have in-betweens, so a transition moves between them.
+  #[inline(always)]
+  #[must_use]
+  fn interpolates_with(&self, to: &Self) -> bool {
+    self.interpolate(to, 0.).is_some()
+  }
 }
 
-/// The in-between of a value with none: `from` until halfway, `to` after.
+/// The in-between of a discrete pair: `from` until halfway, `to` after.
 #[inline(always)]
 #[must_use]
-pub fn snap<T: Clone>(from: &T, to: &T, amount: f32) -> T {
+pub(crate) fn snap<T: Clone>(from: &T, to: &T, amount: f32) -> T {
   if amount < 0.5 {
     from.clone()
   }
@@ -99,124 +108,128 @@ fn lerp(from: f32, to: f32, amount: f32) -> f32 {
 
 impl Interpolate for f32 {
   #[inline(always)]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    lerp(*self, *to, amount)
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(lerp(*self, *to, amount))
   }
 }
 
 impl Interpolate for u32 {
   #[inline(always)]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    Self::from_f32(lerp(self.to_f32(), to.to_f32(), amount))
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self::from_f32(lerp(self.to_f32(), to.to_f32(), amount)))
   }
 }
 
 impl Interpolate for Color {
   #[inline(always)]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    self.mix(*to, amount)
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(self.mix(*to, amount))
   }
 }
 
 impl<T: Interpolate> Interpolate for Inset<T> {
   #[inline(always)]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    Self {
-      top: self.top.interpolate(&to.top, amount),
-      right: self.right.interpolate(&to.right, amount),
-      bottom: self.bottom.interpolate(&to.bottom, amount),
-      left: self.left.interpolate(&to.left, amount),
-    }
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self {
+      top: self.top.interpolate(&to.top, amount)?,
+      right: self.right.interpolate(&to.right, amount)?,
+      bottom: self.bottom.interpolate(&to.bottom, amount)?,
+      left: self.left.interpolate(&to.left, amount)?,
+    })
   }
 }
 
 impl<T: Interpolate> Interpolate for Spacing<T> {
   #[inline(always)]
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    Self {
-      row: self.row.interpolate(&to.row, amount),
-      column: self.column.interpolate(&to.column, amount),
-    }
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self {
+      row: self.row.interpolate(&to.row, amount)?,
+      column: self.column.interpolate(&to.column, amount)?,
+    })
   }
 }
 
 impl<T: Interpolate> Interpolate for Dimension<T> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
-      (Self::Length(from), Self::Length(to)) => Self::Length(from.interpolate(to, amount)),
-      (Self::Fraction(from), Self::Fraction(to)) => Self::Fraction(lerp(*from, *to, amount)),
-      _ => snap(self, to, amount),
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
+      (Self::Fraction(from), Self::Fraction(to)) => Some(Self::Fraction(lerp(*from, *to, amount))),
+      _ => None,
     }
   }
 }
 
 impl<N: Interpolate> Interpolate for Flexibility<N> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
-    Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self {
       grow_factor: lerp(self.grow_factor, to.grow_factor, amount),
       shrink_factor: lerp(self.shrink_factor, to.shrink_factor, amount),
-      initial: self.initial.interpolate(&to.initial, amount),
-    }
+      initial: self.initial.interpolate(&to.initial, amount)?,
+    })
   }
 }
 
 impl<N: Interpolate> Interpolate for Border<N> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     let color = match (&self.color, &to.color) {
       (StaticLeaf::Fixed(from), StaticLeaf::Fixed(to)) => {
-        StaticLeaf::Fixed(from.interpolate(to, amount))
+        StaticLeaf::Fixed(from.interpolate(to, amount)?)
       }
-      _ => snap(&self.color, &to.color, amount),
+      _ => return None,
     };
 
-    Self {
-      width: self.width.interpolate(&to.width, amount),
+    Some(Self {
+      width: self.width.interpolate(&to.width, amount)?,
       color,
-    }
+    })
   }
 }
 
 impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
-      (Self::Dimension(from), Self::Dimension(to)) => Self::Dimension(from.interpolate(to, amount)),
-      (Self::Number(from), Self::Number(to)) => Self::Number(from.interpolate(to, amount)),
-      (Self::DimensionInset(from), Self::DimensionInset(to)) => {
-        Self::DimensionInset(from.interpolate(to, amount))
+      (Self::Dimension(from), Self::Dimension(to)) => {
+        Some(Self::Dimension(from.interpolate(to, amount)?))
       }
-      (Self::Inset(from), Self::Inset(to)) => Self::Inset(from.interpolate(to, amount)),
-      (Self::Color(from), Self::Color(to)) => Self::Color(from.interpolate(to, amount)),
-      (Self::Border(from), Self::Border(to)) => Self::Border(from.interpolate(to, amount)),
-      (Self::Spacing(from), Self::Spacing(to)) => Self::Spacing(from.interpolate(to, amount)),
+      (Self::Number(from), Self::Number(to)) => Some(Self::Number(from.interpolate(to, amount)?)),
+      (Self::DimensionInset(from), Self::DimensionInset(to)) => {
+        Some(Self::DimensionInset(from.interpolate(to, amount)?))
+      }
+      (Self::Inset(from), Self::Inset(to)) => Some(Self::Inset(from.interpolate(to, amount)?)),
+      (Self::Color(from), Self::Color(to)) => Some(Self::Color(from.interpolate(to, amount)?)),
+      (Self::Border(from), Self::Border(to)) => Some(Self::Border(from.interpolate(to, amount)?)),
+      (Self::Spacing(from), Self::Spacing(to)) => {
+        Some(Self::Spacing(from.interpolate(to, amount)?))
+      }
       (Self::Flexibility(from), Self::Flexibility(to)) => {
-        Self::Flexibility(from.interpolate(to, amount))
+        Some(Self::Flexibility(from.interpolate(to, amount)?))
       }
       (Self::Extension(from), Self::Extension(to)) => {
-        Self::Extension(X::interpolate_value(from, to, amount))
+        Some(Self::Extension(X::interpolate_value(from, to, amount)?))
       }
-      _ => snap(self, to, amount),
+      _ => None,
     }
   }
 }
 
 impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for SlotValue<N, X> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
-      (Self::Box(from), Self::Box(to)) => Self::Box(from.interpolate(to, amount)),
-      (Self::Run(from), Self::Run(to)) => Self::Run(from.interpolate(to, amount)),
-      _ => snap(self, to, amount),
+      (Self::Box(from), Self::Box(to)) => Some(Self::Box(from.interpolate(to, amount)?)),
+      (Self::Run(from), Self::Run(to)) => Some(Self::Run(from.interpolate(to, amount)?)),
+      _ => None,
     }
   }
 }
 
 impl<X: StyleExtension> Interpolate for RunValue<X> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Self {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
-      (Self::Color(from), Self::Color(to)) => Self::Color(from.interpolate(to, amount)),
+      (Self::Color(from), Self::Color(to)) => Some(Self::Color(from.interpolate(to, amount)?)),
       (Self::Extension(from), Self::Extension(to)) => {
-        Self::Extension(X::interpolate_value(from, to, amount))
+        Some(Self::Extension(X::interpolate_value(from, to, amount)?))
       }
-      _ => snap(self, to, amount),
+      _ => None,
     }
   }
 }
@@ -283,20 +296,29 @@ impl<V: Interpolate> Tween<V> {
     self.progress(now) >= 1.
   }
 
-  /// The value shown at clock reading `now`.
+  /// The value shown at clock reading `now`; a discrete pair shows `to` from halfway.
   #[inline(always)]
   pub fn sample(&self, now: f64) -> V {
+    let amount = self.easing.apply(self.progress(now));
+
     self
       .from
-      .interpolate(&self.to, self.easing.apply(self.progress(now)))
+      .interpolate(&self.to, amount)
+      .unwrap_or_else(|| snap(&self.from, &self.to, amount))
   }
 }
 
-/// The value of `frames` at `offset` percent: the two frames around it interpolated,
-/// the nearest one alone past either end; `None` for no frames.
+/// The value of `frames` at `offset` percent: the two frames around it interpolated
+/// through `easing` over their interval, the nearest one alone past either end; `None`
+/// for no frames.
 ///
-/// Of frames sharing an offset, the last declared stands, as in CSS.
-pub fn sample_keyframes<V: Interpolate>(frames: &[(f32, V)], offset: f32) -> Option<V> {
+/// Of frames sharing an offset, the last declared stands, and a discrete pair turns
+/// halfway through its eased interval, as in CSS.
+pub fn sample_keyframes<V: Interpolate>(
+  frames: &[(f32, V)],
+  offset: f32,
+  easing: Easing,
+) -> Option<V> {
   let before = frames
     .iter()
     .filter(|(percent, _)| *percent <= offset)
@@ -315,7 +337,13 @@ pub fn sample_keyframes<V: Interpolate>(frames: &[(f32, V)], offset: f32) -> Opt
         return Some(to.clone());
       }
 
-      Some(from.interpolate(to, (offset - from_percent) / span))
+      let amount = easing.apply((offset - from_percent) / span);
+
+      Some(
+        from
+          .interpolate(to, amount)
+          .unwrap_or_else(|| snap(from, to, amount)),
+      )
     }
     (Some((_, value)), None) | (None, Some((_, value))) => Some(value.clone()),
     (None, None) => None,
@@ -348,26 +376,23 @@ mod tests {
     assert!(Easing::EaseOut.apply(0.5) > 0.5);
   }
 
-  /// Cells round at the sample, lengths keep their kind, and a mixed pair cuts over
-  /// halfway.
+  /// Cells round at the sample, lengths keep their kind, and a length and `Auto` are
+  /// discrete.
   #[test]
   fn lengths_interpolate_per_kind() {
-    assert_eq!(0u32.interpolate(&10, 0.26), 3);
+    assert_eq!(0u32.interpolate(&10, 0.26), Some(3));
     assert_eq!(
       Dimension::Length(0f32).interpolate(&Dimension::Length(10.), 0.5),
-      Dimension::Length(5.)
+      Some(Dimension::Length(5.))
     );
     assert_eq!(
       Dimension::<f32>::Auto.interpolate(&Dimension::Length(10.), 0.4),
-      Dimension::Auto
+      None
     );
-    assert_eq!(
-      Dimension::<f32>::Auto.interpolate(&Dimension::Length(10.), 0.6),
-      Dimension::Length(10.)
-    );
+    assert!(!Dimension::<f32>::Auto.interpolates_with(&Dimension::Length(10.)));
     assert_eq!(
       Inset::all(0f32).interpolate(&Inset::all(4.), 0.25),
-      Inset::all(1.)
+      Some(Inset::all(1.))
     );
   }
 
@@ -396,16 +421,43 @@ mod tests {
   fn keyframes_sample_between_neighbours() {
     let frames = [(0., 0f32), (50., 10.), (100., 30.)];
 
-    assert_eq!(sample_keyframes(&frames, 25.), Some(5.));
-    assert_eq!(sample_keyframes(&frames, 75.), Some(20.));
-    assert_eq!(sample_keyframes(&frames[1..], 10.), Some(10.));
+    assert_eq!(sample_keyframes(&frames, 25., Easing::Linear), Some(5.));
+    assert_eq!(sample_keyframes(&frames, 75., Easing::Linear), Some(20.));
+    assert_eq!(
+      sample_keyframes(&frames[1..], 10., Easing::Linear),
+      Some(10.)
+    );
 
     let black = Color::srgb(0., 0., 0.);
     let white = Color::srgb(1., 1., 1.);
-    let mid = sample_keyframes(&[(0., black), (100., white)], 50.).unwrap();
+    let mid = sample_keyframes(&[(0., black), (100., white)], 50., Easing::Linear).unwrap();
 
-    assert_eq!(mid, black.mix(white, 0.5));
-    assert_eq!(sample_keyframes::<f32>(&[], 50.), None);
+    assert_eq!(Some(mid), black.interpolate(&white, 0.5));
+    assert_eq!(sample_keyframes::<f32>(&[], 50., Easing::Linear), None);
+  }
+
+  /// The easing curves each keyframe interval on its own, as CSS's timing function
+  /// does, and a discrete pair turns halfway through its eased interval.
+  #[test]
+  fn easing_applies_per_interval() {
+    let frames = [(0., 0f32), (50., 10.), (100., 30.)];
+    let eased = Easing::EaseIn.apply(0.5);
+
+    assert!((sample_keyframes(&frames, 25., Easing::EaseIn).unwrap() - 10. * eased).abs() < 1e-4);
+    assert!(
+      (sample_keyframes(&frames, 75., Easing::EaseIn).unwrap() - (10. + 20. * eased)).abs() < 1e-4
+    );
+
+    let sizes = [(0., Dimension::<f32>::Auto), (100., Dimension::Length(10.))];
+
+    assert_eq!(
+      sample_keyframes(&sizes, 40., Easing::Linear),
+      Some(Dimension::Auto)
+    );
+    assert_eq!(
+      sample_keyframes(&sizes, 60., Easing::Linear),
+      Some(Dimension::Length(10.))
+    );
   }
 
   /// Of two frames at one offset the last declared stands, on either side of it.
@@ -413,8 +465,8 @@ mod tests {
   fn a_repeated_offset_takes_its_last_frame() {
     let frames = [(0., 0f32), (50., 10.), (50., 20.), (100., 40.)];
 
-    assert_eq!(sample_keyframes(&frames, 25.), Some(10.));
-    assert_eq!(sample_keyframes(&frames, 50.), Some(20.));
-    assert_eq!(sample_keyframes(&frames, 75.), Some(30.));
+    assert_eq!(sample_keyframes(&frames, 25., Easing::Linear), Some(10.));
+    assert_eq!(sample_keyframes(&frames, 50., Easing::Linear), Some(20.));
+    assert_eq!(sample_keyframes(&frames, 75., Easing::Linear), Some(30.));
   }
 }

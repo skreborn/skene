@@ -10,7 +10,10 @@
 //! `i`-th variant. Variants group by their canonical condition into one rule per
 //! conjunction, kept in each property's declaration order.
 
-use std::hash::{Hash, Hasher};
+use std::{
+  fmt::Write as _,
+  hash::{Hash, Hasher},
+};
 
 use rustc_hash::{FxHashMap, FxHasher};
 use skene_common::{
@@ -61,7 +64,7 @@ use skene_core::{
 use super::{
   condition::{CLASS_PLACEHOLDER, Conjunction},
   expr::render_expr,
-  motion::{NO_PREFERENCE, render_animation_values, render_keyframes, render_transitions},
+  motion::{NO_PREFERENCE, REDUCE, render_animation_values, render_keyframes, render_transitions},
   token::WebTokenValue,
 };
 use crate::{Declarations, declarations::Ident};
@@ -595,8 +598,9 @@ fn run_keyframe_declarations(style: &RunStyle<Keyframe, GuiExt>) -> Declarations
 
 /// Folds the motion into `base` and appends the `@keyframes` blocks to `out`; the
 /// motion respecting reduced motion goes into the returned trailer, a rule on the
-/// class under the no-preference media query, so a reader preferring reduced motion
-/// sees only the motion that opted out.
+/// class under the no-preference media query, and under the reduce query each
+/// animation respecting it rests on its final frame, so a reader preferring reduced
+/// motion sees only the motion that opted out moving.
 fn motion<S>(
   out: &mut String,
   base: Declarations,
@@ -606,6 +610,7 @@ fn motion<S>(
 ) -> (Declarations, String) {
   let mut base = base;
   let mut respecting = Declarations::new();
+  let mut resting = Declarations::new();
   let insistent =
     |transition: &skene_core::Transition<GuiProperty>| !transition.respects_reduced_motion;
 
@@ -637,24 +642,36 @@ fn motion<S>(
     if entries().any(|entry| insistent(&entry)) {
       base = base.set(
         "animation",
-        render_animation_values(entries().filter(insistent)),
+        render_animation_values(entries().filter(insistent), |_| false),
       );
     }
 
     if !entries().all(|entry| insistent(&entry)) {
-      respecting = respecting.set("animation", render_animation_values(entries()));
+      respecting = respecting.set("animation", render_animation_values(entries(), |_| false));
+      resting = resting.set(
+        "animation",
+        render_animation_values(entries(), |animation| animation.respects_reduced_motion),
+      );
     }
   }
 
-  let trailer = if respecting.is_empty() {
-    String::new()
-  }
-  else {
-    format!(
+  let mut trailer = String::new();
+
+  if !respecting.is_empty() {
+    let _ = write!(
+      trailer,
       "@media {NO_PREFERENCE}{{.{CLASS_PLACEHOLDER}{{{}}}}}",
       respecting.render()
-    )
-  };
+    );
+  }
+
+  if !resting.is_empty() {
+    let _ = write!(
+      trailer,
+      "@media {REDUCE}{{.{CLASS_PLACEHOLDER}{{{}}}}}",
+      resting.render()
+    );
+  }
 
   (base, trailer)
 }

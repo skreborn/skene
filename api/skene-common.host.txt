@@ -200,7 +200,7 @@ pub type skene_common::gui::GuiExt::RunFields<S: skene_core::shape::Shape> = ske
 pub type skene_common::gui::GuiExt::Value = f32
 pub fn skene_common::gui::GuiExt::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
 pub fn skene_common::gui::GuiExt::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
-pub fn skene_common::gui::GuiExt::interpolate_value(&f32, &f32, f32) -> f32
+pub fn skene_common::gui::GuiExt::interpolate_value(&f32, &f32, f32) -> core::option::Option<f32>
 impl skene_core::run_style::IntoRunValue<skene_common::gui::GuiExt> for f32
 pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::gui::GuiExt>) -> core::option::Option<Self>
 pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::gui::GuiExt>
@@ -646,7 +646,7 @@ pub type skene_common::tui::TuiExt::RunFields<S: skene_core::shape::Shape> = ske
 pub type skene_common::tui::TuiExt::Value = skene_common::tui::TuiValue
 pub fn skene_common::tui::TuiExt::for_each_box_field<N: skene_core::scalar::Scalar, V: skene_core::box_style::BoxFieldVisitor<N, Self>>(&mut V)
 pub fn skene_common::tui::TuiExt::for_each_run_field<V: skene_core::run_style::RunFieldVisitor<Self>>(&mut V)
-pub fn skene_common::tui::TuiExt::interpolate_value(&skene_common::tui::TuiValue, &skene_common::tui::TuiValue, f32) -> skene_common::tui::TuiValue
+pub fn skene_common::tui::TuiExt::interpolate_value(&skene_common::tui::TuiValue, &skene_common::tui::TuiValue, f32) -> core::option::Option<skene_common::tui::TuiValue>
 pub fn skene_common::tui::TuiExt::run_value_from_number(f32) -> core::option::Option<skene_core::run_style::RunValue<Self>>
 impl skene_core::run_style::IntoRunValue<skene_common::tui::TuiExt> for bool
 pub fn bool::from_run_value(skene_core::run_style::RunValue<skene_common::tui::TuiExt>) -> core::option::Option<Self>

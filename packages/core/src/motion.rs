@@ -217,8 +217,9 @@ impl<S> Animation<S> {
   }
 
   /// Where the animation is `elapsed` seconds after it began, as a percentage through
-  /// its keyframes: the first frame before the delay, the last iteration's end once it
-  /// has played out.
+  /// its keyframes, linear in time: the first frame before the delay, the
+  /// [rest offset](Self::rest_offset) once it has played out. The easing applies per
+  /// keyframe interval, where the frames are sampled.
   #[must_use]
   pub fn offset(&self, elapsed: f64) -> f32 {
     let played = elapsed - f64::from(self.delay);
@@ -228,7 +229,7 @@ impl<S> Animation<S> {
     }
 
     if self.duration <= 0. {
-      return self.end_offset();
+      return self.rest_offset();
     }
 
     let cycles = played / f64::from(self.duration);
@@ -237,7 +238,7 @@ impl<S> Animation<S> {
       .iterations
       .is_some_and(|iterations| cycles >= f64::from(iterations))
     {
-      return self.end_offset();
+      return self.rest_offset();
     }
 
     #[expect(
@@ -254,7 +255,7 @@ impl<S> Animation<S> {
     let reversed = self.alternate && iteration % 2 == 1;
     let directed = if reversed { 1. - local } else { local };
 
-    self.easing.apply(directed) * 100.
+    directed * 100.
   }
 
   /// Whether the animation has played out `elapsed` seconds after it began.
@@ -269,8 +270,11 @@ impl<S> Animation<S> {
     }
   }
 
-  /// The offset the animation rests at after its last iteration.
-  fn end_offset(&self) -> f32 {
+  /// The offset the animation rests at: its last iteration's end once it has played
+  /// out, and the end of its first for one that never does. A reader preferring reduced
+  /// motion sees this frame alone.
+  #[must_use]
+  pub fn rest_offset(&self) -> f32 {
     let last = self.iterations.unwrap_or(1).saturating_sub(1);
 
     if self.alternate && last % 2 == 1 {

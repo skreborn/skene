@@ -391,12 +391,12 @@ impl StyleExtension for TuiExt {
   }
 
   #[inline(always)]
-  fn interpolate_value(from: &TuiValue, to: &TuiValue, amount: f32) -> TuiValue {
+  fn interpolate_value(from: &TuiValue, to: &TuiValue, amount: f32) -> Option<TuiValue> {
     match (from, to) {
       (TuiValue::Number(from), TuiValue::Number(to)) => {
-        TuiValue::Number((to - from).mul_add(amount, *from))
+        Some(TuiValue::Number((to - from).mul_add(amount, *from)))
       }
-      _ => skene_core::interpolate::snap(from, to, amount),
+      _ => None,
     }
   }
 }

@@ -19,7 +19,7 @@ use skene_core::{
   RunFieldVisitor,
   RunValue,
   Transition,
-  interpolate::{Tween, sample_keyframes},
+  interpolate::{Interpolate as _, Tween, sample_keyframes},
 };
 
 use crate::{
@@ -84,7 +84,7 @@ fn offsets<S>(animations: &[Animation<S>], elapsed: f64, reduced: bool) -> Vec<f
     .iter()
     .map(|animation| {
       if reduced && animation.respects_reduced_motion {
-        animation.offset(f64::MAX)
+        animation.rest_offset()
       }
       else {
         animation.offset(elapsed)
@@ -273,16 +273,14 @@ impl BoxFieldVisitor<u32, TuiExt> for StartBoxTweens<'_> {
     else {
       return;
     };
+    let (from, to) = (from.clone().into_box_value(), to.clone().into_box_value());
 
-    self.motion.tweens.push((
-      F::KEY,
-      Tween::new(
-        from.clone().into_box_value(),
-        to.clone().into_box_value(),
-        self.now,
-        transition,
-      ),
-    ));
+    if from.interpolates_with(&to) {
+      self
+        .motion
+        .tweens
+        .push((F::KEY, Tween::new(from, to, self.now, transition)));
+    }
   }
 }
 
@@ -321,7 +319,7 @@ impl BoxFieldVisitor<u32, TuiExt> for AnimateBox<'_> {
         })
         .collect();
 
-      if let Some(value) = sample_keyframes(&frames, *offset) {
+      if let Some(value) = sample_keyframes(&frames, *offset, animation.easing) {
         *F::get_mut(self.style) = F::Value::from_box_value(value);
       }
     }
@@ -356,16 +354,14 @@ impl RunFieldVisitor<TuiExt> for StartRunTweens<'_> {
     else {
       return;
     };
+    let (from, to) = (from.clone().into_run_value(), to.clone().into_run_value());
 
-    self.motion.tweens.push((
-      F::KEY,
-      Tween::new(
-        from.clone().into_run_value(),
-        to.clone().into_run_value(),
-        self.now,
-        transition,
-      ),
-    ));
+    if from.interpolates_with(&to) {
+      self
+        .motion
+        .tweens
+        .push((F::KEY, Tween::new(from, to, self.now, transition)));
+    }
   }
 }
 
@@ -404,7 +400,7 @@ impl RunFieldVisitor<TuiExt> for AnimateRun<'_> {
         })
         .collect();
 
-      if let Some(value) = sample_keyframes(&frames, *offset) {
+      if let Some(value) = sample_keyframes(&frames, *offset, animation.easing) {
         *F::get_mut(self.style) = F::Value::from_run_value(value);
       }
     }

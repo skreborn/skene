@@ -24,7 +24,7 @@ use skene_core::{
   Size,
   TokenName,
   Transition,
-  interpolate::{Tween, sample_keyframes},
+  interpolate::{Interpolate as _, Tween, sample_keyframes},
 };
 
 use crate::{Headless, SlotValue, TokenValue, store::Kind, with_store};
@@ -309,7 +309,9 @@ fn present(
         .remove(&key)
         .map_or(previous, |tween| tween.sample(now));
 
-      if let Some(transition) = covering(&declared.transitions, key, reduced) {
+      if let Some(transition) = covering(&declared.transitions, key, reduced)
+        && from.interpolates_with(&target)
+      {
         motion
           .tweens
           .insert(key, Tween::new(from, target.clone(), now, transition));
@@ -332,13 +334,13 @@ fn present(
 
     for (animation, frames) in &declared.animations {
       let offset = if reduced && animation.respects_reduced_motion {
-        animation.offset(f64::MAX)
+        animation.rest_offset()
       }
       else {
         animation.offset(elapsed)
       };
 
-      if let Some(value) = sample_keyframes(frames, offset) {
+      if let Some(value) = sample_keyframes(frames, offset, animation.easing) {
         presented = value;
       }
     }

@@ -619,31 +619,42 @@ impl<V: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::
 impl<V: core::fmt::Debug> core::fmt::Debug for skene_core::interpolate::Tween<V>
 pub fn skene_core::interpolate::Tween<V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub trait skene_core::interpolate::Interpolate: core::clone::Clone
-pub fn skene_core::interpolate::Interpolate::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::interpolate::Interpolate::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::interpolate::Interpolate::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for f32
-pub fn f32::interpolate(&self, &Self, f32) -> Self
+pub fn f32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn f32::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for skene_core::Color
-pub fn skene_core::Color::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for u32
-pub fn u32::interpolate(&self, &Self, f32) -> Self
+pub fn u32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn u32::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::Scalar + skene_core::interpolate::Interpolate, X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::BoxValue<N, X>
-pub fn skene_core::BoxValue<N, X>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::BoxValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::BoxValue<N, X>::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::Scalar + skene_core::interpolate::Interpolate, X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::SlotValue<N, X>
-pub fn skene_core::SlotValue<N, X>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::SlotValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::SlotValue<N, X>::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Border<N>
-pub fn skene_core::Border<N>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Border<N>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Border<N>::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Flexibility<N>
-pub fn skene_core::Flexibility<N>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Flexibility<N>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Flexibility<N>::interpolates_with(&self, &Self) -> bool
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Dimension<T>
-pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Dimension<T>::interpolates_with(&self, &Self) -> bool
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Inset<T>
-pub fn skene_core::Inset<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Inset<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Inset<T>::interpolates_with(&self, &Self) -> bool
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Spacing<T>
-pub fn skene_core::Spacing<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Spacing<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Spacing<T>::interpolates_with(&self, &Self) -> bool
 impl<X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::RunValue<X>
-pub fn skene_core::RunValue<X>::interpolate(&self, &Self, f32) -> Self
-pub fn skene_core::interpolate::sample_keyframes<V: skene_core::interpolate::Interpolate>(&[(f32, V)], f32) -> core::option::Option<V>
-pub fn skene_core::interpolate::snap<T: core::clone::Clone>(&T, &T, f32) -> T
+pub fn skene_core::RunValue<X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::RunValue<X>::interpolates_with(&self, &Self) -> bool
+pub fn skene_core::interpolate::sample_keyframes<V: skene_core::interpolate::Interpolate>(&[(f32, V)], f32, skene_core::Easing) -> core::option::Option<V>
 pub mod skene_core::run_fields
 pub struct skene_core::run_fields::Decoration
 impl core::clone::Clone for skene_core::run_fields::Decoration
@@ -865,7 +876,8 @@ impl<N: core::cmp::PartialEq + skene_core::Scalar, X: core::cmp::PartialEq + ske
 impl<N: core::fmt::Debug + skene_core::Scalar, X: core::fmt::Debug + skene_core::StyleExtension> core::fmt::Debug for skene_core::BoxValue<N, X> where <X as skene_core::StyleExtension>::Value: core::fmt::Debug
 pub fn skene_core::BoxValue<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_core::Scalar + skene_core::interpolate::Interpolate, X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::BoxValue<N, X>
-pub fn skene_core::BoxValue<N, X>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::BoxValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::BoxValue<N, X>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::Bubbling
 pub skene_core::Bubbling::Continue
 pub skene_core::Bubbling::Stop
@@ -1016,7 +1028,8 @@ impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::Dimension<T>
 pub fn skene_core::Dimension<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::marker::Copy> core::marker::Copy for skene_core::Dimension<T>
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Dimension<T>
-pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Dimension<T>::interpolates_with(&self, &Self) -> bool
 impl<T> core::convert::From<T> for skene_core::Dimension<T>
 pub fn skene_core::Dimension<T>::from(T) -> Self
 pub enum skene_core::Easing
@@ -1722,7 +1735,8 @@ impl<X: core::cmp::PartialEq + skene_core::StyleExtension> core::marker::Structu
 impl<X: core::fmt::Debug + skene_core::StyleExtension> core::fmt::Debug for skene_core::RunValue<X> where <X as skene_core::StyleExtension>::Value: core::fmt::Debug
 pub fn skene_core::RunValue<X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::RunValue<X>
-pub fn skene_core::RunValue<X>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::RunValue<X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::RunValue<X>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::SlotValue<N: skene_core::Scalar, X: skene_core::StyleExtension>
 pub skene_core::SlotValue::Box(skene_core::BoxValue<N, X>)
 pub skene_core::SlotValue::Run(skene_core::RunValue<X>)
@@ -1734,7 +1748,8 @@ impl<N: core::cmp::PartialEq + skene_core::Scalar, X: core::cmp::PartialEq + ske
 impl<N: core::fmt::Debug + skene_core::Scalar, X: core::fmt::Debug + skene_core::StyleExtension> core::fmt::Debug for skene_core::SlotValue<N, X>
 pub fn skene_core::SlotValue<N, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_core::Scalar + skene_core::interpolate::Interpolate, X: skene_core::StyleExtension> skene_core::interpolate::Interpolate for skene_core::SlotValue<N, X>
-pub fn skene_core::SlotValue<N, X>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::SlotValue<N, X>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::SlotValue<N, X>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::State
 pub skene_core::State::Checked
 pub skene_core::State::Disabled
@@ -1996,6 +2011,7 @@ pub fn skene_core::Animation<S>::is_done(&self, f64) -> bool
 pub fn skene_core::Animation<S>::map_keyframes<T>(&self, impl core::ops::function::FnMut(&S) -> T) -> skene_core::Animation<T>
 pub fn skene_core::Animation<S>::new(f32, impl core::iter::traits::collect::IntoIterator<Item = (f32, S)>) -> Self
 pub fn skene_core::Animation<S>::offset(&self, f64) -> f32
+pub fn skene_core::Animation<S>::rest_offset(&self) -> f32
 pub const fn skene_core::Animation<S>::set_alternate(self) -> Self
 pub const fn skene_core::Animation<S>::set_delay(self, f32) -> Self
 pub const fn skene_core::Animation<S>::set_easing(self, skene_core::Easing) -> Self
@@ -2060,7 +2076,8 @@ pub fn skene_core::Border<N>::hash<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_core::Scalar> skene_core::Fingerprint for skene_core::Border<N>
 pub fn skene_core::Border<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Border<N>
-pub fn skene_core::Border<N>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Border<N>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Border<N>::interpolates_with(&self, &Self) -> bool
 pub struct skene_core::Boundary
 impl skene_core::Boundary
 pub fn skene_core::Boundary::current() -> core::option::Option<Self>
@@ -2221,7 +2238,8 @@ pub fn skene_core::Color::from_expr_value(skene_core::ExprValue) -> core::option
 impl skene_core::Fingerprint for skene_core::Color
 pub fn skene_core::Color::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::interpolate::Interpolate for skene_core::Color
-pub fn skene_core::Color::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
 impl skene_reactive::encode::Snapshot for skene_core::Color
 pub fn skene_core::Color::record(&self, &mut skene_reactive::encode::Recorder)
 pub fn skene_core::Color::restore(skene_reactive::encode::Value<'_>) -> core::option::Option<Self>
@@ -2565,7 +2583,8 @@ pub fn skene_core::Flexibility<N>::into_box_value(self) -> skene_core::BoxValue<
 impl<N: skene_core::Scalar> skene_core::Fingerprint for skene_core::Flexibility<N>
 pub fn skene_core::Flexibility<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<N: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Flexibility<N>
-pub fn skene_core::Flexibility<N>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Flexibility<N>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Flexibility<N>::interpolates_with(&self, &Self) -> bool
 impl<T: core::clone::Clone> core::clone::Clone for skene_core::Flexibility<T>
 pub fn skene_core::Flexibility<T>::clone(&self) -> skene_core::Flexibility<T>
 impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Flexibility<T>
@@ -2660,7 +2679,8 @@ impl<T: core::marker::Copy> core::marker::Copy for skene_core::Inset<T>
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Inset<T>
 pub fn skene_core::Inset<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Inset<T>
-pub fn skene_core::Inset<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Inset<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Inset<T>::interpolates_with(&self, &Self) -> bool
 pub struct skene_core::Interaction
 pub skene_core::Interaction::control: core::option::Option<skene_core::ControlState>
 pub skene_core::Interaction::focus: skene_core::Focus
@@ -3371,7 +3391,8 @@ impl<T: core::marker::Copy> core::marker::Copy for skene_core::Spacing<T>
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Spacing<T>
 pub fn skene_core::Spacing<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Spacing<T>
-pub fn skene_core::Spacing<T>::interpolate(&self, &Self, f32) -> Self
+pub fn skene_core::Spacing<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Spacing<T>::interpolates_with(&self, &Self) -> bool
 pub struct skene_core::StackChild
 impl core::clone::Clone for skene_core::StackChild
 pub fn skene_core::StackChild::clone(&self) -> skene_core::StackChild
@@ -4127,7 +4148,7 @@ pub type skene_core::StyleExtension::RunFields<S: skene_core::Shape>: core::defa
 pub type skene_core::StyleExtension::Value: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + 'static
 pub fn skene_core::StyleExtension::for_each_box_field<N: skene_core::Scalar, V: skene_core::BoxFieldVisitor<N, Self>>(&mut V)
 pub fn skene_core::StyleExtension::for_each_run_field<V: skene_core::RunFieldVisitor<Self>>(&mut V)
-pub fn skene_core::StyleExtension::interpolate_value(&Self::Value, &Self::Value, f32) -> Self::Value
+pub fn skene_core::StyleExtension::interpolate_value(&Self::Value, &Self::Value, f32) -> core::option::Option<Self::Value>
 pub fn skene_core::StyleExtension::run_value_from_number(f32) -> core::option::Option<skene_core::RunValue<Self>>
 impl skene_core::StyleExtension for ()
 pub type ()::BoxFields<S: skene_core::Shape> = ()
@@ -4136,7 +4157,7 @@ pub type ()::RunFields<S: skene_core::Shape> = ()
 pub type ()::Value = skene_core::NoValue
 pub fn ()::for_each_box_field<N: skene_core::Scalar, V: skene_core::BoxFieldVisitor<N, Self>>(&mut V)
 pub fn ()::for_each_run_field<V: skene_core::RunFieldVisitor<Self>>(&mut V)
-pub fn ()::interpolate_value(&Self::Value, &Self::Value, f32) -> Self::Value
+pub fn ()::interpolate_value(&Self::Value, &Self::Value, f32) -> core::option::Option<Self::Value>
 pub fn ()::run_value_from_number(f32) -> core::option::Option<skene_core::RunValue<Self>>
 pub trait skene_core::Themed<V>: skene_core::TokenSet<V> + core::default::Default
 pub fn skene_core::Themed::current() -> Self

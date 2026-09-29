@@ -401,7 +401,8 @@ fn named_picker(owner: Owner, value: Signal<String>) -> Parts {
 /// Typing over the closed face chooses by name without opening: two characters in
 /// quick succession match a prefix, a character repeated cycles through the options
 /// starting with it, and once the buffer's reset has elapsed the next character
-/// starts afresh. `Space` still toggles the list.
+/// starts afresh. `Space` extends a buffer already begun and toggles the list
+/// otherwise.
 #[test]
 fn typing_over_the_closed_face_chooses_by_name() {
   reset();
@@ -435,7 +436,12 @@ fn typing_over_the_closed_face_chooses_by_name() {
 
   assert_eq!(value.get(), "av", "no match leaves the value alone");
   assert_eq!(trigger_key_down(parts.face, &key(" ")), CONSUMED);
-  assert!(is_open(parts.overlay), "space still opens the list");
+  assert!(!is_open(parts.overlay), "space extends the buffer begun");
+
+  trigger_frame(TYPE_AHEAD_RESET);
+
+  assert_eq!(trigger_key_down(parts.face, &key(" ")), CONSUMED);
+  assert!(is_open(parts.overlay), "space opens the list without one");
 
   owner.dispose();
 }

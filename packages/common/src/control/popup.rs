@@ -24,9 +24,10 @@ type Typed = dyn Fn(&KeyEvent) -> bool;
 /// The face of a popup, which opens and closes it.
 ///
 /// A face opening a list of options is a combobox, and one opening a menu or a dialog a
-/// button. A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it, `Escape`
-/// closes it, and any other key pressed while it is closed goes to
-/// [`handle_typed`](Self::handle_typed).
+/// button. A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it,
+/// `Escape` closes it, and any other key pressed while it is closed goes to
+/// [`handle_typed`](Self::handle_typed), which `Space` reaches first, toggling only
+/// where the handler does not take it.
 ///
 /// Controlled: the open state it reports is what [`derive_open`](Self::derive_open)
 /// reads, and a toggle only calls [`handle_open`](Self::handle_open) with the state it
@@ -156,11 +157,14 @@ impl<P: Platform> Behavior<P> for Popup {
   }
 
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+    let typed = || !self.read() && self.on_typed.as_ref().is_some_and(|typed| typed(event));
+
     match event.key.as_str() {
+      " " if typed() => {}
       "Enter" | " " => self.ask(!self.read()),
       "ArrowDown" | "ArrowUp" => self.ask(true),
       "Escape" if self.read() => self.ask(false),
-      _ if !self.read() && self.on_typed.as_ref().is_some_and(|typed| typed(event)) => {}
+      _ if typed() => {}
       _ => return Prevent::None,
     }
 

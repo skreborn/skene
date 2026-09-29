@@ -785,12 +785,14 @@ pub(crate) struct ScrollLatch {
 
 /// The delivered left press awaiting its release: the node it landed on with its
 /// ancestors, the root first, the node it landed on, the node declaring drag axes that
-/// captured it, if any, and the focusable it landed on.
+/// captured it, if any, the focusable it landed on, and its place in a run of quick
+/// presses at one cell.
 pub(crate) struct Press {
   pub(crate) path: Vec<Handle>,
   pub(crate) pressed: Handle,
   pub(crate) captured: Option<Handle>,
   pub(crate) target: Option<Handle>,
+  pub(crate) count: u8,
 }
 
 /// The environment as signals, with the write halves the platform drives.

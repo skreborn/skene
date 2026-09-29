@@ -915,6 +915,7 @@ pub fn skene_common::Container<P>::derive_visibility<R: core::convert::Into<sken
 pub fn skene_common::Container<P>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Container<P>::handle_double_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
@@ -1124,7 +1125,7 @@ pub fn skene_common::Control<P, B, C>::fmt(&self, &mut core::fmt::Formatter<'_>)
 impl<P: skene_core::platform::Platform, B: skene_common::Behavior<P>, C> skene_core::view::AnyKind for skene_common::Control<P, B, C>
 pub struct skene_common::ControlHandle<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::ControlHandle<P>
-pub fn skene_common::ControlHandle<P>::click(&self) -> skene_core::events::Prevented
+pub fn skene_common::ControlHandle<P>::click(&self, &skene_core::events::ClickEvent) -> skene_core::events::Prevented
 pub fn skene_common::ControlHandle<P>::disabled_read(&self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>
 pub fn skene_common::ControlHandle<P>::focus(&self)
 pub fn skene_common::ControlHandle<P>::is_disabled(&self) -> bool
@@ -1280,6 +1281,7 @@ pub fn skene_common::LayoutBox<P, Kind>::derive_spacing<R: core::convert::Into<s
 pub fn skene_common::LayoutBox<P, Kind>::derive_wrap<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Wrap>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::LayoutBox<P, Kind>::handle_double_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self

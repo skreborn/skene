@@ -120,7 +120,7 @@ impl From<Bubbling> for Prevent {
 }
 
 /// A click handler as dispatch stores it: the closure plus its verdict.
-pub type ClickHandler = dyn Fn() -> Prevent;
+pub type ClickHandler = dyn Fn(&ClickEvent) -> Prevent;
 /// A key handler as dispatch stores it: the closure plus its verdict.
 pub type KeyHandler = dyn Fn(&KeyEvent) -> Prevent;
 /// A pointer handler as dispatch stores it: the closure plus its verdict.
@@ -187,6 +187,29 @@ impl Modifiers {
       shift: self.shift || other.shift,
       alt: self.alt || other.alt,
       meta: self.meta || other.meta,
+    }
+  }
+}
+
+/// A click: a press and release on one target, or a control's activation by a key.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct ClickEvent {
+  /// The modifier state.
+  pub modifiers: Modifiers,
+  /// The click's place in a run of quick clicks at one spot: `1` for a single click,
+  /// `2` for the second of a double, and so on; `0` for a click no pointer made, as a
+  /// key's.
+  pub count: u8,
+}
+
+impl ClickEvent {
+  /// A click of `count` quick clicks with no modifier held.
+  #[inline(always)]
+  pub const fn new(count: u8) -> Self {
+    Self {
+      modifiers: Modifiers::NONE,
+      count,
     }
   }
 }

@@ -41,6 +41,7 @@ use skene_headless::{
   resolve_color,
   resolve_inset,
   trigger_blur,
+  trigger_double_click,
   trigger_focus,
   trigger_key_down,
   trigger_key_up,
@@ -92,6 +93,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     let outer_key = note("outer key");
     let outer_up = note("outer up");
     let outer_enter = note("outer enter");
+    let inner_double = note("inner double click");
     let inner_down = note("inner down");
     let inner_key = note("inner key");
     let inner_key_up = note("inner key up");
@@ -113,6 +115,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       .set_child(
         Container::new()
           .set_overflow(Overflow::Scroll)
+          .handle_double_click(inner_double)
           .handle_pointer_down(move |event| {
             assert_eq!(event.button, Some(PointerButton::Primary));
             inner_down();
@@ -152,6 +155,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   assert_eq!(
     listened(inner),
     [
+      EventKind::DoubleClick,
       EventKind::KeyDown,
       EventKind::KeyUp,
       EventKind::PointerDown,
@@ -188,6 +192,8 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     Prevented::default()
   );
 
+  assert_eq!(trigger_double_click(inner), Prevented::default());
+
   trigger_pointer_enter(inner);
   trigger_pointer_leave(inner);
   trigger_focus(inner);
@@ -209,6 +215,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       "outer up",
       "inner move",
       "inner cancel",
+      "inner double click",
       "outer enter",
       "inner enter",
       "inner leave",

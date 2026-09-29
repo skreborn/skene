@@ -412,21 +412,16 @@ impl skene_gui::router::Route for Page {
   }
 }
 
-/// A pointer press with `modifiers` held.
-fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
-  skene_gui::core::PointerEvent {
-    modifiers,
-    ..skene_gui::core::PointerEvent::mouse(0., 0.)
-  }
-  .with_press(skene_gui::core::PointerButton::Primary)
-}
-
 /// A link is a box carrying its route's path as destination; a plain click navigates
-/// the router and suppresses the platform's own navigation, a modified click leaves
-/// both to the platform.
+/// the router and suppresses the platform's own navigation, a modified click, from a
+/// pointer or a key, leaves both to the platform.
 #[test]
 fn a_link_carries_its_destination_and_navigates_the_router() {
-  use skene_gui::{Link, core::Modifiers, headless::trigger_pointer_down};
+  use skene_gui::{
+    Link,
+    core::{ClickEvent, Modifiers},
+    headless::trigger_click_event,
+  };
 
   reset();
 
@@ -444,7 +439,6 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
   );
   assert_eq!(outline(link), "Box\n  Run \"about\"\n");
 
-  let _ = trigger_pointer_down(link, &press(Modifiers::default()));
   let verdict = trigger_click(link);
 
   assert!(verdict.platform, "a plain click is the router's");
@@ -452,17 +446,18 @@ fn a_link_carries_its_destination_and_navigates_the_router() {
 
   router.navigate(Page::Home);
 
-  let _ = trigger_pointer_down(
-    link,
-    &press(Modifiers {
-      ctrl: true,
-      ..Modifiers::default()
-    }),
-  );
-  let verdict = trigger_click(link);
+  for count in [1, 0] {
+    let verdict = trigger_click_event(
+      link,
+      &ClickEvent {
+        modifiers: Modifiers::CTRL,
+        count,
+      },
+    );
 
-  assert!(!verdict.platform, "a modified click is the platform's");
-  assert_eq!(router.route(), Page::Home);
+    assert!(!verdict.platform, "a modified click is the platform's");
+    assert_eq!(router.route(), Page::Home);
+  }
 
   owner.dispose();
 }

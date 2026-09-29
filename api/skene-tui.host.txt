@@ -8,6 +8,7 @@ pub use skene_tui::BorderGlyphs
 pub use skene_tui::Bubbling
 pub use skene_tui::Canvas
 pub use skene_tui::Children
+pub use skene_tui::ClickEvent
 pub use skene_tui::Code
 pub use skene_tui::Color
 pub use skene_tui::ColorScheme
@@ -85,6 +86,8 @@ pub use skene_tui::TuiRunFields
 pub use skene_tui::TuiValue
 pub use skene_tui::TypeMetrics
 pub use skene_tui::Typography
+pub use skene_tui::WheelEvent
+pub use skene_tui::WheelUnit
 pub use skene_tui::When
 pub use skene_tui::core
 pub use skene_tui::kurbo

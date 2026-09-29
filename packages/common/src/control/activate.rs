@@ -2,7 +2,17 @@
 
 use std::cell::Cell;
 
-use skene_core::{ControlKind, EventKind, Key, KeyEvent, NamedKey, Platform, Prevent, Role};
+use skene_core::{
+  ClickEvent,
+  ControlKind,
+  EventKind,
+  Key,
+  KeyEvent,
+  NamedKey,
+  Platform,
+  Prevent,
+  Role,
+};
 
 use super::{Behavior, ControlHandle};
 
@@ -58,7 +68,10 @@ impl<P: Platform> Behavior<P> for Activate {
   fn on_key(&self, event: &KeyEvent, control: &ControlHandle<P>) -> Prevent {
     match &event.key {
       Key::Named(NamedKey::Enter) => {
-        let _clicked = control.click();
+        let _clicked = control.click(&ClickEvent {
+          modifiers: event.modifiers,
+          count: 0,
+        });
 
         Prevent::All
       }
@@ -78,7 +91,10 @@ impl<P: Platform> Behavior<P> for Activate {
       return Prevent::None;
     }
 
-    let _clicked = control.click();
+    let _clicked = control.click(&ClickEvent {
+      modifiers: event.modifiers,
+      count: 0,
+    });
 
     Prevent::All
   }

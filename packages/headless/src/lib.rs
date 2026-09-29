@@ -43,6 +43,7 @@ use skene_core::{
   Axes,
   BoxProps,
   BoxValue,
+  ClickEvent,
   ClipboardAction,
   Color,
   ColorScheme,
@@ -90,6 +91,7 @@ use skene_core::{
   WheelEvent,
   dispatch_click,
   dispatch_context_menu,
+  dispatch_double_click,
   dispatch_key_down,
   dispatch_key_up,
   dispatch_pointer_cancel,
@@ -576,9 +578,26 @@ pub fn head_elements() -> Vec<HeadElement> {
   with_store(|store| store.head.elements().cloned().collect())
 }
 
-/// Dispatches a click at `node`, bubbling through the scene.
+/// Dispatches a single click with no modifier held at `node`, bubbling through the
+/// scene.
 pub fn trigger_click(node: NodeId) -> Prevented {
-  trigger(|| dispatch_click::<Headless>(node))
+  trigger_click_event(node, &ClickEvent::new(1))
+}
+
+/// Dispatches `event` as a click at `node`, bubbling through the scene.
+pub fn trigger_click_event(node: NodeId, event: &ClickEvent) -> Prevented {
+  trigger(|| dispatch_click::<Headless>(node, event))
+}
+
+/// Dispatches the second click of a double click at `node`, bubbling through the scene:
+/// the click, counting two, then the double click, whose verdict is returned.
+pub fn trigger_double_click(node: NodeId) -> Prevented {
+  trigger(|| {
+    let event = ClickEvent::new(2);
+    let _ = dispatch_click::<Headless>(node, &event);
+
+    dispatch_double_click::<Headless>(node, &event)
+  })
 }
 
 /// Dispatches a key press at `node`, bubbling through the scene; focus shows from

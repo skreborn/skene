@@ -15,6 +15,7 @@ use smallvec::SmallVec;
 
 use super::{Handler, HandlerSet, NodeId, Platform, Scene};
 use crate::{
+  ClickEvent,
   KeyEvent,
   PointerEvent,
   Prevent,
@@ -27,7 +28,7 @@ use crate::{
 
 /// Dispatches a click at `node`.
 #[inline(always)]
-pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
+pub fn dispatch_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     |set, out| {
@@ -37,7 +38,18 @@ pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
       false
     },
     |_| (),
-    |handler, ()| handler(),
+    |handler, ()| handler(event),
+  )
+}
+
+/// Dispatches the second click of a double click at `node`, after the click itself.
+#[inline(always)]
+pub fn dispatch_double_click<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
+  bubble::<P, _, _>(
+    node,
+    all(HandlerSet::double_click),
+    |_| (),
+    |handler, ()| handler(event),
   )
 }
 
@@ -47,7 +59,7 @@ pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
 /// the first node carrying acting ones, as a control consumes the click it acts on; so
 /// a control's observers see the click and its behavior does not act a second time.
 #[inline(always)]
-pub fn dispatch_click_observed<P: Platform>(node: NodeId) -> Prevented {
+pub fn dispatch_click_observed<P: Platform>(node: NodeId, event: &ClickEvent) -> Prevented {
   bubble::<P, _, _>(
     node,
     |set, out| {
@@ -56,7 +68,7 @@ pub fn dispatch_click_observed<P: Platform>(node: NodeId) -> Prevented {
       !set.acting_click().is_empty()
     },
     |_| (),
-    |handler, ()| handler(),
+    |handler, ()| handler(event),
   )
 }
 
@@ -329,6 +341,8 @@ mod tests {
   use crate::{
     Boundary,
     Bubbling,
+    ClickEvent,
+    ClickHandler,
     EventKind,
     NodeId,
     PointerButton,
@@ -355,10 +369,10 @@ mod tests {
     (outer, middle, inner)
   }
 
-  fn record(log: &Rc<RefCell<Vec<&'static str>>>, name: &'static str) -> Rc<dyn Fn() -> Prevent> {
+  fn record(log: &Rc<RefCell<Vec<&'static str>>>, name: &'static str) -> Rc<ClickHandler> {
     let log = Rc::clone(log);
 
-    Rc::new(move || {
+    Rc::new(move |_: &ClickEvent| {
       log.borrow_mut().push(name);
 
       Prevent::None
@@ -388,9 +402,15 @@ mod tests {
         Call::Listen(sink(inner), EventKind::Click),
       ]
     );
-    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
+    assert_eq!(
+      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
+      Prevented::default()
+    );
     assert_eq!(*log.borrow(), ["inner first", "inner second", "outer"]);
-    assert_eq!(dispatch_click::<TestPlatform>(middle), Prevented::default());
+    assert_eq!(
+      dispatch_click::<TestPlatform>(middle, &ClickEvent::new(1)),
+      Prevented::default()
+    );
     assert_eq!(
       *log.borrow(),
       ["inner first", "inner second", "outer", "outer"]
@@ -414,7 +434,7 @@ mod tests {
 
       scene.handle_click(
         middle,
-        Rc::new(move || {
+        Rc::new(move |_: &ClickEvent| {
           stop.borrow_mut().push("middle");
 
           Bubbling::Stop.into()
@@ -423,7 +443,7 @@ mod tests {
     });
 
     assert_eq!(
-      dispatch_click::<TestPlatform>(inner),
+      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
       Prevented {
         platform: false,
         bubbling: true,
@@ -448,7 +468,7 @@ mod tests {
 
       scene.handle_click(
         inner,
-        Rc::new(move || {
+        Rc::new(move |_: &ClickEvent| {
           let parent = Scene::<TestPlatform>::with(|scene| scene.parent(inner));
 
           control.borrow_mut().push(if parent.is_some() {
@@ -464,7 +484,7 @@ mod tests {
     });
 
     assert_eq!(
-      dispatch_click::<TestPlatform>(inner),
+      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
       Prevented {
         platform: true,
         bubbling: false,
@@ -485,7 +505,7 @@ mod tests {
     let acting = {
       let log = Rc::clone(&log);
 
-      Rc::new(move || {
+      Rc::new(move |_: &ClickEvent| {
         log.borrow_mut().push("acting");
 
         Prevent::Bubbling
@@ -499,13 +519,13 @@ mod tests {
       scene.handle_click(outer, record(&log, "outer"));
     });
 
-    let _ = dispatch_click::<TestPlatform>(inner);
+    let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
 
     assert_eq!(*log.borrow(), ["inner", "acting", "observer"]);
 
     log.borrow_mut().clear();
 
-    let _ = dispatch_click_observed::<TestPlatform>(inner);
+    let _ = dispatch_click_observed::<TestPlatform>(inner, &ClickEvent::new(1));
 
     assert_eq!(*log.borrow(), ["inner", "observer"]);
   }
@@ -522,7 +542,7 @@ mod tests {
     Scene::<TestPlatform>::with(|scene| {
       scene.handle_click(
         inner,
-        Rc::new(move || {
+        Rc::new(move |_: &ClickEvent| {
           Scene::<TestPlatform>::with(|scene| scene.detach(outer, middle));
 
           Prevent::None
@@ -531,7 +551,7 @@ mod tests {
       scene.handle_click(outer, record(&log, "outer"));
     });
 
-    let _ = dispatch_click::<TestPlatform>(inner);
+    let _ = dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1));
 
     assert_eq!(*log.borrow(), ["outer"]);
   }
@@ -709,7 +729,7 @@ mod tests {
       Scene::<TestPlatform>::with(|scene| {
         scene.handle_click(
           inner,
-          Rc::new(move || {
+          Rc::new(move |_: &ClickEvent| {
             seen
               .borrow_mut()
               .push((use_context::<u32>(), Owner::current() == owner));
@@ -720,7 +740,10 @@ mod tests {
       });
     });
 
-    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
+    assert_eq!(
+      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
+      Prevented::default()
+    );
     assert_eq!(*seen.borrow(), [(Some(7), true)]);
   }
 
@@ -742,7 +765,7 @@ mod tests {
       Scene::<TestPlatform>::with(|scene| {
         scene.handle_click(
           inner,
-          Rc::new(move || {
+          Rc::new(move |_: &ClickEvent| {
             tasks.borrow_mut().push(count_pending(Box::new(())));
 
             Prevent::None
@@ -751,7 +774,10 @@ mod tests {
       });
     });
 
-    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
+    assert_eq!(
+      dispatch_click::<TestPlatform>(inner, &ClickEvent::new(1)),
+      Prevented::default()
+    );
     assert_eq!(tasks.borrow().len(), 1);
     assert!(boundary.is_settled());
   }

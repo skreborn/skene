@@ -22,6 +22,7 @@ use skene_core::{
   AnyView,
   Axis,
   BoxKeyframe,
+  ClickEvent,
   Condition,
   ContainerName,
   ControlKind,
@@ -339,10 +340,10 @@ impl<P: Platform> ControlHandle<P> {
     self.with_sink(|sink| P::focus(sink));
   }
 
-  /// Dispatches a click at the control, so its behavior and handlers see it.
+  /// Dispatches `event` as a click at the control, so its behavior and handlers see it.
   #[inline(always)]
-  pub fn click(&self) -> Prevented {
-    dispatch_click::<P>(self.node)
+  pub fn click(&self, event: &ClickEvent) -> Prevented {
+    dispatch_click::<P>(self.node, event)
   }
 
   /// Re-reads what the behavior reports: its state, accessibility and focus order.
@@ -1375,11 +1376,11 @@ fn register<P: Platform, B: Behavior<P>>(
 
   Scene::<P>::with(|scene| {
     if let Some(handler) = acting_click {
-      scene.handle_click_acting(node, Rc::new(move || handler(&())));
+      scene.handle_click_acting(node, Rc::new(move |_: &ClickEvent| handler(&())));
     }
 
     if let Some(handler) = click {
-      scene.handle_click(node, Rc::new(move || handler(&())));
+      scene.handle_click(node, Rc::new(move |_: &ClickEvent| handler(&())));
     }
 
     if let Some(handler) = key_down {

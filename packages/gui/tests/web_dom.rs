@@ -830,6 +830,35 @@ fn a_wheel_reaches_the_node_before_it_scrolls() {
   assert!(turn(&child(1)), "the dial takes the turn");
 }
 
+/// A `dblclick` reaches the box's double-click handler through dispatch.
+#[wasm_bindgen_test]
+fn a_double_click_reaches_the_box() {
+  let (_guard, root) = fresh_root();
+  let doubles = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let doubles = Rc::clone(&doubles);
+
+    move || {
+      Container::new()
+        .handle_double_click(move || doubles.set(doubles.get() + 1))
+        .build()
+    }
+  });
+
+  let init = web_sys::MouseEventInit::new();
+
+  init.set_bubbles(true);
+  init.set_detail(2);
+
+  let event =
+    web_sys::MouseEvent::new_with_mouse_event_init_dict("dblclick", &init).expect("a mouse event");
+
+  let _ = only_child(&root).dispatch_event(&event);
+
+  assert_eq!(doubles.get(), 1);
+}
+
 /// A `pointercancel` reaches the box's cancel handler through dispatch.
 #[wasm_bindgen_test]
 fn a_pointer_cancel_reaches_the_box() {

@@ -138,10 +138,12 @@ pub fn skene_headless::text(skene_core::node::NodeId) -> core::option::Option<al
 pub fn skene_headless::trigger_blur(skene_core::node::NodeId)
 pub fn skene_headless::trigger_change(skene_core::node::NodeId, &str)
 pub fn skene_headless::trigger_click(skene_core::node::NodeId) -> skene_core::events::Prevented
+pub fn skene_headless::trigger_click_event(skene_core::node::NodeId, &skene_core::events::ClickEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_color_scheme(skene_core::values::color::ColorScheme)
 pub fn skene_headless::trigger_container_size(skene_core::condition::ContainerName, skene_core::values::size::Size<f32>)
 pub fn skene_headless::trigger_context_menu(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_dismiss(skene_core::node::NodeId)
+pub fn skene_headless::trigger_double_click(skene_core::node::NodeId) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_focus(skene_core::node::NodeId)
 pub fn skene_headless::trigger_frame(core::time::Duration)
 pub fn skene_headless::trigger_graphics(bool)

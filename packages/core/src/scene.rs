@@ -236,6 +236,7 @@ impl<H: ?Sized> Deref for Handler<H> {
 pub struct HandlerSet {
   acting_click: Vec<Handler<ClickHandler>>,
   click: Vec<Handler<ClickHandler>>,
+  double_click: Vec<Handler<ClickHandler>>,
   key_down: Vec<Handler<KeyHandler>>,
   key_up: Vec<Handler<KeyHandler>>,
   pointer_down: Vec<Handler<PointerHandler>>,
@@ -275,6 +276,13 @@ impl HandlerSet {
   #[must_use]
   pub fn click(&self) -> &[Handler<ClickHandler>] {
     &self.click
+  }
+
+  /// The double-click handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn double_click(&self) -> &[Handler<ClickHandler>] {
+    &self.double_click
   }
 
   /// The key-down handlers, in registration order.
@@ -1779,6 +1787,13 @@ impl<P: Platform> Scene<P> {
   pub fn handle_click(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
     self.register(node, EventKind::Click, |set| {
       set.click.push(Handler::new(handler));
+    });
+  }
+
+  /// Adds a double-click handler to `node`.
+  pub fn handle_double_click(&mut self, node: NodeId, handler: Rc<ClickHandler>) {
+    self.register(node, EventKind::DoubleClick, |set| {
+      set.double_click.push(Handler::new(handler));
     });
   }
 

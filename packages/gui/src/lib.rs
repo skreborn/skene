@@ -70,6 +70,7 @@ pub use skene_core::{
   AnyKind,
   Bubbling,
   Children,
+  ClickEvent,
   Code,
   Color,
   ColorScheme,
@@ -113,6 +114,8 @@ pub use skene_core::{
   TokenName,
   TokenRef,
   TokenSet,
+  WheelEvent,
+  WheelUnit,
   When,
 };
 /// The host platform's test seams (`trigger_` events, tree inspection), for headless

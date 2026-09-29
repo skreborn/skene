@@ -100,6 +100,7 @@ pub use skene_core::{
   AnyKind,
   Bubbling,
   Children,
+  ClickEvent,
   Code,
   Color,
   ColorScheme,
@@ -143,6 +144,8 @@ pub use skene_core::{
   TokenName,
   TokenRef,
   TokenSet,
+  WheelEvent,
+  WheelUnit,
   When,
 };
 pub use skene_reactive::{self as reactive, LoadState, Resource};

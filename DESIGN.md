@@ -147,7 +147,10 @@ platform crate, since it is not a shared contract.
   at the node under the pointer before the platform scrolls by it, its delta per axis
   in the unit the device counts (`WheelUnit`: lengths, lines or pages; rows in the
   terminal), and a behavior that takes the turn keeps the scroll from happening; the web
-  listens for it, as for every event, without `passive` and only once a node does.
+  listens for it, as for every event, without `passive` and only once a node does. A
+  click carries its modifiers and its place in a run of quick clicks at one spot
+  (`ClickEvent`, `0` for a key's), and the second click of a double dispatches
+  `DoubleClick` after itself, as `dblclick` follows `click`.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its

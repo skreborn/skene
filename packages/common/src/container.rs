@@ -232,6 +232,18 @@ impl<P: Platform> Container<P> {
     self
   }
 
+  /// Runs `action` on the second click of a double click, after the click itself;
+  /// return [`Bubbling::Stop`] to keep the double click from the ancestors.
+  #[inline(always)]
+  pub fn handle_double_click<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn() -> R + 'static,
+  ) -> Self {
+    self.inner = self.inner.handle_double_click(action);
+
+    self
+  }
+
   /// Runs `action` on a key pressed while the box or a descendant holds focus; return
   /// [`Bubbling::Stop`] to keep the key from the ancestors.
   #[inline(always)]

@@ -1173,6 +1173,7 @@ pub skene_core::EventKind::Change
 pub skene_core::EventKind::Click
 pub skene_core::EventKind::ContextMenu
 pub skene_core::EventKind::Dismiss
+pub skene_core::EventKind::DoubleClick
 pub skene_core::EventKind::Focus
 pub skene_core::EventKind::KeyDown
 pub skene_core::EventKind::KeyUp
@@ -2441,6 +2442,24 @@ impl<P: skene_core::Platform, Kind: 'static> core::default::Default for skene_co
 pub fn skene_core::Children<P, Kind>::default() -> Self
 impl<P: skene_core::Platform, Kind> core::fmt::Debug for skene_core::Children<P, Kind>
 pub fn skene_core::Children<P, Kind>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::ClickEvent
+pub skene_core::ClickEvent::count: u8
+pub skene_core::ClickEvent::modifiers: skene_core::Modifiers
+impl skene_core::ClickEvent
+pub const fn skene_core::ClickEvent::new(u8) -> Self
+impl core::clone::Clone for skene_core::ClickEvent
+pub fn skene_core::ClickEvent::clone(&self) -> skene_core::ClickEvent
+impl core::cmp::Eq for skene_core::ClickEvent
+impl core::cmp::PartialEq for skene_core::ClickEvent
+pub fn skene_core::ClickEvent::eq(&self, &skene_core::ClickEvent) -> bool
+impl core::default::Default for skene_core::ClickEvent
+pub fn skene_core::ClickEvent::default() -> skene_core::ClickEvent
+impl core::fmt::Debug for skene_core::ClickEvent
+pub fn skene_core::ClickEvent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::ClickEvent
+pub fn skene_core::ClickEvent::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::ClickEvent
+impl core::marker::StructuralPartialEq for skene_core::ClickEvent
 pub struct skene_core::Color
 impl skene_core::Color
 pub const skene_core::Color::TRANSPARENT: Self
@@ -2983,6 +3002,7 @@ pub fn skene_core::HandlerSet::change(&self) -> &[skene_core::Handler<skene_core
 pub fn skene_core::HandlerSet::click(&self) -> &[skene_core::Handler<skene_core::ClickHandler>]
 pub fn skene_core::HandlerSet::context_menu(&self) -> &[skene_core::Handler<skene_core::PointerHandler>]
 pub fn skene_core::HandlerSet::dismiss(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
+pub fn skene_core::HandlerSet::double_click(&self) -> &[skene_core::Handler<skene_core::ClickHandler>]
 pub fn skene_core::HandlerSet::focus(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
 pub fn skene_core::HandlerSet::key_down(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
 pub fn skene_core::HandlerSet::key_up(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
@@ -3629,6 +3649,7 @@ pub fn skene_core::Scene<P>::handle_click(&mut self, skene_core::NodeId, alloc::
 pub fn skene_core::Scene<P>::handle_click_acting(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ClickHandler>)
 pub fn skene_core::Scene<P>::handle_context_menu(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PointerHandler>)
 pub fn skene_core::Scene<P>::handle_dismiss(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
+pub fn skene_core::Scene<P>::handle_double_click(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ClickHandler>)
 pub fn skene_core::Scene<P>::handle_focus(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_key_down(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
 pub fn skene_core::Scene<P>::handle_key_up(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
@@ -4720,9 +4741,10 @@ pub fn L::derive_when<C, R: core::convert::Into<skene_core::StaticLeaf<T>>>(self
 pub fn L::when<C>(self, C, impl core::convert::Into<skene_core::Leaf<T>>) -> skene_core::Value<T, C>
 pub fn skene_core::count_pending(skene_reactive::spawn::TaskGuard) -> skene_reactive::spawn::TaskGuard
 pub fn skene_core::derived<P: skene_core::Platform>(impl core::ops::function::Fn() -> skene_core::NodeId + 'static) -> skene_core::NodeId
-pub fn skene_core::dispatch_click<P: skene_core::Platform>(skene_core::NodeId) -> skene_core::Prevented
-pub fn skene_core::dispatch_click_observed<P: skene_core::Platform>(skene_core::NodeId) -> skene_core::Prevented
+pub fn skene_core::dispatch_click<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ClickEvent) -> skene_core::Prevented
+pub fn skene_core::dispatch_click_observed<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ClickEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_context_menu<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
+pub fn skene_core::dispatch_double_click<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ClickEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_key_down<P: skene_core::Platform>(skene_core::NodeId, &skene_core::KeyEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_key_up<P: skene_core::Platform>(skene_core::NodeId, &skene_core::KeyEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_cancel<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
@@ -4747,7 +4769,7 @@ pub type skene_core::Annotated<P, T> = skene_core::Value<T, skene_core::Conditio
 pub type skene_core::BoxKeyframe<P> = skene_core::BoxStyle<<P as skene_core::Platform>::Scalar, skene_core::Keyframe, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::BoxSlot<N, X> = skene_core::DerivedSlot<skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, skene_core::BoxValue<N, X>>
 pub type skene_core::ChangeHandler = dyn core::ops::function::Fn(&str)
-pub type skene_core::ClickHandler = dyn core::ops::function::Fn() -> skene_core::Prevent
+pub type skene_core::ClickHandler = dyn core::ops::function::Fn(&skene_core::ClickEvent) -> skene_core::Prevent
 pub type skene_core::DeclaredBoxStyle<P> = skene_core::BoxStyle<<P as skene_core::Platform>::Scalar, skene_core::Declared<skene_core::Condition<<P as skene_core::Platform>::Scalar>>, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::DeclaredRunStyle<P> = skene_core::RunStyle<skene_core::Declared<skene_core::Condition<<P as skene_core::Platform>::Scalar>>, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::Definition<T, N> = skene_core::Conditional<skene_core::StaticLeaf<T>, skene_core::Media<N>>

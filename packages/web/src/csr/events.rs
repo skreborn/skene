@@ -14,6 +14,7 @@ use std::{rc::Rc, str::FromStr};
 use rustc_hash::FxHashMap;
 use skene_core::{
   Axes,
+  ClickEvent,
   Code,
   EventKind,
   Key,
@@ -35,6 +36,7 @@ use skene_core::{
   dispatch_click,
   dispatch_click_observed,
   dispatch_context_menu,
+  dispatch_double_click,
   dispatch_key_down,
   dispatch_key_up,
   dispatch_pointer_cancel,
@@ -172,6 +174,7 @@ impl Events {
   pub(super) fn ensure(&mut self, kind: EventKind) {
     let names: &[&'static str] = match kind {
       EventKind::Click => &["click"],
+      EventKind::DoubleClick => &["dblclick"],
       EventKind::KeyDown => &["keydown"],
       EventKind::KeyUp => &["keyup"],
       EventKind::PointerDown => &["pointerdown"],
@@ -197,6 +200,7 @@ impl Events {
 
       let handler: fn(&web_sys::Event) = match *name {
         "click" => on_click,
+        "dblclick" => on_double_click,
         "keydown" => on_key_down,
         "keyup" => on_key_up,
         "pointerdown" => on_pointer_down,
@@ -347,13 +351,47 @@ fn on_click(event: &web_sys::Event) {
     // synthesized at the input; the input's is the one that toggled, and its verdict
     // never reaches the platform, whose flip `change` reports.
     if toggle_input(event).is_some() {
-      let _ = dispatch_click_observed::<Web>(node);
+      let _ = dispatch_click_observed::<Web>(node, &click_event(event));
     }
 
     return;
   }
 
-  apply(dispatch_click::<Web>(node), event);
+  apply(dispatch_click::<Web>(node, &click_event(event)), event);
+}
+
+/// The second click of a double click, dispatched after the click itself.
+fn on_double_click(event: &web_sys::Event) {
+  let Some((_, node)) = resolve(event.target())
+  else {
+    return;
+  };
+
+  apply(
+    dispatch_double_click::<Web>(node, &click_event(event)),
+    event,
+  );
+}
+
+/// The portable click of a DOM click: its modifiers and its place in a run of quick
+/// clicks, none for a click no pointer made.
+fn click_event(event: &web_sys::Event) -> ClickEvent {
+  event
+    .dyn_ref::<web_sys::MouseEvent>()
+    .map_or(ClickEvent::new(0), |mouse| ClickEvent {
+      modifiers: mouse_modifiers(mouse),
+      count: u8::try_from(mouse.detail()).unwrap_or(u8::MAX),
+    })
+}
+
+/// The modifier state a DOM mouse event reports.
+fn mouse_modifiers(mouse: &web_sys::MouseEvent) -> Modifiers {
+  Modifiers {
+    ctrl: mouse.ctrl_key(),
+    shift: mouse.shift_key(),
+    alt: mouse.alt_key(),
+    meta: mouse.meta_key(),
+  }
 }
 
 fn on_key_down(event: &web_sys::Event) {
@@ -477,12 +515,7 @@ fn pointer_payload(mouse: &web_sys::MouseEvent, element: &Element) -> PointerEve
       .ok()
       .and_then(|number| BUTTON_NUMBERS.get(number).copied()),
     buttons,
-    modifiers: Modifiers {
-      ctrl: mouse.ctrl_key(),
-      shift: mouse.shift_key(),
-      alt: mouse.alt_key(),
-      meta: mouse.meta_key(),
-    },
+    modifiers: mouse_modifiers(mouse),
     pressure: if buttons.is_empty() { 0. } else { 0.5 },
     ..PointerEvent::mouse(x, y)
   };

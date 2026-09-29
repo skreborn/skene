@@ -198,6 +198,33 @@ fn only_a_dragging_box_keeps_a_press() {
   });
 }
 
+/// Two quick clicks at one cell are a double click: the second click reaches the
+/// double-click handler after its own, and a click at another cell starts afresh.
+#[test]
+fn two_quick_clicks_at_one_cell_are_a_double_click() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let (clicked, doubled) = (Rc::clone(&log), Rc::clone(&log));
+
+    let _ = tui::mount(move || {
+      Container::new()
+        .set_width(4)
+        .set_height(2)
+        .handle_click(move || clicked.borrow_mut().push("click"))
+        .handle_double_click(move || doubled.borrow_mut().push("double click"))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_mouse_click(1, 0);
+    tui::trigger_mouse_click(1, 0);
+    tui::trigger_mouse_click(2, 1);
+
+    assert_eq!(*log.borrow(), ["click", "click", "double click", "click"]);
+  });
+}
+
 /// The mouse hovering a node applies its `Hovered` variant and fires the enter handler;
 /// moving off reverts and fires the leave handler, once each.
 #[test]

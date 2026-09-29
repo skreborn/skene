@@ -1,7 +1,7 @@
 //! A navigation link: a box with a destination, upgraded to router navigation when
 //! running.
 
-use std::{cell::Cell, rc::Rc};
+use std::rc::Rc;
 
 use skene_common::{
   LayoutBox,
@@ -10,12 +10,12 @@ use skene_common::{
 use skene_core::{
   AnyKind,
   Children,
+  ClickEvent,
   HasChildren,
   Layout,
   Modifiers,
   NodeId,
   PlainChild,
-  PointerEvent,
   Prevent,
   Scene,
   Seal,
@@ -63,29 +63,16 @@ impl<R: Route> AnyKind for Link<R> {}
 impl<R: Route> View<ActivePlatform> for Link<R> {
   fn build(self) -> NodeId {
     let node = self.inner.build();
-    let held = Rc::new(Cell::new(Modifiers::default()));
     let route = self.route;
     // Captured while building, where an ancestor's `provide` is in scope; a click
     // arrives outside any scope. No router leaves the anchor plain.
     let router = Router::<R>::get();
 
     Scene::<ActivePlatform>::with(|scene| {
-      scene.handle_pointer_down(node, {
-        let held = Rc::clone(&held);
-
-        Rc::new(move |event: &PointerEvent| {
-          held.set(event.modifiers);
-
-          Prevent::None
-        })
-      });
-
       scene.handle_click(
         node,
-        Rc::new(move || {
-          let modifiers = held.replace(Modifiers::default());
-
-          if modifiers.ctrl || modifiers.shift || modifiers.alt || modifiers.meta {
+        Rc::new(move |event: &ClickEvent| {
+          if event.modifiers != Modifiers::NONE {
             return Prevent::None;
           }
 

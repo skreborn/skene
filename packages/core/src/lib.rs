@@ -88,6 +88,7 @@ pub use dispatch::{
   dispatch_click,
   dispatch_click_observed,
   dispatch_context_menu,
+  dispatch_double_click,
   dispatch_key_down,
   dispatch_key_up,
   dispatch_pointer_cancel,
@@ -106,6 +107,7 @@ pub use dispatch::{
 pub use errors::Errors;
 pub use events::{
   Bubbling,
+  ClickEvent,
   ClickHandler,
   KeyEvent,
   KeyHandler,

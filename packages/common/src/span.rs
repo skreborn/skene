@@ -7,6 +7,7 @@ use skene_core::{
   AnyKind,
   AnyView,
   Bubbling,
+  ClickEvent,
   ClickHandler,
   Color,
   DeclaredRunStyle,
@@ -127,7 +128,9 @@ impl<P: Platform> Span<P> {
   /// on to the ancestors.
   #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.click.push(Rc::new(move || verdict(action())));
+    self
+      .click
+      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
 
     self
   }

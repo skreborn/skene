@@ -6,6 +6,7 @@ pub use skene_gui::Behavior
 pub use skene_gui::Bubbling
 pub use skene_gui::Canvas
 pub use skene_gui::Children
+pub use skene_gui::ClickEvent
 pub use skene_gui::Code
 pub use skene_gui::Color
 pub use skene_gui::ColorScheme
@@ -80,6 +81,8 @@ pub use skene_gui::TokenRef
 pub use skene_gui::TokenSet
 pub use skene_gui::TypeMetrics
 pub use skene_gui::Typography
+pub use skene_gui::WheelEvent
+pub use skene_gui::WheelUnit
 pub use skene_gui::When
 pub use skene_gui::core
 pub use skene_gui::kurbo

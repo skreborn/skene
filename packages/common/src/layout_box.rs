@@ -13,6 +13,7 @@ use skene_core::{
   BoxProps,
   Bubbling,
   Children,
+  ClickEvent,
   ClickHandler,
   Condition,
   ContainerName,
@@ -66,6 +67,7 @@ use crate::{
 #[derive(Default)]
 struct Handlers {
   click: Vec<Rc<ClickHandler>>,
+  double_click: Vec<Rc<ClickHandler>>,
   key_down: Vec<Rc<KeyHandler>>,
   key_up: Vec<Rc<KeyHandler>>,
   pointer_down: Vec<Rc<PointerHandler>>,
@@ -357,7 +359,25 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// ancestors.
   #[inline(always)]
   pub fn handle_click<R: Into<Bubbling>>(mut self, action: impl Fn() -> R + 'static) -> Self {
-    self.handlers.click.push(Rc::new(move || verdict(action())));
+    self
+      .handlers
+      .click
+      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
+
+    self
+  }
+
+  /// Runs `action` on the second click of a double click, after the click itself; its
+  /// verdict says whether the double click carries on to the ancestors.
+  #[inline(always)]
+  pub fn handle_double_click<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn() -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .double_click
+      .push(Rc::new(move |_: &ClickEvent| verdict(action())));
 
     self
   }
@@ -678,6 +698,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
     let Handlers {
       click,
+      double_click,
       key_down,
       key_up,
       pointer_down,
@@ -695,6 +716,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     Scene::<P>::with(|scene| {
       for handler in click {
         scene.handle_click(node, handler);
+      }
+
+      for handler in double_click {
+        scene.handle_double_click(node, handler);
       }
 
       for handler in key_down {

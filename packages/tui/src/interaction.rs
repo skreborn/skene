@@ -7,6 +7,7 @@
 use skene_core::{
   Axes,
   Axis,
+  ClickEvent,
   ClipboardAction,
   ControlKind,
   KeyEvent,
@@ -26,6 +27,7 @@ use skene_core::{
   WheelUnit,
   dispatch_click,
   dispatch_context_menu,
+  dispatch_double_click,
   dispatch_key_down,
   dispatch_key_up,
   dispatch_pointer_cancel,
@@ -1167,12 +1169,14 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     if button == PointerButton::Primary {
       let path = store.ancestors(deepest);
       let captured = path.iter().copied().find(|handle| store.drags(*handle));
+      let count = store.register_press(x, y);
 
       store.press = Some(Press {
         path: path.into_iter().rev().collect(),
         pressed: deepest,
         captured,
         target: focus_target,
+        count,
       });
       store.restyle_pending = true;
 
@@ -1233,8 +1237,10 @@ fn press_default(
         // A press on an entry places its caret—`Shift` extending the selection to
         // it—and starts the drag that extends it: a double click takes the word, a
         // triple click the line.
+        let count = store.press.as_ref().map_or(1, |press| press.count);
+
         if let Some((entry, local_x, local_y)) = entry_local {
-          match store.register_press(x, y) {
+          match count {
             2 => store.select_entry_word(entry),
             3 => store.select_entry_line(entry),
             _ => store.place_caret(entry, local_x, local_y, modifiers.shift),
@@ -1243,14 +1249,11 @@ fn press_default(
         // A press on a selectable run starts a selection: a drag extends it, a double
         // click takes the word, a triple click the whole run.
         else if let Some(point) = store.text_position_at(x, y) {
-          match store.register_press(x, y) {
+          match count {
             2 => store.select_word(point),
             3 => store.select_run(point),
             _ => store.anchor_selection(point),
           }
-        }
-        else {
-          store.last_press = None;
         }
 
         // A press on a link arms it; the release on the same cell opens it.
@@ -1299,12 +1302,12 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     return;
   }
 
-  let (clicked, pressed_link) = store(|store| {
+  let (clicked, pressed_link, count) = store(|store| {
     store.drag = None;
 
     let Some(press) = store.press.take()
     else {
-      return (None, None);
+      return (None, None, 0);
     };
 
     store.restyle_pending = true;
@@ -1323,10 +1326,19 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     (
       common.and_then(|handle| store.record(handle).and_then(|record| record.node)),
       pressed_link,
+      press.count,
     )
   });
+  let event = ClickEvent { modifiers, count };
+  let prevented = clicked.map_or(Prevented::default(), |node| {
+    let prevented = dispatch_click::<Tui>(node, &event);
 
-  let prevented = clicked.map_or(Prevented::default(), dispatch_click::<Tui>);
+    if count == 2 {
+      let _ = dispatch_double_click::<Tui>(node, &event);
+    }
+
+    prevented
+  });
 
   if prevented.platform {
     return;
@@ -1627,7 +1639,7 @@ fn key_default(event: &KeyEvent) {
       return;
     }
     "Enter" if store(|store| store.focused_link()).is_some() => {
-      follow_focused_link();
+      follow_focused_link(event.modifiers);
 
       return;
     }
@@ -1762,15 +1774,21 @@ fn release_mouse() {
   notify_pointer_moved::<Tui>(None);
 }
 
-/// Clicks the focused link and, unless a handler prevented the platform, stages its
-/// destination for the terminal loop's system handler: `Enter` on a link is its click,
-/// as on an anchor.
-fn follow_focused_link() {
+/// Clicks the focused link with `modifiers` held and, unless a handler prevented the
+/// platform, stages its destination for the terminal loop's system handler: `Enter` on
+/// a link is its click, as on an anchor.
+fn follow_focused_link(modifiers: Modifiers) {
   let Some((node, url)) = store(|store| store.focused_link())
   else {
     return;
   };
-  let prevented = dispatch_click::<Tui>(node);
+  let prevented = dispatch_click::<Tui>(
+    node,
+    &ClickEvent {
+      modifiers,
+      count: 0,
+    },
+  );
 
   if prevented.platform {
     return;

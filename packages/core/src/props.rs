@@ -240,6 +240,8 @@ impl<N: Scalar> MediaSignals<N> {
 pub enum EventKind {
   /// A press and release on one target.
   Click,
+  /// The second click of a double click, after the click itself.
+  DoubleClick,
   /// A key pressed while the node or a descendant holds focus.
   KeyDown,
   /// A key released while the node or a descendant holds focus.

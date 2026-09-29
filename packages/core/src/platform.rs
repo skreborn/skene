@@ -20,6 +20,7 @@ use super::{
   Scalar,
   Scene,
   Slot,
+  StaticBoxStyle,
   StaticLeaf,
   StyleExtension,
 };
@@ -93,8 +94,9 @@ pub trait Platform: Copy + Default + 'static {
   /// Realizes a box.
   fn create_box(&self, props: &BoxProps<Self>) -> Self::Sink;
 
-  /// Writes the leaf a derived leaf computed into its slot on a box: a value, or a
-  /// token or expression the platform resolves where it reads the slot.
+  /// Writes the leaf a derived leaf computed into its slot on a box, or in the layout a
+  /// wrapper gave a run or a low-level node: a value, or a token or expression the
+  /// platform resolves where it reads the slot.
   fn update_box(
     &self,
     sink: &Self::Sink,
@@ -132,6 +134,14 @@ pub trait Platform: Copy + Default + 'static {
   /// [`set_overlay_open`](Self::set_overlay_open) that follows.
   #[inline(always)]
   fn set_overlay_position(&self, _sink: &Self::Sink, _position: Option<Point<f32>>) {}
+
+  /// Gives the node a low-level view made at `sink` the per-child layout a wrapper
+  /// annotated it with: its flexibility, alignment, pinning and grid placement, as a
+  /// box style holding nothing else, each derived leaf a slot
+  /// [`update_box`](Self::update_box) writes. A platform that lays out from the
+  /// scene's annotations needs nothing here.
+  #[inline(always)]
+  fn apply_layout(&self, _sink: &Self::Sink, _layout: &StaticBoxStyle<Self>) {}
 
   /// Realizes a text run.
   fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;

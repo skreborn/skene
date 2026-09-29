@@ -43,6 +43,7 @@ use skene_core::{
   Scene,
   Size,
   Slot,
+  StaticBoxStyle,
   StaticLeaf,
   TextSelection,
   Timer,
@@ -63,11 +64,13 @@ use super::{
     compile_box,
     compile_control,
     compile_definitions,
+    compile_layout,
     compile_overlay,
     compile_root_definitions,
     compile_run,
     control_fingerprint,
     inline_definitions,
+    layout_fingerprint,
     overlay_fingerprint,
     render_box_leaf,
     render_run_leaf,
@@ -1239,6 +1242,16 @@ impl Platform for Web {
   }
 
   fn set_overlay_open(&self, _: &u32, _: bool, _: Option<&u32>) {}
+
+  fn apply_layout(&self, sink: &u32, layout: &StaticBoxStyle<Self>) {
+    with_tree(|tree| {
+      let compiled = tree.compiled(layout_fingerprint::<Self>(layout), || {
+        compile_layout::<Self>(layout)
+      });
+
+      tree.assign_style(*sink, &compiled);
+    });
+  }
 
   fn create_run(&self, props: &RunProps<Self>) -> u32 {
     with_tree(|tree| {

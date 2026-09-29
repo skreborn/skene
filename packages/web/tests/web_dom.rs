@@ -9,14 +9,17 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use skene_common::{Container, RawCheckbox, Text, Theme, Toggle, View};
+use skene_common::{Container, Flexible, LowLevel, RawCheckbox, Row, Text, Theme, Toggle, View};
 use skene_core::{
+  AnyKind,
   Color,
   ColorScheme,
   Condition,
   HasChildren,
   Leaf,
   Media,
+  NodeId,
+  NodeKind,
   Platform,
   State,
   StaticLeaf,
@@ -28,7 +31,7 @@ use skene_core::{
 };
 use skene_reactive::{Get, Set, Signal};
 use skene_simple::{SimpleButton, SimpleCheckbox, SimplePicker};
-use skene_web::{Web, WebTokenValue};
+use skene_web::{Web, WebMarkup, WebTokenValue};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element, HtmlElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit};
@@ -660,6 +663,48 @@ fn media_reports_the_window() {
 
   assert_eq!(media.scheme.get(), platform);
   assert_eq!(skene_web::stored_scheme(), None);
+}
+
+/// A low-level view: a `<div>` made through the escape trait.
+struct Raw;
+
+impl AnyKind for Raw {}
+
+impl View<Web> for Raw {
+  fn build(self) -> NodeId {
+    LowLevel::<Web>::realize(Web.create_element("div"), NodeKind::Box)
+  }
+}
+
+/// A low-level node's element takes the layout its wrapper gave it, a derived property
+/// following its signal.
+#[wasm_bindgen_test]
+fn a_low_level_node_takes_its_wrappers_layout() {
+  let (_guard, root) = fresh_root();
+  let grow = Signal::new(2.0f32);
+
+  let _ = skene_web::mount(move || {
+    Row::<Web>::new()
+      .set_children((
+        Flexible::<Web>::new().set_grow_factor(3.).set_child(Raw),
+        Flexible::<Web>::new()
+          .derive_grow_factor(move || grow.get())
+          .set_child(Raw),
+      ))
+      .build()
+  });
+
+  let row = only_child(&root);
+  let fixed = row.first_element_child().expect("the fixed child");
+  let derived = row.last_element_child().expect("the derived child");
+
+  assert_eq!(computed(&fixed, "flex-grow"), "3");
+  assert_eq!(computed(&derived, "flex-grow"), "2");
+
+  grow.set(5.);
+  skene_web::end_turn();
+
+  assert_eq!(computed(&derived, "flex-grow"), "5");
 }
 
 /// Choosing a scheme sets the document's `color-scheme` and leaves the rest of its

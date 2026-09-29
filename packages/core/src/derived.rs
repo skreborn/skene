@@ -32,10 +32,7 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
       .get()
       .map_or_else(|| parent_scope.child(), |previous| previous.replacement());
 
-    let node = match &annotation {
-      Some(annotation) => Scene::<P>::annotate(annotation.clone(), || scope.enter(&build)),
-      None => scope.enter(&build),
-    };
+    let node = Scene::<P>::annotate(annotation.clone(), || scope.enter(&build));
 
     Scene::<P>::with(|scene| {
       scene.clear_segment(start);

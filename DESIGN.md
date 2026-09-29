@@ -166,7 +166,8 @@ and its cost unjustified.
   `Deferred`, `Lazy`, `empty`—mounts between two anchors (a comment pair on the web, a
   non-layout record in the terminal) rather than inside a box of its own. Its nodes are
   therefore its parent's children for layout, and a wrapper around it annotates the
-  content. A group node that is a real `<div>` and a real taffy node makes every
+  content, every rebuild's and each form of a two-form view's: a boundary's fallback,
+  a switch's branches. A group node that is a real `<div>` and a real taffy node makes every
   derived subtree one flex item, which is why there is none.
 - **`Children` is a list of segments**, static or keyed, each between its own anchors;
   `set_children` and `derive_children` append. A header beside a reconciled list in one
@@ -213,9 +214,12 @@ and its cost unjustified.
   does, and the focus and scroll inside the baseline are lost by the rebuild, as they
   are by any.
 - **Wrappers annotate before creation.** `Flexible`, `Pinned` and `GridCell` write their
-  annotation into the scene slot the next box built under them consumes into its own
-  props, so per-child layout is an ordinary property of the child's style: in the class
-  on the web, conditional, token-valued or derived like any other.
+  annotation into the scene slot the next box, control, run or low-level node built
+  under them consumes, so per-child layout is an ordinary property of the child's
+  style: in the class on the web, conditional, token-valued or derived like any other.
+  A run carries it as its layout, its derived leaves slots numbered after the run's
+  own, and a low-level node hands it to its platform through `Platform::apply_layout`,
+  which the web compiles into the element's class.
 - **Owners** are created per reconciled item, per rebuild, per keyed view and where
   context is provided; everything else inherits the ambient owner. `derived` rebuilds
   into `Owner::replacement()`, the same parent and step, so snapshot identity survives

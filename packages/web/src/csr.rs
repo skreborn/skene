@@ -62,6 +62,7 @@ use skene_core::{
   Scene,
   Size,
   Slot,
+  StaticBoxStyle,
   StaticLeaf,
   TextSelection,
   Timer,
@@ -117,11 +118,13 @@ use super::{
     compile_box,
     compile_control,
     compile_definitions,
+    compile_layout,
     compile_overlay,
     compile_root_definitions,
     compile_run,
     control_fingerprint,
     inline_definitions,
+    layout_fingerprint,
     overlay_fingerprint,
     render_box_leaf,
     render_run_leaf,
@@ -1636,6 +1639,16 @@ impl Platform for Web {
       {
         *held = placement;
       }
+    });
+  }
+
+  fn apply_layout(&self, sink: &u32, layout: &StaticBoxStyle<Self>) {
+    with_dom(|dom| {
+      let compiled = dom.sheet.compiled(layout_fingerprint::<Self>(layout), || {
+        compile_layout::<Self>(layout)
+      });
+
+      dom.assign_style(*sink, &compiled);
     });
   }
 

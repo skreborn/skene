@@ -89,16 +89,13 @@ pub struct Annotation<P: Platform> {
 pub type Annotated<P, T> = Value<T, Condition<<P as Platform>::Scalar>>;
 
 impl<P: Platform> Annotation<P> {
-  /// This annotation with only its static properties: those no derived leaf holds.
-  pub fn statics(self) -> Self {
-    Self {
-      flex: self.flex.filter(Value::is_static),
-      self_alignment: self.self_alignment.filter(Value::is_static),
-      self_horizontal_alignment: self.self_horizontal_alignment.filter(Value::is_static),
-      pinned: self.pinned.filter(Value::is_static),
-      grid_row_placement: self.grid_row_placement.filter(Value::is_static),
-      grid_column_placement: self.grid_column_placement.filter(Value::is_static),
-    }
+  /// This annotation as a box style holding its properties and nothing else.
+  pub fn into_style(self) -> DeclaredBoxStyle<P> {
+    let mut style = DeclaredBoxStyle::<P>::default();
+
+    self.apply_to(&mut style);
+
+    style
   }
 
   /// Writes every property set here into `style`, replacing what it held.
@@ -966,11 +963,16 @@ impl<P: Platform> Scene<P> {
     }
   }
 
-  /// Builds the node `build` returns under `annotation`: the first box, control, run or
-  /// low-level node `build` creates takes it, and no node built after `build` returns
-  /// does.
-  pub fn annotate(annotation: Annotation<P>, build: impl FnOnce() -> NodeId) -> NodeId {
-    Self::with(|scene| scene.pending_annotation = Some(annotation));
+  /// Builds the node `build` returns under `annotation`, where there is one: the first
+  /// box, control, run or low-level node `build` creates takes it, and no node built
+  /// after `build` returns does.
+  pub fn annotate(
+    annotation: impl Into<Option<Annotation<P>>>,
+    build: impl FnOnce() -> NodeId,
+  ) -> NodeId {
+    let annotation = annotation.into();
+
+    Self::with(|scene| scene.pending_annotation = annotation);
 
     let node = build();
 

@@ -87,7 +87,8 @@ impl<P: Platform, C> AnyKind for ErrorBoundary<P, C> {}
 
 impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::with(Scene::create_segment);
+    let (start, annotation) =
+      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
     let errors = Errors::new();
     let scope = Owner::current().child();
     let child = self.child;
@@ -98,21 +99,25 @@ impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
         child.build()
       })
     });
-    let content = Show::<P>::new()
-      .derive_shown(move || errors.is_empty())
-      .set_child(content)
-      .build();
+    let content = Scene::<P>::annotate(annotation.clone(), || {
+      Show::<P>::new()
+        .derive_shown(move || errors.is_empty())
+        .set_child(content)
+        .build()
+    });
 
     Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
 
     if let Some(fallback) = self.fallback {
-      let fallback = derived::<P>(move || {
-        if errors.is_empty() {
-          empty::<P>().build()
-        }
-        else {
-          fallback(errors).build()
-        }
+      let fallback = Scene::<P>::annotate(annotation, || {
+        derived::<P>(move || {
+          if errors.is_empty() {
+            empty::<P>().build()
+          }
+          else {
+            fallback(errors).build()
+          }
+        })
       });
 
       Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));

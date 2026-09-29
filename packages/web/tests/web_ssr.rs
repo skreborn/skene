@@ -9,14 +9,18 @@ use skene_common::{
   Behavior,
   Container,
   Control,
+  Flexible,
+  LowLevel,
   RawCheckbox,
   RawTextEditor,
+  Row,
   Text,
   TextEntry,
   Theme,
   Toggle,
 };
 use skene_core::{
+  AnyKind,
   Color,
   Condition,
   ContainerName,
@@ -28,6 +32,8 @@ use skene_core::{
   Expr,
   HasChildren,
   Media,
+  NodeId,
+  NodeKind,
   Role,
   State,
   StaticLeaf,
@@ -38,7 +44,7 @@ use skene_core::{
   When,
 };
 use skene_reactive::{Get, Set, signal};
-use skene_web::{Web, WebTokenValue, render_to_string};
+use skene_web::{Web, WebMarkup, WebTokenValue, render_to_string};
 
 type Box_ = Container<Web>;
 
@@ -382,6 +388,36 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
       css(black())
     )),
     "{styles}"
+  );
+}
+
+/// A low-level view: a `<div>` made through the escape trait.
+struct Raw;
+
+impl AnyKind for Raw {}
+
+impl skene_common::View<Web> for Raw {
+  fn build(self) -> NodeId {
+    LowLevel::<Web>::realize(Web.create_element("div"), NodeKind::Box)
+  }
+}
+
+/// A low-level node's element carries the layout its wrapper gave it in its class.
+#[test]
+fn a_low_level_node_takes_its_wrappers_layout() {
+  let rendered = render_to_string(|| {
+    Row::<Web>::new().set_child(Flexible::<Web>::new().set_grow_factor(3.).set_child(Raw))
+  });
+  let body = rendered.body();
+  let raw = body.rfind("<div").expect("the low-level element");
+  let class = classes(&body[raw..])[0].clone();
+
+  assert!(
+    rendered
+      .styles()
+      .contains(&format!(".{class}{{flex:3 1 auto;}}")),
+    "{}",
+    rendered.styles()
   );
 }
 

@@ -134,18 +134,30 @@ pub struct LowLevel<P: Platform>(PhantomData<fn() -> P>);
 
 impl<P: Platform> LowLevel<P> {
   /// Registers `sink` as a detached node of `kind` and returns its id, recording the
-  /// annotation a wrapper around the view gave it.
-  #[inline(always)]
+  /// annotation a wrapper around the view gave it and applying it to the sink as its
+  /// layout; see [`Platform::apply_layout`].
   pub fn realize(sink: P::Sink, kind: NodeKind) -> NodeId {
-    Scene::<P>::with(|scene| {
+    let (node, annotation) = Scene::<P>::with(|scene| {
       let annotation = scene.take_pending_annotation();
       let node = scene.create(kind, sink);
 
-      if let Some(annotation) = annotation {
-        scene.set_annotation(node, annotation);
+      if let Some(annotation) = &annotation {
+        scene.set_annotation(node, annotation.clone());
       }
 
-      node
-    })
+      (node, annotation)
+    });
+
+    if let Some(annotation) = annotation {
+      let (layout, slots) = annotation.into_style().split();
+
+      with_sink::<P, _>(node, |sink| P::default().apply_layout(sink, &layout));
+
+      for slot in slots {
+        bind_box_slot::<P>(node, slot);
+      }
+    }
+
+    node
   }
 }

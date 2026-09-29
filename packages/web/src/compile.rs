@@ -50,6 +50,7 @@ use skene_core::{
   RunVisitor,
   Slot,
   Static,
+  StaticBoxStyle,
   StaticLeaf,
   TextDecoration,
   TextDecorationStyle,
@@ -743,6 +744,15 @@ pub(crate) fn compile_box<P: PixelPlatform>(props: &BoxProps<P>) -> Compiled {
   compiled
 }
 
+/// The rule template of the per-child layout a wrapper gave a low-level node.
+pub(crate) fn compile_layout<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> Compiled {
+  let mut rules = Rules::new(Declarations::new());
+
+  layout.visit(&mut BoxRules(&mut rules));
+
+  rules.finish(String::new(), "")
+}
+
 /// The rule template of a control: its box's, over the control reset that strips the
 /// native element's own chrome; a text entry's value is inked and selected by the
 /// typography inherited at it.
@@ -1076,6 +1086,16 @@ pub(crate) fn overlay_fingerprint<P: PixelPlatform>(props: &OverlayProps<P>) -> 
   props.modal.hash(&mut hasher);
   (props.placement as u8).hash(&mut hasher);
   props.backdrop.fingerprint(&mut hasher);
+
+  hasher.finish()
+}
+
+/// The hash the class cache keys a low-level node's compiled layout on.
+pub(crate) fn layout_fingerprint<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> u64 {
+  let mut hasher = FxHasher::default();
+
+  hasher.write_u8(3);
+  layout.fingerprint(&mut hasher);
 
   hasher.finish()
 }

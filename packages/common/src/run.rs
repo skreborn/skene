@@ -4,7 +4,6 @@ use skene_core::{
   Animation,
   Color,
   Condition,
-  DeclaredBoxStyle,
   DeclaredRunStyle,
   Definition,
   Definitions,
@@ -27,7 +26,10 @@ use skene_core::{
 };
 use skene_reactive::Effect;
 
-use crate::{realize::bind_run_slot, typography};
+use crate::{
+  realize::{bind_box_slot, bind_run_slot},
+  typography,
+};
 
 /// What every text view declares of its run: selection, link and style.
 #[must_use]
@@ -127,12 +129,14 @@ impl<P: Platform> Run<P> {
 
     let (style, slots) = style.split();
     let annotation = Scene::<P>::with(Scene::take_pending_annotation);
-    let layout = annotation.clone().map(|annotation| {
-      let mut layout = DeclaredBoxStyle::<P>::default();
+    let (layout, layout_slots) = annotation.clone().map_or_else(
+      || (None, Vec::new()),
+      |annotation| {
+        let (layout, layout_slots) = annotation.into_style().split_after(slots.len());
 
-      annotation.statics().apply_to(&mut layout);
-      Box::new(layout.split().0)
-    });
+        (Some(Box::new(layout)), layout_slots)
+      },
+    );
     let props = RunProps {
       display,
       selectable: self.selectable,
@@ -155,6 +159,10 @@ impl<P: Platform> Run<P> {
 
     for slot in slots {
       bind_run_slot::<P>(node, slot);
+    }
+
+    for slot in layout_slots {
+      bind_box_slot::<P>(node, slot);
     }
 
     if let Some(style) = redefined {

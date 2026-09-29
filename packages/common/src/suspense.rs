@@ -82,7 +82,8 @@ impl<P: Platform, C> AnyKind for Suspense<P, C> {}
 
 impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::with(Scene::create_segment);
+    let (start, annotation) =
+      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
     let boundary = Boundary::new();
     let parent = Boundary::current();
     let scope = Owner::current().child();
@@ -94,18 +95,22 @@ impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
         child.build()
       })
     });
-    let content = Show::<P>::new()
-      .derive_shown(move || boundary.is_settled())
-      .set_child(content)
-      .build();
+    let content = Scene::<P>::annotate(annotation.clone(), || {
+      Show::<P>::new()
+        .derive_shown(move || boundary.is_settled())
+        .set_child(content)
+        .build()
+    });
 
     Scene::<P>::with(|scene| scene.insert_in_segment(start, content, None));
 
     if let Some(fallback) = self.fallback {
-      let fallback = Show::<P>::new()
-        .derive_shown(move || !boundary.is_settled())
-        .set_child(fallback)
-        .build();
+      let fallback = Scene::<P>::annotate(annotation, || {
+        Show::<P>::new()
+          .derive_shown(move || !boundary.is_settled())
+          .set_child(fallback)
+          .build()
+      });
 
       Scene::<P>::with(|scene| scene.insert_in_segment(start, fallback, None));
     }

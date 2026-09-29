@@ -5,11 +5,13 @@ mod common;
 
 use std::{cell::Cell, fmt, rc::Rc};
 
-use skene_core::{Boundary, Errors, HasChildren, View};
-use skene_headless::{Headless, children, end_turn, is_live, outline, reset};
+use skene_core::{Boundary, Errors, Flexibility, HasChildren, StaticValue, View};
+use skene_headless::{Headless, box_props, children, end_turn, is_live, outline, reset};
 use skene_reactive::{Get, Owner, Set, Signal};
 
+type Column = skene_common::Column<Headless>;
 type Container = skene_common::Container<Headless>;
+type Flexible<C = skene_common::NoChild> = skene_common::Flexible<Headless, C>;
 type Text = skene_common::Text<Headless>;
 type Suspense<C = skene_common::NoChild> = skene_common::Suspense<Headless, C>;
 type ErrorBoundary<C = skene_common::NoChild> = skene_common::ErrorBoundary<Headless, C>;
@@ -24,6 +26,63 @@ impl fmt::Display for Failed {
 }
 
 impl std::error::Error for Failed {}
+
+/// A wrapper around a boundary annotates its content and its fallback alike.
+#[test]
+fn a_wrapper_annotates_a_boundarys_content_and_fallback() {
+  reset();
+
+  let owner = Owner::new();
+  let boundary = Rc::new(Cell::new(None::<Boundary>));
+  let errors = Rc::new(Cell::new(None::<Errors>));
+  let root = owner.enter(|| {
+    let boundary = Rc::clone(&boundary);
+    let errors = Rc::clone(&errors);
+
+    Column::new()
+      .set_children((
+        Flexible::new().set_grow_factor(2.).set_child(
+          Suspense::new()
+            .set_fallback(Container::new())
+            .set_child_builder(move || {
+              boundary.set(Boundary::current());
+
+              Container::new()
+            }),
+        ),
+        Flexible::new().set_grow_factor(3.).set_child(
+          ErrorBoundary::new()
+            .set_fallback_builder(|_: Errors| Container::new())
+            .set_child_builder(move || {
+              errors.set(Errors::current());
+
+              Container::new()
+            }),
+        ),
+      ))
+      .build()
+  });
+  let grown = || {
+    children(root)
+      .into_iter()
+      .filter_map(|node| box_props(node)?.style.flex)
+      .collect::<Vec<_>>()
+  };
+  let grow = |factor| StaticValue::from(Flexibility::grow(factor));
+
+  assert_eq!(grown(), [grow(2.), grow(3.)]);
+
+  boundary.get().expect("the suspense's content").enter();
+  errors
+    .get()
+    .expect("the error boundary's content")
+    .report(Failed);
+  end_turn();
+
+  assert_eq!(grown(), [grow(2.), grow(3.)]);
+
+  owner.dispose();
+}
 
 /// Pending work swaps the fallback in and the content out without destroying either:
 /// the content's signal and node survive, and both branches are destroyed when the

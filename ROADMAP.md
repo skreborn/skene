@@ -20,20 +20,16 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The web's highest-traffic defects.**
-    - A wrapper's per-child properties reach everything its child produces: a derived
-    one reaches a run on the web as a slot, as it reaches a box; a low-level node's
-    annotation reaches its platform, which applies it to the element on the web; and
-    `Suspense` and `ErrorBoundary` fallbacks take their wrapper's annotation.
-    - With them, views: the picker keeps its caption, accessible name and disabled
-    state across the hydration swap (a disabled picker becomes operable today); an
-    overlay open at build opens once connected; `Show` acts only on a visibility
-    change, and re-attaching in place is a no-op, where each re-run recaptures focus
-    and scroll, reopens tooltips, restarts animations and drops an IME composition
-    today; a modal always prevents `cancel`; behaviors skip keys while an IME composes.
-    - With them, painting: device loss recovers, with a CPU fallback per canvas; the
+    - Views: the picker keeps its caption, accessible name and disabled state across
+    the hydration swap (a disabled picker becomes operable today); an overlay open at
+    build opens once connected; `Show` acts only on a visibility change, and
+    re-attaching in place is a no-op, where each re-run recaptures focus and scroll,
+    reopens tooltips, restarts animations and drops an IME composition today; a modal
+    always prevents `cancel`; behaviors skip keys while an IME composes.
+    - Painting: device loss recovers, with a CPU fallback per canvas; the
     canvas is positioned absolutely and observes `device-pixel-content-box`, so it
     stops sizing its own box and repaints when the pixel ratio changes.
-    - With them, streaming and loading: the streaming cursor resumes by node identity,
+    - Streaming and loading: the streaming cursor resumes by node identity,
     not position; streamed style deltas move into `<head>` on adoption; a title set in
     a `Deferred` holds the shell until the head settles, or is warned about and
     documented; the code-split loader's glue, about 50 lines of JavaScript, is owned,

@@ -23,6 +23,7 @@ use skene_gui::{
   ContextMenu,
   Deferred,
   Definition,
+  Flexible,
   FocusHandle,
   Grid,
   HasChildren,
@@ -457,6 +458,32 @@ fn a_themed_stack_child_shares_the_cell() {
   assert!(
     (over.get_bounding_client_rect().top() - under.get_bounding_client_rect().top()).abs() < 0.5
   );
+}
+
+/// A wrapper's derived property reaches a run as a slot, following its signal.
+#[wasm_bindgen_test]
+fn a_derived_wrapper_property_reaches_a_run() {
+  let (_guard, root) = fresh_root();
+  let grow = Signal::new(2.0f32);
+
+  let _ = mount(move || {
+    Row::new()
+      .set_child(
+        Flexible::new()
+          .derive_grow_factor(move || grow.get())
+          .set_child(Text::new("grows")),
+      )
+      .build()
+  });
+
+  let text = only_child(&only_child(&root));
+
+  assert_eq!(computed(&text, "flex-grow"), "2");
+
+  grow.set(5.);
+  web::end_turn();
+
+  assert_eq!(computed(&text, "flex-grow"), "5");
 }
 
 #[wasm_bindgen_test]

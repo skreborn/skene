@@ -433,7 +433,15 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
   /// slot's index is its position in the list, and its property's field holds
   /// [`PlatformLeaf::Slot`](super::PlatformLeaf::Slot) where the leaf was.
   #[expect(clippy::type_complexity)]
-  pub fn split(mut self) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
+  #[inline(always)]
+  pub fn split(self) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
+    self.split_after(0)
+  }
+
+  /// [`split`](Self::split), for a node already holding `taken` slots: each slot's
+  /// index is `taken` plus its position in the list.
+  #[expect(clippy::type_complexity)]
+  pub fn split_after(mut self, taken: usize) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
     let mut target = BoxStyle::default();
     let mut slots = Vec::new();
 
@@ -441,6 +449,7 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
       source: &mut self,
       target: &mut target,
       slots: &mut slots,
+      taken,
     });
 
     (target, slots)
@@ -451,6 +460,7 @@ struct Split<'a, N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExte
   source: &'a mut BoxStyle<N, Declared<C>, X>,
   target: &'a mut BoxStyle<N, Static<C>, X>,
   slots: &'a mut Vec<BoxSlot<N, X>>,
+  taken: usize,
 }
 
 impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension> BoxFieldVisitor<N, X>
@@ -463,9 +473,10 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension> BoxFi
     };
 
     let slots = &mut *self.slots;
+    let taken = self.taken;
     let split = value.split_derived(|position, compute| {
       let slot =
-        Slot(u16::try_from(slots.len()).expect("a node holds at most 65536 derived slots"));
+        Slot(u16::try_from(taken + slots.len()).expect("a node holds at most 65536 derived slots"));
 
       slots.push(DerivedSlot {
         slot,

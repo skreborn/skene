@@ -1069,46 +1069,43 @@ pub fn is_tab_stop(node: NodeId) -> bool {
   )
 }
 
-/// The name the control `node` reports to assistive technology: the text of its
-/// [`Part::Label`], else the label its accessibility properties carry, else the one its
-/// props were created with.
+/// The name the control `node` reports to assistive technology.
+///
+/// The accessible-name computation's order: the text of the nodes it is labelled by,
+/// else the label its accessibility properties carry, else the text of its
+/// [`Part::Label`], else the label its props were created with.
 #[must_use]
 pub fn accessible_name(node: NodeId) -> Option<String> {
   end_turn();
 
   let props = control_props(node)?;
-  let label = Scene::<Headless>::with(|scene| {
+  let access = &props.box_props.access;
+  let labelled = access.iter().find_map(|prop| match prop {
+    AccessProp::LabelledBy(nodes) => Some(
+      nodes
+        .iter()
+        .map(|node| subtree_text(*node))
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join(" "),
+    ),
+    _ => None,
+  });
+  let label = access.iter().find_map(|prop| match prop {
+    AccessProp::Label(label) => Some(label.clone()),
+    _ => None,
+  });
+  let caption = Scene::<Headless>::with(|scene| {
     scene
       .children(node)
       .find(|child| scene.part(*child) == Some(Part::Label))
-  });
+  })
+  .map(subtree_text);
 
-  if let Some(label) = label {
-    let text = subtree_text(label);
-
-    if !text.is_empty() {
-      return Some(text);
-    }
-  }
-
-  props
-    .box_props
-    .access
-    .iter()
-    .find_map(|prop| match prop {
-      AccessProp::LabelledBy(nodes) => Some(
-        nodes
-          .iter()
-          .map(|node| subtree_text(*node))
-          .filter(|text| !text.is_empty())
-          .collect::<Vec<_>>()
-          .join(" "),
-      )
-      .filter(|text| !text.is_empty()),
-      AccessProp::Label(label) => Some(label.clone()),
-      _ => None,
-    })
-    .or(props.label)
+  [labelled, label, caption, props.label]
+    .into_iter()
+    .flatten()
+    .find(|name| !name.is_empty())
 }
 
 /// The text of every run under `node`, in order.

@@ -378,7 +378,8 @@
   slider's track, fill and thumb are boxes there as everywhere. **Accessibility is
   reported, never spelled**: a behavior reports what it is (`Checked`, `Value`,
   `Expanded`, `HasPopup`, `Orientation`), a control's user adds what any control may carry
-  (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`), and the platform maps each to its
+  (`Required`, `ReadOnly`, `Invalid`, `DescribedBy`, and a `Label` through
+  `set_accessible_name` where no caption names it), and the platform maps each to its
   layer—on the web a form element takes the native attribute where one exists, so the form
   enforces it without script, and ARIA otherwise. A caption drawn by a view names its
   control by reference (`LabelledBy`, `aria-labelledby` on the web), since a combobox,

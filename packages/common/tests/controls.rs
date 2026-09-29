@@ -797,6 +797,46 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
   owner.dispose();
 }
 
+/// An accessible name names a control no caption does and outranks a caption's, and
+/// a derived one follows its signals.
+#[test]
+fn an_accessible_name_names_a_control_over_its_caption() {
+  reset();
+
+  let owner = Owner::new();
+  let name = Signal::new("Close".to_owned());
+  let (icon, derived, captioned) = owner.enter(|| {
+    (
+      RawButton::new(Activate::new())
+        .set_accessible_name("Close")
+        .set_child(Container::new())
+        .build(),
+      RawButton::new(Activate::new())
+        .derive_accessible_name(move || name.get())
+        .build(),
+      RawButton::new(Activate::new())
+        .set_label("×")
+        .set_accessible_name("Close")
+        .build(),
+    )
+  });
+
+  assert_eq!(accessible_name(icon).as_deref(), Some("Close"));
+  assert!(box_props(icon).is_some_and(|props| {
+    props
+      .access
+      .contains(&AccessProp::Label("Close".to_owned()))
+  }));
+  assert_eq!(accessible_name(derived).as_deref(), Some("Close"));
+
+  name.set("Dismiss".to_owned());
+
+  assert_eq!(accessible_name(derived).as_deref(), Some("Dismiss"));
+  assert_eq!(accessible_name(captioned).as_deref(), Some("Close"));
+
+  owner.dispose();
+}
+
 /// A popup face opening a list is a combobox, and one opening a menu or a dialog a
 /// button, each reporting the popup it opens.
 #[test]

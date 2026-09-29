@@ -130,6 +130,18 @@ fn a_buttons_surface_hover_and_focus_resolve_the_primary_look_on_the_control() {
   let label = children(button)[0];
 
   assert_eq!(accessible_name(button), Some("Save".to_owned()));
+
+  let icon = themed(owner, || {
+    SimpleButton::new("")
+      .set_accessible_name("Close")
+      .set_child(Container::new())
+  });
+
+  assert_eq!(
+    accessible_name(icon),
+    Some("Close".to_owned()),
+    "an icon button takes its accessible name"
+  );
   assert_eq!(part(label), Some(Part::Label));
   assert_eq!(
     resolve_color(button, COLOR),

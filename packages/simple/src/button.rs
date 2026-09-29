@@ -123,6 +123,24 @@ impl<P: Platform> SimpleButton<P> {
     self
   }
 
+  /// Sets the name the button reports to assistive technology, over its label's: for a
+  /// button [`set_child`](Self::set_child) draws with an icon alone.
+  #[inline(always)]
+  pub fn set_accessible_name(mut self, name: impl Into<String>) -> Self {
+    self.raw = self.raw.set_accessible_name(name);
+
+    self
+  }
+
+  /// Derives the name the button reports to assistive technology from the signals
+  /// `name` reads.
+  #[inline(always)]
+  pub fn derive_accessible_name(mut self, name: impl Fn() -> String + 'static) -> Self {
+    self.raw = self.raw.derive_accessible_name(name);
+
+    self
+  }
+
   /// Runs `action` on activation by pointer, `Enter` or `Space`.
   #[inline(always)]
   pub fn handle_click(mut self, action: impl Fn() + 'static) -> Self {

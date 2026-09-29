@@ -184,6 +184,19 @@ fn a_named_control_keeps_its_accessible_name() {
   assert!(body.contains("aria-label=\"Close\""), "{body}");
 }
 
+/// A button drawn by an icon alone carries the accessible name it is given.
+#[test]
+fn an_icon_button_carries_its_accessible_name() {
+  let page = render_to_string(|| {
+    RawButton::new(Activate::new())
+      .set_accessible_name("Close")
+      .set_child(Container::new())
+  });
+  let body = page.body();
+
+  assert!(body.contains("aria-label=\"Close\""), "{body}");
+}
+
 /// A slider's scriptless input holds the slider's range, step and value natively.
 #[test]
 fn a_sliders_input_holds_its_range_natively() {

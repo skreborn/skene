@@ -416,6 +416,7 @@ pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   behavior: B,
   inner: LayoutBox<P, PlainChild>,
   label: Option<Label<P>>,
+  accessible_name: Option<Source<String>>,
   disabled: Option<Source<bool>>,
   required: Option<Source<bool>>,
   read_only: Option<Source<bool>>,
@@ -453,6 +454,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       read_only: None,
       invalid: None,
       described_by: None,
+      accessible_name: None,
       focus_order: None,
       parts: Vec::new(),
       observers: Observers::default(),
@@ -485,6 +487,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       read_only: self.read_only,
       invalid: self.invalid,
       described_by: self.described_by,
+      accessible_name: self.accessible_name,
       focus_order: self.focus_order,
       parts: self.parts,
       observers: self.observers,
@@ -598,6 +601,24 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   #[inline(always)]
   pub fn set_label(mut self, label: impl Into<Label<P>>) -> Self {
     self.label = Some(label.into());
+
+    self
+  }
+
+  /// Sets the name the control reports to assistive technology, over its caption's: for
+  /// a control no caption names, such as a button drawn by an icon alone.
+  #[inline(always)]
+  pub fn set_accessible_name(mut self, name: impl Into<String>) -> Self {
+    self.accessible_name = Some(Source::Fixed(name.into()));
+
+    self
+  }
+
+  /// Derives the name the control reports to assistive technology from the signals
+  /// `name` reads.
+  #[inline(always)]
+  pub fn derive_accessible_name(mut self, name: impl Fn() -> String + 'static) -> Self {
+    self.accessible_name = Some(Source::derive(name));
 
     self
   }
@@ -808,6 +829,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       read_only,
       invalid,
       described_by,
+      accessible_name,
       focus_order,
       parts,
       observers,
@@ -820,7 +842,13 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       let kind = behavior.kind();
       let placeholder = behavior.placeholder();
       let lines = behavior.lines();
-      let name = label.as_ref().and_then(|label| label.name.clone());
+      let name = label
+        .as_ref()
+        .and_then(|label| label.name.clone())
+        .or_else(|| match &accessible_name {
+          Some(Source::Fixed(name)) => Some(name.clone()),
+          Some(Source::Derived(_)) | None => None,
+        });
 
       if let Some(role) = behavior.role() {
         inner = inner.set_role(role);
@@ -862,6 +890,10 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         invalid: read_bool(invalid),
         described_by,
         labelled_by,
+        accessible_name: accessible_name.map(|name| match name {
+          Source::Fixed(name) => Rc::new(move || name.clone()) as Rc<dyn Fn() -> String>,
+          Source::Derived(name) => name,
+        }),
       };
 
       bind_reports(&handle, &behavior, &flags, focus_order);
@@ -910,8 +942,8 @@ fn mount_part<P: Platform>(node: NodeId, part: Part, child: NodeId) {
   });
 }
 
-/// What the control's user set beside the behavior: the flags every control may carry
-/// and the node describing it.
+/// What the control's user set beside the behavior: the flags every control may carry,
+/// the node describing it and the name it reports.
 #[derive(Clone)]
 struct Flags {
   /// Whether the control is disabled, read where it is reported.
@@ -926,6 +958,8 @@ struct Flags {
   described_by: Option<NodeId>,
   /// The caption naming the control by reference, where its text is not known at build.
   labelled_by: Option<NodeId>,
+  /// The name the control reports over its caption's, read where it is reported.
+  accessible_name: Option<Rc<dyn Fn() -> String>>,
 }
 
 /// Binds the render effects writing the control's state, accessibility and focus
@@ -986,6 +1020,10 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
 
       if let Some(described_by) = flags.described_by {
         access.push(AccessProp::DescribedBy(vec![described_by]));
+      }
+
+      if let Some(name) = &flags.accessible_name {
+        access.push(AccessProp::Label(name()));
       }
 
       report_access::<P>(node, access);

@@ -202,10 +202,12 @@ impl core::marker::StructuralPartialEq for skene_simple::SimpleVariant
 pub struct skene_simple::SimpleButton<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_simple::SimpleButton<P>
 pub fn skene_simple::SimpleButton<P>::derive(impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_simple::SimpleButton<P>::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::derive_variant(self, impl core::ops::function::Fn() -> skene_simple::SimpleVariant + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::handle_click(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_simple::SimpleButton<P>::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_simple::SimpleButton<P>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_child(self, impl skene_core::view::IntoView<P>) -> Self
 pub fn skene_simple::SimpleButton<P>::set_disabled(self, bool) -> Self
 pub fn skene_simple::SimpleButton<P>::set_variant(self, skene_simple::SimpleVariant) -> Self

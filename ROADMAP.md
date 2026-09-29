@@ -28,10 +28,10 @@ left half-done in a code comment.
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
-    - Parity harness: the browser tier resolves a matrix of property, leaf kind,
-    condition and token kind with the `Resolver` and compares it with
-    `getComputedStyle`, the seam where every divergence between the web and the
-    terminal sits.
+    - The parity harness (`web_parity`) grows past the background, width, padding,
+    border and ink it compares: `em` under a typography, which headless fixes at 16 and
+    the terminal at one cell, container units, number tokens read as lengths, the
+    focus, checked and disabled states, and a case for each fix below.
     - Specificity flat by construction: every state inside `:where()`, the reset in
     `@layer skene.reset` and compiled rules in `@layer skene.style` so app CSS always
     wins (the reset's `label[data-skene-control]` rule outranks `Pinned` today), and a
@@ -46,10 +46,10 @@ left half-done in a code comment.
     unit class) for the terminal, headless and native: easing per keyframe interval,
     discrete properties that never tween, premultiplied color mixing, and one
     reduced-motion rest frame, the final one, where the web shows the base style today.
-    - CSS semantics in core: `clamp` as CSS computes it; no division of a number by a
-    length; a `StaticLeaf::map` that can't change an expression's type; the last of
-    repeated keyframe offsets; a powerless hue for achromatic colors; `Color` taking
-    the `color` crate's CSS semantics in a few lines of its own.
+    - CSS semantics in core: no division of a number by a length; a `StaticLeaf::map`
+    that can't change an expression's type; the last of repeated keyframe offsets; a
+    powerless hue for achromatic colors; `Color` taking the `color` crate's CSS
+    semantics in a few lines of its own.
     - One `Environment` (viewport, scheme, reduced motion, reduced transparency, high
     contrast, pointer capability, insets) in place of three spellings, so
     `HighContrast` and `ReducedTransparency` answer on every platform and in tests; one

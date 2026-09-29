@@ -232,8 +232,8 @@ impl ExprNode {
         .scale(rhs.evaluate(env, resolve)?, |lhs, rhs| lhs / rhs),
       Self::Clamp(value, lower, upper) => value
         .evaluate(env, resolve)?
-        .combine_same(lower.evaluate(env, resolve)?, f32::max)?
-        .combine_same(upper.evaluate(env, resolve)?, f32::min),
+        .combine_same(upper.evaluate(env, resolve)?, f32::min)?
+        .combine_same(lower.evaluate(env, resolve)?, f32::max),
       Self::Mix(lhs, rhs, amount) => {
         let lhs = lhs.evaluate(env, resolve)?.color()?;
         let rhs = rhs.evaluate(env, resolve)?.color()?;
@@ -538,7 +538,8 @@ impl<Q: Quantity> Expr<Q> {
     ))
   }
 
-  /// This, held between `lower` and `upper`.
+  /// This, held between `lower` and `upper`; `lower` wins where the two cross, as in
+  /// CSS's `clamp()`.
   #[inline(always)]
   pub fn clamp(self, lower: impl Into<Self>, upper: impl Into<Self>) -> Self {
     Self::from_node(ExprNode::Clamp(
@@ -741,6 +742,14 @@ mod tests {
       Expr::<Inset<f32>>::from(expr).evaluate(&env(), &tokens),
       Some(Inset::all(20.))
     );
+  }
+
+  /// Crossed bounds resolve to the lower one, as CSS's `clamp()` does.
+  #[test]
+  fn a_crossed_clamp_takes_its_lower_bound() {
+    let expr = Expr::<Length>::from(50.).clamp(80., 20.);
+
+    assert_eq!(expr.evaluate(&env(), &tokens), Some(Length(80.)));
   }
 
   /// Ring arithmetic follows the environment, and a missing token yields nothing.

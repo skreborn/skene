@@ -1,12 +1,12 @@
 //! Event dispatch over the scene: one bubbling implementation for every platform.
 //!
 //! A platform reports an event at a node. A preventable event climbs from that node
-//! through the scene's parents, running every handler on each node deepest first and
-//! folding their verdicts into a [`Prevented`], which tells the platform what the
-//! platform may still do; the climb stops at the node whose handlers prevented
-//! bubbling. A pointer event reaches each node local to that node's own box, measured
-//! by the platform. A notification runs the node's own handlers only. Every dispatch
-//! runs in one batch, and no borrow of the scene is held while a handler runs.
+//! through the scene's parents as they were when the dispatch began, running every
+//! handler on each node deepest first and folding their verdicts into a
+//! [`Prevented`], which tells the platform what the platform may still do; the climb
+//! stops at the node whose handlers prevented bubbling. A pointer event reaches each node local to
+//! that node's own box, measured by the platform. A notification runs the node's own handlers only.
+//! Every dispatch runs in one batch, and no borrow of the scene is held while a handler runs.
 
 use skene_reactive::batch;
 use smallvec::SmallVec;
@@ -30,6 +30,8 @@ pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
     |set, out| {
       out.extend(set.acting_click().iter().cloned());
       out.extend(set.click().iter().cloned());
+
+      false
     },
     |_| (),
     |handler, ()| handler(),
@@ -38,13 +40,18 @@ pub fn dispatch_click<P: Platform>(node: NodeId) -> Prevented {
 
 /// Dispatches a click the platform already acted on at `node`.
 ///
-/// Every click handler up the path runs except the acting ones, so a control's
-/// observers see the click and its behavior does not act a second time.
+/// Every click handler up the path runs except the acting ones, and the climb ends at
+/// the first node carrying acting ones, as a control consumes the click it acts on; so
+/// a control's observers see the click and its behavior does not act a second time.
 #[inline(always)]
 pub fn dispatch_click_observed<P: Platform>(node: NodeId) -> Prevented {
   bubble::<P, _, _>(
     node,
-    all(HandlerSet::click),
+    |set, out| {
+      out.extend(set.click().iter().cloned());
+
+      !set.acting_click().is_empty()
+    },
     |_| (),
     |handler, ()| handler(),
   )
@@ -183,44 +190,62 @@ pub fn dispatch_context_menu<P: Platform>(node: NodeId, event: &PointerEvent) ->
 /// The handlers a dispatch runs on one node, in order.
 type Selected<H> = SmallVec<[Handler<H>; 2]>;
 
-/// A selection taking every handler of one list.
+/// A selection taking every handler of one list, ending the climb nowhere.
 fn all<H: ?Sized>(
   list: fn(&HandlerSet) -> &[Handler<H>],
-) -> impl Fn(&HandlerSet, &mut Selected<H>) {
-  move |set, out| out.extend(list(set).iter().cloned())
+) -> impl Fn(&HandlerSet, &mut Selected<H>) -> bool {
+  move |set, out| {
+    out.extend(list(set).iter().cloned());
+
+    false
+  }
 }
 
 /// The handlers `select` picks on one node, cloned out so the scene is released
-/// before any runs; with the node's parent.
+/// before any runs; with whether `select` ends the climb at the node.
 fn snapshot<P: Platform, H: ?Sized>(
   node: NodeId,
-  select: impl Fn(&HandlerSet, &mut Selected<H>),
-) -> (Selected<H>, Option<NodeId>) {
+  select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
+) -> (Selected<H>, bool) {
   Scene::<P>::with(|scene| {
     let mut handlers = Selected::new();
+    let ends = scene
+      .handlers(node)
+      .is_some_and(|set| select(set, &mut handlers));
 
-    if let Some(set) = scene.handlers(node) {
-      select(set, &mut handlers);
-    }
-
-    (handlers, scene.parent(node))
+    (handlers, ends)
   })
 }
 
-/// Climbs from `node`, running the handlers `select` picks on each node with the
-/// payload `prepare` makes for that node, made only where a handler runs.
+/// `node` and its ancestors, deepest first, as the scene holds them now.
+fn path<P: Platform>(node: NodeId) -> SmallVec<[NodeId; 16]> {
+  Scene::<P>::with(|scene| {
+    let mut path = SmallVec::new();
+    let mut current = Some(node);
+
+    while let Some(node) = current {
+      path.push(node);
+      current = scene.parent(node);
+    }
+
+    path
+  })
+}
+
+/// Climbs from `node` along the path it has before any handler runs, running the
+/// handlers `select` picks on each node with the payload `prepare` makes for that
+/// node, made only where a handler runs.
 fn bubble<P: Platform, H: ?Sized, E>(
   node: NodeId,
-  select: impl Fn(&HandlerSet, &mut Selected<H>),
+  select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
   prepare: impl Fn(NodeId) -> E,
   run: impl Fn(&H, &E) -> Prevent,
 ) -> Prevented {
   batch(|| {
     let mut prevented = Prevented::default();
-    let mut current = Some(node);
 
-    while let Some(node) = current {
-      let (handlers, parent) = snapshot::<P, H>(node, &select);
+    for node in path::<P>(node) {
+      let (handlers, ends) = snapshot::<P, H>(node, &select);
 
       if !handlers.is_empty() {
         let payload = prepare(node);
@@ -230,11 +255,9 @@ fn bubble<P: Platform, H: ?Sized, E>(
         }
       }
 
-      if prevented.bubbling {
+      if prevented.bubbling || ends {
         break;
       }
-
-      current = parent;
     }
 
     prevented
@@ -243,7 +266,7 @@ fn bubble<P: Platform, H: ?Sized, E>(
 
 fn notify<P: Platform, H: ?Sized>(
   node: NodeId,
-  select: impl Fn(&HandlerSet, &mut Selected<H>),
+  select: impl Fn(&HandlerSet, &mut Selected<H>) -> bool,
   run: impl Fn(&H),
 ) {
   batch(|| {
@@ -411,30 +434,66 @@ mod tests {
   }
 
   /// An acting handler runs before the node's observers on a click, and an observed
-  /// click skips it while the observers and the ancestors still run.
+  /// click skips it while the observers beneath and on its node still run, the climb
+  /// ending there as the acting handler's verdict ends it.
   #[test]
   fn observed_click_skips_the_acting_handler() {
     TestPlatform::reset();
 
-    let (outer, _, inner) = chain();
+    let (outer, middle, inner) = chain();
     let log = Rc::new(RefCell::new(Vec::new()));
+    let acting = {
+      let log = Rc::clone(&log);
+
+      Rc::new(move || {
+        log.borrow_mut().push("acting");
+
+        Prevent::Bubbling
+      })
+    };
 
     Scene::<TestPlatform>::with(|scene| {
-      scene.handle_click(inner, record(&log, "observer"));
-      scene.handle_click_acting(inner, record(&log, "acting"));
+      scene.handle_click(inner, record(&log, "inner"));
+      scene.handle_click(middle, record(&log, "observer"));
+      scene.handle_click_acting(middle, acting);
       scene.handle_click(outer, record(&log, "outer"));
     });
 
-    assert_eq!(dispatch_click::<TestPlatform>(inner), Prevented::default());
-    assert_eq!(*log.borrow(), ["acting", "observer", "outer"]);
+    let _ = dispatch_click::<TestPlatform>(inner);
+
+    assert_eq!(*log.borrow(), ["inner", "acting", "observer"]);
 
     log.borrow_mut().clear();
 
-    assert_eq!(
-      dispatch_click_observed::<TestPlatform>(inner),
-      Prevented::default()
-    );
-    assert_eq!(*log.borrow(), ["observer", "outer"]);
+    let _ = dispatch_click_observed::<TestPlatform>(inner);
+
+    assert_eq!(*log.borrow(), ["inner", "observer"]);
+  }
+
+  /// The climb follows the parents a node had when the dispatch began, whatever a
+  /// handler changes on the way.
+  #[test]
+  fn the_path_is_fixed_before_any_handler_runs() {
+    TestPlatform::reset();
+
+    let (outer, middle, inner) = chain();
+    let log = Rc::new(RefCell::new(Vec::new()));
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.handle_click(
+        inner,
+        Rc::new(move || {
+          Scene::<TestPlatform>::with(|scene| scene.detach(outer, middle));
+
+          Prevent::None
+        }),
+      );
+      scene.handle_click(outer, record(&log, "outer"));
+    });
+
+    let _ = dispatch_click::<TestPlatform>(inner);
+
+    assert_eq!(*log.borrow(), ["outer"]);
   }
 
   /// A notification runs the node's own handlers only.

@@ -106,14 +106,16 @@ platform crate, since it is not a shared contract.
 - **Why the scene is in core.** The scene *calls* nothing: core mutates it and then
   calls the platform through the generic parameter. Every platform needs the structure; one
   implementation is smaller and has one reparent semantics.
-- **Dispatch is core's.** A platform reports an event at a node; core walks the scene's
-  parents, runs handlers deepest first, folds `Prevented`, and tells the platform what the
-  platform may still do. The browser's root delegation, the terminal's hit path and the
+- **Dispatch is core's.** A platform reports an event at a node; core walks the
+  parents the node had when the dispatch began, as the DOM fixes an event's path, runs
+  handlers deepest first, folds `Prevented`, and tells the platform what the platform
+  may still do. The browser's root delegation, the terminal's hit path and the
   headless platform share one bubbling implementation, so the rule that a view owns the
   interactions it handles is enforced, and testable, in one place. A click on a native
   web toggle is dispatched *observed* (`dispatch_click_observed`): every handler on the
   path runs except the acting one the behavior registered, since the platform's own flip
-  arrives as `change`.
+  arrives as `change`, and the climb ends at the control, as the acting one's verdict
+  ends it on every other platform.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its

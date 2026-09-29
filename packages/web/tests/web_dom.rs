@@ -470,8 +470,9 @@ fn a_checkbox_flips_once_per_click() {
 }
 
 /// A click on a native toggle is observed, not acted on: the platform flipped it once,
-/// the control's own observer and the container above it each hear one click per
-/// press, whether the press lands on the input or on its caption.
+/// the control's own observer hears one click per press, whether the press lands on the
+/// input or on its caption, and the click ends at the control, never reaching the
+/// container above it.
 #[wasm_bindgen_test]
 fn a_native_toggle_click_is_observed_once_per_press() {
   let (_guard, root) = fresh_root();
@@ -502,11 +503,7 @@ fn a_native_toggle_click_is_observed_once_per_press() {
   input.click();
 
   assert_eq!(observed.get(), 1, "the observer hears the press once");
-  assert_eq!(
-    container_clicks.get(),
-    1,
-    "the click climbs to the container once"
-  );
+  assert_eq!(container_clicks.get(), 0, "the click ends at the control");
   assert!(checked.get(), "the platform's flip reached the signal");
   assert!(input.checked(), "the platform's flip stands");
 
@@ -515,7 +512,7 @@ fn a_native_toggle_click_is_observed_once_per_press() {
   html(&label).click();
 
   assert_eq!(observed.get(), 2, "a press on the caption is one click too");
-  assert_eq!(container_clicks.get(), 2);
+  assert_eq!(container_clicks.get(), 0);
   assert!(!checked.get());
   assert!(!input.checked());
 }

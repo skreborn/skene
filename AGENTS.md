@@ -349,12 +349,13 @@
   consumes, and a control has that chosen for it. The name is deliberate: it is about
   onward travel only, since a view may handle an event and still let it climb. Nothing
   above a platform states more. Dispatch itself lives in core over the scene: a platform
-  reports an event at a node, core walks the parents, runs handlers deepest first,
-  folds the verdicts and tells the platform what its native layer may do—so every platform, the
-  headless one included, bubbles by one implementation. A click on a native web toggle
-  is dispatched *observed* (`dispatch_click_observed`): every handler up the path runs
-  except the acting one the behavior registered, since the platform's flip arrives as
-  `change`.
+  reports an event at a node, core walks the parents it had when the dispatch began,
+  runs handlers deepest first, folds the verdicts and tells the platform what its
+  native layer may do—so every platform, the headless one included, bubbles by one
+  implementation. A click on a native web toggle is dispatched *observed*
+  (`dispatch_click_observed`): every handler up the path runs except the acting one the
+  behavior registered, since the platform's flip arrives as `change`, and the climb
+  ends at the control, as the acting one's verdict ends it everywhere else.
 - **A control is `Control<B: Behavior>`**: one builder in `skene-common` carrying focus,
   events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Roving`,
   `Popup`, `Activate`, `TextEntry` and `Listbox` are the shipped behaviors (`RadioMember`

@@ -40,9 +40,7 @@ left half-done in a code comment.
     order), replacing the terminal's own, headless's divergent copy and the browser's
     implicit one. With it `Pressed` matches a non-focusable box, as `:active` does;
     focus notifications reach ancestors with focus-within semantics, and a tooltip
-    describes the focus holder; a tooltip opens at once on visible focus alone; an
-    observed click stops at the first node carrying acting handlers, as the terminal
-    and headless stop; the dispatch path is fixed before any handler runs; the web
+    describes the focus holder; a tooltip opens at once on visible focus alone; the web
     gains pointer capture and `touch-action: none` on dragging controls. A node's
     `Hovered` then holds while the pointer is over a node beneath it, as `:hover` holds
     on an ancestor, and a group run's state variants reach its spans, as a rule on the

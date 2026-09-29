@@ -41,7 +41,7 @@ impl<P: Painting> Painted<P> {
     }
   }
 
-  fn style_mut(&mut self) -> &mut skene_core::DeclaredBoxStyle<P> {
+  const fn style_mut(&mut self) -> &mut skene_core::DeclaredBoxStyle<P> {
     self.inner.style_mut()
   }
 

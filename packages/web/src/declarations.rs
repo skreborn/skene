@@ -41,7 +41,7 @@ impl Declarations {
   /// Creates an empty declaration set.
   #[inline(always)]
   pub fn new() -> Self {
-    Declarations::default()
+    Self::default()
   }
 
   /// Sets one declaration to its CSS text, replacing any previous value for that
@@ -79,7 +79,7 @@ impl Declarations {
 
   /// Renders a [`MouseCursor`] to its CSS `cursor` keyword.
   #[must_use]
-  pub fn render_cursor(cursor: MouseCursor) -> &'static str {
+  pub const fn render_cursor(cursor: MouseCursor) -> &'static str {
     match cursor {
       MouseCursor::Default => "default",
       MouseCursor::Click => "pointer",
@@ -91,7 +91,7 @@ impl Declarations {
 
   /// Renders an [`Arrangement`] to its CSS distribution keyword.
   #[must_use]
-  pub fn render_arrangement(arrangement: Arrangement) -> &'static str {
+  pub const fn render_arrangement(arrangement: Arrangement) -> &'static str {
     match arrangement {
       Arrangement::Start => "flex-start",
       Arrangement::End => "flex-end",
@@ -105,7 +105,7 @@ impl Declarations {
 
   /// Renders an [`ItemAlignment`] to its CSS keyword.
   #[must_use]
-  pub fn render_item_alignment(alignment: ItemAlignment) -> &'static str {
+  pub const fn render_item_alignment(alignment: ItemAlignment) -> &'static str {
     match alignment {
       ItemAlignment::Start => "flex-start",
       ItemAlignment::End => "flex-end",

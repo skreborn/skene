@@ -413,7 +413,7 @@ impl skene_gui::router::Route for Page {
 }
 
 /// A pointer press with `modifiers` held.
-fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
+const fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
   skene_gui::core::PointerEvent {
     x: 0.,
     y: 0.,

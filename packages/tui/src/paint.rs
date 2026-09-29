@@ -138,7 +138,7 @@ pub(crate) type PlacedCells = (u16, u16, u16, u16, (u16, u16, u16, u16), i32);
 impl Placement {
   /// The cells, the crop and the layer: what the terminal is told, apart from the
   /// image.
-  pub(crate) fn cells(&self) -> PlacedCells {
+  pub(crate) const fn cells(&self) -> PlacedCells {
     (
       self.column,
       self.row,
@@ -1915,7 +1915,7 @@ fn draw_smooth(
 
 /// The color a cell shows at its left edge: a left-block glyph's ink, else its
 /// background.
-fn left_color(cell: &TerminalCell) -> Option<(u8, u8, u8)> {
+const fn left_color(cell: &TerminalCell) -> Option<(u8, u8, u8)> {
   if matches!(
     cell.glyph,
     Glyph::Char('▏' | '▎' | '▍' | '▌' | '▋' | '▊' | '▉')
@@ -2005,7 +2005,7 @@ fn draw_sized(
 }
 
 /// Paints one cell as selected: in the selection colors, or in reverse video.
-fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
+const fn select_cell(cell: &mut TerminalCell, colors: Option<SelectionColors>) {
   match colors {
     Some((ink, surface)) => {
       cell.foreground = Some(ink);

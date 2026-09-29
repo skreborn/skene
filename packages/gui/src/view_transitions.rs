@@ -10,6 +10,13 @@
 /// generated page carries `@view-transition { navigation: auto }`, so the
 /// cross-document navigations between pages animate the same way. A browser without
 /// view transitions, and the host platform, cut.
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(
+    clippy::missing_const_for_fn,
+    reason = "the web leaves' body is not const, and one function has one constness"
+  )
+)]
 pub fn enable() {
   #[cfg(not(skene_leaf = "host"))]
   skene_web::enable_view_transitions();

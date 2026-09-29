@@ -106,7 +106,7 @@ impl<T: 'static> Memo<T> {
 
   /// The memo's id.
   #[inline(always)]
-  pub fn id(&self) -> Id {
+  pub const fn id(&self) -> Id {
     self.id
   }
 

@@ -435,7 +435,7 @@ fn scan(buffer: &[u8], replying: bool, scanned: usize) -> Scan {
 }
 
 /// One byte's key.
-fn key(consumed: usize, code: KeyCode) -> Scan {
+const fn key(consumed: usize, code: KeyCode) -> Scan {
   Scan::Done(consumed, Some(Event::Key(Key::new(code))))
 }
 
@@ -716,7 +716,7 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// The modifiers a mask names: the held keys less one, bit by bit.
-fn modifiers_of(mask: u16) -> Modifiers {
+const fn modifiers_of(mask: u16) -> Modifiers {
   let bits = mask.saturating_sub(1);
 
   Modifiers {
@@ -954,7 +954,7 @@ fn parse_x10_mouse(report: &[u8]) -> Option<Event> {
 }
 
 /// What a mouse report's button byte says: the action and the modifiers held.
-fn mouse_button(byte: u8) -> Option<(MouseKind, Modifiers)> {
+const fn mouse_button(byte: u8) -> Option<(MouseKind, Modifiers)> {
   let number = (byte & 0b11) | ((byte & 0b1100_0000) >> 4);
   let dragging = byte & 0b0010_0000 != 0;
   let kind = match (number, dragging) {
@@ -1263,7 +1263,7 @@ fn parse_sgr_list(list: &str) -> Vec<Sgr> {
 
 /// The palette index of a base color code: `30` to `37` and `40` to `47` the first
 /// eight, `90` to `97` and `100` to `107` the bright eight.
-fn base_color(code: u8) -> u8 {
+const fn base_color(code: u8) -> u8 {
   match code {
     30..=37 => code - 30,
     40..=47 => code - 40,

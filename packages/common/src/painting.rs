@@ -137,7 +137,7 @@ pub trait Renderer {
 impl Renderer for RenderContext {
   #[inline(always)]
   fn set_transform(&mut self, transform: kurbo::Affine) {
-    RenderContext::set_transform(self, transform);
+    Self::set_transform(self, transform);
   }
 
   fn fill(&mut self, path: &kurbo::BezPath, brush: &peniko::Brush) {

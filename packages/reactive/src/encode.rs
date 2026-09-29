@@ -285,7 +285,7 @@ impl<'a> Reader<'a> {
     Some(*first)
   }
 
-  fn take(&mut self, count: usize) -> Option<&'a [u8]> {
+  const fn take(&mut self, count: usize) -> Option<&'a [u8]> {
     if self.bytes.len() < count {
       return None;
     }

@@ -171,6 +171,10 @@ pub fn adopt_next() -> Option<String> {
 #[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
+#[expect(
+  clippy::missing_const_for_fn,
+  reason = "the browser's twin is not const, and one function has one constness"
+)]
 pub fn adopt_next() -> Option<String> {
   None
 }
@@ -191,6 +195,10 @@ pub fn adopt_tagged(tag: &str) -> Option<String> {
 #[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
+#[expect(
+  clippy::missing_const_for_fn,
+  reason = "the browser's twin is not const, and one function has one constness"
+)]
 pub fn adopt_tagged(_tag: &str) -> Option<String> {
   None
 }
@@ -238,7 +246,7 @@ pub fn register_tagged_source(tag: &str, source: HydrationSource) {
 #[cfg(skene_leaf = "browser")]
 #[inline(always)]
 #[must_use]
-pub fn is_server() -> bool {
+pub const fn is_server() -> bool {
   false
 }
 
@@ -246,7 +254,7 @@ pub fn is_server() -> bool {
 #[cfg(skene_leaf = "server")]
 #[inline(always)]
 #[must_use]
-pub fn is_server() -> bool {
+pub const fn is_server() -> bool {
   true
 }
 

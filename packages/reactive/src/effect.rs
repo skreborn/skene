@@ -36,7 +36,7 @@ pub struct EffectHandle {
 impl EffectHandle {
   /// The effect's id.
   #[inline(always)]
-  pub fn id(&self) -> Id {
+  pub const fn id(&self) -> Id {
     self.id
   }
 

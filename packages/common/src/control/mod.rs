@@ -646,7 +646,7 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
 
   /// Sets the node whose text describes the control, for assistive technology.
   #[inline(always)]
-  pub fn set_described_by(mut self, node: NodeId) -> Self {
+  pub const fn set_described_by(mut self, node: NodeId) -> Self {
     self.described_by = Some(node);
 
     self

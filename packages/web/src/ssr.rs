@@ -201,7 +201,7 @@ impl Node {
     }
   }
 
-  fn tag(&self) -> &'static str {
+  const fn tag(&self) -> &'static str {
     match self.content {
       Content::Element(tag) => tag,
       Content::Comment(_) => "",

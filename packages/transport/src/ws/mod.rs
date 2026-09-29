@@ -213,7 +213,7 @@ impl WebSocket {
   /// The next message as it lands; `None` once the socket has closed and every
   /// message before the close has been taken.
   #[inline(always)]
-  pub fn receive(&self) -> Receive<'_> {
+  pub const fn receive(&self) -> Receive<'_> {
     Receive(self)
   }
 

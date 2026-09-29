@@ -350,7 +350,7 @@ impl ExprValue {
   }
 
   #[inline(always)]
-  fn color(self) -> Option<Color> {
+  const fn color(self) -> Option<Color> {
     match self {
       Self::Color(color) => Some(color),
       Self::Length(_) | Self::Number(_) => None,

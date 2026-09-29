@@ -616,7 +616,7 @@ impl<P: Platform, C> AnyKind for ContextMenu<P, C> {}
 impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
   fn build(self) -> NodeId {
     let (start, _) = Scene::<P>::with(Scene::create_segment);
-    let ContextMenu {
+    let Self {
       items,
       list,
       item_style,

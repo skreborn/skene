@@ -19,7 +19,7 @@ pub(crate) const NO_PREFERENCE: &str = "(prefers-reduced-motion: no-preference)"
 pub(crate) const VIEW_TRANSITION_RULE: &str = "@view-transition{navigation:auto}";
 
 /// The CSS property name a transition targets.
-fn style_property_name(property: StyleProperty<GuiProperty>) -> &'static str {
+const fn style_property_name(property: StyleProperty<GuiProperty>) -> &'static str {
   let key: Key = match property {
     StyleProperty::All => return "all",
     StyleProperty::Shared(property) => PropertyKey::Shared(property),

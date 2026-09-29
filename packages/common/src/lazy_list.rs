@@ -65,7 +65,7 @@ impl Axis {
   }
 
   #[inline(always)]
-  fn offset(self, event: ScrollEvent) -> f32 {
+  const fn offset(self, event: ScrollEvent) -> f32 {
     match self {
       Self::Horizontal => event.x,
       Self::Vertical => event.y,

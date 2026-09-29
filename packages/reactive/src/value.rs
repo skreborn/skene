@@ -23,7 +23,7 @@ pub(crate) struct TrackedRefCell<T> {
 
 impl<T> TrackedRefCell<T> {
   #[cfg_attr(debug_assertions, track_caller)]
-  pub(crate) fn new(value: T) -> Self {
+  pub(crate) const fn new(value: T) -> Self {
     Self {
       inner: RefCell::new(value),
       #[cfg(debug_assertions)]

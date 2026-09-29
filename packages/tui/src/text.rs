@@ -365,7 +365,7 @@ impl Clusters {
   }
 
   /// How many clusters there are.
-  pub(crate) fn count(&self) -> usize {
+  pub(crate) const fn count(&self) -> usize {
     self.bytes.len().saturating_sub(1)
   }
 

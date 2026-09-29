@@ -18,7 +18,7 @@ mod split;
 mod tty;
 
 #[cfg(target_arch = "wasm32")]
-fn main() {}
+const fn main() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> std::process::ExitCode {

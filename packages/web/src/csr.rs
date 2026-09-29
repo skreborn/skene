@@ -1421,7 +1421,7 @@ impl Platform for Web {
               event.prevent_default();
 
               if let Some(node) = with_dom(|dom| dom.node(sink).and_then(|node| node.id)) {
-                notify_dismiss::<Web>(node);
+                notify_dismiss::<Self>(node);
               }
             },
           ));

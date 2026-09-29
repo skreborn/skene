@@ -145,7 +145,7 @@ impl BoxRecord {
   /// Marks the resolution stale while keeping what the node presents, so the next
   /// frame resolves again and a moved value starts from where the eye left off.
   #[inline(always)]
-  pub(crate) fn mark_stale(&mut self) {
+  pub(crate) const fn mark_stale(&mut self) {
     if let Some(cache) = &mut self.cache {
       cache.generation = 0;
     }
@@ -235,7 +235,7 @@ impl Field {
   }
 
   /// The value's length in clusters.
-  pub(crate) fn count(&self) -> usize {
+  pub(crate) const fn count(&self) -> usize {
     self.clusters.count()
   }
 
@@ -1498,7 +1498,7 @@ impl Store {
   /// Whether the scheme in force is dark: the app's choice when it has made one, and
   /// the background the terminal reported otherwise.
   #[inline(always)]
-  pub(crate) fn dark(&self) -> bool {
+  pub(crate) const fn dark(&self) -> bool {
     match self.choice {
       Some(ColorScheme::Light) => false,
       Some(ColorScheme::Dark) => true,
@@ -1537,7 +1537,7 @@ impl Store {
 
   /// The color scheme in force.
   #[inline(always)]
-  pub(crate) fn scheme(&self) -> ColorScheme {
+  pub(crate) const fn scheme(&self) -> ColorScheme {
     if self.dark() {
       ColorScheme::Dark
     }
@@ -1554,7 +1554,7 @@ impl Store {
 
   /// Marks every resolved style stale and the frame in need of layout.
   #[inline(always)]
-  pub(crate) fn invalidate_styles(&mut self) {
+  pub(crate) const fn invalidate_styles(&mut self) {
     self.generation += 1;
     self.layout_dirty = true;
     self.paint_dirty = true;

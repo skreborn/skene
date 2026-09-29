@@ -59,7 +59,7 @@ pub struct Prevented {
 
 impl Prevented {
   /// Folds one handler's verdict in; prevention only accumulates.
-  pub fn absorb(&mut self, verdict: Prevent) {
+  pub const fn absorb(&mut self, verdict: Prevent) {
     match verdict {
       Prevent::None => {}
       Prevent::Platform => self.platform = true,
@@ -72,7 +72,7 @@ impl Prevented {
   }
 
   /// Folds another accumulated prevention in.
-  pub fn merge(&mut self, other: Self) {
+  pub const fn merge(&mut self, other: Self) {
     self.platform |= other.platform;
     self.bubbling |= other.bubbling;
   }

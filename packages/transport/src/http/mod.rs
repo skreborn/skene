@@ -185,7 +185,7 @@ pub struct Response {
 impl Response {
   /// A response as received.
   #[inline(always)]
-  pub fn new(status: u16, headers: Vec<(String, String)>, body: Vec<u8>) -> Self {
+  pub const fn new(status: u16, headers: Vec<(String, String)>, body: Vec<u8>) -> Self {
     Self {
       status,
       headers,

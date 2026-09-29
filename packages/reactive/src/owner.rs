@@ -51,7 +51,7 @@ impl Owner {
 
   /// The owner's id.
   #[inline(always)]
-  pub fn id(&self) -> Id {
+  pub const fn id(&self) -> Id {
     self.0
   }
 
@@ -97,13 +97,13 @@ impl Owner {
   }
 
   /// Reparents this owner under `parent`, unlinking it from its previous parent.
-  pub fn set_parent(&self, parent: Owner) {
+  pub fn set_parent(&self, parent: Self) {
     with_graph(|graph| graph.adopt(self.0, parent.0));
   }
 
   /// The parent owner, if any.
   #[inline(always)]
-  pub fn parent(&self) -> Option<Owner> {
+  pub fn parent(&self) -> Option<Self> {
     with_graph(|graph| graph.parent(self.0)).map(Self::from_id)
   }
 

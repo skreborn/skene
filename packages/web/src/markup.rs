@@ -381,12 +381,12 @@ pub(crate) fn native_attributes<P: Platform>(
 }
 
 /// Whether `tag` is an element the `disabled` attribute disables natively.
-pub(crate) fn takes_disabled(tag: &str) -> bool {
+pub(crate) const fn takes_disabled(tag: &str) -> bool {
   tag.eq_ignore_ascii_case("button") || is_form_element(tag)
 }
 
 /// Whether `tag` is a form element that enforces its native attributes.
-pub(crate) fn is_form_element(tag: &str) -> bool {
+pub(crate) const fn is_form_element(tag: &str) -> bool {
   tag.eq_ignore_ascii_case("input")
     || tag.eq_ignore_ascii_case("textarea")
     || tag.eq_ignore_ascii_case("select")
@@ -459,7 +459,7 @@ pub(crate) fn render_focus_order(focus_order: FocusOrder) -> String {
 /// Landmark roles never reach here—they realize as their semantic element instead;
 /// see [`Role::is_spelled`].
 #[must_use]
-pub(crate) fn aria_role(role: Role) -> &'static str {
+pub(crate) const fn aria_role(role: Role) -> &'static str {
   match role {
     Role::Button => "button",
     Role::Checkbox => "checkbox",

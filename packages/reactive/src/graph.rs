@@ -239,7 +239,7 @@ impl Graph {
 
   /// Whether a signal with a hook lost its last subscriber since the hooks were last
   /// taken.
-  pub(crate) fn has_unobserved(&self) -> bool {
+  pub(crate) const fn has_unobserved(&self) -> bool {
     !self.unobserved.is_empty()
   }
 

@@ -995,7 +995,7 @@ impl<P: Platform> Scene<P> {
   /// Takes the pending annotation, for the node about to be created: a box folds it
   /// into its style and records it, any other node records it.
   #[inline(always)]
-  pub fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
+  pub const fn take_pending_annotation(&mut self) -> Option<Annotation<P>> {
     self.pending_annotation.take()
   }
 

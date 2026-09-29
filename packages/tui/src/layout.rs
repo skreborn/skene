@@ -1034,7 +1034,7 @@ fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<St
 }
 
 /// An [`Arrangement`](skene_core::Arrangement) as taffy's content alignment.
-fn arrangement(value: skene_core::Arrangement) -> taffy::style::AlignContent {
+const fn arrangement(value: skene_core::Arrangement) -> taffy::style::AlignContent {
   match value {
     skene_core::Arrangement::Start => taffy::style::AlignContent::Start,
     skene_core::Arrangement::End => taffy::style::AlignContent::End,
@@ -1047,7 +1047,7 @@ fn arrangement(value: skene_core::Arrangement) -> taffy::style::AlignContent {
 }
 
 /// An [`ItemAlignment`](skene_core::ItemAlignment) as taffy's item alignment.
-fn item(value: skene_core::ItemAlignment) -> taffy::style::AlignItems {
+const fn item(value: skene_core::ItemAlignment) -> taffy::style::AlignItems {
   match value {
     skene_core::ItemAlignment::Start => taffy::style::AlignItems::Start,
     skene_core::ItemAlignment::End => taffy::style::AlignItems::End,
@@ -1217,7 +1217,7 @@ pub(crate) fn has_border(style: &PlainBox) -> bool {
 
 /// A cell length as layout units.
 #[inline(always)]
-pub(crate) fn cell(value: u32) -> f32 {
+pub(crate) const fn cell(value: u32) -> f32 {
   #[expect(
     clippy::cast_precision_loss,
     reason = "a cell count stays far below the integers f32 holds exactly"

@@ -22,8 +22,8 @@ left half-done in a code comment.
 
 1. **The rest of the house rules in the gate.** All-or-none field and variant docs
     (28 types document some of their fields, about 210 short), the clippy lints worth
-    turning on (`use_self`, `missing_const_for_fn`, `too_long_first_doc_paragraph`, one
-    of `unreachable_pub` and `redundant_pub_crate`, `missing_debug_implementations`,
+    turning on (`too_long_first_doc_paragraph`, one of `unreachable_pub` and
+    `redundant_pub_crate`, `missing_debug_implementations`,
     `rustdoc::missing_crate_level_docs`), `trigger_` naming on the test doubles, and a
     `cargo public-api` snapshot so a change to the surface shows in review. The
     workspace declares no license, so `cargo deny check licenses` has nothing to hold

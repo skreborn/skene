@@ -243,7 +243,7 @@ pub struct Tween<V> {
 impl<V: Interpolate> Tween<V> {
   /// A tween from `from` to `to` starting at `start`, timed by `transition`.
   #[inline(always)]
-  pub fn new<P>(from: V, to: V, start: f64, transition: &Transition<P>) -> Self {
+  pub const fn new<P>(from: V, to: V, start: f64, transition: &Transition<P>) -> Self {
     Self {
       from,
       to,

@@ -949,7 +949,7 @@ struct Rendition {
 impl Rendition {
   /// The underline control for `decoration`: the style and color where the terminal
   /// keeps them, a plain single underline elsewhere.
-  fn underline(self, decoration: paint::CellDecoration) -> Underline {
+  const fn underline(self, decoration: paint::CellDecoration) -> Underline {
     match decoration.underline {
       None => Underline::None,
       Some(_) if !self.styled_underlines => Underline::Single,
@@ -1358,7 +1358,7 @@ fn keypad_code(character: char) -> String {
 }
 
 /// The W3C code of the modifier key `modifier`, by its side.
-fn modifier_code(modifier: ModifierKey) -> &'static str {
+const fn modifier_code(modifier: ModifierKey) -> &'static str {
   match modifier {
     ModifierKey::LeftShift => "ShiftLeft",
     ModifierKey::RightShift => "ShiftRight",

@@ -93,7 +93,7 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   /// Whether no segment has been pushed.
   #[inline(always)]
   #[must_use]
-  pub fn is_empty(&self) -> bool {
+  pub const fn is_empty(&self) -> bool {
     self.segments.is_empty()
   }
 

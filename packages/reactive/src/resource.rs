@@ -34,7 +34,7 @@ enum Load<T> {
 }
 
 impl<T> Load<T> {
-  fn value(&self) -> Option<&T> {
+  const fn value(&self) -> Option<&T> {
     match self {
       Self::Loading => None,
       Self::Ready(value) | Self::Refetching(value) => Some(value),

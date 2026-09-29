@@ -715,7 +715,7 @@ where
   }
 
   fn keys(&self) -> impl Iterator<Item = &K> {
-    HashMap::keys(self)
+    Self::keys(self)
   }
 }
 
@@ -736,7 +736,7 @@ where
   }
 
   fn keys(&self) -> impl Iterator<Item = &K> {
-    BTreeMap::keys(self)
+    Self::keys(self)
   }
 }
 

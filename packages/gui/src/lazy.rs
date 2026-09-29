@@ -79,6 +79,13 @@ impl Lazy {
 
 /// The lazy segment's place among the hydrating resources, taken as it is built.
 #[inline(always)]
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(
+    clippy::missing_const_for_fn,
+    reason = "the web leaves' body is not const"
+  )
+)]
 fn enter_region() -> Region {
   #[cfg(not(skene_leaf = "host"))]
   {
@@ -136,6 +143,13 @@ impl<F: Future> Future for InRegion<F> {
 
 /// Claims the server's markup in the segment, when hydrating over some.
 #[inline(always)]
+#[cfg_attr(
+  not(skene_leaf = "browser"),
+  expect(
+    clippy::missing_const_for_fn,
+    reason = "the browser leaf's body is not const"
+  )
+)]
 fn claim(start: NodeId) -> bool {
   #[cfg(skene_leaf = "browser")]
   {
@@ -152,6 +166,13 @@ fn claim(start: NodeId) -> bool {
 
 /// Removes the claimed markup, as the real content arrives.
 #[inline(always)]
+#[cfg_attr(
+  not(skene_leaf = "browser"),
+  expect(
+    clippy::missing_const_for_fn,
+    reason = "the browser leaf's body is not const"
+  )
+)]
 fn discard(start: NodeId) {
   #[cfg(skene_leaf = "browser")]
   skene_web::discard_lazy(start);

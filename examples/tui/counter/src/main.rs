@@ -5,7 +5,10 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod app;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
-  #[cfg(not(target_arch = "wasm32"))]
   skene_tui::launch(app::app);
 }
+
+#[cfg(target_arch = "wasm32")]
+const fn main() {}

@@ -169,7 +169,7 @@ impl<S> Animation<S> {
 
   /// Sets the delay before the animation starts, in seconds.
   #[inline(always)]
-  pub fn set_delay(mut self, delay: f32) -> Self {
+  pub const fn set_delay(mut self, delay: f32) -> Self {
     self.delay = delay;
 
     self
@@ -177,7 +177,7 @@ impl<S> Animation<S> {
 
   /// Sets the timing curve.
   #[inline(always)]
-  pub fn set_easing(mut self, easing: Easing) -> Self {
+  pub const fn set_easing(mut self, easing: Easing) -> Self {
     self.easing = easing;
 
     self
@@ -185,7 +185,7 @@ impl<S> Animation<S> {
 
   /// Sets how many times the animation plays.
   #[inline(always)]
-  pub fn set_iterations(mut self, iterations: u32) -> Self {
+  pub const fn set_iterations(mut self, iterations: u32) -> Self {
     self.iterations = Some(iterations);
 
     self
@@ -193,7 +193,7 @@ impl<S> Animation<S> {
 
   /// Makes the animation repeat forever.
   #[inline(always)]
-  pub fn set_infinite(mut self) -> Self {
+  pub const fn set_infinite(mut self) -> Self {
     self.iterations = None;
 
     self
@@ -201,7 +201,7 @@ impl<S> Animation<S> {
 
   /// Makes every other cycle play in reverse.
   #[inline(always)]
-  pub fn set_alternate(mut self) -> Self {
+  pub const fn set_alternate(mut self) -> Self {
     self.alternate = true;
 
     self
@@ -210,7 +210,7 @@ impl<S> Animation<S> {
   /// Sets whether a reader preferring reduced motion sees the final frame alone; on by
   /// default.
   #[inline(always)]
-  pub fn set_respect_reduced_motion(mut self, respect: bool) -> Self {
+  pub const fn set_respect_reduced_motion(mut self, respect: bool) -> Self {
     self.respects_reduced_motion = respect;
 
     self

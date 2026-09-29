@@ -418,7 +418,7 @@ impl Store {
   }
 
   /// Anchors a fresh selection at `point` and starts its drag.
-  pub(crate) fn anchor_selection(&mut self, point: SelectionPoint) {
+  pub(crate) const fn anchor_selection(&mut self, point: SelectionPoint) {
     self.selection = Some(Selection {
       anchor: point,
       focus: point,
@@ -491,7 +491,7 @@ impl Store {
   }
 
   /// Clears the document's selection.
-  pub(crate) fn clear_selection(&mut self) {
+  pub(crate) const fn clear_selection(&mut self) {
     if self.selection.take().is_some() {
       self.paint_dirty = true;
     }

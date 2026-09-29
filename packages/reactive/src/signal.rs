@@ -43,7 +43,7 @@ macro_rules! handle_common {
     impl<T> $handle<T> {
       /// The signal's id.
       #[inline(always)]
-      pub fn id(&self) -> Id {
+      pub const fn id(&self) -> Id {
         self.id
       }
 

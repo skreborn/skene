@@ -159,7 +159,7 @@ impl Color {
   ///
   /// `lightness` on a scale of `0` to `1` and `hue` in degrees.
   #[inline(always)]
-  pub fn oklch(lightness: f32, chroma: f32, hue: f32) -> Self {
+  pub const fn oklch(lightness: f32, chroma: f32, hue: f32) -> Self {
     Self {
       lightness,
       chroma,
@@ -170,7 +170,7 @@ impl Color {
 
   /// Returns a new color with the specified alpha component.
   #[inline(always)]
-  pub fn with_alpha(self, alpha: f32) -> Self {
+  pub const fn with_alpha(self, alpha: f32) -> Self {
     Self {
       lightness: self.lightness,
       chroma: self.chroma,

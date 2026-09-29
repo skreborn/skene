@@ -154,6 +154,6 @@ pub use crate::{
   switch::Switch,
   text::Text,
   theme::{Theme, ThemedIn},
-  tooltip::{TOOLTIP_DELAY, Tooltip},
+  tooltip::{TOOLTIP_DELAY, TOOLTIP_GRACE, Tooltip},
   type_metrics::TypeMetrics,
 };

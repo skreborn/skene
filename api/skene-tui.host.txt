@@ -62,6 +62,7 @@ pub use skene_tui::Shortcut
 pub use skene_tui::State
 pub use skene_tui::StaticLeaf
 pub use skene_tui::TOOLTIP_DELAY
+pub use skene_tui::TOOLTIP_GRACE
 pub use skene_tui::TextDecoration
 pub use skene_tui::TextDecorationStyle
 pub use skene_tui::TextEntry

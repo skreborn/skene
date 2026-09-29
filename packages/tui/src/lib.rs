@@ -86,6 +86,7 @@ pub use skene_common::{
   Roving,
   RovingGroup,
   TOOLTIP_DELAY,
+  TOOLTIP_GRACE,
   TextEntry,
   Toggle,
   TypeMetrics,

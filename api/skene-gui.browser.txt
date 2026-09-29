@@ -60,6 +60,7 @@ pub use skene_gui::Shortcut
 pub use skene_gui::State
 pub use skene_gui::StaticLeaf
 pub use skene_gui::TOOLTIP_DELAY
+pub use skene_gui::TOOLTIP_GRACE
 pub use skene_gui::TextDecoration
 pub use skene_gui::TextDecorationStyle
 pub use skene_gui::TextEntry

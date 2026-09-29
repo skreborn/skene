@@ -3,7 +3,7 @@
 
 mod common;
 
-use skene_common::{Activate, TOOLTIP_DELAY};
+use skene_common::{Activate, TOOLTIP_DELAY, TOOLTIP_GRACE};
 use skene_core::{AccessProp, FocusOrder, HasChildren, Part, Placement, Scene, View};
 use skene_headless::{
   Headless,
@@ -44,8 +44,8 @@ fn parts(start: skene_core::NodeId) -> (skene_core::NodeId, skene_core::NodeId) 
 
 /// A text tooltip describes its child: the bubble is a hint anchored to the child and
 /// its part, and the child reports the bubble and the text. It opens once the pointer
-/// has rested for the delay, closes on leave, opens at once on focus and closes on
-/// blur and on a dismiss.
+/// has rested for the delay, closes the grace period after a leave, opens at once on
+/// focus and closes on blur and on a dismiss.
 #[test]
 fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
   reset();
@@ -91,7 +91,11 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
 
   trigger_pointer_leave(described);
 
-  assert!(!is_open(bubble));
+  assert!(is_open(bubble), "open through the grace period");
+
+  trigger_frame(TOOLTIP_GRACE);
+
+  assert!(!is_open(bubble), "closed once it passed");
 
   trigger_pointer_enter(described);
   trigger_pointer_leave(described);
@@ -123,6 +127,49 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
     0,
     "a rest still pending dies with the view"
   );
+}
+
+/// The pointer can move from the described view onto the bubble without closing it:
+/// the bubble stays open while the pointer rests on either and closes the grace period
+/// after it leaves both.
+#[test]
+fn the_bubble_stays_open_while_the_pointer_rests_on_it() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Tooltip::new("Saves your work")
+      .set_child(Container::new().set_child(Text::new("Save")))
+      .build()
+  });
+  let (described, bubble) = parts(start);
+
+  trigger_pointer_enter(described);
+  trigger_frame(TOOLTIP_DELAY);
+
+  assert!(is_open(bubble));
+
+  trigger_pointer_leave(described);
+  trigger_pointer_enter(bubble);
+  trigger_frame(TOOLTIP_GRACE * 2);
+
+  assert!(
+    is_open(bubble),
+    "open while the pointer rests on the bubble"
+  );
+
+  trigger_pointer_leave(bubble);
+  trigger_pointer_enter(described);
+  trigger_frame(TOOLTIP_GRACE * 2);
+
+  assert!(is_open(bubble), "open again on the described view");
+
+  trigger_pointer_leave(described);
+  trigger_frame(TOOLTIP_GRACE);
+
+  assert!(!is_open(bubble), "closed once the pointer left both");
+
+  owner.dispose();
 }
 
 /// A view tooltip reports only the bubble; a derived text tooltip re-describes as its

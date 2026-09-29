@@ -2068,6 +2068,7 @@ pub fn skene_common::TypeAhead::default() -> skene_common::TypeAhead
 impl core::fmt::Debug for skene_common::TypeAhead
 pub fn skene_common::TypeAhead::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub const skene_common::TOOLTIP_DELAY: core::time::Duration
+pub const skene_common::TOOLTIP_GRACE: core::time::Duration
 pub const skene_common::TYPE_AHEAD_RESET: core::time::Duration
 pub trait skene_common::Behavior<P: skene_core::platform::Platform>: 'static
 pub fn skene_common::Behavior::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>

@@ -36,6 +36,10 @@ use crate::{
 /// How long the pointer rests on the described view before a tooltip opens.
 pub const TOOLTIP_DELAY: Duration = Duration::from_millis(500);
 
+/// How long an open tooltip waits, once the pointer leaves the described view or the
+/// bubble, for the pointer to reach either before it closes.
+pub const TOOLTIP_GRACE: Duration = Duration::from_millis(300);
+
 /// What a tooltip shows: text, or a view.
 enum Content<P: Platform> {
   Text(Source<String>),
@@ -46,7 +50,9 @@ enum Content<P: Platform> {
 /// the pointer rests on that view or it holds focus.
 ///
 /// The bubble opens after [a delay](Self::set_delay) on hover and at once on keyboard
-/// focus, closes on leave, blur and `Escape`, and never takes focus. A text tooltip is
+/// focus, and never takes focus. It stays open while the pointer rests on the described
+/// view or on the bubble, closing [`TOOLTIP_GRACE`] after the pointer leaves both, and
+/// closes at once on blur and `Escape`. A text tooltip is
 /// reported as the described view's accessible description; a view tooltip is
 /// reported as describing it. The bubble is the [`Part::Bubble`] of the described
 /// view, decorated through the setters here, and sits where an anchored overlay's
@@ -163,11 +169,12 @@ impl<P: Platform, C> Tooltip<P, C> {
 
 impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
 
-/// Registers what opens and closes the bubble on the described `node`: a pointer
-/// resting on it for `delay` or focus reaching it writes `open`, and the pointer or
-/// the focus leaving clears it, cancelling a rest still pending, as the view's disposal
-/// does.
-fn bind_triggers<P: Platform>(node: NodeId, open: Signal<bool>, delay: Duration) {
+/// Registers what opens and closes `bubble`, describing `node`: a pointer resting on
+/// the node for `delay` or focus reaching it writes `open`; the pointer leaving the node
+/// or the bubble clears it after [`TOOLTIP_GRACE`] unless it reaches either first, and
+/// the focus leaving clears it at once. Each cancels what is pending, as the view's
+/// disposal does.
+fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, delay: Duration) {
   let pending: Rc<Cell<Option<Timer>>> = Rc::new(Cell::new(None));
   let cancel: Rc<dyn Fn()> = Rc::new({
     let pending = Rc::clone(&pending);
@@ -184,44 +191,41 @@ fn bind_triggers<P: Platform>(node: NodeId, open: Signal<bool>, delay: Duration)
 
     move || cancel()
   });
-  let closing = |cancel: &Rc<dyn Fn()>| -> Rc<dyn Fn()> {
-    let cancel = Rc::clone(cancel);
+  let after = |wait: Duration, value: bool| -> Rc<dyn Fn()> {
+    let cancel = Rc::clone(&cancel);
+    let pending = Rc::clone(&pending);
 
     Rc::new(move || {
       cancel();
-      open.set(false);
+
+      let done = Rc::clone(&pending);
+      let timer = P::default().schedule(
+        wait,
+        Box::new(move || {
+          done.set(None);
+          open.set(value);
+        }),
+      );
+
+      pending.set(Some(timer));
+    })
+  };
+  let at_once = |value: bool| -> Rc<dyn Fn()> {
+    let cancel = Rc::clone(&cancel);
+
+    Rc::new(move || {
+      cancel();
+      open.set(value);
     })
   };
 
   Scene::<P>::with(|scene| {
-    scene.handle_pointer_enter(node, {
-      let cancel = Rc::clone(&cancel);
-
-      Rc::new(move || {
-        cancel();
-
-        let pending_done = Rc::clone(&pending);
-        let timer = P::default().schedule(
-          delay,
-          Box::new(move || {
-            pending_done.set(None);
-            open.set(true);
-          }),
-        );
-
-        pending.set(Some(timer));
-      })
-    });
-    scene.handle_pointer_leave(node, closing(&cancel));
-    scene.handle_focus(node, {
-      let cancel = Rc::clone(&cancel);
-
-      Rc::new(move || {
-        cancel();
-        open.set(true);
-      })
-    });
-    scene.handle_blur(node, closing(&cancel));
+    scene.handle_pointer_enter(node, after(delay, true));
+    scene.handle_pointer_leave(node, after(TOOLTIP_GRACE, false));
+    scene.handle_pointer_enter(bubble, Rc::clone(&cancel));
+    scene.handle_pointer_leave(bubble, after(TOOLTIP_GRACE, false));
+    scene.handle_focus(node, at_once(true));
+    scene.handle_blur(node, at_once(false));
   });
 }
 
@@ -280,7 +284,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
       scene.insert_in_segment(start, node, None);
       scene.insert_in_segment(start, bubble, None);
     });
-    bind_triggers::<P>(node, open, delay);
+    bind_triggers::<P>(node, bubble, open, delay);
 
     match text {
       None => describe::<P>(node, vec![AccessProp::DescribedBy(vec![bubble])]),

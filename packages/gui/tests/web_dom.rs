@@ -45,6 +45,7 @@ use skene_gui::{
   Row,
   Span,
   Stack,
+  TOOLTIP_GRACE,
   Text,
   TextDecoration,
   TextDecorationStyle,
@@ -110,10 +111,16 @@ fn only_child(root: &Element) -> Element {
 /// Waits for the browser's next rendering step, after which a box is measured and
 /// painted.
 async fn next_frame() {
+  wait(Duration::from_millis(20)).await;
+}
+
+/// Waits `duration` on the browser's clock.
+async fn wait(duration: Duration) {
+  let millis = i32::try_from(duration.as_millis()).expect("a short wait");
   let promise = js_sys::Promise::new(&mut |resolve, _| {
     let _ = web_sys::window()
       .expect("a window")
-      .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 20);
+      .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis);
   });
 
   let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
@@ -2044,8 +2051,9 @@ fn pointer(element: &Element, kind: &str) {
 }
 
 /// A hydrated tooltip carries no `title`: the bubble is a hint popover the described
-/// box names, opening once the pointer has rested for the delay, closing as it leaves,
-/// and opening at once on focus.
+/// box names, opening once the pointer has rested for the delay, staying open while the
+/// pointer rests on it, closing the grace period after the pointer leaves both, and
+/// opening at once on focus.
 #[wasm_bindgen_test]
 async fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
   let (_guard, root) = fresh_root();
@@ -2089,7 +2097,17 @@ async fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
 
   pointer(&described, "pointerout");
 
-  assert!(!open(), "the pointer left");
+  assert!(open(), "open through the grace period");
+
+  pointer(&bubble, "pointerover");
+  wait(TOOLTIP_GRACE * 2).await;
+
+  assert!(open(), "open while the pointer rests on the bubble");
+
+  pointer(&bubble, "pointerout");
+  wait(TOOLTIP_GRACE * 2).await;
+
+  assert!(!open(), "the pointer left both");
 
   html(&described).focus().expect("focus the box");
 

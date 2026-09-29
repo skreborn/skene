@@ -371,6 +371,7 @@ fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
       meta: keyboard.meta_key(),
     },
     repeat: keyboard.repeat(),
+    composing: keyboard.is_composing(),
   }
 }
 

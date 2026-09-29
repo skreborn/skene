@@ -30,6 +30,7 @@ use skene_gui::{
   Inset,
   Media,
   MenuItem,
+  Overlay,
   RadioMember,
   Range,
   RawCheckbox,
@@ -458,6 +459,48 @@ fn a_themed_stack_child_shares_the_cell() {
   assert!(
     (over.get_bounding_client_rect().top() - under.get_bounding_client_rect().top()).abs() < 0.5
   );
+}
+
+/// A modal and a popup open at build open once connected, and the modal prevents a
+/// cancel though nothing handles its dismissal.
+#[wasm_bindgen_test]
+fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        Overlay::modal()
+          .set_open(true)
+          .set_child(Text::new("modal")),
+        Overlay::popup()
+          .set_open(true)
+          .set_child(Text::new("popup")),
+      ))
+      .build()
+  });
+
+  let dialog = root
+    .query_selector("dialog")
+    .expect("a valid selector")
+    .expect("the modal");
+  let popup = root
+    .query_selector("[popover]")
+    .expect("a valid selector")
+    .expect("the popup");
+
+  assert!(dialog.has_attribute("open"));
+  assert!(popup.matches(":popover-open").expect("a valid selector"));
+
+  let init = web_sys::EventInit::new();
+
+  init.set_cancelable(true);
+
+  let cancel = web_sys::Event::new_with_event_init_dict("cancel", &init).expect("an event");
+  let _ = dialog.dispatch_event(&cancel);
+
+  assert!(cancel.default_prevented());
+  assert!(dialog.has_attribute("open"));
 }
 
 /// A wrapper's derived property reaches a run as a slot, following its signal.

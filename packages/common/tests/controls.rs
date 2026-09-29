@@ -258,6 +258,27 @@ fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
   owner.dispose();
 }
 
+/// A key an input method is composing leaves the behavior alone.
+#[test]
+fn a_composing_key_never_reaches_the_behavior() {
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new(50.);
+  let node = owner.enter(|| RawSlider::new(Range::new().bind_value(bound)).build());
+  let composing = KeyEvent {
+    composing: true,
+    ..key("ArrowRight")
+  };
+
+  assert_eq!(trigger_key_down(node, &composing), Prevented::default());
+  assert_value(bound, 50.);
+  assert_eq!(trigger_key_down(node, &key("ArrowRight")), CONSUMED);
+  assert_value(bound, 51.);
+
+  owner.dispose();
+}
+
 /// The arrows, page keys, `Home` and `End` move a slider's bound value by the range's
 /// rules, and a press a quarter of the way along its width sets a quarter of the range.
 #[test]

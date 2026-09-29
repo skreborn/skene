@@ -1286,6 +1286,7 @@ fn portable_key(key: &Key) -> KeyEvent {
     code,
     modifiers,
     repeat: key.kind == KeyKind::Repeat,
+    composing: false,
   }
 }
 

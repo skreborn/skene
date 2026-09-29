@@ -25,6 +25,7 @@ use skene_reactive::{Effect, Get, Memo, Set, Signal, on_cleanup, provide_context
 
 use crate::{
   Anchor,
+  Behavior,
   Control,
   Enhance,
   FocusHandle,
@@ -211,13 +212,42 @@ impl<P: Platform, F> RawPicker<P, F> {
 
 impl<P: Platform, F> AnyKind for RawPicker<P, F> {}
 
-/// What one of the picker's two forms takes: the decoration, the caption, the
-/// disabled setting and the face.
+/// What the picker's two forms take: the decoration, what each form's control carries,
+/// and the face.
 struct Parts<P: Platform> {
   face_style: DeclaredBoxStyle<P>,
-  label: Option<Label<P>>,
-  disabled: Option<Source<bool>>,
+  settings: ControlSettings,
   face: Box<dyn FnOnce(Memo<String>) -> AnyView<P>>,
+}
+
+/// What each of the picker's forms gives its control: the caption's node with the name
+/// it supplies, and the disabled setting.
+struct ControlSettings {
+  caption: Option<(NodeId, Option<String>)>,
+  disabled: Option<Source<bool>>,
+}
+
+impl ControlSettings {
+  /// `control` carrying the caption and the disabled setting.
+  fn apply<P: Platform, B: Behavior<P>, C>(
+    &self,
+    mut control: Control<P, B, C>,
+  ) -> Control<P, B, C> {
+    if let Some((node, name)) = &self.caption {
+      let label = Label::new(*node);
+
+      control = control.set_label(match name {
+        Some(name) => label.set_name(name.clone()),
+        None => label,
+      });
+    }
+
+    match self.disabled.clone() {
+      None => control,
+      Some(Source::Fixed(disabled)) => control.set_disabled(disabled),
+      Some(Source::Derived(disabled)) => control.derive_disabled(move || disabled()),
+    }
+  }
 }
 
 /// The handler a choice runs, replaced by the form in force.
@@ -276,6 +306,15 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
     );
 
     let options = list.build();
+    // The caption builds once too, and each form mounts it in turn.
+    let caption = label.map(|label| {
+      let (view, name) = label.into_parts();
+      let node = view.build();
+
+      on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(node)));
+
+      (node, name)
+    });
 
     on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(options)));
 
@@ -288,8 +327,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
     });
     let parts = Parts {
       face_style,
-      label,
-      disabled,
+      settings: ControlSettings { caption, disabled },
       face,
     };
     // A platform whose tree is live from the start draws the picker outright.
@@ -326,7 +364,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
 
 /// Builds the scriptless form: a [`NativePicker`] carrying the decoration, caption
 /// and disabled setting, its options read from the option views, which attach
-/// nowhere; the parts a later form needs are left behind.
+/// nowhere; the parts stay for the drawn form.
 fn build_native<P: Platform>(
   parts: &mut Option<Parts<P>>,
   shared: &Rc<Shared<P>>,
@@ -345,19 +383,7 @@ fn build_native<P: Platform>(
 
   *control.style_mut() = parts.face_style.clone();
 
-  if let Some(label) = parts.label.take() {
-    control = control.set_label(label);
-  }
-
-  match parts.disabled.take() {
-    None => {}
-    Some(Source::Fixed(disabled)) => control = control.set_disabled(disabled),
-    Some(Source::Derived(disabled)) => {
-      control = control.derive_disabled(move || disabled());
-    }
-  }
-
-  let node = control.build();
+  let node = parts.settings.apply(control).build();
 
   shared.roster.root_at(shared.options);
 
@@ -385,8 +411,7 @@ fn build_drawn<P: Platform>(
 ) -> NodeId {
   let Parts {
     face_style,
-    label,
-    disabled,
+    settings,
     face,
   } = parts;
   let chosen = Rc::clone(&shared.chosen);
@@ -463,19 +488,7 @@ fn build_drawn<P: Platform>(
 
   *control.style_mut() = face_style;
 
-  if let Some(label) = label {
-    control = control.set_label(label);
-  }
-
-  match disabled {
-    None => {}
-    Some(Source::Fixed(disabled)) => control = control.set_disabled(disabled),
-    Some(Source::Derived(disabled)) => {
-      control = control.derive_disabled(move || disabled());
-    }
-  }
-
-  let node = control.build();
+  let node = settings.apply(control).build();
   let overlay = Overlay::<P>::popup()
     .set_anchor(&anchor)
     .set_placement(Placement::Bottom)

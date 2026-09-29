@@ -20,12 +20,6 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The web's highest-traffic defects.**
-    - Views: the picker keeps its caption, accessible name and disabled state across
-    the hydration swap (a disabled picker becomes operable today); an overlay open at
-    build opens once connected; `Show` acts only on a visibility change, and
-    re-attaching in place is a no-op, where each re-run recaptures focus and scroll,
-    reopens tooltips, restarts animations and drops an IME composition today; a modal
-    always prevents `cancel`; behaviors skip keys while an IME composes.
     - Painting: device loss recovers, with a CPU fallback per canvas; the
     canvas is positioned absolutely and observes `device-pixel-content-box`, so it
     stops sizing its own box and repaints when the pixel ratio changes.

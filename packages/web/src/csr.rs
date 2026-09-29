@@ -463,6 +463,8 @@ struct Dom {
   resize: Option<SizeObserver>,
   root_node: Option<NodeId>,
   saved: FxHashMap<u32, Saved>,
+  /// The overlays asked open before their element was connected, each with its anchor.
+  pending_open: FxHashMap<u32, Option<u32>>,
   timers: FxHashMap<Timer, Timeout>,
   next_timer: u64,
 }
@@ -545,6 +547,7 @@ impl Dom {
       resize: None,
       root_node: None,
       saved: FxHashMap::default(),
+      pending_open: FxHashMap::default(),
       timers: FxHashMap::default(),
       next_timer: 0,
     }
@@ -633,6 +636,32 @@ impl Dom {
     let (element, adopted) = self.take_element(tag);
 
     self.insert(Node::new(element, realized, adopted))
+  }
+
+  /// Takes the overlays asked open before their element was connected whose element now
+  /// is, each with its anchor.
+  fn take_connected_opens(&mut self) -> Vec<(u32, Option<u32>)> {
+    if self.pending_open.is_empty() {
+      return Vec::new();
+    }
+
+    let connected: Vec<_> = self
+      .pending_open
+      .iter()
+      .filter(|(sink, _)| {
+        self
+          .node(**sink)
+          .and_then(Node::element)
+          .is_some_and(|element| element.is_connected())
+      })
+      .map(|(sink, anchor)| (*sink, *anchor))
+      .collect();
+
+    for (sink, _) in &connected {
+      self.pending_open.remove(sink);
+    }
+
+    connected
   }
 
   /// Whether `sink` stands bare: a control that is its own `<input>`, `<textarea>` or
@@ -1525,7 +1554,26 @@ impl Platform for Web {
         position: None,
       };
       let sink = if props.modal {
-        dom.create_element("dialog", realized)
+        let sink = dom.create_element("dialog", realized);
+
+        if let Some(node) = dom.node_mut(sink)
+          && let Some(element) = node.element()
+        {
+          node.cancel = Some(Listener::new(
+            element.clone().into(),
+            "cancel",
+            false,
+            move |event| {
+              event.prevent_default();
+
+              if let Some(node) = with_dom(|dom| dom.node(sink).and_then(|node| node.id)) {
+                notify_dismiss::<Web>(node);
+              }
+            },
+          ));
+        }
+
+        sink
       }
       else {
         let sink = dom.create_element("div", realized);
@@ -1571,6 +1619,14 @@ impl Platform for Web {
 
         Some((*anchor, element))
       });
+
+      if open && !element.is_connected() {
+        dom.pending_open.insert(*sink, anchor.copied());
+
+        return None;
+      }
+
+      dom.pending_open.remove(sink);
 
       if !modal {
         if open {
@@ -1768,6 +1824,10 @@ impl Platform for Web {
     if let Some(saved) = saved {
       saved.restore(&child);
     }
+
+    for (overlay, anchor) in with_dom(Dom::take_connected_opens) {
+      self.set_overlay_open(&overlay, true, anchor.as_ref());
+    }
   }
 
   fn detach(&self, parent: &u32, child: &u32) {
@@ -1820,6 +1880,7 @@ impl Platform for Web {
 
       dom.events.open_popups.remove(&sink);
       dom.saved.remove(&sink);
+      dom.pending_open.remove(&sink);
     });
   }
 
@@ -1876,25 +1937,6 @@ impl Platform for Web {
       };
 
       node.listened |= 1 << (kind as u16);
-
-      if kind == EventKind::Dismiss
-        && node.cancel.is_none()
-        && matches!(node.realized, Realized::Overlay { modal: true, .. })
-        && let Some(element) = node.element()
-      {
-        node.cancel = Some(Listener::new(
-          element.clone().into(),
-          "cancel",
-          false,
-          move |event| {
-            event.prevent_default();
-
-            if let Some(node) = with_dom(|dom| dom.node(sink).and_then(|node| node.id)) {
-              notify_dismiss::<Web>(node);
-            }
-          },
-        ));
-      }
     });
   }
 

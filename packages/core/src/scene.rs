@@ -792,10 +792,14 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Places `child` under `parent`, immediately before `before` when given, else last,
-  /// unlinking it from any previous parent first.
+  /// unlinking it from any previous parent first; nothing where it already stands there.
   ///
   /// A segment start brings its content and its end anchor along.
   pub fn attach(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
+    if self.stands_before(parent, child, before) {
+      return;
+    }
+
     self.unlink(child);
     self.link(parent, child, before);
 
@@ -1372,6 +1376,35 @@ impl<P: Platform> Scene<P> {
     Some(record)
   }
 
+  /// Whether `child` stands under `parent` immediately before `before`, last when
+  /// `None`: a segment start by its end anchor, its content between.
+  fn stands_before(&self, parent: NodeId, child: NodeId, before: Option<NodeId>) -> bool {
+    let Some(record) = self.record(child)
+    else {
+      return false;
+    };
+
+    if record.parent != Some(parent)
+      || record
+        .segment
+        .as_ref()
+        .is_some_and(|segment| !segment.pending.is_empty())
+    {
+      return false;
+    }
+
+    let last = record.segment.as_ref().map_or(child, |segment| segment.end);
+    let children = self
+      .record(parent)
+      .map(NodeRecord::children)
+      .unwrap_or_default();
+
+    children
+      .iter()
+      .position(|node| *node == last)
+      .is_some_and(|at| children.get(at + 1).copied() == before)
+  }
+
   /// Inserts `child` into `parent`'s children before `before` (else last) and mirrors
   /// it; `child` must be detached.
   fn link(&mut self, parent: NodeId, child: NodeId, before: Option<NodeId>) {
@@ -1541,6 +1574,40 @@ mod tests {
       [
         Call::Attach(sink(parent), sink(second), None),
         Call::Attach(sink(parent), sink(first), Some(sink(second))),
+      ]
+    );
+  }
+
+  /// Attaching a node where it already stands tells the platform nothing, and moving it
+  /// does.
+  #[test]
+  fn attach_in_place_is_a_no_op() {
+    TestPlatform::reset();
+
+    let parent = TestBox::node();
+    let first = TestBox::node();
+    let second = TestBox::node();
+
+    with(|scene| {
+      scene.attach(parent, first, None);
+      scene.attach(parent, second, None);
+    });
+    TestPlatform::take_log();
+    with(|scene| {
+      scene.attach(parent, first, Some(second));
+      scene.attach(parent, second, None);
+    });
+
+    assert_eq!(TestPlatform::take_log(), []);
+
+    with(|scene| scene.attach(parent, first, None));
+
+    assert_eq!(children(parent), [second, first]);
+    assert_eq!(
+      TestPlatform::take_log(),
+      [
+        Call::Detach(sink(parent), sink(first)),
+        Call::Attach(sink(parent), sink(first), None),
       ]
     );
   }

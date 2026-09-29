@@ -232,11 +232,14 @@ pub struct KeyEvent {
   pub modifiers: Modifiers,
   /// Whether the press is the platform's repeat of a key held down.
   pub repeat: bool,
+  /// Whether the press is part of an input method's composition, which a control's
+  /// behavior leaves to the input method.
+  pub composing: bool,
 }
 
 impl KeyEvent {
-  /// A press of `key` with no modifier held, not repeating, at the position `key` has
-  /// on the standard US layout.
+  /// A press of `key` with no modifier held, not repeating and outside a composition, at
+  /// the position `key` has on the standard US layout.
   #[inline(always)]
   pub fn new(key: impl Into<String>) -> Self {
     let key = key.into();
@@ -247,6 +250,7 @@ impl KeyEvent {
       code,
       modifiers: Modifiers::default(),
       repeat: false,
+      composing: false,
     }
   }
 

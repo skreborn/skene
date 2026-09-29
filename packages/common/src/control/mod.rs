@@ -314,6 +314,13 @@ impl<P: Platform> Label<P> {
 
     self
   }
+
+  /// The caption's view and the accessible name it supplies: a view built once, as
+  /// `Label::new(node)` with the name, captions each form of a control with two.
+  #[inline(always)]
+  pub fn into_parts(self) -> (AnyView<P>, Option<String>) {
+    (self.view, self.name)
+  }
 }
 
 impl<P: Platform> From<String> for Label<P> {
@@ -1041,8 +1048,9 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 }
 
 /// Registers one handler per event the behavior or an observer wants: the behavior
-/// acts first and its verdict stands, the observers see the event after, and a
-/// disabled control swallows every pointer event and click and lets every key by.
+/// acts first and its verdict stands, the observers see the event after, a key an input
+/// method is composing never reaches the behavior, and a disabled control swallows
+/// every pointer event and click and lets every key by.
 // One registration per event kind; length is the kind count, not complexity.
 #[expect(clippy::too_many_lines)]
 fn register<P: Platform, B: Behavior<P>>(
@@ -1087,7 +1095,19 @@ fn register<P: Platform, B: Behavior<P>>(
       .map(|observer| -> Rc<Observer<()>> { Rc::new(move |()| observer()) })
       .collect(),
   );
-  let key_down = actor.handler(Prevent::None, acts(EventKind::KeyDown), B::on_key, key_down);
+  let key_down = actor.handler(
+    Prevent::None,
+    acts(EventKind::KeyDown),
+    |behavior: &B, event: &KeyEvent, handle| {
+      if event.composing {
+        Prevent::None
+      }
+      else {
+        behavior.on_key(event, handle)
+      }
+    },
+    key_down,
+  );
   let key_up = actor.handler(
     Prevent::None,
     false,

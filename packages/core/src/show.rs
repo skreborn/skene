@@ -7,7 +7,8 @@ use skene_reactive::{Effect, on_cleanup};
 use super::{AnyKind, AnyView, IntoView, NoChild, NodeId, Platform, Scene, View};
 
 /// Shows or hides one child, preserving its state: the child is built once and
-/// attached or detached between a pair of anchors as the condition changes.
+/// attached or detached between a pair of anchors when the condition changes, and left
+/// where it stands while it holds.
 ///
 /// Holds [`NoChild`] until `set_child` supplies the child; only then is it a view.
 #[must_use]
@@ -75,17 +76,21 @@ impl<P: Platform> View<P> for Show<P, AnyView<P>> {
 
     on_cleanup(move || Scene::<P>::with(|scene| scene.destroy(node)));
 
-    Effect::render(move |_: Option<()>| {
+    Effect::render(move |previous: Option<bool>| {
       let visible = shown();
 
-      Scene::<P>::with(|scene| {
-        if visible {
-          scene.insert_in_segment(start, node, None);
-        }
-        else {
-          scene.remove_from_segment(start, node);
-        }
-      });
+      if previous != Some(visible) {
+        Scene::<P>::with(|scene| {
+          if visible {
+            scene.insert_in_segment(start, node, None);
+          }
+          else {
+            scene.remove_from_segment(start, node);
+          }
+        });
+      }
+
+      visible
     });
 
     start
@@ -102,6 +107,30 @@ mod tests {
     View,
     testing::{TestBox, TestPlatform, children},
   };
+
+  /// A re-run that leaves the condition as it was leaves the child where it stands.
+  #[test]
+  fn an_unchanged_condition_leaves_the_child_alone() {
+    TestPlatform::reset();
+
+    let owner = Owner::new();
+    let (count, set_count) = signal(1);
+    let parent = TestBox::node();
+    let start = owner.enter(|| {
+      Show::<TestPlatform>::new()
+        .derive_shown(move || count.get() > 0)
+        .set_child(TestBox::new())
+        .build()
+    });
+
+    Scene::<TestPlatform>::with(|scene| scene.attach(parent, start, None));
+    TestPlatform::take_log();
+    set_count.set(2);
+
+    assert_eq!(TestPlatform::take_log(), []);
+
+    owner.dispose();
+  }
 
   /// Hiding detaches the child and showing reattaches the same node, never rebuilding.
   #[test]

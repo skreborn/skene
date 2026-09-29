@@ -78,6 +78,16 @@ pub enum Source<T> {
   Derived(Rc<dyn Fn() -> T>),
 }
 
+impl<T: Clone> Clone for Source<T> {
+  #[inline(always)]
+  fn clone(&self) -> Self {
+    match self {
+      Self::Fixed(value) => Self::Fixed(value.clone()),
+      Self::Derived(compute) => Self::Derived(Rc::clone(compute)),
+    }
+  }
+}
+
 impl<T: 'static> Source<T> {
   /// A source recomputed by `compute`.
   #[inline(always)]

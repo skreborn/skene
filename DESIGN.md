@@ -326,7 +326,8 @@ re-export.
   on the web, listing the options the option views name, its caption a `<label for>`
   beside it and the chosen value selected; the option views build once, under the
   group both forms answer through, and attach nowhere until the drawn form lists
-  them, so a swap rebuilds nothing but the face; a choice the reader made in the
+  them, and the caption builds once and each form mounts it with its name and the
+  disabled setting, so a swap rebuilds nothing but the face; a choice the reader made in the
   `<select>` before the bundle arrived reaches the signal as any adopted live value
   does, and the drawn face that takes the select's place shows it.
 - **Accessibility is reported, never spelled.** A behavior reports what it is

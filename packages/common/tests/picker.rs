@@ -540,3 +540,52 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   );
   assert_eq!(text(Parts::of(face).shown).as_deref(), Some("c"));
 }
+
+/// The drawn face that takes the platform's place carries the same caption, the name
+/// it supplies and the disabled setting.
+#[test]
+fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
+  reset();
+  set_hydrated(false);
+
+  let owner = Owner::new();
+  let start = owner.enter(move || {
+    RawPicker::new()
+      .set_label("Size")
+      .set_disabled(true)
+      .set_options(["a"].map(|value| RawOption::new(ListItem::new(value)).set_label(value)))
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+  let caption = |form| {
+    skene_core::Scene::<Headless>::with(|scene| {
+      scene
+        .children(form)
+        .find(|child| scene.part(*child) == Some(skene_core::Part::Label))
+    })
+  };
+  let native = form(start);
+  let native_caption = caption(native);
+
+  assert_eq!(accessible_name(native).as_deref(), Some("Size"));
+  assert!(control_state(native).is_some_and(|state| state.disabled));
+
+  set_hydrated(true);
+
+  let face = form(start);
+
+  assert_eq!(
+    control_props(face).map(|props| props.kind),
+    Some(ControlKind::Combobox)
+  );
+  assert_eq!(accessible_name(face).as_deref(), Some("Size"));
+  assert!(control_state(face).is_some_and(|state| state.disabled));
+  assert!(native_caption.is_some());
+  assert_eq!(
+    caption(face),
+    native_caption,
+    "the caption moved, not rebuilt"
+  );
+
+  owner.dispose();
+}

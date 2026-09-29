@@ -86,7 +86,12 @@ structural mutation (`attach`, `detach`, `destroy`, reorder) is implemented once
 the platform is called only to mirror it into the sink, after core has released its own
 borrow. `NodeId` carries a generation, so a stale id resolves to nothing rather than to a
 recycled node. Token resolution and event dispatch walk this tree; nothing reads
-structure back from a platform.
+structure back from a platform. The scene also records each node's place in focus
+traversal and each overlay's state, the open ones in the order they opened, as a
+browser's top layer stacks them, and computes the tab order from them
+(`Scene::tab_order`): positioned stops first, then document order, the modal opened
+last containing it with the overlays opened after it. A platform drawing its own
+controls traverses by it.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's aliases: `Sink`, `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own

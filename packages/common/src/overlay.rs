@@ -310,6 +310,8 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       });
 
     Scene::<P>::with(|scene| {
+      scene.note_overlay(node, modal);
+
       for handler in dismiss {
         scene.handle_dismiss(node, handler);
       }
@@ -321,11 +323,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       let open = open();
       let anchor = anchor.as_ref().and_then(Anchor::node);
 
-      let Some((sink, anchor)) = Scene::<P>::with(|scene| {
-        let sink = scene.sink(node)?;
-
-        Some((sink, anchor.and_then(|anchor| scene.sink(anchor))))
-      })
+      let Some(sink) = Scene::<P>::with(|scene| scene.sink(node))
       else {
         return;
       };
@@ -338,7 +336,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
         P::set_overlay_position(sink, position);
       }
 
-      P::set_overlay_open(sink, open, anchor);
+      Scene::<P>::with(|scene| scene.set_overlay_open(node, open, anchor));
     });
 
     node

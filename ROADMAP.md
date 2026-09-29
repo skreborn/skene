@@ -35,10 +35,11 @@ left half-done in a code comment.
     declaration, a track list becomes entries of either.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
-    pointer capture, tab order with modal containment, an overlay stack in open order
-    with top-layer rules, light dismiss, focus fixup when the focused node leaves the
-    order), replacing the terminal's own, headless's divergent copy and the browser's
-    implicit one. With it a tooltip describes the focus holder, and a group run's state
+    pointer capture, top-layer rules over the scene's overlay stack, light dismiss,
+    focus fixup when the focused node leaves the order), replacing the terminal's own,
+    headless's divergent copy and the browser's implicit one. The scene already holds
+    the tab order with modal containment, which the terminal traverses by and headless
+    does not yet. With it a tooltip describes the focus holder, and a group run's state
     variants reach its spans, as a rule on the group's class redefining the ink where
     the state holds.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US

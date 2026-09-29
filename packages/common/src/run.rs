@@ -8,6 +8,7 @@ use skene_core::{
   DeclaredRunStyle,
   Definition,
   Definitions,
+  FocusOrder,
   Leaf,
   LinkPolicy,
   NodeId,
@@ -181,6 +182,7 @@ impl<P: Platform> Run<P> {
         (Some(Box::new(layout)), layout_slots)
       },
     );
+    let links = self.link.is_some();
     let props = RunProps {
       display,
       selectable: self.selectable,
@@ -193,6 +195,10 @@ impl<P: Platform> Run<P> {
     let sink = P::create_run(&props);
     let node = Scene::<P>::with(|scene| {
       let node = scene.create(NodeKind::Run, sink);
+
+      if links {
+        scene.note_focus_order(node, Some(FocusOrder::Auto));
+      }
 
       if let Some(annotation) = annotation {
         scene.set_annotation(node, annotation);

@@ -585,6 +585,8 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     let node = Scene::<P>::with(|scene| {
       let node = scene.create(kind, sink);
 
+      scene.note_focus_order(node, focus_order);
+
       if let Some(name) = container {
         scene.set_container(node, name);
       }
@@ -612,9 +614,11 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       bind_box_slot::<P>(node, slot);
     }
 
-    if let Some(focus_order @ Source::Derived(_)) = self.focus_order {
-      focus_order.bind::<P>(node, |sink, focus_order| {
-        P::update_focus_order(sink, Some(*focus_order));
+    if let Some(Source::Derived(focus_order)) = self.focus_order {
+      Effect::render(move |_: Option<()>| {
+        let focus_order = focus_order();
+
+        Scene::<P>::with(|scene| scene.set_focus_order(node, Some(focus_order)));
       });
     }
 

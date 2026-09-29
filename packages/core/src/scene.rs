@@ -24,6 +24,7 @@ use crate::{
   ClickHandler,
   Dimension,
   Flexibility,
+  FocusOrder,
   GridPlacement,
   Inset,
   ItemAlignment,
@@ -408,6 +409,16 @@ pub struct NodeRecord<P: Platform> {
   part: Option<Part>,
   position: Position,
   access: Option<Box<AccessReports>>,
+  focus_order: Option<FocusOrder>,
+  overlay: Option<OverlayRecord>,
+}
+
+/// An overlay's standing: whether it blocks what lies beneath it while open, and
+/// whether it is open.
+#[derive(Debug, Clone, Copy)]
+struct OverlayRecord {
+  modal: bool,
+  open: bool,
 }
 
 impl<P: Platform> std::fmt::Debug for NodeRecord<P> {
@@ -557,6 +568,15 @@ enum Mirror<P: Platform> {
     sink: P::Sink,
     kind: EventKind,
   },
+  FocusOrder {
+    sink: P::Sink,
+    order: Option<FocusOrder>,
+  },
+  OverlayOpen {
+    sink: P::Sink,
+    open: bool,
+    anchor: Option<P::Sink>,
+  },
 }
 
 impl<P: Platform> Mirror<P> {
@@ -575,6 +595,8 @@ impl<P: Platform> Mirror<P> {
       Self::ControlState { sink, state } => P::set_control_state(sink, &state),
       Self::BindNode { sink, node } => P::bind_node(sink, node),
       Self::Listen { sink, kind } => P::listen(sink, kind),
+      Self::FocusOrder { sink, order } => P::update_focus_order(sink, order),
+      Self::OverlayOpen { sink, open, anchor } => P::set_overlay_open(sink, open, anchor),
     }
   }
 }
@@ -600,6 +622,7 @@ pub struct Scene<P: Platform> {
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
   mirrors: Vec<Mirror<P>>,
+  open_overlays: Vec<NodeId>,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -630,6 +653,7 @@ impl<P: Platform> Scene<P> {
       definitions_generation: 0,
       graveyard: Vec::new(),
       mirrors: Vec::new(),
+      open_overlays: Vec::new(),
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }
@@ -725,6 +749,8 @@ impl<P: Platform> Scene<P> {
       part: is_control.then_some(Part::Root),
       position,
       access: None,
+      focus_order: None,
+      overlay: None,
     };
 
     let id = if let Some(index) = self.free.pop() {
@@ -921,6 +947,10 @@ impl<P: Platform> Scene<P> {
 
       if let Some(handlers) = record.handlers {
         self.graveyard.push(*handlers);
+      }
+
+      if record.overlay.is_some_and(|overlay| overlay.open) {
+        self.open_overlays.retain(|open| *open != node);
       }
 
       self.mirrors.push(Mirror::Destroy(record.sink));
@@ -1240,6 +1270,158 @@ impl<P: Platform> Scene<P> {
     if let Some(record) = self.record_mut(node) {
       record.container = Some(name);
     }
+  }
+
+  /// Records `node`'s place in focus traversal as the platform was given it at
+  /// creation; `None` keeps it out of focus.
+  pub fn note_focus_order(&mut self, node: NodeId, order: Option<FocusOrder>) {
+    if let Some(record) = self.record_mut(node) {
+      record.focus_order = order;
+    }
+  }
+
+  /// Replaces `node`'s place in focus traversal and mirrors it; `None` takes it out of
+  /// focus.
+  pub fn set_focus_order(&mut self, node: NodeId, order: Option<FocusOrder>) {
+    let Some(record) = self.record_mut(node)
+    else {
+      return;
+    };
+
+    record.focus_order = order;
+
+    let sink = record.sink;
+
+    self.mirrors.push(Mirror::FocusOrder { sink, order });
+  }
+
+  /// `node`'s place in focus traversal; `None` for a node focus never reaches.
+  #[inline(always)]
+  #[must_use]
+  pub fn focus_order(&self, node: NodeId) -> Option<FocusOrder> {
+    self.record(node).and_then(|record| record.focus_order)
+  }
+
+  /// Records that `node` is an overlay, closed, `modal` when it blocks what lies beneath
+  /// it while open.
+  pub fn note_overlay(&mut self, node: NodeId, modal: bool) {
+    if let Some(record) = self.record_mut(node) {
+      record.overlay = Some(OverlayRecord { modal, open: false });
+    }
+  }
+
+  /// Opens or closes the overlay `node`, placed against `anchor` while open, and mirrors
+  /// it; an opening puts it on top of every open overlay, as a browser's top layer
+  /// stacks, and a node of any other kind is left alone.
+  pub fn set_overlay_open(&mut self, node: NodeId, open: bool, anchor: Option<NodeId>) {
+    let anchor = anchor.and_then(|anchor| self.sink(anchor));
+    let Some(record) = self.record_mut(node)
+    else {
+      return;
+    };
+    let Some(overlay) = record.overlay.as_mut()
+    else {
+      return;
+    };
+    let was_open = std::mem::replace(&mut overlay.open, open);
+    let sink = record.sink;
+
+    match (was_open, open) {
+      (false, true) => self.open_overlays.push(node),
+      (true, false) => self.open_overlays.retain(|open| *open != node),
+      _ => {}
+    }
+
+    self
+      .mirrors
+      .push(Mirror::OverlayOpen { sink, open, anchor });
+  }
+
+  /// The open overlays in the order they opened: the last stands on top.
+  #[inline(always)]
+  pub fn open_overlays(&self) -> &[NodeId] {
+    &self.open_overlays
+  }
+
+  /// Whether `node` is a modal overlay.
+  #[inline(always)]
+  #[must_use]
+  pub fn is_modal(&self, node: NodeId) -> bool {
+    self
+      .record(node)
+      .and_then(|record| record.overlay)
+      .is_some_and(|overlay| overlay.modal)
+  }
+
+  /// The topmost open modal overlay among `overlays`, open overlays in the order they
+  /// opened.
+  #[must_use]
+  pub fn topmost_modal(&self, overlays: &[NodeId]) -> Option<NodeId> {
+    overlays
+      .iter()
+      .rev()
+      .copied()
+      .find(|overlay| self.is_modal(*overlay))
+  }
+
+  /// Whether `node` stays reachable under the topmost modal among `overlays`, open
+  /// overlays in the order they opened: inside that modal, or inside an overlay opened
+  /// after it; every node is while none is open.
+  #[must_use]
+  pub fn reachable_under_modal(&self, overlays: &[NodeId], node: NodeId) -> bool {
+    let Some(modal) = overlays.iter().rposition(|overlay| self.is_modal(*overlay))
+    else {
+      return true;
+    };
+    let ancestry = self.ancestry(node);
+
+    overlays[modal..]
+      .iter()
+      .any(|overlay| ancestry.contains(overlay))
+  }
+
+  /// The tab stops under `root` in traversal order, with `overlays` the open overlays
+  /// in the order they opened: positioned ones first by position, then the rest in
+  /// document order; closed overlays and the subtrees `hidden` answers for skipped, and
+  /// the topmost modal containing the order with the overlays opened after it.
+  #[must_use]
+  pub fn tab_order(
+    &self,
+    root: NodeId,
+    overlays: &[NodeId],
+    hidden: impl Fn(NodeId) -> bool,
+  ) -> Vec<NodeId> {
+    let mut positioned = Vec::new();
+    let mut ordered = Vec::new();
+    let mut stack = vec![root];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      if record.overlay.is_some_and(|overlay| !overlay.open) || hidden(current) {
+        continue;
+      }
+
+      match record.focus_order {
+        Some(FocusOrder::Position(position)) => positioned.push((position, current)),
+        Some(FocusOrder::Auto) => ordered.push(current),
+        Some(FocusOrder::Skip) | None => {}
+      }
+
+      stack.extend(record.children.iter().rev());
+    }
+
+    positioned.sort_by_key(|(position, _)| *position);
+
+    let mut order: Vec<NodeId> = positioned.into_iter().map(|(_, node)| node).collect();
+
+    order.extend(ordered);
+    order.retain(|node| self.reachable_under_modal(overlays, *node));
+
+    order
   }
 
   /// Writes the state of the control `node` and mirrors it; a node of any other kind
@@ -1666,6 +1848,7 @@ mod tests {
     Color,
     Definition,
     Definitions,
+    FocusOrder,
     TokenName,
     testing::{Call, Erased, TestBox, TestPlatform, children, sink},
   };
@@ -2047,5 +2230,72 @@ mod tests {
       children(parent),
       [outer, before, inner, inner_content, inner_end, outer_end]
     );
+  }
+
+  /// The tab order puts positioned stops first by position, then the rest in document
+  /// order, skipping closed overlays and hidden subtrees; the modal opened last contains
+  /// it with the overlays opened after it, whatever order they were built in.
+  #[test]
+  fn the_tab_order_follows_positions_documents_and_the_last_modal() {
+    TestPlatform::reset();
+
+    let root = TestBox::node();
+    let [first, second, positioned, hidden, closed, earlier, later] =
+      std::array::from_fn(|_| TestBox::node());
+    let (inside_earlier, inside_later, inside_closed, inside_hidden) = (
+      TestBox::node(),
+      TestBox::node(),
+      TestBox::node(),
+      TestBox::node(),
+    );
+
+    with(|scene| {
+      for node in [first, second, positioned, hidden, closed, earlier, later] {
+        scene.attach(root, node, None);
+      }
+
+      scene.attach(earlier, inside_earlier, None);
+      scene.attach(later, inside_later, None);
+      scene.attach(closed, inside_closed, None);
+      scene.attach(hidden, inside_hidden, None);
+
+      for node in [
+        first,
+        second,
+        inside_earlier,
+        inside_later,
+        inside_closed,
+        inside_hidden,
+      ] {
+        scene.note_focus_order(node, Some(FocusOrder::Auto));
+      }
+
+      scene.note_focus_order(positioned, Some(FocusOrder::Position(1)));
+
+      for (overlay, modal) in [(closed, false), (earlier, true), (later, true)] {
+        scene.note_overlay(overlay, modal);
+      }
+    });
+
+    let order = || {
+      with(|scene| {
+        let overlays = scene.open_overlays().to_vec();
+
+        scene.tab_order(root, &overlays, |node| node == hidden)
+      })
+    };
+
+    assert_eq!(order(), [positioned, first, second]);
+
+    with(|scene| {
+      scene.set_overlay_open(later, true, None);
+      scene.set_overlay_open(earlier, true, None);
+    });
+
+    assert_eq!(order(), [inside_earlier], "the modal opened last wins");
+
+    with(|scene| scene.set_overlay_open(earlier, false, None));
+
+    assert_eq!(order(), [inside_later]);
   }
 }

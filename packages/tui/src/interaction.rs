@@ -19,6 +19,7 @@ use skene_core::{
   PointerButton,
   PointerEvent,
   Prevented,
+  Scene,
   ScrollEvent,
   Visibility,
   dispatch_click,
@@ -63,17 +64,19 @@ pub(crate) enum OverlayFocus {
 }
 
 impl Store {
-  /// Every open overlay, in build order, reachable from the root; later entries stack
-  /// on top.
+  /// Every open overlay reachable from the root, in the order they opened; later
+  /// entries stack on top.
   pub(crate) fn open_overlays(&self) -> Vec<Handle> {
-    self
-      .overlays
-      .iter()
-      .copied()
-      .filter(|overlay| {
-        self.record(*overlay).is_some_and(Record::is_open_overlay) && self.is_reachable(*overlay)
-      })
-      .collect()
+    Scene::<Tui>::with(|scene| {
+      scene
+        .open_overlays()
+        .iter()
+        .filter_map(|overlay| scene.sink(*overlay))
+        .collect::<Vec<_>>()
+    })
+    .into_iter()
+    .filter(|overlay| self.is_reachable(*overlay))
+    .collect()
   }
 
   /// Whether `handle` sits inside an open overlay.
@@ -170,42 +173,32 @@ impl Store {
       .any(|overlay| *overlay == handle || ancestors.contains(overlay))
   }
 
-  /// The tab stops in traversal order: positioned ones first by position, then the
-  /// rest in document order; closed overlays excluded, and an open modal containing
-  /// the whole order with the overlays opened above it.
+  /// The tab stops in traversal order, as the scene orders them: positioned ones
+  /// first by position, then the rest in document order; closed overlays and hidden
+  /// boxes excluded, and an open modal containing the whole order with the overlays
+  /// opened after it.
   pub(crate) fn tab_order(&self) -> Vec<Handle> {
-    let mut positioned = Vec::new();
-    let mut ordered = Vec::new();
-    let mut stack = vec![self.root];
+    let Some(root) = crate::platform::root_node()
+    else {
+      return Vec::new();
+    };
+    let overlays: Vec<NodeId> = self
+      .open_overlays()
+      .into_iter()
+      .filter_map(|overlay| self.record(overlay)?.node)
+      .collect();
 
-    while let Some(current) = stack.pop() {
-      let Some(record) = self.record(current)
-      else {
-        continue;
-      };
-
-      if (record.is_overlay() && !record.is_open_overlay()) || self.is_hidden(current) {
-        continue;
-      }
-
-      match record.focus_order() {
-        Some(skene_core::FocusOrder::Position(position)) => positioned.push((position, current)),
-        Some(skene_core::FocusOrder::Auto) => ordered.push(current),
-        Some(skene_core::FocusOrder::Skip) | None => {}
-      }
-
-      stack.extend(record.children.iter().rev());
-    }
-
-    positioned.sort_by_key(|(position, _)| *position);
-
-    let mut order: Vec<Handle> = positioned.into_iter().map(|(_, handle)| handle).collect();
-
-    order.extend(ordered);
-
-    order.retain(|node| self.reachable_under_modal(*node));
-
-    order
+    Scene::<Tui>::with(|scene| {
+      scene
+        .tab_order(root, &overlays, |node| {
+          scene
+            .sink(node)
+            .is_some_and(|handle| self.is_hidden(handle))
+        })
+        .into_iter()
+        .filter_map(|node| scene.sink(node))
+        .collect()
+    })
   }
 
   /// The path from the root to the deepest node containing the cell (`x`, `y`), each

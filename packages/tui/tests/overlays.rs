@@ -266,6 +266,56 @@ fn a_modal_traps_focus() {
   });
 }
 
+/// Overlays stack in the order they opened, as a browser's top layer does: of two open
+/// modals, the one opened last holds the tab order, whichever was built first.
+#[test]
+fn the_modal_opened_last_holds_the_tab_order() {
+  with_platform(|| {
+    let (first_open, second_open) = (Signal::new(false), Signal::new(false));
+    let (first, second) = (FocusHandle::new(), FocusHandle::new());
+    let (bound_first, bound_second) = (first.clone(), second.clone());
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          Overlay::modal()
+            .bind_open(first_open)
+            .set_child(
+              RawButton::new(Activate::new())
+                .set_label("first")
+                .bind_focus(&bound_first),
+            )
+            .into_any(),
+          Overlay::modal()
+            .bind_open(second_open)
+            .set_child(
+              RawButton::new(Activate::new())
+                .set_label("second")
+                .bind_focus(&bound_second),
+            )
+            .into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(12, 4);
+
+    second_open.set(true);
+
+    let _ = tui::render_to_text(12, 4);
+
+    first_open.set(true);
+
+    let _ = tui::render_to_text(12, 4);
+
+    assert_eq!(tui::focused_node(), first.node());
+
+    tui::trigger_key("Tab");
+
+    assert_eq!(tui::focused_node(), first.node());
+  });
+}
+
 /// A modal stays in charge while a popup above it is open: with a tooltip showing over
 /// the dialog, `Tab` stays inside and a press on the page reaches nothing.
 #[test]

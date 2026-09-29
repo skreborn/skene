@@ -1130,7 +1130,7 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
         behavior.focus_order()
       };
 
-      with_sink::<P, _>(node, |sink| P::update_focus_order(sink, order));
+      Scene::<P>::with(|scene| scene.set_focus_order(node, order));
     });
   }
 }

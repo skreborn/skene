@@ -79,8 +79,7 @@ left half-done in a code comment.
     skips disabled members in one place; an open role vocabulary on AccessKit's schema,
     with a native-element hint, replaces the closed `Role`, `AccessProp` and
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
-    become styling targets or go, with `ControlHandle::roster` and the drawn picker's
-    unused listbox closures. A slider maps the pointer through its track rather than
+    become styling targets or go. A slider maps the pointer through its track rather than
     its box, so a caption inside the box no longer skews it.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and

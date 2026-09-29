@@ -1081,7 +1081,6 @@ pub fn skene_common::ControlHandle<P>::name(&self) -> core::option::Option<alloc
 pub fn skene_common::ControlHandle<P>::name_read(&self) -> core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>
 pub const fn skene_common::ControlHandle<P>::node(&self) -> skene_core::node::NodeId
 pub fn skene_common::ControlHandle<P>::refresh(&self)
-pub const fn skene_common::ControlHandle<P>::roster(&self) -> core::option::Option<&skene_common::Roster>
 pub fn skene_common::ControlHandle<P>::with_sink<R>(&self, impl core::ops::function::FnOnce(&<P as skene_core::platform::Platform>::Sink) -> R) -> core::option::Option<R>
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::ControlHandle<P>
 pub fn skene_common::ControlHandle<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result

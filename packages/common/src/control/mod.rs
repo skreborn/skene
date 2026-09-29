@@ -58,7 +58,7 @@ use skene_core::{
   View,
   dispatch_click,
 };
-use skene_reactive::{Effect, Owner, Trigger, untrack, use_context};
+use skene_reactive::{Effect, Owner, Trigger, untrack};
 
 pub use self::{
   activate::Activate,
@@ -227,13 +227,11 @@ pub trait Behavior<P: Platform>: 'static {
 }
 
 /// A behavior's access to the control it drives: the node, its sink, focus, a click
-/// dispatched at it, a re-read of its reports, and the roster the control was built
-/// inside if any.
+/// dispatched at it, and a re-read of its reports.
 #[must_use]
 pub struct ControlHandle<P: Platform> {
   node: NodeId,
   name: Option<Rc<dyn Fn() -> String>>,
-  roster: Option<Roster>,
   disabled: Rc<dyn Fn() -> bool>,
   changed: Trigger,
   platform: PhantomData<fn() -> P>,
@@ -267,13 +265,6 @@ impl<P: Platform> ControlHandle<P> {
   #[must_use]
   pub fn name_read(&self) -> Option<Rc<dyn Fn() -> String>> {
     self.name.clone()
-  }
-
-  /// The roster in force where the control was built, if any.
-  #[inline(always)]
-  #[must_use]
-  pub const fn roster(&self) -> Option<&Roster> {
-    self.roster.as_ref()
   }
 
   /// Whether the control is disabled; tracks where the control derives it.
@@ -901,7 +892,6 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       let handle = Rc::new(ControlHandle {
         node,
         name,
-        roster: use_context::<Roster>(),
         disabled: Rc::clone(&disabled),
         changed: Trigger::new(),
         platform: PhantomData,

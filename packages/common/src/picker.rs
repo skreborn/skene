@@ -436,26 +436,7 @@ fn build_drawn<P: Platform>(
   let open = Signal::new(false);
   let focus = FocusHandle::<P>::new();
   let anchor = Anchor::new();
-  let listbox = Listbox::new()
-    .set_roster(shared.roster.clone())
-    .derive_chosen({
-      let chosen = Rc::clone(&chosen);
-
-      move || chosen()
-    })
-    .handle_choose({
-      let focus = focus.clone();
-      let on_change = on_change.clone();
-
-      move |value| {
-        if let Some(action) = &on_change {
-          action(value);
-        }
-
-        open.set(false);
-        focus.focus();
-      }
-    });
+  let listbox = Listbox::new().set_roster(shared.roster.clone());
   let choose = {
     let focus = focus.clone();
     let on_change = on_change.clone();

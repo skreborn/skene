@@ -1,0 +1,106 @@
+pub mod skene_web
+pub enum skene_web::WebTokenValue
+pub skene_web::WebTokenValue::Color(skene_core::leaf::Definition<skene_core::values::color::Color, f32>)
+pub skene_web::WebTokenValue::Dimension(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>)
+pub skene_web::WebTokenValue::Number(skene_core::leaf::Definition<f32, f32>)
+impl core::clone::Clone for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::clone(&self) -> skene_web::WebTokenValue
+impl core::cmp::PartialEq for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::eq(&self, &skene_web::WebTokenValue) -> bool
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<f32>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<f32, f32>) -> Self
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::values::color::Color, f32>) -> Self
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<f32>>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>) -> Self
+impl core::fmt::Debug for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_web::WebTokenValue
+pub struct skene_web::Declarations(_)
+impl skene_web::Declarations
+pub fn skene_web::Declarations::is_empty(&self) -> bool
+pub fn skene_web::Declarations::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
+pub fn skene_web::Declarations::new() -> Self
+pub const fn skene_web::Declarations::render_arrangement(skene_core::values::flex::Arrangement) -> &'static str
+pub fn skene_web::Declarations::render_color(skene_core::values::color::Color) -> alloc::string::String
+pub const fn skene_web::Declarations::render_cursor(skene_core::values::mouse_cursor::MouseCursor) -> &'static str
+pub fn skene_web::Declarations::render_dimension(skene_core::values::dimension::Dimension<f32>) -> alloc::string::String
+pub fn skene_web::Declarations::render_dimension_inset(skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<f32>>) -> alloc::string::String
+pub fn skene_web::Declarations::render_grid_line(skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>) -> alloc::string::String
+pub const fn skene_web::Declarations::render_item_alignment(skene_core::values::flex::ItemAlignment) -> &'static str
+pub fn skene_web::Declarations::render_track(skene_core::values::grid::GridTrack<f32>) -> alloc::string::String
+pub fn skene_web::Declarations::render_tracks(&[skene_core::values::grid::GridTrack<f32>]) -> alloc::string::String
+pub fn skene_web::Declarations::set(self, &'static str, impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self
+impl core::clone::Clone for skene_web::Declarations
+pub fn skene_web::Declarations::clone(&self) -> skene_web::Declarations
+impl core::cmp::Eq for skene_web::Declarations
+impl core::cmp::PartialEq for skene_web::Declarations
+pub fn skene_web::Declarations::eq(&self, &skene_web::Declarations) -> bool
+impl core::default::Default for skene_web::Declarations
+pub fn skene_web::Declarations::default() -> skene_web::Declarations
+impl core::fmt::Debug for skene_web::Declarations
+pub fn skene_web::Declarations::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Declarations
+pub fn skene_web::Declarations::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_web::Declarations
+pub struct skene_web::Document
+pub skene_web::Document::bundle: core::option::Option<alloc::string::String>
+pub skene_web::Document::dev: bool
+pub skene_web::Document::language: core::option::Option<alloc::string::String>
+pub skene_web::Document::nonce: core::option::Option<alloc::string::String>
+impl skene_web::Document
+pub fn skene_web::Document::closing(&self, core::option::Option<&str>) -> alloc::string::String
+pub fn skene_web::Document::opening(&self, &str, &str) -> alloc::string::String
+impl core::clone::Clone for skene_web::Document
+pub fn skene_web::Document::clone(&self) -> skene_web::Document
+impl core::cmp::Eq for skene_web::Document
+impl core::cmp::PartialEq for skene_web::Document
+pub fn skene_web::Document::eq(&self, &skene_web::Document) -> bool
+impl core::default::Default for skene_web::Document
+pub fn skene_web::Document::default() -> skene_web::Document
+impl core::fmt::Debug for skene_web::Document
+pub fn skene_web::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_web::Document
+pub struct skene_web::RenderHints
+pub skene_web::RenderHints::device_pixel_ratio: f32
+pub skene_web::RenderHints::reduced_motion: bool
+pub skene_web::RenderHints::scheme: skene_core::values::color::ColorScheme
+pub skene_web::RenderHints::viewport: skene_core::values::size::Size<f32>
+impl skene_web::RenderHints
+pub const skene_web::RenderHints::DEFAULT: Self
+pub const skene_web::RenderHints::REQUEST_HEADERS: [&'static str; 5]
+pub fn skene_web::RenderHints::from_headers<'a>(impl core::iter::traits::collect::IntoIterator<Item = (&'a str, &'a str)>) -> Self
+pub fn skene_web::RenderHints::response_headers() -> alloc::vec::Vec<(&'static str, alloc::string::String)>
+impl core::clone::Clone for skene_web::RenderHints
+pub fn skene_web::RenderHints::clone(&self) -> skene_web::RenderHints
+impl core::cmp::PartialEq for skene_web::RenderHints
+pub fn skene_web::RenderHints::eq(&self, &skene_web::RenderHints) -> bool
+impl core::default::Default for skene_web::RenderHints
+pub fn skene_web::RenderHints::default() -> Self
+impl core::fmt::Debug for skene_web::RenderHints
+pub fn skene_web::RenderHints::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_web::RenderHints
+impl core::marker::StructuralPartialEq for skene_web::RenderHints
+pub struct skene_web::Web
+impl core::clone::Clone for skene_web::Web
+pub fn skene_web::Web::clone(&self) -> skene_web::Web
+impl core::cmp::Eq for skene_web::Web
+impl core::cmp::PartialEq for skene_web::Web
+pub fn skene_web::Web::eq(&self, &skene_web::Web) -> bool
+impl core::default::Default for skene_web::Web
+pub fn skene_web::Web::default() -> skene_web::Web
+impl core::fmt::Debug for skene_web::Web
+pub fn skene_web::Web::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Web
+pub fn skene_web::Web::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::Web
+impl core::marker::StructuralPartialEq for skene_web::Web
+pub const skene_web::CONTROL_ATTRIBUTE: &str
+pub const skene_web::SCHEME_ATTRIBUTE: &str
+pub const skene_web::STATE_SCRIPT_ID: &str
+pub trait skene_web::WebMarkup: skene_core::platform::Platform
+pub fn skene_web::WebMarkup::create_element(&self, &'static str) -> Self::Sink
+pub fn skene_web::WebMarkup::set_attribute(&self, &Self::Sink, &str, &str)
+pub fn skene_web::WebMarkup::set_declarations(&self, &Self::Sink, &skene_web::Declarations)
+pub fn skene_web::WebMarkup::set_text(&self, &Self::Sink, &str)
+pub type skene_web::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>

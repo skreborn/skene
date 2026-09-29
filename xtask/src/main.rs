@@ -4,7 +4,10 @@
 //! runs the named ones, a bare group name such as `clippy` selecting each of its leaves. A
 //! step writes its whole output to `target/gate/<step>.log`; the gate prints one line per
 //! step and, for a step that failed, why and the end of its log.
+//!
+//! `cargo xtask api` rewrites the public API snapshots the `api` step checks.
 
+mod api;
 mod browser;
 mod lint;
 mod manifests;
@@ -83,6 +86,10 @@ const STEPS: &[Step] = &[
     run: doc_wasm,
   },
   Step {
+    name: "api",
+    run: api::check,
+  },
+  Step {
     name: "test:host",
     run: test_host,
   },
@@ -142,11 +149,31 @@ fn main() -> ExitCode {
 
   match arguments.split_first() {
     Some((command, selectors)) if command == "gate" => run_gate(selectors),
+    Some((command, [])) if command == "api" => write_api(),
     _ => {
       eprintln!(
-        "usage: cargo xtask gate [step ...]\nsteps: {}",
+        "usage: cargo xtask gate [step ...] | cargo xtask api\nsteps: {}",
         step_names()
       );
+
+      ExitCode::FAILURE
+    }
+  }
+}
+
+/// Rewrites the public API snapshots, logging to `target/gate/api-write.log`.
+fn write_api() -> ExitCode {
+  let gate = Gate::new();
+  let logs = gate.target.join("gate");
+  let written = fs::create_dir_all(&logs)
+    .map_err(|error| format!("{}: {error}", logs.display()))
+    .and_then(|()| Log::create(logs.join("api-write.log")))
+    .and_then(|mut log| api::write(&gate, &mut log));
+
+  match written {
+    Ok(()) => ExitCode::SUCCESS,
+    Err(reason) => {
+      eprintln!("{reason}");
 
       ExitCode::FAILURE
     }

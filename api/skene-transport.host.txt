@@ -1,0 +1,129 @@
+pub mod skene_transport
+pub mod skene_transport::http
+pub enum skene_transport::http::Error
+pub skene_transport::http::Error::Text(alloc::string::FromUtf8Error)
+pub skene_transport::http::Error::Transport(alloc::string::String)
+pub skene_transport::http::Error::Url(alloc::string::String)
+impl core::clone::Clone for skene_transport::http::Error
+pub fn skene_transport::http::Error::clone(&self) -> skene_transport::http::Error
+impl core::cmp::Eq for skene_transport::http::Error
+impl core::cmp::PartialEq for skene_transport::http::Error
+pub fn skene_transport::http::Error::eq(&self, &skene_transport::http::Error) -> bool
+impl core::error::Error for skene_transport::http::Error
+impl core::fmt::Debug for skene_transport::http::Error
+pub fn skene_transport::http::Error::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for skene_transport::http::Error
+pub fn skene_transport::http::Error::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_transport::http::Error
+pub enum skene_transport::http::Method
+pub skene_transport::http::Method::Delete
+pub skene_transport::http::Method::Get
+pub skene_transport::http::Method::Head
+pub skene_transport::http::Method::Patch
+pub skene_transport::http::Method::Post
+pub skene_transport::http::Method::Put
+impl skene_transport::http::Method
+pub const fn skene_transport::http::Method::as_str(self) -> &'static str
+impl core::clone::Clone for skene_transport::http::Method
+pub fn skene_transport::http::Method::clone(&self) -> skene_transport::http::Method
+impl core::cmp::Eq for skene_transport::http::Method
+impl core::cmp::PartialEq for skene_transport::http::Method
+pub fn skene_transport::http::Method::eq(&self, &skene_transport::http::Method) -> bool
+impl core::fmt::Debug for skene_transport::http::Method
+pub fn skene_transport::http::Method::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for skene_transport::http::Method
+pub fn skene_transport::http::Method::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_transport::http::Method
+pub fn skene_transport::http::Method::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_transport::http::Method
+impl core::marker::StructuralPartialEq for skene_transport::http::Method
+pub struct skene_transport::http::Request
+impl skene_transport::http::Request
+pub fn skene_transport::http::Request::body(&self) -> &[u8]
+pub fn skene_transport::http::Request::delete(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::get(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::headers(&self) -> &[(alloc::string::String, alloc::string::String)]
+pub const fn skene_transport::http::Request::method(&self) -> skene_transport::http::Method
+pub fn skene_transport::http::Request::new(skene_transport::http::Method, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::patch(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::post(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::put(impl core::convert::Into<alloc::string::String>) -> Self
+pub async fn skene_transport::http::Request::send(self) -> core::result::Result<skene_transport::http::Response, skene_transport::http::Error>
+pub fn skene_transport::http::Request::set_body(self, impl core::convert::Into<alloc::vec::Vec<u8>>) -> Self
+pub fn skene_transport::http::Request::set_header(self, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_transport::http::Request::url(&self) -> &str
+impl core::clone::Clone for skene_transport::http::Request
+pub fn skene_transport::http::Request::clone(&self) -> skene_transport::http::Request
+impl core::cmp::Eq for skene_transport::http::Request
+impl core::cmp::PartialEq for skene_transport::http::Request
+pub fn skene_transport::http::Request::eq(&self, &skene_transport::http::Request) -> bool
+impl core::fmt::Debug for skene_transport::http::Request
+pub fn skene_transport::http::Request::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_transport::http::Request
+pub struct skene_transport::http::Response
+impl skene_transport::http::Response
+pub fn skene_transport::http::Response::body(&self) -> &[u8]
+pub fn skene_transport::http::Response::header(&self, &str) -> core::option::Option<&str>
+pub fn skene_transport::http::Response::headers(&self) -> &[(alloc::string::String, alloc::string::String)]
+pub fn skene_transport::http::Response::into_body(self) -> alloc::vec::Vec<u8>
+pub const fn skene_transport::http::Response::is_success(&self) -> bool
+pub const fn skene_transport::http::Response::new(u16, alloc::vec::Vec<(alloc::string::String, alloc::string::String)>, alloc::vec::Vec<u8>) -> Self
+pub const fn skene_transport::http::Response::status(&self) -> u16
+pub fn skene_transport::http::Response::text(&self) -> core::result::Result<alloc::string::String, skene_transport::http::Error>
+impl core::clone::Clone for skene_transport::http::Response
+pub fn skene_transport::http::Response::clone(&self) -> skene_transport::http::Response
+impl core::cmp::Eq for skene_transport::http::Response
+impl core::cmp::PartialEq for skene_transport::http::Response
+pub fn skene_transport::http::Response::eq(&self, &skene_transport::http::Response) -> bool
+impl core::fmt::Debug for skene_transport::http::Response
+pub fn skene_transport::http::Response::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_transport::http::Response
+pub async fn skene_transport::http::get(impl core::convert::Into<alloc::string::String>) -> core::result::Result<skene_transport::http::Response, skene_transport::http::Error>
+pub mod skene_transport::ws
+pub enum skene_transport::ws::Error
+pub skene_transport::ws::Error::Closed
+pub skene_transport::ws::Error::Transport(alloc::string::String)
+pub skene_transport::ws::Error::Url(alloc::string::String)
+impl core::clone::Clone for skene_transport::ws::Error
+pub fn skene_transport::ws::Error::clone(&self) -> skene_transport::ws::Error
+impl core::cmp::Eq for skene_transport::ws::Error
+impl core::cmp::PartialEq for skene_transport::ws::Error
+pub fn skene_transport::ws::Error::eq(&self, &skene_transport::ws::Error) -> bool
+impl core::error::Error for skene_transport::ws::Error
+impl core::fmt::Debug for skene_transport::ws::Error
+pub fn skene_transport::ws::Error::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for skene_transport::ws::Error
+pub fn skene_transport::ws::Error::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_transport::ws::Error
+pub enum skene_transport::ws::Message
+pub skene_transport::ws::Message::Binary(alloc::vec::Vec<u8>)
+pub skene_transport::ws::Message::Text(alloc::string::String)
+impl core::clone::Clone for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::clone(&self) -> skene_transport::ws::Message
+impl core::cmp::Eq for skene_transport::ws::Message
+impl core::cmp::PartialEq for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::eq(&self, &skene_transport::ws::Message) -> bool
+impl core::convert::From<&str> for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::from(&str) -> Self
+impl core::convert::From<alloc::string::String> for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::from(alloc::string::String) -> Self
+impl core::convert::From<alloc::vec::Vec<u8>> for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::from(alloc::vec::Vec<u8>) -> Self
+impl core::fmt::Debug for skene_transport::ws::Message
+pub fn skene_transport::ws::Message::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_transport::ws::Message
+pub struct skene_transport::ws::Receive<'a>(_)
+impl core::future::future::Future for skene_transport::ws::Receive<'_>
+pub type skene_transport::ws::Receive<'_>::Output = core::option::Option<skene_transport::ws::Message>
+pub fn skene_transport::ws::Receive<'_>::poll(core::pin::Pin<&mut Self>, &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<Self::Output>
+impl<'a> core::fmt::Debug for skene_transport::ws::Receive<'a>
+pub fn skene_transport::ws::Receive<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_transport::ws::WebSocket
+impl skene_transport::ws::WebSocket
+pub fn skene_transport::ws::WebSocket::close(&self)
+pub fn skene_transport::ws::WebSocket::is_closed(&self) -> bool
+pub const fn skene_transport::ws::WebSocket::receive(&self) -> skene_transport::ws::Receive<'_>
+pub fn skene_transport::ws::WebSocket::send(&self, impl core::convert::Into<skene_transport::ws::Message>) -> core::result::Result<(), skene_transport::ws::Error>
+impl core::fmt::Debug for skene_transport::ws::WebSocket
+pub fn skene_transport::ws::WebSocket::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub async fn skene_transport::ws::connect(impl core::convert::Into<alloc::string::String>) -> core::result::Result<skene_transport::ws::WebSocket, skene_transport::ws::Error>

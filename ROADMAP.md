@@ -20,13 +20,10 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **The rest of the house rules in the gate.** A `cargo public-api` snapshot, so a
-    change to the surface shows in review. The workspace declares no license, so
+1. **A license and the first CI runs.** The workspace declares no license, so
     `cargo deny check licenses` has nothing to hold the dependencies to. Neither CI
     workflow, the gate on every pull request nor the weekly RustSec advisories, has run
     yet.
-    - With them: `display` joins the banned words once `RunDisplay` is renamed, checked
-    over the `cargo public-api` output.
 2. **One owner for style and interaction semantics.** The web compiler and core's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
@@ -379,7 +376,9 @@ left half-done in a code comment.
     and referrer policy move to the web escape; `Role::is_spelled` leaves the spine;
     `Inset` and `Spacing` take logical `start`/`end` and `horizontal`/`vertical` before
     internationalization makes that breaking; `set_background` ends `set_color` meaning
-    the background on `Container`.
+    the background on `Container`. With `RunDisplay` renamed, `display` joins the
+    lint's banned words, which then read the names the `api/` snapshots list, re-exports
+    included, rather than the sources' own items.
     - Shapes: one setter per property for `Flexible`
     (`set_flexibility(impl Into<Value<Flexibility>>)`), the slider (`set_range`,
     `derive_range`) and `Animation` (iterations, alternation, reduced motion);

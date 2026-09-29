@@ -30,16 +30,19 @@ jobs:
         run: |
           echo "msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)" >> "$GITHUB_OUTPUT"
           echo "wasm_bindgen=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p}' Cargo.lock)" >> "$GITHUB_OUTPUT"
+          echo "api_toolchain=$(sed -n 's/^const TOOLCHAIN: &str = "\(.*\)";$/\1/p' xtask/src/api.rs)" >> "$GITHUB_OUTPUT"
+          echo "public_api=$(sed -n 's/^const VERSION: &str = "\(.*\)";$/\1/p' xtask/src/api.rs)" >> "$GITHUB_OUTPUT"
 
       - name: Install the toolchains
         run: |
           rustup toolchain install stable --profile minimal --component clippy --target wasm32-unknown-unknown --target aarch64-apple-darwin
           rustup toolchain install nightly --profile minimal --component rustfmt
           rustup toolchain install "${{ steps.versions.outputs.msrv }}" --profile minimal
+          rustup toolchain install "${{ steps.versions.outputs.api_toolchain }}" --profile minimal --target wasm32-unknown-unknown
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-hack,cargo-nextest,cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}
+          tool: cargo-hack,cargo-nextest,cargo-public-api@${{ steps.versions.outputs.public_api }},cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}
 
       - uses: Swatinem/rust-cache@v2
 

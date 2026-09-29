@@ -1,0 +1,402 @@
+pub mod skene_gui
+pub use skene_gui::Activate
+pub use skene_gui::Anchor
+pub use skene_gui::AnyKind
+pub use skene_gui::Behavior
+pub use skene_gui::Bubbling
+pub use skene_gui::Canvas
+pub use skene_gui::Children
+pub use skene_gui::Color
+pub use skene_gui::ColorScheme
+pub use skene_gui::ContainerName
+pub use skene_gui::ControlChild
+pub use skene_gui::ControlKind
+pub use skene_gui::ControlState
+pub use skene_gui::CornerRadius
+pub use skene_gui::Definitions
+pub use skene_gui::Errors
+pub use skene_gui::Expr
+pub use skene_gui::FocusOrder
+pub use skene_gui::GuiExt
+pub use skene_gui::GuiProperty
+pub use skene_gui::HasChildren
+pub use skene_gui::IntoBrush
+pub use skene_gui::IntoChildOf
+pub use skene_gui::IntoChildren
+pub use skene_gui::ItemExtent
+pub use skene_gui::KeyEvent
+pub use skene_gui::Leaf
+pub use skene_gui::Length
+pub use skene_gui::ListItem
+pub use skene_gui::Listbox
+pub use skene_gui::ListboxGroup
+pub use skene_gui::LoadState
+pub use skene_gui::Menu
+pub use skene_gui::MenuGroup
+pub use skene_gui::MenuItem
+pub use skene_gui::MenuOption
+pub use skene_gui::Modifiers
+pub use skene_gui::NativePicker
+pub use skene_gui::NoChild
+pub use skene_gui::NodeId
+pub use skene_gui::Number
+pub use skene_gui::Painter
+pub use skene_gui::Painting
+pub use skene_gui::Part
+pub use skene_gui::PointerEvent
+pub use skene_gui::PointerPhase
+pub use skene_gui::Popup
+pub use skene_gui::Prevent
+pub use skene_gui::Prevented
+pub use skene_gui::RadioMember
+pub use skene_gui::Range
+pub use skene_gui::Role
+pub use skene_gui::Roster
+pub use skene_gui::Roving
+pub use skene_gui::RovingGroup
+pub use skene_gui::Scene
+pub use skene_gui::ScrollEvent
+pub use skene_gui::Shortcut
+pub use skene_gui::State
+pub use skene_gui::StaticLeaf
+pub use skene_gui::TOOLTIP_DELAY
+pub use skene_gui::TextDecoration
+pub use skene_gui::TextDecorationStyle
+pub use skene_gui::TextEntry
+pub use skene_gui::TextSelection
+pub use skene_gui::Toggle
+pub use skene_gui::TokenName
+pub use skene_gui::TokenRef
+pub use skene_gui::TokenSet
+pub use skene_gui::TypeMetrics
+pub use skene_gui::Typography
+pub use skene_gui::When
+pub use skene_gui::core
+pub use skene_gui::kurbo
+pub use skene_gui::lazy
+pub use skene_gui::main
+pub use skene_gui::peniko
+pub use skene_gui::reactive
+pub use skene_gui::router
+pub use skene_gui::tracing
+pub use skene_gui::typography
+pub use skene_gui::web
+pub mod skene_gui::head
+pub fn skene_gui::head::add_link(&str, &str)
+pub fn skene_gui::head::add_meta(&str, &str)
+pub fn skene_gui::head::add_meta_property(&str, &str)
+pub fn skene_gui::head::add_script(&str)
+pub fn skene_gui::head::add_stylesheet(&str)
+pub fn skene_gui::head::derive_title(impl core::ops::function::Fn() -> alloc::string::String + 'static)
+pub fn skene_gui::head::set_language(impl core::convert::Into<alloc::string::String>)
+pub fn skene_gui::head::set_title(impl core::convert::Into<alloc::string::String>)
+pub mod skene_gui::media
+pub fn skene_gui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
+pub fn skene_gui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_gui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_gui::media::viewport() -> skene_reactive::signal::ReadSignal<skene_gui::Size>
+pub fn skene_gui::media::watch(&skene_gui::Media) -> skene_reactive::memo::Memo<bool>
+pub mod skene_gui::prelude
+pub use skene_gui::prelude::AccessProp
+pub use skene_gui::prelude::Alignment
+pub use skene_gui::prelude::Anchor
+pub use skene_gui::prelude::Animation
+pub use skene_gui::prelude::Arrangement
+pub use skene_gui::prelude::Axis
+pub use skene_gui::prelude::Bubbling
+pub use skene_gui::prelude::Color
+pub use skene_gui::prelude::ColorScheme
+pub use skene_gui::prelude::Easing
+pub use skene_gui::prelude::Effect
+pub use skene_gui::prelude::Errors
+pub use skene_gui::prelude::Expr
+pub use skene_gui::prelude::FlexDirection
+pub use skene_gui::prelude::Flexibility
+pub use skene_gui::prelude::FocusOrder
+pub use skene_gui::prelude::Get
+pub use skene_gui::prelude::GridFlow
+pub use skene_gui::prelude::GridPlacement
+pub use skene_gui::prelude::GridTrack
+pub use skene_gui::prelude::HasChildren
+pub use skene_gui::prelude::IndexedField
+pub use skene_gui::prelude::IntoChildOf
+pub use skene_gui::prelude::IntoChildren
+pub use skene_gui::prelude::ItemAlignment
+pub use skene_gui::prelude::ItemExtent
+pub use skene_gui::prelude::KeyEvent
+pub use skene_gui::prelude::KeyedField
+pub use skene_gui::prelude::Layout
+pub use skene_gui::prelude::Leaf
+pub use skene_gui::prelude::Line
+pub use skene_gui::prelude::LinkAnnotation
+pub use skene_gui::prelude::LinkPolicy
+pub use skene_gui::prelude::Memo
+pub use skene_gui::prelude::MenuItem
+pub use skene_gui::prelude::MouseCursor
+pub use skene_gui::prelude::NoChild
+pub use skene_gui::prelude::Overflow
+pub use skene_gui::prelude::Owner
+pub use skene_gui::prelude::Placement
+pub use skene_gui::prelude::ReadSignal
+pub use skene_gui::prelude::Role
+pub use skene_gui::prelude::Set
+pub use skene_gui::prelude::Signal
+pub use skene_gui::prelude::Snapshot
+pub use skene_gui::prelude::Snapshot
+pub use skene_gui::prelude::State
+pub use skene_gui::prelude::Store
+pub use skene_gui::prelude::Store
+pub use skene_gui::prelude::StoreField
+pub use skene_gui::prelude::TextDecoration
+pub use skene_gui::prelude::TextDecorationStyle
+pub use skene_gui::prelude::TextSelection
+pub use skene_gui::prelude::TokenRef
+pub use skene_gui::prelude::TokenSet
+pub use skene_gui::prelude::TrackLimit
+pub use skene_gui::prelude::Transition
+pub use skene_gui::prelude::Typography
+pub use skene_gui::prelude::Update
+pub use skene_gui::prelude::When
+pub use skene_gui::prelude::With
+pub use skene_gui::prelude::Wrap
+pub use skene_gui::prelude::WriteSignal
+pub use skene_gui::prelude::debug
+pub use skene_gui::prelude::error
+pub use skene_gui::prelude::info
+pub use skene_gui::prelude::lazy
+pub use skene_gui::prelude::main
+pub use skene_gui::prelude::trace
+pub use skene_gui::prelude::warn
+pub mod skene_gui::prelude::lazy
+pub struct skene_gui::prelude::lazy::Lazy
+impl skene_gui::Lazy
+pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::IntoView<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
+impl core::fmt::Debug for skene_gui::Lazy
+pub fn skene_gui::Lazy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_core::view::AnyKind for skene_gui::Lazy
+impl skene_core::view::View<skene_web::Web> for skene_gui::Lazy
+pub fn skene_gui::Lazy::build(self) -> skene_core::node::NodeId
+pub mod skene_gui::prelude::media
+pub fn skene_gui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::prelude::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
+pub fn skene_gui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_gui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_gui::prelude::media::viewport() -> skene_reactive::signal::ReadSignal<skene_gui::Size>
+pub fn skene_gui::prelude::media::watch(&skene_gui::Media) -> skene_reactive::memo::Memo<bool>
+pub trait skene_gui::prelude::IntoView: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind
+pub fn skene_gui::prelude::IntoView::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind> skene_gui::IntoView for V
+pub fn V::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub trait skene_gui::prelude::ThemedIn: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>
+pub fn skene_gui::prelude::ThemedIn::current() -> Self
+pub fn skene_gui::prelude::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
+impl<S: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>> skene_gui::ThemedIn for S
+pub fn S::current() -> Self
+pub fn S::watch() -> skene_reactive::memo::Memo<Self>
+pub trait skene_gui::prelude::View: skene_core::view::View<skene_gui::ActivePlatform>
+pub fn skene_gui::prelude::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn skene_gui::prelude::View::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::View<skene_gui::ActivePlatform>> skene_gui::View for V
+pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub fn skene_gui::prelude::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::prelude::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
+pub fn skene_gui::prelude::empty() -> impl skene_gui::View
+pub fn skene_gui::prelude::hydrate_page<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::prelude::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub type skene_gui::prelude::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Border = skene_core::border::Border<f32>
+pub type skene_gui::prelude::Column = skene_common::flex::Column<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Condition = skene_core::condition::Condition<f32>
+pub type skene_gui::prelude::Container = skene_common::container::Container<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::ContextMenu<C> = skene_common::context_menu::ContextMenu<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Control<B, C> = skene_common::control::Control<skene_gui::ActivePlatform, B, C>
+pub type skene_gui::prelude::Definition<T> = skene_core::leaf::Definition<T, f32>
+pub type skene_gui::prelude::Dimension = skene_core::values::dimension::Dimension<f32>
+pub type skene_gui::prelude::Enhance<C> = skene_common::enhance::Enhance<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::ErrorBoundary<C> = skene_common::error_boundary::ErrorBoundary<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Flexible<C> = skene_common::flexible::Flexible<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::FocusHandle = skene_common::focus::FocusHandle<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Grid = skene_common::grid::Grid<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::GridCell<C> = skene_common::grid_cell::GridCell<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_gui::prelude::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_gui::ActivePlatform, Kind>
+pub type skene_gui::prelude::LazyColumn = skene_common::lazy_list::LazyColumn<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::LazyRow = skene_common::lazy_list::LazyRow<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Media = skene_core::condition::Media<f32>
+pub type skene_gui::prelude::Overlay<C> = skene_common::overlay::Overlay<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Painted = skene_common::painted::Painted<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Pinned<C> = skene_common::pinned::Pinned<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Point = skene_core::values::point::Point<f32>
+pub type skene_gui::prelude::RawButton<C> = skene_common::control::RawButton<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawCheckbox<C> = skene_common::control::RawCheckbox<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawMenu<C> = skene_common::control::RawMenu<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawMenuItem<C> = skene_common::control::RawMenuItem<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawOption<C> = skene_common::control::RawOption<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawPicker<F> = skene_common::picker::RawPicker<skene_gui::ActivePlatform, F>
+pub type skene_gui::prelude::RawRadio<C> = skene_common::control::RawRadio<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawRadioGroup<C> = skene_common::control::RawRadioGroup<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawSlider<C> = skene_common::control::RawSlider<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawTextEditor<C> = skene_common::control::RawTextEditor<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::RawTextField<C> = skene_common::control::RawTextField<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Rect = skene_core::values::rect::Rect<f32>
+pub type skene_gui::prelude::RichText = skene_common::span::RichText<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Row = skene_common::flex::Row<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Show<C> = skene_core::show::Show<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Size = skene_core::values::size::Size<f32>
+pub type skene_gui::prelude::SizeHandle = skene_common::size::SizeHandle<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Spacing = skene_core::values::flex::Spacing<f32>
+pub type skene_gui::prelude::Span = skene_common::span::Span<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Stack = skene_common::stack::Stack<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Suspense<C> = skene_common::suspense::Suspense<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Switch<K> = skene_common::switch::Switch<skene_gui::ActivePlatform, K>
+pub type skene_gui::prelude::Text = skene_common::text::Text<skene_gui::ActivePlatform>
+pub type skene_gui::prelude::Theme<S, C> = skene_common::theme::Theme<skene_gui::ActivePlatform, S, C>
+pub type skene_gui::prelude::Token<T> = skene_core::token::Token<T, f32>
+pub type skene_gui::prelude::Tooltip<C> = skene_common::tooltip::Tooltip<skene_gui::ActivePlatform, C>
+pub type skene_gui::prelude::Value<T> = skene_core::leaf::Value<T, skene_gui::Condition>
+pub mod skene_gui::split
+pub struct skene_gui::split::SplitLoader
+impl skene_gui::split::SplitLoader
+pub fn skene_gui::split::SplitLoader::ensure(&'static std::thread::local::LocalKey<Self>) -> impl core::future::future::Future<Output = ()>
+pub unsafe fn skene_gui::split::SplitLoader::new(skene_gui::split::LoadSplit) -> Self
+impl core::fmt::Debug for skene_gui::split::SplitLoader
+pub fn skene_gui::split::SplitLoader::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub type skene_gui::split::LoadSplit = fn(fn(*const core::ffi::c_void, bool), *const core::ffi::c_void)
+pub mod skene_gui::view_transitions
+pub fn skene_gui::view_transitions::enable()
+pub struct skene_gui::Deferred
+impl skene_gui::Deferred
+pub fn skene_gui::Deferred::new<V: skene_core::view::IntoView<skene_gui::ActivePlatform>>(impl core::ops::function::FnOnce() -> V + 'static) -> Self
+impl core::fmt::Debug for skene_gui::Deferred
+pub fn skene_gui::Deferred::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_core::view::AnyKind for skene_gui::Deferred
+impl skene_core::view::View<skene_web::Web> for skene_gui::Deferred
+pub fn skene_gui::Deferred::build(self) -> skene_core::node::NodeId
+pub struct skene_gui::Lazy
+impl skene_gui::Lazy
+pub fn skene_gui::Lazy::new<V, F>(impl core::ops::function::FnOnce() -> F + 'static) -> Self where V: skene_core::view::IntoView<skene_gui::ActivePlatform>, F: core::future::future::Future<Output = V> + 'static
+impl core::fmt::Debug for skene_gui::Lazy
+pub fn skene_gui::Lazy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl skene_core::view::AnyKind for skene_gui::Lazy
+impl skene_core::view::View<skene_web::Web> for skene_gui::Lazy
+pub fn skene_gui::Lazy::build(self) -> skene_core::node::NodeId
+pub struct skene_gui::Link<R: skene_common::routing::Route>
+impl<R: skene_common::routing::Route> skene_gui::Link<R>
+pub fn skene_gui::Link<R>::new(R) -> Self
+impl<R: core::fmt::Debug + skene_common::routing::Route> core::fmt::Debug for skene_gui::Link<R>
+pub fn skene_gui::Link<R>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<R: skene_common::routing::Route> skene_core::children::HasChildren<skene_web::Web> for skene_gui::Link<R>
+pub type skene_gui::Link<R>::Kind = skene_core::view::PlainChild
+pub fn skene_gui::Link<R>::children_mut(&mut self, skene_core::children::Seal) -> &mut skene_core::children::Children<skene_gui::ActivePlatform, skene_core::view::PlainChild>
+impl<R: skene_common::routing::Route> skene_core::view::AnyKind for skene_gui::Link<R>
+impl<R: skene_common::routing::Route> skene_core::view::View<skene_web::Web> for skene_gui::Link<R>
+pub fn skene_gui::Link<R>::build(self) -> skene_core::node::NodeId
+pub struct skene_gui::Resource<T: 'static>(_)
+impl<T: 'static> skene_gui::Resource<T>
+pub fn skene_gui::Resource<T>::client<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static
+pub fn skene_gui::Resource<T>::new<F>(impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
+pub fn skene_gui::Resource<T>::tagged<F>(&'static str, impl core::ops::function::Fn() -> F + 'static) -> Self where F: core::future::future::Future<Output = T> + 'static, T: serde_core::ser::Serialize + serde_core::de::DeserializeOwned
+impl<T: 'static> core::clone::Clone for skene_gui::Resource<T>
+pub fn skene_gui::Resource<T>::clone(&self) -> Self
+impl<T: 'static> core::marker::Copy for skene_gui::Resource<T>
+impl<T: 'static> core::ops::deref::Deref for skene_gui::Resource<T>
+pub type skene_gui::Resource<T>::Target = skene_reactive::resource::Resource<T>
+pub fn skene_gui::Resource<T>::deref(&self) -> &Self::Target
+impl<T: core::fmt::Debug + 'static> core::fmt::Debug for skene_gui::Resource<T>
+pub fn skene_gui::Resource<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub trait skene_gui::IntoView: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind
+pub fn skene_gui::IntoView::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::IntoView<skene_gui::ActivePlatform> + skene_core::view::AnyKind> skene_gui::IntoView for V
+pub fn V::into_view(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub trait skene_gui::ThemedIn: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>
+pub fn skene_gui::ThemedIn::current() -> Self
+pub fn skene_gui::ThemedIn::watch() -> skene_reactive::memo::Memo<Self>
+impl<S: skene_common::theme::ThemedIn<skene_gui::ActivePlatform>> skene_gui::ThemedIn for S
+pub fn S::current() -> Self
+pub fn S::watch() -> skene_reactive::memo::Memo<Self>
+pub trait skene_gui::View: skene_core::view::View<skene_gui::ActivePlatform>
+pub fn skene_gui::View::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn skene_gui::View::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+impl<V: skene_core::view::View<skene_gui::ActivePlatform>> skene_gui::View for V
+pub fn V::build(self) -> skene_core::node::NodeId where Self: core::marker::Sized
+pub fn V::into_any(self) -> skene_gui::AnyView where Self: core::marker::Sized
+pub fn skene_gui::client_only(impl core::ops::function::FnOnce() -> skene_core::node::NodeId + 'static) -> impl skene_gui::View
+pub fn skene_gui::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::derived(impl core::ops::function::Fn() -> skene_core::node::NodeId + 'static) -> skene_core::node::NodeId
+pub fn skene_gui::empty() -> impl skene_gui::View
+pub fn skene_gui::hydrate_page<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::install_router<R: skene_common::routing::Route>(R) -> skene_common::routing::Router<R>
+pub fn skene_gui::install_static_router<R: skene_common::routing::StaticRoutes>(R) -> skene_common::routing::Router<R>
+pub fn skene_gui::launch<V, F>(F) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_gui::IntoView
+pub fn skene_gui::reconcile<T, I, K>(skene_core::node::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::node::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
+pub fn skene_gui::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_gui::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
+pub fn skene_gui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub type skene_gui::ActivePlatform = skene_web::Web
+pub type skene_gui::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
+pub type skene_gui::Border = skene_core::border::Border<f32>
+pub type skene_gui::ChildBuilder = skene_common::realize::ChildBuilder<skene_gui::ActivePlatform>
+pub type skene_gui::Column = skene_common::flex::Column<skene_gui::ActivePlatform>
+pub type skene_gui::Condition = skene_core::condition::Condition<f32>
+pub type skene_gui::Container = skene_common::container::Container<skene_gui::ActivePlatform>
+pub type skene_gui::ContainerQuery = skene_core::condition::ContainerQuery<f32>
+pub type skene_gui::ContextMenu<C> = skene_common::context_menu::ContextMenu<skene_gui::ActivePlatform, C>
+pub type skene_gui::Control<B, C> = skene_common::control::Control<skene_gui::ActivePlatform, B, C>
+pub type skene_gui::ControlHandle = skene_common::control::ControlHandle<skene_gui::ActivePlatform>
+pub type skene_gui::Definition<T> = skene_core::leaf::Definition<T, f32>
+pub type skene_gui::Dimension = skene_core::values::dimension::Dimension<f32>
+pub type skene_gui::Enhance<C> = skene_common::enhance::Enhance<skene_gui::ActivePlatform, C>
+pub type skene_gui::ErrorBoundary<C> = skene_common::error_boundary::ErrorBoundary<skene_gui::ActivePlatform, C>
+pub type skene_gui::Face = skene_common::picker::Face<skene_gui::ActivePlatform>
+pub type skene_gui::Flexible<C> = skene_common::flexible::Flexible<skene_gui::ActivePlatform, C>
+pub type skene_gui::FocusHandle = skene_common::focus::FocusHandle<skene_gui::ActivePlatform>
+pub type skene_gui::Grid = skene_common::grid::Grid<skene_gui::ActivePlatform>
+pub type skene_gui::GridCell<C> = skene_common::grid_cell::GridCell<skene_gui::ActivePlatform, C>
+pub type skene_gui::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_gui::Keyed<V> = skene_core::keyed::Keyed<skene_gui::ActivePlatform, V>
+pub type skene_gui::Label = skene_common::control::Label<skene_gui::ActivePlatform>
+pub type skene_gui::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_gui::ActivePlatform, Kind>
+pub type skene_gui::LazyColumn = skene_common::lazy_list::LazyColumn<skene_gui::ActivePlatform>
+pub type skene_gui::LazyRow = skene_common::lazy_list::LazyRow<skene_gui::ActivePlatform>
+pub type skene_gui::Media = skene_core::condition::Media<f32>
+pub type skene_gui::Overlay<C> = skene_common::overlay::Overlay<skene_gui::ActivePlatform, C>
+pub type skene_gui::Painted = skene_common::painted::Painted<skene_gui::ActivePlatform>
+pub type skene_gui::Pinned<C> = skene_common::pinned::Pinned<skene_gui::ActivePlatform, C>
+pub type skene_gui::Point = skene_core::values::point::Point<f32>
+pub type skene_gui::RawButton<C> = skene_common::control::RawButton<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawCheckbox<C> = skene_common::control::RawCheckbox<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawListbox<C> = skene_common::control::RawListbox<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawMenu<C> = skene_common::control::RawMenu<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawMenuItem<C> = skene_common::control::RawMenuItem<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawOption<C> = skene_common::control::RawOption<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawPicker<F> = skene_common::picker::RawPicker<skene_gui::ActivePlatform, F>
+pub type skene_gui::RawRadio<C> = skene_common::control::RawRadio<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawRadioGroup<C> = skene_common::control::RawRadioGroup<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawSlider<C> = skene_common::control::RawSlider<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawTextEditor<C> = skene_common::control::RawTextEditor<skene_gui::ActivePlatform, C>
+pub type skene_gui::RawTextField<C> = skene_common::control::RawTextField<skene_gui::ActivePlatform, C>
+pub type skene_gui::Rect = skene_core::values::rect::Rect<f32>
+pub type skene_gui::RichText = skene_common::span::RichText<skene_gui::ActivePlatform>
+pub type skene_gui::Row = skene_common::flex::Row<skene_gui::ActivePlatform>
+pub type skene_gui::Show<C> = skene_core::show::Show<skene_gui::ActivePlatform, C>
+pub type skene_gui::Size = skene_core::values::size::Size<f32>
+pub type skene_gui::SizeHandle = skene_common::size::SizeHandle<skene_gui::ActivePlatform>
+pub type skene_gui::Spacing = skene_core::values::flex::Spacing<f32>
+pub type skene_gui::Span = skene_common::span::Span<skene_gui::ActivePlatform>
+pub type skene_gui::Stack = skene_common::stack::Stack<skene_gui::ActivePlatform>
+pub type skene_gui::Suspense<C> = skene_common::suspense::Suspense<skene_gui::ActivePlatform, C>
+pub type skene_gui::Switch<K> = skene_common::switch::Switch<skene_gui::ActivePlatform, K>
+pub type skene_gui::Text = skene_common::text::Text<skene_gui::ActivePlatform>
+pub type skene_gui::Theme<S, C> = skene_common::theme::Theme<skene_gui::ActivePlatform, S, C>
+pub type skene_gui::Token<T> = skene_core::token::Token<T, f32>
+pub type skene_gui::TokenValue = <skene_gui::ActivePlatform as skene_core::platform::Platform>::TokenValue
+pub type skene_gui::Tooltip<C> = skene_common::tooltip::Tooltip<skene_gui::ActivePlatform, C>
+pub type skene_gui::Value<T> = skene_core::leaf::Value<T, skene_gui::Condition>

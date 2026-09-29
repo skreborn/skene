@@ -534,13 +534,15 @@
   `rust-version`, the house rules no compiler checks (em-dashes unspaced, children last,
   no public name in another framework's vocabulary, fields and variants documented all
   or none, a test double's simulated events named `trigger_`), unused dependencies,
-  clippy and rustdoc with warnings denied on all three leaves, clippy on the code
-  written for Apple's platforms (the terminal's, on `aarch64-apple-darwin`), the three
-  test tiers, the feature powerset (so no cargo feature creeps back in) and the
-  workspace on its declared `rust-version`. `cargo xtask gate test:browser` runs one
-  step and `cargo xtask gate clippy` a group; each step logs to
-  `target/gate/<step>.log`, and a failed one prints why beside the end of its log. CI
-  runs the same command on every pull request.
+  clippy and rustdoc with warnings denied on all three leaves, each library crate's
+  public API against its snapshot under `api/`, read by a pinned nightly and `cargo
+  public-api`, clippy on the code written for Apple's platforms (the terminal's, on
+  `aarch64-apple-darwin`), the three test tiers, the feature powerset (so no cargo
+  feature creeps back in) and the workspace on its declared `rust-version`. `cargo xtask
+  gate test:browser` runs one step and `cargo xtask gate clippy` a group; each step logs
+  to `target/gate/<step>.log`, and a failed one prints why beside the end of its log.
+  `cargo xtask api` rewrites the snapshots once a change to a surface is meant. CI runs
+  the same command on every pull request.
 - Tests run in three tiers, and the host tier alone proves nothing about the web: every
   `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
   a change can pass every host test while breaking the browser outright. The host tier

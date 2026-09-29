@@ -1,0 +1,220 @@
+pub mod skene_web
+pub enum skene_web::StreamPiece<'a>
+pub skene_web::StreamPiece::Chunk(alloc::string::String)
+pub skene_web::StreamPiece::Shell
+pub skene_web::StreamPiece::Shell::head: &'a str
+pub skene_web::StreamPiece::Shell::language: core::option::Option<&'a str>
+pub skene_web::StreamPiece::Shell::styles: &'a str
+pub skene_web::StreamPiece::Tail(alloc::string::String)
+impl<'a> core::fmt::Debug for skene_web::StreamPiece<'a>
+pub fn skene_web::StreamPiece<'a>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum skene_web::WebTokenValue
+pub skene_web::WebTokenValue::Color(skene_core::leaf::Definition<skene_core::values::color::Color, f32>)
+pub skene_web::WebTokenValue::Dimension(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>)
+pub skene_web::WebTokenValue::Number(skene_core::leaf::Definition<f32, f32>)
+impl core::clone::Clone for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::clone(&self) -> skene_web::WebTokenValue
+impl core::cmp::PartialEq for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::eq(&self, &skene_web::WebTokenValue) -> bool
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<f32>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<f32, f32>) -> Self
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::values::color::Color, f32>) -> Self
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<f32>>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>) -> Self
+impl core::fmt::Debug for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_web::WebTokenValue
+pub struct skene_web::Declarations(_)
+impl skene_web::Declarations
+pub fn skene_web::Declarations::is_empty(&self) -> bool
+pub fn skene_web::Declarations::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
+pub fn skene_web::Declarations::new() -> Self
+pub const fn skene_web::Declarations::render_arrangement(skene_core::values::flex::Arrangement) -> &'static str
+pub fn skene_web::Declarations::render_color(skene_core::values::color::Color) -> alloc::string::String
+pub const fn skene_web::Declarations::render_cursor(skene_core::values::mouse_cursor::MouseCursor) -> &'static str
+pub fn skene_web::Declarations::render_dimension(skene_core::values::dimension::Dimension<f32>) -> alloc::string::String
+pub fn skene_web::Declarations::render_dimension_inset(skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<f32>>) -> alloc::string::String
+pub fn skene_web::Declarations::render_grid_line(skene_core::values::grid::Line<skene_core::values::grid::GridPlacement>) -> alloc::string::String
+pub const fn skene_web::Declarations::render_item_alignment(skene_core::values::flex::ItemAlignment) -> &'static str
+pub fn skene_web::Declarations::render_track(skene_core::values::grid::GridTrack<f32>) -> alloc::string::String
+pub fn skene_web::Declarations::render_tracks(&[skene_core::values::grid::GridTrack<f32>]) -> alloc::string::String
+pub fn skene_web::Declarations::set(self, &'static str, impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self
+impl core::clone::Clone for skene_web::Declarations
+pub fn skene_web::Declarations::clone(&self) -> skene_web::Declarations
+impl core::cmp::Eq for skene_web::Declarations
+impl core::cmp::PartialEq for skene_web::Declarations
+pub fn skene_web::Declarations::eq(&self, &skene_web::Declarations) -> bool
+impl core::default::Default for skene_web::Declarations
+pub fn skene_web::Declarations::default() -> skene_web::Declarations
+impl core::fmt::Debug for skene_web::Declarations
+pub fn skene_web::Declarations::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Declarations
+pub fn skene_web::Declarations::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_web::Declarations
+pub struct skene_web::Document
+pub skene_web::Document::bundle: core::option::Option<alloc::string::String>
+pub skene_web::Document::dev: bool
+pub skene_web::Document::language: core::option::Option<alloc::string::String>
+pub skene_web::Document::nonce: core::option::Option<alloc::string::String>
+impl skene_web::Document
+pub fn skene_web::Document::closing(&self, core::option::Option<&str>) -> alloc::string::String
+pub fn skene_web::Document::opening(&self, &str, &str) -> alloc::string::String
+impl core::clone::Clone for skene_web::Document
+pub fn skene_web::Document::clone(&self) -> skene_web::Document
+impl core::cmp::Eq for skene_web::Document
+impl core::cmp::PartialEq for skene_web::Document
+pub fn skene_web::Document::eq(&self, &skene_web::Document) -> bool
+impl core::default::Default for skene_web::Document
+pub fn skene_web::Document::default() -> skene_web::Document
+impl core::fmt::Debug for skene_web::Document
+pub fn skene_web::Document::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_web::Document
+pub struct skene_web::LazyRegion(_)
+impl core::clone::Clone for skene_web::LazyRegion
+pub fn skene_web::LazyRegion::clone(&self) -> skene_web::LazyRegion
+impl core::cmp::Eq for skene_web::LazyRegion
+impl core::cmp::PartialEq for skene_web::LazyRegion
+pub fn skene_web::LazyRegion::eq(&self, &skene_web::LazyRegion) -> bool
+impl core::fmt::Debug for skene_web::LazyRegion
+pub fn skene_web::LazyRegion::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for skene_web::LazyRegion
+pub struct skene_web::RenderHints
+pub skene_web::RenderHints::device_pixel_ratio: f32
+pub skene_web::RenderHints::reduced_motion: bool
+pub skene_web::RenderHints::scheme: skene_core::values::color::ColorScheme
+pub skene_web::RenderHints::viewport: skene_core::values::size::Size<f32>
+impl skene_web::RenderHints
+pub const skene_web::RenderHints::DEFAULT: Self
+pub const skene_web::RenderHints::REQUEST_HEADERS: [&'static str; 5]
+pub fn skene_web::RenderHints::from_headers<'a>(impl core::iter::traits::collect::IntoIterator<Item = (&'a str, &'a str)>) -> Self
+pub fn skene_web::RenderHints::response_headers() -> alloc::vec::Vec<(&'static str, alloc::string::String)>
+impl core::clone::Clone for skene_web::RenderHints
+pub fn skene_web::RenderHints::clone(&self) -> skene_web::RenderHints
+impl core::cmp::PartialEq for skene_web::RenderHints
+pub fn skene_web::RenderHints::eq(&self, &skene_web::RenderHints) -> bool
+impl core::default::Default for skene_web::RenderHints
+pub fn skene_web::RenderHints::default() -> Self
+impl core::fmt::Debug for skene_web::RenderHints
+pub fn skene_web::RenderHints::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_web::RenderHints
+impl core::marker::StructuralPartialEq for skene_web::RenderHints
+pub struct skene_web::Rendered
+impl skene_web::Rendered
+pub fn skene_web::Rendered::body(&self) -> &str
+pub fn skene_web::Rendered::head(&self) -> &str
+pub fn skene_web::Rendered::language(&self) -> core::option::Option<&str>
+pub fn skene_web::Rendered::page(&self) -> alloc::string::String
+pub fn skene_web::Rendered::state_script(&self) -> alloc::string::String
+pub fn skene_web::Rendered::styles(&self) -> &str
+impl core::fmt::Debug for skene_web::Rendered
+pub fn skene_web::Rendered::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_web::Web
+impl core::clone::Clone for skene_web::Web
+pub fn skene_web::Web::clone(&self) -> skene_web::Web
+impl core::cmp::Eq for skene_web::Web
+impl core::cmp::PartialEq for skene_web::Web
+pub fn skene_web::Web::eq(&self, &skene_web::Web) -> bool
+impl core::default::Default for skene_web::Web
+pub fn skene_web::Web::default() -> skene_web::Web
+impl core::fmt::Debug for skene_web::Web
+pub fn skene_web::Web::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_web::Web
+pub fn skene_web::Web::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_web::Web
+impl core::marker::StructuralPartialEq for skene_web::Web
+impl skene_common::painting::Painting for skene_web::Web
+pub fn skene_web::Web::available(&self) -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_web::Web::paint(&self, &u32, alloc::boxed::Box<skene_common::painting::Painter>)
+impl skene_core::platform::Platform for skene_web::Web
+pub type skene_web::Web::Scalar = f32
+pub type skene_web::Web::Sink = u32
+pub type skene_web::Web::StyleExt = skene_common::gui::ext::GuiExt
+pub type skene_web::Web::TokenValue = skene_web::WebTokenValue
+pub fn skene_web::Web::apply_layout(&self, &u32, &skene_core::props::StaticBoxStyle<Self>)
+pub fn skene_web::Web::attach(&self, &u32, &u32, core::option::Option<&u32>)
+pub fn skene_web::Web::bind_node(&self, &u32, skene_core::node::NodeId)
+pub fn skene_web::Web::blur(&self, &u32)
+pub fn skene_web::Web::cancel(&self, skene_core::platform::Timer)
+pub fn skene_web::Web::create_anchor(&self) -> u32
+pub fn skene_web::Web::create_box(&self, &skene_core::props::BoxProps<Self>) -> u32
+pub fn skene_web::Web::create_control(&self, &skene_core::control::ControlProps<Self>) -> u32
+pub fn skene_web::Web::create_overlay(&self, &skene_core::props::OverlayProps<Self>) -> u32
+pub fn skene_web::Web::create_run(&self, &skene_core::props::RunProps<Self>) -> u32
+pub fn skene_web::Web::create_scope(&self) -> u32
+pub fn skene_web::Web::define_root_tokens(&self, &skene_core::token::Definitions<skene_web::WebTokenValue>)
+pub fn skene_web::Web::define_tokens(&self, &u32, &skene_core::token::Definitions<skene_web::WebTokenValue>)
+pub fn skene_web::Web::destroy(&self, u32)
+pub fn skene_web::Web::detach(&self, &u32, &u32)
+pub fn skene_web::Web::focus(&self, &u32)
+pub fn skene_web::Web::hydration(&self) -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
+pub fn skene_web::Web::listen(&self, &u32, skene_core::props::EventKind)
+pub fn skene_web::Web::media(&self) -> skene_core::props::MediaSignals<f32>
+pub fn skene_web::Web::observe_size(&self, &u32, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<f32>)>)
+pub fn skene_web::Web::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::scene::Scene<Self>>>
+pub fn skene_web::Web::schedule(&self, core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
+pub fn skene_web::Web::set_checked(&self, &u32, bool)
+pub fn skene_web::Web::set_control_state(&self, &u32, &skene_core::control::ControlState)
+pub fn skene_web::Web::set_options(&self, &u32, &[(alloc::string::String, alloc::string::String)])
+pub fn skene_web::Web::set_overlay_open(&self, &u32, bool, core::option::Option<&u32>)
+pub fn skene_web::Web::set_scheme(&self, core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_web::Web::set_selection(&self, &u32, skene_core::values::text_selection::TextSelection)
+pub fn skene_web::Web::set_text(&self, &u32, &str)
+pub fn skene_web::Web::set_value(&self, &u32, &str)
+pub fn skene_web::Web::stored_scheme(&self) -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_web::Web::update_access(&self, &u32, &[skene_core::values::access::AccessProp])
+pub fn skene_web::Web::update_box(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::update_focus_order(&self, &u32, core::option::Option<skene_core::values::focus_order::FocusOrder>)
+pub fn skene_web::Web::update_run(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
+impl skene_web::WebMarkup for skene_web::Web
+pub fn skene_web::Web::create_element(&self, &'static str) -> u32
+pub fn skene_web::Web::set_attribute(&self, &u32, &str, &str)
+pub fn skene_web::Web::set_declarations(&self, &u32, &skene_web::Declarations)
+pub fn skene_web::Web::set_text(&self, &u32, &str)
+pub const skene_web::CONTROL_ATTRIBUTE: &str
+pub const skene_web::SCHEME_ATTRIBUTE: &str
+pub const skene_web::STATE_SCRIPT_ID: &str
+pub trait skene_web::WebMarkup: skene_core::platform::Platform
+pub fn skene_web::WebMarkup::create_element(&self, &'static str) -> Self::Sink
+pub fn skene_web::WebMarkup::set_attribute(&self, &Self::Sink, &str, &str)
+pub fn skene_web::WebMarkup::set_declarations(&self, &Self::Sink, &skene_web::Declarations)
+pub fn skene_web::WebMarkup::set_text(&self, &Self::Sink, &str)
+impl skene_web::WebMarkup for skene_web::Web
+pub fn skene_web::Web::create_element(&self, &'static str) -> u32
+pub fn skene_web::Web::set_attribute(&self, &u32, &str, &str)
+pub fn skene_web::Web::set_declarations(&self, &u32, &skene_web::Declarations)
+pub fn skene_web::Web::set_text(&self, &u32, &str)
+pub fn skene_web::add_head_element(&str, &[(&str, &str)]) -> skene_common::gui::head::HeadId
+pub fn skene_web::add_head_title(&str) -> skene_common::gui::head::HeadId
+pub fn skene_web::adopt_next() -> core::option::Option<alloc::string::String>
+pub fn skene_web::adopt_tagged(&str) -> core::option::Option<alloc::string::String>
+pub fn skene_web::current_path() -> alloc::string::String
+pub fn skene_web::document_closing(&str) -> alloc::string::String
+pub fn skene_web::document_opening(core::option::Option<&str>, &str, &str) -> alloc::string::String
+pub fn skene_web::drive(impl core::future::future::Future<Output = ()> + 'static)
+pub fn skene_web::enable_view_transitions()
+pub fn skene_web::enter_lazy() -> skene_web::LazyRegion
+pub fn skene_web::install_executor()
+pub fn skene_web::install_logging()
+pub const fn skene_web::is_server() -> bool
+pub fn skene_web::record_static_routes(alloc::vec::Vec<alloc::string::String>)
+pub fn skene_web::recorded_static_routes() -> core::option::Option<alloc::vec::Vec<alloc::string::String>>
+pub fn skene_web::register_boundary(skene_core::node::NodeId, alloc::boxed::Box<dyn core::ops::function::Fn() -> bool>)
+pub fn skene_web::register_source(skene_web::HydrationSource)
+pub fn skene_web::register_tagged_source(&str, skene_web::HydrationSource)
+pub fn skene_web::remove_head_entry(skene_common::gui::head::HeadId)
+pub fn skene_web::render_to_stream_with<V, F>(F, impl core::ops::function::FnMut(skene_web::StreamPiece<'_>)) where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
+pub fn skene_web::render_to_string<V, F>(F) -> skene_web::Rendered where F: core::ops::function::FnOnce() -> V + 'static, V: skene_core::view::IntoView<skene_web::Web>
+pub fn skene_web::set_client_bundle(core::option::Option<&str>)
+pub fn skene_web::set_dev_loop(bool)
+pub fn skene_web::set_document_language(&str)
+pub fn skene_web::set_head_title(skene_common::gui::head::HeadId, &str)
+pub fn skene_web::set_render_deadline(core::time::Duration)
+pub fn skene_web::set_render_hints(skene_web::RenderHints)
+pub fn skene_web::set_request_path(&str)
+pub fn skene_web::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_web::set_script_nonce(core::option::Option<&str>)
+pub fn skene_web::sleep(core::time::Duration) -> impl core::future::future::Future<Output = ()>
+pub const fn skene_web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_web::within_lazy<R>(&skene_web::LazyRegion, impl core::ops::function::FnOnce() -> R) -> R
+pub type skene_web::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>

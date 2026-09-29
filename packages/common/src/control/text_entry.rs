@@ -11,7 +11,7 @@ use skene_core::{
   SelectionHandler,
   TextSelection,
 };
-use skene_reactive::{Effect, Get, Set, Signal};
+use skene_reactive::{Effect, Get, Set, Signal, untrack};
 
 use super::{Behavior, ControlHandle};
 use crate::realize::with_sink;
@@ -211,6 +211,20 @@ impl<P: Platform> Behavior<P> for TextEntry {
   fn on_selection_change(&self, selection: TextSelection, _control: &ControlHandle<P>) {
     if let Some(action) = &self.on_selection_change {
       action(selection);
+    }
+  }
+
+  fn reconcile(&self, control: &ControlHandle<P>) {
+    if let Some(value) = &self.value {
+      let value = untrack(|| value());
+
+      control.with_sink(|sink| P::default().set_value(sink, &value));
+    }
+
+    if let Some(selection) = &self.selection {
+      let selection = untrack(|| selection());
+
+      control.with_sink(|sink| P::default().set_selection(sink, selection));
     }
   }
 }

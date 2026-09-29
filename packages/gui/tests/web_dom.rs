@@ -692,6 +692,42 @@ fn change_handler_receives_the_committed_value() {
   assert_eq!(&*seen.borrow(), "committed");
 }
 
+/// A value written into a focused entry keeps the caret where the browser would move
+/// it to the end: an uppercasing handler leaves it after the character typed.
+#[wasm_bindgen_test]
+fn a_transformed_value_keeps_the_caret() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new("ac".to_owned());
+
+  let _ = mount(move || {
+    RawTextField::new(
+      TextEntry::new()
+        .derive_value(move || value.get())
+        .handle_change(move |text| value.set(text.to_uppercase())),
+    )
+    .build()
+  });
+
+  let input = only_child(&root)
+    .dyn_into::<HtmlInputElement>()
+    .expect("an input");
+
+  let _ = input.focus();
+
+  input.set_value("abc");
+
+  let _ = input.set_selection_range(2, 2);
+
+  dispatch(&input, "input");
+  web::end_turn();
+
+  assert_eq!(input.value(), "ABC");
+  assert_eq!(
+    (input.selection_start(), input.selection_end()),
+    (Ok(Some(2)), Ok(Some(2)))
+  );
+}
+
 /// A checkbox bound to a signal reflects it on its native input and writes toggles
 /// back through a real change event.
 #[wasm_bindgen_test]

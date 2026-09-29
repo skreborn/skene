@@ -797,6 +797,7 @@ pub fn skene_common::Activate::on_pointer(&self, skene_common::PointerPhase, &sk
 pub fn skene_common::Activate::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Activate::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Activate::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Anchor(_)
@@ -1316,6 +1317,7 @@ pub fn skene_common::ListItem::on_pointer(&self, skene_common::PointerPhase, &sk
 pub fn skene_common::ListItem::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::ListItem::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::ListItem::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Listbox
@@ -1349,6 +1351,7 @@ pub fn skene_common::Listbox::on_pointer(&self, skene_common::PointerPhase, &ske
 pub fn skene_common::Listbox::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Listbox::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Listbox::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::ListboxGroup
@@ -1396,6 +1399,7 @@ pub fn skene_common::Menu::on_pointer(&self, skene_common::PointerPhase, &skene_
 pub fn skene_common::Menu::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Menu::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Menu::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::MenuGroup
@@ -1449,6 +1453,7 @@ pub fn skene_common::MenuOption::on_pointer(&self, skene_common::PointerPhase, &
 pub fn skene_common::MenuOption::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::MenuOption::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::MenuOption::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::NativePicker
@@ -1476,6 +1481,7 @@ pub fn skene_common::NativePicker::on_pointer(&self, skene_common::PointerPhase,
 pub fn skene_common::NativePicker::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::NativePicker::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Overlay<P: skene_core::platform::Platform, C>
@@ -1608,6 +1614,7 @@ pub fn skene_common::Popup::on_pointer(&self, skene_common::PointerPhase, &skene
 pub fn skene_common::Popup::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Popup::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Popup::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RadioMember
@@ -1633,6 +1640,7 @@ pub fn skene_common::RadioMember::on_pointer(&self, skene_common::PointerPhase, 
 pub fn skene_common::RadioMember::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::RadioMember::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::RadioMember::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Range
@@ -1668,6 +1676,7 @@ pub fn skene_common::Range::on_pointer(&self, skene_common::PointerPhase, &skene
 pub fn skene_common::Range::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Range::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RawPicker<P: skene_core::platform::Platform, F>
@@ -1780,6 +1789,7 @@ pub fn skene_common::Roving::on_pointer(&self, skene_common::PointerPhase, &sken
 pub fn skene_common::Roving::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Roving::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Roving::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RovingGroup
@@ -1980,6 +1990,7 @@ pub fn skene_common::TextEntry::on_pointer(&self, skene_common::PointerPhase, &s
 pub fn skene_common::TextEntry::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::TextEntry::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::TextEntry::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Theme<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>, C>
@@ -2022,6 +2033,7 @@ pub fn skene_common::Toggle::on_pointer(&self, skene_common::PointerPhase, &sken
 pub fn skene_common::Toggle::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Toggle::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Tooltip<P: skene_core::platform::Platform, C>
@@ -2102,6 +2114,7 @@ pub fn skene_common::Behavior::on_pointer(&self, skene_common::PointerPhase, &sk
 pub fn skene_common::Behavior::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Behavior::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Behavior::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Activate
@@ -2121,6 +2134,7 @@ pub fn skene_common::Activate::on_pointer(&self, skene_common::PointerPhase, &sk
 pub fn skene_common::Activate::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Activate::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Activate::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::ListItem
@@ -2140,6 +2154,7 @@ pub fn skene_common::ListItem::on_pointer(&self, skene_common::PointerPhase, &sk
 pub fn skene_common::ListItem::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::ListItem::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::ListItem::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Listbox
@@ -2159,6 +2174,7 @@ pub fn skene_common::Listbox::on_pointer(&self, skene_common::PointerPhase, &ske
 pub fn skene_common::Listbox::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Listbox::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Listbox::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Menu
@@ -2178,6 +2194,7 @@ pub fn skene_common::Menu::on_pointer(&self, skene_common::PointerPhase, &skene_
 pub fn skene_common::Menu::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Menu::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Menu::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::MenuOption
@@ -2197,6 +2214,7 @@ pub fn skene_common::MenuOption::on_pointer(&self, skene_common::PointerPhase, &
 pub fn skene_common::MenuOption::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::MenuOption::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::MenuOption::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::NativePicker
@@ -2216,6 +2234,7 @@ pub fn skene_common::NativePicker::on_pointer(&self, skene_common::PointerPhase,
 pub fn skene_common::NativePicker::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::NativePicker::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Popup
@@ -2235,6 +2254,7 @@ pub fn skene_common::Popup::on_pointer(&self, skene_common::PointerPhase, &skene
 pub fn skene_common::Popup::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Popup::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Popup::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::RadioMember
@@ -2254,6 +2274,7 @@ pub fn skene_common::RadioMember::on_pointer(&self, skene_common::PointerPhase, 
 pub fn skene_common::RadioMember::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::RadioMember::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::RadioMember::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Range
@@ -2273,6 +2294,7 @@ pub fn skene_common::Range::on_pointer(&self, skene_common::PointerPhase, &skene
 pub fn skene_common::Range::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Range::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Roving
@@ -2292,6 +2314,7 @@ pub fn skene_common::Roving::on_pointer(&self, skene_common::PointerPhase, &sken
 pub fn skene_common::Roving::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Roving::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Roving::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::TextEntry
@@ -2311,6 +2334,7 @@ pub fn skene_common::TextEntry::on_pointer(&self, skene_common::PointerPhase, &s
 pub fn skene_common::TextEntry::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::TextEntry::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::TextEntry::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Toggle
@@ -2330,6 +2354,7 @@ pub fn skene_common::Toggle::on_pointer(&self, skene_common::PointerPhase, &sken
 pub fn skene_common::Toggle::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::Toggle::reconcile(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::role(&self) -> core::option::Option<skene_core::values::role::Role>
 pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub trait skene_common::ControlChild<P: skene_core::platform::Platform>: 'static

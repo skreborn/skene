@@ -363,7 +363,8 @@
   type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
   options' labels supply (`Label::set_name`), and the face's verdict on a typed key is
   the `Popup` behavior's through `handle_typed`. A control is **controlled** on every facade: it
-  reports, and the bound signal is the truth. A text entry's selection is controlled
+  reports, and the bound signal is the truth, the platform brought back to it after
+  every report, so a change its handler rejects is undone. A text entry's selection is controlled
   beside its value: `TextSelection` is a `start` and an `end` in grapheme clusters of
   the value, the end where the caret is and before the start when made backward,
   `derive_selection` places it, `handle_selection_change` hears every move of the

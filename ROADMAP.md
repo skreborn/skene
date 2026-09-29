@@ -72,8 +72,8 @@ left half-done in a code comment.
     seventeenth `EventKind` overflows both platforms' `u16`; a gesture arena before
     touch lands, its exception to "a view that handles an interaction owns it" written
     down.
-    - Controls: one `Controlled<T>` reconciles the platform with the signal after every
-    report, so "the bound signal is the truth" holds on every platform; one
+    - Controls: one `Controlled<T>` holds a behavior's value and the handler it asks, in
+    place of each behavior's own copy of that plumbing; one
     `Collection<Policy>` behavior replaces the roving, listbox and menu conventions and
     skips disabled members in one place; an open role vocabulary on AccessKit's schema,
     with a native-element hint, replaces the closed `Role`, `AccessProp` and

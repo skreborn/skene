@@ -79,6 +79,7 @@ use skene_core::{
   StaticLeaf,
   TextSelection,
   Timer,
+  Toggle,
   Visibility,
   dispatch_click,
   dispatch_context_menu,
@@ -240,7 +241,10 @@ impl Platform for Headless {
   }
 
   fn set_control_state(&self, sink: &Handle, state: &ControlState) {
-    with_record(*sink, |record| record.control_state = *state);
+    with_record(*sink, |record| {
+      record.control_state = *state;
+      record.checked = state.checked == Toggle::On;
+    });
   }
 
   fn create_overlay(&self, props: &OverlayProps<Self>) -> Handle {

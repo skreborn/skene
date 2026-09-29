@@ -201,6 +201,12 @@ pub trait Behavior<P: Platform>: 'static {
   #[inline(always)]
   fn on_toggle(&self, _checked: bool, _control: &ControlHandle<P>) {}
 
+  /// Writes what the behavior holds back to the platform after a report of a change
+  /// the platform made itself, so the platform shows it whatever the report's handler
+  /// did; the control's state and accessibility are re-read beside it.
+  #[inline(always)]
+  fn reconcile(&self, _control: &ControlHandle<P>) {}
+
   /// What the control reports to assistive technology, beside its role.
   #[inline(always)]
   fn access(&self) -> Vec<AccessProp> {
@@ -1075,6 +1081,17 @@ impl<P: Platform, B: Behavior<P>> Clone for Actor<P, B> {
 }
 
 impl<P: Platform, B: Behavior<P>> Actor<P, B> {
+  /// Runs `report`, the behavior hearing a change the platform made itself, unless the
+  /// control is disabled, then reconciles the platform with what the behavior holds.
+  fn report(&self, report: impl FnOnce(&B, &ControlHandle<P>)) {
+    if !(self.disabled)() {
+      report(&self.behavior, &self.handle);
+    }
+
+    self.handle.refresh();
+    self.behavior.reconcile(&self.handle);
+  }
+
   /// One handler for an event carrying `E`: a disabled control neither acts nor lets the
   /// observers see it and gives `when_disabled` as its verdict, else the
   /// behavior acts through `act` when `acts`, the observers see the event after, and
@@ -1203,22 +1220,25 @@ fn register<P: Platform, B: Behavior<P>>(
   let pointer_up = pointer(PointerPhase::Up, EventKind::PointerUp, pointer_up);
   let pointer_move = pointer(PointerPhase::Move, EventKind::PointerMove, pointer_move);
   let change = acts(EventKind::Change).then(|| {
-    let behavior = Rc::clone(behavior);
-    let handle = Rc::clone(handle);
+    let actor = actor.clone();
 
-    Rc::new(move |value: &str| behavior.on_change(value, &handle))
+    Rc::new(move |value: &str| {
+      actor.report(|behavior, handle| behavior.on_change(value, handle));
+    })
   });
   let selection_change = acts(EventKind::SelectionChange).then(|| {
-    let behavior = Rc::clone(behavior);
-    let handle = Rc::clone(handle);
+    let actor = actor.clone();
 
-    Rc::new(move |selection: TextSelection| behavior.on_selection_change(selection, &handle))
+    Rc::new(move |selection: TextSelection| {
+      actor.report(|behavior, handle| behavior.on_selection_change(selection, handle));
+    })
   });
   let toggle = acts(EventKind::Toggle).then(|| {
-    let behavior = Rc::clone(behavior);
-    let handle = Rc::clone(handle);
+    let actor = actor.clone();
 
-    Rc::new(move |checked: bool| behavior.on_toggle(checked, &handle))
+    Rc::new(move |checked: bool| {
+      actor.report(|behavior, handle| behavior.on_toggle(checked, handle));
+    })
   });
   let acting_blur = acts(EventKind::Blur).then(|| {
     let behavior = Rc::clone(behavior);

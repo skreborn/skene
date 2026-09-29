@@ -74,6 +74,7 @@ use skene_headless::{
   trigger_pointer_up,
   trigger_selection_change,
   trigger_size,
+  trigger_toggle,
   value,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
@@ -336,6 +337,69 @@ fn a_press_centers_the_thumb_under_the_pointer() {
   let _ = trigger_pointer_down(node, &press_at(10.));
 
   assert_value(bound, 0.);
+
+  owner.dispose();
+}
+
+/// A text entry is controlled: an edit its handler rejects leaves the platform showing
+/// the bound value, one it accepts stands, and a disabled entry hears none.
+#[test]
+fn a_rejected_edit_leaves_the_platform_showing_the_bound_value() {
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new("12".to_owned());
+  let disabled = Signal::new(false);
+  let node = owner.enter(|| {
+    RawTextField::new(
+      TextEntry::new()
+        .derive_value(move || bound.get())
+        .handle_change(move |value| {
+          if value.chars().all(|character| character.is_ascii_digit()) {
+            bound.set(value.to_owned());
+          }
+        }),
+    )
+    .derive_disabled(move || disabled.get())
+    .build()
+  });
+
+  trigger_change(node, "12a");
+
+  assert_eq!(bound.get(), "12");
+  assert_eq!(
+    value(node).as_deref(),
+    Some("12"),
+    "the rejected edit is undone"
+  );
+
+  trigger_change(node, "123");
+
+  assert_eq!(bound.get(), "123");
+  assert_eq!(value(node).as_deref(), Some("123"));
+
+  disabled.set(true);
+  trigger_change(node, "1234");
+
+  assert_eq!(bound.get(), "123", "a disabled entry hears no edit");
+  assert_eq!(value(node).as_deref(), Some("123"));
+
+  owner.dispose();
+}
+
+/// A checkbox is controlled: a platform toggle its handler rejects is undone on the
+/// platform.
+#[test]
+fn a_rejected_toggle_is_undone_on_the_platform() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner
+    .enter(|| RawCheckbox::new(Toggle::new().set_checked(false).handle_toggle(|_| {})).build());
+
+  trigger_toggle(node, true);
+
+  assert_eq!(skene_headless::checked(node), Some(false));
 
   owner.dispose();
 }

@@ -303,7 +303,8 @@ pub trait Platform: Copy + Default + 'static {
   #[inline(always)]
   fn set_options(&self, _sink: &Self::Sink, _options: &[PickerOption]) {}
 
-  /// Writes a control's textual value.
+  /// Writes a control's textual value; a focused entry keeps its caret, clamped into
+  /// the value.
   fn set_value(&self, sink: &Self::Sink, value: &str);
 
   /// Writes a text entry's selection.

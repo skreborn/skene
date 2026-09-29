@@ -352,7 +352,10 @@ impl Saved {
     }
 
     for (index, left, top) in self.scrolls {
-      #[expect(clippy::cast_possible_truncation)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a saved scroll offset is the whole number of pixels an element reported"
+      )]
       if let Some(element) = elements.get(index) {
         element.set_scroll_left(left as i32);
         element.set_scroll_top(top as i32);
@@ -905,7 +908,10 @@ impl Dom {
           continue;
         };
 
-        #[expect(clippy::cast_precision_loss)]
+        #[expect(
+          clippy::cast_precision_loss,
+          reason = "an element's size in CSS pixels is precise enough in f32"
+        )]
         let size = Size {
           width: target.client_width() as f32,
           height: target.client_height() as f32,

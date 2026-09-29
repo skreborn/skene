@@ -309,7 +309,10 @@ impl<P: Platform> LazyList<P> {
         }
         (ItemExtent::Fixed(length) | ItemExtent::Estimated(length), _) => {
           let window = item_window(offset, viewport, length, count, overscan);
-          #[expect(clippy::cast_precision_loss)]
+          #[expect(
+            clippy::cast_precision_loss,
+            reason = "an item count stays far below the integers f32 holds exactly"
+          )]
           let extent_of = |items: usize| items as f32 * length;
 
           Slice {

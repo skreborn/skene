@@ -22,18 +22,16 @@ left half-done in a code comment.
 
 1. **The rest of the house rules in the gate.** All-or-none field and variant docs
     (28 types document some of their fields, about 210 short), the clippy lints worth
-    turning on (`use_self`, `missing_const_for_fn`, `allow_attributes_without_reason`,
-    `too_long_first_doc_paragraph`, one of `unreachable_pub` and `redundant_pub_crate`,
-    `missing_debug_implementations`, `rustdoc::missing_crate_level_docs`), `trigger_`
-    naming on the test doubles, and a `cargo public-api` snapshot so a change to the
-    surface shows in review. The workspace declares no license, so `cargo deny check
-    licenses` has nothing to hold the dependencies to. Neither CI workflow, the gate on
-    every pull request nor the weekly RustSec advisories, has run yet.
-    - With them: the justifications written as comments above 80 of the 81 `#[expect]`s
-    move into `reason = "…"`; one visibility style wins out of the pair; `Memo`,
-    `Resource`, `Store` and `Selector` get the `Debug` that `Signal` has; `display`
-    joins the banned words once `RunDisplay` is renamed, checked over the
-    `cargo public-api` output.
+    turning on (`use_self`, `missing_const_for_fn`, `too_long_first_doc_paragraph`, one
+    of `unreachable_pub` and `redundant_pub_crate`, `missing_debug_implementations`,
+    `rustdoc::missing_crate_level_docs`), `trigger_` naming on the test doubles, and a
+    `cargo public-api` snapshot so a change to the surface shows in review. The
+    workspace declares no license, so `cargo deny check licenses` has nothing to hold
+    the dependencies to. Neither CI workflow, the gate on every pull request nor the
+    weekly RustSec advisories, has run yet.
+    - With them: one visibility style wins out of the pair; `Memo`, `Resource`, `Store`
+    and `Selector` get the `Debug` that `Signal` has; `display` joins the banned words
+    once `RunDisplay` is renamed, checked over the `cargo public-api` output.
 2. **One owner for style and interaction semantics.** The web compiler and core's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the

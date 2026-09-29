@@ -46,7 +46,10 @@ thread_local! {
 fn window_size() -> Size<f32> {
   let window = web_sys::window().expect("a window");
 
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a viewport length in CSS pixels is precise enough in f32"
+  )]
   let length = |value: Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue>| {
     value.ok().and_then(|value| value.as_f64()).unwrap_or(0.) as f32
   };

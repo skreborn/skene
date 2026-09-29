@@ -218,7 +218,11 @@ pub(super) fn stamp(element: &Element, sink: u32) {
 
 /// The sink stamped on `element`, if the scene knows it.
 pub(super) fn sink_of(element: &Element) -> Option<u32> {
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a sink is stamped as a whole, non-negative u32"
+  )]
   js_sys::Reflect::get(element, &JsValue::from_str(SINK_PROPERTY))
     .ok()
     .and_then(|value| value.as_f64())
@@ -391,7 +395,10 @@ fn open_popups() -> Vec<NodeId> {
 pub(super) fn localized(event: &PointerEvent, element: &Element) -> PointerEvent {
   let rect = element.get_bounding_client_rect();
 
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "an element's position in CSS pixels is precise enough in f32"
+  )]
   PointerEvent {
     local_x: event.x - rect.left() as f32,
     local_y: event.y - rect.top() as f32,
@@ -401,7 +408,10 @@ pub(super) fn localized(event: &PointerEvent, element: &Element) -> PointerEvent
 
 /// The portable payload of a DOM pointer event, local to `element`.
 fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a pointer's position in CSS pixels is precise enough in f32"
+  )]
   let (x, y) = (pointer.client_x() as f32, pointer.client_y() as f32);
   let event = PointerEvent {
     x,
@@ -555,7 +565,10 @@ fn on_context_menu(event: &web_sys::Event) {
   else {
     return;
   };
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a pointer's position in CSS pixels is precise enough in f32"
+  )]
   let (x, y) = (mouse.client_x() as f32, mouse.client_y() as f32);
   let payload = localized(
     &PointerEvent {
@@ -584,7 +597,10 @@ fn on_scroll(event: &web_sys::Event) {
     return;
   };
 
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a scroll offset in CSS pixels is precise enough in f32"
+  )]
   notify_scroll::<Web>(
     node,
     &ScrollEvent {

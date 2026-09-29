@@ -333,8 +333,10 @@ enum Edit {
 /// to the value's ends past the first and last rows, and `Home`/`End` go to the ends
 /// of the row, or of the value under `Ctrl`. An entry that is not `editable` takes no
 /// edit to its value.
-// A match over the keys; length is the key count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "a match over the keys; length is the key count, not complexity"
+)]
 fn apply(event: &KeyEvent, field: &mut Field, area: Area, editable: bool) -> Option<Edit> {
   let count = field.count();
   let ctrl = event.modifiers.ctrl;

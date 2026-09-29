@@ -166,8 +166,10 @@ fn construct(path: &TokenStream, fields: &Fields, body: &TokenStream) -> TokenSt
 }
 
 /// Expands `#[derive(Snapshot)]`.
-// One expansion start to end; length is the generated surface, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one expansion start to end; length is the generated surface, not complexity"
+)]
 pub fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
   let reactive = reactive();

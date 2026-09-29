@@ -46,7 +46,10 @@ fn label(item: NodeId) -> String {
 }
 
 /// The height `items` items take up.
-#[expect(clippy::cast_precision_loss)]
+#[expect(
+  clippy::cast_precision_loss,
+  reason = "the tests' item counts stay far below the integers f32 holds exactly"
+)]
 fn extent(items: usize) -> f32 {
   items as f32 * ITEM_HEIGHT
 }

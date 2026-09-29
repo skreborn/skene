@@ -130,7 +130,10 @@ pub(crate) fn state_script(state: &str) -> String {
 }
 
 /// Appends `text` with the characters HTML text content reserves escaped.
-#[cfg_attr(skene_leaf = "host", expect(dead_code))]
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(dead_code, reason = "the server leaf alone serializes text")
+)]
 pub(crate) fn escape_text(text: &str, out: &mut String) {
   for character in text.chars() {
     match character {

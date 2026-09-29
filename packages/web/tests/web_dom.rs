@@ -615,9 +615,15 @@ fn media_reports_the_window() {
   assert!((f64::from(media.viewport.get().width) - width).abs() < f64::EPSILON);
   assert!((f64::from(media.viewport.get().height) - height).abs() < f64::EPSILON);
 
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a viewport width is precise enough in f32"
+  )]
   let below = (width - 1.) as f32;
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a viewport width is precise enough in f32"
+  )]
   let above = (width + 1.) as f32;
 
   assert!(skene_web::watch_media(&Media::MinWidth(below)).get());

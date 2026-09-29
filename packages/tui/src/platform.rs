@@ -226,7 +226,10 @@ impl Platform for Tui {
       if let Some(Kind::Overlay { position: held, .. }) =
         store.record_mut(*sink).map(|record| &mut record.kind)
       {
-        #[expect(clippy::cast_possible_truncation)]
+        #[expect(
+          clippy::cast_possible_truncation,
+          reason = "a pointer's cell lies within the terminal, far inside i64"
+        )]
         let cell = position.map(|point| (point.x.floor() as i64, point.y.floor() as i64));
 
         *held = cell;
@@ -383,7 +386,10 @@ impl Platform for Tui {
   fn localize_pointer(&self, sink: &Handle, event: &PointerEvent) -> PointerEvent {
     let (x, y) = with_store(|store| store.screen_origin(*sink));
 
-    #[expect(clippy::cast_precision_loss)]
+    #[expect(
+      clippy::cast_precision_loss,
+      reason = "a screen origin in cells stays far below the integers f32 holds exactly"
+    )]
     PointerEvent {
       local_x: event.x - x as f32,
       local_y: event.y - y as f32,

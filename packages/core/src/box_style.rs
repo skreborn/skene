@@ -432,7 +432,10 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
   /// The static style a platform receives, and the derived leaves lifted out of it: each
   /// slot's index is its position in the list, and its property's field holds
   /// [`PlatformLeaf::Slot`](super::PlatformLeaf::Slot) where the leaf was.
-  #[expect(clippy::type_complexity)]
+  #[expect(
+    clippy::type_complexity,
+    reason = "the style model's own types, plainer spelled out than behind an alias"
+  )]
   #[inline(always)]
   pub fn split(self) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
     self.split_after(0)
@@ -440,7 +443,10 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension>
 
   /// [`split`](Self::split), for a node already holding `taken` slots: each slot's
   /// index is `taken` plus its position in the list.
-  #[expect(clippy::type_complexity)]
+  #[expect(
+    clippy::type_complexity,
+    reason = "the style model's own types, plainer spelled out than behind an alias"
+  )]
   pub fn split_after(mut self, taken: usize) -> (BoxStyle<N, Static<C>, X>, Vec<BoxSlot<N, X>>) {
     let mut target = BoxStyle::default();
     let mut slots = Vec::new();

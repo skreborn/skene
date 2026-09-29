@@ -49,9 +49,16 @@ pub(super) struct CanvasSize {
 impl CanvasSize {
   /// `css` in device pixels at the window's device pixel ratio.
   fn at_ratio(css: Size<f32>) -> Self {
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a device pixel ratio is precise enough in f32"
+    )]
     let ratio = web_sys::window().map_or(1., |window| window.device_pixel_ratio()) as f32;
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "a box's size in device pixels is non-negative and far below a canvas's limit"
+    )]
     let device = (
       (css.width * ratio).round() as u16,
       (css.height * ratio).round() as u16,
@@ -88,7 +95,10 @@ impl Pixels {
             .parent_element()
             .and_then(|parent| events::sink_of(&parent))?;
           let rect = entry.content_rect();
-          #[expect(clippy::cast_possible_truncation)]
+          #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a box's size in CSS pixels is precise enough in f32"
+          )]
           let css = Size::new(rect.width() as f32, rect.height() as f32);
           let size = device.then(|| device_size(&entry)).flatten().map_or_else(
             || CanvasSize::at_ratio(css),
@@ -158,7 +168,11 @@ fn device_size(entry: &ResizeObserverEntry) -> Option<(u16, u16)> {
     .dyn_into()
     .ok()?;
 
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a device-pixel size is non-negative and far below a canvas's limit"
+  )]
   Some((
     size.inline_size().round() as u16,
     size.block_size().round() as u16,
@@ -251,7 +265,10 @@ impl Dom {
     let _ = html.append_child(&element);
 
     let rect = element.get_bounding_client_rect();
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a box's size in CSS pixels is precise enough in f32"
+    )]
     let css = Size::new(rect.width() as f32, rect.height() as f32);
 
     node.canvas = Some(Box::new(PaintedCanvas {

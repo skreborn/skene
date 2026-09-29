@@ -121,7 +121,10 @@ impl Declarations {
   /// `10.000001`.
   #[must_use]
   fn render_fraction(value: f32) -> String {
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a fraction's percentage is precise enough in f32"
+    )]
     let percent = (f64::from(value) * 100.) as f32;
 
     format!("{percent}%")

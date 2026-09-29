@@ -122,7 +122,11 @@ fn levels(values: &[f32]) -> Vec<usize> {
         return 0;
       }
 
-      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a value within the range makes a level in 0..=7"
+      )]
       let level = ((value - least) / range * 7.).round() as usize;
 
       level.min(7)

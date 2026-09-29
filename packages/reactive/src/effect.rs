@@ -104,7 +104,10 @@ where
   /// Runs `body` immediately and re-runs it whenever a signal it read changes. `body`
   /// receives its previous return value, or `None` on the first run. The effect lives
   /// until the current [`Owner`](crate::Owner) is disposed.
-  #[expect(clippy::new_ret_no_self)]
+  #[expect(
+    clippy::new_ret_no_self,
+    reason = "the effect lives in the runtime, and `new` hands back the handle controlling it"
+  )]
   #[cfg_attr(debug_assertions, track_caller)]
   pub fn new(body: F) -> EffectHandle {
     Self::create(body, 0)

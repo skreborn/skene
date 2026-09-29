@@ -444,7 +444,10 @@ pub fn render_to_caret(width: u16, height: u16) -> Option<(u16, u16)> {
 /// The painted frame's colors at `width` x `height`: each cell's foreground and
 /// background, row-major, for a headless test asserting paint.
 #[must_use]
-#[expect(clippy::type_complexity)]
+#[expect(
+  clippy::type_complexity,
+  reason = "a cell's two colors, plainer spelled out than behind an alias"
+)]
 pub fn render_to_colors(
   width: u16,
   height: u16,

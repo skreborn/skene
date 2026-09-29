@@ -436,7 +436,11 @@ pub fn paint(node: NodeId, size: Size<f32>) -> Option<Vec<u8>> {
 
   let painter =
     handle(node).and_then(|handle| with_record(handle, |record| record.painter.clone()))??;
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a test canvas's size is a small, non-negative number of pixels"
+  )]
   let mut canvas = Canvas::new(size.width as u16, size.height as u16);
 
   painter(&mut canvas, size);

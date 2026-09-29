@@ -608,7 +608,10 @@ async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   let init = web_sys::PointerEventInit::new();
 
   init.set_bubbles(true);
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a coordinate inside the test page fits an i32"
+  )]
   init.set_client_x((slider.get_bounding_client_rect().left() + 150.).round() as i32);
   init.set_button(0);
 

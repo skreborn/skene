@@ -26,7 +26,10 @@ struct Rule {
   count: u32,
   #[cfg_attr(
     all(not(skene_leaf = "host"), not(skene_leaf = "server")),
-    expect(dead_code)
+    expect(
+      dead_code,
+      reason = "the server orders its rules by it, where the browser inserts each as it comes"
+    )
   )]
   order: u64,
 }

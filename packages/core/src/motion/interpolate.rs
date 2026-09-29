@@ -267,7 +267,10 @@ impl<V: Interpolate> Tween<V> {
       return 1.;
     }
 
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "progress lies in 0..=1, which f32 holds closely enough"
+    )]
     let progress = (played / f64::from(self.duration)).min(1.) as f32;
 
     progress
@@ -367,7 +370,10 @@ mod tests {
 
   /// A tween waits out its delay, samples its curve, and reports when it is done.
   #[test]
-  #[expect(clippy::float_cmp)]
+  #[expect(
+    clippy::float_cmp,
+    reason = "a linear tween's samples at these instants are exact"
+  )]
   fn tweens_sample_their_transition() {
     let transition = Transition::<NoProperty>::new(Property::Width, 1.)
       .set_delay(0.5)

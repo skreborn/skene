@@ -240,9 +240,16 @@ impl<S> Animation<S> {
       return self.end_offset();
     }
 
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "the cycles played are non-negative here and count far below u64::MAX"
+    )]
     let iteration = cycles.floor() as u64;
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a cycle's fraction lies in 0..1, which f32 holds closely enough"
+    )]
     let local = cycles.fract() as f32;
     let reversed = self.alternate && iteration % 2 == 1;
     let directed = if reversed { 1. - local } else { local };
@@ -320,7 +327,10 @@ mod tests {
   /// An animation's offset runs from its first frame to its last, alternates when
   /// asked, and rests at the end of its final iteration.
   #[test]
-  #[expect(clippy::float_cmp)]
+  #[expect(
+    clippy::float_cmp,
+    reason = "a linear animation's offsets at these instants are exact"
+  )]
   fn offsets_follow_iterations_and_alternation() {
     let animation = Animation::new(1., [(0., ()), (100., ())])
       .set_easing(Easing::Linear)

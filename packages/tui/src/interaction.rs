@@ -609,7 +609,11 @@ impl Store {
     };
 
     match self.taffy.layout(taffy) {
-      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a scroll extent is rounded and clamped non-negative, a cell count within u32"
+      )]
       Ok(layout) => (
         layout.scroll_width().round().max(0.) as u32,
         layout.scroll_height().round().max(0.) as u32,
@@ -707,7 +711,8 @@ impl Store {
   #[expect(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "a track's cells stay far below the integers f32 holds exactly, and the offset is rounded from a clamped, non-negative position"
   )]
   fn thumb_offsets(
     &self,
@@ -992,7 +997,10 @@ fn pointer_event(
 ) -> PointerEvent {
   let (within_x, within_y) = store(|store| store.pointer_within);
 
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a cell offset stays far below the integers f32 holds exactly"
+  )]
   PointerEvent {
     x: f32::from(x) + within_x,
     y: f32::from(y) + within_y,
@@ -1050,8 +1058,10 @@ pub(crate) fn pointer_press(x: u16, y: u16, button: PointerButton, modifiers: Mo
 }
 
 /// The press of [`pointer_press`], before its report.
-// One press has these stages; length is the stage count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one press has these stages; length is the stage count, not complexity"
+)]
 fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   store(|store| store.set_focus_visible(false));
 
@@ -1229,7 +1239,10 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
 /// The terminal's own response to a press the handlers let stand: the caret placed,
 /// a selection anchored or extended, a link armed.
-#[expect(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is a separate fact of the press the default acts on"
+)]
 fn press_default(
   x: u16,
   y: u16,
@@ -1400,7 +1413,10 @@ pub(crate) fn drag_to(x: u16, y: u16) {
 }
 
 /// A count of cells as a position along a track.
-#[expect(clippy::cast_precision_loss)]
+#[expect(
+  clippy::cast_precision_loss,
+  reason = "a track's cells stay far below the integers f32 holds exactly"
+)]
 const fn cells(count: i64) -> f32 {
   count as f32
 }
@@ -1416,7 +1432,10 @@ pub(crate) fn scroll_to(handle: Handle, offsets: (u32, u32)) {
   });
 
   if let Some(node) = node {
-    #[expect(clippy::cast_precision_loss)]
+    #[expect(
+      clippy::cast_precision_loss,
+      reason = "a scroll offset in cells stays far below the integers f32 holds exactly"
+    )]
     notify_scroll::<Tui>(
       node,
       &ScrollEvent {

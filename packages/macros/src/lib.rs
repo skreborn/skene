@@ -66,8 +66,10 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Pair with [`Lazy`](../skene_gui/struct.Lazy.html) to render a lazy function's view:
 /// `Lazy::new(settings)`.
-// One expansion start to end; length is the generated surface, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one expansion start to end; length is the generated surface, not complexity"
+)]
 #[proc_macro_attribute]
 pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
   let function = parse_macro_input!(item as ItemFn);

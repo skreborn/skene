@@ -100,7 +100,11 @@ impl<P: Platform<Scalar = f32> + WebDom> View<P> for Map<P> {
     let platform = P::default();
     let sink = platform.create_element("canvas");
 
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "a map's size is a whole, non-negative number of pixels well within u32"
+    )]
     let (width, height) = (self.size.width as u32, self.size.height as u32);
 
     platform.set_attribute(&sink, "width", &width.to_string());

@@ -37,7 +37,7 @@ macro_rules! impl_tuple {
     impl<P: Platform, Kind, $($T: IntoChildOf<P, Kind>),+> IntoChildren<P, Kind> for ($($T,)+) {
       #[inline(always)]
       fn into_children(self) -> Vec<AnyView<P>> {
-        #[expect(non_snake_case, clippy::min_ident_chars)]
+        #[expect(non_snake_case, clippy::min_ident_chars, reason = "each binding takes its element's type parameter name")]
         let ($($T,)+) = self;
 
         vec![$($T.into_child()),+]

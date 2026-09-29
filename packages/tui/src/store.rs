@@ -787,8 +787,10 @@ pub(crate) struct MediaState {
 
 /// Every record the platform holds, the layout tree, the interaction state and the
 /// environment.
-// Each flag is an independent fact about the frame or the pointer.
-#[expect(clippy::struct_excessive_bools)]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "each flag is an independent fact about the frame or the pointer"
+)]
 pub(crate) struct Store {
   entries: Vec<Entry>,
   free: Vec<u32>,
@@ -1605,7 +1607,10 @@ impl Store {
     };
 
     match self.taffy.layout(taffy) {
-      #[expect(clippy::cast_possible_truncation)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a laid-out size is rounded and counts cells far inside i64"
+      )]
       Ok(layout) => (
         layout.size.width.round().max(0.) as i64,
         layout.size.height.round().max(0.) as i64,
@@ -1631,9 +1636,15 @@ impl Store {
     }
 
     let layout = self.taffy.unrounded_layout(record.taffy?);
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "a position in eighth cells stays far inside isize"
+    )]
     let start = (layout.location.x * 8.).round() as isize;
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "an extent in eighth cells stays far inside isize"
+    )]
     let extent = (layout.size.width.max(0.) * 8.).round() as isize;
 
     (extent > 0).then_some((start, extent))
@@ -1647,7 +1658,10 @@ impl Store {
     };
 
     match self.taffy.layout(taffy) {
-      #[expect(clippy::cast_possible_truncation)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a laid-out position is rounded and counts cells far inside i64"
+      )]
       Ok(layout) => (
         layout.location.x.round() as i64,
         layout.location.y.round() as i64,
@@ -1664,7 +1678,10 @@ impl Store {
     };
 
     match self.taffy.layout(taffy) {
-      #[expect(clippy::cast_possible_truncation)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a border is rounded and counts cells far inside i64"
+      )]
       Ok(layout) => (
         layout.border.left.round() as i64,
         layout.border.top.round() as i64,

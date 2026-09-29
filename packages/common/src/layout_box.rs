@@ -499,9 +499,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   ///
   /// A box builds through this with [`NodeKind::Box`] and [`Platform::create_box`]; a
   /// view realized as another kind supplies its own creation.
-  // One box's realization in one place; length is the count of what a box carries,
-  // not complexity.
-  #[expect(clippy::too_many_lines)]
+  #[expect(
+    clippy::too_many_lines,
+    reason = "one box's realization in one place; length is the count of what a box carries, not complexity"
+  )]
   pub fn realize(mut self, kind: NodeKind, create: impl FnOnce(BoxProps<P>) -> P::Sink) -> NodeId {
     if let Some(annotation) = Scene::<P>::with(Scene::take_pending_annotation) {
       annotation.apply_to(&mut self.style);

@@ -49,7 +49,11 @@ impl CellScale {
     }
 
     if size >= 1. {
-      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the size is at least one here and capped at the largest scale"
+      )]
       let whole = size.round().min(f32::from(MAX_SCALE)) as u8;
 
       return Self::Whole(whole.max(1));
@@ -58,7 +62,11 @@ impl CellScale {
     let (mut best, mut error) = ((1, 2), f32::INFINITY);
 
     for denominator in 2..=MAX_DENOMINATOR {
-      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the numerator is clamped below its denominator, itself a u8"
+      )]
       let numerator = ((size * f32::from(denominator)).round() as u8).clamp(1, denominator - 1);
       let distance = (f32::from(numerator) / f32::from(denominator) - size).abs();
 

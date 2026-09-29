@@ -1013,8 +1013,10 @@ fn emphasis_colors(ink: Option<Color>, surface: Option<Color>) -> Option<Selecti
 }
 
 /// What `handle` paints, from its resolved style.
-// A match dispatch over the record kinds; length is the kind count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "a match dispatch over the record kinds; length is the kind count, not complexity"
+)]
 fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> NodePaint {
   let Some(record) = store.record(handle)
   else {
@@ -1163,8 +1165,10 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
 
 /// Paints `handle` at its layout position offset by (`offset_x`, `offset_y`), then its
 /// children.
-// A match dispatch over the paints; length is the kind count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "a match dispatch over the paints; length is the kind count, not complexity"
+)]
 fn paint_node(
   store: &Store,
   buffer: &mut Buffer,
@@ -1626,7 +1630,10 @@ fn place_backdrop(
 
 /// Overlays scrollbar tracks and thumbs on a scrollable box's right and bottom edges,
 /// each drawn only while its axis overflows.
-#[expect(clippy::too_many_arguments)]
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is a separate fact of the box the scrollbars are drawn on"
+)]
 fn draw_scrollbars(
   store: &Store,
   buffer: &mut Buffer,
@@ -1726,7 +1733,11 @@ enum Coverage {
 }
 
 /// The thumb's coverage of the track cell at `position`, against an eighth-cell span.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(
+  clippy::cast_possible_truncation,
+  clippy::cast_sign_loss,
+  reason = "a partial coverage is positive and below eight eighths when narrowed"
+)]
 const fn eighth_coverage(position: isize, start_eighth: isize, thumb_eighths: isize) -> Coverage {
   let cell_start = position * 8;
   let cell_end = cell_start + 8;
@@ -2144,7 +2155,11 @@ fn tint(cell: &mut TerminalCell, red: f32, green: f32, blue: f32, alpha: f32, co
   let mix = |existing: Option<(u8, u8, u8)>, base: (u8, u8, u8)| -> (u8, u8, u8) {
     let (base_red, base_green, base_blue) = existing.unwrap_or(base);
     let channel = |over: f32, beneath: u8| -> u8 {
-      #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+      #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the channel is clamped to 0..=1 before it is scaled to 0..=255"
+      )]
       let mixed = (over.clamp(0., 1.) * 255.)
         .mul_add(alpha, f32::from(beneath) * (1. - alpha))
         .round() as u8;
@@ -2171,7 +2186,11 @@ pub(crate) fn terminal_rgb(color: Color) -> Option<(u8, u8, u8)> {
     return None;
   }
 
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "each channel is clamped to 0..=1 before it is scaled to 0..=255"
+  )]
   Some((
     (red.clamp(0., 1.) * 255.).round() as u8,
     (green.clamp(0., 1.) * 255.).round() as u8,

@@ -1,7 +1,10 @@
 //! What the view tests share: a component library's palette, a typography set, and
 //! the property keys the seams are asked about.
 
-#![allow(dead_code)]
+#![allow(
+  dead_code,
+  reason = "each test binary uses its own share of the helpers"
+)]
 
 use skene_common::typography;
 use skene_core::{

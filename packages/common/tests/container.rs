@@ -66,8 +66,10 @@ fn key(key: &str) -> KeyEvent {
 /// Every handler registers its event on the node, in the fixed order of kinds, and
 /// fires through dispatch: a preventable event climbs to the outer container until a
 /// `Bubbling::Stop`, and a notification stays on its node.
-// One handler per event kind; length is the kind count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one handler per event kind; length is the kind count, not complexity"
+)]
 #[test]
 fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   reset();

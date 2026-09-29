@@ -344,7 +344,7 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
 
   if let Some([red, green, blue, alpha]) = key.shadow {
     for (layer, spread) in [0.5_f32, 0.3, 0.2].into_iter().enumerate() {
-      #[expect(clippy::cast_precision_loss)]
+      #[expect(clippy::cast_precision_loss, reason = "a shadow has three layers")]
       let grow = layer as f64 * cell_width * 0.25;
 
       canvas.fill(

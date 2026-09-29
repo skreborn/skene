@@ -47,7 +47,10 @@ impl Scalar for f32 {
 
 impl Scalar for u32 {
   #[inline(always)]
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a cell count stays far below the integers f32 holds exactly"
+  )]
   fn to_f32(self) -> f32 {
     self as f32
   }
@@ -56,7 +59,8 @@ impl Scalar for u32 {
   #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "the value is rounded and clamped into the cell range first"
   )]
   fn from_f32(value: f32) -> Self {
     value.round().clamp(0., Self::MAX as f32) as Self

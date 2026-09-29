@@ -1,7 +1,10 @@
 //! What the render tests share: the platform install, and the probes reading
 //! a frame back.
 
-#![allow(dead_code)]
+#![allow(
+  dead_code,
+  reason = "each test binary uses its own share of the helpers"
+)]
 
 use skene_tui::{self as tui, Color};
 
@@ -72,7 +75,11 @@ pub fn black() -> Color {
 pub fn rgb(color: Color) -> (u8, u8, u8) {
   let [red, green, blue, _] = color.to_rgba();
   let channel = |value: f32| {
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "the channel is clamped to 0..=1 before it is scaled to 0..=255"
+    )]
     let quantized = (value.clamp(0., 1.) * 255.).round() as u8;
 
     quantized

@@ -46,9 +46,17 @@ pub fn item_window(
     };
   }
 
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the offset is clamped non-negative, and an item index stays far below usize::MAX"
+  )]
   let first = (offset.max(0.0) / item_extent).floor() as usize;
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the offset is clamped non-negative, and an item index stays far below usize::MAX"
+  )]
   let visible = ((offset.max(0.0) + viewport.max(0.0)) / item_extent).ceil() as usize;
 
   ItemWindow {

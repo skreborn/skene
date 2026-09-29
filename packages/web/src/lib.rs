@@ -18,8 +18,10 @@
 //! DOM-reaching code fails to compile for the server. [`RenderHints`] is the
 //! environment a server render answers with, parsed from a request's client hints.
 
-// The compiler is consumed by the leaves, which only compile on wasm targets.
-#[cfg_attr(skene_leaf = "host", expect(dead_code))]
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(dead_code, reason = "the compiler serves the leaves alone")
+)]
 mod compile;
 mod condition;
 #[cfg(skene_leaf = "browser")]
@@ -33,7 +35,10 @@ mod expr;
 mod gpu;
 mod hints;
 mod hydration;
-#[cfg_attr(skene_leaf = "host", expect(dead_code))]
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(dead_code, reason = "the interner serves the leaves alone")
+)]
 mod interner;
 #[cfg(not(skene_leaf = "host"))]
 mod logging;
@@ -42,7 +47,10 @@ mod markup;
 mod motion;
 #[cfg(skene_leaf = "server")]
 mod ssr;
-#[cfg_attr(skene_leaf = "host", expect(dead_code))]
+#[cfg_attr(
+  skene_leaf = "host",
+  expect(dead_code, reason = "tokens compile for the leaves alone")
+)]
 mod token;
 
 #[cfg(skene_leaf = "browser")]

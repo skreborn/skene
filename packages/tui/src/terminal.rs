@@ -277,8 +277,10 @@ fn within(pixel: u16, size: u16) -> f32 {
 
 /// Mounts and runs a skene application in the terminal under `launch`; see
 /// [`Launch::run`].
-// The loop body in one place; length is the event count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "the loop body in one place; length is the event count, not complexity"
+)]
 pub(crate) fn run<V, F>(launch: Launch, app: F)
 where
   F: FnOnce() -> V + 'static,

@@ -1051,8 +1051,10 @@ impl<P: Platform, B: Behavior<P>> Actor<P, B> {
 /// acts first and its verdict stands, the observers see the event after, a key an input
 /// method is composing never reaches the behavior, and a disabled control swallows
 /// every pointer event and click and lets every key by.
-// One registration per event kind; length is the kind count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one registration per event kind; length is the kind count, not complexity"
+)]
 fn register<P: Platform, B: Behavior<P>>(
   node: NodeId,
   behavior: &Rc<B>,

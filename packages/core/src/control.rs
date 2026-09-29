@@ -280,9 +280,10 @@ impl Ring {
 }
 
 #[cfg(test)]
-// Every expected value here is exactly representable—a step multiple or an end of the
-// range—so an exact comparison is the assertion, not an approximation of it.
-#[expect(clippy::float_cmp)]
+#[expect(
+  clippy::float_cmp,
+  reason = "every expected value here is exactly representable—a step multiple or an end of the range—so an exact comparison is the assertion, not an approximation of it"
+)]
 mod tests {
   use super::{Ring, SliderRange};
 

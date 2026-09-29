@@ -124,8 +124,10 @@ pub type PointerHandler = dyn Fn(&PointerEvent) -> Prevent;
 /// The modifier-key state accompanying an input event.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
-// One bool per modifier key is the domain shape.
-#[expect(clippy::struct_excessive_bools)]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "one bool per modifier key is the domain shape"
+)]
 pub struct Modifiers {
   /// Whether Control was held.
   pub ctrl: bool,

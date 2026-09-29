@@ -77,7 +77,10 @@ fn sum(node: &ExprNode) -> String {
 
 /// A fraction (`0.` to `1.`) as a percentage number, narrowed so `0.1` reads `10`.
 fn percent(value: f32) -> f32 {
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "a fraction's percentage is precise enough in f32"
+  )]
   let percent = (f64::from(value) * 100.) as f32;
 
   percent

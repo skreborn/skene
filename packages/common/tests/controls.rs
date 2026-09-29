@@ -805,7 +805,10 @@ impl Behavior<Headless> for Stepper {
     Prevent::All
   }
 
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a test's count stays far below the integers f32 holds exactly"
+  )]
   fn access(&self) -> Vec<AccessProp> {
     vec![AccessProp::Value(self.count.get() as f32)]
   }

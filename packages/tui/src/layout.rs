@@ -883,7 +883,11 @@ fn measure_run(
     };
   };
 
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a width is clamped non-negative and counts cells far below usize::MAX"
+  )]
   let limit = match (known.width, available.width) {
     (Some(width), _) | (None, AvailableSpace::Definite(width)) => width.max(0.) as usize,
     (None, AvailableSpace::MinContent) => longest_word(text, scales),
@@ -891,7 +895,10 @@ fn measure_run(
   };
   let lines = wrap_sized(text, limit, scales);
 
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a line's length in cells stays far below the integers f32 holds exactly"
+  )]
   taffy::geometry::Size {
     width: known.width.unwrap_or_else(|| {
       lines
@@ -1051,8 +1058,10 @@ fn item(value: skene_core::ItemAlignment) -> taffy::style::AlignItems {
 }
 
 /// Folds the resolved style's layout properties into `out`.
-// One fold per property; length is the property count, not complexity.
-#[expect(clippy::too_many_lines)]
+#[expect(
+  clippy::too_many_lines,
+  reason = "one fold per property; length is the property count, not complexity"
+)]
 fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   out.size = taffy::geometry::Size {
     width: style.width.map_or(taffy::style::Dimension::AUTO, dimension),
@@ -1209,7 +1218,10 @@ pub(crate) fn has_border(style: &PlainBox) -> bool {
 /// A cell length as layout units.
 #[inline(always)]
 pub(crate) fn cell(value: u32) -> f32 {
-  #[expect(clippy::cast_precision_loss)]
+  #[expect(
+    clippy::cast_precision_loss,
+    reason = "a cell count stays far below the integers f32 holds exactly"
+  )]
   {
     value as f32
   }

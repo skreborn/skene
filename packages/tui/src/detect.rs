@@ -89,7 +89,10 @@ impl Palette {
 
   /// The index of the base color nearest to `color`.
   pub(crate) fn nearest(&self, color: (u8, u8, u8)) -> u8 {
-    #[expect(clippy::cast_possible_truncation)]
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "the palette holds sixteen colors, so an index fits a u8"
+    )]
     self
       .0
       .iter()
@@ -139,14 +142,21 @@ fn nearest_256(red: u8, green: u8, blue: u8) -> u8 {
 
   let (red_index, green_index, blue_index) = (level(red), level(green), level(blue));
   let cube_rgb = (LEVELS[red_index], LEVELS[green_index], LEVELS[blue_index]);
-  #[expect(clippy::cast_possible_truncation)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "each cube index is below six, so the color index fits a u8"
+  )]
   let cube = 16 + 36 * red_index as u8 + 6 * green_index as u8 + blue_index as u8;
 
   let average = (u16::from(red) + u16::from(green) + u16::from(blue)) / 3;
   let step = ((i32::from(average) - 8 + 5) / 10).clamp(0, 23);
-  #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+  #[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the step is clamped to 0..=23, so the level lies in 8..=238"
+  )]
   let gray_level = (8 + 10 * step) as u8;
-  #[expect(clippy::cast_sign_loss)]
+  #[expect(clippy::cast_sign_loss, reason = "the step is clamped to 0..=23")]
   let gray = 232 + step as u8;
 
   let target = (red, green, blue);

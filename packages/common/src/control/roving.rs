@@ -14,7 +14,7 @@ use skene_core::{
   Ring,
   Role,
 };
-use skene_reactive::{Get, Set, Signal, on_cleanup, provide_context, use_context};
+use skene_reactive::{Get, Memo, Set, Signal, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Roster};
 use crate::realize::with_sink;
@@ -28,6 +28,7 @@ pub struct RovingGroup {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
   roster: Roster,
+  tab_stop: Memo<Option<String>>,
 }
 
 impl std::fmt::Debug for RovingGroup {
@@ -61,16 +62,8 @@ impl RovingGroup {
   /// Whether `value` is the group's one tab stop: the chosen member when it is enabled,
   /// else the first enabled one.
   #[must_use]
-  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
-    let enabled = self.roster.enabled::<P>();
-
-    match self
-      .chosen()
-      .filter(|chosen| enabled.iter().any(|(_, held)| held == chosen))
-    {
-      Some(chosen) => chosen == value,
-      None => enabled.first().is_some_and(|(_, first)| first == value),
-    }
+  pub fn is_tab_stop(&self, value: &str) -> bool {
+    self.tab_stop.with(|stop| stop.as_deref() == Some(value))
   }
 
   /// Chooses the enabled member `step` places from the one holding `value`, wrapping at
@@ -182,16 +175,24 @@ impl<P: Platform> Behavior<P> for Roving {
     let chosen = self.chosen.clone();
     let on_choose = self.on_choose.clone();
     let roster = Roster::new();
+    let chosen: Rc<dyn Fn() -> Option<String>> =
+      Rc::new(move || chosen.as_ref().and_then(|chosen| chosen()));
+    let tab_stop = roster.tab_stop::<P>({
+      let chosen = Rc::clone(&chosen);
+
+      move || chosen()
+    });
 
     roster.root_at(control.node());
     provide_context(RovingGroup {
-      chosen: Rc::new(move || chosen.as_ref().and_then(|chosen| chosen())),
+      chosen,
       choose: Rc::new(move |value| {
         if let Some(action) = &on_choose {
           action(value);
         }
       }),
       roster,
+      tab_stop,
     });
   }
 
@@ -324,7 +325,7 @@ impl<P: Platform> Behavior<P> for RadioMember {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

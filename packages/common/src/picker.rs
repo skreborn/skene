@@ -298,7 +298,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
     // The option views build once, under the group both forms answer through, and
     // attach wherever the form in force lists them.
     provide_context(
-      ListboxGroup::new(
+      ListboxGroup::new::<P>(
         {
           let chosen = Rc::clone(&chosen);
 

@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+rustc-hash.workspace = true
 skene-core.workspace = true
 skene-reactive.workspace = true
 vello_cpu = { default-features = false, features = ["std", "u8_pipeline"], version = "0.2" }

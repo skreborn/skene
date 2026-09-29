@@ -1361,8 +1361,8 @@ pub struct skene_common::ListboxGroup
 impl skene_common::ListboxGroup
 pub fn skene_common::ListboxGroup::choose(&self, impl core::convert::Into<alloc::string::String>)
 pub fn skene_common::ListboxGroup::chosen(&self) -> core::option::Option<alloc::string::String>
-pub fn skene_common::ListboxGroup::is_tab_stop<P: skene_core::platform::Platform>(&self, &str) -> bool
-pub fn skene_common::ListboxGroup::new(impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static, impl core::ops::function::Fn(alloc::string::String) + 'static, skene_common::Roster) -> Self
+pub fn skene_common::ListboxGroup::is_tab_stop(&self, &str) -> bool
+pub fn skene_common::ListboxGroup::new<P: skene_core::platform::Platform>(impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static, impl core::ops::function::Fn(alloc::string::String) + 'static, skene_common::Roster) -> Self
 pub const fn skene_common::ListboxGroup::roster(&self) -> &skene_common::Roster
 pub const fn skene_common::ListboxGroup::set_commit_on_tab(self, bool) -> Self
 pub fn skene_common::ListboxGroup::step_from<P: skene_core::platform::Platform>(&self, &str, isize)
@@ -1410,7 +1410,7 @@ impl skene_common::MenuGroup
 pub fn skene_common::MenuGroup::activate(&self, impl core::convert::Into<alloc::string::String>)
 pub fn skene_common::MenuGroup::enabled<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<(skene_core::node::NodeId, alloc::string::String)>
 pub fn skene_common::MenuGroup::focus_first<P: skene_core::platform::Platform>(&self)
-pub fn skene_common::MenuGroup::is_tab_stop<P: skene_core::platform::Platform>(&self, &str) -> bool
+pub fn skene_common::MenuGroup::is_tab_stop(&self, &str) -> bool
 pub const fn skene_common::MenuGroup::roster(&self) -> &skene_common::Roster
 pub fn skene_common::MenuGroup::step_from<P: skene_core::platform::Platform>(&self, &str, isize)
 pub fn skene_common::MenuGroup::type_ahead_from<P: skene_core::platform::Platform>(&self, &str, &skene_core::events::KeyEvent) -> bool
@@ -1757,6 +1757,7 @@ pub fn skene_common::Roster::new() -> Self
 pub fn skene_common::Roster::options<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<skene_core::control::PickerOption>
 pub fn skene_common::Roster::ordered<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<(skene_core::node::NodeId, alloc::string::String)>
 pub fn skene_common::Roster::root_at(&self, skene_core::node::NodeId)
+pub fn skene_common::Roster::tab_stop<P: skene_core::platform::Platform>(&self, impl core::ops::function::Fn() -> core::option::Option<alloc::string::String> + 'static) -> skene_reactive::memo::Memo<core::option::Option<alloc::string::String>>
 pub fn skene_common::Roster::typed<P: skene_core::platform::Platform>(&self, &str, core::option::Option<&str>) -> core::option::Option<usize>
 impl core::clone::Clone for skene_common::Roster
 pub fn skene_common::Roster::clone(&self) -> skene_common::Roster
@@ -1799,7 +1800,7 @@ pub struct skene_common::RovingGroup
 impl skene_common::RovingGroup
 pub fn skene_common::RovingGroup::choose(&self, impl core::convert::Into<alloc::string::String>)
 pub fn skene_common::RovingGroup::chosen(&self) -> core::option::Option<alloc::string::String>
-pub fn skene_common::RovingGroup::is_tab_stop<P: skene_core::platform::Platform>(&self, &str) -> bool
+pub fn skene_common::RovingGroup::is_tab_stop(&self, &str) -> bool
 pub const fn skene_common::RovingGroup::roster(&self) -> &skene_common::Roster
 pub fn skene_common::RovingGroup::step_from<P: skene_core::platform::Platform>(&self, &str, isize)
 impl core::clone::Clone for skene_common::RovingGroup

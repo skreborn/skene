@@ -5,8 +5,9 @@ use std::{
   rc::Rc,
 };
 
+use rustc_hash::FxHashMap;
 use skene_core::{NodeId, PickerOption, Platform, Scene};
-use skene_reactive::Trigger;
+use skene_reactive::{Memo, Trigger};
 
 use super::TypeAhead;
 use crate::realize::with_sink;
@@ -21,7 +22,8 @@ use crate::realize::with_sink;
 #[derive(Clone)]
 #[must_use]
 pub struct Roster {
-  members: Rc<RefCell<Vec<Member>>>,
+  members: Rc<RefCell<FxHashMap<NodeId, Member>>>,
+  joins: Rc<Cell<u64>>,
   root: Rc<Cell<Option<NodeId>>>,
   changed: Trigger,
 }
@@ -33,13 +35,14 @@ impl std::fmt::Debug for Roster {
 }
 
 /// One member: its node, the value it carries, the name it goes by when its control's
-/// label supplied one, and whether its control is disabled.
+/// label supplied one, whether its control is disabled, and when it joined.
 #[derive(Clone)]
 struct Member {
   node: NodeId,
   value: String,
   name: Option<Rc<dyn Fn() -> String>>,
   disabled: Rc<dyn Fn() -> bool>,
+  joined: u64,
 }
 
 impl Member {
@@ -57,7 +60,8 @@ impl Roster {
   #[inline(always)]
   pub fn new() -> Self {
     Self {
-      members: Rc::new(RefCell::new(Vec::new())),
+      members: Rc::new(RefCell::new(FxHashMap::default())),
+      joins: Rc::new(Cell::new(0)),
       root: Rc::new(Cell::new(None)),
       changed: Trigger::new(),
     }
@@ -79,27 +83,25 @@ impl Roster {
     name: Option<Rc<dyn Fn() -> String>>,
     disabled: Rc<dyn Fn() -> bool>,
   ) {
-    {
-      let mut members = self.members.borrow_mut();
+    let joined = self.joins.get();
 
-      members.retain(|member| member.node != node);
-      members.push(Member {
+    self.joins.set(joined + 1);
+    self.members.borrow_mut().insert(
+      node,
+      Member {
         node,
         value: value.into(),
         name,
         disabled,
-      });
-    }
-
+        joined,
+      },
+    );
     self.changed.notify();
   }
 
   /// Removes the member at `node`.
   pub fn leave(&self, node: NodeId) {
-    self
-      .members
-      .borrow_mut()
-      .retain(|member| member.node != node);
+    self.members.borrow_mut().remove(&node);
     self.changed.notify();
   }
 
@@ -178,13 +180,35 @@ impl Roster {
     TypeAhead::matching(buffer, &names, current)
   }
 
+  /// The group's one tab stop as a memo: the member holding the value `chosen` names
+  /// where that member is enabled, else the first enabled member, in tree order under
+  /// `P`'s scene; a member compares its value against it.
+  pub fn tab_stop<P: Platform>(
+    &self,
+    chosen: impl Fn() -> Option<String> + 'static,
+  ) -> Memo<Option<String>> {
+    let roster = self.clone();
+
+    Memo::new(move |_| {
+      let enabled = roster.enabled::<P>();
+
+      chosen()
+        .filter(|chosen| enabled.iter().any(|(_, value)| value == chosen))
+        .or_else(|| enabled.into_iter().next().map(|(_, value)| value))
+    })
+  }
+
   fn walk<P: Platform>(&self) -> Vec<Member> {
     self.changed.track();
 
     let members = self.members.borrow();
     let Some(root) = self.root.get()
     else {
-      return members.clone();
+      let mut joined: Vec<Member> = members.values().cloned().collect();
+
+      joined.sort_by_key(|member| member.joined);
+
+      return joined;
     };
 
     Scene::<P>::with(|scene| {
@@ -192,7 +216,7 @@ impl Roster {
       let mut pending = vec![root];
 
       while let Some(node) = pending.pop() {
-        if let Some(member) = members.iter().find(|member| member.node == node) {
+        if let Some(member) = members.get(&node) {
           ordered.push(member.clone());
         }
 

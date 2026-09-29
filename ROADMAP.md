@@ -139,9 +139,6 @@ left half-done in a code comment.
     - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
     `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
 4. **The quadratic hot paths.**
-    - Roster members sit in a map with one shared ordered memo per group, and no leave
-    notifications run while the group's owner disposes: a 1,000-option listbox takes
-    1.09 s to build and about five minutes to unmount today.
     - `keyed_by` reads through a key-to-index map rebuilt on the vector's version
     instead of two linear scans, and the store gains `push`, `insert`, `remove` and a
     keyed `reconcile(value)`, since one push re-runs every row reader.

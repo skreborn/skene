@@ -13,7 +13,7 @@ use skene_core::{
   Prevent,
   Role,
 };
-use skene_reactive::{Get, Set, Signal, on_cleanup, provide_context, use_context};
+use skene_reactive::{Get, Memo, Set, Signal, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Roster, TypeAhead};
 
@@ -26,6 +26,7 @@ pub struct ListboxGroup {
   chosen: Rc<dyn Fn() -> Option<String>>,
   choose: Rc<dyn Fn(String)>,
   roster: Roster,
+  tab_stop: Memo<Option<String>>,
   type_ahead: Rc<TypeAhead>,
   commit_on_tab: bool,
 }
@@ -39,18 +40,27 @@ impl std::fmt::Debug for ListboxGroup {
 }
 
 impl ListboxGroup {
-  /// A group whose options join `roster`, answering `chosen` for the chosen value and
-  /// asking `choose` for a choice; provided as context by a control listing options.
+  /// A group whose options join `roster` under `P`'s scene, answering `chosen` for the
+  /// chosen value and asking `choose` for a choice; provided as context by a control
+  /// listing options, its tab stop a memo owned by the current owner.
   #[inline(always)]
-  pub fn new(
+  pub fn new<P: Platform>(
     chosen: impl Fn() -> Option<String> + 'static,
     choose: impl Fn(String) + 'static,
     roster: Roster,
   ) -> Self {
+    let chosen: Rc<dyn Fn() -> Option<String>> = Rc::new(chosen);
+    let tab_stop = roster.tab_stop::<P>({
+      let chosen = Rc::clone(&chosen);
+
+      move || chosen()
+    });
+
     Self {
-      chosen: Rc::new(chosen),
+      chosen,
       choose: Rc::new(choose),
       roster,
+      tab_stop,
       type_ahead: Rc::new(TypeAhead::new()),
       commit_on_tab: false,
     }
@@ -87,16 +97,8 @@ impl ListboxGroup {
   /// Whether `value` is the list's one tab stop: the chosen option when it is enabled,
   /// else the first enabled one.
   #[must_use]
-  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
-    let enabled = self.roster.enabled::<P>();
-
-    match self
-      .chosen()
-      .filter(|chosen| enabled.iter().any(|(_, held)| held == chosen))
-    {
-      Some(chosen) => chosen == value,
-      None => enabled.first().is_some_and(|(_, first)| first == value),
-    }
+  pub fn is_tab_stop(&self, value: &str) -> bool {
+    self.tab_stop.with(|stop| stop.as_deref() == Some(value))
   }
 
   /// Focuses the enabled option `step` places from the one holding `value`, clamped at
@@ -266,17 +268,18 @@ impl<P: Platform> Behavior<P> for Listbox {
     let roster = self.roster.clone();
 
     roster.root_at(control.node());
-    provide_context(ListboxGroup {
-      chosen: Rc::new(move || chosen.as_ref().and_then(|chosen| chosen())),
-      choose: Rc::new(move |value| {
-        if let Some(action) = &on_choose {
-          action(value);
-        }
-      }),
-      roster,
-      type_ahead: Rc::new(TypeAhead::new()),
-      commit_on_tab: self.commit_on_tab,
-    });
+    provide_context(
+      ListboxGroup::new::<P>(
+        move || chosen.as_ref().and_then(|chosen| chosen()),
+        move |value| {
+          if let Some(action) = &on_choose {
+            action(value);
+          }
+        },
+        roster,
+      )
+      .set_commit_on_tab(self.commit_on_tab),
+    );
   }
 
   #[inline(always)]
@@ -410,7 +413,7 @@ impl<P: Platform> Behavior<P> for ListItem {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

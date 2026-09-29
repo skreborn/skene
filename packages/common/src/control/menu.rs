@@ -13,7 +13,7 @@ use skene_core::{
   Role,
   Scene,
 };
-use skene_reactive::{on_cleanup, provide_context, use_context};
+use skene_reactive::{Memo, With, on_cleanup, provide_context, use_context};
 
 use super::{Behavior, ControlHandle, Roster, TypeAhead};
 
@@ -25,6 +25,7 @@ use super::{Behavior, ControlHandle, Roster, TypeAhead};
 pub struct MenuGroup {
   activate: Rc<dyn Fn(String)>,
   roster: Roster,
+  tab_stop: Memo<Option<String>>,
   type_ahead: Rc<TypeAhead>,
 }
 
@@ -55,11 +56,8 @@ impl MenuGroup {
 
   /// Whether `value` is the menu's one tab stop: the first enabled item.
   #[must_use]
-  pub fn is_tab_stop<P: Platform>(&self, value: &str) -> bool {
-    self
-      .enabled::<P>()
-      .first()
-      .is_some_and(|(_, first)| first == value)
+  pub fn is_tab_stop(&self, value: &str) -> bool {
+    self.tab_stop.with(|stop| stop.as_deref() == Some(value))
   }
 
   /// Focuses the first enabled item, if there is one.
@@ -198,6 +196,8 @@ impl<P: Platform> Behavior<P> for Menu {
     let on_activate = self.on_activate.clone();
     let roster = self.roster.clone();
 
+    let tab_stop = roster.tab_stop::<P>(|| None);
+
     roster.root_at(control.node());
     provide_context(MenuGroup {
       activate: Rc::new(move |value| {
@@ -206,6 +206,7 @@ impl<P: Platform> Behavior<P> for Menu {
         }
       }),
       roster,
+      tab_stop,
       type_ahead: Rc::new(TypeAhead::new()),
     });
   }
@@ -323,7 +324,7 @@ impl<P: Platform> Behavior<P> for MenuOption {
 
   fn focus_order(&self) -> Option<FocusOrder> {
     match self.group() {
-      Some(group) if !group.is_tab_stop::<P>(&self.value) => Some(FocusOrder::Skip),
+      Some(group) if !group.is_tab_stop(&self.value) => Some(FocusOrder::Skip),
       _ => Some(FocusOrder::Auto),
     }
   }

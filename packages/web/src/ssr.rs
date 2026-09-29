@@ -26,7 +26,6 @@ use skene_core::{
   BoxValue,
   ColorScheme,
   ContainerSizes,
-  ControlKind,
   ControlProps,
   ControlState,
   Definitions,
@@ -144,6 +143,15 @@ enum Content {
   Comment(String),
 }
 
+/// Where a control's label sits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Captioned {
+  /// Inside the control.
+  Inside,
+  /// Before the control among its siblings, in a `<label>`.
+  Beside,
+}
+
 /// One node of the string tree.
 struct Node {
   /// What the node is.
@@ -167,8 +175,8 @@ struct Node {
   /// The native element carrying a control's state, focus and value, when the control
   /// has one apart from its root.
   carrier: Option<u32>,
-  /// What it is, where it is a control's root.
-  control: Option<ControlKind>,
+  /// Whether it is a control's root, and then whether its label sits beside it.
+  control: Option<Captioned>,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
   /// Whether the node stands bare: a control that is its own `<input>`, `<textarea>`
@@ -506,7 +514,7 @@ impl Tree {
   fn attach_caption(&mut self, parent: u32, child: u32) -> bool {
     let Some((node, labels)) = self
       .node(parent)
-      .filter(|node| node.control.is_some_and(ControlKind::keeps_caption_beside))
+      .filter(|node| node.control == Some(Captioned::Beside))
       .and_then(|node| Some((node.realizes?, node.bare)))
     else {
       return false;
@@ -1245,7 +1253,12 @@ impl Platform for Web {
       };
 
       if let Some(node) = tree.node(index) {
-        node.control = Some(props.kind);
+        node.control = Some(if props.label_beside {
+          Captioned::Beside
+        }
+        else {
+          Captioned::Inside
+        });
         node.set_attribute(CONTROL_ATTRIBUTE, "");
       }
 

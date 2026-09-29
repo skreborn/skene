@@ -14,6 +14,7 @@ use skene_common::{
   Behavior,
   ControlHandle,
   Label,
+  LabelPlacement,
   ListItem,
   Listbox,
   Popup,
@@ -25,6 +26,7 @@ use skene_common::{
 };
 use skene_core::{
   AccessProp,
+  AnyView,
   Condition,
   ControlKind,
   Dimension,
@@ -887,6 +889,82 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
     Some(ControlKind::TextEditor)
   );
   assert_eq!(control_props(editor).map(|props| props.lines), Some(4));
+
+  owner.dispose();
+}
+
+/// A behavior places its label: a text entry's sits beside its box by default, a
+/// button's inside, and a third party's text entry may keep its label inside instead.
+#[test]
+fn a_behavior_places_its_label() {
+  /// A text entry keeping its label inside its box.
+  struct InlineEntry;
+
+  impl Behavior<Headless> for InlineEntry {
+    fn kind(&self) -> ControlKind {
+      ControlKind::TextField
+    }
+
+    fn role(&self) -> Option<Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [EventKind] {
+      &[]
+    }
+
+    fn label_placement(&self) -> LabelPlacement {
+      LabelPlacement::Trailing
+    }
+  }
+
+  reset();
+
+  let owner = Owner::new();
+  let (field, button, inline) = owner.enter(|| {
+    (
+      RawTextField::new(TextEntry::new())
+        .set_label("Name")
+        .build(),
+      RawButton::new(Activate::new()).set_label("Save").build(),
+      Control::new(InlineEntry).set_label("Inline").build(),
+    )
+  });
+  let beside = |node| control_props(node).map(|props| props.label_beside);
+
+  assert_eq!(beside(field), Some(true));
+  assert_eq!(beside(button), Some(false));
+  assert_eq!(beside(inline), Some(false));
+
+  owner.dispose();
+}
+
+/// A caption placed anywhere names a control by reference, after the caption its own
+/// label builds.
+#[test]
+fn a_caption_placed_anywhere_names_a_control() {
+  reset();
+
+  let owner = Owner::new();
+  let (caption, own, field) = owner.enter(|| {
+    let caption = Text::new("Email").build();
+    let own = Text::new("Work").build();
+    let field = RawTextField::new(TextEntry::new())
+      .set_label(Label::new(AnyView::node(own)))
+      .set_labelled_by(caption)
+      .build();
+
+    (caption, own, field)
+  });
+
+  assert!(
+    box_props(field).is_some_and(|props| props
+      .access
+      .contains(&AccessProp::LabelledBy(vec![own, caption]))),
+    "{:?}",
+    box_props(field).map(|props| props.access)
+  );
+  assert_eq!(accessible_name(field).as_deref(), Some("Work Email"));
 
   owner.dispose();
 }

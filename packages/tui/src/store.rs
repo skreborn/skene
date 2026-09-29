@@ -478,6 +478,7 @@ pub(crate) enum Kind {
     state: ControlState,
     field: Option<Field>,
     checked: bool,
+    label_beside: bool,
   },
   Overlay {
     inner: BoxRecord,
@@ -1359,7 +1360,10 @@ impl Store {
   pub(crate) fn keeps_caption_beside(&self, handle: Handle) -> bool {
     matches!(
       self.record(handle).map(|record| &record.kind),
-      Some(Kind::Control { kind, .. }) if kind.keeps_caption_beside()
+      Some(Kind::Control {
+        label_beside: true,
+        ..
+      })
     )
   }
 

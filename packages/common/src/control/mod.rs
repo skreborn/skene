@@ -103,6 +103,19 @@ pub enum PointerPhase {
   Up,
 }
 
+/// Where a control's label sits.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum LabelPlacement {
+  /// Inside the control's row, before its parts and body, as a group's caption.
+  Leading,
+  /// Inside the control's row, after its parts and body, as a mark's caption.
+  #[default]
+  Trailing,
+  /// Before the control's box among its siblings, outside its decoration, answering
+  /// to the control, as a text entry's caption.
+  Beside,
+}
+
 /// What a control's interaction is: its kind and role, the events it acts on and what
 /// it does with them, and what it reports.
 ///
@@ -142,11 +155,18 @@ pub trait Behavior<P: Platform>: 'static {
     1
   }
 
-  /// Whether the label leads the control's parts and body, as a group's caption does,
-  /// rather than following them as a mark's does.
+  /// Where the control's label sits: beside the box of a control whose box holds a
+  /// value—a text entry, a picker, a popup face—and after its parts and body inside
+  /// it otherwise.
   #[inline(always)]
-  fn label_leads(&self) -> bool {
-    false
+  fn label_placement(&self) -> LabelPlacement {
+    match self.kind() {
+      ControlKind::TextField
+      | ControlKind::TextEditor
+      | ControlKind::NativePicker
+      | ControlKind::Combobox => LabelPlacement::Beside,
+      _ => LabelPlacement::Trailing,
+    }
   }
 
   /// Runs once the control's node exists and its reports have been read, before its
@@ -421,9 +441,9 @@ struct Observers {
 /// Holds [`NoChild`] until [`set_child`](Self::set_child) or
 /// [`set_child_builder`](Self::set_child_builder) supplies the drawn body; a control
 /// with a label or parts alone builds without one. Its parts, its body and its label
-/// sit in one row half an em apart, centered on the cross axis, the label leading when
-/// the behavior says so; the platform keeps the label of a control whose kind says so
-/// ([`ControlKind::keeps_caption_beside`]) before its box among its siblings instead.
+/// sit in one row half an em apart, centered on the cross axis, the label where the
+/// behavior places it ([`Behavior::label_placement`]): leading or trailing in the row,
+/// or beside the box, before it among its siblings.
 #[must_use]
 pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   behavior: B,
@@ -435,6 +455,7 @@ pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   read_only: Option<Source<bool>>,
   invalid: Option<Source<bool>>,
   described_by: Option<NodeId>,
+  labelled_by: Option<NodeId>,
   focus_order: Option<Source<FocusOrder>>,
   parts: Vec<(Part, AnyView<P>)>,
   observers: Observers,
@@ -467,6 +488,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       read_only: None,
       invalid: None,
       described_by: None,
+      labelled_by: None,
       accessible_name: None,
       focus_order: None,
       parts: Vec::new(),
@@ -500,6 +522,7 @@ impl<P: Platform, B: Behavior<P>> Control<P, B> {
       read_only: self.read_only,
       invalid: self.invalid,
       described_by: self.described_by,
+      labelled_by: self.labelled_by,
       accessible_name: self.accessible_name,
       focus_order: self.focus_order,
       parts: self.parts,
@@ -711,6 +734,15 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
     self
   }
 
+  /// Names the control by the text of `node`, a caption placed anywhere, after the
+  /// caption [`set_label`](Self::set_label) builds, if any.
+  #[inline(always)]
+  pub const fn set_labelled_by(mut self, node: NodeId) -> Self {
+    self.labelled_by = Some(node);
+
+    self
+  }
+
   /// Sets the control's place in focus traversal, over the behavior's default.
   #[inline(always)]
   pub fn set_focus_order(mut self, focus_order: FocusOrder) -> Self {
@@ -842,6 +874,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       read_only,
       invalid,
       described_by,
+      labelled_by: named_by,
       accessible_name,
       focus_order,
       parts,
@@ -855,6 +888,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       let kind = behavior.kind();
       let placeholder = behavior.placeholder();
       let lines = behavior.lines();
+      let placement = behavior.label_placement();
       let named = label.as_ref().and_then(|label| label.name.clone());
       let name = named
         .clone()
@@ -875,6 +909,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
           label: name.as_ref().map(|name| untrack(|| name())),
           placeholder,
           lines,
+          label_beside: placement == LabelPlacement::Beside,
         })
       });
       // A caption whose text is the platform's to read names the control by reference;
@@ -902,7 +937,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         read_only: read_bool(read_only),
         invalid: read_bool(invalid),
         described_by,
-        labelled_by,
+        labelled_by: labelled_by.into_iter().chain(named_by).collect(),
         accessible_name: accessible_name.map(Source::into_read).or(match named {
           Some(Source::Derived(name)) => Some(name),
           Some(Source::Fixed(_)) | None => None,
@@ -915,7 +950,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
 
       let mut label = label;
 
-      if behavior.label_leads()
+      if placement == LabelPlacement::Leading
         && let Some((part, _)) = label.take()
       {
         mount_part::<P>(node, Part::Label, part);
@@ -965,8 +1000,9 @@ struct Flags {
   invalid: Rc<dyn Fn() -> bool>,
   /// The node describing the control.
   described_by: Option<NodeId>,
-  /// The caption naming the control by reference, where its text is not known at build.
-  labelled_by: Option<NodeId>,
+  /// The nodes naming the control by reference: its caption, where its text is not
+  /// known at build, then the node set to name it.
+  labelled_by: Vec<NodeId>,
   /// The name the control reports, read where it is reported: the one set over its
   /// caption's, else its caption's where that is derived.
   accessible_name: Option<Rc<dyn Fn() -> String>>,
@@ -1024,8 +1060,8 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
         access.push(AccessProp::Invalid(true));
       }
 
-      if let Some(labelled_by) = flags.labelled_by {
-        access.push(AccessProp::LabelledBy(vec![labelled_by]));
+      if !flags.labelled_by.is_empty() {
+        access.push(AccessProp::LabelledBy(flags.labelled_by.clone()));
       }
 
       if let Some(described_by) = flags.described_by {

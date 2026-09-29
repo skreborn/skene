@@ -1019,8 +1019,6 @@ pub skene_core::ControlKind::RadioGroup
 pub skene_core::ControlKind::Range
 pub skene_core::ControlKind::TextEditor
 pub skene_core::ControlKind::TextField
-impl skene_core::ControlKind
-pub const fn skene_core::ControlKind::keeps_caption_beside(self) -> bool
 impl core::clone::Clone for skene_core::ControlKind
 pub fn skene_core::ControlKind::clone(&self) -> skene_core::ControlKind
 impl core::cmp::Eq for skene_core::ControlKind
@@ -2374,6 +2372,7 @@ pub struct skene_core::ControlProps<P: skene_core::Platform>
 pub skene_core::ControlProps::box_props: skene_core::BoxProps<P>
 pub skene_core::ControlProps::kind: skene_core::ControlKind
 pub skene_core::ControlProps::label: core::option::Option<alloc::string::String>
+pub skene_core::ControlProps::label_beside: bool
 pub skene_core::ControlProps::lines: u16
 pub skene_core::ControlProps::placeholder: core::option::Option<alloc::string::String>
 impl<P: skene_core::Platform> core::clone::Clone for skene_core::ControlProps<P>

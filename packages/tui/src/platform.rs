@@ -174,6 +174,7 @@ impl Platform for Tui {
         state: ControlState::DEFAULT,
         field,
         checked: false,
+        label_beside: props.label_beside,
       })
     })
   }

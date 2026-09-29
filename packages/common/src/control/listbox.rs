@@ -15,7 +15,7 @@ use skene_core::{
 };
 use skene_reactive::{Get, Memo, Set, Signal, With, on_cleanup, provide_context, use_context};
 
-use super::{Behavior, ControlHandle, Roster, TypeAhead};
+use super::{Behavior, ControlHandle, LabelPlacement, Roster, TypeAhead};
 
 /// What a [`Listbox`] shares with the options inside it, through context.
 ///
@@ -258,8 +258,8 @@ impl<P: Platform> Behavior<P> for Listbox {
   }
 
   #[inline(always)]
-  fn label_leads(&self) -> bool {
-    true
+  fn label_placement(&self) -> LabelPlacement {
+    LabelPlacement::Leading
   }
 
   fn attach(&self, control: &ControlHandle<P>) {

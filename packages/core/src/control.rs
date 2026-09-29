@@ -85,19 +85,6 @@ pub enum ControlKind {
   MenuItem,
 }
 
-impl ControlKind {
-  /// Whether the control's caption sits before its box among its siblings rather than
-  /// inside it: a text entry's, a picker's and a popup face's, whose box holds a value.
-  #[inline(always)]
-  #[must_use]
-  pub const fn keeps_caption_beside(self) -> bool {
-    matches!(
-      self,
-      Self::TextField | Self::TextEditor | Self::NativePicker | Self::Combobox
-    )
-  }
-}
-
 /// Everything a platform needs to realize a control: a box with a kind and, where
 /// nothing visible supplies one, an accessible name.
 #[must_use]
@@ -112,6 +99,9 @@ pub struct ControlProps<P: Platform> {
   pub placeholder: Option<String>,
   /// The lines a text entry shows at once; `1` for every other kind.
   pub lines: u16,
+  /// Whether the control's [`Part::Label`] sits before its box among its siblings,
+  /// answering to the control, rather than inside it.
+  pub label_beside: bool,
 }
 
 impl<P: Platform> Clone for ControlProps<P> {
@@ -122,6 +112,7 @@ impl<P: Platform> Clone for ControlProps<P> {
       label: self.label.clone(),
       placeholder: self.placeholder.clone(),
       lines: self.lines,
+      label_beside: self.label_beside,
     }
   }
 }
@@ -134,6 +125,7 @@ impl<P: Platform> Debug for ControlProps<P> {
       .field("label", &self.label)
       .field("placeholder", &self.placeholder)
       .field("lines", &self.lines)
+      .field("label_beside", &self.label_beside)
       .finish_non_exhaustive()
   }
 }

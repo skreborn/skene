@@ -101,6 +101,7 @@ pub use crate::{
     ControlChild,
     ControlHandle,
     Label,
+    LabelPlacement,
     ListItem,
     Listbox,
     ListboxGroup,

@@ -363,10 +363,13 @@
   type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
   options' labels supply as they read now (`Label::set_name`, `Label::derive_name`), and
   the face's verdict on a typed key is the `Popup` behavior's through `handle_typed`. A
-  control whose box holds a value—a text entry, a picker, a popup face
-  (`ControlKind::keeps_caption_beside`)—keeps its caption before its box among its
-  siblings on every platform, answering to the control, as the web's `<label>` does. A
-  control is **controlled** on every facade: it reports, and the bound signal is the
+  control's label sits where its behavior places it (`Behavior::label_placement`):
+  leading or trailing in its row, or beside its box—before it among its siblings on
+  every platform, answering to the control, as the web's `<label>` does—the default
+  for a control whose box holds a value, a text entry, a picker, a popup face. A label
+  is a convenience, never a requirement: `set_labelled_by` names a control by a
+  caption placed anywhere, and `set_accessible_name` by text alone. A control is
+  **controlled** on every facade: it reports, and the bound signal is the
   truth, the platform brought back to it after every report, so a change its handler
   rejects is undone. A text entry's selection is controlled
   beside its value: `TextSelection` is a `start` and an `end` in grapheme clusters of

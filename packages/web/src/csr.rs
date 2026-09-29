@@ -1304,7 +1304,7 @@ impl Platform for Web {
       let sink = if let Some(native) = native_element(props.kind) {
         let realized = Realized::Control {
           native: Some(native),
-          caption_beside: props.kind.keeps_caption_beside(),
+          caption_beside: props.label_beside,
         };
 
         if native.is_bare() {
@@ -1352,7 +1352,7 @@ impl Platform for Web {
           tag,
           Realized::Control {
             native: None,
-            caption_beside: props.kind.keeps_caption_beside(),
+            caption_beside: props.label_beside,
           },
         );
 

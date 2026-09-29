@@ -127,7 +127,8 @@ fn text() -> impl IntoView {
         muted("Rich text mixes "),
         Span::new("weights").set_bold(true),
         muted(", "),
-        Span::new("colors").set_color(Color::srgb(1., 0.62, 0.25)),
+        Span::new("colors")
+          .set_color(Color::srgb(0.7, 0.3, 0.).when(Media::Dark, Color::srgb(1., 0.62, 0.25))),
         muted(", and "),
         Span::new("links").set_link("https://example.com"),
         muted(" in one paragraph."),

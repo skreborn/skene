@@ -122,7 +122,8 @@ fn typography() -> impl IntoView {
         plain("Rich text mixes "),
         plain("weights").set_font_weight(700.),
         plain(", "),
-        plain("colors").set_color(Color::srgb(1., 0.62, 0.25)),
+        plain("colors")
+          .set_color(Color::srgb(0.7, 0.3, 0.).when(Media::Dark, Color::srgb(1., 0.62, 0.25))),
         plain(", and "),
         Span::new("links")
           .set_font_size(14.)

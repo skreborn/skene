@@ -151,6 +151,8 @@ pub enum Resolved<N: Scalar> {
   Color(Color),
   /// A unitless number.
   Number(f32),
+  /// A length in the medium's unit, its fractions kept.
+  Length(f32),
   /// A dimension.
   Dimension(Dimension<N>),
   /// A text.
@@ -164,6 +166,7 @@ impl<N: Scalar> Resolved<N> {
     match self {
       Self::Color(color) => Some(BoxValue::Color(color)),
       Self::Number(number) => Some(BoxValue::Number(number)),
+      Self::Length(length) => Some(BoxValue::Length(Length(length))),
       Self::Dimension(dimension) => Some(BoxValue::Dimension(dimension)),
       Self::Text(_) => None,
     }
@@ -176,6 +179,7 @@ impl<N: Scalar> Resolved<N> {
     match self {
       Self::Color(color) => Some(RunValue::Color(color)),
       Self::Number(number) => X::run_value_from_number(number),
+      Self::Length(length) => Some(RunValue::Length(Length(length))),
       Self::Dimension(_) | Self::Text(_) => None,
     }
   }
@@ -186,6 +190,7 @@ impl<N: Scalar> Resolved<N> {
     match self {
       Self::Color(color) => Some(ExprValue::Color(color)),
       Self::Number(number) => Some(ExprValue::Number(number)),
+      Self::Length(length) => Some(ExprValue::Length(length)),
       Self::Dimension(Dimension::Length(length)) => Some(ExprValue::Length(length.to_f32())),
       Self::Dimension(Dimension::Fraction(_) | Dimension::Auto) | Self::Text(_) => None,
     }
@@ -196,7 +201,7 @@ impl<N: Scalar> Resolved<N> {
   pub fn into_color(self) -> Option<Color> {
     match self {
       Self::Color(color) => Some(color),
-      Self::Number(_) | Self::Dimension(_) | Self::Text(_) => None,
+      Self::Number(_) | Self::Length(_) | Self::Dimension(_) | Self::Text(_) => None,
     }
   }
 }
@@ -207,7 +212,7 @@ impl<N: Scalar> From<ExprValue> for Resolved<N> {
     match value {
       ExprValue::Color(color) => Self::Color(color),
       ExprValue::Number(number) => Self::Number(number),
-      ExprValue::Length(length) => Self::Dimension(Dimension::Length(N::from_f32(length))),
+      ExprValue::Length(length) => Self::Length(length),
     }
   }
 }
@@ -227,10 +232,9 @@ impl<N: Scalar> From<f32> for Resolved<N> {
 }
 
 impl<N: Scalar> From<Length> for Resolved<N> {
-  /// A length, as the fixed-length dimension it is in the medium's unit.
   #[inline(always)]
   fn from(length: Length) -> Self {
-    Self::Dimension(Dimension::Length(N::from_f32(length.0)))
+    Self::Length(length.0)
   }
 }
 

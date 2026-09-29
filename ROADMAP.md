@@ -30,12 +30,9 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
-    typed as lengths, so a length token serves them too and the web's `* 1px` and the
-    typography's number tokens go, which gives the type metrics a type per medium;
-    `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; a
-    token's value cached at its defining scope, with per-scope invalidation in place of
-    the global generation, where each consumer resolves it there afresh today.
+    - Tokens: `TokenRef<T: Tokenable>`, so no reference aliases a name under another
+    type; a token's value cached at its defining scope, with per-scope invalidation in
+    place of the global generation, where each consumer resolves it there afresh today.
     - Motion: an aspect ratio becomes a value type of its own, interpolating through its
     logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which

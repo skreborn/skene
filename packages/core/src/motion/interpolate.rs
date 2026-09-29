@@ -11,6 +11,7 @@ use crate::{
   Flexibility,
   GridTrack,
   Inset,
+  Length,
   PropertyKey,
   PropertyName,
   RunValue,
@@ -118,6 +119,13 @@ impl Interpolate for f32 {
   #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(lerp(*self, *to, amount))
+  }
+}
+
+impl Interpolate for Length {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(Self(lerp(self.0, to.0, amount)))
   }
 }
 
@@ -244,6 +252,7 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
         Some(Self::Dimension(from.interpolate(to, amount)?))
       }
       (Self::Number(from), Self::Number(to)) => Some(Self::Number(from.interpolate(to, amount)?)),
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
       (Self::DimensionInset(from), Self::DimensionInset(to)) => {
         Some(Self::DimensionInset(from.interpolate(to, amount)?))
       }
@@ -288,6 +297,7 @@ impl<X: StyleExtension> Interpolate for RunValue<X> {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
       (Self::Color(from), Self::Color(to)) => Some(Self::Color(from.interpolate(to, amount)?)),
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
       (Self::Extension(from), Self::Extension(to)) => {
         Some(Self::Extension(X::interpolate_value(from, to, amount)?))
       }

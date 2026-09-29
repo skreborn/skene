@@ -40,7 +40,7 @@ pub fn skene_common::gui::gui_fields::CornerRadius::hash<__H: core::hash::Hasher
 impl core::marker::Copy for skene_common::gui::gui_fields::CornerRadius
 impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::CornerRadius
 impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::gui::GuiExt> for skene_common::gui::gui_fields::CornerRadius
-pub type skene_common::gui::gui_fields::CornerRadius::Value = f32
+pub type skene_common::gui::gui_fields::CornerRadius::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -59,7 +59,7 @@ pub fn skene_common::gui::gui_fields::FontSize::hash<__H: core::hash::Hasher>(&s
 impl core::marker::Copy for skene_common::gui::gui_fields::FontSize
 impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::FontSize
 impl skene_core::run_style::RunField<skene_common::gui::GuiExt> for skene_common::gui::gui_fields::FontSize
-pub type skene_common::gui::gui_fields::FontSize::Value = f32
+pub type skene_common::gui::gui_fields::FontSize::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -97,7 +97,7 @@ pub fn skene_common::gui::gui_fields::LetterSpacing::hash<__H: core::hash::Hashe
 impl core::marker::Copy for skene_common::gui::gui_fields::LetterSpacing
 impl core::marker::StructuralPartialEq for skene_common::gui::gui_fields::LetterSpacing
 impl skene_core::run_style::RunField<skene_common::gui::GuiExt> for skene_common::gui::gui_fields::LetterSpacing
-pub type skene_common::gui::gui_fields::LetterSpacing::Value = f32
+pub type skene_common::gui::gui_fields::LetterSpacing::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -205,7 +205,7 @@ impl skene_core::run_style::IntoRunValue<skene_common::gui::GuiExt> for f32
 pub fn f32::from_run_value(skene_core::run_style::RunValue<skene_common::gui::GuiExt>) -> core::option::Option<Self>
 pub fn f32::into_run_value(self) -> skene_core::run_style::RunValue<skene_common::gui::GuiExt>
 impl skene_core::run_style::RunField<skene_common::gui::GuiExt> for skene_common::gui::gui_fields::FontSize
-pub type skene_common::gui::gui_fields::FontSize::Value = f32
+pub type skene_common::gui::gui_fields::FontSize::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::FontSize::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::FontSize::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::FontSize::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -215,7 +215,7 @@ pub const skene_common::gui::gui_fields::FontWeight::KEY: skene_core::property::
 pub fn skene_common::gui::gui_fields::FontWeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::FontWeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
 impl skene_core::run_style::RunField<skene_common::gui::GuiExt> for skene_common::gui::gui_fields::LetterSpacing
-pub type skene_common::gui::gui_fields::LetterSpacing::Value = f32
+pub type skene_common::gui::gui_fields::LetterSpacing::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::LetterSpacing::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::LetterSpacing::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::LetterSpacing::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -225,7 +225,7 @@ pub const skene_common::gui::gui_fields::LineHeight::KEY: skene_core::property::
 pub fn skene_common::gui::gui_fields::LineHeight::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::LineHeight::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
 impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::gui::GuiExt> for skene_common::gui::gui_fields::CornerRadius
-pub type skene_common::gui::gui_fields::CornerRadius::Value = f32
+pub type skene_common::gui::gui_fields::CornerRadius::Value = skene_core::expr::Length
 pub const skene_common::gui::gui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::gui::GuiProperty>
 pub fn skene_common::gui::gui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::gui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::gui::GuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -234,14 +234,14 @@ pub skene_common::gui::GuiRunFields::font_size: <S as skene_core::shape::Shape>:
 pub skene_common::gui::GuiRunFields::font_weight: <S as skene_core::shape::Shape>::Of
 pub skene_common::gui::GuiRunFields::letter_spacing: <S as skene_core::shape::Shape>::Of
 pub skene_common::gui::GuiRunFields::line_height: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
 pub fn skene_common::gui::GuiRunFields<S>::clone(&self) -> skene_common::gui::GuiRunFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
 pub fn skene_common::gui::GuiRunFields<S>::eq(&self, &skene_common::gui::GuiRunFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
 pub fn skene_common::gui::GuiRunFields<S>::default() -> skene_common::gui::GuiRunFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::gui::GuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
 pub fn skene_common::gui::GuiRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::gui::Head
 impl skene_common::gui::Head
@@ -307,21 +307,21 @@ impl<P: skene_common::Painting> skene_core::view::View<P> for skene_common::Pain
 pub fn skene_common::Painted<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::gui::Typography
 pub skene_common::gui::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::letter_spacing: skene_core::token::Token<f32, f32>
+pub skene_common::gui::Typography::letter_spacing: skene_core::token::Token<skene_core::expr::Length, f32>
 pub skene_common::gui::Typography::line_height: skene_core::token::Token<f32, f32>
 pub skene_common::gui::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
 pub skene_common::gui::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, f32>
 pub skene_common::gui::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, f32>
-pub skene_common::gui::Typography::size: skene_core::token::Token<f32, f32>
+pub skene_common::gui::Typography::size: skene_core::token::Token<skene_core::expr::Length, f32>
 pub skene_common::gui::Typography::weight: skene_core::token::Token<f32, f32>
 impl skene_common::gui::Typography
 pub fn skene_common::gui::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
+pub fn skene_common::gui::Typography::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
 pub fn skene_common::gui::Typography::set_line_height(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
 pub fn skene_common::gui::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
 pub fn skene_common::gui::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
 pub fn skene_common::gui::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, f32>>) -> Self
-pub fn skene_common::gui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
+pub fn skene_common::gui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, f32>>) -> Self
 pub fn skene_common::gui::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, f32>>) -> Self
 impl core::clone::Clone for skene_common::gui::Typography
 pub fn skene_common::gui::Typography::clone(&self) -> skene_common::gui::Typography
@@ -332,7 +332,7 @@ pub fn skene_common::gui::Typography::default() -> Self
 impl core::fmt::Debug for skene_common::gui::Typography
 pub fn skene_common::gui::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_common::gui::Typography
-impl<V> skene_core::token::TokenSet<V> for skene_common::gui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, f32>> + core::convert::From<skene_core::leaf::Definition<f32, f32>> + 'static
+impl<V> skene_core::token::TokenSet<V> for skene_common::gui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, f32>> + core::convert::From<skene_core::leaf::Definition<f32, f32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, f32>> + 'static
 pub fn skene_common::gui::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
 pub trait skene_common::gui::IntoBrush
 pub fn skene_common::gui::IntoBrush::into_brush(self) -> peniko::brush::Brush
@@ -478,7 +478,7 @@ pub fn skene_common::tui::tui_fields::CornerRadius::hash<__H: core::hash::Hasher
 impl core::marker::Copy for skene_common::tui::tui_fields::CornerRadius
 impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::CornerRadius
 impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiExt> for skene_common::tui::tui_fields::CornerRadius
-pub type skene_common::tui::tui_fields::CornerRadius::Value = f32
+pub type skene_common::tui::tui_fields::CornerRadius::Value = skene_core::expr::Length
 pub const skene_common::tui::tui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
 pub fn skene_common::tui::tui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -516,7 +516,7 @@ pub fn skene_common::tui::tui_fields::Size::hash<__H: core::hash::Hasher>(&self,
 impl core::marker::Copy for skene_common::tui::tui_fields::Size
 impl core::marker::StructuralPartialEq for skene_common::tui::tui_fields::Size
 impl skene_core::run_style::RunField<skene_common::tui::TuiExt> for skene_common::tui::tui_fields::Size
-pub type skene_common::tui::tui_fields::Size::Value = f32
+pub type skene_common::tui::tui_fields::Size::Value = skene_core::expr::Length
 pub const skene_common::tui::tui_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
 pub fn skene_common::tui::tui_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -664,7 +664,7 @@ pub const skene_common::tui::tui_fields::Bold::KEY: skene_core::property::Proper
 pub fn skene_common::tui::tui_fields::Bold::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::Bold::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
 impl skene_core::run_style::RunField<skene_common::tui::TuiExt> for skene_common::tui::tui_fields::Size
-pub type skene_common::tui::tui_fields::Size::Value = f32
+pub type skene_common::tui::tui_fields::Size::Value = skene_core::expr::Length
 pub const skene_common::tui::tui_fields::Size::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
 pub fn skene_common::tui::tui_fields::Size::get<S: skene_core::shape::Shape>(&skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::Size::get_mut<S: skene_core::shape::Shape>(&mut skene_core::run_style::RunStyle<S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -679,7 +679,7 @@ pub const skene_common::tui::tui_fields::BorderGlyphs::KEY: skene_core::property
 pub fn skene_common::tui::tui_fields::BorderGlyphs::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::BorderGlyphs::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
 impl<N: skene_core::scalar::Scalar> skene_core::box_style::BoxField<N, skene_common::tui::TuiExt> for skene_common::tui::tui_fields::CornerRadius
-pub type skene_common::tui::tui_fields::CornerRadius::Value = f32
+pub type skene_common::tui::tui_fields::CornerRadius::Value = skene_core::expr::Length
 pub const skene_common::tui::tui_fields::CornerRadius::KEY: skene_core::property::PropertyKey<skene_common::tui::TuiProperty>
 pub fn skene_common::tui::tui_fields::CornerRadius::get<S: skene_core::shape::Shape>(&skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &<S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::tui_fields::CornerRadius::get_mut<S: skene_core::shape::Shape>(&mut skene_core::box_style::BoxStyle<N, S, skene_common::tui::TuiExt>) -> &mut <S as skene_core::shape::Shape>::Of
@@ -695,14 +695,14 @@ pub struct skene_common::tui::TuiRunFields<S: skene_core::shape::Shape>
 pub skene_common::tui::TuiRunFields::bold: <S as skene_core::shape::Shape>::Of
 pub skene_common::tui::TuiRunFields::size: <S as skene_core::shape::Shape>::Of
 pub skene_common::tui::TuiRunFields::weight: <S as skene_core::shape::Shape>::Of
-impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
+impl<S: core::clone::Clone + skene_core::shape::Shape> core::clone::Clone for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone, <S as skene_core::shape::Shape>::Of: core::clone::Clone
 pub fn skene_common::tui::TuiRunFields<S>::clone(&self) -> skene_common::tui::TuiRunFields<S>
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::cmp::PartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
 pub fn skene_common::tui::TuiRunFields<S>::eq(&self, &skene_common::tui::TuiRunFields<S>) -> bool
-impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
-impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
+impl<S: core::cmp::PartialEq + skene_core::shape::Shape> core::marker::StructuralPartialEq for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq, <S as skene_core::shape::Shape>::Of: core::cmp::PartialEq
+impl<S: core::default::Default + skene_core::shape::Shape> core::default::Default for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default, <S as skene_core::shape::Shape>::Of: core::default::Default
 pub fn skene_common::tui::TuiRunFields<S>::default() -> skene_common::tui::TuiRunFields<S>
-impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
+impl<S: core::fmt::Debug + skene_core::shape::Shape> core::fmt::Debug for skene_common::tui::TuiRunFields<S> where <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug, <S as skene_core::shape::Shape>::Of: core::fmt::Debug
 pub fn skene_common::tui::TuiRunFields<S>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::tui::Typography
 pub skene_common::tui::Typography::ink: skene_core::token::Token<skene_core::values::color::Color, u32>
@@ -711,7 +711,7 @@ pub skene_common::tui::Typography::link_focus_surface: skene_core::token::Token<
 pub skene_common::tui::Typography::link_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
 pub skene_common::tui::Typography::selection_ink: skene_core::token::Token<skene_core::values::color::Color, u32>
 pub skene_common::tui::Typography::selection_surface: skene_core::token::Token<skene_core::values::color::Color, u32>
-pub skene_common::tui::Typography::size: skene_core::token::Token<f32, u32>
+pub skene_common::tui::Typography::size: skene_core::token::Token<skene_core::expr::Length, u32>
 pub skene_common::tui::Typography::weight: skene_core::token::Token<f32, u32>
 impl skene_common::tui::Typography
 pub fn skene_common::tui::Typography::set_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
@@ -720,7 +720,7 @@ pub fn skene_common::tui::Typography::set_link_focus_surface(self, impl core::co
 pub fn skene_common::tui::Typography::set_link_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
 pub fn skene_common::tui::Typography::set_selection_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
 pub fn skene_common::tui::Typography::set_selection_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, u32>>) -> Self
-pub fn skene_common::tui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<f32, u32>>) -> Self
+pub fn skene_common::tui::Typography::set_size(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::expr::Length, u32>>) -> Self
 pub fn skene_common::tui::Typography::set_weight(self, impl core::convert::Into<skene_core::leaf::Definition<f32, u32>>) -> Self
 impl core::clone::Clone for skene_common::tui::Typography
 pub fn skene_common::tui::Typography::clone(&self) -> skene_common::tui::Typography
@@ -731,19 +731,19 @@ pub fn skene_common::tui::Typography::default() -> Self
 impl core::fmt::Debug for skene_common::tui::Typography
 pub fn skene_common::tui::Typography::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::StructuralPartialEq for skene_common::tui::Typography
-impl<V> skene_core::token::TokenSet<V> for skene_common::tui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, u32>> + core::convert::From<skene_core::leaf::Definition<f32, u32>> + 'static
+impl<V> skene_core::token::TokenSet<V> for skene_common::tui::Typography where V: core::convert::From<skene_core::leaf::Definition<skene_core::values::color::Color, u32>> + core::convert::From<skene_core::leaf::Definition<f32, u32>> + core::convert::From<skene_core::leaf::Definition<skene_core::expr::Length, u32>> + 'static
 pub fn skene_common::tui::Typography::definitions(&self) -> alloc::vec::Vec<(skene_core::token::TokenName, V)>
 pub const skene_common::tui::BOLD_WEIGHT: f32
 pub mod skene_common::typography
 pub const skene_common::typography::INK: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_common::typography::LETTER_SPACING: skene_core::token::TokenRef<f32>
+pub const skene_common::typography::LETTER_SPACING: skene_core::token::TokenRef<skene_core::expr::Length>
 pub const skene_common::typography::LINE_HEIGHT: skene_core::token::TokenRef<f32>
 pub const skene_common::typography::LINK_FOCUS_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::LINK_FOCUS_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::LINK_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::SELECTION_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_common::typography::SELECTION_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
-pub const skene_common::typography::SIZE: skene_core::token::TokenRef<f32>
+pub const skene_common::typography::SIZE: skene_core::token::TokenRef<skene_core::expr::Length>
 pub const skene_common::typography::WEIGHT: skene_core::token::TokenRef<f32>
 pub macro skene_common::decoration!
 pub macro skene_common::properties!
@@ -887,7 +887,7 @@ pub fn skene_common::Container<P>::derive_alignment<R: core::convert::Into<skene
 pub fn skene_common::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Container<P>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Container<P>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Container<P>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_core::values::focus_order::FocusOrder + 'static) -> Self
 pub fn skene_common::Container<P>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -920,7 +920,7 @@ pub fn skene_common::Container<P>::set_aspect_ratio(self, impl core::convert::In
 pub fn skene_common::Container<P>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_container_name(self, skene_core::condition::ContainerName) -> Self
-pub fn skene_common::Container<P>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Container<P>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Container<P>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_focus_order(self, skene_core::values::focus_order::FocusOrder) -> Self
 pub fn skene_common::Container<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -955,7 +955,7 @@ impl<P: skene_core::platform::Platform, C> skene_common::ContextMenu<P, C>
 pub fn skene_common::ContextMenu<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::ContextMenu<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::ContextMenu<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::ContextMenu<P, C>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_item_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -976,11 +976,11 @@ pub const fn skene_common::ContextMenu<P, C>::list_style_mut(&mut self) -> &mut 
 pub fn skene_common::ContextMenu<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::ContextMenu<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::ContextMenu<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::ContextMenu<P, C>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_item_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::ContextMenu<P, C>::set_item_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::ContextMenu<P, C>::set_item_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::ContextMenu<P, C>::set_item_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_item_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_item_text_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1023,7 +1023,7 @@ pub fn skene_common::Control<P, B, C>::derive_alignment<R: core::convert::Into<s
 pub fn skene_common::Control<P, B, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Control<P, B, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Control<P, B, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Control<P, B, C>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_focus_order(self, impl core::ops::function::Fn() -> skene_core::values::focus_order::FocusOrder + 'static) -> Self
@@ -1062,7 +1062,7 @@ pub fn skene_common::Control<P, B, C>::set_axis(self, skene_core::values::axis::
 pub fn skene_common::Control<P, B, C>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_container_name(self, skene_core::condition::ContainerName) -> Self
-pub fn skene_common::Control<P, B, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Control<P, B, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Control<P, B, C>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_common::Control<P, B, C>::set_described_by(self, skene_core::node::NodeId) -> Self
 pub fn skene_common::Control<P, B, C>::set_disabled(self, bool) -> Self
@@ -1530,7 +1530,7 @@ pub fn skene_common::Overlay<P, C>::bind_open(self, skene_reactive::signal::Sign
 pub fn skene_common::Overlay<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Overlay<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Overlay<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Overlay<P, C>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_margin<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1553,7 +1553,7 @@ pub fn skene_common::Overlay<P, C>::set_aspect_ratio(self, impl core::convert::I
 pub const fn skene_common::Overlay<P, C>::set_backdrop(self, core::option::Option<skene_core::values::color::Color>) -> Self
 pub fn skene_common::Overlay<P, C>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Overlay<P, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Overlay<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Overlay<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Overlay<P, C>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Overlay<P, C>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Overlay<P, C>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
@@ -1725,7 +1725,7 @@ pub fn skene_common::RawPicker<P, F>::bind_value(self, skene_reactive::signal::S
 pub fn skene_common::RawPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::RawPicker<P, F>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::RawPicker<P, F>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::RawPicker<P, F>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_disabled(self, impl core::ops::function::Fn() -> bool + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1745,7 +1745,7 @@ pub fn skene_common::RawPicker<P, F>::handle_change(self, impl core::ops::functi
 pub fn skene_common::RawPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::RawPicker<P, F>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::RawPicker<P, F>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::RawPicker<P, F>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_disabled(self, bool) -> Self
 pub fn skene_common::RawPicker<P, F>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1889,9 +1889,9 @@ pub fn skene_common::Span<P>::derive_color<R: core::convert::Into<skene_core::le
 pub fn skene_common::Span<P>::derive_decoration<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Span<P>::derive_decoration_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Span<P>::derive_decoration_style<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Span<P>::derive_font_size<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Span<P>::derive_font_size<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::derive_font_weight<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
-pub fn skene_common::Span<P>::derive_letter_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Span<P>::derive_letter_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::derive_line_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::derive_selection_background<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Span<P>::derive_selection_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1903,9 +1903,9 @@ pub fn skene_common::Span<P>::set_color(self, impl core::convert::Into<skene_cor
 pub fn skene_common::Span<P>::set_decoration(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::text_decoration::TextDecoration, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Span<P>::set_decoration_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Span<P>::set_decoration_style(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::text_decoration::TextDecorationStyle, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Span<P>::set_font_size(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Span<P>::set_font_size(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::set_font_weight(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
-pub fn skene_common::Span<P>::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Span<P>::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::set_line_height(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Span<P>::set_link_policy(self, skene_core::values::link::LinkPolicy) -> Self
@@ -1970,9 +1970,9 @@ pub fn skene_common::Text<P>::derive_color<R: core::convert::Into<skene_core::le
 pub fn skene_common::Text<P>::derive_decoration<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::text_decoration::TextDecoration>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Text<P>::derive_decoration_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Text<P>::derive_decoration_style<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::text_decoration::TextDecorationStyle>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Text<P>::derive_font_size<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Text<P>::derive_font_size<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::derive_font_weight<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
-pub fn skene_common::Text<P>::derive_letter_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Text<P>::derive_letter_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::derive_line_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::derive_selection_background<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Text<P>::derive_selection_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1982,9 +1982,9 @@ pub fn skene_common::Text<P>::set_color(self, impl core::convert::Into<skene_cor
 pub fn skene_common::Text<P>::set_decoration(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::text_decoration::TextDecoration, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Text<P>::set_decoration_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Text<P>::set_decoration_style(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::text_decoration::TextDecorationStyle, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Text<P>::set_font_size(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Text<P>::set_font_size(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::set_font_weight(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
-pub fn skene_common::Text<P>::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
+pub fn skene_common::Text<P>::set_letter_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::set_line_height(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Text<P>::set_link(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Text<P>::set_link_policy(self, skene_core::values::link::LinkPolicy) -> Self
@@ -2084,7 +2084,7 @@ pub const fn skene_common::Tooltip<P, C>::bubble_style_mut(&mut self) -> &mut sk
 pub fn skene_common::Tooltip<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_border<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Tooltip<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Tooltip<P, C>::derive_corner_radius<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::expr::Length>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Tooltip<P, C>::derive_cursor<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::mouse_cursor::MouseCursor>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_margin<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -2100,7 +2100,7 @@ pub fn skene_common::Tooltip<P, C>::derive_width<R: core::convert::Into<skene_co
 pub fn skene_common::Tooltip<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Tooltip<P, C>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Tooltip<P, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Tooltip<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
+pub fn skene_common::Tooltip<P, C>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Tooltip<P, C>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_common::Tooltip<P, C>::set_delay(self, core::time::Duration) -> Self
 pub fn skene_common::Tooltip<P, C>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self

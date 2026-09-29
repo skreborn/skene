@@ -1338,12 +1338,14 @@ pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
 }
 
 /// The length the property `key` of `node` resolves to, by the same resolution as
-/// [`resolve_color`]: a fixed-length dimension, a number, or a uniform inset or spacing.
+/// [`resolve_color`]: a length, a fixed-length dimension, a number, or a uniform inset or
+/// spacing.
 #[must_use]
 pub fn resolve_length(node: NodeId, key: PropertyKey<NoProperty>) -> Option<f32> {
   end_turn();
 
   match resolve::resolve(node, key)? {
+    SlotValue::Box(BoxValue::Length(length)) => Some(length.0),
     SlotValue::Box(BoxValue::Dimension(Dimension::Length(length))) => Some(length),
     SlotValue::Box(BoxValue::Number(number)) => Some(number),
     SlotValue::Box(BoxValue::Inset(inset)) => uniform_inset(inset),

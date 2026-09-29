@@ -4,8 +4,7 @@
 //! The only place the web platform spells CSS for the new model. A property compiles to
 //! one declaration (a shorthand where the property has components, so a single custom
 //! property can carry a derived value); a fixed leaf renders as its literal, a token as
-//! `var(--<name>)`—a number token read by a pixel-measured extension property as
-//! `calc(var(--<name>) * 1px)`—an expression as CSS math, and a derived slot as
+//! `var(--<name>)`, an expression as CSS math, and a derived slot as
 //! `var(--skene-<property>)` for the base and `var(--skene-<property>-<i>)` for the
 //! `i`-th variant. Variants group by their canonical condition into one rule per
 //! conjunction, kept in each property's declaration order.
@@ -121,20 +120,10 @@ fn slot_property(key: Key, position: usize) -> String {
   }
 }
 
-/// How a numeric value of a property reads.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Unit {
-  /// Logical pixels.
-  Pixels,
-  /// A plain number.
-  Plain,
-}
-
 /// The CSS a property compiles to.
 pub(crate) struct Target {
   pub(crate) name: &'static str,
   pseudo: &'static str,
-  unit: Unit,
   position: Option<&'static str>,
 }
 
@@ -142,21 +131,11 @@ const fn plain(name: &'static str) -> Target {
   Target {
     name,
     pseudo: "",
-    unit: Unit::Plain,
     position: None,
   }
 }
 
-const fn pixels(name: &'static str) -> Target {
-  Target {
-    name,
-    pseudo: "",
-    unit: Unit::Pixels,
-    position: None,
-  }
-}
-
-/// The CSS property, pseudo-element, unit and positioning `key` compiles to.
+/// The CSS property, pseudo-element and positioning `key` compiles to.
 pub(crate) const fn target(key: Key) -> Target {
   match key {
     PropertyKey::Shared(property) => match property {
@@ -212,48 +191,35 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::DecorationColor => plain("text-decoration-color"),
     },
     PropertyKey::Extension(property) => match property {
-      GuiProperty::CornerRadius => pixels("border-radius"),
-      GuiProperty::FontSize => pixels("font-size"),
+      GuiProperty::CornerRadius => plain("border-radius"),
+      GuiProperty::FontSize => plain("font-size"),
       GuiProperty::FontWeight => plain("font-weight"),
       GuiProperty::LineHeight => plain("line-height"),
-      GuiProperty::LetterSpacing => pixels("letter-spacing"),
+      GuiProperty::LetterSpacing => plain("letter-spacing"),
     },
   }
 }
 
-/// A number in the property's unit.
-fn number(unit: Unit, value: f32) -> String {
-  match unit {
-    Unit::Pixels => format!("{value}px"),
-    Unit::Plain => value.to_string(),
-  }
-}
-
-/// A token reference read by a property: its custom property, scaled to pixels where
-/// the property measures in them.
-fn token_reference(unit: Unit, name: TokenName) -> String {
-  match unit {
-    Unit::Pixels => format!("calc(var(--{name}) * 1px)"),
-    Unit::Plain => format!("var(--{name})"),
-  }
+/// A token reference: its custom property.
+fn token_reference(name: TokenName) -> String {
+  format!("var(--{name})")
 }
 
 /// A color leaf's text: a literal, a token or an expression.
 fn color_leaf(leaf: &StaticLeaf<skene_core::Color>) -> String {
   match leaf {
     StaticLeaf::Fixed(color) => Declarations::render_color(*color),
-    StaticLeaf::Token(reference) => token_reference(Unit::Plain, reference.name()),
+    StaticLeaf::Token(reference) => token_reference(reference.name()),
     StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
 
 /// The CSS text of a box property's erased value.
-pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, GuiExt>) -> String {
-  let unit = target(key).unit;
-
+pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
   match value {
     BoxValue::Dimension(dimension) => Declarations::render_dimension(*dimension),
-    BoxValue::Number(value) | BoxValue::Extension(value) => number(unit, *value),
+    BoxValue::Length(length) => format!("{}px", length.0),
+    BoxValue::Number(value) | BoxValue::Extension(value) => value.to_string(),
     BoxValue::DimensionInset(inset) => Declarations::render_dimension_inset(*inset),
     BoxValue::Inset(inset) => format!(
       "{}px {}px {}px {}px",
@@ -306,9 +272,10 @@ pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, GuiExt>) -> Strin
 }
 
 /// The CSS text of a run property's erased value.
-pub(crate) fn render_run_value(key: Key, value: &RunValue<GuiExt>) -> String {
+pub(crate) fn render_run_value(value: &RunValue<GuiExt>) -> String {
   match value {
     RunValue::Color(color) => Declarations::render_color(*color),
+    RunValue::Length(length) => format!("{}px", length.0),
     RunValue::Decoration(decoration) => match decoration {
       TextDecoration::None => "none",
       TextDecoration::Underline => "underline",
@@ -324,32 +291,28 @@ pub(crate) fn render_run_value(key: Key, value: &RunValue<GuiExt>) -> String {
       TextDecorationStyle::Wavy => "wavy",
     }
     .to_owned(),
-    RunValue::Extension(value) => number(target(key).unit, *value),
+    RunValue::Extension(value) => value.to_string(),
   }
 }
 
 /// The CSS text a derived box leaf writes into its slot: a value rendered, a token or
 /// an expression referenced.
-pub(crate) fn render_box_leaf(key: Key, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) -> String {
-  static_leaf_text(key, leaf, |value| render_box_value(key, &value))
+pub(crate) fn render_box_leaf(leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) -> String {
+  static_leaf_text(leaf, |value| render_box_value(&value))
 }
 
 /// The CSS text a derived run leaf writes into its slot: a value rendered, a token or
 /// an expression referenced.
-pub(crate) fn render_run_leaf(key: Key, leaf: &StaticLeaf<RunValue<GuiExt>>) -> String {
-  static_leaf_text(key, leaf, |value| render_run_value(key, &value))
+pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<GuiExt>>) -> String {
+  static_leaf_text(leaf, |value| render_run_value(&value))
 }
 
-/// The text of a static leaf of `key`: a fixed value through `fixed`, a token or an
-/// expression referenced.
-fn static_leaf_text<T: Clone>(
-  key: Key,
-  leaf: &StaticLeaf<T>,
-  fixed: impl FnOnce(T) -> String,
-) -> String {
+/// The text of a static leaf: a fixed value through `fixed`, a token or an expression
+/// referenced.
+fn static_leaf_text<T: Clone>(leaf: &StaticLeaf<T>, fixed: impl FnOnce(T) -> String) -> String {
   match leaf {
     StaticLeaf::Fixed(value) => fixed(value.clone()),
-    StaticLeaf::Token(reference) => token_reference(target(key).unit, reference.name()),
+    StaticLeaf::Token(reference) => token_reference(reference.name()),
     StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
@@ -363,7 +326,7 @@ fn leaf_text<T: Clone>(
   fixed: impl FnOnce(T) -> String,
 ) -> String {
   match leaf {
-    PlatformLeaf::Static(leaf) => static_leaf_text(key, leaf, fixed),
+    PlatformLeaf::Static(leaf) => static_leaf_text(leaf, fixed),
     PlatformLeaf::Slot(slot) => {
       slots.push(SlotBinding {
         slot: *slot,
@@ -516,7 +479,7 @@ impl BoxVisitor<f32, Static<Condition<f32>>, GuiExt> for BoxRules<'_> {
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
-        render_box_value(key, &fixed.into_box_value())
+        render_box_value(&fixed.into_box_value())
       });
     }
   }
@@ -533,22 +496,9 @@ impl RunVisitor<Static<Condition<f32>>, GuiExt> for RunRules<'_> {
   ) {
     if let Some(value) = value {
       self.0.property(key, value, &|fixed: T| {
-        render_run_value(key, &fixed.into_run_value())
+        render_run_value(&fixed.into_run_value())
       });
     }
-  }
-}
-
-/// The text of a keyframe's static leaf of `key`.
-fn keyframe_leaf<T: Clone>(
-  key: Key,
-  leaf: &StaticLeaf<T>,
-  fixed: impl FnOnce(T) -> String,
-) -> String {
-  match leaf {
-    StaticLeaf::Fixed(value) => fixed(value.clone()),
-    StaticLeaf::Token(reference) => token_reference(target(key).unit, reference.name()),
-    StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
 
@@ -559,9 +509,7 @@ impl BoxVisitor<f32, Keyframe, GuiExt> for KeyframeBox {
   fn value<T: IntoBoxValue<f32, GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
       let Target { name, position, .. } = target(key);
-      let text = keyframe_leaf(key, leaf, |fixed: T| {
-        render_box_value(key, &fixed.into_box_value())
-      });
+      let text = static_leaf_text(leaf, |fixed: T| render_box_value(&fixed.into_box_value()));
       let declarations = std::mem::take(&mut self.0).set(name, text);
 
       self.0 = match position {
@@ -578,9 +526,7 @@ struct KeyframeRun(Declarations);
 impl RunVisitor<Keyframe, GuiExt> for KeyframeRun {
   fn value<T: IntoRunValue<GuiExt>>(&mut self, key: Key, value: &Option<StaticLeaf<T>>) {
     if let Some(leaf) = value {
-      let text = keyframe_leaf(key, leaf, |fixed: T| {
-        render_run_value(key, &fixed.into_run_value())
-      });
+      let text = static_leaf_text(leaf, |fixed: T| render_run_value(&fixed.into_run_value()));
 
       self.0 = std::mem::take(&mut self.0).set(target(key).name, text);
     }
@@ -783,7 +729,7 @@ pub(crate) fn compile_layout<P: PixelPlatform>(layout: &StaticBoxStyle<P>) -> Co
 pub(crate) fn compile_control<P: PixelPlatform>(props: &ControlProps<P>) -> Compiled {
   let entry = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor);
   let ink = if entry {
-    token_reference(Unit::Plain, typography::INK.name())
+    token_reference(typography::INK.name())
   }
   else {
     "inherit".to_owned()
@@ -805,12 +751,9 @@ pub(crate) fn compile_control<P: PixelPlatform>(props: &ControlProps<P>) -> Comp
       &Declarations::new()
         .set(
           "background-color",
-          token_reference(Unit::Plain, typography::SELECTION_SURFACE.name()),
+          token_reference(typography::SELECTION_SURFACE.name()),
         )
-        .set(
-          "color",
-          token_reference(Unit::Plain, typography::SELECTION_INK.name()),
-        )
+        .set("color", token_reference(typography::SELECTION_INK.name()))
         .render(),
     );
   }
@@ -916,7 +859,7 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
 
     Some(match leaf {
       StaticLeaf::Fixed(value) => fixed(value.clone()),
-      StaticLeaf::Token(reference) => token_reference(Unit::Plain, reference.name()),
+      StaticLeaf::Token(reference) => token_reference(reference.name()),
       StaticLeaf::Expr(expr) => render_expr(expr.node()),
     })
   }

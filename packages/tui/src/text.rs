@@ -7,6 +7,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
+use skene_core::Length;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -109,9 +110,9 @@ pub(crate) fn sizing() -> bool {
 
 /// The scale a run's resolved size draws at: its own where the terminal sizes text,
 /// one cell elsewhere.
-pub(crate) fn scale_of(size: Option<f32>) -> CellScale {
+pub(crate) fn scale_of(size: Option<Length>) -> CellScale {
   match size {
-    Some(size) if sizing() => CellScale::of(size),
+    Some(size) if sizing() => CellScale::of(size.0),
     _ => CellScale::ONE,
   }
 }

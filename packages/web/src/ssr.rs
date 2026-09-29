@@ -1184,10 +1184,7 @@ impl Platform for Web {
         .cloned();
 
       if let Some(binding) = binding {
-        node.set_inline(
-          binding.custom_property(),
-          render_box_leaf(binding.property, leaf),
-        );
+        node.set_inline(binding.custom_property(), render_box_leaf(leaf));
       }
     });
   }
@@ -1397,10 +1394,7 @@ impl Platform for Web {
         .cloned();
 
       if let Some(binding) = binding {
-        node.set_inline(
-          binding.custom_property(),
-          render_run_leaf(binding.property, leaf),
-        );
+        node.set_inline(binding.custom_property(), render_run_leaf(leaf));
       }
     });
   }

@@ -20,6 +20,13 @@ use crate::{Color, Dimension, Edge, Inset, Size, Spacing};
 #[must_use]
 pub struct Length(pub f32);
 
+impl From<f32> for Length {
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self(length)
+  }
+}
+
 /// A unitless number.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[must_use]
@@ -767,6 +774,38 @@ length_token_targets!(
   [N: Scalar,] Spacing<N>,
   [N: Scalar,] Inset<Dimension<N>>,
 );
+
+impl From<f32> for StaticLeaf<Length> {
+  /// A number as a length literal, in the medium's unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::Fixed(Length(length))
+  }
+}
+
+impl From<f32> for Leaf<Length> {
+  /// A number as a length literal, in the medium's unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::Static(StaticLeaf::from(length))
+  }
+}
+
+impl<C> From<f32> for Value<Length, C> {
+  /// A number as a length literal, in the medium's unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::new(Leaf::from(length))
+  }
+}
+
+impl<M: Scalar> From<f32> for Definition<Length, M> {
+  /// A number as a length literal, in the medium's unit.
+  #[inline(always)]
+  fn from(length: f32) -> Self {
+    Self::new(StaticLeaf::from(length))
+  }
+}
 
 #[cfg(test)]
 mod tests {

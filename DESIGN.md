@@ -375,8 +375,11 @@ only serialize its current value; style data compiles to real CSS and evaluates 
 **One property model, spelled once.** `BoxStyle<N: Scalar, S: Shape, X: StyleExtension>`
 and `RunStyle<S, X>` name every shared property once; the leaf shape is a type parameter
 (`Declared` for a builder, `Static` for a platform, `Plain` for a keyframe or a resolved
-style) and the medium's own properties come through the extension (`GuiExt`: corner
-radius, transitions' pixel properties; `TuiExt`: border glyphs, shadow, bold). The
+style) and the medium's own properties come through the extension (`GuiExt`: the corner
+radius and the type metrics; `TuiExt`: border glyphs, the corner radius, a shadow, bold,
+size and weight). A corner radius, a font size and a letter spacing are lengths
+(`Length`) in the medium's unit, fractions kept, so one length token serves them as it
+serves padding and sizes. The
 shared run properties are the text color, the selection's ink and surface, and the
 decoration: the line (`TextDecoration`: beneath, above or through the text, a link
 underlined unless set), its style (`TextDecorationStyle`: solid, double, dotted,
@@ -452,7 +455,10 @@ A design token is a named, inherited slot. `TokenRef<T>` names it (a `const`; th
 an implementation detail on every platform), `Token<T>` pairs the name with the
 definition a palette gives it, and a consumer emits only the name, so two boxes under two
 palettes intern one class and a theme change never touches a consumer. A token's own
-conditions live in its definition, once.
+conditions live in its definition, once. A length token serves every property measured
+in lengths, a box's sizes, padding, spacing and margins, its corner radius and a run's
+font size and letter spacing alike, and a property that is a plain number reads a
+number token alone.
 
 `Theme<P, P: TokenSet>` is the one theme view. It realizes one layout-invisible scope node
 (`display: contents` on the web, a scope record in the terminal), provides `Memo<P>`

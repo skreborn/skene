@@ -1,13 +1,13 @@
 //! The type metrics a medium may have, asked of a platform's style extension.
 
-use skene_core::{Shape, StyleExtension};
+use skene_core::{Length, Shape, StyleExtension};
 
 /// A style extension that can size, weight and space a run's type.
 ///
 /// A medium with type metrics implements the setters to write each metric into its own
 /// field; the defaults write nothing, so `()` and any medium without metrics accept
-/// them silently. Sizes and spacing are in the medium's unit, the weight is `100` to
-/// `900`, and the line height is a multiple of the font size.
+/// them silently. Sizes and spacing are lengths in the medium's unit, the weight is
+/// `100` to `900`, and the line height is a multiple of the font size.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` does not say whether it has type metrics",
   label = "a style extension implements `TypeMetrics`, overriding the setters when its medium sizes type and leaving the defaults when it does not"
@@ -16,7 +16,7 @@ pub trait TypeMetrics: StyleExtension {
   /// Writes `size` into the extension's run fields; nothing, on a medium without type
   /// metrics.
   #[inline(always)]
-  fn set_font_size<S: Shape>(_fields: &mut Self::RunFields<S>, _size: S::Of<f32>) {}
+  fn set_font_size<S: Shape>(_fields: &mut Self::RunFields<S>, _size: S::Of<Length>) {}
 
   /// Writes `weight` into the extension's run fields; nothing, on a medium without
   /// type metrics.
@@ -31,7 +31,7 @@ pub trait TypeMetrics: StyleExtension {
   /// Writes `spacing` into the extension's run fields; nothing, on a medium without
   /// type metrics.
   #[inline(always)]
-  fn set_letter_spacing<S: Shape>(_fields: &mut Self::RunFields<S>, _spacing: S::Of<f32>) {}
+  fn set_letter_spacing<S: Shape>(_fields: &mut Self::RunFields<S>, _spacing: S::Of<Length>) {}
 }
 
 impl TypeMetrics for () {}

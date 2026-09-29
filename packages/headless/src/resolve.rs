@@ -135,7 +135,7 @@ impl Env {
       Self::of_scope(scope)?.with_resolver_at(EM, |resolver| resolver.definition(&definition))
     })
     .and_then(|resolved| match resolved {
-      Resolved::Number(size) => Some(size),
+      Resolved::Length(size) => Some(size),
       _ => None,
     })
     .unwrap_or(EM)

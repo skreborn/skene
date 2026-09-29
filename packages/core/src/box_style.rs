@@ -28,6 +28,7 @@ use crate::{
   GridTrack,
   Inset,
   ItemAlignment,
+  Length,
   Line,
   MouseCursor,
   Overflow,
@@ -125,6 +126,8 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
 pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   /// A length, fraction or auto.
   Dimension(Dimension<N>),
+  /// A length in the medium's unit, its fractions kept.
+  Length(Length),
   /// A unitless number.
   Number(f32),
   /// A dimension per edge.
@@ -191,6 +194,23 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Dimension<N> {
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
     match value {
       BoxValue::Dimension(value) => Some(value),
+      BoxValue::Length(length) => Some(Self::Length(N::from_f32(length.0))),
+      _ => None,
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Length {
+  #[inline(always)]
+  fn into_box_value(self) -> BoxValue<N, X> {
+    BoxValue::Length(self)
+  }
+
+  #[inline(always)]
+  fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
+    match value {
+      BoxValue::Length(length) => Some(length),
+      BoxValue::Dimension(Dimension::Length(length)) => Some(Self(length.to_f32())),
       _ => None,
     }
   }
@@ -210,7 +230,10 @@ macro_rules! box_values {
       fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
         match value {
           BoxValue::$variant(value) => Some(value),
-          $(BoxValue::Dimension(Dimension::Length(length)) => Some($lenient(length)),)?
+          $(
+            BoxValue::Dimension(Dimension::Length(length)) => Some($lenient(length)),
+            BoxValue::Length(length) => Some($lenient(N::from_f32(length.0))),
+          )?
           _ => None,
         }
       }

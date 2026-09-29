@@ -8,7 +8,7 @@
 //! [`SIZE`], [`WEIGHT`], [`LINE_HEIGHT`] and [`LETTER_SPACING`] are for the text
 //! properties a medium's style extension carries.
 
-use skene_core::{Color, TokenRef};
+use skene_core::{Color, Length, TokenRef};
 
 /// The text color.
 pub const INK: TokenRef<Color> = TokenRef::new("typography-ink");
@@ -28,8 +28,8 @@ pub const LINK_FOCUS_INK: TokenRef<Color> = TokenRef::new("typography-link-focus
 /// The background behind a link while its focus shows.
 pub const LINK_FOCUS_SURFACE: TokenRef<Color> = TokenRef::new("typography-link-focus-surface");
 
-/// The font size, in the medium's unit.
-pub const SIZE: TokenRef<f32> = TokenRef::new("typography-size");
+/// The font size, a length in the medium's unit.
+pub const SIZE: TokenRef<Length> = TokenRef::new("typography-size");
 
 /// The font weight.
 pub const WEIGHT: TokenRef<f32> = TokenRef::new("typography-weight");
@@ -37,5 +37,5 @@ pub const WEIGHT: TokenRef<f32> = TokenRef::new("typography-weight");
 /// The line height, as a multiple of the font size.
 pub const LINE_HEIGHT: TokenRef<f32> = TokenRef::new("typography-line-height");
 
-/// The extra space between letters, in the medium's unit.
-pub const LETTER_SPACING: TokenRef<f32> = TokenRef::new("typography-letter-spacing");
+/// The extra space between letters, a length in the medium's unit.
+pub const LETTER_SPACING: TokenRef<Length> = TokenRef::new("typography-letter-spacing");

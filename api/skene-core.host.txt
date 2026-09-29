@@ -642,6 +642,9 @@ pub fn f32::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for skene_core::Color
 pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
+impl skene_core::interpolate::Interpolate for skene_core::Length
+pub fn skene_core::Length::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Length::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for skene_core::Visibility
 pub fn skene_core::Visibility::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Visibility::interpolates_with(&self, &Self) -> bool
@@ -888,6 +891,7 @@ pub skene_core::BoxValue::Flexibility(skene_core::Flexibility<N>)
 pub skene_core::BoxValue::GridFlow(skene_core::GridFlow)
 pub skene_core::BoxValue::Inset(skene_core::Inset<N>)
 pub skene_core::BoxValue::ItemAlignment(skene_core::ItemAlignment)
+pub skene_core::BoxValue::Length(skene_core::Length)
 pub skene_core::BoxValue::Number(f32)
 pub skene_core::BoxValue::Overflow(skene_core::Overflow)
 pub skene_core::BoxValue::Placement(skene_core::Line<skene_core::GridPlacement>)
@@ -1327,6 +1331,8 @@ pub skene_core::Leaf::Derived(alloc::rc::Rc<dyn core::ops::function::Fn() -> ske
 pub skene_core::Leaf::Static(skene_core::StaticLeaf<T>)
 impl<T> skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::derive<R: core::convert::Into<skene_core::StaticLeaf<T>>>(impl core::ops::function::Fn() -> R + 'static) -> Self
+impl core::convert::From<f32> for skene_core::Leaf<skene_core::Length>
+pub fn skene_core::Leaf<skene_core::Length>::from(f32) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<f32>
 pub fn skene_core::Leaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Leaf<skene_core::Dimension<N>>
@@ -1711,6 +1717,7 @@ pub fn skene_core::StyleProperty<P>::from(skene_core::PropertyKey<P>) -> Self
 pub enum skene_core::Resolved<N: skene_core::Scalar>
 pub skene_core::Resolved::Color(skene_core::Color)
 pub skene_core::Resolved::Dimension(skene_core::Dimension<N>)
+pub skene_core::Resolved::Length(f32)
 pub skene_core::Resolved::Number(f32)
 pub skene_core::Resolved::Text(alloc::string::String)
 impl<N: skene_core::Scalar> skene_core::Resolved<N>
@@ -1795,6 +1802,7 @@ pub skene_core::RunValue::Color(skene_core::Color)
 pub skene_core::RunValue::Decoration(skene_core::TextDecoration)
 pub skene_core::RunValue::DecorationStyle(skene_core::TextDecorationStyle)
 pub skene_core::RunValue::Extension(<X as skene_core::StyleExtension>::Value)
+pub skene_core::RunValue::Length(skene_core::Length)
 impl<X: core::clone::Clone + skene_core::StyleExtension> core::clone::Clone for skene_core::RunValue<X> where <X as skene_core::StyleExtension>::Value: core::clone::Clone
 pub fn skene_core::RunValue<X>::clone(&self) -> skene_core::RunValue<X>
 impl<X: core::cmp::PartialEq + skene_core::StyleExtension> core::cmp::PartialEq for skene_core::RunValue<X> where <X as skene_core::StyleExtension>::Value: core::cmp::PartialEq
@@ -1847,6 +1855,8 @@ pub enum skene_core::StaticLeaf<T>
 pub skene_core::StaticLeaf::Expr(skene_core::Expr<T>)
 pub skene_core::StaticLeaf::Fixed(T)
 pub skene_core::StaticLeaf::Token(skene_core::TokenRef<T>)
+impl core::convert::From<f32> for skene_core::StaticLeaf<skene_core::Length>
+pub fn skene_core::StaticLeaf<skene_core::Length>::from(f32) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::BoxValue<N, X>>> for skene_core::SlotLeaf<N, X>
@@ -2874,6 +2884,8 @@ impl core::clone::Clone for skene_core::Length
 pub fn skene_core::Length::clone(&self) -> skene_core::Length
 impl core::cmp::PartialEq for skene_core::Length
 pub fn skene_core::Length::eq(&self, &skene_core::Length) -> bool
+impl core::convert::From<f32> for skene_core::Length
+pub fn skene_core::Length::from(f32) -> Self
 impl core::default::Default for skene_core::Length
 pub fn skene_core::Length::default() -> skene_core::Length
 impl core::fmt::Debug for skene_core::Length
@@ -2882,10 +2894,21 @@ impl core::marker::Copy for skene_core::Length
 impl core::marker::StructuralPartialEq for skene_core::Length
 impl skene_core::ExprOutput for skene_core::Length
 pub fn skene_core::Length::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
+impl skene_core::Fingerprint for skene_core::Length
+pub fn skene_core::Length::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Quantity for skene_core::Length
 pub fn skene_core::Length::literal(f32) -> skene_core::ExprNode
+impl skene_core::interpolate::Interpolate for skene_core::Length
+pub fn skene_core::Length::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Length::interpolates_with(&self, &Self) -> bool
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Length
+pub fn skene_core::Length::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::Length::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Length> for skene_core::Resolved<N>
 pub fn skene_core::Resolved<N>::from(skene_core::Length) -> Self
+impl<X: skene_core::StyleExtension> skene_core::IntoRunValue<X> for skene_core::Length
+pub fn skene_core::Length::from_run_value(skene_core::RunValue<X>) -> core::option::Option<Self>
+pub fn skene_core::Length::into_run_value(self) -> skene_core::RunValue<X>
 pub struct skene_core::Line<T>
 pub skene_core::Line::end: T
 pub skene_core::Line::start: T
@@ -3964,6 +3987,8 @@ impl skene_core::Fingerprint for skene_core::GridPlacement
 pub fn skene_core::GridPlacement::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::ItemAlignment
 pub fn skene_core::ItemAlignment::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::Fingerprint for skene_core::Length
+pub fn skene_core::Length::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::MouseCursor
 pub fn skene_core::MouseCursor::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::Overflow
@@ -4082,6 +4107,9 @@ pub fn skene_core::Inset<skene_core::Dimension<N>>::into_box_value(self) -> sken
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::ItemAlignment
 pub fn skene_core::ItemAlignment::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::ItemAlignment::into_box_value(self) -> skene_core::BoxValue<N, X>
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Length
+pub fn skene_core::Length::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::Length::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Line<skene_core::GridPlacement>
 pub fn skene_core::Line<skene_core::GridPlacement>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Line<skene_core::GridPlacement>::into_box_value(self) -> skene_core::BoxValue<N, X>
@@ -4140,6 +4168,9 @@ pub fn skene_core::IntoRunValue::into_run_value(self) -> skene_core::RunValue<X>
 impl<X: skene_core::StyleExtension> skene_core::IntoRunValue<X> for skene_core::Color
 pub fn skene_core::Color::from_run_value(skene_core::RunValue<X>) -> core::option::Option<Self>
 pub fn skene_core::Color::into_run_value(self) -> skene_core::RunValue<X>
+impl<X: skene_core::StyleExtension> skene_core::IntoRunValue<X> for skene_core::Length
+pub fn skene_core::Length::from_run_value(skene_core::RunValue<X>) -> core::option::Option<Self>
+pub fn skene_core::Length::into_run_value(self) -> skene_core::RunValue<X>
 impl<X: skene_core::StyleExtension> skene_core::IntoRunValue<X> for skene_core::TextDecoration
 pub fn skene_core::TextDecoration::from_run_value(skene_core::RunValue<X>) -> core::option::Option<Self>
 pub fn skene_core::TextDecoration::into_run_value(self) -> skene_core::RunValue<X>

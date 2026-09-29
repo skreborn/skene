@@ -31,6 +31,7 @@ use skene_core::{
   EventKind,
   Expr,
   HasChildren,
+  Length,
   Media,
   NodeId,
   NodeKind,
@@ -52,12 +53,12 @@ type Box_ = Container<Web>;
 #[derive(Debug, Clone, PartialEq)]
 struct Palette {
   card: Token<Color, f32>,
-  gutter: Token<f32, f32>,
+  gutter: Token<Length, f32>,
 }
 
 impl Palette {
   const CARD: TokenRef<Color> = TokenRef::new("simple-card");
-  const GUTTER: TokenRef<f32> = TokenRef::new("simple-gutter");
+  const GUTTER: TokenRef<Length> = TokenRef::new("simple-gutter");
 
   fn with_card(card: Color) -> Self {
     Self {
@@ -146,8 +147,8 @@ fn a_token_renders_as_a_custom_property_reference() {
   assert!(
     rendered
       .styles()
-      .contains("border-radius:calc(var(--simple-gutter) * 1px);"),
-    "a number token read by a pixel property scales to pixels: {}",
+      .contains("border-radius:var(--simple-gutter);"),
+    "a length token read by a radius is referenced as it is: {}",
     rendered.styles()
   );
   assert!(
@@ -184,7 +185,7 @@ fn a_theme_scope_defines_its_tokens_under_both_scheme_guards() {
   );
   assert!(
     styles.contains(&format!(
-      ".{scope}{{--simple-card:{};--simple-gutter:8;}}",
+      ".{scope}{{--simple-card:{};--simple-gutter:8px;}}",
       css(white())
     )),
     "{styles}"

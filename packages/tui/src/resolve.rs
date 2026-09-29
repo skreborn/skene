@@ -112,7 +112,7 @@ impl<'a> Env<'a> {
         .with_resolver_at(EM, |resolver| resolver.definition(&definition))
     })
     .and_then(|resolved| match resolved {
-      Resolved::Number(scale) => Some(scale * EM),
+      Resolved::Length(scale) => Some(scale * EM),
       _ => None,
     })
     .unwrap_or(EM)
@@ -216,7 +216,7 @@ impl<'a> Env<'a> {
     });
 
     if style.ext.border_glyphs.is_none()
-      && style.ext.corner_radius.is_some_and(|radius| radius > 0.)
+      && style.ext.corner_radius.is_some_and(|radius| radius.0 > 0.)
     {
       style.ext.border_glyphs = Some(BorderGlyphs::ROUNDED);
     }

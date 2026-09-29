@@ -80,12 +80,12 @@ macro_rules! decoration {
         "whether the box and its content are drawn; a hidden box keeps its place in the layout";
     }
 
-    /// Sets the corner radius, in the medium's unit, where the medium rounds corners; a
-    /// medium without radii accepts and ignores it.
+    /// Sets the corner radius, a length in the medium's unit, where the medium rounds
+    /// corners; a medium without radii accepts and ignores it.
     #[inline(always)]
     pub fn set_corner_radius(
       mut self,
-      radius: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<P::Scalar>>>,
+      radius: impl Into<$crate::__core::Value<$crate::__core::Length, $crate::__core::Condition<P::Scalar>>>,
     ) -> Self
     where
       P::StyleExt: $crate::CornerRadius,
@@ -101,7 +101,7 @@ macro_rules! decoration {
     /// or an expression, where the medium rounds corners; a medium without radii
     /// accepts and ignores it.
     #[inline(always)]
-    pub fn derive_corner_radius<R: Into<$crate::__core::StaticLeaf<f32>>>(
+    pub fn derive_corner_radius<R: Into<$crate::__core::StaticLeaf<$crate::__core::Length>>>(
       mut self,
       radius: impl Fn() -> R + 'static,
     ) -> Self
@@ -124,12 +124,12 @@ macro_rules! decoration {
 /// returns, each writing through the extension's [`TypeMetrics`](crate::TypeMetrics).
 #[macro_export]
 macro_rules! type_metrics {
-  ($access:ident; $($set:ident / $derive:ident ($param:ident) => $write:ident, $doc:literal;)+) => {$(
+  ($access:ident; $($set:ident / $derive:ident ($param:ident: $value:ty) => $write:ident, $doc:literal;)+) => {$(
     #[doc = concat!("Sets ", $doc, ", where the medium sizes type; a medium without type metrics accepts and ignores it.")]
     #[inline(always)]
     pub fn $set(
       mut self,
-      $param: impl Into<$crate::__core::Value<f32, $crate::__core::Condition<P::Scalar>>>,
+      $param: impl Into<$crate::__core::Value<$value, $crate::__core::Condition<P::Scalar>>>,
     ) -> Self
     where
       P::StyleExt: $crate::TypeMetrics,
@@ -143,7 +143,7 @@ macro_rules! type_metrics {
 
     #[doc = concat!("Derives ", $doc, " from the signals `", stringify!($param), "` reads, as a value, a token or an expression, where the medium sizes type; a medium without type metrics accepts and ignores it.")]
     #[inline(always)]
-    pub fn $derive<R: Into<$crate::__core::StaticLeaf<f32>>>(
+    pub fn $derive<R: Into<$crate::__core::StaticLeaf<$value>>>(
       mut self,
       $param: impl Fn() -> R + 'static,
     ) -> Self
@@ -167,12 +167,14 @@ macro_rules! type_metrics {
 macro_rules! run_type_metrics {
   ($access:ident) => {
     $crate::type_metrics! { $access;
-      set_font_size / derive_font_size (size) => set_font_size, "the font size";
-      set_font_weight / derive_font_weight (weight) => set_font_weight, "the font weight";
-      set_line_height / derive_line_height (height) => set_line_height,
+      set_font_size / derive_font_size (size: $crate::__core::Length) => set_font_size,
+        "the font size, a length in the medium's unit";
+      set_font_weight / derive_font_weight (weight: f32) => set_font_weight,
+        "the font weight";
+      set_line_height / derive_line_height (height: f32) => set_line_height,
         "the line height, as a multiple of the font size";
-      set_letter_spacing / derive_letter_spacing (spacing) => set_letter_spacing,
-        "the extra space between letters";
+      set_letter_spacing / derive_letter_spacing (spacing: $crate::__core::Length)
+        => set_letter_spacing, "the extra space between letters, a length in the medium's unit";
     }
   };
 }

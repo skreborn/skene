@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use skene_core::{
   BoxFieldVisitor,
   IntoRunValue,
+  Length,
   PropertyName,
   RunFieldVisitor,
   RunValue,
@@ -28,7 +29,7 @@ pub struct GuiExt;
 #[must_use]
 pub struct GuiBoxFields<S: Shape> {
   /// The corner radius, in logical pixels.
-  pub corner_radius: S::Of<f32>,
+  pub corner_radius: S::Of<Length>,
 }
 
 /// A pixel run's own properties, in shape `S`.
@@ -36,13 +37,13 @@ pub struct GuiBoxFields<S: Shape> {
 #[must_use]
 pub struct GuiRunFields<S: Shape> {
   /// The font size, in logical pixels.
-  pub font_size: S::Of<f32>,
+  pub font_size: S::Of<Length>,
   /// The font weight, `100` to `900`.
   pub font_weight: S::Of<f32>,
   /// The line height, as a multiple of the font size.
   pub line_height: S::Of<f32>,
   /// The extra space between letters, in logical pixels.
-  pub letter_spacing: S::Of<f32>,
+  pub letter_spacing: S::Of<Length>,
 }
 
 /// The names of a pixel medium's own properties.
@@ -109,17 +110,23 @@ impl IntoRunValue<GuiExt> for f32 {
   fn from_run_value(value: RunValue<GuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(number) => Some(number),
-      RunValue::Color(_) | RunValue::Decoration(_) | RunValue::DecorationStyle(_) => None,
+      RunValue::Color(_)
+      | RunValue::Length(_)
+      | RunValue::Decoration(_)
+      | RunValue::DecorationStyle(_) => None,
     }
   }
 }
 
 /// The pixel medium's properties as types, and the enumerations walking them.
 macro_rules! gui_fields {
-  (box: $($box_field:ident => $box_property:ident),+ $(,)?; run: $($run_field:ident => $run_property:ident),+ $(,)?) => {
+  (
+    box: $($box_field:ident: $box_value:ty => $box_property:ident),+ $(,)?;
+    run: $($run_field:ident: $run_value:ty => $run_property:ident),+ $(,)?
+  ) => {
     /// The pixel medium's own properties, addressed by type.
     pub mod gui_fields {
-      use skene_core::{BoxField, BoxStyle, PropertyKey, RunField, RunStyle, Scalar, Shape};
+      use skene_core::{BoxField, BoxStyle, Length, PropertyKey, RunField, RunStyle, Scalar, Shape};
 
       use super::{GuiExt, GuiProperty};
 
@@ -129,18 +136,18 @@ macro_rules! gui_fields {
         pub struct $box_property;
 
         impl<N: Scalar> BoxField<N, GuiExt> for $box_property {
-          type Value = f32;
+          type Value = $box_value;
 
           const KEY: PropertyKey<GuiProperty> =
             PropertyKey::Extension(GuiProperty::$box_property);
 
           #[inline(always)]
-          fn get<S: Shape>(style: &BoxStyle<N, S, GuiExt>) -> &S::Of<f32> {
+          fn get<S: Shape>(style: &BoxStyle<N, S, GuiExt>) -> &S::Of<$box_value> {
             &style.ext.$box_field
           }
 
           #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, GuiExt>) -> &mut S::Of<f32> {
+          fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, GuiExt>) -> &mut S::Of<$box_value> {
             &mut style.ext.$box_field
           }
         }
@@ -152,18 +159,18 @@ macro_rules! gui_fields {
         pub struct $run_property;
 
         impl RunField<GuiExt> for $run_property {
-          type Value = f32;
+          type Value = $run_value;
 
           const KEY: PropertyKey<GuiProperty> =
             PropertyKey::Extension(GuiProperty::$run_property);
 
           #[inline(always)]
-          fn get<S: Shape>(style: &RunStyle<S, GuiExt>) -> &S::Of<f32> {
+          fn get<S: Shape>(style: &RunStyle<S, GuiExt>) -> &S::Of<$run_value> {
             &style.ext.$run_field
           }
 
           #[inline(always)]
-          fn get_mut<S: Shape>(style: &mut RunStyle<S, GuiExt>) -> &mut S::Of<f32> {
+          fn get_mut<S: Shape>(style: &mut RunStyle<S, GuiExt>) -> &mut S::Of<$run_value> {
             &mut style.ext.$run_field
           }
         }
@@ -195,9 +202,9 @@ macro_rules! gui_fields {
 }
 
 gui_fields!(
-  box: corner_radius => CornerRadius;
-  run: font_size => FontSize, font_weight => FontWeight, line_height => LineHeight,
-    letter_spacing => LetterSpacing,
+  box: corner_radius: Length => CornerRadius;
+  run: font_size: Length => FontSize, font_weight: f32 => FontWeight,
+    line_height: f32 => LineHeight, letter_spacing: Length => LetterSpacing,
 );
 
 #[cfg(test)]
@@ -209,6 +216,7 @@ mod tests {
     Condition,
     Declared,
     IntoBoxValue,
+    Length,
     Plain,
     PropertyKey,
     RunStyle,
@@ -245,12 +253,12 @@ mod tests {
   }
 
   /// A derived extension leaf splits into a slot naming the extension property, and its
-  /// value erases into the extension variant of the erased value.
+  /// value erases into the variant of its type.
   #[test]
   fn extension_leaves_split_into_slots() {
     let mut style = BoxStyle::<f32, Declared<Condition<f32>>, GuiExt>::default();
 
-    style.ext.corner_radius = Some(4f32.derive_when(State::Hovered.into(), || 8.));
+    style.ext.corner_radius = Some(Length(4.).derive_when(State::Hovered.into(), || 8.));
 
     let (_, slots) = style.split();
 
@@ -261,12 +269,12 @@ mod tests {
     );
     assert_eq!(
       (slots[0].compute)(),
-      StaticLeaf::Fixed(BoxValue::Number(8.))
+      StaticLeaf::Fixed(BoxValue::Length(Length(8.)))
     );
 
     let mut run = RunStyle::<Declared<Condition<f32>>, GuiExt>::default();
 
-    run.ext.font_size = Some(16f32.derive_when(State::Hovered.into(), || 18.));
+    run.ext.font_size = Some(Length(16.).derive_when(State::Hovered.into(), || 18.));
 
     let (_, slots) = run.split();
 
@@ -276,7 +284,7 @@ mod tests {
     );
     assert_eq!(
       (slots[0].compute)(),
-      StaticLeaf::Fixed(RunValue::Extension(18.))
+      StaticLeaf::Fixed(RunValue::Length(Length(18.)))
     );
   }
 }

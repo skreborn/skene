@@ -1,6 +1,6 @@
 //! The token set every run inherits its text properties through.
 
-use skene_core::{Color, Media, TokenName, TokenSet};
+use skene_core::{Color, Length, Media, TokenName, TokenSet};
 
 use crate::typography;
 
@@ -35,9 +35,9 @@ pub struct Typography {
   pub link_focus_ink: Token<Color>,
   /// The background behind a link while its focus shows.
   pub link_focus_surface: Token<Color>,
-  /// The font size, in cells: a scale of one to seven, or a fraction of one, drawn
-  /// where the terminal sizes text and at one cell elsewhere.
-  pub size: Token<f32>,
+  /// The font size, in cells: one to seven, or a fraction of one, drawn where the
+  /// terminal sizes text and at one cell elsewhere.
+  pub size: Token<Length>,
   /// The font weight, `100` to `900`; `600` and above reads as bold.
   pub weight: Token<f32>,
 }
@@ -93,7 +93,7 @@ impl Typography {
 
   /// Sets the font size, in cells.
   #[inline(always)]
-  pub fn set_size(mut self, size: impl Into<Definition<f32>>) -> Self {
+  pub fn set_size(mut self, size: impl Into<Definition<Length>>) -> Self {
     self.size = self.size.redefine(size);
 
     self
@@ -142,7 +142,7 @@ impl Default for Typography {
 
 impl<V> TokenSet<V> for Typography
 where
-  V: From<Definition<Color>> + From<Definition<f32>> + 'static,
+  V: From<Definition<Color>> + From<Definition<f32>> + From<Definition<Length>> + 'static,
 {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![

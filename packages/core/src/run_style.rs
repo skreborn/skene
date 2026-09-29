@@ -15,7 +15,7 @@ use super::{
   Static,
   StyleExtension,
 };
-use crate::{Animation, Color, TextDecoration, TextDecorationStyle, Transition};
+use crate::{Animation, Color, Length, TextDecoration, TextDecorationStyle, Transition};
 
 /// A text run's style: one field per shared property in shape `S`, and the medium's own
 /// properties in `ext`.
@@ -48,6 +48,8 @@ pub struct RunStyle<S: Shape, X: StyleExtension = ()> {
 pub enum RunValue<X: StyleExtension = ()> {
   /// A color.
   Color(Color),
+  /// A length in the medium's unit, its fractions kept.
+  Length(Length),
   /// A decoration line.
   Decoration(TextDecoration),
   /// A decoration line's style.
@@ -93,6 +95,7 @@ macro_rules! run_values {
 
 run_values!(
   Color => Color,
+  Length => Length,
   TextDecoration => Decoration,
   TextDecorationStyle => DecorationStyle,
 );

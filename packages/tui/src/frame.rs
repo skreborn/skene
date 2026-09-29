@@ -266,7 +266,11 @@ fn render_backdrops(store: &mut Store) {
       continue;
     };
     let style = &cache.style;
-    let radius = style.ext.corner_radius.unwrap_or(0.).max(0.);
+    let radius = style
+      .ext
+      .corner_radius
+      .map_or(0., |radius| radius.0)
+      .max(0.);
     let shadow = style
       .ext
       .shadow

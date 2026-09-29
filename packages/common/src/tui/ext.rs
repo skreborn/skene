@@ -11,6 +11,7 @@ use skene_core::{
   Fingerprint,
   IntoBoxValue,
   IntoRunValue,
+  Length,
   PropertyName,
   RunFieldVisitor,
   RunValue,
@@ -96,10 +97,10 @@ impl Fingerprint for BorderGlyphs {
 /// casts a shadow; a run is bold, by its own flag or by a weight of `600` and above,
 /// and sized in cells.
 ///
-/// Lengths are cells; the radius is a plain number whose non-zero values all select
-/// [`BorderGlyphs::ROUNDED`] where no glyph set is spelled. A run's size is a scale of
-/// the cell: a whole number of cells tall and as many times as wide, one to seven, or
-/// a fraction of one cell; a terminal without text sizing draws every size at one.
+/// Lengths are cells; any radius above zero selects [`BorderGlyphs::ROUNDED`] where no
+/// glyph set is spelled. A run's size is a length in cells: a whole number of cells
+/// tall and as many times as wide, one to seven, or a fraction of one cell; a terminal
+/// without text sizing draws every size at one.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub struct TuiExt;
@@ -110,9 +111,9 @@ pub struct TuiExt;
 pub struct TuiBoxFields<S: Shape> {
   /// The characters the border draws with; [`BorderGlyphs::LIGHT`] when unset.
   pub border_glyphs: S::Of<BorderGlyphs>,
-  /// The corner radius; any non-zero value rounds the border where no glyph set is
-  /// spelled.
-  pub corner_radius: S::Of<f32>,
+  /// The corner radius, in cells; any radius above zero rounds the border where no
+  /// glyph set is spelled.
+  pub corner_radius: S::Of<Length>,
   /// The shadow color, cast one cell down and right and mixed into the colors beneath.
   pub shadow: S::Of<Color>,
 }
@@ -123,8 +124,8 @@ pub struct TuiBoxFields<S: Shape> {
 pub struct TuiRunFields<S: Shape> {
   /// Whether the run is bold.
   pub bold: S::Of<bool>,
-  /// The font size, in cells: a scale of one to seven, or a fraction of one.
-  pub size: S::Of<f32>,
+  /// The font size, in cells: one to seven, or a fraction of one.
+  pub size: S::Of<Length>,
   /// The font weight, `100` to `900`; `600` and above reads as bold where `bold` is
   /// unset.
   pub weight: S::Of<f32>,
@@ -180,7 +181,7 @@ pub enum TuiValue {
   BorderGlyphs(BorderGlyphs),
   /// A bold flag.
   Bold(bool),
-  /// A size or a weight.
+  /// A weight.
   Number(f32),
 }
 
@@ -211,6 +212,7 @@ impl IntoRunValue<TuiExt> for bool {
       RunValue::Extension(TuiValue::Bold(bold)) => Some(bold),
       RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Number(_))
       | RunValue::Color(_)
+      | RunValue::Length(_)
       | RunValue::Decoration(_)
       | RunValue::DecorationStyle(_) => None,
     }
@@ -229,6 +231,7 @@ impl IntoRunValue<TuiExt> for f32 {
       RunValue::Extension(TuiValue::Number(number)) => Some(number),
       RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Bold(_))
       | RunValue::Color(_)
+      | RunValue::Length(_)
       | RunValue::Decoration(_)
       | RunValue::DecorationStyle(_) => None,
     }
@@ -240,7 +243,17 @@ pub const BOLD_WEIGHT: f32 = 600.;
 
 /// The terminal's own properties, addressed by type.
 pub mod tui_fields {
-  use skene_core::{BoxField, BoxStyle, Color, PropertyKey, RunField, RunStyle, Scalar, Shape};
+  use skene_core::{
+    BoxField,
+    BoxStyle,
+    Color,
+    Length,
+    PropertyKey,
+    RunField,
+    RunStyle,
+    Scalar,
+    Shape,
+  };
 
   use super::{BorderGlyphs as Glyphs, TuiExt, TuiProperty};
 
@@ -269,17 +282,17 @@ pub mod tui_fields {
   pub struct CornerRadius;
 
   impl<N: Scalar> BoxField<N, TuiExt> for CornerRadius {
-    type Value = f32;
+    type Value = Length;
 
     const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::CornerRadius);
 
     #[inline(always)]
-    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<f32> {
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
       &style.ext.corner_radius
     }
 
     #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<f32> {
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
       &mut style.ext.corner_radius
     }
   }
@@ -329,17 +342,17 @@ pub mod tui_fields {
   pub struct Size;
 
   impl RunField<TuiExt> for Size {
-    type Value = f32;
+    type Value = Length;
 
     const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::Size);
 
     #[inline(always)]
-    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<f32> {
+    fn get<S: Shape>(style: &RunStyle<S, TuiExt>) -> &S::Of<Length> {
       &style.ext.size
     }
 
     #[inline(always)]
-    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<f32> {
+    fn get_mut<S: Shape>(style: &mut RunStyle<S, TuiExt>) -> &mut S::Of<Length> {
       &mut style.ext.size
     }
   }
@@ -403,14 +416,14 @@ impl StyleExtension for TuiExt {
 
 impl CornerRadius for TuiExt {
   #[inline(always)]
-  fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<f32>) {
+  fn set_corner_radius<S: Shape>(fields: &mut Self::BoxFields<S>, radius: S::Of<Length>) {
     fields.corner_radius = radius;
   }
 }
 
 impl TypeMetrics for TuiExt {
   #[inline(always)]
-  fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<f32>) {
+  fn set_font_size<S: Shape>(fields: &mut Self::RunFields<S>, size: S::Of<Length>) {
     fields.size = size;
   }
 

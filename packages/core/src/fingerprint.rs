@@ -35,6 +35,7 @@ use crate::{
   GridTrack,
   Inset,
   ItemAlignment,
+  Length,
   Line,
   MouseCursor,
   Overflow,
@@ -100,6 +101,13 @@ impl<N: Scalar> Fingerprint for N {
   #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     state.write_u64(self.hash_bits());
+  }
+}
+
+impl Fingerprint for Length {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.0.fingerprint(state);
   }
 }
 

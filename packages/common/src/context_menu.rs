@@ -343,12 +343,12 @@ impl<P: Platform, C> ContextMenu<P, C> {
       "the mouse cursor shown over every item";
   }
 
-  /// Sets every item's corner radius, in the medium's unit, where the medium rounds
-  /// corners; a medium without radii accepts and ignores it.
+  /// Sets every item's corner radius, a length in the medium's unit, where the medium
+  /// rounds corners; a medium without radii accepts and ignores it.
   #[inline(always)]
   pub fn set_item_corner_radius(
     mut self,
-    radius: impl Into<Value<f32, Condition<P::Scalar>>>,
+    radius: impl Into<Value<skene_core::Length, Condition<P::Scalar>>>,
   ) -> Self
   where
     P::StyleExt: crate::CornerRadius,

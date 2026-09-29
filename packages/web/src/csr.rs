@@ -1283,10 +1283,9 @@ impl Platform for Web {
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
         && let Some(html) = node.html()
       {
-        let _ = html.style().set_property(
-          &binding.custom_property(),
-          &render_box_leaf(binding.property, leaf),
-        );
+        let _ = html
+          .style()
+          .set_property(&binding.custom_property(), &render_box_leaf(leaf));
       }
     });
   }
@@ -1631,10 +1630,9 @@ impl Platform for Web {
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
         && let Some(html) = node.html()
       {
-        let _ = html.style().set_property(
-          &binding.custom_property(),
-          &render_run_leaf(binding.property, leaf),
-        );
+        let _ = html
+          .style()
+          .set_property(&binding.custom_property(), &render_run_leaf(leaf));
       }
     });
   }

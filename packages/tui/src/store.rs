@@ -1208,8 +1208,9 @@ impl Store {
 
     if let Some(parent) = record.parent
       && let Some(parent) = self.record_mut(parent)
+      && let Some(index) = position_from_ends(&parent.children, handle)
     {
-      parent.children.retain(|child| *child != handle);
+      let _unlinked = parent.children.remove(index);
     }
 
     self.overlays.retain(|overlay| *overlay != handle);
@@ -1373,8 +1374,9 @@ impl Store {
   pub(crate) fn unlist(&mut self, child: Handle) {
     if let Some(previous) = self.parent(child)
       && let Some(record) = self.record_mut(previous)
+      && let Some(index) = position_from_ends(&record.children, child)
     {
-      record.children.retain(|existing| *existing != child);
+      let _unlinked = record.children.remove(index);
     }
 
     if let Some(record) = self.record_mut(child) {
@@ -1392,7 +1394,7 @@ impl Store {
       return;
     };
     let index = before
-      .and_then(|before| record.children.iter().position(|node| *node == before))
+      .and_then(|before| position_from_ends(&record.children, before))
       .unwrap_or(record.children.len());
 
     record.children.insert(index, child);
@@ -1856,6 +1858,27 @@ impl Store {
       u32::try_from(height - top - bottom).unwrap_or(0),
     )
   }
+}
+
+/// The index of `child` among `children`, searched from both ends at once.
+fn position_from_ends<T: PartialEq + Copy>(children: &[T], child: T) -> Option<usize> {
+  let (mut front, mut back) = (0, children.len());
+
+  while front < back {
+    if children[front] == child {
+      return Some(front);
+    }
+
+    back -= 1;
+
+    if children[back] == child {
+      return Some(back);
+    }
+
+    front += 1;
+  }
+
+  None
 }
 
 #[cfg(test)]

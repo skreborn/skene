@@ -587,8 +587,9 @@ impl Tree {
   fn attach(&mut self, parent: u32, child: u32, before: Option<u32>) {
     if let Some(old) = self.node(child).and_then(|node| node.parent)
       && let Some(old) = self.node(old)
+      && let Some(index) = position_from_ends(&old.children, child)
     {
-      old.children.retain(|node| *node != child);
+      old.children.remove(index);
     }
 
     if let Some(node) = self.node(child) {
@@ -596,7 +597,7 @@ impl Tree {
     }
 
     if let Some(parent) = self.node(parent) {
-      match before.and_then(|before| parent.children.iter().position(|node| *node == before)) {
+      match before.and_then(|before| position_from_ends(&parent.children, before)) {
         Some(index) => parent.children.insert(index, child),
         None => parent.children.push(child),
       }
@@ -604,8 +605,10 @@ impl Tree {
   }
 
   fn detach(&mut self, parent: u32, child: u32) {
-    if let Some(parent) = self.node(parent) {
-      parent.children.retain(|node| *node != child);
+    if let Some(parent) = self.node(parent)
+      && let Some(index) = position_from_ends(&parent.children, child)
+    {
+      parent.children.remove(index);
     }
 
     if let Some(child) = self.node(child) {
@@ -1925,4 +1928,25 @@ where
 
   flush(StreamPiece::Tail(crate::hydration::collect_state()));
   end_render(scope);
+}
+
+/// The index of `child` among `children`, searched from both ends at once.
+fn position_from_ends<T: PartialEq + Copy>(children: &[T], child: T) -> Option<usize> {
+  let (mut front, mut back) = (0, children.len());
+
+  while front < back {
+    if children[front] == child {
+      return Some(front);
+    }
+
+    back -= 1;
+
+    if children[back] == child {
+      return Some(back);
+    }
+
+    front += 1;
+  }
+
+  None
 }

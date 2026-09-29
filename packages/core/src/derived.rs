@@ -157,14 +157,17 @@ pub fn reconcile<P: Platform, T, I, K>(
       mounted.push((key, entry));
     }
 
-    for (_, entries) in old.drain() {
-      for (_, entry) in entries {
-        Scene::<P>::with(|scene| {
-          scene.remove_from_segment(start, entry.node);
-          scene.destroy(entry.node);
-        });
-        entry.scope.dispose();
-      }
+    // The last goes first, so each removal shifts as little as it can.
+    let mut dropped: Vec<(usize, Mounted)> = old.drain().flat_map(|(_, entries)| entries).collect();
+
+    dropped.sort_unstable_by_key(|(index, _)| std::cmp::Reverse(*index));
+
+    for (_, entry) in dropped {
+      Scene::<P>::with(|scene| {
+        scene.remove_from_segment(start, entry.node);
+        scene.destroy(entry.node);
+      });
+      entry.scope.dispose();
     }
 
     let settled = reorder.settled_positions(old_positions.as_slice(), new_positions.as_slice());

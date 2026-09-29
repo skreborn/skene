@@ -295,10 +295,12 @@ impl Platform for Headless {
 
   fn attach(&self, parent: &Handle, child: &Handle, before: Option<&Handle>) {
     with_record(*parent, |record| {
-      record.children.retain(|existing| existing != child);
+      if let Some(index) = position_from_ends(&record.children, *child) {
+        let _unlinked = record.children.remove(index);
+      }
 
       let index = before
-        .and_then(|before| record.children.iter().position(|node| node == before))
+        .and_then(|before| position_from_ends(&record.children, *before))
         .unwrap_or(record.children.len());
 
       record.children.insert(index, *child);
@@ -307,7 +309,9 @@ impl Platform for Headless {
 
   fn detach(&self, parent: &Handle, child: &Handle) {
     with_record(*parent, |record| {
-      record.children.retain(|existing| existing != child);
+      if let Some(index) = position_from_ends(&record.children, *child) {
+        let _unlinked = record.children.remove(index);
+      }
     });
   }
 
@@ -1153,6 +1157,27 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
     .into_iter()
     .flatten()
     .find(|name| !name.is_empty())
+}
+
+/// The index of `handle` among `children`, searched from both ends at once.
+fn position_from_ends(children: &[Handle], handle: Handle) -> Option<usize> {
+  let (mut front, mut back) = (0, children.len());
+
+  while front < back {
+    if children[front] == handle {
+      return Some(front);
+    }
+
+    back -= 1;
+
+    if children[back] == handle {
+      return Some(back);
+    }
+
+    front += 1;
+  }
+
+  None
 }
 
 /// The text of every run under `node`, in order.

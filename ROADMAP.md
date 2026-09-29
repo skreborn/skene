@@ -143,8 +143,9 @@ left half-done in a code comment.
     damaged rows, where an unchanged frame costs 55 ms at 16k rows; selection spans
     compute once per frame; wrapped lines cache per text generation and width, clusters
     re-segment around an edit, and undo stores range diffs.
-    - Tree edits find `before` by a reverse search, remove by position and batch
-    clears, on every platform; reversing a 32k-item `reconcile` takes 524 ms today.
+    - Children become linked lists in the scene and in every platform's records, so a
+    move shifts nothing: a move shifts the whole vector today, and reversing a 32k-item
+    `reconcile` takes 0.79 s on headless.
     - The scene says what happens to a child: move (one `insertBefore` on the web,
     `moveBefore` where available, keeping focus and animations), hide (reversible, and
     the only case that saves state), remove (capturing nothing), a no-op for

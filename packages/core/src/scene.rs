@@ -1525,12 +1525,7 @@ impl<P: Platform> Scene<P> {
       return;
     };
     let index = before
-      .and_then(|before| {
-        parent_record
-          .children
-          .iter()
-          .position(|node| *node == before)
-      })
+      .and_then(|before| position_from_ends(&parent_record.children, before))
       .unwrap_or(parent_record.children.len());
 
     parent_record.children.insert(index, child);
@@ -1578,8 +1573,10 @@ impl<P: Platform> Scene<P> {
 
   /// Removes one node from under `parent` and mirrors it.
   fn unlink_one(&mut self, parent: NodeId, child: NodeId) {
-    if let Some(parent_record) = self.record_mut(parent) {
-      parent_record.children.retain(|node| *node != child);
+    if let Some(parent_record) = self.record_mut(parent)
+      && let Some(index) = position_from_ends(&parent_record.children, child)
+    {
+      let _unlinked = parent_record.children.remove(index);
     }
 
     if let Some(child_record) = self.record_mut(child) {
@@ -1615,6 +1612,28 @@ impl<P: Platform> Scene<P> {
       segment.pending = content;
     }
   }
+}
+
+/// The index of `node` among `children`, searched from both ends at once, so a node
+/// near either end is found at once.
+fn position_from_ends(children: &[NodeId], node: NodeId) -> Option<usize> {
+  let (mut front, mut back) = (0, children.len());
+
+  while front < back {
+    if children[front] == node {
+      return Some(front);
+    }
+
+    back -= 1;
+
+    if children[back] == node {
+      return Some(back);
+    }
+
+    front += 1;
+  }
+
+  None
 }
 
 #[cfg(test)]

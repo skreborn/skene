@@ -423,8 +423,9 @@ fn an_overlay_opens_above_content_and_dismisses_on_escape() {
   });
 }
 
-/// A key release reaches the focused box's key-up handler, and a modifier pressed
-/// alone reaches the key-down handler as its W3C name without showing focus.
+/// A key release the terminal reports reaches the focused box's key-up handler, and a
+/// modifier pressed alone reaches the key-down handler as its W3C name without showing
+/// focus.
 #[test]
 fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
   with_platform(|| {
@@ -441,7 +442,11 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
     });
     let _ = tui::render_to_text(20, 2);
 
+    tui::trigger_key_releases(true);
     tui::trigger_key("Tab");
+
+    assert_eq!(released.get_untracked(), "");
+
     tui::trigger_key_up("Tab");
 
     assert_eq!(released.get_untracked(), "Tab");

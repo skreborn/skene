@@ -776,17 +776,10 @@ impl core::marker::StructuralPartialEq for skene_common::PointerPhase
 pub struct skene_common::Activate
 impl skene_common::Activate
 pub const fn skene_common::Activate::new() -> Self
-impl core::clone::Clone for skene_common::Activate
-pub fn skene_common::Activate::clone(&self) -> skene_common::Activate
-impl core::cmp::Eq for skene_common::Activate
-impl core::cmp::PartialEq for skene_common::Activate
-pub fn skene_common::Activate::eq(&self, &skene_common::Activate) -> bool
 impl core::default::Default for skene_common::Activate
 pub fn skene_common::Activate::default() -> skene_common::Activate
 impl core::fmt::Debug for skene_common::Activate
 pub fn skene_common::Activate::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_common::Activate
-impl core::marker::StructuralPartialEq for skene_common::Activate
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Activate
 pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Activate::attach(&self, &skene_common::ControlHandle<P>)
@@ -795,9 +788,11 @@ pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_leads(&self) -> bool
 pub fn skene_common::Activate::lines(&self) -> u16
 pub fn skene_common::Activate::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Activate::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Activate::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1304,9 +1299,11 @@ pub fn skene_common::ListItem::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::ListItem::label_leads(&self) -> bool
 pub fn skene_common::ListItem::lines(&self) -> u16
 pub fn skene_common::ListItem::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::ListItem::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::ListItem::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1335,9 +1332,11 @@ pub fn skene_common::Listbox::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Listbox::label_leads(&self) -> bool
 pub fn skene_common::Listbox::lines(&self) -> u16
 pub fn skene_common::Listbox::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Listbox::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Listbox::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1380,9 +1379,11 @@ pub fn skene_common::Menu::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Menu::label_leads(&self) -> bool
 pub fn skene_common::Menu::lines(&self) -> u16
 pub fn skene_common::Menu::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Menu::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Menu::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1431,9 +1432,11 @@ pub fn skene_common::MenuOption::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::MenuOption::label_leads(&self) -> bool
 pub fn skene_common::MenuOption::lines(&self) -> u16
 pub fn skene_common::MenuOption::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::MenuOption::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::MenuOption::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1456,9 +1459,11 @@ pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKi
 pub fn skene_common::NativePicker::label_leads(&self) -> bool
 pub fn skene_common::NativePicker::lines(&self) -> u16
 pub fn skene_common::NativePicker::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::NativePicker::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::NativePicker::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1584,9 +1589,11 @@ pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_leads(&self) -> bool
 pub fn skene_common::Popup::lines(&self) -> u16
 pub fn skene_common::Popup::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Popup::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Popup::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1607,9 +1614,11 @@ pub fn skene_common::RadioMember::kind(&self) -> skene_core::control::ControlKin
 pub fn skene_common::RadioMember::label_leads(&self) -> bool
 pub fn skene_common::RadioMember::lines(&self) -> u16
 pub fn skene_common::RadioMember::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::RadioMember::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::RadioMember::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1639,9 +1648,11 @@ pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_leads(&self) -> bool
 pub fn skene_common::Range::lines(&self) -> u16
 pub fn skene_common::Range::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Range::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Range::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1747,9 +1758,11 @@ pub fn skene_common::Roving::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Roving::label_leads(&self) -> bool
 pub fn skene_common::Roving::lines(&self) -> u16
 pub fn skene_common::Roving::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Roving::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Roving::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1945,9 +1958,11 @@ pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_leads(&self) -> bool
 pub fn skene_common::TextEntry::lines(&self) -> u16
 pub fn skene_common::TextEntry::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::TextEntry::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::TextEntry::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -1985,9 +2000,11 @@ pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_leads(&self) -> bool
 pub fn skene_common::Toggle::lines(&self) -> u16
 pub fn skene_common::Toggle::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Toggle::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Toggle::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2060,9 +2077,11 @@ pub fn skene_common::Behavior::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Behavior::label_leads(&self) -> bool
 pub fn skene_common::Behavior::lines(&self) -> u16
 pub fn skene_common::Behavior::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Behavior::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Behavior::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Behavior::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Behavior::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Behavior::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Behavior::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2077,9 +2096,11 @@ pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_leads(&self) -> bool
 pub fn skene_common::Activate::lines(&self) -> u16
 pub fn skene_common::Activate::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Activate::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Activate::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2094,9 +2115,11 @@ pub fn skene_common::ListItem::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::ListItem::label_leads(&self) -> bool
 pub fn skene_common::ListItem::lines(&self) -> u16
 pub fn skene_common::ListItem::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::ListItem::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::ListItem::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::ListItem::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::ListItem::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2111,9 +2134,11 @@ pub fn skene_common::Listbox::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Listbox::label_leads(&self) -> bool
 pub fn skene_common::Listbox::lines(&self) -> u16
 pub fn skene_common::Listbox::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Listbox::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Listbox::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Listbox::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Listbox::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2128,9 +2153,11 @@ pub fn skene_common::Menu::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Menu::label_leads(&self) -> bool
 pub fn skene_common::Menu::lines(&self) -> u16
 pub fn skene_common::Menu::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Menu::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Menu::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Menu::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Menu::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2145,9 +2172,11 @@ pub fn skene_common::MenuOption::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::MenuOption::label_leads(&self) -> bool
 pub fn skene_common::MenuOption::lines(&self) -> u16
 pub fn skene_common::MenuOption::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::MenuOption::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::MenuOption::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::MenuOption::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::MenuOption::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2162,9 +2191,11 @@ pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKi
 pub fn skene_common::NativePicker::label_leads(&self) -> bool
 pub fn skene_common::NativePicker::lines(&self) -> u16
 pub fn skene_common::NativePicker::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::NativePicker::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::NativePicker::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2179,9 +2210,11 @@ pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_leads(&self) -> bool
 pub fn skene_common::Popup::lines(&self) -> u16
 pub fn skene_common::Popup::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Popup::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Popup::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2196,9 +2229,11 @@ pub fn skene_common::RadioMember::kind(&self) -> skene_core::control::ControlKin
 pub fn skene_common::RadioMember::label_leads(&self) -> bool
 pub fn skene_common::RadioMember::lines(&self) -> u16
 pub fn skene_common::RadioMember::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::RadioMember::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::RadioMember::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::RadioMember::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::RadioMember::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2213,9 +2248,11 @@ pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_leads(&self) -> bool
 pub fn skene_common::Range::lines(&self) -> u16
 pub fn skene_common::Range::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Range::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Range::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2230,9 +2267,11 @@ pub fn skene_common::Roving::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Roving::label_leads(&self) -> bool
 pub fn skene_common::Roving::lines(&self) -> u16
 pub fn skene_common::Roving::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Roving::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Roving::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Roving::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Roving::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2247,9 +2286,11 @@ pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_leads(&self) -> bool
 pub fn skene_common::TextEntry::lines(&self) -> u16
 pub fn skene_common::TextEntry::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::TextEntry::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::TextEntry::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHandle<P>)
@@ -2264,9 +2305,11 @@ pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_leads(&self) -> bool
 pub fn skene_common::Toggle::lines(&self) -> u16
 pub fn skene_common::Toggle::listens(&self) -> &'static [skene_core::props::EventKind]
+pub fn skene_common::Toggle::on_blur(&self, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_change(&self, &str, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_click(&self, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_key(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
+pub fn skene_common::Toggle::on_key_up(&self, &skene_core::events::KeyEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_pointer(&self, skene_common::PointerPhase, &skene_core::events::PointerEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::on_selection_change(&self, skene_core::values::text_selection::TextSelection, &skene_common::ControlHandle<P>)
 pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle<P>)

@@ -1,6 +1,6 @@
 //! A checkbox's behavior.
 
-use std::rc::Rc;
+use std::{cell::Cell, rc::Rc};
 
 use skene_core::{
   AccessProp,
@@ -18,15 +18,23 @@ use super::{Behavior, ControlHandle};
 
 /// A checkbox: a click, `Space` or the platform's own toggle flips it.
 ///
+/// `Space` flips it once, as it is released, when the checkbox has held focus since the
+/// press.
+///
 /// Controlled: the checked state it reports is what
 /// [`derive_checked`](Self::derive_checked) reads, and a flip only calls
 /// [`handle_toggle`](Self::handle_toggle) with the state it asks for. With no handler
 /// nothing changes; [`bind_checked`](Self::bind_checked) wires both to one signal.
 #[derive(Default)]
 #[must_use]
+#[expect(
+  clippy::struct_field_names,
+  reason = "a behavior's handler is named for the event it hears"
+)]
 pub struct Toggle {
   checked: Option<Rc<dyn Fn() -> bool>>,
   on_toggle: Option<Rc<dyn Fn(bool)>>,
+  armed: Cell<bool>,
 }
 
 impl std::fmt::Debug for Toggle {
@@ -114,7 +122,13 @@ impl<P: Platform> Behavior<P> for Toggle {
 
   #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
-    &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
+    &[
+      EventKind::Click,
+      EventKind::KeyDown,
+      EventKind::KeyUp,
+      EventKind::Blur,
+      EventKind::Toggle,
+    ]
   }
 
   fn on_click(&self, _control: &ControlHandle<P>) -> Prevent {
@@ -124,13 +138,30 @@ impl<P: Platform> Behavior<P> for Toggle {
   }
 
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
-    if event.key == " " {
-      self.flip();
-
-      return Prevent::All;
+    if event.key != " " {
+      return Prevent::None;
     }
 
-    Prevent::None
+    if !event.repeat {
+      self.armed.set(true);
+    }
+
+    Prevent::All
+  }
+
+  fn on_key_up(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+    if event.key != " " || !self.armed.replace(false) {
+      return Prevent::None;
+    }
+
+    self.flip();
+
+    Prevent::All
+  }
+
+  #[inline(always)]
+  fn on_blur(&self, _control: &ControlHandle<P>) {
+    self.armed.set(false);
   }
 
   fn on_toggle(&self, checked: bool, _control: &ControlHandle<P>) {

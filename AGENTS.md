@@ -271,7 +271,9 @@
   microtask checkpoint; a release dispatches as `KeyUp` with no default, a held key
   repeats its `KeyDown` with `repeat` set, and a modifier alone arrives under its W3C
   name without showing focus, the terminal asking the kitty keyboard protocol for its
-  event types, alternate keys and every key as an escape code, and a letter's case
+  event types, alternate keys and every key as an escape code, and a release following
+  each press at once until the flags the terminal kept confirm its event types;
+  `Space` acts on its release, once, where `Enter` acts on every press; a letter's case
   follows `Shift` and Caps Lock as a browser's `key` does while the modifiers stay
   the keys held, so `Ctrl-Z` undoes under Caps Lock too, and a key's `code` names
   the physical key as a browser's does (`KeyA`, `Digit1`), from the terminal's

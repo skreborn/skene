@@ -61,10 +61,12 @@ use skene_headless::{
   resolve_color,
   selection,
   text,
+  trigger_blur,
   trigger_change,
   trigger_click,
   trigger_focus,
   trigger_key_down,
+  trigger_key_up,
   trigger_pointer_down,
   trigger_pointer_move,
   trigger_pointer_up,
@@ -187,6 +189,50 @@ fn a_button_click_stays_on_the_button_while_a_box_click_climbs() {
   owner.dispose();
 }
 
+/// `Space` activates a button once, as it is released after a press it saw: the press
+/// and its repeats do nothing, and a press the button lost focus after never
+/// activates it; `Enter` activates on every press, repeats included.
+#[test]
+fn space_activates_a_button_once_on_its_release() {
+  reset();
+
+  let owner = Owner::new();
+  let clicks = Rc::new(Cell::new(0));
+  let node = owner.enter(|| {
+    let clicks = Rc::clone(&clicks);
+
+    RawButton::new(Activate::new())
+      .handle_click(move || clicks.set(clicks.get() + 1))
+      .build()
+  });
+  let repeat = |name| KeyEvent {
+    repeat: true,
+    ..key(name)
+  };
+
+  assert_eq!(trigger_key_down(node, &key(" ")), CONSUMED);
+  assert_eq!(trigger_key_down(node, &repeat(" ")), CONSUMED);
+  assert_eq!(clicks.get(), 0);
+  assert_eq!(trigger_key_up(node, &key(" ")), CONSUMED);
+  assert_eq!(clicks.get(), 1);
+  assert_eq!(trigger_key_up(node, &key(" ")), Prevented::default());
+  assert_eq!(clicks.get(), 1);
+
+  trigger_focus(node);
+
+  let _ = trigger_key_down(node, &key(" "));
+
+  trigger_blur(node);
+
+  assert_eq!(trigger_key_up(node, &key(" ")), Prevented::default());
+  assert_eq!(clicks.get(), 1);
+  assert_eq!(trigger_key_down(node, &key("Enter")), CONSUMED);
+  assert_eq!(trigger_key_down(node, &repeat("Enter")), CONSUMED);
+  assert_eq!(clicks.get(), 3);
+
+  owner.dispose();
+}
+
 trait IntoKey {
   fn into_key(self) -> impl Fn(&KeyEvent) + 'static;
 }
@@ -197,8 +243,9 @@ impl<F: Fn() + 'static> IntoKey for F {
   }
 }
 
-/// `Space` and a click each flip the signal a checkbox is bound to; the control's
-/// state and what it reports follow the signal, and `Enter` means nothing to it.
+/// `Space`, on its release, and a click each flip the signal a checkbox is bound to;
+/// the control's state and what it reports follow the signal, and `Enter` means nothing
+/// to it.
 #[test]
 fn space_and_a_click_flip_a_bound_checkbox() {
   reset();
@@ -222,6 +269,8 @@ fn space_and_a_click_flip_a_bound_checkbox() {
     Some(vec![AccessProp::Checked(Checked::On)])
   );
   assert_eq!(trigger_key_down(node, &key(" ")), CONSUMED);
+  assert!(bound.get());
+  assert_eq!(trigger_key_up(node, &key(" ")), CONSUMED);
   assert!(!bound.get());
   assert_eq!(trigger_key_down(node, &key("Enter")), Prevented::default());
   assert!(!bound.get());
@@ -249,6 +298,7 @@ fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
 
   assert_eq!(trigger_click(node), KEPT);
   assert_eq!(trigger_key_down(node, &key(" ")), CONSUMED);
+  assert_eq!(trigger_key_up(node, &key(" ")), CONSUMED);
   assert!(!bound.get());
   assert_eq!(
     control_state(node).map(|state| state.checked),
@@ -766,7 +816,13 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
 
   assert_eq!(
     listened(checkbox),
-    [EventKind::Click, EventKind::KeyDown, EventKind::Toggle]
+    [
+      EventKind::Click,
+      EventKind::KeyDown,
+      EventKind::KeyUp,
+      EventKind::Toggle,
+      EventKind::Blur,
+    ]
   );
   assert_eq!(
     listened(slider),
@@ -783,8 +839,10 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
     [
       EventKind::Click,
       EventKind::KeyDown,
+      EventKind::KeyUp,
       EventKind::PointerMove,
       EventKind::Focus,
+      EventKind::Blur,
     ]
   );
 

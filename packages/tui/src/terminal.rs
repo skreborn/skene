@@ -349,6 +349,9 @@ where
   // far.
   let mut clipboard_answers = false;
   let mut clipboard_read = Vec::new();
+  // The first flags report answers the launch query; a later one reports the flags the
+  // terminal kept of those pushed.
+  let mut keyboard_flags_pushed = false;
   let mut shape = pointer_shape(None);
   let mut mouse_taken = mouse;
 
@@ -706,12 +709,25 @@ where
         }
         // A terminal speaking the kitty keyboard protocol disambiguates modified
         // keys—`Ctrl+Backspace` above all; the rest keep the legacy encoding, where
-        // `Ctrl+W` stands in for it.
-        Event::KeyboardFlags(_) => {
-          let _ = write!(terminal, "{}", escape::KeyboardFlags(KEYBOARD_FLAGS));
-          let _ = terminal.flush();
+        // `Ctrl+W` stands in for it. Its report of the flags it kept says whether it
+        // reports releases.
+        Event::KeyboardFlags(flags) => {
+          if keyboard_flags_pushed {
+            with_store(|store| store.key_releases = flags & escape::REPORT_EVENT_TYPES != 0);
+          }
+          else {
+            keyboard_flags_pushed = true;
 
-          terminal.set_unambiguous_escapes(true);
+            let _ = write!(
+              terminal,
+              "{}{}",
+              escape::KeyboardFlags(KEYBOARD_FLAGS),
+              escape::QUERY_KEYBOARD_FLAGS,
+            );
+            let _ = terminal.flush();
+
+            terminal.set_unambiguous_escapes(true);
+          }
         }
         Event::GraphicRendition(attributes) => {
           if let Some(reported) = ColorDepth::reported(&attributes)
@@ -902,6 +918,14 @@ fn write_copy(terminal: &mut Tty, text: &str, answers: bool) {
   }
 
   let _ = terminal.flush();
+}
+
+/// Simulates the terminal's report that it reports key releases (the kitty keyboard
+/// protocol's event types), or that it does not, for a test driving the loop headlessly.
+///
+/// Until it does, a release follows every press at once.
+pub fn trigger_key_releases(confirmed: bool) {
+  trigger(|| with_store(|store| store.key_releases = confirmed));
 }
 
 /// Simulates the terminal's report that its clipboard answers (mode 5522), or that it
@@ -1242,6 +1266,8 @@ fn dispatch_key(key: &Key) {
 
 /// Dispatches one key press or repeat through core's dispatch, then the terminal's own
 /// response unless a handler prevented it; `Ctrl-Q` quits unconditionally.
+///
+/// Where the terminal does not report releases, a release follows every press at once.
 fn press(event: &KeyEvent) {
   if event.modifiers.ctrl && event.shortcut_key() == "q" {
     with_store(|store| store.quit = true);
@@ -1250,6 +1276,13 @@ fn press(event: &KeyEvent) {
   }
 
   interaction::key(event);
+
+  if !with_store(|store| store.key_releases) {
+    interaction::key_up(&KeyEvent {
+      repeat: false,
+      ..event.clone()
+    });
+  }
 }
 
 /// Maps a terminal key to the portable W3C key value and code: a key carries `Shift`
@@ -1511,7 +1544,8 @@ fn trigger(event: impl FnOnce()) {
 ///
 /// The value is a key's name (`"a"`, `"Enter"`, `"Tab"`, `"Backspace"`, …), and
 /// `"Ctrl+"`, `"Alt+"`, and `"Shift+"` prefixes add the modifier (`"Ctrl+ArrowLeft"`,
-/// `"Shift+Tab"`).
+/// `"Shift+Tab"`). Until [`trigger_key_releases`] confirms releases, the key's release
+/// follows at once.
 pub fn trigger_key(key: &str) {
   trigger(|| press(&key_event(key)));
 }

@@ -944,6 +944,10 @@ pub(crate) struct Store {
   /// Whether the terminal's clipboard answers (mode 5522), so every operation is
   /// offered from its reply rather than the launch choice.
   pub(crate) clipboard_answers: bool,
+  /// Whether the terminal reports key releases (the kitty keyboard protocol's event
+  /// types, confirmed by the flags query), so a release no longer follows each press
+  /// at once.
+  pub(crate) key_releases: bool,
   /// A cell's size in pixels: the window's where the terminal reports it, else a
   /// stand-in the terminal scales a picture from.
   pub(crate) cell_pixels: (u16, u16),
@@ -1055,6 +1059,7 @@ impl Store {
       media: None,
       graphics: false,
       clipboard_answers: false,
+      key_releases: false,
       cell_pixels: DEFAULT_CELL_PIXELS,
       picture_generation: 0,
     };

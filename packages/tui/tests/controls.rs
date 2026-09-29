@@ -79,6 +79,40 @@ fn mouse_click_hits_and_focuses() {
   });
 }
 
+/// Where the terminal reports no key releases, each `Space` press clicks a button, its
+/// release following at once; where it reports them, the release clicks it.
+#[test]
+fn space_clicks_on_the_release_the_terminal_reports_or_at_once() {
+  with_platform(|| {
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = tui::mount(|| {
+      RawButton::new(Activate::new())
+        .set_width(4)
+        .set_height(1)
+        .handle_click(move || counted.set(counted.get() + 1))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(6, 2);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key(" ");
+
+    assert_eq!(clicks.get(), 1);
+
+    tui::trigger_key_releases(true);
+    tui::trigger_key(" ");
+
+    assert_eq!(clicks.get(), 1);
+
+    tui::trigger_key_up(" ");
+
+    assert_eq!(clicks.get(), 2);
+  });
+}
+
 /// A checkbox toggles by `Space` and by mouse click, both directions of the binding,
 /// and its mark repaints as the checked glyph.
 #[test]

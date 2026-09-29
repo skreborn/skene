@@ -168,6 +168,16 @@ pub trait Behavior<P: Platform>: 'static {
     Prevent::None
   }
 
+  /// What the behavior does on a key released while the control holds focus.
+  #[inline(always)]
+  fn on_key_up(&self, _event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
+    Prevent::None
+  }
+
+  /// What the behavior does when the control loses focus.
+  #[inline(always)]
+  fn on_blur(&self, _control: &ControlHandle<P>) {}
+
   /// What the behavior does on a pointer transition over the control.
   #[inline(always)]
   fn on_pointer(
@@ -1132,8 +1142,15 @@ fn register<P: Platform, B: Behavior<P>>(
   );
   let key_up = actor.handler(
     Prevent::None,
-    false,
-    |_, _: &KeyEvent, _| Prevent::None,
+    acts(EventKind::KeyUp),
+    |behavior: &B, event: &KeyEvent, handle| {
+      if event.composing {
+        Prevent::None
+      }
+      else {
+        behavior.on_key_up(event, handle)
+      }
+    },
     key_up,
   );
   let pointer = |phase: PointerPhase, kind: EventKind, observers: Vec<Rc<PointerObserver>>| {
@@ -1164,6 +1181,12 @@ fn register<P: Platform, B: Behavior<P>>(
     let handle = Rc::clone(handle);
 
     Rc::new(move |checked: bool| behavior.on_toggle(checked, &handle))
+  });
+  let acting_blur = acts(EventKind::Blur).then(|| {
+    let behavior = Rc::clone(behavior);
+    let handle = Rc::clone(handle);
+
+    Rc::new(move || behavior.on_blur(&handle))
   });
 
   Scene::<P>::with(|scene| {
@@ -1217,6 +1240,10 @@ fn register<P: Platform, B: Behavior<P>>(
 
     for observer in focus {
       scene.handle_focus(node, observer);
+    }
+
+    if let Some(handler) = acting_blur {
+      scene.handle_blur(node, handler);
     }
 
     for observer in blur {

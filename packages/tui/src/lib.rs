@@ -171,6 +171,7 @@ pub use crate::{
     trigger_graphics,
     trigger_key,
     trigger_key_event,
+    trigger_key_releases,
     trigger_key_up,
     trigger_mouse_click,
     trigger_mouse_drag,

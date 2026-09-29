@@ -35,6 +35,7 @@ mod store;
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
 use skene_common::gui::{Canvas, Painter, Painting};
+pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
   AccessProp,
   Availability,
@@ -95,7 +96,6 @@ use skene_core::{
 use skene_reactive::{ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
 
-pub use crate::store::HeadElement;
 use crate::store::{Kind, Record, Store};
 
 /// The host platform: a zero-sized [`Platform`] whose sink is a [`Handle`] into this
@@ -476,9 +476,25 @@ pub fn pump_tasks() -> bool {
   trigger(skene_core::executor::pump)
 }
 
-/// Sets the document title.
-pub fn set_document_title(title: &str) {
-  with_store(|store| store.title = Some(title.to_owned()));
+/// Registers `title` for the document, in force while it is the latest live one.
+pub fn add_head_title(title: &str) -> HeadId {
+  with_store(|store| store.head.add_title(title.to_owned()))
+}
+
+/// Rewrites the title registration `id`.
+pub fn set_head_title(id: HeadId, title: &str) {
+  with_store(|store| store.head.set_title(id, title.to_owned()));
+}
+
+/// Registers an element for the document head, in force while it is the latest live
+/// one of what it stands for.
+pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
+  with_store(|store| store.head.add_element(HeadElement::new(tag, attributes)))
+}
+
+/// Removes the head registration `id`.
+pub fn remove_head_entry(id: HeadId) {
+  with_store(|store| store.head.remove(id));
 }
 
 /// Sets the document's language, a BCP 47 tag.
@@ -486,25 +502,12 @@ pub fn set_document_language(language: &str) {
   with_store(|store| store.language = Some(language.to_owned()));
 }
 
-/// Registers an element for the document head.
-pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
-  let element = HeadElement {
-    tag: tag.to_owned(),
-    attributes: attributes
-      .iter()
-      .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
-      .collect(),
-  };
-
-  with_store(|store| store.head.push(element));
-}
-
-/// The document title last set.
+/// The document title in force.
 #[must_use]
 pub fn document_title() -> Option<String> {
   end_turn();
 
-  with_store(|store| store.title.clone())
+  with_store(|store| store.head.title().map(str::to_owned))
 }
 
 /// The document language last set.
@@ -515,12 +518,12 @@ pub fn document_language() -> Option<String> {
   with_store(|store| store.language.clone())
 }
 
-/// The elements registered for the document head, in order.
+/// The elements in force in the document head, in their registrations' order.
 #[must_use]
 pub fn head_elements() -> Vec<HeadElement> {
   end_turn();
 
-  with_store(|store| store.head.clone())
+  with_store(|store| store.head.elements().cloned().collect())
 }
 
 /// Dispatches a click at `node`, bubbling through the scene.

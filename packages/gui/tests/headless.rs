@@ -2,7 +2,6 @@
 //! built and driven without a browser.
 
 #![cfg(skene_leaf = "host")]
-#![cfg(skene_leaf = "host")]
 
 use std::{
   cell::{Cell, RefCell},
@@ -575,24 +574,60 @@ fn head_registrations_are_recorded_on_the_host() {
   assert_eq!(
     head_elements(),
     vec![
-      HeadElement {
-        tag: "meta".to_owned(),
-        attributes: vec![
-          ("name".to_owned(), "description".to_owned()),
-          ("content".to_owned(), "A tiny page".to_owned()),
-        ],
-      },
-      HeadElement {
-        tag: "link".to_owned(),
-        attributes: vec![
-          ("rel".to_owned(), "stylesheet".to_owned()),
-          ("href".to_owned(), "/site.css".to_owned()),
-        ],
-      },
+      HeadElement::new(
+        "meta",
+        &[("name", "description"), ("content", "A tiny page")]
+      ),
+      HeadElement::new("link", &[("rel", "stylesheet"), ("href", "/site.css")]),
     ]
   );
 
   owner.dispose();
+
+  assert_eq!(document_title(), None);
+  assert_eq!(head_elements(), []);
+}
+
+/// A registration holds while its owner lives: a later owner's title and description
+/// replace the earlier ones until it is disposed, and an identical stylesheet stays
+/// while either registrant lives.
+#[test]
+fn head_registrations_leave_with_their_owner() {
+  use skene_gui::{
+    head,
+    headless::{HeadElement, document_title, head_elements},
+  };
+
+  reset();
+
+  let outer = Owner::new();
+  let inner = Owner::new();
+  let description =
+    |content| HeadElement::new("meta", &[("name", "description"), ("content", content)]);
+  let stylesheet = HeadElement::new("link", &[("rel", "stylesheet"), ("href", "/site.css")]);
+
+  outer.enter(|| {
+    head::set_title("Outer");
+    head::add_meta("description", "outer");
+    head::add_stylesheet("/site.css");
+  });
+  inner.enter(|| {
+    head::set_title("Inner");
+    head::add_meta("description", "inner");
+    head::add_stylesheet("/site.css");
+  });
+
+  assert_eq!(document_title().as_deref(), Some("Inner"));
+  assert_eq!(head_elements(), [description("inner"), stylesheet.clone()]);
+
+  inner.dispose();
+
+  assert_eq!(document_title().as_deref(), Some("Outer"));
+  assert_eq!(head_elements(), [description("outer"), stylesheet]);
+
+  outer.dispose();
+
+  assert_eq!(head_elements(), []);
 }
 
 /// A size handle bound to a box reports the box's measured size, tracked, and nothing

@@ -18,7 +18,7 @@ use std::{
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use skene_common::gui::{GuiExt, Painter, Painting};
+use skene_common::gui::{GuiExt, Head, HeadElement, HeadId, Painter, Painting};
 use skene_core::{
   AccessProp,
   Boundary,
@@ -347,9 +347,8 @@ struct Tree {
   root_class: Option<Rc<str>>,
   markers: u32,
   anchors: u32,
-  title: Option<String>,
   language: Option<String>,
-  head: Vec<(String, Vec<(String, String)>)>,
+  head: Head,
 }
 
 impl Tree {
@@ -365,9 +364,8 @@ impl Tree {
       root_class: None,
       markers: 0,
       anchors: 0,
-      title: None,
       language: None,
-      head: Vec::new(),
+      head: Head::default(),
     }
   }
 
@@ -635,13 +633,13 @@ impl Tree {
       });
     }
 
-    if let Some(title) = &self.title {
+    if let Some(title) = self.head.title() {
       out.push_str("<title>");
       escape_text(title, &mut out);
       out.push_str("</title>");
     }
 
-    for (tag, attributes) in &self.head {
+    for HeadElement { tag, attributes } in self.head.elements() {
       out.push('<');
       out.push_str(tag);
 
@@ -1489,9 +1487,19 @@ pub fn enable_view_transitions() {
   VIEW_TRANSITIONS.with(|enabled| enabled.set(true));
 }
 
-/// Sets the document title, serialized into the page head.
-pub fn set_document_title(title: &str) {
-  with_tree(|tree| tree.title = Some(title.to_owned()));
+/// Registers `title` for the page, in force while it is the latest live one.
+pub fn add_head_title(title: &str) -> HeadId {
+  with_tree(|tree| tree.head.add_title(title.to_owned()))
+}
+
+/// Rewrites the title registration `id`.
+pub fn set_head_title(id: HeadId, title: &str) {
+  with_tree(|tree| tree.head.set_title(id, title.to_owned()));
+}
+
+/// Removes the head registration `id`.
+pub fn remove_head_entry(id: HeadId) {
+  with_tree(|tree| tree.head.remove(id));
 }
 
 /// Sets the page's language, a BCP 47 tag written as its root's `lang`.
@@ -1514,23 +1522,16 @@ pub fn document_closing(state: &str) -> String {
   served_document(None).closing(Some(state))
 }
 
-/// Adds an element to the page head, serialized in registration order.
+/// Registers an element for the page head, in force while it is the latest live one
+/// of what it stands for; see [`Head`].
 ///
 /// # Panics
 ///
 /// Panics when `tag` is not an element a head holds (`base`, `link`, `meta` or
 /// `script`) or an attribute name is not one.
-pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) {
+pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
   check_head_element(tag, attributes);
-  with_tree(|tree| {
-    tree.head.push((
-      tag.to_owned(),
-      attributes
-        .iter()
-        .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
-        .collect(),
-    ));
-  });
+  with_tree(|tree| tree.head.add_element(HeadElement::new(tag, attributes)))
 }
 
 /// A server render, in parts: the stylesheet, the head, the body markup, the hydration

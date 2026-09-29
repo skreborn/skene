@@ -1114,7 +1114,7 @@ fn a_page_boots_its_bundle_under_the_nonce() {
 #[should_panic(expected = "a head element is one of")]
 fn a_head_registration_names_a_head_element() {
   let _ = render_to_string(|| {
-    web::add_head_element("img", &[("src", "x")]);
+    let _ = web::add_head_element("img", &[("src", "x")]);
 
     Text::new("x")
   });
@@ -1125,7 +1125,7 @@ fn a_head_registration_names_a_head_element() {
 #[should_panic(expected = "is not an attribute name")]
 fn a_head_registration_refuses_an_attribute_that_is_not_one() {
   let _ = render_to_string(|| {
-    web::add_head_element("meta", &[("onload=alert(1) x", "y")]);
+    let _ = web::add_head_element("meta", &[("onload=alert(1) x", "y")]);
 
     Text::new("x")
   });

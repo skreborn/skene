@@ -90,7 +90,13 @@ use web_sys::{
 
 pub use self::{
   dev::boot_with_dev_state,
-  head::{add_head_element, set_document_language, set_document_title},
+  head::{
+    add_head_element,
+    add_head_title,
+    remove_head_entry,
+    set_document_language,
+    set_head_title,
+  },
   history::{current_path, on_pop, push_path},
   media::{media_query, set_scheme, stored_scheme, watch_media},
   restore::adopt_restoration,
@@ -2490,6 +2496,7 @@ pub fn uninstall() {
   });
   media::reset();
   view_transition::reset();
+  head::reset();
   Scene::<Web>::with(|scene| *scene = Scene::new());
   skene_reactive::Runtime::reset();
   skene_core::reset_root_owner();

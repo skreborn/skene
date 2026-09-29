@@ -54,7 +54,7 @@ use skene_gui::{
   derived,
   empty,
   head,
-  reactive::{Get, Set, Signal},
+  reactive::{Get, Owner, Set, Signal},
   wasm_bindgen::JsCast,
   web::{self, mount},
 };
@@ -669,6 +669,79 @@ fn head_registrations_apply_once() {
   }
 
   assert_eq!(matches, 1);
+}
+
+/// A registration leaves the live head with its owner, and the title and description it
+/// replaced return.
+#[wasm_bindgen_test]
+fn head_registrations_leave_with_their_owner() {
+  let (_guard, _root) = fresh_root();
+  let outer = Owner::new();
+  let inner = Owner::new();
+  let scoped = || {
+    let found = document()
+      .head()
+      .expect("a head")
+      .query_selector_all("meta[name=scoped-test]")
+      .expect("a valid selector");
+
+    (0..found.length())
+      .filter_map(|index| found.item(index))
+      .filter_map(|node| node.dyn_into::<Element>().ok())
+      .filter_map(|meta| meta.get_attribute("content"))
+      .collect::<Vec<_>>()
+  };
+
+  outer.enter(|| {
+    head::set_title("Outer");
+    head::add_meta("scoped-test", "outer");
+  });
+  inner.enter(|| {
+    head::set_title("Inner");
+    head::add_meta("scoped-test", "inner");
+  });
+
+  assert_eq!(document().title(), "Inner");
+  assert_eq!(scoped(), ["inner"]);
+
+  inner.dispose();
+
+  assert_eq!(document().title(), "Outer");
+  assert_eq!(scoped(), ["outer"]);
+
+  outer.dispose();
+
+  assert!(scoped().is_empty());
+}
+
+/// A registration adopts the identical element a server render left in the head, and
+/// takes it along when its owner goes.
+#[wasm_bindgen_test]
+fn a_head_registration_adopts_the_served_element() {
+  let (_guard, _root) = fresh_root();
+  let parent = document().head().expect("a head");
+  let served = document().create_element("meta").expect("a meta");
+
+  let _ = served.set_attribute("name", "adopt-test");
+  let _ = served.set_attribute("content", "x");
+  let _ = parent.append_child(&served);
+
+  let owner = Owner::new();
+
+  owner.enter(|| head::add_meta("adopt-test", "x"));
+
+  assert_eq!(
+    parent
+      .query_selector_all("meta[name=adopt-test]")
+      .expect("a valid selector")
+      .length(),
+    1
+  );
+  assert!(served.is_connected());
+
+  owner.dispose();
+
+  assert!(!served.is_connected());
 }
 
 /// A focus handle moves real keyboard focus to the native input of its bound control.

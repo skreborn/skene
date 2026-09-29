@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
-use skene_common::gui::Painter;
+use skene_common::gui::{Head, Painter};
 use skene_core::{
   Availability,
   BoxProps,
@@ -170,9 +170,8 @@ pub struct Store {
   pub reduced_motion: Option<bool>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
-  pub title: Option<String>,
   pub language: Option<String>,
-  pub head: Vec<HeadElement>,
+  pub head: Head,
   /// The scheduled actions, each with the clock reading it is due at.
   pub timers: Vec<Scheduled>,
   pub next_timer: u64,
@@ -190,15 +189,6 @@ pub struct Store {
 /// A scheduled action: the clock reading it is due at, its timer, and the action.
 pub type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
-/// An element registered for the document head.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HeadElement {
-  /// The element's tag.
-  pub tag: String,
-  /// The element's attributes, in registration order.
-  pub attributes: Vec<(String, String)>,
-}
-
 impl Default for Store {
   fn default() -> Self {
     Self {
@@ -214,9 +204,8 @@ impl Default for Store {
       chosen_scheme: None,
       reduced_motion: None,
       clock: 0.,
-      title: None,
       language: None,
-      head: Vec::new(),
+      head: Head::default(),
       timers: Vec::new(),
       next_timer: 0,
       clipboard: Vec::new(),

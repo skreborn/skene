@@ -3,9 +3,11 @@
 #![cfg(skene_leaf = "server")]
 
 use skene_gui::{
+  Column,
+  HasChildren,
   Text,
   head,
-  reactive::{Get, Signal},
+  reactive::{Effect, Get, Set, Signal},
   render_to_string,
 };
 
@@ -37,6 +39,36 @@ fn head_registrations_serialize() {
   assert!(rendered.page().contains(&format!(
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">{head}"
   )));
+}
+
+/// A subtree replaced during the render takes its title, description and stylesheet
+/// along.
+#[test]
+fn a_replaced_subtree_takes_its_head_along() {
+  let rendered = render_to_string(|| {
+    let replaced = Signal::new(false);
+
+    head::set_title("Site");
+    head::add_meta("description", "The site");
+    Effect::new(move |_: Option<()>| replaced.set(true));
+
+    Column::new().derive_child(move || {
+      let name = if replaced.get() { "new" } else { "old" };
+
+      head::set_title(format!("{name} — Site"));
+      head::add_meta("description", &format!("The {name} page"));
+      head::add_stylesheet(&format!("/{name}.css"));
+
+      Text::new(name)
+    })
+  });
+  let head = rendered.head();
+
+  assert!(head.starts_with("<title>new — Site</title>"), "{head}");
+  assert!(head.contains("content=\"The new page\""), "{head}");
+  assert!(head.contains("href=\"/new.css\""), "{head}");
+  assert!(!head.contains("old"), "{head}");
+  assert_eq!(head.matches("name=\"description\"").count(), 1, "{head}");
 }
 
 /// A derived title reads reactive state at render time.

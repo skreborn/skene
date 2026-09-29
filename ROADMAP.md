@@ -20,9 +20,6 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The web's highest-traffic defects.**
-    - Head entries are owner-scoped and keyed, with a title stack, deduped once in
-    shared code, so a route's description and stylesheet leave with it and both leaves
-    serialize them alike.
     - A wrapper's per-child properties reach everything its child produces: a derived
     one reaches a run on the web as a slot, as it reaches a box; a low-level node's
     annotation reaches its platform, which applies it to the element on the web; and

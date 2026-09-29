@@ -66,6 +66,7 @@ use super::{
     compile_overlay,
     compile_root_definitions,
     compile_run,
+    control_fingerprint,
     inline_definitions,
     overlay_fingerprint,
     render_box_leaf,
@@ -81,7 +82,7 @@ use super::{
     SCOPE_ATTRIBUTE,
     STYLE_ATTRIBUTE,
     STYLE_ID,
-    access_attribute,
+    access_attributes,
     anchor_text,
     aria_role,
     box_tag,
@@ -91,10 +92,10 @@ use super::{
     focus_order_attribute,
     is_form_element,
     link_attributes,
-    native_attribute,
     native_attributes,
     native_element,
     referenced_nodes,
+    replaced_by_access,
     runs_script,
     scrolls,
     takes_disabled,
@@ -403,7 +404,20 @@ impl Tree {
 
   /// The compiled template for `key`, rendered by `compile` on a miss.
   fn compiled(&mut self, key: u64, compile: impl FnOnce() -> Compiled) -> Rc<Compiled> {
-    Rc::clone(self.cache.entry(key).or_insert_with(|| Rc::new(compile())))
+    if let Some(cached) = self.cache.get(&key) {
+      debug_assert!(
+        cached.template == compile().template,
+        "the fingerprint {key:x} names two templates"
+      );
+
+      return Rc::clone(cached);
+    }
+
+    let compiled = Rc::new(compile());
+
+    self.cache.insert(key, Rc::clone(&compiled));
+
+    compiled
   }
 
   /// Interns `template` and swaps it in for `previous`, returning the class.
@@ -675,7 +689,13 @@ impl Tree {
     node.emit_options(out);
 
     match &node.text {
-      Some(text) => escape_text(text, out),
+      Some(text) => {
+        if node.tag() == "textarea" && text.starts_with('\n') {
+          out.push('\n');
+        }
+
+        escape_text(text, out);
+      }
       None => {
         for child in &node.children {
           self.serialize(*child, out);
@@ -969,18 +989,10 @@ fn write_access(node: &mut Node, access: &[AccessProp]) {
   node.attributes.retain(|(name, _)| {
     let native = form && NATIVE_ACCESS_ATTRIBUTES.contains(&name.as_str());
 
-    !native && !name.starts_with("aria-") && name != "title"
+    !native && !replaced_by_access(name)
   });
 
-  for prop in access {
-    if form && let Some(name) = native_attribute(prop) {
-      node.set_attribute(name, "");
-
-      continue;
-    }
-
-    let (name, value) = access_attribute(prop);
-
+  for (name, value) in access_attributes(access, form) {
     node.set_attribute(name, &value);
   }
 }
@@ -1156,9 +1168,7 @@ impl Platform for Web {
         node.set_attribute(CONTROL_ATTRIBUTE, "");
       }
 
-      let compiled = tree.compiled(box_fingerprint(&props.box_props, 1), || {
-        compile_control(props)
-      });
+      let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));
 
       (index, compiled)
     });
@@ -1189,7 +1199,7 @@ impl Platform for Web {
       }
       else if let Some(node) = tree.node(carrier) {
         node.set_flag("checked", state.checked == Toggle::On);
-        node.set_flag("indeterminate", state.checked == Toggle::Mixed);
+        node.set_flag("data-skene-indeterminate", state.checked == Toggle::Mixed);
         node.set_flag("disabled", state.disabled);
 
         if state.invalid {

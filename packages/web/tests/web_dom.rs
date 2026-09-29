@@ -662,6 +662,47 @@ fn media_reports_the_window() {
   assert_eq!(skene_web::stored_scheme(), None);
 }
 
+/// Choosing a scheme sets the document's `color-scheme` and leaves the rest of its
+/// inline style alone.
+#[wasm_bindgen_test]
+fn choosing_a_scheme_keeps_the_documents_inline_style() {
+  let (_guard, _root) = fresh_root();
+  let html: HtmlElement = document()
+    .document_element()
+    .expect("a document element")
+    .dyn_into()
+    .expect("an HTML element");
+  let style = html.style();
+
+  let _ = style.set_property("--kept", "1");
+
+  skene_web::set_scheme(Some(ColorScheme::Dark));
+  skene_web::end_turn();
+
+  assert_eq!(
+    style.get_property_value("color-scheme").ok().as_deref(),
+    Some("dark")
+  );
+  assert_eq!(
+    style.get_property_value("--kept").ok().as_deref(),
+    Some("1")
+  );
+
+  skene_web::set_scheme(None);
+  skene_web::end_turn();
+
+  assert_eq!(
+    style.get_property_value("color-scheme").ok().as_deref(),
+    Some("")
+  );
+  assert_eq!(
+    style.get_property_value("--kept").ok().as_deref(),
+    Some("1")
+  );
+
+  let _ = style.remove_property("--kept");
+}
+
 /// A page the server leaf rendered hydrates with no mismatch: its elements are
 /// adopted in place and its one `<style>` block is the only stylesheet.
 #[wasm_bindgen_test]
@@ -709,6 +750,56 @@ fn a_served_page_hydrates_without_mismatch() {
   drop(guard);
 
   assert!(!block.is_connected());
+}
+
+/// A served scope that defines its palette inline gives those definitions up to the
+/// class the client assigns on adoption.
+#[wasm_bindgen_test]
+fn a_hydrated_scope_drops_its_served_inline_definitions() {
+  let app = |palette: Signal<Palette>| {
+    move || {
+      Theme::<Web, _>::derive(move || palette.get()).set_child_builder(|| {
+        Box_::new()
+          .set_color(Palette::CARD)
+          .set_child(Text::<Web>::new("Hi"))
+      })
+    }
+  };
+  let (markup, styles) = {
+    let (_guard, root) = fresh_root();
+    let palette = Signal::opaque(Palette::with_card(white()));
+
+    let _ = skene_web::mount(move || app(palette)().build());
+
+    palette.set(Palette::with_card(black()));
+    skene_web::end_turn();
+
+    (as_served(&root), sheet_text())
+  };
+
+  assert!(markup.contains("--test-card"), "{markup}");
+
+  let _block = serve_styles(&styles);
+  let root = connected_root();
+
+  root.set_inner_html(&markup);
+  skene_web::hydrate(root.clone(), "", app(Signal::opaque(Palette::default())));
+
+  let _guard = Installed(root.clone());
+  let scope = html(&only_child(&root));
+
+  assert_eq!(
+    scope
+      .style()
+      .get_property_value("--test-card")
+      .ok()
+      .as_deref(),
+    Some("")
+  );
+  assert_eq!(
+    computed(&only_child(&scope), "background-color"),
+    probe(&root, &css(white()))
+  );
 }
 
 /// An input the reader ticked before the client arrived reports its live state into

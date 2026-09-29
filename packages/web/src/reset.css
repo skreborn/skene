@@ -70,6 +70,12 @@ Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
   overflow: auto;
 }
 
+/* A scope's children take the grid placement the scope was given, so a stack's cell
+   reaches through any number of them. */
+:where([data-skene-scope]) > * {
+  grid-area: inherit;
+}
+
 :where(input, textarea) {
   -webkit-user-select: text;
   user-select: text;

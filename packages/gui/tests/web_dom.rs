@@ -22,15 +22,19 @@ use skene_gui::{
   Container,
   ContextMenu,
   Deferred,
+  Definition,
   FocusHandle,
   Grid,
   HasChildren,
   Inset,
+  Media,
   MenuItem,
   RadioMember,
+  Range,
   RawCheckbox,
   RawRadio,
   RawRadioGroup,
+  RawSlider,
   RawTextField,
   Role,
   Roving,
@@ -430,6 +434,31 @@ fn stack_children_share_one_grid_cell() {
   }
 }
 
+/// A stack's cell reaches a child beneath a theme's scope.
+#[wasm_bindgen_test]
+fn a_themed_stack_child_shares_the_cell() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Stack::new()
+      .set_children((
+        Text::new("under"),
+        Theme::new(Typography::default()).set_child_builder(|| Text::new("over")),
+      ))
+      .build()
+  });
+
+  let stack = only_child(&root);
+  let under = stack.first_element_child().expect("the first child");
+  let over = only_child(&stack.last_element_child().expect("the theme's scope"));
+
+  assert_eq!(computed(&over, "grid-row-start"), "1");
+  assert_eq!(computed(&over, "grid-column-start"), "1");
+  assert!(
+    (over.get_bounding_client_rect().top() - under.get_bounding_client_rect().top()).abs() < 0.5
+  );
+}
+
 #[wasm_bindgen_test]
 fn click_handler_runs_on_a_real_click() {
   let (_guard, root) = fresh_root();
@@ -519,6 +548,36 @@ async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   let _ = thumb.dispatch_event(&event);
 
   assert!((value.get() - 75.).abs() < f32::EPSILON, "{}", value.get());
+}
+
+/// A slider's native input holds the slider's range, step and value, and follows the
+/// value.
+#[wasm_bindgen_test]
+fn a_sliders_native_input_holds_its_range_and_value() {
+  let (_guard, root) = fresh_root();
+  let value = Signal::new(150.0f32);
+
+  let _ = mount(move || {
+    RawSlider::new(Range::new().set_max(200.).set_step(5.).bind_value(value)).build()
+  });
+
+  let input: HtmlInputElement = root
+    .query_selector("input")
+    .expect("a valid selector")
+    .expect("the slider's input")
+    .dyn_into()
+    .expect("an input");
+
+  assert_eq!(input.get_attribute("min").as_deref(), Some("0"));
+  assert_eq!(input.get_attribute("max").as_deref(), Some("200"));
+  assert_eq!(input.get_attribute("step").as_deref(), Some("5"));
+  assert_eq!(input.value(), "150");
+  assert!(!input.has_attribute("aria-valuenow"));
+
+  value.set(185.);
+  web::end_turn();
+
+  assert_eq!(input.value(), "185");
 }
 
 /// A change handler receives the value, in real time, when an input event fires on
@@ -746,6 +805,49 @@ fn typography_link_ink_reaches_a_link_and_updates() {
     computed(&link, "color"),
     probe(&scope, &css(Color::srgb(0., 0., 1.)))
   );
+}
+
+/// A palette that switches from inline definitions back to conditional ones takes effect.
+#[wasm_bindgen_test]
+fn a_conditional_palette_after_an_unconditional_one_takes_effect() {
+  let (_guard, root) = fresh_root();
+  let conditional = Signal::new(true);
+  let green = Color::srgb(0., 1., 0.);
+  let blue = Color::srgb(0., 0., 1.);
+
+  let _ = mount(move || {
+    Theme::derive(move || {
+      let ink = if conditional.get() {
+        Definition::from(Color::srgb(1., 0., 0.)).when(Media::MinWidth(1.), green)
+      }
+      else {
+        Definition::from(blue)
+      };
+
+      Typography::default()
+        .set_ink(ink)
+        .set_link_ink(blue)
+        .set_selection_ink(blue)
+        .set_selection_surface(blue)
+    })
+    .set_child_builder(|| Text::new("ink"))
+    .build()
+  });
+
+  let scope = only_child(&root);
+  let text = only_child(&scope);
+
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
+
+  conditional.set(false);
+  web::end_turn();
+
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(blue)));
+
+  conditional.set(true);
+  web::end_turn();
+
+  assert_eq!(computed(&text, "color"), probe(&scope, &css(green)));
 }
 
 /// A typography theme sizes, weights, spaces and leads the text beneath it, and a text

@@ -93,7 +93,20 @@ impl Sheet {
 
   /// The compiled template for `key`, rendered by `compile` on a miss.
   pub(super) fn compiled(&mut self, key: u64, compile: impl FnOnce() -> Compiled) -> Rc<Compiled> {
-    Rc::clone(self.cache.entry(key).or_insert_with(|| Rc::new(compile())))
+    if let Some(cached) = self.cache.get(&key) {
+      debug_assert!(
+        cached.template == compile().template,
+        "the fingerprint {key:x} names two templates"
+      );
+
+      return Rc::clone(cached);
+    }
+
+    let compiled = Rc::new(compile());
+
+    self.cache.insert(key, Rc::clone(&compiled));
+
+    compiled
   }
 
   /// Interns `template` and swaps it in for `previous`, returning the class.

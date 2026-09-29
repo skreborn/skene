@@ -7,6 +7,7 @@
 use std::time::Duration;
 
 use skene_gui::{
+  Activate,
   Color,
   Column,
   Container,
@@ -20,8 +21,11 @@ use skene_gui::{
   Listbox,
   Overlay,
   Painted,
+  Range,
+  RawButton,
   RawListbox,
   RawOption,
+  RawSlider,
   Resource,
   RichText,
   Row,
@@ -167,6 +171,31 @@ fn names_and_roles_reach_the_markup() {
     body.matches("tabindex=\"0\"").count() >= 2,
     "the listbox and the scrolling box are tab stops: {body}"
   );
+}
+
+/// A control its label names rather than its text keeps the name in the markup.
+#[test]
+fn a_named_control_keeps_its_accessible_name() {
+  let page = render_to_string(|| {
+    RawButton::new(Activate::new()).set_label(Label::new(Text::new("×")).set_name("Close"))
+  });
+  let body = page.body();
+
+  assert!(body.contains("aria-label=\"Close\""), "{body}");
+}
+
+/// A slider's scriptless input holds the slider's range, step and value natively.
+#[test]
+fn a_sliders_input_holds_its_range_natively() {
+  let page =
+    render_to_string(|| RawSlider::new(Range::new().set_max(200.).set_step(0.).set_value(150.)));
+  let body = page.body();
+
+  for attribute in ["min=\"0\"", "max=\"200\"", "step=\"any\"", "value=\"150\""] {
+    assert!(body.contains(attribute), "{attribute}: {body}");
+  }
+
+  assert!(!body.contains("aria-valuenow"), "{body}");
 }
 
 /// A picker's scriptless form is a `<select>` listing its options by value and name

@@ -5,16 +5,30 @@
 //! `RUSTFLAGS='--cfg skene_platform="server"' cargo test -p skene-web --test web_ssr`.
 #![cfg(skene_leaf = "server")]
 
-use skene_common::{Container, RawCheckbox, Text, Theme, Toggle};
+use skene_common::{
+  Behavior,
+  Container,
+  Control,
+  RawCheckbox,
+  RawTextEditor,
+  Text,
+  TextEntry,
+  Theme,
+  Toggle,
+};
 use skene_core::{
   Color,
   Condition,
   ContainerName,
   ContainerQuery,
+  ControlKind,
+  ControlState,
   Dimension,
+  EventKind,
   Expr,
   HasChildren,
   Media,
+  Role,
   State,
   StaticLeaf,
   Token,
@@ -332,7 +346,9 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
     "{body}"
   );
   assert!(
-    body.contains("<input data-h=\"2\" type=\"checkbox\" class=\"skene-native\""),
+    body.contains(
+      "<input data-h=\"2\" type=\"checkbox\" aria-label=\"Agree\" class=\"skene-native\""
+    ),
     "{body}"
   );
   assert!(
@@ -367,6 +383,65 @@ fn a_checkbox_is_a_label_over_a_native_input_and_its_parts() {
     )),
     "{styles}"
   );
+}
+
+/// A behavior standing for a set that is only partly checked.
+struct Partial;
+
+impl Behavior<Web> for Partial {
+  fn kind(&self) -> ControlKind {
+    ControlKind::Checkbox
+  }
+
+  fn role(&self) -> Option<Role> {
+    Some(Role::Checkbox)
+  }
+
+  fn listens(&self) -> &'static [EventKind] {
+    &[]
+  }
+
+  fn state(&self) -> ControlState {
+    ControlState {
+      checked: skene_core::Toggle::Mixed,
+      ..ControlState::DEFAULT
+    }
+  }
+}
+
+/// A partly checked checkbox's input carries its state without script, and a part's
+/// indeterminate variant anchors on that input.
+#[test]
+fn an_indeterminate_checkbox_carries_its_state_in_markup() {
+  let rendered = render_to_string(|| {
+    Control::<Web, Partial>::new(Partial)
+      .set_part(
+        skene_common::Part::Mark,
+        Box_::new().set_color(white().when(Condition::from(State::Indeterminate), black())),
+      )
+      .set_label("Some")
+  });
+  let body = rendered.body();
+  let styles = rendered.styles();
+
+  assert!(body.contains("data-skene-indeterminate"), "{body}");
+  assert!(!body.contains(" indeterminate"), "{body}");
+  assert!(
+    styles.contains("input.skene-native:is(:indeterminate, [data-skene-indeterminate])"),
+    "{styles}"
+  );
+}
+
+/// A text editor whose value starts with a newline keeps it through the parser, which
+/// drops a textarea's first newline.
+#[test]
+fn a_text_editor_keeps_a_leading_newline() {
+  let rendered = render_to_string(|| {
+    RawTextEditor::<Web>::new(TextEntry::new().set_lines(3).set_value("\nsecond"))
+  });
+  let body = rendered.body();
+
+  assert!(body.contains(">\n\nsecond</textarea>"), "{body}");
 }
 
 /// Two boxes styled by the same token under two palettes intern one class, since a

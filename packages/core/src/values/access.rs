@@ -1,12 +1,12 @@
 use super::{Axis, Toggle};
 use crate::NodeId;
 
-/// One accessibility property a widget reports, for a reactive update.
+/// One accessibility property a view reports, for a reactive update.
 ///
 /// Semantics, not style: a platform maps these to whatever its accessibility layer
 /// speaks—ARIA attributes on the web, a platform accessibility node elsewhere—so the
 /// vocabulary names the concept and never the platform's spelling of it. Pairs with a
-/// widget [`Role`](super::Role), which says what the control *is* while these say what it currently
+/// [`Role`](super::Role), which says what the view *is* while these say what it currently
 /// reports.
 #[derive(Clone, Debug, PartialEq)]
 #[must_use]
@@ -19,6 +19,8 @@ pub enum AccessProp {
   ValueMin(f32),
   /// The highest value that control accepts.
   ValueMax(f32),
+  /// The step that control's value moves by; non-positive for a continuous range.
+  ValueStep(f32),
   /// A human-readable reading of the value, when the number alone does not say enough.
   ValueText(String),
   /// Whether the control's associated content is revealed.

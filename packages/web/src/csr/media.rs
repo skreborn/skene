@@ -7,6 +7,7 @@ use std::cell::{Cell, RefCell};
 use rustc_hash::FxHashMap;
 use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, Size};
 use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, WriteSignal};
+use wasm_bindgen::JsCast as _;
 use web_sys::MediaQueryList;
 
 use super::events::Listener;
@@ -219,14 +220,18 @@ pub fn set_scheme(scheme: Option<ColorScheme>) {
     .and_then(|window| window.document())
     .and_then(|document| document.document_element())
   {
+    let style = root
+      .dyn_ref::<web_sys::HtmlElement>()
+      .map(web_sys::HtmlElement::style);
+
     if let Some(name) = scheme.map(scheme_name) {
       let _ = root.set_attribute(SCHEME_ATTRIBUTE, name);
-      let _ = root.set_attribute("style", &format!("color-scheme:{name}"));
+      let _ = style.map(|style| style.set_property("color-scheme", name));
       let _ = storage().map(|storage| storage.set_item(SCHEME_KEY, name));
     }
     else {
       let _ = root.remove_attribute(SCHEME_ATTRIBUTE);
-      let _ = root.remove_attribute("style");
+      let _ = style.map(|style| style.remove_property("color-scheme"));
       let _ = storage().map(|storage| storage.remove_item(SCHEME_KEY));
     }
   }

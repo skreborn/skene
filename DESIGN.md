@@ -329,8 +329,9 @@ re-export.
   (`Checked`, `Value`, `Expanded`, `HasPopup`, `Orientation`, `Selected`) and a control's
   user adds what any control may carry (`Required`, `ReadOnly`, `Invalid`,
   `DescribedBy`, `Disabled`); the platform maps each to its layer. On the web a form
-  element takes the native attribute where one exists (`required`, `readonly`), so the
-  form enforces it without script, and ARIA otherwise; a property naming another node
+  element takes the native attribute where one exists (`required`, `readonly`, and a
+  slider's `value`, `min`, `max` and `step`), so the form enforces it without script,
+  and ARIA otherwise; a property naming another node
   (`Controls`, `LabelledBy`, `DescribedBy`) gives that node an id derived from its node
   id, identical on both leaves. A name comes from wherever it is: a string caption is
   the control's own (`aria-label`, or the native input's), and a caption drawn by a

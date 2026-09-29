@@ -114,6 +114,7 @@ use super::{
     compile_overlay,
     compile_root_definitions,
     compile_run,
+    control_fingerprint,
     inline_definitions,
     overlay_fingerprint,
     render_box_leaf,
@@ -127,7 +128,7 @@ use super::{
     NativeElement,
     SCOPE_ATTRIBUTE,
     STYLE_ID,
-    access_attribute,
+    access_attributes,
     anchor_text,
     aria_role,
     box_tag,
@@ -136,10 +137,10 @@ use super::{
     focus_order_attribute,
     is_form_element,
     link_attributes,
-    native_attribute,
     native_attributes,
     native_element,
     referenced_nodes,
+    replaced_by_access,
     runs_script,
     scrolls,
     takes_disabled,
@@ -173,7 +174,10 @@ enum Realized {
   },
   Run,
   Anchor,
-  Scope,
+  Scope {
+    /// The custom properties its definitions are written inline as, over its token class.
+    inline: Vec<String>,
+  },
 }
 
 /// One node's record beside the scene: its DOM node, the native element carrying a
@@ -241,6 +245,44 @@ impl Node {
 
   const fn is_control(&self) -> bool {
     matches!(self.realized, Realized::Control { .. })
+  }
+
+  /// Records the custom properties a scope's adopted markup defines inline.
+  fn adopt_inline_definitions(&mut self) {
+    let (Realized::Scope { inline }, Some(html)) =
+      (&mut self.realized, self.dom.dyn_ref::<HtmlElement>())
+    else {
+      return;
+    };
+
+    let style = html.style();
+
+    inline.extend(
+      (0..style.length())
+        .map(|index| style.item(index))
+        .filter(|property| property.starts_with("--")),
+    );
+  }
+
+  /// Replaces a scope's inline definitions with `declarations`.
+  fn set_inline_definitions(&mut self, declarations: Vec<(String, String)>) {
+    let (Realized::Scope { inline }, Some(html)) =
+      (&mut self.realized, self.dom.dyn_ref::<HtmlElement>())
+    else {
+      return;
+    };
+
+    let style = html.style();
+
+    for property in inline.drain(..) {
+      let _ = style.remove_property(&property);
+    }
+
+    for (property, value) in declarations {
+      let _ = style.set_property(&property, &value);
+
+      inline.push(property);
+    }
   }
 }
 
@@ -722,7 +764,7 @@ impl Dom {
 
     for index in 0..names.length() {
       if let Some(name) = names.get(index).as_string()
-        && ((name.starts_with("aria-") && name != "aria-label") || name == "title")
+        && replaced_by_access(&name)
       {
         let _ = carrier.remove_attribute(&name);
       }
@@ -734,21 +776,19 @@ impl Dom {
       }
     }
 
-    for prop in access {
+    for (name, value) in access_attributes(access, form) {
       // A plain description is the server's `title`; with script the tooltip is ours.
-      if matches!(prop, AccessProp::Description(_)) {
+      if name == "title" {
         continue;
       }
-
-      if form && let Some(name) = native_attribute(prop) {
-        let _ = carrier.set_attribute(name, "");
-
-        continue;
-      }
-
-      let (name, value) = access_attribute(prop);
 
       let _ = carrier.set_attribute(name, &value);
+
+      if name == "value"
+        && let Some(input) = carrier.dyn_ref::<HtmlInputElement>()
+      {
+        input.set_value(&value);
+      }
     }
 
     for node in referenced_nodes(access) {
@@ -1406,9 +1446,7 @@ impl Platform for Web {
 
       let compiled = dom
         .sheet
-        .compiled(box_fingerprint(&props.box_props, 1), || {
-          compile_control(props)
-        });
+        .compiled(control_fingerprint(props), || compile_control(props));
 
       dom.finish_box(sink, &props.box_props, &compiled);
 
@@ -1447,6 +1485,11 @@ impl Platform for Web {
             input.set_checked(state.checked == Toggle::On);
             input.set_indeterminate(state.checked == Toggle::Mixed);
             input.set_disabled(state.disabled);
+            set_flag(
+              carrier,
+              "data-skene-indeterminate",
+              state.checked == Toggle::Mixed,
+            );
           }
           else if let Some(area) = carrier.dyn_ref::<HtmlTextAreaElement>() {
             area.set_disabled(state.disabled);
@@ -1654,7 +1697,11 @@ impl Platform for Web {
 
   fn create_scope(&self) -> u32 {
     with_dom(|dom| {
-      let sink = dom.create_element("div", Realized::Scope);
+      let sink = dom.create_element("div", Realized::Scope { inline: Vec::new() });
+
+      if let Some(node) = dom.node_mut(sink) {
+        node.adopt_inline_definitions();
+      }
 
       if let Some(html) = dom.node(sink).and_then(Node::html) {
         let _ = html.set_attribute(SCOPE_ATTRIBUTE, "");
@@ -1764,12 +1811,8 @@ impl Platform for Web {
       let previous = dom.node(*scope).and_then(|node| node.token_class.clone());
 
       if previous.is_some() && all_unconditional(definitions) {
-        if let Some(html) = dom.node(*scope).and_then(Node::html) {
-          let style = html.style();
-
-          for (property, value) in inline_definitions(definitions) {
-            let _ = style.set_property(&property, &value);
-          }
+        if let Some(node) = dom.node_mut(*scope) {
+          node.set_inline_definitions(inline_definitions(definitions));
         }
 
         return;
@@ -1784,6 +1827,7 @@ impl Platform for Web {
           swap_class_attribute(element, previous.as_deref(), &class);
         }
 
+        node.set_inline_definitions(Vec::new());
         node.token_class = Some(class);
       }
     });

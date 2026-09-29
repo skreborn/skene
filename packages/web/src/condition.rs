@@ -300,7 +300,7 @@ const fn facet(state: State) -> Facet {
     },
     State::Indeterminate => Facet {
       own: None,
-      native: Some(":indeterminate"),
+      native: Some(":is(:indeterminate, [data-skene-indeterminate])"),
       attribute: Some("[data-skene-indeterminate]"),
     },
     State::Disabled => Facet {

@@ -80,12 +80,22 @@ impl ClassInterner {
   ///
   /// The returned class has no claim on it yet: call [`retain`](Self::retain) once it is
   /// assigned to a node and [`release`](Self::release) when the node drops it.
+  ///
+  /// # Panics
+  ///
+  /// Panics when another live template hashes to the same class.
   pub(crate) fn class_for(&mut self, template: &str) -> (Rc<str>, bool) {
     if let Some(class) = self.classes.get(template) {
       return (Rc::clone(class), false);
     }
 
     let class: Rc<str> = class_name(template).into();
+
+    assert!(
+      !self.rules.contains_key(&class),
+      "two templates hash to the class {class}"
+    );
+
     let template: Rc<str> = template.into();
     let order = self.next_order;
 

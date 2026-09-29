@@ -272,6 +272,7 @@ impl<P: Platform> Behavior<P> for Range {
       AccessProp::Value(self.read()),
       AccessProp::ValueMin(self.min),
       AccessProp::ValueMax(self.max),
+      AccessProp::ValueStep(self.step),
       AccessProp::Orientation(self.axis),
     ]
   }

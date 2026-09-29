@@ -274,6 +274,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
       AccessProp::Value(50.),
       AccessProp::ValueMin(0.),
       AccessProp::ValueMax(100.),
+      AccessProp::ValueStep(5.),
       AccessProp::Orientation(skene_core::Axis::Horizontal),
     ])
   );
@@ -300,6 +301,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
       AccessProp::Value(100.),
       AccessProp::ValueMin(0.),
       AccessProp::ValueMax(100.),
+      AccessProp::ValueStep(5.),
       AccessProp::Orientation(skene_core::Axis::Horizontal),
     ])
   );

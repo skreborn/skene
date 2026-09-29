@@ -36,14 +36,6 @@ left half-done in a code comment.
     change, and re-attaching in place is a no-op, where each re-run recaptures focus
     and scroll, reopens tooltips, restarts animations and drops an IME composition
     today; a modal always prevents `cancel`; behaviors skip keys while an IME composes.
-    - With them, styles and markup: assigning a class clears inline custom properties;
-    stack placement folds into each child's style, reaching through a `Theme`'s
-    `display: contents`; the control template cache keys on the control's kind and
-    compares templates on a hit, and the interner checks class names for collisions;
-    `set_scheme` stops overwriting `<html>`'s inline style; until the leaves share one
-    realization, the server keeps icon controls' `aria-label`, the hidden range input
-    carries native `min`, `max`, `step` and `value`, `indeterminate` is set as a
-    property, and a textarea keeps a leading newline.
     - With them, painting: device loss recovers, with a CPU fallback per canvas; the
     canvas is positioned absolutely and observes `device-pixel-content-box`, so it
     stops sizing its own box and repaints when the pixel ratio changes.

@@ -1057,6 +1057,17 @@ pub(crate) fn box_fingerprint<P: PixelPlatform>(props: &BoxProps<P>, reset: u8) 
   hasher.finish()
 }
 
+/// The hash the class cache keys a control's compiled template on: its box's and its
+/// kind's, which the compilation branches on.
+pub(crate) fn control_fingerprint<P: PixelPlatform>(props: &ControlProps<P>) -> u64 {
+  let mut hasher = FxHasher::default();
+
+  hasher.write_u64(box_fingerprint(&props.box_props, 1));
+  props.kind.hash(&mut hasher);
+
+  hasher.finish()
+}
+
 /// The hash the class cache keys an overlay's compiled template on.
 pub(crate) fn overlay_fingerprint<P: PixelPlatform>(props: &OverlayProps<P>) -> u64 {
   let mut hasher = FxHasher::default();

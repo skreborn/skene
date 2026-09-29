@@ -260,9 +260,9 @@ pub(crate) fn link_attributes(href: &str, policy: LinkPolicy) -> Vec<(&'static s
   attributes
 }
 
-/// The ARIA attribute carrying `prop`.
-pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
-  match prop {
+/// The ARIA attribute carrying `prop` and its value, where one exists.
+fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
+  Some(match prop {
     AccessProp::Checked(toggle) => (
       "aria-checked",
       match toggle {
@@ -275,6 +275,7 @@ pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
     AccessProp::Value(value) => ("aria-valuenow", value.to_string()),
     AccessProp::ValueMin(value) => ("aria-valuemin", value.to_string()),
     AccessProp::ValueMax(value) => ("aria-valuemax", value.to_string()),
+    AccessProp::ValueStep(_) => return None,
     AccessProp::ValueText(text) => ("aria-valuetext", text.clone()),
     AccessProp::Expanded(state) => ("aria-expanded", state.to_string()),
     AccessProp::Selected(state) => ("aria-selected", state.to_string()),
@@ -304,21 +305,53 @@ pub(crate) fn access_attribute(prop: &AccessProp) -> (&'static str, String) {
       }
       .to_owned(),
     ),
-  }
+  })
 }
 
-/// The native attribute carrying `prop` on a form element, where one exists; the form
-/// element then enforces it without script.
-pub(crate) const fn native_attribute(prop: &AccessProp) -> Option<&'static str> {
+/// Whether an access write replaces the attribute `name`: every ARIA attribute but the
+/// label a control is created with, and a description's `title`.
+pub(crate) fn replaced_by_access(name: &str) -> bool {
+  (name.starts_with("aria-") && name != "aria-label") || name == "title"
+}
+
+/// The native attribute carrying `prop` on a form element and its value, where one
+/// exists; the form element then enforces it without script.
+fn native_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
   match prop {
-    AccessProp::Required(true) => Some("required"),
-    AccessProp::ReadOnly(true) => Some("readonly"),
+    AccessProp::Required(true) => Some(("required", String::new())),
+    AccessProp::ReadOnly(true) => Some(("readonly", String::new())),
+    AccessProp::Value(value) => Some(("value", value.to_string())),
+    AccessProp::ValueMin(value) => Some(("min", value.to_string())),
+    AccessProp::ValueMax(value) => Some(("max", value.to_string())),
+    AccessProp::ValueStep(step) if *step > 0. => Some(("step", step.to_string())),
+    AccessProp::ValueStep(_) => Some(("step", "any".to_owned())),
     _ => None,
   }
 }
 
-/// The native attributes [`native_attribute`] may set, cleared before a rewrite.
-pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 2] = ["required", "readonly"];
+/// The native attributes an access write clears before it rewrites them: every one
+/// [`access_attributes`] gives a form element but `value`, which it only overwrites.
+pub(crate) const NATIVE_ACCESS_ATTRIBUTES: [&str; 5] =
+  ["required", "readonly", "min", "max", "step"];
+
+/// The attributes `access` gives an element, a form element taking the native
+/// attribute where one exists and ARIA otherwise; a native `value` comes last, after
+/// the bounds it is held within.
+pub(crate) fn access_attributes(access: &[AccessProp], form: bool) -> Vec<(&'static str, String)> {
+  let mut attributes: Vec<_> = access
+    .iter()
+    .filter_map(|prop| {
+      form
+        .then(|| native_attribute(prop))
+        .flatten()
+        .or_else(|| access_attribute(prop))
+    })
+    .collect();
+
+  attributes.sort_by_key(|(name, _)| *name == "value");
+
+  attributes
+}
 
 /// The attributes a control's native element carries: its `type`, the placeholder and
 /// the lines of a text entry, and the accessible name when nothing visible supplies one.

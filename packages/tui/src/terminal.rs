@@ -50,7 +50,6 @@ use crate::{
     WindowSize,
   },
   platform::end_turn,
-  store::Store,
   text::{self, CellScale, Glyph},
   tty::Tty,
   with_store,
@@ -742,19 +741,24 @@ where
   terminal.close();
 }
 
-/// Runs every scheduled action whose reading has come, as one turn.
+/// Runs every scheduled action whose reading has come, earliest due first, as one
+/// turn.
 fn run_due_timers() {
-  let due = with_store(Store::take_due_timers);
+  let batch = with_store(|store| store.timers.next_timer());
+  let mut ran = false;
 
-  if due.is_empty() {
-    return;
-  }
+  while let Some(action) = with_store(|store| {
+    let now = store.now();
 
-  for action in due {
+    store.timers.pop_due(now, batch)
+  }) {
     action();
+    ran = true;
   }
 
-  end_turn();
+  if ran {
+    end_turn();
+  }
 }
 
 /// Frees every picture and hands the terminal back.

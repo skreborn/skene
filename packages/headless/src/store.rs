@@ -25,7 +25,7 @@ use skene_core::{
   Size,
   Slot,
   TextSelection,
-  Timer,
+  Timers,
   interpolate::Tween,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
@@ -201,10 +201,8 @@ pub(crate) struct Store {
   pub language: Option<String>,
   /// The head registrations.
   pub head: Head,
-  /// The scheduled actions, each with the clock reading it is due at.
-  pub timers: Vec<Scheduled>,
-  /// The id the next scheduled action takes.
-  pub next_timer: u64,
+  /// The scheduled actions, each due at a clock reading.
+  pub timers: Timers<Box<dyn FnOnce()>>,
   /// The clipboard actions performed, in order, until taken.
   pub clipboard: Vec<ClipboardAction>,
   /// What each clipboard action answers when asked; enabled unless set.
@@ -216,9 +214,6 @@ pub(crate) struct Store {
   /// The environment's signals, once first asked for.
   media: Option<MediaState>,
 }
-
-/// A scheduled action: the clock reading it is due at, its timer, and the action.
-pub(crate) type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
 impl Default for Store {
   fn default() -> Self {
@@ -237,8 +232,7 @@ impl Default for Store {
       clock: 0.,
       language: None,
       head: Head::default(),
-      timers: Vec::new(),
-      next_timer: 0,
+      timers: Timers::new(),
       clipboard: Vec::new(),
       availability: FxHashMap::default(),
       hydrated: None,

@@ -3426,6 +3426,20 @@ impl core::hash::Hash for skene_core::Timer
 pub fn skene_core::Timer::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::Timer
 impl core::marker::StructuralPartialEq for skene_core::Timer
+pub struct skene_core::Timers<A>
+impl<A> skene_core::Timers<A>
+pub fn skene_core::Timers<A>::cancel(&mut self, skene_core::Timer) -> bool
+pub const fn skene_core::Timers<A>::is_empty(&self) -> bool
+pub const fn skene_core::Timers<A>::len(&self) -> usize
+pub const fn skene_core::Timers<A>::new() -> Self
+pub fn skene_core::Timers<A>::next_due(&self) -> core::option::Option<f64>
+pub const fn skene_core::Timers<A>::next_timer(&self) -> skene_core::Timer
+pub fn skene_core::Timers<A>::pop_due(&mut self, f64, skene_core::Timer) -> core::option::Option<A>
+pub fn skene_core::Timers<A>::schedule(&mut self, f64, A) -> skene_core::Timer
+impl<A> core::default::Default for skene_core::Timers<A>
+pub fn skene_core::Timers<A>::default() -> Self
+impl<A> core::fmt::Debug for skene_core::Timers<A>
+pub fn skene_core::Timers<A>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Token<T, N: skene_core::Scalar>
 impl<T, N: skene_core::Scalar> skene_core::Token<T, N>
 pub fn skene_core::Token<T, N>::define<V>(&self) -> (skene_core::TokenName, V) where T: core::clone::Clone, skene_core::Definition<T, N>: skene_core::IntoTokenValue<V>

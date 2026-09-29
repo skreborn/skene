@@ -498,18 +498,14 @@ impl Platform for Tui {
 
   fn schedule(&self, delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_store(|store| {
-      let timer = Timer(store.next_timer);
-      let due = store.now() + delay.as_secs_f64();
+      let at = store.now() + delay.as_secs_f64();
 
-      store.next_timer += 1;
-      store.timers.push((due, timer, action));
-
-      timer
+      store.timers.schedule(at, action)
     })
   }
 
   fn cancel(&self, timer: Timer) {
-    with_store(|store| store.timers.retain(|(_, held, _)| *held != timer));
+    with_store(|store| store.timers.cancel(timer));
   }
 
   fn clipboard_availability(&self, action: ClipboardAction) -> Availability {

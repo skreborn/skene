@@ -26,7 +26,7 @@ use skene_core::{
   Size,
   Slot,
   TextSelection,
-  Timer,
+  Timers,
 };
 use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
@@ -896,10 +896,8 @@ pub(crate) struct Store {
   pub(crate) detected_background: Option<(u8, u8, u8)>,
   /// The color scheme the app has chosen, overriding the detected background.
   pub(crate) choice: Option<ColorScheme>,
-  /// The scheduled actions, each with the clock reading it is due at.
-  pub(crate) timers: Vec<Scheduled>,
-  /// The id the next scheduled action takes.
-  pub(crate) next_timer: u64,
+  /// The scheduled actions, each due at a clock reading.
+  pub(crate) timers: Timers<Box<dyn FnOnce()>>,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
   /// The measured sizes of the named query containers, from the last layout.
@@ -951,9 +949,6 @@ pub(crate) struct Store {
   /// The generation the last rendered picture took; each render takes the next.
   pub(crate) picture_generation: u64,
 }
-
-/// A scheduled action: the clock reading it is due at, its timer, and the action.
-pub(crate) type Scheduled = (f64, Timer, Box<dyn FnOnce()>);
 
 /// The clock motion samples against, in seconds: the wall clock in a launched app, a
 /// hand-stepped one under a headless test.
@@ -1038,8 +1033,7 @@ impl Store {
       detected_foreground: None,
       detected_background: None,
       choice: None,
-      timers: Vec::new(),
-      next_timer: 0,
+      timers: Timers::new(),
       reveal: None,
       container_sizes: FxHashMap::default(),
       title: None,
@@ -1504,31 +1498,14 @@ impl Store {
     self.motion_active || self.autoscrolls()
   }
 
-  /// The scheduled actions whose reading has come, taken out in due order.
-  pub(crate) fn take_due_timers(&mut self) -> Vec<Box<dyn FnOnce()>> {
-    let now = self.now();
-    let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.timers)
-      .into_iter()
-      .partition(|(at, ..)| *at <= now);
-
-    self.timers = pending;
-
-    due.into_iter().map(|(_, _, action)| action).collect()
-  }
-
   /// How long until the earliest scheduled action is due, if any is; a delay past
   /// what a duration holds is the longest one.
   pub(crate) fn next_timer_due(&self) -> Option<std::time::Duration> {
     let now = self.now();
 
-    self
-      .timers
-      .iter()
-      .map(|(at, ..)| {
-        std::time::Duration::try_from_secs_f64((at - now).max(0.))
-          .unwrap_or(std::time::Duration::MAX)
-      })
-      .min()
+    self.timers.next_due().map(|at| {
+      std::time::Duration::try_from_secs_f64((at - now).max(0.)).unwrap_or(std::time::Duration::MAX)
+    })
   }
 
   /// The clock reading motion samples against, in seconds.

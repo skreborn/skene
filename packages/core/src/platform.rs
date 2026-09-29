@@ -48,6 +48,111 @@ use crate::{
 #[must_use]
 pub struct Timer(pub u64);
 
+/// The one-shot actions a platform scheduled on its clock, each due at a reading.
+///
+/// A platform runs them earliest due first, those due together in the order they were
+/// scheduled, as a browser runs its timers.
+#[must_use]
+pub struct Timers<A> {
+  /// Each action, with the reading it is due at and its timer.
+  entries: Vec<(f64, Timer, A)>,
+  /// The timer the next action scheduled takes.
+  next: u64,
+}
+
+impl<A> Default for Timers<A> {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<A> Debug for Timers<A> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("Timers")
+      .field("pending", &self.entries.len())
+      .finish_non_exhaustive()
+  }
+}
+
+impl<A> Timers<A> {
+  /// No action scheduled.
+  #[inline(always)]
+  pub const fn new() -> Self {
+    Self {
+      entries: Vec::new(),
+      next: 0,
+    }
+  }
+
+  /// Schedules `action`, due at the clock reading `at`; the timer cancels it.
+  pub fn schedule(&mut self, at: f64, action: A) -> Timer {
+    let timer = Timer(self.next);
+
+    self.next += 1;
+    self.entries.push((at, timer, action));
+
+    timer
+  }
+
+  /// Cancels `timer`'s action; `false` when it already ran or was cancelled.
+  pub fn cancel(&mut self, timer: Timer) -> bool {
+    let before = self.entries.len();
+
+    self.entries.retain(|(_, held, _)| *held != timer);
+
+    self.entries.len() != before
+  }
+
+  /// The timer the next action scheduled takes, which bounds a batch of
+  /// [`pop_due`](Self::pop_due) calls to the actions scheduled before it began.
+  #[inline(always)]
+  pub const fn next_timer(&self) -> Timer {
+    Timer(self.next)
+  }
+
+  /// Takes the earliest action due by the clock reading `now` among those scheduled
+  /// before `before`: the first scheduled of those due together.
+  pub fn pop_due(&mut self, now: f64, before: Timer) -> Option<A> {
+    let index = self
+      .entries
+      .iter()
+      .enumerate()
+      .filter(|(_, (at, timer, _))| *at <= now && timer.0 < before.0)
+      .min_by(|(_, (left, left_timer, _)), (_, (right, right_timer, _))| {
+        left.total_cmp(right).then(left_timer.0.cmp(&right_timer.0))
+      })
+      .map(|(index, _)| index)?;
+
+    Some(self.entries.remove(index).2)
+  }
+
+  /// The clock reading the earliest action is due at.
+  #[must_use]
+  pub fn next_due(&self) -> Option<f64> {
+    self
+      .entries
+      .iter()
+      .map(|(at, ..)| *at)
+      .min_by(f64::total_cmp)
+  }
+
+  /// How many actions are waiting.
+  #[inline(always)]
+  #[must_use]
+  pub const fn len(&self) -> usize {
+    self.entries.len()
+  }
+
+  /// Whether no action is waiting.
+  #[inline(always)]
+  #[must_use]
+  pub const fn is_empty(&self) -> bool {
+    self.entries.is_empty()
+  }
+}
+
 /// A medium that realizes the portable vocabulary: boxes, controls, overlays, runs,
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
 /// media and a clock.
@@ -269,5 +374,52 @@ pub trait Platform: Copy + Default + 'static {
         container: &container,
       })
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Timers;
+
+  /// Actions run earliest due first, those due together in the order scheduled, and
+  /// none before its reading.
+  #[test]
+  fn timers_pop_the_earliest_due() {
+    let mut timers = Timers::new();
+
+    let _ = timers.schedule(2., "late");
+    let _ = timers.schedule(1., "first");
+    let _ = timers.schedule(1., "second");
+    let _ = timers.schedule(3., "later");
+
+    let batch = timers.next_timer();
+
+    assert_eq!(timers.pop_due(2., batch), Some("first"));
+    assert_eq!(timers.pop_due(2., batch), Some("second"));
+    assert_eq!(timers.pop_due(2., batch), Some("late"));
+    assert_eq!(timers.pop_due(2., batch), None);
+    assert_eq!(timers.len(), 1);
+    assert_eq!(timers.next_due(), Some(3.));
+  }
+
+  /// A cancelled action never runs, and a batch leaves out what was scheduled after it
+  /// began.
+  #[test]
+  fn a_cancelled_or_later_action_stays_out_of_a_batch() {
+    let mut timers = Timers::new();
+    let cancelled = timers.schedule(0., "cancelled");
+
+    let _ = timers.schedule(0., "kept");
+
+    let batch = timers.next_timer();
+
+    let _ = timers.schedule(0., "after");
+
+    assert!(timers.cancel(cancelled));
+    assert!(!timers.cancel(cancelled));
+    assert_eq!(timers.pop_due(0., batch), Some("kept"));
+    assert_eq!(timers.pop_due(0., batch), None);
+    assert_eq!(timers.pop_due(0., timers.next_timer()), Some("after"));
+    assert!(timers.is_empty());
   }
 }

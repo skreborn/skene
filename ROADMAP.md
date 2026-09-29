@@ -42,10 +42,8 @@ left half-done in a code comment.
     discrete properties that never tween, and one reduced-motion rest frame, the final
     one, where the web shows the base style today.
     - One `Environment` (viewport, scheme, reduced motion, reduced transparency, high
-    contrast, pointer capability, insets) in place of three spellings, so
-    `HighContrast` and `ReducedTransparency` answer on every platform and in tests; one
-    `Timers` type in core, popping the earliest due entry, for headless and the
-    terminal.
+    contrast, pointer capability, insets) in place of three spellings, so `HighContrast`
+    and `ReducedTransparency` answer on every platform and in tests.
     - Runs and boxes: a group redefines every token it sets, and a link group its
     `INK`, so the web and the terminal inherit alike; a group run's color keeps its
     state and compound media variants, and every variant slot registers; `Border`

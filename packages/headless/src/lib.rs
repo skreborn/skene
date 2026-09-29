@@ -375,19 +375,14 @@ impl Platform for Headless {
 
   fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_store(|store| {
-      let timer = Timer(store.next_timer);
+      let at = store.clock + delay.as_secs_f64();
 
-      store.next_timer += 1;
-      store
-        .timers
-        .push((store.clock + delay.as_secs_f64(), timer, action));
-
-      timer
+      store.timers.schedule(at, action)
     })
   }
 
   fn cancel(&self, timer: Timer) {
-    with_store(|store| store.timers.retain(|(_, held, _)| *held != timer));
+    with_store(|store| store.timers.cancel(timer));
   }
 
   fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
@@ -810,20 +805,13 @@ pub fn trigger_frame(elapsed: Duration) {
       }
     }
 
-    let due = with_store(|store| {
+    let batch = with_store(|store| {
       store.clock += elapsed.as_secs_f64();
 
-      let now = store.clock;
-      let (due, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut store.timers)
-        .into_iter()
-        .partition(|(at, ..)| *at <= now);
-
-      store.timers = pending;
-
-      due
+      store.timers.next_timer()
     });
 
-    for (_, _, action) in due {
+    while let Some(action) = with_store(|store| store.timers.pop_due(store.clock, batch)) {
       action();
     }
   });

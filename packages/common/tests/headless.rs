@@ -67,6 +67,7 @@ use skene_headless::{
   trigger_color_scheme,
   trigger_container_size,
   trigger_focus,
+  trigger_frame,
   trigger_pointer_enter,
   trigger_pointer_leave,
   trigger_resize,
@@ -741,4 +742,26 @@ fn state_seams_record_value_focus_and_hover() {
   assert!(!is_focused(node));
 
   owner.dispose();
+}
+
+/// A frame runs the actions due by its reading earliest due first, whatever order they
+/// were scheduled in, and a cancelled one not at all.
+#[test]
+fn due_actions_run_earliest_first() {
+  reset();
+
+  let ran = Rc::new(RefCell::new(Vec::new()));
+  let action = |label: &'static str| -> Box<dyn FnOnce()> {
+    let ran = Rc::clone(&ran);
+
+    Box::new(move || ran.borrow_mut().push(label))
+  };
+  let _ = Headless.schedule(std::time::Duration::from_secs(2), action("late"));
+  let _ = Headless.schedule(std::time::Duration::from_secs(1), action("early"));
+  let cancelled = Headless.schedule(std::time::Duration::from_secs(1), action("cancelled"));
+
+  Headless.cancel(cancelled);
+  trigger_frame(std::time::Duration::from_secs(3));
+
+  assert_eq!(*ran.borrow(), ["early", "late"]);
 }

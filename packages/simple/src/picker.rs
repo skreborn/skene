@@ -35,7 +35,16 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{SimpleMarks, SimpleUnit, as_part, border, define_defaults, hairline, shape},
+  shape::{
+    SimpleMarks,
+    SimpleUnit,
+    as_part,
+    border,
+    click_cursor,
+    define_defaults,
+    hairline,
+    shape,
+  },
 };
 
 /// The glyph after the chosen label.
@@ -175,7 +184,10 @@ where
     picker
       .set_width(Dimension::Fraction(1.))
       .set_padding(shape.control_inset)
-      .set_color(SimplePalette::<P::Scalar>::CARD)
+      .set_color(SimplePalette::<P::Scalar>::CARD.when(
+        State::Disabled,
+        SimplePalette::<P::Scalar>::DISABLED_SURFACE,
+      ))
       .set_border(
         border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER)
           .when(
@@ -188,7 +200,7 @@ where
           ),
       )
       .set_corner_radius(shape.control_radius)
-      .set_cursor(MouseCursor::Click)
+      .set_cursor(click_cursor())
       .set_options([AnyView::<P>::new(move || as_part::<P>(Part::List, surface))])
       .set_face(move |value: Memo<String>| face::<P>(&labels, value))
       .build()
@@ -231,7 +243,10 @@ where
     .set_arrangement(Arrangement::SpaceBetween)
     .set_item_alignment(ItemAlignment::Center)
     .set_children((
-      Text::<P>::derive(shown),
+      Text::<P>::derive(shown).set_color(
+        SimplePalette::<P::Scalar>::FOREGROUND
+          .when(State::Disabled, SimplePalette::<P::Scalar>::DISABLED_INK),
+      ),
       as_part::<P>(Part::Face, indicator),
     ))
 }

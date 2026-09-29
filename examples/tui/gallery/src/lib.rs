@@ -156,6 +156,7 @@ fn buttons() -> impl IntoView {
           SimpleButton::new("Outline").set_variant(SimpleVariant::Outline),
           SimpleButton::new("Ghost").set_variant(SimpleVariant::Ghost),
           SimpleButton::new("Destructive").set_variant(SimpleVariant::Destructive),
+          SimpleButton::new("Disabled").set_disabled(true),
         )),
       Text::derive(move || format!("the primary one clicked {} time(s)", count.get()))
         .set_color(SimplePalette::MUTED_FOREGROUND),

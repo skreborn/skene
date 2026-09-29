@@ -691,3 +691,58 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
 
   owner.dispose();
 }
+
+/// A disabled button takes the palette's disabled surface and ink whatever its variant,
+/// a bordered look keeping the palette's border, hover changing nothing; enabled again,
+/// it returns to its look.
+#[test]
+fn a_disabled_button_takes_the_disabled_surface_and_ink() {
+  reset();
+
+  let owner = Owner::new();
+  let palette = SimplePalette::default();
+  let disabled = Signal::new(true);
+  let button = themed(owner, move || {
+    SimpleButton::new("Save")
+      .set_variant(SimpleVariant::Outline)
+      .derive_disabled(move || disabled.get())
+  });
+  let label = children(button)[0];
+
+  assert_eq!(
+    resolve_color(button, COLOR),
+    Some(light(&palette.disabled_surface))
+  );
+  assert_eq!(
+    resolve_color(label, TEXT_COLOR),
+    Some(light(&palette.disabled_ink))
+  );
+  assert_eq!(
+    resolve_border(button),
+    Some(Border::new(1., light(&palette.border)))
+  );
+
+  trigger_pointer_enter(button);
+  trigger_frame(Duration::from_secs(1));
+
+  assert_eq!(
+    resolve_color(button, COLOR),
+    Some(light(&palette.disabled_surface)),
+    "hover changes nothing"
+  );
+
+  disabled.set(false);
+  trigger_frame(Duration::from_secs(1));
+
+  assert_eq!(
+    resolve_color(button, COLOR),
+    Some(light(&palette.outline.hover)),
+    "enabled again, the hovered look"
+  );
+  assert_eq!(
+    resolve_color(label, TEXT_COLOR),
+    Some(light(&palette.outline.ink))
+  );
+
+  owner.dispose();
+}

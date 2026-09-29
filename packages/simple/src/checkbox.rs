@@ -10,7 +10,6 @@ use skene_core::{
   Dimension,
   HasChildren,
   IntoView,
-  MouseCursor,
   NodeId,
   Part,
   Platform,
@@ -23,7 +22,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{SimpleMarks, SimpleUnit, border, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, border, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -128,7 +127,7 @@ where
       }
     };
     let mut control = RawCheckbox::new(self.toggle)
-      .set_cursor(MouseCursor::Click)
+      .set_cursor(click_cursor())
       .set_part(Part::Mark, mark);
 
     if let Some(label) = self.label {

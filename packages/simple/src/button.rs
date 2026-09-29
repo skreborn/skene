@@ -10,7 +10,6 @@ use skene_core::{
   Definition,
   Definitions,
   IntoView,
-  MouseCursor,
   NodeId,
   Platform,
   Property,
@@ -24,8 +23,9 @@ use skene_reactive::{Effect, With};
 
 use super::{
   SimpleLook,
+  SimplePalette,
   SimpleVariant,
-  shape::{SimpleUnit, border, palette, shape},
+  shape::{SimpleUnit, border, click_cursor, palette, shape},
 };
 
 /// The surface of the look in force on a button.
@@ -52,14 +52,16 @@ enum Content<P: Platform> {
 ///
 /// Pick the emphasis with [`set_variant`](Self::set_variant) or follow a signal with
 /// [`derive_variant`](Self::derive_variant); the look is redefined on the button's own
-/// node, so a change re-inks it without a rebuild. [`set_child`](Self::set_child)
-/// draws a view in the label's place, inked in the look's ink. For anything beyond
-/// that, compose [`RawButton`] directly.
+/// node, so a change re-inks it without a rebuild. A disabled button takes the
+/// palette's disabled surface and ink whatever its variant, and the default cursor.
+/// [`set_child`](Self::set_child) draws a view in the label's place, inked in the look's ink. For
+/// anything beyond that, compose [`RawButton`] directly.
 #[must_use]
 pub struct SimpleButton<P: Platform> {
   raw: RawButton<P>,
   content: Content<P>,
   variant: Source<SimpleVariant>,
+  disabled: Source<bool>,
 }
 
 impl<P: Platform> std::fmt::Debug for SimpleButton<P> {
@@ -78,6 +80,7 @@ impl<P: Platform> SimpleButton<P> {
       raw: RawButton::new(Activate::new()),
       content: Content::Text(Source::Fixed(label.into())),
       variant: Source::Fixed(SimpleVariant::Primary),
+      disabled: Source::Fixed(false),
     }
   }
 
@@ -88,6 +91,7 @@ impl<P: Platform> SimpleButton<P> {
       raw: RawButton::new(Activate::new()),
       content: Content::Text(Source::derive(label)),
       variant: Source::Fixed(SimpleVariant::Primary),
+      disabled: Source::Fixed(false),
     }
   }
 
@@ -110,7 +114,7 @@ impl<P: Platform> SimpleButton<P> {
   /// Sets whether the button is present but not operable.
   #[inline(always)]
   pub fn set_disabled(mut self, disabled: bool) -> Self {
-    self.raw = self.raw.set_disabled(disabled);
+    self.disabled = Source::Fixed(disabled);
 
     self
   }
@@ -118,7 +122,7 @@ impl<P: Platform> SimpleButton<P> {
   /// Derives whether the button is disabled from the signals `disabled` reads.
   #[inline(always)]
   pub fn derive_disabled(mut self, disabled: impl Fn() -> bool + 'static) -> Self {
-    self.raw = self.raw.derive_disabled(disabled);
+    self.disabled = Source::derive(disabled);
 
     self
   }
@@ -172,8 +176,18 @@ where
       Source::Derived(variant) => variant,
     };
     let shape = shape::<P>();
-    let raw = self
-      .raw
+    let (raw, disabled): (_, Rc<dyn Fn() -> bool>) = match self.disabled {
+      Source::Fixed(disabled) => (self.raw.set_disabled(disabled), Rc::new(move || disabled)),
+      Source::Derived(disabled) => (
+        self.raw.derive_disabled({
+          let disabled = Rc::clone(&disabled);
+
+          move || disabled()
+        }),
+        disabled,
+      ),
+    };
+    let raw = raw
       .set_padding(shape.control_inset)
       .set_color(
         SURFACE
@@ -182,7 +196,7 @@ where
       )
       .set_border(border(shape.control_ring, BORDER))
       .set_corner_radius(shape.control_radius)
-      .set_cursor(MouseCursor::Click)
+      .set_cursor(click_cursor())
       .set_transition(Transition::new(Property::Color, SURFACE_SETTLE));
     let node = match self.content {
       Content::Text(Source::Fixed(label)) => raw.set_label(label).build(),
@@ -193,13 +207,49 @@ where
     };
 
     Effect::render(move |_: Option<()>| {
-      let definitions = palette.with(|palette| look_definitions::<P>(palette.look(variant())));
+      let definitions = palette.with(|palette| {
+        let look = palette.look(variant());
+
+        if disabled() {
+          disabled_definitions::<P>(look.border.is_some())
+        }
+        else {
+          look_definitions::<P>(look)
+        }
+      });
 
       Scene::<P>::with(|scene| scene.define_tokens(node, definitions));
     });
 
     node
   }
+}
+
+/// The button's own tokens defined as the palette's disabled surface and ink, which
+/// neither hover nor focus changes, its border the palette's where the look is
+/// `bordered` and transparent otherwise, and the typography ink as the disabled ink.
+fn disabled_definitions<P: Platform>(bordered: bool) -> Definitions<P::TokenValue> {
+  let alias = |token: TokenRef<Color>, target: TokenRef<Color>| {
+    (
+      token.name(),
+      P::TokenValue::from(Definition::<Color, P::Scalar>::from(target)),
+    )
+  };
+  let border = if bordered {
+    Definition::<Color, P::Scalar>::from(SimplePalette::<P::Scalar>::BORDER)
+  }
+  else {
+    Definition::from(Color::TRANSPARENT)
+  };
+
+  Definitions::from(vec![
+    alias(SURFACE, SimplePalette::<P::Scalar>::DISABLED_SURFACE),
+    alias(INK, SimplePalette::<P::Scalar>::DISABLED_INK),
+    (BORDER.name(), P::TokenValue::from(border)),
+    alias(HOVER, SimplePalette::<P::Scalar>::DISABLED_SURFACE),
+    alias(FOCUS, SimplePalette::<P::Scalar>::DISABLED_SURFACE),
+    alias(typography::INK, INK),
+  ])
 }
 
 /// The button's own tokens defined as `look`'s, and the typography ink as the look's

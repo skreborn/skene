@@ -313,6 +313,8 @@ pub skene_simple::SimplePalette::background: skene_core::token::Token<skene_core
 pub skene_simple::SimplePalette::border: skene_core::token::Token<skene_core::values::color::Color, N>
 pub skene_simple::SimplePalette::card: skene_core::token::Token<skene_core::values::color::Color, N>
 pub skene_simple::SimplePalette::destructive: skene_simple::SimpleLook<N>
+pub skene_simple::SimplePalette::disabled_ink: skene_core::token::Token<skene_core::values::color::Color, N>
+pub skene_simple::SimplePalette::disabled_surface: skene_core::token::Token<skene_core::values::color::Color, N>
 pub skene_simple::SimplePalette::foreground: skene_core::token::Token<skene_core::values::color::Color, N>
 pub skene_simple::SimplePalette::ghost: skene_simple::SimpleLook<N>
 pub skene_simple::SimplePalette::link: skene_core::token::Token<skene_core::values::color::Color, N>
@@ -330,6 +332,8 @@ pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_FOCUS: skene_core::token::
 pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_HOVER: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_simple::SimplePalette<N>::DESTRUCTIVE_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DISABLED_INK: skene_core::token::TokenRef<skene_core::values::color::Color>
+pub const skene_simple::SimplePalette<N>::DISABLED_SURFACE: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_simple::SimplePalette<N>::FOREGROUND: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_simple::SimplePalette<N>::GHOST_BORDER: skene_core::token::TokenRef<skene_core::values::color::Color>
 pub const skene_simple::SimplePalette<N>::GHOST_FOCUS: skene_core::token::TokenRef<skene_core::values::color::Color>
@@ -359,6 +363,8 @@ pub fn skene_simple::SimplePalette<N>::set_background(self, impl core::convert::
 pub fn skene_simple::SimplePalette<N>::set_border(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_card(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_destructive(self, skene_simple::SimpleLook<N>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_disabled_ink(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
+pub fn skene_simple::SimplePalette<N>::set_disabled_surface(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_foreground(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_ghost(self, skene_simple::SimpleLook<N>) -> Self
 pub fn skene_simple::SimplePalette<N>::set_link(self, impl core::convert::Into<skene_core::leaf::Definition<skene_core::values::color::Color, N>>) -> Self

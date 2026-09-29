@@ -10,7 +10,6 @@ use skene_core::{
   HasChildren,
   Inset,
   ItemAlignment,
-  MouseCursor,
   NodeId,
   Part,
   Platform,
@@ -25,7 +24,7 @@ use skene_reactive::{Get, Set, Signal};
 
 use super::{
   SimplePalette,
-  shape::{SimpleShape, SimpleUnit, as_part, border, define_defaults, shape},
+  shape::{SimpleShape, SimpleUnit, as_part, border, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
@@ -236,7 +235,7 @@ where
 
     let node = slider
       .set_width(Dimension::Fraction(1.))
-      .set_cursor(MouseCursor::Click)
+      .set_cursor(click_cursor())
       .set_child(
         Container::<P>::new()
           .set_width(Dimension::Fraction(1.))

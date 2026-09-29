@@ -219,6 +219,10 @@ pub struct SimplePalette<N: Scalar> {
   pub ring: Token<Color, N>,
   /// The ink of a link.
   pub link: Token<Color, N>,
+  /// The surface of a control that cannot be operated.
+  pub disabled_surface: Token<Color, N>,
+  /// The ink on that surface.
+  pub disabled_ink: Token<Color, N>,
   /// The main action: a high-contrast surface.
   pub primary: SimpleLook<N>,
   /// A supporting action: a subdued surface.
@@ -248,6 +252,10 @@ impl<N: Scalar> SimplePalette<N> {
   pub const DESTRUCTIVE_INK: TokenRef<Color> = SimpleVariant::Destructive.ink();
   /// The dangerous action's surface.
   pub const DESTRUCTIVE_SURFACE: TokenRef<Color> = SimpleVariant::Destructive.surface();
+  /// The ink of a control that cannot be operated.
+  pub const DISABLED_INK: TokenRef<Color> = TokenRef::new("simple-disabled-ink");
+  /// The surface of a control that cannot be operated.
+  pub const DISABLED_SURFACE: TokenRef<Color> = TokenRef::new("simple-disabled-surface");
   /// The default text ink.
   pub const FOREGROUND: TokenRef<Color> = TokenRef::new("simple-foreground");
   /// The bare action's border.
@@ -365,6 +373,22 @@ impl<N: Scalar> SimplePalette<N> {
     self
   }
 
+  /// Sets the surface of a control that cannot be operated.
+  #[inline(always)]
+  pub fn set_disabled_surface(mut self, surface: impl Into<Definition<Color, N>>) -> Self {
+    self.disabled_surface = self.disabled_surface.redefine(surface);
+
+    self
+  }
+
+  /// Sets the ink of a control that cannot be operated.
+  #[inline(always)]
+  pub fn set_disabled_ink(mut self, ink: impl Into<Definition<Color, N>>) -> Self {
+    self.disabled_ink = self.disabled_ink.redefine(ink);
+
+    self
+  }
+
   /// Sets the main action's colors.
   #[inline(always)]
   pub fn set_primary(mut self, primary: SimpleLook<N>) -> Self {
@@ -437,6 +461,11 @@ impl<N: Scalar> Default for SimplePalette<N> {
       border: Token::new(Self::BORDER.name().as_str(), pair(edge, edge_dark)),
       ring: Token::new(Self::RING.name().as_str(), pair(muted, muted_dark)),
       link: Token::new(Self::LINK.name().as_str(), pair(anchor, anchor_dark)),
+      disabled_surface: Token::new(
+        Self::DISABLED_SURFACE.name().as_str(),
+        pair(subdued, subdued_dark),
+      ),
+      disabled_ink: Token::new(Self::DISABLED_INK.name().as_str(), pair(muted, muted_dark)),
       primary: SimpleLook::new(
         SimpleVariant::Primary,
         pair(raised_dark, ink_dark),
@@ -495,6 +524,8 @@ impl<N: Scalar, V: From<Definition<Color, N>>> TokenSet<V> for SimplePalette<N> 
       self.border.define(),
       self.ring.define(),
       self.link.define(),
+      self.disabled_surface.define(),
+      self.disabled_ink.define(),
     ];
 
     for look in [

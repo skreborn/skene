@@ -80,8 +80,8 @@ left half-done in a code comment.
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
     become styling targets or go, with `ControlHandle::roster` and the drawn picker's
     unused listbox closures. The slider maps the pointer through its track and thumb
-    extents; captions lay out beside the control's box; Simple gains a disabled look
-    and unchecked marks hidden by state rather than painted in the surface color.
+    extents; captions lay out beside the control's box; Simple's unchecked marks hide
+    by state rather than by being painted in the surface color.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the

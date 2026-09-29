@@ -20,7 +20,6 @@ use skene_core::{
   Dimension,
   HasChildren,
   IntoView,
-  MouseCursor,
   NoChild,
   NodeId,
   Part,
@@ -35,7 +34,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{SimpleMarks, SimpleUnit, border, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, border, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -209,7 +208,7 @@ where
       }
     };
     let mut control = RawRadio::new(self.member)
-      .set_cursor(MouseCursor::Click)
+      .set_cursor(click_cursor())
       .set_part(Part::Mark, mark);
 
     if let Some(label) = self.label {

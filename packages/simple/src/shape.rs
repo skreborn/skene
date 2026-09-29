@@ -5,6 +5,7 @@ use skene_common::{Behavior, Control, CornerRadius, ThemedIn};
 use skene_core::{
   Border,
   Color,
+  Condition,
   Dimension,
   Inset,
   IntoView,
@@ -16,6 +17,7 @@ use skene_core::{
   Scene,
   State,
   TokenRef,
+  Value,
   View,
   When,
 };
@@ -166,6 +168,13 @@ where
   <P::Scalar as SimpleUnit>::SHAPE
 }
 
+/// The cursor over a control a click operates: the click cursor, and the default one
+/// while the control is disabled.
+#[inline(always)]
+pub(crate) fn click_cursor<N: Scalar>() -> Value<MouseCursor, Condition<N>> {
+  MouseCursor::Click.when(Condition::from(State::Disabled), MouseCursor::Default)
+}
+
 /// A border `width` thick in the token `color`.
 #[inline(always)]
 pub(crate) fn border<N: Scalar>(width: N, color: TokenRef<Color>) -> Border<N> {
@@ -202,7 +211,8 @@ pub(crate) fn as_part<P: Platform>(part: Part, view: impl IntoView<P>) -> NodeId
 }
 
 /// The chrome of a text entry: full width, padded, on the card surface, a hairline in
-/// the border color that becomes the ring while focused, rounded.
+/// the border color that becomes the ring while focused, rounded; on the disabled
+/// surface under the default cursor while disabled.
 pub(crate) fn field_chrome<P: Platform, B: Behavior<P>>(control: Control<P, B>) -> Control<P, B>
 where
   P::Scalar: SimpleUnit,
@@ -213,7 +223,10 @@ where
   control
     .set_width(Dimension::Fraction(1.))
     .set_padding(shape.control_inset)
-    .set_color(SimplePalette::<P::Scalar>::CARD)
+    .set_color(SimplePalette::<P::Scalar>::CARD.when(
+      State::Disabled,
+      SimplePalette::<P::Scalar>::DISABLED_SURFACE,
+    ))
     .set_border(
       border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER).when(
         State::FocusVisible,
@@ -221,5 +234,5 @@ where
       ),
     )
     .set_corner_radius(shape.control_radius)
-    .set_cursor(MouseCursor::Text)
+    .set_cursor(MouseCursor::Text.when(State::Disabled, MouseCursor::Default))
 }

@@ -517,7 +517,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
       });
     }
 
-    let menu = Menu::new().handle_activate({
+    let menu = Menu::new().handle_choose({
       let runs = runs.clone();
 
       move |value| {

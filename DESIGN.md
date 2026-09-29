@@ -283,8 +283,13 @@ A control is `Control<P, B: Behavior>`: one builder carrying focus, events, deco
 label, parts and accessibility once, over a public `Behavior` that says what the
 interaction *is*—its role, its keys, its pointer handling, what it reports to assistive
 technology, where it sits in the tab order, and which parts it exposes. `Toggle`,
-`Range`, `Roving` (with `RadioMember`), `Popup`, `Activate`, `TextEntry` and `Listbox`
-(with `ListItem`) ship; `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`,
+`Range`, `Popup`, `Activate`, `TextEntry` and `Collection` (with `Member`) ship; a
+collection's `CollectionPolicy` says what it and its members are, which keys move
+between the members and what a move and a choice do, and `Roving` (with
+`RadioMember`), `Listbox` (with `ListItem`) and `Menu` (with `MenuOption`) are
+collections under the radio, listbox and menu policies, whose members are one tab stop
+and whose moves pass over the disabled members in one place; `RawButton`,
+`RawCheckbox`, `RawSlider`, `RawRadioGroup`,
 `RawRadio`, `RawListbox`, `RawOption`, `RawTextField` and `RawTextEditor` are aliases over
 them, and `RawPicker` composes a `Popup` face with a `Listbox` in an `Overlay`. Both
 have type-ahead: `TypeAhead` holds the characters typed in quick succession, reset by

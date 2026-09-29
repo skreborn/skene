@@ -357,9 +357,10 @@
   behavior registered, since the platform's flip arrives as `change`, and the climb
   ends at the control, as the acting one's verdict ends it everywhere else.
 - **A control is `Control<B: Behavior>`**: one builder in `skene-common` carrying focus,
-  events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Roving`,
-  `Popup`, `Activate`, `TextEntry` and `Listbox` are the shipped behaviors (`RadioMember`
-  and `ListItem` the members'), `Behavior` is public, and the keyboard tables live in the
+  events, decoration, label, parts and accessibility once. `Toggle`, `Range`, `Popup`,
+  `Activate`, `TextEntry` and `Collection` are the shipped behaviors (`Member` the
+  members'; `Roving`, `Listbox` and `Menu` are collections under a `CollectionPolicy`),
+  `Behavior` is public, and the keyboard tables live in the
   behaviors, so a third party's control and the terminal's slider get the same keys as the
   browser's. `RawButton`, `RawCheckbox`, `RawSlider`, `RawRadioGroup`/`RawRadio`,
   `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and

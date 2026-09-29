@@ -51,6 +51,7 @@ mod tty;
 pub use skene_common::tui::{
   BOLD_WEIGHT,
   BorderGlyphs,
+  ScrollbarGlyphs,
   TuiBoxFields,
   TuiExt,
   TuiProperty,

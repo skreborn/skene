@@ -6,10 +6,11 @@
 
 use std::rc::Rc;
 
-use skene_core::{Color, ControlKind, Inset, TextDecoration, TextDecorationStyle};
+use skene_core::{Axis, Color, ControlKind, Inset, Length, TextDecoration, TextDecorationStyle};
 
 use crate::{
   BorderGlyphs,
+  ScrollbarGlyphs,
   cells::Cells,
   layout::{
     INLINE_BOX,
@@ -21,7 +22,7 @@ use crate::{
     paragraph_runs,
     paragraph_text,
   },
-  store::{Contrast, Handle, Kind, PlainRun, Record, Store},
+  store::{Contrast, Handle, Kind, PlainBox, PlainRun, Record, Store},
   text::{self, CellScale, Extent, Glyph, Scales},
 };
 
@@ -961,7 +962,7 @@ enum NodePaint {
   Box {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
-    shadow: Option<Color>,
+    shadow: Option<ShadowPaint>,
   },
   Text {
     lines: Vec<SizedLine>,
@@ -977,7 +978,7 @@ enum NodePaint {
   Field {
     background: Option<(u8, u8, u8)>,
     border: Option<BorderPaint>,
-    shadow: Option<Color>,
+    shadow: Option<ShadowPaint>,
     /// The visible rows.
     rows: Vec<String>,
     /// The value's ink, the terminal's own where `None`.
@@ -1117,13 +1118,13 @@ fn node_paint(store: &Store, handle: Handle, width: usize, focused: bool) -> Nod
       NodePaint::Box {
         background: style.and_then(|style| style.color).and_then(terminal_rgb),
         border: border_paint(store, handle),
-        shadow: style.and_then(|style| style.ext.shadow),
+        shadow: style.and_then(ShadowPaint::of),
       }
     }
     Kind::Control { inner, field, .. } => {
       let style = inner.style();
       let background = style.and_then(|style| style.color).and_then(terminal_rgb);
-      let shadow = style.and_then(|style| style.ext.shadow);
+      let shadow = style.and_then(ShadowPaint::of);
       let border = border_paint(store, handle);
 
       let Some(field) = field
@@ -1646,7 +1647,7 @@ fn place_backdrop(
           .any(|ancestor| store.record(*ancestor).is_some_and(Record::is_overlay)),
       );
   let layer = BACKDROP_Z + i32::try_from(depth.min(1023)).unwrap_or(1023);
-  let band = isize::from(backdrop.key.shadow.is_some());
+  let band = isize::try_from(backdrop.key.band).unwrap_or(0);
 
   place_image(
     store,
@@ -1687,6 +1688,20 @@ fn draw_scrollbars(
     isize::try_from(height).unwrap_or(0),
   );
   let contrast = store.contrast();
+  let style = store
+    .record(handle)
+    .and_then(|record| record.kind.box_style());
+  let bar = BarStyle {
+    glyphs: style
+      .and_then(|style| style.ext.scrollbar_glyphs)
+      .unwrap_or_default(),
+    thumb: style
+      .and_then(|style| style.ext.scrollbar_thumb)
+      .and_then(terminal_rgb),
+    track: style
+      .and_then(|style| style.ext.scrollbar_track)
+      .and_then(terminal_rgb),
+  };
 
   if limit_y > 0 {
     let track = height - border.1 - border.3;
@@ -1694,21 +1709,12 @@ fn draw_scrollbars(
 
     for row in 0..track {
       if let Some(cell) = buffer.cell_mut(x + width - 1, y + border.1 + row) {
-        let (ink, track_tint) = track_colors(cell, contrast);
-        // A leading partial paints the complement glyph with the colors swapped, in
-        // place of the upper-block run Unicode lacks.
-        let (character, foreground, background) = match eighth_coverage(row, top, thumb) {
-          Coverage::Full => ('█', ink, track_tint),
-          Coverage::Leading(eighths) => (lower_block(8 - eighths), track_tint, ink),
-          Coverage::Trailing(eighths) => (lower_block(eighths), ink, track_tint),
-          Coverage::None => (' ', ink, track_tint),
-        };
-
-        cell.glyph = Glyph::Char(character);
-        cell.foreground = Some(foreground);
-        cell.background = Some(background);
-        cell.bold = false;
-        cell.reverse = false;
+        bar.paint(
+          cell,
+          contrast,
+          eighth_coverage(row, top, thumb),
+          Axis::Vertical,
+        );
       }
     }
   }
@@ -1719,42 +1725,102 @@ fn draw_scrollbars(
 
     for column in 0..track {
       if let Some(cell) = buffer.cell_mut(x + border.0 + column, y + height - 1) {
-        let (ink, track_tint) = track_colors(cell, contrast);
-        // A trailing partial paints the complement glyph with the colors swapped, in
-        // place of the right-block run Unicode lacks.
-        let (character, foreground, background) = match eighth_coverage(column, start, thumb) {
-          Coverage::Full => ('█', ink, track_tint),
-          Coverage::Leading(eighths) => (left_block(eighths), ink, track_tint),
-          Coverage::Trailing(eighths) => (left_block(8 - eighths), track_tint, ink),
-          Coverage::None => (' ', ink, track_tint),
-        };
-
-        cell.glyph = Glyph::Char(character);
-        cell.foreground = Some(foreground);
-        cell.background = Some(background);
-        cell.bold = false;
-        cell.reverse = false;
+        bar.paint(
+          cell,
+          contrast,
+          eighth_coverage(column, start, thumb),
+          Axis::Horizontal,
+        );
       }
     }
   }
 }
 
-/// One scrollbar cell's ink and track: the terminal's foreground under `contrast`,
-/// and a quarter of that ink over the cell beneath.
-fn track_colors(cell: &TerminalCell, contrast: Contrast) -> ((u8, u8, u8), (u8, u8, u8)) {
-  let Contrast { ink, base } = contrast;
-  let beneath = cell.background.unwrap_or(base);
+/// A box's scrollbars as its style draws them: their glyphs, and their thumb's and
+/// track's colors where set.
+#[derive(Clone, Copy)]
+struct BarStyle {
+  glyphs: ScrollbarGlyphs,
+  thumb: Option<(u8, u8, u8)>,
+  track: Option<(u8, u8, u8)>,
+}
+
+impl BarStyle {
+  /// Paints one cell of the scrollbar along `axis` the thumb covers by `coverage`.
+  ///
+  /// A full-block thumb moves by eighths over a track drawn as the cell's background,
+  /// its partial cells the block elements; any other thumb moves by whole cells, a cell
+  /// at least half covered taking it, and both it and the track draw as lines over
+  /// the cell's own background.
+  fn paint(self, cell: &mut TerminalCell, contrast: Contrast, coverage: Coverage, axis: Axis) {
+    let (ink, tint) = self.colors(cell, contrast);
+    let (thumb, track) = match axis {
+      Axis::Vertical => (self.glyphs.vertical_thumb, self.glyphs.vertical_track),
+      Axis::Horizontal => (self.glyphs.horizontal_thumb, self.glyphs.horizontal_track),
+    };
+    let (character, foreground, background) = if thumb == '█' {
+      // A partial whose block Unicode lacks paints the complement glyph with the
+      // colors swapped: the upper blocks down a vertical bar, the right ones along a
+      // horizontal one.
+      let (character, foreground, background) = match (coverage, axis) {
+        (Coverage::Full, _) => ('█', ink, tint),
+        (Coverage::Leading(eighths), Axis::Vertical) => (lower_block(8 - eighths), tint, ink),
+        (Coverage::Trailing(eighths), Axis::Vertical) => (lower_block(eighths), ink, tint),
+        (Coverage::Leading(eighths), Axis::Horizontal) => (left_block(eighths), ink, tint),
+        (Coverage::Trailing(eighths), Axis::Horizontal) => (left_block(8 - eighths), tint, ink),
+        (Coverage::None, _) => (track, ink, tint),
+      };
+
+      (character, foreground, Some(background))
+    }
+    else {
+      let covered = match coverage {
+        Coverage::Full => true,
+        Coverage::Leading(eighths) | Coverage::Trailing(eighths) => eighths >= 4,
+        Coverage::None => false,
+      };
+
+      if covered {
+        (thumb, ink, cell.background)
+      }
+      else {
+        (track, tint, cell.background)
+      }
+    };
+
+    cell.glyph = Glyph::Char(character);
+    cell.foreground = Some(foreground);
+    cell.background = background;
+    cell.bold = false;
+    cell.reverse = false;
+  }
+
+  /// One scrollbar cell's thumb and track colors: the style's where set, else the
+  /// terminal's foreground under `contrast` and a quarter of the thumb's color over the
+  /// cell beneath.
+  fn colors(self, cell: &TerminalCell, contrast: Contrast) -> ((u8, u8, u8), (u8, u8, u8)) {
+    let Contrast { ink, base } = contrast;
+    let ink = self.thumb.unwrap_or(ink);
+
+    (
+      ink,
+      self
+        .track
+        .unwrap_or_else(|| quarter_over(ink, cell.background.unwrap_or(base))),
+    )
+  }
+}
+
+/// A quarter of `ink` over `beneath`.
+fn quarter_over(ink: (u8, u8, u8), beneath: (u8, u8, u8)) -> (u8, u8, u8) {
   let quarter = |over: u8, under: u8| -> u8 {
     u8::try_from((u16::from(over) + 3 * u16::from(under) + 2) / 4).unwrap_or(u8::MAX)
   };
 
   (
-    ink,
-    (
-      quarter(ink.0, beneath.0),
-      quarter(ink.1, beneath.1),
-      quarter(ink.2, beneath.2),
-    ),
+    quarter(ink.0, beneath.0),
+    quarter(ink.1, beneath.1),
+    quarter(ink.2, beneath.2),
   )
 }
 
@@ -2159,19 +2225,79 @@ pub(crate) fn paragraph_scales(store: &Store, handle: Handle) -> Scales {
   }))
 }
 
-/// Casts a box's shadow: the one-cell band below and to the right, the shadow color
-/// mixed into both the foreground and the background of each covered cell by its
-/// alpha. An unset color beneath mixes against the terminal's own under `contrast`.
+/// How far a shadow falls down and right where its box sets no offset, in cells.
+pub(crate) const SHADOW_OFFSET: f32 = 0.5;
+
+/// How far a shadow's edge softens past its offset where its box sets no softening, in
+/// cells.
+pub(crate) const SHADOW_SOFTENING: f32 = 0.5;
+
+/// A box's shadow as cells draw it: its color and the cells it reaches down and right.
+#[derive(Clone, Copy)]
+pub(crate) struct ShadowPaint {
+  color: Color,
+  reach: isize,
+}
+
+impl ShadowPaint {
+  /// The shadow `style` casts in cells, its offset rounded up; `None` for no shadow or
+  /// one reaching no cell.
+  pub(crate) fn of(style: &PlainBox) -> Option<Self> {
+    let color = style.ext.shadow?;
+    let (offset, _) = Self::extent(style);
+    #[expect(
+      clippy::cast_possible_truncation,
+      reason = "an offset in cells is far below the integers isize holds"
+    )]
+    let reach = offset.ceil() as isize;
+
+    (reach > 0).then_some(Self { color, reach })
+  }
+
+  /// The shadow's offset and softening in `style`, in cells, each at least zero.
+  pub(crate) fn extent(style: &PlainBox) -> (f32, f32) {
+    let length =
+      |length: Option<Length>, unset: f32| length.map_or(unset, |length| length.0).max(0.);
+
+    (
+      length(style.ext.shadow_offset, SHADOW_OFFSET),
+      length(style.ext.shadow_softening, SHADOW_SOFTENING),
+    )
+  }
+
+  /// The cells the shadow `style` casts reaches down and right with its softening,
+  /// where the terminal shows graphics; `0` for no shadow.
+  pub(crate) fn band(style: &PlainBox) -> u16 {
+    if style.ext.shadow.is_none() {
+      return 0;
+    }
+
+    let (offset, softening) = Self::extent(style);
+    #[expect(
+      clippy::cast_possible_truncation,
+      clippy::cast_sign_loss,
+      reason = "a reach in cells is at least zero and far below the integers u16 holds"
+    )]
+    let band = (offset + softening).ceil() as u16;
+
+    band
+  }
+}
+
+/// Casts a box's shadow: the box's rectangle moved down and right by the shadow's reach,
+/// where it falls outside the box, the shadow color mixed into both the foreground and
+/// the background of each covered cell by its alpha. An unset color beneath mixes
+/// against the terminal's own under `contrast`.
 fn draw_shadow(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
-  color: Color,
+  shadow: ShadowPaint,
   contrast: Contrast,
 ) {
-  let [red, green, blue, alpha] = color.to_rgba();
+  let [red, green, blue, alpha] = shadow.color.to_rgba();
   let alpha = alpha.clamp(0., 1.);
 
   if alpha <= 0. || width == 0 || height == 0 {
@@ -2182,18 +2308,18 @@ fn draw_shadow(
     isize::try_from(width).unwrap_or(0),
     isize::try_from(height).unwrap_or(0),
   );
-  let mut cast = |cell_x: isize, cell_y: isize| {
-    if let Some(cell) = buffer.cell_mut(cell_x, cell_y) {
-      tint(cell, red, green, blue, alpha, contrast);
+  let reach = shadow.reach;
+
+  for row in reach..height + reach {
+    for column in reach..width + reach {
+      if row < height && column < width {
+        continue;
+      }
+
+      if let Some(cell) = buffer.cell_mut(x + column, y + row) {
+        tint(cell, red, green, blue, alpha, contrast);
+      }
     }
-  };
-
-  for row in 1..=height {
-    cast(x + width, y + row);
-  }
-
-  for column in 1..width {
-    cast(x + column, y + height);
   }
 }
 

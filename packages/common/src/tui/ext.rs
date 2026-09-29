@@ -1,6 +1,6 @@
 //! The terminal medium's own style properties: the glyphs and radius of a border, a
-//! box's shadow, and a run's size and weight; and the extension every terminal platform
-//! shares.
+//! box's shadow and scrollbars, and a run's size and weight; and the extension every
+//! terminal platform shares.
 
 use std::hash::{Hash, Hasher};
 
@@ -77,6 +77,63 @@ impl BorderGlyphs {
   }
 }
 
+/// The characters a scrollbar draws with: its thumb over its track, along each axis.
+///
+/// A thumb of the full block (`█`) moves by eighths of a cell, the block elements
+/// drawing its partial cells; any other thumb moves by whole cells. The named sets are
+/// [`BLOCK`](Self::BLOCK) (the default) and [`LINE`](Self::LINE), and a custom set is
+/// the struct built directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub struct ScrollbarGlyphs {
+  /// A vertical scrollbar's thumb.
+  pub vertical_thumb: char,
+  /// A vertical scrollbar's track.
+  pub vertical_track: char,
+  /// A horizontal scrollbar's thumb.
+  pub horizontal_thumb: char,
+  /// A horizontal scrollbar's track.
+  pub horizontal_track: char,
+}
+
+impl ScrollbarGlyphs {
+  /// A full-block thumb over a blank track, moving by eighths: `█` on ` `.
+  pub const BLOCK: Self = Self::new('█', ' ', '█', ' ');
+  /// A heavy line over a light one, a slimmer bar moving by cells: `┃` on `│`, `━` on
+  /// `─`.
+  pub const LINE: Self = Self::new('┃', '│', '━', '─');
+
+  /// A set from each axis's thumb and track characters.
+  #[inline(always)]
+  pub const fn new(
+    vertical_thumb: char,
+    vertical_track: char,
+    horizontal_thumb: char,
+    horizontal_track: char,
+  ) -> Self {
+    Self {
+      vertical_thumb,
+      vertical_track,
+      horizontal_thumb,
+      horizontal_track,
+    }
+  }
+}
+
+impl Default for ScrollbarGlyphs {
+  #[inline(always)]
+  fn default() -> Self {
+    Self::BLOCK
+  }
+}
+
+impl Fingerprint for ScrollbarGlyphs {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.hash(state);
+  }
+}
+
 impl Default for BorderGlyphs {
   #[inline(always)]
   fn default() -> Self {
@@ -114,8 +171,20 @@ pub struct TuiBoxFields<S: Shape> {
   /// The corner radius, in cells; any radius above zero rounds the border where no
   /// glyph set is spelled.
   pub corner_radius: S::Of<Length>,
-  /// The shadow color, cast one cell down and right and mixed into the colors beneath.
+  /// The shadow color, mixed into the colors beneath where the shadow falls.
   pub shadow: S::Of<Color>,
+  /// How far the shadow falls down and right, in cells; half a cell when unset.
+  pub shadow_offset: S::Of<Length>,
+  /// How far the shadow's edge softens past its offset, in cells, where the terminal
+  /// shows graphics; half a cell when unset.
+  pub shadow_softening: S::Of<Length>,
+  /// The scrollbar thumb's color; the terminal's foreground when unset.
+  pub scrollbar_thumb: S::Of<Color>,
+  /// The scrollbar track's color; a quarter of the thumb's over the colors beneath
+  /// when unset.
+  pub scrollbar_track: S::Of<Color>,
+  /// The characters the scrollbars draw with; [`ScrollbarGlyphs::BLOCK`] when unset.
+  pub scrollbar_glyphs: S::Of<ScrollbarGlyphs>,
 }
 
 /// A terminal run's own properties, in shape `S`.
@@ -141,6 +210,16 @@ pub enum TuiProperty {
   CornerRadius,
   /// The shadow.
   Shadow,
+  /// The shadow's offset.
+  ShadowOffset,
+  /// The shadow's softening.
+  ShadowSoftening,
+  /// The scrollbar thumb's color.
+  ScrollbarThumb,
+  /// The scrollbar track's color.
+  ScrollbarTrack,
+  /// The scrollbar glyphs.
+  ScrollbarGlyphs,
   /// The bold flag.
   Bold,
   /// The font size.
@@ -158,6 +237,11 @@ impl TuiProperty {
       Self::BorderGlyphs => "border_glyphs",
       Self::CornerRadius => "corner_radius",
       Self::Shadow => "shadow",
+      Self::ShadowOffset => "shadow_offset",
+      Self::ShadowSoftening => "shadow_softening",
+      Self::ScrollbarThumb => "scrollbar_thumb",
+      Self::ScrollbarTrack => "scrollbar_track",
+      Self::ScrollbarGlyphs => "scrollbar_glyphs",
       Self::Bold => "bold",
       Self::Size => "font_size",
       Self::Weight => "font_weight",
@@ -172,13 +256,15 @@ impl PropertyName for TuiProperty {
   }
 }
 
-/// An erased value of one of the terminal's own properties; a shadow's color erases
-/// through the shared color variant.
+/// An erased value of one of the terminal's own properties; a color or a length erases
+/// through the shared variants.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub enum TuiValue {
   /// A border glyph set.
   BorderGlyphs(BorderGlyphs),
+  /// A scrollbar glyph set.
+  ScrollbarGlyphs(ScrollbarGlyphs),
   /// A bold flag.
   Bold(bool),
   /// A weight.
@@ -200,6 +286,21 @@ impl<N: Scalar> IntoBoxValue<N, TuiExt> for BorderGlyphs {
   }
 }
 
+impl<N: Scalar> IntoBoxValue<N, TuiExt> for ScrollbarGlyphs {
+  #[inline(always)]
+  fn into_box_value(self) -> BoxValue<N, TuiExt> {
+    BoxValue::Extension(TuiValue::ScrollbarGlyphs(self))
+  }
+
+  #[inline(always)]
+  fn from_box_value(value: BoxValue<N, TuiExt>) -> Option<Self> {
+    match value {
+      BoxValue::Extension(TuiValue::ScrollbarGlyphs(glyphs)) => Some(glyphs),
+      _ => None,
+    }
+  }
+}
+
 impl IntoRunValue<TuiExt> for bool {
   #[inline(always)]
   fn into_run_value(self) -> RunValue<TuiExt> {
@@ -210,7 +311,9 @@ impl IntoRunValue<TuiExt> for bool {
   fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(TuiValue::Bold(bold)) => Some(bold),
-      RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Number(_))
+      RunValue::Extension(
+        TuiValue::BorderGlyphs(_) | TuiValue::ScrollbarGlyphs(_) | TuiValue::Number(_),
+      )
       | RunValue::Color(_)
       | RunValue::Length(_)
       | RunValue::Decoration(_)
@@ -229,7 +332,9 @@ impl IntoRunValue<TuiExt> for f32 {
   fn from_run_value(value: RunValue<TuiExt>) -> Option<Self> {
     match value {
       RunValue::Extension(TuiValue::Number(number)) => Some(number),
-      RunValue::Extension(TuiValue::BorderGlyphs(_) | TuiValue::Bold(_))
+      RunValue::Extension(
+        TuiValue::BorderGlyphs(_) | TuiValue::ScrollbarGlyphs(_) | TuiValue::Bold(_),
+      )
       | RunValue::Color(_)
       | RunValue::Length(_)
       | RunValue::Decoration(_)
@@ -255,7 +360,7 @@ pub mod tui_fields {
     Shape,
   };
 
-  use super::{BorderGlyphs as Glyphs, TuiExt, TuiProperty};
+  use super::{BorderGlyphs as Glyphs, ScrollbarGlyphs as BarGlyphs, TuiExt, TuiProperty};
 
   /// The `border_glyphs` property.
   #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -314,6 +419,106 @@ pub mod tui_fields {
     #[inline(always)]
     fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
       &mut style.ext.shadow
+    }
+  }
+
+  /// The `shadow_offset` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct ShadowOffset;
+
+  impl<N: Scalar> BoxField<N, TuiExt> for ShadowOffset {
+    type Value = Length;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ShadowOffset);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
+      &style.ext.shadow_offset
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
+      &mut style.ext.shadow_offset
+    }
+  }
+
+  /// The `shadow_softening` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct ShadowSoftening;
+
+  impl<N: Scalar> BoxField<N, TuiExt> for ShadowSoftening {
+    type Value = Length;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ShadowSoftening);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Length> {
+      &style.ext.shadow_softening
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Length> {
+      &mut style.ext.shadow_softening
+    }
+  }
+
+  /// The `scrollbar_thumb` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct ScrollbarThumb;
+
+  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarThumb {
+    type Value = Color;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarThumb);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Color> {
+      &style.ext.scrollbar_thumb
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
+      &mut style.ext.scrollbar_thumb
+    }
+  }
+
+  /// The `scrollbar_track` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct ScrollbarTrack;
+
+  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarTrack {
+    type Value = Color;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarTrack);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<Color> {
+      &style.ext.scrollbar_track
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<Color> {
+      &mut style.ext.scrollbar_track
+    }
+  }
+
+  /// The `scrollbar_glyphs` property.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+  pub struct ScrollbarGlyphs;
+
+  impl<N: Scalar> BoxField<N, TuiExt> for ScrollbarGlyphs {
+    type Value = BarGlyphs;
+
+    const KEY: PropertyKey<TuiProperty> = PropertyKey::Extension(TuiProperty::ScrollbarGlyphs);
+
+    #[inline(always)]
+    fn get<S: Shape>(style: &BoxStyle<N, S, TuiExt>) -> &S::Of<BarGlyphs> {
+      &style.ext.scrollbar_glyphs
+    }
+
+    #[inline(always)]
+    fn get_mut<S: Shape>(style: &mut BoxStyle<N, S, TuiExt>) -> &mut S::Of<BarGlyphs> {
+      &mut style.ext.scrollbar_glyphs
     }
   }
 
@@ -389,6 +594,11 @@ impl StyleExtension for TuiExt {
     visitor.field::<tui_fields::BorderGlyphs>();
     visitor.field::<tui_fields::CornerRadius>();
     visitor.field::<tui_fields::Shadow>();
+    visitor.field::<tui_fields::ShadowOffset>();
+    visitor.field::<tui_fields::ShadowSoftening>();
+    visitor.field::<tui_fields::ScrollbarThumb>();
+    visitor.field::<tui_fields::ScrollbarTrack>();
+    visitor.field::<tui_fields::ScrollbarGlyphs>();
   }
 
   #[inline(always)]

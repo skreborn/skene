@@ -123,6 +123,7 @@ pub use crate::{
   Resource,
   RichText,
   Row,
+  ScrollbarGlyphs,
   Show,
   Size,
   SizeHandle,

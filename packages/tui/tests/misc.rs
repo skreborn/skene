@@ -8,7 +8,7 @@ mod common;
 use skene_simple::tui::{glyph, *};
 use skene_tui::{self as tui, CellDecoration, Scene, TokenValue, prelude::*};
 
-use crate::common::{black, colors_at, locate, red, with_platform};
+use crate::common::{black, blue, colors_at, locate, red, rgb, with_platform};
 
 /// The terminal title follows `set_title`, and a derived title follows its signal.
 #[test]
@@ -60,6 +60,72 @@ fn shadow_mixes_into_the_cells_beneath() {
     assert!(background(2, 1).0 < clean.0);
     assert_eq!(background(3, 1), clean);
     assert_eq!(background(1, 2), clean);
+  });
+}
+
+/// A shadow's offset moves it down and right by the cells it reaches, rounded up.
+#[test]
+fn a_shadows_offset_moves_it() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_color(red())
+        .set_child(
+          Container::new()
+            .set_width(2)
+            .set_height(1)
+            .set_shadow(black().with_alpha(0.5))
+            .set_shadow_offset(1.5),
+        )
+        .into_any()
+        .build()
+    });
+
+    let colors = tui::render_to_colors(5, 4);
+    let background = |x: usize, y: usize| colors[y * 5 + x].1.expect("a painted background");
+    let clean = background(0, 0);
+
+    assert_eq!(background(1, 1), clean, "the shadow starts two cells in");
+    assert!(background(2, 2).0 < clean.0);
+    assert!(background(3, 2).0 < clean.0);
+    assert_eq!(background(3, 1), clean);
+    assert_eq!(background(4, 2), clean);
+    assert_eq!(background(2, 3), clean);
+  });
+}
+
+/// A box's scrollbars draw with its own glyphs and colors: a line thumb moving by cells
+/// over a line track, each in the color set for it.
+#[test]
+fn a_boxs_scrollbars_draw_with_its_glyphs_and_colors() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_height(4)
+        .set_overflow(Overflow::Auto)
+        .set_scrollbar_glyphs(ScrollbarGlyphs::LINE)
+        .set_scrollbar_thumb(red())
+        .set_scrollbar_track(blue())
+        .set_child(
+          Column::new().set_children(
+            (0..8)
+              .map(|index| Text::new(format!("{index}")).into_any())
+              .collect::<Vec<_>>(),
+          ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let frame = tui::render_to_text(6, 4);
+    let column: Vec<char> = frame
+      .lines()
+      .map(|line| line.chars().nth(5).unwrap_or(' '))
+      .collect();
+
+    assert_eq!(column, ['┃', '┃', '│', '│'], "{frame}");
+    assert_eq!(colors_at(6, 4, 5, 0).0, Some(rgb(red())));
+    assert_eq!(colors_at(6, 4, 5, 3).0, Some(rgb(blue())));
   });
 }
 

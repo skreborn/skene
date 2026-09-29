@@ -879,7 +879,14 @@ childless, borderless box paints to eighth cells from its parent's origin, unrou
 whole cells take its color, and a cell one of its edges crosses takes a block glyph
 carrying its color on the box's side and the color already there on the other, so a
 slider's fill and thumb move by eighths, meet where the layout put them whatever the
-parent's own offset, and a seam between siblings is exact.
+parent's own offset, and a seam between siblings is exact. A box's scrollbars and
+shadow are its own presentation, set on the box as the web's `scrollbar-color` and
+`box-shadow` are: the thumb's and the track's colors (`set_scrollbar_thumb`,
+`set_scrollbar_track`; the foreground and a quarter of it over the cells beneath where
+unset), their glyphs (`ScrollbarGlyphs`: a full-block thumb moves by eighths, any other
+by whole cells), and the shadow's offset and softening (`set_shadow_offset`,
+`set_shadow_softening`, half a cell each where unset): the cells take the shadow at its
+offset rounded up, and the pixels place it exactly and soften its edge.
 
 The terminal itself is spoken to through three modules of `skene-tui`, with no
 terminal crate beneath them: `tty` opens the device (standard input and output, or

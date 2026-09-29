@@ -628,10 +628,12 @@ pub(crate) struct Backdrop {
 /// What a backdrop is rendered from; a change to any part renders it afresh.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BackdropKey {
-  /// The box's columns, and one more for the shadow's band.
+  /// The box's columns and the shadow's band.
   pub(crate) columns: u16,
-  /// The box's rows, and one more for the shadow's band.
+  /// The box's rows and the shadow's band.
   pub(crate) rows: u16,
+  /// The cells the shadow reaches down and right with its softening.
+  pub(crate) band: u16,
   /// A cell's size in pixels.
   pub(crate) cell_pixels: (u16, u16),
   /// The box's surface; `None` for none.
@@ -644,6 +646,10 @@ pub(crate) struct BackdropKey {
   pub(crate) radius: f32,
   /// The shadow's color as RGBA; `None` for no shadow or a transparent one.
   pub(crate) shadow: Option<[f32; 4]>,
+  /// How far the shadow falls down and right, in cells.
+  pub(crate) shadow_offset: f32,
+  /// How far the shadow's edge softens past its offset, in cells.
+  pub(crate) shadow_softening: f32,
 }
 
 /// A painted box's picture: its painter, and the image last rendered from it, dropped

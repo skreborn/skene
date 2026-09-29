@@ -13,7 +13,7 @@ use skene_reactive::Set;
 use crate::{
   interaction::scroll_to,
   layout::{self, border_edges, has_border, is_inline_run, is_paragraph},
-  paint::{self, Buffer, Image, terminal_rgb},
+  paint::{self, Buffer, Image, ShadowPaint, terminal_rgb},
   store::{Backdrop, BackdropKey, CellRect, Handle, Record, Store},
   with_store,
 };
@@ -160,7 +160,7 @@ fn paint_owner(store: &Store, handle: Handle) -> Handle {
   owner
 }
 
-/// The screen rectangle `handle` paints now, grown by the cell its shadow casts into;
+/// The screen rectangle `handle` paints now, grown by the cells its shadow reaches;
 /// `None` for a node without extent.
 fn current_rect(store: &Store, handle: Handle) -> Option<CellRect> {
   let (width, height) = store.node_size(handle);
@@ -170,14 +170,12 @@ fn current_rect(store: &Store, handle: Handle) -> Option<CellRect> {
   }
 
   let (x, y) = store.screen_origin(handle);
-  let shadow = i64::from(
-    store
-      .record(handle)
-      .and_then(|record| record.kind.box_style())
-      .is_some_and(|style| style.ext.shadow.is_some()),
-  );
+  let band = store
+    .record(handle)
+    .and_then(|record| record.kind.box_style())
+    .map_or(0, |style| i64::from(ShadowPaint::band(style)));
 
-  Some((x, y, width + shadow, height + shadow))
+  Some((x, y, width + band, height + band))
 }
 
 /// Renders every painted box's picture whose image is missing or of another size than
@@ -283,7 +281,13 @@ fn render_backdrops(store: &mut Store) {
       })
       .flatten();
     let (width, height) = store.node_size(handle);
-    let band = u16::from(shadow.is_some());
+    let band = if shadow.is_some() {
+      ShadowPaint::band(style)
+    }
+    else {
+      0
+    };
+    let (shadow_offset, shadow_softening) = ShadowPaint::extent(style);
     let key = BackdropKey {
       columns: u16::try_from(width)
         .unwrap_or(u16::MAX)
@@ -291,12 +295,15 @@ fn render_backdrops(store: &mut Store) {
       rows: u16::try_from(height)
         .unwrap_or(u16::MAX)
         .saturating_add(band),
+      band,
       cell_pixels,
       background: style.color.and_then(terminal_rgb),
       border,
       border_edges: border_edges(style),
       radius,
       shadow,
+      shadow_offset,
+      shadow_softening,
     };
     let wanted = width > 0 && height > 0 && (radius > 0. || border.is_some() || shadow.is_some());
 
@@ -336,12 +343,12 @@ fn render_backdrops(store: &mut Store) {
   }
 }
 
-/// The pixels of a backdrop: the shadow as three softening layers offset half a cell
-/// down and right, the background as a rounded rectangle at the radius in rows, and
-/// the border as a line a quarter cell wide inside the edge.
+/// The pixels of a backdrop: the shadow as three layers at its offset down and right,
+/// each growing by half its softening, the background as a rounded rectangle at the
+/// radius in rows, and the border as a line a quarter cell wide inside the edge.
 fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
   let (cell_width, cell_height) = (f64::from(key.cell_pixels.0), f64::from(key.cell_pixels.1));
-  let band = f64::from(u16::from(key.shadow.is_some()));
+  let band = f64::from(key.band);
   let width = (f64::from(key.columns) - band) * cell_width;
   let height = (f64::from(key.rows) - band) * cell_height;
   let radius = f64::from(key.radius) * cell_height;
@@ -351,16 +358,19 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
   );
 
   if let Some([red, green, blue, alpha]) = key.shadow {
+    let offset = f64::from(key.shadow_offset);
+    let softening = f64::from(key.shadow_softening);
+
     for (layer, spread) in [0.5_f32, 0.3, 0.2].into_iter().enumerate() {
       #[expect(clippy::cast_precision_loss, reason = "a shadow has three layers")]
-      let grow = layer as f64 * cell_width * 0.25;
+      let grow = layer as f64 * cell_width * softening / 2.;
 
       canvas.fill(
         &RoundedRect::new(
-          cell_width / 2. - grow,
-          cell_height / 2. - grow,
-          width + cell_width / 2. + grow,
-          height + cell_height / 2. + grow,
+          cell_width * offset - grow,
+          cell_height * offset - grow,
+          width + cell_width * offset + grow,
+          height + cell_height * offset + grow,
           radius + grow,
         ),
         Color::srgb(red, green, blue).with_alpha(alpha * spread),

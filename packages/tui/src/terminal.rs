@@ -15,16 +15,20 @@
 use std::{
   collections::HashMap,
   io::{self, Write},
+  str::FromStr,
   time::Duration,
 };
 
 use skene_core::{
   ClipboardAction,
+  Code,
   ColorScheme,
   IntoView,
+  Key as PortableKey,
   KeyEvent,
   Modifiers,
   MouseCursor,
+  NamedKey,
   PointerButton,
   TextDecorationStyle,
 };
@@ -1302,18 +1306,18 @@ fn portable_key(key: &Key) -> KeyEvent {
       modifiers.ctrl = false;
       modifiers.alt = false;
 
-      text.to_string()
+      PortableKey::Character(text.to_string())
     }
     (None, code) => portable_key_value(key, code, &mut modifiers),
   };
   let code = match key.code {
     KeyCode::Char(character) if keypad => keypad_code(character),
-    KeyCode::Char(character) => {
-      KeyEvent::code_of(&key.base_layout.unwrap_or(character).to_string())
-    }
-    KeyCode::Enter if keypad => "NumpadEnter".to_owned(),
-    KeyCode::KeypadBegin => "Numpad5".to_owned(),
-    KeyCode::Modifier(modifier) => modifier_code(modifier).to_owned(),
+    KeyCode::Char(character) => KeyEvent::code_of(&PortableKey::Character(
+      key.base_layout.unwrap_or(character).to_string(),
+    )),
+    KeyCode::Enter if keypad => Code::NumpadEnter,
+    KeyCode::KeypadBegin => Code::Numpad5,
+    KeyCode::Modifier(modifier) => modifier_code(modifier),
     _ => KeyEvent::code_of(&key_value),
   };
 
@@ -1332,12 +1336,16 @@ fn portable_key(key: &Key) -> KeyEvent {
 
 /// The W3C key value of `code`, a key reporting no text, marking `Shift` in `modifiers`
 /// where the key arrived shifted.
-fn portable_key_value(key: &Key, code: KeyCode, modifiers: &mut Modifiers) -> String {
-  match code {
+#[expect(
+  deprecated,
+  reason = "the terminal reports a Hyper key, which the W3C names by its legacy value"
+)]
+fn portable_key_value(key: &Key, code: KeyCode, modifiers: &mut Modifiers) -> PortableKey {
+  let named = match code {
     KeyCode::Char(character) => {
       modifiers.shift |= key.shifted.is_some() || character.is_uppercase();
 
-      if key.caps_lock && character.is_alphabetic() {
+      return PortableKey::Character(if key.caps_lock && character.is_alphabetic() {
         if character.is_uppercase() {
           character.to_lowercase().collect()
         }
@@ -1347,67 +1355,71 @@ fn portable_key_value(key: &Key, code: KeyCode, modifiers: &mut Modifiers) -> St
       }
       else {
         character.to_string()
-      }
+      });
     }
     KeyCode::Modifier(modifier) => match modifier {
-      ModifierKey::LeftShift | ModifierKey::RightShift => "Shift".to_owned(),
-      ModifierKey::LeftControl | ModifierKey::RightControl => "Control".to_owned(),
-      ModifierKey::LeftAlt | ModifierKey::RightAlt => "Alt".to_owned(),
+      ModifierKey::LeftShift | ModifierKey::RightShift => NamedKey::Shift,
+      ModifierKey::LeftControl | ModifierKey::RightControl => NamedKey::Control,
+      ModifierKey::LeftAlt | ModifierKey::RightAlt => NamedKey::Alt,
       ModifierKey::LeftSuper
       | ModifierKey::RightSuper
       | ModifierKey::LeftMeta
-      | ModifierKey::RightMeta => "Meta".to_owned(),
-      ModifierKey::LeftHyper | ModifierKey::RightHyper => "Hyper".to_owned(),
-      ModifierKey::IsoLevel3Shift => "AltGraph".to_owned(),
-      ModifierKey::IsoLevel5Shift => "Unidentified".to_owned(),
+      | ModifierKey::RightMeta => NamedKey::Meta,
+      ModifierKey::LeftHyper | ModifierKey::RightHyper => NamedKey::Hyper,
+      ModifierKey::IsoLevel3Shift => NamedKey::AltGraph,
+      ModifierKey::IsoLevel5Shift => NamedKey::Unidentified,
     },
-    KeyCode::Enter => "Enter".to_owned(),
-    KeyCode::Backspace => "Backspace".to_owned(),
-    KeyCode::Tab | KeyCode::BackTab => "Tab".to_owned(),
-    KeyCode::Escape => "Escape".to_owned(),
-    KeyCode::Delete => "Delete".to_owned(),
-    KeyCode::Left => "ArrowLeft".to_owned(),
-    KeyCode::Right => "ArrowRight".to_owned(),
-    KeyCode::Up => "ArrowUp".to_owned(),
-    KeyCode::Down => "ArrowDown".to_owned(),
-    KeyCode::Home => "Home".to_owned(),
-    KeyCode::End => "End".to_owned(),
-    KeyCode::PageUp => "PageUp".to_owned(),
-    KeyCode::PageDown => "PageDown".to_owned(),
-    KeyCode::Insert => "Insert".to_owned(),
-    KeyCode::Function(number) => format!("F{number}"),
-    _ => "Unidentified".to_owned(),
-  }
+    KeyCode::Enter => NamedKey::Enter,
+    KeyCode::Backspace => NamedKey::Backspace,
+    KeyCode::Tab | KeyCode::BackTab => NamedKey::Tab,
+    KeyCode::Escape => NamedKey::Escape,
+    KeyCode::Delete => NamedKey::Delete,
+    KeyCode::Left => NamedKey::ArrowLeft,
+    KeyCode::Right => NamedKey::ArrowRight,
+    KeyCode::Up => NamedKey::ArrowUp,
+    KeyCode::Down => NamedKey::ArrowDown,
+    KeyCode::Home => NamedKey::Home,
+    KeyCode::End => NamedKey::End,
+    KeyCode::PageUp => NamedKey::PageUp,
+    KeyCode::PageDown => NamedKey::PageDown,
+    KeyCode::Insert => NamedKey::Insert,
+    KeyCode::Function(number) => {
+      NamedKey::from_str(&format!("F{number}")).unwrap_or(NamedKey::Unidentified)
+    }
+    _ => NamedKey::Unidentified,
+  };
+
+  PortableKey::Named(named)
 }
 
 /// The W3C code of the keypad key producing `character`.
-fn keypad_code(character: char) -> String {
+fn keypad_code(character: char) -> Code {
   match character {
-    '0'..='9' => format!("Numpad{character}"),
-    '.' => "NumpadDecimal".to_owned(),
-    '/' => "NumpadDivide".to_owned(),
-    '*' => "NumpadMultiply".to_owned(),
-    '-' => "NumpadSubtract".to_owned(),
-    '+' => "NumpadAdd".to_owned(),
-    '=' => "NumpadEqual".to_owned(),
-    ',' => "NumpadComma".to_owned(),
-    _ => "Unidentified".to_owned(),
+    '0'..='9' => Code::from_str(&format!("Numpad{character}")).unwrap_or(Code::Unidentified),
+    '.' => Code::NumpadDecimal,
+    '/' => Code::NumpadDivide,
+    '*' => Code::NumpadMultiply,
+    '-' => Code::NumpadSubtract,
+    '+' => Code::NumpadAdd,
+    '=' => Code::NumpadEqual,
+    ',' => Code::NumpadComma,
+    _ => Code::Unidentified,
   }
 }
 
 /// The W3C code of the modifier key `modifier`, by its side.
-const fn modifier_code(modifier: ModifierKey) -> &'static str {
+const fn modifier_code(modifier: ModifierKey) -> Code {
   match modifier {
-    ModifierKey::LeftShift => "ShiftLeft",
-    ModifierKey::RightShift => "ShiftRight",
-    ModifierKey::LeftControl => "ControlLeft",
-    ModifierKey::RightControl => "ControlRight",
-    ModifierKey::LeftAlt => "AltLeft",
-    ModifierKey::RightAlt | ModifierKey::IsoLevel3Shift => "AltRight",
-    ModifierKey::LeftSuper | ModifierKey::LeftMeta => "MetaLeft",
-    ModifierKey::RightSuper | ModifierKey::RightMeta => "MetaRight",
+    ModifierKey::LeftShift => Code::ShiftLeft,
+    ModifierKey::RightShift => Code::ShiftRight,
+    ModifierKey::LeftControl => Code::ControlLeft,
+    ModifierKey::RightControl => Code::ControlRight,
+    ModifierKey::LeftAlt => Code::AltLeft,
+    ModifierKey::RightAlt | ModifierKey::IsoLevel3Shift => Code::AltRight,
+    ModifierKey::LeftSuper | ModifierKey::LeftMeta => Code::MetaLeft,
+    ModifierKey::RightSuper | ModifierKey::RightMeta => Code::MetaRight,
     ModifierKey::LeftHyper | ModifierKey::RightHyper | ModifierKey::IsoLevel5Shift => {
-      "Unidentified"
+      Code::Unidentified
     }
   }
 }
@@ -1903,9 +1915,9 @@ mod tests {
 
     let held = portable_key(&held);
 
-    assert_eq!(shift.key, "Shift");
+    assert!(shift.is(NamedKey::Shift));
     assert!(shift.is_modifier());
-    assert_eq!(meta.key, "Meta");
+    assert!(meta.is(NamedKey::Meta));
     assert!(held.repeat && !held.is_modifier());
   }
 
@@ -1931,11 +1943,11 @@ mod tests {
     let locked_shifted = portable_key(&locked_shifted);
     let locked = portable_key(&locked);
 
-    assert_eq!(shifted.key, "Z");
+    assert!(shifted.types("Z"));
     assert!(shifted.modifiers.shift && shifted.modifiers.ctrl);
-    assert_eq!(locked.key, "Z");
+    assert!(locked.types("Z"));
     assert!(!locked.modifiers.shift && locked.modifiers.ctrl);
-    assert_eq!(locked_shifted.key, "z");
+    assert!(locked_shifted.types("z"));
     assert!(locked_shifted.modifiers.shift);
   }
 
@@ -1951,8 +1963,8 @@ mod tests {
 
     let bang = portable_key(&bang);
 
-    assert_eq!(bang.key, "!");
-    assert_eq!(bang.code, "Digit1");
+    assert!(bang.types("!"));
+    assert_eq!(bang.code, Code::Digit1);
     assert!(bang.modifiers.shift);
 
     let mut cyrillic = Key::new(KeyCode::Char('\u{444}')).with(Modifiers {
@@ -1964,21 +1976,21 @@ mod tests {
 
     let cyrillic = portable_key(&cyrillic);
 
-    assert_eq!(cyrillic.key, "\u{444}");
-    assert_eq!(cyrillic.code, "KeyA");
+    assert!(cyrillic.types("\u{444}"));
+    assert_eq!(cyrillic.code, Code::KeyA);
     assert!(cyrillic.modifiers.ctrl && !cyrillic.modifiers.shift);
 
     let mut keypad = Key::new(KeyCode::Char('7'));
 
     keypad.keypad = true;
 
-    assert_eq!(portable_key(&keypad).code, "Numpad7");
+    assert_eq!(portable_key(&keypad).code, Code::Numpad7);
     assert_eq!(
       portable_key(&Key::new(KeyCode::Modifier(ModifierKey::RightShift))).code,
-      "ShiftRight"
+      Code::ShiftRight
     );
-    assert_eq!(portable_key(&Key::new(KeyCode::Left)).code, "ArrowLeft");
-    assert_eq!(key_event("Ctrl+z").code, "KeyZ");
+    assert_eq!(portable_key(&Key::new(KeyCode::Left)).code, Code::ArrowLeft);
+    assert_eq!(key_event("Ctrl+z").code, Code::KeyZ);
   }
 
   /// A key reporting the text it typed is that text, the `Ctrl` and `Alt` spent in
@@ -1994,8 +2006,8 @@ mod tests {
 
     let option = portable_key(&option);
 
-    assert_eq!(option.key, "\u{2122}");
-    assert_eq!(option.code, "Digit2");
+    assert!(option.types("\u{2122}"));
+    assert_eq!(option.code, Code::Digit2);
     assert!(!option.modifiers.alt && !option.modifiers.ctrl);
   }
 

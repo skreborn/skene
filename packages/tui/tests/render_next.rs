@@ -436,8 +436,8 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
 
     let _ = tui::mount(move || {
       Container::new()
-        .handle_key_down(move |event| pressed.set(event.key.clone()))
-        .handle_key_up(move |event| released.set(event.key.clone()))
+        .handle_key_down(move |event| pressed.set(event.key.to_string()))
+        .handle_key_up(move |event| released.set(event.key.to_string()))
         .set_child(RawButton::new(Activate::new()).set_label("press"))
         .into_any()
         .build()

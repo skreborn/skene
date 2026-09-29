@@ -8,7 +8,9 @@ use skene_core::{
   ControlState,
   EventKind,
   FocusOrder,
+  Key,
   KeyEvent,
+  NamedKey,
   Platform,
   Prevent,
   Role,
@@ -386,16 +388,16 @@ impl<P: Platform> Behavior<P> for ListItem {
       return Prevent::None;
     };
 
-    match event.key.as_str() {
-      "ArrowDown" => group.step_from::<P>(&self.value, 1),
-      "ArrowUp" => group.step_from::<P>(&self.value, -1),
-      "Home" => group.step_from::<P>(&self.value, isize::MIN),
-      "End" => group.step_from::<P>(&self.value, isize::MAX),
-      "Enter" => group.choose(self.value.clone()),
-      " " if !group.type_ahead_from::<P>(&self.value, event) => {
+    match &event.key {
+      Key::Named(NamedKey::ArrowDown) => group.step_from::<P>(&self.value, 1),
+      Key::Named(NamedKey::ArrowUp) => group.step_from::<P>(&self.value, -1),
+      Key::Named(NamedKey::Home) => group.step_from::<P>(&self.value, isize::MIN),
+      Key::Named(NamedKey::End) => group.step_from::<P>(&self.value, isize::MAX),
+      Key::Named(NamedKey::Enter) => group.choose(self.value.clone()),
+      Key::Character(text) if text == " " && !group.type_ahead_from::<P>(&self.value, event) => {
         group.choose(self.value.clone());
       }
-      "Tab" if group.commit_on_tab => {
+      Key::Named(NamedKey::Tab) if group.commit_on_tab => {
         group.choose(self.value.clone());
 
         return Prevent::None;

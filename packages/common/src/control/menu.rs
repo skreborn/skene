@@ -6,7 +6,9 @@ use skene_core::{
   ControlKind,
   EventKind,
   FocusOrder,
+  Key,
   KeyEvent,
+  NamedKey,
   NodeId,
   Platform,
   Prevent,
@@ -306,13 +308,13 @@ impl<P: Platform> Behavior<P> for MenuOption {
       return Prevent::None;
     };
 
-    match event.key.as_str() {
-      "ArrowDown" => group.step_from::<P>(&self.value, 1),
-      "ArrowUp" => group.step_from::<P>(&self.value, -1),
-      "Home" => group.step_from::<P>(&self.value, isize::MIN),
-      "End" => group.step_from::<P>(&self.value, isize::MAX),
-      "Enter" => group.activate(self.value.clone()),
-      " " if !group.type_ahead_from::<P>(&self.value, event) => {
+    match &event.key {
+      Key::Named(NamedKey::ArrowDown) => group.step_from::<P>(&self.value, 1),
+      Key::Named(NamedKey::ArrowUp) => group.step_from::<P>(&self.value, -1),
+      Key::Named(NamedKey::Home) => group.step_from::<P>(&self.value, isize::MIN),
+      Key::Named(NamedKey::End) => group.step_from::<P>(&self.value, isize::MAX),
+      Key::Named(NamedKey::Enter) => group.activate(self.value.clone()),
+      Key::Character(text) if text == " " && !group.type_ahead_from::<P>(&self.value, event) => {
         group.activate(self.value.clone());
       }
       _ if group.type_ahead_from::<P>(&self.value, event) => {}

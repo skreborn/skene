@@ -823,12 +823,15 @@ key repeats its `KeyDown` with `repeat` set, and a modifier pressed alone arrive
 its W3C name (`Shift`, `Control`, `Alt`, `Meta`) without showing focus; the terminal
 asks the kitty keyboard protocol for `REPORT_EVENT_TYPES`, `REPORT_ALTERNATE_KEYS` and
 `REPORT_ALL_KEYS_AS_ESCAPE_CODES` beside the disambiguated codes, and a terminal
-without them reports presses alone, as the legacy encoding does. Beside `key`, a
-`KeyEvent` carries `code`, the physical key under the W3C names (`KeyA`, `Digit1`,
-`ShiftLeft`, `Numpad7`), so a shortcut on it holds across keyboard layouts: the
-browser's `KeyboardEvent.code`, in the terminal the kitty protocol's base-layout
-alternate where it reports one and the key's own position on the US layout otherwise
-(`KeyEvent::code_of`, which the headless platform's key specs use too), and a shifted
+without them reports presses alone, as the legacy encoding does. A `KeyEvent`'s
+`key` and `code` are `keyboard-types`' `Key` and `Code`, the W3C values typed: `key`
+is `Key::Character` for the text a key types and `Key::Named` for every other key, and
+`code` the physical key (`Code::KeyA`, `Code::Digit1`, `Code::ShiftLeft`,
+`Code::Numpad7`), so a shortcut on it holds across keyboard layouts: the browser's
+`KeyboardEvent.code`, a value the crate does not know arriving as `Unidentified`, in
+the terminal the kitty protocol's base-layout alternate where it reports one and the
+key's own position on the US layout otherwise (`KeyEvent::code_of`, over the crate's
+WebDriver table, which the headless platform's key specs use too), and a shifted
 alternate the terminal applied restores `Shift` for any key, so `Shift-1` reaches an
 app as `!` with `Shift` held. A modal takes
 focus to its first tab stop as it opens and returns it to the node that held focus as

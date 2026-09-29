@@ -20,7 +20,9 @@
 //! acts on. A handler installed on such a view only observes; above a platform, nothing
 //! states a verdict.
 
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
+
+use keyboard_types::{Code, Key, NamedKey, webdriver::KeyInputState};
 
 /// What a handler prevents of the dispatch that invoked it.
 ///
@@ -218,18 +220,18 @@ impl Shortcut {
 
 /// A keyboard event: the logical key, the physical key, and the modifier state.
 ///
-/// `key` follows the W3C key-value names (`"a"`, `"Enter"`, `"ArrowLeft"`, and
-/// `"Shift"`, `"Control"`, `"Alt"`, `"Meta"` for a modifier pressed alone) and `code`
-/// the W3C code names of the key's position on the standard layout (`"KeyA"`,
-/// `"Digit1"`, `"ShiftLeft"`), so a shortcut on `code` holds across keyboard layouts;
-/// every platform maps its own keys onto them.
+/// `key` is the W3C key value (`Key::Character("a")`, `Key::Named(NamedKey::Enter)`, a
+/// modifier's name for a modifier pressed alone) and `code` the W3C code of the key's
+/// position on the standard layout (`Code::KeyA`, `Code::Digit1`, `Code::ShiftLeft`), so
+/// a shortcut on `code` holds across keyboard layouts; every platform maps its own keys
+/// onto them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub struct KeyEvent {
   /// The logical key value.
-  pub key: String,
-  /// The physical key, `"Unidentified"` where the platform does not know it.
-  pub code: String,
+  pub key: Key,
+  /// The physical key, `Code::Unidentified` where the platform does not know it.
+  pub code: Code,
   /// The modifier state.
   pub modifiers: Modifiers,
   /// Whether the press is the platform's repeat of a key held down.
@@ -240,11 +242,12 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
-  /// A press of `key` with no modifier held, not repeating and outside a composition, at
-  /// the position `key` has on the standard US layout.
+  /// A press of the key its W3C key value `key` names (`"a"`, `" "`, `"Enter"`), with no
+  /// modifier held, not repeating and outside a composition, at the position the key has
+  /// on the standard US layout; a value naming no key is the text it types.
   #[inline(always)]
-  pub fn new(key: impl Into<String>) -> Self {
-    let key = key.into();
+  pub fn new(key: &str) -> Self {
+    let key = Key::from_str(key).unwrap_or_else(|_| Key::Character(key.to_owned()));
     let code = Self::code_of(&key);
 
     Self {
@@ -256,60 +259,42 @@ impl KeyEvent {
     }
   }
 
-  /// The W3C code of the key `key` names on the standard US layout: `"KeyA"` for
-  /// `"a"` or `"A"`, `"Digit1"` for `"1"` or `"!"`, `"Space"` for `" "`, the left
-  /// modifier for a modifier's name, the name itself for a named key, and
-  /// `"Unidentified"` for a key the layout does not have.
+  /// The W3C code of `key`'s position on the standard US layout: `Code::KeyA` for `"a"`
+  /// or `"A"`, `Code::Digit1` for `"1"` or `"!"`, `Code::Space` for `" "`, the left
+  /// modifier for a modifier, the code of its name for another named key, and
+  /// `Code::Unidentified` for a key the layout does not have.
   #[must_use]
-  pub fn code_of(key: &str) -> String {
-    let mut characters = key.chars();
-
-    if let (Some(character), None) = (characters.next(), characters.next()) {
-      return match character {
-        'a'..='z' | 'A'..='Z' => format!("Key{}", character.to_ascii_uppercase()),
-        '0'..='9' => format!("Digit{character}"),
-        ' ' => "Space".to_owned(),
-        '!' => "Digit1".to_owned(),
-        '@' => "Digit2".to_owned(),
-        '#' => "Digit3".to_owned(),
-        '$' => "Digit4".to_owned(),
-        '%' => "Digit5".to_owned(),
-        '^' => "Digit6".to_owned(),
-        '&' => "Digit7".to_owned(),
-        '*' => "Digit8".to_owned(),
-        '(' => "Digit9".to_owned(),
-        ')' => "Digit0".to_owned(),
-        '-' | '_' => "Minus".to_owned(),
-        '=' | '+' => "Equal".to_owned(),
-        '[' | '{' => "BracketLeft".to_owned(),
-        ']' | '}' => "BracketRight".to_owned(),
-        '\\' | '|' => "Backslash".to_owned(),
-        ';' | ':' => "Semicolon".to_owned(),
-        '\'' | '"' => "Quote".to_owned(),
-        '`' | '~' => "Backquote".to_owned(),
-        ',' | '<' => "Comma".to_owned(),
-        '.' | '>' => "Period".to_owned(),
-        '/' | '?' => "Slash".to_owned(),
-        _ => "Unidentified".to_owned(),
-      };
-    }
-
+  pub fn code_of(key: &Key) -> Code {
     match key {
-      "Shift" | "Control" | "Alt" | "Meta" => format!("{key}Left"),
-      "AltGraph" => "AltRight".to_owned(),
-      "Enter" | "Backspace" | "Tab" | "Escape" | "Delete" | "Insert" | "Home" | "End"
-      | "PageUp" | "PageDown" | "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" => {
-        key.to_owned()
+      Key::Character(text) => {
+        let mut characters = text.chars();
+
+        match (characters.next(), characters.next()) {
+          (Some(character), None) => KeyInputState::new().dispatch_keydown(character).code,
+          _ => Code::Unidentified,
+        }
       }
-      function
-        if function.len() > 1
-          && function.starts_with('F')
-          && function[1..].bytes().all(|byte| byte.is_ascii_digit()) =>
-      {
-        key.to_owned()
-      }
-      _ => "Unidentified".to_owned(),
+      Key::Named(NamedKey::Shift) => Code::ShiftLeft,
+      Key::Named(NamedKey::Control) => Code::ControlLeft,
+      Key::Named(NamedKey::Alt) => Code::AltLeft,
+      Key::Named(NamedKey::Meta) => Code::MetaLeft,
+      Key::Named(NamedKey::AltGraph) => Code::AltRight,
+      Key::Named(named) => Code::from_str(&named.to_string()).unwrap_or(Code::Unidentified),
     }
+  }
+
+  /// Whether the key is `named`.
+  #[inline(always)]
+  #[must_use]
+  pub fn is(&self, named: NamedKey) -> bool {
+    self.key == Key::Named(named)
+  }
+
+  /// Whether the key types `text`, as `" "` for the space bar.
+  #[inline(always)]
+  #[must_use]
+  pub fn types(&self, text: &str) -> bool {
+    matches!(&self.key, Key::Character(typed) if typed == text)
   }
 
   /// The key a shortcut names this one by: a letter lowercase whatever case it was
@@ -317,23 +302,28 @@ impl KeyEvent {
   /// character (one of a non-Latin layout), and the key value otherwise.
   #[must_use]
   pub fn shortcut_key(&self) -> Cow<'_, str> {
-    let mut characters = self.key.chars();
+    let Key::Character(text) = &self.key
+    else {
+      return Cow::Owned(self.key.to_string());
+    };
+    let mut characters = text.chars();
 
     match (characters.next(), characters.next()) {
       (Some(character), None) if character.is_ascii_uppercase() => {
         Cow::Owned(character.to_ascii_lowercase().to_string())
       }
       (Some(character), None) if !character.is_ascii() => {
-        match self
-          .code
+        let code = self.code.to_string();
+
+        match code
           .strip_prefix("Key")
-          .or_else(|| self.code.strip_prefix("Digit"))
+          .or_else(|| code.strip_prefix("Digit"))
         {
           Some(physical) if physical.len() == 1 => Cow::Owned(physical.to_ascii_lowercase()),
-          _ => Cow::Borrowed(&self.key),
+          _ => Cow::Borrowed(text),
         }
       }
-      _ => Cow::Borrowed(&self.key),
+      _ => Cow::Borrowed(text),
     }
   }
 
@@ -346,12 +336,24 @@ impl KeyEvent {
   }
 
   /// Whether the key is a modifier pressed alone.
+  #[expect(
+    deprecated,
+    reason = "the legacy Hyper and Super keys still arrive from terminals and engines"
+  )]
   #[inline(always)]
   #[must_use]
-  pub fn is_modifier(&self) -> bool {
+  pub const fn is_modifier(&self) -> bool {
     matches!(
-      self.key.as_str(),
-      "Shift" | "Control" | "Alt" | "Meta" | "AltGraph" | "Hyper" | "Super"
+      self.key,
+      Key::Named(
+        NamedKey::Shift
+          | NamedKey::Control
+          | NamedKey::Alt
+          | NamedKey::Meta
+          | NamedKey::AltGraph
+          | NamedKey::Hyper
+          | NamedKey::Super
+      )
     )
   }
 }
@@ -399,22 +401,27 @@ pub struct ScrollEvent {
 
 #[cfg(test)]
 mod tests {
+  use keyboard_types::{Code, Key, NamedKey};
+
   use super::{KeyEvent, Modifiers, Shortcut};
 
   /// A key's code is its position on the US layout, whatever the shifted form.
   #[test]
   fn the_code_is_the_keys_position_on_the_us_layout() {
-    assert_eq!(KeyEvent::code_of("a"), "KeyA");
-    assert_eq!(KeyEvent::code_of("A"), "KeyA");
-    assert_eq!(KeyEvent::code_of("1"), "Digit1");
-    assert_eq!(KeyEvent::code_of("!"), "Digit1");
-    assert_eq!(KeyEvent::code_of(" "), "Space");
-    assert_eq!(KeyEvent::code_of("?"), "Slash");
-    assert_eq!(KeyEvent::code_of("Shift"), "ShiftLeft");
-    assert_eq!(KeyEvent::code_of("ArrowLeft"), "ArrowLeft");
-    assert_eq!(KeyEvent::code_of("F12"), "F12");
-    assert_eq!(KeyEvent::code_of("ф"), "Unidentified");
-    assert_eq!(KeyEvent::new("z").code, "KeyZ");
+    let code = |key: &str| KeyEvent::new(key).code;
+
+    assert_eq!(code("a"), Code::KeyA);
+    assert_eq!(code("A"), Code::KeyA);
+    assert_eq!(code("1"), Code::Digit1);
+    assert_eq!(code("!"), Code::Digit1);
+    assert_eq!(code(" "), Code::Space);
+    assert_eq!(code("?"), Code::Slash);
+    assert_eq!(code("Shift"), Code::ShiftLeft);
+    assert_eq!(code("ArrowLeft"), Code::ArrowLeft);
+    assert_eq!(code("F12"), Code::F12);
+    assert_eq!(code("ф"), Code::Unidentified);
+    assert_eq!(KeyEvent::new("Enter").key, Key::Named(NamedKey::Enter));
+    assert_eq!(KeyEvent::new("z").key, Key::Character("z".to_owned()));
   }
 
   /// A shortcut names a letter in lowercase, a non-Latin layout's key by the letter on
@@ -422,7 +429,7 @@ mod tests {
   #[test]
   fn a_shortcut_names_a_key_across_case_and_layout() {
     let cyrillic = KeyEvent {
-      code: "KeyC".to_owned(),
+      code: Code::KeyC,
       ..KeyEvent::new("\u{441}")
     };
     let unplaced = KeyEvent::new("\u{441}");

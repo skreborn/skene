@@ -1,7 +1,14 @@
 //! The terminal's editing of a text entry: the caret and the selection over the value,
 //! the visible window, and the keys that move, select and edit.
 
-use skene_core::{AccessProp, ClipboardAction, KeyEvent, notify_change, notify_selection_change};
+use skene_core::{
+  AccessProp,
+  ClipboardAction,
+  Key,
+  KeyEvent,
+  notify_change,
+  notify_selection_change,
+};
 use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{
@@ -344,8 +351,14 @@ fn apply(event: &KeyEvent, field: &mut Field, area: Area, editable: bool) -> Opt
   let shift = event.modifiers.shift;
   let shortcut = event.shortcut_key();
   let key = shortcut.as_ref();
-  let mut characters = event.key.chars();
-  let single = characters.next().filter(|_| characters.next().is_none());
+  let single = match &event.key {
+    Key::Character(text) => {
+      let mut characters = text.chars();
+
+      characters.next().filter(|_| characters.next().is_none())
+    }
+    Key::Named(_) => None,
+  };
   let selection = field.selection();
   let caret = field.caret;
 

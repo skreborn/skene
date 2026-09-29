@@ -14,6 +14,7 @@ use skene_core::{
   Inset,
   KeyEvent,
   Modifiers,
+  NamedKey,
   Overflow,
   PointerButton,
   PointerEvent,
@@ -120,11 +121,11 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
             Bubbling::Stop
           })
           .handle_key_down(move |event| {
-            assert_eq!(event.key, "Enter");
+            assert!(event.is(NamedKey::Enter));
             inner_key();
           })
           .handle_key_up(move |event| {
-            assert_eq!(event.key, "Enter");
+            assert!(event.is(NamedKey::Enter));
             inner_key_up();
 
             Bubbling::Stop

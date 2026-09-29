@@ -1,4 +1,7 @@
 pub mod skene_core
+pub use skene_core::Code
+pub use skene_core::Key
+pub use skene_core::NamedKey
 pub mod skene_core::box_fields
 pub struct skene_core::box_fields::Arrangement
 impl core::clone::Clone for skene_core::box_fields::Arrangement
@@ -3046,17 +3049,19 @@ pub fn skene_core::ItemWindow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core
 impl core::marker::Copy for skene_core::ItemWindow
 impl core::marker::StructuralPartialEq for skene_core::ItemWindow
 pub struct skene_core::KeyEvent
-pub skene_core::KeyEvent::code: alloc::string::String
+pub skene_core::KeyEvent::code: keyboard_types::code::Code
 pub skene_core::KeyEvent::composing: bool
-pub skene_core::KeyEvent::key: alloc::string::String
+pub skene_core::KeyEvent::key: keyboard_types::key::Key
 pub skene_core::KeyEvent::modifiers: skene_core::Modifiers
 pub skene_core::KeyEvent::repeat: bool
 impl skene_core::KeyEvent
-pub fn skene_core::KeyEvent::code_of(&str) -> alloc::string::String
-pub fn skene_core::KeyEvent::is_modifier(&self) -> bool
+pub fn skene_core::KeyEvent::code_of(&keyboard_types::key::Key) -> keyboard_types::code::Code
+pub fn skene_core::KeyEvent::is(&self, keyboard_types::named_key::NamedKey) -> bool
+pub const fn skene_core::KeyEvent::is_modifier(&self) -> bool
 pub fn skene_core::KeyEvent::matches(&self, &skene_core::Shortcut) -> bool
-pub fn skene_core::KeyEvent::new(impl core::convert::Into<alloc::string::String>) -> Self
+pub fn skene_core::KeyEvent::new(&str) -> Self
 pub fn skene_core::KeyEvent::shortcut_key(&self) -> alloc::borrow::Cow<'_, str>
+pub fn skene_core::KeyEvent::types(&self, &str) -> bool
 impl core::clone::Clone for skene_core::KeyEvent
 pub fn skene_core::KeyEvent::clone(&self) -> skene_core::KeyEvent
 impl core::cmp::Eq for skene_core::KeyEvent

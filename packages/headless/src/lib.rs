@@ -57,6 +57,7 @@ use skene_core::{
   KeyEvent,
   Media,
   MediaSignals,
+  NamedKey,
   NoProperty,
   NodeId,
   NodeRecord,
@@ -588,7 +589,7 @@ pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
 
     let prevented = dispatch_key_down::<Headless>(node, event);
 
-    if !prevented.platform && event.key == "Tab" {
+    if !prevented.platform && event.is(NamedKey::Tab) {
       traverse(node, if event.modifiers.shift { -1 } else { 1 });
     }
 

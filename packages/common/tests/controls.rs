@@ -34,8 +34,10 @@ use skene_core::{
   FocusOrder,
   HasChildren,
   ItemAlignment,
+  Key,
   KeyEvent,
   Modifiers,
+  NamedKey,
   Part,
   PointerButton,
   PointerEvent,
@@ -1155,9 +1157,9 @@ impl Behavior<Headless> for Stepper {
   }
 
   fn on_key(&self, event: &KeyEvent, _: &ControlHandle<Headless>) -> Prevent {
-    match event.key.as_str() {
-      "ArrowUp" => self.count.set(self.count.get() + 1),
-      "ArrowDown" => self.count.set(self.count.get() - 1),
+    match event.key {
+      Key::Named(NamedKey::ArrowUp) => self.count.set(self.count.get() + 1),
+      Key::Named(NamedKey::ArrowDown) => self.count.set(self.count.get() - 1),
       _ => return Prevent::None,
     }
 

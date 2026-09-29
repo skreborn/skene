@@ -9,13 +9,16 @@
 //! press and the behavior, whose flip the platform performed, is skipped. The only
 //! per-node listener is a `<dialog>`'s `cancel`.
 
-use std::rc::Rc;
+use std::{rc::Rc, str::FromStr};
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  Code,
   EventKind,
+  Key,
   KeyEvent,
   Modifiers,
+  NamedKey,
   NodeId,
   PointerButton,
   PointerEvent,
@@ -365,8 +368,8 @@ fn on_key_up(event: &web_sys::Event) {
 /// The portable key event of a DOM keyboard event.
 fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
   KeyEvent {
-    key: keyboard.key(),
-    code: keyboard.code(),
+    key: Key::from_str(&keyboard.key()).unwrap_or(Key::Named(NamedKey::Unidentified)),
+    code: Code::from_str(&keyboard.code()).unwrap_or(Code::Unidentified),
     modifiers: Modifiers {
       ctrl: keyboard.ctrl_key(),
       shift: keyboard.shift_key(),

@@ -138,7 +138,7 @@ impl<P: Platform> Behavior<P> for Toggle {
   }
 
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
-    if event.key != " " {
+    if !event.types(" ") {
       return Prevent::None;
     }
 
@@ -150,7 +150,7 @@ impl<P: Platform> Behavior<P> for Toggle {
   }
 
   fn on_key_up(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
-    if event.key != " " || !self.armed.replace(false) {
+    if !event.types(" ") || !self.armed.replace(false) {
       return Prevent::None;
     }
 

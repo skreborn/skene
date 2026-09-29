@@ -8,7 +8,9 @@ use skene_core::{
   ControlState,
   EventKind,
   FocusOrder,
+  Key,
   KeyEvent,
+  NamedKey,
   Platform,
   Prevent,
   Ring,
@@ -299,10 +301,14 @@ impl<P: Platform> Behavior<P> for RadioMember {
       return Prevent::None;
     };
 
-    match event.key.as_str() {
-      "ArrowRight" | "ArrowDown" => group.step_from::<P>(&self.value, 1),
-      "ArrowLeft" | "ArrowUp" => group.step_from::<P>(&self.value, -1),
-      " " => group.choose(self.value.clone()),
+    match &event.key {
+      Key::Named(NamedKey::ArrowRight | NamedKey::ArrowDown) => {
+        group.step_from::<P>(&self.value, 1);
+      }
+      Key::Named(NamedKey::ArrowLeft | NamedKey::ArrowUp) => {
+        group.step_from::<P>(&self.value, -1);
+      }
+      Key::Character(text) if text == " " => group.choose(self.value.clone()),
       _ => return Prevent::None,
     }
 

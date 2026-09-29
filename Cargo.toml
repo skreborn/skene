@@ -9,6 +9,7 @@ rust-version = "1.91"
 
 [workspace.dependencies]
 color = "0.3"
+keyboard-types = { default-features = false, features = ["std", "webdriver"], version = "0.8" }
 num-traits = "0.2"
 proc-macro-crate = "3"
 proc-macro2 = "1"

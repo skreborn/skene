@@ -7,7 +7,9 @@ use skene_core::{
   ControlKind,
   ControlState,
   EventKind,
+  Key,
   KeyEvent,
+  NamedKey,
   NodeId,
   Platform,
   PopupKind,
@@ -159,11 +161,12 @@ impl<P: Platform> Behavior<P> for Popup {
   fn on_key(&self, event: &KeyEvent, _control: &ControlHandle<P>) -> Prevent {
     let typed = || !self.read() && self.on_typed.as_ref().is_some_and(|typed| typed(event));
 
-    match event.key.as_str() {
-      " " if typed() => {}
-      "Enter" | " " => self.ask(!self.read()),
-      "ArrowDown" | "ArrowUp" => self.ask(true),
-      "Escape" if self.read() => self.ask(false),
+    match &event.key {
+      Key::Character(text) if text == " " && typed() => {}
+      Key::Named(NamedKey::Enter) => self.ask(!self.read()),
+      Key::Character(text) if text == " " => self.ask(!self.read()),
+      Key::Named(NamedKey::ArrowDown | NamedKey::ArrowUp) => self.ask(true),
+      Key::Named(NamedKey::Escape) if self.read() => self.ask(false),
       _ if typed() => {}
       _ => return Prevent::None,
     }

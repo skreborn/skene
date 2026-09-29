@@ -7,7 +7,7 @@ use std::{
   time::Duration,
 };
 
-use skene_core::{KeyEvent, Platform, Timer};
+use skene_core::{Key, KeyEvent, Platform, Timer};
 
 /// How long after the last character a type-ahead buffer is kept.
 pub const TYPE_AHEAD_RESET: Duration = Duration::from_millis(500);
@@ -38,7 +38,11 @@ impl TypeAhead {
       return None;
     }
 
-    let mut characters = event.key.chars();
+    let Key::Character(text) = &event.key
+    else {
+      return None;
+    };
+    let mut characters = text.chars();
     let character = characters.next().filter(|_| characters.next().is_none())?;
 
     if character.is_control() || (character == ' ' && self.buffer.borrow().is_empty()) {

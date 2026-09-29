@@ -360,13 +360,13 @@ fn shortcuts_act_by_the_physical_key_under_any_layout() {
 
     mount_document(value);
 
-    let cyrillic = |key: &str, code: &str| tui::KeyEvent {
-      code: code.to_owned(),
+    let cyrillic = |key: &str, code: tui::Code| tui::KeyEvent {
+      code,
       modifiers: tui::Modifiers::CTRL,
       ..tui::KeyEvent::new(key)
     };
 
-    tui::trigger_key_event(&cyrillic("\u{441}", "KeyC"));
+    tui::trigger_key_event(&cyrillic("\u{441}", tui::Code::KeyC));
 
     assert_eq!(tui::take_copied().as_deref(), Some("value"));
     assert!(!tui::quit_requested());

@@ -31,6 +31,7 @@ use skene_gui::{
   Inset,
   Media,
   MenuItem,
+  NamedKey,
   Overlay,
   Pinned,
   RadioMember,
@@ -330,7 +331,7 @@ fn a_key_release_and_a_repeat_reach_the_box() {
   let _ = mount(move || {
     Container::new()
       .handle_key_down(move |event| repeated.set(event.repeat))
-      .handle_key_up(move |event| released.set((event.key.clone(), event.code.clone())))
+      .handle_key_up(move |event| released.set((event.key.to_string(), event.code.to_string())))
       .set_child(RawTextField::new(TextEntry::new()))
       .build()
   });
@@ -554,7 +555,7 @@ fn escape_dismisses_the_topmost_popup_unless_taken() {
     }
 
     fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
-      if event.key == "Escape" {
+      if event.is(NamedKey::Escape) {
         Prevent::All
       }
       else {

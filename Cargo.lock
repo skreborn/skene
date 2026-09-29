@@ -1325,6 +1325,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "keyboard-types"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fbe853b403ae61a04233030ae8a79d94975281ed9770a1f9e246732b534b28d"
+dependencies = [
+ "bitflags",
+ "serde",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "kqueue"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2343,6 +2354,7 @@ version = "0.1.0"
 dependencies = [
  "async-task",
  "color",
+ "keyboard-types",
  "libm",
  "longest-increasing-subsequence",
  "num-traits",

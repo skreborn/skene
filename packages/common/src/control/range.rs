@@ -7,7 +7,9 @@ use skene_core::{
   Axis,
   ControlKind,
   EventKind,
+  Key,
   KeyEvent,
+  NamedKey,
   Platform,
   PointerButton,
   PointerEvent,
@@ -185,17 +187,21 @@ impl Range {
   }
 
   /// Where `key` takes the value; `None` when the key means nothing to a slider.
-  fn key_value(&self, key: &str) -> Option<f32> {
+  fn key_value(&self, key: &Key) -> Option<f32> {
     let range = self.range();
     let current = self.read();
+    let Key::Named(named) = key
+    else {
+      return None;
+    };
 
-    Some(match key {
-      "ArrowRight" | "ArrowUp" => range.nudge(current, 1.),
-      "ArrowLeft" | "ArrowDown" => range.nudge(current, -1.),
-      "PageUp" => range.page(current, 1.),
-      "PageDown" => range.page(current, -1.),
-      "Home" => range.min(),
-      "End" => range.max(),
+    Some(match named {
+      NamedKey::ArrowRight | NamedKey::ArrowUp => range.nudge(current, 1.),
+      NamedKey::ArrowLeft | NamedKey::ArrowDown => range.nudge(current, -1.),
+      NamedKey::PageUp => range.page(current, 1.),
+      NamedKey::PageDown => range.page(current, -1.),
+      NamedKey::Home => range.min(),
+      NamedKey::End => range.max(),
       _ => return None,
     })
   }

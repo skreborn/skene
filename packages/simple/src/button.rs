@@ -25,7 +25,7 @@ use skene_reactive::{Effect, With};
 use super::{
   SimpleLook,
   SimpleVariant,
-  shape::{RADIUS, SimpleUnit, border, palette, shape},
+  shape::{SimpleUnit, border, palette, shape},
 };
 
 /// The surface of the look in force on a button.
@@ -181,7 +181,7 @@ where
           .when(State::FocusVisible, FOCUS),
       )
       .set_border(border(shape.control_ring, BORDER))
-      .set_corner_radius(RADIUS)
+      .set_corner_radius(shape.control_radius)
       .set_cursor(MouseCursor::Click)
       .set_transition(Transition::new(Property::Color, SURFACE_SETTLE));
     let node = match self.content {

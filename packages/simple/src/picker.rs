@@ -35,17 +35,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{
-    MARK_RADIUS,
-    RADIUS,
-    SimpleMarks,
-    SimpleUnit,
-    as_part,
-    border,
-    define_defaults,
-    hairline,
-    shape,
-  },
+  shape::{SimpleMarks, SimpleUnit, as_part, border, define_defaults, hairline, shape},
 };
 
 /// The glyph after the chosen label.
@@ -179,7 +169,7 @@ where
       .set_padding(shape.list_inset)
       .set_color(SimplePalette::<P::Scalar>::CARD)
       .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
-      .set_corner_radius(RADIUS)
+      .set_corner_radius(shape.control_radius)
       .set_child(Column::<P>::new().set_children(rows));
 
     picker
@@ -197,7 +187,7 @@ where
             border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
           ),
       )
-      .set_corner_radius(RADIUS)
+      .set_corner_radius(shape.control_radius)
       .set_cursor(MouseCursor::Click)
       .set_options([AnyView::<P>::new(move || as_part::<P>(Part::List, surface))])
       .set_face(move |value: Memo<String>| face::<P>(&labels, value))
@@ -278,7 +268,7 @@ where
         )
         .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     )
-    .set_corner_radius(MARK_RADIUS)
+    .set_corner_radius(shape::<P>().mark_radius)
     .set_cursor(MouseCursor::Click)
     .set_part(Part::Item, check)
     .set_label(Label::new(caption).set_name(label))

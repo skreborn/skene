@@ -23,17 +23,6 @@ use skene_reactive::Memo;
 
 use super::SimplePalette;
 
-/// The corner radius of a control, in the medium's unit.
-pub(crate) const RADIUS: f32 = 8.;
-/// The corner radius of a card.
-pub(crate) const CARD_RADIUS: f32 = 12.;
-/// The corner radius of a checkbox mark.
-pub(crate) const MARK_RADIUS: f32 = 4.;
-/// The corner radius rounding a one-em box into a circle.
-pub(crate) const ROUND: f32 = 8.;
-/// The corner radius rounding a slider track's ends.
-pub(crate) const TRACK_RADIUS: f32 = 3.;
-
 /// The lengths the Simple views are drawn with, in one medium's unit.
 ///
 /// [`SimpleUnit`] gives each unit its shape: logical pixels keep the language's pixel
@@ -48,8 +37,13 @@ pub struct SimpleShape<N> {
   pub control_ring: N,
   /// The thickness of a text entry's or a picker face's border; zero draws none.
   pub field_ring: N,
+  /// The corner radius of a control, in the unit the medium measures radii in: logical
+  /// pixels, or rows in the terminal.
+  pub control_radius: f32,
   /// The inset between a card's edge and its content.
   pub card_inset: Inset<N>,
+  /// The corner radius of a card.
+  pub card_radius: f32,
   /// The inset between a picker's list surface and its rows.
   pub list_inset: Inset<N>,
   /// The inset between a picker row's edge and its caption.
@@ -66,6 +60,8 @@ pub struct SimpleShape<N> {
   pub mark_size: N,
   /// The thickness of a mark's or a ring's border; zero draws none.
   pub mark_ring: N,
+  /// The corner radius of a checkbox mark, a list row and a tooltip bubble.
+  pub mark_radius: f32,
   /// The surface of an unchecked mark or ring, which stands in for the ring where it
   /// has no thickness.
   pub mark_surface: TokenRef<Color>,
@@ -110,7 +106,9 @@ impl SimpleUnit for f32 {
     control_inset: Inset::symmetric(12., 8.),
     control_ring: 1.,
     field_ring: 1.,
+    control_radius: 8.,
     card_inset: Inset::all(24.),
+    card_radius: 12.,
     list_inset: Inset::all(4.),
     row_inset: Inset::all(6.),
     tooltip_inset: Inset::symmetric(8., 4.),
@@ -119,6 +117,7 @@ impl SimpleUnit for f32 {
     card_spacing: 16.,
     mark_size: 18.,
     mark_ring: 1.,
+    mark_radius: 4.,
     mark_surface: SimplePalette::<Self>::CARD,
     dot_size: 8.,
     track_height: 6.,
@@ -135,7 +134,9 @@ impl SimpleUnit for u32 {
     control_inset: Inset::symmetric(1, 0),
     control_ring: 0,
     field_ring: 1,
+    control_radius: 0.25,
     card_inset: Inset::symmetric(2, 1),
+    card_radius: 0.5,
     list_inset: Inset::all(0),
     row_inset: Inset::symmetric(1, 0),
     tooltip_inset: Inset::symmetric(1, 0),
@@ -144,6 +145,7 @@ impl SimpleUnit for u32 {
     card_spacing: 1,
     mark_size: 1,
     mark_ring: 0,
+    mark_radius: 0.25,
     mark_surface: SimplePalette::<Self>::BORDER,
     dot_size: 1,
     track_height: 1,
@@ -218,6 +220,6 @@ where
         border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
       ),
     )
-    .set_corner_radius(RADIUS)
+    .set_corner_radius(shape.control_radius)
     .set_cursor(MouseCursor::Text)
 }

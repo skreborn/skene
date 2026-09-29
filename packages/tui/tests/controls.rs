@@ -1176,3 +1176,22 @@ fn a_themed_glyph_set_draws_the_marks() {
     assert!(frame.contains("\u{25cb} b"), "{frame}");
   });
 }
+
+/// Where graphics show, a Simple button's corners round by a fraction of a row rather
+/// than by the pixel radius read as rows: its edge runs straight below the corner.
+#[test]
+fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
+  with_platform(|| {
+    let _ = tui::mount(|| SimpleButton::new("Save").into_any().build());
+
+    tui::trigger_graphics(true);
+
+    let pictures = tui::render_to_pictures(12, 2);
+    let backdrop = pictures.first().expect("the button's backdrop");
+    let width = usize::from(backdrop.width);
+    let alpha = |x: usize, y: usize| backdrop.pixels[(y * width + x) * 4 + 3];
+
+    assert_eq!(alpha(0, 0), 0, "the corner is rounded away");
+    assert_eq!(alpha(0, 5), 255, "the edge runs straight below the corner");
+  });
+}

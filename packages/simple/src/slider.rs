@@ -14,6 +14,7 @@ use skene_core::{
   NodeId,
   Part,
   Platform,
+  Scalar,
   Scene,
   SliderRange,
   State,
@@ -24,7 +25,7 @@ use skene_reactive::{Get, Set, Signal};
 
 use super::{
   SimplePalette,
-  shape::{ROUND, SimpleShape, SimpleUnit, TRACK_RADIUS, as_part, border, define_defaults, shape},
+  shape::{SimpleShape, SimpleUnit, as_part, border, define_defaults, shape},
 };
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
@@ -171,7 +172,7 @@ where
       Container::<P>::new()
         .derive_width(move || Dimension::Fraction(range.fraction_of(filled())))
         .set_height(Dimension::Length(shape.track_height))
-        .set_corner_radius(TRACK_RADIUS)
+        .set_corner_radius(shape.track_height.to_f32() / 2.)
         .set_color(SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     );
     let track = as_part::<P>(
@@ -179,7 +180,7 @@ where
       Container::<P>::new()
         .set_width(Dimension::Fraction(1.))
         .set_height(Dimension::Length(shape.track_height))
-        .set_corner_radius(TRACK_RADIUS)
+        .set_corner_radius(shape.track_height.to_f32() / 2.)
         .set_color(SimplePalette::<P::Scalar>::SECONDARY_SURFACE),
     );
     // The thumb is pinned, so the stack builds it; its part is recorded once it is.
@@ -267,7 +268,7 @@ where
     .bind_anchor(anchor)
     .set_width(Dimension::Length(shape.thumb_size))
     .set_height(Dimension::Length(shape.thumb_size))
-    .set_corner_radius(ROUND)
+    .set_corner_radius(shape.thumb_size.to_f32() / 2.)
     .set_color(
       shape
         .thumb_surface

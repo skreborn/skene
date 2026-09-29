@@ -23,7 +23,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{MARK_RADIUS, SimpleMarks, SimpleUnit, border, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -168,7 +168,7 @@ where
           border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
         ),
     )
-    .set_corner_radius(MARK_RADIUS)
+    .set_corner_radius(shape.mark_radius)
     .set_alignment(Alignment::CENTER)
     .set_child(
       Text::new("✓").set_color(

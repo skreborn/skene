@@ -7,7 +7,7 @@ use skene_core::{AnyKind, AnyView, IntoView, NoChild, NodeId, Placement, Platfor
 
 use super::{
   SimplePalette,
-  shape::{MARK_RADIUS, SimpleUnit, define_defaults, shape},
+  shape::{SimpleUnit, define_defaults, shape},
 };
 
 /// A ready-made tooltip: a bubble in the foreground color carrying its text in the
@@ -92,7 +92,7 @@ where
       .set_color(SimplePalette::<P::Scalar>::FOREGROUND)
       .set_text_color(SimplePalette::<P::Scalar>::BACKGROUND)
       .set_padding(shape::<P>().tooltip_inset)
-      .set_corner_radius(MARK_RADIUS)
+      .set_corner_radius(shape::<P>().mark_radius)
       .build()
   }
 }

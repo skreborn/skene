@@ -17,7 +17,7 @@ use skene_core::{
 
 use super::{
   SimplePalette,
-  shape::{MARK_RADIUS, RADIUS, SimpleUnit, define_defaults, hairline, shape},
+  shape::{SimpleUnit, define_defaults, hairline, shape},
 };
 
 /// A ready-made context menu.
@@ -95,7 +95,7 @@ where
     .set_padding(shape.list_inset)
     .set_color(SimplePalette::<P::Scalar>::CARD)
     .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
-    .set_corner_radius(RADIUS)
+    .set_corner_radius(shape.control_radius)
     .set_item_padding(shape.row_inset)
     .set_item_color(
       Color::TRANSPARENT
@@ -116,7 +116,7 @@ where
     .set_separator_color(SimplePalette::<P::Scalar>::BORDER)
     .set_shortcut_spacing(shape.shortcut_spacing)
     .set_item_cursor(MouseCursor::Click)
-    .set_item_corner_radius(MARK_RADIUS)
+    .set_item_corner_radius(shape.mark_radius)
 }
 
 impl<P: Platform> View<P> for SimpleContextMenu<P, AnyView<P>>

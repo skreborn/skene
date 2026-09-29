@@ -19,7 +19,7 @@ use skene_core::{
 
 use super::{
   SimplePalette,
-  shape::{CARD_RADIUS, SimpleUnit, define_defaults, hairline, shape},
+  shape::{SimpleUnit, define_defaults, hairline, shape},
 };
 
 /// A ready-made card: a raised, hairline-bordered, rounded surface grouping related
@@ -126,7 +126,7 @@ where
       .set_padding(shape::<P>().card_inset)
       .set_color(SimplePalette::<P::Scalar>::CARD)
       .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
-      .set_corner_radius(CARD_RADIUS)
+      .set_corner_radius(shape::<P>().card_radius)
       .set_child(self.column)
       .build()
   }

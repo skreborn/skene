@@ -424,13 +424,16 @@ impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_simp
 pub fn skene_simple::SimpleRadioGroup<P, skene_core::view::AnyView<P>>::build(self) -> skene_core::node::NodeId
 pub struct skene_simple::SimpleShape<N>
 pub skene_simple::SimpleShape::card_inset: skene_core::values::inset::Inset<N>
+pub skene_simple::SimpleShape::card_radius: f32
 pub skene_simple::SimpleShape::card_spacing: N
 pub skene_simple::SimpleShape::control_inset: skene_core::values::inset::Inset<N>
+pub skene_simple::SimpleShape::control_radius: f32
 pub skene_simple::SimpleShape::control_ring: N
 pub skene_simple::SimpleShape::dot_size: N
 pub skene_simple::SimpleShape::field_ring: N
 pub skene_simple::SimpleShape::indicator_spacing: N
 pub skene_simple::SimpleShape::list_inset: skene_core::values::inset::Inset<N>
+pub skene_simple::SimpleShape::mark_radius: f32
 pub skene_simple::SimpleShape::mark_ring: N
 pub skene_simple::SimpleShape::mark_size: N
 pub skene_simple::SimpleShape::mark_surface: skene_core::token::TokenRef<skene_core::values::color::Color>

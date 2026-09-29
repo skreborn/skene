@@ -25,6 +25,7 @@ use skene_core::{
   NodeId,
   Part,
   Platform,
+  Scalar,
   State,
   View,
   When,
@@ -34,7 +35,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{ROUND, SimpleMarks, SimpleUnit, border, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, border, define_defaults, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -230,7 +231,7 @@ where
   let dot = Container::<P>::new()
     .set_width(Dimension::Length(shape.dot_size))
     .set_height(Dimension::Length(shape.dot_size))
-    .set_corner_radius(ROUND / 2.)
+    .set_corner_radius(shape.dot_size.to_f32() / 2.)
     .set_color(
       Color::TRANSPARENT.when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     );
@@ -250,7 +251,7 @@ where
           border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
         ),
     )
-    .set_corner_radius(ROUND)
+    .set_corner_radius(shape.mark_size.to_f32() / 2.)
     .set_alignment(Alignment::CENTER)
     .set_child(dot)
 }

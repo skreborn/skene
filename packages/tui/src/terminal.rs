@@ -1575,7 +1575,7 @@ pub fn focused_node() -> Option<skene_core::NodeId> {
   end_turn();
   with_store(|store| {
     store
-      .focused
+      .focused()
       .and_then(|focused| store.record(focused).and_then(|record| record.node))
   })
 }

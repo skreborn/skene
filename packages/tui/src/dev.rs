@@ -182,7 +182,7 @@ fn scroll_snapshot() -> Option<Vec<(Position, u32, u32)>> {
 /// The focused node's position and, for a text entry, its caret and selection anchor.
 fn focus_snapshot() -> Option<(Position, Option<Caret>)> {
   let (focused, caret) = crate::try_with_store(|store| {
-    let focused = store.focused?;
+    let focused = store.focused()?;
     let caret = store
       .record(focused)
       .and_then(|record| record.kind.field())

@@ -25,6 +25,7 @@ use skene_core::{
   PointerPrecision,
   RunProps,
   RunStyle,
+  Scene,
   Shortcut,
   Size,
   Slot,
@@ -93,7 +94,7 @@ impl Handle {
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
 pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiExt>;
 
-pub(crate) use skene_core::{Focus, Interaction};
+pub(crate) use skene_core::Interaction;
 
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
@@ -830,14 +831,8 @@ pub(crate) struct Store {
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
   pub(crate) overlays: Vec<Handle>,
-  /// The node holding focus.
-  pub(crate) focused: Option<Handle>,
-  /// Whether focus shows while held: set by a key, cleared by a pointer press.
-  pub(crate) focus_visible: bool,
   /// The path from the root to the deepest node under the mouse, when known.
   hovered: Vec<Handle>,
-  /// The nodes on the hover path, for membership.
-  hovered_set: FxHashSet<Handle>,
   /// The nodes whose paint changed since the last frame; each repaints the rows it
   /// covered and covers.
   damaged: Vec<Handle>,
@@ -1007,10 +1002,7 @@ impl Store {
       taffy,
       root: Handle::new(0, 0),
       overlays: Vec::new(),
-      focused: None,
-      focus_visible: true,
       hovered: Vec::new(),
-      hovered_set: FxHashSet::default(),
       damaged: Vec::new(),
       damaged_rects: Vec::new(),
       last_frame: None,
@@ -1206,16 +1198,10 @@ impl Store {
 
     self.overlays.retain(|overlay| *overlay != handle);
 
-    if self.hovered_set.remove(&handle) {
-      self.hovered.retain(|hovered| *hovered != handle);
-    }
+    self.hovered.retain(|hovered| *hovered != handle);
 
     if let Some(rect) = record.painted {
       self.damaged_rects.push(rect);
-    }
-
-    if self.focused == Some(handle) {
-      self.focused = None;
     }
 
     if self.reveal == Some(handle) {
@@ -1442,7 +1428,7 @@ impl Store {
 
   /// The focused link run's node and destination, while a link holds focus.
   pub(crate) fn focused_link(&self) -> Option<(NodeId, String)> {
-    let record = self.record(self.focused?)?;
+    let record = self.record(self.focused()?)?;
 
     match &record.kind {
       Kind::Run { props, .. } => Some((record.node?, props.link.clone()?)),
@@ -1450,21 +1436,34 @@ impl Store {
     }
   }
 
+  /// The node holding focus, as the scene holds it.
+  #[expect(
+    clippy::unused_self,
+    reason = "every reader holds the store, and focus is asked of it as of the rest"
+  )]
+  pub(crate) fn focused(&self) -> Option<Handle> {
+    Scene::<Tui>::with(|scene| scene.focused().and_then(|node| scene.sink(node)))
+  }
+
   /// Whether `handle` holds focus that shows: after a key, or as a text entry, and not
   /// since a pointer press.
   pub(crate) fn focus_shows(&self, handle: Handle) -> bool {
-    self.focused == Some(handle) && (self.focus_visible || self.is_field(handle))
+    let node = self.record(handle).and_then(|record| record.node);
+
+    Scene::<Tui>::with(|scene| node.is_some_and(|node| scene.focus_shows(node)))
   }
 
   /// Records whether focus shows, repainting the focused node when that changes.
   pub(crate) fn set_focus_visible(&mut self, visible: bool) {
-    if self.focus_visible == visible {
-      return;
-    }
+    let changed = Scene::<Tui>::with(|scene| {
+      let changed = scene.focus_visible() != visible;
 
-    self.focus_visible = visible;
+      scene.set_focus_visible(visible);
 
-    if let Some(focused) = self.focused {
+      changed
+    });
+
+    if changed && let Some(focused) = self.focused() {
       self.damage(focused);
     }
   }
@@ -1479,24 +1478,14 @@ impl Store {
     self.enclosing_control(handle)
   }
 
-  /// The interaction state `handle`'s conditions resolve against now.
+  /// The interaction state `handle`'s conditions resolve against now, as the scene
+  /// resolves it.
   pub(crate) fn interaction(&self, handle: Handle) -> Interaction {
-    let control = self.enclosing_control(handle);
-    let holder = control.unwrap_or(handle);
+    let node = self.record(handle).and_then(|record| record.node);
 
-    Interaction {
-      hovered: self.hovered_set.contains(&handle),
-      focus: Focus::new(self.focused == Some(holder), self.focus_shows(holder)),
-      pressed: self.left_held
-        && self
-          .press
-          .as_ref()
-          .is_some_and(|press| press.path.contains(&holder)),
-      control: control.and_then(|control| match &self.record(control)?.kind {
-        Kind::Control { state, .. } => Some(*state),
-        _ => None,
-      }),
-    }
+    Scene::<Tui>::with(|scene| {
+      node.map_or_else(Interaction::default, |node| scene.interaction(node))
+    })
   }
 
   /// The named containers above `handle`, nearest first, with their last measured
@@ -1555,8 +1544,6 @@ impl Store {
   /// whose style it changed.
   pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) {
     self.restyle_pending |= self.hovered != next;
-    self.hovered_set.clear();
-    self.hovered_set.extend(next.iter().copied());
     self.hovered = next;
   }
 

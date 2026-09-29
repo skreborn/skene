@@ -875,7 +875,7 @@ impl Store {
     &mut self,
     edit: impl FnOnce(&mut Field, Area, bool) -> Option<Edit>,
   ) -> Option<(skene_core::NodeId, String)> {
-    let focused = self.focused?;
+    let focused = self.focused()?;
 
     self.edit_entry(focused, edit)
   }
@@ -937,7 +937,7 @@ pub(crate) fn report_selections() {
 /// Inserts `text` into the focused entry in place of its selection, reporting the
 /// changed value through the node's change handlers.
 pub(crate) fn paste_focused(text: &str) {
-  let target = with_store(|store| store.focused);
+  let target = with_store(|store| store.focused());
 
   paste_into(target, text);
 }

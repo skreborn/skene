@@ -106,7 +106,7 @@ impl Store {
   fn stop_beside_focus(&self, order: &[Handle], step: isize) -> Handle {
     let positions = self.document_positions();
     let position = |node: &Handle| positions.get(node).copied();
-    let focused = self.focused.and_then(|focused| position(&focused));
+    let focused = self.focused().and_then(|focused| position(&focused));
     let beside = focused.and_then(|focused| {
       if step >= 0 {
         order
@@ -804,7 +804,7 @@ impl Store {
     open: bool,
     anchor: Option<Handle>,
   ) -> OverlayFocus {
-    let focused = self.focused;
+    let focused = self.focused();
     let Some(Kind::Overlay {
       open: held,
       anchor: bound,
@@ -888,11 +888,11 @@ pub(crate) fn set_focus_restored(next: Option<Handle>) {
 }
 
 fn focus_on(next: Option<Handle>, restored: bool) {
-  let (previous, gained, dismissed) = store(|store| {
-    let previous = std::mem::replace(&mut store.focused, next);
+  let moved = store(|store| {
+    let previous = store.focused();
 
     if previous == next {
-      return (None, None, Vec::new());
+      return None;
     }
 
     if let Some(previous) = previous {
@@ -922,17 +922,18 @@ fn focus_on(next: Option<Handle>, restored: bool) {
       store.reveal = Some(next);
     }
 
-    (
-      previous.and_then(|previous| store.record(previous).and_then(|record| record.node)),
+    Some((
       next.and_then(|next| store.record(next).and_then(|record| record.node)),
       store.popups_left_by(next),
-    )
+    ))
   });
 
-  notify_focus_moved::<Tui>(previous, gained);
+  if let Some((gained, dismissed)) = moved {
+    notify_focus_moved::<Tui>(gained);
 
-  for popup in dismissed {
-    notify_dismiss::<Tui>(popup);
+    for popup in dismissed {
+      notify_dismiss::<Tui>(popup);
+    }
   }
 
   crate::field::report_selections();
@@ -950,7 +951,7 @@ pub(crate) fn move_focus(step: isize) {
     }
 
     let index = store
-      .focused
+      .focused()
       .and_then(|focused| order.iter().position(|node| *node == focused));
 
     let Some(index) = index
@@ -1188,7 +1189,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
 
   // A right press on an entry focuses it too, so its edit menu is the focused entry's.
   let entry = focus_target.filter(|target| store(|store| store.is_field(*target)));
-  let entry_held_focus = entry.is_some_and(|entry| store(|store| store.focused == Some(entry)));
+  let entry_held_focus = entry.is_some_and(|entry| store(|store| store.focused() == Some(entry)));
 
   if button == PointerButton::Primary || entry.is_some() {
     set_focus(focus_target);
@@ -1207,6 +1208,8 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
         target: focus_target,
       });
       store.restyle_pending = true;
+
+      Scene::<Tui>::with(|scene| scene.set_pressed(node));
     }
   });
 
@@ -1336,6 +1339,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     };
 
     store.restyle_pending = true;
+    Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
     let released = store.pointer_path(x, y);
     let common = press
@@ -1514,7 +1518,7 @@ pub(crate) fn wheel(x: u16, y: u16, delta_x: i64, delta_y: i64) {
 pub(crate) fn page_scroll(pages: i64) {
   let target = store(|store| {
     let target = store
-      .focused
+      .focused()
       .and_then(|focused| {
         store
           .ancestors(focused)
@@ -1562,7 +1566,7 @@ pub(crate) fn key(event: &KeyEvent) {
       store.set_focus_visible(true);
     }
 
-    let handle = store.focused.unwrap_or(store.root);
+    let handle = store.focused().unwrap_or(store.root);
 
     store.record(handle).and_then(|record| record.node)
   });
@@ -1584,7 +1588,7 @@ pub(crate) fn key(event: &KeyEvent) {
 /// response of its own to one.
 pub(crate) fn key_up(event: &KeyEvent) {
   let target = store(|store| {
-    let handle = store.focused.unwrap_or(store.root);
+    let handle = store.focused().unwrap_or(store.root);
 
     store.record(handle).and_then(|record| record.node)
   });
@@ -1707,7 +1711,7 @@ fn key_default(event: &KeyEvent) {
 /// corner.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = store(|store| {
-    let handle = store.focused.unwrap_or(store.root);
+    let handle = store.focused().unwrap_or(store.root);
     let node = store.record(handle).and_then(|record| record.node)?;
     let (origin_x, origin_y) = store.screen_origin(handle);
     let (_, height) = store.node_size(handle);

@@ -530,9 +530,10 @@ fn on_pointer_out(event: &web_sys::Event) {
   }
 }
 
-/// Focus reaching a node: the move from the node it left, if any, is notified whole.
+/// Focus reaching a node: the move from the node the scene holds focus on is notified
+/// whole.
 fn on_focus_in(event: &web_sys::Event) {
-  notify_focus_moved::<Web>(node_at(focus_related(event)), node_at(event.target()));
+  notify_focus_moved::<Web>(node_at(event.target()));
 }
 
 fn on_focus_out(event: &web_sys::Event) {
@@ -549,7 +550,7 @@ fn on_focus_out(event: &web_sys::Event) {
 
   // A move to another node is notified by the `focusin` that follows it.
   if node_at(focus_related(event)).is_none() {
-    notify_focus_moved::<Web>(node_at(event.target()), None);
+    notify_focus_moved::<Web>(None);
   }
 }
 

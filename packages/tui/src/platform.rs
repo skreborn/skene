@@ -403,7 +403,7 @@ impl Platform for Tui {
   }
 
   fn blur(sink: Handle) {
-    let holds = with_store(|store| store.focused == Some(sink));
+    let holds = with_store(|store| store.focused() == Some(sink));
 
     if holds {
       interaction::set_focus(None);
@@ -413,7 +413,7 @@ impl Platform for Tui {
   fn focus_visible() -> bool {
     with_store(|store| {
       store
-        .focused
+        .focused()
         .is_some_and(|focused| store.focus_shows(focused))
     })
   }

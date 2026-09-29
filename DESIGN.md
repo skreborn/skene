@@ -95,7 +95,11 @@ controls traverses by it. The scene answers which overlays a press dismisses
 (`Scene::dismissed_by_press`) for every platform: from the top down, each overlay the
 press lands outside of, on neither it nor the anchor it opened from, until one it lands
 inside of, a modal ending the descent and dismissed itself; the web leaves a modal's
-backdrop to its click.
+backdrop to its click. The scene holds the interaction every platform reports: the
+focused node with whether focus shows (a key sets it, a pointer press clears it, a text
+entry's shows however reached), the pressed node and the hovered one, dropping each
+with its node, and resolves every node's interaction from them (`Scene::interaction`),
+so the terminal and headless resolve states alike.
 
 **`Platform` is a zero-sized trait with associated types**, monomorphized, hidden behind
 each facade's aliases: `Sink`, `Scalar` (`f32` or `u32`), `StyleExt` (the medium's own

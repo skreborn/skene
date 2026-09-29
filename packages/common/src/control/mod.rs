@@ -944,6 +944,10 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
           drags: behavior.drags(),
         })
       });
+
+      if matches!(kind, ControlKind::TextField | ControlKind::TextEditor) {
+        Scene::<P>::with(|scene| scene.note_entry(node));
+      }
       // A caption whose text is the platform's to read names the control by reference;
       // it is built after the control, so the markup keeps the control first.
       let (label, labelled_by) = match label {

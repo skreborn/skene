@@ -24,9 +24,11 @@ use crate::{
   ClickHandler,
   Dimension,
   Flexibility,
+  Focus,
   FocusOrder,
   GridPlacement,
   Inset,
+  Interaction,
   ItemAlignment,
   KeyHandler,
   Line,
@@ -406,6 +408,7 @@ pub struct NodeRecord<P: Platform> {
   segment: Option<Box<Segment>>,
   cache: Option<Box<TokenCache<P::TokenValue>>>,
   control: Option<ControlState>,
+  entry: bool,
   part: Option<Part>,
   position: Position,
   access: Option<Box<AccessReports>>,
@@ -625,6 +628,9 @@ pub struct Scene<P: Platform> {
   mirrors: Vec<Mirror<P>>,
   open_overlays: Vec<NodeId>,
   hovered: Option<NodeId>,
+  pressed: Option<NodeId>,
+  focused: Option<NodeId>,
+  focus_visible: bool,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -657,6 +663,9 @@ impl<P: Platform> Scene<P> {
       mirrors: Vec::new(),
       open_overlays: Vec::new(),
       hovered: None,
+      pressed: None,
+      focused: None,
+      focus_visible: true,
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }
@@ -749,6 +758,7 @@ impl<P: Platform> Scene<P> {
       segment: None,
       cache: None,
       control: is_control.then_some(ControlState::DEFAULT),
+      entry: false,
       part: is_control.then_some(Part::Root),
       position,
       access: None,
@@ -906,6 +916,92 @@ impl<P: Platform> Scene<P> {
       .is_some_and(|hovered| self.ancestry(hovered).contains(&node))
   }
 
+  /// The deepest node a primary press landed on, until its release.
+  #[inline(always)]
+  #[must_use]
+  pub const fn pressed(&self) -> Option<NodeId> {
+    self.pressed
+  }
+
+  /// Holds a primary press on `node`, or ends the press for `None`.
+  #[inline(always)]
+  pub const fn set_pressed(&mut self, node: Option<NodeId>) {
+    self.pressed = node;
+  }
+
+  /// Whether a primary press is held on `node` or a node beneath it, as `:active` holds.
+  #[must_use]
+  pub fn is_pressed(&self, node: NodeId) -> bool {
+    self
+      .pressed
+      .is_some_and(|pressed| self.ancestry(pressed).contains(&node))
+  }
+
+  /// The node holding focus.
+  #[inline(always)]
+  #[must_use]
+  pub const fn focused(&self) -> Option<NodeId> {
+    self.focused
+  }
+
+  /// Moves focus to `next`, returning the nodes whose subtree it left, innermost first,
+  /// and those whose subtree it reached, outermost first.
+  pub fn move_focus(
+    &mut self,
+    next: Option<NodeId>,
+  ) -> (SmallVec<[NodeId; 16]>, SmallVec<[NodeId; 16]>) {
+    let previous = std::mem::replace(&mut self.focused, next);
+    let left = self.crossed(previous, next);
+    let mut reached = self.crossed(next, previous);
+
+    reached.reverse();
+
+    (left, reached)
+  }
+
+  /// Whether focus shows while held: set by a key, cleared by a pointer press.
+  #[inline(always)]
+  #[must_use]
+  pub const fn focus_visible(&self) -> bool {
+    self.focus_visible
+  }
+
+  /// Records whether focus shows while held.
+  #[inline(always)]
+  pub const fn set_focus_visible(&mut self, visible: bool) {
+    self.focus_visible = visible;
+  }
+
+  /// Records that the control `node` is a text entry, whose focus shows however it was
+  /// reached, as `:focus-visible` does on an `<input>`.
+  pub fn note_entry(&mut self, node: NodeId) {
+    if let Some(record) = self.record_mut(node) {
+      record.entry = true;
+    }
+  }
+
+  /// Whether `node` holds focus that shows: reached by a key and not since a pointer
+  /// press, or held by a text entry.
+  #[must_use]
+  pub fn focus_shows(&self, node: NodeId) -> bool {
+    self.focused == Some(node)
+      && (self.focus_visible || self.record(node).is_some_and(|record| record.entry))
+  }
+
+  /// The interaction `node`'s conditions resolve against: its own hover, the focus and
+  /// press of the control enclosing it or of itself, and that control's state.
+  pub fn interaction(&self, node: NodeId) -> Interaction {
+    let control = self.enclosing_control(node);
+    let holder = control.unwrap_or(node);
+
+    Interaction {
+      hovered: self.is_hovered(node),
+      focus: Focus::new(self.focused == Some(holder), self.focus_shows(holder)),
+      pressed: self.is_pressed(holder),
+      control: control.and_then(|control| self.control_state(control)),
+    }
+  }
+
   /// Calls `f` with each child of `node`, in order.
   #[inline(always)]
   pub fn for_each_child(&self, node: NodeId, mut visit: impl FnMut(NodeId)) {
@@ -984,6 +1080,12 @@ impl<P: Platform> Scene<P> {
 
       if record.overlay.is_some_and(|overlay| overlay.open) {
         self.open_overlays.retain(|open| *open != node);
+      }
+
+      for held in [&mut self.hovered, &mut self.pressed, &mut self.focused] {
+        if *held == Some(node) {
+          *held = None;
+        }
       }
 
       self.mirrors.push(Mirror::Destroy(record.sink));
@@ -2420,5 +2522,48 @@ mod tests {
     assert_eq!(dismissed(Some(menu)), [submenu]);
     assert_eq!(dismissed(Some(page)), [submenu, menu, modal]);
     assert_eq!(dismissed(None), [submenu, menu, modal]);
+  }
+
+  /// Focus shows after a key and always on a text entry, a press holds along its
+  /// ancestors, and a destroyed node's focus is gone, the scene resolving each node's
+  /// interaction from them.
+  #[test]
+  fn the_scene_holds_focus_press_and_their_rules() {
+    TestPlatform::reset();
+
+    let root = TestBox::node();
+    let [button, entry] = std::array::from_fn(|_| TestBox::node());
+
+    with(|scene| {
+      scene.attach(root, button, None);
+      scene.attach(root, entry, None);
+      scene.note_entry(entry);
+      scene.set_focus_visible(false);
+
+      let _ = scene.move_focus(Some(button));
+    });
+
+    assert!(
+      with(|scene| !scene.focus_shows(button)),
+      "focus a press gave"
+    );
+
+    with(|scene| {
+      let _ = scene.move_focus(Some(entry));
+
+      scene.set_pressed(Some(entry));
+    });
+
+    assert!(
+      with(|scene| scene.focus_shows(entry)),
+      "an entry's focus shows"
+    );
+    assert!(with(|scene| scene.interaction(root).pressed));
+    assert!(with(|scene| !scene.interaction(button).pressed));
+
+    with(|scene| scene.destroy(entry));
+
+    assert_eq!(with(|scene| scene.focused()), None);
+    assert_eq!(with(|scene| scene.pressed()), None);
   }
 }

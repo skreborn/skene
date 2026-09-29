@@ -8,7 +8,6 @@ use skene_core::{
   BoxKeyframe,
   ContainerName,
   Environment,
-  Focus,
   Interaction,
   NoProperty,
   NodeId,
@@ -44,18 +43,9 @@ pub(crate) struct Env {
 impl Env {
   /// The environment of `node`; `None` for a stale id.
   pub(crate) fn of(node: NodeId) -> Option<Self> {
-    let pressed = with_store(|store| store.pressed);
-    let (handle, control, pressed, hovered, names) = Scene::<Headless>::with(|scene| {
+    let (handle, interaction, names) = Scene::<Headless>::with(|scene| {
       let handle = *scene.record(node)?.sink();
-      let holder = scene.enclosing_control(node).unwrap_or(node);
-      let control = scene.enclosing_control(node).and_then(|control| {
-        let record = scene.record(control)?;
-
-        Some((*record.sink(), record.control_state()?))
-      });
-      let pressed = std::iter::successors(pressed, |pressed| scene.parent(*pressed))
-        .any(|pressed| pressed == holder);
-      let hovered = scene.is_hovered(node);
+      let interaction = scene.interaction(node);
       let mut names = Vec::new();
       let mut current = scene.parent(node);
 
@@ -67,23 +57,16 @@ impl Env {
         current = scene.parent(ancestor);
       }
 
-      Some((handle, control, pressed, hovered, names))
+      Some((handle, interaction, names))
     })?;
 
     with_store(|store| {
       store.record(handle)?;
 
-      let focus_holder = control.map_or(handle, |(control, _)| control);
-
       Some(Self {
         node: Some(node),
         environment: store.environment(),
-        interaction: Interaction {
-          hovered,
-          focus: Focus::new(store.focused == Some(focus_holder), store.focus_visible),
-          pressed,
-          control: control.map(|(_, state)| state),
-        },
+        interaction,
         containers: names
           .into_iter()
           .map(|name| (name, store.container_sizes.get(&name).copied()))

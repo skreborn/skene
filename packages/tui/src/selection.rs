@@ -276,14 +276,14 @@ impl Store {
 
   /// The focused text entry, when one holds focus.
   pub(crate) fn focused_entry(&self) -> Option<Handle> {
-    self.focused.filter(|focused| self.is_field(*focused))
+    self.focused().filter(|focused| self.is_field(*focused))
   }
 
   /// The entry the clipboard acts on: the focused entry, or the entry focus left for
   /// the open popup it now sits in.
   pub(crate) fn clipboard_entry(&self) -> Option<Handle> {
     self.focused_entry().or_else(|| {
-      let focused = self.focused?;
+      let focused = self.focused()?;
       let ancestors = self.ancestors(focused);
       let popup = self
         .open_overlays()

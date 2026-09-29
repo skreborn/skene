@@ -3578,6 +3578,9 @@ pub fn skene_core::Scene<P>::detach(&mut self, skene_core::NodeId, skene_core::N
 pub fn skene_core::Scene<P>::dismissed_by_press(&self, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>) -> alloc::vec::Vec<skene_core::NodeId>
 pub fn skene_core::Scene<P>::enclosing_control(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::option::Option<skene_core::FocusOrder>
+pub fn skene_core::Scene<P>::focus_shows(&self, skene_core::NodeId) -> bool
+pub const fn skene_core::Scene<P>::focus_visible(&self) -> bool
+pub const fn skene_core::Scene<P>::focused(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::for_each_child(&self, skene_core::NodeId, impl core::ops::function::FnMut(skene_core::NodeId))
 pub fn skene_core::Scene<P>::handle_blur(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_change(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ChangeHandler>)
@@ -3599,19 +3602,24 @@ pub fn skene_core::Scene<P>::handle_toggle(&mut self, skene_core::NodeId, alloc:
 pub fn skene_core::Scene<P>::handlers(&self, skene_core::NodeId) -> core::option::Option<&skene_core::HandlerSet>
 pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::insert_in_segment(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::Scene<P>::interaction(&self, skene_core::NodeId) -> skene_core::Interaction
 pub fn skene_core::Scene<P>::is_borrowed() -> bool
 pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_modal(&self, skene_core::NodeId) -> bool
+pub fn skene_core::Scene<P>::is_pressed(&self, skene_core::NodeId) -> bool
+pub fn skene_core::Scene<P>::move_focus(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::new() -> Self
 pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::Position) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::note_access(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>)
+pub fn skene_core::Scene<P>::note_entry(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::note_focus_order(&mut self, skene_core::NodeId, core::option::Option<skene_core::FocusOrder>)
 pub fn skene_core::Scene<P>::note_overlay(&mut self, skene_core::NodeId, bool)
 pub fn skene_core::Scene<P>::open_overlays(&self) -> &[skene_core::NodeId]
 pub fn skene_core::Scene<P>::overlay_anchor(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::parent(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::part(&self, skene_core::NodeId) -> core::option::Option<skene_core::Part>
+pub const fn skene_core::Scene<P>::pressed(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::reachable_under_modal(&self, &[skene_core::NodeId], skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::record(&self, skene_core::NodeId) -> core::option::Option<&skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::record_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut skene_core::NodeRecord<P>>
@@ -3626,9 +3634,11 @@ pub fn skene_core::Scene<P>::set_annotation(&mut self, skene_core::NodeId, skene
 pub fn skene_core::Scene<P>::set_container(&mut self, skene_core::NodeId, skene_core::ContainerName)
 pub fn skene_core::Scene<P>::set_control_state(&mut self, skene_core::NodeId, skene_core::ControlState)
 pub fn skene_core::Scene<P>::set_focus_order(&mut self, skene_core::NodeId, core::option::Option<skene_core::FocusOrder>)
+pub const fn skene_core::Scene<P>::set_focus_visible(&mut self, bool)
 pub fn skene_core::Scene<P>::set_overlay_open(&mut self, skene_core::NodeId, bool, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::set_part(&mut self, skene_core::NodeId, skene_core::Part)
 pub fn skene_core::Scene<P>::set_pending_annotation(&mut self, skene_core::Annotation<P>)
+pub const fn skene_core::Scene<P>::set_pressed(&mut self, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::sink(&self, skene_core::NodeId) -> core::option::Option<<P as skene_core::Platform>::Sink>
 pub fn skene_core::Scene<P>::tab_order(&self, skene_core::NodeId, &[skene_core::NodeId], impl core::ops::function::Fn(skene_core::NodeId) -> bool) -> alloc::vec::Vec<skene_core::NodeId>
 pub const fn skene_core::Scene<P>::take_pending_annotation(&mut self) -> core::option::Option<skene_core::Annotation<P>>
@@ -4660,7 +4670,7 @@ pub fn skene_core::item_window(f32, f32, f32, usize, usize) -> skene_core::ItemW
 pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::ItemWindow
 pub fn skene_core::notify_change<P: skene_core::Platform>(skene_core::NodeId, &str)
 pub fn skene_core::notify_dismiss<P: skene_core::Platform>(skene_core::NodeId)
-pub fn skene_core::notify_focus_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>, core::option::Option<skene_core::NodeId>)
+pub fn skene_core::notify_focus_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>)
 pub fn skene_core::notify_pointer_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>)
 pub fn skene_core::notify_scroll<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ScrollEvent)
 pub fn skene_core::notify_selection_change<P: skene_core::Platform>(skene_core::NodeId, skene_core::TextSelection)

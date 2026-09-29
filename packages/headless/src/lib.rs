@@ -347,19 +347,29 @@ impl Platform for Headless {
   }
 
   fn focus(sink: Handle) {
-    with_store(|store| store.focused = Some(sink));
+    if let Some(node) = with_record(sink, |record| record.node).flatten() {
+      notify_focus_moved::<Self>(Some(node));
+    }
   }
 
   fn blur(sink: Handle) {
-    with_store(|store| {
-      if store.focused == Some(sink) {
-        store.focused = None;
-      }
+    let holds = Scene::<Self>::with(|scene| {
+      scene
+        .focused()
+        .is_some_and(|focused| scene.sink(focused) == Some(sink))
     });
+
+    if holds {
+      notify_focus_moved::<Self>(None);
+    }
   }
 
   fn focus_visible() -> bool {
-    with_store(|store| store.focused.is_some() && store.focus_visible)
+    Scene::<Self>::with(|scene| {
+      scene
+        .focused()
+        .is_some_and(|focused| scene.focus_shows(focused))
+    })
   }
 
   fn set_value(sink: Handle, value: &str) {
@@ -571,7 +581,7 @@ pub fn trigger_click(node: NodeId) -> Prevented {
 /// here on.
 pub fn trigger_key_down(node: NodeId, event: &KeyEvent) -> Prevented {
   trigger(|| {
-    with_store(|store| store.focus_visible = true);
+    Scene::<Headless>::with(|scene| scene.set_focus_visible(true));
 
     dispatch_key_down::<Headless>(node, event)
   })
@@ -589,11 +599,11 @@ pub fn trigger_key_up(node: NodeId, event: &KeyEvent) -> Prevented {
 /// release.
 pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
   trigger(|| {
-    with_store(|store| {
-      store.focus_visible = false;
+    Scene::<Headless>::with(|scene| {
+      scene.set_focus_visible(false);
 
       if event.button == Some(PointerButton::Primary) {
-        store.pressed = Some(node);
+        scene.set_pressed(Some(node));
       }
     });
 
@@ -616,7 +626,7 @@ pub fn trigger_pointer_down(node: NodeId, event: &PointerEvent) -> Prevented {
 pub fn trigger_pointer_up(node: NodeId, event: &PointerEvent) -> Prevented {
   trigger(|| {
     if event.button == Some(PointerButton::Primary) {
-      with_store(|store| store.pressed = None);
+      Scene::<Headless>::with(|scene| scene.set_pressed(None));
     }
 
     dispatch_pointer_up::<Headless>(node, event)
@@ -643,27 +653,16 @@ pub fn trigger_pointer_leave(node: NodeId) {
 /// Moves focus to `node`, notifying each node whose subtree focus left and each whose
 /// subtree it reached.
 pub fn trigger_focus(node: NodeId) {
-  trigger(|| {
-    let previous = with_store(|store| {
-      store
-        .focused
-        .and_then(|focused| store.record(focused)?.node)
-    });
-
-    move_focus(node);
-    notify_focus_moved::<Headless>(previous, Some(node));
-  });
+  trigger(|| notify_focus_moved::<Headless>(Some(node)));
 }
 
 /// Takes focus off `node`, if it holds it, notifying `node` and each ancestor whose
 /// subtree held it.
 pub fn trigger_blur(node: NodeId) {
   trigger(|| {
-    if let Some(handle) = handle(node) {
-      Headless::blur(handle);
+    if Scene::<Headless>::with(|scene| scene.focused()) == Some(node) {
+      notify_focus_moved::<Headless>(None);
     }
-
-    notify_focus_moved::<Headless>(Some(node), None);
   });
 }
 
@@ -965,13 +964,6 @@ fn record_container_size(name: ContainerName, size: Size<f32>) {
   sizes.set(name, size);
 }
 
-/// Records focus on `node`.
-fn move_focus(node: NodeId) {
-  let handle = handle(node);
-
-  with_store(|store| store.focused = handle);
-}
-
 /// Whether the pointer is over `node` or a node beneath it.
 #[must_use]
 pub fn is_hovered(node: NodeId) -> bool {
@@ -985,9 +977,7 @@ pub fn is_hovered(node: NodeId) -> bool {
 pub fn is_focused(node: NodeId) -> bool {
   end_turn();
 
-  let handle = handle(node);
-
-  handle.is_some() && with_store(|store| store.focused == handle)
+  Scene::<Headless>::with(|scene| scene.focused()) == Some(node)
 }
 
 /// The tree under `node` as the layout sees it: one line per box or run, indented by

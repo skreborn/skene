@@ -140,21 +140,20 @@ pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
   });
 }
 
-/// Notifies the nodes focus left and reached as it moved from `from` to `to`.
+/// Moves the scene's focus to `next`, or off every node for `None`.
 ///
-/// Either may be none. Each node whose subtree held focus and no longer does is blurred,
-/// innermost first, then each whose subtree holds it and did not is focused, outermost
-/// first, as `:focus-within` changes.
-pub fn notify_focus_moved<P: Platform>(from: Option<NodeId>, to: Option<NodeId>) {
-  let (left, reached) =
-    Scene::<P>::with(|scene| (scene.crossed(from, to), scene.crossed(to, from)));
+/// Each node whose subtree held focus and no longer does is blurred, innermost first,
+/// then each whose subtree holds it and did not is focused, outermost first, as
+/// `:focus-within` changes.
+pub fn notify_focus_moved<P: Platform>(next: Option<NodeId>) {
+  let (left, reached) = Scene::<P>::with(|scene| scene.move_focus(next));
 
   batch(|| {
     for node in left {
       notify::<P, _>(node, all(HandlerSet::blur), |handler| handler());
     }
 
-    for node in reached.into_iter().rev() {
+    for node in reached {
       notify::<P, _>(node, all(HandlerSet::focus), |handler| handler());
     }
   });
@@ -606,21 +605,21 @@ mod tests {
       }
     });
 
-    notify_focus_moved::<TestPlatform>(None, Some(inner));
+    notify_focus_moved::<TestPlatform>(Some(inner));
 
     assert_eq!(
       std::mem::take(&mut *log.borrow_mut()),
       ["outer focus", "middle focus", "inner focus"]
     );
 
-    notify_focus_moved::<TestPlatform>(Some(inner), Some(sibling));
+    notify_focus_moved::<TestPlatform>(Some(sibling));
 
     assert_eq!(
       std::mem::take(&mut *log.borrow_mut()),
       ["inner blur", "middle blur", "sibling focus"]
     );
 
-    notify_focus_moved::<TestPlatform>(Some(sibling), None);
+    notify_focus_moved::<TestPlatform>(None);
 
     assert_eq!(*log.borrow(), ["sibling blur", "outer blur"]);
   }

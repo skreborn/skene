@@ -4,7 +4,7 @@ use std::{fmt::Debug, rc::Rc};
 
 use smallvec::SmallVec;
 
-use super::{Condition, Expr, Media, Scalar, State, Token, TokenRef};
+use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
 use crate::{Dimension, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
@@ -16,8 +16,8 @@ use crate::{Dimension, Spacing};
 pub enum StaticLeaf<T> {
   /// A literal value.
   Fixed(T),
-  /// A reference to a token, resolved where the property is realized.
-  Token(TokenRef<T>),
+  /// A token, by its name, resolved where the property is realized.
+  Token(TokenName),
   /// An expression, evaluated where the property is realized.
   Expr(Expr<T>),
 }
@@ -29,7 +29,7 @@ impl<T> StaticLeaf<T> {
   pub(crate) fn map<U>(self, map: impl FnOnce(T) -> U) -> StaticLeaf<U> {
     match self {
       Self::Fixed(value) => StaticLeaf::Fixed(map(value)),
-      Self::Token(reference) => StaticLeaf::Token(TokenRef::new(reference.name().as_str())),
+      Self::Token(name) => StaticLeaf::Token(name),
       Self::Expr(expr) => StaticLeaf::Expr(Expr::from_node(expr.into_node())),
     }
   }
@@ -298,24 +298,24 @@ impl<T> From<T> for StaticLeaf<T> {
   }
 }
 
-impl<T> From<TokenRef<T>> for StaticLeaf<T> {
+impl<T: Tokenable> From<TokenRef<T>> for StaticLeaf<T> {
   #[inline(always)]
   fn from(reference: TokenRef<T>) -> Self {
-    Self::Token(reference)
+    Self::Token(reference.name())
   }
 }
 
-impl<T, N: Scalar> From<&Token<T, N>> for StaticLeaf<T> {
+impl<T: Tokenable, N: Scalar> From<&Token<T, N>> for StaticLeaf<T> {
   #[inline(always)]
   fn from(token: &Token<T, N>) -> Self {
-    Self::Token(token.reference())
+    Self::Token(token.name())
   }
 }
 
-impl<T, N: Scalar> From<Token<T, N>> for StaticLeaf<T> {
+impl<T: Tokenable, N: Scalar> From<Token<T, N>> for StaticLeaf<T> {
   #[inline(always)]
   fn from(token: Token<T, N>) -> Self {
-    Self::Token(token.reference())
+    Self::Token(token.name())
   }
 }
 
@@ -333,24 +333,24 @@ impl<T> From<T> for Leaf<T> {
   }
 }
 
-impl<T> From<TokenRef<T>> for Leaf<T> {
+impl<T: Tokenable> From<TokenRef<T>> for Leaf<T> {
   #[inline(always)]
   fn from(reference: TokenRef<T>) -> Self {
-    Self::Static(StaticLeaf::Token(reference))
+    Self::Static(StaticLeaf::from(reference))
   }
 }
 
-impl<T, N: Scalar> From<&Token<T, N>> for Leaf<T> {
+impl<T: Tokenable, N: Scalar> From<&Token<T, N>> for Leaf<T> {
   #[inline(always)]
   fn from(token: &Token<T, N>) -> Self {
-    Self::Static(StaticLeaf::Token(token.reference()))
+    Self::Static(StaticLeaf::from(token))
   }
 }
 
-impl<T, N: Scalar> From<Token<T, N>> for Leaf<T> {
+impl<T: Tokenable, N: Scalar> From<Token<T, N>> for Leaf<T> {
   #[inline(always)]
   fn from(token: Token<T, N>) -> Self {
-    Self::Static(StaticLeaf::Token(token.reference()))
+    Self::Static(StaticLeaf::from(token))
   }
 }
 
@@ -375,21 +375,21 @@ impl<T, C> From<T> for Value<T, C> {
   }
 }
 
-impl<T, C> From<TokenRef<T>> for Value<T, C> {
+impl<T: Tokenable, C> From<TokenRef<T>> for Value<T, C> {
   #[inline(always)]
   fn from(reference: TokenRef<T>) -> Self {
     Self::new(Leaf::from(reference))
   }
 }
 
-impl<T, N: Scalar, C> From<&Token<T, N>> for Value<T, C> {
+impl<T: Tokenable, N: Scalar, C> From<&Token<T, N>> for Value<T, C> {
   #[inline(always)]
   fn from(token: &Token<T, N>) -> Self {
     Self::new(Leaf::from(token))
   }
 }
 
-impl<T, N: Scalar, C> From<Token<T, N>> for Value<T, C> {
+impl<T: Tokenable, N: Scalar, C> From<Token<T, N>> for Value<T, C> {
   #[inline(always)]
   fn from(token: Token<T, N>) -> Self {
     Self::new(Leaf::from(token))
@@ -481,24 +481,24 @@ impl<T, N: Scalar> From<T> for Definition<T, N> {
   }
 }
 
-impl<T, N: Scalar> From<TokenRef<T>> for Definition<T, N> {
+impl<T: Tokenable, N: Scalar> From<TokenRef<T>> for Definition<T, N> {
   #[inline(always)]
   fn from(reference: TokenRef<T>) -> Self {
-    Self::new(StaticLeaf::Token(reference))
+    Self::new(StaticLeaf::from(reference))
   }
 }
 
-impl<T, N: Scalar, M: Scalar> From<&Token<T, M>> for Definition<T, N> {
+impl<T: Tokenable, N: Scalar, M: Scalar> From<&Token<T, M>> for Definition<T, N> {
   #[inline(always)]
   fn from(token: &Token<T, M>) -> Self {
-    Self::new(StaticLeaf::Token(token.reference()))
+    Self::new(StaticLeaf::from(token))
   }
 }
 
-impl<T, N: Scalar, M: Scalar> From<Token<T, M>> for Definition<T, N> {
+impl<T: Tokenable, N: Scalar, M: Scalar> From<Token<T, M>> for Definition<T, N> {
   #[inline(always)]
   fn from(token: Token<T, M>) -> Self {
-    Self::new(StaticLeaf::Token(token.reference()))
+    Self::new(StaticLeaf::from(token))
   }
 }
 
@@ -567,10 +567,13 @@ mod tests {
     let hover = TokenRef::<Color>::new("hover");
     let value = card.when(State::Hovered, hover);
 
-    assert_eq!(value.base(), &Leaf::Static(StaticLeaf::Token(card)));
+    assert_eq!(value.base(), &Leaf::Static(StaticLeaf::Token(card.name())));
     assert_eq!(
       value.variants(),
-      &[(State::Hovered, Leaf::Static(StaticLeaf::Token(hover)))]
+      &[(
+        State::Hovered,
+        Leaf::Static(StaticLeaf::Token(hover.name()))
+      )]
     );
   }
 

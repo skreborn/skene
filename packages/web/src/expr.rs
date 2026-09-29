@@ -97,7 +97,7 @@ fn percent(value: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Color, Edge, Expr, Length, Number, TokenRef};
+  use skene_core::{Color, Edge, Expr, Length, TokenRef};
 
   use super::render_expr;
   use crate::Declarations;
@@ -106,7 +106,7 @@ mod tests {
   /// functions take their operands bare.
   #[test]
   fn arithmetic_renders_as_calc() {
-    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<Number>::new("ratio"));
+    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
 
     assert_eq!(
       render_expr(width.node()),

@@ -227,7 +227,7 @@ impl<T: Fingerprint> Fingerprint for StaticLeaf<T> {
 
     match self {
       Self::Fixed(value) => value.fingerprint(state),
-      Self::Token(reference) => reference.hash(state),
+      Self::Token(name) => name.hash(state),
       Self::Expr(expr) => expr.hash(state),
     }
   }

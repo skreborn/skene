@@ -398,7 +398,7 @@ elsewhere.
 **A property value is a base and its conditions, and each leaf is one of five kinds.**
 
 ```
-StaticLeaf<T> = Fixed(T) | Token(TokenRef<T>) | Expr(Expr<T>)
+StaticLeaf<T> = Fixed(T) | Token(TokenName) | Expr(Expr<T>)
 Leaf<T>       = Static(StaticLeaf<T>) | Derived(Rc<dyn Fn() -> StaticLeaf<T>>)
 Value<T>      = Conditional<Leaf<T>, Condition>          // what a setter takes
 Definition<T> = Conditional<StaticLeaf<T>, Media>        // what a token is; no closures
@@ -410,11 +410,14 @@ Condition     = Media | State | And | Or
 ```
 
 - **Fixed** leaves render as literals. **Tokens** render as `var(--name)` on the web and
-  resolve through the scene elsewhere. **Expressions** are typed arithmetic that compiles
-  to `calc()`, `clamp()`, `color-mix()` and relative color and evaluates natively:
-  lengths and numbers have the ring operations CSS type-checks, colors have only the named
-  functions, and there is no boolean expression, so an ill-formed expression does not
-  compile. **Derived** leaves are the script-only kind: on the web a per-node custom
+  resolve through the scene elsewhere. A leaf holds a token by its name: a `TokenRef<T>`
+  is of a type a token holds (`Tokenable`: a color, a number, a length, a dimension or
+  a text) and converts into the leaves of every property type reading it, a length
+  token into a padding's or a radius's, so no reference is ever retyped. **Expressions**
+  are typed arithmetic that compiles to `calc()`, `clamp()`, `color-mix()` and relative
+  color and evaluates natively: lengths and numbers have the ring operations CSS
+  type-checks, colors have only the named functions, and there is no boolean
+  expression, so an ill-formed expression does not compile. **Derived** leaves are the script-only kind: on the web a per-node custom
   property slot the class references (registered `inherits: false`), written by a render
   effect, so a derived base never outranks a variant; on the server, evaluated once. The
   closure returns any static leaf, so a state chooses between tokens: the slot holds the

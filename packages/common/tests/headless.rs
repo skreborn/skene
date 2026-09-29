@@ -645,7 +645,7 @@ fn a_derived_token_resolves_through_the_theme() {
 
   assert_eq!(
     slot_leaf(card, Slot(0)),
-    Some(StaticLeaf::Token(TokenRef::new("card")))
+    Some(StaticLeaf::Token(TokenName::new("card")))
   );
   assert_eq!(resolve_color(card, COLOR), Some(WHITE));
 

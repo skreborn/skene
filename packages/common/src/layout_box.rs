@@ -43,7 +43,6 @@ use skene_core::{
   Spacing,
   StaticLeaf,
   StyleExtension,
-  TokenRef,
   Transition,
   Value,
   View,
@@ -477,7 +476,7 @@ fn alignment_axis_leaf(
 ) -> StaticLeaf<ItemAlignment> {
   match leaf {
     StaticLeaf::Fixed(alignment) => StaticLeaf::Fixed(pick(*alignment)),
-    StaticLeaf::Token(reference) => StaticLeaf::Token(TokenRef::new(reference.name().as_str())),
+    StaticLeaf::Token(name) => StaticLeaf::Token(*name),
     StaticLeaf::Expr(_) => unreachable!("no expression has an alignment type"),
   }
 }

@@ -114,8 +114,9 @@
   are for **state**, never for environment or arithmetic.
 - **A design token is a named, inherited slot; a theme defines it; a palette belongs to
   its library.** `TokenRef<T>` names a slot (a `const`; the name is an implementation
-  detail on every platform, never a public hook), `Token<T>` pairs the name with the
-  definition a palette gives it, and every setter takes `impl Into<Value<T>>`, so
+  detail on every platform, never a public hook) of a type a token holds (`Tokenable`:
+  a color, a number, a length, a dimension or a text), `Token<T>` pairs the name with
+  the definition a palette gives it, and every setter takes `impl Into<Value<T>>`, so
   `set_color(Color::WHITE)`, `set_color(palette.card)` and
   `set_color(SimplePalette::CARD)` are the same call and a consumer emits only the name.
   A length token (`Token<Length, N>`) serves every property measured in lengths,

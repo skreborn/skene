@@ -466,7 +466,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   pub fn leaf<T: Clone + Into<Resolved<N>>>(&self, leaf: &StaticLeaf<T>) -> Option<Resolved<N>> {
     match leaf {
       StaticLeaf::Fixed(fixed) => Some(fixed.clone().into()),
-      StaticLeaf::Token(reference) => self.token(reference.name()),
+      StaticLeaf::Token(name) => self.token(*name),
       StaticLeaf::Expr(expr) => self.expr(expr.node()),
     }
   }
@@ -527,8 +527,8 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   ) -> Option<T> {
     match leaf {
       StaticLeaf::Fixed(value) => fixed(value.clone()),
-      StaticLeaf::Token(reference) => self
-        .token(reference.name())
+      StaticLeaf::Token(name) => self
+        .token(*name)
         .and_then(Resolved::into_box_value)
         .and_then(T::from_box_value),
       StaticLeaf::Expr(expr) => self
@@ -545,8 +545,8 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   ) -> Option<T> {
     match leaf {
       StaticLeaf::Fixed(value) => fixed(value.clone()),
-      StaticLeaf::Token(reference) => self
-        .token(reference.name())
+      StaticLeaf::Token(name) => self
+        .token(*name)
         .and_then(Resolved::into_run_value)
         .and_then(T::from_run_value),
       StaticLeaf::Expr(expr) => self

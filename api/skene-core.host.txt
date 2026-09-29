@@ -1051,6 +1051,7 @@ impl<N: skene_core::Scalar> skene_core::ExprOutput for skene_core::Dimension<N>
 pub fn skene_core::Dimension<N>::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl<N: skene_core::Scalar> skene_core::Fingerprint for skene_core::Dimension<N>
 pub fn skene_core::Dimension<N>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_core::Scalar> skene_core::Tokenable for skene_core::Dimension<N>
 impl<T: core::clone::Clone> core::clone::Clone for skene_core::Dimension<T>
 pub fn skene_core::Dimension<T>::clone(&self) -> skene_core::Dimension<T>
 impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Dimension<T>
@@ -1353,10 +1354,6 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core:
 pub fn skene_core::Leaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<T, C> core::convert::From<skene_core::Leaf<T>> for skene_core::Value<T, C>
 pub fn skene_core::Value<T, C>::from(skene_core::Leaf<T>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::Leaf<T>
-pub fn skene_core::Leaf<T>::from(&skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::Leaf<T>
-pub fn skene_core::Leaf<T>::from(skene_core::Token<T, N>) -> Self
 impl<T: core::clone::Clone> core::clone::Clone for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::clone(&self) -> skene_core::Leaf<T>
 impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Leaf<T>
@@ -1367,14 +1364,18 @@ impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Leaf<skene_co
 pub fn skene_core::Leaf<skene_core::Dimension<T>>::from(T) -> Self
 impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Leaf<skene_core::Spacing<T>>
 pub fn skene_core::Leaf<skene_core::Spacing<T>>::from(T) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::Leaf<T>
+pub fn skene_core::Leaf<T>::from(&skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::Leaf<T>
+pub fn skene_core::Leaf<T>::from(skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable> core::convert::From<skene_core::TokenRef<T>> for skene_core::Leaf<T>
+pub fn skene_core::Leaf<T>::from(skene_core::TokenRef<T>) -> Self
 impl<T> core::convert::From<T> for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::from(T) -> Self
 impl<T> core::convert::From<skene_core::Expr<T>> for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::from(skene_core::Expr<T>) -> Self
 impl<T> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::from(skene_core::StaticLeaf<T>) -> Self
-impl<T> core::convert::From<skene_core::TokenRef<T>> for skene_core::Leaf<T>
-pub fn skene_core::Leaf<T>::from(skene_core::TokenRef<T>) -> Self
 pub enum skene_core::LinkAnnotation
 pub skene_core::LinkAnnotation::NoFollow
 pub skene_core::LinkAnnotation::Sponsored
@@ -1854,7 +1855,7 @@ pub fn skene_core::Condition<N>::from(skene_core::State) -> Self
 pub enum skene_core::StaticLeaf<T>
 pub skene_core::StaticLeaf::Expr(skene_core::Expr<T>)
 pub skene_core::StaticLeaf::Fixed(T)
-pub skene_core::StaticLeaf::Token(skene_core::TokenRef<T>)
+pub skene_core::StaticLeaf::Token(skene_core::TokenName)
 impl core::convert::From<f32> for skene_core::StaticLeaf<skene_core::Length>
 pub fn skene_core::StaticLeaf<skene_core::Length>::from(f32) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
@@ -1883,12 +1884,8 @@ impl<T, C> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Static
 pub fn skene_core::StaticValue<T, C>::from(skene_core::StaticLeaf<T>) -> Self
 impl<T, C> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Value<T, C>
 pub fn skene_core::Value<T, C>::from(skene_core::StaticLeaf<T>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::from(&skene_core::Token<T, N>) -> Self
 impl<T, N: skene_core::Scalar> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Definition<T, N>
 pub fn skene_core::Definition<T, N>::from(skene_core::StaticLeaf<T>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::from(skene_core::Token<T, N>) -> Self
 impl<T: core::clone::Clone> core::clone::Clone for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::clone(&self) -> skene_core::StaticLeaf<T>
 impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::StaticLeaf<T>
@@ -1904,14 +1901,18 @@ impl<T: core::marker::Copy> core::convert::From<T> for skene_core::StaticLeaf<sk
 pub fn skene_core::StaticLeaf<skene_core::Spacing<T>>::from(T) -> Self
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
+pub fn skene_core::StaticLeaf<T>::from(&skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
+pub fn skene_core::StaticLeaf<T>::from(skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable> core::convert::From<skene_core::TokenRef<T>> for skene_core::StaticLeaf<T>
+pub fn skene_core::StaticLeaf<T>::from(skene_core::TokenRef<T>) -> Self
 impl<T> core::convert::From<T> for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::from(T) -> Self
 impl<T> core::convert::From<skene_core::Expr<T>> for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::from(skene_core::Expr<T>) -> Self
 impl<T> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::from(skene_core::StaticLeaf<T>) -> Self
-impl<T> core::convert::From<skene_core::TokenRef<T>> for skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::from(skene_core::TokenRef<T>) -> Self
 pub enum skene_core::StyleProperty<P>
 pub skene_core::StyleProperty::All
 pub skene_core::StyleProperty::Extension(P)
@@ -2343,6 +2344,7 @@ impl skene_core::ExprOutput for skene_core::Color
 pub fn skene_core::Color::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::Fingerprint for skene_core::Color
 pub fn skene_core::Color::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::Tokenable for skene_core::Color
 impl skene_core::interpolate::Interpolate for skene_core::Color
 pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
@@ -2566,8 +2568,12 @@ impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::L
 pub fn skene_core::Leaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Expr<skene_core::Number>
+pub fn skene_core::Expr<skene_core::Number>::from(skene_core::TokenRef<f32>) -> Self
 impl core::convert::From<skene_core::TokenRef<skene_core::Color>> for skene_core::Expr<skene_core::Color>
 pub fn skene_core::Expr<skene_core::Color>::from(skene_core::TokenRef<skene_core::Color>) -> Self
+impl core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Expr<skene_core::Length>
+pub fn skene_core::Expr<skene_core::Length>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<C> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Value<f32, C>
 pub fn skene_core::Value<f32, C>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl<M: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Definition<f32, M>
@@ -2614,8 +2620,6 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Len
 pub fn skene_core::StaticLeaf<skene_core::Spacing<N>>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<Q: skene_core::Quantity> core::convert::From<f32> for skene_core::Expr<Q>
 pub fn skene_core::Expr<Q>::from(f32) -> Self
-impl<Q: skene_core::Quantity> core::convert::From<skene_core::TokenRef<Q>> for skene_core::Expr<Q>
-pub fn skene_core::Expr<Q>::from(skene_core::TokenRef<Q>) -> Self
 impl<Q: skene_core::Quantity> core::ops::arith::Add for skene_core::Expr<Q>
 pub type skene_core::Expr<Q>::Output = skene_core::Expr<Q>
 pub fn skene_core::Expr<Q>::add(self, Self) -> Self
@@ -2898,6 +2902,7 @@ impl skene_core::Fingerprint for skene_core::Length
 pub fn skene_core::Length::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Quantity for skene_core::Length
 pub fn skene_core::Length::literal(f32) -> skene_core::ExprNode
+impl skene_core::Tokenable for skene_core::Length
 impl skene_core::interpolate::Interpolate for skene_core::Length
 pub fn skene_core::Length::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Length::interpolates_with(&self, &Self) -> bool
@@ -3620,8 +3625,8 @@ impl<A> core::default::Default for skene_core::Timers<A>
 pub fn skene_core::Timers<A>::default() -> Self
 impl<A> core::fmt::Debug for skene_core::Timers<A>
 pub fn skene_core::Timers<A>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub struct skene_core::Token<T, N: skene_core::Scalar>
-impl<T, N: skene_core::Scalar> skene_core::Token<T, N>
+pub struct skene_core::Token<T: skene_core::Tokenable, N: skene_core::Scalar>
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> skene_core::Token<T, N>
 pub fn skene_core::Token<T, N>::define<V>(&self) -> (skene_core::TokenName, V) where T: core::clone::Clone, skene_core::Definition<T, N>: skene_core::IntoTokenValue<V>
 pub fn skene_core::Token<T, N>::define_when(self, skene_core::Media<N>, impl core::convert::Into<skene_core::StaticLeaf<T>>) -> Self where T: core::clone::Clone
 pub fn skene_core::Token<T, N>::definition(&self) -> &skene_core::Definition<T, N>
@@ -3631,29 +3636,29 @@ pub fn skene_core::Token<T, N>::new(&'static str, impl core::convert::Into<skene
 pub fn skene_core::Token<T, N>::redefine(self, impl core::convert::Into<skene_core::Definition<T, N>>) -> Self
 pub const fn skene_core::Token<T, N>::reference(&self) -> skene_core::TokenRef<T>
 pub fn skene_core::Token<T, N>::when<C>(&self, C, impl core::convert::Into<skene_core::Leaf<T>>) -> skene_core::Value<T, C>
-impl<T, N: skene_core::Scalar, C> core::convert::From<&skene_core::Token<T, N>> for skene_core::Value<T, C>
-pub fn skene_core::Value<T, C>::from(&skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar, C> core::convert::From<skene_core::Token<T, N>> for skene_core::Value<T, C>
-pub fn skene_core::Value<T, C>::from(skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<&skene_core::Token<T, M>> for skene_core::Definition<T, N>
-pub fn skene_core::Definition<T, N>::from(&skene_core::Token<T, M>) -> Self
-impl<T, N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::Token<T, M>> for skene_core::Definition<T, N>
-pub fn skene_core::Definition<T, N>::from(skene_core::Token<T, M>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::Leaf<T>
-pub fn skene_core::Leaf<T>::from(&skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::from(&skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::Leaf<T>
-pub fn skene_core::Leaf<T>::from(skene_core::Token<T, N>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::from(skene_core::Token<T, N>) -> Self
-impl<T: core::clone::Clone, N: core::clone::Clone + skene_core::Scalar> core::clone::Clone for skene_core::Token<T, N>
+impl<T: core::clone::Clone + skene_core::Tokenable, N: core::clone::Clone + skene_core::Scalar> core::clone::Clone for skene_core::Token<T, N>
 pub fn skene_core::Token<T, N>::clone(&self) -> skene_core::Token<T, N>
-impl<T: core::cmp::PartialEq, N: core::cmp::PartialEq + skene_core::Scalar> core::cmp::PartialEq for skene_core::Token<T, N>
+impl<T: core::cmp::PartialEq + skene_core::Tokenable, N: core::cmp::PartialEq + skene_core::Scalar> core::cmp::PartialEq for skene_core::Token<T, N>
 pub fn skene_core::Token<T, N>::eq(&self, &skene_core::Token<T, N>) -> bool
-impl<T: core::cmp::PartialEq, N: core::cmp::PartialEq + skene_core::Scalar> core::marker::StructuralPartialEq for skene_core::Token<T, N>
-impl<T: core::fmt::Debug, N: core::fmt::Debug + skene_core::Scalar> core::fmt::Debug for skene_core::Token<T, N>
+impl<T: core::cmp::PartialEq + skene_core::Tokenable, N: core::cmp::PartialEq + skene_core::Scalar> core::marker::StructuralPartialEq for skene_core::Token<T, N>
+impl<T: core::fmt::Debug + skene_core::Tokenable, N: core::fmt::Debug + skene_core::Scalar> core::fmt::Debug for skene_core::Token<T, N>
 pub fn skene_core::Token<T, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: skene_core::Tokenable, N: skene_core::Scalar, C> core::convert::From<&skene_core::Token<T, N>> for skene_core::Value<T, C>
+pub fn skene_core::Value<T, C>::from(&skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar, C> core::convert::From<skene_core::Token<T, N>> for skene_core::Value<T, C>
+pub fn skene_core::Value<T, C>::from(skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<&skene_core::Token<T, M>> for skene_core::Definition<T, N>
+pub fn skene_core::Definition<T, N>::from(&skene_core::Token<T, M>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::Token<T, M>> for skene_core::Definition<T, N>
+pub fn skene_core::Definition<T, N>::from(skene_core::Token<T, M>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::Leaf<T>
+pub fn skene_core::Leaf<T>::from(&skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
+pub fn skene_core::StaticLeaf<T>::from(&skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::Leaf<T>
+pub fn skene_core::Leaf<T>::from(skene_core::Token<T, N>) -> Self
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<skene_core::Token<T, N>> for skene_core::StaticLeaf<T>
+pub fn skene_core::StaticLeaf<T>::from(skene_core::Token<T, N>) -> Self
 pub struct skene_core::TokenName(_)
 impl skene_core::TokenName
 pub const fn skene_core::TokenName::as_str(self) -> &'static str
@@ -3675,14 +3680,18 @@ impl core::hash::Hash for skene_core::TokenName
 pub fn skene_core::TokenName::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::TokenName
 impl core::marker::StructuralPartialEq for skene_core::TokenName
-pub struct skene_core::TokenRef<T>
-impl<T> skene_core::TokenRef<T>
+pub struct skene_core::TokenRef<T: skene_core::Tokenable>
+impl<T: skene_core::Tokenable> skene_core::TokenRef<T>
 pub fn skene_core::TokenRef<T>::derive_when<C, R: core::convert::Into<skene_core::StaticLeaf<T>>>(self, C, impl core::ops::function::Fn() -> R + 'static) -> skene_core::Value<T, C>
 pub const fn skene_core::TokenRef<T>::name(self) -> skene_core::TokenName
 pub const fn skene_core::TokenRef<T>::new(&'static str) -> Self
 pub fn skene_core::TokenRef<T>::when<C>(self, C, impl core::convert::Into<skene_core::Leaf<T>>) -> skene_core::Value<T, C>
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Expr<skene_core::Number>
+pub fn skene_core::Expr<skene_core::Number>::from(skene_core::TokenRef<f32>) -> Self
 impl core::convert::From<skene_core::TokenRef<skene_core::Color>> for skene_core::Expr<skene_core::Color>
 pub fn skene_core::Expr<skene_core::Color>::from(skene_core::TokenRef<skene_core::Color>) -> Self
+impl core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Expr<skene_core::Length>
+pub fn skene_core::Expr<skene_core::Length>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Dimension<N>, C>
 pub fn skene_core::Value<skene_core::Dimension<N>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Inset<N>, C>
@@ -3715,26 +3724,24 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core:
 pub fn skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Spacing<N>>
 pub fn skene_core::StaticLeaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
-impl<Q: skene_core::Quantity> core::convert::From<skene_core::TokenRef<Q>> for skene_core::Expr<Q>
-pub fn skene_core::Expr<Q>::from(skene_core::TokenRef<Q>) -> Self
-impl<T, C> core::convert::From<skene_core::TokenRef<T>> for skene_core::Value<T, C>
+impl<T: skene_core::Tokenable, C> core::convert::From<skene_core::TokenRef<T>> for skene_core::Value<T, C>
 pub fn skene_core::Value<T, C>::from(skene_core::TokenRef<T>) -> Self
-impl<T, N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<T>> for skene_core::Definition<T, N>
+impl<T: skene_core::Tokenable, N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<T>> for skene_core::Definition<T, N>
 pub fn skene_core::Definition<T, N>::from(skene_core::TokenRef<T>) -> Self
-impl<T> core::clone::Clone for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::clone::Clone for skene_core::TokenRef<T>
 pub fn skene_core::TokenRef<T>::clone(&self) -> Self
-impl<T> core::cmp::Eq for skene_core::TokenRef<T>
-impl<T> core::cmp::PartialEq for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::cmp::Eq for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::cmp::PartialEq for skene_core::TokenRef<T>
 pub fn skene_core::TokenRef<T>::eq(&self, &Self) -> bool
-impl<T> core::convert::From<skene_core::TokenRef<T>> for skene_core::Leaf<T>
+impl<T: skene_core::Tokenable> core::convert::From<skene_core::TokenRef<T>> for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::from(skene_core::TokenRef<T>) -> Self
-impl<T> core::convert::From<skene_core::TokenRef<T>> for skene_core::StaticLeaf<T>
+impl<T: skene_core::Tokenable> core::convert::From<skene_core::TokenRef<T>> for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::from(skene_core::TokenRef<T>) -> Self
-impl<T> core::fmt::Debug for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::fmt::Debug for skene_core::TokenRef<T>
 pub fn skene_core::TokenRef<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl<T> core::hash::Hash for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::hash::Hash for skene_core::TokenRef<T>
 pub fn skene_core::TokenRef<T>::hash<H: core::hash::Hasher>(&self, &mut H)
-impl<T> core::marker::Copy for skene_core::TokenRef<T>
+impl<T: skene_core::Tokenable> core::marker::Copy for skene_core::TokenRef<T>
 pub struct skene_core::Transition<P>
 pub skene_core::Transition::delay: f32
 pub skene_core::Transition::duration: f32
@@ -4332,6 +4339,12 @@ pub fn P::current() -> Self
 pub fn P::watch() -> skene_reactive::memo::Memo<Self>
 pub trait skene_core::TokenSet<V>: core::clone::Clone + core::cmp::PartialEq + 'static
 pub fn skene_core::TokenSet::definitions(&self) -> alloc::vec::Vec<(skene_core::TokenName, V)>
+pub trait skene_core::Tokenable: 'static
+impl skene_core::Tokenable for alloc::string::String
+impl skene_core::Tokenable for f32
+impl skene_core::Tokenable for skene_core::Color
+impl skene_core::Tokenable for skene_core::Length
+impl<N: skene_core::Scalar> skene_core::Tokenable for skene_core::Dimension<N>
 pub trait skene_core::View<P: skene_core::Platform>: skene_core::AnyKind + 'static
 pub fn skene_core::View::build(self) -> skene_core::NodeId
 pub fn skene_core::View::into_any(self) -> skene_core::AnyView<P> where Self: core::marker::Sized

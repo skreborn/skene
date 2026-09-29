@@ -10,6 +10,7 @@ use std::{
 use skene_reactive::{Get, Memo, use_context};
 
 use super::{Definition, Leaf, Media, Scalar, StaticLeaf, Value};
+use crate::{Color, Dimension, Length};
 
 /// A token's name: what a consumer emits, and the key a theme defines.
 ///
@@ -69,17 +70,38 @@ impl Display for TokenName {
   }
 }
 
+/// A type a token holds: a color, a number, a length, a dimension or a text.
+///
+/// A [`TokenRef`] and a [`Token`] are of these types alone, so every reference names a
+/// slot a platform can hold; a property of another type reads a token through the
+/// conversions its type offers, as padding reads a length token.
+#[diagnostic::on_unimplemented(
+  message = "a token cannot hold a `{Self}`",
+  label = "a token holds a `Color`, a number (`f32`), a `Length`, a `Dimension` or a `String`"
+)]
+pub trait Tokenable: 'static {}
+
+impl Tokenable for Color {}
+
+impl Tokenable for f32 {}
+
+impl Tokenable for Length {}
+
+impl<N: Scalar> Tokenable for Dimension<N> {}
+
+impl Tokenable for String {}
+
 /// A typed reference to a token: the name a property emits, without any definition.
 ///
 /// A `const` in a component library's palette module, so `set_color(Palette::CARD)`
 /// names the slot whatever theme is in force.
 #[must_use]
-pub struct TokenRef<T> {
+pub struct TokenRef<T: Tokenable> {
   name: TokenName,
   ty: PhantomData<fn() -> T>,
 }
 
-impl<T> TokenRef<T> {
+impl<T: Tokenable> TokenRef<T> {
   /// A reference to the token named `name`.
   #[inline(always)]
   pub const fn new(name: &'static str) -> Self {
@@ -113,32 +135,32 @@ impl<T> TokenRef<T> {
   }
 }
 
-impl<T> Clone for TokenRef<T> {
+impl<T: Tokenable> Clone for TokenRef<T> {
   #[inline(always)]
   fn clone(&self) -> Self {
     *self
   }
 }
 
-impl<T> Copy for TokenRef<T> {}
+impl<T: Tokenable> Copy for TokenRef<T> {}
 
-impl<T> PartialEq for TokenRef<T> {
+impl<T: Tokenable> PartialEq for TokenRef<T> {
   #[inline(always)]
   fn eq(&self, other: &Self) -> bool {
     self.name == other.name
   }
 }
 
-impl<T> Eq for TokenRef<T> {}
+impl<T: Tokenable> Eq for TokenRef<T> {}
 
-impl<T> Hash for TokenRef<T> {
+impl<T: Tokenable> Hash for TokenRef<T> {
   #[inline(always)]
   fn hash<H: Hasher>(&self, state: &mut H) {
     self.name.hash(state);
   }
 }
 
-impl<T> Debug for TokenRef<T> {
+impl<T: Tokenable> Debug for TokenRef<T> {
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     formatter.debug_tuple("TokenRef").field(&self.name).finish()
   }
@@ -151,12 +173,12 @@ impl<T> Debug for TokenRef<T> {
 /// platform through the theme that provides the palette.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
-pub struct Token<T, N: Scalar> {
+pub struct Token<T: Tokenable, N: Scalar> {
   reference: TokenRef<T>,
   definition: Rc<Definition<T, N>>,
 }
 
-impl<T, N: Scalar> Token<T, N> {
+impl<T: Tokenable, N: Scalar> Token<T, N> {
   /// A token named `name`, defined as `definition`.
   #[inline(always)]
   pub fn new(name: &'static str, definition: impl Into<Definition<T, N>>) -> Self {

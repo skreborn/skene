@@ -187,7 +187,16 @@ pub use scene::{
 pub use shape::{Declared, Keyframe, Plain, Shape, Static};
 pub use show::Show;
 pub use task::count_pending;
-pub use token::{Definitions, IntoTokenValue, Themed, Token, TokenName, TokenRef, TokenSet};
+pub use token::{
+  Definitions,
+  IntoTokenValue,
+  Themed,
+  Token,
+  TokenName,
+  TokenRef,
+  TokenSet,
+  Tokenable,
+};
 pub use values::{
   AccessProp,
   Alignment,

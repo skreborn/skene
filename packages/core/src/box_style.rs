@@ -558,6 +558,7 @@ mod tests {
     Dimension,
     Inset,
     Leaf,
+    Length,
     Media,
     Plain,
     PlatformLeaf,
@@ -568,6 +569,7 @@ mod tests {
     State,
     StaticLeaf,
     StyleExtension,
+    TokenName,
     TokenRef,
     Value,
     When,
@@ -581,7 +583,7 @@ mod tests {
   fn split_yields_the_static_part_and_the_slot_list() {
     let declared = BoxStyle::<f32, Declared<GuiCondition>> {
       width: Some(Value::from(Dimension::from(10.))),
-      padding: Some(Value::from(TokenRef::<Inset<f32>>::new("gutter"))),
+      padding: Some(Value::from(TokenRef::<Length>::new("gutter"))),
       color: Some(
         Value::new(Leaf::derive(|| Color::TRANSPARENT))
           .when(Media::Dark.into(), Color::srgb(0., 0., 0.)),
@@ -600,7 +602,7 @@ mod tests {
     );
     assert_eq!(
       fixed.padding.as_ref().map(|padding| padding.base().clone()),
-      Some(PlatformLeaf::Static(StaticLeaf::Token(TokenRef::new(
+      Some(PlatformLeaf::Static(StaticLeaf::Token(TokenName::new(
         "gutter"
       ))))
     );

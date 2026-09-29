@@ -581,9 +581,16 @@ impl<Q: Quantity> From<f32> for Expr<Q> {
   }
 }
 
-impl<Q: Quantity> From<TokenRef<Q>> for Expr<Q> {
+impl From<TokenRef<Length>> for Expr<Length> {
   #[inline(always)]
-  fn from(reference: TokenRef<Q>) -> Self {
+  fn from(reference: TokenRef<Length>) -> Self {
+    Self::from_node(ExprNode::Token(reference.name()))
+  }
+}
+
+impl From<TokenRef<f32>> for Expr<Number> {
+  #[inline(always)]
+  fn from(reference: TokenRef<f32>) -> Self {
     Self::from_node(ExprNode::Token(reference.name()))
   }
 }
@@ -741,7 +748,7 @@ macro_rules! length_token_targets {
     impl<$($generics)*> From<TokenRef<Length>> for StaticLeaf<$target> {
       #[inline(always)]
       fn from(reference: TokenRef<Length>) -> Self {
-        Self::Token(TokenRef::new(reference.name().as_str()))
+        Self::Token(reference.name())
       }
     }
 
@@ -879,7 +886,7 @@ mod tests {
   fn only_a_number_divides() {
     let halved = Expr::from(TokenRef::<Length>::new("gutter")) / 2.;
     let inverted =
-      Expr::from(TokenRef::<Length>::new("ratio")) / Expr::from(TokenRef::<Number>::new("gutter"));
+      Expr::from(TokenRef::<Length>::new("ratio")) / Expr::from(TokenRef::<f32>::new("gutter"));
 
     assert_eq!(halved.evaluate(&env(), &tokens), Some(Length(4.)));
     assert_eq!(inverted.evaluate(&env(), &tokens), None);
@@ -896,7 +903,7 @@ mod tests {
   /// Ring arithmetic follows the environment, and a missing token yields nothing.
   #[test]
   fn arithmetic_follows_the_environment() {
-    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<Number>::new("ratio"));
+    let width = (Expr::<Length>::vw(50.) + 10.) * Expr::from(TokenRef::<f32>::new("ratio"));
 
     assert_eq!(width.evaluate(&env(), &tokens), Some(Length(765.)));
     assert_eq!(

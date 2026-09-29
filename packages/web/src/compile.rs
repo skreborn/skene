@@ -209,7 +209,7 @@ fn token_reference(name: TokenName) -> String {
 fn color_leaf(leaf: &StaticLeaf<skene_core::Color>) -> String {
   match leaf {
     StaticLeaf::Fixed(color) => Declarations::render_color(*color),
-    StaticLeaf::Token(reference) => token_reference(reference.name()),
+    StaticLeaf::Token(name) => token_reference(*name),
     StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
@@ -312,7 +312,7 @@ pub(crate) fn render_run_leaf(leaf: &StaticLeaf<RunValue<GuiExt>>) -> String {
 fn static_leaf_text<T: Clone>(leaf: &StaticLeaf<T>, fixed: impl FnOnce(T) -> String) -> String {
   match leaf {
     StaticLeaf::Fixed(value) => fixed(value.clone()),
-    StaticLeaf::Token(reference) => token_reference(reference.name()),
+    StaticLeaf::Token(name) => token_reference(*name),
     StaticLeaf::Expr(expr) => render_expr(expr.node()),
   }
 }
@@ -859,7 +859,7 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
 
     Some(match leaf {
       StaticLeaf::Fixed(value) => fixed(value.clone()),
-      StaticLeaf::Token(reference) => token_reference(reference.name()),
+      StaticLeaf::Token(name) => token_reference(*name),
       StaticLeaf::Expr(expr) => render_expr(expr.node()),
     })
   }

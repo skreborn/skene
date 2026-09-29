@@ -346,6 +346,7 @@ mod tests {
     Slot,
     State,
     StaticLeaf,
+    TokenName,
     TokenRef,
   };
 
@@ -362,7 +363,7 @@ mod tests {
 
     assert_eq!(
       color.base(),
-      &PlatformLeaf::Static(StaticLeaf::Token(TokenRef::new("ink")))
+      &PlatformLeaf::Static(StaticLeaf::Token(TokenName::new("ink")))
     );
     assert_eq!(color.variants()[0].1, PlatformLeaf::Slot(Slot(0)));
     assert_eq!(fixed.selection_color, None);

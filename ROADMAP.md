@@ -30,9 +30,6 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Tokens: `TokenRef<T: Tokenable>`, so no reference aliases a name under another
-    type; a token's value cached at its defining scope, with per-scope invalidation in
-    place of the global generation, where each consumer resolves it there afresh today.
     - Motion: an aspect ratio becomes a value type of its own, interpolating through its
     logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which
@@ -149,9 +146,10 @@ left half-done in a code comment.
     re-attaching in place, and each changed parent's real children in one call at the
     end of a flush, the batch shape Android needs; the web captures focus and scroll
     over every detached subtree today, a forced layout per cleared row.
-    - Token caches take per-scope epochs, a cached nearest defining node, interned
-    names and skipped equal redefinitions, so a palette change costs the number of
-    tokens beyond the web too.
+    - Token caches take per-scope epochs in place of the global generation, a cached
+    nearest defining node, a token's value cached at its defining scope where each
+    consumer resolves it there afresh today, interned names and skipped equal
+    redefinitions, so a palette change costs the number of tokens beyond the web too.
     - Constant factors: the UI-thread assertion in debug alone, fused borrows, the
     iterative pull and alien-signals' propagation techniques, estimated to halve a read
     and a write; a lazy first memo run; `reconcile` as a thin generic shim over a

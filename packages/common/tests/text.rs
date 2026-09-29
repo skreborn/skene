@@ -51,12 +51,12 @@ fn text_without_a_color_resolves_the_typography_ink() {
 
   assert_eq!(
     props.style.color,
-    Some(StaticValue::from(StaticLeaf::Token(typography::INK)))
+    Some(StaticValue::from(StaticLeaf::Token(typography::INK.name())))
   );
   assert_eq!(
     props.style.selection_color,
     Some(StaticValue::from(StaticLeaf::Token(
-      typography::SELECTION_INK
+      typography::SELECTION_INK.name()
     )))
   );
   assert_eq!(resolve_color(themed, TEXT_COLOR), Some(red()));

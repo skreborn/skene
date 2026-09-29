@@ -287,7 +287,8 @@ pub fn notice_view(notice: Signal<Option<String>>) -> impl crate::View {
     .derive_open(move || notice.get().is_some())
     .handle_dismiss(move || notice.set(None))
     .set_color(fill)
-    .set_border(crate::Border::new(1, Color::srgb(0.8, 0.2, 0.2)))
+    .set_border_width(skene_core::Inset::all(1))
+    .set_border_color(Color::srgb(0.8, 0.2, 0.2))
     .set_padding(crate::Inset {
       top: 1,
       right: 2,

@@ -368,8 +368,6 @@ pub type Value<T> = skene_core::Value<T, Condition>;
 pub type Definition<T> = skene_core::Definition<T, u32>;
 /// A token as a palette holds it; see [`skene_core::Token`].
 pub type Token<T> = skene_core::Token<T, u32>;
-/// A border: one cell of glyphs in a color; see [`skene_core::Border`].
-pub type Border = skene_core::Border<u32>;
 /// Spacing on the four edges of a box, in cells.
 pub type Inset<T = u32> = skene_core::Inset<T>;
 /// A dimension, in cells or as a fraction of the parent.

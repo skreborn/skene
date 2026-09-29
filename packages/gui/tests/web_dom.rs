@@ -16,7 +16,6 @@ use std::{
 
 use skene_gui::{
   AnyView,
-  Border,
   Color,
   Column,
   Container,
@@ -412,7 +411,8 @@ fn interned_class_actually_applies_its_style() {
   let _ = mount(|| {
     Container::new()
       .set_padding(Inset::all(10.0))
-      .set_border(Border::new(2.0, Color::srgb(0.0, 0.0, 0.0)))
+      .set_border_width(Inset::all(2.0))
+      .set_border_color(Color::srgb(0.0, 0.0, 0.0))
       .build()
   });
 

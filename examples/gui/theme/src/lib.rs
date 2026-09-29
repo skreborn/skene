@@ -152,7 +152,8 @@ fn swatches() -> impl IntoView {
         .set_height(44.)
         .set_corner_radius(8.)
         .set_color(token)
-        .set_border(Border::new(1., SimplePalette::BORDER)),
+        .set_border_width(Inset::all(1.))
+        .set_border_color(SimplePalette::BORDER),
       Text::new(label)
         .set_font_size(12.)
         .set_color(SimplePalette::MUTED_FOREGROUND),

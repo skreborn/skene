@@ -18,13 +18,12 @@ use skene_core::{
   SliderRange,
   State,
   View,
-  When,
 };
 use skene_reactive::{Get, Set, Signal};
 
 use super::{
   SimplePalette,
-  shape::{SimpleShape, SimpleUnit, as_part, border, click_cursor, define_defaults, shape},
+  shape::{SimpleShape, SimpleUnit, as_part, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made slider: a track on the secondary surface, the run filled to the value
@@ -274,10 +273,9 @@ where
         .thumb_surface
         .when(State::FocusVisible, shape.thumb_focus),
     )
-    .set_border(
-      border(shape.thumb_ring, SimplePalette::<P::Scalar>::BACKGROUND).when(
-        State::FocusVisible,
-        border(shape.thumb_ring, SimplePalette::<P::Scalar>::RING),
-      ),
+    .set_border_width(Inset::all(shape.thumb_ring))
+    .set_border_color(
+      SimplePalette::<P::Scalar>::BACKGROUND
+        .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
     )
 }

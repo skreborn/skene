@@ -3,7 +3,6 @@
 
 use skene_common::{Behavior, Control, CornerRadius, ThemedIn};
 use skene_core::{
-  Border,
   Color,
   Condition,
   Dimension,
@@ -175,16 +174,10 @@ pub(crate) fn click_cursor<N: Scalar>() -> Value<MouseCursor, Condition<N>> {
   MouseCursor::Click.when(Condition::from(State::Disabled), MouseCursor::Default)
 }
 
-/// A border `width` thick in the token `color`.
+/// A border's width of one unit on every edge.
 #[inline(always)]
-pub(crate) fn border<N: Scalar>(width: N, color: TokenRef<Color>) -> Border<N> {
-  Border::new(width, color)
-}
-
-/// A one-unit border in the token `color`.
-#[inline(always)]
-pub(crate) fn hairline<N: Scalar>(color: TokenRef<Color>) -> Border<N> {
-  border(N::from_f32(1.), color)
+pub(crate) fn hairline<N: Scalar>() -> Inset<N> {
+  Inset::all(N::from_f32(1.))
 }
 
 /// The palette in force as a memo, its default defined at the root where no theme
@@ -227,11 +220,10 @@ where
       State::Disabled,
       SimplePalette::<P::Scalar>::DISABLED_SURFACE,
     ))
-    .set_border(
-      border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER).when(
-        State::FocusVisible,
-        border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
-      ),
+    .set_border_width(Inset::all(shape.field_ring))
+    .set_border_color(
+      SimplePalette::<P::Scalar>::BORDER
+        .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
     )
     .set_corner_radius(shape.control_radius)
     .set_cursor(MouseCursor::Text.when(State::Disabled, MouseCursor::Default))

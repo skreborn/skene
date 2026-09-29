@@ -5,9 +5,7 @@
 use skene_common::typography;
 use skene_core::{
   Animation,
-  Border,
   BoxKeyframe,
-  BoxValue,
   ContainerName,
   Environment,
   Focus,
@@ -15,7 +13,6 @@ use skene_core::{
   NoProperty,
   NodeId,
   NodeRecord,
-  Property,
   PropertyKey,
   Resolved,
   Resolver,
@@ -329,17 +326,4 @@ fn resolve_target(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValu
       .map(SlotValue::Run),
     Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) | Kind::Anchor | Kind::Scope => None,
   }
-}
-
-/// The border of the box `node`, its color leaf resolved to a fixed color.
-pub(crate) fn resolve_border(node: NodeId) -> Option<Border<f32>> {
-  let SlotValue::Box(BoxValue::Border(border)) =
-    resolve(node, PropertyKey::Shared(Property::Border))?
-  else {
-    return None;
-  };
-  let env = Env::of(node)?;
-  let color = env.with_resolver(|resolver| resolver.color_leaf(&border.color))?;
-
-  Some(Border::new(border.width, color))
 }

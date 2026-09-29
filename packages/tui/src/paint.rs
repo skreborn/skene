@@ -6,13 +6,14 @@
 
 use std::rc::Rc;
 
-use skene_core::{Color, ControlKind, TextDecoration, TextDecorationStyle};
+use skene_core::{Color, ControlKind, Inset, TextDecoration, TextDecorationStyle};
 
 use crate::{
   BorderGlyphs,
   cells::Cells,
   layout::{
     INLINE_BOX,
+    border_edges,
     has_border,
     inline_box_cells,
     is_inline_box,
@@ -898,6 +899,8 @@ type SelectionColors = ((u8, u8, u8), (u8, u8, u8));
 struct BorderPaint {
   glyphs: BorderGlyphs,
   color: Option<(u8, u8, u8)>,
+  edges: Inset<bool>,
+  shown: bool,
 }
 
 /// One paragraph span's paint: its ink, weight, decoration, link, and the emphasis it
@@ -991,13 +994,24 @@ enum NodePaint {
   None,
 }
 
-/// The border paint of a resolved box style.
+/// The border paint of a resolved box style: in its color, the terminal's own ink where
+/// it sets none, and unshown where its color is transparent.
 fn border_paint(store: &Store, handle: Handle) -> Option<BorderPaint> {
-  let cache = store.record(handle)?.kind.box_record()?.cache.as_ref()?;
+  let style = &store
+    .record(handle)?
+    .kind
+    .box_record()?
+    .cache
+    .as_ref()?
+    .style;
 
-  has_border(&cache.style).then(|| BorderPaint {
-    glyphs: cache.style.ext.border_glyphs.unwrap_or_default(),
-    color: cache.border_ink.and_then(terminal_rgb),
+  has_border(style).then(|| BorderPaint {
+    glyphs: style.ext.border_glyphs.unwrap_or_default(),
+    color: style.border_color.and_then(terminal_rgb),
+    edges: border_edges(style),
+    shown: style
+      .border_color
+      .is_none_or(|color| terminal_rgb(color).is_some()),
   })
 }
 
@@ -1332,9 +1346,9 @@ fn paint_node(
         }
 
         if let Some(border) = border
-          && border.color.is_some()
+          && border.shown
         {
-          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+          draw_border(buffer, x, y, width, height, &border);
         }
       }
 
@@ -1427,9 +1441,9 @@ fn paint_node(
         fill(buffer, x, y, width, height, background);
 
         if let Some(border) = border
-          && border.color.is_some()
+          && border.shown
         {
-          draw_border(buffer, x, y, width, height, border.glyphs, border.color);
+          draw_border(buffer, x, y, width, height, &border);
         }
       }
 
@@ -1951,20 +1965,27 @@ const fn left_color(cell: &TerminalCell) -> Option<(u8, u8, u8)> {
   }
 }
 
-/// Draws a one-cell box border with the given character set.
-pub(crate) fn draw_border(
+/// Draws a one-cell border on the edges `border` names, in its glyph set: a corner where
+/// two drawn edges meet, and an edge's line running through the corner where the other
+/// is undrawn.
+fn draw_border(
   buffer: &mut Buffer,
   x: isize,
   y: isize,
   width: usize,
   height: usize,
-  glyphs: BorderGlyphs,
-  color: Option<(u8, u8, u8)>,
+  border: &BorderPaint,
 ) {
-  if width < 2 || height < 2 {
+  if width == 0 || height == 0 {
     return;
   }
 
+  let BorderPaint {
+    glyphs,
+    color,
+    edges,
+    ..
+  } = *border;
   let right = x + isize::try_from(width - 1).expect("fits");
   let bottom = y + isize::try_from(height - 1).expect("fits");
   let mut put = |cx: isize, cy: isize, character: char| {
@@ -1977,24 +1998,45 @@ pub(crate) fn draw_border(
     }
   };
 
-  for column in 1..width - 1 {
+  for column in 0..width {
     let cx = x + isize::try_from(column).expect("fits");
 
-    put(cx, y, glyphs.horizontal);
-    put(cx, bottom, glyphs.horizontal);
+    if edges.top {
+      put(cx, y, glyphs.horizontal);
+    }
+
+    if edges.bottom {
+      put(cx, bottom, glyphs.horizontal);
+    }
   }
 
-  for row in 1..height - 1 {
+  for row in 0..height {
     let cy = y + isize::try_from(row).expect("fits");
 
-    put(x, cy, glyphs.vertical);
-    put(right, cy, glyphs.vertical);
+    if edges.left {
+      put(x, cy, glyphs.vertical);
+    }
+
+    if edges.right {
+      put(right, cy, glyphs.vertical);
+    }
   }
 
-  put(x, y, glyphs.top_left);
-  put(right, y, glyphs.top_right);
-  put(x, bottom, glyphs.bottom_left);
-  put(right, bottom, glyphs.bottom_right);
+  if edges.top && edges.left {
+    put(x, y, glyphs.top_left);
+  }
+
+  if edges.top && edges.right {
+    put(right, y, glyphs.top_right);
+  }
+
+  if edges.bottom && edges.left {
+    put(x, bottom, glyphs.bottom_left);
+  }
+
+  if edges.bottom && edges.right {
+    put(right, bottom, glyphs.bottom_right);
+  }
 }
 
 /// Draws one line of text at `scale`, `style` applied to every cell of each block.

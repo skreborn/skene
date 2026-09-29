@@ -24,9 +24,8 @@ fn focus_variant_and_enter_click() {
       RawButton::new(Activate::new())
         .set_width(6)
         .set_height(3)
-        .set_border(
-          Border::new(1, Color::TRANSPARENT).when(State::Focused, Border::new(1, white())),
-        )
+        .set_border_width(Inset::all(1))
+        .set_border_color(Color::TRANSPARENT.when(State::Focused, white()))
         .handle_click(move || counted.set(counted.get() + 1))
         .into_any()
         .build()
@@ -1161,7 +1160,8 @@ fn a_container_frames_a_checkbox_mark() {
   with_platform(|| {
     let _ = tui::mount(|| {
       Container::new()
-        .set_border(Border::new(1, white()))
+        .set_border_width(Inset::all(1))
+        .set_border_color(white())
         .set_width(5)
         .set_height(3)
         .set_child(SimpleCheckbox::new().set_checked(true))

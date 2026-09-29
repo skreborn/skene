@@ -7,11 +7,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use skene_core::{
   AccessProp,
-  Border,
   Bubbling,
   EventKind,
   FocusOrder,
   HasChildren,
+  Inset,
   KeyEvent,
   Modifiers,
   Overflow,
@@ -19,6 +19,7 @@ use skene_core::{
   PointerEvent,
   Prevented,
   Property,
+  PropertyKey,
   ScrollEvent,
   StyleProperty,
   Transition,
@@ -29,7 +30,8 @@ use skene_headless::{
   box_props,
   listened,
   reset,
-  resolve_border,
+  resolve_color,
+  resolve_inset,
   trigger_blur,
   trigger_focus,
   trigger_key_down,
@@ -196,8 +198,8 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   owner.dispose();
 }
 
-/// A border whose color is a token resolves through the theme, and a transition lands
-/// in the box's dynamics.
+/// A border whose color is a token resolves through the theme, its width per edge, and a
+/// transition lands in the box's dynamics.
 #[test]
 fn border_with_a_token_color_resolves_through_the_theme() {
   reset();
@@ -207,7 +209,13 @@ fn border_with_a_token_color_resolves_through_the_theme() {
     Theme::new(TestPalette::with_card(red()))
       .set_child_builder(|| {
         Container::new()
-          .set_border(Border::new(2., TestPalette::CARD))
+          .set_border_width(Inset {
+            top: 1.,
+            right: 2.,
+            bottom: 3.,
+            left: 4.,
+          })
+          .set_border_color(TestPalette::CARD)
           .set_transition(Transition::new(Property::Color, 0.2))
       })
       .build()
@@ -215,7 +223,19 @@ fn border_with_a_token_color_resolves_through_the_theme() {
   let card = skene_headless::children(root)[0];
   let props = box_props(card).unwrap();
 
-  assert_eq!(resolve_border(card), Some(Border::new(2., red())));
+  assert_eq!(
+    resolve_inset(card, PropertyKey::Shared(Property::BorderWidth)),
+    Some(Inset {
+      top: 1.,
+      right: 2.,
+      bottom: 3.,
+      left: 4.,
+    })
+  );
+  assert_eq!(
+    resolve_color(card, PropertyKey::Shared(Property::BorderColor)),
+    Some(red())
+  );
   assert_eq!(props.dynamics.transitions.len(), 1);
   assert_eq!(
     props.dynamics.transitions[0].property,

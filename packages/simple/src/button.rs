@@ -9,6 +9,7 @@ use skene_core::{
   Color,
   Definition,
   Definitions,
+  Inset,
   IntoView,
   NodeId,
   Platform,
@@ -25,7 +26,7 @@ use super::{
   SimpleLook,
   SimplePalette,
   SimpleVariant,
-  shape::{SimpleUnit, border, click_cursor, palette, shape},
+  shape::{SimpleUnit, click_cursor, palette, shape},
 };
 
 /// The surface of the look in force on a button.
@@ -194,7 +195,8 @@ where
           .when(State::Hovered, HOVER)
           .when(State::FocusVisible, FOCUS),
       )
-      .set_border(border(shape.control_ring, BORDER))
+      .set_border_width(Inset::all(shape.control_ring))
+      .set_border_color(BORDER)
       .set_corner_radius(shape.control_radius)
       .set_cursor(click_cursor())
       .set_transition(Transition::new(Property::Color, SURFACE_SETTLE));

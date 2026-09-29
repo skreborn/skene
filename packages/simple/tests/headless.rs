@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use skene_common::ThemedIn;
 use skene_core::{
-  Border,
   BoxValue,
   Color,
   ColorScheme,
@@ -39,8 +38,8 @@ use skene_headless::{
   is_open,
   part,
   reset,
-  resolve_border,
   resolve_color,
+  resolve_length,
   resolve_visibility,
   root_definitions,
   slot_leaf,
@@ -75,6 +74,16 @@ type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
 
 const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
+const BORDER_WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderWidth);
+const BORDER_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderColor);
+
+/// The border of the box `node`: its width, the same on every edge, and its color.
+fn border(node: skene_core::NodeId) -> Option<(f32, Color)> {
+  Some((
+    resolve_length(node, BORDER_WIDTH)?,
+    resolve_color(node, BORDER_COLOR)?,
+  ))
+}
 
 /// The fixed color `token` is defined as: under the dark scheme when `dark`, else its
 /// base.
@@ -153,10 +162,7 @@ fn a_buttons_surface_hover_and_focus_resolve_the_primary_look_on_the_control() {
     resolve_color(label, TEXT_COLOR),
     Some(light(&palette.primary.ink))
   );
-  assert_eq!(
-    resolve_border(button),
-    Some(Border::new(1., Color::TRANSPARENT))
-  );
+  assert_eq!(border(button), Some((1., Color::TRANSPARENT)));
 
   trigger_pointer_enter(button);
   trigger_frame(Duration::from_secs(1));
@@ -201,11 +207,8 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
 
   assert_eq!(resolve_color(button, COLOR), Some(Color::TRANSPARENT));
   assert_eq!(
-    resolve_border(button),
-    Some(Border::new(
-      1.,
-      light(palette.outline.border.as_ref().unwrap())
-    ))
+    border(button),
+    Some((1., light(palette.outline.border.as_ref().unwrap())))
   );
 
   variant.set(SimpleVariant::Destructive);
@@ -215,10 +218,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
     resolve_color(button, COLOR),
     Some(light(&palette.destructive.surface))
   );
-  assert_eq!(
-    resolve_border(button),
-    Some(Border::new(1., Color::TRANSPARENT))
-  );
+  assert_eq!(border(button), Some((1., Color::TRANSPARENT)));
 
   owner.dispose();
 }
@@ -244,10 +244,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
   assert_eq!(part(mark), Some(Part::Mark));
   assert_eq!(accessible_name(checkbox), Some("Remember me".to_owned()));
   assert_eq!(resolve_color(mark, COLOR), Some(light(&palette.card)));
-  assert_eq!(
-    resolve_border(mark),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(mark), Some((1., light(&palette.border))));
   assert_eq!(
     resolve_visibility(check),
     Some(Visibility::Hidden),
@@ -261,10 +258,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
     resolve_color(mark, COLOR),
     Some(light(&palette.primary.surface))
   );
-  assert_eq!(
-    resolve_border(mark),
-    Some(Border::new(1., light(&palette.primary.surface)))
-  );
+  assert_eq!(border(mark), Some((1., light(&palette.primary.surface))));
   assert_eq!(resolve_visibility(check), Some(Visibility::Visible));
   assert_eq!(
     resolve_color(glyph, TEXT_COLOR),
@@ -273,10 +267,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
 
   trigger_focus(checkbox);
 
-  assert_eq!(
-    resolve_border(mark),
-    Some(Border::new(1., light(&palette.ring)))
-  );
+  assert_eq!(border(mark), Some((1., light(&palette.ring))));
 
   owner.dispose();
 }
@@ -360,17 +351,11 @@ fn a_slider_fill_follows_the_bound_value_and_its_thumb_rings_when_focused() {
 
   assert!((fill_width() - 0.75).abs() < 1e-6);
   assert!((thumb_left() - 0.75).abs() < 1e-6);
-  assert_eq!(
-    resolve_border(thumb),
-    Some(Border::new(2., light(&palette.background)))
-  );
+  assert_eq!(border(thumb), Some((2., light(&palette.background))));
 
   trigger_focus(slider);
 
-  assert_eq!(
-    resolve_border(thumb),
-    Some(Border::new(2., light(&palette.ring)))
-  );
+  assert_eq!(border(thumb), Some((2., light(&palette.ring))));
 
   owner.dispose();
 }
@@ -395,33 +380,21 @@ fn a_text_fields_border_is_the_ring_only_while_focused() {
     control_props(field).and_then(|props| props.placeholder),
     Some("Name".to_owned())
   );
-  assert_eq!(
-    resolve_border(field),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(field), Some((1., light(&palette.border))));
 
   trigger_focus(field);
 
-  assert_eq!(
-    resolve_border(field),
-    Some(Border::new(1., light(&palette.ring)))
-  );
+  assert_eq!(border(field), Some((1., light(&palette.ring))));
 
   trigger_blur(field);
 
-  assert_eq!(
-    resolve_border(field),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(field), Some((1., light(&palette.border))));
 
   trigger_change(field, "typed");
 
   assert_eq!(bound.get(), "typed");
   assert_eq!(control_props(editor).map(|props| props.lines), Some(6));
-  assert_eq!(
-    resolve_border(editor),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(editor), Some((1., light(&palette.border))));
 
   owner.dispose();
 }
@@ -449,10 +422,7 @@ fn the_default_palette_answers_the_dark_scheme() {
   trigger_color_scheme(ColorScheme::Dark);
 
   assert_eq!(resolve_color(card, COLOR), Some(dark(&palette.card)));
-  assert_eq!(
-    resolve_border(card),
-    Some(Border::new(1., dark(&palette.border)))
-  );
+  assert_eq!(border(card), Some((1., dark(&palette.border))));
   assert_eq!(
     resolve_color(background, COLOR),
     Some(dark(&palette.background))
@@ -618,10 +588,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   assert_eq!(text(shown), Some("Medium".to_owned()));
   assert_eq!(part(indicator), Some(Part::Face));
   assert_eq!(resolve_color(picker, COLOR), Some(light(&palette.card)));
-  assert_eq!(
-    resolve_border(picker),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(picker), Some((1., light(&palette.border))));
   assert_eq!(
     resolve_color(indicator, TEXT_COLOR),
     Some(light(&palette.muted_foreground))
@@ -629,10 +596,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
 
   trigger_focus(picker);
 
-  assert_eq!(
-    resolve_border(picker),
-    Some(Border::new(1., light(&palette.ring)))
-  );
+  assert_eq!(border(picker), Some((1., light(&palette.ring))));
 
   assert_eq!(part(surface), Some(Part::List));
   assert_eq!(resolve_color(surface, COLOR), Some(light(&palette.card)));
@@ -723,10 +687,7 @@ fn a_disabled_button_takes_the_disabled_surface_and_ink() {
     resolve_color(label, TEXT_COLOR),
     Some(light(&palette.disabled_ink))
   );
-  assert_eq!(
-    resolve_border(button),
-    Some(Border::new(1., light(&palette.border)))
-  );
+  assert_eq!(border(button), Some((1., light(&palette.border))));
 
   trigger_pointer_enter(button);
   trigger_frame(Duration::from_secs(1));

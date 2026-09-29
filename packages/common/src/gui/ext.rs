@@ -248,8 +248,8 @@ mod tests {
 
     BoxStyle::<f32, Plain, GuiExt>::default().visit(&mut names);
 
-    assert_eq!(names.0.len(), 33);
-    assert_eq!(names.0[32], "corner_radius");
+    assert_eq!(names.0.len(), 34);
+    assert_eq!(names.0[33], "corner_radius");
   }
 
   /// A derived extension leaf splits into a slot naming the extension property, and its

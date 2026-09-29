@@ -39,7 +39,6 @@ pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
   AccessProp,
   Availability,
-  Border,
   BoxProps,
   BoxValue,
   ClipboardAction,
@@ -1328,13 +1327,18 @@ pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color
   }
 }
 
-/// The border of the box `node`, by the same resolution as [`resolve_color`], with its
-/// color leaf resolved to a fixed color.
+/// The inset the property `key` of `node` resolves to, by the same resolution as
+/// [`resolve_color`]: a padding, a border's width, or a single length on every edge.
 #[must_use]
-pub fn resolve_border(node: NodeId) -> Option<Border<f32>> {
+pub fn resolve_inset(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Inset<f32>> {
   end_turn();
 
-  resolve::resolve_border(node)
+  match resolve::resolve(node, key)? {
+    SlotValue::Box(BoxValue::Inset(inset)) => Some(inset),
+    SlotValue::Box(BoxValue::Length(length)) => Some(Inset::all(length.0)),
+    SlotValue::Box(BoxValue::Dimension(Dimension::Length(length))) => Some(Inset::all(length)),
+    SlotValue::Box(_) | SlotValue::Run(_) => None,
+  }
 }
 
 /// The length the property `key` of `node` resolves to, by the same resolution as

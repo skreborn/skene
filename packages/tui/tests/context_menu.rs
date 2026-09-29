@@ -27,7 +27,8 @@ fn a_menu_on_a_view_takes_the_right_press_from_the_standard_one() {
               MenuItem::separator(),
               MenuItem::new("Delete").handle_select(move || chosen.set("delete".to_owned())),
             ])
-            .set_border(Border::new(1, Color::srgb(0.5, 0.5, 0.5)))
+            .set_border_width(Inset::all(1))
+            .set_border_color(Color::srgb(0.5, 0.5, 0.5))
             .set_child(Text::new("note")),
           Text::new("selectable text").set_selectable(true),
         ))

@@ -94,7 +94,8 @@ where
   menu
     .set_padding(shape.list_inset)
     .set_color(SimplePalette::<P::Scalar>::CARD)
-    .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
+    .set_border_width(hairline())
+    .set_border_color(SimplePalette::<P::Scalar>::BORDER)
     .set_corner_radius(shape.control_radius)
     .set_item_padding(shape.row_inset)
     .set_item_color(

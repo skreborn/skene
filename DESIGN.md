@@ -686,7 +686,8 @@ loop-integrated timer is fair game here (the loop is ours).
 
 A facade in its own right, not a platform of the GUI vocabulary. Its views are the shared
 ones typed to the terminal: lengths are `u32` cells, text is a color plus a `bool` bold,
-a border is one cell of box-drawing characters in a color, its conditions are cells and
+a border is one cell of box-drawing characters on each edge its width names, in its own
+color, its conditions are cells and
 its own background. Nothing the medium lacks exists to call, so a terminal app is
 first-class at compile time rather than best-effort at run time.
 
@@ -852,7 +853,7 @@ box whose decoration asks for more than cells draw—a corner radius, a border, 
 shadow—gets a **backdrop**: an image of its cells and the shadow's band at the cell's
 pixels, the shadow as three softening layers offset half a cell, the background a
 rounded rectangle at the radius in rows, the border a line a quarter cell wide inside
-the edge, rendered through the same `Canvas` a painted box uses and afresh only when
+each edge it is drawn on, rendered through the same `Canvas` a painted box uses and afresh only when
 the size, the cell's pixels or a part of the decoration changes. It is placed on the
 layer beneath every colored cell (`z` below the protocol's threshold, the box's depth
 added so a nested backdrop draws over its parent's), and the box's own cells are left
@@ -872,8 +873,9 @@ only the rows the changed nodes covered and cover—a node whose resolution, tex
 scroll or rectangle changed—and every row for a whole-frame change; the terminal loop
 then diffs rows again on output. A paragraph lays its inline runs out as one wrapped
 text, and a view inside it flows as an inline box: laid out on its own, standing in the
-text as a placeholder of its width, painted and hit at the cells it flowed into. A
-border of zero width takes no cells. Frames paint into a cell buffer—to the terminal
+text as a placeholder of its width, painted and hit at the cells it flowed into. An
+edge whose border width is zero takes no cells and draws none, and a border whose color
+is unset draws in the terminal's own ink, as CSS's `currentColor` does. Frames paint into a cell buffer—to the terminal
 through `launch`, or to plain text
 through `render_to_text` for headless tests (`trigger_key`/`trigger_mouse_move`/
 `trigger_mouse_click`/`trigger_frame` drive it without a terminal). Terminal detection is

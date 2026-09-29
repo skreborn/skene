@@ -4,7 +4,6 @@
 
 use super::{Animation, Easing, Transition};
 use crate::{
-  Border,
   BoxValue,
   Color,
   Dimension,
@@ -18,7 +17,6 @@ use crate::{
   Scalar,
   SlotValue,
   Spacing,
-  StaticLeaf,
   StyleExtension,
   TrackLimit,
   Visibility,
@@ -229,22 +227,6 @@ impl<N: Interpolate> Interpolate for Flexibility<N> {
   }
 }
 
-impl<N: Interpolate> Interpolate for Border<N> {
-  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
-    let color = match (&self.color, &to.color) {
-      (StaticLeaf::Fixed(from), StaticLeaf::Fixed(to)) => {
-        StaticLeaf::Fixed(from.interpolate(to, amount)?)
-      }
-      _ => return None,
-    };
-
-    Some(Self {
-      width: self.width.interpolate(&to.width, amount)?,
-      color,
-    })
-  }
-}
-
 impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     match (self, to) {
@@ -258,7 +240,6 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
       }
       (Self::Inset(from), Self::Inset(to)) => Some(Self::Inset(from.interpolate(to, amount)?)),
       (Self::Color(from), Self::Color(to)) => Some(Self::Color(from.interpolate(to, amount)?)),
-      (Self::Border(from), Self::Border(to)) => Some(Self::Border(from.interpolate(to, amount)?)),
       (Self::Spacing(from), Self::Spacing(to)) => {
         Some(Self::Spacing(from.interpolate(to, amount)?))
       }

@@ -9,6 +9,7 @@ use skene_core::{
   AnyView,
   Dimension,
   HasChildren,
+  Inset,
   IntoView,
   NodeId,
   Part,
@@ -23,7 +24,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{SimpleMarks, SimpleUnit, border, click_cursor, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made checkbox: a rounded mark on the card surface that fills with the
@@ -157,16 +158,11 @@ where
         .mark_surface
         .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
     )
-    .set_border(
-      border(shape.mark_ring, SimplePalette::<P::Scalar>::BORDER)
-        .when(
-          State::Checked,
-          border(shape.mark_ring, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
-        )
-        .when(
-          State::FocusVisible,
-          border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
-        ),
+    .set_border_width(Inset::all(shape.mark_ring))
+    .set_border_color(
+      SimplePalette::<P::Scalar>::BORDER
+        .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE)
+        .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
     )
     .set_corner_radius(shape.mark_radius)
     .set_alignment(Alignment::CENTER)

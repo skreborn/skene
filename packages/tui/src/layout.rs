@@ -5,7 +5,7 @@
 //! style resolved for it differs from the one applied, so a keystroke relays out the
 //! changed subtree and a hover change repaints without a relayout.
 
-use skene_core::{Layout, Overflow, RunDisplay};
+use skene_core::{Inset, Layout, Overflow, RunDisplay};
 use taffy::{
   prelude::{
     AvailableSpace,
@@ -434,7 +434,7 @@ fn restyle_one(store: &mut Store, handle: Handle, displayed: bool) -> Option<Res
 /// What a restyle presents: the resolved box or run target, the wrapper layout of a
 /// run, and the keyframes of each.
 struct Targets {
-  resolved_box: Option<(PlainBox, Option<skene_core::Color>)>,
+  resolved_box: Option<PlainBox>,
   resolved_run: Option<PlainRun>,
   resolved_layout: PlainBox,
   box_keyframes: Vec<skene_core::Animation<PlainBox>>,
@@ -462,7 +462,7 @@ fn targets(store: &mut Store, handle: Handle, fresh: bool) -> Option<Targets> {
         let cache = kind.box_record()?.cache.as_ref()?;
 
         (
-          Some((cache.target.clone(), cache.target_ink)),
+          Some(cache.target.clone()),
           None,
           PlainBox::default(),
           cache.keyframes.clone(),
@@ -572,11 +572,11 @@ fn present_run(
 /// Presents a box's resolution over its motion and caches it; `(repaint, active)`.
 fn present_box(
   inner: &mut crate::store::BoxRecord,
-  resolved: Option<(PlainBox, Option<skene_core::Color>)>,
+  resolved: Option<PlainBox>,
   keyframes: &[skene_core::Animation<PlainBox>],
   frame: &Frame,
 ) -> (bool, bool) {
-  let Some((target, target_ink)) = resolved
+  let Some(target) = resolved
   else {
     return (false, false);
   };
@@ -590,28 +590,20 @@ fn present_box(
     keyframes,
     frame.clock,
   );
-  let (border_ink, inking) = inner.motion.present_ink(
-    inner.cache.as_ref().map(|cache| &cache.target_ink),
-    target_ink,
-    &inner.props.dynamics,
-    frame.clock,
-  );
   let repaint = inner
     .cache
     .as_ref()
-    .is_none_or(|cache| cache.style != style || cache.border_ink != border_ink);
+    .is_none_or(|cache| cache.style != style);
 
   inner.cache = Some(BoxCache {
     generation: frame.generation,
     interaction: frame.interaction,
     style,
     target,
-    border_ink,
-    target_ink,
     keyframes: keyframes.to_vec(),
   });
 
-  (repaint, running || inking)
+  (repaint, running)
 }
 
 /// The taffy style `handle` takes from its resolved style and its place in the tree.
@@ -699,8 +691,7 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
       let mut style = box_taffy_style(inner.props.layout, &resolved, in_stack);
 
       if let Some(field) = field {
-        let border = u32::from(has_border(&resolved));
-        let padding = resolved.padding.unwrap_or_default();
+        let chrome = chrome(&resolved);
 
         if resolved.width.is_none() {
           // One cell past the value's longest line keeps the caret inside the box at
@@ -711,14 +702,12 @@ fn taffy_style_of(store: &Store, handle: Handle) -> Restyled {
             .max(8);
 
           style.size.width = length(cell(
-            u32::try_from(content).unwrap_or(u32::MAX) + 2 * border + padding.left + padding.right,
+            u32::try_from(content).unwrap_or(u32::MAX) + chrome.left + chrome.right,
           ));
         }
 
         if resolved.height.is_none() {
-          style.size.height = length(cell(
-            u32::from(field.lines) + 2 * border + padding.top + padding.bottom,
-          ));
+          style.size.height = length(cell(u32::from(field.lines) + chrome.top + chrome.bottom));
         }
       }
 
@@ -1100,11 +1089,13 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   }
 
   if has_border(style) {
+    let edges = border_edges(style);
+
     out.border = taffy::geometry::Rect {
-      left: length(1.),
-      right: length(1.),
-      top: length(1.),
-      bottom: length(1.),
+      left: length(cell(u32::from(edges.left))),
+      right: length(cell(u32::from(edges.right))),
+      top: length(cell(u32::from(edges.top))),
+      bottom: length(cell(u32::from(edges.bottom))),
     };
   }
 
@@ -1193,11 +1184,37 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   }
 }
 
-/// Whether the resolved style draws a border: one of a width above zero, which the
-/// terminal draws as one cell.
+/// The edges the resolved style draws its border on: each of a width above zero, which
+/// the terminal draws as one cell.
+#[inline(always)]
+pub(crate) fn border_edges(style: &PlainBox) -> Inset<bool> {
+  let width = style.border_width.unwrap_or_default();
+
+  Inset {
+    top: width.top > 0,
+    right: width.right > 0,
+    bottom: width.bottom > 0,
+    left: width.left > 0,
+  }
+}
+
+/// The cells the resolved style's border and padding take on each edge.
+fn chrome(style: &PlainBox) -> Inset<u32> {
+  let edges = border_edges(style);
+  let padding = style.padding.unwrap_or_default();
+
+  Inset {
+    top: u32::from(edges.top) + padding.top,
+    right: u32::from(edges.right) + padding.right,
+    bottom: u32::from(edges.bottom) + padding.bottom,
+    left: u32::from(edges.left) + padding.left,
+  }
+}
+
+/// Whether the resolved style draws its border on any edge.
 #[inline(always)]
 pub(crate) fn has_border(style: &PlainBox) -> bool {
-  style.border.as_ref().is_some_and(|border| border.width > 0)
+  border_edges(style) != Inset::default()
 }
 
 /// A cell length as layout units.

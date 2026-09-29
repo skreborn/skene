@@ -5,14 +5,14 @@ use std::rc::Rc;
 
 use skene_common::{
   Canvas,
-  kurbo::{RoundedRect, Stroke},
+  kurbo::{Rect, RoundedRect, Stroke},
 };
-use skene_core::{Color, ContainerName, Size};
+use skene_core::{Color, ContainerName, Inset, Size};
 use skene_reactive::Set;
 
 use crate::{
   interaction::scroll_to,
-  layout::{self, has_border, is_inline_run, is_paragraph},
+  layout::{self, border_edges, has_border, is_inline_run, is_paragraph},
   paint::{self, Buffer, Image, terminal_rgb},
   store::{Backdrop, BackdropKey, CellRect, Handle, Record, Store},
   with_store,
@@ -277,7 +277,10 @@ fn render_backdrops(store: &mut Store) {
       .map(Color::to_rgba)
       .filter(|rgba| rgba[3] > 0.);
     let border = has_border(style)
-      .then(|| cache.border_ink.and_then(terminal_rgb))
+      .then(|| match style.border_color {
+        Some(color) => terminal_rgb(color),
+        None => Some(store.contrast().ink),
+      })
       .flatten();
     let (width, height) = store.node_size(handle);
     let band = u16::from(shadow.is_some());
@@ -291,6 +294,7 @@ fn render_backdrops(store: &mut Store) {
       cell_pixels,
       background: style.color.and_then(terminal_rgb),
       border,
+      border_edges: border_edges(style),
       radius,
       shadow,
     };
@@ -377,22 +381,38 @@ fn render_backdrop(key: &BackdropKey) -> Vec<u8> {
 
   if let Some((red, green, blue)) = key.border {
     let line = (cell_width / 4.).max(2.);
-
-    canvas.stroke(
-      &RoundedRect::new(
-        line / 2.,
-        line / 2.,
-        width - line / 2.,
-        height - line / 2.,
-        (radius - line / 2.).max(0.),
-      ),
-      &Stroke::new(line),
-      Color::srgb(
-        f32::from(red) / 255.,
-        f32::from(green) / 255.,
-        f32::from(blue) / 255.,
-      ),
+    let ink = Color::srgb(
+      f32::from(red) / 255.,
+      f32::from(green) / 255.,
+      f32::from(blue) / 255.,
     );
+    let edges = key.border_edges;
+
+    if edges == Inset::all(true) {
+      canvas.stroke(
+        &RoundedRect::new(
+          line / 2.,
+          line / 2.,
+          width - line / 2.,
+          height - line / 2.,
+          (radius - line / 2.).max(0.),
+        ),
+        &Stroke::new(line),
+        ink,
+      );
+    }
+    else {
+      for (drawn, x0, y0, x1, y1) in [
+        (edges.top, 0., 0., width, line),
+        (edges.right, width - line, 0., width, height),
+        (edges.bottom, 0., height - line, width, height),
+        (edges.left, 0., 0., line, height),
+      ] {
+        if drawn {
+          canvas.fill(&Rect::new(x0, y0, x1, y1), ink);
+        }
+      }
+    }
   }
 
   canvas.pixels()

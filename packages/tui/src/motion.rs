@@ -7,11 +7,8 @@ use skene_core::{
   BoxField,
   BoxFieldVisitor,
   BoxValue,
-  Color,
   IntoBoxValue,
   IntoRunValue,
-  Property,
-  PropertyKey,
   RunDynamics,
   RunField,
   RunFieldVisitor,
@@ -26,11 +23,10 @@ use crate::{
   store::{PlainBox, PlainRun},
 };
 
-/// What a box-like node runs: its properties' motion and its border ink's.
+/// What a box-like node runs: its properties' motion.
 #[derive(Default)]
 pub(crate) struct BoxMotion {
   properties: Motion<TuiProperty, BoxValue<u32, TuiExt>>,
-  ink: Motion<TuiProperty, Color>,
 }
 
 /// What a run runs: its properties' motion.
@@ -91,35 +87,6 @@ impl BoxMotion {
         .properties
         .is_running(keyframes, clock.now, clock.reduced),
     }
-  }
-
-  /// Presents the border's ink: a tween where the border transitions, else the target.
-  pub(crate) fn present_ink(
-    &mut self,
-    previous: Option<&Option<Color>>,
-    target: Option<Color>,
-    dynamics: &BoxDynamics<u32, TuiExt>,
-    clock: Clock,
-  ) -> (Option<Color>, bool) {
-    const BORDER: PropertyKey<TuiProperty> = PropertyKey::Shared(Property::Border);
-
-    if let Some(previous) = previous {
-      self.ink.retarget(
-        BORDER,
-        previous.as_ref(),
-        target.as_ref(),
-        &dynamics.transitions,
-        clock.now,
-        clock.reduced,
-      );
-    }
-
-    let ink = self.ink.sample(BORDER, clock.now).or(target);
-
-    (
-      ink,
-      self.ink.is_running::<()>(&[], clock.now, clock.reduced),
-    )
   }
 }
 

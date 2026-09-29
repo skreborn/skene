@@ -20,7 +20,6 @@
 //! platform compiles or runs, and the universal values ([`Color`], the geometry, the
 //! layout vocabulary) are what every medium's properties are made of.
 
-mod border;
 mod boundary;
 mod box_style;
 mod children;
@@ -58,7 +57,6 @@ mod values;
 mod view;
 mod window;
 
-pub use border::Border;
 pub use boundary::Boundary;
 pub use box_style::{
   BoxDynamics,

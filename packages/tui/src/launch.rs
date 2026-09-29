@@ -1,7 +1,7 @@
 //! The launch configuration: what the app takes from the terminal.
 
 use skene_common::{ContextMenu, MenuItem, typography};
-use skene_core::{Border, Color, Inset, IntoView, Media, Modifiers, Shortcut, State, When};
+use skene_core::{Color, Inset, IntoView, Media, Modifiers, Shortcut, State, When};
 
 use crate::{Tui, terminal, with_store};
 
@@ -161,7 +161,8 @@ fn serve_standard_menu() {
     let _ = ContextMenu::<Tui>::new()
       .set_items([MenuItem::cut(), MenuItem::copy(), MenuItem::paste()])
       .set_color(Color::srgb(1., 1., 1.).when(Media::Dark, Color::srgb(0., 0., 0.)))
-      .set_border(Border::new(1, gray))
+      .set_border_width(Inset::all(1))
+      .set_border_color(gray)
       .set_item_padding(Inset::symmetric(1, 0))
       .set_item_color(
         Color::TRANSPARENT

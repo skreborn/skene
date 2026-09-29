@@ -19,6 +19,7 @@ use skene_core::{
   Color,
   Dimension,
   HasChildren,
+  Inset,
   IntoView,
   NoChild,
   NodeId,
@@ -34,7 +35,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{SimpleMarks, SimpleUnit, border, click_cursor, define_defaults, shape},
+  shape::{SimpleMarks, SimpleUnit, click_cursor, define_defaults, shape},
 };
 
 /// A ready-made group of radio buttons: the members inside it are one tab stop, the
@@ -239,16 +240,11 @@ where
     .set_width(Dimension::Length(shape.mark_size))
     .set_height(Dimension::Length(shape.mark_size))
     .set_color(shape.mark_surface)
-    .set_border(
-      border(shape.mark_ring, SimplePalette::<P::Scalar>::BORDER)
-        .when(
-          State::Checked,
-          border(shape.mark_ring, SimplePalette::<P::Scalar>::PRIMARY_SURFACE),
-        )
-        .when(
-          State::FocusVisible,
-          border(shape.mark_ring, SimplePalette::<P::Scalar>::RING),
-        ),
+    .set_border_width(Inset::all(shape.mark_ring))
+    .set_border_color(
+      SimplePalette::<P::Scalar>::BORDER
+        .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_SURFACE)
+        .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING),
     )
     .set_corner_radius(shape.mark_size.to_f32() / 2.)
     .set_alignment(Alignment::CENTER)

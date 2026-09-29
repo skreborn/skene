@@ -71,7 +71,6 @@ pub use crate::render_to_string;
 pub use crate::{
   Anchor,
   AnyView,
-  Border,
   Column,
   Condition,
   Container,

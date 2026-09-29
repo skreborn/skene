@@ -24,7 +24,6 @@ use skene_core::{
   AccessProp,
   Animation,
   AnyView,
-  Border,
   BoxKeyframe,
   Color,
   Condition,
@@ -62,8 +61,8 @@ use skene_headless::{
   box_props,
   children,
   control_props,
-  resolve_border,
   resolve_color,
+  resolve_inset,
   resolve_length,
   resolve_visibility,
   trigger_container_size,
@@ -83,6 +82,8 @@ const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
 const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
 const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
+const BORDER_WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderWidth);
+const BORDER_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderColor);
 
 /// The accessible name a case gives the box it reads, where that box is not its own.
 const TARGET: &str = "parity-target";
@@ -206,8 +207,8 @@ enum Read {
   Width,
   /// The box's padding, the same on each edge.
   Padding,
-  /// The box's border: its width and its color.
-  Border,
+  /// The box's border at an edge: its width there, and its color.
+  Border(Edge),
   /// The ink of the run inside the box.
   Ink,
   /// Whether the box is drawn.
@@ -247,6 +248,7 @@ enum Case {
   ConditionalPadding,
   SafeAreaPadding,
   FixedBorder,
+  EdgeBorder,
   FixedInk,
   TokenInk,
   LexicalToken,
@@ -293,6 +295,7 @@ const CASES: &[Case] = &[
   Case::ConditionalPadding,
   Case::SafeAreaPadding,
   Case::FixedBorder,
+  Case::EdgeBorder,
   Case::FixedInk,
   Case::TokenInk,
   Case::LexicalToken,
@@ -348,7 +351,8 @@ impl Case {
       | Self::LengthTokenPadding
       | Self::ConditionalPadding
       | Self::SafeAreaPadding => Read::Padding,
-      Self::FixedBorder => Read::Border,
+      Self::FixedBorder => Read::Border(Edge::Top),
+      Self::EdgeBorder => Read::Border(Edge::Left),
       Self::FixedInk | Self::TokenInk => Read::Ink,
       Self::VisibilityTransition => Read::Visibility,
     }
@@ -456,8 +460,35 @@ impl Case {
         container.set_padding(Value::from(Inset::all(4.)).when(Media::MinWidth(1.), Inset::all(9.)))
       }
       Self::SafeAreaPadding => container.set_padding(Expr::<Length>::safe_area(Edge::Top) + 6.),
-      Self::FixedBorder => container.set_border(Border::new(3., orange())),
+      Self::FixedBorder => container
+        .set_border_width(Inset::all(3.))
+        .set_border_color(orange()),
+      Self::EdgeBorder => container
+        .set_border_width(Inset {
+          top: 1.,
+          right: 2.,
+          bottom: 3.,
+          left: 4.,
+        })
+        .set_border_color(ParityPalette::SURFACE),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
+      Self::NeutralKeyframe | Self::ReversedTransition | Self::VisibilityTransition => {
+        self.moving(container)
+      }
+      Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
+      Self::LexicalToken
+      | Self::LexicalEm
+      | Self::ContainerUnitWidth
+      | Self::ContainerQueryColor
+      | Self::CheckedColor
+      | Self::DisabledColor
+      | Self::FocusedColor => container,
+    }
+  }
+
+  /// The case's box in motion, where the case moves; the box as it is otherwise.
+  fn moving<P: Platform<Scalar = f32>>(self, container: Container<P>) -> Container<P> {
+    match self {
       Self::NeutralKeyframe => container.set_width(Dimension::Length(40.)).set_animation(
         Animation::new(
           1.,
@@ -496,14 +527,7 @@ impl Case {
           })
           .set_transition(Transition::new(Property::Visibility, 1.).set_easing(Easing::Linear))
       }
-      Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
-      Self::LexicalToken
-      | Self::LexicalEm
-      | Self::ContainerUnitWidth
-      | Self::ContainerQueryColor
-      | Self::CheckedColor
-      | Self::DisabledColor
-      | Self::FocusedColor => container,
+      _ => container,
     }
   }
 
@@ -680,10 +704,9 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
     Read::Background => resolve_color(node, COLOR).map(Reading::Color),
     Read::Width => resolve_length(node, WIDTH).map(Reading::Length),
     Read::Padding => resolve_length(node, PADDING).map(Reading::Length),
-    Read::Border => resolve_border(node).and_then(|border| match border.color {
-      StaticLeaf::Fixed(color) => Some(Reading::Border(border.width, color)),
-      _ => None,
-    }),
+    Read::Border(edge) => resolve_inset(node, BORDER_WIDTH)
+      .zip(resolve_color(node, BORDER_COLOR))
+      .map(|(width, color)| Reading::Border(width.edge(edge), color)),
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
     Read::Visibility => resolve_visibility(node).map(Reading::Visibility),
   };
@@ -776,12 +799,22 @@ fn rendered(case: Case) -> Reading {
     Read::Background => computed_color(&element, "background-color"),
     Read::Width => Reading::Length(pixels(&computed(&element, "width"))),
     Read::Padding => Reading::Length(pixels(&computed(&element, "padding-top"))),
-    Read::Border => match computed_color(&element, "border-top-color") {
-      Reading::Color(color) => {
-        Reading::Border(pixels(&computed(&element, "border-top-width")), color)
+    Read::Border(edge) => {
+      let side = match edge {
+        Edge::Top => "top",
+        Edge::Right => "right",
+        Edge::Bottom => "bottom",
+        Edge::Left => "left",
+      };
+
+      match computed_color(&element, &format!("border-{side}-color")) {
+        Reading::Color(color) => Reading::Border(
+          pixels(&computed(&element, &format!("border-{side}-width"))),
+          color,
+        ),
+        _ => Reading::Missing,
       }
-      _ => Reading::Missing,
-    },
+    }
     Read::Ink => {
       let run = element
         .first_element_child()

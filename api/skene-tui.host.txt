@@ -331,7 +331,6 @@ pub fn skene_tui::prelude::set_title(impl core::convert::Into<alloc::string::Str
 pub fn skene_tui::prelude::spawn(impl core::future::future::Future<Output = ()> + 'static) -> skene_reactive::spawn::TaskHandle
 pub fn skene_tui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_tui::prelude::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>
-pub type skene_tui::prelude::Border = skene_core::border::Border<u32>
 pub type skene_tui::prelude::Column = skene_common::flex::Column<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::Condition = skene_core::condition::Condition<u32>
 pub type skene_tui::prelude::Container = skene_common::container::Container<skene_tui::ActivePlatform>
@@ -688,7 +687,6 @@ pub fn skene_tui::trigger_text_sizing(bool)
 pub fn skene_tui::uninstall()
 pub type skene_tui::ActivePlatform = skene_tui::Tui
 pub type skene_tui::AnyView = skene_core::view::AnyView<skene_tui::ActivePlatform>
-pub type skene_tui::Border = skene_core::border::Border<u32>
 pub type skene_tui::ChildBuilder = skene_common::realize::ChildBuilder<skene_tui::ActivePlatform>
 pub type skene_tui::Column = skene_common::flex::Column<skene_tui::ActivePlatform>
 pub type skene_tui::Condition = skene_core::condition::Condition<u32>

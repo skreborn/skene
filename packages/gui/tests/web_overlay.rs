@@ -43,7 +43,7 @@ fn modal_serializes_as_a_closed_dialog() {
 
   assert!(
     rendered.styles().contains(&format!(
-      ".{class}{{background:none;border:none;color:inherit;margin:auto;overflow:visible;\
+      ".{class}{{background:none;border:0 solid;color:inherit;margin:auto;overflow:visible;\
        padding:16px 16px 16px 16px;}}"
     )),
     "{}",

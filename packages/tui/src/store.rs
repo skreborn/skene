@@ -106,10 +106,6 @@ pub(crate) struct BoxCache {
   pub(crate) style: PlainBox,
   /// The style the resolution produced, which a change is judged against.
   pub(crate) target: PlainBox,
-  /// The border's color leaf presented; `None` for no border or a transparent one.
-  pub(crate) border_ink: Option<Color>,
-  /// The border's color leaf resolved.
-  pub(crate) target_ink: Option<Color>,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
   pub(crate) keyframes: Vec<skene_core::Animation<PlainBox>>,
 }
@@ -642,6 +638,8 @@ pub(crate) struct BackdropKey {
   pub(crate) background: Option<(u8, u8, u8)>,
   /// The border's ink; `None` for no border or a transparent one.
   pub(crate) border: Option<(u8, u8, u8)>,
+  /// The edges the border is drawn on.
+  pub(crate) border_edges: Inset<bool>,
   /// The corner radius.
   pub(crate) radius: f32,
   /// The shadow's color as RGBA; `None` for no shadow or a transparent one.

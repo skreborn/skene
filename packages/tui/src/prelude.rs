@@ -68,7 +68,6 @@ pub use skene_reactive::{
 pub use crate::{
   Anchor,
   AnyView,
-  Border,
   BorderGlyphs,
   Clipboard,
   Column,

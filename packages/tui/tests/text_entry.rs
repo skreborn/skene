@@ -366,7 +366,8 @@ fn an_overflowing_editor_shows_a_scrollbar_that_drags() {
         .set_child(
           RawTextEditor::new(TextEntry::new().set_lines(3).bind_value(bio))
             .set_width(10)
-            .set_border(Border::new(1, white())),
+            .set_border_width(Inset::all(1))
+            .set_border_color(white()),
         )
         .into_any()
         .build()

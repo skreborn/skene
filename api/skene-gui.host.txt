@@ -223,7 +223,6 @@ pub fn skene_gui::prelude::empty() -> impl skene_gui::View
 pub fn skene_gui::prelude::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::prelude::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
-pub type skene_gui::prelude::Border = skene_core::border::Border<f32>
 pub type skene_gui::prelude::Column = skene_common::flex::Column<skene_gui::ActivePlatform>
 pub type skene_gui::prelude::Condition = skene_core::condition::Condition<f32>
 pub type skene_gui::prelude::Container = skene_common::container::Container<skene_gui::ActivePlatform>
@@ -344,7 +343,6 @@ pub fn skene_gui::spawn(impl core::future::future::Future<Output = ()> + 'static
 pub fn skene_gui::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
 pub type skene_gui::ActivePlatform = skene_headless::Headless
 pub type skene_gui::AnyView = skene_core::view::AnyView<skene_gui::ActivePlatform>
-pub type skene_gui::Border = skene_core::border::Border<f32>
 pub type skene_gui::ChildBuilder = skene_common::realize::ChildBuilder<skene_gui::ActivePlatform>
 pub type skene_gui::Column = skene_common::flex::Column<skene_gui::ActivePlatform>
 pub type skene_gui::Condition = skene_core::condition::Condition<f32>

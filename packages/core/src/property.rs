@@ -32,8 +32,10 @@ pub enum Property {
   Pinned,
   /// The background color.
   Color,
-  /// The border.
-  Border,
+  /// The border's width on each edge.
+  BorderWidth,
+  /// The border's color.
+  BorderColor,
   /// The mouse cursor shown over the box.
   Cursor,
   /// The spacing between children, per axis.
@@ -104,7 +106,8 @@ impl Property {
       Self::Offset => "offset",
       Self::Pinned => "pinned",
       Self::Color => "color",
-      Self::Border => "border",
+      Self::BorderWidth => "border_width",
+      Self::BorderColor => "border_color",
       Self::Cursor => "cursor",
       Self::Spacing => "spacing",
       Self::Wrap => "wrap",

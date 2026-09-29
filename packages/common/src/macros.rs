@@ -69,8 +69,11 @@ macro_rules! decoration {
         "the shift from each edge, keeping the box in flow";
       set_color / derive_color (color) => color: $crate::__core::Color,
         "the background color";
-      set_border / derive_border (border) => border: $crate::__core::Border<P::Scalar>,
-        "the border";
+      set_border_width / derive_border_width (width)
+        => border_width: $crate::__core::Inset<P::Scalar>,
+        "the border's width on each edge; zero draws none";
+      set_border_color / derive_border_color (color) => border_color: $crate::__core::Color,
+        "the border's color";
       set_cursor / derive_cursor (cursor) => cursor: $crate::__core::MouseCursor,
         "the mouse cursor shown over the box";
       set_overflow / derive_overflow (overflow) => overflow: $crate::__core::Overflow,

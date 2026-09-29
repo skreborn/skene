@@ -273,7 +273,8 @@ fn borders() -> impl IntoView {
 fn framed(label: &'static str, glyphs: BorderGlyphs) -> impl IntoView {
   Container::new()
     .set_padding(Inset::horizontal(1))
-    .set_border(Border::new(1, SimplePalette::BORDER))
+    .set_border_width(Inset::all(1))
+    .set_border_color(SimplePalette::BORDER)
     .set_border_glyphs(glyphs)
     .set_child(Text::new(label).set_color(SimplePalette::MUTED_FOREGROUND))
 }

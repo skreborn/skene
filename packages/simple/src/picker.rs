@@ -20,6 +20,7 @@ use skene_core::{
   Color,
   Dimension,
   HasChildren,
+  Inset,
   IntoView,
   ItemAlignment,
   MouseCursor,
@@ -36,16 +37,7 @@ use skene_reactive::{Get, Memo, Signal, use_context};
 use super::{
   SimpleGlyphs,
   SimplePalette,
-  shape::{
-    SimpleMarks,
-    SimpleUnit,
-    as_part,
-    border,
-    click_cursor,
-    define_defaults,
-    hairline,
-    shape,
-  },
+  shape::{SimpleMarks, SimpleUnit, as_part, click_cursor, define_defaults, hairline, shape},
 };
 
 /// The glyph after the chosen label.
@@ -178,7 +170,8 @@ where
     let surface = Container::<P>::new()
       .set_padding(shape.list_inset)
       .set_color(SimplePalette::<P::Scalar>::CARD)
-      .set_border(hairline(SimplePalette::<P::Scalar>::BORDER))
+      .set_border_width(hairline())
+      .set_border_color(SimplePalette::<P::Scalar>::BORDER)
       .set_corner_radius(shape.control_radius)
       .set_child(Column::<P>::new().set_children(rows));
 
@@ -189,16 +182,11 @@ where
         State::Disabled,
         SimplePalette::<P::Scalar>::DISABLED_SURFACE,
       ))
-      .set_border(
-        border(shape.field_ring, SimplePalette::<P::Scalar>::BORDER)
-          .when(
-            State::FocusVisible,
-            border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
-          )
-          .when(
-            State::Open,
-            border(shape.field_ring, SimplePalette::<P::Scalar>::RING),
-          ),
+      .set_border_width(Inset::all(shape.field_ring))
+      .set_border_color(
+        SimplePalette::<P::Scalar>::BORDER
+          .when(State::FocusVisible, SimplePalette::<P::Scalar>::RING)
+          .when(State::Open, SimplePalette::<P::Scalar>::RING),
       )
       .set_corner_radius(shape.control_radius)
       .set_cursor(click_cursor())

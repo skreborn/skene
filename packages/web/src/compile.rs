@@ -157,7 +157,8 @@ pub(crate) const fn target(key: Key) -> Target {
         ..plain("inset")
       },
       Property::Color => plain("background-color"),
-      Property::Border => plain("border"),
+      Property::BorderWidth => plain("border-width"),
+      Property::BorderColor => plain("border-color"),
       Property::Cursor => plain("cursor"),
       Property::Spacing => plain("gap"),
       Property::Wrap => plain("flex-wrap"),
@@ -205,15 +206,6 @@ fn token_reference(name: TokenName) -> String {
   format!("var(--{name})")
 }
 
-/// A color leaf's text: a literal, a token or an expression.
-fn color_leaf(leaf: &StaticLeaf<skene_core::Color>) -> String {
-  match leaf {
-    StaticLeaf::Fixed(color) => Declarations::render_color(*color),
-    StaticLeaf::Token(name) => token_reference(*name),
-    StaticLeaf::Expr(expr) => render_expr(expr.node()),
-  }
-}
-
 /// The CSS text of a box property's erased value.
 pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
   match value {
@@ -226,9 +218,6 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
       inset.top, inset.right, inset.bottom, inset.left
     ),
     BoxValue::Color(color) => Declarations::render_color(*color),
-    BoxValue::Border(border) => {
-      format!("{}px solid {}", border.width, color_leaf(&border.color))
-    }
     BoxValue::Cursor(cursor) => Declarations::render_cursor(*cursor).to_owned(),
     BoxValue::Spacing(spacing) => format!("{}px {}px", spacing.row, spacing.column),
     BoxValue::Wrap(wrap) => match wrap {
@@ -781,7 +770,7 @@ const fn placement_margin(placement: Placement) -> &'static str {
 /// backdrop.
 pub(crate) fn compile_overlay<P: PixelPlatform>(props: &OverlayProps<P>) -> Compiled {
   let base = box_identity(&props.box_props, Declarations::new())
-    .set("border", "none")
+    .set("border", "0 solid")
     .set("padding", "0")
     .set("background", "none")
     .set("color", "inherit")

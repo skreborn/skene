@@ -32,9 +32,7 @@ left half-done in a code comment.
     - The parity harness (`web_parity`) gains a case for each fix below.
     - Motion: an aspect ratio becomes a value type of its own, interpolating through its
     logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
-    - Runs and boxes: `Border` becomes a width `Inset` and a plain color, making per-edge
-    borders expressible and the terminal's border-ink path unnecessary; taffy's
-    per-axis overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named adaptive
+    - Boxes: taffy's per-axis overflow, `repeat(auto-fill)` as a Compose-named adaptive
     grid, and named lines and areas surface.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and

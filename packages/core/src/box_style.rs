@@ -3,7 +3,6 @@
 use std::{fmt::Debug, rc::Rc};
 
 use super::{
-  Border,
   Declared,
   DerivedSlot,
   Fingerprint,
@@ -72,8 +71,10 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   pub pinned: S::Of<Inset<Dimension<N>>>,
   /// The background color.
   pub color: S::Of<Color>,
-  /// The border.
-  pub border: S::Of<Border<N>>,
+  /// The border's width on each edge.
+  pub border_width: S::Of<Inset<N>>,
+  /// The border's color.
+  pub border_color: S::Of<Color>,
   /// The mouse cursor shown over the box.
   pub cursor: S::Of<MouseCursor>,
   /// The spacing between children, per axis.
@@ -136,8 +137,6 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   Inset(Inset<N>),
   /// A color.
   Color(Color),
-  /// A border.
-  Border(Border<N>),
   /// A mouse cursor.
   Cursor(MouseCursor),
   /// A spacing per axis.
@@ -246,7 +245,6 @@ box_values!(
   Inset<Dimension<N>> => DimensionInset, |length| Inset::all(Dimension::Length(length));
   Inset<N> => Inset, Inset::all;
   Color => Color;
-  Border<N> => Border;
   MouseCursor => Cursor;
   Spacing<N> => Spacing, Spacing::all;
   Wrap => Wrap;
@@ -360,7 +358,8 @@ box_fields!(
   offset: crate::Inset<crate::Dimension<N>> => Offset,
   pinned: crate::Inset<crate::Dimension<N>> => Pinned,
   color: crate::Color => Color,
-  border: crate::Border<N> => Border,
+  border_width: crate::Inset<N> => BorderWidth,
+  border_color: crate::Color => BorderColor,
   cursor: crate::MouseCursor => Cursor,
   spacing: crate::Spacing<N> => Spacing,
   wrap: crate::Wrap => Wrap,
@@ -690,11 +689,13 @@ mod tests {
 
     style.visit(&mut names);
 
-    assert_eq!(names.0.len(), 32);
+    assert_eq!(names.0.len(), 33);
     assert_eq!(names.0[0], ("width", false));
-    assert_eq!(names.0[14], ("spacing", true));
-    assert_eq!(names.0[30], ("overflow", false));
-    assert_eq!(names.0[31], ("visibility", false));
+    assert_eq!(names.0[12], ("border_width", false));
+    assert_eq!(names.0[13], ("border_color", false));
+    assert_eq!(names.0[15], ("spacing", true));
+    assert_eq!(names.0[31], ("overflow", false));
+    assert_eq!(names.0[32], ("visibility", false));
     assert_eq!(
       <box_fields::Spacing as BoxField<f32, ()>>::KEY,
       PropertyKey::Shared(Property::Spacing)

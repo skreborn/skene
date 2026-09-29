@@ -200,20 +200,12 @@ impl<'a> Env<'a> {
     layout
   }
 
-  /// The box style of the record, every property resolved; with its border's ink.
-  pub(crate) fn resolve_box(&self) -> Option<(PlainBox, Option<Color>)> {
+  /// The box style of the record, every property resolved.
+  pub(crate) fn resolve_box(&self) -> Option<PlainBox> {
     let record = self.store.record(self.handle)?;
     let source: &BoxStyle<u32, Static<Condition<u32>>, TuiExt> =
       &record.kind.box_record()?.props.style;
-    let (mut style, border_ink) = self.with_resolver(|resolver| {
-      let style = resolver.box_style(source);
-      let border_ink = style
-        .border
-        .as_ref()
-        .and_then(|border| resolver.color_leaf(&border.color));
-
-      (style, border_ink)
-    });
+    let mut style = self.with_resolver(|resolver| resolver.box_style(source));
 
     if style.ext.border_glyphs.is_none()
       && style.ext.corner_radius.is_some_and(|radius| radius.0 > 0.)
@@ -221,7 +213,7 @@ impl<'a> Env<'a> {
       style.ext.border_glyphs = Some(BorderGlyphs::ROUNDED);
     }
 
-    Some((style, border_ink))
+    Some(style)
   }
 
   /// The run style a text entry's value paints with: the typography inherited at the

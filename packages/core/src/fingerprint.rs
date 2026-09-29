@@ -3,7 +3,6 @@
 use std::hash::{Hash, Hasher};
 
 use super::{
-  Border,
   BoxDynamics,
   BoxStyle,
   BoxVisitor,
@@ -168,13 +167,6 @@ impl<T: Fingerprint> Fingerprint for Spacing<T> {
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.row.fingerprint(state);
     self.column.fingerprint(state);
-  }
-}
-
-impl<N: Scalar> Fingerprint for Border<N> {
-  #[inline(always)]
-  fn fingerprint<H: Hasher>(&self, state: &mut H) {
-    self.hash(state);
   }
 }
 

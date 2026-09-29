@@ -1156,11 +1156,15 @@ impl Platform for Web {
 
   fn create_box(props: &BoxProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
-      let index = tree.element(box_tag(props.role, props.destination.is_some()));
+      let index = tree.element(box_tag(
+        props.role,
+        AccessProp::level_of(&props.access),
+        props.destination.is_some(),
+      ));
 
       if let Some(node) = tree.node(index) {
-        if let Some(role) = props.role.filter(|role| role.is_spelled()) {
-          node.set_attribute("role", aria_role(role));
+        if let Some(role) = props.role.and_then(aria_role) {
+          node.set_attribute("role", role);
         }
 
         if let Some(href) = props
@@ -1339,8 +1343,8 @@ impl Platform for Web {
           if props.hint {
             node.set_attribute("role", "tooltip");
           }
-          else if let Some(role) = props.box_props.role.filter(|role| role.is_spelled()) {
-            node.set_attribute("role", aria_role(role));
+          else if let Some(role) = props.box_props.role.and_then(aria_role) {
+            node.set_attribute("role", role);
           }
         }
 

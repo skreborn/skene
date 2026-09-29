@@ -431,7 +431,7 @@ impl Behavior<Web> for Partial {
   }
 
   fn role(&self) -> Option<Role> {
-    Some(Role::Checkbox)
+    Some(Role::CheckBox)
   }
 
   fn listens(&self) -> &'static [EventKind] {

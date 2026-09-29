@@ -151,7 +151,7 @@ fn arrow_down_opens_the_list_with_focus_on_the_chosen_option() {
   );
   assert_eq!(
     box_props(parts.face).and_then(|props| props.role),
-    Some(Role::Combobox)
+    Some(Role::ComboBox)
   );
   assert_eq!(accessible_name(parts.face), Some("Size".to_owned()));
   assert_eq!(text(parts.shown), Some("b".to_owned()));

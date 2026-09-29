@@ -140,7 +140,7 @@ impl<P: Platform> Behavior<P> for Popup {
   #[inline(always)]
   fn role(&self) -> Option<Role> {
     Some(match self.kind {
-      PopupKind::Listbox => Role::Combobox,
+      PopupKind::Listbox => Role::ComboBox,
       PopupKind::Menu | PopupKind::Dialog => Role::Button,
     })
   }

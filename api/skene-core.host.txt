@@ -8,6 +8,7 @@ pub use skene_core::PointerButtons
 pub use skene_core::PointerId
 pub use skene_core::PointerInfo
 pub use skene_core::PointerType
+pub use skene_core::Role
 pub mod skene_core::box_fields
 pub struct skene_core::box_fields::Arrangement
 impl core::clone::Clone for skene_core::box_fields::Arrangement
@@ -857,6 +858,7 @@ pub skene_core::AccessProp::HasPopup(skene_core::PopupKind)
 pub skene_core::AccessProp::Invalid(bool)
 pub skene_core::AccessProp::Label(alloc::string::String)
 pub skene_core::AccessProp::LabelledBy(alloc::vec::Vec<skene_core::NodeId>)
+pub skene_core::AccessProp::Level(usize)
 pub skene_core::AccessProp::Orientation(skene_core::Axis)
 pub skene_core::AccessProp::ReadOnly(bool)
 pub skene_core::AccessProp::Required(bool)
@@ -868,6 +870,7 @@ pub skene_core::AccessProp::ValueStep(f32)
 pub skene_core::AccessProp::ValueText(alloc::string::String)
 impl skene_core::AccessProp
 pub fn skene_core::AccessProp::fold(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> alloc::vec::Vec<Self>
+pub fn skene_core::AccessProp::level_of(&[Self]) -> core::option::Option<usize>
 pub fn skene_core::AccessProp::referenced(&self) -> &[skene_core::NodeId]
 impl core::clone::Clone for skene_core::AccessProp
 pub fn skene_core::AccessProp::clone(&self) -> skene_core::AccessProp
@@ -1834,46 +1837,6 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::ExprValue> for skene
 pub fn skene_core::Resolved<N>::from(skene_core::ExprValue) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Length> for skene_core::Resolved<N>
 pub fn skene_core::Resolved<N>::from(skene_core::Length) -> Self
-pub enum skene_core::Role
-pub skene_core::Role::Alert
-pub skene_core::Role::Article
-pub skene_core::Role::Aside
-pub skene_core::Role::Button
-pub skene_core::Role::Checkbox
-pub skene_core::Role::Combobox
-pub skene_core::Role::Dialog
-pub skene_core::Role::Footer
-pub skene_core::Role::Header
-pub skene_core::Role::Heading(u8)
-pub skene_core::Role::Image
-pub skene_core::Role::Label
-pub skene_core::Role::List
-pub skene_core::Role::ListItem
-pub skene_core::Role::Listbox
-pub skene_core::Role::ListboxOption
-pub skene_core::Role::Main
-pub skene_core::Role::Menu
-pub skene_core::Role::MenuItem
-pub skene_core::Role::Navigation
-pub skene_core::Role::Radio
-pub skene_core::Role::RadioGroup
-pub skene_core::Role::Section
-pub skene_core::Role::Slider
-pub skene_core::Role::Status
-impl skene_core::Role
-pub const fn skene_core::Role::is_control(self) -> bool
-pub const fn skene_core::Role::is_spelled(self) -> bool
-impl core::clone::Clone for skene_core::Role
-pub fn skene_core::Role::clone(&self) -> skene_core::Role
-impl core::cmp::Eq for skene_core::Role
-impl core::cmp::PartialEq for skene_core::Role
-pub fn skene_core::Role::eq(&self, &skene_core::Role) -> bool
-impl core::fmt::Debug for skene_core::Role
-pub fn skene_core::Role::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::hash::Hash for skene_core::Role
-pub fn skene_core::Role::hash<__H: core::hash::Hasher>(&self, &mut __H)
-impl core::marker::Copy for skene_core::Role
-impl core::marker::StructuralPartialEq for skene_core::Role
 pub enum skene_core::RunDisplay
 pub skene_core::RunDisplay::Block
 pub skene_core::RunDisplay::Inline
@@ -2378,7 +2341,7 @@ pub skene_core::BoxProps::drag_axes: core::option::Option<skene_core::DragAxes>
 pub skene_core::BoxProps::dynamics: skene_core::BoxDynamics<<P as skene_core::Platform>::Scalar, <P as skene_core::Platform>::StyleExt>
 pub skene_core::BoxProps::focus_order: core::option::Option<skene_core::FocusOrder>
 pub skene_core::BoxProps::layout: skene_core::Layout
-pub skene_core::BoxProps::role: core::option::Option<skene_core::Role>
+pub skene_core::BoxProps::role: core::option::Option<accesskit::Role>
 pub skene_core::BoxProps::style: skene_core::StaticBoxStyle<P>
 pub skene_core::BoxProps::transition_name: core::option::Option<alloc::string::String>
 impl<P: core::clone::Clone + skene_core::Platform> core::clone::Clone for skene_core::BoxProps<P> where <P as skene_core::Platform>::Scalar: core::clone::Clone, <P as skene_core::Platform>::StyleExt: core::clone::Clone

@@ -166,7 +166,11 @@ platform crate, since it is not a shared contract.
   content-addressed class—while each derived leaf binds a render effect that writes its
   per-node slot. The split is written once against the property visitor.
 - **`Role` guides the platform's concrete choice** (web: `Role::Navigation` → `<nav>`); the
-  vocabulary stays semantic, never platform-worded.
+  vocabulary stays semantic, never platform-worded. It is AccessKit's, open to every
+  role an accessibility layer knows, so a third party's switch, tab or tree is named as
+  a shipped control is: the web realizes a landmark as its element and a heading at the
+  `Level` it reports, and spells every other role ARIA has a word for on a generic
+  element.
 - **Painted**—a vello paint callback plus a layout size, portable across every
   *interactive* pixel target through the `Painting` extension. A `Canvas` is a vello
   scene in device pixels (kurbo shapes, peniko brushes, the framework's `Color`

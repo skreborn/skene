@@ -35,9 +35,10 @@ left half-done in a code comment.
     redefines condition on media alone, so this waits on the styling direction.
     - Typed events: a gesture arena before touch lands, its exception to "a view that
     handles an interaction owns it" written down.
-    - Controls: an open role vocabulary on AccessKit's schema, with a native-element
-    hint, replaces the closed `Role`, `AccessProp` and `ControlKind`, so a third party
-    builds switches, tabs, comboboxes and trees; parts become styling targets or go.
+    - Controls: `AccessProp` and `ControlKind` move onto AccessKit's schema, beside its
+    open `Role`: its properties in place of the closed report, and a native-element
+    hint in place of the kind, so a third party builds switches, tabs, comboboxes and
+    trees; parts become styling targets or go.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the

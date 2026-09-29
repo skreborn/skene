@@ -108,6 +108,33 @@ fn an_enhancement_renders_its_fallback() {
   assert!(!page.body().contains("<canvas"), "{}", page.body());
 }
 
+/// The role vocabulary is AccessKit's, open past the shipped controls: a switch is
+/// spelled in ARIA on a generic element, and a heading is the element of the level it
+/// reports.
+#[test]
+fn any_role_reaches_the_markup() {
+  use skene_gui::core::{AccessProp, Role};
+
+  let page = render_to_string(|| {
+    Column::new().set_children((
+      Container::new()
+        .set_role(Role::Switch)
+        .set_child(Text::new("wifi")),
+      Container::new()
+        .set_role(Role::Heading)
+        .set_accessibility([AccessProp::Level(3)])
+        .set_child(Text::new("Details")),
+    ))
+  });
+  let body = page.body();
+
+  assert!(body.contains("role=\"switch\""), "{body}");
+  assert!(
+    body.contains("<h3 ") && body.contains("aria-level=\"3\""),
+    "{body}"
+  );
+}
+
 /// Names and roles reach the markup: a region named by text carries `aria-label`, a
 /// control captioned by a view is named by reference to the caption's id, a modal
 /// takes the name given it, a status box carries its live role, a painted box with a

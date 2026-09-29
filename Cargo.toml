@@ -8,6 +8,7 @@ edition = "2024"
 rust-version = "1.91"
 
 [workspace.dependencies]
+accesskit = { default-features = false, version = "0.25" }
 color = "0.3"
 keyboard-types = { default-features = false, features = ["std", "webdriver"], version = "0.8" }
 num-traits = "0.2"

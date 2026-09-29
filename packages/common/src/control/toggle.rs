@@ -111,7 +111,7 @@ impl<P: Platform> Behavior<P> for Toggle {
 
   #[inline(always)]
   fn role(&self) -> Option<Role> {
-    Some(Role::Checkbox)
+    Some(Role::CheckBox)
   }
 
   #[inline(always)]

@@ -51,6 +51,9 @@ pub enum AccessProp {
   Description(String),
   /// The axis a range control runs along.
   Orientation(Axis),
+  /// The level in a hierarchy: a heading's, `1` the highest, a tree item's or a nested
+  /// list item's.
+  Level(usize),
 }
 
 impl AccessProp {
@@ -79,6 +82,15 @@ impl AccessProp {
     }
 
     folded
+  }
+
+  /// The level `access` reports, if any.
+  #[must_use]
+  pub fn level_of(access: &[Self]) -> Option<usize> {
+    access.iter().find_map(|prop| match prop {
+      Self::Level(level) => Some(*level),
+      _ => None,
+    })
   }
 
   /// The nodes the property refers to: a relation's, and none for every other.

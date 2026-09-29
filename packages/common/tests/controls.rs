@@ -1078,7 +1078,7 @@ fn a_popup_face_is_what_its_popup_makes_it() {
 
   for (kind, face) in faces {
     let (control, role) = match kind {
-      PopupKind::Listbox => (ControlKind::Combobox, Role::Combobox),
+      PopupKind::Listbox => (ControlKind::Combobox, Role::ComboBox),
       PopupKind::Menu | PopupKind::Dialog => (ControlKind::Button, Role::Button),
     };
 

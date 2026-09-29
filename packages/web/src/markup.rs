@@ -34,28 +34,38 @@ pub(crate) const MARKER_ATTRIBUTE: &str = "data-h";
 pub(crate) const SCOPE_ATTRIBUTE: &str = "data-skene-scope";
 
 /// The element a box is realized as: an anchor when it has a destination, else the
-/// element its role names.
-pub(crate) const fn box_tag(role: Option<Role>, destination: bool) -> &'static str {
-  if destination { "a" } else { element_tag(role) }
+/// element its role names, a heading's at its `level`.
+pub(crate) const fn box_tag(
+  role: Option<Role>,
+  level: Option<usize>,
+  destination: bool,
+) -> &'static str {
+  if destination {
+    "a"
+  }
+  else {
+    element_tag(role, level)
+  }
 }
 
-/// The element a box of `role` is realized as.
-pub(crate) const fn element_tag(role: Option<Role>) -> &'static str {
+/// The element a box of `role` is realized as, a heading's at its `level`: the second
+/// where it names none.
+pub(crate) const fn element_tag(role: Option<Role>, level: Option<usize>) -> &'static str {
   match role {
     Some(Role::Navigation) => "nav",
     Some(Role::Main) => "main",
     Some(Role::Header) => "header",
     Some(Role::Footer) => "footer",
-    Some(Role::Aside) => "aside",
+    Some(Role::Complementary) => "aside",
     Some(Role::Section) => "section",
     Some(Role::Article) => "article",
-    Some(Role::Heading(level)) => match level {
-      0 | 1 => "h1",
-      2 => "h2",
-      3 => "h3",
-      4 => "h4",
-      5 => "h5",
-      _ => "h6",
+    Some(Role::Heading) => match level {
+      Some(0 | 1) => "h1",
+      None | Some(2) => "h2",
+      Some(3) => "h3",
+      Some(4) => "h4",
+      Some(5) => "h5",
+      Some(_) => "h6",
     },
     Some(Role::List) => "ul",
     Some(Role::ListItem) => "li",
@@ -304,6 +314,7 @@ fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
       }
       .to_owned(),
     ),
+    AccessProp::Level(level) => ("aria-level", level.to_string()),
   })
 }
 
@@ -459,29 +470,86 @@ pub(crate) fn render_focus_order(focus_order: FocusOrder) -> String {
   }
 }
 
-/// A widget [`Role`]'s ARIA spelling.
-///
-/// Landmark roles never reach here—they realize as their semantic element instead;
-/// see [`Role::is_spelled`].
+/// The ARIA spelling of a role a box is realized with on a generic element; `None` for a
+/// role realized as an element of its own, as a landmark is, or one ARIA has no word
+/// for.
 #[must_use]
-pub(crate) const fn aria_role(role: Role) -> &'static str {
-  match role {
-    Role::Button => "button",
-    Role::Checkbox => "checkbox",
-    Role::Radio => "radio",
-    Role::RadioGroup => "radiogroup",
-    Role::Slider => "slider",
-    Role::Listbox => "listbox",
-    Role::ListboxOption => "option",
-    Role::Combobox => "combobox",
-    Role::Menu => "menu",
-    Role::MenuItem => "menuitem",
-    Role::Dialog => "dialog",
-    Role::Image => "img",
-    Role::Status => "status",
+pub(crate) const fn aria_role(role: Role) -> Option<&'static str> {
+  Some(match role {
     Role::Alert => "alert",
-    _ => "",
-  }
+    Role::AlertDialog => "alertdialog",
+    Role::Application => "application",
+    Role::Banner => "banner",
+    Role::Blockquote => "blockquote",
+    Role::Button | Role::DefaultButton => "button",
+    Role::Caption | Role::FigureCaption => "caption",
+    Role::Cell | Role::LayoutTableCell => "cell",
+    Role::CheckBox => "checkbox",
+    Role::Code => "code",
+    Role::ColumnHeader => "columnheader",
+    Role::ComboBox | Role::EditableComboBox => "combobox",
+    Role::Comment => "comment",
+    Role::ContentDeletion => "deletion",
+    Role::ContentInfo => "contentinfo",
+    Role::ContentInsertion => "insertion",
+    Role::Definition => "definition",
+    Role::Dialog => "dialog",
+    Role::Document => "document",
+    Role::Emphasis => "emphasis",
+    Role::Feed => "feed",
+    Role::Figure => "figure",
+    Role::Form => "form",
+    Role::GenericContainer => "generic",
+    Role::Grid => "grid",
+    Role::GridCell => "gridcell",
+    Role::Group => "group",
+    Role::Image => "img",
+    Role::Link => "link",
+    Role::ListBox => "listbox",
+    Role::ListBoxOption | Role::MenuListOption => "option",
+    Role::Log => "log",
+    Role::Mark => "mark",
+    Role::Marquee => "marquee",
+    Role::Math => "math",
+    Role::Menu | Role::MenuListPopup => "menu",
+    Role::MenuBar => "menubar",
+    Role::MenuItem => "menuitem",
+    Role::MenuItemCheckBox => "menuitemcheckbox",
+    Role::MenuItemRadio => "menuitemradio",
+    Role::Meter => "meter",
+    Role::Note => "note",
+    Role::Paragraph => "paragraph",
+    Role::ProgressIndicator => "progressbar",
+    Role::RadioButton => "radio",
+    Role::RadioGroup => "radiogroup",
+    Role::Region => "region",
+    Role::Row | Role::LayoutTableRow => "row",
+    Role::RowGroup => "rowgroup",
+    Role::RowHeader => "rowheader",
+    Role::ScrollBar => "scrollbar",
+    Role::Search => "search",
+    Role::SearchInput => "searchbox",
+    Role::Slider => "slider",
+    Role::SpinButton => "spinbutton",
+    Role::Splitter => "separator",
+    Role::Status => "status",
+    Role::Strong => "strong",
+    Role::Switch => "switch",
+    Role::Tab => "tab",
+    Role::TabList => "tablist",
+    Role::TabPanel => "tabpanel",
+    Role::Table | Role::LayoutTable => "table",
+    Role::Term => "term",
+    Role::TextInput | Role::MultilineTextInput => "textbox",
+    Role::Time => "time",
+    Role::Timer => "timer",
+    Role::Toolbar => "toolbar",
+    Role::Tooltip => "tooltip",
+    Role::Tree => "tree",
+    Role::TreeGrid => "treegrid",
+    Role::TreeItem => "treeitem",
+    _ => return None,
+  })
 }
 
 #[cfg(test)]

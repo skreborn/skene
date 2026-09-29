@@ -992,7 +992,7 @@ pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHand
 pub fn skene_common::Activate::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Activate::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Activate::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Activate::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Activate::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Anchor(_)
 impl skene_common::Anchor
@@ -1059,7 +1059,7 @@ pub fn skene_common::Collection<C>::on_toggle(&self, bool, &skene_common::Contro
 pub fn skene_common::Collection<C>::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Collection<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Collection<C>::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Collection<C>::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Collection<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Collection<C>::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::CollectionGroup<C: skene_common::CollectionPolicy>
 impl<C: skene_common::CollectionPolicy> skene_common::CollectionGroup<C>
@@ -1166,7 +1166,7 @@ pub fn skene_common::Container<P>::set_min_width(self, impl core::convert::Into<
 pub fn skene_common::Container<P>::set_offset(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_overflow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::axis::Axes<skene_core::values::overflow::Overflow>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub fn skene_common::Container<P>::set_role(self, skene_core::values::role::Role) -> Self
+pub fn skene_common::Container<P>::set_role(self, accesskit::Role) -> Self
 pub fn skene_common::Container<P>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
 pub fn skene_common::Container<P>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Container<P>::set_visibility(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::visibility::Visibility, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1561,7 +1561,7 @@ pub const fn skene_common::LayoutBox<P, Kind>::set_labelled_by(self, skene_core:
 pub const fn skene_common::LayoutBox<P, Kind>::set_layout(self, skene_core::values::layout::Layout) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_line_arrangement(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Arrangement, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
-pub const fn skene_common::LayoutBox<P, Kind>::set_role(self, skene_core::values::role::Role) -> Self
+pub const fn skene_common::LayoutBox<P, Kind>::set_role(self, accesskit::Role) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_rows(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::GridTemplate<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_spacing(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
@@ -1626,8 +1626,8 @@ pub const skene_common::ListboxPolicy::LISTS: bool
 pub const skene_common::ListboxPolicy::MARKS_CHOSEN: bool
 pub const skene_common::ListboxPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::ListboxPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::ListboxPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::ListboxPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::ListboxPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::ListboxPolicy::ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::WRAPS: bool
 pub fn skene_common::ListboxPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub struct skene_common::LowLevel<P: skene_core::platform::Platform>(_)
@@ -1662,7 +1662,7 @@ pub fn skene_common::Member<C>::on_toggle(&self, bool, &skene_common::ControlHan
 pub fn skene_common::Member<C>::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Member<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Member<C>::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Member<C>::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Member<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Member<C>::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::MenuItem
 impl skene_common::MenuItem
@@ -1709,8 +1709,8 @@ pub const skene_common::MenuPolicy::LISTS: bool
 pub const skene_common::MenuPolicy::MARKS_CHOSEN: bool
 pub const skene_common::MenuPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::MenuPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::MenuPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::MenuPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::MenuPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::MenuPolicy::ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::WRAPS: bool
 pub fn skene_common::MenuPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub struct skene_common::NativePicker
@@ -1742,7 +1742,7 @@ pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::Control
 pub fn skene_common::NativePicker::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::NativePicker::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::NativePicker::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::NativePicker::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Overlay<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform, C> skene_common::Overlay<P, C>
@@ -1791,7 +1791,7 @@ pub fn skene_common::Overlay<P, C>::set_overflow(self, impl core::convert::Into<
 pub fn skene_common::Overlay<P, C>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Overlay<P, C>::set_placement(self, skene_core::values::placement::Placement) -> Self
 pub fn skene_common::Overlay<P, C>::set_position(self, skene_core::values::point::Point<f32>) -> Self
-pub fn skene_common::Overlay<P, C>::set_role(self, skene_core::values::role::Role) -> Self
+pub fn skene_common::Overlay<P, C>::set_role(self, accesskit::Role) -> Self
 pub fn skene_common::Overlay<P, C>::set_transition(self, skene_core::motion::Transition<<<P as skene_core::platform::Platform>::StyleExt as skene_core::extension::StyleExtension>::Property>) -> Self
 pub fn skene_common::Overlay<P, C>::set_transition_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Overlay<P, C>::set_visibility(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::visibility::Visibility, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1880,7 +1880,7 @@ pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<
 pub fn skene_common::Popup::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Popup::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Popup::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Popup::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Popup::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RadioPolicy
 impl core::clone::Clone for skene_common::RadioPolicy
@@ -1904,8 +1904,8 @@ pub const skene_common::RadioPolicy::LISTS: bool
 pub const skene_common::RadioPolicy::MARKS_CHOSEN: bool
 pub const skene_common::RadioPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::RadioPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::RadioPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::RadioPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::RadioPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::RadioPolicy::ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::WRAPS: bool
 pub fn skene_common::RadioPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub struct skene_common::Range
@@ -1945,7 +1945,7 @@ pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<
 pub fn skene_common::Range::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Range::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Range::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Range::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RawPicker<P: skene_core::platform::Platform, F>
 impl<P: skene_core::platform::Platform, F> skene_common::RawPicker<P, F>
@@ -2224,7 +2224,7 @@ pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHan
 pub fn skene_common::TextEntry::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::TextEntry::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::TextEntry::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::TextEntry::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::TextEntry::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Theme<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>, C>
 impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as skene_core::platform::Platform>::TokenValue>, C> skene_common::Theme<P, S, C>
@@ -2270,7 +2270,7 @@ pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle
 pub fn skene_common::Toggle::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Toggle::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Toggle::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Toggle::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Tooltip<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform, C> skene_common::Tooltip<P, C>
@@ -2356,7 +2356,7 @@ pub fn skene_common::Behavior::on_toggle(&self, bool, &skene_common::ControlHand
 pub fn skene_common::Behavior::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Behavior::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Behavior::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Behavior::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Behavior::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Behavior::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform, C: skene_common::CollectionPolicy> skene_common::Behavior<P> for skene_common::Collection<C>
 pub fn skene_common::Collection<C>::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2379,7 +2379,7 @@ pub fn skene_common::Collection<C>::on_toggle(&self, bool, &skene_common::Contro
 pub fn skene_common::Collection<C>::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Collection<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Collection<C>::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Collection<C>::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Collection<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Collection<C>::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform, C: skene_common::CollectionPolicy> skene_common::Behavior<P> for skene_common::Member<C>
 pub fn skene_common::Member<C>::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2402,7 +2402,7 @@ pub fn skene_common::Member<C>::on_toggle(&self, bool, &skene_common::ControlHan
 pub fn skene_common::Member<C>::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Member<C>::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Member<C>::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Member<C>::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Member<C>::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Member<C>::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Activate
 pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2425,7 +2425,7 @@ pub fn skene_common::Activate::on_toggle(&self, bool, &skene_common::ControlHand
 pub fn skene_common::Activate::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Activate::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Activate::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Activate::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Activate::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Activate::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::NativePicker
 pub fn skene_common::NativePicker::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2448,7 +2448,7 @@ pub fn skene_common::NativePicker::on_toggle(&self, bool, &skene_common::Control
 pub fn skene_common::NativePicker::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::NativePicker::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::NativePicker::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::NativePicker::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::NativePicker::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Popup
 pub fn skene_common::Popup::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2471,7 +2471,7 @@ pub fn skene_common::Popup::on_toggle(&self, bool, &skene_common::ControlHandle<
 pub fn skene_common::Popup::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Popup::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Popup::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Popup::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Popup::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Popup::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Range
 pub fn skene_common::Range::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2494,7 +2494,7 @@ pub fn skene_common::Range::on_toggle(&self, bool, &skene_common::ControlHandle<
 pub fn skene_common::Range::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Range::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Range::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Range::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Range::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::TextEntry
 pub fn skene_common::TextEntry::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2517,7 +2517,7 @@ pub fn skene_common::TextEntry::on_toggle(&self, bool, &skene_common::ControlHan
 pub fn skene_common::TextEntry::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::TextEntry::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::TextEntry::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::TextEntry::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::TextEntry::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::TextEntry::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Toggle
 pub fn skene_common::Toggle::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
@@ -2540,7 +2540,7 @@ pub fn skene_common::Toggle::on_toggle(&self, bool, &skene_common::ControlHandle
 pub fn skene_common::Toggle::on_wheel(&self, &skene_core::events::WheelEvent, &skene_common::ControlHandle<P>) -> skene_core::events::Prevent
 pub fn skene_common::Toggle::placeholder(&self) -> core::option::Option<alloc::string::String>
 pub fn skene_common::Toggle::reconcile(&self, &skene_common::ControlHandle<P>)
-pub fn skene_common::Toggle::role(&self) -> core::option::Option<skene_core::values::role::Role>
+pub fn skene_common::Toggle::role(&self) -> core::option::Option<accesskit::Role>
 pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub trait skene_common::CollectionPolicy: 'static
 pub const skene_common::CollectionPolicy::CHOOSES_ON_MOVE: bool
@@ -2550,8 +2550,8 @@ pub const skene_common::CollectionPolicy::LISTS: bool
 pub const skene_common::CollectionPolicy::MARKS_CHOSEN: bool
 pub const skene_common::CollectionPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::CollectionPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::CollectionPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::CollectionPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::CollectionPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::CollectionPolicy::ROLE: accesskit::Role
 pub const skene_common::CollectionPolicy::WRAPS: bool
 pub fn skene_common::CollectionPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 impl skene_common::CollectionPolicy for skene_common::ListboxPolicy
@@ -2562,8 +2562,8 @@ pub const skene_common::ListboxPolicy::LISTS: bool
 pub const skene_common::ListboxPolicy::MARKS_CHOSEN: bool
 pub const skene_common::ListboxPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::ListboxPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::ListboxPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::ListboxPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::ListboxPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::ListboxPolicy::ROLE: accesskit::Role
 pub const skene_common::ListboxPolicy::WRAPS: bool
 pub fn skene_common::ListboxPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 impl skene_common::CollectionPolicy for skene_common::MenuPolicy
@@ -2574,8 +2574,8 @@ pub const skene_common::MenuPolicy::LISTS: bool
 pub const skene_common::MenuPolicy::MARKS_CHOSEN: bool
 pub const skene_common::MenuPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::MenuPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::MenuPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::MenuPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::MenuPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::MenuPolicy::ROLE: accesskit::Role
 pub const skene_common::MenuPolicy::WRAPS: bool
 pub fn skene_common::MenuPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 impl skene_common::CollectionPolicy for skene_common::RadioPolicy
@@ -2586,8 +2586,8 @@ pub const skene_common::RadioPolicy::LISTS: bool
 pub const skene_common::RadioPolicy::MARKS_CHOSEN: bool
 pub const skene_common::RadioPolicy::MEMBER_EVENTS: &'static [skene_core::props::EventKind]
 pub const skene_common::RadioPolicy::MEMBER_KIND: skene_core::control::ControlKind
-pub const skene_common::RadioPolicy::MEMBER_ROLE: skene_core::values::role::Role
-pub const skene_common::RadioPolicy::ROLE: skene_core::values::role::Role
+pub const skene_common::RadioPolicy::MEMBER_ROLE: accesskit::Role
+pub const skene_common::RadioPolicy::ROLE: accesskit::Role
 pub const skene_common::RadioPolicy::WRAPS: bool
 pub fn skene_common::RadioPolicy::member_access(bool) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub trait skene_common::ControlChild<P: skene_core::platform::Platform>: 'static

@@ -68,7 +68,7 @@ impl CollectionPolicy for RadioPolicy {
   const MEMBER_EVENTS: &'static [EventKind] =
     &[EventKind::Click, EventKind::KeyDown, EventKind::Toggle];
   const MEMBER_KIND: ControlKind = ControlKind::Radio;
-  const MEMBER_ROLE: Role = Role::Radio;
+  const MEMBER_ROLE: Role = Role::RadioButton;
   const ROLE: Role = Role::RadioGroup;
   const WRAPS: bool = true;
 
@@ -92,8 +92,8 @@ impl CollectionPolicy for ListboxPolicy {
   const MARKS_CHOSEN: bool = true;
   const MEMBER_EVENTS: &'static [EventKind] = &[EventKind::Click, EventKind::KeyDown];
   const MEMBER_KIND: ControlKind = ControlKind::ListboxOption;
-  const MEMBER_ROLE: Role = Role::ListboxOption;
-  const ROLE: Role = Role::Listbox;
+  const MEMBER_ROLE: Role = Role::ListBoxOption;
+  const ROLE: Role = Role::ListBox;
   const WRAPS: bool = false;
 
   #[inline(always)]

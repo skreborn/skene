@@ -2034,7 +2034,7 @@ fn a_widget_role_and_state_reach_the_real_dom() {
 
   let _ = mount(move || {
     Container::new()
-      .set_role(Role::Checkbox)
+      .set_role(Role::CheckBox)
       .derive_accessibility(move || vec![AccessProp::Checked(checked.get().into())])
       .build()
   });

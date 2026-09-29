@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+accesskit.workspace = true
 async-task = "4"
 color.workspace = true
 keyboard-types.workspace = true

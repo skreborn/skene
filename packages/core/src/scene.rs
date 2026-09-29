@@ -1437,6 +1437,28 @@ impl<P: Platform> Scene<P> {
     self.record(node).and_then(|record| record.focus_order)
   }
 
+  /// The node that takes focus for the subtree `node` roots: `node` itself where it
+  /// has a place in focus traversal, else the first node beneath it with one, in
+  /// document order; `node` where none has.
+  pub fn focus_holder_within(&self, node: NodeId) -> NodeId {
+    let mut stack = vec![node];
+
+    while let Some(current) = stack.pop() {
+      let Some(record) = self.record(current)
+      else {
+        continue;
+      };
+
+      if record.focus_order.is_some() {
+        return current;
+      }
+
+      stack.extend(record.children.iter().rev());
+    }
+
+    node
+  }
+
   /// Records that `node` is an overlay, closed, `modal` when it blocks what lies beneath
   /// it while open.
   pub fn note_overlay(&mut self, node: NodeId, modal: bool) {

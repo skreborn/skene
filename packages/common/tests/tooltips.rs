@@ -21,6 +21,7 @@ use skene_core::{
 use skene_headless::{
   Headless,
   box_props,
+  children,
   handle,
   is_open,
   overlay_anchor,
@@ -55,6 +56,43 @@ fn parts(start: skene_core::NodeId) -> (skene_core::NodeId, skene_core::NodeId) 
   );
 
   (nodes[0], nodes[1])
+}
+
+/// A tooltip describes the node that takes focus within the view it wraps, so a
+/// reader hears the description where focus lands.
+#[test]
+fn a_tooltip_describes_the_focus_holder_within_its_view() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Tooltip::new("Saves your work")
+      .set_child(
+        Container::new().set_child(
+          Container::new()
+            .set_focus_order(FocusOrder::Auto)
+            .set_child(Text::new("Save")),
+        ),
+      )
+      .build()
+  });
+  let (described, _) = parts(start);
+  let holder = children(described)
+    .into_iter()
+    .find(|child| box_props(*child).is_some())
+    .expect("the focusable box");
+
+  assert_eq!(
+    box_props(holder).map(|props| props.access.len()),
+    Some(2),
+    "the focus holder carries the description"
+  );
+  assert_eq!(
+    box_props(described).map(|props| props.access.len()),
+    Some(0)
+  );
+
+  owner.dispose();
 }
 
 /// Focus opens the bubble at once only where it shows: focus a pointer press gave

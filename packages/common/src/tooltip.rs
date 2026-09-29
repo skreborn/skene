@@ -52,11 +52,11 @@ enum Content<P: Platform> {
 /// The bubble opens after [a delay](Self::set_delay) on hover and at once on focus that
 /// shows, and never takes focus. It stays open while the pointer rests on the described
 /// view or on the bubble, closing [`TOOLTIP_GRACE`] after the pointer leaves both, and
-/// closes at once on blur and `Escape`. A text tooltip is
-/// reported as the described view's accessible description; a view tooltip is
-/// reported as describing it. The bubble is the [`Part::Bubble`] of the described
-/// view, decorated through the setters here, and sits where an anchored overlay's
-/// [placement](Self::set_placement) puts it. Holds [`NoChild`] until
+/// closes at once on blur and `Escape`. A text tooltip is reported as the accessible
+/// description of the node that takes focus within the described view, the view itself
+/// where it does; a view tooltip is reported as describing that node. The bubble is the
+/// [`Part::Bubble`] of the described view, decorated through the setters here, and sits where an
+/// anchored overlay's [placement](Self::set_placement) puts it. Holds [`NoChild`] until
 /// [`set_child`](Self::set_child) supplies the view it describes.
 #[must_use]
 pub struct Tooltip<P: Platform, C = NoChild> {
@@ -294,10 +294,12 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
     });
     bind_triggers::<P>(node, bubble, open, delay);
 
+    let holder = Scene::<P>::with(|scene| scene.focus_holder_within(node));
+
     match text {
-      None => describe::<P>(node, vec![AccessProp::DescribedBy(vec![bubble])]),
+      None => describe::<P>(holder, vec![AccessProp::DescribedBy(vec![bubble])]),
       Some(Source::Fixed(text)) => describe::<P>(
-        node,
+        holder,
         vec![
           AccessProp::DescribedBy(vec![bubble]),
           AccessProp::Description(text),
@@ -306,7 +308,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
       Some(Source::Derived(compute)) => {
         Effect::render(move |_: Option<()>| {
           describe::<P>(
-            node,
+            holder,
             vec![
               AccessProp::DescribedBy(vec![bubble]),
               AccessProp::Description(compute()),

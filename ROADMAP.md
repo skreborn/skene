@@ -30,9 +30,9 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Interaction: a tooltip describes the focus holder, and a group run's state
-    variants reach its spans, as a rule on the group's class redefining the ink where
-    the state holds.
+    - Interaction: a group run's state variants reach its spans, as a rule on the
+    group's class redefining the ink where the state holds; the token definitions it
+    redefines condition on media alone, so this waits on the styling direction.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US
     `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before

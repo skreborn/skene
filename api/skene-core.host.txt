@@ -3577,6 +3577,7 @@ pub fn skene_core::Scene<P>::destroy(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::detach(&mut self, skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Scene<P>::dismissed_by_press(&self, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>) -> alloc::vec::Vec<skene_core::NodeId>
 pub fn skene_core::Scene<P>::enclosing_control(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::focus_holder_within(&self, skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::option::Option<skene_core::FocusOrder>
 pub fn skene_core::Scene<P>::focus_shows(&self, skene_core::NodeId) -> bool
 pub const fn skene_core::Scene<P>::focus_visible(&self) -> bool

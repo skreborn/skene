@@ -240,6 +240,7 @@ pub struct HandlerSet {
   pointer_down: Vec<Handler<PointerHandler>>,
   pointer_up: Vec<Handler<PointerHandler>>,
   pointer_move: Vec<Handler<PointerHandler>>,
+  pointer_cancel: Vec<Handler<PointerHandler>>,
   pointer_enter: Vec<Handler<PlainHandler>>,
   pointer_leave: Vec<Handler<PlainHandler>>,
   focus: Vec<Handler<PlainHandler>>,
@@ -307,6 +308,13 @@ impl HandlerSet {
   #[must_use]
   pub fn pointer_move(&self) -> &[Handler<PointerHandler>] {
     &self.pointer_move
+  }
+
+  /// The pointer-cancel handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn pointer_cancel(&self) -> &[Handler<PointerHandler>] {
+    &self.pointer_cancel
   }
 
   /// The pointer-enter handlers, in registration order.
@@ -1805,6 +1813,13 @@ impl<P: Platform> Scene<P> {
   pub fn handle_pointer_move(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
     self.register(node, EventKind::PointerMove, |set| {
       set.pointer_move.push(Handler::new(handler));
+    });
+  }
+
+  /// Adds a pointer-cancel handler to `node`.
+  pub fn handle_pointer_cancel(&mut self, node: NodeId, handler: Rc<PointerHandler>) {
+    self.register(node, EventKind::PointerCancel, |set| {
+      set.pointer_cancel.push(Handler::new(handler));
     });
   }
 

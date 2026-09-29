@@ -247,6 +247,9 @@ pub enum EventKind {
   PointerUp,
   /// The pointer moved over the node.
   PointerMove,
+  /// The platform took a pointer pressed over the node for itself, ending its press
+  /// without a release.
+  PointerCancel,
   /// The pointer entered the node.
   PointerEnter,
   /// The pointer left the node.

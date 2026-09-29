@@ -1161,6 +1161,7 @@ pub skene_core::EventKind::Dismiss
 pub skene_core::EventKind::Focus
 pub skene_core::EventKind::KeyDown
 pub skene_core::EventKind::KeyUp
+pub skene_core::EventKind::PointerCancel
 pub skene_core::EventKind::PointerDown
 pub skene_core::EventKind::PointerEnter
 pub skene_core::EventKind::PointerLeave
@@ -2954,6 +2955,7 @@ pub fn skene_core::HandlerSet::dismiss(&self) -> &[skene_core::Handler<skene_cor
 pub fn skene_core::HandlerSet::focus(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
 pub fn skene_core::HandlerSet::key_down(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
 pub fn skene_core::HandlerSet::key_up(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
+pub fn skene_core::HandlerSet::pointer_cancel(&self) -> &[skene_core::Handler<skene_core::PointerHandler>]
 pub fn skene_core::HandlerSet::pointer_down(&self) -> &[skene_core::Handler<skene_core::PointerHandler>]
 pub fn skene_core::HandlerSet::pointer_enter(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
 pub fn skene_core::HandlerSet::pointer_leave(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
@@ -3597,6 +3599,7 @@ pub fn skene_core::Scene<P>::handle_dismiss(&mut self, skene_core::NodeId, alloc
 pub fn skene_core::Scene<P>::handle_focus(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_key_down(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
 pub fn skene_core::Scene<P>::handle_key_up(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
+pub fn skene_core::Scene<P>::handle_pointer_cancel(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PointerHandler>)
 pub fn skene_core::Scene<P>::handle_pointer_down(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PointerHandler>)
 pub fn skene_core::Scene<P>::handle_pointer_enter(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_pointer_leave(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
@@ -4669,6 +4672,7 @@ pub fn skene_core::dispatch_click_observed<P: skene_core::Platform>(skene_core::
 pub fn skene_core::dispatch_context_menu<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_key_down<P: skene_core::Platform>(skene_core::NodeId, &skene_core::KeyEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_key_up<P: skene_core::Platform>(skene_core::NodeId, &skene_core::KeyEvent) -> skene_core::Prevented
+pub fn skene_core::dispatch_pointer_cancel<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_down<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_move<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_up<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented

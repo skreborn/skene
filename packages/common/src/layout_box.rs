@@ -68,6 +68,7 @@ struct Handlers {
   pointer_down: Vec<Rc<PointerHandler>>,
   pointer_up: Vec<Rc<PointerHandler>>,
   pointer_move: Vec<Rc<PointerHandler>>,
+  pointer_cancel: Vec<Rc<PointerHandler>>,
   pointer_enter: Vec<Rc<PlainHandler>>,
   pointer_leave: Vec<Rc<PlainHandler>>,
   focus: Vec<Rc<PlainHandler>>,
@@ -420,6 +421,22 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
+  /// Runs `action` when the platform takes a pointer pressed over the box for itself,
+  /// ending the press without a release; its verdict says whether the cancel carries on
+  /// to the ancestors.
+  #[inline(always)]
+  pub fn handle_pointer_cancel<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self
+      .handlers
+      .pointer_cancel
+      .push(Rc::new(move |event| verdict(action(event))));
+
+    self
+  }
+
   /// Runs `action` when the pointer enters the box.
   #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
@@ -634,6 +651,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       pointer_down,
       pointer_up,
       pointer_move,
+      pointer_cancel,
       pointer_enter,
       pointer_leave,
       focus,
@@ -664,6 +682,10 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
       for handler in pointer_move {
         scene.handle_pointer_move(node, handler);
+      }
+
+      for handler in pointer_cancel {
+        scene.handle_pointer_cancel(node, handler);
       }
 
       for handler in pointer_enter {

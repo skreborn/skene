@@ -752,6 +752,27 @@ fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
   assert_eq!(press(true).0.pointer_id, Some(PointerId::PRIMARY));
 }
 
+/// A `pointercancel` reaches the box's cancel handler through dispatch.
+#[wasm_bindgen_test]
+fn a_pointer_cancel_reaches_the_box() {
+  let (_guard, root) = fresh_root();
+  let cancels = Rc::new(Cell::new(0));
+
+  let _ = mount({
+    let cancels = Rc::clone(&cancels);
+
+    move || {
+      Container::new()
+        .handle_pointer_cancel(move |_| cancels.set(cancels.get() + 1))
+        .build()
+    }
+  });
+
+  pointer(&only_child(&root), "pointercancel");
+
+  assert_eq!(cancels.get(), 1);
+}
+
 /// A press on a slider's thumb asks for the value whose thumb centers under the
 /// pointer, measured from the slider's own box rather than the thumb's: 150 pixels into
 /// 200, the thumb's 16-pixel center travelling 184, is 77.

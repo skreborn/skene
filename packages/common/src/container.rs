@@ -280,6 +280,19 @@ impl<P: Platform> Container<P> {
     self
   }
 
+  /// Runs `action` when the platform takes a pointer pressed over the box for itself,
+  /// ending the press without a release; return [`Bubbling::Stop`] to keep the cancel
+  /// from the ancestors.
+  #[inline(always)]
+  pub fn handle_pointer_cancel<R: Into<Bubbling>>(
+    mut self,
+    action: impl Fn(&PointerEvent) -> R + 'static,
+  ) -> Self {
+    self.inner = self.inner.handle_pointer_cancel(action);
+
+    self
+  }
+
   /// Runs `action` when the pointer enters the box.
   #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {

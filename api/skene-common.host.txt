@@ -788,6 +788,7 @@ pub fn skene_common::LabelPlacement::hash<__H: core::hash::Hasher>(&self, &mut _
 impl core::marker::Copy for skene_common::LabelPlacement
 impl core::marker::StructuralPartialEq for skene_common::LabelPlacement
 pub enum skene_common::PointerPhase
+pub skene_common::PointerPhase::Cancel
 pub skene_common::PointerPhase::Down
 pub skene_common::PointerPhase::Move
 pub skene_common::PointerPhase::Up
@@ -916,6 +917,7 @@ pub fn skene_common::Container<P>::handle_click<R: core::convert::Into<skene_cor
 pub fn skene_common::Container<P>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
+pub fn skene_common::Container<P>::handle_pointer_cancel<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_pointer_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
@@ -1062,6 +1064,7 @@ pub fn skene_common::Control<P, B, C>::handle_click(self, impl core::ops::functi
 pub fn skene_common::Control<P, B, C>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_key_down(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_key_up(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) + 'static) -> Self
+pub fn skene_common::Control<P, B, C>::handle_pointer_cancel(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_pointer_down(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self
@@ -1276,6 +1279,7 @@ pub fn skene_common::LayoutBox<P, Kind>::handle_click<R: core::convert::Into<ske
 pub fn skene_common::LayoutBox<P, Kind>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
+pub fn skene_common::LayoutBox<P, Kind>::handle_pointer_cancel<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_pointer_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::PointerEvent) -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_pointer_enter(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_pointer_leave(self, impl core::ops::function::Fn() + 'static) -> Self

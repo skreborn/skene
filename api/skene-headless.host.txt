@@ -149,6 +149,7 @@ pub fn skene_headless::trigger_high_contrast(bool)
 pub fn skene_headless::trigger_hydrated(bool)
 pub fn skene_headless::trigger_key_down(skene_core::node::NodeId, &skene_core::events::KeyEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_key_up(skene_core::node::NodeId, &skene_core::events::KeyEvent) -> skene_core::events::Prevented
+pub fn skene_headless::trigger_pointer_cancel(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_pointer_down(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_pointer_enter(skene_core::node::NodeId)
 pub fn skene_headless::trigger_pointer_hovers(bool)

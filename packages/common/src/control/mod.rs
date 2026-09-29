@@ -104,6 +104,9 @@ pub enum PointerPhase {
   Move,
   /// A button released over the control.
   Up,
+  /// The platform took the pointer pressed over the control for itself, ending the
+  /// press without a release.
+  Cancel,
 }
 
 /// Where a control's label sits.
@@ -434,6 +437,7 @@ struct Observers {
   pointer_down: Vec<Rc<PointerObserver>>,
   pointer_up: Vec<Rc<PointerObserver>>,
   pointer_move: Vec<Rc<PointerObserver>>,
+  pointer_cancel: Vec<Rc<PointerObserver>>,
   pointer_enter: Vec<Rc<PlainHandler>>,
   pointer_leave: Vec<Rc<PlainHandler>>,
   focus: Vec<Rc<PlainHandler>>,
@@ -851,6 +855,15 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
     self
   }
 
+  /// Runs `action` after the behavior has acted on the platform taking the pointer
+  /// pressed over the control for itself, ending the press without a release.
+  #[inline(always)]
+  pub fn handle_pointer_cancel(mut self, action: impl Fn(&PointerEvent) + 'static) -> Self {
+    self.observers.pointer_cancel.push(Rc::new(action));
+
+    self
+  }
+
   /// Runs `action` when the pointer enters the control.
   #[inline(always)]
   pub fn handle_pointer_enter(mut self, action: impl Fn() + 'static) -> Self {
@@ -1237,6 +1250,7 @@ fn register<P: Platform, B: Behavior<P>>(
     pointer_down,
     pointer_up,
     pointer_move,
+    pointer_cancel,
     pointer_enter,
     pointer_leave,
     focus,
@@ -1295,6 +1309,11 @@ fn register<P: Platform, B: Behavior<P>>(
   let pointer_down = pointer(PointerPhase::Down, EventKind::PointerDown, pointer_down);
   let pointer_up = pointer(PointerPhase::Up, EventKind::PointerUp, pointer_up);
   let pointer_move = pointer(PointerPhase::Move, EventKind::PointerMove, pointer_move);
+  let pointer_cancel = pointer(
+    PointerPhase::Cancel,
+    EventKind::PointerCancel,
+    pointer_cancel,
+  );
   let change = acts(EventKind::Change).then(|| {
     let actor = actor.clone();
 
@@ -1350,6 +1369,10 @@ fn register<P: Platform, B: Behavior<P>>(
 
     if let Some(handler) = pointer_move {
       scene.handle_pointer_move(node, as_pointer_handler(handler));
+    }
+
+    if let Some(handler) = pointer_cancel {
+      scene.handle_pointer_cancel(node, as_pointer_handler(handler));
     }
 
     if let Some(handler) = change {

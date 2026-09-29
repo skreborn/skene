@@ -140,7 +140,10 @@ platform crate, since it is not a shared contract.
   positions: the pointer (`PointerInfo`: its id, `PointerId::PRIMARY` for the primary
   pointer and none for an event no pointing device raised, and its `PointerType`), the
   button that changed, none for a move, the `PointerButtons` held once the event took
-  effect, and the pressure, `0.5` while a button is held on a device reporting none.
+  effect, and the pressure, `0.5` while a button is held on a device reporting none. A
+  platform that takes a pointer for itself—the browser starting a pan, the terminal's
+  mouse key handing the mouse over mid-press—dispatches `PointerCancel` at the node the
+  press reached, ending the press without a release.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its
@@ -752,7 +755,8 @@ loop's parser reads for any mode), and from the reply that confirms it
 every report is pixels over the cell size, so a pointer sits within its cell and a
 slider or scrollbar drag lands where the pointer is; the request repeats on resize, and
 hit-testing stays by cell. The pointer is the primary mouse, its back and forward
-buttons `X1` and `X2`, and a context menu the keyboard opens names none. The window's size is event-driven: the platform's at launch,
+buttons `X1` and `X2`, and a context menu the keyboard opens names none; the mouse key
+cancels a press in progress. The window's size is event-driven: the platform's at launch,
 then every resize notification's, and the loop sets in-band resize (mode 2048) and
 queries it, so a terminal that confirms it reports every resize in the input stream
 (`CSI 48 ; rows ; cols ; height ; width t`) with the pixel size the pixel mouse needs where the platform's own

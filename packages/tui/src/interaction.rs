@@ -27,6 +27,7 @@ use skene_core::{
   dispatch_context_menu,
   dispatch_key_down,
   dispatch_key_up,
+  dispatch_pointer_cancel,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -1697,15 +1698,38 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
   let _ = dispatch_context_menu::<Tui>(node, &event);
 }
 
-/// Hands the mouse to the terminal until a key takes it back: the hover path empties,
-/// its nodes told the pointer left, and every mouse event is ignored meanwhile.
+/// Hands the mouse to the terminal until a key takes it back: a press in progress is
+/// cancelled at the node it reached, the hover path empties, its nodes told the pointer
+/// left, and every mouse event is ignored meanwhile.
 fn release_mouse() {
-  store(|store| {
+  let cancelled = store(|store| {
     store.mouse_released = true;
     store.scroll_latch = None;
+    store.drag = None;
+    store.pressed_link = None;
+    store.buttons.clear();
 
     store.set_hovered(Vec::new());
+
+    let press = store.press.take()?;
+
+    store.restyle_pending = true;
+
+    Some((
+      press.captured,
+      store.screen_origin(press.captured),
+      store.last_pointer,
+    ))
   });
+
+  if let Some((captured, origin, (x, y))) = cancelled {
+    Scene::<Tui>::with(|scene| scene.set_pressed(None));
+
+    if let Some(node) = store(|store| store.record(captured).and_then(|record| record.node)) {
+      let event = pointer_event(x, y, origin, None, Modifiers::NONE);
+      let _ = dispatch_pointer_cancel::<Tui>(node, &event);
+    }
+  }
 
   notify_pointer_moved::<Tui>(None);
 }

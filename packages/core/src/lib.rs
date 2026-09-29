@@ -90,6 +90,7 @@ pub use dispatch::{
   dispatch_context_menu,
   dispatch_key_down,
   dispatch_key_up,
+  dispatch_pointer_cancel,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,

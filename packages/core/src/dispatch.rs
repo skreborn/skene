@@ -92,6 +92,18 @@ pub fn dispatch_pointer_down<P: Platform>(node: NodeId, event: &PointerEvent) ->
   )
 }
 
+/// Dispatches the cancel of a pointer the platform took for itself at `node`, the node
+/// its press reached.
+#[inline(always)]
+pub fn dispatch_pointer_cancel<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {
+  bubble::<P, _, _>(
+    node,
+    all(HandlerSet::pointer_cancel),
+    |at| localize::<P>(at, event),
+    |handler, event| handler(event),
+  )
+}
+
 /// Dispatches a pointer release at `node`.
 #[inline(always)]
 pub fn dispatch_pointer_up<P: Platform>(node: NodeId, event: &PointerEvent) -> Prevented {

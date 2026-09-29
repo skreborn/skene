@@ -35,6 +35,7 @@ use skene_core::{
   dispatch_context_menu,
   dispatch_key_down,
   dispatch_key_up,
+  dispatch_pointer_cancel,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -160,6 +161,7 @@ impl Events {
       EventKind::PointerDown => &["pointerdown"],
       EventKind::PointerUp => &["pointerup"],
       EventKind::PointerMove => &["pointermove"],
+      EventKind::PointerCancel => &["pointercancel"],
       EventKind::PointerEnter | EventKind::PointerLeave => &["pointerover", "pointerout"],
       EventKind::Focus => &["focusin"],
       EventKind::Blur => &["focusout"],
@@ -183,6 +185,7 @@ impl Events {
         "pointerdown" => on_pointer_down,
         "pointerup" => on_pointer_up,
         "pointermove" => on_pointer_move,
+        "pointercancel" => on_pointer_cancel,
         "pointerover" => on_pointer_over,
         "pointerout" => on_pointer_out,
         "focusin" => on_focus_in,
@@ -558,6 +561,10 @@ fn on_pointer_up(event: &web_sys::Event) {
 
 fn on_pointer_move(event: &web_sys::Event) {
   dispatch_pointer(event, dispatch_pointer_move::<Web>);
+}
+
+fn on_pointer_cancel(event: &web_sys::Event) {
+  dispatch_pointer(event, dispatch_pointer_cancel::<Web>);
 }
 
 /// The element a pointer event came from or went to.

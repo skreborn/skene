@@ -7,7 +7,7 @@ mod common;
 
 use skene_tui::{self as tui, Activate, Label, TextEntry, prelude::*};
 
-use crate::common::{rgb, white, with_launch};
+use crate::common::{blue, colors_at, red, rgb, white, with_launch};
 
 /// The selection highlight the tests read back.
 fn highlight() -> Color {
@@ -299,6 +299,37 @@ fn the_mouse_key_releases_the_mouse_and_any_key_takes_it_back() {
     tui::trigger_mouse_click(2, 0);
 
     assert_eq!(clicks.get_untracked(), 2, "any key takes the mouse back");
+  });
+}
+
+/// The mouse key cancels a press in progress: the node the press reached hears the
+/// cancel and holds `Pressed` no longer.
+#[test]
+fn the_mouse_key_cancels_a_press_in_progress() {
+  with_launch(tui::Launch::new(), || {
+    let cancels = Signal::new(0u32);
+
+    let _ = tui::mount(move || {
+      Container::new()
+        .set_width(4)
+        .set_height(2)
+        .set_color(red().when(State::Pressed, blue()))
+        .handle_pointer_cancel(move |_| cancels.update(|count| *count += 1))
+        .into_any()
+        .build()
+    });
+    let color = || colors_at(10, 3, 0, 0).1;
+
+    assert_eq!(color(), Some(rgb(red())));
+
+    tui::trigger_mouse_press(1, 0);
+
+    assert_eq!(color(), Some(rgb(blue())));
+
+    tui::trigger_key("Alt+m");
+
+    assert_eq!(cancels.get_untracked(), 1);
+    assert_eq!(color(), Some(rgb(red())), "the press is over");
   });
 }
 

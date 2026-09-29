@@ -77,6 +77,7 @@ use skene_headless::{
   trigger_focus,
   trigger_key_down,
   trigger_key_up,
+  trigger_pointer_cancel,
   trigger_pointer_down,
   trigger_pointer_move,
   trigger_pointer_up,
@@ -504,6 +505,14 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
     Prevented::default()
   );
   assert_value(bound, 50.);
+  assert_eq!(trigger_pointer_down(node, &press_at(120.)), CONSUMED);
+  assert_value(bound, 60.);
+  assert_eq!(trigger_pointer_cancel(node, &press_at(120.)), KEPT);
+  assert_eq!(
+    trigger_pointer_move(node, &press_at(160.)),
+    Prevented::default()
+  );
+  assert_value(bound, 60.);
 
   owner.dispose();
 }
@@ -1109,6 +1118,7 @@ fn only_the_events_a_behavior_or_a_handler_needs_are_listened_to() {
       EventKind::PointerDown,
       EventKind::PointerUp,
       EventKind::PointerMove,
+      EventKind::PointerCancel,
     ]
   );
   assert_eq!(listened(field), [EventKind::Change]);

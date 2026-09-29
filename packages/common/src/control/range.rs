@@ -237,6 +237,7 @@ impl<P: Platform> Behavior<P> for Range {
       EventKind::PointerDown,
       EventKind::PointerMove,
       EventKind::PointerUp,
+      EventKind::PointerCancel,
     ]
   }
 
@@ -300,6 +301,13 @@ impl<P: Platform> Behavior<P> for Range {
       }
       PointerPhase::Up => {
         if !primary || !self.pressed.replace(false) {
+          return Prevent::None;
+        }
+
+        Prevent::Bubbling
+      }
+      PointerPhase::Cancel => {
+        if !self.pressed.replace(false) {
           return Prevent::None;
         }
 

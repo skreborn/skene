@@ -91,6 +91,7 @@ use skene_core::{
   dispatch_context_menu,
   dispatch_key_down,
   dispatch_key_up,
+  dispatch_pointer_cancel,
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
@@ -676,6 +677,16 @@ pub fn trigger_pointer_up(node: NodeId, event: &PointerEvent) -> Prevented {
     }
 
     dispatch_pointer_up::<Headless>(node, event)
+  })
+}
+
+/// Dispatches the cancel of a pointer pressed at `node`, bubbling through the scene: the
+/// platform took the pointer for itself, so the press ends without a release.
+pub fn trigger_pointer_cancel(node: NodeId, event: &PointerEvent) -> Prevented {
+  trigger(|| {
+    Scene::<Headless>::with(|scene| scene.set_pressed(None));
+
+    dispatch_pointer_cancel::<Headless>(node, event)
   })
 }
 

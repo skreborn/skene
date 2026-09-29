@@ -42,6 +42,7 @@ use skene_headless::{
   trigger_focus,
   trigger_key_down,
   trigger_key_up,
+  trigger_pointer_cancel,
   trigger_pointer_down,
   trigger_pointer_enter,
   trigger_pointer_leave,
@@ -93,6 +94,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
     let inner_key_up = note("inner key up");
     let inner_up = note("inner up");
     let inner_move = note("inner move");
+    let inner_cancel = note("inner cancel");
     let inner_enter = note("inner enter");
     let inner_leave = note("inner leave");
     let inner_focus = note("inner focus");
@@ -125,6 +127,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
           })
           .handle_pointer_up(move |_| inner_up())
           .handle_pointer_move(move |_| inner_move())
+          .handle_pointer_cancel(move |_| inner_cancel())
           .handle_pointer_enter(inner_enter)
           .handle_pointer_leave(inner_leave)
           .handle_focus(inner_focus)
@@ -146,6 +149,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       EventKind::PointerDown,
       EventKind::PointerUp,
       EventKind::PointerMove,
+      EventKind::PointerCancel,
       EventKind::PointerEnter,
       EventKind::PointerLeave,
       EventKind::Focus,
@@ -170,6 +174,10 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
   );
   assert_eq!(trigger_pointer_up(inner, &press()), Prevented::default());
   assert_eq!(trigger_pointer_move(inner, &press()), Prevented::default());
+  assert_eq!(
+    trigger_pointer_cancel(inner, &press()),
+    Prevented::default()
+  );
 
   trigger_pointer_enter(inner);
   trigger_pointer_leave(inner);
@@ -187,6 +195,7 @@ fn handlers_fire_through_dispatch_and_a_stop_ends_the_climb() {
       "inner up",
       "outer up",
       "inner move",
+      "inner cancel",
       "outer enter",
       "inner enter",
       "inner leave",

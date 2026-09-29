@@ -22,6 +22,7 @@ use skene_core::{
   RunKeyframe,
   Scene,
   Size,
+  TokenName,
   Transition,
   interpolate::{Tween, sample_keyframes},
 };
@@ -29,6 +30,7 @@ use skene_core::{
 use crate::{
   Headless,
   SlotValue,
+  TokenValue,
   store::{DEFAULT_VIEWPORT, Kind},
   with_store,
 };
@@ -39,11 +41,17 @@ const EM: f32 = 16.;
 /// What one node's properties resolve against: the environment, the node's interaction
 /// and the named containers above it.
 pub(crate) struct Env {
-  node: NodeId,
+  /// The node, or `None` for the root the root definitions hang off.
+  node: Option<NodeId>,
+  /// The viewport's size.
   viewport: Size<f32>,
+  /// The color scheme in force.
   scheme: ColorScheme,
+  /// Whether the reader prefers reduced motion.
   reduced_motion: bool,
+  /// The node's interaction.
   interaction: Interaction,
+  /// The named containers above the node, nearest first, with their sizes.
   containers: Vec<(ContainerName, Option<Size<f32>>)>,
 }
 
@@ -76,7 +84,7 @@ impl Env {
       let focus_holder = control.map_or(handle, |(control, _)| control);
 
       Some(Self {
-        node,
+        node: Some(node),
         viewport: store.viewport.unwrap_or(DEFAULT_VIEWPORT),
         scheme: store.scheme_in_force(),
         reduced_motion: store.reduced_motion.unwrap_or(false),
@@ -94,34 +102,88 @@ impl Env {
     })
   }
 
-  /// Runs `operation` with the resolver of this environment, reading tokens through
-  /// the scene and slots through the store.
+  /// The environment of the root: the platform's, with no container above it.
+  fn root() -> Self {
+    with_store(|store| Self {
+      node: None,
+      viewport: store.viewport.unwrap_or(DEFAULT_VIEWPORT),
+      scheme: store.scheme_in_force(),
+      reduced_motion: store.reduced_motion.unwrap_or(false),
+      interaction: Interaction::default(),
+      containers: Vec::new(),
+    })
+  }
+
+  /// The environment a token's definition resolves in: the defining node's, else the
+  /// root's.
+  fn of_scope(scope: Option<NodeId>) -> Option<Self> {
+    match scope {
+      Some(node) => Self::of(node),
+      None => Some(Self::root()),
+    }
+  }
+
+  /// The definition of `name` in force here, with the node defining it.
+  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, TokenValue)> {
+    match self.node {
+      Some(node) => Scene::<Headless>::with(|scene| scene.resolve_scoped_token(node, name)),
+      None => Scene::<Headless>::with(|scene| scene.root_definitions().get(name).cloned())
+        .map(|value| (None, value)),
+    }
+  }
+
+  /// The value of the token `name` in force here, resolved where it is defined.
+  fn token(&self, name: TokenName) -> Option<Resolved<f32>> {
+    Resolver::<f32>::nested(|| {
+      let (scope, definition) = self.scoped_token(name)?;
+
+      Self::of_scope(scope)?.with_resolver(|resolver| resolver.definition(&definition))
+    })
+  }
+
+  /// The font size in force here: the typography's size, resolved where it is
+  /// defined, else [`EM`].
+  fn font_size(&self) -> f32 {
+    Resolver::<f32>::nested(|| {
+      let (scope, definition) = self.scoped_token(typography::SIZE.name())?;
+
+      Self::of_scope(scope)?.with_resolver_at(EM, |resolver| resolver.definition(&definition))
+    })
+    .and_then(|resolved| match resolved {
+      Resolved::Number(size) => Some(size),
+      _ => None,
+    })
+    .unwrap_or(EM)
+  }
+
+  /// Runs `operation` with the resolver of this environment, reading tokens where they
+  /// are defined and slots through the store.
   pub(crate) fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
-    let node = self.node;
-    let token = move |name| Scene::<Headless>::with(|scene| scene.resolve_token(node, name));
-    let slot = move |slot| {
+    self.with_resolver_at(self.font_size(), operation)
+  }
+
+  /// Runs `operation` with the resolver of this environment, an `em` evaluating against
+  /// `em`.
+  fn with_resolver_at<R>(&self, em: f32, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
+    let token = |name| self.token(name);
+    let slot = |slot| {
+      let node = self.node?;
       let handle =
         Scene::<Headless>::with(|scene| scene.record(node).map(|record| *record.sink()))?;
 
       with_store(|store| store.record(handle)?.slots.get(&slot).cloned())
     };
 
-    let mut resolver = Resolver {
+    operation(&Resolver {
       viewport: self.viewport,
       scheme: self.scheme,
       reduced_motion: self.reduced_motion,
       interaction: self.interaction,
       containers: &self.containers,
-      em: EM,
+      em,
       token: &token,
       slot: &slot,
-    };
-
-    if let Some(Resolved::Number(size)) = resolver.token(typography::SIZE.name()) {
-      resolver.em = size;
-    }
-
-    operation(&resolver)
+    })
   }
 }
 

@@ -54,6 +54,11 @@ use crate::{
 /// How deep a chain of tokens and expressions naming tokens is followed.
 const MAX_DEPTH: usize = 32;
 
+thread_local! {
+  /// How many token definitions the thread is resolving, one inside another.
+  static DEPTH: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// The erased token definition a runtime-resolving platform stores per token: a color,
 /// a number, a length or a dimension in the medium's unit, or a text.
 #[derive(Debug, Clone, PartialEq)]
@@ -307,9 +312,10 @@ impl Interaction {
 
 /// What one node's properties resolve against, and how its tokens and slots are read.
 ///
-/// `token` looks a name up through the scene from the node; `slot` reads the node's
-/// latest derived write; `em` is the font size an `em` expression evaluates against,
-/// in the medium's unit.
+/// `token` gives the value of the token in force at the node, which the platform
+/// resolves where it is defined, as CSS computes a custom property; `slot` reads the
+/// node's latest derived write; `em` is the font size an `em` expression evaluates
+/// against, in the medium's unit.
 #[must_use]
 pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   /// The viewport's size.
@@ -324,8 +330,8 @@ pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   pub containers: &'a [(ContainerName, Option<Size<N>>)],
   /// The font size an `em` evaluates against.
   pub em: f32,
-  /// The token definition in force at the node.
-  pub token: &'a dyn Fn(TokenName) -> Option<TokenValue<N>>,
+  /// The value of the token in force at the node, resolved where it is defined.
+  pub token: &'a dyn Fn(TokenName) -> Option<Resolved<N>>,
   /// The node's latest derived write into a slot.
   pub slot: &'a dyn Fn(Slot) -> Option<SlotLeaf<N, X>>,
 }
@@ -386,38 +392,53 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     })
   }
 
-  /// The value of the token `name` in force at the node, through its definition;
-  /// `None` for an undefined token or a chain deeper than a platform follows.
+  /// The value of the token `name` in force at the node, resolved where it is defined;
+  /// `None` for an undefined token.
   #[must_use]
   pub fn token(&self, name: TokenName) -> Option<Resolved<N>> {
-    self.token_at(name, 0)
+    (self.token)(name)
   }
 
-  fn token_at(&self, name: TokenName, depth: usize) -> Option<Resolved<N>> {
-    if depth > MAX_DEPTH {
+  /// The value `definition` gives its token in this environment: its winning variant,
+  /// resolved here.
+  #[must_use]
+  pub fn definition(&self, definition: &TokenValue<N>) -> Option<Resolved<N>> {
+    match definition {
+      TokenValue::Color(definition) => self.leaf(self.winning_media(definition)),
+      TokenValue::Number(definition) => self.leaf(self.winning_media(definition)),
+      TokenValue::Length(definition) => self.leaf(self.winning_media(definition)),
+      TokenValue::Dimension(definition) => self.leaf(self.winning_media(definition)),
+      TokenValue::Text(definition) => self.leaf(self.winning_media(definition)),
+    }
+  }
+
+  /// Runs `resolve`, a token definition's resolution, one definition deeper; `None`
+  /// past the deepest chain of definitions naming tokens a platform follows, so a
+  /// token defined through itself resolves to nothing.
+  pub fn nested<R>(resolve: impl FnOnce() -> Option<R>) -> Option<R> {
+    /// Steps back out of one definition when dropped.
+    struct Leave;
+
+    impl Drop for Leave {
+      fn drop(&mut self) {
+        DEPTH.with(|depth| depth.set(depth.get() - 1));
+      }
+    }
+
+    if DEPTH.with(|depth| depth.replace(depth.get() + 1)) >= MAX_DEPTH {
+      DEPTH.with(|depth| depth.set(depth.get() - 1));
+
       return None;
     }
 
-    match (self.token)(name)? {
-      TokenValue::Color(definition) => self.leaf_at(self.winning_media(&definition), depth),
-      TokenValue::Number(definition) => self.leaf_at(self.winning_media(&definition), depth),
-      TokenValue::Length(definition) => self.leaf_at(self.winning_media(&definition), depth),
-      TokenValue::Dimension(definition) => self.leaf_at(self.winning_media(&definition), depth),
-      TokenValue::Text(definition) => self.leaf_at(self.winning_media(&definition), depth),
-    }
+    let _leave = Leave;
+
+    resolve()
   }
 
   /// The value of an expression at the node.
   #[must_use]
   pub fn expr(&self, node: &ExprNode) -> Option<Resolved<N>> {
-    self.expr_at(node, 0)
-  }
-
-  fn expr_at(&self, node: &ExprNode, depth: usize) -> Option<Resolved<N>> {
-    if depth > MAX_DEPTH {
-      return None;
-    }
-
     let env = ExprEnv {
       viewport: Size::new(self.viewport.width.to_f32(), self.viewport.height.to_f32()),
       container: self
@@ -428,9 +449,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
 
     node
       .evaluate(&env, &|name| {
-        self
-          .token_at(name, depth + 1)
-          .and_then(Resolved::into_expr_value)
+        self.token(name).and_then(Resolved::into_expr_value)
       })
       .map(Resolved::from)
   }
@@ -439,18 +458,10 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   /// definition, an expression evaluated.
   #[must_use]
   pub fn leaf<T: Clone + Into<Resolved<N>>>(&self, leaf: &StaticLeaf<T>) -> Option<Resolved<N>> {
-    self.leaf_at(leaf, 0)
-  }
-
-  fn leaf_at<T: Clone + Into<Resolved<N>>>(
-    &self,
-    leaf: &StaticLeaf<T>,
-    depth: usize,
-  ) -> Option<Resolved<N>> {
     match leaf {
       StaticLeaf::Fixed(fixed) => Some(fixed.clone().into()),
-      StaticLeaf::Token(reference) => self.token_at(reference.name(), depth + 1),
-      StaticLeaf::Expr(expr) => self.expr_at(expr.node(), depth + 1),
+      StaticLeaf::Token(reference) => self.token(reference.name()),
+      StaticLeaf::Expr(expr) => self.expr(expr.node()),
     }
   }
 

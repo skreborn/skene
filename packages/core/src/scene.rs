@@ -384,10 +384,11 @@ struct Segment {
   pending: Vec<NodeId>,
 }
 
-/// The token values a node resolved under one definitions generation.
+/// The token definitions a node looked up under one definitions generation, each with
+/// the node defining it.
 struct TokenCache<V> {
   generation: u64,
-  values: FxHashMap<TokenName, Option<V>>,
+  values: FxHashMap<TokenName, Option<(Option<NodeId>, V)>>,
 }
 
 /// One node of the scene.
@@ -1112,6 +1113,20 @@ impl<P: Platform> Scene<P> {
   ///
   /// Cached per node until a definition or the tree changes.
   pub fn resolve_token(&mut self, node: NodeId, name: TokenName) -> Option<P::TokenValue> {
+    self
+      .resolve_scoped_token(node, name)
+      .map(|(_, value)| value)
+  }
+
+  /// The definition of `name` in force at `node`, with the node defining it: the
+  /// nearest defining ancestor, else `None` for the root.
+  ///
+  /// Cached per node until a definition or the tree changes.
+  pub fn resolve_scoped_token(
+    &mut self,
+    node: NodeId,
+    name: TokenName,
+  ) -> Option<(Option<NodeId>, P::TokenValue)> {
     let generation = self.definitions_generation;
     let cached = self
       .record(node)
@@ -1134,7 +1149,7 @@ impl<P: Platform> Scene<P> {
         .as_ref()
         .and_then(|definitions| definitions.get(name))
       {
-        found = Some(value.clone());
+        found = Some((Some(visited), value.clone()));
 
         break;
       }
@@ -1142,7 +1157,12 @@ impl<P: Platform> Scene<P> {
       current = record.parent;
     }
 
-    let found = found.or_else(|| self.root_definitions.get(name).cloned());
+    let found = found.or_else(|| {
+      self
+        .root_definitions
+        .get(name)
+        .map(|value| (None, value.clone()))
+    });
     let record = self.record_mut(node)?;
     let cache = record.cache.get_or_insert_with(|| {
       Box::new(TokenCache {
@@ -1769,7 +1789,11 @@ mod tests {
 
         (cache.generation, cache.values.get(&card).cloned())
       }),
-      (generation, Some(Some(color(0.5))))
+      (generation, Some(Some((Some(outer), color(0.5)))))
+    );
+    assert_eq!(
+      with(|scene| scene.resolve_scoped_token(stranger, card)),
+      Some((None, color(0.)))
     );
 
     with(|scene| scene.define_tokens(inner, definitions("card", color(1.))));

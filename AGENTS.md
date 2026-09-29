@@ -124,8 +124,10 @@
   conditions live in its **definition**, once: `Definition<T>` conditions on `Media`
   only and holds no closure, so a palette is plain data that serializes and
   hashes. On the web a token is a custom property defined on the theme's scope and
-  referenced with `var()`; in the terminal and on native it resolves through the scene to
-  the nearest defining ancestor, cached per node. Nothing below a component library
+  referenced with `var()`; in the terminal and on native it resolves through the scene
+  to the nearest defining ancestor, cached per node, and its definition is resolved
+  there, nested tokens, `em` and container conditions included, as CSS computes a
+  registered custom property where it is declared. Nothing below a component library
   knows what a palette is: `skene-simple` owns `SimplePalette` as a struct of `Token`s
   implementing `TokenSet`, and a third party's `AcmePalette` is on identical footing.
   - **`Theme<P: TokenSet>` is the one theme view**, in `skene-common`:

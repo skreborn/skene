@@ -8,6 +8,7 @@
 
 use skene_common::{Container, Text, Theme, gui::Typography};
 use skene_core::{
+  AnyView,
   Border,
   Color,
   Condition,
@@ -33,7 +34,14 @@ use skene_core::{
   View,
 };
 use skene_gui::web::{self, mount};
-use skene_headless::{Headless, children, resolve_border, resolve_color, resolve_length};
+use skene_headless::{
+  Headless,
+  box_props,
+  children,
+  resolve_border,
+  resolve_color,
+  resolve_length,
+};
 use skene_reactive::Owner;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element};
@@ -58,6 +66,10 @@ struct ParityPalette {
   wide: Token<Dimension<f32>, f32>,
   /// A length every length-measured property reads.
   gap: Token<Length, f32>,
+  /// A surface defined through `surface`, where the palette defines it.
+  shade: Token<Color, f32>,
+  /// A length defined in `em`, where the palette defines it.
+  indent: Token<Length, f32>,
 }
 
 impl ParityPalette {
@@ -65,6 +77,8 @@ impl ParityPalette {
   const SHIFTED: TokenRef<Color> = TokenRef::new("parity-shifted");
   const WIDE: TokenRef<Dimension<f32>> = TokenRef::new("parity-wide");
   const GAP: TokenRef<Length> = TokenRef::new("parity-gap");
+  const SHADE: TokenRef<Color> = TokenRef::new("parity-shade");
+  const INDENT: TokenRef<Length> = TokenRef::new("parity-indent");
 }
 
 impl Default for ParityPalette {
@@ -84,6 +98,11 @@ impl Default for ParityPalette {
         Definition::from(Dimension::Length(90.)),
       ),
       gap: Token::new(Self::GAP.name().as_str(), Length(14.)),
+      shade: Token::new(
+        Self::SHADE.name().as_str(),
+        Expr::from(Self::SURFACE).lighter(0.2),
+      ),
+      indent: Token::new(Self::INDENT.name().as_str(), Expr::<Length>::em(2.)),
     }
   }
 }
@@ -101,7 +120,22 @@ where
       self.shifted.define(),
       self.wide.define(),
       self.gap.define(),
+      self.shade.define(),
+      self.indent.define(),
     ]
+  }
+}
+
+/// A nested scope's tokens: the palette's surface alone, redefined.
+#[derive(Debug, Clone, PartialEq)]
+struct InnerPalette {
+  /// The surface.
+  surface: Token<Color, f32>,
+}
+
+impl<V: From<Definition<Color, f32>> + 'static> TokenSet<V> for InnerPalette {
+  fn definitions(&self) -> Vec<(TokenName, V)> {
+    vec![self.surface.define()]
   }
 }
 
@@ -164,6 +198,8 @@ enum Case {
   FixedBorder,
   FixedInk,
   TokenInk,
+  LexicalToken,
+  LexicalEm,
 }
 
 /// Every case the harness holds the resolution to.
@@ -199,6 +235,8 @@ const CASES: &[Case] = &[
   Case::FixedBorder,
   Case::FixedInk,
   Case::TokenInk,
+  Case::LexicalToken,
+  Case::LexicalEm,
 ];
 
 impl Case {
@@ -218,7 +256,8 @@ impl Case {
       | Self::DerivedTokenColor
       | Self::HeldCondition
       | Self::UnheldCondition
-      | Self::DarkUnchosen => Read::Background,
+      | Self::DarkUnchosen
+      | Self::LexicalToken => Read::Background,
       Self::FixedWidth
       | Self::ViewportWidth
       | Self::ClampedWidth
@@ -228,15 +267,31 @@ impl Case {
       | Self::LengthTokenWidth
       | Self::LengthTokenExpressionWidth
       | Self::DerivedWidth
-      | Self::ConditionalWidth => Read::Width,
+      | Self::ConditionalWidth
+      | Self::LexicalEm => Read::Width,
       Self::FixedPadding | Self::LengthTokenPadding | Self::ConditionalPadding => Read::Padding,
       Self::FixedBorder => Read::Border,
       Self::FixedInk | Self::TokenInk => Read::Ink,
     }
   }
 
-  /// The case's box, on the platform `P`.
-  fn view<P: Platform<Scalar = f32>>(self) -> Container<P> {
+  /// The case's box, inside the scopes the case adds, on the platform `P`.
+  fn view<P: Platform<Scalar = f32>>(self) -> AnyView<P> {
+    match self {
+      Self::LexicalToken => Theme::<P, InnerPalette>::new(InnerPalette {
+        surface: Token::new(ParityPalette::SURFACE.name().as_str(), orange()),
+      })
+      .set_child_builder(|| Container::<P>::new().set_color(ParityPalette::SHADE))
+      .into_any(),
+      Self::LexicalEm => Theme::<P, Typography>::new(Typography::default().set_size(30.))
+        .set_child_builder(|| Container::<P>::new().set_width(ParityPalette::INDENT))
+        .into_any(),
+      _ => self.container::<P>().into_any(),
+    }
+  }
+
+  /// The case's box, where the case adds no scope, on the platform `P`.
+  fn container<P: Platform<Scalar = f32>>(self) -> Container<P> {
     let container = Container::<P>::new();
 
     match self {
@@ -289,6 +344,7 @@ impl Case {
       Self::FixedBorder => container.set_border(Border::new(3., orange())),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
+      Self::LexicalToken | Self::LexicalEm => container,
     }
   }
 
@@ -390,8 +446,12 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   skene_headless::trigger_resize(viewport);
 
   let owner = Owner::new();
-  let typography = owner.enter(|| case.build::<Headless>());
-  let node = children(children(typography)[0])[0];
+  let mut node = owner.enter(|| case.build::<Headless>());
+
+  while box_props(node).is_none() {
+    node = children(node)[0];
+  }
+
   let reading = match case.read() {
     Read::Background => resolve_color(node, COLOR).map(Reading::Color),
     Read::Width => resolve_length(node, WIDTH).map(Reading::Length),
@@ -421,7 +481,7 @@ fn rendered(case: Case) -> Reading {
 
   let _ = mount(move || case.build::<Web>());
   let element = root
-    .query_selector("[data-skene-scope] > [data-skene-scope] > *")
+    .query_selector(":not([data-skene-scope])")
     .ok()
     .flatten()
     .expect("the case's box");

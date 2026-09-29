@@ -3055,7 +3055,7 @@ pub skene_core::Resolver::interaction: skene_core::Interaction
 pub skene_core::Resolver::reduced_motion: bool
 pub skene_core::Resolver::scheme: skene_core::ColorScheme
 pub skene_core::Resolver::slot: &'a dyn core::ops::function::Fn(skene_core::Slot) -> core::option::Option<skene_core::SlotLeaf<N, X>>
-pub skene_core::Resolver::token: &'a dyn core::ops::function::Fn(skene_core::TokenName) -> core::option::Option<skene_core::TokenValue<N>>
+pub skene_core::Resolver::token: &'a dyn core::ops::function::Fn(skene_core::TokenName) -> core::option::Option<skene_core::Resolved<N>>
 pub skene_core::Resolver::viewport: skene_core::Size<N>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::Resolver<'_, N, X>
 pub fn skene_core::Resolver<'_, N, X>::box_keyframe(&self, &skene_core::BoxStyle<N, skene_core::Keyframe, X>) -> skene_core::BoxStyle<N, skene_core::Plain, X>
@@ -3064,10 +3064,12 @@ pub fn skene_core::Resolver<'_, N, X>::box_value<T: skene_core::IntoBoxValue<N, 
 pub fn skene_core::Resolver<'_, N, X>::color_leaf(&self, &skene_core::StaticLeaf<skene_core::Color>) -> core::option::Option<skene_core::Color>
 pub fn skene_core::Resolver<'_, N, X>::container(&self, core::option::Option<skene_core::ContainerName>) -> core::option::Option<skene_core::Size<N>>
 pub fn skene_core::Resolver<'_, N, X>::declared_value<T: skene_core::IntoBoxValue<N, X>>(&self, &skene_core::Value<T, skene_core::Condition<N>>) -> core::option::Option<T>
+pub fn skene_core::Resolver<'_, N, X>::definition(&self, &skene_core::TokenValue<N>) -> core::option::Option<skene_core::Resolved<N>>
 pub fn skene_core::Resolver<'_, N, X>::expr(&self, &skene_core::ExprNode) -> core::option::Option<skene_core::Resolved<N>>
 pub fn skene_core::Resolver<'_, N, X>::keyframe_box_value<T: skene_core::IntoBoxValue<N, X>>(&self, &skene_core::StaticLeaf<T>) -> core::option::Option<T>
 pub fn skene_core::Resolver<'_, N, X>::keyframe_run_value<T: skene_core::IntoRunValue<X>>(&self, &skene_core::StaticLeaf<T>) -> core::option::Option<T>
 pub fn skene_core::Resolver<'_, N, X>::leaf<T: core::clone::Clone + core::convert::Into<skene_core::Resolved<N>>>(&self, &skene_core::StaticLeaf<T>) -> core::option::Option<skene_core::Resolved<N>>
+pub fn skene_core::Resolver<'_, N, X>::nested<R>(impl core::ops::function::FnOnce() -> core::option::Option<R>) -> core::option::Option<R>
 pub fn skene_core::Resolver<'_, N, X>::run_keyframe(&self, &skene_core::RunStyle<skene_core::Keyframe, X>) -> skene_core::RunStyle<skene_core::Plain, X>
 pub fn skene_core::Resolver<'_, N, X>::run_style(&self, &skene_core::RunStyle<skene_core::Static<skene_core::Condition<N>>, X>) -> skene_core::RunStyle<skene_core::Plain, X>
 pub fn skene_core::Resolver<'_, N, X>::run_value<T: skene_core::IntoRunValue<X>>(&self, &skene_core::StaticValue<T, skene_core::Condition<N>>) -> core::option::Option<T>
@@ -3195,6 +3197,7 @@ pub fn skene_core::Scene<P>::record(&self, skene_core::NodeId) -> core::option::
 pub fn skene_core::Scene<P>::record_mut(&mut self, skene_core::NodeId) -> core::option::Option<&mut skene_core::NodeRecord<P>>
 pub fn skene_core::Scene<P>::remove_from_segment(&mut self, skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Scene<P>::report_access(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>) -> alloc::vec::Vec<skene_core::AccessProp>
+pub fn skene_core::Scene<P>::resolve_scoped_token(&mut self, skene_core::NodeId, skene_core::TokenName) -> core::option::Option<(core::option::Option<skene_core::NodeId>, <P as skene_core::Platform>::TokenValue)>
 pub fn skene_core::Scene<P>::resolve_token(&mut self, skene_core::NodeId, skene_core::TokenName) -> core::option::Option<<P as skene_core::Platform>::TokenValue>
 pub const fn skene_core::Scene<P>::root_definitions(&self) -> &skene_core::Definitions<<P as skene_core::Platform>::TokenValue>
 pub fn skene_core::Scene<P>::segment_end(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>

@@ -22,11 +22,13 @@ use skene_core::{
   Size,
   Static,
   StaticLeaf,
+  TokenName,
 };
 
 use crate::{
   BOLD_WEIGHT,
   BorderGlyphs,
+  TokenValue,
   Tui,
   TuiExt,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
@@ -40,13 +42,21 @@ const EM: f32 = 1.;
 /// What one node's properties resolve against: the environment, the node's
 /// interaction, and the named containers above it.
 pub(crate) struct Env<'a> {
+  /// The records the environment reads.
   store: &'a Store,
+  /// The node's record.
   handle: Handle,
+  /// The scene node the record realizes, or `None` for the root.
   node: Option<NodeId>,
+  /// The viewport's size.
   viewport: Size<u32>,
+  /// The color scheme in force.
   scheme: ColorScheme,
+  /// Whether the reader prefers reduced motion.
   reduced_motion: bool,
+  /// The node's interaction.
   interaction: Interaction,
+  /// The named containers above the node, nearest first, with their sizes.
   containers: Vec<(ContainerName, Option<Size<u32>>)>,
 }
 
@@ -65,31 +75,81 @@ impl<'a> Env<'a> {
     }
   }
 
-  /// Runs `operation` with the resolver of this environment, reading tokens through
-  /// the scene and slots through the store.
+  /// The environment a token's definition resolves in: the defining node's, else the
+  /// root's.
+  fn of_scope(store: &'a Store, scope: Option<NodeId>) -> Option<Self> {
+    let handle = match scope {
+      Some(node) => Scene::<Tui>::with(|scene| scene.record(node).map(|record| *record.sink()))?,
+      None => store.root,
+    };
+
+    Some(Self::of(store, handle))
+  }
+
+  /// The definition of `name` in force here, with the node defining it.
+  fn scoped_token(&self, name: TokenName) -> Option<(Option<NodeId>, TokenValue)> {
+    match self.node {
+      Some(node) => Scene::<Tui>::with(|scene| scene.resolve_scoped_token(node, name)),
+      None => Scene::<Tui>::with(|scene| scene.root_definitions().get(name).cloned())
+        .map(|value| (None, value)),
+    }
+  }
+
+  /// The value of the token `name` in force here, resolved where it is defined.
+  fn token(&self, name: TokenName) -> Option<Resolved<u32>> {
+    Resolver::<u32, TuiExt>::nested(|| {
+      let (scope, definition) = self.scoped_token(name)?;
+
+      Self::of_scope(self.store, scope)?.with_resolver(|resolver| resolver.definition(&definition))
+    })
+  }
+
+  /// The font size in force here, in cells: the typography's size, resolved where it
+  /// is defined, where the terminal proves text sizing, else [`EM`].
+  fn font_size(&self) -> f32 {
+    if !text::sizing() {
+      return EM;
+    }
+
+    Resolver::<u32, TuiExt>::nested(|| {
+      let (scope, definition) = self.scoped_token(typography::SIZE.name())?;
+
+      Self::of_scope(self.store, scope)?
+        .with_resolver_at(EM, |resolver| resolver.definition(&definition))
+    })
+    .and_then(|resolved| match resolved {
+      Resolved::Number(scale) => Some(scale * EM),
+      _ => None,
+    })
+    .unwrap_or(EM)
+  }
+
+  /// Runs `operation` with the resolver of this environment, reading tokens where they
+  /// are defined and slots through the store.
   fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R) -> R {
-    let node = self.node;
-    let token = move |name| Scene::<Tui>::with(|scene| scene.resolve_token(node?, name));
+    self.with_resolver_at(self.font_size(), operation)
+  }
+
+  /// Runs `operation` with the resolver of this environment, an `em` evaluating against
+  /// `em`.
+  fn with_resolver_at<R>(
+    &self,
+    em: f32,
+    operation: impl FnOnce(&Resolver<'_, u32, TuiExt>) -> R,
+  ) -> R {
+    let token = |name| self.token(name);
     let slot = |slot| self.store.record(self.handle)?.slots.get(&slot).cloned();
 
-    let mut resolver = Resolver {
+    operation(&Resolver {
       viewport: self.viewport,
       scheme: self.scheme,
       reduced_motion: self.reduced_motion,
       interaction: self.interaction,
       containers: &self.containers,
-      em: EM,
+      em,
       token: &token,
       slot: &slot,
-    };
-
-    if text::sizing()
-      && let Some(Resolved::Number(scale)) = resolver.token(typography::SIZE.name())
-    {
-      resolver.em = scale * EM;
-    }
-
-    operation(&resolver)
+    })
   }
 
   /// A box keyframe with every leaf resolved at the node.

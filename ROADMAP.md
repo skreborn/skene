@@ -34,10 +34,9 @@ left half-done in a code comment.
     - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
     typed as lengths, so a length token serves them too and the web's `* 1px` and the
     typography's number tokens go, which gives the type metrics a type per medium;
-    `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; lexical
-    resolution cached per scope, a definition's nested tokens, `em` and container
-    conditions resolving where it is declared, as CSS does, with per-scope invalidation
-    in place of the global generation.
+    `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; a
+    token's value cached at its defining scope, with per-scope invalidation in place of
+    the global generation, where each consumer resolves it there afresh today.
     - One motion runner in core with a property table (continuous or discrete, and a
     unit class) for the terminal, headless and native: easing per keyframe interval,
     discrete properties that never tween, and one reduced-motion rest frame, the final

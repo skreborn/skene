@@ -60,6 +60,7 @@ mod host {
     /// The app directory (holding `Cargo.toml` and, optionally, `skene.toml`).
     #[arg(long, default_value = ".", global = true)]
     dir: PathBuf,
+    /// The command to run.
     #[command(subcommand)]
     command: Command,
   }

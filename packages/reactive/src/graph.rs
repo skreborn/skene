@@ -76,6 +76,7 @@ pub(crate) struct Children {
   order: Vec<(Id, u32)>,
   /// Each child's current sequence number.
   live: FxHashMap<Id, u32>,
+  /// The sequence number the next child adopted takes.
   next: u32,
 }
 
@@ -119,11 +120,17 @@ impl Children {
 /// The ownership facet owners and computations share.
 #[derive(Default)]
 pub(crate) struct OwnerData {
+  /// The owner that adopted it.
   pub(crate) parent: Option<Id>,
+  /// How many owners stand above it.
   pub(crate) depth: u32,
+  /// The signals, owners and computations it adopted.
   pub(crate) children: Option<Box<Children>>,
+  /// The context values it provides.
   pub(crate) contexts: Option<Box<Contexts>>,
+  /// The cleanups registered on it, run in reverse when it is disposed or runs again.
   pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
+  /// The tasks running under it, cancelled when it is disposed or runs again.
   pub(crate) tasks: Option<Box<Tasks>>,
   /// The step from the parent, or from the runtime root for a detached owner.
   step: Option<Step>,
@@ -139,9 +146,13 @@ pub(crate) struct OwnerData {
 
 /// A local signal: its value cell and its subscriber list.
 pub(crate) struct SignalRecord {
+  /// The value cell.
   pub(crate) value: Rc<dyn Any>,
+  /// The owner that adopted it.
   parent: Option<Id>,
+  /// The computations reading it.
   subs: LinkList,
+  /// Bumped on every write, which a subscriber's link is compared against.
   version: u32,
   /// Registered in the state snapshot, to be unregistered on removal.
   snapshotted: bool,
@@ -190,15 +201,23 @@ pub(crate) struct RunRemains {
 
 /// One thread's reactive graph.
 pub(crate) struct Graph {
+  /// The graph's own mark on every id it mints, telling them from another thread's.
   nonce: u32,
+  /// The local signals.
   signals: Arena<SignalRecord>,
+  /// The effects and memos.
   computations: Arena<ComputationRecord>,
+  /// The owners that are not computations.
   owners: Arena<OwnerRecord>,
+  /// The dependency links between the computations and what they read.
   links: LinkPool,
+  /// The creation order the next computation takes.
   next_order: u64,
   /// The next detached root's ordinal.
   next_root: u32,
+  /// The queued render effects, by owner depth, then creation order.
   render_queue: BinaryHeap<Reverse<(u32, u64, Id)>>,
+  /// The queued ordinary effects, in propagation order.
   queue: VecDeque<Id>,
   /// The hooks run once their signal has lost its last subscriber.
   unobserved_hooks: FxHashMap<Id, Rc<dyn Fn()>>,

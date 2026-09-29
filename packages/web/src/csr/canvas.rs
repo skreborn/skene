@@ -29,9 +29,13 @@ const CANVAS_STYLE: &str = "position:absolute;inset:0;width:100%;height:100%;dis
 /// A painted box's canvas: the painter, the element and its last measured size, the GPU
 /// target, and which path paints it.
 pub(super) struct PaintedCanvas {
+  /// The painter the box draws with.
   painter: Rc<Painter>,
+  /// The `<canvas>` painted into.
   pub(super) element: HtmlCanvasElement,
+  /// The size last measured; `None` before the first measure.
   size: Option<CanvasSize>,
+  /// The GPU target painted into, once made.
   gpu: Option<gpu::Target>,
   /// Whether it waits on the answer to the ask for a GPU.
   awaiting_gpu: bool,

@@ -2,7 +2,6 @@
 //! and decoded into events, and the process signals that concern the terminal.
 
 use std::{
-  collections::VecDeque,
   fs,
   io::{self, IsTerminal as _, Read as _, Write},
   mem,
@@ -97,16 +96,21 @@ fn open_input() -> io::Result<Fd> {
 /// buffered written unless the thread is panicking, and every signal caught is handed
 /// back as it was.
 pub(crate) struct Tty {
+  /// Where the terminal's input is read.
   input: Fd,
+  /// Where the terminal's output is written.
   output: Fd,
+  /// The output written and not yet flushed.
   pending: Vec<u8>,
+  /// The mode the terminal was opened in.
   original: Termios,
+  /// The decoder of the input read.
   parser: Parser,
-  events: VecDeque<Event>,
   /// The window size last reported, so a change reads as a resize.
   size: Option<WindowSize>,
   /// The dev launcher's control pipe, and the partial line read from it so far.
   control: Option<(BorrowedFd<'static>, Vec<u8>)>,
+  /// The process signals caught.
   signals: Signals,
   /// When the terminal last sent anything.
   last_read: Instant,
@@ -128,7 +132,6 @@ impl Tty {
       pending: Vec::with_capacity(READ_SIZE),
       original,
       parser: Parser::default(),
-      events: VecDeque::new(),
       size: None,
       control: None,
       signals: Signals::catch()?,
@@ -220,8 +223,6 @@ impl Tty {
     }
 
     let mut events = self.signals.take();
-
-    events.extend(self.events.drain(..));
 
     while let Some(event) = self.parser.pop() {
       events.push(event);

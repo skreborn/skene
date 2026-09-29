@@ -128,8 +128,11 @@ impl Drop for Listener {
 /// The root's delegated listeners, the popups currently open, each with the anchor
 /// it was opened against, and the text entry focus last left.
 pub(super) struct Events {
+  /// The element the listeners are delegated to.
   root: Element,
+  /// The delegated listeners, by event name.
   listeners: FxHashMap<&'static str, Listener>,
+  /// The popups open, each with the anchor it was opened against.
   pub(super) open_popups: FxHashMap<u32, Option<u32>>,
   /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
   /// open popup acts on in place of the popup's own focus.

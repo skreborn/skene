@@ -191,19 +191,31 @@ enum Realized {
 /// control's state, focus and value when the control has one apart from its root, and
 /// what the platform keeps per node.
 struct Node {
+  /// The DOM node realizing it.
   dom: web_sys::Node,
+  /// The native element carrying a control's state, focus and value, where the control
+  /// has one apart from its root.
   carrier: Option<Element>,
   /// The `<label for>` a text entry's caption lives in, kept before the entry among
   /// its siblings.
   caption: Option<Element>,
+  /// What it is realized as.
   realized: Realized,
+  /// The scene node it realizes, once bound.
   id: Option<NodeId>,
+  /// The class of its compiled style.
   style_class: Option<Rc<str>>,
+  /// The class of a scope's token definitions.
   token_class: Option<Rc<str>>,
+  /// The slots its class references.
   slots: Rc<[SlotBinding]>,
+  /// The events it listens to, one bit per event kind.
   listened: u16,
+  /// The reports of the box's size.
   observers: Vec<Rc<dyn Fn(Size<f32>)>>,
+  /// A modal's `cancel` listener, reporting a dismissal.
   cancel: Option<Listener>,
+  /// Whether the hydration in progress adopted it from the server's markup.
   adopted: bool,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
@@ -446,24 +458,39 @@ impl Hydration {
 /// The browser leaf's state: the document, the node records, the stylesheet sink, the
 /// delegated events and the hydration in progress.
 struct Dom {
+  /// The document the app mounts in.
   document: Document,
+  /// The node records, indexed by sink.
   nodes: Vec<Option<Node>>,
+  /// The sinks of the empty records, reused before the records grow.
   free: Vec<u32>,
+  /// The hydration marker the next element created takes.
   markers: u32,
+  /// The ordinal the next anchor's comment takes.
   anchors: u32,
+  /// The stylesheet sink.
   sheet: Sheet,
+  /// The delegated events.
   events: Events,
+  /// The class of the root's token definitions.
   root_class: Option<Rc<str>>,
+  /// The hydration in progress.
   hydration: Option<Hydration>,
+  /// How many nodes the last hydration failed to adopt.
   mismatches: u32,
+  /// The shared size observer, made when the first size is observed.
   resize: Option<SizeObserver>,
+  /// The scene node of the mount root.
   root_node: Option<NodeId>,
+  /// What content leaving a segment held, by the sink of the anchor following it.
   saved: FxHashMap<u32, Saved>,
   /// The observer reporting each canvas's size, made when the first box paints.
   pixels: Option<canvas::Pixels>,
   /// The overlays asked open before their element was connected, each with its anchor.
   pending_open: FxHashMap<u32, Option<u32>>,
+  /// The timeouts of the scheduled actions.
   timers: FxHashMap<Timer, Timeout>,
+  /// The id the next scheduled action takes.
   next_timer: u64,
 }
 

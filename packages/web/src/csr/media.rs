@@ -27,12 +27,16 @@ struct Query {
 
 /// The environment's signals with their sources.
 struct MediaState {
+  /// The environment's signals.
   signals: MediaSignals<f32>,
   /// Whether the bundle runs the tree: false while a hydration adopts the server's
   /// markup, true once it has finished and on a mount that hydrates nothing.
   live: (ReadSignal<bool>, WriteSignal<bool>),
+  /// The color scheme the app has chosen; `None` follows the platform's.
   choice: Signal<Option<ColorScheme>>,
+  /// The live media queries, by their text.
   queries: FxHashMap<String, Query>,
+  /// The window's resize listener, writing the viewport.
   _resize: Listener,
 }
 

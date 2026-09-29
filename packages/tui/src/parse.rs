@@ -127,8 +127,11 @@ impl ModeSetting {
 /// A key event: the key, the modifiers held, and what the kitty protocol adds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Key {
+  /// The key.
   pub(crate) code: KeyCode,
+  /// The modifiers held.
   pub(crate) modifiers: Modifiers,
+  /// Whether the key was pressed, repeated or released.
   pub(crate) kind: KeyKind,
   /// Whether the key is on the keypad.
   pub(crate) keypad: bool,
@@ -183,24 +186,43 @@ pub(crate) enum KeyKind {
 /// The key itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KeyCode {
+  /// A character key, by the character it types.
   Char(char),
+  /// Enter.
   Enter,
+  /// Backspace.
   Backspace,
+  /// Tab.
   Tab,
+  /// Tab with Shift held, reported as a key of its own.
   BackTab,
+  /// Escape.
   Escape,
+  /// The left arrow.
   Left,
+  /// The right arrow.
   Right,
+  /// The up arrow.
   Up,
+  /// The down arrow.
   Down,
+  /// Home.
   Home,
+  /// End.
   End,
+  /// Page Up.
   PageUp,
+  /// Page Down.
   PageDown,
+  /// Insert.
   Insert,
+  /// Delete.
   Delete,
+  /// The keypad's center key, Begin.
   KeypadBegin,
+  /// A function key, by its number.
   Function(u8),
+  /// A modifier key on its own.
   Modifier(ModifierKey),
   /// A key the loop has no name for.
   Unidentified,
@@ -250,7 +272,9 @@ pub(crate) enum MouseKind {
 /// The incremental parser: bytes in, events out.
 #[derive(Debug, Default)]
 pub(crate) struct Parser {
+  /// The bytes read and not yet parsed.
   buffer: Vec<u8>,
+  /// The events parsed and not yet taken.
   events: VecDeque<Event>,
   /// The reply windows open.
   windows: u32,

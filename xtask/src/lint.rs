@@ -1,5 +1,5 @@
-//! The house rules no compiler checks: unspaced em-dashes, children last and the
-//! framework's own vocabulary.
+//! The house rules no compiler checks: unspaced em-dashes, children last, the
+//! framework's own vocabulary, and fields and variants documented all or none.
 
 use std::{
   fs,
@@ -150,6 +150,31 @@ impl Rules<'_> {
       .push(format!("{}:{line}: {message}", self.path.display()));
   }
 
+  /// Reports a type documenting some of its fields or variants but not all: every one,
+  /// none, or exactly the public ones pass. Each member is whether it is documented and
+  /// whether it is public.
+  fn check_member_docs(&mut self, name: &Ident, members: &[(bool, bool)]) {
+    let documented = members.iter().filter(|(documented, _)| *documented).count();
+
+    if documented == 0
+      || documented == members.len()
+      || members
+        .iter()
+        .all(|(documented, public)| documented == public)
+    {
+      return;
+    }
+
+    self.report(
+      name.span(),
+      &format!(
+        "`{name}` documents {documented} of its {} members: all, none, or exactly the \
+         public ones",
+        members.len()
+      ),
+    );
+  }
+
   /// Reports a public name made of a banned word.
   fn check_name(&mut self, visibility: &Visibility, ident: &Ident) {
     if !self.public_surface || !matches!(visibility, Visibility::Public(_)) {
@@ -191,6 +216,18 @@ impl<'ast> Visit<'ast> for Rules<'_> {
       }
     }
 
+    let members: Vec<(bool, bool)> = item
+      .fields
+      .iter()
+      .map(|field| {
+        (
+          field.attrs.iter().any(is_doc),
+          matches!(field.vis, Visibility::Public(_)),
+        )
+      })
+      .collect();
+
+    self.check_member_docs(&item.ident, &members);
     visit::visit_item_struct(self, item);
   }
 
@@ -201,6 +238,13 @@ impl<'ast> Visit<'ast> for Rules<'_> {
       self.check_name(&item.vis, &variant.ident);
     }
 
+    let members: Vec<(bool, bool)> = item
+      .variants
+      .iter()
+      .map(|variant| (variant.attrs.iter().any(is_doc), true))
+      .collect();
+
+    self.check_member_docs(&item.ident, &members);
     visit::visit_item_enum(self, item);
   }
 
@@ -254,6 +298,11 @@ fn is_framework_source(path: &Path) -> bool {
   components.next() == Some("packages".as_ref())
     && components.next().is_some()
     && components.next() == Some("src".as_ref())
+}
+
+/// Whether `attribute` is documentation, as a `///` comment is.
+fn is_doc(attribute: &Attribute) -> bool {
+  attribute.path().is_ident("doc")
 }
 
 fn is_test_configuration(attribute: &Attribute) -> bool {
@@ -346,6 +395,25 @@ mod tests {
       )
       .is_empty()
     );
+  }
+
+  #[test]
+  fn a_type_documenting_some_members_is_reported() {
+    assert_eq!(
+      findings("struct Half { /// Documented.\n a: u8, b: u8 }", false).len(),
+      1
+    );
+    assert_eq!(
+      findings("enum Half { /// Documented.\n A, B }", false).len(),
+      1
+    );
+  }
+
+  #[test]
+  fn a_type_documenting_all_none_or_its_public_members_passes() {
+    assert!(findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }", false).is_empty());
+    assert!(findings("struct None { a: u8, b: u8 }", false).is_empty());
+    assert!(findings("pub struct Public { /// A.\n pub a: u8, b: u8 }", false).is_empty());
   }
 
   #[test]

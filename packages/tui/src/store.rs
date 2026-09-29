@@ -98,7 +98,9 @@ pub(crate) use skene_core::{Focus, Interaction};
 /// A box's style resolved under one generation and interaction: the style presented,
 /// with its motion laid over, and the target it resolved to.
 pub(crate) struct BoxCache {
+  /// The resolution generation it was resolved under.
   pub(crate) generation: u64,
+  /// The interaction state it was resolved under.
   pub(crate) interaction: Interaction,
   /// The style laid out and painted: the target with every running tween sampled.
   pub(crate) style: PlainBox,
@@ -115,12 +117,15 @@ pub(crate) struct BoxCache {
 /// A run's style resolved under one generation and interaction, with the per-child
 /// layout properties a wrapper annotated the run with.
 pub(crate) struct RunCache {
+  /// The resolution generation it was resolved under.
   pub(crate) generation: u64,
+  /// The interaction state it was resolved under.
   pub(crate) interaction: Interaction,
   /// The style painted: the target with every running tween sampled.
   pub(crate) style: PlainRun,
   /// The style the resolution produced, which a change is judged against.
   pub(crate) target: PlainRun,
+  /// The per-child layout properties a wrapper annotated the run with.
   pub(crate) layout: PlainBox,
   /// The keyframes resolved at the node, reused across the frames of a running motion.
   pub(crate) keyframes: Vec<skene_core::Animation<PlainRun>>,
@@ -183,6 +188,7 @@ enum EditRun {
 /// A text entry's editing state; the caret and the anchor are cluster positions in
 /// the value, `0..=count`.
 pub(crate) struct Field {
+  /// The value being edited.
   pub(crate) value: String,
   /// The value's clusters, kept with it.
   pub(crate) clusters: Clusters,
@@ -567,20 +573,31 @@ impl Kind {
 
 /// One realized node.
 pub(crate) struct Record {
+  /// What the node is, with its props, its resolution and its motion.
   pub(crate) kind: Kind,
+  /// The node in the layout tree, where it takes part in layout.
   pub(crate) taffy: Option<taffy::NodeId>,
+  /// The scene node the record realizes, once bound.
   pub(crate) node: Option<NodeId>,
+  /// The node it is attached under.
   pub(crate) parent: Option<Handle>,
+  /// The children attached to it, in order.
   pub(crate) children: Vec<Handle>,
   /// The taffy children last handed to the layout tree.
   pub(crate) taffy_children: Vec<taffy::NodeId>,
   /// The text and scales the layout tree carries for a run or a paragraph.
   pub(crate) measured_text: Option<Measured>,
+  /// The taffy style last handed to the layout tree.
   pub(crate) applied: Option<taffy::Style>,
+  /// A run's text, as last set.
   pub(crate) text: String,
+  /// The node's slot values, as last written.
   pub(crate) slots: FxHashMap<Slot, SlotLeaf>,
+  /// The events the node listens to, one bit per event kind.
   pub(crate) listened: u16,
+  /// The reports of the box's size.
   pub(crate) observers: Vec<Rc<dyn Fn(Size<u32>)>>,
+  /// The size last reported to the observers.
   pub(crate) reported: Option<Size<u32>>,
   /// The scroll offsets, in cells.
   pub(crate) scroll: (u32, u32),
@@ -610,13 +627,19 @@ pub(crate) struct Backdrop {
 /// What a backdrop is rendered from; a change to any part renders it afresh.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BackdropKey {
-  /// The box's cells, and one more each way for the shadow's band.
+  /// The box's columns, and one more for the shadow's band.
   pub(crate) columns: u16,
+  /// The box's rows, and one more for the shadow's band.
   pub(crate) rows: u16,
+  /// A cell's size in pixels.
   pub(crate) cell_pixels: (u16, u16),
+  /// The box's surface; `None` for none.
   pub(crate) background: Option<(u8, u8, u8)>,
+  /// The border's ink; `None` for no border or a transparent one.
   pub(crate) border: Option<(u8, u8, u8)>,
+  /// The corner radius.
   pub(crate) radius: f32,
+  /// The shadow's color as RGBA; `None` for no shadow or a transparent one.
   pub(crate) shadow: Option<[f32; 4]>,
 }
 
@@ -775,13 +798,19 @@ pub(crate) struct Press {
 
 /// The environment as signals, with the write halves the platform drives.
 pub(crate) struct MediaState {
+  /// The root owner the signals live under.
   pub(crate) owner: Owner,
+  /// Writes the viewport.
   pub(crate) set_viewport: WriteSignal<Size<u32>>,
+  /// Writes the color scheme in force.
   pub(crate) set_scheme: WriteSignal<ColorScheme>,
+  /// Writes whether the reader prefers reduced motion.
   pub(crate) set_reduced_motion: WriteSignal<bool>,
   /// Whether the terminal proved a graphics protocol.
   pub(crate) graphics: ReadSignal<bool>,
+  /// Writes whether the terminal proved a graphics protocol.
   pub(crate) set_graphics: WriteSignal<bool>,
+  /// The environment's signals.
   pub(crate) signals: MediaSignals<u32>,
 }
 
@@ -792,14 +821,18 @@ pub(crate) struct MediaState {
   reason = "each flag is an independent fact about the frame or the pointer"
 )]
 pub(crate) struct Store {
+  /// The record slots, indexed by a handle's index.
   entries: Vec<Entry>,
+  /// The indices of the empty slots, reused before the store grows.
   free: Vec<u32>,
   /// The layout tree; a text run's leaf carries its text and scales as context,
   /// wrapped by the layout's measure function.
   pub(crate) taffy: taffy::TaffyTree<Measured>,
+  /// The root box, filling the screen.
   pub(crate) root: Handle,
   /// Every overlay, in build order; later entries stack on top.
   pub(crate) overlays: Vec<Handle>,
+  /// The node holding focus.
   pub(crate) focused: Option<Handle>,
   /// Whether focus shows while held: set by a key, cleared by a pointer press.
   pub(crate) focus_visible: bool,
@@ -816,11 +849,15 @@ pub(crate) struct Store {
   pub(crate) last_frame: Option<Buffer>,
   /// The rows the last paint rewrote.
   pub(crate) repainted: Vec<usize>,
+  /// The drag in progress.
   pub(crate) drag: Option<Drag>,
+  /// The left press awaiting its release.
   pub(crate) press: Option<Press>,
-  /// Whether a left or right press has been delivered and not yet released; a release
-  /// arriving without one stands in for a click whose press the terminal swallowed.
+  /// Whether a left press has been delivered and not yet released; a release arriving
+  /// without one stands in for a click whose press the terminal swallowed.
   pub(crate) left_held: bool,
+  /// Whether a right press has been delivered and not yet released, as
+  /// [`left_held`](Self::left_held) is for the left.
   pub(crate) right_held: bool,
   /// The selection over the document's runs; a text entry's lives in its [`Field`].
   pub(crate) selection: Option<Selection>,
@@ -831,6 +868,7 @@ pub(crate) struct Store {
   /// Where the pointer sits within its cell, `0..1` along each axis: the center unless
   /// the terminal reports pixels.
   pub(crate) pointer_within: (f32, f32),
+  /// The wheel gesture's latched scroll target.
   pub(crate) scroll_latch: Option<ScrollLatch>,
   /// The clipboard operations the launch offers.
   pub(crate) clipboard: Clipboard,
@@ -863,12 +901,15 @@ pub(crate) struct Store {
   pub(crate) choice: Option<ColorScheme>,
   /// The scheduled actions, each with the clock reading it is due at.
   pub(crate) timers: Vec<Scheduled>,
+  /// The id the next scheduled action takes.
   pub(crate) next_timer: u64,
   /// The node to scroll into view once the next layout is computed.
   pub(crate) reveal: Option<Handle>,
   /// The measured sizes of the named query containers, from the last layout.
   pub(crate) container_sizes: FxHashMap<ContainerName, Size<u32>>,
+  /// The window title the document asks for.
   pub(crate) title: Option<String>,
+  /// Whether the title changed since the terminal was last told it.
   pub(crate) title_dirty: bool,
   /// The resolution generation: moves when definitions, the environment or a control's
   /// state change, invalidating every resolved style.
@@ -879,13 +920,16 @@ pub(crate) struct Store {
   pub(crate) set_style_calls: u64,
   /// How many node styles have been resolved from their declarations.
   pub(crate) style_resolutions: u64,
+  /// Whether the tree changed since the layout tree's children were last handed over.
   pub(crate) structure_dirty: bool,
+  /// Whether anything the layout reads changed since it was last computed.
   pub(crate) layout_dirty: bool,
   /// Whether the whole frame repaints; a change confined to a node damages it instead.
   pub(crate) paint_dirty: bool,
   /// Whether a node's interaction state moved since the last restyle, which may change
   /// its style though nothing else changed.
   pub(crate) restyle_pending: bool,
+  /// Whether a key asked the app to quit.
   pub(crate) quit: bool,
   /// The clock motion samples against.
   pub(crate) clock: Clock,
@@ -897,6 +941,7 @@ pub(crate) struct Store {
   /// The clock reading the caret drag's autoscroll last stepped at, `None` while no
   /// drag is held past its entry's edge.
   pub(crate) autoscroll_at: Option<f64>,
+  /// The environment's signals, once first asked for.
   media: Option<MediaState>,
   /// Whether the terminal proved a graphics protocol, so pictures render and place.
   pub(crate) graphics: bool,

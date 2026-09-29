@@ -45,6 +45,7 @@ impl std::fmt::Debug for SplitLoader {
 }
 
 struct Inner {
+  /// Where the module's load stands.
   state: RefCell<State>,
   /// The loads that have failed so far.
   failures: Cell<u32>,

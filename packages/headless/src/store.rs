@@ -66,26 +66,42 @@ pub(crate) struct Motion {
 }
 
 /// One realized node.
-// Each flag is an independent fact a platform call recorded.
 pub(crate) struct Record {
+  /// What the node is, with the props it was created from.
   pub kind: Kind,
+  /// A run's text, as last set.
   pub text: String,
+  /// A control's value, as last set.
   pub value: String,
   /// The options a platform-drawn picker offers, each a value and its name.
   pub options: Vec<(String, String)>,
+  /// A text entry's selection, clamped into its value.
   pub selection: TextSelection,
+  /// Whether a native toggle is checked, as last set.
   pub checked: bool,
+  /// Whether an overlay is open.
   pub open: bool,
+  /// The node an open overlay was opened against.
   pub anchor: Option<Handle>,
+  /// The point an overlay is placed at, where it is pinned to one.
   pub position: Option<Point<f32>>,
+  /// A control's state, as last set.
   pub control_state: ControlState,
+  /// Whether the pointer is over the node.
   pub hovered: bool,
+  /// The node's slot values, as last written.
   pub slots: FxHashMap<Slot, SlotLeaf>,
+  /// A scope's token definitions, as last written.
   pub definitions: Option<Definitions<TokenValue>>,
+  /// The events the node listens to, in the order first asked.
   pub listened: Vec<EventKind>,
+  /// The children attached to the node, in order.
   pub children: Vec<Handle>,
+  /// The reports of the box's size.
   pub size_observers: Vec<Rc<dyn Fn(Size<f32>)>>,
+  /// The painter a painted box draws with.
   pub painter: Option<Rc<Painter>>,
+  /// The motion the node runs.
   pub motion: Motion,
 }
 
@@ -156,24 +172,37 @@ pub(crate) struct MediaState {
 
 /// Every record the platform holds, the focus, the root definitions and the environment.
 pub(crate) struct Store {
+  /// The record slots, indexed by a handle's index.
   entries: Vec<Entry>,
+  /// The indices of the empty slots, reused before the store grows.
   free: Vec<u32>,
+  /// The node holding focus.
   pub focused: Option<Handle>,
   /// Whether focus shows while held: set by a key, cleared by a pointer press.
   pub focus_visible: bool,
+  /// The token definitions on the root, as last written.
   pub root_definitions: Definitions<TokenValue>,
+  /// How many times the root definitions have been written.
   pub root_definition_writes: usize,
+  /// The sizes of the named query containers, as set.
   pub container_sizes: FxHashMap<ContainerName, Size<f32>>,
+  /// The viewport, as set; [`DEFAULT_VIEWPORT`] unless set.
   pub viewport: Option<Size<f32>>,
+  /// The platform's color scheme, as set; light unless set.
   pub scheme: Option<ColorScheme>,
+  /// The color scheme the app has chosen, overriding the platform's.
   pub chosen_scheme: Option<ColorScheme>,
+  /// Whether the reader prefers reduced motion, as set; not unless set.
   pub reduced_motion: Option<bool>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
+  /// The document's language, as last set.
   pub language: Option<String>,
+  /// The head registrations.
   pub head: Head,
   /// The scheduled actions, each with the clock reading it is due at.
   pub timers: Vec<Scheduled>,
+  /// The id the next scheduled action takes.
   pub next_timer: u64,
   /// The clipboard actions performed, in order, until taken.
   pub clipboard: Vec<ClipboardAction>,
@@ -183,6 +212,7 @@ pub(crate) struct Store {
   pub hydrated: Option<bool>,
   /// Whether a painted box shows as pixels, as set; shown unless set.
   pub graphics: Option<bool>,
+  /// The environment's signals, once first asked for.
   media: Option<MediaState>,
 }
 

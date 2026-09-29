@@ -140,19 +140,28 @@ enum Content {
 
 /// One node of the string tree.
 struct Node {
+  /// What the node is.
   content: Content,
   /// The element's hydration marker: its place in element creation order.
   marker: u32,
+  /// The element's attributes, in the order first set.
   attributes: Vec<(String, String)>,
+  /// The class of its compiled style.
   style_class: Option<Rc<str>>,
+  /// The class of a scope's token definitions.
   token_class: Option<Rc<str>>,
+  /// The inline style declarations, in the order first set.
   inline: Vec<(String, String)>,
+  /// The text content: a run's text, or a `<textarea>`'s value.
   text: Option<String>,
+  /// The children, in order.
   children: Vec<u32>,
+  /// The node it is attached under.
   parent: Option<u32>,
   /// The native element carrying a control's state, focus and value, when the control
   /// has one apart from its root.
   carrier: Option<u32>,
+  /// Whether it is a control's root.
   control: bool,
   /// Whether the box scrolls its content, so it takes a place in the focus order.
   scrolls: bool,
@@ -162,11 +171,13 @@ struct Node {
   /// The `<label for>` a bare control's caption is serialized in, before the control,
   /// outside its children.
   caption: Option<u32>,
-  /// A `<select>`'s options, each a value and the name shown, and the value chosen.
+  /// A `<select>`'s options, each a value and the name shown.
   options: Vec<(String, String)>,
+  /// A `<select>`'s chosen value.
   chosen: Option<String>,
   /// The scene node the element realizes.
   realizes: Option<NodeId>,
+  /// The slots its class references.
   slots: Rc<[SlotBinding]>,
 }
 
@@ -815,9 +826,13 @@ impl Tree {
 
 /// The environment's signals with their write halves.
 struct MediaState {
+  /// The environment's signals.
   signals: MediaSignals<f32>,
+  /// Writes the viewport.
   set_viewport: WriteSignal<Size<f32>>,
+  /// Writes the color scheme.
   set_scheme: WriteSignal<ColorScheme>,
+  /// Writes whether the reader prefers reduced motion.
   set_reduced_motion: WriteSignal<bool>,
   /// The server's render is never hydrated and shows no pixels.
   absent: ReadSignal<bool>,

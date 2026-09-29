@@ -27,10 +27,15 @@ use crate::{
 /// One terminal cell's paint state.
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct TerminalCell {
+  /// The glyph the cell shows.
   pub(crate) glyph: Glyph,
+  /// The glyph's ink; `None` for the terminal's own.
   pub(crate) foreground: Option<(u8, u8, u8)>,
+  /// The cell's surface; `None` for the terminal's own.
   pub(crate) background: Option<(u8, u8, u8)>,
+  /// Whether the glyph draws bold.
   pub(crate) bold: bool,
+  /// The decoration lines the cell carries.
   pub(crate) decoration: CellDecoration,
   /// Whether the cell paints in reverse video.
   pub(crate) reverse: bool,
@@ -119,15 +124,20 @@ pub(crate) struct Image {
 pub(crate) struct Placement {
   /// The image's id at the terminal.
   pub(crate) id: u32,
+  /// The leftmost screen column covered.
   pub(crate) column: u16,
+  /// The top screen row covered.
   pub(crate) row: u16,
+  /// How many columns are covered.
   pub(crate) columns: u16,
+  /// How many rows are covered.
   pub(crate) rows: u16,
   /// The source rectangle: left, top, width, height.
   pub(crate) crop: (u16, u16, u16, u16),
   /// The layer: zero over the text for a painted box, beneath every colored cell
   /// for a backdrop.
   pub(crate) layer: i32,
+  /// The image placed.
   pub(crate) image: Rc<Image>,
 }
 
@@ -203,8 +213,11 @@ impl From<&Placement> for Picture {
 /// A painted frame: `width` x `height` cells in row-major order.
 #[derive(Clone)]
 pub(crate) struct Buffer {
+  /// The frame's width, in cells.
   pub(crate) width: usize,
+  /// The frame's height, in cells.
   pub(crate) height: usize,
+  /// The cells, in row-major order.
   pub(crate) cells: Vec<TerminalCell>,
   /// The focused entry's caret cell, shown as the terminal's own bar cursor.
   pub(crate) caret: Option<(u16, u16)>,
@@ -890,12 +903,17 @@ struct BorderPaint {
 /// One paragraph span's paint: its ink, weight, decoration, link, and the emphasis it
 /// paints in while it is the link whose focus shows.
 struct SpanPaint {
+  /// The span's ink; `None` for the terminal's own.
   foreground: Option<(u8, u8, u8)>,
+  /// Whether the span draws bold.
   bold: bool,
+  /// The decoration lines the span's cells carry.
   decoration: CellDecoration,
+  /// The span's hyperlink, an index into the frame's [`Buffer::links`].
   link: Option<u16>,
   /// The emphasis of the link whose focus shows; `None` while the span is not it.
   focused: Option<Emphasis>,
+  /// The colors the span's selected cells paint in; reverse video when `None`.
   selection: Option<SelectionColors>,
 }
 
@@ -1724,11 +1742,13 @@ fn track_colors(cell: &TerminalCell, contrast: Contrast) -> ((u8, u8, u8), (u8, 
 
 /// How much of a track cell the thumb covers, in eighth-cell resolution.
 enum Coverage {
+  /// The whole cell.
   Full,
   /// The leading eighths only: the thumb ends mid-cell.
   Leading(u8),
   /// The trailing eighths only: the thumb starts mid-cell.
   Trailing(u8),
+  /// None of the cell.
   None,
 }
 

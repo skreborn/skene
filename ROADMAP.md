@@ -20,12 +20,11 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **The rest of the house rules in the gate.** All-or-none field and variant docs
-    (28 types document some of their fields, about 210 short), `trigger_` naming on the
-    test doubles, and a `cargo public-api` snapshot so a change to the surface shows in
-    review. The workspace declares no license, so `cargo
-    deny check licenses` has nothing to hold the dependencies to. Neither CI workflow,
-    the gate on every pull request nor the weekly RustSec advisories, has run yet.
+1. **The rest of the house rules in the gate.** `trigger_` naming on the test
+    doubles, and a `cargo public-api` snapshot so a change to the surface shows in
+    review. The workspace declares no license, so `cargo deny check licenses` has
+    nothing to hold the dependencies to. Neither CI workflow, the gate on every pull
+    request nor the weekly RustSec advisories, has run yet.
     - With them: `display` joins the banned words once `RunDisplay` is renamed, checked
     over the `cargo public-api` output.
 2. **One owner for style and interaction semantics.** The web compiler and core's
@@ -343,8 +342,8 @@ left half-done in a code comment.
     `Conditional::into_parts`, `Scene::set_annotation`, `Scene::for_each_child`,
     `NodeRecord::sink_mut`, `Prevented::merge`, and `IntoView`, whose only impl is the
     blanket over `View` (`AnyKind` stays); `hydrate_page` and the four-tuple
-    `render_to_stream`; the terminal's `Tty::events`, `Kind::Control.checked`,
-    `Record::listened`, the `interaction::store` alias and `KeyCode::BackTab`; the
+    `render_to_stream`; the terminal's `Kind::Control.checked`, `Record::listened`,
+    the `interaction::store` alias and `KeyCode::BackTab`; the
     CLI's unreachable Windows `Tty` and its `windows-sys`; `num-traits`.
     - Copies folded: `Container`'s 25 forwarded `LayoutBox` methods and what `Text` and
     `Span` share, into a forwarding macro and a public `Run` builder; the roughly 200

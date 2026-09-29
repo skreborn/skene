@@ -904,10 +904,15 @@ fn mount_part<P: Platform>(node: NodeId, part: Part, child: NodeId) {
 /// and the node describing it.
 #[derive(Clone)]
 struct Flags {
+  /// Whether the control is disabled, read where it is reported.
   disabled: Rc<dyn Fn() -> bool>,
+  /// Whether the control needs a value, read where it is reported.
   required: Rc<dyn Fn() -> bool>,
+  /// Whether the control's value is read-only, read where it is reported.
   read_only: Rc<dyn Fn() -> bool>,
+  /// Whether the control's value is invalid, read where it is reported.
   invalid: Rc<dyn Fn() -> bool>,
+  /// The node describing the control.
   described_by: Option<NodeId>,
   /// The caption naming the control by reference, where its text is not known at build.
   labelled_by: Option<NodeId>,

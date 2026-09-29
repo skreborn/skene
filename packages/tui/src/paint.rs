@@ -1207,6 +1207,10 @@ fn paint_node(
     return;
   }
 
+  if store.is_hidden(handle) {
+    return;
+  }
+
   let (location_x, location_y) = store.node_location(handle);
   let (x, y) = (
     offset_x + isize::try_from(location_x).unwrap_or(0),

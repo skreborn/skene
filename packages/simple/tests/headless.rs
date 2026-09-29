@@ -26,6 +26,7 @@ use skene_core::{
   TokenRef,
   TokenSet,
   View,
+  Visibility,
 };
 use skene_headless::{
   Headless,
@@ -40,6 +41,7 @@ use skene_headless::{
   reset,
   resolve_border,
   resolve_color,
+  resolve_visibility,
   root_definitions,
   slot_leaf,
   text,
@@ -236,7 +238,8 @@ fn a_checkbox_mark_follows_the_checked_state() {
       .bind_checked(bound)
   });
   let mark = children(checkbox)[0];
-  let glyph = children(mark)[1];
+  let check = children(mark)[1];
+  let glyph = children(check)[1];
 
   assert_eq!(part(mark), Some(Part::Mark));
   assert_eq!(accessible_name(checkbox), Some("Remember me".to_owned()));
@@ -246,9 +249,9 @@ fn a_checkbox_mark_follows_the_checked_state() {
     Some(Border::new(1., light(&palette.border)))
   );
   assert_eq!(
-    resolve_color(glyph, TEXT_COLOR),
-    Some(light(&palette.card)),
-    "the unchecked glyph hides in the mark's surface"
+    resolve_visibility(check),
+    Some(Visibility::Hidden),
+    "the unchecked glyph is hidden"
   );
 
   let _clicked = trigger_click(checkbox);
@@ -262,6 +265,7 @@ fn a_checkbox_mark_follows_the_checked_state() {
     resolve_border(mark),
     Some(Border::new(1., light(&palette.primary.surface)))
   );
+  assert_eq!(resolve_visibility(check), Some(Visibility::Visible));
   assert_eq!(
     resolve_color(glyph, TEXT_COLOR),
     Some(light(&palette.primary.ink))
@@ -607,6 +611,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
   let column = children(surface)[1];
   let row = |index: usize| children(column)[index + 1];
   let check = |index: usize| children(row(index))[0];
+  let glyph = |index: usize| children(check(index))[1];
   let caption = |index: usize| children(row(index))[1];
   let key = |key: &str| KeyEvent::new(key);
 
@@ -639,7 +644,7 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
     Some(light(&palette.primary.surface))
   );
   assert_eq!(
-    resolve_color(check(1), TEXT_COLOR),
+    resolve_color(glyph(1), TEXT_COLOR),
     Some(light(&palette.primary.ink))
   );
   assert_eq!(
@@ -647,10 +652,11 @@ fn a_pickers_face_rings_and_its_rows_follow_focus_and_the_choice() {
     Some(light(&palette.primary.ink))
   );
   assert_eq!(resolve_color(row(0), COLOR), Some(Color::TRANSPARENT));
+  assert_eq!(resolve_visibility(check(1)), Some(Visibility::Visible));
   assert_eq!(
-    resolve_color(check(0), TEXT_COLOR),
-    Some(light(&palette.card)),
-    "an unchosen check hides in the list's surface"
+    resolve_visibility(check(0)),
+    Some(Visibility::Hidden),
+    "an unchosen check is hidden"
   );
   assert_eq!(
     resolve_color(caption(0), TEXT_COLOR),

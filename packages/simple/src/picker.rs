@@ -28,6 +28,7 @@ use skene_core::{
   Platform,
   State,
   View,
+  Visibility,
   When,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
@@ -258,16 +259,9 @@ where
   P::Scalar: SimpleUnit,
   P::StyleExt: CornerRadius,
 {
-  // An unchosen row's check is inked in the row's own surface, so it hides on every
-  // medium.
-  let check = Text::<P>::new(CHECK).set_color(
-    SimplePalette::<P::Scalar>::CARD
-      .when(
-        State::Focused,
-        SimplePalette::<P::Scalar>::SECONDARY_SURFACE,
-      )
-      .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
-  );
+  let check = Container::<P>::new()
+    .set_visibility(Visibility::Hidden.when(State::Checked, Visibility::Visible))
+    .set_child(Text::<P>::new(CHECK).set_color(SimplePalette::<P::Scalar>::PRIMARY_INK));
   let caption = Text::<P>::new(label).set_color(
     SimplePalette::<P::Scalar>::FOREGROUND
       .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),

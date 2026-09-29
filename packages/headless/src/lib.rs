@@ -67,6 +67,7 @@ use skene_core::{
   Point,
   PointerEvent,
   Prevented,
+  Property,
   PropertyKey,
   RunProps,
   RunValue,
@@ -78,6 +79,7 @@ use skene_core::{
   StaticLeaf,
   TextSelection,
   Timer,
+  Visibility,
   dispatch_click,
   dispatch_context_menu,
   dispatch_key_down,
@@ -1279,6 +1281,18 @@ pub fn resolve_length(node: NodeId, key: PropertyKey<NoProperty>) -> Option<f32>
       Dimension::Fraction(_) | Dimension::Auto => None,
     },
     SlotValue::Box(BoxValue::Spacing(spacing)) => uniform_spacing(spacing),
+    SlotValue::Box(_) | SlotValue::Run(_) => None,
+  }
+}
+
+/// The visibility of the box `node`, by the same resolution as [`resolve_color`];
+/// `None` where none is set, which draws the box where its ancestors are drawn.
+#[must_use]
+pub fn resolve_visibility(node: NodeId) -> Option<Visibility> {
+  end_turn();
+
+  match resolve::resolve(node, PropertyKey::Shared(Property::Visibility))? {
+    SlotValue::Box(BoxValue::Visibility(visibility)) => Some(visibility),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
   }
 }

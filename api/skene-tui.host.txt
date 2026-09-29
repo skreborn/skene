@@ -158,6 +158,7 @@ pub use skene_tui::prelude::TrackLimit
 pub use skene_tui::prelude::Transition
 pub use skene_tui::prelude::Typography
 pub use skene_tui::prelude::Update
+pub use skene_tui::prelude::Visibility
 pub use skene_tui::prelude::When
 pub use skene_tui::prelude::With
 pub use skene_tui::prelude::Wrap

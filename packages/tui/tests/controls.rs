@@ -1195,3 +1195,23 @@ fn a_simple_buttons_corners_round_by_a_fraction_of_a_row() {
     assert_eq!(alpha(0, 5), 255, "the edge runs straight below the corner");
   });
 }
+
+/// The open list marks the chosen row alone: an unchosen row's check is hidden, not
+/// drawn in its surface's color.
+#[test]
+fn picker_marks_the_chosen_row_alone() {
+  with_platform(|| {
+    let unit = Signal::new("cell".to_owned());
+
+    mount_picker(unit);
+
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    let open = tui::render_to_text(20, 10);
+    let marked: Vec<&str> = open.lines().filter(|line| line.contains('✓')).collect();
+
+    assert_eq!(marked.len(), 1, "{open}");
+    assert!(marked[0].contains("cells"), "{open}");
+  });
+}

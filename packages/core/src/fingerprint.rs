@@ -44,6 +44,7 @@ use crate::{
   TextDecorationStyle,
   TrackLimit,
   Transition,
+  Visibility,
   Wrap,
 };
 
@@ -83,6 +84,7 @@ hashed!(
   GridFlow,
   GridPlacement,
   Overflow,
+  Visibility,
   bool,
   u16,
 );

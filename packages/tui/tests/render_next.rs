@@ -456,3 +456,65 @@ fn a_key_release_and_a_bare_modifier_reach_their_handlers() {
     assert_eq!(pressed.get_untracked(), "Shift");
   });
 }
+
+/// A hidden box keeps its place but paints nothing, its content with it, and takes
+/// neither the pointer nor focus; shown again, it paints and takes both.
+#[test]
+fn a_hidden_box_keeps_its_place_and_paints_nothing() {
+  with_platform(|| {
+    let shown = Signal::new(false);
+    let clicks = Rc::new(Cell::new(0u32));
+    let counted = Rc::clone(&clicks);
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .derive_visibility(move || {
+              if shown.get() {
+                Visibility::Visible
+              }
+              else {
+                Visibility::Hidden
+              }
+            })
+            .set_child(
+              RawButton::new(Activate::new())
+                .set_label("hidden")
+                .handle_click(move || counted.set(counted.get() + 1)),
+            ),
+          Text::new("below"),
+        ))
+        .into_any()
+        .build()
+    });
+    let frame = tui::render_to_text(10, 2);
+
+    assert!(!frame.contains("hidden"), "{frame}");
+    assert!(
+      frame
+        .lines()
+        .nth(1)
+        .is_some_and(|line| line.contains("below")),
+      "the box keeps its place: {frame}"
+    );
+
+    tui::trigger_mouse_click(1, 0);
+    tui::trigger_key("Tab");
+    tui::trigger_key("Enter");
+
+    assert_eq!(
+      clicks.get(),
+      0,
+      "neither the pointer nor the keyboard reaches it"
+    );
+
+    shown.set(true);
+
+    assert!(tui::render_to_text(10, 2).contains("hidden"));
+
+    tui::trigger_mouse_click(1, 0);
+
+    assert_eq!(clicks.get(), 1);
+  });
+}

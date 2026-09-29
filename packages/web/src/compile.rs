@@ -58,6 +58,7 @@ use skene_core::{
   TextDecoration,
   TextDecorationStyle,
   TokenName,
+  Visibility,
   Wrap,
 };
 
@@ -196,6 +197,7 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::GridRowPlacement => plain("grid-row"),
       Property::GridColumnPlacement => plain("grid-column"),
       Property::Overflow => plain("overflow"),
+      Property::Visibility => plain("visibility"),
       Property::TextColor => plain("color"),
       Property::SelectionColor => Target {
         pseudo: "::selection",
@@ -293,6 +295,11 @@ pub(crate) fn render_box_value(key: Key, value: &BoxValue<f32, GuiExt>) -> Strin
       Overflow::Hidden => "hidden",
       Overflow::Scroll => "scroll",
       Overflow::Auto => "auto",
+    }
+    .to_owned(),
+    BoxValue::Visibility(visibility) => match visibility {
+      Visibility::Visible => "inherit",
+      Visibility::Hidden => "hidden",
     }
     .to_owned(),
   }

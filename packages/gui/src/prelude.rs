@@ -42,6 +42,7 @@ pub use skene_core::{
   TokenSet,
   TrackLimit,
   Transition,
+  Visibility,
   When,
   Wrap,
 };

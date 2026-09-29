@@ -75,6 +75,9 @@ macro_rules! decoration {
         "the mouse cursor shown over the box";
       set_overflow / derive_overflow (overflow) => overflow: $crate::__core::Overflow,
         "how content exceeding the box's bounds is treated; `Scroll` and `Auto` make it scrollable";
+      set_visibility / derive_visibility (visibility)
+        => visibility: $crate::__core::Visibility,
+        "whether the box and its content are drawn; a hidden box keeps its place in the layout";
     }
 
     /// Sets the corner radius, in the medium's unit, where the medium rounds corners; a

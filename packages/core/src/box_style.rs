@@ -33,6 +33,7 @@ use crate::{
   Overflow,
   Spacing,
   Transition,
+  Visibility,
   Wrap,
 };
 
@@ -111,6 +112,8 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   pub grid_column_placement: S::Of<Line<GridPlacement>>,
   /// How content exceeding the box's bounds is treated.
   pub overflow: S::Of<Overflow>,
+  /// Whether the box and its content are drawn.
+  pub visibility: S::Of<Visibility>,
   /// The medium's own properties.
   pub ext: X::BoxFields<S>,
 }
@@ -152,6 +155,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   Placement(Line<GridPlacement>),
   /// An overflow mode.
   Overflow(Overflow),
+  /// A visibility.
+  Visibility(Visibility),
   /// A value of one of the medium's own properties.
   Extension(X::Value),
 }
@@ -229,6 +234,7 @@ box_values!(
   GridFlow => GridFlow;
   Line<GridPlacement> => Placement;
   Overflow => Overflow;
+  Visibility => Visibility;
 );
 
 /// One property of a [`BoxStyle`], addressed by type, in whatever shape the style is.
@@ -350,6 +356,7 @@ box_fields!(
   grid_row_placement: crate::Line<crate::GridPlacement> => GridRowPlacement,
   grid_column_placement: crate::Line<crate::GridPlacement> => GridColumnPlacement,
   overflow: crate::Overflow => Overflow,
+  visibility: crate::Visibility => Visibility,
 );
 
 impl<N: Scalar, S: Shape, X: StyleExtension> BoxStyle<N, S, X> {
@@ -658,10 +665,11 @@ mod tests {
 
     style.visit(&mut names);
 
-    assert_eq!(names.0.len(), 31);
+    assert_eq!(names.0.len(), 32);
     assert_eq!(names.0[0], ("width", false));
     assert_eq!(names.0[14], ("spacing", true));
     assert_eq!(names.0[30], ("overflow", false));
+    assert_eq!(names.0[31], ("visibility", false));
     assert_eq!(
       <box_fields::Spacing as BoxField<f32, ()>>::KEY,
       PropertyKey::Shared(Property::Spacing)

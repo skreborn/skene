@@ -20,6 +20,7 @@ mod size;
 mod text_decoration;
 mod text_selection;
 mod toggle;
+mod visibility;
 
 pub use access::*;
 pub use axis::*;
@@ -43,6 +44,7 @@ pub use size::*;
 pub use text_decoration::*;
 pub use text_selection::*;
 pub use toggle::*;
+pub use visibility::*;
 
 macro_rules! impl_ops {
   ($type:ident { $($field:ident),+ $(,)? }) => {

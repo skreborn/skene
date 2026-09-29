@@ -197,6 +197,23 @@ fn an_icon_button_carries_its_accessible_name() {
   assert!(body.contains("aria-label=\"Close\""), "{body}");
 }
 
+/// A hidden box compiles to `visibility: hidden`, and a visible one inherits, so it
+/// shows only where its ancestors do.
+#[test]
+fn visibility_compiles_to_hidden_or_inherited() {
+  use skene_gui::core::{State, Visibility, When};
+
+  let page = render_to_string(|| {
+    Container::new()
+      .set_visibility(Visibility::Hidden.when(State::Hovered, Visibility::Visible))
+      .set_child(Text::new("x"))
+  });
+  let styles = page.styles();
+
+  assert!(styles.contains("visibility:hidden"), "{styles}");
+  assert!(styles.contains("visibility:inherit"), "{styles}");
+}
+
 /// A slider's scriptless input holds the slider's range, step and value natively.
 #[test]
 fn a_sliders_input_holds_its_range_natively() {

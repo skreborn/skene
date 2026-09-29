@@ -70,6 +70,8 @@ pub enum Property {
   GridColumnPlacement,
   /// How content exceeding the box's bounds is treated.
   Overflow,
+  /// Whether the box and its content are drawn.
+  Visibility,
   /// The text color.
   TextColor,
   /// The text color while selected.
@@ -121,6 +123,7 @@ impl Property {
       Self::GridRowPlacement => "grid_row_placement",
       Self::GridColumnPlacement => "grid_column_placement",
       Self::Overflow => "overflow",
+      Self::Visibility => "visibility",
       Self::TextColor => "text_color",
       Self::SelectionColor => "selection_color",
       Self::SelectionBackground => "selection_background",

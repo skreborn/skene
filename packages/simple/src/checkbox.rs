@@ -15,6 +15,7 @@ use skene_core::{
   Platform,
   State,
   View,
+  Visibility,
   When,
 };
 use skene_reactive::{Get, Memo, Signal, use_context};
@@ -170,10 +171,8 @@ where
     .set_corner_radius(shape.mark_radius)
     .set_alignment(Alignment::CENTER)
     .set_child(
-      Text::new("✓").set_color(
-        shape
-          .mark_surface
-          .when(State::Checked, SimplePalette::<P::Scalar>::PRIMARY_INK),
-      ),
+      Container::new()
+        .set_visibility(Visibility::Hidden.when(State::Checked, Visibility::Visible))
+        .set_child(Text::new("✓").set_color(SimplePalette::<P::Scalar>::PRIMARY_INK)),
     )
 }

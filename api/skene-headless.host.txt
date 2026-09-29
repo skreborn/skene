@@ -120,6 +120,7 @@ pub fn skene_headless::reset()
 pub fn skene_headless::resolve_border(skene_core::node::NodeId) -> core::option::Option<skene_core::border::Border<f32>>
 pub fn skene_headless::resolve_color(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_core::extension::NoProperty>) -> core::option::Option<skene_core::values::color::Color>
 pub fn skene_headless::resolve_length(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_core::extension::NoProperty>) -> core::option::Option<f32>
+pub fn skene_headless::resolve_visibility(skene_core::node::NodeId) -> core::option::Option<skene_core::values::visibility::Visibility>
 pub fn skene_headless::root_definition_writes() -> usize
 pub fn skene_headless::root_definitions() -> skene_core::token::Definitions<skene_headless::TokenValue>
 pub fn skene_headless::run_props(skene_core::node::NodeId) -> core::option::Option<skene_core::props::RunProps<skene_headless::Headless>>

@@ -224,6 +224,7 @@ pub use values::{
   TextSelection,
   Toggle,
   TrackLimit,
+  Visibility,
   Wrap,
 };
 pub use view::{

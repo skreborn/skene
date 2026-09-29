@@ -19,6 +19,7 @@ use skene_core::{
   PointerEvent,
   Prevented,
   ScrollEvent,
+  Visibility,
   dispatch_click,
   dispatch_context_menu,
   dispatch_key_down,
@@ -183,7 +184,7 @@ impl Store {
         continue;
       };
 
-      if record.is_overlay() && !record.is_open_overlay() {
+      if (record.is_overlay() && !record.is_open_overlay()) || self.is_hidden(current) {
         continue;
       }
 
@@ -257,6 +258,10 @@ impl Store {
         }
       }
 
+      return false;
+    }
+
+    if self.is_hidden(handle) {
       return false;
     }
 
@@ -562,6 +567,16 @@ impl Store {
       .and_then(|record| record.kind.box_style())
       .and_then(|style| style.overflow)
       .unwrap_or(Overflow::Visible)
+  }
+
+  /// Whether the node's box is hidden: it and its content draw nothing and take neither
+  /// the pointer nor focus.
+  pub(crate) fn is_hidden(&self, handle: Handle) -> bool {
+    self
+      .record(handle)
+      .and_then(|record| record.kind.box_style())
+      .and_then(|style| style.visibility)
+      == Some(Visibility::Hidden)
   }
 
   /// Whether the node's content scrolls: a box overflowing by its style, or an editor

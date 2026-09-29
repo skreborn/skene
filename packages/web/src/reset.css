@@ -1,302 +1,293 @@
-/*
-TODO: Implement font loading that generates font imports with trimming set.
+/* The reset sits in the layer beneath the compiled styles, and an app's unlayered CSS
+   outranks both. */
+@layer skene.reset, skene.style;
 
-Open Sans (https://fonts.google.com/specimen/Open+Sans) example:
-
-```
-@font-face {
-  font-family: "Open Sans";
-  src: local("Open Sans"), url("open-sans.woff") format("woff2");
-  ascent-override: 71.4%;
-  descent-override: 0%;
-  line-gap-override: 0%;
-}
-*/
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  border: 0 solid;
-  font: inherit;
-  vertical-align: baseline;
-  background: transparent;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
-  -webkit-tap-highlight-color: transparent;
-}
-
-:where(html) {
-  width: 100%;
-  height: 100%;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  overscroll-behavior: none;
-}
-
-:where(body) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  overflow: hidden;
-  font-family: system-ui, sans-serif;
-  /* Selection is opt-in: a run's set_selectable(true) restores user-select. */
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* The typography in force: the root and every scope turn the typography tokens into
-   the text properties everything beneath them inherits, the defaults standing in where
-   nothing defines them. */
-:where(:root, [data-skene-scope]) {
-  font-size: calc(var(--typography-size, 16) * 1px);
-  font-weight: var(--typography-weight, 400);
-  line-height: var(--typography-line-height, 1.5);
-  letter-spacing: calc(var(--typography-letter-spacing, 0) * 1px);
-}
-
-/* The app's first box fills the viewport and is the page's scroll container, so the
-   page scrolls as a browser page does unless the app overrides its overflow. A scope
-   is layout-invisible, so the rule reaches through any number of them. */
-:where(body :not([data-skene-scope]):not(body :not([data-skene-scope]) *)) {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* A scope's children take the grid placement the scope was given, so a stack's cell
-   reaches through any number of them. */
-:where([data-skene-scope]) > * {
-  grid-area: inherit;
-}
-
-:where(input, textarea) {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-:where(button, input, select, textarea) {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: none;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  /* Controls clip their content box; trimming would crop descenders. */
-  text-box-trim: none;
-}
-
-/* An entry's value is inked by the typography in force, as a run is; where nothing
-   defines the ink, it inherits as the rest of a control does. */
-:where(input[type="text"], textarea) {
-  color: var(--typography-ink);
-}
-
-:where(button) {
-  text-align: inherit;
-}
-
-/* Clickable controls carry the pointer, text entry the I-beam it already has. */
-:where(button, select, input[type="checkbox"], input[type="radio"]) {
-  cursor: pointer;
-}
-
-/* Control chrome is not content: only text runs are selectable. Top-layer elements
-   restart the used-value chain, so overlays restate the opt-in default. */
-:where(button, select, label, dialog, [popover]) {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* A label captions the control it wraps; clicking it activates that control. */
-:where(label) {
-  cursor: pointer;
-}
-
-:where(textarea) {
-  resize: none;
-}
-
-/* The select's dropdown, wearing the select's own ink and background—styled only
-   where the customizable-select rendering is supported (the control reset opts in
-   with appearance: base-select); other engines keep the native popup. */
-:where(select)::picker(select) {
-  appearance: base-select;
-  background: inherit;
-  color: inherit;
-  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-radius: 8px;
-  padding: 4px;
-}
-
-:where(option) {
-  padding: 6px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-:where(option:hover, option:focus) {
-  background: color-mix(in srgb, currentColor 12.5%, transparent);
-}
-
-:where(input, textarea)::placeholder {
-  color: color-mix(in srgb, currentColor 50%, transparent);
-  opacity: 1;
-}
-
-/* The default toggle chrome, drawn in the inherited ink: a bordered box or circle
-   whose mark scales in while checked. The border itself rides in the controls' reset
-   class, which would otherwise strip it. */
-:where(input[type="checkbox"], input[type="radio"]) {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  display: inline-grid;
-  place-content: center;
-}
-
-:where(input[type="checkbox"]) {
-  border-radius: 4px;
-}
-
-:where(input[type="radio"]) {
-  border-radius: 50%;
-}
-
-:where(input[type="checkbox"], input[type="radio"])::before {
-  content: "";
-  background: currentColor;
-  transform: scale(0);
-}
-
-:where(input[type="checkbox"])::before {
-  width: 10px;
-  height: 10px;
-  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-}
-
-:where(input[type="radio"])::before {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-:where(input[type="checkbox"], input[type="radio"]):checked::before {
-  transform: scale(1);
-}
-
-/* The default slider chrome, drawn in the inherited ink: a soft track under a round
-   thumb. The vendor track and thumb selectors cannot share rules—an unknown selector
-   drops the whole rule—so each engine gets its own.
-
-   Gecko's progress part is engine-native: it follows the value with no script, so it
-   paints everywhere. WebKit has no equivalent, and a fill computed from the value is
-   script-bound—it would freeze at the served value while the control kept working—so
-   the run rides `--skene-slider-fill`, which only a running app sets. Absent it the
-   `0%` fallback paints no fill at all, and the thumb's own position still reports the
-   value truthfully. */
-:where(input[type="range"]) {
-  width: 160px;
-  height: 16px;
-  cursor: grab;
-}
-
-:where(input[type="range"]:active) {
-  cursor: grabbing;
-}
-
-:where(input[type="range"])::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
-  background-color: color-mix(in srgb, currentColor 25%, transparent);
-  background-image: linear-gradient(currentColor, currentColor);
-  background-repeat: no-repeat;
-  background-size: var(--skene-slider-fill, 0%) 100%;
-}
-
-:where(input[type="range"])::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-:where(input[type="range"])::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, currentColor 25%, transparent);
-}
-
-:where(input[type="range"])::-moz-range-progress {
-  height: 4px;
-  border-radius: 2px;
-  background: currentColor;
-}
-
-:where(input[type="range"])::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border: none;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-/* Links: underlined, inked in the scheme's link blue unless the author styles them. */
-:where(a) {
-  color: #0066cc;
-  text-decoration: underline;
-}
-
-@media (prefers-color-scheme: dark) {
-  :where(a) {
-    color: #6699ff;
+@layer skene.reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+    font: inherit;
+    vertical-align: baseline;
+    background: transparent;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    -webkit-tap-highlight-color: transparent;
   }
-}
 
-:where(ol, ul, menu) {
-  list-style: none;
-}
+  :where(html) {
+    width: 100%;
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+  }
 
-:where(img, picture, video, canvas, svg) {
-  display: block;
-  max-width: 100%;
-}
+  :where(body) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+    /* Selection is opt-in: a run's set_selectable(true) restores user-select. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
 
-:where(table) {
-  border-collapse: collapse;
-  border-spacing: 0;
-}
+  /* The typography in force: the root and every scope turn the typography tokens into
+     the text properties everything beneath them inherits, the defaults standing in where
+     nothing defines them. */
+  :where(:root, [data-skene-scope]) {
+    font-size: calc(var(--typography-size, 16) * 1px);
+    font-weight: var(--typography-weight, 400);
+    line-height: var(--typography-line-height, 1.5);
+    letter-spacing: calc(var(--typography-letter-spacing, 0) * 1px);
+  }
 
-:where(:focus-visible) {
-  outline: none;
-}
+  /* The app's first box fills the viewport and is the page's scroll container, so the
+     page scrolls as a browser page does unless the app overrides its overflow. A scope
+     is layout-invisible, so the rule reaches through any number of them. */
+  :where(body :not([data-skene-scope]):not(body :not([data-skene-scope]) *)) {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+  }
 
-/* A checkbox, radio or range is drawn by the control's parts, so the native input it
-   keeps first inside its label is visually hidden yet focusable; a text entry is its
-   own element and needs none of this. */
-label[data-skene-control] {
-  position: relative;
-}
+  /* A scope's children take the grid placement the scope was given, so a stack's cell
+     reaches through any number of them. */
+  :where([data-skene-scope]) > * {
+    grid-area: inherit;
+  }
 
-.skene-native:is([type="checkbox"], [type="radio"], [type="range"]) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  pointer-events: none;
+  :where(input, textarea) {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  :where(button, input, select, textarea) {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    /* Controls clip their content box; trimming would crop descenders. */
+    text-box-trim: none;
+  }
+
+  /* An entry's value is inked by the typography in force, as a run is; where nothing
+     defines the ink, it inherits as the rest of a control does. */
+  :where(input[type="text"], textarea) {
+    color: var(--typography-ink);
+  }
+
+  :where(button) {
+    text-align: inherit;
+  }
+
+  /* Clickable controls carry the pointer, text entry the I-beam it already has. */
+  :where(button, select, input[type="checkbox"], input[type="radio"]) {
+    cursor: pointer;
+  }
+
+  /* Control chrome is not content: only text runs are selectable. Top-layer elements
+     restart the used-value chain, so overlays restate the opt-in default. */
+  :where(button, select, label, dialog, [popover]) {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* A label captions the control it wraps; clicking it activates that control. */
+  :where(label) {
+    cursor: pointer;
+  }
+
+  :where(textarea) {
+    resize: none;
+  }
+
+  /* The select's dropdown, wearing the select's own ink and background—styled only
+     where the customizable-select rendering is supported (the control reset opts in
+     with appearance: base-select); other engines keep the native popup. */
+  :where(select)::picker(select) {
+    appearance: base-select;
+    background: inherit;
+    color: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  :where(option) {
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  :where(option:hover, option:focus) {
+    background: color-mix(in srgb, currentColor 12.5%, transparent);
+  }
+
+  :where(input, textarea)::placeholder {
+    color: color-mix(in srgb, currentColor 50%, transparent);
+    opacity: 1;
+  }
+
+  /* The default toggle chrome, drawn in the inherited ink: a bordered box or circle
+     whose mark scales in while checked. The border itself rides in the controls' reset
+     class, which would otherwise strip it. */
+  :where(input[type="checkbox"], input[type="radio"]) {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    display: inline-grid;
+    place-content: center;
+  }
+
+  :where(input[type="checkbox"]) {
+    border-radius: 4px;
+  }
+
+  :where(input[type="radio"]) {
+    border-radius: 50%;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"])::before {
+    content: "";
+    background: currentColor;
+    transform: scale(0);
+  }
+
+  :where(input[type="checkbox"])::before {
+    width: 10px;
+    height: 10px;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+
+  :where(input[type="radio"])::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):checked::before {
+    transform: scale(1);
+  }
+
+  /* The default slider chrome, drawn in the inherited ink: a soft track under a round
+     thumb. The vendor track and thumb selectors cannot share rules—an unknown selector
+     drops the whole rule—so each engine gets its own.
+
+     Gecko's progress part is engine-native: it follows the value with no script, so it
+     paints everywhere. WebKit has no equivalent, and a fill computed from the value is
+     script-bound—it would freeze at the served value while the control kept working—so
+     the run rides `--skene-slider-fill`, which only a running app sets. Absent it the
+     `0%` fallback paints no fill at all, and the thumb's own position still reports the
+     value truthfully. */
+  :where(input[type="range"]) {
+    width: 160px;
+    height: 16px;
+    cursor: grab;
+  }
+
+  :where(input[type="range"]:active) {
+    cursor: grabbing;
+  }
+
+  :where(input[type="range"])::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background-color: color-mix(in srgb, currentColor 25%, transparent);
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-size: var(--skene-slider-fill, 0%) 100%;
+  }
+
+  :where(input[type="range"])::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  :where(input[type="range"])::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: color-mix(in srgb, currentColor 25%, transparent);
+  }
+
+  :where(input[type="range"])::-moz-range-progress {
+    height: 4px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  :where(input[type="range"])::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Links: underlined, inked in the scheme's link blue unless the author styles them. */
+  :where(a) {
+    color: #0066cc;
+    text-decoration: underline;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :where(a) {
+      color: #6699ff;
+    }
+  }
+
+  :where(ol, ul, menu) {
+    list-style: none;
+  }
+
+  :where(img, picture, video, canvas, svg) {
+    display: block;
+    max-width: 100%;
+  }
+
+  :where(table) {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  :where(:focus-visible) {
+    outline: none;
+  }
+
+  /* A checkbox, radio or range is drawn by the control's parts, so the native input it
+     keeps first inside its label is visually hidden yet focusable; a text entry is its
+     own element and needs none of this. */
+  label[data-skene-control] {
+    position: relative;
+  }
+
+  .skene-native:is([type="checkbox"], [type="radio"], [type="range"]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    pointer-events: none;
+  }
 }

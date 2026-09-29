@@ -31,6 +31,7 @@ use skene_gui::{
   Media,
   MenuItem,
   Overlay,
+  Pinned,
   RadioMember,
   Range,
   RawCheckbox,
@@ -52,7 +53,7 @@ use skene_gui::{
   Tooltip,
   Typography,
   View,
-  core::PointerButton,
+  core::{Dimension, PointerButton},
   derived,
   empty,
   head,
@@ -2183,4 +2184,47 @@ fn a_context_menu_takes_the_browsers_only_where_a_view_opts_in() {
 
   assert_eq!(chosen.get(), "delete");
   assert!(!open(), "running an item closes the list");
+}
+
+/// An app's own rule outranks a compiled one more specific than it, every compiled
+/// rule sitting in the `skene.style` layer.
+#[wasm_bindgen_test]
+fn an_app_rule_outranks_a_compiled_one() {
+  let (_installed, root) = fresh_root();
+  let sheet = document().create_element("style").expect("a style element");
+
+  sheet.set_text_content(Some("div { background-color: rgb(0, 0, 255); }"));
+  document()
+    .head()
+    .expect("a head")
+    .append_child(&sheet)
+    .expect("add the app's sheet");
+
+  let _ = mount(|| Container::new().set_color(Color::srgb(1., 0., 0.)).build());
+  let color = computed(&only_child(&root), "background-color");
+
+  sheet.remove();
+
+  assert_eq!(color, "rgb(0, 0, 255)");
+}
+
+/// A pinned checkbox leaves the flow, the reset positioning its label sitting in a layer
+/// beneath the compiled rules.
+#[wasm_bindgen_test]
+fn a_pinned_checkbox_leaves_the_flow() {
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Stack::new()
+      .set_children((Pinned::new()
+        .set_edges(Inset::all(Dimension::Length(0.)))
+        .set_child(SimpleCheckbox::new().set_label("pinned")),))
+      .build()
+  });
+  let label = root
+    .query_selector("label[data-skene-control]")
+    .ok()
+    .flatten()
+    .expect("the checkbox's label");
+
+  assert_eq!(computed(&label, "position"), "absolute");
 }

@@ -4,6 +4,7 @@
 #![cfg(skene_leaf = "server")]
 
 use skene_gui::{
+  Column,
   Condition,
   Container,
   Flexible,
@@ -38,6 +39,7 @@ use skene_gui::{
     Transition,
     Wrap,
   },
+  reactive::Signal,
   render_to_string,
 };
 use skene_simple::gui::prelude::*;
@@ -628,4 +630,238 @@ fn view_transitions_opt_in_reaches_the_stylesheet() {
     .expect("a render on its own thread");
 
   assert!(!elsewhere.contains("@view-transition"));
+}
+
+/// The index of the `}` closing the block `text` opens at `open`.
+fn closing(text: &str, open: usize) -> usize {
+  let mut depth = 0;
+
+  for (index, character) in text[open..].char_indices() {
+    match character {
+      '{' | '(' => depth += 1,
+      '}' | ')' => {
+        depth -= 1;
+
+        if depth == 0 {
+          return open + index;
+        }
+      }
+      _ => {}
+    }
+  }
+
+  panic!("an unclosed block in {text}");
+}
+
+/// The parts of `list` between its commas outside parentheses.
+fn top_level_parts(list: &str) -> Vec<&str> {
+  let mut parts = Vec::new();
+  let mut depth = 0;
+  let mut start = 0;
+
+  for (index, character) in list.char_indices() {
+    match character {
+      '(' => depth += 1,
+      ')' => depth -= 1,
+      ',' if depth == 0 => {
+        parts.push(list[start..index].trim());
+        start = index + 1;
+      }
+      _ => {}
+    }
+  }
+
+  parts.push(list[start..].trim());
+  parts
+}
+
+/// Every selector of the rules in `block`, the at-rules they sit in opened and the
+/// keyframes skipped.
+fn rule_selectors(block: &str, found: &mut Vec<String>) {
+  let mut rest = block;
+
+  while let Some(open) = rest.find('{') {
+    let prelude = rest[..open].trim();
+    let close = closing(rest, open);
+
+    if prelude.starts_with('@') {
+      if !prelude.starts_with("@keyframes") {
+        rule_selectors(&rest[open + 1..close], found);
+      }
+    }
+    else {
+      found.extend(top_level_parts(prelude).into_iter().map(str::to_owned));
+    }
+
+    rest = &rest[close + 1..];
+  }
+}
+
+/// Every selector of the rules in the style layers of `styles`.
+fn layered_selectors(styles: &str) -> Vec<String> {
+  let mut found = Vec::new();
+  let mut rest = styles;
+
+  while let Some(start) = rest.find("@layer skene.style{") {
+    let open = start + "@layer skene.style".len();
+    let close = closing(rest, open);
+
+    rule_selectors(&rest[open + 1..close], &mut found);
+    rest = &rest[close + 1..];
+  }
+
+  found
+}
+
+/// Where the name starting at `start` in `characters` ends.
+fn name_end(characters: &[char], start: usize) -> usize {
+  characters[start..]
+    .iter()
+    .position(|character| !(character.is_alphanumeric() || *character == '-' || *character == '_'))
+    .map_or(characters.len(), |length| start + length)
+}
+
+/// The specificity of `selector` as ids, classes and types: `:where()` counts nothing,
+/// `:is()`, `:not()` and `:has()` count their most specific argument, and a
+/// pseudo-element, which styles another box, is set aside.
+fn specificity(selector: &str) -> (u32, u32, u32) {
+  let characters: Vec<char> = selector.chars().collect();
+  let mut total = (0, 0, 0);
+  let mut index = 0;
+
+  while index < characters.len() {
+    match characters[index] {
+      '#' => {
+        total.0 += 1;
+        index = name_end(&characters, index + 1);
+      }
+      '.' => {
+        total.1 += 1;
+        index = name_end(&characters, index + 1);
+      }
+      '[' => {
+        total.1 += 1;
+        index += characters[index..]
+          .iter()
+          .position(|character| *character == ']')
+          .expect("a closed attribute selector")
+          + 1;
+      }
+      ':' if characters.get(index + 1) == Some(&':') => index = name_end(&characters, index + 2),
+      ':' => {
+        let end = name_end(&characters, index + 1);
+        let name: String = characters[index + 1..end].iter().collect();
+
+        if characters.get(end) == Some(&'(') {
+          let text: String = characters[end..].iter().collect();
+          let close = end + text[..=closing(&text, 0)].chars().count() - 1;
+          let argument: String = characters[end + 1..close].iter().collect();
+
+          match name.as_str() {
+            "where" => {}
+            "is" | "not" | "has" => {
+              let most = top_level_parts(&argument)
+                .into_iter()
+                .map(specificity)
+                .max()
+                .unwrap_or_default();
+
+              total = (total.0 + most.0, total.1 + most.1, total.2 + most.2);
+            }
+            _ => total.1 += 1,
+          }
+
+          index = close + 1;
+        }
+        else {
+          total.1 += 1;
+          index = end;
+        }
+      }
+      character if character.is_alphabetic() => {
+        total.2 += 1;
+        index = name_end(&characters, index);
+      }
+      _ => index += 1,
+    }
+  }
+
+  total
+}
+
+/// No compiled rule outranks a class: states, anchors and the scheme sit in `:where()`,
+/// so the order of the rules alone decides between variants, and every rule sits in the
+/// style layer, above the reset and beneath an app's own CSS.
+#[test]
+fn every_rule_has_a_class_specificity() {
+  let rendered = render_to_string(|| {
+    let states = [
+      State::Hovered,
+      State::Focused,
+      State::FocusVisible,
+      State::Pressed,
+      State::Checked,
+      State::Indeterminate,
+      State::Disabled,
+      State::Invalid,
+      State::Open,
+    ];
+    let mut width = skene_gui::core::Value::from(Dimension::Length(10.));
+
+    for (index, state) in (0u8..).zip(states) {
+      width = width.when(
+        Condition::from(state),
+        Dimension::Length(f32::from(index) + 11.),
+      );
+    }
+
+    let width = width.when(
+      Condition::and([
+        Condition::from(State::Hovered),
+        Condition::from(State::Checked),
+      ]),
+      Dimension::Length(30.),
+    );
+
+    Column::new().set_children((
+      Container::new().set_width(width).set_color(
+        Color::srgb(0.1, 0.2, 0.3)
+          .when(Media::Dark, Color::srgb(0.7, 0.8, 0.9))
+          .when(Media::MinWidth(600.), Color::srgb(0.4, 0.5, 0.6)),
+      ),
+      Text::new("hovered")
+        .set_color(Color::srgb(0., 0., 0.).when(State::Hovered, Color::srgb(1., 0., 0.))),
+      SimpleButton::new("Save"),
+      SimpleCheckbox::new()
+        .bind_checked(Signal::new(false))
+        .set_label("checked"),
+      SimpleRadioGroup::new()
+        .bind_chosen(Signal::new(None))
+        .set_label("group")
+        .set_child(Row::new().set_children((
+          SimpleRadio::new("one").set_label("one"),
+          SimpleRadio::new("two").set_label("two"),
+        ))),
+      SimpleSlider::new()
+        .set_label("slider")
+        .bind_value(Signal::new(0.5)),
+      SimpleTextField::new().bind_value(Signal::new(String::new())),
+      SimplePicker::new()
+        .set_label("picker")
+        .set_options([("a", "A"), ("b", "B")])
+        .bind_value(Signal::new("a".to_owned())),
+      SimpleTooltip::new("described").set_child(SimpleButton::new("Described")),
+    ))
+  });
+  let selectors = layered_selectors(rendered.styles());
+
+  assert_eq!(specificity("label[data-skene-control]"), (0, 1, 1));
+  assert_eq!(specificity(".a:hover::selection"), (0, 2, 0));
+  assert_eq!(specificity(".a:is(:hover,#b) > *"), (1, 1, 0));
+  assert_eq!(specificity(":where(input.b:checked) ~ .a"), (0, 1, 0));
+  assert!(selectors.len() > 50, "{}", rendered.styles());
+
+  for selector in selectors {
+    assert_eq!(specificity(&selector), (0, 1, 0), "{selector}");
+  }
 }

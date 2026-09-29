@@ -11,6 +11,7 @@ use web_sys::{Document, Element, HtmlHeadElement};
 
 use crate::{
   RESET_CSS,
+  STYLE_LAYER,
   compile::{Compiled, slot_registrations},
   condition::CLASS_PLACEHOLDER,
   interner::ClassInterner,
@@ -124,7 +125,7 @@ impl Sheet {
       if !present {
         let element = style_element(&self.document);
 
-        element.set_text_content(Some(&realized));
+        element.set_text_content(Some(&format!("{STYLE_LAYER}{realized}}}")));
         let _ = self.head.append_child(&element);
         self.elements.insert(Rc::clone(&class), element);
       }

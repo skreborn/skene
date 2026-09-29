@@ -32,10 +32,6 @@ left half-done in a code comment.
     border and ink it compares: `em` under a typography, which headless fixes at 16 and
     the terminal at one cell, container units, number tokens read as lengths, the
     focus, checked and disabled states, and a case for each fix below.
-    - Specificity flat by construction: every state inside `:where()`, the reset in
-    `@layer skene.reset` and compiled rules in `@layer skene.style` so app CSS always
-    wins (the reset's `label[data-skene-control]` rule outranks `Pinned` today), and a
-    compiler test that no variant rule exceeds class specificity.
     - Tokens: a length kind registered as `<length>`, one token kind serving padding,
     spacing and width, where the web needs a number for some and a dimension for others
     today; `TokenRef<T: Tokenable>`; a debug panic when one name is defined with two

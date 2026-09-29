@@ -111,6 +111,7 @@ use crate::{
   Document,
   RESET_CSS,
   RenderHints,
+  STYLE_LAYER,
   WebMarkup,
   document::{escape_attr, escape_text, push_script, state_script},
   interner::ClassInterner,
@@ -629,19 +630,28 @@ impl Tree {
     format!("<style {STYLE_ATTRIBUTE}>{delta}</style>")
   }
 
-  /// Appends the token registrations and live rules not emitted yet, marking them
-  /// emitted; no `</` is written, so the text cannot end the `<style>` it sits in.
+  /// Appends the token registrations and live rules not emitted yet, the rules in the
+  /// style layer, marking them emitted; no `</` is written, so the text cannot end the
+  /// `<style>` it sits in.
   fn render_new_styles(&mut self, out: &mut String) {
     push_style_text(out, &self.registrations[self.registrations_emitted..]);
     self.registrations_emitted = self.registrations.len();
+
+    let mut rules = String::new();
 
     for (class, template) in self.styles.live_rules() {
       if self.emitted.contains(class) {
         continue;
       }
 
-      push_style_text(out, &template.replace(CLASS_PLACEHOLDER, class));
+      push_style_text(&mut rules, &template.replace(CLASS_PLACEHOLDER, class));
       self.emitted.insert(Rc::from(class));
+    }
+
+    if !rules.is_empty() {
+      out.push_str(STYLE_LAYER);
+      out.push_str(&rules);
+      out.push('}');
     }
   }
 

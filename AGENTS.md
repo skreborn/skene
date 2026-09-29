@@ -107,7 +107,10 @@
   and the conditions compile to CSS, so SSR/SSG output is responsive, hoverable, themed
   and animated with **no JS/WASM**; a derived leaf is a per-node custom-property slot
   the class references, holding the literal or the token's `var()`, so it never
-  outranks a variant and a state may choose between palette tokens. `derive_` closures
+  outranks a variant and a state may choose between palette tokens. Every compiled rule
+  has a class's specificity, its states, anchors and scheme guards in `:where()`, and
+  sits in the `skene.style` cascade layer above the reset's `skene.reset`, so rule order
+  alone decides between variants and an app's own CSS always wins. `derive_` closures
   are for **state**, never for environment or arithmetic.
 - **A design token is a named, inherited slot; a theme defines it; a palette belongs to
   its library.** `TokenRef<T>` names a slot (a `const`; the name is an implementation

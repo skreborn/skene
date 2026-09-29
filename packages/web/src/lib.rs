@@ -146,8 +146,15 @@ pub use self::{
 
 /// The reset stylesheet every web leaf applies: injected into a `<style>` by the
 /// browser, serialized into the document by a server.
+///
+/// It declares the framework's cascade layers and fills `skene.reset`, beneath the
+/// compiled rules' `skene.style`.
 #[cfg(not(skene_leaf = "host"))]
 const RESET_CSS: &str = include_str!("reset.css");
+
+/// Opens the cascade layer every compiled rule sits in, which a `}` closes.
+#[cfg(not(skene_leaf = "host"))]
+const STYLE_LAYER: &str = "@layer skene.style{";
 
 /// The web platform: zero-sized, implementing the portable vocabulary over the DOM in the
 /// browser and over a string tree on the server.

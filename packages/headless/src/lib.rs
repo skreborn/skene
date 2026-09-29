@@ -1123,8 +1123,9 @@ pub fn is_tab_stop(node: NodeId) -> bool {
 /// The name the control `node` reports to assistive technology.
 ///
 /// The accessible-name computation's order: the text of the nodes it is labelled by,
-/// else the label its accessibility properties carry, else the text of its
-/// [`Part::Label`], else the label its props were created with.
+/// else the label its accessibility properties carry, else the label its props were
+/// created with (both a platform's `aria-label`), else the text of its
+/// [`Part::Label`].
 #[must_use]
 pub fn accessible_name(node: NodeId) -> Option<String> {
   end_turn();
@@ -1153,7 +1154,7 @@ pub fn accessible_name(node: NodeId) -> Option<String> {
   })
   .map(subtree_text);
 
-  [labelled, label, caption, props.label]
+  [labelled, label, props.label, caption]
     .into_iter()
     .flatten()
     .find(|name| !name.is_empty())

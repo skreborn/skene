@@ -29,9 +29,7 @@ left half-done in a code comment.
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
-    - The parity harness (`web_parity`) grows past the background, width, padding,
-    border and ink it compares: container units, the focus, checked and disabled states,
-    and a case for each fix below.
+    - The parity harness (`web_parity`) gains a case for each fix below.
     - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
     typed as lengths, so a length token serves them too and the web's `* 1px` and the
     typography's number tokens go, which gives the type metrics a type per medium;

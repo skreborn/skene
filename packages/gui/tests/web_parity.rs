@@ -6,12 +6,24 @@
 //! platform resolving through core shares, the terminal among them.
 #![cfg(skene_leaf = "browser")]
 
-use skene_common::{Container, Text, Theme, gui::Typography};
+use skene_common::{
+  Activate,
+  Container,
+  RawButton,
+  RawCheckbox,
+  Text,
+  Theme,
+  Toggle,
+  gui::Typography,
+};
 use skene_core::{
+  AccessProp,
   AnyView,
   Border,
   Color,
   Condition,
+  ContainerName,
+  ContainerQuery,
   Definition,
   Dimension,
   Expr,
@@ -25,6 +37,7 @@ use skene_core::{
   Property,
   PropertyKey,
   Size,
+  State,
   StaticLeaf,
   Token,
   TokenName,
@@ -38,11 +51,15 @@ use skene_headless::{
   Headless,
   box_props,
   children,
+  control_props,
   resolve_border,
   resolve_color,
   resolve_length,
+  trigger_container_size,
+  trigger_focus,
 };
 use skene_reactive::Owner;
+use wasm_bindgen::JsCast;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use web_sys::{Document, Element};
 
@@ -54,6 +71,20 @@ const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
 const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
 const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
 const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
+
+/// The accessible name a case gives the box it reads, where that box is not its own.
+const TARGET: &str = "parity-target";
+
+/// The query container a case's box sits in, where it asks for one.
+const BOX: ContainerName = ContainerName("parity-box");
+
+/// The width the query container holds.
+const BOX_WIDTH: f32 = 400.;
+
+/// The box a case reads, where it is not the case's own: named [`TARGET`].
+fn target() -> [AccessProp; 1] {
+  [AccessProp::Label(TARGET.to_owned())]
+}
 
 /// The tokens the cases read, one per kind and one defined under a condition.
 #[derive(Debug, Clone, PartialEq)]
@@ -200,6 +231,11 @@ enum Case {
   TokenInk,
   LexicalToken,
   LexicalEm,
+  ContainerUnitWidth,
+  ContainerQueryColor,
+  CheckedColor,
+  DisabledColor,
+  FocusedColor,
 }
 
 /// Every case the harness holds the resolution to.
@@ -237,6 +273,11 @@ const CASES: &[Case] = &[
   Case::TokenInk,
   Case::LexicalToken,
   Case::LexicalEm,
+  Case::ContainerUnitWidth,
+  Case::ContainerQueryColor,
+  Case::CheckedColor,
+  Case::DisabledColor,
+  Case::FocusedColor,
 ];
 
 impl Case {
@@ -257,7 +298,11 @@ impl Case {
       | Self::HeldCondition
       | Self::UnheldCondition
       | Self::DarkUnchosen
-      | Self::LexicalToken => Read::Background,
+      | Self::LexicalToken
+      | Self::ContainerQueryColor
+      | Self::CheckedColor
+      | Self::DisabledColor
+      | Self::FocusedColor => Read::Background,
       Self::FixedWidth
       | Self::ViewportWidth
       | Self::ClampedWidth
@@ -268,7 +313,8 @@ impl Case {
       | Self::LengthTokenExpressionWidth
       | Self::DerivedWidth
       | Self::ConditionalWidth
-      | Self::LexicalEm => Read::Width,
+      | Self::LexicalEm
+      | Self::ContainerUnitWidth => Read::Width,
       Self::FixedPadding | Self::LengthTokenPadding | Self::ConditionalPadding => Read::Padding,
       Self::FixedBorder => Read::Border,
       Self::FixedInk | Self::TokenInk => Read::Ink,
@@ -285,6 +331,41 @@ impl Case {
       .into_any(),
       Self::LexicalEm => Theme::<P, Typography>::new(Typography::default().set_size(30.))
         .set_child_builder(|| Container::<P>::new().set_width(ParityPalette::INDENT))
+        .into_any(),
+      Self::ContainerUnitWidth => Container::<P>::new()
+        .set_width(Dimension::Length(BOX_WIDTH))
+        .set_container_name(BOX)
+        .set_child(
+          Container::<P>::new()
+            .set_width(Expr::cqw(25.))
+            .set_accessibility(target()),
+        )
+        .into_any(),
+      Self::ContainerQueryColor => Container::<P>::new()
+        .set_width(Dimension::Length(BOX_WIDTH))
+        .set_container_name(BOX)
+        .set_child(
+          Container::<P>::new()
+            .set_color(Value::from(blue()).when(
+              Media::Container {
+                name: Some(BOX),
+                query: ContainerQuery::MinWidth(300.),
+              },
+              orange(),
+            ))
+            .set_accessibility(target()),
+        )
+        .into_any(),
+      Self::CheckedColor => RawCheckbox::<P>::new(Toggle::new().set_checked(true))
+        .set_child(Self::state_box::<P>(State::Checked))
+        .into_any(),
+      Self::DisabledColor => RawButton::<P>::new(Activate::new())
+        .set_disabled(true)
+        .set_child(Self::state_box::<P>(State::Disabled))
+        .into_any(),
+      Self::FocusedColor => RawButton::<P>::new(Activate::new())
+        .set_accessible_name(TARGET)
+        .set_color(Value::from(blue()).when(State::Focused, orange()))
         .into_any(),
       _ => self.container::<P>().into_any(),
     }
@@ -344,8 +425,28 @@ impl Case {
       Self::FixedBorder => container.set_border(Border::new(3., orange())),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
-      Self::LexicalToken | Self::LexicalEm => container,
+      Self::LexicalToken
+      | Self::LexicalEm
+      | Self::ContainerUnitWidth
+      | Self::ContainerQueryColor
+      | Self::CheckedColor
+      | Self::DisabledColor
+      | Self::FocusedColor => container,
     }
+  }
+
+  /// A box inside a control, blue until `state` holds and orange while it does.
+  fn state_box<P: Platform<Scalar = f32>>(state: State) -> Container<P> {
+    Container::<P>::new()
+      .set_width(Dimension::Length(10.))
+      .set_height(Dimension::Length(10.))
+      .set_color(Value::from(blue()).when(state, orange()))
+      .set_accessibility(target())
+  }
+
+  /// Whether the case focuses its control before it is read.
+  const fn focuses(self) -> bool {
+    matches!(self, Self::FocusedColor)
   }
 
   /// The case's box under a theme of the palette, inside a typography of a size other
@@ -444,13 +545,23 @@ fn pixels(value: &str) -> f32 {
 fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   skene_headless::reset();
   skene_headless::trigger_resize(viewport);
+  trigger_container_size(BOX, Size::new(BOX_WIDTH, 0.));
 
   let owner = Owner::new();
-  let mut node = owner.enter(|| case.build::<Headless>());
+  let built = owner.enter(|| case.build::<Headless>());
+  let mut node = built;
 
   while box_props(node).is_none() {
     node = children(node)[0];
   }
+
+  if case.focuses()
+    && let Some(control) = headless_control(built)
+  {
+    trigger_focus(control);
+  }
+
+  let node = headless_target(built).unwrap_or(node);
 
   let reading = match case.read() {
     Read::Background => resolve_color(node, COLOR).map(Reading::Color),
@@ -468,6 +579,28 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   reading.unwrap_or(Reading::Missing)
 }
 
+/// The node under `node` a case names [`TARGET`], if it names one.
+fn headless_target(node: NodeId) -> Option<NodeId> {
+  let named = box_props(node)
+    .is_some_and(|props| props.access.contains(&AccessProp::Label(TARGET.to_owned())))
+    || control_props(node).is_some_and(|props| props.label.as_deref() == Some(TARGET));
+
+  if named {
+    return Some(node);
+  }
+
+  children(node).into_iter().find_map(headless_target)
+}
+
+/// The first control at or under `node`.
+fn headless_control(node: NodeId) -> Option<NodeId> {
+  if control_props(node).is_some() {
+    return Some(node);
+  }
+
+  children(node).into_iter().find_map(headless_control)
+}
+
 /// What the engine computes for `case`.
 fn rendered(case: Case) -> Reading {
   let root = document().create_element("div").expect("a root");
@@ -480,10 +613,27 @@ fn rendered(case: Case) -> Reading {
   web::install(root.clone());
 
   let _ = mount(move || case.build::<Web>());
+
+  if case.focuses()
+    && let Some(control) = root
+      .query_selector("[data-skene-control]")
+      .ok()
+      .flatten()
+      .and_then(|control| control.dyn_into::<web_sys::HtmlElement>().ok())
+  {
+    let _ = control.focus();
+  }
+
   let element = root
-    .query_selector(":not([data-skene-scope])")
+    .query_selector(&format!("[aria-label='{TARGET}']"))
     .ok()
     .flatten()
+    .or_else(|| {
+      root
+        .query_selector(":not([data-skene-scope])")
+        .ok()
+        .flatten()
+    })
     .expect("the case's box");
   let reading = match case.read() {
     Read::Background => computed_color(&element, "background-color"),

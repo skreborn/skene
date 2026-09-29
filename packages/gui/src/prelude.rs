@@ -13,6 +13,7 @@ pub use skene_core::{
   Color,
   ColorScheme,
   DragAxes,
+  DragData,
   Easing,
   Errors,
   Expr,

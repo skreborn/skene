@@ -1821,8 +1821,16 @@ impl Platform for Web {
     });
   }
 
-  fn listen(_sink: u32, kind: EventKind) {
-    with_dom(|dom| dom.events.ensure(kind));
+  fn listen(sink: u32, kind: EventKind) {
+    with_dom(|dom| {
+      dom.events.ensure(kind);
+
+      if kind == EventKind::DragStart
+        && let Some(element) = dom.node(sink).and_then(Node::element)
+      {
+        let _ = element.set_attribute("draggable", "true");
+      }
+    });
   }
 
   fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {

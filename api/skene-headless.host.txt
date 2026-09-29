@@ -144,6 +144,10 @@ pub fn skene_headless::trigger_container_size(skene_core::condition::ContainerNa
 pub fn skene_headless::trigger_context_menu(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_dismiss(skene_core::node::NodeId)
 pub fn skene_headless::trigger_double_click(skene_core::node::NodeId) -> skene_core::events::Prevented
+pub fn skene_headless::trigger_drag_end()
+pub fn skene_headless::trigger_drag_over(skene_core::node::NodeId) -> bool
+pub fn skene_headless::trigger_drag_start(skene_core::node::NodeId) -> bool
+pub fn skene_headless::trigger_drop() -> bool
 pub fn skene_headless::trigger_focus(skene_core::node::NodeId)
 pub fn skene_headless::trigger_frame(core::time::Duration)
 pub fn skene_headless::trigger_graphics(bool)

@@ -255,6 +255,10 @@ pub enum State {
   FocusVisible,
   /// The node is being pressed.
   Pressed,
+  /// A drag the node offered is in progress.
+  Dragged,
+  /// A drag the node takes is over it.
+  Targeted,
   /// The enclosing control is checked.
   Checked,
   /// The enclosing control is neither checked nor unchecked.

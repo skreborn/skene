@@ -19,6 +19,10 @@ use skene_core::{
   ContainerName,
   DeclaredBoxStyle,
   DragAxes,
+  DragData,
+  DragSource,
+  DropHandler,
+  DropPhase,
   FocusOrder,
   GridFlow,
   GridTemplate,
@@ -80,6 +84,8 @@ struct Handlers {
   blur: Vec<Rc<PlainHandler>>,
   wheel: Vec<Rc<WheelHandler>>,
   scroll: Vec<Rc<ScrollHandler>>,
+  drag_source: Option<Rc<DragSource>>,
+  drop: Vec<Rc<DropHandler>>,
 }
 
 /// A box with a layout mode, a declared style, a role, a container name, focus and
@@ -457,6 +463,39 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
+  /// Offers what a drag from the box carries, `data` building it as the drag starts;
+  /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
+  #[inline(always)]
+  pub fn set_drag_data(mut self, data: impl Fn() -> DragData + 'static) -> Self {
+    self.handlers.drag_source = Some(Rc::new(data));
+
+    self
+  }
+
+  /// Takes a drag carrying a `T` dropped on the box, running `action` with the value;
+  /// the box holds [`State::Targeted`](skene_core::State::Targeted) while such a drag
+  /// is over it.
+  #[inline(always)]
+  pub fn handle_drop<T: 'static>(mut self, action: impl Fn(&T) + 'static) -> Self {
+    self
+      .handlers
+      .drop
+      .push(Rc::new(move |data: &DragData, phase| {
+        let Some(value) = data.value::<T>()
+        else {
+          return false;
+        };
+
+        if phase == DropPhase::Dropped {
+          action(value);
+        }
+
+        true
+      }));
+
+    self
+  }
+
   /// Runs `action` on a wheel turned over the box, before the platform scrolls by it;
   /// its verdict says whether the turn carries on to the ancestors.
   #[inline(always)]
@@ -711,6 +750,8 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       blur,
       wheel,
       scroll,
+      drag_source,
+      drop,
     } = self.handlers;
 
     Scene::<P>::with(|scene| {
@@ -768,6 +809,14 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
       for handler in scroll {
         scene.handle_scroll(node, handler);
+      }
+
+      if let Some(source) = drag_source {
+        scene.handle_drag_source(node, source);
+      }
+
+      for handler in drop {
+        scene.handle_drop(node, handler);
       }
     });
 

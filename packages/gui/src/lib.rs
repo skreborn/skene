@@ -78,6 +78,7 @@ pub use skene_core::{
   ControlKind,
   ControlState,
   Definitions,
+  DragData,
   Errors,
   Expr,
   FocusOrder,

@@ -122,6 +122,23 @@
         "8086"
       ],
       "port": 8086
+    },
+    {
+      "name": "drag-and-drop",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/drag-and-drop",
+        "run",
+        "web",
+        "--port",
+        "8087"
+      ],
+      "port": 8087
     }
   ]
 }

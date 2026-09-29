@@ -225,6 +225,65 @@ fn two_quick_clicks_at_one_cell_are_a_double_click() {
   });
 }
 
+/// A press on a box offering drag data starts a drag once the pointer leaves the cell,
+/// cancelling the press: the box under the pointer taking what it carries holds
+/// `Targeted`, and the release drops the drag there without a click.
+#[test]
+fn a_drag_moves_between_boxes_and_drops_on_release() {
+  with_platform(|| {
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let (clicked, cancelled, dropped) = (Rc::clone(&log), Rc::clone(&log), Rc::clone(&log));
+
+    let _ = tui::mount(move || {
+      Row::new()
+        .set_children((
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .set_drag_data(|| tui::DragData::new(String::from("card")))
+            .handle_click(move || clicked.borrow_mut().push(String::from("click")))
+            .handle_pointer_cancel(move |_| cancelled.borrow_mut().push(String::from("cancel"))),
+          Container::new()
+            .set_width(4)
+            .set_height(2)
+            .set_color(red().when(State::Targeted, blue()))
+            .handle_drop(move |card: &String| dropped.borrow_mut().push(card.clone())),
+        ))
+        .into_any()
+        .build()
+    });
+    let target = || colors_at(10, 3, 5, 0).1;
+
+    assert_eq!(target(), Some(rgb(red())));
+
+    tui::trigger_mouse_press(1, 0);
+    tui::trigger_mouse_drag(1, 0);
+
+    assert_eq!(
+      *log.borrow(),
+      Vec::<String>::new(),
+      "no drag within the cell"
+    );
+
+    tui::trigger_mouse_drag(5, 0);
+
+    assert_eq!(target(), Some(rgb(blue())));
+
+    tui::trigger_mouse_release(5, 0);
+
+    assert_eq!(*log.borrow(), ["cancel", "card"]);
+    assert_eq!(target(), Some(rgb(red())));
+
+    tui::trigger_mouse_click(1, 0);
+
+    assert_eq!(
+      *log.borrow(),
+      ["cancel", "card", "click"],
+      "a press that stays clicks"
+    );
+  });
+}
+
 /// The mouse hovering a node applies its `Hovered` variant and fires the enter handler;
 /// moving off reverts and fires the leave handler, once each.
 #[test]

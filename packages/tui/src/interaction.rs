@@ -17,6 +17,7 @@ use skene_core::{
   Overflow,
   Placement,
   PointerButton,
+  PointerButtons,
   PointerEvent,
   PointerInfo,
   PointerType,
@@ -35,10 +36,14 @@ use skene_core::{
   dispatch_pointer_move,
   dispatch_pointer_up,
   dispatch_wheel,
+  drop_drag,
+  end_drag,
+  move_drag,
   notify_dismiss,
   notify_focus_moved,
   notify_pointer_moved,
   notify_scroll,
+  start_drag,
 };
 
 use crate::{
@@ -479,7 +484,11 @@ impl Store {
       return None;
     }
 
-    if matches!(self.drag, Some(Drag::Scrollbar { .. })) || self.drags_control() {
+    if matches!(
+      self.drag,
+      Some(Drag::Scrollbar { .. } | Drag::Item { started: true, .. })
+    ) || self.drags_control()
+    {
       return Some(MouseCursor::Grabbing);
     }
 
@@ -1197,6 +1206,22 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
     );
   }
 
+  // A primary press under a node offering drag data arms a drag of it, which starts
+  // once the pointer leaves the cell.
+  if button == PointerButton::Primary
+    && !prevented.platform
+    && let Some(node) = node
+    && Scene::<Tui>::with(|scene| scene.drag_source(node)).is_some()
+  {
+    store(|store| {
+      store.drag = Some(Drag::Item {
+        node,
+        from: (x, y),
+        started: false,
+      });
+    });
+  }
+
   // The right press asks for the context menu once its default has placed the caret.
   if button == PointerButton::Secondary
     && let Some(node) = node
@@ -1283,6 +1308,25 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
     return;
   }
 
+  // A release ends an item drag: one that started drops where it is, its press long
+  // cancelled, and one that never did is an ordinary release.
+  let dragged = store(|store| match store.drag {
+    Some(Drag::Item { started, .. }) if button == PointerButton::Primary => {
+      store.drag = None;
+
+      started
+    }
+    _ => false,
+  });
+
+  if dragged {
+    let _ = drop_drag::<Tui>();
+
+    store(|store| store.restyle_pending = true);
+
+    return;
+  }
+
   let target = store(|store| {
     store
       .press
@@ -1353,9 +1397,59 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
   }
 }
 
+/// Follows an item drag of what `node` offers to the cell (`x`, `y`): the drag starts
+/// once the pointer leaves the press's cell `from`, the press cancelled at the node it
+/// reached, and then moves over the node under the pointer.
+fn drag_item(node: NodeId, from: (u16, u16), started: bool, x: u16, y: u16) {
+  if !started {
+    if (x, y) == from {
+      return;
+    }
+
+    if start_drag::<Tui>(node).is_none() {
+      store(|store| store.drag = None);
+
+      return;
+    }
+
+    cancel_press();
+    store(|store| {
+      store.drag = Some(Drag::Item {
+        node,
+        from,
+        started: true,
+      });
+    });
+  }
+
+  let over = store(|store| {
+    let (handle, _) = store.hit_test(x, y).last().copied()?;
+
+    store.record(handle)?.node
+  });
+  let _ = move_drag::<Tui>(over);
+
+  store(|store| store.restyle_pending = true);
+}
+
 /// Follows the drag in progress to the pointer at (`x`, `y`), if one is under way: a
 /// scrollbar's thumb follows the pointer's position within the cell.
 pub(crate) fn drag_to(x: u16, y: u16) {
+  let item = store(|store| match store.drag {
+    Some(Drag::Item {
+      node,
+      from,
+      started,
+    }) => Some((node, from, started)),
+    _ => None,
+  });
+
+  if let Some((node, from, started)) = item {
+    drag_item(node, from, started, x, y);
+
+    return;
+  }
+
   let scrolled = store(|store| match store.drag {
     Some(Drag::Scrollbar { node, axis, grab }) => {
       let (track_start, track, limit) = store.scroll_geometry(node, axis);
@@ -1380,7 +1474,7 @@ pub(crate) fn drag_to(x: u16, y: u16) {
 
       None
     }
-    None => None,
+    Some(Drag::Item { .. }) | None => None,
   });
 
   if let Some((handle, offsets)) = scrolled {
@@ -1644,7 +1738,17 @@ fn key_default(event: &KeyEvent) {
       return;
     }
     "Escape" => {
-      // The most transient layer goes first: an open overlay, then the selection.
+      // The most transient layer goes first: a drag, an open overlay, then the
+      // selection.
+      if store(|store| {
+        matches!(store.drag, Some(Drag::Item { started: true, .. })) && store.drag.take().is_some()
+      }) {
+        end_drag::<Tui>();
+        store(|store| store.restyle_pending = true);
+
+        return;
+      }
+
       let dismissed = store(|store| {
         if let Some((top, _)) = store.topmost_open_overlay() {
           return store.record(top).and_then(|record| record.node);
@@ -1744,7 +1848,7 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
 /// cancelled at the node it reached, the hover path empties, its nodes told the pointer
 /// left, and every mouse event is ignored meanwhile.
 fn release_mouse() {
-  let cancelled = store(|store| {
+  store(|store| {
     store.mouse_released = true;
     store.scroll_latch = None;
     store.drag = None;
@@ -1752,7 +1856,17 @@ fn release_mouse() {
     store.buttons.clear();
 
     store.set_hovered(Vec::new());
+  });
 
+  end_drag::<Tui>();
+  cancel_press();
+  notify_pointer_moved::<Tui>(None);
+}
+
+/// Cancels the press in progress at the node it reached, which holds `Pressed` no
+/// longer, as a platform taking the pointer for itself does.
+fn cancel_press() {
+  let cancelled = store(|store| {
     let press = store.press.take()?;
 
     store.restyle_pending = true;
@@ -1761,17 +1875,21 @@ fn release_mouse() {
 
     Some((reached, store.screen_origin(reached), store.last_pointer))
   });
+  let Some((reached, origin, (x, y))) = cancelled
+  else {
+    return;
+  };
 
-  if let Some((reached, origin, (x, y))) = cancelled {
-    Scene::<Tui>::with(|scene| scene.set_pressed(None));
+  Scene::<Tui>::with(|scene| scene.set_pressed(None));
 
-    if let Some(node) = store(|store| store.record(reached).and_then(|record| record.node)) {
-      let event = pointer_event(x, y, origin, None, Modifiers::NONE);
-      let _ = dispatch_pointer_cancel::<Tui>(node, &event);
-    }
+  if let Some(node) = store(|store| store.record(reached).and_then(|record| record.node)) {
+    let event = PointerEvent {
+      buttons: PointerButtons::new(),
+      pressure: 0.,
+      ..pointer_event(x, y, origin, None, Modifiers::NONE)
+    };
+    let _ = dispatch_pointer_cancel::<Tui>(node, &event);
   }
-
-  notify_pointer_moved::<Tui>(None);
 }
 
 /// Clicks the focused link with `modifiers` held and, unless a handler prevented the

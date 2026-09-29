@@ -41,7 +41,12 @@ impl ControlState {
       State::Disabled => self.disabled,
       State::Invalid => self.invalid,
       State::Open => self.open,
-      State::Hovered | State::Focused | State::FocusVisible | State::Pressed => false,
+      State::Hovered
+      | State::Focused
+      | State::FocusVisible
+      | State::Pressed
+      | State::Dragged
+      | State::Targeted => false,
     }
   }
 }

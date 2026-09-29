@@ -18,6 +18,7 @@ pub use skene_tui::ControlKind
 pub use skene_tui::ControlState
 pub use skene_tui::CornerRadius
 pub use skene_tui::Definitions
+pub use skene_tui::DragData
 pub use skene_tui::Errors
 pub use skene_tui::Expr
 pub use skene_tui::FocusOrder
@@ -123,6 +124,7 @@ pub use skene_tui::prelude::Bubbling
 pub use skene_tui::prelude::Color
 pub use skene_tui::prelude::ColorScheme
 pub use skene_tui::prelude::DragAxes
+pub use skene_tui::prelude::DragData
 pub use skene_tui::prelude::Easing
 pub use skene_tui::prelude::Effect
 pub use skene_tui::prelude::Errors

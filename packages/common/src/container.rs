@@ -12,6 +12,7 @@ use skene_core::{
   ContainerName,
   DeclaredBoxStyle,
   DragAxes,
+  DragData,
   FocusOrder,
   HasChildren,
   KeyEvent,
@@ -300,6 +301,25 @@ impl<P: Platform> Container<P> {
     action: impl Fn(&PointerEvent) -> R + 'static,
   ) -> Self {
     self.inner = self.inner.handle_pointer_move(action);
+
+    self
+  }
+
+  /// Offers what a drag from the box carries, `data` building it as the drag starts;
+  /// the box holds [`State::Dragged`](skene_core::State::Dragged) while the drag lasts.
+  #[inline(always)]
+  pub fn set_drag_data(mut self, data: impl Fn() -> DragData + 'static) -> Self {
+    self.inner = self.inner.set_drag_data(data);
+
+    self
+  }
+
+  /// Takes a drag carrying a `T` dropped on the box, running `action` with the value;
+  /// the box holds [`State::Targeted`](skene_core::State::Targeted) while such a drag
+  /// is over it.
+  #[inline(always)]
+  pub fn handle_drop<T: 'static>(mut self, action: impl Fn(&T) + 'static) -> Self {
+    self.inner = self.inner.handle_drop(action);
 
     self
   }

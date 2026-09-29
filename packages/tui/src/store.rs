@@ -761,6 +761,13 @@ pub(crate) enum Drag {
   /// A text entry's caret: motion moves it to the position under the pointer, the
   /// anchor held.
   Caret(Handle),
+  /// A press under a node offering drag data: a drag of what the node offers starts
+  /// once the pointer leaves the press's cell `from`, and has once `started`.
+  Item {
+    node: NodeId,
+    from: (u16, u16),
+    started: bool,
+  },
 }
 
 /// The pause that ends a wheel gesture: the next wheel event re-targets, as on the

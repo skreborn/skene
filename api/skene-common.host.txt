@@ -916,6 +916,7 @@ pub fn skene_common::Container<P>::derive_width<R: core::convert::Into<skene_cor
 pub fn skene_common::Container<P>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_double_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Container<P>::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
 pub fn skene_common::Container<P>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::Container<P>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
@@ -939,6 +940,7 @@ pub fn skene_common::Container<P>::set_container_name(self, skene_core::conditio
 pub fn skene_common::Container<P>::set_corner_radius(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::expr::Length, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self where <P as skene_core::platform::Platform>::StyleExt: skene_common::CornerRadius
 pub fn skene_common::Container<P>::set_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_drag_axes(self, skene_core::values::axis::DragAxes) -> Self
+pub fn skene_common::Container<P>::set_drag_data(self, impl core::ops::function::Fn() -> skene_core::drag::DragData + 'static) -> Self
 pub fn skene_common::Container<P>::set_focus_order(self, skene_core::values::focus_order::FocusOrder) -> Self
 pub fn skene_common::Container<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
@@ -1282,6 +1284,7 @@ pub fn skene_common::LayoutBox<P, Kind>::derive_wrap<R: core::convert::Into<sken
 pub fn skene_common::LayoutBox<P, Kind>::handle_blur(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_double_click<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::LayoutBox<P, Kind>::handle_drop<T: 'static>(self, impl core::ops::function::Fn(&T) + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_focus(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_down<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::handle_key_up<R: core::convert::Into<skene_core::events::Bubbling>>(self, impl core::ops::function::Fn(&skene_core::events::KeyEvent) -> R + 'static) -> Self
@@ -1302,6 +1305,7 @@ pub fn skene_common::LayoutBox<P, Kind>::set_columns(self, impl core::convert::I
 pub const fn skene_common::LayoutBox<P, Kind>::set_container_name(self, skene_core::condition::ContainerName) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_destination(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn skene_common::LayoutBox<P, Kind>::set_drag_axes(self, skene_core::values::axis::DragAxes) -> Self
+pub fn skene_common::LayoutBox<P, Kind>::set_drag_data(self, impl core::ops::function::Fn() -> skene_core::drag::DragData + 'static) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_flow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::GridFlow, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_focus_order(self, skene_core::values::focus_order::FocusOrder) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_implicit_columns(self, impl core::convert::Into<skene_core::leaf::Value<alloc::vec::Vec<skene_core::values::grid::GridTrack<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self

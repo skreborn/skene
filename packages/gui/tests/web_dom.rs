@@ -64,6 +64,7 @@ use skene_gui::{
     Axis,
     Dimension,
     DragAxes,
+    DragData,
     GridAreas,
     GridName,
     GridPlacement,
@@ -828,6 +829,68 @@ fn a_wheel_reaches_the_node_before_it_scrolls() {
   assert!(!turn(&child(0)), "the browser scrolls");
   assert_eq!(seen.get(), Some((Axes::new(0., 3.), WheelUnit::Lines)));
   assert!(turn(&child(1)), "the dial takes the turn");
+}
+
+/// A drag from a box offering data drops on a box taking it: the browser is handed the
+/// drag's text, the target lets the drop happen and holds `Targeted` while the drag is
+/// over it, and the drop runs its action.
+#[wasm_bindgen_test]
+fn a_drag_drops_on_a_box_taking_it() {
+  let (_guard, root) = fresh_root();
+  let dropped = Rc::new(RefCell::new(Vec::new()));
+
+  let _ = mount({
+    let dropped = Rc::clone(&dropped);
+
+    move || {
+      Column::new()
+        .set_children((
+          Container::new().set_drag_data(|| DragData::new(String::from("card")).with_text("card")),
+          Container::new()
+            .handle_drop(move |card: &String| dropped.borrow_mut().push(card.clone())),
+        ))
+        .build()
+    }
+  });
+
+  let column = only_child(&root);
+  let child = |index| column.children().item(index).expect("a child");
+  let transfer = web_sys::DataTransfer::new().expect("a data transfer");
+  let drag = |target: &Element, kind: &str| {
+    let init = web_sys::DragEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_data_transfer(Some(&transfer));
+
+    let event = web_sys::DragEvent::new_with_event_init_dict(kind, &init).expect("a drag event");
+
+    let _ = target.dispatch_event(&event);
+
+    event.default_prevented()
+  };
+
+  assert_eq!(child(0).get_attribute("draggable").as_deref(), Some("true"));
+
+  let _ = drag(&child(0), "dragstart");
+
+  assert_eq!(
+    transfer.get_data("text/plain").ok().as_deref(),
+    Some("card")
+  );
+  assert!(child(0).has_attribute("data-skene-dragged"));
+  assert!(
+    drag(&child(1), "dragover"),
+    "the target lets the drop happen"
+  );
+  assert!(child(1).has_attribute("data-skene-targeted"));
+
+  let _ = drag(&child(1), "drop");
+  let _ = drag(&child(0), "dragend");
+
+  assert_eq!(*dropped.borrow(), ["card"]);
+  assert!(!child(1).has_attribute("data-skene-targeted"));
+  assert!(!child(0).has_attribute("data-skene-dragged"));
 }
 
 /// A `dblclick` reaches the box's double-click handler through dispatch.

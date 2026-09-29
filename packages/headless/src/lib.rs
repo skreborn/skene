@@ -99,6 +99,9 @@ use skene_core::{
   dispatch_pointer_move,
   dispatch_pointer_up,
   dispatch_wheel,
+  drop_drag,
+  end_drag,
+  move_drag,
   notify_change,
   notify_dismiss,
   notify_focus_moved,
@@ -106,6 +109,7 @@ use skene_core::{
   notify_scroll,
   notify_selection_change,
   notify_toggle,
+  start_drag,
 };
 use skene_reactive::{Memo, ReadSignal, Set};
 use unicode_segmentation::UnicodeSegmentation;
@@ -715,6 +719,33 @@ pub fn trigger_pointer_cancel(node: NodeId, event: &PointerEvent) -> Prevented {
 /// suppresses the platform's response keeps the scroll from happening.
 pub fn trigger_wheel(node: NodeId, event: &WheelEvent) -> Prevented {
   trigger(|| dispatch_wheel::<Headless>(node, event))
+}
+
+/// Starts a drag from `node`, as a pointer pressing it and moving off would: the
+/// nearest node at or above it offering drag data builds what the drag carries;
+/// whether one did.
+#[must_use]
+pub fn trigger_drag_start(node: NodeId) -> bool {
+  trigger(|| start_drag::<Headless>(node).is_some())
+}
+
+/// Moves the drag in progress over `node`; whether a node at or above it takes the
+/// drag.
+#[must_use]
+pub fn trigger_drag_over(node: NodeId) -> bool {
+  trigger(|| move_drag::<Headless>(Some(node)).is_some())
+}
+
+/// Drops the drag in progress where it is; whether its target took it.
+#[must_use]
+pub fn trigger_drop() -> bool {
+  trigger(drop_drag::<Headless>)
+}
+
+/// Ends the drag in progress without a drop, as `Escape` or a drop outside the app
+/// does.
+pub fn trigger_drag_end() {
+  trigger(end_drag::<Headless>);
 }
 
 /// Dispatches a pointer move at `node`, bubbling through the scene.

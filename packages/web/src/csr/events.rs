@@ -44,6 +44,9 @@ use skene_core::{
   dispatch_pointer_move,
   dispatch_pointer_up,
   dispatch_wheel,
+  drop_drag,
+  end_drag,
+  move_drag,
   notify_change,
   notify_dismiss,
   notify_focus_moved,
@@ -51,6 +54,7 @@ use skene_core::{
   notify_scroll,
   notify_selection_change,
   notify_toggle,
+  start_drag,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
@@ -63,8 +67,11 @@ use web_sys::{
   HtmlTextAreaElement,
 };
 
-use super::{Realized, end_turn, with_dom};
-use crate::{Web, condition::DRAGS_ATTRIBUTE};
+use super::{Node, Realized, end_turn, with_dom};
+use crate::{
+  Web,
+  condition::{DRAG_MARKER, DRAGGED_ATTRIBUTE, DRAGS_ATTRIBUTE, TARGETED_ATTRIBUTE},
+};
 
 /// The property stamped on every element the scene knows, holding its sink.
 const SINK_PROPERTY: &str = "__skeneSink";
@@ -159,6 +166,10 @@ pub(super) struct Events {
   /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
   /// open popup acts on in place of the popup's own focus.
   pub(super) last_entry: Option<Element>,
+  /// The element of the node a drag in progress started from.
+  dragged: Option<Element>,
+  /// The element of the node taking the drag in progress.
+  targeted: Option<Element>,
 }
 
 impl Events {
@@ -167,6 +178,8 @@ impl Events {
       root,
       listeners: FxHashMap::default(),
       last_entry: None,
+      dragged: None,
+      targeted: None,
     }
   }
 
@@ -191,6 +204,8 @@ impl Events {
       EventKind::Toggle => &["change"],
       EventKind::Dismiss => &["click", "keydown", "pointerdown"],
       EventKind::ContextMenu => &["contextmenu"],
+      EventKind::DragStart => &["dragstart", "dragend"],
+      EventKind::Drop => &["dragenter", "dragover", "dragleave", "drop"],
     };
 
     for name in names {
@@ -216,6 +231,11 @@ impl Events {
         "input" => on_input,
         "selectionchange" => on_selection_change,
         "contextmenu" => on_context_menu,
+        "dragstart" => on_drag_start,
+        "dragend" => on_drag_end,
+        "dragenter" | "dragover" => on_drag_over,
+        "dragleave" => on_drag_leave,
+        "drop" => on_drop,
         _ => on_change,
       };
       let capture = *name == "scroll";
@@ -712,6 +732,104 @@ fn on_wheel(event: &web_sys::Event) {
   let payload = pointer_payload(wheel, &element).wheel(delta, unit);
 
   apply(dispatch_wheel::<Web>(node, &payload), event);
+}
+
+/// A drag starting from an element: the nearest node offering drag data builds what it
+/// carries, and the browser is handed its text, or a marker where it has none, since
+/// an engine starts no drag without data.
+fn on_drag_start(event: &web_sys::Event) {
+  let Some(drag) = event.dyn_ref::<web_sys::DragEvent>()
+  else {
+    return;
+  };
+  let Some((source, data)) = node_at(event.target()).and_then(start_drag::<Web>)
+  else {
+    return;
+  };
+
+  if let Some(transfer) = drag.data_transfer() {
+    let _ = match data.text() {
+      Some(text) => transfer.set_data("text/plain", text),
+      None => transfer.set_data(DRAG_MARKER, ""),
+    };
+  }
+
+  mark_drag(
+    |events| &mut events.dragged,
+    Some(source),
+    DRAGGED_ATTRIBUTE,
+  );
+}
+
+/// A drag over an element: the nearest node taking what it carries becomes its target,
+/// and the browser lets it drop there.
+fn on_drag_over(event: &web_sys::Event) {
+  let target = move_drag::<Web>(node_at(event.target()));
+
+  mark_drag(|events| &mut events.targeted, target, TARGETED_ATTRIBUTE);
+
+  if target.is_some() {
+    event.prevent_default();
+  }
+}
+
+/// A drag leaving the page, which leaves it no target.
+fn on_drag_leave(event: &web_sys::Event) {
+  if related(event).is_none() {
+    let _ = move_drag::<Web>(None);
+
+    mark_drag(|events| &mut events.targeted, None, TARGETED_ATTRIBUTE);
+  }
+}
+
+/// A drop: the target takes the drag, and the browser's own response is prevented.
+fn on_drop(event: &web_sys::Event) {
+  event.prevent_default();
+
+  let _ = drop_drag::<Web>();
+
+  clear_drag_marks();
+}
+
+/// A drag ending, dropped or not.
+fn on_drag_end(_: &web_sys::Event) {
+  end_drag::<Web>();
+  clear_drag_marks();
+}
+
+/// Moves `attribute` from the element `slot` holds to the element of `node`.
+fn mark_drag(
+  slot: impl FnOnce(&mut Events) -> &mut Option<Element>,
+  node: Option<NodeId>,
+  attribute: &str,
+) {
+  let sink = node
+    .and_then(|node| Scene::<Web>::with(|scene| scene.record(node).map(|record| *record.sink())));
+
+  with_dom(|dom| {
+    let element = sink.and_then(|sink| dom.node(sink).and_then(Node::element).cloned());
+    let held = slot(&mut dom.events);
+
+    if *held == element {
+      return;
+    }
+
+    if let Some(previous) = held.take() {
+      let _ = previous.remove_attribute(attribute);
+    }
+
+    if let Some(element) = &element {
+      let _ = element.set_attribute(attribute, "");
+    }
+
+    *held = element;
+  });
+}
+
+/// Takes the drag marks off their elements.
+fn clear_drag_marks() {
+  mark_drag(|events| &mut events.dragged, None, DRAGGED_ATTRIBUTE);
+  mark_drag(|events| &mut events.targeted, None, TARGETED_ATTRIBUTE);
 }
 
 fn on_scroll(event: &web_sys::Event) {

@@ -9,6 +9,7 @@ use skene_core::{
   AccessProp,
   Axes,
   Bubbling,
+  DragData,
   EventKind,
   FocusOrder,
   HasChildren,
@@ -42,6 +43,9 @@ use skene_headless::{
   resolve_inset,
   trigger_blur,
   trigger_double_click,
+  trigger_drag_over,
+  trigger_drag_start,
+  trigger_drop,
   trigger_focus,
   trigger_key_down,
   trigger_key_up,
@@ -419,6 +423,53 @@ fn tab_traverses_the_scenes_tab_order() {
   let _ = trigger_key_down(first, &back);
 
   assert!(is_focused(last), "Shift-Tab goes back");
+
+  owner.dispose();
+}
+
+/// A drag from a box offering data reaches a box taking what it carries: the source
+/// holds `Dragged` and the target `Targeted` while the drag lasts, a box taking another
+/// type is no target, and the drop runs the target's action with the value.
+#[test]
+fn a_drag_drops_on_a_box_taking_what_it_carries() {
+  reset();
+
+  let owner = Owner::new();
+  let dropped = Rc::new(RefCell::new(Vec::new()));
+  let log = Rc::clone(&dropped);
+  let column = owner.enter(|| {
+    skene_common::Column::<Headless>::new()
+      .set_children((
+        Container::new()
+          .set_color(Value::from(red()).when(State::Dragged, blue()))
+          .set_drag_data(|| DragData::new(7u32).with_text("seven"))
+          .set_child(Container::new()),
+        Container::new()
+          .set_color(Value::from(red()).when(State::Targeted, blue()))
+          .handle_drop(move |value: &u32| log.borrow_mut().push(*value)),
+        Container::new().handle_drop(|_: &String| {}),
+      ))
+      .build()
+  });
+  let boxes = children(column);
+  let (source, target, other) = (boxes[1], boxes[2], boxes[3]);
+  let inside = only_child(source);
+
+  assert!(
+    trigger_drag_start(inside),
+    "the drag starts at the box offering data"
+  );
+  assert_eq!(resolve_color(source, COLOR), Some(blue()));
+  assert!(
+    !trigger_drag_over(other),
+    "a box taking another type is no target"
+  );
+  assert!(trigger_drag_over(target));
+  assert_eq!(resolve_color(target, COLOR), Some(blue()));
+  assert!(trigger_drop());
+  assert_eq!(*dropped.borrow(), [7]);
+  assert_eq!(resolve_color(source, COLOR), Some(red()));
+  assert_eq!(resolve_color(target, COLOR), Some(red()));
 
   owner.dispose();
 }

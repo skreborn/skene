@@ -23,6 +23,9 @@ use crate::{
   AccessProp,
   ClickHandler,
   Dimension,
+  DragData,
+  DragSource,
+  DropHandler,
   Flexibility,
   Focus,
   FocusOrder,
@@ -254,6 +257,8 @@ pub struct HandlerSet {
   toggle: Vec<Handler<ToggleHandler>>,
   dismiss: Vec<Handler<PlainHandler>>,
   context_menu: Vec<Handler<PointerHandler>>,
+  drag_source: Vec<Handler<DragSource>>,
+  drop: Vec<Handler<DropHandler>>,
 }
 
 impl std::fmt::Debug for HandlerSet {
@@ -403,6 +408,29 @@ impl HandlerSet {
   pub fn context_menu(&self) -> &[Handler<PointerHandler>] {
     &self.context_menu
   }
+
+  /// What builds the data a drag from the node carries, in registration order; the last
+  /// is offered.
+  #[inline(always)]
+  #[must_use]
+  pub fn drag_source(&self) -> &[Handler<DragSource>] {
+    &self.drag_source
+  }
+
+  /// The drop handlers, in registration order.
+  #[inline(always)]
+  #[must_use]
+  pub fn drop(&self) -> &[Handler<DropHandler>] {
+    &self.drop
+  }
+}
+
+/// A drag in progress: the node it started from, what it carries, and the node taking
+/// it.
+struct DragRecord {
+  source: NodeId,
+  data: DragData,
+  target: Option<NodeId>,
 }
 
 /// The end of a segment and, while the segment is detached, the content waiting
@@ -656,6 +684,7 @@ pub struct Scene<P: Platform> {
   pressed: Option<NodeId>,
   focused: Option<NodeId>,
   focus_visible: bool,
+  drag: Option<DragRecord>,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -691,6 +720,7 @@ impl<P: Platform> Scene<P> {
       pressed: None,
       focused: None,
       focus_visible: true,
+      drag: None,
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }
@@ -1023,6 +1053,8 @@ impl<P: Platform> Scene<P> {
       hovered: self.is_hovered(node),
       focus: Focus::new(self.focused == Some(holder), self.focus_shows(holder)),
       pressed: self.is_pressed(holder),
+      dragged: self.dragged() == Some(node),
+      targeted: self.drag_target() == Some(node),
       control: control.and_then(|control| self.control_state(control)),
     }
   }
@@ -1111,6 +1143,16 @@ impl<P: Platform> Scene<P> {
         if *held == Some(node) {
           *held = None;
         }
+      }
+
+      if self.drag.as_ref().is_some_and(|drag| drag.source == node) {
+        self.drag = None;
+      }
+
+      if let Some(drag) = &mut self.drag
+        && drag.target == Some(node)
+      {
+        drag.target = None;
       }
 
       self.mirrors.push(Mirror::Destroy(record.sink));
@@ -1880,6 +1922,96 @@ impl<P: Platform> Scene<P> {
     self.register(node, EventKind::Wheel, |set| {
       set.wheel.push(Handler::new(handler));
     });
+  }
+
+  /// Offers what a drag from `node` carries, `source` building it as the drag starts.
+  pub fn handle_drag_source(&mut self, node: NodeId, source: Rc<DragSource>) {
+    self.register(node, EventKind::DragStart, |set| {
+      set.drag_source.push(Handler::new(source));
+    });
+  }
+
+  /// Adds a drop handler to `node`, which takes the drags it answers for.
+  pub fn handle_drop(&mut self, node: NodeId, handler: Rc<DropHandler>) {
+    self.register(node, EventKind::Drop, |set| {
+      set.drop.push(Handler::new(handler));
+    });
+  }
+
+  /// The nearest node at or above `node` offering drag data, with what builds it.
+  #[must_use]
+  pub fn drag_source(&self, node: NodeId) -> Option<(NodeId, Handler<DragSource>)> {
+    self.ancestry(node).into_iter().find_map(|at| {
+      let source = self.record(at)?.handlers.as_ref()?.drag_source.last()?;
+
+      Some((at, source.clone()))
+    })
+  }
+
+  /// The nodes at or above `node` taking drops, innermost first, each with its drop
+  /// handlers.
+  #[must_use]
+  pub fn drop_candidates(&self, node: NodeId) -> Vec<(NodeId, Vec<Handler<DropHandler>>)> {
+    self
+      .ancestry(node)
+      .into_iter()
+      .filter_map(|at| {
+        let handlers = self.drop_handlers(at);
+
+        (!handlers.is_empty()).then_some((at, handlers))
+      })
+      .collect()
+  }
+
+  /// `node`'s drop handlers.
+  #[must_use]
+  pub fn drop_handlers(&self, node: NodeId) -> Vec<Handler<DropHandler>> {
+    self
+      .record(node)
+      .and_then(|record| record.handlers.as_ref())
+      .map_or_else(Vec::new, |handlers| handlers.drop.clone())
+  }
+
+  /// The node the drag in progress started from.
+  #[inline(always)]
+  #[must_use]
+  pub fn dragged(&self) -> Option<NodeId> {
+    self.drag.as_ref().map(|drag| drag.source)
+  }
+
+  /// What the drag in progress carries.
+  #[inline(always)]
+  #[must_use]
+  pub fn drag_data(&self) -> Option<&DragData> {
+    self.drag.as_ref().map(|drag| &drag.data)
+  }
+
+  /// The node taking the drag in progress.
+  #[inline(always)]
+  #[must_use]
+  pub fn drag_target(&self) -> Option<NodeId> {
+    self.drag.as_ref().and_then(|drag| drag.target)
+  }
+
+  /// Starts a drag from `source` carrying `data`.
+  pub(crate) fn begin_drag(&mut self, source: NodeId, data: DragData) {
+    self.drag = Some(DragRecord {
+      source,
+      data,
+      target: None,
+    });
+  }
+
+  /// Makes `target` the node taking the drag in progress.
+  pub(crate) const fn set_drag_target(&mut self, target: Option<NodeId>) {
+    if let Some(drag) = &mut self.drag {
+      drag.target = target;
+    }
+  }
+
+  /// Ends the drag in progress.
+  pub(crate) fn finish_drag(&mut self) {
+    self.drag = None;
   }
 
   /// Adds a scroll handler to `node`.

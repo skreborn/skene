@@ -279,10 +279,14 @@ impl Focus {
   }
 }
 
-/// A node's interaction state, as one resolution reads it: its own hover, focus and
-/// press, and the state of the control enclosing it.
+/// A node's interaction state, as one resolution reads it: its own hover, focus, press
+/// and drags, and the state of the control enclosing it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[must_use]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "one bool per interaction state is the domain shape"
+)]
 pub struct Interaction {
   /// Whether the pointer is over the node.
   pub hovered: bool,
@@ -290,6 +294,10 @@ pub struct Interaction {
   pub focus: Focus,
   /// Whether a press is held on the node.
   pub pressed: bool,
+  /// Whether a drag the node offered is in progress.
+  pub dragged: bool,
+  /// Whether a drag the node takes is over it.
+  pub targeted: bool,
   /// The enclosing control's state, when the node is inside one.
   pub control: Option<ControlState>,
 }
@@ -308,6 +316,8 @@ impl Interaction {
       State::Focused => self.focus != Focus::None,
       State::FocusVisible => self.focus == Focus::Shown,
       State::Pressed => self.pressed,
+      State::Dragged => self.dragged,
+      State::Targeted => self.targeted,
       State::Checked | State::Indeterminate | State::Disabled | State::Invalid | State::Open => {
         false
       }

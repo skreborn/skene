@@ -21,6 +21,18 @@ pub(crate) const CLASS_PLACEHOLDER: char = '\u{1}';
 /// The attribute an app's chosen color scheme is written to, on the document root.
 pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
 
+/// The attribute the element of the node a drag in progress started from carries.
+#[cfg(skene_leaf = "browser")]
+pub(crate) const DRAGGED_ATTRIBUTE: &str = "data-skene-dragged";
+
+/// The attribute the element of the node taking the drag in progress carries.
+#[cfg(skene_leaf = "browser")]
+pub(crate) const TARGETED_ATTRIBUTE: &str = "data-skene-targeted";
+
+/// The type a drag hands the browser where it carries no text.
+#[cfg(skene_leaf = "browser")]
+pub(crate) const DRAG_MARKER: &str = "application/x-skene-drag";
+
 /// The attribute every control's root element carries.
 pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
@@ -293,6 +305,8 @@ const fn state_rank(state: State) -> u8 {
     State::Disabled => 6,
     State::Invalid => 7,
     State::Open => 8,
+    State::Dragged => 9,
+    State::Targeted => 10,
   }
 }
 
@@ -350,6 +364,16 @@ const fn facet(state: State) -> Facet {
       own: None,
       native: None,
       attribute: Some("[data-skene-open]"),
+    },
+    State::Dragged => Facet {
+      own: Some("[data-skene-dragged]"),
+      native: None,
+      attribute: None,
+    },
+    State::Targeted => Facet {
+      own: Some("[data-skene-targeted]"),
+      native: None,
+      attribute: None,
     },
   }
 }

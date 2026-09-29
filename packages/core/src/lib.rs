@@ -28,6 +28,7 @@ mod condition;
 mod control;
 mod derived;
 mod dispatch;
+mod drag;
 mod errors;
 mod events;
 pub mod executor;
@@ -103,6 +104,16 @@ pub use dispatch::{
   notify_scroll,
   notify_selection_change,
   notify_toggle,
+};
+pub use drag::{
+  DragData,
+  DragSource,
+  DropHandler,
+  DropPhase,
+  drop_drag,
+  end_drag,
+  move_drag,
+  start_drag,
 };
 pub use errors::Errors;
 pub use events::{

@@ -275,6 +275,10 @@ pub enum EventKind {
   Toggle,
   /// An overlay was dismissed by the platform: a light dismiss, or `Escape`.
   Dismiss,
+  /// A drag started from the node, which offers what it carries.
+  DragStart,
+  /// A drag the node takes dropped on it.
+  Drop,
   /// A context menu was asked for at the node: a secondary press, or the menu key
   /// while it holds focus; the platform's own menu opens unless prevented.
   ContextMenu,

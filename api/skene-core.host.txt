@@ -1132,6 +1132,20 @@ impl core::hash::Hash for skene_core::DragAxes
 pub fn skene_core::DragAxes::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::DragAxes
 impl core::marker::StructuralPartialEq for skene_core::DragAxes
+pub enum skene_core::DropPhase
+pub skene_core::DropPhase::Dropped
+pub skene_core::DropPhase::Offered
+impl core::clone::Clone for skene_core::DropPhase
+pub fn skene_core::DropPhase::clone(&self) -> skene_core::DropPhase
+impl core::cmp::Eq for skene_core::DropPhase
+impl core::cmp::PartialEq for skene_core::DropPhase
+pub fn skene_core::DropPhase::eq(&self, &skene_core::DropPhase) -> bool
+impl core::fmt::Debug for skene_core::DropPhase
+pub fn skene_core::DropPhase::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::DropPhase
+pub fn skene_core::DropPhase::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::DropPhase
+impl core::marker::StructuralPartialEq for skene_core::DropPhase
 pub enum skene_core::Easing
 pub skene_core::Easing::CubicBezier(f32, f32, f32, f32)
 pub skene_core::Easing::Ease
@@ -1174,6 +1188,8 @@ pub skene_core::EventKind::Click
 pub skene_core::EventKind::ContextMenu
 pub skene_core::EventKind::Dismiss
 pub skene_core::EventKind::DoubleClick
+pub skene_core::EventKind::DragStart
+pub skene_core::EventKind::Drop
 pub skene_core::EventKind::Focus
 pub skene_core::EventKind::KeyDown
 pub skene_core::EventKind::KeyUp
@@ -1903,6 +1919,7 @@ pub fn skene_core::SlotValue<N, X>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::State
 pub skene_core::State::Checked
 pub skene_core::State::Disabled
+pub skene_core::State::Dragged
 pub skene_core::State::FocusVisible
 pub skene_core::State::Focused
 pub skene_core::State::Hovered
@@ -1910,6 +1927,7 @@ pub skene_core::State::Indeterminate
 pub skene_core::State::Invalid
 pub skene_core::State::Open
 pub skene_core::State::Pressed
+pub skene_core::State::Targeted
 impl skene_core::State
 pub const fn skene_core::State::is_control_state(self) -> bool
 impl core::clone::Clone for skene_core::State
@@ -2665,6 +2683,18 @@ impl<K: core::clone::Clone, V: core::clone::Clone> core::clone::Clone for skene_
 pub fn skene_core::DerivedSlot<K, V>::clone(&self) -> skene_core::DerivedSlot<K, V>
 impl<K: core::fmt::Debug, V> core::fmt::Debug for skene_core::DerivedSlot<K, V>
 pub fn skene_core::DerivedSlot<K, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::DragData
+impl skene_core::DragData
+pub fn skene_core::DragData::new(impl core::any::Any) -> Self
+pub fn skene_core::DragData::text(&self) -> core::option::Option<&str>
+pub fn skene_core::DragData::value<T: 'static>(&self) -> core::option::Option<&T>
+pub fn skene_core::DragData::with_text(self, impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for skene_core::DragData
+pub fn skene_core::DragData::clone(&self) -> skene_core::DragData
+impl core::default::Default for skene_core::DragData
+pub fn skene_core::DragData::default() -> skene_core::DragData
+impl core::fmt::Debug for skene_core::DragData
+pub fn skene_core::DragData::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Environment<N>
 pub skene_core::Environment::high_contrast: bool
 pub skene_core::Environment::hover: bool
@@ -3003,6 +3033,8 @@ pub fn skene_core::HandlerSet::click(&self) -> &[skene_core::Handler<skene_core:
 pub fn skene_core::HandlerSet::context_menu(&self) -> &[skene_core::Handler<skene_core::PointerHandler>]
 pub fn skene_core::HandlerSet::dismiss(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
 pub fn skene_core::HandlerSet::double_click(&self) -> &[skene_core::Handler<skene_core::ClickHandler>]
+pub fn skene_core::HandlerSet::drag_source(&self) -> &[skene_core::Handler<skene_core::DragSource>]
+pub fn skene_core::HandlerSet::drop(&self) -> &[skene_core::Handler<skene_core::DropHandler>]
 pub fn skene_core::HandlerSet::focus(&self) -> &[skene_core::Handler<skene_core::PlainHandler>]
 pub fn skene_core::HandlerSet::key_down(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
 pub fn skene_core::HandlerSet::key_up(&self) -> &[skene_core::Handler<skene_core::KeyHandler>]
@@ -3064,9 +3096,11 @@ pub fn skene_core::Inset<T>::interpolate(&self, &Self, f32) -> core::option::Opt
 pub fn skene_core::Inset<T>::interpolates_with(&self, &Self) -> bool
 pub struct skene_core::Interaction
 pub skene_core::Interaction::control: core::option::Option<skene_core::ControlState>
+pub skene_core::Interaction::dragged: bool
 pub skene_core::Interaction::focus: skene_core::Focus
 pub skene_core::Interaction::hovered: bool
 pub skene_core::Interaction::pressed: bool
+pub skene_core::Interaction::targeted: bool
 impl skene_core::Interaction
 pub fn skene_core::Interaction::holds(&self, skene_core::State) -> bool
 impl core::clone::Clone for skene_core::Interaction
@@ -3636,6 +3670,12 @@ pub fn skene_core::Scene<P>::describe(&mut self, skene_core::NodeId, alloc::vec:
 pub fn skene_core::Scene<P>::destroy(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::detach(&mut self, skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Scene<P>::dismissed_by_press(&self, &[skene_core::NodeId], core::option::Option<skene_core::NodeId>) -> alloc::vec::Vec<skene_core::NodeId>
+pub fn skene_core::Scene<P>::drag_data(&self) -> core::option::Option<&skene_core::DragData>
+pub fn skene_core::Scene<P>::drag_source(&self, skene_core::NodeId) -> core::option::Option<(skene_core::NodeId, skene_core::Handler<skene_core::DragSource>)>
+pub fn skene_core::Scene<P>::drag_target(&self) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::dragged(&self) -> core::option::Option<skene_core::NodeId>
+pub fn skene_core::Scene<P>::drop_candidates(&self, skene_core::NodeId) -> alloc::vec::Vec<(skene_core::NodeId, alloc::vec::Vec<skene_core::Handler<skene_core::DropHandler>>)>
+pub fn skene_core::Scene<P>::drop_handlers(&self, skene_core::NodeId) -> alloc::vec::Vec<skene_core::Handler<skene_core::DropHandler>>
 pub fn skene_core::Scene<P>::enclosing_control(&self, skene_core::NodeId) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::focus_holder_within(&self, skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::focus_order(&self, skene_core::NodeId) -> core::option::Option<skene_core::FocusOrder>
@@ -3650,6 +3690,8 @@ pub fn skene_core::Scene<P>::handle_click_acting(&mut self, skene_core::NodeId, 
 pub fn skene_core::Scene<P>::handle_context_menu(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PointerHandler>)
 pub fn skene_core::Scene<P>::handle_dismiss(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_double_click(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ClickHandler>)
+pub fn skene_core::Scene<P>::handle_drag_source(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::DragSource>)
+pub fn skene_core::Scene<P>::handle_drop(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::DropHandler>)
 pub fn skene_core::Scene<P>::handle_focus(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::PlainHandler>)
 pub fn skene_core::Scene<P>::handle_key_down(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
 pub fn skene_core::Scene<P>::handle_key_up(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::KeyHandler>)
@@ -4752,9 +4794,12 @@ pub fn skene_core::dispatch_pointer_down<P: skene_core::Platform>(skene_core::No
 pub fn skene_core::dispatch_pointer_move<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_pointer_up<P: skene_core::Platform>(skene_core::NodeId, &skene_core::PointerEvent) -> skene_core::Prevented
 pub fn skene_core::dispatch_wheel<P: skene_core::Platform>(skene_core::NodeId, &skene_core::WheelEvent) -> skene_core::Prevented
+pub fn skene_core::drop_drag<P: skene_core::Platform>() -> bool
 pub fn skene_core::empty<P: skene_core::Platform>() -> impl skene_core::View<P>
+pub fn skene_core::end_drag<P: skene_core::Platform>()
 pub fn skene_core::item_window(f32, f32, f32, usize, usize) -> skene_core::ItemWindow
 pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::ItemWindow
+pub fn skene_core::move_drag<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::notify_change<P: skene_core::Platform>(skene_core::NodeId, &str)
 pub fn skene_core::notify_dismiss<P: skene_core::Platform>(skene_core::NodeId)
 pub fn skene_core::notify_focus_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>)
@@ -4765,6 +4810,7 @@ pub fn skene_core::notify_toggle<P: skene_core::Platform>(skene_core::NodeId, bo
 pub fn skene_core::reconcile<P: skene_core::Platform, T, I, K>(skene_core::NodeId, impl core::ops::function::Fn() -> I + 'static, impl core::ops::function::Fn(&T) -> K + 'static, impl core::ops::function::Fn(T) -> skene_core::NodeId + 'static) where I: core::iter::traits::collect::IntoIterator<Item = T>, K: core::cmp::Eq + core::hash::Hash + 'static
 pub fn skene_core::reset_root_owner()
 pub fn skene_core::root_owner() -> skene_reactive::owner::Owner
+pub fn skene_core::start_drag<P: skene_core::Platform>(skene_core::NodeId) -> core::option::Option<(skene_core::NodeId, skene_core::DragData)>
 pub type skene_core::Annotated<P, T> = skene_core::Value<T, skene_core::Condition<<P as skene_core::Platform>::Scalar>>
 pub type skene_core::BoxKeyframe<P> = skene_core::BoxStyle<<P as skene_core::Platform>::Scalar, skene_core::Keyframe, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::BoxSlot<N, X> = skene_core::DerivedSlot<skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>, skene_core::BoxValue<N, X>>
@@ -4773,6 +4819,8 @@ pub type skene_core::ClickHandler = dyn core::ops::function::Fn(&skene_core::Cli
 pub type skene_core::DeclaredBoxStyle<P> = skene_core::BoxStyle<<P as skene_core::Platform>::Scalar, skene_core::Declared<skene_core::Condition<<P as skene_core::Platform>::Scalar>>, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::DeclaredRunStyle<P> = skene_core::RunStyle<skene_core::Declared<skene_core::Condition<<P as skene_core::Platform>::Scalar>>, <P as skene_core::Platform>::StyleExt>
 pub type skene_core::Definition<T, N> = skene_core::Conditional<skene_core::StaticLeaf<T>, skene_core::Media<N>>
+pub type skene_core::DragSource = dyn core::ops::function::Fn() -> skene_core::DragData
+pub type skene_core::DropHandler = dyn core::ops::function::Fn(&skene_core::DragData, skene_core::DropPhase) -> bool
 pub type skene_core::KeyHandler = dyn core::ops::function::Fn(&skene_core::KeyEvent) -> skene_core::Prevent
 pub type skene_core::PlainHandler = dyn core::ops::function::Fn()
 pub type skene_core::PointerHandler = dyn core::ops::function::Fn(&skene_core::PointerEvent) -> skene_core::Prevent

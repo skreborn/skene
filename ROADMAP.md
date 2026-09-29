@@ -33,9 +33,9 @@ left half-done in a code comment.
     - Interaction: a group run's state variants reach its spans, as a rule on the
     group's class redefining the ink where the state holds; the token definitions it
     redefines condition on media alone, so this waits on the styling direction.
-    - Typed events: drag and drop; actions and keymaps, so menu shortcuts act; a
-    gesture arena before touch lands, its exception to "a view that handles an
-    interaction owns it" written down.
+    - Typed events: actions and keymaps, so menu shortcuts act; a gesture arena before
+    touch lands, its exception to "a view that handles an interaction owns it" written
+    down.
     - The terminal's own chrome becomes presentation its user sets: a scrollbar's marks
     and inks, and a shadow's offset and softening, become properties of the box they
     decorate, as the web's `scrollbar-color` and `box-shadow` are.

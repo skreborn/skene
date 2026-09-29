@@ -151,6 +151,16 @@ platform crate, since it is not a shared contract.
   click carries its modifiers and its place in a run of quick clicks at one spot
   (`ClickEvent`, `0` for a key's), and the second click of a double dispatches
   `DoubleClick` after itself, as `dblclick` follows `click`.
+- **Drag and drop is core's too.** A box offers what a drag from it carries
+  (`Container::set_drag_data`, a `DragData` of the app's value and any text another
+  app may read, built as the drag starts), and the platform recognizes the gesture—the
+  browser's own drag and drop, the terminal once a press's pointer leaves its cell,
+  cancelling the press—while core carries the drag over the scene (`start_drag`,
+  `move_drag`, `drop_drag`, `end_drag`): the nearest node at or above the pointer that
+  takes what it carries (`Container::handle_drop`, taking a `T`) is its target, the
+  source holding `Dragged` and the target `Targeted` while it lasts, and a drop runs
+  the target's action. The web hands the browser the drag's text, and `Escape` abandons
+  a terminal drag.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its

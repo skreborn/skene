@@ -172,6 +172,25 @@ impl<N: Scalar> SimpleLook<N> {
     self
   }
 
+  /// The look with its tokens named for `variant`, its definitions kept.
+  fn named_for(self, variant: SimpleVariant) -> Self {
+    let rename = |token: &Token<Color, N>, name: TokenRef<Color>| {
+      Token::new(name.name().as_str(), token.definition().clone())
+    };
+
+    Self {
+      surface: rename(&self.surface, variant.surface()),
+      ink: rename(&self.ink, variant.ink()),
+      border: self
+        .border
+        .as_ref()
+        .map(|border| rename(border, variant.border())),
+      hover: rename(&self.hover, variant.hover()),
+      focus: rename(&self.focus, variant.focus()),
+      variant,
+    }
+  }
+
   /// Appends the look's definitions, erased into `V`.
   fn define_into<V: From<Definition<Color, N>>>(&self, definitions: &mut Vec<(TokenName, V)>) {
     definitions.push(self.surface.define());
@@ -389,42 +408,47 @@ impl<N: Scalar> SimplePalette<N> {
     self
   }
 
-  /// Sets the main action's colors.
+  /// Sets the main action's colors, naming the look's tokens for the main action
+  /// whichever variant it was made for.
   #[inline(always)]
   pub fn set_primary(mut self, primary: SimpleLook<N>) -> Self {
-    self.primary = primary;
+    self.primary = primary.named_for(SimpleVariant::Primary);
 
     self
   }
 
-  /// Sets the supporting action's colors.
+  /// Sets the supporting action's colors, naming the look's tokens for the supporting
+  /// action whichever variant it was made for.
   #[inline(always)]
   pub fn set_secondary(mut self, secondary: SimpleLook<N>) -> Self {
-    self.secondary = secondary;
+    self.secondary = secondary.named_for(SimpleVariant::Secondary);
 
     self
   }
 
-  /// Sets the hairline-bordered action's colors.
+  /// Sets the hairline-bordered action's colors, naming the look's tokens for it
+  /// whichever variant it was made for.
   #[inline(always)]
   pub fn set_outline(mut self, outline: SimpleLook<N>) -> Self {
-    self.outline = outline;
+    self.outline = outline.named_for(SimpleVariant::Outline);
 
     self
   }
 
-  /// Sets the bare action's colors.
+  /// Sets the bare action's colors, naming the look's tokens for it whichever variant
+  /// it was made for.
   #[inline(always)]
   pub fn set_ghost(mut self, ghost: SimpleLook<N>) -> Self {
-    self.ghost = ghost;
+    self.ghost = ghost.named_for(SimpleVariant::Ghost);
 
     self
   }
 
-  /// Sets the dangerous action's colors.
+  /// Sets the dangerous action's colors, naming the look's tokens for it whichever
+  /// variant it was made for.
   #[inline(always)]
   pub fn set_destructive(mut self, destructive: SimpleLook<N>) -> Self {
-    self.destructive = destructive;
+    self.destructive = destructive.named_for(SimpleVariant::Destructive);
 
     self
   }
@@ -555,4 +579,35 @@ fn alias<N: Scalar, V: From<Definition<Color, N>>>(
   target: TokenRef<Color>,
 ) -> (TokenName, V) {
   (token.name(), V::from(Definition::<Color, N>::from(target)))
+}
+
+#[cfg(test)]
+mod tests {
+  use skene_core::{Color, Definition, TokenName, TokenSet};
+
+  use super::{SimpleLook, SimplePalette, SimpleVariant};
+
+  /// A look set into a slot takes the slot's token names whichever variant it was made
+  /// for, so every variant is defined once.
+  #[test]
+  fn a_slot_names_the_look_it_holds() {
+    let red = Color::srgb(1., 0., 0.);
+    let palette =
+      SimplePalette::<f32>::default().set_primary(SimpleLook::new(SimpleVariant::Ghost, red, red));
+    let definitions: Vec<(TokenName, Definition<Color, f32>)> = palette.definitions();
+    let defined = |name: TokenName| {
+      definitions
+        .iter()
+        .filter(|(defined, _)| *defined == name)
+        .count()
+    };
+
+    assert_eq!(palette.primary.variant(), SimpleVariant::Primary);
+    assert_eq!(
+      palette.primary.surface.name(),
+      SimplePalette::<f32>::PRIMARY_SURFACE.name()
+    );
+    assert_eq!(defined(SimplePalette::<f32>::PRIMARY_SURFACE.name()), 1);
+    assert_eq!(defined(SimplePalette::<f32>::GHOST_SURFACE.name()), 1);
+  }
 }

@@ -233,11 +233,11 @@ pub type Painter = dyn Fn(&mut Canvas, Size<f32>);
 pub trait Painting: Platform {
   /// Paints `painter` into the box `sink` at its laid-out size, now and whenever the
   /// box repaints; a later call replaces the painter.
-  fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);
+  fn paint(sink: Self::Sink, painter: Box<Painter>);
 
   /// Whether a painted box shows as pixels, as a signal: false on the server leaf,
   /// on the browser leaf until it is live and in the terminal until its graphics are
   /// proven, true once they are; what [`Painted::set_fallback`](crate::Painted::set_fallback)
   /// waits on.
-  fn available(&self) -> ReadSignal<bool>;
+  fn available() -> ReadSignal<bool>;
 }

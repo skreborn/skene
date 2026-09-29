@@ -181,7 +181,7 @@ fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, 
 
     move || {
       if let Some(timer) = pending.take() {
-        P::default().cancel(timer);
+        P::cancel(timer);
       }
     }
   });
@@ -199,7 +199,7 @@ fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, 
       cancel();
 
       let done = Rc::clone(&pending);
-      let timer = P::default().schedule(
+      let timer = P::schedule(
         wait,
         Box::new(move || {
           done.set(None);

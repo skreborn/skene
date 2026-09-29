@@ -1892,7 +1892,7 @@ mod tests {
   fn a_huge_delay_waits_the_longest() {
     crate::install();
 
-    let _ = Tui.schedule(Duration::MAX, Box::new(|| {}));
+    let _ = Tui::schedule(Duration::MAX, Box::new(|| {}));
 
     assert_eq!(
       with_store(|store| store.next_timer_due()),

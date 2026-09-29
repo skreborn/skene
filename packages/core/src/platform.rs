@@ -47,6 +47,45 @@ use crate::{
 #[must_use]
 pub struct Timer(pub u64);
 
+/// A size observation a platform keeps: [`stop`](Self::stop) ends it, and it ends with
+/// its node otherwise.
+pub struct Observation {
+  stop: Option<Box<dyn FnOnce()>>,
+}
+
+impl Observation {
+  /// An observation `stop` ends.
+  #[inline(always)]
+  pub fn new(stop: impl FnOnce() + 'static) -> Self {
+    Self {
+      stop: Some(Box::new(stop)),
+    }
+  }
+
+  /// An observation with nothing to end, from a platform that never measures.
+  #[inline(always)]
+  #[must_use]
+  pub const fn unmeasured() -> Self {
+    Self { stop: None }
+  }
+
+  /// Ends the observation: its report is not called again.
+  #[inline(always)]
+  pub fn stop(self) {
+    if let Some(stop) = self.stop {
+      stop();
+    }
+  }
+}
+
+impl Debug for Observation {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("Observation")
+      .finish_non_exhaustive()
+  }
+}
+
 /// The one-shot actions a platform scheduled on its clock, each due at a reading.
 ///
 /// A platform runs them earliest due first, those due together in the order they were
@@ -156,8 +195,9 @@ impl<A> Timers<A> {
 /// anchors, scopes, tree mutations, tokens, event registration, focus, values, sizes,
 /// media and a clock.
 ///
-/// Zero-sized and monomorphized: a facade names exactly one platform, and every view is
-/// written once against the trait. Conditions follow from [`Scalar`](Self::Scalar) as
+/// Zero-sized and monomorphized: a facade names exactly one platform, every view is
+/// written once against the trait, and every operation is an associated function over
+/// sinks passed by value. Conditions follow from [`Scalar`](Self::Scalar) as
 /// `Condition<Self::Scalar>`. Core owns the [`Scene`] and every operation on it; a
 /// platform declares the thread-local holding it and is called only to mirror each
 /// mutation into its sink. `Painted` and embeds are outside this trait: their payloads
@@ -197,51 +237,50 @@ pub trait Platform: Copy + Default + 'static {
   /// Tells the platform the id the scene minted for `sink`, once, right after the sink
   /// was created.
   #[inline(always)]
-  fn bind_node(&self, _sink: &Self::Sink, _node: NodeId) {}
+  fn bind_node(_sink: Self::Sink, _node: NodeId) {}
 
   /// Realizes a box.
-  fn create_box(&self, props: &BoxProps<Self>) -> Self::Sink;
+  fn create_box(props: &BoxProps<Self>) -> Self::Sink;
 
   /// Writes the leaf a derived leaf computed into its slot on a box, or in the layout a
   /// wrapper gave a run or a low-level node: a value, or a token or expression the
   /// platform resolves where it reads the slot.
   fn update_box(
-    &self,
-    sink: &Self::Sink,
+    sink: Self::Sink,
     slot: Slot,
     leaf: &StaticLeaf<BoxValue<Self::Scalar, Self::StyleExt>>,
   );
 
   /// Replaces a box's place in focus traversal; `None` takes it out of focus.
-  fn update_focus_order(&self, sink: &Self::Sink, focus_order: Option<FocusOrder>);
+  fn update_focus_order(sink: Self::Sink, focus_order: Option<FocusOrder>);
 
   /// Replaces the accessibility properties a box reports.
-  fn update_access(&self, sink: &Self::Sink, access: &[AccessProp]);
+  fn update_access(sink: Self::Sink, access: &[AccessProp]);
 
   /// Realizes a control: a box a platform may stand a native element in for.
-  fn create_control(&self, props: &ControlProps<Self>) -> Self::Sink;
+  fn create_control(props: &ControlProps<Self>) -> Self::Sink;
 
   /// Mirrors a control's state, for a platform whose native element holds it too.
-  fn set_control_state(&self, sink: &Self::Sink, state: &ControlState);
+  fn set_control_state(sink: Self::Sink, state: &ControlState);
 
   /// Realizes an overlay: a box shown above the app while open, closed at first.
-  fn create_overlay(&self, props: &OverlayProps<Self>) -> Self::Sink;
+  fn create_overlay(props: &OverlayProps<Self>) -> Self::Sink;
 
   /// Opens or closes an overlay; an open overlay placed against `anchor` sits by it
   /// rather than by the viewport.
-  fn set_overlay_open(&self, sink: &Self::Sink, open: bool, anchor: Option<&Self::Sink>);
+  fn set_overlay_open(sink: Self::Sink, open: bool, anchor: Option<Self::Sink>);
 
   /// Replaces where an overlay sits; an open overlay is re-placed by the
   /// [`set_overlay_open`](Self::set_overlay_open) that follows.
   #[inline(always)]
-  fn set_overlay_placement(&self, _sink: &Self::Sink, _placement: Placement) {}
+  fn set_overlay_placement(_sink: Self::Sink, _placement: Placement) {}
 
   /// Pins an overlay's top-start corner to `position`, in the units a pointer event
   /// reports, or unpins it for `None`; a pinned overlay ignores its placement and
   /// anchor, and is shifted to stay within the viewport. An open overlay moves at the
   /// [`set_overlay_open`](Self::set_overlay_open) that follows.
   #[inline(always)]
-  fn set_overlay_position(&self, _sink: &Self::Sink, _position: Option<Point<f32>>) {}
+  fn set_overlay_position(_sink: Self::Sink, _position: Option<Point<f32>>) {}
 
   /// Gives the node a low-level view made at `sink` the per-child layout a wrapper
   /// annotated it with: its flexibility, alignment, pinning and grid placement, as a
@@ -249,75 +288,76 @@ pub trait Platform: Copy + Default + 'static {
   /// [`update_box`](Self::update_box) writes. A platform that lays out from the
   /// scene's annotations needs nothing here.
   #[inline(always)]
-  fn apply_layout(&self, _sink: &Self::Sink, _layout: &StaticBoxStyle<Self>) {}
+  fn apply_layout(_sink: Self::Sink, _layout: &StaticBoxStyle<Self>) {}
 
   /// Realizes a text run.
-  fn create_run(&self, props: &RunProps<Self>) -> Self::Sink;
+  fn create_run(props: &RunProps<Self>) -> Self::Sink;
 
   /// Writes the leaf a derived leaf computed into its slot on a run: a value, or a
   /// token or expression the platform resolves where it reads the slot.
-  fn update_run(&self, sink: &Self::Sink, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
+  fn update_run(sink: Self::Sink, slot: Slot, leaf: &StaticLeaf<RunValue<Self::StyleExt>>);
 
   /// Replaces a run's text.
-  fn set_text(&self, sink: &Self::Sink, text: &str);
+  fn set_text(sink: Self::Sink, text: &str);
 
   /// Realizes an anchor: a layout-invisible marker a reactive subtree mounts between.
-  fn create_anchor(&self) -> Self::Sink;
+  fn create_anchor() -> Self::Sink;
 
   /// Realizes a scope: a layout-invisible node token definitions hang off.
-  fn create_scope(&self) -> Self::Sink;
+  fn create_scope() -> Self::Sink;
 
   /// Places `child` under `parent`, immediately before `before` when given, else last.
-  fn attach(&self, parent: &Self::Sink, child: &Self::Sink, before: Option<&Self::Sink>);
+  fn attach(parent: Self::Sink, child: Self::Sink, before: Option<Self::Sink>);
 
   /// Removes `child` from under `parent`.
-  fn detach(&self, parent: &Self::Sink, child: &Self::Sink);
+  fn detach(parent: Self::Sink, child: Self::Sink);
 
   /// Releases a sink the scene no longer holds.
-  fn destroy(&self, sink: Self::Sink);
+  fn destroy(sink: Self::Sink);
 
   /// Defines tokens on a scope, replacing what the scope defined before.
-  fn define_tokens(&self, scope: &Self::Sink, definitions: &Definitions<Self::TokenValue>);
+  fn define_tokens(scope: Self::Sink, definitions: &Definitions<Self::TokenValue>);
 
   /// Defines the tokens every node falls back to, replacing the previous set.
-  fn define_root_tokens(&self, definitions: &Definitions<Self::TokenValue>);
+  fn define_root_tokens(definitions: &Definitions<Self::TokenValue>);
 
   /// Notes that a node has a handler for `kind`; dispatch itself is core's.
-  fn listen(&self, sink: &Self::Sink, kind: EventKind);
+  fn listen(sink: Self::Sink, kind: EventKind);
 
   /// `event` with its local position measured from `sink`'s top-left corner; unchanged
   /// on a platform that lays nothing out.
   #[inline(always)]
-  fn localize_pointer(&self, _sink: &Self::Sink, event: &PointerEvent) -> PointerEvent {
+  fn localize_pointer(_sink: Self::Sink, event: &PointerEvent) -> PointerEvent {
     *event
   }
 
   /// Moves focus to a node.
-  fn focus(&self, sink: &Self::Sink);
+  fn focus(sink: Self::Sink);
 
   /// Takes focus off a node.
-  fn blur(&self, sink: &Self::Sink);
+  fn blur(sink: Self::Sink);
 
   /// Writes the options a platform-drawn picker offers, in order; a platform without
   /// one ignores them.
   #[inline(always)]
-  fn set_options(&self, _sink: &Self::Sink, _options: &[PickerOption]) {}
+  fn set_options(_sink: Self::Sink, _options: &[PickerOption]) {}
 
   /// Writes a control's textual value; a focused entry keeps its caret, clamped into
   /// the value.
-  fn set_value(&self, sink: &Self::Sink, value: &str);
+  fn set_value(sink: Self::Sink, value: &str);
 
   /// Writes a text entry's selection.
-  fn set_selection(&self, sink: &Self::Sink, selection: TextSelection);
+  fn set_selection(sink: Self::Sink, selection: TextSelection);
 
   /// Writes a control's checked state.
-  fn set_checked(&self, sink: &Self::Sink, checked: bool);
+  fn set_checked(sink: Self::Sink, checked: bool);
 
-  /// Reports a node's measured size to `report`, now and whenever it changes.
-  fn observe_size(&self, sink: &Self::Sink, report: Rc<dyn Fn(Size<Self::Scalar>)>);
+  /// Reports a node's measured size to `report`, now and whenever it changes, until
+  /// the observation this returns is stopped or the node is destroyed.
+  fn observe_size(sink: Self::Sink, report: Rc<dyn Fn(Size<Self::Scalar>)>) -> Observation;
 
   /// The environment as signals.
-  fn media(&self) -> MediaSignals<Self::Scalar>;
+  fn media() -> MediaSignals<Self::Scalar>;
 
   /// The signal that turns true once a render made without script has been hydrated,
   /// and stays false on a render that never is; `None` where the tree is live from
@@ -326,41 +366,42 @@ pub trait Platform: Copy + Default + 'static {
   /// Only a platform with a scriptless render answers: the web leaves, and the headless
   /// platform standing in for them under a test. Every other platform keeps the default.
   #[inline(always)]
-  fn hydration(&self) -> Option<ReadSignal<bool>> {
+  #[must_use]
+  fn hydration() -> Option<ReadSignal<bool>> {
     None
   }
 
   /// Puts `scheme` in force throughout, overriding the platform's preference and
   /// touching no node; `None` returns to following the platform.
-  fn set_scheme(&self, scheme: Option<ColorScheme>);
+  fn set_scheme(scheme: Option<ColorScheme>);
 
   /// The scheme the app put in force, or a previous run stored, when there is one.
-  fn stored_scheme(&self) -> Option<ColorScheme>;
+  fn stored_scheme() -> Option<ColorScheme>;
 
   /// Runs `action` once `delay` has passed on the platform's clock, unless cancelled
   /// first; a platform without a clock never runs it.
-  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer;
+  fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer;
 
   /// Drops the action `timer` names, if it has not run.
-  fn cancel(&self, timer: Timer);
+  fn cancel(timer: Timer);
 
   /// Whether `action` can be offered on what the platform holds selected or focused
   /// right now; a platform without a clipboard offers nothing.
   #[inline(always)]
-  fn clipboard_availability(&self, _action: ClipboardAction) -> Availability {
+  fn clipboard_availability(_action: ClipboardAction) -> Availability {
     Availability::Absent
   }
 
   /// Performs `action` on what the platform holds selected or focused, when it is
   /// [`Enabled`](Availability::Enabled); a platform without a clipboard does nothing.
   #[inline(always)]
-  fn clipboard(&self, _action: ClipboardAction) {}
+  fn clipboard(_action: ClipboardAction) {}
 
   /// Whether `media` holds, as a memo following the environment; a container condition
   /// never holds here, since it is answered per node by the box it names.
   ///
   /// [`MediaSignals::watch`] answers it from the platform's signals.
-  fn watch_media(&self, media: &Media<Self::Scalar>) -> Memo<bool>;
+  fn watch_media(media: &Media<Self::Scalar>) -> Memo<bool>;
 }
 
 #[cfg(test)]

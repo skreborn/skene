@@ -234,7 +234,7 @@ impl<P: Platform> Behavior<P> for Range {
     let axis = self.axis;
 
     control.with_sink(|sink| {
-      P::default().observe_size(
+      let _observed = P::observe_size(
         sink,
         Rc::new(move |size| {
           extent.set(match axis {

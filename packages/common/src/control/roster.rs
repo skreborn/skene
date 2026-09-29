@@ -109,7 +109,7 @@ impl Roster {
   /// there is one.
   pub fn focus_at<P: Platform>(&self, index: usize) {
     if let Some((node, _)) = self.enabled::<P>().get(index) {
-      with_sink::<P, _>(*node, |sink| P::default().focus(sink));
+      with_sink::<P, _>(*node, |sink| P::focus(sink));
     }
   }
 
@@ -122,7 +122,7 @@ impl Roster {
       .unwrap_or(0);
 
     if let Some((node, _)) = members.get(index) {
-      with_sink::<P, _>(*node, |sink| P::default().focus(sink));
+      with_sink::<P, _>(*node, |sink| P::focus(sink));
     }
   }
 

@@ -132,7 +132,7 @@ impl<P: Platform> View<P> for Text<P> {
 
     self
       .content
-      .bind::<P>(node, |sink, text| P::default().set_text(sink, text));
+      .bind::<P>(node, |sink, text| P::set_text(sink, text));
 
     node
   }

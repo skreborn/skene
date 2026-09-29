@@ -200,7 +200,7 @@ where
 
     match self.content {
       Content::Text(content) => {
-        content.bind::<P>(node, |sink, text| P::default().set_text(sink, text));
+        content.bind::<P>(node, |sink, text| P::set_text(sink, text));
       }
       Content::Group(spans) => {
         for span in spans {

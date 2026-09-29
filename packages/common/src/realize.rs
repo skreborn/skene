@@ -25,10 +25,10 @@ use skene_reactive::Effect;
 /// The scene is released before `operation` runs, so a platform call inside it may
 /// reach the scene again.
 #[inline(always)]
-pub fn with_sink<P: Platform, R>(node: NodeId, operation: impl FnOnce(&P::Sink) -> R) -> Option<R> {
+pub fn with_sink<P: Platform, R>(node: NodeId, operation: impl FnOnce(P::Sink) -> R) -> Option<R> {
   let sink = Scene::<P>::with(|scene| scene.sink(node))?;
 
-  Some(operation(&sink))
+  Some(operation(sink))
 }
 
 /// Binds a render effect that computes `slot`'s leaf and writes it into the box
@@ -39,7 +39,7 @@ pub fn bind_box_slot<P: Platform>(node: NodeId, slot: BoxSlot<P::Scalar, P::Styl
   Effect::render(move |_: Option<()>| {
     let value = compute();
 
-    with_sink::<P, _>(node, |sink| P::default().update_box(sink, slot, &value));
+    with_sink::<P, _>(node, |sink| P::update_box(sink, slot, &value));
   });
 }
 
@@ -51,7 +51,7 @@ pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
   Effect::render(move |_: Option<()>| {
     let value = compute();
 
-    with_sink::<P, _>(node, |sink| P::default().update_run(sink, slot, &value));
+    with_sink::<P, _>(node, |sink| P::update_run(sink, slot, &value));
   });
 }
 
@@ -60,7 +60,7 @@ pub fn bind_run_slot<P: Platform>(node: NodeId, slot: RunSlot<P::StyleExt>) {
 pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.report_access(node, access));
 
-  with_sink::<P, _>(node, |sink| P::default().update_access(sink, &access));
+  with_sink::<P, _>(node, |sink| P::update_access(sink, &access));
 }
 
 /// Reports `description` as what a view describing `node` says to assistive
@@ -68,7 +68,7 @@ pub fn report_access<P: Platform>(node: NodeId, access: Vec<AccessProp>) {
 pub fn describe<P: Platform>(node: NodeId, description: Vec<AccessProp>) {
   let access = Scene::<P>::with(|scene| scene.describe(node, description));
 
-  with_sink::<P, _>(node, |sink| P::default().update_access(sink, &access));
+  with_sink::<P, _>(node, |sink| P::update_access(sink, &access));
 }
 
 /// A setting outside the style model: fixed, or recomputed from the signals it reads.
@@ -117,7 +117,7 @@ impl<T: 'static> Source<T> {
 
   /// Writes the value into `node` through `write`: once for a fixed value, and under a
   /// render effect for a derived one.
-  pub fn bind<P: Platform>(self, node: NodeId, write: impl Fn(&P::Sink, &T) + 'static) {
+  pub fn bind<P: Platform>(self, node: NodeId, write: impl Fn(P::Sink, &T) + 'static) {
     match self {
       Self::Fixed(value) => {
         with_sink::<P, _>(node, |sink| write(sink, &value));
@@ -190,7 +190,7 @@ impl<P: Platform> LowLevel<P> {
     if let Some(annotation) = annotation {
       let (layout, slots) = annotation.into_style().split();
 
-      with_sink::<P, _>(node, |sink| P::default().apply_layout(sink, &layout));
+      with_sink::<P, _>(node, |sink| P::apply_layout(sink, &layout));
 
       for slot in slots {
         bind_box_slot::<P>(node, slot);

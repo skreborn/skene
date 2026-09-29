@@ -37,6 +37,7 @@ use skene_core::{
   MediaSignals,
   NodeId,
   NodeKind,
+  Observation,
   OverlayProps,
   Part,
   PickerOption,
@@ -1130,9 +1131,9 @@ fn finish_box(index: u32, props: &BoxProps<Web>, compiled: &Rc<Compiled>) {
 }
 
 impl Painting for Web {
-  fn paint(&self, _sink: &u32, _painter: Box<Painter>) {}
+  fn paint(_sink: u32, _painter: Box<Painter>) {}
 
-  fn available(&self) -> ReadSignal<bool> {
+  fn available() -> ReadSignal<bool> {
     with_media(|media| media.absent)
   }
 }
@@ -1147,7 +1148,7 @@ impl Platform for Web {
     &SCENE
   }
 
-  fn create_box(&self, props: &BoxProps<Self>) -> u32 {
+  fn create_box(props: &BoxProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
       let index = tree.element(box_tag(props.role, props.destination.is_some()));
 
@@ -1175,8 +1176,8 @@ impl Platform for Web {
     index
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
-    with_node(*sink, |node| {
+  fn update_box(sink: u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+    with_node(sink, |node| {
       let binding = node
         .slots
         .iter()
@@ -1189,9 +1190,9 @@ impl Platform for Web {
     });
   }
 
-  fn update_focus_order(&self, sink: &u32, focus_order: Option<FocusOrder>) {
+  fn update_focus_order(sink: u32, focus_order: Option<FocusOrder>) {
     with_tree(|tree| {
-      let target = tree.carrier(*sink);
+      let target = tree.carrier(sink);
 
       if let Some(node) = tree.node(target) {
         write_focus_order(node, focus_order);
@@ -1199,9 +1200,9 @@ impl Platform for Web {
     });
   }
 
-  fn update_access(&self, sink: &u32, access: &[AccessProp]) {
+  fn update_access(sink: u32, access: &[AccessProp]) {
     with_tree(|tree| {
-      let target = tree.carrier(*sink);
+      let target = tree.carrier(sink);
 
       if let Some(node) = tree.node(target) {
         write_access(node, access);
@@ -1211,7 +1212,7 @@ impl Platform for Web {
     });
   }
 
-  fn create_control(&self, props: &ControlProps<Self>) -> u32 {
+  fn create_control(props: &ControlProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
       let index = if let Some(native) = native_element(props.kind) {
         if native.is_bare() {
@@ -1279,9 +1280,9 @@ impl Platform for Web {
     index
   }
 
-  fn set_control_state(&self, sink: &u32, state: &ControlState) {
+  fn set_control_state(sink: u32, state: &ControlState) {
     with_tree(|tree| {
-      let root = *sink;
+      let root = sink;
       let carrier = tree.carrier(root);
 
       if carrier == root {
@@ -1317,7 +1318,7 @@ impl Platform for Web {
     });
   }
 
-  fn create_overlay(&self, props: &OverlayProps<Self>) -> u32 {
+  fn create_overlay(props: &OverlayProps<Self>) -> u32 {
     let (index, compiled) = with_tree(|tree| {
       let index = if props.modal {
         tree.element("dialog")
@@ -1349,19 +1350,19 @@ impl Platform for Web {
     index
   }
 
-  fn set_overlay_open(&self, _: &u32, _: bool, _: Option<&u32>) {}
+  fn set_overlay_open(_: u32, _: bool, _: Option<u32>) {}
 
-  fn apply_layout(&self, sink: &u32, layout: &StaticBoxStyle<Self>) {
+  fn apply_layout(sink: u32, layout: &StaticBoxStyle<Self>) {
     with_tree(|tree| {
       let compiled = tree.compiled(layout_fingerprint::<Self>(layout), || {
         compile_layout::<Self>(layout)
       });
 
-      tree.assign_style(*sink, &compiled);
+      tree.assign_style(sink, &compiled);
     });
   }
 
-  fn create_run(&self, props: &RunProps<Self>) -> u32 {
+  fn create_run(props: &RunProps<Self>) -> u32 {
     with_tree(|tree| {
       let index = match props.link.as_deref() {
         Some(href) => {
@@ -1385,8 +1386,8 @@ impl Platform for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
-    with_node(*sink, |node| {
+  fn update_run(sink: u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+    with_node(sink, |node| {
       let binding = node
         .slots
         .iter()
@@ -1399,11 +1400,11 @@ impl Platform for Web {
     });
   }
 
-  fn set_text(&self, sink: &u32, text: &str) {
-    with_node(*sink, |node| node.text = Some(text.to_owned()));
+  fn set_text(sink: u32, text: &str) {
+    with_node(sink, |node| node.text = Some(text.to_owned()));
   }
 
-  fn create_anchor(&self) -> u32 {
+  fn create_anchor() -> u32 {
     with_tree(|tree| {
       let ordinal = tree.anchors;
 
@@ -1413,7 +1414,7 @@ impl Platform for Web {
     })
   }
 
-  fn create_scope(&self) -> u32 {
+  fn create_scope() -> u32 {
     with_tree(|tree| {
       let index = tree.element("div");
 
@@ -1426,42 +1427,42 @@ impl Platform for Web {
     })
   }
 
-  fn bind_node(&self, sink: &u32, node: NodeId) {
+  fn bind_node(sink: u32, node: NodeId) {
     with_tree(|tree| {
-      if let Some(record) = tree.node(*sink) {
+      if let Some(record) = tree.node(sink) {
         record.realizes = Some(node);
       }
     });
   }
 
-  fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
+  fn attach(parent: u32, child: u32, before: Option<u32>) {
     with_tree(|tree| {
-      if !tree.attach_caption(*parent, *child) {
-        tree.attach(*parent, *child, before.copied());
+      if !tree.attach_caption(parent, child) {
+        tree.attach(parent, child, before);
       }
     });
   }
 
-  fn detach(&self, parent: &u32, child: &u32) {
+  fn detach(parent: u32, child: u32) {
     with_tree(|tree| {
-      if !tree.detach_caption(*parent, *child) {
-        tree.detach(*parent, *child);
+      if !tree.detach_caption(parent, child) {
+        tree.detach(parent, child);
       }
     });
   }
 
-  fn destroy(&self, sink: u32) {
+  fn destroy(sink: u32) {
     with_tree(|tree| tree.destroy(sink));
   }
 
-  fn define_tokens(&self, scope: &u32, definitions: &Definitions<WebTokenValue>) {
+  fn define_tokens(scope: u32, definitions: &Definitions<WebTokenValue>) {
     with_tree(|tree| {
       tree.register(definitions);
 
-      let previous = tree.node(*scope).and_then(|node| node.token_class.clone());
+      let previous = tree.node(scope).and_then(|node| node.token_class.clone());
 
       if previous.is_some() && all_unconditional(definitions) {
-        if let Some(node) = tree.node(*scope) {
+        if let Some(node) = tree.node(scope) {
           for (property, value) in inline_definitions(definitions) {
             node.set_inline(property, value);
           }
@@ -1472,13 +1473,13 @@ impl Platform for Web {
 
       let class = tree.swap_class(&compile_definitions(definitions), previous.as_deref());
 
-      if let Some(node) = tree.node(*scope) {
+      if let Some(node) = tree.node(scope) {
         node.token_class = Some(class);
       }
     });
   }
 
-  fn define_root_tokens(&self, definitions: &Definitions<WebTokenValue>) {
+  fn define_root_tokens(definitions: &Definitions<WebTokenValue>) {
     with_tree(|tree| {
       tree.register(definitions);
 
@@ -1489,15 +1490,15 @@ impl Platform for Web {
     });
   }
 
-  fn listen(&self, _: &u32, _: EventKind) {}
+  fn listen(_: u32, _: EventKind) {}
 
-  fn focus(&self, _: &u32) {}
+  fn focus(_: u32) {}
 
-  fn blur(&self, _: &u32) {}
+  fn blur(_: u32) {}
 
-  fn set_value(&self, sink: &u32, value: &str) {
+  fn set_value(sink: u32, value: &str) {
     with_tree(|tree| {
-      let target = tree.carrier(*sink);
+      let target = tree.carrier(sink);
 
       if let Some(node) = tree.node(target) {
         if node.tag() == "textarea" {
@@ -1513,9 +1514,9 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(&self, sink: &u32, options: &[PickerOption]) {
+  fn set_options(sink: u32, options: &[PickerOption]) {
     with_tree(|tree| {
-      let target = tree.carrier(*sink);
+      let target = tree.carrier(sink);
 
       if let Some(node) = tree.node(target) {
         node.options = options.to_vec();
@@ -1523,11 +1524,11 @@ impl Platform for Web {
     });
   }
 
-  fn set_selection(&self, _: &u32, _: TextSelection) {}
+  fn set_selection(_: u32, _: TextSelection) {}
 
-  fn set_checked(&self, sink: &u32, checked: bool) {
+  fn set_checked(sink: u32, checked: bool) {
     with_tree(|tree| {
-      let target = tree.carrier(*sink);
+      let target = tree.carrier(sink);
 
       if let Some(node) = tree.node(target) {
         node.set_flag("checked", checked);
@@ -1535,55 +1536,57 @@ impl Platform for Web {
     });
   }
 
-  fn observe_size(&self, _: &u32, _: Rc<dyn Fn(Size<f32>)>) {}
+  fn observe_size(_: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    Observation::unmeasured()
+  }
 
-  fn media(&self) -> MediaSignals<f32> {
+  fn media() -> MediaSignals<f32> {
     media_signals()
   }
 
-  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
-    self.media().watch(media)
+  fn watch_media(media: &Media<f32>) -> Memo<bool> {
+    Self::media().watch(media)
   }
 
-  fn hydration(&self) -> Option<ReadSignal<bool>> {
+  fn hydration() -> Option<ReadSignal<bool>> {
     Some(with_media(|media| media.absent))
   }
 
-  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+  fn set_scheme(scheme: Option<ColorScheme>) {
     set_scheme(scheme);
   }
 
   /// The server renders once, so nothing scheduled ever runs.
-  fn schedule(&self, _: Duration, _: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(_: Duration, _: Box<dyn FnOnce()>) -> Timer {
     Timer(0)
   }
 
-  fn cancel(&self, _: Timer) {}
+  fn cancel(_: Timer) {}
 
-  fn stored_scheme(&self) -> Option<ColorScheme> {
+  fn stored_scheme() -> Option<ColorScheme> {
     stored_scheme()
   }
 }
 
 impl WebMarkup for Web {
-  fn create_element(&self, tag: &'static str) -> u32 {
+  fn create_element(tag: &'static str) -> u32 {
     with_tree(|tree| tree.element(tag))
   }
 
-  fn set_attribute(&self, sink: &u32, name: &str, value: &str) {
-    with_node(*sink, |node| node.set_attribute(name, value));
+  fn set_attribute(sink: u32, name: &str, value: &str) {
+    with_node(sink, |node| node.set_attribute(name, value));
   }
 
-  fn set_declarations(&self, sink: &u32, declarations: &Declarations) {
-    with_node(*sink, |node| {
+  fn set_declarations(sink: u32, declarations: &Declarations) {
+    with_node(sink, |node| {
       for (property, value) in declarations.iter() {
         node.set_inline(property.to_owned(), value.to_owned());
       }
     });
   }
 
-  fn set_text(&self, sink: &u32, text: &str) {
-    with_node(*sink, |node| node.text = Some(text.to_owned()));
+  fn set_text(sink: u32, text: &str) {
+    with_node(sink, |node| node.text = Some(text.to_owned()));
   }
 }
 

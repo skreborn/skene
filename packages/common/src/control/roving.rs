@@ -84,7 +84,7 @@ impl RovingGroup {
     };
 
     self.choose(value);
-    with_sink::<P, _>(node, |sink| P::default().focus(sink));
+    with_sink::<P, _>(node, |sink| P::focus(sink));
   }
 }
 

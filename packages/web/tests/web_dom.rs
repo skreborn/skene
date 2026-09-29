@@ -610,7 +610,7 @@ fn media_reports_the_window() {
   let window = web_sys::window().expect("a window");
   let width = window.inner_width().unwrap().as_f64().unwrap();
   let height = window.inner_height().unwrap().as_f64().unwrap();
-  let media = Web.media();
+  let media = Web::media();
 
   assert!((f64::from(media.viewport.get().width) - width).abs() < f64::EPSILON);
   assert!((f64::from(media.viewport.get().height) - height).abs() < f64::EPSILON);
@@ -678,7 +678,7 @@ impl AnyKind for Raw {}
 
 impl View<Web> for Raw {
   fn build(self) -> NodeId {
-    LowLevel::<Web>::realize(Web.create_element("div"), NodeKind::Box)
+    LowLevel::<Web>::realize(Web::create_element("div"), NodeKind::Box)
   }
 }
 

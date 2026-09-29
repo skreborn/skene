@@ -300,7 +300,7 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
     let node = inner
       .set_child(child)
       .realize(NodeKind::Overlay, |box_props| {
-        P::default().create_overlay(&OverlayProps {
+        P::create_overlay(&OverlayProps {
           modal,
           hint,
           placement: initial,
@@ -329,17 +329,16 @@ impl<P: Platform> View<P> for Overlay<P, AnyView<P>> {
       else {
         return;
       };
-      let platform = P::default();
 
       if let Some(placement) = placement {
-        platform.set_overlay_placement(&sink, placement);
+        P::set_overlay_placement(sink, placement);
       }
 
       if let Some(position) = position {
-        platform.set_overlay_position(&sink, position);
+        P::set_overlay_position(sink, position);
       }
 
-      platform.set_overlay_open(&sink, open, anchor.as_ref());
+      P::set_overlay_open(sink, open, anchor);
     });
 
     node

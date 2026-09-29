@@ -68,12 +68,10 @@ impl<P: Platform> Map<P> {
   where
     P: WebMarkup<Scalar = f32>,
   {
-    let platform = P::default();
-
-    platform.set_attribute(&sink, "role", "img");
-    platform.set_attribute(&sink, "aria-label", "map");
-    platform.set_declarations(
-      &sink,
+    P::set_attribute(sink, "role", "img");
+    P::set_attribute(sink, "aria-label", "map");
+    P::set_declarations(
+      sink,
       &Declarations::new()
         .set("display", "block")
         .set("width", "100%")
@@ -97,9 +95,7 @@ impl<P: Platform> AnyKind for Map<P> {}
 impl<P: Platform<Scalar = f32> + WebDom> View<P> for Map<P> {
   fn build(self) -> NodeId {
     use wasm_bindgen::JsCast;
-
-    let platform = P::default();
-    let sink = platform.create_element("canvas");
+    let sink = P::create_element("canvas");
 
     #[expect(
       clippy::cast_possible_truncation,
@@ -108,12 +104,11 @@ impl<P: Platform<Scalar = f32> + WebDom> View<P> for Map<P> {
     )]
     let (width, height) = (self.size.width as u32, self.size.height as u32);
 
-    platform.set_attribute(&sink, "width", &width.to_string());
-    platform.set_attribute(&sink, "height", &height.to_string());
+    P::set_attribute(sink, "width", &width.to_string());
+    P::set_attribute(sink, "height", &height.to_string());
 
-    if let Some(canvas) = platform
-      .element(&sink)
-      .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
+    if let Some(canvas) =
+      P::element(sink).and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
     {
       paint(&canvas, width, height);
     }
@@ -161,8 +156,7 @@ impl<P: Platform> AnyKind for Placeholder<P> {}
 
 impl<P: Platform<Scalar = f32> + WebMarkup> View<P> for Placeholder<P> {
   fn build(self) -> NodeId {
-    let platform = P::default();
-    let sink = platform.create_element("div");
+    let sink = P::create_element("div");
 
     self.map.realize(sink)
   }

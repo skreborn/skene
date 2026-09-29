@@ -3073,6 +3073,13 @@ impl skene_core::ExprOutput for skene_core::Number
 pub fn skene_core::Number::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::Quantity for skene_core::Number
 pub fn skene_core::Number::literal(f32) -> skene_core::ExprNode
+pub struct skene_core::Observation
+impl skene_core::Observation
+pub fn skene_core::Observation::new(impl core::ops::function::FnOnce() + 'static) -> Self
+pub fn skene_core::Observation::stop(self)
+pub const fn skene_core::Observation::unmeasured() -> Self
+impl core::fmt::Debug for skene_core::Observation
+pub fn skene_core::Observation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::OverlayProps<P: skene_core::Platform>
 pub skene_core::OverlayProps::backdrop: core::option::Option<skene_core::Color>
 pub skene_core::OverlayProps::box_props: skene_core::BoxProps<P>
@@ -4192,47 +4199,47 @@ pub type skene_core::Platform::Scalar: skene_core::Scalar
 pub type skene_core::Platform::Sink: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub type skene_core::Platform::StyleExt: skene_core::StyleExtension
 pub type skene_core::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_core::Definition<skene_core::Color, Self::Scalar>> + core::convert::From<skene_core::Definition<f32, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Length, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Dimension<Self::Scalar>, Self::Scalar>> + 'static
-pub fn skene_core::Platform::apply_layout(&self, &Self::Sink, &skene_core::StaticBoxStyle<Self>)
-pub fn skene_core::Platform::attach(&self, &Self::Sink, &Self::Sink, core::option::Option<&Self::Sink>)
-pub fn skene_core::Platform::bind_node(&self, &Self::Sink, skene_core::NodeId)
-pub fn skene_core::Platform::blur(&self, &Self::Sink)
-pub fn skene_core::Platform::cancel(&self, skene_core::Timer)
-pub fn skene_core::Platform::clipboard(&self, skene_core::ClipboardAction)
-pub fn skene_core::Platform::clipboard_availability(&self, skene_core::ClipboardAction) -> skene_core::Availability
-pub fn skene_core::Platform::create_anchor(&self) -> Self::Sink
-pub fn skene_core::Platform::create_box(&self, &skene_core::BoxProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_control(&self, &skene_core::ControlProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_overlay(&self, &skene_core::OverlayProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_run(&self, &skene_core::RunProps<Self>) -> Self::Sink
-pub fn skene_core::Platform::create_scope(&self) -> Self::Sink
-pub fn skene_core::Platform::define_root_tokens(&self, &skene_core::Definitions<Self::TokenValue>)
-pub fn skene_core::Platform::define_tokens(&self, &Self::Sink, &skene_core::Definitions<Self::TokenValue>)
-pub fn skene_core::Platform::destroy(&self, Self::Sink)
-pub fn skene_core::Platform::detach(&self, &Self::Sink, &Self::Sink)
-pub fn skene_core::Platform::focus(&self, &Self::Sink)
-pub fn skene_core::Platform::hydration(&self) -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
-pub fn skene_core::Platform::listen(&self, &Self::Sink, skene_core::EventKind)
-pub fn skene_core::Platform::localize_pointer(&self, &Self::Sink, &skene_core::PointerEvent) -> skene_core::PointerEvent
-pub fn skene_core::Platform::media(&self) -> skene_core::MediaSignals<Self::Scalar>
-pub fn skene_core::Platform::observe_size(&self, &Self::Sink, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::Size<Self::Scalar>)>)
+pub fn skene_core::Platform::apply_layout(Self::Sink, &skene_core::StaticBoxStyle<Self>)
+pub fn skene_core::Platform::attach(Self::Sink, Self::Sink, core::option::Option<Self::Sink>)
+pub fn skene_core::Platform::bind_node(Self::Sink, skene_core::NodeId)
+pub fn skene_core::Platform::blur(Self::Sink)
+pub fn skene_core::Platform::cancel(skene_core::Timer)
+pub fn skene_core::Platform::clipboard(skene_core::ClipboardAction)
+pub fn skene_core::Platform::clipboard_availability(skene_core::ClipboardAction) -> skene_core::Availability
+pub fn skene_core::Platform::create_anchor() -> Self::Sink
+pub fn skene_core::Platform::create_box(&skene_core::BoxProps<Self>) -> Self::Sink
+pub fn skene_core::Platform::create_control(&skene_core::ControlProps<Self>) -> Self::Sink
+pub fn skene_core::Platform::create_overlay(&skene_core::OverlayProps<Self>) -> Self::Sink
+pub fn skene_core::Platform::create_run(&skene_core::RunProps<Self>) -> Self::Sink
+pub fn skene_core::Platform::create_scope() -> Self::Sink
+pub fn skene_core::Platform::define_root_tokens(&skene_core::Definitions<Self::TokenValue>)
+pub fn skene_core::Platform::define_tokens(Self::Sink, &skene_core::Definitions<Self::TokenValue>)
+pub fn skene_core::Platform::destroy(Self::Sink)
+pub fn skene_core::Platform::detach(Self::Sink, Self::Sink)
+pub fn skene_core::Platform::focus(Self::Sink)
+pub fn skene_core::Platform::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
+pub fn skene_core::Platform::listen(Self::Sink, skene_core::EventKind)
+pub fn skene_core::Platform::localize_pointer(Self::Sink, &skene_core::PointerEvent) -> skene_core::PointerEvent
+pub fn skene_core::Platform::media() -> skene_core::MediaSignals<Self::Scalar>
+pub fn skene_core::Platform::observe_size(Self::Sink, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::Size<Self::Scalar>)>) -> skene_core::Observation
 pub fn skene_core::Platform::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::Scene<Self>>>
-pub fn skene_core::Platform::schedule(&self, core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::Timer
-pub fn skene_core::Platform::set_checked(&self, &Self::Sink, bool)
-pub fn skene_core::Platform::set_control_state(&self, &Self::Sink, &skene_core::ControlState)
-pub fn skene_core::Platform::set_options(&self, &Self::Sink, &[skene_core::PickerOption])
-pub fn skene_core::Platform::set_overlay_open(&self, &Self::Sink, bool, core::option::Option<&Self::Sink>)
-pub fn skene_core::Platform::set_overlay_placement(&self, &Self::Sink, skene_core::Placement)
-pub fn skene_core::Platform::set_overlay_position(&self, &Self::Sink, core::option::Option<skene_core::Point<f32>>)
-pub fn skene_core::Platform::set_scheme(&self, core::option::Option<skene_core::ColorScheme>)
-pub fn skene_core::Platform::set_selection(&self, &Self::Sink, skene_core::TextSelection)
-pub fn skene_core::Platform::set_text(&self, &Self::Sink, &str)
-pub fn skene_core::Platform::set_value(&self, &Self::Sink, &str)
-pub fn skene_core::Platform::stored_scheme(&self) -> core::option::Option<skene_core::ColorScheme>
-pub fn skene_core::Platform::update_access(&self, &Self::Sink, &[skene_core::AccessProp])
-pub fn skene_core::Platform::update_box(&self, &Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::BoxValue<Self::Scalar, Self::StyleExt>>)
-pub fn skene_core::Platform::update_focus_order(&self, &Self::Sink, core::option::Option<skene_core::FocusOrder>)
-pub fn skene_core::Platform::update_run(&self, &Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::RunValue<Self::StyleExt>>)
-pub fn skene_core::Platform::watch_media(&self, &skene_core::Media<Self::Scalar>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_core::Platform::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::Timer
+pub fn skene_core::Platform::set_checked(Self::Sink, bool)
+pub fn skene_core::Platform::set_control_state(Self::Sink, &skene_core::ControlState)
+pub fn skene_core::Platform::set_options(Self::Sink, &[skene_core::PickerOption])
+pub fn skene_core::Platform::set_overlay_open(Self::Sink, bool, core::option::Option<Self::Sink>)
+pub fn skene_core::Platform::set_overlay_placement(Self::Sink, skene_core::Placement)
+pub fn skene_core::Platform::set_overlay_position(Self::Sink, core::option::Option<skene_core::Point<f32>>)
+pub fn skene_core::Platform::set_scheme(core::option::Option<skene_core::ColorScheme>)
+pub fn skene_core::Platform::set_selection(Self::Sink, skene_core::TextSelection)
+pub fn skene_core::Platform::set_text(Self::Sink, &str)
+pub fn skene_core::Platform::set_value(Self::Sink, &str)
+pub fn skene_core::Platform::stored_scheme() -> core::option::Option<skene_core::ColorScheme>
+pub fn skene_core::Platform::update_access(Self::Sink, &[skene_core::AccessProp])
+pub fn skene_core::Platform::update_box(Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::BoxValue<Self::Scalar, Self::StyleExt>>)
+pub fn skene_core::Platform::update_focus_order(Self::Sink, core::option::Option<skene_core::FocusOrder>)
+pub fn skene_core::Platform::update_run(Self::Sink, skene_core::Slot, &skene_core::StaticLeaf<skene_core::RunValue<Self::StyleExt>>)
+pub fn skene_core::Platform::watch_media(&skene_core::Media<Self::Scalar>) -> skene_reactive::memo::Memo<bool>
 pub trait skene_core::PropertyName: core::marker::Copy + core::cmp::Eq + core::hash::Hash + core::fmt::Debug + 'static
 pub fn skene_core::PropertyName::name(&self) -> &'static str
 impl skene_core::PropertyName for skene_core::NoProperty

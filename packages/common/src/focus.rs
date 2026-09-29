@@ -41,7 +41,7 @@ impl<P: Platform> FocusHandle<P> {
   #[inline(always)]
   pub fn focus(&self) {
     if let Some(node) = self.node.get() {
-      with_sink::<P, _>(node, |sink| P::default().focus(sink));
+      with_sink::<P, _>(node, |sink| P::focus(sink));
     }
   }
 
@@ -49,7 +49,7 @@ impl<P: Platform> FocusHandle<P> {
   #[inline(always)]
   pub fn blur(&self) {
     if let Some(node) = self.node.get() {
-      with_sink::<P, _>(node, |sink| P::default().blur(sink));
+      with_sink::<P, _>(node, |sink| P::blur(sink));
     }
   }
 }

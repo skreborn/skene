@@ -312,13 +312,11 @@ impl Dom {
 }
 
 impl Painting for Web {
-  fn available(&self) -> ReadSignal<bool> {
+  fn available() -> ReadSignal<bool> {
     media::live()
   }
 
-  fn paint(&self, sink: &u32, painter: Box<Painter>) {
-    let sink = *sink;
-
+  fn paint(sink: u32, painter: Box<Painter>) {
     with_dom(|dom| dom.place_canvas(sink, Rc::from(painter)));
     repaint(sink);
   }

@@ -66,7 +66,7 @@ fn clock_card() -> impl IntoView {
 
 /// Advances `seconds` once a second on the platform's clock.
 fn tick(seconds: Signal<u32>) {
-  let _ = ActivePlatform::default().schedule(
+  let _ = ActivePlatform::schedule(
     Duration::from_secs(1),
     Box::new(move || {
       seconds.update(|count| *count += 1);

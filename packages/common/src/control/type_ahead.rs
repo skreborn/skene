@@ -45,17 +45,15 @@ impl TypeAhead {
       return None;
     }
 
-    let platform = P::default();
-
     if let Some(timer) = self.reset.take() {
-      platform.cancel(timer);
+      P::cancel(timer);
     }
 
     self.buffer.borrow_mut().push(character);
 
     let cleared = Rc::clone(self);
 
-    self.reset.set(Some(platform.schedule(
+    self.reset.set(Some(P::schedule(
       TYPE_AHEAD_RESET,
       Box::new(move || {
         cleared.buffer.borrow_mut().clear();

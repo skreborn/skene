@@ -136,7 +136,7 @@ pub use leaf::{
 };
 pub use motion::{Animation, Easing, StyleProperty, Transition, interpolate};
 pub use node::NodeId;
-pub use platform::{Platform, Timer, Timers};
+pub use platform::{Observation, Platform, Timer, Timers};
 pub use property::{Property, PropertyKey, PropertyName};
 pub use props::{
   BoxKeyframe,

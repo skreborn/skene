@@ -232,7 +232,7 @@ impl<P: Platform> LazyList<P> {
               let measures = Rc::clone(&measures);
 
               with_sink::<P, _>(node, |sink| {
-                P::default().observe_size(
+                P::observe_size(
                   sink,
                   Rc::new(move |size| {
                     let length = measures.axis.extent(size);
@@ -345,7 +345,7 @@ impl<P: Platform> LazyList<P> {
       .build();
 
     with_sink::<P, _>(node, |sink| {
-      P::default().observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
+      P::observe_size(sink, Rc::new(move |size| viewport.set(axis.extent(size))));
     });
 
     node

@@ -308,14 +308,14 @@ impl<P: Platform> ControlHandle<P> {
   /// Runs `operation` on a copy of the control's sink, if the node is live; the scene
   /// is released before it runs.
   #[inline(always)]
-  pub fn with_sink<R>(&self, operation: impl FnOnce(&P::Sink) -> R) -> Option<R> {
+  pub fn with_sink<R>(&self, operation: impl FnOnce(P::Sink) -> R) -> Option<R> {
     with_sink::<P, _>(self.node, operation)
   }
 
   /// Moves focus to the control.
   #[inline(always)]
   pub fn focus(&self) {
-    self.with_sink(|sink| P::default().focus(sink));
+    self.with_sink(|sink| P::focus(sink));
   }
 
   /// Dispatches a click at the control, so its behavior and handlers see it.
@@ -927,7 +927,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       }
 
       let node = inner.realize(NodeKind::Control, |box_props| {
-        P::default().create_control(&ControlProps {
+        P::create_control(&ControlProps {
           kind,
           box_props,
           label: name.as_ref().map(|name| untrack(|| name())),
@@ -1122,7 +1122,7 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
         behavior.focus_order()
       };
 
-      with_sink::<P, _>(node, |sink| P::default().update_focus_order(sink, order));
+      with_sink::<P, _>(node, |sink| P::update_focus_order(sink, order));
     });
   }
 }

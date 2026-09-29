@@ -522,7 +522,31 @@ fn expressions_resolve_over_tokens_and_the_environment() {
   trigger_resize(Size::new(800., 600.));
 
   assert_eq!(resolve_length(card, WIDTH), Some(400.));
-  assert_eq!(Headless.media().viewport.get(), Size::new(800., 600.));
+  assert_eq!(Headless::media().viewport.get(), Size::new(800., 600.));
+
+  owner.dispose();
+}
+
+/// A size observation reports each measured size until it is stopped, and nothing after.
+#[test]
+fn a_stopped_size_observation_hears_nothing_more() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| Container::new().build());
+  let heard = Rc::new(RefCell::new(Vec::new()));
+  let observation = {
+    let heard = Rc::clone(&heard);
+    let sink = skene_core::Scene::<Headless>::with(|scene| scene.sink(node)).unwrap();
+
+    Headless::observe_size(sink, Rc::new(move |size| heard.borrow_mut().push(size)))
+  };
+
+  trigger_size(node, Size::new(10., 20.));
+  observation.stop();
+  trigger_size(node, Size::new(30., 40.));
+
+  assert_eq!(*heard.borrow(), [Size::new(10., 20.)]);
 
   owner.dispose();
 }
@@ -566,7 +590,7 @@ fn container_condition_resolves_against_the_named_containers_size() {
 
   assert_eq!(resolve_color(child, COLOR), Some(WHITE));
   assert_eq!(
-    Headless.media().container_sizes.get(SIDEBAR),
+    Headless::media().container_sizes.get(SIDEBAR),
     Some(Size::new(300., 100.))
   );
 
@@ -682,14 +706,17 @@ fn scheme_seam_drives_the_dark_definition_and_the_signal() {
 
   assert_eq!(resolve_color(card, COLOR), Some(WHITE));
   assert_eq!(
-    Headless.media().scheme.get(),
+    Headless::media().scheme.get(),
     skene_core::ColorScheme::Light
   );
 
   trigger_color_scheme(skene_core::ColorScheme::Dark);
 
   assert_eq!(resolve_color(card, COLOR), Some(Color::srgb(0., 0., 0.)));
-  assert_eq!(Headless.media().scheme.get(), skene_core::ColorScheme::Dark);
+  assert_eq!(
+    Headless::media().scheme.get(),
+    skene_core::ColorScheme::Dark
+  );
   assert_eq!(
     TestPalette::default().card.definition(),
     &Definition::from(WHITE).when(Media::Dark, StaticLeaf::Fixed(Color::srgb(0., 0., 0.)))
@@ -763,11 +790,11 @@ fn due_actions_run_earliest_first() {
 
     Box::new(move || ran.borrow_mut().push(label))
   };
-  let _ = Headless.schedule(std::time::Duration::from_secs(2), action("late"));
-  let _ = Headless.schedule(std::time::Duration::from_secs(1), action("early"));
-  let cancelled = Headless.schedule(std::time::Duration::from_secs(1), action("cancelled"));
+  let _ = Headless::schedule(std::time::Duration::from_secs(2), action("late"));
+  let _ = Headless::schedule(std::time::Duration::from_secs(1), action("early"));
+  let cancelled = Headless::schedule(std::time::Duration::from_secs(1), action("cancelled"));
 
-  Headless.cancel(cancelled);
+  Headless::cancel(cancelled);
   trigger_frame(std::time::Duration::from_secs(3));
 
   assert_eq!(*ran.borrow(), ["early", "late"]);

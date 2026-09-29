@@ -614,7 +614,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 
     if let Some(focus_order @ Source::Derived(_)) = self.focus_order {
       focus_order.bind::<P>(node, |sink, focus_order| {
-        P::default().update_focus_order(sink, Some(*focus_order));
+        P::update_focus_order(sink, Some(*focus_order));
       });
     }
 
@@ -691,6 +691,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
 impl<P: Platform, Kind: 'static> View<P> for LayoutBox<P, Kind> {
   #[inline(always)]
   fn build(self) -> NodeId {
-    self.realize(NodeKind::Box, |props| P::default().create_box(&props))
+    self.realize(NodeKind::Box, |props| P::create_box(&props))
   }
 }

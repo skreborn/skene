@@ -189,7 +189,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
       Effect::render(move |_: Option<()>| {
         let value = value();
 
-        with_sink::<P, _>(node, |sink| P::default().set_value(sink, &value));
+        with_sink::<P, _>(node, |sink| P::set_value(sink, &value));
       });
     }
 
@@ -197,7 +197,7 @@ impl<P: Platform> Behavior<P> for TextEntry {
       Effect::render(move |_: Option<()>| {
         let selection = selection();
 
-        with_sink::<P, _>(node, |sink| P::default().set_selection(sink, selection));
+        with_sink::<P, _>(node, |sink| P::set_selection(sink, selection));
       });
     }
   }
@@ -218,13 +218,13 @@ impl<P: Platform> Behavior<P> for TextEntry {
     if let Some(value) = &self.value {
       let value = untrack(|| value());
 
-      control.with_sink(|sink| P::default().set_value(sink, &value));
+      control.with_sink(|sink| P::set_value(sink, &value));
     }
 
     if let Some(selection) = &self.selection {
       let selection = untrack(|| selection());
 
-      control.with_sink(|sink| P::default().set_selection(sink, selection));
+      control.with_sink(|sink| P::set_selection(sink, selection));
     }
   }
 }

@@ -588,16 +588,16 @@ impl MenuItem {
 
     if let ItemKind::Standard(action) = self.kind {
       return Verdicts {
-        run: Rc::new(move || P::default().clipboard(action)),
+        run: Rc::new(move || P::clipboard(action)),
         shown: Rc::new(move || {
           generation.get();
 
-          P::default().clipboard_availability(action) != Availability::Absent
+          P::clipboard_availability(action) != Availability::Absent
         }),
         disabled: Rc::new(move || {
           generation.get();
 
-          disabled() || P::default().clipboard_availability(action) != Availability::Enabled
+          disabled() || P::clipboard_availability(action) != Availability::Enabled
         }),
       };
     }

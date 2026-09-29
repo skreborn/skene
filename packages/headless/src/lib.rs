@@ -58,6 +58,7 @@ use skene_core::{
   NoProperty,
   NodeId,
   NodeRecord,
+  Observation,
   OverlayProps,
   Part,
   PickerOption,
@@ -210,186 +211,196 @@ impl Platform for Headless {
     &SCENE
   }
 
-  fn create_box(&self, props: &BoxProps<Self>) -> Handle {
+  fn create_box(props: &BoxProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Box(Box::new(props.clone())))))
   }
 
-  fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
-    with_record(*sink, |record| {
+  fn update_box(sink: Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
+    with_record(sink, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
   }
 
-  fn update_focus_order(&self, sink: &Handle, focus_order: Option<FocusOrder>) {
-    with_record(*sink, |record| {
+  fn update_focus_order(sink: Handle, focus_order: Option<FocusOrder>) {
+    with_record(sink, |record| {
       if let Some(props) = record.kind.box_props_mut() {
         props.focus_order = focus_order;
       }
     });
   }
 
-  fn update_access(&self, sink: &Handle, access: &[AccessProp]) {
-    with_record(*sink, |record| {
+  fn update_access(sink: Handle, access: &[AccessProp]) {
+    with_record(sink, |record| {
       if let Some(props) = record.kind.box_props_mut() {
         access.clone_into(&mut props.access);
       }
     });
   }
 
-  fn create_control(&self, props: &ControlProps<Self>) -> Handle {
+  fn create_control(props: &ControlProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Control(Box::new(props.clone())))))
   }
 
-  fn set_control_state(&self, sink: &Handle, state: &ControlState) {
-    with_record(*sink, |record| {
+  fn set_control_state(sink: Handle, state: &ControlState) {
+    with_record(sink, |record| {
       record.control_state = *state;
       record.checked = state.checked == Toggle::On;
     });
   }
 
-  fn create_overlay(&self, props: &OverlayProps<Self>) -> Handle {
+  fn create_overlay(props: &OverlayProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Overlay(Box::new(props.clone())))))
   }
 
-  fn set_overlay_open(&self, sink: &Handle, open: bool, anchor: Option<&Handle>) {
-    with_record(*sink, |record| {
+  fn set_overlay_open(sink: Handle, open: bool, anchor: Option<Handle>) {
+    with_record(sink, |record| {
       record.open = open;
-      record.anchor = anchor.copied();
+      record.anchor = anchor;
     });
   }
 
-  fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {
-    with_record(*sink, |record| {
+  fn set_overlay_placement(sink: Handle, placement: Placement) {
+    with_record(sink, |record| {
       if let Kind::Overlay(props) = &mut record.kind {
         props.placement = placement;
       }
     });
   }
 
-  fn set_overlay_position(&self, sink: &Handle, position: Option<Point<f32>>) {
-    with_record(*sink, |record| record.position = position);
+  fn set_overlay_position(sink: Handle, position: Option<Point<f32>>) {
+    with_record(sink, |record| record.position = position);
   }
 
-  fn create_run(&self, props: &RunProps<Self>) -> Handle {
+  fn create_run(props: &RunProps<Self>) -> Handle {
     with_store(|store| store.create(Record::new(Kind::Run(Box::new(props.clone())))))
   }
 
-  fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue>) {
-    with_record(*sink, |record| {
+  fn update_run(sink: Handle, slot: Slot, leaf: &StaticLeaf<RunValue>) {
+    with_record(sink, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
   }
 
-  fn set_text(&self, sink: &Handle, text: &str) {
-    with_record(*sink, |record| text.clone_into(&mut record.text));
+  fn set_text(sink: Handle, text: &str) {
+    with_record(sink, |record| text.clone_into(&mut record.text));
   }
 
-  fn create_anchor(&self) -> Handle {
+  fn create_anchor() -> Handle {
     with_store(|store| store.create(Record::new(Kind::Anchor)))
   }
 
-  fn create_scope(&self) -> Handle {
+  fn create_scope() -> Handle {
     with_store(|store| store.create(Record::new(Kind::Scope)))
   }
 
-  fn attach(&self, parent: &Handle, child: &Handle, before: Option<&Handle>) {
-    with_record(*parent, |record| {
-      if let Some(index) = position_from_ends(&record.children, *child) {
+  fn attach(parent: Handle, child: Handle, before: Option<Handle>) {
+    with_record(parent, |record| {
+      if let Some(index) = position_from_ends(&record.children, child) {
         let _unlinked = record.children.remove(index);
       }
 
       let index = before
-        .and_then(|before| position_from_ends(&record.children, *before))
+        .and_then(|before| position_from_ends(&record.children, before))
         .unwrap_or(record.children.len());
 
-      record.children.insert(index, *child);
+      record.children.insert(index, child);
     });
   }
 
-  fn detach(&self, parent: &Handle, child: &Handle) {
-    with_record(*parent, |record| {
-      if let Some(index) = position_from_ends(&record.children, *child) {
+  fn detach(parent: Handle, child: Handle) {
+    with_record(parent, |record| {
+      if let Some(index) = position_from_ends(&record.children, child) {
         let _unlinked = record.children.remove(index);
       }
     });
   }
 
-  fn destroy(&self, sink: Handle) {
+  fn destroy(sink: Handle) {
     with_store(|store| store.destroy(sink));
   }
 
-  fn define_tokens(&self, scope: &Handle, definitions: &Definitions<TokenValue>) {
-    with_record(*scope, |record| {
+  fn define_tokens(scope: Handle, definitions: &Definitions<TokenValue>) {
+    with_record(scope, |record| {
       record.definitions = Some(definitions.clone());
     });
   }
 
-  fn define_root_tokens(&self, definitions: &Definitions<TokenValue>) {
+  fn define_root_tokens(definitions: &Definitions<TokenValue>) {
     with_store(|store| {
       store.root_definitions = definitions.clone();
       store.root_definition_writes += 1;
     });
   }
 
-  fn listen(&self, sink: &Handle, kind: EventKind) {
-    with_record(*sink, |record| {
+  fn listen(sink: Handle, kind: EventKind) {
+    with_record(sink, |record| {
       if !record.listened.contains(&kind) {
         record.listened.push(kind);
       }
     });
   }
 
-  fn focus(&self, sink: &Handle) {
-    with_store(|store| store.focused = Some(*sink));
+  fn focus(sink: Handle) {
+    with_store(|store| store.focused = Some(sink));
   }
 
-  fn blur(&self, sink: &Handle) {
+  fn blur(sink: Handle) {
     with_store(|store| {
-      if store.focused == Some(*sink) {
+      if store.focused == Some(sink) {
         store.focused = None;
       }
     });
   }
 
-  fn set_value(&self, sink: &Handle, value: &str) {
-    with_record(*sink, |record| value.clone_into(&mut record.value));
+  fn set_value(sink: Handle, value: &str) {
+    with_record(sink, |record| value.clone_into(&mut record.value));
   }
 
-  fn set_options(&self, sink: &Handle, options: &[PickerOption]) {
-    with_record(*sink, |record| options.clone_into(&mut record.options));
+  fn set_options(sink: Handle, options: &[PickerOption]) {
+    with_record(sink, |record| options.clone_into(&mut record.options));
   }
 
-  fn set_selection(&self, sink: &Handle, selection: TextSelection) {
-    with_record(*sink, |record| {
+  fn set_selection(sink: Handle, selection: TextSelection) {
+    with_record(sink, |record| {
       record.selection = selection.clamped(record.value.graphemes(true).count());
     });
   }
 
-  fn set_checked(&self, sink: &Handle, checked: bool) {
-    with_record(*sink, |record| record.checked = checked);
+  fn set_checked(sink: Handle, checked: bool) {
+    with_record(sink, |record| record.checked = checked);
   }
 
-  fn observe_size(&self, sink: &Handle, report: Rc<dyn Fn(Size<f32>)>) {
-    with_record(*sink, |record| record.size_observers.push(report));
+  fn observe_size(sink: Handle, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    let kept = Rc::clone(&report);
+
+    with_record(sink, |record| record.size_observers.push(report));
+
+    Observation::new(move || {
+      with_record(sink, |record| {
+        record
+          .size_observers
+          .retain(|observer| !Rc::ptr_eq(observer, &kept));
+      });
+    })
   }
 
-  fn media(&self) -> MediaSignals<f32> {
+  fn media() -> MediaSignals<f32> {
     with_store(|store| store.media().signals)
   }
 
-  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
-    self.media().watch(media)
+  fn watch_media(media: &Media<f32>) -> Memo<bool> {
+    Self::media().watch(media)
   }
 
-  fn hydration(&self) -> Option<ReadSignal<bool>> {
+  fn hydration() -> Option<ReadSignal<bool>> {
     Some(with_store(|store| store.media().hydrated))
   }
 
-  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+  fn set_scheme(scheme: Option<ColorScheme>) {
     record_chosen_scheme(scheme);
   }
 
-  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_store(|store| {
       let at = store.clock + delay.as_secs_f64();
 
@@ -397,11 +408,11 @@ impl Platform for Headless {
     })
   }
 
-  fn cancel(&self, timer: Timer) {
+  fn cancel(timer: Timer) {
     with_store(|store| store.timers.cancel(timer));
   }
 
-  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+  fn clipboard_availability(action: ClipboardAction) -> Availability {
     with_store(|store| {
       store
         .availability
@@ -411,21 +422,21 @@ impl Platform for Headless {
     })
   }
 
-  fn clipboard(&self, action: ClipboardAction) {
+  fn clipboard(action: ClipboardAction) {
     with_store(|store| store.clipboard.push(action));
   }
 
-  fn stored_scheme(&self) -> Option<ColorScheme> {
+  fn stored_scheme() -> Option<ColorScheme> {
     chosen_scheme()
   }
 }
 
 impl Painting for Headless {
-  fn paint(&self, sink: &Handle, painter: Box<Painter>) {
-    with_record(*sink, |record| record.painter = Some(Rc::from(painter)));
+  fn paint(sink: Handle, painter: Box<Painter>) {
+    with_record(sink, |record| record.painter = Some(Rc::from(painter)));
   }
 
-  fn available(&self) -> ReadSignal<bool> {
+  fn available() -> ReadSignal<bool> {
     with_store(|store| store.media().graphics)
   }
 }
@@ -610,7 +621,7 @@ pub fn trigger_focus(node: NodeId) {
 pub fn trigger_blur(node: NodeId) {
   trigger(|| {
     if let Some(handle) = handle(node) {
-      Headless.blur(&handle);
+      Headless::blur(handle);
     }
 
     notify_blur::<Headless>(node);
@@ -621,7 +632,7 @@ pub fn trigger_blur(node: NodeId) {
 pub fn trigger_change(node: NodeId, value: &str) {
   trigger(|| {
     if let Some(handle) = handle(node) {
-      Headless.set_value(&handle, value);
+      Headless::set_value(handle, value);
     }
 
     notify_change::<Headless>(node, value);
@@ -632,7 +643,7 @@ pub fn trigger_change(node: NodeId, value: &str) {
 pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
   trigger(|| {
     if let Some(handle) = handle(node) {
-      Headless.set_selection(&handle, selection);
+      Headless::set_selection(handle, selection);
     }
 
     notify_selection_change::<Headless>(node, selection);
@@ -643,7 +654,7 @@ pub fn trigger_selection_change(node: NodeId, selection: TextSelection) {
 pub fn trigger_toggle(node: NodeId, checked: bool) {
   trigger(|| {
     if let Some(handle) = handle(node) {
-      Headless.set_checked(&handle, checked);
+      Headless::set_checked(handle, checked);
     }
 
     notify_toggle::<Headless>(node, checked);

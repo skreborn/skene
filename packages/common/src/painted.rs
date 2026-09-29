@@ -111,7 +111,7 @@ impl<P: Painting> View<P> for Painted<P> {
       with_sink::<P, _>(node, |sink| {
         let painter = Rc::clone(&painter);
 
-        P::default().paint(sink, Box::new(move |canvas, size| painter(canvas, size)));
+        P::paint(sink, Box::new(move |canvas, size| painter(canvas, size)));
       });
 
       node
@@ -121,7 +121,7 @@ impl<P: Painting> View<P> for Painted<P> {
       return paint();
     };
 
-    Enhance::<P>::new(P::default().available())
+    Enhance::<P>::new(P::available())
       .set_fallback(move || AnyView::<P>::new(move || fallback.build()))
       .set_child_builder(move || AnyView::<P>::new(paint))
       .build()

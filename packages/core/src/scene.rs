@@ -562,21 +562,19 @@ enum Mirror<P: Platform> {
 impl<P: Platform> Mirror<P> {
   /// Hands the mutation to the platform.
   fn run(self) {
-    let platform = P::default();
-
     match self {
       Self::Attach {
         parent,
         child,
         before,
-      } => platform.attach(&parent, &child, before.as_ref()),
-      Self::Detach { parent, child } => platform.detach(&parent, &child),
-      Self::Destroy(sink) => platform.destroy(sink),
-      Self::DefineTokens { scope, definitions } => platform.define_tokens(&scope, &definitions),
-      Self::DefineRootTokens(definitions) => platform.define_root_tokens(&definitions),
-      Self::ControlState { sink, state } => platform.set_control_state(&sink, &state),
-      Self::BindNode { sink, node } => platform.bind_node(&sink, node),
-      Self::Listen { sink, kind } => platform.listen(&sink, kind),
+      } => P::attach(parent, child, before),
+      Self::Detach { parent, child } => P::detach(parent, child),
+      Self::Destroy(sink) => P::destroy(sink),
+      Self::DefineTokens { scope, definitions } => P::define_tokens(scope, &definitions),
+      Self::DefineRootTokens(definitions) => P::define_root_tokens(&definitions),
+      Self::ControlState { sink, state } => P::set_control_state(sink, &state),
+      Self::BindNode { sink, node } => P::bind_node(sink, node),
+      Self::Listen { sink, kind } => P::listen(sink, kind),
     }
   }
 }
@@ -778,8 +776,7 @@ impl<P: Platform> Scene<P> {
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
   pub fn create_segment() -> (NodeId, NodeId) {
-    let platform = P::default();
-    let (start, end) = (platform.create_anchor(), platform.create_anchor());
+    let (start, end) = (P::create_anchor(), P::create_anchor());
 
     Self::with(|scene| {
       let start = scene.create(NodeKind::Anchor, start);

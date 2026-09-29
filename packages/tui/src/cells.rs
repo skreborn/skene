@@ -27,7 +27,7 @@ pub(crate) type Painter = dyn Fn(&mut Cells<'_>, Rect<u32>);
 pub trait CellPainter: Platform {
   /// Runs `painter` inside the box `sink` on every repaint; a later call replaces the
   /// painter.
-  fn paint(&self, sink: &Self::Sink, painter: Box<Painter>);
+  fn paint(sink: Self::Sink, painter: Box<Painter>);
 }
 
 /// A window onto the frame being painted: the cells of one box's content rectangle.

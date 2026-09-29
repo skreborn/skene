@@ -130,67 +130,67 @@ pub fn skene_web::Web::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_web::Web
 impl core::marker::StructuralPartialEq for skene_web::Web
 impl skene_common::painting::Painting for skene_web::Web
-pub fn skene_web::Web::available(&self) -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_web::Web::paint(&self, &u32, alloc::boxed::Box<skene_common::painting::Painter>)
+pub fn skene_web::Web::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_web::Web::paint(u32, alloc::boxed::Box<skene_common::painting::Painter>)
 impl skene_core::platform::Platform for skene_web::Web
 pub type skene_web::Web::Scalar = f32
 pub type skene_web::Web::Sink = u32
 pub type skene_web::Web::StyleExt = skene_common::gui::ext::GuiExt
 pub type skene_web::Web::TokenValue = skene_web::WebTokenValue
-pub fn skene_web::Web::apply_layout(&self, &u32, &skene_core::props::StaticBoxStyle<Self>)
-pub fn skene_web::Web::attach(&self, &u32, &u32, core::option::Option<&u32>)
-pub fn skene_web::Web::bind_node(&self, &u32, skene_core::node::NodeId)
-pub fn skene_web::Web::blur(&self, &u32)
-pub fn skene_web::Web::cancel(&self, skene_core::platform::Timer)
-pub fn skene_web::Web::create_anchor(&self) -> u32
-pub fn skene_web::Web::create_box(&self, &skene_core::props::BoxProps<Self>) -> u32
-pub fn skene_web::Web::create_control(&self, &skene_core::control::ControlProps<Self>) -> u32
-pub fn skene_web::Web::create_overlay(&self, &skene_core::props::OverlayProps<Self>) -> u32
-pub fn skene_web::Web::create_run(&self, &skene_core::props::RunProps<Self>) -> u32
-pub fn skene_web::Web::create_scope(&self) -> u32
-pub fn skene_web::Web::define_root_tokens(&self, &skene_core::token::Definitions<skene_web::WebTokenValue>)
-pub fn skene_web::Web::define_tokens(&self, &u32, &skene_core::token::Definitions<skene_web::WebTokenValue>)
-pub fn skene_web::Web::destroy(&self, u32)
-pub fn skene_web::Web::detach(&self, &u32, &u32)
-pub fn skene_web::Web::focus(&self, &u32)
-pub fn skene_web::Web::hydration(&self) -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
-pub fn skene_web::Web::listen(&self, &u32, skene_core::props::EventKind)
-pub fn skene_web::Web::media(&self) -> skene_core::props::MediaSignals<f32>
-pub fn skene_web::Web::observe_size(&self, &u32, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<f32>)>)
+pub fn skene_web::Web::apply_layout(u32, &skene_core::props::StaticBoxStyle<Self>)
+pub fn skene_web::Web::attach(u32, u32, core::option::Option<u32>)
+pub fn skene_web::Web::bind_node(u32, skene_core::node::NodeId)
+pub fn skene_web::Web::blur(u32)
+pub fn skene_web::Web::cancel(skene_core::platform::Timer)
+pub fn skene_web::Web::create_anchor() -> u32
+pub fn skene_web::Web::create_box(&skene_core::props::BoxProps<Self>) -> u32
+pub fn skene_web::Web::create_control(&skene_core::control::ControlProps<Self>) -> u32
+pub fn skene_web::Web::create_overlay(&skene_core::props::OverlayProps<Self>) -> u32
+pub fn skene_web::Web::create_run(&skene_core::props::RunProps<Self>) -> u32
+pub fn skene_web::Web::create_scope() -> u32
+pub fn skene_web::Web::define_root_tokens(&skene_core::token::Definitions<skene_web::WebTokenValue>)
+pub fn skene_web::Web::define_tokens(u32, &skene_core::token::Definitions<skene_web::WebTokenValue>)
+pub fn skene_web::Web::destroy(u32)
+pub fn skene_web::Web::detach(u32, u32)
+pub fn skene_web::Web::focus(u32)
+pub fn skene_web::Web::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
+pub fn skene_web::Web::listen(u32, skene_core::props::EventKind)
+pub fn skene_web::Web::media() -> skene_core::props::MediaSignals<f32>
+pub fn skene_web::Web::observe_size(u32, alloc::rc::Rc<dyn core::ops::function::Fn(skene_core::values::size::Size<f32>)>) -> skene_core::platform::Observation
 pub fn skene_web::Web::scene() -> &'static std::thread::local::LocalKey<core::cell::RefCell<skene_core::scene::Scene<Self>>>
-pub fn skene_web::Web::schedule(&self, core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
-pub fn skene_web::Web::set_checked(&self, &u32, bool)
-pub fn skene_web::Web::set_control_state(&self, &u32, &skene_core::control::ControlState)
-pub fn skene_web::Web::set_options(&self, &u32, &[skene_core::control::PickerOption])
-pub fn skene_web::Web::set_overlay_open(&self, &u32, bool, core::option::Option<&u32>)
-pub fn skene_web::Web::set_scheme(&self, core::option::Option<skene_core::values::color::ColorScheme>)
-pub fn skene_web::Web::set_selection(&self, &u32, skene_core::values::text_selection::TextSelection)
-pub fn skene_web::Web::set_text(&self, &u32, &str)
-pub fn skene_web::Web::set_value(&self, &u32, &str)
-pub fn skene_web::Web::stored_scheme(&self) -> core::option::Option<skene_core::values::color::ColorScheme>
-pub fn skene_web::Web::update_access(&self, &u32, &[skene_core::values::access::AccessProp])
-pub fn skene_web::Web::update_box(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiExt>>)
-pub fn skene_web::Web::update_focus_order(&self, &u32, core::option::Option<skene_core::values::focus_order::FocusOrder>)
-pub fn skene_web::Web::update_run(&self, &u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
-pub fn skene_web::Web::watch_media(&self, &skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
+pub fn skene_web::Web::schedule(core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
+pub fn skene_web::Web::set_checked(u32, bool)
+pub fn skene_web::Web::set_control_state(u32, &skene_core::control::ControlState)
+pub fn skene_web::Web::set_options(u32, &[skene_core::control::PickerOption])
+pub fn skene_web::Web::set_overlay_open(u32, bool, core::option::Option<u32>)
+pub fn skene_web::Web::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
+pub fn skene_web::Web::set_selection(u32, skene_core::values::text_selection::TextSelection)
+pub fn skene_web::Web::set_text(u32, &str)
+pub fn skene_web::Web::set_value(u32, &str)
+pub fn skene_web::Web::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
+pub fn skene_web::Web::update_access(u32, &[skene_core::values::access::AccessProp])
+pub fn skene_web::Web::update_box(u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::box_style::BoxValue<f32, skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::update_focus_order(u32, core::option::Option<skene_core::values::focus_order::FocusOrder>)
+pub fn skene_web::Web::update_run(u32, skene_core::leaf::Slot, &skene_core::leaf::StaticLeaf<skene_core::run_style::RunValue<skene_common::gui::ext::GuiExt>>)
+pub fn skene_web::Web::watch_media(&skene_core::condition::Media<f32>) -> skene_reactive::memo::Memo<bool>
 impl skene_web::WebMarkup for skene_web::Web
-pub fn skene_web::Web::create_element(&self, &'static str) -> u32
-pub fn skene_web::Web::set_attribute(&self, &u32, &str, &str)
-pub fn skene_web::Web::set_declarations(&self, &u32, &skene_web::Declarations)
-pub fn skene_web::Web::set_text(&self, &u32, &str)
+pub fn skene_web::Web::create_element(&'static str) -> u32
+pub fn skene_web::Web::set_attribute(u32, &str, &str)
+pub fn skene_web::Web::set_declarations(u32, &skene_web::Declarations)
+pub fn skene_web::Web::set_text(u32, &str)
 pub const skene_web::CONTROL_ATTRIBUTE: &str
 pub const skene_web::SCHEME_ATTRIBUTE: &str
 pub const skene_web::STATE_SCRIPT_ID: &str
 pub trait skene_web::WebMarkup: skene_core::platform::Platform
-pub fn skene_web::WebMarkup::create_element(&self, &'static str) -> Self::Sink
-pub fn skene_web::WebMarkup::set_attribute(&self, &Self::Sink, &str, &str)
-pub fn skene_web::WebMarkup::set_declarations(&self, &Self::Sink, &skene_web::Declarations)
-pub fn skene_web::WebMarkup::set_text(&self, &Self::Sink, &str)
+pub fn skene_web::WebMarkup::create_element(&'static str) -> Self::Sink
+pub fn skene_web::WebMarkup::set_attribute(Self::Sink, &str, &str)
+pub fn skene_web::WebMarkup::set_declarations(Self::Sink, &skene_web::Declarations)
+pub fn skene_web::WebMarkup::set_text(Self::Sink, &str)
 impl skene_web::WebMarkup for skene_web::Web
-pub fn skene_web::Web::create_element(&self, &'static str) -> u32
-pub fn skene_web::Web::set_attribute(&self, &u32, &str, &str)
-pub fn skene_web::Web::set_declarations(&self, &u32, &skene_web::Declarations)
-pub fn skene_web::Web::set_text(&self, &u32, &str)
+pub fn skene_web::Web::create_element(&'static str) -> u32
+pub fn skene_web::Web::set_attribute(u32, &str, &str)
+pub fn skene_web::Web::set_declarations(u32, &skene_web::Declarations)
+pub fn skene_web::Web::set_text(u32, &str)
 pub fn skene_web::add_head_element(&str, &[(&str, &str)]) -> skene_common::gui::head::HeadId
 pub fn skene_web::add_head_title(&str) -> skene_common::gui::head::HeadId
 pub fn skene_web::adopt_next() -> core::option::Option<alloc::string::String>

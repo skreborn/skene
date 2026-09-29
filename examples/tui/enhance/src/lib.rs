@@ -70,7 +70,7 @@ fn clock_card() -> impl IntoView {
 
 /// Marks the first tick, then advances `seconds` once a second on the loop's clock.
 fn tick(ticked: Signal<bool>, seconds: Signal<u32>) {
-  let _ = ActivePlatform::default().schedule(
+  let _ = ActivePlatform::schedule(
     Duration::from_secs(1),
     Box::new(move || {
       if ticked.get_untracked() {

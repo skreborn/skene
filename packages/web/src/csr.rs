@@ -52,6 +52,7 @@ use skene_core::{
   MediaSignals,
   NodeId,
   NodeKind,
+  Observation,
   OverlayProps,
   Part,
   PickerOption,
@@ -1238,15 +1239,15 @@ impl Platform for Web {
     &SCENE
   }
 
-  fn bind_node(&self, sink: &u32, node: NodeId) {
+  fn bind_node(sink: u32, node: NodeId) {
     with_dom(|dom| {
-      if let Some(record) = dom.node_mut(*sink) {
+      if let Some(record) = dom.node_mut(sink) {
         record.id = Some(node);
       }
     });
   }
 
-  fn create_box(&self, props: &BoxProps<Self>) -> u32 {
+  fn create_box(props: &BoxProps<Self>) -> u32 {
     with_dom(|dom| {
       let sink = dom.create_element(
         box_tag(props.role, props.destination.is_some()),
@@ -1277,9 +1278,9 @@ impl Platform for Web {
     })
   }
 
-  fn update_box(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
+  fn update_box(sink: u32, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_dom(|dom| {
-      if let Some(node) = dom.node(*sink)
+      if let Some(node) = dom.node(sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
         && let Some(html) = node.html()
       {
@@ -1290,15 +1291,15 @@ impl Platform for Web {
     });
   }
 
-  fn update_focus_order(&self, sink: &u32, focus_order: Option<FocusOrder>) {
-    with_dom(|dom| dom.write_focus_order(*sink, focus_order));
+  fn update_focus_order(sink: u32, focus_order: Option<FocusOrder>) {
+    with_dom(|dom| dom.write_focus_order(sink, focus_order));
   }
 
-  fn update_access(&self, sink: &u32, access: &[AccessProp]) {
-    with_dom(|dom| dom.write_access(*sink, access));
+  fn update_access(sink: u32, access: &[AccessProp]) {
+    with_dom(|dom| dom.write_access(sink, access));
   }
 
-  fn create_control(&self, props: &ControlProps<Self>) -> u32 {
+  fn create_control(props: &ControlProps<Self>) -> u32 {
     with_dom(|dom| {
       let sink = if let Some(native) = native_element(props.kind) {
         let realized = Realized::Control {
@@ -1382,9 +1383,9 @@ impl Platform for Web {
     })
   }
 
-  fn set_control_state(&self, sink: &u32, state: &ControlState) {
+  fn set_control_state(sink: u32, state: &ControlState) {
     with_dom(|dom| {
-      let Some(node) = dom.node(*sink)
+      let Some(node) = dom.node(sink)
       else {
         return;
       };
@@ -1436,7 +1437,7 @@ impl Platform for Web {
     });
   }
 
-  fn create_overlay(&self, props: &OverlayProps<Self>) -> u32 {
+  fn create_overlay(props: &OverlayProps<Self>) -> u32 {
     with_dom(|dom| {
       let realized = Realized::Overlay {
         modal: props.modal,
@@ -1492,9 +1493,9 @@ impl Platform for Web {
     })
   }
 
-  fn set_overlay_open(&self, sink: &u32, open: bool, anchor: Option<&u32>) {
+  fn set_overlay_open(sink: u32, open: bool, anchor: Option<u32>) {
     let Some((element, modal, placement, position, anchor)) = with_dom(|dom| {
-      let node = dom.node(*sink)?;
+      let node = dom.node(sink)?;
       let Realized::Overlay {
         modal,
         placement,
@@ -1505,25 +1506,25 @@ impl Platform for Web {
       };
       let element = node.element()?.clone();
       let anchor_element = anchor.and_then(|anchor| {
-        let element = dom.node(*anchor)?.element().cloned()?;
+        let element = dom.node(anchor)?.element().cloned()?;
 
-        Some((*anchor, element))
+        Some((anchor, element))
       });
 
       if open && !element.is_connected() {
-        dom.pending_open.insert(*sink, anchor.copied());
+        dom.pending_open.insert(sink, anchor);
 
         return None;
       }
 
-      dom.pending_open.remove(sink);
+      dom.pending_open.remove(&sink);
 
       if !modal {
         if open {
-          dom.events.open_popup(*sink, anchor.copied());
+          dom.events.open_popup(sink, anchor);
         }
         else {
-          dom.events.close_popup(*sink);
+          dom.events.close_popup(sink);
         }
       }
 
@@ -1566,9 +1567,9 @@ impl Platform for Web {
     }
   }
 
-  fn set_overlay_position(&self, sink: &u32, position: Option<Point<f32>>) {
+  fn set_overlay_position(sink: u32, position: Option<Point<f32>>) {
     with_dom(|dom| {
-      if let Some(node) = dom.node_mut(*sink)
+      if let Some(node) = dom.node_mut(sink)
         && let Realized::Overlay { position: held, .. } = &mut node.realized
       {
         *held = position;
@@ -1576,9 +1577,9 @@ impl Platform for Web {
     });
   }
 
-  fn set_overlay_placement(&self, sink: &u32, placement: Placement) {
+  fn set_overlay_placement(sink: u32, placement: Placement) {
     with_dom(|dom| {
-      if let Some(node) = dom.node_mut(*sink)
+      if let Some(node) = dom.node_mut(sink)
         && let Realized::Overlay {
           placement: held, ..
         } = &mut node.realized
@@ -1588,17 +1589,17 @@ impl Platform for Web {
     });
   }
 
-  fn apply_layout(&self, sink: &u32, layout: &StaticBoxStyle<Self>) {
+  fn apply_layout(sink: u32, layout: &StaticBoxStyle<Self>) {
     with_dom(|dom| {
       let compiled = dom.sheet.compiled(layout_fingerprint::<Self>(layout), || {
         compile_layout::<Self>(layout)
       });
 
-      dom.assign_style(*sink, &compiled);
+      dom.assign_style(sink, &compiled);
     });
   }
 
-  fn create_run(&self, props: &RunProps<Self>) -> u32 {
+  fn create_run(props: &RunProps<Self>) -> u32 {
     with_dom(|dom| {
       let sink = match props.link.as_deref() {
         Some(href) => {
@@ -1624,9 +1625,9 @@ impl Platform for Web {
     })
   }
 
-  fn update_run(&self, sink: &u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
+  fn update_run(sink: u32, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
     with_dom(|dom| {
-      if let Some(node) = dom.node(*sink)
+      if let Some(node) = dom.node(sink)
         && let Some(binding) = node.slots.iter().find(|binding| binding.slot == slot)
         && let Some(html) = node.html()
       {
@@ -1637,9 +1638,9 @@ impl Platform for Web {
     });
   }
 
-  fn set_text(&self, sink: &u32, text: &str) {
+  fn set_text(sink: u32, text: &str) {
     with_dom(|dom| {
-      if let Some(node) = dom.node(*sink)
+      if let Some(node) = dom.node(sink)
         && !(node.adopted && node.dom.text_content().as_deref() == Some(text))
       {
         node.dom.set_text_content(Some(text));
@@ -1647,7 +1648,7 @@ impl Platform for Web {
     });
   }
 
-  fn create_anchor(&self) -> u32 {
+  fn create_anchor() -> u32 {
     with_dom(|dom| {
       let text = anchor_text(dom.anchors);
 
@@ -1659,7 +1660,7 @@ impl Platform for Web {
     })
   }
 
-  fn create_scope(&self) -> u32 {
+  fn create_scope() -> u32 {
     with_dom(|dom| {
       let sink = dom.create_element("div", Realized::Scope { inline: Vec::new() });
 
@@ -1676,14 +1677,14 @@ impl Platform for Web {
     })
   }
 
-  fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
+  fn attach(parent: u32, child: u32, before: Option<u32>) {
     let Some((parent, child, caption, before, saved)) = with_dom(|dom| {
-      if dom.attach_caption(*parent, *child) {
+      if dom.attach_caption(parent, child) {
         return None;
       }
 
-      let parent = dom.node(*parent)?.dom.clone();
-      let child_node = dom.node(*child)?;
+      let parent = dom.node(parent)?.dom.clone();
+      let child_node = dom.node(child)?;
 
       if child_node.adopted && child_node.dom.parent_node().as_ref() == Some(&parent) {
         return None;
@@ -1691,9 +1692,9 @@ impl Platform for Web {
 
       let child = child_node.dom.clone();
       let caption = child_node.caption.clone();
-      let saved = before.and_then(|before| dom.saved.remove(before));
+      let saved = before.and_then(|before| dom.saved.remove(&before));
       let before = before
-        .and_then(|before| dom.node(*before))
+        .and_then(|before| dom.node(before))
         .map(|node| node.dom.clone());
 
       Some((parent, child, caption, before, saved))
@@ -1715,20 +1716,20 @@ impl Platform for Web {
     }
 
     for (overlay, anchor) in with_dom(Dom::take_connected_opens) {
-      self.set_overlay_open(&overlay, true, anchor.as_ref());
+      Self::set_overlay_open(overlay, true, anchor);
     }
   }
 
-  fn detach(&self, parent: &u32, child: &u32) {
+  fn detach(parent: u32, child: u32) {
     let Some((parent, child, caption)) = with_dom(|dom| {
-      if dom.detach_caption(*parent, *child) {
+      if dom.detach_caption(parent, child) {
         return None;
       }
 
       Some((
-        dom.node(*parent)?.dom.clone(),
-        dom.node(*child)?.dom.clone(),
-        dom.node(*child)?.caption.clone(),
+        dom.node(parent)?.dom.clone(),
+        dom.node(child)?.dom.clone(),
+        dom.node(child)?.caption.clone(),
       ))
     })
     else {
@@ -1748,7 +1749,7 @@ impl Platform for Web {
     }
   }
 
-  fn destroy(&self, sink: u32) {
+  fn destroy(sink: u32) {
     with_dom(|dom| {
       let Some(node) = dom.nodes.get_mut(sink as usize).and_then(Option::take)
       else {
@@ -1777,14 +1778,14 @@ impl Platform for Web {
     });
   }
 
-  fn define_tokens(&self, scope: &u32, definitions: &Definitions<WebTokenValue>) {
+  fn define_tokens(scope: u32, definitions: &Definitions<WebTokenValue>) {
     with_dom(|dom| {
       dom.sheet.register(definitions);
 
-      let previous = dom.node(*scope).and_then(|node| node.token_class.clone());
+      let previous = dom.node(scope).and_then(|node| node.token_class.clone());
 
       if previous.is_some() && all_unconditional(definitions) {
-        if let Some(node) = dom.node_mut(*scope) {
+        if let Some(node) = dom.node_mut(scope) {
           node.set_inline_definitions(inline_definitions(definitions));
         }
 
@@ -1795,7 +1796,7 @@ impl Platform for Web {
         .sheet
         .swap_class(&compile_definitions(definitions), previous.as_deref());
 
-      if let Some(node) = dom.node_mut(*scope) {
+      if let Some(node) = dom.node_mut(scope) {
         if let Some(element) = node.element() {
           swap_class_attribute(element, previous.as_deref(), &class);
         }
@@ -1806,7 +1807,7 @@ impl Platform for Web {
     });
   }
 
-  fn define_root_tokens(&self, definitions: &Definitions<WebTokenValue>) {
+  fn define_root_tokens(definitions: &Definitions<WebTokenValue>) {
     with_dom(|dom| {
       dom.sheet.register(definitions);
 
@@ -1819,11 +1820,10 @@ impl Platform for Web {
     });
   }
 
-  fn listen(&self, sink: &u32, kind: EventKind) {
+  fn listen(sink: u32, kind: EventKind) {
     with_dom(|dom| {
       dom.events.ensure(kind);
 
-      let sink = *sink;
       let Some(node) = dom.node_mut(sink)
       else {
         return;
@@ -1833,14 +1833,14 @@ impl Platform for Web {
     });
   }
 
-  fn localize_pointer(&self, sink: &u32, event: &PointerEvent) -> PointerEvent {
-    let element = with_dom(|dom| dom.node(*sink).and_then(Node::element).cloned());
+  fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {
+    let element = with_dom(|dom| dom.node(sink).and_then(Node::element).cloned());
 
     element.map_or(*event, |element| events::localized(event, &element))
   }
 
-  fn focus(&self, sink: &u32) {
-    let carrier = with_dom(|dom| dom.node(*sink).and_then(Node::carrier).cloned());
+  fn focus(sink: u32) {
+    let carrier = with_dom(|dom| dom.node(sink).and_then(Node::carrier).cloned());
 
     if let Some(html) = carrier
       .as_ref()
@@ -1850,8 +1850,8 @@ impl Platform for Web {
     }
   }
 
-  fn blur(&self, sink: &u32) {
-    let carrier = with_dom(|dom| dom.node(*sink).and_then(Node::carrier).cloned());
+  fn blur(sink: u32) {
+    let carrier = with_dom(|dom| dom.node(sink).and_then(Node::carrier).cloned());
 
     if let Some(html) = carrier
       .as_ref()
@@ -1861,9 +1861,9 @@ impl Platform for Web {
     }
   }
 
-  fn set_value(&self, sink: &u32, value: &str) {
+  fn set_value(sink: u32, value: &str) {
     with_dom(|dom| {
-      let Some(carrier) = dom.node(*sink).and_then(Node::carrier)
+      let Some(carrier) = dom.node(sink).and_then(Node::carrier)
       else {
         return;
       };
@@ -1902,10 +1902,10 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(&self, sink: &u32, options: &[PickerOption]) {
+  fn set_options(sink: u32, options: &[PickerOption]) {
     with_dom(|dom| {
       let Some(select) = dom
-        .node(*sink)
+        .node(sink)
         .and_then(Node::carrier)
         .and_then(|carrier| carrier.dyn_ref::<HtmlSelectElement>())
       else {
@@ -1930,9 +1930,9 @@ impl Platform for Web {
     });
   }
 
-  fn set_selection(&self, sink: &u32, selection: TextSelection) {
+  fn set_selection(sink: u32, selection: TextSelection) {
     with_dom(|dom| {
-      let Some(carrier) = dom.node(*sink).and_then(Node::carrier)
+      let Some(carrier) = dom.node(sink).and_then(Node::carrier)
       else {
         return;
       };
@@ -1941,10 +1941,10 @@ impl Platform for Web {
     });
   }
 
-  fn set_checked(&self, sink: &u32, checked: bool) {
+  fn set_checked(sink: u32, checked: bool) {
     with_dom(|dom| {
       if let Some(input) = dom
-        .node(*sink)
+        .node(sink)
         .and_then(Node::carrier)
         .and_then(|carrier| carrier.dyn_ref::<HtmlInputElement>())
       {
@@ -1953,10 +1953,12 @@ impl Platform for Web {
     });
   }
 
-  fn observe_size(&self, sink: &u32, report: Rc<dyn Fn(Size<f32>)>) {
+  fn observe_size(sink: u32, report: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    let kept = Rc::clone(&report);
+
     with_dom(|dom| {
       let observer = dom.resize_observer();
-      let Some(node) = dom.node_mut(*sink)
+      let Some(node) = dom.node_mut(sink)
       else {
         return;
       };
@@ -1969,21 +1971,41 @@ impl Platform for Web {
         node.observers.push(report);
       }
     });
+
+    Observation::new(move || {
+      let _ = try_with_dom(|dom| {
+        let observer = dom.resize_observer();
+        let Some(node) = dom.node_mut(sink)
+        else {
+          return;
+        };
+
+        node
+          .observers
+          .retain(|observer| !Rc::ptr_eq(observer, &kept));
+
+        if node.observers.is_empty()
+          && let Some(element) = node.element()
+        {
+          observer.unobserve(element);
+        }
+      });
+    })
   }
 
-  fn media(&self) -> MediaSignals<f32> {
+  fn media() -> MediaSignals<f32> {
     media::signals()
   }
 
-  fn hydration(&self) -> Option<ReadSignal<bool>> {
+  fn hydration() -> Option<ReadSignal<bool>> {
     Some(media::live())
   }
 
-  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+  fn set_scheme(scheme: Option<ColorScheme>) {
     media::set_scheme(scheme);
   }
 
-  fn schedule(&self, delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(delay: Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_dom(|dom| {
       dom.timers.retain(|_, timeout| !timeout.fired.get());
 
@@ -2028,7 +2050,7 @@ impl Platform for Web {
     })
   }
 
-  fn cancel(&self, timer: Timer) {
+  fn cancel(timer: Timer) {
     with_dom(|dom| {
       if let Some(timeout) = dom.timers.remove(&timer)
         && !timeout.fired.get()
@@ -2039,7 +2061,7 @@ impl Platform for Web {
     });
   }
 
-  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+  fn clipboard_availability(action: ClipboardAction) -> Availability {
     with_dom(|dom| {
       if clipboard(dom).is_none() {
         return Availability::Absent;
@@ -2070,7 +2092,7 @@ impl Platform for Web {
     })
   }
 
-  fn clipboard(&self, action: ClipboardAction) {
+  fn clipboard(action: ClipboardAction) {
     let Some((clipboard, entry, text)) = with_dom(|dom| {
       let clipboard = clipboard(dom)?;
       let entry = clipboard_entry(dom);
@@ -2111,31 +2133,31 @@ impl Platform for Web {
     }
   }
 
-  fn stored_scheme(&self) -> Option<ColorScheme> {
+  fn stored_scheme() -> Option<ColorScheme> {
     media::stored_scheme()
   }
 
-  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
+  fn watch_media(media: &Media<f32>) -> Memo<bool> {
     media::watch_media(media)
   }
 }
 
 impl WebMarkup for Web {
-  fn create_element(&self, tag: &'static str) -> u32 {
+  fn create_element(tag: &'static str) -> u32 {
     with_dom(|dom| dom.create_element(tag, Realized::Box))
   }
 
-  fn set_attribute(&self, sink: &u32, name: &str, value: &str) {
+  fn set_attribute(sink: u32, name: &str, value: &str) {
     with_dom(|dom| {
-      if let Some(element) = dom.node(*sink).and_then(Node::element) {
+      if let Some(element) = dom.node(sink).and_then(Node::element) {
         let _ = element.set_attribute(name, value);
       }
     });
   }
 
-  fn set_declarations(&self, sink: &u32, declarations: &Declarations) {
+  fn set_declarations(sink: u32, declarations: &Declarations) {
     with_dom(|dom| {
-      if let Some(html) = dom.node(*sink).and_then(Node::html) {
+      if let Some(html) = dom.node(sink).and_then(Node::html) {
         let style = html.style();
 
         for (property, value) in declarations.iter() {
@@ -2145,17 +2167,17 @@ impl WebMarkup for Web {
     });
   }
 
-  fn set_text(&self, sink: &u32, text: &str) {
-    Platform::set_text(self, sink, text);
+  fn set_text(sink: u32, text: &str) {
+    <Self as Platform>::set_text(sink, text);
   }
 }
 
 impl WebDom for Web {
-  fn element(&self, sink: &u32) -> Option<Element> {
-    with_dom(|dom| dom.node(*sink).and_then(Node::element).cloned())
+  fn element(sink: u32) -> Option<Element> {
+    with_dom(|dom| dom.node(sink).and_then(Node::element).cloned())
   }
 
-  fn document(&self) -> Document {
+  fn document() -> Document {
     document()
   }
 }

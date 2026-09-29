@@ -113,7 +113,7 @@ fn focus<P: Platform>(node: NodeId) {
   let sink = Scene::<P>::with(|scene| scene.sink(node));
 
   if let Some(sink) = sink {
-    P::default().focus(&sink);
+    P::focus(sink);
   }
 }
 

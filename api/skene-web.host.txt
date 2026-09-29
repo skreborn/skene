@@ -105,8 +105,8 @@ pub const skene_web::CONTROL_ATTRIBUTE: &str
 pub const skene_web::SCHEME_ATTRIBUTE: &str
 pub const skene_web::STATE_SCRIPT_ID: &str
 pub trait skene_web::WebMarkup: skene_core::platform::Platform
-pub fn skene_web::WebMarkup::create_element(&self, &'static str) -> Self::Sink
-pub fn skene_web::WebMarkup::set_attribute(&self, &Self::Sink, &str, &str)
-pub fn skene_web::WebMarkup::set_declarations(&self, &Self::Sink, &skene_web::Declarations)
-pub fn skene_web::WebMarkup::set_text(&self, &Self::Sink, &str)
+pub fn skene_web::WebMarkup::create_element(&'static str) -> Self::Sink
+pub fn skene_web::WebMarkup::set_attribute(Self::Sink, &str, &str)
+pub fn skene_web::WebMarkup::set_declarations(Self::Sink, &skene_web::Declarations)
+pub fn skene_web::WebMarkup::set_text(Self::Sink, &str)
 pub type skene_web::HydrationSource = alloc::boxed::Box<dyn core::ops::function::Fn() -> core::option::Option<alloc::string::String>>

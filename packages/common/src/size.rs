@@ -31,7 +31,7 @@ impl<P: Platform> SizeHandle<P> {
     let size = self.size;
 
     with_sink::<P, _>(node, |sink| {
-      P::default().observe_size(sink, Rc::new(move |measured| size.set(Some(measured))));
+      P::observe_size(sink, Rc::new(move |measured| size.set(Some(measured))));
     });
   }
 

@@ -30,6 +30,7 @@ use skene_core::{
   Media,
   MediaSignals,
   NodeId,
+  Observation,
   OverlayProps,
   Placement,
   Platform,
@@ -127,65 +128,65 @@ impl Platform for Reentrant {
     &SCENE
   }
 
-  fn create_box(&self, _: &BoxProps<Self>) -> u32 {
+  fn create_box(_: &BoxProps<Self>) -> u32 {
     mint()
   }
 
-  fn update_box(&self, sink: &u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {
-    reenter("update_box", *sink);
+  fn update_box(sink: u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {
+    reenter("update_box", sink);
   }
 
-  fn update_focus_order(&self, sink: &u32, _: Option<FocusOrder>) {
-    reenter("update_focus_order", *sink);
+  fn update_focus_order(sink: u32, _: Option<FocusOrder>) {
+    reenter("update_focus_order", sink);
   }
 
-  fn update_access(&self, sink: &u32, _: &[AccessProp]) {
-    reenter("update_access", *sink);
+  fn update_access(sink: u32, _: &[AccessProp]) {
+    reenter("update_access", sink);
   }
 
-  fn create_control(&self, _: &ControlProps<Self>) -> u32 {
+  fn create_control(_: &ControlProps<Self>) -> u32 {
     mint()
   }
 
-  fn set_control_state(&self, sink: &u32, _: &ControlState) {
-    reenter("set_control_state", *sink);
+  fn set_control_state(sink: u32, _: &ControlState) {
+    reenter("set_control_state", sink);
   }
 
-  fn create_overlay(&self, _: &OverlayProps<Self>) -> u32 {
+  fn create_overlay(_: &OverlayProps<Self>) -> u32 {
     mint()
   }
 
-  fn set_overlay_open(&self, sink: &u32, _: bool, _: Option<&u32>) {
-    reenter("set_overlay_open", *sink);
+  fn set_overlay_open(sink: u32, _: bool, _: Option<u32>) {
+    reenter("set_overlay_open", sink);
   }
 
-  fn set_overlay_placement(&self, sink: &u32, _: Placement) {
-    reenter("set_overlay_placement", *sink);
+  fn set_overlay_placement(sink: u32, _: Placement) {
+    reenter("set_overlay_placement", sink);
   }
 
-  fn create_run(&self, _: &RunProps<Self>) -> u32 {
+  fn create_run(_: &RunProps<Self>) -> u32 {
     mint()
   }
 
-  fn update_run(&self, sink: &u32, _: Slot, _: &StaticLeaf<RunValue>) {
-    reenter("update_run", *sink);
+  fn update_run(sink: u32, _: Slot, _: &StaticLeaf<RunValue>) {
+    reenter("update_run", sink);
   }
 
-  fn set_text(&self, sink: &u32, _: &str) {
-    reenter("set_text", *sink);
+  fn set_text(sink: u32, _: &str) {
+    reenter("set_text", sink);
   }
 
-  fn schedule(&self, _: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(_: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
     Timer(0)
   }
 
-  fn cancel(&self, _: Timer) {}
+  fn cancel(_: Timer) {}
 
-  fn bind_node(&self, sink: &u32, _: NodeId) {
-    reenter("bind_node", *sink);
+  fn bind_node(sink: u32, _: NodeId) {
+    reenter("bind_node", sink);
   }
 
-  fn create_anchor(&self) -> u32 {
+  fn create_anchor() -> u32 {
     let sink = mint();
 
     reenter("create_anchor", sink);
@@ -193,59 +194,61 @@ impl Platform for Reentrant {
     sink
   }
 
-  fn create_scope(&self) -> u32 {
+  fn create_scope() -> u32 {
     mint()
   }
 
-  fn attach(&self, parent: &u32, _: &u32, _: Option<&u32>) {
-    reenter("attach", *parent);
+  fn attach(parent: u32, _: u32, _: Option<u32>) {
+    reenter("attach", parent);
   }
 
-  fn detach(&self, parent: &u32, _: &u32) {
-    reenter("detach", *parent);
+  fn detach(parent: u32, _: u32) {
+    reenter("detach", parent);
   }
 
-  fn destroy(&self, sink: u32) {
+  fn destroy(sink: u32) {
     reenter("destroy", sink);
   }
 
-  fn define_tokens(&self, scope: &u32, _: &Definitions<Erased>) {
-    reenter("define_tokens", *scope);
+  fn define_tokens(scope: u32, _: &Definitions<Erased>) {
+    reenter("define_tokens", scope);
   }
 
-  fn define_root_tokens(&self, _: &Definitions<Erased>) {
+  fn define_root_tokens(_: &Definitions<Erased>) {
     reenter("define_root_tokens", 1);
   }
 
-  fn listen(&self, sink: &u32, _: EventKind) {
-    reenter("listen", *sink);
+  fn listen(sink: u32, _: EventKind) {
+    reenter("listen", sink);
   }
 
-  fn focus(&self, sink: &u32) {
-    reenter("focus", *sink);
+  fn focus(sink: u32) {
+    reenter("focus", sink);
   }
 
-  fn blur(&self, sink: &u32) {
-    reenter("blur", *sink);
+  fn blur(sink: u32) {
+    reenter("blur", sink);
   }
 
-  fn set_value(&self, sink: &u32, _: &str) {
-    reenter("set_value", *sink);
+  fn set_value(sink: u32, _: &str) {
+    reenter("set_value", sink);
   }
 
-  fn set_selection(&self, sink: &u32, _: TextSelection) {
-    reenter("set_selection", *sink);
+  fn set_selection(sink: u32, _: TextSelection) {
+    reenter("set_selection", sink);
   }
 
-  fn set_checked(&self, sink: &u32, _: bool) {
-    reenter("set_checked", *sink);
+  fn set_checked(sink: u32, _: bool) {
+    reenter("set_checked", sink);
   }
 
-  fn observe_size(&self, sink: &u32, _: Rc<dyn Fn(Size<f32>)>) {
-    reenter("observe_size", *sink);
+  fn observe_size(sink: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    reenter("observe_size", sink);
+
+    Observation::unmeasured()
   }
 
-  fn media(&self) -> MediaSignals<f32> {
+  fn media() -> MediaSignals<f32> {
     MEDIA.with(|media| {
       media
         .borrow_mut()
@@ -269,13 +272,13 @@ impl Platform for Reentrant {
     })
   }
 
-  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
-    self.media().watch(media)
+  fn watch_media(media: &Media<f32>) -> Memo<bool> {
+    Self::media().watch(media)
   }
 
-  fn set_scheme(&self, _scheme: Option<skene_core::ColorScheme>) {}
+  fn set_scheme(_scheme: Option<skene_core::ColorScheme>) {}
 
-  fn stored_scheme(&self) -> Option<skene_core::ColorScheme> {
+  fn stored_scheme() -> Option<skene_core::ColorScheme> {
     None
   }
 }

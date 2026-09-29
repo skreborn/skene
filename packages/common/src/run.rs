@@ -190,7 +190,7 @@ impl<P: Platform> Run<P> {
       layout,
       dynamics: self.dynamics,
     };
-    let sink = P::default().create_run(&props);
+    let sink = P::create_run(&props);
     let node = Scene::<P>::with(|scene| {
       let node = scene.create(NodeKind::Run, sink);
 

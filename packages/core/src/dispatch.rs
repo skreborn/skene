@@ -109,7 +109,7 @@ pub fn dispatch_pointer_move<P: Platform>(node: NodeId, event: &PointerEvent) ->
 fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
   let sink = Scene::<P>::with(|scene| scene.sink(node));
 
-  sink.map_or(*event, |sink| P::default().localize_pointer(&sink, event))
+  sink.map_or(*event, |sink| P::localize_pointer(sink, event))
 }
 
 /// Notifies `node` that the pointer entered it.

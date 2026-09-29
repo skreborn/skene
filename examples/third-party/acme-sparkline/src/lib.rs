@@ -63,8 +63,7 @@ impl<P: Platform<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P
     let color = self.color;
 
     with_sink::<P, _>(node, |sink| {
-      CellPainter::paint(
-        &P::default(),
+      <P as CellPainter>::paint(
         sink,
         Box::new(move |cells, _| {
           for (x, level) in levels.iter().enumerate() {
@@ -78,8 +77,7 @@ impl<P: Platform<Scalar = u32> + CellPainter + Painting> View<P> for Sparkline<P
           }
         }),
       );
-      Painting::paint(
-        &P::default(),
+      <P as Painting>::paint(
         sink,
         Box::new(move |canvas, size| {
           let count = u32::try_from(pixel_levels.len().max(1)).unwrap_or(u32::MAX);

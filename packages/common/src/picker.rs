@@ -358,7 +358,7 @@ impl<P: Platform> View<P> for RawPicker<P, Face<P>> {
       face,
     };
     // A platform whose tree is live from the start draws the picker outright.
-    let Some(hydrated) = P::default().hydration()
+    let Some(hydrated) = P::hydration()
     else {
       return build_drawn::<P>(parts, &shared, on_change);
     };
@@ -416,14 +416,14 @@ fn build_native<P: Platform>(
 
   let options = untrack(|| shared.roster.options::<P>());
 
-  with_sink::<P, _>(node, |sink| P::default().set_options(sink, &options));
+  with_sink::<P, _>(node, |sink| P::set_options(sink, &options));
   Effect::render({
     let chosen = Rc::clone(&shared.chosen);
 
     move |_: Option<()>| {
       let value = chosen().unwrap_or_default();
 
-      with_sink::<P, _>(node, |sink| P::default().set_value(sink, &value));
+      with_sink::<P, _>(node, |sink| P::set_value(sink, &value));
     }
   });
 

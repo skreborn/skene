@@ -24,6 +24,7 @@ use super::{
   MediaSignals,
   NodeId,
   NodeKind,
+  Observation,
   OverlayProps,
   PlainChild,
   Platform,
@@ -149,80 +150,80 @@ impl Platform for TestPlatform {
     &SCENE
   }
 
-  fn create_box(&self, _: &BoxProps<Self>) -> u32 {
+  fn create_box(_: &BoxProps<Self>) -> u32 {
     Self::next_sink()
   }
 
-  fn update_box(&self, _: &u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {}
+  fn update_box(_: u32, _: Slot, _: &StaticLeaf<BoxValue<f32>>) {}
 
-  fn update_focus_order(&self, _: &u32, _: Option<FocusOrder>) {}
+  fn update_focus_order(_: u32, _: Option<FocusOrder>) {}
 
-  fn update_access(&self, _: &u32, _: &[AccessProp]) {}
+  fn update_access(_: u32, _: &[AccessProp]) {}
 
-  fn create_control(&self, _: &ControlProps<Self>) -> u32 {
+  fn create_control(_: &ControlProps<Self>) -> u32 {
     Self::next_sink()
   }
 
-  fn set_control_state(&self, _: &u32, _: &ControlState) {}
+  fn set_control_state(_: u32, _: &ControlState) {}
 
-  fn create_overlay(&self, _: &OverlayProps<Self>) -> u32 {
+  fn create_overlay(_: &OverlayProps<Self>) -> u32 {
     Self::next_sink()
   }
 
-  fn set_overlay_open(&self, _: &u32, _: bool, _: Option<&u32>) {}
+  fn set_overlay_open(_: u32, _: bool, _: Option<u32>) {}
 
-  fn create_run(&self, _: &RunProps<Self>) -> u32 {
+  fn create_run(_: &RunProps<Self>) -> u32 {
     Self::next_sink()
   }
 
-  fn update_run(&self, _: &u32, _: Slot, _: &StaticLeaf<RunValue>) {}
+  fn update_run(_: u32, _: Slot, _: &StaticLeaf<RunValue>) {}
 
-  fn schedule(&self, _: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(_: std::time::Duration, _: Box<dyn FnOnce()>) -> Timer {
     Timer(0)
   }
 
-  fn cancel(&self, _: Timer) {}
+  fn cancel(_: Timer) {}
 
-  fn set_text(&self, _: &u32, _: &str) {}
+  fn set_text(_: u32, _: &str) {}
 
-  fn create_anchor(&self) -> u32 {
+  fn create_anchor() -> u32 {
     Self::next_sink()
   }
 
-  fn create_scope(&self) -> u32 {
+  fn create_scope() -> u32 {
     Self::next_sink()
   }
 
-  fn attach(&self, parent: &u32, child: &u32, before: Option<&u32>) {
-    Self::log(Call::Attach(*parent, *child, before.copied()));
+  fn attach(parent: u32, child: u32, before: Option<u32>) {
+    Self::log(Call::Attach(parent, child, before));
   }
 
-  fn detach(&self, parent: &u32, child: &u32) {
-    Self::log(Call::Detach(*parent, *child));
+  fn detach(parent: u32, child: u32) {
+    Self::log(Call::Detach(parent, child));
   }
 
-  fn destroy(&self, sink: u32) {
+  fn destroy(sink: u32) {
     Self::log(Call::Destroy(sink));
   }
 
-  fn define_tokens(&self, scope: &u32, definitions: &Definitions<Erased>) {
-    Self::log(Call::DefineTokens(*scope, definitions.len()));
+  fn define_tokens(scope: u32, definitions: &Definitions<Erased>) {
+    Self::log(Call::DefineTokens(scope, definitions.len()));
   }
 
-  fn define_root_tokens(&self, definitions: &Definitions<Erased>) {
+  fn define_root_tokens(definitions: &Definitions<Erased>) {
     Self::log(Call::DefineRootTokens(definitions.len()));
   }
 
-  fn listen(&self, sink: &u32, kind: EventKind) {
-    Self::log(Call::Listen(*sink, kind));
+  fn listen(sink: u32, kind: EventKind) {
+    Self::log(Call::Listen(sink, kind));
   }
 
-  fn localize_pointer(&self, sink: &u32, event: &PointerEvent) -> PointerEvent {
+  fn localize_pointer(sink: u32, event: &PointerEvent) -> PointerEvent {
     ORIGINS.with(|origins| {
       origins
         .borrow()
         .iter()
-        .find(|(placed, _, _)| placed == sink)
+        .find(|(placed, _, _)| *placed == sink)
         .map_or(*event, |(_, x, y)| PointerEvent {
           local_x: event.x - x,
           local_y: event.y - y,
@@ -231,19 +232,21 @@ impl Platform for TestPlatform {
     })
   }
 
-  fn focus(&self, _: &u32) {}
+  fn focus(_: u32) {}
 
-  fn blur(&self, _: &u32) {}
+  fn blur(_: u32) {}
 
-  fn set_value(&self, _: &u32, _: &str) {}
+  fn set_value(_: u32, _: &str) {}
 
-  fn set_selection(&self, _: &u32, _: TextSelection) {}
+  fn set_selection(_: u32, _: TextSelection) {}
 
-  fn set_checked(&self, _: &u32, _: bool) {}
+  fn set_checked(_: u32, _: bool) {}
 
-  fn observe_size(&self, _: &u32, _: Rc<dyn Fn(Size<f32>)>) {}
+  fn observe_size(_: u32, _: Rc<dyn Fn(Size<f32>)>) -> Observation {
+    Observation::unmeasured()
+  }
 
-  fn media(&self) -> MediaSignals<f32> {
+  fn media() -> MediaSignals<f32> {
     MEDIA.with(|media| {
       *media.borrow_mut().get_or_insert_with(|| MediaSignals {
         viewport: Signal::opaque(Size {
@@ -263,13 +266,13 @@ impl Platform for TestPlatform {
     })
   }
 
-  fn watch_media(&self, media: &Media<f32>) -> Memo<bool> {
-    self.media().watch(media)
+  fn watch_media(media: &Media<f32>) -> Memo<bool> {
+    Self::media().watch(media)
   }
 
-  fn set_scheme(&self, _scheme: Option<ColorScheme>) {}
+  fn set_scheme(_scheme: Option<ColorScheme>) {}
 
-  fn stored_scheme(&self) -> Option<ColorScheme> {
+  fn stored_scheme() -> Option<ColorScheme> {
     None
   }
 }

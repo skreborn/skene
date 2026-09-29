@@ -21,6 +21,7 @@ use skene_core::{
   MediaSignals,
   NodeId,
   NodeKind,
+  Observation,
   OverlayProps,
   Part,
   Placement,
@@ -114,21 +115,21 @@ impl Platform for Tui {
     &SCENE
   }
 
-  fn bind_node(&self, sink: &Handle, node: NodeId) {
+  fn bind_node(sink: Handle, node: NodeId) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.node = Some(node);
       }
     });
   }
 
-  fn create_box(&self, props: &BoxProps<Self>) -> Handle {
+  fn create_box(props: &BoxProps<Self>) -> Handle {
     with_store(|store| store.create_laid_out(Kind::Box(BoxRecord::new(props.clone()))))
   }
 
-  fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiExt>>) {
+  fn update_box(sink: Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiExt>>) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.slots.insert(slot, leaf.clone().into());
 
         if let Some(inner) = record.kind.box_record_mut() {
@@ -136,15 +137,15 @@ impl Platform for Tui {
         }
 
         store.layout_dirty = true;
-        store.damage(*sink);
+        store.damage(sink);
       }
     });
   }
 
-  fn update_focus_order(&self, sink: &Handle, focus_order: Option<FocusOrder>) {
+  fn update_focus_order(sink: Handle, focus_order: Option<FocusOrder>) {
     with_store(|store| {
       if let Some(inner) = store
-        .record_mut(*sink)
+        .record_mut(sink)
         .and_then(|record| record.kind.box_record_mut())
       {
         inner.props.focus_order = focus_order;
@@ -152,10 +153,10 @@ impl Platform for Tui {
     });
   }
 
-  fn update_access(&self, sink: &Handle, access: &[AccessProp]) {
+  fn update_access(sink: Handle, access: &[AccessProp]) {
     with_store(|store| {
       if let Some(inner) = store
-        .record_mut(*sink)
+        .record_mut(sink)
         .and_then(|record| record.kind.box_record_mut())
       {
         access.clone_into(&mut inner.props.access);
@@ -163,7 +164,7 @@ impl Platform for Tui {
     });
   }
 
-  fn create_control(&self, props: &ControlProps<Self>) -> Handle {
+  fn create_control(props: &ControlProps<Self>) -> Handle {
     let field = matches!(props.kind, ControlKind::TextField | ControlKind::TextEditor)
       .then(|| Field::new(props.placeholder.clone(), props.lines));
 
@@ -179,20 +180,20 @@ impl Platform for Tui {
     })
   }
 
-  fn set_control_state(&self, sink: &Handle, state: &ControlState) {
+  fn set_control_state(sink: Handle, state: &ControlState) {
     with_store(|store| {
       if let Some(Kind::Control { state: held, .. }) =
-        store.record_mut(*sink).map(|record| &mut record.kind)
+        store.record_mut(sink).map(|record| &mut record.kind)
         && *held != *state
       {
         *held = *state;
         store.layout_dirty = true;
-        store.damage(*sink);
+        store.damage(sink);
       }
     });
   }
 
-  fn create_overlay(&self, props: &OverlayProps<Self>) -> Handle {
+  fn create_overlay(props: &OverlayProps<Self>) -> Handle {
     with_store(|store| {
       let handle = store.create_laid_out(Kind::Overlay {
         inner: BoxRecord::new(props.box_props.clone()),
@@ -211,8 +212,8 @@ impl Platform for Tui {
     })
   }
 
-  fn set_overlay_open(&self, sink: &Handle, open: bool, anchor: Option<&Handle>) {
-    let focus = with_store(|store| store.set_overlay_open(*sink, open, anchor.copied()));
+  fn set_overlay_open(sink: Handle, open: bool, anchor: Option<Handle>) {
+    let focus = with_store(|store| store.set_overlay_open(sink, open, anchor));
 
     if let interaction::OverlayFocus::Moved(next) = focus {
       if open {
@@ -224,10 +225,10 @@ impl Platform for Tui {
     }
   }
 
-  fn set_overlay_position(&self, sink: &Handle, position: Option<Point<f32>>) {
+  fn set_overlay_position(sink: Handle, position: Option<Point<f32>>) {
     with_store(|store| {
       if let Some(Kind::Overlay { position: held, .. }) =
-        store.record_mut(*sink).map(|record| &mut record.kind)
+        store.record_mut(sink).map(|record| &mut record.kind)
       {
         #[expect(
           clippy::cast_possible_truncation,
@@ -241,11 +242,11 @@ impl Platform for Tui {
     });
   }
 
-  fn set_overlay_placement(&self, sink: &Handle, placement: Placement) {
+  fn set_overlay_placement(sink: Handle, placement: Placement) {
     with_store(|store| {
       if let Some(Kind::Overlay {
         placement: held, ..
-      }) = store.record_mut(*sink).map(|record| &mut record.kind)
+      }) = store.record_mut(sink).map(|record| &mut record.kind)
       {
         *held = placement;
         store.paint_dirty = true;
@@ -253,7 +254,7 @@ impl Platform for Tui {
     });
   }
 
-  fn create_run(&self, props: &RunProps<Self>) -> Handle {
+  fn create_run(props: &RunProps<Self>) -> Handle {
     let inline_box = props.display == skene_core::RunDisplay::InlineBox;
 
     with_store(|store| {
@@ -273,9 +274,9 @@ impl Platform for Tui {
     })
   }
 
-  fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue<TuiExt>>) {
+  fn update_run(sink: Handle, slot: Slot, leaf: &StaticLeaf<RunValue<TuiExt>>) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.slots.insert(slot, leaf.clone().into());
 
         if let Kind::Run {
@@ -286,14 +287,14 @@ impl Platform for Tui {
         }
 
         store.layout_dirty = true;
-        store.damage(*sink);
+        store.damage(sink);
       }
     });
   }
 
-  fn set_text(&self, sink: &Handle, text: &str) {
+  fn set_text(sink: Handle, text: &str) {
     with_store(|store| {
-      let Some(record) = store.record_mut(*sink)
+      let Some(record) = store.record_mut(sink)
       else {
         return;
       };
@@ -303,57 +304,57 @@ impl Platform for Tui {
       }
 
       text.clone_into(&mut record.text);
-      store.invalidate_selection(*sink);
+      store.invalidate_selection(sink);
       store.layout_dirty = true;
-      store.damage(*sink);
+      store.damage(sink);
     });
   }
 
-  fn create_anchor(&self) -> Handle {
+  fn create_anchor() -> Handle {
     with_store(|store| store.create(Kind::Anchor, None))
   }
 
-  fn create_scope(&self) -> Handle {
+  fn create_scope() -> Handle {
     with_store(|store| store.create(Kind::Scope, None))
   }
 
-  fn attach(&self, parent: &Handle, child: &Handle, before: Option<&Handle>) {
+  fn attach(parent: Handle, child: Handle, before: Option<Handle>) {
     let caption = with_store(|store| {
       store
-        .keeps_caption_beside(*parent)
-        .then(|| store.record(*child).and_then(|record| record.node))
+        .keeps_caption_beside(parent)
+        .then(|| store.record(child).and_then(|record| record.node))
         .flatten()
     })
     .is_some_and(|node| Scene::<Self>::with(|scene| scene.part(node)) == Some(Part::Label));
 
     with_store(|store| {
       if caption {
-        store.keep_caption(*parent, *child);
+        store.keep_caption(parent, child);
 
         return;
       }
 
-      store.list(*parent, *child, before.copied());
+      store.list(parent, child, before);
 
-      if let Some(caption) = store.record(*child).and_then(|record| record.caption) {
-        store.list(*parent, caption, Some(*child));
+      if let Some(caption) = store.record(child).and_then(|record| record.caption) {
+        store.list(parent, caption, Some(child));
       }
     });
   }
 
-  fn detach(&self, parent: &Handle, child: &Handle) {
+  fn detach(parent: Handle, child: Handle) {
     with_store(|store| {
-      if store.record(*child).and_then(|record| record.captioned) == Some(*parent) {
-        store.drop_caption(*parent, *child);
+      if store.record(child).and_then(|record| record.captioned) == Some(parent) {
+        store.drop_caption(parent, child);
 
         return;
       }
 
-      if store.parent(*child) == Some(*parent) {
-        store.unlist(*child);
+      if store.parent(child) == Some(parent) {
+        store.unlist(child);
       }
 
-      if let Some(caption) = store.record(*child).and_then(|record| record.caption) {
+      if let Some(caption) = store.record(child).and_then(|record| record.caption) {
         store.unlist(caption);
       }
 
@@ -362,28 +363,28 @@ impl Platform for Tui {
     });
   }
 
-  fn destroy(&self, sink: Handle) {
+  fn destroy(sink: Handle) {
     with_store(|store| store.destroy(sink));
   }
 
-  fn define_tokens(&self, _scope: &Handle, _definitions: &Definitions<TokenValue>) {
+  fn define_tokens(_scope: Handle, _definitions: &Definitions<TokenValue>) {
     with_store(Store::invalidate_styles);
   }
 
-  fn define_root_tokens(&self, _definitions: &Definitions<TokenValue>) {
+  fn define_root_tokens(_definitions: &Definitions<TokenValue>) {
     with_store(Store::invalidate_styles);
   }
 
-  fn listen(&self, sink: &Handle, kind: EventKind) {
+  fn listen(sink: Handle, kind: EventKind) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.listened |= 1 << (kind as u16);
       }
     });
   }
 
-  fn localize_pointer(&self, sink: &Handle, event: &PointerEvent) -> PointerEvent {
-    let (x, y) = with_store(|store| store.screen_origin(*sink));
+  fn localize_pointer(sink: Handle, event: &PointerEvent) -> PointerEvent {
+    let (x, y) = with_store(|store| store.screen_origin(sink));
 
     #[expect(
       clippy::cast_precision_loss,
@@ -396,21 +397,21 @@ impl Platform for Tui {
     }
   }
 
-  fn focus(&self, sink: &Handle) {
-    interaction::set_focus(Some(*sink));
+  fn focus(sink: Handle) {
+    interaction::set_focus(Some(sink));
   }
 
-  fn blur(&self, sink: &Handle) {
-    let holds = with_store(|store| store.focused == Some(*sink));
+  fn blur(sink: Handle) {
+    let holds = with_store(|store| store.focused == Some(sink));
 
     if holds {
       interaction::set_focus(None);
     }
   }
 
-  fn set_value(&self, sink: &Handle, value: &str) {
+  fn set_value(sink: Handle, value: &str) {
     with_store(|store| {
-      let Some(record) = store.record_mut(*sink)
+      let Some(record) = store.record_mut(sink)
       else {
         return;
       };
@@ -423,18 +424,18 @@ impl Platform for Tui {
         return;
       }
 
-      store.settle_entry(*sink);
+      store.settle_entry(sink);
       store.layout_dirty = true;
-      store.damage(*sink);
+      store.damage(sink);
     });
 
     crate::field::report_selections();
   }
 
-  fn set_selection(&self, sink: &Handle, selection: TextSelection) {
+  fn set_selection(sink: Handle, selection: TextSelection) {
     with_store(|store| {
       let Some(field) = store
-        .record_mut(*sink)
+        .record_mut(sink)
         .and_then(|record| record.kind.field_mut())
       else {
         return;
@@ -444,40 +445,52 @@ impl Platform for Tui {
         return;
       }
 
-      store.settle_entry(*sink);
-      store.damage(*sink);
+      store.settle_entry(sink);
+      store.damage(sink);
     });
   }
 
-  fn set_checked(&self, sink: &Handle, checked: bool) {
+  fn set_checked(sink: Handle, checked: bool) {
     with_store(|store| {
       if let Some(Kind::Control { checked: held, .. }) =
-        store.record_mut(*sink).map(|record| &mut record.kind)
+        store.record_mut(sink).map(|record| &mut record.kind)
       {
         *held = checked;
       }
     });
   }
 
-  fn observe_size(&self, sink: &Handle, report: Rc<dyn Fn(Size<u32>)>) {
+  fn observe_size(sink: Handle, report: Rc<dyn Fn(Size<u32>)>) -> Observation {
+    let kept = Rc::clone(&report);
+
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.observers.push(report);
         record.reported = None;
         store.layout_dirty = true;
       }
     });
+
+    Observation::new(move || {
+      with_store(|store| {
+        if let Some(record) = store.record_mut(sink) {
+          record
+            .observers
+            .retain(|observer| !Rc::ptr_eq(observer, &kept));
+        }
+      });
+    })
   }
 
-  fn media(&self) -> MediaSignals<u32> {
+  fn media() -> MediaSignals<u32> {
     with_store(|store| store.media().signals)
   }
 
-  fn watch_media(&self, media: &Media<u32>) -> Memo<bool> {
-    self.media().watch(media)
+  fn watch_media(media: &Media<u32>) -> Memo<bool> {
+    Self::media().watch(media)
   }
 
-  fn set_scheme(&self, scheme: Option<ColorScheme>) {
+  fn set_scheme(scheme: Option<ColorScheme>) {
     let write = with_store(|store| {
       let before = store.scheme();
 
@@ -499,7 +512,7 @@ impl Platform for Tui {
     }
   }
 
-  fn schedule(&self, delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
+  fn schedule(delay: std::time::Duration, action: Box<dyn FnOnce()>) -> Timer {
     with_store(|store| {
       let at = store.now() + delay.as_secs_f64();
 
@@ -507,11 +520,11 @@ impl Platform for Tui {
     })
   }
 
-  fn cancel(&self, timer: Timer) {
+  fn cancel(timer: Timer) {
     with_store(|store| store.timers.cancel(timer));
   }
 
-  fn clipboard_availability(&self, action: ClipboardAction) -> Availability {
+  fn clipboard_availability(action: ClipboardAction) -> Availability {
     with_store(|store| {
       if !store.offers(action) {
         return Availability::Absent;
@@ -539,7 +552,7 @@ impl Platform for Tui {
     })
   }
 
-  fn clipboard(&self, action: ClipboardAction) {
+  fn clipboard(action: ClipboardAction) {
     match action {
       ClipboardAction::Copy => with_store(Store::copy_selection),
       ClipboardAction::Cut => crate::field::cut_focused(),
@@ -547,35 +560,35 @@ impl Platform for Tui {
     }
   }
 
-  fn stored_scheme(&self) -> Option<ColorScheme> {
+  fn stored_scheme() -> Option<ColorScheme> {
     with_store(|store| store.choice)
   }
 }
 
 impl Painting for Tui {
-  fn available(&self) -> ReadSignal<bool> {
+  fn available() -> ReadSignal<bool> {
     with_store(|store| store.media().graphics)
   }
 
-  fn paint(&self, sink: &Handle, painter: Box<skene_common::Painter>) {
+  fn paint(sink: Handle, painter: Box<skene_common::Painter>) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.picture = Some(PictureRecord {
           painter: Rc::from(painter),
           image: None,
         });
-        store.damage(*sink);
+        store.damage(sink);
       }
     });
   }
 }
 
 impl CellPainter for Tui {
-  fn paint(&self, sink: &Handle, painter: Box<Painter>) {
+  fn paint(sink: Handle, painter: Box<Painter>) {
     with_store(|store| {
-      if let Some(record) = store.record_mut(*sink) {
+      if let Some(record) = store.record_mut(sink) {
         record.painter = Some(painter);
-        store.damage(*sink);
+        store.damage(sink);
       }
     });
   }

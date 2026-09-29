@@ -349,8 +349,8 @@ pub fn peniko::gradient::Gradient::into_brush(self) -> peniko::brush::Brush
 impl skene_common::IntoBrush for skene_core::values::color::Color
 pub fn skene_core::values::color::Color::into_brush(self) -> peniko::brush::Brush
 pub trait skene_common::gui::Painting: skene_core::platform::Platform
-pub fn skene_common::gui::Painting::available(&self) -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_common::gui::Painting::paint(&self, &Self::Sink, alloc::boxed::Box<skene_common::Painter>)
+pub fn skene_common::gui::Painting::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::gui::Painting::paint(Self::Sink, alloc::boxed::Box<skene_common::Painter>)
 pub trait skene_common::gui::Renderer
 pub fn skene_common::gui::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
 pub fn skene_common::gui::Renderer::pop(&mut self)
@@ -384,7 +384,7 @@ pub enum skene_common::realize::Source<T>
 pub skene_common::realize::Source::Derived(alloc::rc::Rc<dyn core::ops::function::Fn() -> T>)
 pub skene_common::realize::Source::Fixed(T)
 impl<T: 'static> skene_common::realize::Source<T>
-pub fn skene_common::realize::Source<T>::bind<P: skene_core::platform::Platform>(self, skene_core::node::NodeId, impl core::ops::function::Fn(&<P as skene_core::platform::Platform>::Sink, &T) + 'static)
+pub fn skene_common::realize::Source<T>::bind<P: skene_core::platform::Platform>(self, skene_core::node::NodeId, impl core::ops::function::Fn(<P as skene_core::platform::Platform>::Sink, &T) + 'static)
 pub fn skene_common::realize::Source<T>::derive(impl core::ops::function::Fn() -> T + 'static) -> Self
 pub fn skene_common::realize::Source<T>::into_read(self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> T> where T: core::clone::Clone
 impl<T: core::clone::Clone> core::clone::Clone for skene_common::realize::Source<T>
@@ -406,7 +406,7 @@ pub fn skene_common::realize::bind_box_slot<P: skene_core::platform::Platform>(s
 pub fn skene_common::realize::bind_run_slot<P: skene_core::platform::Platform>(skene_core::node::NodeId, skene_core::run_style::RunSlot<<P as skene_core::platform::Platform>::StyleExt>)
 pub fn skene_common::realize::describe<P: skene_core::platform::Platform>(skene_core::node::NodeId, alloc::vec::Vec<skene_core::values::access::AccessProp>)
 pub fn skene_common::realize::report_access<P: skene_core::platform::Platform>(skene_core::node::NodeId, alloc::vec::Vec<skene_core::values::access::AccessProp>)
-pub fn skene_common::realize::with_sink<P: skene_core::platform::Platform, R>(skene_core::node::NodeId, impl core::ops::function::FnOnce(&<P as skene_core::platform::Platform>::Sink) -> R) -> core::option::Option<R>
+pub fn skene_common::realize::with_sink<P: skene_core::platform::Platform, R>(skene_core::node::NodeId, impl core::ops::function::FnOnce(<P as skene_core::platform::Platform>::Sink) -> R) -> core::option::Option<R>
 pub mod skene_common::routing
 pub struct skene_common::routing::Router<R: skene_common::routing::Route>
 impl<R: skene_common::routing::Route> skene_common::routing::Router<R>
@@ -1124,7 +1124,7 @@ pub fn skene_common::ControlHandle<P>::name(&self) -> core::option::Option<alloc
 pub fn skene_common::ControlHandle<P>::name_read(&self) -> core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>
 pub const fn skene_common::ControlHandle<P>::node(&self) -> skene_core::node::NodeId
 pub fn skene_common::ControlHandle<P>::refresh(&self)
-pub fn skene_common::ControlHandle<P>::with_sink<R>(&self, impl core::ops::function::FnOnce(&<P as skene_core::platform::Platform>::Sink) -> R) -> core::option::Option<R>
+pub fn skene_common::ControlHandle<P>::with_sink<R>(&self, impl core::ops::function::FnOnce(<P as skene_core::platform::Platform>::Sink) -> R) -> core::option::Option<R>
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::ControlHandle<P>
 pub fn skene_common::ControlHandle<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::Enhance<P: skene_core::platform::Platform, C>
@@ -2444,8 +2444,8 @@ pub fn peniko::gradient::Gradient::into_brush(self) -> peniko::brush::Brush
 impl skene_common::IntoBrush for skene_core::values::color::Color
 pub fn skene_core::values::color::Color::into_brush(self) -> peniko::brush::Brush
 pub trait skene_common::Painting: skene_core::platform::Platform
-pub fn skene_common::Painting::available(&self) -> skene_reactive::signal::ReadSignal<bool>
-pub fn skene_common::Painting::paint(&self, &Self::Sink, alloc::boxed::Box<skene_common::Painter>)
+pub fn skene_common::Painting::available() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::Painting::paint(Self::Sink, alloc::boxed::Box<skene_common::Painter>)
 pub trait skene_common::Renderer
 pub fn skene_common::Renderer::fill(&mut self, &kurbo::bezpath::BezPath, &peniko::brush::Brush)
 pub fn skene_common::Renderer::pop(&mut self)

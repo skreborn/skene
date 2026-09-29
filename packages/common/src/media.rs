@@ -7,49 +7,49 @@ use skene_reactive::{Effect, Memo, ReadSignal, Signal};
 /// The viewport's size, in the medium's unit.
 #[inline(always)]
 pub fn viewport<P: Platform>() -> ReadSignal<Size<P::Scalar>> {
-  P::default().media().viewport
+  P::media().viewport
 }
 
 /// The color scheme in force: the app's choice, else the platform's.
 #[inline(always)]
 pub fn scheme<P: Platform>() -> ReadSignal<ColorScheme> {
-  P::default().media().scheme
+  P::media().scheme
 }
 
 /// Whether the reader prefers reduced motion.
 #[inline(always)]
 pub fn reduced_motion<P: Platform>() -> ReadSignal<bool> {
-  P::default().media().reduced_motion
+  P::media().reduced_motion
 }
 
 /// Whether the reader prefers reduced transparency.
 #[inline(always)]
 pub fn reduced_transparency<P: Platform>() -> ReadSignal<bool> {
-  P::default().media().reduced_transparency
+  P::media().reduced_transparency
 }
 
 /// Whether the reader prefers more contrast.
 #[inline(always)]
 pub fn high_contrast<P: Platform>() -> ReadSignal<bool> {
-  P::default().media().high_contrast
+  P::media().high_contrast
 }
 
 /// How precisely the reader's primary pointer points.
 #[inline(always)]
 pub fn pointer<P: Platform>() -> ReadSignal<PointerPrecision> {
-  P::default().media().pointer
+  P::media().pointer
 }
 
 /// Whether the reader's primary pointer hovers.
 #[inline(always)]
 pub fn hover<P: Platform>() -> ReadSignal<bool> {
-  P::default().media().hover
+  P::media().hover
 }
 
 /// The insets the display keeps clear of the viewport's edges, in the medium's unit.
 #[inline(always)]
 pub fn safe_area<P: Platform>() -> ReadSignal<Inset<P::Scalar>> {
-  P::default().media().safe_area
+  P::media().safe_area
 }
 
 /// Whether a render made without script has been hydrated.
@@ -59,15 +59,13 @@ pub fn safe_area<P: Platform>() -> ReadSignal<Inset<P::Scalar>> {
 /// from the start.
 #[inline(always)]
 pub fn hydrated<P: Platform>() -> ReadSignal<bool> {
-  P::default()
-    .hydration()
-    .unwrap_or_else(|| Signal::opaque(true).read_only())
+  P::hydration().unwrap_or_else(|| Signal::opaque(true).read_only())
 }
 
 /// Whether `media` holds, as a memo following the environment.
 #[inline(always)]
 pub fn watch<P: Platform>(media: &Media<P::Scalar>) -> Memo<bool> {
-  P::default().watch_media(media)
+  P::watch_media(media)
 }
 
 /// Puts `scheme` in force throughout, overriding the platform's preference.
@@ -76,7 +74,7 @@ pub fn watch<P: Platform>(media: &Media<P::Scalar>) -> Memo<bool> {
 /// told which is in force, so a change re-inks without rebuilding anything.
 #[inline(always)]
 pub fn set_scheme<P: Platform>(scheme: Option<ColorScheme>) {
-  P::default().set_scheme(scheme);
+  P::set_scheme(scheme);
 }
 
 /// Puts the scheme `scheme` reports in force, following it as it changes; see
@@ -90,5 +88,5 @@ pub fn derive_scheme<P: Platform>(scheme: impl Fn() -> Option<ColorScheme> + 'st
 #[inline(always)]
 #[must_use]
 pub fn stored_scheme<P: Platform>() -> Option<ColorScheme> {
-  P::default().stored_scheme()
+  P::stored_scheme()
 }

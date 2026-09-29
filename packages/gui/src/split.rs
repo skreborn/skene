@@ -157,7 +157,7 @@ unsafe extern "C" fn loaded(payload: *const c_void, success: bool) {
   inner.failures.set(failures);
   tracing::warn!("a split module failed to load; asking again in {wait:?}");
 
-  let _ = ActivePlatform::default().schedule(
+  let _ = ActivePlatform::schedule(
     wait,
     Box::new(move || {
       let load = match &*inner.state.borrow() {

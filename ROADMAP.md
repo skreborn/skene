@@ -83,9 +83,6 @@ left half-done in a code comment.
     `NoChild` state, making children-last a type error for every wrapper view; `Show`
     builds lazily and detached subtrees pause through `EffectHandle::pause`, catching
     up on reattach.
-    - `Platform` hygiene: associated functions in place of `&self` on a zero-sized type,
-    and sinks passed by value now that they are `Copy`; `observe_size` returning a
-    handle that stops observing.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and
     events on top, so the two leaves cannot drift; hydration converges, removing

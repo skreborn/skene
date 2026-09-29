@@ -20,6 +20,7 @@ use crate::{
   Animation,
   Arrangement,
   AspectRatio,
+  Axes,
   Color,
   Dimension,
   Flexibility,
@@ -113,8 +114,8 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   pub grid_row_placement: S::Of<Line<GridPlacement>>,
   /// The box's column placement as a grid child.
   pub grid_column_placement: S::Of<Line<GridPlacement>>,
-  /// How content exceeding the box's bounds is treated.
-  pub overflow: S::Of<Overflow>,
+  /// How content exceeding the box's bounds is treated, per axis.
+  pub overflow: S::Of<Axes<Overflow>>,
   /// Whether the box and its content are drawn.
   pub visibility: S::Of<Visibility>,
   /// The medium's own properties.
@@ -158,8 +159,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   GridFlow(GridFlow),
   /// A grid placement.
   Placement(Line<GridPlacement>),
-  /// An overflow mode.
-  Overflow(Overflow),
+  /// An overflow mode per axis.
+  Overflow(Axes<Overflow>),
   /// A visibility.
   Visibility(Visibility),
   /// A value of one of the medium's own properties.
@@ -274,7 +275,7 @@ box_values!(
   Vec<GridTrack<N>> => Tracks;
   GridFlow => GridFlow;
   Line<GridPlacement> => Placement;
-  Overflow => Overflow;
+  Axes<Overflow> => Overflow;
   Visibility => Visibility;
 );
 
@@ -397,7 +398,7 @@ box_fields!(
   grid_flow: crate::GridFlow => GridFlow,
   grid_row_placement: crate::Line<crate::GridPlacement> => GridRowPlacement,
   grid_column_placement: crate::Line<crate::GridPlacement> => GridColumnPlacement,
-  overflow: crate::Overflow => Overflow,
+  overflow: crate::Axes<crate::Overflow> => Overflow,
   visibility: crate::Visibility => Visibility,
 );
 

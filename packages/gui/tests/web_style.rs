@@ -24,6 +24,7 @@ use skene_gui::{
   When,
   core::{
     Animation,
+    Axes,
     BoxStyle,
     Color,
     Dimension,
@@ -197,6 +198,20 @@ fn overflow_renders() {
 
   assert!(rendered.styles().contains(&format!(
     ".{class}{{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;overflow:scroll;}}"
+  )));
+}
+
+/// An overflow per axis renders as the two-value shorthand, horizontal first.
+#[test]
+fn overflow_renders_per_axis() {
+  let rendered = render_to_string(|| {
+    Container::new().set_overflow(Axes::new(Overflow::Hidden, Overflow::Scroll))
+  });
+
+  let class = root_class(rendered.body());
+
+  assert!(rendered.styles().contains(&format!(
+    ".{class}{{display:grid;grid-template-columns:1fr;grid-template-rows:1fr;overflow:hidden scroll;}}"
   )));
 }
 

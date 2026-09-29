@@ -471,7 +471,7 @@ pub fn skene_core::box_fields::Overflow::hash<__H: core::hash::Hasher>(&self, &m
 impl core::marker::Copy for skene_core::box_fields::Overflow
 impl core::marker::StructuralPartialEq for skene_core::box_fields::Overflow
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::Overflow
-pub type skene_core::box_fields::Overflow::Value = skene_core::Overflow
+pub type skene_core::box_fields::Overflow::Value = skene_core::Axes<skene_core::Overflow>
 pub const skene_core::box_fields::Overflow::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::Overflow::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Overflow::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
@@ -912,7 +912,7 @@ pub skene_core::BoxValue::Inset(skene_core::Inset<N>)
 pub skene_core::BoxValue::ItemAlignment(skene_core::ItemAlignment)
 pub skene_core::BoxValue::Length(skene_core::Length)
 pub skene_core::BoxValue::Number(f32)
-pub skene_core::BoxValue::Overflow(skene_core::Overflow)
+pub skene_core::BoxValue::Overflow(skene_core::Axes<skene_core::Overflow>)
 pub skene_core::BoxValue::Placement(skene_core::Line<skene_core::GridPlacement>)
 pub skene_core::BoxValue::Spacing(skene_core::Spacing<N>)
 pub skene_core::BoxValue::Tracks(alloc::vec::Vec<skene_core::GridTrack<N>>)
@@ -1385,6 +1385,8 @@ impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::eq(&self, &Self) -> bool
 impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Leaf<skene_core::Axes<T>>
+pub fn skene_core::Leaf<skene_core::Axes<T>>::from(T) -> Self
 impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Leaf<skene_core::Dimension<T>>
 pub fn skene_core::Leaf<skene_core::Dimension<T>>::from(T) -> Self
 impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Leaf<skene_core::Spacing<T>>
@@ -1524,6 +1526,8 @@ pub skene_core::Overflow::Auto
 pub skene_core::Overflow::Hidden
 pub skene_core::Overflow::Scroll
 pub skene_core::Overflow::Visible
+impl skene_core::Overflow
+pub const fn skene_core::Overflow::scrolls(self) -> bool
 impl core::clone::Clone for skene_core::Overflow
 pub fn skene_core::Overflow::clone(&self) -> skene_core::Overflow
 impl core::cmp::Eq for skene_core::Overflow
@@ -1537,9 +1541,6 @@ impl core::marker::Copy for skene_core::Overflow
 impl core::marker::StructuralPartialEq for skene_core::Overflow
 impl skene_core::Fingerprint for skene_core::Overflow
 pub fn skene_core::Overflow::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Overflow
-pub fn skene_core::Overflow::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
-pub fn skene_core::Overflow::into_box_value(self) -> skene_core::BoxValue<N, X>
 pub enum skene_core::Part
 pub skene_core::Part::Bubble
 pub skene_core::Part::Face
@@ -1927,6 +1928,8 @@ impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::hash::Hash> core::hash::Hash for skene_core::StaticLeaf<T>
 pub fn skene_core::StaticLeaf<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl<T: core::marker::Copy> core::convert::From<T> for skene_core::StaticLeaf<skene_core::Axes<T>>
+pub fn skene_core::StaticLeaf<skene_core::Axes<T>>::from(T) -> Self
 impl<T: core::marker::Copy> core::convert::From<T> for skene_core::StaticLeaf<skene_core::Dimension<T>>
 pub fn skene_core::StaticLeaf<skene_core::Dimension<T>>::from(T) -> Self
 impl<T: core::marker::Copy> core::convert::From<T> for skene_core::StaticLeaf<skene_core::Spacing<T>>
@@ -2218,6 +2221,33 @@ pub fn skene_core::AspectRatio::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::AspectRatio
 pub fn skene_core::AspectRatio::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::AspectRatio::into_box_value(self) -> skene_core::BoxValue<N, X>
+pub struct skene_core::Axes<T>
+pub skene_core::Axes::horizontal: T
+pub skene_core::Axes::vertical: T
+impl skene_core::Axes<skene_core::Overflow>
+pub const fn skene_core::Axes<skene_core::Overflow>::computed(self) -> Self
+pub const fn skene_core::Axes<skene_core::Overflow>::scrolls(self) -> bool
+impl<T: core::marker::Copy> skene_core::Axes<T>
+pub const fn skene_core::Axes<T>::all(T) -> Self
+pub const fn skene_core::Axes<T>::new(T, T) -> Self
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Axes<skene_core::Overflow>
+pub fn skene_core::Axes<skene_core::Overflow>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::Axes<skene_core::Overflow>::into_box_value(self) -> skene_core::BoxValue<N, X>
+impl<T: core::clone::Clone> core::clone::Clone for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::clone(&self) -> skene_core::Axes<T>
+impl<T: core::cmp::Eq> core::cmp::Eq for skene_core::Axes<T>
+impl<T: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::eq(&self, &skene_core::Axes<T>) -> bool
+impl<T: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::Axes<T>
+impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<T: core::hash::Hash> core::hash::Hash for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl<T: core::marker::Copy> core::convert::From<T> for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::from(T) -> Self
+impl<T: core::marker::Copy> core::marker::Copy for skene_core::Axes<T>
+impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::Boundary
 impl skene_core::Boundary
 pub fn skene_core::Boundary::current() -> core::option::Option<Self>
@@ -3954,7 +3984,7 @@ pub const skene_core::box_fields::Offset::KEY: skene_core::PropertyKey<<X as ske
 pub fn skene_core::box_fields::Offset::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Offset::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::Overflow
-pub type skene_core::box_fields::Overflow::Value = skene_core::Overflow
+pub type skene_core::box_fields::Overflow::Value = skene_core::Axes<skene_core::Overflow>
 pub const skene_core::box_fields::Overflow::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::Overflow::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Overflow::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
@@ -4113,6 +4143,8 @@ impl<T: skene_core::Fingerprint> skene_core::Fingerprint for alloc::vec::Vec<T>
 pub fn alloc::vec::Vec<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for core::option::Option<T>
 pub fn core::option::Option<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Axes<T>
+pub fn skene_core::Axes<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Inset<T>
 pub fn skene_core::Inset<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::Line<T>
@@ -4160,6 +4192,9 @@ pub fn skene_core::Arrangement::into_box_value(self) -> skene_core::BoxValue<N, 
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::AspectRatio
 pub fn skene_core::AspectRatio::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::AspectRatio::into_box_value(self) -> skene_core::BoxValue<N, X>
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Axes<skene_core::Overflow>
+pub fn skene_core::Axes<skene_core::Overflow>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::Axes<skene_core::Overflow>::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Color
 pub fn skene_core::Color::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Color::into_box_value(self) -> skene_core::BoxValue<N, X>
@@ -4190,9 +4225,6 @@ pub fn skene_core::Line<skene_core::GridPlacement>::into_box_value(self) -> sken
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::MouseCursor
 pub fn skene_core::MouseCursor::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::MouseCursor::into_box_value(self) -> skene_core::BoxValue<N, X>
-impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Overflow
-pub fn skene_core::Overflow::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
-pub fn skene_core::Overflow::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Spacing<N>
 pub fn skene_core::Spacing<N>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Spacing<N>::into_box_value(self) -> skene_core::BoxValue<N, X>

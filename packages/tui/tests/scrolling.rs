@@ -61,6 +61,47 @@ fn scroll_box_clips_wheels_and_hit_tests() {
   });
 }
 
+/// A box scrolling on one axis alone keeps the other clipped and still under the wheel.
+#[test]
+fn overflow_scrolls_on_its_own_axis_alone() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_child(
+          Container::new()
+            .set_width(8)
+            .set_height(3)
+            .set_overflow(Axes::new(Overflow::Hidden, Overflow::Auto))
+            .set_child(
+              Container::new().set_width(20).set_child(
+                Column::new().set_children(
+                  (0..6)
+                    .map(|index| Text::new(format!("row {index} runs long")).into_any())
+                    .collect::<Vec<_>>(),
+                ),
+              ),
+            ),
+        )
+        .into_any()
+        .build()
+    });
+
+    let first = tui::render_to_text(12, 4);
+
+    assert!(first.contains("row 0") && !first.contains("row 3"));
+
+    tui::trigger_mouse_scroll(2, 1, 4, 0);
+
+    assert_eq!(tui::render_to_text(12, 4), first);
+
+    tui::trigger_mouse_scroll(2, 1, 0, 2);
+
+    let scrolled = tui::render_to_text(12, 4);
+
+    assert!(scrolled.contains("row 2") && !scrolled.contains("row 1"));
+  });
+}
+
 /// Focusing a control below the fold scrolls it into view.
 #[test]
 fn focus_scrolls_into_view() {

@@ -435,7 +435,10 @@ Condition     = Media | State | And | Or
 - **Layout** runs on taffy at full capability, statically constrained per layout: each
   mode is its own container view carrying layout properties alone, `Container` is the one
   decorated box, and per-child properties ride in wrappers. `Dimension` is a fixed length,
-  a `Fraction` of the parent, or auto. The framework invents no layout system.
+  a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
+  overflow setting both) and computed as CSS computes it, an axis left visible beside
+  one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,
+  only along an axis that scrolls. The framework invents no layout system.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.

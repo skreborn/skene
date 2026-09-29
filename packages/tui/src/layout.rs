@@ -1107,15 +1107,16 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   }
 
   if let Some(overflow) = style.overflow {
-    let mapped = match overflow {
+    let overflow = overflow.computed();
+    let mapped = |overflow| match overflow {
       Overflow::Visible => taffy::style::Overflow::Visible,
       Overflow::Hidden => taffy::style::Overflow::Hidden,
       Overflow::Scroll | Overflow::Auto => taffy::style::Overflow::Scroll,
     };
 
     out.overflow = taffy::geometry::Point {
-      x: mapped,
-      y: mapped,
+      x: mapped(overflow.horizontal),
+      y: mapped(overflow.vertical),
     };
   }
 

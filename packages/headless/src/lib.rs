@@ -40,6 +40,7 @@ use skene_core::{
   AccessProp,
   AspectRatio,
   Availability,
+  Axes,
   BoxProps,
   BoxValue,
   ClipboardAction,
@@ -60,6 +61,7 @@ use skene_core::{
   NodeId,
   NodeRecord,
   Observation,
+  Overflow,
   OverlayProps,
   Part,
   PickerOption,
@@ -1394,6 +1396,18 @@ pub fn resolve_aspect_ratio(node: NodeId) -> Option<AspectRatio> {
 
   match resolve::resolve(node, PropertyKey::Shared(Property::AspectRatio))? {
     SlotValue::Box(BoxValue::AspectRatio(ratio)) => Some(ratio),
+    SlotValue::Box(_) | SlotValue::Run(_) => None,
+  }
+}
+
+/// The overflow of the box `node` on each axis, by the same resolution as
+/// [`resolve_color`] and as CSS computes it; `None` where none is set.
+#[must_use]
+pub fn resolve_overflow(node: NodeId) -> Option<Axes<Overflow>> {
+  end_turn();
+
+  match resolve::resolve(node, PropertyKey::Shared(Property::Overflow))? {
+    SlotValue::Box(BoxValue::Overflow(overflow)) => Some(overflow.computed()),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
   }
 }

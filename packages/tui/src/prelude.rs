@@ -7,6 +7,7 @@ pub use skene_core::{
   Animation,
   Arrangement,
   AspectRatio,
+  Axes,
   Axis,
   Bubbling,
   Color,

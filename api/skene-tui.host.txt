@@ -106,6 +106,7 @@ pub use skene_tui::prelude::Anchor
 pub use skene_tui::prelude::Animation
 pub use skene_tui::prelude::Arrangement
 pub use skene_tui::prelude::AspectRatio
+pub use skene_tui::prelude::Axes
 pub use skene_tui::prelude::Axis
 pub use skene_tui::prelude::BorderGlyphs
 pub use skene_tui::prelude::Bubbling

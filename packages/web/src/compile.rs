@@ -246,13 +246,25 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
     }
     .to_owned(),
     BoxValue::Placement(line) => Declarations::render_grid_line(*line),
-    BoxValue::Overflow(overflow) => match overflow {
-      Overflow::Visible => "visible",
-      Overflow::Hidden => "hidden",
-      Overflow::Scroll => "scroll",
-      Overflow::Auto => "auto",
+    BoxValue::Overflow(overflow) => {
+      let keyword = |overflow| match overflow {
+        Overflow::Visible => "visible",
+        Overflow::Hidden => "hidden",
+        Overflow::Scroll => "scroll",
+        Overflow::Auto => "auto",
+      };
+
+      if overflow.horizontal == overflow.vertical {
+        keyword(overflow.horizontal).to_owned()
+      }
+      else {
+        format!(
+          "{} {}",
+          keyword(overflow.horizontal),
+          keyword(overflow.vertical)
+        )
+      }
     }
-    .to_owned(),
     BoxValue::Visibility(visibility) => match visibility {
       Visibility::Visible => "inherit",
       Visibility::Hidden => "hidden",

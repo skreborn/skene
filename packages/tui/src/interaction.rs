@@ -6,6 +6,7 @@
 
 use rustc_hash::FxHashMap;
 use skene_core::{
+  Axes,
   Axis,
   ClipboardAction,
   ControlKind,
@@ -560,13 +561,14 @@ impl Store {
         .is_some_and(|target| control_kind(self, target) == Some(ControlKind::Range))
   }
 
-  /// A node's resolved overflow, `Visible` when unset or the node has no box style.
-  fn overflow(&self, handle: Handle) -> Overflow {
+  /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has
+  /// no box style.
+  fn overflow(&self, handle: Handle) -> Axes<Overflow> {
     self
       .record(handle)
       .and_then(|record| record.kind.box_style())
       .and_then(|style| style.overflow)
-      .unwrap_or(Overflow::Visible)
+      .map_or(Axes::all(Overflow::Visible), Axes::computed)
   }
 
   /// Whether the node's box is hidden: it and its content draw nothing and take neither
@@ -579,15 +581,15 @@ impl Store {
       == Some(Visibility::Hidden)
   }
 
-  /// Whether the node's content scrolls: a box overflowing by its style, or an editor
-  /// windowing its wrapped rows.
+  /// Whether the node's content scrolls: a box overflowing by its style on either axis,
+  /// or an editor windowing its wrapped rows.
   pub(crate) fn is_scrollable(&self, handle: Handle) -> bool {
-    self.is_editor(handle) || matches!(self.overflow(handle), Overflow::Scroll | Overflow::Auto)
+    self.is_editor(handle) || self.overflow(handle).scrolls()
   }
 
   /// Whether the node clips its children when painting.
   pub(crate) fn clips(&self, handle: Handle) -> bool {
-    !matches!(self.overflow(handle), Overflow::Visible)
+    self.overflow(handle) != Axes::all(Overflow::Visible)
   }
 
   /// A node's scroll offsets, clamped to what the last layout allows; an editor's is
@@ -611,8 +613,8 @@ impl Store {
     (x.min(limit_x), y.min(limit_y))
   }
 
-  /// A node's maximum scroll offsets, from the last computed layout; an editor's is
-  /// how far its window can scroll down its rows.
+  /// A node's maximum scroll offsets, from the last computed layout and zero on an axis
+  /// that does not scroll; an editor's is how far its window can scroll down its rows.
   pub(crate) fn scroll_limits(&self, handle: Handle) -> (u32, u32) {
     if let Some(limit) = self.editor_window_limit(handle) {
       return (0, limit);
@@ -622,6 +624,7 @@ impl Store {
     else {
       return (0, 0);
     };
+    let overflow = self.overflow(handle);
 
     match self.taffy.layout(taffy) {
       #[expect(
@@ -630,8 +633,18 @@ impl Store {
         reason = "a scroll extent is rounded and clamped non-negative, a cell count within u32"
       )]
       Ok(layout) => (
-        layout.scroll_width().round().max(0.) as u32,
-        layout.scroll_height().round().max(0.) as u32,
+        if overflow.horizontal.scrolls() {
+          layout.scroll_width().round().max(0.) as u32
+        }
+        else {
+          0
+        },
+        if overflow.vertical.scrolls() {
+          layout.scroll_height().round().max(0.) as u32
+        }
+        else {
+          0
+        },
       ),
       Err(_) => (0, 0),
     }

@@ -70,7 +70,7 @@ pub enum Property {
   GridRowPlacement,
   /// The box's column placement as a grid child.
   GridColumnPlacement,
-  /// How content exceeding the box's bounds is treated.
+  /// How content exceeding the box's bounds is treated, per axis.
   Overflow,
   /// Whether the box and its content are drawn.
   Visibility,

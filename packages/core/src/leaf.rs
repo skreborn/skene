@@ -5,7 +5,7 @@ use std::{fmt::Debug, rc::Rc};
 use smallvec::SmallVec;
 
 use super::{Condition, Expr, Media, Scalar, State, Token, TokenName, TokenRef, Tokenable};
-use crate::{Dimension, Spacing};
+use crate::{Axes, Dimension, Spacing};
 
 /// A value that is data: a literal, a token reference, or an expression.
 ///
@@ -438,8 +438,9 @@ impl<T, N> From<Definition<T, N>> for Value<T, Condition<N>> {
   }
 }
 
-/// The conversions letting a plain length stand for a uniform value of a type built
-/// from one, at every leaf: `set_spacing(8.)`, `set_width(10.)`, `when(.., 16.)`.
+/// The conversions letting a plain value stand for a uniform value of a type built from
+/// one, at every leaf: `set_spacing(8.)`, `set_width(10.)`, `when(.., 16.)`,
+/// `set_overflow(Overflow::Auto)`.
 macro_rules! uniform_leaves {
   ($($wrapper:ident),+ $(,)?) => {$(
     impl<T: Copy> From<T> for StaticLeaf<$wrapper<T>> {
@@ -472,7 +473,7 @@ macro_rules! uniform_leaves {
   )+};
 }
 
-uniform_leaves!(Spacing, Dimension);
+uniform_leaves!(Spacing, Dimension, Axes);
 
 impl<T, N: Scalar> From<T> for Definition<T, N> {
   #[inline(always)]

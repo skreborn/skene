@@ -77,8 +77,9 @@ macro_rules! decoration {
         "the border's color";
       set_cursor / derive_cursor (cursor) => cursor: $crate::__core::MouseCursor,
         "the mouse cursor shown over the box";
-      set_overflow / derive_overflow (overflow) => overflow: $crate::__core::Overflow,
-        "how content exceeding the box's bounds is treated; `Scroll` and `Auto` make it scrollable";
+      set_overflow / derive_overflow (overflow)
+        => overflow: $crate::__core::Axes<$crate::__core::Overflow>,
+        "how content exceeding the box's bounds is treated on each axis; `Scroll` and `Auto` make an axis scrollable, and one overflow sets both";
       set_visibility / derive_visibility (visibility)
         => visibility: $crate::__core::Visibility,
         "whether the box and its content are drawn; a hidden box keeps its place in the layout";

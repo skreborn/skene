@@ -26,6 +26,7 @@ use crate::{
   Animation,
   Arrangement,
   AspectRatio,
+  Axes,
   Color,
   Dimension,
   Easing,
@@ -108,6 +109,14 @@ impl Fingerprint for Length {
   #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.0.fingerprint(state);
+  }
+}
+
+impl<T: Fingerprint> Fingerprint for Axes<T> {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.horizontal.fingerprint(state);
+    self.vertical.fingerprint(state);
   }
 }
 

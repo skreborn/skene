@@ -201,6 +201,7 @@ pub use values::{
   Arrangement,
   AspectRatio,
   Availability,
+  Axes,
   Axis,
   ClipboardAction,
   Color,

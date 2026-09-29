@@ -12,7 +12,6 @@ use skene_core::{
   LinkAnnotation,
   LinkPolicy,
   NodeId,
-  Overflow,
   Platform,
   PlatformLeaf,
   PopupKind,
@@ -431,14 +430,12 @@ pub(crate) fn focus_order_attribute(
   }
 }
 
-/// Whether a box's declared style scrolls its content: an overflow of `Scroll` or
-/// `Auto` fixed on the base value.
+/// Whether a box's declared style scrolls its content: an overflow fixed on the base
+/// value that scrolls on either axis once computed.
 pub(crate) fn scrolls<P: Platform>(style: &skene_core::StaticBoxStyle<P>) -> bool {
   matches!(
     style.overflow.as_ref().map(Conditional::base),
-    Some(PlatformLeaf::Static(StaticLeaf::Fixed(
-      Overflow::Scroll | Overflow::Auto
-    )))
+    Some(PlatformLeaf::Static(StaticLeaf::Fixed(overflow))) if overflow.scrolls()
   )
 }
 

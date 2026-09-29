@@ -25,6 +25,7 @@ use skene_core::{
   Animation,
   AnyView,
   AspectRatio,
+  Axes,
   BoxKeyframe,
   Color,
   Condition,
@@ -41,6 +42,7 @@ use skene_core::{
   Media,
   NoProperty,
   NodeId,
+  Overflow,
   Platform,
   Property,
   PropertyKey,
@@ -66,6 +68,7 @@ use skene_headless::{
   resolve_color,
   resolve_inset,
   resolve_length,
+  resolve_overflow,
   resolve_visibility,
   trigger_container_size,
   trigger_focus,
@@ -217,6 +220,8 @@ enum Read {
   Visibility,
   /// The box's aspect ratio.
   AspectRatio,
+  /// The box's overflow per axis.
+  Overflow,
 }
 
 /// One declaration, realized on either platform.
@@ -266,6 +271,8 @@ enum Case {
   ReversedTransition,
   VisibilityTransition,
   RatioTransition,
+  AxisOverflow,
+  VisibleBesideScroll,
 }
 
 /// Every case the harness holds the resolution to.
@@ -314,6 +321,8 @@ const CASES: &[Case] = &[
   Case::ReversedTransition,
   Case::VisibilityTransition,
   Case::RatioTransition,
+  Case::AxisOverflow,
+  Case::VisibleBesideScroll,
 ];
 
 impl Case {
@@ -362,6 +371,7 @@ impl Case {
       Self::FixedInk | Self::TokenInk => Read::Ink,
       Self::VisibilityTransition => Read::Visibility,
       Self::RatioTransition => Read::AspectRatio,
+      Self::AxisOverflow | Self::VisibleBesideScroll => Read::Overflow,
     }
   }
 
@@ -479,6 +489,10 @@ impl Case {
         })
         .set_border_color(ParityPalette::SURFACE),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
+      Self::AxisOverflow => container.set_overflow(Axes::new(Overflow::Hidden, Overflow::Scroll)),
+      Self::VisibleBesideScroll => {
+        container.set_overflow(Axes::new(Overflow::Visible, Overflow::Scroll))
+      }
       Self::NeutralKeyframe
       | Self::ReversedTransition
       | Self::VisibilityTransition
@@ -600,6 +614,8 @@ enum Reading {
   Visibility(Visibility),
   /// A width-to-height ratio.
   Ratio(f32),
+  /// An overflow per axis.
+  Overflow(Axes<Overflow>),
   /// Nothing: the platform gave no value, or one the harness could not read.
   Missing,
 }
@@ -708,6 +724,17 @@ fn ratio(value: &str) -> Reading {
   parsed.map_or(Reading::Missing, Reading::Ratio)
 }
 
+/// A computed overflow keyword.
+fn overflow_keyword(value: &str) -> Option<Overflow> {
+  match value {
+    "visible" => Some(Overflow::Visible),
+    "hidden" => Some(Overflow::Hidden),
+    "scroll" => Some(Overflow::Scroll),
+    "auto" => Some(Overflow::Auto),
+    _ => None,
+  }
+}
+
 /// A computed length in pixels.
 fn pixels(value: &str) -> f32 {
   value
@@ -747,6 +774,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
     Read::Visibility => resolve_visibility(node).map(Reading::Visibility),
     Read::AspectRatio => resolve_aspect_ratio(node).map(|ratio| Reading::Ratio(ratio.0)),
+    Read::Overflow => resolve_overflow(node).map(Reading::Overflow),
   };
   let _ = read();
 
@@ -866,6 +894,11 @@ fn rendered(case: Case) -> Reading {
       _ => Reading::Missing,
     },
     Read::AspectRatio => ratio(&computed(&element, "aspect-ratio")),
+    Read::Overflow => overflow_keyword(&computed(&element, "overflow-x"))
+      .zip(overflow_keyword(&computed(&element, "overflow-y")))
+      .map_or(Reading::Missing, |(horizontal, vertical)| {
+        Reading::Overflow(Axes::new(horizontal, vertical))
+      }),
   };
 
   web::uninstall();
@@ -884,7 +917,7 @@ fn same_color(left: Color, right: Color) -> bool {
 }
 
 /// Whether two readings agree: colors within an 8-bit rounding, lengths within a
-/// hundredth of a pixel, ratios within a thousandth, visibilities exactly.
+/// hundredth of a pixel, ratios within a thousandth, visibilities and overflows exactly.
 fn agree(resolved: &Reading, rendered: &Reading) -> bool {
   match (resolved, rendered) {
     (Reading::Color(left), Reading::Color(right)) => same_color(*left, *right),
@@ -894,6 +927,7 @@ fn agree(resolved: &Reading, rendered: &Reading) -> bool {
     }
     (Reading::Visibility(left), Reading::Visibility(right)) => left == right,
     (Reading::Ratio(left), Reading::Ratio(right)) => (left - right).abs() < 0.001,
+    (Reading::Overflow(left), Reading::Overflow(right)) => left == right,
     _ => false,
   }
 }

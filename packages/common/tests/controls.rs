@@ -280,7 +280,8 @@ fn a_composing_key_never_reaches_the_behavior() {
 }
 
 /// The arrows, page keys, `Home` and `End` move a slider's bound value by the range's
-/// rules, and a press a quarter of the way along its width sets a quarter of the range.
+/// rules, a press a quarter of the way along its width sets a quarter of the range, and
+/// a press of another button than the primary slides nothing.
 #[test]
 fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
   reset();
@@ -346,6 +347,19 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
     trigger_pointer_up(node, &press_at(150.)),
     Prevented::default()
   );
+
+  let secondary = PointerEvent {
+    button: Some(PointerButton::Secondary),
+    ..press_at(150.)
+  };
+
+  assert_eq!(trigger_pointer_down(node, &secondary), Prevented::default());
+  assert_value(bound, 50.);
+  assert_eq!(
+    trigger_pointer_move(node, &press_at(160.)),
+    Prevented::default()
+  );
+  assert_value(bound, 50.);
 
   owner.dispose();
 }

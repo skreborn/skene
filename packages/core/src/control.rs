@@ -168,8 +168,17 @@ pub struct SliderRange {
 
 impl SliderRange {
   /// Creates a range over `min..=max`, snapping to multiples of `step` from `min`.
+  ///
+  /// The bounds are normalized as a browser normalizes a range input's: a `min` or
+  /// `max` that is not a number stands at `0` or `100`, a `max` below `min` collapses
+  /// onto `min`, and a `step` that is not a number leaves the range continuous.
   #[inline(always)]
   pub const fn new(min: f32, max: f32, step: f32) -> Self {
+    let min = if min.is_nan() { 0. } else { min };
+    let max = if max.is_nan() { 100. } else { max };
+    let max = if max < min { min } else { max };
+    let step = if step.is_nan() { 0. } else { step };
+
     Self { min, max, step }
   }
 
@@ -286,6 +295,21 @@ impl Ring {
 )]
 mod tests {
   use super::{Ring, SliderRange};
+
+  /// Crossed or unparsed bounds are normalized, so nothing panics clamping into them.
+  #[test]
+  fn a_range_normalizes_its_bounds() {
+    assert_eq!(
+      SliderRange::new(10., 5., 1.),
+      SliderRange::new(10., 10., 1.)
+    );
+    assert_eq!(
+      SliderRange::new(f32::NAN, f32::NAN, f32::NAN),
+      SliderRange::new(0., 100., 0.)
+    );
+    assert!((SliderRange::new(10., 5., 1.).value_at(0.5) - 10.).abs() < f32::EPSILON);
+    assert!((SliderRange::new(10., 5., 0.).nudge(7., 1.) - 10.).abs() < f32::EPSILON);
+  }
 
   /// A stepped range snaps a fraction to the nearest step and clamps at both ends.
   #[test]

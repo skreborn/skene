@@ -80,8 +80,7 @@ left half-done in a code comment.
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
     become styling targets or go, with `ControlHandle::roster` and the drawn picker's
     unused listbox closures. The slider maps the pointer through its track and thumb
-    extents, slides on the primary button alone and normalizes its range, where crossed
-    or NaN bounds panic in `f32::clamp`; Space acts once, on key-up; `DescribedBy`,
+    extents; Space acts once, on key-up; `DescribedBy`,
     `LabelledBy` and `Controls` fold into lists instead of overwriting one another;
     captions lay out beside the control's box; a tooltip stays open over its bubble
     (WCAG 1.4.13); `Popup` derives its role from its kind; the scriptless `<select>`

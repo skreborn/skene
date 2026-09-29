@@ -9,6 +9,7 @@ use skene_core::{
   EventKind,
   KeyEvent,
   Platform,
+  PointerButton,
   PointerEvent,
   Prevent,
   Role,
@@ -249,8 +250,16 @@ impl<P: Platform> Behavior<P> for Range {
     event: &PointerEvent,
     _control: &ControlHandle<P>,
   ) -> Prevent {
+    let primary = event
+      .button
+      .is_none_or(|button| button == PointerButton::Primary);
+
     match phase {
       PointerPhase::Down => {
+        if !primary {
+          return Prevent::None;
+        }
+
         self.pressed.set(true);
         self.slide(event);
 
@@ -266,7 +275,7 @@ impl<P: Platform> Behavior<P> for Range {
         Prevent::Bubbling
       }
       PointerPhase::Up => {
-        if !self.pressed.replace(false) {
+        if !primary || !self.pressed.replace(false) {
           return Prevent::None;
         }
 

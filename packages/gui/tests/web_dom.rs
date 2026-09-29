@@ -68,6 +68,8 @@ use skene_gui::{
     GridTrack,
     Line,
     PointerButton,
+    PointerId,
+    PointerType,
   },
   derived,
   empty,
@@ -696,6 +698,58 @@ fn pointer_down_handler_receives_the_event() {
   let _ = target.dispatch_event(&event);
 
   assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
+}
+
+/// A pointer event carries its pointer's id and kind, the buttons held and the
+/// pressure: a pen that is not the primary pointer is named past the primary one, and
+/// the primary pointer is `PointerId::PRIMARY`.
+#[wasm_bindgen_test]
+fn a_pointer_event_carries_its_pointer_buttons_and_pressure() {
+  let (_guard, root) = fresh_root();
+  let seen = Rc::new(Cell::new(None));
+
+  let _ = mount({
+    let seen = Rc::clone(&seen);
+
+    move || {
+      Container::new()
+        .handle_pointer_down(move |event| {
+          seen.set(Some((event.pointer, event.buttons, event.pressure)));
+        })
+        .build()
+    }
+  });
+
+  let target = only_child(&root);
+  let press = |primary: bool| {
+    let init = web_sys::PointerEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_pointer_id(7);
+    init.set_pointer_type("pen");
+    init.set_is_primary(primary);
+    init.set_pressure(0.75);
+    init.set_button(0);
+    init.set_buttons(1 | 32);
+
+    let event = web_sys::PointerEvent::new_with_event_init_dict("pointerdown", &init)
+      .expect("a pointer event");
+
+    let _ = target.dispatch_event(&event);
+
+    seen.take().expect("the press reached the handler")
+  };
+  let (pointer, buttons, pressure) = press(false);
+
+  assert_eq!(pointer.pointer_id, PointerId::new(9));
+  assert_eq!(pointer.pointer_type, PointerType::Pen);
+  assert_eq!(
+    buttons,
+    PointerButton::Primary | PointerButton::PenEraser,
+    "the buttons held"
+  );
+  assert!((pressure - 0.75).abs() < f32::EPSILON, "{pressure}");
+  assert_eq!(press(true).0.pointer_id, Some(PointerId::PRIMARY));
 }
 
 /// A press on a slider's thumb asks for the value whose thumb centers under the

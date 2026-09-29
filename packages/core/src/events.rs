@@ -23,6 +23,7 @@
 use std::{borrow::Cow, str::FromStr};
 
 use keyboard_types::{Code, Key, NamedKey, webdriver::KeyInputState};
+use ui_events::pointer::{PointerButton, PointerButtons, PointerId, PointerInfo, PointerType};
 
 /// What a handler prevents of the dispatch that invoked it.
 ///
@@ -358,19 +359,12 @@ impl KeyEvent {
   }
 }
 
-/// A pointer button.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[must_use]
-pub enum PointerButton {
-  /// The primary button (usually the left).
-  Primary,
-  /// The secondary button (usually the right).
-  Secondary,
-  /// The auxiliary button (usually the wheel).
-  Auxiliary,
-}
-
-/// A pointer event: where, which button, and the modifier state.
+/// A pointer event: where, which pointer, its buttons and pressure, and the modifier
+/// state.
+///
+/// Its buttons, pointer and pressure follow the W3C pointer events: `buttons` holds
+/// every button down once the event took effect, and a device reporting no pressure
+/// presses at `0.5` while a button is held and at `0` otherwise.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct PointerEvent {
@@ -385,8 +379,58 @@ pub struct PointerEvent {
   pub local_y: f32,
   /// The button that changed state, or `None` for a move.
   pub button: Option<PointerButton>,
+  /// The buttons held once the event took effect: with `button` for a press, without it
+  /// for a release.
+  pub buttons: PointerButtons,
   /// The modifier state.
   pub modifiers: Modifiers,
+  /// The pointer and the kind of device it is; its id is `None` for an event no pointing
+  /// device raised, as a context menu the keyboard opens.
+  pub pointer: PointerInfo,
+  /// The pressure on the pointer, from `0` to `1`.
+  pub pressure: f32,
+}
+
+impl PointerEvent {
+  /// The primary mouse at (`x`, `y`) in the viewport, local to a view at the viewport's
+  /// origin, with no button held and no modifier: a move.
+  pub fn mouse(x: f32, y: f32) -> Self {
+    Self {
+      x,
+      y,
+      local_x: x,
+      local_y: y,
+      button: None,
+      buttons: PointerButtons::new(),
+      modifiers: Modifiers::NONE,
+      pointer: PointerInfo {
+        pointer_id: Some(PointerId::PRIMARY),
+        persistent_device_id: None,
+        pointer_type: PointerType::Mouse,
+      },
+      pressure: 0.,
+    }
+  }
+
+  /// The event as the press of `button` on a device reporting no pressure: `button`
+  /// changed and is held beside the others.
+  pub fn with_press(mut self, button: PointerButton) -> Self {
+    self.button = Some(button);
+    self.buttons.insert(button);
+    self.pressure = 0.5;
+
+    self
+  }
+
+  /// The event as the release of `button` on a device reporting no pressure: `button`
+  /// changed and the others stay held.
+  pub fn with_release(mut self, button: PointerButton) -> Self {
+    self.button = Some(button);
+    self.buttons.remove(button);
+    self.pressure = if self.buttons.is_empty() { 0. } else { 0.5 };
+
+    self
+  }
 }
 
 /// A scroll: the scrolled container's new offsets.
@@ -402,8 +446,9 @@ pub struct ScrollEvent {
 #[cfg(test)]
 mod tests {
   use keyboard_types::{Code, Key, NamedKey};
+  use ui_events::pointer::{PointerButton, PointerButtons};
 
-  use super::{KeyEvent, Modifiers, Shortcut};
+  use super::{KeyEvent, Modifiers, PointerEvent, Shortcut};
 
   /// A key's code is its position on the US layout, whatever the shifted form.
   #[test]
@@ -440,6 +485,33 @@ mod tests {
     assert_eq!(unplaced.shortcut_key(), "\u{441}");
     assert_eq!(KeyEvent::new("Enter").shortcut_key(), "Enter");
     assert_eq!(KeyEvent::new("?").shortcut_key(), "?");
+  }
+
+  /// A press holds its button beside the others at a mouse's pressure, and a release
+  /// keeps the others held, pressing at `0` once none is.
+  #[test]
+  fn a_press_and_a_release_change_the_buttons_held() {
+    let both = PointerEvent::mouse(1., 2.)
+      .with_press(PointerButton::Primary)
+      .with_press(PointerButton::Secondary);
+
+    assert_eq!(both.button, Some(PointerButton::Secondary));
+    assert_eq!(
+      both.buttons,
+      PointerButton::Primary | PointerButton::Secondary
+    );
+    assert!((both.pressure - 0.5).abs() < f32::EPSILON);
+
+    let one = both.with_release(PointerButton::Primary);
+
+    assert_eq!(one.button, Some(PointerButton::Primary));
+    assert_eq!(one.buttons, PointerButtons::from(PointerButton::Secondary));
+    assert!((one.pressure - 0.5).abs() < f32::EPSILON);
+
+    let none = one.with_release(PointerButton::Secondary);
+
+    assert!(none.buttons.is_empty());
+    assert!(none.pressure.abs() < f32::EPSILON);
   }
 
   /// A shortcut matches its key whatever the case or the repeat, with exactly its

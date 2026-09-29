@@ -10,7 +10,6 @@ use skene_core::{
   FocusOrder,
   HasChildren,
   KeyEvent,
-  Modifiers,
   Part,
   Placement,
   PointerButton,
@@ -112,14 +111,7 @@ fn only_focus_that_shows_opens_a_tooltip_at_once() {
       .build()
   });
   let (described, bubble) = parts(start);
-  let press = PointerEvent {
-    x: 0.,
-    y: 0.,
-    local_x: 0.,
-    local_y: 0.,
-    button: Some(PointerButton::Primary),
-    modifiers: Modifiers::default(),
-  };
+  let press = PointerEvent::mouse(0., 0.).with_press(PointerButton::Primary);
 
   let _ = trigger_pointer_down(described, &press);
   trigger_focus(described);

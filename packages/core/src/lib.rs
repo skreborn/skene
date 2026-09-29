@@ -108,7 +108,6 @@ pub use events::{
   KeyEvent,
   KeyHandler,
   Modifiers,
-  PointerButton,
   PointerEvent,
   PointerHandler,
   Prevent,
@@ -193,6 +192,14 @@ pub use token::{
   TokenRef,
   TokenSet,
   Tokenable,
+};
+pub use ui_events::pointer::{
+  PersistentDeviceId,
+  PointerButton,
+  PointerButtons,
+  PointerId,
+  PointerInfo,
+  PointerType,
 };
 pub use values::{
   AccessProp,

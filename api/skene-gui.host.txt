@@ -46,8 +46,13 @@ pub use skene_gui::Number
 pub use skene_gui::Painter
 pub use skene_gui::Painting
 pub use skene_gui::Part
+pub use skene_gui::PointerButton
+pub use skene_gui::PointerButtons
 pub use skene_gui::PointerEvent
+pub use skene_gui::PointerId
+pub use skene_gui::PointerInfo
 pub use skene_gui::PointerPhase
+pub use skene_gui::PointerType
 pub use skene_gui::Popup
 pub use skene_gui::Prevent
 pub use skene_gui::Prevented

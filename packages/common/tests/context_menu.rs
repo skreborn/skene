@@ -14,7 +14,6 @@ use skene_core::{
   FocusOrder,
   HasChildren,
   KeyEvent,
-  Modifiers,
   Part,
   Placement,
   Point,
@@ -81,14 +80,7 @@ fn items(root: skene_core::NodeId) -> Vec<skene_core::NodeId> {
 }
 
 fn press(x: f32, y: f32) -> PointerEvent {
-  PointerEvent {
-    x,
-    y,
-    local_x: x,
-    local_y: y,
-    button: Some(PointerButton::Secondary),
-    modifiers: Modifiers::default(),
-  }
+  PointerEvent::mouse(x, y).with_press(PointerButton::Secondary)
 }
 
 fn key(key: &str) -> KeyEvent {

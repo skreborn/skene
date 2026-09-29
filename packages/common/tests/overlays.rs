@@ -15,7 +15,6 @@ use skene_core::{
   EventKind,
   FocusOrder,
   HasChildren,
-  Modifiers,
   Placement,
   PointerButton,
   PointerEvent,
@@ -247,14 +246,7 @@ fn a_press_outside_a_popup_dismisses_it() {
   });
   let [face, page, popup] = [1, 2, 3].map(|index| children(column)[index]);
   let inside = only_child(popup);
-  let press = PointerEvent {
-    x: 0.,
-    y: 0.,
-    local_x: 0.,
-    local_y: 0.,
-    button: Some(PointerButton::Primary),
-    modifiers: Modifiers::default(),
-  };
+  let press = PointerEvent::mouse(0., 0.).with_press(PointerButton::Primary);
 
   open.set(true);
 

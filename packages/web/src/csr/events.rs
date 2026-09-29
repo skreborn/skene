@@ -21,7 +21,11 @@ use skene_core::{
   NamedKey,
   NodeId,
   PointerButton,
+  PointerButtons,
   PointerEvent,
+  PointerId,
+  PointerInfo,
+  PointerType,
   Prevented,
   Scene,
   ScrollEvent,
@@ -408,31 +412,80 @@ pub(super) fn localized(event: &PointerEvent, element: &Element) -> PointerEvent
   }
 }
 
-/// The portable payload of a DOM pointer event, local to `element`.
-fn pointer_payload(pointer: &web_sys::PointerEvent, element: &Element) -> PointerEvent {
+/// The buttons by their number in `MouseEvent.button`.
+const BUTTON_NUMBERS: [PointerButton; 6] = [
+  PointerButton::Primary,
+  PointerButton::Auxiliary,
+  PointerButton::Secondary,
+  PointerButton::X1,
+  PointerButton::X2,
+  PointerButton::PenEraser,
+];
+
+/// The buttons by their bit in `MouseEvent.buttons`.
+const BUTTON_BITS: [PointerButton; 6] = [
+  PointerButton::Primary,
+  PointerButton::Secondary,
+  PointerButton::Auxiliary,
+  PointerButton::X1,
+  PointerButton::X2,
+  PointerButton::PenEraser,
+];
+
+/// The portable payload of a DOM mouse or pointer event, local to `element`.
+///
+/// A pointer event names its pointer, the primary one as [`PointerId::PRIMARY`] and
+/// every other past it, and one no pointing device raised names none; a mouse event is
+/// the primary mouse's.
+fn pointer_payload(mouse: &web_sys::MouseEvent, element: &Element) -> PointerEvent {
   #[expect(
     clippy::cast_precision_loss,
     reason = "a pointer's position in CSS pixels is precise enough in f32"
   )]
-  let (x, y) = (pointer.client_x() as f32, pointer.client_y() as f32);
-  let event = PointerEvent {
-    x,
-    y,
-    local_x: x,
-    local_y: y,
-    button: match pointer.button() {
-      0 => Some(PointerButton::Primary),
-      1 => Some(PointerButton::Auxiliary),
-      2 => Some(PointerButton::Secondary),
-      _ => None,
-    },
+  let (x, y) = (mouse.client_x() as f32, mouse.client_y() as f32);
+  let mut buttons = PointerButtons::new();
+
+  for (bit, button) in BUTTON_BITS.into_iter().enumerate() {
+    if mouse.buttons() & (1 << bit) != 0 {
+      buttons.insert(button);
+    }
+  }
+
+  let mut event = PointerEvent {
+    button: usize::try_from(mouse.button())
+      .ok()
+      .and_then(|number| BUTTON_NUMBERS.get(number).copied()),
+    buttons,
     modifiers: Modifiers {
-      ctrl: pointer.ctrl_key(),
-      shift: pointer.shift_key(),
-      alt: pointer.alt_key(),
-      meta: pointer.meta_key(),
+      ctrl: mouse.ctrl_key(),
+      shift: mouse.shift_key(),
+      alt: mouse.alt_key(),
+      meta: mouse.meta_key(),
     },
+    pressure: if buttons.is_empty() { 0. } else { 0.5 },
+    ..PointerEvent::mouse(x, y)
   };
+
+  if let Some(pointer) = mouse.dyn_ref::<web_sys::PointerEvent>() {
+    event.pointer = PointerInfo {
+      pointer_id: if pointer.is_primary() {
+        Some(PointerId::PRIMARY)
+      }
+      else {
+        u64::try_from(pointer.pointer_id())
+          .ok()
+          .and_then(|id| PointerId::new(id + 2))
+      },
+      persistent_device_id: None,
+      pointer_type: match pointer.pointer_type().as_str() {
+        "mouse" => PointerType::Mouse,
+        "pen" => PointerType::Pen,
+        "touch" => PointerType::Touch,
+        _ => PointerType::Unknown,
+      },
+    };
+    event.pressure = pointer.pressure();
+  }
 
   localized(&event, element)
 }
@@ -568,28 +621,11 @@ fn on_context_menu(event: &web_sys::Event) {
   else {
     return;
   };
-  #[expect(
-    clippy::cast_precision_loss,
-    reason = "a pointer's position in CSS pixels is precise enough in f32"
-  )]
-  let (x, y) = (mouse.client_x() as f32, mouse.client_y() as f32);
-  let payload = localized(
-    &PointerEvent {
-      x,
-      y,
-      local_x: x,
-      local_y: y,
-      // A request from the keyboard carries no button.
-      button: (mouse.button() == 2).then_some(PointerButton::Secondary),
-      modifiers: Modifiers {
-        ctrl: mouse.ctrl_key(),
-        shift: mouse.shift_key(),
-        alt: mouse.alt_key(),
-        meta: mouse.meta_key(),
-      },
-    },
-    &element,
-  );
+  let payload = PointerEvent {
+    // A request from the keyboard carries no button.
+    button: (mouse.button() == 2).then_some(PointerButton::Secondary),
+    ..pointer_payload(mouse, &element)
+  };
 
   apply(dispatch_context_menu::<Web>(node, &payload), event);
 }

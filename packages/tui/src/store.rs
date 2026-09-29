@@ -22,6 +22,7 @@ use skene_core::{
   NodeId,
   Placement,
   Plain,
+  PointerButtons,
   PointerPrecision,
   RunProps,
   RunStyle,
@@ -843,12 +844,10 @@ pub(crate) struct Store {
   pub(crate) drag: Option<Drag>,
   /// The left press awaiting its release.
   pub(crate) press: Option<Press>,
-  /// Whether a left press has been delivered and not yet released; a release arriving
-  /// without one stands in for a click whose press the terminal swallowed.
-  pub(crate) left_held: bool,
-  /// Whether a right press has been delivered and not yet released, as
-  /// [`left_held`](Self::left_held) is for the left.
-  pub(crate) right_held: bool,
+  /// The buttons whose press has been delivered and not yet released; a release
+  /// arriving without its press stands in for a click whose press the terminal
+  /// swallowed.
+  pub(crate) buttons: PointerButtons,
   /// The selection over the document's runs; a text entry's lives in its [`Field`].
   pub(crate) selection: Option<Selection>,
   /// The last press, for counting multi-click sequences: its time, cell, and count.
@@ -1006,8 +1005,7 @@ impl Store {
       repainted: Vec::new(),
       drag: None,
       press: None,
-      left_held: false,
-      right_held: false,
+      buttons: PointerButtons::new(),
       selection: None,
       last_press: None,
       last_pointer: (0, 0),

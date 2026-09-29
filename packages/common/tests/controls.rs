@@ -36,7 +36,6 @@ use skene_core::{
   ItemAlignment,
   Key,
   KeyEvent,
-  Modifiers,
   NamedKey,
   Part,
   PointerButton,
@@ -118,14 +117,7 @@ fn key(key: &str) -> KeyEvent {
 }
 
 fn press_at(local_x: f32) -> PointerEvent {
-  PointerEvent {
-    x: local_x,
-    y: 5.,
-    local_x,
-    local_y: 5.,
-    button: Some(PointerButton::Primary),
-    modifiers: Modifiers::default(),
-  }
+  PointerEvent::mouse(local_x, 5.).with_press(PointerButton::Primary)
 }
 
 fn note(log: &Rc<RefCell<Vec<&'static str>>>, name: &'static str) -> impl Fn() + 'static {
@@ -503,10 +495,7 @@ fn slider_keys_and_a_press_move_the_bound_value_by_the_ranges_rules() {
     Prevented::default()
   );
 
-  let secondary = PointerEvent {
-    button: Some(PointerButton::Secondary),
-    ..press_at(150.)
-  };
+  let secondary = PointerEvent::mouse(150., 5.).with_press(PointerButton::Secondary);
 
   assert_eq!(trigger_pointer_down(node, &secondary), Prevented::default());
   assert_value(bound, 50.);
@@ -1280,14 +1269,7 @@ fn a_vertical_range_reads_the_pointer_bottom_to_top() {
 
   let _ = trigger_pointer_down(
     node,
-    &PointerEvent {
-      x: 5.,
-      y: 10.,
-      local_x: 5.,
-      local_y: 10.,
-      button: Some(PointerButton::Primary),
-      modifiers: Modifiers::default(),
-    },
+    &PointerEvent::mouse(5., 10.).with_press(PointerButton::Primary),
   );
 
   assert!(

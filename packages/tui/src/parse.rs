@@ -994,6 +994,10 @@ const fn mouse_button(byte: u8) -> Option<(MouseKind, Modifiers)> {
     (5, false) => MouseKind::ScrollDown,
     (6, false) => MouseKind::ScrollLeft,
     (7, false) => MouseKind::ScrollRight,
+    (8, false) => MouseKind::Press(PointerButton::X1),
+    (9, false) => MouseKind::Press(PointerButton::X2),
+    (8, true) => MouseKind::Drag(PointerButton::X1),
+    (9, true) => MouseKind::Drag(PointerButton::X2),
     _ => return None,
   };
 
@@ -1448,7 +1452,8 @@ mod tests {
   }
 
   /// SGR mouse reports decode to presses, releases, drags, motion and wheels at
-  /// zero-based cells with their modifiers, and the X10 form to the same.
+  /// zero-based cells with their modifiers, the back and forward buttons among them,
+  /// and the X10 form to the same.
   #[test]
   fn mouse_reports_decode() {
     assert_eq!(
@@ -1486,6 +1491,20 @@ mod tests {
       [Event::Mouse(Mouse {
         kind: MouseKind::ScrollDown,
         modifiers: Modifiers { shift: true, .. },
+        ..
+      })]
+    ));
+    assert!(matches!(
+      events(b"\x1b[<128;5;5M").as_slice(),
+      [Event::Mouse(Mouse {
+        kind: MouseKind::Press(PointerButton::X1),
+        ..
+      })]
+    ));
+    assert!(matches!(
+      events(b"\x1b[<129;5;5m").as_slice(),
+      [Event::Mouse(Mouse {
+        kind: MouseKind::Release(PointerButton::X2),
         ..
       })]
     ));

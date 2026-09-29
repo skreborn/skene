@@ -135,6 +135,12 @@ platform crate, since it is not a shared contract.
   focus reach any control inside it and never hears it move between them; a pointer
   move does the same for enter and leave (`notify_pointer_moved`) over the hovered node
   the scene holds, which every platform moves.
+- **Events are the W3C's, typed.** A key event carries `keyboard-types`' `Key` and
+  `Code`, and a pointer event `ui-events`' pointer vocabulary beside the platform's own
+  positions: the pointer (`PointerInfo`: its id, `PointerId::PRIMARY` for the primary
+  pointer and none for an event no pointing device raised, and its `PointerType`), the
+  button that changed, none for a move, the `PointerButtons` held once the event took
+  effect, and the pressure, `0.5` while a button is held on a device reporting none.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its
@@ -745,7 +751,8 @@ the loop asks for SGR-Pixels (DECSET 1016) and queries the mode (a DECRPM reply 
 loop's parser reads for any mode), and from the reply that confirms it
 every report is pixels over the cell size, so a pointer sits within its cell and a
 slider or scrollbar drag lands where the pointer is; the request repeats on resize, and
-hit-testing stays by cell. The window's size is event-driven: the platform's at launch,
+hit-testing stays by cell. The pointer is the primary mouse, its back and forward
+buttons `X1` and `X2`, and a context menu the keyboard opens names none. The window's size is event-driven: the platform's at launch,
 then every resize notification's, and the loop sets in-band resize (mode 2048) and
 queries it, so a terminal that confirms it reports every resize in the input stream
 (`CSI 48 ; rows ; cols ; height ; width t`) with the pixel size the pixel mouse needs where the platform's own

@@ -47,8 +47,12 @@ pub use skene_tui::Painter
 pub use skene_tui::Painting
 pub use skene_tui::Part
 pub use skene_tui::PointerButton
+pub use skene_tui::PointerButtons
 pub use skene_tui::PointerEvent
+pub use skene_tui::PointerId
+pub use skene_tui::PointerInfo
 pub use skene_tui::PointerPhase
+pub use skene_tui::PointerType
 pub use skene_tui::Popup
 pub use skene_tui::Prevent
 pub use skene_tui::Prevented

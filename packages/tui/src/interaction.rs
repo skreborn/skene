@@ -17,6 +17,8 @@ use skene_core::{
   Placement,
   PointerButton,
   PointerEvent,
+  PointerInfo,
+  PointerType,
   Prevented,
   Scene,
   ScrollEvent,
@@ -519,7 +521,7 @@ impl Store {
   /// Whether a held left press landed on a control that follows the pointer until the
   /// release.
   fn drags_control(&self) -> bool {
-    self.left_held
+    self.buttons.contains(PointerButton::Primary)
       && self
         .press
         .as_ref()
@@ -955,19 +957,21 @@ fn pointer_event(
   button: Option<PointerButton>,
   modifiers: Modifiers,
 ) -> PointerEvent {
-  let (within_x, within_y) = store(|store| store.pointer_within);
+  let ((within_x, within_y), buttons) = store(|store| (store.pointer_within, store.buttons));
+  let (x, y) = (f32::from(x) + within_x, f32::from(y) + within_y);
 
   #[expect(
     clippy::cast_precision_loss,
     reason = "a cell offset stays far below the integers f32 holds exactly"
   )]
   PointerEvent {
-    x: f32::from(x) + within_x,
-    y: f32::from(y) + within_y,
-    local_x: (i64::from(x) - origin.0) as f32 + within_x,
-    local_y: (i64::from(y) - origin.1) as f32 + within_y,
+    local_x: x - origin.0 as f32,
+    local_y: y - origin.1 as f32,
     button,
+    buttons,
     modifiers,
+    pressure: if buttons.is_empty() { 0. } else { 0.5 },
+    ..PointerEvent::mouse(x, y)
   }
 }
 
@@ -975,7 +979,7 @@ fn pointer_event(
 /// captured.
 fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))> {
   if let Some(press) = &store.press
-    && store.left_held
+    && store.buttons.contains(PointerButton::Primary)
   {
     return Some((press.captured, store.screen_origin(press.captured)));
   }
@@ -983,10 +987,10 @@ fn pointer_target(store: &Store, x: u16, y: u16) -> Option<(Handle, (i64, i64))>
   store.hit_test(x, y).last().copied()
 }
 
-/// Dispatches a pointer move at (`x`, `y`): the hover path follows it, the move
-/// reaches the node under the pointer or the one the press captured, and a drag in
-/// progress follows.
-pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifiers: Modifiers) {
+/// Dispatches a pointer move at (`x`, `y`), the terminal reporting `dragging` held: the
+/// hover path follows it, the move reaches the node under the pointer or the one the
+/// press captured, and a drag in progress follows.
+pub(crate) fn pointer_move(x: u16, y: u16, dragging: Option<PointerButton>, modifiers: Modifiers) {
   if !store(|store| store.mouse_taken()) {
     return;
   }
@@ -998,10 +1002,10 @@ pub(crate) fn pointer_move(x: u16, y: u16, button: Option<PointerButton>, modifi
   if let Some((handle, origin)) = target
     && let Some(node) = store(|store| store.record(handle).and_then(|record| record.node))
   {
-    let _ = dispatch_pointer_move::<Tui>(node, &pointer_event(x, y, origin, button, modifiers));
+    let _ = dispatch_pointer_move::<Tui>(node, &pointer_event(x, y, origin, None, modifiers));
   }
 
-  if button == Some(PointerButton::Primary) {
+  if dragging == Some(PointerButton::Primary) {
     drag_to(x, y);
   }
 }
@@ -1255,7 +1259,7 @@ fn press_default(
         store.drag = None;
       }
     }),
-    PointerButton::Auxiliary => {}
+    _ => {}
   }
 }
 
@@ -1663,7 +1667,7 @@ fn key_default(event: &KeyEvent) {
 }
 
 /// Asks the focused node, or the root, for its context menu at the node's bottom-start
-/// corner.
+/// corner, the request naming no pointer.
 fn context_menu_from_keyboard(modifiers: Modifiers) {
   let Some((node, origin, x, y)) = store(|store| {
     let handle = store.focused().unwrap_or(store.root);
@@ -1682,7 +1686,15 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
     return;
   };
 
-  let _ = dispatch_context_menu::<Tui>(node, &pointer_event(x, y, origin, None, modifiers));
+  let event = PointerEvent {
+    pointer: PointerInfo {
+      pointer_id: None,
+      persistent_device_id: None,
+      pointer_type: PointerType::Unknown,
+    },
+    ..pointer_event(x, y, origin, None, modifiers)
+  };
+  let _ = dispatch_context_menu::<Tui>(node, &event);
 }
 
 /// Hands the mouse to the terminal until a key takes it back: the hover path empties,

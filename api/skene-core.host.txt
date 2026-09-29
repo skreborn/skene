@@ -2,6 +2,12 @@ pub mod skene_core
 pub use skene_core::Code
 pub use skene_core::Key
 pub use skene_core::NamedKey
+pub use skene_core::PersistentDeviceId
+pub use skene_core::PointerButton
+pub use skene_core::PointerButtons
+pub use skene_core::PointerId
+pub use skene_core::PointerInfo
+pub use skene_core::PointerType
 pub mod skene_core::box_fields
 pub struct skene_core::box_fields::Arrangement
 impl core::clone::Clone for skene_core::box_fields::Arrangement
@@ -1632,19 +1638,6 @@ impl<T: core::hash::Hash> core::hash::Hash for skene_core::PlatformLeaf<T>
 pub fn skene_core::PlatformLeaf<T>::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl<T: skene_core::Fingerprint> skene_core::Fingerprint for skene_core::PlatformLeaf<T>
 pub fn skene_core::PlatformLeaf<T>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
-pub enum skene_core::PointerButton
-pub skene_core::PointerButton::Auxiliary
-pub skene_core::PointerButton::Primary
-pub skene_core::PointerButton::Secondary
-impl core::clone::Clone for skene_core::PointerButton
-pub fn skene_core::PointerButton::clone(&self) -> skene_core::PointerButton
-impl core::cmp::Eq for skene_core::PointerButton
-impl core::cmp::PartialEq for skene_core::PointerButton
-pub fn skene_core::PointerButton::eq(&self, &skene_core::PointerButton) -> bool
-impl core::fmt::Debug for skene_core::PointerButton
-pub fn skene_core::PointerButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Copy for skene_core::PointerButton
-impl core::marker::StructuralPartialEq for skene_core::PointerButton
 pub enum skene_core::PointerPrecision
 pub skene_core::PointerPrecision::Absent
 pub skene_core::PointerPrecision::Coarse
@@ -3403,12 +3396,19 @@ impl<T: core::ops::arith::Sub<Output = T>> core::ops::arith::Sub for skene_core:
 pub type skene_core::Point<T>::Output = skene_core::Point<T>
 pub fn skene_core::Point<T>::sub(self, Self) -> Self
 pub struct skene_core::PointerEvent
-pub skene_core::PointerEvent::button: core::option::Option<skene_core::PointerButton>
+pub skene_core::PointerEvent::button: core::option::Option<ui_events::pointer::buttons::PointerButton>
+pub skene_core::PointerEvent::buttons: ui_events::pointer::buttons::PointerButtons
 pub skene_core::PointerEvent::local_x: f32
 pub skene_core::PointerEvent::local_y: f32
 pub skene_core::PointerEvent::modifiers: skene_core::Modifiers
+pub skene_core::PointerEvent::pointer: ui_events::pointer::PointerInfo
+pub skene_core::PointerEvent::pressure: f32
 pub skene_core::PointerEvent::x: f32
 pub skene_core::PointerEvent::y: f32
+impl skene_core::PointerEvent
+pub fn skene_core::PointerEvent::mouse(f32, f32) -> Self
+pub fn skene_core::PointerEvent::with_press(self, ui_events::pointer::buttons::PointerButton) -> Self
+pub fn skene_core::PointerEvent::with_release(self, ui_events::pointer::buttons::PointerButton) -> Self
 impl core::clone::Clone for skene_core::PointerEvent
 pub fn skene_core::PointerEvent::clone(&self) -> skene_core::PointerEvent
 impl core::cmp::PartialEq for skene_core::PointerEvent

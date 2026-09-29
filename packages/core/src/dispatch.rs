@@ -297,7 +297,6 @@ mod tests {
     Boundary,
     Bubbling,
     EventKind,
-    Modifiers,
     NodeId,
     PointerButton,
     PointerEvent,
@@ -649,13 +648,11 @@ mod tests {
     TestPlatform::set_origin(sink(inner), 30., 120.);
 
     let event = PointerEvent {
-      x: 35.,
-      y: 125.,
       local_x: 5.,
       local_y: 5.,
-      button: Some(PointerButton::Primary),
-      modifiers: Modifiers::default(),
-    };
+      ..PointerEvent::mouse(35., 125.)
+    }
+    .with_press(PointerButton::Primary);
     let _ = dispatch_pointer_down::<TestPlatform>(inner, &event);
 
     assert_eq!(*seen.borrow(), [("inner", 5., 5.), ("outer", 25., 25.)]);

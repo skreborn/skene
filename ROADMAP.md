@@ -33,9 +33,8 @@ left half-done in a code comment.
     - Interaction: a group run's state variants reach its spans, as a rule on the
     group's class redefining the ink where the state holds; the token definitions it
     redefines condition on media alone, so this waits on the styling direction.
-    - Typed events: pointers with id, kind, buttons and pressure in `ui-events`'
-    shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before
-    default scrolling; double-click; drag and drop; click events carrying their
+    - Typed events: `PointerCancel`, capture and a pan declaration; `Wheel` dispatched
+    before default scrolling; double-click; drag and drop; click events carrying their
     modifiers, which `Link` takes from the last press today; actions and keymaps, so
     menu shortcuts act; a gesture arena before touch lands, its exception to "a view
     that handles an interaction owns it" written down.

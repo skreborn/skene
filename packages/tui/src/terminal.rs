@@ -835,33 +835,19 @@ fn dispatch_mouse(mouse: Mouse) {
       interaction::pointer_move(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::Press(button) => {
-      with_store(|store| match button {
-        PointerButton::Primary => store.left_held = true,
-        PointerButton::Secondary => store.right_held = true,
-        PointerButton::Auxiliary => {}
-      });
+      with_store(|store| store.buttons.insert(button));
       interaction::pointer_press(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::Release(button) => {
       // A release whose press was never delivered stands in for the whole click: VTE
       // terminals report only the first three presses of a rapid sequence to the app,
       // yet forward every release.
-      let orphan = with_store(|store| match button {
-        PointerButton::Primary => !std::mem::replace(&mut store.left_held, false),
-        PointerButton::Secondary => !std::mem::replace(&mut store.right_held, false),
-        PointerButton::Auxiliary => false,
-      });
-
-      if orphan {
-        with_store(|store| {
-          if button == PointerButton::Primary {
-            store.left_held = true;
-          }
-        });
+      if !with_store(|store| store.buttons.contains(button)) {
+        with_store(|store| store.buttons.insert(button));
         interaction::pointer_press(mouse.column, mouse.row, button, modifiers);
-        with_store(|store| store.left_held = false);
       }
 
+      with_store(|store| store.buttons.remove(button));
       interaction::pointer_release(mouse.column, mouse.row, button, modifiers);
     }
     MouseKind::ScrollDown => interaction::wheel(mouse.column, mouse.row, 0, WHEEL_STEP),
@@ -1614,7 +1600,7 @@ pub fn trigger_mouse_press(x: u16, y: u16) {
   trigger(|| {
     with_store(|store| {
       store.pointer_within = crate::store::CELL_CENTER;
-      store.left_held = true;
+      store.buttons.insert(PointerButton::Primary);
     });
     interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
   });
@@ -1642,12 +1628,12 @@ pub fn trigger_mouse_release(x: u16, y: u16) {
   trigger(|| {
     with_store(|store| store.pointer_within = crate::store::CELL_CENTER);
 
-    if !with_store(|store| store.left_held) {
-      with_store(|store| store.left_held = true);
+    if !with_store(|store| store.buttons.contains(PointerButton::Primary)) {
+      with_store(|store| store.buttons.insert(PointerButton::Primary));
       interaction::pointer_press(x, y, PointerButton::Primary, Modifiers::default());
     }
 
-    with_store(|store| store.left_held = false);
+    with_store(|store| store.buttons.remove(PointerButton::Primary));
     interaction::pointer_release(x, y, PointerButton::Primary, Modifiers::default());
   });
 }
@@ -1658,10 +1644,10 @@ pub fn trigger_mouse_right_click(x: u16, y: u16) {
   trigger(|| {
     with_store(|store| {
       store.pointer_within = crate::store::CELL_CENTER;
-      store.right_held = true;
+      store.buttons.insert(PointerButton::Secondary);
     });
     interaction::pointer_press(x, y, PointerButton::Secondary, Modifiers::default());
-    with_store(|store| store.right_held = false);
+    with_store(|store| store.buttons.remove(PointerButton::Secondary));
     interaction::pointer_release(x, y, PointerButton::Secondary, Modifiers::default());
   });
 }

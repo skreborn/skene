@@ -57,14 +57,7 @@ type Container = skene_common::Container<Headless>;
 type Theme<S, C = skene_common::NoChild> = skene_common::Theme<Headless, S, C>;
 
 fn press() -> PointerEvent {
-  PointerEvent {
-    x: 1.,
-    y: 2.,
-    local_x: 1.,
-    local_y: 2.,
-    button: Some(PointerButton::Primary),
-    modifiers: Modifiers::default(),
-  }
+  PointerEvent::mouse(1., 2.).with_press(PointerButton::Primary)
 }
 
 fn key(key: &str) -> KeyEvent {

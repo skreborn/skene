@@ -413,15 +413,12 @@ impl skene_gui::router::Route for Page {
 }
 
 /// A pointer press with `modifiers` held.
-const fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
+fn press(modifiers: skene_gui::core::Modifiers) -> skene_gui::core::PointerEvent {
   skene_gui::core::PointerEvent {
-    x: 0.,
-    y: 0.,
-    local_x: 0.,
-    local_y: 0.,
-    button: Some(skene_gui::core::PointerButton::Primary),
     modifiers,
+    ..skene_gui::core::PointerEvent::mouse(0., 0.)
   }
+  .with_press(skene_gui::core::PointerButton::Primary)
 }
 
 /// A link is a box carrying its route's path as destination; a plain click navigates

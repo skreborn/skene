@@ -5,10 +5,25 @@
 
 mod common;
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  rc::Rc,
+};
 
 use skene_simple::tui::prelude::*;
-use skene_tui::{self as tui, Activate, PointerButton, TextEntry, prelude::*};
+use skene_tui::{
+  self as tui,
+  Activate,
+  PointerButton,
+  PointerButtons,
+  PointerEvent,
+  PointerInfo,
+  PointerType,
+  Prevent,
+  Scene,
+  TextEntry,
+  prelude::*,
+};
 
 use crate::common::{blue, colors_at, red, rgb, with_platform};
 
@@ -54,6 +69,82 @@ fn pointer_events_carry_cell_coordinates() {
       Some((6.5, 1.5, 2.5, 1.5, Some(PointerButton::Primary)))
     );
     assert_eq!(moved.get(), Some((3.5, 2.5, None)));
+  });
+}
+
+/// The terminal's pointer is the primary mouse: a press holds its button at a mouse's
+/// pressure, a drag's move changes no button and holds the pressed one, the release
+/// holds none, and a context menu the keyboard opens names no pointer.
+#[test]
+fn the_terminals_pointer_is_the_primary_mouse() {
+  with_platform(|| {
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let (down, moved, up) = (Rc::clone(&seen), Rc::clone(&seen), Rc::clone(&seen));
+    let node = tui::mount(move || {
+      Container::new()
+        .set_width(6)
+        .set_height(3)
+        .set_focus_order(FocusOrder::Auto)
+        .handle_pointer_down(move |event| down.borrow_mut().push(*event))
+        .handle_pointer_move(move |event| moved.borrow_mut().push(*event))
+        .handle_pointer_up(move |event| up.borrow_mut().push(*event))
+        .into_any()
+        .build()
+    });
+    let requested = Rc::new(Cell::new(None));
+    let menu = Rc::clone(&requested);
+
+    Scene::<tui::Tui>::with(|scene| {
+      scene.handle_context_menu(
+        node,
+        Rc::new(move |event: &PointerEvent| {
+          menu.set(Some(event.pointer));
+
+          Prevent::None
+        }),
+      );
+    });
+
+    let _ = tui::render_to_text(12, 4);
+
+    tui::trigger_mouse_press(1, 1);
+    tui::trigger_mouse_drag(2, 1);
+    tui::trigger_mouse_release(2, 1);
+    tui::trigger_key("Shift+F10");
+
+    let mouse = PointerEvent::mouse(0., 0.).pointer;
+    let seen = seen.borrow();
+    let states: Vec<_> = seen
+      .iter()
+      .map(|event| (event.pointer, event.button, event.buttons, event.pressure))
+      .collect();
+
+    assert_eq!(
+      states,
+      [
+        (
+          mouse,
+          Some(PointerButton::Primary),
+          PointerButton::Primary.into(),
+          0.5
+        ),
+        (mouse, None, PointerButton::Primary.into(), 0.5),
+        (
+          mouse,
+          Some(PointerButton::Primary),
+          PointerButtons::new(),
+          0.
+        ),
+      ]
+    );
+    assert_eq!(
+      requested.get(),
+      Some(PointerInfo {
+        pointer_id: None,
+        persistent_device_id: None,
+        pointer_type: PointerType::Unknown,
+      })
+    );
   });
 }
 

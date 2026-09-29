@@ -1754,10 +1754,12 @@ pub enum skene_core::StaticLeaf<T>
 pub skene_core::StaticLeaf::Expr(skene_core::Expr<T>)
 pub skene_core::StaticLeaf::Fixed(T)
 pub skene_core::StaticLeaf::Token(skene_core::TokenRef<T>)
-impl<T> skene_core::StaticLeaf<T>
-pub fn skene_core::StaticLeaf<T>::map<U>(self, impl core::ops::function::FnOnce(T) -> U) -> skene_core::StaticLeaf<U>
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::BoxValue<N, X>>> for skene_core::SlotLeaf<N, X>
+pub fn skene_core::SlotLeaf<N, X>::from(skene_core::StaticLeaf<skene_core::BoxValue<N, X>>) -> Self
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::RunValue<X>>> for skene_core::SlotLeaf<N, X>
+pub fn skene_core::SlotLeaf<N, X>::from(skene_core::StaticLeaf<skene_core::RunValue<X>>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Dimension<N>>
 pub fn skene_core::StaticLeaf<skene_core::Dimension<N>>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Inset<N>>

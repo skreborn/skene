@@ -20,8 +20,10 @@ pub enum ColorScheme {
 
 /// Color value, stored as its Oklch `[lightness, chroma, hue, alpha]` components.
 ///
-/// Every conversion runs through the same arithmetic on every target, so a color built
-/// on a server and the same color built in a browser are the same bits.
+/// The sRGB, linear, Oklab and Oklch constructors run the same arithmetic on every
+/// target, so a color built by one of them on a server and in a browser is the same
+/// bits. A color converted to Oklch with no chroma to speak of, a gray, keeps the hue
+/// CSS gives a powerless one: none, stored as `0`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct Color {
@@ -157,12 +159,13 @@ impl Color {
 
   /// Creates an opaque color in the Oklch color space.
   ///
-  /// `lightness` on a scale of `0` to `1` and `hue` in degrees.
+  /// `lightness` on a scale of `0` to `1` and `hue` in degrees; a lightness outside the
+  /// scale and a negative chroma are held at the nearest bound, as CSS does.
   #[inline(always)]
   pub const fn oklch(lightness: f32, chroma: f32, hue: f32) -> Self {
     Self {
-      lightness,
-      chroma,
+      lightness: convert::bounded_lightness(lightness),
+      chroma: convert::bounded_chroma(chroma),
       hue,
       alpha: 1.,
     }
@@ -207,16 +210,22 @@ impl Color {
     self.alpha
   }
 
-  /// This color with its Oklch lightness replaced, `0` to `1`.
+  /// This color with its Oklch lightness replaced, held between `0` and `1`.
   #[inline(always)]
   pub const fn with_lightness(self, lightness: f32) -> Self {
-    Self { lightness, ..self }
+    Self {
+      lightness: convert::bounded_lightness(lightness),
+      ..self
+    }
   }
 
-  /// This color with its Oklch chroma replaced.
+  /// This color with its Oklch chroma replaced, a negative one held at `0`.
   #[inline(always)]
   pub const fn with_chroma(self, chroma: f32) -> Self {
-    Self { chroma, ..self }
+    Self {
+      chroma: convert::bounded_chroma(chroma),
+      ..self
+    }
   }
 
   /// This color with its Oklch hue replaced, in degrees.
@@ -225,15 +234,21 @@ impl Color {
     Self { hue, ..self }
   }
 
-  /// This color mixed toward `other` in Oklab: `0.` is this color, `1.` is `other`, and
-  /// every component, alpha included, interpolates linearly.
+  /// This color mixed toward `other` in Oklab, as CSS's `color-mix()` mixes: `0.` is
+  /// this color and `1.` is `other`, alpha interpolates linearly, and each other
+  /// component interpolates premultiplied by alpha.
   pub fn mix(self, other: Self, amount: f32) -> Self {
     let from = self.to_oklab();
     let to = other.to_oklab();
-    let mixed: [f32; 4] =
-      std::array::from_fn(|component| from[component] + (to[component] - from[component]) * amount);
+    let alpha = from[3] + (to[3] - from[3]) * amount;
+    let component = |index: usize| {
+      let start = from[index] * from[3];
+      let mixed = start + (to[index] * to[3] - start) * amount;
 
-    Self::from_oklab([mixed[0], mixed[1], mixed[2]], mixed[3])
+      if alpha > 0. { mixed / alpha } else { mixed }
+    };
+
+    Self::from_oklab([component(0), component(1), component(2)], alpha)
   }
 
   /// This color's `[red, green, blue, alpha]` components in the sRGB color space.
@@ -426,15 +441,43 @@ mod convert {
     matvecmul(&LMS_TO_SRGB, lms)
   }
 
-  /// Oklab to Oklch, the hue in degrees from `0` up to `360`.
+  /// The chroma at or below which a hue is powerless, as CSS's conversions have it.
+  const POWERLESS_CHROMA: f32 = 0.000_004;
+
+  /// Oklab to Oklch, the hue in degrees from `0` up to `360`; a chroma too small for a
+  /// hue to show is `0`, and so is its hue.
   pub(super) fn oklab_to_oklch([lightness, a_axis, b_axis]: [f32; 3]) -> [f32; 3] {
+    let chroma = libm::hypotf(b_axis, a_axis);
+
+    if chroma <= POWERLESS_CHROMA {
+      return [lightness, 0.0, 0.0];
+    }
+
     let mut hue = libm::atan2f(b_axis, a_axis).to_degrees();
 
     if hue < 0.0 {
       hue += 360.0;
     }
 
-    [lightness, libm::hypotf(b_axis, a_axis), hue]
+    [lightness, chroma, hue]
+  }
+
+  /// An Oklch lightness held between `0` and `1`.
+  pub(super) const fn bounded_lightness(lightness: f32) -> f32 {
+    if lightness < 0.0 {
+      0.0
+    }
+    else if lightness > 1.0 {
+      1.0
+    }
+    else {
+      lightness
+    }
+  }
+
+  /// An Oklch chroma held at `0` or above.
+  pub(super) const fn bounded_chroma(chroma: f32) -> f32 {
+    if chroma < 0.0 { 0.0 } else { chroma }
   }
 
   /// Oklch to Oklab.
@@ -446,5 +489,61 @@ mod convert {
       chroma * libm::cosf(radians),
       chroma * libm::sinf(radians),
     ]
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::Color;
+
+  /// Whether two colors agree in Oklab to within a rounding.
+  fn close(left: Color, right: Color) -> bool {
+    left
+      .to_oklab()
+      .iter()
+      .zip(right.to_oklab())
+      .all(|(left, right)| (left - right).abs() < 1e-5)
+  }
+
+  /// A gray has no hue, as CSS's conversions leave it, so a chroma given to it starts
+  /// from hue `0` rather than from rounding noise.
+  #[test]
+  fn a_gray_has_no_hue() {
+    for gray in [
+      Color::srgb(1., 1., 1.),
+      Color::srgb(0.5, 0.5, 0.5),
+      Color::srgb(0., 0., 0.),
+    ] {
+      assert_eq!(gray, Color::oklch(gray.lightness(), 0., 0.));
+      assert_eq!(
+        gray.with_chroma(0.1),
+        Color::oklch(gray.lightness(), 0.1, 0.)
+      );
+    }
+  }
+
+  /// A lightness past its scale and a negative chroma are held at the nearest bound.
+  #[test]
+  fn oklch_components_hold_at_their_bounds() {
+    let color = Color::oklch(0.5, 0.1, 30.);
+
+    assert_eq!(Color::oklch(1.5, -0.2, 30.), Color::oklch(1., 0., 30.));
+    assert_eq!(color.with_chroma(-0.1), color.with_chroma(0.));
+    assert_eq!(color.with_lightness(-1.), color.with_lightness(0.));
+    assert_eq!(color.with_lightness(2.), color.with_lightness(1.));
+  }
+
+  /// A mix interpolates premultiplied, so a transparent end lends the mix no hue.
+  #[test]
+  fn a_mix_interpolates_premultiplied() {
+    let red = Color::srgb(1., 0., 0.);
+    let blue = Color::srgb(0., 0., 1.);
+
+    assert!(close(
+      red.with_alpha(0.).mix(blue, 0.5),
+      blue.with_alpha(0.5)
+    ));
+    assert!(close(red.mix(blue, 0.), red));
+    assert!(close(red.mix(blue, 1.), blue));
   }
 }

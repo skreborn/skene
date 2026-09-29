@@ -129,7 +129,11 @@ enum Case {
   TokenColor,
   ConditionalTokenColor,
   MixedColor,
+  TranslucentMix,
   LighterColor,
+  LighterThanWhite,
+  NegativeChroma,
+  GrayWithChroma,
   TranslucentColor,
   DerivedColor,
   DerivedTokenColor,
@@ -157,7 +161,11 @@ const CASES: &[Case] = &[
   Case::TokenColor,
   Case::ConditionalTokenColor,
   Case::MixedColor,
+  Case::TranslucentMix,
   Case::LighterColor,
+  Case::LighterThanWhite,
+  Case::NegativeChroma,
+  Case::GrayWithChroma,
   Case::TranslucentColor,
   Case::DerivedColor,
   Case::DerivedTokenColor,
@@ -186,7 +194,11 @@ impl Case {
       | Self::TokenColor
       | Self::ConditionalTokenColor
       | Self::MixedColor
+      | Self::TranslucentMix
       | Self::LighterColor
+      | Self::LighterThanWhite
+      | Self::NegativeChroma
+      | Self::GrayWithChroma
       | Self::TranslucentColor
       | Self::DerivedColor
       | Self::DerivedTokenColor
@@ -218,7 +230,17 @@ impl Case {
       Self::MixedColor => {
         container.set_color(Expr::from(ParityPalette::SURFACE).mix(Color::srgb(1., 1., 1.), 0.25))
       }
+      Self::TranslucentMix => {
+        container.set_color(Expr::from(blue().with_alpha(0.2)).mix(orange(), 0.5))
+      }
       Self::LighterColor => container.set_color(Expr::from(blue()).lighter(0.1)),
+      Self::LighterThanWhite => {
+        container.set_color(Expr::from(Color::srgb(0.9, 0.9, 0.9)).lighter(0.5))
+      }
+      Self::NegativeChroma => container.set_color(Expr::from(blue()).with_chroma(-0.1)),
+      Self::GrayWithChroma => {
+        container.set_color(Expr::from(Color::srgb(0.5, 0.5, 0.5)).with_chroma(0.1))
+      }
       Self::TranslucentColor => container.set_color(Expr::from(blue()).with_alpha(0.5)),
       Self::DerivedColor => container.derive_color(blue),
       Self::DerivedTokenColor => container.derive_color(|| ParityPalette::SURFACE),

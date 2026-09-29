@@ -24,8 +24,9 @@ pub enum StaticLeaf<T> {
 
 impl<T> StaticLeaf<T> {
   /// This leaf with `map` applied to a fixed value; a token or an expression keeps its
-  /// name or tree under the mapped type.
-  pub fn map<U>(self, map: impl FnOnce(T) -> U) -> StaticLeaf<U> {
+  /// name or tree under the mapped type, which `map` must leave a reading of the same
+  /// quantity.
+  pub(crate) fn map<U>(self, map: impl FnOnce(T) -> U) -> StaticLeaf<U> {
     match self {
       Self::Fixed(value) => StaticLeaf::Fixed(map(value)),
       Self::Token(reference) => StaticLeaf::Token(TokenRef::new(reference.name().as_str())),
@@ -137,11 +138,9 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// node's own state is the consuming property's to condition on.
 ///
 /// ```compile_fail,E0277
-/// use std::rc::Rc;
-///
 /// use skene_core::{Color, Definition, Leaf};
 ///
-/// let _: Definition<Color, f32> = Definition::from(Leaf::Derived(Rc::new(|| Color::TRANSPARENT)));
+/// let _ = Definition::<Color, f32>::from(Leaf::derive(|| Color::TRANSPARENT));
 /// ```
 pub type Definition<T, N> = Conditional<StaticLeaf<T>, Media<N>>;
 

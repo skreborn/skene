@@ -294,6 +294,8 @@ impl<V: Interpolate> Tween<V> {
 
 /// The value of `frames` at `offset` percent: the two frames around it interpolated,
 /// the nearest one alone past either end; `None` for no frames.
+///
+/// Of frames sharing an offset, the last declared stands, as in CSS.
 pub fn sample_keyframes<V: Interpolate>(frames: &[(f32, V)], offset: f32) -> Option<V> {
   let before = frames
     .iter()
@@ -301,6 +303,7 @@ pub fn sample_keyframes<V: Interpolate>(frames: &[(f32, V)], offset: f32) -> Opt
     .max_by(|(left, _), (right, _)| left.total_cmp(right));
   let after = frames
     .iter()
+    .rev()
     .filter(|(percent, _)| *percent >= offset)
     .min_by(|(left, _), (right, _)| left.total_cmp(right));
 
@@ -403,5 +406,15 @@ mod tests {
 
     assert_eq!(mid, black.mix(white, 0.5));
     assert_eq!(sample_keyframes::<f32>(&[], 50.), None);
+  }
+
+  /// Of two frames at one offset the last declared stands, on either side of it.
+  #[test]
+  fn a_repeated_offset_takes_its_last_frame() {
+    let frames = [(0., 0f32), (50., 10.), (50., 20.), (100., 40.)];
+
+    assert_eq!(sample_keyframes(&frames, 25.), Some(10.));
+    assert_eq!(sample_keyframes(&frames, 50.), Some(20.));
+    assert_eq!(sample_keyframes(&frames, 75.), Some(30.));
   }
 }

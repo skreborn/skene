@@ -43,7 +43,7 @@ use crate::{
   cells::{CellPainter, Painter},
   interaction,
   motion::RunMotion,
-  store::{BoxRecord, Field, Handle, Kind, PictureRecord, SlotValue, Store},
+  store::{BoxRecord, Field, Handle, Kind, PictureRecord, Store},
 };
 
 /// The terminal platform: a zero-sized [`Platform`] whose sink is a [`Handle`] into this
@@ -127,7 +127,7 @@ impl Platform for Tui {
   fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<u32, TuiExt>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
-        record.slots.insert(slot, leaf.clone().map(SlotValue::Box));
+        record.slots.insert(slot, leaf.clone().into());
 
         if let Some(inner) = record.kind.box_record_mut() {
           inner.mark_stale();
@@ -273,7 +273,7 @@ impl Platform for Tui {
   fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue<TuiExt>>) {
     with_store(|store| {
       if let Some(record) = store.record_mut(*sink) {
-        record.slots.insert(slot, leaf.clone().map(SlotValue::Run));
+        record.slots.insert(slot, leaf.clone().into());
 
         if let Kind::Run {
           cache: Some(cache), ..

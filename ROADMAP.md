@@ -40,12 +40,8 @@ left half-done in a code comment.
     invalidation in place of the global generation.
     - One motion runner in core with a property table (continuous or discrete, and a
     unit class) for the terminal, headless and native: easing per keyframe interval,
-    discrete properties that never tween, premultiplied color mixing, and one
-    reduced-motion rest frame, the final one, where the web shows the base style today.
-    - CSS semantics in core: no division of a number by a length; a `StaticLeaf::map`
-    that can't change an expression's type; the last of repeated keyframe offsets; a
-    powerless hue for achromatic colors; `Color` taking the `color` crate's CSS
-    semantics in a few lines of its own.
+    discrete properties that never tween, and one reduced-motion rest frame, the final
+    one, where the web shows the base style today.
     - One `Environment` (viewport, scheme, reduced motion, reduced transparency, high
     contrast, pointer capability, insets) in place of three spellings, so
     `HighContrast` and `ReducedTransparency` answer on every platform and in tests; one

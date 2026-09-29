@@ -461,18 +461,27 @@ pub(crate) fn verdict<R: Into<Bubbling>>(result: R) -> Prevent {
   Prevent::from(bubbling)
 }
 
+/// One axis of a two-axis alignment leaf: a fixed alignment projected through `pick`, a
+/// token read by its name.
+fn alignment_axis_leaf(
+  leaf: &StaticLeaf<Alignment>,
+  pick: fn(Alignment) -> ItemAlignment,
+) -> StaticLeaf<ItemAlignment> {
+  match leaf {
+    StaticLeaf::Fixed(alignment) => StaticLeaf::Fixed(pick(*alignment)),
+    StaticLeaf::Token(reference) => StaticLeaf::Token(TokenRef::new(reference.name().as_str())),
+    StaticLeaf::Expr(_) => unreachable!("no expression has an alignment type"),
+  }
+}
+
 /// One axis of a two-axis alignment value: each leaf projected through `pick`.
 fn alignment_axis<C: Clone>(
   value: &Value<Alignment, C>,
   pick: fn(Alignment) -> ItemAlignment,
 ) -> Value<ItemAlignment, C> {
   value.clone().map(|leaf| match leaf {
-    Leaf::Static(StaticLeaf::Fixed(alignment)) => Leaf::from(pick(alignment)),
-    Leaf::Static(StaticLeaf::Token(reference)) => {
-      Leaf::from(TokenRef::<ItemAlignment>::new(reference.name().as_str()))
-    }
-    Leaf::Static(StaticLeaf::Expr(_)) => unreachable!("no expression has an alignment type"),
-    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || compute().map(pick))),
+    Leaf::Static(leaf) => Leaf::Static(alignment_axis_leaf(&leaf, pick)),
+    Leaf::Derived(compute) => Leaf::Derived(Rc::new(move || alignment_axis_leaf(&compute(), pick))),
   })
 }
 

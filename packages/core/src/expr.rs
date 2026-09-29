@@ -226,10 +226,10 @@ impl ExprNode {
         .combine_same(rhs.evaluate(env, resolve)?, f32::max),
       Self::Mul(lhs, rhs) => lhs
         .evaluate(env, resolve)?
-        .scale(rhs.evaluate(env, resolve)?, |lhs, rhs| lhs * rhs),
+        .multiply(rhs.evaluate(env, resolve)?),
       Self::Div(lhs, rhs) => lhs
         .evaluate(env, resolve)?
-        .scale(rhs.evaluate(env, resolve)?, |lhs, rhs| lhs / rhs),
+        .divide(rhs.evaluate(env, resolve)?),
       Self::Clamp(value, lower, upper) => value
         .evaluate(env, resolve)?
         .combine_same(upper.evaluate(env, resolve)?, f32::min)?
@@ -327,14 +327,24 @@ impl ExprValue {
     }
   }
 
-  /// Scales a quantity by a number; `None` for anything else or without a finite
-  /// result.
-  fn scale(self, other: Self, scale: impl FnOnce(f32, f32) -> f32) -> Option<Self> {
+  /// Multiplies a quantity by a number, either way round; `None` for anything else or
+  /// without a finite result.
+  fn multiply(self, other: Self) -> Option<Self> {
     match (self, other) {
       (Self::Length(lhs), Self::Number(rhs)) | (Self::Number(rhs), Self::Length(lhs)) => {
-        Self::finite_length(scale(lhs, rhs))
+        Self::finite_length(lhs * rhs)
       }
-      (Self::Number(lhs), Self::Number(rhs)) => Self::finite_number(scale(lhs, rhs)),
+      (Self::Number(lhs), Self::Number(rhs)) => Self::finite_number(lhs * rhs),
+      _ => None,
+    }
+  }
+
+  /// Divides a quantity by a number; `None` for anything else, a number divided by a
+  /// length among it, or without a finite result.
+  fn divide(self, other: Self) -> Option<Self> {
+    match (self, other) {
+      (Self::Length(lhs), Self::Number(rhs)) => Self::finite_length(lhs / rhs),
+      (Self::Number(lhs), Self::Number(rhs)) => Self::finite_number(lhs / rhs),
       _ => None,
     }
   }
@@ -742,6 +752,19 @@ mod tests {
       Expr::<Inset<f32>>::from(expr).evaluate(&env(), &tokens),
       Some(Inset::all(20.))
     );
+  }
+
+  /// A length divided by a number is a length, and a number divided by a length is
+  /// nothing, as in CSS, even where tokens read through references of the other kind
+  /// make the division check.
+  #[test]
+  fn only_a_number_divides() {
+    let halved = Expr::from(TokenRef::<Length>::new("gutter")) / 2.;
+    let inverted =
+      Expr::from(TokenRef::<Length>::new("ratio")) / Expr::from(TokenRef::<Number>::new("gutter"));
+
+    assert_eq!(halved.evaluate(&env(), &tokens), Some(Length(4.)));
+    assert_eq!(inverted.evaluate(&env(), &tokens), None);
   }
 
   /// Crossed bounds resolve to the lower one, as CSS's `clamp()` does.

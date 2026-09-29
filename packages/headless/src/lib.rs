@@ -211,7 +211,7 @@ impl Platform for Headless {
 
   fn update_box(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
     with_record(*sink, |record| {
-      record.slots.insert(slot, leaf.clone().map(SlotValue::Box));
+      record.slots.insert(slot, leaf.clone().into());
     });
   }
 
@@ -268,7 +268,7 @@ impl Platform for Headless {
 
   fn update_run(&self, sink: &Handle, slot: Slot, leaf: &StaticLeaf<RunValue>) {
     with_record(*sink, |record| {
-      record.slots.insert(slot, leaf.clone().map(SlotValue::Run));
+      record.slots.insert(slot, leaf.clone().into());
     });
   }
 

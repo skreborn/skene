@@ -111,6 +111,22 @@ pub enum SlotValue<N: Scalar, X: StyleExtension = ()> {
 /// expression resolved where the slot is read.
 pub type SlotLeaf<N, X = ()> = StaticLeaf<SlotValue<N, X>>;
 
+impl<N: Scalar, X: StyleExtension> From<StaticLeaf<BoxValue<N, X>>> for SlotLeaf<N, X> {
+  /// A box property's leaf, erased over the property.
+  #[inline(always)]
+  fn from(leaf: StaticLeaf<BoxValue<N, X>>) -> Self {
+    leaf.map(SlotValue::Box)
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> From<StaticLeaf<RunValue<X>>> for SlotLeaf<N, X> {
+  /// A run property's leaf, erased over the property.
+  #[inline(always)]
+  fn from(leaf: StaticLeaf<RunValue<X>>) -> Self {
+    leaf.map(SlotValue::Run)
+  }
+}
+
 /// A value a leaf resolved to, erased over the property.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]

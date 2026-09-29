@@ -87,9 +87,6 @@ impl Handle {
   }
 }
 
-/// A property's value erased over the property; see [`skene_core::SlotValue`].
-pub(crate) type SlotValue = skene_core::SlotValue<u32, TuiExt>;
-
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
 pub(crate) type SlotLeaf = skene_core::SlotLeaf<u32, TuiExt>;
 

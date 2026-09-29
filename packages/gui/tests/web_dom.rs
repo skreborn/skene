@@ -513,6 +513,97 @@ fn overlays_open_at_build_open_and_a_modal_prevents_cancel() {
   assert!(dialog.has_attribute("open"));
 }
 
+/// An `Escape` nothing prevents dismisses the popup opened last and that one alone,
+/// and one a control inside a popup takes dismisses nothing.
+#[wasm_bindgen_test]
+fn escape_dismisses_the_topmost_popup_unless_taken() {
+  use skene_gui::{
+    ActivePlatform,
+    Behavior,
+    Control,
+    ControlHandle,
+    core::{ControlKind, EventKind, KeyEvent, Prevent, Role},
+  };
+
+  /// Takes `Escape` and nothing else.
+  struct Keeper;
+
+  impl Behavior<ActivePlatform> for Keeper {
+    fn kind(&self) -> ControlKind {
+      ControlKind::Button
+    }
+
+    fn role(&self) -> Option<Role> {
+      None
+    }
+
+    fn listens(&self) -> &'static [EventKind] {
+      &[EventKind::KeyDown]
+    }
+
+    fn on_key(&self, event: &KeyEvent, _: &ControlHandle) -> Prevent {
+      if event.key == "Escape" {
+        Prevent::All
+      }
+      else {
+        Prevent::None
+      }
+    }
+  }
+
+  let (_guard, root) = fresh_root();
+  let outer = Signal::new(false);
+  let inner = Signal::new(false);
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Overlay::popup()
+          .bind_open(outer)
+          .set_child(Text::new("outer")),
+        Overlay::popup()
+          .bind_open(inner)
+          .set_child(Control::new(Keeper).set_child(Text::new("keeper"))),
+      ))
+      .build()
+  });
+
+  outer.set(true);
+  web::end_turn();
+  inner.set(true);
+  web::end_turn();
+
+  let escape = |target: &Element| {
+    let init = web_sys::KeyboardEventInit::new();
+
+    init.set_bubbles(true);
+    init.set_cancelable(true);
+    init.set_key("Escape");
+
+    let event =
+      web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init).expect("a key");
+
+    let _ = target.dispatch_event(&event);
+  };
+  let keeper = root
+    .query_selector("[data-skene-control]")
+    .expect("a valid selector")
+    .expect("the keeper");
+
+  escape(&keeper);
+
+  assert!(outer.get() && inner.get(), "the keeper took it");
+
+  escape(&root);
+
+  assert!(outer.get(), "only the topmost closes");
+  assert!(!inner.get());
+
+  escape(&root);
+
+  assert!(!outer.get());
+}
+
 /// A wrapper's derived property reaches a run as a slot, following its signal.
 #[wasm_bindgen_test]
 fn a_derived_wrapper_property_reaches_a_run() {

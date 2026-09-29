@@ -132,8 +132,9 @@ pub(super) struct Events {
   root: Element,
   /// The delegated listeners, by event name.
   listeners: FxHashMap<&'static str, Listener>,
-  /// The popups open, each with the anchor it was opened against.
-  pub(super) open_popups: FxHashMap<u32, Option<u32>>,
+  /// The popups open, each with the anchor it was opened against, in the order they
+  /// opened.
+  pub(super) open_popups: Vec<(u32, Option<u32>)>,
   /// The `<input>` or `<textarea>` focus last left, which a clipboard action from an
   /// open popup acts on in place of the popup's own focus.
   pub(super) last_entry: Option<Element>,
@@ -144,9 +145,20 @@ impl Events {
     Self {
       root,
       listeners: FxHashMap::default(),
-      open_popups: FxHashMap::default(),
+      open_popups: Vec::new(),
       last_entry: None,
     }
+  }
+
+  /// Records `popup` as open against `anchor`, above every popup already open.
+  pub(super) fn open_popup(&mut self, popup: u32, anchor: Option<u32>) {
+    self.close_popup(popup);
+    self.open_popups.push((popup, anchor));
+  }
+
+  /// Forgets `popup` as open.
+  pub(super) fn close_popup(&mut self, popup: u32) {
+    self.open_popups.retain(|(open, _)| *open != popup);
   }
 
   /// Installs the root listeners serving `kind`, once each.
@@ -339,18 +351,19 @@ fn on_key_down(event: &web_sys::Event) {
     return;
   };
 
-  if keyboard.key() == "Escape" {
-    for popup in open_popups() {
-      notify_dismiss::<Web>(popup);
-    }
+  let prevented = node_at(event.target())
+    .map(|node| dispatch_key_down::<Web>(node, &key_event(keyboard)))
+    .unwrap_or_default();
+
+  apply(prevented, event);
+
+  if keyboard.key() == "Escape"
+    && !prevented.platform
+    && let Some(popup) = topmost_popup()
+  {
+    event.prevent_default();
+    notify_dismiss::<Web>(popup);
   }
-
-  let Some(node) = node_at(event.target())
-  else {
-    return;
-  };
-
-  apply(dispatch_key_down::<Web>(node, &key_event(keyboard)), event);
 }
 
 fn on_key_up(event: &web_sys::Event) {
@@ -382,15 +395,15 @@ fn key_event(keyboard: &web_sys::KeyboardEvent) -> KeyEvent {
   }
 }
 
-/// The nodes of the popups currently open.
-fn open_popups() -> Vec<NodeId> {
+/// The node of the popup opened last among those open.
+fn topmost_popup() -> Option<NodeId> {
   with_dom(|dom| {
     dom
       .events
       .open_popups
-      .keys()
-      .filter_map(|sink| dom.node(*sink).and_then(|node| node.id))
-      .collect()
+      .iter()
+      .rev()
+      .find_map(|(sink, _)| dom.node(*sink).and_then(|node| node.id))
   })
 }
 
@@ -467,7 +480,7 @@ fn on_pointer_down(event: &web_sys::Event) {
       .events
       .open_popups
       .iter()
-      .filter(|(popup, anchor)| !contains(**popup) && !anchor.is_some_and(contains))
+      .filter(|(popup, anchor)| !contains(*popup) && !anchor.is_some_and(contains))
       .filter_map(|(popup, _)| dom.node(*popup).and_then(|node| node.id))
       .collect()
   });

@@ -1101,7 +1101,7 @@ fn clipboard_entry(dom: &Dom) -> Option<Element> {
   }
 
   let active: &web_sys::Node = &active;
-  let in_popup = dom.events.open_popups.keys().any(|sink| {
+  let in_popup = dom.events.open_popups.iter().any(|(sink, _)| {
     dom
       .node(*sink)
       .is_some_and(|node| node.dom.contains(Some(active)))
@@ -1514,10 +1514,10 @@ impl Platform for Web {
 
       if !modal {
         if open {
-          dom.events.open_popups.insert(*sink, anchor.copied());
+          dom.events.open_popup(*sink, anchor.copied());
         }
         else {
-          dom.events.open_popups.remove(sink);
+          dom.events.close_popup(*sink);
         }
       }
 
@@ -1766,7 +1766,7 @@ impl Platform for Web {
         pixels.unobserve(&canvas.element);
       }
 
-      dom.events.open_popups.remove(&sink);
+      dom.events.close_popup(sink);
       dom.saved.remove(&sink);
       dom.pending_open.remove(&sink);
     });

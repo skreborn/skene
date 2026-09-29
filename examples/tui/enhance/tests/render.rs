@@ -6,10 +6,6 @@
 
 use skene_tui::{self as tui, prelude::*};
 
-/// Serializes the tests: the UI-thread designation is process-wide, so each test must
-/// install, run, and uninstall without another test's thread interleaving.
-static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 /// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
 struct Installed;
@@ -22,10 +18,6 @@ impl Drop for Installed {
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  let _serialized = PLATFORM
-    .lock()
-    .unwrap_or_else(std::sync::PoisonError::into_inner);
-
   tui::install();
 
   let _installed = Installed;

@@ -1,13 +1,9 @@
-//! What the render tests share: the serialized platform install, and the probes reading
+//! What the render tests share: the platform install, and the probes reading
 //! a frame back.
 
 #![allow(dead_code)]
 
 use skene_tui::{self as tui, Color};
-
-/// Serializes the tests: the UI-thread designation is process-wide, so each test must
-/// install, run, and uninstall without another test's thread interleaving.
-static PLATFORM: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// The installed platform, uninstalled when dropped, so a failing test leaves the thread
 /// clean for the next.
@@ -21,10 +17,6 @@ impl Drop for Installed {
 
 /// Installs a fresh platform, runs `body`, and uninstalls afterwards.
 pub fn with_platform<R>(body: impl FnOnce() -> R) -> R {
-  let _serialized = PLATFORM
-    .lock()
-    .unwrap_or_else(std::sync::PoisonError::into_inner);
-
   tui::install();
 
   let _installed = Installed;
@@ -91,10 +83,6 @@ pub fn rgb(color: Color) -> (u8, u8, u8) {
 
 /// Installs a fresh platform under `launch`, runs `body`, and uninstalls afterwards.
 pub fn with_launch<R>(launch: tui::Launch, body: impl FnOnce() -> R) -> R {
-  let _serialized = PLATFORM
-    .lock()
-    .unwrap_or_else(std::sync::PoisonError::into_inner);
-
   launch.install();
 
   let _installed = Installed;

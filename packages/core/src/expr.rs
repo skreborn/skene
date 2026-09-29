@@ -62,8 +62,8 @@ impl Quantity for Number {
 /// Every operation is defined per type, so a platform walking [`node`](Self::node) meets
 /// only trees the constructors could build.
 ///
-/// ```compile_fail
-/// use skene_core::Expr, Length;
+/// ```compile_fail,E0277
+/// use skene_core::{Expr, Length};
 ///
 /// let width = Expr::<Length>::vw(50.);
 /// let _area = width.clone() * width;

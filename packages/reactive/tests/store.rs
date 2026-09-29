@@ -4,7 +4,6 @@ use std::{
   cell::{Cell, RefCell},
   collections::{BTreeMap, HashMap},
   rc::Rc,
-  time::{Duration, Instant},
 };
 
 use skene_reactive::{
@@ -541,52 +540,49 @@ fn tagged_store_round_trips_through_a_snapshot() {
   assert_eq!(restored, 7);
 }
 
-/// The time a burst of row edits takes over a store of `rows` tracked cells.
-fn edit_time(rows: usize, edits: u32) -> Duration {
+/// Editing one row of ten thousand tracked rows reruns that row's effect on the edited
+/// field and no other.
+#[test]
+fn a_row_edit_reruns_only_its_own_effect() {
   #[derive(Store, Clone, Default)]
   struct Row {
     label: u32,
     checked: bool,
   }
 
+  const ROWS: usize = 10_000;
+
+  let runs = Rc::new(Cell::new(0usize));
   let scope = Owner::new();
   let store = scope.enter(|| {
-    let store = Store::opaque(vec![Row::default(); rows]);
+    let store = Store::opaque(vec![Row::default(); ROWS]);
 
-    for index in 0..rows {
+    for index in 0..ROWS {
+      let label = Rc::clone(&runs);
+      let checked = Rc::clone(&runs);
+
       Effect::new(move |_| {
         let _ = store.at(index).label().get();
+
+        label.set(label.get() + 1);
       });
       Effect::new(move |_| {
         let _ = store.at(index).checked().get();
+
+        checked.set(checked.get() + 1);
       });
     }
 
     store
   });
-  let start = Instant::now();
 
-  for edit in 0..edits {
-    store.at(rows / 2).label().set(edit);
+  runs.set(0);
+
+  for edit in 1..=100 {
+    store.at(ROWS / 2).label().set(edit);
   }
 
-  let elapsed = start.elapsed();
+  assert_eq!(runs.get(), 100);
 
   scope.dispose();
-
-  elapsed
-}
-
-/// Editing one row notifies in time independent of how many rows are tracked: ten
-/// thousand tracked cells cost no more per edit than a hundred, within noise.
-#[test]
-fn row_edit_cost_is_independent_of_tracked_count() {
-  let _warm = edit_time(100, 100);
-  let small = edit_time(100, 2_000);
-  let large = edit_time(10_000, 2_000);
-
-  assert!(
-    large < small * 8 + Duration::from_millis(20),
-    "an edit over 10,000 tracked cells took {large:?} against {small:?} over 200"
-  );
 }

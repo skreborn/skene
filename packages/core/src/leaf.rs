@@ -136,7 +136,7 @@ pub type Value<T, C> = Conditional<Leaf<T>, C>;
 /// can compile once. Only media conditions apply: a token answers the environment, and a
 /// node's own state is the consuming property's to condition on.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0277
 /// use std::rc::Rc;
 ///
 /// use skene_core::{Color, Definition, Leaf};

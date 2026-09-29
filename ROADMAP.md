@@ -8,7 +8,8 @@ it.
 The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` on the
 development machine (2026-09-28), against which a change to the engine is measured:
 creating a thousand signals 71 µs; a signal read outside an effect 4.9 ns; a write
-reaching ten effects 242 ns; a write through a chain of ten memos 414 ns. Versions
+reaching ten effects 242 ns; a write through a chain of ten memos 414 ns; a store row's
+edit among a hundred tracked rows 150 ns, and among ten thousand 147 ns (2026-09-29). Versions
 compare only when each is built in its own target directory (a shared one reuses
 another tree's build) and the bench binaries run alternately, pinned to one of the
 fast cores with address randomization off: `setarch -R taskset -c 2 <binary> --bench`.
@@ -33,12 +34,6 @@ left half-done in a code comment.
     `Resource`, `Store` and `Selector` get the `Debug` that `Signal` has; `display`
     joins the banned words once `RunDisplay` is renamed, checked over the
     `cargo public-api` output.
-    - Tests that cannot flake or pass vacuously: no wall-clock assertion in
-    `reactive/tests/store.rs`; no WebSocket test riding the reader's mutex; a
-    server-tier deadline test (`render_deadline_cuts_off_unsettled_work`) whose load
-    runs on the server, which `Resource::client` never does; the `compile_fail`
-    doctests in `expr.rs` and `leaf.rs` failing for the type rule they document, marked
-    `compile_fail,E0277`.
     - `#[main]` emits its wasm `main` under `not(test)`, so apps' lib tests link on
     wasm32 and the gate runs them; the host tier runs through nextest, doctests beside
     it.

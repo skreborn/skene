@@ -143,13 +143,9 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
   /// Mounts every segment under `parent`, in order.
   pub fn mount(self, parent: NodeId) {
     for segment in self.segments {
-      let (start, _) = Scene::<P>::with(|scene| {
-        let anchors = scene.create_segment();
+      let (start, _) = Scene::<P>::create_segment();
 
-        scene.attach(parent, anchors.0, None);
-
-        anchors
-      });
+      Scene::<P>::with(|scene| scene.attach(parent, start, None));
 
       match segment {
         Segment::Static(views) => {

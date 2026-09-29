@@ -88,8 +88,8 @@ impl<P: Platform, K> AnyKind for Switch<P, K> {}
 
 impl<P: Platform, K: PartialEq + 'static> View<P> for Switch<P, K> {
   fn build(self) -> NodeId {
-    let (start, annotation) =
-      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+    let (start, _) = Scene::<P>::create_segment();
+    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
     let Some(key) = self.key
     else {
       return start;

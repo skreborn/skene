@@ -95,8 +95,8 @@ impl<P: Platform, C> AnyKind for ErrorBoundary<P, C> {}
 
 impl<P: Platform> View<P> for ErrorBoundary<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, annotation) =
-      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+    let (start, _) = Scene::<P>::create_segment();
+    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
     let errors = Errors::new();
     let scope = Owner::current().child();
     let child = self.child;

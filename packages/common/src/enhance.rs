@@ -88,7 +88,7 @@ impl<P: Platform> View<P> for Enhance<P, ChildBuilder<P>> {
 
       untrack(|| {
         form.map_or_else(
-          || AnyView::<P>::new(|| Scene::<P>::with(|scene| scene.create_segment().0)).build(),
+          || AnyView::<P>::new(|| Scene::<P>::create_segment().0).build(),
           ChildBuilder::build,
         )
       })

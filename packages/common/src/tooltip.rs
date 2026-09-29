@@ -235,7 +235,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
       bubble,
       child,
     } = self;
-    let (start, _) = Scene::<P>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::create_segment();
     let node = child.build();
     let open = Signal::opaque(false);
     let anchor = Anchor::new();

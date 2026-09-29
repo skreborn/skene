@@ -83,8 +83,8 @@ impl<P: Platform, C> AnyKind for Suspense<P, C> {}
 
 impl<P: Platform> View<P> for Suspense<P, ChildBuilder<P>> {
   fn build(self) -> NodeId {
-    let (start, annotation) =
-      Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+    let (start, _) = Scene::<P>::create_segment();
+    let annotation = Scene::<P>::with(Scene::take_pending_annotation);
     let boundary = Boundary::new();
     let parent = Boundary::current();
     let scope = Owner::current().child();

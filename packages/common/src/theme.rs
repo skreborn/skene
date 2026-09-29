@@ -162,9 +162,16 @@ impl<P: Platform, S: TokenSet<P::TokenValue> + Default> ThemedIn<P> for S {
   }
 }
 
-/// Lays `S`'s default definitions over the root of `P`'s scene, once per set.
+/// Lays `S`'s default definitions over the root of `P`'s scene, once per set, built
+/// outside the scene's borrow.
 fn define_root<P: Platform, S: TokenSet<P::TokenValue> + Default>() {
-  Scene::<P>::with(|scene| {
-    scene.define_root_tokens_once(TypeId::of::<S>(), || Definitions::of(&S::default()));
-  });
+  let set = TypeId::of::<S>();
+
+  if Scene::<P>::with(|scene| scene.defines_root_set(set)) {
+    return;
+  }
+
+  let definitions = Definitions::of(&S::default());
+
+  Scene::<P>::with(|scene| scene.define_root_tokens_once(set, definitions));
 }

@@ -105,8 +105,7 @@ left half-done in a code comment.
     up on reattach.
     - `Platform` hygiene: associated functions in place of `&self` on a zero-sized type,
     and sinks passed by value now that they are `Copy`; `observe_size` returning a
-    handle that stops observing; `bind_node`, `create_anchor`, `listen` and a token
-    set's `define` mirrored after the scene's borrow is released.
+    handle that stops observing.
     - The web's realization: `Platform for Web` is written once over a small sink trait
     that the DOM and the string tree implement, the browser layering adoption and
     events on top, so the two leaves cannot drift; hydration converges, removing

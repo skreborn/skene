@@ -76,7 +76,7 @@ impl<P: Platform, C> AnyKind for Show<P, C> {}
 
 impl<P: Platform> View<P> for Show<P, AnyView<P>> {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<P>::with(Scene::create_segment);
+    let (start, _) = Scene::<P>::create_segment();
     let node = self.child.build();
     let shown = self.shown;
 

@@ -20,8 +20,8 @@ use crate::Reorder;
 /// the content does not survive it. The annotation pending when the subtree is created
 /// lands on the content of every rebuild.
 pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
-  let (start, annotation) =
-    Scene::<P>::with(|scene| (scene.create_segment().0, scene.take_pending_annotation()));
+  let (start, _) = Scene::<P>::create_segment();
+  let annotation = Scene::<P>::with(Scene::take_pending_annotation);
   let parent_scope = Owner::current();
   let current = Rc::new(Cell::new(None::<Owner>));
 
@@ -51,7 +51,7 @@ pub fn derived<P: Platform>(build: impl Fn() -> NodeId + 'static) -> NodeId {
 #[inline(always)]
 #[must_use]
 pub fn empty<P: Platform>() -> impl View<P> {
-  AnyView::new(|| Scene::<P>::with(|scene| scene.create_segment().0))
+  AnyView::new(|| Scene::<P>::create_segment().0)
 }
 
 struct Mounted {
@@ -317,7 +317,7 @@ mod tests {
     let (items, set_items) = signal(vec![1, 2, 3]);
     let inner = Rc::new(Cell::new(None::<Signal<i32>>));
     let parent = TestBox::node();
-    let (start, end) = with(Scene::create_segment);
+    let (start, end) = Scene::<TestPlatform>::create_segment();
 
     with(|scene| scene.attach(parent, start, None));
     owner.enter(|| {
@@ -364,7 +364,7 @@ mod tests {
     let owner = Owner::new();
     let (items, set_items) = signal(vec![1, 1, 2]);
     let parent = TestBox::node();
-    let (start, end) = with(Scene::create_segment);
+    let (start, end) = Scene::<TestPlatform>::create_segment();
 
     with(|scene| scene.attach(parent, start, None));
     owner.enter(|| {

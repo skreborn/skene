@@ -549,6 +549,14 @@ enum Mirror<P: Platform> {
     sink: P::Sink,
     state: ControlState,
   },
+  BindNode {
+    sink: P::Sink,
+    node: NodeId,
+  },
+  Listen {
+    sink: P::Sink,
+    kind: EventKind,
+  },
 }
 
 impl<P: Platform> Mirror<P> {
@@ -567,6 +575,8 @@ impl<P: Platform> Mirror<P> {
       Self::DefineTokens { scope, definitions } => platform.define_tokens(&scope, &definitions),
       Self::DefineRootTokens(definitions) => platform.define_root_tokens(&definitions),
       Self::ControlState { sink, state } => platform.set_control_state(&sink, &state),
+      Self::BindNode { sink, node } => platform.bind_node(&sink, node),
+      Self::Listen { sink, kind } => platform.listen(&sink, kind),
     }
   }
 }
@@ -738,7 +748,9 @@ impl<P: Platform> Scene<P> {
     };
 
     if let Some(record) = self.record(id) {
-      P::default().bind_node(&record.sink, id);
+      let sink = record.sink;
+
+      self.mirrors.push(Mirror::BindNode { sink, node: id });
     }
 
     id
@@ -761,22 +773,27 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Mints a detached segment: a start and an end anchor, attached and detached as one
-  /// with whatever is mounted between them.
+  /// with whatever is mounted between them. The platform makes the anchors before the
+  /// scene is borrowed.
   ///
   /// Returns `(start, end)`; the start stands for the segment everywhere.
-  pub fn create_segment(&mut self) -> (NodeId, NodeId) {
+  pub fn create_segment() -> (NodeId, NodeId) {
     let platform = P::default();
-    let start = self.create(NodeKind::Anchor, platform.create_anchor());
-    let end = self.create(NodeKind::Anchor, platform.create_anchor());
+    let (start, end) = (platform.create_anchor(), platform.create_anchor());
 
-    if let Some(record) = self.record_mut(start) {
-      record.segment = Some(Box::new(Segment {
-        end,
-        pending: Vec::new(),
-      }));
-    }
+    Self::with(|scene| {
+      let start = scene.create(NodeKind::Anchor, start);
+      let end = scene.create(NodeKind::Anchor, end);
 
-    (start, end)
+      if let Some(record) = scene.record_mut(start) {
+        record.segment = Some(Box::new(Segment {
+          end,
+          pending: Vec::new(),
+        }));
+      }
+
+      (start, end)
+    })
   }
 
   /// The end anchor of the segment `start` begins.
@@ -1086,22 +1103,31 @@ impl<P: Platform> Scene<P> {
     self.definitions_generation += 1;
   }
 
-  /// Lays the definitions `define` produces over the tokens every node falls back to,
-  /// once per `set`: a later call for the same set does nothing and returns `false`.
+  /// Whether the definitions of `set` were laid over the root.
+  #[inline(always)]
+  #[must_use]
+  pub fn defines_root_set(&self, set: TypeId) -> bool {
+    self.root_sets.contains(&set)
+  }
+
+  /// Lays `set`'s `definitions` over the tokens every node falls back to, once per set: a
+  /// later call for the same set does nothing and returns `false`.
+  ///
+  /// [`defines_root_set`](Self::defines_root_set) tells a caller whether the set's
+  /// definitions are wanted before it builds them, outside the scene's borrow.
   pub fn define_root_tokens_once(
     &mut self,
     set: TypeId,
-    define: impl FnOnce() -> Definitions<P::TokenValue>,
+    definitions: Definitions<P::TokenValue>,
   ) -> bool {
     if !self.root_sets.insert(set) {
       return false;
     }
 
-    let mut definitions =
-      std::mem::replace(&mut self.root_definitions, Definitions::from(Vec::new()));
+    let mut root = std::mem::replace(&mut self.root_definitions, Definitions::from(Vec::new()));
 
-    definitions.overlay(define());
-    self.define_root_tokens(definitions);
+    root.overlay(definitions);
+    self.define_root_tokens(root);
 
     true
   }
@@ -1424,7 +1450,10 @@ impl<P: Platform> Scene<P> {
     };
 
     add(record.handlers.get_or_insert_default());
-    P::default().listen(&record.sink, kind);
+
+    let sink = record.sink;
+
+    self.mirrors.push(Mirror::Listen { sink, kind });
   }
 
   /// The parent the segment's content sits under (`None` while detached) and its end.
@@ -1886,7 +1915,7 @@ mod tests {
     let parent = TestBox::node();
     let other = TestBox::node();
     let content = TestBox::node();
-    let (start, end) = with(Scene::create_segment);
+    let (start, end) = Scene::<TestPlatform>::create_segment();
 
     with(|scene| scene.insert_in_segment(start, content, None));
 
@@ -1938,8 +1967,8 @@ mod tests {
     let parent = TestBox::node();
     let before = TestBox::node();
     let inner_content = TestBox::node();
-    let (outer, outer_end) = with(Scene::create_segment);
-    let (inner, inner_end) = with(Scene::create_segment);
+    let (outer, outer_end) = Scene::<TestPlatform>::create_segment();
+    let (inner, inner_end) = Scene::<TestPlatform>::create_segment();
 
     with(|scene| {
       scene.attach(parent, outer, None);

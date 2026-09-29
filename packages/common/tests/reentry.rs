@@ -28,6 +28,7 @@ use skene_core::{
   Length,
   Media,
   MediaSignals,
+  NodeId,
   OverlayProps,
   Placement,
   Platform,
@@ -178,8 +179,16 @@ impl Platform for Reentrant {
 
   fn cancel(&self, _: Timer) {}
 
+  fn bind_node(&self, sink: &u32, _: NodeId) {
+    reenter("bind_node", *sink);
+  }
+
   fn create_anchor(&self) -> u32 {
-    mint()
+    let sink = mint();
+
+    reenter("create_anchor", sink);
+
+    sink
   }
 
   fn create_scope(&self) -> u32 {
@@ -206,7 +215,9 @@ impl Platform for Reentrant {
     reenter("define_root_tokens", 1);
   }
 
-  fn listen(&self, _: &u32, _: EventKind) {}
+  fn listen(&self, sink: &u32, _: EventKind) {
+    reenter("listen", *sink);
+  }
 
   fn focus(&self, sink: &u32) {
     reenter("focus", *sink);
@@ -280,12 +291,15 @@ impl Default for Palette {
 
 impl TokenSet<Erased> for Palette {
   fn definitions(&self) -> Vec<(TokenName, Erased)> {
+    reenter("definitions", 1);
+
     vec![self.card.define()]
   }
 }
 
-/// Focus, blur, a rewritten text, a redefined palette, a mirrored control state and
-/// the tree mutations all reach the platform with the scene released.
+/// Focus, blur, a rewritten text, a redefined palette, a mirrored control state, the
+/// tree mutations, a node's binding, an anchor, a listener and a token set's definitions
+/// all reach the platform with the scene released.
 #[test]
 fn every_mirrored_call_runs_with_the_scene_released() {
   let owner = Owner::new();
@@ -308,10 +322,18 @@ fn every_mirrored_call_runs_with_the_scene_released() {
       .build()
   });
 
-  assert!(calls().contains(&"attach"));
-  assert!(calls().contains(&"define_tokens"));
-  assert!(calls().contains(&"set_text"));
-  assert!(calls().contains(&"set_control_state"));
+  for call in [
+    "attach",
+    "bind_node",
+    "create_anchor",
+    "define_tokens",
+    "definitions",
+    "listen",
+    "set_text",
+    "set_control_state",
+  ] {
+    assert!(calls().contains(&call), "{call}");
+  }
 
   CALLS.with(|calls| calls.borrow_mut().clear());
 
@@ -331,6 +353,7 @@ fn every_mirrored_call_runs_with_the_scene_released() {
       "set_text",
       "set_control_state",
       "update_access",
+      "definitions",
       "define_tokens"
     ]
   );

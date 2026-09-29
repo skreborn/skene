@@ -191,7 +191,7 @@ impl AnyKind for Lazy {}
 
 impl View<ActivePlatform> for Lazy {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<ActivePlatform>::with(Scene::create_segment);
+    let (start, _) = Scene::<ActivePlatform>::create_segment();
 
     (self.load)(start);
 

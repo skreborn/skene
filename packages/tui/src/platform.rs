@@ -608,12 +608,11 @@ pub(crate) fn install() {
   });
 
   let root = with_store(|store| store.root);
+  // Every run inherits its text properties through the typography tokens, so the
+  // terminal's defaults are defined at the root before any theme redefines them.
+  let typography = Definitions::of(&Typography::default());
   let node = Scene::<Tui>::with(|scene| {
-    // Every run inherits its text properties through the typography tokens, so the
-    // terminal's defaults are defined at the root before any theme redefines them.
-    scene.define_root_tokens_once(std::any::TypeId::of::<Typography>(), || {
-      Definitions::of(&Typography::default())
-    });
+    scene.define_root_tokens_once(std::any::TypeId::of::<Typography>(), typography);
 
     scene.create(NodeKind::Box, root)
   });

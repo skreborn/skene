@@ -3193,10 +3193,11 @@ pub fn skene_core::Scene<P>::children(&self, skene_core::NodeId) -> impl core::i
 pub fn skene_core::Scene<P>::clear_segment(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::control_state(&self, skene_core::NodeId) -> core::option::Option<skene_core::ControlState>
 pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind, <P as skene_core::Platform>::Sink) -> skene_core::NodeId
-pub fn skene_core::Scene<P>::create_segment(&mut self) -> (skene_core::NodeId, skene_core::NodeId)
+pub fn skene_core::Scene<P>::create_segment() -> (skene_core::NodeId, skene_core::NodeId)
 pub fn skene_core::Scene<P>::define_root_tokens(&mut self, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>)
-pub fn skene_core::Scene<P>::define_root_tokens_once(&mut self, core::any::TypeId, impl core::ops::function::FnOnce() -> skene_core::Definitions<<P as skene_core::Platform>::TokenValue>) -> bool
+pub fn skene_core::Scene<P>::define_root_tokens_once(&mut self, core::any::TypeId, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>) -> bool
 pub fn skene_core::Scene<P>::define_tokens(&mut self, skene_core::NodeId, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>)
+pub fn skene_core::Scene<P>::defines_root_set(&self, core::any::TypeId) -> bool
 pub fn skene_core::Scene<P>::describe(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>) -> alloc::vec::Vec<skene_core::AccessProp>
 pub fn skene_core::Scene<P>::destroy(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::detach(&mut self, skene_core::NodeId, skene_core::NodeId)

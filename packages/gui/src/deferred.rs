@@ -69,7 +69,7 @@ impl AnyKind for Deferred {}
 
 impl View<ActivePlatform> for Deferred {
   fn build(self) -> NodeId {
-    let (start, _) = Scene::<ActivePlatform>::with(Scene::create_segment);
+    let (start, _) = Scene::<ActivePlatform>::create_segment();
     let content = self.build_content(start);
 
     Scene::<ActivePlatform>::with(|scene| scene.insert_in_segment(start, content, None));

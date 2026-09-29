@@ -54,6 +54,7 @@ use skene_core::{
   Transition,
   Value,
   View,
+  Visibility,
 };
 use skene_gui::web::{self, mount};
 use skene_headless::{
@@ -64,6 +65,7 @@ use skene_headless::{
   resolve_border,
   resolve_color,
   resolve_length,
+  resolve_visibility,
   trigger_container_size,
   trigger_focus,
   trigger_frame,
@@ -92,7 +94,7 @@ const BOX: ContainerName = ContainerName("parity-box");
 const BOX_WIDTH: f32 = 400.;
 
 thread_local! {
-  /// The width the moving case derives, written as the case steps.
+  /// The number a moving case derives its property from, written as the case steps.
   static MOVING: Cell<Option<Signal<f32>>> = const { Cell::new(None) };
 }
 
@@ -208,6 +210,8 @@ enum Read {
   Border,
   /// The ink of the run inside the box.
   Ink,
+  /// Whether the box is drawn.
+  Visibility,
 }
 
 /// One declaration, realized on either platform.
@@ -254,6 +258,7 @@ enum Case {
   FocusedColor,
   NeutralKeyframe,
   ReversedTransition,
+  VisibilityTransition,
 }
 
 /// Every case the harness holds the resolution to.
@@ -299,6 +304,7 @@ const CASES: &[Case] = &[
   Case::FocusedColor,
   Case::NeutralKeyframe,
   Case::ReversedTransition,
+  Case::VisibilityTransition,
 ];
 
 impl Case {
@@ -344,6 +350,7 @@ impl Case {
       | Self::SafeAreaPadding => Read::Padding,
       Self::FixedBorder => Read::Border,
       Self::FixedInk | Self::TokenInk => Read::Ink,
+      Self::VisibilityTransition => Read::Visibility,
     }
   }
 
@@ -465,13 +472,29 @@ impl Case {
         .set_easing(Easing::Linear),
       ),
       Self::ReversedTransition => {
-        let width = Signal::new(0f32);
+        let moving = Signal::new(0f32);
 
-        MOVING.set(Some(width));
+        MOVING.set(Some(moving));
 
         container
-          .derive_width(move || Dimension::Length(width.get()))
+          .derive_width(move || Dimension::Length(moving.get()))
           .set_transition(Transition::new(Property::Width, 1.).set_easing(Easing::Linear))
+      }
+      Self::VisibilityTransition => {
+        let moving = Signal::new(0f32);
+
+        MOVING.set(Some(moving));
+
+        container
+          .derive_visibility(move || {
+            if moving.get() > 0. {
+              Visibility::Hidden
+            }
+            else {
+              Visibility::Visible
+            }
+          })
+          .set_transition(Transition::new(Property::Visibility, 1.).set_easing(Easing::Linear))
       }
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
       Self::LexicalToken
@@ -498,12 +521,13 @@ impl Case {
     matches!(self, Self::FocusedColor)
   }
 
-  /// The steps the case takes before it is read, each a width written to the moving
+  /// The steps the case takes before it is read, each a number written to the moving
   /// case's signal, where it writes one, and the milliseconds the clock then advances.
   const fn steps(self) -> &'static [(Option<f32>, u64)] {
     match self {
       Self::NeutralKeyframe => &[(None, 250)],
       Self::ReversedTransition => &[(Some(100.), 250), (Some(0.), 125)],
+      Self::VisibilityTransition => &[(Some(1.), 250)],
       _ => &[],
     }
   }
@@ -529,6 +553,8 @@ enum Reading {
   Length(f32),
   /// A border's width, in pixels, and its color.
   Border(f32, Color),
+  /// A visibility.
+  Visibility(Visibility),
   /// Nothing: the platform gave no value, or one the harness could not read.
   Missing,
 }
@@ -659,6 +685,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
       _ => None,
     }),
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
+    Read::Visibility => resolve_visibility(node).map(Reading::Visibility),
   };
   let _ = read();
 
@@ -762,6 +789,11 @@ fn rendered(case: Case) -> Reading {
 
       computed_color(&run, "color")
     }
+    Read::Visibility => match computed(&element, "visibility").as_str() {
+      "visible" => Reading::Visibility(Visibility::Visible),
+      "hidden" => Reading::Visibility(Visibility::Hidden),
+      _ => Reading::Missing,
+    },
   };
 
   web::uninstall();
@@ -780,7 +812,7 @@ fn same_color(left: Color, right: Color) -> bool {
 }
 
 /// Whether two readings agree: colors within an 8-bit rounding, lengths within a
-/// hundredth of a pixel.
+/// hundredth of a pixel, visibilities exactly.
 fn agree(resolved: &Reading, rendered: &Reading) -> bool {
   match (resolved, rendered) {
     (Reading::Color(left), Reading::Color(right)) => same_color(*left, *right),
@@ -788,6 +820,7 @@ fn agree(resolved: &Reading, rendered: &Reading) -> bool {
     (Reading::Border(left_width, left), Reading::Border(right_width, right)) => {
       (left_width - right_width).abs() < 0.01 && same_color(*left, *right)
     }
+    (Reading::Visibility(left), Reading::Visibility(right)) => left == right,
     _ => false,
   }
 }

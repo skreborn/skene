@@ -36,6 +36,8 @@ left half-done in a code comment.
     `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; a
     token's value cached at its defining scope, with per-scope invalidation in place of
     the global generation, where each consumer resolves it there afresh today.
+    - Motion: an aspect ratio becomes a value type of its own, interpolating through its
+    logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which
     the terminal's spans read from the typography where the web inherits them; a group
     run's state variants reach its spans, as a rule on the group's class redefining the

@@ -642,6 +642,9 @@ pub fn f32::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for skene_core::Color
 pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
+impl skene_core::interpolate::Interpolate for skene_core::Visibility
+pub fn skene_core::Visibility::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Visibility::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for u32
 pub fn u32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn u32::interpolates_with(&self, &Self) -> bool
@@ -657,6 +660,12 @@ pub fn skene_core::Border<N>::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Flexibility<N>
 pub fn skene_core::Flexibility<N>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Flexibility<N>::interpolates_with(&self, &Self) -> bool
+impl<T: skene_core::interpolate::Interpolate + core::cmp::PartialEq> skene_core::interpolate::Interpolate for skene_core::GridTrack<T>
+pub fn skene_core::GridTrack<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::GridTrack<T>::interpolates_with(&self, &Self) -> bool
+impl<T: skene_core::interpolate::Interpolate + core::cmp::PartialEq> skene_core::interpolate::Interpolate for skene_core::TrackLimit<T>
+pub fn skene_core::TrackLimit<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::TrackLimit<T>::interpolates_with(&self, &Self) -> bool
 impl<T: skene_core::interpolate::Interpolate> skene_core::interpolate::Interpolate for skene_core::Dimension<T>
 pub fn skene_core::Dimension<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Dimension<T>::interpolates_with(&self, &Self) -> bool
@@ -1270,6 +1279,9 @@ impl<T: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::
 impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::GridTrack<T>
 pub fn skene_core::GridTrack<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::marker::Copy> core::marker::Copy for skene_core::GridTrack<T>
+impl<T: skene_core::interpolate::Interpolate + core::cmp::PartialEq> skene_core::interpolate::Interpolate for skene_core::GridTrack<T>
+pub fn skene_core::GridTrack<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::GridTrack<T>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::ItemAlignment
 pub skene_core::ItemAlignment::Baseline
 pub skene_core::ItemAlignment::Center
@@ -2017,6 +2029,9 @@ impl<T: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::
 impl<T: core::fmt::Debug> core::fmt::Debug for skene_core::TrackLimit<T>
 pub fn skene_core::TrackLimit<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<T: core::marker::Copy> core::marker::Copy for skene_core::TrackLimit<T>
+impl<T: skene_core::interpolate::Interpolate + core::cmp::PartialEq> skene_core::interpolate::Interpolate for skene_core::TrackLimit<T>
+pub fn skene_core::TrackLimit<T>::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::TrackLimit<T>::interpolates_with(&self, &Self) -> bool
 pub enum skene_core::Visibility
 pub skene_core::Visibility::Hidden
 pub skene_core::Visibility::Visible
@@ -2035,6 +2050,9 @@ impl core::marker::Copy for skene_core::Visibility
 impl core::marker::StructuralPartialEq for skene_core::Visibility
 impl skene_core::Fingerprint for skene_core::Visibility
 pub fn skene_core::Visibility::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::interpolate::Interpolate for skene_core::Visibility
+pub fn skene_core::Visibility::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::Visibility::interpolates_with(&self, &Self) -> bool
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Visibility
 pub fn skene_core::Visibility::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Visibility::into_box_value(self) -> skene_core::BoxValue<N, X>

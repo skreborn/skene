@@ -9,6 +9,7 @@ use crate::{
   Color,
   Dimension,
   Flexibility,
+  GridTrack,
   Inset,
   PropertyKey,
   PropertyName,
@@ -18,6 +19,8 @@ use crate::{
   Spacing,
   StaticLeaf,
   StyleExtension,
+  TrackLimit,
+  Visibility,
 };
 
 /// How many halvings the bezier solve refines the parameter through.
@@ -70,10 +73,12 @@ fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
 /// A value with an in-between: what a transition or a keyframe animation samples.
 ///
 /// Colors mix in Oklab, lengths and numbers move linearly and land back in the
-/// medium's unit, and a value per edge or axis moves per component. A pair with no
-/// in-between (a keyword, a mode, a length and `Auto`) is discrete, as in CSS: a
-/// transition changes it at once, and a keyframe animation halfway through the
-/// interval.
+/// medium's unit, and a value per edge or axis moves per component. A visibility is
+/// visible throughout a change to or from visible, and a list of grid tracks moves per
+/// track where the lists are as long and each pair of tracks moves or matches. A pair
+/// with no in-between (a keyword, a mode, a length and `Auto`) is discrete. All of it
+/// is as in CSS: a transition changes a discrete pair at once, and a keyframe animation
+/// halfway through the interval.
 #[diagnostic::on_unimplemented(
   message = "`{Self}` has no in-between value",
   label = "a value a transition samples implements `Interpolate`, answering `None` for a discrete pair"
@@ -162,6 +167,50 @@ impl<T: Interpolate> Interpolate for Dimension<T> {
   }
 }
 
+impl Interpolate for Visibility {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    Some(if self == to || amount <= 0. {
+      *self
+    }
+    else if amount >= 1. {
+      *to
+    }
+    else {
+      Self::Visible
+    })
+  }
+}
+
+impl<T: Interpolate + PartialEq> Interpolate for TrackLimit<T> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    match (self, to) {
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
+      (Self::Fraction(from), Self::Fraction(to)) => Some(Self::Fraction(lerp(*from, *to, amount))),
+      (Self::Flex(from), Self::Flex(to)) => Some(Self::Flex(lerp(*from, *to, amount))),
+      (from, to) => (from == to).then(|| from.clone()),
+    }
+  }
+}
+
+impl<T: Interpolate + PartialEq> Interpolate for GridTrack<T> {
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    match (self, to) {
+      (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
+      (Self::Fraction(from), Self::Fraction(to)) => Some(Self::Fraction(lerp(*from, *to, amount))),
+      (Self::Flex(from), Self::Flex(to)) => Some(Self::Flex(lerp(*from, *to, amount))),
+      (Self::FitContent(from), Self::FitContent(to)) => {
+        Some(Self::FitContent(from.interpolate(to, amount)?))
+      }
+      (Self::Minmax(from_min, from_max), Self::Minmax(to_min, to_max)) => Some(Self::Minmax(
+        from_min.interpolate(to_min, amount)?,
+        from_max.interpolate(to_max, amount)?,
+      )),
+      (from, to) => (from == to).then(|| from.clone()),
+    }
+  }
+}
+
 impl<N: Interpolate> Interpolate for Flexibility<N> {
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self {
@@ -206,6 +255,16 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
       }
       (Self::Flexibility(from), Self::Flexibility(to)) => {
         Some(Self::Flexibility(from.interpolate(to, amount)?))
+      }
+      (Self::Tracks(from), Self::Tracks(to)) if from.len() == to.len() => Some(Self::Tracks(
+        from
+          .iter()
+          .zip(to)
+          .map(|(from, to)| from.interpolate(to, amount))
+          .collect::<Option<_>>()?,
+      )),
+      (Self::Visibility(from), Self::Visibility(to)) => {
+        Some(Self::Visibility(from.interpolate(to, amount)?))
       }
       (Self::Extension(from), Self::Extension(to)) => {
         Some(Self::Extension(X::interpolate_value(from, to, amount)?))
@@ -565,14 +624,18 @@ mod tests {
   use super::{Interpolate, Motion, sample_keyframes};
   use crate::{
     Animation,
+    BoxValue,
     Color,
     Dimension,
     Easing,
+    GridTrack,
     Inset,
     NoProperty,
     Property,
     PropertyKey,
+    TrackLimit,
     Transition,
+    Visibility,
   };
 
   const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
@@ -825,6 +888,42 @@ mod tests {
     assert_eq!(
       sample_keyframes(&[(0., 40f32)], 25., Easing::Linear, Some(&0.)),
       Some(30.)
+    );
+  }
+
+  /// A visibility stays visible through a change to or from visible, and grid tracks
+  /// move per track where the lists are as long and each pair moves or matches.
+  #[test]
+  fn visibility_and_tracks_interpolate_as_css_does() {
+    let (visible, hidden) = (Visibility::Visible, Visibility::Hidden);
+
+    assert_eq!(visible.interpolate(&hidden, 0.), Some(visible));
+    assert_eq!(visible.interpolate(&hidden, 0.9), Some(visible));
+    assert_eq!(visible.interpolate(&hidden, 1.), Some(hidden));
+    assert_eq!(hidden.interpolate(&visible, 0.1), Some(visible));
+    assert_eq!(hidden.interpolate(&hidden, 0.5), Some(hidden));
+
+    let tracks = |length: f32, flex: f32, minimum: f32| {
+      BoxValue::<f32>::Tracks(vec![
+        GridTrack::Length(length),
+        GridTrack::Flex(flex),
+        GridTrack::Auto,
+        GridTrack::Minmax(TrackLimit::Length(minimum), TrackLimit::Flex(1.)),
+      ])
+    };
+
+    assert_eq!(
+      tracks(0., 1., 0.).interpolate(&tracks(10., 3., 20.), 0.5),
+      Some(tracks(5., 2., 10.))
+    );
+    assert_eq!(
+      tracks(0., 1., 0.).interpolate(&BoxValue::Tracks(vec![GridTrack::Length(10.)]), 0.5),
+      None
+    );
+    assert_eq!(
+      BoxValue::<f32>::Tracks(vec![GridTrack::Auto])
+        .interpolate(&BoxValue::Tracks(vec![GridTrack::MinContent]), 0.5),
+      None
     );
   }
 }

@@ -379,6 +379,7 @@ pub skene_common::realize::Source::Fixed(T)
 impl<T: 'static> skene_common::realize::Source<T>
 pub fn skene_common::realize::Source<T>::bind<P: skene_core::platform::Platform>(self, skene_core::node::NodeId, impl core::ops::function::Fn(&<P as skene_core::platform::Platform>::Sink, &T) + 'static)
 pub fn skene_common::realize::Source<T>::derive(impl core::ops::function::Fn() -> T + 'static) -> Self
+pub fn skene_common::realize::Source<T>::into_read(self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> T> where T: core::clone::Clone
 impl<T: core::clone::Clone> core::clone::Clone for skene_common::realize::Source<T>
 pub fn skene_common::realize::Source<T>::clone(&self) -> Self
 impl<T> core::fmt::Debug for skene_common::realize::Source<T>
@@ -1076,7 +1077,8 @@ pub fn skene_common::ControlHandle<P>::click(&self) -> skene_core::events::Preve
 pub fn skene_common::ControlHandle<P>::disabled_read(&self) -> alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>
 pub fn skene_common::ControlHandle<P>::focus(&self)
 pub fn skene_common::ControlHandle<P>::is_disabled(&self) -> bool
-pub fn skene_common::ControlHandle<P>::name(&self) -> core::option::Option<&str>
+pub fn skene_common::ControlHandle<P>::name(&self) -> core::option::Option<alloc::string::String>
+pub fn skene_common::ControlHandle<P>::name_read(&self) -> core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>
 pub const fn skene_common::ControlHandle<P>::node(&self) -> skene_core::node::NodeId
 pub fn skene_common::ControlHandle<P>::refresh(&self)
 pub const fn skene_common::ControlHandle<P>::roster(&self) -> core::option::Option<&skene_common::Roster>
@@ -1193,7 +1195,8 @@ impl<P: skene_core::platform::Platform> skene_core::view::IntoChildOf<P, skene_c
 pub fn skene_common::GridCell<P, skene_core::view::AnyView<P>>::into_child(self) -> skene_core::view::AnyView<P>
 pub struct skene_common::Label<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Label<P>
-pub fn skene_common::Label<P>::into_parts(self) -> (skene_core::view::AnyView<P>, core::option::Option<alloc::string::String>)
+pub fn skene_common::Label<P>::derive_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
+pub fn skene_common::Label<P>::into_parts(self) -> (skene_core::view::AnyView<P>, core::option::Option<skene_common::realize::Source<alloc::string::String>>)
 pub fn skene_common::Label<P>::new(impl skene_core::view::IntoView<P>) -> Self
 pub fn skene_common::Label<P>::set_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl<P: core::fmt::Debug + skene_core::platform::Platform> core::fmt::Debug for skene_common::Label<P>
@@ -1748,7 +1751,7 @@ impl skene_common::Roster
 pub fn skene_common::Roster::enabled<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<(skene_core::node::NodeId, alloc::string::String)>
 pub fn skene_common::Roster::focus_at<P: skene_core::platform::Platform>(&self, usize)
 pub fn skene_common::Roster::focus_value<P: skene_core::platform::Platform>(&self, core::option::Option<&str>)
-pub fn skene_common::Roster::join(&self, skene_core::node::NodeId, impl core::convert::Into<alloc::string::String>, core::option::Option<alloc::string::String>, alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>)
+pub fn skene_common::Roster::join(&self, skene_core::node::NodeId, impl core::convert::Into<alloc::string::String>, core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn() -> alloc::string::String>>, alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>)
 pub fn skene_common::Roster::leave(&self, skene_core::node::NodeId)
 pub fn skene_common::Roster::new() -> Self
 pub fn skene_common::Roster::options<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<skene_core::control::PickerOption>

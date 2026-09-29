@@ -58,7 +58,7 @@ use skene_core::{
   View,
   dispatch_click,
 };
-use skene_reactive::{Effect, Owner, Trigger, use_context};
+use skene_reactive::{Effect, Owner, Trigger, untrack, use_context};
 
 pub use self::{
   activate::Activate,
@@ -232,7 +232,7 @@ pub trait Behavior<P: Platform>: 'static {
 #[must_use]
 pub struct ControlHandle<P: Platform> {
   node: NodeId,
-  name: Option<String>,
+  name: Option<Rc<dyn Fn() -> String>>,
   roster: Option<Roster>,
   disabled: Rc<dyn Fn() -> bool>,
   changed: Trigger,
@@ -254,12 +254,19 @@ impl<P: Platform> ControlHandle<P> {
     self.node
   }
 
-  /// The accessible name the control's label supplied at build, when its text was
-  /// known then.
+  /// The accessible name the control's label supplies, as it reads now.
   #[inline(always)]
   #[must_use]
-  pub fn name(&self) -> Option<&str> {
-    self.name.as_deref()
+  pub fn name(&self) -> Option<String> {
+    self.name.as_ref().map(|name| name())
+  }
+
+  /// [`name`](Self::name) as a read that outlives the handle, for a roster the control
+  /// joins.
+  #[inline(always)]
+  #[must_use]
+  pub fn name_read(&self) -> Option<Rc<dyn Fn() -> String>> {
+    self.name.clone()
   }
 
   /// The roster in force where the control was built, if any.
@@ -318,7 +325,7 @@ impl<P: Platform> ControlHandle<P> {
 #[must_use]
 pub struct Label<P: Platform> {
   view: AnyView<P>,
-  name: Option<String>,
+  name: Option<Source<String>>,
 }
 
 impl<P: Platform> Label<P> {
@@ -335,7 +342,15 @@ impl<P: Platform> Label<P> {
   /// platform's to read: what type-ahead matches, and what is reported to assistive technology.
   #[inline(always)]
   pub fn set_name(mut self, name: impl Into<String>) -> Self {
-    self.name = Some(name.into());
+    self.name = Some(Source::Fixed(name.into()));
+
+    self
+  }
+
+  /// Derives the accessible name the caption supplies from the signals `name` reads.
+  #[inline(always)]
+  pub fn derive_name(mut self, name: impl Fn() -> String + 'static) -> Self {
+    self.name = Some(Source::derive(name));
 
     self
   }
@@ -343,7 +358,7 @@ impl<P: Platform> Label<P> {
   /// The caption's view and the accessible name it supplies: a view built once, as
   /// `Label::new(node)` with the name, captions each form of a control with two.
   #[inline(always)]
-  pub fn into_parts(self) -> (AnyView<P>, Option<String>) {
+  pub fn into_parts(self) -> (AnyView<P>, Option<Source<String>>) {
     (self.view, self.name)
   }
 }
@@ -353,7 +368,7 @@ impl<P: Platform> From<String> for Label<P> {
   fn from(text: String) -> Self {
     Self {
       view: Text::new(text.clone()).into_view(),
-      name: Some(text),
+      name: Some(Source::Fixed(text)),
     }
   }
 }
@@ -848,13 +863,14 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
       let kind = behavior.kind();
       let placeholder = behavior.placeholder();
       let lines = behavior.lines();
-      let name = label
-        .as_ref()
-        .and_then(|label| label.name.clone())
+      let named = label.as_ref().and_then(|label| label.name.clone());
+      let name = named
+        .clone()
         .or_else(|| match &accessible_name {
-          Some(Source::Fixed(name)) => Some(name.clone()),
+          Some(Source::Fixed(name)) => Some(Source::Fixed(name.clone())),
           Some(Source::Derived(_)) | None => None,
-        });
+        })
+        .map(Source::into_read);
 
       if let Some(role) = behavior.role() {
         inner = inner.set_role(role);
@@ -864,7 +880,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         P::default().create_control(&ControlProps {
           kind,
           box_props,
-          label: name.clone(),
+          label: name.as_ref().map(|name| untrack(|| name())),
           placeholder,
           lines,
         })
@@ -896,9 +912,9 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
         invalid: read_bool(invalid),
         described_by,
         labelled_by,
-        accessible_name: accessible_name.map(|name| match name {
-          Source::Fixed(name) => Rc::new(move || name.clone()) as Rc<dyn Fn() -> String>,
-          Source::Derived(name) => name,
+        accessible_name: accessible_name.map(Source::into_read).or(match named {
+          Some(Source::Derived(name)) => Some(name),
+          Some(Source::Fixed(_)) | None => None,
         }),
       };
 
@@ -933,11 +949,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
 
 /// A boolean setting as a closure: `false` when unset.
 fn read_bool(source: Option<Source<bool>>) -> Rc<dyn Fn() -> bool> {
-  match source {
-    None => Rc::new(|| false),
-    Some(Source::Fixed(value)) => Rc::new(move || value),
-    Some(Source::Derived(compute)) => compute,
-  }
+  source.map_or_else(|| Rc::new(|| false), Source::into_read)
 }
 
 /// Attaches `child` under `node` as its `part`.
@@ -964,7 +976,8 @@ struct Flags {
   described_by: Option<NodeId>,
   /// The caption naming the control by reference, where its text is not known at build.
   labelled_by: Option<NodeId>,
-  /// The name the control reports over its caption's, read where it is reported.
+  /// The name the control reports, read where it is reported: the one set over its
+  /// caption's, else its caption's where that is derived.
   accessible_name: Option<Rc<dyn Fn() -> String>>,
 }
 

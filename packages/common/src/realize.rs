@@ -103,6 +103,18 @@ impl<T: 'static> Source<T> {
     Self::Derived(Rc::new(compute))
   }
 
+  /// The source as a read: the fixed value, cloned, or the derived closure.
+  #[inline(always)]
+  pub fn into_read(self) -> Rc<dyn Fn() -> T>
+  where
+    T: Clone,
+  {
+    match self {
+      Self::Fixed(value) => Rc::new(move || value.clone()),
+      Self::Derived(compute) => compute,
+    }
+  }
+
   /// Writes the value into `node` through `write`: once for a fixed value, and under a
   /// render effect for a derived one.
   pub fn bind<P: Platform>(self, node: NodeId, write: impl Fn(&P::Sink, &T) + 'static) {

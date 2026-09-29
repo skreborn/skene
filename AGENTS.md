@@ -361,7 +361,8 @@
   `RawListbox`/`RawOption`, `RawTextField` and `RawTextEditor` are aliases over them, and
   `RawPicker` is composed from them. A listbox and the closed picker face have
   type-ahead (`TypeAhead`, its buffer reset on `Platform::schedule`) over the names the
-  options' labels supply (`Label::set_name`), and the face's verdict on a typed key is
+  options' labels supply as they read now (`Label::set_name`, `Label::derive_name`), and
+  the face's verdict on a typed key is
   the `Popup` behavior's through `handle_typed`. A control is **controlled** on every facade: it
   reports, and the bound signal is the truth, the platform brought back to it after
   every report, so a change its handler rejects is undone. A text entry's selection is controlled

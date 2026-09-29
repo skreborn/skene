@@ -377,6 +377,40 @@ fn tab_on_an_option_commits_it_and_closes_the_list() {
   owner.dispose();
 }
 
+/// A derived option name keeps type-ahead current: the characters match the name the
+/// option goes by now.
+#[test]
+fn type_ahead_matches_a_derived_name_as_it_reads_now() {
+  use skene_common::Label;
+
+  reset();
+
+  let owner = Owner::new();
+  let value = Signal::new("ba".to_owned());
+  let renamed = Signal::new("Apple".to_owned());
+  let face = owner.enter(move || {
+    RawPicker::new()
+      .bind_value(value)
+      .set_options([
+        RawOption::new(ListItem::new("ap")).set_label(
+          Label::new(Text::derive(move || renamed.get())).derive_name(move || renamed.get()),
+        ),
+        RawOption::new(ListItem::new("ba"))
+          .set_label(Label::new(Text::new("Banana")).set_name("Banana")),
+      ])
+      .set_face(|shown| Text::derive(move || shown.get()))
+      .build()
+  });
+  let parts = Parts::of(form(face));
+
+  renamed.set("Cherry".to_owned());
+
+  assert_eq!(trigger_key_down(parts.face, &key("c")), CONSUMED);
+  assert_eq!(value.get(), "ap", "the name as it reads now");
+
+  owner.dispose();
+}
+
 /// Options named apart from their values for type-ahead: `Label::set_name` supplies
 /// the name the characters match.
 fn named_picker(owner: Owner, value: Signal<String>) -> Parts {

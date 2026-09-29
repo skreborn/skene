@@ -235,7 +235,7 @@ struct Parts<P: Platform> {
 /// What each of the picker's forms gives its control: the caption's node with the name
 /// it supplies, and the disabled setting.
 struct ControlSettings {
-  caption: Option<(NodeId, Option<String>)>,
+  caption: Option<(NodeId, Option<Source<String>>)>,
   disabled: Option<Source<bool>>,
 }
 
@@ -248,8 +248,9 @@ impl ControlSettings {
     if let Some((node, name)) = &self.caption {
       let label = Label::new(*node);
 
-      control = control.set_label(match name {
-        Some(name) => label.set_name(name.clone()),
+      control = control.set_label(match name.clone() {
+        Some(Source::Fixed(name)) => label.set_name(name),
+        Some(Source::Derived(name)) => label.derive_name(move || name()),
         None => label,
       });
     }

@@ -559,10 +559,7 @@ impl<P: Platform> RowDress<P> {
     value: String,
     verdicts: &Verdicts,
   ) -> AnyView<P> {
-    let name = match &label {
-      Source::Fixed(label) => label.clone(),
-      Source::Derived(compute) => untrack(|| compute()),
-    };
+    let name = label.clone();
     let mut caption = match label {
       Source::Fixed(label) => Text::<P>::new(label),
       Source::Derived(compute) => Text::<P>::derive(move || compute()),
@@ -604,7 +601,10 @@ impl<P: Platform> RowDress<P> {
 
         move || disabled()
       })
-      .set_label(Label::new(row).set_name(name));
+      .set_label(match name {
+        Source::Fixed(name) => Label::new(row).set_name(name),
+        Source::Derived(name) => Label::new(row).derive_name(move || name()),
+      });
 
     *control.style_mut() = self.item_style.clone();
 

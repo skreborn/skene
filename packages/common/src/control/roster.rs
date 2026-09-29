@@ -38,8 +38,18 @@ impl std::fmt::Debug for Roster {
 struct Member {
   node: NodeId,
   value: String,
-  name: Option<String>,
+  name: Option<Rc<dyn Fn() -> String>>,
   disabled: Rc<dyn Fn() -> bool>,
+}
+
+impl Member {
+  /// The name the member goes by now: its label's, else its value.
+  fn name(&self) -> String {
+    self
+      .name
+      .as_ref()
+      .map_or_else(|| self.value.clone(), |name| name())
+  }
 }
 
 impl Roster {
@@ -60,13 +70,13 @@ impl Roster {
     self.changed.notify();
   }
 
-  /// Adds the member `node` holding `value`, going by `name` and disabled while
-  /// `disabled` answers so, replacing any member already at that node.
+  /// Adds the member `node` holding `value`, going by the name `name` reads and
+  /// disabled while `disabled` answers so, replacing any member already at that node.
   pub fn join(
     &self,
     node: NodeId,
     value: impl Into<String>,
-    name: Option<String>,
+    name: Option<Rc<dyn Fn() -> String>>,
     disabled: Rc<dyn Fn() -> bool>,
   ) {
     {
@@ -143,7 +153,7 @@ impl Roster {
       .walk::<P>()
       .into_iter()
       .map(|member| PickerOption {
-        name: member.name.unwrap_or_else(|| member.value.clone()),
+        name: member.name(),
         disabled: (member.disabled)(),
         value: member.value,
       })
@@ -161,10 +171,7 @@ impl Roster {
       .into_iter()
       .filter(|member| !(member.disabled)())
       .collect();
-    let names: Vec<String> = members
-      .iter()
-      .map(|member| member.name.clone().unwrap_or_else(|| member.value.clone()))
-      .collect();
+    let names: Vec<String> = members.iter().map(Member::name).collect();
     let current =
       current.and_then(|current| members.iter().position(|member| member.value == current));
 

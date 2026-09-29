@@ -358,7 +358,7 @@ impl<P: Platform> Behavior<P> for ListItem {
     group.roster.join(
       node,
       self.value.clone(),
-      control.name().map(str::to_owned),
+      control.name_read(),
       control.disabled_read(),
     );
 

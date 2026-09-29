@@ -4,9 +4,11 @@
 //! through the scene's parents as they were when the dispatch began, running every
 //! handler on each node deepest first and folding their verdicts into a
 //! [`Prevented`], which tells the platform what the platform may still do; the climb
-//! stops at the node whose handlers prevented bubbling. A pointer event reaches each node local to
-//! that node's own box, measured by the platform. A notification runs the node's own handlers only.
-//! Every dispatch runs in one batch, and no borrow of the scene is held while a handler runs.
+//! stops at the node whose handlers prevented bubbling. A pointer event reaches each
+//! node local to that node's own box, measured by the platform. A notification runs the
+//! node's own handlers only, and a focus move notifies each node whose subtree it
+//! enters or leaves. Every dispatch runs in one batch, and no borrow of the scene is
+//! held while a handler runs.
 
 use skene_reactive::batch;
 use smallvec::SmallVec;
@@ -131,16 +133,24 @@ pub fn notify_pointer_leave<P: Platform>(node: NodeId) {
   notify::<P, _>(node, all(HandlerSet::pointer_leave), |handler| handler());
 }
 
-/// Notifies `node` that it gained focus.
-#[inline(always)]
-pub fn notify_focus<P: Platform>(node: NodeId) {
-  notify::<P, _>(node, all(HandlerSet::focus), |handler| handler());
-}
+/// Notifies the nodes focus left and reached as it moved from `from` to `to`.
+///
+/// Either may be none. Each node whose subtree held focus and no longer does is blurred,
+/// innermost first, then each whose subtree holds it and did not is focused, outermost
+/// first, as `:focus-within` changes.
+pub fn notify_focus_moved<P: Platform>(from: Option<NodeId>, to: Option<NodeId>) {
+  let (left, reached) =
+    Scene::<P>::with(|scene| (scene.crossed(from, to), scene.crossed(to, from)));
 
-/// Notifies `node` that it lost focus.
-#[inline(always)]
-pub fn notify_blur<P: Platform>(node: NodeId) {
-  notify::<P, _>(node, all(HandlerSet::blur), |handler| handler());
+  batch(|| {
+    for node in left {
+      notify::<P, _>(node, all(HandlerSet::blur), |handler| handler());
+    }
+
+    for node in reached.into_iter().rev() {
+      notify::<P, _>(node, all(HandlerSet::focus), |handler| handler());
+    }
+  });
 }
 
 /// Notifies `node` of its new scroll offsets.
@@ -217,21 +227,6 @@ fn snapshot<P: Platform, H: ?Sized>(
   })
 }
 
-/// `node` and its ancestors, deepest first, as the scene holds them now.
-fn path<P: Platform>(node: NodeId) -> SmallVec<[NodeId; 16]> {
-  Scene::<P>::with(|scene| {
-    let mut path = SmallVec::new();
-    let mut current = Some(node);
-
-    while let Some(node) = current {
-      path.push(node);
-      current = scene.parent(node);
-    }
-
-    path
-  })
-}
-
 /// Climbs from `node` along the path it has before any handler runs, running the
 /// handlers `select` picks on each node with the payload `prepare` makes for that
 /// node, made only where a handler runs.
@@ -244,7 +239,7 @@ fn bubble<P: Platform, H: ?Sized, E>(
   batch(|| {
     let mut prevented = Prevented::default();
 
-    for node in path::<P>(node) {
+    for node in Scene::<P>::with(|scene| scene.ancestry(node)) {
       let (handlers, ends) = snapshot::<P, H>(node, &select);
 
       if !handlers.is_empty() {
@@ -284,7 +279,13 @@ mod tests {
 
   use skene_reactive::{Owner, provide_context, use_context};
 
-  use super::{dispatch_click, dispatch_click_observed, dispatch_pointer_down, notify_focus};
+  use super::{
+    dispatch_click,
+    dispatch_click_observed,
+    dispatch_pointer_down,
+    notify_focus_moved,
+    notify_pointer_enter,
+  };
   use crate::{
     Boundary,
     Bubbling,
@@ -508,13 +509,62 @@ mod tests {
       let outer_log = Rc::clone(&log);
       let inner_log = Rc::clone(&log);
 
-      scene.handle_focus(outer, Rc::new(move || outer_log.borrow_mut().push("outer")));
-      scene.handle_focus(inner, Rc::new(move || inner_log.borrow_mut().push("inner")));
+      scene.handle_pointer_enter(outer, Rc::new(move || outer_log.borrow_mut().push("outer")));
+      scene.handle_pointer_enter(inner, Rc::new(move || inner_log.borrow_mut().push("inner")));
     });
 
-    notify_focus::<TestPlatform>(inner);
+    notify_pointer_enter::<TestPlatform>(inner);
 
     assert_eq!(*log.borrow(), ["inner"]);
+  }
+
+  /// A focus move blurs each node whose subtree focus left, innermost first, then
+  /// focuses each whose subtree it reached, outermost first; a node holding it
+  /// throughout hears nothing.
+  #[test]
+  fn a_focus_move_notifies_the_subtrees_it_crosses() {
+    TestPlatform::reset();
+
+    let (outer, middle, inner) = chain();
+    let sibling = TestBox::node();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let note = |name: &'static str| -> Rc<dyn Fn()> {
+      let log = Rc::clone(&log);
+
+      Rc::new(move || log.borrow_mut().push(name))
+    };
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.attach(outer, sibling, None);
+
+      for (node, focus, blur) in [
+        (outer, "outer focus", "outer blur"),
+        (middle, "middle focus", "middle blur"),
+        (inner, "inner focus", "inner blur"),
+        (sibling, "sibling focus", "sibling blur"),
+      ] {
+        scene.handle_focus(node, note(focus));
+        scene.handle_blur(node, note(blur));
+      }
+    });
+
+    notify_focus_moved::<TestPlatform>(None, Some(inner));
+
+    assert_eq!(
+      std::mem::take(&mut *log.borrow_mut()),
+      ["outer focus", "middle focus", "inner focus"]
+    );
+
+    notify_focus_moved::<TestPlatform>(Some(inner), Some(sibling));
+
+    assert_eq!(
+      std::mem::take(&mut *log.borrow_mut()),
+      ["inner blur", "middle blur", "sibling focus"]
+    );
+
+    notify_focus_moved::<TestPlatform>(Some(sibling), None);
+
+    assert_eq!(*log.borrow(), ["sibling blur", "outer blur"]);
   }
 
   /// A pointer event reaches each handling node local to that node's own box.

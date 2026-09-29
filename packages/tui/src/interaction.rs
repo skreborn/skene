@@ -28,9 +28,8 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
-  notify_blur,
   notify_dismiss,
-  notify_focus,
+  notify_focus_moved,
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
@@ -925,13 +924,7 @@ fn focus_on(next: Option<Handle>, restored: bool) {
     )
   });
 
-  if let Some(previous) = previous {
-    notify_blur::<Tui>(previous);
-  }
-
-  if let Some(gained) = gained {
-    notify_focus::<Tui>(gained);
-  }
+  notify_focus_moved::<Tui>(previous, gained);
 
   for popup in dismissed {
     notify_dismiss::<Tui>(popup);

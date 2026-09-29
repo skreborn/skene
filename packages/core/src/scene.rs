@@ -821,6 +821,32 @@ impl<P: Platform> Scene<P> {
       .copied()
   }
 
+  /// `node` and its ancestors, innermost first.
+  pub fn ancestry(&self, node: NodeId) -> SmallVec<[NodeId; 16]> {
+    let mut chain = SmallVec::new();
+    let mut current = Some(node);
+
+    while let Some(node) = current {
+      chain.push(node);
+      current = self.parent(node);
+    }
+
+    chain
+  }
+
+  /// The nodes among `from` and its ancestors that are neither `to` nor among its
+  /// ancestors, innermost first: those a move from `from` to `to` leaves.
+  pub fn crossed(&self, from: Option<NodeId>, to: Option<NodeId>) -> SmallVec<[NodeId; 16]> {
+    let kept = to.map(|to| self.ancestry(to)).unwrap_or_default();
+
+    from
+      .map(|from| self.ancestry(from))
+      .unwrap_or_default()
+      .into_iter()
+      .filter(|node| !kept.contains(node))
+      .collect()
+  }
+
   /// Calls `f` with each child of `node`, in order.
   #[inline(always)]
   pub fn for_each_child(&self, node: NodeId, mut visit: impl FnMut(NodeId)) {

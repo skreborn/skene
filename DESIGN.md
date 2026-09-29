@@ -115,7 +115,9 @@ platform crate, since it is not a shared contract.
   web toggle is dispatched *observed* (`dispatch_click_observed`): every handler on the
   path runs except the acting one the behavior registered, since the platform's own flip
   arrives as `change`, and the climb ends at the control, as the acting one's verdict
-  ends it on every other platform.
+  ends it on every other platform. A focus move notifies each node whose subtree it
+  enters or leaves (`notify_focus_moved`), as `:focus-within` changes, so a box hears
+  focus reach any control inside it and never hears it move between them.
 - **Statics batch, deriveds bind.** A builder's fixed properties, token references and
   expressions arrive together in the create call—the web folds them into one
   content-addressed class—while each derived leaf binds a render effect that writes its

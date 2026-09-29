@@ -11,7 +11,7 @@
 
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use skene_core::{
   EventKind,
   KeyEvent,
@@ -31,16 +31,16 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
-  notify_blur,
   notify_change,
   notify_dismiss,
-  notify_focus,
+  notify_focus_moved,
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
   notify_selection_change,
   notify_toggle,
 };
+use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
@@ -500,37 +500,23 @@ fn on_pointer_move(event: &web_sys::Event) {
   dispatch_pointer(event, dispatch_pointer_move::<Web>);
 }
 
-/// `node` and its ancestors, innermost first.
-fn ancestry(node: Option<NodeId>) -> Vec<NodeId> {
-  let mut chain = Vec::new();
-
-  Scene::<Web>::with(|scene| {
-    let mut current = node;
-
-    while let Some(node) = current {
-      chain.push(node);
-      current = scene.parent(node);
-    }
-  });
-
-  chain
+/// The nodes a move from `from` to `to` leaves, innermost first.
+fn crossed(from: Option<NodeId>, to: Option<NodeId>) -> SmallVec<[NodeId; 16]> {
+  Scene::<Web>::with(|scene| scene.crossed(from, to))
 }
 
-/// The nodes on `from`'s ancestry that `to`'s lacks: those a pointer moving from one
-/// to the other leaves, innermost first.
-fn crossed(from: Option<NodeId>, to: Option<NodeId>) -> Vec<NodeId> {
-  let kept: FxHashSet<NodeId> = ancestry(to).into_iter().collect();
-
-  ancestry(from)
-    .into_iter()
-    .filter(|node| !kept.contains(node))
-    .collect()
-}
-
+/// The element a pointer event came from or went to.
 fn related(event: &web_sys::Event) -> Option<EventTarget> {
   event
     .dyn_ref::<web_sys::MouseEvent>()
     .and_then(web_sys::MouseEvent::related_target)
+}
+
+/// The element focus came from or went to.
+fn focus_related(event: &web_sys::Event) -> Option<EventTarget> {
+  event
+    .dyn_ref::<web_sys::FocusEvent>()
+    .and_then(web_sys::FocusEvent::related_target)
 }
 
 fn on_pointer_over(event: &web_sys::Event) {
@@ -547,10 +533,9 @@ fn on_pointer_out(event: &web_sys::Event) {
   }
 }
 
+/// Focus reaching a node: the move from the node it left, if any, is notified whole.
 fn on_focus_in(event: &web_sys::Event) {
-  if let Some(node) = node_at(event.target()) {
-    notify_focus::<Web>(node);
-  }
+  notify_focus_moved::<Web>(node_at(focus_related(event)), node_at(event.target()));
 }
 
 fn on_focus_out(event: &web_sys::Event) {
@@ -565,8 +550,9 @@ fn on_focus_out(event: &web_sys::Event) {
     with_dom(|dom| dom.events.last_entry = Some(entry));
   }
 
-  if let Some(node) = node_at(event.target()) {
-    notify_blur::<Web>(node);
+  // A move to another node is notified by the `focusin` that follows it.
+  if node_at(focus_related(event)).is_none() {
+    notify_focus_moved::<Web>(node_at(event.target()), None);
   }
 }
 

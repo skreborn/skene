@@ -15,6 +15,7 @@ use std::{
 };
 
 use skene_gui::{
+  Activate,
   AnyView,
   Color,
   Column,
@@ -34,6 +35,7 @@ use skene_gui::{
   Pinned,
   RadioMember,
   Range,
+  RawButton,
   RawCheckbox,
   RawRadio,
   RawRadioGroup,
@@ -1356,6 +1358,53 @@ fn named_areas_and_adaptive_tracks_lay_out() {
 
   assert!((first.width() - 250. / 3.).abs() < 0.5);
   assert!(fourth.top() > first.top());
+}
+
+/// A box hears focus when focus enters its subtree and blur when focus leaves it, not
+/// as focus moves between the controls inside it, as `:focus-within` changes.
+#[wasm_bindgen_test]
+fn a_box_hears_focus_entering_and_leaving_its_subtree() {
+  let (_guard, root) = fresh_root();
+  let (focuses, blurs) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
+  let (entered, left) = (Rc::clone(&focuses), Rc::clone(&blurs));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .handle_focus(move || entered.set(entered.get() + 1))
+          .handle_blur(move || left.set(left.get() + 1))
+          .set_child(Row::new().set_children((
+            RawButton::new(Activate::new()).set_label("a"),
+            RawButton::new(Activate::new()).set_label("b"),
+          ))),
+        RawButton::new(Activate::new()).set_label("c"),
+      ))
+      .build()
+  });
+
+  let buttons = root.query_selector_all("button").expect("the buttons");
+  let focus = |index| {
+    let button: HtmlElement = buttons
+      .item(index)
+      .expect("a button")
+      .dyn_into()
+      .expect("an element");
+
+    button.focus().expect("focus");
+  };
+
+  focus(0);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+  focus(1);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+  focus(2);
+
+  assert_eq!((focuses.get(), blurs.get()), (1, 1));
 }
 
 /// `empty` renders no element at all: an empty segment, its two anchors alone.

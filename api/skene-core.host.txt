@@ -3511,6 +3511,7 @@ impl<X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::RunS
 pub fn skene_core::RunStyle<skene_core::Plain, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::Scene<P: skene_core::Platform>
 impl<P: skene_core::Platform> skene_core::Scene<P>
+pub fn skene_core::Scene<P>::ancestry(&self, skene_core::NodeId) -> smallvec::SmallVec<[skene_core::NodeId; 16]>
 pub fn skene_core::Scene<P>::annotate(impl core::convert::Into<core::option::Option<skene_core::Annotation<P>>>, impl core::ops::function::FnOnce() -> skene_core::NodeId) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::attach(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::children(&self, skene_core::NodeId) -> impl core::iter::traits::iterator::Iterator<Item = skene_core::NodeId> + '_
@@ -3518,6 +3519,7 @@ pub fn skene_core::Scene<P>::clear_segment(&mut self, skene_core::NodeId)
 pub fn skene_core::Scene<P>::control_state(&self, skene_core::NodeId) -> core::option::Option<skene_core::ControlState>
 pub fn skene_core::Scene<P>::create(&mut self, skene_core::NodeKind, <P as skene_core::Platform>::Sink) -> skene_core::NodeId
 pub fn skene_core::Scene<P>::create_segment() -> (skene_core::NodeId, skene_core::NodeId)
+pub fn skene_core::Scene<P>::crossed(&self, core::option::Option<skene_core::NodeId>, core::option::Option<skene_core::NodeId>) -> smallvec::SmallVec<[skene_core::NodeId; 16]>
 pub fn skene_core::Scene<P>::define_root_tokens(&mut self, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>)
 pub fn skene_core::Scene<P>::define_root_tokens_once(&mut self, core::any::TypeId, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>) -> bool
 pub fn skene_core::Scene<P>::define_tokens(&mut self, skene_core::NodeId, skene_core::Definitions<<P as skene_core::Platform>::TokenValue>)
@@ -4587,10 +4589,9 @@ pub fn skene_core::dispatch_pointer_up<P: skene_core::Platform>(skene_core::Node
 pub fn skene_core::empty<P: skene_core::Platform>() -> impl skene_core::View<P>
 pub fn skene_core::item_window(f32, f32, f32, usize, usize) -> skene_core::ItemWindow
 pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::ItemWindow
-pub fn skene_core::notify_blur<P: skene_core::Platform>(skene_core::NodeId)
 pub fn skene_core::notify_change<P: skene_core::Platform>(skene_core::NodeId, &str)
 pub fn skene_core::notify_dismiss<P: skene_core::Platform>(skene_core::NodeId)
-pub fn skene_core::notify_focus<P: skene_core::Platform>(skene_core::NodeId)
+pub fn skene_core::notify_focus_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::notify_pointer_enter<P: skene_core::Platform>(skene_core::NodeId)
 pub fn skene_core::notify_pointer_leave<P: skene_core::Platform>(skene_core::NodeId)
 pub fn skene_core::notify_scroll<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ScrollEvent)

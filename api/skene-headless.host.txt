@@ -43,6 +43,7 @@ pub type skene_headless::Headless::Sink = skene_headless::Handle
 pub type skene_headless::Headless::StyleExt = ()
 pub type skene_headless::Headless::TokenValue = skene_core::resolve::TokenValue<f32>
 pub fn skene_headless::Headless::attach(skene_headless::Handle, skene_headless::Handle, core::option::Option<skene_headless::Handle>)
+pub fn skene_headless::Headless::bind_node(skene_headless::Handle, skene_core::node::NodeId)
 pub fn skene_headless::Headless::blur(skene_headless::Handle)
 pub fn skene_headless::Headless::cancel(skene_core::platform::Timer)
 pub fn skene_headless::Headless::clipboard(skene_core::values::clipboard::ClipboardAction)

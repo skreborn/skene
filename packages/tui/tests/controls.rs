@@ -43,6 +43,46 @@ fn focus_variant_and_enter_click() {
   });
 }
 
+/// A box hears focus when focus enters its subtree and blur when focus leaves it, not
+/// as focus moves between the controls inside it, as `:focus-within` changes.
+#[test]
+fn a_box_hears_focus_entering_and_leaving_its_subtree() {
+  with_platform(|| {
+    let (focuses, blurs) = (Rc::new(Cell::new(0u32)), Rc::new(Cell::new(0u32)));
+    let (entered, left) = (Rc::clone(&focuses), Rc::clone(&blurs));
+
+    let _ = tui::mount(move || {
+      Column::new()
+        .set_children((
+          Container::new()
+            .handle_focus(move || entered.set(entered.get() + 1))
+            .handle_blur(move || left.set(left.get() + 1))
+            .set_child(Row::new().set_children((
+              RawButton::new(Activate::new()).set_label("a"),
+              RawButton::new(Activate::new()).set_label("b"),
+            ))),
+          RawButton::new(Activate::new()).set_label("c"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(10, 3);
+
+    tui::trigger_key("Tab");
+
+    assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+    tui::trigger_key("Tab");
+
+    assert_eq!((focuses.get(), blurs.get()), (1, 0));
+
+    tui::trigger_key("Tab");
+
+    assert_eq!((focuses.get(), blurs.get()), (1, 1));
+  });
+}
+
 /// A mouse click hits the topmost control at the cell, runs its click handlers, and
 /// focuses it, so `Enter` and `Space` click it again.
 #[test]

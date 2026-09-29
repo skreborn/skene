@@ -435,7 +435,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
-  /// Runs `action` when the box gains focus.
+  /// Runs `action` when focus enters the box or a node inside it from outside.
   #[inline(always)]
   pub fn handle_focus(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.focus.push(Rc::new(action));
@@ -443,7 +443,7 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     self
   }
 
-  /// Runs `action` when the box loses focus.
+  /// Runs `action` when focus leaves the box and every node inside it.
   #[inline(always)]
   pub fn handle_blur(mut self, action: impl Fn() + 'static) -> Self {
     self.handlers.blur.push(Rc::new(action));

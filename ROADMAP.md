@@ -38,10 +38,9 @@ left half-done in a code comment.
     pointer capture, tab order with modal containment, an overlay stack in open order
     with top-layer rules, light dismiss, focus fixup when the focused node leaves the
     order), replacing the terminal's own, headless's divergent copy and the browser's
-    implicit one. With it focus notifications reach ancestors with focus-within
-    semantics, and a tooltip describes the focus holder; a tooltip opens at once on
-    visible focus alone; the web gains pointer capture and `touch-action: none` on
-    dragging controls. A node's `Hovered` then holds while the pointer is over a node
+    implicit one. With it a tooltip describes the focus holder; a tooltip opens at
+    once on visible focus alone; the web gains pointer capture and `touch-action:
+    none` on dragging controls. A node's `Hovered` then holds while the pointer is over a node
     beneath it, as `:hover` holds on an ancestor, and a group run's state variants
     reach its spans, as a rule on the group's class redefining the ink where the state
     holds.

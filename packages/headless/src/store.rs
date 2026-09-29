@@ -73,6 +73,8 @@ pub(crate) struct NodeMotion {
 pub(crate) struct Record {
   /// What the node is, with the props it was created from.
   pub kind: Kind,
+  /// The node the scene minted for the record.
+  pub node: Option<NodeId>,
   /// A run's text, as last set.
   pub text: String,
   /// A control's value, as last set.
@@ -135,6 +137,7 @@ impl Record {
   pub(crate) fn new(kind: Kind) -> Self {
     Self {
       kind,
+      node: None,
       text: String::new(),
       value: String::new(),
       options: Vec::new(),

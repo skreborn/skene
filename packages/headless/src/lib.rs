@@ -93,10 +93,9 @@ use skene_core::{
   dispatch_pointer_down,
   dispatch_pointer_move,
   dispatch_pointer_up,
-  notify_blur,
   notify_change,
   notify_dismiss,
-  notify_focus,
+  notify_focus_moved,
   notify_pointer_enter,
   notify_pointer_leave,
   notify_scroll,
@@ -213,6 +212,10 @@ impl Platform for Headless {
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
     &SCENE
+  }
+
+  fn bind_node(sink: Handle, node: NodeId) {
+    with_record(sink, |record| record.node = Some(node));
   }
 
   fn create_box(props: &BoxProps<Self>) -> Handle {
@@ -626,23 +629,30 @@ pub fn trigger_pointer_leave(node: NodeId) {
   });
 }
 
-/// Moves focus to `node` and notifies its focus handlers; no blur is implied on the
-/// node focus left.
+/// Moves focus to `node`, notifying each node whose subtree focus left and each whose
+/// subtree it reached.
 pub fn trigger_focus(node: NodeId) {
   trigger(|| {
+    let previous = with_store(|store| {
+      store
+        .focused
+        .and_then(|focused| store.record(focused)?.node)
+    });
+
     move_focus(node);
-    notify_focus::<Headless>(node);
+    notify_focus_moved::<Headless>(previous, Some(node));
   });
 }
 
-/// Takes focus off `node`, if it holds it, and notifies its blur handlers.
+/// Takes focus off `node`, if it holds it, notifying `node` and each ancestor whose
+/// subtree held it.
 pub fn trigger_blur(node: NodeId) {
   trigger(|| {
     if let Some(handle) = handle(node) {
       Headless::blur(handle);
     }
 
-    notify_blur::<Headless>(node);
+    notify_focus_moved::<Headless>(Some(node), None);
   });
 }
 

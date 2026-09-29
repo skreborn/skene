@@ -39,9 +39,11 @@ use skene_gui::{
   RawRadioGroup,
   RawSlider,
   RawTextField,
+  RichText,
   Role,
   Roving,
   Row,
+  Span,
   Stack,
   Text,
   TextDecoration,
@@ -2227,4 +2229,26 @@ fn a_pinned_checkbox_leaves_the_flow() {
     .expect("the checkbox's label");
 
   assert_eq!(computed(&label, "position"), "absolute");
+}
+
+/// The span inside a link group takes the link's ink, as the link's own text does.
+#[wasm_bindgen_test]
+fn a_link_groups_span_takes_the_link_ink() {
+  let (_installed, root) = fresh_root();
+  let _ = mount(|| {
+    Theme::new(Typography::default().set_link_ink(Color::srgb(1., 0., 0.)))
+      .set_child_builder(|| {
+        RichText::new().set_spans([Span::group([Span::new("x")]).set_link("/g")])
+      })
+      .build()
+  });
+  let link = root.query_selector("a").ok().flatten().expect("the link");
+  let span = link
+    .first_element_child()
+    .expect("the span inside the link");
+
+  let paragraph = link.parent_element().expect("the paragraph");
+
+  assert_ne!(computed(&link, "color"), computed(&paragraph, "color"));
+  assert_eq!(computed(&span, "color"), computed(&link, "color"));
 }

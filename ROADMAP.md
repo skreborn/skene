@@ -45,13 +45,13 @@ left half-done in a code comment.
     - The `Environment` gains the pointer's capability (fine, coarse or none, and
     whether it hovers) and the safe-area insets, as facts every platform reports and
     `Media` conditions test.
-    - Runs and boxes: a group redefines every token it sets, and a link group its
-    `INK`, so the web and the terminal inherit alike; a group run's color keeps its
-    state and compound media variants, and every variant slot registers; `Border`
-    becomes a width `Inset` and a plain color, making per-edge borders expressible and
-    the terminal's border-ink path unnecessary; taffy's per-axis overflow, per-edge
-    borders, `repeat(auto-fill)` as a Compose-named adaptive grid, and named lines and
-    areas surface.
+    - Runs and boxes: a group redefines every token it sets, its type metrics too, which
+    the terminal's spans read from the typography where the web inherits them; a group
+    run's color keeps its state and compound media variants, and every variant slot
+    registers; `Border` becomes a width `Inset` and a plain color, making per-edge
+    borders expressible and the terminal's border-ink path unnecessary; taffy's per-axis
+    overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named adaptive grid,
+    and named lines and areas surface.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
     pointer capture, tab order with modal containment, an overlay stack in open order

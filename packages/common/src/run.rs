@@ -108,10 +108,21 @@ impl<P: Platform> Run<P> {
   /// Realizes the run as a detached node with `display`.
   ///
   /// A property the run leaves unset references its typography token; a `group` also
-  /// redefines the typography tokens of the properties it sets for the runs beneath it.
+  /// redefines the typography tokens of the properties it sets for the runs beneath it,
+  /// and a link group setting no color the ink as the link ink.
   pub(crate) fn build(self, display: RunDisplay, group: bool) -> NodeId {
     let mut style = self.style;
-    let redefined = group.then(|| style.clone());
+    let redefined = group.then(|| {
+      let mut redefined = style.clone();
+
+      if self.link.is_some() {
+        redefined
+          .color
+          .get_or_insert_with(|| Value::from(typography::LINK_INK));
+      }
+
+      redefined
+    });
     let ink = if self.link.is_some() {
       typography::LINK_INK
     }

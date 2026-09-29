@@ -135,6 +135,28 @@ fn rich_text_group_redefines_ink_for_nested_spans_only() {
   owner.dispose();
 }
 
+/// A link group that sets no color gives the spans beneath it the link ink, as a link's
+/// own text shows.
+#[test]
+fn a_link_groups_spans_take_the_link_ink() {
+  reset();
+
+  let owner = Owner::new();
+  let root = owner.enter(|| {
+    Theme::new(TestTypography::default())
+      .set_child_builder(|| {
+        RichText::new().set_spans([Span::group([Span::new("x")]).set_link("/g")])
+      })
+      .build()
+  });
+  let group = children(children(root)[0])[0];
+
+  assert_eq!(resolve_color(group, TEXT_COLOR), Some(blue()));
+  assert_eq!(resolve_color(children(group)[0], TEXT_COLOR), Some(blue()));
+
+  owner.dispose();
+}
+
 /// A view span is an inline-level run holding the view's node, and a derived span
 /// rewrites its own run's text.
 #[test]

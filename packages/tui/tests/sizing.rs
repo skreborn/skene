@@ -170,3 +170,23 @@ fn an_em_is_the_typography_size_in_cells() {
     assert!(frame.starts_with("   x\n      y"), "{frame}");
   });
 }
+
+/// A group's size reaches the spans beneath it through the typography it redefines,
+/// where a span sets none of its own.
+#[test]
+fn a_groups_size_reaches_its_spans() {
+  with_platform(|| {
+    tui::trigger_text_sizing(true);
+
+    let _ = tui::mount(|| {
+      RichText::new()
+        .set_spans([Span::group([Span::new("b")]).set_font_size(2.)])
+        .into_any()
+        .build()
+    });
+
+    let _ = tui::render_to_text(4, 2);
+
+    assert_eq!(scale_at(4, 2, 0, 0), CellScale::Whole(2));
+  });
+}

@@ -28,6 +28,7 @@ use skene_core::{
 
 use crate::{
   LayoutBox,
+  TypeMetrics,
   layout_box::verdict,
   properties,
   realize::Source,
@@ -48,10 +49,10 @@ enum Content<P: Platform> {
 /// Spans flow together and wrap as one paragraph, so styling can vary within a line. A
 /// property left unset is inherited through its [`typography`](crate::typography)
 /// token. A [group](Self::group) redefines the typography tokens of the properties it
-/// sets for the spans beneath it, on its own run: a derived leaf is redefined with each
-/// value it computes, and a variant conditioned on a state applies to the group's own
-/// run alone. A [view](Self::view) is laid out as an inline-level box among the
-/// surrounding runs.
+/// sets for the spans beneath it, its type metrics among them, on its own run: a
+/// derived leaf is redefined with each value it computes, and a variant conditioned on
+/// a state applies to the group's own run alone. A [view](Self::view) is laid out as an
+/// inline-level box among the surrounding runs.
 #[must_use]
 pub struct Span<P: Platform> {
   content: Content<P>,
@@ -180,14 +181,16 @@ impl<P: Platform> Span<P> {
 
 impl<P: Platform> AnyKind for Span<P> {}
 
-impl<P: Platform> View<P> for Span<P> {
+impl<P: Platform> View<P> for Span<P>
+where
+  P::StyleExt: TypeMetrics,
+{
   fn build(self) -> NodeId {
-    let display = match self.content {
-      Content::View(_) => RunDisplay::InlineBox,
-      Content::Text(_) | Content::Group(_) => RunDisplay::Inline,
+    let node = match self.content {
+      Content::View(_) => self.run.build(RunDisplay::InlineBox),
+      Content::Text(_) => self.run.build(RunDisplay::Inline),
+      Content::Group(_) => self.run.build_group(RunDisplay::Inline),
     };
-    let group = matches!(self.content, Content::Group(_));
-    let node = self.run.build(display, group);
 
     Scene::<P>::with(|scene| {
       for handler in self.click {
@@ -252,7 +255,10 @@ impl<P: Platform> RichText<P> {
 
 impl<P: Platform> AnyKind for RichText<P> {}
 
-impl<P: Platform> View<P> for RichText<P> {
+impl<P: Platform> View<P> for RichText<P>
+where
+  P::StyleExt: TypeMetrics,
+{
   fn build(self) -> NodeId {
     let node = LayoutBox::<P, PlainChild>::new(Layout::Flow).build();
 

@@ -32,13 +32,10 @@ left half-done in a code comment.
     - The parity harness (`web_parity`) gains a case for each fix below.
     - Motion: an aspect ratio becomes a value type of its own, interpolating through its
     logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
-    - Runs and boxes: a group redefines every token it sets, its type metrics too, which
-    the terminal's spans read from the typography where the web inherits them; a group
-    run's state variants reach its spans, as a rule on the group's class redefining the
-    ink where the state holds; `Border` becomes a width `Inset` and a plain color,
-    making per-edge borders expressible and the terminal's border-ink path unnecessary;
-    taffy's per-axis overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named
-    adaptive grid, and named lines and areas surface.
+    - Runs and boxes: `Border` becomes a width `Inset` and a plain color, making per-edge
+    borders expressible and the terminal's border-ink path unnecessary; taffy's
+    per-axis overflow, per-edge borders, `repeat(auto-fill)` as a Compose-named adaptive
+    grid, and named lines and areas surface.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
     pointer capture, tab order with modal containment, an overlay stack in open order
@@ -49,7 +46,10 @@ left half-done in a code comment.
     describes the focus holder; a tooltip opens at once on visible focus alone; an
     observed click stops at the first node carrying acting handlers, as the terminal
     and headless stop; the dispatch path is fixed before any handler runs; the web
-    gains pointer capture and `touch-action: none` on dragging controls.
+    gains pointer capture and `touch-action: none` on dragging controls. A node's
+    `Hovered` then holds while the pointer is over a node beneath it, as `:hover` holds
+    on an ancestor, and a group run's state variants reach its spans, as a rule on the
+    group's class redefining the ink where the state holds.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US
     `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before

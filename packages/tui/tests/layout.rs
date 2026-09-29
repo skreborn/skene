@@ -188,6 +188,26 @@ fn bold_and_derived_text() {
   });
 }
 
+/// A group's weight reaches the spans beneath it through the typography it redefines,
+/// and the span beside the group keeps the typography's.
+#[test]
+fn a_groups_weight_reaches_its_spans() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      RichText::new()
+        .set_spans([
+          Span::new("a"),
+          Span::group([Span::new("bc")]).set_font_weight(700.),
+        ])
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(4, 1), "abc\n");
+    assert_eq!(tui::render_to_bold(4, 1), [false, true, true, false]);
+  });
+}
+
 /// Grid tracks size the columns: a fixed track, then the rest split evenly.
 #[test]
 fn grid_tracks_size_columns() {

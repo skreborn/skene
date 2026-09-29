@@ -128,7 +128,7 @@ impl<P: Platform> AnyKind for Text<P> {}
 
 impl<P: Platform> View<P> for Text<P> {
   fn build(self) -> NodeId {
-    let node = self.run.build(RunDisplay::Block, false);
+    let node = self.run.build(RunDisplay::Block);
 
     self
       .content

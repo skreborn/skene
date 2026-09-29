@@ -189,6 +189,10 @@ impl core::marker::StructuralPartialEq for skene_common::gui::GuiExt
 impl skene_common::CornerRadius for skene_common::gui::GuiExt
 pub fn skene_common::gui::GuiExt::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for skene_common::gui::GuiExt
+pub fn skene_common::gui::GuiExt::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::GuiExt::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiExt::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiExt::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
@@ -639,6 +643,10 @@ impl core::marker::StructuralPartialEq for skene_common::tui::TuiExt
 impl skene_common::CornerRadius for skene_common::tui::TuiExt
 pub fn skene_common::tui::TuiExt::set_corner_radius<S: skene_core::shape::Shape>(&mut Self::BoxFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for skene_common::tui::TuiExt
+pub fn skene_common::tui::TuiExt::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::TuiExt::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::tui::TuiExt::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::tui::TuiExt::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
@@ -1782,7 +1790,7 @@ pub fn skene_common::RichText<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> c
 impl<P: skene_core::platform::Platform> core::default::Default for skene_common::RichText<P>
 pub fn skene_common::RichText<P>::default() -> Self
 impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_common::RichText<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::RichText<P>
+impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::RichText<P> where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::RichText<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::Roster
 impl skene_common::Roster
@@ -1918,7 +1926,7 @@ pub fn skene_common::Span<P>::view(impl skene_core::view::IntoView<P>) -> Self
 impl<P: skene_core::platform::Platform> core::fmt::Debug for skene_common::Span<P>
 pub fn skene_common::Span<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform> skene_core::view::AnyKind for skene_common::Span<P>
-impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::Span<P>
+impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::Span<P> where <P as skene_core::platform::Platform>::StyleExt: skene_common::TypeMetrics
 pub fn skene_common::Span<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::Stack<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Stack<P>
@@ -2445,21 +2453,37 @@ impl<P: skene_core::platform::Platform, S: skene_core::token::TokenSet<<P as ske
 pub fn S::current() -> S
 pub fn S::watch() -> skene_reactive::memo::Memo<S>
 pub trait skene_common::TypeMetrics: skene_core::extension::StyleExtension
+pub fn skene_common::TypeMetrics::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::TypeMetrics::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::TypeMetrics::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::TypeMetrics::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::TypeMetrics::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::TypeMetrics::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::TypeMetrics::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::TypeMetrics::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for ()
+pub fn ()::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn ()::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn ()::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn ()::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn ()::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn ()::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn ()::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn ()::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for skene_common::gui::GuiExt
+pub fn skene_common::gui::GuiExt::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::gui::GuiExt::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::gui::GuiExt::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiExt::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiExt::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::gui::GuiExt::set_line_height<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 impl skene_common::TypeMetrics for skene_common::tui::TuiExt
+pub fn skene_common::tui::TuiExt::font_size<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::font_weight<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::letter_spacing<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
+pub fn skene_common::tui::TuiExt::line_height<S: skene_core::shape::Shape>(&Self::RunFields) -> <S as skene_core::shape::Shape>::Of
 pub fn skene_common::tui::TuiExt::set_font_size<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::tui::TuiExt::set_font_weight<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)
 pub fn skene_common::tui::TuiExt::set_letter_spacing<S: skene_core::shape::Shape>(&mut Self::RunFields, <S as skene_core::shape::Shape>::Of)

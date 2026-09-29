@@ -431,4 +431,14 @@ impl TypeMetrics for TuiExt {
   fn set_font_weight<S: Shape>(fields: &mut Self::RunFields<S>, weight: S::Of<f32>) {
     fields.weight = weight;
   }
+
+  #[inline(always)]
+  fn font_size<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<Length> {
+    fields.size.clone()
+  }
+
+  #[inline(always)]
+  fn font_weight<S: Shape>(fields: &Self::RunFields<S>) -> S::Of<f32> {
+    fields.weight.clone()
+  }
 }

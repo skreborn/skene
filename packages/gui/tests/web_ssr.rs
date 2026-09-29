@@ -197,6 +197,29 @@ fn an_icon_button_carries_its_accessible_name() {
   assert!(body.contains("aria-label=\"Close\""), "{body}");
 }
 
+/// A pointer's precision and hover compile to the media features that test them.
+#[test]
+fn pointer_conditions_compile_to_their_media_features() {
+  use skene_gui::core::{Media, PointerPrecision, Value};
+
+  let page = render_to_string(|| {
+    Container::new()
+      .set_color(
+        Value::from(Color::srgb(1., 0., 0.))
+          .when(
+            Media::Pointer(PointerPrecision::Coarse),
+            Color::srgb(0., 1., 0.),
+          )
+          .when(Media::Hover, Color::srgb(0., 0., 1.)),
+      )
+      .set_child(Text::new("x"))
+  });
+  let styles = page.styles();
+
+  assert!(styles.contains("(pointer: coarse)"), "{styles}");
+  assert!(styles.contains("(hover: hover)"), "{styles}");
+}
+
 /// A hidden box compiles to `visibility: hidden`, and a visible one inherits, so it
 /// shows only where its ancestors do.
 #[test]

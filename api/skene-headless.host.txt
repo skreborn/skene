@@ -147,8 +147,10 @@ pub fn skene_headless::trigger_key_down(skene_core::node::NodeId, &skene_core::e
 pub fn skene_headless::trigger_key_up(skene_core::node::NodeId, &skene_core::events::KeyEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_pointer_down(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_pointer_enter(skene_core::node::NodeId)
+pub fn skene_headless::trigger_pointer_hovers(bool)
 pub fn skene_headless::trigger_pointer_leave(skene_core::node::NodeId)
 pub fn skene_headless::trigger_pointer_move(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
+pub fn skene_headless::trigger_pointer_precision(skene_core::condition::PointerPrecision)
 pub fn skene_headless::trigger_pointer_up(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_reduced_motion(bool)
 pub fn skene_headless::trigger_reduced_transparency(bool)

@@ -364,7 +364,9 @@ pub type skene_common::gui::Painter = dyn core::ops::function::Fn(&mut skene_com
 pub mod skene_common::media
 pub fn skene_common::media::derive_scheme<P: skene_core::platform::Platform>(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_common::media::high_contrast<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::media::hover<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_common::media::hydrated<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::media::pointer<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_common::media::reduced_motion<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_common::media::reduced_transparency<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_common::media::scheme<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>

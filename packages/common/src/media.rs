@@ -1,7 +1,7 @@
 //! The environment as signals, and the color scheme the app puts in force, over any
 //! platform; a facade forwards to these with its medium's units.
 
-use skene_core::{ColorScheme, Media, Platform, Size};
+use skene_core::{ColorScheme, Media, Platform, PointerPrecision, Size};
 use skene_reactive::{Effect, Memo, ReadSignal, Signal};
 
 /// The viewport's size, in the medium's unit.
@@ -32,6 +32,18 @@ pub fn reduced_transparency<P: Platform>() -> ReadSignal<bool> {
 #[inline(always)]
 pub fn high_contrast<P: Platform>() -> ReadSignal<bool> {
   P::default().media().high_contrast
+}
+
+/// How precisely the reader's primary pointer points.
+#[inline(always)]
+pub fn pointer<P: Platform>() -> ReadSignal<PointerPrecision> {
+  P::default().media().pointer
+}
+
+/// Whether the reader's primary pointer hovers.
+#[inline(always)]
+pub fn hover<P: Platform>() -> ReadSignal<bool> {
+  P::default().media().hover
 }
 
 /// Whether a render made without script has been hydrated.

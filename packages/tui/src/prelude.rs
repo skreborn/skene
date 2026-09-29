@@ -33,6 +33,7 @@ pub use skene_core::{
   NoChild,
   Overflow,
   Placement,
+  PointerPrecision,
   Role,
   State,
   TextDecoration,

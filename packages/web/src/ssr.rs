@@ -1038,6 +1038,8 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
         let (reduced_motion, set_reduced_motion) = Signal::opaque(hints.reduced_motion).split();
         let reduced_transparency = Signal::opaque(hints.reduced_transparency).read_only();
         let high_contrast = Signal::opaque(false).read_only();
+        let pointer = Signal::opaque(hints.pointer).read_only();
+        let hover = Signal::opaque(hints.hover).read_only();
         let (absent, _) = Signal::opaque(false).split();
 
         MediaState {
@@ -1047,6 +1049,8 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
             reduced_motion,
             reduced_transparency,
             high_contrast,
+            pointer,
+            hover,
             container_sizes: ContainerSizes::new(),
           },
           set_viewport,

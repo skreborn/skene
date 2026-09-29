@@ -21,6 +21,7 @@ use skene_core::{
   NodeId,
   Placement,
   Plain,
+  PointerPrecision,
   RunProps,
   RunStyle,
   Shortcut,
@@ -1667,7 +1668,8 @@ impl Store {
   }
 
   /// The environment the terminal reports; it has no answer for reduced transparency
-  /// or more contrast, which never hold.
+  /// or more contrast, which never hold, and its pointer is the mouse, fine and
+  /// hovering where the app takes it and absent where it does not.
   pub(crate) fn environment(&self) -> Environment<u32> {
     Environment {
       viewport: self.viewport(),
@@ -1675,6 +1677,18 @@ impl Store {
       reduced_motion: self.reduced_motion,
       reduced_transparency: false,
       high_contrast: false,
+      pointer: self.pointer(),
+      hover: self.mouse,
+    }
+  }
+
+  /// The pointer the terminal reports: the mouse, where the app takes it.
+  pub(crate) const fn pointer(&self) -> PointerPrecision {
+    if self.mouse {
+      PointerPrecision::Fine
+    }
+    else {
+      PointerPrecision::Absent
     }
   }
 
@@ -1691,6 +1705,8 @@ impl Store {
     let viewport = self.viewport();
     let scheme = self.scheme();
     let reduced = self.reduced_motion;
+    let pointer = self.pointer();
+    let hover = self.mouse;
     let graphics = self.graphics;
 
     self.media.get_or_insert_with(|| {
@@ -1702,6 +1718,8 @@ impl Store {
         let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced).split();
         let reduced_transparency = Signal::opaque(false).read_only();
         let high_contrast = Signal::opaque(false).read_only();
+        let pointer = Signal::opaque(pointer).read_only();
+        let hover = Signal::opaque(hover).read_only();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
@@ -1717,6 +1735,8 @@ impl Store {
             reduced_motion,
             reduced_transparency,
             high_contrast,
+            pointer,
+            hover,
             container_sizes: ContainerSizes::new(),
           },
         }

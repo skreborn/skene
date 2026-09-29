@@ -1365,12 +1365,14 @@ pub skene_core::Media::Container::name: core::option::Option<skene_core::Contain
 pub skene_core::Media::Container::query: skene_core::ContainerQuery<N>
 pub skene_core::Media::Dark
 pub skene_core::Media::HighContrast
+pub skene_core::Media::Hover
 pub skene_core::Media::Light
 pub skene_core::Media::MaxHeight(N)
 pub skene_core::Media::MaxWidth(N)
 pub skene_core::Media::MinHeight(N)
 pub skene_core::Media::MinWidth(N)
 pub skene_core::Media::Or(alloc::vec::Vec<Self>)
+pub skene_core::Media::Pointer(skene_core::PointerPrecision)
 pub skene_core::Media::ReducedMotion
 pub skene_core::Media::ReducedTransparency
 impl<N: skene_core::Scalar> skene_core::Media<N>
@@ -1552,6 +1554,23 @@ impl core::fmt::Debug for skene_core::PointerButton
 pub fn skene_core::PointerButton::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_core::PointerButton
 impl core::marker::StructuralPartialEq for skene_core::PointerButton
+pub enum skene_core::PointerPrecision
+pub skene_core::PointerPrecision::Absent
+pub skene_core::PointerPrecision::Coarse
+pub skene_core::PointerPrecision::Fine
+impl core::clone::Clone for skene_core::PointerPrecision
+pub fn skene_core::PointerPrecision::clone(&self) -> skene_core::PointerPrecision
+impl core::cmp::Eq for skene_core::PointerPrecision
+impl core::cmp::PartialEq for skene_core::PointerPrecision
+pub fn skene_core::PointerPrecision::eq(&self, &skene_core::PointerPrecision) -> bool
+impl core::default::Default for skene_core::PointerPrecision
+pub fn skene_core::PointerPrecision::default() -> skene_core::PointerPrecision
+impl core::fmt::Debug for skene_core::PointerPrecision
+pub fn skene_core::PointerPrecision::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::PointerPrecision
+pub fn skene_core::PointerPrecision::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::PointerPrecision
+impl core::marker::StructuralPartialEq for skene_core::PointerPrecision
 pub enum skene_core::PopupKind
 pub skene_core::PopupKind::Dialog
 pub skene_core::PopupKind::Listbox
@@ -2445,6 +2464,8 @@ impl<K: core::fmt::Debug, V> core::fmt::Debug for skene_core::DerivedSlot<K, V>
 pub fn skene_core::DerivedSlot<K, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::Environment<N>
 pub skene_core::Environment::high_contrast: bool
+pub skene_core::Environment::hover: bool
+pub skene_core::Environment::pointer: skene_core::PointerPrecision
 pub skene_core::Environment::reduced_motion: bool
 pub skene_core::Environment::reduced_transparency: bool
 pub skene_core::Environment::scheme: skene_core::ColorScheme
@@ -2887,6 +2908,8 @@ pub fn skene_core::MediaEnv<'_, N>::fmt(&self, &mut core::fmt::Formatter<'_>) ->
 pub struct skene_core::MediaSignals<N: 'static>
 pub skene_core::MediaSignals::container_sizes: skene_core::ContainerSizes<N>
 pub skene_core::MediaSignals::high_contrast: skene_reactive::signal::ReadSignal<bool>
+pub skene_core::MediaSignals::hover: skene_reactive::signal::ReadSignal<bool>
+pub skene_core::MediaSignals::pointer: skene_reactive::signal::ReadSignal<skene_core::PointerPrecision>
 pub skene_core::MediaSignals::reduced_motion: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::reduced_transparency: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::scheme: skene_reactive::signal::ReadSignal<skene_core::ColorScheme>

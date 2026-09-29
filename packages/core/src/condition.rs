@@ -80,6 +80,10 @@ pub enum Media<N> {
   ReducedTransparency,
   /// The reader prefers more contrast.
   HighContrast,
+  /// The reader's primary pointer points this precisely.
+  Pointer(PointerPrecision),
+  /// The reader's primary pointer hovers.
+  Hover,
   /// A container's size satisfies a query: the nearest container of any name without
   /// a name, the nearest one of that name with it.
   Container {
@@ -123,6 +127,8 @@ impl<N: Scalar> Media<N> {
       Self::ReducedMotion => env.environment.reduced_motion,
       Self::ReducedTransparency => env.environment.reduced_transparency,
       Self::HighContrast => env.environment.high_contrast,
+      Self::Pointer(precision) => env.environment.pointer == *precision,
+      Self::Hover => env.environment.hover,
       Self::Container { name, query } => {
         (env.container)(*name).is_some_and(|size| query.holds_for(size))
       }
@@ -165,7 +171,9 @@ impl<N: Scalar> Hash for Media<N> {
       | Self::Light
       | Self::ReducedMotion
       | Self::ReducedTransparency
-      | Self::HighContrast => {}
+      | Self::HighContrast
+      | Self::Hover => {}
+      Self::Pointer(precision) => precision.hash(state),
       Self::Container { name, query } => {
         name.hash(state);
         query.hash(state);
@@ -179,6 +187,10 @@ impl<N: Scalar> Hash for Media<N> {
 /// condition tests but the containers around a node.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
+#[expect(
+  clippy::struct_excessive_bools,
+  reason = "each flag is a fact of its own a platform reports and a condition tests"
+)]
 pub struct Environment<N> {
   /// The viewport's size.
   pub viewport: Size<N>,
@@ -190,6 +202,23 @@ pub struct Environment<N> {
   pub reduced_transparency: bool,
   /// Whether the reader prefers more contrast.
   pub high_contrast: bool,
+  /// How precisely the reader's primary pointer points.
+  pub pointer: PointerPrecision,
+  /// Whether the reader's primary pointer hovers.
+  pub hover: bool,
+}
+
+/// How precisely the reader's primary pointer points.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum PointerPrecision {
+  /// A mouse or a stylus: precisely.
+  #[default]
+  Fine,
+  /// A finger: coarsely.
+  Coarse,
+  /// There is no pointer.
+  Absent,
 }
 
 /// What the environment answers when a [`Media`] condition is evaluated.
@@ -361,7 +390,16 @@ impl<N> From<State> for Condition<N> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Condition, ContainerName, ContainerQuery, Environment, Media, MediaEnv, State};
+  use super::{
+    Condition,
+    ContainerName,
+    ContainerQuery,
+    Environment,
+    Media,
+    MediaEnv,
+    PointerPrecision,
+    State,
+  };
   use crate::{ColorScheme, Composable, Size};
 
   fn env(container: &dyn Fn(Option<ContainerName>) -> Option<Size<f32>>) -> MediaEnv<'_, f32> {
@@ -372,6 +410,8 @@ mod tests {
         reduced_motion: true,
         reduced_transparency: false,
         high_contrast: false,
+        pointer: PointerPrecision::Coarse,
+        hover: false,
       },
       container,
     }

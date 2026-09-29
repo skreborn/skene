@@ -5,7 +5,7 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_hash::FxHashMap;
-use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, Size};
+use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, PointerPrecision, Size};
 use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, WriteSignal};
 use wasm_bindgen::JsCast as _;
 use web_sys::MediaQueryList;
@@ -24,6 +24,15 @@ const REDUCED_TRANSPARENCY: &str = "(prefers-reduced-transparency: reduce)";
 
 /// The query text of the preference for more contrast.
 const HIGH_CONTRAST: &str = "(prefers-contrast: more)";
+
+/// The query text of a fine primary pointer.
+const FINE_POINTER: &str = "(pointer: fine)";
+
+/// The query text of a coarse primary pointer.
+const COARSE_POINTER: &str = "(pointer: coarse)";
+
+/// The query text of a primary pointer that hovers.
+const HOVER: &str = "(hover: hover)";
 
 /// One live media query: its list, its signal and the listener keeping them equal.
 struct Query {
@@ -127,6 +136,8 @@ fn create() -> MediaState {
   let (reduced_motion, set_reduced_motion) = Signal::opaque(false).split();
   let (reduced_transparency, set_reduced_transparency) = Signal::opaque(false).split();
   let (high_contrast, set_high_contrast) = Signal::opaque(false).split();
+  let (pointer, set_pointer) = Signal::opaque(PointerPrecision::Fine).split();
+  let (hover, set_hover) = Signal::opaque(true).split();
   let choice = Signal::opaque(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
@@ -141,6 +152,8 @@ fn create() -> MediaState {
       reduced_motion,
       reduced_transparency,
       high_contrast,
+      pointer,
+      hover,
       container_sizes: ContainerSizes::new(),
     },
     live: Signal::opaque(LIVE.with(Cell::get)).split(),
@@ -152,6 +165,9 @@ fn create() -> MediaState {
   let reduced = query(&mut state, REDUCED_MOTION);
   let transparency = query(&mut state, REDUCED_TRANSPARENCY);
   let contrast = query(&mut state, HIGH_CONTRAST);
+  let fine = query(&mut state, FINE_POINTER);
+  let coarse = query(&mut state, COARSE_POINTER);
+  let hovers = query(&mut state, HOVER);
 
   Effect::new(move |_: Option<()>| {
     let platform = if dark.get() {
@@ -166,6 +182,18 @@ fn create() -> MediaState {
   Effect::new(move |_: Option<()>| set_reduced_motion.set(reduced.get()));
   Effect::new(move |_: Option<()>| set_reduced_transparency.set(transparency.get()));
   Effect::new(move |_: Option<()>| set_high_contrast.set(contrast.get()));
+  Effect::new(move |_: Option<()>| {
+    set_pointer.set(if fine.get() {
+      PointerPrecision::Fine
+    }
+    else if coarse.get() {
+      PointerPrecision::Coarse
+    }
+    else {
+      PointerPrecision::Absent
+    });
+  });
+  Effect::new(move |_: Option<()>| set_hover.set(hovers.get()));
 
   state
 }

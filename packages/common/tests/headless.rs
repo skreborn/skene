@@ -26,6 +26,7 @@ use skene_core::{
   NoChild,
   NodeId,
   Platform,
+  PointerPrecision,
   Prevented,
   Property,
   PropertyKey,
@@ -70,7 +71,9 @@ use skene_headless::{
   trigger_frame,
   trigger_high_contrast,
   trigger_pointer_enter,
+  trigger_pointer_hovers,
   trigger_pointer_leave,
+  trigger_pointer_precision,
   trigger_reduced_transparency,
   trigger_resize,
   trigger_size,
@@ -802,6 +805,45 @@ fn the_transparency_and_contrast_preferences_answer() {
 
   assert_eq!(resolve_color(node, COLOR), Some(blue()));
   assert!(contrast.get());
+
+  owner.dispose();
+}
+
+/// The primary pointer's precision and whether it hovers answer as the platform
+/// reports them, in a property's condition and through a watch.
+#[test]
+fn the_pointer_precision_and_hover_answer() {
+  reset();
+
+  let owner = Owner::new();
+  let (node, hovers) = owner.enter(|| {
+    let node = Container::new()
+      .set_color(
+        Value::from(red())
+          .when(Media::Pointer(PointerPrecision::Coarse), green())
+          .when(Media::Pointer(PointerPrecision::Absent), blue()),
+      )
+      .build();
+
+    (node, skene_common::media::watch::<Headless>(&Media::Hover))
+  });
+
+  assert_eq!(resolve_color(node, COLOR), Some(red()));
+  assert!(hovers.get(), "a fine pointer that hovers by default");
+
+  trigger_pointer_precision(PointerPrecision::Coarse);
+  trigger_pointer_hovers(false);
+
+  assert_eq!(resolve_color(node, COLOR), Some(green()));
+  assert_eq!(
+    skene_common::media::pointer::<Headless>().get(),
+    PointerPrecision::Coarse
+  );
+  assert!(!hovers.get());
+
+  trigger_pointer_precision(PointerPrecision::Absent);
+
+  assert_eq!(resolve_color(node, COLOR), Some(blue()));
 
   owner.dispose();
 }

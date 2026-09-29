@@ -66,6 +66,7 @@ use skene_core::{
   Platform,
   Point,
   PointerEvent,
+  PointerPrecision,
   Prevented,
   Property,
   PropertyKey,
@@ -816,6 +817,33 @@ pub fn trigger_high_contrast(high: bool) {
     });
 
     write.set(high);
+  });
+}
+
+/// Simulates a change of the reader's primary pointer to one pointing as precisely as
+/// `precision` says.
+pub fn trigger_pointer_precision(precision: PointerPrecision) {
+  trigger(|| {
+    let write = with_store(|store| {
+      store.pointer = Some(precision);
+
+      store.media().set_pointer
+    });
+
+    write.set(precision);
+  });
+}
+
+/// Simulates a change of the reader's primary pointer to one that hovers, or not.
+pub fn trigger_pointer_hovers(hovers: bool) {
+  trigger(|| {
+    let write = with_store(|store| {
+      store.hover = Some(hovers);
+
+      store.media().set_hover
+    });
+
+    write.set(hovers);
   });
 }
 

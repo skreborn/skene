@@ -11,7 +11,7 @@
 //! returns to following the platform. [`stored_scheme`] reads the choice a previous
 //! visit stored, so an app's setting starts where the page already is.
 
-use skene_core::ColorScheme;
+use skene_core::{ColorScheme, PointerPrecision};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{ActivePlatform, Media, Size};
@@ -44,6 +44,20 @@ pub fn reduced_transparency() -> ReadSignal<bool> {
 #[inline(always)]
 pub fn high_contrast() -> ReadSignal<bool> {
   skene_common::media::high_contrast::<ActivePlatform>()
+}
+
+/// How precisely the reader's primary pointer points; a fine one before the bundle
+/// arrives, no request header saying.
+#[inline(always)]
+pub fn pointer() -> ReadSignal<PointerPrecision> {
+  skene_common::media::pointer::<ActivePlatform>()
+}
+
+/// Whether the reader's primary pointer hovers; it does before the bundle arrives, no
+/// request header saying.
+#[inline(always)]
+pub fn hover() -> ReadSignal<bool> {
+  skene_common::media::hover::<ActivePlatform>()
 }
 
 /// Whether the page stands hydrated, as a signal.

@@ -3,7 +3,16 @@
 
 use std::fmt::Write as _;
 
-use skene_core::{ColorScheme, Composable, Condition, ContainerName, ContainerQuery, Media, State};
+use skene_core::{
+  ColorScheme,
+  Composable,
+  Condition,
+  ContainerName,
+  ContainerQuery,
+  Media,
+  PointerPrecision,
+  State,
+};
 
 /// The class-name placeholder inside a rule template, replaced once the interner assigns
 /// the content-addressed name.
@@ -118,6 +127,15 @@ impl Conjunction {
         .media
         .push("(prefers-reduced-transparency: reduce)".to_owned()),
       Media::HighContrast => self.media.push("(prefers-contrast: more)".to_owned()),
+      Media::Pointer(precision) => self.media.push(
+        match precision {
+          PointerPrecision::Fine => "(pointer: fine)",
+          PointerPrecision::Coarse => "(pointer: coarse)",
+          PointerPrecision::Absent => "(pointer: none)",
+        }
+        .to_owned(),
+      ),
+      Media::Hover => self.media.push("(hover: hover)".to_owned()),
       Media::Container { name, query } => {
         let name = name.map(|ContainerName(name)| name);
         let query = match query {

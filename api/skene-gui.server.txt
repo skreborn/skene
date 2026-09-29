@@ -95,7 +95,9 @@ pub fn skene_gui::head::set_title(impl core::convert::Into<alloc::string::String
 pub mod skene_gui::media
 pub fn skene_gui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::hover() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_gui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
@@ -144,6 +146,7 @@ pub use skene_gui::prelude::NoChild
 pub use skene_gui::prelude::Overflow
 pub use skene_gui::prelude::Owner
 pub use skene_gui::prelude::Placement
+pub use skene_gui::prelude::PointerPrecision
 pub use skene_gui::prelude::ReadSignal
 pub use skene_gui::prelude::Role
 pub use skene_gui::prelude::Set
@@ -187,7 +190,9 @@ pub fn skene_gui::Lazy::build(self) -> skene_core::node::NodeId
 pub mod skene_gui::prelude::media
 pub fn skene_gui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_gui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::hover() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_gui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>

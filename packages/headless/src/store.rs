@@ -22,6 +22,7 @@ use skene_core::{
   OverlayProps,
   PickerOption,
   Point,
+  PointerPrecision,
   PropertyKey,
   RunProps,
   Size,
@@ -168,6 +169,8 @@ pub(crate) struct MediaState {
   pub set_reduced_motion: WriteSignal<bool>,
   pub set_reduced_transparency: WriteSignal<bool>,
   pub set_high_contrast: WriteSignal<bool>,
+  pub set_pointer: WriteSignal<PointerPrecision>,
+  pub set_hover: WriteSignal<bool>,
   pub set_hydrated: WriteSignal<bool>,
   pub set_graphics: WriteSignal<bool>,
   pub hydrated: ReadSignal<bool>,
@@ -203,6 +206,10 @@ pub(crate) struct Store {
   pub reduced_transparency: Option<bool>,
   /// Whether the reader prefers more contrast, as set; not unless set.
   pub high_contrast: Option<bool>,
+  /// How precisely the reader's primary pointer points, as set; finely unless set.
+  pub pointer: Option<PointerPrecision>,
+  /// Whether the reader's primary pointer hovers, as set; it does unless set.
+  pub hover: Option<bool>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   /// The document's language, as last set.
@@ -239,6 +246,8 @@ impl Default for Store {
       reduced_motion: None,
       reduced_transparency: None,
       high_contrast: None,
+      pointer: None,
+      hover: None,
       clock: 0.,
       language: None,
       head: Head::default(),
@@ -334,6 +343,8 @@ impl Store {
       reduced_motion: self.reduced_motion.unwrap_or(false),
       reduced_transparency: self.reduced_transparency.unwrap_or(false),
       high_contrast: self.high_contrast.unwrap_or(false),
+      pointer: self.pointer.unwrap_or_default(),
+      hover: self.hover.unwrap_or(true),
     }
   }
 
@@ -344,6 +355,8 @@ impl Store {
     let reduced_motion = self.reduced_motion.unwrap_or(false);
     let reduced_transparency = self.reduced_transparency.unwrap_or(false);
     let high_contrast = self.high_contrast.unwrap_or(false);
+    let pointer = self.pointer.unwrap_or_default();
+    let hover = self.hover.unwrap_or(true);
     let hydrated = self.hydrated.unwrap_or(true);
     let graphics = self.graphics.unwrap_or(true);
 
@@ -357,6 +370,8 @@ impl Store {
         let (reduced_transparency, set_reduced_transparency) =
           Signal::opaque(reduced_transparency).split();
         let (high_contrast, set_high_contrast) = Signal::opaque(high_contrast).split();
+        let (pointer, set_pointer) = Signal::opaque(pointer).split();
+        let (hover, set_hover) = Signal::opaque(hover).split();
         let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
@@ -367,6 +382,8 @@ impl Store {
           set_reduced_motion,
           set_reduced_transparency,
           set_high_contrast,
+          set_pointer,
+          set_hover,
           set_hydrated,
           set_graphics,
           hydrated,
@@ -377,6 +394,8 @@ impl Store {
             reduced_motion,
             reduced_transparency,
             high_contrast,
+            pointer,
+            hover,
             container_sizes: ContainerSizes::new(),
           },
         }

@@ -10,7 +10,7 @@
 //! [`derive_scheme`] tell the platform which scheme paints, touching no node, and `None`
 //! returns to following the detected background.
 
-use skene_core::ColorScheme;
+use skene_core::{ColorScheme, PointerPrecision};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{ActivePlatform, Media, Size};
@@ -46,6 +46,19 @@ pub fn reduced_transparency() -> ReadSignal<bool> {
 #[inline(always)]
 pub fn high_contrast() -> ReadSignal<bool> {
   skene_common::media::high_contrast::<ActivePlatform>()
+}
+
+/// How precisely the reader's primary pointer points: finely, the mouse, where the
+/// app takes the mouse, and absent where it does not.
+#[inline(always)]
+pub fn pointer() -> ReadSignal<PointerPrecision> {
+  skene_common::media::pointer::<ActivePlatform>()
+}
+
+/// Whether the reader's primary pointer hovers: where the app takes the mouse.
+#[inline(always)]
+pub fn hover() -> ReadSignal<bool> {
+  skene_common::media::hover::<ActivePlatform>()
 }
 
 /// Whether `media` holds, as a memo following the environment. A container condition

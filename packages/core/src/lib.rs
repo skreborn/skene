@@ -81,6 +81,7 @@ pub use condition::{
   Environment,
   Media,
   MediaEnv,
+  PointerPrecision,
   State,
 };
 pub use control::{ControlKind, ControlProps, ControlState, Part, PickerOption, Ring, SliderRange};

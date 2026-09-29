@@ -32,6 +32,7 @@ use skene_core::{
   OverlayProps,
   Placement,
   Platform,
+  PointerPrecision,
   RunProps,
   RunValue,
   Scene,
@@ -255,6 +256,8 @@ impl Platform for Reentrant {
             reduced_motion: Signal::opaque(false).read_only(),
             reduced_transparency: Signal::opaque(false).read_only(),
             high_contrast: Signal::opaque(false).read_only(),
+            pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
+            hover: Signal::opaque(true).read_only(),
             container_sizes: ContainerSizes::new(),
           });
 

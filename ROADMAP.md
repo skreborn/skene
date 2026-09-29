@@ -43,9 +43,8 @@ left half-done in a code comment.
     keyframes for a property missing at 0% or 100%, interpolating from the underlying
     value as CSS does where the first frame holds today, and CSS's reversing shortening
     for an interrupted transition.
-    - The `Environment` gains the pointer's capability (fine, coarse or none, and
-    whether it hovers) and the safe-area insets, as facts every platform reports and
-    `Media` conditions test.
+    - The `Environment` gains the safe-area insets, as a fact every platform reports
+    and a length can read.
     - Runs and boxes: a group redefines every token it sets, its type metrics too, which
     the terminal's spans read from the typography where the web inherits them; a group
     run's state variants reach its spans, as a rule on the group's class redefining the

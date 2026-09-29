@@ -14,6 +14,7 @@ use super::{
   Media,
   MediaEnv,
   Platform,
+  PointerPrecision,
   RunDynamics,
   RunStyle,
   Scalar,
@@ -185,6 +186,10 @@ pub struct MediaSignals<N: 'static> {
   pub reduced_transparency: ReadSignal<bool>,
   /// Whether the reader prefers more contrast.
   pub high_contrast: ReadSignal<bool>,
+  /// How precisely the reader's primary pointer points.
+  pub pointer: ReadSignal<PointerPrecision>,
+  /// Whether the reader's primary pointer hovers.
+  pub hover: ReadSignal<bool>,
   /// The measured sizes of the named query containers.
   pub container_sizes: ContainerSizes<N>,
 }
@@ -198,6 +203,8 @@ impl<N: Clone + 'static> MediaSignals<N> {
       reduced_motion: self.reduced_motion.get(),
       reduced_transparency: self.reduced_transparency.get(),
       high_contrast: self.high_contrast.get(),
+      pointer: self.pointer.get(),
+      hover: self.hover.get(),
     }
   }
 }

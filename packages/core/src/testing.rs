@@ -44,6 +44,7 @@ use crate::{
   FocusOrder,
   Length,
   PointerEvent,
+  PointerPrecision,
   Size,
   TextSelection,
 };
@@ -253,6 +254,8 @@ impl Platform for TestPlatform {
         reduced_motion: Signal::opaque(false).read_only(),
         reduced_transparency: Signal::opaque(false).read_only(),
         high_contrast: Signal::opaque(false).read_only(),
+        pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
+        hover: Signal::opaque(true).read_only(),
         container_sizes: ContainerSizes::new(),
       })
     })

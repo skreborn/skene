@@ -89,6 +89,8 @@ pub use skene_tui::typography
 pub mod skene_tui::media
 pub fn skene_tui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::media::hover() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_tui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
@@ -138,6 +140,7 @@ pub use skene_tui::prelude::NoChild
 pub use skene_tui::prelude::Overflow
 pub use skene_tui::prelude::Owner
 pub use skene_tui::prelude::Placement
+pub use skene_tui::prelude::PointerPrecision
 pub use skene_tui::prelude::ReadSignal
 pub use skene_tui::prelude::Resource
 pub use skene_tui::prelude::Role
@@ -212,6 +215,8 @@ pub fn skene_tui::prelude::launch::launch<V, F>(F) where F: core::ops::function:
 pub mod skene_tui::prelude::media
 pub fn skene_tui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
 pub fn skene_tui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::prelude::media::hover() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_tui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>

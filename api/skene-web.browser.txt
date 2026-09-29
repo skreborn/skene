@@ -57,6 +57,8 @@ pub fn skene_web::LazyRegion::fmt(&self, &mut core::fmt::Formatter<'_>) -> core:
 impl core::marker::StructuralPartialEq for skene_web::LazyRegion
 pub struct skene_web::RenderHints
 pub skene_web::RenderHints::device_pixel_ratio: f32
+pub skene_web::RenderHints::hover: bool
+pub skene_web::RenderHints::pointer: skene_core::condition::PointerPrecision
 pub skene_web::RenderHints::reduced_motion: bool
 pub skene_web::RenderHints::reduced_transparency: bool
 pub skene_web::RenderHints::scheme: skene_core::values::color::ColorScheme

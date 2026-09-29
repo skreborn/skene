@@ -1,13 +1,14 @@
 //! The environment a server render answers with, parsed from the client hints a
 //! request carries.
 
-use skene_core::{ColorScheme, Size};
+use skene_core::{ColorScheme, PointerPrecision, Size};
 
 /// The environment a render answers with: what the client hints say, else the
 /// defaults.
 ///
 /// Without hints a render assumes a 1024 by 768 viewport, the light scheme, no
-/// reduced-motion or reduced-transparency preference and a device pixel ratio of one.
+/// reduced-motion or reduced-transparency preference, a fine pointer that hovers and a
+/// device pixel ratio of one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct RenderHints {
@@ -19,6 +20,10 @@ pub struct RenderHints {
   pub reduced_motion: bool,
   /// Whether the reader prefers reduced transparency.
   pub reduced_transparency: bool,
+  /// How precisely the reader's primary pointer points; no request header says.
+  pub pointer: PointerPrecision,
+  /// Whether the reader's primary pointer hovers; no request header says.
+  pub hover: bool,
   /// The device pixels per logical pixel.
   pub device_pixel_ratio: f32,
 }
@@ -30,6 +35,8 @@ impl RenderHints {
     scheme: ColorScheme::Light,
     reduced_motion: false,
     reduced_transparency: false,
+    pointer: PointerPrecision::Fine,
+    hover: true,
     device_pixel_ratio: 1.,
   };
 

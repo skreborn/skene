@@ -20,11 +20,8 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The web's highest-traffic defects.**
-    - The CLI's client-rendered shell and its script injector fold into the document
-    template in `skene-web`, which gains preloads and the dev script under a flag, the
-    boot script carrying the render's script nonce as the scheme script does; head
-    entries are owner-scoped and keyed, with a title stack, deduped once in shared
-    code, so a route's description and stylesheet leave with it and both leaves
+    - Head entries are owner-scoped and keyed, with a title stack, deduped once in
+    shared code, so a route's description and stylesheet leave with it and both leaves
     serialize them alike.
     - A wrapper's per-child properties reach everything its child produces: a derived
     one reaches a run on the web as a slot, as it reaches a box; a low-level node's

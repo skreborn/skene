@@ -2317,6 +2317,7 @@ dependencies = [
  "percent-encoding",
  "rustix",
  "serde",
+ "skene-web",
  "toml",
  "url",
  "walkdir",

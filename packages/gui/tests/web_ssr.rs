@@ -1073,6 +1073,42 @@ fn an_inline_script_carries_the_renders_nonce() {
   assert!(!render_to_string(app).page().contains("nonce="));
 }
 
+/// A page boots and preloads the client bundle it was given, and in the dev loop
+/// carries the dev script, every inline script under the render's nonce.
+#[test]
+fn a_page_boots_its_bundle_under_the_nonce() {
+  web::set_client_bundle(Some("app"));
+  web::set_dev_loop(true);
+  web::set_script_nonce(Some("n0"));
+
+  let page = render_to_string(|| Text::new("x")).page();
+
+  web::set_client_bundle(None);
+  web::set_dev_loop(false);
+  web::set_script_nonce(None);
+
+  assert!(
+    page.contains("<link rel=\"modulepreload\" href=\"/app.js\">"),
+    "{page}"
+  );
+  assert!(
+    page.contains("<meta name=\"skene-dev\"><script nonce=\"n0\">"),
+    "{page}"
+  );
+  assert!(
+    page.ends_with(
+      "<script type=\"module\" nonce=\"n0\">import init from \"/app.js\";init();</script>\
+       </body></html>"
+    ),
+    "{page}"
+  );
+
+  let bare = render_to_string(|| Text::new("x")).page();
+
+  assert!(!bare.contains("<script type=\"module\""), "{bare}");
+  assert!(!bare.contains("skene-dev"), "{bare}");
+}
+
 /// A head registration is an element a head holds, with real attribute names.
 #[test]
 #[should_panic(expected = "a head element is one of")]

@@ -469,6 +469,11 @@ pub const HINTS_VARIABLE: &str = "SKENE_HINTS";
 #[cfg(skene_leaf = "server")]
 pub const NONCE_VARIABLE: &str = "SKENE_SCRIPT_NONCE";
 
+/// The environment variable that, set, makes the pages join the dev loop of
+/// `skene run web`; see [`set_dev_loop`](skene_web::set_dev_loop).
+#[cfg(skene_leaf = "server")]
+pub const DEV_VARIABLE: &str = "SKENE_DEV";
+
 /// The first line and the last of `--routes` output, the routes one per line between.
 #[cfg(skene_leaf = "server")]
 pub const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
@@ -484,7 +489,8 @@ const USAGE: &str = "usage: app-server [path | --stream path | --routes | --serv
   --help          print this
 
 SKENE_HINTS names the client hints a render answers with, one `Name: value` per
-line; SKENE_SCRIPT_NONCE the nonce its inline scripts carry.";
+line; SKENE_SCRIPT_NONCE the nonce its inline scripts carry; SKENE_DEV, set, makes
+the pages join the dev loop.";
 
 /// The server entry `#[main]` expands to: renders the path given as the first argument
 /// (default `/`) and writes the complete page to stdout—or, given `--routes`, writes
@@ -492,14 +498,16 @@ line; SKENE_SCRIPT_NONCE the nonce its inline scripts carry.";
 /// [`install_static_router`]), or, given `--stream <path>`, writes the page as
 /// [`render_page_stream`] flushes it, or, given `--serve`, renders one request after
 /// another read from stdin (see [`serve_renders`]), or, given `--help`, prints its
-/// usage. The client hints in [`HINTS_VARIABLE`], when set, are the environment the
-/// render answers with, and the nonce in [`NONCE_VARIABLE`] its inline scripts carry;
+/// usage. Every page boots and preloads the client `bundle`, the name wasm-bindgen gave
+/// the app's files. The client hints in [`HINTS_VARIABLE`], when set, are the
+/// environment the render answers with, the nonce in [`NONCE_VARIABLE`] its inline
+/// scripts carry, and [`DEV_VARIABLE`], set, makes the pages join the dev loop;
 /// `tracing` events, a render's deadline report among them, go to stderr.
 ///
 /// This makes the app's server build a plain command—`app-server /some/path` prints
 /// the document—which is exactly the interface a server or a generator embeds.
 #[cfg(skene_leaf = "server")]
-pub fn render_main<V, F>(app: F)
+pub fn render_main<V, F>(bundle: &str, app: F)
 where
   F: Fn() -> V + Clone + 'static,
   V: IntoView,
@@ -507,6 +515,8 @@ where
   use std::io::Write as _;
 
   skene_web::install_logging();
+  skene_web::set_client_bundle(Some(bundle));
+  skene_web::set_dev_loop(std::env::var_os(DEV_VARIABLE).is_some());
 
   if matches!(std::env::args().nth(1).as_deref(), Some("--help" | "-h")) {
     println!("{USAGE}");

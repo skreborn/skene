@@ -105,10 +105,11 @@ use super::{
 };
 use crate::{
   Declarations,
+  Document,
   RESET_CSS,
   RenderHints,
   WebMarkup,
-  hydration::STATE_SCRIPT_ID,
+  document::{escape_attr, escape_text, push_script, state_script},
   interner::ClassInterner,
 };
 
@@ -624,9 +625,14 @@ impl Tree {
     let mut out = String::new();
 
     if PREEMPT_SCHEME.with(Cell::get) {
-      open_script(&mut out);
-      out.push_str(PREEMPT_SCHEME_SCRIPT);
-      out.push_str("</script>");
+      SCRIPT_NONCE.with(|nonce| {
+        push_script(
+          &mut out,
+          nonce.borrow().as_deref(),
+          false,
+          PREEMPT_SCHEME_SCRIPT,
+        );
+      });
     }
 
     if let Some(title) = &self.title {
@@ -802,6 +808,10 @@ thread_local! {
   static REQUEST_PATH: RefCell<String> = RefCell::new("/".to_owned());
   /// The nonce the renders' inline scripts carry, if any.
   static SCRIPT_NONCE: RefCell<Option<String>> = const { RefCell::new(None) };
+  /// The client bundle the renders' pages boot, if any.
+  static CLIENT_BUNDLE: RefCell<Option<String>> = const { RefCell::new(None) };
+  /// Whether the renders' pages join the dev loop.
+  static DEV_LOOP: Cell<bool> = const { Cell::new(false) };
   /// The statically-renderable routes the app recorded during the last render.
   static STATIC_ROUTES: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
   /// Each deferred boundary's start anchor, mapped to a probe for whether its content
@@ -824,19 +834,26 @@ pub fn set_script_nonce(nonce: Option<&str>) {
   SCRIPT_NONCE.with(|current| *current.borrow_mut() = nonce.map(str::to_owned));
 }
 
-/// The opening of an inline script, carrying the renders' nonce where one is set.
-fn open_script(out: &mut String) {
-  out.push_str("<script");
+/// Sets the client bundle the following renders' pages boot and preload: the name
+/// wasm-bindgen gave its files, served from the site root; `None` for none.
+pub fn set_client_bundle(bundle: Option<&str>) {
+  CLIENT_BUNDLE.with(|current| *current.borrow_mut() = bundle.map(str::to_owned));
+}
 
-  SCRIPT_NONCE.with(|nonce| {
-    if let Some(nonce) = &*nonce.borrow() {
-      out.push_str(" nonce=\"");
-      escape_attr(nonce, out);
-      out.push('"');
-    }
-  });
+/// Sets whether the following renders' pages join the dev loop of `skene run web`,
+/// carrying its marker and its script.
+pub fn set_dev_loop(dev: bool) {
+  DEV_LOOP.with(|current| current.set(dev));
+}
 
-  out.push('>');
+/// The document the following renders' pages are served as, in `language`.
+fn served_document(language: Option<&str>) -> Document {
+  Document {
+    language: language.map(str::to_owned),
+    bundle: CLIENT_BUNDLE.with(|bundle| bundle.borrow().clone()),
+    nonce: SCRIPT_NONCE.with(|nonce| nonce.borrow().clone()),
+    dev: DEV_LOOP.with(Cell::get),
+  }
 }
 
 /// Routes `tracing` events to standard error, a render's deadline report among them,
@@ -885,31 +902,6 @@ fn push_style_text(out: &mut String, text: &str) {
   }
 
   out.push_str(rest);
-}
-
-/// Appends `text` with the characters HTML text content reserves escaped.
-fn escape_text(text: &str, out: &mut String) {
-  for character in text.chars() {
-    match character {
-      '&' => out.push_str("&amp;"),
-      '<' => out.push_str("&lt;"),
-      '>' => out.push_str("&gt;"),
-      other => out.push(other),
-    }
-  }
-}
-
-/// Appends `value` with the characters an HTML attribute value reserves escaped.
-fn escape_attr(value: &str, out: &mut String) {
-  for character in value.chars() {
-    match character {
-      '&' => out.push_str("&amp;"),
-      '<' => out.push_str("&lt;"),
-      '>' => out.push_str("&gt;"),
-      '"' => out.push_str("&quot;"),
-      other => out.push(other),
-    }
-  }
 }
 
 /// Runs `operation` on the tree.
@@ -1507,44 +1499,19 @@ pub fn set_document_language(language: &str) {
   with_tree(|tree| tree.language = Some(language.to_owned()));
 }
 
-/// The opening of a served document up to its body's content: the doctype, the root in
-/// `language` when one is set, and the head, which starts with the character set and
-/// the viewport and holds `head` and `styles` after them.
+/// The opening of a served document up to its body's content, in `language` when one
+/// is set: see [`Document::opening`], the document carrying the bundle, the dev loop
+/// and the nonce set for the renders.
 #[must_use]
 pub fn document_opening(language: Option<&str>, head: &str, styles: &str) -> String {
-  let mut out = String::from("<!DOCTYPE html><html");
-
-  if let Some(language) = language {
-    out.push_str(" lang=\"");
-    escape_attr(language, &mut out);
-    out.push('"');
-  }
-
-  out.push_str(
-    "><head><meta charset=\"utf-8\"><meta name=\"viewport\" \
-     content=\"width=device-width, initial-scale=1\">",
-  );
-  out.push_str(head);
-  out.push_str(styles);
-  out.push_str("</head><body>");
-
-  out
+  served_document(language).opening(head, styles)
 }
 
-/// The closing of a served document: the hydration `state` in the script the client
-/// reads it from, and the end of the body and the document.
+/// The closing of a served document from the hydration `state`: see
+/// [`Document::closing`].
 #[must_use]
 pub fn document_closing(state: &str) -> String {
-  format!("{}</body></html>", state_script(state))
-}
-
-/// The script element carrying the hydration `state`, its markup escaped so it closes
-/// nothing: what a page of an app's own embeds for the client to read.
-fn state_script(state: &str) -> String {
-  format!(
-    "<script id=\"{STATE_SCRIPT_ID}\" type=\"application/json\">{}</script>",
-    state.replace('<', "\\u003c"),
-  )
+  served_document(None).closing(Some(state))
 }
 
 /// Adds an element to the page head, serialized in registration order.

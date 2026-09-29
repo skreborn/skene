@@ -16,54 +16,9 @@ use crate::manifest::App;
 /// The message format a build reports its artifacts in, its diagnostics rendered.
 const MESSAGE_FORMAT: &str = "--message-format=json-render-diagnostics";
 
-/// The dev additions to the generated page: the marker the framework's boot handshake
-/// looks for, and the script that keeps the state snapshot in the page's own storage
-/// across a reload—the origin private file system on the server's say-so, and session
-/// storage as the best effort on a reload the reader made—and hands it back at boot.
-const DEV_PAGE_ADDITIONS: &str = "<meta name=\"skene-dev\"><script>(() => {\n\
-  const FILE = \"skene-state\";\n\
-  const root = () => navigator.storage.getDirectory();\n\
-  const encode = (bytes) => {\n\
-    let text = \"\";\n\
-    for (let at = 0; at < bytes.length; at += 8192) text += String.fromCharCode(...bytes.subarray(at, at + 8192));\n\
-    return btoa(text);\n\
-  };\n\
-  window.skene_state = async () => {\n\
-    try {\n\
-      const directory = await root();\n\
-      const file = await (await directory.getFileHandle(FILE)).getFile();\n\
-      const bytes = new Uint8Array(await file.arrayBuffer());\n\
-      await directory.removeEntry(FILE);\n\
-      return bytes;\n\
-    } catch {}\n\
-    try {\n\
-      const text = sessionStorage.getItem(FILE);\n\
-      if (text) {\n\
-        sessionStorage.removeItem(FILE);\n\
-        return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));\n\
-      }\n\
-    } catch {}\n\
-    return null;\n\
-  };\n\
-  const save = async () => {\n\
-    if (!window.skene_snapshot) return;\n\
-    const handle = await (await root()).getFileHandle(FILE, { create: true });\n\
-    const writable = await handle.createWritable();\n\
-    await writable.write(window.skene_snapshot());\n\
-    await writable.close();\n\
-  };\n\
-  addEventListener(\"pagehide\", () => {\n\
-    if (!window.skene_snapshot) return;\n\
-    try { sessionStorage.setItem(FILE, encode(window.skene_snapshot())); } catch {}\n\
-  });\n\
-  new EventSource(\"/skene:reload\").onmessage = () => {\n\
-    save().catch(() => {}).finally(() => location.reload());\n\
-  };\n\
-})();</script>";
 /// Builds the app's browser wasm, generates its bindings, writes the boot page and
 /// copies the assets—all into `<app>/dist/web`, replacing the folder wholesale, which
-/// deploys as a site's root. A dev build's page carries the dev marker and the reload
-/// script.
+/// deploys as a site's root. A dev build's page joins the dev loop.
 pub fn build_web(app: &App, release: bool, dev: bool) -> Result<(), String> {
   let wasm = build_wasm(app, release)?;
 
@@ -81,28 +36,21 @@ fn clear_web_out(app: &App) {
   let _ = fs::remove_dir_all(app.dir.join("dist/web"));
 }
 
-/// Writes the generated CSR boot page: the module import of the generated bindings,
-/// initialized on load.
+/// Writes the generated CSR boot page: the web platform's document around an empty
+/// body, titled after the package, booting the bundle and, in `dev`, joining the dev
+/// loop.
 fn write_page(app: &App, dev: bool) -> Result<(), String> {
-  let additions = if dev { DEV_PAGE_ADDITIONS } else { "" };
-  let page = format!(
-    "<!DOCTYPE html>\n\
-     <html>\n\
-       <head>\n\
-         <meta charset=\"utf-8\">\n\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
-         <title>{package}</title>{additions}\n\
-       </head>\n\
-       <body>\n\
-         <script type=\"module\">\n\
-           import init from \"/{stem}.js\";\n\n\
-           init();\n\
-         </script>\n\
-       </body>\n\
-     </html>\n",
-    package = app.package,
-    stem = app.stem,
-  );
+  let document = skene_web::Document {
+    bundle: Some(app.stem.clone()),
+    dev,
+    ..skene_web::Document::default()
+  };
+  let mut title = String::from("<title>");
+
+  title.push_str(&app.package);
+  title.push_str("</title>");
+
+  let page = document.opening(&title, "") + &document.closing(None);
 
   fs::write(app.dir.join("dist/web/index.html"), page).map_err(|error| error.to_string())
 }
@@ -377,7 +325,7 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
   generate_bindings(app, &wasm)?;
   crate::split::split_web(app, &wasm)?;
 
-  let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone())?;
+  let mut renderer = crate::render::Renderer::load(artifact, app.dir.clone(), false)?;
   // No explicit routes: render every route the app enumerates (see
   // `install_static_router`), or the root alone.
   let routes = if routes.is_empty() {
@@ -404,26 +352,9 @@ pub fn build_static(app: &App, routes: &[String], release: bool) -> Result<(), S
 
     let file = directory.join("index.html");
 
-    fs::write(&file, inject_client(&page, &app.stem)).map_err(|error| error.to_string())?;
+    fs::write(&file, page).map_err(|error| error.to_string())?;
     println!("rendered {route} -> {}", file.display());
   }
 
   app.copy_assets(out)
-}
-
-/// Adds the client bundle's boot script to a rendered page: the content stands on its
-/// own as markup, and the script hydrates it into the running app when it runs.
-pub fn inject_client(page: &str, stem: &str) -> String {
-  let script = format!("<script type=\"module\">import init from \"/{stem}.js\"; init();</script>");
-
-  match page.rfind("</body>") {
-    Some(position) => {
-      let mut out = page.to_owned();
-
-      out.insert_str(position, &script);
-
-      out
-    }
-    None => format!("{page}{script}"),
-  }
 }

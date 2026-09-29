@@ -449,7 +449,7 @@ fn handle_request(mut stream: TcpStream, app: &App, dev: Option<&Dev>) {
             "200 OK",
             "text/html; charset=utf-8",
             &hint_response_headers(),
-            crate::pipeline::inject_client(&page, &app.stem).as_bytes(),
+            page.as_bytes(),
           );
         }
         Some(Err(error)) => {

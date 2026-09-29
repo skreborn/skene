@@ -25,6 +25,8 @@ mod condition;
 #[cfg(skene_leaf = "browser")]
 mod csr;
 mod declarations;
+#[cfg(not(skene_leaf = "browser"))]
+mod document;
 mod escape;
 mod expr;
 #[cfg(skene_leaf = "browser")]
@@ -77,6 +79,8 @@ pub use self::csr::{
   view_transitions_enabled,
   watch_media,
 };
+#[cfg(not(skene_leaf = "browser"))]
+pub use self::document::Document;
 #[cfg(skene_leaf = "browser")]
 pub use self::escape::WebDom;
 #[cfg(not(skene_leaf = "host"))]
@@ -107,6 +111,8 @@ pub use self::ssr::{
   register_boundary,
   render_to_stream_with,
   render_to_string,
+  set_client_bundle,
+  set_dev_loop,
   set_document_language,
   set_document_title,
   set_render_deadline,

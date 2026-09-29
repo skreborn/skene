@@ -212,11 +212,12 @@ mod host {
     serve(&app, port, Some(&dev))
   }
 
-  /// Builds the app's server binary and starts it as a render worker.
+  /// Builds the app's server binary and starts it as a render worker whose pages join
+  /// the dev loop.
   fn load_renderer(app: &App, release: bool) -> Result<crate::render::Renderer, String> {
     let artifact = pipeline::build_server(app, release)?;
 
-    crate::render::Renderer::load(artifact, app.dir.clone())
+    crate::render::Renderer::load(artifact, app.dir.clone(), true)
   }
 
   /// The terminal build loop: build, publish the binary for an attached terminal, and

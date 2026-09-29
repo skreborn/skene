@@ -14,6 +14,10 @@ use std::{
 /// own settling deadline, after which it serializes what it has.
 const RENDER_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// The environment variable that, set, makes the server binary's pages join the dev
+/// loop; the binary's `DEV_VARIABLE`.
+const DEV_VARIABLE: &str = "SKENE_DEV";
+
 /// The first line and the last of the server binary's `--routes` output, the routes
 /// between; the binary's `ROUTES_MARKERS`.
 const ROUTES_MARKERS: [&str; 2] = ["--skene-routes--", "--skene-routes-end--"];
@@ -41,6 +45,7 @@ pub const fn hint_response_headers() -> [(&'static str, &'static str); 3] {
 pub struct Renderer {
   binary: PathBuf,
   dir: PathBuf,
+  dev: bool,
   worker: Option<Worker>,
 }
 
@@ -53,12 +58,20 @@ struct Worker {
 }
 
 impl Worker {
-  fn spawn(binary: &Path, dir: &Path) -> Result<Self, String> {
-    let mut child = Command::new(binary)
+  fn spawn(binary: &Path, dir: &Path, dev: bool) -> Result<Self, String> {
+    let mut command = Command::new(binary);
+
+    command
       .arg("--serve")
       .current_dir(dir)
       .stdin(Stdio::piped())
-      .stdout(Stdio::piped())
+      .stdout(Stdio::piped());
+
+    if dev {
+      command.env(DEV_VARIABLE, "1");
+    }
+
+    let mut child = command
       .spawn()
       .map_err(|error| format!("{}: {error}", binary.display()))?;
     let stdin = child.stdin.take().ok_or("the worker has no stdin")?;
@@ -140,17 +153,19 @@ impl Drop for Worker {
 }
 
 impl Renderer {
-  /// Spawns the server binary at `binary` in `dir` as a render worker.
+  /// Spawns the server binary at `binary` in `dir` as a render worker, whose pages join
+  /// the dev loop in `dev`.
   ///
   /// # Errors
   ///
   /// Fails when the binary cannot be spawned.
-  pub fn load(binary: PathBuf, dir: PathBuf) -> Result<Self, String> {
-    let worker = Worker::spawn(&binary, &dir)?;
+  pub fn load(binary: PathBuf, dir: PathBuf, dev: bool) -> Result<Self, String> {
+    let worker = Worker::spawn(&binary, &dir, dev)?;
 
     Ok(Self {
       binary,
       dir,
+      dev,
       worker: Some(worker),
     })
   }
@@ -170,7 +185,7 @@ impl Renderer {
     let hints = hint_lines(headers);
 
     if self.worker.is_none() {
-      self.worker = Some(Worker::spawn(&self.binary, &self.dir)?);
+      self.worker = Some(Worker::spawn(&self.binary, &self.dir, self.dev)?);
     }
 
     let outcome = self

@@ -952,16 +952,20 @@ what to render. The router depends on the engine alone.
 
 Server-side rendering is a *capability*, not a server: `render_to_string` /
 `render_to_stream` produce the parts (styles, body, state) or ordered chunks, and
-`Rendered::page` assembles a document. The app's server binary is built natively with the
+`Rendered::page` assembles a document. One template, `skene_web::Document`, writes every
+page, the CLI's client-rendered shell among them: the head preloads the client bundle,
+the body ends in the hydration state and the module script booting the bundle, a page
+in the dev loop carries the dev marker and the dev script, and every inline script
+carries the render's nonce. The app's server binary is built natively with the
 server platform named (`skene build web --static` and `skene run web --ssr` do it, for
 the host target alone so build scripts and proc macros never see the cfg; by hand,
 `RUSTFLAGS='--cfg skene_platform="server"' cargo build --bin app-server`), and
-`#[main]` makes it a plain command: `app-server /path` prints the page, `--routes` the
-enumerable routes, `--stream /path` the page as it flushes, and `--serve` renders one
-request after another read from stdin—the path, the hint headers, an empty line—so a
-user's server runs it as a command or embeds `render_to_string` directly, hands each
-request's headers to the render as `RenderHints` and names the response headers that
-request them. A render occupies the thread it runs on, since the runtime and the scene are
+`#[main]` makes it a plain command booting its own crate's bundle: `app-server /path`
+prints the page, `--routes` the enumerable routes, `--stream /path` the page as it
+flushes, and `--serve` renders one length-framed request after another read from
+stdin—the path, then the hint headers and the nonce—so a user's server runs it as a
+command or embeds `render_to_string` directly, hands each request's headers to the
+render as `RenderHints` and names the response headers that request them. A render occupies the thread it runs on, since the runtime and the scene are
 that thread's, and starts from a clean one every time. SSG is the same binary run at build
 time by `skene build web --static`; the CLI's dev server (`skene run web`, `--ssr` to
 render per request through a `--serve` worker) is where the development conveniences

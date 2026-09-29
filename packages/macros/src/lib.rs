@@ -44,7 +44,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
       ::skene_gui::launch(#name);
 
       #[cfg(skene_platform = "server")]
-      ::skene_gui::render_main(#name);
+      ::skene_gui::render_main(env!("CARGO_CRATE_NAME"), #name);
 
       #[cfg(not(any(all(target_arch = "wasm32", target_os = "unknown"), skene_platform = "server")))]
       ::skene_gui::launch(#name);

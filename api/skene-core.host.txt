@@ -2525,6 +2525,7 @@ impl<N: skene_core::Scalar> core::default::Default for skene_core::ContainerSize
 pub fn skene_core::ContainerSizes<N>::default() -> Self
 pub struct skene_core::ControlProps<P: skene_core::Platform>
 pub skene_core::ControlProps::box_props: skene_core::BoxProps<P>
+pub skene_core::ControlProps::drags: bool
 pub skene_core::ControlProps::kind: skene_core::ControlKind
 pub skene_core::ControlProps::label: core::option::Option<alloc::string::String>
 pub skene_core::ControlProps::label_beside: bool

@@ -508,7 +508,7 @@ impl Store {
       return None;
     }
 
-    if matches!(self.drag, Some(Drag::Scrollbar { .. })) || self.drags_range() {
+    if matches!(self.drag, Some(Drag::Scrollbar { .. })) || self.drags_control() {
       return Some(MouseCursor::Grabbing);
     }
 
@@ -531,9 +531,12 @@ impl Store {
         return Some(cursor);
       }
 
+      if self.drags(*handle) {
+        return Some(MouseCursor::Grab);
+      }
+
       match control_kind(self, *handle) {
         Some(ControlKind::TextField | ControlKind::TextEditor) => return Some(MouseCursor::Text),
-        Some(ControlKind::Range) => return Some(MouseCursor::Grab),
         Some(_) => return Some(MouseCursor::Click),
         None => {}
       }
@@ -549,15 +552,15 @@ impl Store {
     })
   }
 
-  /// Whether a held left press landed on a slider, which follows the pointer until the
+  /// Whether a held left press landed on a control that follows the pointer until the
   /// release.
-  fn drags_range(&self) -> bool {
+  fn drags_control(&self) -> bool {
     self.left_held
       && self
         .press
         .as_ref()
         .and_then(|press| press.target)
-        .is_some_and(|target| control_kind(self, target) == Some(ControlKind::Range))
+        .is_some_and(|target| self.drags(target))
   }
 
   /// A node's overflow per axis as CSS computes it, `Visible` when unset or the node has

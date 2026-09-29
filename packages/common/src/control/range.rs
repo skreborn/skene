@@ -220,6 +220,11 @@ impl<P: Platform> Behavior<P> for Range {
   }
 
   #[inline(always)]
+  fn drags(&self) -> bool {
+    true
+  }
+
+  #[inline(always)]
   fn listens(&self) -> &'static [EventKind] {
     &[
       EventKind::KeyDown,

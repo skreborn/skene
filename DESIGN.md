@@ -249,8 +249,11 @@ a `Platform::schedule` timer, and `Roster::typed` matches them against the membe
 names (`Label::set_name`, the value standing in), one character cycling through the
 names starting with it and more matching a prefix; the listbox moves focus to the
 match, and the closed face chooses it outright through `Popup::handle_typed`, the
-behavior's hook for the keys it does not act on itself. An
-anchored popup on the web follows its anchor through CSS anchor positioning (the anchor
+behavior's hook for the keys it does not act on itself. A behavior that follows a
+press's pointer until its release (`Behavior::drags`, a slider's) keeps the pointer
+with its control: the web captures the pointer on a primary press and takes a touch as
+a drag (`touch-action: none`), and the terminal, which routes every held press to the
+node it landed on, shows a grab cursor over it. An anchored popup on the web follows its anchor through CSS anchor positioning (the anchor
 named after its sink, the popup placed by `position-area`) where the engine has it, and
 sits at the anchor's measured rectangle as it opens elsewhere. A `Tooltip` wraps the one
 view it describes and mounts that view and a hint overlay, the `Bubble`, in a segment of

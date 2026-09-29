@@ -46,7 +46,7 @@ use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
 
 use super::{Realized, end_turn, with_dom};
-use crate::Web;
+use crate::{Web, condition::DRAGS_ATTRIBUTE};
 
 /// The property stamped on every element the scene knows, holding its sink.
 const SINK_PROPERTY: &str = "__skeneSink";
@@ -489,7 +489,34 @@ fn on_pointer_down(event: &web_sys::Event) {
     notify_dismiss::<Web>(popup);
   }
 
+  capture_drag(event);
   dispatch_pointer(event, dispatch_pointer_down::<Web>);
+}
+
+/// Keeps a primary press inside a control that follows the pointer with that control,
+/// so the press's moves and its release reach the control wherever the pointer goes.
+fn capture_drag(event: &web_sys::Event) {
+  let Some(pointer) = event.dyn_ref::<web_sys::PointerEvent>()
+  else {
+    return;
+  };
+
+  if pointer.button() != 0 {
+    return;
+  }
+
+  if let Some(control) = event
+    .target()
+    .and_then(|target| target.dyn_into::<Element>().ok())
+    .and_then(|element| {
+      element
+        .closest(&format!("[{DRAGS_ATTRIBUTE}]"))
+        .ok()
+        .flatten()
+    })
+  {
+    let _ = control.set_pointer_capture(pointer.pointer_id());
+  }
 }
 
 fn on_pointer_up(event: &web_sys::Event) {

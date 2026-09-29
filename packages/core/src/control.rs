@@ -102,6 +102,8 @@ pub struct ControlProps<P: Platform> {
   /// Whether the control's [`Part::Label`] sits before its box among its siblings,
   /// answering to the control, rather than inside it.
   pub label_beside: bool,
+  /// Whether the control follows a press's pointer until its release, as a slider does.
+  pub drags: bool,
 }
 
 impl<P: Platform> Clone for ControlProps<P> {
@@ -113,6 +115,7 @@ impl<P: Platform> Clone for ControlProps<P> {
       placeholder: self.placeholder.clone(),
       lines: self.lines,
       label_beside: self.label_beside,
+      drags: self.drags,
     }
   }
 }
@@ -126,6 +129,7 @@ impl<P: Platform> Debug for ControlProps<P> {
       .field("placeholder", &self.placeholder)
       .field("lines", &self.lines)
       .field("label_beside", &self.label_beside)
+      .field("drags", &self.drags)
       .finish_non_exhaustive()
   }
 }

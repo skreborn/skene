@@ -158,6 +158,13 @@ pub trait Behavior<P: Platform>: 'static {
     1
   }
 
+  /// Whether the control follows a press's pointer until its release, as a slider does;
+  /// a platform keeps the pointer with the control and touch from panning over it.
+  #[inline(always)]
+  fn drags(&self) -> bool {
+    false
+  }
+
   /// Where the control's label sits: beside the box of a control whose box holds a
   /// value—a text entry, a picker, a popup face—and after its parts and body inside
   /// it otherwise.
@@ -934,6 +941,7 @@ impl<P: Platform, B: Behavior<P>, C: ControlChild<P>> View<P> for Control<P, B, 
           placeholder,
           lines,
           label_beside: placement == LabelPlacement::Beside,
+          drags: behavior.drags(),
         })
       });
       // A caption whose text is the platform's to read names the control by reference;

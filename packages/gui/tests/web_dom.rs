@@ -1407,6 +1407,38 @@ fn a_box_hears_focus_entering_and_leaving_its_subtree() {
   assert_eq!((focuses.get(), blurs.get()), (1, 1));
 }
 
+/// A slider follows a press's pointer, so its element takes a touch as a drag, never a
+/// pan; a checkbox, which does not, is left to the page.
+#[wasm_bindgen_test]
+fn a_slider_takes_a_touch_as_a_drag() {
+  let (_guard, root) = fresh_root();
+
+  let _ = mount(|| {
+    Column::new()
+      .set_children((
+        RawSlider::new(Range::new()),
+        RawCheckbox::new(Toggle::new()),
+      ))
+      .build()
+  });
+
+  let controls = root
+    .query_selector_all("[data-skene-control]")
+    .expect("a valid selector");
+  let control = |index| -> Element {
+    controls
+      .item(index)
+      .expect("a control")
+      .dyn_into()
+      .expect("an element")
+  };
+
+  assert!(control(0).has_attribute("data-skene-drags"));
+  assert_eq!(computed(&control(0), "touch-action"), "none");
+  assert!(!control(1).has_attribute("data-skene-drags"));
+  assert_eq!(computed(&control(1), "touch-action"), "auto");
+}
+
 /// `empty` renders no element at all: an empty segment, its two anchors alone.
 #[wasm_bindgen_test]
 fn empty_renders_no_element() {

@@ -477,6 +477,7 @@ pub(crate) enum Kind {
     field: Option<Field>,
     checked: bool,
     label_beside: bool,
+    drags: bool,
   },
   Overlay {
     inner: BoxRecord,
@@ -1355,6 +1356,14 @@ impl Store {
     }
 
     None
+  }
+
+  /// Whether `handle` is a control following a press's pointer until its release.
+  pub(crate) fn drags(&self, handle: Handle) -> bool {
+    matches!(
+      self.record(handle).map(|record| &record.kind),
+      Some(Kind::Control { drags: true, .. })
+    )
   }
 
   /// Whether `handle` is a control keeping its caption beside it.

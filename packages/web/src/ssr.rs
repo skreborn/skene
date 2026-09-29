@@ -83,7 +83,7 @@ use super::{
     slot_registration,
     slot_registrations,
   },
-  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, NATIVE_CLASS},
+  condition::{CLASS_PLACEHOLDER, CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -1268,6 +1268,10 @@ impl Platform for Web {
           Captioned::Inside
         });
         node.set_attribute(CONTROL_ATTRIBUTE, "");
+
+        if props.drags {
+          node.set_attribute(DRAGS_ATTRIBUTE, "");
+        }
       }
 
       let compiled = tree.compiled(control_fingerprint(props), || compile_control(props));

@@ -812,6 +812,7 @@ pub fn skene_common::Activate::fmt(&self, &mut core::fmt::Formatter<'_>) -> core
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Activate
 pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Activate::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Activate::drags(&self) -> bool
 pub fn skene_common::Activate::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_placement(&self) -> skene_common::LabelPlacement
@@ -1352,6 +1353,7 @@ pub fn skene_common::ListItem::fmt(&self, &mut core::fmt::Formatter<'_>) -> core
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::ListItem
 pub fn skene_common::ListItem::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::ListItem::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::ListItem::drags(&self) -> bool
 pub fn skene_common::ListItem::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::ListItem::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::ListItem::label_placement(&self) -> skene_common::LabelPlacement
@@ -1386,6 +1388,7 @@ pub fn skene_common::Listbox::fmt(&self, &mut core::fmt::Formatter<'_>) -> core:
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Listbox
 pub fn skene_common::Listbox::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Listbox::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Listbox::drags(&self) -> bool
 pub fn skene_common::Listbox::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Listbox::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Listbox::label_placement(&self) -> skene_common::LabelPlacement
@@ -1434,6 +1437,7 @@ pub fn skene_common::Menu::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fm
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Menu
 pub fn skene_common::Menu::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Menu::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Menu::drags(&self) -> bool
 pub fn skene_common::Menu::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Menu::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Menu::label_placement(&self) -> skene_common::LabelPlacement
@@ -1496,6 +1500,7 @@ pub fn skene_common::MenuOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> co
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::MenuOption
 pub fn skene_common::MenuOption::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::MenuOption::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::MenuOption::drags(&self) -> bool
 pub fn skene_common::MenuOption::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::MenuOption::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::MenuOption::label_placement(&self) -> skene_common::LabelPlacement
@@ -1524,6 +1529,7 @@ pub fn skene_common::NativePicker::fmt(&self, &mut core::fmt::Formatter<'_>) -> 
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::NativePicker
 pub fn skene_common::NativePicker::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::NativePicker::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::NativePicker::drags(&self) -> bool
 pub fn skene_common::NativePicker::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::NativePicker::label_placement(&self) -> skene_common::LabelPlacement
@@ -1659,6 +1665,7 @@ pub fn skene_common::Popup::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::f
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Popup
 pub fn skene_common::Popup::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Popup::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Popup::drags(&self) -> bool
 pub fn skene_common::Popup::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_placement(&self) -> skene_common::LabelPlacement
@@ -1685,6 +1692,7 @@ pub fn skene_common::RadioMember::fmt(&self, &mut core::fmt::Formatter<'_>) -> c
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::RadioMember
 pub fn skene_common::RadioMember::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::RadioMember::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::RadioMember::drags(&self) -> bool
 pub fn skene_common::RadioMember::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::RadioMember::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::RadioMember::label_placement(&self) -> skene_common::LabelPlacement
@@ -1721,6 +1729,7 @@ pub fn skene_common::Range::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::f
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Range
 pub fn skene_common::Range::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Range::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Range::drags(&self) -> bool
 pub fn skene_common::Range::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_placement(&self) -> skene_common::LabelPlacement
@@ -1838,6 +1847,7 @@ pub fn skene_common::Roving::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Roving
 pub fn skene_common::Roving::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Roving::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Roving::drags(&self) -> bool
 pub fn skene_common::Roving::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Roving::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Roving::label_placement(&self) -> skene_common::LabelPlacement
@@ -2039,6 +2049,7 @@ pub fn skene_common::TextEntry::fmt(&self, &mut core::fmt::Formatter<'_>) -> cor
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::TextEntry
 pub fn skene_common::TextEntry::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::TextEntry::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::TextEntry::drags(&self) -> bool
 pub fn skene_common::TextEntry::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_placement(&self) -> skene_common::LabelPlacement
@@ -2082,6 +2093,7 @@ pub fn skene_common::Toggle::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Toggle
 pub fn skene_common::Toggle::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Toggle::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Toggle::drags(&self) -> bool
 pub fn skene_common::Toggle::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_placement(&self) -> skene_common::LabelPlacement
@@ -2165,6 +2177,7 @@ pub const skene_common::TYPE_AHEAD_RESET: core::time::Duration
 pub trait skene_common::Behavior<P: skene_core::platform::Platform>: 'static
 pub fn skene_common::Behavior::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Behavior::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Behavior::drags(&self) -> bool
 pub fn skene_common::Behavior::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Behavior::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Behavior::label_placement(&self) -> skene_common::LabelPlacement
@@ -2185,6 +2198,7 @@ pub fn skene_common::Behavior::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Activate
 pub fn skene_common::Activate::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Activate::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Activate::drags(&self) -> bool
 pub fn skene_common::Activate::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Activate::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Activate::label_placement(&self) -> skene_common::LabelPlacement
@@ -2205,6 +2219,7 @@ pub fn skene_common::Activate::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::ListItem
 pub fn skene_common::ListItem::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::ListItem::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::ListItem::drags(&self) -> bool
 pub fn skene_common::ListItem::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::ListItem::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::ListItem::label_placement(&self) -> skene_common::LabelPlacement
@@ -2225,6 +2240,7 @@ pub fn skene_common::ListItem::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Listbox
 pub fn skene_common::Listbox::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Listbox::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Listbox::drags(&self) -> bool
 pub fn skene_common::Listbox::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Listbox::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Listbox::label_placement(&self) -> skene_common::LabelPlacement
@@ -2245,6 +2261,7 @@ pub fn skene_common::Listbox::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Menu
 pub fn skene_common::Menu::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Menu::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Menu::drags(&self) -> bool
 pub fn skene_common::Menu::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Menu::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Menu::label_placement(&self) -> skene_common::LabelPlacement
@@ -2265,6 +2282,7 @@ pub fn skene_common::Menu::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::MenuOption
 pub fn skene_common::MenuOption::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::MenuOption::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::MenuOption::drags(&self) -> bool
 pub fn skene_common::MenuOption::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::MenuOption::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::MenuOption::label_placement(&self) -> skene_common::LabelPlacement
@@ -2285,6 +2303,7 @@ pub fn skene_common::MenuOption::state(&self) -> skene_core::control::ControlSta
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::NativePicker
 pub fn skene_common::NativePicker::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::NativePicker::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::NativePicker::drags(&self) -> bool
 pub fn skene_common::NativePicker::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::NativePicker::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::NativePicker::label_placement(&self) -> skene_common::LabelPlacement
@@ -2305,6 +2324,7 @@ pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlS
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Popup
 pub fn skene_common::Popup::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Popup::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Popup::drags(&self) -> bool
 pub fn skene_common::Popup::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Popup::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Popup::label_placement(&self) -> skene_common::LabelPlacement
@@ -2325,6 +2345,7 @@ pub fn skene_common::Popup::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::RadioMember
 pub fn skene_common::RadioMember::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::RadioMember::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::RadioMember::drags(&self) -> bool
 pub fn skene_common::RadioMember::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::RadioMember::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::RadioMember::label_placement(&self) -> skene_common::LabelPlacement
@@ -2345,6 +2366,7 @@ pub fn skene_common::RadioMember::state(&self) -> skene_core::control::ControlSt
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Range
 pub fn skene_common::Range::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Range::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Range::drags(&self) -> bool
 pub fn skene_common::Range::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Range::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Range::label_placement(&self) -> skene_common::LabelPlacement
@@ -2365,6 +2387,7 @@ pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Roving
 pub fn skene_common::Roving::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Roving::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Roving::drags(&self) -> bool
 pub fn skene_common::Roving::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Roving::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Roving::label_placement(&self) -> skene_common::LabelPlacement
@@ -2385,6 +2408,7 @@ pub fn skene_common::Roving::state(&self) -> skene_core::control::ControlState
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::TextEntry
 pub fn skene_common::TextEntry::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::TextEntry::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::TextEntry::drags(&self) -> bool
 pub fn skene_common::TextEntry::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::TextEntry::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::TextEntry::label_placement(&self) -> skene_common::LabelPlacement
@@ -2405,6 +2429,7 @@ pub fn skene_common::TextEntry::state(&self) -> skene_core::control::ControlStat
 impl<P: skene_core::platform::Platform> skene_common::Behavior<P> for skene_common::Toggle
 pub fn skene_common::Toggle::access(&self) -> alloc::vec::Vec<skene_core::values::access::AccessProp>
 pub fn skene_common::Toggle::attach(&self, &skene_common::ControlHandle<P>)
+pub fn skene_common::Toggle::drags(&self) -> bool
 pub fn skene_common::Toggle::focus_order(&self) -> core::option::Option<skene_core::values::focus_order::FocusOrder>
 pub fn skene_common::Toggle::kind(&self) -> skene_core::control::ControlKind
 pub fn skene_common::Toggle::label_placement(&self) -> skene_common::LabelPlacement

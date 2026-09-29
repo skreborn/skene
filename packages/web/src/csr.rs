@@ -130,7 +130,7 @@ use super::{
     render_run_leaf,
     run_fingerprint,
   },
-  condition::{CONTROL_ATTRIBUTE, NATIVE_CLASS},
+  condition::{CONTROL_ATTRIBUTE, DRAGS_ATTRIBUTE, NATIVE_CLASS},
   markup::{
     MARKER_ATTRIBUTE,
     NATIVE_ACCESS_ATTRIBUTES,
@@ -1371,6 +1371,10 @@ impl Platform for Web {
 
       if let Some(element) = dom.node(sink).and_then(Node::element) {
         let _ = element.set_attribute(CONTROL_ATTRIBUTE, "");
+
+        if props.drags {
+          let _ = element.set_attribute(DRAGS_ATTRIBUTE, "");
+        }
       }
 
       let compiled = dom

@@ -176,6 +176,7 @@ impl Platform for Tui {
         field,
         checked: false,
         label_beside: props.label_beside,
+        drags: props.drags,
       })
     })
   }

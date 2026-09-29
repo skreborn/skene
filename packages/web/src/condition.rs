@@ -24,6 +24,10 @@ pub const SCHEME_ATTRIBUTE: &str = "data-skene-scheme";
 /// The attribute every control's root element carries.
 pub const CONTROL_ATTRIBUTE: &str = "data-skene-control";
 
+/// The attribute the root element of a control that follows a press's pointer carries.
+#[cfg(any(skene_leaf = "browser", skene_leaf = "server"))]
+pub(crate) const DRAGS_ATTRIBUTE: &str = "data-skene-drags";
+
 /// The class the native input a control keeps inside its label carries.
 pub(crate) const NATIVE_CLASS: &str = "skene-native";
 

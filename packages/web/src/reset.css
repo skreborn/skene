@@ -290,4 +290,9 @@
     white-space: nowrap;
     pointer-events: none;
   }
+
+  /* A control that follows a press's pointer takes a touch as a drag, never a pan. */
+  [data-skene-drags] {
+    touch-action: none;
+  }
 }

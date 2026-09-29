@@ -981,11 +981,11 @@ fn bind_reports<P: Platform, B: Behavior<P>>(
       }
 
       if let Some(labelled_by) = flags.labelled_by {
-        access.push(AccessProp::LabelledBy(labelled_by));
+        access.push(AccessProp::LabelledBy(vec![labelled_by]));
       }
 
       if let Some(described_by) = flags.described_by {
-        access.push(AccessProp::DescribedBy(described_by));
+        access.push(AccessProp::DescribedBy(vec![described_by]));
       }
 
       report_access::<P>(node, access);

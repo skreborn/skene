@@ -293,9 +293,9 @@ fn access_attribute(prop: &AccessProp) -> Option<(&'static str, String)> {
       }
       .to_owned(),
     ),
-    AccessProp::Controls(node) => ("aria-controls", element_id(*node)),
-    AccessProp::LabelledBy(node) => ("aria-labelledby", element_id(*node)),
-    AccessProp::DescribedBy(node) => ("aria-describedby", element_id(*node)),
+    AccessProp::Controls(nodes) => ("aria-controls", element_ids(nodes)?),
+    AccessProp::LabelledBy(nodes) => ("aria-labelledby", element_ids(nodes)?),
+    AccessProp::DescribedBy(nodes) => ("aria-describedby", element_ids(nodes)?),
     AccessProp::Description(text) => ("title", text.clone()),
     AccessProp::Orientation(axis) => (
       "aria-orientation",
@@ -397,14 +397,22 @@ pub(crate) fn element_id(node: NodeId) -> String {
   format!("skene-{}-{}", node.index(), node.generation())
 }
 
+/// The nodes a relation refers to, as a list of element ids; `None` for none.
+fn element_ids(nodes: &[NodeId]) -> Option<String> {
+  (!nodes.is_empty()).then(|| {
+    nodes
+      .iter()
+      .map(|node| element_id(*node))
+      .collect::<Vec<_>>()
+      .join(" ")
+  })
+}
+
 /// The nodes `access` refers to by id.
 pub(crate) fn referenced_nodes(access: &[AccessProp]) -> impl Iterator<Item = NodeId> + '_ {
-  access.iter().filter_map(|prop| match prop {
-    AccessProp::Controls(node) | AccessProp::LabelledBy(node) | AccessProp::DescribedBy(node) => {
-      Some(*node)
-    }
-    _ => None,
-  })
+  access
+    .iter()
+    .flat_map(|prop| prop.referenced().iter().copied())
 }
 
 /// The `tabindex` a node carries for `focus_order`; `None` removes it. A control out

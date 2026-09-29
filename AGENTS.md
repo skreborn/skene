@@ -403,8 +403,8 @@
   describes and showing text or any view in a `Bubble` beside it: open after a delay on
   hover and at once on focus, closed on leave, blur and `Escape`, never focused. A text
   tooltip is reported as the described view's `Description` beside `DescribedBy`, and a
-  view's reports are merged in the scene, so a describing view never overwrites a
-  control's own. On the web the server renders the description as `title`, the
+  view's reports are merged in the scene, the relations of one kind folding into one
+  list, so a describing view never overwrites a control's own. On the web the server renders the description as `title`, the
   scriptless tooltip, and hydration **removes** it as the bubble (a `popover="hint"`
   promoted in place) takes over. `SimpleTooltip` is the styled one; any view takes a
   tooltip by wrapping. **A context menu is a view** the same way, `ContextMenu` in

@@ -345,7 +345,7 @@ fn the_face_reports_its_popup_and_the_list_it_controls() {
     "{access:?}"
   );
   assert!(
-    access.contains(&AccessProp::Controls(parts.listbox)),
+    access.contains(&AccessProp::Controls(vec![parts.listbox])),
     "{access:?}"
   );
 

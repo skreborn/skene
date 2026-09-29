@@ -70,7 +70,7 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
   assert_eq!(
     box_props(described).map(|props| props.access),
     Some(vec![
-      AccessProp::DescribedBy(bubble),
+      AccessProp::DescribedBy(vec![bubble]),
       AccessProp::Description("Saves your work".to_owned()),
     ])
   );
@@ -150,7 +150,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
       .unwrap_or_default()
   };
 
-  assert!(access().contains(&AccessProp::DescribedBy(bubble)));
+  assert!(access().contains(&AccessProp::DescribedBy(vec![bubble])));
   assert!(access().contains(&AccessProp::Description("Saves".to_owned())));
 
   disabled.set(true);
@@ -161,7 +161,7 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
     access()
   );
   assert!(
-    access().contains(&AccessProp::DescribedBy(bubble)),
+    access().contains(&AccessProp::DescribedBy(vec![bubble])),
     "the description survives the control's rewrite: {:?}",
     access()
   );
@@ -180,8 +180,47 @@ fn a_tooltips_report_sits_beside_the_controls_own() {
 
   assert_eq!(
     box_props(box_node).map(|props| props.access),
-    Some(vec![AccessProp::DescribedBy(view_bubble)])
+    Some(vec![AccessProp::DescribedBy(vec![view_bubble])])
   );
+
+  owner.dispose();
+}
+
+/// A control's own description and a tooltip's fold into one list, the control's
+/// first, through a rewrite of the control's report.
+#[test]
+fn a_controls_description_and_a_tooltips_fold_into_one_list() {
+  reset();
+
+  let owner = Owner::new();
+  let disabled = Signal::new(false);
+  let (hint, start) = owner.enter(|| {
+    let hint = Text::new("Required").build();
+    let start = Tooltip::new("Saves")
+      .set_child(
+        RawButton::new(Activate::new())
+          .derive_disabled(move || disabled.get())
+          .set_described_by(hint),
+      )
+      .build();
+
+    (hint, start)
+  });
+  let (button, bubble) = parts(start);
+  let described = || {
+    box_props(button)
+      .map(|props| props.access)
+      .unwrap_or_default()
+      .into_iter()
+      .filter(|prop| matches!(prop, AccessProp::DescribedBy(_)))
+      .collect::<Vec<_>>()
+  };
+
+  assert_eq!(described(), [AccessProp::DescribedBy(vec![hint, bubble])]);
+
+  disabled.set(true);
+
+  assert_eq!(described(), [AccessProp::DescribedBy(vec![hint, bubble])]);
 
   owner.dispose();
 }

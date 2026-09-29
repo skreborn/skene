@@ -955,7 +955,7 @@ fn a_controls_flags_report_as_accessibility_and_state() {
     Some(vec![
       AccessProp::Required(true),
       AccessProp::ReadOnly(true),
-      AccessProp::DescribedBy(hint),
+      AccessProp::DescribedBy(vec![hint]),
     ])
   );
   assert_eq!(control_state(field).map(|state| state.invalid), Some(false));

@@ -283,11 +283,11 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
     bind_triggers::<P>(node, open, delay);
 
     match text {
-      None => describe::<P>(node, vec![AccessProp::DescribedBy(bubble)]),
+      None => describe::<P>(node, vec![AccessProp::DescribedBy(vec![bubble])]),
       Some(Source::Fixed(text)) => describe::<P>(
         node,
         vec![
-          AccessProp::DescribedBy(bubble),
+          AccessProp::DescribedBy(vec![bubble]),
           AccessProp::Description(text),
         ],
       ),
@@ -296,7 +296,7 @@ impl<P: Platform> View<P> for Tooltip<P, AnyView<P>> {
           describe::<P>(
             node,
             vec![
-              AccessProp::DescribedBy(bubble),
+              AccessProp::DescribedBy(vec![bubble]),
               AccessProp::Description(compute()),
             ],
           );

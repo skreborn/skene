@@ -772,15 +772,15 @@ pub fn skene_core::run_fields::TextColor::get<S: skene_core::Shape>(&skene_core:
 pub fn skene_core::run_fields::TextColor::get_mut<S: skene_core::Shape>(&mut skene_core::RunStyle<S, X>) -> &mut <S as skene_core::Shape>::Of
 pub enum skene_core::AccessProp
 pub skene_core::AccessProp::Checked(skene_core::Toggle)
-pub skene_core::AccessProp::Controls(skene_core::NodeId)
-pub skene_core::AccessProp::DescribedBy(skene_core::NodeId)
+pub skene_core::AccessProp::Controls(alloc::vec::Vec<skene_core::NodeId>)
+pub skene_core::AccessProp::DescribedBy(alloc::vec::Vec<skene_core::NodeId>)
 pub skene_core::AccessProp::Description(alloc::string::String)
 pub skene_core::AccessProp::Disabled(bool)
 pub skene_core::AccessProp::Expanded(bool)
 pub skene_core::AccessProp::HasPopup(skene_core::PopupKind)
 pub skene_core::AccessProp::Invalid(bool)
 pub skene_core::AccessProp::Label(alloc::string::String)
-pub skene_core::AccessProp::LabelledBy(skene_core::NodeId)
+pub skene_core::AccessProp::LabelledBy(alloc::vec::Vec<skene_core::NodeId>)
 pub skene_core::AccessProp::Orientation(skene_core::Axis)
 pub skene_core::AccessProp::ReadOnly(bool)
 pub skene_core::AccessProp::Required(bool)
@@ -790,6 +790,9 @@ pub skene_core::AccessProp::ValueMax(f32)
 pub skene_core::AccessProp::ValueMin(f32)
 pub skene_core::AccessProp::ValueStep(f32)
 pub skene_core::AccessProp::ValueText(alloc::string::String)
+impl skene_core::AccessProp
+pub fn skene_core::AccessProp::fold(impl core::iter::traits::collect::IntoIterator<Item = Self>) -> alloc::vec::Vec<Self>
+pub fn skene_core::AccessProp::referenced(&self) -> &[skene_core::NodeId]
 impl core::clone::Clone for skene_core::AccessProp
 pub fn skene_core::AccessProp::clone(&self) -> skene_core::AccessProp
 impl core::cmp::PartialEq for skene_core::AccessProp

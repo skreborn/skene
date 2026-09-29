@@ -167,7 +167,7 @@ impl<P: Platform> Behavior<P> for Popup {
     ];
 
     if let Some(node) = self.controls.as_ref().and_then(|controls| controls()) {
-      access.push(AccessProp::Controls(node));
+      access.push(AccessProp::Controls(vec![node]));
     }
 
     access

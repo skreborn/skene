@@ -39,18 +39,55 @@ pub enum AccessProp {
   ReadOnly(bool),
   /// The kind of popup the control opens.
   HasPopup(PopupKind),
-  /// The node the control operates: its popup's list, the region it expands.
-  Controls(NodeId),
-  /// The node whose text names the control, where the name is not the control's own
-  /// content.
-  LabelledBy(NodeId),
-  /// The node whose text describes the control.
-  DescribedBy(NodeId),
+  /// The nodes the control operates, in order: its popup's list, the region it expands.
+  Controls(Vec<NodeId>),
+  /// The nodes whose text names the control, in order, where the name is not the
+  /// control's own content.
+  LabelledBy(Vec<NodeId>),
+  /// The nodes whose text describes the control, in order.
+  DescribedBy(Vec<NodeId>),
   /// A plain-text description: the accessible description where nothing else supplies
   /// one, and the native tooltip where the platform shows one without script.
   Description(String),
   /// The axis a range control runs along.
   Orientation(Axis),
+}
+
+impl AccessProp {
+  /// `access` with the relations of one kind folded into the first of them, each node
+  /// once, in the order the reports name them; every other property as reported.
+  pub fn fold(access: impl IntoIterator<Item = Self>) -> Vec<Self> {
+    let mut folded: Vec<Self> = Vec::new();
+
+    for prop in access {
+      if let Self::Controls(nodes) | Self::LabelledBy(nodes) | Self::DescribedBy(nodes) = &prop
+        && let Some(Self::Controls(held) | Self::LabelledBy(held) | Self::DescribedBy(held)) =
+          folded
+            .iter_mut()
+            .find(|held| std::mem::discriminant(*held) == std::mem::discriminant(&prop))
+      {
+        for node in nodes {
+          if !held.contains(node) {
+            held.push(*node);
+          }
+        }
+
+        continue;
+      }
+
+      folded.push(prop);
+    }
+
+    folded
+  }
+
+  /// The nodes the property refers to: a relation's, and none for every other.
+  pub fn referenced(&self) -> &[NodeId] {
+    match self {
+      Self::Controls(nodes) | Self::LabelledBy(nodes) | Self::DescribedBy(nodes) => nodes,
+      _ => &[],
+    }
+  }
 }
 
 /// What a control's popup is; a list of options unless told otherwise.
@@ -64,4 +101,37 @@ pub enum PopupKind {
   Menu,
   /// A dialog.
   Dialog,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// Relations of one kind fold into the first of them, each node once and in order,
+  /// while every other property stays as reported.
+  #[test]
+  fn relations_of_one_kind_fold_into_one_list() {
+    let [a, b, c] = [1, 2, 3].map(|index| NodeId::new(index, 0));
+    let folded = AccessProp::fold([
+      AccessProp::DescribedBy(vec![a]),
+      AccessProp::Required(true),
+      AccessProp::LabelledBy(vec![b]),
+      AccessProp::DescribedBy(vec![c, a]),
+      AccessProp::Controls(vec![]),
+      AccessProp::Description("hint".to_owned()),
+    ]);
+
+    assert_eq!(
+      folded,
+      [
+        AccessProp::DescribedBy(vec![a, c]),
+        AccessProp::Required(true),
+        AccessProp::LabelledBy(vec![b]),
+        AccessProp::Controls(vec![]),
+        AccessProp::Description("hint".to_owned()),
+      ]
+    );
+    assert_eq!(folded[0].referenced(), [a, c]);
+    assert!(folded[1].referenced().is_empty());
+  }
 }

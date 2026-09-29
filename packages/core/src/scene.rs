@@ -425,9 +425,9 @@ struct AccessReports {
 }
 
 impl AccessReports {
-  /// Both reports, the node's own first.
+  /// Both reports, the node's own first, with their relations folded.
   fn merged(&self) -> Vec<AccessProp> {
-    self.own.iter().chain(&self.description).cloned().collect()
+    AccessProp::fold(self.own.iter().chain(&self.description).cloned())
   }
 }
 
@@ -1407,7 +1407,8 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Replaces what the view that made `node` reports with `access`, returning the
-  /// whole report the platform is to receive: the node's own, then its description.
+  /// whole report the platform is to receive: the node's own, then its description,
+  /// with their relations folded ([`AccessProp::fold`]).
   #[must_use]
   pub fn report_access(&mut self, node: NodeId, access: Vec<AccessProp>) -> Vec<AccessProp> {
     let Some(record) = self.record_mut(node)
@@ -1422,7 +1423,8 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Replaces what a view describing `node` reports with `description`, returning the
-  /// whole report the platform is to receive: the node's own, then its description.
+  /// whole report the platform is to receive: the node's own, then its description,
+  /// with their relations folded ([`AccessProp::fold`]).
   #[must_use]
   pub fn describe(&mut self, node: NodeId, description: Vec<AccessProp>) -> Vec<AccessProp> {
     let Some(record) = self.record_mut(node)

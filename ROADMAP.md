@@ -80,13 +80,11 @@ left half-done in a code comment.
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
     become styling targets or go, with `ControlHandle::roster` and the drawn picker's
     unused listbox closures. The slider maps the pointer through its track and thumb
-    extents; `DescribedBy`, `LabelledBy` and `Controls` fold into lists instead of
-    overwriting one another;
-    captions lay out beside the control's box; a tooltip stays open over its bubble
-    (WCAG 1.4.13); `Popup` derives its role from its kind; the scriptless `<select>`
-    marks disabled options; Simple gains a disabled look, `set_accessible_name` for
-    icon-only buttons, unchecked marks hidden by state rather than painted in the
-    surface color, and per-unit radii.
+    extents; captions lay out beside the control's box; a tooltip stays open over its
+    bubble (WCAG 1.4.13); `Popup` derives its role from its kind; the scriptless
+    `<select>` marks disabled options; Simple gains a disabled look,
+    `set_accessible_name` for icon-only buttons, unchecked marks hidden by state rather
+    than painted in the surface color, and per-unit radii.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the

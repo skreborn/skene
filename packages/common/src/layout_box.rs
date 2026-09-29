@@ -527,7 +527,11 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       .label
       .map(AccessProp::Label)
       .into_iter()
-      .chain(self.labelled_by.map(AccessProp::LabelledBy))
+      .chain(
+        self
+          .labelled_by
+          .map(|node| AccessProp::LabelledBy(vec![node])),
+      )
       .collect();
 
     if !named.is_empty() {
@@ -553,10 +557,11 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
       Some(Source::Fixed(focus_order)) => Some(*focus_order),
       Some(Source::Derived(_)) | None => None,
     };
-    let access = match &self.access {
-      Some(Source::Fixed(access)) => access.clone(),
-      Some(Source::Derived(_)) | None => Vec::new(),
+    let noted = match &self.access {
+      Some(Source::Fixed(access)) => Some(AccessProp::fold(access.iter().cloned())),
+      Some(Source::Derived(_)) | None => None,
     };
+    let access = noted.clone().unwrap_or_default();
     let props = BoxProps {
       layout: self.layout,
       role: self.role,
@@ -570,10 +575,6 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     };
     let sink = create(props);
     let container = self.container;
-    let noted = match &self.access {
-      Some(Source::Fixed(access)) => Some(access.clone()),
-      Some(Source::Derived(_)) | None => None,
-    };
     let node = Scene::<P>::with(|scene| {
       let node = scene.create(kind, sink);
 

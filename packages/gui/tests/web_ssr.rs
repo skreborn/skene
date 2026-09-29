@@ -1189,6 +1189,38 @@ fn control_flags_serialize_natively_and_references_carry_ids() {
   assert!(body.contains(&format!("id=\"{described}\"")), "{body}");
 }
 
+/// A control's own description and a tooltip's fold into one reference list, each
+/// referenced node carrying the id the list names.
+#[test]
+fn descriptions_fold_into_one_reference_list() {
+  use skene_gui::{RawTextField, TextEntry};
+
+  let rendered = render_to_string(|| {
+    let hint = Text::new("Required").build();
+
+    Column::new().set_children((
+      skene_gui::core::AnyView::node(hint),
+      Tooltip::new("Your full name")
+        .set_child(RawTextField::new(TextEntry::new()).set_described_by(hint)),
+    ))
+  });
+  let body = rendered.body();
+  let described: Vec<&str> = body
+    .split("aria-describedby=\"")
+    .nth(1)
+    .and_then(|rest| rest.split('"').next())
+    .expect("a description reference")
+    .split(' ')
+    .collect();
+
+  assert_eq!(body.matches("aria-describedby=").count(), 1, "{body}");
+  assert_eq!(described.len(), 2, "{body}");
+
+  for id in described {
+    assert!(body.contains(&format!("id=\"{id}\"")), "{body}");
+  }
+}
+
 /// The state script escapes the markup its state holds, so it closes nothing early.
 #[test]
 fn the_state_script_closes_nothing_early() {

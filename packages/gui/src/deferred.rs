@@ -15,6 +15,9 @@ use crate::ActivePlatform;
 
 /// A subtree whose async work the server settles apart from the shell's and streams
 /// in place once it does.
+///
+/// A streamed page's head flushes with the shell, so a title or head element
+/// registered inside the subtree reaches that page only once the client hydrates.
 #[must_use]
 pub struct Deferred {
   content: Box<dyn FnOnce() -> NodeId>,

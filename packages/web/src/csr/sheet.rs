@@ -55,8 +55,8 @@ impl Sheet {
   }
 
   /// A sink adopting the server's `block` and the delta blocks a streamed render left
-  /// in the body: every rule already in them is left alone, and only what they lack is
-  /// added.
+  /// in the body, which move into the head after it: every rule already in them is left
+  /// alone, and only what they lack is added.
   pub(super) fn adopt(document: &Document, head: &HtmlHeadElement, block: Element) -> Self {
     let base_text = block.text_content().unwrap_or_default();
     let mut adopted = base_text.clone();
@@ -72,6 +72,7 @@ impl Sheet {
           && delta != block
         {
           adopted.push_str(&delta.text_content().unwrap_or_default());
+          let _ = head.append_child(&delta);
           deltas.push(delta);
         }
       }

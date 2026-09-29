@@ -610,7 +610,8 @@ fn a_structural_mismatch_is_caught_not_silently_adopted() {
 }
 
 /// A streamed page leaves its style deltas in the body; hydration adopts them with the
-/// head's block, so no rule is added twice and the delta stays the one copy.
+/// head's block and moves them into the head, so no rule is added twice, the delta
+/// stays the one copy, and no change to the content takes it along.
 #[wasm_bindgen_test]
 fn a_streamed_delta_is_adopted_with_the_stylesheet() {
   use skene_gui::Color;
@@ -671,8 +672,19 @@ fn a_streamed_delta_is_adopted_with_the_stylesheet() {
     .filter(|text| text.contains(&rule))
     .count();
 
+  let delta = (0..styles.length())
+    .filter_map(|index| styles.item(index))
+    .filter_map(|style| style.dyn_into::<Element>().ok())
+    .find(|style| {
+      style
+        .text_content()
+        .is_some_and(|text| text.contains(&rule))
+    })
+    .expect("the delta");
+
   assert_eq!(web::hydration_mismatches(), 0);
   assert_eq!(copies, 1, "the delta is the one copy of its rule");
+  assert_eq!(delta.parent_element(), document().head().map(Into::into));
 
   web::uninstall();
 

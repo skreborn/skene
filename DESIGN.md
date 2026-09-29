@@ -1000,7 +1000,10 @@ takes it back at boot through the dev script's `skene_state()`. A rebuild failur
 reaches the app as `notice <text>` on the same pipe. Static output is fully functional without script (styling, media and container
 queries, hover, themes, transitions, animations—all CSS); hydration upgrades it to
 interactive when the wasm loads, and `#[lazy]` bodies split into modules fetched on
-first use while the server leaf renders them inline.
+first use while the server leaf renders them inline. The CLI owns the loader glue: a
+load in flight is shared by every caller, each caller hears once whether it succeeded,
+and a failed load is asked for again after a wait that doubles to thirty seconds, the
+boundary's fallback standing until the module arrives.
 
 ## Logging
 

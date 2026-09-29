@@ -190,11 +190,7 @@ pub fn lazy(args: TokenStream, item: TokenStream) -> TokenStream {
           unsafe { ::skene_gui::split::SplitLoader::new(#load) };
       }
 
-      assert!(
-        ::skene_gui::split::SplitLoader::ensure(&#loader).await,
-        "failed to load the split module `{}`",
-        #module,
-      );
+      ::skene_gui::split::SplitLoader::ensure(&#loader).await;
 
       unsafe { #import(#(#arguments),*) }.await
     }

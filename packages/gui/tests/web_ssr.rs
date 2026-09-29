@@ -659,6 +659,155 @@ fn deferred_app() -> impl skene_gui::IntoView {
   ])
 }
 
+/// A sibling shown before a paused boundary, by work the boundary waits on, moves the
+/// walk's place and nothing it streams: each node streams once, in order.
+#[test]
+fn a_stream_resumes_where_it_stood_among_changed_siblings() {
+  use skene_gui::{
+    Show,
+    reactive::{Get, Set, Signal},
+  };
+
+  let stream = render_to_stream(|| {
+    let grown = Signal::new(false);
+
+    Row::new().set_children([
+      Show::new()
+        .derive_shown(move || grown.get())
+        .set_child(Text::new("grown"))
+        .into_any(),
+      Deferred::new(move || {
+        skene_gui::spawn(async move {
+          web::sleep(Duration::from_millis(1)).await;
+          grown.set(true);
+        });
+
+        let data = Resource::new(|| async {
+          web::sleep(Duration::from_millis(5)).await;
+
+          "late".to_owned()
+        });
+
+        derived(move || data.with(|value| Text::new(value.cloned().unwrap_or_default()).build()))
+      })
+      .into_any(),
+      Text::new("after").into_any(),
+    ])
+  });
+  let document = stream.document();
+  let comments: Vec<&str> = document
+    .match_indices("<!--")
+    .map(|(at, _)| &document[at..])
+    .map(|rest| &rest[..rest.find("-->").expect("a comment end")])
+    .collect();
+  let mut unique = comments.clone();
+
+  unique.sort_unstable();
+  unique.dedup();
+
+  assert!(
+    !stream.chunks()[0].contains(">grown</span>"),
+    "the sibling showed while the walk paused: {document}"
+  );
+  assert_eq!(
+    comments.len(),
+    unique.len(),
+    "no anchor streams twice: {document}"
+  );
+  assert_eq!(document.matches(">after</span>").count(), 1, "{document}");
+  assert!(
+    document.find(">late</span>") < document.find(">after</span>"),
+    "{document}"
+  );
+}
+
+/// The warnings a render logs, collected.
+struct Warnings(std::sync::Arc<std::sync::Mutex<Vec<String>>>);
+
+impl skene_gui::tracing::Subscriber for Warnings {
+  fn enabled(&self, metadata: &skene_gui::tracing::Metadata<'_>) -> bool {
+    *metadata.level() <= skene_gui::tracing::Level::WARN
+  }
+
+  fn new_span(&self, _: &skene_gui::tracing::span::Attributes<'_>) -> skene_gui::tracing::span::Id {
+    skene_gui::tracing::span::Id::from_u64(1)
+  }
+
+  fn record(&self, _: &skene_gui::tracing::span::Id, _: &skene_gui::tracing::span::Record<'_>) {}
+
+  fn record_follows_from(
+    &self,
+    _: &skene_gui::tracing::span::Id,
+    _: &skene_gui::tracing::span::Id,
+  ) {
+  }
+
+  fn event(&self, event: &skene_gui::tracing::Event<'_>) {
+    struct Message<'a>(&'a mut String);
+
+    impl skene_gui::tracing::field::Visit for Message<'_> {
+      fn record_debug(
+        &mut self,
+        _: &skene_gui::tracing::field::Field,
+        value: &dyn std::fmt::Debug,
+      ) {
+        let _ = std::fmt::Write::write_fmt(self.0, format_args!("{value:?}"));
+      }
+    }
+
+    let mut message = String::new();
+
+    event.record(&mut Message(&mut message));
+    self.0.lock().expect("the warnings").push(message);
+  }
+
+  fn enter(&self, _: &skene_gui::tracing::span::Id) {}
+
+  fn exit(&self, _: &skene_gui::tracing::span::Id) {}
+}
+
+/// A title registered inside a deferred boundary, after the streamed shell flushed,
+/// misses the streamed page and is warned about.
+#[test]
+fn a_title_registered_after_the_shell_is_warned_about() {
+  use skene_gui::head;
+
+  let warnings = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+  let stream = skene_gui::tracing::subscriber::with_default(
+    Warnings(std::sync::Arc::clone(&warnings)),
+    || {
+      render_to_stream(|| {
+        Row::new().set_child(Deferred::new(|| {
+          let data = Resource::new(|| async {
+            web::sleep(Duration::from_millis(1)).await;
+
+            "late".to_owned()
+          });
+
+          derived(move || {
+            if data.with(|value| value.is_some()) {
+              head::set_title("Late");
+            }
+
+            Text::new("x").build()
+          })
+        }))
+      })
+    },
+  );
+
+  assert!(!stream.document().contains("<title>Late</title>"));
+  assert!(
+    warnings
+      .lock()
+      .expect("the warnings")
+      .iter()
+      .any(|warning| warning.contains("head registration")),
+    "{:?}",
+    warnings.lock().expect("the warnings")
+  );
+}
+
 /// The piece-driven stream: the sink receives the opening shell, a chunk per deferred
 /// boundary, and the closing tail, in order—and the pieces concatenate to the same
 /// document the collected stream assembles.

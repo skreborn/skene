@@ -122,12 +122,14 @@ const ROOT: u32 = 0;
 /// A probe for whether a deferred boundary's content has settled.
 type BoundarySettled = Box<dyn Fn() -> bool>;
 
-/// A position in the in-order stream walk: a node whose opening tag is emitted and how
-/// many of its children have been serialized.
+/// A position in the in-order stream walk: a node whose opening tag is emitted, where
+/// among its children the walk stands, and the child it last passed, by which it finds
+/// its place again among children that changed while it paused.
 #[derive(Clone, Copy)]
 struct Frame {
   index: u32,
   next_child: usize,
+  passed: Option<u32>,
 }
 
 /// What a node is in the string tree.
@@ -250,6 +252,16 @@ impl Node {
 
   fn is_void(&self) -> bool {
     matches!(self.tag(), "input" | "br" | "hr" | "img")
+  }
+
+  /// Appends the node's text, escaped; a textarea's leading newline doubled, since the
+  /// parser drops the first.
+  fn emit_text(&self, text: &str, out: &mut String) {
+    if self.tag() == "textarea" && text.starts_with('\n') {
+      out.push('\n');
+    }
+
+    escape_text(text, out);
   }
 
   fn emit_comment(text: &str, out: &mut String) {
@@ -696,13 +708,7 @@ impl Tree {
     node.emit_options(out);
 
     match &node.text {
-      Some(text) => {
-        if node.tag() == "textarea" && text.starts_with('\n') {
-          out.push('\n');
-        }
-
-        escape_text(text, out);
-      }
+      Some(text) => node.emit_text(text, out),
       None => {
         for child in &node.children {
           self.serialize(*child, out);
@@ -725,13 +731,30 @@ impl Tree {
     out: &mut String,
     pending: impl Fn(u32) -> bool,
   ) -> Option<u32> {
-    while let Some(&Frame { index, next_child }) = cursor.last() {
-      let Some(Some(node)) = self.nodes.get(index as usize)
+    while let Some(frame) = cursor.last_mut() {
+      let Some(Some(node)) = self.nodes.get(frame.index as usize)
       else {
         cursor.pop();
 
         continue;
       };
+
+      if let Some(passed) = frame.passed
+        && frame
+          .next_child
+          .checked_sub(1)
+          .and_then(|at| node.children.get(at))
+          != Some(&passed)
+        && let Some(at) = node.children.iter().position(|child| *child == passed)
+      {
+        frame.next_child = at + 1;
+      }
+
+      frame.next_child = frame.next_child.min(node.children.len());
+
+      let Frame {
+        index, next_child, ..
+      } = *frame;
 
       if next_child == node.children.len() {
         if index != ROOT {
@@ -749,7 +772,10 @@ impl Tree {
         return Some(child);
       }
 
-      cursor.last_mut().expect("the frame just read").next_child += 1;
+      let frame = cursor.last_mut().expect("the frame just read");
+
+      frame.next_child += 1;
+      frame.passed = Some(child);
 
       let Some(Some(child_node)) = self.nodes.get(child as usize)
       else {
@@ -771,13 +797,14 @@ impl Tree {
 
       match &child_node.text {
         Some(text) => {
-          escape_text(text, out);
+          child_node.emit_text(text, out);
           child_node.emit_close(out);
         }
         None if child_node.children.is_empty() => child_node.emit_close(out),
         None => cursor.push(Frame {
           index: child,
           next_child: 0,
+          passed: None,
         }),
       }
     }
@@ -1738,6 +1765,10 @@ pub enum StreamPiece<'a> {
 /// in place, opening the chunk with the styles interned since the previous flush, so a
 /// client with no JavaScript receives a correct, styled document progressively, each
 /// chunk appended to the last.
+///
+/// The head flushes with the shell: a title or head element registered inside a
+/// deferred boundary is missing from the streamed page, a client receiving it only
+/// once it hydrates, and the render logs a warning.
 pub fn render_to_stream_with<V, F>(app: F, mut flush: impl FnMut(StreamPiece<'_>))
 where
   F: FnOnce() -> V + 'static,
@@ -1766,6 +1797,7 @@ where
   let mut cursor = vec![Frame {
     index: ROOT,
     next_child: 0,
+    passed: None,
   }];
 
   // TODO: once HTML's declarative out-of-order patching (`<template for>`) is Baseline
@@ -1790,6 +1822,13 @@ where
     // Dropped whether or not it settled: settled emits its content, unsettled emits
     // what it has, and either way the walk must not pause on it again.
     BOUNDARIES.with(|boundaries| boundaries.borrow_mut().remove(&index));
+  }
+
+  if with_tree(|tree| tree.render_head()) != head {
+    tracing::warn!(
+      "a head registration made after the shell flushed, inside a deferred boundary, \
+       is missing from the streamed page until the client hydrates it"
+    );
   }
 
   flush(StreamPiece::Tail(crate::hydration::collect_state()));

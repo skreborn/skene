@@ -16,6 +16,13 @@ use crate::manifest::App;
 /// The prefix `#[lazy]` stamps into its split import and export names.
 const MARKER: &[u8] = b"__wasm_split_00";
 
+/// The glue fetching and linking a split module on its first call: `makeLoad(url, deps,
+/// initSync)` makes a module's loader, whose load in flight every caller shares, whose
+/// callback each caller's call runs exactly once with whether the load succeeded, and
+/// whose failed load is forgotten, so the next call starts afresh. Called with no
+/// callback, as a dependency is, it returns the load.
+const LOADER_GLUE: &str = include_str!("split.js");
+
 /// Splits the bindgened wasm in `dist/web` when the app opts in, `original` the wasm
 /// cargo built it from.
 ///
@@ -88,16 +95,15 @@ fn module_file(index: usize, module: &SplitModule) -> String {
 /// per lazy module, under the names the split bindings import.
 fn loader_manifest(app: &App, output: &OutputModules) -> Result<String, String> {
   let mut manifest = format!(
-    "import {{ initSync }} from \"./{}.js\";\n{}",
+    "import {{ initSync }} from \"./{}.js\";\n{LOADER_GLUE}",
     app.stem,
-    wasm_split_cli::MAKE_LOAD_JS,
   );
 
   for (index, chunk) in output.chunks.iter().enumerate() {
     let _ = writeln!(
       manifest,
       "export const __wasm_split_load_chunk_{index} = \
-       makeLoad(new URL(\"{file}\", import.meta.url), [], fusedImports, initSync);",
+       makeLoad(new URL(\"{file}\", import.meta.url), [], initSync);",
       file = chunk_file(index, chunk),
     );
   }
@@ -123,7 +129,7 @@ fn loader_manifest(app: &App, output: &OutputModules) -> Result<String, String> 
     let _ = writeln!(
       manifest,
       "export const __wasm_split_load_{module}_{hash}_{component} = \
-       makeLoad(new URL(\"{file}\", import.meta.url), [{dependencies}], fusedImports, initSync);",
+       makeLoad(new URL(\"{file}\", import.meta.url), [{dependencies}], initSync);",
       module = module.module_name,
       file = module_file(index, module),
     );

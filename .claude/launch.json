@@ -105,6 +105,23 @@
         "--ssr"
       ],
       "port": 8085
+    },
+    {
+      "name": "router",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "skene-cli",
+        "--",
+        "--dir",
+        "examples/gui/router",
+        "run",
+        "web",
+        "--port",
+        "8086"
+      ],
+      "port": 8086
     }
   ]
 }

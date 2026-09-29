@@ -6,9 +6,11 @@
 //! for (a `meta` by its name or property, a `base`, any other element by its
 //! attributes), so a nested route's description replaces its parent's until it leaves
 //! and identical registrations write one element. On a server render the registrations
-//! in force serialize into the page's `<head>`; in the browser they apply to the live
-//! document, adopting an identical element a server render left. Off the web the
-//! headless platform records them for a test to read back.
+//! in force serialize into the page's `<head>`, which a streamed render flushes with its
+//! shell, so a registration inside a `Deferred` reaches that page only once the client
+//! hydrates; in the browser they apply to the live document, adopting an identical
+//! element a server render left. Off the web the headless platform records them for a
+//! test to read back.
 
 use skene_common::gui::HeadId;
 #[cfg(skene_leaf = "host")]

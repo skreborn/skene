@@ -39,7 +39,7 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-hack,cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}
+          tool: cargo-hack,cargo-nextest,cargo-shear,wasm-bindgen@${{ steps.versions.outputs.wasm_bindgen }}
 
       - uses: Swatinem/rust-cache@v2
 

@@ -530,7 +530,15 @@ fn doc_wasm(gate: &Gate, log: &mut Log) -> Outcome {
 }
 
 fn test_host(gate: &Gate, log: &mut Log) -> Outcome {
-  log.check(gate.cargo(["test", "--workspace", "--locked", "--no-fail-fast"]))
+  gate.require("nextest", "cargo-nextest")?;
+  log.check(gate.cargo([
+    "nextest",
+    "run",
+    "--workspace",
+    "--locked",
+    "--no-fail-fast",
+  ]))?;
+  log.check(gate.cargo(["test", "--workspace", "--locked", "--no-fail-fast", "--doc"]))
 }
 
 fn test_server(gate: &Gate, log: &mut Log) -> Outcome {

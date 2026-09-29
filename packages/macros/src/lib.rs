@@ -28,8 +28,9 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #function
 
     // The split tool roots its call graph at a function named `main`; a wasm library
-    // has none, so the entry exports an empty one.
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    // has none, so the entry exports an empty one, except to its own tests, whose
+    // harness brings the entry.
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown", not(test)))]
     #[unsafe(no_mangle)]
     extern "C" fn main() {}
 

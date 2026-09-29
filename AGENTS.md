@@ -542,9 +542,11 @@
   runs the same command on every pull request.
 - Tests run in three tiers, and the host tier alone proves nothing about the web: every
   `web_*.rs` is gated to a leaf, so on the host those binaries compile to zero tests, and
-  a change can pass every host test while breaking the browser outright. The server tier
-  is the server leaf built natively, the byte-exact render snapshot among it. The browser
-  tier drives a real Firefox through geckodriver with WebGPU switched on by
+  a change can pass every host test while breaking the browser outright. The host tier
+  runs through `cargo nextest run`, each test in a process of its own, the doctests
+  beside it through `cargo test --doc`. The server tier is the server leaf built
+  natively, the byte-exact render snapshot among it. The browser tier first links every
+  library's tests for wasm32, so an app's own tests build there, then drives a real Firefox through geckodriver with WebGPU switched on by
   `packages/gui/webdriver.json`, so a painted box renders on the GPU there; `web_painted`
   hides `navigator.gpu` before its first box paints, so the CPU blit is proven in the
   same run. The gate holds each browser binary to the least number of tests it lists for

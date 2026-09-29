@@ -60,9 +60,19 @@ struct Results {
   failed: usize,
 }
 
-/// Runs every browser binary and checks each against its expected count.
+/// Links every library's tests for the browser, then runs every browser binary and
+/// checks each against its expected count.
 pub(crate) fn run(gate: &Gate, log: &mut Log) -> Outcome {
   check_runner(gate)?;
+  log.check(gate.cargo([
+    "test",
+    "--locked",
+    "--workspace",
+    "--lib",
+    "--no-run",
+    "--target",
+    WASM,
+  ]))?;
 
   let scratch = gate.target.join("gate").join("tmp");
 

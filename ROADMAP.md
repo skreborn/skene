@@ -34,9 +34,6 @@ left half-done in a code comment.
     `Resource`, `Store` and `Selector` get the `Debug` that `Signal` has; `display`
     joins the banned words once `RunDisplay` is renamed, checked over the
     `cargo public-api` output.
-    - `#[main]` emits its wasm `main` under `not(test)`, so apps' lib tests link on
-    wasm32 and the gate runs them; the host tier runs through nextest, doctests beside
-    it.
 2. **One owner for style and interaction semantics.** The web compiler and core's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the

@@ -337,6 +337,14 @@ pub trait Platform: Copy + Default + 'static {
   /// Takes focus off a node.
   fn blur(sink: Self::Sink);
 
+  /// Whether the focus held now shows: reached by the keyboard, or held by a text
+  /// entry, and not since a pointer press; `false` where nothing holds focus.
+  #[inline(always)]
+  #[must_use]
+  fn focus_visible() -> bool {
+    false
+  }
+
   /// Writes the options a platform-drawn picker offers, in order; a platform without
   /// one ignores them.
   #[inline(always)]

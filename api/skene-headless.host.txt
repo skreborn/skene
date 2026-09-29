@@ -59,6 +59,7 @@ pub fn skene_headless::Headless::define_tokens(skene_headless::Handle, &skene_co
 pub fn skene_headless::Headless::destroy(skene_headless::Handle)
 pub fn skene_headless::Headless::detach(skene_headless::Handle, skene_headless::Handle)
 pub fn skene_headless::Headless::focus(skene_headless::Handle)
+pub fn skene_headless::Headless::focus_visible() -> bool
 pub fn skene_headless::Headless::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
 pub fn skene_headless::Headless::listen(skene_headless::Handle, skene_core::props::EventKind)
 pub fn skene_headless::Headless::media() -> skene_core::props::MediaSignals<f32>

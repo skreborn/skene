@@ -414,9 +414,9 @@
   everything else, so they carry roles, accessibility and focus order like the GUI's.
   **A tooltip is a view**, `Tooltip` in `skene-common`, wrapping the one view it
   describes and showing text or any view in a `Bubble` beside it: open after a delay on
-  hover and at once on focus, open while the pointer rests on the view or the bubble
-  (WCAG 1.4.13), closed a grace period after it leaves both and at once on blur and
-  `Escape`, never focused. A text
+  hover and at once on focus that shows, open while the pointer rests on the view or
+  the bubble (WCAG 1.4.13), closed a grace period after it leaves both and at once on
+  blur and `Escape`, never focused. A text
   tooltip is reported as the described view's `Description` beside `DescribedBy`, and a
   view's reports are merged in the scene, the relations of one kind folding into one
   list, so a describing view never overwrites a control's own. On the web the server renders the description as `title`, the

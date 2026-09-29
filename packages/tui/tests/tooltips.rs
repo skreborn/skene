@@ -1,5 +1,5 @@
 //! Tooltips in cells: the bubble paints beside its anchor once the pointer has rested
-//! for the delay, at once on focus, stays while the pointer rests on it, and leaves
+//! for the delay, at once on focus that shows, stays while the pointer rests on it, and leaves
 //! with the pointer, the focus or `Escape`.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -11,6 +11,41 @@ use std::time::Duration;
 use skene_tui::{self as tui, Activate, TOOLTIP_DELAY, TOOLTIP_GRACE, prelude::*};
 
 use crate::common::with_platform;
+
+/// A click focuses a described button without opening its bubble at once, since focus
+/// a press gives does not show; the rest before the delay still opens it.
+#[test]
+fn a_click_leaves_the_opening_to_the_delay() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          Tooltip::new("Saves your work")
+            .set_placement(Placement::Bottom)
+            .set_child(RawButton::new(Activate::new()).set_label("save"))
+            .into_any(),
+          Text::new("below").into_any(),
+        ))
+        .into_any()
+        .build()
+    });
+    let _ = tui::render_to_text(24, 4);
+
+    tui::trigger_mouse_click(1, 0);
+
+    assert!(
+      !tui::render_to_text(24, 4).contains("Saves"),
+      "focus from a click does not show"
+    );
+
+    tui::trigger_frame(TOOLTIP_DELAY);
+
+    assert!(
+      tui::render_to_text(24, 4).contains("Saves your work"),
+      "the pointer rested"
+    );
+  });
+}
 
 /// A tooltip on a button opens below it after the delay while the pointer rests on
 /// the button, closes the grace period after the pointer leaves, opens at once as the

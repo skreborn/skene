@@ -119,6 +119,7 @@ pub fn skene_web::Web::define_tokens(u32, &skene_core::token::Definitions<skene_
 pub fn skene_web::Web::destroy(u32)
 pub fn skene_web::Web::detach(u32, u32)
 pub fn skene_web::Web::focus(u32)
+pub fn skene_web::Web::focus_visible() -> bool
 pub fn skene_web::Web::hydration() -> core::option::Option<skene_reactive::signal::ReadSignal<bool>>
 pub fn skene_web::Web::listen(u32, skene_core::props::EventKind)
 pub fn skene_web::Web::localize_pointer(u32, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent

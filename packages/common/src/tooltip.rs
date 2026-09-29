@@ -49,8 +49,8 @@ enum Content<P: Platform> {
 /// A tooltip: content shown in a bubble beside the one view it describes, open while
 /// the pointer rests on that view or it holds focus.
 ///
-/// The bubble opens after [a delay](Self::set_delay) on hover and at once on keyboard
-/// focus, and never takes focus. It stays open while the pointer rests on the described
+/// The bubble opens after [a delay](Self::set_delay) on hover and at once on focus that
+/// shows, and never takes focus. It stays open while the pointer rests on the described
 /// view or on the bubble, closing [`TOOLTIP_GRACE`] after the pointer leaves both, and
 /// closes at once on blur and `Escape`. A text tooltip is
 /// reported as the described view's accessible description; a view tooltip is
@@ -158,7 +158,7 @@ impl<P: Platform, C> Tooltip<P, C> {
   }
 
   /// Sets how long the pointer rests on the described view before the bubble opens;
-  /// keyboard focus opens it at once.
+  /// focus that shows opens it at once.
   #[inline(always)]
   pub const fn set_delay(mut self, delay: Duration) -> Self {
     self.delay = delay;
@@ -170,10 +170,10 @@ impl<P: Platform, C> Tooltip<P, C> {
 impl<P: Platform, C> AnyKind for Tooltip<P, C> {}
 
 /// Registers what opens and closes `bubble`, describing `node`: a pointer resting on
-/// the node for `delay` or focus reaching it writes `open`; the pointer leaving the node
-/// or the bubble clears it after [`TOOLTIP_GRACE`] unless it reaches either first, and
-/// the focus leaving clears it at once. Each cancels what is pending, as the view's
-/// disposal does.
+/// the node for `delay` or focus that shows reaching it writes `open`; the pointer
+/// leaving the node or the bubble clears it after [`TOOLTIP_GRACE`] unless it reaches
+/// either first, and the focus leaving clears it at once. Each cancels what is pending,
+/// as the view's disposal does.
 fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, delay: Duration) {
   let pending: Rc<Cell<Option<Timer>>> = Rc::new(Cell::new(None));
   let cancel: Rc<dyn Fn()> = Rc::new({
@@ -224,7 +224,15 @@ fn bind_triggers<P: Platform>(node: NodeId, bubble: NodeId, open: Signal<bool>, 
     scene.handle_pointer_leave(node, after(TOOLTIP_GRACE, false));
     scene.handle_pointer_enter(bubble, Rc::clone(&cancel));
     scene.handle_pointer_leave(bubble, after(TOOLTIP_GRACE, false));
-    scene.handle_focus(node, at_once(true));
+    scene.handle_focus(node, {
+      let open_at_once = at_once(true);
+
+      Rc::new(move || {
+        if P::focus_visible() {
+          open_at_once();
+        }
+      })
+    });
     scene.handle_blur(node, at_once(false));
   });
 }

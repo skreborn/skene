@@ -548,6 +548,7 @@ pub fn skene_tui::Tui::define_tokens(skene_tui::Handle, &skene_core::token::Defi
 pub fn skene_tui::Tui::destroy(skene_tui::Handle)
 pub fn skene_tui::Tui::detach(skene_tui::Handle, skene_tui::Handle)
 pub fn skene_tui::Tui::focus(skene_tui::Handle)
+pub fn skene_tui::Tui::focus_visible() -> bool
 pub fn skene_tui::Tui::listen(skene_tui::Handle, skene_core::props::EventKind)
 pub fn skene_tui::Tui::localize_pointer(skene_tui::Handle, &skene_core::events::PointerEvent) -> skene_core::events::PointerEvent
 pub fn skene_tui::Tui::media() -> skene_core::props::MediaSignals<u32>

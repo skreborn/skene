@@ -359,6 +359,10 @@ impl Platform for Headless {
     });
   }
 
+  fn focus_visible() -> bool {
+    with_store(|store| store.focused.is_some() && store.focus_visible)
+  }
+
   fn set_value(sink: Handle, value: &str) {
     with_record(sink, |record| value.clone_into(&mut record.value));
   }

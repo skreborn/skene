@@ -1,10 +1,23 @@
-//! Tooltips: the bubble opens after the delay on hover and at once on focus, closes on
-//! leave, blur and dismiss, and the described view reports the bubble and its text.
+//! Tooltips: the bubble opens after the delay on hover and at once on focus that shows,
+//! closes on leave, blur and dismiss, and the described view reports the bubble and its
+//! text.
 
 mod common;
 
 use skene_common::{Activate, TOOLTIP_DELAY, TOOLTIP_GRACE};
-use skene_core::{AccessProp, FocusOrder, HasChildren, Part, Placement, Scene, View};
+use skene_core::{
+  AccessProp,
+  FocusOrder,
+  HasChildren,
+  KeyEvent,
+  Modifiers,
+  Part,
+  Placement,
+  PointerButton,
+  PointerEvent,
+  Scene,
+  View,
+};
 use skene_headless::{
   Headless,
   box_props,
@@ -19,6 +32,8 @@ use skene_headless::{
   trigger_dismiss,
   trigger_focus,
   trigger_frame,
+  trigger_key_down,
+  trigger_pointer_down,
   trigger_pointer_enter,
   trigger_pointer_leave,
 };
@@ -40,6 +55,47 @@ fn parts(start: skene_core::NodeId) -> (skene_core::NodeId, skene_core::NodeId) 
   );
 
   (nodes[0], nodes[1])
+}
+
+/// Focus opens the bubble at once only where it shows: focus a pointer press gave
+/// leaves the opening to the hover delay, and focus after a key opens it.
+#[test]
+fn only_focus_that_shows_opens_a_tooltip_at_once() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Tooltip::new("Saves your work")
+      .set_child(
+        Container::new()
+          .set_focus_order(FocusOrder::Auto)
+          .set_child(Text::new("Save")),
+      )
+      .build()
+  });
+  let (described, bubble) = parts(start);
+  let press = PointerEvent {
+    x: 0.,
+    y: 0.,
+    local_x: 0.,
+    local_y: 0.,
+    button: Some(PointerButton::Primary),
+    modifiers: Modifiers::default(),
+  };
+
+  let _ = trigger_pointer_down(described, &press);
+  trigger_focus(described);
+
+  assert!(!is_open(bubble), "focus a press gave does not show");
+
+  trigger_blur(described);
+
+  let _ = trigger_key_down(described, &KeyEvent::new("Tab"));
+  trigger_focus(described);
+
+  assert!(is_open(bubble), "focus after a key shows");
+
+  owner.dispose();
 }
 
 /// A text tooltip describes its child: the bubble is a hint anchored to the child and

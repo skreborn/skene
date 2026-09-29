@@ -1861,6 +1861,13 @@ impl Platform for Web {
     }
   }
 
+  fn focus_visible() -> bool {
+    web_sys::window()
+      .and_then(|window| window.document())
+      .and_then(|document| document.active_element())
+      .is_some_and(|element| element.matches(":focus-visible").unwrap_or(false))
+  }
+
   fn set_value(sink: u32, value: &str) {
     with_dom(|dom| {
       let Some(carrier) = dom.node(sink).and_then(Node::carrier)

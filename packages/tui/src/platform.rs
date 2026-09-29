@@ -409,6 +409,14 @@ impl Platform for Tui {
     }
   }
 
+  fn focus_visible() -> bool {
+    with_store(|store| {
+      store
+        .focused
+        .is_some_and(|focused| store.focus_shows(focused))
+    })
+  }
+
   fn set_value(sink: Handle, value: &str) {
     with_store(|store| {
       let Some(record) = store.record_mut(sink)

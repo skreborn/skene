@@ -255,10 +255,10 @@ named after its sink, the popup placed by `position-area`) where the engine has 
 sits at the anchor's measured rectangle as it opens elsewhere. A `Tooltip` wraps the one
 view it describes and mounts that view and a hint overlay, the `Bubble`, in a segment of
 its own: it opens on the platform's clock once the pointer has rested for its delay and
-at once on focus, closes on leave, blur and a dismiss, and reports the bubble as the
-view's description (`DescribedBy`, and `Description` for text), the report merged in
-the scene with the view's own; the web's server leaf renders the text as `title` and
-hydration removes it.
+at once on focus that shows (`Platform::focus_visible`), closes on leave, blur and a
+dismiss, and reports the bubble as the view's description (`DescribedBy`, and
+`Description` for text), the report merged in the scene with the view's own; the web's
+server leaf renders the text as `title` and hydration removes it.
 
 A **context menu is a view of the same shape**. `ContextMenu` in `skene-common` wraps
 the one view it serves and mounts that view and a popup overlay, the `List`, in a

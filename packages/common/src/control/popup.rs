@@ -23,7 +23,8 @@ type Typed = dyn Fn(&KeyEvent) -> bool;
 
 /// The face of a popup, which opens and closes it.
 ///
-/// A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it, `Escape`
+/// A face opening a list of options is a combobox, and one opening a menu or a dialog a
+/// button. A click, `Enter` or `Space` toggles it, `ArrowDown` and `ArrowUp` open it, `Escape`
 /// closes it, and any other key pressed while it is closed goes to
 /// [`handle_typed`](Self::handle_typed).
 ///
@@ -129,12 +130,18 @@ impl Popup {
 impl<P: Platform> Behavior<P> for Popup {
   #[inline(always)]
   fn kind(&self) -> ControlKind {
-    ControlKind::Combobox
+    match self.kind {
+      PopupKind::Listbox => ControlKind::Combobox,
+      PopupKind::Menu | PopupKind::Dialog => ControlKind::Button,
+    }
   }
 
   #[inline(always)]
   fn role(&self) -> Option<Role> {
-    Some(Role::Combobox)
+    Some(match self.kind {
+      PopupKind::Listbox => Role::Combobox,
+      PopupKind::Menu | PopupKind::Dialog => Role::Button,
+    })
   }
 
   #[inline(always)]

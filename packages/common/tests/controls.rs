@@ -16,6 +16,7 @@ use skene_common::{
   Label,
   ListItem,
   Listbox,
+  Popup,
   RadioMember,
   Range,
   Roving,
@@ -35,6 +36,7 @@ use skene_core::{
   Part,
   PointerButton,
   PointerEvent,
+  PopupKind,
   Prevent,
   Prevented,
   Role,
@@ -791,6 +793,37 @@ fn a_text_fields_change_writes_the_signal_and_stays_on_its_node() {
     Some(ControlKind::TextEditor)
   );
   assert_eq!(control_props(editor).map(|props| props.lines), Some(4));
+
+  owner.dispose();
+}
+
+/// A popup face opening a list is a combobox, and one opening a menu or a dialog a
+/// button, each reporting the popup it opens.
+#[test]
+fn a_popup_face_is_what_its_popup_makes_it() {
+  reset();
+
+  let owner = Owner::new();
+  let faces = [PopupKind::Listbox, PopupKind::Menu, PopupKind::Dialog].map(|kind| {
+    (
+      kind,
+      owner.enter(|| Control::new(Popup::new().set_kind(kind)).build()),
+    )
+  });
+
+  for (kind, face) in faces {
+    let (control, role) = match kind {
+      PopupKind::Listbox => (ControlKind::Combobox, Role::Combobox),
+      PopupKind::Menu | PopupKind::Dialog => (ControlKind::Button, Role::Button),
+    };
+
+    assert_eq!(control_props(face).map(|props| props.kind), Some(control));
+    assert_eq!(box_props(face).and_then(|props| props.role), Some(role));
+    assert!(
+      box_props(face).is_some_and(|props| props.access.contains(&AccessProp::HasPopup(kind))),
+      "{kind:?}"
+    );
+  }
 
   owner.dispose();
 }

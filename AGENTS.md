@@ -209,15 +209,15 @@
   it): the web leaves return the signal that is false on the server leaf and while a
   hydration adopts the server's markup and true once it has finished (so the fallback
   is adopted, then rebuilt into the child in place, under a replacement owner), the
-  headless platform returns one a test flips (`set_hydrated`), and the GUI facade reads
-  it as `media::hydrated()`, true from the start on native. `Painting::available()` is
-  the pixels': false on the server and in the terminal until its graphics probe is
-  answered, true on the browser leaf once live, `set_graphics` on the headless
-  platform; it is what `Painted::set_fallback` waits for, and the picker's prerendered
-  `<select>` waits on `hydration()`, drawn outright where there is none. Prefer the
-  latest CSS standards and pay
-  nothing for obscure or ancient engines; when a slightly older engine can be
-  supported without giving anything up in new ones, support it.
+  headless platform returns one a test flips (`trigger_hydrated`), and the GUI facade
+  reads it as `media::hydrated()`, true from the start on native.
+  `Painting::available()` is the pixels': false on the server and in the terminal until
+  its graphics probe is answered, true on the browser leaf once live, `trigger_graphics`
+  on the headless platform; it is what `Painted::set_fallback` waits for, and the
+  picker's prerendered `<select>` waits on `hydration()`, drawn outright where there is
+  none. Prefer the latest CSS standards and pay nothing for obscure or ancient engines;
+  when a slightly older engine can be supported without giving anything up in new ones,
+  support it.
 - The **interner contract is load-bearing**: content-addressed class names
   (`skene-{hash:x}` from a wide hash), reference-counted, deterministic and identical
   across csr and ssr—hydration and stylesheet parity depend on it. The pure core lives
@@ -528,14 +528,15 @@
   self-describing encoding a restore coerces across (a `bool` and an integer are one
   another, a missing field is its type's absent value, an unknown one is skipped, a
   gone variant is the default), derived with `#[derive(Snapshot)]`, never serde.
-- **`cargo xtask gate` is the gate**: every check a change passes, in one command, and
-  a change lands only when it reports `gate passed`. It checks formatting, every
+- **`cargo xtask gate` is the gate**: every check a change passes, in one command, and a
+  change lands only when it reports `gate passed`. It checks formatting, every
   manifest's dependency order and its inheriting the workspace's lints and
-  `rust-version`, the house rules no compiler checks (em-dashes unspaced,
-  children last, no public name in another framework's vocabulary), unused
-  dependencies, clippy and rustdoc with warnings denied on all three leaves, clippy on
-  the code written for Apple's platforms (the terminal's, on `aarch64-apple-darwin`),
-  the three test tiers, the feature powerset (so no cargo feature creeps back in) and the
+  `rust-version`, the house rules no compiler checks (em-dashes unspaced, children last,
+  no public name in another framework's vocabulary, fields and variants documented all
+  or none, a test double's simulated events named `trigger_`), unused dependencies,
+  clippy and rustdoc with warnings denied on all three leaves, clippy on the code
+  written for Apple's platforms (the terminal's, on `aarch64-apple-darwin`), the three
+  test tiers, the feature powerset (so no cargo feature creeps back in) and the
   workspace on its declared `rust-version`. `cargo xtask gate test:browser` runs one
   step and `cargo xtask gate clippy` a group; each step logs to
   `target/gate/<step>.log`, and a failed one prints why beside the end of its log. CI

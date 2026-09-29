@@ -200,12 +200,12 @@ and its cost unjustified.
   enhancement in place, as a `derived` rebuild is, under a replacement owner, so a
   signal bound beneath keeps its value and its snapshot identity; a mount that
   hydrates nothing answers true from the start and never builds the baseline. The
-  headless platform answers hydrated until a test says otherwise (`set_hydrated`), so a
-  generic view's two forms are tested on the host. **Pixels** are `Painting`'s:
+  headless platform answers hydrated until a test says otherwise (`trigger_hydrated`),
+  so a generic view's two forms are tested on the host. **Pixels** are `Painting`'s:
   `Painting::available()` is the signal a painted box waits on, false on the server
   leaf, false on the browser leaf until it is live, false in the terminal until the
-  graphics probe is answered, and the headless platform's from `set_graphics`. Only the
-  branch in force is ever built, so an enhancement may touch the browser and a
+  graphics probe is answered, and the headless platform's from `trigger_graphics`. Only
+  the branch in force is ever built, so an enhancement may touch the browser and a
   baseline may be the whole view where the signal never turns. The seam is the
   built-ins' own: `Painted` takes `set_fallback`, the view drawn where no pixels
   show, so a painted box has a no-JS form on the web and a cell form in the terminal

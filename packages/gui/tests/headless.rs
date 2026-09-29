@@ -777,11 +777,11 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
   use skene_gui::{
     Painted,
     core::Scene,
-    headless::{is_painted, set_graphics},
+    headless::{is_painted, trigger_graphics},
   };
 
   reset();
-  set_graphics(false);
+  trigger_graphics(false);
 
   let owner = Owner::new();
   let start = owner.enter(|| {
@@ -796,7 +796,7 @@ fn a_painted_box_falls_back_where_nothing_is_drawn_as_pixels() {
   assert_eq!(text(shown[0]).as_deref(), Some("a red box"));
   assert!(!is_painted(shown[0]));
 
-  set_graphics(true);
+  trigger_graphics(true);
 
   let shown = nodes();
 

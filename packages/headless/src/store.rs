@@ -32,7 +32,8 @@ use skene_reactive::{Owner, ReadSignal, Signal, WriteSignal};
 
 use crate::{Handle, Headless, SlotLeaf, SlotValue, TokenValue};
 
-/// The viewport the platform reports until [`set_viewport`](crate::set_viewport) is called.
+/// The viewport the platform reports until [`trigger_resize`](crate::trigger_resize) is
+/// called.
 pub(crate) const DEFAULT_VIEWPORT: Size<f32> = Size::new(1024., 768.);
 
 /// What a record is, with everything its creation call carried.

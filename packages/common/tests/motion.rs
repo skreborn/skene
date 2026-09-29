@@ -10,13 +10,13 @@ use skene_common::{Container, Theme};
 use skene_core::{Animation, BoxKeyframe, Color, Easing, Property, Transition, View};
 use skene_headless::{
   Headless,
-  advance,
   box_props,
   children,
   reset,
   resolve_color,
   resolve_length,
-  set_reduced_motion,
+  trigger_frame,
+  trigger_reduced_motion,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -58,12 +58,12 @@ fn derived_writes_transition_across_the_stepped_clock() {
 
   color.set(blue());
   width.set(10.);
-  advance(Duration::from_millis(500));
+  trigger_frame(Duration::from_millis(500));
 
   assert_eq!(resolve_color(node, COLOR), Some(red().mix(blue(), 0.5)));
   assert_eq!(resolve_length(node, WIDTH), Some(5.));
 
-  advance(Duration::from_millis(500));
+  trigger_frame(Duration::from_millis(500));
 
   assert_eq!(resolve_color(node, COLOR), Some(blue()));
   assert_eq!(resolve_length(node, WIDTH), Some(10.));
@@ -93,21 +93,21 @@ fn a_palette_flip_transitions_and_reduced_motion_cuts() {
   assert_eq!(resolve_color(card, COLOR), Some(red()));
 
   palette.set(TestPalette::with_card(blue()));
-  advance(Duration::from_millis(500));
+  trigger_frame(Duration::from_millis(500));
 
   assert_eq!(resolve_color(card, COLOR), Some(red().mix(blue(), 0.5)));
 
-  advance(Duration::from_millis(500));
+  trigger_frame(Duration::from_millis(500));
 
   assert_eq!(resolve_color(card, COLOR), Some(blue()));
 
-  set_reduced_motion(true);
+  trigger_reduced_motion(true);
   palette.set(TestPalette::with_card(red()));
-  advance(Duration::from_millis(1));
+  trigger_frame(Duration::from_millis(1));
 
   assert_eq!(resolve_color(card, COLOR), Some(red()));
 
-  set_reduced_motion(false);
+  trigger_reduced_motion(false);
   owner.dispose();
 }
 
@@ -139,11 +139,11 @@ fn a_token_keyframe_animation_samples_through_the_theme() {
   );
   assert_eq!(resolve_color(card, COLOR), Some(red()));
 
-  advance(Duration::from_millis(500));
+  trigger_frame(Duration::from_millis(500));
 
   assert_eq!(resolve_color(card, COLOR), Some(red().mix(blue(), 0.5)));
 
-  advance(Duration::from_secs(1));
+  trigger_frame(Duration::from_secs(1));
 
   assert_eq!(resolve_color(card, COLOR), Some(blue()));
 

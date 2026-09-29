@@ -20,11 +20,11 @@ One list, every item big and small, top first. An item is resolved by landing it
 proving it unnecessary, or by recording it under the decisions at the end; it is never
 left half-done in a code comment.
 
-1. **The rest of the house rules in the gate.** `trigger_` naming on the test
-    doubles, and a `cargo public-api` snapshot so a change to the surface shows in
-    review. The workspace declares no license, so `cargo deny check licenses` has
-    nothing to hold the dependencies to. Neither CI workflow, the gate on every pull
-    request nor the weekly RustSec advisories, has run yet.
+1. **The rest of the house rules in the gate.** A `cargo public-api` snapshot, so a
+    change to the surface shows in review. The workspace declares no license, so
+    `cargo deny check licenses` has nothing to hold the dependencies to. Neither CI
+    workflow, the gate on every pull request nor the weekly RustSec advisories, has run
+    yet.
     - With them: `display` joins the banned words once `RunDisplay` is renamed, checked
     over the `cargo public-api` output.
 2. **One owner for style and interaction semantics.** The web compiler and core's

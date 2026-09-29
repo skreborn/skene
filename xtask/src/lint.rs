@@ -1,5 +1,6 @@
 //! The house rules no compiler checks: unspaced em-dashes, children last, the
-//! framework's own vocabulary, and fields and variants documented all or none.
+//! framework's own vocabulary, fields and variants documented all or none, and a test
+//! double's simulated events named `trigger_`.
 
 use std::{
   fs,
@@ -10,6 +11,7 @@ use proc_macro2::Span;
 use syn::{
   Attribute,
   Expr,
+  ExprCall,
   ExprMethodCall,
   Fields,
   Ident,
@@ -37,6 +39,10 @@ const PROPERTY_PREFIXES: &[&str] = &["derive_", "handle_", "set_"];
 
 /// Words the public surface never uses, the framework's own vocabulary standing in.
 const BANNED_WORDS: &[&str] = &["backend", "gap", "justify", "widget"];
+
+/// The public functions that run a test double's `trigger` helper to turn its own loop
+/// rather than to simulate an event, exempt from `trigger_` naming.
+const LOOP_TURNS: &[&str] = &["pump_tasks"];
 
 /// Directories never searched for sources.
 const SKIPPED: &[&str] = &[".git", "dist", "node_modules", "target", "vendor"];
@@ -175,6 +181,30 @@ impl Rules<'_> {
     );
   }
 
+  /// Reports a public function that simulates an event through the `trigger` helper
+  /// without a `trigger_` name.
+  fn check_trigger_name(&mut self, item: &ItemFn) {
+    let name = item.sig.ident.to_string();
+
+    if !matches!(item.vis, Visibility::Public(_))
+      || name.starts_with("trigger_")
+      || LOOP_TURNS.contains(&name.as_str())
+    {
+      return;
+    }
+
+    let mut calls = TriggerCalls(false);
+
+    calls.visit_block(&item.block);
+
+    if calls.0 {
+      self.report(
+        item.sig.ident.span(),
+        &format!("`{name}` simulates an event through `trigger`: name it `trigger_<event>`"),
+      );
+    }
+  }
+
   /// Reports a public name made of a banned word.
   fn check_name(&mut self, visibility: &Visibility, ident: &Ident) {
     if !self.public_surface || !matches!(visibility, Visibility::Public(_)) {
@@ -250,6 +280,7 @@ impl<'ast> Visit<'ast> for Rules<'_> {
 
   fn visit_item_fn(&mut self, item: &'ast ItemFn) {
     self.check_name(&item.vis, &item.sig.ident);
+    self.check_trigger_name(item);
     visit::visit_item_fn(self, item);
   }
 
@@ -288,6 +319,21 @@ impl<'ast> Visit<'ast> for Rules<'_> {
     }
 
     visit::visit_expr_method_call(self, call);
+  }
+}
+
+/// Whether a body calls a test double's `trigger` helper.
+struct TriggerCalls(bool);
+
+impl<'ast> Visit<'ast> for TriggerCalls {
+  fn visit_expr_call(&mut self, call: &'ast ExprCall) {
+    if let Expr::Path(function) = &*call.func
+      && function.path.is_ident("trigger")
+    {
+      self.0 = true;
+    }
+
+    visit::visit_expr_call(self, call);
   }
 }
 
@@ -414,6 +460,29 @@ mod tests {
     assert!(findings("struct All { /// A.\n a: u8, /// B.\n b: u8 }", false).is_empty());
     assert!(findings("struct None { a: u8, b: u8 }", false).is_empty());
     assert!(findings("pub struct Public { /// A.\n pub a: u8, b: u8 }", false).is_empty());
+  }
+
+  #[test]
+  fn a_public_function_triggering_an_event_under_another_name_is_reported() {
+    assert_eq!(
+      findings("pub fn set_viewport() { trigger(|| ()); }", false),
+      [
+        "test.rs:1: `set_viewport` simulates an event through `trigger`: name it \
+         `trigger_<event>`"
+      ]
+    );
+  }
+
+  #[test]
+  fn a_triggered_event_its_name_a_loop_turn_or_a_private_helper_passes() {
+    assert!(
+      findings(
+        "pub fn trigger_resize() { trigger(|| ()); } pub fn pump_tasks() -> bool { \
+         trigger(pump) } fn resize() { trigger(|| ()); }",
+        false
+      )
+      .is_empty()
+    );
   }
 
   #[test]

@@ -33,8 +33,8 @@ use skene_headless::{
   children,
   reset,
   resolve_length,
-  set_viewport,
   slot_leaf,
+  trigger_resize,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 
@@ -135,7 +135,7 @@ fn media_condition_on_padding_switches_with_the_viewport() {
   assert_eq!(resolve_length(root, PADDING), Some(12.));
   assert_eq!(resolve_length(child, ASPECT_RATIO), Some(2.));
 
-  set_viewport(Size::new(800., 600.));
+  trigger_resize(Size::new(800., 600.));
 
   assert_eq!(resolve_length(root, SPACING), Some(8.));
   assert_eq!(resolve_length(root, PADDING), Some(4.));

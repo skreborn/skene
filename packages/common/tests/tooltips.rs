@@ -7,7 +7,6 @@ use skene_common::{Activate, TOOLTIP_DELAY};
 use skene_core::{AccessProp, FocusOrder, HasChildren, Part, Placement, Scene, View};
 use skene_headless::{
   Headless,
-  advance,
   box_props,
   handle,
   is_open,
@@ -19,6 +18,7 @@ use skene_headless::{
   trigger_blur,
   trigger_dismiss,
   trigger_focus,
+  trigger_frame,
   trigger_pointer_enter,
   trigger_pointer_leave,
 };
@@ -80,11 +80,11 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
 
   assert!(!is_open(bubble), "the pointer has not rested yet");
 
-  advance(TOOLTIP_DELAY / 2);
+  trigger_frame(TOOLTIP_DELAY / 2);
 
   assert!(!is_open(bubble));
 
-  advance(TOOLTIP_DELAY);
+  trigger_frame(TOOLTIP_DELAY);
 
   assert!(is_open(bubble), "the delay passed");
   assert_eq!(overlay_anchor(bubble), handle(described));
@@ -95,7 +95,7 @@ fn a_tooltip_opens_on_hover_after_its_delay_and_on_focus_at_once() {
 
   trigger_pointer_enter(described);
   trigger_pointer_leave(described);
-  advance(TOOLTIP_DELAY * 2);
+  trigger_frame(TOOLTIP_DELAY * 2);
 
   assert!(
     !is_open(bubble),

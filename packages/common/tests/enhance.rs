@@ -5,7 +5,7 @@ use std::{cell::Cell, rc::Rc};
 
 use skene_common::{Enhance, media};
 use skene_core::{NodeId, Scene, View};
-use skene_headless::{Headless, end_turn, reset, set_hydrated, text};
+use skene_headless::{Headless, end_turn, reset, text, trigger_hydrated};
 use skene_reactive::{Get, Owner, Set, Signal};
 
 type Text = skene_common::Text<Headless>;
@@ -159,7 +159,7 @@ fn a_signal_true_from_the_start_never_builds_the_fallback() {
 #[test]
 fn hydration_is_answered_by_the_platform() {
   reset();
-  set_hydrated(false);
+  trigger_hydrated(false);
 
   let owner = Owner::new();
   let start = owner.enter(|| {
@@ -171,7 +171,7 @@ fn hydration_is_answered_by_the_platform() {
 
   assert_eq!(shown(start), "markup");
 
-  set_hydrated(true);
+  trigger_hydrated(true);
 
   assert_eq!(shown(start), "hydrated");
 }

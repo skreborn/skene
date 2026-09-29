@@ -8,11 +8,11 @@
 //! core's dispatch so bubbling is the one implementation every platform shares.
 //!
 //! The environment starts at a 1024 by 768 viewport, the light scheme and no reduced
-//! motion; [`set_viewport`], [`set_scheme`] and [`set_reduced_motion`] move it,
-//! [`choose_scheme`] lets the app override the platform's scheme, and the signals
-//! [`Platform::media`] reports follow.
+//! motion; [`trigger_resize`], [`trigger_color_scheme`] and [`trigger_reduced_motion`]
+//! move it, the app's choice through [`Platform::set_scheme`] overrides the platform's
+//! scheme, and the signals [`Platform::media`] reports follow.
 //!
-//! Motion runs on a clock that stands still until [`advance`] steps it: a property
+//! Motion runs on a clock that stands still until [`trigger_frame`] steps it: a property
 //! whose resolved value moved under a transition, or that an animation sets, resolves
 //! to the in-flight value at the clock's reading, so [`resolve_color`] and
 //! [`resolve_length`] read what a frame would show.
@@ -590,7 +590,7 @@ pub fn trigger_pointer_leave(node: NodeId) {
 /// node focus left.
 pub fn trigger_focus(node: NodeId) {
   trigger(|| {
-    move_focus(Some(node));
+    move_focus(node);
     notify_focus::<Headless>(node);
   });
 }
@@ -699,8 +699,8 @@ pub fn trigger_size(node: NodeId, size: Size<f32>) {
   });
 }
 
-/// Sets the viewport's size.
-pub fn set_viewport(size: Size<f32>) {
+/// Simulates the viewport resizing to `size`.
+pub fn trigger_resize(size: Size<f32>) {
   trigger(|| {
     let write = with_store(|store| {
       store.viewport = Some(size);
@@ -712,9 +712,9 @@ pub fn set_viewport(size: Size<f32>) {
   });
 }
 
-/// Sets the platform's color scheme; the scheme in force follows it unless the app
-/// chose one through [`choose_scheme`].
-pub fn set_scheme(scheme: ColorScheme) {
+/// Simulates the platform's color scheme changing to `scheme`; the scheme in force
+/// follows it unless the app chose one.
+pub fn trigger_color_scheme(scheme: ColorScheme) {
   trigger(|| {
     let (write, in_force) = with_store(|store| {
       store.scheme = Some(scheme);
@@ -724,12 +724,6 @@ pub fn set_scheme(scheme: ColorScheme) {
 
     write.set(in_force);
   });
-}
-
-/// Sets the scheme the app chose, overriding the platform's; `None` returns to
-/// following the platform.
-pub fn choose_scheme(scheme: Option<ColorScheme>) {
-  trigger(|| record_chosen_scheme(scheme));
 }
 
 /// Records the scheme the app chose, the scheme in force following.
@@ -743,7 +737,7 @@ fn record_chosen_scheme(scheme: Option<ColorScheme>) {
   write.set(in_force);
 }
 
-/// The scheme the app chose through [`choose_scheme`], if any.
+/// The scheme the app chose, if any.
 #[must_use]
 pub fn chosen_scheme() -> Option<ColorScheme> {
   end_turn();
@@ -751,10 +745,10 @@ pub fn chosen_scheme() -> Option<ColorScheme> {
   with_store(|store| store.chosen_scheme)
 }
 
-/// Sets whether the render stands hydrated, as the web leaves answer it: false
+/// Simulates whether the render stands hydrated, as the web leaves answer it: false
 /// stands in for a server render or a hydration still adopting, true for a live page;
-/// hydrated until set.
-pub fn set_hydrated(hydrated: bool) {
+/// hydrated until triggered.
+pub fn trigger_hydrated(hydrated: bool) {
   trigger(|| {
     let write = with_store(|store| {
       store.hydrated = Some(hydrated);
@@ -766,8 +760,8 @@ pub fn set_hydrated(hydrated: bool) {
   });
 }
 
-/// Sets whether a painted box shows as pixels; shown until set.
-pub fn set_graphics(shown: bool) {
+/// Simulates whether a painted box shows as pixels; shown until triggered.
+pub fn trigger_graphics(shown: bool) {
   trigger(|| {
     let write = with_store(|store| {
       store.graphics = Some(shown);
@@ -779,8 +773,8 @@ pub fn set_graphics(shown: bool) {
   });
 }
 
-/// Sets whether the reader prefers reduced motion.
-pub fn set_reduced_motion(reduced: bool) {
+/// Simulates the reader's reduced-motion preference.
+pub fn trigger_reduced_motion(reduced: bool) {
   trigger(|| {
     let write = with_store(|store| {
       store.reduced_motion = Some(reduced);
@@ -801,12 +795,12 @@ pub fn pending_timers() -> usize {
   with_store(|store| store.timers.len())
 }
 
-/// Passes a frame, stepping the clock forward by `elapsed`.
+/// Simulates a frame passing, stepping the clock forward by `elapsed`.
 ///
 /// Every property a resolution has observed is judged again at the clock's reading, so
 /// a value that moved since starts its transition there, before the clock steps; the
 /// next resolution samples every transition and animation at the new reading.
-pub fn advance(elapsed: std::time::Duration) {
+pub fn trigger_frame(elapsed: Duration) {
   trigger(|| {
     let tracked = with_store(|store| store.tracked());
 
@@ -835,8 +829,8 @@ pub fn advance(elapsed: std::time::Duration) {
   });
 }
 
-/// Sets the measured size of the query container `name`.
-pub fn set_container_size(name: ContainerName, size: Size<f32>) {
+/// Simulates the query container `name` measuring `size`.
+pub fn trigger_container_size(name: ContainerName, size: Size<f32>) {
   trigger(|| record_container_size(name, size));
 }
 
@@ -851,11 +845,6 @@ fn record_container_size(name: ContainerName, size: Size<f32>) {
   sizes.set(name, size);
 }
 
-/// Sets whether the pointer is over `node`.
-pub fn set_hovered(node: NodeId, hovered: bool) {
-  trigger(|| mark_hovered(node, hovered));
-}
-
 /// Records whether the pointer is over `node`.
 fn mark_hovered(node: NodeId, hovered: bool) {
   if let Some(handle) = handle(node) {
@@ -863,14 +852,9 @@ fn mark_hovered(node: NodeId, hovered: bool) {
   }
 }
 
-/// Moves focus to `node`, or clears it for `None`.
-pub fn set_focused(node: Option<NodeId>) {
-  trigger(|| move_focus(node));
-}
-
-/// Records focus on `node`, or on nothing for `None`.
-fn move_focus(node: Option<NodeId>) {
-  let handle = node.and_then(handle);
+/// Records focus on `node`.
+fn move_focus(node: NodeId) {
+  let handle = handle(node);
 
   with_store(|store| store.focused = handle);
 }

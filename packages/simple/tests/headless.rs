@@ -32,7 +32,6 @@ use skene_headless::{
   SlotValue,
   TokenValue,
   accessible_name,
-  advance,
   children,
   control_props,
   is_focused,
@@ -42,15 +41,17 @@ use skene_headless::{
   resolve_border,
   resolve_color,
   root_definitions,
-  set_hovered,
-  set_scheme,
   slot_leaf,
   text,
   trigger_blur,
   trigger_change,
   trigger_click,
+  trigger_color_scheme,
   trigger_focus,
+  trigger_frame,
   trigger_key_down,
+  trigger_pointer_enter,
+  trigger_pointer_leave,
 };
 use skene_reactive::{Get, Owner, Set, Signal};
 use skene_simple::SimpleVariant;
@@ -143,17 +144,17 @@ fn a_buttons_surface_hover_and_focus_resolve_the_primary_look_on_the_control() {
     Some(Border::new(1., Color::TRANSPARENT))
   );
 
-  set_hovered(button, true);
-  advance(Duration::from_secs(1));
+  trigger_pointer_enter(button);
+  trigger_frame(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),
     Some(light(&palette.primary.hover))
   );
 
-  set_hovered(button, false);
+  trigger_pointer_leave(button);
   trigger_focus(button);
-  advance(Duration::from_secs(1));
+  trigger_frame(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),
@@ -182,7 +183,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   );
 
   variant.set(SimpleVariant::Outline);
-  advance(Duration::from_secs(1));
+  trigger_frame(Duration::from_secs(1));
 
   assert_eq!(resolve_color(button, COLOR), Some(Color::TRANSPARENT));
   assert_eq!(
@@ -194,7 +195,7 @@ fn a_derived_variant_redefines_the_look_without_a_rebuild() {
   );
 
   variant.set(SimpleVariant::Destructive);
-  advance(Duration::from_secs(1));
+  trigger_frame(Duration::from_secs(1));
 
   assert_eq!(
     resolve_color(button, COLOR),
@@ -429,7 +430,7 @@ fn the_default_palette_answers_the_dark_scheme() {
 
   assert_eq!(resolve_color(card, COLOR), Some(light(&palette.card)));
 
-  set_scheme(ColorScheme::Dark);
+  trigger_color_scheme(ColorScheme::Dark);
 
   assert_eq!(resolve_color(card, COLOR), Some(dark(&palette.card)));
   assert_eq!(
@@ -559,7 +560,7 @@ fn a_third_party_palette_works_under_theme_like_the_simple_one() {
     Some(light(&palette.primary.surface))
   );
 
-  set_scheme(ColorScheme::Dark);
+  trigger_color_scheme(ColorScheme::Dark);
 
   assert_eq!(resolve_color(accent, COLOR), Some(Color::srgb(0., 0., 1.)));
   assert_eq!(resolve_color(card, COLOR), Some(dark(&palette.card)));

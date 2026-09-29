@@ -60,17 +60,16 @@ use skene_headless::{
   reset,
   resolve_color,
   resolve_length,
-  set_container_size,
-  set_hovered,
-  set_scheme,
-  set_viewport,
   slot_leaf,
   text,
   trigger_change,
   trigger_click,
+  trigger_color_scheme,
+  trigger_container_size,
   trigger_focus,
   trigger_pointer_enter,
   trigger_pointer_leave,
+  trigger_resize,
   trigger_size,
   value,
 };
@@ -512,7 +511,7 @@ fn expressions_resolve_over_tokens_and_the_environment() {
   assert_eq!(resolve_length(card, WIDTH), Some(512.));
   assert_eq!(resolve_length(card, PADDING), Some(4.));
 
-  set_viewport(Size::new(800., 600.));
+  trigger_resize(Size::new(800., 600.));
 
   assert_eq!(resolve_length(card, WIDTH), Some(400.));
   assert_eq!(Headless.media().viewport.get(), Size::new(800., 600.));
@@ -547,11 +546,11 @@ fn container_condition_resolves_against_the_named_containers_size() {
   );
   assert_eq!(resolve_color(child, COLOR), Some(WHITE));
 
-  set_container_size(SIDEBAR, Size::new(300., 100.));
+  trigger_container_size(SIDEBAR, Size::new(300., 100.));
 
   assert_eq!(resolve_color(child, COLOR), Some(WHITE));
 
-  set_container_size(SIDEBAR, Size::new(500., 100.));
+  trigger_container_size(SIDEBAR, Size::new(500., 100.));
 
   assert_eq!(resolve_color(child, COLOR), Some(red()));
 
@@ -595,7 +594,7 @@ fn derived_slot_updates_and_a_hover_variant_still_wins() {
   );
   assert_eq!(resolve_color(node, COLOR), Some(green()));
 
-  set_hovered(node, true);
+  trigger_pointer_enter(node);
 
   assert_eq!(resolve_color(node, COLOR), Some(blue()));
 
@@ -650,7 +649,7 @@ fn a_derived_token_resolves_through_the_theme() {
   ));
   assert_eq!(resolve_color(card, COLOR), Some(WHITE.with_alpha(0.5)));
 
-  set_scheme(skene_core::ColorScheme::Dark);
+  trigger_color_scheme(skene_core::ColorScheme::Dark);
 
   assert_eq!(
     resolve_color(card, COLOR),
@@ -679,7 +678,7 @@ fn scheme_seam_drives_the_dark_definition_and_the_signal() {
     skene_core::ColorScheme::Light
   );
 
-  set_scheme(skene_core::ColorScheme::Dark);
+  trigger_color_scheme(skene_core::ColorScheme::Dark);
 
   assert_eq!(resolve_color(card, COLOR), Some(Color::srgb(0., 0., 0.)));
   assert_eq!(Headless.media().scheme.get(), skene_core::ColorScheme::Dark);

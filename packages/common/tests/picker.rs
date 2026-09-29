@@ -21,7 +21,6 @@ use skene_core::{
 use skene_headless::{
   Headless,
   accessible_name,
-  advance,
   box_props,
   children,
   control_props,
@@ -33,11 +32,12 @@ use skene_headless::{
   overlay_anchor,
   overlay_props,
   reset,
-  set_hydrated,
   text,
   trigger_change,
   trigger_click,
   trigger_dismiss,
+  trigger_frame,
+  trigger_hydrated,
   trigger_key_down,
   value as written_value,
 };
@@ -416,7 +416,7 @@ fn typing_over_the_closed_face_chooses_by_name() {
   assert_eq!(trigger_key_down(parts.face, &key("v")), CONSUMED);
   assert_eq!(value.get(), "av", "the buffer matches a prefix");
 
-  advance(TYPE_AHEAD_RESET);
+  trigger_frame(TYPE_AHEAD_RESET);
 
   let _ = trigger_key_down(parts.face, &key("a"));
 
@@ -457,7 +457,7 @@ fn typing_over_the_open_list_moves_focus_by_name() {
   assert_eq!(value.get(), "ap", "typing chooses nothing");
   assert!(is_open(parts.overlay));
 
-  advance(TYPE_AHEAD_RESET);
+  trigger_frame(TYPE_AHEAD_RESET);
 
   let _ = trigger_key_down(parts.options[2], &key("a"));
 
@@ -473,7 +473,7 @@ fn typing_over_the_open_list_moves_focus_by_name() {
   );
   assert_eq!(value.get(), "ap");
 
-  advance(TYPE_AHEAD_RESET);
+  trigger_frame(TYPE_AHEAD_RESET);
 
   let _ = trigger_key_down(parts.options[1], &key(" "));
 
@@ -490,7 +490,7 @@ fn typing_over_the_open_list_moves_focus_by_name() {
 #[test]
 fn until_hydrated_the_picker_is_the_platforms_own() {
   reset();
-  set_hydrated(false);
+  trigger_hydrated(false);
 
   let owner = Owner::new();
   let value = Signal::new("b".to_owned());
@@ -529,7 +529,7 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   assert_eq!(value.get(), "c", "the platform's choice reaches the signal");
   assert_eq!(written_value(native).as_deref(), Some("c"));
 
-  set_hydrated(true);
+  trigger_hydrated(true);
 
   let face = form(start);
 
@@ -546,7 +546,7 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
 #[test]
 fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
   reset();
-  set_hydrated(false);
+  trigger_hydrated(false);
 
   let owner = Owner::new();
   let start = owner.enter(move || {
@@ -570,7 +570,7 @@ fn the_drawn_face_keeps_the_caption_name_and_disabled_setting() {
   assert_eq!(accessible_name(native).as_deref(), Some("Size"));
   assert!(control_state(native).is_some_and(|state| state.disabled));
 
-  set_hydrated(true);
+  trigger_hydrated(true);
 
   let face = form(start);
 

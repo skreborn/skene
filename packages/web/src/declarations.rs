@@ -165,6 +165,16 @@ impl Declarations {
     }
   }
 
+  /// Renders one [`TrackLimit`] as the minimum of a `minmax()` track, where a flexible
+  /// share sizes as `auto`.
+  #[must_use]
+  fn render_track_minimum(limit: TrackLimit<f32>) -> String {
+    match limit {
+      TrackLimit::Flex(_) => "auto".to_owned(),
+      limit => Self::render_track_limit(limit),
+    }
+  }
+
   /// Renders a [`GridTrack`] to its CSS track text.
   #[must_use]
   pub fn render_track(track: GridTrack<f32>) -> String {
@@ -178,7 +188,12 @@ impl Declarations {
       GridTrack::FitContent(value) => format!("fit-content({value}px)"),
       GridTrack::Minmax(min, max) => format!(
         "minmax({}, {})",
-        Self::render_track_limit(min),
+        Self::render_track_minimum(min),
+        Self::render_track_limit(max),
+      ),
+      GridTrack::Adaptive(min, max) => format!(
+        "repeat(auto-fill, minmax({}, {}))",
+        Self::render_track_minimum(min),
         Self::render_track_limit(max),
       ),
     }

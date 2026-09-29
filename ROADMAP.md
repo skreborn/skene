@@ -30,8 +30,7 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Boxes: `repeat(auto-fill)` as a Compose-named adaptive grid, and named lines and
-    areas surface.
+    - Boxes: named grid lines and areas surface, as taffy has them.
     - Interaction: one model in core over the scene for every platform that draws its
     own controls (hover crossing, focus with the focus-visible rule, pressed state and
     pointer capture, tab order with modal containment, an overlay stack in open order

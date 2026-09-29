@@ -419,6 +419,29 @@ fn grid_tracks_and_placements_render() {
   assert!(styles.contains("grid-row:auto / span 2;"), "{styles}");
 }
 
+/// An adaptive track renders as an auto-filled repetition, and a flexible minimum as
+/// `auto`, since CSS rejects a flexible one.
+#[test]
+fn adaptive_tracks_and_flexible_minimums_render() {
+  let rendered = render_to_string(|| {
+    Grid::adaptive(120.).set_rows(vec![GridTrack::Minmax(
+      TrackLimit::Flex(1.),
+      TrackLimit::Length(40.),
+    )])
+  });
+
+  let styles = rendered.styles();
+
+  assert!(
+    styles.contains("grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));"),
+    "{styles}"
+  );
+  assert!(
+    styles.contains("grid-template-rows:minmax(auto, 40px);"),
+    "{styles}"
+  );
+}
+
 /// A theme's scheme is real CSS: a consumer emits the token's name alone, and the
 /// theme's scope carries the light value on its class and the dark one inside a
 /// `prefers-color-scheme` block, so a server-rendered page answers the reader's

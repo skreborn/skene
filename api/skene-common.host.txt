@@ -1186,6 +1186,7 @@ impl<P: skene_core::platform::Platform> core::default::Default for skene_common:
 pub fn skene_common::FocusHandle<P>::default() -> Self
 pub struct skene_common::Grid<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Grid<P>
+pub fn skene_common::Grid<P>::adaptive(<P as skene_core::platform::Platform>::Scalar) -> Self
 pub fn skene_common::Grid<P>::derive_column_arrangement<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_columns<R: core::convert::Into<skene_core::leaf::StaticLeaf<alloc::vec::Vec<skene_core::values::grid::GridTrack<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_flow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::grid::GridFlow>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self

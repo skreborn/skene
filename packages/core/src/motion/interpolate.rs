@@ -225,6 +225,10 @@ impl<T: Interpolate + PartialEq> Interpolate for GridTrack<T> {
         from_min.interpolate(to_min, amount)?,
         from_max.interpolate(to_max, amount)?,
       )),
+      (Self::Adaptive(from_min, from_max), Self::Adaptive(to_min, to_max)) => Some(Self::Adaptive(
+        from_min.interpolate(to_min, amount)?,
+        from_max.interpolate(to_max, amount)?,
+      )),
       (from, to) => (from == to).then(|| from.clone()),
     }
   }
@@ -932,6 +936,16 @@ mod tests {
       BoxValue::<f32>::Tracks(vec![GridTrack::Auto])
         .interpolate(&BoxValue::Tracks(vec![GridTrack::MinContent]), 0.5),
       None
+    );
+    assert_eq!(
+      GridTrack::Adaptive(TrackLimit::Length(100f32), TrackLimit::Flex(1.)).interpolate(
+        &GridTrack::Adaptive(TrackLimit::Length(200.), TrackLimit::Flex(1.)),
+        0.5
+      ),
+      Some(GridTrack::Adaptive(
+        TrackLimit::Length(150.),
+        TrackLimit::Flex(1.)
+      ))
     );
   }
 

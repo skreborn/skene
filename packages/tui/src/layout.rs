@@ -974,9 +974,10 @@ fn max_track(limit: skene_core::TrackLimit<u32>) -> taffy::style::MaxTrackSizing
   }
 }
 
-/// One [`GridTrack`](skene_core::GridTrack) as a taffy track sizing function.
-fn track(value: skene_core::GridTrack<u32>) -> taffy::style::TrackSizingFunction {
-  match value {
+/// One [`GridTrack`](skene_core::GridTrack) as a taffy track sizing function; `None`
+/// for an adaptive track, which only a template holds.
+fn track(value: skene_core::GridTrack<u32>) -> Option<taffy::style::TrackSizingFunction> {
+  Some(match value {
     skene_core::GridTrack::Length(cells) => length(cell(cells)),
     skene_core::GridTrack::Fraction(value) => percent(value),
     skene_core::GridTrack::Flex(value) => fr(value),
@@ -985,17 +986,54 @@ fn track(value: skene_core::GridTrack<u32>) -> taffy::style::TrackSizingFunction
     skene_core::GridTrack::MaxContent => taffy::prelude::max_content(),
     skene_core::GridTrack::FitContent(cells) => fit_content(length(cell(cells))),
     skene_core::GridTrack::Minmax(min, max) => minmax(min_track(min), max_track(max)),
-  }
+    skene_core::GridTrack::Adaptive(..) => return None,
+  })
 }
 
-/// A track list as a taffy template.
+/// A track list as a taffy template; empty where CSS drops the list: more than one
+/// adaptive track, or one with neither limit a length or a fraction.
 fn template(
   tracks: &[skene_core::GridTrack<u32>],
 ) -> Vec<taffy::style::GridTemplateComponent<String>> {
+  let fixed = |limit| {
+    matches!(
+      limit,
+      skene_core::TrackLimit::Length(_) | skene_core::TrackLimit::Fraction(_)
+    )
+  };
+  let adaptive = tracks
+    .iter()
+    .filter(|entry| matches!(entry, skene_core::GridTrack::Adaptive(..)))
+    .count();
+
+  if adaptive > 1 {
+    return Vec::new();
+  }
+
   tracks
     .iter()
-    .map(|entry| taffy::style::GridTemplateComponent::Single(track(*entry)))
-    .collect()
+    .map(|entry| match *entry {
+      skene_core::GridTrack::Adaptive(min, max) => (fixed(min) || fixed(max)).then(|| {
+        taffy::style::GridTemplateComponent::Repeat(taffy::style::GridTemplateRepetition {
+          count: taffy::style::RepetitionCount::AutoFill,
+          tracks: vec![minmax(min_track(min), max_track(max))],
+          line_names: Vec::new(),
+        })
+      }),
+      entry => track(entry).map(taffy::style::GridTemplateComponent::Single),
+    })
+    .collect::<Option<_>>()
+    .unwrap_or_default()
+}
+
+/// A track list as taffy's implicit tracks; empty where CSS drops the list, an adaptive
+/// track in it.
+fn implicit(tracks: &[skene_core::GridTrack<u32>]) -> Vec<taffy::style::TrackSizingFunction> {
+  tracks
+    .iter()
+    .map(|entry| track(*entry))
+    .collect::<Option<_>>()
+    .unwrap_or_default()
 }
 
 /// One [`GridPlacement`](skene_core::GridPlacement) as taffy's.
@@ -1150,11 +1188,11 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
   }
 
   if let Some(tracks) = &style.grid_implicit_columns {
-    out.grid_auto_columns = tracks.iter().map(|entry| track(*entry)).collect();
+    out.grid_auto_columns = implicit(tracks);
   }
 
   if let Some(tracks) = &style.grid_implicit_rows {
-    out.grid_auto_rows = tracks.iter().map(|entry| track(*entry)).collect();
+    out.grid_auto_rows = implicit(tracks);
   }
 
   if let Some(flow) = style.grid_flow {

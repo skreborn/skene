@@ -1283,6 +1283,7 @@ impl core::marker::StructuralPartialEq for skene_core::GridPlacement
 impl skene_core::Fingerprint for skene_core::GridPlacement
 pub fn skene_core::GridPlacement::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 pub enum skene_core::GridTrack<T>
+pub skene_core::GridTrack::Adaptive(skene_core::TrackLimit<T>, skene_core::TrackLimit<T>)
 pub skene_core::GridTrack::Auto
 pub skene_core::GridTrack::FitContent(T)
 pub skene_core::GridTrack::Flex(f32)

@@ -438,7 +438,10 @@ Condition     = Media | State | And | Or
   a `Fraction` of the parent, or auto. Overflow is per axis (`Axes<Overflow>`, one
   overflow setting both) and computed as CSS computes it, an axis left visible beside
   one that is not scrolling where needed; the terminal scrolls, and draws a scrollbar,
-  only along an axis that scrolls. The framework invents no layout system.
+  only along an axis that scrolls. An adaptive track (`GridTrack::Adaptive`,
+  `Grid::adaptive`) fits as many tracks as the container holds, as SwiftUI's adaptive
+  grid item does, compiled to CSS's auto-filled repetition. The framework invents no
+  layout system.
 - **Raw CSS** reaches a node only through the web escape trait: `WebMarkup` takes
   `Declarations`, the sorted, content-addressed declaration set the compiler itself
   renders into. The typed model carries no passthrough of its own.

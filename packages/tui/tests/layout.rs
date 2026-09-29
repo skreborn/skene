@@ -230,6 +230,45 @@ fn grid_tracks_size_columns() {
   });
 }
 
+/// An adaptive grid fits as many columns as its minimum allows and shares the rest of
+/// the width among them.
+#[test]
+fn an_adaptive_grid_fits_its_columns() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Grid::adaptive(4)
+        .set_children((
+          Text::new("a"),
+          Text::new("b"),
+          Text::new("c"),
+          Text::new("d"),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(10, 2), "a    b\nc    d\n");
+  });
+}
+
+/// A track list holding two adaptive tracks is dropped whole, as CSS drops it, leaving
+/// the children to implicit rows.
+#[test]
+fn a_second_adaptive_track_drops_the_list() {
+  with_platform(|| {
+    let adaptive = GridTrack::Adaptive(TrackLimit::Length(4), TrackLimit::Flex(1.));
+    let _ = tui::mount(move || {
+      Grid::new()
+        .set_columns(vec![adaptive, adaptive])
+        .set_children((Text::new("a"), Text::new("b")))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(10, 2), "a\nb\n");
+  });
+}
+
 /// A grid child placement spans tracks.
 #[test]
 fn grid_placement_spans_tracks() {

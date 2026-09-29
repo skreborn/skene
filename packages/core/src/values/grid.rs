@@ -18,6 +18,12 @@ pub enum GridTrack<T> {
   FitContent(T),
   /// Sized between the two limits.
   Minmax(TrackLimit<T>, TrackLimit<T>),
+  /// As many tracks as fit, each sized between the two limits, at least one of which is
+  /// a length or a fraction so the count follows from the container's size.
+  ///
+  /// An explicit track list holds at most one; a list holding more, or an implicit list
+  /// holding any, is dropped whole, as CSS drops it.
+  Adaptive(TrackLimit<T>, TrackLimit<T>),
 }
 
 impl<T: Copy> GridTrack<T> {

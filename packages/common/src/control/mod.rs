@@ -20,6 +20,7 @@ use skene_core::{
   Animation,
   AnyKind,
   AnyView,
+  Axis,
   BoxKeyframe,
   Condition,
   ContainerName,
@@ -550,6 +551,20 @@ impl<P: Platform, B: Behavior<P>, C> Control<P, B, C> {
   }
 
   decoration! { style_mut }
+
+  /// Sets the axis the control's parts, body and label run along; horizontal unless
+  /// told otherwise.
+  #[inline(always)]
+  pub fn set_axis(mut self, axis: Axis) -> Self {
+    self.inner = self.inner.set_layout(Layout::Flex {
+      direction: match axis {
+        Axis::Horizontal => FlexDirection::Row,
+        Axis::Vertical => FlexDirection::Column,
+      },
+    });
+
+    self
+  }
 
   properties! { style_mut;
     set_spacing / derive_spacing (spacing) => spacing: Spacing<P::Scalar>,

@@ -60,6 +60,41 @@ enum ItemKind {
   Separator,
 }
 
+/// A view drawing a menu item from its content.
+type ItemView<P> = Rc<dyn Fn(MenuItemContent) -> AnyView<P>>;
+
+/// What a menu item's view draws from: the item's label and its shortcut hint.
+#[derive(Clone)]
+#[must_use]
+pub struct MenuItemContent {
+  label: Rc<dyn Fn() -> String>,
+  shortcut: Option<String>,
+}
+
+impl std::fmt::Debug for MenuItemContent {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("MenuItemContent")
+      .finish_non_exhaustive()
+  }
+}
+
+impl MenuItemContent {
+  /// The item's label, as it reads now; tracked where the label is derived.
+  #[inline(always)]
+  #[must_use]
+  pub fn label(&self) -> String {
+    (self.label)()
+  }
+
+  /// The item's shortcut hint, if it has one.
+  #[inline(always)]
+  #[must_use]
+  pub fn shortcut(&self) -> Option<&str> {
+    self.shortcut.as_deref()
+  }
+}
+
 /// One entry of a [`ContextMenu`]: a command with a label, a standard clipboard
 /// action, or a separator.
 ///
@@ -198,7 +233,6 @@ impl MenuItem {
 /// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
-#[derive(Debug)]
 #[must_use]
 pub struct ContextMenu<P: Platform, C = NoChild> {
   items: Vec<MenuItem>,
@@ -209,7 +243,16 @@ pub struct ContextMenu<P: Platform, C = NoChild> {
   separator_color: Option<Declared<P, Color>>,
   separator_thickness: Option<Declared<P, Dimension<P::Scalar>>>,
   shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
+  item_view: Option<ItemView<P>>,
   child: C,
+}
+
+impl<P: Platform, C> std::fmt::Debug for ContextMenu<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ContextMenu")
+      .finish_non_exhaustive()
+  }
 }
 
 impl<P: Platform> ContextMenu<P> {
@@ -225,6 +268,7 @@ impl<P: Platform> ContextMenu<P> {
       separator_color: None,
       separator_thickness: None,
       shortcut_spacing: None,
+      item_view: None,
       child: NoChild,
     }
   }
@@ -249,6 +293,7 @@ impl<P: Platform> ContextMenu<P> {
       separator_color: self.separator_color,
       separator_thickness: self.separator_thickness,
       shortcut_spacing: self.shortcut_spacing,
+      item_view: self.item_view,
       child: child.into_view(),
     }
   }
@@ -369,6 +414,20 @@ impl<P: Platform, C> ContextMenu<P, C> {
     self
   }
 
+  /// Sets the view drawing each item from its content; the menu keeps the item's
+  /// behavior, its accessible name and when it is listed and enabled. Without one, an
+  /// item's label and shortcut sit at its two ends, dressed by the `set_item_*` and
+  /// `set_shortcut_*` setters.
+  #[inline(always)]
+  pub fn set_item_view<V: IntoView<P>>(
+    mut self,
+    view: impl Fn(MenuItemContent) -> V + 'static,
+  ) -> Self {
+    self.item_view = Some(Rc::new(move |content| view(content).into_view()));
+
+    self
+  }
+
   /// Sets the spacing between an item's caption and its shortcut hint.
   #[inline(always)]
   pub fn set_shortcut_spacing(
@@ -404,6 +463,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
       separator_color,
       separator_thickness,
       shortcut_spacing,
+      item_view,
       ..
     } = self;
     let open = Signal::opaque(false);
@@ -417,6 +477,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
       separator_color,
       separator_thickness,
       shortcut_spacing,
+      item_view,
     };
     let mut rows: Vec<AnyView<P>> = Vec::new();
     let mut runs: Vec<Rc<dyn Fn()>> = Vec::new();
@@ -563,6 +624,7 @@ struct RowDress<P: Platform> {
   separator_color: Option<Declared<P, Color>>,
   separator_thickness: Option<Declared<P, Dimension<P::Scalar>>>,
   shortcut_spacing: Option<Declared<P, Spacing<P::Scalar>>>,
+  item_view: Option<ItemView<P>>,
 }
 
 impl<P: Platform> RowDress<P> {
@@ -592,6 +654,39 @@ impl<P: Platform> RowDress<P> {
     verdicts: &Verdicts,
   ) -> AnyView<P> {
     let name = label.clone();
+    let row = match &self.item_view {
+      Some(view) => view(MenuItemContent {
+        label: label.into_read(),
+        shortcut,
+      }),
+      None => self.default_row(label, shortcut),
+    };
+    let mut control = Control::<P, _>::new(MenuOption::new(value))
+      .derive_disabled({
+        let disabled = Rc::clone(&verdicts.disabled);
+
+        move || disabled()
+      })
+      .set_label(match name {
+        Source::Fixed(name) => Label::new(row).set_name(name),
+        Source::Derived(name) => Label::new(row).derive_name(move || name()),
+      });
+
+    *control.style_mut() = self.item_style.clone();
+
+    Show::<P>::new()
+      .derive_shown({
+        let shown = Rc::clone(&verdicts.shown);
+
+        move || shown()
+      })
+      .set_child(control.into_view())
+      .into_view()
+  }
+
+  /// An item's content without a view of the menu's user: the label and the shortcut
+  /// at the item's two ends.
+  fn default_row(&self, label: Source<String>, shortcut: Option<String>) -> AnyView<P> {
     let mut caption = match label {
       Source::Fixed(label) => Text::<P>::new(label),
       Source::Derived(compute) => Text::<P>::derive(move || compute()),
@@ -627,27 +722,8 @@ impl<P: Platform> RowDress<P> {
           .unwrap_or_else(|| Spacing::from(P::Scalar::from_f32(2.)).into()),
       )
       .set_children(cells);
-    let mut control = Control::<P, _>::new(MenuOption::new(value))
-      .derive_disabled({
-        let disabled = Rc::clone(&verdicts.disabled);
 
-        move || disabled()
-      })
-      .set_label(match name {
-        Source::Fixed(name) => Label::new(row).set_name(name),
-        Source::Derived(name) => Label::new(row).derive_name(move || name()),
-      });
-
-    *control.style_mut() = self.item_style.clone();
-
-    Show::<P>::new()
-      .derive_shown({
-        let shown = Rc::clone(&verdicts.shown);
-
-        move || shown()
-      })
-      .set_child(control.into_view())
-      .into_view()
+    row.into_view()
   }
 }
 
@@ -665,6 +741,7 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
       separator_color,
       separator_thickness,
       shortcut_spacing,
+      item_view,
       child,
     } = self;
     let node = child.build();
@@ -677,6 +754,7 @@ impl<P: Platform> View<P> for ContextMenu<P, AnyView<P>> {
       separator_color,
       separator_thickness,
       shortcut_spacing,
+      item_view,
       child: NoChild,
     }
     .mount(node);

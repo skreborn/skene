@@ -93,7 +93,7 @@ pub use skene_core::{
 pub use crate::{
   anchor::Anchor,
   container::Container,
-  context_menu::{ContextMenu, MenuItem},
+  context_menu::{ContextMenu, MenuItem, MenuItemContent},
   control::{
     Activate,
     Behavior,

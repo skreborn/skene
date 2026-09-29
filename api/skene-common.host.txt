@@ -984,6 +984,7 @@ pub fn skene_common::ContextMenu<P, C>::set_item_corner_radius(self, impl core::
 pub fn skene_common::ContextMenu<P, C>::set_item_cursor(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::mouse_cursor::MouseCursor, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_item_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_item_text_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::ContextMenu<P, C>::set_item_view<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::Fn(skene_common::MenuItemContent) -> V + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_margin(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_max_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_max_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1005,7 +1006,7 @@ pub fn skene_common::ContextMenu<P>::new() -> Self
 pub fn skene_common::ContextMenu<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId
 pub fn skene_common::ContextMenu<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::ContextMenu<P, skene_core::view::AnyView<P>>
 pub fn skene_common::ContextMenu<P>::set_items(self, impl core::iter::traits::collect::IntoIterator<Item = skene_common::MenuItem>) -> Self
-impl<P: core::fmt::Debug + skene_core::platform::Platform, C: core::fmt::Debug> core::fmt::Debug for skene_common::ContextMenu<P, C> where <P as skene_core::platform::Platform>::Scalar: core::fmt::Debug
+impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::ContextMenu<P, C>
 pub fn skene_common::ContextMenu<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::ContextMenu<P, C>
 impl<P: skene_core::platform::Platform> core::default::Default for skene_common::ContextMenu<P>
@@ -1057,6 +1058,7 @@ pub fn skene_common::Control<P, B, C>::set_accessible_name(self, impl core::conv
 pub fn skene_common::Control<P, B, C>::set_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Alignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_animation(self, skene_core::motion::Animation<skene_core::props::BoxKeyframe<P>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Control<P, B, C>::set_axis(self, skene_core::values::axis::Axis) -> Self
 pub fn skene_common::Control<P, B, C>::set_border(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::border::Border<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_container_name(self, skene_core::condition::ContainerName) -> Self
@@ -1278,6 +1280,7 @@ pub fn skene_common::LayoutBox<P, Kind>::set_item_alignment(self, impl core::con
 pub fn skene_common::LayoutBox<P, Kind>::set_item_horizontal_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::ItemAlignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn skene_common::LayoutBox<P, Kind>::set_labelled_by(self, skene_core::node::NodeId) -> Self
+pub const fn skene_common::LayoutBox<P, Kind>::set_layout(self, skene_core::values::layout::Layout) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_line_arrangement(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Arrangement, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::LayoutBox<P, Kind>::set_padding(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_common::LayoutBox<P, Kind>::set_role(self, skene_core::values::role::Role) -> Self
@@ -1459,6 +1462,14 @@ pub fn skene_common::MenuItem::set_label(self, impl core::convert::Into<alloc::s
 pub fn skene_common::MenuItem::set_shortcut(self, impl core::convert::Into<alloc::string::String>) -> Self
 impl core::fmt::Debug for skene_common::MenuItem
 pub fn skene_common::MenuItem::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_common::MenuItemContent
+impl skene_common::MenuItemContent
+pub fn skene_common::MenuItemContent::label(&self) -> alloc::string::String
+pub fn skene_common::MenuItemContent::shortcut(&self) -> core::option::Option<&str>
+impl core::clone::Clone for skene_common::MenuItemContent
+pub fn skene_common::MenuItemContent::clone(&self) -> skene_common::MenuItemContent
+impl core::fmt::Debug for skene_common::MenuItemContent
+pub fn skene_common::MenuItemContent::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::MenuOption
 impl skene_common::MenuOption
 pub fn skene_common::MenuOption::new(impl core::convert::Into<alloc::string::String>) -> Self

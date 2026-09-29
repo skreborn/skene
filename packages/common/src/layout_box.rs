@@ -134,6 +134,14 @@ impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
     }
   }
 
+  /// Sets the layout the box lays its children out in.
+  #[inline(always)]
+  pub const fn set_layout(mut self, layout: Layout) -> Self {
+    self.layout = layout;
+
+    self
+  }
+
   /// The declared style, for a view to write its properties into.
   #[inline(always)]
   pub const fn style_mut(&mut self) -> &mut DeclaredBoxStyle<P> {

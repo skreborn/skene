@@ -5,7 +5,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use skene_common::{ContextMenu, MenuItem};
+use skene_common::{ContextMenu, MenuItem, MenuItemContent};
 use skene_core::{
   Availability,
   ClipboardAction,
@@ -27,6 +27,7 @@ use skene_core::{
 };
 use skene_headless::{
   Headless,
+  accessible_name,
   children,
   control_props,
   control_state,
@@ -335,6 +336,40 @@ fn a_context_menu_places_its_list_and_sizes_its_separators() {
   );
 
   assert!(holds_height(list, 3.), "the separator is three units thick");
+
+  owner.dispose();
+}
+
+/// An item view draws each item from its content while the menu keeps the item's
+/// name and behavior: the label and the shortcut composed as the view says, the
+/// accessible name still the label.
+#[test]
+fn an_item_view_draws_each_item() {
+  reset();
+
+  let owner = Owner::new();
+  let start = owner.enter(|| {
+    Menu::new()
+      .set_item_view(|content: MenuItemContent| {
+        Text::new(format!(
+          "{} · {}",
+          content.label(),
+          content.shortcut().unwrap_or("none")
+        ))
+      })
+      .set_items([MenuItem::new("Rename").set_shortcut("F2")])
+      .set_child(Container::new())
+      .build()
+  });
+  let (_, list) = parts(start);
+  let item = items(list)[0];
+
+  assert!(
+    skene_headless::full_outline(item).contains("Rename · F2"),
+    "{}",
+    skene_headless::full_outline(item)
+  );
+  assert_eq!(accessible_name(item).as_deref(), Some("Rename"));
 
   owner.dispose();
 }

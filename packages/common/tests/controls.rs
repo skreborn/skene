@@ -1014,10 +1014,10 @@ fn an_accessible_name_names_a_control_over_its_caption() {
   owner.dispose();
 }
 
-/// A control's row spaces its parts, body and label half an em apart unless the
-/// control spaces them otherwise.
+/// A control's parts, body and label run across half an em apart unless the control
+/// lays them out otherwise.
 #[test]
-fn a_control_spaces_its_row() {
+fn a_control_lays_out_its_row() {
   reset();
 
   let owner = Owner::new();
@@ -1025,6 +1025,7 @@ fn a_control_spaces_its_row() {
     (
       RawButton::new(Activate::new()).set_label("a").build(),
       RawButton::new(Activate::new())
+        .set_axis(skene_core::Axis::Vertical)
         .set_spacing(Spacing::all(3.))
         .set_item_alignment(ItemAlignment::Start)
         .set_label("b")
@@ -1032,9 +1033,20 @@ fn a_control_spaces_its_row() {
     )
   });
   let spacing = PropertyKey::Shared(Property::Spacing);
+  let direction = |node| {
+    box_props(node).map(|props| match props.layout {
+      skene_core::Layout::Flex { direction } => Some(direction),
+      _ => None,
+    })
+  };
 
   assert_eq!(resolve_length(plain, spacing), Some(8.));
   assert_eq!(resolve_length(spaced, spacing), Some(3.));
+  assert_eq!(direction(plain), Some(Some(skene_core::FlexDirection::Row)));
+  assert_eq!(
+    direction(spaced),
+    Some(Some(skene_core::FlexDirection::Column))
+  );
 
   owner.dispose();
 }

@@ -27,7 +27,6 @@ pub(crate) const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Prope
 pub(crate) const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
 pub(crate) const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
 pub(crate) const SPACING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Spacing);
-pub(crate) const ASPECT_RATIO: PropertyKey<NoProperty> = PropertyKey::Shared(Property::AspectRatio);
 
 pub(crate) const WHITE: Color = Color::TRANSPARENT;
 

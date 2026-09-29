@@ -38,6 +38,7 @@ use skene_common::gui::{Canvas, Painter, Painting};
 pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
   AccessProp,
+  AspectRatio,
   Availability,
   BoxProps,
   BoxValue,
@@ -1381,6 +1382,18 @@ pub fn resolve_visibility(node: NodeId) -> Option<Visibility> {
 
   match resolve::resolve(node, PropertyKey::Shared(Property::Visibility))? {
     SlotValue::Box(BoxValue::Visibility(visibility)) => Some(visibility),
+    SlotValue::Box(_) | SlotValue::Run(_) => None,
+  }
+}
+
+/// The aspect ratio of the box `node`, by the same resolution as [`resolve_color`];
+/// `None` where none is set.
+#[must_use]
+pub fn resolve_aspect_ratio(node: NodeId) -> Option<AspectRatio> {
+  end_turn();
+
+  match resolve::resolve(node, PropertyKey::Shared(Property::AspectRatio))? {
+    SlotValue::Box(BoxValue::AspectRatio(ratio)) => Some(ratio),
     SlotValue::Box(_) | SlotValue::Run(_) => None,
   }
 }

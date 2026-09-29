@@ -19,6 +19,7 @@ use super::{
 use crate::{
   Animation,
   Arrangement,
+  AspectRatio,
   Color,
   Dimension,
   Flexibility,
@@ -59,7 +60,7 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   /// The maximum height.
   pub max_height: S::Of<Dimension<N>>,
   /// The width-to-height ratio the unsized axis follows.
-  pub aspect_ratio: S::Of<f32>,
+  pub aspect_ratio: S::Of<AspectRatio>,
   /// The margin on each edge.
   pub margin: S::Of<Inset<Dimension<N>>>,
   /// The padding on each edge.
@@ -131,6 +132,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   Length(Length),
   /// A unitless number.
   Number(f32),
+  /// A width-to-height ratio.
+  AspectRatio(AspectRatio),
   /// A dimension per edge.
   DimensionInset(Inset<Dimension<N>>),
   /// A length per edge.
@@ -179,7 +182,8 @@ pub trait IntoBoxValue<N: Scalar, X: StyleExtension>:
 
   /// This type's reading of an erased value; `None` when it holds another type. A type
   /// made of one length also reads a fixed-length dimension, as a length token resolves
-  /// to, as a uniform value.
+  /// to, as a uniform value, and an aspect ratio reads a number, as a number token
+  /// resolves to.
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self>;
 }
 
@@ -210,6 +214,22 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Length {
     match value {
       BoxValue::Length(length) => Some(length),
       BoxValue::Dimension(Dimension::Length(length)) => Some(Self(length.to_f32())),
+      _ => None,
+    }
+  }
+}
+
+impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for AspectRatio {
+  #[inline(always)]
+  fn into_box_value(self) -> BoxValue<N, X> {
+    BoxValue::AspectRatio(self)
+  }
+
+  #[inline(always)]
+  fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
+    match value {
+      BoxValue::AspectRatio(ratio) => Some(ratio),
+      BoxValue::Number(number) => Some(Self(number)),
       _ => None,
     }
   }
@@ -352,7 +372,7 @@ box_fields!(
   min_height: crate::Dimension<N> => MinHeight,
   max_width: crate::Dimension<N> => MaxWidth,
   max_height: crate::Dimension<N> => MaxHeight,
-  aspect_ratio: f32 => AspectRatio,
+  aspect_ratio: crate::AspectRatio => AspectRatio,
   margin: crate::Inset<crate::Dimension<N>> => Margin,
   padding: crate::Inset<N> => Padding,
   offset: crate::Inset<crate::Dimension<N>> => Offset,
@@ -550,6 +570,7 @@ impl<N: Scalar, X: StyleExtension> Default for BoxDynamics<N, X> {
 mod tests {
   use super::{BoxStyle, BoxValue, BoxVisitor, box_fields};
   use crate::{
+    AspectRatio,
     BoxField,
     Color,
     Condition,
@@ -587,7 +608,7 @@ mod tests {
         Value::new(Leaf::derive(|| Color::TRANSPARENT))
           .when(Media::Dark.into(), Color::srgb(0., 0., 0.)),
       ),
-      aspect_ratio: Some(1f32.derive_when(State::Hovered.into(), || 2.)),
+      aspect_ratio: Some(AspectRatio(1.).derive_when(State::Hovered.into(), || AspectRatio(2.))),
       ..Default::default()
     };
 
@@ -622,7 +643,7 @@ mod tests {
 
     assert_eq!(
       aspect_ratio.base(),
-      &PlatformLeaf::Static(StaticLeaf::Fixed(1.))
+      &PlatformLeaf::Static(StaticLeaf::Fixed(AspectRatio(1.)))
     );
     assert_eq!(aspect_ratio.variants()[0].1, PlatformLeaf::Slot(Slot(0)));
 
@@ -635,7 +656,7 @@ mod tests {
     assert_eq!(slots[0].position, 1);
     assert_eq!(
       (slots[0].compute)(),
-      StaticLeaf::Fixed(BoxValue::Number(2.))
+      StaticLeaf::Fixed(BoxValue::AspectRatio(AspectRatio(2.)))
     );
     assert_eq!(slots[1].slot, Slot(1));
     assert_eq!(slots[1].property, PropertyKey::Shared(Property::Color));

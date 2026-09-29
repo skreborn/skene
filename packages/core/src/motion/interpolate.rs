@@ -4,6 +4,7 @@
 
 use super::{Animation, Easing, Transition};
 use crate::{
+  AspectRatio,
   BoxValue,
   Color,
   Dimension,
@@ -72,7 +73,8 @@ fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
 /// A value with an in-between: what a transition or a keyframe animation samples.
 ///
 /// Colors mix in Oklab, lengths and numbers move linearly and land back in the
-/// medium's unit, and a value per edge or axis moves per component. A visibility is
+/// medium's unit, an aspect ratio moves through its logarithm, and a value per edge or
+/// axis moves per component. A visibility is
 /// visible throughout a change to or from visible, and a list of grid tracks moves per
 /// track where the lists are as long and each pair of tracks moves or matches. A pair
 /// with no in-between (a keyword, a mode, a length and `Auto`) is discrete. All of it
@@ -124,6 +126,17 @@ impl Interpolate for Length {
   #[inline(always)]
   fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
     Some(Self(lerp(self.0, to.0, amount)))
+  }
+}
+
+impl Interpolate for AspectRatio {
+  #[inline(always)]
+  fn interpolate(&self, to: &Self, amount: f32) -> Option<Self> {
+    if self.is_degenerate() || to.is_degenerate() {
+      return None;
+    }
+
+    Some(Self(lerp(self.0.ln(), to.0.ln(), amount).exp()))
   }
 }
 
@@ -234,6 +247,9 @@ impl<N: Scalar + Interpolate, X: StyleExtension> Interpolate for BoxValue<N, X> 
         Some(Self::Dimension(from.interpolate(to, amount)?))
       }
       (Self::Number(from), Self::Number(to)) => Some(Self::Number(from.interpolate(to, amount)?)),
+      (Self::AspectRatio(from), Self::AspectRatio(to)) => {
+        Some(Self::AspectRatio(from.interpolate(to, amount)?))
+      }
       (Self::Length(from), Self::Length(to)) => Some(Self::Length(from.interpolate(to, amount)?)),
       (Self::DimensionInset(from), Self::DimensionInset(to)) => {
         Some(Self::DimensionInset(from.interpolate(to, amount)?))
@@ -615,6 +631,7 @@ mod tests {
   use super::{Interpolate, Motion, sample_keyframes};
   use crate::{
     Animation,
+    AspectRatio,
     BoxValue,
     Color,
     Dimension,
@@ -914,6 +931,22 @@ mod tests {
     assert_eq!(
       BoxValue::<f32>::Tracks(vec![GridTrack::Auto])
         .interpolate(&BoxValue::Tracks(vec![GridTrack::MinContent]), 0.5),
+      None
+    );
+  }
+
+  /// An aspect ratio moves through its logarithm, and a degenerate one is discrete.
+  #[test]
+  fn an_aspect_ratio_moves_through_its_logarithm() {
+    let halfway = BoxValue::<f32>::AspectRatio(AspectRatio(1.))
+      .interpolate(&BoxValue::AspectRatio(AspectRatio(4.)), 0.5);
+
+    assert!(
+      matches!(halfway, Some(BoxValue::AspectRatio(AspectRatio(ratio))) if (ratio - 2.).abs() < 1e-5)
+    );
+    assert_eq!(AspectRatio(0.).interpolate(&AspectRatio(4.), 0.5), None);
+    assert_eq!(
+      AspectRatio(1.).interpolate(&AspectRatio(f32::INFINITY), 0.5),
       None
     );
   }

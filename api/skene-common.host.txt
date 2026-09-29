@@ -287,7 +287,7 @@ impl core::marker::StructuralPartialEq for skene_common::gui::HeadId
 pub struct skene_common::gui::Painted<P: skene_common::Painting>
 impl<P: skene_common::Painting> skene_common::Painted<P>
 pub fn skene_common::Painted<P>::bind_size(self, &skene_common::SizeHandle<P>) -> Self
-pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_max_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_max_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -295,7 +295,7 @@ pub fn skene_common::Painted<P>::derive_min_height<R: core::convert::Into<skene_
 pub fn skene_common::Painted<P>::derive_min_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
-pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -892,7 +892,7 @@ pub fn skene_common::Container<P>::bind_focus(self, &skene_common::FocusHandle<P
 pub fn skene_common::Container<P>::bind_size(self, &skene_common::SizeHandle<P>) -> Self
 pub fn skene_common::Container<P>::derive_accessibility(self, impl core::ops::function::Fn() -> alloc::vec::Vec<skene_core::values::access::AccessProp> + 'static) -> Self
 pub fn skene_common::Container<P>::derive_alignment<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Container<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Container<P>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -925,7 +925,7 @@ pub fn skene_common::Container<P>::new() -> Self
 pub fn skene_common::Container<P>::set_accessibility(self, impl core::iter::traits::collect::IntoIterator<Item = skene_core::values::access::AccessProp>) -> Self
 pub fn skene_common::Container<P>::set_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Alignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_animation(self, skene_core::motion::Animation<skene_core::props::BoxKeyframe<P>>) -> Self
-pub fn skene_common::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Container<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Container<P>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -962,7 +962,7 @@ impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_comm
 pub fn skene_common::Container<P>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::ContextMenu<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform, C> skene_common::ContextMenu<P, C>
-pub fn skene_common::ContextMenu<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::ContextMenu<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::ContextMenu<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -984,7 +984,7 @@ pub fn skene_common::ContextMenu<P, C>::derive_visibility<R: core::convert::Into
 pub fn skene_common::ContextMenu<P, C>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub const fn skene_common::ContextMenu<P, C>::item_style_mut(&mut self) -> &mut skene_core::props::DeclaredBoxStyle<P>
 pub const fn skene_common::ContextMenu<P, C>::list_style_mut(&mut self) -> &mut skene_core::props::DeclaredBoxStyle<P>
-pub fn skene_common::ContextMenu<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::ContextMenu<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::ContextMenu<P, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1032,7 +1032,7 @@ pub fn skene_common::Control<P, B, C>::bind_anchor(self, &skene_common::Anchor) 
 pub fn skene_common::Control<P, B, C>::bind_focus(self, &skene_common::FocusHandle<P>) -> Self
 pub fn skene_common::Control<P, B, C>::derive_accessible_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_alignment<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Alignment>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Control<P, B, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Control<P, B, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Control<P, B, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1070,7 +1070,7 @@ pub fn skene_common::Control<P, B, C>::handle_scroll(self, impl core::ops::funct
 pub fn skene_common::Control<P, B, C>::set_accessible_name(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Control<P, B, C>::set_alignment(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Alignment, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_animation(self, skene_core::motion::Animation<skene_core::props::BoxKeyframe<P>>) -> Self
-pub fn skene_common::Control<P, B, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Control<P, B, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_axis(self, skene_core::values::axis::Axis) -> Self
 pub fn skene_common::Control<P, B, C>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Control<P, B, C>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1541,7 +1541,7 @@ pub fn skene_common::NativePicker::state(&self) -> skene_core::control::ControlS
 pub struct skene_common::Overlay<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform, C> skene_common::Overlay<P, C>
 pub fn skene_common::Overlay<P, C>::bind_open(self, skene_reactive::signal::Signal<bool>) -> Self
-pub fn skene_common::Overlay<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Overlay<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1564,7 +1564,7 @@ pub fn skene_common::Overlay<P, C>::derive_width<R: core::convert::Into<skene_co
 pub fn skene_common::Overlay<P, C>::handle_dismiss(self, impl core::ops::function::Fn() + 'static) -> Self
 pub fn skene_common::Overlay<P, C>::set_anchor(self, &skene_common::Anchor) -> Self
 pub fn skene_common::Overlay<P, C>::set_animation(self, skene_core::motion::Animation<skene_core::props::BoxKeyframe<P>>) -> Self
-pub fn skene_common::Overlay<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Overlay<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub const fn skene_common::Overlay<P, C>::set_backdrop(self, core::option::Option<skene_core::values::color::Color>) -> Self
 pub fn skene_common::Overlay<P, C>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Overlay<P, C>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1604,7 +1604,7 @@ pub fn skene_common::Overlay<P, skene_core::view::AnyView<P>>::build(self) -> sk
 pub struct skene_common::Painted<P: skene_common::Painting>
 impl<P: skene_common::Painting> skene_common::Painted<P>
 pub fn skene_common::Painted<P>::bind_size(self, &skene_common::SizeHandle<P>) -> Self
-pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Painted<P>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_max_height<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_max_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1612,7 +1612,7 @@ pub fn skene_common::Painted<P>::derive_min_height<R: core::convert::Into<skene_
 pub fn skene_common::Painted<P>::derive_min_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Painted<P>::new(impl core::ops::function::Fn(&mut skene_common::Canvas, skene_core::values::size::Size<f32>) + 'static) -> Self
-pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Painted<P>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Painted<P>::set_description(self, impl core::convert::Into<alloc::string::String>) -> Self
 pub fn skene_common::Painted<P>::set_fallback<V: skene_core::view::IntoView<P>>(self, impl core::ops::function::FnOnce() -> V + 'static) -> Self
 pub fn skene_common::Painted<P>::set_height(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -1738,7 +1738,7 @@ pub fn skene_common::Range::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::RawPicker<P: skene_core::platform::Platform, F>
 impl<P: skene_core::platform::Platform, F> skene_common::RawPicker<P, F>
 pub fn skene_common::RawPicker<P, F>::bind_value(self, skene_reactive::signal::Signal<alloc::string::String>) -> Self
-pub fn skene_common::RawPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::RawPicker<P, F>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1759,7 +1759,7 @@ pub fn skene_common::RawPicker<P, F>::derive_value(self, impl core::ops::functio
 pub fn skene_common::RawPicker<P, F>::derive_visibility<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::RawPicker<P, F>::handle_change(self, impl core::ops::function::Fn(alloc::string::String) + 'static) -> Self
-pub fn skene_common::RawPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::RawPicker<P, F>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::RawPicker<P, F>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
@@ -2099,7 +2099,7 @@ pub fn skene_common::Toggle::state(&self) -> skene_core::control::ControlState
 pub struct skene_common::Tooltip<P: skene_core::platform::Platform, C>
 impl<P: skene_core::platform::Platform, C> skene_common::Tooltip<P, C>
 pub const fn skene_common::Tooltip<P, C>::bubble_style_mut(&mut self) -> &mut skene_core::props::DeclaredBoxStyle<P>
-pub fn skene_common::Tooltip<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<f32>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
+pub fn skene_common::Tooltip<P, C>::derive_aspect_ratio<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::aspect_ratio::AspectRatio>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_border_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_border_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_color<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -2116,7 +2116,7 @@ pub fn skene_common::Tooltip<P, C>::derive_overflow<R: core::convert::Into<skene
 pub fn skene_common::Tooltip<P, C>::derive_padding<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_visibility<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::visibility::Visibility>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Tooltip<P, C>::derive_width<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
-pub fn skene_common::Tooltip<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<f32, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
+pub fn skene_common::Tooltip<P, C>::set_aspect_ratio(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::aspect_ratio::AspectRatio, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Tooltip<P, C>::set_border_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Tooltip<P, C>::set_border_width(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Tooltip<P, C>::set_color(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::color::Color, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self

@@ -1062,7 +1062,7 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
       .map_or(taffy::style::Dimension::AUTO, dimension),
   };
 
-  out.aspect_ratio = style.aspect_ratio;
+  out.aspect_ratio = style.aspect_ratio.map(|ratio| ratio.0);
 
   if let Some(margin) = style.margin {
     out.margin = dimension_rect(margin);

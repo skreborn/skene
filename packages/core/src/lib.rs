@@ -199,6 +199,7 @@ pub use values::{
   AccessProp,
   Alignment,
   Arrangement,
+  AspectRatio,
   Availability,
   Axis,
   ClipboardAction,

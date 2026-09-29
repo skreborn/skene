@@ -13,7 +13,7 @@ use std::{
 };
 
 use super::{Definition, Leaf, Scalar, StaticLeaf, TokenName, TokenRef, Value};
-use crate::{Color, Dimension, Edge, Inset, Size, Spacing};
+use crate::{AspectRatio, Color, Dimension, Edge, Inset, Size, Spacing};
 
 /// A length, in the facade's scalar unit.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -436,6 +436,13 @@ impl ExprOutput for f32 {
   }
 }
 
+impl ExprOutput for AspectRatio {
+  #[inline(always)]
+  fn from_expr_value(value: ExprValue) -> Option<Self> {
+    Number::from_expr_value(value).map(|Number(number)| Self(number))
+  }
+}
+
 impl ExprOutput for Color {
   #[inline(always)]
   fn from_expr_value(value: ExprValue) -> Option<Self> {
@@ -738,49 +745,50 @@ quantity_targets!(Length =>
   [N: Scalar,] Inset<Dimension<N>>,
 );
 
-quantity_targets!(Number => [] f32);
+quantity_targets!(Number => [] f32, [] AspectRatio);
 
-/// The conversions carrying a length token's reference into every property type
-/// measured in lengths, and into each leaf holding one: the property reads the token by
-/// its name.
-macro_rules! length_token_targets {
-  ($([$($generics:tt)*] $target:ty),+ $(,)?) => {$(
-    impl<$($generics)*> From<TokenRef<Length>> for StaticLeaf<$target> {
+/// The conversions carrying a token's reference into every property type measured in
+/// its kind, and into each leaf holding one: the property reads the token by its name.
+macro_rules! token_targets {
+  ($token:ty => $([$($generics:tt)*] $target:ty),+ $(,)?) => {$(
+    impl<$($generics)*> From<TokenRef<$token>> for StaticLeaf<$target> {
       #[inline(always)]
-      fn from(reference: TokenRef<Length>) -> Self {
+      fn from(reference: TokenRef<$token>) -> Self {
         Self::Token(reference.name())
       }
     }
 
-    impl<$($generics)*> From<TokenRef<Length>> for Leaf<$target> {
+    impl<$($generics)*> From<TokenRef<$token>> for Leaf<$target> {
       #[inline(always)]
-      fn from(reference: TokenRef<Length>) -> Self {
+      fn from(reference: TokenRef<$token>) -> Self {
         Self::Static(StaticLeaf::from(reference))
       }
     }
 
-    impl<$($generics)* C> From<TokenRef<Length>> for Value<$target, C> {
+    impl<$($generics)* C> From<TokenRef<$token>> for Value<$target, C> {
       #[inline(always)]
-      fn from(reference: TokenRef<Length>) -> Self {
+      fn from(reference: TokenRef<$token>) -> Self {
         Self::new(Leaf::from(reference))
       }
     }
 
-    impl<$($generics)* M: Scalar> From<TokenRef<Length>> for Definition<$target, M> {
+    impl<$($generics)* M: Scalar> From<TokenRef<$token>> for Definition<$target, M> {
       #[inline(always)]
-      fn from(reference: TokenRef<Length>) -> Self {
+      fn from(reference: TokenRef<$token>) -> Self {
         Self::new(StaticLeaf::from(reference))
       }
     }
   )+};
 }
 
-length_token_targets!(
+token_targets!(Length =>
   [N: Scalar,] Dimension<N>,
   [N: Scalar,] Inset<N>,
   [N: Scalar,] Spacing<N>,
   [N: Scalar,] Inset<Dimension<N>>,
 );
+
+token_targets!(f32 => [] AspectRatio);
 
 impl From<f32> for StaticLeaf<Length> {
   /// A number as a length literal, in the medium's unit.
@@ -811,6 +819,30 @@ impl<M: Scalar> From<f32> for Definition<Length, M> {
   #[inline(always)]
   fn from(length: f32) -> Self {
     Self::new(StaticLeaf::from(length))
+  }
+}
+
+impl From<f32> for StaticLeaf<AspectRatio> {
+  /// A number as a ratio to one.
+  #[inline(always)]
+  fn from(ratio: f32) -> Self {
+    Self::Fixed(AspectRatio(ratio))
+  }
+}
+
+impl From<f32> for Leaf<AspectRatio> {
+  /// A number as a ratio to one.
+  #[inline(always)]
+  fn from(ratio: f32) -> Self {
+    Self::Static(StaticLeaf::from(ratio))
+  }
+}
+
+impl<C> From<f32> for Value<AspectRatio, C> {
+  /// A number as a ratio to one.
+  #[inline(always)]
+  fn from(ratio: f32) -> Self {
+    Self::new(Leaf::from(ratio))
   }
 }
 

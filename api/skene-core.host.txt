@@ -34,7 +34,7 @@ pub fn skene_core::box_fields::AspectRatio::hash<__H: core::hash::Hasher>(&self,
 impl core::marker::Copy for skene_core::box_fields::AspectRatio
 impl core::marker::StructuralPartialEq for skene_core::box_fields::AspectRatio
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::AspectRatio
-pub type skene_core::box_fields::AspectRatio::Value = f32
+pub type skene_core::box_fields::AspectRatio::Value = skene_core::AspectRatio
 pub const skene_core::box_fields::AspectRatio::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::AspectRatio::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::AspectRatio::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
@@ -658,6 +658,9 @@ pub fn skene_core::interpolate::Interpolate::interpolates_with(&self, &Self) -> 
 impl skene_core::interpolate::Interpolate for f32
 pub fn f32::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn f32::interpolates_with(&self, &Self) -> bool
+impl skene_core::interpolate::Interpolate for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::AspectRatio::interpolates_with(&self, &Self) -> bool
 impl skene_core::interpolate::Interpolate for skene_core::Color
 pub fn skene_core::Color::interpolate(&self, &Self, f32) -> core::option::Option<Self>
 pub fn skene_core::Color::interpolates_with(&self, &Self) -> bool
@@ -897,6 +900,7 @@ impl core::marker::Copy for skene_core::Axis
 impl core::marker::StructuralPartialEq for skene_core::Axis
 pub enum skene_core::BoxValue<N: skene_core::Scalar, X: skene_core::StyleExtension>
 pub skene_core::BoxValue::Arrangement(skene_core::Arrangement)
+pub skene_core::BoxValue::AspectRatio(skene_core::AspectRatio)
 pub skene_core::BoxValue::Color(skene_core::Color)
 pub skene_core::BoxValue::Cursor(skene_core::MouseCursor)
 pub skene_core::BoxValue::Dimension(skene_core::Dimension<N>)
@@ -1347,10 +1351,16 @@ pub skene_core::Leaf::Derived(alloc::rc::Rc<dyn core::ops::function::Fn() -> ske
 pub skene_core::Leaf::Static(skene_core::StaticLeaf<T>)
 impl<T> skene_core::Leaf<T>
 pub fn skene_core::Leaf<T>::derive<R: core::convert::Into<skene_core::StaticLeaf<T>>>(impl core::ops::function::Fn() -> R + 'static) -> Self
+impl core::convert::From<f32> for skene_core::Leaf<skene_core::AspectRatio>
+pub fn skene_core::Leaf<skene_core::AspectRatio>::from(f32) -> Self
 impl core::convert::From<f32> for skene_core::Leaf<skene_core::Length>
 pub fn skene_core::Leaf<skene_core::Length>::from(f32) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<f32>
 pub fn skene_core::Leaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<skene_core::AspectRatio>
+pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Leaf<skene_core::AspectRatio>
+pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Leaf<skene_core::Dimension<N>>
 pub fn skene_core::Leaf<skene_core::Dimension<N>>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Leaf<skene_core::Inset<N>>
@@ -1872,10 +1882,16 @@ pub enum skene_core::StaticLeaf<T>
 pub skene_core::StaticLeaf::Expr(skene_core::Expr<T>)
 pub skene_core::StaticLeaf::Fixed(T)
 pub skene_core::StaticLeaf::Token(skene_core::TokenName)
+impl core::convert::From<f32> for skene_core::StaticLeaf<skene_core::AspectRatio>
+pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(f32) -> Self
 impl core::convert::From<f32> for skene_core::StaticLeaf<skene_core::Length>
 pub fn skene_core::StaticLeaf<skene_core::Length>::from(f32) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<skene_core::AspectRatio>
+pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::StaticLeaf<skene_core::AspectRatio>
+pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::BoxValue<N, X>>> for skene_core::SlotLeaf<N, X>
 pub fn skene_core::SlotLeaf<N, X>::from(skene_core::StaticLeaf<skene_core::BoxValue<N, X>>) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::RunValue<X>>> for skene_core::SlotLeaf<N, X>
@@ -2178,6 +2194,30 @@ impl<P: skene_core::Platform> skene_core::View<P> for skene_core::AnyView<P>
 pub fn skene_core::AnyView<P>::build(self) -> skene_core::NodeId
 pub fn skene_core::AnyView<P>::into_any(self) -> Self
 pub fn skene_core::AnyView<P>::set_key(self, impl core::hash::Hash) -> skene_core::Keyed<P, Self> where Self: core::marker::Sized
+pub struct skene_core::AspectRatio(pub f32)
+impl skene_core::AspectRatio
+pub const fn skene_core::AspectRatio::is_degenerate(self) -> bool
+pub const fn skene_core::AspectRatio::new(f32, f32) -> Self
+impl core::clone::Clone for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::clone(&self) -> skene_core::AspectRatio
+impl core::cmp::PartialEq for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::eq(&self, &skene_core::AspectRatio) -> bool
+impl core::cmp::PartialOrd for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::partial_cmp(&self, &skene_core::AspectRatio) -> core::option::Option<core::cmp::Ordering>
+impl core::fmt::Debug for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for skene_core::AspectRatio
+impl core::marker::StructuralPartialEq for skene_core::AspectRatio
+impl skene_core::ExprOutput for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
+impl skene_core::Fingerprint for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::interpolate::Interpolate for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::interpolate(&self, &Self, f32) -> core::option::Option<Self>
+pub fn skene_core::AspectRatio::interpolates_with(&self, &Self) -> bool
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::AspectRatio::into_box_value(self) -> skene_core::BoxValue<N, X>
 pub struct skene_core::Boundary
 impl skene_core::Boundary
 pub fn skene_core::Boundary::current() -> core::option::Option<Self>
@@ -2559,10 +2599,16 @@ impl core::convert::From<skene_core::Color> for skene_core::Expr<skene_core::Col
 pub fn skene_core::Expr<skene_core::Color>::from(skene_core::Color) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Expr<f32>
 pub fn skene_core::Expr<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Expr<skene_core::AspectRatio>
+pub fn skene_core::Expr<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<f32>
 pub fn skene_core::Leaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<skene_core::AspectRatio>
+pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<f32>
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<skene_core::AspectRatio>
+pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Expr<skene_core::Number>
 pub fn skene_core::Expr<skene_core::Number>::from(skene_core::TokenRef<f32>) -> Self
 impl core::convert::From<skene_core::TokenRef<skene_core::Color>> for skene_core::Expr<skene_core::Color>
@@ -2571,8 +2617,12 @@ impl core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_cor
 pub fn skene_core::Expr<skene_core::Length>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<C> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Value<f32, C>
 pub fn skene_core::Value<f32, C>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl<C> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Value<skene_core::AspectRatio, C>
+pub fn skene_core::Value<skene_core::AspectRatio, C>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl<M: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Definition<f32, M>
 pub fn skene_core::Definition<f32, M>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl<M: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Definition<skene_core::AspectRatio, M>
+pub fn skene_core::Definition<skene_core::AspectRatio, M>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Value<skene_core::Dimension<N>, C>
 pub fn skene_core::Value<skene_core::Dimension<N>, C>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Value<skene_core::Inset<N>, C>
@@ -3690,10 +3740,18 @@ pub const fn skene_core::TokenRef<T>::new(&'static str) -> Self
 pub fn skene_core::TokenRef<T>::when<C>(self, C, impl core::convert::Into<skene_core::Leaf<T>>) -> skene_core::Value<T, C>
 impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Expr<skene_core::Number>
 pub fn skene_core::Expr<skene_core::Number>::from(skene_core::TokenRef<f32>) -> Self
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Leaf<skene_core::AspectRatio>
+pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
+impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::StaticLeaf<skene_core::AspectRatio>
+pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
 impl core::convert::From<skene_core::TokenRef<skene_core::Color>> for skene_core::Expr<skene_core::Color>
 pub fn skene_core::Expr<skene_core::Color>::from(skene_core::TokenRef<skene_core::Color>) -> Self
 impl core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Expr<skene_core::Length>
 pub fn skene_core::Expr<skene_core::Length>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<C> core::convert::From<skene_core::TokenRef<f32>> for skene_core::Value<skene_core::AspectRatio, C>
+pub fn skene_core::Value<skene_core::AspectRatio, C>::from(skene_core::TokenRef<f32>) -> Self
+impl<M: skene_core::Scalar> core::convert::From<skene_core::TokenRef<f32>> for skene_core::Definition<skene_core::AspectRatio, M>
+pub fn skene_core::Definition<skene_core::AspectRatio, M>::from(skene_core::TokenRef<f32>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Dimension<N>, C>
 pub fn skene_core::Value<skene_core::Dimension<N>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Inset<N>, C>
@@ -3781,7 +3839,7 @@ pub const skene_core::box_fields::Arrangement::KEY: skene_core::PropertyKey<<X a
 pub fn skene_core::box_fields::Arrangement::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Arrangement::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::AspectRatio
-pub type skene_core::box_fields::AspectRatio::Value = f32
+pub type skene_core::box_fields::AspectRatio::Value = skene_core::AspectRatio
 pub const skene_core::box_fields::AspectRatio::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::AspectRatio::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::AspectRatio::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
@@ -3971,6 +4029,8 @@ pub trait skene_core::ExprOutput: core::marker::Sized
 pub fn skene_core::ExprOutput::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::ExprOutput for f32
 pub fn f32::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
+impl skene_core::ExprOutput for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::ExprOutput for skene_core::Color
 pub fn skene_core::Color::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::ExprOutput for skene_core::Length
@@ -3991,6 +4051,8 @@ impl skene_core::Fingerprint for bool
 pub fn bool::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::Arrangement
 pub fn skene_core::Arrangement::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::Fingerprint for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::Color
 pub fn skene_core::Color::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::Easing
@@ -4095,6 +4157,9 @@ pub fn f32::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Arrangement
 pub fn skene_core::Arrangement::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Arrangement::into_box_value(self) -> skene_core::BoxValue<N, X>
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::AspectRatio
+pub fn skene_core::AspectRatio::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::AspectRatio::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Color
 pub fn skene_core::Color::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Color::into_box_value(self) -> skene_core::BoxValue<N, X>

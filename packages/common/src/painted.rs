@@ -66,7 +66,8 @@ impl<P: Painting> Painted<P> {
     set_max_height / derive_max_height (max_height)
       => max_height: skene_core::Dimension<P::Scalar>,
       "the maximum height";
-    set_aspect_ratio / derive_aspect_ratio (aspect_ratio) => aspect_ratio: f32,
+    set_aspect_ratio / derive_aspect_ratio (aspect_ratio)
+      => aspect_ratio: skene_core::AspectRatio,
       "the width-to-height ratio the unsized axis follows";
   }
 

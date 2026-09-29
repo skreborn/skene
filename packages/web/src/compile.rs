@@ -212,6 +212,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
     BoxValue::Dimension(dimension) => Declarations::render_dimension(*dimension),
     BoxValue::Length(length) => format!("{}px", length.0),
     BoxValue::Number(value) | BoxValue::Extension(value) => value.to_string(),
+    BoxValue::AspectRatio(ratio) => ratio.0.to_string(),
     BoxValue::DimensionInset(inset) => Declarations::render_dimension_inset(*inset),
     BoxValue::Inset(inset) => format!(
       "{}px {}px {}px {}px",

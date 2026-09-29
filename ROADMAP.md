@@ -30,8 +30,6 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Motion: an aspect ratio becomes a value type of its own, interpolating through its
-    logarithm as CSS's `<ratio>` does, where the runner moves it as a plain number.
     - Boxes: taffy's per-axis overflow, `repeat(auto-fill)` as a Compose-named adaptive
     grid, and named lines and areas surface.
     - Interaction: one model in core over the scene for every platform that draws its

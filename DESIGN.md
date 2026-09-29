@@ -614,7 +614,8 @@ a running transition began reverses it over the share it had played. A property 
 keyframe animation leaves out at `0%` or `100%` moves from and to the value beneath it,
 as CSS's neutral keyframes do. Colors mix in Oklab, as CSS Color 4 specifies for the
 `oklch()` values the web writes and Chromium does; Firefox still mixes them in sRGB.
-Every change source animates: a condition flipping, a token redefined, an expression
+An aspect ratio moves through its logarithm, as CSS's `<ratio>` does, and one of zero or
+infinity is discrete. Every change source animates: a condition flipping, a token redefined, an expression
 input moving, a derived write. Reduced motion is respected by default. Keyframes may
 hold tokens. `set_transition_name` maps to `view-transition-name`; the router wraps a
 same-document navigation in `startViewTransition` when the app opts in

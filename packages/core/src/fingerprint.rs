@@ -25,6 +25,7 @@ use super::{
 use crate::{
   Animation,
   Arrangement,
+  AspectRatio,
   Color,
   Dimension,
   Easing,
@@ -104,6 +105,13 @@ impl<N: Scalar> Fingerprint for N {
 }
 
 impl Fingerprint for Length {
+  #[inline(always)]
+  fn fingerprint<H: Hasher>(&self, state: &mut H) {
+    self.0.fingerprint(state);
+  }
+}
+
+impl Fingerprint for AspectRatio {
   #[inline(always)]
   fn fingerprint<H: Hasher>(&self, state: &mut H) {
     self.0.fingerprint(state);

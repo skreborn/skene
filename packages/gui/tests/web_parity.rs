@@ -24,6 +24,7 @@ use skene_core::{
   AccessProp,
   Animation,
   AnyView,
+  AspectRatio,
   BoxKeyframe,
   Color,
   Condition,
@@ -61,6 +62,7 @@ use skene_headless::{
   box_props,
   children,
   control_props,
+  resolve_aspect_ratio,
   resolve_color,
   resolve_inset,
   resolve_length,
@@ -213,6 +215,8 @@ enum Read {
   Ink,
   /// Whether the box is drawn.
   Visibility,
+  /// The box's aspect ratio.
+  AspectRatio,
 }
 
 /// One declaration, realized on either platform.
@@ -261,6 +265,7 @@ enum Case {
   NeutralKeyframe,
   ReversedTransition,
   VisibilityTransition,
+  RatioTransition,
 }
 
 /// Every case the harness holds the resolution to.
@@ -308,6 +313,7 @@ const CASES: &[Case] = &[
   Case::NeutralKeyframe,
   Case::ReversedTransition,
   Case::VisibilityTransition,
+  Case::RatioTransition,
 ];
 
 impl Case {
@@ -355,6 +361,7 @@ impl Case {
       Self::EdgeBorder => Read::Border(Edge::Left),
       Self::FixedInk | Self::TokenInk => Read::Ink,
       Self::VisibilityTransition => Read::Visibility,
+      Self::RatioTransition => Read::AspectRatio,
     }
   }
 
@@ -472,9 +479,10 @@ impl Case {
         })
         .set_border_color(ParityPalette::SURFACE),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
-      Self::NeutralKeyframe | Self::ReversedTransition | Self::VisibilityTransition => {
-        self.moving(container)
-      }
+      Self::NeutralKeyframe
+      | Self::ReversedTransition
+      | Self::VisibilityTransition
+      | Self::RatioTransition => self.moving(container),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),
       Self::LexicalToken
       | Self::LexicalEm
@@ -527,6 +535,16 @@ impl Case {
           })
           .set_transition(Transition::new(Property::Visibility, 1.).set_easing(Easing::Linear))
       }
+      Self::RatioTransition => {
+        let moving = Signal::new(0f32);
+
+        MOVING.set(Some(moving));
+
+        container
+          .set_width(Dimension::Length(40.))
+          .derive_aspect_ratio(move || AspectRatio(1. + 3. * moving.get()))
+          .set_transition(Transition::new(Property::AspectRatio, 1.).set_easing(Easing::Linear))
+      }
       _ => container,
     }
   }
@@ -552,6 +570,7 @@ impl Case {
       Self::NeutralKeyframe => &[(None, 250)],
       Self::ReversedTransition => &[(Some(100.), 250), (Some(0.), 125)],
       Self::VisibilityTransition => &[(Some(1.), 250)],
+      Self::RatioTransition => &[(Some(1.), 500)],
       _ => &[],
     }
   }
@@ -579,6 +598,8 @@ enum Reading {
   Border(f32, Color),
   /// A visibility.
   Visibility(Visibility),
+  /// A width-to-height ratio.
+  Ratio(f32),
   /// Nothing: the platform gave no value, or one the harness could not read.
   Missing,
 }
@@ -671,6 +692,22 @@ fn computed_color(element: &Element, property: &str) -> Reading {
   parse_color(&computed(element, property)).map_or(Reading::Missing, Reading::Color)
 }
 
+/// A computed aspect ratio: `auto`, a ratio, or `auto` with a ratio.
+fn ratio(value: &str) -> Reading {
+  let value = value.trim_start_matches("auto").trim();
+  let parsed = match value.split_once('/') {
+    Some((width, height)) => width
+      .trim()
+      .parse::<f32>()
+      .ok()
+      .zip(height.trim().parse::<f32>().ok())
+      .map(|(width, height)| width / height),
+    None => value.parse().ok(),
+  };
+
+  parsed.map_or(Reading::Missing, Reading::Ratio)
+}
+
 /// A computed length in pixels.
 fn pixels(value: &str) -> f32 {
   value
@@ -709,6 +746,7 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
       .map(|(width, color)| Reading::Border(width.edge(edge), color)),
     Read::Ink => resolve_color(children(node)[1], TEXT_COLOR).map(Reading::Color),
     Read::Visibility => resolve_visibility(node).map(Reading::Visibility),
+    Read::AspectRatio => resolve_aspect_ratio(node).map(|ratio| Reading::Ratio(ratio.0)),
   };
   let _ = read();
 
@@ -827,6 +865,7 @@ fn rendered(case: Case) -> Reading {
       "hidden" => Reading::Visibility(Visibility::Hidden),
       _ => Reading::Missing,
     },
+    Read::AspectRatio => ratio(&computed(&element, "aspect-ratio")),
   };
 
   web::uninstall();
@@ -845,7 +884,7 @@ fn same_color(left: Color, right: Color) -> bool {
 }
 
 /// Whether two readings agree: colors within an 8-bit rounding, lengths within a
-/// hundredth of a pixel, visibilities exactly.
+/// hundredth of a pixel, ratios within a thousandth, visibilities exactly.
 fn agree(resolved: &Reading, rendered: &Reading) -> bool {
   match (resolved, rendered) {
     (Reading::Color(left), Reading::Color(right)) => same_color(*left, *right),
@@ -854,6 +893,7 @@ fn agree(resolved: &Reading, rendered: &Reading) -> bool {
       (left_width - right_width).abs() < 0.01 && same_color(*left, *right)
     }
     (Reading::Visibility(left), Reading::Visibility(right)) => left == right,
+    (Reading::Ratio(left), Reading::Ratio(right)) => (left - right).abs() < 0.001,
     _ => false,
   }
 }

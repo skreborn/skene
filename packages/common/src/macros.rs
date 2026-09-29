@@ -57,7 +57,8 @@ macro_rules! decoration {
       set_max_height / derive_max_height (max_height)
         => max_height: $crate::__core::Dimension<P::Scalar>,
         "the maximum height";
-      set_aspect_ratio / derive_aspect_ratio (aspect_ratio) => aspect_ratio: f32,
+      set_aspect_ratio / derive_aspect_ratio (aspect_ratio)
+        => aspect_ratio: $crate::__core::AspectRatio,
         "the width-to-height ratio the unsized axis follows";
       set_padding / derive_padding (padding) => padding: $crate::__core::Inset<P::Scalar>,
         "the padding on each edge";

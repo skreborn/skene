@@ -117,6 +117,7 @@ pub fn skene_headless::pending_timers() -> usize
 pub fn skene_headless::pump_tasks() -> bool
 pub fn skene_headless::remove_head_entry(skene_common::gui::head::HeadId)
 pub fn skene_headless::reset()
+pub fn skene_headless::resolve_aspect_ratio(skene_core::node::NodeId) -> core::option::Option<skene_core::values::aspect_ratio::AspectRatio>
 pub fn skene_headless::resolve_color(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_core::extension::NoProperty>) -> core::option::Option<skene_core::values::color::Color>
 pub fn skene_headless::resolve_inset(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_core::extension::NoProperty>) -> core::option::Option<skene_core::values::inset::Inset<f32>>
 pub fn skene_headless::resolve_length(skene_core::node::NodeId, skene_core::property::PropertyKey<skene_core::extension::NoProperty>) -> core::option::Option<f32>

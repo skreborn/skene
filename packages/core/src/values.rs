@@ -1,4 +1,5 @@
 mod access;
+mod aspect_ratio;
 mod axis;
 mod clipboard;
 mod color;
@@ -23,6 +24,7 @@ mod toggle;
 mod visibility;
 
 pub use access::*;
+pub use aspect_ratio::*;
 pub use axis::*;
 pub use clipboard::*;
 pub use color::*;

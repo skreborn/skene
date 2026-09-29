@@ -111,6 +111,7 @@ pub use skene_gui::prelude::Alignment
 pub use skene_gui::prelude::Anchor
 pub use skene_gui::prelude::Animation
 pub use skene_gui::prelude::Arrangement
+pub use skene_gui::prelude::AspectRatio
 pub use skene_gui::prelude::Axis
 pub use skene_gui::prelude::Bubbling
 pub use skene_gui::prelude::Color

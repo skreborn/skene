@@ -143,3 +143,30 @@ fn the_selection_takes_the_clusters_whose_blocks_are_hit() {
     assert_eq!(tui::take_copied().as_deref(), Some("bc"));
   });
 }
+
+/// An `em` is the typography's size in cells once the terminal proves text sizing, and
+/// one cell until then, as every size is.
+#[test]
+fn an_em_is_the_typography_size_in_cells() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Column::new()
+        .set_children((
+          Row::new().set_children((Container::new().set_width(Expr::em(3.)), Text::new("x"))),
+          Theme::new(Typography::default().set_size(2.)).set_child_builder(|| {
+            Row::new().set_children((Container::new().set_width(Expr::em(3.)), Text::new("y")))
+          }),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(12, 2), "   x\n   y\n");
+
+    tui::trigger_text_sizing(true);
+
+    let frame = tui::render_to_text(12, 3);
+
+    assert!(frame.starts_with("   x\n      y"), "{frame}");
+  });
+}

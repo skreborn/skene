@@ -15,6 +15,7 @@ use skene_core::{
   Keyframe,
   NodeId,
   PlatformLeaf,
+  Resolved,
   Resolver,
   RunStyle,
   Scene,
@@ -29,9 +30,11 @@ use crate::{
   Tui,
   TuiExt,
   store::{Handle, Kind, PlainBox, PlainRun, Store},
+  text,
 };
 
-/// The font size expressions in `em` evaluate against: one cell.
+/// The font size an `em` evaluates against where no typography defines one, or where the
+/// terminal draws every size at one cell: one cell.
 const EM: f32 = 1.;
 
 /// What one node's properties resolve against: the environment, the node's
@@ -69,7 +72,7 @@ impl<'a> Env<'a> {
     let token = move |name| Scene::<Tui>::with(|scene| scene.resolve_token(node?, name));
     let slot = |slot| self.store.record(self.handle)?.slots.get(&slot).cloned();
 
-    operation(&Resolver {
+    let mut resolver = Resolver {
       viewport: self.viewport,
       scheme: self.scheme,
       reduced_motion: self.reduced_motion,
@@ -78,7 +81,15 @@ impl<'a> Env<'a> {
       em: EM,
       token: &token,
       slot: &slot,
-    })
+    };
+
+    if text::sizing()
+      && let Some(Resolved::Number(scale)) = resolver.token(typography::SIZE.name())
+    {
+      resolver.em = scale * EM;
+    }
+
+    operation(&resolver)
   }
 
   /// A box keyframe with every leaf resolved at the node.

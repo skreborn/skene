@@ -29,8 +29,7 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) grows past the background, width, padding,
-    border and ink it compares: `em` under a typography, which headless fixes at 16 and
-    the terminal at one cell, container units, number tokens read as lengths, the
+    border and ink it compares: container units, number tokens read as lengths, the
     focus, checked and disabled states, and a case for each fix below.
     - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
     typed as lengths, so a length token serves them too and the web's `* 1px` and the

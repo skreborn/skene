@@ -6,7 +6,7 @@
 //! platform resolving through core shares, the terminal among them.
 #![cfg(skene_leaf = "browser")]
 
-use skene_common::{Container, Text, Theme};
+use skene_common::{Container, Text, Theme, gui::Typography};
 use skene_core::{
   Border,
   Color,
@@ -292,10 +292,14 @@ impl Case {
     }
   }
 
-  /// The case's box under a theme of the palette, built on the platform `P`.
+  /// The case's box under a theme of the palette, inside a typography of a size other
+  /// than the default, built on the platform `P`.
   fn build<P: Platform<Scalar = f32>>(self) -> NodeId {
-    Theme::<P, ParityPalette>::new(ParityPalette::default())
-      .set_child_builder(move || self.view::<P>())
+    Theme::<P, Typography>::new(Typography::default().set_size(20.))
+      .set_child_builder(move || {
+        Theme::<P, ParityPalette>::new(ParityPalette::default())
+          .set_child_builder(move || self.view::<P>())
+      })
       .build()
   }
 }
@@ -386,8 +390,8 @@ fn resolved(case: Case, viewport: Size<f32>) -> Reading {
   skene_headless::trigger_resize(viewport);
 
   let owner = Owner::new();
-  let scope = owner.enter(|| case.build::<Headless>());
-  let node = children(scope)[0];
+  let typography = owner.enter(|| case.build::<Headless>());
+  let node = children(children(typography)[0])[0];
   let reading = match case.read() {
     Read::Background => resolve_color(node, COLOR).map(Reading::Color),
     Read::Width => resolve_length(node, WIDTH).map(Reading::Length),
@@ -417,7 +421,7 @@ fn rendered(case: Case) -> Reading {
 
   let _ = mount(move || case.build::<Web>());
   let element = root
-    .query_selector("[data-skene-scope] > *")
+    .query_selector("[data-skene-scope] > [data-skene-scope] > *")
     .ok()
     .flatten()
     .expect("the case's box");

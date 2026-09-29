@@ -2,6 +2,7 @@
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 
+use skene_common::typography;
 use skene_core::{
   Animation,
   Border,
@@ -16,6 +17,7 @@ use skene_core::{
   NodeRecord,
   Property,
   PropertyKey,
+  Resolved,
   Resolver,
   RunKeyframe,
   Scene,
@@ -31,7 +33,7 @@ use crate::{
   with_store,
 };
 
-/// The font size expressions in `em` evaluate against.
+/// The font size an `em` evaluates against where no typography defines one.
 const EM: f32 = 16.;
 
 /// What one node's properties resolve against: the environment, the node's interaction
@@ -104,7 +106,7 @@ impl Env {
       with_store(|store| store.record(handle)?.slots.get(&slot).cloned())
     };
 
-    operation(&Resolver {
+    let mut resolver = Resolver {
       viewport: self.viewport,
       scheme: self.scheme,
       reduced_motion: self.reduced_motion,
@@ -113,7 +115,13 @@ impl Env {
       em: EM,
       token: &token,
       slot: &slot,
-    })
+    };
+
+    if let Some(Resolved::Number(size)) = resolver.token(typography::SIZE.name()) {
+      resolver.em = size;
+    }
+
+    operation(&resolver)
   }
 }
 

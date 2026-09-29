@@ -16,6 +16,8 @@ use skene_core::{
   HasChildren,
   IntoView,
   ItemAlignment,
+  KeyEvent,
+  KeyHandler,
   NoChild,
   NodeId,
   Part,
@@ -26,6 +28,7 @@ use skene_core::{
   Prevent,
   Scalar,
   Scene,
+  Shortcut,
   Show,
   Spacing,
   StyleExtension,
@@ -63,12 +66,12 @@ enum ItemKind {
 /// A view drawing a menu item from its content.
 type ItemView<P> = Rc<dyn Fn(MenuItemContent) -> AnyView<P>>;
 
-/// What a menu item's view draws from: the item's label and its shortcut hint.
+/// What a menu item's view draws from: the item's label and its shortcut.
 #[derive(Clone)]
 #[must_use]
 pub struct MenuItemContent {
   label: Rc<dyn Fn() -> String>,
-  shortcut: Option<String>,
+  shortcut: Option<Shortcut>,
 }
 
 impl std::fmt::Debug for MenuItemContent {
@@ -87,11 +90,11 @@ impl MenuItemContent {
     (self.label)()
   }
 
-  /// The item's shortcut hint, if it has one.
+  /// The item's shortcut, if it has one; its `Display` reads as a hint.
   #[inline(always)]
   #[must_use]
-  pub fn shortcut(&self) -> Option<&str> {
-    self.shortcut.as_deref()
+  pub const fn shortcut(&self) -> Option<Shortcut> {
+    self.shortcut
   }
 }
 
@@ -106,7 +109,7 @@ impl MenuItemContent {
 pub struct MenuItem {
   kind: ItemKind,
   label: Source<String>,
-  shortcut: Option<String>,
+  shortcut: Option<Shortcut>,
   disabled: Option<Source<bool>>,
   on_select: Option<Rc<dyn Fn()>>,
 }
@@ -182,10 +185,12 @@ impl MenuItem {
     self
   }
 
-  /// Sets the shortcut hint shown beside the label; a hint only, binding no key.
+  /// Binds `shortcut` to the item: pressed while focus is inside the view the menu
+  /// serves, it runs the item as choosing it does, in place of the platform's
+  /// response, and it shows beside the label.
   #[inline(always)]
-  pub fn set_shortcut(mut self, shortcut: impl Into<String>) -> Self {
-    self.shortcut = Some(shortcut.into());
+  pub const fn set_shortcut(mut self, shortcut: Shortcut) -> Self {
+    self.shortcut = Some(shortcut);
 
     self
   }
@@ -482,6 +487,7 @@ impl<P: Platform, C> ContextMenu<P, C> {
     let mut rows: Vec<AnyView<P>> = Vec::new();
     let mut runs: Vec<Rc<dyn Fn()>> = Vec::new();
     let mut usable: Vec<Predicate> = Vec::new();
+    let mut bindings: Vec<(Shortcut, usize)> = Vec::new();
 
     for item in items {
       if matches!(item.kind, ItemKind::Separator) {
@@ -497,6 +503,10 @@ impl<P: Platform, C> ContextMenu<P, C> {
         shown,
         disabled,
       } = &verdicts;
+
+      if let Some(shortcut) = item.shortcut {
+        bindings.push((shortcut, runs.len()));
+      }
 
       rows.push(dress.row(item.label, item.shortcut, value, &verdicts));
       runs.push(Rc::clone(run));
@@ -530,8 +540,20 @@ impl<P: Platform, C> ContextMenu<P, C> {
       .set_child(Control::<P, _>::new(menu).set_child(Column::<P>::new().set_children(rows)))
       .build();
 
+    let bound = ItemShortcuts {
+      bindings,
+      runs: runs.clone(),
+      usable: usable.clone(),
+    }
+    .handler(generation);
+
     Scene::<P>::with(|scene| {
       scene.set_part(list, Part::List);
+
+      if let Some(bound) = bound {
+        scene.handle_key_down(served, bound);
+      }
+
       scene.handle_context_menu(
         served,
         Rc::new(move |event: &PointerEvent| {
@@ -555,6 +577,46 @@ impl<P: Platform, C> ContextMenu<P, C> {
     });
 
     list
+  }
+}
+
+/// The shortcuts a menu's items bind, by the index of the item each runs, with what
+/// runs each item and whether it is usable.
+struct ItemShortcuts {
+  bindings: Vec<(Shortcut, usize)>,
+  runs: Vec<Rc<dyn Fn()>>,
+  usable: Vec<Predicate>,
+}
+
+impl ItemShortcuts {
+  /// The key handler running the usable item a key's shortcut names, in place of the
+  /// platform's response; `None` where no item binds one. A standard item re-asks the
+  /// platform, `generation` moving, before its usability is read.
+  fn handler(self, generation: Signal<u32>) -> Option<Rc<KeyHandler>> {
+    if self.bindings.is_empty() {
+      return None;
+    }
+
+    Some(Rc::new(move |event: &KeyEvent| {
+      let Some(index) = self
+        .bindings
+        .iter()
+        .find(|(shortcut, _)| event.matches(shortcut))
+        .map(|(_, index)| *index)
+      else {
+        return Prevent::None;
+      };
+
+      generation.set(generation.get_untracked().wrapping_add(1));
+
+      if !untrack(|| (self.usable[index])()) {
+        return Prevent::None;
+      }
+
+      (self.runs[index])();
+
+      Prevent::All
+    }))
   }
 }
 
@@ -649,7 +711,7 @@ impl<P: Platform> RowDress<P> {
   fn row(
     &self,
     label: Source<String>,
-    shortcut: Option<String>,
+    shortcut: Option<Shortcut>,
     value: String,
     verdicts: &Verdicts,
   ) -> AnyView<P> {
@@ -686,7 +748,7 @@ impl<P: Platform> RowDress<P> {
 
   /// An item's content without a view of the menu's user: the label and the shortcut
   /// at the item's two ends.
-  fn default_row(&self, label: Source<String>, shortcut: Option<String>) -> AnyView<P> {
+  fn default_row(&self, label: Source<String>, shortcut: Option<Shortcut>) -> AnyView<P> {
     let mut caption = match label {
       Source::Fixed(label) => Text::<P>::new(label),
       Source::Derived(compute) => Text::<P>::derive(move || compute()),
@@ -699,7 +761,7 @@ impl<P: Platform> RowDress<P> {
     let mut cells = vec![caption.into_view()];
 
     if let Some(shortcut) = shortcut {
-      let mut hint = Text::<P>::new(shortcut);
+      let mut hint = Text::<P>::new(shortcut.to_string());
 
       if let Some(color) = self
         .shortcut_color

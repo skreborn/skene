@@ -91,14 +91,14 @@ fn note(name: String, notes: Signal<Vec<String>>, last: Signal<String>) -> impl 
   SimpleContextMenu::new()
     .set_items([
       MenuItem::new("Open")
-        .set_shortcut("Enter")
+        .set_shortcut(Shortcut::new(Modifiers::NONE, "Enter"))
         .handle_select(ran("Opened")),
       MenuItem::new("Rename")
-        .set_shortcut("F2")
+        .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
         .handle_select(ran("Renamed")),
       MenuItem::separator(),
       MenuItem::new("Delete")
-        .set_shortcut("Del")
+        .set_shortcut(Shortcut::new(Modifiers::NONE, "Delete"))
         .handle_select(move || {
           notes.update(|notes| notes.retain(|held| *held != *deleted));
           record();

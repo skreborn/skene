@@ -43,6 +43,7 @@ mod focus;
 mod grid;
 mod grid_cell;
 pub mod gui;
+mod keymap;
 mod layout_box;
 mod lazy_list;
 mod macros;
@@ -140,6 +141,7 @@ pub use crate::{
   focus::FocusHandle,
   grid::Grid,
   grid_cell::GridCell,
+  keymap::Keymap,
   layout_box::LayoutBox,
   lazy_list::{ItemExtent, LazyColumn, LazyRow},
   overlay::Overlay,

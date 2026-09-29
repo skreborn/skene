@@ -3781,6 +3781,8 @@ impl core::cmp::PartialEq for skene_core::Shortcut
 pub fn skene_core::Shortcut::eq(&self, &skene_core::Shortcut) -> bool
 impl core::fmt::Debug for skene_core::Shortcut
 pub fn skene_core::Shortcut::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for skene_core::Shortcut
+pub fn skene_core::Shortcut::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::hash::Hash for skene_core::Shortcut
 pub fn skene_core::Shortcut::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::Shortcut

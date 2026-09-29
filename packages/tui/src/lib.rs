@@ -346,6 +346,8 @@ pub type Tooltip<C = NoChild> = skene_common::Tooltip<ActivePlatform, C>;
 /// Commands shown beside the pointer on a secondary press over the view it serves;
 /// see [`skene_common::ContextMenu`].
 pub type ContextMenu<C = NoChild> = skene_common::ContextMenu<ActivePlatform, C>;
+/// Keyboard shortcuts over the view it serves; see [`skene_common::Keymap`].
+pub type Keymap<C = NoChild> = skene_common::Keymap<ActivePlatform, C>;
 /// A menu; see [`skene_common::RawMenu`].
 pub type RawMenu<C = NoChild> = skene_common::RawMenu<ActivePlatform, C>;
 /// One item within a menu; see [`skene_common::RawMenuItem`].

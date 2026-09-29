@@ -1249,6 +1249,20 @@ impl<P: skene_core::platform::Platform> core::default::Default for skene_common:
 pub fn skene_common::GridCell<P>::default() -> Self
 impl<P: skene_core::platform::Platform> skene_core::view::IntoChildOf<P, skene_core::view::GridChild> for skene_common::GridCell<P, skene_core::view::AnyView<P>>
 pub fn skene_common::GridCell<P, skene_core::view::AnyView<P>>::into_child(self) -> skene_core::view::AnyView<P>
+pub struct skene_common::Keymap<P: skene_core::platform::Platform, C>
+impl<P: skene_core::platform::Platform, C> skene_common::Keymap<P, C>
+pub fn skene_common::Keymap<P, C>::handle_shortcut(self, skene_core::events::Shortcut, impl core::ops::function::Fn() + 'static) -> Self
+impl<P: skene_core::platform::Platform> skene_common::Keymap<P>
+pub const fn skene_common::Keymap<P>::new() -> Self
+pub fn skene_common::Keymap<P>::serve(self, skene_core::node::NodeId) -> skene_core::node::NodeId
+pub fn skene_common::Keymap<P>::set_child(self, impl skene_core::view::IntoView<P>) -> skene_common::Keymap<P, skene_core::view::AnyView<P>>
+impl<P: skene_core::platform::Platform, C> core::fmt::Debug for skene_common::Keymap<P, C>
+pub fn skene_common::Keymap<P, C>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<P: skene_core::platform::Platform, C> skene_core::view::AnyKind for skene_common::Keymap<P, C>
+impl<P: skene_core::platform::Platform> core::default::Default for skene_common::Keymap<P>
+pub fn skene_common::Keymap<P>::default() -> Self
+impl<P: skene_core::platform::Platform> skene_core::view::View<P> for skene_common::Keymap<P, skene_core::view::AnyView<P>>
+pub fn skene_common::Keymap<P, skene_core::view::AnyView<P>>::build(self) -> skene_core::node::NodeId
 pub struct skene_common::Label<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Label<P>
 pub fn skene_common::Label<P>::derive_name(self, impl core::ops::function::Fn() -> alloc::string::String + 'static) -> Self
@@ -1499,13 +1513,13 @@ pub fn skene_common::MenuItem::paste() -> Self
 pub fn skene_common::MenuItem::separator() -> Self
 pub fn skene_common::MenuItem::set_disabled(self, bool) -> Self
 pub fn skene_common::MenuItem::set_label(self, impl core::convert::Into<alloc::string::String>) -> Self
-pub fn skene_common::MenuItem::set_shortcut(self, impl core::convert::Into<alloc::string::String>) -> Self
+pub const fn skene_common::MenuItem::set_shortcut(self, skene_core::events::Shortcut) -> Self
 impl core::fmt::Debug for skene_common::MenuItem
 pub fn skene_common::MenuItem::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_common::MenuItemContent
 impl skene_common::MenuItemContent
 pub fn skene_common::MenuItemContent::label(&self) -> alloc::string::String
-pub fn skene_common::MenuItemContent::shortcut(&self) -> core::option::Option<&str>
+pub const fn skene_common::MenuItemContent::shortcut(&self) -> core::option::Option<skene_core::events::Shortcut>
 impl core::clone::Clone for skene_common::MenuItemContent
 pub fn skene_common::MenuItemContent::clone(&self) -> skene_common::MenuItemContent
 impl core::fmt::Debug for skene_common::MenuItemContent

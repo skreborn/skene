@@ -324,9 +324,12 @@ everywhere wraps its root. The terminal facade serves the standard menu from the
 at install, because the terminal has no menu of its own; a deeper wrapper wins over it
 as it wins over the browser's, so replacing the default is the same act on both
 facades. The items are `MenuItem`s: `MenuItem::new(label)` with `handle_select`,
-`set_disabled`/`derive_disabled` and `set_shortcut` (a hint the item shows, never a
-binding), `MenuItem::separator()`, and the standard entries `MenuItem::copy()`, `cut()`
-and `paste()`. A standard item asks the platform for its `Availability` each time the
+`set_disabled`/`derive_disabled` and `set_shortcut` (a `Shortcut` the item shows
+beside its label, as its `Display` reads, and binds on the view the menu serves, so
+the key runs a usable item from anywhere focus is inside that view, in place of the
+platform's response), `MenuItem::separator()`, and the standard entries
+`MenuItem::copy()`, `cut()` and `paste()`; a `Keymap` binds shortcuts the same way over
+any view, no menu needed. A standard item asks the platform for its `Availability` each time the
 menu is requested: `Absent` hides it, `Disabled` lists it disabled, `Enabled` lists it
 live—outside a text entry only `Copy` exists, and only with a selection; inside one all
 three are listed, `Copy` and `Cut` disabled without a selection—and running it calls

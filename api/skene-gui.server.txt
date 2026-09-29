@@ -162,6 +162,7 @@ pub use skene_gui::prelude::LinkAnnotation
 pub use skene_gui::prelude::LinkPolicy
 pub use skene_gui::prelude::Memo
 pub use skene_gui::prelude::MenuItem
+pub use skene_gui::prelude::Modifiers
 pub use skene_gui::prelude::MouseCursor
 pub use skene_gui::prelude::NamedKey
 pub use skene_gui::prelude::NoChild
@@ -172,6 +173,7 @@ pub use skene_gui::prelude::PointerPrecision
 pub use skene_gui::prelude::ReadSignal
 pub use skene_gui::prelude::Role
 pub use skene_gui::prelude::Set
+pub use skene_gui::prelude::Shortcut
 pub use skene_gui::prelude::Signal
 pub use skene_gui::prelude::Snapshot
 pub use skene_gui::prelude::Snapshot
@@ -260,6 +262,7 @@ pub type skene_gui::prelude::FocusHandle = skene_common::focus::FocusHandle<sken
 pub type skene_gui::prelude::Grid = skene_common::grid::Grid<skene_gui::ActivePlatform>
 pub type skene_gui::prelude::GridCell<C> = skene_common::grid_cell::GridCell<skene_gui::ActivePlatform, C>
 pub type skene_gui::prelude::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_gui::prelude::Keymap<C> = skene_common::keymap::Keymap<skene_gui::ActivePlatform, C>
 pub type skene_gui::prelude::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_gui::ActivePlatform, Kind>
 pub type skene_gui::prelude::LazyColumn = skene_common::lazy_list::LazyColumn<skene_gui::ActivePlatform>
 pub type skene_gui::prelude::LazyRow = skene_common::lazy_list::LazyRow<skene_gui::ActivePlatform>
@@ -401,6 +404,7 @@ pub type skene_gui::Grid = skene_common::grid::Grid<skene_gui::ActivePlatform>
 pub type skene_gui::GridCell<C> = skene_common::grid_cell::GridCell<skene_gui::ActivePlatform, C>
 pub type skene_gui::Inset<T> = skene_core::values::inset::Inset<T>
 pub type skene_gui::Keyed<V> = skene_core::keyed::Keyed<skene_gui::ActivePlatform, V>
+pub type skene_gui::Keymap<C> = skene_common::keymap::Keymap<skene_gui::ActivePlatform, C>
 pub type skene_gui::Label = skene_common::control::Label<skene_gui::ActivePlatform>
 pub type skene_gui::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_gui::ActivePlatform, Kind>
 pub type skene_gui::LazyColumn = skene_common::lazy_list::LazyColumn<skene_gui::ActivePlatform>

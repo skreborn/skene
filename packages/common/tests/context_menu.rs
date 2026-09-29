@@ -14,6 +14,7 @@ use skene_core::{
   FocusOrder,
   HasChildren,
   KeyEvent,
+  Modifiers,
   Part,
   Placement,
   Point,
@@ -22,6 +23,7 @@ use skene_core::{
   Property,
   PropertyKey,
   Scene,
+  Shortcut,
   View,
 };
 use skene_headless::{
@@ -88,8 +90,9 @@ fn key(key: &str) -> KeyEvent {
 }
 
 /// A secondary press on the served view opens the list pinned at the press with the
-/// platform's menu prevented, the first item takes focus, and clicking an item runs
-/// it and closes the list.
+/// platform's menu prevented, the first item takes focus, clicking an item runs it and
+/// closes the list, and an item's shortcut runs it from the served view in place of
+/// the platform's response.
 #[test]
 fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
   reset();
@@ -99,11 +102,13 @@ fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
   let start = owner.enter(|| {
     Menu::new()
       .set_items([
-        MenuItem::new("Rename").set_shortcut("F2").handle_select({
-          let log = Rc::clone(&log);
+        MenuItem::new("Rename")
+          .set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))
+          .handle_select({
+            let log = Rc::clone(&log);
 
-          move || log.borrow_mut().push("rename")
-        }),
+            move || log.borrow_mut().push("rename")
+          }),
         MenuItem::separator(),
         MenuItem::new("Delete").handle_select({
           let log = Rc::clone(&log);
@@ -145,6 +150,12 @@ fn a_context_menu_opens_at_the_press_and_runs_the_chosen_item() {
   trigger_dismiss(list);
 
   assert!(!is_open(list), "a dismiss closes it");
+
+  let verdict = trigger_key_down(served, &key("F2"));
+
+  assert!(verdict.platform, "the shortcut is the item's");
+  assert_eq!(*log.borrow(), vec!["delete", "rename"]);
+  assert!(!is_open(list), "a shortcut opens nothing");
 }
 
 /// The arrows walk the enabled items with wrapping, skipping a disabled one, `Home`
@@ -346,10 +357,12 @@ fn an_item_view_draws_each_item() {
         Text::new(format!(
           "{} · {}",
           content.label(),
-          content.shortcut().unwrap_or("none")
+          content
+            .shortcut()
+            .map_or_else(|| "none".to_owned(), |shortcut| shortcut.to_string())
         ))
       })
-      .set_items([MenuItem::new("Rename").set_shortcut("F2")])
+      .set_items([MenuItem::new("Rename").set_shortcut(Shortcut::new(Modifiers::NONE, "F2"))])
       .set_child(Container::new())
       .build()
   });

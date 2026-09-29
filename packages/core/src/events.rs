@@ -246,6 +246,30 @@ impl Shortcut {
   }
 }
 
+impl std::fmt::Display for Shortcut {
+  /// The shortcut as a hint reads it: its modifiers, then its key, a letter capital,
+  /// joined by `+` (`Ctrl+Shift+S`, `F2`).
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let held = [
+      (self.modifiers.ctrl, "Ctrl"),
+      (self.modifiers.alt, "Alt"),
+      (self.modifiers.shift, "Shift"),
+      (self.modifiers.meta, "Meta"),
+    ];
+
+    for (_, name) in held.into_iter().filter(|(held, _)| *held) {
+      write!(formatter, "{name}+")?;
+    }
+
+    let mut characters = self.key.chars();
+
+    match (characters.next(), characters.next()) {
+      (Some(character), None) => write!(formatter, "{}", character.to_uppercase()),
+      _ => formatter.write_str(self.key),
+    }
+  }
+}
+
 /// A keyboard event: the logical key, the physical key, and the modifier state.
 ///
 /// `key` is the W3C key value (`Key::Character("a")`, `Key::Named(NamedKey::Enter)`, a

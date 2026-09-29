@@ -155,6 +155,7 @@ pub use skene_tui::prelude::LinkAnnotation
 pub use skene_tui::prelude::LinkPolicy
 pub use skene_tui::prelude::Memo
 pub use skene_tui::prelude::MenuItem
+pub use skene_tui::prelude::Modifiers
 pub use skene_tui::prelude::MouseCursor
 pub use skene_tui::prelude::NamedKey
 pub use skene_tui::prelude::NoChild
@@ -166,6 +167,7 @@ pub use skene_tui::prelude::ReadSignal
 pub use skene_tui::prelude::Resource
 pub use skene_tui::prelude::Role
 pub use skene_tui::prelude::Set
+pub use skene_tui::prelude::Shortcut
 pub use skene_tui::prelude::Signal
 pub use skene_tui::prelude::Snapshot
 pub use skene_tui::prelude::Snapshot
@@ -365,6 +367,7 @@ pub type skene_tui::prelude::FocusHandle = skene_common::focus::FocusHandle<sken
 pub type skene_tui::prelude::Grid = skene_common::grid::Grid<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::GridCell<C> = skene_common::grid_cell::GridCell<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::Inset<T> = skene_core::values::inset::Inset<T>
+pub type skene_tui::prelude::Keymap<C> = skene_common::keymap::Keymap<skene_tui::ActivePlatform, C>
 pub type skene_tui::prelude::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_tui::ActivePlatform, Kind>
 pub type skene_tui::prelude::LazyColumn = skene_common::lazy_list::LazyColumn<skene_tui::ActivePlatform>
 pub type skene_tui::prelude::LazyRow = skene_common::lazy_list::LazyRow<skene_tui::ActivePlatform>
@@ -726,6 +729,7 @@ pub type skene_tui::Grid = skene_common::grid::Grid<skene_tui::ActivePlatform>
 pub type skene_tui::GridCell<C> = skene_common::grid_cell::GridCell<skene_tui::ActivePlatform, C>
 pub type skene_tui::Inset<T> = skene_core::values::inset::Inset<T>
 pub type skene_tui::Keyed<V> = skene_core::keyed::Keyed<skene_tui::ActivePlatform, V>
+pub type skene_tui::Keymap<C> = skene_common::keymap::Keymap<skene_tui::ActivePlatform, C>
 pub type skene_tui::Label = skene_common::control::Label<skene_tui::ActivePlatform>
 pub type skene_tui::LayoutBox<Kind> = skene_common::layout_box::LayoutBox<skene_tui::ActivePlatform, Kind>
 pub type skene_tui::LazyColumn = skene_common::lazy_list::LazyColumn<skene_tui::ActivePlatform>

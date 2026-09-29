@@ -35,7 +35,17 @@ use super::{
   Timer,
   View,
 };
-use crate::{AccessProp, Color, ColorScheme, FocusOrder, PointerEvent, Size, TextSelection};
+use crate::{
+  AccessProp,
+  Color,
+  ColorScheme,
+  Dimension,
+  FocusOrder,
+  Length,
+  PointerEvent,
+  Size,
+  TextSelection,
+};
 
 /// One call the platform received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,7 +62,9 @@ pub(super) enum Call {
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum Erased {
   Color(Definition<Color, f32>),
-  Length(Definition<f32, f32>),
+  Number(Definition<f32, f32>),
+  Length(Definition<Length, f32>),
+  Dimension(Definition<Dimension<f32>, f32>),
 }
 
 impl From<Definition<Color, f32>> for Erased {
@@ -63,7 +75,19 @@ impl From<Definition<Color, f32>> for Erased {
 
 impl From<Definition<f32, f32>> for Erased {
   fn from(definition: Definition<f32, f32>) -> Self {
+    Self::Number(definition)
+  }
+}
+
+impl From<Definition<Length, f32>> for Erased {
+  fn from(definition: Definition<Length, f32>) -> Self {
     Self::Length(definition)
+  }
+}
+
+impl From<Definition<Dimension<f32>, f32>> for Erased {
+  fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
+    Self::Dimension(definition)
   }
 }
 

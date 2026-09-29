@@ -2,6 +2,7 @@ pub mod skene_web
 pub enum skene_web::WebTokenValue
 pub skene_web::WebTokenValue::Color(skene_core::leaf::Definition<skene_core::values::color::Color, f32>)
 pub skene_web::WebTokenValue::Dimension(skene_core::leaf::Definition<skene_core::values::dimension::Dimension<f32>, f32>)
+pub skene_web::WebTokenValue::Length(skene_core::leaf::Definition<skene_core::expr::Length, f32>)
 pub skene_web::WebTokenValue::Number(skene_core::leaf::Definition<f32, f32>)
 impl core::clone::Clone for skene_web::WebTokenValue
 pub fn skene_web::WebTokenValue::clone(&self) -> skene_web::WebTokenValue
@@ -9,6 +10,8 @@ impl core::cmp::PartialEq for skene_web::WebTokenValue
 pub fn skene_web::WebTokenValue::eq(&self, &skene_web::WebTokenValue) -> bool
 impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<f32>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
 pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<f32, f32>) -> Self
+impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::expr::Length>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
+pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::expr::Length, f32>) -> Self
 impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::color::Color>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue
 pub fn skene_web::WebTokenValue::from(skene_core::leaf::Definition<skene_core::values::color::Color, f32>) -> Self
 impl core::convert::From<skene_core::leaf::Conditional<skene_core::leaf::StaticLeaf<skene_core::values::dimension::Dimension<f32>>, skene_core::condition::Media<f32>>> for skene_web::WebTokenValue

@@ -4,7 +4,7 @@
 //! The only place the web platform spells CSS for the new model. A property compiles to
 //! one declaration (a shorthand where the property has components, so a single custom
 //! property can carry a derived value); a fixed leaf renders as its literal, a token as
-//! `var(--<name>)`—a number token read by a pixel-measured property as
+//! `var(--<name>)`—a number token read by a pixel-measured extension property as
 //! `calc(var(--<name>) * 1px)`—an expression as CSS math, and a derived slot as
 //! `var(--skene-<property>)` for the base and `var(--skene-<property>-<i>)` for the
 //! `i`-th variant. Variants group by their canonical condition into one rule per
@@ -164,7 +164,7 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::MaxHeight => plain("max-height"),
       Property::AspectRatio => plain("aspect-ratio"),
       Property::Margin => plain("margin"),
-      Property::Padding => pixels("padding"),
+      Property::Padding => plain("padding"),
       Property::Offset => Target {
         position: Some("relative"),
         ..plain("inset")
@@ -176,7 +176,7 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::Color => plain("background-color"),
       Property::Border => plain("border"),
       Property::Cursor => plain("cursor"),
-      Property::Spacing => pixels("gap"),
+      Property::Spacing => plain("gap"),
       Property::Wrap => plain("flex-wrap"),
       Property::Flex => plain("flex"),
       Property::Arrangement => plain("justify-content"),
@@ -900,6 +900,9 @@ fn definition_leaf(value: &WebTokenValue, position: usize) -> Option<String> {
   match value {
     WebTokenValue::Color(definition) => leaf(definition, position, Declarations::render_color),
     WebTokenValue::Number(definition) => leaf(definition, position, |number| number.to_string()),
+    WebTokenValue::Length(definition) => {
+      leaf(definition, position, |length| format!("{}px", length.0))
+    }
     WebTokenValue::Dimension(definition) => {
       leaf(definition, position, Declarations::render_dimension)
     }
@@ -915,6 +918,11 @@ fn definition_conditions(value: &WebTokenValue) -> Vec<skene_core::Media<f32>> {
       .map(|(media, _)| media.clone())
       .collect(),
     WebTokenValue::Number(definition) => definition
+      .variants()
+      .iter()
+      .map(|(media, _)| media.clone())
+      .collect(),
+    WebTokenValue::Length(definition) => definition
       .variants()
       .iter()
       .map(|(media, _)| media.clone())

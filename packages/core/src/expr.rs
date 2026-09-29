@@ -712,6 +712,48 @@ quantity_targets!(Length =>
 
 quantity_targets!(Number => [] f32);
 
+/// The conversions carrying a length token's reference into every property type
+/// measured in lengths, and into each leaf holding one: the property reads the token by
+/// its name.
+macro_rules! length_token_targets {
+  ($([$($generics:tt)*] $target:ty),+ $(,)?) => {$(
+    impl<$($generics)*> From<TokenRef<Length>> for StaticLeaf<$target> {
+      #[inline(always)]
+      fn from(reference: TokenRef<Length>) -> Self {
+        Self::Token(TokenRef::new(reference.name().as_str()))
+      }
+    }
+
+    impl<$($generics)*> From<TokenRef<Length>> for Leaf<$target> {
+      #[inline(always)]
+      fn from(reference: TokenRef<Length>) -> Self {
+        Self::Static(StaticLeaf::from(reference))
+      }
+    }
+
+    impl<$($generics)* C> From<TokenRef<Length>> for Value<$target, C> {
+      #[inline(always)]
+      fn from(reference: TokenRef<Length>) -> Self {
+        Self::new(Leaf::from(reference))
+      }
+    }
+
+    impl<$($generics)* M: Scalar> From<TokenRef<Length>> for Definition<$target, M> {
+      #[inline(always)]
+      fn from(reference: TokenRef<Length>) -> Self {
+        Self::new(StaticLeaf::from(reference))
+      }
+    }
+  )+};
+}
+
+length_token_targets!(
+  [N: Scalar,] Dimension<N>,
+  [N: Scalar,] Inset<N>,
+  [N: Scalar,] Spacing<N>,
+  [N: Scalar,] Inset<Dimension<N>>,
+);
+
 #[cfg(test)]
 mod tests {
   use super::{Expr, ExprEnv, ExprValue, Length, Number};

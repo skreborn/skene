@@ -1276,6 +1276,14 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Len
 pub fn skene_core::Leaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Leaf<skene_core::Spacing<N>>
 pub fn skene_core::Leaf<skene_core::Spacing<N>>::from(skene_core::Expr<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Dimension<N>>
+pub fn skene_core::Leaf<skene_core::Dimension<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Inset<N>>
+pub fn skene_core::Leaf<skene_core::Inset<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Inset<skene_core::Dimension<N>>>
+pub fn skene_core::Leaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Spacing<N>>
+pub fn skene_core::Leaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<T, C> core::convert::From<skene_core::Leaf<T>> for skene_core::Value<T, C>
 pub fn skene_core::Value<T, C>::from(skene_core::Leaf<T>) -> Self
 impl<T, N: skene_core::Scalar> core::convert::From<&skene_core::Token<T, N>> for skene_core::Leaf<T>
@@ -1646,6 +1654,8 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Dimension<N>> for sk
 pub fn skene_core::Resolved<N>::from(skene_core::Dimension<N>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::ExprValue> for skene_core::Resolved<N>
 pub fn skene_core::Resolved<N>::from(skene_core::ExprValue) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::Length> for skene_core::Resolved<N>
+pub fn skene_core::Resolved<N>::from(skene_core::Length) -> Self
 pub enum skene_core::Role
 pub skene_core::Role::Alert
 pub skene_core::Role::Article
@@ -1768,6 +1778,14 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Len
 pub fn skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::Expr<skene_core::Length>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Spacing<N>>
 pub fn skene_core::StaticLeaf<skene_core::Spacing<N>>::from(skene_core::Expr<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Dimension<N>>
+pub fn skene_core::StaticLeaf<skene_core::Dimension<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Inset<N>>
+pub fn skene_core::StaticLeaf<skene_core::Inset<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>
+pub fn skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Spacing<N>>
+pub fn skene_core::StaticLeaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<T, C> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::StaticValue<T, C>
 pub fn skene_core::StaticValue<T, C>::from(skene_core::StaticLeaf<T>) -> Self
 impl<T, C> core::convert::From<skene_core::StaticLeaf<T>> for skene_core::Value<T, C>
@@ -1891,6 +1909,7 @@ impl core::marker::StructuralPartialEq for skene_core::Toggle
 pub enum skene_core::TokenValue<N: skene_core::Scalar>
 pub skene_core::TokenValue::Color(skene_core::Definition<skene_core::Color, N>)
 pub skene_core::TokenValue::Dimension(skene_core::Definition<skene_core::Dimension<N>, N>)
+pub skene_core::TokenValue::Length(skene_core::Definition<skene_core::Length, N>)
 pub skene_core::TokenValue::Number(skene_core::Definition<f32, N>)
 pub skene_core::TokenValue::Text(skene_core::Definition<alloc::string::String, N>)
 impl<N: core::clone::Clone + skene_core::Scalar> core::clone::Clone for skene_core::TokenValue<N>
@@ -1908,6 +1927,8 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_co
 pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Color, N>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_core::StaticLeaf<skene_core::Dimension<N>>, skene_core::Media<N>>> for skene_core::TokenValue<N>
 pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Dimension<N>, N>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_core::StaticLeaf<skene_core::Length>, skene_core::Media<N>>> for skene_core::TokenValue<N>
+pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Length, N>) -> Self
 pub enum skene_core::TrackLimit<T>
 pub skene_core::TrackLimit::Auto
 pub skene_core::TrackLimit::Flex(f32)
@@ -2249,6 +2270,8 @@ impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_co
 pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Color, N>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_core::StaticLeaf<skene_core::Dimension<N>>, skene_core::Media<N>>> for skene_core::TokenValue<N>
 pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Dimension<N>, N>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::Conditional<skene_core::StaticLeaf<skene_core::Length>, skene_core::Media<N>>> for skene_core::TokenValue<N>
+pub fn skene_core::TokenValue<N>::from(skene_core::Definition<skene_core::Length, N>) -> Self
 impl<T, N> core::convert::From<skene_core::Conditional<skene_core::StaticLeaf<T>, skene_core::Media<N>>> for skene_core::Value<T, skene_core::Condition<N>>
 pub fn skene_core::Value<T, skene_core::Condition<N>>::from(skene_core::Definition<T, N>) -> Self
 pub struct skene_core::ContainerName(pub &'static str)
@@ -2724,6 +2747,8 @@ impl skene_core::ExprOutput for skene_core::Length
 pub fn skene_core::Length::from_expr_value(skene_core::ExprValue) -> core::option::Option<Self>
 impl skene_core::Quantity for skene_core::Length
 pub fn skene_core::Length::literal(f32) -> skene_core::ExprNode
+impl<N: skene_core::Scalar> core::convert::From<skene_core::Length> for skene_core::Resolved<N>
+pub fn skene_core::Resolved<N>::from(skene_core::Length) -> Self
 pub struct skene_core::Line<T>
 pub skene_core::Line::end: T
 pub skene_core::Line::start: T
@@ -3461,6 +3486,38 @@ pub const fn skene_core::TokenRef<T>::new(&'static str) -> Self
 pub fn skene_core::TokenRef<T>::when<C>(self, C, impl core::convert::Into<skene_core::Leaf<T>>) -> skene_core::Value<T, C>
 impl core::convert::From<skene_core::TokenRef<skene_core::Color>> for skene_core::Expr<skene_core::Color>
 pub fn skene_core::Expr<skene_core::Color>::from(skene_core::TokenRef<skene_core::Color>) -> Self
+impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Dimension<N>, C>
+pub fn skene_core::Value<skene_core::Dimension<N>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Inset<N>, C>
+pub fn skene_core::Value<skene_core::Inset<N>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Inset<skene_core::Dimension<N>>, C>
+pub fn skene_core::Value<skene_core::Inset<skene_core::Dimension<N>>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, C> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Value<skene_core::Spacing<N>, C>
+pub fn skene_core::Value<skene_core::Spacing<N>, C>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Definition<skene_core::Dimension<N>, M>
+pub fn skene_core::Definition<skene_core::Dimension<N>, M>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Definition<skene_core::Inset<N>, M>
+pub fn skene_core::Definition<skene_core::Inset<N>, M>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Definition<skene_core::Inset<skene_core::Dimension<N>>, M>
+pub fn skene_core::Definition<skene_core::Inset<skene_core::Dimension<N>>, M>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar, M: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Definition<skene_core::Spacing<N>, M>
+pub fn skene_core::Definition<skene_core::Spacing<N>, M>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Dimension<N>>
+pub fn skene_core::Leaf<skene_core::Dimension<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Inset<N>>
+pub fn skene_core::Leaf<skene_core::Inset<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Inset<skene_core::Dimension<N>>>
+pub fn skene_core::Leaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::Leaf<skene_core::Spacing<N>>
+pub fn skene_core::Leaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Dimension<N>>
+pub fn skene_core::StaticLeaf<skene_core::Dimension<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Inset<N>>
+pub fn skene_core::StaticLeaf<skene_core::Inset<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>
+pub fn skene_core::StaticLeaf<skene_core::Inset<skene_core::Dimension<N>>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
+impl<N: skene_core::Scalar> core::convert::From<skene_core::TokenRef<skene_core::Length>> for skene_core::StaticLeaf<skene_core::Spacing<N>>
+pub fn skene_core::StaticLeaf<skene_core::Spacing<N>>::from(skene_core::TokenRef<skene_core::Length>) -> Self
 impl<Q: skene_core::Quantity> core::convert::From<skene_core::TokenRef<Q>> for skene_core::Expr<Q>
 pub fn skene_core::Expr<Q>::from(skene_core::TokenRef<Q>) -> Self
 impl<T, C> core::convert::From<skene_core::TokenRef<T>> for skene_core::Value<T, C>
@@ -3917,7 +3974,7 @@ pub trait skene_core::Platform: core::marker::Copy + core::default::Default + 's
 pub type skene_core::Platform::Scalar: skene_core::Scalar
 pub type skene_core::Platform::Sink: core::clone::Clone + 'static
 pub type skene_core::Platform::StyleExt: skene_core::StyleExtension
-pub type skene_core::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_core::Definition<skene_core::Color, Self::Scalar>> + core::convert::From<skene_core::Definition<f32, Self::Scalar>> + 'static
+pub type skene_core::Platform::TokenValue: core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug + core::convert::From<skene_core::Definition<skene_core::Color, Self::Scalar>> + core::convert::From<skene_core::Definition<f32, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Length, Self::Scalar>> + core::convert::From<skene_core::Definition<skene_core::Dimension<Self::Scalar>, Self::Scalar>> + 'static
 pub fn skene_core::Platform::apply_layout(&self, &Self::Sink, &skene_core::StaticBoxStyle<Self>)
 pub fn skene_core::Platform::attach(&self, &Self::Sink, &Self::Sink, core::option::Option<&Self::Sink>)
 pub fn skene_core::Platform::bind_node(&self, &Self::Sink, skene_core::NodeId)

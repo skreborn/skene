@@ -591,6 +591,8 @@ pub struct Scene<P: Platform> {
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
   mirrors: Vec<Mirror<P>>,
+  #[cfg(debug_assertions)]
+  token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
 
 impl<P: Platform> std::fmt::Debug for Scene<P> {
@@ -619,6 +621,8 @@ impl<P: Platform> Scene<P> {
       definitions_generation: 0,
       graveyard: Vec::new(),
       mirrors: Vec::new(),
+      #[cfg(debug_assertions)]
+      token_kinds: FxHashMap::default(),
     }
   }
 
@@ -1026,8 +1030,27 @@ impl<P: Platform> Scene<P> {
     }
   }
 
+  /// Panics, in a debug build, when a token of `definitions` was defined before as
+  /// another kind: one name is one kind wherever it is defined.
+  #[cfg(debug_assertions)]
+  fn check_kinds(&mut self, definitions: &Definitions<P::TokenValue>) {
+    for (name, value) in definitions.iter() {
+      let kind = std::mem::discriminant(value);
+      let first = *self.token_kinds.entry(name).or_insert(kind);
+
+      assert!(first == kind, "the token `{name}` is defined as two kinds");
+    }
+  }
+
   /// Defines tokens on `node`, replacing what it defined before.
+  ///
+  /// # Panics
+  ///
+  /// Panics, in a debug build, when a token was defined before as another kind.
   pub fn define_tokens(&mut self, node: NodeId, definitions: Definitions<P::TokenValue>) {
+    #[cfg(debug_assertions)]
+    self.check_kinds(&definitions);
+
     let Some(record) = self.record_mut(node)
     else {
       return;
@@ -1043,7 +1066,14 @@ impl<P: Platform> Scene<P> {
   }
 
   /// Defines the tokens every node falls back to, replacing the previous set.
+  ///
+  /// # Panics
+  ///
+  /// Panics, in a debug build, when a token was defined before as another kind.
   pub fn define_root_tokens(&mut self, definitions: Definitions<P::TokenValue>) {
+    #[cfg(debug_assertions)]
+    self.check_kinds(&definitions);
+
     self
       .mirrors
       .push(Mirror::DefineRootTokens(definitions.clone()));
@@ -1545,6 +1575,21 @@ mod tests {
 
   fn definitions(name: &'static str, value: Erased) -> Definitions<Erased> {
     Definitions::from(vec![(TokenName::new(name), value)])
+  }
+
+  /// One name is one kind: redefining a token as another kind panics in a debug build,
+  /// where redefining it as the same kind does not.
+  #[test]
+  #[cfg(debug_assertions)]
+  #[should_panic(expected = "the token `ink` is defined as two kinds")]
+  fn a_token_is_one_kind() {
+    TestPlatform::reset();
+
+    with(|scene| {
+      scene.define_root_tokens(definitions("ink", color(0.1)));
+      scene.define_root_tokens(definitions("ink", color(0.9)));
+      scene.define_root_tokens(definitions("ink", Erased::Number(Definition::from(1.))));
+    });
   }
 
   /// Attaching an attached node unlinks it from its previous parent first, in the

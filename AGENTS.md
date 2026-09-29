@@ -118,8 +118,11 @@
   definition a palette gives it, and every setter takes `impl Into<Value<T>>`, so
   `set_color(Color::WHITE)`, `set_color(palette.card)` and
   `set_color(SimplePalette::CARD)` are the same call and a consumer emits only the name.
-  A token's own conditions live in its **definition**, once: `Definition<T>` conditions
-  on `Media` only and holds no closure, so a palette is plain data that serializes and
+  A length token (`Token<Length, N>`) serves every property measured in lengths,
+  padding, spacing, margins and sizes alike, through its one reference, and a name is
+  one kind wherever it is defined: a debug build panics on a second. A token's own
+  conditions live in its **definition**, once: `Definition<T>` conditions on `Media`
+  only and holds no closure, so a palette is plain data that serializes and
   hashes. On the web a token is a custom property defined on the theme's scope and
   referenced with `var()`; in the terminal and on native it resolves through the scene to
   the nearest defining ancestor, cached per node. Nothing below a component library

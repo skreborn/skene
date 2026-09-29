@@ -31,7 +31,9 @@ use crate::{
   Color,
   ColorScheme,
   ContainerName,
+  Dimension,
   FocusOrder,
+  Length,
   Media,
   MediaEnv,
   Placement,
@@ -81,6 +83,8 @@ pub trait Platform: Copy + Default + 'static {
     + Debug
     + From<Definition<Color, Self::Scalar>>
     + From<Definition<f32, Self::Scalar>>
+    + From<Definition<Length, Self::Scalar>>
+    + From<Definition<Dimension<Self::Scalar>, Self::Scalar>>
     + 'static;
 
   /// The thread-local holding this platform's scene.

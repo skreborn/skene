@@ -15,7 +15,6 @@ use skene_core::{
   NodeId,
   Property,
   PropertyKey,
-  Spacing,
   Token,
   TokenName,
   TokenRef,
@@ -52,16 +51,12 @@ pub(crate) fn black() -> Color {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct TestPalette {
   pub card: Token<Color, f32>,
-  pub gutter: Token<f32, f32>,
+  pub gutter: Token<Length, f32>,
 }
 
 impl TestPalette {
   pub(crate) const CARD: TokenRef<Color> = TokenRef::new("card");
-  pub(crate) const GUTTER: TokenRef<f32> = TokenRef::new("gutter");
-  /// The gutter as an expression reads it.
-  pub(crate) const GUTTER_LENGTH: TokenRef<Length> = TokenRef::new("gutter");
-  /// The gutter as the spacing property reads it.
-  pub(crate) const GUTTER_SPACING: TokenRef<Spacing<f32>> = TokenRef::new("gutter");
+  pub(crate) const GUTTER: TokenRef<Length> = TokenRef::new("gutter");
 
   pub(crate) fn with_card(card: Color) -> Self {
     Self {
@@ -75,7 +70,7 @@ impl Default for TestPalette {
   fn default() -> Self {
     Self {
       card: Token::new("card", WHITE).define_when(Media::Dark, black()),
-      gutter: Token::new("gutter", 8.),
+      gutter: Token::new("gutter", Length(8.)),
     }
   }
 }

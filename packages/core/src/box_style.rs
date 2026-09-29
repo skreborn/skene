@@ -171,8 +171,8 @@ pub trait IntoBoxValue<N: Scalar, X: StyleExtension>:
   fn into_box_value(self) -> BoxValue<N, X>;
 
   /// This type's reading of an erased value; `None` when it holds another type. A type
-  /// made of one length also reads a fixed-length dimension, or a unitless number in
-  /// the medium's unit, as a uniform value.
+  /// made of one length also reads a fixed-length dimension, as a length token resolves
+  /// to, as a uniform value.
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self>;
 }
 
@@ -186,7 +186,6 @@ impl<N: Scalar, X: StyleExtension> IntoBoxValue<N, X> for Dimension<N> {
   fn from_box_value(value: BoxValue<N, X>) -> Option<Self> {
     match value {
       BoxValue::Dimension(value) => Some(value),
-      BoxValue::Number(number) => Some(Self::Length(N::from_f32(number))),
       _ => None,
     }
   }
@@ -207,7 +206,6 @@ macro_rules! box_values {
         match value {
           BoxValue::$variant(value) => Some(value),
           $(BoxValue::Dimension(Dimension::Length(length)) => Some($lenient(length)),)?
-          $(BoxValue::Number(number) => Some($lenient(N::from_f32(number))),)?
           _ => None,
         }
       }

@@ -56,12 +56,15 @@ struct ParityPalette {
   shifted: Token<Color, f32>,
   /// A width.
   wide: Token<Dimension<f32>, f32>,
+  /// A length every length-measured property reads.
+  gap: Token<Length, f32>,
 }
 
 impl ParityPalette {
   const SURFACE: TokenRef<Color> = TokenRef::new("parity-surface");
   const SHIFTED: TokenRef<Color> = TokenRef::new("parity-shifted");
   const WIDE: TokenRef<Dimension<f32>> = TokenRef::new("parity-wide");
+  const GAP: TokenRef<Length> = TokenRef::new("parity-gap");
 }
 
 impl Default for ParityPalette {
@@ -80,19 +83,24 @@ impl Default for ParityPalette {
         Self::WIDE.name().as_str(),
         Definition::from(Dimension::Length(90.)),
       ),
+      gap: Token::new(Self::GAP.name().as_str(), Length(14.)),
     }
   }
 }
 
 impl<V> TokenSet<V> for ParityPalette
 where
-  V: From<Definition<Color, f32>> + From<Definition<Dimension<f32>, f32>> + 'static,
+  V: From<Definition<Color, f32>>
+    + From<Definition<Dimension<f32>, f32>>
+    + From<Definition<Length, f32>>
+    + 'static,
 {
   fn definitions(&self) -> Vec<(TokenName, V)> {
     vec![
       self.surface.define(),
       self.shifted.define(),
       self.wide.define(),
+      self.gap.define(),
     ]
   }
 }
@@ -146,9 +154,12 @@ enum Case {
   CrossedClampWidth,
   EmWidth,
   TokenWidth,
+  LengthTokenWidth,
+  LengthTokenExpressionWidth,
   DerivedWidth,
   ConditionalWidth,
   FixedPadding,
+  LengthTokenPadding,
   ConditionalPadding,
   FixedBorder,
   FixedInk,
@@ -178,9 +189,12 @@ const CASES: &[Case] = &[
   Case::CrossedClampWidth,
   Case::EmWidth,
   Case::TokenWidth,
+  Case::LengthTokenWidth,
+  Case::LengthTokenExpressionWidth,
   Case::DerivedWidth,
   Case::ConditionalWidth,
   Case::FixedPadding,
+  Case::LengthTokenPadding,
   Case::ConditionalPadding,
   Case::FixedBorder,
   Case::FixedInk,
@@ -211,9 +225,11 @@ impl Case {
       | Self::CrossedClampWidth
       | Self::EmWidth
       | Self::TokenWidth
+      | Self::LengthTokenWidth
+      | Self::LengthTokenExpressionWidth
       | Self::DerivedWidth
       | Self::ConditionalWidth => Read::Width,
-      Self::FixedPadding | Self::ConditionalPadding => Read::Padding,
+      Self::FixedPadding | Self::LengthTokenPadding | Self::ConditionalPadding => Read::Padding,
       Self::FixedBorder => Read::Border,
       Self::FixedInk | Self::TokenInk => Read::Ink,
     }
@@ -259,11 +275,14 @@ impl Case {
       Self::CrossedClampWidth => container.set_width(Expr::<Length>::from(50.).clamp(80., 20.)),
       Self::EmWidth => container.set_width(Expr::em(3.)),
       Self::TokenWidth => container.set_width(ParityPalette::WIDE),
+      Self::LengthTokenWidth => container.set_width(ParityPalette::GAP),
+      Self::LengthTokenExpressionWidth => container.set_width(Expr::from(ParityPalette::GAP) * 3.),
       Self::DerivedWidth => container.derive_width(|| Dimension::Length(70.)),
       Self::ConditionalWidth => container.set_width(
         Value::from(Dimension::Length(40.)).when(Media::MinWidth(1.), Dimension::Length(60.)),
       ),
       Self::FixedPadding => container.set_padding(Inset::all(12.)),
+      Self::LengthTokenPadding => container.set_padding(ParityPalette::GAP),
       Self::ConditionalPadding => {
         container.set_padding(Value::from(Inset::all(4.)).when(Media::MinWidth(1.), Inset::all(9.)))
       }
@@ -274,10 +293,7 @@ impl Case {
   }
 
   /// The case's box under a theme of the palette, built on the platform `P`.
-  fn build<P: Platform<Scalar = f32>>(self) -> NodeId
-  where
-    P::TokenValue: From<Definition<Color, f32>> + From<Definition<Dimension<f32>, f32>>,
-  {
+  fn build<P: Platform<Scalar = f32>>(self) -> NodeId {
     Theme::<P, ParityPalette>::new(ParityPalette::default())
       .set_child_builder(move || self.view::<P>())
       .build()

@@ -32,12 +32,13 @@ left half-done in a code comment.
     border and ink it compares: `em` under a typography, which headless fixes at 16 and
     the terminal at one cell, container units, number tokens read as lengths, the
     focus, checked and disabled states, and a case for each fix below.
-    - Tokens: a length kind registered as `<length>`, one token kind serving padding,
-    spacing and width, where the web needs a number for some and a dimension for others
-    today; `TokenRef<T: Tokenable>`; a debug panic when one name is defined with two
-    kinds; lexical resolution cached per scope, a definition's nested tokens, `em` and
-    container conditions resolving where it is declared, as CSS does, with per-scope
-    invalidation in place of the global generation.
+    - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
+    typed as lengths, so a length token serves them too and the web's `* 1px` and the
+    typography's number tokens go, which gives the type metrics a type per medium;
+    `TokenRef<T: Tokenable>`, so no reference aliases a name under another type; lexical
+    resolution cached per scope, a definition's nested tokens, `em` and container
+    conditions resolving where it is declared, as CSS does, with per-scope invalidation
+    in place of the global generation.
     - One motion runner in core with a property table (continuous or discrete, and a
     unit class) for the terminal, headless and native: easing per keyframe interval,
     discrete properties that never tween, and one reduced-motion rest frame, the final

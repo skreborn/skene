@@ -21,9 +21,11 @@ use skene_core::{
   ControlState,
   Definition,
   Definitions,
+  Dimension,
   EventKind,
   FocusOrder,
   HasChildren,
+  Length,
   MediaSignals,
   OverlayProps,
   Placement,
@@ -52,6 +54,8 @@ struct Reentrant;
 enum Erased {
   Color(Definition<Color, f32>),
   Number(Definition<f32, f32>),
+  Length(Definition<Length, f32>),
+  Dimension(Definition<Dimension<f32>, f32>),
 }
 
 impl From<Definition<Color, f32>> for Erased {
@@ -63,6 +67,18 @@ impl From<Definition<Color, f32>> for Erased {
 impl From<Definition<f32, f32>> for Erased {
   fn from(definition: Definition<f32, f32>) -> Self {
     Self::Number(definition)
+  }
+}
+
+impl From<Definition<Length, f32>> for Erased {
+  fn from(definition: Definition<Length, f32>) -> Self {
+    Self::Length(definition)
+  }
+}
+
+impl From<Definition<Dimension<f32>, f32>> for Erased {
+  fn from(definition: Definition<Dimension<f32>, f32>) -> Self {
+    Self::Dimension(definition)
   }
 }
 

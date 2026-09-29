@@ -28,6 +28,7 @@ use crate::{
   IntoRunValue,
   Keyframe,
   Leaf,
+  Length,
   Media,
   MediaEnv,
   Plain,
@@ -54,7 +55,7 @@ use crate::{
 const MAX_DEPTH: usize = 32;
 
 /// The erased token definition a runtime-resolving platform stores per token: a color,
-/// a number, a dimension in the medium's unit, or a text.
+/// a number, a length or a dimension in the medium's unit, or a text.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum TokenValue<N: Scalar> {
@@ -62,6 +63,8 @@ pub enum TokenValue<N: Scalar> {
   Color(Definition<Color, N>),
   /// A unitless number token.
   Number(Definition<f32, N>),
+  /// A length token, in the medium's unit.
+  Length(Definition<Length, N>),
   /// A dimension token, in the medium's unit.
   Dimension(Definition<Dimension<N>, N>),
   /// A text token.
@@ -79,6 +82,13 @@ impl<N: Scalar> From<Definition<f32, N>> for TokenValue<N> {
   #[inline(always)]
   fn from(definition: Definition<f32, N>) -> Self {
     Self::Number(definition)
+  }
+}
+
+impl<N: Scalar> From<Definition<Length, N>> for TokenValue<N> {
+  #[inline(always)]
+  fn from(definition: Definition<Length, N>) -> Self {
+    Self::Length(definition)
   }
 }
 
@@ -207,6 +217,14 @@ impl<N: Scalar> From<f32> for Resolved<N> {
   #[inline(always)]
   fn from(number: f32) -> Self {
     Self::Number(number)
+  }
+}
+
+impl<N: Scalar> From<Length> for Resolved<N> {
+  /// A length, as the fixed-length dimension it is in the medium's unit.
+  #[inline(always)]
+  fn from(length: Length) -> Self {
+    Self::Dimension(Dimension::Length(N::from_f32(length.0)))
   }
 }
 
@@ -383,6 +401,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     match (self.token)(name)? {
       TokenValue::Color(definition) => self.leaf_at(self.winning_media(&definition), depth),
       TokenValue::Number(definition) => self.leaf_at(self.winning_media(&definition), depth),
+      TokenValue::Length(definition) => self.leaf_at(self.winning_media(&definition), depth),
       TokenValue::Dimension(definition) => self.leaf_at(self.winning_media(&definition), depth),
       TokenValue::Text(definition) => self.leaf_at(self.winning_media(&definition), depth),
     }

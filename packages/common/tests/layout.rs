@@ -59,10 +59,10 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
       .set_child_builder(|| {
         Column::new().set_children((
           Row::new()
-            .set_spacing(TestPalette::GUTTER_SPACING)
+            .set_spacing(TestPalette::GUTTER)
             .set_arrangement(Arrangement::SpaceBetween)
             .set_item_alignment(ItemAlignment::Center),
-          Row::reversed().set_spacing(Expr::<Length>::from(TestPalette::GUTTER_LENGTH) * 2.),
+          Row::reversed().set_spacing(Expr::<Length>::from(TestPalette::GUTTER) * 2.),
           Row::new().set_spacing(Spacing {
             row: 1.,
             column: 2.,
@@ -83,8 +83,8 @@ fn layout_props_reach_box_props_and_a_token_spacing_resolves() {
   );
   assert_eq!(
     tokened.style.spacing,
-    Some(StaticValue::from(StaticLeaf::Token(
-      TestPalette::GUTTER_SPACING
+    Some(StaticValue::from(StaticLeaf::<Spacing<f32>>::from(
+      TestPalette::GUTTER
     )))
   );
   assert_eq!(

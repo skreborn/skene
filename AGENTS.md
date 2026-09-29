@@ -184,10 +184,12 @@
     the anchor's measured rectangle where it does not. A native platform may still realize
     an overlay into its own layer, so nothing is built on ancestor-selector reachability
     beyond a control's own subtree.
-  - **Environment is queryable.** `media::viewport()`, `media::scheme()` and
-    `media::reduced_motion()` are signals on every facade, `media::watch(&condition)`
-    turns any declared condition into a memo, and a box's measured size reaches a view
-    through `Platform::observe_size` and an app through a `SizeHandle` bound to the box. On
+  - **Environment is queryable.** `media::viewport()`, `media::scheme()`,
+    `media::reduced_motion()`, `media::reduced_transparency()` and
+    `media::high_contrast()` are signals on every facade, one `Environment` in core
+    holding what they report, `media::watch(&condition)` turns any declared condition
+    into a memo, and a box's measured size reaches a view through
+    `Platform::observe_size` and an app through a `SizeHandle` bound to the box. On
     the web they are live after hydration and hold the server's answer before it; the
     server's answer comes from client hints when the render is given them, else from
     documented defaults. Declare what must be right before the bundle arrives; derive

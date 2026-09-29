@@ -29,8 +29,8 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) grows past the background, width, padding,
-    border and ink it compares: container units, number tokens read as lengths, the
-    focus, checked and disabled states, and a case for each fix below.
+    border and ink it compares: container units, the focus, checked and disabled states,
+    and a case for each fix below.
     - Tokens: the pixel extension properties (corner radius, font size, letter spacing)
     typed as lengths, so a length token serves them too and the web's `* 1px` and the
     typography's number tokens go, which gives the type metrics a type per medium;
@@ -41,9 +41,9 @@ left half-done in a code comment.
     unit class) for the terminal, headless and native: easing per keyframe interval,
     discrete properties that never tween, and one reduced-motion rest frame, the final
     one, where the web shows the base style today.
-    - One `Environment` (viewport, scheme, reduced motion, reduced transparency, high
-    contrast, pointer capability, insets) in place of three spellings, so `HighContrast`
-    and `ReducedTransparency` answer on every platform and in tests.
+    - The `Environment` gains the pointer's capability (fine, coarse or none, and
+    whether it hovers) and the safe-area insets, as facts every platform reports and
+    `Media` conditions test.
     - Runs and boxes: a group redefines every token it sets, and a link group its
     `INK`, so the web and the terminal inherit alike; a group run's color keeps its
     state and compound media variants, and every variant slot registers; `Border`

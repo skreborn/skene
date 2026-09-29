@@ -14,6 +14,7 @@ use skene_core::{
   ContainerSizes,
   ControlKind,
   ControlState,
+  Environment,
   FocusOrder,
   Layout,
   MediaSignals,
@@ -1571,6 +1572,18 @@ impl Store {
     Size::new(u32::from(self.last_size.0), u32::from(self.last_size.1))
   }
 
+  /// The environment the terminal reports; it has no answer for reduced transparency
+  /// or more contrast, which never hold.
+  pub(crate) fn environment(&self) -> Environment<u32> {
+    Environment {
+      viewport: self.viewport(),
+      scheme: self.scheme(),
+      reduced_motion: self.reduced_motion,
+      reduced_transparency: false,
+      high_contrast: false,
+    }
+  }
+
   /// Marks every resolved style stale and the frame in need of layout.
   #[inline(always)]
   pub(crate) const fn invalidate_styles(&mut self) {
@@ -1593,6 +1606,8 @@ impl Store {
         let (viewport, set_viewport) = Signal::opaque(viewport).split();
         let (scheme, set_scheme) = Signal::opaque(scheme).split();
         let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced).split();
+        let reduced_transparency = Signal::opaque(false).read_only();
+        let high_contrast = Signal::opaque(false).read_only();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
@@ -1606,6 +1621,8 @@ impl Store {
             viewport,
             scheme,
             reduced_motion,
+            reduced_transparency,
+            high_contrast,
             container_sizes: ContainerSizes::new(),
           },
         }

@@ -34,6 +34,18 @@ pub fn reduced_motion() -> ReadSignal<bool> {
   skene_common::media::reduced_motion::<ActivePlatform>()
 }
 
+/// Whether the reader prefers reduced transparency.
+#[inline(always)]
+pub fn reduced_transparency() -> ReadSignal<bool> {
+  skene_common::media::reduced_transparency::<ActivePlatform>()
+}
+
+/// Whether the reader prefers more contrast.
+#[inline(always)]
+pub fn high_contrast() -> ReadSignal<bool> {
+  skene_common::media::high_contrast::<ActivePlatform>()
+}
+
 /// Whether the page stands hydrated, as a signal.
 ///
 /// False on the server leaf and while the browser leaf adopts the server's markup, true

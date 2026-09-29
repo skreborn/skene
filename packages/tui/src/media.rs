@@ -34,6 +34,20 @@ pub fn reduced_motion() -> ReadSignal<bool> {
   skene_common::media::reduced_motion::<ActivePlatform>()
 }
 
+/// Whether the reader prefers reduced transparency; the terminal reports no
+/// preference, so it never holds.
+#[inline(always)]
+pub fn reduced_transparency() -> ReadSignal<bool> {
+  skene_common::media::reduced_transparency::<ActivePlatform>()
+}
+
+/// Whether the reader prefers more contrast; the terminal reports no preference, so
+/// it never holds.
+#[inline(always)]
+pub fn high_contrast() -> ReadSignal<bool> {
+  skene_common::media::high_contrast::<ActivePlatform>()
+}
+
 /// Whether `media` holds, as a memo following the environment. A container condition
 /// never holds here: it is answered per node, by the box it names.
 #[inline(always)]

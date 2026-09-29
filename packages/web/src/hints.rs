@@ -7,7 +7,7 @@ use skene_core::{ColorScheme, Size};
 /// defaults.
 ///
 /// Without hints a render assumes a 1024 by 768 viewport, the light scheme, no
-/// reduced-motion preference and a device pixel ratio of one.
+/// reduced-motion or reduced-transparency preference and a device pixel ratio of one.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
 pub struct RenderHints {
@@ -17,6 +17,8 @@ pub struct RenderHints {
   pub scheme: ColorScheme,
   /// Whether the reader prefers reduced motion.
   pub reduced_motion: bool,
+  /// Whether the reader prefers reduced transparency.
+  pub reduced_transparency: bool,
   /// The device pixels per logical pixel.
   pub device_pixel_ratio: f32,
 }
@@ -27,14 +29,17 @@ impl RenderHints {
     viewport: Size::new(1024., 768.),
     scheme: ColorScheme::Light,
     reduced_motion: false,
+    reduced_transparency: false,
     device_pixel_ratio: 1.,
   };
 
-  /// The request headers a render reads: the color scheme, the reduced-motion
-  /// preference, the viewport's width and height, and the device pixel ratio.
-  pub const REQUEST_HEADERS: [&'static str; 5] = [
+  /// The request headers a render reads: the color scheme, the reduced-motion and
+  /// reduced-transparency preferences, the viewport's width and height, and the device
+  /// pixel ratio.
+  pub const REQUEST_HEADERS: [&'static str; 6] = [
     "Sec-CH-Prefers-Color-Scheme",
     "Sec-CH-Prefers-Reduced-Motion",
+    "Sec-CH-Prefers-Reduced-Transparency",
     "Sec-CH-Viewport-Width",
     "Sec-CH-Viewport-Height",
     "Sec-CH-DPR",
@@ -60,6 +65,10 @@ impl RenderHints {
       else if name.eq_ignore_ascii_case("Sec-CH-Prefers-Reduced-Motion") {
         hints.reduced_motion =
           word(value).is_some_and(|motion| motion.eq_ignore_ascii_case("reduce"));
+      }
+      else if name.eq_ignore_ascii_case("Sec-CH-Prefers-Reduced-Transparency") {
+        hints.reduced_transparency =
+          word(value).is_some_and(|transparency| transparency.eq_ignore_ascii_case("reduce"));
       }
       else if name.eq_ignore_ascii_case("Sec-CH-Viewport-Width") {
         if let Some(width) = positive(value) {
@@ -149,6 +158,7 @@ mod tests {
     let hints = RenderHints::from_headers([
       ("sec-ch-prefers-color-scheme", "dark"),
       ("Sec-CH-Prefers-Reduced-Motion", "reduce"),
+      ("Sec-CH-Prefers-Reduced-Transparency", "reduce"),
       ("Sec-CH-Viewport-Width", "390"),
       ("sec-ch-viewport-height", " 844 "),
       ("Sec-CH-DPR", "3"),
@@ -157,6 +167,7 @@ mod tests {
 
     assert_eq!(hints.scheme, ColorScheme::Dark);
     assert!(hints.reduced_motion);
+    assert!(hints.reduced_transparency);
     assert_eq!(hints.viewport, Size::new(390., 844.));
     assert!((hints.device_pixel_ratio - 3.).abs() < f32::EPSILON);
   }

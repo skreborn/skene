@@ -22,6 +22,18 @@ pub fn reduced_motion<P: Platform>() -> ReadSignal<bool> {
   P::default().media().reduced_motion
 }
 
+/// Whether the reader prefers reduced transparency.
+#[inline(always)]
+pub fn reduced_transparency<P: Platform>() -> ReadSignal<bool> {
+  P::default().media().reduced_transparency
+}
+
+/// Whether the reader prefers more contrast.
+#[inline(always)]
+pub fn high_contrast<P: Platform>() -> ReadSignal<bool> {
+  P::default().media().high_contrast
+}
+
 /// Whether a render made without script has been hydrated.
 ///
 /// False on the server leaf and while the browser leaf adopts the server's markup, true

@@ -781,6 +781,32 @@ pub fn trigger_reduced_motion(reduced: bool) {
   });
 }
 
+/// Simulates the reader's reduced-transparency preference.
+pub fn trigger_reduced_transparency(reduced: bool) {
+  trigger(|| {
+    let write = with_store(|store| {
+      store.reduced_transparency = Some(reduced);
+
+      store.media().set_reduced_transparency
+    });
+
+    write.set(reduced);
+  });
+}
+
+/// Simulates the reader's preference for more contrast.
+pub fn trigger_high_contrast(high: bool) {
+  trigger(|| {
+    let write = with_store(|store| {
+      store.high_contrast = Some(high);
+
+      store.media().set_high_contrast
+    });
+
+    write.set(high);
+  });
+}
+
 /// How many scheduled actions are still waiting for the clock, for a test asserting that
 /// a view cancels its own.
 #[must_use]

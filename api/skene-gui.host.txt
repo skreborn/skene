@@ -92,8 +92,10 @@ pub fn skene_gui::head::set_language(impl core::convert::Into<alloc::string::Str
 pub fn skene_gui::head::set_title(impl core::convert::Into<alloc::string::String>)
 pub mod skene_gui::media
 pub fn skene_gui::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
@@ -181,8 +183,10 @@ impl skene_core::view::View<skene_headless::Headless> for skene_gui::Lazy
 pub fn skene_gui::Lazy::build(self) -> skene_core::node::NodeId
 pub mod skene_gui::prelude::media
 pub fn skene_gui::prelude::media::derive_scheme(impl core::ops::function::Fn() -> core::option::Option<skene_core::values::color::ColorScheme> + 'static)
+pub fn skene_gui::prelude::media::high_contrast() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>

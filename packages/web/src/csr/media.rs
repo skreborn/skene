@@ -19,6 +19,12 @@ const DARK: &str = "(prefers-color-scheme: dark)";
 /// The query text of the reduced-motion preference.
 const REDUCED_MOTION: &str = "(prefers-reduced-motion: reduce)";
 
+/// The query text of the reduced-transparency preference.
+const REDUCED_TRANSPARENCY: &str = "(prefers-reduced-transparency: reduce)";
+
+/// The query text of the preference for more contrast.
+const HIGH_CONTRAST: &str = "(prefers-contrast: more)";
+
 /// One live media query: its list, its signal and the listener keeping them equal.
 struct Query {
   read: ReadSignal<bool>,
@@ -119,6 +125,8 @@ fn create() -> MediaState {
   let (viewport, set_viewport) = Signal::opaque(window_size()).split();
   let (scheme, set_scheme) = Signal::opaque(ColorScheme::Light).split();
   let (reduced_motion, set_reduced_motion) = Signal::opaque(false).split();
+  let (reduced_transparency, set_reduced_transparency) = Signal::opaque(false).split();
+  let (high_contrast, set_high_contrast) = Signal::opaque(false).split();
   let choice = Signal::opaque(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
@@ -131,6 +139,8 @@ fn create() -> MediaState {
       viewport,
       scheme,
       reduced_motion,
+      reduced_transparency,
+      high_contrast,
       container_sizes: ContainerSizes::new(),
     },
     live: Signal::opaque(LIVE.with(Cell::get)).split(),
@@ -140,6 +150,8 @@ fn create() -> MediaState {
   };
   let dark = query(&mut state, DARK);
   let reduced = query(&mut state, REDUCED_MOTION);
+  let transparency = query(&mut state, REDUCED_TRANSPARENCY);
+  let contrast = query(&mut state, HIGH_CONTRAST);
 
   Effect::new(move |_: Option<()>| {
     let platform = if dark.get() {
@@ -152,6 +164,8 @@ fn create() -> MediaState {
     set_scheme.set(choice.get().unwrap_or(platform));
   });
   Effect::new(move |_: Option<()>| set_reduced_motion.set(reduced.get()));
+  Effect::new(move |_: Option<()>| set_reduced_transparency.set(transparency.get()));
+  Effect::new(move |_: Option<()>| set_high_contrast.set(contrast.get()));
 
   state
 }

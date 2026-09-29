@@ -7,10 +7,10 @@ use skene_core::{
   Annotation,
   BoxStyle,
   Color,
-  ColorScheme,
   Condition,
   Conditional,
   ContainerName,
+  Environment,
   Interaction,
   Keyframe,
   NodeId,
@@ -48,12 +48,8 @@ pub(crate) struct Env<'a> {
   handle: Handle,
   /// The scene node the record realizes, or `None` for the root.
   node: Option<NodeId>,
-  /// The viewport's size.
-  viewport: Size<u32>,
-  /// The color scheme in force.
-  scheme: ColorScheme,
-  /// Whether the reader prefers reduced motion.
-  reduced_motion: bool,
+  /// The reader's environment.
+  environment: Environment<u32>,
   /// The node's interaction.
   interaction: Interaction,
   /// The named containers above the node, nearest first, with their sizes.
@@ -67,9 +63,7 @@ impl<'a> Env<'a> {
       store,
       handle,
       node: store.record(handle).and_then(|record| record.node),
-      viewport: store.viewport(),
-      scheme: store.scheme(),
-      reduced_motion: store.reduced_motion,
+      environment: store.environment(),
       interaction: store.interaction(handle),
       containers: store.containers_above(handle),
     }
@@ -141,9 +135,7 @@ impl<'a> Env<'a> {
     let slot = |slot| self.store.record(self.handle)?.slots.get(&slot).cloned();
 
     operation(&Resolver {
-      viewport: self.viewport,
-      scheme: self.scheme,
-      reduced_motion: self.reduced_motion,
+      environment: self.environment,
       interaction: self.interaction,
       containers: &self.containers,
       em,

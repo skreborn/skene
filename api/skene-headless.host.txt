@@ -139,6 +139,7 @@ pub fn skene_headless::trigger_dismiss(skene_core::node::NodeId)
 pub fn skene_headless::trigger_focus(skene_core::node::NodeId)
 pub fn skene_headless::trigger_frame(core::time::Duration)
 pub fn skene_headless::trigger_graphics(bool)
+pub fn skene_headless::trigger_high_contrast(bool)
 pub fn skene_headless::trigger_hydrated(bool)
 pub fn skene_headless::trigger_key_down(skene_core::node::NodeId, &skene_core::events::KeyEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_key_up(skene_core::node::NodeId, &skene_core::events::KeyEvent) -> skene_core::events::Prevented
@@ -148,6 +149,7 @@ pub fn skene_headless::trigger_pointer_leave(skene_core::node::NodeId)
 pub fn skene_headless::trigger_pointer_move(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_pointer_up(skene_core::node::NodeId, &skene_core::events::PointerEvent) -> skene_core::events::Prevented
 pub fn skene_headless::trigger_reduced_motion(bool)
+pub fn skene_headless::trigger_reduced_transparency(bool)
 pub fn skene_headless::trigger_resize(skene_core::values::size::Size<f32>)
 pub fn skene_headless::trigger_scroll(skene_core::node::NodeId, &skene_core::events::ScrollEvent)
 pub fn skene_headless::trigger_selection_change(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)

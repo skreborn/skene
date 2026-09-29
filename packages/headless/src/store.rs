@@ -14,6 +14,7 @@ use skene_core::{
   ControlProps,
   ControlState,
   Definitions,
+  Environment,
   EventKind,
   MediaSignals,
   NoProperty,
@@ -164,6 +165,8 @@ pub(crate) struct MediaState {
   pub set_viewport: WriteSignal<Size<f32>>,
   pub set_scheme: WriteSignal<ColorScheme>,
   pub set_reduced_motion: WriteSignal<bool>,
+  pub set_reduced_transparency: WriteSignal<bool>,
+  pub set_high_contrast: WriteSignal<bool>,
   pub set_hydrated: WriteSignal<bool>,
   pub set_graphics: WriteSignal<bool>,
   pub hydrated: ReadSignal<bool>,
@@ -195,6 +198,10 @@ pub(crate) struct Store {
   pub chosen_scheme: Option<ColorScheme>,
   /// Whether the reader prefers reduced motion, as set; not unless set.
   pub reduced_motion: Option<bool>,
+  /// Whether the reader prefers reduced transparency, as set; not unless set.
+  pub reduced_transparency: Option<bool>,
+  /// Whether the reader prefers more contrast, as set; not unless set.
+  pub high_contrast: Option<bool>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   /// The document's language, as last set.
@@ -229,6 +236,8 @@ impl Default for Store {
       scheme: None,
       chosen_scheme: None,
       reduced_motion: None,
+      reduced_transparency: None,
+      high_contrast: None,
       clock: 0.,
       language: None,
       head: Head::default(),
@@ -316,11 +325,24 @@ impl Store {
       .unwrap_or(ColorScheme::Light)
   }
 
+  /// The environment the platform reports, as set.
+  pub(crate) fn environment(&self) -> Environment<f32> {
+    Environment {
+      viewport: self.viewport.unwrap_or(DEFAULT_VIEWPORT),
+      scheme: self.scheme_in_force(),
+      reduced_motion: self.reduced_motion.unwrap_or(false),
+      reduced_transparency: self.reduced_transparency.unwrap_or(false),
+      high_contrast: self.high_contrast.unwrap_or(false),
+    }
+  }
+
   /// The environment's signals, created on first use under a root owner of their own.
   pub(crate) fn media(&mut self) -> &MediaState {
     let viewport = self.viewport.unwrap_or(DEFAULT_VIEWPORT);
     let scheme = self.scheme_in_force();
     let reduced_motion = self.reduced_motion.unwrap_or(false);
+    let reduced_transparency = self.reduced_transparency.unwrap_or(false);
+    let high_contrast = self.high_contrast.unwrap_or(false);
     let hydrated = self.hydrated.unwrap_or(true);
     let graphics = self.graphics.unwrap_or(true);
 
@@ -331,6 +353,9 @@ impl Store {
         let (viewport, set_viewport) = Signal::opaque(viewport).split();
         let (scheme, set_scheme) = Signal::opaque(scheme).split();
         let (reduced_motion, set_reduced_motion) = Signal::opaque(reduced_motion).split();
+        let (reduced_transparency, set_reduced_transparency) =
+          Signal::opaque(reduced_transparency).split();
+        let (high_contrast, set_high_contrast) = Signal::opaque(high_contrast).split();
         let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
@@ -339,6 +364,8 @@ impl Store {
           set_viewport,
           set_scheme,
           set_reduced_motion,
+          set_reduced_transparency,
+          set_high_contrast,
           set_hydrated,
           set_graphics,
           hydrated,
@@ -347,6 +374,8 @@ impl Store {
             viewport,
             scheme,
             reduced_motion,
+            reduced_transparency,
+            high_contrast,
             container_sizes: ContainerSizes::new(),
           },
         }

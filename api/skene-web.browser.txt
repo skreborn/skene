@@ -58,11 +58,12 @@ impl core::marker::StructuralPartialEq for skene_web::LazyRegion
 pub struct skene_web::RenderHints
 pub skene_web::RenderHints::device_pixel_ratio: f32
 pub skene_web::RenderHints::reduced_motion: bool
+pub skene_web::RenderHints::reduced_transparency: bool
 pub skene_web::RenderHints::scheme: skene_core::values::color::ColorScheme
 pub skene_web::RenderHints::viewport: skene_core::values::size::Size<f32>
 impl skene_web::RenderHints
 pub const skene_web::RenderHints::DEFAULT: Self
-pub const skene_web::RenderHints::REQUEST_HEADERS: [&'static str; 5]
+pub const skene_web::RenderHints::REQUEST_HEADERS: [&'static str; 6]
 pub fn skene_web::RenderHints::from_headers<'a>(impl core::iter::traits::collect::IntoIterator<Item = (&'a str, &'a str)>) -> Self
 pub fn skene_web::RenderHints::response_headers() -> alloc::vec::Vec<(&'static str, alloc::string::String)>
 impl core::clone::Clone for skene_web::RenderHints

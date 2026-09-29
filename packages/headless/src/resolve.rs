@@ -8,8 +8,8 @@ use skene_core::{
   Border,
   BoxKeyframe,
   BoxValue,
-  ColorScheme,
   ContainerName,
+  Environment,
   Focus,
   Interaction,
   NoProperty,
@@ -27,13 +27,7 @@ use skene_core::{
   interpolate::{Tween, sample_keyframes},
 };
 
-use crate::{
-  Headless,
-  SlotValue,
-  TokenValue,
-  store::{DEFAULT_VIEWPORT, Kind},
-  with_store,
-};
+use crate::{Headless, SlotValue, TokenValue, store::Kind, with_store};
 
 /// The font size an `em` evaluates against where no typography defines one.
 const EM: f32 = 16.;
@@ -43,12 +37,8 @@ const EM: f32 = 16.;
 pub(crate) struct Env {
   /// The node, or `None` for the root the root definitions hang off.
   node: Option<NodeId>,
-  /// The viewport's size.
-  viewport: Size<f32>,
-  /// The color scheme in force.
-  scheme: ColorScheme,
-  /// Whether the reader prefers reduced motion.
-  reduced_motion: bool,
+  /// The reader's environment.
+  environment: Environment<f32>,
   /// The node's interaction.
   interaction: Interaction,
   /// The named containers above the node, nearest first, with their sizes.
@@ -85,9 +75,7 @@ impl Env {
 
       Some(Self {
         node: Some(node),
-        viewport: store.viewport.unwrap_or(DEFAULT_VIEWPORT),
-        scheme: store.scheme_in_force(),
-        reduced_motion: store.reduced_motion.unwrap_or(false),
+        environment: store.environment(),
         interaction: Interaction {
           hovered: record.hovered,
           focus: Focus::new(store.focused == Some(focus_holder), store.focus_visible),
@@ -106,9 +94,7 @@ impl Env {
   fn root() -> Self {
     with_store(|store| Self {
       node: None,
-      viewport: store.viewport.unwrap_or(DEFAULT_VIEWPORT),
-      scheme: store.scheme_in_force(),
-      reduced_motion: store.reduced_motion.unwrap_or(false),
+      environment: store.environment(),
       interaction: Interaction::default(),
       containers: Vec::new(),
     })
@@ -175,9 +161,7 @@ impl Env {
     };
 
     operation(&Resolver {
-      viewport: self.viewport,
-      scheme: self.scheme,
-      reduced_motion: self.reduced_motion,
+      environment: self.environment,
       interaction: self.interaction,
       containers: &self.containers,
       em,

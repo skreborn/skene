@@ -250,6 +250,8 @@ impl Platform for TestPlatform {
         .read_only(),
         scheme: Signal::opaque(ColorScheme::Light).read_only(),
         reduced_motion: Signal::opaque(false).read_only(),
+        reduced_transparency: Signal::opaque(false).read_only(),
+        high_contrast: Signal::opaque(false).read_only(),
         container_sizes: ContainerSizes::new(),
       })
     })

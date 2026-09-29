@@ -68,8 +68,10 @@ use skene_headless::{
   trigger_container_size,
   trigger_focus,
   trigger_frame,
+  trigger_high_contrast,
   trigger_pointer_enter,
   trigger_pointer_leave,
+  trigger_reduced_transparency,
   trigger_resize,
   trigger_size,
   value,
@@ -764,4 +766,42 @@ fn due_actions_run_earliest_first() {
   trigger_frame(std::time::Duration::from_secs(3));
 
   assert_eq!(*ran.borrow(), ["early", "late"]);
+}
+
+/// Reduced transparency and more contrast answer as the platform reports them, in a
+/// property's condition and through a watch.
+#[test]
+fn the_transparency_and_contrast_preferences_answer() {
+  reset();
+
+  let owner = Owner::new();
+  let (node, contrast) = owner.enter(|| {
+    let node = Container::new()
+      .set_color(
+        Value::from(red())
+          .when(Media::ReducedTransparency, green())
+          .when(Media::HighContrast, blue()),
+      )
+      .build();
+
+    (
+      node,
+      skene_common::media::watch::<Headless>(&Media::HighContrast),
+    )
+  });
+
+  assert_eq!(resolve_color(node, COLOR), Some(red()));
+  assert!(!contrast.get());
+
+  trigger_reduced_transparency(true);
+
+  assert_eq!(resolve_color(node, COLOR), Some(green()));
+  assert!(skene_common::media::reduced_transparency::<Headless>().get());
+
+  trigger_high_contrast(true);
+
+  assert_eq!(resolve_color(node, COLOR), Some(blue()));
+  assert!(contrast.get());
+
+  owner.dispose();
 }

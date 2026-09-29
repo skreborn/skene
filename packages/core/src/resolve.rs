@@ -14,13 +14,13 @@ use crate::{
   BoxValue,
   BoxVisitor,
   Color,
-  ColorScheme,
   Condition,
   Conditional,
   ContainerName,
   ControlState,
   Definition,
   Dimension,
+  Environment,
   ExprEnv,
   ExprNode,
   ExprValue,
@@ -318,12 +318,8 @@ impl Interaction {
 /// against, in the medium's unit.
 #[must_use]
 pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
-  /// The viewport's size.
-  pub viewport: Size<N>,
-  /// The color scheme in force.
-  pub scheme: ColorScheme,
-  /// Whether the reader prefers reduced motion.
-  pub reduced_motion: bool,
+  /// The reader's environment.
+  pub environment: Environment<N>,
   /// The node's interaction.
   pub interaction: Interaction,
   /// The named containers above the node, nearest first, with their measured sizes.
@@ -357,11 +353,7 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
     let container = |name: Option<ContainerName>| self.container(name);
 
     operation(&MediaEnv {
-      viewport: self.viewport,
-      scheme: self.scheme,
-      reduced_motion: self.reduced_motion,
-      reduced_transparency: false,
-      high_contrast: false,
+      environment: self.environment,
       container: &container,
     })
   }
@@ -440,7 +432,10 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   #[must_use]
   pub fn expr(&self, node: &ExprNode) -> Option<Resolved<N>> {
     let env = ExprEnv {
-      viewport: Size::new(self.viewport.width.to_f32(), self.viewport.height.to_f32()),
+      viewport: Size::new(
+        self.environment.viewport.width.to_f32(),
+        self.environment.viewport.height.to_f32(),
+      ),
       container: self
         .container(None)
         .map(|size| Size::new(size.width.to_f32(), size.height.to_f32())),

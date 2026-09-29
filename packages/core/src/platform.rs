@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_reactive::{Get, Memo, ReadSignal};
+use skene_reactive::{Memo, ReadSignal};
 
 use super::{
   BoxProps,
@@ -366,11 +366,7 @@ pub trait Platform: Copy + Default + 'static {
       let container = |_: Option<ContainerName>| None;
 
       media.holds_in(&MediaEnv {
-        viewport: signals.viewport.get(),
-        scheme: signals.scheme.get(),
-        reduced_motion: signals.reduced_motion.get(),
-        reduced_transparency: false,
-        high_contrast: false,
+        environment: signals.environment(),
         container: &container,
       })
     })

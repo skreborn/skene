@@ -1,7 +1,7 @@
 //! What a platform receives to realize a node, and what it reports of the environment.
 
 use rustc_hash::FxHashMap;
-use skene_reactive::{ReadSignal, Signal, Update, With};
+use skene_reactive::{Get, ReadSignal, Signal, Update, With};
 
 use super::{
   BoxDynamics,
@@ -9,6 +9,7 @@ use super::{
   Condition,
   ContainerName,
   Declared,
+  Environment,
   Keyframe,
   Platform,
   RunDynamics,
@@ -178,8 +179,25 @@ pub struct MediaSignals<N: 'static> {
   pub scheme: ReadSignal<ColorScheme>,
   /// Whether the reader prefers reduced motion.
   pub reduced_motion: ReadSignal<bool>,
+  /// Whether the reader prefers reduced transparency.
+  pub reduced_transparency: ReadSignal<bool>,
+  /// Whether the reader prefers more contrast.
+  pub high_contrast: ReadSignal<bool>,
   /// The measured sizes of the named query containers.
   pub container_sizes: ContainerSizes<N>,
+}
+
+impl<N: Clone + 'static> MediaSignals<N> {
+  /// The environment the signals hold, each read tracked.
+  pub fn environment(&self) -> Environment<N> {
+    Environment {
+      viewport: self.viewport.get(),
+      scheme: self.scheme.get(),
+      reduced_motion: self.reduced_motion.get(),
+      reduced_transparency: self.reduced_transparency.get(),
+      high_contrast: self.high_contrast.get(),
+    }
+  }
 }
 
 /// An event a node can carry handlers for.

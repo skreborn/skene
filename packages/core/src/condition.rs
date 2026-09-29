@@ -114,15 +114,15 @@ impl<N: Scalar> Media<N> {
 
   fn leaf_holds_in(&self, env: &MediaEnv<'_, N>) -> bool {
     match self {
-      Self::MinWidth(width) => env.viewport.width >= *width,
-      Self::MaxWidth(width) => env.viewport.width <= *width,
-      Self::MinHeight(height) => env.viewport.height >= *height,
-      Self::MaxHeight(height) => env.viewport.height <= *height,
-      Self::Dark => env.scheme == ColorScheme::Dark,
-      Self::Light => env.scheme == ColorScheme::Light,
-      Self::ReducedMotion => env.reduced_motion,
-      Self::ReducedTransparency => env.reduced_transparency,
-      Self::HighContrast => env.high_contrast,
+      Self::MinWidth(width) => env.environment.viewport.width >= *width,
+      Self::MaxWidth(width) => env.environment.viewport.width <= *width,
+      Self::MinHeight(height) => env.environment.viewport.height >= *height,
+      Self::MaxHeight(height) => env.environment.viewport.height <= *height,
+      Self::Dark => env.environment.scheme == ColorScheme::Dark,
+      Self::Light => env.environment.scheme == ColorScheme::Light,
+      Self::ReducedMotion => env.environment.reduced_motion,
+      Self::ReducedTransparency => env.environment.reduced_transparency,
+      Self::HighContrast => env.environment.high_contrast,
       Self::Container { name, query } => {
         (env.container)(*name).is_some_and(|size| query.holds_for(size))
       }
@@ -175,10 +175,11 @@ impl<N: Scalar> Hash for Media<N> {
   }
 }
 
-/// What the environment answers when a [`Media`] condition is evaluated.
-#[derive(Clone, Copy)]
+/// What a platform reports of the reader's environment: every fact a [`Media`]
+/// condition tests but the containers around a node.
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use]
-pub struct MediaEnv<'a, N> {
+pub struct Environment<N> {
   /// The viewport's size.
   pub viewport: Size<N>,
   /// The color scheme in force.
@@ -189,6 +190,14 @@ pub struct MediaEnv<'a, N> {
   pub reduced_transparency: bool,
   /// Whether the reader prefers more contrast.
   pub high_contrast: bool,
+}
+
+/// What the environment answers when a [`Media`] condition is evaluated.
+#[derive(Clone, Copy)]
+#[must_use]
+pub struct MediaEnv<'a, N> {
+  /// The reader's environment.
+  pub environment: Environment<N>,
   /// The size of the nearest container of a name—of any name for `None`—when the node
   /// is inside one.
   pub container: &'a dyn Fn(Option<ContainerName>) -> Option<Size<N>>,
@@ -331,16 +340,18 @@ impl<N> From<State> for Condition<N> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Condition, ContainerName, ContainerQuery, Media, MediaEnv, State};
+  use super::{Condition, ContainerName, ContainerQuery, Environment, Media, MediaEnv, State};
   use crate::{ColorScheme, Composable, Size};
 
   fn env(container: &dyn Fn(Option<ContainerName>) -> Option<Size<f32>>) -> MediaEnv<'_, f32> {
     MediaEnv {
-      viewport: Size::new(1200., 800.),
-      scheme: ColorScheme::Dark,
-      reduced_motion: true,
-      reduced_transparency: false,
-      high_contrast: false,
+      environment: Environment {
+        viewport: Size::new(1200., 800.),
+        scheme: ColorScheme::Dark,
+        reduced_motion: true,
+        reduced_transparency: false,
+        high_contrast: false,
+      },
       container,
     }
   }

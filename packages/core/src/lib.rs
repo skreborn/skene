@@ -74,7 +74,15 @@ pub use box_style::{
 };
 pub use children::{Children, HasChildren, IntoChildren, Seal};
 pub use composable::{Composable, ConditionShape};
-pub use condition::{Condition, ContainerName, ContainerQuery, Media, MediaEnv, State};
+pub use condition::{
+  Condition,
+  ContainerName,
+  ContainerQuery,
+  Environment,
+  Media,
+  MediaEnv,
+  State,
+};
 pub use control::{ControlKind, ControlProps, ControlState, Part, Ring, SliderRange};
 pub use derived::{derived, empty, reconcile};
 pub use dispatch::{

@@ -2377,6 +2377,20 @@ impl<K: core::clone::Clone, V: core::clone::Clone> core::clone::Clone for skene_
 pub fn skene_core::DerivedSlot<K, V>::clone(&self) -> skene_core::DerivedSlot<K, V>
 impl<K: core::fmt::Debug, V> core::fmt::Debug for skene_core::DerivedSlot<K, V>
 pub fn skene_core::DerivedSlot<K, V>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::Environment<N>
+pub skene_core::Environment::high_contrast: bool
+pub skene_core::Environment::reduced_motion: bool
+pub skene_core::Environment::reduced_transparency: bool
+pub skene_core::Environment::scheme: skene_core::ColorScheme
+pub skene_core::Environment::viewport: skene_core::Size<N>
+impl<N: core::clone::Clone> core::clone::Clone for skene_core::Environment<N>
+pub fn skene_core::Environment<N>::clone(&self) -> skene_core::Environment<N>
+impl<N: core::cmp::PartialEq> core::cmp::PartialEq for skene_core::Environment<N>
+pub fn skene_core::Environment<N>::eq(&self, &skene_core::Environment<N>) -> bool
+impl<N: core::cmp::PartialEq> core::marker::StructuralPartialEq for skene_core::Environment<N>
+impl<N: core::fmt::Debug> core::fmt::Debug for skene_core::Environment<N>
+pub fn skene_core::Environment<N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<N: core::marker::Copy> core::marker::Copy for skene_core::Environment<N>
 pub struct skene_core::Errors
 impl skene_core::Errors
 pub fn skene_core::Errors::clear(&self)
@@ -2796,11 +2810,7 @@ impl core::marker::Copy for skene_core::LinkPolicy
 impl core::marker::StructuralPartialEq for skene_core::LinkPolicy
 pub struct skene_core::MediaEnv<'a, N>
 pub skene_core::MediaEnv::container: &'a dyn core::ops::function::Fn(core::option::Option<skene_core::ContainerName>) -> core::option::Option<skene_core::Size<N>>
-pub skene_core::MediaEnv::high_contrast: bool
-pub skene_core::MediaEnv::reduced_motion: bool
-pub skene_core::MediaEnv::reduced_transparency: bool
-pub skene_core::MediaEnv::scheme: skene_core::ColorScheme
-pub skene_core::MediaEnv::viewport: skene_core::Size<N>
+pub skene_core::MediaEnv::environment: skene_core::Environment<N>
 impl<'a, N: core::clone::Clone> core::clone::Clone for skene_core::MediaEnv<'a, N>
 pub fn skene_core::MediaEnv<'a, N>::clone(&self) -> skene_core::MediaEnv<'a, N>
 impl<'a, N: core::marker::Copy> core::marker::Copy for skene_core::MediaEnv<'a, N>
@@ -2808,9 +2818,13 @@ impl<N> core::fmt::Debug for skene_core::MediaEnv<'_, N>
 pub fn skene_core::MediaEnv<'_, N>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub struct skene_core::MediaSignals<N: 'static>
 pub skene_core::MediaSignals::container_sizes: skene_core::ContainerSizes<N>
+pub skene_core::MediaSignals::high_contrast: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::reduced_motion: skene_reactive::signal::ReadSignal<bool>
+pub skene_core::MediaSignals::reduced_transparency: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::scheme: skene_reactive::signal::ReadSignal<skene_core::ColorScheme>
 pub skene_core::MediaSignals::viewport: skene_reactive::signal::ReadSignal<skene_core::Size<N>>
+impl<N: core::clone::Clone + 'static> skene_core::MediaSignals<N>
+pub fn skene_core::MediaSignals<N>::environment(&self) -> skene_core::Environment<N>
 impl<N: core::clone::Clone + 'static> core::clone::Clone for skene_core::MediaSignals<N>
 pub fn skene_core::MediaSignals<N>::clone(&self) -> skene_core::MediaSignals<N>
 impl<N: core::fmt::Debug + 'static> core::fmt::Debug for skene_core::MediaSignals<N>
@@ -3051,12 +3065,10 @@ pub fn skene_core::Reorder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::f
 pub struct skene_core::Resolver<'a, N: skene_core::Scalar, X: skene_core::StyleExtension>
 pub skene_core::Resolver::containers: &'a [(skene_core::ContainerName, core::option::Option<skene_core::Size<N>>)]
 pub skene_core::Resolver::em: f32
+pub skene_core::Resolver::environment: skene_core::Environment<N>
 pub skene_core::Resolver::interaction: skene_core::Interaction
-pub skene_core::Resolver::reduced_motion: bool
-pub skene_core::Resolver::scheme: skene_core::ColorScheme
 pub skene_core::Resolver::slot: &'a dyn core::ops::function::Fn(skene_core::Slot) -> core::option::Option<skene_core::SlotLeaf<N, X>>
 pub skene_core::Resolver::token: &'a dyn core::ops::function::Fn(skene_core::TokenName) -> core::option::Option<skene_core::Resolved<N>>
-pub skene_core::Resolver::viewport: skene_core::Size<N>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::Resolver<'_, N, X>
 pub fn skene_core::Resolver<'_, N, X>::box_keyframe(&self, &skene_core::BoxStyle<N, skene_core::Keyframe, X>) -> skene_core::BoxStyle<N, skene_core::Plain, X>
 pub fn skene_core::Resolver<'_, N, X>::box_style(&self, &skene_core::BoxStyle<N, skene_core::Static<skene_core::Condition<N>>, X>) -> skene_core::BoxStyle<N, skene_core::Plain, X>

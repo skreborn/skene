@@ -16,6 +16,7 @@ use skene_core::{
   ControlState,
   Environment,
   FocusOrder,
+  Inset,
   Layout,
   MediaSignals,
   NodeId,
@@ -1668,8 +1669,8 @@ impl Store {
   }
 
   /// The environment the terminal reports; it has no answer for reduced transparency
-  /// or more contrast, which never hold, and its pointer is the mouse, fine and
-  /// hovering where the app takes it and absent where it does not.
+  /// or more contrast, which never hold, its pointer is the mouse, fine and hovering
+  /// where the app takes it and absent where it does not, and it keeps no edge clear.
   pub(crate) fn environment(&self) -> Environment<u32> {
     Environment {
       viewport: self.viewport(),
@@ -1679,6 +1680,7 @@ impl Store {
       high_contrast: false,
       pointer: self.pointer(),
       hover: self.mouse,
+      safe_area: Inset::ZERO,
     }
   }
 
@@ -1720,6 +1722,7 @@ impl Store {
         let high_contrast = Signal::opaque(false).read_only();
         let pointer = Signal::opaque(pointer).read_only();
         let hover = Signal::opaque(hover).read_only();
+        let safe_area = Signal::opaque(Inset::ZERO).read_only();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
         MediaState {
@@ -1737,6 +1740,7 @@ impl Store {
             high_contrast,
             pointer,
             hover,
+            safe_area,
             container_sizes: ContainerSizes::new(),
           },
         }

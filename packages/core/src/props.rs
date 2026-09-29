@@ -10,6 +10,7 @@ use super::{
   ContainerName,
   Declared,
   Environment,
+  Inset,
   Keyframe,
   Media,
   MediaEnv,
@@ -190,6 +191,8 @@ pub struct MediaSignals<N: 'static> {
   pub pointer: ReadSignal<PointerPrecision>,
   /// Whether the reader's primary pointer hovers.
   pub hover: ReadSignal<bool>,
+  /// The insets the display keeps clear of the viewport's edges.
+  pub safe_area: ReadSignal<Inset<N>>,
   /// The measured sizes of the named query containers.
   pub container_sizes: ContainerSizes<N>,
 }
@@ -205,6 +208,7 @@ impl<N: Clone + 'static> MediaSignals<N> {
       high_contrast: self.high_contrast.get(),
       pointer: self.pointer.get(),
       hover: self.hover.get(),
+      safe_area: self.safe_area.get(),
     }
   }
 }

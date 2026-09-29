@@ -1075,6 +1075,22 @@ impl core::marker::Copy for skene_core::Easing
 impl core::marker::StructuralPartialEq for skene_core::Easing
 impl skene_core::Fingerprint for skene_core::Easing
 pub fn skene_core::Easing::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+pub enum skene_core::Edge
+pub skene_core::Edge::Bottom
+pub skene_core::Edge::Left
+pub skene_core::Edge::Right
+pub skene_core::Edge::Top
+impl core::clone::Clone for skene_core::Edge
+pub fn skene_core::Edge::clone(&self) -> skene_core::Edge
+impl core::cmp::Eq for skene_core::Edge
+impl core::cmp::PartialEq for skene_core::Edge
+pub fn skene_core::Edge::eq(&self, &skene_core::Edge) -> bool
+impl core::fmt::Debug for skene_core::Edge
+pub fn skene_core::Edge::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::Edge
+pub fn skene_core::Edge::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::Edge
+impl core::marker::StructuralPartialEq for skene_core::Edge
 pub enum skene_core::EventKind
 pub skene_core::EventKind::Blur
 pub skene_core::EventKind::Change
@@ -1119,6 +1135,7 @@ pub skene_core::ExprNode::Min(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>)
 pub skene_core::ExprNode::Mix(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>, f32)
 pub skene_core::ExprNode::Mul(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>)
 pub skene_core::ExprNode::Number(f32)
+pub skene_core::ExprNode::SafeArea(skene_core::Edge)
 pub skene_core::ExprNode::Sub(alloc::boxed::Box<Self>, alloc::boxed::Box<Self>)
 pub skene_core::ExprNode::Token(skene_core::TokenName)
 pub skene_core::ExprNode::ViewportHeight(f32)
@@ -2468,6 +2485,7 @@ pub skene_core::Environment::hover: bool
 pub skene_core::Environment::pointer: skene_core::PointerPrecision
 pub skene_core::Environment::reduced_motion: bool
 pub skene_core::Environment::reduced_transparency: bool
+pub skene_core::Environment::safe_area: skene_core::Inset<N>
 pub skene_core::Environment::scheme: skene_core::ColorScheme
 pub skene_core::Environment::viewport: skene_core::Size<N>
 impl<N: core::clone::Clone> core::clone::Clone for skene_core::Environment<N>
@@ -2505,6 +2523,7 @@ impl skene_core::Expr<skene_core::Length>
 pub const fn skene_core::Expr<skene_core::Length>::cqh(f32) -> Self
 pub const fn skene_core::Expr<skene_core::Length>::cqw(f32) -> Self
 pub const fn skene_core::Expr<skene_core::Length>::em(f32) -> Self
+pub const fn skene_core::Expr<skene_core::Length>::safe_area(skene_core::Edge) -> Self
 pub const fn skene_core::Expr<skene_core::Length>::vh(f32) -> Self
 pub const fn skene_core::Expr<skene_core::Length>::vw(f32) -> Self
 impl<Q: skene_core::Quantity> skene_core::Expr<Q>
@@ -2617,6 +2636,7 @@ pub fn skene_core::Expr<T>::hash<H: core::hash::Hasher>(&self, &mut H)
 pub struct skene_core::ExprEnv
 pub skene_core::ExprEnv::container: core::option::Option<skene_core::Size<f32>>
 pub skene_core::ExprEnv::em: f32
+pub skene_core::ExprEnv::safe_area: skene_core::Inset<f32>
 pub skene_core::ExprEnv::viewport: skene_core::Size<f32>
 impl core::clone::Clone for skene_core::ExprEnv
 pub fn skene_core::ExprEnv::clone(&self) -> skene_core::ExprEnv
@@ -2719,6 +2739,7 @@ pub const fn skene_core::Inset<T>::horizontal(T) -> Self
 pub const fn skene_core::Inset<T>::vertical(T) -> Self
 impl<T: core::marker::Copy> skene_core::Inset<T>
 pub const fn skene_core::Inset<T>::all(T) -> Self
+pub const fn skene_core::Inset<T>::edge(&self, skene_core::Edge) -> T
 pub const fn skene_core::Inset<T>::symmetric(T, T) -> Self
 impl<T: num_traits::identities::ConstZero> skene_core::Inset<T>
 pub const skene_core::Inset<T>::ZERO: Self
@@ -2912,6 +2933,7 @@ pub skene_core::MediaSignals::hover: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::pointer: skene_reactive::signal::ReadSignal<skene_core::PointerPrecision>
 pub skene_core::MediaSignals::reduced_motion: skene_reactive::signal::ReadSignal<bool>
 pub skene_core::MediaSignals::reduced_transparency: skene_reactive::signal::ReadSignal<bool>
+pub skene_core::MediaSignals::safe_area: skene_reactive::signal::ReadSignal<skene_core::Inset<N>>
 pub skene_core::MediaSignals::scheme: skene_reactive::signal::ReadSignal<skene_core::ColorScheme>
 pub skene_core::MediaSignals::viewport: skene_reactive::signal::ReadSignal<skene_core::Size<N>>
 impl<N: core::clone::Clone + 'static> skene_core::MediaSignals<N>

@@ -5,7 +5,7 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_hash::FxHashMap;
-use skene_core::{ColorScheme, ContainerSizes, Media, MediaSignals, PointerPrecision, Size};
+use skene_core::{ColorScheme, ContainerSizes, Inset, Media, MediaSignals, PointerPrecision, Size};
 use skene_reactive::{Effect, Get, Memo, ReadSignal, Set, Signal, WriteSignal};
 use wasm_bindgen::JsCast as _;
 use web_sys::MediaQueryList;
@@ -51,9 +51,59 @@ struct MediaState {
   choice: Signal<Option<ColorScheme>>,
   /// The live media queries, by their text.
   queries: FxHashMap<String, Query>,
-  /// The window's resize listener, writing the viewport.
+  /// The window's resize listener, writing the viewport and the safe area.
   _resize: Listener,
 }
+
+/// The insets the display keeps clear of the viewport's edges, as a hidden probe padded
+/// by them measures them.
+fn safe_area() -> Inset<f32> {
+  let Some(document) = web_sys::window().and_then(|window| window.document())
+  else {
+    return Inset::ZERO;
+  };
+  let Some(probe) = document.get_element_by_id(SAFE_AREA_PROBE).or_else(|| {
+    let probe = document.create_element("div").ok()?;
+
+    probe.set_id(SAFE_AREA_PROBE);
+    let _ = probe.set_attribute(
+      "style",
+      "position:fixed;visibility:hidden;pointer-events:none;\
+         padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) \
+         env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)",
+    );
+    let _ = probe.set_attribute("aria-hidden", "true");
+    let _ = document.document_element()?.append_child(&probe);
+
+    Some(probe)
+  })
+  else {
+    return Inset::ZERO;
+  };
+  let Some(style) = web_sys::window()
+    .and_then(|window| window.get_computed_style(&probe).ok())
+    .flatten()
+  else {
+    return Inset::ZERO;
+  };
+  let edge = |property: &str| {
+    style
+      .get_property_value(property)
+      .ok()
+      .and_then(|value| value.strip_suffix("px")?.parse::<f32>().ok())
+      .unwrap_or(0.)
+  };
+
+  Inset {
+    top: edge("padding-top"),
+    right: edge("padding-right"),
+    bottom: edge("padding-bottom"),
+    left: edge("padding-left"),
+  }
+}
+
+/// The id of the probe measuring the safe area.
+const SAFE_AREA_PROBE: &str = "skene-safe-area";
 
 thread_local! {
   static MEDIA: RefCell<Option<MediaState>> = const { RefCell::new(None) };
@@ -138,12 +188,16 @@ fn create() -> MediaState {
   let (high_contrast, set_high_contrast) = Signal::opaque(false).split();
   let (pointer, set_pointer) = Signal::opaque(PointerPrecision::Fine).split();
   let (hover, set_hover) = Signal::opaque(true).split();
+  let (safe_area, set_safe_area) = Signal::opaque(safe_area()).split();
   let choice = Signal::opaque(None);
   let resize = Listener::new(
     web_sys::window().expect("a window").into(),
     "resize",
     false,
-    move |_| set_viewport.set(window_size()),
+    move |_| {
+      set_viewport.set(window_size());
+      set_safe_area.set(self::safe_area());
+    },
   );
   let mut state = MediaState {
     signals: MediaSignals {
@@ -154,6 +208,7 @@ fn create() -> MediaState {
       high_contrast,
       pointer,
       hover,
+      safe_area,
       container_sizes: ContainerSizes::new(),
     },
     live: Signal::opaque(LIVE.with(Cell::get)).split(),

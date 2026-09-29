@@ -10,7 +10,7 @@
 //! [`derive_scheme`] tell the platform which scheme paints, touching no node, and `None`
 //! returns to following the detected background.
 
-use skene_core::{ColorScheme, PointerPrecision};
+use skene_core::{ColorScheme, Inset, PointerPrecision};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{ActivePlatform, Media, Size};
@@ -59,6 +59,12 @@ pub fn pointer() -> ReadSignal<PointerPrecision> {
 #[inline(always)]
 pub fn hover() -> ReadSignal<bool> {
   skene_common::media::hover::<ActivePlatform>()
+}
+
+/// The insets the display keeps clear of the viewport's edges; a terminal keeps none.
+#[inline(always)]
+pub fn safe_area() -> ReadSignal<Inset<u32>> {
+  skene_common::media::safe_area::<ActivePlatform>()
 }
 
 /// Whether `media` holds, as a memo following the environment. A container condition

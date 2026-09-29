@@ -13,7 +13,7 @@ use std::{
 };
 
 use super::{Definition, Leaf, Scalar, StaticLeaf, TokenName, TokenRef, Value};
-use crate::{Color, Dimension, Inset, Size, Spacing};
+use crate::{Color, Dimension, Edge, Inset, Size, Spacing};
 
 /// A length, in the facade's scalar unit.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -158,6 +158,8 @@ pub enum ExprNode {
   ContainerHeight(f32),
   /// A multiple of the font size in force.
   Em(f32),
+  /// The inset the display keeps clear at an edge of the viewport.
+  SafeArea(Edge),
   /// A token's value.
   Token(TokenName),
   /// A literal color.
@@ -210,6 +212,7 @@ impl ExprNode {
       Self::ContainerWidth(percent) => Some(ExprValue::Length(container.width * percent / 100.)),
       Self::ContainerHeight(percent) => Some(ExprValue::Length(container.height * percent / 100.)),
       Self::Em(multiple) => Some(ExprValue::Length(env.em * multiple)),
+      Self::SafeArea(edge) => Some(ExprValue::Length(env.safe_area.edge(*edge))),
       Self::Token(name) => resolve(*name),
       Self::Color(color) => Some(ExprValue::Color(*color)),
       Self::Add(lhs, rhs) => lhs
@@ -271,6 +274,7 @@ impl Hash for ExprNode {
       | Self::ContainerWidth(value)
       | Self::ContainerHeight(value)
       | Self::Em(value) => state.write_u64(value.hash_bits()),
+      Self::SafeArea(edge) => edge.hash(state),
       Self::Token(name) => name.hash(state),
       Self::Color(color) => color.hash(state),
       Self::Add(lhs, rhs)
@@ -383,6 +387,9 @@ pub struct ExprEnv {
   pub container: Option<Size<f32>>,
   /// The font size in force, in the facade's scalar unit.
   pub em: f32,
+  /// The insets the display keeps clear of the viewport's edges, in the facade's scalar
+  /// unit.
+  pub safe_area: Inset<f32>,
 }
 
 /// A type an evaluated expression lands in.
@@ -599,6 +606,13 @@ impl Expr<Length> {
     Self::from_node(ExprNode::ContainerHeight(percent))
   }
 
+  /// The inset the display keeps clear at `edge` of the viewport—for a notch, rounded
+  /// corners or a home indicator—and zero where it keeps none.
+  #[inline(always)]
+  pub const fn safe_area(edge: Edge) -> Self {
+    Self::from_node(ExprNode::SafeArea(edge))
+  }
+
   /// `multiple` of the font size in force.
   #[inline(always)]
   pub const fn em(multiple: f32) -> Self {
@@ -757,13 +771,36 @@ length_token_targets!(
 #[cfg(test)]
 mod tests {
   use super::{Expr, ExprEnv, ExprValue, Length, Number};
-  use crate::{Color, Dimension, Inset, Size, TokenRef};
+  use crate::{Color, Dimension, Edge, Inset, Size, TokenRef};
+
+  /// A safe-area inset evaluates to the environment's inset at its edge.
+  #[test]
+  fn a_safe_area_evaluates_to_its_inset() {
+    let bottom = Expr::<Length>::safe_area(Edge::Bottom) + 8.;
+
+    assert_eq!(
+      bottom.node().evaluate(&env(), &|_| None),
+      Some(ExprValue::Length(42.))
+    );
+    assert_eq!(
+      Expr::<Length>::safe_area(Edge::Left)
+        .node()
+        .evaluate(&env(), &|_| None),
+      Some(ExprValue::Length(0.))
+    );
+  }
 
   fn env() -> ExprEnv {
     ExprEnv {
       viewport: Size::new(1000., 500.),
       container: Some(Size::new(200., 100.)),
       em: 16.,
+      safe_area: Inset {
+        top: 44.,
+        right: 0.,
+        bottom: 34.,
+        left: 0.,
+      },
     }
   }
 

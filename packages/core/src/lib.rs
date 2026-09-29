@@ -198,6 +198,7 @@ pub use values::{
   Color,
   ColorScheme,
   Dimension,
+  Edge,
   FlexDirection,
   Flexibility,
   FocusOrder,

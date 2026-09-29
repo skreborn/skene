@@ -42,6 +42,7 @@ use crate::{
   ColorScheme,
   Dimension,
   FocusOrder,
+  Inset,
   Length,
   PointerEvent,
   PointerPrecision,
@@ -256,6 +257,7 @@ impl Platform for TestPlatform {
         high_contrast: Signal::opaque(false).read_only(),
         pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
         hover: Signal::opaque(true).read_only(),
+        safe_area: Signal::opaque(Inset::ZERO).read_only(),
         container_sizes: ContainerSizes::new(),
       })
     })

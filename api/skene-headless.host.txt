@@ -155,6 +155,7 @@ pub fn skene_headless::trigger_pointer_up(skene_core::node::NodeId, &skene_core:
 pub fn skene_headless::trigger_reduced_motion(bool)
 pub fn skene_headless::trigger_reduced_transparency(bool)
 pub fn skene_headless::trigger_resize(skene_core::values::size::Size<f32>)
+pub fn skene_headless::trigger_safe_area(skene_core::values::inset::Inset<f32>)
 pub fn skene_headless::trigger_scroll(skene_core::node::NodeId, &skene_core::events::ScrollEvent)
 pub fn skene_headless::trigger_selection_change(skene_core::node::NodeId, skene_core::values::text_selection::TextSelection)
 pub fn skene_headless::trigger_size(skene_core::node::NodeId, skene_core::values::size::Size<f32>)

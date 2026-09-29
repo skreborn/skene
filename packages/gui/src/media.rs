@@ -11,7 +11,7 @@
 //! returns to following the platform. [`stored_scheme`] reads the choice a previous
 //! visit stored, so an app's setting starts where the page already is.
 
-use skene_core::{ColorScheme, PointerPrecision};
+use skene_core::{ColorScheme, Inset, PointerPrecision};
 use skene_reactive::{Memo, ReadSignal};
 
 use crate::{ActivePlatform, Media, Size};
@@ -58,6 +58,15 @@ pub fn pointer() -> ReadSignal<PointerPrecision> {
 #[inline(always)]
 pub fn hover() -> ReadSignal<bool> {
   skene_common::media::hover::<ActivePlatform>()
+}
+
+/// The insets the display keeps clear of the viewport's edges, in logical pixels.
+///
+/// None before the bundle arrives, no request header saying, while a length reading
+/// them through `Expr::safe_area` holds them from the first paint.
+#[inline(always)]
+pub fn safe_area() -> ReadSignal<Inset<f32>> {
+  skene_common::media::safe_area::<ActivePlatform>()
 }
 
 /// Whether the page stands hydrated, as a signal.

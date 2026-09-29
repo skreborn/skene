@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use super::Scalar;
 use crate::{
   ColorScheme,
+  Inset,
   Size,
   composable::{Composable, ConditionShape},
 };
@@ -206,6 +207,8 @@ pub struct Environment<N> {
   pub pointer: PointerPrecision,
   /// Whether the reader's primary pointer hovers.
   pub hover: bool,
+  /// The insets the display keeps clear of the viewport's edges.
+  pub safe_area: Inset<N>,
 }
 
 /// How precisely the reader's primary pointer points.
@@ -400,7 +403,7 @@ mod tests {
     PointerPrecision,
     State,
   };
-  use crate::{ColorScheme, Composable, Size};
+  use crate::{ColorScheme, Composable, Inset, Size};
 
   fn env(container: &dyn Fn(Option<ContainerName>) -> Option<Size<f32>>) -> MediaEnv<'_, f32> {
     MediaEnv {
@@ -412,6 +415,7 @@ mod tests {
         high_contrast: false,
         pointer: PointerPrecision::Coarse,
         hover: false,
+        safe_area: Inset::ZERO,
       },
       container,
     }

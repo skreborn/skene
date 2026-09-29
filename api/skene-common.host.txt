@@ -369,6 +369,7 @@ pub fn skene_common::media::hydrated<P: skene_core::platform::Platform>() -> ske
 pub fn skene_common::media::pointer<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_common::media::reduced_motion<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_common::media::reduced_transparency<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_common::media::safe_area<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<<P as skene_core::platform::Platform>::Scalar>>
 pub fn skene_common::media::scheme<P: skene_core::platform::Platform>() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_common::media::set_scheme<P: skene_core::platform::Platform>(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_common::media::stored_scheme<P: skene_core::platform::Platform>() -> core::option::Option<skene_core::values::color::ColorScheme>

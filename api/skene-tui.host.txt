@@ -93,6 +93,7 @@ pub fn skene_tui::media::hover() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_tui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
 pub fn skene_tui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_tui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_tui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
@@ -219,6 +220,7 @@ pub fn skene_tui::prelude::media::hover() -> skene_reactive::signal::ReadSignal<
 pub fn skene_tui::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_tui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_tui::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_tui::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<u32>>
 pub fn skene_tui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_tui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_tui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>

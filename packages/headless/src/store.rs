@@ -16,6 +16,7 @@ use skene_core::{
   Definitions,
   Environment,
   EventKind,
+  Inset,
   MediaSignals,
   NoProperty,
   NodeId,
@@ -171,6 +172,7 @@ pub(crate) struct MediaState {
   pub set_high_contrast: WriteSignal<bool>,
   pub set_pointer: WriteSignal<PointerPrecision>,
   pub set_hover: WriteSignal<bool>,
+  pub set_safe_area: WriteSignal<Inset<f32>>,
   pub set_hydrated: WriteSignal<bool>,
   pub set_graphics: WriteSignal<bool>,
   pub hydrated: ReadSignal<bool>,
@@ -210,6 +212,9 @@ pub(crate) struct Store {
   pub pointer: Option<PointerPrecision>,
   /// Whether the reader's primary pointer hovers, as set; it does unless set.
   pub hover: Option<bool>,
+  /// The insets the display keeps clear of the viewport's edges, as set; none unless
+  /// set.
+  pub safe_area: Option<Inset<f32>>,
   /// The motion clock, in seconds; stands still until advanced.
   pub clock: f64,
   /// The document's language, as last set.
@@ -248,6 +253,7 @@ impl Default for Store {
       high_contrast: None,
       pointer: None,
       hover: None,
+      safe_area: None,
       clock: 0.,
       language: None,
       head: Head::default(),
@@ -345,6 +351,7 @@ impl Store {
       high_contrast: self.high_contrast.unwrap_or(false),
       pointer: self.pointer.unwrap_or_default(),
       hover: self.hover.unwrap_or(true),
+      safe_area: self.safe_area.unwrap_or_default(),
     }
   }
 
@@ -357,6 +364,7 @@ impl Store {
     let high_contrast = self.high_contrast.unwrap_or(false);
     let pointer = self.pointer.unwrap_or_default();
     let hover = self.hover.unwrap_or(true);
+    let safe_area = self.safe_area.unwrap_or_default();
     let hydrated = self.hydrated.unwrap_or(true);
     let graphics = self.graphics.unwrap_or(true);
 
@@ -372,6 +380,7 @@ impl Store {
         let (high_contrast, set_high_contrast) = Signal::opaque(high_contrast).split();
         let (pointer, set_pointer) = Signal::opaque(pointer).split();
         let (hover, set_hover) = Signal::opaque(hover).split();
+        let (safe_area, set_safe_area) = Signal::opaque(safe_area).split();
         let (hydrated, set_hydrated) = Signal::opaque(hydrated).split();
         let (graphics, set_graphics) = Signal::opaque(graphics).split();
 
@@ -384,6 +393,7 @@ impl Store {
           set_high_contrast,
           set_pointer,
           set_hover,
+          set_safe_area,
           set_hydrated,
           set_graphics,
           hydrated,
@@ -396,6 +406,7 @@ impl Store {
             high_contrast,
             pointer,
             hover,
+            safe_area,
             container_sizes: ContainerSizes::new(),
           },
         }

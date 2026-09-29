@@ -15,6 +15,7 @@ use skene_core::{
   ContainerQuery,
   Definition,
   Dimension,
+  Edge,
   EventKind,
   Expr,
   Flexibility,
@@ -76,6 +77,7 @@ use skene_headless::{
   trigger_pointer_precision,
   trigger_reduced_transparency,
   trigger_resize,
+  trigger_safe_area,
   trigger_size,
   value,
 };
@@ -844,6 +846,34 @@ fn the_pointer_precision_and_hover_answer() {
   trigger_pointer_precision(PointerPrecision::Absent);
 
   assert_eq!(resolve_color(node, COLOR), Some(blue()));
+
+  owner.dispose();
+}
+
+/// A length reading the safe area follows the insets the platform reports, as the
+/// signal does.
+#[test]
+fn a_length_reads_the_safe_area() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    Container::new()
+      .set_padding(Expr::<Length>::safe_area(Edge::Top) + 4.)
+      .build()
+  });
+
+  assert_eq!(resolve_length(node, PADDING), Some(4.));
+
+  trigger_safe_area(Inset {
+    top: 44.,
+    right: 0.,
+    bottom: 34.,
+    left: 0.,
+  });
+
+  assert_eq!(resolve_length(node, PADDING), Some(48.));
+  assert!((skene_common::media::safe_area::<Headless>().get().bottom - 34.).abs() < f32::EPSILON);
 
   owner.dispose();
 }

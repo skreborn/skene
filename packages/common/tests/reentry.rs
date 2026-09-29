@@ -25,6 +25,7 @@ use skene_core::{
   EventKind,
   FocusOrder,
   HasChildren,
+  Inset,
   Length,
   Media,
   MediaSignals,
@@ -258,6 +259,7 @@ impl Platform for Reentrant {
             high_contrast: Signal::opaque(false).read_only(),
             pointer: Signal::opaque(PointerPrecision::Fine).read_only(),
             hover: Signal::opaque(true).read_only(),
+            safe_area: Signal::opaque(Inset::ZERO).read_only(),
             container_sizes: ContainerSizes::new(),
           });
 

@@ -1,6 +1,6 @@
 //! Expressions as CSS math and color functions.
 
-use skene_core::ExprNode;
+use skene_core::{Edge, ExprNode};
 
 use crate::Declarations;
 
@@ -26,6 +26,15 @@ fn operand(node: &ExprNode) -> String {
     ExprNode::ContainerWidth(percent) => format!("{percent}cqw"),
     ExprNode::ContainerHeight(percent) => format!("{percent}cqh"),
     ExprNode::Em(multiple) => format!("{multiple}em"),
+    ExprNode::SafeArea(edge) => format!(
+      "env(safe-area-inset-{}, 0px)",
+      match edge {
+        Edge::Top => "top",
+        Edge::Right => "right",
+        Edge::Bottom => "bottom",
+        Edge::Left => "left",
+      }
+    ),
     ExprNode::Token(name) => format!("var(--{name})"),
     ExprNode::Color(color) => Declarations::render_color(*color),
     ExprNode::Add(..) | ExprNode::Sub(..) | ExprNode::Mul(..) | ExprNode::Div(..) => {
@@ -88,7 +97,7 @@ fn percent(value: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-  use skene_core::{Color, Expr, Length, Number, TokenRef};
+  use skene_core::{Color, Edge, Expr, Length, Number, TokenRef};
 
   use super::render_expr;
   use crate::Declarations;
@@ -114,6 +123,16 @@ mod tests {
     assert_eq!(
       render_expr(Expr::<Length>::em(1.).min(Expr::vh(2.) / 3.).node()),
       "min(1em, 2vh / 3)"
+    );
+  }
+
+  /// A safe-area inset renders as the environment variable, zero where the display
+  /// keeps none, inside the arithmetic too.
+  #[test]
+  fn a_safe_area_renders_as_its_environment_variable() {
+    assert_eq!(
+      render_expr((Expr::<Length>::safe_area(Edge::Bottom) + 8.).node()),
+      "calc(env(safe-area-inset-bottom, 0px) + 8px)"
     );
   }
 

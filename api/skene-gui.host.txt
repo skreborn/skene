@@ -99,6 +99,7 @@ pub fn skene_gui::media::hydrated() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_gui::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<f32>>
 pub fn skene_gui::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>
@@ -194,6 +195,7 @@ pub fn skene_gui::prelude::media::hydrated() -> skene_reactive::signal::ReadSign
 pub fn skene_gui::prelude::media::pointer() -> skene_reactive::signal::ReadSignal<skene_core::condition::PointerPrecision>
 pub fn skene_gui::prelude::media::reduced_motion() -> skene_reactive::signal::ReadSignal<bool>
 pub fn skene_gui::prelude::media::reduced_transparency() -> skene_reactive::signal::ReadSignal<bool>
+pub fn skene_gui::prelude::media::safe_area() -> skene_reactive::signal::ReadSignal<skene_core::values::inset::Inset<f32>>
 pub fn skene_gui::prelude::media::scheme() -> skene_reactive::signal::ReadSignal<skene_core::values::color::ColorScheme>
 pub fn skene_gui::prelude::media::set_scheme(core::option::Option<skene_core::values::color::ColorScheme>)
 pub fn skene_gui::prelude::media::stored_scheme() -> core::option::Option<skene_core::values::color::ColorScheme>

@@ -31,6 +31,7 @@ use skene_core::{
   Definitions,
   EventKind,
   FocusOrder,
+  Inset,
   IntoView,
   Media,
   MediaSignals,
@@ -1040,6 +1041,7 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
         let high_contrast = Signal::opaque(false).read_only();
         let pointer = Signal::opaque(hints.pointer).read_only();
         let hover = Signal::opaque(hints.hover).read_only();
+        let safe_area = Signal::opaque(Inset::ZERO).read_only();
         let (absent, _) = Signal::opaque(false).split();
 
         MediaState {
@@ -1051,6 +1053,7 @@ fn with_media<R>(operation: impl FnOnce(&MediaState) -> R) -> R {
             high_contrast,
             pointer,
             hover,
+            safe_area,
             container_sizes: ContainerSizes::new(),
           },
           set_viewport,

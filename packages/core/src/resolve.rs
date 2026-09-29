@@ -24,6 +24,7 @@ use crate::{
   ExprEnv,
   ExprNode,
   ExprValue,
+  Inset,
   IntoBoxValue,
   IntoRunValue,
   Keyframe,
@@ -440,6 +441,12 @@ impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
         .container(None)
         .map(|size| Size::new(size.width.to_f32(), size.height.to_f32())),
       em: self.em,
+      safe_area: Inset {
+        top: self.environment.safe_area.top.to_f32(),
+        right: self.environment.safe_area.right.to_f32(),
+        bottom: self.environment.safe_area.bottom.to_f32(),
+        left: self.environment.safe_area.left.to_f32(),
+      },
     };
 
     node

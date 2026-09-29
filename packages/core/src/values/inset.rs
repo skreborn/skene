@@ -14,6 +14,20 @@ pub struct Inset<T> {
   pub left: T,
 }
 
+/// One edge of a box.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
+pub enum Edge {
+  /// The top edge.
+  Top,
+  /// The right edge.
+  Right,
+  /// The bottom edge.
+  Bottom,
+  /// The left edge.
+  Left,
+}
+
 impl<T: ConstZero> Inset<T> {
   /// Zero inset on all sides.
   pub const ZERO: Self = Self {
@@ -25,6 +39,17 @@ impl<T: ConstZero> Inset<T> {
 }
 
 impl<T: Copy> Inset<T> {
+  /// The value at `edge`.
+  #[inline(always)]
+  pub const fn edge(&self, edge: Edge) -> T {
+    match edge {
+      Edge::Top => self.top,
+      Edge::Right => self.right,
+      Edge::Bottom => self.bottom,
+      Edge::Left => self.left,
+    }
+  }
+
   /// Creates an inset with the same value on all four sides.
   #[inline(always)]
   pub const fn all(value: T) -> Self {

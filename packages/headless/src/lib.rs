@@ -834,6 +834,19 @@ pub fn trigger_pointer_precision(precision: PointerPrecision) {
   });
 }
 
+/// Simulates the display keeping `insets` clear of the viewport's edges.
+pub fn trigger_safe_area(insets: Inset<f32>) {
+  trigger(|| {
+    let write = with_store(|store| {
+      store.safe_area = Some(insets);
+
+      store.media().set_safe_area
+    });
+
+    write.set(insets);
+  });
+}
+
 /// Simulates a change of the reader's primary pointer to one that hovers, or not.
 pub fn trigger_pointer_hovers(hovers: bool) {
   trigger(|| {

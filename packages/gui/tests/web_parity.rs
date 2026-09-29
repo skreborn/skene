@@ -26,6 +26,7 @@ use skene_core::{
   ContainerQuery,
   Definition,
   Dimension,
+  Edge,
   Expr,
   HasChildren,
   Inset,
@@ -226,6 +227,7 @@ enum Case {
   FixedPadding,
   LengthTokenPadding,
   ConditionalPadding,
+  SafeAreaPadding,
   FixedBorder,
   FixedInk,
   TokenInk,
@@ -268,6 +270,7 @@ const CASES: &[Case] = &[
   Case::FixedPadding,
   Case::LengthTokenPadding,
   Case::ConditionalPadding,
+  Case::SafeAreaPadding,
   Case::FixedBorder,
   Case::FixedInk,
   Case::TokenInk,
@@ -315,7 +318,10 @@ impl Case {
       | Self::ConditionalWidth
       | Self::LexicalEm
       | Self::ContainerUnitWidth => Read::Width,
-      Self::FixedPadding | Self::LengthTokenPadding | Self::ConditionalPadding => Read::Padding,
+      Self::FixedPadding
+      | Self::LengthTokenPadding
+      | Self::ConditionalPadding
+      | Self::SafeAreaPadding => Read::Padding,
       Self::FixedBorder => Read::Border,
       Self::FixedInk | Self::TokenInk => Read::Ink,
     }
@@ -422,6 +428,7 @@ impl Case {
       Self::ConditionalPadding => {
         container.set_padding(Value::from(Inset::all(4.)).when(Media::MinWidth(1.), Inset::all(9.)))
       }
+      Self::SafeAreaPadding => container.set_padding(Expr::<Length>::safe_area(Edge::Top) + 6.),
       Self::FixedBorder => container.set_border(Border::new(3., orange())),
       Self::FixedInk => container.set_child(Text::new("ink").set_color(orange())),
       Self::TokenInk => container.set_child(Text::new("ink").set_color(ParityPalette::SURFACE)),

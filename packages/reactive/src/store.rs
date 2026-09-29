@@ -164,7 +164,13 @@ fn edge_hash(kind: u8, key: impl Hash) -> u64 {
   hasher.finish()
 }
 
-/// A store's shared plumbing: the location trie and the owning owner.
+/// The key-to-index maps keyed vectors read through, each under its vector's location
+/// and its key function.
+#[derive(Default)]
+struct Indexes(FxHashMap<(u32, usize), Box<dyn Any>>);
+
+/// A store's shared plumbing: the location trie, the keyed vectors' indexes and the
+/// owning owner.
 ///
 /// Every lens of one store carries the same core; custom lenses only forward it and
 /// intern their locations through it.
@@ -172,6 +178,7 @@ fn edge_hash(kind: u8, key: impl Hash) -> u64 {
 #[must_use]
 pub struct StoreCore {
   trie: Signal<Trie>,
+  indexes: Signal<Indexes>,
   owner: Owner,
 }
 
@@ -179,8 +186,52 @@ impl StoreCore {
   fn new() -> Self {
     Self {
       trie: Signal::opaque(Trie::new()),
+      indexes: Signal::opaque(Indexes::default()),
       owner: Owner::current(),
     }
+  }
+
+  /// The index of the element `key_of` keys `key` among `elements`, the vector at
+  /// `location`, read through a key-to-index map rebuilt only when it no longer
+  /// answers.
+  fn keyed_index<T, K: Hash + Eq + Clone + 'static>(
+    &self,
+    location: StoreLocation,
+    elements: &[T],
+    key_of: fn(&T) -> K,
+    key: &K,
+  ) -> Option<usize> {
+    let answers = |map: &FxHashMap<K, usize>| {
+      map.get(key).copied().filter(|index| {
+        elements
+          .get(*index)
+          .is_some_and(|element| key_of(element) == *key)
+      })
+    };
+    let slot = (location.0, key_of as usize);
+
+    update_silently(self.indexes.id(), |indexes: &mut Indexes| {
+      if let Some(index) = indexes
+        .0
+        .get(&slot)
+        .and_then(|map| map.downcast_ref::<FxHashMap<K, usize>>())
+        .and_then(answers)
+      {
+        return Some(index);
+      }
+
+      let map: FxHashMap<K, usize> = elements
+        .iter()
+        .enumerate()
+        .map(|(index, element)| (key_of(element), index))
+        .collect();
+      let index = answers(&map);
+
+      indexes.0.insert(slot, Box::new(map));
+
+      index
+    })
+    .flatten()
   }
 
   /// The location of the field keyed `key` under `parent`.
@@ -805,13 +856,19 @@ where
   type Key = K;
 
   fn entry<'a>(&self, value: &'a Vec<T>, key: &K) -> Option<&'a T> {
-    value.iter().find(|element| (self.key_of)(element) == *key)
+    let index = self
+      .core()
+      .keyed_index(self.location(), value, self.key_of, key)?;
+
+    value.get(index)
   }
 
   fn entry_mut<'a>(&self, value: &'a mut Vec<T>, key: &K) -> Option<&'a mut T> {
-    value
-      .iter_mut()
-      .find(|element| (self.key_of)(element) == *key)
+    let index = self
+      .core()
+      .keyed_index(self.location(), value, self.key_of, key)?;
+
+    value.get_mut(index)
   }
 
   fn keys(&self, value: &Vec<T>) -> impl Iterator<Item = K> {
@@ -821,11 +878,7 @@ where
   fn entry_location(&self, key: &K) -> StoreLocation {
     let parent = self.location();
     let position = self
-      .read_untracked(|value| {
-        value
-          .iter()
-          .position(|element| (self.key_of)(element) == *key)
-      })
+      .read_untracked(|value| self.core().keyed_index(parent, value, self.key_of, key))
       .flatten();
 
     match position {

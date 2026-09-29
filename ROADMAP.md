@@ -9,7 +9,8 @@ The reactive engine's baseline, `cargo bench -p skene-reactive --bench engine` o
 development machine (2026-09-28), against which a change to the engine is measured:
 creating a thousand signals 71 µs; a signal read outside an effect 4.9 ns; a write
 reaching ten effects 242 ns; a write through a chain of ten memos 414 ns; a store row's
-edit among a hundred tracked rows 150 ns, and among ten thousand 147 ns (2026-09-29). Versions
+edit among a hundred tracked rows 150 ns, and among ten thousand 147 ns, and by key
+270 ns and 248 ns (2026-09-29). Versions
 compare only when each is built in its own target directory (a shared one reuses
 another tree's build) and the bench binaries run alternately, pinned to one of the
 fast cores with address randomization off: `setarch -R taskset -c 2 <binary> --bench`.
@@ -139,9 +140,8 @@ left half-done in a code comment.
     - The gallery shows every built-in (the context menu, `Link`, `Show`, `Switch`,
     `Suspense` and `ErrorBoundary` are missing), and axe runs with each overlay open.
 4. **The quadratic hot paths.**
-    - `keyed_by` reads through a key-to-index map rebuilt on the vector's version
-    instead of two linear scans, and the store gains `push`, `insert`, `remove` and a
-    keyed `reconcile(value)`, since one push re-runs every row reader.
+    - The store gains `push`, `insert`, `remove` and a keyed `reconcile(value)`, since
+    one push re-runs every row reader.
     - The terminal: the runtime kit's resolution becomes incremental and subtree-scoped
     (per-record dirty bits, restyling only the dirty and moving set, per-scope token
     and per-container query invalidation, `em` from the node's own font size),

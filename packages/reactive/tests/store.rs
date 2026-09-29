@@ -401,6 +401,38 @@ fn a_vec_keyed_by_its_elements_reads_by_key_across_a_reorder() {
   assert_eq!(keyed.key(9).try_with(|_| ()), None);
 }
 
+/// A keyed read follows every change to the vector: a push, a removal, and an element
+/// whose key itself changed.
+#[test]
+fn keyed_reads_follow_pushes_removals_and_changed_keys() {
+  #[derive(Store, Clone)]
+  struct Row {
+    id: u32,
+    label: &'static str,
+  }
+
+  let rows = Store::opaque(vec![Row { id: 1, label: "a" }, Row { id: 2, label: "b" }]);
+  let keyed = rows.keyed_by(|row| row.id);
+
+  assert_eq!(keyed.key(2).label().get(), "b");
+
+  rows.update(|rows| rows.push(Row { id: 3, label: "c" }));
+
+  assert_eq!(keyed.key(3).label().get(), "c");
+
+  rows.update(|rows| {
+    rows.remove(0);
+  });
+
+  assert_eq!(keyed.key(2).label().get(), "b");
+  assert_eq!(keyed.key(1).try_with(|_| ()), None);
+
+  keyed.key(2).id().set(7);
+
+  assert_eq!(keyed.key(7).label().get(), "b");
+  assert_eq!(keyed.key(2).try_with(|_| ()), None);
+}
+
 /// An element addressed by key and the same element addressed by position are one
 /// location: a write through either wakes the readers through both, before and after a
 /// reorder moves the element.

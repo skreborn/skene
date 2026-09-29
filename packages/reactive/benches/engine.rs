@@ -1,5 +1,6 @@
 //! Engine microbenchmarks: creation, reads, writes through effects, memo chains, and a
-//! store row's edit among a hundred tracked rows and among ten thousand.
+//! store row's edit among a hundred tracked rows and among ten thousand, by position
+//! and by key.
 
 #![expect(
   missing_docs,
@@ -7,7 +8,18 @@
 )]
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use skene_reactive::{Effect, Get, IndexedField, Memo, Owner, Signal, Store, StoreField, Update};
+use skene_reactive::{
+  Effect,
+  Get,
+  IndexedField,
+  KeyedField,
+  Memo,
+  Owner,
+  Signal,
+  Store,
+  StoreField,
+  Update,
+};
 
 fn bench_create(c: &mut Criterion) {
   c.bench_function("create_1000_signals", |bencher| {
@@ -119,13 +131,55 @@ fn bench_row_edits(c: &mut Criterion) {
   bench_row_edit(c, 10_000);
 }
 
+#[derive(Store, Clone, Default)]
+struct KeyedRow {
+  id: u32,
+  label: u32,
+}
+
+/// One row's label edited by key among `rows` rows whose label an effect each tracks
+/// by key.
+fn bench_keyed_row_edit(c: &mut Criterion, rows: u32) {
+  let owner = Owner::new();
+  let keyed = owner.enter(|| {
+    let store = Store::opaque(
+      (0..rows)
+        .map(|id| KeyedRow { id, label: 0 })
+        .collect::<Vec<_>>(),
+    );
+    let keyed = store.keyed_by(|row| row.id);
+
+    for id in 0..rows {
+      Effect::new(move |_| {
+        let _ = keyed.key(id).label().get();
+      });
+    }
+
+    keyed
+  });
+  let mut edit = 0;
+
+  c.bench_function(&format!("keyed_row_edit_among_{rows}"), |bencher| {
+    bencher.iter(|| {
+      edit += 1;
+      keyed.key(rows / 2).label().set(edit);
+    });
+  });
+}
+
+fn bench_keyed_row_edits(c: &mut Criterion) {
+  bench_keyed_row_edit(c, 100);
+  bench_keyed_row_edit(c, 10_000);
+}
+
 criterion_group!(
   benches,
   bench_create,
   bench_get,
   bench_set_with_effects,
   bench_memo_chain,
-  bench_row_edits
+  bench_row_edits,
+  bench_keyed_row_edits
 );
 
 criterion_main!(benches);

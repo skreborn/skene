@@ -13,6 +13,7 @@ use skene_core::{
   ControlKind,
   KeyEvent,
   NodeId,
+  PickerOption,
   Prevented,
   Role,
   Toggle as Checked,
@@ -501,7 +502,9 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
       .set_options(["a", "b", "c"].map(|value| {
         let name = value.to_uppercase();
 
-        RawOption::new(ListItem::new(value)).set_label(Label::new(Text::new(&name)).set_name(name))
+        RawOption::new(ListItem::new(value))
+          .set_disabled(value == "c")
+          .set_label(Label::new(Text::new(&name)).set_name(name))
       }))
       .set_face(|shown| Text::derive(move || shown.get()))
       .build()
@@ -515,11 +518,15 @@ fn until_hydrated_the_picker_is_the_platforms_own() {
   assert_eq!(
     options(native),
     Some(
-      [("a", "A"), ("b", "B"), ("c", "C")]
-        .map(|(value, name)| (value.to_owned(), name.to_owned()))
+      [("a", "A", false), ("b", "B", false), ("c", "C", true)]
+        .map(|(value, name, disabled)| PickerOption {
+          value: value.to_owned(),
+          name: name.to_owned(),
+          disabled,
+        })
         .to_vec()
     ),
-    "the options are read from the option views"
+    "the options are read from the option views, the disabled one marked"
   );
   assert_eq!(written_value(native).as_deref(), Some("b"));
   assert_eq!(accessible_name(native).as_deref(), Some("Size"));

@@ -54,6 +54,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Part,
+  PickerOption,
   Placement,
   Platform,
   Point,
@@ -1874,7 +1875,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(&self, sink: &u32, options: &[(String, String)]) {
+  fn set_options(&self, sink: &u32, options: &[PickerOption]) {
     with_dom(|dom| {
       let Some(select) = dom
         .node(*sink)
@@ -1886,13 +1887,18 @@ impl Platform for Web {
 
       select.set_inner_html("");
 
-      for (value, name) in options {
-        let option = dom.document.create_element("option").expect("an option");
+      for option in options {
+        let element = dom.document.create_element("option").expect("an option");
 
-        let _ = option.set_attribute("value", value);
-        option.set_text_content(Some(name));
+        let _ = element.set_attribute("value", &option.value);
 
-        let _ = select.append_child(&option);
+        if option.disabled {
+          let _ = element.set_attribute("disabled", "");
+        }
+
+        element.set_text_content(Some(&option.name));
+
+        let _ = select.append_child(&element);
       }
     });
   }

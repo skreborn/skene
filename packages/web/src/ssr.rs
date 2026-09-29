@@ -38,6 +38,7 @@ use skene_core::{
   NodeKind,
   OverlayProps,
   Part,
+  PickerOption,
   Platform,
   RunProps,
   RunValue,
@@ -175,8 +176,8 @@ struct Node {
   /// The `<label for>` a bare control's caption is serialized in, before the control,
   /// outside its children.
   caption: Option<u32>,
-  /// A `<select>`'s options, each a value and the name shown.
-  options: Vec<(String, String)>,
+  /// A `<select>`'s options.
+  options: Vec<PickerOption>,
   /// A `<select>`'s chosen value.
   chosen: Option<String>,
   /// The scene node the element realizes.
@@ -337,19 +338,23 @@ impl Node {
     out.push('>');
   }
 
-  /// Writes a `<select>`'s options, the chosen one marked.
+  /// Writes a `<select>`'s options, the chosen one and the disabled ones marked.
   fn emit_options(&self, out: &mut String) {
-    for (value, name) in &self.options {
+    for option in &self.options {
       out.push_str("<option value=\"");
-      escape_attr(value, out);
+      escape_attr(&option.value, out);
       out.push('"');
 
-      if self.chosen.as_deref() == Some(value.as_str()) {
+      if self.chosen.as_deref() == Some(option.value.as_str()) {
         out.push_str(" selected");
       }
 
+      if option.disabled {
+        out.push_str(" disabled");
+      }
+
       out.push('>');
-      escape_text(name, out);
+      escape_text(&option.name, out);
       out.push_str("</option>");
     }
   }
@@ -1486,7 +1491,7 @@ impl Platform for Web {
     });
   }
 
-  fn set_options(&self, sink: &u32, options: &[(String, String)]) {
+  fn set_options(&self, sink: &u32, options: &[PickerOption]) {
     with_tree(|tree| {
       let target = tree.carrier(*sink);
 

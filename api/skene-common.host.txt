@@ -1728,8 +1728,8 @@ pub fn skene_common::Roster::focus_at<P: skene_core::platform::Platform>(&self, 
 pub fn skene_common::Roster::focus_value<P: skene_core::platform::Platform>(&self, core::option::Option<&str>)
 pub fn skene_common::Roster::join(&self, skene_core::node::NodeId, impl core::convert::Into<alloc::string::String>, core::option::Option<alloc::string::String>, alloc::rc::Rc<dyn core::ops::function::Fn() -> bool>)
 pub fn skene_common::Roster::leave(&self, skene_core::node::NodeId)
-pub fn skene_common::Roster::named<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
 pub fn skene_common::Roster::new() -> Self
+pub fn skene_common::Roster::options<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<skene_core::control::PickerOption>
 pub fn skene_common::Roster::ordered<P: skene_core::platform::Platform>(&self) -> alloc::vec::Vec<(skene_core::node::NodeId, alloc::string::String)>
 pub fn skene_common::Roster::root_at(&self, skene_core::node::NodeId)
 pub fn skene_common::Roster::typed<P: skene_core::platform::Platform>(&self, &str, core::option::Option<&str>) -> core::option::Option<usize>

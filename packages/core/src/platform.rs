@@ -15,6 +15,7 @@ use super::{
   MediaSignals,
   NodeId,
   OverlayProps,
+  PickerOption,
   RunProps,
   RunValue,
   Scalar,
@@ -297,10 +298,10 @@ pub trait Platform: Copy + Default + 'static {
   /// Takes focus off a node.
   fn blur(&self, sink: &Self::Sink);
 
-  /// Writes the options a platform-drawn picker offers, each a value and the name
-  /// shown for it, in order; a platform without one ignores them.
+  /// Writes the options a platform-drawn picker offers, in order; a platform without
+  /// one ignores them.
   #[inline(always)]
-  fn set_options(&self, _sink: &Self::Sink, _options: &[(String, String)]) {}
+  fn set_options(&self, _sink: &Self::Sink, _options: &[PickerOption]) {}
 
   /// Writes a control's textual value.
   fn set_value(&self, sink: &Self::Sink, value: &str);

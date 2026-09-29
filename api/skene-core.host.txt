@@ -2958,6 +2958,20 @@ impl<P: core::clone::Clone + skene_core::Platform> core::clone::Clone for skene_
 pub fn skene_core::OverlayProps<P>::clone(&self) -> skene_core::OverlayProps<P>
 impl<P: core::fmt::Debug + skene_core::Platform> core::fmt::Debug for skene_core::OverlayProps<P>
 pub fn skene_core::OverlayProps<P>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct skene_core::PickerOption
+pub skene_core::PickerOption::disabled: bool
+pub skene_core::PickerOption::name: alloc::string::String
+pub skene_core::PickerOption::value: alloc::string::String
+impl core::clone::Clone for skene_core::PickerOption
+pub fn skene_core::PickerOption::clone(&self) -> skene_core::PickerOption
+impl core::cmp::Eq for skene_core::PickerOption
+impl core::cmp::PartialEq for skene_core::PickerOption
+pub fn skene_core::PickerOption::eq(&self, &skene_core::PickerOption) -> bool
+impl core::fmt::Debug for skene_core::PickerOption
+pub fn skene_core::PickerOption::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::PickerOption
+pub fn skene_core::PickerOption::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_core::PickerOption
 pub struct skene_core::Plain
 impl core::clone::Clone for skene_core::Plain
 pub fn skene_core::Plain::clone(&self) -> skene_core::Plain
@@ -4059,7 +4073,7 @@ pub fn skene_core::Platform::scene() -> &'static std::thread::local::LocalKey<co
 pub fn skene_core::Platform::schedule(&self, core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::Timer
 pub fn skene_core::Platform::set_checked(&self, &Self::Sink, bool)
 pub fn skene_core::Platform::set_control_state(&self, &Self::Sink, &skene_core::ControlState)
-pub fn skene_core::Platform::set_options(&self, &Self::Sink, &[(alloc::string::String, alloc::string::String)])
+pub fn skene_core::Platform::set_options(&self, &Self::Sink, &[skene_core::PickerOption])
 pub fn skene_core::Platform::set_overlay_open(&self, &Self::Sink, bool, core::option::Option<&Self::Sink>)
 pub fn skene_core::Platform::set_overlay_placement(&self, &Self::Sink, skene_core::Placement)
 pub fn skene_core::Platform::set_overlay_position(&self, &Self::Sink, core::option::Option<skene_core::Point<f32>>)

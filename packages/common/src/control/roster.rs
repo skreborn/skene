@@ -5,7 +5,7 @@ use std::{
   rc::Rc,
 };
 
-use skene_core::{NodeId, Platform, Scene};
+use skene_core::{NodeId, PickerOption, Platform, Scene};
 use skene_reactive::Trigger;
 
 use super::TypeAhead;
@@ -135,17 +135,17 @@ impl Roster {
       .collect()
   }
 
-  /// The members' values and names in tree order under `P`'s scene, tracked; a
-  /// member's value is its name where its label supplied none.
+  /// The members as a platform-drawn picker's options, in tree order under `P`'s scene,
+  /// tracked; a member's value is its name where its label supplied none.
   #[must_use]
-  pub fn named<P: Platform>(&self) -> Vec<(String, String)> {
+  pub fn options<P: Platform>(&self) -> Vec<PickerOption> {
     self
       .walk::<P>()
       .into_iter()
-      .map(|member| {
-        let name = member.name.unwrap_or_else(|| member.value.clone());
-
-        (member.value, name)
+      .map(|member| PickerOption {
+        name: member.name.unwrap_or_else(|| member.value.clone()),
+        disabled: (member.disabled)(),
+        value: member.value,
       })
       .collect()
   }

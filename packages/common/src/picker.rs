@@ -399,9 +399,9 @@ fn build_native<P: Platform>(
 
   shared.roster.root_at(shared.options);
 
-  let named = untrack(|| shared.roster.named::<P>());
+  let options = untrack(|| shared.roster.options::<P>());
 
-  with_sink::<P, _>(node, |sink| P::default().set_options(sink, &named));
+  with_sink::<P, _>(node, |sink| P::default().set_options(sink, &options));
   Effect::render({
     let chosen = Rc::clone(&shared.chosen);
 

@@ -20,6 +20,7 @@ use skene_core::{
   NoProperty,
   NodeId,
   OverlayProps,
+  PickerOption,
   Point,
   PropertyKey,
   RunProps,
@@ -75,8 +76,8 @@ pub(crate) struct Record {
   pub text: String,
   /// A control's value, as last set.
   pub value: String,
-  /// The options a platform-drawn picker offers, each a value and its name.
-  pub options: Vec<(String, String)>,
+  /// The options a platform-drawn picker offers.
+  pub options: Vec<PickerOption>,
   /// A text entry's selection, clamped into its value.
   pub selection: TextSelection,
   /// Whether a native toggle is checked, as last set.

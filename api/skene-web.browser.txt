@@ -125,7 +125,7 @@ pub fn skene_web::Web::scene() -> &'static std::thread::local::LocalKey<core::ce
 pub fn skene_web::Web::schedule(&self, core::time::Duration, alloc::boxed::Box<dyn core::ops::function::FnOnce()>) -> skene_core::platform::Timer
 pub fn skene_web::Web::set_checked(&self, &u32, bool)
 pub fn skene_web::Web::set_control_state(&self, &u32, &skene_core::control::ControlState)
-pub fn skene_web::Web::set_options(&self, &u32, &[(alloc::string::String, alloc::string::String)])
+pub fn skene_web::Web::set_options(&self, &u32, &[skene_core::control::PickerOption])
 pub fn skene_web::Web::set_overlay_open(&self, &u32, bool, core::option::Option<&u32>)
 pub fn skene_web::Web::set_overlay_placement(&self, &u32, skene_core::values::placement::Placement)
 pub fn skene_web::Web::set_overlay_position(&self, &u32, core::option::Option<skene_core::values::point::Point<f32>>)

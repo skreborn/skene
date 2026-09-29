@@ -61,6 +61,7 @@ use skene_core::{
   NodeRecord,
   OverlayProps,
   Part,
+  PickerOption,
   Placement,
   Platform,
   Point,
@@ -344,7 +345,7 @@ impl Platform for Headless {
     with_record(*sink, |record| value.clone_into(&mut record.value));
   }
 
-  fn set_options(&self, sink: &Handle, options: &[(String, String)]) {
+  fn set_options(&self, sink: &Handle, options: &[PickerOption]) {
     with_record(*sink, |record| options.clone_into(&mut record.options));
   }
 
@@ -1158,9 +1159,9 @@ pub fn value(node: NodeId) -> Option<String> {
   with_record(handle(node)?, |record| record.value.clone())
 }
 
-/// The options last written to `node`, each a value and its name.
+/// The options last written to `node`.
 #[must_use]
-pub fn options(node: NodeId) -> Option<Vec<(String, String)>> {
+pub fn options(node: NodeId) -> Option<Vec<PickerOption>> {
   end_turn();
 
   with_record(handle(node)?, |record| record.options.clone())

@@ -222,6 +222,33 @@ fn a_picker_renders_to_a_select() {
   assert!(!body.contains("combobox"), "no drawn face: {body}");
 }
 
+/// A picker's scriptless `<select>` marks the options that cannot be chosen.
+#[test]
+fn a_pickers_select_marks_its_disabled_options() {
+  use skene_gui::{RawPicker, reactive::Get};
+
+  let page = render_to_string(|| {
+    RawPicker::new()
+      .set_value("s")
+      .set_options([("", "Choose one", true), ("s", "Small", false)].map(
+        |(value, name, disabled)| {
+          RawOption::new(ListItem::new(value))
+            .set_disabled(disabled)
+            .set_label(Label::new(Text::new(name)).set_name(name))
+        },
+      ))
+      .set_face(|shown| Text::derive(move || shown.get()))
+  });
+  let body = page.body();
+
+  assert!(
+    body.contains(
+      "<option value=\"\" disabled>Choose one</option><option value=\"s\" selected>Small</option>"
+    ),
+    "{body}"
+  );
+}
+
 #[test]
 fn a_text_renders_to_a_styled_span() {
   let page = render_to_string(|| Text::new("Hello"));

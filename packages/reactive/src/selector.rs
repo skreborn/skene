@@ -1,6 +1,6 @@
 //! Membership tracking over one key-valued source.
 
-use std::hash::Hash;
+use std::{fmt, hash::Hash};
 
 use rustc_hash::FxHashMap;
 
@@ -37,6 +37,15 @@ impl<K: Eq + Hash + Clone + 'static> Copy for Selector<K> {}
 impl<K: Eq + Hash + Clone + 'static> Clone for Selector<K> {
   fn clone(&self) -> Self {
     *self
+  }
+}
+
+impl<K: Eq + Hash + Clone + 'static> fmt::Debug for Selector<K> {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("Selector")
+      .field("current", &self.current)
+      .finish_non_exhaustive()
   }
 }
 

@@ -1,4 +1,4 @@
-use std::{any::Any, cell::RefCell, marker::PhantomData, rc::Rc};
+use std::{any::Any, cell::RefCell, fmt, marker::PhantomData, rc::Rc};
 
 use crate::{
   access::{Get, Track, With},
@@ -25,6 +25,15 @@ impl<T: 'static> Copy for Memo<T> {}
 impl<T: 'static> Clone for Memo<T> {
   fn clone(&self) -> Self {
     *self
+  }
+}
+
+impl<T: 'static> fmt::Debug for Memo<T> {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("Memo")
+      .field("id", &self.id)
+      .finish()
   }
 }
 

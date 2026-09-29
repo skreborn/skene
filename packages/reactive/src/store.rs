@@ -22,6 +22,7 @@
 use std::{
   any::Any,
   collections::{BTreeMap, HashMap},
+  fmt,
   hash::{BuildHasher, Hash, Hasher},
   marker::PhantomData,
   rc::Rc,
@@ -340,6 +341,15 @@ impl<T: 'static> Clone for Store<T> {
 }
 
 impl<T: 'static> Copy for Store<T> {}
+
+impl<T: 'static> fmt::Debug for Store<T> {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("Store")
+      .field("value", &self.value)
+      .finish_non_exhaustive()
+  }
+}
 
 impl<T: Snapshot> Store<T> {
   /// Creates a store owned by the current [`Owner`]; the whole value is one snapshot

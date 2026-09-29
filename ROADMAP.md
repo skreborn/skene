@@ -29,9 +29,8 @@ left half-done in a code comment.
     workspace declares no license, so `cargo deny check licenses` has nothing to hold
     the dependencies to. Neither CI workflow, the gate on every pull request nor the
     weekly RustSec advisories, has run yet.
-    - With them: one visibility style wins out of the pair; `Memo`, `Resource`, `Store`
-    and `Selector` get the `Debug` that `Signal` has; `display` joins the banned words
-    once `RunDisplay` is renamed, checked over the `cargo public-api` output.
+    - With them: one visibility style wins out of the pair; `display` joins the banned
+    words once `RunDisplay` is renamed, checked over the `cargo public-api` output.
 2. **One owner for style and interaction semantics.** The web compiler and core's
     `Resolver` implement one meaning twice, and the terminal, headless and the web each
     implement focus, press, hover and overlays; each mechanism gets one owner, and the

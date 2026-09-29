@@ -1,6 +1,6 @@
 //! Asynchronously loaded data, readable as a signal.
 
-use std::{future::Future, pin::Pin, rc::Rc};
+use std::{fmt, future::Future, pin::Pin, rc::Rc};
 
 use crate::{
   access::{Get, Set, Update, With},
@@ -78,6 +78,15 @@ impl<T: 'static> Clone for Resource<T> {
 }
 
 impl<T: 'static> Copy for Resource<T> {}
+
+impl<T: 'static> fmt::Debug for Resource<T> {
+  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter
+      .debug_struct("Resource")
+      .field("value", &self.value)
+      .finish_non_exhaustive()
+  }
+}
 
 impl<T: 'static> Resource<T> {
   fn with_loader<F>(load: impl Fn() -> F + 'static, value: Load<T>) -> Self

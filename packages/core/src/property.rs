@@ -60,6 +60,8 @@ pub enum Property {
   GridColumns,
   /// The grid's explicit row tracks.
   GridRows,
+  /// The named areas over the grid's cells.
+  GridAreas,
   /// The sizes given to implicitly created columns.
   GridImplicitColumns,
   /// The sizes given to implicitly created rows.
@@ -120,6 +122,7 @@ impl Property {
       Self::SelfHorizontalAlignment => "self_horizontal_alignment",
       Self::GridColumns => "grid_columns",
       Self::GridRows => "grid_rows",
+      Self::GridAreas => "grid_areas",
       Self::GridImplicitColumns => "grid_implicit_columns",
       Self::GridImplicitRows => "grid_implicit_rows",
       Self::GridFlow => "grid_flow",

@@ -171,6 +171,7 @@ pub(crate) const fn target(key: Key) -> Target {
       Property::SelfHorizontalAlignment => plain("justify-self"),
       Property::GridColumns => plain("grid-template-columns"),
       Property::GridRows => plain("grid-template-rows"),
+      Property::GridAreas => plain("grid-template-areas"),
       Property::GridImplicitColumns => plain("grid-auto-columns"),
       Property::GridImplicitRows => plain("grid-auto-rows"),
       Property::GridFlow => plain("grid-auto-flow"),
@@ -238,6 +239,7 @@ pub(crate) fn render_box_value(value: &BoxValue<f32, GuiExt>) -> String {
       Declarations::render_item_alignment(*alignment).to_owned()
     }
     BoxValue::Tracks(tracks) => Declarations::render_tracks(tracks),
+    BoxValue::Areas(areas) => Declarations::render_areas(areas),
     BoxValue::GridFlow(flow) => match flow {
       GridFlow::Rows => "row",
       GridFlow::Columns => "column",

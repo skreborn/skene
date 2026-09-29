@@ -1187,6 +1187,7 @@ pub fn skene_common::FocusHandle<P>::default() -> Self
 pub struct skene_common::Grid<P: skene_core::platform::Platform>
 impl<P: skene_core::platform::Platform> skene_common::Grid<P>
 pub fn skene_common::Grid<P>::adaptive(<P as skene_core::platform::Platform>::Scalar) -> Self
+pub fn skene_common::Grid<P>::derive_areas<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::grid::GridAreas>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_column_arrangement<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Arrangement>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_columns<R: core::convert::Into<skene_core::leaf::StaticLeaf<alloc::vec::Vec<skene_core::values::grid::GridTrack<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_flow<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::grid::GridFlow>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
@@ -1198,6 +1199,7 @@ pub fn skene_common::Grid<P>::derive_row_arrangement<R: core::convert::Into<sken
 pub fn skene_common::Grid<P>::derive_rows<R: core::convert::Into<skene_core::leaf::StaticLeaf<alloc::vec::Vec<skene_core::values::grid::GridTrack<<P as skene_core::platform::Platform>::Scalar>>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::derive_spacing<R: core::convert::Into<skene_core::leaf::StaticLeaf<skene_core::values::flex::Spacing<<P as skene_core::platform::Platform>::Scalar>>>>(self, impl core::ops::function::Fn() -> R + 'static) -> Self
 pub fn skene_common::Grid<P>::new() -> Self
+pub fn skene_common::Grid<P>::set_areas(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::GridAreas, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Grid<P>::set_column_arrangement(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::flex::Arrangement, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Grid<P>::set_columns(self, impl core::convert::Into<skene_core::leaf::Value<alloc::vec::Vec<skene_core::values::grid::GridTrack<<P as skene_core::platform::Platform>::Scalar>>, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self
 pub fn skene_common::Grid<P>::set_flow(self, impl core::convert::Into<skene_core::leaf::Value<skene_core::values::grid::GridFlow, skene_core::condition::Condition<<P as skene_core::platform::Platform>::Scalar>>>) -> Self

@@ -24,6 +24,7 @@ impl skene_web::Declarations
 pub fn skene_web::Declarations::is_empty(&self) -> bool
 pub fn skene_web::Declarations::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&'static str, &str)>
 pub fn skene_web::Declarations::new() -> Self
+pub fn skene_web::Declarations::render_areas(&skene_core::values::grid::GridAreas) -> alloc::string::String
 pub const fn skene_web::Declarations::render_arrangement(skene_core::values::flex::Arrangement) -> &'static str
 pub fn skene_web::Declarations::render_color(skene_core::values::color::Color) -> alloc::string::String
 pub const fn skene_web::Declarations::render_cursor(skene_core::values::mouse_cursor::MouseCursor) -> &'static str

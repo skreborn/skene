@@ -25,6 +25,7 @@ use skene_gui::{
   Flexible,
   FocusHandle,
   Grid,
+  GridCell,
   HasChildren,
   Inset,
   Media,
@@ -55,7 +56,7 @@ use skene_gui::{
   Tooltip,
   Typography,
   View,
-  core::{Dimension, PointerButton},
+  core::{Dimension, GridAreas, GridName, GridTrack, PointerButton},
   derived,
   empty,
   head,
@@ -1289,6 +1290,72 @@ fn grid_container_is_a_grid() {
   let _ = mount(|| Grid::uniform(2).build());
 
   assert_eq!(computed(&only_child(&root), "display"), "grid");
+}
+
+/// A child placed by an area's name lands on the area's tracks, and an adaptive grid fits
+/// as many columns as its minimum allows.
+#[wasm_bindgen_test]
+fn named_areas_and_adaptive_tracks_lay_out() {
+  const HEAD: GridName = GridName::new("head");
+  const MAIN: GridName = GridName::new("main");
+
+  let (_guard, root) = fresh_root();
+  let cell = || Container::new().set_height(Dimension::Length(10.));
+
+  let _ = mount(move || {
+    Column::new()
+      .set_children((
+        Container::new()
+          .set_width(Dimension::Length(300.))
+          .set_child(
+            Grid::new()
+              .set_columns(vec![GridTrack::Length(100.), GridTrack::Flex(1.)])
+              .set_areas(GridAreas::new(["head head", "nav main"]))
+              .set_children((
+                GridCell::new()
+                  .set_row(MAIN)
+                  .set_column(MAIN)
+                  .set_child(cell()),
+                GridCell::new()
+                  .set_row(HEAD)
+                  .set_column(HEAD)
+                  .set_child(cell()),
+              )),
+          ),
+        Container::new()
+          .set_width(Dimension::Length(250.))
+          .set_child(Grid::adaptive(80.).set_children((cell(), cell(), cell(), cell()))),
+      ))
+      .build()
+  });
+
+  let column = only_child(&root);
+  let areas = column
+    .first_element_child()
+    .and_then(|container| container.first_element_child())
+    .expect("the areas' grid");
+  let adaptive = column
+    .last_element_child()
+    .and_then(|container| container.first_element_child())
+    .expect("the adaptive grid");
+  let rect = |element: &Element| element.get_bounding_client_rect();
+  let origin = rect(&areas);
+  let (main, head) = (
+    rect(&areas.children().item(0).expect("main")),
+    rect(&areas.children().item(1).expect("head")),
+  );
+
+  assert!((main.left() - origin.left() - 100.).abs() < 0.5);
+  assert!((head.width() - 300.).abs() < 0.5);
+  assert!(main.top() > head.top());
+
+  let (first, fourth) = (
+    rect(&adaptive.children().item(0).expect("first")),
+    rect(&adaptive.children().item(3).expect("fourth")),
+  );
+
+  assert!((first.width() - 250. / 3.).abs() < 0.5);
+  assert!(fourth.top() > first.top());
 }
 
 /// `empty` renders no element at all: an empty segment, its two anchors alone.

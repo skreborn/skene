@@ -269,6 +269,35 @@ fn a_second_adaptive_track_drops_the_list() {
   });
 }
 
+/// A child placed by an area's name lands on the area's tracks.
+#[test]
+fn a_named_area_places_its_child() {
+  const HEAD: GridName = GridName::new("head");
+  const MAIN: GridName = GridName::new("main");
+
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Grid::new()
+        .set_columns(vec![GridTrack::Length(4), GridTrack::Flex(1.)])
+        .set_areas(GridAreas::new(["head head", "nav main"]))
+        .set_children((
+          GridCell::new()
+            .set_row(MAIN)
+            .set_column(MAIN)
+            .set_child(Text::new("m")),
+          GridCell::new()
+            .set_row(HEAD)
+            .set_column(HEAD)
+            .set_child(Text::new("h")),
+        ))
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(tui::render_to_text(10, 2), "h\n    m\n");
+  });
+}
+
 /// A grid child placement spans tracks.
 #[test]
 fn grid_placement_spans_tracks() {

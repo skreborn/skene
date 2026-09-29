@@ -133,6 +133,25 @@ pub type skene_core::box_fields::Flex::Value = skene_core::Flexibility<N>
 pub const skene_core::box_fields::Flex::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::Flex::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Flex::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
+pub struct skene_core::box_fields::GridAreas
+impl core::clone::Clone for skene_core::box_fields::GridAreas
+pub fn skene_core::box_fields::GridAreas::clone(&self) -> skene_core::box_fields::GridAreas
+impl core::cmp::Eq for skene_core::box_fields::GridAreas
+impl core::cmp::PartialEq for skene_core::box_fields::GridAreas
+pub fn skene_core::box_fields::GridAreas::eq(&self, &skene_core::box_fields::GridAreas) -> bool
+impl core::default::Default for skene_core::box_fields::GridAreas
+pub fn skene_core::box_fields::GridAreas::default() -> skene_core::box_fields::GridAreas
+impl core::fmt::Debug for skene_core::box_fields::GridAreas
+pub fn skene_core::box_fields::GridAreas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::box_fields::GridAreas
+pub fn skene_core::box_fields::GridAreas::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::box_fields::GridAreas
+impl core::marker::StructuralPartialEq for skene_core::box_fields::GridAreas
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::GridAreas
+pub type skene_core::box_fields::GridAreas::Value = skene_core::GridAreas
+pub const skene_core::box_fields::GridAreas::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
+pub fn skene_core::box_fields::GridAreas::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
+pub fn skene_core::box_fields::GridAreas::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
 pub struct skene_core::box_fields::GridColumnPlacement
 impl core::clone::Clone for skene_core::box_fields::GridColumnPlacement
 pub fn skene_core::box_fields::GridColumnPlacement::clone(&self) -> skene_core::box_fields::GridColumnPlacement
@@ -899,6 +918,7 @@ pub fn skene_core::Axis::hash<__H: core::hash::Hasher>(&self, &mut __H)
 impl core::marker::Copy for skene_core::Axis
 impl core::marker::StructuralPartialEq for skene_core::Axis
 pub enum skene_core::BoxValue<N: skene_core::Scalar, X: skene_core::StyleExtension>
+pub skene_core::BoxValue::Areas(skene_core::GridAreas)
 pub skene_core::BoxValue::Arrangement(skene_core::Arrangement)
 pub skene_core::BoxValue::AspectRatio(skene_core::AspectRatio)
 pub skene_core::BoxValue::Color(skene_core::Color)
@@ -1268,6 +1288,8 @@ pub fn skene_core::GridFlow::into_box_value(self) -> skene_core::BoxValue<N, X>
 pub enum skene_core::GridPlacement
 pub skene_core::GridPlacement::Auto
 pub skene_core::GridPlacement::Line(i16)
+pub skene_core::GridPlacement::Named(skene_core::GridName, i16)
+pub skene_core::GridPlacement::NamedSpan(skene_core::GridName, u16)
 pub skene_core::GridPlacement::Span(u16)
 impl core::clone::Clone for skene_core::GridPlacement
 pub fn skene_core::GridPlacement::clone(&self) -> skene_core::GridPlacement
@@ -1360,6 +1382,8 @@ impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::L
 pub fn skene_core::Leaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::Leaf<skene_core::AspectRatio>
 pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::GridName> for skene_core::Leaf<skene_core::Line<skene_core::GridPlacement>>
+pub fn skene_core::Leaf<skene_core::Line<skene_core::GridPlacement>>::from(skene_core::GridName) -> Self
 impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::Leaf<skene_core::AspectRatio>
 pub fn skene_core::Leaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
 impl<N: skene_core::Scalar> core::convert::From<skene_core::Expr<skene_core::Length>> for skene_core::Leaf<skene_core::Dimension<N>>
@@ -1675,6 +1699,7 @@ pub skene_core::Property::Decoration
 pub skene_core::Property::DecorationColor
 pub skene_core::Property::DecorationStyle
 pub skene_core::Property::Flex
+pub skene_core::Property::GridAreas
 pub skene_core::Property::GridColumnPlacement
 pub skene_core::Property::GridColumns
 pub skene_core::Property::GridFlow
@@ -1892,6 +1917,8 @@ impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::S
 pub fn skene_core::StaticLeaf<f32>::from(skene_core::Expr<skene_core::Number>) -> Self
 impl core::convert::From<skene_core::Expr<skene_core::Number>> for skene_core::StaticLeaf<skene_core::AspectRatio>
 pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::Expr<skene_core::Number>) -> Self
+impl core::convert::From<skene_core::GridName> for skene_core::StaticLeaf<skene_core::Line<skene_core::GridPlacement>>
+pub fn skene_core::StaticLeaf<skene_core::Line<skene_core::GridPlacement>>::from(skene_core::GridName) -> Self
 impl core::convert::From<skene_core::TokenRef<f32>> for skene_core::StaticLeaf<skene_core::AspectRatio>
 pub fn skene_core::StaticLeaf<skene_core::AspectRatio>::from(skene_core::TokenRef<f32>) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> core::convert::From<skene_core::StaticLeaf<skene_core::BoxValue<N, X>>> for skene_core::SlotLeaf<N, X>
@@ -2300,6 +2327,7 @@ pub skene_core::BoxStyle::color: <S as skene_core::Shape>::Of
 pub skene_core::BoxStyle::cursor: <S as skene_core::Shape>::Of
 pub skene_core::BoxStyle::ext: <X as skene_core::StyleExtension>::BoxFields
 pub skene_core::BoxStyle::flex: <S as skene_core::Shape>::Of
+pub skene_core::BoxStyle::grid_areas: <S as skene_core::Shape>::Of
 pub skene_core::BoxStyle::grid_column_placement: <S as skene_core::Shape>::Of
 pub skene_core::BoxStyle::grid_columns: <S as skene_core::Shape>::Of
 pub skene_core::BoxStyle::grid_flow: <S as skene_core::Shape>::Of
@@ -2338,14 +2366,14 @@ impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxStyle<
 pub fn skene_core::BoxStyle<N, skene_core::Plain, X>::overlay(&mut self, &Self)
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxStyle<N, skene_core::Plain, X>
 pub fn skene_core::BoxStyle<N, skene_core::Plain, X>::value(&self, skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>) -> core::option::Option<skene_core::BoxValue<N, X>>
-impl<N: core::clone::Clone + skene_core::Scalar, S: core::clone::Clone + skene_core::Shape, X: core::clone::Clone + skene_core::StyleExtension> core::clone::Clone for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <X as skene_core::StyleExtension>::BoxFields: core::clone::Clone
+impl<N: core::clone::Clone + skene_core::Scalar, S: core::clone::Clone + skene_core::Shape, X: core::clone::Clone + skene_core::StyleExtension> core::clone::Clone for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <S as skene_core::Shape>::Of: core::clone::Clone, <X as skene_core::StyleExtension>::BoxFields: core::clone::Clone
 pub fn skene_core::BoxStyle<N, S, X>::clone(&self) -> skene_core::BoxStyle<N, S, X>
-impl<N: core::cmp::PartialEq + skene_core::Scalar, S: core::cmp::PartialEq + skene_core::Shape, X: core::cmp::PartialEq + skene_core::StyleExtension> core::cmp::PartialEq for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <X as skene_core::StyleExtension>::BoxFields: core::cmp::PartialEq
+impl<N: core::cmp::PartialEq + skene_core::Scalar, S: core::cmp::PartialEq + skene_core::Shape, X: core::cmp::PartialEq + skene_core::StyleExtension> core::cmp::PartialEq for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <X as skene_core::StyleExtension>::BoxFields: core::cmp::PartialEq
 pub fn skene_core::BoxStyle<N, S, X>::eq(&self, &skene_core::BoxStyle<N, S, X>) -> bool
-impl<N: core::cmp::PartialEq + skene_core::Scalar, S: core::cmp::PartialEq + skene_core::Shape, X: core::cmp::PartialEq + skene_core::StyleExtension> core::marker::StructuralPartialEq for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <X as skene_core::StyleExtension>::BoxFields: core::cmp::PartialEq
-impl<N: core::default::Default + skene_core::Scalar, S: core::default::Default + skene_core::Shape, X: core::default::Default + skene_core::StyleExtension> core::default::Default for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <X as skene_core::StyleExtension>::BoxFields: core::default::Default
+impl<N: core::cmp::PartialEq + skene_core::Scalar, S: core::cmp::PartialEq + skene_core::Shape, X: core::cmp::PartialEq + skene_core::StyleExtension> core::marker::StructuralPartialEq for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <S as skene_core::Shape>::Of: core::cmp::PartialEq, <X as skene_core::StyleExtension>::BoxFields: core::cmp::PartialEq
+impl<N: core::default::Default + skene_core::Scalar, S: core::default::Default + skene_core::Shape, X: core::default::Default + skene_core::StyleExtension> core::default::Default for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <S as skene_core::Shape>::Of: core::default::Default, <X as skene_core::StyleExtension>::BoxFields: core::default::Default
 pub fn skene_core::BoxStyle<N, S, X>::default() -> skene_core::BoxStyle<N, S, X>
-impl<N: core::fmt::Debug + skene_core::Scalar, S: core::fmt::Debug + skene_core::Shape, X: core::fmt::Debug + skene_core::StyleExtension> core::fmt::Debug for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <X as skene_core::StyleExtension>::BoxFields: core::fmt::Debug
+impl<N: core::fmt::Debug + skene_core::Scalar, S: core::fmt::Debug + skene_core::Shape, X: core::fmt::Debug + skene_core::StyleExtension> core::fmt::Debug for skene_core::BoxStyle<N, S, X> where <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <S as skene_core::Shape>::Of: core::fmt::Debug, <X as skene_core::StyleExtension>::BoxFields: core::fmt::Debug
 pub fn skene_core::BoxStyle<N, S, X>::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<N: skene_core::Scalar, C: core::clone::Clone + core::cmp::PartialEq + core::hash::Hash + core::fmt::Debug + 'static, X: skene_core::StyleExtension> skene_core::Fingerprint for skene_core::BoxStyle<N, skene_core::Static<C>, X>
 pub fn skene_core::BoxStyle<N, skene_core::Static<C>, X>::fingerprint<H: core::hash::Hasher>(&self, &mut H)
@@ -2787,6 +2815,41 @@ pub fn skene_core::Flexibility<T>::fmt(&self, &mut core::fmt::Formatter<'_>) -> 
 impl<T: core::marker::Copy> core::marker::Copy for skene_core::Flexibility<T>
 impl<T> core::default::Default for skene_core::Flexibility<T>
 pub fn skene_core::Flexibility<T>::default() -> Self
+pub struct skene_core::GridArea
+pub skene_core::GridArea::columns: skene_core::Line<u16>
+pub skene_core::GridArea::name: skene_core::GridName
+pub skene_core::GridArea::rows: skene_core::Line<u16>
+impl core::clone::Clone for skene_core::GridArea
+pub fn skene_core::GridArea::clone(&self) -> skene_core::GridArea
+impl core::cmp::Eq for skene_core::GridArea
+impl core::cmp::PartialEq for skene_core::GridArea
+pub fn skene_core::GridArea::eq(&self, &skene_core::GridArea) -> bool
+impl core::fmt::Debug for skene_core::GridArea
+pub fn skene_core::GridArea::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::GridArea
+pub fn skene_core::GridArea::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::GridArea
+impl core::marker::StructuralPartialEq for skene_core::GridArea
+pub struct skene_core::GridAreas
+impl skene_core::GridAreas
+pub fn skene_core::GridAreas::areas(&self) -> core::option::Option<alloc::vec::Vec<skene_core::GridArea>>
+pub fn skene_core::GridAreas::new(impl core::iter::traits::collect::IntoIterator<Item = &'static str>) -> Self
+pub fn skene_core::GridAreas::rows(&self) -> &[alloc::vec::Vec<core::option::Option<skene_core::GridName>>]
+impl core::clone::Clone for skene_core::GridAreas
+pub fn skene_core::GridAreas::clone(&self) -> skene_core::GridAreas
+impl core::cmp::Eq for skene_core::GridAreas
+impl core::cmp::PartialEq for skene_core::GridAreas
+pub fn skene_core::GridAreas::eq(&self, &skene_core::GridAreas) -> bool
+impl core::fmt::Debug for skene_core::GridAreas
+pub fn skene_core::GridAreas::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::GridAreas
+pub fn skene_core::GridAreas::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for skene_core::GridAreas
+impl skene_core::Fingerprint for skene_core::GridAreas
+pub fn skene_core::GridAreas::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::GridAreas
+pub fn skene_core::GridAreas::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::GridAreas::into_box_value(self) -> skene_core::BoxValue<N, X>
 pub struct skene_core::GridChild
 impl core::clone::Clone for skene_core::GridChild
 pub fn skene_core::GridChild::clone(&self) -> skene_core::GridChild
@@ -2799,6 +2862,33 @@ impl core::fmt::Debug for skene_core::GridChild
 pub fn skene_core::GridChild::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Copy for skene_core::GridChild
 impl core::marker::StructuralPartialEq for skene_core::GridChild
+pub struct skene_core::GridName(_)
+impl skene_core::GridName
+pub const fn skene_core::GridName::as_str(self) -> &'static str
+pub const fn skene_core::GridName::new(&'static str) -> Self
+impl core::clone::Clone for skene_core::GridName
+pub fn skene_core::GridName::clone(&self) -> skene_core::GridName
+impl core::cmp::Eq for skene_core::GridName
+impl core::cmp::Ord for skene_core::GridName
+pub fn skene_core::GridName::cmp(&self, &skene_core::GridName) -> core::cmp::Ordering
+impl core::cmp::PartialEq for skene_core::GridName
+pub fn skene_core::GridName::eq(&self, &skene_core::GridName) -> bool
+impl core::cmp::PartialOrd for skene_core::GridName
+pub fn skene_core::GridName::partial_cmp(&self, &skene_core::GridName) -> core::option::Option<core::cmp::Ordering>
+impl core::convert::From<skene_core::GridName> for skene_core::Leaf<skene_core::Line<skene_core::GridPlacement>>
+pub fn skene_core::Leaf<skene_core::Line<skene_core::GridPlacement>>::from(skene_core::GridName) -> Self
+impl core::convert::From<skene_core::GridName> for skene_core::Line<skene_core::GridPlacement>
+pub fn skene_core::Line<skene_core::GridPlacement>::from(skene_core::GridName) -> Self
+impl core::convert::From<skene_core::GridName> for skene_core::StaticLeaf<skene_core::Line<skene_core::GridPlacement>>
+pub fn skene_core::StaticLeaf<skene_core::Line<skene_core::GridPlacement>>::from(skene_core::GridName) -> Self
+impl core::fmt::Debug for skene_core::GridName
+pub fn skene_core::GridName::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for skene_core::GridName
+pub fn skene_core::GridName::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for skene_core::GridName
+impl core::marker::StructuralPartialEq for skene_core::GridName
+impl<C> core::convert::From<skene_core::GridName> for skene_core::Value<skene_core::Line<skene_core::GridPlacement>, C>
+pub fn skene_core::Value<skene_core::Line<skene_core::GridPlacement>, C>::from(skene_core::GridName) -> Self
 pub struct skene_core::Handler<H: ?core::marker::Sized>
 impl<H: ?core::marker::Sized> skene_core::Handler<H>
 pub const fn skene_core::Handler<H>::owner(&self) -> skene_reactive::owner::Owner
@@ -2994,9 +3084,12 @@ pub struct skene_core::Line<T>
 pub skene_core::Line::end: T
 pub skene_core::Line::start: T
 impl skene_core::Line<skene_core::GridPlacement>
+pub const fn skene_core::Line<skene_core::GridPlacement>::area(skene_core::GridName) -> Self
 pub const fn skene_core::Line<skene_core::GridPlacement>::at(i16) -> Self
 pub const fn skene_core::Line<skene_core::GridPlacement>::between(i16, i16) -> Self
 pub const fn skene_core::Line<skene_core::GridPlacement>::span(u16) -> Self
+impl core::convert::From<skene_core::GridName> for skene_core::Line<skene_core::GridPlacement>
+pub fn skene_core::Line<skene_core::GridPlacement>::from(skene_core::GridName) -> Self
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Line<skene_core::GridPlacement>
 pub fn skene_core::Line<skene_core::GridPlacement>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Line<skene_core::GridPlacement>::into_box_value(self) -> skene_core::BoxValue<N, X>
@@ -3899,6 +3992,11 @@ pub type skene_core::box_fields::Flex::Value = skene_core::Flexibility<N>
 pub const skene_core::box_fields::Flex::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
 pub fn skene_core::box_fields::Flex::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
 pub fn skene_core::box_fields::Flex::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::GridAreas
+pub type skene_core::box_fields::GridAreas::Value = skene_core::GridAreas
+pub const skene_core::box_fields::GridAreas::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
+pub fn skene_core::box_fields::GridAreas::get<S: skene_core::Shape>(&skene_core::BoxStyle<N, S, X>) -> &<S as skene_core::Shape>::Of
+pub fn skene_core::box_fields::GridAreas::get_mut<S: skene_core::Shape>(&mut skene_core::BoxStyle<N, S, X>) -> &mut <S as skene_core::Shape>::Of
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::BoxField<N, X> for skene_core::box_fields::GridColumnPlacement
 pub type skene_core::box_fields::GridColumnPlacement::Value = skene_core::Line<skene_core::GridPlacement>
 pub const skene_core::box_fields::GridColumnPlacement::KEY: skene_core::PropertyKey<<X as skene_core::StyleExtension>::Property>
@@ -4088,6 +4186,8 @@ impl skene_core::Fingerprint for skene_core::Color
 pub fn skene_core::Color::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::Easing
 pub fn skene_core::Easing::fingerprint<H: core::hash::Hasher>(&self, &mut H)
+impl skene_core::Fingerprint for skene_core::GridAreas
+pub fn skene_core::GridAreas::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::GridFlow
 pub fn skene_core::GridFlow::fingerprint<H: core::hash::Hasher>(&self, &mut H)
 impl skene_core::Fingerprint for skene_core::GridPlacement
@@ -4205,6 +4305,9 @@ pub fn skene_core::Dimension<N>::into_box_value(self) -> skene_core::BoxValue<N,
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::Flexibility<N>
 pub fn skene_core::Flexibility<N>::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::Flexibility<N>::into_box_value(self) -> skene_core::BoxValue<N, X>
+impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::GridAreas
+pub fn skene_core::GridAreas::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
+pub fn skene_core::GridAreas::into_box_value(self) -> skene_core::BoxValue<N, X>
 impl<N: skene_core::Scalar, X: skene_core::StyleExtension> skene_core::IntoBoxValue<N, X> for skene_core::GridFlow
 pub fn skene_core::GridFlow::from_box_value(skene_core::BoxValue<N, X>) -> core::option::Option<Self>
 pub fn skene_core::GridFlow::into_box_value(self) -> skene_core::BoxValue<N, X>

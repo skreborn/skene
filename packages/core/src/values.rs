@@ -48,6 +48,29 @@ pub use text_selection::*;
 pub use toggle::*;
 pub use visibility::*;
 
+/// Whether `name` is ASCII letters, digits, `_` and `-`, not starting with a digit.
+pub(crate) const fn is_identifier(name: &str) -> bool {
+  let bytes = name.as_bytes();
+
+  if bytes.is_empty() || bytes[0].is_ascii_digit() {
+    return false;
+  }
+
+  let mut index = 0;
+
+  while index < bytes.len() {
+    let byte = bytes[index];
+
+    if !(byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-') {
+      return false;
+    }
+
+    index += 1;
+  }
+
+  true
+}
+
 macro_rules! impl_ops {
   ($type:ident { $($field:ident),+ $(,)? }) => {
     impl<T: ::std::ops::Add<Output = T>> ::std::ops::Add for $type<T> {

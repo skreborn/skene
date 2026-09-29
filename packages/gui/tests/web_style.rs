@@ -29,6 +29,9 @@ use skene_gui::{
     Color,
     Dimension,
     Easing,
+    GridAreas,
+    GridName,
+    GridPlacement,
     GridTrack,
     ItemAlignment,
     Keyframe,
@@ -438,6 +441,38 @@ fn adaptive_tracks_and_flexible_minimums_render() {
   );
   assert!(
     styles.contains("grid-template-rows:minmax(auto, 40px);"),
+    "{styles}"
+  );
+}
+
+/// Named areas render as a quoted row per grid row, and a child's placement by an area's
+/// name or a line's as CSS's named lines.
+#[test]
+fn named_areas_and_placements_render() {
+  const HEAD: GridName = GridName::new("head");
+  const MAIN: GridName = GridName::new("main");
+
+  let rendered = render_to_string(|| {
+    Grid::new()
+      .set_areas(GridAreas::new(["head head", ". main"]))
+      .set_children((GridCell::new()
+        .set_row(HEAD)
+        .set_column(Line {
+          start: GridPlacement::Named(MAIN, 2),
+          end: GridPlacement::NamedSpan(MAIN, 1),
+        })
+        .set_child(Container::new()),))
+  });
+
+  let styles = rendered.styles();
+
+  assert!(
+    styles.contains("grid-template-areas:\"head head\" \". main\";"),
+    "{styles}"
+  );
+  assert!(styles.contains("grid-row:head / head;"), "{styles}");
+  assert!(
+    styles.contains("grid-column:2 main / span main;"),
     "{styles}"
   );
 }

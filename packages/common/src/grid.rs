@@ -7,6 +7,7 @@ use skene_core::{
   Children,
   Condition,
   DeclaredBoxStyle,
+  GridAreas,
   GridChild,
   GridFlow,
   GridTrack,
@@ -82,6 +83,8 @@ impl<P: Platform> Grid<P> {
       "the explicit column tracks";
     set_rows / derive_rows (tracks) => grid_rows: Vec<GridTrack<P::Scalar>>,
       "the explicit row tracks";
+    set_areas / derive_areas (areas) => grid_areas: GridAreas,
+      "the named areas over the grid's cells, which a child's placement names";
     set_implicit_columns / derive_implicit_columns (tracks)
       => grid_implicit_columns: Vec<GridTrack<P::Scalar>>,
       "the sizes given to implicitly created columns, cycled";

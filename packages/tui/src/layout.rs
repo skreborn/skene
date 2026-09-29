@@ -1042,6 +1042,12 @@ fn placement(value: skene_core::GridPlacement) -> taffy::style::GridPlacement<St
     skene_core::GridPlacement::Auto => taffy::style::GridPlacement::Auto,
     skene_core::GridPlacement::Line(index) => taffy::style::GridPlacement::from_line_index(index),
     skene_core::GridPlacement::Span(count) => taffy::style::GridPlacement::from_span(count),
+    skene_core::GridPlacement::Named(name, index) => {
+      taffy::style::GridPlacement::NamedLine(name.as_str().to_owned(), index)
+    }
+    skene_core::GridPlacement::NamedSpan(name, count) => {
+      taffy::style::GridPlacement::NamedSpan(name.as_str().to_owned(), count)
+    }
   }
 }
 
@@ -1185,6 +1191,21 @@ fn apply_box_sizing(out: &mut Style, style: &PlainBox, in_stack: bool) {
 
   if let Some(tracks) = &style.grid_rows {
     out.grid_template_rows = template(tracks);
+  }
+
+  if let Some(areas) = &style.grid_areas {
+    out.grid_template_areas = areas
+      .areas()
+      .unwrap_or_default()
+      .into_iter()
+      .map(|area| taffy::style::GridTemplateArea {
+        name: area.name.as_str().to_owned(),
+        row_start: area.rows.start,
+        row_end: area.rows.end,
+        column_start: area.columns.start,
+        column_end: area.columns.end,
+      })
+      .collect();
   }
 
   if let Some(tracks) = &style.grid_implicit_columns {

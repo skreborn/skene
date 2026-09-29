@@ -10,7 +10,7 @@ use std::{
 use skene_reactive::{Get, Memo, use_context};
 
 use super::{Definition, Leaf, Media, Scalar, StaticLeaf, Value};
-use crate::{Color, Dimension, Length};
+use crate::{Color, Dimension, Length, values::is_identifier};
 
 /// A token's name: what a consumer emits, and the key a theme defines.
 ///
@@ -26,7 +26,7 @@ impl TokenName {
   #[inline(always)]
   pub const fn new(name: &'static str) -> Self {
     debug_assert!(
-      Self::is_identifier(name),
+      is_identifier(name),
       "a token name is ASCII letters, digits, `_` and `-`, and does not start with a digit",
     );
 
@@ -38,28 +38,6 @@ impl TokenName {
   #[must_use]
   pub const fn as_str(self) -> &'static str {
     self.0
-  }
-
-  const fn is_identifier(name: &str) -> bool {
-    let bytes = name.as_bytes();
-
-    if bytes.is_empty() || bytes[0].is_ascii_digit() {
-      return false;
-    }
-
-    let mut index = 0;
-
-    while index < bytes.len() {
-      let byte = bytes[index];
-
-      if !(byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-') {
-        return false;
-      }
-
-      index += 1;
-    }
-
-    true
   }
 }
 

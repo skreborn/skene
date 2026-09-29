@@ -17,6 +17,7 @@ use skene_core::{
   Arrangement,
   Color,
   Dimension,
+  GridAreas,
   GridPlacement,
   GridTrack,
   Inset,
@@ -209,6 +210,25 @@ impl Declarations {
       .join(" ")
   }
 
+  /// Renders named grid areas to their CSS text: a quoted row of cell names per row.
+  #[must_use]
+  pub fn render_areas(areas: &GridAreas) -> String {
+    areas
+      .rows()
+      .iter()
+      .map(|row| {
+        let cells = row
+          .iter()
+          .map(|cell| cell.map_or_else(|| ".".to_owned(), |name| Ident(name.as_str()).to_string()))
+          .collect::<Vec<_>>()
+          .join(" ");
+
+        format!("\"{cells}\"")
+      })
+      .collect::<Vec<_>>()
+      .join(" ")
+  }
+
   /// Renders one grid placement axis to its `start / end` CSS text.
   #[must_use]
   pub fn render_grid_line(line: Line<GridPlacement>) -> String {
@@ -228,6 +248,12 @@ impl Declarations {
       GridPlacement::Auto => "auto".to_owned(),
       GridPlacement::Line(index) => index.to_string(),
       GridPlacement::Span(count) => format!("span {count}"),
+      GridPlacement::Named(name, 1) => Ident(name.as_str()).to_string(),
+      GridPlacement::Named(name, index) => format!("{index} {}", Ident(name.as_str())),
+      GridPlacement::NamedSpan(name, 1) => format!("span {}", Ident(name.as_str())),
+      GridPlacement::NamedSpan(name, count) => {
+        format!("span {count} {}", Ident(name.as_str()))
+      }
     }
   }
 

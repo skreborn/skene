@@ -24,6 +24,7 @@ use crate::{
   Color,
   Dimension,
   Flexibility,
+  GridAreas,
   GridFlow,
   GridPlacement,
   GridTrack,
@@ -104,6 +105,8 @@ pub struct BoxStyle<N: Scalar, S: Shape, X: StyleExtension = ()> {
   pub grid_columns: S::Of<Vec<GridTrack<N>>>,
   /// The grid's explicit row tracks.
   pub grid_rows: S::Of<Vec<GridTrack<N>>>,
+  /// The named areas over the grid's cells.
+  pub grid_areas: S::Of<GridAreas>,
   /// The sizes given to implicitly created columns, cycled.
   pub grid_implicit_columns: S::Of<Vec<GridTrack<N>>>,
   /// The sizes given to implicitly created rows, cycled.
@@ -155,6 +158,8 @@ pub enum BoxValue<N: Scalar, X: StyleExtension = ()> {
   ItemAlignment(ItemAlignment),
   /// A list of grid tracks.
   Tracks(Vec<GridTrack<N>>),
+  /// Named areas over a grid's cells.
+  Areas(GridAreas),
   /// A grid flow.
   GridFlow(GridFlow),
   /// A grid placement.
@@ -273,6 +278,7 @@ box_values!(
   Arrangement => Arrangement;
   ItemAlignment => ItemAlignment;
   Vec<GridTrack<N>> => Tracks;
+  GridAreas => Areas;
   GridFlow => GridFlow;
   Line<GridPlacement> => Placement;
   Axes<Overflow> => Overflow;
@@ -393,6 +399,7 @@ box_fields!(
   self_horizontal_alignment: crate::ItemAlignment => SelfHorizontalAlignment,
   grid_columns: Vec<crate::GridTrack<N>> => GridColumns,
   grid_rows: Vec<crate::GridTrack<N>> => GridRows,
+  grid_areas: crate::GridAreas => GridAreas,
   grid_implicit_columns: Vec<crate::GridTrack<N>> => GridImplicitColumns,
   grid_implicit_rows: Vec<crate::GridTrack<N>> => GridImplicitRows,
   grid_flow: crate::GridFlow => GridFlow,
@@ -711,13 +718,13 @@ mod tests {
 
     style.visit(&mut names);
 
-    assert_eq!(names.0.len(), 33);
+    assert_eq!(names.0.len(), 34);
     assert_eq!(names.0[0], ("width", false));
     assert_eq!(names.0[12], ("border_width", false));
     assert_eq!(names.0[13], ("border_color", false));
     assert_eq!(names.0[15], ("spacing", true));
-    assert_eq!(names.0[31], ("overflow", false));
-    assert_eq!(names.0[32], ("visibility", false));
+    assert_eq!(names.0[32], ("overflow", false));
+    assert_eq!(names.0[33], ("visibility", false));
     assert_eq!(
       <box_fields::Spacing as BoxField<f32, ()>>::KEY,
       PropertyKey::Shared(Property::Spacing)

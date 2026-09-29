@@ -31,8 +31,7 @@ use skene_core::{
   dispatch_pointer_up,
   notify_dismiss,
   notify_focus_moved,
-  notify_pointer_enter,
-  notify_pointer_leave,
+  notify_pointer_moved,
   notify_scroll,
 };
 
@@ -973,7 +972,7 @@ pub(crate) fn move_focus(step: isize) {
 /// browser's `:hover` holds on the ancestors of what the pointer is over, an overlay's
 /// among them, notifying the nodes the pointer left and entered.
 pub(crate) fn set_hover(x: u16, y: u16) {
-  let (left, entered) = store(|store| {
+  let deepest = store(|store| {
     let next = store.pointer_path(x, y);
 
     if std::mem::replace(&mut store.last_pointer, (x, y)) != (x, y) {
@@ -981,36 +980,13 @@ pub(crate) fn set_hover(x: u16, y: u16) {
       store.scroll_latch = None;
     }
 
-    if store.hovered() == next {
-      return (Vec::new(), Vec::new());
-    }
+    let deepest = next.last().and_then(|handle| store.record(*handle)?.node);
+    store.set_hovered(next);
 
-    let previous = store.set_hovered(next);
-    let node_of =
-      |store: &Store, handle: Handle| store.record(handle).and_then(|record| record.node);
-    let left: Vec<NodeId> = previous
-      .iter()
-      .rev()
-      .filter(|node| !store.hovered().contains(node))
-      .filter_map(|handle| node_of(store, *handle))
-      .collect();
-    let entered: Vec<NodeId> = store
-      .hovered()
-      .iter()
-      .filter(|node| !previous.contains(node))
-      .filter_map(|handle| node_of(store, *handle))
-      .collect();
-
-    (left, entered)
+    deepest
   });
 
-  for node in left {
-    notify_pointer_leave::<Tui>(node);
-  }
-
-  for node in entered {
-    notify_pointer_enter::<Tui>(node);
-  }
+  notify_pointer_moved::<Tui>(deepest);
 }
 
 /// A pointer event at the cell (`x`, `y`) for a node whose screen origin is `origin`:
@@ -1753,22 +1729,14 @@ fn context_menu_from_keyboard(modifiers: Modifiers) {
 /// Hands the mouse to the terminal until a key takes it back: the hover path empties,
 /// its nodes told the pointer left, and every mouse event is ignored meanwhile.
 fn release_mouse() {
-  let left: Vec<NodeId> = store(|store| {
+  store(|store| {
     store.mouse_released = true;
     store.scroll_latch = None;
 
-    let previous = store.set_hovered(Vec::new());
-
-    previous
-      .iter()
-      .rev()
-      .filter_map(|handle| store.record(*handle).and_then(|record| record.node))
-      .collect()
+    store.set_hovered(Vec::new());
   });
 
-  for node in left {
-    notify_pointer_leave::<Tui>(node);
-  }
+  notify_pointer_moved::<Tui>(None);
 }
 
 /// Clicks the focused link and, unless a handler prevented the platform, stages its

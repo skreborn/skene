@@ -3597,9 +3597,12 @@ pub fn skene_core::Scene<P>::handle_scroll(&mut self, skene_core::NodeId, alloc:
 pub fn skene_core::Scene<P>::handle_selection_change(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::SelectionHandler>)
 pub fn skene_core::Scene<P>::handle_toggle(&mut self, skene_core::NodeId, alloc::rc::Rc<skene_core::ToggleHandler>)
 pub fn skene_core::Scene<P>::handlers(&self, skene_core::NodeId) -> core::option::Option<&skene_core::HandlerSet>
+pub const fn skene_core::Scene<P>::hovered(&self) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::insert_in_segment(&mut self, skene_core::NodeId, skene_core::NodeId, core::option::Option<skene_core::NodeId>)
 pub fn skene_core::Scene<P>::is_borrowed() -> bool
+pub fn skene_core::Scene<P>::is_hovered(&self, skene_core::NodeId) -> bool
 pub fn skene_core::Scene<P>::is_modal(&self, skene_core::NodeId) -> bool
+pub fn skene_core::Scene<P>::move_pointer(&mut self, core::option::Option<skene_core::NodeId>) -> (smallvec::SmallVec<[skene_core::NodeId; 16]>, smallvec::SmallVec<[skene_core::NodeId; 16]>)
 pub fn skene_core::Scene<P>::new() -> Self
 pub fn skene_core::Scene<P>::node_at(&self, &skene_reactive::path::Position) -> core::option::Option<skene_core::NodeId>
 pub fn skene_core::Scene<P>::note_access(&mut self, skene_core::NodeId, alloc::vec::Vec<skene_core::AccessProp>)
@@ -4658,8 +4661,7 @@ pub fn skene_core::item_window_over(f32, f32, &[f32], usize) -> skene_core::Item
 pub fn skene_core::notify_change<P: skene_core::Platform>(skene_core::NodeId, &str)
 pub fn skene_core::notify_dismiss<P: skene_core::Platform>(skene_core::NodeId)
 pub fn skene_core::notify_focus_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>, core::option::Option<skene_core::NodeId>)
-pub fn skene_core::notify_pointer_enter<P: skene_core::Platform>(skene_core::NodeId)
-pub fn skene_core::notify_pointer_leave<P: skene_core::Platform>(skene_core::NodeId)
+pub fn skene_core::notify_pointer_moved<P: skene_core::Platform>(core::option::Option<skene_core::NodeId>)
 pub fn skene_core::notify_scroll<P: skene_core::Platform>(skene_core::NodeId, &skene_core::ScrollEvent)
 pub fn skene_core::notify_selection_change<P: skene_core::Platform>(skene_core::NodeId, skene_core::TextSelection)
 pub fn skene_core::notify_toggle<P: skene_core::Platform>(skene_core::NodeId, bool)

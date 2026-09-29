@@ -624,6 +624,7 @@ pub struct Scene<P: Platform> {
   graveyard: Vec<HandlerSet>,
   mirrors: Vec<Mirror<P>>,
   open_overlays: Vec<NodeId>,
+  hovered: Option<NodeId>,
   #[cfg(debug_assertions)]
   token_kinds: FxHashMap<TokenName, std::mem::Discriminant<P::TokenValue>>,
 }
@@ -655,6 +656,7 @@ impl<P: Platform> Scene<P> {
       graveyard: Vec::new(),
       mirrors: Vec::new(),
       open_overlays: Vec::new(),
+      hovered: None,
       #[cfg(debug_assertions)]
       token_kinds: FxHashMap::default(),
     }
@@ -872,6 +874,36 @@ impl<P: Platform> Scene<P> {
       .into_iter()
       .filter(|node| !kept.contains(node))
       .collect()
+  }
+
+  /// The deepest node under the pointer.
+  #[inline(always)]
+  #[must_use]
+  pub const fn hovered(&self) -> Option<NodeId> {
+    self.hovered
+  }
+
+  /// Moves the pointer over `next`, the deepest node under it, returning the nodes it
+  /// left, innermost first, and those it entered, outermost first.
+  pub fn move_pointer(
+    &mut self,
+    next: Option<NodeId>,
+  ) -> (SmallVec<[NodeId; 16]>, SmallVec<[NodeId; 16]>) {
+    let previous = std::mem::replace(&mut self.hovered, next);
+    let left = self.crossed(previous, next);
+    let mut entered = self.crossed(next, previous);
+
+    entered.reverse();
+
+    (left, entered)
+  }
+
+  /// Whether `node` is under the pointer or holds the node that is, as `:hover` holds.
+  #[must_use]
+  pub fn is_hovered(&self, node: NodeId) -> bool {
+    self
+      .hovered
+      .is_some_and(|hovered| self.ancestry(hovered).contains(&node))
   }
 
   /// Calls `f` with each child of `node`, in order.

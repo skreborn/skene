@@ -121,16 +121,23 @@ fn localize<P: Platform>(node: NodeId, event: &PointerEvent) -> PointerEvent {
   sink.map_or(*event, |sink| P::localize_pointer(sink, event))
 }
 
-/// Notifies `node` that the pointer entered it.
-#[inline(always)]
-pub fn notify_pointer_enter<P: Platform>(node: NodeId) {
-  notify::<P, _>(node, all(HandlerSet::pointer_enter), |handler| handler());
-}
+/// Moves the scene's pointer over `next`, the deepest node under it.
+///
+/// Each node the pointer left is notified, innermost first, then each it entered,
+/// outermost first, as `pointerleave` and `pointerenter` reach every node whose subtree
+/// the pointer crossed.
+pub fn notify_pointer_moved<P: Platform>(next: Option<NodeId>) {
+  let (left, entered) = Scene::<P>::with(|scene| scene.move_pointer(next));
 
-/// Notifies `node` that the pointer left it.
-#[inline(always)]
-pub fn notify_pointer_leave<P: Platform>(node: NodeId) {
-  notify::<P, _>(node, all(HandlerSet::pointer_leave), |handler| handler());
+  batch(|| {
+    for node in left {
+      notify::<P, _>(node, all(HandlerSet::pointer_leave), |handler| handler());
+    }
+
+    for node in entered {
+      notify::<P, _>(node, all(HandlerSet::pointer_enter), |handler| handler());
+    }
+  });
 }
 
 /// Notifies the nodes focus left and reached as it moved from `from` to `to`.
@@ -283,8 +290,9 @@ mod tests {
     dispatch_click,
     dispatch_click_observed,
     dispatch_pointer_down,
+    notify_dismiss,
     notify_focus_moved,
-    notify_pointer_enter,
+    notify_pointer_moved,
   };
   use crate::{
     Boundary,
@@ -509,13 +517,63 @@ mod tests {
       let outer_log = Rc::clone(&log);
       let inner_log = Rc::clone(&log);
 
-      scene.handle_pointer_enter(outer, Rc::new(move || outer_log.borrow_mut().push("outer")));
-      scene.handle_pointer_enter(inner, Rc::new(move || inner_log.borrow_mut().push("inner")));
+      scene.handle_dismiss(outer, Rc::new(move || outer_log.borrow_mut().push("outer")));
+      scene.handle_dismiss(inner, Rc::new(move || inner_log.borrow_mut().push("inner")));
     });
 
-    notify_pointer_enter::<TestPlatform>(inner);
+    notify_dismiss::<TestPlatform>(inner);
 
     assert_eq!(*log.borrow(), ["inner"]);
+  }
+
+  /// A pointer move leaves each node whose subtree the pointer left, innermost first,
+  /// then enters each whose subtree it reached, outermost first; a node holding the
+  /// pointer throughout hears nothing.
+  #[test]
+  fn a_pointer_move_notifies_the_subtrees_it_crosses() {
+    TestPlatform::reset();
+
+    let (outer, middle, inner) = chain();
+    let sibling = TestBox::node();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let note = |name: &'static str| -> Rc<dyn Fn()> {
+      let log = Rc::clone(&log);
+
+      Rc::new(move || log.borrow_mut().push(name))
+    };
+
+    Scene::<TestPlatform>::with(|scene| {
+      scene.attach(outer, sibling, None);
+
+      for (node, enter, leave) in [
+        (outer, "outer enter", "outer leave"),
+        (middle, "middle enter", "middle leave"),
+        (inner, "inner enter", "inner leave"),
+        (sibling, "sibling enter", "sibling leave"),
+      ] {
+        scene.handle_pointer_enter(node, note(enter));
+        scene.handle_pointer_leave(node, note(leave));
+      }
+    });
+
+    notify_pointer_moved::<TestPlatform>(Some(inner));
+
+    assert_eq!(
+      std::mem::take(&mut *log.borrow_mut()),
+      ["outer enter", "middle enter", "inner enter"]
+    );
+
+    notify_pointer_moved::<TestPlatform>(Some(sibling));
+
+    assert_eq!(
+      std::mem::take(&mut *log.borrow_mut()),
+      ["inner leave", "middle leave", "sibling enter"]
+    );
+    assert!(Scene::<TestPlatform>::with(|scene| scene.is_hovered(outer)));
+
+    notify_pointer_moved::<TestPlatform>(None);
+
+    assert_eq!(*log.borrow(), ["sibling leave", "outer leave"]);
   }
 
   /// A focus move blurs each node whose subtree focus left, innermost first, then

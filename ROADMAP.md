@@ -30,15 +30,14 @@ left half-done in a code comment.
     implement focus, press, hover and overlays; each mechanism gets one owner, and the
     browser is the oracle.
     - The parity harness (`web_parity`) gains a case for each fix below.
-    - Interaction: one model in core over the scene for every platform that draws its
-    own controls (hover crossing, focus with the focus-visible rule, pressed state and
-    pointer capture, top-layer rules over the scene's overlay stack, focus fixup when
-    the focused node leaves the order), replacing the terminal's own, headless's
-    divergent copy and the browser's implicit one. The scene already holds the tab order
-    with modal containment, which the terminal traverses by and headless does not yet,
-    and the light dismiss every platform dismisses by. With it a tooltip describes the focus holder, and a group run's state
-    variants reach its spans, as a rule on the group's class redefining the ink where
-    the state holds.
+    - Interaction: the rest of one model in core over the scene for every platform that
+    draws its own controls: the focus with the focus-visible rule and the pressed state
+    held in the scene, as the hovered node, the tab order with modal containment, the
+    overlay stack and light dismiss already are; top-layer rules; focus fixup when the
+    focused node leaves the order. The terminal and headless still keep their own focus
+    and press, and headless does not traverse by the tab order yet. With it a tooltip
+    describes the focus holder, and a group run's state variants reach its spans, as a
+    rule on the group's class redefining the ink where the state holds.
     - Typed events: keys from `keyboard-types` in place of strings and the partial US
     `code_of` table; pointers with id, kind, buttons and pressure in `ui-events`'
     shape; `PointerCancel`, capture and a pan declaration; `Wheel` dispatched before

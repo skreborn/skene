@@ -34,13 +34,11 @@ use skene_core::{
   notify_change,
   notify_dismiss,
   notify_focus_moved,
-  notify_pointer_enter,
-  notify_pointer_leave,
+  notify_pointer_moved,
   notify_scroll,
   notify_selection_change,
   notify_toggle,
 };
-use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, EventTarget, HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
@@ -506,11 +504,6 @@ fn on_pointer_move(event: &web_sys::Event) {
   dispatch_pointer(event, dispatch_pointer_move::<Web>);
 }
 
-/// The nodes a move from `from` to `to` leaves, innermost first.
-fn crossed(from: Option<NodeId>, to: Option<NodeId>) -> SmallVec<[NodeId; 16]> {
-  Scene::<Web>::with(|scene| scene.crossed(from, to))
-}
-
 /// The element a pointer event came from or went to.
 fn related(event: &web_sys::Event) -> Option<EventTarget> {
   event
@@ -525,17 +518,15 @@ fn focus_related(event: &web_sys::Event) -> Option<EventTarget> {
     .and_then(web_sys::FocusEvent::related_target)
 }
 
+/// The pointer reaching a node: the move from the node it was over is notified whole.
 fn on_pointer_over(event: &web_sys::Event) {
-  let entered = crossed(node_at(event.target()), node_at(related(event)));
-
-  for node in entered.into_iter().rev() {
-    notify_pointer_enter::<Web>(node);
-  }
+  notify_pointer_moved::<Web>(node_at(event.target()));
 }
 
 fn on_pointer_out(event: &web_sys::Event) {
-  for node in crossed(node_at(event.target()), node_at(related(event))) {
-    notify_pointer_leave::<Web>(node);
+  // A move onto another node is notified by the `pointerover` that follows it.
+  if node_at(related(event)).is_none() {
+    notify_pointer_moved::<Web>(None);
   }
 }
 

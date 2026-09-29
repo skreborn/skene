@@ -1551,14 +1551,13 @@ impl Store {
     &self.hovered
   }
 
-  /// Replaces the hover path, returning the previous one; a changed path asks for a
-  /// restyle, which repaints the nodes whose style it changed.
-  pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) -> Vec<Handle> {
+  /// Replaces the hover path; a changed path asks for a restyle, which repaints the nodes
+  /// whose style it changed.
+  pub(crate) fn set_hovered(&mut self, next: Vec<Handle>) {
     self.restyle_pending |= self.hovered != next;
     self.hovered_set.clear();
     self.hovered_set.extend(next.iter().copied());
-
-    std::mem::replace(&mut self.hovered, next)
+    self.hovered = next;
   }
 
   /// Marks `handle` for repaint: the rows it covered at the last paint and the rows it

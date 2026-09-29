@@ -96,8 +96,7 @@ use skene_core::{
   notify_change,
   notify_dismiss,
   notify_focus_moved,
-  notify_pointer_enter,
-  notify_pointer_leave,
+  notify_pointer_moved,
   notify_scroll,
   notify_selection_change,
   notify_toggle,
@@ -632,13 +631,13 @@ pub fn trigger_pointer_move(node: NodeId, event: &PointerEvent) -> Prevented {
 /// Moves the pointer over `node`, which holds `Hovered` with its ancestors, notifying
 /// each node the pointer left, innermost first, and each it entered, outermost first.
 pub fn trigger_pointer_enter(node: NodeId) {
-  trigger(|| move_pointer(Some(node)));
+  trigger(|| notify_pointer_moved::<Headless>(Some(node)));
 }
 
 /// Moves the pointer off `node` onto the node around it, notifying `node` and each node
 /// beneath it the pointer was over.
 pub fn trigger_pointer_leave(node: NodeId) {
-  trigger(|| move_pointer(Scene::<Headless>::with(|scene| scene.parent(node))));
+  trigger(|| notify_pointer_moved::<Headless>(Scene::<Headless>::with(|scene| scene.parent(node))));
 }
 
 /// Moves focus to `node`, notifying each node whose subtree focus left and each whose
@@ -966,21 +965,6 @@ fn record_container_size(name: ContainerName, size: Size<f32>) {
   sizes.set(name, size);
 }
 
-/// Moves the pointer over `next`, notifying the nodes it left and entered.
-fn move_pointer(next: Option<NodeId>) {
-  let previous = with_store(|store| std::mem::replace(&mut store.hovered, next));
-  let (left, entered) =
-    Scene::<Headless>::with(|scene| (scene.crossed(previous, next), scene.crossed(next, previous)));
-
-  for node in left {
-    notify_pointer_leave::<Headless>(node);
-  }
-
-  for node in entered.into_iter().rev() {
-    notify_pointer_enter::<Headless>(node);
-  }
-}
-
 /// Records focus on `node`.
 fn move_focus(node: NodeId) {
   let handle = handle(node);
@@ -993,11 +977,7 @@ fn move_focus(node: NodeId) {
 pub fn is_hovered(node: NodeId) -> bool {
   end_turn();
 
-  let hovered = with_store(|store| store.hovered);
-
-  Scene::<Headless>::with(|scene| {
-    std::iter::successors(hovered, |hovered| scene.parent(*hovered)).any(|hovered| hovered == node)
-  })
+  Scene::<Headless>::with(|scene| scene.is_hovered(node))
 }
 
 /// Whether `node` holds focus.

@@ -44,7 +44,7 @@ pub(crate) struct Env {
 impl Env {
   /// The environment of `node`; `None` for a stale id.
   pub(crate) fn of(node: NodeId) -> Option<Self> {
-    let (pressed, hovered) = with_store(|store| (store.pressed, store.hovered));
+    let pressed = with_store(|store| store.pressed);
     let (handle, control, pressed, hovered, names) = Scene::<Headless>::with(|scene| {
       let handle = *scene.record(node)?.sink();
       let holder = scene.enclosing_control(node).unwrap_or(node);
@@ -55,8 +55,7 @@ impl Env {
       });
       let pressed = std::iter::successors(pressed, |pressed| scene.parent(*pressed))
         .any(|pressed| pressed == holder);
-      let hovered = std::iter::successors(hovered, |hovered| scene.parent(*hovered))
-        .any(|hovered| hovered == node);
+      let hovered = scene.is_hovered(node);
       let mut names = Vec::new();
       let mut current = scene.parent(node);
 

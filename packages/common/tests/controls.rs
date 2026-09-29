@@ -310,6 +310,36 @@ fn a_controlled_checkbox_keeps_its_state_without_a_handler() {
   owner.dispose();
 }
 
+/// A press maps to the value whose thumb centers under it: the thumb's center travels
+/// the extent less the thumb, so a press on the thumb at either end holds that end.
+#[test]
+fn a_press_centers_the_thumb_under_the_pointer() {
+  reset();
+
+  let owner = Owner::new();
+  let bound = Signal::new(0.);
+  let node =
+    owner.enter(|| RawSlider::new(Range::new().set_thumb_extent(20.).bind_value(bound)).build());
+
+  trigger_size(node, Size::new(200., 20.));
+
+  let _ = trigger_pointer_down(node, &press_at(190.));
+
+  assert_value(bound, 100.);
+
+  let _ = trigger_pointer_up(node, &press_at(190.));
+  let _ = trigger_pointer_down(node, &press_at(100.));
+
+  assert_value(bound, 50.);
+
+  let _ = trigger_pointer_up(node, &press_at(100.));
+  let _ = trigger_pointer_down(node, &press_at(10.));
+
+  assert_value(bound, 0.);
+
+  owner.dispose();
+}
+
 /// A key an input method is composing leaves the behavior alone.
 #[test]
 fn a_composing_key_never_reaches_the_behavior() {

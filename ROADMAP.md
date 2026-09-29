@@ -79,8 +79,8 @@ left half-done in a code comment.
     with a native-element hint, replaces the closed `Role`, `AccessProp` and
     `ControlKind`, so a third party builds switches, tabs, comboboxes and trees; parts
     become styling targets or go, with `ControlHandle::roster` and the drawn picker's
-    unused listbox closures. The slider maps the pointer through its track and thumb
-    extents; captions lay out beside the control's box.
+    unused listbox closures. Captions lay out beside the control's box, so a caption
+    no longer widens a slider's track.
     - Structure: the scene owns the platforms' records (`Sink = NodeId`), so the
     terminal and headless stop mirroring parents, children, tab order and
     `enclosing_control`, and `bind_node` and three arenas go; anchors exist in the

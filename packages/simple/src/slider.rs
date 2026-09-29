@@ -69,7 +69,7 @@ impl<P: Platform> SimpleSlider<P> {
     }
   }
 
-  /// Sets the accessible name, since nothing visible names a slider.
+  /// Sets the accessible name; nothing visible names a slider.
   #[inline(always)]
   pub fn set_label(mut self, label: impl Into<String>) -> Self {
     self.label = Some(label.into());
@@ -221,6 +221,7 @@ where
       .set_min(min)
       .set_max(max)
       .set_step(step)
+      .set_thumb_extent(shape.thumb_size.to_f32())
       .derive_value(move || value());
 
     if let Some(action) = on_change {
@@ -230,7 +231,7 @@ where
     let mut slider = RawSlider::new(behavior);
 
     if let Some(label) = label {
-      slider = slider.set_label(label);
+      slider = slider.set_accessible_name(label);
     }
 
     let node = slider

@@ -24,8 +24,9 @@ use super::{Behavior, ControlHandle, PointerPhase};
 ///
 /// The arrows move by a step, the page keys by a tenth of the range or a step where
 /// the step is larger, `Home` and `End` reach the ends, and a press or drag along the
-/// control's axis jumps to that fraction of the range; a vertical range runs bottom to
-/// top.
+/// control's axis jumps to the value whose thumb centers under the pointer, the thumb
+/// travelling the control's extent less [its own](Self::set_thumb_extent); a vertical
+/// range runs bottom to top.
 ///
 /// Controlled: the value it reports is what [`derive_value`](Self::derive_value)
 /// reads, and a move only calls [`handle_change`](Self::handle_change) with the value
@@ -40,6 +41,7 @@ pub struct Range {
   value: Option<Rc<dyn Fn() -> f32>>,
   on_change: Option<Rc<dyn Fn(f32)>>,
   extent: Rc<Cell<f32>>,
+  thumb: f32,
   pressed: Cell<bool>,
   axis: Axis,
 }
@@ -61,6 +63,7 @@ impl Range {
       value: None,
       on_change: None,
       extent: Rc::new(Cell::new(0.)),
+      thumb: 0.,
       pressed: Cell::new(false),
       axis: Axis::Horizontal,
     }
@@ -70,6 +73,16 @@ impl Range {
   #[inline(always)]
   pub const fn set_axis(mut self, axis: Axis) -> Self {
     self.axis = axis;
+
+    self
+  }
+
+  /// Sets the extent of the thumb along the axis, in the medium's unit: the thumb's
+  /// center travels from half of it past the start to half of it short of the end.
+  /// Zero, the default, maps the pointer straight along the whole extent.
+  #[inline(always)]
+  pub const fn set_thumb_extent(mut self, extent: f32) -> Self {
+    self.thumb = extent;
 
     self
   }
@@ -154,18 +167,20 @@ impl Range {
     }
   }
 
-  /// Asks for the value under the pointer—the center of the unit it names—along the
-  /// measured extent, so the last unit reaches the end.
+  /// Asks for the value whose thumb centers under the pointer along the measured
+  /// extent.
   fn slide(&self, event: &PointerEvent) {
     let extent = self.extent.get();
+    let thumb = self.thumb.clamp(0., extent);
+    let travel = extent - thumb;
 
-    if extent > 0. {
-      let fraction = match self.axis {
-        Axis::Horizontal => event.local_x / extent,
-        Axis::Vertical => (extent - event.local_y) / extent,
+    if travel > 0. {
+      let along = match self.axis {
+        Axis::Horizontal => event.local_x,
+        Axis::Vertical => extent - event.local_y,
       };
 
-      self.write(self.range().value_at(fraction));
+      self.write(self.range().value_at((along - thumb / 2.) / travel));
     }
   }
 

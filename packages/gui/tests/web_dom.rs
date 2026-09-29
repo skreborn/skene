@@ -594,8 +594,9 @@ fn pointer_down_handler_receives_the_event() {
   assert_eq!(seen.get(), Some((11., 7., Some(PointerButton::Primary))));
 }
 
-/// A press on a slider's thumb asks for the value under the pointer measured from the
-/// slider's own box, not from the thumb's.
+/// A press on a slider's thumb asks for the value whose thumb centers under the
+/// pointer, measured from the slider's own box rather than the thumb's: 150 pixels into
+/// 200, the thumb's 16-pixel center travelling 184, is 77.
 #[wasm_bindgen_test]
 async fn a_press_on_the_thumb_slides_by_the_slider_box() {
   use skene_gui::core::Dimension;
@@ -630,7 +631,7 @@ async fn a_press_on_the_thumb_slides_by_the_slider_box() {
 
   let _ = thumb.dispatch_event(&event);
 
-  assert!((value.get() - 75.).abs() < f32::EPSILON, "{}", value.get());
+  assert!((value.get() - 77.).abs() < f32::EPSILON, "{}", value.get());
 }
 
 /// A slider's native input holds the slider's range, step and value, and follows the

@@ -490,19 +490,55 @@ fn a_slider_drag_reads_the_pointer_within_its_cell() {
     });
     let _ = tui::render_to_text(25, 1);
 
-    // Cell 10 of 25 spans 40% to 44%: its center reads 42, its edges 41 and 43.
+    // The thumb's center travels the 24 cells between the first cell's center and the
+    // last's, so cell 10 spans 39.6% to 43.75%: its center reads 42, a tenth into it
+    // 40 and nine tenths 43.
     tui::trigger_mouse_press(0, 0);
     tui::trigger_mouse_drag(10, 0);
 
     assert!((volume.get_untracked() - 42.).abs() < f32::EPSILON);
 
-    tui::trigger_mouse_drag_within(10, 0, (0.2, 0.5));
+    tui::trigger_mouse_drag_within(10, 0, (0.1, 0.5));
 
-    assert!((volume.get_untracked() - 41.).abs() < f32::EPSILON);
+    assert!((volume.get_untracked() - 40.).abs() < f32::EPSILON);
 
-    tui::trigger_mouse_drag_within(10, 0, (0.8, 0.5));
+    tui::trigger_mouse_drag_within(10, 0, (0.9, 0.5));
 
     assert!((volume.get_untracked() - 43.).abs() < f32::EPSILON);
+  });
+}
+
+/// A press on the first cell of a slider reaches its minimum and one on its last cell
+/// its maximum, where the thumb sits at either end, and no caption takes cells from it.
+#[test]
+fn a_sliders_end_cells_reach_its_ends() {
+  with_platform(|| {
+    let volume = Signal::new(50.0f32);
+
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(20)
+        .set_child(
+          SimpleSlider::new()
+            .set_label("Volume")
+            .set_min(0.)
+            .set_max(100.)
+            .set_step(1.)
+            .bind_value(volume),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert!(!tui::render_to_text(20, 1).contains("Volume"));
+
+    tui::trigger_mouse_click(19, 0);
+
+    assert!((volume.get_untracked() - 100.).abs() < f32::EPSILON);
+
+    tui::trigger_mouse_click(0, 0);
+
+    assert!(volume.get_untracked().abs() < f32::EPSILON);
   });
 }
 

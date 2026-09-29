@@ -1645,6 +1645,7 @@ pub const fn skene_common::Range::set_axis(self, skene_core::values::axis::Axis)
 pub const fn skene_common::Range::set_max(self, f32) -> Self
 pub const fn skene_common::Range::set_min(self, f32) -> Self
 pub const fn skene_common::Range::set_step(self, f32) -> Self
+pub const fn skene_common::Range::set_thumb_extent(self, f32) -> Self
 pub fn skene_common::Range::set_value(self, f32) -> Self
 impl core::default::Default for skene_common::Range
 pub fn skene_common::Range::default() -> Self

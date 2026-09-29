@@ -201,6 +201,16 @@ impl Store {
     })
   }
 
+  /// The deepest node under the cell (`x`, `y`) and its ancestors, the root first: the
+  /// path hover and a press hold along.
+  pub(crate) fn pointer_path(&self, x: u16, y: u16) -> Vec<Handle> {
+    self
+      .hit_test(x, y)
+      .last()
+      .map(|(deepest, _)| self.ancestors(*deepest).into_iter().rev().collect())
+      .unwrap_or_default()
+  }
+
   /// The path from the root to the deepest node containing the cell (`x`, `y`), each
   /// with its absolute origin, against the last computed layout.
   pub(crate) fn hit_test(&self, x: u16, y: u16) -> Vec<(Handle, (i64, i64))> {
@@ -959,11 +969,12 @@ pub(crate) fn move_focus(step: isize) {
   }
 }
 
-/// Updates the hover path to the nodes under (`x`, `y`), notifying the nodes the
-/// pointer left and entered.
+/// Updates the hover path to the deepest node under (`x`, `y`) and its ancestors, as a
+/// browser's `:hover` holds on the ancestors of what the pointer is over, an overlay's
+/// among them, notifying the nodes the pointer left and entered.
 pub(crate) fn set_hover(x: u16, y: u16) {
   let (left, entered) = store(|store| {
-    let next: Vec<Handle> = store.hit_test(x, y).iter().map(|(node, _)| *node).collect();
+    let next = store.pointer_path(x, y);
 
     if std::mem::replace(&mut store.last_pointer, (x, y)) != (x, y) {
       // A real pointer move releases the wheel's latched target.
@@ -1215,7 +1226,7 @@ fn press(x: u16, y: u16, button: PointerButton, modifiers: Modifiers) {
   store(|store| {
     if button == PointerButton::Primary {
       store.press = Some(Press {
-        path: path.iter().map(|(handle, _)| *handle).collect(),
+        path: store.ancestors(deepest).into_iter().rev().collect(),
         captured: deepest,
         target: focus_target,
       });
@@ -1350,7 +1361,7 @@ pub(crate) fn pointer_release(x: u16, y: u16, button: PointerButton, modifiers: 
 
     store.restyle_pending = true;
 
-    let released: Vec<Handle> = store.hit_test(x, y).iter().map(|(node, _)| *node).collect();
+    let released = store.pointer_path(x, y);
     let common = press
       .path
       .iter()

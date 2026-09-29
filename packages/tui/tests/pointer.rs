@@ -129,6 +129,34 @@ fn a_press_holds_pressed_along_its_path() {
   });
 }
 
+/// The pointer over an open overlay holds `Hovered` on the boxes around the overlay in
+/// the tree too, as a browser's `:hover` holds on a popover's ancestors.
+#[test]
+fn hover_over_an_overlay_holds_on_its_ancestors() {
+  with_platform(|| {
+    let _ = tui::mount(|| {
+      Container::new()
+        .set_width(10)
+        .set_height(3)
+        .set_color(red().when(State::Hovered, blue()))
+        .set_child(
+          Overlay::popup()
+            .set_placement(Placement::TopStart)
+            .set_open(true)
+            .set_child(Container::new().set_width(3).set_height(1)),
+        )
+        .into_any()
+        .build()
+    });
+
+    assert_eq!(colors_at(10, 3, 8, 2).1, Some(rgb(red())));
+
+    tui::trigger_mouse_move(1, 0);
+
+    assert_eq!(colors_at(10, 3, 8, 2).1, Some(rgb(blue())));
+  });
+}
+
 /// The hover cursor defaults follow the content: the pointer over buttons and toggling
 /// controls, the I-beam over entries and selectable text, and none over anything
 /// else—an explicit style still winning.

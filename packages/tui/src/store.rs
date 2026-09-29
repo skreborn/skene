@@ -785,8 +785,9 @@ pub(crate) struct ScrollLatch {
   pub(crate) last: Instant,
 }
 
-/// The delivered left press awaiting its release: the hit path, the node the press
-/// captured, and the focusable it landed on.
+/// The delivered left press awaiting its release: the node it landed on with its
+/// ancestors, the root first, the node the press captured, and the focusable it landed
+/// on.
 pub(crate) struct Press {
   pub(crate) path: Vec<Handle>,
   pub(crate) captured: Handle,

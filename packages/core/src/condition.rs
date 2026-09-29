@@ -194,6 +194,12 @@ pub struct MediaEnv<'a, N> {
   pub container: &'a dyn Fn(Option<ContainerName>) -> Option<Size<N>>,
 }
 
+impl<N> std::fmt::Debug for MediaEnv<'_, N> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("MediaEnv").finish_non_exhaustive()
+  }
+}
+
 /// A condition on a node's own interaction state, or on the state of the control it is
 /// part of.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

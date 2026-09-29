@@ -43,6 +43,7 @@ use super::{
 /// Members are [`SimpleRadio`]s at any depth inside the child, so one may be wrapped
 /// or interleaved with anything. The chosen value flows both ways. Holds [`NoChild`]
 /// until [`set_child`](Self::set_child) supplies the view holding the members.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleRadioGroup<P: Platform, C = NoChild> {
   roving: Roving,
@@ -145,6 +146,7 @@ impl<P: Platform> View<P> for SimpleRadioGroup<P, AnyView<P>> {
 /// every facade. Outside a [`SimpleRadioGroup`] it draws, is never chosen and takes
 /// focus like any control. For a radio drawn some other way, compose [`RawRadio`]
 /// directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleRadio<P: Platform> {
   member: RadioMember,

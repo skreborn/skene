@@ -45,6 +45,12 @@ pub struct Range {
   axis: Axis,
 }
 
+impl std::fmt::Debug for Range {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Range").finish_non_exhaustive()
+  }
+}
+
 impl Range {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   #[inline(always)]

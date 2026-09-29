@@ -29,6 +29,7 @@ use crate::realize::ChildBuilder;
 /// [`NoChild`] until [`set_child_builder`](Self::set_child_builder) supplies the
 /// content; it is a builder closure because it is built under the owner the boundary
 /// is provided on.
+#[derive(Debug)]
 #[must_use]
 pub struct Suspense<P: Platform, C = NoChild> {
   fallback: Option<AnyView<P>>,

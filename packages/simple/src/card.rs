@@ -28,6 +28,7 @@ use super::{
 /// Its own properties shape the column; wrap it in a [`Container`] to change the
 /// surface itself. Accepts any view or a [`Flexible`](skene_common::Flexible) wrapper as
 /// a child.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleCard<P: Platform> {
   column: Column<P>,

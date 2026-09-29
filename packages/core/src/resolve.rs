@@ -296,6 +296,12 @@ pub struct Resolver<'a, N: Scalar, X: StyleExtension = ()> {
   pub slot: &'a dyn Fn(Slot) -> Option<SlotLeaf<N, X>>,
 }
 
+impl<N: Scalar, X: StyleExtension> std::fmt::Debug for Resolver<'_, N, X> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Resolver").finish_non_exhaustive()
+  }
+}
+
 impl<N: Scalar, X: StyleExtension> Resolver<'_, N, X> {
   /// The size of the nearest container of `name`, of any name for `None`.
   #[must_use]

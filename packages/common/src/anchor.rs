@@ -10,7 +10,7 @@ use skene_core::NodeId;
 /// [`Overlay::set_anchor`](crate::Overlay::set_anchor); the open overlay is placed
 /// against the bound view. Holds nothing until that view builds, and an overlay reads
 /// it each time it opens.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 #[must_use]
 pub struct Anchor(Rc<Cell<Option<NodeId>>>);
 

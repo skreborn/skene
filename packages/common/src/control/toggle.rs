@@ -29,6 +29,12 @@ pub struct Toggle {
   on_toggle: Option<Rc<dyn Fn(bool)>>,
 }
 
+impl std::fmt::Debug for Toggle {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Toggle").finish_non_exhaustive()
+  }
+}
+
 impl Toggle {
   /// An unchecked checkbox with no handler.
   #[inline(always)]

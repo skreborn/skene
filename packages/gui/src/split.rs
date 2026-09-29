@@ -36,6 +36,14 @@ pub struct SplitLoader {
   inner: Rc<Inner>,
 }
 
+impl std::fmt::Debug for SplitLoader {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("SplitLoader")
+      .finish_non_exhaustive()
+  }
+}
+
 struct Inner {
   state: RefCell<State>,
   /// The loads that have failed so far.

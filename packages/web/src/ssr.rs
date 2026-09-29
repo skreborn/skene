@@ -1578,6 +1578,7 @@ pub fn add_head_element(tag: &str, attributes: &[(&str, &str)]) -> HeadId {
 
 /// A server render, in parts: the stylesheet, the head, the body markup, the hydration
 /// state and the page's language.
+#[derive(Debug)]
 #[must_use]
 pub struct Rendered {
   styles: String,
@@ -1742,6 +1743,7 @@ where
 }
 
 /// One piece of a streamed render, in emission order.
+#[derive(Debug)]
 pub enum StreamPiece<'a> {
   /// The settled shell's styles, head and language, before any body chunk.
   Shell {

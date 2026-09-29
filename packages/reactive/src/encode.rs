@@ -110,7 +110,7 @@ pub const fn key(name: &str) -> u32 {
 }
 
 /// Records values into the encoding.
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[must_use]
 pub struct Recorder {
   out: Vec<u8>,
@@ -248,6 +248,7 @@ impl Recorder {
 }
 
 /// A struct's fields as they are recorded.
+#[derive(Debug)]
 #[must_use]
 pub struct Fields {
   recorder: Recorder,

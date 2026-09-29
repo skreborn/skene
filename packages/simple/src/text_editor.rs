@@ -16,6 +16,7 @@ const LINES: u16 = 3;
 ///
 /// The value flows both ways, exactly as on [`RawTextEditor`]; for custom chrome,
 /// compose the raw control directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleTextEditor<P: Platform> {
   entry: TextEntry,

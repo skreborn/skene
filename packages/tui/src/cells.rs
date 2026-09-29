@@ -41,6 +41,12 @@ pub struct Cells<'a> {
   size: Size<u32>,
 }
 
+impl std::fmt::Debug for Cells<'_> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Cells").finish_non_exhaustive()
+  }
+}
+
 impl<'a> Cells<'a> {
   pub(crate) const fn new(buffer: &'a mut Buffer, origin: (isize, isize), size: Size<u32>) -> Self {
     Self {

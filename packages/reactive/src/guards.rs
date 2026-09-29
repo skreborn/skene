@@ -16,6 +16,12 @@ pub struct ReadGuard<'a, T> {
   _handle: Rc<TrackedRefCell<T>>,
 }
 
+impl<T: std::fmt::Debug> std::fmt::Debug for ReadGuard<'_, T> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    (**self).fmt(formatter)
+  }
+}
+
 impl<'a, T> ReadGuard<'a, T> {
   pub(crate) fn new(handle: Rc<TrackedRefCell<T>>) -> Self {
     let guard = handle.borrow();
@@ -45,6 +51,12 @@ pub struct WriteGuard<'a, T> {
   id: Id,
   guard: Option<TrackedRefMut<'a, T>>,
   _handle: Rc<TrackedRefCell<T>>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for WriteGuard<'_, T> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    (**self).fmt(formatter)
+  }
 }
 
 impl<'a, T> WriteGuard<'a, T> {

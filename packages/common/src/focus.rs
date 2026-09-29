@@ -10,6 +10,7 @@ use crate::realize::with_sink;
 ///
 /// Bound to a focusable view through its `bind_focus`; [`focus`](Self::focus) and
 /// [`blur`](Self::blur) go through the platform and do nothing until that view builds.
+#[derive(Debug)]
 #[must_use]
 pub struct FocusHandle<P: Platform> {
   node: Rc<Cell<Option<NodeId>>>,

@@ -43,6 +43,12 @@ pub struct Router<R: Route> {
   commit: Commit,
 }
 
+impl<R: Route> std::fmt::Debug for Router<R> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Router").finish_non_exhaustive()
+  }
+}
+
 impl<R: Route> Clone for Router<R> {
   fn clone(&self) -> Self {
     Self {

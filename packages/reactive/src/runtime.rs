@@ -73,6 +73,12 @@ pub struct Runtime {
   scheduled: Cell<bool>,
 }
 
+impl std::fmt::Debug for Runtime {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Runtime").finish_non_exhaustive()
+  }
+}
+
 impl Runtime {
   fn new() -> Self {
     let mut graph = Graph::new();

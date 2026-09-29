@@ -40,6 +40,12 @@ pub struct Theme<P: Platform, S: TokenSet<P::TokenValue>, C = NoChild> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform, S: TokenSet<P::TokenValue>, C> std::fmt::Debug for Theme<P, S, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Theme").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform, S: TokenSet<P::TokenValue>> Theme<P, S> {
   /// A theme defining `palette`.
   #[inline(always)]

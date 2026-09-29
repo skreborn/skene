@@ -36,6 +36,12 @@ pub struct TextEntry {
   on_selection_change: Option<Rc<SelectionHandler>>,
 }
 
+impl std::fmt::Debug for TextEntry {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("TextEntry").finish_non_exhaustive()
+  }
+}
+
 impl TextEntry {
   /// An empty single-line field.
   #[inline(always)]

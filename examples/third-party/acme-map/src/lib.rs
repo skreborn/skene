@@ -23,6 +23,7 @@ use skene_web::{Declarations, WebMarkup};
 const SEA: &str = "oklch(0.72 0.1 230)";
 
 /// A map: a `<canvas>` the view paints, sized by the container around it.
+#[derive(Debug)]
 #[must_use]
 pub struct Map<P: Platform> {
   size: Size<f32>,
@@ -150,6 +151,7 @@ fn paint(canvas: &web_sys::HtmlCanvasElement, width: u32, height: u32) {
 }
 
 /// The map as the server leaf renders it: a box in the sea's color, of the map's size.
+#[derive(Debug)]
 #[must_use]
 pub struct Placeholder<P: Platform> {
   map: Map<P>,

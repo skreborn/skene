@@ -46,6 +46,12 @@ use crate::{
 #[must_use]
 pub struct Face<P: Platform>(Box<dyn FnOnce(Memo<String>) -> AnyView<P>>);
 
+impl<P: Platform> std::fmt::Debug for Face<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Face").finish_non_exhaustive()
+  }
+}
+
 /// A choice among fixed options, drawn by the views it holds: the face draws the
 /// control closed, the options draw the list it opens.
 ///
@@ -73,6 +79,12 @@ pub struct RawPicker<P: Platform, F = NoChild> {
   value: Option<Source<String>>,
   on_change: Option<Rc<dyn Fn(String)>>,
   face: F,
+}
+
+impl<P: Platform, F> std::fmt::Debug for RawPicker<P, F> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("RawPicker").finish_non_exhaustive()
+  }
 }
 
 impl<P: Platform> RawPicker<P> {

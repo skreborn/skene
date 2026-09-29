@@ -46,6 +46,14 @@ pub struct SimpleSlider<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform> std::fmt::Debug for SimpleSlider<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("SimpleSlider")
+      .finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> SimpleSlider<P> {
   /// A slider over `0..=100` stepping by `1`, holding its minimum.
   #[inline(always)]

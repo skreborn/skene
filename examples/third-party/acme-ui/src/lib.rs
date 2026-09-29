@@ -105,6 +105,7 @@ impl AcmeUnit for u32 {
 
 /// A short label on the Acme surface: rounded where the medium rounds corners, square
 /// where it has none, padded by the unit's [`AcmeUnit::BADGE_INSET`].
+#[derive(Debug)]
 #[must_use]
 pub struct AcmeBadge<P: Platform> {
   text: String,

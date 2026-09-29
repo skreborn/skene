@@ -68,6 +68,12 @@ pub struct Children<P: Platform, Kind = PlainChild> {
   kind: PhantomData<fn() -> Kind>,
 }
 
+impl<P: Platform, Kind> std::fmt::Debug for Children<P, Kind> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Children").finish_non_exhaustive()
+  }
+}
+
 enum Segment<P: Platform> {
   Static(Vec<AnyView<P>>),
   Keyed(Box<dyn FnOnce(NodeId)>),
@@ -161,6 +167,7 @@ impl<P: Platform, Kind: 'static> Children<P, Kind> {
 
 /// Proof that a call came from core; only the public setters of [`HasChildren`] hold
 /// one.
+#[derive(Debug)]
 #[must_use]
 pub struct Seal(());
 

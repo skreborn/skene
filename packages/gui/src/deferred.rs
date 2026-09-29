@@ -23,6 +23,12 @@ pub struct Deferred {
   content: Box<dyn FnOnce() -> NodeId>,
 }
 
+impl std::fmt::Debug for Deferred {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Deferred").finish_non_exhaustive()
+  }
+}
+
 impl Deferred {
   /// Defers `content`: its async work reports to a boundary of its own, and a
   /// streaming render flushes the surrounding page before it settles.

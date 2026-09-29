@@ -63,6 +63,12 @@ pub struct Overlay<P: Platform, C = NoChild> {
   child: C,
 }
 
+impl<P: Platform, C> std::fmt::Debug for Overlay<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Overlay").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Overlay<P> {
   fn new(modal: bool, hint: bool) -> Self {
     Self {

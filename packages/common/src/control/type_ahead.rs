@@ -14,7 +14,7 @@ pub const TYPE_AHEAD_RESET: Duration = Duration::from_millis(500);
 
 /// The characters typed in quick succession over a grouping control, cleared once the
 /// platform's clock has run [`TYPE_AHEAD_RESET`] past the last.
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[must_use]
 pub struct TypeAhead {
   buffer: RefCell<String>,

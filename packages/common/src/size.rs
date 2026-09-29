@@ -12,6 +12,7 @@ use crate::realize::with_sink;
 /// Bound to a box through its `bind_size`; [`size`](Self::size) is `None` until the
 /// platform has measured the box and tracks every later measurement, so a view that lays
 /// out by its own size derives from it.
+#[derive(Debug)]
 #[must_use]
 pub struct SizeHandle<P: Platform> {
   size: Signal<Option<Size<P::Scalar>>>,

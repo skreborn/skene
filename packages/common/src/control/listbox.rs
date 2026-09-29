@@ -30,6 +30,14 @@ pub struct ListboxGroup {
   commit_on_tab: bool,
 }
 
+impl std::fmt::Debug for ListboxGroup {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ListboxGroup")
+      .finish_non_exhaustive()
+  }
+}
+
 impl ListboxGroup {
   /// A group whose options join `roster`, answering `chosen` for the chosen value and
   /// asking `choose` for a choice; provided as context by a control listing options.
@@ -144,6 +152,12 @@ pub struct Listbox {
   on_choose: Option<Rc<dyn Fn(String)>>,
   roster: Roster,
   commit_on_tab: bool,
+}
+
+impl std::fmt::Debug for Listbox {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Listbox").finish_non_exhaustive()
+  }
 }
 
 impl Listbox {
@@ -280,6 +294,7 @@ impl<P: Platform> Behavior<P> for Listbox {
 ///
 /// Outside a listbox it reports its role, is never selected and takes focus like any
 /// control.
+#[derive(Debug)]
 #[must_use]
 pub struct ListItem {
   value: String,

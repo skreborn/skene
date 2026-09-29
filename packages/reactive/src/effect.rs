@@ -24,6 +24,16 @@ where
   ty: PhantomData<(T, F)>,
 }
 
+impl<T, F> std::fmt::Debug for Effect<T, F>
+where
+  T: 'static,
+  F: Fn(Option<T>) -> T,
+{
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Effect").finish_non_exhaustive()
+  }
+}
+
 /// Addresses one effect: a `Copy` id that disposes, pauses or resumes it.
 ///
 /// Dropping a handle does nothing; the effect belongs to its owner.
@@ -236,6 +246,12 @@ impl Computation for ReactionBody {
 pub struct Reaction {
   id: Cell<Option<Id>>,
   on_invalidate: Rc<dyn Fn()>,
+}
+
+impl std::fmt::Debug for Reaction {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Reaction").finish_non_exhaustive()
+  }
 }
 
 impl Drop for Reaction {

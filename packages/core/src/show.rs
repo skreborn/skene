@@ -18,6 +18,12 @@ pub struct Show<P: Platform, C = NoChild> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform, C> std::fmt::Debug for Show<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Show").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Show<P> {
   /// A `Show` with no child yet, shown until told otherwise.
   #[inline(always)]

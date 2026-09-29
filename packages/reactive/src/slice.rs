@@ -25,6 +25,16 @@ where
   ty: PhantomData<O>,
 }
 
+impl<T: 'static, O, GF, UF> std::fmt::Debug for Slice<T, O, GF, UF>
+where
+  GF: Fn(&T) -> O + Clone + 'static,
+  UF: Fn(&mut T, &O) + Clone + 'static,
+{
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Slice").finish_non_exhaustive()
+  }
+}
+
 impl<T, O, GF, UF> Clone for Slice<T, O, GF, UF>
 where
   GF: Fn(&T) -> O + Clone + 'static,

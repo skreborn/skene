@@ -21,10 +21,9 @@ proving it unnecessary, or by recording it under the decisions at the end; it is
 left half-done in a code comment.
 
 1. **The rest of the house rules in the gate.** All-or-none field and variant docs
-    (28 types document some of their fields, about 210 short),
-    `missing_debug_implementations` (108 public types without `Debug` on the host
-    alone), `trigger_` naming on the test doubles, and a `cargo public-api` snapshot so a
-    change to the surface shows in review. The workspace declares no license, so `cargo
+    (28 types document some of their fields, about 210 short), `trigger_` naming on the
+    test doubles, and a `cargo public-api` snapshot so a change to the surface shows in
+    review. The workspace declares no license, so `cargo
     deny check licenses` has nothing to hold the dependencies to. Neither CI workflow,
     the gate on every pull request nor the weekly RustSec advisories, has run yet.
     - With them: `display` joins the banned words once `RunDisplay` is renamed, checked

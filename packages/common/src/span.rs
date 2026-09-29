@@ -59,6 +59,12 @@ pub struct Span<P: Platform> {
   click: Vec<Rc<ClickHandler>>,
 }
 
+impl<P: Platform> std::fmt::Debug for Span<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Span").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Span<P> {
   /// A run reading `content`.
   #[inline(always)]
@@ -215,6 +221,7 @@ impl<P: Platform> View<P> for Span<P> {
 ///
 /// Carries no properties of its own; decorating it means wrapping it in a
 /// [`Container`](crate::Container).
+#[derive(Debug)]
 #[must_use]
 pub struct RichText<P: Platform> {
   spans: Vec<Span<P>>,

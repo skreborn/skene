@@ -44,6 +44,12 @@ pub struct Flexible<P: Platform, C = NoChild> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform, C> std::fmt::Debug for Flexible<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Flexible").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Default for Flexible<P> {
   #[inline(always)]
   fn default() -> Self {

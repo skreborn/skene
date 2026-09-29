@@ -38,6 +38,7 @@ use crate::{Anchor, FocusHandle, LayoutBox, SizeHandle, decoration};
 /// fills the container when the container is sized and the container hugs the child
 /// when it is not; [`set_alignment`](Self::set_alignment) places a child that does
 /// neither. Several children take a layout view, wrapped in a container to decorate it.
+#[derive(Debug)]
 #[must_use]
 pub struct Container<P: Platform> {
   inner: LayoutBox<P, PlainChild>,

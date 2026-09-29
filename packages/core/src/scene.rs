@@ -180,6 +180,7 @@ impl<P: Platform> Debug for Annotation<P> {
 
 /// A handler with the owner it was registered under, which it runs as: what it
 /// creates, spawns or looks up in context belongs to the view that registered it.
+#[derive(Debug)]
 pub struct Handler<H: ?Sized> {
   owner: Owner,
   run: Rc<H>,
@@ -246,6 +247,12 @@ pub struct HandlerSet {
   toggle: Vec<Handler<ToggleHandler>>,
   dismiss: Vec<Handler<PlainHandler>>,
   context_menu: Vec<Handler<PointerHandler>>,
+}
+
+impl std::fmt::Debug for HandlerSet {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("HandlerSet").finish_non_exhaustive()
+  }
 }
 
 impl HandlerSet {
@@ -400,6 +407,12 @@ pub struct NodeRecord<P: Platform> {
   part: Option<Part>,
   position: Position,
   access: Option<Box<AccessReports>>,
+}
+
+impl<P: Platform> std::fmt::Debug for NodeRecord<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("NodeRecord").finish_non_exhaustive()
+  }
 }
 
 /// What a node reports to assistive technology: the view's own report, and the report
@@ -578,6 +591,12 @@ pub struct Scene<P: Platform> {
   definitions_generation: u64,
   graveyard: Vec<HandlerSet>,
   mirrors: Vec<Mirror<P>>,
+}
+
+impl<P: Platform> std::fmt::Debug for Scene<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Scene").finish_non_exhaustive()
+  }
 }
 
 impl<P: Platform> Default for Scene<P> {

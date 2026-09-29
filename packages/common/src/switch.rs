@@ -26,6 +26,12 @@ pub struct Switch<P: Platform, K> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform, K> std::fmt::Debug for Switch<P, K> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Switch").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform, K: PartialEq + 'static> Default for Switch<P, K> {
   #[inline(always)]
   fn default() -> Self {

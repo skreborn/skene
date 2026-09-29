@@ -23,6 +23,7 @@ use crate::realize::ChildBuilder;
 /// The signals the built-ins wait on are a platform's own: the GUI facade's
 /// `media::hydrated` for a render made without script, and
 /// [`Painting::available`](crate::Painting::available) for a painted box's pixels.
+#[derive(Debug)]
 #[must_use]
 pub struct Enhance<P: Platform, C = NoChild> {
   live: ReadSignal<bool>,

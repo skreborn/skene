@@ -13,6 +13,7 @@ use super::shape::{SimpleUnit, define_defaults, field_chrome};
 ///
 /// The value flows both ways, exactly as on [`RawTextField`]; for custom chrome,
 /// compose the raw control directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleTextField<P: Platform> {
   entry: TextEntry,

@@ -30,6 +30,12 @@ pub struct Painted<P: Painting> {
   fallback: Option<ChildBuilder<P>>,
 }
 
+impl<P: Painting> std::fmt::Debug for Painted<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Painted").finish_non_exhaustive()
+  }
+}
+
 impl<P: Painting> Painted<P> {
   /// A box painted by `painter`.
   #[inline(always)]

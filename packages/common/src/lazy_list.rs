@@ -377,6 +377,12 @@ fn rigid<P: Platform>(mut container: Container<P>) -> Container<P> {
 #[must_use]
 pub struct LazyColumn<P: Platform>(LazyList<P>);
 
+impl<P: Platform> std::fmt::Debug for LazyColumn<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("LazyColumn").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> LazyColumn<P> {
   /// An empty column with an overscan of three items.
   #[inline(always)]
@@ -445,6 +451,12 @@ impl<P: Platform> View<P> for LazyColumn<P> {
 /// ([`ItemExtent`]); until one is set every item builds.
 #[must_use]
 pub struct LazyRow<P: Platform>(LazyList<P>);
+
+impl<P: Platform> std::fmt::Debug for LazyRow<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("LazyRow").finish_non_exhaustive()
+  }
+}
 
 impl<P: Platform> LazyRow<P> {
   /// An empty row with an overscan of three items.

@@ -26,6 +26,12 @@ pub struct Roster {
   changed: Trigger,
 }
 
+impl std::fmt::Debug for Roster {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Roster").finish_non_exhaustive()
+  }
+}
+
 /// One member: its node, the value it carries, the name it goes by when its control's
 /// label supplied one, and whether its control is disabled.
 #[derive(Clone)]

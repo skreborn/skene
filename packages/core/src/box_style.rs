@@ -500,7 +500,7 @@ impl<N: Scalar, C: Clone + PartialEq + Debug + 'static, X: StyleExtension> BoxFi
 
 /// A box's motion: the transitions between its values and the keyframe animations it
 /// plays.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[must_use]
 pub struct BoxDynamics<N: Scalar, X: StyleExtension = ()> {
   /// The property transitions.

@@ -19,6 +19,14 @@ pub struct NativePicker {
   on_change: Option<Rc<dyn Fn(String)>>,
 }
 
+impl std::fmt::Debug for NativePicker {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("NativePicker")
+      .finish_non_exhaustive()
+  }
+}
+
 impl NativePicker {
   /// A picker with no handler.
   #[inline(always)]

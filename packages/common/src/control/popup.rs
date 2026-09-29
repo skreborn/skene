@@ -41,6 +41,12 @@ pub struct Popup {
   on_typed: Option<Rc<Typed>>,
 }
 
+impl std::fmt::Debug for Popup {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Popup").finish_non_exhaustive()
+  }
+}
+
 impl Popup {
   /// A closed face with no handler.
   #[inline(always)]

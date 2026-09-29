@@ -8,6 +8,7 @@
 //! them into another language (the web platform's CSS rules).
 
 /// One level of a composed condition: a leaf, or a combination of subconditions.
+#[derive(Debug)]
 pub enum ConditionShape<'condition, C> {
   /// A facade-specific leaf condition.
   Leaf(&'condition C),

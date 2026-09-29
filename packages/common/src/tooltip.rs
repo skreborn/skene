@@ -62,6 +62,12 @@ pub struct Tooltip<P: Platform, C = NoChild> {
   child: C,
 }
 
+impl<P: Platform, C> std::fmt::Debug for Tooltip<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Tooltip").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Tooltip<P> {
   fn with(content: Content<P>) -> Self {
     Self {

@@ -7,7 +7,7 @@ use longest_increasing_subsequence::lis_with;
 /// Holds its working buffers so a repeated reconcile allocates nothing. Platform-agnostic:
 /// a facade's reconciliation feeds it positions and applies the result with its own tree
 /// operations.
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[must_use]
 pub struct Reorder {
   subsequence: Vec<usize>,

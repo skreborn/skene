@@ -63,6 +63,7 @@ const CHECK: &str = "✓";
 /// each row's check the [`Part::Item`], so all three follow their control's state on
 /// every facade. The chosen value flows both ways, exactly as on [`RawPicker`]; for
 /// custom chrome, compose the raw control directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimplePicker<P: Platform> {
   options: Vec<(String, String)>,

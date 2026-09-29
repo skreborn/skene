@@ -29,6 +29,7 @@ use crate::{LayoutBox, properties};
 /// Carries layout properties and nothing else; decorating it means wrapping it in a
 /// [`Container`](crate::Container). Accepts any view or a
 /// [`GridCell`](crate::GridCell) wrapper as a child.
+#[derive(Debug)]
 #[must_use]
 pub struct Grid<P: Platform> {
   inner: LayoutBox<P, GridChild>,

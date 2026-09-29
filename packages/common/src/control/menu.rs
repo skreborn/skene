@@ -28,6 +28,12 @@ pub struct MenuGroup {
   type_ahead: Rc<TypeAhead>,
 }
 
+impl std::fmt::Debug for MenuGroup {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("MenuGroup").finish_non_exhaustive()
+  }
+}
+
 impl MenuGroup {
   /// Asks for the item holding `value` to run.
   #[inline(always)]
@@ -129,6 +135,12 @@ pub struct Menu {
   roster: Roster,
 }
 
+impl std::fmt::Debug for Menu {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Menu").finish_non_exhaustive()
+  }
+}
+
 impl Menu {
   /// A menu with no handler, its roster owned by the current owner.
   #[inline(always)]
@@ -211,6 +223,7 @@ impl<P: Platform> Behavior<P> for Menu {
 /// type-ahead picks, and it is the menu's tab stop while it is the first enabled item.
 ///
 /// Outside a menu it reports its role and takes focus like any control.
+#[derive(Debug)]
 #[must_use]
 pub struct MenuOption {
   value: String,

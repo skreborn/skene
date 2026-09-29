@@ -26,6 +26,7 @@ use crate::{LayoutBox, properties};
 /// [`Container`](crate::Container). Accepts any view or a [`Pinned`](crate::Pinned)
 /// wrapper as a child; a pinned child sits against the stack's edges instead of where
 /// the alignment puts it.
+#[derive(Debug)]
 #[must_use]
 pub struct Stack<P: Platform> {
   inner: LayoutBox<P, StackChild>,

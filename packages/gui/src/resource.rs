@@ -23,6 +23,7 @@ use skene_web as platform;
 ///   Some(user) => profile(user).build(),
 /// })
 /// ```
+#[derive(Debug)]
 #[must_use]
 pub struct Resource<T: 'static>(skene_reactive::Resource<T>);
 

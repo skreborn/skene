@@ -32,6 +32,7 @@ use super::{
 /// The mark is the control's [`Part::Mark`], so it follows the control's state on
 /// every facade. The checked state flows both ways; for a checkbox drawn some other
 /// way, compose [`RawCheckbox`] directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleCheckbox<P: Platform> {
   toggle: Toggle,

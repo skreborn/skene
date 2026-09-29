@@ -32,6 +32,7 @@ type Placement<P> = Value<Line<GridPlacement>, Condition<<P as Platform>::Scalar
 /// own style, so they compile, condition and derive like any property. The child is
 /// auto-placed on an axis with no placement set. Accepted only where a grid's children
 /// are; holds [`NoChild`] until `set_child` supplies the child.
+#[derive(Debug)]
 #[must_use]
 pub struct GridCell<P: Platform, C = NoChild> {
   row: Option<Placement<P>>,

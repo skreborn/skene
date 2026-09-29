@@ -35,6 +35,12 @@ pub struct Lazy {
   load: Box<dyn FnOnce(NodeId)>,
 }
 
+impl std::fmt::Debug for Lazy {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Lazy").finish_non_exhaustive()
+  }
+}
+
 impl Lazy {
   /// Creates the view over `load`, run to completion as a task.
   #[inline(always)]

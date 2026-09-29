@@ -29,6 +29,12 @@ pub struct Text<P: Platform> {
   run: Run<P>,
 }
 
+impl<P: Platform> std::fmt::Debug for Text<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Text").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Text<P> {
   /// A run reading `content`.
   #[inline(always)]

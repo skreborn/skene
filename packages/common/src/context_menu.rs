@@ -76,6 +76,12 @@ pub struct MenuItem {
   on_select: Option<Rc<dyn Fn()>>,
 }
 
+impl std::fmt::Debug for MenuItem {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("MenuItem").finish_non_exhaustive()
+  }
+}
+
 impl MenuItem {
   fn with(kind: ItemKind, label: Source<String>) -> Self {
     Self {
@@ -192,6 +198,7 @@ impl MenuItem {
 /// `set_item_*` setters. Holds [`NoChild`] until [`set_child`](Self::set_child)
 /// supplies the view served; [`serve`](Self::serve) attaches the menu to a node that
 /// already exists instead.
+#[derive(Debug)]
 #[must_use]
 pub struct ContextMenu<P: Platform, C = NoChild> {
   items: Vec<MenuItem>,

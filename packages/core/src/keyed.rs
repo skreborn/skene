@@ -13,6 +13,7 @@ use super::{AnyKind, Children, HasChildren, NodeId, Platform, Seal, View};
 /// keeps its snapshot identity wherever the view sits and however its siblings change,
 /// which is the same identity [`reconcile`](crate::reconcile) gives a keyed list item.
 /// A container's setters carry through, so the children still come last.
+#[derive(Debug)]
 #[must_use]
 pub struct Keyed<P: Platform, V> {
   key: Key,

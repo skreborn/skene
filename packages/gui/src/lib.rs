@@ -595,6 +595,7 @@ where
 /// client with no JavaScript receives a correct, styled document progressively, since
 /// the chunks concatenate, in order, into the markup [`render_to_string`] would
 /// produce with the deltas beside the content they style.
+#[derive(Debug)]
 #[cfg(skene_leaf = "server")]
 #[must_use]
 pub struct Stream {

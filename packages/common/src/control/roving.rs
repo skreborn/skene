@@ -30,6 +30,14 @@ pub struct RovingGroup {
   roster: Roster,
 }
 
+impl std::fmt::Debug for RovingGroup {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("RovingGroup")
+      .finish_non_exhaustive()
+  }
+}
+
 impl RovingGroup {
   /// The chosen member's value, tracked.
   #[inline(always)]
@@ -99,6 +107,12 @@ impl RovingGroup {
 pub struct Roving {
   chosen: Option<Rc<dyn Fn() -> Option<String>>>,
   on_choose: Option<Rc<dyn Fn(String)>>,
+}
+
+impl std::fmt::Debug for Roving {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Roving").finish_non_exhaustive()
+  }
 }
 
 impl Roving {
@@ -195,6 +209,7 @@ impl<P: Platform> Behavior<P> for Roving {
 ///
 /// Outside a group it reports its role, is never checked and takes focus like any
 /// control.
+#[derive(Debug)]
 #[must_use]
 pub struct RadioMember {
   value: String,

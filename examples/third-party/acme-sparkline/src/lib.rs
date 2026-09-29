@@ -23,6 +23,7 @@ use skene_tui::CellPainter;
 const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
 /// A row of bars, one cell per value, scaled to the values' range.
+#[derive(Debug)]
 #[must_use]
 pub struct Sparkline<P: Platform> {
   values: Vec<f32>,

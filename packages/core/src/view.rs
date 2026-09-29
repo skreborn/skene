@@ -55,6 +55,12 @@ pub struct AnyView<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform> std::fmt::Debug for AnyView<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("AnyView").finish_non_exhaustive()
+  }
+}
+
 enum Inner {
   Build(Box<dyn FnOnce() -> NodeId>),
   Node(NodeId),

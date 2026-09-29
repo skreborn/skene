@@ -19,6 +19,12 @@ pub struct Canvas {
   height: u16,
 }
 
+impl std::fmt::Debug for Canvas {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Canvas").finish_non_exhaustive()
+  }
+}
+
 /// One recorded drawing step.
 enum Command {
   Transform(kurbo::Affine),

@@ -10,7 +10,7 @@ use skene_reactive::{Signal, Update, With, use_context};
 /// tasks run outside the build scope, where the lookup no longer resolves—then
 /// [`report`](Self::report) into it from anywhere. The boundary presents its fallback
 /// while any errors are held; [`clear`](Self::clear) dismisses them.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[must_use]
 pub struct Errors {
   errors: Signal<Vec<Rc<dyn Error>>>,

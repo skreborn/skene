@@ -30,6 +30,7 @@ use super::{
 /// [`set_child`](Self::set_child), so any view takes a menu by wrapping, or
 /// [`serve`](Self::serve) attaches it to a node that already exists. For anything
 /// beyond that, compose [`ContextMenu`] directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleContextMenu<P: Platform, C = NoChild> {
   raw: ContextMenu<P, C>,

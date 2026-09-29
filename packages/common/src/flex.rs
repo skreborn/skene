@@ -30,6 +30,7 @@ macro_rules! flex_layout {
     /// Carries layout properties and nothing else; decorating it means wrapping it in
     /// a [`Container`](crate::Container). Accepts any view or a
     /// [`Flexible`](crate::Flexible) wrapper as a child.
+    #[derive(Debug)]
     #[must_use]
     pub struct $name<P: Platform> {
       inner: LayoutBox<P, FlexChild>,

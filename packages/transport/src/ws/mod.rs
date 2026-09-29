@@ -151,6 +151,7 @@ impl Receiver {
 }
 
 /// The next message, or `None` once the socket is closed and every message taken.
+#[derive(Debug)]
 #[must_use]
 pub struct Receive<'a>(&'a WebSocket);
 

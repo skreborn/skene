@@ -9,6 +9,7 @@ use crate::{
 
 /// A signal owned by this handle: unowned by any [`Owner`](crate::Owner), disposed
 /// when the handle drops.
+#[derive(Debug)]
 #[must_use]
 pub struct OwnedSignal<T: 'static> {
   id: Id,

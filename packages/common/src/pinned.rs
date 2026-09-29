@@ -28,6 +28,7 @@ use skene_core::{
 /// the child where the stack's alignment does on that axis; every edge is `Auto` until
 /// [`set_edges`](Self::set_edges). Accepted only where a stack's children are; holds
 /// [`NoChild`] until `set_child` supplies the child.
+#[derive(Debug)]
 #[must_use]
 pub struct Pinned<P: Platform, C = NoChild> {
   edges: Value<Inset<Dimension<P::Scalar>>, Condition<P::Scalar>>,

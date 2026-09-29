@@ -37,6 +37,14 @@ pub struct ErrorBoundary<P: Platform, C = NoChild> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform, C> std::fmt::Debug for ErrorBoundary<P, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ErrorBoundary")
+      .finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> Default for ErrorBoundary<P> {
   #[inline(always)]
   fn default() -> Self {

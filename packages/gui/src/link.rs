@@ -32,6 +32,7 @@ use crate::ActivePlatform;
 ///
 /// A modified click—control, shift, alt, or command held—is left to the platform, so
 /// open-in-new-tab and friends keep working.
+#[derive(Debug)]
 #[must_use]
 pub struct Link<R: Route> {
   route: R,

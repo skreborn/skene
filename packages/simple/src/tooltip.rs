@@ -18,6 +18,7 @@ use super::{
 /// and [`view`](Self::view) any view; the described view comes last through
 /// [`set_child`](Self::set_child), so any view takes a tooltip by wrapping. For
 /// anything beyond that, compose [`Tooltip`] directly.
+#[derive(Debug)]
 #[must_use]
 pub struct SimpleTooltip<P: Platform, C = NoChild> {
   raw: Tooltip<P, C>,

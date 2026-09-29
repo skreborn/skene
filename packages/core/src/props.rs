@@ -59,7 +59,7 @@ pub type BoxKeyframe<P> = BoxStyle<<P as Platform>::Scalar, Keyframe, <P as Plat
 pub type RunKeyframe<P> = RunStyle<Keyframe, <P as Platform>::StyleExt>;
 
 /// Everything a platform needs to realize a box.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct BoxProps<P: Platform> {
   /// The layout mode.
@@ -84,7 +84,7 @@ pub struct BoxProps<P: Platform> {
 }
 
 /// Everything a platform needs to realize a text run.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct RunProps<P: Platform> {
   /// How the run participates in the surrounding layout.
@@ -106,7 +106,7 @@ pub struct RunProps<P: Platform> {
 
 /// Everything a platform needs to realize an overlay: a box shown above the app while
 /// open, opened and closed through [`Platform::set_overlay_open`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct OverlayProps<P: Platform> {
   /// Whether the overlay is modal: it traps focus and blocks interaction beneath it.
@@ -126,7 +126,7 @@ pub struct OverlayProps<P: Platform> {
 ///
 /// A read tracks, so a condition against a container re-evaluates when the platform
 /// reports a new size or names a container it had not measured before.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[must_use]
 pub struct ContainerSizes<N: 'static>(Signal<FxHashMap<ContainerName, Size<N>>>);
 
@@ -169,7 +169,7 @@ impl<N: Scalar> Default for ContainerSizes<N> {
 }
 
 /// The environment as signals: what every [`Media`](super::Media) condition answers to.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[must_use]
 pub struct MediaSignals<N: 'static> {
   /// The viewport's size.

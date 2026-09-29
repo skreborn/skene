@@ -80,6 +80,12 @@ pub enum Source<T> {
   Derived(Rc<dyn Fn() -> T>),
 }
 
+impl<T> std::fmt::Debug for Source<T> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Source").finish_non_exhaustive()
+  }
+}
+
 impl<T: Clone> Clone for Source<T> {
   #[inline(always)]
   fn clone(&self) -> Self {
@@ -119,6 +125,14 @@ impl<T: 'static> Source<T> {
 #[must_use]
 pub struct ChildBuilder<P: Platform>(Box<dyn FnOnce() -> AnyView<P>>);
 
+impl<P: Platform> std::fmt::Debug for ChildBuilder<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ChildBuilder")
+      .finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> ChildBuilder<P> {
   /// A builder running `child` when the view builds.
   #[inline(always)]
@@ -141,6 +155,7 @@ impl<P: Platform> ChildBuilder<P> {
 /// inside a wrapper, with handlers registered on it through the [`Scene`]. A box the
 /// view creates through [`Platform::create_box`] instead needs no registration beyond
 /// the [`LayoutBox`](crate::LayoutBox) that made it.
+#[derive(Debug)]
 #[must_use]
 pub struct LowLevel<P: Platform>(PhantomData<fn() -> P>);
 

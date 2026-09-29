@@ -62,6 +62,14 @@ pub struct SimpleButton<P: Platform> {
   variant: Source<SimpleVariant>,
 }
 
+impl<P: Platform> std::fmt::Debug for SimpleButton<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("SimpleButton")
+      .finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> SimpleButton<P> {
   /// A button carrying `label`.
   #[inline(always)]

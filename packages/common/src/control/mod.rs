@@ -223,6 +223,14 @@ pub struct ControlHandle<P: Platform> {
   platform: PhantomData<fn() -> P>,
 }
 
+impl<P: Platform> std::fmt::Debug for ControlHandle<P> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter
+      .debug_struct("ControlHandle")
+      .finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform> ControlHandle<P> {
   /// The control's node.
   #[inline(always)]
@@ -290,6 +298,7 @@ impl<P: Platform> ControlHandle<P> {
 
 /// A control's caption: a view mounted as its [`Part::Label`], with the accessible
 /// name it supplies when its text is known at build.
+#[derive(Debug)]
 #[must_use]
 pub struct Label<P: Platform> {
   view: AnyView<P>,
@@ -406,6 +415,12 @@ pub struct Control<P: Platform, B: Behavior<P>, C = NoChild> {
   parts: Vec<(Part, AnyView<P>)>,
   observers: Observers,
   child: C,
+}
+
+impl<P: Platform, B: Behavior<P>, C> std::fmt::Debug for Control<P, B, C> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("Control").finish_non_exhaustive()
+  }
 }
 
 impl<P: Platform, B: Behavior<P>> Control<P, B> {

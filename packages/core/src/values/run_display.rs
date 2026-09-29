@@ -1,5 +1,5 @@
 /// How a text run participates in the surrounding layout.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[must_use]
 pub enum RunDisplay {
   /// Its own line.

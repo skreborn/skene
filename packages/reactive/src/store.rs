@@ -168,7 +168,7 @@ fn edge_hash(kind: u8, key: impl Hash) -> u64 {
 ///
 /// Every lens of one store carries the same core; custom lenses only forward it and
 /// intern their locations through it.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[must_use]
 pub struct StoreCore {
   trie: Signal<Trie>,
@@ -543,6 +543,7 @@ impl<T: 'static> StoreField for Store<T> {
 
 /// A lens onto one named field of the parent location's value; built by the accessors
 /// `#[derive(Store)]` generates.
+#[derive(Debug)]
 #[must_use]
 pub struct Subfield<Parent: StoreField, T> {
   parent: Parent,
@@ -611,6 +612,7 @@ impl<Parent: StoreField, T: 'static> StoreField for Subfield<Parent, T> {
 ///
 /// Positional: a structural change to the `Vec` shifts what it addresses, and such a
 /// change notifies every element reader.
+#[derive(Debug)]
 #[must_use]
 pub struct AtIndex<Parent, T> {
   parent: Parent,
@@ -747,6 +749,7 @@ where
 /// addressed by key and the same element addressed by position
 /// ([`IndexedField::at`]) are one location: a write through either wakes the readers
 /// through both, and a key's location follows its element across a reorder.
+#[derive(Debug)]
 #[must_use]
 pub struct KeyedBy<Parent, K, T> {
   parent: Parent,
@@ -834,6 +837,7 @@ where
 
 /// A lens onto one entry of the parent location, by key; built by
 /// [`KeyedField::key`] and [`KeyedField::entries`].
+#[derive(Debug)]
 #[must_use]
 pub struct AtKey<Parent: KeyedField> {
   parent: Parent,

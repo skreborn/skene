@@ -104,6 +104,12 @@ pub struct LayoutBox<P: Platform, Kind = PlainChild> {
   children: Children<P, Kind>,
 }
 
+impl<P: Platform, Kind> std::fmt::Debug for LayoutBox<P, Kind> {
+  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    formatter.debug_struct("LayoutBox").finish_non_exhaustive()
+  }
+}
+
 impl<P: Platform, Kind: 'static> LayoutBox<P, Kind> {
   /// A box laid out in `layout`, with no properties set.
   #[inline(always)]

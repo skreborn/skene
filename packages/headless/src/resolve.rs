@@ -2,14 +2,16 @@
 //! feed the shared [`Resolver`], and the presented value lays the node's motion over
 //! what it resolved to.
 
-use skene_common::typography;
+use skene_common::{
+  gui::{GuiExt, GuiProperty},
+  typography,
+};
 use skene_core::{
   Animation,
   BoxKeyframe,
   ContainerName,
   Environment,
   Interaction,
-  NoProperty,
   NodeId,
   NodeRecord,
   PropertyKey,
@@ -130,13 +132,20 @@ impl Env {
 
   /// Runs `operation` with the resolver of this environment, reading tokens where they
   /// are defined and slots through the store.
-  pub(crate) fn with_resolver<R>(&self, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
+  pub(crate) fn with_resolver<R>(
+    &self,
+    operation: impl FnOnce(&Resolver<'_, f32, GuiExt>) -> R,
+  ) -> R {
     self.with_resolver_at(self.font_size(), operation)
   }
 
   /// Runs `operation` with the resolver of this environment, an `em` evaluating against
   /// `em`.
-  fn with_resolver_at<R>(&self, em: f32, operation: impl FnOnce(&Resolver<'_, f32>) -> R) -> R {
+  fn with_resolver_at<R>(
+    &self,
+    em: f32,
+    operation: impl FnOnce(&Resolver<'_, f32, GuiExt>) -> R,
+  ) -> R {
     let token = |name| self.token(name);
     let slot = |slot| {
       let node = self.node?;
@@ -158,7 +167,7 @@ impl Env {
 fn box_frames(
   env: &Env,
   animation: &Animation<BoxKeyframe<Headless>>,
-  key: PropertyKey<NoProperty>,
+  key: PropertyKey<GuiProperty>,
 ) -> Animation<Option<SlotValue>> {
   animation.map_keyframes(|style| {
     env
@@ -171,7 +180,7 @@ fn box_frames(
 fn run_frames(
   env: &Env,
   animation: &Animation<RunKeyframe<Headless>>,
-  key: PropertyKey<NoProperty>,
+  key: PropertyKey<GuiProperty>,
 ) -> Animation<Option<SlotValue>> {
   animation.map_keyframes(|style| {
     env
@@ -183,13 +192,13 @@ fn run_frames(
 /// The motion declared on a node that bears on one property: its transitions, and its
 /// animations reading the property from each keyframe, resolved.
 struct DeclaredMotion {
-  transitions: Vec<Transition<NoProperty>>,
+  transitions: Vec<Transition<GuiProperty>>,
   animations: Vec<Animation<Option<SlotValue>>>,
 }
 
 impl DeclaredMotion {
   /// The motion of `kind` bearing on `key`; `None` for a node with no style.
-  fn of(env: &Env, kind: &Kind, key: PropertyKey<NoProperty>) -> Option<Self> {
+  fn of(env: &Env, kind: &Kind, key: PropertyKey<GuiProperty>) -> Option<Self> {
     let box_props = match kind {
       Kind::Box(props) => &**props,
       Kind::Control(props) => &props.box_props,
@@ -227,7 +236,7 @@ fn present(
   env: &Env,
   node: NodeId,
   kind: &Kind,
-  key: PropertyKey<NoProperty>,
+  key: PropertyKey<GuiProperty>,
   target: Option<SlotValue>,
 ) -> Option<SlotValue> {
   let Some(declared) = DeclaredMotion::of(env, kind, key)
@@ -265,7 +274,7 @@ fn present(
 
 /// The property `key` of `node` resolved and presented: a box's as a [`BoxValue`], a
 /// run's as a [`RunValue`], in flight where a transition or an animation moves it.
-pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
+pub(crate) fn resolve(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
   let target = resolve_target(node, key);
   let env = Env::of(node)?;
   let kind = with_store(|store| match &store.record(node)?.kind {
@@ -280,7 +289,7 @@ pub(crate) fn resolve(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Slot
 }
 
 /// The property `key` of `node` resolved, motion aside: the value it is heading for.
-fn resolve_target(node: NodeId, key: PropertyKey<NoProperty>) -> Option<SlotValue> {
+fn resolve_target(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<SlotValue> {
   let env = Env::of(node)?;
   let kind = with_store(|store| match &store.record(node)?.kind {
     Kind::Box(props) => Some(Kind::Box(props.clone())),

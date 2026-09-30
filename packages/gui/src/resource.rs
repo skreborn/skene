@@ -7,6 +7,8 @@ pub use skene_reactive::LoadState;
 #[cfg(not(skene_leaf = "host"))]
 use skene_web as platform;
 
+use crate::task::install_executor;
+
 /// A [`skene_reactive::Resource`] that hydrates: a value loaded on the server crosses
 /// the boundary to the client and is adopted there rather than re-loaded.
 ///
@@ -62,10 +64,10 @@ impl<T: 'static> Resource<T> {
     F: Future<Output = T> + 'static,
     T: Serialize + DeserializeOwned,
   {
+    install_executor();
+
     #[cfg(not(skene_leaf = "host"))]
     {
-      platform::install_executor();
-
       if let Some(state) = platform::adopt_next()
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
       {
@@ -98,10 +100,10 @@ impl<T: 'static> Resource<T> {
     F: Future<Output = T> + 'static,
     T: Serialize + DeserializeOwned,
   {
+    install_executor();
+
     #[cfg(not(skene_leaf = "host"))]
     {
-      platform::install_executor();
-
       if let Some(state) = platform::adopt_tagged(tag)
         && let Ok(adopted) = serde_json::from_str::<T>(&state)
       {
@@ -134,13 +136,11 @@ impl<T: 'static> Resource<T> {
   where
     F: Future<Output = T> + 'static,
   {
-    #[cfg(not(skene_leaf = "host"))]
-    {
-      platform::install_executor();
+    install_executor();
 
-      if platform::is_server() {
-        return Self(skene_reactive::Resource::unloaded(load));
-      }
+    #[cfg(not(skene_leaf = "host"))]
+    if platform::is_server() {
+      return Self(skene_reactive::Resource::unloaded(load));
     }
 
     Self(skene_reactive::Resource::new(load))

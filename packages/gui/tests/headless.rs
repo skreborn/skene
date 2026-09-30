@@ -12,6 +12,7 @@ use skene_gui::{
   Bubbling,
   Column,
   Container,
+  GuiProperty,
   HasChild,
   HasChildren,
   LayoutBox,
@@ -28,7 +29,7 @@ use skene_gui::{
   Text,
   TextEntry,
   View,
-  core::{Color, Dimension, FlexChild, FlexDirection, Layout, NoProperty, Property, PropertyKey},
+  core::{Color, Dimension, FlexChild, FlexDirection, Layout, Property, PropertyKey},
   headless::{
     box_props,
     children,
@@ -47,9 +48,9 @@ use skene_gui::{
   prelude::{Get, Owner, Set, Signal},
 };
 
-const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
-const HEIGHT: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Height);
-const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
+const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
+const HEIGHT: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Height);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
 
 /// The nodes between a container's anchors: its content, in order.
 fn content(node: NodeId) -> Vec<NodeId> {
@@ -385,6 +386,19 @@ fn a_resource_loads_when_the_tasks_are_pumped() {
   assert_eq!(resource.state(), LoadState::Ready);
   assert_eq!(resource.get(), Some(42));
   assert!(!pump_tasks());
+
+  owner.dispose();
+}
+
+/// A resource installs the headless executor itself, as `spawn` does: on a thread
+/// nothing reset, it loads once the tasks are pumped.
+#[test]
+fn a_resource_installs_the_executor_on_the_host() {
+  let owner = Owner::new();
+  let resource = owner.enter(|| Resource::new(|| async { 7u32 }));
+
+  assert!(pump_tasks());
+  assert_eq!(resource.get(), Some(7));
 
   owner.dispose();
 }

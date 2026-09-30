@@ -57,11 +57,6 @@ left half-done in a code comment.
     wheel latching, field editing, selection, motion) is extracted into a
     medium-generic kit; headless lays out through it and renders pixel snapshots, and
     it is the native family's first prerequisite.
-    - Headless as the medium: `StyleExt = GuiExt`, since corner radius and type metrics
-    compile to nothing on the host and `em` is fixed at 16; focus and blur handlers,
-    light dismiss and the text-entry focus-visible rule through core's interaction
-    model; accessible names in the ARIA order for every named node;
-    `Resource::new` installing the executor on the host, as `spawn` does.
     - `find_by_role(role, name)`, `find_by_text` and a user-event layer on headless and
     the terminal; a host-tier check that every control is named; terminal snapshot
     files with colors, and browser screenshot goldens through the browser tier's

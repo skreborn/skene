@@ -6,12 +6,11 @@
   reason = "each test binary uses its own share of the helpers"
 )]
 
-use skene_common::typography;
+use skene_common::{gui::GuiProperty, typography};
 use skene_core::{
   Color,
   Length,
   Media,
-  NoProperty,
   NodeId,
   Property,
   PropertyKey,
@@ -22,11 +21,11 @@ use skene_core::{
 };
 use skene_headless::{TokenValue, children};
 
-pub(crate) const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-pub(crate) const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
-pub(crate) const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
-pub(crate) const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
-pub(crate) const SPACING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Spacing);
+pub(crate) const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+pub(crate) const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
+pub(crate) const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
+pub(crate) const PADDING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Padding);
+pub(crate) const SPACING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Spacing);
 
 pub(crate) const WHITE: Color = Color::TRANSPARENT;
 

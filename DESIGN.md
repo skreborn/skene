@@ -762,15 +762,19 @@ and on wasm proved the bits equal.
 
 The host platform: every `Platform` method writes into a record per node, keyed by its
 `NodeId`, while the structure stays the scene's alone; nothing lays out and no platform
-response fires. Beside the records it keeps what a test asks: the outline, read from the
-scene,
-the props a node was created with, the slot a render effect last wrote, a property
-resolved through core's `Resolver` under the environment a test set (viewport, scheme,
-reduced motion, container sizes, hover and focus), control state and
-parts, overlay openness, focus order, accessible names, bound painters. Events go through
-`trigger_*` into core's dispatch; a frame clock advances on request; an executor holds
-every spawned task until `pump_tasks`. It is what `skene-gui` selects on a host target,
-so an app's `#[main]` compiles everywhere.
+response fires. It is the pixel medium (`StyleExt = GuiExt`), so a corner radius or a
+run's font size resolves as set, as it would on the web. Beside the records it keeps what
+a test asks: the outline, read from the scene, the props a node was created with, the
+slot a render effect last wrote, a property resolved through core's `Resolver` under the
+environment a test set (viewport, scheme, reduced motion, container sizes, hover and
+focus), control state and parts, overlay openness, focus order, bound painters, and any
+node's accessible name in the accessible-name computation's order: the nodes it is
+labelled by, its label, a control's caption, then its content where its role or its
+link takes the name from content, an embedded entry, picker or range giving its value
+and hidden content giving nothing. Events go through `trigger_*` into core's dispatch; a
+frame clock advances on request; an executor, installed by `spawn` and `Resource` alike,
+holds every spawned task until `pump_tasks`. It is what `skene-gui` selects on a host
+target, so an app's `#[main]` compiles everywhere.
 
 ### Native (`skene-native`, planned)
 

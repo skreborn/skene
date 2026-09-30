@@ -6,6 +6,7 @@ use std::{
   rc::Rc,
 };
 
+use skene_common::gui::GuiProperty;
 use skene_core::{
   BoxValue,
   Bubbling,
@@ -99,9 +100,9 @@ type Text = skene_common::Text<Headless>;
 type Flexible<C = NoChild> = skene_common::Flexible<Headless, C>;
 type Theme<S, C = NoChild> = skene_common::Theme<Headless, S, C>;
 
-const COLOR: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Color);
-const WIDTH: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Width);
-const PADDING: PropertyKey<skene_core::NoProperty> = PropertyKey::Shared(Property::Padding);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
+const PADDING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Padding);
 const SIDEBAR: ContainerName = ContainerName("sidebar");
 
 const WHITE: Color = Color::TRANSPARENT;
@@ -159,6 +160,33 @@ fn hovered() -> Condition<f32> {
 /// The content between a container's anchors: its one child.
 fn only_child(node: NodeId) -> NodeId {
   children(node)[1]
+}
+
+/// The host platform takes the pixel media's own properties: a box's corner radius and
+/// a run's font size resolve as set, the size an `em` measures against.
+#[test]
+fn the_pixel_properties_resolve_on_the_host() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    Container::new()
+      .set_corner_radius(8.)
+      .set_child(Text::new("big").set_font_size(24.))
+      .build()
+  });
+  let run = only_child(node);
+
+  assert_eq!(
+    resolve_length(node, PropertyKey::Extension(GuiProperty::CornerRadius)),
+    Some(8.)
+  );
+  assert_eq!(
+    resolve_length(run, PropertyKey::Extension(GuiProperty::FontSize)),
+    Some(24.)
+  );
+
+  owner.dispose();
 }
 
 /// A container with a derived child realizes a box and a run and nothing else, and a

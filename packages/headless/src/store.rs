@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
-use skene_common::gui::{Head, Painter};
+use skene_common::gui::{GuiProperty, Head, Painter};
 use skene_core::{
   Availability,
   BoxProps,
@@ -18,7 +18,6 @@ use skene_core::{
   EventKind,
   Inset,
   MediaSignals,
-  NoProperty,
   NodeId,
   NodeMap,
   OverlayProps,
@@ -62,10 +61,10 @@ pub(crate) enum Kind {
 #[derive(Default)]
 pub(crate) struct NodeMotion {
   /// The value last resolved per property, which a change is judged against.
-  pub targets: FxHashMap<PropertyKey<NoProperty>, Option<SlotValue>>,
+  pub targets: FxHashMap<PropertyKey<GuiProperty>, Option<SlotValue>>,
   /// The tweens in flight, and the clock the animations count from: the node's
   /// creation.
-  pub runner: Motion<NoProperty, SlotValue>,
+  pub runner: Motion<GuiProperty, SlotValue>,
 }
 
 /// One realized node.
@@ -354,7 +353,7 @@ impl Store {
 
   /// Every property a resolution has observed, by node, for a frame to judge again.
   #[must_use]
-  pub(crate) fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<NoProperty>>)> {
+  pub(crate) fn tracked(&self) -> Vec<(NodeId, Vec<PropertyKey<GuiProperty>>)> {
     self
       .records
       .iter()

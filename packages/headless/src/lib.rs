@@ -34,7 +34,7 @@ mod store;
 
 use std::{cell::RefCell, fmt::Write as _, rc::Rc, thread::LocalKey, time::Duration};
 
-use skene_common::gui::{Canvas, Painter, Painting};
+use skene_common::gui::{Canvas, GuiExt, GuiProperty, Painter, Painting};
 pub use skene_common::gui::{HeadElement, HeadId};
 use skene_core::{
   AccessProp,
@@ -59,7 +59,7 @@ use skene_core::{
   Media,
   MediaSignals,
   NamedKey,
-  NoProperty,
+  NativeElement,
   NodeId,
   NodeRecord,
   Observation,
@@ -76,6 +76,8 @@ use skene_core::{
   Prevented,
   Property,
   PropertyKey,
+  Role,
+  RunDisplay,
   RunProps,
   RunValue,
   Scene,
@@ -127,10 +129,10 @@ pub struct Headless;
 pub type TokenValue = skene_core::TokenValue<f32>;
 
 /// A property's value erased over the property; see [`skene_core::SlotValue`].
-pub type SlotValue = skene_core::SlotValue<f32>;
+pub type SlotValue = skene_core::SlotValue<f32, GuiExt>;
 
 /// What a derived leaf last wrote into a node's slot; see [`skene_core::SlotLeaf`].
-pub type SlotLeaf = skene_core::SlotLeaf<f32>;
+pub type SlotLeaf = skene_core::SlotLeaf<f32, GuiExt>;
 
 thread_local! {
   static SCENE: RefCell<Scene<Headless>> = RefCell::new(Scene::new());
@@ -177,7 +179,7 @@ fn with_record<R>(node: NodeId, operation: impl FnOnce(&mut Record) -> R) -> Opt
 
 impl Platform for Headless {
   type Scalar = f32;
-  type StyleExt = ();
+  type StyleExt = GuiExt;
   type TokenValue = TokenValue;
 
   fn scene() -> &'static LocalKey<RefCell<Scene<Self>>> {
@@ -188,7 +190,7 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Box(Box::new(props.clone())))));
   }
 
-  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32>>) {
+  fn update_box(node: NodeId, slot: Slot, leaf: &StaticLeaf<BoxValue<f32, GuiExt>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -248,7 +250,7 @@ impl Platform for Headless {
     with_store(|store| store.insert(node, Record::new(Kind::Run(Box::new(props.clone())))));
   }
 
-  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue>) {
+  fn update_run(node: NodeId, slot: Slot, leaf: &StaticLeaf<RunValue<GuiExt>>) {
     with_record(node, |record| {
       record.slots.insert(slot, leaf.clone().into());
     });
@@ -1184,62 +1186,247 @@ pub fn is_tab_stop(node: NodeId) -> bool {
   )
 }
 
-/// The name the control `node` reports to assistive technology.
+/// The name `node` reports to assistive technology, by the accessible-name computation.
 ///
-/// The accessible-name computation's order: the text of the nodes it is labelled by,
-/// else the label its accessibility properties carry, else the label its props were
-/// created with (both a platform's `aria-label`), else the text of its
-/// [`Part::Label`].
+/// In its order: the text alternatives of the nodes it is labelled by, else the label
+/// its accessibility properties carry, else the label a control's props were created
+/// with (both a platform's `aria-label`), else the text alternative of a control's
+/// [`Part::Label`], else, where its role or its link takes its name from its content,
+/// the text alternatives of its children.
+///
+/// Within content, a run's text is its own, a box's and a block run's are set apart by
+/// spaces, and an embedded entry, picker or range contributes its value. A hidden box or
+/// a closed overlay contributes nothing unless a node is labelled by it. Whitespace
+/// collapses, and an empty name is none.
 #[must_use]
 pub fn accessible_name(node: NodeId) -> Option<String> {
   end_turn();
 
-  let props = control_props(node)?;
-  let access = &props.box_props.access;
-  let labelled = access.iter().find_map(|prop| match prop {
-    AccessProp::LabelledBy(nodes) => Some(
-      nodes
-        .iter()
-        .map(|node| subtree_text(*node))
-        .filter(|text| !text.is_empty())
-        .collect::<Vec<_>>()
-        .join(" "),
-    ),
-    _ => None,
-  });
-  let label = access.iter().find_map(|prop| match prop {
-    AccessProp::Label(label) => Some(label.clone()),
-    _ => None,
-  });
-  let caption = Scene::<Headless>::with(|scene| {
-    scene
-      .children(node)
-      .find(|child| scene.part(*child) == Some(Part::Label))
-  })
-  .map(subtree_text);
+  let name = Naming::default().alternative(node, Reach::Root);
+  let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
 
-  [labelled, label, props.label, caption]
-    .into_iter()
-    .flatten()
-    .find(|name| !name.is_empty())
+  (!name.is_empty()).then_some(name)
 }
 
-/// The text of every run under `node`, in order.
-fn subtree_text(node: NodeId) -> String {
-  let mut out = String::new();
-  let mut pending = vec![node];
+/// How an accessible-name computation reached a node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Reach {
+  /// The node being named.
+  Root,
+  /// A node the named node is labelled by, or its caption.
+  Reference,
+  /// A node within content a name is taken from.
+  Content,
+}
 
-  while let Some(node) = pending.pop() {
-    if let Some(text) = text(node) {
-      out.push_str(&text);
+/// One accessible-name computation.
+#[derive(Debug, Default)]
+struct Naming {
+  /// Whether the computation is within a labelled-by traversal, which follows no other.
+  referencing: bool,
+}
+
+impl Naming {
+  /// The text alternative of `node`, reached by `reach`.
+  fn alternative(&mut self, node: NodeId, reach: Reach) -> String {
+    if reach != Reach::Reference && is_hidden(node) {
+      return String::new();
     }
 
-    let children: Vec<NodeId> = children(node);
+    let access = box_props(node)
+      .map(|props| props.access)
+      .unwrap_or_default();
 
-    pending.extend(children.into_iter().rev());
+    if !self.referencing
+      && let Some(nodes) = access.iter().find_map(|prop| match prop {
+        AccessProp::LabelledBy(nodes) => Some(nodes),
+        _ => None,
+      })
+    {
+      let name = self.references(nodes);
+
+      if !name.trim().is_empty() {
+        return name;
+      }
+    }
+
+    if reach != Reach::Root
+      && let Some(value) = embedded_value(node)
+    {
+      return value;
+    }
+
+    let label = access.iter().find_map(|prop| match prop {
+      AccessProp::Label(label) => Some(label.clone()),
+      _ => None,
+    });
+
+    if let Some(label) = label.filter(|label| !label.trim().is_empty()) {
+      return label;
+    }
+
+    if let Some(props) = control_props(node) {
+      if let Some(label) = props.label.filter(|label| !label.trim().is_empty()) {
+        return label;
+      }
+
+      let caption = Scene::<Headless>::with(|scene| {
+        scene
+          .children(node)
+          .find(|child| scene.part(*child) == Some(Part::Label))
+      });
+
+      if let Some(caption) = caption
+        && !self.referencing
+      {
+        let name = self.references(&[caption]);
+
+        if !name.trim().is_empty() {
+          return name;
+        }
+      }
+    }
+
+    if reach != Reach::Root || names_from_content(node) {
+      return self.content(node);
+    }
+
+    String::new()
   }
 
-  out
+  /// The text alternatives of `nodes`, each reached as a reference, joined by spaces.
+  fn references(&mut self, nodes: &[NodeId]) -> String {
+    self.referencing = true;
+
+    let name = nodes
+      .iter()
+      .map(|node| self.alternative(*node, Reach::Reference))
+      .filter(|name| !name.trim().is_empty())
+      .collect::<Vec<_>>()
+      .join(" ");
+
+    self.referencing = false;
+
+    name
+  }
+
+  /// The text of `node` and the text alternatives of its children, in order, a box's and
+  /// a block run's set apart by spaces.
+  fn content(&mut self, node: NodeId) -> String {
+    let mut out = text(node).unwrap_or_default();
+
+    for child in children(node) {
+      let alternative = self.alternative(child, Reach::Content);
+
+      if is_block(child) {
+        out.push(' ');
+        out.push_str(&alternative);
+        out.push(' ');
+      }
+      else {
+        out.push_str(&alternative);
+      }
+    }
+
+    out
+  }
+}
+
+/// Whether `node` is out of the accessibility tree: a box resolving hidden or a closed
+/// overlay.
+fn is_hidden(node: NodeId) -> bool {
+  let closed = with_record(node, |record| {
+    matches!(record.kind, Kind::Overlay(_)) && !record.open
+  });
+
+  closed == Some(true) || resolve_visibility(node) == Some(Visibility::Hidden)
+}
+
+/// Whether `node` lays out as a block: a box, or a run on its own line.
+fn is_block(node: NodeId) -> bool {
+  with_record(node, |record| match &record.kind {
+    Kind::Box(_) | Kind::Control(_) | Kind::Overlay(_) => true,
+    Kind::Run(props) => props.display == RunDisplay::Block,
+    Kind::Anchor | Kind::Scope => false,
+  }) == Some(true)
+}
+
+/// Whether `node` takes its name from its content, as a link and ARIA's roles named
+/// from contents do.
+fn names_from_content(node: NodeId) -> bool {
+  with_record(node, |record| {
+    if let Kind::Run(props) = &record.kind {
+      return props.link.is_some();
+    }
+
+    record.kind.box_props().is_some_and(|props| {
+      props.destination.is_some()
+        || props.role.is_some_and(|role| {
+          matches!(
+            role,
+            Role::Button
+              | Role::DefaultButton
+              | Role::CheckBox
+              | Role::RadioButton
+              | Role::Switch
+              | Role::Link
+              | Role::MenuItem
+              | Role::MenuItemCheckBox
+              | Role::MenuItemRadio
+              | Role::ListBoxOption
+              | Role::MenuListOption
+              | Role::Tab
+              | Role::TreeItem
+              | Role::Heading
+              | Role::Cell
+              | Role::GridCell
+              | Role::ColumnHeader
+              | Role::RowHeader
+              | Role::Row
+              | Role::Tooltip
+              | Role::DisclosureTriangle
+              | Role::Comment
+              | Role::DocBackLink
+              | Role::DocBiblioRef
+              | Role::DocGlossRef
+              | Role::DocNoteRef
+          )
+        })
+    })
+  }) == Some(true)
+}
+
+/// The value the control `node` contributes to a name taken from content it sits in:
+/// an entry's text, a picker's chosen option's name, a range's value text or value;
+/// `None` for any other node.
+fn embedded_value(node: NodeId) -> Option<String> {
+  let props = control_props(node)?;
+  let access = &props.box_props.access;
+
+  match props.native {
+    Some(NativeElement::TextField | NativeElement::TextEditor) => value(node),
+    Some(NativeElement::Picker) => {
+      let chosen = value(node)?;
+
+      options(node)?
+        .into_iter()
+        .find(|option| option.value == chosen)
+        .map(|option| option.name)
+    }
+    Some(NativeElement::Range) => access
+      .iter()
+      .find_map(|prop| match prop {
+        AccessProp::ValueText(text) => Some(text.clone()),
+        _ => None,
+      })
+      .or_else(|| {
+        access.iter().find_map(|prop| match prop {
+          AccessProp::Value(value) => Some(value.to_string()),
+          _ => None,
+        })
+      }),
+    Some(NativeElement::Button | NativeElement::Checkbox | NativeElement::Radio) | None => None,
+  }
 }
 
 /// The props the run `node` was created with.
@@ -1350,7 +1537,7 @@ pub fn children(node: NodeId) -> Vec<NodeId> {
 /// then its leaf through the scene's tokens, the expression evaluator or the recorded
 /// slot value.
 #[must_use]
-pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color> {
+pub fn resolve_color(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Color> {
   end_turn();
 
   match resolve::resolve(node, key)? {
@@ -1362,7 +1549,7 @@ pub fn resolve_color(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Color
 /// The inset the property `key` of `node` resolves to, by the same resolution as
 /// [`resolve_color`]: a padding, a border's width, or a single length on every edge.
 #[must_use]
-pub fn resolve_inset(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Inset<f32>> {
+pub fn resolve_inset(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<Inset<f32>> {
   end_turn();
 
   match resolve::resolve(node, key)? {
@@ -1374,14 +1561,16 @@ pub fn resolve_inset(node: NodeId, key: PropertyKey<NoProperty>) -> Option<Inset
 }
 
 /// The length the property `key` of `node` resolves to, by the same resolution as
-/// [`resolve_color`]: a length, a fixed-length dimension, a number, or a uniform inset or
-/// spacing.
+/// [`resolve_color`]: a box's length, fixed-length dimension, number, or uniform inset or
+/// spacing, or a run's length.
 #[must_use]
-pub fn resolve_length(node: NodeId, key: PropertyKey<NoProperty>) -> Option<f32> {
+pub fn resolve_length(node: NodeId, key: PropertyKey<GuiProperty>) -> Option<f32> {
   end_turn();
 
   match resolve::resolve(node, key)? {
-    SlotValue::Box(BoxValue::Length(length)) => Some(length.0),
+    SlotValue::Box(BoxValue::Length(length)) | SlotValue::Run(RunValue::Length(length)) => {
+      Some(length.0)
+    }
     SlotValue::Box(BoxValue::Dimension(Dimension::Length(length))) => Some(length),
     SlotValue::Box(BoxValue::Number(number)) => Some(number),
     SlotValue::Box(BoxValue::Inset(inset)) => uniform_inset(inset),

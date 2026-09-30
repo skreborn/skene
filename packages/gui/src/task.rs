@@ -14,10 +14,16 @@ use skene_reactive::TaskHandle;
 /// platform's queue, drained by `pump_tasks`.
 #[inline(always)]
 pub fn spawn(future: impl Future<Output = ()> + 'static) -> TaskHandle {
+  install_executor();
+
+  skene_reactive::spawn(future)
+}
+
+/// Installs the active platform's executor as this thread's spawner.
+#[inline(always)]
+pub(crate) fn install_executor() {
   #[cfg(not(skene_leaf = "host"))]
   skene_web::install_executor();
   #[cfg(skene_leaf = "host")]
   skene_headless::install_executor();
-
-  skene_reactive::spawn(future)
 }

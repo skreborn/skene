@@ -751,6 +751,29 @@ fn focus_shows_after_a_key_and_not_after_a_pointer_press() {
   owner.dispose();
 }
 
+/// Focus in a text entry shows even when a pointer press reached it, as
+/// `:focus-visible` does in an `<input>`.
+#[test]
+fn focus_in_a_text_entry_shows_after_a_pointer_press() {
+  reset();
+
+  let owner = Owner::new();
+  let node = owner.enter(|| {
+    RawTextField::new(TextEntry::new())
+      .set_color(red().when(focus_visible(), blue()))
+      .build()
+  });
+
+  let _ = trigger_pointer_down(node, &press_at(0.));
+
+  trigger_focus(node);
+
+  assert!(is_focused(node));
+  assert_eq!(resolve_color(node, COLOR), Some(blue()));
+
+  owner.dispose();
+}
+
 /// A disabled control reports it, takes no focus and ignores activation, letting keys
 /// by; enabling it again restores all three.
 #[test]

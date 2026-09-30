@@ -2,12 +2,13 @@
 //! default lands at the root without one.
 
 use acme_ui::{AcmeBadge, AcmePalette};
-use skene_core::{Color, NoProperty, NodeId, Property, PropertyKey, View};
+use skene_common::gui::GuiProperty;
+use skene_core::{Color, NodeId, Property, PropertyKey, View};
 use skene_headless::{Headless, children, reset, resolve_color, text};
 use skene_reactive::Owner;
 
-const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
 
 type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
 

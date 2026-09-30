@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use skene_common::ThemedIn;
+use skene_common::{ThemedIn, gui::GuiProperty};
 use skene_core::{
   BoxValue,
   Color,
@@ -14,7 +14,6 @@ use skene_core::{
   Inset,
   KeyEvent,
   Media,
-  NoProperty,
   Part,
   Property,
   PropertyKey,
@@ -72,10 +71,10 @@ type Column = skene_common::Column<Headless>;
 type Text = skene_common::Text<Headless>;
 type Theme<P, C = skene_common::NoChild> = skene_common::Theme<Headless, P, C>;
 
-const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
-const BORDER_WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderWidth);
-const BORDER_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderColor);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
+const BORDER_WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::BorderWidth);
+const BORDER_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::BorderColor);
 
 /// The border of the box `node`: its width, the same on every edge, and its color.
 fn border(node: skene_core::NodeId) -> Option<(f32, Color)> {

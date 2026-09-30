@@ -18,7 +18,7 @@ use skene_common::{
   Text,
   Theme,
   Toggle,
-  gui::Typography,
+  gui::{GuiProperty, Typography},
 };
 use skene_core::{
   AccessProp,
@@ -40,7 +40,6 @@ use skene_core::{
   Inset,
   Length,
   Media,
-  NoProperty,
   NodeId,
   Overflow,
   Platform,
@@ -83,12 +82,12 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 type Web = skene_gui::ActivePlatform;
 
-const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
-const WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Width);
-const PADDING: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Padding);
-const BORDER_WIDTH: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderWidth);
-const BORDER_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::BorderColor);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
+const WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Width);
+const PADDING: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Padding);
+const BORDER_WIDTH: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::BorderWidth);
+const BORDER_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::BorderColor);
 
 /// The accessible name a case gives the box it reads, where that box is not its own.
 const TARGET: &str = "parity-target";

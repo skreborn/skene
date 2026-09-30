@@ -8,6 +8,7 @@ use skene_gui::{
   Activate,
   Column,
   Container,
+  GuiProperty,
   HasChildren,
   NodeId,
   RawButton,
@@ -16,15 +17,15 @@ use skene_gui::{
   ThemedIn,
   Typography,
   View,
-  core::{Color, ColorScheme, Media, NoProperty, Property, PropertyKey, StaticLeaf},
+  core::{Color, ColorScheme, Media, Property, PropertyKey, StaticLeaf},
   headless::{children, end_turn, reset, resolve_color, text, trigger_click},
   media,
   prelude::{Get, Owner, Set, Signal, Update},
 };
 use skene_simple::gui::prelude::*;
 
-const COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::Color);
-const TEXT_COLOR: PropertyKey<NoProperty> = PropertyKey::Shared(Property::TextColor);
+const COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::Color);
+const TEXT_COLOR: PropertyKey<GuiProperty> = PropertyKey::Shared(Property::TextColor);
 
 /// The nodes between a container's anchors: its content, in order.
 fn content(node: NodeId) -> Vec<NodeId> {

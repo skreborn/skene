@@ -1,12 +1,10 @@
 //! The identity a scope carries across two runs: its position, or the key anchoring it.
 
-use std::{
-  hash::{Hash, Hasher},
-  rc::Rc,
-};
+use std::{hash::Hash, rc::Rc};
 
 use crate::{
   encode::{Recorder, Snapshot, Value},
+  hash,
   runtime::RUNTIME,
 };
 
@@ -24,44 +22,7 @@ impl Key {
   /// The key of `value`.
   #[inline(always)]
   pub fn of(value: &impl Hash) -> Self {
-    let mut hasher = Fnv128::default();
-
-    value.hash(&mut hasher);
-
-    Self(hasher.hash)
-  }
-}
-
-/// The 128-bit FNV-1a hasher a key is taken with: wide enough that two keys colliding
-/// is not a case to design for.
-struct Fnv128 {
-  hash: u128,
-}
-
-impl Default for Fnv128 {
-  #[inline(always)]
-  fn default() -> Self {
-    Self {
-      hash: 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d,
-    }
-  }
-}
-
-impl Hasher for Fnv128 {
-  #[inline(always)]
-  fn write(&mut self, bytes: &[u8]) {
-    const PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
-
-    for byte in bytes {
-      self.hash ^= u128::from(*byte);
-      self.hash = self.hash.wrapping_mul(PRIME);
-    }
-  }
-
-  #[inline(always)]
-  #[expect(clippy::cast_possible_truncation, reason = "the hash's low half")]
-  fn finish(&self) -> u64 {
-    self.hash as u64
+    Self(hash::wide_of(value))
   }
 }
 

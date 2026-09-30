@@ -33,29 +33,15 @@ pub(crate) struct ClassInterner {
   rules: FxHashMap<Rc<str>, Rule>,
 }
 
-/// The 128-bit FNV-1a hash of `text`.
-///
-/// Content addressing needs a wide, deterministic hash of the template text and nothing
-/// else; the name it yields is identical on every leaf and independent of intern order.
-#[must_use]
-pub(crate) fn content_hash(text: &str) -> u128 {
-  const OFFSET: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
-  const PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
-
-  let mut hash = OFFSET;
-
-  for byte in text.bytes() {
-    hash ^= u128::from(byte);
-    hash = hash.wrapping_mul(PRIME);
-  }
-
-  hash
-}
-
-/// The class name for a template: `skene-` and the template's content hash in hex.
+/// The class name for a template: `skene-` and the template's 128-bit
+/// [`hash`](skene_reactive::hash::wide) in hex, identical on every leaf and independent
+/// of intern order.
 #[must_use]
 pub(crate) fn class_name(template: &str) -> String {
-  format!("skene-{:032x}", content_hash(template))
+  format!(
+    "skene-{:032x}",
+    skene_reactive::hash::wide(template.as_bytes())
+  )
 }
 
 impl ClassInterner {

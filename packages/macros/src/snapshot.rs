@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, LitStr, ext::IdentExt};
 
-use crate::store::{field_key, reactive};
+use crate::store::reactive;
 
 /// What a field's `#[snapshot(...)]` attributes say: whether it is skipped, and its tag.
 struct FieldAttributes {
@@ -108,7 +108,8 @@ fn field_code(fields: &Fields, reactive: &TokenStream, bound: bool) -> syn::Resu
       .ident
       .as_ref()
       .map_or_else(|| position.to_string(), |ident| ident.unraw().to_string());
-    let key = field_key(attributes.tag.as_deref().unwrap_or(&label));
+    let name = attributes.tag.as_deref().unwrap_or(&label);
+    let key = quote!(const { #reactive::key(#name) });
     let binding = format_ident!("__field_{position}");
     let member: syn::Member = field.ident.clone().map_or_else(
       || syn::Member::Unnamed(syn::Index::from(position)),
@@ -211,13 +212,16 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
     Data::Enum(data) => {
       let mut record_arms = Vec::new();
       let mut restore_arms = Vec::new();
+      let mut restore_constants = Vec::new();
       let mut default_variant = None;
 
       for variant in &data.variants {
         let (default, tag) = variant_attributes(&variant.attrs)?;
         let ident = &variant.ident;
         let label = ident.unraw().to_string();
-        let key = field_key(tag.as_deref().unwrap_or(&label));
+        let name = tag.as_deref().unwrap_or(&label);
+        let key = quote!(const { #reactive::key(#name) });
+        let constant = format_ident!("__VARIANT_KEY_{}", restore_constants.len());
         let code = field_code(&variant.fields, &reactive, true)?;
         let bindings = &code.bindings;
         let path = quote!(Self::#ident);
@@ -257,7 +261,8 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
         record_arms.push(quote! {
           #pattern => __recorder.variant(#key, |__recorder| { #payload }),
         });
-        restore_arms.push(quote!(#key => #restored,));
+        restore_constants.push(quote!(const #constant: u32 = #reactive::key(#name);));
+        restore_arms.push(quote!(#constant => #restored,));
 
         if default {
           if !bindings.is_empty() {
@@ -296,6 +301,8 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
             return None;
           };
           let __payload = __reader.value()?;
+
+          #(#restore_constants)*
 
           match __key {
             #(#restore_arms)*

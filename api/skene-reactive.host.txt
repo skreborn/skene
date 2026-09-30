@@ -1,6 +1,10 @@
 pub mod skene_reactive
 pub use skene_reactive::Snapshot
 pub use skene_reactive::Store
+pub mod skene_reactive::hash
+pub const fn skene_reactive::hash::key(&str) -> u32
+pub fn skene_reactive::hash::wide(&[u8]) -> u128
+pub fn skene_reactive::hash::wide_of(&impl core::hash::Hash) -> u128
 pub enum skene_reactive::LoadState
 pub skene_reactive::LoadState::Loading
 pub skene_reactive::LoadState::Ready

@@ -92,23 +92,6 @@ mod tag {
   pub(super) const VARIANT: u8 = 12;
 }
 
-/// The key a field or a variant is recorded under: FNV-1a over its name, stable under
-/// reordering.
-#[inline(always)]
-#[must_use]
-pub const fn key(name: &str) -> u32 {
-  let bytes = name.as_bytes();
-  let mut hash = 0x811c_9dc5_u32;
-  let mut at = 0;
-
-  while at < bytes.len() {
-    hash = (hash ^ bytes[at] as u32).wrapping_mul(0x0100_0193);
-    at += 1;
-  }
-
-  hash
-}
-
 /// Records values into the encoding.
 #[derive(Debug, Default)]
 #[must_use]
@@ -1103,6 +1086,7 @@ tuples!(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::hash::key;
 
   /// Every kind round-trips through its own type.
   #[test]

@@ -8,7 +8,6 @@ use skene_core::{Animation, Easing, PropertyKey, StyleProperty, Transition};
 use crate::{
   Declarations,
   compile::{Key, target},
-  interner::content_hash,
 };
 
 /// The media query under which motion respecting the reduced-motion preference runs.
@@ -87,7 +86,10 @@ pub(crate) fn render_keyframes<S>(
     body.push('}');
   }
 
-  let name = format!("skene-k-{:032x}", content_hash(&body));
+  let name = format!(
+    "skene-k-{:032x}",
+    skene_reactive::hash::wide(body.as_bytes())
+  );
 
   out.push_str("@keyframes ");
   out.push_str(&name);

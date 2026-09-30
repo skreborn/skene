@@ -28,7 +28,8 @@ use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use crate::{
   Signal,
   With,
-  encode::{Fields, Recorder, Snapshot, Value, decode, encode, key},
+  encode::{Fields, Recorder, Snapshot, Value, decode, encode},
+  hash::key,
   id::Id,
   path::{Position, Step},
   runtime::{RUNTIME, with_graph},

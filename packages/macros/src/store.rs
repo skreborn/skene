@@ -57,15 +57,8 @@ struct Field {
   accessor: Ident,
   member: syn::Member,
   ty: syn::Type,
-  key: u32,
+  key: String,
   label: String,
-}
-
-/// FNV-1a over `name`: the field key, stable under reordering.
-pub(crate) fn field_key(name: &str) -> u32 {
-  name.bytes().fold(0x811c_9dc5_u32, |hash, byte| {
-    (hash ^ u32::from(byte)).wrapping_mul(0x0100_0193)
-  })
 }
 
 /// Reads a field's `#[store(...)]` attributes: whether it is skipped, and its tag.
@@ -129,13 +122,13 @@ fn fields(data: &Fields) -> syn::Result<Vec<Field>> {
         position.to_string(),
       )
     };
-    let key = field_key(tag.as_deref().unwrap_or(&label));
+    let key = tag.unwrap_or_else(|| label.clone());
 
     if let Some(existing) = fields.iter().find(|existing: &&Field| existing.key == key) {
       return Err(syn::Error::new_spanned(
         field,
         format!(
-          "the store key of `{label}` collides with `{}`; tag one of them",
+          "the store key of `{label}` is `{}`'s as well; tag one of them",
           existing.label
         ),
       ));
@@ -193,7 +186,7 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
       fn #accessor(self) -> #reactive::Subfield<Self, #ty> {
         #reactive::Subfield::new(
           self,
-          #key,
+          const { #reactive::key(#key) },
           |value: &#name #ty_generics| &value.#member,
           |value: &mut #name #ty_generics| &mut value.#member,
         )
@@ -207,7 +200,27 @@ pub(crate) fn derive(input: &DeriveInput) -> syn::Result<TokenStream> {
     __Location: #reactive::StoreField<Value = #name #ty_generics>
   });
 
+  let reactive_path = &reactive;
+  let collisions = fields.iter().enumerate().flat_map(|(index, field)| {
+    fields[index + 1..].iter().map(move |other| {
+      let message = format!(
+        "the store keys of `{}` and `{}` collide; tag one of them",
+        field.label, other.label
+      );
+      let (key, other) = (&field.key, &other.key);
+
+      quote! {
+        const _: () = ::core::assert!(
+          #reactive_path::key(#key) != #reactive_path::key(#other),
+          #message
+        );
+      }
+    })
+  });
+
   Ok(quote! {
+    #(#collisions)*
+
     #[doc = #trait_doc]
     #[automatically_derived]
     #visibility trait #trait_name #impl_generics:
